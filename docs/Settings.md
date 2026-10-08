@@ -309,7 +309,11 @@ Saves, the Authoring Tour, and stored data. To back up your worlds, saves, libra
 
 ### Authoring
 
-**Start Authoring Tour** opens the World Editor on a new world and shows an example for each step. See [The Authoring Tour](WorldEditor#the-authoring-tour). Your other worlds do not change. This section shows only when you open Settings from the main menu.
+**Auto Save** saves your world while you edit it in the World Editor. The **Save** menu in the editor has the same checkbox. The setting applies to every world. See [Saving and Discarding](WorldEditor#saving-and-discarding).
+
+**Auto Save Pause** sets how long the editor waits after your last edit before it saves. The range is 10 seconds to 5 minutes. The default is 30 seconds. A longer pause writes less often but leaves more unsaved. A large run of edits saves without waiting. The slider shows only while **Auto Save** is on.
+
+**Start Authoring Tour** opens the World Editor on a new world and shows an example for each step. See [The Authoring Tour](WorldEditor#the-authoring-tour). Your other worlds do not change. This button shows only when you open Settings from the main menu.
 
 ### Storage
 

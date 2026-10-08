@@ -58,6 +58,46 @@ describe('the idle pause', () => {
   });
 });
 
+describe('a chosen pause', () => {
+  it('replaces the default one', async () => {
+    const saves = pendingSaves();
+    const scheduler = createAutoSaveScheduler({ save: saves.save, idleMs: 10_000 });
+    scheduler.setEnabled(true);
+    scheduler.add(10);
+    await vi.advanceTimersByTimeAsync(9_999);
+    expect(saves.save).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(saves.save).toHaveBeenCalledTimes(1);
+  });
+
+  it('applies to a change already waiting, counted from the change in the setting', async () => {
+    const { scheduler, save } = setup();
+    scheduler.add(10);
+    await vi.advanceTimersByTimeAsync(AUTO_SAVE_IDLE_MS - 1000);
+    scheduler.setIdleMs(5_000);
+    await vi.advanceTimersByTimeAsync(4_999);
+    expect(save).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(save).toHaveBeenCalledTimes(1);
+  });
+
+  it('starts no timer when nothing is waiting', async () => {
+    const { scheduler, save } = setup();
+    scheduler.setIdleMs(10_000);
+    await vi.advanceTimersByTimeAsync(AUTO_SAVE_IDLE_MS);
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it('leaves the threshold alone', async () => {
+    const saves = pendingSaves();
+    const scheduler = createAutoSaveScheduler({ save: saves.save, idleMs: 300_000 });
+    scheduler.setEnabled(true);
+    scheduler.add(AUTO_SAVE_THRESHOLD);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(saves.save).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('the count', () => {
   it('resets on a good auto save and keeps what was edited while it ran', async () => {
     const { scheduler, save, settle } = setup();

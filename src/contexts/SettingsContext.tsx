@@ -2,7 +2,7 @@ import { randomUUID } from "@/lib/uuid";
 import { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from 'react';
 import { PROMPT_TEXT_DEFAULTS } from '../components/game/GamePrompts';
 import { EXPERIMENTAL_PROMPT_VALUES } from '../components/game/ExperimentalPrompts';
-import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_CONTEXT_WINDOW, DEFAULT_LOCAL_CONTEXT_SIZE, DEFAULT_LOCAL_GPU_LAYERS, DEFAULT_LOCAL_FLASH_ATTENTION, DEFAULT_LOCAL_PARALLEL_REQUESTS, DEFAULT_LOCAL_GPU_DEVICE, DEFAULT_LOCAL_AUTO_LOAD, DEFAULT_GEN_TEMPERATURE, DEFAULT_GEN_TOP_P, DEFAULT_GEN_REPETITION_PENALTY, DEFAULT_GEN_TOP_K, DEFAULT_GEN_MIN_P, DEFAULT_THEME_COLOR, BASE_THEME_COLOR, THEME_COLORS, DEFAULT_FONT, DEFAULT_FONT_TUNINGS, FONT_OPTIONS, SYSTEM_FONT_STACK, DEFAULT_NARRATION_FONT, DEFAULT_NARRATION_SCALE, DEFAULT_NARRATION_LINE_HEIGHT, DEFAULT_QUOTE_COLOR, DEFAULT_QUOTE_ITALIC, DEFAULT_QUOTE_COLOR_LIGHT, DEFAULT_QUOTE_COLOR_DARK, NARRATION_FONT_OPTIONS, fontStack, fontSizeAdjust, DEFAULT_UPDATE_CHANNEL, DEFAULT_SCENE_IMAGE_AUTO, DEFAULT_CONTINUE_CHOICE, DEFAULT_IMAGE_ATTACHMENTS, CONTINUE_CHOICE_MODES, DEFAULT_NARRATION_LAYOUT, NARRATION_LAYOUTS, DEFAULT_TOOLS_ENABLED, DEFAULT_EDITOR_AUTO_SAVE, type ContinueChoiceMode, type NarrationLayout, type ThemeColor, type FontChoice, type NarrationFont, type UpdateChannel } from './settingsDefaults';
+import { DEFAULT_EDITOR_AUTO_SAVE_IDLE_S, clampEditorAutoSaveIdle, DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_CONTEXT_WINDOW, DEFAULT_LOCAL_CONTEXT_SIZE, DEFAULT_LOCAL_GPU_LAYERS, DEFAULT_LOCAL_FLASH_ATTENTION, DEFAULT_LOCAL_PARALLEL_REQUESTS, DEFAULT_LOCAL_GPU_DEVICE, DEFAULT_LOCAL_AUTO_LOAD, DEFAULT_GEN_TEMPERATURE, DEFAULT_GEN_TOP_P, DEFAULT_GEN_REPETITION_PENALTY, DEFAULT_GEN_TOP_K, DEFAULT_GEN_MIN_P, DEFAULT_THEME_COLOR, BASE_THEME_COLOR, THEME_COLORS, DEFAULT_FONT, DEFAULT_FONT_TUNINGS, FONT_OPTIONS, SYSTEM_FONT_STACK, DEFAULT_NARRATION_FONT, DEFAULT_NARRATION_SCALE, DEFAULT_NARRATION_LINE_HEIGHT, DEFAULT_QUOTE_COLOR, DEFAULT_QUOTE_ITALIC, DEFAULT_QUOTE_COLOR_LIGHT, DEFAULT_QUOTE_COLOR_DARK, NARRATION_FONT_OPTIONS, fontStack, fontSizeAdjust, DEFAULT_UPDATE_CHANNEL, DEFAULT_SCENE_IMAGE_AUTO, DEFAULT_CONTINUE_CHOICE, DEFAULT_IMAGE_ATTACHMENTS, CONTINUE_CHOICE_MODES, DEFAULT_NARRATION_LAYOUT, NARRATION_LAYOUTS, DEFAULT_TOOLS_ENABLED, DEFAULT_EDITOR_AUTO_SAVE, type ContinueChoiceMode, type NarrationLayout, type ThemeColor, type FontChoice, type NarrationFont, type UpdateChannel } from './settingsDefaults';
 import { isDesktop } from '../lib/imageGen/desktop';
 import type { ImageProviderId } from '../lib/imageGen';
 import { useLocalLlmStatus } from '../lib/useLocalLlmStatus';
@@ -442,6 +442,12 @@ function useProvideSettings() {
   const [autosaveEnabled, setAutosaveEnabled] = usePersistentState<boolean>(`${APP_ID}_autosaveEnabled`, true, boolCodec);
   // The World Editor saves on its own, in both hosts. One preference for every world.
   const [editorAutoSave, setEditorAutoSave] = usePersistentState<boolean>(`${APP_ID}_editorAutoSave`, DEFAULT_EDITOR_AUTO_SAVE, boolCodec);
+  // Seconds of quiet before the editor auto saves a small change. A stored value outside the slider's range is pulled in.
+  const idleCodec = {
+    parse: (r: string) => clampEditorAutoSaveIdle(intCodec.parse(r)),
+    serialize: intCodec.serialize,
+  };
+  const [editorAutoSaveIdleSeconds, setEditorAutoSaveIdleSeconds] = usePersistentState<number>(`${APP_ID}_editorAutoSaveIdleSeconds`, DEFAULT_EDITOR_AUTO_SAVE_IDLE_S, idleCodec);
   // Lazily write a per-character first-person diary entry for each turn's participants as turns age out.
   // Write-side only for now (entries are stored + inspectable, not yet fed back into the character pass).
   // Default off: extra async requests (one per participant) that matter mostly on a local endpoint.
@@ -1642,6 +1648,8 @@ function useProvideSettings() {
     setAutosaveEnabled,
     editorAutoSave,
     setEditorAutoSave,
+    editorAutoSaveIdleSeconds,
+    setEditorAutoSaveIdleSeconds,
     characterDiaries,
     setCharacterDiaries,
     describeCharacters,

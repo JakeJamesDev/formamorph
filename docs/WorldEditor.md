@@ -204,11 +204,11 @@ The tour goes through the tabs in order: **Overview**, **Locations**, **Entities
 With **Auto Save** on, the editor saves your world by itself:
 
 - After about 300 characters of typing, or about 30 actions such as a toggle, an add or a delete.
-- After 30 seconds with no edit, when any change is not saved.
+- After a pause with no edit, when any change is not saved. The pause is 30 seconds by default. To change it, use **Auto Save Pause** in [Settings](Settings#authoring). The pause can be 10 seconds to 5 minutes.
 
 **Save** and **Ctrl+S** still save at once. A new world isn't stored until you save it once yourself. After that, it auto saves too. A world that comes with Formamorph also waits for one save by you. Until then, it keeps getting the updates that come with the app. Auto save waits while the Authoring Tour runs, because each **Next** saves the world.
 
-**Auto Save** is on by default and applies to every world. To turn it off, select the arrow beside **Save**, then clear **Auto Save**. With it off, your edits stay in the editor until you select **Save**.
+**Auto Save** is on by default and applies to every world. To turn it off, select the arrow beside **Save**, then clear **Auto Save**. You can also clear **Auto Save** under **Authoring** in Settings. With it off, your edits stay in the editor until you select **Save**.
 
 If an auto save fails, a message says why and **Save** shows **Failed**. Auto save then stops until a save that you start works.
 
