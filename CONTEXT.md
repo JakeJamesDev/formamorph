@@ -179,6 +179,14 @@ _Avoid_: canvas (authoring term), world map
 The one editor shell every authoring list runs on: a filter box with the **+** control (a search box in the Entity Editor and Dictionary Editor modals), the tree (or a flat list of matches while a search is typed), and the selected item's detail. Each list plugs in what it shows and how it adds. A panel or modal shows the detail beside the list or pushed over it.
 _Avoid_: list-detail (that is only the layout), master-detail, list manager
 
+**Step**:
+One entry in the World Editor's history: the records one author action rewrote, as they were and as they became. A typed run, a drag from press to release, and a multi-slice operation are each one Step. Undo and redo move the cursor across Steps. The Saved marker sits after the Step last saved.
+_Avoid_: action (an author's act, not the record of it), command, undo entry
+
+**History Popover**:
+The app-bar control over the open world's Steps: a split pill (Undo, Redo, chevron) on desktop, one History icon on mobile. Its list holds the fixed **World opened** row, every Step, the Saved marker, and the undone Steps dimmed. A click on a row moves the world to that point.
+_Avoid_: undo stack (the stack is the data, the popover is the view), timeline
+
 **Report**:
 A signed-in user's one-shot ticket flagging a Report Target to staff — a category plus optional details. Never public, never a conversation; it ends in exactly one Outcome.
 _Avoid_: flag, feedback (that's bug/suggestion)
