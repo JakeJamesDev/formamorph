@@ -43,6 +43,19 @@
       "palette": "graphite"
     },
     {
+      "id": "stats-clip",
+      "storyboard": "C02b",
+      "kind": "clip",
+      "route": { "view": "gameViewer", "fixture": "whiteRoom", "mode": "pages", "tab": "entities" },
+      "ready": { "testId": "narration" },
+      "turn": { "stats": ["Power: -15", "Charge: +40"] },
+      "frames": 90,
+      "viewport": { "width": 1600, "height": 900 },
+      "scale": 2,
+      "theme": "dark",
+      "palette": "graphite"
+    },
+    {
       "id": "entity",
       "storyboard": "C03",
       "kind": "game",
@@ -167,7 +180,7 @@
       "kind": "page",
       "route": { "modal": "avatar" },
       "ready": { "text": "Character Viewer" },
-      "steps": [{ "uncheck": "animate" }, { "wait": 1500 }],
+      "freezeAt": 1.4,
       "viewport": { "width": 1600, "height": 900 },
       "scale": 2,
       "theme": "dark",

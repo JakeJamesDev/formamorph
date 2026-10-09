@@ -13,3 +13,13 @@ export const exitProgress = (frame: number, durationInFrames: number) =>
 /** A settled spring from 0 to 1 that starts at `delay`. */
 export const enterProgress = (frame: number, fps: number, delay: number) =>
   spring({ frame: frame - delay, fps, config: { damping: 200 } });
+
+/** How far in an entering line is before it counts as legible. */
+const LEGIBLE_PROGRESS = 0.95;
+
+/** Frames from the start of an enter until the line is legible. */
+export const enterFrames = (fps: number) => {
+  let frame = 0;
+  while (enterProgress(frame, fps, 0) < LEGIBLE_PROGRESS) frame++;
+  return frame;
+};

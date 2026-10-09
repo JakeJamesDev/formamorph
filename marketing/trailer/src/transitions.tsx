@@ -6,8 +6,8 @@ import type { ReactElement } from 'react';
 /** A join between two scenes: the element that goes between their `TransitionSeries.Sequence`s, and how long it overlaps them. */
 export type Join = { element: ReactElement; timing: TransitionTiming };
 
-const fadeTiming = linearTiming({ durationInFrames: 15 });
-const wipeTiming = linearTiming({ durationInFrames: 18 });
+const fadeTiming = linearTiming({ durationInFrames: 30 });
+const wipeTiming = linearTiming({ durationInFrames: 36 });
 
 const fadeJoin: Join = { timing: fadeTiming, element: <TransitionSeries.Transition presentation={fade()} timing={fadeTiming} /> };
 const wipeJoin: Join = {
@@ -15,7 +15,7 @@ const wipeJoin: Join = {
   element: <TransitionSeries.Transition presentation={wipe({ direction: 'from-left' })} timing={wipeTiming} />,
 };
 
-/** The storyboard's three joins: cut, fade (15 frames) and one directional wipe (18 frames). */
+/** The storyboard's three joins: cut, fade (30 frames) and one directional wipe (36 frames). */
 export type TransitionName = 'cut' | 'fade' | 'wipe';
 
 /** The join for a storyboard name. A cut has none. */

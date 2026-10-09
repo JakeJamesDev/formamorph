@@ -1,6 +1,7 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from 'remotion';
 import type { Layout, SceneProps } from '../layout';
-import { EXIT_FRAMES, enterProgress, exitProgress } from '../motion';
+import { EXIT_FRAMES, enterFrames, enterProgress, exitProgress } from '../motion';
+import type { CopyRead } from '../reading';
 import { FrameCamera, type CameraPath } from '../parts/FrameCamera';
 import { shotFor, type LayoutShot } from '../shots';
 import { colors, fonts, roleSize, shade } from '../theme';
@@ -19,6 +20,8 @@ type TypedNarrationProps = SceneProps & {
 const TYPE_START_FRAME = 24;
 const FRAMES_PER_CHAR = 2;
 const PAUSE_FRAMES = 24;
+/** Without a player line, the narration starts while the panel enters. */
+const NARRATION_LEAD_FRAMES = 4;
 const FRAMES_PER_WORD = 5;
 const WORD_FADE_FRAMES = 10;
 const CARET_BLINK_FRAMES = 20;
@@ -28,9 +31,18 @@ const MIN_HOLD_FRAMES = 30;
 export const typedTimeline = (prompt: string, narration: string) => {
   const words = narration.split(/\s+/).filter(Boolean);
   const typeEnd = TYPE_START_FRAME + prompt.length * FRAMES_PER_CHAR;
-  const narrationStart = typeEnd + PAUSE_FRAMES;
+  const narrationStart = prompt === '' ? NARRATION_LEAD_FRAMES : typeEnd + PAUSE_FRAMES;
   const narrationEnd = narrationStart + words.length * FRAMES_PER_WORD + WORD_FADE_FRAMES;
   return { words, typeEnd, narrationStart, narrationEnd };
+};
+
+/** The frames the player line and the narration are legible, for the reading check: each counts from its last character landing. */
+export const typedReads = (prompt: string, narration: string, durationInFrames: number, fps: number): CopyRead[] => {
+  const { typeEnd, narrationEnd } = typedTimeline(prompt, narration);
+  const panelIn = enterFrames(fps);
+  const until = durationInFrames - EXIT_FRAMES;
+  const narrationRead = { text: narration, from: Math.max(panelIn, narrationEnd), until };
+  return prompt === '' ? [narrationRead] : [{ text: prompt, from: Math.max(panelIn, typeEnd), until }, narrationRead];
 };
 
 const PANEL: Record<Layout, { width: number; bottom: number; padding: number }> = {
@@ -49,7 +61,7 @@ export const TypedNarration = ({ layout, durationInFrames, prompt, narration, ba
   }
 
   const exit = exitProgress(frame, durationInFrames);
-  const panelIn = enterProgress(frame, fps, 6);
+  const panelIn = enterProgress(frame, fps, 0);
   const typedChars = Math.max(0, Math.min(prompt.length, Math.floor((frame - TYPE_START_FRAME) / FRAMES_PER_CHAR)));
   const caretOn = frame < narrationStart && (frame < typeEnd || Math.floor(frame / CARET_BLINK_FRAMES) % 2 === 0);
   const afterOpacity = interpolate(frame, [narrationStart - 6, narrationStart + 14], [0, 1], {

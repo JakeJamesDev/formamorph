@@ -38,6 +38,11 @@ The wide cut also writes its poster frame, `out/TrailerWide-poster.png`.
 
 Each line reports size, frame rate, length, bitrate and codecs. A mismatch prints `FAIL` and the command exits with code 1. To render one cut, name it: `npm run render -- TrailerWide`, or `npm run render:wide`.
 
+The command also checks every line of copy against the reading bar. Each line reports its shot, the seconds it is fully legible, and its characters per second. A line under 1.5 s or over 12 characters per second prints `FAIL`.
+
+- 📏 A line is legible from the frame its enter animation is 95% in until its exit starts or a join begins to cover it. Typed and streamed text counts from its last character.
+- ✏️ A longer line needs a longer shot. Raise the shot's frames in `src/timeline.tsx` until its line prints `OK`. The wordmark is a logo and is not measured.
+
 - 📁 `out/` is not tracked. Upload the two MP4s and the poster from there.
 - 🧪 `out/*-loop-first.png` and `out/*-loop-last.png` are the frames the loop check compares. You can delete them.
 
@@ -67,7 +72,7 @@ All on-screen copy is in `src/timeline.tsx`, plus the end card's tagline in `src
 npm run render:wide
 ```
 
-The wide cut plays the storyboard's 19 shots (`docs-internal/specs/trailer/storyboard.md`, §2) in 63.05 s. The command encodes it for Steam and checks the result:
+The wide cut plays the storyboard's 19 shots (`docs-internal/specs/trailer/storyboard.md`, §2) in 64.35 s. The command encodes it for Steam and checks the result:
 
 | Check | Limit |
 |---|---|
@@ -89,7 +94,7 @@ Edit the shot list, copy and camera moves in `src/timeline.tsx`. The studio's **
 npm run render:tall
 ```
 
-The tall cut plays the storyboard's 14 shots (§4) in 47.80 s at 1080x1920, 60 fps. It comes from the same scene list as the wide cut and has its own shot order. `npm run render` renders both.
+The tall cut plays the storyboard's 14 shots (§4) in 50.10 s at 1080x1920, 60 fps. It comes from the same scene list as the wide cut and has its own shot order. `npm run render` renders both.
 
 | Treatment | Shots | How |
 |---|---|---|
@@ -114,7 +119,7 @@ The studio's **Scene-library** folder lists every scene type and transition in b
 | Stack | `src/scenes/StackScene.tsx` | Two panes, each with a shot, a camera path and a caption. Tall stacks top and bottom; wide sits side by side |
 | Typed prompt, then narration | `src/scenes/TypedNarration.tsx` | A player line (empty for none), the narration, an optional shot behind (`before`, then `after`) |
 | Plate title | `src/scenes/PlateTitle.tsx` | The wordmark alone over a blurred shot; it ends on the bare plate |
-| Cut, fade, wipe | `src/transitions.tsx` | `TransitionName`; a cut has no overlap, a fade overlaps 15 frames, a wipe 18 |
+| Cut, fade, wipe | `src/transitions.tsx` | `TransitionName`; a cut has no overlap, a fade overlaps 30 frames, a wipe 36 |
 
 - 🔤 Copy uses the app's text size roles (`typeRoles` in `src/theme.ts`) scaled to the canvas, in Lexend.
 - 🎥 A camera path runs `from` to `to`. Add `via` stops for a move in stages, such as a push to the input and then to the narration.
@@ -143,7 +148,7 @@ This sets up each shot in `captures.json` through the app's dev-router and write
 - 📦 Shots are committed as source assets, about 2.5 MB each. Check the size of a new shot before you commit it.
 - 🧩 The script needs the repo root's `node_modules` (Playwright and Vite) and its Chromium (`npm run test:e2e:install` at the root).
 
-A shot's `kind` is `page` (navigate and wait for `ready`) or `game` (load the demo scene into the game view first). Add a shot by adding an entry to `captures.json` and a line in `src/shots.ts`.
+A shot's `kind` is `page` (navigate and wait for `ready`), `game` (load the demo scene into the game view first) or `clip` (film a live turn, below). Add a shot by adding an entry to `captures.json` and a line in `src/shots.ts`.
 
 Optional fields on a shot:
 
@@ -152,7 +157,7 @@ Optional fields on a shot:
 | `storyboard` | The storyboard capture ID (C01 to C12), for the record |
 | `scene` | A game scene file other than the demo one, such as `scripts/fixtures/trailer-chat.json` |
 | `setup` | Names from `scripts/captureSetups.mjs` that replace the shot's network and storage with fixed data (below) |
-| `steps` | Moves after the screen is up: `editWorld`, `click`, `link`, `uncheck`, `ask`, `wait` |
+| `steps` | Moves after the screen is up: `editWorld`, `click`, `link`, `ask`, `wait` |
 | `expect` | Text that must be on screen after the steps, so a shot never saves the wrong state |
 | `verify` | `false` skips the game screen's layout check for a shot that is not the demo turn |
 | `deferred` | A later ticket's shot. It stays in the list and `npm run capture` skips it; `--only` runs it |
@@ -167,7 +172,22 @@ Setups keep every shot off live servers and live AI:
 | `defaultEndpoint` | The Demo AI preset, answering its model list |
 | `helpAnswer` | The help window's reply, streamed from a fixed text |
 
-The storyboard's three live-data shots (help answer, community grid, avatar) are fixed this way. The avatar shot unchecks **Animate character**, so it shows the model's rest pose and never a moving frame.
+The storyboard's three live-data shots (help answer, community grid, avatar) are fixed this way. The avatar shot keeps **Animate character** on and sets `freezeAt` (below), so it shows the idle animation at a fixed time.
+
+### Frozen time and clips
+
+Two kinds of shot control the page clock, so a moving screen comes out the same on every run.
+
+| Field | Does |
+|---|---|
+| `freezeAt` | Seconds of the avatar's idle animation to show. The script holds the model files, pauses the page clock, lets the models load, then runs the clock that far. |
+| `kind: "clip"` | Films one live turn instead of a still. `turn.stats` is the stat reply, and `frames` is the clip's length at 60 fps. |
+
+A clip loads the demo scene before its turn, submits the action, and answers every AI call from fixed text. Once the narration settles, it pauses the page clock and lets the stat reply through. It then pauses every animation that starts, seeks each one frame at a time and takes a screenshot per frame. The frames encode to `public/shots/<id>.mp4`, about 1 MB, with a bit-exact encode.
+
+- 🎞️ The stats shot (W06, and the top pane of T06) plays `stats-clip.mp4`. It holds the first frame, plays the clip from frame 60 of the scene, then holds the last frame.
+- 🔁 A second run gives the same frames and the same file, so `npm run capture:diff` prints `same`. The frames stay in `.capture-clip/` to compare two runs.
+- 🧩 The script runs Vite with `scripts/captureVite.config.mjs`. It adds the real path of the repo's `node_modules` to the files Vite serves, so the stat code's QuickJS runtime also loads in a worktree.
 
 ## How it fits together
 
@@ -180,6 +200,7 @@ The storyboard's three live-data shots (help answer, community grid, avatar) are
 | Scenes: kinetic text, frame camera, stack, typed narration | `src/scenes/` |
 | Shared parts: the moving camera, the copy block, the plate and the wordmark | `src/parts/` |
 | Enter and exit timing | `src/motion.ts` |
+| The reading bar and each line's reading time | `src/reading.ts` |
 | Transitions | `src/transitions.tsx` |
 | Fonts, type roles and colors | `src/theme.ts` |
 | Capture list and the demo world, scene and seed | `captures.json` |

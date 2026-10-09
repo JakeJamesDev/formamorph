@@ -1,6 +1,7 @@
 import { AbsoluteFill } from 'remotion';
 import { CANVAS, type Layout, type SceneProps, type Size } from '../layout';
-import { CopyBlock, type CopyLines } from '../parts/CopyBlock';
+import { CopyBlock, DEFAULT_DELAY, copyReads, type CopyLines } from '../parts/CopyBlock';
+import type { CopyRead } from '../reading';
 import { FrameCamera, type CameraPath } from '../parts/FrameCamera';
 import { shotFor, type LayoutShot } from '../shots';
 import { colors } from '../theme';
@@ -16,6 +17,13 @@ type StackSceneProps = SceneProps & { panes: readonly [StackPane, StackPane] };
 
 const GAP = 6;
 
+/** Frame each pane's caption starts to enter: the second follows the first. */
+const paneDelay = (index: number) => DEFAULT_DELAY + index * 20;
+
+/** The frames each pane's caption is legible, for the reading check. */
+export const stackReads = (panes: readonly StackPane[], durationInFrames: number, fps: number): CopyRead[] =>
+  panes.flatMap((pane, i) => copyReads(pane.caption, durationInFrames, fps, paneDelay(i)));
+
 /** The area of each pane: the tall canvas splits top and bottom, the wide canvas left and right. */
 const paneSize = (layout: Layout): Size => {
   const { width, height } = CANVAS[layout];
@@ -30,7 +38,7 @@ export const StackScene = ({ layout, durationInFrames, panes }: StackSceneProps)
       {panes.map((pane, i) => (
         <div key={i} style={{ position: 'relative', ...size, overflow: 'hidden', backgroundColor: colors.stage }}>
           <FrameCamera layout={layout} durationInFrames={durationInFrames} shot={shotFor(pane.shot, layout)} path={pane.camera} size={size} />
-          <CopyBlock lines={pane.caption} layout={layout} durationInFrames={durationInFrames} variant="pane" delay={10 + i * 20} />
+          <CopyBlock lines={pane.caption} layout={layout} durationInFrames={durationInFrames} variant="pane" delay={paneDelay(i)} />
         </div>
       ))}
     </AbsoluteFill>
