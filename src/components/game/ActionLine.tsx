@@ -15,7 +15,7 @@ export function ActionLine({ text, actions, attachments = NO_ATTACHMENTS }: { te
       {/* The line has its own menu: a right-click here never reaches the card's. */}
       <div
         data-testid="action-line"
-        className="mb-3 border-l-2 border-primary pl-3 text-label text-muted-foreground"
+        className="mb-3 border-l-2 border-primary pl-3 text-label text-muted-foreground last:mb-0"
         onContextMenu={(event) => event.stopPropagation()}
       >
         <MarkdownRenderer text={text} dialogue />

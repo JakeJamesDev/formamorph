@@ -166,6 +166,16 @@ describe('useSentenceReveal', () => {
     expect(onText).toHaveBeenLastCalledWith('One two three.');
   });
 
+  it('drains once the last words have faded in, not when they are released', () => {
+    const { reveal } = setup();
+    act(() => { reveal.reset(); reveal.finish('One two three.'); });
+    const { stagger, duration } = getRevealTiming();
+    act(() => vi.advanceTimersByTime(3 * stagger + 1));
+    expect(reveal.isDrained()).toBe(false);
+    act(() => vi.advanceTimersByTime(duration));
+    expect(reveal.isDrained()).toBe(true);
+  });
+
   it('reads as drained only before any reveal and after one plays out', () => {
     const { reveal } = setup();
     expect(reveal.isDrained()).toBe(true);

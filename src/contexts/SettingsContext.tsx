@@ -1952,6 +1952,10 @@ export const useSettings = () => {
   return context;
 };
 
+/** The settings, or null outside a `SettingsProvider`. */
+// eslint-disable-next-line react-refresh/only-export-components
+export const useSettingsOptional = (): SettingsContextValue | null => useContext(SettingsContext);
+
 /** The passed source, else the live settings. A source lets a component run outside a `SettingsProvider`. */
 // eslint-disable-next-line react-refresh/only-export-components
 export function useSettingsSource<T>(source: T | undefined): T | SettingsContextValue {

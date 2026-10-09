@@ -3,6 +3,7 @@ import type { BubbleAction } from '@/lib/bubbleActions';
 import { CONTINUE_CHOICE, choiceRuns } from '@/lib/choices';
 import { QUOTE_CLASS } from '@/lib/quoteSegments';
 import { BubbleActionButton, BubbleMenu } from './BubbleMenu';
+import { useRowReveal } from '@/lib/useRowReveal';
 
 // Unsent player bubbles: dashed and light. Hover and focus tint them; only the staged choice takes the fill.
 const BUBBLE = [
@@ -55,6 +56,7 @@ export function ChatChoices({ choices, showContinue, disabled, isSelected, choic
   // A touch long press on a choice appends it, so that press never reaches the block's menu.
   const touchPress = useRef(false);
   const all = showContinue ? [...choices, CONTINUE_CHOICE] : choices;
+  const reveal = useRowReveal(all);
   if (all.length === 0 && actions.length === 0) return null;
 
   return (
@@ -67,6 +69,7 @@ export function ChatChoices({ choices, showContinue, disabled, isSelected, choic
               key={index}
               type="button"
               className={BUBBLE}
+              style={reveal(index)}
               data-selected={isSelected(choice) ? '' : undefined}
               disabled={disabled}
               {...press}

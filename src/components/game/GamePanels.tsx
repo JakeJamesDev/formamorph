@@ -813,10 +813,12 @@ export const MiddlePanel = ({
   const commandPreviewCard = (
     <TurnCard actions={[]} turnNumber={totalPages + 1} live style={revealStyle}>
       {!chatLayout && commandAction && <ActionLine text={commandAction} actions={[]} />}
-      <div data-testid="preview-narration">
-        {/* A reused renderer keeps the last run's shown text and would show the next run's first sentence at once. */}
-        <MarkdownRenderer key={commandRunId} text={gameplayText} animate={revealOn} animation={revealAnim} easing={revealEasing} dialogue />
-      </div>
+      {gameplayText && (
+        <div data-testid="preview-narration">
+          {/* A reused renderer keeps the last run's shown text and would show the next run's first sentence at once. */}
+          <MarkdownRenderer key={commandRunId} text={gameplayText} animate={revealOn} animation={revealAnim} easing={revealEasing} dialogue />
+        </div>
+      )}
     </TurnCard>
   );
   const commandPreviewChoices = (
@@ -900,7 +902,8 @@ export const MiddlePanel = ({
                             <MarkdownRenderer text={commandAction} />
                           </div>
                         )}
-                        {commandPreviewCard}
+                        {/* Chat shows no card until there is narration to fill it. */}
+                        {gameplayText && commandPreviewCard}
                         {commandPreviewChoices}
                       </article>
                     </div>
@@ -951,7 +954,7 @@ export const MiddlePanel = ({
                 {showReasoning && pageReasoning?.text && (
                   <ReasoningBlock text={pageReasoning.text} ms={pageReasoning.ms} active={pageReasoningLive && liveReasoning.active} />
                 )}
-                {currentAssistantMessage && (
+                {currentAssistantMessage && pageNarration && (
                   <div ref={narrationRef} data-testid="narration">
                     {/* Streamdown memoizes on source position, not text, so committed text keys by its content. */}
                     <MarkdownRenderer

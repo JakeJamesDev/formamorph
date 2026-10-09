@@ -35,6 +35,8 @@ export function useSentenceReveal(onText: (text: string) => void, minStagger = 0
   const skippingRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const drainWaitersRef = useRef<Array<() => void>>([]);
+  // When the last released sentence's final word finishes fading in (Date.now ms).
+  const visualEndRef = useRef(0);
   const onTextRef = useRef(onText);
   onTextRef.current = onText;
   const minStaggerRef = useRef(minStagger);
@@ -49,6 +51,16 @@ export function useSentenceReveal(onText: (text: string) => void, minStagger = 0
 
   const settleDrain = useCallback(() => {
     if (finishedRef.current && !busyRef.current && queueRef.current.length === 0) {
+      // Drained means read: hold until the last words have faded in, not just been released.
+      const tail = visualEndRef.current - Date.now();
+      if (tail > 0) {
+        busyRef.current = true;
+        timerRef.current = setTimeout(() => {
+          busyRef.current = false;
+          settleDrain();
+        }, tail);
+        return;
+      }
       const waiters = drainWaitersRef.current;
       drainWaitersRef.current = [];
       waiters.forEach((resolve) => resolve());
@@ -66,6 +78,7 @@ export function useSentenceReveal(onText: (text: string) => void, minStagger = 0
       const deepest = queueRef.current[queueRef.current.length - 1];
       queueRef.current = [];
       shownRef.current = deepest;
+      visualEndRef.current = 0;
       onTextRef.current(deepest);
       settleDrain();
       return;
@@ -82,12 +95,14 @@ export function useSentenceReveal(onText: (text: string) => void, minStagger = 0
     const addedWords = countWords(next) - countWords(shownRef.current);
     shownRef.current = next;
     onTextRef.current(next);
+    const timing = getRevealTiming();
+    visualEndRef.current = Date.now() + addedWords * timing.stagger + timing.duration;
     busyRef.current = true;
     // Wait this sentence's rhythm span (its words × the cadence just set) before the next.
     timerRef.current = setTimeout(() => {
       busyRef.current = false;
       pump();
-    }, addedWords * getRevealTiming().stagger);
+    }, addedWords * timing.stagger);
   }, [settleDrain]);
 
   // Cumulative prefixes only grow, so a longer target is a genuinely new sentence to reveal. `measure`
@@ -140,6 +155,7 @@ export function useSentenceReveal(onText: (text: string) => void, minStagger = 0
     finishedRef.current = false;
     startedRef.current = true;
     skippingRef.current = false;
+    visualEndRef.current = 0;
     // Deliberately NOT reset: msPerWordRef carries the last turn's converged arrival rate into this one.
     // The model's speed is consistent turn to turn, so this is a far better seed than the fixed default —
     // it skips the slow-start ramp (and its visible catch-up) on every turn after the first. Only the
@@ -159,6 +175,7 @@ export function useSentenceReveal(onText: (text: string) => void, minStagger = 0
     if (skippingRef.current === on) return;
     skippingRef.current = on;
     if (!on) return;
+    visualEndRef.current = 0;
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = null;
     busyRef.current = false;
