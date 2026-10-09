@@ -6,15 +6,8 @@ import type { ReactElement } from 'react';
 /** A join between two scenes: the element that goes between their `TransitionSeries.Sequence`s, and how long it overlaps them. */
 export type Join = { element: ReactElement; timing: TransitionTiming };
 
-const proofTiming = linearTiming({ durationInFrames: 30 });
 const fadeTiming = linearTiming({ durationInFrames: 15 });
 const wipeTiming = linearTiming({ durationInFrames: 18 });
-
-/** The 30-frame fade that joins the scenes of the 20-second proof cut. */
-export const sceneTransition: Join = {
-  timing: proofTiming,
-  element: <TransitionSeries.Transition presentation={fade()} timing={proofTiming} />,
-};
 
 const fadeJoin: Join = { timing: fadeTiming, element: <TransitionSeries.Transition presentation={fade()} timing={fadeTiming} /> };
 const wipeJoin: Join = {

@@ -9,6 +9,7 @@
     "studio": "remotion studio",
     "render": "node scripts/render.mjs",
     "render:wide": "node scripts/render.mjs TrailerWide",
+    "render:tall": "node scripts/render.mjs TrailerTall",
     "capture": "node scripts/capture.mjs",
     "capture:diff": "node scripts/capture.mjs --diff",
     "typecheck": "tsc --noEmit"

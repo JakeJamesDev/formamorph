@@ -124,8 +124,8 @@ const ENTRIES: LibraryEntry[] = [
         layout={layout}
         durationInFrames={durationInFrames}
         panes={[
-          { shot: SHOTS.game, camera: move(stop(0.8, 0.45), stop(0.8, 0.45, 1.3)), caption: 'Every turn updates your stats.' },
-          { shot: SHOTS.library, camera: move(stop(0.3, 0.5), stop(0.7, 0.5)), caption: 'Play any world you can imagine.' },
+          { shot: SHOTS.game, camera: move(stop(0.8, 0.45), stop(0.8, 0.45, 1.3)), caption: ['Every turn updates your stats.'] },
+          { shot: SHOTS.library, camera: move(stop(0.3, 0.5), stop(0.7, 0.5)), caption: ['Play any world you can imagine.'] },
         ]}
       />
     ),
