@@ -88,6 +88,8 @@ When the Origin can't be shown, the editor reveals the touched record on its own
 | Q9 | The pulse plays on every undo and redo, even when the author is already on the field, and restarts on each key repeat. |
 | Q10 | A write from a different place starts a new Step. Any difference counts: tab, selection, sub-view or field. |
 | Q11 | Q34 applies to the Origin. A location in the canvas view pushes its detail panel on mobile. |
+| Q12 | The Origin's tab and selection apply only to a mirror, where the Origin tab differs from the touched record's own tab. On the own tab, reveal selects today's target, so an add or a row action selects the touched record, not the earlier selection. A mirror whose Origin held no selection (the Opening sub-tab, an empty list) opens the Origin tab alone. Sub-view and field still come from the Origin on either kind of tab. Ticket 03's whole selection follows the same split. |
+| Q13 | A jump skips a Step that resolves to nothing and falls back inward to the next Step that resolves (Q3). A single undo or redo is unchanged. A Step with an Origin whose touched records have no tab (stat updates) counts as a mirror and opens the Origin tab. |
 
 Undo-history Q21 (tour) stands. The History Popover is unchanged.
 
@@ -113,6 +115,7 @@ These surfaces write records that another tab owns. Today each one reveals on th
 - The field in use comes from the control that holds focus or that the author is working. Fields carry a stable field identity in the DOM. The find bar's text matching is not reused, because a reveal runs after the text changed.
 - A chip edit knows only its placeholder, not its host. The Origin field is the host field that holds focus, which covers chips without a new prop chain.
 - The Origin is not part of the world and never enters a save or an export.
+- Ticket 01 checked this in Chromium: a field that commits on blur after a click on another tab records the old tab.
 
 ### History module
 
