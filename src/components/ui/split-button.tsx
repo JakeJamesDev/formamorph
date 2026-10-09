@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -28,7 +28,7 @@ const MENU_ITEM = 'justify-start text-meta h-8';
  */
 export function SplitButton({
   icon, label, children, menu, onClick, disabled, faceDisabled, faceAriaDisabled, faceClassName, menuLabel, faceTip,
-  tourAnchor, variant = 'outline', size = 'sm', side = 'top', align = 'start',
+  faceDescription, tourAnchor, variant = 'outline', size = 'sm', side = 'top', align = 'start',
 }: {
   icon?: ReactNode;
   /** The face's visible text. With `children` it still marks the face as named by its text, not its tip. */
@@ -47,6 +47,8 @@ export function SplitButton({
   menuLabel: string;
   /** The face's tooltip. On an icon-only face it is also the accessible name. */
   faceTip?: string;
+  /** The face's accessible description, read with its name. A tip shows only on hover, so it is not one. */
+  faceDescription?: string;
   tourAnchor?: string;
   variant?: 'default' | 'outline';
   size?: 'sm' | 'icon';
@@ -54,12 +56,14 @@ export function SplitButton({
   align?: 'start' | 'end';
 }) {
   const [open, setOpen] = useState(false);
+  const descriptionId = useId();
   const Chevron = side === 'top' ? ChevronUp : ChevronDown;
   const face = (
     <Button
       variant={variant} size={size} className={cn('rounded-r-none', faceClassName)}
       onClick={() => { if (!faceAriaDisabled) onClick(); }}
       disabled={disabled || faceDisabled} aria-disabled={faceAriaDisabled || undefined} data-tour-anchor={tourAnchor}
+      aria-describedby={faceDescription ? descriptionId : undefined}
     >
       {children ?? (
         <>
@@ -72,6 +76,7 @@ export function SplitButton({
   return (
     <div className="flex">
       {faceTip ? <Tip tip={faceTip} labelsChild={label ? false : undefined}>{face}</Tip> : face}
+      {faceDescription && <span id={descriptionId} className="sr-only">{faceDescription}</span>}
       <Popover open={open} onOpenChange={setOpen}>
         <Tip tip={menuLabel}>
           <PopoverTrigger asChild>

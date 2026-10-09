@@ -143,6 +143,20 @@ describe('the world history', () => {
     expect(history().canUndo).toBe(false);
   });
 
+  it('tells auto save which writes merged into the Step before, so a burst counts as one action (Q30)', async () => {
+    const { ctx, history } = await open();
+    const merged: boolean[] = [];
+    const stop = history().onChange((change) => { merged.push(change.merged); });
+    await act1(() => {
+      flushSync(() => ctx().removeStat('hunger'));
+      ctx().removeStat('warmth');
+    });
+    await act1(() => ctx().removeStat('thirst'));
+    await act1(() => history().undo());
+    stop();
+    expect(merged).toEqual([false, true, false, false]);
+  });
+
   it('keeps two separate actions as two Steps', async () => {
     const { ctx, history } = await open();
     await act1(() => ctx().removeStat('hunger'));

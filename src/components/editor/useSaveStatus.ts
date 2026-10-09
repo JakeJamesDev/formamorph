@@ -39,15 +39,22 @@ export function useSaveStatus(dirty: boolean) {
     }
   }, [phase, dirty]);
 
+  // An edit while the save runs is not in it, so that save never shows Saved; an undo back would read stale.
+  const editedDuringSave = useRef(false);
+  /** Hears each change to the world. */
+  const edited = useCallback(() => { if (inFlight.current) editedDuringSave.current = true; }, []);
+
   const settle = useCallback((ok: boolean) => {
     inFlight.current = null;
     if (!mounted.current) return;
+    if (ok && editedDuringSave.current) { setPhase('idle'); return; }
     setPhase(ok ? 'saved' : 'failed');
     if (ok) holdTimer.current = window.setTimeout(() => { if (mounted.current) setPhase('idle'); }, SAVED_HOLD_MS);
   }, [mounted]);
 
   const track = useCallback((save: () => Promise<boolean>): Promise<boolean> => {
     if (inFlight.current) return inFlight.current;
+    editedDuringSave.current = false;
     window.clearTimeout(holdTimer.current);
     setPhase('saving');
     const run = save().then(
@@ -58,5 +65,5 @@ export function useSaveStatus(dirty: boolean) {
     return run;
   }, [settle]);
 
-  return { status: saveStatusOf(phase, dirty), track };
+  return { status: saveStatusOf(phase, dirty), track, edited };
 }

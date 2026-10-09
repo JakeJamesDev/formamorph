@@ -82,6 +82,17 @@ export function tombstoneDefaultWorld(id: string): void {
   }
 }
 
+/** Forget one default's deletion: it is stored again, so it no longer counts as deleted. */
+export function forgetDeletedDefaultWorld(id: string): void {
+  const deleted = readDeletedDefaultWorlds();
+  if (!deleted.delete(id)) return;
+  try {
+    localStorage.setItem(DELETED_DEFAULTS_KEY, JSON.stringify([...deleted]));
+  } catch {
+    // A storage that won't write leaves the count one high; the world itself is stored.
+  }
+}
+
 /** Forget every deletion, so the next seed pass re-creates the missing defaults. The escape hatch behind
  *  Settings → Data → Storage → Restore Default Worlds. */
 export function clearDeletedDefaultWorlds(): void {

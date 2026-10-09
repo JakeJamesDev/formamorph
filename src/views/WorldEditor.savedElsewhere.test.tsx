@@ -2,7 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBench';
 import { AUTO_SAVE_IDLE_MS } from '@/lib/autoSaveScheduler';
-import { WORLD_CHANGE_CHANNEL } from '@/lib/worldChangeSignal';
+import { WORLD_CHANGE_CHANNEL, onWorldChangedElsewhere } from '@/lib/worldChangeSignal';
+import { watchStackedAlerts } from '@/test/stackedDialogs';
 import WorldStorageService from '../services/WorldStorageService';
 
 /**
@@ -87,10 +88,44 @@ describe('a save of the open world in another tab', () => {
     expect(screen.getByRole('alertdialog', { name: TITLE })).toBeInTheDocument();
   });
 
+  it('pauses auto save as it is heard, before the next render', async () => {
+    await openOptedIn();
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    // A full count: the save is due on the next timer.
+    act(() => { fireEvent.change(nameField(), { target: { value: `Brinewell${'x'.repeat(300)}` } }); });
+    // The due timer runs right after the tab's own listeners, before React renders their state.
+    const heard = new Promise<void>((resolve) => {
+      const stop = onWorldChangedElsewhere(() => { vi.advanceTimersByTime(0); stop(); resolve(); });
+    });
+    await act(async () => { otherTab.postMessage({ worldId: 'w1' }); await heard; });
+    vi.useRealTimers();
+    await settle();
+    expect(storeWorld).not.toHaveBeenCalled();
+    expect(await dialog()).toBeInTheDocument();
+  });
+
   it('asks a tab with no unsaved changes too', async () => {
     await openOptedIn();
     await savedElsewhere();
     expect(await dialog()).toBeInTheDocument();
+  });
+
+  it('replaces an open unsaved-changes prompt, which does not come back after Reload', async () => {
+    await openOptedIn();
+    await type(30);
+    fireEvent.click(document.querySelector('.lucide-arrow-left')!.closest('button')!);
+    await screen.findByText('Unsaved changes');
+    getWorldData.mockResolvedValue(benchEditorWorld({}));
+
+    const watch = watchStackedAlerts();
+    await savedElsewhere();
+    const asked = await dialog();
+    expect(watch.stop()).toBe(false);
+    expect(screen.queryByText('Unsaved changes')).not.toBeInTheDocument();
+    fireEvent.click(within(asked).getByRole('button', { name: 'Reload' }));
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
+    await settle();
+    expect(screen.queryByText('Unsaved changes')).not.toBeInTheDocument();
   });
 
   it('leaves a tab with another world open alone', async () => {
@@ -180,17 +215,19 @@ const deletedElsewhere = () => act(() => { otherTab.postMessage({ worldId: 'w1',
 const deletedDialog = () => screen.findByRole('alertdialog', { name: DELETED });
 
 describe('a delete of the open world in another tab', () => {
-  it('pauses auto save and asks, and Escape does not dismiss it', async () => {
+  it('pauses auto save and asks, and Escape or an outside press does not dismiss it', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     await openOptedIn();
     await type(30);
     await deletedElsewhere();
     const asked = await deletedDialog();
     expect(within(asked).getByRole('button', { name: 'Close' })).toBeInTheDocument();
+    expect(within(asked).getByText(/close the other tab/i)).toBeInTheDocument();
 
     await act(() => vi.advanceTimersByTimeAsync(AUTO_SAVE_IDLE_MS));
     expect(storeWorld).not.toHaveBeenCalled();
     fireEvent.keyDown(asked, { key: 'Escape' });
+    fireEvent.pointerDown(document.body);
     await settle();
     expect(screen.getByRole('alertdialog', { name: DELETED })).toBeInTheDocument();
   });

@@ -56,6 +56,17 @@ describe('useSaveStatus', () => {
     expect(result.current.status).toBe('clean');
   });
 
+  it('skips Saved for a save the world was edited during, so an undo back reads the muted Save', async () => {
+    const { result, rerender } = renderHook(({ dirty }) => useSaveStatus(dirty), { initialProps: { dirty: true } });
+    const save = deferred();
+    act(() => { void result.current.track(() => save.promise); });
+    act(() => { result.current.edited(); });
+    await act(async () => { save.settle(true); });
+    expect(result.current.status).toBe('pending');
+    rerender({ dirty: false });
+    expect(result.current.status).toBe('clean');
+  });
+
   it('holds Failed through edits until a save succeeds', async () => {
     const { result, rerender } = renderHook(({ dirty }) => useSaveStatus(dirty), { initialProps: { dirty: true } });
     await act(async () => { await result.current.track(async () => false); });

@@ -67,7 +67,8 @@ const TooltipPopup = React.forwardRef<HTMLDivElement, TooltipPrimitive.Popup.Pro
     <TooltipPrimitive.Popup
       ref={ref}
       className={cn(
-        "max-w-64 rounded-md border bg-popover px-2 py-1 text-helper text-popover-foreground shadow-md",
+        // pre-line: a tip that names an icon control puts its description on a second line.
+        "max-w-64 whitespace-pre-line rounded-md border bg-popover px-2 py-1 text-helper text-popover-foreground shadow-md",
         "origin-[var(--transform-origin)] scale-100 opacity-100 transition-[opacity,transform] duration-150 ease-out",
         "data-[starting-style]:scale-95 data-[starting-style]:opacity-0",
         "data-[ending-style]:scale-95 data-[ending-style]:opacity-0",
