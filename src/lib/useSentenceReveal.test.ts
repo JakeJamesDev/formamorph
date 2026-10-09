@@ -120,4 +120,60 @@ describe('useSentenceReveal', () => {
     act(() => { reveal.push(words(15) + '.'); });
     expect(getRevealTiming().stagger).toBeGreaterThan(DEFAULT_STAGGER * 2);
   });
+
+  it('skipping shows everything queued at once, then each later sentence on arrival, and drains', async () => {
+    const { onText, reveal } = setup();
+    act(() => {
+      reveal.reset();
+      reveal.push('One two.');
+      reveal.push('One two. Three four.');
+      reveal.push('One two. Three four.\n\nFive six.');
+    });
+    expect(onText).toHaveBeenLastCalledWith('One two.');
+    act(() => { reveal.setSkipping(true); });
+    expect(onText).toHaveBeenLastCalledWith('One two. Three four.\n\nFive six.');
+    act(() => { reveal.push('One two. Three four.\n\nFive six. Seven.'); });
+    expect(onText).toHaveBeenLastCalledWith('One two. Three four.\n\nFive six. Seven.');
+    let drained = false;
+    const wait = reveal.drained().then(() => { drained = true; });
+    act(() => { reveal.finish('One two. Three four.\n\nFive six. Seven. Eight'); });
+    expect(onText).toHaveBeenLastCalledWith('One two. Three four.\n\nFive six. Seven. Eight');
+    await act(async () => { await wait; });
+    expect(drained).toBe(true);
+  });
+
+  it('paces again once skipping is off', () => {
+    const { onText, reveal } = setup();
+    act(() => { reveal.reset(); reveal.push('One two.'); reveal.setSkipping(true); });
+    expect(onText).toHaveBeenLastCalledWith('One two.');
+    act(() => { reveal.setSkipping(false); });
+    act(() => {
+      reveal.push('One two. Three four five.');
+      reveal.push('One two. Three four five. Six seven.');
+    });
+    expect(onText).toHaveBeenLastCalledWith('One two. Three four five.');
+    act(() => vi.advanceTimersByTime(3 * STAGGER_MAX));
+    expect(onText).toHaveBeenLastCalledWith('One two. Three four five. Six seven.');
+  });
+
+  it('reset ends skipping: the next turn paces again', () => {
+    const { onText, reveal } = setup();
+    act(() => { reveal.reset(); reveal.setSkipping(true); reveal.reset(); });
+    act(() => {
+      reveal.push('One two three.');
+      reveal.push('One two three. Four five.');
+    });
+    expect(onText).toHaveBeenLastCalledWith('One two three.');
+  });
+
+  it('reads as drained only before any reveal and after one plays out', () => {
+    const { reveal } = setup();
+    expect(reveal.isDrained()).toBe(true);
+    act(() => { reveal.reset(); reveal.push('One two three.'); });
+    expect(reveal.isDrained()).toBe(false);
+    act(() => { reveal.finish('One two three.'); });
+    expect(reveal.isDrained()).toBe(false);
+    act(() => vi.advanceTimersByTime(3 * STAGGER_MAX));
+    expect(reveal.isDrained()).toBe(true);
+  });
 });

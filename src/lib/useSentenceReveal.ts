@@ -30,6 +30,9 @@ export function useSentenceReveal(onText: (text: string) => void, minStagger = 0
   const shownRef = useRef('');
   const busyRef = useRef(false);
   const finishedRef = useRef(false);
+  // No reveal has started yet; `isDrained` reads that as drained.
+  const startedRef = useRef(false);
+  const skippingRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const drainWaitersRef = useRef<Array<() => void>>([]);
   const onTextRef = useRef(onText);
@@ -56,6 +59,14 @@ export function useSentenceReveal(onText: (text: string) => void, minStagger = 0
     if (busyRef.current) return;
     const next = queueRef.current[0];
     if (next === undefined) {
+      settleDrain();
+      return;
+    }
+    if (skippingRef.current) {
+      const deepest = queueRef.current[queueRef.current.length - 1];
+      queueRef.current = [];
+      shownRef.current = deepest;
+      onTextRef.current(deepest);
       settleDrain();
       return;
     }
@@ -127,6 +138,8 @@ export function useSentenceReveal(onText: (text: string) => void, minStagger = 0
     shownRef.current = '';
     busyRef.current = false;
     finishedRef.current = false;
+    startedRef.current = true;
+    skippingRef.current = false;
     // Deliberately NOT reset: msPerWordRef carries the last turn's converged arrival rate into this one.
     // The model's speed is consistent turn to turn, so this is a far better seed than the fixed default —
     // it skips the slow-start ramp (and its visible catch-up) on every turn after the first. Only the
@@ -141,16 +154,30 @@ export function useSentenceReveal(onText: (text: string) => void, minStagger = 0
     waiters.forEach((resolve) => resolve());
   }, []);
 
+  // While on, drops the pacing: what has arrived shows now, and later sentences on arrival.
+  const setSkipping = useCallback((on: boolean) => {
+    if (skippingRef.current === on) return;
+    skippingRef.current = on;
+    if (!on) return;
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = null;
+    busyRef.current = false;
+    pump();
+  }, [pump]);
+
+  const settled = useCallback(() => finishedRef.current && !busyRef.current && queueRef.current.length === 0, []);
+  const isDrained = useCallback(() => !startedRef.current || settled(), [settled]);
+
   const drained = useCallback(
     () =>
       new Promise<void>((resolve) => {
-        if (finishedRef.current && !busyRef.current && queueRef.current.length === 0) resolve();
+        if (settled()) resolve();
         else drainWaitersRef.current.push(resolve);
       }),
-    [],
+    [settled],
   );
 
   useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
 
-  return { push, finish, reset, drained };
+  return { push, finish, reset, drained, isDrained, setSkipping };
 }
