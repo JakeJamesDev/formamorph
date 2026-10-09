@@ -1,4 +1,4 @@
-import { memo, useMemo, type ComponentProps } from 'react';
+import { memo, useMemo, useState, type ComponentProps } from 'react';
 import { Streamdown, defaultRehypePlugins, defaultRemarkPlugins } from 'streamdown';
 import { createCodePlugin } from '@streamdown/code';
 import { markdownCodeThemes } from '@/lib/markdownCodeTheme';
@@ -114,11 +114,16 @@ const COMPONENTS: MarkdownComponents = {
  *
  * `timing` is the word timing of a reveal with its own pace, such as a help answer. Without it the
  * renderer reads the narration timing store.
+ *
+ * `resume` shows the text present at mount as already revealed, for a reveal that remounts mid-stream.
+ * Only its value at mount counts.
  */
 export const MarkdownRenderer = memo(function MarkdownRenderer(
-  { text, animate = false, animation = 'fadeIn', easing, timing, tinted = false, dialogue = false, components }: { text: string; animate?: boolean; animation?: string; easing?: string; timing?: RevealTiming; tinted?: boolean; dialogue?: boolean; components?: MarkdownComponents },
+  { text, animate = false, animation = 'fadeIn', easing, timing, tinted = false, dialogue = false, components, resume = false }: { text: string; animate?: boolean; animation?: string; easing?: string; timing?: RevealTiming; tinted?: boolean; dialogue?: boolean; components?: MarkdownComponents; resume?: boolean },
 ) {
   const allComponents = useMemo(() => (components ? { ...COMPONENTS, ...components } : COMPONENTS), [components]);
+  // Fixed at mount: Streamdown keys its reveal state on the animated options, so a change would replay it.
+  const [skipInitial] = useState(resume);
   // Read the current fade timing at render (a new sentence's release re-renders us via the text prop),
   // so the words just added animate at the model's current smoothed rate.
   return (
@@ -135,7 +140,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer(
         mode={animate ? 'streaming' : 'static'}
         // The sentence pacer owns catch-up, so narration lifts Streamdown's backlog cap; help sets its own.
         // patches/streamdown+*.patch reads duration and stagger live; a change there would otherwise re-fade shown words.
-        animated={animate ? { animation, sep: 'word', easing, maxBacklogMs: Number.POSITIVE_INFINITY, ...(timing ?? getRevealTiming()) } : false}
+        animated={animate ? { animation, sep: 'word', easing, maxBacklogMs: Number.POSITIVE_INFINITY, skipInitial, ...(timing ?? getRevealTiming()) } : false}
         isAnimating={animate}
       >
         {text}
