@@ -8,8 +8,11 @@ import { WORLD_PROMPT_KINDS, type WorldPromptKind } from '@/lib/worldPrompt';
 export type OverviewPanel = WorldPromptKind | 'opening';
 
 /** The three system prompts first, then the outlier. */
-export const OVERVIEW_PANELS: readonly OverviewPanel[] =[...WORLD_PROMPT_KINDS, 'opening'];
+export const OVERVIEW_PANELS: readonly OverviewPanel[] = [...WORLD_PROMPT_KINDS, 'opening'];
 
-/** The panel a history reveal names, or none when the editor offers no such panel. */
+/** The sub-tab an Origin records when no panel was open, so a reveal closes the one open now. */
+export const NO_OVERVIEW_PANEL = 'none';
+
+/** The panel a history reveal names, or none for no panel or one the editor doesn't offer. */
 export const overviewPanelFor = (value: string): OverviewPanel | null =>
   OVERVIEW_PANELS.find((panel) => panel === value) ?? null;

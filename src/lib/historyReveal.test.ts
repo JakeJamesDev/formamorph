@@ -260,6 +260,32 @@ describe('revealForMove', () => {
         .toEqual({ tab: 'entities', id: 'wick', subTab: 'descriptions' });
     });
 
+    it('reveals the list view with the Origin location for a connection edited there', () => {
+      const connectionEdit = diffSlice('connections', [], [
+        { id: 'c1', a: 'harbor', b: 'docks', aToB: {}, bToA: {} } as unknown as Connection,
+      ]) as SliceEdit;
+      const step = stepFrom({ tab: 'locations', ids: ['harbor'], view: 'list' }, [connectionEdit]);
+      expect(revealForMove([step], world, editor())).toEqual({ tab: 'locations', id: 'harbor', view: 'list' });
+    });
+
+    it('opens the list view alone when a connection edited there had no location open', () => {
+      const connectionEdit = diffSlice('connections', [], [
+        { id: 'c1', a: 'harbor', b: 'docks', aToB: {}, bToA: {} } as unknown as Connection,
+      ]) as SliceEdit;
+      const step = stepFrom({ tab: 'locations', view: 'list' }, [connectionEdit]);
+      expect(revealForMove([step], world, editor())).toEqual({ tab: 'locations', view: 'list' });
+    });
+
+    it('still selects the connection for one edited on the canvas', () => {
+      const connectionEdit = diffSlice('connections', [], [
+        { id: 'c1', a: 'harbor', b: 'docks', aToB: {}, bToA: {} } as unknown as Connection,
+      ]) as SliceEdit;
+      const step = stepFrom({ tab: 'locations', ids: ['harbor'], view: 'canvas' }, [connectionEdit]);
+      const joined = { ...world, connections: [{ id: 'c1', a: 'harbor', b: 'docks', aToB: {}, bToA: {} }] } as unknown as WorldSlices;
+      expect(revealForMove([step], joined, editor({ held: ['harbor', 'c1'] })))
+        .toEqual({ tab: 'locations', id: 'c1', connection: true, view: 'canvas' });
+    });
+
     it('is dropped when the reveal falls back to a tab the Origin was not on', () => {
       const step = stepFrom({ tab: 'locations', ids: ['harbor'], subTab: 'presence', view: 'canvas' });
       expect(revealForMove([step], world, editor({ held: [] }))).toEqual({ tab: 'entities', id: 'wick' });
