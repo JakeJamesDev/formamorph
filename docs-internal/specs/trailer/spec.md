@@ -84,6 +84,7 @@ Gameplay is text. Watching someone read is not a trailer. The video is a showcas
 | Q49 | The end card's wordmark enters the way the app's first-run intro does: a field of goo blobs pops in, magnetizes into place and coalesces into the letterforms through a metaball filter. The trailer ports that animation from the app's intro into a frame-driven Remotion scene, same timing and look, deterministic per frame. The wordmark's spring entrance is retired on the end card. |
 | Q50 | The community mock gives each world its own author name from the repo's neutral fixture set. No two worlds share an author, and none is "Formamorph". |
 | Q51 | Ticket 12 details. The opening card is the wordmark alone, stretched to the 360-frame loop, no tagline. Tall cut order: T09 map alone, T10 profile and travel stacked, the traits card, blueprints alone. The tall cut drops the help card along with Morphie; the traits card stays in both cuts. |
+| Q52 | The reveal clip ships as the app behaves: the narration card opens a full line in one frame and the words fade in over it. The user chose not to change the app for the trailer. Q41's smoothness check exempts frames where the change is the card's bottom edge growing (one line or a paragraph gap plus a line) and still fails any other spike. |
 
 ### Facts the design rests on
 
