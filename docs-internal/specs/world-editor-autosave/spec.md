@@ -105,6 +105,12 @@ Research behind the trigger model: Vim refreshes its swap file after 200 charact
 | Q29 | Auto save pauses while the Authoring Tour runs. The tour owns saving there, through its save on every Next. Auto save resumes when the tour ends. |
 | Q30 | A discrete write that merges into the History Step before it adds only its text units, not another 10. One History Step counts as one discrete action, so a burst on one field or record never reaches the threshold alone; the idle pause saves it. |
 | Q31 | A world in the library auto saves from its first edit, imported worlds included. A bundled default waits for one manual save, so a stray edit never marks it edited and cuts it off from bundled updates. A brand-new world waits for its first manual save (Q10). |
+| Q32 | The two-tab notice (Q18) is a blocking dialog, like the unsaved-changes prompt: the author must pick **Reload** or **Keep Mine**, and Escape or an outside click does not close it. Editing in two tabs is a mistake to resolve, not a reminder. The copy tells the author to close the other tab. |
+| Q33 | A clean tab gets the same pause and dialog as a dirty one. A silent reload would swap the world and clear History without a word. |
+| Q34 | Every stored write of the world announces, not only the editor's save, so an import or update over the same id in another tab also trips the guard. A tab never trips on its own writes. |
+| Q35 | A manual save in a paused tab counts as Keep Mine only when it succeeds. A failed save overwrote nothing, so the dialog stays. |
+| Q36 | Reload loads the stored world the same way opening it does: it re-baselines, starts History over, and drops pending links. Pending edits in this tab are lost, and the dialog copy says so. |
+| Q37 | A delete of the open world in another tab also announces. This tab pauses auto save and shows its own blocking dialog: another tab deleted this world, with **Keep Mine** (saves it back) and **Close** (leaves the editor and drops the edits). Escape and an outside click do not close it. Backup restores announce like saves (Q34). |
 
 ### Prototype
 
