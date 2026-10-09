@@ -1,25 +1,19 @@
-import { interpolate, spring } from 'remotion';
+import { Easing, interpolate } from 'remotion';
 
-/** Frames a scene's own content takes to leave, ending on the scene's last frame. */
-export const EXIT_FRAMES = 18;
+/** Ruling Q25: frames a line of copy takes to enter, and to leave. */
+export const ENTER_FRAMES = 30;
+export const EXIT_FRAMES = 30;
+
+const gentle = Easing.inOut(Easing.sin);
+
+/** 0 before `delay`, rising to 1 over the enter frames. */
+export const enterProgress = (frame: number, delay: number) =>
+  interpolate(frame, [delay, delay + ENTER_FRAMES], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: gentle });
 
 /** 1 while a scene holds, falling to 0 on its last frame. */
 export const exitProgress = (frame: number, durationInFrames: number) =>
-  interpolate(frame, [durationInFrames - EXIT_FRAMES, durationInFrames - 1], [1, 0], {
+  interpolate(frame, [durationInFrames - 1 - EXIT_FRAMES, durationInFrames - 1], [1, 0], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
+    easing: gentle,
   });
-
-/** A settled spring from 0 to 1 that starts at `delay`. */
-export const enterProgress = (frame: number, fps: number, delay: number) =>
-  spring({ frame: frame - delay, fps, config: { damping: 200 } });
-
-/** How far in an entering line is before it counts as legible. */
-const LEGIBLE_PROGRESS = 0.95;
-
-/** Frames from the start of an enter until the line is legible. */
-export const enterFrames = (fps: number) => {
-  let frame = 0;
-  while (enterProgress(frame, fps, 0) < LEGIBLE_PROGRESS) frame++;
-  return frame;
-};

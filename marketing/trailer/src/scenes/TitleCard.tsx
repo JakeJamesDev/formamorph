@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import { AbsoluteFill, Img, interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import type { Layout, SceneProps } from '../layout';
-import { enterFrames } from '../motion';
+import { ENTER_FRAMES, enterProgress } from '../motion';
 import { Wordmark, WordmarkFilter } from '../parts/Wordmark';
 import type { CopyRead } from '../reading';
 import { SHOTS } from '../shots';
@@ -43,14 +43,18 @@ const PLACEMENT: Record<Layout, Placement> = {
 const cover: CSSProperties = { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' };
 
 const TAGLINE = 'AI text RPG';
+/** The backdrop's zoom, and how far it drifts across the card as a percent of its width. */
+const BACKDROP_ZOOM = 1.05;
+const BACKDROP_DRIFT = 3;
 /** Frames each part starts to rise. */
 const RISE = { mark: 12, tag: 40, rule: 52, cta: 80 };
 
-/** The frames the tagline and the call-to-action line are legible, for the reading check. The card holds to its last frame. */
-export const titleReads = (durationInFrames: number, fps: number, cta?: string): CopyRead[] => [
-  { text: TAGLINE, from: RISE.tag + enterFrames(fps), until: durationInFrames },
-  ...(cta ? [{ text: cta, from: RISE.cta + enterFrames(fps), until: durationInFrames }] : []),
-];
+/** The frames the tagline and the call-to-action line enter and are legible, for the reading check. Both hold to the card's last frame. */
+export const titleReads = (durationInFrames: number, cta?: string): CopyRead[] =>
+  [
+    { text: TAGLINE, start: RISE.tag },
+    ...(cta ? [{ text: cta, start: RISE.cta }] : []),
+  ].map(({ text, start }) => ({ text, start, from: start + ENTER_FRAMES, until: durationInFrames, end: null }));
 
 /** The title card: two app shots stitched behind the wordmark on the dark stage, with an optional call-to-action line. */
 export const TitleCard = ({ layout, durationInFrames, cta }: SceneProps & { cta?: string }) => {
@@ -58,18 +62,19 @@ export const TitleCard = ({ layout, durationInFrames, cta }: SceneProps & { cta?
   const { fps } = useVideoConfig();
   const place = PLACEMENT[layout];
 
-  const drift = interpolate(frame, [0, durationInFrames], [1.08, 1], { extrapolateRight: 'clamp' });
+  // Ruling Q23: the backdrop holds one zoom and drifts left in a straight line, inside the slack the zoom leaves.
+  const drift = interpolate(frame, [0, durationInFrames - 1], [BACKDROP_DRIFT / 2, -BACKDROP_DRIFT / 2], { extrapolateRight: 'clamp' });
   const rise = (delay: number) => spring({ frame: frame - delay, fps, config: { damping: 200 } });
   const mark = rise(RISE.mark);
-  const tag = rise(RISE.tag);
+  const tag = enterProgress(frame, RISE.tag);
   const rule = rise(RISE.rule);
-  const ctaIn = rise(RISE.cta);
+  const ctaIn = enterProgress(frame, RISE.cta);
 
   return (
     <AbsoluteFill style={{ backgroundColor: colors.stage, fontFamily: fonts.body, color: colors.foreground }}>
       <WordmarkFilter />
 
-      <AbsoluteFill style={{ transform: `scale(${drift})`, filter: 'saturate(.85) brightness(.9)' }}>
+      <AbsoluteFill style={{ transform: `translateX(${drift}%) scale(${BACKDROP_ZOOM})`, filter: 'saturate(.85) brightness(.9)' }}>
         <Img src={SHOTS.library.src} style={cover} />
         <Img src={SHOTS.game.src} style={{ ...cover, maskImage: place.seam, WebkitMaskImage: place.seam }} />
       </AbsoluteFill>

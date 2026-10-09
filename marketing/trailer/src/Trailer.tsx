@@ -1,11 +1,12 @@
 import { TransitionSeries } from '@remotion/transitions';
 import { Fragment } from 'react';
+import type { CameraReading } from './framing';
 import type { Layout } from './layout';
 import type { LineReading } from './reading';
 import { TIMELINES } from './timeline';
 
-/** `reading` is the cut's reading report, carried in the props so the render check can read it from the composition. */
-type TrailerProps = { layout: Layout; reading: LineReading[] };
+/** `reading` and `camera` are the cut's reports, carried in the props so the render check can read them from the composition. */
+type TrailerProps = { layout: Layout; reading: LineReading[]; camera: CameraReading[] };
 
 /** Plays one cut's scene list in its layout. Each scene's join overlaps it with the next. */
 export const Trailer = ({ layout }: TrailerProps) => {

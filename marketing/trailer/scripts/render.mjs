@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Renders each trailer composition (default: both) to out/<id>.mp4, then checks every file against its composition,
-// every line of copy against the reading bar, and proves its 6 s loop. The wide cut is also checked against the
+// every line of copy against the reading bar, every camera move, and proves its 6 s loop. The wide cut is also checked against the
 // Steam spec and writes its poster frame.
 //
 //   npm run render                 both cuts
@@ -32,10 +32,14 @@ const CHECKS = {
     maxSeconds: 90,
     loopFrames: 360,
     poster: { size: '1920x1080', fromEnd: 1 },
+    zoomShots: ['W06', 'W13'],
   },
-  // The social cut has no store spec. It shares the wide cut's first 6 s, so it loops too.
-  TrailerTall: { loopFrames: 360 },
+  // The social cut has no store spec. It shares the wide cut's first 6 s, so it loops too. Its stats pane zooms like W06.
+  TrailerTall: { loopFrames: 360, zoomShots: ['T06/1'] },
 };
+
+/** Ruling Q26: a shot that holds its zoom moves this far on screen, as a percent of its area. */
+const DRIFT_PERCENT = { min: 1, max: 5 };
 
 console.log('Bundling…');
 const serveUrl = await bundle({ entryPoint: path.join(root, 'src/index.ts'), publicDir: path.join(root, 'public') });
@@ -107,10 +111,27 @@ for (const { composition, outputLocation } of rendered) {
   const summary = `${path.relative(root, outputLocation)}  ${actual.size}  ${actual.fps} fps  ${seconds?.toFixed(2) ?? '?'} s  ${kbps ?? '?'} Kbps  ${actual.videoCodec}  audio: ${actual.audioCodec ?? 'none'}`;
   report(problems.length === 0, summary, problems);
 
-  // Ruling Q17: each line's legible seconds and characters per second, measured by the timeline that played.
+  // Rulings Q17 and Q25: each line's enter, legible and exit seconds and its characters per second, measured by the timeline that played.
   for (const line of composition.props.reading) {
     const cps = line.charsPerSecond === null ? '-' : line.charsPerSecond.toFixed(1);
-    report(line.ok, `${line.shot.padEnd(4)} ${line.seconds.toFixed(2).padStart(5)} s  ${cps.padStart(4)} cps  "${line.text}"`);
+    const exit = line.exitSeconds === null ? 'holds to end' : `exit ${line.exitSeconds.toFixed(2)} s`;
+    report(line.ok, `${line.shot.padEnd(4)} enter ${line.enterSeconds.toFixed(2)} s  hold ${line.seconds.toFixed(2).padStart(5)} s  ${exit.padEnd(12)}  ${cps.padStart(4)} cps  "${line.text}"`);
+  }
+
+  // Rulings Q22, Q23 and Q26: every camera moves at a constant rate; only the named shots zoom; every other shot drifts a few percent.
+  for (const camera of composition.props.camera) {
+    const name = camera.pane === null ? camera.shot : `${camera.shot}/${camera.pane}`;
+    const zooms = Math.abs(camera.zoomTo - camera.zoomFrom) > 1e-6;
+    const allowed = spec?.zoomShots?.includes(name) ?? false;
+    const problems = [];
+    if (!camera.linear) problems.push('the move is not linear: the shot edge stops the camera');
+    if (zooms && !allowed) problems.push('only a zoom shot may change zoom');
+    if (!zooms && allowed) problems.push('a zoom shot must zoom');
+    if (!zooms && (camera.travelPercent < DRIFT_PERCENT.min || camera.travelPercent > DRIFT_PERCENT.max)) {
+      problems.push(`drift: ${camera.travelPercent.toFixed(1)}% is outside ${DRIFT_PERCENT.min}% to ${DRIFT_PERCENT.max}%`);
+    }
+    const move = zooms ? `zoom ${camera.zoomFrom.toFixed(2)} -> ${camera.zoomTo.toFixed(2)}` : `zoom ${camera.zoomFrom.toFixed(2)}, drift ${camera.travelPercent.toFixed(1)}%`;
+    report(problems.length === 0, `${name.padEnd(6)} camera ${move}`, problems);
   }
 
   if (!spec) continue;

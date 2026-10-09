@@ -38,10 +38,24 @@ The wide cut also writes its poster frame, `out/TrailerWide-poster.png`.
 
 Each line reports size, frame rate, length, bitrate and codecs. A mismatch prints `FAIL` and the command exits with code 1. To render one cut, name it: `npm run render -- TrailerWide`, or `npm run render:wide`.
 
-The command also checks every line of copy against the reading bar. Each line reports its shot, the seconds it is fully legible, and its characters per second. A line under 1.5 s or over 12 characters per second prints `FAIL`.
+The command also checks every line of copy against the reading bar. Each line reports its shot, the seconds it takes to enter, the seconds it is fully legible, the seconds it takes to leave, and its characters per second. It prints `FAIL` for a line that:
 
-- 📏 A line is legible from the frame its enter animation is 95% in until its exit starts or a join begins to cover it. Typed and streamed text counts from its last character.
+- holds under 1.5 s or reads over 12 characters per second
+- enters or leaves in under 0.5 s
+
+Notes:
+
+- 📏 A line is legible from the frame its enter animation ends until its exit starts or a join begins to cover it. Typed and streamed text counts from its last character.
+- 🔚 The end card's lines stay to the last frame. Their exit prints `holds to end`.
 - ✏️ A longer line needs a longer shot. Raise the shot's frames in `src/timeline.tsx` until its line prints `OK`. The wordmark is a logo and is not measured.
+
+The command also checks every camera move. Each camera reports its zoom, and how far it drifts as a percent of the frame. It prints `FAIL` when:
+
+- the move is not linear, because the shot's edge stops the camera partway
+- a shot other than W06, W13 or the T06 stats pane changes zoom
+- a shot that holds its zoom drifts under 1% or over 5% of the frame
+
+The render leaves its files in `out/`:
 
 - 📁 `out/` is not tracked. Upload the two MP4s and the poster from there.
 - 🧪 `out/*-loop-first.png` and `out/*-loop-last.png` are the frames the loop check compares. You can delete them.
@@ -72,7 +86,7 @@ All on-screen copy is in `src/timeline.tsx`, plus the end card's tagline in `src
 npm run render:wide
 ```
 
-The wide cut plays the storyboard's 19 shots (`docs-internal/specs/trailer/storyboard.md`, §2) in 64.35 s. The command encodes it for Steam and checks the result:
+The wide cut plays the storyboard's 19 shots (`docs-internal/specs/trailer/storyboard.md`, §2) in 64.45 s. The command encodes it for Steam and checks the result:
 
 | Check | Limit |
 |---|---|
@@ -83,7 +97,7 @@ The wide cut plays the storyboard's 19 shots (`docs-internal/specs/trailer/story
 | Loop | Frame 0 and frame 359 are identical, so the first 6 s loop |
 | Poster | `out/TrailerWide-poster.png`, the last frame, 1920x1080 |
 
-- 🔁 The first 6 s (shots W01 to W03) cut between shots and start and end on the same blurred library plate. Steam cuts its microtrailer from them.
+- 🔁 The first 6 s (shots W01 to W03) cut between shots and start and end on the same blurred library plate. Steam cuts its microtrailer from them. The plate holds at W04's opening camera (`LIBRARY_OPEN` in `src/timeline.tsx`), so the cut into W04 has no jump.
 - 🖼️ The poster is the last frame of the encoded video, cut out as a PNG at the video's size.
 
 Edit the shot list, copy and camera moves in `src/timeline.tsx`. The studio's **TrailerWide** composition shows the result live.
@@ -94,7 +108,7 @@ Edit the shot list, copy and camera moves in `src/timeline.tsx`. The studio's **
 npm run render:tall
 ```
 
-The tall cut plays the storyboard's 14 shots (§4) in 50.10 s at 1080x1920, 60 fps. It comes from the same scene list as the wide cut and has its own shot order. `npm run render` renders both.
+The tall cut plays the storyboard's 14 shots (§4) in 50.20 s at 1080x1920, 60 fps. It comes from the same scene list as the wide cut and has its own shot order. `npm run render` renders both.
 
 | Treatment | Shots | How |
 |---|---|---|
@@ -122,7 +136,7 @@ The studio's **Scene-library** folder lists every scene type and transition in b
 | Cut, fade, wipe | `src/transitions.tsx` | `TransitionName`; a cut has no overlap, a fade overlaps 30 frames, a wipe 36 |
 
 - 🔤 Copy uses the app's text size roles (`typeRoles` in `src/theme.ts`) scaled to the canvas, in Lexend.
-- 🎥 A camera path runs `from` to `to`. Add `via` stops for a move in stages, such as a push to the input and then to the narration.
+- 🎥 A camera path runs `from` to `to` at a constant rate. In `src/timeline.tsx`, `zoom` changes the zoom (W06, W13 and the T06 stats pane only), and `drift` holds one zoom and pans a few percent. A full frame drifts at zoom 1.05, so the pan has room.
 - 🖼️ Any shot prop takes one shot, or `{ wide, tall }` when the tall cut uses its own recapture (`LayoutShot` in `src/shots.ts`).
 - ✍️ The typed scene is a stylized overlay, never a copy of the real input. It throws if the copy does not fit the scene's frames.
 - 🧩 Add a scene by adding an entry to `ENTRIES` in `src/library.tsx`.
@@ -172,7 +186,7 @@ Setups keep every shot off live servers and live AI:
 | `defaultEndpoint` | The Demo AI preset, answering its model list |
 | `helpAnswer` | The help window's reply, streamed from a fixed text |
 
-The storyboard's three live-data shots (help answer, community grid, avatar) are fixed this way. The avatar shot keeps **Animate character** on and sets `freezeAt` (below), so it shows the idle animation at a fixed time.
+The storyboard's three live-data shots (help answer, community grid, avatar) are fixed this way. The avatar shot keeps **Animate character** on and sets `model` (below), so it films the idle animation on a controlled clock.
 
 ### Frozen time and clips
 
@@ -180,12 +194,15 @@ Two kinds of shot control the page clock, so a moving screen comes out the same 
 
 | Field | Does |
 |---|---|
-| `freezeAt` | Seconds of the avatar's idle animation to show. The script holds the model files, pauses the page clock, lets the models load, then runs the clock that far. |
+| `model` | Films the avatar's idle animation. `model.from` is the second of the animation the clip starts at, and `frames` is the clip's length at 60 fps. |
 | `kind: "clip"` | Films one live turn instead of a still. `turn.stats` is the stat reply, and `frames` is the clip's length at 60 fps. |
+
+A model clip holds the model files, pauses the page clock, lets the models load, then runs the clock to `model.from`. It then takes over the page's animation frames: for each film frame it moves the clock one frame (16 or 17 ms, so the frames stay on the 60 fps grid), draws once, and takes a screenshot. The avatar clip is about 0.8 MB.
 
 A clip loads the demo scene before its turn, submits the action, and answers every AI call from fixed text. Once the narration settles, it pauses the page clock and lets the stat reply through. It then pauses every animation that starts, seeks each one frame at a time and takes a screenshot per frame. The frames encode to `public/shots/<id>.mp4`, about 1 MB, with a bit-exact encode.
 
 - 🎞️ The stats shot (W06, and the top pane of T06) plays `stats-clip.mp4`. It holds the first frame, plays the clip from frame 60 of the scene, then holds the last frame.
+- 🧍 The avatar shot (W18) plays `avatar-clip.mp4` from its first frame. The clip has as many frames as the shot, so the avatar moves to the end. Lengthen both together.
 - 🔁 A second run gives the same frames and the same file, so `npm run capture:diff` prints `same`. The frames stay in `.capture-clip/` to compare two runs.
 - 🧩 The script runs Vite with `scripts/captureVite.config.mjs`. It adds the real path of the repo's `node_modules` to the files Vite serves, so the stat code's QuickJS runtime also loads in a worktree.
 

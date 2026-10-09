@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Poses the app screens listed in captures.json through the dev-router and writes one PNG per shot into
-// public/shots/. A clip shot films one live turn frame by frame and writes an MP4 instead. With --diff it
-// captures to .capture-diff/ and reports each shot whose pixels differ from the committed file.
+// public/shots/. A clip shot films one live turn, and a model shot the avatar's idle animation, frame by frame
+// and writes an MP4 instead. With --diff it captures to .capture-diff/ and reports each shot whose pixels differ
+// from the committed file.
 //
 //   npm run capture
 //   npm run capture -- --only game
@@ -102,13 +103,13 @@ async function newContext(browser, shot) {
     // A clip films the app's own motion; a still shows every animation at its end.
     reducedMotion: shot.kind === 'clip' ? 'no-preference' : 'reduce',
   });
-  if (shot.freezeAt === undefined && shot.kind !== 'clip') {
+  if (!shot.model && shot.kind !== 'clip') {
     await context.clock.setFixedTime(new Date(list.demo.time));
   } else {
     // The page clock runs until the capture pauses it, so its timers and frames move only when the capture says.
     await context.clock.install({ time: new Date(list.demo.time) });
   }
-  if (shot.freezeAt !== undefined) {
+  if (shot.model) {
     // The models load only once the clock is paused, so the animation starts at a known time.
     context.models = gate();
     await context.route(/\.(vrm|fbx)(\?|$)/, async (route) => {
@@ -214,8 +215,11 @@ async function filmTurn(page, shot, scene) {
   return frames;
 }
 
-/** Pauses the page clock, lets the held models load, then runs the clock `seconds` from the animation's start. */
-async function freezeModel(page, context, seconds) {
+/**
+ * Films the avatar's idle animation: pauses the page clock, lets the held models load, runs the clock to
+ * `model.from` seconds into the animation, then draws and screenshots one frame per trailer frame.
+ */
+async function filmModel(page, context, shot) {
   const loaded = [];
   page.on('console', (message) => { if (/animation loaded$/.test(message.text())) loaded.push(message.text()); });
   await page.clock.pauseAt(pauseTime());
@@ -223,7 +227,22 @@ async function freezeModel(page, context, seconds) {
   // The viewer starts its first animation once all three are in.
   for (let i = 0; i < 240 && loaded.length < 3; i++) await page.waitForTimeout(250);
   if (loaded.length < 3) throw new Error(`Only ${loaded.length} of 3 avatar animations loaded`);
-  await page.clock.runFor(Math.round(seconds * 1000));
+  await page.clock.runFor(Math.round(shot.model.from * 1000));
+  // The fake clock fires animation frames on its own 16 ms grid. Queue them instead, so each film frame draws once at its own time.
+  await page.evaluate(() => {
+    const queue = [];
+    window.requestAnimationFrame = (callback) => { queue.push(callback); return 0; };
+    window.__film = { draw: () => { const due = queue.splice(0); for (const callback of due) callback(performance.now()); return due.length; } };
+  });
+  // A loop the clock had already scheduled moves into the queue on its next tick.
+  await page.clock.runFor(16);
+  const frames = [];
+  for (let i = 0; i < shot.frames; i++) {
+    if (i > 0) await page.clock.runFor(Math.round(i * FRAME_MS) - Math.round((i - 1) * FRAME_MS));
+    if ((await page.evaluate(() => window.__film.draw())) === 0) throw new Error(`The avatar stopped drawing at frame ${i}`);
+    frames.push(await page.screenshot({ animations: 'disabled', caret: 'hide' }));
+  }
+  return frames;
 }
 
 /** Runs a shot's `steps` after the screen is up. Each step is one key of captures.json's step list. */
@@ -312,7 +331,7 @@ async function capture(browser, shot) {
     await page.mouse.move(0, 0);
     await page.waitForTimeout(1500);
     if (shot.kind === 'clip') return await filmTurn(page, shot, scene);
-    if (shot.freezeAt !== undefined) await freezeModel(page, context, shot.freezeAt);
+    if (shot.model) return await filmModel(page, context, shot);
     if (shot.kind === 'game' && shot.verify !== false) await verifyGame(page, scene);
     return await page.screenshot({ animations: 'disabled', caret: 'hide' });
   } finally {
@@ -366,7 +385,7 @@ try {
       console.log(`FAILED   ${shot.id}: ${String(error).split('\n')[0]}`);
       continue;
     }
-    if (shot.kind === 'clip') {
+    if (shot.frames) {
       const file = path.join(outDir, `${shot.id}.mp4`);
       encodeClip(png, path.join(DIFF ? outDir : path.join(packageRoot, '.capture-clip'), shot.id), file);
       const clip = readFileSync(file);

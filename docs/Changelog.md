@@ -39,6 +39,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **`npm run capture` in `marketing/trailer/` writes the trailer's UI frames from the real app, and `capture:diff` flags UI changes.** It sets up each shot in `captures.json` on its own dev server, with watching off. The proof renders from these frames.
     - **`npm run render` in `marketing/trailer/` writes the final 63-second Steam cut, the 48-second social cut and the poster frame.** The README lists the Steam checks and the steps to re-render after a release.
     - **The trailer render checks each line's reading time, and its stats shot plays the real stat-bar animation.** Lines under 1.5 s or over 12 characters per second fail. The cuts now run 64 and 50 seconds. The avatar shot shows the idle pose at a fixed time.
+    - **The trailer camera moves at a constant rate, text enters and leaves calmly, and the avatar shot plays a clip.** Only the stats and Morphie shots zoom; the rest drift a few percent. The render check fails text under 0.5 s and nonlinear camera moves.
   - **The ticket test gate reruns files that failed only by timeout, alone, once.** A run starved by another session's gates is not a verdict. Any other failure stops the gate as before.
   - **The changelog lint lets a feature group hold one entry under In Progress.** The first ticket of an effort names the group. The release lint still needs two entries, and close-spec drops a header that stayed alone.
 
