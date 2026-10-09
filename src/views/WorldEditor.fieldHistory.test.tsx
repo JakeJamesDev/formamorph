@@ -288,7 +288,7 @@ const reported = (tree: ReactNode) => (
 );
 
 describe('Ctrl+Z under a question the editor asks', () => {
-  it.each(['imageReplace', 'codeRename', 'replaceAll'])('leaves the world alone under %s, which reports its surface', async (modal) => {
+  it.each(['imageReplace', 'codeRename', 'replaceAll', 'savedElsewhere', 'deletedElsewhere'])('leaves the world alone under %s, which reports its surface', async (modal) => {
     window.location.hash = `#dev?modal=${modal}`;
     try {
       const { ctx } = renderWorldEditorBench(WORLD, 'advanced', {}, reported);

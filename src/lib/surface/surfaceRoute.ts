@@ -76,6 +76,8 @@ const DIALOGS: Record<DevModal, DialogRoute> = {
   imageReplace: { ancestor: 'worldEditor' },
   codeRename: { ancestor: 'worldEditor' },
   replaceAll: { ancestor: 'worldEditor' },
+  savedElsewhere: { ancestor: 'worldEditor' },
+  deletedElsewhere: { ancestor: 'worldEditor' },
 
   export: { host: 'gameViewer' },
   location: { host: 'gameViewer' },

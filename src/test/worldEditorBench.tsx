@@ -129,6 +129,8 @@ export const renderWorldEditorBench = (
   const view = render(tree(props));
   return {
     ctx: () => ctx,
+    /** The host's close, which the editor calls to leave. */
+    onClose,
     /** The history's moves, called as a hook caller would, past the chords and the pill. */
     history: () => moves,
     /** The Steps, the cursor and the Saved marker as the last render read them. */

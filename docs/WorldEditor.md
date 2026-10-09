@@ -230,6 +230,22 @@ When you leave with unsaved changes, the **Unsaved changes** dialog asks what to
 - **Exit Without Saving** discards every change since the last save.
 - **Cancel** keeps you in the editor.
 
+## Editing in Two Tabs
+<!-- keywords: two tabs, other tab, another window, saved elsewhere, deleted elsewhere, overwrite, reload, keep mine, lost changes, conflicting copies, world came back -->
+<!-- route: savedElsewhere -->
+
+When you save a world in one browser tab, every other tab with that world open in the editor stops auto saving. The **World Saved in Another Tab** dialog asks which copy to keep. A tab where you play that world, or picked it on the Main Menu, asks when you open the editor.
+
+- **Reload** opens the other tab's save. It discards your unsaved changes in this tab, and **History** starts over.
+- **Keep Mine** keeps this tab's copy and turns auto save back on. Your next save replaces the other tab's copy.
+
+A save that you start in this tab counts as **Keep Mine** once it works. Only one tab should edit a world, so close the other tab when you're done.
+
+When another tab deletes the world, the **World Deleted in Another Tab** dialog asks instead:
+
+- **Keep Mine** saves this tab's copy back to your library.
+- **Close** leaves the editor. It discards your unsaved changes in this tab.
+
 ## Help Buttons
 <!-- keywords: question mark, info icon, explain this section, colored icon, short reference -->
 

@@ -12,6 +12,7 @@ import {
   putWorldRecord, readAllWorldMeta, readWorldMeta, type LinkedCopy, type WorldMetaRecord,
 } from '@/lib/worldLibrary';
 import { contentHash } from '@/lib/contentHash';
+import { announceWorldDeleted, announceWorldSaved } from '@/lib/worldChangeSignal';
 import { readDeletedDefaultWorlds, seedWorldData, tombstoneDefaultWorld, type DefaultWorldSeed } from '@/lib/defaultWorlds';
 import { changelogOf, type ChangelogDraft, type ChangelogEntry } from '@/lib/listingChangelog';
 import type { ReviewState, WorldAssociation } from '@/lib/compatibleWorlds';
@@ -357,11 +358,15 @@ class WorldStorageService {
     if (!worldId) throw new Error('World ID is required');
 
     const transaction = libraryTransaction(this.db!, 'readwrite');
-    return writeAfterRead(transaction, transaction.objectStore(WORLD_STORE).get(worldId), (record) => {
+    let wrote = false;
+    await writeAfterRead(transaction, transaction.objectStore(WORLD_STORE).get(worldId), (record) => {
       if (!record?.data || typeof record.data !== 'object') throw new Error('World not found');
       const revised = revise(record.data as Record<string, unknown>);
-      if (revised !== record.data) putWorldRecord(transaction, { ...record, data: revised });
+      if (revised === record.data) return;
+      putWorldRecord(transaction, { ...record, data: revised });
+      wrote = true;
     });
+    if (wrote) announceWorldSaved(worldId);
   }
 
   /** Load one world's full `data` (with `id` injected); rejects if missing, malformed, or lacking any
@@ -456,7 +461,7 @@ class WorldStorageService {
     // caller supplies one), and dirty defaults to the existing/false unless the caller sets it.
     // The sticky fields all live in the metadata record, so the old world data is never read.
     const read = transaction.objectStore(WORLD_META_STORE).get(world.id) as IDBRequest<WorldMetaRecord | undefined>;
-    return writeAfterRead(transaction, read, (existing) => {
+    await writeAfterRead(transaction, read, (existing) => {
       putWorldRecord(transaction, {
         id: world.id,
         name: world.name,
@@ -476,6 +481,7 @@ class WorldStorageService {
         lastAccessed: new Date().toISOString()
       });
     });
+    announceWorldSaved(world.id);
   }
 
   /** Seed missing default worlds and auto-update unedited ones whose bundled content no longer matches the
@@ -579,6 +585,7 @@ class WorldStorageService {
     const transaction = libraryTransaction(this.db!, 'readwrite');
     deleteWorldRecord(transaction, worldId);
     await transactionDone(transaction);
+    announceWorldDeleted(worldId);
     // Deleting a default is permanent: without this the next seed pass sees it missing and re-creates it.
     // A no-op for any non-default id.
     tombstoneDefaultWorld(worldId);

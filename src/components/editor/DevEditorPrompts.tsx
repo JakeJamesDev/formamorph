@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { CodeRenameDialog } from '@/components/editor/CodeRenameOffer';
 import { ReplaceAllConfirm } from '@/components/editor/EditorFindBar';
+import { ChangedElsewhereDialog } from '@/components/editor/ChangedElsewhereDialog';
 import { ReplaceImageDialog } from '@/managers/ImageTagsField';
 import type { CodeRenamePlan } from '@/lib/statCodeRename';
 
@@ -26,6 +27,9 @@ export function DevEditorPrompts({ modal }: { modal: string | undefined }) {
     return <ReplaceImageDialog open images={IMAGES} slot={slot} onSlotChange={setSlot} idPrefix="dev-image" onClose={close} />;
   }
   if (modal === 'codeRename') return <CodeRenameDialog open plan={PLAN} onApply={close} onSettle={close} />;
+  if (modal === 'savedElsewhere' || modal === 'deletedElsewhere') {
+    return <ChangedElsewhereDialog change={modal === 'savedElsewhere' ? 'saved' : 'deleted'} onLeave={close} onKeepMine={close} />;
+  }
   if (modal === 'replaceAll') {
     return (
       <ReplaceAllConfirm

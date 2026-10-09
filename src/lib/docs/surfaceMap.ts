@@ -74,6 +74,8 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
   imageReplace: { page: 'World-Editor-Entities', anchor: 'images-and-models' },
   codeRename: { page: 'StatCodeGuide', anchor: 'accessing-other-stats' },
   replaceAll: { page: 'WorldEditor', anchor: 'find-and-replace' },
+  savedElsewhere: { page: 'WorldEditor', anchor: 'editing-in-two-tabs' },
+  deletedElsewhere: { page: 'WorldEditor', anchor: 'editing-in-two-tabs' },
   settings: { page: 'Settings', anchor: '\u{FE0F}-settings' },
   worldEditor: { page: 'WorldEditor', anchor: '\u{FE0F}-world-editor' },
   worldUpdate: { page: 'LinkedContent', anchor: 'update-this-world' },

@@ -11,6 +11,7 @@ import { PUBLISH_LIMITS } from '@/lib/publishLimits';
 import { KIND_LABELS } from '@/lib/catalogKinds';
 import { openWorldLibrary, putWorldRecords } from '@/lib/worldLibrary';
 import { Blob as NodeBlob } from 'node:buffer';
+import { WORLD_CHANGE_CHANNEL } from '@/lib/worldChangeSignal';
 
 vi.mock('@/lib/jsonFileWorkerUtils', async (importOriginal) => ({
   ...(await importOriginal<object>()),
@@ -435,6 +436,51 @@ describe('local world storage (IndexedDB)', () => {
 
     await WorldStorageService.deleteWorld('bundled-1');
     await WorldStorageService.deleteWorld('own-1');
+  });
+
+  describe('tells the other tabs', () => {
+    let otherTab: BroadcastChannel;
+    let heard: unknown[];
+    beforeEach(() => {
+      heard = [];
+      otherTab = new BroadcastChannel(WORLD_CHANGE_CHANNEL);
+      otherTab.onmessage = (event) => { heard.push(event.data); };
+    });
+    afterEach(() => { otherTab.close(); });
+    /** Lets messages already posted arrive. */
+    const settle = () => new Promise<void>((resolve) => { setTimeout(resolve, 50); });
+
+    it('after a stored world is written, and not for a write that fails', async () => {
+      await expect(
+        WorldStorageService.storeWorld({ id: 'bad', name: 'X' } as unknown as StoredWorldRecord),
+      ).rejects.toThrow();
+      await WorldStorageService.storeWorld({ ...validWorld, id: 'tell-1' });
+      await vi.waitFor(() => expect(heard).toEqual([{ worldId: 'tell-1' }]));
+      await WorldStorageService.deleteWorld('tell-1');
+    });
+
+    it('after a content rewrite, and not for one that changes nothing', async () => {
+      await WorldStorageService.storeWorld({ ...validWorld, id: 'tell-2' });
+      await vi.waitFor(() => expect(heard).toHaveLength(1));
+      await WorldStorageService.updateWorldContent('tell-2', (data) => data);
+      await settle();
+      expect(heard).toHaveLength(1);
+      await WorldStorageService.updateWorldContent('tell-2', (data) => ({ ...data, stats: [] }));
+      await vi.waitFor(() => expect(heard).toEqual([{ worldId: 'tell-2' }, { worldId: 'tell-2' }]));
+      await WorldStorageService.deleteWorld('tell-2');
+    });
+
+    it('after a whole-record write, as a backup restore makes', async () => {
+      await writeRaw({ ...validWorld, id: 'tell-3' });
+      await vi.waitFor(() => expect(heard).toEqual([{ worldId: 'tell-3' }]));
+      await WorldStorageService.deleteWorld('tell-3');
+    });
+
+    it('after a delete, as a delete', async () => {
+      await WorldStorageService.storeWorld({ ...validWorld, id: 'tell-4' });
+      await WorldStorageService.deleteWorld('tell-4');
+      await vi.waitFor(() => expect(heard).toEqual([{ worldId: 'tell-4' }, { worldId: 'tell-4', deleted: true }]));
+    });
   });
 });
 
