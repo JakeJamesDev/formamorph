@@ -1,5 +1,5 @@
 import {
-  touchedIds, type RecordSliceName, type SliceEdit, type SliceName, type Step, type WorldSlices,
+  touchedIds, type RecordSliceName, type SliceEdit, type SliceName, type Step, type StepOrigin, type WorldSlices,
 } from '@/lib/editorHistory';
 import type { FindingSection } from '@/lib/testBench/rules';
 import type { Dictionary, DictionaryEntry } from '@/types';
@@ -18,6 +18,10 @@ export interface RevealTarget {
   connection?: boolean;
   /** The records an Origin restores when it holds more than one, `id` first. */
   ids?: string[];
+  /** The panel sub-tab to show, from the Origin. */
+  subTab?: string;
+  /** The Locations view to show, from the Origin. */
+  view?: string;
 }
 
 // Stat updates have no tab, so a Step that only touches them reveals nothing.
@@ -92,21 +96,29 @@ export interface RevealPlace {
 const REVEAL_TABS = new Set<string>(Object.values(SLICE_TABS));
 const isRevealTab = (tab: string): tab is RevealTab => REVEAL_TABS.has(tab);
 
+/** The Origin's sub-view, which belongs to whichever target sits on the Origin's tab. */
+const subView = ({ subTab, view }: StepOrigin): Pick<RevealTarget, 'subTab' | 'view'> => ({
+  ...(subTab !== undefined ? { subTab } : {}),
+  ...(view !== undefined ? { view } : {}),
+});
+
 /**
  * Where one Step returns the author. A Step made through a mirror returns to its Origin tab and the records
  * of its selection that still stand; one made on the touched record's own tab, or whose Origin the editor
- * can't show, reveals the touched record.
+ * can't show, reveals the touched record. The Origin's sub-view applies on either kind of tab, and only
+ * where the Origin tab is the one shown.
  */
 function revealStep(step: Step, world: WorldSlices, place: RevealPlace): RevealTarget | null {
   const target = revealTarget(step, world);
   const fallback = target && place.shows(target.tab) ? target : null;
   const { origin } = step;
-  if (!origin || !isRevealTab(origin.tab) || !place.shows(origin.tab) || origin.tab === target?.tab) return fallback;
-  if (!origin.ids?.length) return { tab: origin.tab };
+  if (!origin || !isRevealTab(origin.tab) || !place.shows(origin.tab)) return fallback;
+  if (origin.tab === target?.tab) return fallback && { ...fallback, ...subView(origin) };
+  if (!origin.ids?.length) return { tab: origin.tab, ...subView(origin) };
   const { tab } = origin;
   const standing = origin.ids.filter((id) => place.holds(tab, id));
   if (!standing.length) return fallback;
-  return { tab, id: standing[0], ...(standing.length > 1 ? { ids: standing } : {}) };
+  return { tab, id: standing[0], ...(standing.length > 1 ? { ids: standing } : {}), ...subView(origin) };
 }
 
 /** Where a move over one or more Steps returns the author: the Step nearest where the cursor lands, else the next one in. */

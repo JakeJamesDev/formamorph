@@ -70,6 +70,10 @@ export interface StepOrigin {
   tab: string;
   /** The records selected on that tab, the one whose panel is open first. */
   ids?: readonly string[];
+  /** The panel sub-tab that was showing, or the Overview's open prompt panel. */
+  subTab?: string;
+  /** The Locations tab's List or Canvas view. */
+  view?: string;
 }
 
 export interface Step {

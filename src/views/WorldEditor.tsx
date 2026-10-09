@@ -86,6 +86,8 @@ import { useWorldEntitiesAdapter } from '../managers/useWorldEntitiesAdapter';
 import { useWorldLocationsAdapter } from '../managers/useWorldLocationsAdapter';
 import { useWorldDictionaryAdapter } from '../managers/useWorldDictionaryAdapter';
 import { LOCATION_VIEWS, type LocationView } from './locationViews';
+import { overviewPanelFor, type OverviewPanel } from './overviewPanels';
+import { placeholderPanelTabsFor, type PlaceholderPanelTab } from './placeholderPanelTabs';
 import { ENTITY_PANEL_TABS, entityPanelTabsFor, type EntityPanelTab } from './entityPanelTabs';
 import { LOCATION_PANEL_TABS, locationPanelTabsFor, type LocationPanelTab } from './locationPanelTabs';
 import { STAT_PANEL_TABS, statPanelTabsFor, type StatPanelTab } from './statPanelTabs';
@@ -272,6 +274,12 @@ const WorldEditorInner = ({
   }, [visibleTabs, activeTab]);
   // Which of the Locations tab's two views is showing — the tree, or the canvas of the same locations.
   const [locationView, setLocationView] = useState<LocationView>('list');
+  // The Overview's open custom prompt panel and the Placeholders panel's tab, held here so a history reveal
+  // can return to the one an edit was made on.
+  const [overviewPanel, setOverviewPanel] = useState<OverviewPanel | null>(null);
+  const [placeholderTab, setPlaceholderTab] = useState<PlaceholderPanelTab>('details');
+  const placeholderTabs = useMemo(() => placeholderPanelTabsFor(advanced, true), [advanced]);
+  const shownPlaceholderTab = placeholderTabs.some((t) => t.value === placeholderTab) ? placeholderTab : 'details';
   // Which of the entity panel's tabs is showing. Held here rather than in the panel, which remounts per
   // entity, so an author reviewing every entity's descriptions stays on Descriptions down the list.
   const [entityTab, setEntityTab] = useState<EntityPanelTab>('profile');
@@ -721,31 +729,41 @@ const WorldEditorInner = ({
   // The lists are built below and read only after a move's commit.
   const listHoldsRef = useRef<(tab: RevealTab, id: string) => boolean>(() => false);
   const listHolds = useCallback((tab: RevealTab, id: string) => listHoldsRef.current(tab, id), []);
+  // A sub-tab the mode doesn't offer opens the tab's first one, which the held choice follows.
+  const showSubTab = useCallback((tab: string, subTab: string) => {
+    const offered = <T extends string>(tabs: readonly { value: T }[], fallback: T): T =>
+      tabs.find((t) => t.value === subTab)?.value ?? fallback;
+    switch (tab) {
+      case 'overview': setOverviewPanel(overviewPanelFor(subTab)); break;
+      case 'entities': setEntityTab(offered(entityTabs, 'profile')); break;
+      case 'locations': setLocationTab(offered(locationTabs, 'details')); break;
+      case 'stats': setStatTab(offered(statTabs, 'details')); break;
+      case 'traits': setTraitTab(offered(traitTabs, 'details')); break;
+      case 'placeholders': setPlaceholderTab(offered(placeholderTabs, 'details')); break;
+      case 'dictionary': {
+        // One tab strip shows at a time, so the value goes to whichever panel offers it.
+        const entry = entryTabs.some((t) => t.value === subTab);
+        const book = bookTabs.some((t) => t.value === subTab);
+        if (entry) setEntryTab(subTab as DictionaryPanelTab);
+        if (book) setBookTab(subTab as DictionaryBookPanelTab);
+        if (!entry && !book) { setEntryTab('details'); setBookTab('details'); }
+        break;
+      }
+    }
+  }, [entityTabs, locationTabs, statTabs, traitTabs, placeholderTabs, entryTabs, bookTabs]);
   const { connectionReveal, clearConnectionReveal, selectionReveal, clearSelectionReveal } = useHistoryReveal({
     onMove: historyMoves.onMove, touring, visibleTabs, holds: listHolds, setActiveTab, clearSearch, setLocationView,
-    navigateToItem: navigateToBenchItem,
+    showSubTab, navigateToItem: navigateToBenchItem,
   });
-  // Passive, so a write's layout effect still reads the place from before a tab switch in its commit.
   const { place: historyPlace } = historyMoves;
-  const placeId = selections[activeTab] ?? undefined;
-  // Only the canvas selects several locations; the open one leads.
+  // Only the canvas selects several locations; the open one leads. The place is published below, once the
+  // sub-tabs are known.
   const canvasPicked = useRef<string[]>([]);
   const publishPlace = useRef(() => {});
-  useEffect(() => {
-    const onCanvas = activeTab === 'locations' && locationView === 'canvas';
-    if (!onCanvas) canvasPicked.current = [];
-    publishPlace.current = () => {
-      const others = onCanvas ? canvasPicked.current.filter((id) => id !== placeId) : [];
-      const ids = [...(placeId ? [placeId] : []), ...others];
-      historyPlace.current = { tab: activeTab, ...(ids.length ? { ids } : {}) };
-    };
-    publishPlace.current();
-  }, [historyPlace, activeTab, placeId, locationView]);
   const onCanvasSelection = useCallback((ids: string[]) => {
     canvasPicked.current = ids;
     publishPlace.current();
   }, []);
-  useEffect(() => () => { historyPlace.current = null; }, [historyPlace]);
 
   // ── Authoring Tour ────────────────────────────────────────────────────────
   // A step's field comes on screen the way a search hit does: its tab, a clear list filter, then focus once
@@ -886,6 +904,8 @@ const WorldEditorInner = ({
   const placeholdersEditor = useWorldPlaceholdersAdapter({
     selectedId: selections.placeholders ?? null,
     onSelect: selectPlaceholder,
+    tab: shownPlaceholderTab,
+    onTabChange: setPlaceholderTab,
     onOpenOwner: (owner) => (owner.kind === 'entity'
       ? navigateToBenchItem('entities', owner.id, 'placeholders')
       : navigateToBenchItem('dictionary', owner.id)),
@@ -965,6 +985,37 @@ const WorldEditorInner = ({
     entities: entitiesEditor.adapter, locations: locationsAdapter, dictionary: dictionaryEditor.adapter,
   };
   listHoldsRef.current = (tab, id) => !!adaptersByTab[tab]?.holds(id);
+  // What the author sees on the active tab beyond the tab itself, for a new Step's Origin.
+  const bookOpen = !!selections.dictionary && dictionaryEditor.book?.id === selections.dictionary;
+  const placeSubTab: Partial<Record<string, string>> = {
+    overview: overviewPanel ?? undefined,
+    entities: shownEntityTab,
+    locations: shownLocationTab,
+    stats: shownStatTab,
+    traits: shownTraitTab,
+    placeholders: shownPlaceholderTab,
+    dictionary: bookOpen ? shownBookTab : shownEntryTab,
+  };
+  const placeId = selections[activeTab] ?? undefined;
+  const placeSub = placeSubTab[activeTab];
+  const placeView = activeTab === 'locations' ? locationView : undefined;
+  // Passive, so a write's layout effect still reads the place from before a tab switch in its commit.
+  useEffect(() => {
+    const onCanvas = activeTab === 'locations' && locationView === 'canvas';
+    if (!onCanvas) canvasPicked.current = [];
+    publishPlace.current = () => {
+      const others = onCanvas ? canvasPicked.current.filter((id) => id !== placeId) : [];
+      const ids = [...(placeId ? [placeId] : []), ...others];
+      historyPlace.current = {
+        tab: activeTab,
+        ...(ids.length ? { ids } : {}),
+        ...(placeSub ? { subTab: placeSub } : {}),
+        ...(placeView ? { view: placeView } : {}),
+      };
+    };
+    publishPlace.current();
+  }, [historyPlace, activeTab, placeId, placeSub, placeView, locationView]);
+  useEffect(() => () => { historyPlace.current = null; }, [historyPlace]);
   // Tabbed panels keep their strip above a body that scrolls itself, so the pane gives them its height.
   const detailFills = !!listEditorParts?.fills;
   // Whose panel the palette sits over: the entity, the book (selected itself or through an entry), or the
@@ -1006,6 +1057,8 @@ const WorldEditorInner = ({
       {activeTab === "overview" && (
         <WorldDetailsManager
           focusField={findField}
+          panel={overviewPanel}
+          onPanelChange={setOverviewPanel}
           onOpenEntity={(id) => navigateToBenchItem('entities', id, 'openings')}
           onOpenLocation={(id) => { navigateToBenchItem('locations', id); setLocationTab('openings'); }}
         />

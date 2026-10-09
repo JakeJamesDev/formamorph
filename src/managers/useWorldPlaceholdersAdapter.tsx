@@ -11,6 +11,7 @@ import { placeholderOwnerRef, type PlaceholderOwnerRef } from '@/lib/placeholder
 import { newPlaceholder } from '@/lib/placeholders';
 import { ownerIdOfNode, placeholderTreeNodes } from '@/lib/placeholderScopes';
 import { randomUUID } from '@/lib/uuid';
+import type { PlaceholderPanelTab } from '@/views/placeholderPanelTabs';
 import PlaceholderList from './PlaceholderList';
 import { usePlaceholderDetail } from './PlaceholderDetail';
 import { placeholderSearchRows } from './placeholderSearchRows';
@@ -21,15 +22,17 @@ import { usePlaceholderRowActions } from './usePlaceholderRowActions';
  * each placeholder's own row, and the detail router's pane. `ownerId` is whose placeholder is open, for the
  * palette; `dialog` is the delete confirmation the search rows open, which the host renders.
  */
-export function useWorldPlaceholdersAdapter({ selectedId, onSelect, onOpenOwner }: {
+export function useWorldPlaceholdersAdapter({ selectedId, onSelect, onOpenOwner, tab, onTabChange }: {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   onOpenOwner: (owner: PlaceholderOwnerRef) => void;
+  tab: PlaceholderPanelTab;
+  onTabChange: (tab: PlaceholderPanelTab) => void;
 }): { adapter: ListEditorAdapter; ownerId?: string; dialog: ReactNode } {
   const { placementLetters, placeholderOwners, placeholderGroups, addPlaceholder, addPlaceholderGroup } = useGameData();
   const { placeholders, lists } = usePlaceholderStore();
   const { advanced } = useEditorMode();
-  const { detail, footer, ownerId, fills } = usePlaceholderDetail({ selectedId, onSelect, onOpenOwner });
+  const { detail, footer, ownerId, fills } = usePlaceholderDetail({ selectedId, onSelect, onOpenOwner, tab, onTabChange });
   const { rowRules, dialog } = usePlaceholderRowActions({ selectedId, onSelect });
 
   const nodes = useMemo(() => (lists ? placeholderTreeNodes(lists) : []), [lists]);
