@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  pacedStagger, flooredTiming, TARGET_BUFFER_WORDS, DRAIN_TARGET_WORDS, STAGGER_MIN, STAGGER_MAX, FADE_SPREAD,
+  pacedStagger, flooredTiming, TARGET_BUFFER_WORDS, DRAIN_TARGET_WORDS, DRAIN_CORRECTION_MIN, STAGGER_MIN, STAGGER_MAX, FADE_SPREAD,
 } from './narrationRevealConfig';
 
 const BASE = 40; // measured ms/word
@@ -29,6 +29,10 @@ describe('pacedStagger', () => {
     // …and a nearly-empty tail is capped at the measured rate, never slower (no dawdling).
     expect(pacedStagger(BASE, 1, true)).toBeLessThanOrEqual(BASE);
     expect(DRAIN_TARGET_WORDS).toBeLessThan(TARGET_BUFFER_WORDS);
+  });
+
+  it('caps the tail speed-up, so a deep leftover buffer does not sprint at the end', () => {
+    expect(pacedStagger(BASE, TARGET_BUFFER_WORDS * 10, true)).toBe(BASE * DRAIN_CORRECTION_MIN);
   });
 
   it('clamps to the readable stagger bounds', () => {

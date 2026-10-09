@@ -152,6 +152,8 @@ export const DRAIN_TARGET_WORDS = 4;
 //  - Bounds on that speed-up/slow-down so the controller stays gentle and never stalls or sprints.
 export const PACE_CORRECTION_MIN = 0.5;
 export const PACE_CORRECTION_MAX = 2;
+//  - The tail's speed-up is capped lower: a sprint at the end reads as uneven pace.
+export const DRAIN_CORRECTION_MIN = 0.75;
 
 export { clamp }; // re-exported (from ./utils) so existing importers/tests keep their path
 
@@ -171,6 +173,6 @@ export function flooredTiming(t: RevealTiming, minStagger: number, minDuration: 
 export function pacedStagger(msPerWord: number, backlogWords: number, drainingOnly: boolean): number {
   const target = drainingOnly ? DRAIN_TARGET_WORDS : TARGET_BUFFER_WORDS;
   let correction = clamp(target / Math.max(backlogWords, 1), PACE_CORRECTION_MIN, PACE_CORRECTION_MAX);
-  if (drainingOnly) correction = Math.min(correction, 1);
+  if (drainingOnly) correction = clamp(correction, DRAIN_CORRECTION_MIN, 1);
   return clamp(msPerWord * correction, STAGGER_MIN, STAGGER_MAX);
 }

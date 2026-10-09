@@ -166,6 +166,15 @@ describe('useSentenceReveal', () => {
     expect(onText).toHaveBeenLastCalledWith('One two three.');
   });
 
+  it("times a turn's first sentence from the stream's start", () => {
+    const { reveal } = setup();
+    // 10 words over 2s: 200 ms/word, well above the 40ms seed.
+    act(() => { reveal.reset(); reveal.push(''); });
+    act(() => vi.advanceTimersByTime(2000));
+    act(() => { reveal.push(words(10) + '.'); });
+    expect(getRevealTiming().stagger).toBeGreaterThanOrEqual(200);
+  });
+
   it('drains once the last words have faded in, not when they are released', () => {
     const { reveal } = setup();
     act(() => { reveal.reset(); reveal.finish('One two three.'); });
