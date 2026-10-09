@@ -9,7 +9,7 @@ import { colors, fonts, roleSize, shade } from '../theme';
 export type TypedBackdrop = { before: LayoutShot; after: LayoutShot; camera: Record<Layout, CameraPath> };
 
 type TypedNarrationProps = SceneProps & {
-  /** The player line that types in. */
+  /** The player line that types in. An empty string leaves it out, and the narration streams in alone. */
   prompt: string;
   /** The narration that streams in word by word after it. */
   narration: string;
@@ -42,6 +42,7 @@ const PANEL: Record<Layout, { width: number; bottom: number; padding: number }> 
 export const TypedNarration = ({ layout, durationInFrames, prompt, narration, backdrop }: TypedNarrationProps) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
+  const hasPrompt = prompt !== '';
   const { words, typeEnd, narrationStart, narrationEnd } = typedTimeline(prompt, narration);
   if (narrationEnd + MIN_HOLD_FRAMES + EXIT_FRAMES > durationInFrames) {
     throw new Error(`TypedNarration needs ${narrationEnd + MIN_HOLD_FRAMES + EXIT_FRAMES} frames; the scene has ${durationInFrames}.`);
@@ -91,32 +92,34 @@ export const TypedNarration = ({ layout, durationInFrames, prompt, narration, ba
             color: colors.foreground,
           }}
         >
-          <p
-            style={{
-              margin: 0,
-              fontSize: roleSize('title', layout),
-              fontWeight: 500,
-              lineHeight: 1.2,
-            }}
-          >
-            {prompt.slice(0, typedChars)}
-            <span
+          {hasPrompt && (
+            <p
               style={{
-                display: 'inline-block',
-                width: '0.07em',
-                height: '1em',
-                marginLeft: '0.06em',
-                verticalAlign: '-0.12em',
-                background: colors.accent,
-                opacity: caretOn ? 1 : 0,
+                margin: 0,
+                fontSize: roleSize('title', layout),
+                fontWeight: 500,
+                lineHeight: 1.2,
               }}
-            />
-            {/* The untyped rest holds its space, so the line never reflows while it types. */}
-            <span style={{ opacity: 0 }}>{prompt.slice(typedChars)}</span>
-          </p>
+            >
+              {prompt.slice(0, typedChars)}
+              <span
+                style={{
+                  display: 'inline-block',
+                  width: '0.07em',
+                  height: '1em',
+                  marginLeft: '0.06em',
+                  verticalAlign: '-0.12em',
+                  background: colors.accent,
+                  opacity: caretOn ? 1 : 0,
+                }}
+              />
+              {/* The untyped rest holds its space, so the line never reflows while it types. */}
+              <span style={{ opacity: 0 }}>{prompt.slice(typedChars)}</span>
+            </p>
+          )}
           <p
             style={{
-              margin: `${roleSize('body', layout) * 0.6}px 0 0`,
+              margin: hasPrompt ? `${roleSize('body', layout) * 0.6}px 0 0` : 0,
               fontSize: roleSize('body', layout),
               fontWeight: 300,
               lineHeight: 1.35,

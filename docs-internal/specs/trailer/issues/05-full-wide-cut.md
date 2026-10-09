@@ -1,6 +1,6 @@
 # 05: Full Wide Cut
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 02, 04
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium

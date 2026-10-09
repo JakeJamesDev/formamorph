@@ -1,29 +1,39 @@
-import { TransitionSeries, linearTiming } from '@remotion/transitions';
+import { TransitionSeries, linearTiming, type TransitionTiming } from '@remotion/transitions';
 import { fade } from '@remotion/transitions/fade';
 import { wipe } from '@remotion/transitions/wipe';
 import type { ReactElement } from 'react';
 
-/** The 30-frame fade that joins the scenes in `timeline.tsx`. */
-export const sceneTransition = {
-  presentation: fade(),
-  timing: linearTiming({ durationInFrames: 30 }),
+/** A join between two scenes: the element that goes between their `TransitionSeries.Sequence`s, and how long it overlaps them. */
+export type Join = { element: ReactElement; timing: TransitionTiming };
+
+const proofTiming = linearTiming({ durationInFrames: 30 });
+const fadeTiming = linearTiming({ durationInFrames: 15 });
+const wipeTiming = linearTiming({ durationInFrames: 18 });
+
+/** The 30-frame fade that joins the scenes of the 20-second proof cut. */
+export const sceneTransition: Join = {
+  timing: proofTiming,
+  element: <TransitionSeries.Transition presentation={fade()} timing={proofTiming} />,
 };
 
-const fadeJoin = { presentation: fade(), timing: linearTiming({ durationInFrames: 15 }) };
-const wipeJoin = { presentation: wipe({ direction: 'from-left' }), timing: linearTiming({ durationInFrames: 18 }) };
+const fadeJoin: Join = { timing: fadeTiming, element: <TransitionSeries.Transition presentation={fade()} timing={fadeTiming} /> };
+const wipeJoin: Join = {
+  timing: wipeTiming,
+  element: <TransitionSeries.Transition presentation={wipe({ direction: 'from-left' })} timing={wipeTiming} />,
+};
 
 /** The storyboard's three joins: cut, fade (15 frames) and one directional wipe (18 frames). */
 export type TransitionName = 'cut' | 'fade' | 'wipe';
 
-/** Frames the join overlaps the two scenes it connects. A cut has none. */
-export const overlapFrames = (name: TransitionName, fps: number) => {
-  if (name === 'cut') return 0;
-  return (name === 'fade' ? fadeJoin : wipeJoin).timing.getDurationInFrames({ fps });
-};
-
-/** The element that goes between two `TransitionSeries.Sequence`s. A cut has none. */
-export const joinElement = (name: TransitionName): ReactElement | null => {
-  if (name === 'fade') return <TransitionSeries.Transition presentation={fadeJoin.presentation} timing={fadeJoin.timing} />;
-  if (name === 'wipe') return <TransitionSeries.Transition presentation={wipeJoin.presentation} timing={wipeJoin.timing} />;
+/** The join for a storyboard name. A cut has none. */
+export const joinFor = (name: TransitionName): Join | null => {
+  if (name === 'fade') return fadeJoin;
+  if (name === 'wipe') return wipeJoin;
   return null;
 };
+
+/** Frames a join overlaps the two scenes it connects. A cut has none. */
+export const overlapFrames = (name: TransitionName, fps: number) => joinFor(name)?.timing.getDurationInFrames({ fps }) ?? 0;
+
+/** The element that goes between two `TransitionSeries.Sequence`s. A cut has none. */
+export const joinElement = (name: TransitionName): ReactElement | null => joinFor(name)?.element ?? null;

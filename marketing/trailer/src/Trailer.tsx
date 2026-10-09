@@ -1,19 +1,24 @@
 import { TransitionSeries } from '@remotion/transitions';
 import { Fragment } from 'react';
 import type { Layout } from './layout';
-import { SCENES } from './timeline';
-import { sceneTransition } from './transitions';
+import { TIMELINES } from './timeline';
 
-/** Plays the shared scene list in one layout. */
-export const Trailer = ({ layout }: { layout: Layout }) => (
-  <TransitionSeries>
-    {SCENES.map((scene, i) => (
-      <Fragment key={scene.id}>
-        {i > 0 && <TransitionSeries.Transition presentation={sceneTransition.presentation} timing={sceneTransition.timing} />}
-        <TransitionSeries.Sequence durationInFrames={scene.durationInFrames} name={scene.id}>
-          {scene.render({ layout, durationInFrames: scene.durationInFrames })}
-        </TransitionSeries.Sequence>
-      </Fragment>
-    ))}
-  </TransitionSeries>
-);
+/** Plays one cut's scene list in its layout. Each scene's join overlaps it with the next. */
+export const Trailer = ({ layout }: { layout: Layout }) => {
+  const scenes = TIMELINES[layout];
+  return (
+    <TransitionSeries>
+      {scenes.map((scene, i) => {
+        const join = scenes[i - 1]?.join;
+        return (
+          <Fragment key={scene.id}>
+            {join?.element}
+            <TransitionSeries.Sequence durationInFrames={scene.durationInFrames} name={scene.id}>
+              {scene.render({ layout, durationInFrames: scene.durationInFrames })}
+            </TransitionSeries.Sequence>
+          </Fragment>
+        );
+      })}
+    </TransitionSeries>
+  );
+};

@@ -7,35 +7,38 @@ import { randomUUID } from 'node:crypto';
 const ROOT = new URL('../../', import.meta.url);
 const readJson = (path) => JSON.parse(readFileSync(new URL(path, ROOT), 'utf8'));
 
-/** The scene file's shape: `location`, `entity`, `opening`, `action`, `narration`, `choices`. */
+/** The scene file's shape: `location`, `entity`, `opening`, `choices`, and one `action` + `narration` or a `turns` list of them. */
 export async function prepareGame(context, scene, worldFile = 'src/defaultworlds/drone.json') {
   const world = readJson(worldFile);
   const location = world.locations.find((item) => item.name === scene.location);
   const entity = world.entities.find((item) => item.name === scene.entity);
   if (!location || !entity || !entity.locations.includes(location.id)) throw new Error('Capture scene does not match the world');
   location.backgroundImage ||= world.locations.find((item) => item.backgroundImage)?.backgroundImage;
-  const state = {
+  const turns = scene.turns ?? [{ action: scene.action, narration: scene.narration }];
+  const base = {
     playerStats: world.stats.map((stat) => ({ ...stat, value: stat.starting })),
     playerTraits: [], visibleEntities: [{ name: entity.name, revealed: true }], discoveredEntities: [],
-    logEntries: [], gameplayText: scene.narration, locationId: location.id, gameTime: 3,
-    characterData: null, choices: scene.choices, isGameStarted: true, timestamp: new Date().toISOString(),
-    worldName: world.worldOverview.name, playerNotes: '', previousStateIndex: 0, stateVersion: 2,
+    logEntries: [], locationId: location.id, characterData: null, isGameStarted: true,
+    timestamp: new Date().toISOString(), worldName: world.worldOverview.name, playerNotes: '', stateVersion: 2,
   };
-  const openingState = { ...state, gameplayText: scene.opening, choices: [scene.action], gameTime: 0, previousStateIndex: null };
+  // State 0 is the opening; state i is the result of turn i. Each page offers the next turn's action.
+  const stateHistory = [
+    { ...base, gameplayText: scene.opening, choices: [turns[0].action], gameTime: 0, previousStateIndex: null },
+    ...turns.map((turn, i) => ({
+      ...base, gameplayText: turn.narration, gameTime: i === turns.length - 1 ? Math.max(3, turns.length) : i + 1, previousStateIndex: i,
+      choices: i === turns.length - 1 ? scene.choices : [turns[i + 1].action],
+    })),
+  ];
+  const state = stateHistory[stateHistory.length - 1];
+  const reply = (narration, choices) => ({ role: 'assistant', content: JSON.stringify({
+    narration, choices, entities: [entity.name], stat_changes: [], turnId: randomUUID(),
+  }) });
   const save = {
-    currentState: state, stateHistory: [openingState, state], dictionaries: world.dictionaries,
+    currentState: state, stateHistory, dictionaries: world.dictionaries,
     version: readJson('package.json').version,
     messageHistory: [
-      { role: 'user', content: 'START GAME' },
-      { role: 'assistant', content: JSON.stringify({
-        narration: scene.opening, choices: [scene.action], entities: [entity.name],
-        stat_changes: [], turnId: randomUUID(),
-      }) },
-      { role: 'user', content: scene.action },
-      { role: 'assistant', content: JSON.stringify({
-        narration: scene.narration, choices: scene.choices, entities: [entity.name],
-        stat_changes: [], turnId: randomUUID(),
-      }) },
+      { role: 'user', content: 'START GAME' }, reply(scene.opening, [turns[0].action]),
+      ...turns.flatMap((turn, i) => [{ role: 'user', content: turn.action }, reply(turn.narration, stateHistory[i + 1].choices)]),
     ],
   };
   // Replace only the capture browser's dev-fixture modules; the client and tracked fixtures stay intact.

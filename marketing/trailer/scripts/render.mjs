@@ -1,10 +1,15 @@
 #!/usr/bin/env node
-// Renders each trailer composition (default: both) to out/<id>.mp4, then checks every file against its composition.
+// Renders each trailer composition (default: both) to out/<id>.mp4, then checks every file against its composition
+// and, for the Steam cut, against the Steam spec. The wide cut also writes its poster frame and proves its loop.
+//
+//   npm run render                 both cuts
+//   npm run render -- TrailerWide  one cut
 import { bundle } from '@remotion/bundler';
 import { parseMedia } from '@remotion/media-parser';
 import { nodeReader } from '@remotion/media-parser/node';
-import { renderMedia, selectComposition } from '@remotion/renderer';
-import { mkdirSync } from 'node:fs';
+import { renderMedia, renderStill, selectComposition } from '@remotion/renderer';
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -12,6 +17,21 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ids = process.argv.slice(2).length > 0 ? process.argv.slice(2) : ['TrailerWide', 'TrailerTall'];
 const outDir = path.join(root, 'out');
 mkdirSync(outDir, { recursive: true });
+
+/**
+ * Steam's store trailer spec (partner docs, read 2026-10-08): up to 1920x1080, 30 or 60 fps, 5,000+ Kbps,
+ * H.264 in MP4. The spec states no length limit; the storyboard sets the 90 s target. The poster must be a
+ * 1920x1080 frame of the video. The first 6 s are Steam's microtrailer, so they must loop.
+ */
+const STEAM = {
+  TrailerWide: {
+    videoBitrate: '12M',
+    minKbps: 5000,
+    maxSeconds: 90,
+    loopFrames: 360,
+    poster: { size: '1920x1080', fromEnd: 1 },
+  },
+};
 
 console.log('Bundling…');
 const serveUrl = await bundle({ entryPoint: path.join(root, 'src/index.ts'), publicDir: path.join(root, 'public') });
@@ -26,6 +46,8 @@ for (const id of ids) {
     serveUrl,
     codec: 'h264',
     outputLocation,
+    jpegQuality: 95,
+    videoBitrate: STEAM[id]?.videoBitrate,
     onProgress: ({ progress }) => {
       const step = Math.floor(progress * 10);
       if (step !== lastStep) {
@@ -37,13 +59,28 @@ for (const id of ids) {
   rendered.push({ composition, outputLocation });
 }
 
+const still = async (composition, frame, output) => {
+  await renderStill({ composition, serveUrl, frame, output, imageFormat: 'png' });
+  return readFileSync(output);
+};
+
+/** PNG width and height, read from the IHDR chunk. */
+const pngSize = (buffer) => `${buffer.readUInt32BE(16)}x${buffer.readUInt32BE(20)}`;
+
 let failed = false;
+const report = (ok, line, details = []) => {
+  if (!ok) failed = true;
+  console.log(`${ok ? 'OK  ' : 'FAIL'}  ${line}`);
+  for (const detail of details) console.log(`      ${detail}`);
+};
+
 for (const { composition, outputLocation } of rendered) {
   const media = await parseMedia({
     src: outputLocation,
     reader: nodeReader,
     fields: { dimensions: true, fps: true, slowNumberOfFrames: true, videoCodec: true, audioCodec: true },
   });
+  const spec = STEAM[composition.id];
   const expected = {
     size: `${composition.width}x${composition.height}`,
     fps: composition.fps,
@@ -58,15 +95,31 @@ for (const { composition, outputLocation } of rendered) {
     videoCodec: media.videoCodec,
     audioCodec: media.audioCodec,
   };
-  const mismatches = Object.keys(expected).filter((key) => expected[key] !== actual[key]);
-  const seconds = actual.frames === null ? '?' : (actual.frames / composition.fps).toFixed(2);
-  const summary = `${path.relative(root, outputLocation)}  ${actual.size}  ${actual.fps} fps  ${seconds} s  ${actual.videoCodec}  audio: ${actual.audioCodec ?? 'none'}`;
-  if (mismatches.length === 0) {
-    console.log(`OK    ${summary}`);
-  } else {
-    failed = true;
-    console.log(`FAIL  ${summary}`);
-    for (const key of mismatches) console.log(`      ${key}: expected ${expected[key]}, got ${actual[key]}`);
+  const problems = Object.keys(expected).filter((key) => expected[key] !== actual[key]).map((key) => `${key}: expected ${expected[key]}, got ${actual[key]}`);
+  const seconds = actual.frames === null ? null : actual.frames / composition.fps;
+  const kbps = seconds ? Math.round((statSync(outputLocation).size * 8) / seconds / 1000) : null;
+  if (spec) {
+    if (seconds === null || seconds >= spec.maxSeconds) problems.push(`length: ${seconds} s is not under ${spec.maxSeconds} s`);
+    if (kbps === null || kbps < spec.minKbps) problems.push(`bitrate: ${kbps} Kbps is under ${spec.minKbps} Kbps`);
   }
+  const summary = `${path.relative(root, outputLocation)}  ${actual.size}  ${actual.fps} fps  ${seconds?.toFixed(2) ?? '?'} s  ${kbps ?? '?'} Kbps  ${actual.videoCodec}  audio: ${actual.audioCodec ?? 'none'}`;
+  report(problems.length === 0, summary, problems);
+
+  if (!spec) continue;
+
+  // The microtrailer loops when its last frame is its first frame, so the replay has no jump.
+  const first = await still(composition, 0, path.join(outDir, `${composition.id}-loop-first.png`));
+  const last = await still(composition, spec.loopFrames - 1, path.join(outDir, `${composition.id}-loop-last.png`));
+  report(first.equals(last), `first ${spec.loopFrames / composition.fps} s loop: frame 0 and frame ${spec.loopFrames - 1} are identical`);
+
+  // The poster is a frame of the encoded video, so it is the frame a viewer sees. Seek by time, to the frame's start.
+  const posterFrame = composition.durationInFrames - spec.poster.fromEnd;
+  const posterPath = path.join(outDir, `${composition.id}-poster.png`);
+  execFileSync('npx', ['remotion', 'ffmpeg', '-y', '-loglevel', 'error', '-ss', String(posterFrame / composition.fps), '-i', outputLocation, '-frames:v', '1', '-update', '1', posterPath], {
+    cwd: root,
+    shell: true,
+  });
+  const poster = pngSize(readFileSync(posterPath));
+  report(poster === spec.poster.size, `${path.relative(root, posterPath)}  ${poster}  frame ${posterFrame}`, poster === spec.poster.size ? [] : [`size: expected ${spec.poster.size}`]);
 }
 process.exit(failed ? 1 : 0);
