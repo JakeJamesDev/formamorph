@@ -31,6 +31,7 @@ The spec review after tickets 01–07 found races and gaps. Fix them as one unit
 
 - An undo back to clean during the Saved hold must not bring back a stale Saved after a mid-save edit returned the face to pending.
 - The Failed face's accessible description says that activating it retries.
+- Saved uses the full `success` fill with `success-foreground` text and icon, not the 20% tint (Q41). Remove the Saved contrast assertion from the save-button e2e; keep the Failed and width checks. Update the Design System entry.
 
 ### Tests and copy
 
@@ -40,7 +41,7 @@ The spec review after tickets 01–07 found races and gaps. Fix them as one unit
 - Optimize Images tooltip: verb-first, common words, one shared string.
 - Shorten the three-line comment beside the Optimize Images button.
 
-Rulings: Q10, Q17, Q29, Q30, Q35, Q38, Q40.
+Rulings: Q10, Q17, Q29, Q30, Q35, Q38, Q40, Q41.
 
 ## Acceptance criteria
 
@@ -51,5 +52,6 @@ Rulings: Q10, Q17, Q29, Q30, Q35, Q38, Q40.
 - [ ] Exit copy is true for every world; the delete dialog says to close the other tab.
 - [ ] The deleted-default count is right after Keep Mine.
 - [ ] No stale Saved after undo; Failed's accessible description names the retry.
+- [ ] Saved shows the full success fill (Q41).
 - [ ] Listed test gaps closed; the flaky idle test fixed.
 - [ ] Copy passes the copy sweep. Changelog fragment written.

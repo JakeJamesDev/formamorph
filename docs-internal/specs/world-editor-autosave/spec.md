@@ -114,6 +114,7 @@ Research behind the trigger model: Vim refreshes its swap file after 200 charact
 | Q38 | Q30 covers only writes that merge into the Step before them. A single new Step counts every record added or removed and every non-text field changed, so a bulk action (delete 30 records, paste 30 rows) saves at once. |
 | Q39 | Mobile's Failed face stays as built: the red alert icon and the failure toast are enough cues. No tap hint. |
 | Q40 | The delete dialog (Q37) also tells the author to close the other tab, the same as Q32. |
+| Q41 | Replaces Q28's tint. Saved uses the full `success` fill with `success-foreground` text and icon, because the muted tint did not look good. Still no new token. This knowingly drops Saved below 4.5:1 text contrast (about 2.8:1 light, 2.4:1 dark); the e2e contrast check for Saved goes. |
 
 ### Prototype
 
