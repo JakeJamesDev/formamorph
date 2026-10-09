@@ -4,6 +4,8 @@ import { benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBenc
 import { toastTexts } from '@/test/toastText';
 import { STORAGE_FULL } from '@/lib/saveFailureToast';
 import { AUTO_SAVE_IDLE_MS } from '@/lib/autoSaveScheduler';
+import { clearTourRecord, writeTourRecord } from '@/lib/authoringTour/progress';
+import { TOUR_STEPS } from '@/lib/authoringTour/steps';
 import type { Stat } from '@/types';
 import WorldStorageService from '../services/WorldStorageService';
 
@@ -222,6 +224,64 @@ describe('Exit Without Saving during an auto save', () => {
   });
 });
 
+describe('the Authoring Tour', () => {
+  it('holds auto save while it runs, and its end saves what piled up (Q29)', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await openOptedIn();
+    act(() => writeTourRecord('w1', { step: TOUR_STEPS[0].id, items: {} }));
+    try {
+      for (let i = 0; i < 12; i += 1) await type(30);
+      await act(() => vi.advanceTimersByTimeAsync(AUTO_SAVE_IDLE_MS));
+      expect(storeWorld).not.toHaveBeenCalled();
+    } finally {
+      act(() => clearTourRecord('w1'));
+    }
+    await waitFor(() => expect(storeWorld).toHaveBeenCalledTimes(1));
+    expect(storeWorld.mock.calls[0][0]).toMatchObject({ name: `Brinewell${'x'.repeat(360)}` });
+  });
+});
+
+describe('a clean leave during an auto save', () => {
+  it('waits for the save, then asks, since the save left the world apart from disk', async () => {
+    const bench = await openOptedIn();
+    let finish!: () => void;
+    storeWorld.mockImplementationOnce(() => new Promise<void>((resolve) => { finish = resolve; }));
+    for (let i = 0; i < 10; i += 1) await type(30);
+    await waitFor(() => expect(storeWorld).toHaveBeenCalledTimes(1));
+    // Back to what is on disk while the auto save still runs.
+    fireEvent.change(nameField(), { target: { value: 'Brinewell' } });
+    await nextTask();
+    expect(bench.ctx().isWorldDirty).toBe(false);
+
+    fireEvent.click(document.querySelector('.lucide-arrow-left')!.closest('button')!);
+    await nextTask();
+    expect(bench.onClose).not.toHaveBeenCalled();
+
+    await act(async () => { finish(); });
+    expect(await screen.findByText('Unsaved changes')).toBeInTheDocument();
+    expect(bench.onClose).not.toHaveBeenCalled();
+  });
+});
+
+describe('the unsaved-changes prompt', () => {
+  const askToLeave = () => fireEvent.click(document.querySelector('.lucide-arrow-left')!.closest('button')!);
+
+  it('says Auto Save kept the rest only once an auto save wrote the world', async () => {
+    await openOptedIn();
+    await type(30);
+    askToLeave();
+    expect(await screen.findByText(/exit without saving, or keep editing/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
+
+    for (let i = 0; i < 10; i += 1) await type(30);
+    await waitFor(() => expect(storeWorld).toHaveBeenCalledTimes(1));
+    await type(5);
+    askToLeave();
+    expect(await screen.findByText(/Auto Save kept the rest/)).toBeInTheDocument();
+  });
+});
+
 describe('a failed auto save', () => {
   it('toasts once, shows Failed, and pauses until a save by hand works', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
@@ -254,6 +314,9 @@ describe('the idle pause setting', () => {
     await act(() => vi.advanceTimersByTimeAsync(AUTO_SAVE_IDLE_MS * 2));
     expect(storeWorld).not.toHaveBeenCalled();
     await act(() => vi.advanceTimersByTimeAsync(AUTO_SAVE_IDLE_MS - 1000));
+    expect(storeWorld).not.toHaveBeenCalled();
+    // The whole pause on the faked clock, so the save never rests on waitFor's own faked timeout.
+    await act(() => vi.advanceTimersByTimeAsync(1000));
     await waitFor(() => expect(storeWorld).toHaveBeenCalledTimes(1));
   });
 });

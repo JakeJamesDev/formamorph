@@ -130,7 +130,7 @@ function useProvideGameData() {
   const [savedWorld, setSavedWorld] = useState<WorldData | null>(null);
   // The world on screen has a copy in world storage. A new world has a baseline but no copy until its first save.
   const [worldStored, setWorldStored] = useState(false);
-  // The changes other tabs made to the open world, how many of them this copy has answered, and the latest kind.
+  // The open world's id, set by its load, and the other tabs' changes to it: heard, answered, latest kind.
   const elsewhere = useRef<{ worldId: string | null; heard: number; settled: number; last: WorldChange }>(
     { worldId: null, heard: 0, settled: 0, last: 'saved' },
   );
@@ -624,8 +624,10 @@ function useProvideGameData() {
       await store(data);
       const written = await writeBack();
       const world = stamped(written);
+      if (written.length) await store(world);
+      // The world open now is another one, so none of this save's state is its state.
+      if (elsewhere.current.worldId !== worldId) return { ok: true };
       if (written.length) {
-        await store(world);
         // Stamps are not edits. The flag goes only on a write that changes a slice, so none waits for a later one.
         const live = latest.current.getWorldData();
         if (stampLinks(live.entities, written) !== live.entities || stampLinks(live.dictionaries, written) !== live.dictionaries) {
@@ -639,7 +641,8 @@ function useProvideGameData() {
       setWorldStored(true);
       // A discard before the commit rolls back to this save, not the one before it.
       latest.current = { ...latest.current, savedWorld: world, worldStored: true };
-      if (elsewhere.current.worldId === worldId) settleElsewhere(heardBefore);
+      // Only a save by hand is Keep Mine (Q35).
+      if (markSaved) settleElsewhere(heardBefore);
       return { ok: true };
     } catch (error) {
       console.error('Error saving world:', error);

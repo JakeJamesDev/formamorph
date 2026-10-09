@@ -407,6 +407,7 @@ const GameViewer = ({
     worldId,
     worldLoaded,
     isWorldDirty,
+    worldChangedElsewhere,
     loadWorldData,
     getWorldData,
   } = useGameData();
@@ -1186,16 +1187,28 @@ const GameViewer = ({
   const editorLeave = useRef<{ then: () => void; cancel: () => void } | null>(null);
   // The open editor's save and discard, which run through its auto save.
   const editorExit = useRef<EditorExit | null>(null);
+  // Taken as the prompt opens: an auto save wrote the world during this visit.
+  const [editorPromptAutoSaved, setEditorPromptAutoSaved] = useState(false);
   // A request for the main menu, waiting on the leave prompt. Leaving keeps it pending for the menu.
   const [leaveForSurface, setLeaveForSurface] = useState<{ clear: () => void } | null>(null);
   // Set by the leave prompt's Confirm, so the close that follows it is not read as a refusal.
   const leavingForSurface = useRef(false);
   /** Closes the in-game editor, after its unsaved prompt when it holds edits, then runs `then`. */
-  const leaveEditorThen = (then: () => void, cancel: () => void) => {
+  const askEditorLeave = (then: () => void, cancel: () => void) => {
     if (!isEditingWorld) { then(); return; }
     if (!isWorldDirty) { setIsEditingWorld(false); then(); return; }
     editorLeave.current = { then, cancel };
+    setEditorPromptAutoSaved(editorExit.current?.autoSaved ?? false);
     setShowEditorExitPrompt(true);
+  };
+  const askEditorLeaveRef = useRef(askEditorLeave);
+  askEditorLeaveRef.current = askEditorLeave;
+  // A clean world waits for a running save, so the store matches disk when the editor closes. The save can
+  // leave the world dirty, so the render after it decides.
+  const leaveEditorThen = (then: () => void, cancel: () => void) => {
+    const exit = editorExit.current;
+    if (isEditingWorld && !isWorldDirty && exit) exit.afterSavesRender(() => askEditorLeaveRef.current(then, cancel));
+    else askEditorLeave(then, cancel);
   };
   /** Takes what waits on the editor prompt, so its answer runs it once. */
   const takeEditorLeave = () => {
@@ -1203,6 +1216,14 @@ const GameViewer = ({
     editorLeave.current = null;
     return pending;
   };
+  // The two-tab dialog replaces the prompt, and refuses what waited on it: after its answer, the question is stale.
+  useEffect(() => {
+    if (!worldChangedElsewhere || !showEditorExitPrompt) return;
+    setShowEditorExitPrompt(false);
+    const pending = editorLeave.current;
+    editorLeave.current = null;
+    pending?.cancel();
+  }, [worldChangedElsewhere, showEditorExitPrompt]);
   const openSurfaceHere = (steps: SurfaceSteps) => {
     surfaceNav.land(steps);
     switch (steps.dialog) {
@@ -4772,9 +4793,8 @@ const GameViewer = ({
         open={isEditingWorld}
         onOpenChange={(open) => {
           if (open) { setIsEditingWorld(true); return; }
-          // Guard close (X / Esc / overlay): prompt if there are pending edits.
-          if (isWorldDirty) setShowEditorExitPrompt(true);
-          else setIsEditingWorld(false);
+          // Guard close (X / Esc / overlay): the same leave as any other.
+          leaveEditorThen(() => {}, () => {});
         }}
       >
         <DialogContent surface="worldEditor" aria-describedby={undefined} className="max-w-[95vw] w-[95vw] h-[90dvh] p-0 overflow-hidden">
@@ -4792,10 +4812,10 @@ const GameViewer = ({
         </DialogContent>
       </Dialog>
       <UnsavedChangesDialog
-        open={showEditorExitPrompt}
+        open={showEditorExitPrompt && !worldChangedElsewhere}
         // A dismissal is a refusal of whatever waited on the prompt.
         onOpenChange={(open) => { setShowEditorExitPrompt(open); if (!open) takeEditorLeave()?.cancel(); }}
-        autoSave={settings.editorAutoSave}
+        autoSaved={editorPromptAutoSaved}
         // The editor saves and discards, so the prompt shares auto save's lock and its failure toast.
         onSave={async () => {
           // No editor means nothing to save; the prompt stays up rather than close on a save that never ran.
@@ -4803,9 +4823,10 @@ const GameViewer = ({
           if (!exit) return;
           const next = takeEditorLeave();
           const saved = await exit.save();
-          setShowEditorExitPrompt(false); setIsEditingWorld(false);
-          // A failed save stops the request and closes the editor; the toast keeps Export World for the edits.
-          if (saved) next?.then(); else next?.cancel();
+          if (!mounted.current) return;
+          setShowEditorExitPrompt(false);
+          // A failed save stops the request and keeps the editor open with its edits, as the menu editor does.
+          if (saved) { setIsEditingWorld(false); next?.then(); } else next?.cancel();
         }}
         onExit={() => {
           const next = takeEditorLeave();

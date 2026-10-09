@@ -83,7 +83,8 @@ describe('a save on a full disk', () => {
     expect(saveAnnouncement(failed)).toBe('Save failed');
     fireEvent.pointerEnter(failed);
     fireEvent.focus(failed);
-    expect(await screen.findByText(SAVE_FAILED_TIP)).toBeInTheDocument();
+    // The tip, not the face's hidden description, which holds the same words.
+    expect(await screen.findByText(SAVE_FAILED_TIP, { ignore: '.sr-only, script, style' })).toBeInTheDocument();
 
     fireEvent.change(screen.getByDisplayValue('Brinewell'), { target: { value: 'Saltmarsh' } });
     expect(screen.getByRole('button', { name: 'Failed' })).toBe(failed);

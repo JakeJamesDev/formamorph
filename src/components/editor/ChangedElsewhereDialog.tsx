@@ -21,8 +21,8 @@ const COPY = {
   },
   deleted: {
     title: 'World Deleted in Another Tab',
-    body: 'Another tab deleted this world. “Keep Mine” saves this copy back to your library. “Close” leaves the'
-      + ' editor and discards your unsaved changes.',
+    body: 'Another tab deleted this world. Close the other tab first. “Keep Mine” saves this copy back to your'
+      + ' library. “Close” leaves the editor and discards your unsaved changes.',
     leave: 'Close',
   },
 } as const;

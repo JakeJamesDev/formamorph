@@ -52,6 +52,7 @@ import { SaveSplitButton } from '@/components/editor/SaveSplitButton';
 import { useSaveStatus } from '@/components/editor/useSaveStatus';
 import { useAutoSave } from '@/components/editor/useAutoSave';
 import { ChangedElsewhereDialog } from '@/components/editor/ChangedElsewhereDialog';
+import { OPTIMIZE_IMAGES_TIP } from '@/components/editor/appBarCopy';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { useSettings } from '@/contexts/SettingsContext';
 import { ImageDown, Loader2, Search, ChevronRight } from "lucide-react";
@@ -135,6 +136,10 @@ export interface EditorExit {
   save: () => Promise<boolean>;
   /** Waits for a running save, rolls the pending edits back, then runs `then`. */
   discard: (then: () => void) => void;
+  /** Runs `then` now when no save runs, or after the render that follows the running saves. */
+  afterSavesRender: (then: () => void) => void;
+  /** An auto save wrote the open world during this visit, so Exit drops only the changes since then. */
+  autoSaved: boolean;
 }
 
 const WorldEditorInner = ({
@@ -514,20 +519,6 @@ const WorldEditorInner = ({
   // that prompt; the Android back button reaches this step instead.
   // What follows once the edits are settled: closing the editor, or a tour on a new world.
   const afterLeave = useRef<() => void>(onClose);
-  /** Runs `then` now, or after the unsaved-changes prompt. False when the prompt is up. */
-  const leaveWorld = useCallback((then: () => void) => {
-    if (!isWorldDirty) { then(); return true; }
-    afterLeave.current = then;
-    setShowExitPrompt(true);
-    return false;
-  }, [isWorldDirty]);
-  const requestClose = useCallback(() => { leaveWorld(onClose); }, [leaveWorld, onClose]);
-  useEffect(() => {
-    if (!leaveRef) return;
-    leaveRef.current = leaveWorld;
-    return () => { leaveRef.current = null; };
-  }, [leaveRef, leaveWorld]);
-  useBackStop(requestClose, editorRootRef);
   useLeavePrompt(isWorldDirty);
   const [showAddDictionary, setShowAddDictionary] = useState(false);
   const [showAddEntity, setShowAddEntity] = useState(false);
@@ -636,6 +627,9 @@ const WorldEditorInner = ({
     return result.ok;
   });
   const historyMoves = useWorldHistoryMoves();
+  const { onChange: onWorldChange } = historyMoves;
+  const { edited: saveFaceEdited } = saveStatus;
+  useEffect(() => onWorldChange(saveFaceEdited), [onWorldChange, saveFaceEdited]);
   // The tour saves on every Next itself. A save or delete in another tab holds auto save until the author answers.
   const autoSave = useAutoSave({
     enabled: editorAutoSave && !touring && !worldChangedElsewhere,
@@ -664,10 +658,43 @@ const WorldEditorInner = ({
     linking.clearPendingLinks();
     then();
   });
+  /** Runs `then` now, or after the unsaved-changes prompt. */
+  const askToLeave = (then: () => void) => {
+    if (!isWorldDirty) { then(); return; }
+    afterLeave.current = then;
+    setShowExitPrompt(true);
+  };
+  const askToLeaveRef = useRef(askToLeave);
+  askToLeaveRef.current = askToLeave;
+  // The two-tab dialog replaces the prompt, in the render it opens in: after its answer, the question is stale.
+  if (worldChangedElsewhere && showExitPrompt) setShowExitPrompt(false);
+  const { afterSavesRender } = autoSave;
+  /**
+   * Runs `then` now, or after the running saves and the prompt. False when `then` did not run now. A clean
+   * world waits, so the store matches disk when the editor closes; the render after the save decides.
+   */
+  const leaveWorld = useCallback((then: () => void) => {
+    if (isWorldDirty) {
+      askToLeaveRef.current(then);
+      return false;
+    }
+    let ranNow = false;
+    afterSavesRender(() => { ranNow = true; askToLeaveRef.current(then); });
+    return ranNow;
+  }, [isWorldDirty, afterSavesRender]);
+  const requestClose = useCallback(() => { leaveWorld(onClose); }, [leaveWorld, onClose]);
+  useEffect(() => {
+    if (!leaveRef) return;
+    leaveRef.current = leaveWorld;
+    return () => { leaveRef.current = null; };
+  }, [leaveRef, leaveWorld]);
+  useBackStop(requestClose, editorRootRef);
   // Every render, so the host's prompt runs the latest closures.
   useEffect(() => {
     if (!exitRef) return;
-    exitRef.current = { save: saveWorld, discard: discardAfterSaves };
+    exitRef.current = {
+      save: saveWorld, discard: discardAfterSaves, afterSavesRender, autoSaved: autoSave.autoSaved,
+    };
     return () => { exitRef.current = null; };
   });
   // After a delete elsewhere, Keep Mine saves this copy back, and Close leaves as Exit Without Saving does.
@@ -1060,11 +1087,9 @@ const WorldEditorInner = ({
     </div>
   );
   const optimizing = optimizeProgress !== null;
-  const optimizeTip = optimizeProgress === null ? 'Optimize Images: downscale oversized images to conserve file size'
+  const optimizeTip = optimizeProgress === null ? OPTIMIZE_IMAGES_TIP
     : optimizeProgress === 'scanning' ? 'Scanning…' : `Optimizing ${optimizeProgress.done}/${optimizeProgress.total}…`;
-  // An oversized upload is already offered Optimize/Downscale as it lands, so this is the bulk pass over a
-  // world that is already large. aria-disabled, not disabled: a disabled button takes no pointer events, and
-  // the tooltip carries the progress.
+  // aria-disabled keeps pointer events, so the tooltip shows the progress.
   const optimizeButton = advanced && (
     <Tip tip={optimizeTip}>
       <Button
@@ -1406,7 +1431,7 @@ const WorldEditorInner = ({
       <UnsavedChangesDialog
         open={showExitPrompt}
         onOpenChange={setShowExitPrompt}
-        autoSave={editorAutoSave}
+        autoSaved={autoSave.autoSaved}
         onSave={async () => { if (await saveWorld()) afterLeave.current(); }}
         onExit={() => discardAfterSaves(() => afterLeave.current())}
       />

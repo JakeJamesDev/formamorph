@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { measureChange, type CommittedChange } from '@/lib/changeMeter';
 import { createAutoSaveScheduler } from '@/lib/autoSaveScheduler';
 import { useMountedRef } from '@/lib/useMountedRef';
+import { onWorldChangedElsewhere } from '@/lib/worldChangeSignal';
 import WorldStorageService from '@/services/WorldStorageService';
 
 /**
@@ -25,10 +26,21 @@ export function useAutoSave({ enabled, idleMs, worldId, stored, dirty, onChange,
   save: () => Promise<boolean>;
 }) {
   const saveRef = useRef(save);
-  useLayoutEffect(() => { saveRef.current = save; });
-  const [scheduler] = useState(() => createAutoSaveScheduler({ save: () => saveRef.current() }));
-  useEffect(() => scheduler.setIdleMs(idleMs), [idleMs, scheduler]);
+  const worldIdRef = useRef(worldId);
+  useLayoutEffect(() => { saveRef.current = save; worldIdRef.current = worldId; });
   const mounted = useMountedRef();
+  // The world an auto save wrote during this visit.
+  const [autoSavedId, setAutoSavedId] = useState<string | null>(null);
+  const [scheduler] = useState(() => createAutoSaveScheduler({
+    save: () => {
+      const id = worldIdRef.current;
+      return saveRef.current().then((ok) => {
+        if (ok && mounted.current) setAutoSavedId(id);
+        return ok;
+      });
+    },
+  }));
+  useEffect(() => scheduler.setIdleMs(idleMs), [idleMs, scheduler]);
 
   // Each holds the world id it is true for, so another world starts over without a reset.
   const [savedByHand, setSavedByHand] = useState<string | null>(null);
@@ -49,6 +61,11 @@ export function useAutoSave({ enabled, idleMs, worldId, stored, dirty, onChange,
     scheduler.setEnabled(enabled && joined);
     return () => scheduler.setEnabled(false);
   }, [enabled, joined, scheduler]);
+  // Pauses at once: a save due before the dialog's render would overwrite the other tab's.
+  useEffect(() => {
+    if (!worldId) return;
+    return onWorldChangedElsewhere((id) => { if (id === worldId) scheduler.setEnabled(false); });
+  }, [worldId, scheduler]);
   // A world back to what is on disk has nothing to save.
   useEffect(() => { if (!dirty) scheduler.clear(); }, [dirty, scheduler]);
 
@@ -57,5 +74,24 @@ export function useAutoSave({ enabled, idleMs, worldId, stored, dirty, onChange,
     return ok;
   }), [scheduler, worldId, mounted]);
 
-  return { manual, afterSaves: scheduler.afterSaves };
+  // Steps that wait for a render holding the result of the saves they waited for.
+  const [waiting, setWaiting] = useState<(() => void)[]>([]);
+  useEffect(() => {
+    if (!waiting.length) return;
+    setWaiting([]);
+    for (const then of waiting) then();
+  }, [waiting]);
+  /** Runs `then` now when no save runs, or after the render that follows the running saves. */
+  const afterSavesRender = useCallback((then: () => void) => {
+    if (!scheduler.state.saving) { then(); return; }
+    scheduler.afterSaves(() => { if (mounted.current) setWaiting((queued) => [...queued, then]); });
+  }, [scheduler, mounted]);
+
+  return {
+    manual,
+    afterSaves: scheduler.afterSaves,
+    afterSavesRender,
+    /** An auto save wrote the open world during this visit. */
+    autoSaved: worldId !== null && autoSavedId === worldId,
+  };
 }

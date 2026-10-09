@@ -94,7 +94,7 @@ describe('World Editor footer (mobile)', () => {
     await waitFor(() => expect(shownFace(face)).toBe('saved'));
     expect(face.querySelector('[data-save-face="saved"] .lucide-check')).not.toBeNull();
     expect(face).toHaveTextContent(/^$/);
-    expect(face).toHaveClass('bg-success/20');
+    expect(face).toHaveClass('bg-success');
     expect(saveAnnouncement(face)).toBe('Saved');
   });
 });

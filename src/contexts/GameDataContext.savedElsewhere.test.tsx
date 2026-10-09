@@ -95,6 +95,15 @@ describe('a save', () => {
     expect(ctx().worldChangedElsewhere).toBeNull();
   });
 
+  it('on its own answers nothing: only a save by hand is Keep Mine (Q35)', async () => {
+    const ctx = await mount();
+    await savedElsewhere(ctx);
+    vi.spyOn(WorldStorageService, 'storeWorld').mockResolvedValue(undefined);
+    act(() => ctx().updateWorldOverview({ name: 'Brinewell' }));
+    await act(async () => { await ctx().saveWorld({ markSaved: false }); });
+    expect(ctx().worldChangedElsewhere).toBe('saved');
+  });
+
   it('that fails answers nothing', async () => {
     const ctx = await mount();
     await savedElsewhere(ctx);

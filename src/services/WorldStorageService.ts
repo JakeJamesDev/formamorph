@@ -13,7 +13,9 @@ import {
 } from '@/lib/worldLibrary';
 import { contentHash } from '@/lib/contentHash';
 import { announceWorldDeleted, announceWorldSaved } from '@/lib/worldChangeSignal';
-import { readDeletedDefaultWorlds, seedWorldData, tombstoneDefaultWorld, type DefaultWorldSeed } from '@/lib/defaultWorlds';
+import {
+  forgetDeletedDefaultWorld, readDeletedDefaultWorlds, seedWorldData, tombstoneDefaultWorld, type DefaultWorldSeed,
+} from '@/lib/defaultWorlds';
 import { changelogOf, type ChangelogDraft, type ChangelogEntry } from '@/lib/listingChangelog';
 import type { ReviewState, WorldAssociation } from '@/lib/compatibleWorlds';
 import type { ListingVisibility } from '@/lib/publishLinks';
@@ -482,6 +484,8 @@ class WorldStorageService {
       });
     });
     announceWorldSaved(world.id);
+    // A default deleted in another tab and saved back here exists again.
+    forgetDeletedDefaultWorld(world.id);
   }
 
   /** Seed missing default worlds and auto-update unedited ones whose bundled content no longer matches the

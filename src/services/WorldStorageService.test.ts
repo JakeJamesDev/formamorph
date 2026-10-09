@@ -3,7 +3,7 @@
 import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import WorldStorageService, { type StoredWorldRecord } from './WorldStorageService';
-import { clearDeletedDefaultWorlds } from '@/lib/defaultWorlds';
+import { clearDeletedDefaultWorlds, readDeletedDefaultWorlds } from '@/lib/defaultWorlds';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import AuthService from './AuthService';
 import { getDownloadState } from '@/lib/downloadState';
@@ -719,6 +719,18 @@ describe('default worlds: seed vs. the player deleting one', () => {
     await WorldStorageService.loadDefaultWorlds(RAMPAGE);
 
     await expect(WorldStorageService.getWorldData('rampage')).rejects.toBe('World not found');
+  });
+
+  it('stops counting a deleted default once it is stored again, as Keep Mine in another tab saves it back', async () => {
+    await WorldStorageService.loadDefaultWorlds(RAMPAGE);
+    const world = await WorldStorageService.getWorldData('rampage');
+    await WorldStorageService.deleteWorld('rampage');
+    expect(readDeletedDefaultWorlds().has('rampage')).toBe(true);
+
+    await WorldStorageService.storeWorld({ id: 'rampage', name: 'City Rampage', dirty: true, data: world } as StoredWorldRecord);
+
+    expect(readDeletedDefaultWorlds().has('rampage')).toBe(false);
+    await WorldStorageService.deleteWorld('rampage');
   });
 
   it('leaves a deleted default gone across repeated seed passes', async () => {

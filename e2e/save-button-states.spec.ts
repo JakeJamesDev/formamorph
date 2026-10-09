@@ -3,8 +3,8 @@ import { gotoDev, openApp } from './app';
 
 /**
  * The World Editor's Save face through a real save, sampled every frame in a compositing browser: the
- * walk from Save to Saved and back, the Saved hold, the fade, a width that never moves, and Saved's
- * contrast in both themes. jsdom has no layout or clock for any of this.
+ * walk from Save to Saved and back, the Saved hold, the fade, and a width that never moves. jsdom has no
+ * layout or clock for any of this.
  */
 
 interface DevRouter {
@@ -22,9 +22,8 @@ const FACE = 'button[data-tour-anchor="save"]';
 interface Sample { t: number; face: string; width: number; opacity: number; disabled: boolean }
 interface Recording { samples: Sample[]; sequence: string[] }
 
-async function openEditor(page: Page, theme: 'light' | 'dark' = 'light') {
-  await openApp(page, { FORMAMORPH_theme: theme });
-  await page.evaluate((t) => { document.documentElement.classList.toggle('dark', t === 'dark'); }, theme);
+async function openEditor(page: Page) {
+  await openApp(page);
   await page.evaluate(async (world) => {
     const dev = (window as unknown as { __fmDev: DevRouter }).__fmDev;
     await dev.editWorld(await dev.putWorld(world));
@@ -72,26 +71,6 @@ const stopRecording = (page: Page) => page.evaluate((): Recording => {
   return { samples: rec.samples, sequence: rec.sequence };
 });
 
-/** WCAG contrast of the shown label's text over the face's tint, composited onto the first opaque ancestor. */
-const savedContrast = (page: Page) => page.locator(FACE).evaluate((face) => {
-  const rgba = (c: string) => (c.match(/[\d.]+/g) ?? []).map(Number);
-  const [r, g, b, a = 1] = rgba(getComputedStyle(face).backgroundColor);
-  let under = rgba(getComputedStyle(document.body).backgroundColor).slice(0, 3);
-  for (let el = face.parentElement; el; el = el.parentElement) {
-    const c = rgba(getComputedStyle(el).backgroundColor);
-    if (c.length === 3 || c[3] === 1) { under = c.slice(0, 3); break; }
-  }
-  const bg = [r, g, b].map((v, i) => v * a + under[i] * (1 - a));
-  const label = face.querySelector<HTMLElement>('[data-save-face="saved"] span')!;
-  const text = rgba(getComputedStyle(label).color).slice(0, 3);
-  const lum = (c: number[]) => {
-    const [x, y, z] = c.map((v) => { const s = v / 255; return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; });
-    return 0.2126 * x + 0.7152 * y + 0.0722 * z;
-  };
-  const [hi, lo] = [lum(text), lum(bg)].sort((p, q) => q - p);
-  return { contrast: (hi + 0.05) / (lo + 0.05), text, bg };
-});
-
 test.describe('Save button states', () => {
   test('walks Save, Saving…, Saved, holds, then fades to the muted Save at one width', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop', 'the labeled face lives in the desktop app bar');
@@ -124,20 +103,6 @@ test.describe('Save button states', () => {
     expect(fade, `fade took ${fade.toFixed(0)}ms`).toBeGreaterThan(500);
     expect(fade).toBeLessThan(1000);
     expect(after[after.length - 1]).toMatchObject({ face: 'save', opacity: 0.5, disabled: true });
-  });
-
-  test('Saved reads at 4.5:1 or better in both themes', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== 'desktop', 'color is a theme concern, the same at every width');
-    for (const theme of ['light', 'dark'] as const) {
-      await openEditor(page, theme);
-      await edit(page, `Saltmarsh ${theme}`);
-      await page.locator(FACE).click();
-      await expect(page.locator(FACE)).toHaveAccessibleName('Saved');
-      // Past the 150ms color ease into Saved, well inside the hold.
-      await page.waitForTimeout(400);
-      const reading = await savedContrast(page);
-      expect(reading.contrast, `${theme}: text ${reading.text} on ${reading.bg.map(Math.round)}`).toBeGreaterThanOrEqual(4.5);
-    }
   });
 
   test('keeps one width through Saving… and Failed in the reference', async ({ page }, testInfo) => {

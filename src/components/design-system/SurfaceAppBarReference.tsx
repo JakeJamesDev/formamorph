@@ -3,6 +3,7 @@ import { ChevronRight, FlaskConical, ImageDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SaveSplitButton } from '@/components/editor/SaveSplitButton';
+import { OPTIMIZE_IMAGES_TIP } from '@/components/editor/appBarCopy';
 import { useSaveStatus } from '@/components/editor/useSaveStatus';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ModeSelect } from '@/components/ui/mode-select';
@@ -91,7 +92,7 @@ export function SurfaceAppBarReference() {
                   />
                   <Separator orientation="vertical" className="mx-1 h-5" />
                   {mode === 'advanced' && (
-                    <Tip tip="Optimize Images: downscale oversized images to conserve file size">
+                    <Tip tip={OPTIMIZE_IMAGES_TIP}>
                       <Button
                         variant="ghost" size="icon" aria-label="Optimize Images"
                         onClick={() => setAction('Optimize Images.')}

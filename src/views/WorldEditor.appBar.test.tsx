@@ -3,6 +3,7 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { asMobile, benchEditorWorld, openEditorTab, renderWorldEditorBench, saveAnnouncement as announced } from '@/test/worldEditorBench';
 import { downloadBlob } from '@/lib/downloadBlob';
 import { SAVED_HOLD_MS } from '@/components/editor/useSaveStatus';
+import { SAVE_FAILED_TIP } from '@/components/editor/SaveSplitButton';
 import WorldStorageService from '../services/WorldStorageService';
 
 /** The World Editor's desktop app bar: its order, the world actions per mode, the world name, and the footer. */
@@ -134,7 +135,7 @@ describe('World Editor app bar (desktop)', () => {
 
       await act(async () => { finish(); });
       const saved = await screen.findByRole('button', { name: 'Saved' });
-      expect(saved).toHaveClass('bg-success/20', 'text-foreground');
+      expect(saved).toHaveClass('bg-success', 'text-success-foreground');
       expect(saved).toBeEnabled();
       expect(announced(saved)).toBe('Saved');
 
@@ -158,7 +159,36 @@ describe('World Editor app bar (desktop)', () => {
 
     rename('Brinewell', 'Saltmarsh');
     expect(button('Save')).toBeEnabled();
-    expect(button('Save')).not.toHaveClass('bg-success/20');
+    expect(button('Save')).not.toHaveClass('bg-success');
+    // Back to the saved world inside the hold: the edit ended Saved, so the face is the muted Save.
+    rename('Saltmarsh', 'Brinewell');
+    expect(button('Save')).toBeDisabled();
+  });
+
+  it('shows no stale Saved after an edit made during the save is undone', async () => {
+    let finish!: () => void;
+    vi.mocked(WorldStorageService.storeWorld).mockImplementationOnce(() => new Promise<void>((resolve) => { finish = resolve; }));
+    const { ctx } = renderWorldEditorBench(WORLD, 'simple');
+    act(() => { ctx().loadWorldData(WORLD, false, { stored: true }); });
+    rename('Sedge Landing', 'Brinewell');
+    await save();
+    await screen.findByRole('button', { name: 'Saving…' });
+    rename('Brinewell', 'Saltmarsh');
+    await act(async () => { finish(); });
+    await waitFor(() => expect(button('Save')).toBeEnabled());
+
+    rename('Saltmarsh', 'Brinewell');
+    expect(button('Save')).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Saved' })).toBeNull();
+  });
+
+  it('says that Failed tries again, with no hover', async () => {
+    vi.mocked(WorldStorageService.storeWorld).mockRejectedValueOnce(new Error('disk gone'));
+    const { ctx } = renderWorldEditorBench(WORLD, 'simple');
+    act(() => { ctx().loadWorldData(WORLD, false, { stored: true }); });
+    rename('Sedge Landing', 'Brinewell');
+    await save();
+    expect(await screen.findByRole('button', { name: 'Failed' })).toHaveAccessibleDescription(SAVE_FAILED_TIP);
   });
 
   it('stacks every face label and shows only the current one', () => {

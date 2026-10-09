@@ -22,9 +22,9 @@ const icon = (face: Face, shown: boolean): ReactNode => ({
   failed: <AlertCircle className="h-4 w-4" />,
 })[face];
 
-// Saved uses the normal text color for contrast; the long ease into the disabled look is the fade.
+// The long ease into the disabled look is the fade.
 const TONE: Partial<Record<SaveStatus, string>> = {
-  saved: 'bg-success/20 text-foreground hover:bg-success/20',
+  saved: 'bg-success text-success-foreground hover:bg-success',
   failed: 'bg-destructive-fill text-destructive-foreground hover:bg-destructive-fill/90 focus-visible:ring-destructive-foreground',
 };
 const motion = (status: SaveStatus) => cn(
@@ -79,6 +79,8 @@ export function SaveSplitButton({ status, onSave, menu, iconOnly = false }: {
         menuLabel="Save options"
         label={iconOnly ? undefined : LABEL[faceOf(status)]}
         faceTip={failed ? SAVE_FAILED_TIP : iconOnly ? 'Save' : 'Save (Ctrl+S)'}
+        // The icon-only face takes the tip as its name already.
+        faceDescription={failed && !iconOnly ? SAVE_FAILED_TIP : undefined}
         faceDisabled={status === 'clean'}
         faceAriaDisabled={status === 'saving' || status === 'saved'}
         faceClassName={cn(motion(status), TONE[status])}

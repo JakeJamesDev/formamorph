@@ -47,6 +47,32 @@ describe('a discard right after a save', () => {
   });
 });
 
+describe('a save whose world closed while it ran', () => {
+  it('leaves the world open now alone: its baseline, its stored flag and its discard', async () => {
+    let ctx!: Handle;
+    render(<GameDataProvider><Harness onReady={(c) => { ctx = c; }} /></GameDataProvider>);
+    await waitFor(() => expect(ctx.worldLoaded).toBe(true));
+    let finish!: () => void;
+    const storeWorld = vi.spyOn(WorldStorageService, 'storeWorld')
+      .mockImplementationOnce(() => new Promise<void>((resolve) => { finish = resolve; }));
+
+    act(() => ctx.updateWorldOverview({ name: 'Brinewell' }));
+    let saving!: Promise<unknown>;
+    act(() => { saving = ctx.saveWorld({ markSaved: false }); });
+    await waitFor(() => expect(storeWorld).toHaveBeenCalledTimes(1));
+    // A new world, as the tour offer opens: it has a baseline and no stored copy.
+    act(() => { ctx.loadWorldData({ ...WORLD, id: 'w-new', worldOverview: { ...WORLD.worldOverview, name: 'Untitled' } }); });
+
+    await act(async () => { finish(); await saving; });
+    expect(ctx.worldId).toBe('w-new');
+    expect(ctx.isWorldStored).toBe(false);
+    expect(ctx.isWorldDirty).toBe(false);
+    act(() => ctx.updateWorldOverview({ name: 'Saltmarsh' }));
+    act(() => ctx.discardChanges());
+    expect(ctx.worldOverview.name).toBe('Untitled');
+  });
+});
+
 describe('two saves asked for at once', () => {
   it('writes the second after the first, and ends clean on the newer world', async () => {
     let ctx!: Handle;
