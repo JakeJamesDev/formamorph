@@ -1,6 +1,6 @@
 import { Fragment } from 'react';
 import type { BubbleAction } from '@/lib/bubbleActions';
-import { CONTINUE_CHOICE } from '@/lib/choices';
+import { CONTINUE_CHOICE, choiceWordCount } from '@/lib/choices';
 import { BubbleActionButton } from './BubbleMenu';
 import { ChoiceText, type ChoicePress } from './ChatChoices';
 import { useRowReveal } from '@/lib/useRowReveal';
@@ -14,8 +14,10 @@ const ROW = [
 ].join(' ');
 
 /** Choice rows, a separated continue action, and the block's action icons. */
-export function ChoiceRows({ choices, showContinue, disabled, isSelected, continueSelected, choicePress, actions }: {
+export function ChoiceRows({ choices, showContinue, disabled, isSelected, continueSelected, choicePress, actions, stream = false }: {
   choices: string[];
+  /** Stream new choices in word by word, as after a live turn's narration. */
+  stream?: boolean;
   showContinue: boolean;
   disabled: boolean;
   /** Whether a generated choice shows as picked: staged in the input, or taken on a past page. */
@@ -26,7 +28,7 @@ export function ChoiceRows({ choices, showContinue, disabled, isSelected, contin
   actions: BubbleAction[];
 }) {
   const rows = showContinue ? [...choices, CONTINUE_CHOICE] : choices;
-  const reveal = useRowReveal(rows);
+  const reveal = useRowReveal(rows, choiceWordCount, stream);
   if (rows.length === 0 && actions.length === 0) return null;
   const actionButtons = actions.map((action) => (
     <BubbleActionButton key={action.key} action={action} className={showContinue ? 'h-auto w-10 rounded-none border-0' : undefined} />
@@ -36,20 +38,21 @@ export function ChoiceRows({ choices, showContinue, disabled, isSelected, contin
     <div data-testid="choice-rows" className="mt-4">
       {rows.length > 0 && (
         // The box enters with its first row; each later row enters on its own.
-        <div className="overflow-hidden rounded-md border border-border" style={reveal(0)}>
+        <div className="overflow-hidden rounded-md border border-border" style={reveal.row(0)}>
           {rows.map((choice, index) => {
+            if (!reveal.shown(index)) return null;
             const isContinue = index === choices.length;
             const selected = isContinue ? continueSelected : isSelected(choice, index);
             return (
               <Fragment key={index}>
                 {isContinue && choices.length > 0 && (
-                  <div className="mx-3 mt-2 mb-1.5 flex items-center gap-3 text-muted-foreground" style={reveal(index)} aria-hidden>
+                  <div className="mx-3 mt-2 mb-1.5 flex items-center gap-3 text-muted-foreground" style={reveal.row(index)} aria-hidden>
                     <span className="h-hairline flex-1 bg-border" />
                     <span className="text-helper">or</span>
                     <span className="h-hairline flex-1 bg-border" />
                   </div>
                 )}
-                <div className="flex items-stretch" style={index > 0 ? reveal(index) : undefined}>
+                <div className="flex items-stretch" style={index > 0 ? reveal.row(index) : undefined}>
                   <button
                     type="button"
                     className={`${ROW}${!isContinue && index > 0 ? ' border-t border-border' : ''}${disabled && !selected ? ' opacity-50' : ''}`}
@@ -59,7 +62,9 @@ export function ChoiceRows({ choices, showContinue, disabled, isSelected, contin
                   >
                     {/* On the primary fill the dialogue color loses contrast, so a picked row's quotes inherit. */}
                     <span className="min-w-0 flex-1 break-words">
-                      {isContinue ? choice : <ChoiceText choice={choice} plainQuotes={selected} />}
+                      {!reveal.streaming && isContinue
+                        ? choice
+                        : <ChoiceText choice={choice} plainQuotes={selected} word={reveal.streaming ? (w) => reveal.word(index, w) : undefined} />}
                     </span>
                   </button>
                   {isContinue && actions.length > 0 && (

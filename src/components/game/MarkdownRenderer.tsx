@@ -1,4 +1,4 @@
-import { memo, useMemo, useState, type ComponentProps } from 'react';
+import { memo, useLayoutEffect, useMemo, useRef, useState, type ComponentProps, type RefObject } from 'react';
 import { Streamdown, defaultRehypePlugins, defaultRemarkPlugins } from 'streamdown';
 import { createCodePlugin } from '@streamdown/code';
 import { markdownCodeThemes } from '@/lib/markdownCodeTheme';
@@ -117,17 +117,22 @@ const COMPONENTS: MarkdownComponents = {
  *
  * `resume` shows the text present at mount as already revealed, for a reveal that remounts mid-stream.
  * Only its value at mount counts.
+ *
+ * `fitShown` holds the block to the words that have started their entrance while it animates, so the
+ * chrome around it grows with the text rather than to the whole released sentence at once.
  */
 export const MarkdownRenderer = memo(function MarkdownRenderer(
-  { text, animate = false, animation = 'fadeIn', easing, timing, tinted = false, dialogue = false, components, resume = false }: { text: string; animate?: boolean; animation?: string; easing?: string; timing?: RevealTiming; tinted?: boolean; dialogue?: boolean; components?: MarkdownComponents; resume?: boolean },
+  { text, animate = false, animation = 'fadeIn', easing, timing, tinted = false, dialogue = false, components, resume = false, fitShown = false }: { text: string; animate?: boolean; animation?: string; easing?: string; timing?: RevealTiming; tinted?: boolean; dialogue?: boolean; components?: MarkdownComponents; resume?: boolean; fitShown?: boolean },
 ) {
+  const root = useRef<HTMLDivElement>(null);
+  useFitShown(root, animate && fitShown, text);
   const allComponents = useMemo(() => (components ? { ...COMPONENTS, ...components } : COMPONENTS), [components]);
   // Fixed at mount: Streamdown keys its reveal state on the animated options, so a change would replay it.
   const [skipInitial] = useState(resume);
   // Read the current fade timing at render (a new sentence's release re-renders us via the text prop),
   // so the words just added animate at the model's current smoothed rate.
   return (
-    <div className="[overflow-wrap:anywhere] [&_ul]:list-outside [&_ul]:pl-6 [&_ol]:list-outside [&_ol]:pl-6">
+    <div ref={root} className="relative [overflow-wrap:anywhere] [&_ul]:list-outside [&_ul]:pl-6 [&_ol]:list-outside [&_ol]:pl-6">
       <Streamdown
         remarkPlugins={REMARK_PLUGINS}
         rehypePlugins={rehypePluginsFor(tinted, dialogue)}
@@ -148,4 +153,32 @@ export const MarkdownRenderer = memo(function MarkdownRenderer(
     </div>
   );
 });
+/** Whether a word's entrance has begun: no animation, or its delay has passed. */
+function started(word: HTMLElement): boolean {
+  return word.getAnimations().every((animation) => {
+    const delay = Number(animation.effect?.getTiming().delay ?? 0);
+    return Number(animation.currentTime ?? 0) >= delay;
+  });
+}
+
+/** Holds `root`'s height to the bottom of its last started word until every word has started. */
+function useFitShown(root: RefObject<HTMLDivElement | null>, enabled: boolean, text: string) {
+  useLayoutEffect(() => {
+    const el = root.current;
+    if (!el) return;
+    if (!enabled || typeof el.getAnimations !== 'function') { el.style.height = ''; return; }
+    let frame = 0;
+    const fit = () => {
+      const words = el.querySelectorAll<HTMLElement>('[data-sd-animate]');
+      let i = words.length - 1;
+      while (i >= 0 && !started(words[i])) i--;
+      if (i === words.length - 1) { el.style.height = ''; return; }
+      // The root is the words' offset parent, and offsets ignore the entrance's own motion.
+      el.style.height = i < 0 ? '0px' : `${words[i].offsetTop + words[i].offsetHeight}px`;
+      frame = requestAnimationFrame(fit);
+    };
+    fit();
+    return () => cancelAnimationFrame(frame);
+  }, [root, enabled, text]);
+}
 // scroll-guard: allow horizontal: wide tables scroll sideways

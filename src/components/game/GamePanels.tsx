@@ -742,6 +742,9 @@ export const MiddlePanel = ({
   const pageLive = !isViewingPast && isRevealingNarration && !!currentAssistantMessage;
   // GameViewer releases what arrives while a past page shows; the remount on return shows it still.
   const [pagedAway, setPagedAway] = useState(false);
+  // Choices stream in only once a turn has played here; a loaded game's choices show at once.
+  const [playedTurn, setPlayedTurn] = useState(false);
+  React.useEffect(() => { if (isWaitingForAI) setPlayedTurn(true); }, [isWaitingForAI]);
   React.useEffect(() => {
     if (isViewingPast && isRevealingNarration) setPagedAway(true);
     else if (!isRevealingNarration) setPagedAway(false);
@@ -816,7 +819,7 @@ export const MiddlePanel = ({
       {gameplayText && (
         <div data-testid="preview-narration">
           {/* A reused renderer keeps the last run's shown text and would show the next run's first sentence at once. */}
-          <MarkdownRenderer key={commandRunId} text={gameplayText} animate={revealOn} animation={revealAnim} easing={revealEasing} dialogue />
+          <MarkdownRenderer key={commandRunId} text={gameplayText} animate={revealOn} animation={revealAnim} easing={revealEasing} dialogue fitShown />
         </div>
       )}
     </TurnCard>
@@ -825,6 +828,7 @@ export const MiddlePanel = ({
         // A live turn's choices stay disabled until the turn settles, and Continue joins them then.
         commandChoices && (chatLayout ? (
           <ChatChoices
+            stream
             choices={commandChoices.list}
             showContinue={continueOffered && commandChoices.settled}
             disabled={!commandChoices.settled}
@@ -834,6 +838,7 @@ export const MiddlePanel = ({
           />
         ) : (
           <ChoiceRows
+            stream
             choices={commandChoices.list}
             showContinue={continueOffered && commandChoices.settled}
             disabled={!commandChoices.settled}
@@ -917,6 +922,7 @@ export const MiddlePanel = ({
                 onDeleteSceneImage={onDeleteSceneImage}
                 latestFooter={
                   <ChatChoices
+                    stream={playedTurn}
                     choices={latestChoices}
                     showContinue={chatShowContinue}
                     disabled={disabled || isWaitingForAI}
@@ -962,6 +968,7 @@ export const MiddlePanel = ({
                       text={pageNarration}
                       animate={pageLive && revealOn}
                       resume={pagedAway}
+                      fitShown
                       animation={revealAnim}
                       easing={revealEasing}
                       dialogue
@@ -988,6 +995,7 @@ export const MiddlePanel = ({
             )}
             {!commandPreview && (
               <ChoiceRows
+                stream={playedTurn && !isViewingPast}
                 choices={choices ?? []}
                 showContinue={showContinue}
                 disabled={disabled || isViewingPast}
