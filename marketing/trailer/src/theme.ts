@@ -25,13 +25,30 @@ export const roleSize = (role: TypeRole, layout: Layout) => typeRoles[role] * TY
 /** Shade over the shots, at the given opacity. */
 export const shade = (alpha: number) => `rgba(10, 12, 16, ${alpha})`;
 
+/** The brand palette, as hex so the stage can add alpha to it. */
+const brand = { purple: '#a78bfa', pink: '#f0abfc', rose: '#fb7185', amber: '#fbbf24', mint: '#6ee7b7', sky: '#7dd3fc' };
+
+export type DotColor = keyof typeof brand;
+
 /** The dark stage palette, from the build-assets title card. */
 export const colors = {
   stage: 'hsl(220 12% 10%)',
   foreground: 'hsl(220 10% 96%)',
   muted: 'hsl(220 8% 66%)',
   panel: 'hsla(220 12% 13% / 0.88)',
-  border: 'hsl(220 10% 26%)',
-  accent: '#a78bfa',
-  wordmarkGradient: 'linear-gradient(95deg, #a78bfa 0%, #f0abfc 55%, #fb7185 100%)',
+  accent: brand.purple,
+  wordmarkGradient: `linear-gradient(95deg, ${brand.purple} 0%, ${brand.pink} 55%, ${brand.rose} 100%)`,
+  /** The stage's glowing blobs. */
+  blobs: { purple: brand.purple, rose: brand.rose, sky: brand.sky },
+  /** Caption pill dots. */
+  dots: brand,
+};
+
+/** The glass surface every card and pill shares. */
+export const glass = {
+  border: '1px solid rgba(255, 255, 255, 0.12)',
+  pill: 'rgba(16, 18, 24, 0.72)',
+  shadow: '0 60px 160px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(0, 0, 0, 0.4)',
+  depthShadow: '0 40px 120px rgba(0, 0, 0, 0.5)',
+  pillShadow: '0 20px 60px rgba(0, 0, 0, 0.4)',
 };

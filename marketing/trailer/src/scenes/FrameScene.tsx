@@ -1,35 +1,39 @@
-import { AbsoluteFill, interpolate, useCurrentFrame } from 'remotion';
+import { AbsoluteFill } from 'remotion';
 import type { Layout, SceneProps } from '../layout';
-import { CopyBlock, type CopyLines } from '../parts/CopyBlock';
-import { FrameCamera, type Callout, type CameraPath } from '../parts/FrameCamera';
-import { PLATE_SHADE, plateFilter } from '../parts/Plate';
+import { Pills, type CopyLines } from '../parts/CopyBlock';
+import type { Callout, CameraPath } from '../parts/FrameCamera';
+import { ShotCard, fullFrame } from '../parts/GlassCard';
+import { CAPTION_PLACE, FRAME_CARDS, type CardPair } from '../poses';
 import { shotFor, type LayoutShot } from '../shots';
-import { colors, shade } from '../theme';
+import type { DotColor } from '../theme';
 
 type FrameSceneProps = SceneProps & {
   shot: LayoutShot;
   camera: Record<Layout, CameraPath>;
+  /** The shot on the dimmed card behind: the next shot or a related one. */
+  depth: LayoutShot;
   /** A ring on one region, with the rest dimmed. */
   callout?: Callout;
   caption?: CopyLines;
-  /** Starts as the blurred plate of this same shot and comes into focus, so a cut from the plate has no jump. */
-  fromPlate?: boolean;
+  dot?: DotColor;
+  /** This shot's own card placement, where the default does not suit its subject. */
+  cards?: Partial<Record<Layout, CardPair>>;
 };
 
-const FOCUS_FRAMES = 36;
+/** Frames the depth card trails the subject card. */
+const DEPTH_DELAY = 10;
 
-/** A captured UI shot under a pan, zoom or hold, with an optional callout and caption. */
-export const FrameScene = ({ layout, durationInFrames, shot, camera, callout, caption, fromPlate }: FrameSceneProps) => {
-  const frame = useCurrentFrame();
+/** The cards a frame scene places in a layout. */
+export const frameCards = (layout: Layout, cards?: FrameSceneProps['cards']) => cards?.[layout] ?? FRAME_CARDS[layout];
+
+/** A captured UI shot on a floating glass card over a dimmed depth card, with an optional callout and caption pills. */
+export const FrameScene = ({ layout, durationInFrames, shot, camera, depth, callout, caption, dot = 'mint', cards }: FrameSceneProps) => {
+  const pair = frameCards(layout, cards);
   return (
-    <AbsoluteFill style={{ backgroundColor: colors.stage }}>
-      <AbsoluteFill style={fromPlate ? { filter: plateFilter(interpolate(frame, [0, FOCUS_FRAMES], [0, 1], { extrapolateRight: 'clamp' })) } : undefined}>
-        <FrameCamera layout={layout} durationInFrames={durationInFrames} shot={shotFor(shot, layout)} path={camera[layout]} callout={callout} />
-      </AbsoluteFill>
-      {fromPlate && (
-        <AbsoluteFill style={{ background: shade(PLATE_SHADE), opacity: interpolate(frame, [0, FOCUS_FRAMES], [1, 0], { extrapolateRight: 'clamp' }) }} />
-      )}
-      {caption && <CopyBlock lines={caption} layout={layout} durationInFrames={durationInFrames} variant="caption" />}
+    <AbsoluteFill>
+      <ShotCard shot={shotFor(depth, layout)} path={fullFrame} pose={pair.depth} durationInFrames={durationInFrames} delay={DEPTH_DELAY} variant="depth" bobPhase={1.4} />
+      <ShotCard shot={shotFor(shot, layout)} path={camera[layout]} pose={pair.front} durationInFrames={durationInFrames} callout={callout} />
+      {caption && <Pills lines={caption} layout={layout} durationInFrames={durationInFrames} place={CAPTION_PLACE[layout]} dot={dot} />}
     </AbsoluteFill>
   );
 };

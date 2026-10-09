@@ -3,10 +3,12 @@ import { Fragment, type ReactNode } from 'react';
 import { Composition, Folder } from 'remotion';
 import { CANVAS, type Layout } from './layout';
 import type { CameraPath, CameraStop } from './parts/FrameCamera';
+import { Stage } from './parts/Stage';
 import { FrameScene } from './scenes/FrameScene';
 import { KineticText } from './scenes/KineticText';
 import { StackScene } from './scenes/StackScene';
 import { TypedNarration } from './scenes/TypedNarration';
+import { WordmarkTitle } from './scenes/WordmarkTitle';
 import { SHOTS } from './shots';
 import { FPS } from './timeline';
 import { joinElement, overlapFrames, type TransitionName } from './transitions';
@@ -31,8 +33,8 @@ const joinEntry = (name: TransitionName): LibraryEntry => ({
   durationInFrames: JOIN_SCENE_FRAMES * 2 - overlapFrames(name, FPS),
   render: (layout) => {
     const cards = [
-      { id: 'a', lines: ['Type any action.'] as const, plate: SHOTS.library },
-      { id: 'b', lines: ['Play any world.'] as const, plate: SHOTS.game },
+      { id: 'a', lines: ['Type any action.'] as const },
+      { id: 'b', lines: ['Play any world.'] as const },
     ];
     return (
       <TransitionSeries>
@@ -40,7 +42,7 @@ const joinEntry = (name: TransitionName): LibraryEntry => ({
           <Fragment key={card.id}>
             {i > 0 && joinElement(name)}
             <TransitionSeries.Sequence durationInFrames={JOIN_SCENE_FRAMES}>
-              <KineticText layout={layout} durationInFrames={JOIN_SCENE_FRAMES} lines={card.lines} plate={card.plate} />
+              <KineticText layout={layout} durationInFrames={JOIN_SCENE_FRAMES} lines={card.lines} />
             </TransitionSeries.Sequence>
           </Fragment>
         ))}
@@ -55,7 +57,7 @@ const ENTRIES: LibraryEntry[] = [
     id: 'KineticText',
     durationInFrames: 150,
     render: (layout, durationInFrames) => (
-      <KineticText layout={layout} durationInFrames={durationInFrames} lines={['Build your own world.']} plate={SHOTS.library} />
+      <KineticText layout={layout} durationInFrames={durationInFrames} lines={['Build your own world.']} />
     ),
   },
   {
@@ -66,20 +68,20 @@ const ENTRIES: LibraryEntry[] = [
         layout={layout}
         durationInFrames={durationInFrames}
         lines={['An AI text RPG.', 'Play any world you can imagine.']}
-        plate={SHOTS.game}
       />
     ),
   },
   {
-    id: 'FrameScene-Drift',
+    id: 'FrameScene-Hold',
     durationInFrames: 240,
     render: (layout, durationInFrames) => (
       <FrameScene
         layout={layout}
         durationInFrames={durationInFrames}
         shot={SHOTS.library}
-        caption={['Play any world you can imagine.']}
-        camera={{ wide: move(stop(0.485, 0.5, 1.05), stop(0.515, 0.5, 1.05)), tall: move(stop(0.495, 0.5), stop(0.505, 0.5)) }}
+        depth={SHOTS.game}
+        caption={['An AI text RPG.', 'Play any world you can imagine.']}
+        camera={both(hold(stop(0.5, 0.5)))}
       />
     ),
   },
@@ -91,6 +93,7 @@ const ENTRIES: LibraryEntry[] = [
         layout={layout}
         durationInFrames={durationInFrames}
         shot={SHOTS.game}
+        depth={SHOTS.entity}
         caption={['Every turn updates your stats.']}
         callout={{ region: { x: 0.745, y: 0.205, width: 0.24, height: 0.37 } }}
         camera={{ wide: move(stop(0.5, 0.5), stop(0.8, 0.4, 1.7)), tall: move(stop(0.5, 0.5), stop(0.85, 0.4, 1.2)) }}
@@ -105,16 +108,11 @@ const ENTRIES: LibraryEntry[] = [
         layout={layout}
         durationInFrames={durationInFrames}
         shot={SHOTS.avatarClip}
+        depth={SHOTS.entity}
         caption={['Pick a 3D avatar.']}
-        camera={both(move(stop(0.515, 0.5, 1.05), stop(0.485, 0.5, 1.05)))}
+        dot="rose"
+        camera={both(hold(stop(0.5, 0.5)))}
       />
-    ),
-  },
-  {
-    id: 'FrameScene-Hold',
-    durationInFrames: 150,
-    render: (layout, durationInFrames) => (
-      <FrameScene layout={layout} durationInFrames={durationInFrames} shot={SHOTS.game} camera={both(hold(stop(0.5, 0.5)))} />
     ),
   },
   {
@@ -125,8 +123,8 @@ const ENTRIES: LibraryEntry[] = [
         layout={layout}
         durationInFrames={durationInFrames}
         panes={[
-          { shot: SHOTS.game, camera: move(stop(0.5, 0.5), stop(0.8, 0.45, 1.3)), caption: ['Every turn updates your stats.'] },
-          { shot: SHOTS.library, camera: move(stop(0.49, 0.5), stop(0.51, 0.5)), caption: ['Play any world you can imagine.'] },
+          { shot: SHOTS.game, camera: move(stop(0.5, 0.5), stop(0.8, 0.45, 1.3)), caption: ['Every turn updates your stats.'], dot: 'mint' },
+          { shot: SHOTS.library, camera: hold(stop(0.5, 0.5)), caption: ['Play any world you can imagine.'], dot: 'purple' },
         ]}
       />
     ),
@@ -155,14 +153,19 @@ const ENTRIES: LibraryEntry[] = [
         backdrop={{
           before: SHOTS.library,
           after: SHOTS.game,
-          camera: both(move(stop(0.5, 0.515, 1.05), stop(0.5, 0.485, 1.05))),
+          camera: both(hold(stop(0.5, 0.5))),
         }}
       />
     ),
   },
+  {
+    id: 'WordmarkTitle',
+    durationInFrames: 90,
+    render: (layout, durationInFrames) => <WordmarkTitle layout={layout} durationInFrames={durationInFrames} />,
+  },
   joinEntry('cut'),
-  joinEntry('fade'),
-  joinEntry('wipe'),
+  joinEntry('overlap'),
+  joinEntry('section'),
 ];
 
 const LAYOUTS: Layout[] = ['wide', 'tall'];
@@ -172,7 +175,12 @@ type LibraryPreviewProps = { entryId: string; layout: Layout };
 const LibraryPreview = ({ entryId, layout }: LibraryPreviewProps) => {
   const entry = ENTRIES.find((item) => item.id === entryId);
   if (!entry) throw new Error(`No library entry "${entryId}"`);
-  return <>{entry.render(layout, entry.durationInFrames)}</>;
+  return (
+    <>
+      <Stage layout={layout} />
+      {entry.render(layout, entry.durationInFrames)}
+    </>
+  );
 };
 
 /** The studio's "Scene-library" folder: one composition per entry and layout. */
