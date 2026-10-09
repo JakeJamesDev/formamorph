@@ -3,3 +3,5 @@ node_modules
 out
 # Fresh captures that `npm run capture:diff` compares against the committed shots.
 .capture-diff
+# Frames of the clips `npm run capture` encodes, kept to compare two runs.
+.capture-clip

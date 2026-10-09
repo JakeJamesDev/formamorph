@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-// Renders each trailer composition (default: both) to out/<id>.mp4, then checks every file against its composition
-// and proves its 6 s loop. The wide cut is also checked against the Steam spec and writes its poster frame.
+// Renders each trailer composition (default: both) to out/<id>.mp4, then checks every file against its composition,
+// every line of copy against the reading bar, and proves its 6 s loop. The wide cut is also checked against the
+// Steam spec and writes its poster frame.
 //
 //   npm run render                 both cuts
 //   npm run render -- TrailerWide  one cut
@@ -105,6 +106,12 @@ for (const { composition, outputLocation } of rendered) {
   if (spec?.minKbps && (kbps === null || kbps < spec.minKbps)) problems.push(`bitrate: ${kbps} Kbps is under ${spec.minKbps} Kbps`);
   const summary = `${path.relative(root, outputLocation)}  ${actual.size}  ${actual.fps} fps  ${seconds?.toFixed(2) ?? '?'} s  ${kbps ?? '?'} Kbps  ${actual.videoCodec}  audio: ${actual.audioCodec ?? 'none'}`;
   report(problems.length === 0, summary, problems);
+
+  // Ruling Q17: each line's legible seconds and characters per second, measured by the timeline that played.
+  for (const line of composition.props.reading) {
+    const cps = line.charsPerSecond === null ? '-' : line.charsPerSecond.toFixed(1);
+    report(line.ok, `${line.shot.padEnd(4)} ${line.seconds.toFixed(2).padStart(5)} s  ${cps.padStart(4)} cps  "${line.text}"`);
+  }
 
   if (!spec) continue;
 

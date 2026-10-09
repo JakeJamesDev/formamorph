@@ -1,7 +1,8 @@
 import type { CSSProperties } from 'react';
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from 'remotion';
 import type { Layout } from '../layout';
-import { enterProgress, exitProgress } from '../motion';
+import { EXIT_FRAMES, enterFrames, enterProgress, exitProgress } from '../motion';
+import type { CopyRead } from '../reading';
 import { colors, fonts, roleSize, shade, type TypeRole } from '../theme';
 
 /** One or two lines of copy. The first is the point; the second supports it. */
@@ -48,6 +49,8 @@ const SCRIM: Record<Layout, string> = {
 };
 
 const LINE_STAGGER_FRAMES = 10;
+/** Frame a copy block's first line starts to enter, unless the scene sets its own. */
+export const DEFAULT_DELAY = 10;
 
 type CopyBlockProps = {
   lines: CopyLines;
@@ -58,8 +61,12 @@ type CopyBlockProps = {
   delay?: number;
 };
 
+/** The frames each line of a copy block is legible, for the reading check. */
+export const copyReads = (lines: CopyLines, durationInFrames: number, fps: number, delay = DEFAULT_DELAY): CopyRead[] =>
+  lines.map((text, i) => ({ text, from: delay + i * LINE_STAGGER_FRAMES + enterFrames(fps), until: durationInFrames - EXIT_FRAMES }));
+
 /** Copy that enters line by line, holds, and leaves on the scene's last frames. */
-export const CopyBlock = ({ lines, layout, durationInFrames, variant, delay = 10 }: CopyBlockProps) => {
+export const CopyBlock = ({ lines, layout, durationInFrames, variant, delay = DEFAULT_DELAY }: CopyBlockProps) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const out = exitProgress(frame, durationInFrames);

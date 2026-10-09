@@ -1,4 +1,4 @@
-import { AbsoluteFill, Easing, Img, interpolate, useCurrentFrame } from 'remotion';
+import { AbsoluteFill, Easing, Freeze, Img, OffthreadVideo, interpolate, useCurrentFrame } from 'remotion';
 import { CANVAS, type Layout, type Size } from '../layout';
 import type { Shot } from '../shots';
 import { colors, shade } from '../theme';
@@ -14,6 +14,8 @@ export type Callout = { region: { x: number; y: number; width: number; height: n
 
 const CALLOUT_FADE_FRAMES = 18;
 const CALLOUT_DEFAULT_FROM = 36;
+/** The scene frame a clip starts to play: after the callout lands, while the camera is still on its way in. */
+const CLIP_FROM = 60;
 
 const ease = Easing.inOut(Easing.cubic);
 
@@ -52,7 +54,7 @@ type FrameCameraProps = {
   size?: Size;
 };
 
-/** A captured UI shot with the camera moving over it across the scene. */
+/** A captured UI shot or clip with the camera moving over it across the scene. */
 export const FrameCamera = ({ layout, durationInFrames, shot, path, callout, size = CANVAS[layout] }: FrameCameraProps) => {
   const frame = useCurrentFrame();
   const progress = interpolate(frame, [0, durationInFrames], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
@@ -76,7 +78,14 @@ export const FrameCamera = ({ layout, durationInFrames, shot, path, callout, siz
           transform: `translate(${x}px, ${y}px) scale(${scale})`,
         }}
       >
-        <Img src={shot.src} style={{ width: shot.width, height: shot.height, display: 'block' }} />
+        {shot.clipFrames ? (
+          // The clip holds its first frame until it starts, plays once, then holds its last frame.
+          <Freeze frame={Math.min(shot.clipFrames - 1, Math.max(0, frame - CLIP_FROM))}>
+            <OffthreadVideo src={shot.src} muted style={{ width: shot.width, height: shot.height, display: 'block' }} />
+          </Freeze>
+        ) : (
+          <Img src={shot.src} style={{ width: shot.width, height: shot.height, display: 'block' }} />
+        )}
         {callout && (
           <div
             style={{
