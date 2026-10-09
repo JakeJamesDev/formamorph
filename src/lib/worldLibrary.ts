@@ -10,6 +10,7 @@ import { describePlaceholders } from './placeholders';
 import { allPlaceholders, type PlaceholderHomesWorld } from './placeholderHomes';
 import { migrateCarriedPlaceholders } from './version';
 import { promisifyRequest, transactionDone } from './idb';
+import { announceWorldSaved } from './worldChangeSignal';
 
 export const WORLD_LIBRARY_DB = 'worldsDB';
 export const WORLD_LIBRARY_VERSION = 2;
@@ -186,6 +187,7 @@ export async function putWorldRecords(db: IDBDatabase, records: readonly StoredW
   const transaction = libraryTransaction(db, 'readwrite');
   for (const record of records) putWorldRecord(transaction, record);
   await transactionDone(transaction);
+  for (const record of records) announceWorldSaved(record.id);
 }
 
 /** One world's metadata record, or undefined when the world is not stored. */

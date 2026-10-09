@@ -51,6 +51,8 @@ import { ModeSelect } from '@/components/ui/mode-select';
 import { SaveSplitButton } from '@/components/editor/SaveSplitButton';
 import { useSaveStatus } from '@/components/editor/useSaveStatus';
 import { useAutoSave } from '@/components/editor/useAutoSave';
+import { ChangedElsewhereDialog } from '@/components/editor/ChangedElsewhereDialog';
+import { useMountedRef } from '@/lib/useMountedRef';
 import { useSettings } from '@/contexts/SettingsContext';
 import { ImageDown, Loader2, Search, ChevronRight } from "lucide-react";
 import { ActionIcon } from '@/lib/actionIcons';
@@ -177,6 +179,7 @@ const WorldEditorInner = ({
     updateDictionary, addDictionaryEntry, updateDictionaryEntry, updatePlaceholder, updatePlaceholderGroup,
     setLocations, setEntities, setDictionaries,
     isWorldDirty, isWorldStored, saveWorld: saveWorldCtx, discardChanges, setOwnedLibraryIds,
+    worldChangedElsewhere, reloadWorld, keepWorldCopy,
   } = useGameData();
   const { editorAutoSave, setEditorAutoSave, editorAutoSaveIdleSeconds } = useSettings();
   const { promptWorld, dialog: downscaleDialog } = useDownscalePrompt();
@@ -618,6 +621,7 @@ const WorldEditorInner = ({
   // `announce` false keeps a good save silent: the tour saves on every Next, and a toast per step is noise.
   // The Save face walks every save through its states, the tour's quiet ones and auto saves included.
   const saveStatus = useSaveStatus(isWorldDirty);
+  const mounted = useMountedRef();
   const runSave = (announce: boolean, markSaved: boolean) => saveStatus.track(async () => {
     const result = await saveWorldCtx({ markSaved });
     if (result.ok) {
@@ -630,9 +634,9 @@ const WorldEditorInner = ({
     return result.ok;
   });
   const historyMoves = useWorldHistoryMoves();
-  // The tour saves on every Next itself.
+  // The tour saves on every Next itself. A save or delete in another tab holds auto save until the author answers.
   const autoSave = useAutoSave({
-    enabled: editorAutoSave && !touring,
+    enabled: editorAutoSave && !touring && !worldChangedElsewhere,
     idleMs: editorAutoSaveIdleSeconds * 1000,
     worldId,
     stored: isWorldStored,
@@ -641,6 +645,12 @@ const WorldEditorInner = ({
     save: () => runSave(false, false),
   });
   const saveWorldWith = (announce: boolean) => autoSave.manual(() => runSave(announce, true));
+  // The load starts History over; this visit's links go with the copy they were made in.
+  const reloadSavedElsewhere = () => {
+    reloadWorld().then((loaded) => {
+      if (loaded && mounted.current) linking.clearPendingLinks();
+    }, (error: unknown) => { toastError(error, { headline: 'Formamorph cannot reload the world.' }); });
+  };
   const saveWorld = () => saveWorldWith(true);
   const saveWorldQuietly = () => saveWorldWith(false);
   // The managers write edits straight into the store as you type, so leaving has to actively roll them
@@ -658,6 +668,10 @@ const WorldEditorInner = ({
     exitRef.current = { save: saveWorld, discard: discardAfterSaves };
     return () => { exitRef.current = null; };
   });
+  // After a delete elsewhere, Keep Mine saves this copy back, and Close leaves as Exit Without Saving does.
+  const changedElsewhereProps = worldChangedElsewhere === 'deleted'
+    ? { onLeave: () => discardAfterSaves(onClose), onKeepMine: () => { void saveWorld(); } }
+    : { onLeave: reloadSavedElsewhere, onKeepMine: keepWorldCopy };
   // The listener reads the latest render's save and dirty flag without re-subscribing every render.
   const saveShortcutRef = useRef<() => void>(() => {});
   // Failed retries like a click, even after an undo leaves the world clean.
@@ -1394,6 +1408,7 @@ const WorldEditorInner = ({
         onSave={async () => { if (await saveWorld()) afterLeave.current(); }}
         onExit={() => discardAfterSaves(() => afterLeave.current())}
       />
+      <ChangedElsewhereDialog change={worldChangedElsewhere} {...changedElsewhereProps} />
       {worldExportDialog}
       {downscaleDialog}
       <Input type="file" accept=".json" onChange={loadWorld} className="hidden" id="load-world" />

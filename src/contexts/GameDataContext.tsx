@@ -5,6 +5,7 @@ import { canonicalEqual } from '@/lib/canonicalStringify';
 import { dirtyDiff } from '@/lib/dirtyDiff';
 import { registerDevHook } from '@/lib/devRouter';
 import { holdUnsavedWorld } from '@/lib/unsavedWorld';
+import { onWorldChangedElsewhere, type WorldChange } from '@/lib/worldChangeSignal';
 import { migrateWorld, APP_VERSION } from '@/lib/version';
 import { dropLocationFromEntities } from '@/lib/entityPresence';
 import { dropLinksTo, removeBlueprints } from '@/lib/traitLinks';
@@ -129,6 +130,24 @@ function useProvideGameData() {
   const [savedWorld, setSavedWorld] = useState<WorldData | null>(null);
   // The world on screen has a copy in world storage. A new world has a baseline but no copy until its first save.
   const [worldStored, setWorldStored] = useState(false);
+  // The changes other tabs made to the open world, how many of them this copy has answered, and the latest kind.
+  const elsewhere = useRef<{ worldId: string | null; heard: number; settled: number; last: WorldChange }>(
+    { worldId: null, heard: 0, settled: 0, last: 'saved' },
+  );
+  const [worldChangedElsewhere, setWorldChangedElsewhere] = useState<WorldChange | null>(null);
+  const settleElsewhere = useCallback((upTo: number) => {
+    const counts = elsewhere.current;
+    counts.settled = Math.max(counts.settled, upTo);
+    setWorldChangedElsewhere(counts.heard > counts.settled ? counts.last : null);
+  }, []);
+  // For the provider's life, so a change heard in play or on the Main Menu still holds when the editor opens.
+  useEffect(() => onWorldChangedElsewhere((id, change) => {
+    const counts = elsewhere.current;
+    if (id !== counts.worldId) return;
+    counts.heard += 1;
+    counts.last = change;
+    setWorldChangedElsewhere(change);
+  }), []);
 
   const slices = useMemo(() => ({
     worldOverview, stats, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries,
@@ -314,9 +333,10 @@ function useProvideGameData() {
   // Returns the migrated world so a caller that also needs the loaded data (e.g. to seed a cross-world save
   // load, or to cache it for later reuse) uses the current-shape version rather than the raw input — which
   // would otherwise bypass the migration this function just applied.
-  // `stored` says the world came from world storage. Left out, the world reads as never stored.
+  // `stored` says the world came from world storage. Left out, the world reads as never stored. `answers`
+  // false keeps the other tabs' writes unanswered: a rollback to this tab's own baseline holds none of them.
   const loadWorldData = useCallback((
-    rawWorldData: World, isDefault = false, { stored = false }: { stored?: boolean } = {},
+    rawWorldData: World, isDefault = false, { stored = false, answers = true }: { stored?: boolean; answers?: boolean } = {},
   ): { world: World; isDefault: boolean } => {
     // Central sanitation net: normalize any legacy import shape to the current version (idempotent),
     // so worlds reaching the editor are always current regardless of which entry point loaded them.
@@ -385,7 +405,14 @@ function useProvideGameData() {
     });
     // The load sets the baseline, so none of its writes is a Step; the commit that carries it re-arms.
     disarmHistory();
-    setWorldId(worldData.id ?? null);
+    const nextId = worldData.id ?? null;
+    if (nextId !== elsewhere.current.worldId) {
+      elsewhere.current = { worldId: nextId, heard: 0, settled: 0, last: 'saved' };
+      setWorldChangedElsewhere(null);
+    } else if (answers) {
+      settleElsewhere(elsewhere.current.heard);
+    }
+    setWorldId(nextId);
     setStats(nextStats);
     setLocations(nextLocations);
     setConnections(nextConnections);
@@ -405,7 +432,7 @@ function useProvideGameData() {
     setWorldStored(stored);
 
     return { world: worldData, isDefault };
-  }, [setWorldOverview, setStats, setLocations, setEntities, setTraits, setStatUpdates, setDictionaries, disarmHistory]);
+  }, [setWorldOverview, setStats, setLocations, setEntities, setTraits, setStatUpdates, setDictionaries, disarmHistory, settleElsewhere]);
 
   // Copies follow the traits after every write. The slices are separate states, so the pass reads the
   // committed world rather than one setter's view of it.
@@ -559,7 +586,7 @@ function useProvideGameData() {
     // No baseline means nothing has been loaded yet; there is no state worth restoring.
     if (!savedWorld) return;
     // The baseline is current, so the migration steps for older versions don't run on it.
-    loadWorldData({ ...savedWorld, id: worldId ?? '', version: APP_VERSION }, false, { stored: worldStored });
+    loadWorldData({ ...savedWorld, id: worldId ?? '', version: APP_VERSION }, false, { stored: worldStored, answers: false });
   }, [loadWorldData]);
 
   // Persist the current world and re-baseline so isWorldDirty clears. Edited copies of owned library items
@@ -570,6 +597,8 @@ function useProvideGameData() {
     const { worldId, worldOverview, placeholders, locations } = latest.current;
     const data = latest.current.getWorldData();
     const placeSavedMarker = markSaved ? beginHistorySave() : () => {};
+    // A write heard while this one runs may have landed after it, so only the ones heard before count as answered.
+    const heardBefore = elsewhere.current.heard;
     try {
       const writeBack = await planOwnedWriteBack({
         entities: data.entities, dictionaries: data.dictionaries, placeholders, locations,
@@ -610,12 +639,13 @@ function useProvideGameData() {
       setWorldStored(true);
       // A discard before the commit rolls back to this save, not the one before it.
       latest.current = { ...latest.current, savedWorld: world, worldStored: true };
+      if (elsewhere.current.worldId === worldId) settleElsewhere(heardBefore);
       return { ok: true };
     } catch (error) {
       console.error('Error saving world:', error);
       return { ok: false, error, world: { id: worldId ?? '', version: APP_VERSION, ...data } };
     }
-  }, [setDictionaries, writeIntent, beginHistorySave]);
+  }, [setDictionaries, writeIntent, beginHistorySave, settleElsewhere]);
   // One write at a time, in the order asked, so an older world never lands over a newer one.
   const saveQueue = useRef<Promise<unknown>>(Promise.resolve());
   /** `markSaved` false is an auto save: it leaves History's Saved marker and its Steps alone. */
@@ -625,6 +655,25 @@ function useProvideGameData() {
     saveQueue.current = run.catch(() => undefined);
     return run;
   }, [writeWorld]);
+  /**
+   * Replace the open world with its stored copy, through the same load that opens it. Runs after any queued
+   * save, so that save's baseline never lands over the copy. Answers the other tabs' writes heard before the read.
+   */
+  const reloadWorld = useCallback((): Promise<boolean> => {
+    const run = saveQueue.current.then(async () => {
+      const { worldId } = latest.current;
+      if (!worldId) return false;
+      const heardBefore = elsewhere.current.heard;
+      const world = await WorldStorageService.getWorldData(worldId) as World;
+      loadWorldData(world, false, { stored: true, answers: false });
+      settleElsewhere(heardBefore);
+      return true;
+    });
+    saveQueue.current = run.catch(() => undefined);
+    return run;
+  }, [loadWorldData, settleElsewhere]);
+  /** Keep Mine: this copy stands, and the next save overwrites the other tabs' writes. */
+  const keepWorldCopy = useCallback(() => settleElsewhere(elsewhere.current.heard), [settleElsewhere]);
 
   useEffect(() => {
     WorldStorageService.initialize();
@@ -647,7 +696,7 @@ function useProvideGameData() {
     addPlaceholderGroup, updatePlaceholderGroup, setPlaceholderGroups,
     setStats, setLocations, setConnections, setEntities, setEntityGroups, setTraits, setTraitGroups, setStatUpdates,
     setDictionaries, setWorldPlaceholders,
-    loadWorldData, setWorldId, saveWorld, discardChanges, setOwnedLibraryIds,
+    loadWorldData, setWorldId, saveWorld, discardChanges, setOwnedLibraryIds, reloadWorld, keepWorldCopy,
   }), [
     updateWorldOverview, loadWorldMetadata,
     addStat, updateStat, removeStat,
@@ -661,7 +710,7 @@ function useProvideGameData() {
     addDictionaryEntry, updateDictionaryEntry, removeDictionaryEntry,
     addPlaceholder, updatePlaceholder, removePlaceholder,
     addPlaceholderGroup, updatePlaceholderGroup,
-    setDictionaries, loadWorldData, saveWorld, discardChanges, setOwnedLibraryIds,
+    setDictionaries, loadWorldData, saveWorld, discardChanges, setOwnedLibraryIds, reloadWorld, keepWorldCopy,
   ]);
 
   const worldLoaded = savedWorld !== null;
@@ -689,6 +738,8 @@ function useProvideGameData() {
     isWorldDirty,
     // True once the world on screen has a copy in world storage: loaded from there, or saved.
     isWorldStored: worldStored,
+    // Another tab saved or deleted the open world, and this copy has not answered it.
+    worldChangedElsewhere,
     // The scoped dictionary store, forwarded so the provider can bind the editing widgets to the world's books.
     dictStore,
     // Likewise for placeholders, so the same editing widgets bind to the world's placeholders.
@@ -700,7 +751,7 @@ function useProvideGameData() {
   }), [
     actions, worldMetadata, worldOverview, stats, locations, connections, entities, entityGroups, traits, traitGroups,
     statUpdates, dictionaries, placeholders, worldPlaceholders, placeholderGroups, getWorldData, worldId, worldLoaded,
-    isWorldDirty, worldStored, dictStore, phStore, placementLetters, placeholderOwnerIndex,
+    isWorldDirty, worldStored, worldChangedElsewhere, dictStore, phStore, placementLetters, placeholderOwnerIndex,
   ]);
 
   return { value, actions, history };
