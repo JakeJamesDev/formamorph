@@ -229,6 +229,7 @@ export function ChatNarration({ parseAssistantMessage, latestFooter, actionsFor,
                           key={liveReveal ? 'live' : `committed:${narrationText}`}
                           text={narrationText}
                           animate={liveReveal && revealOn}
+                          fitShown
                           animation={revealAnim}
                           easing={revealEasing}
                           dialogue

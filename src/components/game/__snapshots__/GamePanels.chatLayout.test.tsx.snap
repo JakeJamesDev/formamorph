@@ -83,7 +83,7 @@ exports[`Narration Layout: Pages > renders a past page unchanged 1`] = `
                   data-testid="action-line"
                 >
                   <div
-                    class="[overflow-wrap:anywhere] [&_ul]:list-outside [&_ul]:pl-6 [&_ol]:list-outside [&_ol]:pl-6"
+                    class="relative [overflow-wrap:anywhere] [&_ul]:list-outside [&_ul]:pl-6 [&_ol]:list-outside [&_ol]:pl-6"
                   >
                     <div
                       class="space-y-4 whitespace-normal [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
@@ -98,7 +98,7 @@ exports[`Narration Layout: Pages > renders a past page unchanged 1`] = `
                   data-testid="narration"
                 >
                   <div
-                    class="[overflow-wrap:anywhere] [&_ul]:list-outside [&_ul]:pl-6 [&_ol]:list-outside [&_ol]:pl-6"
+                    class="relative [overflow-wrap:anywhere] [&_ul]:list-outside [&_ul]:pl-6 [&_ol]:list-outside [&_ol]:pl-6"
                   >
                     <div
                       class="space-y-4 whitespace-normal [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
@@ -543,7 +543,7 @@ exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
                   data-testid="action-line"
                 >
                   <div
-                    class="[overflow-wrap:anywhere] [&_ul]:list-outside [&_ul]:pl-6 [&_ol]:list-outside [&_ol]:pl-6"
+                    class="relative [overflow-wrap:anywhere] [&_ul]:list-outside [&_ul]:pl-6 [&_ol]:list-outside [&_ol]:pl-6"
                   >
                     <div
                       class="space-y-4 whitespace-normal [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
@@ -558,7 +558,7 @@ exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
                   data-testid="narration"
                 >
                   <div
-                    class="[overflow-wrap:anywhere] [&_ul]:list-outside [&_ul]:pl-6 [&_ol]:list-outside [&_ol]:pl-6"
+                    class="relative [overflow-wrap:anywhere] [&_ul]:list-outside [&_ul]:pl-6 [&_ol]:list-outside [&_ol]:pl-6"
                   >
                     <div
                       class="space-y-4 whitespace-normal [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
@@ -741,7 +741,6 @@ exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
               >
                 <div
                   class="overflow-hidden rounded-md border border-border"
-                  style="--rl-o: 0; transform-origin: var(--rl-origin, center); animation: sd-reveal 400ms cubic-bezier(0.16, 1, 0.3, 1) 0ms both;"
                 >
                   <div
                     class="flex items-stretch"
@@ -762,7 +761,6 @@ exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
                   </div>
                   <div
                     class="flex items-stretch"
-                    style="--rl-o: 0; transform-origin: var(--rl-origin, center); animation: sd-reveal 400ms cubic-bezier(0.16, 1, 0.3, 1) 300ms both;"
                   >
                     <button
                       aria-pressed="false"
@@ -781,7 +779,6 @@ exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
                   <div
                     aria-hidden="true"
                     class="mx-3 mt-2 mb-1.5 flex items-center gap-3 text-muted-foreground"
-                    style="--rl-o: 0; transform-origin: var(--rl-origin, center); animation: sd-reveal 400ms cubic-bezier(0.16, 1, 0.3, 1) 600ms both;"
                   >
                     <span
                       class="h-hairline flex-1 bg-border"
@@ -797,7 +794,6 @@ exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
                   </div>
                   <div
                     class="flex items-stretch"
-                    style="--rl-o: 0; transform-origin: var(--rl-origin, center); animation: sd-reveal 400ms cubic-bezier(0.16, 1, 0.3, 1) 600ms both;"
                   >
                     <button
                       aria-pressed="false"

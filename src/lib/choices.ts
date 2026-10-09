@@ -103,3 +103,12 @@ export function choiceRuns(text: string): ChoiceRun[] {
   });
   return runs;
 }
+
+/** `text` as words, each with the space after it; leading space rides on the first. */
+export function splitWords(text: string): string[] {
+  return text.match(/\s*\S+\s*/g) ?? (text ? [text] : []);
+}
+
+/** How many words a choice renders as, counted the way its runs split into words. */
+export const choiceWordCount = (choice: string): number =>
+  choiceRuns(choice).reduce((sum, run) => sum + splitWords(run.text).length, 0);
