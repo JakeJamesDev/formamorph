@@ -134,6 +134,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer(
         // visible when paging history, where nothing follows to flush it.
         mode={animate ? 'streaming' : 'static'}
         // The sentence pacer owns catch-up, so narration lifts Streamdown's backlog cap; help sets its own.
+        // patches/streamdown+*.patch reads duration and stagger live; a change there would otherwise re-fade shown words.
         animated={animate ? { animation, sep: 'word', easing, maxBacklogMs: Number.POSITIVE_INFINITY, ...(timing ?? getRevealTiming()) } : false}
         isAnimating={animate}
       >

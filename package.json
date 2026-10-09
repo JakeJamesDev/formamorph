@@ -9,6 +9,7 @@
     "node": ">=20.19"
   },
   "scripts": {
+    "postinstall": "patch-package",
     "dev": "vite",
     "dev:site": "vite --config vite.site.config.js",
     "build": "vite build",
@@ -149,6 +150,7 @@
     "lexical": "^0.50.0",
     "lucide-react": "^1.31.0",
     "next-themes": "^0.3.0",
+    "patch-package": "^8.0.1",
     "playwright": "^1.48.0",
     "postcss": "^8.4.41",
     "quickjs-emscripten": "^0.30.0",
@@ -162,7 +164,7 @@
     "remark-gfm": "^4.0.1",
     "remark-parse": "^11.0.0",
     "remark-rehype": "^11.1.2",
-    "streamdown": "^2.7.0",
+    "streamdown": "2.7.0",
     "tailwind-merge": "^2.4.0",
     "tailwindcss": "^3.4.9",
     "tailwindcss-animate": "^1.0.7",
