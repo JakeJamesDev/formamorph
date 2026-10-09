@@ -198,6 +198,7 @@ Optional fields on a shot:
 | `steps` | Moves after the screen is up: `editWorld`, `click`, `link`, `button`, `ask`, `wait` |
 | `hide` | CSS selectors the shot hides, where the app has no switch for them, such as the map's travel-rule labels |
 | `expect` | Text that must be on screen after the steps, so a shot never saves the wrong state |
+| `gifFrame` | The frame every animated GIF on screen holds (default 0), since a GIF plays on its own clock |
 | `verify` | `false` skips the game screen's layout check for a shot that is not the demo turn |
 | `deferred` | A later ticket's shot. It stays in the list and `npm run capture` skips it; `--only` runs it |
 
