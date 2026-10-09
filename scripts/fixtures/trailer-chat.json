@@ -1,0 +1,24 @@
+{
+  "location": "Demon Frontier",
+  "entity": "Tiamat",
+  "opening": "Tiamat rests on a ruined arch at the edge of the clearing. He watches you roll closer.",
+  "turns": [
+    {
+      "action": "I ask Tiamat how long he has watched this frontier.",
+      "narration": "Tiamat tilts his silver head. \"Longer than your makers have kept records, little machine.\" His eyes drift over the ruins. \"Kingdoms rose here. I watched each one fall.\""
+    },
+    {
+      "action": "I ask which kingdom he liked best.",
+      "narration": "A low rumble shakes the arch. \"None of them.\" He pauses. \"The one with the lanterns. Their children left bread on my wall each winter.\""
+    },
+    {
+      "action": "I tell him I will leave bread on the arch tonight.",
+      "narration": "Tiamat is quiet for a long moment. Then he lowers his head until one eye meets your sensor. \"Do that, little machine. I will remember it.\""
+    }
+  ],
+  "choices": [
+    "I ask Tiamat what became of the lantern kingdom.",
+    "I ask Tiamat about the smoke over the watchtower.",
+    "I sit on the arch beside him and wait."
+  ]
+}

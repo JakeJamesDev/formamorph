@@ -20,5 +20,16 @@ const shot = (id: string): Shot => {
 /** Captured UI shots in `public/shots/`, written by `npm run capture`. */
 export const SHOTS = {
   library: shot('library'),
+  turnBefore: shot('turn-before'),
   game: shot('game'),
+  entity: shot('entity'),
+  chat: shot('chat'),
+  canvas: shot('canvas'),
+  profile: shot('profile'),
+  blueprints: shot('blueprints'),
+  help: shot('help'),
+  community: shot('community'),
+  contest: shot('contest'),
+  endpoint: shot('endpoint'),
+  avatar: shot('avatar'),
 };

@@ -1,7 +1,7 @@
 import { Composition } from 'remotion';
 import { CANVAS, type Layout } from './layout';
 import { SceneLibrary } from './library';
-import { FPS, TOTAL_FRAMES } from './timeline';
+import { FPS, totalFrames } from './timeline';
 import { Trailer } from './Trailer';
 
 const CUTS: { id: string; layout: Layout }[] = [
@@ -18,7 +18,7 @@ export const Root = () => (
         component={Trailer}
         defaultProps={{ layout }}
         fps={FPS}
-        durationInFrames={TOTAL_FRAMES}
+        durationInFrames={totalFrames(layout)}
         {...CANVAS[layout]}
       />
     ))}

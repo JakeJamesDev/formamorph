@@ -1,11 +1,9 @@
 import type { CSSProperties } from 'react';
 import { AbsoluteFill, Img, interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import type { Layout, SceneProps } from '../layout';
+import { Wordmark, WordmarkFilter } from '../parts/Wordmark';
 import { SHOTS } from '../shots';
 import { colors, fonts, shade } from '../theme';
-
-// "Forma" holds one weight; "morph" steps heavier per letter, as on the build-assets title card.
-const MORPH_WEIGHTS = [500, 575, 650, 725, 800];
 
 type Placement = {
   /** Where the game shot fades in over the library shot. */
@@ -14,6 +12,7 @@ type Placement = {
   mark: CSSProperties;
   fontSize: number;
   tagSize: number;
+  ctaSize: number;
   /** The underline beneath the wordmark; the tall layout has none. */
   rule: { left: number; bottom: number; width: number } | null;
 };
@@ -25,6 +24,7 @@ const PLACEMENT: Record<Layout, Placement> = {
     mark: { left: 110, bottom: 96, textAlign: 'left' },
     fontSize: 132,
     tagSize: 22,
+    ctaSize: 44,
     rule: { left: 116, bottom: 74, width: 620 },
   },
   tall: {
@@ -33,14 +33,15 @@ const PLACEMENT: Record<Layout, Placement> = {
     mark: { left: 0, right: 0, bottom: 520, textAlign: 'center' },
     fontSize: 150,
     tagSize: 26,
+    ctaSize: 52,
     rule: null,
   },
 };
 
 const cover: CSSProperties = { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' };
 
-/** The opening card: two app shots stitched behind the wordmark on the dark stage. */
-export const TitleCard = ({ layout, durationInFrames }: SceneProps) => {
+/** The title card: two app shots stitched behind the wordmark on the dark stage, with an optional call-to-action line. */
+export const TitleCard = ({ layout, durationInFrames, cta }: SceneProps & { cta?: string }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const place = PLACEMENT[layout];
@@ -50,17 +51,11 @@ export const TitleCard = ({ layout, durationInFrames }: SceneProps) => {
   const mark = rise(12);
   const tag = rise(40);
   const rule = rise(52);
+  const ctaIn = rise(80);
 
   return (
     <AbsoluteFill style={{ backgroundColor: colors.stage, fontFamily: fonts.body, color: colors.foreground }}>
-      <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden="true">
-        <defs>
-          <filter id="goo">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="3.5" result="b" />
-            <feColorMatrix in="b" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 26 -11" />
-          </filter>
-        </defs>
-      </svg>
+      <WordmarkFilter />
 
       <AbsoluteFill style={{ transform: `scale(${drift})`, filter: 'saturate(.85) brightness(.9)' }}>
         <Img src={SHOTS.library.src} style={cover} />
@@ -70,28 +65,7 @@ export const TitleCard = ({ layout, durationInFrames }: SceneProps) => {
       <AbsoluteFill style={{ background: place.overlay }} />
 
       <div style={{ position: 'absolute', ...place.mark }}>
-        <h1
-          style={{
-            margin: 0,
-            fontFamily: fonts.wordmark,
-            fontSize: place.fontSize,
-            letterSpacing: '-.06em',
-            lineHeight: 0.9,
-            whiteSpace: 'nowrap',
-            filter: 'url(#goo)',
-            opacity: mark,
-            transform: `translateY(${(1 - mark) * 40}px)`,
-          }}
-        >
-          <span style={{ fontWeight: 500 }}>Forma</span>
-          <span style={{ backgroundImage: colors.wordmarkGradient, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>
-            {'morph'.split('').map((letter, i) => (
-              <span key={letter} style={{ fontWeight: MORPH_WEIGHTS[i] }}>
-                {letter}
-              </span>
-            ))}
-          </span>
-        </h1>
+        <Wordmark fontSize={place.fontSize} progress={mark} />
         <p
           style={{
             margin: '20px 0 0 6px',
@@ -105,6 +79,20 @@ export const TitleCard = ({ layout, durationInFrames }: SceneProps) => {
         >
           AI text roleplay
         </p>
+        {cta && (
+          <p
+            style={{
+              margin: '40px 0 0 6px',
+              fontSize: place.ctaSize,
+              fontWeight: 400,
+              color: colors.foreground,
+              opacity: ctaIn,
+              transform: `translateY(${(1 - ctaIn) * 16}px)`,
+            }}
+          >
+            {cta}
+          </p>
+        )}
       </div>
 
       {place.rule && (

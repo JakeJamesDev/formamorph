@@ -18,6 +18,7 @@ import net from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { prepareGame, verifyGame } from '../../../scripts/lib/demoGame.mjs';
+import { setups } from './captureSetups.mjs';
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = path.resolve(packageRoot, '../..');
@@ -33,8 +34,10 @@ const only = arg('only', '').split(',').filter(Boolean);
 const list = JSON.parse(readFileSync(path.join(packageRoot, 'captures.json'), 'utf8'));
 const unknown = only.filter((id) => !list.shots.some((shot) => shot.id === id));
 if (unknown.length) throw new Error(`Unknown shot: ${unknown.join(', ')}`);
-const shots = list.shots.filter((shot) => !only.length || only.includes(shot.id));
-const scene = JSON.parse(readFileSync(path.join(repoRoot, list.demo.scene), 'utf8'));
+// A deferred shot is listed for the record and belongs to a later ticket. Only `--only` runs it.
+const shots = list.shots.filter((shot) => (only.length ? only.includes(shot.id) : !shot.deferred));
+const readScene = (file) => JSON.parse(readFileSync(path.join(repoRoot, file), 'utf8'));
+const sceneOf = (shot) => readScene(shot.scene ?? list.demo.scene);
 
 const committedDir = path.join(packageRoot, 'public/shots');
 const outDir = DIFF ? path.join(packageRoot, '.capture-diff') : committedDir;
@@ -108,8 +111,55 @@ async function newContext(browser, shot) {
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
   }, list.demo.seed);
-  if (shot.kind === 'game') await prepareGame(context, scene, list.demo.world);
+  for (const name of shot.setup ?? []) {
+    if (!setups[name]) throw new Error(`Unknown setup "${name}" in shot ${shot.id}`);
+    await setups[name](context);
+  }
+  if (shot.kind === 'game') await prepareGame(context, sceneOf(shot), list.demo.world);
   return context;
+}
+
+/** Runs a shot's `steps` after the screen is up. Each step is one key of captures.json's step list. */
+async function runSteps(page, steps) {
+  for (const step of steps) {
+    if (step.editWorld) {
+      // The router's modal route opens a blank draft, so load the stored world into the editor.
+      // The bundled worlds seed in the background on first boot, so wait for this one to land.
+      let id;
+      for (let i = 0; i < 120 && !id; i++) {
+        id = await page.evaluate(async (name) => (await window.__fmDev.listWorlds()).find((world) => world.name === name)?.id, step.editWorld);
+        if (!id) await page.waitForTimeout(500);
+      }
+      if (!id) throw new Error(`No stored world "${step.editWorld}" after 60 s`);
+      await page.evaluate((worldId) => window.__fmDev.editWorld(worldId), id);
+      await page.getByText(step.editWorld, { exact: true }).first().waitFor();
+    } else if (step.click) {
+      await page.getByText(step.click, { exact: true }).first().click();
+    } else if (step.link) {
+      await page.getByRole('link', { name: new RegExp(step.link) }).first().click();
+    } else if (step.uncheck) {
+      const box = page.getByRole('checkbox', { name: new RegExp(step.uncheck, 'i') });
+      if (await box.isVisible().catch(() => false)) await box.uncheck();
+    } else if (step.ask) {
+      await page.keyboard.press('F1');
+      const field = page.getByRole('textbox', { name: 'Ask a Question' });
+      await field.waitFor();
+      await page.waitForTimeout(2000); // the window's open animation drops a fill made during it
+      await field.fill(step.ask);
+      await field.press('Enter');
+      await page.waitForFunction(() => {
+        const log = document.querySelector('[role="log"][aria-label="Conversation"]');
+        return log?.getAttribute('aria-busy') === 'false' && (log.textContent ?? '').length > 150;
+      }, null, { timeout: 60000 });
+      await page.mouse.move(0, 0);
+      await page.waitForTimeout(4000); // the reveal finishes and the pill fades
+    } else if (step.wait) {
+      await page.waitForTimeout(step.wait);
+    } else {
+      throw new Error(`Unknown step ${JSON.stringify(step)}`);
+    }
+    await page.waitForTimeout(400);
+  }
 }
 
 /** Onboarding popovers reappear per screen, so dismissing is a loop, not a single pass. */
@@ -126,15 +176,19 @@ async function dismiss(page) {
 }
 
 async function capture(browser, shot) {
+  const scene = sceneOf(shot);
   const context = await newContext(browser, shot);
   try {
     const page = await context.newPage();
     await page.goto(`http://localhost:${PORT}/`);
     await page.waitForFunction(() => '__fmDev' in window);
     await page.evaluate(([view, opts]) => window.__fmDev.goto(view, opts), [shot.route.view, shot.route]);
-    const { text, testId } = shot.ready;
-    await (text ? page.getByText(text, { exact: true }).first() : page.getByTestId(testId)).waitFor();
+    const { text, testId, role, name } = shot.ready;
+    const target = text ? page.getByText(text, { exact: true }).first() : testId ? page.getByTestId(testId) : page.getByRole(role, { name }).first();
+    await target.waitFor();
     await page.evaluate((palette) => document.documentElement.setAttribute('data-theme', palette), shot.palette);
+    // Toasts time out on their own clock, so a first-run notice would land in some frames and not others.
+    await page.addStyleTag({ content: '[data-sonner-toaster]{display:none!important}' });
     await dismiss(page);
     if (shot.kind === 'game') {
       await page.getByRole('button', { name: scene.choices[0], exact: true }).waitFor();
@@ -142,14 +196,18 @@ async function capture(browser, shot) {
       await input.fill('');
       await input.blur();
     }
+    if (shot.steps) await runSteps(page, shot.steps);
+    if (shot.expect) await page.getByText(shot.expect, { exact: true }).first().waitFor({ timeout: 10000 });
     // Settle: fonts and images decoded, then the pointer parked where it hovers nothing.
     await page.evaluate(async () => {
       await document.fonts.ready;
       await Promise.all([...document.images].map((image) => image.decode().catch(() => {})));
+      // A control a dialog focused on open would otherwise show its focus ring.
+      if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     });
     await page.mouse.move(0, 0);
     await page.waitForTimeout(1500);
-    if (shot.kind === 'game') await verifyGame(page, scene);
+    if (shot.kind === 'game' && shot.verify !== false) await verifyGame(page, scene);
     return await page.screenshot({ animations: 'disabled', caret: 'hide' });
   } finally {
     await context.close();

@@ -34,9 +34,32 @@ This renders both cuts to `out/` and checks each file:
 | TrailerWide | `out/TrailerWide.mp4` | 1920x1080 | 60 fps |
 | TrailerTall | `out/TrailerTall.mp4` | 1080x1920 | 60 fps |
 
-Each line reports size, frame rate, length and codecs. A mismatch prints `FAIL` and the command exits with code 1. To render one cut, name it: `npm run render -- TrailerWide`.
+Each line reports size, frame rate, length, bitrate and codecs. A mismatch prints `FAIL` and the command exits with code 1. To render one cut, name it: `npm run render -- TrailerWide`, or `npm run render:wide`.
 
 Rendered videos are not tracked.
+
+## Wide cut (Steam)
+
+```bash
+npm run render:wide
+```
+
+The wide cut plays the storyboard's 19 shots (`docs-internal/specs/trailer/storyboard.md`, §2) in 63.05 s. The command encodes it for Steam and checks the result:
+
+| Check | Limit |
+|---|---|
+| Size and rate | 1920x1080, 60 fps |
+| Codec | H.264 in MP4, no audio track yet |
+| Bitrate | 5,000 Kbps or more (the encode targets 12 Mbps) |
+| Length | Under 90 s |
+| Loop | Frame 0 and frame 359 are identical, so the first 6 s loop |
+| Poster | `out/TrailerWide-poster.png`, the last frame, 1920x1080 |
+
+- 🔁 The first 6 s (shots W01 to W03) cut between shots and start and end on the same blurred library plate. Steam cuts its microtrailer from them.
+- 🖼️ The poster is the last frame of the encoded video, cut out as a PNG at the video's size.
+- ⏱️ The tall cut still plays the 20 s proof until ticket 06 gives it its own shot order.
+
+Edit the shot list, copy and camera moves in `src/timeline.tsx`. The studio's **TrailerWide** composition shows the result live.
 
 ## Scene library
 
@@ -45,9 +68,10 @@ The studio's **Scene-library** folder lists every scene type and transition in b
 | Scene | File | Takes |
 |---|---|---|
 | Kinetic text card | `src/scenes/KineticText.tsx` | One or two lines, an optional blurred still plate |
-| Frame camera | `src/scenes/FrameScene.tsx` | A shot, a camera path per layout, an optional callout region and caption |
+| Frame camera | `src/scenes/FrameScene.tsx` | A shot, a camera path per layout, an optional callout region and caption, and `fromPlate` to focus in from the shot's own plate |
 | Stack | `src/scenes/StackScene.tsx` | Two panes, each with a shot, a camera path and a caption. Tall stacks top and bottom; wide sits side by side |
-| Typed prompt, then narration | `src/scenes/TypedNarration.tsx` | A player line, the narration, an optional shot behind (`before`, then `after`) |
+| Typed prompt, then narration | `src/scenes/TypedNarration.tsx` | A player line (empty for none), the narration, an optional shot behind (`before`, then `after`) |
+| Plate title | `src/scenes/PlateTitle.tsx` | The wordmark alone over a blurred shot; it ends on the bare plate |
 | Cut, fade, wipe | `src/transitions.tsx` | `TransitionName`; a cut has no overlap, a fade overlaps 15 frames, a wipe 18 |
 
 - 🔤 Copy uses the app's text size roles (`typeRoles` in `src/theme.ts`) scaled to the canvas, in Lexend.
@@ -79,16 +103,40 @@ This sets up each shot in `captures.json` through the app's dev-router and write
 
 A shot's `kind` is `page` (navigate and wait for `ready`) or `game` (load the demo scene into the game view first). Add a shot by adding an entry to `captures.json` and a line in `src/shots.ts`.
 
+Optional fields on a shot:
+
+| Field | Does |
+|---|---|
+| `storyboard` | The storyboard capture ID (C01 to C12), for the record |
+| `scene` | A game scene file other than the demo one, such as `scripts/fixtures/trailer-chat.json` |
+| `setup` | Names from `scripts/captureSetups.mjs` that replace the shot's network and storage with fixed data (below) |
+| `steps` | Moves after the screen is up: `editWorld`, `click`, `link`, `uncheck`, `ask`, `wait` |
+| `expect` | Text that must be on screen after the steps, so a shot never saves the wrong state |
+| `verify` | `false` skips the game screen's layout check for a shot that is not the demo turn |
+| `deferred` | A later ticket's shot. It stays in the list and `npm run capture` skips it; `--only` runs it |
+
+Setups keep every shot off live servers and live AI:
+
+| Setup | Fixes |
+|---|---|
+| `ageGate`, `tutorialsSeen` | The age attestation and every onboarding popover |
+| `communityListings` | The community catalog: the bundled worlds, no counts, from the router's own route |
+| `contestListings` | The router's canned decided contest, with its three entries in the catalog |
+| `defaultEndpoint` | The Demo AI preset, answering its model list |
+| `helpAnswer` | The help window's reply, streamed from a fixed text |
+
+The storyboard's three live-data shots (help answer, community grid, avatar) are fixed this way. The avatar shot unchecks **Animate character**, so it shows the model's rest pose and never a moving frame.
+
 ## How it fits together
 
 | Part | File |
 |---|---|
-| Scene list and timing, shared by both cuts | `src/timeline.tsx` |
+| Scene list and timing for each cut | `src/timeline.tsx` |
 | The two compositions and the scene library folder | `src/Root.tsx` |
 | Scene library entries for the studio | `src/library.tsx` |
-| Title card scene | `src/scenes/TitleCard.tsx` |
+| Title card scene, with an optional call-to-action line | `src/scenes/TitleCard.tsx` |
 | Scenes: kinetic text, frame camera, stack, typed narration | `src/scenes/` |
-| Shared parts: the moving camera and the copy block | `src/parts/` |
+| Shared parts: the moving camera, the copy block, the plate and the wordmark | `src/parts/` |
 | Enter and exit timing | `src/motion.ts` |
 | Transitions | `src/transitions.tsx` |
 | Fonts, type roles and colors | `src/theme.ts` |
