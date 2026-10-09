@@ -48,6 +48,7 @@ export function useSentenceReveal(onText: (text: string) => void, minStagger = 0
   const msPerWordRef = useRef(DEFAULT_STAGGER);
   const lastArrivalAtRef = useRef<number | null>(null);
   const lastArrivalWordsRef = useRef(0);
+  const sampledRef = useRef(false);
 
   const settleDrain = useCallback(() => {
     if (finishedRef.current && !busyRef.current && queueRef.current.length === 0) {
@@ -122,7 +123,9 @@ export function useSentenceReveal(onText: (text: string) => void, minStagger = 0
       const dw = words - lastArrivalWordsRef.current;
       if (dt >= ARRIVAL_MIN_GAP_MS && dw > 0) {
         const sample = dt / dw; // ms per word, observed
-        msPerWordRef.current += ARRIVAL_EMA_ALPHA * (sample - msPerWordRef.current);
+        // A turn's first real sample beats the carried rate outright; later ones smooth into it.
+        msPerWordRef.current = sampledRef.current ? msPerWordRef.current + ARRIVAL_EMA_ALPHA * (sample - msPerWordRef.current) : sample;
+        sampledRef.current = true;
       }
     }
     lastArrivalAtRef.current = now;
@@ -131,6 +134,11 @@ export function useSentenceReveal(onText: (text: string) => void, minStagger = 0
 
   const push = useCallback(
     (cumulativePrefix: string) => {
+      // The first call marks the stream's start, so the first sentence's arrival is a rate sample too.
+      if (lastArrivalAtRef.current === null && !cumulativePrefix && !shownRef.current && !queueRef.current.length) {
+        lastArrivalAtRef.current = Date.now();
+        lastArrivalWordsRef.current = 0;
+      }
       enqueue(cumulativePrefix, true);
       pump();
     },
@@ -162,6 +170,7 @@ export function useSentenceReveal(onText: (text: string) => void, minStagger = 0
     // per-turn arrival tracking below is cleared, so the first arrival of the new turn measures no gap.
     lastArrivalAtRef.current = null;
     lastArrivalWordsRef.current = 0;
+    sampledRef.current = false;
     setRevealTiming(flooredTiming({ stagger: DEFAULT_STAGGER, duration: DEFAULT_DURATION }, minStaggerRef.current, minDurationRef.current));
     onTextRef.current('');
     // Don't leave a caller awaiting a reveal we just cleared.
