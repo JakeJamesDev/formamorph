@@ -90,6 +90,9 @@ When the Origin can't be shown, the editor reveals the touched record on its own
 | Q11 | Q34 applies to the Origin. A location in the canvas view pushes its detail panel on mobile. |
 | Q12 | The Origin's tab and selection apply only to a mirror, where the Origin tab differs from the touched record's own tab. On the own tab, reveal selects today's target, so an add or a row action selects the touched record, not the earlier selection. A mirror whose Origin held no selection (the Opening sub-tab, an empty list) opens the Origin tab alone. Sub-view and field still come from the Origin on either kind of tab. Ticket 03's whole selection follows the same split. |
 | Q13 | A jump skips a Step that resolves to nothing and falls back inward to the next Step that resolves (Q3). A single undo or redo is unchanged. A Step with an Origin whose touched records have no tab (stat updates) counts as a mirror and opens the Origin tab. |
+| Q14 | A connection edited in the Locations list view reveals the list view with the Origin's location selected. The connection stays unselected, because only the canvas selects one. A connection edited on the canvas still selects it there. |
+| Q15 | "No panel open" is a sub-view. An Overview edit made with no custom prompt panel open closes any open panel on reveal. |
+| Q16 | Any in-panel tab that hides a field is a sub-view, including the Overview readme's Introduction and Gameplay tabs. A Gameplay readme edit reveals the Gameplay tab and pulses the field. Where the field identity already names its tab, as the readme fields do, the field opens it; no separate Origin entry is needed. |
 
 Undo-history Q21 (tour) stands. The History Popover is unchanged.
 
