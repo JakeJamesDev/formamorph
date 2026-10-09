@@ -22,6 +22,8 @@ export const SHOTS = {
   library: shot('library'),
   turnBefore: shot('turn-before'),
   game: shot('game'),
+  turnBeforeTall: shot('turn-before-tall'),
+  gameTall: shot('game-tall'),
   entity: shot('entity'),
   chat: shot('chat'),
   canvas: shot('canvas'),

@@ -1,6 +1,6 @@
 import { AbsoluteFill } from 'remotion';
 import { CANVAS, type Layout, type SceneProps, type Size } from '../layout';
-import { CopyBlock } from '../parts/CopyBlock';
+import { CopyBlock, type CopyLines } from '../parts/CopyBlock';
 import { FrameCamera, type CameraPath } from '../parts/FrameCamera';
 import { shotFor, type LayoutShot } from '../shots';
 import { colors } from '../theme';
@@ -9,7 +9,7 @@ import { colors } from '../theme';
 export type StackPane = {
   shot: LayoutShot;
   camera: CameraPath;
-  caption: string;
+  caption: CopyLines;
 };
 
 type StackSceneProps = SceneProps & { panes: readonly [StackPane, StackPane] };
@@ -30,7 +30,7 @@ export const StackScene = ({ layout, durationInFrames, panes }: StackSceneProps)
       {panes.map((pane, i) => (
         <div key={i} style={{ position: 'relative', ...size, overflow: 'hidden', backgroundColor: colors.stage }}>
           <FrameCamera layout={layout} durationInFrames={durationInFrames} shot={shotFor(pane.shot, layout)} path={pane.camera} size={size} />
-          <CopyBlock lines={[pane.caption]} layout={layout} durationInFrames={durationInFrames} variant="pane" delay={10 + i * 20} />
+          <CopyBlock lines={pane.caption} layout={layout} durationInFrames={durationInFrames} variant="pane" delay={10 + i * 20} />
         </div>
       ))}
     </AbsoluteFill>

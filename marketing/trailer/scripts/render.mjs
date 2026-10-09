@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Renders each trailer composition (default: both) to out/<id>.mp4, then checks every file against its composition
-// and, for the Steam cut, against the Steam spec. The wide cut also writes its poster frame and proves its loop.
+// and proves its 6 s loop. The wide cut is also checked against the Steam spec and writes its poster frame.
 //
 //   npm run render                 both cuts
 //   npm run render -- TrailerWide  one cut
@@ -19,11 +19,12 @@ const outDir = path.join(root, 'out');
 mkdirSync(outDir, { recursive: true });
 
 /**
- * Steam's store trailer spec (partner docs, read 2026-10-08): up to 1920x1080, 30 or 60 fps, 5,000+ Kbps,
- * H.264 in MP4. The spec states no length limit; the storyboard sets the 90 s target. The poster must be a
- * 1920x1080 frame of the video. The first 6 s are Steam's microtrailer, so they must loop.
+ * Per-composition checks. The wide cut follows Steam's store trailer spec (partner docs, read 2026-10-08):
+ * up to 1920x1080, 30 or 60 fps, 5,000+ Kbps, H.264 in MP4. The spec states no length limit; the storyboard
+ * sets the 90 s target. The poster must be a 1920x1080 frame of the video. The first 6 s are Steam's
+ * microtrailer, so they must loop.
  */
-const STEAM = {
+const CHECKS = {
   TrailerWide: {
     videoBitrate: '12M',
     minKbps: 5000,
@@ -31,6 +32,8 @@ const STEAM = {
     loopFrames: 360,
     poster: { size: '1920x1080', fromEnd: 1 },
   },
+  // The social cut has no store spec. It shares the wide cut's first 6 s, so it loops too.
+  TrailerTall: { loopFrames: 360 },
 };
 
 console.log('Bundling…');
@@ -47,7 +50,7 @@ for (const id of ids) {
     codec: 'h264',
     outputLocation,
     jpegQuality: 95,
-    videoBitrate: STEAM[id]?.videoBitrate,
+    videoBitrate: CHECKS[id]?.videoBitrate,
     onProgress: ({ progress }) => {
       const step = Math.floor(progress * 10);
       if (step !== lastStep) {
@@ -80,7 +83,7 @@ for (const { composition, outputLocation } of rendered) {
     reader: nodeReader,
     fields: { dimensions: true, fps: true, slowNumberOfFrames: true, videoCodec: true, audioCodec: true },
   });
-  const spec = STEAM[composition.id];
+  const spec = CHECKS[composition.id];
   const expected = {
     size: `${composition.width}x${composition.height}`,
     fps: composition.fps,
@@ -98,10 +101,8 @@ for (const { composition, outputLocation } of rendered) {
   const problems = Object.keys(expected).filter((key) => expected[key] !== actual[key]).map((key) => `${key}: expected ${expected[key]}, got ${actual[key]}`);
   const seconds = actual.frames === null ? null : actual.frames / composition.fps;
   const kbps = seconds ? Math.round((statSync(outputLocation).size * 8) / seconds / 1000) : null;
-  if (spec) {
-    if (seconds === null || seconds >= spec.maxSeconds) problems.push(`length: ${seconds} s is not under ${spec.maxSeconds} s`);
-    if (kbps === null || kbps < spec.minKbps) problems.push(`bitrate: ${kbps} Kbps is under ${spec.minKbps} Kbps`);
-  }
+  if (spec?.maxSeconds && (seconds === null || seconds >= spec.maxSeconds)) problems.push(`length: ${seconds} s is not under ${spec.maxSeconds} s`);
+  if (spec?.minKbps && (kbps === null || kbps < spec.minKbps)) problems.push(`bitrate: ${kbps} Kbps is under ${spec.minKbps} Kbps`);
   const summary = `${path.relative(root, outputLocation)}  ${actual.size}  ${actual.fps} fps  ${seconds?.toFixed(2) ?? '?'} s  ${kbps ?? '?'} Kbps  ${actual.videoCodec}  audio: ${actual.audioCodec ?? 'none'}`;
   report(problems.length === 0, summary, problems);
 
@@ -111,6 +112,7 @@ for (const { composition, outputLocation } of rendered) {
   const first = await still(composition, 0, path.join(outDir, `${composition.id}-loop-first.png`));
   const last = await still(composition, spec.loopFrames - 1, path.join(outDir, `${composition.id}-loop-last.png`));
   report(first.equals(last), `first ${spec.loopFrames / composition.fps} s loop: frame 0 and frame ${spec.loopFrames - 1} are identical`);
+  if (!spec.poster) continue;
 
   // The poster is a frame of the encoded video, so it is the frame a viewer sees. Seek by time, to the frame's start.
   const posterFrame = composition.durationInFrames - spec.poster.fromEnd;

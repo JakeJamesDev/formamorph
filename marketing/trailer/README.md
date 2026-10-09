@@ -57,9 +57,28 @@ The wide cut plays the storyboard's 19 shots (`docs-internal/specs/trailer/story
 
 - 🔁 The first 6 s (shots W01 to W03) cut between shots and start and end on the same blurred library plate. Steam cuts its microtrailer from them.
 - 🖼️ The poster is the last frame of the encoded video, cut out as a PNG at the video's size.
-- ⏱️ The tall cut still plays the 20 s proof until ticket 06 gives it its own shot order.
 
 Edit the shot list, copy and camera moves in `src/timeline.tsx`. The studio's **TrailerWide** composition shows the result live.
+
+## Tall cut (social)
+
+```bash
+npm run render:tall
+```
+
+The tall cut plays the storyboard's 14 shots (§4) in 47.80 s at 1080x1920, 60 fps. It comes from the same scene list as the wide cut and has its own shot order. `npm run render` renders both.
+
+| Treatment | Shots | How |
+|---|---|---|
+| Relayout | T01, T03, T08, T12, T14 | The scene places its own content for `tall` |
+| Crop | T04, T07, T09, T13 | The frame camera follows a 9:16 window in the wide capture. Each scene has one camera path per layout |
+| Stack | T06, T10, T11 | Two wide captures, each cropped to half the canvas, one above the other, each with its own caption |
+| Recapture | T02, T05 | The native 540x960 mobile-layout shots `turn-before-tall` and `game-tall` |
+
+- ✂️ The tall cut drops W13 (Morphie) and W18 (avatar).
+- 🔁 T01 to T03 match W01 to W03, so the tall cut loops for its first 6 s too.
+- 📱 `npm run capture -- --only game-tall` and `--only turn-before-tall` rewrite the two recaptures.
+- 🎯 The tall cut has no Steam checks. The render command checks its size, rate, length, codecs and the 6 s loop.
 
 ## Scene library
 
