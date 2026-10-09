@@ -292,6 +292,30 @@ describe('revealForMove', () => {
     });
   });
 
+  describe('the Origin field', () => {
+    it('rides with the Origin tab and record of a mirror', () => {
+      const step = stepFrom({ tab: 'locations', ids: ['harbor'], field: 'roster' });
+      expect(revealForMove([step], world, editor())).toEqual({ tab: 'locations', id: 'harbor', field: 'roster' });
+    });
+
+    it('rides with the Origin tab alone when nothing was selected there', () => {
+      const step = stepFrom({ tab: 'overview', subTab: 'opening', field: 'openings/o-1/text' });
+      expect(revealForMove([step], world, editor()))
+        .toEqual({ tab: 'overview', subTab: 'opening', field: 'openings/o-1/text' });
+    });
+
+    it('applies to the touched record on its own tab', () => {
+      const step = stepFrom({ tab: 'entities', ids: ['other'], field: 'aiDescription' });
+      expect(revealForMove([step], world, editor({ held: ['other', 'wick'] })))
+        .toEqual({ tab: 'entities', id: 'wick', field: 'aiDescription' });
+    });
+
+    it('is dropped when the reveal falls back to a tab the Origin was not on', () => {
+      const step = stepFrom({ tab: 'locations', ids: ['harbor'], field: 'roster' });
+      expect(revealForMove([step], world, editor({ held: [] }))).toEqual({ tab: 'entities', id: 'wick' });
+    });
+  });
+
   it('reveals the Origin of the Step nearest where a jump lands', () => {
     const first = stepFrom({ tab: 'overview' });
     const last = stepFrom({ tab: 'locations', ids: ['harbor'] });

@@ -37,6 +37,7 @@ import { ListDetailFirstRow } from '@/components/ui/list-detail';
 import { PanelTabContent, PanelTabs } from '@/components/ui/panel-tabs';
 import { placeholderPanelTabsFor, type PlaceholderPanelTab } from '@/views/placeholderPanelTabs';
 import { WorldInput } from '@/components/editor/WorldField';
+import { fieldFrame, fieldPath } from '@/lib/historyField';
 
 /** Which of the two value-editing styles a placeholder is being edited in. Session-only — nothing about it
  *  is stored, so a placeholder is re-read on every open rather than remembered. */
@@ -341,7 +342,7 @@ const PlaceholderManager = ({ placeholder, rowId, share, tab, onTabChange }: {
   );
 
   const nameInput = (
-    <div className="space-y-2">
+    <div className="space-y-2" {...fieldFrame('name')}>
       <Label>Name</Label>
       <WorldInput
         value={editing.name}
@@ -525,35 +526,37 @@ const PlaceholderManager = ({ placeholder, rowId, share, tab, onTabChange }: {
           ) : (
           <Popover open={openValue !== null} onOpenChange={(o) => !o && setOpenValue(null)}>
             <PopoverAnchor virtualRef={anchor} />
-            <KeywordChips
-              keywords={editing.values.map((v) => v.text)}
-              onChange={setValues}
-              placeholders={placeholders}
-              ownerId={placeholder.id}
-              // A value that is only a chip is a part of this placeholder, so it reads as the part it names
-              // rather than as what that part will become.
-              lonePlaceholderAsPath
-              placeholder="e.g. Red, then Enter for each"
-              // Toggles, like the placeholder chips' own pop-out: without this, clicking the open chip
-              // re-opened it and the only way out was clicking somewhere else entirely.
-              onChipClick={weighable ? (v) => {
-                anchor.current = chipEls.current.get(v) ?? null;
-                setOpenValue((prev) => (prev === v ? null : v));
-              } : undefined}
-              chipSuffix={showChances ? (v) => `(${chipPct(v)})` : undefined}
-              chipStyle={chipStyle}
-              // Every chip gets the same wrapper whether or not it is the open one, so its DOM node survives
-              // the click that opens the pop-out.
-              renderChip={(chip, v) => (
-                <span
-                  className="inline-flex"
-                  ref={(el) => { if (el) chipEls.current.set(v, el); else chipEls.current.delete(v); }}
-                >
-                  {chip}
-                </span>
-              )}
-              chipAside={advanced ? valuePins : undefined}
-            />
+            <div {...fieldFrame('values')}>
+              <KeywordChips
+                keywords={editing.values.map((v) => v.text)}
+                onChange={setValues}
+                placeholders={placeholders}
+                ownerId={placeholder.id}
+                // A value that is only a chip is a part of this placeholder, so it reads as the part it names
+                // rather than as what that part will become.
+                lonePlaceholderAsPath
+                placeholder="e.g. Red, then Enter for each"
+                // Toggles, like the placeholder chips' own pop-out: without this, clicking the open chip
+                // re-opened it and the only way out was clicking somewhere else entirely.
+                onChipClick={weighable ? (v) => {
+                  anchor.current = chipEls.current.get(v) ?? null;
+                  setOpenValue((prev) => (prev === v ? null : v));
+                } : undefined}
+                chipSuffix={showChances ? (v) => `(${chipPct(v)})` : undefined}
+                chipStyle={chipStyle}
+                // Every chip gets the same wrapper whether or not it is the open one, so its DOM node survives
+                // the click that opens the pop-out.
+                renderChip={(chip, v) => (
+                  <span
+                    className="inline-flex"
+                    ref={(el) => { if (el) chipEls.current.set(v, el); else chipEls.current.delete(v); }}
+                  >
+                    {chip}
+                  </span>
+                )}
+                chipAside={advanced ? valuePins : undefined}
+              />
+            </div>
             {weightPopover}
           </Popover>
           )}
@@ -667,16 +670,19 @@ const MultilineValues = ({
             <div className="ml-auto flex shrink-0 items-center gap-2">
               {weight && value && (
                 <>
-                  <WorldInput
-                    type="number"
-                    min={0}
-                    step={1}
-                    value={weight(value)}
-                    onChange={(e) => onWeight(value, Math.max(0, Math.round(Number(e.target.value) || 0)))}
-                    className="h-6 w-14 px-1.5 text-helper"
-                    aria-label={`Draw weight for value ${i + 1}`}
-                    title="Draw weight"
-                  />
+                  {/* A box's id is redrawn whenever the values change, so its place in the list names it. */}
+                  <span className="inline-flex" {...fieldFrame('values', String(i), 'weight')}>
+                    <WorldInput
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={weight(value)}
+                      onChange={(e) => onWeight(value, Math.max(0, Math.round(Number(e.target.value) || 0)))}
+                      className="h-6 w-14 px-1.5 text-helper"
+                      aria-label={`Draw weight for value ${i + 1}`}
+                      title="Draw weight"
+                    />
+                  </span>
                   <span className="w-10 text-right text-meta text-muted-foreground">{chance(value)}</span>
                 </>
               )}
@@ -698,6 +704,7 @@ const MultilineValues = ({
           {open && (
             <div className="p-2">
               <PlaceholderField
+                historyField={fieldPath('values', String(i), 'text')}
                 value={box.text}
                 onChange={(text) => onText(box.id, text)}
                 placeholders={placeholders}

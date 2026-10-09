@@ -10,6 +10,7 @@ import { isSurfaceTarget, routeText, TARGET_ATTRIBUTE, targetAttribute, type Tar
 import { useRouteLanding } from '@/lib/surface/useLanding';
 import { editorTabGroupsFor, editorTabsFor, RAIL_ROOM_PX } from './worldEditorTabs';
 import { useHistoryReveal } from './useHistoryReveal';
+import { watchFieldInUse } from '@/lib/historyField';
 import type { RevealTab } from '@/lib/historyReveal';
 import { EditorSectionsBar } from '@/components/editor/EditorSectionsBar';
 import { EDITOR_HIDDEN_NOTICE, EDITOR_MODE_DESCRIPTIONS, useEditorMode, type EditorMode } from '@/lib/editorMode';
@@ -751,7 +752,7 @@ const WorldEditorInner = ({
       }
     }
   }, [entityTabs, locationTabs, statTabs, traitTabs, placeholderTabs, entryTabs, bookTabs]);
-  const { connectionReveal, clearConnectionReveal, selectionReveal, clearSelectionReveal } = useHistoryReveal({
+  const { connectionReveal, clearConnectionReveal, selectionReveal, clearSelectionReveal, fieldReveal } = useHistoryReveal({
     onMove: historyMoves.onMove, touring, visibleTabs, holds: listHolds, setActiveTab, clearSearch, setLocationView,
     showSubTab, navigateToItem: navigateToBenchItem,
   });
@@ -764,6 +765,9 @@ const WorldEditorInner = ({
     canvasPicked.current = ids;
     publishPlace.current();
   }, []);
+  // State, so a write committed on blur renders with the focus change and records the field it left.
+  const [fieldInUse, setFieldInUse] = useState<string | undefined>(undefined);
+  useEffect(() => watchFieldInUse(document, setFieldInUse), []);
 
   // ── Authoring Tour ────────────────────────────────────────────────────────
   // A step's field comes on screen the way a search hit does: its tab, a clear list filter, then focus once
@@ -999,7 +1003,7 @@ const WorldEditorInner = ({
   const placeId = selections[activeTab] ?? undefined;
   const placeSub = placeSubTab[activeTab];
   const placeView = activeTab === 'locations' ? locationView : undefined;
-  // Passive, so a write's layout effect still reads the place from before a tab switch in its commit.
+  // Passive, so a write's layout effect still reads the place from before a tab or focus switch in its commit.
   useEffect(() => {
     const onCanvas = activeTab === 'locations' && locationView === 'canvas';
     if (!onCanvas) canvasPicked.current = [];
@@ -1011,10 +1015,11 @@ const WorldEditorInner = ({
         ...(ids.length ? { ids } : {}),
         ...(placeSub ? { subTab: placeSub } : {}),
         ...(placeView ? { view: placeView } : {}),
+        ...(fieldInUse ? { field: fieldInUse } : {}),
       };
     };
     publishPlace.current();
-  }, [historyPlace, activeTab, placeId, placeSub, placeView, locationView]);
+  }, [historyPlace, activeTab, placeId, placeSub, placeView, locationView, fieldInUse]);
   useEffect(() => () => { historyPlace.current = null; }, [historyPlace]);
   // Tabbed panels keep their strip above a body that scrolls itself, so the pane gives them its height.
   const detailFills = !!listEditorParts?.fills;
@@ -1057,6 +1062,7 @@ const WorldEditorInner = ({
       {activeTab === "overview" && (
         <WorldDetailsManager
           focusField={findField}
+          fieldReveal={fieldReveal}
           panel={overviewPanel}
           onPanelChange={setOverviewPanel}
           onOpenEntity={(id) => navigateToBenchItem('entities', id, 'openings')}

@@ -21,6 +21,7 @@ import { HintInfo } from '@/components/SettingsRows';
 import { PlaceholderPinRows } from '@/components/editor/PlaceholderPinRows';
 import { locationPanelTabsFor, locationTabForField, type LocationPanelTab } from '@/views/locationPanelTabs';
 import type { FocusFieldHint, GameLocation, PlaceholderPin } from '@/types';
+import { fieldFrame } from '@/lib/historyField';
 
 /**
  * Right-panel editor for one location: its fields split across Details, Presence, Media, Pins and Openings.
@@ -80,7 +81,7 @@ const LocationManager = ({ location, tab, onTabChange, focusField }: {
 
       <PanelTabContent value="details">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-          <div data-tour-anchor="location-name" className="min-w-0 flex-1 space-y-2">
+          <div data-tour-anchor="location-name" className="min-w-0 flex-1 space-y-2" {...fieldFrame('name')}>
             <Label>Name</Label>
             <PlaceholderNameField
               value={editingLocation.name || ''}
@@ -103,6 +104,7 @@ const LocationManager = ({ location, tab, onTabChange, focusField }: {
         </div>
         <PlaceholderField
           label="Player-Facing Description"
+          historyField="playerDescription"
           labelAside={(
             <AiGenerateButton
               mode="playerDesc"
@@ -119,6 +121,7 @@ const LocationManager = ({ location, tab, onTabChange, focusField }: {
         />
         <PlaceholderField
           label="AI-Facing Description"
+          historyField="aiDescription"
           labelAside={(
             <AiGenerateButton
               mode="aiDesc"
@@ -136,6 +139,7 @@ const LocationManager = ({ location, tab, onTabChange, focusField }: {
         {advanced && (
           <PlaceholderField
             label="AI-Facing Summary"
+            historyField="aiSummary"
             labelAside={(
               <AiGenerateButton
                 mode="summary"

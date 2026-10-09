@@ -4,6 +4,7 @@ import { Label } from '@/components/ui/label';
 import type { EntityGroup } from '@/types';
 import { ListDetailFirstRow } from '@/components/ui/list-detail';
 import { WorldInput } from '@/components/editor/WorldField';
+import { fieldFrame } from '@/lib/historyField';
 
 /** Right-panel editor for an entity group: just a name — groups are editor-only folders with no AI fields. */
 const EntityGroupManager = ({ group }: { group: EntityGroup }) => {
@@ -15,7 +16,7 @@ const EntityGroupManager = ({ group }: { group: EntityGroup }) => {
   return (
     <div className="space-y-4">
       <ListDetailFirstRow>
-        <div className="space-y-2">
+        <div className="space-y-2" {...fieldFrame('name')}>
           <Label>Group Name</Label>
           <WorldInput value={editingGroup.name || ''} onChange={(e) => setField('name', e.target.value)} />
         </div>

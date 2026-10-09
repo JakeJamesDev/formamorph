@@ -25,6 +25,8 @@ import {
 import { isOpeningFieldKey, openingsEnabled, setOpeningsEnabled } from "@/lib/openings";
 import { OpeningsPanel } from "./OpeningsPanel";
 import { OVERVIEW_PANELS, type OverviewPanel } from '@/views/overviewPanels';
+import type { FieldReveal } from '@/views/useHistoryReveal';
+import { fieldPath } from '@/lib/historyField';
 import { useEditorMode } from "@/lib/editorMode";
 import type { FocusFieldHint } from "@/types";
 
@@ -212,6 +214,7 @@ const CustomPromptsSection = ({ focusField, tab, onTabChange: setTab, onOpenEnti
         return (
           <div className="space-y-2">
             <PlaceholderField
+              historyField={fieldPath('prompts', kind)}
               value={stored ?? presetPrompts[kind]}
               // Storing on the first divergence is what keeps an untouched kind tracking the preset: a
               // world only carries a prompt its author actually wrote.
@@ -258,16 +261,22 @@ const CustomPromptsSection = ({ focusField, tab, onTabChange: setTab, onOpenEnti
   );
 };
 
+/** The readme tab that shows each readme field, by its find-bar field key and its field identity alike. */
+const README_TABS: Partial<Record<string, 'introduction' | 'gameplay'>> = { introReadme: 'introduction', readme: 'gameplay' };
+
 /**
  * The world's two readmes, one tab each. The player never sees them together: the Introduction opens over
  * the first enter-world setup screen and the Gameplay one on entering the game, so writing for a player
  * who has already built their character stays out of the pre-trait window.
  *
- * `focusField` is the search target the find bar just navigated to, which is the only way it can reach
- * whichever readme isn't currently showing. It arrives as a fresh object per navigation so that stepping
- * onto a second hit in the same readme re-opens that tab after the author has flipped away from it.
+ * `focusField` is the search target the find bar just navigated to, and `fieldReveal` the field an undo or
+ * redo returns to. Either is the only way to reach whichever readme isn't showing. Each arrives as a fresh
+ * object per navigation, so a second visit to the same readme re-opens its tab after the author flipped away.
  */
-const ReadmeSection = ({ focusField }: { focusField?: FocusFieldHint | null }) => {
+const ReadmeSection = ({ focusField, fieldReveal }: {
+  focusField?: FocusFieldHint | null;
+  fieldReveal?: FieldReveal | null;
+}) => {
   const { worldOverview, updateWorldOverview, placeholders } = useGameData();
   // Opens on the Introduction, except for a world that only has the older Gameplay readme — an author
   // whose readme is on the other tab would otherwise be met by an empty field where their text used to be.
@@ -275,9 +284,13 @@ const ReadmeSection = ({ focusField }: { focusField?: FocusFieldHint | null }) =
     !worldOverview.introReadme?.trim() && worldOverview.readme?.trim() ? 'gameplay' : 'introduction');
 
   useEffect(() => {
-    if (focusField?.fieldKey === 'introReadme') setTab('introduction');
-    else if (focusField?.fieldKey === 'readme') setTab('gameplay');
+    const shows = README_TABS[focusField?.fieldKey ?? ''];
+    if (shows) setTab(shows);
   }, [focusField]);
+  useEffect(() => {
+    const shows = README_TABS[fieldReveal?.field ?? ''];
+    if (shows) setTab(shows);
+  }, [fieldReveal]);
 
   return (
     <Tabs value={tab} onValueChange={setTab} className="space-y-2">
@@ -293,6 +306,7 @@ const ReadmeSection = ({ focusField }: { focusField?: FocusFieldHint | null }) =
       <TabsContent value="introduction" className="space-y-2">
         <Hint>Shown before the player makes any setup choices</Hint>
         <PlaceholderField
+          historyField="introReadme"
           value={worldOverview.introReadme ?? ''}
           onChange={(introReadme) => updateWorldOverview({ introReadme })}
           placeholders={placeholders}
@@ -304,6 +318,7 @@ const ReadmeSection = ({ focusField }: { focusField?: FocusFieldHint | null }) =
       <TabsContent value="gameplay" className="space-y-2">
         <Hint>Shown when the player enters the world</Hint>
         <PlaceholderField
+          historyField="readme"
           value={worldOverview.readme ?? ''}
           onChange={(readme) => updateWorldOverview({ readme })}
           placeholders={placeholders}
@@ -322,8 +337,10 @@ export const AI_DESCRIPTION_INFO = "Goes to the AI on every turn as your world's
 
 /** The AI-facing world content fields (description, system prompt, readmes), shown in the editor's right
  *  column on the Overview tab. Identity/listing fields live in WorldOverviewManager (left column). */
-const WorldDetailsManager = ({ focusField, panel, onPanelChange, onOpenEntity, onOpenLocation }: {
+const WorldDetailsManager = ({ focusField, fieldReveal, panel, onPanelChange, onOpenEntity, onOpenLocation }: {
   focusField?: FocusFieldHint | null;
+  /** The field the latest undo or redo returns to. */
+  fieldReveal?: FieldReveal | null;
   /** The open custom prompt panel, held by the editor. */
   panel: OverviewPanel | null;
   onPanelChange: (panel: OverviewPanel | null) => void;
@@ -343,6 +360,7 @@ const WorldDetailsManager = ({ focusField, panel, onPanelChange, onOpenEntity, o
     <div className="space-y-4">
       <PromptField
         label="Player-Facing Description"
+        historyField="description"
         info={<HintInfo>{PLAYER_DESCRIPTION_INFO}</HintInfo>}
         value={worldOverview.description}
         onChange={(description) => updateWorldOverview({ description })}
@@ -351,10 +369,11 @@ const WorldDetailsManager = ({ focusField, panel, onPanelChange, onOpenEntity, o
         resizable
       />
 
-      <ReadmeSection focusField={focusField} />
+      <ReadmeSection focusField={focusField} fieldReveal={fieldReveal} />
 
       <PlaceholderField
         label="AI-Facing Description"
+        historyField="systemPrompt"
         info={<HintInfo>{AI_DESCRIPTION_INFO}</HintInfo>}
         value={worldOverview.systemPrompt || ''}
         onChange={(systemPrompt) => updateWorldOverview({ systemPrompt })}

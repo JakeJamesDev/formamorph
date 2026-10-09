@@ -15,6 +15,7 @@ import {
 } from '@/views/dictionaryPanelTabs';
 import type { DictionaryEntry, FocusFieldHint, Placeholder } from '@/types';
 import { WorldInput } from '@/components/editor/WorldField';
+import { fieldFrame } from '@/lib/historyField';
 
 /** The long form behind the Trigger Keywords ⓘ: the chip editor's own controls, which the field does not
  *  label. The line under the chips carries only what the keywords do. */
@@ -110,7 +111,7 @@ const DictionaryManager = ({ entry, placeholders = [], ownerId, tab, onTabChange
 
   const detailsPanel = (
     <>
-      <div className="space-y-2" data-tour-anchor="dictionary-name">
+      <div className="space-y-2" data-tour-anchor="dictionary-name" {...fieldFrame('name')}>
         <Label>Name</Label>
         <Hint>Names the entry in the list and prefixes the Value in the prompt. Blank uses the first Trigger Keyword.</Hint>
         <PlaceholderNameField
@@ -122,7 +123,7 @@ const DictionaryManager = ({ entry, placeholders = [], ownerId, tab, onTabChange
           ariaLabel="Name"
         />
       </div>
-      <div className="space-y-2">
+      <div className="space-y-2" {...fieldFrame('key')}>
         <div className="flex items-center gap-2">
           <Label>Trigger Keywords</Label>
           <HintInfo>{KEYWORDS_INFO}</HintInfo>
@@ -138,6 +139,7 @@ const DictionaryManager = ({ entry, placeholders = [], ownerId, tab, onTabChange
       </div>
       <PlaceholderField
         label="Value"
+        historyField="value"
         value={editingEntry.value || ''}
         onChange={(v) => handleChange('value', v)}
         placeholders={placeholders}
@@ -162,12 +164,12 @@ const DictionaryManager = ({ entry, placeholders = [], ownerId, tab, onTabChange
           <CheckRow label="Recursive" checked={!!editingEntry.recursive} onChange={(v) => handleChange('recursive', v)} />
         </div>
       </div>
-      <div className="space-y-2">
+      <div className="space-y-2" {...fieldFrame('scanDepth')}>
         <Label>Scan Depth</Label>
         <Hint>Sets how many earlier messages are scanned for keywords. Blank scans all of them. 0 scans only the current scene.</Hint>
         <WorldInput type="number" min={0} value={editingEntry.scanDepth ?? ''} onChange={(e) => handleNumber('scanDepth', e.target.value)} placeholder="All history" />
       </div>
-      <div className="space-y-2">
+      <div className="space-y-2" {...fieldFrame('secondaryKeys')}>
         <Label>Secondary Keywords</Label>
         <Hint>{secondaryHint}</Hint>
         <KeywordChips keywords={secondaryKeywords} onChange={handleSecondaryChange} placeholders={chipPlaceholders} ownerId={ownerId} placeholder="e.g. red" offerCommaSplit={!editingEntry.useRegex} />

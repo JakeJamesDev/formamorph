@@ -4,6 +4,7 @@ import { Label } from '@/components/ui/label';
 import type { PlaceholderGroup } from '@/types';
 import { ListDetailFirstRow } from '@/components/ui/list-detail';
 import { WorldInput } from '@/components/editor/WorldField';
+import { fieldFrame } from '@/lib/historyField';
 
 /** Right-panel editor for a placeholder folder: just a name. Folders are editor-only and take no chips, so
  *  the name is a plain input rather than a chip field. The Blueprints group keeps its name. */
@@ -17,7 +18,7 @@ const PlaceholderGroupManager = ({ group }: { group: PlaceholderGroup }) => {
   return (
     <div className="space-y-4">
       <ListDetailFirstRow>
-        <div className="space-y-2">
+        <div className="space-y-2" {...fieldFrame('name')}>
           <Label htmlFor={`group-name-${editingGroup.id}`}>Group Name</Label>
           <WorldInput
             id={`group-name-${editingGroup.id}`}

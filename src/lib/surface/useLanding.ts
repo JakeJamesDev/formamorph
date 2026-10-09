@@ -17,9 +17,9 @@ export interface LandingOptions {
 /**
  * Lands on a row once per call of the returned function. A frame after the call, so a tab panel that mounts
  * a commit late is there, it scrolls the row into view, focuses its control, and pulses its ring. A row
- * that never shows lands nothing.
+ * that never shows lands nothing. A null target cancels the pending landing and its pulse.
  */
-export function useLanding<T>(find: (target: T) => HTMLElement | null, options: LandingOptions = {}): (target: T) => void {
+export function useLanding<T>(find: (target: T) => HTMLElement | null, options: LandingOptions = {}): (target: T | null) => void {
   // Each call is a new object, so a repeat call for the same target lands again.
   const [request, setRequest] = useState<{ target: T } | null>(null);
   const latest = useRef({ find, options });
@@ -46,7 +46,7 @@ export function useLanding<T>(find: (target: T) => HTMLElement | null, options: 
       cancelPulse?.();
     };
   }, [request]);
-  return useCallback((target: T) => setRequest({ target }), []);
+  return useCallback((target: T | null) => setRequest(target === null ? null : { target }), []);
 }
 
 const findInDocument = (route: string) => findTargetRow(document, route);

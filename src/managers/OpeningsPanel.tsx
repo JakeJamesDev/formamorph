@@ -29,6 +29,7 @@ import { labelPlaceholders } from '@/lib/placementLetters';
 import { cn } from '@/lib/utils';
 import type { Entity, GameLocation, Opening, OpeningKind, Placeholder } from '@/types';
 import { WorldInput } from '@/components/editor/WorldField';
+import { fieldFrame, fieldPath } from '@/lib/historyField';
 
 /** The Starting Location filter's value for every start at once. */
 const ALL_LOCATIONS = 'all-locations';
@@ -455,16 +456,18 @@ const OpeningCard = ({
           </ToggleGroup>
         )}
         <div className="ml-auto flex items-center gap-2">
-          <WorldInput
-            type="number"
-            min={0}
-            step={1}
-            value={weight}
-            onChange={(e) => onWeight(Math.max(0, Math.round(Number(e.target.value) || 0)))}
-            className="h-6 w-14 px-1.5 text-helper"
-            aria-label={`Draw weight for ${a11yLabel}`}
-            title="Draw weight"
-          />
+          <span className="inline-flex" {...fieldFrame('openings', opening.id, 'weight')}>
+            <WorldInput
+              type="number"
+              min={0}
+              step={1}
+              value={weight}
+              onChange={(e) => onWeight(Math.max(0, Math.round(Number(e.target.value) || 0)))}
+              className="h-6 w-14 px-1.5 text-helper"
+              aria-label={`Draw weight for ${a11yLabel}`}
+              title="Draw weight"
+            />
+          </span>
           <span className="w-10 text-right text-meta text-muted-foreground" aria-label={`Chance for ${a11yLabel}`}>
             {chance === null ? '—' : `${Math.round(chance)}%`}
           </span>
@@ -485,6 +488,7 @@ const OpeningCard = ({
       {open && (
         <div className="p-2">
           <PlaceholderField
+            historyField={fieldPath('openings', opening.id, 'text')}
             value={opening.text}
             onChange={onText}
             placeholders={placeholders}
