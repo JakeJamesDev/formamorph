@@ -98,7 +98,7 @@ The prototype that settled the app-bar layout is on branch `prototype/editor-his
 | Q3 | One effort: the stack, the chords and the History view. |
 | Q4 | The stack clears when the editor closes, including the in-game dialog. Opening another world clears it. |
 | Q5 | World data only. Editor preferences (snap, grid, pane widths, rail state, selection, mode) are never Steps. |
-| Q6 | Undo and redo reveal the record they touched: switch to its tab and select it. |
+| Q6 | Undo and redo reveal the record they touched: switch to its tab and select it. Superseded by `history-reveal-origin`. |
 | Q7 | Linear history. A new edit after undos drops the future. |
 | Q8 | The stack keeps 100 Steps. |
 | Q9 | Typing merges into one Step until a pause of 1000 ms. The module takes the pause as a parameter. |
@@ -127,7 +127,7 @@ The prototype that settled the app-bar layout is on branch `prototype/editor-his
 | Q32 | A world restore into a field clears the field's own undo and redo stacks as well as rebuilding with the merge tag. The tag alone left stale redo entries that turned the next Ctrl+Y into a plain write. |
 | Q33 | A field's own undo moves the cursor only past a Step that holds that field alone. Otherwise it merges into the Step (Q29), so a Step's other edits (a tick fold, Links-follow) never stay in the world while the Step reads as undone. |
 | Q34 | Q6 stands on mobile: a reveal in the Locations canvas view selects the location and pushes its detail panel over the canvas, as a tap does. The e2e canvas test closes the panel after each undo. |
-| Q35 | A reveal of a location already in the canvas's multi-selection keeps the whole selection. A location outside it replaces the selection, as today. An undo of a group command never collapses the author's selection. |
+| Q35 | A reveal of a location already in the canvas's multi-selection keeps the whole selection. A location outside it replaces the selection, as today. An undo of a group command never collapses the author's selection. Selection rule replaced by `history-reveal-origin` Q5. |
 | Q36 | A field-driven cursor move seals the top Step (Q23), and the seal records its origin. The Q29 join ignores a seal a field move set, so a field walk through Lexical's finer entries never grows the list. A plain keyed or tick merge respects every seal. A field join that cuts Steps drops a Saved marker on them. |
 
 ### The history module
