@@ -1,29 +1,26 @@
 import { TransitionSeries, linearTiming, type TransitionTiming } from '@remotion/transitions';
-import { fade } from '@remotion/transitions/fade';
-import { wipe } from '@remotion/transitions/wipe';
+import { none } from '@remotion/transitions/none';
 import type { ReactElement } from 'react';
 
 /** A join between two scenes: the element that goes between their `TransitionSeries.Sequence`s, and how long it overlaps them. */
 export type Join = { element: ReactElement; timing: TransitionTiming };
 
-const fadeTiming = linearTiming({ durationInFrames: 30 });
-const wipeTiming = linearTiming({ durationInFrames: 36 });
+/** The leaving scene stacks on top, so its fading caption never sits behind the next card. */
+const exitOnTop = none({ exitStyle: { zIndex: 1 } });
 
-const fadeJoin: Join = { timing: fadeTiming, element: <TransitionSeries.Transition presentation={fade()} timing={fadeTiming} /> };
-const wipeJoin: Join = {
-  timing: wipeTiming,
-  element: <TransitionSeries.Transition presentation={wipe({ direction: 'from-left' })} timing={wipeTiming} />,
+/** Ruling Q29: a join is a plain overlap. The outgoing scene leaves by its own exit while the next one springs in over the same stage. */
+const overlapJoin = (durationInFrames: number): Join => {
+  const timing = linearTiming({ durationInFrames });
+  return { timing, element: <TransitionSeries.Transition presentation={exitOnTop} timing={timing} /> };
 };
 
-/** The storyboard's three joins: cut, fade (30 frames) and one directional wipe (36 frames). */
-export type TransitionName = 'cut' | 'fade' | 'wipe';
+/** The storyboard's three joins: `cut` (no overlap), `overlap` (30 frames, inside a section) and `section` (36 frames, between sections). */
+export type TransitionName = 'cut' | 'overlap' | 'section';
+
+const JOINS: Record<TransitionName, Join | null> = { cut: null, overlap: overlapJoin(30), section: overlapJoin(36) };
 
 /** The join for a storyboard name. A cut has none. */
-export const joinFor = (name: TransitionName): Join | null => {
-  if (name === 'fade') return fadeJoin;
-  if (name === 'wipe') return wipeJoin;
-  return null;
-};
+export const joinFor = (name: TransitionName): Join | null => JOINS[name];
 
 /** Frames a join overlaps the two scenes it connects. A cut has none. */
 export const overlapFrames = (name: TransitionName, fps: number) => joinFor(name)?.timing.getDurationInFrames({ fps }) ?? 0;

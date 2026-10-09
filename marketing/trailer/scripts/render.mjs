@@ -38,8 +38,8 @@ const CHECKS = {
   TrailerTall: { loopFrames: 360, zoomShots: ['T06/1'] },
 };
 
-/** Ruling Q26: a shot that holds its zoom moves this far on screen, as a percent of its area. */
-const DRIFT_PERCENT = { min: 1, max: 5 };
+/** Ruling Q28: a card that does not zoom holds its crop, so any travel past float noise is a pan. */
+const HOLD_PERCENT = 1e-6;
 
 console.log('Bundling…');
 const serveUrl = await bundle({ entryPoint: path.join(root, 'src/index.ts'), publicDir: path.join(root, 'public') });
@@ -118,7 +118,7 @@ for (const { composition, outputLocation } of rendered) {
     report(line.ok, `${line.shot.padEnd(4)} enter ${line.enterSeconds.toFixed(2)} s  hold ${line.seconds.toFixed(2).padStart(5)} s  ${exit.padEnd(12)}  ${cps.padStart(4)} cps  "${line.text}"`);
   }
 
-  // Rulings Q22, Q23 and Q26: every camera moves at a constant rate; only the named shots zoom; every other shot drifts a few percent.
+  // Rulings Q22, Q23 and Q28: every camera moves at a constant rate; only the named shots zoom; every other card holds its crop.
   for (const camera of composition.props.camera) {
     const name = camera.pane === null ? camera.shot : `${camera.shot}/${camera.pane}`;
     const zooms = Math.abs(camera.zoomTo - camera.zoomFrom) > 1e-6;
@@ -127,10 +127,10 @@ for (const { composition, outputLocation } of rendered) {
     if (!camera.linear) problems.push('the move is not linear: the shot edge stops the camera');
     if (zooms && !allowed) problems.push('only a zoom shot may change zoom');
     if (!zooms && allowed) problems.push('a zoom shot must zoom');
-    if (!zooms && (camera.travelPercent < DRIFT_PERCENT.min || camera.travelPercent > DRIFT_PERCENT.max)) {
-      problems.push(`drift: ${camera.travelPercent.toFixed(1)}% is outside ${DRIFT_PERCENT.min}% to ${DRIFT_PERCENT.max}%`);
+    if (!zooms && camera.travelPercent > HOLD_PERCENT) {
+      problems.push(`pan: ${camera.travelPercent.toPrecision(2)}% inside a card that must hold its crop`);
     }
-    const move = zooms ? `zoom ${camera.zoomFrom.toFixed(2)} -> ${camera.zoomTo.toFixed(2)}` : `zoom ${camera.zoomFrom.toFixed(2)}, drift ${camera.travelPercent.toFixed(1)}%`;
+    const move = zooms ? `zoom ${camera.zoomFrom.toFixed(2)} -> ${camera.zoomTo.toFixed(2)}` : `zoom ${camera.zoomFrom.toFixed(2)}, ${camera.travelPercent > HOLD_PERCENT ? `pans ${camera.travelPercent.toPrecision(2)}%` : 'holds'}`;
     report(problems.length === 0, `${name.padEnd(6)} camera ${move}`, problems);
   }
 

@@ -45,37 +45,37 @@ Ranked by what sells the app to a Steam visitor who reads the copy without sound
 
 **Arc:** loop hook → the promise → play → build → share → run anywhere → close.
 
-**Look:** graphite palette, dark theme, every frame (matches the title card). Kinetic text uses Lexend in the Design System's type roles.
+**Look:** the Floating cards language (Q27, Q28). Slow glowing blobs drift on one dark stage under the whole cut. Each UI shot is a tilted glass card that rises on a spring, floats on a bob and fades as it drifts away, over a dimmed depth card. Headlines rise word by word in Lexend in the Design System's type roles; captions are glass pills.
 
-**Scene types** (ticket 04): `kinetic` text card · `frame` camera over a captured PNG · `typed` prompt-then-narration · `title` card (ticket 01).
+**Scene types:** `kinetic` headline · `frame` card over a captured PNG · `typed` prompt-then-narration on a glass panel card · `title` wordmark or end card.
 
-**Transitions:** `fade` (30 f) inside a section, `wipe` (36 f) between sections, `cut` (0 f) inside the loop. A transition overlaps the end of its shot, so a shot's start is the previous start plus its duration minus its outgoing transition.
+**Joins (Q29):** `overlap` (30 f) inside a section, `section` (36 f) between sections, `cut` (0 f) inside the loop. A join is a plain overlap: the outgoing scene leaves by its own exit while the next one springs in. It overlaps the end of its shot, so a shot's start is the previous start plus its duration minus its outgoing join.
 
 | Shot | Start | Frames | Type | Copy | Source frame | Camera | Out |
 |---|---|---|---|---|---|---|---|
-| W01 | 0.00 s | 150 | kinetic | Type any action. | C01 blurred (plate) | still | cut |
-| W02 | 2.50 s | 150 | typed | The AI narrates. | C02a → C02b | full frame, drift up | cut |
-| W03 | 5.00 s | 60 | title | wordmark only | C01 blurred (plate) | still; ends on the bare plate | cut |
-| W04 | 6.00 s | 300 | frame | An AI text RPG. / Play any world you can imagine. | C01 | full frame, drift right | wipe |
-| W05 | 10.40 s | 360 | typed | Type any action. / The narrator continues the story. | C02a → C02b | full frame, drift up | fade |
-| W06 | 15.90 s | 220 | frame | Every turn updates your stats. | C02b, as a clip of the live stat-bar animation | zoom to the stat bars | fade |
-| W07 | 19.07 s | 210 | frame | Talk to anyone you meet. | C03 | static crop on the entity card, drift right | fade |
-| W08 | 22.07 s | 242 | frame | Chat with anyone in your library. | C04 | full frame, drift down | wipe |
-| W09 | 25.50 s | 175 | kinetic | Build your own world. | C05 blurred (plate) | still | fade |
-| W10 | 27.92 s | 240 | frame | Place locations on a map. | C05 | full frame, drift right | fade |
-| W11 | 31.42 s | 240 | frame | Write who lives there. | C06 | static crop on the entity profile, drift right | fade |
-| W12 | 34.92 s | 250 | frame | Let players pick a race and a class. | C07 | full frame, drift down | fade |
-| W13 | 38.58 s | 242 | frame | Ask Morphie for help at any step. | C08 | zoom to the help answer | wipe |
-| W14 | 42.02 s | 305 | frame | Download hundreds of worlds from the community. | C09 | full frame, drift down | fade |
-| W15 | 46.60 s | 187 | frame | Enter contests. Share what you make. | C10 | slight crop that keeps the whole podium callout, drift down | wipe |
-| W16 | 49.12 s | 160 | kinetic | Use any AI model. | C11 blurred (plate) | still | fade |
-| W17 | 51.28 s | 310 | frame | Play in your browser or offline on your desktop. | C11 | static crop on the model field, drift down | fade |
-| W18 | 55.95 s | 180 | frame | Pick a 3D avatar. | C12, as a clip of the idle animation | full frame, drift left | fade |
-| W19 | 58.45 s | 360 | title | wordmark · AI text RPG · formamorph.ai | title card stage | backdrop holds one zoom and drifts left; wordmark settles | end |
+| W01 | 0.00 s | 150 | kinetic | Type any action. | stage only | none | cut |
+| W02 | 2.50 s | 150 | typed | The AI narrates. | C02a → C02b on the depth card | full frame, holds | cut |
+| W03 | 5.00 s | 60 | title | wordmark only | stage only | none; ends on the bare stage | cut |
+| W04 | 6.00 s | 300 | frame | An AI text RPG. / Play any world you can imagine. | C01 | full frame, holds | section |
+| W05 | 10.40 s | 360 | typed | Type any action. / The narrator continues the story. | C02a → C02b on the depth card | full frame, holds | overlap |
+| W06 | 15.90 s | 220 | frame | Every turn updates your stats. | C02b, as a clip of the live stat-bar animation | zoom to the stat bars | overlap |
+| W07 | 19.07 s | 210 | frame | Talk to anyone you meet. | C03 | static crop on the entity card | overlap |
+| W08 | 22.07 s | 242 | frame | Chat with anyone in your library. | C04 | full frame, holds | section |
+| W09 | 25.50 s | 175 | kinetic | Build your own world. | stage only | none | overlap |
+| W10 | 27.92 s | 240 | frame | Place locations on a map. | C05 | full frame, holds | overlap |
+| W11 | 31.42 s | 240 | frame | Write who lives there. | C06 | static crop on the entity profile | overlap |
+| W12 | 34.92 s | 250 | frame | Let players pick a race and a class. | C07 | full frame, holds | overlap |
+| W13 | 38.58 s | 242 | frame | Ask Morphie for help at any step. | C08 | zoom to the help answer | section |
+| W14 | 42.02 s | 305 | frame | Download hundreds of worlds from the community. | C09 | full frame, holds | overlap |
+| W15 | 46.60 s | 187 | frame | Enter contests. Share what you make. | C10 | slight crop that keeps the whole podium callout | section |
+| W16 | 49.12 s | 160 | kinetic | Use any AI model. | stage only | none | overlap |
+| W17 | 51.28 s | 310 | frame | Play in your browser or offline on your desktop. | C11 | static crop on the model field | overlap |
+| W18 | 55.95 s | 180 | frame | Pick a 3D avatar. | C12, as a clip of the idle animation | full frame, holds | overlap |
+| W19 | 58.45 s | 360 | title | wordmark · AI text RPG · formamorph.ai | C01 and C02b on two depth cards | full frames, hold; everything holds to the last frame | end |
 
 Total: **3,867 frames, 64.45 s**, under the 90 s target.
 
-**Camera (Q22, Q23, Q26):** every move runs at a constant rate. Only W06 and W13 zoom during the shot. Every other frame shot holds one zoom and drifts about 3% of the frame over its length. A full frame sits at zoom 1.05 so the drift has room.
+**Camera (Q22, Q23, Q28):** every move runs at a constant rate. Only W06 and W13 zoom during the shot. Every other card holds one crop for its whole shot; the card's spring, bob and exit drift are the motion.
 
 **Text (Q25):** each line takes 0.5 s to enter and 0.5 s to leave on a gentle curve, then holds at least 1.5 s (Q17).
 
@@ -87,14 +87,14 @@ Steam cuts its looping microtrailer from the first 6 seconds of the first traile
 
 ```
 frame 0 ──── 150 ──────────── 300 ──── 359 │ 360
-plate        game frame        wordmark   plate │ W04
-"Type any    types, narration   lands,     (same as │
- action."    streams in         dissolves  frame 0) │
+stage        game card          wordmark   stage │ W04
+"Type any    narration          springs,   (same as │
+ action."    streams in         leaves     frame 0) │
 ```
 
-- **Seam:** frame 0 and frame 359 both show the bare blurred library plate (C01), with no text. The loop has no visible jump.
-- **No cross-scene transition inside the loop.** Each shot fades its own content in and out over the plate, so the 360-frame block is exact.
-- **Frame 360:** W04 starts from that same plate with a cut, so the full trailer also runs on without a jump. The loop's plate holds at W04's opening zoom and position.
+- **Seam:** frame 0 and frame 359 both show the bare blob stage, with no card and no text. The blobs repeat every 359 frames, so the two frames match and the loop has no visible jump (Q28).
+- **No cross-scene join inside the loop.** Each shot brings its own content in and out over the stage, so the 360-frame block is exact.
+- **Frame 360:** W04's card springs in over the same stage with a cut, so the full trailer also runs on without a jump.
 - **Message in 6 s:** the action (W01), the result (W02), the name (W03). A viewer of the loop alone gets what the app does and what it is called.
 
 ---
@@ -106,30 +106,30 @@ Derived shot by shot from the wide cut. Four treatments:
 | Treatment | Meaning |
 |---|---|
 | **relayout** | Kinetic and title scenes place their own content for `tall` (spec scene model). |
-| **crop** | The frame camera follows a 9:16 window inside the wide capture. |
-| **stack** | Two wide captures, each cropped to 1080x960, one above the other. Both lines of copy show. |
-| **recapture** | A native 540x960 capture at scale 2 (1080x1920) in the app's mobile layout. |
+| **crop** | The card fills the width and shows a 3:4 window of the wide capture. |
+| **stack** | Two wide captures on two cards, one above the other. Both caption pills show. |
+| **recapture** | A native 540x960 capture at scale 2 (1080x1920) in the app's mobile layout, on the depth card behind the typed panel. |
 
 | Tall | Start | From | Frames | Treatment | Notes | Out |
 |---|---|---|---|---|---|---|
 | T01 | 0.00 s | W01 | 150 | relayout | | cut |
-| T02 | 2.50 s | W02 | 150 | recapture | C02a-tall → C02b-tall. Full frame, drift up. | cut |
+| T02 | 2.50 s | W02 | 150 | recapture | C02a-tall → C02b-tall. Full frame, holds. | cut |
 | T03 | 5.00 s | W03 | 60 | relayout | Loop seam as in the wide cut. | cut |
-| T04 | 6.00 s | W04 | 300 | crop | Window on the center tile column, drift right. | wipe |
-| T05 | 10.40 s | W05 | 360 | recapture | C02a-tall → C02b-tall. Full frame, drift up. | fade |
-| T06 | 15.90 s | W06 + W07 | 240 | stack | Stat bars above, zooming like W06 (Q26). Entity card below, static crop. | fade |
-| T07 | 19.40 s | W08 | 242 | crop | The chat column is already narrow. Drift right. | wipe |
-| T08 | 22.83 s | W09 | 175 | relayout | | fade |
-| T09 | 25.25 s | W10 | 240 | crop | Window on the map center, drift right. | fade |
-| T10 | 28.75 s | W11 + W12 | 277 | stack | Entity profile above, Blueprint list below. Both drift. | wipe |
-| T11 | 32.77 s | W14 + W15 | 312 | stack | World grid above, podium below. Both drift. | wipe |
-| T12 | 37.37 s | W16 | 160 | relayout | | fade |
-| T13 | 39.53 s | W17 | 310 | crop | Window on the model field, drift right. | fade |
+| T04 | 6.00 s | W04 | 300 | crop | Window on the center tile column, holds. | section |
+| T05 | 10.40 s | W05 | 360 | recapture | C02a-tall → C02b-tall. Full frame, holds. | overlap |
+| T06 | 15.90 s | W06 + W07 | 240 | stack | Stat bars above, zooming like W06 (Q26). Entity card below, static crop. | overlap |
+| T07 | 19.40 s | W08 | 242 | crop | The chat column, holds. | section |
+| T08 | 22.83 s | W09 | 175 | relayout | | overlap |
+| T09 | 25.25 s | W10 | 240 | crop | Window on the map center, holds. | overlap |
+| T10 | 28.75 s | W11 + W12 | 277 | stack | Entity profile above, Blueprint list below. Both hold. | section |
+| T11 | 32.77 s | W14 + W15 | 312 | stack | World grid above, podium below. Both hold. | section |
+| T12 | 37.37 s | W16 | 160 | relayout | | overlap |
+| T13 | 39.53 s | W17 | 310 | crop | Window on the model field, holds. | overlap |
 | T14 | 44.20 s | W19 | 360 | relayout | | end |
 
 **Dropped:** W13 (Morphie) and W18 (avatar). Total: **3,012 frames, 50.20 s**, under the 60 s that every social platform accepts.
 
-A crop window, a stack pane and a recapture hold one zoom and drift about 3% of their area, except the T06 stats pane.
+A crop window, a stack card and a recapture hold one crop for the whole shot, except the T06 stats card, which zooms.
 
 The tall cut shares the scene set with the wide cut, not its timeline.
 

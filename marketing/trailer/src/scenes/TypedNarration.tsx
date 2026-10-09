@@ -1,12 +1,14 @@
 import { AbsoluteFill, interpolate, useCurrentFrame } from 'remotion';
 import type { Layout, SceneProps } from '../layout';
-import { ENTER_FRAMES, EXIT_FRAMES, enterProgress, exitProgress } from '../motion';
-import type { CopyRead } from '../reading';
+import { ENTER_FRAMES, EXIT_FRAMES } from '../motion';
 import { FrameCamera, type CameraPath } from '../parts/FrameCamera';
+import { GlassCard, cardSize } from '../parts/GlassCard';
+import { TYPED_CARDS } from '../poses';
+import type { CopyRead } from '../reading';
 import { shotFor, type LayoutShot } from '../shots';
-import { colors, fonts, roleSize, shade } from '../theme';
+import { colors, fonts, roleSize } from '../theme';
 
-/** A captured shot behind the text: `before` until the narration starts, then `after`, under one camera path. */
+/** The game shot on the card behind the panel: `before` until the narration starts, then `after`, under one camera path. */
 export type TypedBackdrop = { before: LayoutShot; after: LayoutShot; camera: Record<Layout, CameraPath> };
 
 type TypedNarrationProps = SceneProps & {
@@ -47,12 +49,10 @@ export const typedReads = (prompt: string, narration: string, durationInFrames: 
   return prompt === '' ? [narrationRead] : [{ text: prompt, start: 0, from: Math.max(ENTER_FRAMES, typeEnd), ...exit }, narrationRead];
 };
 
-const PANEL: Record<Layout, { width: number; bottom: number; padding: number }> = {
-  wide: { width: 1240, bottom: 110, padding: 64 },
-  tall: { width: 888, bottom: 260, padding: 56 },
-};
+/** The area the game shot's camera fills on the back card. */
+export const typedCameraSize = (layout: Layout) => cardSize(TYPED_CARDS[layout].back);
 
-/** A player line types in, then the narration streams in word by word, as a stylized overlay on the dark stage or a shot. */
+/** A player line types in, then the narration streams in word by word, on a glass panel card over the game shot's dimmed card. */
 export const TypedNarration = ({ layout, durationInFrames, prompt, narration, backdrop }: TypedNarrationProps) => {
   const frame = useCurrentFrame();
   const hasPrompt = prompt !== '';
@@ -61,59 +61,29 @@ export const TypedNarration = ({ layout, durationInFrames, prompt, narration, ba
     throw new Error(`TypedNarration needs ${narrationEnd + MIN_HOLD_FRAMES + EXIT_FRAMES} frames; the scene has ${durationInFrames}.`);
   }
 
-  const exit = exitProgress(frame, durationInFrames);
-  const panelIn = enterProgress(frame, 0);
   const typedChars = Math.max(0, Math.min(prompt.length, Math.floor((frame - TYPE_START_FRAME) / FRAMES_PER_CHAR)));
   const caretOn = frame < narrationStart && (frame < typeEnd || Math.floor(frame / CARET_BLINK_FRAMES) % 2 === 0);
   const afterOpacity = interpolate(frame, [narrationStart - 6, narrationStart + 14], [0, 1], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   });
-  const panel = PANEL[layout];
-  const cameraProps = { layout, durationInFrames };
+  const cards = TYPED_CARDS[layout];
+  const size = typedCameraSize(layout);
 
   return (
-    <AbsoluteFill style={{ backgroundColor: colors.stage }}>
+    <AbsoluteFill style={{ fontFamily: fonts.body }}>
       {backdrop && (
-        <>
-          <FrameCamera {...cameraProps} shot={shotFor(backdrop.before, layout)} path={backdrop.camera[layout]} />
+        <GlassCard pose={cards.back} durationInFrames={durationInFrames} variant="depth">
+          <FrameCamera durationInFrames={durationInFrames} shot={shotFor(backdrop.before, layout)} path={backdrop.camera[layout]} size={size} />
           <AbsoluteFill style={{ opacity: afterOpacity }}>
-            <FrameCamera {...cameraProps} shot={shotFor(backdrop.after, layout)} path={backdrop.camera[layout]} />
+            <FrameCamera durationInFrames={durationInFrames} shot={shotFor(backdrop.after, layout)} path={backdrop.camera[layout]} size={size} />
           </AbsoluteFill>
-          <AbsoluteFill style={{ background: shade(0.5) }} />
-        </>
+        </GlassCard>
       )}
-      <AbsoluteFill
-        style={{
-          alignItems: 'center',
-          justifyContent: backdrop ? 'flex-end' : 'center',
-          paddingBottom: backdrop ? panel.bottom : 0,
-          fontFamily: fonts.body,
-          opacity: exit * panelIn,
-          transform: `translateY(${(1 - panelIn) * 32 + (1 - exit) * -24}px)`,
-        }}
-      >
-        <div
-          style={{
-            width: panel.width,
-            boxSizing: 'border-box',
-            padding: panel.padding,
-            borderRadius: 32,
-            border: `2px solid ${colors.border}`,
-            background: colors.panel,
-            backdropFilter: 'blur(18px)',
-            color: colors.foreground,
-          }}
-        >
+      <GlassCard pose={backdrop ? cards.panel : { ...cards.panel, x: 0, y: 0 }} durationInFrames={durationInFrames} variant="panel">
+        <div style={{ padding: cards.padding, color: colors.foreground }}>
           {hasPrompt && (
-            <p
-              style={{
-                margin: 0,
-                fontSize: roleSize('title', layout),
-                fontWeight: 500,
-                lineHeight: 1.2,
-              }}
-            >
+            <p style={{ margin: 0, fontSize: roleSize('title', layout), fontWeight: 500, lineHeight: 1.2 }}>
               {prompt.slice(0, typedChars)}
               <span
                 style={{
@@ -136,7 +106,7 @@ export const TypedNarration = ({ layout, durationInFrames, prompt, narration, ba
               fontSize: roleSize('body', layout),
               fontWeight: 300,
               lineHeight: 1.35,
-              color: colors.foreground,
+              textWrap: 'balance',
             }}
           >
             {words.map((word, i) => {
@@ -150,7 +120,7 @@ export const TypedNarration = ({ layout, durationInFrames, prompt, narration, ba
             })}
           </p>
         </div>
-      </AbsoluteFill>
+      </GlassCard>
     </AbsoluteFill>
   );
 };

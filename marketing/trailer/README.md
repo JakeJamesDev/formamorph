@@ -49,16 +49,27 @@ Notes:
 - 🔚 The end card's lines stay to the last frame. Their exit prints `holds to end`.
 - ✏️ A longer line needs a longer shot. Raise the shot's frames in `src/timeline.tsx` until its line prints `OK`. The wordmark is a logo and is not measured.
 
-The command also checks every camera move. Each camera reports its zoom, and how far it drifts as a percent of the frame. It prints `FAIL` when:
+The command also checks the camera inside every card. Each camera reports its zoom, or `holds` when its crop stays still. It prints `FAIL` when:
 
 - the move is not linear, because the shot's edge stops the camera partway
 - a shot other than W06, W13 or the T06 stats pane changes zoom
-- a shot that holds its zoom drifts under 1% or over 5% of the frame
+- a card that does not zoom pans at all; the card's own float is the motion
 
 The render leaves its files in `out/`:
 
 - 📁 `out/` is not tracked. Upload the two MP4s and the poster from there.
 - 🧪 `out/*-loop-first.png` and `out/*-loop-last.png` are the frames the loop check compares. You can delete them.
+
+## Contact sheets
+
+```bash
+npm run sheet
+```
+
+This writes each cut's contact sheet to `out/sheets/`, for example `wide-1.png`. Each shot is a row of five frames: entering, settled, mid-hold, late, and leaving into the join. A page holds four wide shots or two tall ones. To render one cut, name it: `npm run sheet -- tall`.
+
+- 👀 Look at every cell before you call a shot done. A sheet takes about 40 s, much less than a render.
+- 🎬 The studio's **Sheets** folder shows the same pages live; set `page` in the props.
 
 ## Re-render after a release
 
@@ -97,7 +108,7 @@ The wide cut plays the storyboard's 19 shots (`docs-internal/specs/trailer/story
 | Loop | Frame 0 and frame 359 are identical, so the first 6 s loop |
 | Poster | `out/TrailerWide-poster.png`, the last frame, 1920x1080 |
 
-- 🔁 The first 6 s (shots W01 to W03) cut between shots and start and end on the same blurred library plate. Steam cuts its microtrailer from them. The plate holds at W04's opening camera (`LIBRARY_OPEN` in `src/timeline.tsx`), so the cut into W04 has no jump.
+- 🔁 The first 6 s (shots W01 to W03) cut between shots and start and end on the bare stage. Steam cuts its microtrailer from them. The stage's blobs repeat every 359 frames (`STAGE_PERIOD` in `src/parts/Stage.tsx`), so frame 359 matches frame 0, and W04's card springs in over the same stage.
 - 🖼️ The poster is the last frame of the encoded video, cut out as a PNG at the video's size.
 
 Edit the shot list, copy and camera moves in `src/timeline.tsx`. The studio's **TrailerWide** composition shows the result live.
@@ -113,8 +124,8 @@ The tall cut plays the storyboard's 14 shots (§4) in 50.20 s at 1080x1920, 60 f
 | Treatment | Shots | How |
 |---|---|---|
 | Relayout | T01, T03, T08, T12, T14 | The scene places its own content for `tall` |
-| Crop | T04, T07, T09, T13 | The frame camera follows a 9:16 window in the wide capture. Each scene has one camera path per layout |
-| Stack | T06, T10, T11 | Two wide captures, each cropped to half the canvas, one above the other, each with its own caption |
+| Crop | T04, T07, T09, T13 | The card fills the width and shows a 3:4 window of the wide capture. Each scene has one camera path per layout |
+| Stack | T06, T10, T11 | Two wide captures on two cards, one above the other, each with its own caption pill |
 | Recapture | T02, T05 | The native 540x960 mobile-layout shots `turn-before-tall` and `game-tall` |
 
 - ✂️ The tall cut drops W13 (Morphie) and W18 (avatar).
@@ -128,15 +139,20 @@ The studio's **Scene-library** folder lists every scene type and transition in b
 
 | Scene | File | Takes |
 |---|---|---|
-| Kinetic text card | `src/scenes/KineticText.tsx` | One or two lines, an optional blurred still plate |
-| Frame camera | `src/scenes/FrameScene.tsx` | A shot, a camera path per layout, an optional callout region and caption, and `fromPlate` to focus in from the shot's own plate |
-| Stack | `src/scenes/StackScene.tsx` | Two panes, each with a shot, a camera path and a caption. Tall stacks top and bottom; wide sits side by side |
-| Typed prompt, then narration | `src/scenes/TypedNarration.tsx` | A player line (empty for none), the narration, an optional shot behind (`before`, then `after`) |
-| Plate title | `src/scenes/PlateTitle.tsx` | The wordmark alone over a blurred shot; it ends on the bare plate |
-| Cut, fade, wipe | `src/transitions.tsx` | `TransitionName`; a cut has no overlap, a fade overlaps 30 frames, a wipe 36 |
+| Kinetic text card | `src/scenes/KineticText.tsx` | One or two lines that rise word by word |
+| Frame card | `src/scenes/FrameScene.tsx` | A shot, a camera path per layout, a depth shot for the card behind, an optional callout region, caption and dot color, and optional card placement |
+| Stack | `src/scenes/StackScene.tsx` | Two cards, each with a shot, a camera path, a caption and a dot color. Tall stacks top and bottom; wide sits side by side |
+| Typed prompt, then narration | `src/scenes/TypedNarration.tsx` | A player line (empty for none), the narration, an optional shot on the card behind (`before`, then `after`) |
+| Wordmark title | `src/scenes/WordmarkTitle.tsx` | The wordmark alone on the stage; it ends on the bare stage |
+| Cut, overlap, section | `src/transitions.tsx` | `TransitionName`; a cut has no overlap, an overlap joins 30 frames inside a section, a section join 36 |
 
-- 🔤 Copy uses the app's text size roles (`typeRoles` in `src/theme.ts`) scaled to the canvas, in Lexend.
-- 🎥 A camera path runs `from` to `to` at a constant rate. In `src/timeline.tsx`, `zoom` changes the zoom (W06, W13 and the T06 stats pane only), and `drift` holds one zoom and pans a few percent. A full frame drifts at zoom 1.05, so the pan has room.
+The look is the Floating cards language:
+
+- 🌌 One stage sits under the whole cut: slow glowing blobs in the brand palette (`src/parts/Stage.tsx`). Scenes are transparent, so a join never cuts the stage.
+- 🃏 Each shot is a tilted glass card (`src/parts/GlassCard.tsx`). It rises on an overshooting spring, floats on a slow bob, and fades as it drifts away. A dimmed card behind it shows the next or a related shot; a stack's two cards are each other's depth. Card placement per layout is in `src/poses.ts`.
+- 🔤 Headlines rise word by word, the last word in the wordmark gradient. Captions are glass pills with a colored dot (`src/parts/CopyBlock.tsx`). Copy uses the app's text size roles (`typeRoles` in `src/theme.ts`) scaled to the canvas, in Lexend.
+- 🔗 A join is a plain overlap: the outgoing scene leaves by its own exit while the next one springs in.
+- 🎥 A camera path runs `from` to `to` at a constant rate. In `src/timeline.tsx`, `zoom` changes the zoom (W06, W13 and the T06 stats pane only), and `hold` keeps one crop for the whole shot.
 - 🖼️ Any shot prop takes one shot, or `{ wide, tall }` when the tall cut uses its own recapture (`LayoutShot` in `src/shots.ts`).
 - ✍️ The typed scene is a stylized overlay, never a copy of the real input. It throws if the copy does not fit the scene's frames.
 - 🧩 Add a scene by adding an entry to `ENTRIES` in `src/library.tsx`.
@@ -211,12 +227,14 @@ A clip loads the demo scene before its turn, submits the action, and answers eve
 | Part | File |
 |---|---|
 | Scene list and timing for each cut | `src/timeline.tsx` |
-| The two compositions and the scene library folder | `src/Root.tsx` |
+| The two compositions, the scene library and the sheets | `src/Root.tsx` |
 | Scene library entries for the studio | `src/library.tsx` |
-| Title card scene, with an optional call-to-action line | `src/scenes/TitleCard.tsx` |
-| Scenes: kinetic text, frame camera, stack, typed narration | `src/scenes/` |
-| Shared parts: the moving camera, the copy block, the plate and the wordmark | `src/parts/` |
-| Enter and exit timing | `src/motion.ts` |
+| Contact sheet composition and script | `src/sheet.tsx`, `scripts/sheet.mjs` |
+| End card scene, with an optional call-to-action pill | `src/scenes/TitleCard.tsx` |
+| Scenes: kinetic text, frame card, stack, typed narration, wordmark title | `src/scenes/` |
+| Shared parts: the stage, the glass card, the camera inside it, the headline and pills, and the wordmark | `src/parts/` |
+| Where each card sits per layout | `src/poses.ts` |
+| Enter and exit timing, and the springs | `src/motion.ts` |
 | The reading bar and each line's reading time | `src/reading.ts` |
 | Transitions | `src/transitions.tsx` |
 | Fonts, type roles and colors | `src/theme.ts` |
@@ -225,6 +243,6 @@ A clip loads the demo scene before its turn, submits the action, and answers eve
 | Captured UI shots | `public/shots/` |
 
 - 📐 A scene gets a `layout` (`wide` or `tall`) and its length in frames. It places its own content for each layout.
-- ⏱️ Timing is in frames at 60 fps. A transition overlaps the two scenes it joins.
+- ⏱️ Timing is in frames at 60 fps. A join overlaps the two scenes it connects.
 - 🔤 Fonts load through Remotion's Google Fonts loader, which holds each frame until the fonts are ready.
 - 🔇 The trailer is silent for now.

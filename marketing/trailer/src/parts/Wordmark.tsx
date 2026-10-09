@@ -25,6 +25,7 @@ export const Wordmark = ({ fontSize, progress }: { fontSize: number; progress: n
       letterSpacing: '-.06em',
       lineHeight: 0.9,
       whiteSpace: 'nowrap',
+      color: colors.foreground,
       filter: 'url(#goo)',
       opacity: progress,
       transform: `translateY(${(1 - progress) * 40}px)`,

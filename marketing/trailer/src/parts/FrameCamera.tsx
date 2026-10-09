@@ -1,5 +1,5 @@
 import { AbsoluteFill, Freeze, Img, OffthreadVideo, interpolate, useCurrentFrame } from 'remotion';
-import { CANVAS, type Layout, type Size } from '../layout';
+import type { Size } from '../layout';
 import type { Shot } from '../shots';
 import { colors, shade } from '../theme';
 
@@ -34,17 +34,16 @@ export const cameraAt = (frame: number, durationInFrames: number, shot: Shot, pa
 };
 
 type FrameCameraProps = {
-  layout: Layout;
   durationInFrames: number;
   shot: Shot;
   path: CameraPath;
   callout?: Callout;
-  /** The area the camera fills. Defaults to the whole canvas. */
-  size?: Size;
+  /** The area the camera fills. */
+  size: Size;
 };
 
 /** A captured UI shot or clip with the camera moving over it across the scene. */
-export const FrameCamera = ({ layout, durationInFrames, shot, path, callout, size = CANVAS[layout] }: FrameCameraProps) => {
+export const FrameCamera = ({ durationInFrames, shot, path, callout, size }: FrameCameraProps) => {
   const frame = useCurrentFrame();
   const { x, y, scale } = cameraAt(frame, durationInFrames, shot, path, size);
   const calloutFrom = callout?.from ?? CALLOUT_DEFAULT_FROM;
