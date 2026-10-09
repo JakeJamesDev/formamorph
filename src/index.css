@@ -675,6 +675,8 @@ b {
    to an edge via --rl-origin (set on the container); everything else uses center. */
 .narration-text [data-sd-animate] {
   display: inline-block;
+  /* Each word's span carries its trailing space; inline-block would drop it. */
+  white-space: pre;
   transform-origin: var(--rl-origin, center);
 }
 
