@@ -49,6 +49,10 @@ Gameplay is text. Watching someone read is not a trailer. The video is a showcas
 | Q14 | The typed scene draws its own text in Design System type roles: a prompt line types in with a caret, then a narration line streams in word by word. Copy comes in as props; ticket 05 supplies it. An optional captured frame sits behind it under the frame camera. The drawn text is a stylized overlay and never imitates the real input over a PNG. Frame scenes take an optional caption through a copy block shared with kinetic text. |
 | Q15 | Ticket 05 copies the whole storyboard capture table into the capture list, tall rows included, and captures the 12 wide shots. Ticket 06 captures the tall rows. Ticket 05 splits the timeline: the wide composition plays the storyboard; the tall composition keeps the 20 s proof scenes until 06 replaces them, so one command still renders both. |
 | Q16 | The tall cut's length is the storyboard's 47.80 s (Q9). Ticket 06's earlier 15 to 30 s target was a pre-storyboard estimate and is withdrawn; ticket 06 fixes its own length line. |
+| Q17 | Reading bar for every line of on-screen copy: at most 12 characters per second and at least 1.5 s of hold, measured on the frames the line is fully legible (after its enter animation, before its exit and the join overlap). Basis: Netflix holds a subtitle 5/6 s to 7 s at 20 characters per second for adults; the BBC runs 160 to 180 words per minute. Trailer copy animates in and competes with the image, so the bar is about half subtitle pace. The render check enforces it. |
+| Q18 | Transitions run longer: fade 0.5 s (30 frames), wipe 0.6 s (36 frames). |
+| Q19 | The stats shot plays the app's real stat-bar animation, captured frame by frame from the running app as a short clip, not a still with a camera move and not a re-creation in Remotion. |
+| Q20 | The avatar shot shows the idle animation frozen at a fixed time, never the rest pose. The capture keeps the animate toggle on and controls the clock. |
 
 ### Facts the design rests on
 
@@ -106,3 +110,4 @@ Gameplay is text. Watching someone read is not a trailer. The video is a showcas
 | 05 | Full 16:9 cut | 02, 04 | The Steam trailer at 1920x1080, 60 fps, Steam encode settings. First 6 s works as a loop. |
 | 06 | 9:16 cut | 05 | The social cut at 1080x1920 from the same scene set, on its own shot order. |
 | 07 | Copy sweep and final renders | 05, 06 | Copy pass, final encodes, poster frame, check against the Steam spec. |
+| 08 | Review fixes | 07 | The first review: reading bar and transition lengths (Q17, Q18), the real stat animation as a clip (Q19), the avatar in its idle pose (Q20). |
