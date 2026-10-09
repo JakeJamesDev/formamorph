@@ -48,6 +48,24 @@ describe('the word timing of a reveal', () => {
     expect(more - then).toBe(60);
   });
 
+  it('resumes a remounted reveal: text present at mount stays still, later text fades in', () => {
+    const durations = (container: HTMLElement) =>
+      [...container.querySelectorAll<HTMLElement>('[data-sd-animate]')].map((w) => w.style.getPropertyValue('--sd-duration'));
+    setRevealTiming({ duration: 200, stagger: 40 });
+    const first = 'One two.\n\nThree four.';
+    const { container, rerender } = render(<MarkdownRenderer text={first} animate animation="reveal" resume />);
+    expect(durations(container)).toEqual(['0ms', '0ms', '0ms', '0ms']);
+    // Flipping the prop after mount changes nothing: only its mount value counts.
+    rerender(<MarkdownRenderer text={`${first} Five\n\nSix`} animate animation="reveal" resume={false} />);
+    expect(durations(container)).toEqual(['0ms', '0ms', '0ms', '0ms', '200ms', '200ms']);
+  });
+
+  it('fades in the text present at mount without resume', () => {
+    setRevealTiming({ duration: 200, stagger: 40 });
+    const { container } = render(<MarkdownRenderer text={'One two.\n\nThree four.'} animate animation="reveal" />);
+    expect([...container.querySelectorAll<HTMLElement>('[data-sd-animate]')].every((w) => w.style.getPropertyValue('--sd-duration') === '200ms')).toBe(true);
+  });
+
   it("shortens the word gap to a given timing's backlog cap", () => {
     const { container } = render(
       <MarkdownRenderer text={BURST} animate animation="reveal" timing={{ duration: 200, stagger: 40, maxBacklogMs: 640 }} />,

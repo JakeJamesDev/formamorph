@@ -709,6 +709,12 @@ export const MiddlePanel = ({
   const actionLine = currentPage > 1 ? displayedMessages.find((m) => m.role === 'user')?.content : undefined;
   // The live stream belongs to the latest page only; a past page shows its committed text.
   const pageLive = !isViewingPast && isRevealingNarration && !!currentAssistantMessage;
+  // Paging away unmounts the live renderer; on return, the text already revealed stays still.
+  const [liveShown, setLiveShown] = useState(false);
+  React.useEffect(() => {
+    if (pageLive) setLiveShown(true);
+    else if (!isRevealingNarration) setLiveShown(false);
+  }, [pageLive, isRevealingNarration]);
   const pageNarration = pageLive ? gameplayText : currentAssistantMessage ? parseAssistantMessage(currentAssistantMessage.content) : '';
   const pageReasoningLive = !isViewingPast && !!liveReasoning.text;
   const pageReasoning = pageReasoningLive
@@ -868,6 +874,7 @@ export const MiddlePanel = ({
                       key={pageLive ? 'live' : `committed:${pageNarration}`}
                       text={pageNarration}
                       animate={pageLive && revealOn}
+                      resume={liveShown}
                       animation={revealAnim}
                       easing={revealEasing}
                       dialogue
