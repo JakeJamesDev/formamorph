@@ -27,7 +27,7 @@ const moveOf = <S extends SliceName>(slice: S, after: WorldSlices[S], left: Worl
 const setup = (over: Partial<HistoryRevealOptions> = {}) => {
   let hear: ((move: HistoryMoveEvent) => void) | null = null;
   const calls = {
-    setActiveTab: vi.fn(), clearSearch: vi.fn(), setLocationView: vi.fn(), navigateToItem: vi.fn(),
+    setActiveTab: vi.fn(), clearSearch: vi.fn(), setLocationView: vi.fn(), showSubTab: vi.fn(), navigateToItem: vi.fn(),
   };
   const view = renderHook(() => useHistoryReveal({
     onMove: (listener) => { hear = listener; return () => { hear = null; }; },

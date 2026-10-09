@@ -24,6 +24,7 @@ import {
 } from "@/lib/worldPrompt";
 import { isOpeningFieldKey, openingsEnabled, setOpeningsEnabled } from "@/lib/openings";
 import { OpeningsPanel } from "./OpeningsPanel";
+import { OVERVIEW_PANELS, type OverviewPanel } from '@/views/overviewPanels';
 import { useEditorMode } from "@/lib/editorMode";
 import type { FocusFieldHint } from "@/types";
 
@@ -32,17 +33,7 @@ const PROMPT_KIND_VARIABLE_KEY = {
   narration: 'narration', choices: 'choices', statUpdates: 'statupdates',
 } as const;
 
-/**
- * The openings share the section's picker without being a {@link WorldPromptKind}: they are the player's
- * first message rather than a system prompt, and they live on their own overview fields instead of in
- * `promptOverrides`. So the panel keys widen by one where the override type does not.
- */
-type PanelKind = WorldPromptKind | 'opening';
-
-/** The three system prompts first, then the outlier — an opening is a different kind of text. */
-const PANEL_KINDS: PanelKind[] = [...WORLD_PROMPT_KINDS, 'opening'];
-
-const PANEL_LABELS: Record<PanelKind, string> = { ...WORLD_PROMPT_KIND_LABELS, opening: 'Openings' };
+const PANEL_LABELS: Record<OverviewPanel, string> ={ ...WORLD_PROMPT_KIND_LABELS, opening: 'Openings' };
 
 /** The note-and-Reset row under whichever panel is open. Reset appears only for text the author stored. */
 const PanelFooter = ({ note, onReset }: { note: ReactNode; onReset?: () => void }) => (
@@ -67,8 +58,10 @@ const PanelFooter = ({ note, onReset }: { note: ReactNode; onReset?: () => void 
  * Openings need no player-facing opt-out where the prompts do: the pre-filled box is editable, so the
  * player already has the last word on what the opening turn says.
  */
-const CustomPromptsSection = ({ focusField, onOpenEntity, onOpenLocation }: {
+const CustomPromptsSection = ({ focusField, tab, onTabChange: setTab, onOpenEntity, onOpenLocation }: {
   focusField?: FocusFieldHint | null;
+  tab: OverviewPanel | null;
+  onTabChange: (tab: OverviewPanel | null) => void;
   onOpenEntity?: (entityId: string) => void;
   onOpenLocation?: (locationId: string) => void;
 }) => {
@@ -107,8 +100,8 @@ const CustomPromptsSection = ({ focusField, onOpenEntity, onOpenLocation }: {
   );
   const { advanced } = useEditorMode();
   // Nothing open by default, and picking the open one again closes it: four large fields is more of the
-  // panel than an author who isn't writing prompts should have to scroll past.
-  const [tab, setTab] = useState<PanelKind | null>(null);
+  // panel than an author who isn't writing prompts should have to scroll past. The editor holds the choice,
+  // so a history reveal can open the panel an edit was made on.
   const [resetKind, setResetKind] = useState<WorldPromptKind | null>(null);
 
   // The prompt each tab tracks: what the game would send right now, preset pins and all — not the shipped
@@ -139,7 +132,7 @@ const CustomPromptsSection = ({ focusField, onOpenEntity, onOpenLocation }: {
   // writes straight through to world state, where the only undo is discarding every unsaved edit at once.
   // Switching on opens the kind, since the author is about to want it; switching off leaves the panel as
   // it stands rather than yanking a field open around the click.
-  const toggle = (kind: PanelKind, on: boolean) => {
+  const toggle = (kind: OverviewPanel, on: boolean) => {
     if (on) setTab(kind);
     if (kind === 'opening') updateWorldOverview(setOpeningsEnabled(on));
     else write(kind, { enabled: on });
@@ -166,14 +159,14 @@ const CustomPromptsSection = ({ focusField, onOpenEntity, onOpenLocation }: {
       <ToggleGroup
         type="single"
         value={tab ?? ''}
-        onValueChange={(v) => setTab((v || null) as PanelKind | null)}
+        onValueChange={(v) => setTab((v || null) as OverviewPanel | null)}
         // The gate for the Openings panel: the panel shows only once its kind is open.
         {...targetAttribute('worldEditor.overview', 'custom-prompts')}
         // Four across only once the row clears the column with room to spare; two-up below that. Sized to
         // its own labels rather than the column, so it stays a control instead of stretching into a banner.
         className="inline-grid h-auto grid-cols-2 [@container(min-width:32rem)]:grid-cols-4"
       >
-        {PANEL_KINDS.map((kind, i) => (
+        {OVERVIEW_PANELS.map((kind, i) => (
           <div key={kind} className="inline-flex items-center">
             {/* The app's pipe (see PromptField's toolbar), pairing each checkbox with the label after it
                 rather than the one before. Only between neighbors on a row, never opening one: the second
@@ -329,8 +322,11 @@ export const AI_DESCRIPTION_INFO = "Goes to the AI on every turn as your world's
 
 /** The AI-facing world content fields (description, system prompt, readmes), shown in the editor's right
  *  column on the Overview tab. Identity/listing fields live in WorldOverviewManager (left column). */
-const WorldDetailsManager = ({ focusField, onOpenEntity, onOpenLocation }: {
+const WorldDetailsManager = ({ focusField, panel, onPanelChange, onOpenEntity, onOpenLocation }: {
   focusField?: FocusFieldHint | null;
+  /** The open custom prompt panel, held by the editor. */
+  panel: OverviewPanel | null;
+  onPanelChange: (panel: OverviewPanel | null) => void;
   /** Opens an entity's Openings tab, from the openings panel's group header. */
   onOpenEntity?: (entityId: string) => void;
   /** Opens a location's Openings tab, from the openings panel's group header. */
@@ -367,7 +363,7 @@ const WorldDetailsManager = ({ focusField, onOpenEntity, onOpenLocation }: {
         tourAnchor="world-ai-description"
       />
 
-      <CustomPromptsSection focusField={focusField} onOpenEntity={onOpenEntity} onOpenLocation={onOpenLocation} />
+      <CustomPromptsSection focusField={focusField} tab={panel} onTabChange={onPanelChange} onOpenEntity={onOpenEntity} onOpenLocation={onOpenLocation} />
     </div>
   );
 };

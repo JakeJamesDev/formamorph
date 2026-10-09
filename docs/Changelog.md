@@ -62,6 +62,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The narration card now grows with the words as they fade in.** It no longer shows blank lines ahead of the text.
   - **Auto Save:**
     - **Exit Without Saving in the in-game World Editor now drops the edits you made since the last save.** After Auto Save saved the world, the prompt says so.
+  - **History:**
+    - **Undo in the World Editor returns you to the sub-tab or view where you made the edit.** An edit on the Openings sub-tab, an entity tab, or the Locations canvas opens that same sub-tab or view.
   - **The app and the wiki now say In Game for the time after a game starts.** The trait toggle, the Authoring Tour pane and the Entities page use the same term.
   - **Test Bench now names the right requirements when a linked trait's default starts unselected.** The message names the entity, quotes the link's rows and opens the link.
   - **The markdown Preview now shows every edit inside a list, a quote or a multi-line paragraph.** Formatting and text changes in a list item, for example, now show at once instead of keeping the old text.

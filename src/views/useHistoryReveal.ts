@@ -3,7 +3,7 @@ import type { HistoryMoveEvent, WorldHistoryControls } from '@/contexts/worldRec
 import { revealForMove, type RevealTab } from '@/lib/historyReveal';
 import type { FindingSection } from '@/lib/testBench/rules';
 import type { ConnectionReveal, SelectionReveal } from '@/managers/LocationCanvas';
-import type { LocationView } from '@/views/locationViews';
+import { LOCATION_VIEWS, type LocationView } from '@/views/locationViews';
 
 export interface HistoryRevealOptions {
   onMove: WorldHistoryControls['onMove'];
@@ -16,6 +16,8 @@ export interface HistoryRevealOptions {
   setActiveTab: (tab: string) => void;
   clearSearch: () => void;
   setLocationView: (view: LocationView) => void;
+  /** Shows a panel sub-tab, or the Overview's prompt panel. The editor falls back to its default for one the mode doesn't offer. */
+  showSubTab: (tab: string, subTab: string) => void;
   /** The find bar's route to a record: its tab, a clear list filter, the record selected and scrolled to. */
   navigateToItem: (section: FindingSection, id: string) => void;
 }
@@ -41,7 +43,9 @@ export function useHistoryReveal(options: HistoryRevealOptions) {
   useLayoutEffect(() => {
     if (!move) return;
     setMove(null);
-    const { touring, visibleTabs, holds, setActiveTab, clearSearch, setLocationView, navigateToItem } = latest.current;
+    const {
+      touring, visibleTabs, holds, setActiveTab, clearSearch, setLocationView, showSubTab, navigateToItem,
+    } = latest.current;
     if (touring) return;
     const target = revealForMove(move.steps, move.world, {
       shows: (tab) => visibleTabs.some((shown) => shown.value === tab),
@@ -65,6 +69,11 @@ export function useHistoryReveal(options: HistoryRevealOptions) {
     } else {
       setActiveTab(target.tab);
     }
+    // A connection already opened the canvas, so only a view the Origin names applies, as the one it is.
+    if (target.view !== undefined && !target.connection) {
+      setLocationView(LOCATION_VIEWS.find((view) => view.value === target.view)?.value ?? 'list');
+    }
+    if (target.subTab !== undefined) showSubTab(target.tab, target.subTab);
   }, [move]);
 
   return { connectionReveal, clearConnectionReveal, selectionReveal, clearSelectionReveal };

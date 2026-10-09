@@ -7,6 +7,7 @@ import { EditorModeContext } from '@/lib/editorMode';
 import { OPENING_SCENE_CUE } from '@/components/game/GamePrompts';
 import { openingFieldKey } from '@/lib/openings';
 import WorldDetailsManager from './WorldDetailsManager';
+import type { OverviewPanel } from '@/views/overviewPanels';
 
 const PRESET_NARRATION = 'PRESET narration prompt';
 const PRESET_CHOICES = 'PRESET choices prompt';
@@ -110,8 +111,14 @@ const Harness = ({ focusField, onOpenEntity, onOpenLocation }: {
   focusField?: FocusField; onOpenEntity?: OpenItem; onOpenLocation?: OpenItem;
 }) => {
   const [, setTick] = useState(0);
+  // The World Editor holds the open panel in the app.
+  const [panel, setPanel] = useState<OverviewPanel | null>(null);
   world.rerender = () => setTick((n) => n + 1);
-  return <WorldDetailsManager focusField={focusField} onOpenEntity={onOpenEntity} onOpenLocation={onOpenLocation} />;
+  return (
+    <WorldDetailsManager
+      focusField={focusField} panel={panel} onPanelChange={setPanel} onOpenEntity={onOpenEntity} onOpenLocation={onOpenLocation}
+    />
+  );
 };
 
 const renderManager = (advanced = true, focusField?: FocusField, onOpenEntity?: OpenItem, onOpenLocation?: OpenItem) => render(

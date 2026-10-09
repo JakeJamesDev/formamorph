@@ -22,6 +22,9 @@ export interface PlaceholderDetailProps {
   ownerName?: string;
   /** An off-world card's carried blueprints: a copy reads its blueprint here, read-only, with no Edit Blueprint. */
   carriedBlueprints?: readonly Placeholder[];
+  /** The panel's open tab, when the host holds it so a history reveal can set it. Without it the panel holds its own. */
+  tab?: PlaceholderPanelTab;
+  onTabChange?: (tab: PlaceholderPanelTab) => void;
 }
 
 /** A copy whose blueprint the card doesn't carry: its values live in the blueprint, so there is nothing to edit. */
@@ -48,7 +51,9 @@ export interface PlaceholderDetailParts {
  * the placeholder manager. Groups and owner nodes resolve only through a store that carries the world's
  * lists, so a store bound to one owner's list reaches the copy and manager panes alone.
  */
-export function usePlaceholderDetail({ selectedId, onSelect, onOpenOwner, ownerName, carriedBlueprints }: PlaceholderDetailProps): PlaceholderDetailParts {
+export function usePlaceholderDetail({
+  selectedId, onSelect, onOpenOwner, ownerName, carriedBlueprints, tab: hostTab, onTabChange: onHostTabChange,
+}: PlaceholderDetailProps): PlaceholderDetailParts {
   const { placeholders, lists, owners } = usePlaceholderStore();
   const owner = useMemo(() => {
     const ownerId = selectedId && lists ? ownerIdOfNode(selectedId) : null;
@@ -58,7 +63,9 @@ export function usePlaceholderDetail({ selectedId, onSelect, onOpenOwner, ownerN
   // Resolving a row walks the whole tree, and the host re-renders on every keystroke in any panel.
   const selection = useMemo(() => placeholderSelection(placeholders, selectedId), [placeholders, selectedId]);
   // The panel's tab, held here so it carries from one row to the next.
-  const [tab, setTab] = useState<PlaceholderPanelTab>('details');
+  const [ownTab, setOwnTab] = useState<PlaceholderPanelTab>('details');
+  const tab = hostTab ?? ownTab;
+  const setTab = onHostTabChange ?? setOwnTab;
   // DEV dev-router: `subtab=…` names one of the panel's tabs (`#dev?modal=worldEditor&tab=placeholders&subtab=pins`).
   const devSubtab = useDevRoute()?.subtab;
   useEffect(() => {
