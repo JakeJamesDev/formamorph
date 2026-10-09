@@ -77,7 +77,7 @@ export const TitleCard = ({ layout, durationInFrames, cta }: SceneProps & { cta?
             opacity: tag,
           }}
         >
-          AI text roleplay
+          AI text RPG
         </p>
         {cta && (
           <p
