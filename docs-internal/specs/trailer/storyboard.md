@@ -6,8 +6,8 @@ Parent: [Trailer spec](spec.md) · Ticket: [03 Storyboard](issues/03-storyboard.
 
 | Cut | Size | Length | Shots |
 |---|---|---|---|
-| Wide (Steam) | 1920x1080, 60 fps | 68.45 s (4,107 frames) | 19 |
-| Tall (social) | 1080x1920, 60 fps | 51.03 s (3,062 frames) | 13 |
+| Wide (Steam) | 1920x1080, 60 fps | 76.22 s (4,573 frames) | 20 |
+| Tall (social) | 1080x1920, 60 fps | 57.35 s (3,441 frames) | 14 |
 
 The first 6 seconds (frames 0–359) are a standalone silent loop in both cuts.
 
@@ -19,7 +19,7 @@ Ranked by what sells the app to a Steam visitor who reads the copy without sound
 
 | Rank | Feature | Source | Shots | Pick |
 |---|---|---|---|---|
-| 1 | Type any action, an AI narrator writes what happens | Landing, 2.0 | W01, W05 | ✅ |
+| 1 | Type any action, an AI narrator writes what happens | Landing, 2.0 | W05 | ✅ |
 | 2 | Play authored worlds: the bundled set and the library | Landing, 2.15 | W04 | ✅ |
 | 3 | Build your own world: map canvas, travel, entities, stats | Landing, 2.11, 2.13 | W09–W11 | ✅ |
 | 4 | Hundreds of community worlds | Landing, 2.9, 2.19 | W14 | ✅ |
@@ -53,8 +53,7 @@ Ranked by what sells the app to a Steam visitor who reads the copy without sound
 
 | Shot | Start | Frames | Type | Copy | Source frame | Camera | Out |
 |---|---|---|---|---|---|---|---|
-| W01 | 0.00 s | 150 | kinetic | Type any action. | stage only | none | cut |
-| W03 | 2.50 s | 210 | title | wordmark only | stage only | none; ends on the bare stage | cut |
+| W03 | 0.00 s | 360 | title | wordmark only | stage only | none; starts and ends on the bare stage | cut |
 | W04 | 6.00 s | 300 | frame | An AI text RPG. / Play any world you can imagine. | C01 | full frame | section |
 | W05 | 10.40 s | 360 | turn | Type any action. / The narrator continues the story. | C02c, a clip of the live narration reveal | static crop on the narration | overlap |
 | W06 | 15.90 s | 220 | frame | Every turn updates your stats. | C02b, as a clip of the live stat-bar animation | static crop on the stat bars | overlap |
@@ -62,18 +61,20 @@ Ranked by what sells the app to a Steam visitor who reads the copy without sound
 | W08 | 22.07 s | 242 | frame | Chat with anyone in your library. | C04 | full frame | section |
 | W09 | 25.50 s | 175 | kinetic | Build your own world. | stage only | none | overlap |
 | W10 | 27.92 s | 240 | frame | Place locations on a map. | C05 | full frame | overlap |
-| W10b | 31.42 s | 270 | frame | Travel there and meet who lives there. | C13 | static crop on the dialog | overlap |
-| W11 | 35.42 s | 240 | frame | Write who lives there. | C06 | static crop on the entity profile | overlap |
-| W12 | 38.92 s | 250 | frame | Let players pick a race and a class. | C07 | full frame | overlap |
-| W13 | 42.58 s | 242 | frame | Ask Morphie for help at any step. | C08 | static crop on the help answer | section |
-| W14 | 46.02 s | 305 | frame | Download hundreds of worlds from the community. | C09 | full frame | overlap |
-| W15 | 50.60 s | 187 | frame | Enter contests. Share what you make. | C10 | slight crop that keeps the whole podium callout | section |
-| W16 | 53.12 s | 160 | kinetic | Use any AI model. | stage only | none | overlap |
-| W17 | 55.28 s | 310 | frame | Play in your browser or offline on your desktop. | C11 | static crop on the engine panel | overlap |
-| W18 | 59.95 s | 180 | frame | Pick a 3D avatar. | C12, as a clip of the idle animation | full frame | overlap |
-| W19 | 62.45 s | 360 | title | wordmark · AI text RPG · Play free at formamorph.ai | C01 and C02b on two depth cards | full frames; everything holds to the last frame | end |
+| W11 | 31.42 s | 240 | frame | Write who lives there. | C06 | static crop on the entity profile | overlap |
+| W10b | 34.92 s | 270 | frame | Then travel there and meet them. | C13 | static crop on the dialog | overlap |
+| W12a | 38.92 s | 212 | kinetic | Traits shape who you play. | stage only | none | overlap |
+| W12 | 41.95 s | 250 | frame | Let players pick a race and a class. | C07 | full frame | overlap |
+| W13a | 45.62 s | 176 | kinetic | Need help? Just ask. | stage only | none | overlap |
+| W13 | 48.05 s | 380 | frame | Ask your AI guide Morphie for help at any time. | C08, a clip: Morphie thinks, then the answer streams in | static crop on Morphie and the answer | section |
+| W14 | 53.78 s | 305 | frame | Download hundreds of worlds from the community. | C09 | full frame | overlap |
+| W15 | 58.37 s | 187 | frame | Enter contests. Share what you make. | C10 | slight crop that keeps the whole podium callout | section |
+| W16 | 60.88 s | 160 | kinetic | Use any AI model. | stage only | none | overlap |
+| W17 | 63.05 s | 310 | frame | Play in your browser or offline on your desktop. | C11 | static crop on the engine panel | overlap |
+| W18 | 67.72 s | 180 | frame | Pick a 3D avatar. | C12, as a clip of the idle animation | full frame | overlap |
+| W19 | 70.22 s | 360 | title | wordmark · AI text RPG · Play free at formamorph.ai | C01 and C02b on two depth cards | full frames; everything holds to the last frame | end |
 
-Total: **4,107 frames, 68.45 s**, under the 90 s target. W02 is cut (Q30); W10b is the travel shot (Q34).
+Total: **4,573 frames, 76.22 s**, under the 90 s target. W01 and W02 are cut (Q30, Q40). The authoring order is map, profile, travel, the traits card, blueprints (Q43). A title card with the letter `a` sits before the shot it introduces (W12a, W13a).
 
 **Camera (Q22, Q32):** no card zooms or pans. Each card holds one crop for its whole shot; the card's spring, bob and exit drift are the motion.
 
@@ -90,16 +91,16 @@ Total: **4,107 frames, 68.45 s**, under the 90 s target. W02 is cut (Q30); W10b 
 Steam cuts its looping microtrailer from the first 6 seconds of the first trailer. Frames 0–359 are built to loop on their own.
 
 ```
-frame 0 ──── 150 ───────────────────── 359 │ 360
-stage        wordmark springs in,      stage │ W04
-"Type any    holds about 2.5 s,        (same as │
- action."    leaves                    frame 0) │
+frame 0 ─────────────────────────────── 359 │ 360
+stage   wordmark springs in, holds,     stage │ W04
+        leaves                          (same as │
+                                        frame 0) │
 ```
 
 - **Seam:** frame 0 and frame 359 both show the bare blob stage, with no card and no text. The blobs repeat every 359 frames, so the two frames match and the loop has no visible jump (Q28).
-- **No cross-scene join inside the loop.** Each shot brings its own content in and out over the stage, so the 360-frame block is exact.
+- **One shot:** the title card W03 is the whole loop (Q40, Q51). It brings the wordmark in and out over the stage, so the 360-frame block is exact.
 - **Frame 360:** W04's card springs in over the same stage with a cut, so the full trailer also runs on without a jump.
-- **Message in 6 s:** the action (W01), then the name (W03) (Q30). A viewer of the loop alone gets what the player does and what the app is called.
+- **Message in 6 s:** the name. W04 says what the app is right after.
 
 ---
 
@@ -116,23 +117,24 @@ Derived shot by shot from the wide cut. Four treatments:
 
 | Tall | Start | From | Frames | Treatment | Notes | Out |
 |---|---|---|---|---|---|---|
-| T01 | 0.00 s | W01 | 150 | relayout | | cut |
-| T03 | 2.50 s | W03 | 210 | relayout | Loop seam as in the wide cut. | cut |
+| T03 | 0.00 s | W03 | 360 | relayout | The whole loop, as in the wide cut. | cut |
 | T04 | 6.00 s | W04 | 300 | crop | Window on the center tile column. | section |
 | T05 | 10.40 s | W05 | 360 | recapture | C02c-tall, the reveal clip, on the top part of the mobile view. | overlap |
 | T06 | 15.90 s | W06 + W07 | 240 | stack | Stat bars above, static crop. Entity card below, static crop. | overlap |
 | T07 | 19.40 s | W08 | 242 | crop | The chat column, on a squarer card so the whole column fits. | section |
 | T08 | 22.83 s | W09 | 175 | relayout | | overlap |
-| T09 | 25.25 s | W10 + W10b | 290 | stack | Map above, travel dialog below. Both hold. | overlap |
-| T10 | 29.58 s | W11 + W12 | 277 | stack | Entity profile above, Blueprint list below. Both hold. | section |
-| T11 | 33.60 s | W14 + W15 | 312 | stack | World grid above, podium below. Both hold. | section |
-| T12 | 38.20 s | W16 | 160 | relayout | | overlap |
-| T13 | 40.37 s | W17 | 310 | crop | The engine panel, on a squarer card. | overlap |
-| T14 | 45.03 s | W19 | 360 | relayout | | end |
+| T09 | 25.25 s | W10 | 240 | crop | The whole map, on a card at the stack cards' shape. | overlap |
+| T10 | 28.75 s | W11 + W10b | 290 | stack | Entity profile above, travel dialog below. Both hold. | overlap |
+| T10a | 33.08 s | W12a | 212 | relayout | | overlap |
+| T10b | 36.12 s | W12 | 264 | crop | Window on the Blueprint list. | section |
+| T11 | 39.92 s | W14 + W15 | 312 | stack | World grid above, podium below. Both hold. | section |
+| T12 | 44.52 s | W16 | 160 | relayout | | overlap |
+| T13 | 46.68 s | W17 | 310 | crop | The engine panel, on a squarer card. | overlap |
+| T14 | 51.35 s | W19 | 360 | relayout | | end |
 
-**Dropped:** W02 (Q30), W13 (Morphie) and W18 (avatar). Total: **3,062 frames, 51.03 s**, under the 60 s that every social platform accepts.
+**Dropped:** W01 and W02 (Q30, Q40), Morphie with its title card (W13a, W13) and the avatar (W18). Total: **3,441 frames, 57.35 s**, under the 60 s that every social platform accepts.
 
-**Travel (Q34):** the tall cut stacks the travel shot under the map, as it stacks the other adjacent pairs, so the cut gains no shot.
+**Authoring order (Q43, Q51):** the traits card parts the Blueprint shot from the rest, so the map stands alone, the profile and the travel shot stack as a pair, and the Blueprint shot stands alone after the card.
 
 Every crop window, stack card and recapture holds one crop for the whole shot (Q32).
 
@@ -154,11 +156,11 @@ Format per ruling Q8: the spec's field list. Ticket 05 copies these rows into ti
 | C02b-tall | gameViewer | as C02b | graphite dark | 2 | 540x960 | Drone | as C02b |
 | C02c-tall | gameViewer | as C02c | graphite dark | 2 | 540x960 | Drone | as C02c |
 | C03 | gameViewer | tab `entities`, Tiamat open | graphite dark | 2 | 1600x900 | Drone | site-game.json |
-| C04 | gameViewer | mode `chat` | graphite dark | 2 | 1600x900 | Open Chat | new fixture: three exchanges with one library entity |
+| C04 | gameViewer | mode `chat` | graphite dark | 2 | 1600x900 | Brinewell, the Authoring Tour's world, built from the tour's own code (Q42) | [trailer-chat.json](../../../scripts/fixtures/trailer-chat.json): three exchanges with Maren at the Tidewell |
 | C05 | — | modal `worldEditor`, tab `locations`, subtab `canvas`, after **Auto Arrange All** | graphite dark | 2 | 1600x900 | Veilwood | travel-rule labels hidden (below) |
 | C06 | — | modal `worldEditor`, tab `entities`, subtab `profile` | graphite dark | 2 | 1600x900 | Veilwood | an entity with art selected |
 | C07 | — | modal `worldEditor`, tab `traits`, subtab `details` | graphite dark | 2 | 1600x900 | Emberwatch | a race Blueprint selected |
-| C08 | — | modal `formaquestion`, tab `ask`, mode `narrow` | graphite dark | 2 | 1600x900 | none | new fixture: one answered question |
+| C08 | mainMenu | the help window, a clip: Morphie thinks, then the answer streams in and she turns to idle (Q47) | graphite dark | 2 | 1600x900 | none | a canned answer, held while she thinks for 0.75 s, then streamed at about 12 words a second, on a stepped clock |
 | C09 | — | modal `community`, tab `world` | graphite dark | 2 | 1600x900 | none | pinned listing data (see below) |
 | C10 | — | modal `community`, the **Contest** tab, podium | graphite dark | 2 | 1600x900 | none | pinned listing data and one decided contest, so each world has one badge |
 | C11 | — | modal `settings`, tab `endpoints`, subtab `text`, **Built-In Engine** | graphite dark | 2 | 1600x900 | none | a mocked desktop bridge with a model loaded and ready (below) |
@@ -181,11 +183,11 @@ Format per ruling Q8: the spec's field list. Ticket 05 copies these rows into ti
 
 Every line above is written for the copy sweep in ticket 07.
 
-- **STE:** one idea per line, active voice, common words, no metaphor. The longest line (W17) has 9 words.
+- **STE:** one idea per line, active voice, common words, no metaphor. The longest line (W13) has 10 words.
 - **Positive contract:** each line says what you can do. No line names a rival or a missing feature.
 - **Terms:** no line says "character". W07, W08 and W11 avoid the noun with "anyone" and "who". "Blueprint" stays off screen because new players do not know the term; W12 says "race and class".
 - **Claims to verify before the final render:** "hundreds of worlds" (W14) matches the landing page. Ticket 07 checks the live count.
-- **For the copy sweep:** W04 says "AI text RPG" and the end card says "AI text roleplay". W01 says "Type" and W05 says "Write". Ticket 07 picks one term for each pair.
+- **For the copy sweep:** W04 says "AI text RPG" and the end card says "AI text roleplay". W05 says "Type". Ticket 07 picks one term for each pair.
 
 ---
 

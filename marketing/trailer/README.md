@@ -103,7 +103,7 @@ All on-screen copy is in `src/timeline.tsx`, plus the end card's tagline in `src
 npm run render:wide
 ```
 
-The wide cut plays the storyboard's 19 shots (`docs-internal/specs/trailer/storyboard.md`, §2) in 68.45 s. The command encodes it for Steam and checks the result:
+The wide cut plays the storyboard's 20 shots (`docs-internal/specs/trailer/storyboard.md`, §2) in 76.22 s. The command encodes it for Steam and checks the result:
 
 | Check | Limit |
 |---|---|
@@ -114,7 +114,7 @@ The wide cut plays the storyboard's 19 shots (`docs-internal/specs/trailer/story
 | Loop | Frame 0 and frame 359 are identical, so the first 6 s loop |
 | Poster | `out/TrailerWide-poster.png`, the last frame, 1920x1080 |
 
-- 🔁 The first 6 s (shots W01 and W03) cut between shots and start and end on the bare stage. Steam cuts its microtrailer from them. The stage's blobs repeat every 359 frames (`STAGE_PERIOD` in `src/parts/Stage.tsx`), so frame 359 matches frame 0, and W04's card springs in over the same stage.
+- 🔁 The first 6 s are the title card W03 alone. It starts and ends on the bare stage. Steam cuts its microtrailer from it. The stage's blobs repeat every 359 frames (`STAGE_PERIOD` in `src/parts/Stage.tsx`), so frame 359 matches frame 0, and W04's card springs in over the same stage.
 - 🖼️ The poster is the last frame of the encoded video, cut out as a PNG at the video's size.
 
 Edit the shot list, copy and camera moves in `src/timeline.tsx`. The studio's **TrailerWide** composition shows the result live.
@@ -125,17 +125,17 @@ Edit the shot list, copy and camera moves in `src/timeline.tsx`. The studio's **
 npm run render:tall
 ```
 
-The tall cut plays the storyboard's 13 shots (§4) in 51.03 s at 1080x1920, 60 fps. It comes from the same scene list as the wide cut and has its own shot order. `npm run render` renders both.
+The tall cut plays the storyboard's 14 shots (§4) in 57.35 s at 1080x1920, 60 fps. It comes from the same scene list as the wide cut and has its own shot order. `npm run render` renders both.
 
 | Treatment | Shots | How |
 |---|---|---|
-| Relayout | T01, T03, T08, T12, T14 | The scene places its own content for `tall` |
-| Crop | T04, T07, T13 | The card fills the width and shows a window of the wide capture. Each scene has one camera path per layout. T07 and T13 use a squarer card, so their subject fits |
-| Stack | T06, T09, T10, T11 | Two wide captures on two cards, one above the other, each with its own caption pill |
+| Relayout | T03, T08, T10a, T12, T14 | The scene places its own content for `tall` |
+| Crop | T04, T07, T09, T10b, T13 | The card fills the width and shows a window of the wide capture. Each scene has one camera path per layout. T07 and T13 use a squarer card, and T09 a card at the stack cards' shape, so their subject fits |
+| Stack | T06, T10, T11 | Two wide captures on two cards, one above the other, each with its own caption pill |
 | Recapture | T05 | The native 540x960 mobile-layout clip `narration-clip-tall`, and `game-tall` on depth cards |
 
-- ✂️ The tall cut drops W13 (Morphie) and W18 (avatar), and stacks the travel shot (W10b) under the map.
-- 🔁 T01 and T03 match W01 and W03, so the tall cut loops for its first 6 s too.
+- ✂️ The tall cut drops Morphie with its title card (W13a, W13) and the avatar (W18). It stacks the profile and the travel shot (W11, W10b) as T10.
+- 🔁 T03 matches W03, so the tall cut loops for its first 6 s too.
 - 📱 `npm run capture -- --only game-tall,narration-clip-tall` rewrites the two recaptures.
 - 🎯 The tall cut has no Steam checks. The render command checks its size, rate, length, codecs and the 6 s loop.
 
@@ -193,6 +193,7 @@ Optional fields on a shot:
 | `subject` | The part of the shot that carries its point, in 0–1 fractions. The render check keeps it in frame (above) |
 | `storyboard` | The storyboard capture ID (C01 to C13), for the record |
 | `scene` | A game scene file other than the demo one, such as `scripts/fixtures/trailer-chat.json` |
+| `world` | A world built from the app's own code instead of the demo world. `tour` is the world the Authoring Tour leaves when you take every example |
 | `setup` | Names from `scripts/captureSetups.mjs` that replace the shot's network and storage with fixed data (below) |
 | `steps` | Moves after the screen is up: `editWorld`, `click`, `link`, `button`, `ask`, `wait` |
 | `hide` | CSS selectors the shot hides, where the app has no switch for them, such as the map's travel-rule labels |
@@ -209,18 +210,19 @@ Setups keep every shot off live servers and live AI:
 | `contestListings` | The three entries of the router's canned decided contest, in the catalog |
 | `contestEvents` | The contest list: that decided contest alone, so each entry wears one placement badge |
 | `desktopEngine` | The desktop bridge, with the built-in engine ready on a loaded model. Nothing loads or downloads |
-| `helpAnswer` | The help window's reply, streamed from a fixed text |
+| `helpAnswer` | The help window's reply, streamed from a fixed text. An ask clip holds it back until it lets it through |
 
 The storyboard's three live-data shots (help answer, community grid, avatar) are fixed this way. The avatar shot keeps **Animate character** on and sets `model` (below), so it films the idle animation on a controlled clock.
 
 ### Frozen time and clips
 
-Two kinds of shot control the page clock, so a moving screen comes out the same on every run.
+Three kinds of shot control the page clock, so a moving screen comes out the same on every run.
 
 | Field | Does |
 |---|---|
 | `model` | Films the avatar's idle animation. `model.from` is the second of the animation the clip starts at, and `frames` is the clip's length at 60 fps. |
 | `kind: "clip"` | Films one live turn instead of a still. `turn.stats` is the stat reply, `turn.film: "reveal"` films the narration reveal instead of the stat bars, and `frames` is the clip's length at 60 fps. |
+| `film: "ask"` | Films the help window answering `ask.question`. Morphie thinks for `ask.thinking` frames, then the answer streams in and she turns to her idle look. |
 
 A model clip holds the model files, pauses the page clock, lets the models load, then runs the clock to `model.from`. It then takes over the page's animation frames: for each film frame it moves the clock one frame (16 or 17 ms, so the frames stay on the 60 fps grid), draws once, and takes a screenshot. The avatar clip is about 0.8 MB.
 
@@ -228,8 +230,17 @@ A clip loads the demo scene before its turn, submits the action, and answers eve
 
 A reveal clip films the screen before the turn, then pauses the page clock and submits the action. Once the app has read the canned narration, it steps the clock one frame at a time. Each animation the reveal starts is seeked to the clock time since it first showed, so the clip comes from the page clock alone. Calls after the narration never answer, so nothing else lands mid-clip.
 
+An ask clip opens the help window, types the question and pauses the page clock before it sends. The help reply waits. The clock runs on, unfilmed, until Morphie settles into her thinking look, and the clip starts there. After `ask.thinking` frames the reply goes through: the guide-section pick comes whole, and the answer streams about 12 words a second on the page clock, as a live endpoint would.
+
+Each clip prints its motion: the share of pixels each frame changes, ten frames to a line. A frame that changes more than 6 times the clip's median moving frame, and more than 0.2% of the screen, is a jump (`!`). A reveal clip with a jump fails before it encodes. Other clips only print it, since Morphie's change of look is real motion over many frames.
+
+- 📏 A reveal clip records the narration's bottom edge on each frame. A jump that is only that edge growing by one line, or a paragraph gap and a line, is the app's own layout. It prints `~` and passes. Anything else that moves on that frame still counts.
+- ✂️ A reveal clip's first step is the send itself, so it never counts as a jump.
+- 🔍 `node scripts/clipMotion.mjs .capture-clip/<id>` prints the same series for frames you already have.
+
 - 📝 The turn shot (W05, T05) plays `narration-clip.mp4` or `narration-clip-tall.mp4`. It holds the screen before the turn while the player line types in, then plays the reveal.
 - 🎞️ The stats shot (W06, and the top pane of T06) plays `stats-clip.mp4`. It holds the first frame, plays the clip from frame 60 of the scene, then holds the last frame.
+- 💬 The Morphie shot (W13) plays `help-clip.mp4` once its card lands, at scene frame 40.
 - 🧍 The avatar shot (W18) plays `avatar-clip.mp4` from its first frame. The clip has as many frames as the shot, so the avatar moves to the end. Lengthen both together.
 - 🔁 A second run gives the same frames and the same file, so `npm run capture:diff` prints `same`. The frames stay in `.capture-clip/` to compare two runs.
 - 🧩 The script runs Vite with `scripts/captureVite.config.mjs`. It adds the real path of the repo's `node_modules` to the files Vite serves, so the stat code's QuickJS runtime also loads in a worktree.

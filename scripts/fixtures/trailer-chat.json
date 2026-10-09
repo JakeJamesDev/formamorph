@@ -1,24 +1,24 @@
 {
-  "location": "Demon Frontier",
-  "entity": "Tiamat",
-  "opening": "Tiamat rests on a ruined arch at the edge of the clearing. He watches you roll closer.",
+  "location": "The Tidewell",
+  "entity": "Maren",
+  "opening": "Maren kneels at the rim of the Tidewell, setting a fresh shell among the offerings. She looks up and smiles at you.",
   "turns": [
     {
-      "action": "I ask Tiamat how long he has watched this frontier.",
-      "narration": "Tiamat tilts his silver head. \"Longer than your makers have kept records, little machine.\" His eyes drift over the ruins. \"Kingdoms rose here. I watched each one fall.\""
+      "action": "I ask Maren how long she has tended the spring.",
+      "narration": "\"Twenty years this winter.\" She turns her wrist so the silver scales catch the light. \"It keeps a little of everyone who stays.\""
     },
     {
-      "action": "I ask which kingdom he liked best.",
-      "narration": "A low rumble shakes the arch. \"None of them.\" He pauses. \"The one with the lanterns. Their children left bread on my wall each winter.\""
+      "action": "I ask if the change ever frightens her.",
+      "narration": "Her laugh is warm, but her eyes drift to the water. \"Not the scales. Some nights the tide calls louder than it used to.\""
     },
     {
-      "action": "I tell him I will leave bread on the arch tonight.",
-      "narration": "Tiamat is quiet for a long moment. Then he lowers his head until one eye meets your sensor. \"Do that, little machine. I will remember it.\""
+      "action": "I promise to sit with her at the next high tide.",
+      "narration": "Maren is quiet for a moment. Then she presses a cool, webbed hand over yours. \"I'd like that. Bring your own blanket. The stone gets cold.\""
     }
   ],
   "choices": [
-    "I ask Tiamat what became of the lantern kingdom.",
-    "I ask Tiamat about the smoke over the watchtower.",
-    "I sit on the arch beside him and wait."
+    "I ask Maren what the tide says when it calls.",
+    "I dip my fingers in the Tidewell.",
+    "I walk with Maren to the Salt Lantern."
   ]
 }

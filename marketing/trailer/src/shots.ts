@@ -58,7 +58,8 @@ export const SHOTS = {
   travel: shot('travel'),
   profile: shot('profile'),
   blueprints: shot('blueprints'),
-  help: shot('help'),
+  /** Plays once the card lands: she thinks, then turns to her idle look as the answer streams in. */
+  helpClip: clip('help-clip', 40),
   community: shot('community'),
   contest: shot('contest'),
   engine: shot('engine'),

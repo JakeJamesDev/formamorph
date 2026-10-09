@@ -1,6 +1,6 @@
 # 12: Fourth Review Fixes
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 11
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -30,3 +30,12 @@ The user's fourth review. Each item is a ruling.
 - [ ] Both new title cards exist with their lines and pass the reading checks.
 - [ ] The Morphie shot plays a clip from thinking to idle as the answer streams, under the new caption; the subject region covers her and the answer.
 - [ ] Every line passes hold, rate, enter and exit; every card passes the subject check; the Steam checks pass; storyboard totals match the renders.
+
+## Notes
+
+- **Edge growths (Q52).** The fresh reveal clips jump where the narration's bottom edge grows one line, or a paragraph gap and a line, in one frame. The app has no height easing there. The capture records that edge per frame and passes a jump only when everything outside the growth band moves as usual. Wide `narration-clip`: frames 50, 78, 104, 136, 163, 189, 221, 249, 273. Tall `narration-clip-tall`: frames 43, 62, 82, 102, 104, 129, 148, 169, 189, 212, 234, 251, 270. A square painted on wide frame 104 outside the band turned that frame back into a failing jump. A growth passes only at 0.9–1.1 lines or 1.5–1.9 lines (measured: 1.00, and 1.67–1.76), so two lines in one frame still fail. Frame 1 of a reveal clip is the send itself (8.2% wide, 17.3% tall) and is exempt too.
+- **Tour world (Q42).** The capture builds the chat shot's world in the browser with `replayTourSteps(newBlankWorld(), TOUR_STEPS.length)` from the app's own modules: Brinewell, with Maren at the Tidewell. Nothing is copied by hand.
+- **Morphie clip (Q47).** `help-clip` opens on her thinking look, holds the reply for 45 frames, then streams the canned answer at about 12 words a second on the page clock while she springs to idle. The page's own `fetch` serves the reply, since a routed reply lands whole and the answer then shows at once. The guide-section pick comes whole. The motion rule fails reveal clips only; her change of look is real motion over about 25 frames, so other clips print their series.
+- **Repeatable.** `npm run capture:diff` printed `same` for `narration-clip`, `narration-clip-tall`, `help-clip` and `chat`.
+- **Tall chat crop.** T07 keeps the chat column, so Maren's portrait shows in the wide W08 only.
+- **Tall order (Q51).** T09 is the map alone, T10 stacks the profile and the travel shot, T10a is the traits card, and T10b is the blueprints alone. The help card and Morphie stay out of the tall cut.
