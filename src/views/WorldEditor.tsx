@@ -10,6 +10,7 @@ import { isSurfaceTarget, routeText, TARGET_ATTRIBUTE, targetAttribute, type Tar
 import { useRouteLanding } from '@/lib/surface/useLanding';
 import { editorTabGroupsFor, editorTabsFor, RAIL_ROOM_PX } from './worldEditorTabs';
 import { useHistoryReveal } from './useHistoryReveal';
+import type { RevealTab } from '@/lib/historyReveal';
 import { EditorSectionsBar } from '@/components/editor/EditorSectionsBar';
 import { EDITOR_HIDDEN_NOTICE, EDITOR_MODE_DESCRIPTIONS, useEditorMode, type EditorMode } from '@/lib/editorMode';
 import { EditorModeProvider } from '@/components/EditorModeProvider';
@@ -717,10 +718,19 @@ const WorldEditorInner = ({
   useEffect(() => clearHistory, [clearHistory]);
   // The in-game host's dialog is the editor's own.
   useHistoryChords(historyMoves, editorRootRef, { hostDialog: 'worldEditor', paused: touring });
+  // The lists are built below and read only after a move's commit.
+  const listHoldsRef = useRef<(tab: RevealTab, id: string) => boolean>(() => false);
+  const listHolds = useCallback((tab: RevealTab, id: string) => listHoldsRef.current(tab, id), []);
   const { connectionReveal, clearConnectionReveal } = useHistoryReveal({
-    onMove: historyMoves.onMove, touring, visibleTabs, setActiveTab, clearSearch, setLocationView,
+    onMove: historyMoves.onMove, touring, visibleTabs, holds: listHolds, setActiveTab, clearSearch, setLocationView,
     navigateToItem: navigateToBenchItem,
   });
+  // Passive, so a write's layout effect still reads the place from before a tab switch in its commit.
+  const { place: historyPlace } = historyMoves;
+  const placeId = selections[activeTab] ?? undefined;
+  useEffect(() => { historyPlace.current = { tab: activeTab, ...(placeId ? { id: placeId } : {}) }; },
+    [historyPlace, activeTab, placeId]);
+  useEffect(() => () => { historyPlace.current = null; }, [historyPlace]);
 
   // ── Authoring Tour ────────────────────────────────────────────────────────
   // A step's field comes on screen the way a search hit does: its tab, a clear list filter, then focus once
@@ -932,6 +942,11 @@ const WorldEditorInner = ({
     entities: entitiesParts, locations: locationsParts, dictionary: dictionaryParts,
   };
   const listEditorParts = partsByTab[activeTab] ?? null;
+  const adaptersByTab: Partial<Record<RevealTab, { holds: (id: string) => boolean }>> = {
+    traits: traitsAdapter, placeholders: placeholdersEditor.adapter, stats: statsAdapter,
+    entities: entitiesEditor.adapter, locations: locationsAdapter, dictionary: dictionaryEditor.adapter,
+  };
+  listHoldsRef.current = (tab, id) => !!adaptersByTab[tab]?.holds(id);
   // Tabbed panels keep their strip above a body that scrolls itself, so the pane gives them its height.
   const detailFills = !!listEditorParts?.fills;
   // Whose panel the palette sits over: the entity, the book (selected itself or through an entry), or the

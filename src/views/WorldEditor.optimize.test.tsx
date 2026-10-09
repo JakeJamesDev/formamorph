@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { benchEditorWorld, openEditorTab, renderWorldEditorBench, shownEditorTab } from '@/test/worldEditorBench';
 import { reloadTourProgress } from '@/lib/authoringTour/progress';
 import type { World } from '@/types';
 
@@ -107,5 +107,18 @@ describe('Optimize Images', () => {
     await act(async () => { fireEvent.keyDown(document.body, { key: 'y', ctrlKey: true }); });
     expect(ctx().worldOverview.thumbnail).toBe(WEBP);
     expect(ctx().locations[0].backgroundImage).toBe(WEBP);
+  });
+
+  it('reveals what it touched on undo, not the tab the author ran it from', async () => {
+    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+    openEditorTab(/Locations/);
+    fireEvent.click(screen.getAllByText('Harbor Steps').map((el) => el.closest<HTMLElement>('[class*="cursor-pointer"]')).find(Boolean)!);
+    fireEvent.click(screen.getByRole('button', { name: 'Optimize Images' }));
+    await waitFor(() => expect(ctx().locations[0].backgroundImage).toBe(WEBP));
+    openEditorTab(/Entities/);
+
+    await act(async () => { fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true }); });
+    expect(ctx().worldOverview.thumbnail).toBe(PNG);
+    expect(shownEditorTab()).toMatch(/Overview/);
   });
 });

@@ -79,10 +79,34 @@ export function revealTarget(step: Step, world: WorldSlices): RevealTarget | nul
   return null;
 }
 
-/** The target of a move over one or more Steps: the Step nearest where the cursor lands, else the next one in. */
-export function revealTargetForMove(moved: Step[], world: WorldSlices): RevealTarget | null {
+/** What the editor shows after the move's commit. */
+export interface RevealPlace {
+  /** Whether the editor mode shows the tab. */
+  shows(tab: string): boolean;
+  /** Whether the tab's list holds the record. */
+  holds(tab: RevealTab, id: string): boolean;
+}
+
+const REVEAL_TABS = new Set<string>(Object.values(SLICE_TABS));
+const isRevealTab = (tab: string): tab is RevealTab => REVEAL_TABS.has(tab);
+
+/**
+ * Where one Step returns the author. A Step made through a mirror returns to its Origin tab and record; one
+ * made on the touched record's own tab, or whose Origin the editor can't show, reveals the touched record.
+ */
+function revealStep(step: Step, world: WorldSlices, place: RevealPlace): RevealTarget | null {
+  const target = revealTarget(step, world);
+  const fallback = target && place.shows(target.tab) ? target : null;
+  const { origin } = step;
+  if (!origin || !isRevealTab(origin.tab) || !place.shows(origin.tab) || origin.tab === target?.tab) return fallback;
+  if (origin.id === undefined) return { tab: origin.tab };
+  return place.holds(origin.tab, origin.id) ? { tab: origin.tab, id: origin.id } : fallback;
+}
+
+/** Where a move over one or more Steps returns the author: the Step nearest where the cursor lands, else the next one in. */
+export function revealForMove(moved: Step[], world: WorldSlices, place: RevealPlace): RevealTarget | null {
   for (let i = moved.length - 1; i >= 0; i -= 1) {
-    const target = revealTarget(moved[i], world);
+    const target = revealStep(moved[i], world, place);
     if (target) return target;
   }
   return null;

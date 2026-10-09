@@ -24,6 +24,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Test Bench flags requirements that loop through Not and rows that can never hold.** A loop such as "A requires B, B requires not A" is an error. "Paladin and not Paladin" is a warning. Two traits that exclude each other still pass.
   - **Auto Save:**
     - **Leaving the World Editor now waits for a save that is still running.** A failed **Save & Exit** in the in-game editor keeps it open with your changes. The prompt says **Auto Save** kept your changes only after an auto save ran.
+  - **History:**
+    - **Undo in the World Editor returns you to the tab where you made the edit.** An edit made on another tab's record, such as a location's entities, opens that tab with the same record selected.
   - **Ctrl+S saves the world in the World Editor.** On a Mac, use Cmd+S. It works while you type in a field, and the **Save** tooltip shows it.
   - **Ctrl+B and Ctrl+I make text bold or italic in fields with a formatting toolbar.** On a Mac, use Cmd+B and Cmd+I. Press the key again to remove the formatting. The **Bold** and **Italic** tooltips show the shortcut.
   - **The World Editor now has undo, redo and a History list for your world's edits.** Press Ctrl+Z, or open History in the app bar to jump to any earlier point.

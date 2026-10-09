@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { createHistory, diffSlice, record, type SliceEdit, type SliceName, type Step, type WorldSlices } from '@/lib/editorHistory';
-import { revealTarget, revealTargetForMove } from '@/lib/historyReveal';
+import {
+  createHistory, diffSlice, record, type SliceEdit, type SliceName, type Step, type StepOrigin, type WorldSlices,
+} from '@/lib/editorHistory';
+import { revealForMove, revealTarget } from '@/lib/historyReveal';
 import type {
   Connection, Dictionary, DictionaryEntry, Entity, GameLocation, Stat, StatUpdate, Trait, WorldOverview,
 } from '@/types';
@@ -136,22 +138,94 @@ describe('revealTarget', () => {
   });
 });
 
-describe('revealTargetForMove', () => {
+// A Step with no Origin, in an editor that shows every tab.
+const NO_ORIGIN_EDITOR = { shows: () => true, holds: () => false };
+const revealWithoutOrigin = (moved: Step[], world: WorldSlices) => revealForMove(moved, world, NO_ORIGIN_EDITOR);
+
+describe('revealForMove without an Origin', () => {
   it('reveals the Step nearest where the move lands', () => {
     const first = stepOf('stats', [], [stat('a')]);
     const last = stepOf('locations', [], [location('b')]);
     const world = emptyWorld({ stats: [stat('a')], locations: [location('b')] });
-    expect(revealTargetForMove([first, last], world)).toEqual({ tab: 'locations', id: 'b' });
+    expect(revealWithoutOrigin([first, last], world)).toEqual({ tab: 'locations', id: 'b' });
   });
 
   it('falls back to an earlier Step when the nearest has no tab', () => {
     const update: StatUpdate = { id: 'u1', name: 'u1', prompt: '', stats: [], messageHistory: [] };
     const first = stepOf('stats', [], [stat('a')]);
     const last = stepOf('statUpdates', [], [update]);
-    expect(revealTargetForMove([first, last], emptyWorld({ stats: [stat('a')] }))).toEqual({ tab: 'stats', id: 'a' });
+    expect(revealWithoutOrigin([first, last], emptyWorld({ stats: [stat('a')] }))).toEqual({ tab: 'stats', id: 'a' });
   });
 
   it('finds nothing in an empty move', () => {
-    expect(revealTargetForMove([], emptyWorld())).toBeNull();
+    expect(revealWithoutOrigin([], emptyWorld())).toBeNull();
+  });
+});
+
+describe('revealForMove', () => {
+  // A roster edit: the Locations tab wrote an entity, whose own tab is Entities.
+  const wick = { id: 'wick', name: 'Wick', locations: [] } as unknown as Entity;
+  const rostered = { ...wick, locations: ['harbor'] };
+  const rosterEdit = () => diffSlice('entities', [wick], [rostered]) as SliceEdit;
+  const stepFrom = (origin: StepOrigin | undefined, edits: SliceEdit[] = [rosterEdit()]): Step =>
+    record(createHistory(), edits, { origin }).steps[0];
+  const world = emptyWorld({ entities: [wick], locations: [location('harbor')] });
+  const ALL_TABS = ['overview', 'stats', 'locations', 'entities', 'traits', 'dictionary', 'placeholders'];
+  const editor = (over: { shown?: string[]; held?: string[] } = {}) => ({
+    shows: (tab: string) => (over.shown ?? ALL_TABS).includes(tab),
+    holds: (_tab: string, id: string) => (over.held ?? ['harbor']).includes(id),
+  });
+
+  it('reveals the Origin tab and record for an edit made through a mirror', () => {
+    const step = stepFrom({ tab: 'locations', id: 'harbor' });
+    expect(revealForMove([step], world, editor())).toEqual({ tab: 'locations', id: 'harbor' });
+  });
+
+  it('opens the Origin tab alone when the author had nothing selected there', () => {
+    const step = stepFrom({ tab: 'overview' });
+    expect(revealForMove([step], world, editor())).toEqual({ tab: 'overview' });
+  });
+
+  it('reveals the touched record on its own tab when the Origin is that tab', () => {
+    // An add selects the new record in the same commit, so the Origin still names the earlier selection.
+    const step = stepFrom({ tab: 'entities', id: 'other' });
+    expect(revealForMove([step], world, editor({ held: ['other', 'wick'] }))).toEqual({ tab: 'entities', id: 'wick' });
+  });
+
+  it('falls back to the touched record when the Origin record is gone', () => {
+    const step = stepFrom({ tab: 'locations', id: 'harbor' });
+    expect(revealForMove([step], world, editor({ held: [] }))).toEqual({ tab: 'entities', id: 'wick' });
+  });
+
+  it('falls back to the touched record when the mode hides the Origin tab', () => {
+    const step = stepFrom({ tab: 'placeholders', id: 'harbor' });
+    expect(revealForMove([step], world, editor({ shown: ['entities'] }))).toEqual({ tab: 'entities', id: 'wick' });
+  });
+
+  it('reveals the touched record for a Step with no Origin', () => {
+    expect(revealForMove([stepFrom(undefined)], world, editor())).toEqual({ tab: 'entities', id: 'wick' });
+  });
+
+  it('opens the Origin tab for a Step whose edits have no tab of their own', () => {
+    const update: StatUpdate = { id: 'u1', name: 'u1', prompt: '', stats: [], messageHistory: [] };
+    const step = stepFrom({ tab: 'stats', id: 'harbor' }, [diffSlice('statUpdates', [], [update]) as SliceEdit]);
+    expect(revealForMove([step], world, editor())).toEqual({ tab: 'stats', id: 'harbor' });
+  });
+
+  it('reveals nothing when the mode hides both tabs', () => {
+    const step = stepFrom({ tab: 'placeholders', id: 'harbor' });
+    expect(revealForMove([step], world, editor({ shown: ['overview'] }))).toBeNull();
+  });
+
+  it('reveals the Origin of the Step nearest where a jump lands', () => {
+    const first = stepFrom({ tab: 'overview' });
+    const last = stepFrom({ tab: 'locations', id: 'harbor' });
+    expect(revealForMove([first, last], world, editor())).toEqual({ tab: 'locations', id: 'harbor' });
+  });
+
+  it('falls back inward when the nearest Step reveals nothing', () => {
+    const first = stepFrom({ tab: 'locations', id: 'harbor' });
+    const last = stepFrom({ tab: 'placeholders', id: 'harbor' });
+    expect(revealForMove([first, last], world, editor({ shown: ['locations'] }))).toEqual({ tab: 'locations', id: 'harbor' });
   });
 });
