@@ -54,6 +54,10 @@ Gameplay is text. Watching someone read is not a trailer. The video is a showcas
 | Q19 | The stats shot plays the app's real stat-bar animation, captured frame by frame from the running app as a short clip, not a still with a camera move and not a re-creation in Remotion. |
 | Q20 | The avatar shot shows the idle animation frozen at a fixed time, never the rest pose. The capture keeps the animate toggle on and controls the clock. |
 | Q21 | The 6 s loop (Q9) and the reading bar (Q17) both hold. Inside the loop, W02's narration line shortens to 22 characters or fewer and the typed scene's lead-in and pause shrink, so W01 and W02 each meet the bar within 360 frames. Legible frames for streamed narration count from the last word landing. The W03 wordmark is a logo and is not measured; the title card's two lines are. |
+| Q22 | Camera motion is linear. No easing on any leg. |
+| Q23 | The camera zooms during a shot only where the subject is small and is the point: the stats (W06) and the Morphie answer (W13). Every other frame shot appears at a fixed zoom and drifts with one slow linear pan across the whole shot, very subtle, a few percent of the frame. The zoom never changes during those shots. Static crops: entity, profile, contest (keeps its callout), endpoint on the model field. Full frame: library, map, blueprints, community, chat, avatar, the typed backdrops, and the tall recaptures. |
+| Q24 | The avatar shot plays a clip of the idle animation, captured frame by frame with the page clock controlled, so the avatar moves. |
+| Q25 | Text enters and leaves calmly: at least 0.5 s for a line to enter and 0.5 s to leave, with a gentle curve. The render check reports each line's enter and exit seconds beside its hold and fails a line under either. Shots lengthen as needed so the 1.5 s hold (Q17) still stands. |
 
 ### Facts the design rests on
 
@@ -112,3 +116,4 @@ Gameplay is text. Watching someone read is not a trailer. The video is a showcas
 | 06 | 9:16 cut | 05 | The social cut at 1080x1920 from the same scene set, on its own shot order. |
 | 07 | Copy sweep and final renders | 05, 06 | Copy pass, final encodes, poster frame, check against the Steam spec. |
 | 08 | Review fixes | 07 | The first review: reading bar and transition lengths (Q17, Q18), the real stat animation as a clip (Q19), the avatar in its idle pose (Q20). |
+| 09 | Camera and motion pass | 08 | The second review: linear camera (Q22), zoom only on stats and Morphie with subtle drift elsewhere (Q23), avatar in motion (Q24), calm text enter and exit with a measured check (Q25). |
