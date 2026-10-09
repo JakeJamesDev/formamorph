@@ -20,7 +20,7 @@ import { useGameDataOptional } from '@/contexts/GameDataContext';
 import { WORLD_OWNER } from '@/lib/traitGates';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { ReasoningBlock } from './ReasoningBlock';
-import { ChatNarration, type ChatBubbleTurn, type ChatPlayerTurn } from './ChatNarration';
+import { ChatNarration, PLAYER_ACTION_BUBBLE, type ChatBubbleTurn, type ChatPlayerTurn } from './ChatNarration';
 import { ChatChoices } from './ChatChoices';
 import { ChoiceRows } from './ChoiceRows';
 import { TurnCard } from './TurnCard';
@@ -31,6 +31,8 @@ import { rewriteTurnAction } from '@/lib/turnHistory';
 import { copyWithToast } from '@/lib/clipboard';
 import { useLiveReasoning } from '@/lib/reasoningStreamStore';
 import { useAutoGrowTextarea } from '@/lib/useAutoGrowTextarea';
+import { useSlashCompletion } from '@/lib/useSlashCompletion';
+import { SuggestionList } from '@/components/SuggestionList';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TokenAutocomplete } from "@/components/TokenAutocomplete";
@@ -418,13 +420,13 @@ const ACTION_INPUT_MAX_H = 240;
  */
 const ActionInput = ({
   value,
-  onChange,
+  setValue,
   onKeyDown,
   placeholder,
   disabled,
 }: {
   value: string;
-  onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  setValue: (value: string) => void;
   onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   placeholder: string;
   disabled: boolean;
@@ -432,14 +434,28 @@ const ActionInput = ({
   // The wrapper mirrors the grown height so the box is real layout, not an overlay: the row above it moves
   // up instead of being covered, which is what lets it clear the on-screen keyboard.
   const { height, focused, stateClass, fieldProps } = useAutoGrowTextarea(value, ACTION_INPUT_LINE_H, ACTION_INPUT_MAX_H);
+  const slash = useSlashCompletion(fieldProps.ref, value, setValue);
 
   return (
     <div className="relative flex-grow mr-2 flex-shrink-0" style={{ height }} data-testid="action-input-wrap">
+      {focused && slash.items.length > 0 && (
+        // Above the box, starting under the word being typed.
+        <div className="absolute bottom-full z-30 mb-1" style={{ left: slash.left }}>
+          <SuggestionList
+            items={slash.items}
+            active={slash.active}
+            onPick={slash.accept}
+            onHover={slash.setActive}
+            className="relative mt-0 min-w-[10rem]"
+          />
+        </div>
+      )}
       <textarea
         {...fieldProps}
         value={value}
-        onChange={onChange}
-        onKeyDown={onKeyDown}
+        onChange={(e) => { setValue(e.target.value); slash.readCaret(); }}
+        onSelect={slash.readCaret}
+        onKeyDown={(e) => { if (!slash.onKeyDown(e)) onKeyDown(e); }}
         placeholder={placeholder}
         disabled={disabled}
         className={cn(
@@ -459,6 +475,12 @@ const ROLLBACK_CONFIRM = {
   title: "Confirm Rollback",
   description: "Are you sure you want to rollback to the previous state? This action cannot be undone.",
 };
+
+/** A slash-command preview's choices: the list so far, and whether its scripted turn has ended. */
+export interface CommandChoices {
+  list: string[];
+  settled: boolean;
+}
 
 export const MiddlePanel = ({
   narrationBadge,
@@ -495,6 +517,9 @@ export const MiddlePanel = ({
   likePrompt,
   locationSuggestion,
   commandPreview,
+  commandChoices = null,
+  commandAction = null,
+  commandRunId = 0,
   onDismissCommandPreview
 }: {
   /** A status badge that leads the narration options. */
@@ -545,6 +570,12 @@ export const MiddlePanel = ({
   likePrompt?: React.ReactNode;
   locationSuggestion: React.ReactNode;
   commandPreview: boolean;
+  /** The preview's choices, or null when it shows narration only. */
+  commandChoices?: CommandChoices | null;
+  /** The preview turn's player action, or null when it has none. */
+  commandAction?: string | null;
+  /** Changes per preview run, so each run starts on a fresh renderer. */
+  commandRunId?: number;
   onDismissCommandPreview: () => void;
 }) => {
   // Resolved: narration is matched against these names, and a chip can never appear in AI prose.
@@ -767,20 +798,49 @@ export const MiddlePanel = ({
       </Popover>
     </div>
   );
-  const commandPreviewBlock = commandPreview && (
-      <div className="mb-3 p-2 border border-dashed border-primary/50 rounded relative">
-        <div className="flex items-center justify-between mb-1">
-          <span className="text-meta text-muted-foreground">Markdown preview (/markdown test)</span>
-          <Tip tip="Dismiss preview">
-            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onDismissCommandPreview}>
-              <X className="h-4 w-4" />
-            </Button>
-          </Tip>
-        </div>
-        <div style={revealStyle}>
-          <MarkdownRenderer text={gameplayText} animate={revealOn} animation={revealAnim} easing={revealEasing} />
-        </div>
+  // A slash-command preview plays as a live turn in the layout's own chrome, in place of the story.
+  const commandPreviewHeader = (
+    // Left-aligned: the narration options button holds the top-right corner.
+    <div className="mb-2 flex shrink-0 items-center gap-1">
+      <span className="text-meta text-muted-foreground">{commandChoices ? 'Choices preview (/choices test)' : 'Markdown preview (/markdown test)'}</span>
+      <Tip tip="Dismiss preview">
+        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onDismissCommandPreview}>
+          <X className="h-4 w-4" />
+        </Button>
+      </Tip>
+    </div>
+  );
+  const commandPreviewCard = (
+    <TurnCard actions={[]} turnNumber={totalPages + 1} live style={revealStyle}>
+      {!chatLayout && commandAction && <ActionLine text={commandAction} actions={[]} />}
+      <div data-testid="preview-narration">
+        {/* A reused renderer keeps the last run's shown text and would show the next run's first sentence at once. */}
+        <MarkdownRenderer key={commandRunId} text={gameplayText} animate={revealOn} animation={revealAnim} easing={revealEasing} dialogue />
       </div>
+    </TurnCard>
+  );
+  const commandPreviewChoices = (
+        // A live turn's choices stay disabled until the turn settles, and Continue joins them then.
+        commandChoices && (chatLayout ? (
+          <ChatChoices
+            choices={commandChoices.list}
+            showContinue={continueOffered && commandChoices.settled}
+            disabled={!commandChoices.settled}
+            isSelected={(choice) => playerInput.includes(choice)}
+            choicePress={choicePress}
+            actions={[]}
+          />
+        ) : (
+          <ChoiceRows
+            choices={commandChoices.list}
+            showContinue={continueOffered && commandChoices.settled}
+            disabled={!commandChoices.settled}
+            isSelected={(choice) => playerInput.includes(choice)}
+            continueSelected={playerInput.includes(CONTINUE_CHOICE)}
+            choicePress={choicePress}
+            actions={[]}
+          />
+        ))
   );
 
   return (
@@ -829,7 +889,24 @@ export const MiddlePanel = ({
           {chatLayout ? (
             <div className={`${narrationFrame} flex flex-col`}>
               {optionsControl}
-              {commandPreviewBlock}
+              {commandPreview ? (
+                <>
+                  {commandPreviewHeader}
+                  <ScrollArea className="min-h-0 flex-grow">
+                    <div className="mx-auto max-w-3xl px-2">
+                      <article className="flow-root py-3">
+                        {commandAction && (
+                          <div className={`mb-3 ${PLAYER_ACTION_BUBBLE}`}>
+                            <MarkdownRenderer text={commandAction} />
+                          </div>
+                        )}
+                        {commandPreviewCard}
+                        {commandPreviewChoices}
+                      </article>
+                    </div>
+                  </ScrollArea>
+                </>
+              ) : (
               <ChatNarration
                 parseAssistantMessage={parseAssistantMessage}
                 actionsFor={actionsFor}
@@ -846,12 +923,19 @@ export const MiddlePanel = ({
                   />
                 }
               />
+              )}
             </div>
           ) : (
           <ScrollArea className={narrationFrame}>
             {optionsControl}
-            {commandPreviewBlock}
-            {(actionLine !== undefined || currentAssistantMessage || (showReasoning && pageReasoning?.text)) && (
+            {commandPreview && (
+              <>
+                {commandPreviewHeader}
+                {commandPreviewCard}
+                {commandPreviewChoices}
+              </>
+            )}
+            {!commandPreview && (actionLine !== undefined || currentAssistantMessage || (showReasoning && pageReasoning?.text)) && (
               <TurnCard actions={pageActions} turnNumber={currentPage} live={pageLive} style={revealStyle}>
                 {sceneTurnId && (
                   <ScenePlate
@@ -883,7 +967,7 @@ export const MiddlePanel = ({
                 )}
               </TurnCard>
             )}
-            {sceneImagesAvailable && (
+            {!commandPreview && sceneImagesAvailable && (
               <SceneImagePanel
                 // Keyed by turn: paging to another turn remounts the panel, so the tag draft and open
                 // editor can't carry one turn's state onto another.
@@ -899,16 +983,18 @@ export const MiddlePanel = ({
                 onCancel={onCancelSceneImage}
               />
             )}
-            <ChoiceRows
-              choices={choices ?? []}
-              showContinue={showContinue}
-              disabled={disabled || isViewingPast}
-              // Past: the choice the player took. Live: any choice staged in the input.
-              isSelected={(choice, index) => isViewingPast ? viewSelectedChoice.includes(index) : playerInput.includes(choice)}
-              continueSelected={continueSelected}
-              choicePress={choicePress}
-              actions={pageChoicesActions}
-            />
+            {!commandPreview && (
+              <ChoiceRows
+                choices={choices ?? []}
+                showContinue={showContinue}
+                disabled={disabled || isViewingPast}
+                // Past: the choice the player took. Live: any choice staged in the input.
+                isSelected={(choice, index) => isViewingPast ? viewSelectedChoice.includes(index) : playerInput.includes(choice)}
+                continueSelected={continueSelected}
+                choicePress={choicePress}
+                actions={pageChoicesActions}
+              />
+            )}
           </ScrollArea>
           )}
           <ConfirmDialog
@@ -1039,7 +1125,7 @@ export const MiddlePanel = ({
               )}
               <ActionInput
                 value={playerInput}
-                onChange={(e) => setPlayerInput(e.target.value)}
+                setValue={setPlayerInput}
                 onKeyDown={handleKeyPress}
                 placeholder="Type your action... [square brackets] direct the story as the author"
                 disabled={disabled}

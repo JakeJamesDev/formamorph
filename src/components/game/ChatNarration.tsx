@@ -69,6 +69,9 @@ function chatTurns(history: ChatMessage[]): ChatTurn[] {
   return turns;
 }
 
+/** The player's sent action in Chat. No dialogue color: the quote color loses contrast on the primary fill. */
+export const PLAYER_ACTION_BUBBLE = 'ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-sm bg-primary px-3 py-2 text-primary-foreground';
+
 /**
  * The Chat body of the narration panel: every turn in one virtualized list, the action as a bubble on the
  * right and the narration as a full-width block. Opens at the latest turn. `latestFooter` renders under the
@@ -206,8 +209,7 @@ export function ChatNarration({ parseAssistantMessage, latestFooter, actionsFor,
               >
                 {turn.action !== null && (
                   <BubbleMenu actions={playerActions}>
-                    {/* No dialogue color: the quote color loses contrast on the primary fill. */}
-                    <div data-testid="player-action" className="mb-3 ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-sm bg-primary px-3 py-2 text-primary-foreground">
+                    <div data-testid="player-action" className={`mb-3 ${PLAYER_ACTION_BUBBLE}`}>
                       <MarkdownRenderer text={turn.action} />
                     </div>
                   </BubbleMenu>
