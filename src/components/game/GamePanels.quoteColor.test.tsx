@@ -69,13 +69,13 @@ describe('MiddlePanel — quote color', () => {
     expect(spans(view.container)).toEqual([]);
   });
 
-  it('leaves the command preview plain', () => {
+  it('colors quoted speech in the command preview, as in narration', () => {
     const view = renderMiddlePanel({ commandPreview: true }, {
       turns: [],
       gameplayText: 'A bold **claim** and a spoken "line".',
     });
     expect(view.container.textContent).toContain('Markdown preview');
-    expect(spans(view.container)).toEqual([]);
+    expect(spans(view.container)).toEqual(['"line"']);
   });
 
   describe('choices', () => {

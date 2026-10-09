@@ -149,7 +149,7 @@ import { setGameplayText } from "../lib/gameplayTextStore";
 import { useSentenceReveal } from "../lib/useSentenceReveal";
 import { useSmoothedReveal } from "../lib/useSmoothedReveal";
 import { revealActive } from "../lib/narrationRevealConfig";
-import { REVEAL_TEST_NARRATION, REVEAL_TEST_PROFILES } from "../lib/revealTestScripts";
+import { CHOICES_TEST_ACTION, CHOICES_TEST_CHOICES, CHOICES_TEST_NARRATION, REVEAL_TEST_NARRATION, REVEAL_TEST_PROFILES, type RevealArrivalEvent } from "../lib/revealTestScripts";
 import { MARKDOWN_SAMPLE } from "../lib/markdownSample";
 import { parseSlashCommand } from "../lib/slashCommands";
 import { normalizeStatChanges, appliedStatDeltas, applyRegen } from "../lib/statChanges";
@@ -190,6 +190,7 @@ import {
   LeftPanel,
   MiddlePanel,
   RightPanel,
+  type CommandChoices,
 } from "../components/game/GamePanels";
 import { LocationBackdrop } from "../components/game/LocationBackdrop";
 import { ConfirmDialog } from "../components/ConfirmDialog";
@@ -746,16 +747,66 @@ const GameViewer = ({
 
   // Slash-command preview (e.g. `/markdown test`): drives the narration reveal with local text, off the AI path.
   const [commandPreview, setCommandPreview] = useState(false);
+  // The `/choices test` choices; null for a narration-only preview.
+  const [commandChoices, setCommandChoices] = useState<CommandChoices | null>(null);
   const [connectionGuideOpen, setConnectionGuideOpen] = useState(false); // AI-server connection guide (web-only)
-  const commandTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const commandTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Bumped per run, so a stopped run's pending drain can't commit into the next one.
+  const commandRun = useRef(0);
+  const [commandRunId, setCommandRunId] = useState(0);
 
   const stopCommandPreview = useCallback(() => {
+    commandRun.current++;
     if (commandTimer.current !== null) {
-      clearInterval(commandTimer.current);
+      clearTimeout(commandTimer.current);
       commandTimer.current = null;
     }
     setCommandPreview(false);
+    setCommandChoices(null);
   }, []);
+
+  // Replays `text` at `schedule`'s wall-clock times through `onArrive`, then calls `onEnd`.
+  const replaySchedule = useCallback((
+    text: string, schedule: RevealArrivalEvent[], onArrive: (slice: string) => void, onEnd: () => void,
+  ) => {
+    const run = commandRun.current;
+    const startedAt = performance.now();
+    let i = 0;
+    const step = () => {
+      if (run !== commandRun.current) return;
+      // Fire every arrival event that's due, then reschedule for the next.
+      while (i < schedule.length && performance.now() - startedAt >= schedule[i].atMs) {
+        onArrive(text.slice(0, schedule[i].chars));
+        i++;
+      }
+      if (i >= schedule.length) {
+        commandTimer.current = null;
+        onEnd();
+        return;
+      }
+      commandTimer.current = setTimeout(step, Math.max(0, schedule[i].atMs - (performance.now() - startedAt)));
+    };
+    step();
+  }, []);
+
+  const pushPreviewNarration = useCallback((slice: string) => {
+    if (fadeRevealActive) fadeReveal.push(revealedSentences(slice));
+    else smoothReveal.push(slice);
+  }, [fadeReveal, smoothReveal, fadeRevealActive]);
+
+  const finishPreviewNarration = useCallback((text: string) => {
+    if (fadeRevealActive) fadeReveal.finish(text);
+    else smoothReveal.finish(text);
+  }, [fadeReveal, smoothReveal, fadeRevealActive]);
+
+  const startCommandPreview = useCallback((choices: CommandChoices | null) => {
+    stopCommandPreview();
+    setCommandRunId(commandRun.current);
+    setCommandPreview(true);
+    setCommandChoices(choices);
+    fadeReveal.reset();
+    smoothReveal.reset();
+  }, [stopCommandPreview, fadeReveal, smoothReveal]);
 
   // Replay a fixed narration through the REAL reveal path (pacer → renderer) at a scripted arrival
   // timing, so the reveal can be eyeballed/recorded reproducibly without the AI. The profile (see
@@ -763,7 +814,6 @@ const GameViewer = ({
   // The pacer measures arrival timing itself (via Date.now on each push), so replaying the schedule at
   // real wall-clock times reproduces production pacing exactly, with no estimator to mirror here.
   const runMarkdownTest = useCallback((profileName?: string) => {
-    if (commandTimer.current !== null) clearTimeout(commandTimer.current);
     // No profile (and the explicit `render`) previews the markdown sample at a steady pace — the reading
     // this command's name implies. Naming an arrival-timing profile instead replays the prose narration to
     // test the reveal pacer.
@@ -774,31 +824,39 @@ const GameViewer = ({
       return;
     }
     const text = isRender ? MARKDOWN_SAMPLE : REVEAL_TEST_NARRATION;
-    const schedule = profile.schedule(text.length);
-    setCommandPreview(true);
-    fadeReveal.reset();
-    smoothReveal.reset();
+    startCommandPreview(null);
+    replaySchedule(text, profile.schedule(text.length), pushPreviewNarration, () => finishPreviewNarration(text));
+  }, [startCommandPreview, replaySchedule, pushPreviewNarration, finishPreviewNarration]);
 
-    const startedAt = performance.now();
-    let i = 0;
-    const step = () => {
-      // Fire every arrival event that's due, then reschedule for the next.
-      while (i < schedule.length && performance.now() - startedAt >= schedule[i].atMs) {
-        const slice = text.slice(0, schedule[i].chars);
-        if (fadeRevealActive) fadeReveal.push(revealedSentences(slice));
-        else smoothReveal.push(slice);
-        i++;
-      }
-      if (i >= schedule.length) {
-        commandTimer.current = null;
-        if (fadeRevealActive) fadeReveal.finish(text);
-        else smoothReveal.finish(text);
-        return;
-      }
-      commandTimer.current = setTimeout(step, Math.max(0, schedule[i].atMs - (performance.now() - startedAt)));
-    };
-    step();
-  }, [fadeReveal, smoothReveal, fadeRevealActive]);
+  // A scripted turn: one paragraph, then a choices reply streamed through the live turn's rules. Live
+  // updates wait out a still-fading narration, and the full list commits once the reveal drains.
+  const runChoicesTest = useCallback((profileName = 'steady') => {
+    const profile = REVEAL_TEST_PROFILES[profileName];
+    if (!profile) {
+      toast.info(`Unknown profile. Try: ${Object.keys(REVEAL_TEST_PROFILES).join(', ')}`);
+      return;
+    }
+    startCommandPreview({ list: [], settled: false });
+    const run = commandRun.current;
+    const narration = CHOICES_TEST_NARRATION;
+    const streamChoices = () => replaySchedule(
+      CHOICES_TEST_CHOICES,
+      REVEAL_TEST_PROFILES.steady.schedule(CHOICES_TEST_CHOICES.length),
+      (slice) => {
+        const list = parseChoices(slice);
+        if (list.length > 0 && !(fadeRevealActive && !fadeReveal.isDrained())) setCommandChoices({ list, settled: false });
+      },
+      () => {
+        void (fadeRevealActive ? fadeReveal.drained() : Promise.resolve()).then(() => {
+          if (run === commandRun.current) setCommandChoices({ list: parseChoices(CHOICES_TEST_CHOICES), settled: true });
+        });
+      },
+    );
+    replaySchedule(narration, profile.schedule(narration.length), pushPreviewNarration, () => {
+      finishPreviewNarration(narration);
+      streamChoices();
+    });
+  }, [startCommandPreview, replaySchedule, pushPreviewNarration, finishPreviewNarration, fadeReveal, fadeRevealActive]);
 
   // Dispatch a parsed slash command; returns true if it was handled (caller then skips the AI).
   const runSlashCommand = useCallback((input: string): boolean => {
@@ -810,9 +868,14 @@ const GameViewer = ({
       runMarkdownTest(parsed.args[1]);
       return true;
     }
+    if (parsed.command === "choices" && parsed.args[0] === "test") {
+      // /choices test [burst|steady|slow|fast|erratic] — the profile paces the narration.
+      runChoicesTest(parsed.args[1]);
+      return true;
+    }
     toast.info(`Unknown command: /${parsed.command}`);
     return true;
-  }, [runMarkdownTest]);
+  }, [runMarkdownTest, runChoicesTest]);
 
   // Clear any running command preview when this view unmounts.
   useEffect(() => () => {
@@ -4574,6 +4637,9 @@ const GameViewer = ({
       likePrompt={likePromptCard}
       locationSuggestion={locationSuggestion}
       commandPreview={commandPreview}
+      commandChoices={commandChoices}
+      commandRunId={commandRunId}
+      commandAction={commandChoices ? CHOICES_TEST_ACTION : null}
       onDismissCommandPreview={stopCommandPreview}
     />
   );

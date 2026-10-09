@@ -102,3 +102,13 @@ export const REVEAL_TEST_PROFILES: Record<string, RevealTestProfile> = {
 };
 
 export const DEFAULT_REVEAL_TEST_PROFILE = 'burst';
+
+// The `/choices test` turn: the player's action, one paragraph of narration, then a choices reply after it.
+export const CHOICES_TEST_ACTION = 'I force the gate open.';
+
+export const CHOICES_TEST_NARRATION = `The gate shudders as you brace against it, servos whining under the strain. Rust flakes drift down like *dead snow*, and somewhere beyond the wall the horde answers with a single, rising howl. The bolts groan, the doors grind inward, and a courtyard choked with ivy opens before you. Something moves in the shadow of the eastern arch.`;
+
+export const CHOICES_TEST_CHOICES = `Open fire on the shape under the arch before it can close the distance
+Call out "Who's there? Show yourself!" and hold your ground by the gate
+Back through the gate and **seal the doors** behind you
+Circle the courtyard wall to flank the arch from the west`;
