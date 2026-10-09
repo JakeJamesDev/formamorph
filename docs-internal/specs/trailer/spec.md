@@ -72,6 +72,14 @@ Gameplay is text. Watching someone read is not a trailer. The video is a showcas
 | Q37 | The end card's call to action reads as a link: "Play free at formamorph.ai" with the address in the accent color and no bullet dot. |
 | Q38 | Every captured frame that carries the shot's point must show that point whole for the full hold. The render check gets a per-shot "subject region" and fails a shot whose region leaves the card's visible area at any frame. |
 | Q39 | Q38's visible area is the card's crop window less anything drawn over it: a caption pill that covers the subject fails the shot too, since a covered subject was the first finding of the third review. The card's tilt is not counted. Depth cards are not checked. In W05 and T05 the panel types only the player line; the clip carries the narration, so two texts never stream at once. "The narrator continues the story." stays as a plain caption line that enters once the reveal starts. The tall cut stacks map and travel as one stack (T09). |
+| Q40 | The cut opens on the Formamorph title card. "Type any action." (W01) is cut. The 6 s loop is the opening title card alone: it enters, holds and leaves inside frames 0 to 359 on the bare stage. Q30 is superseded. |
+| Q41 | The narration reveal clip (Q31) is recaptured against the current app, after the user's recent reveal fixes. It must look smooth. The capture reports the per-frame pixel change of the clip and fails a frame whose change is far above the clip's median, so a jumpy step never ships. |
+| Q42 | The chat shot (W08/T07) captures the Authoring Tour's world and its entity, not the Drone world, so the trailer shows more than one world. |
+| Q43 | Order in the authoring section: map, "Write who lives there." (profile), then "Then travel there and meet them." (Change Location dialog), then the traits title card, then blueprints. Q34's line and order are superseded. |
+| Q44 | A title card about traits sits before "Let players pick a race and a class." Copy proposed by the spec session, user may change: "Traits shape who you play." |
+| Q45 | A title card about needing help sits before the Morphie shot. Copy proposed by the spec session, user may change: "Need help? Just ask." |
+| Q46 | The Morphie caption is "Ask your AI guide Morphie for help at any time." |
+| Q47 | The Morphie shot is a clip: she starts in her thinking animation and moves to idle as her answer streams in. Captured with the page clock controlled, like the avatar clip, with the help answer canned. |
 
 ### Facts the design rests on
 
@@ -133,3 +141,4 @@ Gameplay is text. Watching someone read is not a trailer. The video is a showcas
 | 09 | Camera and motion pass | 08 | The second review: linear camera (Q22), zoom only on stats and Morphie with subtle drift elsewhere (Q23), avatar in motion (Q24), calm text enter and exit with a measured check (Q25). |
 | 10 | Apply the motion language | 09 | Every shot in both cuts rebuilt in the Floating cards language (Q27), iterated by eye against contact sheets. |
 | 11 | Third review fixes | 10 | Loop and wordmark (Q30), narration reveal clip (Q31), no zooms and a subject-region check (Q32, Q38), map, travel, contest, desktop and end-card shots (Q33 to Q37). |
+| 12 | Fourth review fixes | 11 | Title card opening and loop (Q40), smooth reveal recapture (Q41), chat shot world (Q42), authoring order with two title cards (Q43 to Q45), Morphie caption and animated clip (Q46, Q47). |
