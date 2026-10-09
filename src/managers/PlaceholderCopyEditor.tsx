@@ -15,35 +15,43 @@ import { cn } from '@/lib/utils';
 import type { Placeholder, PlaceholderValue } from '@/types';
 import { ListDetailFirstRow } from '@/components/ui/list-detail';
 import { WorldInput } from '@/components/editor/WorldField';
+import { fieldFrame, fieldPath } from '@/lib/historyField';
 
 /** A weight typed into a box: whole, never negative. */
 const typedWeight = (raw: string) => Math.max(0, Math.round(Number(raw) || 0));
 
 /** One value's text: a line with chips inline, or the markdown field once it spans lines. */
-function ValueText({ value, onChange, placeholders, ownerId, label }: {
+function ValueText({ value, onChange, placeholders, ownerId, label, historyField }: {
   value: string;
   onChange: (text: string) => void;
   placeholders: Placeholder[];
   ownerId: string;
   label: string;
+  historyField: string;
 }) {
-  return value.includes('\n')
-    ? <PlaceholderField value={value} onChange={onChange} placeholders={placeholders} ownerId={ownerId} markdown ariaLabel={label} />
-    : <PlaceholderNameField value={value} onChange={onChange} placeholders={placeholders} ownerId={ownerId} ariaLabel={label} />;
+  return (
+    <div {...fieldFrame(historyField)}>
+      {value.includes('\n')
+        ? <PlaceholderField value={value} onChange={onChange} placeholders={placeholders} ownerId={ownerId} markdown ariaLabel={label} />
+        : <PlaceholderNameField value={value} onChange={onChange} placeholders={placeholders} ownerId={ownerId} ariaLabel={label} />}
+    </div>
+  );
 }
 
-function WeightBox({ value, onChange, label }: { value: number; onChange: (weight: number) => void; label: string }) {
+function WeightBox({ value, onChange, label, historyField }: { value: number; onChange: (weight: number) => void; label: string; historyField: string }) {
   return (
-    <WorldInput
-      type="number"
-      min={0}
-      step={1}
-      value={value}
-      onChange={(e) => onChange(typedWeight(e.target.value))}
-      className="h-6 w-14 px-1.5 text-helper"
-      aria-label={label}
-      title="Draw weight"
-    />
+    <span className="inline-flex" {...fieldFrame(historyField)}>
+      <WorldInput
+        type="number"
+        min={0}
+        step={1}
+        value={value}
+        onChange={(e) => onChange(typedWeight(e.target.value))}
+        className="h-6 w-14 px-1.5 text-helper"
+        aria-label={label}
+        title="Draw weight"
+      />
+    </span>
   );
 }
 
@@ -116,14 +124,14 @@ export function PlaceholderCopyEditor({ copy, blueprint, ownerName }: { copy: Pl
                   <span className="text-meta text-muted-foreground">Removed</span>
                 ) : (
                   <>
-                    {weighable && shown && <WeightBox value={weightOf(shown)} onChange={(w) => setWeight(value, w)} label={`Draw weight for value ${n}`} />}
+                    {weighable && shown && <WeightBox value={weightOf(shown)} onChange={(w) => setWeight(value, w)} label={`Draw weight for value ${n}`} historyField={fieldPath('values', value.id, 'weight')} />}
                     <RemoveButton label={`Remove value ${n}`} onClick={() => updatePlaceholder(removeCopyValue(copy, value.id))} />
                   </>
                 )}
               </LabelRow>
               {own?.removed || !shown
                 ? <p className="text-helper text-muted-foreground">{value.text}</p>
-                : <ValueText value={shown.text} onChange={(t) => setText(value, t)} placeholders={placeholders} ownerId={copy.id} label={`Value ${n}`} />}
+                : <ValueText value={shown.text} onChange={(t) => setText(value, t)} placeholders={placeholders} ownerId={copy.id} label={`Value ${n}`} historyField={fieldPath('values', value.id, 'text')} />}
             </div>
           );
         })}
@@ -137,7 +145,7 @@ export function PlaceholderCopyEditor({ copy, blueprint, ownerName }: { copy: Pl
               <LabelRow>
                 <span className="text-helper font-medium text-muted-foreground">Value {n}</span>
                 <span className="ml-auto flex items-center gap-2">
-                  {weighable && <WeightBox value={weightOf(value)} onChange={(w) => setOwnWeight(value, w)} label={`Draw weight for value ${n}`} />}
+                  {weighable && <WeightBox value={weightOf(value)} onChange={(w) => setOwnWeight(value, w)} label={`Draw weight for value ${n}`} historyField={fieldPath('values', value.id, 'weight')} />}
                   <RemoveButton label={`Remove value ${n}`} onClick={() => setOwn(copy.values.filter((v) => v.id !== value.id))} />
                 </span>
               </LabelRow>
@@ -147,6 +155,7 @@ export function PlaceholderCopyEditor({ copy, blueprint, ownerName }: { copy: Pl
                 placeholders={placeholders}
                 ownerId={copy.id}
                 label={`Value ${n}`}
+                historyField={fieldPath('values', value.id, 'text')}
               />
             </div>
           );

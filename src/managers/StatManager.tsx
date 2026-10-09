@@ -39,6 +39,7 @@ import { findTargetRow, routeText } from "@/lib/surface/surfaceTargets";
 import { useLanding } from "@/lib/surface/useLanding";
 import type { FocusFieldHint, Stat, StatDescriptor, StatType, ThresholdUnit } from "@/types";
 import { WorldInput } from '@/components/editor/WorldField';
+import { fieldFrame } from '@/lib/historyField';
 
 export const AVAILABILITY_INFO = `**Enabled** keeps the stat active. Uncheck it and the stat stays inactive until a trait enables it. An inactive stat isn't shown to the player or sent to the AI, and its Regen and Code don't run.
 
@@ -246,7 +247,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
       {/* The identity line: the name takes the room it needs and the type select keeps a fixed width, so
           the two read as one row until the pane is too narrow to hold them side by side. */}
       <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_11rem]">
-        <div data-tour-anchor="stat-name" className="space-y-2">
+        <div data-tour-anchor="stat-name" className="space-y-2" {...fieldFrame('name')}>
           <Label>Name</Label>
           <PlaceholderNameField
             value={editingStat.name || ""}
@@ -274,7 +275,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
           </Select>
         </div>
       </div>
-      <div data-tour-anchor="stat-description" className="space-y-2">
+      <div data-tour-anchor="stat-description" className="space-y-2" {...fieldFrame('description')}>
         <Label>Description</Label>
         <PlaceholderNameField
           value={editingStat.description || ""}
@@ -297,7 +298,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
                   <Label>Max</Label>
                   <Input type="number" value={100} readOnly disabled />
                 </div>
-                <div>
+                <div {...fieldFrame('value')}>
                   <Label>Initial Value (%)</Label>
                   <WorldInput
                     type="number"
@@ -307,7 +308,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
                     onChange={(e) => handleChange("value", clamp(Number(e.target.value), 0, 100))}
                   />
                 </div>
-                <div>
+                <div {...fieldFrame('regen')}>
                   <Label>Regen</Label>
                   <WorldInput
                     type="number"
@@ -318,7 +319,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
               </>
             ) : (
               <>
-                <div>
+                <div {...fieldFrame('min')}>
                   <Label>Min</Label>
                   <WorldInput
                     type="number"
@@ -326,7 +327,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
                     onChange={(e) => handleChange("min", Number(e.target.value))}
                   />
                 </div>
-                <div>
+                <div {...fieldFrame('max')}>
                   <Label>Max</Label>
                   <WorldInput
                     type="number"
@@ -334,7 +335,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
                     onChange={(e) => handleChange("max", Number(e.target.value))}
                   />
                 </div>
-                <div>
+                <div {...fieldFrame('value')}>
                   <Label>Initial Value</Label>
                   <WorldInput
                     type="number"
@@ -342,7 +343,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
                     onChange={(e) => handleChange("value", Number(e.target.value))}
                   />
                 </div>
-                <div>
+                <div {...fieldFrame('regen')}>
                   <Label>Regen</Label>
                   <WorldInput
                     type="number"

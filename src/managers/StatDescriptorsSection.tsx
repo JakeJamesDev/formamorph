@@ -25,6 +25,7 @@ import {
 } from '@/lib/statDescriptorGeometry';
 import type { PlaceholderPin, Stat, StatDescriptor, ThresholdUnit } from '@/types';
 import { Tip } from '@/components/ui/tooltip';
+import { fieldFrame, fieldPath } from '@/lib/historyField';
 
 /** What one descriptor field can be written to: its threshold, its text, or its pin list. */
 export type DescriptorFieldValue = string | number | PlaceholderPin[] | undefined;
@@ -64,15 +65,21 @@ const ROW_TEXT = [
 const ROW_CONTROLS = 'flex items-center gap-2 ms-auto sm:ms-0 md:ms-auto xl:ms-0';
 
 /** A threshold input wearing its unit inside the right edge — a placeholder says it only until you type. */
-const UnitInput = ({ value, unit, onChange, onBlur, placeholder, ariaLabel, worldField = false }: {
+const UnitInput = ({ value, unit, onChange, onBlur, placeholder, ariaLabel, worldField = false, historyField }: {
   value: number | string; unit: string; placeholder?: string; ariaLabel: string;
   onChange: (v: string) => void; onBlur?: () => void;
   /** The box writes the world, so the world stack owns its undo. */
   worldField?: boolean;
+  /** The box's field identity, for a box that writes the world. */
+  historyField?: string;
 }) => {
   const Box = worldField ? WorldInput : Input;
   return (
-    <div className="relative flex-shrink-0" style={{ width: `${thresholdInputWidthRem(unit)}rem` }}>
+    <div
+      className="relative flex-shrink-0"
+      style={{ width: `${thresholdInputWidthRem(unit)}rem` }}
+      {...(historyField !== undefined && fieldFrame(historyField))}
+    >
       <Box
         type="number"
         value={value}
@@ -237,13 +244,14 @@ export const StatDescriptorsSection = ({
             <div className={ROW}>
               <UnitInput
                 worldField
+                historyField={fieldPath('descriptors', String(descriptor.id), 'threshold')}
                 value={descriptor.threshold}
                 unit={tag}
                 ariaLabel={`Threshold for ${chipText(descriptor.description) || 'descriptor'}`}
                 onChange={(v) => onDescriptorChange(index, 'threshold', Number(v))}
                 onBlur={onDescriptorBlur}
               />
-              <div className={ROW_TEXT}>
+              <div className={ROW_TEXT} {...fieldFrame('descriptors', String(descriptor.id), 'description')}>
                 <PlaceholderNameField
                   value={descriptor.description}
                   onChange={(v) => onDescriptorChange(index, 'description', v)}
@@ -277,7 +285,7 @@ export const StatDescriptorsSection = ({
         );
       })}
 
-      <div className={ROW}>
+      <div className={ROW} {...fieldFrame('descriptors', 'new')}>
         <UnitInput
           value={newDescriptor.threshold}
           unit={tag}

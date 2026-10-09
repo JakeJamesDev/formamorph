@@ -22,6 +22,7 @@ import type { RenameFieldHandlers } from '@/lib/useCodeRename';
 import type { ReactNode } from 'react';
 import type { Entity, Placeholder } from '@/types';
 import { WorldInput } from '@/components/editor/WorldField';
+import { fieldFrame } from '@/lib/historyField';
 
 /** What every entity field group needs: the entity, a field writer, and the chip vocabulary to offer. */
 export interface EntityFieldGroupProps {
@@ -46,7 +47,7 @@ export const EntityIdentityFields = ({ value, onChange, placeholders = [], owner
   const { advanced } = useEditorMode();
   return (
     <>
-      <div data-tour-anchor="entity-name" className="space-y-2">
+      <div data-tour-anchor="entity-name" className="space-y-2" {...fieldFrame('name')}>
         <Label>Name</Label>
         <PlaceholderNameField
           value={value.name || ''}
@@ -58,7 +59,7 @@ export const EntityIdentityFields = ({ value, onChange, placeholders = [], owner
         />
       </div>
       {advanced && (
-      <div className="space-y-2">
+      <div className="space-y-2" {...fieldFrame('aliases')}>
         <div className="flex items-center gap-2">
           <Label>Aliases</Label>
           <HelpButton topicId="worldEditor.aliases" className="h-6 w-6" />
@@ -72,7 +73,7 @@ export const EntityIdentityFields = ({ value, onChange, placeholders = [], owner
         />
       </div>
       )}
-      <div data-tour-anchor="entity-pronouns" className="space-y-2">
+      <div data-tour-anchor="entity-pronouns" className="space-y-2" {...fieldFrame('pronouns')}>
         <Label htmlFor={`entity-pronouns-${value.id}`}>Pronouns</Label>
         <Hint>Tells the AI how to refer to this entity</Hint>
         <WorldInput
@@ -84,7 +85,7 @@ export const EntityIdentityFields = ({ value, onChange, placeholders = [], owner
       </div>
       <EntityPersonaField value={value} onChange={onChange} placeholders={placeholders} home={home} customPersonaHolder={customPersonaHolder} />
       {advanced && (
-        <div className="space-y-2">
+        <div className="space-y-2" {...fieldFrame('type')}>
           <Label>Type</Label>
           <WorldInput
             value={value.type || ''}
@@ -186,6 +187,7 @@ export const EntityDescriptionFields = ({ value, onChange, placeholders = [], ow
     <>
       <PlaceholderField
         label="Player-Facing Description"
+        historyField="playerDescription"
         labelAside={(
           <AiGenerateButton
             mode="playerDesc"
@@ -204,6 +206,7 @@ export const EntityDescriptionFields = ({ value, onChange, placeholders = [], ow
       />
       <PlaceholderField
         label="AI-Facing Description"
+        historyField="aiDescription"
         labelAside={(
           <AiGenerateButton
             mode="aiDesc"
@@ -223,6 +226,7 @@ export const EntityDescriptionFields = ({ value, onChange, placeholders = [], ow
       {advanced && (
         <PlaceholderField
           label="AI-Facing Summary"
+          historyField="aiSummary"
           labelAside={(
             <AiGenerateButton
               mode="summary"

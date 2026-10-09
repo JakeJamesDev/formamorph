@@ -31,6 +31,7 @@ import type { ImageSubjectKind } from '@/lib/imagePrompt';
 import { useEditorMode } from '@/lib/editorMode';
 import type { Placeholder } from '@/types';
 import { Tip } from '@/components/ui/tooltip';
+import { fieldFrame } from '@/lib/historyField';
 
 interface ImageWidgetProps {
   /** Field label above the upload — "Background Image" for locations, "Image" for entities. */
@@ -461,15 +462,17 @@ export const ImageTags = () => {
   const { advanced } = useEditorMode();
   if (!advanced) return null;
   return (
-    <TagField
-      label="Image Tags"
-      value={tags || ''}
-      onChange={onTagsChange}
-      placeholders={placeholders}
-      ownerId={ownerId}
-      placeholder="booru tags, comma separated"
-      aside={<AiGenerateButton mode="tags" kind={kind} source={description} onChange={onTagsChange} />}
-    />
+    <div {...fieldFrame('imageTags')}>
+      <TagField
+        label="Image Tags"
+        value={tags || ''}
+        onChange={onTagsChange}
+        placeholders={placeholders}
+        ownerId={ownerId}
+        placeholder="booru tags, comma separated"
+        aside={<AiGenerateButton mode="tags" kind={kind} source={description} onChange={onTagsChange} />}
+      />
+    </div>
   );
 };
 

@@ -22,6 +22,8 @@ export interface RevealTarget {
   subTab?: string;
   /** The Locations view to show, from the Origin. */
   view?: string;
+  /** The field to pulse, from the Origin. */
+  field?: string;
 }
 
 // Stat updates have no tab, so a Step that only touches them reveals nothing.
@@ -96,17 +98,18 @@ export interface RevealPlace {
 const REVEAL_TABS = new Set<string>(Object.values(SLICE_TABS));
 const isRevealTab = (tab: string): tab is RevealTab => REVEAL_TABS.has(tab);
 
-/** The Origin's sub-view, which belongs to whichever target sits on the Origin's tab. */
-const subView = ({ subTab, view }: StepOrigin): Pick<RevealTarget, 'subTab' | 'view'> => ({
+/** The Origin's sub-view and field, which belong to whichever target sits on the Origin's tab. */
+const subView = ({ subTab, view, field }: StepOrigin): Pick<RevealTarget, 'subTab' | 'view' | 'field'> => ({
   ...(subTab !== undefined ? { subTab } : {}),
   ...(view !== undefined ? { view } : {}),
+  ...(field !== undefined ? { field } : {}),
 });
 
 /**
  * Where one Step returns the author. A Step made through a mirror returns to its Origin tab and the records
  * of its selection that still stand; one made on the touched record's own tab, or whose Origin the editor
- * can't show, reveals the touched record. The Origin's sub-view applies on either kind of tab, and only
- * where the Origin tab is the one shown.
+ * can't show, reveals the touched record. The Origin's sub-view and field apply on either kind of tab, and
+ * only where the Origin tab is the one shown.
  */
 function revealStep(step: Step, world: WorldSlices, place: RevealPlace): RevealTarget | null {
   const target = revealTarget(step, world);

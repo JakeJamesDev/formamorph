@@ -8,6 +8,7 @@ import { statCodeName } from '@/lib/statCodeNames';
 import { useRenameField } from '@/lib/useCodeRename';
 import type { Dictionary, Placeholder } from '@/types';
 import { WorldInput, WorldTextarea } from '@/components/editor/WorldField';
+import { fieldFrame } from '@/lib/historyField';
 
 /** Stable empty list, so the rename reader keeps its identity where there is no world. */
 const EMPTY_PLACEHOLDERS: Placeholder[] = [];
@@ -29,7 +30,7 @@ const DictionaryBookFields = ({ book, showEnabled = true }: { book: Dictionary; 
   });
   return (
     <div className="space-y-4">
-      <div className="space-y-2">
+      <div className="space-y-2" {...fieldFrame('name')}>
         <Label>Name</Label>
         <WorldInput
           value={book.name}
@@ -40,7 +41,7 @@ const DictionaryBookFields = ({ book, showEnabled = true }: { book: Dictionary; 
           onKeyDown={(e) => { if (e.key === 'Enter') rename.onSubmit(); }}
         />
       </div>
-      <div className="space-y-2">
+      <div className="space-y-2" {...fieldFrame('description')}>
         <Label>Description</Label>
         <WorldTextarea
           value={book.description ?? ''}

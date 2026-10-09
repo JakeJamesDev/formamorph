@@ -9,6 +9,7 @@ import type { TraitGroup } from '@/types';
 import { ListDetailFirstRow } from '@/components/ui/list-detail';
 import { Hint } from '@/components/ui/typography';
 import { WorldInput } from '@/components/editor/WorldField';
+import { fieldFrame } from '@/lib/historyField';
 
 type PickPreset = 'any' | 'exactlyOne' | 'upToOne' | 'custom';
 
@@ -54,7 +55,7 @@ const GroupManager = ({ group, ownerId, readOnly = false, detailsHeader, details
   const preset = customFor === editingGroup.id ? 'custom' : presetOf(editingGroup);
 
   const nameField = (
-    <div className="space-y-2">
+    <div className="space-y-2" {...fieldFrame('name')}>
       <Label>Group Name</Label>
       <PlaceholderNameField
         trait={traitField}
@@ -78,6 +79,7 @@ const GroupManager = ({ group, ownerId, readOnly = false, detailsHeader, details
       <PlaceholderField
         trait={traitField}
         label="Player-Facing Description"
+        historyField="playerDescription"
         value={editingGroup.playerDescription || ''}
         onChange={(v) => handleChange('playerDescription', v)}
         placeholders={placeholders}
@@ -89,6 +91,7 @@ const GroupManager = ({ group, ownerId, readOnly = false, detailsHeader, details
       <PlaceholderField
         trait={traitField}
         label="AI-Facing Description"
+        historyField="aiDescription"
         value={editingGroup.aiDescription || ''}
         onChange={(v) => handleChange('aiDescription', v)}
         placeholders={placeholders}
@@ -118,7 +121,7 @@ const GroupManager = ({ group, ownerId, readOnly = false, detailsHeader, details
         </Select>
         {preset === 'custom' && (
           <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-1">
+            <div className="space-y-1" {...fieldFrame('minPicks')}>
               <Label htmlFor={`pick-min-${editingGroup.id}`} className="text-meta text-muted-foreground">At Least</Label>
               <WorldInput
                 id={`pick-min-${editingGroup.id}`}
@@ -131,7 +134,7 @@ const GroupManager = ({ group, ownerId, readOnly = false, detailsHeader, details
                 onChange={(e) => handleChange('minPicks', countOf(e.target.value))}
               />
             </div>
-            <div className="space-y-1">
+            <div className="space-y-1" {...fieldFrame('maxPicks')}>
               <Label htmlFor={`pick-max-${editingGroup.id}`} className="text-meta text-muted-foreground">At Most</Label>
               <WorldInput
                 id={`pick-max-${editingGroup.id}`}

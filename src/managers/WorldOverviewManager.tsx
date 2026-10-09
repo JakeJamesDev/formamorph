@@ -23,6 +23,7 @@ import { Select, SelectContent, SelectTrigger, SelectValue } from "@/components/
 import { SelectOptions } from "@/components/SelectOptions";
 import type { AllowedPersonas, VrmLicense } from '@/types';
 import { WorldInput } from '@/components/editor/WorldField';
+import { fieldFrame } from '@/lib/historyField';
 
 /**
  * The world's custom player VRM in the same details view the model library uses. The world stores the model
@@ -196,7 +197,7 @@ const WorldOverviewManager = () => {
     // The listing fields first, then the avatar setting, then the music: the library card's name, author,
     // tags and picture read as one block.
     <div className="space-y-4">
-      <div className="space-y-2" data-tour-anchor="world-name">
+      <div className="space-y-2" data-tour-anchor="world-name" {...fieldFrame('name')}>
         <Label htmlFor="worldName">World Name</Label>
         <WorldInput
           id="worldName"
@@ -204,7 +205,7 @@ const WorldOverviewManager = () => {
           onChange={(e) => updateWorldOverview({ name: e.target.value })}
         />
       </div>
-      <div className="space-y-2">
+      <div className="space-y-2" {...fieldFrame('author')}>
         <Label htmlFor="worldAuthor">Author</Label>
         <WorldInput
           id="worldAuthor"

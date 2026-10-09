@@ -29,6 +29,7 @@ import type {
   Entity, FocusFieldHint, Placeholder, PlaceholderPin, Trait, StatChange, TraitLinkFields, TraitRequirement, TraitRequirementRow, TraitStatToggle,
 } from '@/types';
 import { WorldInput } from '@/components/editor/WorldField';
+import { fieldFrame } from '@/lib/historyField';
 
 /** A link's edit of one trait it brings: which fields it overrides, which of those the blueprint changed
  *  since, and where a whole-trait write and a field reset go. */
@@ -217,7 +218,7 @@ const TraitManager = ({
           </div>
         </div>
       )}
-      <div data-tour-anchor="trait-name" className="space-y-2">
+      <div data-tour-anchor="trait-name" className="space-y-2" {...fieldFrame('name')}>
         <Label>Name</Label>
         <PlaceholderNameField
           value={editingTrait.name || ''}
@@ -232,6 +233,7 @@ const TraitManager = ({
       </div>
       <PlaceholderField
         label="Player-Facing Description"
+        historyField="playerDescription"
         trait={traitField}
         value={editingTrait.playerDescription || ''}
         onChange={(v) => handleChange('playerDescription', v)}
@@ -243,6 +245,7 @@ const TraitManager = ({
       />
       <PlaceholderField
         label="AI-Facing Description"
+        historyField="aiDescription"
         trait={traitField}
         value={editingTrait.aiDescription || ''}
         onChange={(v) => handleChange('aiDescription', v)}
@@ -296,11 +299,14 @@ const TraitManager = ({
                 ))}
               </SelectContent>
             </Select>
-            <WorldInput
-              type="number"
-              value={statChange.value}
-              onChange={(e) => handleStatChangeUpdate(index, 'value', Number(e.target.value))}
-            />
+            {/* A stat change has no id, and two can name one stat, so its place in the list names it. */}
+            <div className="w-full" {...fieldFrame('statChanges', String(index), 'value')}>
+              <WorldInput
+                type="number"
+                value={statChange.value}
+                onChange={(e) => handleStatChangeUpdate(index, 'value', Number(e.target.value))}
+              />
+            </div>
             <Select
               value={statChange.type}
               onValueChange={(value) => handleStatChangeUpdate(index, 'type', value)}

@@ -37,7 +37,7 @@ const stepIndex = (index: number, direction: StepDirection, count: number): numb
  * text is tinted the chip's own color, like the prompt previews. A Values tab opens each chip in place on
  * the value its Preview drew.
  */
-const PlaceholderField = ({ value, onChange, placeholders, ownerId, ownerName, bearer, trait, promptChips, markdown = false, resizable = false, placeholder, className, readOnly = false, label, info, labelAside, hint, ariaLabel, tourAnchor }: {
+const PlaceholderField = ({ value, onChange, placeholders, ownerId, ownerName, bearer, trait, promptChips, markdown = false, resizable = false, placeholder, className, readOnly = false, label, info, labelAside, hint, ariaLabel, tourAnchor, historyField }: {
   value: string;
   onChange: (v: string) => void;
   placeholders: Placeholder[];
@@ -74,6 +74,8 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, ownerName, b
   ariaLabel?: string;
   /** The Authoring Tour anchor (see `PromptField`). */
   tourAnchor?: string;
+  /** The World Editor field identity (see `PromptField`). */
+  historyField?: string;
 }) => {
   // A prompt names the player with its Persona variable, so no Built-in chip is offered there.
   const placeholderVocab = usePlaceholderChipVocabulary(placeholders, ownerId, { builtins: !promptChips, trait });
@@ -214,6 +216,7 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, ownerName, b
       readOnly={readOnly}
       ariaLabel={ariaLabel}
       tourAnchor={tourAnchor}
+      historyField={historyField}
       insertTrigger={PLACEHOLDER_TRIGGER}
     />
   );

@@ -74,6 +74,8 @@ export interface StepOrigin {
   subTab?: string;
   /** The Locations tab's List or Canvas view. */
   view?: string;
+  /** The field identity of the field in use, from `historyField`. */
+  field?: string;
 }
 
 export interface Step {

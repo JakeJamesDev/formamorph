@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { hintsLinked, withHint, withLink, withUnlink } from '@/lib/connectionEditing';
 import type { Connection, LegKey } from '@/types';
 import { WorldInput } from '@/components/editor/WorldField';
+import { fieldFrame } from '@/lib/historyField';
 
 /** One hint box: the leg it edits, its visible label, and its accessible name. */
 export interface TravelHintLeg {
@@ -88,7 +89,7 @@ export function TravelHintPair({ connection, legs, idPrefix, onChange, focus }: 
           const id = `${idPrefix}-${key}`;
           const copy = linked && key === second?.key;
           return (
-            <div key={key} className="space-y-1">
+            <div key={key} className="space-y-1" {...fieldFrame('connections', connection.id, key)}>
               <Label htmlFor={id} className="flex items-center gap-1">{label}</Label>
               <WorldInput
                 id={id}
