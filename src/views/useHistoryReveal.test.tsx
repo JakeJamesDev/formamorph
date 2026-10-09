@@ -79,6 +79,27 @@ describe('useHistoryReveal', () => {
     expect(view.result.current.connectionReveal).toBeNull();
   });
 
+  it('hands the canvas the whole selection of an Origin and shows the canvas to take it', () => {
+    const { calls, view, move } = setup({ holds: (_tab, id) => id !== 'c' });
+    const steps = record(createHistory(), [diffSlice('stats', [], [stat('x')]) as SliceEdit], {
+      origin: { tab: 'locations', ids: ['a', 'b', 'c'] },
+    }).steps;
+    move({ steps, world: world({ stats: [stat('x')] }) });
+    expect(calls.navigateToItem).toHaveBeenCalledWith('locations', 'a');
+    expect(calls.setLocationView).toHaveBeenCalledWith('canvas');
+    expect(view.result.current.selectionReveal).toEqual({ ids: ['a', 'b'] });
+
+    act(() => view.result.current.clearSelectionReveal());
+    expect(view.result.current.selectionReveal).toBeNull();
+  });
+
+  it('makes no canvas request for a single record', () => {
+    const { calls, view, move } = setup();
+    move(moveOf('stats', [stat('a')], world({ stats: [stat('a')] })));
+    expect(calls.setLocationView).not.toHaveBeenCalled();
+    expect(view.result.current.selectionReveal).toBeNull();
+  });
+
   it('marks a removed connection as gone so the canvas can drop it', () => {
     const { view, move } = setup();
     move(moveOf('connections', [wire('c1')], world()));

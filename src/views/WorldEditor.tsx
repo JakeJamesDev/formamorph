@@ -721,15 +721,30 @@ const WorldEditorInner = ({
   // The lists are built below and read only after a move's commit.
   const listHoldsRef = useRef<(tab: RevealTab, id: string) => boolean>(() => false);
   const listHolds = useCallback((tab: RevealTab, id: string) => listHoldsRef.current(tab, id), []);
-  const { connectionReveal, clearConnectionReveal } = useHistoryReveal({
+  const { connectionReveal, clearConnectionReveal, selectionReveal, clearSelectionReveal } = useHistoryReveal({
     onMove: historyMoves.onMove, touring, visibleTabs, holds: listHolds, setActiveTab, clearSearch, setLocationView,
     navigateToItem: navigateToBenchItem,
   });
   // Passive, so a write's layout effect still reads the place from before a tab switch in its commit.
   const { place: historyPlace } = historyMoves;
   const placeId = selections[activeTab] ?? undefined;
-  useEffect(() => { historyPlace.current = { tab: activeTab, ...(placeId ? { id: placeId } : {}) }; },
-    [historyPlace, activeTab, placeId]);
+  // Only the canvas selects several locations; the open one leads.
+  const canvasPicked = useRef<string[]>([]);
+  const publishPlace = useRef(() => {});
+  useEffect(() => {
+    const onCanvas = activeTab === 'locations' && locationView === 'canvas';
+    if (!onCanvas) canvasPicked.current = [];
+    publishPlace.current = () => {
+      const others = onCanvas ? canvasPicked.current.filter((id) => id !== placeId) : [];
+      const ids = [...(placeId ? [placeId] : []), ...others];
+      historyPlace.current = { tab: activeTab, ...(ids.length ? { ids } : {}) };
+    };
+    publishPlace.current();
+  }, [historyPlace, activeTab, placeId, locationView]);
+  const onCanvasSelection = useCallback((ids: string[]) => {
+    canvasPicked.current = ids;
+    publishPlace.current();
+  }, []);
   useEffect(() => () => { historyPlace.current = null; }, [historyPlace]);
 
   // ── Authoring Tour ────────────────────────────────────────────────────────
@@ -914,6 +929,9 @@ const WorldEditorInner = ({
     focusField: findField,
     revealConnection: connectionReveal,
     onConnectionRevealed: clearConnectionReveal,
+    revealSelection: selectionReveal,
+    onSelectionRevealed: clearSelectionReveal,
+    onCanvasSelection,
   });
   const locationsParts = useListEditor(locationsAdapter, {
     selectedId: selections.locations ?? null, onSelect: selectLocation, search,

@@ -16,6 +16,8 @@ export interface RevealTarget {
   gone?: boolean;
   /** The id names a connection, which the Locations Canvas selects. */
   connection?: boolean;
+  /** The records an Origin restores when it holds more than one, `id` first. */
+  ids?: string[];
 }
 
 // Stat updates have no tab, so a Step that only touches them reveals nothing.
@@ -91,16 +93,20 @@ const REVEAL_TABS = new Set<string>(Object.values(SLICE_TABS));
 const isRevealTab = (tab: string): tab is RevealTab => REVEAL_TABS.has(tab);
 
 /**
- * Where one Step returns the author. A Step made through a mirror returns to its Origin tab and record; one
- * made on the touched record's own tab, or whose Origin the editor can't show, reveals the touched record.
+ * Where one Step returns the author. A Step made through a mirror returns to its Origin tab and the records
+ * of its selection that still stand; one made on the touched record's own tab, or whose Origin the editor
+ * can't show, reveals the touched record.
  */
 function revealStep(step: Step, world: WorldSlices, place: RevealPlace): RevealTarget | null {
   const target = revealTarget(step, world);
   const fallback = target && place.shows(target.tab) ? target : null;
   const { origin } = step;
   if (!origin || !isRevealTab(origin.tab) || !place.shows(origin.tab) || origin.tab === target?.tab) return fallback;
-  if (origin.id === undefined) return { tab: origin.tab };
-  return place.holds(origin.tab, origin.id) ? { tab: origin.tab, id: origin.id } : fallback;
+  if (!origin.ids?.length) return { tab: origin.tab };
+  const { tab } = origin;
+  const standing = origin.ids.filter((id) => place.holds(tab, id));
+  if (!standing.length) return fallback;
+  return { tab, id: standing[0], ...(standing.length > 1 ? { ids: standing } : {}) };
 }
 
 /** Where a move over one or more Steps returns the author: the Step nearest where the cursor lands, else the next one in. */

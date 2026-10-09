@@ -722,13 +722,15 @@ export interface LocationCanvasInputs {
   };
 }
 
-const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullscreen, data, preferences }: {
+const CanvasInner = ({
+  selectedId, onSelect, session, fullscreen, onToggleFullscreen, data, preferences, revealSelection, onSelectionRevealed,
+}: {
   selectedId: string | null;
   onSelect: (id: string) => void;
   session: CanvasSession;
   fullscreen: boolean;
   onToggleFullscreen: () => void;
-} & Pick<LocationCanvasInputs, 'data' | 'preferences'>) => {
+} & Pick<LocationCanvasInputs, 'data' | 'preferences'> & Pick<CanvasReveal, 'revealSelection' | 'onSelectionRevealed'>) => {
   const { locations, setLocations, connections, setConnections, placeholders, placementLetters, placeholderOwners } = data;
   const {
     selectedIdsRef, lastSyncedRef, reportSelection, wake, selectedConnectionId, setSelectedConnectionId,
@@ -901,6 +903,15 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
       selected: selectedIdsRef.current.includes(node.id),
     })));
   }, [map, setNodes, selectedIdsRef]);
+
+  // Restores an undone edit's whole selection; the first id is marked synced so its prop can't collapse the rest.
+  useEffect(() => {
+    if (!revealSelection) return;
+    const { ids } = revealSelection;
+    lastSyncedRef.current = ids[0] ?? null;
+    setSelection((id) => ids.includes(id));
+    onSelectionRevealed?.();
+  }, [revealSelection, onSelectionRevealed, setSelection, lastSyncedRef]);
 
   // Implicit arrows belong to the locations the author is looking at: the hovered one and the selected ones,
   // and none while a drag is in flight. The hover outlives the pointer by a beat, so the pointer can cross
@@ -1409,10 +1420,19 @@ export interface ConnectionReveal {
   gone?: boolean;
 }
 
+/** A request from the editor to make these locations the canvas's whole selection, as an undo restores it. */
+export interface SelectionReveal {
+  ids: readonly string[];
+}
+
 interface CanvasReveal {
   revealConnection?: ConnectionReveal | null;
   /** Called once the canvas has taken the request, so a later mount does not take it again. */
   onConnectionRevealed?: () => void;
+  revealSelection?: SelectionReveal | null;
+  onSelectionRevealed?: () => void;
+  /** Every selection the canvas reports, so the editor knows the whole of it. */
+  onSelectionChange?: (ids: string[]) => void;
 }
 
 /** Embedded and fullscreen canvas with caller-owned data and preferences. It records into the world history
@@ -1441,10 +1461,13 @@ export const LocationCanvasWorkspace = (props: LocationCanvasInputs & CanvasReve
   // it goes and the new one before it has drawn, and neither is the author letting go of anything.
   const inTransitRef = useRef(false);
   const wake = useCallback(() => { inTransitRef.current = false; }, []);
+  const onSelectionChange = useRef(props.onSelectionChange);
+  onSelectionChange.current = props.onSelectionChange;
   const reportSelection = useCallback((ids: string[]) => {
     if (inTransitRef.current && !ids.length) return;
     inTransitRef.current = false;
     selectedIdsRef.current = ids;
+    onSelectionChange.current?.(ids);
   }, []);
   // Every way in and out of the window goes through the same pair, so Escape and the dialog's own close carry
   // the selection exactly as the toggle does.

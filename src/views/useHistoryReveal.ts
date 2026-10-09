@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import type { HistoryMoveEvent, WorldHistoryControls } from '@/contexts/worldRecorder';
 import { revealForMove, type RevealTab } from '@/lib/historyReveal';
 import type { FindingSection } from '@/lib/testBench/rules';
-import type { ConnectionReveal } from '@/managers/LocationCanvas';
+import type { ConnectionReveal, SelectionReveal } from '@/managers/LocationCanvas';
 import type { LocationView } from '@/views/locationViews';
 
 export interface HistoryRevealOptions {
@@ -29,6 +29,8 @@ export interface HistoryRevealOptions {
 export function useHistoryReveal(options: HistoryRevealOptions) {
   const [connectionReveal, setConnectionReveal] = useState<ConnectionReveal | null>(null);
   const clearConnectionReveal = useCallback(() => setConnectionReveal(null), []);
+  const [selectionReveal, setSelectionReveal] = useState<SelectionReveal | null>(null);
+  const clearSelectionReveal = useCallback(() => setSelectionReveal(null), []);
   const latest = useRef(options);
   latest.current = options;
   const { onMove } = options;
@@ -45,6 +47,8 @@ export function useHistoryReveal(options: HistoryRevealOptions) {
       shows: (tab) => visibleTabs.some((shown) => shown.value === tab),
       holds,
     });
+    // A request the canvas never took must not outlive the move that made it.
+    setSelectionReveal(null);
     if (!target) return;
     if (target.connection && target.id !== undefined) {
       setActiveTab(target.tab);
@@ -53,10 +57,15 @@ export function useHistoryReveal(options: HistoryRevealOptions) {
       setConnectionReveal({ id: target.id, gone: target.gone });
     } else if (target.id !== undefined && !target.gone) {
       navigateToItem(target.tab, target.id);
+      // Only the canvas holds more than one selected location, so it must be showing to take them.
+      if (target.tab === 'locations' && target.ids) {
+        setLocationView('canvas');
+        setSelectionReveal({ ids: target.ids });
+      }
     } else {
       setActiveTab(target.tab);
     }
   }, [move]);
 
-  return { connectionReveal, clearConnectionReveal };
+  return { connectionReveal, clearConnectionReveal, selectionReveal, clearSelectionReveal };
 }

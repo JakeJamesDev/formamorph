@@ -257,6 +257,82 @@ describe('returning to where the edit was made', () => {
     expect(openRecordName()).toBe('Docks');
   });
 
+  describe('with the Locations Canvas selection', () => {
+    const picked = () => [...document.querySelectorAll('.react-flow__node.selected')].map((n) => n.getAttribute('data-id'));
+    /** Opens the canvas, adds Quay, and selects every location on it. */
+    const pickAllOnCanvas = async (ctx: () => { addLocation: (l: never) => void }) => {
+      openEditorTab(/Locations/);
+      fireEvent.click(screen.getByRole('radio', { name: 'Canvas' }));
+      await step(() => ctx().addLocation({ id: 'quay', name: 'Quay' } as never));
+      // The canvas answers keys only after a press on it.
+      fireEvent.pointerDown(document.querySelector('.react-flow')!);
+      await step(() => { fireEvent.keyDown(document.body, { key: 'a', ctrlKey: true }); });
+      expect(picked()).toEqual(['harbor', 'docks', 'quay']);
+    };
+
+    it('restores every location that was selected on undo and redo', async () => {
+      const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+      await pickAllOnCanvas(ctx);
+      await step(() => ctx().updateEntity(residentIn(ctx, 'harbor', 'docks')));
+      openEditorTab(/Stats/);
+
+      await undo();
+      expect(ctx().entities.find((e) => e.id === 'resident')!.locations).toEqual(['harbor']);
+      expect(shownEditorTab()).toMatch(/Locations/);
+      expect(picked()).toEqual(['harbor', 'docks', 'quay']);
+      openEditorTab(/Stats/);
+
+      await redo();
+      expect(ctx().entities.find((e) => e.id === 'resident')!.locations).toEqual(['harbor', 'docks']);
+      expect(shownEditorTab()).toMatch(/Locations/);
+      expect(picked()).toEqual(['harbor', 'docks', 'quay']);
+    });
+
+    it('drops a location the move removed from the restored selection', async () => {
+      const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+      await pickAllOnCanvas(ctx);
+      // One Step: the roster edit made with all three selected, then the removal of Quay.
+      await step(() => {
+        ctx().updateEntity(residentIn(ctx, 'harbor', 'quay'));
+        ctx().removeLocation('quay');
+      });
+      openEditorTab(/Stats/);
+
+      await undo();
+      expect(ctx().locations.map((l) => l.id)).toEqual(['harbor', 'docks', 'quay']);
+      expect(picked()).toEqual(['harbor', 'docks', 'quay']);
+      openEditorTab(/Stats/);
+
+      await redo();
+      expect(ctx().locations.map((l) => l.id)).toEqual(['harbor', 'docks']);
+      expect(shownEditorTab()).toMatch(/Locations/);
+      expect(picked()).toEqual(['harbor', 'docks']);
+    });
+  });
+
+  it('reveals the touched record when every selected location is gone', async () => {
+    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+    await step(() => ctx().addLocation({ id: 'quay', name: 'Quay' } as never));
+    openEditorTab(/Locations/);
+    selectLocation('Quay');
+    expect(openRecordName()).toBe('Quay');
+    await step(() => {
+      ctx().updateEntity(residentIn(ctx, 'harbor', 'quay'));
+      ctx().removeLocation('quay');
+    });
+    openEditorTab(/Stats/);
+
+    await undo();
+    expect(shownEditorTab()).toMatch(/Locations/);
+    expect(openRecordName()).toBe('Quay');
+    openEditorTab(/Stats/);
+
+    await redo();
+    expect(ctx().locations.map((l) => l.id)).toEqual(['harbor', 'docks']);
+    expect(shownEditorTab()).toMatch(/Entities/);
+    expect(openRecordName()).toBe('Odd Wick');
+  });
+
   it('keeps the place out of the saved world', async () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openEditorTab(/Locations/);
