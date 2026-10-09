@@ -611,14 +611,12 @@ const WorldEditorInner = ({
     exportDictionary: (book) => { void exportDictionary(book); },
   });
 
-  // `announce` false keeps a good save silent: the tour saves on every Next, and a toast per step is noise.
-  // The Save face walks every save through its states, the tour's quiet ones and auto saves included.
+  // The Save face walks every save through its states, the tour's and auto saves included.
   const saveStatus = useSaveStatus(isWorldDirty);
   const mounted = useMountedRef();
-  const runSave = (announce: boolean, markSaved: boolean) => saveStatus.track(async () => {
+  const runSave = (markSaved: boolean) => saveStatus.track(async () => {
     const result = await saveWorldCtx({ markSaved });
     if (result.ok) {
-      if (announce) toast.success('World saved successfully!');
       // The links made this session are now on disk, so they stop reading as pending.
       linking.clearPendingLinks();
     } else {
@@ -638,17 +636,15 @@ const WorldEditorInner = ({
     stored: isWorldStored,
     dirty: isWorldDirty,
     onChange: historyMoves.onChange,
-    save: () => runSave(false, false),
+    save: () => runSave(false),
   });
-  const saveWorldWith = (announce: boolean) => autoSave.manual(() => runSave(announce, true));
+  const saveWorld = () => autoSave.manual(() => runSave(true));
   // The load starts History over; this visit's links go with the copy they were made in.
   const reloadSavedElsewhere = () => {
     reloadWorld().then((loaded) => {
       if (loaded && mounted.current) linking.clearPendingLinks();
     }, (error: unknown) => { toastError(error, { headline: 'Formamorph cannot reload the world.' }); });
   };
-  const saveWorld = () => saveWorldWith(true);
-  const saveWorldQuietly = () => saveWorldWith(false);
   // The managers write edits straight into the store as you type, so leaving has to actively roll them
   // back — closing alone would keep them live for the next time this world is opened. The links made
   // this session roll back with them; the library items they named stay. A running save lands first, so
@@ -764,7 +760,7 @@ const WorldEditorInner = ({
   const tourWorld = useMemo(() => getWorldData(), [getWorldData]);
   const playWorld = useMemo(() => (onPlay && worldId ? () => onPlay(worldId) : undefined), [onPlay, worldId]);
   const tour = useAuthoringTour({
-    worldId, world: tourWorld, api: tourApi, save: saveWorldQuietly, showStep: showTourStep, onPlay: playWorld,
+    worldId, world: tourWorld, api: tourApi, save: saveWorld, showStep: showTourStep, onPlay: playWorld,
   });
   // The editor's part of the Surface. Each detail panel and the Bench report their own tabs after these.
   useSurfaceTab('worldEditor', activeTab);
