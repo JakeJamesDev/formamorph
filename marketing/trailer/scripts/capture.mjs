@@ -179,12 +179,16 @@ async function newContext(browser, shot) {
   if (shot.kind === 'clip') {
     await prepareGame(context, sceneOf(shot), worldOf(shot), { openingOnly: true });
     context.stats = gate();
+    context.choices = gate();
     await answerTurn(context, shot, sceneOf(shot));
   }
   return context;
 }
 
-/** Plays a clip's turn from canned replies, picked by each call's system prompt. The stat reply waits for `context.stats`. */
+/**
+ * Plays a clip's turn from canned replies, picked by each call's system prompt. The choice reply waits for
+ * `context.choices` and the stat reply for `context.stats`.
+ */
 async function answerTurn(context, shot, scene) {
   const replies = [
     ['narrator stage', scene.narration],
@@ -200,6 +204,7 @@ async function answerTurn(context, shot, scene) {
     const [role, text] = replies.find(([key]) => system.includes(key)) ?? ['other', 'Done.'];
     // A reveal clip films the narration alone: calls after it never answer, so nothing else lands mid-clip.
     if (shot.turn.film === 'reveal' && context.narrated) return;
+    if (role === 'player choice writer') await context.choices.opened;
     if (role === 'stat tracker') await context.stats.opened;
     if (role === 'narrator stage') context.narrated = true;
     if (!body.stream) return route.fulfill({ json: { choices: [{ index: 0, message: { role: 'assistant', content: text }, finish_reason: 'stop' }] } });
@@ -217,7 +222,14 @@ async function filmTurn(page, shot, scene, sink) {
   await page.getByRole('button', { name: scene.action, exact: true }).click();
   await input.press('Enter');
   const ending = scene.narration.trim().slice(-60);
-  await page.waitForFunction((text) => document.querySelector('[data-testid="narration"]')?.textContent?.includes(text), ending, { timeout: 60000 });
+  // Choices that land over a still-fading narration wait for the turn's commit, which waits for the held stats.
+  // So the choices answer once the narration's words have all faded in.
+  await page.waitForFunction((text) => {
+    const narration = document.querySelector('[data-testid="narration"]');
+    return !!narration?.textContent?.includes(text) && narration.getAnimations({ subtree: true }).every((animation) => animation.playState === 'finished');
+  }, ending, { timeout: 60000 });
+  await page.waitForTimeout(500); // the reveal's drain settles on its own timer
+  page.context().choices.open();
   await page.getByRole('button', { name: scene.choices[0], exact: true }).waitFor();
   await verifyGame(page, scene);
   await input.blur();
@@ -478,12 +490,30 @@ async function capture(browser, shot, sink) {
     if (shot.steps) await runSteps(page, shot.steps);
     if (shot.expect) await page.getByText(shot.expect, { exact: true }).first().waitFor({ timeout: 10000 });
     // Settle: fonts and images decoded, then the pointer parked where it hovers nothing.
-    await page.evaluate(async () => {
+    await page.evaluate(async (gifFrame) => {
       await document.fonts.ready;
       await Promise.all([...document.images].map((image) => image.decode().catch(() => {})));
+      // An animated GIF plays on real time, so each one is swapped for a still of frame `gifFrame`.
+      await Promise.all([...document.images].filter((image) => /^data:image\/gif|\.gif(\?|$)/i.test(image.currentSrc)).map(async (image) => {
+        try {
+          const decoder = new ImageDecoder({ data: await (await fetch(image.currentSrc)).arrayBuffer(), type: 'image/gif' });
+          await decoder.tracks.ready;
+          const { image: frame } = await decoder.decode({ frameIndex: Math.min(gifFrame, decoder.tracks.selectedTrack.frameCount - 1) });
+          const canvas = document.createElement('canvas');
+          canvas.width = frame.displayWidth;
+          canvas.height = frame.displayHeight;
+          canvas.getContext('2d').drawImage(frame, 0, 0);
+          frame.close();
+          decoder.close();
+          image.src = canvas.toDataURL();
+        } catch {
+          return; // a cross-origin image can't be read back
+        }
+        await image.decode().catch(() => {});
+      }));
       // A control a dialog focused on open would otherwise show its focus ring.
       if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
-    });
+    }, shot.gifFrame ?? 0);
     await page.mouse.move(0, 0);
     await page.waitForTimeout(1500);
     if (shot.kind === 'clip') return await (shot.turn.film === 'reveal' ? filmReveal(page, context, shot, scene, sink) : filmTurn(page, shot, scene, sink));

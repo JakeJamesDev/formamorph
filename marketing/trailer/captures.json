@@ -98,6 +98,7 @@
       "ready": { "text": "World Editor" },
       "steps": [{ "editWorld": "Veilwood" }, { "click": "Ember Speckle" }, { "wait": 3000 }],
       "expect": "Generate with AI",
+      "gifFrame": 13,
       "viewport": { "width": 1600, "height": 900 },
       "scale": 2,
       "theme": "dark",
