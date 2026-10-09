@@ -71,6 +71,7 @@ Gameplay is text. Watching someone read is not a trailer. The video is a showcas
 | Q36 | The desktop shot shows the desktop's built-in engine panel with a model loaded and ready, under the caption "Play in your browser or offline on your desktop." The endpoint form is out. |
 | Q37 | The end card's call to action reads as a link: "Play free at formamorph.ai" with the address in the accent color and no bullet dot. |
 | Q38 | Every captured frame that carries the shot's point must show that point whole for the full hold. The render check gets a per-shot "subject region" and fails a shot whose region leaves the card's visible area at any frame. |
+| Q39 | Q38's visible area is the card's crop window less anything drawn over it: a caption pill that covers the subject fails the shot too, since a covered subject was the first finding of the third review. The card's tilt is not counted. Depth cards are not checked. In W05 and T05 the panel types only the player line; the clip carries the narration, so two texts never stream at once. "The narrator continues the story." stays as a plain caption line that enters once the reveal starts. The tall cut stacks map and travel as one stack (T09). |
 
 ### Facts the design rests on
 
