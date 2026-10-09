@@ -1,8 +1,7 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderGameViewer } from '@/test/gameViewer';
 import { createSurfaceRequester } from '@/test/surfaceRequest';
-import { stubReachableEndpoint } from '@/test/endpointProbe';
 import { createSurfaceRegistry } from '@/lib/surface/surfaceRegistry';
 import type { World } from '@/types';
 
@@ -29,11 +28,9 @@ let requester: ReturnType<typeof createSurfaceRequester>;
 
 beforeEach(() => {
   localStorage.clear();
-  stubReachableEndpoint();
   registry = createSurfaceRegistry();
   requester = createSurfaceRequester();
 });
-afterEach(() => { vi.unstubAllGlobals(); });
 
 describe('the AI Context search box', () => {
   it('clears with the X, drops the counter, and keeps the cursor in the box', async () => {
