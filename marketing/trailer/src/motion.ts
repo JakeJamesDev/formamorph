@@ -39,5 +39,8 @@ export const wordProgress = (frame: number, fps: number, delay: number, index: n
   return springIn(frame, fps, SPRINGS.word, delay + index * stagger, frames);
 };
 
+/** How far a card floats above and below its rest, in pixels. */
+export const BOB_PIXELS = 7;
+
 /** The slow float of a card while it holds, in pixels. `phase` keeps two cards out of step. */
-export const bob = (frame: number, phase = 0) => Math.sin(frame / 38 + phase) * 7;
+export const bob = (frame: number, phase = 0) => Math.sin(frame / 38 + phase) * BOB_PIXELS;

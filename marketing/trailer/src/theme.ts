@@ -6,6 +6,9 @@ import type { Layout } from './layout';
 const lexend = loadLexend('normal', { weights: ['300', '400', '500'], subsets: ['latin'] });
 const baloo2 = loadBaloo2('normal', { subsets: ['latin'] });
 
+/** Resolves once both faces are in, so text measured after it has its real width. */
+export const fontsReady = () => Promise.all([lexend.waitUntilDone(), baloo2.waitUntilDone()]);
+
 export const fonts = {
   body: `'${lexend.fontFamily}', sans-serif`,
   wordmark: `'${baloo2.fontFamily}', '${lexend.fontFamily}', sans-serif`,

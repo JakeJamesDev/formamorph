@@ -33,6 +33,32 @@ const CONTEST = {
   ],
 };
 
+/** The canned decided contest of the router's samples (`devEventSample.ts`), alone and on fixed dates, with its sole-winner podium. */
+const DECIDED_CONTEST = {
+  id: CONTEST.eventId, type: 'contest', title: 'Autumn Ruins Contest',
+  bannerText: 'Build a world around a single season and enter it before the deadline.',
+  body: null, rulesText: null, posterColor: '#1e3a8a', posterImageUrl: null, posterPlacement: null,
+  startsAt: '2026-08-09T12:00:00.000Z', endsAt: '2026-09-08T12:00:00.000Z', cancelledAt: null,
+  startMessageId: null, endMessageId: null, resultsMessageId: null, resultsAnnouncedAt: '2026-09-09T12:00:00.000Z',
+  placements: CONTEST.entries.map((entry, i) => ({ place: i + 1, worldId: entry.id, worldName: entry.name, authorName: entry.author })),
+};
+
+/** The built-in engine with a model loaded and ready, on one GPU. The model is an 8 GB pick from the catalog (`src/lib/localModels.ts`). */
+const ENGINE_STATE = {
+  status: 'ready', modelPath: 'C:\\Formamorph\\models\\Anubis-Mini-8B-v1h-Q4_K_M.gguf', modelId: 'Anubis-Mini-8B-v1h-Q4_K_M.gguf',
+  port: 8977, error: null, loadProgress: null, contextSize: 8192, gpuLayers: 99, flashAttention: true, parallelRequests: 2,
+  maxContextSize: 32768, engineVramMB: 6100, gpuBackend: 'cuda', gpuDeviceNames: ['NVIDIA GeForce RTX 4070'],
+  deviceVramTotalMB: 12282, deviceVramFreeMB: 11200, gpuDeviceIndex: 0, gpuDeviceRawIndex: 0, gpuDeviceOrigin: 'auto',
+  gpuDeviceOptions: ['NVIDIA GeForce RTX 4070'],
+};
+
+/** The VRAM readout for that GPU, with the engine's process holding the model. */
+const GPU_STATS = {
+  gpus: [{ index: 0, name: 'NVIDIA GeForce RTX 4070', totalMB: 12282, usedMB: 7180, freeMB: 5102 }],
+  processes: [{ pid: 4242, name: 'Formamorph.exe', usedMB: 6100 }],
+  selfPid: 4242,
+};
+
 const listing = ({ id, name, description, author, tags = [], thumbnail, contestEventId = null }, index) => ({
   id, name, description, thumbnail_file: `${id}.webp`,
   downloads: 0, tags, created_at: '2026-10-01 12:00:00', updated_at: '2026-10-01T12:00:00.000Z',
@@ -95,15 +121,52 @@ export const setups = {
   /** The community catalog lists the canned contest's entries. */
   contestListings: (context) => serveCatalog(context, contestEntries()),
 
-  /** The app runs on its default endpoint preset, and that server answers its model list. */
-  async defaultEndpoint(context) {
-    await context.addInitScript(() => {
+  /** The contest list holds only the canned decided contest, so each entry wears one placement badge. */
+  async contestEvents(context) {
+    await context.route(new RegExp(`${API.source}api/events\\?slim=1`), (route) => route.fulfill({ json: { data: [DECIDED_CONTEST] } }));
+  },
+
+  /**
+   * The desktop bridge, with the built-in engine serving a model that is already loaded. Nothing loads or
+   * downloads: every engine call answers from a fixed ready state, and the engine's local server answers its model list.
+   */
+  async desktopEngine(context) {
+    await context.addInitScript(({ engine, gpu }) => {
       for (const key of ['useCustomEndpoint', 'endpointUrl', 'apiToken', 'modelName']) localStorage.removeItem(`FORMAMORPH_${key}`);
-    });
-    await context.route(/^https:\/\/api\.lyonade\.net\//, (route) => {
-      if (route.request().url().endsWith('/v1/models')) return route.fulfill({ json: { data: [{ id: 'default' }] } });
-      return route.fulfill({ status: 404, json: {} });
-    });
+      let state = engine;
+      const idle = () => () => {};
+      const model = { id: engine.modelId, fileName: engine.modelId, subpath: '', size: 4_920_000_000, path: engine.modelPath, source: 'root' };
+      window.formamorphDesktop = {
+        fetch: async ({ url, method, headers, body }) => {
+          const response = await fetch(url, { method, headers, body });
+          return { ok: response.ok, status: response.status, body: await response.text() };
+        },
+        vramStats: async () => gpu,
+        llm: {
+          status: async () => state,
+          stop: async () => state,
+          load: async () => state,
+          setOptions: async (opts) => {
+            state = { ...state, contextSize: opts.contextSize, gpuLayers: opts.gpuLayers, flashAttention: opts.flashAttention, parallelRequests: opts.parallelRequests };
+            return state;
+          },
+          onStatus: idle,
+          onMoveProgress: idle,
+          onDownloadProgress: idle,
+          modelsDir: async () => 'C:\\Formamorph\\models',
+          listModels: async () => [engine.modelId],
+          listInstalled: async () => [model],
+          listPartials: async () => [],
+          listDevices: async () => ({ backend: engine.gpuBackend, devices: engine.gpuDeviceNames, autoPick: engine.gpuDeviceNames[0] }),
+          getLocations: async () => ({
+            rootDir: 'C:\\Formamorph\\models', defaultDir: 'C:\\Formamorph\\models', isDefaultDir: true, downloadDirMissing: false,
+            freeBytes: 512_000_000_000, externalDir: null, searchSubfolders: false, lmStudioDir: null,
+          }),
+          freeSpace: async () => 512_000_000_000,
+        },
+      };
+    }, { engine: ENGINE_STATE, gpu: GPU_STATS });
+    await context.route(/^http:\/\/(localhost|127\.0\.0\.1):8977\/v1\/models/, (route) => route.fulfill({ json: { data: [{ id: ENGINE_STATE.modelId }] } }));
   },
 
   /** The help window's AI call answers with one canned reply, streamed as the endpoint would. */

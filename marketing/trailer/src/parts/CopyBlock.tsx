@@ -1,9 +1,11 @@
 import type { CSSProperties } from 'react';
+import { flushSync } from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from 'remotion';
-import type { Layout } from '../layout';
+import { CANVAS, type Layout, type Rect } from '../layout';
 import { ENTER_FRAMES, EXIT_FRAMES, SPRINGS, exitProgress, springIn, springOpacity, wordProgress } from '../motion';
 import type { CopyRead } from '../reading';
-import { colors, fonts, glass, roleSize, type DotColor, type TypeRole } from '../theme';
+import { colors, fonts, fontsReady, glass, roleSize, type DotColor, type TypeRole } from '../theme';
 
 /** One or two lines of copy. The first is the point; the second supports it. */
 export type CopyLines = readonly [string] | readonly [string, string];
@@ -106,66 +108,103 @@ export const Headline = ({ lines, layout, durationInFrames, delay = DEFAULT_DELA
   );
 };
 
-type PillsProps = BlockProps & {
-  /** Where the pill column sits on the canvas. */
-  place: CSSProperties;
-  dot: DotColor;
+/** A pill column's look: its lines, where it sits, its dot (none without one) and the part of the first line drawn in the accent color. */
+export type PillSpec = { lines: CopyLines; layout: Layout; place: CSSProperties; dot?: DotColor; accent?: string };
+
+type PillsProps = Omit<BlockProps, 'layout'> & PillSpec & {
   /** The pills stay to the scene's last frame instead of leaving, as on the end card. */
   holdsToEnd?: boolean;
 };
 
+/** A line with its `accent` part, when it has one, in the accent color. */
+const withAccent = (line: string, accent?: string) => {
+  const at = accent ? line.indexOf(accent) : -1;
+  if (!accent || at < 0) return line;
+  return (
+    <>
+      {line.slice(0, at)}
+      <span style={{ color: colors.accent }}>{accent}</span>
+      {line.slice(at + accent.length)}
+    </>
+  );
+};
+
+/** The pill column at one moment: `out` is the column's exit, `progress(i)` line i's enter spring. */
+const PillColumn = ({ lines, layout, place, dot, accent, out, progress }: PillSpec & { out: number; progress: (index: number) => number }) => (
+  <div
+    style={{
+      position: 'absolute',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 18,
+      fontFamily: fonts.body,
+      opacity: out,
+      // Leaving pills rise clear of the next scene's pills, which come up from below.
+      transform: `translateY(${(1 - out) * -90}px)`,
+      ...place,
+    }}
+  >
+    {lines.map((line, i) => {
+      const p = progress(i);
+      const style = PILL_LINES[i];
+      const size = roleSize(style.role, layout);
+      return (
+        <p
+          key={i}
+          style={{
+            margin: 0,
+            display: 'flex',
+            alignItems: 'center',
+            gap: size * 0.34,
+            fontSize: size,
+            fontWeight: style.weight,
+            lineHeight: 1.2,
+            textWrap: 'balance',
+            color: style.color,
+            background: glass.pill,
+            border: glass.border,
+            backdropFilter: 'blur(20px)',
+            padding: `${size * 0.48}px ${size * 0.8}px`,
+            borderRadius: 999,
+            boxShadow: glass.pillShadow,
+            opacity: springOpacity(p),
+            transform: `translateY(${(1 - p) * 60}px) scale(${0.9 + p * 0.1})`,
+          }}
+        >
+          {i === 0 && dot && <span style={{ flex: 'none', width: size * 0.26, height: size * 0.26, borderRadius: '50%', background: colors.dots[dot] }} />}
+          {i === 0 ? withAccent(line, accent) : line}
+        </p>
+      );
+    })}
+  </div>
+);
+
 /** Ruling Q27: captions are glass pills with a colored dot. A second line is its own smaller pill under the first. */
-export const Pills = ({ lines, layout, durationInFrames, delay = DEFAULT_DELAY, place, dot, holdsToEnd = false }: PillsProps) => {
+export const Pills = ({ durationInFrames, delay = DEFAULT_DELAY, holdsToEnd = false, ...spec }: PillsProps) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const out = holdsToEnd ? 1 : exitProgress(frame, durationInFrames);
+  return <PillColumn {...spec} out={out} progress={(i) => springIn(frame, fps, SPRINGS.pill, lineDelay(delay, i), ENTER_FRAMES)} />;
+};
 
-  return (
-    <div
-      style={{
-        position: 'absolute',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 18,
-        fontFamily: fonts.body,
-        opacity: out,
-        // Leaving pills rise clear of the next scene's pills, which come up from below.
-        transform: `translateY(${(1 - out) * -90}px)`,
-        ...place,
-      }}
-    >
-      {lines.map((line, i) => {
-        const p = springIn(frame, fps, SPRINGS.pill, lineDelay(delay, i), ENTER_FRAMES);
-        const style = PILL_LINES[i];
-        const size = roleSize(style.role, layout);
-        return (
-          <p
-            key={i}
-            style={{
-              margin: 0,
-              display: 'flex',
-              alignItems: 'center',
-              gap: size * 0.34,
-              fontSize: size,
-              fontWeight: style.weight,
-              lineHeight: 1.2,
-              textWrap: 'balance',
-              color: style.color,
-              background: glass.pill,
-              border: glass.border,
-              backdropFilter: 'blur(20px)',
-              padding: `${size * 0.48}px ${size * 0.8}px`,
-              borderRadius: 999,
-              boxShadow: glass.pillShadow,
-              opacity: springOpacity(p),
-              transform: `translateY(${(1 - p) * 60}px) scale(${0.9 + p * 0.1})`,
-            }}
-          >
-            {i === 0 && <span style={{ flex: 'none', width: size * 0.26, height: size * 0.26, borderRadius: '50%', background: colors.dots[dot] }} />}
-            {line}
-          </p>
-        );
-      })}
-    </div>
-  );
+/** Where a pill column's pills sit on the canvas once they settle, measured from the real layout with the fonts in. Runs in the browser. */
+export const measurePills = async (spec: PillSpec): Promise<Rect[]> => {
+  await fontsReady();
+  const host = document.createElement('div');
+  Object.assign(host.style, { position: 'fixed', left: '0', top: '0', visibility: 'hidden', pointerEvents: 'none' });
+  host.style.width = `${CANVAS[spec.layout].width}px`;
+  host.style.height = `${CANVAS[spec.layout].height}px`;
+  document.body.appendChild(host);
+  const root = createRoot(host);
+  try {
+    flushSync(() => root.render(<PillColumn {...spec} out={1} progress={() => 1} />));
+    const origin = host.getBoundingClientRect();
+    return [...host.querySelectorAll('p')].map((pill) => {
+      const box = pill.getBoundingClientRect();
+      return { x: box.left - origin.left, y: box.top - origin.top, width: box.width, height: box.height };
+    });
+  } finally {
+    root.unmount();
+    host.remove();
+  }
 };

@@ -155,7 +155,7 @@ async function answerTurn(context, shot, scene) {
   const replies = [
     ['narrator stage', scene.narration],
     ['player choice writer', scene.choices.join('\n')],
-    ['stat tracker', shot.turn.stats.join('\n')],
+    ['stat tracker', (shot.turn.stats ?? []).join('\n')],
     ['location router', 'NONE'],
     ['memory keeper', 'Keep: none'],
   ];
@@ -164,7 +164,10 @@ async function answerTurn(context, shot, scene) {
     const body = route.request().postDataJSON();
     const system = body.messages.find((message) => message.role === 'system')?.content ?? '';
     const [role, text] = replies.find(([key]) => system.includes(key)) ?? ['other', 'Done.'];
+    // A reveal clip films the narration alone: calls after it never answer, so nothing else lands mid-clip.
+    if (shot.turn.film === 'reveal' && context.narrated) return;
     if (role === 'stat tracker') await context.stats.opened;
+    if (role === 'narrator stage') context.narrated = true;
     if (!body.stream) return route.fulfill({ json: { choices: [{ index: 0, message: { role: 'assistant', content: text }, finish_reason: 'stop' }] } });
     const words = text.split(/(?<=\s)/);
     return route.fulfill({ contentType: 'text/event-stream', body: chunk({ role: 'assistant' }) + words.map((word) => chunk({ content: word })).join('') + 'data: [DONE]\n\n' });
@@ -175,7 +178,7 @@ async function answerTurn(context, shot, scene) {
 const pauseTime = () => new Date(Date.parse(list.demo.time) + 10 * 60 * 1000);
 
 /** Films the clip's stat change one seeked frame at a time, on a paused page clock so timed UI holds still. */
-async function filmTurn(page, shot, scene) {
+async function filmTurn(page, shot, scene, sink) {
   const input = page.getByTestId('action-input-wrap').locator('textarea');
   await page.getByRole('button', { name: scene.action, exact: true }).click();
   await input.press('Enter');
@@ -202,7 +205,6 @@ async function filmTurn(page, shot, scene) {
   for (let i = 0; i < 600 && !(await started()); i++) await page.clock.runFor(16);
   if (!(await started())) throw new Error('The stat bars never animated');
   await page.clock.runFor(1500); // the stat code's bars commit after the tracker's
-  const frames = [];
   for (let i = 0; i < shot.frames; i++) {
     await page.evaluate((time) => {
       for (const animation of window.__clip.fresh()) {
@@ -210,16 +212,56 @@ async function filmTurn(page, shot, scene) {
         animation.currentTime = time;
       }
     }, i * FRAME_MS);
-    frames.push(await page.screenshot({ caret: 'hide' }));
+    sink.add(await page.screenshot({ caret: 'hide' }));
   }
-  return frames;
+}
+
+/**
+ * Films the turn's narration reveal: the screen before the turn, then one frame per step of the paused page
+ * clock. Each animation the reveal starts is seeked to the clock time since it first showed, so the frames come
+ * from the page clock alone and a second run films the same clip.
+ */
+async function filmReveal(page, context, shot, scene, sink) {
+  const input = page.getByTestId('action-input-wrap').locator('textarea');
+  await page.getByRole('button', { name: scene.action, exact: true }).click();
+  await input.blur();
+  await page.mouse.move(0, 0);
+  await page.waitForTimeout(1500);
+  await page.clock.pauseAt(pauseTime());
+  await page.evaluate(() => {
+    const before = new Set(document.getAnimations());
+    const seen = new Map();
+    window.__clip = {
+      sync: () => {
+        const now = performance.now();
+        for (const animation of document.getAnimations()) {
+          if (before.has(animation)) continue;
+          if (!seen.has(animation)) seen.set(animation, now);
+          animation.pause();
+          animation.currentTime = now - seen.get(animation);
+        }
+      },
+    };
+  });
+  sink.add(await page.screenshot({ caret: 'hide' }));
+  await input.press('Enter');
+  await input.blur();
+  // The narration lands on real network time, so the clock holds until the app has read all of it.
+  for (let i = 0; i < 200 && !context.narrated; i++) await page.waitForTimeout(50);
+  if (!context.narrated) throw new Error('The narration was never asked for');
+  await page.waitForTimeout(1000);
+  for (let i = 1; i < shot.frames; i++) {
+    await page.clock.runFor(Math.round(i * FRAME_MS) - Math.round((i - 1) * FRAME_MS));
+    await page.evaluate(() => window.__clip.sync());
+    sink.add(await page.screenshot({ caret: 'hide' }));
+  }
 }
 
 /**
  * Films the avatar's idle animation: pauses the page clock, lets the held models load, runs the clock to
  * `model.from` seconds into the animation, then draws and screenshots one frame per trailer frame.
  */
-async function filmModel(page, context, shot) {
+async function filmModel(page, context, shot, sink) {
   const loaded = [];
   page.on('console', (message) => { if (/animation loaded$/.test(message.text())) loaded.push(message.text()); });
   await page.clock.pauseAt(pauseTime());
@@ -236,13 +278,11 @@ async function filmModel(page, context, shot) {
   });
   // A loop the clock had already scheduled moves into the queue on its next tick.
   await page.clock.runFor(16);
-  const frames = [];
   for (let i = 0; i < shot.frames; i++) {
     if (i > 0) await page.clock.runFor(Math.round(i * FRAME_MS) - Math.round((i - 1) * FRAME_MS));
     if ((await page.evaluate(() => window.__film.draw())) === 0) throw new Error(`The avatar stopped drawing at frame ${i}`);
-    frames.push(await page.screenshot({ animations: 'disabled', caret: 'hide' }));
+    sink.add(await page.screenshot({ animations: 'disabled', caret: 'hide' }));
   }
-  return frames;
 }
 
 /** Runs a shot's `steps` after the screen is up. Each step is one key of captures.json's step list. */
@@ -263,6 +303,8 @@ async function runSteps(page, steps) {
       await page.getByText(step.click, { exact: true }).first().click();
     } else if (step.link) {
       await page.getByRole('link', { name: new RegExp(step.link) }).first().click();
+    } else if (step.button) {
+      await page.getByRole('button', { name: new RegExp(step.button) }).first().click();
     } else if (step.ask) {
       await page.keyboard.press('F1');
       const field = page.getByRole('textbox', { name: 'Ask a Question' });
@@ -298,7 +340,7 @@ async function dismiss(page) {
   }
 }
 
-async function capture(browser, shot) {
+async function capture(browser, shot, sink) {
   const scene = sceneOf(shot);
   const context = await newContext(browser, shot);
   try {
@@ -312,6 +354,8 @@ async function capture(browser, shot) {
     await page.evaluate((palette) => document.documentElement.setAttribute('data-theme', palette), shot.palette);
     // Toasts time out on their own clock, so a first-run notice would land in some frames and not others.
     await page.addStyleTag({ content: '[data-sonner-toaster]{display:none!important}' });
+    // Parts of the screen a shot leaves out, where the app has no switch for them.
+    for (const selector of shot.hide ?? []) await page.addStyleTag({ content: `${selector}{visibility:hidden!important}` });
     await dismiss(page);
     if (shot.kind === 'game') {
       await page.getByRole('button', { name: scene.choices[0], exact: true }).waitFor();
@@ -330,8 +374,8 @@ async function capture(browser, shot) {
     });
     await page.mouse.move(0, 0);
     await page.waitForTimeout(1500);
-    if (shot.kind === 'clip') return await filmTurn(page, shot, scene);
-    if (shot.model) return await filmModel(page, context, shot);
+    if (shot.kind === 'clip') return await (shot.turn.film === 'reveal' ? filmReveal(page, context, shot, scene, sink) : filmTurn(page, shot, scene, sink));
+    if (shot.model) return await filmModel(page, context, shot, sink);
     if (shot.kind === 'game' && shot.verify !== false) await verifyGame(page, scene);
     return await page.screenshot({ animations: 'disabled', caret: 'hide' });
   } finally {
@@ -339,11 +383,19 @@ async function capture(browser, shot) {
   }
 }
 
-/** Writes a clip's frames to `frameDir` and encodes them near-lossless and bit-exact, so the same frames give the same file. */
-function encodeClip(frames, frameDir, file) {
-  rmSync(frameDir, { recursive: true, force: true });
-  mkdirSync(frameDir, { recursive: true });
-  frames.forEach((frame, i) => writeFileSync(path.join(frameDir, `${String(i).padStart(3, '0')}.png`), frame));
+/** An empty folder that takes a clip's frames as they are filmed, one numbered PNG each, so a long clip never sits in memory. */
+function clipSink(dir) {
+  rmSync(dir, { recursive: true, force: true });
+  mkdirSync(dir, { recursive: true });
+  let count = 0;
+  return {
+    add: (png) => writeFileSync(path.join(dir, `${String(count++).padStart(3, '0')}.png`), png),
+    get count() { return count; },
+  };
+}
+
+/** Encodes a clip's frames near-lossless and bit-exact, so the same frames give the same file. */
+function encodeClip(frameDir, file) {
   execFileSync('npx', ['remotion', 'ffmpeg', '-y', '-loglevel', 'error', '-framerate', String(FPS), '-i', `"${path.join(frameDir, '%03d.png')}"`,
     '-c:v', 'libx264', '-preset', 'slow', '-crf', '12', '-pix_fmt', 'yuv420p', '-movflags', '+faststart',
     '-fflags', '+bitexact', '-flags:v', '+bitexact', '-map_metadata', '-1', `"${file}"`], { cwd: packageRoot, shell: true, stdio: 'inherit' });
@@ -369,6 +421,9 @@ async function pixelDiff(encoder, a, b) {
   }, [a.toString('base64'), b.toString('base64')]);
 }
 
+/** Where a clip's frames stay after the run, to compare two runs. */
+const frameDir = (shot) => path.join(DIFF ? outDir : path.join(packageRoot, '.capture-clip'), shot.id);
+
 const server = await startServer();
 const changed = [];
 const failed = [];
@@ -379,7 +434,7 @@ try {
   for (const shot of shots) {
     let png;
     try {
-      png = await capture(browser, shot);
+      png = await capture(browser, shot, shot.frames ? clipSink(frameDir(shot)) : null);
     } catch (error) {
       failed.push(shot.id);
       console.log(`FAILED   ${shot.id}: ${String(error).split('\n')[0]}`);
@@ -387,9 +442,9 @@ try {
     }
     if (shot.frames) {
       const file = path.join(outDir, `${shot.id}.mp4`);
-      encodeClip(png, path.join(DIFF ? outDir : path.join(packageRoot, '.capture-clip'), shot.id), file);
+      encodeClip(frameDir(shot), file);
       const clip = readFileSync(file);
-      if (!DIFF) { console.log(`wrote public/shots/${shot.id}.mp4 (${png.length} frames, ${(clip.length / 1024 / 1024).toFixed(2)} MB)`); continue; }
+      if (!DIFF) { console.log(`wrote public/shots/${shot.id}.mp4 (${shot.frames} frames, ${(clip.length / 1024 / 1024).toFixed(2)} MB)`); continue; }
       const committed = path.join(committedDir, `${shot.id}.mp4`);
       // The encode is bit-exact, so the same frames give the same file.
       if (!existsSync(committed)) { changed.push(shot.id); console.log(`NEW      ${shot.id}: no committed clip`); }
