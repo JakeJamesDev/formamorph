@@ -83,6 +83,7 @@ Gameplay is text. Watching someone read is not a trailer. The video is a showcas
 | Q48 | The contest shot holds longer: its card is dense, so the hold is at least 5 s after the card lands, and the two caption lines keep their stagger. A dense card is one whose subject region holds more than one element the eye must find; the storyboard marks those and they get at least 5 s. |
 | Q49 | The end card's wordmark enters the way the app's first-run intro does: a field of goo blobs pops in, magnetizes into place and coalesces into the letterforms through a metaball filter. The trailer ports that animation from the app's intro into a frame-driven Remotion scene, same timing and look, deterministic per frame. The wordmark's spring entrance is retired on the end card. |
 | Q50 | The community mock gives each world its own author name from the repo's neutral fixture set. No two worlds share an author, and none is "Formamorph". |
+| Q51 | Ticket 12 details. The opening card is the wordmark alone, stretched to the 360-frame loop, no tagline. Tall cut order: T09 map alone, T10 profile and travel stacked, the traits card, blueprints alone. The tall cut drops the help card along with Morphie; the traits card stays in both cuts. |
 
 ### Facts the design rests on
 
