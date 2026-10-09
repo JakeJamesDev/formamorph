@@ -37,6 +37,17 @@ describe('the word timing of a reveal', () => {
     expect(lastDelay(container)).toBe('1560ms');
   });
 
+  it('keeps shown words still when the timing changes mid-stream', () => {
+    const words = (container: HTMLElement) => [...container.querySelectorAll<HTMLElement>('[data-sd-animate]')];
+    setRevealTiming({ duration: 200, stagger: 40 });
+    const { container, rerender } = render(<MarkdownRenderer text="Hello brave world." animate animation="reveal" />);
+    setRevealTiming({ duration: 300, stagger: 60 });
+    rerender(<MarkdownRenderer text="Hello brave world. Then more" animate animation="reveal" />);
+    expect(words(container).map((w) => w.style.getPropertyValue('--sd-duration'))).toEqual(['0ms', '0ms', '0ms', '300ms', '300ms']);
+    const [then, more] = words(container).slice(3).map((w) => parseFloat(w.style.getPropertyValue('--sd-delay')));
+    expect(more - then).toBe(60);
+  });
+
   it("shortens the word gap to a given timing's backlog cap", () => {
     const { container } = render(
       <MarkdownRenderer text={BURST} animate animation="reveal" timing={{ duration: 200, stagger: 40, maxBacklogMs: 640 }} />,
