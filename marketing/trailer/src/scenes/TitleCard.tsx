@@ -25,15 +25,18 @@ const TAGLINE = 'AI text RPG';
 /** Frames each part starts to rise. */
 const RISE = { cards: 0, mark: 12, tag: 40, cta: 80 };
 
+/** The call to action: its line, and the part of it drawn in the accent color as a link. */
+export type CallToAction = { text: string; link: string };
+
 /** The frames the tagline and the call-to-action line enter and are legible, for the reading check. Both hold to the card's last frame. */
-export const titleReads = (durationInFrames: number, cta?: string): CopyRead[] =>
+export const titleReads = (durationInFrames: number, cta?: CallToAction): CopyRead[] =>
   [
     { text: TAGLINE, start: RISE.tag },
-    ...(cta ? [{ text: cta, start: RISE.cta }] : []),
+    ...(cta ? [{ text: cta.text, start: RISE.cta }] : []),
   ].map(({ text, start }) => ({ text, start, from: start + ENTER_FRAMES, until: durationInFrames, end: null }));
 
-/** The end card: the wordmark springs in on the stage between two dimmed cards, then the tagline and an optional call-to-action pill. Everything holds to the last frame. */
-export const TitleCard = ({ layout, durationInFrames, cta }: SceneProps & { cta?: string }) => {
+/** The end card: the wordmark springs in on the stage between two dimmed cards, then the tagline and an optional call-to-action pill with its link in the accent color (ruling Q37). Everything holds to the last frame. */
+export const TitleCard = ({ layout, durationInFrames, cta }: SceneProps & { cta?: CallToAction }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const place = PLACEMENT[layout];
@@ -73,7 +76,15 @@ export const TitleCard = ({ layout, durationInFrames, cta }: SceneProps & { cta?
           {TAGLINE}
         </p>
         {cta && (
-          <Pills lines={[cta]} layout={layout} durationInFrames={durationInFrames} delay={RISE.cta} place={{ position: 'relative', marginTop: 44 }} dot="purple" holdsToEnd />
+          <Pills
+            lines={[cta.text]}
+            accent={cta.link}
+            layout={layout}
+            durationInFrames={durationInFrames}
+            delay={RISE.cta}
+            place={{ position: 'relative', marginTop: 44 }}
+            holdsToEnd
+          />
         )}
       </AbsoluteFill>
     </AbsoluteFill>

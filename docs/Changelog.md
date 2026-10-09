@@ -41,6 +41,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The trailer render checks each line's reading time, and its stats shot plays the real stat-bar animation.** Lines under 1.5 s or over 12 characters per second fail. The cuts now run 64 and 50 seconds. The avatar shot plays its idle animation.
     - **The trailer camera moves at a constant rate, text enters and leaves calmly, and the avatar shot plays a clip.** Only the stats and Morphie shots zoom; the rest hold their crop. The render check fails text under 0.5 s and nonlinear camera moves.
     - **Every trailer shot now floats as a tilted glass card over one glowing stage, with word-by-word headlines and pill captions.** `npm run sheet` writes a contact sheet per cut. Cards hold their crop except the stats and Morphie shots. Joins are plain overlaps.
+    - **The trailer plays the real narration reveal, adds travel and desktop engine shots, and ends on "Play free at formamorph.ai".** No card zooms. The render check fails a shot whose subject leaves its card or sits under a caption. `npm run check` runs the checks without a render.
   - **The ticket test gate reruns files that failed only by timeout, alone, once.** A run starved by another session's gates is not a verdict. Any other failure stops the gate as before.
   - **The changelog lint lets a feature group hold one entry under In Progress.** The first ticket of an effort names the group. The release lint still needs two entries, and close-spec drops a header that stayed alone.
 

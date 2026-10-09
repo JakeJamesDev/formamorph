@@ -1,8 +1,8 @@
 import { AbsoluteFill } from 'remotion';
-import type { Layout, SceneProps, Size } from '../layout';
+import type { SceneProps } from '../layout';
 import { DEFAULT_DELAY, Pills, copyReads, type CopyLines } from '../parts/CopyBlock';
 import type { CameraPath } from '../parts/FrameCamera';
-import { ShotCard, cardSize } from '../parts/GlassCard';
+import { ShotCard } from '../parts/GlassCard';
 import { STACK_CARDS, STACK_PLACE } from '../poses';
 import type { CopyRead } from '../reading';
 import { shotFor, type LayoutShot } from '../shots';
@@ -24,9 +24,6 @@ const paneDelay = (index: number) => DEFAULT_DELAY + index * 20;
 /** The frames each pane's caption enters, is legible and leaves, for the reading check. */
 export const stackReads = (panes: readonly StackPane[], durationInFrames: number): CopyRead[] =>
   panes.flatMap((pane, i) => copyReads(pane.caption, durationInFrames, paneDelay(i)));
-
-/** The area each card's camera fills. */
-export const paneSize = (layout: Layout, index: number): Size => cardSize(STACK_CARDS[layout][index]);
 
 /** Two shots on their own glass cards, one above the other (tall) or side by side (wide), a pill caption on each. */
 export const StackScene = ({ layout, durationInFrames, panes }: StackSceneProps) => (

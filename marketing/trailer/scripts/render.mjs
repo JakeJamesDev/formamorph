@@ -5,6 +5,7 @@
 //
 //   npm run render                 both cuts
 //   npm run render -- TrailerWide  one cut
+//   npm run check                  the copy and camera checks alone, with no render
 import { bundle } from '@remotion/bundler';
 import { parseMedia } from '@remotion/media-parser';
 import { nodeReader } from '@remotion/media-parser/node';
@@ -15,7 +16,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const ids = process.argv.slice(2).length > 0 ? process.argv.slice(2) : ['TrailerWide', 'TrailerTall'];
+const CHECK_ONLY = process.argv.includes('--check');
+const named = process.argv.slice(2).filter((arg) => !arg.startsWith('--'));
+const ids = named.length > 0 ? named : ['TrailerWide', 'TrailerTall'];
 const outDir = path.join(root, 'out');
 mkdirSync(outDir, { recursive: true });
 
@@ -32,13 +35,12 @@ const CHECKS = {
     maxSeconds: 90,
     loopFrames: 360,
     poster: { size: '1920x1080', fromEnd: 1 },
-    zoomShots: ['W06', 'W13'],
   },
-  // The social cut has no store spec. It shares the wide cut's first 6 s, so it loops too. Its stats pane zooms like W06.
-  TrailerTall: { loopFrames: 360, zoomShots: ['T06/1'] },
+  // The social cut has no store spec. It shares the wide cut's first 6 s, so it loops too.
+  TrailerTall: { loopFrames: 360 },
 };
 
-/** Ruling Q28: a card that does not zoom holds its crop, so any travel past float noise is a pan. */
+/** Ruling Q32: every card holds its crop, so any travel past float noise is a pan. */
 const HOLD_PERCENT = 1e-6;
 
 console.log('Bundling…');
@@ -47,6 +49,10 @@ const serveUrl = await bundle({ entryPoint: path.join(root, 'src/index.ts'), pub
 const rendered = [];
 for (const id of ids) {
   const composition = await selectComposition({ serveUrl, id });
+  if (CHECK_ONLY) {
+    rendered.push({ composition, outputLocation: null });
+    continue;
+  }
   const outputLocation = path.join(outDir, `${id}.mp4`);
   let lastStep = -1;
   await renderMedia({
@@ -82,7 +88,34 @@ const report = (ok, line, details = []) => {
   for (const detail of details) console.log(`      ${detail}`);
 };
 
+/** Rulings Q17, Q25, Q32 and Q38: the copy and camera checks, measured by the timeline the composition plays. */
+const reportCopyAndCamera = (composition) => {
+  // Each line's enter, legible and exit seconds and its characters per second.
+  for (const line of composition.props.reading) {
+    const cps = line.charsPerSecond === null ? '-' : line.charsPerSecond.toFixed(1);
+    const exit = line.exitSeconds === null ? 'holds to end' : `exit ${line.exitSeconds.toFixed(2)} s`;
+    report(line.ok, `${line.shot.padEnd(4)} enter ${line.enterSeconds.toFixed(2)} s  hold ${line.seconds.toFixed(2).padStart(5)} s  ${exit.padEnd(12)}  ${cps.padStart(4)} cps  "${line.text}"`);
+  }
+
+  // Every card holds one crop, and its subject region stays whole in the card's visible area on every frame.
+  for (const camera of composition.props.camera) {
+    const name = camera.pane === null ? camera.shot : `${camera.shot}/${camera.pane}`;
+    const zooms = Math.abs(camera.zoomTo - camera.zoomFrom) > 1e-6;
+    const problems = [];
+    if (zooms) problems.push(`zoom ${camera.zoomFrom.toFixed(2)} -> ${camera.zoomTo.toFixed(2)}: no card may change zoom`);
+    if (camera.travelPercent > HOLD_PERCENT) problems.push(`pan: ${camera.travelPercent.toPrecision(2)}% inside a card that must hold its crop`);
+    if (camera.subject.problem) problems.push(`subject: ${camera.subject.problem}`);
+    const subject = camera.subject.problem ? 'subject out' : `subject in frame, ${camera.subject.margin.toFixed(0)} px clear`;
+    report(problems.length === 0, `${name.padEnd(6)} camera zoom ${camera.zoomFrom.toFixed(2)}, ${zooms || camera.travelPercent > HOLD_PERCENT ? 'moves' : 'holds'}  ${subject}  (${camera.source})`, problems);
+  }
+};
+
 for (const { composition, outputLocation } of rendered) {
+  if (CHECK_ONLY) {
+    console.log(`${composition.id}: ${composition.durationInFrames} frames, ${(composition.durationInFrames / composition.fps).toFixed(2)} s`);
+    reportCopyAndCamera(composition);
+    continue;
+  }
   const media = await parseMedia({
     src: outputLocation,
     reader: nodeReader,
@@ -110,29 +143,7 @@ for (const { composition, outputLocation } of rendered) {
   if (spec?.minKbps && (kbps === null || kbps < spec.minKbps)) problems.push(`bitrate: ${kbps} Kbps is under ${spec.minKbps} Kbps`);
   const summary = `${path.relative(root, outputLocation)}  ${actual.size}  ${actual.fps} fps  ${seconds?.toFixed(2) ?? '?'} s  ${kbps ?? '?'} Kbps  ${actual.videoCodec}  audio: ${actual.audioCodec ?? 'none'}`;
   report(problems.length === 0, summary, problems);
-
-  // Rulings Q17 and Q25: each line's enter, legible and exit seconds and its characters per second, measured by the timeline that played.
-  for (const line of composition.props.reading) {
-    const cps = line.charsPerSecond === null ? '-' : line.charsPerSecond.toFixed(1);
-    const exit = line.exitSeconds === null ? 'holds to end' : `exit ${line.exitSeconds.toFixed(2)} s`;
-    report(line.ok, `${line.shot.padEnd(4)} enter ${line.enterSeconds.toFixed(2)} s  hold ${line.seconds.toFixed(2).padStart(5)} s  ${exit.padEnd(12)}  ${cps.padStart(4)} cps  "${line.text}"`);
-  }
-
-  // Rulings Q22, Q23 and Q28: every camera moves at a constant rate; only the named shots zoom; every other card holds its crop.
-  for (const camera of composition.props.camera) {
-    const name = camera.pane === null ? camera.shot : `${camera.shot}/${camera.pane}`;
-    const zooms = Math.abs(camera.zoomTo - camera.zoomFrom) > 1e-6;
-    const allowed = spec?.zoomShots?.includes(name) ?? false;
-    const problems = [];
-    if (!camera.linear) problems.push('the move is not linear: the shot edge stops the camera');
-    if (zooms && !allowed) problems.push('only a zoom shot may change zoom');
-    if (!zooms && allowed) problems.push('a zoom shot must zoom');
-    if (!zooms && camera.travelPercent > HOLD_PERCENT) {
-      problems.push(`pan: ${camera.travelPercent.toPrecision(2)}% inside a card that must hold its crop`);
-    }
-    const move = zooms ? `zoom ${camera.zoomFrom.toFixed(2)} -> ${camera.zoomTo.toFixed(2)}` : `zoom ${camera.zoomFrom.toFixed(2)}, ${camera.travelPercent > HOLD_PERCENT ? `pans ${camera.travelPercent.toPrecision(2)}%` : 'holds'}`;
-    report(problems.length === 0, `${name.padEnd(6)} camera ${move}`, problems);
-  }
+  reportCopyAndCamera(composition);
 
   if (!spec) continue;
 

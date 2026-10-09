@@ -1,6 +1,6 @@
 # 11: Third Review Fixes
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 10
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -34,3 +34,10 @@ The user's third review, from frames of the Floating cards render. Each item is 
 - [ ] The desktop shot shows the built-in engine panel, model ready.
 - [ ] The end card reads "Play free at formamorph.ai" with the address in the accent color.
 - [ ] Every line still passes hold, rate, enter and exit; the Steam checks still pass; storyboard totals match the renders.
+
+## Notes
+
+- **Map labels (Q33).** The editor has no switch for the travel-rule labels on the canvas. The capture hides them through the page: the `canvas` shot's `hide` list sets `.react-flow__edgelabel-renderer` to hidden.
+- **Desktop (Q36).** The capture uses a mocked ready state, not a model file. The `desktopEngine` setup in `captureSetups.mjs` stands in for the desktop bridge with a model already loaded. Nothing loads or downloads.
+- **Travel, tall cut (Q34).** The travel shot stacks under the map as T09, like the other adjacent pairs.
+- **Visible area (Q39).** The check fails a subject outside the card's crop, or under a caption pill or the typed panel. It does not count the card's tilt, and it does not check depth cards.
