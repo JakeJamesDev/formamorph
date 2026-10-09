@@ -86,7 +86,7 @@ import { useWorldEntitiesAdapter } from '../managers/useWorldEntitiesAdapter';
 import { useWorldLocationsAdapter } from '../managers/useWorldLocationsAdapter';
 import { useWorldDictionaryAdapter } from '../managers/useWorldDictionaryAdapter';
 import { LOCATION_VIEWS, type LocationView } from './locationViews';
-import { overviewPanelFor, type OverviewPanel } from './overviewPanels';
+import { NO_OVERVIEW_PANEL, overviewPanelFor, type OverviewPanel } from './overviewPanels';
 import { placeholderPanelTabsFor, type PlaceholderPanelTab } from './placeholderPanelTabs';
 import { ENTITY_PANEL_TABS, entityPanelTabsFor, type EntityPanelTab } from './entityPanelTabs';
 import { LOCATION_PANEL_TABS, locationPanelTabsFor, type LocationPanelTab } from './locationPanelTabs';
@@ -988,7 +988,7 @@ const WorldEditorInner = ({
   // What the author sees on the active tab beyond the tab itself, for a new Step's Origin.
   const bookOpen = !!selections.dictionary && dictionaryEditor.book?.id === selections.dictionary;
   const placeSubTab: Partial<Record<string, string>> = {
-    overview: overviewPanel ?? undefined,
+    overview: overviewPanel ?? NO_OVERVIEW_PANEL,
     entities: shownEntityTab,
     locations: shownLocationTab,
     stats: shownStatTab,

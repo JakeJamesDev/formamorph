@@ -132,6 +132,19 @@ describe('an undo of an edit made on a panel sub-tab', () => {
     expect(promptKind('Narration')).toHaveAttribute('data-state', 'off');
   });
 
+  it('closes an open Overview prompt panel for an edit made with none open', async () => {
+    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+    await screen.findByLabelText('World Name');
+    await step(() => ctx().updateWorldOverview({ systemPrompt: 'Narrate the harbor.' }));
+    fireEvent.click(promptKind('Narration'));
+    expect(promptKind('Narration')).toHaveAttribute('data-state', 'on');
+    openEditorTab(/Stats/);
+
+    await undo();
+    expect(shownEditorTab()).toMatch(/Overview/);
+    expect(promptKind('Narration')).toHaveAttribute('data-state', 'off');
+  });
+
   it('falls back to the default sub-tab when the editor mode no longer offers it', async () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openEditorTab(/Entities/);
@@ -181,17 +194,20 @@ describe('an undo of an edit made on the Locations tab', () => {
     expect(canvasShown()).toBe(false);
   });
 
-  it('still opens the canvas for a connection edited while the list view was open', async () => {
+  it('returns to the list view with the open location for a connection edited there', async () => {
     const { ctx } = renderWorldEditorBench({
       ...WORLD, connections: [{ id: 'c1', a: 'harbor', b: 'docks', aToB: {}, bToA: {} }],
     }, 'advanced');
     openEditorTab(/Locations/);
+    fireEvent.click(screen.getAllByText('Docks')[0]);
     await step(() => ctx().updateConnection({ ...ctx().connections[0], aToB: { hint: 'by ferry' } }));
+    fireEvent.click(viewToggle('Canvas'));
     openEditorTab(/Stats/);
 
     await undo();
     expect(shownEditorTab()).toMatch(/Locations/);
-    expect(canvasShown()).toBe(true);
+    expect(canvasShown()).toBe(false);
+    expect(screen.getByRole('textbox', { name: 'Name' }).textContent).toBe('Docks');
   });
 
   describe('on mobile', () => {

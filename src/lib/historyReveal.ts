@@ -113,7 +113,14 @@ function revealStep(step: Step, world: WorldSlices, place: RevealPlace): RevealT
   const fallback = target && place.shows(target.tab) ? target : null;
   const { origin } = step;
   if (!origin || !isRevealTab(origin.tab) || !place.shows(origin.tab)) return fallback;
-  if (origin.tab === target?.tab) return fallback && { ...fallback, ...subView(origin) };
+  if (origin.tab === target?.tab) {
+    // Only the canvas selects a connection, so one edited in the list view reveals the open location there.
+    if (fallback?.connection && origin.view === 'list') {
+      const open = origin.ids?.find((id) => place.holds(origin.tab as RevealTab, id));
+      return { tab: origin.tab, ...(open !== undefined ? { id: open } : {}), ...subView(origin) };
+    }
+    return fallback && { ...fallback, ...subView(origin) };
+  }
   if (!origin.ids?.length) return { tab: origin.tab, ...subView(origin) };
   const { tab } = origin;
   const standing = origin.ids.filter((id) => place.holds(tab, id));

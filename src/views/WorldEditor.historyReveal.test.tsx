@@ -114,9 +114,10 @@ describe('revealing what an undo restored', () => {
     expect(statPanelShown()).toBe(false);
   });
 
-  it('opens the Locations Canvas with the connection selected when a connection edit is undone', async () => {
+  it('opens the Locations Canvas with the connection selected when a connection edit made there is undone', async () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openEditorTab(/Locations/);
+    fireEvent.click(screen.getByRole('radio', { name: 'Canvas' }));
     await step(() => ctx().updateConnection({ ...ctx().connections[0], aToB: { hint: 'by ferry' } }));
     openEditorTab(/Stats/);
     expect(canvasShown()).toBe(false);
