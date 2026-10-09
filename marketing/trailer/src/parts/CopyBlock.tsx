@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
-import { AbsoluteFill, useCurrentFrame, useVideoConfig } from 'remotion';
+import { AbsoluteFill, useCurrentFrame } from 'remotion';
 import type { Layout } from '../layout';
-import { EXIT_FRAMES, enterFrames, enterProgress, exitProgress } from '../motion';
+import { ENTER_FRAMES, EXIT_FRAMES, enterProgress, exitProgress } from '../motion';
 import type { CopyRead } from '../reading';
 import { colors, fonts, roleSize, shade, type TypeRole } from '../theme';
 
@@ -61,20 +61,22 @@ type CopyBlockProps = {
   delay?: number;
 };
 
-/** The frames each line of a copy block is legible, for the reading check. */
-export const copyReads = (lines: CopyLines, durationInFrames: number, fps: number, delay = DEFAULT_DELAY): CopyRead[] =>
-  lines.map((text, i) => ({ text, from: delay + i * LINE_STAGGER_FRAMES + enterFrames(fps), until: durationInFrames - EXIT_FRAMES }));
+/** The frames each line of a copy block enters, is legible and leaves, for the reading check. */
+export const copyReads = (lines: CopyLines, durationInFrames: number, delay = DEFAULT_DELAY): CopyRead[] =>
+  lines.map((text, i) => {
+    const start = delay + i * LINE_STAGGER_FRAMES;
+    return { text, start, from: start + ENTER_FRAMES, until: durationInFrames - EXIT_FRAMES, end: durationInFrames };
+  });
 
 /** Copy that enters line by line, holds, and leaves on the scene's last frames. */
 export const CopyBlock = ({ lines, layout, durationInFrames, variant, delay = DEFAULT_DELAY }: CopyBlockProps) => {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
   const out = exitProgress(frame, durationInFrames);
 
   return (
     <>
       {variant !== 'headline' && (
-        <AbsoluteFill style={{ background: SCRIM[layout], opacity: enterProgress(frame, fps, delay) * out }} />
+        <AbsoluteFill style={{ background: SCRIM[layout], opacity: enterProgress(frame, delay) * out }} />
       )}
       <div
         style={{
@@ -90,7 +92,7 @@ export const CopyBlock = ({ lines, layout, durationInFrames, variant, delay = DE
       >
         {lines.map((line, i) => {
           const style = LINES[variant][i];
-          const p = enterProgress(frame, fps, delay + i * LINE_STAGGER_FRAMES);
+          const p = enterProgress(frame, delay + i * LINE_STAGGER_FRAMES);
           return (
             <p
               key={i}

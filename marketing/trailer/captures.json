@@ -175,12 +175,13 @@
       "palette": "graphite"
     },
     {
-      "id": "avatar",
+      "id": "avatar-clip",
       "storyboard": "C12",
       "kind": "page",
       "route": { "modal": "avatar" },
       "ready": { "text": "Character Viewer" },
-      "freezeAt": 1.4,
+      "model": { "from": 1.4 },
+      "frames": 180,
       "viewport": { "width": 1600, "height": 900 },
       "scale": 2,
       "theme": "dark",

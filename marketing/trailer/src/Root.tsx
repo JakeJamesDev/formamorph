@@ -1,7 +1,7 @@
 import { Composition } from 'remotion';
 import { CANVAS, type Layout } from './layout';
 import { SceneLibrary } from './library';
-import { FPS, readingReport, totalFrames } from './timeline';
+import { FPS, cameraReport, readingReport, totalFrames } from './timeline';
 import { Trailer } from './Trailer';
 
 const CUTS: { id: string; layout: Layout }[] = [
@@ -16,7 +16,7 @@ export const Root = () => (
         key={id}
         id={id}
         component={Trailer}
-        defaultProps={{ layout, reading: readingReport(layout) }}
+        defaultProps={{ layout, reading: readingReport(layout), camera: cameraReport(layout) }}
         fps={FPS}
         durationInFrames={totalFrames(layout)}
         {...CANVAS[layout]}

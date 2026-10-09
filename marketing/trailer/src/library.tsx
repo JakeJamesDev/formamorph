@@ -18,7 +18,7 @@ type LibraryEntry = {
 };
 
 const stop = (focusX: number, focusY: number, zoom = 1): CameraStop => ({ focusX, focusY, zoom });
-const move = (from: CameraStop, to: CameraStop, via?: CameraStop[]): CameraPath => ({ from, to, via });
+const move = (from: CameraStop, to: CameraStop): CameraPath => ({ from, to });
 const hold = (at: CameraStop): CameraPath => move(at, at);
 /** The same path in both layouts. */
 const both = (path: CameraPath) => ({ wide: path, tall: path });
@@ -71,7 +71,7 @@ const ENTRIES: LibraryEntry[] = [
     ),
   },
   {
-    id: 'FrameScene-Pan',
+    id: 'FrameScene-Drift',
     durationInFrames: 240,
     render: (layout, durationInFrames) => (
       <FrameScene
@@ -79,7 +79,7 @@ const ENTRIES: LibraryEntry[] = [
         durationInFrames={durationInFrames}
         shot={SHOTS.library}
         caption={['Play any world you can imagine.']}
-        camera={{ wide: move(stop(0.3, 0.5, 1.2), stop(0.7, 0.5, 1.2)), tall: move(stop(0.2, 0.5), stop(0.8, 0.5)) }}
+        camera={{ wide: move(stop(0.485, 0.5, 1.05), stop(0.515, 0.5, 1.05)), tall: move(stop(0.495, 0.5), stop(0.505, 0.5)) }}
       />
     ),
   },
@@ -98,14 +98,15 @@ const ENTRIES: LibraryEntry[] = [
     ),
   },
   {
-    id: 'FrameScene-TwoStage',
-    durationInFrames: 300,
+    id: 'FrameScene-Clip',
+    durationInFrames: 180,
     render: (layout, durationInFrames) => (
       <FrameScene
         layout={layout}
         durationInFrames={durationInFrames}
-        shot={SHOTS.game}
-        camera={both(move(stop(0.5, 0.5), stop(0.5, 0.35, 1.5), [stop(0.5, 0.95, 1.5)]))}
+        shot={SHOTS.avatarClip}
+        caption={['Pick a 3D avatar.']}
+        camera={both(move(stop(0.515, 0.5, 1.05), stop(0.485, 0.5, 1.05)))}
       />
     ),
   },
@@ -124,8 +125,8 @@ const ENTRIES: LibraryEntry[] = [
         layout={layout}
         durationInFrames={durationInFrames}
         panes={[
-          { shot: SHOTS.game, camera: move(stop(0.8, 0.45), stop(0.8, 0.45, 1.3)), caption: ['Every turn updates your stats.'] },
-          { shot: SHOTS.library, camera: move(stop(0.3, 0.5), stop(0.7, 0.5)), caption: ['Play any world you can imagine.'] },
+          { shot: SHOTS.game, camera: move(stop(0.5, 0.5), stop(0.8, 0.45, 1.3)), caption: ['Every turn updates your stats.'] },
+          { shot: SHOTS.library, camera: move(stop(0.49, 0.5), stop(0.51, 0.5)), caption: ['Play any world you can imagine.'] },
         ]}
       />
     ),
@@ -154,7 +155,7 @@ const ENTRIES: LibraryEntry[] = [
         backdrop={{
           before: SHOTS.library,
           after: SHOTS.game,
-          camera: { wide: move(stop(0.5, 0.5, 1.25), stop(0.5, 0.5)), tall: move(stop(0.5, 0.5, 1.1), stop(0.5, 0.5)) },
+          camera: both(move(stop(0.5, 0.515, 1.05), stop(0.5, 0.485, 1.05))),
         }}
       />
     ),

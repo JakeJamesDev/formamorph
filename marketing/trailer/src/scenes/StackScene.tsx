@@ -20,12 +20,12 @@ const GAP = 6;
 /** Frame each pane's caption starts to enter: the second follows the first. */
 const paneDelay = (index: number) => DEFAULT_DELAY + index * 20;
 
-/** The frames each pane's caption is legible, for the reading check. */
-export const stackReads = (panes: readonly StackPane[], durationInFrames: number, fps: number): CopyRead[] =>
-  panes.flatMap((pane, i) => copyReads(pane.caption, durationInFrames, fps, paneDelay(i)));
+/** The frames each pane's caption enters, is legible and leaves, for the reading check. */
+export const stackReads = (panes: readonly StackPane[], durationInFrames: number): CopyRead[] =>
+  panes.flatMap((pane, i) => copyReads(pane.caption, durationInFrames, paneDelay(i)));
 
 /** The area of each pane: the tall canvas splits top and bottom, the wide canvas left and right. */
-const paneSize = (layout: Layout): Size => {
+export const paneSize = (layout: Layout): Size => {
   const { width, height } = CANVAS[layout];
   return layout === 'tall' ? { width, height: (height - GAP) / 2 } : { width: (width - GAP) / 2, height };
 };

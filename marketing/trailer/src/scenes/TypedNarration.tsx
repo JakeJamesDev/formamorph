@@ -1,6 +1,6 @@
-import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from 'remotion';
+import { AbsoluteFill, interpolate, useCurrentFrame } from 'remotion';
 import type { Layout, SceneProps } from '../layout';
-import { EXIT_FRAMES, enterFrames, enterProgress, exitProgress } from '../motion';
+import { ENTER_FRAMES, EXIT_FRAMES, enterProgress, exitProgress } from '../motion';
 import type { CopyRead } from '../reading';
 import { FrameCamera, type CameraPath } from '../parts/FrameCamera';
 import { shotFor, type LayoutShot } from '../shots';
@@ -36,13 +36,15 @@ export const typedTimeline = (prompt: string, narration: string) => {
   return { words, typeEnd, narrationStart, narrationEnd };
 };
 
-/** The frames the player line and the narration are legible, for the reading check: each counts from its last character landing. */
-export const typedReads = (prompt: string, narration: string, durationInFrames: number, fps: number): CopyRead[] => {
-  const { typeEnd, narrationEnd } = typedTimeline(prompt, narration);
-  const panelIn = enterFrames(fps);
-  const until = durationInFrames - EXIT_FRAMES;
-  const narrationRead = { text: narration, from: Math.max(panelIn, narrationEnd), until };
-  return prompt === '' ? [narrationRead] : [{ text: prompt, from: Math.max(panelIn, typeEnd), until }, narrationRead];
+/**
+ * The frames the player line and the narration enter, are legible and leave, for the reading check. Each is legible
+ * from its last character landing. The player line, and a narration with no player line, enter with the panel.
+ */
+export const typedReads = (prompt: string, narration: string, durationInFrames: number): CopyRead[] => {
+  const { typeEnd, narrationStart, narrationEnd } = typedTimeline(prompt, narration);
+  const exit = { until: durationInFrames - EXIT_FRAMES, end: durationInFrames };
+  const narrationRead = { text: narration, start: prompt === '' ? 0 : narrationStart, from: Math.max(ENTER_FRAMES, narrationEnd), ...exit };
+  return prompt === '' ? [narrationRead] : [{ text: prompt, start: 0, from: Math.max(ENTER_FRAMES, typeEnd), ...exit }, narrationRead];
 };
 
 const PANEL: Record<Layout, { width: number; bottom: number; padding: number }> = {
@@ -53,7 +55,6 @@ const PANEL: Record<Layout, { width: number; bottom: number; padding: number }> 
 /** A player line types in, then the narration streams in word by word, as a stylized overlay on the dark stage or a shot. */
 export const TypedNarration = ({ layout, durationInFrames, prompt, narration, backdrop }: TypedNarrationProps) => {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
   const hasPrompt = prompt !== '';
   const { words, typeEnd, narrationStart, narrationEnd } = typedTimeline(prompt, narration);
   if (narrationEnd + MIN_HOLD_FRAMES + EXIT_FRAMES > durationInFrames) {
@@ -61,7 +62,7 @@ export const TypedNarration = ({ layout, durationInFrames, prompt, narration, ba
   }
 
   const exit = exitProgress(frame, durationInFrames);
-  const panelIn = enterProgress(frame, fps, 0);
+  const panelIn = enterProgress(frame, 0);
   const typedChars = Math.max(0, Math.min(prompt.length, Math.floor((frame - TYPE_START_FRAME) / FRAMES_PER_CHAR)));
   const caretOn = frame < narrationStart && (frame < typeEnd || Math.floor(frame / CARET_BLINK_FRAMES) % 2 === 0);
   const afterOpacity = interpolate(frame, [narrationStart - 6, narrationStart + 14], [0, 1], {

@@ -6,8 +6,8 @@ Parent: [Trailer spec](spec.md) · Ticket: [03 Storyboard](issues/03-storyboard.
 
 | Cut | Size | Length | Shots |
 |---|---|---|---|
-| Wide (Steam) | 1920x1080, 60 fps | 64.35 s (3,861 frames) | 19 |
-| Tall (social) | 1080x1920, 60 fps | 50.10 s (3,006 frames) | 14 |
+| Wide (Steam) | 1920x1080, 60 fps | 64.45 s (3,867 frames) | 19 |
+| Tall (social) | 1080x1920, 60 fps | 50.20 s (3,012 frames) | 14 |
 
 The first 6 seconds (frames 0–359) are a standalone silent loop in both cuts.
 
@@ -53,27 +53,31 @@ Ranked by what sells the app to a Steam visitor who reads the copy without sound
 
 | Shot | Start | Frames | Type | Copy | Source frame | Camera | Out |
 |---|---|---|---|---|---|---|---|
-| W01 | 0.00 s | 147 | kinetic | Type any action. | C01 blurred (plate) | still | cut |
-| W02 | 2.45 s | 153 | typed | The narrator answers. | C02a → C02b | push toward the input, then the narration | cut |
+| W01 | 0.00 s | 150 | kinetic | Type any action. | C01 blurred (plate) | still | cut |
+| W02 | 2.50 s | 150 | typed | The AI narrates. | C02a → C02b | full frame, drift up | cut |
 | W03 | 5.00 s | 60 | title | wordmark only | C01 blurred (plate) | still; ends on the bare plate | cut |
-| W04 | 6.00 s | 300 | frame | An AI text RPG. / Play any world you can imagine. | C01 | slow pan across the world tiles | wipe |
-| W05 | 10.40 s | 360 | typed | Type any action. / The narrator continues the story. | C02a → C02b | zoom from the input up to the narration | fade |
+| W04 | 6.00 s | 300 | frame | An AI text RPG. / Play any world you can imagine. | C01 | full frame, drift right | wipe |
+| W05 | 10.40 s | 360 | typed | Type any action. / The narrator continues the story. | C02a → C02b | full frame, drift up | fade |
 | W06 | 15.90 s | 220 | frame | Every turn updates your stats. | C02b, as a clip of the live stat-bar animation | zoom to the stat bars | fade |
-| W07 | 19.07 s | 210 | frame | Talk to anyone you meet. | C03 | zoom to the entity card and its art | fade |
-| W08 | 22.07 s | 240 | frame | Chat with anyone in your library. | C04 | push in on the chat column | wipe |
-| W09 | 25.47 s | 175 | kinetic | Build your own world. | C05 blurred (plate) | still | fade |
-| W10 | 27.88 s | 240 | frame | Place locations on a map. | C05 | pan across the map canvas | fade |
-| W11 | 31.38 s | 240 | frame | Write who lives there. | C06 | zoom to the entity profile | fade |
-| W12 | 34.88 s | 250 | frame | Let players pick a race and a class. | C07 | pan across the Blueprint list | fade |
-| W13 | 38.55 s | 240 | frame | Ask Morphie for help at any step. | C08 | push in on the help window | wipe |
-| W14 | 41.95 s | 305 | frame | Download hundreds of worlds from the community. | C09 | slow pan down the world grid | fade |
-| W15 | 46.53 s | 185 | frame | Enter contests. Share what you make. | C10 | zoom to the podium | wipe |
-| W16 | 49.02 s | 160 | kinetic | Use any AI model. | C11 blurred (plate) | still | fade |
-| W17 | 51.18 s | 310 | frame | Play in your browser or offline on your desktop. | C11 | pan across the endpoint form | fade |
-| W18 | 55.85 s | 180 | frame | Pick a 3D avatar. | C12 | slow push on the avatar | fade |
-| W19 | 58.35 s | 360 | title | wordmark · AI text RPG · formamorph.ai | title card stage | still, wordmark settles | end |
+| W07 | 19.07 s | 210 | frame | Talk to anyone you meet. | C03 | static crop on the entity card, drift right | fade |
+| W08 | 22.07 s | 242 | frame | Chat with anyone in your library. | C04 | full frame, drift down | wipe |
+| W09 | 25.50 s | 175 | kinetic | Build your own world. | C05 blurred (plate) | still | fade |
+| W10 | 27.92 s | 240 | frame | Place locations on a map. | C05 | full frame, drift right | fade |
+| W11 | 31.42 s | 240 | frame | Write who lives there. | C06 | static crop on the entity profile, drift right | fade |
+| W12 | 34.92 s | 250 | frame | Let players pick a race and a class. | C07 | full frame, drift down | fade |
+| W13 | 38.58 s | 242 | frame | Ask Morphie for help at any step. | C08 | zoom to the help answer | wipe |
+| W14 | 42.02 s | 305 | frame | Download hundreds of worlds from the community. | C09 | full frame, drift down | fade |
+| W15 | 46.60 s | 187 | frame | Enter contests. Share what you make. | C10 | slight crop that keeps the whole podium callout, drift down | wipe |
+| W16 | 49.12 s | 160 | kinetic | Use any AI model. | C11 blurred (plate) | still | fade |
+| W17 | 51.28 s | 310 | frame | Play in your browser or offline on your desktop. | C11 | static crop on the model field, drift down | fade |
+| W18 | 55.95 s | 180 | frame | Pick a 3D avatar. | C12, as a clip of the idle animation | full frame, drift left | fade |
+| W19 | 58.45 s | 360 | title | wordmark · AI text RPG · formamorph.ai | title card stage | backdrop holds one zoom and drifts left; wordmark settles | end |
 
-Total: **3,861 frames, 64.35 s**, under the 90 s target.
+Total: **3,867 frames, 64.45 s**, under the 90 s target.
+
+**Camera (Q22, Q23, Q26):** every move runs at a constant rate. Only W06 and W13 zoom during the shot. Every other frame shot holds one zoom and drifts about 3% of the frame over its length. A full frame sits at zoom 1.05 so the drift has room.
+
+**Text (Q25):** each line takes 0.5 s to enter and 0.5 s to leave on a gentle curve, then holds at least 1.5 s (Q17).
 
 ---
 
@@ -82,7 +86,7 @@ Total: **3,861 frames, 64.35 s**, under the 90 s target.
 Steam cuts its looping microtrailer from the first 6 seconds of the first trailer. Frames 0–359 are built to loop on their own.
 
 ```
-frame 0 ──── 147 ──────────── 300 ──── 359 │ 360
+frame 0 ──── 150 ──────────── 300 ──── 359 │ 360
 plate        game frame        wordmark   plate │ W04
 "Type any    types, narration   lands,     (same as │
  action."    streams in         dissolves  frame 0) │
@@ -90,7 +94,7 @@ plate        game frame        wordmark   plate │ W04
 
 - **Seam:** frame 0 and frame 359 both show the bare blurred library plate (C01), with no text. The loop has no visible jump.
 - **No cross-scene transition inside the loop.** Each shot fades its own content in and out over the plate, so the 360-frame block is exact.
-- **Frame 360:** W04 starts from that same plate with a cut, so the full trailer also runs on without a jump.
+- **Frame 360:** W04 starts from that same plate with a cut, so the full trailer also runs on without a jump. The loop's plate holds at W04's opening zoom and position.
 - **Message in 6 s:** the action (W01), the result (W02), the name (W03). A viewer of the loop alone gets what the app does and what it is called.
 
 ---
@@ -108,22 +112,24 @@ Derived shot by shot from the wide cut. Four treatments:
 
 | Tall | Start | From | Frames | Treatment | Notes | Out |
 |---|---|---|---|---|---|---|
-| T01 | 0.00 s | W01 | 147 | relayout | | cut |
-| T02 | 2.45 s | W02 | 153 | recapture | C02a-tall → C02b-tall. Narration stays readable. | cut |
+| T01 | 0.00 s | W01 | 150 | relayout | | cut |
+| T02 | 2.50 s | W02 | 150 | recapture | C02a-tall → C02b-tall. Full frame, drift up. | cut |
 | T03 | 5.00 s | W03 | 60 | relayout | Loop seam as in the wide cut. | cut |
-| T04 | 6.00 s | W04 | 300 | crop | Window on the center tile column. | wipe |
-| T05 | 10.40 s | W05 | 360 | recapture | C02a-tall → C02b-tall. | fade |
-| T06 | 15.90 s | W06 + W07 | 240 | stack | Stat bars above, entity card below. | fade |
-| T07 | 19.40 s | W08 | 240 | crop | The chat column is already narrow. | wipe |
-| T08 | 22.80 s | W09 | 175 | relayout | | fade |
-| T09 | 25.22 s | W10 | 240 | crop | Window on the map center. | fade |
-| T10 | 28.72 s | W11 + W12 | 275 | stack | Entity profile above, Blueprint list below. | wipe |
-| T11 | 32.70 s | W14 + W15 | 310 | stack | World grid above, podium below. | wipe |
-| T12 | 37.27 s | W16 | 160 | relayout | | fade |
-| T13 | 39.43 s | W17 | 310 | crop | Window on the endpoint form. | fade |
-| T14 | 44.10 s | W19 | 360 | relayout | | end |
+| T04 | 6.00 s | W04 | 300 | crop | Window on the center tile column, drift right. | wipe |
+| T05 | 10.40 s | W05 | 360 | recapture | C02a-tall → C02b-tall. Full frame, drift up. | fade |
+| T06 | 15.90 s | W06 + W07 | 240 | stack | Stat bars above, zooming like W06 (Q26). Entity card below, static crop. | fade |
+| T07 | 19.40 s | W08 | 242 | crop | The chat column is already narrow. Drift right. | wipe |
+| T08 | 22.83 s | W09 | 175 | relayout | | fade |
+| T09 | 25.25 s | W10 | 240 | crop | Window on the map center, drift right. | fade |
+| T10 | 28.75 s | W11 + W12 | 277 | stack | Entity profile above, Blueprint list below. Both drift. | wipe |
+| T11 | 32.77 s | W14 + W15 | 312 | stack | World grid above, podium below. Both drift. | wipe |
+| T12 | 37.37 s | W16 | 160 | relayout | | fade |
+| T13 | 39.53 s | W17 | 310 | crop | Window on the model field, drift right. | fade |
+| T14 | 44.20 s | W19 | 360 | relayout | | end |
 
-**Dropped:** W13 (Morphie) and W18 (avatar). Total: **3,006 frames, 50.10 s**, under the 60 s that every social platform accepts.
+**Dropped:** W13 (Morphie) and W18 (avatar). Total: **3,012 frames, 50.20 s**, under the 60 s that every social platform accepts.
+
+A crop window, a stack pane and a recapture hold one zoom and drift about 3% of their area, except the T06 stats pane.
 
 The tall cut shares the scene set with the wide cut, not its timeline.
 
@@ -151,7 +157,7 @@ Format per ruling Q8: the spec's field list. Ticket 05 copies these rows into ti
 | C09 | — | modal `community`, tab `world` | graphite dark | 2 | 1600x900 | none | pinned listing data (see below) |
 | C10 | — | modal `community`, tab `contest`, podium | graphite dark | 2 | 1600x900 | none | pinned listing data (see below) |
 | C11 | — | modal `settings`, tab `endpoints`, subtab `text` | graphite dark | 2 | 1600x900 | none | the default endpoint preset |
-| C12 | — | modal `avatar` | graphite dark | 2 | 1600x900 | none | the default avatar, frozen pose as in the title card |
+| C12 | — | modal `avatar` | graphite dark | 2 | 1600x900 | none | the default avatar, a clip of the idle animation on a stepped clock |
 
 **Capture risks for tickets 02 and 05**
 
