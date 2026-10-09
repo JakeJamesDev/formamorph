@@ -111,6 +111,9 @@ Research behind the trigger model: Vim refreshes its swap file after 200 charact
 | Q35 | A manual save in a paused tab counts as Keep Mine only when it succeeds. A failed save overwrote nothing, so the dialog stays. |
 | Q36 | Reload loads the stored world the same way opening it does: it re-baselines, starts History over, and drops pending links. Pending edits in this tab are lost, and the dialog copy says so. |
 | Q37 | A delete of the open world in another tab also announces. This tab pauses auto save and shows its own blocking dialog: another tab deleted this world, with **Keep Mine** (saves it back) and **Close** (leaves the editor and drops the edits). Escape and an outside click do not close it. Backup restores announce like saves (Q34). |
+| Q38 | Q30 covers only writes that merge into the Step before them. A single new Step counts every record added or removed and every non-text field changed, so a bulk action (delete 30 records, paste 30 rows) saves at once. |
+| Q39 | Mobile's Failed face stays as built: the red alert icon and the failure toast are enough cues. No tap hint. |
+| Q40 | The delete dialog (Q37) also tells the author to close the other tab, the same as Q32. |
 
 ### Prototype
 
