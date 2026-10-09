@@ -33,6 +33,7 @@ const setup = (over: Partial<HistoryRevealOptions> = {}) => {
     onMove: (listener) => { hear = listener; return () => { hear = null; }; },
     touring: false,
     visibleTabs: [{ value: 'stats' }, { value: 'locations' }, { value: 'overview' }],
+    holds: () => false,
     ...calls,
     ...over,
   }));

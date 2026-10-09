@@ -143,6 +143,10 @@ export const renderWorldEditorBench = (
   };
 };
 
+/** The label of the editor tab that is showing. */
+export const shownEditorTab = () =>
+  within(screen.getByRole('tablist', { name: 'Editor Sections' })).getByRole('tab', { selected: true }).textContent;
+
 /** Open one of the editor's own tabs, from the rail or, on mobile, through the Sections bar. Panel strips
  *  share tab names with the editor's, so the list is found by its label. These tabs switch on mouseDown. */
 export const openEditorTab = (name: RegExp) => {

@@ -65,9 +65,17 @@ export interface StepKey {
   field?: string;
 }
 
+/** Where the author stood in the World Editor when a Step's first write landed. */
+export interface StepOrigin {
+  tab: string;
+  /** The record selected on that tab. */
+  id?: string;
+}
+
 export interface Step {
   edits: SliceEdit[];
   key?: StepKey;
+  origin?: StepOrigin;
   /** A group or batch label, which replaces the derived one. */
   label?: string;
   /** When the latest write merged into this Step was recorded. */
@@ -293,6 +301,8 @@ export interface RecordOptions {
   /** The event-loop tick the write landed in; writes that share one fold into one Step. */
   tick?: number;
   now?: number;
+  /** Kept by a new Step only: a merge keeps the Step's first Origin. */
+  origin?: StepOrigin;
 }
 
 /**
@@ -321,6 +331,7 @@ export function record(history: EditorHistory, edits: SliceEdit[], options: Reco
   const step: Step = { edits, at: now, tick: options.tick };
   if (history.group) step.label = history.group.label;
   else if (options.key) step.key = options.key;
+  if (options.origin) step.origin = options.origin;
   steps.push(step);
   return capped({
     ...history, steps, cursor: steps.length, saved, sealed: false,

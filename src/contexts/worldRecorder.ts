@@ -1,12 +1,12 @@
 import {
-  createContext, startTransition, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState,
+  createContext, startTransition, type MutableRefObject, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState,
   useSyncExternalStore,
 } from 'react';
 import { useMountedRef } from '@/lib/useMountedRef';
 import {
   beginGroup as openGroup, canRedo, canUndo, createHistory, diffSlice, endGroup as closeGroup, jumpTo, markSaved, movedTexts,
   record, recordFieldMove, replaceRecords, settleKey, WORLD_SLICES,
-  type EditorHistory, type SliceEdit, type SliceName, type Step, type StepKey, type WorldSlices,
+  type EditorHistory, type SliceEdit, type SliceName, type Step, type StepKey, type StepOrigin, type WorldSlices,
 } from '@/lib/editorHistory';
 import type { CommittedChange } from '@/lib/changeMeter';
 
@@ -108,6 +108,8 @@ export interface HistoryMoveEvent {
 
 export interface WorldHistoryControls {
   store: HistoryStore;
+  /** The World Editor's place as of its last commit, which a new Step takes as its Origin. Null with no editor open. */
+  place: MutableRefObject<StepOrigin | null>;
   undo(): void;
   redo(): void;
   /** Moves the world to a list position. 0 is the World opened head. */
@@ -143,6 +145,9 @@ export function useWorldRecorder(slices: WorldSlices, worldId: string | null, se
   const openWorld = useRef(worldId);
   const last = useRef<{ recorded: boolean; tick?: number }>({ recorded: false });
   const armed = useRef(true);
+  const place = useRef<StepOrigin | null>(null);
+  // A labeled batch spans the world, so its Step has no one place to return to.
+  const batching = useRef(false);
   // The tick a close cleared the stack in: what the closing editor still writes in it is not an edit.
   const closedIn = useRef<number | null>(null);
   // The text the last move wrote, until the next recorded write. A field rebuilt to it is restoring, not editing.
@@ -202,7 +207,8 @@ export function useWorldRecorder(slices: WorldSlices, worldId: string | null, se
       emitChange({ edits, merged: joined });
       return;
     }
-    const next = record(was, edits, { tick: at, key: settled });
+    const origin = batching.current ? undefined : place.current ?? undefined;
+    const next = record(was, edits, { tick: at, key: settled, origin });
     store.set(next);
     last.current = { recorded: true, tick: at };
     // A new Step holds the edits as given; a merge combines them into the Step before.
@@ -289,15 +295,17 @@ export function useWorldRecorder(slices: WorldSlices, worldId: string | null, se
   }), [mounted]);
   const batch = useCallback(async (label: string, run: () => void | Promise<void>) => {
     beginGroup(label);
+    batching.current = true;
     try {
       await run();
     } finally {
       await endGroup();
+      batching.current = false;
     }
   }, [beginGroup, endGroup]);
 
   const controls = useMemo<WorldHistoryControls>(
-    () => ({ store, undo, redo, jump, keyNext, markFieldHistory, isRestoredText, clear, onMove, onChange, beginGroup, endGroup, batch }),
+    () => ({ store, place, undo, redo, jump, keyNext, markFieldHistory, isRestoredText, clear, onMove, onChange, beginGroup, endGroup, batch }),
     [store, undo, redo, jump, keyNext, markFieldHistory, isRestoredText, clear, onMove, onChange, beginGroup, endGroup, batch],
   );
   return { intent, controls, disarm, beginSave };

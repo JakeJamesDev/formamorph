@@ -6,7 +6,7 @@ import { useEffect } from 'react';
 import { flushSync } from 'react-dom';
 import { GameDataProvider, useGameData } from './GameDataContext';
 import { useWorldHistory } from './worldRecorder';
-import { revealTargetForMove, type RevealTarget } from '@/lib/historyReveal';
+import { revealForMove, type RevealTarget } from '@/lib/historyReveal';
 import type { Entity, GameLocation, Placeholder, PlaceholderGroup, Stat, Trait, TraitGroup, TraitLink, World } from '@/types';
 
 /** Every write to the open world can be undone and redone through the provider's history. */
@@ -67,7 +67,8 @@ const statIds = (ctx: Handle) => ctx.stats.map((s) => s.id);
 /** Where each later move lands, as the editor would reveal it. */
 const watch = (history: HistoryView) => {
   const targets: (RevealTarget | null)[] = [];
-  const stop = history.onMove((move) => targets.push(revealTargetForMove(move.steps, move.world)));
+  // No editor is open, so no Step has an Origin.
+  const stop = history.onMove((move) => targets.push(revealForMove(move.steps, move.world, { shows: () => true, holds: () => false })));
   return { targets, stop };
 };
 
