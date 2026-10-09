@@ -336,7 +336,11 @@ describe('styling the poster', () => {
 
     // The pick also opens the positioning dialog, whose band is a second copy of the artwork.
     await waitFor(() => expect(screen.getAllByTestId('poster-band-image').length).toBeGreaterThan(0));
-    fireEvent.keyDown(document.body, { key: 'Escape' });
+    // Radix arms a fresh layer's Escape a render after it mounts, so a press can land before that.
+    await waitFor(() => {
+      fireEvent.keyDown(document.body, { key: 'Escape' });
+      expect(positioningOpen()).toBe(false);
+    });
     fireEvent.click(screen.getByRole('button', { name: /Create Event/ }));
 
     await waitFor(() => expect(create).toHaveBeenCalled());
