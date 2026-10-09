@@ -177,28 +177,29 @@ describe('revealForMove', () => {
   });
 
   it('reveals the Origin tab and record for an edit made through a mirror', () => {
-    const step = stepFrom({ tab: 'locations', id: 'harbor' });
+    const step = stepFrom({ tab: 'locations', ids: ['harbor'] });
     expect(revealForMove([step], world, editor())).toEqual({ tab: 'locations', id: 'harbor' });
   });
 
   it('opens the Origin tab alone when the author had nothing selected there', () => {
     const step = stepFrom({ tab: 'overview' });
     expect(revealForMove([step], world, editor())).toEqual({ tab: 'overview' });
+    expect(revealForMove([stepFrom({ tab: 'overview', ids: [] })], world, editor())).toEqual({ tab: 'overview' });
   });
 
   it('reveals the touched record on its own tab when the Origin is that tab', () => {
     // An add selects the new record in the same commit, so the Origin still names the earlier selection.
-    const step = stepFrom({ tab: 'entities', id: 'other' });
+    const step = stepFrom({ tab: 'entities', ids: ['other'] });
     expect(revealForMove([step], world, editor({ held: ['other', 'wick'] }))).toEqual({ tab: 'entities', id: 'wick' });
   });
 
   it('falls back to the touched record when the Origin record is gone', () => {
-    const step = stepFrom({ tab: 'locations', id: 'harbor' });
+    const step = stepFrom({ tab: 'locations', ids: ['harbor'] });
     expect(revealForMove([step], world, editor({ held: [] }))).toEqual({ tab: 'entities', id: 'wick' });
   });
 
   it('falls back to the touched record when the mode hides the Origin tab', () => {
-    const step = stepFrom({ tab: 'placeholders', id: 'harbor' });
+    const step = stepFrom({ tab: 'placeholders', ids: ['harbor'] });
     expect(revealForMove([step], world, editor({ shown: ['entities'] }))).toEqual({ tab: 'entities', id: 'wick' });
   });
 
@@ -208,24 +209,48 @@ describe('revealForMove', () => {
 
   it('opens the Origin tab for a Step whose edits have no tab of their own', () => {
     const update: StatUpdate = { id: 'u1', name: 'u1', prompt: '', stats: [], messageHistory: [] };
-    const step = stepFrom({ tab: 'stats', id: 'harbor' }, [diffSlice('statUpdates', [], [update]) as SliceEdit]);
+    const step = stepFrom({ tab: 'stats', ids: ['harbor'] }, [diffSlice('statUpdates', [], [update]) as SliceEdit]);
     expect(revealForMove([step], world, editor())).toEqual({ tab: 'stats', id: 'harbor' });
   });
 
+  describe('with several records selected', () => {
+    const picked = { tab: 'locations', ids: ['harbor', 'docks', 'quay'] };
+
+    it('restores every record of the selection that still stands', () => {
+      expect(revealForMove([stepFrom(picked)], world, editor({ held: ['harbor', 'docks', 'quay'] })))
+        .toEqual({ tab: 'locations', id: 'harbor', ids: ['harbor', 'docks', 'quay'] });
+    });
+
+    it('drops the records that are gone and keeps the order of the rest', () => {
+      expect(revealForMove([stepFrom(picked)], world, editor({ held: ['quay', 'harbor'] })))
+        .toEqual({ tab: 'locations', id: 'harbor', ids: ['harbor', 'quay'] });
+    });
+
+    it('names the one record that is left without a selection list', () => {
+      expect(revealForMove([stepFrom(picked)], world, editor({ held: ['docks'] })))
+        .toEqual({ tab: 'locations', id: 'docks' });
+    });
+
+    it('falls back to the touched record when every record is gone', () => {
+      expect(revealForMove([stepFrom(picked)], world, editor({ held: [] })))
+        .toEqual({ tab: 'entities', id: 'wick' });
+    });
+  });
+
   it('reveals nothing when the mode hides both tabs', () => {
-    const step = stepFrom({ tab: 'placeholders', id: 'harbor' });
+    const step = stepFrom({ tab: 'placeholders', ids: ['harbor'] });
     expect(revealForMove([step], world, editor({ shown: ['overview'] }))).toBeNull();
   });
 
   it('reveals the Origin of the Step nearest where a jump lands', () => {
     const first = stepFrom({ tab: 'overview' });
-    const last = stepFrom({ tab: 'locations', id: 'harbor' });
+    const last = stepFrom({ tab: 'locations', ids: ['harbor'] });
     expect(revealForMove([first, last], world, editor())).toEqual({ tab: 'locations', id: 'harbor' });
   });
 
   it('falls back inward when the nearest Step reveals nothing', () => {
-    const first = stepFrom({ tab: 'locations', id: 'harbor' });
-    const last = stepFrom({ tab: 'placeholders', id: 'harbor' });
+    const first = stepFrom({ tab: 'locations', ids: ['harbor'] });
+    const last = stepFrom({ tab: 'placeholders', ids: ['harbor'] });
     expect(revealForMove([first, last], world, editor({ shown: ['locations'] }))).toEqual({ tab: 'locations', id: 'harbor' });
   });
 });

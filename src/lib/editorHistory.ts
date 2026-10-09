@@ -68,8 +68,8 @@ export interface StepKey {
 /** Where the author stood in the World Editor when a Step's first write landed. */
 export interface StepOrigin {
   tab: string;
-  /** The record selected on that tab. */
-  id?: string;
+  /** The records selected on that tab, the one whose panel is open first. */
+  ids?: readonly string[];
 }
 
 export interface Step {
