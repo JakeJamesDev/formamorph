@@ -48,6 +48,9 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### 🔧 Fixed
 
 - **👤 User-facing**
+  - **Narration:**
+    - **Paging away from narration that is still fading in, then back, now shows all the text that has arrived.** It no longer fades in again from the start. Text the AI writes after you return fades in as usual.
+    - **Choices now wait until the narration has finished fading in.** They no longer stream in over text that is still fading in.
   - **Auto Save:**
     - **Exit Without Saving in the in-game World Editor now drops the edits you made since the last save.** After Auto Save saved the world, the prompt says so.
   - **The app and the wiki now say In Game for the time after a game starts.** The trait toggle, the Authoring Tour pane and the Entities page use the same term.

@@ -585,6 +585,7 @@ const GameViewer = ({
     setPlayerInput,
     isWaitingForAI,
     setIsWaitingForAI,
+    isRevealingNarration,
     setIsRevealingNarration,
     fullMessageHistory,
     setFullMessageHistory,
@@ -737,6 +738,11 @@ const GameViewer = ({
   const smoothReveal = useSmoothedReveal(setGameplayText);
   // Which reveal drives narration: any effect enabled ⇒ the paced fade path; none ⇒ the smooth crawl.
   const fadeRevealActive = revealActive(revealSpec);
+  // A past page shows: release narration as it arrives, so the return shows it all and paces what follows.
+  const setFadeRevealSkipping = fadeReveal.setSkipping;
+  useEffect(() => {
+    setFadeRevealSkipping(isViewingPast && isRevealingNarration);
+  }, [isViewingPast, isRevealingNarration, setFadeRevealSkipping]);
 
   // Slash-command preview (e.g. `/markdown test`): drives the narration reveal with local text, off the AI path.
   const [commandPreview, setCommandPreview] = useState(false);
@@ -3222,9 +3228,9 @@ const GameViewer = ({
           } else if (requestType === "narration") {
             onNarrationDelta();
           } else if (requestType === "choices") {
-            // Update choices in real-time, ensuring we handle partial content correctly
+            // Stream choices in live, but not over a still-fading narration: the drain commits them.
             const choicesList = parseChoices(stripReasoningLive(content));
-            if (choicesList.length > 0) setChoices(choicesList);
+            if (choicesList.length > 0 && !(fadeRevealActive && !fadeReveal.isDrained())) setChoices(choicesList);
           }
           // For statUpdates type, we do nothing during streaming
         } catch (e) {
