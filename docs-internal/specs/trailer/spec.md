@@ -41,7 +41,7 @@ Gameplay is text. Watching someone read is not a trailer. The video is a showcas
 | Q6 | The proof is 20 seconds: one title card, two UI frames with motion, one transition, rendered at both sizes. The pipeline is proven before the storyboard is written. |
 | Q7 | The trailer package uses React 19. `@remotion/transitions` 4.0.534 bundles a React DOM 19 copy and reads React 19 internals, so it fails to bundle against React 18 despite its declared peer range. The package is standalone (Q5), so the app stays on React 18. Ruled 2026-10-08 on ticket 01's evidence. |
 | Q8 | The storyboard lives at `docs-internal/specs/trailer/storyboard.md` and lands in ticket 03's commit. It holds its own capture table in the spec's field list (view, modal or tab, viewport, theme, scale, world, seed). Ticket 05 copies that table into ticket 02's capture list, so 02 and 03 never race on one file. The user approves the storyboard in the 03 session; its rulings come here as numbered Q-lines and fold into this spec. |
-| Q9 | The storyboard is approved (2026-10-08, ticket 03): wide cut 19 shots, tall cut 13 shots; lengths as of ticket 11: wide 68.45 s (4,107 frames), tall 51.03 s (3,062 frames); frames 0 to 359 loop on the bare blob stage (Q28). |
+| Q9 | The storyboard is approved (2026-10-08, ticket 03): wide cut 20 shots, tall cut 14 shots; lengths as of ticket 12: wide 76.22 s (4,573 frames), tall 57.35 s (3,441 frames); frames 0 to 359 loop on the bare blob stage (Q28). |
 | Q10 | Feature cut: Morphie help, contests and 3D avatars stay in the wide cut. Memory is cut. Scene images, character cards and ST import, themes, TTS and authoring tools are not in the trailer. |
 | Q11 | The end card's call-to-action line is "formamorph.ai". |
 | Q12 | Gameplay shots use the Drone world on the landing page's site-game fixture. |
@@ -109,6 +109,7 @@ Gameplay is text. Watching someone read is not a trailer. The video is a showcas
 - Fonts load through Remotion's font loader, not a `<link>`, so renders never race the network.
 - The first 6 seconds must read as a loop on their own (microtrailer).
 - Both cuts render from one command. Rendered MP4s are gitignored; only source and captures are tracked.
+- Two capture flakes are on record after ticket 12, not fixed by it: the stats clip times out against the current app (a session is on it), and the profile shot flips between `same` and about 1.6% changed between runs. Ticket 13 should land with both resolved or named.
 - Three shots need canned or frozen inputs to capture deterministically (storyboard §5): the help answer (live endpoint), the community world grid (live server data; contest listings are already canned through the dev-router), and the avatar's WebGL frame. Tickets 02 and 05 own this.
 
 ## Testing Decisions
