@@ -33,6 +33,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Settings now has Auto Save and Auto Save Pause for the World Editor.** Under **Authoring**, turn Auto Save on or off and set the pause from 10 seconds to 5 minutes.
   - **The World Editor asks which copy to keep when another tab saves or deletes the same world.** Auto save stops until you answer. After a save, **Reload** opens the other copy and **Keep Mine** keeps yours. After a delete, **Keep Mine** saves it back.
   - **The World Editor asks before you close or reload the tab with unsaved changes.** It works in the menu and in the in-game editor, and in the desktop app's window close.
+  - **Choices now enter one at a time with your narration reveal effects, after the narration finishes.** Fade, Move, Scale and Blur apply to each choice. Choices you page back to show at once.
 - **🛠️ Developer tooling**
   - **Trailer:**
     - **`marketing/trailer/` renders a 20-second proof trailer to wide and tall MP4s with one command.** It is a Remotion package with its own dependencies and scripts. `npm run render` checks each file's size, frame rate and length.
@@ -54,6 +55,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Narration:**
     - **Paging away from narration that is still fading in, then back, now shows all the text that has arrived.** It no longer fades in again from the start. Text the AI writes after you return fades in as usual.
     - **Choices now wait until the narration has finished fading in.** They no longer stream in over text that is still fading in.
+    - **A new turn's card no longer shows a blank line under your action before the narration starts.**
   - **Auto Save:**
     - **Exit Without Saving in the in-game World Editor now drops the edits you made since the last save.** After Auto Save saved the world, the prompt says so.
   - **The app and the wiki now say In Game for the time after a game starts.** The trait toggle, the Authoring Tour pane and the Entities page use the same term.

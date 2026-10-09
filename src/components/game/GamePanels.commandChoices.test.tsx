@@ -75,6 +75,12 @@ describe('the /choices test preview', () => {
     expect(durations()).not.toContain('0ms');
   });
 
+  it('leaves the action line last in the card until narration arrives', () => {
+    renderMiddlePanel({ commandPreview: true, commandChoices: { list: [], settled: false }, commandAction: 'I force the gate.' }, { turns: [] });
+    expect(screen.queryByTestId('preview-narration')).toBeNull();
+    expect(screen.getByTestId('action-line').nextElementSibling).toBeNull();
+  });
+
   it('shows no choices for a narration-only preview', () => {
     renderMiddlePanel({ commandPreview: true }, { turns: [] });
     expect(screen.getByText('Markdown preview (/markdown test)')).toBeTruthy();
