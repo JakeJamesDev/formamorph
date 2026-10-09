@@ -3,6 +3,8 @@
 import 'fake-indexeddb/auto';
 import { useEffect, useState, type ReactNode } from 'react';
 import { render } from '@testing-library/react';
+import { onTestFinished, vi } from 'vitest';
+import { stubReachableEndpoint } from '@/test/endpointProbe';
 import { ThemeProvider } from '@/components/theme-provider';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { SurfaceLayer, SurfaceReporterContext, type SurfaceReporter } from '@/components/ui/surface';
@@ -32,6 +34,7 @@ function WithWorld({ world, children }: { world: World; children: ReactNode }) {
 /**
  * Render the real game view under the real app providers, in `App.tsx`'s order, on a loaded world.
  * The calling file mocks what jsdom cannot run: `@/views/VRMViewer` and the toast module.
+ * The AI probe gets a reachable answer, so no test reaches a real server.
  */
 export function renderGameViewer(
   world: World,
@@ -41,6 +44,8 @@ export function renderGameViewer(
     children?: ReactNode;
   } = {},
 ) {
+  stubReachableEndpoint();
+  onTestFinished(() => { vi.unstubAllGlobals(); });
   return render(
     <ThemeProvider>
       <TooltipProvider>
