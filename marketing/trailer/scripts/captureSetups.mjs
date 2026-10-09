@@ -17,6 +17,9 @@ const HELP_ANSWER = [
   'Add your stats, locations and entities from the list on the left. Press **Save** when you finish. The world appears in your library.',
 ].join('\n');
 
+/** Page time between two words of the help answer's stream: about 12 words a second, a fast local model's pace. */
+const HELP_WORD_MS = 80;
+
 /** Worlds the community grid lists: the bundled worlds, with no download or like counts. */
 const LISTED = ['emberwatch', 'veilwood', 'drone', 'slime', 'sugarscape', 'rampage'];
 
@@ -169,20 +172,54 @@ export const setups = {
     await context.route(/^http:\/\/(localhost|127\.0\.0\.1):8977\/v1\/models/, (route) => route.fulfill({ json: { data: [{ id: ENGINE_STATE.modelId }] } }));
   },
 
-  /** The help window's AI call answers with one canned reply, streamed as the endpoint would. */
+  /**
+   * The help window's AI calls answer from one canned reply. The page's own `fetch` serves them, so the answer
+   * streams one word per `HELP_WORD_MS` of page time, as a live endpoint would, and a paused page clock holds it.
+   * The first call is the guide-section pick, a short reply in real use, so it comes whole. Every reply waits until
+   * the capture calls `window.__helpAnswer.open()`; `window.__helpAnswer.asked` is true once one is asked.
+   */
   async helpAnswer(context) {
-    const chunk = (delta) => `data: ${JSON.stringify({ choices: [{ index: 0, delta }] })}\n\n`;
-    // The placeholder endpoint capture.mjs stores, which nothing listens on.
-    await context.route(/127\.0\.0\.1:9\//, async (route) => {
-      const body = JSON.parse(route.request().postData() ?? '{}');
-      if (body.stream) {
-        const words = HELP_ANSWER.split(/(?<=\s)/);
-        return route.fulfill({
-          contentType: 'text/event-stream',
-          body: chunk({ role: 'assistant' }) + words.map((word) => chunk({ content: word })).join('') + 'data: [DONE]\n\n',
+    await context.addInitScript(({ answer, wordMs }) => {
+      let open;
+      const opened = new Promise((resolve) => { open = resolve; });
+      window.__helpAnswer = { asked: false, open: () => open() };
+      let calls = 0;
+      const encoder = new TextEncoder();
+      const chunk = (delta) => encoder.encode(`data: ${JSON.stringify({ choices: [{ index: 0, delta }] })}\n\n`);
+      const realFetch = window.fetch.bind(window);
+      window.fetch = async (input, init) => {
+        const url = String(input instanceof Request ? input.url : input);
+        // The placeholder endpoint capture.mjs stores, which nothing listens on.
+        if (!url.includes('127.0.0.1:9/')) return realFetch(input, init);
+        const chat = url.includes('chat/completions');
+        if (chat) window.__helpAnswer.asked = true;
+        const paced = chat && calls++ > 0;
+        await opened;
+        const body = JSON.parse(typeof init?.body === 'string' ? init.body : '{}');
+        if (!body.stream) {
+          return new Response(JSON.stringify({ choices: [{ index: 0, message: { role: 'assistant', content: answer }, finish_reason: 'stop' }] }), { headers: { 'content-type': 'application/json' } });
+        }
+        const words = answer.split(/(?<=\s)/);
+        const stream = new ReadableStream({
+          start(controller) {
+            controller.enqueue(chunk({ role: 'assistant' }));
+            const end = () => {
+              controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+              controller.close();
+            };
+            if (!paced) {
+              for (const word of words) controller.enqueue(chunk({ content: word }));
+              end();
+              return;
+            }
+            words.forEach((word, i) => setTimeout(() => {
+              controller.enqueue(chunk({ content: word }));
+              if (i === words.length - 1) end();
+            }, (i + 1) * wordMs));
+          },
         });
-      }
-      return route.fulfill({ json: { choices: [{ index: 0, message: { role: 'assistant', content: HELP_ANSWER }, finish_reason: 'stop' }] } });
-    });
+        return new Response(stream, { headers: { 'content-type': 'text/event-stream' } });
+      };
+    }, { answer: HELP_ANSWER, wordMs: HELP_WORD_MS });
   },
 };

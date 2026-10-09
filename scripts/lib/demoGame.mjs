@@ -7,9 +7,12 @@ import { randomUUID } from 'node:crypto';
 const ROOT = new URL('../../', import.meta.url);
 const readJson = (path) => JSON.parse(readFileSync(new URL(path, ROOT), 'utf8'));
 
-/** The scene file's shape: `location`, `entity`, `opening`, `choices`, and one `action` + `narration` or a `turns` list of them. `openingOnly` saves the opening page alone. */
-export async function prepareGame(context, scene, worldFile = 'src/defaultworlds/drone.json', { openingOnly = false } = {}) {
-  const world = readJson(worldFile);
+/**
+ * The scene file's shape: `location`, `entity`, `opening`, `choices`, and one `action` + `narration` or a `turns` list of them.
+ * `source` is a world file path or a world already built. `openingOnly` saves the opening page alone.
+ */
+export async function prepareGame(context, scene, source = 'src/defaultworlds/drone.json', { openingOnly = false } = {}) {
+  const world = typeof source === 'string' ? readJson(source) : structuredClone(source);
   const location = world.locations.find((item) => item.name === scene.location);
   const entity = world.entities.find((item) => item.name === scene.entity);
   if (!location || !entity || !entity.locations.includes(location.id)) throw new Error('Capture scene does not match the world');
@@ -17,7 +20,7 @@ export async function prepareGame(context, scene, worldFile = 'src/defaultworlds
   const sceneTurns = scene.turns ?? [{ action: scene.action, narration: scene.narration }];
   const turns = openingOnly ? [] : sceneTurns;
   const base = {
-    playerStats: world.stats.map((stat) => ({ ...stat, value: stat.starting })),
+    playerStats: world.stats.map((stat) => ({ ...stat, value: stat.starting ?? stat.value })),
     playerTraits: [], visibleEntities: [{ name: entity.name, revealed: true }], discoveredEntities: [],
     logEntries: [], locationId: location.id, characterData: null, isGameStarted: true,
     timestamp: new Date().toISOString(), worldName: world.worldOverview.name, playerNotes: '', stateVersion: 2,

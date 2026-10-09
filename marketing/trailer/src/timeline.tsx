@@ -115,15 +115,14 @@ const SQUARE_TALL: CardPair = {
 const STATS: StackPane = { shot: SHOTS.statsClip, caption: ['Every turn updates your stats.'], camera: hold(1.8, 0.8, 0.38), dot: 'mint' };
 const ENTITY: StackPane = { shot: SHOTS.entity, caption: ['Talk to anyone you meet.'], camera: hold(1.45, 0.5, 0.44), dot: 'pink' };
 const MAP: StackPane = { shot: SHOTS.canvas, caption: ['Place locations on a map.'], camera: hold(1, 0.395), dot: 'mint' };
-const TRAVEL: StackPane = { shot: SHOTS.travel, caption: ['Travel there and meet who lives there.'], camera: hold(1.25, 0.5, 0.28), dot: 'sky' };
 const PROFILE: StackPane = { shot: SHOTS.profile, caption: ['Write who lives there.'], camera: hold(1.6, 0.72, 0.4), dot: 'rose' };
+const TRAVEL: StackPane = { shot: SHOTS.travel, caption: ['Then travel there and meet them.'], camera: hold(1.25, 0.5, 0.28), dot: 'sky' };
 const BLUEPRINTS: StackPane = { shot: SHOTS.blueprints, caption: ['Let players pick a race and a class.'], camera: hold(1, 0.34), dot: 'amber' };
 const COMMUNITY: StackPane = { shot: SHOTS.community, caption: ['Download hundreds of worlds from the community.'], camera: FULL, dot: 'sky' };
 const CONTEST: StackPane = { shot: SHOTS.contest, caption: ['Enter contests.', 'Share what you make.'], camera: hold(1.85, 0.275, 0.455), dot: 'amber' };
 
-/** W01 and W03 (frames 0–359) loop on their own: they cut inside, and begin and end on the bare stage (rulings Q28, Q30). */
-const W01 = kinetic('W01', 150, 'cut', { lines: ['Type any action.'], delay: 0 });
-const W03 = wordmark('W03', 210, 'cut');
+/** W03 is the whole loop (frames 0–359): the title card begins and ends on the bare stage (rulings Q28, Q40, Q51). */
+const W03 = wordmark('W03', 360, 'cut');
 const W04 = frameShot('W04', 300, 'section', {
   shot: SHOTS.library,
   depth: TURN_AFTER,
@@ -155,16 +154,19 @@ const W08 = frameShot('W08', 242, 'section', {
   cards: { tall: SQUARE_TALL },
 });
 const W09 = kinetic('W09', 175, 'overlap', { lines: ['Build your own world.'] });
-const W10 = frameShot('W10', 240, 'overlap', { shot: MAP.shot, depth: SHOTS.travel, caption: MAP.caption, dot: MAP.dot, camera: both(FULL) });
-const W10b = frameShot('W10b', 270, 'overlap', { shot: TRAVEL.shot, depth: SHOTS.profile, caption: TRAVEL.caption, dot: TRAVEL.dot, camera: both(hold(1.6, 0.5, 0.3)) });
-const W11 = frameShot('W11', 240, 'overlap', { shot: PROFILE.shot, depth: SHOTS.canvas, caption: PROFILE.caption, dot: PROFILE.dot, camera: both(hold(1.6, 0.67, 0.4)) });
+/** The authoring section plays map, profile, travel, the traits card, then blueprints (ruling Q43). */
+const W10 = frameShot('W10', 240, 'overlap', { shot: MAP.shot, depth: SHOTS.profile, caption: MAP.caption, dot: MAP.dot, camera: both(FULL) });
+const W11 = frameShot('W11', 240, 'overlap', { shot: PROFILE.shot, depth: SHOTS.travel, caption: PROFILE.caption, dot: PROFILE.dot, camera: both(hold(1.6, 0.67, 0.4)) });
+const W10b = frameShot('W10b', 270, 'overlap', { shot: TRAVEL.shot, depth: SHOTS.canvas, caption: TRAVEL.caption, dot: TRAVEL.dot, camera: both(hold(1.6, 0.5, 0.3)) });
+const W12a = kinetic('W12a', 212, 'overlap', { lines: ['Traits shape who you play.'] });
 const W12 = frameShot('W12', 250, 'overlap', { shot: BLUEPRINTS.shot, depth: SHOTS.profile, caption: BLUEPRINTS.caption, dot: BLUEPRINTS.dot, camera: both(FULL) });
-const W13 = frameShot('W13', 242, 'section', {
-  shot: SHOTS.help,
+const W13a = kinetic('W13a', 176, 'overlap', { lines: ['Need help? Just ask.'] });
+const W13 = frameShot('W13', 380, 'section', {
+  shot: SHOTS.helpClip,
   depth: SHOTS.canvas,
-  caption: ['Ask Morphie for help at any step.'],
+  caption: ['Ask your AI guide Morphie for help at any time.'],
   dot: 'pink',
-  camera: both(hold(2.2, 0.77, 0.62)),
+  camera: both(hold(2, 0.75, 0.75)),
 });
 const W14 = frameShot('W14', 305, 'overlap', { shot: COMMUNITY.shot, depth: SHOTS.contest, caption: COMMUNITY.caption, dot: COMMUNITY.dot, camera: both(FULL) });
 const W15 = frameShot('W15', 187, 'section', {
@@ -188,18 +190,28 @@ const W17 = frameShot('W17', 310, 'overlap', {
 const W18 = frameShot('W18', 180, 'overlap', { shot: SHOTS.avatarClip, depth: SHOTS.entity, caption: ['Pick a 3D avatar.'], dot: 'rose', camera: both(FULL) });
 const W19 = title('W19', 360, { text: 'Play free at formamorph.ai', link: 'formamorph.ai' });
 
+/** A tall card at the stack cards' shape, for a single shot whose subject is wider than the 3:4 window shows. */
+const LANDSCAPE_TALL: CardPair = {
+  front: { width: 960, height: 760, x: 0, y: -160, tilt: [-8, -4], lean: 3 },
+  depth: { width: 820, height: 649, x: -70, y: -420, tilt: [-14, -10], lean: 4 },
+};
+
 /** The tall cut's stacks: two wide captures on two cards, one above the other (storyboard §4). */
 const T06 = stack('T06', 240, 'overlap', [STATS, ENTITY]);
-const T09 = stack('T09', 290, 'overlap', [MAP, TRAVEL]);
-const T10 = stack('T10', 277, 'section', [PROFILE, BLUEPRINTS]);
+/** The map alone, then profile and travel as one pair, since the traits card parts blueprints from them (ruling Q51). */
+const T09 = frameShot('T09', 240, 'overlap', { shot: MAP.shot, depth: SHOTS.profile, caption: MAP.caption, dot: MAP.dot, camera: both(MAP.camera), cards: { tall: LANDSCAPE_TALL } });
+const T10 = stack('T10', 290, 'overlap', [PROFILE, TRAVEL]);
+const T10b = frameShot('T10b', 264, 'section', { shot: BLUEPRINTS.shot, depth: SHOTS.profile, caption: BLUEPRINTS.caption, dot: BLUEPRINTS.dot, camera: both(hold(1, 0.31)) });
 const T11 = stack('T11', 312, 'section', [COMMUNITY, CONTEST]);
 
 /** The wide cut: storyboard §2. */
-const WIDE: SceneEntry[] = [W01, W03, W04, W05, W06, W07, W08, W09, W10, W10b, W11, W12, W13, W14, W15, W16, W17, W18, W19];
+const WIDE: SceneEntry[] = [W03, W04, W05, W06, W07, W08, W09, W10, W11, W10b, W12a, W12, W13a, W13, W14, W15, W16, W17, W18, W19];
 
-/** The tall cut: storyboard §4. It keeps the loop shots, drops Morphie (W13) and the avatar (W18), and stacks eight wide shots into four. */
+/**
+ * The tall cut: storyboard §4. It drops Morphie with its title card (W13a, W13) and the avatar (W18), and stacks
+ * six wide shots into three.
+ */
 const TALL: SceneEntry[] = [
-  reuse('T01', W01),
   reuse('T03', W03),
   reuse('T04', W04),
   reuse('T05', W05),
@@ -208,6 +220,8 @@ const TALL: SceneEntry[] = [
   reuse('T08', W09),
   T09,
   T10,
+  reuse('T10a', W12a),
+  T10b,
   T11,
   reuse('T12', W16),
   reuse('T13', W17),

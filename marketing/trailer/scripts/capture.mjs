@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Poses the app screens listed in captures.json through the dev-router and writes one PNG per shot into
-// public/shots/. A clip shot films one live turn, and a model shot the avatar's idle animation, frame by frame
-// and writes an MP4 instead. With --diff it captures to .capture-diff/ and reports each shot whose pixels differ
-// from the committed file.
+// public/shots/. A clip shot films one live turn, a model shot the avatar's idle animation, and an ask shot the
+// help window answering, frame by frame, and writes an MP4 instead after a check for jumps (clipMotion.mjs).
+// With --diff it captures to .capture-diff/ and reports each shot whose pixels differ from the committed file.
 //
 //   npm run capture
 //   npm run capture -- --only game
@@ -20,6 +20,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { prepareGame, verifyGame } from '../../../scripts/lib/demoGame.mjs';
 import { setups } from './captureSetups.mjs';
+import { EDGES_FILE, formatSeries, formatSpikes, motionSeries, movingMedian, spikes } from './clipMotion.mjs';
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = path.resolve(packageRoot, '../..');
@@ -42,6 +43,10 @@ if (unknown.length) throw new Error(`Unknown shot: ${unknown.join(', ')}`);
 const shots = list.shots.filter((shot) => (only.length ? only.includes(shot.id) : !shot.deferred));
 const readScene = (file) => JSON.parse(readFileSync(path.join(repoRoot, file), 'utf8'));
 const sceneOf = (shot) => readScene(shot.scene ?? list.demo.scene);
+/** Built worlds by name, filled once per run by `buildWorlds`. */
+const builtWorlds = {};
+/** The world a game shot loads: a built world by name, or the demo world file. */
+const worldOf = (shot) => (shot.world ? builtWorlds[shot.world] : list.demo.world);
 
 const committedDir = path.join(packageRoot, 'public/shots');
 const outDir = DIFF ? path.join(packageRoot, '.capture-diff') : committedDir;
@@ -88,6 +93,34 @@ async function startServer() {
   return { url, stop: () => child.kill() };
 }
 
+/**
+ * Builds each world the listed shots name, from the app's own modules through the capture server. `tour` is the
+ * world the Authoring Tour leaves when an author takes every step's example (ruling Q42). Ids count up, so every
+ * run builds the same world.
+ */
+async function buildWorlds(browser, names) {
+  if (!names.length) return;
+  const context = await browser.newContext();
+  try {
+    await context.addInitScript(() => {
+      let n = 0;
+      crypto.randomUUID = () => `00000000-0000-4000-8000-${String(++n).padStart(12, '0')}`;
+    });
+    const page = await context.newPage();
+    await page.goto(`http://localhost:${PORT}/`);
+    for (const name of names) {
+      if (name !== 'tour') throw new Error(`Unknown world "${name}"`);
+      builtWorlds[name] = await page.evaluate(async () => {
+        const { TOUR_STEPS, replayTourSteps } = await import('/src/lib/authoringTour/steps.ts');
+        const { newBlankWorld } = await import('/src/lib/blankWorld.ts');
+        return (await replayTourSteps(newBlankWorld(), TOUR_STEPS.length)).world;
+      });
+    }
+  } finally {
+    await context.close();
+  }
+}
+
 /** A promise and the function that settles it, so a held request waits for the capture to let it through. */
 const gate = () => {
   let open;
@@ -96,14 +129,15 @@ const gate = () => {
 };
 
 async function newContext(browser, shot) {
+  const films = shot.kind === 'clip' || !!shot.film;
   const context = await browser.newContext({
     viewport: shot.viewport,
     deviceScaleFactor: shot.scale,
     colorScheme: shot.theme,
     // A clip films the app's own motion; a still shows every animation at its end.
-    reducedMotion: shot.kind === 'clip' ? 'no-preference' : 'reduce',
+    reducedMotion: films ? 'no-preference' : 'reduce',
   });
-  if (!shot.model && shot.kind !== 'clip') {
+  if (!shot.model && !films) {
     await context.clock.setFixedTime(new Date(list.demo.time));
   } else {
     // The page clock runs until the capture pauses it, so its timers and frames move only when the capture says.
@@ -141,9 +175,9 @@ async function newContext(browser, shot) {
     if (!setups[name]) throw new Error(`Unknown setup "${name}" in shot ${shot.id}`);
     await setups[name](context);
   }
-  if (shot.kind === 'game') await prepareGame(context, sceneOf(shot), list.demo.world);
+  if (shot.kind === 'game') await prepareGame(context, sceneOf(shot), worldOf(shot));
   if (shot.kind === 'clip') {
-    await prepareGame(context, sceneOf(shot), list.demo.world, { openingOnly: true });
+    await prepareGame(context, sceneOf(shot), worldOf(shot), { openingOnly: true });
     context.stats = gate();
     await answerTurn(context, shot, sceneOf(shot));
   }
@@ -217,6 +251,86 @@ async function filmTurn(page, shot, scene, sink) {
 }
 
 /**
+ * Ties every animation that starts from now on to the paused page clock: `window.__clip.sync()` seeks each one to
+ * the clock time since it first showed, so frames come from the clock alone. CSS runs on real time, so with
+ * `onChange` each new animation is held at its start the moment its element changes, even while the capture waits.
+ */
+async function followClock(page, { onChange = false } = {}) {
+  await page.evaluate((onChange) => {
+    const before = new Set(document.getAnimations());
+    const seen = new Map();
+    const hold = () => {
+      const now = performance.now();
+      for (const animation of document.getAnimations()) {
+        if (before.has(animation) || seen.has(animation)) continue;
+        seen.set(animation, now);
+        animation.pause();
+        animation.currentTime = 0;
+      }
+    };
+    if (onChange) new MutationObserver(hold).observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true });
+    window.__clip = {
+      sync: () => {
+        hold();
+        const now = performance.now();
+        for (const animation of document.getAnimations()) {
+          if (before.has(animation)) continue;
+          animation.pause();
+          animation.currentTime = now - seen.get(animation);
+        }
+      },
+    };
+  }, onChange);
+}
+
+/** Moves a paused page clock on by film frames, on the 60 fps grid from where it starts, syncing animations each step. */
+function filmClock(page) {
+  let frame = 0;
+  return async () => {
+    frame += 1;
+    await page.clock.runFor(Math.round(frame * FRAME_MS) - Math.round((frame - 1) * FRAME_MS));
+    await page.evaluate(() => window.__clip.sync());
+  };
+}
+
+/**
+ * Films the help window answering (ruling Q47): the question is sent on a paused clock, the Mascot's change to her
+ * thinking look plays out unfilmed, and the clip opens on that look. The `helpAnswer` setup holds the reply for
+ * `ask.thinking` frames; then it streams in on the page clock and she moves to her idle look as the answer reveals.
+ */
+async function filmAsk(page, shot, sink) {
+  await page.keyboard.press('F1');
+  const field = page.getByRole('textbox', { name: 'Ask a Question' });
+  await field.waitFor();
+  await page.waitForTimeout(2000); // the window's open animation drops a fill made during it
+  await field.fill(shot.ask.question);
+  await page.mouse.move(0, 0);
+  await page.waitForTimeout(500);
+  await page.clock.pauseAt(pauseTime());
+  // The help answer's word animations start as its text lands, between clock steps.
+  await followClock(page, { onChange: true });
+  await field.press('Enter');
+  await field.blur();
+  const asked = () => page.evaluate(() => window.__helpAnswer.asked);
+  for (let i = 0; i < 200 && !(await asked()); i++) await page.waitForTimeout(50);
+  if (!(await asked())) throw new Error('The help question was never sent');
+  const step = filmClock(page);
+  for (let i = 0; i < SETTLE_FRAMES; i++) await step();
+  for (let i = 0; i < shot.ask.thinking; i++) {
+    if (i > 0) await step();
+    sink.add(await page.screenshot({ caret: 'hide' }));
+  }
+  await page.evaluate(() => window.__helpAnswer.open());
+  for (let i = shot.ask.thinking; i < shot.frames; i++) {
+    await step();
+    sink.add(await page.screenshot({ caret: 'hide' }));
+  }
+}
+
+/** Frames the send's own change of look takes before an ask clip opens: the Mascot's transition and the bubble's entrance. */
+const SETTLE_FRAMES = 60;
+
+/**
  * Films the turn's narration reveal: the screen before the turn, then one frame per step of the paused page
  * clock. Each animation the reveal starts is seeked to the clock time since it first showed, so the frames come
  * from the page clock alone and a second run films the same clip.
@@ -228,33 +342,31 @@ async function filmReveal(page, context, shot, scene, sink) {
   await page.mouse.move(0, 0);
   await page.waitForTimeout(1500);
   await page.clock.pauseAt(pauseTime());
-  await page.evaluate(() => {
-    const before = new Set(document.getAnimations());
-    const seen = new Map();
-    window.__clip = {
-      sync: () => {
-        const now = performance.now();
-        for (const animation of document.getAnimations()) {
-          if (before.has(animation)) continue;
-          if (!seen.has(animation)) seen.set(animation, now);
-          animation.pause();
-          animation.currentTime = now - seen.get(animation);
-        }
-      },
-    };
-  });
-  sink.add(await page.screenshot({ caret: 'hide' }));
+  await followClock(page);
+  // The narration's bottom edge on each frame, so the motion check can tell the app's line growth from a jump.
+  const edges = [];
+  const shoot = async () => {
+    sink.add(await page.screenshot({ caret: 'hide' }));
+    edges.push(await page.evaluate(() => {
+      const narration = document.querySelector('[data-testid="narration"]');
+      if (!narration) return null;
+      const line = parseFloat(getComputedStyle(narration.querySelector('p') ?? narration).lineHeight);
+      return { bottom: narration.getBoundingClientRect().bottom / innerHeight, line: line / innerHeight };
+    }));
+  };
+  await shoot();
   await input.press('Enter');
   await input.blur();
   // The narration lands on real network time, so the clock holds until the app has read all of it.
   for (let i = 0; i < 200 && !context.narrated; i++) await page.waitForTimeout(50);
   if (!context.narrated) throw new Error('The narration was never asked for');
   await page.waitForTimeout(1000);
+  const step = filmClock(page);
   for (let i = 1; i < shot.frames; i++) {
-    await page.clock.runFor(Math.round(i * FRAME_MS) - Math.round((i - 1) * FRAME_MS));
-    await page.evaluate(() => window.__clip.sync());
-    sink.add(await page.screenshot({ caret: 'hide' }));
+    await step();
+    await shoot();
   }
+  writeFileSync(path.join(sink.dir, EDGES_FILE), JSON.stringify(edges));
 }
 
 /**
@@ -353,7 +465,7 @@ async function capture(browser, shot, sink) {
     await target.waitFor();
     await page.evaluate((palette) => document.documentElement.setAttribute('data-theme', palette), shot.palette);
     // Toasts time out on their own clock, so a first-run notice would land in some frames and not others.
-    await page.addStyleTag({ content: '[data-sonner-toaster]{display:none!important}' });
+    await page.addStyleTag({ content: '[data-sonner-toaster],.Toastify{display:none!important}' });
     // Parts of the screen a shot leaves out, where the app has no switch for them.
     for (const selector of shot.hide ?? []) await page.addStyleTag({ content: `${selector}{visibility:hidden!important}` });
     await dismiss(page);
@@ -376,6 +488,7 @@ async function capture(browser, shot, sink) {
     await page.waitForTimeout(1500);
     if (shot.kind === 'clip') return await (shot.turn.film === 'reveal' ? filmReveal(page, context, shot, scene, sink) : filmTurn(page, shot, scene, sink));
     if (shot.model) return await filmModel(page, context, shot, sink);
+    if (shot.film === 'ask') return await filmAsk(page, shot, sink);
     if (shot.kind === 'game' && shot.verify !== false) await verifyGame(page, scene);
     return await page.screenshot({ animations: 'disabled', caret: 'hide' });
   } finally {
@@ -389,6 +502,7 @@ function clipSink(dir) {
   mkdirSync(dir, { recursive: true });
   let count = 0;
   return {
+    dir,
     add: (png) => writeFileSync(path.join(dir, `${String(count++).padStart(3, '0')}.png`), png),
     get count() { return count; },
   };
@@ -424,12 +538,16 @@ async function pixelDiff(encoder, a, b) {
 /** Where a clip's frames stay after the run, to compare two runs. */
 const frameDir = (shot) => path.join(DIFF ? outDir : path.join(packageRoot, '.capture-clip'), shot.id);
 
+/** The narration reveal clip: its frame 0 is the screen before the send, and ruling Q41 holds it to the motion rule. */
+const isReveal = (shot) => shot.turn?.film === 'reveal';
+
 const server = await startServer();
 const changed = [];
 const failed = [];
 let browser;
 try {
   browser = await chromium.launch();
+  await buildWorlds(browser, [...new Set(shots.flatMap((shot) => (shot.world ? [shot.world] : [])))]);
   const encoder = await browser.newPage();
   for (const shot of shots) {
     let png;
@@ -441,6 +559,19 @@ try {
       continue;
     }
     if (shot.frames) {
+      const series = await motionSeries(encoder, frameDir(shot));
+      // A reveal clip starts with the send, a cut the app makes itself.
+      const found = spikes(series).filter((spike) => !(isReveal(shot) && spike.frame === 1));
+      const jumps = found.filter((spike) => !spike.edge);
+      const edges = found.filter((spike) => spike.edge);
+      console.log(`motion   ${shot.id}, % of pixels per frame (moving median ${(movingMedian(series) * 100).toFixed(3)}%, ! = spike, ~ = edge grows):\n${formatSeries(series)}`);
+      if (edges.length) console.log(`         ${edges.length} edge growth(s) pass: ${formatSpikes(edges)}`);
+      // Other clips only print their series: the Mascot's change of look is motion, not a jump.
+      if (jumps.length && isReveal(shot)) {
+        failed.push(shot.id);
+        console.log(`FAILED   ${shot.id}: ${jumps.length} jump(s) far above the median: ${formatSpikes(jumps)}`);
+        continue;
+      }
       const file = path.join(outDir, `${shot.id}.mp4`);
       encodeClip(frameDir(shot), file);
       const clip = readFileSync(file);
