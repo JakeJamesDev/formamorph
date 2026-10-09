@@ -80,6 +80,9 @@ Gameplay is text. Watching someone read is not a trailer. The video is a showcas
 | Q45 | A title card about needing help sits before the Morphie shot. Copy proposed by the spec session, user may change: "Need help? Just ask." |
 | Q46 | The Morphie caption is "Ask your AI guide Morphie for help at any time." |
 | Q47 | The Morphie shot is a clip: she starts in her thinking animation and moves to idle as her answer streams in. Captured with the page clock controlled, like the avatar clip, with the help answer canned. |
+| Q48 | The contest shot holds longer: its card is dense, so the hold is at least 5 s after the card lands, and the two caption lines keep their stagger. A dense card is one whose subject region holds more than one element the eye must find; the storyboard marks those and they get at least 5 s. |
+| Q49 | The end card's wordmark enters the way the app's first-run intro does: a field of goo blobs pops in, magnetizes into place and coalesces into the letterforms through a metaball filter. The trailer ports that animation from the app's intro into a frame-driven Remotion scene, same timing and look, deterministic per frame. The wordmark's spring entrance is retired on the end card. |
+| Q50 | The community mock gives each world its own author name from the repo's neutral fixture set. No two worlds share an author, and none is "Formamorph". |
 
 ### Facts the design rests on
 
@@ -142,3 +145,4 @@ Gameplay is text. Watching someone read is not a trailer. The video is a showcas
 | 10 | Apply the motion language | 09 | Every shot in both cuts rebuilt in the Floating cards language (Q27), iterated by eye against contact sheets. |
 | 11 | Third review fixes | 10 | Loop and wordmark (Q30), narration reveal clip (Q31), no zooms and a subject-region check (Q32, Q38), map, travel, contest, desktop and end-card shots (Q33 to Q37). |
 | 12 | Fourth review fixes | 11 | Title card opening and loop (Q40), smooth reveal recapture (Q41), chat shot world (Q42), authoring order with two title cards (Q43 to Q45), Morphie caption and animated clip (Q46, Q47). |
+| 13 | Fifth review fixes | 12 | Contest hold and dense-card rule (Q48), goo wordmark on the end card (Q49), varied community authors (Q50). |
