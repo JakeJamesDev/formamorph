@@ -34,9 +34,32 @@ This renders both cuts to `out/` and checks each file:
 | TrailerWide | `out/TrailerWide.mp4` | 1920x1080 | 60 fps |
 | TrailerTall | `out/TrailerTall.mp4` | 1080x1920 | 60 fps |
 
+The wide cut also writes its poster frame, `out/TrailerWide-poster.png`.
+
 Each line reports size, frame rate, length, bitrate and codecs. A mismatch prints `FAIL` and the command exits with code 1. To render one cut, name it: `npm run render -- TrailerWide`, or `npm run render:wide`.
 
-Rendered videos are not tracked.
+- 📁 `out/` is not tracked. Upload the two MP4s and the poster from there.
+- 🧪 `out/*-loop-first.png` and `out/*-loop-last.png` are the frames the loop check compares. You can delete them.
+
+## Re-render after a release
+
+Run these steps from `marketing/trailer` after each release, before you upload a new cut.
+
+1. **Check the frames.** Run `npm run capture:diff`. A `CHANGED` line means the app's UI moved since the last capture.
+2. **Update the frames.** For each changed shot, run `npm run capture -- --only <id>`. Open the new PNG in `public/shots/` and check it. Commit the PNGs you keep.
+3. **Check the copy.** Edit lines in `src/timeline.tsx`. Keep them short, active and in the app's terms (see [Copy](#copy)).
+4. **Check the claims.** The "hundreds of worlds" line must stay true. Run `curl "https://api.formamorph.ai/api/worlds?page=1&limit=1"` and read `total`.
+5. **Render.** Run `npm run render`. Every line must print `OK`.
+6. **Check the cut.** Open `out/TrailerWide.mp4` and scrub it. The Steam checks in [Wide cut (Steam)](#wide-cut-steam) pass in the render output.
+
+## Copy
+
+All on-screen copy is in `src/timeline.tsx`, plus the end card's tagline in `src/scenes/TitleCard.tsx`. The app's `npm run copy:sweep` does not read it, so check it by hand against the Writing Guide.
+
+- ✍️ Short active sentences, common words, no metaphor, American English.
+- 🔤 The product is an "AI text RPG" and the player "types" an action. Use those words everywhere.
+- 🚫 Never "character" (write "anyone" or "who"), never "phone" (write "mobile"), never "picture" (write "image").
+- 🎯 Each line says what you can do. No line names a rival or a missing feature.
 
 ## Wide cut (Steam)
 

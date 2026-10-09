@@ -137,7 +137,7 @@ const ENTRIES: LibraryEntry[] = [
       <TypedNarration
         layout={layout}
         durationInFrames={durationInFrames}
-        prompt="Write any action."
+        prompt="Type any action."
         narration="The narrator continues the story."
       />
     ),
@@ -149,7 +149,7 @@ const ENTRIES: LibraryEntry[] = [
       <TypedNarration
         layout={layout}
         durationInFrames={durationInFrames}
-        prompt="Write any action."
+        prompt="Type any action."
         narration="The narrator continues the story."
         backdrop={{
           before: SHOTS.library,

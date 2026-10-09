@@ -88,7 +88,7 @@ const W04 = shot('W04', 300, 'wipe', (props) => (
 const W05 = shot('W05', 360, 'fade', (props) => (
   <TypedNarration
     {...props}
-    prompt="Write any action."
+    prompt="Type any action."
     narration="The narrator continues the story."
     backdrop={{
       before: TURN_BEFORE,
