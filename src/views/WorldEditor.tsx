@@ -74,6 +74,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { ListDetail } from "@/components/ui/list-detail";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { useBackStop } from "@/hooks/useBackStop";
+import { useLeavePrompt } from "@/hooks/useLeavePrompt";
 import { toast } from 'react-toastify';
 import { toastError } from '@/lib/linkToast';
 import { ThemedToastContainer } from '@/components/ThemedToastContainer';
@@ -527,6 +528,7 @@ const WorldEditorInner = ({
     return () => { leaveRef.current = null; };
   }, [leaveRef, leaveWorld]);
   useBackStop(requestClose, editorRootRef);
+  useLeavePrompt(isWorldDirty);
   const [showAddDictionary, setShowAddDictionary] = useState(false);
   const [showAddEntity, setShowAddEntity] = useState(false);
   // Back out of the connection step reopens the picker on the picks already made rather than a clean one.

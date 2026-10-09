@@ -17,6 +17,7 @@ const modelMove = require('./modelMove.cjs');
 const { portableUserDataDir, migratePersistentStores } = require('./portableProfile.cjs');
 const { corsResponse } = require('./corsShim.cjs');
 const { contextMenuTemplate } = require('./contextMenu.cjs');
+const { confirmLeave } = require('./leavePrompt.cjs');
 const updater = require('./updater.cjs');
 const perfMeter = require('./perfMeter.cjs');
 
@@ -309,6 +310,9 @@ function createWindow() {
   });
 
   watchRenderer(win);
+
+  // Closing the window with unsaved world edits: the page cancels the unload, so ask. See leavePrompt.cjs.
+  win.webContents.on('will-prevent-unload', confirmLeave(win, dialog));
 
   // Dev: load the Vite dev server when its URL is provided; otherwise the packaged build.
   const devURL = process.env.VITE_DEV_SERVER_URL;

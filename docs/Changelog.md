@@ -30,6 +30,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The World Editor saves on its own after about 300 characters or 30 actions, or after a 30-second pause.** Turn it off with **Auto Save** in the **Save** menu. A new world waits for its first save by hand. A failed auto save pauses until you save. History keeps its Saved mark.
   - **Settings now has Auto Save and Auto Save Pause for the World Editor.** Under **Authoring**, turn Auto Save on or off and set the pause from 10 seconds to 5 minutes.
   - **The World Editor asks which copy to keep when another tab saves or deletes the same world.** Auto save stops until you answer. After a save, **Reload** opens the other copy and **Keep Mine** keeps yours. After a delete, **Keep Mine** saves it back.
+  - **The World Editor asks before you close or reload the tab with unsaved changes.** It works in the menu and in the in-game editor, and in the desktop app's window close.
 - **🛠️ Developer tooling**
   - **Trailer:**
     - **`marketing/trailer/` renders a 20-second proof trailer to wide and tall MP4s with one command.** It is a Remotion package with its own dependencies and scripts. `npm run render` checks each file's size, frame rate and length.
