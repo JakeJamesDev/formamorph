@@ -59,6 +59,13 @@ Rulings from the grill, numbered as asked.
 - **Q31** Trait groups and stat groups both gain the AI-visibility toggle in this effort.
 - **Q32** With the toggle off, the AI loses only the group's heading and description. Its members still reach the AI as if ungrouped. A nested group keeps its own heading and moves up one level.
 
+- **Q33** (ticket 01) Ticket 01 adds only the owner-keyed seam: an owner → stats map whose player owner reads and writes today's player stats, owner ids on request targets and resolved updates, regen and apply per owner, and a stat-code turn that names its owner. It adds no gameplay-state or save field for entity values; ticket 04 owns those, and `entities[x].stats` and entity-stat code.
+
+- **Q34** (ticket 02) Today's text-line default Stat Updates prompts stay as an internal fallback pair. On the fallback path, a player whose prompts match the shipped default gets that legacy pair; a custom prompt is sent as written on both paths.
+- **Q35** (ticket 02) Schema support is a question on the per-endpoint capability record that already answers `tools` (ADR-0008): untried sends the schema, rejected uses the text pass. A 400 or 422 on the schema request retries once in the same turn on the text pass, and only a successful retry stores the rejection.
+- **Q36** (ticket 02) The schema keeps C3's flat shape. Under each owner, a stat's key holds its bare signed change, and a "<key> max" key beside it holds its max change. All keys are required and bounded, 0 meaning no change. Key dedupe reserves both keys, so a real stat named "X max" gets a numbered key. A per-stat `{ change, max }` object was rejected: on the cloud model it wrote the size of a change instead of its signed value (6 wrong signs vs 0). Cloud, player cells: exact 87%, recall 78%, 0 wrong signs, 5 invented changes, 0 invented max changes.
+- **Q37** (ticket 02) The player-only request already uses C3's per-owner sections: a Stats section with one owner heading for the player character, as the probe measured. Ticket 05 adds owners to the same structure.
+
 Derived from Q7 and confirmed with the summary:
 
 - An entity stat's morph bindings drive that entity's own model.
