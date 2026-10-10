@@ -91,6 +91,7 @@ Gameplay is text. Watching someone read is not a trailer. The video is a showcas
 | Q56 | The blueprints caption is no longer about race and class, since traits are free-form. Spec session's proposal, user may change: "Define your world and everyone in it, your way." The app's copy rule bars "character", which is why the user's draft was reworded. |
 | Q57 | The contest captions become "Enter contests." then "Share your ideas with the community and compete with others." Spec session's STE rendering, user may change: "Share your ideas with the community." / "Compete with other creators." The dense hold (Q48) covers the longer second line. |
 | Q58 | The AI-model card gets a second line in the wide cut only: "Run it fully local, with no extra software to install." The tall cut keeps "Use any AI model." alone, since the line does not hold on mobile. |
+| Q59 | The end card's wordmark gets an emphasis pop after it enters: F, o, r, m, a each grow then shrink back in turn, one beat each, then "morph" grows and shrinks as one unit on the same beat, slightly larger than the single letters did. Every glyph settles back to its normal size; the pop is emphasis, not a size change. This replaces Q55's "plain entrance" for the end card: plain entrance, then the pop. |
 
 ### Facts the design rests on
 
