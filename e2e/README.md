@@ -76,6 +76,11 @@ hover opens it, moving to the neighbor opens that one through the shared instant
 focus opens the same tip. Desktop only for the two hover guards — a touch profile has no hover, and the
 native `title` these replaced never showed there either.
 
+[landing-pulse-clip.spec.ts](e2e/landing-pulse-clip.spec.ts) — the Landing Pulse ring by painted pixels:
+an undo on a field flush with its scroll window paints the ring's top edge, the ring follows a field that
+scrolls, and a ring in a dialog paints above it and takes no hit. The top-edge check fails on the old
+row-drawn ring. Desktop only for the editor guards; the mobile sheet has no flush field.
+
 > **No stopwatch.** The instant window is read off the popup's `data-instant`, not off elapsed time.
 > Note that the provider's `timeout` does **not** control it: a direct move from one trigger to its
 > neighbor hands over instantly whatever that value is. What makes them one group is the shared provider,

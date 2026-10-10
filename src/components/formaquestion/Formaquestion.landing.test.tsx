@@ -11,7 +11,7 @@ import { helpAi } from '@/test/helpAiFixture';
 import { storeFramedWindow, stubHelpStream } from '@/test/helpFixtures';
 import { stubReducedMotion } from '@/test/reducedMotion';
 import { renderReporting } from '@/test/surfaceReporter';
-import { frames, recordScrolls, rowOf } from '@/test/landing';
+import { endLanding, frames, recordScrolls, ringOn, rowOf } from '@/test/landing';
 import { FormaquestionSettings } from './FormaquestionSettings';
 import type { FormaquestionSettingsTab } from './formaquestionSettingsTabs';
 import { DEFAULT_HELP_SETTINGS } from '@/lib/formaquestion/helpSettings';
@@ -58,7 +58,7 @@ describe('Take Me There in the help window', () => {
   it('lands a settings target: scrolled, focused and pulsed once', async () => {
     const route = 'formaquestionSettings.general#chat-style';
     await takeMeThere(route);
-    await waitFor(() => expect(rowOf(route)?.classList.contains(LANDING_PULSE_CLASS)).toBe(true));
+    await waitFor(() => expect(ringOn(rowOf(route), LANDING_PULSE_CLASS)).toBe(true));
     const row = rowOf(route)!;
     expect(scrolled).toContain(row);
     expect(row.contains(document.activeElement)).toBe(true);
@@ -70,8 +70,8 @@ describe('Take Me There in the help window', () => {
     stubReducedMotion();
     const route = 'formaquestionSettings.general#backdrop';
     await takeMeThere(route);
-    await waitFor(() => expect(rowOf(route)?.classList.contains(LANDING_RING_CLASS)).toBe(true));
-    expect(rowOf(route)!.classList.contains(LANDING_PULSE_CLASS)).toBe(false);
+    await waitFor(() => expect(ringOn(rowOf(route), LANDING_RING_CLASS)).toBe(true));
+    expect(ringOn(rowOf(route), LANDING_PULSE_CLASS)).toBe(false);
   });
 
   it('lands a target on another settings tab', async () => {
@@ -88,7 +88,7 @@ describe('Take Me There in the help window', () => {
     await takeMeThere(route);
     await waitFor(() => expect(scrolled).toContain(rowOf(route)));
     expect(rowOf(route)!.contains(document.activeElement)).toBe(true);
-    expect(rowOf(route)!.classList.contains(LANDING_PULSE_CLASS)).toBe(true);
+    expect(ringOn(rowOf(route), LANDING_PULSE_CLASS)).toBe(true);
   });
 
   it('lands again on a repeat request for the same target', async () => {
@@ -96,12 +96,12 @@ describe('Take Me There in the help window', () => {
     await takeMeThere(route);
     await waitFor(() => expect(scrolled).toHaveLength(1));
     const row = rowOf(route)!;
-    row.dispatchEvent(Object.assign(new Event('animationend', { bubbles: true }), { animationName: LANDING_PULSE_CLASS }));
+    endLanding(row);
     fireEvent.keyDown(screen.getByRole('dialog', { name: 'Formaquestion Settings' }), { key: 'Escape' });
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Formaquestion Settings' })).toBeNull());
     await userEvent.click(await within(conversation()).findByRole('button', { name: 'Take Me There' }));
     await waitFor(() => expect(scrolled).toHaveLength(2));
-    expect(rowOf(route)!.classList.contains(LANDING_PULSE_CLASS)).toBe(true);
+    expect(ringOn(rowOf(route), LANDING_PULSE_CLASS)).toBe(true);
   });
 
   it.each(['full', 'minimal'] as const)('lands on the question field of the %s chat style', async (chatStyle) => {

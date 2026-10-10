@@ -75,6 +75,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Player Name and Character Name chips line up with other chips, and the Values tab shows what they become.** Values shows each one locked, as Preview reads it, instead of an empty box that broke the line. The chips carry a pencil icon, so they no longer look like AI generate buttons.
   - **A supporter's profile image sits centered in its ring in comments and notifications.** The image no longer covers the bottom of the ring. Supporter and staff badges are the same height on every screen.
   - **A toast's close button and View Details link now work while a dialog is open.** Before, a click went through the toast to the dialog behind it.
+  - **The ring that undo and Take Me There draw around a field shows in full at a scroll area's edge.** The first field of a World Editor panel lost the ring's top edge after an undo. The ring follows the field as it scrolls.
 
 ---
 

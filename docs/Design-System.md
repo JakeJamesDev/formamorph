@@ -1617,30 +1617,31 @@ The labels are **Preset**, **Duplicate**, **Rename**, **Import**, **Export**, **
 
 > ✅ **Approved.** The user approved this pattern in the reference (2026-10-04). Production: Take Me There landings in the Settings dialog, on the game screen (the action box, the page buttons and the **Export Story** format buttons) and in the World Editor, the jump from a prompt's anatomy to a Messages field, and the Mascot tab's off-state link to the Mascot row of Formaquestion Settings → General.
 
-**Density:** None of its own. The ring draws outside the row's box and changes no layout.
+**Density:** None of its own. The ring draws in a layer above the page and changes no layout.
 
 ### Composition
 
 - 🎯 **One row.** The ring goes on the whole row: the label, the control and its hint. It never goes on a section or a tab.
-- ⭕ **Ring.** A 2px border in the `ring` color, 4px outside the row, drawn by a pseudo-element on the row. It is absolutely placed, so it moves nothing, and it grows by `transform` and fades by `opacity`, so it runs on the compositor, sub-pixel, and a busy main thread never stalls it. The row is `position: relative` while the ring shows. Use the pattern on rows that do not position their own children against the row.
-- ⏱️ **Pulse.** 1500ms in all. The ring holds for the first 40%, then grows to 10px out and fades to clear. It runs once, and the class leaves the row when the animation ends.
+- ⭕ **Ring.** A 2px border in the row's `ring` color, 4px outside the row. It draws in a fixed layer above the row's own layer, never on the row, so it moves nothing and no scroll area cuts it. It grows by `transform` and fades by `opacity`, so it runs on the compositor, sub-pixel, and a busy main thread never stalls it.
+- 🧭 **Placement.** The layer reads the row's place each frame, so the ring follows a row that scrolls or moves. A row in a dialog gets a ring above that dialog. The layer is cut to each of the row's scroll areas widened by 10px, so a ring whose row scrolls away leaves with it.
+- ⏱️ **Pulse.** 1500ms in all. The ring holds for the first 40%, then grows to 10px out and fades to clear. It runs once, and the layer goes when the animation ends.
 - ♿ **Reduced motion.** The same ring, still, for the same 1500ms. Then it goes away at once.
-- 🛑 **Canceled.** When the row hides mid-pulse, the class comes off with the animation.
+- 🛑 **Canceled.** When the row hides or leaves the page, or the landing is canceled mid-pulse, the ring goes at once.
+- 🖱️ **Inert.** The layer takes no pointer events and no focus, and screen readers skip it.
 - ⌨️ **Focus.** The landing focuses the row's control, not the label's ⓘ button. A row of buttons focuses its first enabled button, or its first live link button, such as a pager's. Where a control draws a select and a segmented group and hides one per width, focus goes to the one on screen. The control's own inset focus ring then sits inside the landing ring.
 - 🔁 **Repeat.** A second landing on the same row restarts the pulse from the start.
-- 📏 **Room.** The pulse reaches 12px past the row. Give the row at least that much padding inside its scroll area, or the fade clips. `landingRoom` on `ScrollArea` adds it and keeps the rows in place. A target row keeps a 12px scroll margin, so a scroll to an edge leaves the same room.
+- 📏 **Room.** A target row keeps a 12px scroll margin, so a scroll to an edge leaves the ring's reach on screen.
 
 ### Production mapping
 
 | Need | Component |
 | --- | --- |
-| Add the class, restart it, take it off on animation end | `pulseLanding` in [`landingPulse.ts`](../src/lib/landingPulse.ts) |
+| Draw the ring, follow the row, restart it, remove it on animation end | `pulseLanding` in [`landingPulse.ts`](../src/lib/landingPulse.ts) |
 | The control to focus | `landingControl` in [`landingPulse.ts`](../src/lib/landingPulse.ts) |
-| The ring, the pulse and the still ring | `.landing-pulse` and `.landing-ring` in [`index.css`](../src/index.css) |
+| The layer, the ring, the pulse and the still ring | `.landing-layer`, `.landing-pulse` and `.landing-ring` in [`index.css`](../src/index.css) |
 | Wait for the row, scroll, focus and pulse once per request | `useLanding` in [`useLanding.ts`](../src/lib/surface/useLanding.ts) |
 | Mark a row as a target | The `target` prop of `Row`, `CheckRow` and the other shared rows, from `targetAttribute` in [`surfaceTargets.ts`](../src/lib/surface/surfaceTargets.ts) |
 | Find a target's row | `findTargetRow` in [`surfaceTargets.ts`](../src/lib/surface/surfaceTargets.ts) |
-| Room for the ring in a scroll area | `landingRoom` on `ScrollArea` in [`scroll-area.tsx`](../src/components/ui/scroll-area.tsx) |
 | Isolated reference | [`LandingPulseReference.tsx`](../src/components/design-system/LandingPulseReference.tsx) |
 
 `pulseLanding` reads the system's reduced-motion setting, and a caller can pass `reducedMotion` to choose. It returns a cancel for unmount.
@@ -1657,12 +1658,12 @@ Open `#dev?modal=designSystem&tab=landing-pulse` for a sample Settings tab in bo
 
 | State | Treatment |
 | --- | --- |
-| Idle | No ring. The row has no landing class. |
-| Pulse | The `landing-pulse` class: the ring holds, then grows and fades. |
-| Reduced motion | The `landing-ring` class: the ring holds without movement, then goes away. |
-| Ended | The class is off the row. A later landing adds it again. |
-| Canceled | The row hid mid-pulse. The class is off the row. |
-| Repeat | The pulse restarts from the start. One end takes the class off. |
+| Idle | No ring and no landing layer. |
+| Pulse | A ring with the `landing-pulse` class: it holds, then grows and fades. |
+| Reduced motion | A ring with the `landing-ring` class: it holds without movement, then goes away. |
+| Ended | The layer is gone. A later landing draws a new one. |
+| Canceled | The row hid or left the page, or the landing was canceled. The layer is gone. |
+| Repeat | A new ring replaces the running one and starts from the start. |
 | Focus | The control's inset focus ring shows inside the landing ring. |
 
 ### Writing review
