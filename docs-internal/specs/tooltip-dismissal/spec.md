@@ -1,8 +1,8 @@
 # Tooltip Dismissal
 
-Status: ready-for-agent
+Status: done
 Spec session: tooltip-dismissal — spec
-Status note: Follows the done themed-tooltips effort. Decisions settled in chat on 2026-10-09.
+Status note: Closed 2026-10-10. Tickets 01–06 done, last landing f7f27e7b. Closed without gates.
 
 ## Problem Statement
 
