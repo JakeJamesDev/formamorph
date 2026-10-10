@@ -20,6 +20,7 @@ The AI records how a turn moved the stats of everyone in the scene. The present 
 - [ ] Each owner's changes apply to that owner's stats only, max before value.
 - [ ] An absent entity is never in the request.
 - [ ] The fallback skips entity stats and records a diagnostic.
+- [ ] Entity stat rows in the stat panel show this turn's change deltas, as the player's rows do (Q50).
 - [ ] The token cap scales with stats and owners.
 - [ ] The entity stats probe meets Q28 on the cloud default model and Cydonia for the shipped prompt. Numbers go in the commit body.
 - [ ] Q45: on Cydonia, invented player changes no longer rise above C3's. Ticket 02 landed at 81 against C3's 68. A miss here blocks the release and goes to the user.
