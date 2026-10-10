@@ -13,6 +13,26 @@ type TipPayload = Pick<TipProps, "side" | "align"> & { tip: string }
 /** Joins every `Tip` trigger to the one root the provider mounts. One provider is mounted at a time. */
 const tipHandle = TooltipPrimitive.createHandle<TipPayload>()
 
+/** Whether a pointer button is held. A press, a drag and a text selection all run with one down. */
+let pointerHeld = false
+
+/** Cancels a hover open while a button is held, so a drag across the board opens nothing. Focus still
+ *  opens. Returns whether it canceled. */
+function cancelHoverOpenWhileHeld(next: boolean, details: TooltipPrimitive.Root.ChangeEventDetails) {
+  if (!next || !pointerHeld || details.reason !== "trigger-hover") return false
+  details.cancel()
+  return true
+}
+
+/** Capture on window: scroll does not bubble, and a call site that stops a press must not hide it. */
+const WINDOW_LISTENER = { capture: true, passive: true }
+
+/** Adds each listener to the window and returns the remover. */
+function listenOnWindow(listeners: readonly (readonly [type: string, handler: () => void])[]) {
+  listeners.forEach(([type, handler]) => window.addEventListener(type, handler, WINDOW_LISTENER))
+  return () => listeners.forEach(([type, handler]) => window.removeEventListener(type, handler, WINDOW_LISTENER))
+}
+
 /** Runs `close` on every event that ends a tip's reason to show. Base UI closes on hover and focus
  *  leaving only, so the module adds the rest here. `close` must do nothing while no tip is open. */
 function useTipDismissal(close: () => void) {
@@ -21,9 +41,21 @@ function useTipDismissal(close: () => void) {
 
   React.useEffect(() => {
     const dismiss = () => closeRef.current()
-    // Capture: scroll does not bubble, so only the capture phase sees a nested scroll container.
-    window.addEventListener("scroll", dismiss, { capture: true, passive: true })
-    return () => window.removeEventListener("scroll", dismiss, { capture: true })
+    return listenOnWindow(["scroll", "pointerdown", "contextmenu", "dragstart"].map((type) => [type, dismiss] as const))
+  }, [])
+}
+
+/** Tracks `pointerHeld` for the app. The provider calls it once, so a hand-built root unmounting mid-drag
+ *  cannot end the hold. */
+function usePointerHold() {
+  React.useEffect(() => {
+    const press = () => { pointerHeld = true }
+    const release = () => { pointerHeld = false }
+    // Blur too: a button released outside the window sends no pointerup here.
+    const stop = listenOnWindow([
+      ["pointerdown", press], ["pointerup", release], ["pointercancel", release], ["blur", release],
+    ])
+    return () => { stop(); release() }
   }, [])
 }
 
@@ -33,11 +65,12 @@ function useTipDismissal(close: () => void) {
  * popup every `Tip` shares, so an idle tip costs only its trigger.
  */
 function TooltipProvider({ children }: { children: React.ReactNode }) {
+  usePointerHold()
   useTipDismissal(() => { if (tipHandle.isOpen) tipHandle.close() })
   return (
     <TooltipPrimitive.Provider delay={TOOLTIP_DELAY_MS} timeout={TOOLTIP_DELAY_MS}>
       {children}
-      <TooltipPrimitive.Root handle={tipHandle}>
+      <TooltipPrimitive.Root handle={tipHandle} onOpenChange={cancelHoverOpenWhileHeld}>
         {({ payload }) => payload && (
           <TooltipPrimitive.Portal>
             <TooltipPositioner side={payload.side} align={payload.align}>
@@ -50,7 +83,8 @@ function TooltipProvider({ children }: { children: React.ReactNode }) {
   )
 }
 
-/** The root for a hand-built tip. It closes on scroll, like `Tip`. */
+/** The root for a hand-built tip. Like `Tip`, it closes on scroll, press, right-click and drag, and opens
+ *  nothing on hover while a pointer button is held. */
 function Tooltip<Payload = unknown>(
   { actionsRef, open, onOpenChange, ...props }: TooltipPrimitive.Root.Props<Payload>,
 ) {
@@ -64,6 +98,7 @@ function Tooltip<Payload = unknown>(
       actionsRef={actions}
       open={open}
       onOpenChange={(next, details) => {
+        if (cancelHoverOpenWhileHeld(next, details)) return
         onOpenChange?.(next, details)
         if (!details.isCanceled) openRef.current = next
       }}

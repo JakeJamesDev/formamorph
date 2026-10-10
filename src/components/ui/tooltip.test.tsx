@@ -310,6 +310,137 @@ describe('a tip when the page scrolls', () => {
   });
 });
 
+describe('a tip when the pointer presses or drags', () => {
+  /** Longer than the provider's 400 ms open delay, so a tip that was going to open has done so. */
+  const pastOpenDelay = () => new Promise((resolve) => setTimeout(resolve, 500));
+
+  // Hover, not focus: Base UI already closes a focus-opened tip on an outside press.
+  const openOnHover = async () => {
+    renderTip(<Tip tip="Delete world"><button type="button">x</button></Tip>);
+    await userEvent.hover(screen.getByRole('button'));
+    expect(await screen.findByText('Delete world')).toBeVisible();
+  };
+
+  it.each([
+    ['a press anywhere', () => fireEvent.pointerDown(document.body)],
+    ['a right-click', () => fireEvent.contextMenu(document.body)],
+    ['a native drag', () => fireEvent.dragStart(document.body)],
+  ])('closes on %s', async (_label, fire) => {
+    await openOnHover();
+
+    fire();
+
+    expect(screen.queryByText('Delete world')).toBeNull();
+  });
+
+  it('closes on a press on the tip itself', async () => {
+    // Base UI counts a press inside the popup as no outside press, so it leaves the tip open.
+    await openOnHover();
+
+    fireEvent.pointerDown(screen.getByText('Delete world'));
+
+    expect(screen.queryByText('Delete world')).toBeNull();
+  });
+
+  it('opens nothing on hover while a pointer button is held, and again after release', async () => {
+    renderTip(<Tip tip="Delete world"><button type="button">x</button></Tip>);
+    const control = screen.getByRole('button');
+    fireEvent.pointerDown(document.body);
+
+    await userEvent.hover(control);
+    await pastOpenDelay();
+    expect(screen.queryByText('Delete world')).toBeNull();
+
+    fireEvent.pointerUp(document.body);
+    await userEvent.unhover(control);
+    await userEvent.hover(control);
+
+    expect(await screen.findByText('Delete world')).toBeVisible();
+  });
+
+  it('opens on hover again after the browser cancels the press', async () => {
+    renderTip(<Tip tip="Delete world"><button type="button">x</button></Tip>);
+    const control = screen.getByRole('button');
+    fireEvent.pointerDown(document.body);
+    await userEvent.hover(control);
+    await pastOpenDelay();
+    expect(screen.queryByText('Delete world')).toBeNull();
+
+    fireEvent.pointerCancel(document.body);
+    await userEvent.unhover(control);
+    await userEvent.hover(control);
+
+    expect(await screen.findByText('Delete world')).toBeVisible();
+  });
+
+  it('opens on hover again when the button was released outside the window', async () => {
+    // The release goes to another window, so no pointerup arrives. Losing focus ends the hold.
+    renderTip(<Tip tip="Delete world"><button type="button">x</button></Tip>);
+    const control = screen.getByRole('button');
+    fireEvent.pointerDown(document.body);
+    fireEvent.blur(window);
+
+    await userEvent.hover(control);
+
+    expect(await screen.findByText('Delete world')).toBeVisible();
+  });
+
+  describe('on a hand-built tip', () => {
+    const renderHandBuilt = () => render(
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger aria-label="Undo" render={<button type="button" />} />
+          <TooltipPortal>
+            <TooltipPositioner>
+              <TooltipPopup>Undo step list</TooltipPopup>
+            </TooltipPositioner>
+          </TooltipPortal>
+        </Tooltip>
+      </TooltipProvider>,
+    );
+
+    it.each([
+      ['a press', () => fireEvent.pointerDown(screen.getByText('Undo step list'))],
+      ['a right-click', () => fireEvent.contextMenu(document.body)],
+      ['a native drag', () => fireEvent.dragStart(document.body)],
+    ])('closes on %s', async (_label, fire) => {
+      renderHandBuilt();
+      await userEvent.hover(screen.getByRole('button'));
+      expect(await screen.findByText('Undo step list')).toBeVisible();
+
+      fire();
+
+      expect(screen.queryByText('Undo step list')).toBeNull();
+    });
+
+    it('opens nothing on hover while a pointer button is held, and again after release', async () => {
+      renderHandBuilt();
+      const control = screen.getByRole('button');
+      fireEvent.pointerDown(document.body);
+
+      await userEvent.hover(control);
+      await pastOpenDelay();
+      expect(screen.queryByText('Undo step list')).toBeNull();
+
+      fireEvent.pointerUp(document.body);
+      await userEvent.unhover(control);
+      await userEvent.hover(control);
+
+      expect(await screen.findByText('Undo step list')).toBeVisible();
+    });
+  });
+
+  it('lets a keyboard focus open a tip while a pointer button is held', async () => {
+    renderTip(<Tip tip="Delete world"><button type="button">x</button></Tip>);
+    fireEvent.pointerDown(document.body);
+
+    await userEvent.tab();
+
+    expect(screen.getByText('Delete world')).toBeVisible();
+    fireEvent.pointerUp(document.body);
+  });
+});
+
 describe('a tip with no text', () => {
   const renderEmpty = (tip: string | null | undefined) =>
     renderTip(
