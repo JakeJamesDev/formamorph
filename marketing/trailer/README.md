@@ -108,7 +108,7 @@ All on-screen copy is in `src/timeline.tsx`, plus the end card's tagline in `src
 npm run render:wide
 ```
 
-The wide cut plays the storyboard's 20 shots (`docs-internal/specs/trailer/storyboard.md`, §2) in 76.22 s. The command encodes it for Steam and checks the result:
+The wide cut plays the storyboard's 20 shots (`docs-internal/specs/trailer/storyboard.md`, §2) in 83.83 s. The command encodes it for Steam and checks the result:
 
 | Check | Limit |
 |---|---|
@@ -130,7 +130,7 @@ Edit the shot list, copy and camera moves in `src/timeline.tsx`. The studio's **
 npm run render:tall
 ```
 
-The tall cut plays the storyboard's 14 shots (§4) in 57.35 s at 1080x1920, 60 fps. It comes from the same scene list as the wide cut and has its own shot order. `npm run render` renders both.
+The tall cut plays the storyboard's 14 shots (§4) in 59.92 s at 1080x1920, 60 fps. It comes from the same scene list as the wide cut and has its own shot order. `npm run render` renders both.
 
 | Treatment | Shots | How |
 |---|---|---|
@@ -153,8 +153,8 @@ The studio's **Scene-library** folder lists every scene type and transition in b
 | Kinetic text card | `src/scenes/KineticText.tsx` | One or two lines that rise word by word |
 | Frame card | `src/scenes/FrameScene.tsx` | A shot, a camera path per layout, a depth shot for the card behind, an optional callout region, caption and dot color, and optional card placement |
 | Stack | `src/scenes/StackScene.tsx` | Two cards, each with a shot, a camera path, a caption and a dot color. Tall stacks top and bottom; wide sits side by side |
-| Typed turn | `src/scenes/TypedTurn.tsx` | A turn clip on a card, a camera path per layout, the player line that types in on a panel below the card, and a caption line that enters as the clip plays |
-| Wordmark title | `src/scenes/WordmarkTitle.tsx` | The wordmark alone on the stage; it ends on the bare stage |
+| Typed turn | `src/scenes/TypedTurn.tsx` | A turn clip on a card, a camera path per layout, the player line that types in on a panel below the card, and a caption line that follows it. The panel enters on the clip's first narration word |
+| Wordmark title | `src/scenes/WordmarkTitle.tsx` | The goo wordmark alone on the stage: it coalesces, dissolves into crisp letters, holds and leaves, so it ends on the bare stage |
 | Cut, overlap, section | `src/transitions.tsx` | `TransitionName`; a cut has no overlap, an overlap joins 30 frames inside a section, a section join 36 |
 
 The look is the Floating cards language:
@@ -182,6 +182,7 @@ This sets up each shot in `captures.json` through the app's dev-router and write
 | `npm run capture -- --only game` | Writes the named shots only |
 | `npm run capture:diff` | Captures into `.capture-diff/` and compares each shot with the committed PNG |
 
+- 🔤 A reveal clip's capture finds the first frame after the send that shows a narration word and writes it as `firstWord` beside the clip in `captures.json`. The typed panel enters on that frame. A diff run reports a moved frame as `CHANGED`.
 - 🔎 A diff run prints `same`, `CHANGED` (with the pixel count), `NEW` or `FAILED` per shot, and a failed shot never stops the rest. It exits with code 1 when any shot changed or failed. Run it before a render to catch UI changes.
 - 🖥️ The script starts its own Vite server from the repo root on port 5188 and stops it at the end. Use `--port` or `CAPTURE_PORT` for another port. It stops if the port is busy, so it never captures from your own dev server.
 - 🔒 File watching is off, so a peer's edit never reloads a capture.
@@ -262,7 +263,7 @@ Each clip prints its motion: the share of pixels each frame changes, ten frames 
 | End card scene, with an optional call-to-action pill | `src/scenes/TitleCard.tsx` |
 | Scenes: kinetic text, frame card, stack, typed narration, wordmark title | `src/scenes/` |
 | Shared parts: the stage, the glass card, the camera inside it, the headline and pills, and the wordmark | `src/parts/` |
-| The end card's goo wordmark: the app's first-run intro (`src/components/IntroSequence.tsx`), driven by the frame, in the intro's own font | `src/parts/GooWordmark.tsx` |
+| The opening card's goo wordmark: the app's first-run intro (`src/components/IntroSequence.tsx`), driven by the frame, in the intro's own font | `src/parts/GooWordmark.tsx` |
 | Where each card sits per layout | `src/poses.ts` |
 | Enter and exit timing, and the springs | `src/motion.ts` |
 | The reading bar and each line's reading time | `src/reading.ts` |

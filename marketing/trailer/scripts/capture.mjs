@@ -339,6 +339,9 @@ async function filmAsk(page, shot, sink) {
   }
 }
 
+/** A word shows once it is this opaque. */
+const WORD_OPACITY = 0.1;
+
 /** Frames the send's own change of look takes before an ask clip opens: the Mascot's transition and the bubble's entrance. */
 const SETTLE_FRAMES = 60;
 
@@ -357,14 +360,32 @@ async function filmReveal(page, context, shot, scene, sink) {
   await followClock(page);
   // The narration's bottom edge on each frame, so the motion check can tell the app's line growth from a jump.
   const edges = [];
+  // The first frame after the send that shows a narration word (ruling Q54).
+  let firstWord = null;
   const shoot = async () => {
     sink.add(await page.screenshot({ caret: 'hide' }));
-    edges.push(await page.evaluate(() => {
+    const seen = await page.evaluate((wordOpacity) => {
       const narration = document.querySelector('[data-testid="narration"]');
-      if (!narration) return null;
+      if (!narration) return { edge: null, word: false };
       const line = parseFloat(getComputedStyle(narration.querySelector('p') ?? narration).lineHeight);
-      return { bottom: narration.getBoundingClientRect().bottom / innerHeight, line: line / innerHeight };
-    }));
+      // A word shows once its own opacity times its ancestors' up to the narration passes the bar.
+      const shown = (node) => {
+        let opacity = 1;
+        for (let el = node.parentElement; el && opacity > 0; el = el === narration ? null : el.parentElement) {
+          const style = getComputedStyle(el);
+          if (style.visibility === 'hidden' || style.display === 'none') return false;
+          opacity *= parseFloat(style.opacity);
+        }
+        return opacity > wordOpacity;
+      };
+      const walker = document.createTreeWalker(narration, NodeFilter.SHOW_TEXT);
+      let word = false;
+      for (let node = walker.nextNode(); node && !word; node = walker.nextNode()) word = /\S/.test(node.textContent ?? '') && shown(node);
+      return { edge: { bottom: narration.getBoundingClientRect().bottom / innerHeight, line: line / innerHeight }, word };
+    }, WORD_OPACITY);
+    // Frame 0 is the screen before the send, which shows the turn before.
+    if (sink.count > 1 && firstWord === null && seen.word) firstWord = sink.count - 1;
+    edges.push(seen.edge);
   };
   await shoot();
   await input.press('Enter');
@@ -379,6 +400,8 @@ async function filmReveal(page, context, shot, scene, sink) {
     await shoot();
   }
   writeFileSync(path.join(sink.dir, EDGES_FILE), JSON.stringify(edges));
+  if (firstWord === null) throw new Error('No narration word showed in the clip');
+  return { firstWord };
 }
 
 /**
@@ -571,6 +594,27 @@ const frameDir = (shot) => path.join(DIFF ? outDir : path.join(packageRoot, '.ca
 /** The narration reveal clip: its frame 0 is the screen before the send, and ruling Q41 holds it to the motion rule. */
 const isReveal = (shot) => shot.turn?.film === 'reveal';
 
+/**
+ * Writes the reveal clip's first narration word frame beside its entry in captures.json, where the trailer reads
+ * it. A diff run reports a change instead.
+ */
+function recordFirstWord(shot, frame) {
+  if (shot.firstWord === frame) return;
+  if (DIFF) {
+    changed.push(shot.id);
+    console.log(`CHANGED  ${shot.id}: the first narration word moved from frame ${shot.firstWord} to ${frame}`);
+    return;
+  }
+  const file = path.join(packageRoot, 'captures.json');
+  const text = readFileSync(file, 'utf8');
+  // A text edit keeps the file's hand formatting, which a JSON round trip would lose.
+  const entry = new RegExp(String.raw`("id": "${shot.id}",[\s\S]*?\n(\s*)"frames": \d+,)(\n\s*"firstWord": \d+,)?`);
+  if (!entry.test(text)) throw new Error(`No frames line for "${shot.id}" in captures.json`);
+  writeFileSync(file, text.replace(entry, (_, head, indent) => `${head}
+${indent}"firstWord": ${frame},`));
+  console.log(`wrote captures.json: ${shot.id} shows its first narration word on clip frame ${frame}`);
+}
+
 const server = await startServer();
 const changed = [];
 const failed = [];
@@ -583,6 +627,7 @@ try {
     let png;
     try {
       png = await capture(browser, shot, shot.frames ? clipSink(frameDir(shot)) : null);
+      if (isReveal(shot)) recordFirstWord(shot, png.firstWord);
     } catch (error) {
       failed.push(shot.id);
       console.log(`FAILED   ${shot.id}: ${String(error).split('\n')[0]}`);

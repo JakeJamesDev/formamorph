@@ -1,16 +1,16 @@
 import { staticFile } from 'remotion';
 import captures from '../captures.json';
 import type { Layout, Size } from './layout';
-import { turnTimeline } from './typing';
 
 /** The part of a shot that carries its point, in 0–1 fractions of the shot (ruling Q38). */
 export type Subject = { x: number; y: number; width: number; height: number };
 
 /**
  * A captured UI screenshot and its layout size in CSS pixels, for the camera math, with its capture id and subject
- * region. A clip also has its frame count and the scene frame it starts to play.
+ * region. A clip also has its frame count and the scene frame it starts to play; a reveal clip, the clip frame that
+ * shows its first narration word, which the capture measures.
  */
-export type Shot = Size & { id: string; src: string; subject?: Subject; clipFrames?: number; clipFrom?: number };
+export type Shot = Size & { id: string; src: string; subject?: Subject; clipFrames?: number; clipFrom?: number; firstWord?: number };
 
 /** One shot for both layouts, or its own shot per layout (the tall cut recaptures some screens natively). */
 export type LayoutShot = Shot | Record<Layout, Shot>;
@@ -31,24 +31,32 @@ const shot = (id: string): Shot => {
 
 /** A clip from the capture list: the frames `npm run capture` filmed, encoded at the trailer's frame rate. It holds its first frame until scene frame `from`. */
 const clip = (id: string, from: number): Shot => {
-  const { viewport, frames, subject } = entryOf(id);
+  const entry = entryOf(id);
+  const { viewport, frames, subject } = entry;
   if (!frames) throw new Error(`Shot "${id}" is not a clip`);
-  return { id, src: staticFile(`shots/${id}.mp4`), subject, ...viewport, clipFrames: frames, clipFrom: from };
+  const firstWord = 'firstWord' in entry && typeof entry.firstWord === 'number' ? entry.firstWord : undefined;
+  return { id, src: staticFile(`shots/${id}.mp4`), subject, ...viewport, clipFrames: frames, clipFrom: from, firstWord };
 };
 
 /** The player line both turn shots type in. */
 export const TURN_PROMPT = 'Type any action.';
 
-/** The scene frame the turn clips start to play: the reveal, once the player line has typed in. */
-const REVEAL_FRAME = turnTimeline(TURN_PROMPT).revealFrame;
+/** The scene frame the turn clips start to play, as their card comes up. */
+const TURN_CLIP_FROM = 30;
+
+/** The scene frame a turn's panel enters: the clip frame that shows the first narration word (ruling Q54). */
+export const panelFrameOf = (clip: Shot) => {
+  if (clip.clipFrom === undefined || clip.firstWord === undefined) throw new Error(`Shot "${clip.id}" has no first narration word; run npm run capture -- --only ${clip.id}`);
+  return clip.clipFrom + clip.firstWord;
+};
 
 /** Captured UI shots and clips in `public/shots/`, written by `npm run capture`. */
 export const SHOTS = {
   library: shot('library'),
   game: shot('game'),
-  /** Plays as the player line finishes typing on the panel below it. */
-  narrationClip: clip('narration-clip', REVEAL_FRAME),
-  narrationClipTall: clip('narration-clip-tall', REVEAL_FRAME),
+  /** The panel below it enters as its first narration word shows. */
+  narrationClip: clip('narration-clip', TURN_CLIP_FROM),
+  narrationClipTall: clip('narration-clip-tall', TURN_CLIP_FROM),
   /** Plays once the callout lands. */
   statsClip: clip('stats-clip', 60),
   gameTall: shot('game-tall'),
