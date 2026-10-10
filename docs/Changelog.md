@@ -26,6 +26,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Leaving the World Editor now waits for a save that is still running.** A failed **Save & Exit** in the in-game editor keeps it open with your changes. The prompt says **Auto Save** kept your changes only after an auto save ran.
   - **History:**
     - **Undo in the World Editor returns you to the tab where you made the edit.** An edit made on another tab's record, such as a location's entities, opens that tab with the same record selected.
+    - **Undo in the World Editor returns you to the sub-tab or view where you made the edit.** An edit on the Openings sub-tab, an entity tab, or the Locations list or canvas opens that same sub-tab or view. An Overview edit with no prompt panel open closes the panel.
     - **Undo and redo in the World Editor restore every location you had selected on the canvas.** Locations that no longer exist drop out of the selection.
     - **Undo and redo in the World Editor scroll to the text field you edited and pulse it.** It pulses on every press, even when you're already on the field. Keyboard focus stays where it was. With reduced motion, the field shows a still ring.
     - **Typing in a different field, tab or selection starts a new undo step in the World Editor.** Undo then takes you back to the field you edited. Typing in one field still joins into one step.
@@ -69,8 +70,6 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The narration card now grows with the words as they fade in.** It no longer shows blank lines ahead of the text.
   - **Auto Save:**
     - **Exit Without Saving in the in-game World Editor now drops the edits you made since the last save.** After Auto Save saved the world, the prompt says so.
-  - **History:**
-    - **Undo in the World Editor returns you to the sub-tab or view where you made the edit.** An edit on the Openings sub-tab, an entity tab, or the Locations list or canvas opens that same sub-tab or view. An Overview edit with no prompt panel open closes the panel.
   - **Tooltips:**
     - **A tooltip now closes when you scroll.** It no longer stays on screen after its control moves. Scrolling a page, list, panel or scrollbar, or scrolling by keyboard, closes it. It opens again on the next hover or focus.
     - **A tooltip now closes when you press, right-click or start a drag.** None opens while you hold a mouse button, so dragging across the library board or the Trait Tree opens none.
