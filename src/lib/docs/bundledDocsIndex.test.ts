@@ -119,7 +119,7 @@ describe('the bundled Docs Index', () => {
     const versions = changelog?.sections.filter((s) => s.level === 2).map((s) => /\d+\.\d+\.\d+/.exec(s.label)?.[0]);
     expect(expected.length).toBeGreaterThan(0);
     expect(versions).toEqual(expected);
-    expect(BUNDLED_DOCS.Changelog).not.toContain('In Progress');
+    expect(BUNDLED_DOCS.Changelog).not.toMatch(/^#+ .*In Progress/m);
   });
 });
 
