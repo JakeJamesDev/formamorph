@@ -13,12 +13,27 @@ type TipPayload = Pick<TipProps, "side" | "align"> & { tip: string }
 /** Joins every `Tip` trigger to the one root the provider mounts. One provider is mounted at a time. */
 const tipHandle = TooltipPrimitive.createHandle<TipPayload>()
 
+/** Runs `close` on every event that ends a tip's reason to show. Base UI closes on hover and focus
+ *  leaving only, so the module adds the rest here. `close` must do nothing while no tip is open. */
+function useTipDismissal(close: () => void) {
+  const closeRef = React.useRef(close)
+  React.useEffect(() => { closeRef.current = close })
+
+  React.useEffect(() => {
+    const dismiss = () => closeRef.current()
+    // Capture: scroll does not bubble, so only the capture phase sees a nested scroll container.
+    window.addEventListener("scroll", dismiss, { capture: true, passive: true })
+    return () => window.removeEventListener("scroll", dismiss, { capture: true })
+  }, [])
+}
+
 /**
  * Mounted once at the application root. It owns tooltip timing for the whole app: every tip waits the
  * same beat, and once one is open its neighbors open with no wait at all. It also holds the one root and
  * popup every `Tip` shares, so an idle tip costs only its trigger.
  */
 function TooltipProvider({ children }: { children: React.ReactNode }) {
+  useTipDismissal(() => { if (tipHandle.isOpen) tipHandle.close() })
   return (
     <TooltipPrimitive.Provider delay={TOOLTIP_DELAY_MS} timeout={TOOLTIP_DELAY_MS}>
       {children}
@@ -35,7 +50,27 @@ function TooltipProvider({ children }: { children: React.ReactNode }) {
   )
 }
 
-const Tooltip = TooltipPrimitive.Root
+/** The root for a hand-built tip. It closes on scroll, like `Tip`. */
+function Tooltip<Payload = unknown>(
+  { actionsRef, open, onOpenChange, ...props }: TooltipPrimitive.Root.Props<Payload>,
+) {
+  const ownActions = React.useRef<TooltipPrimitive.Root.Actions | null>(null)
+  const actions = actionsRef ?? ownActions
+  // Base UI's close() reports onOpenChange(false) even when closed, so the root tracks its own state.
+  const openRef = React.useRef(props.defaultOpen ?? false)
+  useTipDismissal(() => { if (open ?? openRef.current) actions.current?.close() })
+  return (
+    <TooltipPrimitive.Root
+      actionsRef={actions}
+      open={open}
+      onOpenChange={(next, details) => {
+        onOpenChange?.(next, details)
+        if (!details.isCanceled) openRef.current = next
+      }}
+      {...props}
+    />
+  )
+}
 
 /** Joins many triggers to one `Tooltip` root, each trigger with its own payload. */
 const createTooltipHandle = TooltipPrimitive.createHandle
