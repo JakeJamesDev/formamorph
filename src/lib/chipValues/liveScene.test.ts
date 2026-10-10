@@ -125,6 +125,31 @@ describe('the live adapter', () => {
     expect(chipValues(scene)['<PERSONA>']).toContain('Wren rows the ferry.');
   });
 
+  describe('entity stats', () => {
+    const trust: PlayerStat = { ...grit, id: 'trust', name: 'Trust', value: 6 };
+    const off: PlayerStat = { ...grit, id: 'dread', name: 'Dread', enabled: false };
+
+    it('carries each entity’s switched-on stats at their live values, and drops a switched-off one', () => {
+      const scene = liveChipScene(sources({ entityStats: { harbormaster: [trust, off] } }));
+      expect(scene.ownedStats).toEqual({ harbormaster: [trust] });
+      expect(chipValues(scene)['<ENTITIES>']).toContain('Trust: 6/10');
+      expect(chipValues(scene)['<ENTITIES>']).not.toContain('Dread');
+    });
+
+    it('reads the stats a before box wrote, in place of the committed ones', () => {
+      const moved: PlayerStat = { ...trust, value: 9 };
+      const scene = liveChipScene(sources({ entityStats: { harbormaster: [trust] } }), null, {
+        activeStats: [grit], activeTraits: [], ownedTraits: {}, entityStats: { harbormaster: [moved] },
+        resolve: (text) => text, resolveTrait: (_trait, text) => text, resolveEntity: (_entity, text) => text,
+      });
+      expect(scene.ownedStats).toEqual({ harbormaster: [moved] });
+    });
+
+    it('holds none for a playthrough with no entity stats', () => {
+      expect(chipValues(liveChipScene(sources()))['<ENTITIES>']).not.toContain('stats:');
+    });
+  });
+
   describe('owned traits', () => {
     const loyal: Trait = { id: 'loyal', name: 'Loyal', aiDescription: '{{char}} stands by the player.', statChanges: [] };
     const sullen: Trait = { id: 'sullen', name: 'Sullen', aiDescription: '{{char}} answers in grunts.', statChanges: [] };

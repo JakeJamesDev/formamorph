@@ -1,4 +1,5 @@
-import type { Connection, Entity, GameLocation } from "@/types";
+import type { Connection, Entity, GameLocation, PlayerStat } from "@/types";
+import { buildStatContext } from "./statContext";
 import { entityIdsAt, entityIdsAtAny } from "./entityPresence";
 import { effectiveDestinations } from "./locationGraph";
 import { buildTraitContext, traitsInContextOrder } from "./traitTree";
@@ -131,8 +132,23 @@ export function buildLocationContext(
 /** Entity id → the ids of its owned traits in force. Absent entity ⇒ none. */
 export type OwnedTraitsInForce = Readonly<Record<string, readonly string[]>>;
 
-/** How a roster renders: the chip content and format, and each entity's owned traits in force. */
-export type RosterOpts = { preferSummary?: boolean; format?: ContextFormat; nameOnly?: boolean; ownedTraits?: OwnedTraitsInForce };
+/** Entity id → the stats it owns that are switched on, at their current values. Absent entity ⇒ none. */
+export type OwnedStatsInForce = Readonly<Record<string, readonly PlayerStat[]>>;
+
+/** How a roster renders: the chip content and format, each entity's owned traits in force, and the owned
+ *  stats to list under it. Absent `ownedStats` lists none. */
+export type RosterOpts = {
+  preferSummary?: boolean; format?: ContextFormat; nameOnly?: boolean; ownedTraits?: OwnedTraitsInForce; ownedStats?: OwnedStatsInForce;
+};
+
+/** An entity's owned stats as roster field lines, nested as its traits are, or '' when it holds none. */
+function ownedStatLines(stats: readonly PlayerStat[], format: ContextFormat): string {
+  if (!stats.length) return "";
+  const block = buildStatContext([...stats], { values: true, status: true, meaning: true }, format)
+    .split("\n").map((line) => `    ${line}`).join("\n");
+  if (format === "xml") return `  <stats>\n${block}\n  </stats>\n`;
+  return `${format === "markdown" ? "  - **stats:**" : "  stats:"}\n${block}\n`;
+}
 
 /** An entity's owned traits in force as roster field lines, or '' when none is. */
 function ownedTraitLines(
@@ -171,7 +187,7 @@ export function renderEntityRoster(
   entities: Entity[],
   opts: RosterOpts = {},
 ): string {
-  const { preferSummary = false, format = "simple", nameOnly = false, ownedTraits } = opts;
+  const { preferSummary = false, format = "simple", nameOnly = false, ownedTraits, ownedStats } = opts;
   if (nameOnly) {
     const names = entityIds
       .map((id) => entities.find((e) => e.id === id)?.name)
@@ -202,14 +218,15 @@ export function renderEntityRoster(
       : "";
     const pronouns = entityItem.pronouns?.trim();
     const pronounLine = pronouns ? field("pronouns", pronouns) : "";
-    const traitLines = ownedTraitLines(entityItem, ownedTraits?.[entityItem.id] ?? [], preferSummary, format, field);
+    const ownedLines = ownedTraitLines(entityItem, ownedTraits?.[entityItem.id] ?? [], preferSummary, format, field)
+      + ownedStatLines(ownedStats?.[entityItem.id] ?? [], format);
     if (xml) {
       let inner = field("name", entityItem.name);
       inner += aliasLine;
       inner += pronounLine;
       if (hasDesc) inner += field(descKey, entityDescription!);
       inner += appendAllowedFields(entityItem, AI_ENTITY_FIELDS, field);
-      inner += traitLines;
+      inner += ownedLines;
       output += `<entity>\n${inner}</entity>\n`;
       return;
     }
@@ -218,7 +235,7 @@ export function renderEntityRoster(
     output += pronounLine;
     if (hasDesc) output += field(descKey, entityDescription!);
     output += appendAllowedFields(entityItem, AI_ENTITY_FIELDS, field);
-    output += traitLines;
+    output += ownedLines;
   });
 
   // All listed ids failed to resolve to a real entity → treat as empty.
@@ -459,12 +476,13 @@ export function buildReachableEntitiesContext(
 }
 
 /** The axes a scoped context chip carries, as the builders take them. */
-export type ContextOpts = { preferSummary?: boolean; nameOnly?: boolean; format?: ContextFormat };
+export type ContextOpts = { preferSummary?: boolean; nameOnly?: boolean; format?: ContextFormat; noStats?: boolean };
 
 // What each registry option means to the builders. The ids come from the registry; only their meaning is
 // spelled here, and an option with no meaning throws so the drift guard fails before a prompt renders a
 // raw token.
 const CONTENT_OPTS: Record<string, ContextOpts> = { summary: { preferSummary: true }, name: { nameOnly: true } };
+const STATS_OPTS: Record<string, ContextOpts> = { nostats: { noStats: true } };
 const FORMATS: Record<string, ContextFormat> = { markdown: "markdown", xml: "xml" };
 
 /** The builders' format for a chip's format option; the default option is the plain shape. */
@@ -482,17 +500,24 @@ function chipContent(optionId: string | null): ContextOpts {
   return opts;
 }
 
+function chipStats(optionId: string | null): ContextOpts {
+  if (optionId === null) return {};
+  const opts = STATS_OPTS[optionId];
+  if (!opts) throw new Error(`No builder option for the stats option "${optionId}"`);
+  return opts;
+}
+
 /** The builder options one concrete scoped chip token encodes, read through the same tables as the expander. */
 export function scopedChipOpts(token: string): ContextOpts {
   const variable = variableForToken(token);
   if (!variable) throw new Error(`No chip is registered for ${token}`);
   const selection = decodeVariant(variable, tokenVariant(token));
-  return { ...chipContent(selection.content), format: chipFormat(selection.format) };
+  return { ...chipContent(selection.content), ...chipStats(selection.stats ?? null), format: chipFormat(selection.format) };
 }
 
 /**
- * Every concrete token one scoped chip family produces — scope × content × format — mapped to its built
- * value. The content and format options are read from the chip's registry axes, so an option added there
+ * Every concrete token one scoped chip family produces — scope × content × stats × format — mapped to its
+ * built value. The content, stats and format options are read from the chip's registry axes, so an option added there
  * reaches every value builder at once; the scopes are the caller's, since a builder can serve a subset.
  *
  * Shared so the live game and the world editor's preview enumerate the same set: a variant only one of them
@@ -510,9 +535,11 @@ export function expandScopedTokens(
   const values: Record<string, string> = {};
   for (const [scope, build] of Object.entries(scopes)) {
     for (const content of options("content")) {
-      for (const format of options("format")) {
-        const id = encodeVariant(variable, { scope: scope || null, content, format });
-        values[withVariant(base, id)] = build({ ...chipContent(content), format: chipFormat(format) });
+      for (const stats of options("stats")) {
+        for (const format of options("format")) {
+          const id = encodeVariant(variable, { scope: scope || null, content, stats, format });
+          values[withVariant(base, id)] = build({ ...chipContent(content), ...chipStats(stats), format: chipFormat(format) });
+        }
       }
     }
   }

@@ -7,6 +7,7 @@ import { entityNamed, scenePresentHere, type OwnedTraitsInForce } from '../locat
 import { PLAYER_BEARER } from '../bearers';
 import { borneByPlayer, inBearerPlaces, withBearerTrees, type BearerTree } from '../ownedTraitsInPlay';
 import type { ResolvedPersona } from '../persona';
+import { enabledOwnerStats, type OwnerStats } from '../statOwners';
 import { resolveEntityTexts, resolveOwnedTraitTexts, type ResolveEntityText } from '../resolveWorldNames';
 import type { ChipScene, ChipSceneTime } from './chipScene';
 
@@ -25,6 +26,8 @@ export interface LiveSceneSources {
   ownedTraits?: OwnedTraitStates;
   /** Each bearer's tree, links expanded. An entity with none reads its owned traits alone. */
   bearers?: readonly BearerTree[];
+  /** Each entity's stat values. None when absent. */
+  entityStats?: OwnerStats;
   resolve: (text: string) => string;
   /** A trait's own text under its own pins, with an owned trait's owner as the Character Name. */
   resolveTrait: ResolveTraitText;
@@ -52,6 +55,8 @@ export interface SceneWrites {
   activeTraits: Trait[];
   /** Each entity's owned trait state after the box's switches and cascades. */
   ownedTraits: OwnedTraitStates;
+  /** Each entity's stat values after the box. Absent keeps the committed ones. */
+  entityStats?: OwnerStats;
   resolve: (text: string) => string;
   resolveTrait: ResolveTraitText;
   resolveEntity: ResolveEntityText;
@@ -101,6 +106,7 @@ export function liveChipScene(
     traits,
     traitGroups: player ? borneByPlayer(player.groups) : sources.traitGroups,
     ownedTraits: inForceByOwner(box?.ownedTraits ?? sources.ownedTraits),
+    ownedStats: enabledOwnerStats(box?.entityStats ?? sources.entityStats ?? {}),
     persona,
     location: loc,
     locations: sources.locations,
@@ -131,17 +137,17 @@ function inForceByOwner(states: OwnedTraitStates | undefined): OwnedTraitsInForc
 /** The live adapter: one memoized builder over the playthrough's contexts. */
 export function useLiveChipScene(sources: LiveSceneSources): (location?: GameLocation | null, box?: SceneWrites | null) => ChipScene {
   const {
-    overview, stats, traits, traitGroups, ownedTraits, bearers, resolve, resolveTrait, resolveEntity, persona, location,
-    locations, connections, entities, allEntities, participants, notes, time, placeholders,
+    overview, stats, traits, traitGroups, ownedTraits, bearers, entityStats, resolve, resolveTrait, resolveEntity, persona,
+    location, locations, connections, entities, allEntities, participants, notes, time, placeholders,
   } = sources;
   return useCallback(
     (at?: GameLocation | null, box?: SceneWrites | null) => liveChipScene({
-      overview, stats, traits, traitGroups, ownedTraits, bearers, resolve, resolveTrait, resolveEntity, persona, location,
-      locations, connections, entities, allEntities, participants, notes, time, placeholders,
+      overview, stats, traits, traitGroups, ownedTraits, bearers, entityStats, resolve, resolveTrait, resolveEntity, persona,
+      location, locations, connections, entities, allEntities, participants, notes, time, placeholders,
     }, at, box),
     [
-      overview, stats, traits, traitGroups, ownedTraits, bearers, resolve, resolveTrait, resolveEntity, persona, location,
-      locations, connections, entities, allEntities, participants, notes, time, placeholders,
+      overview, stats, traits, traitGroups, ownedTraits, bearers, entityStats, resolve, resolveTrait, resolveEntity, persona,
+      location, locations, connections, entities, allEntities, participants, notes, time, placeholders,
     ],
   );
 }

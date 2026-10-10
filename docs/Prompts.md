@@ -255,7 +255,7 @@ Each prompt editor is a chip editor. A **chip** is a box in the text. When the a
 
 - **A chip sends text, and no chip sends nothing.** The app adds nothing to a prompt that you did not place. Delete the **Notes** chip, and the AI never reads your notes.
 - **The bar above the editor lists the chips this prompt can use.** Select a chip to put it at the cursor, or drag it into the text.
-- **Select a placed chip to open its pop-out.** The pop-out sets what the chip sends. Some chips have a **Scope** or **Content** choice, such as **Full** or **Summary**. The **Stats**, **Traits**, **Location**, **Entities** and **Persona** chips have a **Format** of **Simple**, **Markdown** or **XML**. Some chips also have **Header**, **Prepend** and **Append** text.
+- **Select a placed chip to open its pop-out.** The pop-out sets what the chip sends. Some chips have a **Scope** or **Content** choice, such as **Full** or **Summary**. The **Stats**, **Traits**, **Location**, **Entities** and **Persona** chips have a **Format** of **Simple**, **Markdown** or **XML**. The **Entities** chip also has a **Stats** checkbox, on by default, that sends each entity's stats. Some chips also have **Header**, **Prepend** and **Append** text.
 - **The editor has two tabs.** **Edit** holds the template. **Preview** shows the text with each chip filled in. Outside a game, a **Sample data** tag marks the sample values. **Preview** is off while the prompt has no chips.
 
 The editor has **Undo** and **Redo** buttons. **Edit full screen** opens the editor in a large window. For the chips that carry the persona and names, see [Personas for Authors](Persona-Authoring).

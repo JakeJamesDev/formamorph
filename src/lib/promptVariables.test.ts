@@ -117,11 +117,16 @@ describe('multi-axis variants (Stats: content × format)', () => {
     expect(variantLabelForToken('<LOCATION|sublocations.name>')).toBe('Sub, Name');
   });
 
-  it('gives Entities a scope axis (Here/Sub/Reachable) plus content and format', () => {
+  it('gives Entities a scope axis (Here/Sub/Reachable) plus content, stats and format', () => {
     const ENT = variableForToken('<ENTITIES>')!;
-    expect(variableAxes(ENT).map((a) => a.id)).toEqual(['scope', 'content', 'format']);
+    expect(variableAxes(ENT).map((a) => a.id)).toEqual(['scope', 'content', 'stats', 'format']);
     expect(variantLabelForToken('<ENTITIES|reachable.summary.markdown>')).toBe('Reachable, Summary, Markdown');
     expect(variantLabelForToken('<ENTITIES|markdown>')).toBe('Markdown');
+  });
+
+  it('keeps the Entities stats piece on in a bare token and names its off state in the label', () => {
+    expect(variantLabelForToken('<ENTITIES>')).toBeNull();
+    expect(variantLabelForToken('<ENTITIES|inscene.summary.nostats.xml>')).toBe('In Scene, Summary, No Stats, XML');
   });
 });
 

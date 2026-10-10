@@ -55,6 +55,23 @@ describe('authoredChipScene and the Character Name chip', () => {
   });
 });
 
+describe('authoredChipScene and entity stats', () => {
+  const trust: Stat = { id: 'trust', name: 'Trust', type: 'number', description: '', min: 0, max: 100, value: 30, regen: 0, descriptors: [] };
+  const dread: Stat = { ...trust, id: 'dread', name: 'Dread', enabled: false };
+  const stock: Stat = { id: 'stock', name: 'Stock', type: 'number', description: '', min: 5, max: 50, regen: 0, descriptors: [] };
+
+  it('holds each entity’s switched-on stats at their starting values', () => {
+    const scene = authoredChipScene(world({ entities: [{ ...wren, stats: [trust, dread, stock] }, harrow] }));
+    expect(scene.ownedStats?.wren.map((s) => [s.name, s.value])).toEqual([['Trust', 30], ['Stock', 5]]);
+    expect(scene.ownedStats).not.toHaveProperty('harrow');
+    expect(chipValues(scene)['<ENTITIES>']).toContain('Trust: 30/100');
+  });
+
+  it('holds none when no entity owns a stat', () => {
+    expect(authoredChipScene(world()).ownedStats ?? {}).toEqual({});
+  });
+});
+
 describe('authoredChipScene', () => {
   it('opens the world at its starting location with the cast the author placed there', () => {
     const scene = authoredChipScene(world());

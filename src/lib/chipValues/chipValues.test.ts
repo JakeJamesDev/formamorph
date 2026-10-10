@@ -3,7 +3,7 @@ import { chipValues, sceneEntityChipValues } from './chipValues';
 import type { ChipScene } from './chipScene';
 import { knownPersonaLine } from '../personaContext';
 import { NONE_PLACEHOLDER } from '../promptFallbacks';
-import { decodeVariant, variableForToken, variableVariantIds, withVariant } from '../promptVariables';
+import { decodeVariant, encodeVariant, variableForToken, variableVariantIds, withVariant } from '../promptVariables';
 import type { Connection, DictionaryEntry, Entity, GameLocation, PlayerStat, Trait, TraitGroup } from '@/types';
 import type { ResolvedPersona } from '../persona';
 
@@ -146,6 +146,86 @@ describe('the Entities chip', () => {
     expect(values['<ENTITIES|inscene>']).not.toContain('ferryman');
     // With nobody resolved, the names alone are the list.
     expect(chipValues(scene({ inSceneIds: [], inSceneNames: ['the ferryman'] }))['<ENTITIES|inscene.name>']).toBe('the ferryman');
+  });
+});
+
+describe('entity stats on the Entities chip', () => {
+  const trust: PlayerStat = {
+    id: 'trust', name: 'Trust', type: 'number', description: 'How far he trusts you.', min: 0, max: 100, value: 40, regen: 0,
+    descriptors: [{ id: 't1', threshold: 50, description: 'Wary' }, { id: 't2', threshold: 100, description: 'Warm' }],
+  };
+  const withStats = scene({ ownedStats: { guard: [trust], merchant: [trust], wanderer: [trust] } });
+  const without = scene();
+  const line = 'Trust: 40/100 (Wary) — How far he trusts you.';
+
+  it('lists each entity’s stats with range, descriptor and meaning in the simple format, in Here and In Scene', () => {
+    const values = chipValues(withStats);
+    expect(values['<ENTITIES>']).toContain(`  stats:\n    ${line}\n`);
+    expect(values['<ENTITIES|inscene>']).toContain(`  stats:\n    ${line}\n`);
+  });
+
+  it('nests the stats in the markdown and XML formats', () => {
+    const values = chipValues(withStats);
+    expect(values['<ENTITIES|markdown>']).toContain(`  - **stats:**\n    - **Trust:** 40/100 (Wary) — How far he trusts you.\n`);
+    expect(values['<ENTITIES|xml>']).toContain(
+      '  <stats>\n    <stat>\n      <name>Trust</name>\n      <value>40/100</value>\n      <status>Wary</status>\n'
+      + '      <meaning>How far he trusts you.</meaning>\n    </stat>\n  </stats>\n',
+    );
+  });
+
+  it('carries the stats in the Summary content too, for the planner', () => {
+    expect(chipValues(withStats)['<ENTITIES|summary>']).toContain(`  stats:\n    ${line}\n`);
+  });
+
+  it('leaves the stats out of the Name content', () => {
+    const values = chipValues(withStats);
+    expect(values['<ENTITIES|name>']).toBe(chipValues(without)['<ENTITIES|name>']);
+    expect(values['<ENTITIES|inscene.name.xml>']).toBe(chipValues(without)['<ENTITIES|inscene.name.xml>']);
+  });
+
+  it('leaves the stats out of the Sub and Reachable scopes, who are not present', () => {
+    const values = chipValues(scene({ ownedStats: { merchant: [trust], watchman: [trust] } }));
+    expect(values['<ENTITIES|sublocations>']).toBe(chipValues(without)['<ENTITIES|sublocations>']);
+    expect(values['<ENTITIES|reachable.markdown>']).toBe(chipValues(without)['<ENTITIES|reachable.markdown>']);
+  });
+
+  it('renders the block as before when the stats piece is off', () => {
+    const values = chipValues(withStats);
+    const entitiesChip = variableForToken('<ENTITIES>')!;
+    const token = (scope: string | null, content: string | null, stats: string | null, format: string | null) =>
+      withVariant('<ENTITIES>', encodeVariant(entitiesChip, { scope, content, stats, format }));
+    for (const scope of [null, 'inscene']) {
+      for (const content of [null, 'summary']) {
+        for (const format of [null, 'markdown', 'xml']) {
+          const off = token(scope, content, 'nostats', format);
+          expect(values[off], off).toBe(chipValues(without)[token(scope, content, null, format)]);
+        }
+      }
+    }
+  });
+
+  it('renders an entity with no stats as before', () => {
+    const values = chipValues(scene({ ownedStats: { wanderer: [trust] } }));
+    expect(values['<ENTITIES>']).toBe(chipValues(without)['<ENTITIES>']);
+    expect(values['<ENTITIES|inscene>']).toContain('Wanderer\n  description: Came in with the last caravan.\n  stats:');
+    expect(values['<ENTITIES|inscene>']).not.toContain('Guard\n  pronouns: he/him\n  description: A burly guard in full plate.\n  stats:');
+  });
+
+  it('renders a hidden stat, since hidden only hides it from the player', () => {
+    const secret: PlayerStat = { ...trust, id: 'secret', name: 'Grudge', hidden: true, descriptors: [] };
+    expect(chipValues(scene({ ownedStats: { guard: [secret] } }))['<ENTITIES>']).toContain('Grudge: 40/100 — How far he trusts you.');
+  });
+
+  it('lists several stats in the order the scene holds them', () => {
+    const second: PlayerStat = { ...trust, id: 'fear', name: 'Fear', description: '', descriptors: [], value: 7 };
+    const block = chipValues(scene({ ownedStats: { guard: [trust, second] } }))['<ENTITIES>'];
+    expect(block).toContain(`  stats:\n    ${line}\n    Fear: 7/100\n`);
+  });
+
+  it('keeps the scene-roster override on the same stats', () => {
+    const values = sceneEntityChipValues(withStats, ['guard']);
+    expect(values['<ENTITIES>']).toContain(`stats:\n    ${line}`);
+    expect(values['<ENTITIES|nostats>']).not.toContain('stats:');
   });
 });
 

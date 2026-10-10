@@ -12,6 +12,7 @@ import {
   resolveEntityTexts, resolveOwnedTraitTexts, type ResolveEntityText, type ResolveOwnedTraitText,
 } from '../resolveWorldNames';
 import { resolveStartingLocation } from '../startingLocation';
+import { enabledOwnerStats } from '../statOwners';
 import type {
   Connection, Dictionary, Entity, EntityGroup, GameLocation, Placeholder, PlayerStat, Stat, Trait,
   TraitGroup, WorldOverview,
@@ -47,6 +48,9 @@ export interface AuthoredSceneOptions {
   /** An entity's own text under `resolve`'s rolls and pins. Absent with `resolve` given, `resolve` alone reads it. */
   resolveEntity?: ResolveEntityText;
 }
+
+/** An authored stat as a playthrough holds it at the start: its own value, or its minimum when none is set. */
+const atStartingValue = (stat: Stat): PlayerStat => ({ ...stat, value: typeof stat.value === 'number' ? stat.value : stat.min });
 
 /**
  * The world being edited as a Chip Scene: its own opening. The scene is at the starting location with the
@@ -104,8 +108,7 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
   return {
     overview: worldOverview?.systemPrompt || '',
     // Stats read their authored starting value — the same shape a playthrough's stats carry.
-    stats: options.stats
-      ?? stats.map((stat) => ({ ...stat, value: typeof stat.value === 'number' ? stat.value : stat.min })),
+    stats: options.stats ?? stats.map(atStartingValue),
     // The player bearer's traits, where its tree places them: never Blueprints, and Custom Persona's at the root.
     traits: borneByPlayer(player.traits.filter((trait) => activeIds.has(trait.id))
       .map((trait) => (trait.aiDescription ? { ...trait, aiDescription: playerText(trait, trait.aiDescription) } : trait))),
@@ -115,6 +118,9 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
       const defaults = defaultsOf(bearer);
       return bearer.entity && defaults.length ? [[bearer.id, defaults]] : [];
     })),
+    ownedStats: enabledOwnerStats(Object.fromEntries(entities.filter((e) => e.stats?.length).map((e) => [
+      e.id, (e.stats ?? []).map(atStartingValue),
+    ]))),
     persona: null,
     location,
     locations,

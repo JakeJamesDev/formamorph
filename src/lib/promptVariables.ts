@@ -21,6 +21,10 @@ export interface PromptVariantAxis {
   /** Render as an independent checkbox (on = its non-null option) rather than a single-select control. A
    *  variable's toggle axes form one "at least one must stay on" group in the editor. */
   toggle?: boolean;
+  /** For a toggle axis: the checkbox is on while the axis holds its default (null) option, and clearing it
+   *  stores the non-null one. The bare token then keeps the piece, and the axis sits outside the "one piece
+   *  stays on" group. */
+  onByDefault?: boolean;
   /** Help shown beside a toggle axis's checkbox. */
   help?: string;
   /** Show the stored choice and take no input. For an axis whose options exist but cannot differ here. */
@@ -133,6 +137,14 @@ const STAT_MEANING_AXIS: PromptVariantAxis = {
   options: [{ id: null, label: 'Description' }, { id: 'meaning', label: 'Description' }],
 };
 
+// The Entities chip's stats piece. On by default, so a bare token (every prompt saved before it) sends stats;
+// the non-null id is the off state.
+const ENTITY_STATS_AXIS: PromptVariantAxis = {
+  id: 'stats', label: 'Stats', toggle: true, onByDefault: true,
+  help: "Sends each entity's stats: range, descriptor and description.",
+  options: [{ id: null, label: 'Stats' }, { id: 'nostats', label: 'No Stats' }],
+};
+
 // Each variable gets a fixed palette slot so its color is stable everywhere (chip + preview, every prompt).
 const WORLD: PromptVariable = { token: '<WORLD DESCRIPTION>', label: 'World', color: HIGHLIGHT_PALETTE[0], affixable: true };
 const STATS: PromptVariable = { token: '<STATS DESCRIPTION>', label: 'Stats', color: HIGHLIGHT_PALETTE[1], axes: [STAT_VALUES_AXIS, STAT_STATUS_AXIS, STAT_MEANING_AXIS, FORMAT_AXIS] };
@@ -155,7 +167,7 @@ const MARKDOWN: PromptVariable = {
 // Director prompt only: expands to the cast-size guidance derived from the Limit Active Characters setting.
 const ACTIVE_CHARACTER: PromptVariable = { token: '<ACTIVE CHARACTER GUIDANCE>', label: 'Active Character Guidance', color: HIGHLIGHT_PALETTE[13] };
 // Entities are one chip whose `scope` axis picks here / sub-locations / reachable siblings.
-const ENTITIES: PromptVariable = { token: '<ENTITIES>', label: 'Entities', color: HIGHLIGHT_PALETTE[8], axes: [ENTITY_SCOPE_AXIS, CONTENT_AXIS, FORMAT_AXIS], affixable: true };
+const ENTITIES: PromptVariable = { token: '<ENTITIES>', label: 'Entities', color: HIGHLIGHT_PALETTE[8], axes: [ENTITY_SCOPE_AXIS, CONTENT_AXIS, ENTITY_STATS_AXIS, FORMAT_AXIS], affixable: true };
 // The activated-dictionary lore for the turn — supplied by GameViewer per turn (narration prompt only). The
 // `before` variant renders the early "## Background Lore" block; the default renders the late "## Foreground Lore".
 const DICTIONARY: PromptVariable = {
