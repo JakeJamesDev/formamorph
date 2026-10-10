@@ -52,6 +52,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The trailer opens on the title card alone and adds traits and help title cards before their shots.** Morphie's shot plays a clip from thinking to idle. The chat shot uses the Authoring Tour's world. The reveal clip capture now fails on a jump in motion.
     - **The trailer's end card wordmark now forms from goo blobs, and the contest shot holds 5 seconds.** The wordmark moves as the app's first-run intro does. The render check fails a dense card that holds under 5 seconds. The community shot shows a different author on each world.
     - **The trailer now opens on the goo wordmark, and the end card's wordmark pops letter by letter.** The blobs dissolve into crisp letters inside the 6 s loop. The typed panel enters on the clip's first narration word, which the capture records. Three captions changed.
+    - **The trailer no longer has an avatar shot.** The wide cut is 81 seconds. The avatar clip capture stays in the list as deferred.
   - **Slash Commands:**
     - **Typing `/choices test` in the action box plays a scripted turn with one paragraph and 4 choices.** It plays in the Pages or Chat turn layout, with a live turn's timing. Add a profile name such as `slow` or `burst` to change the narration's pace.
     - **Typing `/` in the action box lists the commands, and each later word lists its own options.** The list opens under the word you're typing. Arrow keys move through it; Enter or Tab picks.

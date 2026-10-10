@@ -71,5 +71,4 @@ export const SHOTS = {
   community: shot('community'),
   contest: shot('contest'),
   engine: shot('engine'),
-  avatarClip: clip('avatar-clip', 0),
 };

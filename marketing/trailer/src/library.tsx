@@ -105,9 +105,9 @@ const ENTRIES: LibraryEntry[] = [
       <FrameScene
         layout={layout}
         durationInFrames={durationInFrames}
-        shot={SHOTS.avatarClip}
-        depth={SHOTS.entity}
-        caption={['Pick a 3D avatar.']}
+        shot={SHOTS.helpClip}
+        depth={SHOTS.community}
+        caption={['Ask your AI guide Morphie for help at any time.']}
         dot="rose"
         camera={both(hold(stop(0.5, 0.5)))}
       />

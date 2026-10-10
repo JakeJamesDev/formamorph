@@ -139,7 +139,7 @@ The tall cut plays the storyboard's 14 shots (§4) in 59.92 s at 1080x1920, 60 f
 | Stack | T06, T10, T11 | Two wide captures on two cards, one above the other, each with its own caption pill |
 | Recapture | T05 | The native 540x960 mobile-layout clip `narration-clip-tall`, and `game-tall` on depth cards |
 
-- ✂️ The tall cut drops Morphie with its title card (W13a, W13) and the avatar (W18). It stacks the profile and the travel shot (W11, W10b) as T10.
+- ✂️ The tall cut drops Morphie with its title card (W13a, W13). It stacks the profile and the travel shot (W11, W10b) as T10.
 - 🔁 T03 matches W03, so the tall cut loops for its first 6 s too.
 - 📱 `npm run capture -- --only game-tall,narration-clip-tall` rewrites the two recaptures.
 - 🎯 The tall cut has no Steam checks. The render command checks its size, rate, length, codecs and the 6 s loop.
@@ -219,7 +219,7 @@ Setups keep every shot off live servers and live AI:
 | `desktopEngine` | The desktop bridge, with the built-in engine ready on a loaded model. Nothing loads or downloads |
 | `helpAnswer` | The help window's reply, streamed from a fixed text. An ask clip holds it back until it lets it through |
 
-The storyboard's three live-data shots (help answer, community grid, avatar) are fixed this way. The avatar shot keeps **Animate character** on and sets `model` (below), so it films the idle animation on a controlled clock.
+The storyboard's live-data shots (help answer, community grid) are fixed this way. The avatar clip is deferred (Q60) but keeps **Animate character** on and sets `model` (below), so it films the idle animation on a controlled clock if it returns.
 
 ### Frozen time and clips
 
@@ -248,7 +248,7 @@ Each clip prints its motion: the share of pixels each frame changes, ten frames 
 - 📝 The turn shot (W05, T05) plays `narration-clip.mp4` or `narration-clip-tall.mp4`. It holds the screen before the turn while the player line types in, then plays the reveal.
 - 🎞️ The stats shot (W06, and the top pane of T06) plays `stats-clip.mp4`. It holds the first frame, plays the clip from frame 60 of the scene, then holds the last frame.
 - 💬 The Morphie shot (W13) plays `help-clip.mp4` once its card lands, at scene frame 40.
-- 🧍 The avatar shot (W18) plays `avatar-clip.mp4` from its first frame. The clip has as many frames as the shot, so the avatar moves to the end. Lengthen both together.
+- 🧍 The avatar clip is deferred: no shot plays it since the avatar left the cut (Q60). `npm run capture -- --only avatar-clip` films it again if it returns.
 - 🔁 A second run gives the same frames and the same file, so `npm run capture:diff` prints `same`. The frames stay in `.capture-clip/` to compare two runs.
 - 🧩 The script runs Vite with `scripts/captureVite.config.mjs`. It adds the real path of the repo's `node_modules` to the files Vite serves, so the stat code's QuickJS runtime also loads in a worktree.
 

@@ -41,7 +41,7 @@ Gameplay is text. Watching someone read is not a trailer. The video is a showcas
 | Q6 | The proof is 20 seconds: one title card, two UI frames with motion, one transition, rendered at both sizes. The pipeline is proven before the storyboard is written. |
 | Q7 | The trailer package uses React 19. `@remotion/transitions` 4.0.534 bundles a React DOM 19 copy and reads React 19 internals, so it fails to bundle against React 18 despite its declared peer range. The package is standalone (Q5), so the app stays on React 18. Ruled 2026-10-08 on ticket 01's evidence. |
 | Q8 | The storyboard lives at `docs-internal/specs/trailer/storyboard.md` and lands in ticket 03's commit. It holds its own capture table in the spec's field list (view, modal or tab, viewport, theme, scale, world, seed). Ticket 05 copies that table into ticket 02's capture list, so 02 and 03 never race on one file. The user approves the storyboard in the 03 session; its rulings come here as numbered Q-lines and fold into this spec. |
-| Q9 | The storyboard is approved (2026-10-08, ticket 03): wide cut 20 shots, tall cut 14 shots; lengths as of ticket 14: wide 83.83 s (5,030 frames), tall 59.92 s (3,595 frames); frames 0 to 359 loop on the bare blob stage (Q28). |
+| Q9 | The storyboard is approved (2026-10-08, ticket 03): wide cut 20 shots, tall cut 14 shots; lengths after Q60: wide 81.33 s (4,880 frames), tall 59.92 s (3,595 frames); frames 0 to 359 loop on the bare blob stage (Q28). |
 | Q10 | Feature cut: Morphie help, contests and 3D avatars stay in the wide cut. Memory is cut. Scene images, character cards and ST import, themes, TTS and authoring tools are not in the trailer. |
 | Q11 | The end card's call-to-action line is "formamorph.ai". |
 | Q12 | Gameplay shots use the Drone world on the landing page's site-game fixture. |
@@ -92,6 +92,7 @@ Gameplay is text. Watching someone read is not a trailer. The video is a showcas
 | Q57 | The contest captions become "Enter contests." then "Share your ideas with the community and compete with others." Spec session's STE rendering, user may change: "Share your ideas with the community." / "Compete with other creators." The dense hold (Q48) covers the longer second line. |
 | Q58 | The AI-model card gets a second line in the wide cut only: "Run it fully local, with no extra software to install." The tall cut keeps "Use any AI model." alone, since the line does not hold on mobile. |
 | Q59 | The end card's wordmark gets an emphasis pop after it enters: F, o, r, m, a each grow then shrink back in turn, one beat each, then "morph" grows and shrinks as one unit on the same beat, slightly larger than the single letters did. Every glyph settles back to its normal size; the pop is emphasis, not a size change. This replaces Q55's "plain entrance" for the end card: plain entrance, then the pop, then the tagline, then the call to action; nothing rises under the pop. |
+| Q60 | The avatar shot (W18) is cut from the wide cut. On review it read as out of place beside the other features. Q10's "3D avatars stay" is reopened on that evidence. The avatar clip capture stays in the list as deferred. |
 
 ### Facts the design rests on
 
