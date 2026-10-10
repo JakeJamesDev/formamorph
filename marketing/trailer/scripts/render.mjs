@@ -88,13 +88,18 @@ const report = (ok, line, details = []) => {
   for (const detail of details) console.log(`      ${detail}`);
 };
 
-/** Rulings Q17, Q25, Q32 and Q38: the copy and camera checks, measured by the timeline the composition plays. */
+/** Rulings Q17, Q25, Q32, Q38 and Q48: the copy, dense hold and camera checks, measured by the timeline the composition plays. */
 const reportCopyAndCamera = (composition) => {
   // Each line's enter, legible and exit seconds and its characters per second.
   for (const line of composition.props.reading) {
     const cps = line.charsPerSecond === null ? '-' : line.charsPerSecond.toFixed(1);
     const exit = line.exitSeconds === null ? 'holds to end' : `exit ${line.exitSeconds.toFixed(2)} s`;
     report(line.ok, `${line.shot.padEnd(4)} enter ${line.enterSeconds.toFixed(2)} s  hold ${line.seconds.toFixed(2).padStart(5)} s  ${exit.padEnd(12)}  ${cps.padStart(4)} cps  "${line.text}"`);
+  }
+
+  // A dense card holds at least 5 s after it lands.
+  for (const card of composition.props.dense) {
+    report(card.ok, `${card.shot.padEnd(4)} dense card holds ${card.seconds.toFixed(2)} s after it lands at frame ${card.landFrame} (${card.minSeconds} s minimum)`);
   }
 
   // Every card holds one crop, and its subject region stays whole in the card's visible area on every frame.

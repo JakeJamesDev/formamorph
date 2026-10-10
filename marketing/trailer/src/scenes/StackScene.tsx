@@ -21,6 +21,9 @@ type StackSceneProps = SceneProps & { panes: readonly [StackPane, StackPane] };
 /** Frame each pane's caption starts to enter; its card rises `DEFAULT_DELAY` frames earlier. The second pane follows the first. */
 const paneDelay = (index: number) => DEFAULT_DELAY + index * 20;
 
+/** Frame pane `index`'s card starts to rise. */
+export const paneRise = (index: number) => paneDelay(index) - DEFAULT_DELAY;
+
 /** The frames each pane's caption enters, is legible and leaves, for the reading check. */
 export const stackReads = (panes: readonly StackPane[], durationInFrames: number): CopyRead[] =>
   panes.flatMap((pane, i) => copyReads(pane.caption, durationInFrames, paneDelay(i)));
@@ -35,7 +38,7 @@ export const StackScene = ({ layout, durationInFrames, panes }: StackSceneProps)
         path={pane.camera}
         pose={STACK_CARDS[layout][i]}
         durationInFrames={durationInFrames}
-        delay={paneDelay(i) - DEFAULT_DELAY}
+        delay={paneRise(i)}
         bobPhase={i * 2}
       />
     ))}

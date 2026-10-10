@@ -49,6 +49,11 @@ Notes:
 - 🔚 The end card's lines stay to the last frame. Their exit prints `holds to end`.
 - ✏️ A longer line needs a longer shot. Raise the shot's frames in `src/timeline.tsx` until its line prints `OK`. The wordmark is a logo and is not measured.
 
+The command also checks each dense card: a card whose subject holds more than one thing the eye must find. It reports the seconds the card holds from the frame it lands until it starts to leave or a join covers it, and prints `FAIL` under 5 s.
+
+- 🔍 Mark a dense card with `dense()` in `src/timeline.tsx`, and with ✅ in the storyboard's Dense column. For a stack, pass the dense pane's rise frame, `paneRise(1)`.
+- 🛬 A card lands when its spring settles within 0.5%. The report prints the frame it lands on.
+
 The command also checks the camera inside every card. Each camera reports its zoom, `holds` when its crop stays still, and how far its subject sits from the crop's edge. It prints `FAIL` when:
 
 - a card zooms or pans at all; the card's own float is the motion
@@ -257,6 +262,7 @@ Each clip prints its motion: the share of pixels each frame changes, ten frames 
 | End card scene, with an optional call-to-action pill | `src/scenes/TitleCard.tsx` |
 | Scenes: kinetic text, frame card, stack, typed narration, wordmark title | `src/scenes/` |
 | Shared parts: the stage, the glass card, the camera inside it, the headline and pills, and the wordmark | `src/parts/` |
+| The end card's goo wordmark: the app's first-run intro (`src/components/IntroSequence.tsx`), driven by the frame, in the intro's own font | `src/parts/GooWordmark.tsx` |
 | Where each card sits per layout | `src/poses.ts` |
 | Enter and exit timing, and the springs | `src/motion.ts` |
 | The reading bar and each line's reading time | `src/reading.ts` |
