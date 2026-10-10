@@ -75,6 +75,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **A tooltip now closes when you scroll.** It no longer stays on screen after its control moves. Scrolling a page, list, panel or scrollbar, or scrolling by keyboard, closes it. It opens again on the next hover or focus.
     - **A tooltip now closes when you press, right-click or start a drag.** None opens while you hold a mouse button, so dragging across the library board or the Trait Tree opens none.
     - **A tooltip now closes when focus moves elsewhere, the window loses focus or the tab is hidden.** Tabbing to another control still opens that control's tooltip.
+    - **The Copied bubble on a help code block now closes when you scroll, press, right-click or start a drag.** It no longer floats in place when its button scrolls away. Each copy shows it again.
   - **The app and the wiki now say In Game for the time after a game starts.** The trait toggle, the Authoring Tour pane and the Entities page use the same term.
   - **Test Bench now names the right requirements when a linked trait's default starts unselected.** The message names the entity, quotes the link's rows and opens the link.
   - **The markdown Preview now shows every edit inside a list, a quote or a multi-line paragraph.** Formatting and text changes in a list item, for example, now show at once instead of keeping the old text.
