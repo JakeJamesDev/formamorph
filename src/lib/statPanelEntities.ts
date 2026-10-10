@@ -1,6 +1,7 @@
 // The entity picker of the in-game stat panel: who it lists, how it labels each, and which one shows.
 
-import type { Entity, EntityStatValues, PlayerStat, SceneEntity } from '@/types';
+import type { Entity, PlayerStat, SceneEntity } from '@/types';
+import type { OwnerStats } from './statOwners';
 import { resolveEntityByName } from './entityMatch';
 
 export interface StatPanelOption {
@@ -50,7 +51,7 @@ export function statPanelOptions({ entities, persona, scene, history, values, ke
   scene: readonly SceneEntity[];
   /** Every scene up to the viewed turn, oldest first. */
   history: readonly (readonly SceneEntity[])[];
-  values: EntityStatValues;
+  values: OwnerStats;
   keep?: string | null;
 }): StatPanelOption[] {
   const out: StatPanelOption[] = [];

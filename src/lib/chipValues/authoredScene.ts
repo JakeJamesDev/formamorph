@@ -12,7 +12,8 @@ import {
   resolveEntityTexts, resolveOwnedTraitTexts, type ResolveEntityText, type ResolveOwnedTraitText,
 } from '../resolveWorldNames';
 import { resolveStartingLocation } from '../startingLocation';
-import { enabledOwnerStats } from '../statOwners';
+import { treeStatTraits } from '../traitRuntime';
+import { enabledOwnerStats, withTraitToggles } from '../statOwners';
 import type {
   Connection, Dictionary, Entity, EntityGroup, GameLocation, Placeholder, PlayerStat, Stat, Trait,
   TraitGroup, WorldOverview,
@@ -118,9 +119,11 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
       const defaults = defaultsOf(bearer);
       return bearer.entity && defaults.length ? [[bearer.id, defaults]] : [];
     })),
-    ownedStats: enabledOwnerStats(Object.fromEntries(entities.filter((e) => e.stats?.length).map((e) => [
-      e.id, (e.stats ?? []).map(atStartingValue),
-    ]))),
+    // Each entity's default traits switch its stats on and off.
+    ownedStats: enabledOwnerStats(withTraitToggles(
+      Object.fromEntries(entities.filter((e) => e.stats?.length).map((e) => [e.id, (e.stats ?? []).map(atStartingValue)])),
+      treeStatTraits(bearers, Object.fromEntries(bearers.map((b) => [b.id, defaultsOf(b)]))),
+    )),
     persona: null,
     location,
     locations,

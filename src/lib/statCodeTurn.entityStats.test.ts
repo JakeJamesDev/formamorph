@@ -6,6 +6,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { runStatCodeTurn, type OwnerCodeTurn, type StatCodeTurn } from './statCodeTurn';
 import type { StatCodeBearers } from './statCodeTraits';
 import { inPlayBearers } from './ownedTraitsInPlay';
+import { withOwnerCodeResults } from './entityStats';
 import type { Entity, Placeholder, PlayerStat, Trait } from '@/types';
 import { phValues } from '@/test/placeholderValues';
 
@@ -124,6 +125,29 @@ describe('runStatCodeTurn entity owners', () => {
     expect(out.owners?.bram.stats[0]).toMatchObject({ max: 40, value: 40, codeBounds: { max: 40 } });
     expect(out.owners?.bram.boundsChanged).toEqual(['trust']);
     expect(out.stats[0].max).toBe(100);
+  });
+
+  it('moves an entity’s own stats when code switches its own trait, and lays the result on the latest values', async () => {
+    const hardy: Trait = { id: 'hardy', name: 'Hardy', statChanges: [{ statId: 'vigor', value: 10, type: 'max' }, { statId: 'vigor', value: 5, type: 'starting' }] };
+    const strong: Entity = { ...bram, traits: [hardy] };
+    const entities = [strong, odette];
+    const vigor = stat({ id: 'vigor', name: 'Vigor' });
+    const out = await run(
+      [stat({ id: 'gold', name: 'Gold', code: 'entities.Bram.traits.Hardy.enabled = true;' })],
+      [owner('bram', [vigor])],
+      {
+        bearers: {
+          ...bearers(), entities,
+          world: { ...bearers().world, entities, bearers: inPlayBearers({ traits: [brave], traitGroups: [], entities }, { source: 'none' }, []) },
+        },
+      },
+    );
+    expect(out.owners?.bram.stats[0]).toMatchObject({ max: 110, value: 55 });
+    expect(out.owners?.bram.inForce?.map((t) => t.id)).toEqual(['hardy']);
+    expect(out.traits?.appliedValues).toEqual({ 'bram/hardy/stats': { vigor: 5 } });
+    // The latest values hold the pre-switch cap, so the overlay re-derives it under Bram's traits.
+    const latest = withOwnerCodeResults({ bram: [vigor] }, out.owners, () => []);
+    expect(latest.bram[0]).toMatchObject({ max: 110, value: 55 });
   });
 
   it('hands an owner whose code moved nothing its own stats back', async () => {

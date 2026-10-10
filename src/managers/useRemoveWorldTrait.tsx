@@ -4,22 +4,16 @@ import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { linksTo, removeBlueprints, type BlueprintsRemoval } from '@/lib/traitLinks';
 import { groupHoldsItems } from '@/lib/traitTree';
-import type { Placeholder } from '@/types';
 
 /** The line a removal's confirmation adds for the links that go with it. */
 const alsoDeletesLinks = (links: number): string =>
   `This also deletes ${links === 1 ? 'its link' : `its ${links} links`}.`;
 
-/** `A`, `A and B`, `A, B and C`. */
-const joined = (names: readonly string[]): string =>
-  (names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`);
-
-/** What removing Blueprints does: the detached links, the stats their copies lose, and the items that move up. */
-function blueprintsLine(removal: BlueprintsRemoval, placeholders: Placeholder[]): string {
-  const { detached, strippedOn, movedUp } = removal;
+/** What removing Blueprints does: the detached links, and the items that move up. */
+function blueprintsLine(removal: BlueprintsRemoval): string {
+  const { detached, movedUp } = removal;
   const lines = [
     detached ? `${detached === 1 ? "Its link becomes that entity's own trait" : `Its ${detached} links become each entity's own trait`}, and the linked originals are deleted.` : '',
-    strippedOn.length ? `The copies on ${joined(strippedOn.map((n) => labelPlaceholders(n, placeholders)))} lose their stat changes and stat toggles.` : '',
     movedUp ? `${detached ? 'The other traits move' : 'Its traits move'} to the top level, where the player can pick them.` : '',
   ];
   return lines.filter(Boolean).join(' ');
@@ -47,7 +41,7 @@ export function useRemoveWorldTrait(): { ask: (id: string, isGroup: boolean) => 
     ? `Remove ${labelPlaceholders(pending.name, placeholders)}?`
     : `Delete ${labelPlaceholders(pending?.name ?? '', placeholders)}?`;
   const description = pending?.blueprints
-    ? blueprintsLine(pending.blueprints, placeholders)
+    ? blueprintsLine(pending.blueprints)
     : alsoDeletesLinks(pending?.links ?? 0);
   const dialog = (
     <ConfirmDialog

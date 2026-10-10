@@ -29,7 +29,8 @@ const values: EntityStatValues = {
   mira: [stat({ id: 'calm', name: 'Calm' })],
 };
 const none: PersonaRef = { source: 'none' };
-const owners = (present: Entity[], persona: PersonaRef = none) => statRequestOwners(present, values, persona, (s) => s);
+const noTraits = () => [];
+const owners = (present: Entity[], persona: PersonaRef = none) => statRequestOwners(present, values, persona, (s) => s, noTraits);
 const snapshotFor = (present: Entity[], textPass = false) =>
   createStatRequest([vigor, playerTrust], PLAYER_OWNER, { textPass, entities: owners(present) });
 
@@ -62,6 +63,18 @@ describe('the stat request with entities', () => {
     expect(owners([bram, bram]).map((o) => o.id)).toEqual(['bram']);
   });
 
+  it('leaves out an entity stat its own trait switches off, and ignores an update to it', () => {
+    const wary = { id: 'wary', name: 'Wary', statChanges: [], statToggles: [{ statId: 'stock', enabled: false }] };
+    const inForce = (ownerId: string) => (ownerId === 'odette' ? [wary] : []);
+    const asked = statRequestOwners([odette], values, none, (s) => s, inForce);
+    expect(asked.map((o) => o.stats.map((s) => s.id))).toEqual([['trust']]);
+
+    const full = createStatRequest([vigor, playerTrust], PLAYER_OWNER, { entities: owners([odette]) });
+    const reply = JSON.stringify({ You: { Vigor: 0, 'Vigor max': 0, Trust: 0, 'Trust max': 0 }, Odette: { Trust: 0, 'Trust max': 0, Stock: 4, 'Stock max': 0 } });
+    const applied = applyEntityStatResponse(values, readStatResponse(reply, full), inForce);
+    expect(applied.values.odette[1].value).toBe(12);
+  });
+
   it('numbers an owner key that clashes with the player heading or another owner', () => {
     const snapshot = createStatRequest([vigor], PLAYER_OWNER, { entities: [
       { id: 'a', name: 'Player Character', stats: [stat()] },
@@ -86,7 +99,7 @@ describe('the stat request with entities', () => {
       Odette: { Trust: -3, 'Trust max': 0, Stock: 0, 'Stock max': 0 },
     });
     const response = readStatResponse(reply, snapshot);
-    const applied = applyEntityStatResponse(values, response);
+    const applied = applyEntityStatResponse(values, response, noTraits);
     // At 30/100, +15 only fits under the raised cap if the max moves first: 45/110, not clamped.
     expect(applied.values.bram.map(({ id, value, max }) => [id, value, max])).toEqual([['trust', 45, 110], ['grit', 5, 100]]);
     expect(applied.values.odette[0].value).toBe(37);
@@ -96,7 +109,7 @@ describe('the stat request with entities', () => {
 
   it('reports every update to an owner the playthrough no longer holds', () => {
     const response = readStatResponse(JSON.stringify({ Bram: { Trust: 2, 'Trust max': 0 } }), snapshotFor([bram]));
-    const applied = applyEntityStatResponse({ odette: values.odette }, response);
+    const applied = applyEntityStatResponse({ odette: values.odette }, response, noTraits);
     expect(applied.values).toEqual({ odette: values.odette });
     expect(applied.diagnostics).toEqual([{ name: 'Trust', reason: 'missing' }]);
   });
@@ -181,7 +194,7 @@ describe('entity stats after the request', () => {
   it("hands each owner's asks to its code, over the values from before them", () => {
     const after = { ...values, bram: [{ ...values.bram[0], value: 45 }, values.bram[1]] };
     const asks = { bram: [{ id: 'trust', value: 15, max: 0 }] };
-    const [turn] = entityCodeTurns(entityStatOwners(after, [bram], none), 0, (_, s) => s, { previous: values, asks });
+    const [turn] = entityCodeTurns(entityStatOwners(after, [bram], none, noTraits), 0, (_, s) => s, { previous: values, asks });
     expect(turn).toMatchObject({ id: 'bram', asks: asks.bram, previous: values.bram });
     expect(turn.stats[0].value).toBe(45);
   });

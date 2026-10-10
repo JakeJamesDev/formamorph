@@ -108,15 +108,11 @@ describe('TraitTree link rows', () => {
     expect(screen.queryByRole('alertdialog')).toBeNull();
   });
 
-  it('confirms before a Detach that leaves stat effects behind', () => {
+  it('detaches a link with stat effects at once, the copy keeping them', () => {
     const { entity } = setup();
     fireEvent.click(action('Brave', 1, 'Detach')!);
-    const dialog = screen.getByRole('alertdialog');
-    expect(dialog).toHaveTextContent('Detach Brave?');
-    expect(dialog).toHaveTextContent("The copy won't keep its stat changes and stat toggles");
-    expect(entity('ash').traitLinks?.some((l) => l.id === 'l-brave')).toBe(true);
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Confirm' }));
-    expect(entity('ash').traits?.find((t) => t.name === 'Brave')).toMatchObject({ statChanges: [] });
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(entity('ash').traits?.find((t) => t.name === 'Brave')?.statChanges).not.toEqual([]);
     expect(entity('ash').traitLinks?.some((l) => l.id === 'l-brave')).toBe(false);
   });
 

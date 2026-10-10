@@ -67,6 +67,12 @@ describe('authoredChipScene and entity stats', () => {
     expect(chipValues(scene)['<ENTITIES>']).toContain('Trust: 30/100');
   });
 
+  it("switches each entity's stats with its default traits", () => {
+    const grim: Trait = { id: 'grim', name: 'Grim', isDefault: true, statChanges: [], statToggles: [{ statId: 'trust', enabled: false }, { statId: 'dread', enabled: true }] };
+    const scene = authoredChipScene(world({ entities: [{ ...wren, stats: [trust, dread], traits: [grim] }, harrow] }));
+    expect(scene.ownedStats?.wren.map((s) => s.name)).toEqual(['Dread']);
+  });
+
   it('holds none when no entity owns a stat', () => {
     expect(authoredChipScene(world()).ownedStats ?? {}).toEqual({});
   });

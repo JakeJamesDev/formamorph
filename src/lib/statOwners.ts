@@ -1,8 +1,9 @@
-// Stat owners: whose stats the runtime moves. The player is the one owner, and its stats are the
-// playthrough's `playerStats`.
+// Stat owners: whose stats the runtime moves, the player's and each entity's, and how each owner's traits
+// switch them.
 
-import type { PlayerStat } from '@/types';
+import type { PlayerStat, Trait } from '@/types';
 import { applyRegen } from './statChanges';
+import { activeStatEnabled } from './traitEffects';
 import { WORLD_OWNER } from './traitGates';
 
 /** The player's owner id, the one owned traits key the player by. */
@@ -31,6 +32,21 @@ export function enabledOwnerStats(owners: OwnerStats): Record<string, PlayerStat
     if (live.length) out[id] = live;
   }
   return out;
+}
+
+/** An owner's stat traits in force, by owner id. */
+export type OwnerStatTraits = (ownerId: string) => readonly Trait[];
+
+/** Each owner's stats with `enabled` as its traits in force switch them, for readers that filter on it. The
+ *  stored values keep the author's own switch. The same map when no trait switches anything. */
+export function withTraitToggles(values: OwnerStats, inForce: OwnerStatTraits): OwnerStats {
+  let out: Record<string, readonly PlayerStat[]> | null = null;
+  for (const [id, stats] of Object.entries(values)) {
+    const enabled = activeStatEnabled(stats, inForce(id));
+    if (stats.every((s) => enabled[s.id] === (s.enabled !== false))) continue;
+    (out ??= { ...values })[id] = stats.map((s) => (enabled[s.id] === (s.enabled !== false) ? s : { ...s, enabled: enabled[s.id] }));
+  }
+  return out ?? values;
 }
 
 /** One regen tick over `hours` for each owner. `applied` is what each stat moved, by owner, then stat id. */

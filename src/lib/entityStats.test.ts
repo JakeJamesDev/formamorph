@@ -18,6 +18,7 @@ const stock = stat({ id: 'stock', name: 'Stock', value: 0, min: 3, max: 30, enab
 const bram: Entity = { id: 'bram', name: 'Bram', stats: [trust, stock] };
 const odette: Entity = { id: 'odette', name: 'Odette', stats: [stat({ id: 'eels', name: 'Eels', value: 5 })] };
 const rook: Entity = { id: 'rook', name: 'Rook' };
+const noTraits = () => [];
 
 describe('seedEntityStats', () => {
   it('seeds every stat of each entity that owns any, switched-off ones included, as the player’s are seeded', () => {
@@ -52,7 +53,7 @@ describe('backfillEntityStats', () => {
 describe('withEntityRegen', () => {
   it('regenerates each owner’s live stats, leaving a switched-off one and an owner not listed alone', () => {
     const values = seedEntityStats([bram, odette]);
-    const owners = entityStatOwners(values, [bram], { source: 'none' });
+    const owners = entityStatOwners(values, [bram], { source: 'none' }, noTraits);
     const out = withEntityRegen(values, owners, 3);
     expect(out.bram.map((s) => s.value)).toEqual([23, 3]);
     expect(out.odette).toBe(values.odette);
@@ -66,7 +67,7 @@ describe('withEntityRegen', () => {
 
 describe('entityCodeTurns', () => {
   const values = seedEntityStats([bram]);
-  const owners = entityStatOwners(values, [bram], { source: 'none' });
+  const owners = entityStatOwners(values, [bram], { source: 'none' }, noTraits);
 
   it('hands each owner its ticked stats, the regen applied, and its pre-tick stats as previous', () => {
     const [turn] = entityCodeTurns(owners, 2, (_, stats) => stats);
@@ -88,16 +89,16 @@ describe('withOwnerCodeResults', () => {
 
   it('lays each owner’s moved values and code bounds onto the latest values', () => {
     // The latest values took a regen tick after the run read its snapshot.
-    const latest = withEntityRegen(values, entityStatOwners(values, [bram], { source: 'none' }), 1);
+    const latest = withEntityRegen(values, entityStatOwners(values, [bram], { source: 'none' }, noTraits), 1);
     const run = values.bram.map((s) => (s.id === 'stock' ? { ...s, value: 9, max: 9, codeBounds: { max: 9 } } : { ...s, value: 70 }));
-    const out = withOwnerCodeResults(latest, { bram: { stats: run, moved: ['trust'], boundsChanged: ['stock'] } });
+    const out = withOwnerCodeResults(latest, { bram: { stats: run, moved: ['trust'], boundsChanged: ['stock'] } }, noTraits);
     expect(out.bram.map((s) => [s.value, s.max])).toEqual([[70, 100], [3, 9]]);
     expect(out.odette).toBe(latest.odette);
   });
 
   it('hands back the same map when no owner moved', () => {
-    expect(withOwnerCodeResults(values, { bram: { stats: values.bram, moved: [], boundsChanged: [] } })).toBe(values);
-    expect(withOwnerCodeResults(values, undefined)).toBe(values);
+    expect(withOwnerCodeResults(values, { bram: { stats: values.bram, moved: [], boundsChanged: [] } }, noTraits)).toBe(values);
+    expect(withOwnerCodeResults(values, undefined, noTraits)).toBe(values);
   });
 });
 
@@ -105,11 +106,11 @@ describe('entityStatOwners', () => {
   const values = seedEntityStats([bram, odette]);
 
   it('lists every entity in the playthrough that holds stats, in authored order, present or not', () => {
-    expect(entityStatOwners(values, [odette, rook, bram], { source: 'none' }).map((o) => o.id)).toEqual(['odette', 'bram']);
+    expect(entityStatOwners(values, [odette, rook, bram], { source: 'none' }, noTraits).map((o) => o.id)).toEqual(['odette', 'bram']);
   });
 
   it('reads each stat’s own switch for its enabled map', () => {
-    const [owner] = entityStatOwners(values, [bram], { source: 'none' });
+    const [owner] = entityStatOwners(values, [bram], { source: 'none' }, noTraits);
     expect(owner.enabled).toEqual({ trust: true, stock: false });
     expect(owner.stats).toBe(values.bram);
   });
@@ -117,7 +118,7 @@ describe('entityStatOwners', () => {
   it('regens and runs the Custom Persona entity’s stats under a library persona, as its traits are the player’s there', async () => {
     const custom: Entity = { id: 'cp', name: 'Wanderer', customPersona: true, stats: [stat({ id: 'grit', name: 'Grit', code: 'return self.value + 10;' })] };
     const all = seedEntityStats([bram, custom]);
-    const owners = entityStatOwners(all, [bram, custom], { source: 'library', entityId: 'lib' });
+    const owners = entityStatOwners(all, [bram, custom], { source: 'library', entityId: 'lib' }, noTraits);
     expect(owners.map((o) => o.id)).toEqual(['bram', 'cp']);
     expect(withEntityRegen(all, owners, 2).cp[0].value).toBe(22);
     const turns = entityCodeTurns(owners, 2, (_, stats) => stats);
@@ -132,7 +133,7 @@ describe('entityStatOwners', () => {
   it('runs the played world persona, and leaves out a persona-only entity nobody plays', () => {
     const mira: Entity = { ...odette, id: 'mira', persona: true, personaOnly: true };
     const all = seedEntityStats([bram, mira]);
-    expect(entityStatOwners(all, [bram, mira], { source: 'none' }).map((o) => o.id)).toEqual(['bram']);
-    expect(entityStatOwners(all, [bram, mira], { source: 'world', entityId: 'mira' }).map((o) => o.id)).toEqual(['bram', 'mira']);
+    expect(entityStatOwners(all, [bram, mira], { source: 'none' }, noTraits).map((o) => o.id)).toEqual(['bram']);
+    expect(entityStatOwners(all, [bram, mira], { source: 'world', entityId: 'mira' }, noTraits).map((o) => o.id)).toEqual(['bram', 'mira']);
   });
 });

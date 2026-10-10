@@ -76,8 +76,11 @@ export interface OwnerCodeTurn extends Pick<StatCodeTurn, 'stats' | 'enabled' | 
   asks?: StatCodeTurn['asks'];
 }
 
-/** What one entity owner's code did to its stats. */
-export type OwnerCodeResult = Pick<StatCodeTurnResult, 'stats' | 'moved' | 'boundsChanged'>;
+/** What one entity owner's code and the run's trait switches did to its stats. */
+export type OwnerCodeResult = Pick<StatCodeTurnResult, 'stats' | 'moved' | 'boundsChanged'> & {
+  /** The owner's stat traits in force after the switches; absent when code switched no trait. */
+  inForce?: Trait[];
+};
 
 export interface StatCodeTurnResult {
   /** `stats` with the trait switches, then the code writes, applied, in the same order; the same array when
@@ -125,16 +128,17 @@ const sameBounds = (a: CodeBounds = {}, b: CodeBounds = {}) =>
  *  After a trait switch every stat re-derives, under the traits the switch left in force. */
 export function overlayStatCodeResult(
   latest: readonly PlayerStat[],
-  result: OwnerCodeResult & Pick<StatCodeTurnResult, 'traits'>,
+  result: OwnerCodeResult & { traits?: Pick<StatCodeTraitResult, 'inForce'> },
   active: readonly Trait[],
 ): PlayerStat[] {
   const coded = new Map(result.stats.map((stat) => [stat.id, stat]));
-  const inForce = result.traits ? result.traits.inForce : active;
+  const switched = result.traits?.inForce ?? result.inForce;
+  const inForce = switched ?? active;
   return latest.map((stat) => {
     const run = coded.get(stat.id);
     const value = run && result.moved.includes(stat.id) ? run.value : stat.value;
     if (run && result.boundsChanged.includes(stat.id)) return withCodeBounds(stat, run.codeBounds ?? {}, value, inForce);
-    if (result.traits) return withCodeBounds(stat, stat.codeBounds ?? {}, value, inForce);
+    if (switched) return withCodeBounds(stat, stat.codeBounds ?? {}, value, inForce);
     return value === stat.value ? stat : { ...stat, value };
   });
 }
@@ -289,6 +293,7 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
     appliedValues: turn.bearers.appliedValues,
     cascadeOffTraitIds: turn.bearers.cascadeOffTraitIds,
     ownedTraits: turn.bearers.ownedTraits,
+    entityStats: Object.fromEntries((turn.owners ?? []).map((owner) => [owner.id, [...owner.stats]])),
   };
   const keyed = inPlay && keyedEntities(inPlay.entities, inPlay.persona);
   const switches = inOrder.map(({ stat, writes }) => ({ stat, written: writes.traits.get(stat.id) }));
@@ -309,9 +314,10 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
   };
 
   const owners = turn.owners && Object.fromEntries(entityRuns.map(({ owner, writes }): [string, OwnerCodeResult] => {
-    const result = settleWrites(owner.stats, owner.stats, writes.values,
-      ownerStatTraitsInForce(switched.state, turn.bearers.world, owner.id));
-    return [owner.id, result.moved.length || result.boundsChanged.length ? result : { ...result, stats: owner.stats }];
+    const inForce = ownerStatTraitsInForce(switched.state, turn.bearers.world, owner.id);
+    const result = settleWrites(owner.stats, switched.state.entityStats?.[owner.id] ?? owner.stats, writes.values, inForce);
+    const settled = result.moved.length || result.boundsChanged.length ? result : { ...result, stats: owner.stats };
+    return [owner.id, traitResult ? { ...settled, inForce } : settled];
   }));
   const withOwners = owners ? { owners } : {};
   const { stats, moved, boundsChanged } = settleWrites(turn.stats, switched.state.stats, playerRun.writes.values, active);

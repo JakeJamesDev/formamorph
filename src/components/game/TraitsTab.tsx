@@ -35,6 +35,9 @@ export interface TraitsTabProps {
    *  entity under None and a library persona. */
   playerEntityIds?: readonly string[];
   stats: TraitTabStat[];
+  /** Each entity's own stats, by entity id. A cast entity's trait lists changes to these alone; a player
+   *  entity's lists these first, then `stats`. Absent ⇒ none. */
+  ownerStats?: Readonly<Record<string, readonly TraitTabStat[]>>;
   /** Switched off or never taken in the bearer's tree — the panel draws no line between the two. */
   isOff: (traitId: string, bearerId: string) => boolean;
   /** A past turn is a record, not a control surface. */
@@ -59,6 +62,7 @@ const flipKey = (keys: ReadonlySet<string>, key: string): ReadonlySet<string> =>
 };
 
 const EMPTY: ReadonlySet<string> = new Set();
+const NO_IDS: readonly string[] = [];
 
 /** The bearer a block's traits belong to: the world's when the block sits in no entity node. */
 const bearerOf = (block: TraitBlock): string => block.entityId ?? WORLD_OWNER;
@@ -68,7 +72,7 @@ const seedOpen = (sections: TraitSection[], isOff: (id: string, bearerId: string
   new Set(sections.filter((s) => s.blocks.some((b) => b.traits.some((t) => !isHidden(t) && !isOff(t.id, bearerOf(b))))).map((s) => s.key));
 
 export const TraitsTab = ({
-  traits, groups, entityNodes, playerEntityIds = [], stats, isOff, readOnly, onToggleTrait, resolveTraitText, view, setView,
+  traits, groups, entityNodes, playerEntityIds = NO_IDS, stats, ownerStats, isOff, readOnly, onToggleTrait, resolveTraitText, view, setView,
   gates, cascade, onDismissCascade,
 }: TraitsTabProps) => {
   const entityNodeIds = React.useMemo(() => new Set(entityNodes?.keys() ?? []), [entityNodes]);
@@ -107,7 +111,20 @@ export const TraitsTab = ({
     (trait: Trait, bearerId: string = WORLD_OWNER) => resolveTraitText(trait, trait.playerDescription ?? '', bearerId),
     [resolveTraitText],
   );
-  const statById = React.useMemo(() => new Map(stats.map((s) => [s.id, s])), [stats]);
+  // The stats a bearer's trait changes: the player's for the player, and an entity's own first.
+  const statsFor = React.useMemo(() => {
+    const cache = new Map<string, Map<string, TraitTabStat>>();
+    return (bearerId: string) => {
+      let found = cache.get(bearerId);
+      if (!found) {
+        const own = bearerId === WORLD_OWNER ? [] : ownerStats?.[bearerId] ?? [];
+        const player = bearerId === WORLD_OWNER || playerEntityIds.includes(bearerId) ? stats : [];
+        found = new Map([...player, ...own].map((s) => [s.id, s]));
+        cache.set(bearerId, found);
+      }
+      return found;
+    };
+  }, [stats, ownerStats, playerEntityIds]);
   const filtering = query.trim() !== '';
 
   const views = sections
@@ -134,7 +151,7 @@ export const TraitsTab = ({
     // A change is listed only if the player can see the stat it targets: hidden stats stay behind the
     // scenes, and one whose stat the world no longer has would otherwise print a raw id.
     const changes = trait.statChanges
-      .map((change) => ({ change, stat: statById.get(change.statId) }))
+      .map((change) => ({ change, stat: statsFor(bearerId).get(change.statId) }))
       .filter((c): c is { change: StatChange; stat: TraitTabStat } => c.stat !== undefined && c.stat.hidden !== true);
     const isExpanded = view.expanded.has(rowKey);
     const description = describe(trait, bearerId).trim();

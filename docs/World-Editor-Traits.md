@@ -166,6 +166,8 @@ Each row changes one stat while the trait is active. A row has a stat, a number,
 
 Min and Max follow different rules on purpose. A trait can put the Max anywhere. A trait can never put a stat below the range you designed.
 
+On an entity's trait, the rows change that entity's own stats. The stat list shows its stats, and the player's stats on an entity the player can play. See [Entity Traits and Stats](#entity-traits-and-stats).
+
 ## Stat Availability
 <!-- keywords: unlock a meter, mana for mages, class specific bar, show bar only if, turn on gauge, conditional meter -->
 
@@ -303,7 +305,16 @@ An entity's active traits describe it to the AI, the same way the player's do. W
 
 To give a world trait or group to one entity, drag it onto the entity's node. It moves to that entity. A [Blueprints](#blueprints) item links instead, in Advanced mode.
 
-> 💡 **Only a persona's traits can have Stat Changes or Stat Availability.** Only the player has stats. A **Playable**, **Persona-Only** or [Custom Persona](#custom-persona) entity can own stat traits, and they apply when the player plays as it. Any other entity refuses them. Remove an entity's persona mark, and its stat traits stay, but their stats do nothing.
+### Entity Traits and Stats
+
+An entity's traits change the entity's own stats: Min, Max, Starting Value, Regen and Stat Availability. Its links do the same. A *Hardy* trait on Bram raises Bram's Vigor, never the player's.
+
+| Entity | What its trait's stat rows can name |
+|---|---|
+| Cast entity | Its own stats |
+| **Playable**, **Persona-Only** or [Custom Persona](#custom-persona) | Its own stats, and the player's stats. A player stat changes only while the player plays as it. |
+
+> ⚠️ **A row that names a stat the entity doesn't own does nothing.** The **Issues** tab warns about it.
 
 ## Links
 <!-- keywords: sync across npcs, live reference, unlink, make independent, break connection, stale warning, inherit, instance, detach, carry to another world -->
@@ -380,7 +391,7 @@ The library entity editor shows links but never makes them. Opened from a world,
 - **A world has one Blueprints group.** It stays at the top level. **Add Blueprints Group** leaves the menu while one exists.
 - **New items start at the top level.** **Add Trait** and **Add Group** never add inside Blueprints. Drag the new item in.
 - **Entities can't go under Blueprints.** Blueprints holds world traits and groups only.
-- **Remove it, and each linked item becomes its entities' own trait.** Every link into Blueprints is [detached](#detach), and the linked originals are deleted. Unlinked traits move to the top level, where the player can pick them. A confirmation asks first. It gives the link count and names each cast entity whose copies lose their stat changes.
+- **Remove it, and each linked item becomes its entities' own trait.** Every link into Blueprints is [detached](#detach), and the linked originals are deleted. Unlinked traits move to the top level, where the player can pick them. A confirmation asks first. It gives the link count.
 
 Placeholders have a [Blueprints group](World-Editor-Placeholders#blueprints) of their own, with the same rule.
 
@@ -446,6 +457,7 @@ It shows a warning when:
 - A copy removed the value that a pin names. The pin pins nothing.
 - A blueprint chip or a pin by blueprint sits where it is refused, such as in a location or a world placeholder.
 - A link is redundant, because another link on the same bearer already brings its original.
+- An entity's trait or link changes a stat that the entity doesn't own. The row does nothing.
 
 It shows a note when:
 

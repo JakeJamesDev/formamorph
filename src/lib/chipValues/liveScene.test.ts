@@ -136,6 +136,18 @@ describe('the live adapter', () => {
       expect(chipValues(scene)['<ENTITIES>']).not.toContain('Dread');
     });
 
+    it('switches an entity’s stats with its own traits in force', () => {
+      // Grim switches Trust off and Dread on, while the harbormaster holds it.
+      const grim: Trait = { id: 'grim', name: 'Grim', statChanges: [], statToggles: [{ statId: 'trust', enabled: false }, { statId: 'dread', enabled: true }] };
+      const holding = (disabled: string[]) => liveChipScene(sources({
+        entityStats: { harbormaster: [trust, off] },
+        bearers: [{ id: 'harbormaster', traits: [grim], groups: [] }],
+        ownedTraits: { harbormaster: { chosen: ['grim'], disabled } },
+      }));
+      expect(holding([]).ownedStats?.harbormaster.map((s) => s.name)).toEqual(['Dread']);
+      expect(holding(['grim']).ownedStats?.harbormaster.map((s) => s.name)).toEqual(['Trust']);
+    });
+
     it('reads the stats a before box wrote, in place of the committed ones', () => {
       const moved: PlayerStat = { ...trust, value: 9 };
       const scene = liveChipScene(sources({ entityStats: { harbormaster: [trust] } }), null, {

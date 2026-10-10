@@ -15,7 +15,7 @@
       "adventure"
     ],
     "introReadme": "🔥 **The barrow beyond the wall has opened.** Emberwatch Keep wants hands, and pays in gold and renown for anyone who comes back with answers.\n\nBefore your first step, pick who you are:\n- **Wanderer** is your own character. Enter your name, then change the **Race** and the **Class** from the Halfling Wizard it starts as. Your abilities follow.\n- **Albus** is a Human Paladin and **Sylvie Thornwhistle** an Elf Rogue, ready to play.\n- Bring a persona from your library, and you still pick a Race and Class in this world.\n\nYour class sets your garb and raises one resource. Your race gives one small edge and one ability that switches on with it. Class abilities need their class; **Blessed Light** answers to Clerics and Paladins alike.",
-    "readme": "## Emberwatch\n\nA stone keep at the end of the frontier road. The barrow past the wall has opened, and Captain Blackwell pays in **Gold** and **Renown** for anyone who finds out why and does something about it.\n\n**Playing**\n- **Health** keeps you standing. **Mana** feeds spells, **Faith** feeds prayers and holy light. Rest restores both.\n- Your abilities use the resource their description names. Ask the narrator to use one by name.\n- Mother Hesk at the chapel knows the barrow's rites. Corvin Vale at the tavern knows its rumors. Neither tells you for free.\n- The Barrow Wight gets stronger every night. Go in prepared, with light and allies.\n\n**Places**\n- **Emberwatch Keep** and the **Old Watchtower** are the captain's ground.\n- **Ashford Square**, the **Cinder and Crown** and the **Chapel of the Ember** are the town's.\n- **The Barrow Beyond the Wall** is where the answers are.\n\n## How this world is built\n\nEmberwatch is also an example of an RPG race-and-class system. Open it in the World Editor with Advanced mode on and look at the **Traits** tab.\n\n- **Blueprints.** The system group that holds every Race, Class and ability once. Traits under it never reach the player directly. They reach play only through links.\n- **Group links.** **Wanderer**, **Albus** and **Sylvie Thornwhistle** each link the **Races**, **Classes**, **Racial Abilities** and **Class Abilities** groups. One edit to Paladin reaches every bearer.\n- **Trait links.** **Mother Hesk** links the **Dwarf**, **Cleric** and **Darkvision** traits. **Corvin Vale** links **Human** and **Wizard**. A single-trait link brings one original. Darkvision is default-on in Blueprints, so Hesk's link starts it on with no override.\n- **Per-link defaults.** Select Albus's **Classes** link and open **This Link**. Paladin is default-on there and Wizard is not. Sylvie's link makes Rogue the default.\n- **Link overrides.** Select **Paladin** under Albus's **Classes** link. Its stat change is an override, so Albus gains more Faith than any other Paladin. **Reset** returns it to the blueprint.\n- **Blueprint pins.** Each Class pins **Class Garb** and each Race pins **Heritage**, two placeholders in the Placeholders tab's **Blueprints** group. Every bearer of a Class or a Race owns a copy of each, named like **Albus.Class Garb**, and the pin lands on that bearer's copy. A copy reads the blueprint's values until you edit one. Hesk's and Corvin's copies reword the value their class and race pin, so their text reads their own words.\n- **Blueprint chips.** Each Class's AI description ends with a **Class Garb** chip, and each Race's with a **Heritage** chip. A chip in a blueprint trait reads the bearer's copy, so one Cleric text gives Hesk her own vestments.\n- **Custom Persona.** **Wanderer** carries the Custom Persona mark, so it takes None's place at Enter World. The player enters a name, and Wanderer's links build the character. Its links also apply under a persona from your library, and its copies of **Class Garb** and **Heritage** fill in where that persona has none.\n- **Persona-only.** The Custom Persona mark implies Persona-only. Unpicked, Wanderer leaves the cast and never joins a scene.\n- **Same-bearer gates.** **Smite** requires Paladin on the same bearer. Your Wizard never unlocks it through Albus.\n- **Any-of gates.** **Blessed Light** requires Cleric or Paladin. Either one unlocks it.\n- **Named-scope gates.** The root trait **Squire to Albus** requires **Albus: Paladin**. Re-class Albus at Enter World and the trait locks. Play Albus and the trait is not offered, because nobody is their own squire.\n- **Gated defaults and cascades.** Each racial ability is default-on and requires its race. Change race and the old ability switches off; the new one switches on.\n- **Test Bench.** Open **Test Bench → Issues** to see the rule pass. This world runs clean.",
+    "readme": "## Emberwatch\n\nA stone keep at the end of the frontier road. The barrow past the wall has opened, and Captain Blackwell pays in **Gold** and **Renown** for anyone who finds out why and does something about it.\n\n**Playing**\n- **Health** keeps you standing. **Mana** feeds spells, **Faith** feeds prayers and holy light. Rest restores both.\n- Your abilities use the resource their description names. Ask the narrator to use one by name.\n- Mother Hesk at the chapel knows the barrow's rites. Corvin Vale at the tavern knows its rumors. Neither tells you for free.\n- The Barrow Wight gets stronger every night. Go in prepared, with light and allies.\n\n**Places**\n- **Emberwatch Keep** and the **Old Watchtower** are the captain's ground.\n- **Ashford Square**, the **Cinder and Crown** and the **Chapel of the Ember** are the town's.\n- **The Barrow Beyond the Wall** is where the answers are.\n\n## How this world is built\n\nEmberwatch is also an example of an RPG race-and-class system. Open it in the World Editor with Advanced mode on and look at the **Traits** tab.\n\n- **Blueprints.** The system group that holds every Race, Class and ability once. Traits under it never reach the player directly. They reach play only through links.\n- **Group links.** **Wanderer**, **Albus** and **Sylvie Thornwhistle** each link the **Races**, **Classes**, **Racial Abilities** and **Class Abilities** groups. One edit to Paladin reaches every bearer.\n- **Trait links.** **Mother Hesk** links the **Dwarf**, **Cleric** and **Darkvision** traits. **Corvin Vale** links **Human** and **Wizard**. A single-trait link brings one original. Darkvision is default-on in Blueprints, so Hesk's link starts it on with no override.\n- **Entity stats.** Hesk owns her own **Health** and **Faith**, and Corvin owns **Renown** and **Mana**. Their race and class links change their own stats, never yours: Dwarf raises Hesk's Health, and Wizard raises Corvin's Mana.\n- **Per-link defaults.** Select Albus's **Classes** link and open **This Link**. Paladin is default-on there and Wizard is not. Sylvie's link makes Rogue the default.\n- **Link overrides.** Select **Paladin** under Albus's **Classes** link. Its stat change is an override, so Albus gains more Faith than any other Paladin. **Reset** returns it to the blueprint.\n- **Blueprint pins.** Each Class pins **Class Garb** and each Race pins **Heritage**, two placeholders in the Placeholders tab's **Blueprints** group. Every bearer of a Class or a Race owns a copy of each, named like **Albus.Class Garb**, and the pin lands on that bearer's copy. A copy reads the blueprint's values until you edit one. Hesk's and Corvin's copies reword the value their class and race pin, so their text reads their own words.\n- **Blueprint chips.** Each Class's AI description ends with a **Class Garb** chip, and each Race's with a **Heritage** chip. A chip in a blueprint trait reads the bearer's copy, so one Cleric text gives Hesk her own vestments.\n- **Custom Persona.** **Wanderer** carries the Custom Persona mark, so it takes None's place at Enter World. The player enters a name, and Wanderer's links build the character. Its links also apply under a persona from your library, and its copies of **Class Garb** and **Heritage** fill in where that persona has none.\n- **Persona-only.** The Custom Persona mark implies Persona-only. Unpicked, Wanderer leaves the cast and never joins a scene.\n- **Same-bearer gates.** **Smite** requires Paladin on the same bearer. Your Wizard never unlocks it through Albus.\n- **Any-of gates.** **Blessed Light** requires Cleric or Paladin. Either one unlocks it.\n- **Named-scope gates.** The root trait **Squire to Albus** requires **Albus: Paladin**. Re-class Albus at Enter World and the trait locks. Play Albus and the trait is not offered, because nobody is their own squire.\n- **Gated defaults and cascades.** Each racial ability is default-on and requires its race. Change race and the old ability switches off; the new one switches on.\n- **Test Bench.** Open **Test Bench → Issues** to see the rule pass. This world runs clean.",
     "openings": [
       {
         "id": "a47ba8ec-fd14-5aa5-849a-6dfc2f6468db",
@@ -649,6 +649,76 @@
           "groupId": null,
           "order": 2
         }
+      ],
+      "stats": [
+        {
+          "id": "health",
+          "name": "Health",
+          "type": "number",
+          "description": "Mother Hesk's condition. Age slows her, but the barrow's cold and its dead can still wound her.",
+          "min": 0,
+          "max": 100,
+          "value": 100,
+          "starting": 100,
+          "regen": 2,
+          "thresholdUnit": "percent",
+          "descriptors": [
+            {
+              "id": "5cd550c4-f69b-539d-ace5-7c3a3cfe9b30",
+              "threshold": 10,
+              "description": "Dying. Barely conscious, bleeding out, one more blow from the end."
+            },
+            {
+              "id": "5493874a-7fc0-5905-ab24-981ae8fa1ebc",
+              "threshold": 40,
+              "description": "Badly wounded. Every movement costs, and fighting on is a gamble."
+            },
+            {
+              "id": "d3102a52-8342-5bd7-ad21-8b3b08f8201d",
+              "threshold": 70,
+              "description": "Hurt. Cuts and bruises, sore but able."
+            },
+            {
+              "id": "e79d52f8-1c1a-5672-b838-144db1ef6b77",
+              "threshold": 100,
+              "description": "Hale. Whole and ready."
+            }
+          ]
+        },
+        {
+          "id": "faith",
+          "name": "Faith",
+          "type": "number",
+          "description": "Mother Hesk's favor with the Ember. Mercy and long vigils feed it; despair and desecration spend it.",
+          "min": 0,
+          "max": 100,
+          "value": 70,
+          "starting": 70,
+          "regen": 3,
+          "thresholdUnit": "percent",
+          "descriptors": [
+            {
+              "id": "6dcefe2a-4a6e-5ad0-aa0e-8fc6b69a20c4",
+              "threshold": 10,
+              "description": "Forsaken. Prayers fall into silence."
+            },
+            {
+              "id": "f5cea26a-f001-5cd4-beb0-76cd3814de71",
+              "threshold": 40,
+              "description": "Shaken. The light answers slowly and dimly."
+            },
+            {
+              "id": "70b3b974-1895-5664-b351-679682c99a99",
+              "threshold": 70,
+              "description": "Steady. The Ember listens."
+            },
+            {
+              "id": "4a9a3209-ddb2-536d-bca5-c0264368778f",
+              "threshold": 100,
+              "description": "Radiant. Warmth answers before the prayer is finished."
+            }
+          ]
+        }
       ]
     },
     {
@@ -729,6 +799,76 @@
               }
             }
           }
+        }
+      ],
+      "stats": [
+        {
+          "id": "renown",
+          "name": "Renown",
+          "type": "number",
+          "description": "How widely Emberwatch knows Corvin Vale. Good stories and true rumors raise it; lies that unravel lower it.",
+          "min": 0,
+          "max": 100,
+          "value": 25,
+          "starting": 25,
+          "regen": 0,
+          "thresholdUnit": "percent",
+          "descriptors": [
+            {
+              "id": "0e4ecbb4-4287-5fa1-954c-5545f2602f57",
+              "threshold": 10,
+              "description": "Unknown. One more face on the frontier road."
+            },
+            {
+              "id": "a558049d-6b25-5f8a-9fb2-b35cd35b977a",
+              "threshold": 35,
+              "description": "Noticed. The keep's people know the name and watch what it does."
+            },
+            {
+              "id": "c9700614-52a8-595d-8d41-0a7b103fff7d",
+              "threshold": 70,
+              "description": "Known. Doors open; favors are asked and owed."
+            },
+            {
+              "id": "e12dbfe2-65e8-572f-b5e1-773cd29c6693",
+              "threshold": 100,
+              "description": "Famed. Songs at the Cinder and Crown, and a captain's ear on demand."
+            }
+          ]
+        },
+        {
+          "id": "mana",
+          "name": "Mana",
+          "type": "number",
+          "description": "Corvin Vale's arcane power. His spells drain it; rest and study restore it.",
+          "min": 0,
+          "max": 100,
+          "value": 50,
+          "starting": 50,
+          "regen": 5,
+          "thresholdUnit": "percent",
+          "descriptors": [
+            {
+              "id": "25994d4b-ad71-54ef-aca2-6497c0d2c950",
+              "threshold": 10,
+              "description": "Drained. The weave slips away from every attempt to grasp it."
+            },
+            {
+              "id": "715ea47a-92ba-53a5-a3b9-f3af514fd0e4",
+              "threshold": 40,
+              "description": "Low. A spell or two left before the well runs dry."
+            },
+            {
+              "id": "ed6f40fb-1226-51d2-85d1-7fea24056d3a",
+              "threshold": 70,
+              "description": "Steady. Enough power for a fight's worth of magic."
+            },
+            {
+              "id": "b5e66aa1-d619-56d8-8e63-8f061d9d6e4d",
+              "threshold": 100,
+              "description": "Brimming. Power hums under the skin."
+            }
+          ]
         }
       ]
     },

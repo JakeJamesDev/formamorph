@@ -1,19 +1,16 @@
 // Entity stats in play: each authored entity's stat values, seeded at a new game and backfilled on load, and
 // the owners whose regen and code run each turn.
 
-import type { Entity, EntityStatChanges, EntityStatValues, PersonaRef, PlayerStat, Trait } from '@/types';
+import type { Entity, EntityStatChanges, EntityStatValues, PersonaRef, PlayerStat } from '@/types';
 import { inCast, playsAs } from './bearers';
 import { backfillPlayerStats } from './statBackfill';
 import { activeStatEnabled, enabledStats } from './traitEffects';
 import { seedNewGameStats } from './traitRuntime';
-import { PLAYER_OWNER, regenOwners, statsOf, type OwnerStats, type StatOwner } from './statOwners';
+import { PLAYER_OWNER, regenOwners, statsOf, type OwnerStats, type OwnerStatTraits, type StatOwner } from './statOwners';
 import { applyStatResponse, type StatRequestOwner, type StatResponse, type StatUpdateDiagnostic } from './statRequest';
 import { overlayStatCodeResult, type OwnerCodeResult, type OwnerCodeTurn } from './statCodeTurn';
 
 type StatEntity = Pick<Entity, 'id' | 'stats'>;
-
-/** The traits that move an entity's stats: none, since an entity's own traits move no stats. */
-const ENTITY_STAT_TRAITS: readonly Trait[] = [];
 
 /** Each authored entity that owns stats, every stat seeded as a new game seeds the player's. */
 export const seedEntityStats = (entities: readonly StatEntity[]): EntityStatValues =>
@@ -60,25 +57,26 @@ export function entityCodeTurns(
 
 /** The present entities whose live stats join the player's in the stat request, each once, in `present` order.
  *  `present` holds the entities the narration confirmed, names resolved. The played persona stays out. `prepare`
- *  readies an owner's live stats for the request. */
+ *  readies an owner's live stats for the request; `inForce` gives the traits that switch them. */
 export function statRequestOwners(
   present: readonly Entity[], values: OwnerStats, persona: PersonaRef | undefined,
-  prepare: (stats: PlayerStat[]) => PlayerStat[],
+  prepare: (stats: PlayerStat[]) => PlayerStat[], inForce: OwnerStatTraits,
 ): StatRequestOwner[] {
   const seen = new Set<string>();
   return present.flatMap((entity) => {
     const held = values[entity.id];
     if (!held || seen.has(entity.id) || !inCast(entity, persona)) return [];
     seen.add(entity.id);
-    const stats = prepare(enabledStats([...held], activeStatEnabled(held, ENTITY_STAT_TRAITS)));
+    const stats = prepare(enabledStats([...held], activeStatEnabled(held, inForce(entity.id))));
     return stats.length ? [{ id: entity.id, name: entity.name, stats }] : [];
   });
 }
 
-/** `values` with each entity owner's updates from `response` applied, max before value, by identity. The
- *  diagnostics are each owner's own: an owner the playthrough no longer holds reports every update missing. */
+/** `values` with each entity owner's updates from `response` applied, max before value, by identity, bounds
+ *  derived under the owner's traits in force. The diagnostics are each owner's own: an owner the playthrough no
+ *  longer holds reports every update missing. */
 export function applyEntityStatResponse(
-  values: EntityStatValues, response: StatResponse,
+  values: EntityStatValues, response: StatResponse, inForce: OwnerStatTraits,
 ): { values: EntityStatValues; diagnostics: StatUpdateDiagnostic[] } {
   const ownerIds = [...new Set(response.updates.map((u) => u.ownerId).filter((id) => id !== PLAYER_OWNER))];
   if (!ownerIds.length) return { values, diagnostics: [] };
@@ -88,8 +86,9 @@ export function applyEntityStatResponse(
   const diagnostics: StatUpdateDiagnostic[] = [];
   for (const ownerId of ownerIds) {
     const held = values[ownerId] ?? [];
-    const live = new Set(enabledStats(held, activeStatEnabled(held, ENTITY_STAT_TRAITS)).map((s) => s.id));
-    const applied = applyStatResponse(held, updatesOnly, live, ENTITY_STAT_TRAITS, ownerId);
+    const active = inForce(ownerId);
+    const live = new Set(enabledStats(held, activeStatEnabled(held, active)).map((s) => s.id));
+    const applied = applyStatResponse(held, updatesOnly, live, active, ownerId);
     if (values[ownerId]) next[ownerId] = applied.stats;
     diagnostics.push(...applied.diagnostics);
   }
@@ -113,14 +112,18 @@ export function entityStatDeltas(values: EntityStatValues, baseline: EntityStatV
 }
 
 /** Each owner's code result laid onto the latest `values`, which may have moved since the run read its
- *  snapshot. The same map when no owner moved. */
+ *  snapshot, re-derived under the owner's traits in force. The same map when no owner moved. */
 export function withOwnerCodeResults(
-  values: EntityStatValues, results: Readonly<Record<string, OwnerCodeResult>> | undefined,
+  values: EntityStatValues, results: Readonly<Record<string, OwnerCodeResult>> | undefined, inForce: OwnerStatTraits,
 ): EntityStatValues {
-  const moved = Object.entries(results ?? {}).filter(([id, r]) => values[id] && (r.moved.length || r.boundsChanged.length));
+  const moved = Object.entries(results ?? {})
+    .filter(([id, r]) => values[id] && (r.moved.length || r.boundsChanged.length || r.inForce));
   if (!moved.length) return values;
   return {
-    ...values, ...Object.fromEntries(moved.map(([id, r]) => [id, overlayStatCodeResult(values[id], r, ENTITY_STAT_TRAITS)])),
+    ...values,
+    ...Object.fromEntries(moved.map(([id, r]) => [
+      id, overlayStatCodeResult(values[id], r, inForce(id)),
+    ])),
   };
 }
 
@@ -131,9 +134,12 @@ export function backfillGameStateEntityStats<S extends { entityStats?: EntitySta
 }
 
 /** The entity owners whose regen and code run, in authored order: every entity in the playthrough that holds
- *  stat values, present or not, the played world persona among them. */
-export function entityStatOwners(values: OwnerStats, entities: readonly Entity[], persona: PersonaRef | undefined): StatOwner[] {
+ *  stat values, present or not, the played world persona among them. Each owner's traits in force switch its
+ *  stats on and off. */
+export function entityStatOwners(
+  values: OwnerStats, entities: readonly Entity[], persona: PersonaRef | undefined, inForce: OwnerStatTraits,
+): StatOwner[] {
   return entities
     .filter((entity) => values[entity.id] && (inCast(entity, persona) || playsAs(entity, persona)))
-    .map((entity) => ({ id: entity.id, stats: values[entity.id], enabled: activeStatEnabled(values[entity.id], ENTITY_STAT_TRAITS) }));
+    .map((entity) => ({ id: entity.id, stats: values[entity.id], enabled: activeStatEnabled(values[entity.id], inForce(entity.id)) }));
 }

@@ -275,18 +275,9 @@ export function entityRootTraitTree(entity: Entity, world: Pick<WorldTraitLists,
   return tree;
 }
 
-/** Why a drop was refused: `offender`, inside the dragged `name`, has stat effects; the bearer's tree already
- *  holds the original `name`; the Custom Persona entity `name` left the top level; or a linked Blueprint would
- *  leave Blueprints. */
+/** Why a drop was refused: the bearer's tree already holds the original `name`; the Custom Persona entity
+ *  `name` left the top level; or a linked Blueprint would leave Blueprints. */
 export type TraitDropRefusal =
-  | {
-    reason: 'stats';
-    name: string;
-    kind: 'trait' | 'group';
-    offender: string;
-    /** The name of the entity the item stays with; null = the world. */
-    owner: string | null;
-  }
   | { reason: 'duplicate'; name: string; bearer: string }
   | { reason: 'root'; name: string }
   /** A Blueprints item moved out of Blueprints, or into an entity, while the `bearers` link it or something below it. */
@@ -305,8 +296,8 @@ export type OwnedTraitDrop =
 /** Whether the trait changes stats: stat changes or stat toggles. */
 export const hasStatEffects = (t: Trait): boolean => t.statChanges.length > 0 || (t.statToggles?.length ?? 0) > 0;
 
-/** Whether the entity may own traits with stat effects: the player can play it, so they apply while it is played. */
-export const canOwnStatTraits = (entity: Pick<Entity, 'persona' | 'customPersona'>): boolean => !!(entity.persona || entity.customPersona);
+/** The trait's stat changes and stat toggles, each naming one stat. */
+export const statRows = (t: Trait): readonly { statId: string }[] => [...t.statChanges, ...(t.statToggles ?? [])];
 
 /** The one tree's visible rows, with collapsed groups' children hidden. */
 export const ownedTraitRows = (tree: OwnedTraitTree, collapsedIds: Iterable<string>): FlatTraitNode[] =>
@@ -444,9 +435,8 @@ export function linkRefusal(
 /**
  * Resolve a drag in the one tree. A world row dropped into an entity links it there, refused when the
  * entity's tree already holds it; without `createLinks` it moves in as the entity's own item, refused while
- * any entity links it. An owned row may change owner and keeps its id, unless a trait it carries into an
- * entity has stat effects. An entity node moves like a group, among world items only, and the Custom Persona
- * entity's node at the top level only. Null = nothing to write.
+ * any entity links it. An owned row may change owner and keeps its id. An entity node moves like a group,
+ * among world items only, and the Custom Persona entity's node at the top level only. Null = nothing to write.
  */
 export function applyOwnedTraitDrop(
   world: WorldTraitLists, entities: readonly Entity[],
@@ -540,18 +530,6 @@ export function applyOwnedTraitDrop(
     for (const { link } of linksCarried(tree, activeId)) {
       const refused = duplicateIn(to, link.originalId);
       if (refused) return refused;
-    }
-    // A link's stat effects stay on its original, so only owned traits count, and a persona may own them.
-    const ownedBelow = canOwnStatTraits(tree.entityNodes.get(to)!) ? [] : leavesBelow.filter((t) => !tree.linkRows.has(t.id));
-    const offender = flattenTraitTree(buildTraitTree(dropped.groups, ownedBelow)).find((n) => n.leaf && hasStatEffects(n.leaf));
-    if (offender) {
-      return {
-        kind: 'refused',
-        refusal: {
-          reason: 'stats', name: movedItem.name, kind: movedGroup ? 'group' : 'trait', offender: offender.leaf!.name,
-          owner: from ? tree.entityNodes.get(from)!.name : null,
-        },
-      };
     }
   }
 
