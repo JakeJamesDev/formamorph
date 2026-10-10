@@ -82,6 +82,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **A supporter's profile image sits centered in its ring in comments and notifications.** The image no longer covers the bottom of the ring. Supporter and staff badges are the same height on every screen.
   - **A toast's close button and View Details link now work while a dialog is open.** Before, a click went through the toast to the dialog behind it.
   - **The ring that undo and Take Me There draw around a field shows in full at a scroll area's edge.** The first field of a World Editor panel lost the ring's top edge after an undo. The ring follows the field as it scrolls.
+- **🛠️ Developer tooling**
+  - **The dev held-updates bar shows the full file paths in a themed tip, not a native tooltip.** The bar now runs in its own React root, so it still works after the app crashes.
 
 ---
 
