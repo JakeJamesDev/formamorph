@@ -19,7 +19,7 @@ When the player plays an authored entity, its stats become the player's stats, a
 - [ ] A same-named persona stat and world player stat are two stats in the panel, the request and stat code.
 - [ ] The stat request tells the two apart, and each change lands on the right one.
 - [ ] Switching persona and back keeps every entity's stat values.
-- [ ] The persona is never listed as an entity in the request or the panel's dropdown while played.
+- [ ] The played persona is never an entity owner in the request. In the panel's dropdown it stays "<name> (You)", and picking it shows no entity section (Q49).
 
 ## Completion checks
 
