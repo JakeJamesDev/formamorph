@@ -11,7 +11,7 @@ Parent: [Entity Stats spec](../spec.md)
 
 ## What to build
 
-Entity stats live through a playthrough. A new game seeds every authored entity's stats. Each turn, regen and stat code run for every entity in the playthrough, present or not. Stat code reads any entity's stats through `entities[x].stats`, read only, and an entity stat's own code reads its owner's stats as `stats`. An entity stat's morph bindings drive that entity's model. The save keeps entity stat values and drops those of entities no longer in the playthrough. Rulings Q7, Q9, Q15, Q29, and the derived morph and pruning rulings.
+Entity stats live through a playthrough. A new game seeds every authored entity's stats. Each turn, regen and stat code run for every entity in the playthrough, present or not. Stat code reads any entity's stats through `entities[x].stats`, read only, and an entity stat's own code reads its owner's stats as `stats`. The save keeps entity stat values and drops those of entities no longer in the playthrough. Rulings Q7, Q9, Q15, Q29, Q38–Q42, and the derived pruning ruling. Morph bindings are ticket 16 (Q43).
 
 ## Acceptance criteria
 
@@ -19,7 +19,6 @@ Entity stats live through a playthrough. A new game seeds every authored entity'
 - [ ] Before code, regen and after code run for every owner each turn, in today's order.
 - [ ] `entities[x].stats` exposes each entity's stats read only; a write from code has no effect.
 - [ ] In an entity stat's code, `stats` is its owner's stats. The player's code reads the player's stats as before.
-- [ ] An entity stat's morph bindings drive that entity's model.
 - [ ] The save stores entity stat values keyed by owner. Load drops owners no longer in the playthrough.
 - [ ] Gameplay never writes GameDataContext.
 - [ ] Response carries the export-shape reminder.

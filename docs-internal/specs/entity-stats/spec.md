@@ -66,6 +66,13 @@ Rulings from the grill, numbered as asked.
 - **Q36** (ticket 02) The schema keeps C3's flat shape. Under each owner, a stat's key holds its bare signed change, and a "<key> max" key beside it holds its max change. All keys are required and bounded, 0 meaning no change. Key dedupe reserves both keys, so a real stat named "X max" gets a numbered key. A per-stat `{ change, max }` object was rejected: on the cloud model it wrote the size of a change instead of its signed value (6 wrong signs vs 0). Cloud, player cells: exact 87%, recall 78%, 0 wrong signs, 5 invented changes, 0 invented max changes.
 - **Q37** (ticket 02) The player-only request already uses C3's per-owner sections: a Stats section with one owner heading for the player character, as the probe measured. Ticket 05 adds owners to the same structure.
 
+- **Q38** (ticket 04) A new game seeds every authored entity stat at its starting value, enabled or not, as the player's stats are seeded. A switched-off stat keeps its value, gets no regen or code, and reads in `entities[x].stats` as a real entry with `enabled: false`.
+- **Q39** (ticket 04) Every authored world entity that owns stats is seeded at a new game. Regen and code run each turn for every authored entity in the playthrough, present or not (Q15), and for the played world persona. Until ticket 13, the persona's stats run as that entity's stats. Discovered characters never own stats; library characters wait for ticket 14.
+- **Q40** (ticket 04) On load, entity stats backfill per owner as the player's do: a missing stat is added at its starting value, and a stat the world removed is kept. Owners no longer in the playthrough are pruned.
+- **Q41** (ticket 04) `entities[x].stats` is keyed by code name, and each entry has the same shape as an entry in `stats`, change fields included, all read only. A write is dropped and reported with the other read-only writes. Every owner's code reads one snapshot, taken after asks and regen and before any code.
+- **Q42** (ticket 04) Code for every owner runs over that one snapshot. Writes and trait switches then apply in owner order: the player first, then entities in authored order, and the later write wins. In an entity stat's code, only `stats` is the owner's; `traits` stays the player's world traits, and the owner's traits are under `entities[x].traits`.
+- **Q43** (ticket 04) Entity-stat morph bindings move to ticket 16, which adds morphs to entity models and lists each entity model's own shape keys in the Body Sliders picker. A binding without a picker can't be authored, so both land together.
+
 Derived from Q7 and confirmed with the summary:
 
 - An entity stat's morph bindings drive that entity's own model.
