@@ -23,6 +23,9 @@ const keep = <T>(map: Readonly<Record<string, T>> | undefined, held: (id: string
 export const recordKey = (ownerId: string, traitId: string): string =>
   (ownerId === WORLD_OWNER ? traitId : `${ownerId}/${traitId}`);
 
+/** The key an entity's trait keeps the record of what it moved on that entity's own stats. */
+export const ownStatsRecordKey = (ownerId: string, traitId: string): string => `${ownerId}/${traitId}/stats`;
+
 /** The bearer a stat record belongs to, read back from its key. */
 const recordOwner = (key: string): string => (key.includes('/') ? key.slice(0, key.indexOf('/')) : WORLD_OWNER);
 

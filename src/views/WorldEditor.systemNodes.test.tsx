@@ -94,7 +94,6 @@ describe('removing a system node', () => {
     fireEvent.click(within(blueprints).getByRole('button', { name: 'Remove Blueprints' }));
     expect(screen.getByText(
       "Its 3 links become each entity's own trait, and the linked originals are deleted. "
-      + 'The copies on Vex lose their stat changes and stat toggles. '
       + 'The other traits move to the top level, where the player can pick them.',
     )).toBeInTheDocument();
     confirm();
@@ -103,7 +102,7 @@ describe('removing a system node', () => {
     expect(marked(ctx)).not.toHaveProperty('traitLinks');
     expect(marked(ctx).traits?.map((t) => t.name).sort()).toEqual(['Paladin', 'Wizard']);
     const vex = ctx().entities.find((e) => e.id === 'e-vex')!;
-    expect(vex.traits).toMatchObject([{ name: 'Wizard', statChanges: [] }]);
+    expect(vex.traits).toMatchObject([{ name: 'Wizard', statChanges: [{ statId: 'hp', value: 1, type: 'max' }] }]);
   });
 
   it('removes Blueprints with no links without mentioning them', () => {

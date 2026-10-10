@@ -191,34 +191,43 @@ describe('an owned trait\'s panel', () => {
     expect(screen.getByText('Describes them to the AI, and joins your traits when you play as them')).toBeInTheDocument();
     const strip = screen.getByRole('tablist', { name: 'Trait Fields' });
     expect(within(strip).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Details', 'Availability', 'Stats', 'Pins']);
+    // Tamed names no player stat, so the persona note stays away.
     fireEvent.mouseDown(within(strip).getByRole('tab', { name: 'Stats' }));
-    expect(screen.getByText('Stat changes apply only when you play as them')).toBeInTheDocument();
+    expect(screen.queryByText(/stat changes apply/i)).toBeNull();
 
     fireEvent.mouseDown(within(strip).getByRole('tab', { name: 'Details' }));
     fireEvent.click(screen.getByRole('button', { name: 'Ash' }));
     expect(screen.getByRole('tab', { name: /Entities/, selected: true })).toBeInTheDocument();
   });
 
-  it("has no Stats tab on a cast entity's trait, unless the trait already has stat effects to remove (Q6, Q10)", () => {
-    const cast = (tamed: Partial<World['traits'][number]>) => ({
+  it("picks a cast entity's own stats on its trait's Stats tab, and a persona's player stats too, with a note (Q53)", () => {
+    const withStats = (persona: boolean, statId: string) => ({
       ...WORLD,
+      stats: [{ id: 'hp', name: 'Health', type: 'number', description: '', min: 0, max: 100, regen: 0, descriptors: [] }],
       entities: WORLD.entities.map((e) => (e.id === 'ash'
-        ? { ...e, persona: false, traits: e.traits!.map((t) => (t.id === 't-tamed' ? { ...t, ...tamed } : t)) }
+        ? {
+          ...e, persona, stats: [{ id: 'vigor', name: 'Vigor', type: 'number', description: '', min: 0, max: 100, regen: 0, descriptors: [] }],
+          traits: e.traits!.map((t) => (t.id === 't-tamed' ? { ...t, statChanges: [{ statId, value: 5, type: 'max' }] } : t)),
+        }
         : e)),
-    });
-    const { unmount } = renderWorldEditorBench(cast({}), 'advanced');
-    openTab(/Traits/);
-    fireEvent.click(treeRow('Tamed')!);
-    const plain = screen.getByRole('tablist', { name: 'Trait Fields' });
-    expect(within(plain).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Details', 'Availability', 'Pins']);
+    }) as World;
+    const statsTab = () => {
+      openTab(/Traits/);
+      fireEvent.click(treeRow('Tamed')!);
+      const strip = screen.getByRole('tablist', { name: 'Trait Fields' });
+      expect(within(strip).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Details', 'Availability', 'Stats', 'Pins']);
+      fireEvent.mouseDown(within(strip).getByRole('tab', { name: 'Stats' }));
+    };
+    const { unmount } = renderWorldEditorBench(withStats(false, 'vigor'), 'advanced');
+    statsTab();
+    expect(screen.getByText('Vigor')).toBeInTheDocument();
+    expect(screen.queryByText(/stat changes apply/i)).toBeNull();
     unmount();
 
-    renderWorldEditorBench(cast({ statToggles: [{ statId: 'hp', enabled: true }] }), 'advanced');
-    openTab(/Traits/);
-    fireEvent.click(treeRow('Tamed')!);
-    const strip = screen.getByRole('tablist', { name: 'Trait Fields' });
-    fireEvent.mouseDown(within(strip).getByRole('tab', { name: 'Stats' }));
-    expect(screen.getByText("Stat changes don't apply to entities")).toBeInTheDocument();
+    renderWorldEditorBench(withStats(true, 'hp'), 'advanced');
+    statsTab();
+    expect(screen.getByText('Health')).toBeInTheDocument();
+    expect(screen.getByText('Player stat changes apply only when you play as them')).toBeInTheDocument();
   });
 
   it('keeps the Stats tab and no owner line on a world trait', () => {

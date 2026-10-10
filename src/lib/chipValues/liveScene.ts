@@ -7,7 +7,8 @@ import { entityNamed, scenePresentHere, type OwnedTraitsInForce } from '../locat
 import { PLAYER_BEARER } from '../bearers';
 import { borneByPlayer, inBearerPlaces, withBearerTrees, type BearerTree } from '../ownedTraitsInPlay';
 import type { ResolvedPersona } from '../persona';
-import { enabledOwnerStats, type OwnerStats } from '../statOwners';
+import { treeStatTraits } from '../traitRuntime';
+import { enabledOwnerStats, withTraitToggles, type OwnerStats } from '../statOwners';
 import { resolveEntityTexts, resolveOwnedTraitTexts, type ResolveEntityText } from '../resolveWorldNames';
 import type { ChipScene, ChipSceneTime } from './chipScene';
 
@@ -100,13 +101,15 @@ export function liveChipScene(
     trait.aiDescription ? { ...trait, aiDescription: resolveTrait(trait, trait.aiDescription) } : trait,
   );
 
+  const ownedInForce = inForceByOwner(box?.ownedTraits ?? sources.ownedTraits);
   return {
     overview: sources.overview,
     stats: box?.activeStats ?? sources.stats,
     traits,
     traitGroups: player ? borneByPlayer(player.groups) : sources.traitGroups,
-    ownedTraits: inForceByOwner(box?.ownedTraits ?? sources.ownedTraits),
-    ownedStats: enabledOwnerStats(box?.entityStats ?? sources.entityStats ?? {}),
+    ownedTraits: ownedInForce,
+    // An entity's traits in force switch its stats on and off.
+    ownedStats: enabledOwnerStats(withTraitToggles(box?.entityStats ?? sources.entityStats ?? {}, treeStatTraits(sources.bearers ?? [], ownedInForce))),
     persona,
     location: loc,
     locations: sources.locations,

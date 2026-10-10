@@ -10,7 +10,6 @@ import { BlueprintFooter, FieldReset, LabelRow } from '@/components/editor/Bluep
 import { effectiveLinkTrait, linkTraitState } from '@/lib/blueprints';
 import { editLinkTrait, linkedTraits, originalPath, resetLink, resetLinkField, resetLinkTrait, setLinkField } from '@/lib/traitLinks';
 import { labelPlaceholders } from '@/lib/placementLetters';
-import { hasStatEffects } from '@/lib/traitTree';
 import { fieldFrame } from '@/lib/historyField';
 import type { LinkRow } from '@/lib/traitTree';
 import type { Entity, Trait, TraitLink } from '@/types';
@@ -41,11 +40,6 @@ export function LinkNotice({ children }: { children: ReactNode }) {
 const defaultHintFor = (bearer: Entity) =>
   (bearer.customPersona ? 'Selected when a new game starts' : 'Selected for this entity when a new game starts');
 
-/** The bearer's stat note on a link that brings stat effects. */
-function LinkStatNote({ bearer, traits }: { bearer: Entity; traits: readonly Trait[] }) {
-  return traits.some(hasStatEffects) ? <BearerStatNote bearer={bearer} /> : null;
-}
-
 /**
  * The trait panel for one trait a link brings, as that link reads it. Edits write the link's overrides on the
  * bearer; the original is untouched.
@@ -73,7 +67,7 @@ export function LinkedTraitManager({ bearer, link, original, ...panel }: {
       trait={trait}
       link={edit}
       detailsHeader={<LinkedFromLine originalId={original.id} />}
-      availabilityFooter={<LinkStatNote bearer={bearer} traits={[trait]} />}
+      availabilityFooter={<BearerStatNote bearer={bearer} traits={[trait]} />}
     />
   );
 }
@@ -123,7 +117,7 @@ export function ThisLinkSection({ entity, link, originalId }: { entity: Entity; 
           </ul>
         </div>
       )}
-      <LinkStatNote bearer={entity} traits={rows} />
+      <BearerStatNote bearer={entity} traits={rows} />
     </Section>
   );
 }

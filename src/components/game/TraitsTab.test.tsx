@@ -658,6 +658,34 @@ describe('a trait row reveals what it does', () => {
     expect(screen.getByText(/Vigor/)).toHaveTextContent('Vigor: +10');
   });
 
+  it("reads a cast entity's trait changes against its own stats, never the player's", () => {
+    // The player's Health is hidden; Hesk's own Health is not. Dwarf also names Vigor, which Hesk doesn't own.
+    const dwarf = T('t-dwarf', 'Dwarf', {
+      statChanges: [{ statId: 'health', value: 10, type: 'max' }, { statId: 'vigor', value: 3, type: 'starting' }],
+    });
+    const hesk = { id: 'e-hesk', name: 'Mother Hesk', traits: [dwarf], stats: [statFixture('Health', 100)] };
+    const owned = (persona: boolean) => renderTraits([], [], [], {
+      stats: [statFixture('Vigor', 50), statFixture('Health', 100, { hidden: true })],
+      world: { entities: [{ ...hesk, persona }] },
+      seed: (gameplay) => {
+        gameplay.setOwnedTraits({ 'e-hesk': { chosen: ['t-dwarf'] } });
+        gameplay.setEntityStats({ 'e-hesk': hesk.stats });
+        if (persona) gameplay.setPersonaRef({ source: 'world', entityId: 'e-hesk' });
+      },
+    });
+    const { unmount } = owned(false);
+    fireEvent.click(screen.getByRole('button', { name: /Dwarf/ }));
+    expect(screen.getByText(/Health/)).toHaveTextContent('Health: +10 (max)');
+    expect(screen.queryByText(/Vigor:/)).toBeNull();
+    unmount();
+
+    // Played, Hesk's traits also reach the player's stats: her own Health first, then the player's Vigor.
+    owned(true);
+    fireEvent.click(screen.getByRole('button', { name: /Dwarf/ }));
+    expect(screen.getByText(/Health:/)).toHaveTextContent('Health: +10 (max)');
+    expect(screen.getByText(/Vigor:/)).toHaveTextContent('Vigor: +3');
+  });
+
   it('leaves a hidden stat out of the list the player reads', () => {
     renderTraits(TRAITS, [], ['t-strong']);
     fireEvent.click(screen.getByRole('button', { name: /Strong Back/ }));

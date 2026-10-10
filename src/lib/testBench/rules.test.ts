@@ -283,14 +283,56 @@ describe('reference-integrity rules', () => {
     expect(runRules(toggled('s1'))).toEqual([]);
   });
 
-  it('flags an owned trait toggling a stat that doesn’t exist', () => {
-    const found = only(base({
+  it('leaves an owned trait’s toggles to the bearer rule', () => {
+    const w = base({
       stats: [stat({ id: 's1', name: 'Mana' })],
       entities: [resident, { id: 'e-you', name: 'Wanderer', customPersona: true, traits: [
         trait({ id: 't1', name: 'Blessed', statToggles: [{ statId: 'gone', enabled: true }] }),
       ] }],
-    }), 'trait-toggle-missing-stat');
-    expect(found.map((f) => f.items[0].id)).toEqual(['t1']);
+    });
+    expect(only(w, 'trait-toggle-missing-stat')).toEqual([]);
+    expect(only(w, 'trait-stat-no-target').map((f) => f.items[0].id)).toEqual(['t1']);
+  });
+
+  describe('entity trait stat changes with no target', () => {
+    const rule = 'trait-stat-no-target';
+    const hp = stat({ id: 'hp', name: 'Health' });
+    const vigor = stat({ id: 'vigor', name: 'Vigor' });
+    const raise = (statId: string) => [{ statId, value: 5, type: 'max' as const }];
+    const bram = (traits: Trait[], over: Partial<Entity> = {}): Entity => ({ ...resident, id: 'bram', name: 'Bram', stats: [vigor], traits, ...over });
+
+    it('flags a cast entity’s trait that changes or toggles a stat the entity doesn’t own, a player stat included', () => {
+      const found = only(base({ stats: [hp], entities: [bram([
+        trait({ id: 'boast', name: 'Boast', statChanges: raise('hp') }),
+        trait({ id: 'grim', name: 'Grim', statToggles: [{ statId: 'gone', enabled: false }] }),
+        trait({ id: 'hardy', name: 'Hardy', statChanges: raise('vigor'), statToggles: [{ statId: 'vigor', enabled: true }] }),
+        trait({ id: 'draft', name: 'Draft', statChanges: raise('') }),
+      ])] }), rule);
+      expect(found.map((f) => f.message)).toEqual([
+        '“Boast” on “Bram” changes a stat that “Bram” doesn’t own',
+        '“Grim” on “Bram” changes a stat that “Bram” doesn’t own',
+      ]);
+      expect(found.map((f) => [f.severity, f.section, f.items[0].id])).toEqual([['warning', 'traits', 'boast'], ['warning', 'traits', 'grim']]);
+    });
+
+    it('lets a trait on an entity the player can play name a player stat', () => {
+      for (const mark of [{ persona: true }, { customPersona: true }]) {
+        const w = base({ stats: [hp], entities: [bram([trait({ id: 'boast', name: 'Boast', statChanges: raise('hp') })], mark)] });
+        expect(only(w, rule)).toEqual([]);
+      }
+    });
+
+    it('checks a linked trait as its bearer reads it, opening the link', () => {
+      const linkTo = (overrides?: TraitLink['overrides']): TraitLink => ({
+        id: 'l-boast', originalId: 'boast', kind: 'trait', originalName: 'Boast', groupId: null, order: 0, ...(overrides ? { overrides } : {}),
+      });
+      const blueprints: TraitGroup = { id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' };
+      const shared = { stats: [hp], traitGroups: [blueprints], traits: [trait({ id: 'boast', name: 'Boast', groupId: 'bp', statChanges: raise('hp') })] };
+      const found = only(base({ ...shared, entities: [bram([], { traitLinks: [linkTo()] })] }), rule);
+      expect(found.map((f) => f.items[0].id)).toEqual(['l-boast']);
+      const retargeted = { boast: { statChanges: { value: raise('vigor'), blueprint: raise('hp') } } };
+      expect(only(base({ ...shared, entities: [bram([], { traitLinks: [linkTo(retargeted)] })] }), rule)).toEqual([]);
+    });
   });
 
   it('flags a pin to a placeholder that doesn’t exist, from any of the four sources, opening on the source', () => {
@@ -3988,6 +4030,7 @@ const RULE_SCOPE: Record<string, 'simple' | 'advanced'> = {
   'wildcard-single-value': 'advanced',
   // Names, placement, structure, stat bounds, lore keywords, the world itself.
   'connection-endpoint-orphan': 'simple',
+  'trait-stat-no-target': 'simple',
   'dictionary-entry-inert': 'simple',
   'dictionary-keyword-substring': 'simple',
   'entity-location-orphan': 'simple',

@@ -11,11 +11,11 @@
 //   that trait reverses it, rather than the authored number.
 
 import type {
-  CascadeOffTraitIds, CodeBounds, OwnedTraitPicks, OwnedTraitStates, PersonaRef, PlayerStat, Stat, StatChange, Trait,
+  CascadeOffTraitIds, CodeBounds, EntityStatValues, OwnedTraitPicks, OwnedTraitStates, PersonaRef, PlayerStat, Stat, StatChange, Trait,
   TraitGroup,
 } from '@/types';
 import { clamp } from './utils';
-import { ownedTraitStatesFrom, recordKey } from './ownedTraitState';
+import { ownedTraitStatesFrom, ownStatsRecordKey, recordKey } from './ownedTraitState';
 import { activeOwnedTraitIds } from './ownedTraitsInPlay';
 import { exclusiveSiblings, inAuthoredOrder, isAlwaysOn, isHidden } from './traitEffects';
 import { hasStatEffects, offeredWorldTraits } from './traitTree';
@@ -23,8 +23,8 @@ import {
   gateOf, gateStates, modeRefuses, overfills, playerOwnerIds, settle, underfills, WORLD_OWNER, type GateEntity, type GateInput, type GateOwner, type GateStates, type GateTraitRef,
 } from './traitGates';
 
-/** What a trait's last switch actually moved: record key → stat id → value delta, keyed as `recordKey`
- *  (lib/ownedTraitState) spells it. */
+/** What a trait's last switch actually moved: record key → stat id → value delta, keyed as `recordKey` and
+ *  `ownStatsRecordKey` (lib/ownedTraitState) spell it. */
 export type AppliedTraitValues = Record<string, Record<string, number>>;
 
 /** The gameplay slice trait operations read and rewrite. */
@@ -38,6 +38,8 @@ export interface TraitRuntimeState {
   cascadeOffTraitIds?: CascadeOffTraitIds;
   /** Each entity's owned traits. Absent ⇒ none. */
   ownedTraits?: OwnedTraitStates;
+  /** Each entity's stat values, which its own traits move. Absent ⇒ none. */
+  entityStats?: EntityStatValues;
 }
 
 /** The authored world, for exclusive-group lookups and gates. Absent `entities` or `persona`, no "playing
@@ -64,6 +66,8 @@ export interface TraitForceState {
   traits: readonly Trait[];
   disabledTraitIds: readonly string[];
   ownedTraits?: OwnedTraitStates;
+  /** Each entity's stat values: a player bearer's change on one of its own stats leaves the player's alone. */
+  entityStats?: EntityStatValues;
 }
 
 /** The player's chosen world traits the player bearer holds right now. A Custom Persona pick lies dormant
@@ -87,19 +91,35 @@ const playerEntityBearers = (world: TraitWorld): readonly GateOwner[] => {
 /** Whether `ownerId` is a player entity bearer, whose stat traits move the player's stats. */
 const isPlayerBearer = (world: TraitWorld, ownerId: string): boolean => playerEntityBearers(world).some((o) => o.id === ownerId);
 
-/** Each player entity bearer's active traits that change stats, owned or linked, with the bearer that holds
- *  them: the played persona's, and the Custom Persona entity's. */
-function playedStatTraitsByOwner(state: Pick<TraitForceState, 'ownedTraits'>, world: TraitWorld): [string, Trait][] {
+/** The ids of the stats `ownerId` owns in play. */
+const ownStatIds = (state: Pick<TraitForceState, 'entityStats'>, ownerId: string): ReadonlySet<string> =>
+  new Set((state.entityStats?.[ownerId] ?? []).map((s) => s.id));
+
+/** A player bearer's trait as it acts on the player's stats: its changes and toggles on the bearer's own
+ *  stats left out. The same trait when it has none. */
+function withoutOwnStatRows(trait: Trait, own: ReadonlySet<string>): Trait {
+  if (!own.size) return trait;
+  const statChanges = trait.statChanges.filter((x) => !own.has(x.statId));
+  const statToggles = trait.statToggles?.filter((x) => !own.has(x.statId));
+  if (statChanges.length === trait.statChanges.length && statToggles?.length === trait.statToggles?.length) return trait;
+  return { ...trait, statChanges, ...(statToggles ? { statToggles } : {}) };
+}
+
+/** Each player entity bearer's active traits that change the player's stats, owned or linked, with the bearer
+ *  that holds them: the played persona's, and the Custom Persona entity's. */
+function playedStatTraitsByOwner(state: Pick<TraitForceState, 'ownedTraits' | 'entityStats'>, world: TraitWorld): [string, Trait][] {
   const active = activeOwnedTraitIds(state.ownedTraits ?? {});
   return playerEntityBearers(world).flatMap((owner) => {
     const on = new Set(active[owner.id] ?? []);
-    return owner.traits.filter((t) => on.has(t.id) && hasStatEffects(t)).map((t): [string, Trait] => [owner.id, t]);
+    const own = ownStatIds(state, owner.id);
+    return owner.traits.filter((t) => on.has(t.id)).map((t) => withoutOwnStatRows(t, own))
+      .filter(hasStatEffects).map((t): [string, Trait] => [owner.id, t]);
   });
 }
 
 /** The player's active entity traits that change stats: the played persona's, and the Custom Persona
  *  entity's under None and a library persona. Empty with no persona, or under a world with no bearers. */
-export const playedStatTraits = (state: Pick<TraitForceState, 'ownedTraits'>, world: TraitWorld): Trait[] =>
+export const playedStatTraits = (state: Pick<TraitForceState, 'ownedTraits' | 'entityStats'>, world: TraitWorld): Trait[] =>
   playedStatTraitsByOwner(state, world).map(([, t]) => t);
 
 /** Every trait whose stat effects are in force: the player's active held world traits, then the player's
@@ -108,10 +128,27 @@ export function statTraitsInForce(state: TraitForceState, world: TraitWorld): Tr
   return [...heldPlayerTraits(activeTraits(state.traits, state.disabledTraitIds), world), ...playedStatTraits(state, world)];
 }
 
-/** The stat traits in force for one owner's stats: the player's are {@link statTraitsInForce}. An entity's
- *  own traits move no stats. */
+/** Each bearer's traits among its `active` ids that change stats, in its tree order; none for an owner with
+ *  no tree. */
+export function treeStatTraits(
+  trees: readonly Pick<GateOwner, 'id' | 'traits'>[], active: Readonly<Record<string, readonly string[]>>,
+): (ownerId: string) => Trait[] {
+  const byId = new Map(trees.map((tree) => [tree.id, tree]));
+  return (ownerId) => {
+    const on = new Set(active[ownerId] ?? []);
+    return (byId.get(ownerId)?.traits ?? []).filter((t) => on.has(t.id) && hasStatEffects(t));
+  };
+}
+
+/** An entity bearer's active traits that change stats, owned or linked, in its tree order. None for an
+ *  entity that isn't a bearer in play. */
+export const bearerStatTraitsInForce = (ownedTraits: OwnedTraitStates | undefined, world: TraitWorld, ownerId: string): Trait[] =>
+  treeStatTraits(entityBearers(world), activeOwnedTraitIds(ownedTraits ?? {}))(ownerId);
+
+/** The stat traits in force for one owner's stats: the player's are {@link statTraitsInForce}; an entity's
+ *  are its own. A change on a stat the owner lacks finds nothing to move. */
 export const ownerStatTraitsInForce = (state: TraitForceState, world: TraitWorld, ownerId: string): Trait[] =>
-  (ownerId === WORLD_OWNER ? statTraitsInForce(state, world) : []);
+  (ownerId === WORLD_OWNER ? statTraitsInForce(state, world) : bearerStatTraitsInForce(state.ownedTraits, world, ownerId));
 
 /** Each stat trait in force with its record key, so two worlds' sets compare by what the record is under. */
 const keyedStatTraits = (state: TraitForceState, world: TraitWorld): [string, Trait][] => [
@@ -322,20 +359,45 @@ function withDisabled(ids: readonly string[], add: string | null, remove: string
  * bound can swallow and ratchet, for that one trait. That switch records properly, so a save without records
  * heals itself the first time the player touches the trait.
  */
-function moveStats(state: TraitRuntimeState, trait: Trait, on: boolean, key: string, active: readonly Trait[]): TraitRuntimeState {
-  const derived = deriveEffectiveStats(state.stats, active);
-  const record = state.appliedValues[key];
+function settleSwitch(
+  stats: PlayerStat[], record: Record<string, number> | undefined, trait: Trait, on: boolean, active: readonly Trait[],
+): { stats: PlayerStat[]; record: Record<string, number> } {
+  const derived = deriveEffectiveStats(stats, active);
   const reversing = record !== undefined;
   const deltas = reversing
     ? negated(Object.entries(record))
     : on
       ? valueDeltas(trait.statChanges)
       : negated(valueDeltas(trait.statChanges));
-  const stats = settleValues(state.stats, derived, deltas, !reversing && on);
+  const next = settleValues(stats, derived, deltas, !reversing && on);
   // Recorded even when nothing moved: an empty record is the statement "this switch moved nothing", which is
   // exactly what stops a bound-swallowed penalty from paying out on the way off. Absent means unrecorded.
-  const appliedValues = { ...state.appliedValues, [key]: movement(state.stats, stats) };
-  return { ...state, stats, appliedValues };
+  return { stats: next, record: movement(stats, next) };
+}
+
+/** {@link settleSwitch} on the player's stats, recorded under `key`. */
+function moveStats(state: TraitRuntimeState, trait: Trait, on: boolean, key: string, active: readonly Trait[]): TraitRuntimeState {
+  const moved = settleSwitch(state.stats, state.appliedValues[key], trait, on, active);
+  return { ...state, stats: moved.stats, appliedValues: { ...state.appliedValues, [key]: moved.record } };
+}
+
+/** Whether any of the trait's stat changes names one of `stats`. */
+const changesAny = (trait: Trait, stats: readonly PlayerStat[]): boolean =>
+  trait.statChanges.some((change) => stats.some((s) => s.id === change.statId));
+
+/** {@link settleSwitch} on an entity's own stats, its lists already moved; the same state when the entity
+ *  holds no stats, or the trait changes none of them and has nothing to reverse. */
+function moveOwnStats(state: TraitRuntimeState, ownerId: string, trait: Trait, on: boolean, world: TraitWorld): TraitRuntimeState {
+  const stats = state.entityStats?.[ownerId];
+  const key = ownStatsRecordKey(ownerId, trait.id);
+  const record = state.appliedValues[key];
+  if (!stats || (record === undefined && !changesAny(trait, stats))) return state;
+  const moved = settleSwitch(stats, record, trait, on, bearerStatTraitsInForce(state.ownedTraits, world, ownerId));
+  return {
+    ...state,
+    entityStats: { ...state.entityStats, [ownerId]: moved.stats },
+    appliedValues: { ...state.appliedValues, [key]: moved.record },
+  };
 }
 
 /** Move a trait's switch in its bearer's lists and settle the stats around it: the player's world traits in
@@ -347,12 +409,15 @@ function switchTrait(state: TraitRuntimeState, trait: Trait, on: boolean, world:
   return moveStats(listed, trait, on, recordKey(ownerId, trait.id), statTraitsInForce(listed, world));
 }
 
-/** Switch a bearer's trait in its lists, moving stats when the trait has them and the player bears it: the
- *  world's traits, and a player entity bearer's linked stat traits. A cast entity's trait moves lists only. */
+/** Switch a bearer's trait in its lists and move the stats it changes: the world's traits and a player entity
+ *  bearer's move the player's stats, and an entity's own traits move its own stats. */
 function flipBearerTrait(state: TraitRuntimeState, ownerId: string, trait: Trait, on: boolean, world: TraitWorld): TraitRuntimeState {
   if (ownerId === WORLD_OWNER) return switchTrait(state, trait, on, world);
-  if (isPlayerBearer(world, ownerId) && hasStatEffects(trait)) return switchTrait(state, trait, on, world, ownerId);
-  return withOwnedSwitch(state, ownerId, trait.id, on);
+  const played = isPlayerBearer(world, ownerId) ? withoutOwnStatRows(trait, ownStatIds(state, ownerId)) : null;
+  const switched = played && hasStatEffects(played)
+    ? switchTrait(state, played, on, world, ownerId)
+    : withOwnedSwitch(state, ownerId, trait.id, on);
+  return moveOwnStats(switched, ownerId, trait, on, world);
 }
 
 /**
@@ -368,6 +433,30 @@ export function applyPlayedStatTraits(state: TraitRuntimeState, world: TraitWorl
     next = moveStats(next, trait, true, recordKey(ownerId, trait.id), [...activeTraits(next.traits, next.disabledTraitIds), ...on]);
   }
   return { state: next, applied: applied.map(([, t]) => t) };
+}
+
+/**
+ * Apply each entity bearer's traits in force to its own stats, bearer by bearer in tree order, as creation
+ * picks apply for the player. For a new game, whose entity stats are freshly seeded.
+ */
+export function applyOwnedStatTraits(state: TraitRuntimeState, world: TraitWorld): TraitRuntimeState {
+  let next = state;
+  for (const owner of entityBearers(world)) {
+    let stats = next.entityStats?.[owner.id];
+    if (!stats) continue;
+    const records: AppliedTraitValues = {};
+    const on: Trait[] = [];
+    for (const trait of bearerStatTraitsInForce(next.ownedTraits, world, owner.id)) {
+      on.push(trait);
+      if (!changesAny(trait, stats)) continue;
+      const moved = settleSwitch(stats, undefined, trait, true, on);
+      stats = moved.stats;
+      records[ownStatsRecordKey(owner.id, trait.id)] = moved.record;
+    }
+    if (!Object.keys(records).length) continue;
+    next = { ...next, entityStats: { ...next.entityStats, [owner.id]: stats }, appliedValues: { ...next.appliedValues, ...records } };
+  }
+  return next;
 }
 
 /**

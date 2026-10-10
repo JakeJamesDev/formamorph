@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
 import { EntityIcon } from '@/lib/elementIcons';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PanelTabContent, PanelTabs } from "@/components/ui/panel-tabs";
 import type { SurfaceLedgerName } from "@/components/ui/surface";
 import PlaceholderField, { PlaceholderNameField } from '@/components/prompt/PlaceholderField';
@@ -19,14 +19,15 @@ import { statCodeName } from '@/lib/statCodeNames';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { traitConflicts, type TraitConflict } from '@/lib/traitEffects';
 import { updateOwnedTrait } from '@/lib/ownedTraits';
-import { canOwnStatTraits, hasStatEffects } from '@/lib/traitTree';
+import { canBePlayer } from '@/lib/bearers';
+import { statRows } from '@/lib/traitTree';
 import { useEditorMode } from '@/lib/editorMode';
 import { HelpButton } from '@/components/HelpButton';
 import { Hint, Meta } from '@/components/ui/typography';
 import { traitPanelTabsFor, traitTabForField, type TraitPanelTab } from '@/views/traitPanelTabs';
 import { FieldReset, LabelRow } from '@/components/editor/BlueprintReset';
 import type {
-  Entity, FocusFieldHint, Placeholder, PlaceholderPin, Trait, StatChange, TraitLinkFields, TraitRequirement, TraitRequirementRow, TraitStatToggle,
+  Entity, FocusFieldHint, Placeholder, PlaceholderPin, Stat, Trait, StatChange, TraitLinkFields, TraitRequirement, TraitRequirementRow, TraitStatToggle,
 } from '@/types';
 import { WorldInput } from '@/components/editor/WorldField';
 import { fieldFrame } from '@/lib/historyField';
@@ -70,11 +71,36 @@ const ConflictNote = ({ conflict, placeholders, onOpen }: {
   );
 };
 
-/** The line under a bearer's stat sections: when its stat effects apply, or that they never do. The Custom
- *  Persona entity's traits are the player's, so it gets none. */
-export function BearerStatNote({ bearer }: { bearer: Entity }) {
-  if (bearer.customPersona) return null;
-  return <Hint>{bearer.persona ? 'Stat changes apply only when you play as them' : "Stat changes don't apply to entities"}</Hint>;
+/** The line under a world persona's stat sections when its traits change a player stat, which they do only
+ *  while it is played. The Custom Persona entity's traits are the player's, so it gets none. */
+export function BearerStatNote({ bearer, traits }: { bearer: Entity; traits: readonly Trait[] }) {
+  const { stats } = useTraitStore();
+  if (!bearer.persona || bearer.customPersona) return null;
+  const player = new Set(stats.map((s) => s.id));
+  const named = traits.flatMap(statRows).some((row) => player.has(row.statId));
+  return named ? <Hint>Player stat changes apply only when you play as them</Hint> : null;
+}
+
+/** One labeled list of stats a trait's stat rows can name. */
+interface StatChoices {
+  label?: string;
+  stats: readonly Stat[];
+}
+
+/** The stat options of a trait's stat row, under a heading per list when there is more than one. */
+function StatOptions({ choices, label }: { choices: readonly StatChoices[]; label: (name: string) => string }) {
+  const items = (list: readonly Stat[]) => list.map((stat) => <SelectItem key={stat.id} value={stat.id}>{label(stat.name)}</SelectItem>);
+  if (choices.length === 1) return <>{items(choices[0].stats)}</>;
+  return (
+    <>
+      {choices.map((choice) => (
+        <SelectGroup key={choice.label}>
+          <SelectLabel>{choice.label}</SelectLabel>
+          {items(choice.stats)}
+        </SelectGroup>
+      ))}
+    </>
+  );
 }
 
 /**
@@ -192,9 +218,13 @@ const TraitManager = ({
 
   if (!editingTrait) return null;
 
-  // An owned trait has a Stats tab on a persona, or anywhere it already has stat effects to see and remove.
-  const statsShown = !owner || canOwnStatTraits(owner) || hasStatEffects(editingTrait);
-  const tabs = traitPanelTabsFor(advanced).filter((t) => statsShown || t.value !== 'stats');
+  const tabs = traitPanelTabsFor(advanced);
+  // A bearer's trait changes the bearer's own stats; one the player can play also changes the player's.
+  const statLabel = (name: string) => labelPlaceholders(name, placeholders, { letters: placementLetters, owners: placeholderOwners });
+  const statChoices: StatChoices[] = !bearer ? [{ stats }] : [
+    { label: statLabel(bearer.name), stats: bearer.stats ?? [] },
+    ...(canBePlayer(bearer) ? [{ label: 'Player', stats }] : []),
+  ];
   const shownTab = tabs.some((t) => t.value === tab) ? tab : 'details';
 
   const detailsPanel = (
@@ -276,7 +306,7 @@ const TraitManager = ({
 
   const statsPanel = (
     <>
-      {owner && !link && <BearerStatNote bearer={owner} />}
+      {owner && !link && <BearerStatNote bearer={owner} traits={[editingTrait]} />}
       <div data-tour-anchor="trait-stat-changes" className="space-y-2">
         <LabelRow reset={resetControl('statChanges', 'Stat Changes')}>
           <Label>Stat Changes</Label>
@@ -292,11 +322,7 @@ const TraitManager = ({
                 <SelectValue placeholder="Select stat" />
               </SelectTrigger>
               <SelectContent>
-                {stats.map((stat) => (
-                  <SelectItem key={stat.id} value={stat.id}>
-                    {labelPlaceholders(stat.name, placeholders, { letters: placementLetters, owners: placeholderOwners })}
-                  </SelectItem>
-                ))}
+                <StatOptions choices={statChoices} label={statLabel} />
               </SelectContent>
             </Select>
             {/* A stat change has no id, and two can name one stat, so its place in the list names it. */}
@@ -347,9 +373,7 @@ const TraitManager = ({
                 <SelectValue placeholder="Select stat" />
               </SelectTrigger>
               <SelectContent>
-                {stats.map((stat) => (
-                  <SelectItem key={stat.id} value={stat.id}>{labelPlaceholders(stat.name, placeholders, { letters: placementLetters, owners: placeholderOwners })}</SelectItem>
-                ))}
+                <StatOptions choices={statChoices} label={statLabel} />
               </SelectContent>
             </Select>
             <Select

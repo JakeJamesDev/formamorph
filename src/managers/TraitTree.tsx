@@ -9,9 +9,8 @@ import {
 } from '@/lib/traitTree';
 import { Tip } from '@/components/ui/tooltip';
 import { DropRefusalNotice } from '@/components/editor/DropRefusalNotice';
-import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { removeOwnedItem, withOwnedTraits } from '@/lib/ownedTraits';
-import { detachDropsStats, detachLink, removeLink } from '@/lib/traitLinks';
+import { detachLink, removeLink } from '@/lib/traitLinks';
 import { SortableTree, type SortableTreeAdapter, type TreeRowSpec } from './SortableTree';
 import { chipInput } from './chipInput';
 import { useRemoveWorldTrait } from './useRemoveWorldTrait';
@@ -55,9 +54,8 @@ const bearerList = (names: readonly string[], placeholders: Placeholder[]) => na
   </Fragment>
 ));
 
-/** The line after a refused drop: an entity's trait would gain stat effects, the entity already has the
- *  trait, the Custom Persona entity left the top level, or a linked Blueprint would leave Blueprints or
- *  become owned. The dragged item stays put. */
+/** The line after a refused drop: the entity already has the trait, the Custom Persona entity left the top
+ *  level, or a linked Blueprint would leave Blueprints or become owned. The dragged item stays put. */
 export function TraitDropRefusalNotice({ refusal, placeholders, onDismiss }: {
   refusal: TraitDropRefusal;
   placeholders: Placeholder[];
@@ -73,17 +71,8 @@ export function TraitDropRefusalNotice({ refusal, placeholders, onDismiss }: {
           {name} stays in Blueprints, because {bearerList(refusal.bearers, placeholders)}{' '}
           {refusal.bearers.length === 1 ? 'links' : 'link'} to it or to something in it. Remove those links first.
         </>
-      ) : refusal.reason === 'root' ? (
-        <>{name} stays at the top level, because the Custom Persona can&apos;t go in a group.</>
       ) : (
-        <>
-          {name} stays {refusal.owner
-            ? <><PlaceholderText text={refusal.owner} placeholders={placeholders} />&apos;s</>
-            : 'a world'} {refusal.kind}, because only a persona&apos;s traits can change stats.{' '}
-          {refusal.kind === 'trait'
-            ? 'Remove its stat changes and stat toggles first.'
-            : <>Remove the stat changes and stat toggles from <strong><PlaceholderText text={refusal.offender} placeholders={placeholders} /></strong> first.</>}
-        </>
+        <>{name} stays at the top level, because the Custom Persona can&apos;t go in a group.</>
       )}
     </DropRefusalNotice>
   );
@@ -111,7 +100,6 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
   );
   const [refusal, setRefusal] = useState<TraitDropRefusal | null>(null);
   const { ask: askRemoveOriginal, dialog: removeDialog } = useRemoveWorldTrait();
-  const [pendingDetach, setPendingDetach] = useState<{ entityId: string; linkId: string; name: string } | null>(null);
 
   const detach = (entityId: string, linkId: string) => {
     const bearer = entityRoot?.bearer.id === entityId ? entityRoot.bearer : entities.find((e) => e.id === entityId);
@@ -119,12 +107,6 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
     if (!res) return;
     editEntity(entityId, () => res.entity);
     onSelect(res.newId);
-  };
-  // A Detach that drops stat effects, on an entity that can't own them, asks first.
-  const askDetach = ({ entityId, link }: LinkRow, name: string) => {
-    const bearer = entityRoot?.bearer.id === entityId ? entityRoot.bearer : entities.find((e) => e.id === entityId);
-    if (bearer && detachDropsStats(originals, bearer, link)) setPendingDetach({ entityId, linkId: link.id, name });
-    else detach(entityId, link.id);
   };
 
   // The gate a row shows. A link row reads its bearer's gate on the original. A one-entity tree's own rows
@@ -215,7 +197,7 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
           </button>
         </Tip>
       ),
-      actions: [{ icon: <Unlink className="h-4 w-4" />, title: 'Detach', onClick: () => askDetach(linkRow, name) }],
+      actions: [{ icon: <Unlink className="h-4 w-4" />, title: 'Detach', onClick: () => detach(linkRow.entityId, linkRow.link.id) }],
       removeTitle: 'Remove Link',
       remove: () => editEntity(linkRow.entityId, (e) => removeLink(e, linkRow.link.id)),
     };
@@ -332,16 +314,6 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
       {refusal && <TraitDropRefusalNotice refusal={refusal} placeholders={placeholders} onDismiss={() => setRefusal(null)} />}
       <SortableTree adapter={adapter} selectedId={selectedId} onSelect={onSelect} revealSelected />
       {removeDialog}
-      <ConfirmDialog
-        open={!!pendingDetach}
-        onOpenChange={(open) => { if (!open) setPendingDetach(null); }}
-        title={`Detach ${labelPlaceholders(pendingDetach?.name ?? '', placeholders)}?`}
-        description="The copy won't keep its stat changes and stat toggles, because only a persona's traits can change stats."
-        onConfirm={() => {
-          if (pendingDetach) detach(pendingDetach.entityId, pendingDetach.linkId);
-          setPendingDetach(null);
-        }}
-      />
     </>
   );
 };

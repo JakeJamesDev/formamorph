@@ -24,6 +24,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The Entities chip sends the stats of each present entity to the AI.** The **Stats** checkbox in the chip's pop-out turns it off. It covers the Here and In Scene scopes with Full or Summary content.
     - **Stats now go in groups on the Stats tab and on each entity's Stats tab.** Groups nest, reorder and take a description. The stat panel shows each group as a collapsible heading and leaves out a group with no visible stat.
     - **The AI now updates the stats of every entity in the scene, in the same request as yours.** Entities who aren't present stay out. The stat panel shows each entity stat's change this turn. On an endpoint that can't take the format, only your stats update, and the AI Context viewer lists the skipped entities.
+    - **An entity's own traits and trait links now change its own stats, in the World Editor and in play.** They never change the player's stats. A persona's traits still change the player's stats while you play as it. The Issues tab warns about a change to a stat the entity doesn't own.
   - **The AI now updates your stats with fewer wrong-direction and made-up changes.** It answers with a change for every stat, 0 included. An endpoint that can't take that format gets the old reply style, and the AI context viewer notes it.
 - **🛠️ Developer tooling**
   - **Entity Stats:**

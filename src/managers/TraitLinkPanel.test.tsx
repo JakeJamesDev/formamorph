@@ -237,14 +237,14 @@ describe('ThisLinkSection', () => {
     expect(within(list).queryByRole('button', { name: /^Reset/ })).toBeNull();
   });
 
-  it('notes that stat changes wait for play as a playable entity', () => {
+  it('notes that player stat changes wait for play as a playable entity', () => {
     renderSection({ id: 'ash', name: 'Ash', persona: true, traitLinks: [link('l1', 'classes', 'group')] }, 'classes');
-    expect(screen.getByText('Stat changes apply only when you play as them')).toBeInTheDocument();
+    expect(screen.getByText('Player stat changes apply only when you play as them')).toBeInTheDocument();
   });
 
-  it('notes that stat changes never apply to an entity nobody can play as', () => {
+  it('has no stat note on an entity nobody can play as, whose traits change only its own stats', () => {
     renderSection({ id: 'ash', name: 'Ash', traitLinks: [link('l1', 'classes', 'group')] }, 'classes');
-    expect(screen.getByText("Stat changes don't apply to entities")).toBeInTheDocument();
+    expect(screen.queryByText(/stat changes/i)).toBeNull();
   });
 
   it("has no stat note on the Custom Persona entity, whose links are the player's", () => {

@@ -58,6 +58,24 @@ describe('RightPanel — entity stats', () => {
     expect(screen.queryByText('Dormant')).not.toBeInTheDocument();
   });
 
+  it("hides an entity stat while its own trait switches it off, and shows one its trait switches on", () => {
+    // Bram's Grim switches Trust off and Dormant on.
+    const grim = { id: 't-grim', name: 'Grim', statChanges: [], statToggles: [{ statId: 'trust', enabled: false }, { statId: 'dormant', enabled: true }] };
+    const grimWorld = { entities: [{ ...bram, traits: [grim] }, odette, wick] } as never;
+    const withGrim = (chosen: string[], disabled: string[] = []) => renderRightPanel({}, {
+      ...stage, world: grimWorld,
+      seed: (g) => { stage.seed(g); g.setOwnedTraits({ bram: { chosen, disabled } }); g.setSelectedEntityId('bram'); },
+    });
+    const { unmount } = withGrim(['t-grim']);
+    expect(within(section()!).queryByText('Trust')).not.toBeInTheDocument();
+    expect(within(section()!).getByText('Dormant')).toBeInTheDocument();
+    unmount();
+
+    withGrim(['t-grim'], ['t-grim']);
+    expect(within(section()!).getByText('Trust')).toBeInTheDocument();
+    expect(within(section()!).queryByText('Dormant')).not.toBeInTheDocument();
+  });
+
   it('lists present entities, then absent ones, then (None)', async () => {
     renderRightPanel({}, stage);
     expect(await optionLabels()).toEqual(['Bram', 'a thin runner', 'Odette', '(None)']);

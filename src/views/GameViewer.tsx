@@ -70,7 +70,7 @@ import WorldStorageService from "../services/WorldStorageService";
 import { MenuModal } from "../components/modals/MenuModal";
 import LlmSetupGuide from "../components/modals/LlmSetupGuide";
 import WorldEditor, { type EditorExit } from "./WorldEditor";
-import type { CharacterData, ChatMessage, ChatRole, RequestMessage, ImageAttachment, AIRequestType, AITurnResult, GameLocation, GameState, MediaAsset, Dictionary, Entity, EntityStatValues, SaveRecord, World, PlayerStat, Trait, PersonaRef, OwnedTraitPicks } from "@/types";
+import type { CharacterData, ChatMessage, ChatRole, RequestMessage, ImageAttachment, AIRequestType, AITurnResult, GameLocation, GameState, MediaAsset, Dictionary, Entity, EntityStatValues, SaveRecord, World, PlayerStat, Trait, PersonaRef, OwnedTraitPicks, OwnedTraitStates } from "@/types";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars, estimateTokens } from "../lib/memoryUtils";
 import { parseNarration, stripReasoning, stripReasoningLive, extractReasoning, extractReasoningLive } from "../lib/aiResponse";
@@ -182,7 +182,7 @@ import {
 } from "../lib/traitEffects";
 import { usePlaceholderSession } from "../contexts/PlaceholderSessionContext";
 import {
-  acquireTrait, activeTraits as traitsInForce, applyPlayedStatTraits, heldPlayerTraits, playedStatTraits, seedNewGameStats, startingTraitLog,
+  acquireTrait, activeTraits as traitsInForce, applyOwnedStatTraits, applyPlayedStatTraits, bearerStatTraitsInForce, heldPlayerTraits, playedStatTraits, seedNewGameStats, startingTraitLog,
   settleTraits, statTraitsInForce, switchPersonaStats, switchPlayerTrait, traitNameIn,
   type GatedTraitResult, type TraitRuntimeState, type TraitWorld,
 } from "../lib/traitRuntime";
@@ -612,6 +612,7 @@ const GameViewer = ({
     viewTraits,
     viewDisabledTraitIds,
     viewOwnedTraits,
+    viewEntityStats,
     viewLocationId,
     gameStates,
     setGameStates,
@@ -697,13 +698,13 @@ const GameViewer = ({
   // The traits whose stat effects are in force: the active world traits, then the played persona's linked
   // stat traits. Bounds, stat toggles and stat code all read this set; the AI text reads `activeTraits`.
   const statTraits = useMemo(
-    () => statTraitsInForce({ traits: chosenTraits, disabledTraitIds, ownedTraits }, gatedWorld()),
-    [chosenTraits, disabledTraitIds, ownedTraits, gatedWorld],
+    () => statTraitsInForce({ traits: chosenTraits, disabledTraitIds, ownedTraits, entityStats }, gatedWorld()),
+    [chosenTraits, disabledTraitIds, ownedTraits, entityStats, gatedWorld],
   );
   /** The stat traits in force on a saved slice, under the current persona. */
   const inForceOn = useCallback(
-    (held: Pick<TraitRuntimeState, 'ownedTraits'> & { acquired: readonly Trait[]; disabledTraitIds: readonly string[] }) =>
-      statTraitsInForce({ traits: held.acquired, disabledTraitIds: held.disabledTraitIds, ownedTraits: held.ownedTraits }, gatedWorld()),
+    (held: Pick<TraitRuntimeState, 'ownedTraits'> & { acquired: readonly Trait[]; disabledTraitIds: readonly string[] }, entityStats?: EntityStatValues) =>
+      statTraitsInForce({ traits: held.acquired, disabledTraitIds: held.disabledTraitIds, ownedTraits: held.ownedTraits, entityStats }, gatedWorld()),
     [gatedWorld],
   );
 
@@ -1807,10 +1808,17 @@ const GameViewer = ({
   const activeStats = useMemo(() => enabledStats(playerStats, statEnabled), [playerStats, statEnabled]);
   statEnabledRef.current = statEnabled;
 
-  /** The entity owners whose regen and code run over `values`: everyone in the playthrough, present or not. */
+  /** Each entity's stat traits in force under `owned`, the owned trait state they read. */
+  const entityInForceUnder = useCallback(
+    (owned: OwnedTraitStates) => (ownerId: string) => bearerStatTraitsInForce(owned, gatedWorld(), ownerId),
+    [gatedWorld],
+  );
+  /** The entity owners whose regen and code run over `values`: everyone in the playthrough, present or not.
+   *  `owned` is the owned trait state their toggles read, the live one by default. */
   const entityOwnersOf = useCallback(
-    (values: EntityStatValues) => entityStatOwners(values, codeEntities.world, personaRef),
-    [codeEntities, personaRef],
+    (values: EntityStatValues, owned: OwnedTraitStates = ownedTraits) =>
+      entityStatOwners(values, codeEntities.world, personaRef, entityInForceUnder(owned)),
+    [codeEntities, personaRef, entityInForceUnder, ownedTraits],
   );
   // The latest committed entity stats, which the turn callbacks read as they read `rawPlayerStatsRef`.
   const entityStatsRef = useRef(entityStats);
@@ -1818,17 +1826,18 @@ const GameViewer = ({
   // The live stats a stat request could hold: the player's and every entity's that can be present.
   const requestStatCount = useMemo(
     () => activeStats.length
-      + statRequestOwners(codeEntities.world, entityStats, personaRef, (owned) => owned).reduce((n, owner) => n + owner.stats.length, 0),
-    [activeStats, codeEntities, entityStats, personaRef],
+      + statRequestOwners(codeEntities.world, entityStats, personaRef, (owned) => owned, entityInForceUnder(ownedTraits))
+        .reduce((n, owner) => n + owner.stats.length, 0),
+    [activeStats, codeEntities, entityStats, personaRef, entityInForceUnder, ownedTraits],
   );
 
   // The same derivation for a paged-back turn, so history shows the stats that were live on that turn.
   const viewActiveStats = useMemo(
     () => activeUnderTraits(
       viewStats, refreshChosenTraits(viewTraits, traits), viewDisabledTraitIds, traitOrder,
-      playedStatTraits({ ownedTraits: viewOwnedTraits }, gatedWorld()),
+      playedStatTraits({ ownedTraits: viewOwnedTraits, entityStats: viewEntityStats }, gatedWorld()),
     ).activeStats,
-    [viewStats, viewTraits, viewDisabledTraitIds, viewOwnedTraits, traitOrder, traits, gatedWorld],
+    [viewStats, viewTraits, viewDisabledTraitIds, viewOwnedTraits, viewEntityStats, traitOrder, traits, gatedWorld],
   );
 
   useEffect(() => {
@@ -1932,7 +1941,7 @@ const GameViewer = ({
     return {
       ...activeUnderTraits(
         resolveStatNames(over.playerStats, resolve), held.acquired, held.disabledTraitIds, traitOrder,
-        playedStatTraits(held, gatedWorld()),
+        playedStatTraits({ ...held, entityStats: over.entityStats }, gatedWorld()),
       ),
       ownedTraits: over.ownedTraits ?? {},
       entityStats: over.entityStats,
@@ -2884,7 +2893,7 @@ const GameViewer = ({
         const entityPrevious = preTurn ? preTurn.entityStats ?? {} : entityStatsRef.current;
         const entityBase = entityTurn?.values ?? entityPrevious;
         const owners = entityCodeTurns(
-          entityOwnersOf(entityBase), timing === 'before' ? null : clock.deltaHours ?? FLAT_HOURS_PER_TURN,
+          entityOwnersOf(entityBase, preTurn ? preTurn.ownedTraits ?? {} : undefined), timing === 'before' ? null : clock.deltaHours ?? FLAT_HOURS_PER_TURN,
           (ownerId, ticked) => resolveStatText(
             refreshSavedStats(ticked, codeEntities.world.find((e) => e.id === ownerId)?.stats ?? []), resolvePH,
           ),
@@ -2897,7 +2906,7 @@ const GameViewer = ({
             acquired: live.chosenTraits, disabledTraitIds: live.disabledTraitIds, appliedValues: live.appliedTraitValues,
             cascadeOffTraitIds: live.cascadeOffTraitIds, ownedTraits: live.ownedTraits,
           };
-        const inForce = preTurn ? inForceOn(held) : live.statTraits;
+        const inForce = preTurn ? inForceOn(held, entityBase) : live.statTraits;
         const basePins = preTurn ? preTurn.codePins ?? {} : live.codePins;
         const result = await runStatCodeTurn({
           timing, ownerId: PLAYER_OWNER,
@@ -2918,8 +2927,9 @@ const GameViewer = ({
         });
         const nextPins = withPinWrites(basePins, result.pinWrites);
         // Onto the latest values, as the player's stats below: the regen tick can apply while the run awaits.
-        setEntityStats((prev) => withOwnerCodeResults(prev, result.owners));
-        const nextEntityStats = withOwnerCodeResults(entityBase, result.owners);
+        const ownersInForce = entityInForceUnder(result.traits?.ownedTraits ?? held.ownedTraits ?? {});
+        setEntityStats((prev) => withOwnerCodeResults(prev, result.owners, ownersInForce));
+        const nextEntityStats = withOwnerCodeResults(entityBase, result.owners, ownersInForce);
         setCodePins((prev) => withPinWrites(prev, result.pinWrites));
         if (result.traits) {
           setPlayerTraits(result.traits.acquired);
@@ -2960,7 +2970,7 @@ const GameViewer = ({
         return null;
       }
     },
-    [setPlayerStats, setEntityStats, entityOwnersOf, setRecentStatChanges, setHeldStatChanges, setCodePins, resolvePH, statCodePlaceholders, pinsFor, traits, authoredStats, resolveTraitText, gatedWorld, codeEntities, inForceOn, liveScene,
+    [setPlayerStats, setEntityStats, entityOwnersOf, entityInForceUnder, setRecentStatChanges, setHeldStatChanges, setCodePins, resolvePH, statCodePlaceholders, pinsFor, traits, authoredStats, resolveTraitText, gatedWorld, codeEntities, inForceOn, liveScene,
       setPlayerTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, setOwnedTraits, addLogEntry],
   );
 
@@ -2976,11 +2986,11 @@ const GameViewer = ({
       const baseStats = base?.playerStats ?? rawPlayerStatsRef.current;
       const live = new Set(enabledStats(rawPlayerStatsRef.current, statEnabledRef.current).map((s) => s.id));
       const baseTraits = base ? savedTraits(base, traits) : null;
-      const inForce = baseTraits ? inForceOn(baseTraits) : statTraits;
+      const inForce = baseTraits ? inForceOn(baseTraits, base?.entityStats) : statTraits;
       const applied = applyStatResponse(baseStats, response, live, inForce, PLAYER_OWNER);
       const directApplied = applied.stats;
       const entityBase = base ? base.entityStats ?? {} : entityStatsRef.current;
-      const entityApplied = applyEntityStatResponse(entityBase, response);
+      const entityApplied = applyEntityStatResponse(entityBase, response, entityInForceUnder(base ? base.ownedTraits ?? {} : ownedTraits));
       const diagnostics = [...applied.diagnostics, ...entityApplied.diagnostics];
       setDebugTurns((turns) => turns.map((turn) => ({ ...turn, requests: turn.requests.map((request) =>
         request.statRequestId === response.requestId ? { ...request, statDiagnostics: diagnostics } : request,
@@ -3014,7 +3024,7 @@ const GameViewer = ({
         asks: Object.fromEntries(Object.keys(entityApplied.values).map((id) => [id, asksOf(id)])),
       });
     },
-    [runStatCode, setPlayerStats, setEntityStats, setRecentStatChanges, setHeldStatChanges, resolvePH, statTraits, traits, inForceOn],
+    [runStatCode, setPlayerStats, setEntityStats, setRecentStatChanges, setHeldStatChanges, resolvePH, statTraits, traits, inForceOn, entityInForceUnder, ownedTraits],
   );
 
   // Discard a turn's dangling, unpaired user message. The failure exits (empty narration, request error)
@@ -3775,7 +3785,7 @@ const GameViewer = ({
   const statRequestFor = (stats: readonly PlayerStat[], present: readonly Entity[], values: EntityStatValues): StatRequestSnapshot =>
     createStatRequest(stats, PLAYER_OWNER, {
       textPass: !schemaAccepted(resolveEndpointForKind("statUpdates").reasoning),
-      entities: statRequestOwners(present, values, personaRef, (owned) => resolveStatNames(owned, resolvePH)),
+      entities: statRequestOwners(present, values, personaRef, (owned) => resolveStatNames(owned, resolvePH), entityInForceUnder(ownedTraits)),
     });
   /** The defined entities among a turn's participants, as the diary fan-out resolves them. */
   const presentEntitiesOf = (participants: readonly TurnPassSubject[]): Entity[] =>
@@ -4183,8 +4193,9 @@ const GameViewer = ({
   const traitState = useMemo<TraitRuntimeState>(
     () => ({
       stats: playerStats, traits: chosenTraits, disabledTraitIds, appliedValues: appliedTraitValues, cascadeOffTraitIds, ownedTraits,
+      entityStats,
     }),
-    [playerStats, chosenTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits],
+    [playerStats, chosenTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, entityStats],
   );
   const commitTraitState = useCallback(
     (next: TraitRuntimeState) => {
@@ -4195,8 +4206,9 @@ const GameViewer = ({
       setAppliedTraitValues(next.appliedValues);
       setCascadeOffTraitIds(next.cascadeOffTraitIds ?? {});
       setOwnedTraits(next.ownedTraits ?? {});
+      setEntityStats(next.entityStats ?? {});
     },
-    [setPlayerStats, setPlayerTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, setOwnedTraits],
+    [setPlayerStats, setPlayerTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, setOwnedTraits, setEntityStats],
   );
 
   // The banner naming what the player's last switch or persona change turned off. Session-only.
@@ -4301,16 +4313,18 @@ const GameViewer = ({
       for (const trait of chosenList) {
         seedState = acquireTrait(seedState, trait, { traits: authoredTraits, groups: traitGroups }).state;
       }
-      // The persona's linked stat traits apply after the world picks, under the persona's own record keys.
-      const played = applyPlayedStatTraits({ ...seedState, ownedTraits: ownedTraitStatesFrom(initialOwnedTraits) }, seedWorld);
-      seedState = played.state;
+      // The persona's linked stat traits apply after the world picks; then each entity's own traits apply to its stats.
+      const played = applyPlayedStatTraits({
+        ...seedState, ownedTraits: ownedTraitStatesFrom(initialOwnedTraits), entityStats: seedEntityStats(codeEntities.world),
+      }, seedWorld);
+      seedState = applyOwnedStatTraits(played.state, seedWorld);
       // Logs are write-time strings shown raw, and each trait here is authored (chips intact), so each resolves
       // now with its own pins.
       const traitLabel = (trait: Trait) => resolveTraitText(trait, trait.name);
       for (const line of startingTraitLog([...chosenList, ...played.applied], traitLabel)) addLogEntry(line);
       commitTraitState(seedState);
-      // Every authored entity's stats, from the authored list for the same reason as the player's.
-      resetEntityStats(seedEntityStats(codeEntities.world));
+      // The seeded entity stats are also the baseline their first changes read from.
+      resetEntityStats(seedState.entityStats ?? {});
       // A new game starts with no entity picked in the stat panel or the entity view.
       setSelectedEntityId(undefined);
 

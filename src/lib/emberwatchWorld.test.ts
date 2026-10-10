@@ -8,7 +8,10 @@ import { gateOf, gateStates, settleDefaults, switchTrait } from './traitGates';
 import { syncBlueprintCopies } from './blueprintCopies';
 import { copyLookup, effectiveCopy, readerFor } from './blueprints';
 import { buildPlaceholderPreview, resolvePlaceholders } from './placeholders';
-import { bearerPreview } from './ownedTraitsInPlay';
+import { bearerPreview, inPlayBearers } from './ownedTraitsInPlay';
+import { applyOwnedStatTraits, seedNewGameStats, type TraitRuntimeState, type TraitWorld } from './traitRuntime';
+import { ownedTraitStatesFrom } from './ownedTraitState';
+import { seedEntityStats } from './entityStats';
 import type { Entity, PersonaRef, World } from '@/types';
 
 // Loaded the way the seeder loads it: raw text through the world migration.
@@ -131,6 +134,27 @@ describe('bearers on Emberwatch', () => {
     const albus = entityNamed(world, 'Albus');
     expect(names(world, settledDefaults(world, albus.id, NONE)).sort()).toEqual(['Human', 'Paladin', 'Stubborn Heart']);
     expect(names(world, settledDefaults(world, albus.id, asEntity(world, 'Albus'))).sort()).toEqual(['Human', 'Paladin', 'Stubborn Heart']);
+  });
+
+  it("starts Hesk's and Corvin's race and class on their own stats, never the player's", () => {
+    const hesk = entityNamed(world, 'Mother Hesk').id;
+    const corvin = entityNamed(world, 'Corvin Vale').id;
+    const picks = { [hesk]: settledDefaults(world, hesk, NONE), [corvin]: settledDefaults(world, corvin, NONE) };
+    const tw: TraitWorld = {
+      traits: world.traits, groups: world.traitGroups ?? [], entities: world.entities, persona: NONE, bearers: inPlayBearers(bearerWorld(world), NONE),
+    };
+    const seeded: TraitRuntimeState = {
+      stats: seedNewGameStats(world.stats), traits: [], disabledTraitIds: [], appliedValues: {},
+      ownedTraits: ownedTraitStatesFrom(picks), entityStats: seedEntityStats(world.entities),
+    };
+    const started = applyOwnedStatTraits(seeded, tw);
+    const own = (owner: string, id: string) => started.entityStats![owner].find((s) => s.id === id)!;
+    // Dwarf +10 max Health and Cleric +30 max Faith on Hesk; Human +10 Renown and Wizard +30 max Mana on Corvin.
+    expect(own(hesk, 'health')).toMatchObject({ max: 110, value: 110 });
+    expect(own(hesk, 'faith')).toMatchObject({ max: 130, value: 70 });
+    expect(own(corvin, 'renown')).toMatchObject({ max: 100, value: 35 });
+    expect(own(corvin, 'mana')).toMatchObject({ max: 130, value: 50 });
+    expect(started.stats).toEqual(seeded.stats);
   });
 
   it('starts Sylvie as an Elf Rogue and Hesk as a Dwarf Cleric', () => {

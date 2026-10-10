@@ -7,7 +7,7 @@ import { broughtIds, makeLink, originalOf, type BearerWorld } from './bearers';
 import {
   effectiveLinkTrait, resetLinkOverride, resetLinkOverrides, resetLinkTraitOverrides, setLinkEdits, setLinkOverride,
 } from './blueprints';
-import { blueprintItemIds, blueprintsGroup, buildTraitTree, canOwnStatTraits, flattenTraitTree, groupsBelow, hasStatEffects, isBlueprintItem, isDescendantGroup } from './traitTree';
+import { blueprintItemIds, blueprintsGroup, buildTraitTree, flattenTraitTree, groupsBelow, isBlueprintItem, isDescendantGroup } from './traitTree';
 import { rootCount, withOwnedTraits } from './ownedTraits';
 import { mapConditions } from './requirementRows';
 
@@ -104,32 +104,24 @@ function brought(world: WorldTraitLists, link: TraitLink): { groups: TraitGroup[
   return { groups, traits: world.traits.filter((t) => t.groupId != null && ids.has(t.groupId)) };
 }
 
-/** Whether Detach would leave stat changes or stat toggles behind: the entity can't own them. */
-export const detachDropsStats = (world: WorldTraitLists, entity: Entity, link: TraitLink): boolean =>
-  !canOwnStatTraits(entity) && (brought(world, link)?.traits.some((t) => hasStatEffects(effectiveLinkTrait(t, link))) ?? false);
-
 /**
  * Replace a link with an owned copy of what it brings, in the link's place, under new ids. The copy takes
- * each trait as the link reads it; stat effects stay only on an entity that can own them. Null when the link
- * or its original is gone.
+ * each trait as the link reads it. Null when the link or its original is gone.
  */
 export function detachLink(world: WorldTraitLists, entity: Entity, linkId: string): { entity: Entity; newId: string } | null {
   const link = entity.traitLinks?.find((l) => l.id === linkId);
   const items = link && brought(world, link);
   if (!link || !items) return null;
   const ids = new Map([...items.groups, ...items.traits].map((x) => [x.id, randomUUID()] as const));
-  const keepStats = canOwnStatTraits(entity);
   // The original takes the link's place; everything below it keeps its place inside the copy.
   const isOriginal = (id: string) => id === link.originalId;
   const traits = items.traits.map((t): Trait => {
-    const { statToggles, ...rest } = effectiveLinkTrait(t, link);
+    const rest = effectiveLinkTrait(t, link);
     return {
       ...rest,
       id: ids.get(t.id)!,
       groupId: isOriginal(t.id) ? link.groupId : ids.get(t.groupId!)!,
       order: isOriginal(t.id) ? link.order ?? 0 : t.order,
-      statChanges: keepStats ? rest.statChanges : [],
-      ...(keepStats && statToggles ? { statToggles } : {}),
       ...(rest.requires ? { requires: mapConditions(rest.requires, (r) => (r.kind === 'trait' && ids.has(r.id) ? { ...r, id: ids.get(r.id)! } : r)) } : {}),
     };
   });
@@ -150,8 +142,6 @@ export interface BlueprintsRemoval {
   entities: Entity[];
   /** Links turned into their entity's own copy. */
   detached: number;
-  /** Entities whose copies lose stat effects, in entity order. */
-  strippedOn: string[];
   /** Whether any unlinked item moves to the top level. */
   movedUp: boolean;
 }
@@ -165,14 +155,12 @@ export function removeBlueprints(world: WorldTraitLists, entities: readonly Enti
   if (!bp) return null;
   const items = blueprintItemIds(world);
   const gone = new Set<string>();
-  const strippedOn: string[] = [];
   let detached = 0;
   const entitiesOut = entities.map((entity) => {
     let next = entity;
     for (const link of entity.traitLinks ?? []) {
       if (!items.has(link.originalId)) continue;
       broughtIds(world, link.originalId).forEach((id) => gone.add(id));
-      if (detachDropsStats(world, next, link) && !strippedOn.includes(entity.name)) strippedOn.push(entity.name);
       const res = detachLink(world, next, link.id);
       if (res) { next = res.entity; detached += 1; }
     }
@@ -183,5 +171,5 @@ export function removeBlueprints(world: WorldTraitLists, entities: readonly Enti
     .filter((g) => g.id !== bp.id && !gone.has(g.id))
     .map((g) => (g.parentId === bp.id ? { ...g, parentId: null } : g));
   const movedUp = [...traits, ...traitGroups].some((item) => items.has(item.id));
-  return { traits, traitGroups, entities: entitiesOut, detached, strippedOn, movedUp };
+  return { traits, traitGroups, entities: entitiesOut, detached, movedUp };
 }

@@ -12,7 +12,7 @@ import { usePlayerModelUrl } from '@/lib/usePlayerModelUrl';
 import { mergeBodyMorphs } from '@/lib/bodyMorphs';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { traitOrderIndex, activeStatEnabled, refreshChosenTraits } from '@/lib/traitEffects';
-import { listablePlayerTraits, statTraitsInForce, traitGateInput, type TraitWorld } from '@/lib/traitRuntime';
+import { bearerStatTraitsInForce, listablePlayerTraits, statTraitsInForce, traitGateInput, type TraitWorld } from '@/lib/traitRuntime';
 import {
   activeOwnedTraitIds, bearerTraitTree, inPlayBearers, playerEntityIds, rowBearer, withBearerNames,
 } from '@/lib/ownedTraitsInPlay';
@@ -1245,6 +1245,7 @@ export const RightPanel = ({
     viewDisabledTraitIds,
     viewOwnedTraits,
     viewEntityStatChanges,
+    viewEntityStats,
     viewStatChanges: recentStatChanges,
     recentStatFading,
     heldStatChanges,
@@ -1256,11 +1257,6 @@ export const RightPanel = ({
     locations, connections, traits, traitGroups, viewStats: playerStats, currentLocation, resolveTraitText, resolveEntityText,
     entities: cast, persona, traitEntities, traitLibrary,
   } = useResolvedWorld();
-  const {
-    options: entityOptions, shown: shownEntity, rows: entityRows, showPicker: entitiesShowStats, authored: shownAuthored,
-  } = useStatPanelEntity();
-  const presentOptions = entityOptions.filter((option) => option.present);
-  const absentOptions = entityOptions.filter((option) => !option.present);
   // In Chat a scroll moves the viewed turn, so the stat rows snap to it.
   const snapStats = useStatsSnap({ page: currentPage, totalPages }, useNarrationLayout() === 'chat');
   const resolvePH = usePlaceholderResolver();
@@ -1325,6 +1321,16 @@ export const RightPanel = ({
     [playerStats, viewTraitState, gateWorld],
   );
   const traitGates = React.useMemo(() => gateStates(traitGateInput(viewTraitState, gateWorld)), [viewTraitState, gateWorld]);
+  // Each entity's own traits switch its stats on and off, on the viewed turn.
+  const entityInForce = React.useCallback(
+    (ownerId: string) => bearerStatTraitsInForce(viewOwnedTraits, gateWorld, ownerId),
+    [viewOwnedTraits, gateWorld],
+  );
+  const {
+    options: entityOptions, shown: shownEntity, rows: entityRows, showPicker: entitiesShowStats, authored: shownAuthored,
+  } = useStatPanelEntity(entityInForce);
+  const presentOptions = entityOptions.filter((option) => option.present);
+  const absentOptions = entityOptions.filter((option) => !option.present);
   // Filtered for display but carrying each stat's index in the full array, which the edit slider writes back to.
   // Hidden stats stay live for the AI, regen and code — they just never render, which also drops their
   // delta chip, bar band and history deltas (all keyed off the row).
@@ -1483,6 +1489,7 @@ export const RightPanel = ({
             entityNodes={traitTree.entityNodes}
             playerEntityIds={playerEntityIds(traitTree)}
             stats={playerStats}
+            ownerStats={viewEntityStats}
             isOff={(id, bearerId) => (bearerId === WORLD_OWNER
               ? disabledTraits.has(id) || !heldTraitIds.has(id)
               : !activeOwned[bearerId]?.includes(id))}

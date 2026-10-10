@@ -56,7 +56,7 @@ import {
 import { ruleText, rowText } from '@/lib/traitGateLine';
 import { conditionsOf } from '@/lib/requirementRows';
 import { isAlwaysOn } from '@/lib/traitEffects';
-import { canOwnStatTraits } from '@/lib/traitTree';
+import { statRows } from '@/lib/traitTree';
 import type {
   DictionaryEntry, Entity, GameLocation, PersonaRef, Placeholder, PlaceholderPin, PlaceholderValue, Stat, StatDescriptor,
   Trait, TraitGroup, TraitLink, TraitRequirement, TraitRequirementRow, World,
@@ -344,7 +344,7 @@ const everyTrait = (world: RuleWorld): Trait[] => [
 
 /** The traits whose stat effects can reach the player: the world's, and the ones persona entities own. */
 const statTraits = (world: RuleWorld): Trait[] => [
-  ...(world.traits ?? []), ...(world.entities ?? []).filter(canOwnStatTraits).flatMap((e) => e.traits ?? []),
+  ...(world.traits ?? []), ...(world.entities ?? []).filter(canBePlayer).flatMap((e) => e.traits ?? []),
 ];
 
 /** A non-entity item, chips labeled like the editor's own lists label them. */
@@ -445,9 +445,10 @@ const traitToggleMissingStat: Rule = {
   section: 'traits',
   advanced: true,
   summary: (count) => `${count} trait stat toggles point at stats that don’t exist`,
+  // An entity's own traits name its own stats, which trait-stat-no-target checks.
   check: (world) => {
     const known = new Set((world.stats ?? []).map((s) => s.id));
-    return everyTrait(world)
+    return (world.traits ?? [])
       .filter((trait) => (trait.statToggles ?? []).some((toggle) => !known.has(toggle.statId)))
       .map((trait) => {
         const item = namedItem(trait.id, trait.name, world);
@@ -2343,6 +2344,31 @@ const bearerTraitItem = (item: Trait | TraitGroup, bearer: Bearer | undefined, w
   return link ? linkItem(link, item.name, world) : namedItem(item.id, item.name, world, 'traits');
 };
 
+const traitStatNoTarget: Rule = {
+  id: 'trait-stat-no-target',
+  severity: 'warning',
+  section: 'traits',
+  summary: (count) => `${count} entity traits change stats that their entity doesn’t own`,
+  // A blank row is an edit in progress. A trait on an entity the player can play may also name a player stat.
+  check: (world) => {
+    const playerStats = new Set((world.stats ?? []).map((s) => s.id));
+    const bearers = bearersOf(world);
+    return (world.entities ?? []).flatMap((entity) => {
+      const bearer = bearers.get(entity.id);
+      if (!bearer) return [];
+      const own = new Set((entity.stats ?? []).map((s) => s.id));
+      const namesOwnedStat = (id: string) => !id || own.has(id) || (canBePlayer(entity) && playerStats.has(id));
+      const name = quote(labelOf(entity.name, world));
+      return bearer.traits
+        .filter((trait) => statRows(trait).some((row) => !namesOwnedStat(row.statId)))
+        .map((trait) => {
+          const item = bearerTraitItem(trait, bearer, world);
+          return finding(traitStatNoTarget, `${quote(item.name)} on ${name} changes a stat that ${name} doesn’t own`, [item]);
+        });
+    });
+  },
+};
+
 /** The value ids a copy removed. */
 const removedValues = (copy: Placeholder): Set<string> =>
   new Set(Object.entries(copy.valueOverrides ?? {}).filter(([, o]) => o.removed).map(([id]) => id));
@@ -3134,7 +3160,7 @@ export const RULES: readonly Rule[] = [
   traitGroupDefaultsOverMax, traitGroupAlwaysOnOverMax, traitGroupTooSmall, traitGroupMinAboveMax, traitGroupMinUnreachable,
   traitGroupDefaultsBelowMin, traitRequirementNeverUnlockable, traitRequirementUnstable, traitRequirementUnresolved,
   traitRequirementRowNeverHolds, traitDefaultGated,
-  traitLinkRedundant,
+  traitLinkRedundant, traitStatNoTarget,
   copyPinRemovedValue, blueprintRefusedField, copyEditedUnused, copyMissing,
   placeholderWeightUnknownValue, wildcardSingleValue,
   placeholderPinUnknownValue, placeholderPinConflict, placeholderPinCycle, placeholderPinSelf,
