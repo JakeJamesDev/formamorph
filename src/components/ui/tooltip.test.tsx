@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import * as React from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from './popover';
@@ -216,6 +216,97 @@ describe('the accessible name', () => {
       </Tip>,
     );
     expect(screen.getByRole('button', { name: '12 characters in this world' })).toBeTruthy();
+  });
+});
+
+describe('a tip when the page scrolls', () => {
+  it('closes on a scroll of the document', async () => {
+    renderTip(<Tip tip="Delete world"><button type="button">x</button></Tip>);
+    await userEvent.tab();
+    expect(screen.getByText('Delete world')).toBeVisible();
+
+    fireEvent.scroll(document);
+
+    expect(screen.queryByText('Delete world')).toBeNull();
+  });
+
+  it('closes on a scroll of a nested container', async () => {
+    renderTip(
+      <div data-testid="panel" style={{ overflow: 'auto' }}>
+        <Tip tip="Delete world"><button type="button">x</button></Tip>
+      </div>,
+    );
+    await userEvent.tab();
+    expect(screen.getByText('Delete world')).toBeVisible();
+
+    // A scroll event does not bubble, so only a capture listener hears the panel.
+    fireEvent.scroll(screen.getByTestId('panel'));
+
+    expect(screen.queryByText('Delete world')).toBeNull();
+  });
+
+  it('closes a hand-built tip on the exported root', async () => {
+    render(
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger aria-label="Undo" render={<button type="button" />} />
+          <TooltipPortal>
+            <TooltipPositioner>
+              <TooltipPopup>Undo step list</TooltipPopup>
+            </TooltipPositioner>
+          </TooltipPortal>
+        </Tooltip>
+      </TooltipProvider>,
+    );
+    await userEvent.tab();
+    expect(screen.getByText('Undo step list')).toBeVisible();
+
+    fireEvent.scroll(document);
+
+    expect(screen.queryByText('Undo step list')).toBeNull();
+  });
+
+  it('reports a close to the owner of a hand-built tip only when one was open', async () => {
+    const onOpenChange = vi.fn();
+    render(
+      <TooltipProvider>
+        <Tooltip onOpenChange={onOpenChange}>
+          <TooltipTrigger aria-label="Undo" render={<button type="button" />} />
+          <TooltipPortal>
+            <TooltipPositioner>
+              <TooltipPopup>Undo step list</TooltipPopup>
+            </TooltipPositioner>
+          </TooltipPortal>
+        </Tooltip>
+      </TooltipProvider>,
+    );
+
+    fireEvent.scroll(document);
+    expect(onOpenChange).not.toHaveBeenCalled();
+
+    await userEvent.tab();
+    expect(onOpenChange).toHaveBeenLastCalledWith(true, expect.anything());
+    fireEvent.scroll(document);
+
+    expect(onOpenChange).toHaveBeenLastCalledWith(false, expect.anything());
+    expect(onOpenChange).toHaveBeenCalledTimes(2);
+  });
+
+  it('opens again once focus returns to the control', async () => {
+    renderTip(
+      <>
+        <Tip tip="Delete world"><button type="button">x</button></Tip>
+        <button type="button">elsewhere</button>
+      </>,
+    );
+    await userEvent.tab();
+    fireEvent.scroll(document);
+    expect(screen.queryByText('Delete world')).toBeNull();
+
+    await userEvent.tab();
+    await userEvent.tab({ shift: true });
+
+    expect(screen.getByText('Delete world')).toBeVisible();
   });
 });
 
