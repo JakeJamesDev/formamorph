@@ -7,7 +7,7 @@
 import type { Entity, World, SaveObject } from '@/types';
 
 /** The names the router can boot. Kept in lockstep with `loadDevFixture` by `devRouter.test.ts`. */
-export const DEV_FIXTURES = ['whiteRoom', 'thousandTurns', 'writtenOpening', 'pickedOpening'] as const;
+export const DEV_FIXTURES = ['whiteRoom', 'thousandTurns', 'writtenOpening', 'pickedOpening', 'entityStats'] as const;
 export type DevFixtureName = (typeof DEV_FIXTURES)[number];
 
 // Real-sized images for the long save, fetched from the dev server.
@@ -22,6 +22,27 @@ export interface DevFixture {
   /** Library entities the player picked at Enter World, for a new game. */
   picked?: Entity[];
 }
+
+const portrait = (fill: string) =>
+  `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="240" height="288"><rect width="240" height="288" fill="${fill}"/></svg>`)}`;
+const devStat = (name: string, starting: number, extra: Record<string, unknown> = {}) => ({
+  id: `dev-${name.toLowerCase()}`, name, type: 'number', description: '', min: 0, max: 100, starting, regen: 0, descriptors: [], ...extra,
+});
+
+/** The `entityStats` fixture's cast. Bram also owns a hidden stat and a switched-off one, which never show.
+ *  Each entry lists only the fields the check reads, hence the cast. */
+const ENTITY_STATS_CAST = [
+  {
+    id: 'dev-bram', name: 'Bram', image: portrait('#7a5c3e'),
+    stats: [
+      devStat('Trust', 40, { descriptors: [{ id: 'd1', description: 'Wary', threshold: 0 }, { id: 'd2', description: 'Friendly', threshold: 60 }] }),
+      devStat('Secret', 9, { hidden: true }),
+      devStat('Dormant', 3, { enabled: false }),
+    ],
+  },
+  { id: 'dev-wick', name: 'Wick', image: portrait('#3e5c7a'), stats: [devStat('Nerve', 70), devStat('Stamina', 55)] },
+  { id: 'dev-odette', name: 'Odette', stats: [devStat('Stock', 12)] },
+] as unknown as Entity[];
 
 /** Page one of the `writtenOpening` fixture. */
 export const WRITTEN_OPENING_TEXT = 'The white room hums. A door you did not see before stands open.';
@@ -66,6 +87,33 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
           turns: 1000, narrations: narrations.default, images, imageEvery: 20,
         }),
         saveName: 'DEV: 1000 Turns',
+      };
+    }
+    case 'entityStats': {
+      // The white room plus three entities that own stats, in the scene: one met by name, one by alias only,
+      // and one who left earlier. Their values are the starting values the load backfills.
+      const [world, save] = await Promise.all([
+        import('./devFixtures/whiteRoomWorld.json'),
+        import('./devFixtures/whiteRoomSave.json'),
+      ]);
+      const base = world.default as unknown as World;
+      const saved = save.default as unknown as SaveObject;
+      return {
+        world: { ...base, entities: [...base.entities, ...ENTITY_STATS_CAST] },
+        save: {
+          ...saved,
+          currentState: {
+            ...saved.currentState,
+            visibleEntities: [
+              { name: 'Bram', revealed: true },
+              { name: 'Wick', alias: 'a thin runner', revealed: false },
+            ],
+          },
+          stateHistory: saved.stateHistory.map((state, index) => (
+            index === 0 ? { ...state, visibleEntities: [{ name: 'Odette', revealed: true }] } : state
+          )),
+        },
+        saveName: 'DEV: Entity Stats',
       };
     }
     case 'writtenOpening': {

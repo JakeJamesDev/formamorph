@@ -302,7 +302,7 @@ export function findEntityNames(
  * "Emily Foster") while two names merely sharing a fragment stay distinct ("Wolf" is not "Direwolf").
  * Plural forms match as elsewhere here. Returns undefined for an ad-hoc participant with no entity behind it.
  */
-export function resolveEntityByName<T extends { name: string }>(name: string, entities: T[]): T | undefined {
+export function resolveEntityByName<T extends { name: string }>(name: string, entities: readonly T[]): T | undefined {
   const trimmed = name?.trim();
   if (!trimmed) return undefined;
   const lower = trimmed.toLowerCase();

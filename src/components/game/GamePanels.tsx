@@ -53,6 +53,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tip } from "@/components/ui/tooltip";
 import { Pager } from "@/components/ui/pagination";
 import VRMViewer from '@/views/VRMViewer';
@@ -84,6 +85,8 @@ import { StatRow } from './StatRow';
 import { PersonaRow } from './PersonaRow';
 import { useNarrationLayout } from '@/lib/useNarrationLayout';
 import { useStatsSnap } from '@/lib/useStatsSnap';
+import { firstShowableEntity, type StatPanelOption } from '@/lib/statPanelEntities';
+import { useStatPanelEntity } from './useStatPanelEntity';
 
 import { parseSavedReasoning } from '@/lib/savedReasoning';
 
@@ -137,6 +140,9 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
     setSuppressedCharacterNames,
     setVisibleEntities,
     setIsEditMode,
+    // Shared with the stat panel's entity picker.
+    selectedEntityId,
+    setSelectedEntityId,
   } = useGameplay();
   // The discovered character awaiting delete confirmation, or null.
   const [pendingRemoval, setPendingRemoval] = useState<string | null>(null);
@@ -156,21 +162,18 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
   const { url: playerModelUrl, resolving: modelResolving } = usePlayerModelUrl(characterData?.playerModelId);
   // First present entity with something to show — an image, or failing that a 3D model — displayed in the
   // model section's Entities view (the portrait shows whether or not the name is revealed yet).
-  const firstShowableEntity = visibleEntities
-    .map((se) => resolveEntityByName(se.name, entities))
-    .find((e) => hasEntityVisual(e));
+  const firstShowable = firstShowableEntity(visibleEntities, entities, hasEntityVisual);
   const isMobile = useIsMobile();
   const [showModel, setShowModel] = React.useState(true);
   // Landscape model viewer view: the player VRM vs. the detected-entity view.
   const [modelTab, setModelTab] = React.useState("avatar");
-  // Entity picked from the list; falls back to the first detected showable entity.
-  const [selectedEntityName, setSelectedEntityName] = React.useState<string | undefined>(undefined);
   const [leftTab, setLeftTab] = React.useState(requestedTab ?? (isMobile ? "model" : "notes"));
   React.useEffect(() => { if (requestedTab) setLeftTab(requestedTab); }, [requestedTab, requestKey]);
 
-  const entityViewEntity =
-    [...entities, ...(personaEntity ? [personaEntity] : [])].find((e) => e.name === selectedEntityName)
-    ?? firstShowableEntity;
+  // The shared pick when it has a picture to show, else the first detected showable entity. The stat panel's
+  // (None) and a pick with no picture both leave the view on that fallback.
+  const pickedEntity = [...entities, ...(personaEntity ? [personaEntity] : [])].find((e) => e.id === selectedEntityId);
+  const entityViewEntity = (hasEntityVisual(pickedEntity) ? pickedEntity : undefined) ?? firstShowable;
   const entityViewPreference = useEntityVisualPreference(entityViewEntity?.id);
   const entityViewGallery = useEntityGallery(entityViewEntity);
 
@@ -188,7 +191,7 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
     const entitiesViewActive = !characterData || modelTab === "entities";
     const alreadyShown = entitiesViewActive && match === entityViewEntity;
     if (!isMobile && showModel && hasEntityVisual(match) && !alreadyShown) {
-      setSelectedEntityName(match.name);
+      setSelectedEntityId(match.id);
       setModelTab("entities");
     } else if (revealed) {
       onEntityClick(match.name);
@@ -1192,6 +1195,13 @@ export const MiddlePanel = ({
   );
 };
 
+/** The (None) item's value: Radix Select has no empty item value. */
+const NO_ENTITY = '__none';
+/** An entity row is read-only, so its value never commits. */
+const noCommit = () => {};
+const entityItems = (options: StatPanelOption[]) =>
+  options.map((option) => <SelectItem key={option.id} value={option.id}>{option.label}</SelectItem>);
+
 export const RightPanel = ({
   onLocationClick, onToggleTrait, onPersonaChange, traitCascade, onDismissTraitCascade, onRegenerateStats, sceneImageJob,
   language, setLanguage,
@@ -1235,11 +1245,15 @@ export const RightPanel = ({
     heldStatChanges,
     drainingStatChanges,
     personaRef,
+    setSelectedEntityId,
   } = useGameplay();
   const {
     locations, connections, traits, traitGroups, viewStats: playerStats, currentLocation, resolveTraitText, resolveEntityText,
     entities: cast, persona, traitEntities, traitLibrary,
   } = useResolvedWorld();
+  const { options: entityOptions, shown: shownEntity, rows: entityRows, showPicker: entitiesShowStats } = useStatPanelEntity();
+  const presentOptions = entityOptions.filter((option) => option.present);
+  const absentOptions = entityOptions.filter((option) => !option.present);
   // In Chat a scroll moves the viewed turn, so the stat rows snap to it.
   const snapStats = useStatsSnap({ page: currentPage, totalPages }, useNarrationLayout() === 'chat');
   const resolvePH = usePlaceholderResolver();
@@ -1314,7 +1328,7 @@ export const RightPanel = ({
   // keeps its shape as values move in and out of bands; a world that names none of them pays nothing, and a
   // stat the player never sees can't put the line there for the ones they do.
   // A world with no stat the player can see gets no Stats tab; the panel then opens on Traits.
-  const hasShownStats = playerStats.some((stat) => stat.hidden !== true);
+  const hasShownStats = playerStats.some((stat) => stat.hidden !== true) || entitiesShowStats;
   const shownTab = !hasShownStats && activeTab === 'stats' ? 'traits' : activeTab;
   const anyDescriptors = visibleStats.some(({ stat }) => (stat.descriptors?.length ?? 0) > 0);
   // On a past page show the viewed turn's location (Location tab); live otherwise.
@@ -1351,8 +1365,28 @@ export const RightPanel = ({
           <PanelTab value="traits" icon={TraitIcon} label="Traits" />
           <PanelTab value="location" icon={LocationIcon} label="Location" />
         </TabsList>
-        <TabsContent value="stats" className="flex-grow overflow-hidden">
-          <ScrollArea className="h-[calc(100%-1rem)] relative">
+        {/* `flex` is state-scoped for the same reason as on the Entities tab. */}
+        <TabsContent value="stats" className="flex-grow overflow-hidden flex-col data-[state=active]:flex">
+          {entitiesShowStats && (
+            <div className="flex-shrink-0 px-2 pb-2">
+              <Select
+                value={shownEntity?.id ?? NO_ENTITY}
+                onValueChange={(value) => setSelectedEntityId(value === NO_ENTITY ? null : value)}
+              >
+                <SelectTrigger aria-label="Entity stats" className="h-8 w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {entityItems(presentOptions)}
+                  {presentOptions.length > 0 && absentOptions.length > 0 && <SelectSeparator />}
+                  {entityItems(absentOptions)}
+                  <SelectSeparator />
+                  <SelectItem value={NO_ENTITY}>(None)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          <ScrollArea className="min-h-0 flex-grow mb-4 relative">
             {visibleStats.map(({ stat, index }) => {
               const key = stat.name.toLowerCase();
               return (
@@ -1380,6 +1414,31 @@ export const RightPanel = ({
                 />
               );
             })}
+            {entitiesShowStats && shownEntity && (
+              <section aria-label={`${shownEntity.label} stats`} data-testid="entity-stats" className="mt-2 border-t border-border pt-2">
+                <h3 className="truncate px-2 pb-1 text-label font-medium">{shownEntity.label}</h3>
+                {entityRows.length === 0 ? (
+                  <p role="status" className="py-4 text-center text-muted-foreground">No stats to show.</p>
+                ) : entityRows.map((stat) => (
+                  <StatRow
+                    // Keyed by owner, so a pick starts every row's band flash fresh.
+                    key={`${shownEntity.id}:${stat.id}`}
+                    stat={stat}
+                    // The entity row change: no entity stat change reaches the panel yet.
+                    change={0}
+                    barDelta={0}
+                    draining={false}
+                    page={currentPage}
+                    isViewingPast={isViewingPast}
+                    snap={snapStats}
+                    fading={false}
+                    editable={false}
+                    reserveDescriptorLine={entityRows.some((row) => (row.descriptors?.length ?? 0) > 0)}
+                    onCommitValue={noCommit}
+                  />
+                ))}
+              </section>
+            )}
             <StatsActions
               className="absolute bottom-2 right-2"
               past={isViewingPast}

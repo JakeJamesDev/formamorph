@@ -13,7 +13,7 @@ import { pageAssistantIndex } from '@/lib/turnHistory';
 import { LeftPanel, MiddlePanel, RightPanel } from '@/components/game/GamePanels';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { defaultSystemPrompt } from '@/components/game/GamePrompts';
-import type { AITurnResult, ChatMessage, GameState, PlayerStat, Stat, Trait, World } from '@/types';
+import type { AITurnResult, ChatMessage, EntityStatValues, GameState, PlayerStat, SceneEntity, Stat, Trait, World } from '@/types';
 
 /**
  * Render helper for the three gameplay panels (`GamePanels.tsx`).
@@ -69,6 +69,10 @@ export interface TurnFixture {
   /** The stats as this turn left them, for the history view's stat rows. Defaults to the harness-wide
    *  `stats`, which is what makes every turn read the same unless a case wants them to move. */
   stats?: PlayerStat[];
+  /** Who stood in this turn's scene, with each name's reveal state. */
+  scene?: SceneEntity[];
+  /** Each entity's stat values as this turn left them. */
+  entityStats?: EntityStatValues;
 }
 
 export interface PanelHarnessOptions {
@@ -147,7 +151,8 @@ function snapshotFixture(turn: TurnFixture, stats: PlayerStat[]): GameState {
   return {
     playerStats: turn.stats ?? stats,
     playerTraits: turn.traits ?? [],
-    visibleEntities: [],
+    ...(turn.entityStats ? { entityStats: turn.entityStats } : {}),
+    visibleEntities: turn.scene ?? [],
     logEntries: [],
     gameplayText: turn.narration,
     gameTime: 0,

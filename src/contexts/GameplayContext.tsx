@@ -21,6 +21,7 @@ import { heldEntityIds, withHeldOwners } from '../lib/ownedTraitState';
 import { pageAssistantIndex, pageNextActionIndex, placeSnapshot } from '../lib/turnHistory';
 import { backfillGameStateStats } from '../lib/statBackfill';
 import { backfillGameStateEntityStats } from '../lib/entityStats';
+import { normalizeVisibleEntities } from '../lib/sceneEntities';
 import { appendLogEntry, type LogKind } from '../lib/playLog';
 import { registerDevHook } from '../lib/devRouter';
 import { useLibraryEntity } from '../lib/useLibraryEntity';
@@ -65,14 +66,7 @@ const EMPTY_CHOICES: Choice[] = [];
 const EMPTY_INDICES: number[] = [];
 const EMPTY_PINS: CodePins = {};
 
-/** Normalize a snapshot's `visibleEntities`: legacy saves stored a bare `string[]` of names; those become
- *  `{ name, revealed: true }` (a name that was in the old list had, by construction, been shown already). */
-function normalizeVisibleEntities(raw: unknown): SceneEntity[] {
-  if (!Array.isArray(raw)) return [];
-  return raw.map((e) =>
-    typeof e === 'string' ? { name: e, revealed: true } : (e as SceneEntity),
-  );
-}
+const EMPTY_ENTITY_STATS: EntityStatValues = {};
 
 function useProvideGameplay() {
   const [characterData, setCharacterData] = useState<CharacterData | null>(null);
@@ -189,6 +183,9 @@ function useProvideGameplay() {
   // so last turn's bars clear cleanly before this turn's grow animation. Cosmetic-only; cleared on a timer.
   const [drainingStatChanges, setDrainingStatChanges] = useState<Record<string, number>>({});
   const [activeTab, setActiveTab] = useState("stats");
+  // The entity the entity view and the stat panel both show: an id, null for (None), undefined before any
+  // pick. Runtime-only, like the gallery position. An id that matches no entity reads as no pick.
+  const [selectedEntityId, setSelectedEntityId] = useState<string | null | undefined>(undefined);
   // The Traits tab's arrangement lives out here for the same reason `activeTab` does: the panel is unmounted
   // the moment the player looks at another tab.
   const [traitsView, setTraitsView] = useState<TraitsPanelView>({
@@ -312,6 +309,8 @@ function useProvideGameplay() {
       // player's edits and deletions, which land after the snapshot froze); the rewind handlers prune
       // the cast to the surviving turns themselves.
       if (!opts?.keepLiveHistory) {
+        // A loaded save is another playthrough: the old pick may name an entity this one never met.
+        setSelectedEntityId(undefined);
         setDiscoveredEntities(gameState.discoveredEntities ?? []);
         setSuppressedCharacterNames(gameState.suppressedCharacterNames ?? []);
       }
@@ -619,6 +618,7 @@ function useProvideGameplay() {
   // on a past page, since the live branch returns the state values themselves.
   const viewDisabledTraitIds = viewedSnapshot ? (viewedSnapshot.disabledTraitIds ?? EMPTY_IDS) : disabledTraitIds;
   const viewOwnedTraits = viewedSnapshot ? (viewedSnapshot.ownedTraits ?? EMPTY_OWNED) : ownedTraits;
+  const viewEntityStats = viewedSnapshot ? (viewedSnapshot.entityStats ?? EMPTY_ENTITY_STATS) : entityStats;
   const viewCodePins = viewedSnapshot ? (viewedSnapshot.codePins ?? EMPTY_PINS) : codePins;
   const viewCharacterData = viewedSnapshot?.characterData ?? characterData;
   const viewVisibleEntities = useMemo(
@@ -780,6 +780,8 @@ function useProvideGameplay() {
     setActiveTab,
     traitsView,
     setTraitsView,
+    selectedEntityId,
+    setSelectedEntityId,
     logsEndRef,
     isFlashing,
     setIsFlashing,
@@ -808,6 +810,7 @@ function useProvideGameplay() {
     viewTraits,
     viewDisabledTraitIds,
     viewOwnedTraits,
+    viewEntityStats,
     viewCodePins,
     viewCharacterData,
     viewVisibleEntities,
