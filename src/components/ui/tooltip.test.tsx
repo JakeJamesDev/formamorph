@@ -5,7 +5,7 @@ import * as React from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from './popover';
 import { Slot } from '@radix-ui/react-slot';
 import {
-  Tip, Tooltip, TooltipPopup, TooltipPortal, TooltipPositioner, TooltipProvider, TooltipTrigger,
+  FlashTip, Tip, Tooltip, TooltipPopup, TooltipPortal, TooltipPositioner, TooltipProvider, TooltipTrigger,
 } from './tooltip';
 
 /** Live Base UI tooltip roots and portals, counted by pass-through wrappers. */
@@ -579,6 +579,95 @@ describe('a tip when focus or the window changes', () => {
       expect(screen.getByText('Undo step list')).toBeVisible();
       expect(onOpenChange).not.toHaveBeenCalledWith(false, expect.anything());
     });
+  });
+});
+
+describe('a flash tip while its owner passes open', () => {
+  /** Owns `open` the way a copy button does: the test flips it, the tip never sets it. */
+  const Owner = ({ open, cycle }: { open: boolean; cycle?: number }) => {
+    const anchor = React.useRef<HTMLButtonElement>(null);
+    return (
+      <>
+        <button type="button" ref={anchor}>copy</button>
+        <FlashTip anchor={anchor} tip="Copied" open={open} cycle={cycle} />
+      </>
+    );
+  };
+  const renderOwner = (open: boolean, cycle?: number) => {
+    const view = render(<TooltipProvider><Owner open={open} cycle={cycle} /></TooltipProvider>);
+    return (next: boolean, nextCycle = cycle) =>
+      view.rerender(<TooltipProvider><Owner open={next} cycle={nextCycle} /></TooltipProvider>);
+  };
+  const bubble = () => document.querySelector('[data-flash-tip]');
+
+  it('shows while its owner passes open', () => {
+    renderOwner(true);
+    expect(bubble()).toBeInTheDocument();
+  });
+
+  it('closes on a scroll of a nested element while its owner still passes open', () => {
+    renderOwner(true);
+    expect(bubble()).toBeInTheDocument();
+
+    // A scroll event does not bubble, so only a capture listener hears an element below the document.
+    fireEvent.scroll(screen.getByRole('button'));
+
+    expect(bubble()).toBeNull();
+  });
+
+  it.each([
+    ['a press anywhere', () => fireEvent.pointerDown(document.body)],
+    ['a right-click', () => fireEvent.contextMenu(document.body)],
+    ['a native drag', () => fireEvent.dragStart(document.body)],
+  ])('closes on %s', (_label, fire) => {
+    renderOwner(true);
+
+    fire();
+
+    expect(bubble()).toBeNull();
+  });
+
+  it('stays closed until its owner closes it and opens it again', () => {
+    const setOpen = renderOwner(true);
+    fireEvent.scroll(document.body);
+    expect(bubble()).toBeNull();
+
+    setOpen(true);
+    expect(bubble()).toBeNull();
+
+    setOpen(false);
+    setOpen(true);
+
+    expect(bubble()).toBeInTheDocument();
+  });
+
+  it('shows again when its owner changes cycle while open stays true', () => {
+    const setOpen = renderOwner(true, 1);
+    fireEvent.scroll(document.body);
+    expect(bubble()).toBeNull();
+
+    setOpen(true, 1);
+    expect(bubble()).toBeNull();
+
+    setOpen(true, 2);
+
+    expect(bubble()).toBeInTheDocument();
+  });
+
+  it('shows on its first open after a scroll that came while it was closed', () => {
+    const setOpen = renderOwner(false);
+    fireEvent.scroll(document.body);
+
+    setOpen(true);
+
+    expect(bubble()).toBeInTheDocument();
+  });
+
+  it('still announces its text to a live region after it is dismissed', () => {
+    renderOwner(true);
+    fireEvent.scroll(document.body);
+
+    expect(screen.getByRole('status')).toHaveTextContent('Copied');
   });
 });
 

@@ -66,7 +66,7 @@ function CopyButton({ code }: { code: string }) {
           <Copy aria-hidden className="h-3.5 w-3.5" />
         </Button>
       </Tip>
-      <FlashTip anchor={button} tip={flash.tip} open={flash.open} />
+      <FlashTip anchor={button} tip={flash.tip} open={flash.open} cycle={flash.shown} />
     </>
   );
 }
