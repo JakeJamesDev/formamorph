@@ -7,6 +7,7 @@ import { PinConflictNote } from '@/components/editor/PinConflictNote';
 import { PinValueField } from '@/components/editor/PinValueField';
 import { OnDemandSelect } from '@/components/OnDemandSelect';
 import type { SelectOption } from '@/components/SelectOptions';
+import { fieldFrame } from '@/lib/historyField';
 import {
   addPinAt, commitPinSource, pinKindsFor, pinSourceKey, pinSourcesOfKind, pinsTargeting,
   removePinAt, sameSource, updatePinAt,
@@ -84,7 +85,8 @@ export function PlaceholderPinsSection({ world, placeholder }: {
         <p className="text-helper text-muted-foreground">Nothing pins this placeholder</p>
       )}
       {rows.map((row, index) => (
-        <div key={`${pinSourceKey(row.source)}:${index}`} className="space-y-1">
+        // A pin has no id, so its source and place in the list name it.
+        <div key={`${pinSourceKey(row.source)}:${index}`} className="space-y-1" {...fieldFrame('pins', `${pinSourceKey(row.source)}:${index}`)}>
           <div className="flex space-x-2">
             {/* The row's own label stands in for the picked item: it carries the kind a bare name would not. */}
             <OnDemandSelect

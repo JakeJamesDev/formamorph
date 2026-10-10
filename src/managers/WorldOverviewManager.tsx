@@ -121,7 +121,7 @@ const PersonaRulesFields = () => {
 
   return (
     <>
-      <div className="space-y-2">
+      <div className="space-y-2" {...fieldFrame('allowedPersonas')}>
         <Label id="allowed-personas-label">Allowed Personas</Label>
         <ToggleGroup
           type="single"
@@ -140,7 +140,7 @@ const PersonaRulesFields = () => {
         </ToggleGroup>
         <Hint>{hint}</Hint>
       </div>
-      <div className="space-y-2">
+      <div className="space-y-2" {...fieldFrame('startPersona')}>
         <Label htmlFor="start-persona">Starts On</Label>
         <Hint>{START_PERSONA_HINT}</Hint>
         <Select value={selected} onValueChange={writeStart}>
@@ -247,7 +247,7 @@ const WorldOverviewManager = () => {
         </div>
       </div>
       {/* A checkbox row carries its hint inline after the caption, as the trait panel's does. */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2" {...fieldFrame('use3DModel')}>
         <Checkbox
           id="use3DModel"
           checked={worldOverview.use3DModel}

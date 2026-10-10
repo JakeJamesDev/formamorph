@@ -4,6 +4,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { type ReactNode } from 'react';
 import { Copy, X } from 'lucide-react';
 import { EditorRow, EditorRowList, type EditorRowProps } from '@/components/EditorRow';
+import { fieldPath } from '@/lib/historyField';
 import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
 
 export interface SortableListItem {
@@ -67,7 +68,7 @@ export function SortableRow({
       selected={selected}
       onSelect={() => onSelect(item.id)}
       selectionLabel={`Select ${item.name}`}
-      checkbox={onToggleEnabled ? { checked: enabled !== false, onChange: (v) => onToggleEnabled(item.id, v) } : undefined}
+      checkbox={onToggleEnabled ? { checked: enabled !== false, onChange: (v) => onToggleEnabled(item.id, v), field: fieldPath('rows', item.id, 'enabled') } : undefined}
       icon={icon}
       label={label ?? item.name}
       meta={meta?.text}

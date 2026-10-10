@@ -7,6 +7,7 @@ import { PlaceholderSectionList } from '@/components/editor/PlaceholderSectionLi
 import { placeholderVocabulary, type ChipRow, type ChipVocabulary } from '@/lib/chipVocabulary';
 import { decodePlaceholderToken } from '@/lib/placeholders';
 import { pinTargetFilter, withPinnedValue, type PinEditorWorld, type PinSourceRef } from '@/lib/placeholderPins';
+import { fieldFrame } from '@/lib/historyField';
 import { useStableCallback } from '@/lib/useStableCallback';
 import type { Placeholder, PlaceholderPin } from '@/types';
 
@@ -102,7 +103,8 @@ export function PlaceholderPinRows({ pins, onChange, source, world, placeholders
   return (
     <div className="space-y-2">
       {pins.map((pin, index) => (
-        <div key={index} className="space-y-1">
+        // A pin has no id, so its place in the list names it.
+        <div key={index} className="space-y-1" {...fieldFrame('pins', String(index))}>
           <PinRow
             pin={pin}
             index={index}

@@ -92,7 +92,7 @@ const LocationManager = ({ location, tab, onTabChange, focusField }: {
           </div>
           {/* Bottom-aligned and as tall as the field, so the checkbox sits on the name's last line when a
               long name wraps. */}
-          <div data-tour-anchor="location-starting" className="flex min-h-10 shrink-0 items-center gap-2">
+          <div data-tour-anchor="location-starting" className="flex min-h-10 shrink-0 items-center gap-2" {...fieldFrame('isStarting')}>
             <Checkbox
               id={`location-starting-${editingLocation.id}`}
               checked={!!editingLocation.isStarting}
@@ -157,7 +157,7 @@ const LocationManager = ({ location, tab, onTabChange, focusField }: {
       </PanelTabContent>
 
       <PanelTabContent value="presence">
-        <div className="space-y-2">
+        <div className="space-y-2" {...fieldFrame('entities')}>
           <Label>Entities</Label>
           <MultiSelect
             key={editingLocation.id}

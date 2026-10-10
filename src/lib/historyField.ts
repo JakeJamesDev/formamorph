@@ -26,6 +26,9 @@ export function fieldOf(node: EventTarget | null): string | undefined {
   return node.closest(`[${HISTORY_FIELD_ATTRIBUTE}]`)?.getAttribute(HISTORY_FIELD_ATTRIBUTE) ?? undefined;
 }
 
+// A pop-out or option list renders in a portal, outside the frame of the field that opened it.
+const OVERLAY = '[data-radix-popper-content-wrapper], [role="listbox"], [role="menu"]';
+
 /** The frame of a field. Of several, the one on screen wins: a layout can draw a field twice and hide one. */
 export function findHistoryField(root: ParentNode, field: string): HTMLElement | null {
   const frames = Array.from(root.querySelectorAll<HTMLElement>(`[${HISTORY_FIELD_ATTRIBUTE}]`))
@@ -34,9 +37,10 @@ export function findHistoryField(root: ParentNode, field: string): HTMLElement |
 }
 
 /**
- * Reports the field in use each time it changes: the field focus moves into, or none. A write the old field
- * commits on blur is queued in the same events, so a host that keeps the field as React state commits both
- * in one render. Returns a stop.
+ * Reports the field in use each time it changes: the field focus moves into or a press ends on, or none. A
+ * write the old field commits on blur is queued in the same events, so a host that keeps the field as React
+ * state commits both in one render. Focus or a press inside a pop-out with no field of its own keeps the field
+ * that opened it, so a chip's pop-out or a select's options edit the host field. Returns a stop.
  */
 export function watchFieldInUse(doc: Document, onChange: (field: string | undefined) => void): () => void {
   let field: string | undefined;
@@ -45,13 +49,22 @@ export function watchFieldInUse(doc: Document, onChange: (field: string | undefi
     field = next;
     onChange(next);
   };
-  const onFocusIn = (event: FocusEvent) => report(fieldOf(event.target));
+  const fieldOrOpener = (target: EventTarget | null) => {
+    const found = fieldOf(target);
+    return found === undefined && target instanceof Element && target.closest(OVERLAY) ? field : found;
+  };
+  const onFocusIn = (event: FocusEvent) => report(fieldOrOpener(event.target));
   // Focus moving to another element reports through that element's focusin.
   const onFocusOut = (event: FocusEvent) => { if (!event.relatedTarget) report(undefined); };
+  // Some browsers don't focus a button or checkbox on click, and a drag on the canvas has no field to name.
+  // On release, not press: the press blurs the old field, which commits its write first.
+  const onPointerUp = (event: PointerEvent) => report(fieldOrOpener(event.target));
   doc.addEventListener('focusin', onFocusIn);
   doc.addEventListener('focusout', onFocusOut);
+  doc.addEventListener('pointerup', onPointerUp, true);
   return () => {
     doc.removeEventListener('focusin', onFocusIn);
     doc.removeEventListener('focusout', onFocusOut);
+    doc.removeEventListener('pointerup', onPointerUp, true);
   };
 }

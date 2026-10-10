@@ -138,7 +138,7 @@ export const EntityPersonaField = ({ value, onChange, placeholders = [], home, c
     else apply(next);
   };
   return (
-    <div className="space-y-2 [container-type:inline-size]">
+    <div className="space-y-2 [container-type:inline-size]" {...fieldFrame('persona')}>
       <Label id={`entity-persona-${value.id}`}>Persona</Label>
       <ToggleGroup
         type="single"
@@ -256,7 +256,7 @@ export interface EntityLocationsFieldProps extends EntityFieldGroupProps {
 
 /** The locations the entity belongs to. World Editor only: a library character has no world locations. */
 export const EntityLocationsField = ({ value, options, selectedIds, onLocationsChange }: EntityLocationsFieldProps) => (
-  <div data-tour-anchor="entity-locations" className="space-y-2">
+  <div data-tour-anchor="entity-locations" className="space-y-2" {...fieldFrame('locations')}>
     <Label>Locations</Label>
     <MultiSelect
       key={value.id}
@@ -278,7 +278,7 @@ export const EntityStartingLocationField = ({ value, onChange, options }: Entity
   if (!advanced || value.persona !== true) return null;
   const selected = options.some((o) => o.value === value.startingLocationId) ? value.startingLocationId! : AUTOMATIC;
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" {...fieldFrame('startingLocationId')}>
       <Label htmlFor={`entity-start-${value.id}`}>Starting Location</Label>
       <Hint>Selects where the player starts as this persona</Hint>
       <Select value={selected} onValueChange={(v) => onChange('startingLocationId', v === AUTOMATIC ? undefined : v)}>

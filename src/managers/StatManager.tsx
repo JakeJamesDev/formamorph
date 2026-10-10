@@ -259,7 +259,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
             onSubmit={rename.onSubmit}
           />
         </div>
-        <div className="space-y-2">
+        <div className="space-y-2" {...fieldFrame('type')}>
           <Label>Type</Label>
           <Select
             value={editingStat.type || "number"}
@@ -354,7 +354,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
               </>
             )}
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2" {...fieldFrame('morphBindings')}>
             <Label>Body Sliders</Label>
             <Hint>Binds body sliders to this stat. Its value between Min and Max sets each slider&apos;s position.</Hint>
             <MultiSelect
@@ -379,14 +379,14 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
           {/* The line decides; the ⓘ defines. Two paragraphs here cost the panel a screen. */}
           <Hint>Enabled keeps the stat active. Hidden hides it from the player only.</Hint>
           <div className="grid grid-cols-2 gap-2">
-            <label className="flex items-center space-x-2 cursor-pointer">
+            <label className="flex items-center space-x-2 cursor-pointer" {...fieldFrame('enabled')}>
               <Checkbox
                 checked={editingStat.enabled !== false}
                 onCheckedChange={(c) => handleChange("enabled", c !== false)}
               />
               <span>Enabled</span>
             </label>
-            <label className="flex items-center space-x-2 cursor-pointer">
+            <label className="flex items-center space-x-2 cursor-pointer" {...fieldFrame('hidden')}>
               <Checkbox
                 checked={editingStat.hidden === true}
                 onCheckedChange={(c) => handleChange("hidden", c === true)}
@@ -401,7 +401,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
           <Label>Prevent AI Changes</Label>
           <Hint>Stops the AI from changing this stat in one direction</Hint>
           <div className="grid grid-cols-2 gap-2">
-            <label className="flex items-center space-x-2 cursor-pointer">
+            <label className="flex items-center space-x-2 cursor-pointer" {...fieldFrame('noIncrease')}>
               <Checkbox
                 checked={!!editingStat.noIncrease}
                 onCheckedChange={(c) => handleChange("noIncrease", c === true)}
@@ -410,7 +410,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
             </label>
 
             {!isPercentage && (
-              <label className="flex items-center space-x-2 cursor-pointer">
+              <label className="flex items-center space-x-2 cursor-pointer" {...fieldFrame('noIncreaseMax')}>
                 <Checkbox
                   checked={!!editingStat.noIncreaseMax}
                   onCheckedChange={(c) => handleChange("noIncreaseMax", c === true)}
@@ -419,7 +419,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
               </label>
             )}
 
-            <label className="flex items-center space-x-2 cursor-pointer">
+            <label className="flex items-center space-x-2 cursor-pointer" {...fieldFrame('noDecrease')}>
               <Checkbox
                 checked={!!editingStat.noDecrease}
                 onCheckedChange={(c) => handleChange("noDecrease", c === true)}
@@ -428,7 +428,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
             </label>
 
             {!isPercentage && (
-              <label className="flex items-center space-x-2 cursor-pointer">
+              <label className="flex items-center space-x-2 cursor-pointer" {...fieldFrame('noDecreaseMax')}>
                 <Checkbox
                   checked={!!editingStat.noDecreaseMax}
                   onCheckedChange={(c) => handleChange("noDecreaseMax", c === true)}

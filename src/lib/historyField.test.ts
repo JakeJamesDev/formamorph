@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent } from '@testing-library/react';
 import {
   HISTORY_FIELD_ATTRIBUTE, fieldFrame, fieldOf, fieldPath, findHistoryField, watchFieldInUse,
 } from '@/lib/historyField';
@@ -89,6 +90,57 @@ describe('watchFieldInUse', () => {
     first.focus();
     second.focus();
     expect(seen).toEqual(['aiSummary']);
+  });
+
+  it('follows a press on a control that takes no focus, and a press on a place with no field', () => {
+    const checkbox = document.createElement('button');
+    frame('hidden').append(checkbox);
+    const canvas = document.createElement('div');
+    document.body.append(canvas);
+    fireEvent.pointerUp(checkbox);
+    fireEvent.pointerUp(canvas);
+    expect(seen).toEqual(['hidden', undefined]);
+  });
+
+  it('keeps the old field while the press that leaves it is still down', () => {
+    const checkbox = document.createElement('button');
+    frame('hidden').append(checkbox);
+    frame('name').querySelector('input')!.focus();
+    fireEvent.pointerDown(checkbox);
+    expect(seen).toEqual(['name']);
+  });
+
+  it('keeps the field that opened a pop-out for focus and presses inside it', () => {
+    const popout = document.createElement('div');
+    popout.setAttribute('data-radix-popper-content-wrapper', '');
+    const option = document.createElement('button');
+    popout.append(option);
+    document.body.append(popout);
+    frame('aiDescription').querySelector('input')!.focus();
+    option.focus();
+    fireEvent.pointerUp(option);
+    expect(seen).toEqual(['aiDescription']);
+  });
+
+  it('names no field for a pop-out opened from a place with no field', () => {
+    const popout = document.createElement('div');
+    popout.setAttribute('role', 'menu');
+    const item = document.createElement('button');
+    popout.append(item);
+    document.body.append(popout);
+    item.focus();
+    fireEvent.pointerUp(item);
+    expect(seen).toEqual([]);
+  });
+
+  it("names the pop-out's own field when its controls have one", () => {
+    const popout = document.createElement('div');
+    popout.setAttribute('data-radix-popper-content-wrapper', '');
+    popout.append(frame('pins/0'));
+    document.body.append(popout);
+    frame('aiDescription').querySelector('input')!.focus();
+    popout.querySelector('input')!.focus();
+    expect(seen).toEqual(['aiDescription', 'pins/0']);
   });
 
   it('stops reporting once stopped', () => {

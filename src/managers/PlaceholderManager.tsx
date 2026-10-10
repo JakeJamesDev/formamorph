@@ -403,6 +403,7 @@ const PlaceholderManager = ({ placeholder, rowId, share, tab, onTabChange }: {
             }}
             aria-label="Placeholder kind"
             className="h-8"
+            {...fieldFrame('roll')}
           >
             <ToggleGroupItem value="wildcard" className="h-6 px-2 text-helper">Wildcard</ToggleGroupItem>
             <ToggleGroupItem value="object" className="h-6 px-2 text-helper">Object</ToggleGroupItem>

@@ -19,6 +19,7 @@ import {
 import { otherLeg } from '@/lib/locationGraph';
 import type { Connection, GameLocation, LegKey } from '@/types';
 import { Tip } from '@/components/ui/tooltip';
+import { fieldFrame } from '@/lib/historyField';
 import { TravelHintPair } from '@/components/editor/TravelHintPair';
 
 /** The direction control's options in the order they're offered, worded from the panel that's open. */
@@ -108,6 +109,7 @@ const LocationConnections = ({ location }: { location: GameLocation }) => {
               className="w-full"
               value={direction}
               aria-label={`Direction of the Connection to ${partnerName}`}
+              {...fieldFrame('connections', connection.id, 'direction')}
               // A single ToggleGroup clears its value when the active item is clicked again; a Connection
               // always runs some direction, so an empty result is ignored rather than stored.
               onValueChange={(v) => {

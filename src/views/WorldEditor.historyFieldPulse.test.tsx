@@ -2,11 +2,13 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act, fireEvent, screen, within } from '@testing-library/react';
 import { $createParagraphNode, $createTextNode, $getRoot, getNearestEditorFromDOMNode, type LexicalEditor } from 'lexical';
 import {
-  benchEditorWorld, openEditorTab, pickEditorMode, renderWorldEditorBench, shownEditorTab,
+  benchEditorWorld, openEditorTab, openTraitFieldsTab, pickEditorMode, renderWorldEditorBench, shownEditorTab,
 } from '@/test/worldEditorBench';
 import { frames } from '@/test/landing';
 import { stubReducedMotion } from '@/test/reducedMotion';
 import { reloadTourProgress } from '@/lib/authoringTour/progress';
+import { encodePlaceholderToken } from '@/lib/placeholders';
+import { phValues } from '@/test/placeholderValues';
 import { LANDING_PULSE_CLASS, LANDING_RING_CLASS } from '@/lib/landingPulse';
 import type { World } from '@/types';
 
@@ -285,5 +287,158 @@ describe('the field pulse after undo and redo', () => {
     await undo();
     expect(ringed(LANDING_RING_CLASS)).toContainElement(pronouns());
     expect(document.querySelectorAll(`.${LANDING_PULSE_CLASS}`)).toHaveLength(0);
+  });
+});
+
+const CHIP = encodePlaceholderToken({ id: 'weather', mode: 'world', placementId: 'p1' });
+const CONTROL_WORLD: World = benchEditorWorld({
+  stats: [{ id: 's-mood', name: 'Mood', type: 'number', description: 'How calm', min: 0, max: 10, value: 4, regen: 0 }],
+  locations: [
+    { id: 'harbor', name: 'Harbor Steps', isStarting: true },
+    { id: 'docks', name: 'Docks' },
+  ],
+  entities: [{
+    id: 'resident', name: 'Odd Wick', playerDescription: 'The lamp-keeper.', aiDescription: `Keeps lamps in ${CHIP}.`,
+    locations: ['harbor'],
+  }],
+  traits: [{ id: 't-calm', name: 'Calm', statChanges: [{ statId: 's-mood', value: 2, type: 'starting' }], groupId: null, order: 0 }],
+  placeholders: [{ id: 'weather', name: 'Weather', values: phValues(['fog', 'rain']) }],
+} as Partial<World>);
+
+/** A press, its release and its click as three author actions, without focus: some browsers don't focus a pressed button. */
+const clickOn = async (control: HTMLElement) => {
+  await step(() => { fireEvent.pointerDown(control); });
+  await step(() => { fireEvent.pointerUp(control); });
+  await step(() => { fireEvent.click(control); });
+};
+
+/** Picks an option from a select by keyboard: a click needs pointer capture, which jsdom lacks. */
+const pickOption = async (select: HTMLElement, option: string) => {
+  await step(() => select.focus());
+  await step(() => { fireEvent.keyDown(select, { key: 'Enter' }); });
+  await step(() => { fireEvent.keyDown(screen.getByRole('option', { name: option }), { key: 'Enter' }); });
+};
+
+describe('the field pulse on controls and chips', () => {
+  it('pulses a checkbox, and the switch it stands for', async () => {
+    const { ctx } = renderWorldEditorBench(CONTROL_WORLD, 'advanced');
+    openEditorTab(/Stats/);
+    fireEvent.click(screen.getByRole('button', { name: 'Select Mood' }));
+    await clickOn(screen.getByRole('checkbox', { name: 'Hidden' }));
+    expect(ctx().stats[0].hidden).toBe(true);
+    const trigger = await leaveFor(/Entities/);
+
+    await undo();
+    expect(ctx().stats[0].hidden).toBeFalsy();
+    expect(shownEditorTab()).toMatch(/Stats/);
+    expect(ringed()).toContainElement(screen.getByRole('checkbox', { name: 'Hidden' }));
+    expect(ringed()).not.toContainElement(screen.getByRole('checkbox', { name: 'Enabled' }));
+    expect(document.activeElement).toBe(trigger);
+
+    await leaveFor(/Entities/);
+    await redo();
+    expect(ctx().stats[0].hidden).toBe(true);
+    expect(ringed()).toContainElement(screen.getByRole('checkbox', { name: 'Hidden' }));
+  });
+
+  it('keeps the field a press leaves, when that field commits on blur', async () => {
+    const { ctx } = renderWorldEditorBench(CONTROL_WORLD, 'advanced');
+    openEditorTab(/Placeholders/);
+    fireEvent.click(screen.getAllByText('Weather', { selector: 'span' }).find((el) => !el.closest('button'))!);
+    await typeInto(screen.getByRole('textbox', { name: 'Add keyword' }), 'mist');
+    // A real press: down, the old field blurs and commits, the new control takes focus, up, click.
+    const object = screen.getByRole('radio', { name: 'Object' });
+    await step(() => { fireEvent.pointerDown(object); });
+    await step(() => object.focus());
+    await step(() => { fireEvent.pointerUp(object); });
+    await step(() => { fireEvent.click(object); });
+    expect(ctx().placeholders[0].values.map((v) => v.text)).toEqual(['fog', 'rain', 'mist']);
+    expect(ctx().placeholders[0].roll).toBe(false);
+
+    await undo();
+    expect(ctx().placeholders[0].roll).not.toBe(false);
+    expect(ringed()).toContainElement(screen.getByRole('radio', { name: 'Object' }));
+
+    await undo();
+    expect(ctx().placeholders[0].values.map((v) => v.text)).toEqual(['fog', 'rain']);
+    expect(ringed()).toContainElement(screen.getByRole('textbox', { name: 'Add keyword' }));
+  });
+
+  it("pulses the edited row's select, not its neighbor's", async () => {
+    const { ctx } = renderWorldEditorBench(CONTROL_WORLD, 'advanced');
+    openEditorTab(/Traits/);
+    fireEvent.click(screen.getAllByText('Calm', { exact: true })[0]);
+    openTraitFieldsTab('Stats');
+    const section = () => screen.getByText('Stat Changes').closest<HTMLElement>('[data-tour-anchor]')!;
+    await pickOption(within(section()).getAllByRole('combobox')[1], 'Max');
+    expect(ctx().traits[0].statChanges[0].type).toBe('max');
+    // The option list closes, and Radix hands the page back, a few frames later.
+    await frames(5);
+    expect(screen.queryByRole('listbox')).toBeNull();
+    const trigger = await leaveFor(/Stats/);
+    expect(document.activeElement).toBe(trigger);
+
+    await undo();
+    expect(ctx().traits[0].statChanges[0].type).toBe('starting');
+    expect(shownEditorTab()).toMatch(/Traits/);
+    const [stat, type] = within(section()).getAllByRole('combobox');
+    expect(ringed()).toContainElement(type);
+    expect(ringed()).not.toContainElement(stat);
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it('pulses a segmented choice', async () => {
+    const { ctx } = renderWorldEditorBench(CONTROL_WORLD, 'advanced');
+    openWick();
+    const before = ctx().entities[0].persona;
+    await clickOn(screen.getByRole('radio', { name: 'Playable' }));
+    expect(ctx().entities[0].persona).not.toBe(before);
+    const trigger = await leaveFor(/Stats/);
+
+    await undo();
+    expect(ctx().entities[0].persona).toBe(before);
+    expect(shownEditorTab()).toMatch(/Entities/);
+    expect(ringed()).toContainElement(screen.getByRole('radio', { name: 'Cast' }));
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it('pulses the host prompt field after a chip pop-out edit', async () => {
+    const { ctx } = renderWorldEditorBench(CONTROL_WORLD, 'advanced');
+    openWick(/Descriptions/);
+    await clickOn(within(promptFieldUnder('AI-Facing Description')).getByText('Weather'));
+    await clickOn(screen.getByRole('radio', { name: 'Unique' }));
+    expect(ctx().entities[0].aiDescription).not.toBe(`Keeps lamps in ${CHIP}.`);
+    const trigger = await leaveFor(/Stats/);
+
+    await undo();
+    expect(ctx().entities[0].aiDescription).toBe(`Keeps lamps in ${CHIP}.`);
+    expect(shownEditorTab()).toMatch(/Entities/);
+    expect(ringed()).toContainElement(promptFieldUnder('AI-Facing Description'));
+    expect(ringed()).not.toContainElement(promptFieldUnder('Player-Facing Description'));
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it('reveals a canvas edit with no pulse', async () => {
+    vi.stubGlobal('DOMMatrixReadOnly', class { m22 = 1; });
+    const { ctx } = renderWorldEditorBench(CONTROL_WORLD, 'advanced');
+    openEditorTab(/Locations/);
+    fireEvent.click(screen.getByRole('radio', { name: 'Canvas' }));
+    fireEvent.click(document.querySelector('.react-flow__node[data-id="harbor"]')!);
+    // The author's caret rests in the location's name while they drag a node.
+    await step(() => screen.getByRole('textbox', { name: 'Name' }).focus());
+    const pane = document.querySelector('.react-flow__pane')!;
+    await step(() => { fireEvent.pointerDown(pane); });
+    await step(() => { fireEvent.pointerUp(pane); });
+    // The drop commits through the world; jsdom cannot drag a node.
+    await step(() => ctx().updateLocation({ ...ctx().locations[1], parentId: 'harbor' }));
+    expect(ctx().locations[1].parentId).toBe('harbor');
+    await step(() => openEditorTab(/Stats/));
+
+    await undo();
+    await frames(40);
+    expect(ctx().locations[1].parentId).toBeUndefined();
+    expect(shownEditorTab()).toMatch(/Locations/);
+    expect(document.querySelector('.react-flow')).not.toBeNull();
+    expect(noRing()).toHaveLength(0);
   });
 });

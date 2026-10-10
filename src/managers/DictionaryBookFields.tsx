@@ -51,7 +51,7 @@ const DictionaryBookFields = ({ book, showEnabled = true }: { book: Dictionary; 
         />
       </div>
       {advanced && showEnabled && (
-        <label className="flex items-center gap-2 text-label">
+        <label className="flex items-center gap-2 text-label" {...fieldFrame('enabled')}>
           <Checkbox
             checked={book.enabled !== false}
             onCheckedChange={(v) => updateDictionary({ ...book, enabled: v === true })}

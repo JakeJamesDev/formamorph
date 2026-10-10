@@ -33,9 +33,9 @@ export const ACTIVATION_INFO = `**Always Inject** injects the Value into every p
 **Recursive** lets a Value injected by another entry activate this one`;
 
 /** A compact labeled checkbox for the entry panel's switch rows. */
-function CheckRow({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
+function CheckRow({ field, label, checked, onChange }: { field: string; label: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
-    <label className="flex items-center gap-2 text-label">
+    <label className="flex items-center gap-2 text-label" {...fieldFrame(field)}>
       <Checkbox checked={checked} onCheckedChange={(v) => onChange(v === true)} />
       {label}
     </label>
@@ -133,8 +133,8 @@ const DictionaryManager = ({ entry, placeholders = [], ownerId, tab, onTabChange
         {/* The two switches that modify these keywords, kept beside them: they are also the only matching
             switches Simple mode shows. */}
         <div className="flex flex-wrap gap-x-4 gap-y-2">
-          <CheckRow label="Whole Words" checked={!!editingEntry.matchWholeWords} onChange={(v) => handleChange('matchWholeWords', v)} />
-          <CheckRow label="Case-Sensitive" checked={!!editingEntry.caseSensitive} onChange={(v) => handleChange('caseSensitive', v)} />
+          <CheckRow field="matchWholeWords" label="Whole Words" checked={!!editingEntry.matchWholeWords} onChange={(v) => handleChange('matchWholeWords', v)} />
+          <CheckRow field="caseSensitive" label="Case-Sensitive" checked={!!editingEntry.caseSensitive} onChange={(v) => handleChange('caseSensitive', v)} />
         </div>
       </div>
       <PlaceholderField
@@ -159,9 +159,9 @@ const DictionaryManager = ({ entry, placeholders = [], ownerId, tab, onTabChange
         </div>
         <Hint>Controls when this entry activates and how its keywords match</Hint>
         <div className="flex flex-wrap gap-x-4 gap-y-2">
-          <CheckRow label="Always Inject" checked={!!editingEntry.constant} onChange={(v) => handleChange('constant', v)} />
-          <CheckRow label="Regex" checked={!!editingEntry.useRegex} onChange={(v) => handleChange('useRegex', v)} />
-          <CheckRow label="Recursive" checked={!!editingEntry.recursive} onChange={(v) => handleChange('recursive', v)} />
+          <CheckRow field="constant" label="Always Inject" checked={!!editingEntry.constant} onChange={(v) => handleChange('constant', v)} />
+          <CheckRow field="useRegex" label="Regex" checked={!!editingEntry.useRegex} onChange={(v) => handleChange('useRegex', v)} />
+          <CheckRow field="recursive" label="Recursive" checked={!!editingEntry.recursive} onChange={(v) => handleChange('recursive', v)} />
         </div>
       </div>
       <div className="space-y-2" {...fieldFrame('scanDepth')}>
@@ -174,8 +174,8 @@ const DictionaryManager = ({ entry, placeholders = [], ownerId, tab, onTabChange
         <Hint>{secondaryHint}</Hint>
         <KeywordChips keywords={secondaryKeywords} onChange={handleSecondaryChange} placeholders={chipPlaceholders} ownerId={ownerId} placeholder="e.g. red" offerCommaSplit={!editingEntry.useRegex} />
         <div className="flex flex-wrap gap-x-4 gap-y-2">
-          <CheckRow label="Require All" checked={!!editingEntry.secondaryAll} onChange={(v) => handleChange('secondaryAll', v)} />
-          <CheckRow label="Exclude" checked={!!editingEntry.secondaryExclude} onChange={(v) => handleChange('secondaryExclude', v)} />
+          <CheckRow field="secondaryAll" label="Require All" checked={!!editingEntry.secondaryAll} onChange={(v) => handleChange('secondaryAll', v)} />
+          <CheckRow field="secondaryExclude" label="Exclude" checked={!!editingEntry.secondaryExclude} onChange={(v) => handleChange('secondaryExclude', v)} />
         </div>
       </div>
     </>

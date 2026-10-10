@@ -18,6 +18,7 @@ import type { Dictionary, DictionaryEntry } from '@/types';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { ContentLinkIcon } from '@/components/ContentLinkStatus';
 import { useEditorMode } from '@/lib/editorMode';
+import { fieldPath } from '@/lib/historyField';
 import { cn } from '@/lib/utils';
 import { useDictionaryActions, useDictionaryCollapse, type DictionaryCollapse } from './useDictionaryActions';
 
@@ -49,7 +50,7 @@ function EntryRow({ entry, selected, onSelect, onToggleEnabled, onDuplicate, onR
       gripTitle="Drag to reorder, re-place, or move to another dictionary"
       selected={selected}
       onSelect={() => onSelect(entry.id)}
-      checkbox={advanced ? { checked: entry.enabled !== false, onChange: (v) => onToggleEnabled(entry, v) } : undefined}
+      checkbox={advanced ? { checked: entry.enabled !== false, onChange: (v) => onToggleEnabled(entry, v), field: fieldPath('rows', entry.id, 'enabled') } : undefined}
       label={<PlaceholderText text={dictionaryEntryLabel(entry)} placeholders={placeholders} />}
       actions={[
         { icon: <Copy className="h-4 w-4" />, title: 'Duplicate', onClick: () => onDuplicate(entry.id) },
@@ -213,7 +214,7 @@ function BookRow({ book, addEntryTourAnchor, collapsed, collapsedZones, selected
         collapsed={collapsed}
         onToggleCollapse={() => onToggleCollapse(book.id)}
         collapseLabels={['Expand dictionary', 'Collapse dictionary']}
-        checkbox={advanced ? { checked: book.enabled !== false, onChange: (v) => onToggleEnabled(book, v) } : undefined}
+        checkbox={advanced ? { checked: book.enabled !== false, onChange: (v) => onToggleEnabled(book, v), field: fieldPath('rows', book.id, 'enabled') } : undefined}
         icon={<ContentLinkIcon link={book.link} />}
         label={<PlaceholderText text={book.name} placeholders={placeholders} />}
         labelClass="font-medium"

@@ -203,6 +203,7 @@ export const StatDescriptorsSection = ({
               onValueChange={(v) => { if (v) switchUnit(v as ThresholdUnit); }}
               aria-label="Threshold units"
               className="h-8"
+              {...fieldFrame('descriptors', 'unit')}
             >
               <ToggleGroupItem value="raw" className="h-6 px-2 text-helper">Raw</ToggleGroupItem>
               <ToggleGroupItem value="percent" className="h-6 px-2 text-helper">% of Max</ToggleGroupItem>

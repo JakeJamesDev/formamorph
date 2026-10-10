@@ -288,7 +288,7 @@ const TraitManager = ({
               value={statChange.statId}
               onValueChange={(value) => handleStatChangeUpdate(index, 'statId', value)}
             >
-              <SelectTrigger>
+              <SelectTrigger {...fieldFrame('statChanges', String(index), 'statId')}>
                 <SelectValue placeholder="Select stat" />
               </SelectTrigger>
               <SelectContent>
@@ -311,7 +311,7 @@ const TraitManager = ({
               value={statChange.type}
               onValueChange={(value) => handleStatChangeUpdate(index, 'type', value)}
             >
-              <SelectTrigger>
+              <SelectTrigger {...fieldFrame('statChanges', String(index), 'type')}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -343,7 +343,7 @@ const TraitManager = ({
           <div key={index} className="space-y-1">
           <div className="flex space-x-2">
             <Select value={toggle.statId} onValueChange={(v) => updateStatToggle(index, { statId: v })} disabled={readOnly}>
-              <SelectTrigger>
+              <SelectTrigger {...fieldFrame('statToggles', String(index), 'statId')}>
                 <SelectValue placeholder="Select stat" />
               </SelectTrigger>
               <SelectContent>
@@ -357,7 +357,7 @@ const TraitManager = ({
               onValueChange={(v) => updateStatToggle(index, { enabled: v === 'on' })}
               disabled={readOnly}
             >
-              <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-32" {...fieldFrame('statToggles', String(index), 'enabled')}><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="on">Enable</SelectItem>
                 <SelectItem value="off">Disable</SelectItem>
