@@ -76,13 +76,14 @@ const frameShot = (id: string, frames: number, out: TransitionName, props: Own<C
     (layout) => (props.caption ? [{ pills: { lines: props.caption, layout, place: CAPTION_PLACE[layout], dot: props.dot } }] : []),
   );
 
-const turn = (id: string, frames: number, out: TransitionName, props: Own<ComponentProps<typeof TypedTurn>>) =>
+/** A turn shot. Its panel timing follows its own layout's clip, so `layout` names the cut whose reads it carries. */
+const turn = (id: string, frames: number, out: TransitionName, layout: Layout, props: Own<ComponentProps<typeof TypedTurn>>) =>
   shot(
     id,
     frames,
     out,
     (scene) => <TypedTurn {...scene} {...props} />,
-    turnReads(props.prompt, props.caption, frames),
+    turnReads(props.clip, layout, props.prompt, props.caption, frames),
     (layout) => [{ shot: shotFor(props.clip, layout), path: props.camera[layout], card: TURN_CARDS[layout].clip, bob: cardBob('shot') }],
     (layout) => [{ card: TURN_CARDS[layout].panel, bob: cardBob('panel') }],
   );
@@ -122,9 +123,9 @@ const ENTITY: StackPane = { shot: SHOTS.entity, caption: ['Talk to anyone you me
 const MAP: StackPane = { shot: SHOTS.canvas, caption: ['Place locations on a map.'], camera: hold(1, 0.395), dot: 'mint' };
 const PROFILE: StackPane = { shot: SHOTS.profile, caption: ['Write who lives there.'], camera: hold(1.6, 0.72, 0.4), dot: 'rose' };
 const TRAVEL: StackPane = { shot: SHOTS.travel, caption: ['Then travel there and meet them.'], camera: hold(1.25, 0.5, 0.28), dot: 'sky' };
-const BLUEPRINTS: StackPane = { shot: SHOTS.blueprints, caption: ['Let players pick a race and a class.'], camera: hold(1, 0.34), dot: 'amber' };
+const BLUEPRINTS: StackPane = { shot: SHOTS.blueprints, caption: ['Define your world and everyone in it, your way.'], camera: hold(1, 0.34), dot: 'amber' };
 const COMMUNITY: StackPane = { shot: SHOTS.community, caption: ['Download hundreds of worlds from the community.'], camera: FULL, dot: 'sky' };
-const CONTEST: StackPane = { shot: SHOTS.contest, caption: ['Enter contests.', 'Share what you make.'], camera: hold(1.85, 0.275, 0.455), dot: 'amber' };
+const CONTEST: StackPane = { shot: SHOTS.contest, caption: ['Share your ideas with the community.', 'Compete with other creators.'], camera: hold(1.75, 0.275, 0.48), dot: 'amber' };
 
 /** W03 is the whole loop (frames 0–359): the title card begins and ends on the bare stage (rulings Q28, Q40, Q51). */
 const W03 = wordmark('W03', 360, 'cut');
@@ -135,12 +136,13 @@ const W04 = frameShot('W04', 300, 'section', {
   dot: 'purple',
   camera: both(FULL),
 });
-const W05 = turn('W05', 360, 'overlap', {
+const TURN = {
   clip: { wide: SHOTS.narrationClip, tall: SHOTS.narrationClipTall },
   camera: layouts(hold(1.5, 0.5, 0.32), hold(1, 0.5, 0)),
   prompt: TURN_PROMPT,
   caption: 'The narrator continues the story.',
-});
+};
+const W05 = turn('W05', 360, 'overlap', 'wide', TURN);
 const W06 = frameShot('W06', 220, 'overlap', {
   shot: STATS.shot,
   depth: SHOTS.entity,
@@ -164,7 +166,7 @@ const W10 = frameShot('W10', 240, 'overlap', { shot: MAP.shot, depth: SHOTS.prof
 const W11 = frameShot('W11', 240, 'overlap', { shot: PROFILE.shot, depth: SHOTS.travel, caption: PROFILE.caption, dot: PROFILE.dot, camera: both(hold(1.6, 0.67, 0.4)) });
 const W10b = frameShot('W10b', 270, 'overlap', { shot: TRAVEL.shot, depth: SHOTS.canvas, caption: TRAVEL.caption, dot: TRAVEL.dot, camera: both(hold(1.6, 0.5, 0.3)) });
 const W12a = kinetic('W12a', 212, 'overlap', { lines: ['Traits shape who you play.'] });
-const W12 = frameShot('W12', 250, 'overlap', { shot: BLUEPRINTS.shot, depth: SHOTS.profile, caption: BLUEPRINTS.caption, dot: BLUEPRINTS.dot, camera: both(FULL) });
+const W12 = frameShot('W12', 305, 'overlap', { shot: BLUEPRINTS.shot, depth: SHOTS.profile, caption: BLUEPRINTS.caption, dot: BLUEPRINTS.dot, camera: both(FULL) });
 const W13a = kinetic('W13a', 176, 'overlap', { lines: ['Need help? Just ask.'] });
 const W13 = frameShot('W13', 380, 'section', {
   shot: SHOTS.helpClip,
@@ -183,7 +185,9 @@ const W15 = dense(frameShot('W15', 383, 'section', {
   // Zoomed only as far as keeps the whole podium callout in frame.
   camera: both(hold(1.12, 0.55, 0.46)),
 }));
-const W16 = kinetic('W16', 160, 'overlap', { lines: ['Use any AI model.'] });
+const W16 = kinetic('W16', 350, 'overlap', { lines: ['Use any AI model.', 'Run it fully local, with no extra software to install.'] });
+/** The tall cut keeps the one line: the second does not hold on mobile (ruling Q58). */
+const T12 = kinetic('T12', 160, 'overlap', { lines: ['Use any AI model.'] });
 const W17 = frameShot('W17', 310, 'overlap', {
   shot: SHOTS.engine,
   depth: TURN_AFTER,
@@ -193,7 +197,7 @@ const W17 = frameShot('W17', 310, 'overlap', {
   cards: { tall: SQUARE_TALL },
 });
 const W18 = frameShot('W18', 180, 'overlap', { shot: SHOTS.avatarClip, depth: SHOTS.entity, caption: ['Pick a 3D avatar.'], dot: 'rose', camera: both(FULL) });
-const W19 = title('W19', 392, { text: 'Play free at formamorph.ai', link: 'formamorph.ai' });
+const W19 = title('W19', 376, { text: 'Play free at formamorph.ai', link: 'formamorph.ai' });
 
 /** A tall card at the stack cards' shape, for a single shot whose subject is wider than the 3:4 window shows. */
 const LANDSCAPE_TALL: CardPair = {
@@ -201,12 +205,13 @@ const LANDSCAPE_TALL: CardPair = {
   depth: { width: 820, height: 649, x: -70, y: -420, tilt: [-14, -10], lean: 4 },
 };
 
+const T05 = turn('T05', 360, 'overlap', 'tall', TURN);
 /** The tall cut's stacks: two wide captures on two cards, one above the other (storyboard §4). */
 const T06 = stack('T06', 240, 'overlap', [STATS, ENTITY]);
 /** The map alone, then profile and travel as one pair, since the traits card parts blueprints from them (ruling Q51). */
 const T09 = frameShot('T09', 240, 'overlap', { shot: MAP.shot, depth: SHOTS.profile, caption: MAP.caption, dot: MAP.dot, camera: both(MAP.camera), cards: { tall: LANDSCAPE_TALL } });
 const T10 = stack('T10', 290, 'overlap', [PROFILE, TRAVEL]);
-const T10b = frameShot('T10b', 264, 'section', { shot: BLUEPRINTS.shot, depth: SHOTS.profile, caption: BLUEPRINTS.caption, dot: BLUEPRINTS.dot, camera: both(hold(1, 0.31)) });
+const T10b = frameShot('T10b', 311, 'section', { shot: BLUEPRINTS.shot, depth: SHOTS.profile, caption: BLUEPRINTS.caption, dot: BLUEPRINTS.dot, camera: both(hold(1, 0.31)) });
 /** The contest pane is the dense one. */
 const T11 = dense(stack('T11', 403, 'section', [COMMUNITY, CONTEST]), paneRise(1));
 
@@ -220,7 +225,7 @@ const WIDE: SceneEntry[] = [W03, W04, W05, W06, W07, W08, W09, W10, W11, W10b, W
 const TALL: SceneEntry[] = [
   reuse('T03', W03),
   reuse('T04', W04),
-  reuse('T05', W05),
+  T05,
   T06,
   reuse('T07', W08),
   reuse('T08', W09),
@@ -229,7 +234,7 @@ const TALL: SceneEntry[] = [
   reuse('T10a', W12a),
   T10b,
   T11,
-  reuse('T12', W16),
+  T12,
   reuse('T13', W17),
   reuse('T14', W19),
 ];

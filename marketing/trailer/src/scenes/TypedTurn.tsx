@@ -5,48 +5,52 @@ import type { CameraPath } from '../parts/FrameCamera';
 import { GlassCard, ShotCard } from '../parts/GlassCard';
 import { TURN_CARDS } from '../poses';
 import type { CopyRead } from '../reading';
-import { shotFor, type LayoutShot } from '../shots';
+import { panelFrameOf, shotFor, type LayoutShot } from '../shots';
 import { colors, fonts, roleSize } from '../theme';
-import { FRAMES_PER_CHAR, TYPE_START_FRAME, turnTimeline } from '../typing';
+import { FRAMES_PER_CHAR, turnTimeline } from '../typing';
 
 type TypedTurnProps = SceneProps & {
-  /** The turn's clip: the game before the turn, then the real narration revealing. It starts to play on `revealFrame`. */
+  /** The turn's clip: the game before the turn, the send, then the real narration revealing. */
   clip: LayoutShot;
   camera: Record<Layout, CameraPath>;
   /** The player line that types in on the panel. */
   prompt: string;
-  /** A plain line under it that enters as the reveal starts. */
+  /** A plain line under it that enters once the player line has typed in. */
   caption: string;
 };
 
 const CARET_BLINK_FRAMES = 20;
 
-/** The frames the player line and the caption enter, are legible and leave, for the reading check. The player line is legible from its last character. */
-export const turnReads = (prompt: string, caption: string, durationInFrames: number): CopyRead[] => {
-  const { typeEnd, revealFrame } = turnTimeline(prompt);
+/** The frames the player line and the caption enter, are legible and leave in `layout`, for the reading check. The player line is legible from its last character. */
+export const turnReads = (clip: LayoutShot, layout: Layout, prompt: string, caption: string, durationInFrames: number): CopyRead[] => {
+  const panelFrame = panelFrameOf(shotFor(clip, layout));
+  const { typeEnd, captionFrame } = turnTimeline(prompt, panelFrame);
   const exit = { until: durationInFrames - EXIT_FRAMES, end: durationInFrames };
   return [
-    { text: prompt, start: 0, from: Math.max(ENTER_FRAMES, typeEnd), ...exit },
-    { text: caption, start: revealFrame, from: revealFrame + ENTER_FRAMES, ...exit },
+    { text: prompt, start: panelFrame, from: Math.max(panelFrame + ENTER_FRAMES, typeEnd), ...exit },
+    { text: caption, start: captionFrame, from: captionFrame + ENTER_FRAMES, ...exit },
   ];
 };
 
-/** Ruling Q31: the turn's real narration reveal plays in the card, and the player line types in on a glass panel below it, never over it. */
+/**
+ * Ruling Q31: the turn's real narration reveal plays in the card, and the player line types in on a glass panel
+ * below it, never over it. The panel enters as the clip shows its first narration word (ruling Q54).
+ */
 export const TypedTurn = ({ layout, durationInFrames, clip, camera, prompt, caption }: TypedTurnProps) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const { typeEnd, revealFrame } = turnTimeline(prompt);
-  const cards = TURN_CARDS[layout];
-  const typedChars = Math.max(0, Math.min(prompt.length, Math.floor((frame - TYPE_START_FRAME) / FRAMES_PER_CHAR)));
-  const caretOn = frame < revealFrame && (frame < typeEnd || Math.floor(frame / CARET_BLINK_FRAMES) % 2 === 0);
-  const captionIn = springIn(frame, fps, SPRINGS.pill, revealFrame, ENTER_FRAMES);
   const shot = shotFor(clip, layout);
-  if (shot.clipFrom !== revealFrame) throw new Error(`The turn clip must start on frame ${revealFrame}, the reveal; it starts on ${shot.clipFrom}.`);
+  const panelFrame = panelFrameOf(shot);
+  const { typeStart, typeEnd, captionFrame } = turnTimeline(prompt, panelFrame);
+  const cards = TURN_CARDS[layout];
+  const typedChars = Math.max(0, Math.min(prompt.length, Math.floor((frame - typeStart) / FRAMES_PER_CHAR)));
+  const caretOn = frame < captionFrame && (frame < typeEnd || Math.floor(frame / CARET_BLINK_FRAMES) % 2 === 0);
+  const captionIn = springIn(frame, fps, SPRINGS.pill, captionFrame, ENTER_FRAMES);
 
   return (
     <AbsoluteFill style={{ fontFamily: fonts.body }}>
       <ShotCard shot={shot} path={camera[layout]} pose={cards.clip} durationInFrames={durationInFrames} />
-      <GlassCard pose={cards.panel} durationInFrames={durationInFrames} variant="panel" delay={6}>
+      <GlassCard pose={cards.panel} durationInFrames={durationInFrames} variant="panel" delay={panelFrame}>
         <div style={{ padding: cards.padding, color: colors.foreground }}>
           <p style={{ margin: 0, fontSize: roleSize('title', layout), fontWeight: 500, lineHeight: 1.2 }}>
             {prompt.slice(0, typedChars)}

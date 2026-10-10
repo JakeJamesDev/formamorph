@@ -4,9 +4,11 @@ import { INTRO_FONT_BASE64, INTRO_FONT_FAMILY } from '../../../../src/lib/introF
 import { colors } from '../theme';
 
 /** The intro's cine timeline in ms, shifted so the first blob is born at 0. */
-const T = { genesis: 350, popcorn: 2000, magnet: 3000, solid: 6500 };
-/** Ms from the first blob until every blob has magnetized into place. */
-export const GOO_SETTLE_MS = T.magnet;
+const T = { genesis: 350, popcorn: 2000, magnet: 3000 };
+/** Ms the blobs take to shrink away into the letters once they settle (ruling Q55). */
+const DISSOLVE_MS = 1250;
+/** Ms from the first blob until only the crisp letters are left. */
+export const GOO_CRISP_MS = T.magnet + DISSOLVE_MS;
 const POP_MS = 300;
 const SEED = 20261009;
 
@@ -16,6 +18,11 @@ const FORMA_LENGTH = 5;
 /** The intro's tracking, in em: tight enough for size, open enough that the letters never weld. */
 const TRACKING = 0.05;
 const FILTER_ID = 'goo-wordmark';
+
+/** How far the dissolve has run at `t` ms after the first blob, 0 to 1. */
+const dissolveAt = (t: number) => clamp01((t - T.magnet) / DISSOLVE_MS);
+/** The metaball blur's share: it sharpens to none over the dissolve's second half, so the goo letters match the crisp ones before they hide. */
+const blurAt = (t: number) => 1 - easeInOut(clamp01((dissolveAt(t) - 0.5) / 0.5));
 
 const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
 const easeInOut = (t: number) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
@@ -129,14 +136,51 @@ const buildLayout = (maxSize: number, maxWidth: number): GooLayout => {
   return { width: Math.round(textWidth), height, pad, midY, font, glyphs, blobs, step, morphFrom, morphTo };
 };
 
-/** Draws one frame of the intro at `t` ms after the first blob, as the intro's frame loop draws its goo layer. */
-const draw = (ctx: CanvasRenderingContext2D, layout: GooLayout, t: number) => {
-  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+/** A layer canvas's size and place: the padded box, centered in a box `maxWidth` wide. */
+const canvasBox = (layout: GooLayout, maxWidth: number) => ({
+  width: layout.width + layout.pad * 2,
+  height: layout.height + layout.pad * 2,
+  style: { position: 'absolute', left: (maxWidth - layout.width) / 2 - layout.pad, top: -layout.pad } as const,
+});
+
+/** The letters' fill: white for "Forma", the wordmark gradient across "morph". */
+const fillFor = (ctx: CanvasRenderingContext2D, layout: GooLayout) => {
   const gradient = ctx.createLinearGradient(layout.morphFrom, 0, layout.morphTo, 0);
   gradient.addColorStop(0, colors.dots.purple);
   gradient.addColorStop(0.55, colors.dots.pink);
   gradient.addColorStop(1, colors.dots.rose);
-  const fill = (morph: boolean) => (morph ? gradient : colors.foreground);
+  return (morph: boolean) => (morph ? gradient : colors.foreground);
+};
+
+/** Draws the letters at `alpha`, each nudged by the intro's wobble scaled by `wobble`. */
+const drawLetters = (ctx: CanvasRenderingContext2D, layout: GooLayout, t: number, alpha: number, wobble: number) => {
+  if (alpha <= 0) return;
+  const fill = fillFor(ctx, layout);
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.font = layout.font;
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'left';
+  const wx = Math.sin(t / 430) * 1.2 * wobble;
+  const wy = Math.cos(t / 310) * 1.4 * wobble;
+  layout.glyphs.forEach((g, i) => {
+    ctx.fillStyle = fill(i >= FORMA_LENGTH);
+    ctx.fillText(g.ch, g.x + wx + Math.sin(t / 350 + i) * 0.8 * wobble, layout.midY + wy + Math.cos(t / 280 + i * 1.7) * wobble);
+  });
+  ctx.restore();
+};
+
+/**
+ * Draws one frame `t` ms after the first blob: the goo layer as the intro's frame loop draws it, then the
+ * dissolve, where the blobs shrink away outside in and the wobble stills, and the crisp letters on their own
+ * unfiltered layer take over.
+ */
+const draw = (goo: CanvasRenderingContext2D, crisp: CanvasRenderingContext2D, layout: GooLayout, t: number) => {
+  goo.clearRect(0, 0, goo.canvas.width, goo.canvas.height);
+  crisp.clearRect(0, 0, crisp.canvas.width, crisp.canvas.height);
+  const fill = fillFor(goo, layout);
+  const dissolve = dissolveAt(t);
+  const still = 1 - easeInOut(dissolve);
 
   const restWin = T.popcorn - T.genesis;
   const magRaw = clamp01((t - T.popcorn) / (T.magnet - T.popcorn));
@@ -144,37 +188,28 @@ const draw = (ctx: CanvasRenderingContext2D, layout: GooLayout, t: number) => {
     const age = t - (i === 0 ? 0 : T.genesis + restWin * (0.03 + 0.9 * b.rank));
     if (age <= 0) return;
     const m = easeInOut(clamp01((magRaw - b.rank * 0.35) / 0.65));
-    const jig = b.jig * (1 - 0.82 * m);
-    const r = b.r * springScale(age, i === 0 ? POP_MS * 1.6 : POP_MS) * (1 - 0.18 * m);
+    const jig = b.jig * (1 - 0.82 * m) * still;
+    // Outer blobs leave first, so the goo draws in toward the letters as it goes.
+    const gone = easeInOut(clamp01((dissolve - (1 - b.rank) * 0.55) / 0.45));
+    const r = b.r * springScale(age, i === 0 ? POP_MS * 1.6 : POP_MS) * (1 - 0.18 * m) * (1 - gone);
     if (r < 0.5) return;
-    ctx.fillStyle = fill(b.morph);
-    ctx.beginPath();
-    ctx.arc(b.px + (b.x - b.px) * m + Math.sin(t / 280 + b.seed) * jig, b.py + (b.y - b.py) * m + Math.cos(t / 320 + b.seed * 1.3) * jig, r, 0, Math.PI * 2);
-    ctx.fill();
+    goo.fillStyle = fill(b.morph);
+    goo.beginPath();
+    goo.arc(b.px + (b.x - b.px) * m + Math.sin(t / 280 + b.seed) * jig, b.py + (b.y - b.py) * m + Math.cos(t / 320 + b.seed * 1.3) * jig, r, 0, Math.PI * 2);
+    goo.fill();
   });
 
-  // The real letters swell in through the threshold across the magnetize and hold.
-  const solid = easeInOut(clamp01((t - T.popcorn) / (T.solid - T.popcorn)));
-  if (solid <= 0) return;
-  ctx.save();
-  ctx.globalAlpha = solid;
-  ctx.font = layout.font;
-  ctx.textBaseline = 'middle';
-  ctx.textAlign = 'left';
-  const wx = Math.sin(t / 430) * 1.2;
-  const wy = Math.cos(t / 310) * 1.4;
-  layout.glyphs.forEach((g, i) => {
-    ctx.fillStyle = fill(i >= FORMA_LENGTH);
-    ctx.fillText(g.ch, g.x + wx + Math.sin(t / 350 + i) * 0.8, layout.midY + wy + Math.cos(t / 280 + i * 1.7));
-  });
-  ctx.restore();
+  // The real letters swell in through the threshold across the magnetize, solid by the dissolve's end.
+  drawLetters(goo, layout, t, easeInOut(clamp01((t - T.popcorn) / (GOO_CRISP_MS - T.popcorn))), still);
+  // The crisp letters fade in over the dissolve's second half and cover the goo layer, which hides at the end.
+  drawLetters(crisp, layout, t, easeInOut(clamp01((dissolve - 0.4) / 0.45)), still);
 };
 
 /**
  * "Formamorph" coalescing from goo, as the app's first-run intro (`src/components/IntroSequence.tsx`, cine pace, no
  * kicker) does, driven by the frame (ruling Q49). Blobs pop in, magnetize into place and merge into the letters
  * through a metaball filter. The letters keep the intro's face and spacing in the trailer wordmark's colors, and each
- * blob takes its letter's color (ruling Q53).
+ * blob takes its letter's color (ruling Q53). Once settled, the blobs dissolve and leave the crisp letters (ruling Q55).
  *
  * The first blob is born at scene frame `from`, at `fontSize` or smaller to fit `maxWidth`. It takes a fixed box in
  * the layout; the blobs fly in from past its edges.
@@ -182,9 +217,12 @@ const draw = (ctx: CanvasRenderingContext2D, layout: GooLayout, t: number) => {
 export const GooWordmark = ({ fontSize, maxWidth, from }: { fontSize: number; maxWidth: number; from: number }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const canvas = useRef<HTMLCanvasElement>(null);
+  const gooCanvas = useRef<HTMLCanvasElement>(null);
+  const crispCanvas = useRef<HTMLCanvasElement>(null);
   const [layout, setLayout] = useState<GooLayout | null>(null);
   const [handle] = useState(() => delayRender('Goo wordmark layout'));
+  /** Ms since the first blob. */
+  const t = ((frame - from) / fps) * 1000;
 
   useEffect(() => {
     let live = true;
@@ -200,11 +238,12 @@ export const GooWordmark = ({ fontSize, maxWidth, from }: { fontSize: number; ma
   }, [fontSize, maxWidth]);
 
   useLayoutEffect(() => {
-    const ctx = canvas.current?.getContext('2d');
-    if (!layout || !ctx) return;
-    draw(ctx, layout, ((frame - from) / fps) * 1000);
+    const goo = gooCanvas.current?.getContext('2d');
+    const crisp = crispCanvas.current?.getContext('2d');
+    if (!layout || !goo || !crisp) return;
+    draw(goo, crisp, layout, t);
     continueRender(handle);
-  }, [frame, from, fps, layout, handle]);
+  }, [t, layout, handle]);
 
   // The box has its final size before the layout is measured: copy that moves after the first paint can be
   // captured from its old raster.
@@ -214,18 +253,20 @@ export const GooWordmark = ({ fontSize, maxWidth, from }: { fontSize: number; ma
       <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden="true">
         <defs>
           <filter id={FILTER_ID}>
-            <feGaussianBlur in="SourceGraphic" stdDeviation={layout ? layout.step * 0.3 : 0} result="b" />
+            <feGaussianBlur in="SourceGraphic" stdDeviation={layout ? layout.step * 0.3 * blurAt(t) : 0} result="b" />
             <feColorMatrix in="b" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 26 -11" />
           </filter>
         </defs>
       </svg>
       {layout && (
-        <canvas
-          ref={canvas}
-          width={layout.width + layout.pad * 2}
-          height={layout.height + layout.pad * 2}
-          style={{ position: 'absolute', left: (maxWidth - layout.width) / 2 - layout.pad, top: -layout.pad, filter: `url(#${FILTER_ID})` }}
-        />
+        <>
+          <canvas
+            ref={gooCanvas}
+            {...canvasBox(layout, maxWidth)}
+            style={{ ...canvasBox(layout, maxWidth).style, filter: `url(#${FILTER_ID})`, visibility: dissolveAt(t) < 1 ? 'visible' : 'hidden' }}
+          />
+          <canvas ref={crispCanvas} {...canvasBox(layout, maxWidth)} />
+        </>
       )}
     </div>
   );

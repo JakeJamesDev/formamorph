@@ -6,8 +6,8 @@ Parent: [Trailer spec](spec.md) · Ticket: [03 Storyboard](issues/03-storyboard.
 
 | Cut | Size | Length | Shots |
 |---|---|---|---|
-| Wide (Steam) | 1920x1080, 60 fps | 80.02 s (4,801 frames) | 20 |
-| Tall (social) | 1080x1920, 60 fps | 59.40 s (3,564 frames) | 14 |
+| Wide (Steam) | 1920x1080, 60 fps | 83.83 s (5,030 frames) | 20 |
+| Tall (social) | 1080x1920, 60 fps | 59.92 s (3,595 frames) | 14 |
 
 The first 6 seconds (frames 0–359) are a standalone silent loop in both cuts.
 
@@ -53,7 +53,7 @@ Ranked by what sells the app to a Steam visitor who reads the copy without sound
 
 | Shot | Start | Frames | Dense | Type | Copy | Source frame | Camera | Out |
 |---|---|---|---|---|---|---|---|---|
-| W03 | 0.00 s | 360 |  | title | wordmark only | stage only | none; starts and ends on the bare stage | cut |
+| W03 | 0.00 s | 360 |  | title | goo wordmark only | stage only | none; starts and ends on the bare stage | cut |
 | W04 | 6.00 s | 300 |  | frame | An AI text RPG. / Play any world you can imagine. | C01 | full frame | section |
 | W05 | 10.40 s | 360 |  | turn | Type any action. / The narrator continues the story. | C02c, a clip of the live narration reveal | static crop on the narration | overlap |
 | W06 | 15.90 s | 220 |  | frame | Every turn updates your stats. | C02b, as a clip of the live stat-bar animation | static crop on the stat bars | overlap |
@@ -64,27 +64,31 @@ Ranked by what sells the app to a Steam visitor who reads the copy without sound
 | W11 | 31.42 s | 240 |  | frame | Write who lives there. | C06 | static crop on the entity profile | overlap |
 | W10b | 34.92 s | 270 |  | frame | Then travel there and meet them. | C13 | static crop on the dialog | overlap |
 | W12a | 38.92 s | 212 |  | kinetic | Traits shape who you play. | stage only | none | overlap |
-| W12 | 41.95 s | 250 |  | frame | Let players pick a race and a class. | C07 | full frame | overlap |
-| W13a | 45.62 s | 176 |  | kinetic | Need help? Just ask. | stage only | none | overlap |
-| W13 | 48.05 s | 380 |  | frame | Ask your AI guide Morphie for help at any time. | C08, a clip: Morphie thinks, then the answer streams in | static crop on Morphie and the answer | section |
-| W14 | 53.78 s | 305 |  | frame | Download hundreds of worlds from the community. | C09 | full frame | overlap |
-| W15 | 58.37 s | 383 | ✅ | frame | Enter contests. Share what you make. | C10 | slight crop that keeps the whole podium callout | section |
-| W16 | 64.15 s | 160 |  | kinetic | Use any AI model. | stage only | none | overlap |
-| W17 | 66.32 s | 310 |  | frame | Play in your browser or offline on your desktop. | C11 | static crop on the engine panel | overlap |
-| W18 | 70.98 s | 180 |  | frame | Pick a 3D avatar. | C12, as a clip of the idle animation | full frame | overlap |
-| W19 | 73.48 s | 392 |  | title | goo wordmark · AI text RPG · Play free at formamorph.ai | C01 and C02b on two depth cards | full frames; everything holds to the last frame | end |
+| W12 | 41.95 s | 305 |  | frame | Define your world and everyone in it, your way. | C07 | full frame | overlap |
+| W13a | 46.53 s | 176 |  | kinetic | Need help? Just ask. | stage only | none | overlap |
+| W13 | 48.97 s | 380 |  | frame | Ask your AI guide Morphie for help at any time. | C08, a clip: Morphie thinks, then the answer streams in | static crop on Morphie and the answer | section |
+| W14 | 54.70 s | 305 |  | frame | Download hundreds of worlds from the community. | C09 | full frame | overlap |
+| W15 | 59.28 s | 383 | ✅ | frame | Share your ideas with the community. / Compete with other creators. | C10 | slight crop that keeps the whole podium callout | section |
+| W16 | 65.07 s | 350 |  | kinetic | Use any AI model. / Run it fully local, with no extra software to install. | stage only | none | overlap |
+| W17 | 70.40 s | 310 |  | frame | Play in your browser or offline on your desktop. | C11 | static crop on the engine panel | overlap |
+| W18 | 75.07 s | 180 |  | frame | Pick a 3D avatar. | C12, as a clip of the idle animation | full frame | overlap |
+| W19 | 77.57 s | 376 |  | title | wordmark, then its pop · AI text RPG · Play free at formamorph.ai | C01 and C02b on two depth cards | full frames; everything holds to the last frame | end |
 
-Total: **4,801 frames, 80.02 s**, under the 90 s target. W01 and W02 are cut (Q30, Q40). The authoring order is map, profile, travel, the traits card, blueprints (Q43). A title card with the letter `a` sits before the shot it introduces (W12a, W13a).
+Total: **5,030 frames, 83.83 s**, under the 90 s target. W01 and W02 are cut (Q30, Q40). The authoring order is map, profile, travel, the traits card, blueprints (Q43). A title card with the letter `a` sits before the shot it introduces (W12a, W13a).
 
 **Camera (Q22, Q32):** no card zooms or pans. Each card holds one crop for its whole shot; the card's spring, bob and exit drift are the motion.
 
 **Subject (Q38, Q39):** each capture has a subject region, the part that carries its point. The render check fails a shot whose subject leaves the card's crop, or sits under a caption pill or panel, on any frame.
 
-**End card (Q37, Q49, Q53):** the wordmark coalesces from goo blobs, as the app's first-run intro does, in the wordmark's white and gradient. The tagline and the call to action enter once the letters settle. The call to action is a pill with no dot. "formamorph.ai" is in the accent color.
+**Opening card (Q49, Q53, Q55):** the wordmark coalesces from goo blobs, as the app's first-run intro does, in the wordmark's white and gradient. Once the letters settle, the blobs shrink away, outer ones first, and leave the crisp letters. The letters hold, then leave before frame 359.
+
+**End card (Q37, Q59):** the wordmark springs in. Then F, o, r, m and a each grow and shrink back in turn, one beat each, and "morph" does the same as one unit, a little larger. Every glyph settles at its normal size. The tagline and the call to action enter after the pop. The call to action is a pill with no dot. "formamorph.ai" is in the accent color.
 
 **Dense cards (Q48):** a card whose subject holds more than one thing the eye must find is marked ✅ in the Dense column. It holds at least 5 s after it lands, and the render check fails one that holds less. The contest podium is the one dense card.
 
 **Text (Q25):** each line takes 0.5 s to enter and 0.5 s to leave on a gentle curve, then holds at least 1.5 s (Q17).
+
+**Typed panel (Q54):** in W05 and T05 the panel enters on the clip frame that shows the first narration word. The capture measures that frame and writes it as `firstWord` beside each clip in `marketing/trailer/captures.json`; both clips show it on frame 2. The player line types in from there, then the caption enters.
 
 ---
 
@@ -94,13 +98,13 @@ Steam cuts its looping microtrailer from the first 6 seconds of the first traile
 
 ```
 frame 0 ─────────────────────────────── 359 │ 360
-stage   wordmark springs in, holds,     stage │ W04
-        leaves                          (same as │
+stage   goo coalesces, dissolves into   stage │ W04
+        the letters, holds, leaves      (same as │
                                         frame 0) │
 ```
 
 - **Seam:** frame 0 and frame 359 both show the bare blob stage, with no card and no text. The blobs repeat every 359 frames, so the two frames match and the loop has no visible jump (Q28).
-- **One shot:** the title card W03 is the whole loop (Q40, Q51). It brings the wordmark in and out over the stage, so the 360-frame block is exact.
+- **One shot:** the title card W03 is the whole loop (Q40, Q51, Q55). The goo coalesces, dissolves into the crisp letters, holds and leaves over the stage, so the 360-frame block is exact.
 - **Frame 360:** W04's card springs in over the same stage with a cut, so the full trailer also runs on without a jump.
 - **Message in 6 s:** the name. W04 says what the app is right after.
 
@@ -128,13 +132,13 @@ Derived shot by shot from the wide cut. Four treatments:
 | T09 | 25.25 s | W10 | 240 |  | crop | The whole map, on a card at the stack cards' shape. | overlap |
 | T10 | 28.75 s | W11 + W10b | 290 |  | stack | Entity profile above, travel dialog below. Both hold. | overlap |
 | T10a | 33.08 s | W12a | 212 |  | relayout |  | overlap |
-| T10b | 36.12 s | W12 | 264 |  | crop | Window on the Blueprint list. | section |
-| T11 | 39.92 s | W14 + W15 | 403 | ✅ | stack | World grid above, podium below. Both hold. | section |
-| T12 | 46.03 s | W16 | 160 |  | relayout |  | overlap |
-| T13 | 48.20 s | W17 | 310 |  | crop | The engine panel, on a squarer card. | overlap |
-| T14 | 52.87 s | W19 | 392 |  | relayout |  | end |
+| T10b | 36.12 s | W12 | 311 |  | crop | Window on the Blueprint list. | section |
+| T11 | 40.70 s | W14 + W15 | 403 | ✅ | stack | World grid above, podium below. Both hold. | section |
+| T12 | 46.82 s | W16 | 160 |  | relayout | "Use any AI model." alone: the second line does not hold on mobile (Q58). | overlap |
+| T13 | 48.98 s | W17 | 310 |  | crop | The engine panel, on a squarer card. | overlap |
+| T14 | 53.65 s | W19 | 376 |  | relayout |  | end |
 
-**Dropped:** W01 and W02 (Q30, Q40), Morphie with its title card (W13a, W13) and the avatar (W18). Total: **3,564 frames, 59.40 s**, under the 60 s that every social platform accepts.
+**Dropped:** W01 and W02 (Q30, Q40), Morphie with its title card (W13a, W13) and the avatar (W18). Total: **3,595 frames, 59.92 s**, under the 60 s that every social platform accepts.
 
 **Authoring order (Q43, Q51):** the traits card parts the Blueprint shot from the rest, so the map stands alone, the profile and the travel shot stack as a pair, and the Blueprint shot stands alone after the card.
 
@@ -185,9 +189,9 @@ Format per ruling Q8: the spec's field list. Ticket 05 copies these rows into ti
 
 Every line above is written for the copy sweep in ticket 07.
 
-- **STE:** one idea per line, active voice, common words, no metaphor. The longest line (W13) has 10 words.
+- **STE:** one idea per line, active voice, common words, no metaphor. The longest lines (W13, W16) have 10 words.
 - **Positive contract:** each line says what you can do. No line names a rival or a missing feature.
-- **Terms:** no line says "character". W07, W08 and W11 avoid the noun with "anyone" and "who". "Blueprint" stays off screen because new players do not know the term; W12 says "race and class".
+- **Terms:** no line says "character". W07, W08, W11 and W12 avoid the noun with "anyone", "who" and "everyone". "Blueprint" stays off screen because new players do not know the term.
 - **Claims to verify before the final render:** "hundreds of worlds" (W14) matches the landing page. Ticket 07 checks the live count.
 - **For the copy sweep:** W04 says "AI text RPG" and the end card says "AI text roleplay". W05 says "Type". Ticket 07 picks one term for each pair.
 
