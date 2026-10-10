@@ -1,0 +1,168 @@
+{
+  "_note": "Gold cases for the entity-stats request-shape probe (harness/entity-stats-probe.cli.ts). Sedge Landing with stats on its entities. Owners share stat names on purpose (Vigor on the player and Bram; Trust on Bram, Odette and Wick) so a change can land on the wrong owner. `present` = the entities whose stats go into the request. `expect` = owner -> stat -> direction that must move; `allow` = defensible extra moves that do not count as spurious. Every other owner/stat cell must stay still. `player` is the player character.",
+  "entityStats": {
+    "ent-bram": [
+      { "id": "bram-vigor", "name": "Vigor", "type": "number", "min": 0, "max": 100, "value": 70, "description": "Physical energy and stamina." },
+      { "id": "bram-trust", "name": "Trust", "type": "number", "min": 0, "max": 100, "value": 20, "description": "How far he trusts the player." }
+    ],
+    "ent-odette": [
+      { "id": "odette-trust", "name": "Trust", "type": "number", "min": 0, "max": 100, "value": 10, "description": "How far she trusts the player." },
+      { "id": "odette-stock", "name": "Stock", "type": "number", "min": 0, "max": 40, "value": 30, "description": "Smoked eels she has left to sell." }
+    ],
+    "ent-tomas": [
+      { "id": "tomas-suspicion", "name": "Suspicion", "type": "number", "min": 0, "max": 100, "value": 60, "description": "How strongly he suspects the player means harm." }
+    ],
+    "ent-wick": [
+      { "id": "wick-trust", "name": "Trust", "type": "number", "min": 0, "max": 100, "value": 5, "description": "How far she trusts the player." }
+    ]
+  },
+  "cases": [
+    {
+      "id": "shared-haul",
+      "present": ["ent-bram", "ent-odette"],
+      "narration": "You take the rope behind Bram and pull. The raft drags against the current, and every arm's length of tar-black rope costs you. Halfway across, your shoulders burn and your breath comes ragged. Bram works his one arm hand over hand without a word, but sweat runs down his neck and he stops twice to lean on the rope. When the raft grinds onto the far shingle, both of you stand bent over, breathing hard. Odette watches the crossing from the firepit and turns another eel on the rack.",
+      "expect": { "player": { "Vigor": "-" }, "ent-bram": { "Vigor": "-" } },
+      "allow": { "ent-bram": { "Trust": "+" } }
+    },
+    {
+      "id": "bram-alone",
+      "present": ["ent-bram", "ent-odette"],
+      "narration": "You sit on an upturned crate and watch Bram haul the raft back from the far bank alone. He pulls for a long time against the swollen river. By the time the raft touches the landing, he is grey-faced and shaking, and he drops onto the bench without a word. Beside you, Odette keeps her eyes on her eels and does not answer when you remark on the weather.",
+      "expect": { "ent-bram": { "Vigor": "-" } },
+      "allow": {}
+    },
+    {
+      "id": "player-alone",
+      "present": ["ent-bram"],
+      "narration": "You split the stack of driftwood by the cottage wall, one log after another, until your palms blister and your arms tremble. Bram sits on his stool in the doorway and smokes his pipe. He does not offer to help and he does not look up when you finally set the axe down.",
+      "expect": { "player": { "Vigor": "-" } },
+      "allow": {}
+    },
+    {
+      "id": "buy-eels",
+      "present": ["ent-odette", "ent-bram"],
+      "narration": "You count out four copper coins and set them on the flat stone by the firepit. Odette counts them twice, then wraps two smoked eels in a dock leaf and hands them over. When you thank her and do not haggle, the hard line of her mouth eases a little. \"Fair dealing,\" she says. \"Not much of that on this river.\" Bram coils rope at the water's edge and pays you no mind.",
+      "expect": { "ent-odette": { "Stock": "-", "Trust": "+" } },
+      "allow": {}
+    },
+    {
+      "id": "quiet-wait",
+      "present": ["ent-bram", "ent-odette"],
+      "narration": "Rain ticks on the reeds. You wait under the eaves of the ferry shed while the river runs past, brown and slow. Bram checks the rope's knots on the post, one by one. Odette feeds a handful of alder chips to the fire, and the smoke hangs low over the water. Nobody speaks. The afternoon passes like that.",
+      "expect": {},
+      "allow": {}
+    },
+    {
+      "id": "tomas-letter",
+      "present": ["ent-tomas"],
+      "narration": "Tomas plants his fishing spear in the mud and asks your business. You tell him plainly: you carry a letter for the reeve of the hamlet, and you show him the seal. He studies it with his good eye for a long moment. Then he grunts, lifts the spear, and steps aside. \"Reeve's up the path,\" he says. \"Don't wander.\"",
+      "expect": { "ent-tomas": { "Suspicion": "-" } },
+      "allow": { "player": { "Resolve": "+" } }
+    },
+    {
+      "id": "mock-eels",
+      "present": ["ent-odette", "ent-bram"],
+      "narration": "You sniff at the rack and tell Odette her eels smell like a drowned boot. Her eyes go flat and cold. She turns her back on you and moves the rack to the far side of the fire, out of your reach. Behind you, Bram gives one short, dry laugh and goes back to his rope.",
+      "expect": { "ent-odette": { "Trust": "-" } },
+      "allow": { "ent-bram": { "Trust": "+" } }
+    },
+    {
+      "id": "storm-crowd",
+      "present": ["ent-bram", "ent-odette", "ent-tomas", "ent-wick"],
+      "narration": "The storm hits all at once. Wind tears across the landing and the raft bucks on its rope. You and Bram throw yourselves on the line and haul it up the shingle, inch by inch, until your arms are dead and Bram is gasping beside you. A gust rips Odette's drying rack loose and flings half her eels into the black water before she can catch them; she curses and grabs what is left. Tomas, who crossed at noon, stands under the shed roof and watches. Wick holds the cottage door against the wind and hums, and does not come out.",
+      "expect": { "player": { "Vigor": "-" }, "ent-bram": { "Vigor": "-" }, "ent-odette": { "Stock": "-" } },
+      "allow": { "ent-bram": { "Trust": "+" }, "player": { "Resolve": "-" } }
+    },
+    {
+      "id": "wick-supper",
+      "present": ["ent-wick", "ent-bram"],
+      "narration": "Wick sets a bowl of barley broth in front of you without a word. You eat it slowly and thank her, and you wash the bowl yourself at the rain barrel. She watches you do it. When you hand the bowl back, she holds your eye for a moment and hums a few bars of something, low, for you to hear. Bram sleeps in his chair by the hearth through all of it.",
+      "expect": { "ent-wick": { "Trust": "+" } },
+      "allow": { "player": { "Vigor": "+" } }
+    },
+    {
+      "id": "rest-by-fire",
+      "present": ["ent-odette", "ent-bram"],
+      "narration": "You sleep through the grey afternoon on a bed of dry reeds beside the firepit. When you wake, the ache has gone out of your legs and your head is clear. Odette, without a word, puts a smoked eel in your hand from her rack and goes back to the fire. Bram is out on the river and has not come back.",
+      "expect": { "player": { "Vigor": "+" }, "ent-odette": { "Stock": "-" } },
+      "allow": { "ent-odette": { "Trust": "+" } }
+    },
+    {
+      "id": "slip-gash",
+      "present": ["ent-bram"],
+      "narration": "Your boot slides on the wet planks of the landing and you go down hard. A nail head tears open your shin, and cold river water closes over your legs. Bram grabs your collar with his one hand and drags you back onto the boards. Blood runs into your sock, and the cut throbs with every heartbeat.",
+      "expect": { "player": { "Vigor": "-" } },
+      "allow": { "player": { "Resolve": "-" }, "ent-bram": { "Vigor": "-", "Trust": "+" } }
+    },
+    {
+      "id": "tomas-lie",
+      "present": ["ent-tomas"],
+      "narration": "Tomas asks your business, and you tell him you are a cousin of the reeve. The lie comes out thin. His good eye narrows. He brings the point of his fishing spear up until it rests a hand's breadth from your chest. \"The reeve has no cousins,\" he says. \"Try again.\"",
+      "expect": { "ent-tomas": { "Suspicion": "+" } },
+      "allow": { "player": { "Resolve": "-" } }
+    },
+    {
+      "id": "carry-water",
+      "present": ["ent-wick", "ent-bram"],
+      "narration": "You carry Wick's buckets up from the river, trip after trip, until the barrel by the cottage door is full and your arms are shaking. Wick stands in the doorway and watches the last bucket go in. Then she nods to you, once, and hums as she goes back inside. Bram is asleep in his chair and does not stir.",
+      "expect": { "player": { "Vigor": "-" }, "ent-wick": { "Trust": "+" } },
+      "allow": {}
+    },
+    {
+      "id": "push-bram",
+      "present": ["ent-bram", "ent-odette"],
+      "narration": "The light is going, and you press Bram to take you across now. He says no. You offer double the fare, then you tell him he is a coward. His face shuts like a door. \"Not after dark,\" he says, \"and not for you.\" He turns his back on you and coils the rope. Odette keeps her eyes on her fire.",
+      "expect": { "ent-bram": { "Trust": "-" } },
+      "allow": {}
+    },
+    {
+      "id": "river-fright",
+      "present": ["ent-odette"],
+      "narration": "You kneel at the water's edge to fill your flask. Something long and dark slides under the surface, an arm's length from your hand, bigger than any fish. The reeds bend in its wake. You freeze, and your heart hammers for a long time after the water goes still. Behind you, Odette turns her eels and does not notice.",
+      "expect": { "player": { "Resolve": "-" } },
+      "allow": {}
+    },
+    {
+      "id": "absent-ferryman",
+      "present": ["ent-odette"],
+      "narration": "Odette tells you, between eels, that the ferryman hauled the raft back and forth all night for a family fleeing the floods. \"He'll be dead on his feet,\" she says. \"Don't ask him for a crossing today.\" You nod and sit by the fire, and the two of you watch the smoke rise.",
+      "expect": {},
+      "allow": {}
+    },
+    {
+      "id": "calm-supper",
+      "present": ["ent-bram", "ent-odette", "ent-tomas", "ent-wick"],
+      "narration": "Supper is barley and smoked eel around the cottage hearth. Bram eats with his one hand and says the river is high. Tomas says it will be higher by morning. Odette counts her coins. Wick hums. You eat your share and listen, and nobody says anything that matters. The fire burns down.",
+      "expect": {},
+      "allow": { "player": { "Vigor": "+" } }
+    },
+    {
+      "id": "fare-dispute",
+      "present": ["ent-odette", "ent-bram"],
+      "narration": "Odette tells Bram his fare is robbery, and Bram tells her the river sets the price. They both look at you. You say Bram works the rope and should name his fare. Bram gives you a short nod of approval. Odette spits into the fire, turns her back on you both, and moves her rack away.",
+      "expect": { "ent-bram": { "Trust": "+" }, "ent-odette": { "Trust": "-" } },
+      "allow": {}
+    },
+    {
+      "id": "drag-log",
+      "present": ["ent-tomas", "ent-bram"],
+      "narration": "A drowned log has jammed against the far-bank landing. You put your shoulder to one end and Tomas takes the other, and together you drag it up the mud, step by straining step, until it rolls clear. Your legs are shaking when you let go. Tomas leans his spear against the post and says, \"You'll do.\" Bram watches from the raft.",
+      "expect": { "player": { "Vigor": "-" }, "ent-tomas": { "Suspicion": "-" } },
+      "allow": {}
+    },
+    {
+      "id": "bram-oilskin",
+      "present": ["ent-bram"],
+      "narration": "Rain comes down hard. Bram looks at your soaked coat, then goes into the shed and comes back with his spare oilskin. He drops it over your shoulders without being asked. \"Bram,\" he says, and taps his own chest. It is the first time he has told you his name.",
+      "expect": { "ent-bram": { "Trust": "+" } },
+      "allow": { "player": { "Vigor": "+" } }
+    },
+    {
+      "id": "eat-three",
+      "present": ["ent-odette"],
+      "narration": "You buy three smoked eels from Odette and eat them on the spot, standing by her fire, grease running down your chin. Warmth comes back into your hands, and the tiredness of the road lifts. Odette counts your coins twice and tucks them away, and her eyes stay as cold as before.",
+      "expect": { "ent-odette": { "Stock": "-" }, "player": { "Vigor": "+" } },
+      "allow": {}
+    }
+  ]
+}
