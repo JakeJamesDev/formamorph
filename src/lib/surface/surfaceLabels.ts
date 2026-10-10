@@ -18,7 +18,7 @@ import { DICTIONARY_BOOK_PANEL_TABS } from '@/views/dictionaryBookPanelTabs';
 import { PLACEHOLDER_PANEL_TABS } from '@/views/placeholderPanelTabs';
 import { DICTIONARY_EDITOR_TABS } from '@/views/dictionaryEditorTabs';
 import { DICTIONARY_PANEL_TABS } from '@/views/dictionaryPanelTabs';
-import { ENTITY_EDITOR_TABS, ENTITY_PANEL_TABS } from '@/views/entityPanelTabs';
+import { ENTITY_EDITOR_SUBTABS, ENTITY_EDITOR_TABS, ENTITY_PANEL_TABS } from '@/views/entityPanelTabs';
 import { LOCATION_PANEL_TABS } from '@/views/locationPanelTabs';
 import { STAT_PANEL_TABS } from '@/views/statPanelTabs';
 import { TRAIT_PANEL_TABS } from '@/views/traitPanelTabs';
@@ -107,7 +107,7 @@ const ENTRIES: [string, string][] = [
   ...tabsOf('worldEditorBench', BENCH_TABS),
   ...tabsOf('worldEditorTour', TOUR_STEPS.map((step) => ({ value: step.id, label: step.title }))),
   ...tabsOf('entityEditor', ENTITY_EDITOR_TABS),
-  ...tabsOf('entityEditorEntity', ENTITY_PANEL_TABS.filter((tab) => tab.value !== 'traits' && tab.value !== 'placeholders')),
+  ...tabsOf('entityEditorEntity', ENTITY_EDITOR_SUBTABS),
   ...tabsOf('dictionaryEditor', DICTIONARY_EDITOR_TABS),
   ...tabsOf('formaquestion', FORMAQUESTION_TABS),
   ...tabsOf('formaquestionSettings', FORMAQUESTION_SETTINGS_TABS),

@@ -290,6 +290,9 @@ export interface Entity {
   /** Where this entity's node sits in the world's Traits tree: a world group and a sibling order. Absent,
    *  or a group that no longer exists, = the end of the top level. */
   traitPlacement?: TraitPlacement;
+  /** Stats this entity owns: the world stat type, every field. Order is list order. Absent = none. Authored
+   *  here only; play does not read them yet. */
+  stats?: Stat[];
   /** Off-world only: the shared placeholders this entity's chips use, so they resolve after import. An import
    *  merges them into the world's shared list by name and values and clears the field. */
   sharedPlaceholders?: Placeholder[];

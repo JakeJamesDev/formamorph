@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { GameDataProvider, useGameData } from './GameDataContext';
-import type { World } from '@/types';
+import type { Stat, World } from '@/types';
 
 import { phValueId, phValues } from '@/test/placeholderValues';
 // The provider initializes IndexedDB storage on mount; stub it out so these tests exercise only
@@ -21,6 +21,52 @@ const world = (id: string, overview: Record<string, unknown>): World => ({
 } as unknown as World);
 
 const wrapper = ({ children }: { children: ReactNode }) => <GameDataProvider>{children}</GameDataProvider>;
+
+describe('entity stats in the world store', () => {
+  const trust: Stat = {
+    id: 's-trust', name: 'Trust', type: 'number', description: 'How far Ash trusts you', min: -5, max: 20, value: 3, regen: 1,
+    descriptors: [{ id: 'd1', threshold: 10, description: 'Wary' }], hidden: true, noDecrease: true, code: 'return 1;',
+    morphBindings: ['Belly'],
+  };
+  const withStats = {
+    ...world('w', {}),
+    entities: [{ id: 'ash', name: 'Ash', stats: [trust] }, { id: 'vex', name: 'Vex' }],
+  } as unknown as World;
+
+  it('writes an entity\'s stats into the exported world, and an imported copy loads them whole', () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData(world('w', {})); });
+    act(() => { result.current.addEntity({ id: 'ash', name: 'Ash' }); });
+    act(() => { result.current.editEntity('ash', (e) => ({ ...e, stats: [trust] })); });
+    const exported = JSON.parse(JSON.stringify(result.current.getWorldData()));
+    expect(exported.entities[0].stats).toEqual([trust]);
+
+    // A different provider state stands in for the importing app.
+    act(() => { result.current.loadWorldData(world('other', {})); });
+    expect(result.current.entities).toEqual([]);
+    act(() => { result.current.loadWorldData(exported); });
+    expect(result.current.entities.find((e) => e.id === 'ash')?.stats).toEqual([trust]);
+    expect(result.current.entities.find((e) => e.id === 'vex')).toBeUndefined();
+    expect(result.current.stats).toEqual([]);
+  });
+
+  it('loads a world whose entities carry no stats with none, clean', () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData(world('w', {})); });
+    act(() => { result.current.addEntity({ id: 'vex', name: 'Vex' }); });
+    act(() => { result.current.loadWorldData(JSON.parse(JSON.stringify(result.current.getWorldData()))); });
+    expect(result.current.entities[0]).not.toHaveProperty('stats');
+    expect(result.current.isWorldDirty).toBe(false);
+  });
+
+  it('counts an entity stat edit as an unsaved change', () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData(withStats); });
+    expect(result.current.isWorldDirty).toBe(false);
+    act(() => { result.current.editEntity('ash', (e) => ({ ...e, stats: [{ ...trust, value: 9 }] })); });
+    expect(result.current.isWorldDirty).toBe(true);
+  });
+});
 
 describe('the Custom Persona entity in the world store', () => {
   const links = [

@@ -63,7 +63,7 @@ const FIELD_KEYS: Record<string, string> = {
 
 const WorldPanel = () => {
   const [tab, setTab] = useState<EntityPanelTab>('profile');
-  return <EntityManager entity={entity} tab={tab} onTabChange={setTab} traitId={null} onTraitIdChange={() => {}} placeholderId={null} onPlaceholderIdChange={() => {}} onOpenWorldPlaceholder={() => {}} />;
+  return <EntityManager entity={entity} tab={tab} onTabChange={setTab} traitId={null} onTraitIdChange={() => {}} statId={null} onStatIdChange={() => {}} placeholderId={null} onPlaceholderIdChange={() => {}} onOpenWorldPlaceholder={() => {}} />;
 };
 
 const ownText = (el: Element) =>
@@ -95,7 +95,7 @@ async function fieldsByTab(skip: string[] = []) {
 }
 
 describe('the two entity editors', () => {
-  it('show the same field tabs, with Traits and Placeholders on the library top strip', () => {
+  it('show the same field tabs, with Traits and Placeholders on the library top strip and Stats in the World Editor only', () => {
     renderLibrary();
     const libraryTop = topTabNames();
     const librarySub = fieldTabNames();
@@ -105,7 +105,7 @@ describe('the two entity editors', () => {
 
     expect(libraryTop).toEqual(['Entity', 'Traits', 'Placeholders']);
     expect(librarySub).toEqual(['Profile', 'Descriptions', 'Openings']);
-    expect(worldTabs).toEqual(['Profile', 'Descriptions', 'Traits', 'Placeholders', 'Openings']);
+    expect(worldTabs).toEqual(['Profile', 'Descriptions', 'Traits', 'Stats', 'Placeholders', 'Openings']);
   });
 
   it('drop Traits, Openings and Placeholders in the World Editor in Simple mode, and keep them in the always-Advanced library', () => {
@@ -157,8 +157,8 @@ describe('the two entity editors', () => {
     const library = await fieldsByTab(['Openings']);
     cleanup();
     render(<SettingsProvider><WorldPanel /></SettingsProvider>);
-    // Traits holds a list of the entity's own traits, not fields.
-    const worldFields = await fieldsByTab(['Traits', 'Openings', 'Placeholders']);
+    // Traits and Stats hold lists of the entity's own traits and stats, not fields.
+    const worldFields = await fieldsByTab(['Traits', 'Stats', 'Openings', 'Placeholders']);
 
     expect(library).toEqual({
       Profile: ['Image', 'Name', 'Aliases', 'Pronouns', 'Persona', 'Type', 'Image Tags', '3D Model'],
@@ -234,7 +234,7 @@ describe('the two entity editors', () => {
     world.updateEntity.mockClear();
     const Panel = () => {
       const [tab, setTab] = useState<EntityPanelTab>('profile');
-      return <EntityManager entity={withOpenings} tab={tab} onTabChange={setTab} traitId={null} onTraitIdChange={() => {}} placeholderId={null} onPlaceholderIdChange={() => {}} onOpenWorldPlaceholder={() => {}} />;
+      return <EntityManager entity={withOpenings} tab={tab} onTabChange={setTab} traitId={null} onTraitIdChange={() => {}} statId={null} onStatIdChange={() => {}} placeholderId={null} onPlaceholderIdChange={() => {}} onOpenWorldPlaceholder={() => {}} />;
     };
     render(<SettingsProvider><Panel /></SettingsProvider>);
     expect(await rowsOn()).toEqual(library);
@@ -259,7 +259,7 @@ describe('the Others | Self switch on the Openings tab', () => {
   const openTab = () => userEvent.click(screen.getByRole('tab', { name: 'Openings' }));
   const WorldPanelFor = ({ of }: { of: Entity }) => {
     const [tab, setTab] = useState<EntityPanelTab>('profile');
-    return <EntityManager entity={of} tab={tab} onTabChange={setTab} traitId={null} onTraitIdChange={() => {}} placeholderId={null} onPlaceholderIdChange={() => {}} onOpenWorldPlaceholder={() => {}} />;
+    return <EntityManager entity={of} tab={tab} onTabChange={setTab} traitId={null} onTraitIdChange={() => {}} statId={null} onStatIdChange={() => {}} placeholderId={null} onPlaceholderIdChange={() => {}} onOpenWorldPlaceholder={() => {}} />;
   };
 
   it('shows on a library entity with the Persona mark, with its Self row', async () => {

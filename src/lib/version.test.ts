@@ -985,3 +985,35 @@ describe('migrateWorld — links only into Blueprints', () => {
     expect(migrateWorld(JSON.parse(JSON.stringify(once))).entities).toEqual(once.entities);
   });
 });
+
+describe('migrateWorld — entity stats', () => {
+  const stat = (id: string) => ({ id, name: id, type: 'number', description: '', min: 0, max: 10, value: 1, regen: 0, descriptors: [] });
+  const raw = (entities: unknown[]) => ({ version: APP_VERSION, entities });
+
+  it('leaves an entity with stats, and an entity with none, as they are', () => {
+    const entities = [{ id: 'ash', name: 'Ash', stats: [stat('trust'), stat('vigor')] }, { id: 'vex', name: 'Vex' }];
+    const out = migrateWorld(raw(entities)).entities;
+    expect(out).toEqual(entities);
+    expect(out[1]).not.toHaveProperty('stats');
+  });
+
+  it('stores an empty or malformed stat list as absent', () => {
+    const out = migrateWorld(raw([
+      { id: 'a', name: 'A', stats: [] },
+      { id: 'b', name: 'B', stats: 'trust' },
+      { id: 'c', name: 'C', stats: { trust: 1 } },
+    ])).entities;
+    for (const entity of out) expect(entity).not.toHaveProperty('stats');
+    expect(out.map((e) => e.name)).toEqual(['A', 'B', 'C']);
+  });
+
+  it('drops the records of a stat list that are not stats, and keeps the stats around them', () => {
+    const [ash] = migrateWorld(raw([{ id: 'ash', name: 'Ash', stats: [stat('trust'), null, 'x', { name: 'No Id' }, stat('vigor')] }])).entities;
+    expect(ash.stats?.map((s) => s.id)).toEqual(['trust', 'vigor']);
+  });
+
+  it('is idempotent', () => {
+    const once = migrateWorld(raw([{ id: 'ash', name: 'Ash', stats: [stat('trust'), null] }, { id: 'b', name: 'B', stats: 3 }]));
+    expect(migrateWorld(JSON.parse(JSON.stringify(once))).entities).toEqual(once.entities);
+  });
+});

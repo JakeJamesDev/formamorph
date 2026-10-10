@@ -292,6 +292,8 @@ const WorldEditorInner = ({
   // The entity Traits tab's open trait, held here for the same reason. Never reset here: the tab's editor
   // clears a selection the shown entity doesn't hold, and a tab switch away and back keeps it.
   const [entityTraitId, setEntityTraitId] = useState<string | null>(null);
+  // The entity Stats tab's open stat, held and cleared the same way.
+  const [entityStatId, setEntityStatId] = useState<string | null>(null);
   // The entity and book panels' open placeholder rows, one per panel, held and cleared the same way.
   const [entityPlaceholderId, setEntityPlaceholderId] = useState<string | null>(null);
   const [bookPlaceholderId, setBookPlaceholderId] = useState<string | null>(null);
@@ -933,6 +935,8 @@ const WorldEditorInner = ({
     onTabChange: setEntityTab,
     traitId: entityTraitId,
     onTraitIdChange: setEntityTraitId,
+    statId: entityStatId,
+    onStatIdChange: setEntityStatId,
     placeholderId: entityPlaceholderId,
     onPlaceholderIdChange: setEntityPlaceholderId,
     onOpenWorldPlaceholder: openWorldPlaceholder,
