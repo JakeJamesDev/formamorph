@@ -200,7 +200,7 @@ describe('the entity Traits tab as a mirror', () => {
     fireEvent.click(rowNamed('Wild')!);
     openTraitFieldsTab('Availability');
     // Paladin is a world trait: named, never a button, and the details stay open.
-    expect(within(field()).getByText('Paladin')).toBeInTheDocument();
+    expect(within(field().querySelector<HTMLElement>('[data-requirement-row]')!).getByText('Paladin')).toBeInTheDocument();
     expect(within(field()).queryByRole('button', { name: 'Paladin' })).toBeNull();
     fireEvent.click(within(field()).getByRole('button', { name: 'Beast Tamer' }));
     openTraitFieldsTab('Details');
