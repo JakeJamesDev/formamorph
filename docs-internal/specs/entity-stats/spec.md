@@ -95,6 +95,9 @@ Rulings from the grill, numbered as asked.
 - **Q55** (ticket 08, user ruling) In Emberwatch, Mother Hesk and Corvin Vale get their own stats that match the stats their linked class and race traits change (Health and Faith; Renown and Mana). The traits then move the NPCs' own stats, and the world runs clean under the no-target rule.
 - **Q56** (ticket 05, user ruling) Ticket 05 lands its request mechanics with two Q28 misses on record. On the cloud model, recall is 59% against C3's 69–70%: the max keys leave social Trust shifts at 0. On Cydonia, invented player changes are 73 against C3's 68. The Q45 release blocker stays open and moves to ticket 17, a prompt ticket with its own probe A/B.
 
+- **Q57** (ticket 05, user ruling) Ticket 05 lands entity-row deltas that hold for the whole turn. Ticket 18 brings the player's timing to entity rows (the chip fades after 10 s, the band drains at submit) through one per-owner delta piece shared by player and entity rows.
+- **Q58** (ticket 08) Q55 is built now. The new Emberwatch stats get fresh descriptor ids, and the in-game Traits tab reads each bearer's trait stat changes against that bearer's own stats. Ticket 13 takes the hazards of a persona that owns a stat with a world stat's id: a doubled picker item, an own-first rule that can't reach the world stat, and false notes.
+
 Derived from Q7 and confirmed with the summary:
 
 - An entity stat's morph bindings drive that entity's own model.
