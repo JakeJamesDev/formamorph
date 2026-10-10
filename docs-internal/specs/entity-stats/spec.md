@@ -1,0 +1,242 @@
+# Entity Stats
+
+Status: ready-for-agent
+Spec session: entity-stats — spec
+
+## Problem Statement
+
+An author can give an entity its own traits, but not its own stats. Only the player has stats. An author who wants Bram's trust, Odette's stock of eels or an ally's health has to fake it with a player stat named "Bram's Trust", or with notes the AI may forget. The stat pass reads only the player's stats, so the AI never records how a turn moved anyone else.
+
+Owned traits already promise more. The trait-gates spec says that once entities own stats, an owned trait's stat effects target its owner's stats. Stat code reserves `entities[x].stats` for the same day. Neither has anything to point at yet.
+
+## Solution
+
+Entities own stats. An owned stat is a stat: it has every field and behavior a world stat has, with nothing left out. Stats work the way traits already do:
+
+- The Stats tab gets a **Blueprints** group. An entity can **Link** or **Copy** a stat Blueprint, and a Link can override any field except the name.
+- Stats get author-made groups, on the Stats tab and inside each entity, for organization.
+- The entity panel gets a **Stats** tab that mirrors the Stats tab for that entity (Advanced only).
+- In game, the stat panel shows the player's stats and, below them, the selected entity's stats. A dropdown at the top picks that entity.
+
+Each turn, one stat request covers the player and every present entity that owns stats. It is a JSON-schema request with a fixed object: every owner, every stat, 0 for no change. A probe chose this shape ("C3") over one call per entity, text lines and a two-step gate. It was the only shape with no wrong signs on both test models, and it beat today's pass on the player's own stats.
+
+Trait groups and stat groups both gain a toggle that lets the AI see the group's heading. It is on by default.
+
+## Rulings
+
+Rulings from the grill, numbered as asked.
+
+- **Q1** Only authored entities own stats. Characters the narrator invents during play have none.
+- **Q2** The stat request covers the entities present this turn: the participants the narration confirmed.
+- **Q3** One request covers the player and the present entities. Today's player-only text pass is replaced, player-only turns included.
+- **Q4** When an endpoint rejects the JSON schema, the turn falls back to today's player-only text pass, skips entity stats, and records a diagnostic.
+- **Q5** The player sees an entity's stats in game. Each stat keeps its own hidden flag.
+- **Q6** Authors share one stat across many entities through Links, as with traits.
+- **Q7** An owned stat is the same thing as a world stat. No field or behavior is left out: type, bounds, starting value, regen, descriptors, threshold unit, before and after code, morph bindings, enabled, hidden, and the no-increase and no-decrease locks.
+- **Q8** An entity's own traits, and the trait Links it bears, change its own stats (min, max, starting, regen, toggles), through the same derive step the player uses.
+- **Q9** Stat code reads every entity's stats through `entities[x].stats`, read only.
+- **Q10** The schema has a max-change slot per stat, for the player and for entities. A probe round confirms it adds no invented max changes.
+- **Q11** A played persona's owned stats become the player's stats while it is played, as its owned traits become the player's traits.
+- **Q12** Authors edit an entity's stats on a Stats tab in the entity panel. It mirrors the Stats tab: the shared list toolbar, search, a **+** menu with **Add Stat** and **Link Stat**.
+- **Q13** The in-game stat panel shows the player's stats on top and the selected entity's stats below (Q13a). A dropdown at the top of the panel syncs both ways with the entity view's selection (Q13b). It also lists entities that aren't present, and (None), which hides the section. An entity whose name is not yet revealed is listed by its player description (Q13c).
+- **Q14** Entity stats reach the narration, choices and planner prompts through a stats piece on the Entities chip, on by default.
+- **Q15** Regen and stat code run every turn for every entity in the playthrough, present or not. Only the AI request is limited to present entities.
+- **Q16** A played persona's stat and a world player stat with the same name stay two stats, as a persona trait and a world trait do. Each sits under its own owner.
+- **Q17** Stat Blueprints live in a Blueprints group on the Stats tab. A Blueprint stat is not a player stat; it exists to be linked or copied.
+- **Q18** A stat Link overrides any field except the name, each field with its own Reset. The name always follows the Blueprint. An owner holds at most one Link per Blueprint.
+- **Q19** An author can Link or Copy a stat Blueprint onto an entity.
+- **Q20** Library characters (character cards) own stats and bring them into any world.
+- **Q21** Stats get full author-made groups, with nesting and reorder, on the Stats tab and inside each entity.
+- **Q22** The entity Stats tab is Advanced only.
+- **Q23** A trait's stat change on a stat its bearer doesn't own has no effect. The World Editor flags it.
+- **Q24** A custom Stat Updates prompt stays as the player wrote it. The schema applies to it all the same.
+- **Q25** The in-game stat panel shows groups as collapsible headings. A group with no visible stat doesn't show.
+- **Q26** Stat groups reach the AI: stats chips and the stat request nest stats under group headings, as the Traits chip nests traits.
+- **Q27** Stat groups are for organization only: name, description, order and nesting. No modes, pick counts or gates.
+- **Q28** Every prompt change in this effort clears one probe bar on the cloud default model and on Cydonia: exact and recall stay within 5 points of the C3 numbers, wrong signs stay at 0, and invented changes don't rise.
+- **Q29** An entity stat's own code reads its owner's stats as `stats`.
+- **Q30** The probe drops its `odette-catch` case.
+- **Q31** Trait groups and stat groups both gain the AI-visibility toggle in this effort.
+- **Q32** With the toggle off, the AI loses only the group's heading and description. Its members still reach the AI as if ungrouped. A nested group keeps its own heading and moves up one level.
+
+Derived from Q7 and confirmed with the summary:
+
+- An entity stat's morph bindings drive that entity's own model.
+- The Test Bench covers entity stats.
+- On load, a save drops the stat values of entities that are no longer in the playthrough, as owned-trait state is pruned.
+
+## User Stories
+
+### Authoring owned stats
+
+1. As an author, I want to add a stat to an entity, so that the story can track something about that entity alone.
+2. As an author, I want an entity's stat to have every field a world stat has, so that I never hit a feature that works only for the player.
+3. As an author, I want to give an entity stat a type, a minimum, a maximum and a starting value, so that it behaves like any other stat.
+4. As an author, I want to give an entity stat regen, so that an ally's stamina recovers between turns.
+5. As an author, I want to give an entity stat descriptors, so that the AI reads "Wary" instead of a bare number.
+6. As an author, I want to give an entity stat before and after code, so that I can script it like a player stat.
+7. As an author, I want to mark an entity stat hidden, so that the player never sees Bram's Trust while the AI still reads it.
+8. As an author, I want to switch an entity stat off until a trait turns it on, so that a stat can appear partway through a story.
+9. As an author, I want the no-increase and no-decrease locks on entity stats, so that I can keep a stat moving one way.
+10. As an author, I want an entity stat's morph bindings to drive that entity's own model, so that a wounded ally looks wounded.
+11. As an author, I want an entity's Stats tab in the entity panel, so that I edit its stats without leaving the entity.
+12. As an author, I want the entity Stats tab to mirror the Stats tab, so that the same toolbar, search and row buttons work there.
+13. As an author, I want a **+** menu with **Add Stat** and **Link Stat** on the entity Stats tab, so that I can start a stat from scratch or from a Blueprint.
+14. As an author, I want to search an entity's stats, so that I find one fast on a busy entity.
+15. As an author, I want to reorder and nest an entity's stats, so that its list reads in the order I think in.
+16. As an author working in Simple mode, I want the entity Stats tab hidden, as the entity Traits tab is, so that Simple mode stays simple.
+
+### Blueprints, Links and Copies
+
+17. As an author, I want a Blueprints group on the Stats tab, so that I can define Trust once for the whole cast.
+18. As an author, I want a Blueprint stat to stay out of the player's stats, so that a stat meant for entities never shows on the player.
+19. As an author, I want to Link a stat Blueprint onto an entity, so that every entity's Trust follows one definition.
+20. As an author, I want a Link to read its Blueprint live, so that one edit to Trust reaches every entity that links it.
+21. As an author, I want to override any field on a stat Link except its name, so that Bram can start at 20 Trust while Odette starts at 10.
+22. As an author, I want each overridden field to have its own Reset, so that I can return one field to the Blueprint.
+23. As an author, I want **Reset to Blueprint** on a stat Link, so that I can drop every override at once.
+24. As an author, I want a stale mark on an override whose Blueprint field has changed since, so that I notice drift.
+25. As an author, I want a stat Link's name to always be its Blueprint's, so that "Trust" means the same stat everywhere.
+26. As an author, I want an entity to hold at most one Link per Blueprint, so that it never has two Trust stats.
+27. As an author, I want to Copy a stat Blueprint onto an entity, so that I can start from it and then cut it loose.
+28. As an author, I want each entity to keep its own value of a linked stat, so that Bram's Trust and Odette's Trust move apart.
+
+### Groups
+
+29. As an author, I want to group stats on the Stats tab, so that a long list reads in sections.
+30. As an author, I want to group an entity's stats, so that its stats read in sections too.
+31. As an author, I want to nest stat groups, so that I can build the same structure traits allow.
+32. As an author, I want to give a stat group a description, so that the AI knows what the section means.
+33. As an author, I want a toggle on a stat group that lets the AI see its heading, so that I can group for my own tidiness without telling the AI.
+34. As an author, I want the same toggle on trait groups, so that both kinds of group work alike.
+35. As an author, I want the toggle on by default, so that new groups behave as groups do today.
+36. As an author, I want a group with the toggle off to still send its members to the AI, so that hiding a heading never hides the stats under it.
+37. As an author, I want a nested group under a hidden heading to keep its own heading, so that the AI still reads the inner section.
+
+### Traits and stats together
+
+38. As an author, I want an entity's own traits to change its own stats, so that a "Hardy" trait raises Bram's maximum Vigor.
+39. As an author, I want a trait Link an entity bears to change that entity's stats, so that a shared "Wounded" Blueprint lowers whoever bears it.
+40. As an author, I want an entity's traits to switch its stats on and off, so that a stat appears when a trait is gained.
+41. As an author, I want the World Editor to flag a trait stat change on a stat its bearer doesn't own, so that a silent no-op never ships.
+42. As a player, I want an NPC's trait never to change my own stats, so that buffs land where the story says.
+
+### Personas and library characters
+
+43. As a player, I want the stats of the entity I play to become my stats, so that playing Odette means tracking her Stock.
+44. As a player, I want my persona's stats to show beside the world's player stats, so that I see everything I am.
+45. As a player, I want a persona stat that shares a name with a world player stat to stay a separate stat, so that nothing merges by accident.
+46. As a player, I want my library character's stats to come with it into any world, so that my persona is the same everywhere.
+47. As a player, I want library characters I add to a world to bring their stats, so that they act like authored entities.
+48. As a player, I want an entity's stat values kept when I switch persona and back, so that nothing resets behind my back.
+
+### Play: the stat request
+
+49. As a player, I want the AI to record how a turn moved the stats of everyone in the scene, so that Odette's Trust drops when I mock her eels.
+50. As a player, I want entities who aren't in the scene left out of the request, so that the AI doesn't invent changes for absent people.
+51. As a player, I want my own stats tracked in the same request, so that one turn makes one stat call.
+52. As a player, I want the AI to change a stat's maximum when the story calls for it, for me and for entities, so that an injury can lower a ceiling.
+53. As a player on an endpoint that can't follow a JSON schema, I want my own stats still tracked the old way, so that the game keeps working.
+54. As a player on such an endpoint, I want a diagnostic that says entity stats were skipped, so that I know why they don't move.
+55. As a player with a custom Stat Updates prompt, I want my prompt left as I wrote it, so that my edits survive.
+56. As a player, I want regen and stat code to run for every entity each turn, present or not, so that an absent ally still heals.
+57. As a player, I want a relationship shift to count as a stat change, so that Wick's Trust rises when she warms to me.
+
+### Play: the stat panel
+
+58. As a player, I want the stat panel to show my stats on top, so that my own state is always in view.
+59. As a player, I want the selected entity's stats below mine, so that I can read Bram's state while I talk to him.
+60. As a player, I want a dropdown at the top of the stat panel that picks the entity, so that I can look at anyone's stats.
+61. As a player, I want the dropdown and the entity view to share one selection, so that picking in either place updates both.
+62. As a player, I want the dropdown to list entities who aren't present, so that I can check on someone across the river.
+63. As a player, I want (None) in the dropdown, so that I can hide the entity section.
+64. As a player, I want an entity whose name I haven't learned listed by its description, so that the dropdown never spoils a name.
+65. As a player, I want hidden entity stats left out of the panel, so that secrets stay secret.
+66. As a player, I want stat groups as collapsible headings in the panel, so that a long list stays readable.
+67. As a player, I want a group with nothing visible left out, so that I never see an empty heading.
+
+### AI context and stat code
+
+68. As a player, I want the narrator to know the present entities' stats, so that a wounded ally is written as wounded.
+69. As an author, I want entity stats in a stats piece on the Entities chip, on by default, so that every prompt that lists entities can carry them.
+70. As an author, I want stats chips to nest stats under their group headings, so that the AI reads sections as I wrote them.
+71. As an author, I want stat code to read any entity's stats through `entities[x].stats`, so that a player stat can react to an NPC's state.
+72. As an author, I want `entities[x].stats` read only, so that one stat's code can't rewrite another owner's values behind the turn.
+73. As an author, I want an entity stat's own code to read its owner's stats as `stats`, so that Bram's code reads like the player's.
+74. As an author, I want the Test Bench to cover entity stats, so that I can check bands and derived values before I play.
+
+### Data
+
+75. As a player, I want entity stat values saved with my game, so that a reload keeps them.
+76. As a player, I want stat values of entities removed from the world dropped on load, so that old saves stay clean.
+77. As an author, I want a world exported with entity stats, stat Blueprints and stat groups to import intact, so that sharing keeps everything.
+
+## Implementation Decisions
+
+### Model
+
+- An owned stat is the world stat type, held by an entity next to its traits. An entity holds its own stats, stat Links, stat groups and a stat placement for its tree, mirroring the trait fields.
+- A stat Link stores its Original's id, the Original's name, its group, its order and its Overrides. An Override stores the Blueprint's value it was made against, so a stale Override can be detected. This follows the trait and placeholder Link models.
+- The Stats tab's tree gains groups, with a system Blueprints group. A Blueprint stat is excluded from the player's stats everywhere: seeding, the stat request, chips, the panel and stat code.
+- Trait groups and stat groups gain an AI-visibility flag, default on. Prompt building reads it when it renders headings.
+- Owners are resolved through the bearer resolution that owned traits use: a bearer's stat tree is its own stats plus its stat Links expanded against their Blueprints. The played persona's resolved stats join the player's stats under the persona, as separate stats.
+- Runtime values live in gameplay state, keyed by owner, then stat id. Owned-trait state is the precedent. The authored world is never written during play.
+- Effective stats are derived per owner by the same derive step the player uses: base, plus the bearer's trait stat changes, plus the AI's max delta, then code bounds. A trait stat change finds its target among the bearer's own stats by id, or by Blueprint for a linked stat. A change with no target is dropped and reported to the editor.
+
+### The stat request
+
+- The stat pass builds one request from a list of owners: the player (world player stats plus the played persona's stats) and the present entities with enabled stats. The present entities arrive through the Turn Pipeline's derivation callback after narration (ADR-0001), from the participants the narration confirmed.
+- The system prompt renders one section per owner, with stats nested under visible group headings. The response format is a JSON schema: one key per owner, and under it one entry per stat holding a change and an optional max change, each a bounded integer. Every key is required, so "no change" is an explicit 0.
+- The default Stat Updates prompts change to the C3 wording: one JSON object on one line, 0 for a stat that didn't move, and a clear shift in how a character regards the player counts as a change. Custom prompts are not touched.
+- The request layer gains a structured-output field. A schema rejection is detected and remembered per endpoint through the existing capability pattern. On rejection, the turn falls back to today's player-only text pass and adds a diagnostic.
+- The response reader matches owners and stats by identity from the request snapshot, as the current reader does. It returns per-owner updates and diagnostics. Applying runs max changes before values, per owner.
+- The token cap scales with the number of stats and owners in the request.
+- The request schema and its whitespace hints avoid keywords the cloud server rejects (`uniqueItems`).
+
+### Stat code and regen
+
+- Regen and stat code run for every owner in the playthrough each turn, in today's order: before code at turn start, then AI asks, regen and after code.
+- `entities[x].stats` exposes every entity's stats read only. In an entity stat's code, `stats` is its owner's stats. The player's code keeps today's `stats`.
+
+### UI
+
+- The entity Stats tab reuses the shared list toolbar and the entity Traits mirror's layout: stacked over the list in the World Editor, with details sliding in over it.
+- The in-game stat panel renders the player's stats, then a section for the selected entity. The selection is lifted so that the entity view and the panel's dropdown share it. The dropdown lists present entities first, then the rest, then (None). An unrevealed entity shows its player description.
+- Stat groups render as collapsible headings in the panel, reusing the stat row.
+
+### Prompts
+
+- The Entities chip gains a stats piece, on by default. It renders each present entity's visible-to-AI stats with value, status and meaning, nested by group.
+- Stats chips and the Traits chip skip the heading of a group with the AI-visibility flag off.
+
+### Data
+
+- World export shape: entity stats, stat Links, stat groups, stat Blueprints and the group AI-visibility flag on trait and stat groups.
+- Save shape: entity stat values keyed by owner. Load prunes owners no longer in the playthrough.
+- Character card shape: the entity's owned stats, stat Links and stat groups.
+- All are additive on unreleased forms; migration fills defaults (no entity stats, groups visible to the AI).
+
+## Testing Decisions
+
+- A good test drives behavior through a seam and asserts what a caller sees: requests sent, values applied, rows rendered. It never asserts private helpers or mirrors the code under test.
+- **Turn Pipeline seams (ADR-0001):** a fake request adapter and the derivation callback cover owner selection, schema building, the fallback on rejection, response reading, diagnostics and per-owner apply. Prior art: the turn-pipeline parity and commit tests.
+- **Pure stat runtime:** per-owner derivation (traits, trait Links, stat Links, Overrides, untargeted changes) and the stat-code turn with owners. Prior art: the trait-runtime and stat-code-turn tests.
+- **Import boundary:** world, save and card migration, and save pruning on load. Prior art: the version migration and owned-trait pruning tests.
+- **UI harnesses:** the game panels harness for the stat panel, its dropdown, sync and groups; the entity editor tab tests for the Stats mirror. Prior art: the entity traits mirror tests.
+- **Probe:** the entity stats probe measures every prompt change against Q28 on the cloud default model and on Cydonia, with the player-only control in the same batch.
+- Every guard is proved by reinstating the bug once and watching its test fail.
+
+## Out of Scope
+
+- Stats on characters the narrator invents during play.
+- Modes, pick counts and gates on stat groups.
+- Write access to another owner's stats from stat code.
+- Changes to custom Stat Updates prompts.
+- The leftover world-level stat update rules, which no turn runs.
+- Prompt work on the two weaknesses the probe found: the cloud model under-reports entity changes, and Cydonia invents player changes that today's pass also invents.
+
+## Further Notes
+
+- Evidence for the request shape: the entity stats probe, 22 cases, cloud default model and Cydonia, 2026-10-10. C3 scored 56% exact and 68% recall on the cloud model and 48% and 100% on Cydonia, with no wrong signs on either. One call per entity scored 18%; text lines never wrote the player's lines.
+- The cloud server ignores every whitespace switch tried. A fixed-shape object written on one line avoids the padding that list values cause.
+- ⚠️ This effort changes the world, save and character card export shapes.
