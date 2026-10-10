@@ -1,6 +1,7 @@
 # Request Transport
 
 Status: ready-for-agent
+Spec session: request-transport — spec
 
 Rulings Q1–Q14 were settled in the grilling session of 2026-10-07 and are folded into the decisions below. Architecture review: candidate 2 (request adapter split) with candidate 1 (background pass queue) folded in by Q8. A code review of the first draft reopened Q6, Q10 and Q11 on new evidence the same day; the rulings below are the revised ones.
 
