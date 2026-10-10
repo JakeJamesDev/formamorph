@@ -31,16 +31,32 @@ export interface StatRequestTarget {
 
 export interface StatRequestSnapshot {
   id: string;
+  /** The player's targets first, then each entity owner's. */
   targets: StatRequestTarget[];
+  /** Every owner's section, for the schema request. */
   context: Record<string, string>;
+  /** The player's section alone, for the text pass. */
+  textContext: Record<string, string>;
+  /** Each entity owner's key, in order. The text pass skips them. */
+  entityKeys: string[];
   /** The request takes the text pass, because its endpoint refused the schema. */
   textPass?: boolean;
 }
 
+/** An entity whose stats join the player's in one request. */
+export interface StatRequestOwner {
+  id: string;
+  /** Its heading in the request; a clash takes a numbered key. */
+  name: string;
+  /** Its live stats, names resolved. */
+  stats: readonly PlayerStat[];
+}
+
 export interface StatUpdateDiagnostic {
   name: string;
-  /** `textPass` marks a reply the text pass wrote; it skips none of the player's stats. */
-  reason: 'ambiguous' | 'unknown' | 'invalid' | 'disabled' | 'missing' | 'textPass';
+  /** `textPass` marks a reply the text pass wrote; it skips none of the player's stats. `skipped` names an
+   *  entity owner the text pass left out. */
+  reason: 'ambiguous' | 'unknown' | 'invalid' | 'disabled' | 'missing' | 'textPass' | 'skipped';
 }
 
 export interface ResolvedStatUpdate {
@@ -73,21 +89,58 @@ function statKeys(plainNames: readonly string[]): string[] {
   });
 }
 
-/** Capture the names and identities this stat request exposes, with plain names in every Stats chip. Every
- *  target belongs to `ownerId`, keyed `ownerKey` in a schema reply. */
-export function createStatRequest(
-  stats: readonly PlayerStat[],
-  ownerId: string = PLAYER_OWNER,
-  { ownerKey = PLAYER_STAT_HEADING, textPass = false }: { ownerKey?: string; textPass?: boolean } = {},
-): StatRequestSnapshot {
+/** Unique owner keys, in order, after the keys already `taken`: a plain name, or its first free numbered form. */
+function ownerKeys(names: readonly string[], taken: Set<string>): string[] {
+  return names.map((name) => {
+    const base = stripMarkdown(name).trim() || 'Character';
+    let key = base;
+    for (let n = 2; taken.has(key); n++) key = `${base} (${n})`;
+    taken.add(key);
+    return key;
+  });
+}
+
+/** One owner's targets, and its Stats chip values naming each stat by its key. */
+function ownerSection(stats: readonly PlayerStat[], ownerId: string, ownerKey: string) {
   const plainNames = stats.map(({ name }) => stripMarkdown(name).trim());
   const keys = statKeys(plainNames);
   const targets = stats.map(({ id, name }, i) => ({
     id, name, plainName: plainNames[i], ownerId, ownerKey, key: keys[i], maxKey: maxKeyOf(keys[i]),
   }));
   // The chip names each stat by its key, so a numbered key is the name the reply sees.
-  const plainStats = stats.map((stat, i) => ({ ...stat, name: keys[i] }));
-  return { id: randomUUID(), targets, context: statChipValues(plainStats), ...(textPass && { textPass }) };
+  return { targets, context: statChipValues(stats.map((stat, i) => ({ ...stat, name: keys[i] }))) };
+}
+
+/** Capture the names and identities this stat request exposes, with plain names in every Stats chip. The
+ *  player's targets belong to `ownerId`, keyed `ownerKey` in a schema reply. Each of `entities` follows under
+ *  its own heading in every Stats chip value. */
+export function createStatRequest(
+  stats: readonly PlayerStat[],
+  ownerId: string = PLAYER_OWNER,
+  { ownerKey = PLAYER_STAT_HEADING, textPass = false, entities = [] }:
+    { ownerKey?: string; textPass?: boolean; entities?: readonly StatRequestOwner[] } = {},
+): StatRequestSnapshot {
+  const player = ownerSection(stats, ownerId, ownerKey);
+  const owners = entities.filter((owner) => owner.stats.length);
+  const keys = ownerKeys(owners.map((owner) => owner.name), new Set([ownerKey]));
+  const sections = owners.map((owner, i) => ({ key: keys[i], ...ownerSection(owner.stats, owner.id, keys[i]) }));
+  const context = Object.fromEntries(Object.entries(player.context).map(([token, value]) => [
+    token, [value, ...sections.map((section) => `### ${section.key}\n${section.context[token]}`)].join('\n\n'),
+  ]));
+  return {
+    id: randomUUID(),
+    targets: [...player.targets, ...sections.flatMap((section) => section.targets)],
+    context,
+    textContext: player.context,
+    entityKeys: keys,
+    ...(textPass && { textPass }),
+  };
+}
+
+/** The player's targets alone: what the text pass asks about. */
+export function playerTargets(snapshot: StatRequestSnapshot): StatRequestTarget[] {
+  const entityKeys = new Set(snapshot.entityKeys);
+  return snapshot.targets.filter((target) => !entityKeys.has(target.ownerKey));
 }
 
 const bounded = (): ResponseSchemaNode => ({ type: 'integer', minimum: -STAT_CHANGE_BOUND, maximum: STAT_CHANGE_BOUND });
@@ -162,7 +215,10 @@ export function readStatResponse(raw: string, snapshot: StatRequestSnapshot): St
   if (reply === null) return { requestId: snapshot.id, updates: [], diagnostics: [{ name: raw.trim(), reason: 'invalid' }] };
   const updates = new Map<string, ResolvedStatUpdate>();
   // A refused schema, or a server that ignored one, leaves the text pass's lines; an empty reply is one too.
-  const diagnostics: StatUpdateDiagnostic[] = [{ name: '', reason: 'textPass' }];
+  const diagnostics: StatUpdateDiagnostic[] = [
+    { name: '', reason: 'textPass' }, ...snapshot.entityKeys.map((name) => ({ name, reason: 'skipped' as const })),
+  ];
+  const targets = playerTargets(snapshot);
   for (const line of raw.split('\n').filter((text) => text.trim())) {
     const plain = stripMarkdown(line);
     const separator = plain.lastIndexOf(':');
@@ -174,12 +230,12 @@ export function readStatResponse(raw: string, snapshot: StatRequestSnapshot): St
     }
     const rawName = line.slice(0, line.lastIndexOf(':')).trim().replace(/^[-*+]\s+/, '');
     let matches = nameKey(rawName) !== nameKey(name)
-      ? snapshot.targets.filter((target) => nameKey(target.name) === nameKey(rawName)) : [];
-    const byKey = snapshot.targets.filter((target) => nameKey(target.key) === nameKey(name));
+      ? targets.filter((target) => nameKey(target.name) === nameKey(rawName)) : [];
+    const byKey = targets.filter((target) => nameKey(target.key) === nameKey(name));
     if (!matches.length && byKey.length === 1) matches = byKey;
-    if (!matches.length) matches = snapshot.targets.filter((target) => nameKey(target.plainName) === nameKey(name));
+    if (!matches.length) matches = targets.filter((target) => nameKey(target.plainName) === nameKey(name));
     if (!matches.length && symbolKey(name)) {
-      matches = snapshot.targets.filter((target) => symbolKey(target.plainName) === symbolKey(name));
+      matches = targets.filter((target) => symbolKey(target.plainName) === symbolKey(name));
     }
     if (matches.length !== 1) {
       diagnostics.push({ name, reason: matches.length ? 'ambiguous' : 'unknown' });
@@ -225,8 +281,8 @@ export function applyStatResponse(
   };
 }
 
-/** Keep the existing history representation; request identities remain transient. */
+/** The history's change map: the player's stats alone, by name; request identities stay transient. */
 export function statResponseChanges(response: StatResponse): Record<string, number>[] {
-  return response.updates.filter((update) => update.value !== 0)
+  return response.updates.filter((update) => update.ownerId === PLAYER_OWNER && update.value !== 0)
     .map((update) => ({ [update.name.toLowerCase()]: update.value }));
 }

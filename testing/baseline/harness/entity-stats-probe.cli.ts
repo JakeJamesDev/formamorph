@@ -13,7 +13,9 @@
 //   D        C3, with each stat's change written after a short `evidence` field
 //   E        a gate call names the owners whose stats moved, then B's call runs for each named owner
 //   C3P      C3 with the player alone, which S's request matches but for the max keys
-//   S        the shipped request: the app's own stat pass builder, prompts and schema, the player's cells only
+//   S        the shipped request: the app's own stat pass builder, prompts and schema, every present owner
+//   SU       S, with C3's user line
+//   SN       S, with no max keys in the schema, the format or the user line
 // A to E derive from the text pass's prompt by checked text swaps; S is built by the app, so it is what ships.
 //
 // Per reply: exact (every gold move right, nothing spurious), hits / wrong sign / misses, spurious moves,
@@ -36,6 +38,7 @@ import { chipValues } from '@/lib/chipValues/chipValues';
 import { PROMPT_SAMPLER_PINS } from '@/lib/promptSamplers';
 import { renderPromptTemplate } from '@/lib/promptTemplate';
 import { createStatRequest, type StatRequestSnapshot } from '@/lib/statRequest';
+import { PLAYER_OWNER } from '@/lib/statOwners';
 import { statUpdatesCap, statUpdatesRequest } from '@/lib/turnPipeline/turnPasses';
 import { migrateWorld } from '@/lib/version';
 import type { PlayerStat } from '@/types';
@@ -54,7 +57,7 @@ const model = argVal('--model', 'default');
 const runs = Number(argVal('--runs', '6'));
 const pool = Number(argVal('--pool', '3'));
 const only = argVal('--only', '');
-const ALL_ARMS = ['control', 'A', 'A2', 'A3', 'B', 'C', 'C2', 'C3', 'D', 'E', 'S', 'C3P'] as const;
+const ALL_ARMS = ['control', 'A', 'A2', 'A3', 'B', 'C', 'C2', 'C3', 'D', 'E', 'S', 'SU', 'SN', 'C3P'] as const;
 type Arm = typeof ALL_ARMS[number];
 const arms = argVal('--arms', ALL_ARMS.join(',')).split(',') as Arm[];
 const SEED = 424242;
@@ -146,9 +149,11 @@ function gatedOwners(raw: string, owners: Owner[]): Owner[] {
   } catch { return []; }
 }
 
-/** The request the app sends for the player's stats, built by the app's own stat pass. */
-function shippedCall(narration: string): Call {
-  const snapshot = createStatRequest(playerOwner.stats);
+/** The request the app sends, built by the app's own stat pass: the player's stats and each present owner's. */
+function shippedCall(owners: Owner[], narration: string): Call {
+  const snapshot = createStatRequest(playerOwner.stats, PLAYER_OWNER, {
+    entities: owners.filter((o) => o !== playerOwner).map((o) => ({ id: o.key, name: o.name, stats: o.stats })),
+  });
   const request = statUpdatesRequest(
     { system: shippedStatPrompt, user: shippedStatUserPrompt },
     { ctx: BASE_CTX, action: '', narration },
@@ -161,8 +166,27 @@ function shippedCall(narration: string): Call {
   };
 }
 
+const C3_USER = "Give each character's stats their change from this narration: 0 for every stat it did not move.";
+const C3_FORMAT = "- One key per character, named exactly as its heading shows. Its value gives each of that character's stats this turn's change as one signed whole number between -20 and 20.";
+
+/** S with C3's user line (SU), or with no max keys at all, in the schema, the format or the user line (SN). */
+function shippedVariant(arm: 'SU' | 'SN', owners: Owner[], narration: string): Call {
+  const call = shippedCall(owners, narration);
+  const user = swap(call.user, /Give each character's stats[^\n]*$/, C3_USER);
+  if (arm === 'SU') return { ...call, user };
+  const strip = (node: Record<string, unknown>): Record<string, unknown> => {
+    if (node.type !== 'object') return node;
+    const properties = Object.fromEntries(Object.entries(node.properties as Record<string, Record<string, unknown>>)
+      .filter(([key]) => !key.endsWith(' max')).map(([key, child]) => [key, strip(child)]));
+    return { ...node, properties, required: Object.keys(properties) };
+  };
+  const system = swap(call.system, /- One key per character, named exactly as its heading shows\. Under it[^\n]*/, C3_FORMAT);
+  return { ...call, user, system: swap(system, 'A value or maximum that did not move gets 0.', 'A stat that did not move gets 0.'), schema: strip(call.schema as Record<string, unknown>) };
+}
+
 function callsFor(arm: Arm, owners: Owner[], narration: string): Call[] {
-  if (arm === 'S') return [shippedCall(narration)];
+  if (arm === 'S') return [shippedCall(owners, narration)];
+  if (arm === 'SU' || arm === 'SN') return [shippedVariant(arm, owners, narration)];
   if (arm === 'C3P') return callsFor('C3', [playerOwner], narration);
   if (arm === 'control') {
     return [{ owner: playerOwner, system: render(defaultStatUpdatesPrompt, playerOwner), user: userFor(narration), maxTokens: statUpdatesCap(playerOwner.stats.length) }];
@@ -276,6 +300,7 @@ function parse(arm: Arm, owners: Owner[], calls: Call[], replies: Reply[]): Pars
   if (arm === 'A3') return parseOwnerBlocks(replies[0].raw, owners);
   if (arm === 'C' || arm === 'C2' || arm === 'C3' || arm === 'D') return parseJsonReply(replies[0].raw, owners);
   if (arm === 'C3P') return parseJsonReply(replies[0].raw, [playerOwner]);
+  if (arm === 'S' || arm === 'SU' || arm === 'SN') return parsePlainLines(replies[0].raw, playerOwner, calls[0].snapshot, (id) => (id === PLAYER_OWNER ? playerOwner.key : id));
   const parts = calls.flatMap((call, i) => (call.owner ? [parsePlainLines(replies[i].raw, call.owner, call.snapshot)] : []));
   return {
     changes: parts.flatMap((p) => p.changes), invalid: parts.reduce((n, p) => n + p.invalid, 0), unreadable: false,
@@ -311,7 +336,7 @@ await Promise.all(Array.from({ length: pool }, async () => {
   while (next < jobs.length) {
     const { arm, c, run } = jobs[next++];
     const owners = ownersOf(c);
-    const scope = arm === 'control' || arm === 'S' || arm === 'C3P' ? ['player'] : owners.map((o) => o.key);
+    const scope = arm === 'control' || arm === 'C3P' ? ['player'] : owners.map((o) => o.key);
     try {
       const calls = callsFor(arm, owners, c.narration);
       const t0 = Date.now();
@@ -349,7 +374,7 @@ const mean = (xs: Result[], f: (r: Result) => number) => (xs.length ? sum(xs, f)
 const pct = (k: number, n: number) => (n ? `${k}/${n} (${Math.round((100 * k) / n)}%)` : '-');
 const p90 = (xs: number[]) => xs.sort((a, b) => a - b)[Math.max(0, Math.ceil(xs.length * 0.9) - 1)] ?? NaN;
 
-console.log('\nTOTALS per arm (control and S are graded on player cells only)');
+console.log('\nTOTALS per arm (control and C3P are graded on player cells only)');
 console.log('arm      exact          recall          sign spur misattr inv unread dup cap max   ms(mean/p90)  tok in/out');
 for (const arm of arms) {
   const xs = results.filter((r) => r.arm === arm);

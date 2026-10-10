@@ -46,7 +46,8 @@ export interface TurnSettings {
   concurrentTurnRequests: boolean;
   choicesEnabled: boolean;
   statUpdatesEnabled: boolean;
-  /** Live stats in this world; with none, the stat pass would only invent names that match nothing. */
+  /** Live stats the request could hold: the player's and every entity's that can be present. With none, the
+   *  stat pass would only invent names that match nothing. */
   statCount: number;
   locationChangeEnabled: boolean;
   locationAutoApply: boolean;

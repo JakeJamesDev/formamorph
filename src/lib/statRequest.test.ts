@@ -128,7 +128,7 @@ describe('stat request names', () => {
   });
 
   it('keeps two owners of one stat id apart in the reply', () => {
-    const snapshot: StatRequestSnapshot = { id: 'r', context: {}, targets: [
+    const snapshot: StatRequestSnapshot = { id: 'r', context: {}, textContext: {}, entityKeys: [], targets: [
       { ownerId: PLAYER_OWNER, id: 'health', name: 'Health', plainName: 'Health', ownerKey: PLAYER_STAT_HEADING, key: 'Health', maxKey: 'Health max' },
       { ownerId: 'bram', id: 'health', name: 'Bram Health', plainName: 'Bram Health', ownerKey: 'Bram', key: 'Health', maxKey: 'Health max' },
     ] };

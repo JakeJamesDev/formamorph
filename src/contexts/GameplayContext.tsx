@@ -20,7 +20,7 @@ import { activeTraits, recoverStatBases, type AppliedTraitValues } from '../lib/
 import { heldEntityIds, withHeldOwners } from '../lib/ownedTraitState';
 import { pageAssistantIndex, pageNextActionIndex, placeSnapshot } from '../lib/turnHistory';
 import { backfillGameStateStats } from '../lib/statBackfill';
-import { backfillGameStateEntityStats } from '../lib/entityStats';
+import { backfillGameStateEntityStats, entityStatDeltas } from '../lib/entityStats';
 import { normalizeVisibleEntities } from '../lib/sceneEntities';
 import { appendLogEntry, type LogKind } from '../lib/playLog';
 import { registerDevHook } from '../lib/devRouter';
@@ -36,6 +36,7 @@ import type {
   CharacterData,
   CodePins,
   Entity,
+  EntityStatChanges,
   EntityStatValues,
   ImageAttachment,
   LogEntry,
@@ -62,6 +63,7 @@ import type {
 // leaks into consumers' dependency arrays and can drive a render loop while viewing a past page.
 const EMPTY_IDS: string[] = [];
 const EMPTY_OWNED: OwnedTraitStates = {};
+const EMPTY_ENTITY_CHANGES: EntityStatChanges = {};
 const EMPTY_CHOICES: Choice[] = [];
 const EMPTY_INDICES: number[] = [];
 const EMPTY_PINS: CodePins = {};
@@ -106,6 +108,14 @@ function useProvideGameplay() {
   const [ownedTraits, setOwnedTraits] = useState<OwnedTraitStates>({});
   // Entity id → its stat values. Snapshotted per turn too.
   const [entityStats, setEntityStats] = useState<EntityStatValues>({});
+  // The entity stats as this turn found them, which the turn's entity deltas count from. Runtime only.
+  const [entityStatBaseline, setEntityStatBaseline] = useState<EntityStatValues>({});
+  const entityStatChanges = useMemo(() => entityStatDeltas(entityStats, entityStatBaseline), [entityStats, entityStatBaseline]);
+  /** Put the entity stats back to `values`, as a turn that moved nothing yet. */
+  const resetEntityStats = useCallback((values: EntityStatValues) => {
+    setEntityStats(values);
+    setEntityStatBaseline(values);
+  }, []);
   // Placeholder id → the text stat code pinned it to. Snapshotted per turn, so undo and re-roll restore it.
   const [codePins, setCodePins] = useState<CodePins>(EMPTY_PINS);
   // Per-playthrough dictionary set chosen at world entry (or restored from a save). Runtime-only: the
@@ -257,6 +267,7 @@ function useProvideGameplay() {
       ...(Object.keys(cascadeOffTraitIds).length ? { cascadeOffTraitIds } : {}),
       ...(Object.keys(ownedTraits).length ? { ownedTraits } : {}),
       ...(Object.keys(entityStats).length ? { entityStats } : {}),
+      ...(Object.keys(entityStatChanges).length ? { entityStatChanges } : {}),
       ...(Object.keys(codePins).length ? { codePins } : {}),
       visibleEntities,
       discoveredEntities,
@@ -278,7 +289,7 @@ function useProvideGameplay() {
       // Add a version flag for backward compatibility
       stateVersion: 2
     };
-  }, [playerStats, playerTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, entityStats, codePins, visibleEntities, discoveredEntities, suppressedCharacterNames, logEntries, currentLocation,
+  }, [playerStats, playerTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, entityStats, entityStatChanges, codePins, visibleEntities, discoveredEntities, suppressedCharacterNames, logEntries, currentLocation,
       gameTime, startHour, fullMessageHistory, characterData, choices, isGameStarted, playerNotes, currentPage]);
 
   /** Restore a `GameState` into the live gameplay state, resolving `locationId` against `locations` and
@@ -302,7 +313,7 @@ function useProvideGameplay() {
       setAppliedTraitValues(gameState.appliedTraitValues ?? {});
       setCascadeOffTraitIds(gameState.cascadeOffTraitIds ?? {});
       setOwnedTraits(gameState.ownedTraits ?? {});
-      setEntityStats(gameState.entityStats ?? {});
+      resetEntityStats(gameState.entityStats ?? {});
       setCodePins(gameState.codePins ?? EMPTY_PINS);
       setVisibleEntities(normalizeVisibleEntities(gameState.visibleEntities));
       // Rollback / re-generate also keep the live discovered cast + suppressed names (they carry the
@@ -364,7 +375,7 @@ function useProvideGameplay() {
       addSystemLogEntry('Failed to load game state');
       return false;
     }
-  }, [addSystemLogEntry]);
+  }, [addSystemLogEntry, resetEntityStats]);
 
   /** Persist the current turn to IndexedDB as a flat envelope (`currentState` + `stateHistory` +
    *  `APP_VERSION`), stamping `worldName`/`worldId` for per-world folders. A fresh `id` creates a new save;
@@ -619,6 +630,8 @@ function useProvideGameplay() {
   const viewDisabledTraitIds = viewedSnapshot ? (viewedSnapshot.disabledTraitIds ?? EMPTY_IDS) : disabledTraitIds;
   const viewOwnedTraits = viewedSnapshot ? (viewedSnapshot.ownedTraits ?? EMPTY_OWNED) : ownedTraits;
   const viewEntityStats = viewedSnapshot ? (viewedSnapshot.entityStats ?? EMPTY_ENTITY_STATS) : entityStats;
+  // What the shown turn moved each entity stat: live, this turn's; on a past page, that turn's record.
+  const viewEntityStatChanges = viewedSnapshot ? (viewedSnapshot.entityStatChanges ?? EMPTY_ENTITY_CHANGES) : entityStatChanges;
   const viewCodePins = viewedSnapshot ? (viewedSnapshot.codePins ?? EMPTY_PINS) : codePins;
   const viewCharacterData = viewedSnapshot?.characterData ?? characterData;
   const viewVisibleEntities = useMemo(
@@ -736,6 +749,8 @@ function useProvideGameplay() {
     setOwnedTraits,
     entityStats,
     setEntityStats,
+    setEntityStatBaseline,
+    resetEntityStats,
     codePins,
     setCodePins,
     runtimeDictionaries,
@@ -811,6 +826,7 @@ function useProvideGameplay() {
     viewDisabledTraitIds,
     viewOwnedTraits,
     viewEntityStats,
+    viewEntityStatChanges,
     viewCodePins,
     viewCharacterData,
     viewVisibleEntities,

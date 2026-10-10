@@ -42,12 +42,16 @@ export interface Score {
 
 const key = (text: string) => stripMarkdown(text).replace(/^[\s*_+-]+|[\s*_]+$/g, '').replace(/\s+/g, ' ').toLowerCase();
 
-/** One owner's reply, text lines or the shipped schema object, read by the app's own reader. */
-export function parsePlainLines(raw: string, owner: Owner, snapshot: StatRequestSnapshot = createStatRequest(owner.stats)): Parsed {
+/** One owner's reply, text lines or the shipped schema object, read by the app's own reader. A shipped
+ *  request over several owners maps each update's owner id through `ownerKeyOf`. */
+export function parsePlainLines(
+  raw: string, owner: Owner, snapshot: StatRequestSnapshot = createStatRequest(owner.stats),
+  ownerKeyOf: (ownerId: string) => string = () => owner.key,
+): Parsed {
   const response = readStatResponse(raw, snapshot);
   return {
-    changes: response.updates.filter((u) => u.value !== 0).map((u) => ({ owner: owner.key, stat: u.name, change: u.value })),
-    invalid: response.diagnostics.filter((d) => d.reason !== 'textPass').length,
+    changes: response.updates.filter((u) => u.value !== 0).map((u) => ({ owner: ownerKeyOf(u.ownerId), stat: u.name, change: u.value })),
+    invalid: response.diagnostics.filter((d) => d.reason !== 'textPass' && d.reason !== 'skipped').length,
     unreadable: false,
     maxChanges: response.updates.filter((u) => u.max !== 0).length,
   };

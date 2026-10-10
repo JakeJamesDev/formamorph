@@ -284,6 +284,27 @@ describe('owned trait state across a save/load round trip', () => {
     expect(live().entityStats).toEqual({ ash: [{ ...trust, value: 33 }, { ...stock, value: 6 }] });
   });
 
+  it('records what a turn moved each entity stat, live, in its snapshot, and on its past page', async () => {
+    const trust: PlayerStat = { ...authored, id: 'trust', name: 'Trust', value: 20 };
+    const live = mount();
+    await act(async () => { live().setEntityStatBaseline({ ash: [trust] }); });
+    await act(async () => { live().setEntityStats({ ash: [{ ...trust, value: 26 }] }); });
+    expect(live().viewEntityStatChanges).toEqual({ ash: { trust: 6 } });
+    const snapshot = live().saveCurrentGameState();
+    expect(snapshot.entityStatChanges).toEqual({ ash: { trust: 6 } });
+    // The next turn starts from what this one left; paging back shows this turn's record.
+    await act(async () => {
+      live().setEntityStatBaseline({ ash: [{ ...trust, value: 26 }] });
+      live().setGameStates([snapshot]);
+      live().setFullMessageHistory([
+        { role: 'user', content: 'a' }, { role: 'assistant', content: 'b' }, { role: 'user', content: 'c' }, { role: 'assistant', content: 'd' },
+      ]);
+    });
+    expect(live().viewEntityStatChanges).toEqual({});
+    await act(async () => { live().setUserPage(1); });
+    expect(live().viewEntityStatChanges).toEqual({ ash: { trust: 6 } });
+  });
+
   it("keeps a library persona's state, which the world never holds", async () => {
     const live = mount();
     await act(async () => {

@@ -388,9 +388,9 @@ describe('turn pass requests', () => {
     it('skips the storyboard when the director cast nobody — there is nothing to reconcile', () => {
       expect(pass('storyboard').isReady?.(material({ npcCastSize: 0 }))).toBe(false);
       expect(pass('storyboard').isReady?.(material())).toBe(true);
-      // Every other pass is ready the moment it is due.
+      // Every other pass but the stat request, which waits for its owners, is ready the moment it is due.
       for (const record of TURN_PASSES) {
-        if (record.id !== 'storyboard') expect([record.id, record.isReady]).toEqual([record.id, undefined]);
+        if (record.id !== 'storyboard' && record.id !== 'statUpdates') expect([record.id, record.isReady]).toEqual([record.id, undefined]);
       }
     });
 
