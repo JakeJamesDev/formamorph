@@ -23,6 +23,16 @@ export interface StatOwner {
 /** One owner's stats; none for an owner the map does not hold. */
 export const statsOf = (owners: OwnerStats, ownerId: string): readonly PlayerStat[] => owners[ownerId] ?? [];
 
+/** Each owner's stats that are switched on, as the prompts read them; an owner left with none is dropped. */
+export function enabledOwnerStats(owners: OwnerStats): Record<string, PlayerStat[]> {
+  const out: Record<string, PlayerStat[]> = {};
+  for (const [id, stats] of Object.entries(owners)) {
+    const live = stats.filter((stat) => stat.enabled !== false);
+    if (live.length) out[id] = live;
+  }
+  return out;
+}
+
 /** One regen tick over `hours` for each owner. `applied` is what each stat moved, by owner, then stat id. */
 export function regenOwners(
   owners: readonly StatOwner[],

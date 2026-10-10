@@ -97,19 +97,21 @@ function resolveAll(values: Record<string, string>, resolve: (text: string) => s
 
 /** The Entities chip's scope builders over one scene. */
 function entityScopes(scene: ChipScene): Record<string, (opts: ContextOpts) => string> {
-  const { location, locations, entities, presentIds, inSceneIds, inSceneNames = [], ownedTraits } = scene;
+  const { location, locations, entities, presentIds, inSceneIds, inSceneNames = [], ownedTraits, ownedStats } = scene;
   const outer = scene.outerScopeEntities ?? entities;
   // Roster precedence: here > sub-location > reachable. A character shows only in the highest scope it
   // belongs to, so the lower scopes drop the ids the higher ones list.
   const reachableExclude = [...presentIds, ...sublocationEntityIds(location, locations, outer)];
   // Every scope renders each entity with its owned traits in force.
   const roster = (opts: ContextOpts) => ({ ...opts, ownedTraits });
+  // Only the scopes of who is present carry stats, and the chip's stats piece can switch them off.
+  const presentOpts = (opts: ContextOpts) => ({ ...roster(opts), ownedStats: opts.noStats ? undefined : ownedStats });
   return {
-    '': (opts) => renderEntityRoster(presentIds, entities, roster(opts)),
+    '': (opts) => renderEntityRoster(presentIds, entities, presentOpts(opts)),
     sublocations: (opts) => buildSublocationEntitiesContext(location, locations, outer, { ...roster(opts), excludeIds: presentIds }),
     reachable: (opts) => buildReachableEntitiesContext(location, locations, outer, { ...roster(opts), excludeIds: reachableExclude }),
     inscene: (opts) => {
-      const block = renderEntityRoster(inSceneIds, entities, roster(opts));
+      const block = renderEntityRoster(inSceneIds, entities, presentOpts(opts));
       if (!opts.nameOnly || !inSceneNames.length) return block;
       return [...(block === NONE_PLACEHOLDER ? [] : [block]), ...inSceneNames].join(', ');
     },

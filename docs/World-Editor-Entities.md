@@ -159,6 +159,16 @@ The default prompt sends entities from three places, as separate blocks: the pla
 
 The stats stay on the entity, in the order you set. Dragging a stat reorders it inside this entity only.
 
+### What the AI sees
+<!-- keywords: ai sees entity stats, npc stats in prompt, send stats to ai, turn off entity stats, hidden stat ai -->
+
+The **Entities** chip lists each entity's stats under its entry. Each stat shows its range, its [Descriptor](World-Editor-Stats#stat-descriptors) and its **Description**.
+
+- **Only entities in the scene get stats.** That means the **Here** and **In Scene** scopes, in **Full** or **Summary** content. **Name** content sends names only.
+- **Hidden stats are sent.** **Hidden** hides a stat from the player, and the AI still reads it.
+- **A stat that is switched off isn't sent.**
+- **The chip's Stats checkbox turns them off.** It's on by default.
+
 ## Openings
 
 An entity can have its own openings, so it can start the scene in its own voice. A playable entity can also have [Self Openings](World-Editor-Openings#self-openings), which start the game for a player who plays it. See [Entity Openings](World-Editor-Openings#entity-openings).

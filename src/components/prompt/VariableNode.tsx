@@ -130,7 +130,7 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
   const placementLabel = known ? vocab.placementLabel?.(token) ?? null : null;
   const header = known ? vocab.header?.(token) ?? null : null;
   // How many toggle (checkbox) axes are on — used to lock the last one so at least one piece stays selected.
-  const toggleOnCount = axes.filter((a) => a.toggle && selection[a.id] != null).length;
+  const toggleOnCount = axes.filter((a) => a.toggle && !a.onByDefault && selection[a.id] != null).length;
 
   const remove = () => editor.update(() => {
     const node = $getNodeByKey(nodeKey);
@@ -281,17 +281,20 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
                 {axes.length ? (
                   <div className="space-y-3">
                     {axes.map((axis) => {
-                      // Toggle axes render as a checkbox; the last one on is locked so a stats block is never nameless.
+                      // Toggle axes render as a checkbox. The last piece on in the Stats group is locked so a stats
+                      // block is never nameless; an on-by-default axis sits outside that group.
                       if (axis.toggle) {
-                        const isOn = selection[axis.id] != null;
-                        const onId = axis.options.find((o) => o.id != null)?.id ?? null;
-                        const locked = isOn && toggleOnCount === 1;
+                        const stored = axis.options.find((o) => o.id != null)?.id ?? null;
+                        const holdsStored = selection[axis.id] != null;
+                        const isOn = holdsStored !== !!axis.onByDefault;
+                        const locked = !axis.onByDefault && isOn && toggleOnCount === 1;
+                        const toggled = holdsStored ? null : stored;
                         return (
                           <label key={axis.id} className={cn('flex items-start gap-2', (!editable || locked) && 'cursor-default')}>
                             <Checkbox
                               checked={isOn}
                               disabled={!editable || locked}
-                              onCheckedChange={() => setAxis(axis.id, isOn ? null : onId)}
+                              onCheckedChange={() => setAxis(axis.id, toggled)}
                               className="mt-0.5"
                             />
                             <span>

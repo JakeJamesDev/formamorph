@@ -1,0 +1,61 @@
+{
+  "_note": "Cases for the Entities chip stats piece probe (harness/entity-stats-chip-probe.cli.ts). Sedge Landing, with stats on Bram and Odette set to a state the scene should show: Bram worn out and guarded, Odette's stock nearly gone and her trust low. `checks` name scorers in the harness. Narration and planning cases run the action; choices cases run a fixed passage.",
+  "entityStats": {
+    "ent-bram": [
+      {
+        "id": "bram-vigor", "name": "Vigor", "type": "number", "min": 0, "max": 100, "value": 12,
+        "description": "Physical energy and stamina.",
+        "descriptors": [
+          { "id": "bv1", "threshold": 25, "description": "Spent" },
+          { "id": "bv2", "threshold": 60, "description": "Tired" },
+          { "id": "bv3", "threshold": 100, "description": "Hale" }
+        ]
+      },
+      {
+        "id": "bram-trust", "name": "Trust", "type": "number", "min": 0, "max": 100, "value": 15,
+        "description": "How far he trusts the player.",
+        "descriptors": [
+          { "id": "bt1", "threshold": 30, "description": "Guarded" },
+          { "id": "bt2", "threshold": 70, "description": "Open" },
+          { "id": "bt3", "threshold": 100, "description": "Devoted" }
+        ]
+      }
+    ],
+    "ent-odette": [
+      {
+        "id": "odette-trust", "name": "Trust", "type": "number", "min": 0, "max": 100, "value": 8,
+        "description": "How far she trusts the player.",
+        "descriptors": [
+          { "id": "ot1", "threshold": 30, "description": "Hostile" },
+          { "id": "ot2", "threshold": 70, "description": "Neutral" },
+          { "id": "ot3", "threshold": 100, "description": "Friendly" }
+        ]
+      },
+      {
+        "id": "odette-stock", "name": "Stock", "type": "number", "min": 0, "max": 40, "value": 3,
+        "description": "Smoked eels she has left to sell.",
+        "descriptors": [
+          { "id": "os1", "threshold": 8, "description": "Nearly out" },
+          { "id": "os2", "threshold": 40, "description": "Stocked" }
+        ]
+      }
+    ]
+  },
+  "cases": [
+    { "id": "narr-bram", "kind": "narration", "action": "I walk up to the ferryman and ask if he'll take me across.", "checks": ["bram-worn", "bram-guarded", "numeral-leak", "label-leak", "name-leak"] },
+    { "id": "narr-odette", "kind": "narration", "action": "I crouch by the firepit and look over the eel rack.", "checks": ["odette-low-stock", "odette-hostile", "numeral-leak", "label-leak", "name-leak"] },
+    { "id": "narr-idle", "kind": "narration", "action": "I sit on the edge of the dock and rest my feet.", "checks": ["numeral-leak", "label-leak", "name-leak"] },
+    { "id": "plan-bram", "kind": "planning", "action": "I walk up to the ferryman and ask if he'll take me across.", "checks": ["bram-worn", "bram-guarded", "numeral-leak", "label-leak"] },
+    { "id": "plan-odette", "kind": "planning", "action": "I crouch by the firepit and look over the eel rack.", "checks": ["odette-low-stock", "odette-hostile", "numeral-leak", "label-leak"] },
+    {
+      "id": "choice-bram", "kind": "choices", "scene": ["ent-bram"],
+      "narration": "Bram stands at the landing with the raft rope slack in his hand. He answers you with a short nod and does not meet your eye. The river runs high behind him, brown and quick, and the far bank sits a long pull away.",
+      "checks": ["contract", "bram-care", "numeral-leak", "label-leak", "name-leak"]
+    },
+    {
+      "id": "choice-odette", "kind": "choices", "scene": ["ent-odette"],
+      "narration": "Odette turns the last few eels on the rack without looking up. Smoke curls past her face. She waits, one hand on the rack, for you to say what you came for.",
+      "checks": ["contract", "numeral-leak", "label-leak", "name-leak"]
+    }
+  ]
+}
