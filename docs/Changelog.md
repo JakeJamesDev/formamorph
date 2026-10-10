@@ -2,7 +2,7 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **3.0.0 – 3.2.2 are released** (collapsed below). Releases 2.0.0 – 2.19.x are in [Changelog-v2](Changelog-v2). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **3.2.2** — the latest released version.
+> ✅ **3.0.0 – 3.2.3 are released** (collapsed below). Releases 2.0.0 – 2.19.x are in [Changelog-v2](Changelog-v2). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **3.2.3** — the latest released version.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend. Where two or more changes touch the same feature, they sit together under that feature's name.
 
@@ -10,53 +10,52 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 ## 🚧 In Progress
 
-_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.2.2** (just released below)._
+_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.2.3** (just released below)._
+
+---
+
+<details>
+<summary><strong>✅ 3.2.3 — Released 2026-10-10</strong> — Undo, redo and History in the World Editor — World Editor Auto Save — trait requirement rows with And, Or and Not — choices stream in word by word — tooltips close on scroll and press — a long tail of fixes (click to expand)</summary>
 
 ### Minor Changes
 
 #### ➕ Added
 
 - **👤 User-facing**
-  - **Traits:**
-    - **The Requires field in the World Editor takes rows: a row unlocks the trait when all its requirements hold.** **And** adds a requirement to a row, and **Or Another Way** adds a row. The lock line reads the same rule. Existing worlds and character cards open with one requirement per row.
-    - **A requirement can require a trait to be off: flip its chip to Not.** The lock line reads "not Paladin". Picking an excluded trait turns the other off with the banner, and dropping the pick brings it back.
-    - **The Availability tab shows Mode, Starts and In Game as three rows with one rule sentence.** **Automatic** is the new name of Always On. Starts and In Game dim under Automatic and Hidden. **Requires** adds a world trait at once when only You can hold it.
-    - **Test Bench flags requirements that loop through Not and rows that can never hold.** A loop such as "A requires B, B requires not A" is an error. "Paladin and not Paladin" is a warning. Two traits that exclude each other still pass.
-  - **Auto Save:**
-    - **Leaving the World Editor now waits for a save that is still running.** A failed **Save & Exit** in the in-game editor keeps it open with your changes. The prompt says **Auto Save** kept your changes only after an auto save ran.
   - **History:**
+    - **The World Editor has undo, redo and a History list for your world's edits.** Press Ctrl+Z, or open History in the app bar to jump to any earlier point.
     - **Undo in the World Editor returns you to the tab where you made the edit.** An edit made on another tab's record, such as a location's entities, opens that tab with the same record selected.
     - **Undo in the World Editor returns you to the sub-tab or view where you made the edit.** An edit on the Openings sub-tab, an entity tab, or the Locations list or canvas opens that same sub-tab or view. An Overview edit with no prompt panel open closes the panel.
     - **Undo and redo in the World Editor restore every location you had selected on the canvas.** Locations that no longer exist drop out of the selection.
     - **Undo and redo in the World Editor scroll to the text field you edited and pulse it.** It pulses on every press, even when you're already on the field. Keyboard focus stays where it was. With reduced motion, the field shows a still ring.
-    - **Typing in a different field, tab or selection starts a new undo step in the World Editor.** Undo then takes you back to the field you edited. Typing in one field still joins into one step.
+    - **Typing in a different field, tab or selection starts a new undo step in the World Editor.** Undo then takes you back to the field you edited. Typing in one field joins into one step.
     - **Undo and redo in the World Editor pulse the checkbox, select or option group you changed.** A chip's pop-out edit pulses the prompt field that holds the chip.
+  - **Auto Save:**
+    - **The World Editor's Save button now has a menu with Export World, and Optimize Images is its own icon.** Select the arrow beside **Save** to export, even when Save is dim. In Advanced mode, the **Optimize Images** icon shows a spinner, and its tooltip shows progress. The **More world actions** menu is gone.
+    - **The World Editor's Save button shows Saving…, then Saved, and fades back to a dim Save.** A failed save shows **Failed** in red until a save works; select it to try again. On mobile, the Save icon changes the same way. A good save no longer shows a pop-up message.
+    - **The World Editor saves on its own after about 300 characters or 30 actions, or after a 30-second pause.** Turn it off with **Auto Save** in the **Save** menu. A new world waits for its first save by hand. A failed auto save pauses until you save. History keeps its Saved mark.
+    - **Settings now has Auto Save and Auto Save Pause for the World Editor.** Under **Authoring**, turn Auto Save on or off and set the pause from 10 seconds to 5 minutes.
+    - **The World Editor asks which copy to keep when another tab saves or deletes the same world.** Auto save stops until you answer. After a save, **Reload** opens the other copy and **Keep Mine** keeps yours. After a delete, **Keep Mine** saves it back.
+    - **The World Editor asks before you close or reload the tab with unsaved changes.** It works in the menu and in the in-game editor, and in the desktop app's window close.
+    - **Leaving the World Editor waits for a save that is still running.** A failed **Save & Exit** in the in-game editor keeps it open with your changes. The prompt says **Auto Save** kept your changes only after an auto save ran.
+  - **Traits:**
+    - **The Requires field in the World Editor takes rows: a row unlocks the trait when all its requirements hold.** **And** adds a requirement to a row, and **Or Another Way** adds a row. The lock line reads the same rule. Existing worlds and character cards open with one requirement per row.
+    - **A requirement can require a trait to be off: flip its chip to Not.** The lock line reads "not Paladin". Picking an excluded trait turns the other off with the banner, and dropping the pick brings it back.
+    - **The Availability tab shows Mode, Starts and In Game as three rows with one rule sentence.** **Automatic** is the new name of Always On. Starts and In Game dim under Automatic and Hidden. **Requires** adds a world trait at once when only You can hold it.
+    - **Test Bench flags requirements that loop through Not and rows that can never hold.** A loop such as "A requires B, B requires not A" is an error. "Paladin and not Paladin" is a warning. Two traits that exclude each other pass.
   - **Ctrl+S saves the world in the World Editor.** On a Mac, use Cmd+S. It works while you type in a field, and the **Save** tooltip shows it.
   - **Ctrl+B and Ctrl+I make text bold or italic in fields with a formatting toolbar.** On a Mac, use Cmd+B and Cmd+I. Press the key again to remove the formatting. The **Bold** and **Italic** tooltips show the shortcut.
-  - **The World Editor now has undo, redo and a History list for your world's edits.** Press Ctrl+Z, or open History in the app bar to jump to any earlier point.
-  - **The World Editor's Save button now has a menu with Export World, and Optimize Images is its own icon.** Select the arrow beside **Save** to export, even when Save is dim. In Advanced mode, the **Optimize Images** icon shows a spinner, and its tooltip shows progress. The **More world actions** menu is gone.
-  - **The World Editor's Save button shows Saving…, then Saved, and fades back to a dim Save.** A failed save shows **Failed** in red until a save works; select it to try again. On mobile, the Save icon changes the same way. A good save no longer shows a pop-up message.
-  - **The World Editor saves on its own after about 300 characters or 30 actions, or after a 30-second pause.** Turn it off with **Auto Save** in the **Save** menu. A new world waits for its first save by hand. A failed auto save pauses until you save. History keeps its Saved mark.
-  - **Settings now has Auto Save and Auto Save Pause for the World Editor.** Under **Authoring**, turn Auto Save on or off and set the pause from 10 seconds to 5 minutes.
-  - **The World Editor asks which copy to keep when another tab saves or deletes the same world.** Auto save stops until you answer. After a save, **Reload** opens the other copy and **Keep Mine** keeps yours. After a delete, **Keep Mine** saves it back.
-  - **The World Editor asks before you close or reload the tab with unsaved changes.** It works in the menu and in the in-game editor, and in the desktop app's window close.
-  - **Choices now stream in word by word, one choice after another, once the narration finishes.** They use your narration reveal effects and pace. A choice's row appears with its first word. Choices you page back to show at once.
+  - **Choices stream in word by word, one choice after another, once the narration finishes.** They use your narration reveal effects and pace. A choice's row appears with its first word. Choices you page back to show at once.
 - **🛠️ Developer tooling**
   - **Trailer:**
-    - **`marketing/trailer/` renders a 20-second proof trailer to wide and tall MP4s with one command.** It is a Remotion package with its own dependencies and scripts. `npm run render` checks each file's size, frame rate and length.
-    - **`npm run capture` in `marketing/trailer/` writes the trailer's UI frames from the real app, and `capture:diff` flags UI changes.** It sets up each shot in `captures.json` on its own dev server, with watching off. The proof renders from these frames.
-    - **`npm run render` in `marketing/trailer/` writes the final 63-second Steam cut, the 48-second social cut and the poster frame.** The README lists the Steam checks and the steps to re-render after a release.
-    - **The trailer render checks each line's reading time, and its stats shot plays the real stat-bar animation.** Lines under 1.5 s or over 12 characters per second fail. The cuts now run 64 and 50 seconds. The avatar shot plays its idle animation.
-    - **The trailer camera moves at a constant rate, text enters and leaves calmly, and the avatar shot plays a clip.** Only the stats and Morphie shots zoom; the rest hold their crop. The render check fails text under 0.5 s and nonlinear camera moves.
-    - **Every trailer shot now floats as a tilted glass card over one glowing stage, with word-by-word headlines and pill captions.** `npm run sheet` writes a contact sheet per cut. Cards hold their crop except the stats and Morphie shots. Joins are plain overlaps.
-    - **The trailer plays the real narration reveal, adds travel and desktop engine shots, and ends on "Play free at formamorph.ai".** No card zooms. The render check fails a shot whose subject leaves its card or sits under a caption. `npm run check` runs the checks without a render.
-    - **The trailer opens on the title card alone and adds traits and help title cards before their shots.** Morphie's shot plays a clip from thinking to idle. The chat shot uses the Authoring Tour's world. The reveal clip capture now fails on a jump in motion.
-    - **The trailer's end card wordmark now forms from goo blobs, and the contest shot holds 5 seconds.** The wordmark moves as the app's first-run intro does. The render check fails a dense card that holds under 5 seconds. The community shot shows a different author on each world.
-    - **The trailer now opens on the goo wordmark, and the end card's wordmark pops letter by letter.** The blobs dissolve into crisp letters inside the 6 s loop. The typed panel enters on the clip's first narration word, which the capture records. Three captions changed.
-    - **The trailer no longer has an avatar shot.** The wide cut is 81 seconds. The avatar clip capture stays in the list as deferred.
+    - **`marketing/trailer/` renders the trailer: a wide Steam cut under 90 seconds, a 60-second tall cut and a poster.** It is a Remotion package with its own dependencies and scripts. `npm run render` checks each file's size, frame rate, length and 6-second loop.
+    - **`npm run capture` in `marketing/trailer/` writes the trailer's UI frames from the real app, and `capture:diff` flags UI changes.** It sets up each shot in `captures.json` on its own dev server. A clip capture fails on a jump in motion.
+    - **Every trailer shot floats as a tilted glass card over one glowing stage, with word-by-word headlines and pill captions.** Each card holds one crop. The cut opens on the goo wordmark and ends on "Play free at formamorph.ai". `npm run sheet` writes a contact sheet per cut.
+    - **The trailer shows the real narration reveal, stat-bar animation, traits, travel, the desktop engine, the community and Morphie.** Title cards come before the traits and help shots. The README lists the Steam checks and the steps to re-render after a release.
+    - **The trailer render checks each line's reading time, each dense card's hold and each card's camera.** It fails a line under 1.5 s or over 12 characters per second, a dense card under 5 s, and a card that zooms or loses its subject. `npm run check` runs the checks without a render.
   - **Slash Commands:**
-    - **Typing `/choices test` in the action box plays a scripted turn with one paragraph and 4 choices.** It plays in the Pages or Chat turn layout, with a live turn's timing. Add a profile name such as `slow` or `burst` to change the narration's pace.
     - **Typing `/` in the action box lists the commands, and each later word lists its own options.** The list opens under the word you're typing. Arrow keys move through it; Enter or Tab picks.
+    - **Typing `/choices test` in the action box plays a scripted turn with one paragraph and 4 choices.** It plays in the Pages or Chat turn layout, with a live turn's timing. Add a profile name such as `slow` or `burst` to change the narration's pace.
   - **The ticket test gate reruns files that failed only by timeout, alone, once.** A run starved by another session's gates is not a verdict. Any other failure stops the gate as before.
   - **The changelog lint lets a feature group hold one entry under In Progress.** The first ticket of an effort names the group. The release lint still needs two entries, and close-spec drops a header that stayed alone.
 
@@ -65,27 +64,28 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **👤 User-facing**
   - **Narration:**
     - **Paging away from narration that is still fading in, then back, now shows all the text that has arrived.** It no longer fades in again from the start. Text the AI writes after you return fades in as usual.
-    - **Choices now wait until the narration has finished fading in.** They no longer stream in over text that is still fading in.
     - **Fade-in narration now keeps an even pace with slow models.** The first sentence is timed from the stream, so no long pause follows it, and the last sentences no longer speed up.
     - **The narration card now grows with the words as they fade in.** It no longer shows blank lines ahead of the text.
-  - **Auto Save:**
-    - **Exit Without Saving in the in-game World Editor now drops the edits you made since the last save.** After Auto Save saved the world, the prompt says so.
   - **Tooltips:**
     - **A tooltip now closes when you scroll.** It no longer stays on screen after its control moves. Scrolling a page, list, panel or scrollbar, or scrolling by keyboard, closes it. It opens again on the next hover or focus.
     - **A tooltip now closes when you press, right-click or start a drag.** None opens while you hold a mouse button, so dragging across the library board or the Trait Tree opens none.
     - **A tooltip now closes when focus moves elsewhere, the window loses focus or the tab is hidden.** Tabbing to another control still opens that control's tooltip.
     - **The Copied bubble on a help code block now closes when you scroll, press, right-click or start a drag.** It no longer floats in place when its button scrolls away. Each copy shows it again.
+  - **Exit Without Saving in the in-game World Editor now drops the edits you made since the last save.** After Auto Save saved the world, the prompt says so.
   - **The app and the wiki now say In Game for the time after a game starts.** The trait toggle, the Authoring Tour pane and the Entities page use the same term.
   - **Test Bench now names the right requirements when a linked trait's default starts unselected.** The message names the entity, quotes the link's rows and opens the link.
   - **The markdown Preview now shows every edit inside a list, a quote or a multi-line paragraph.** Formatting and text changes in a list item, for example, now show at once instead of keeping the old text.
   - **Player Name and Character Name chips line up with other chips, and the Values tab shows what they become.** Values shows each one locked, as Preview reads it, instead of an empty box that broke the line. The chips carry a pencil icon, so they no longer look like AI generate buttons.
   - **A supporter's profile image sits centered in its ring in comments and notifications.** The image no longer covers the bottom of the ring. Supporter and staff badges are the same height on every screen.
   - **A toast's close button and View Details link now work while a dialog is open.** Before, a click went through the toast to the dialog behind it.
-  - **The ring that undo and Take Me There draw around a field shows in full at a scroll area's edge.** The first field of a World Editor panel lost the ring's top edge after an undo. The ring follows the field as it scrolls.
+  - **The ring that undo and Take Me There draw around a field shows in full at a scroll area's edge.** The ring follows the field as it scrolls.
 - **🛠️ Developer tooling**
   - **The dev held-updates bar shows the full file paths in a themed tip, not a native tooltip.** The bar now runs in its own React root, so it still works after the app crashes.
 
+</details>
+
 ---
+
 
 <details>
 <summary><strong>✅ 3.2.2 — Released 2026-10-07</strong> — Safari and iOS load without an error — Text to Speech loads on first use, so every browser starts faster (click to expand)</summary>
