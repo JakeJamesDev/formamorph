@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { resolveWorldPrompt, worldPromptChipValues, worldPromptTexts, type WorldPromptKind } from './worldPrompt';
 import { buildNarrationPrompt } from './turnPipeline/narrationPrompt';
-import { TURN_PASSES, choicesSystemPrompt, statUpdatesSystemPrompt } from './turnPipeline/turnPasses';
+import { TURN_PASSES, choicesSystemPrompt, statUpdatesRequest } from './turnPipeline/turnPasses';
 import { emptyTurnMaterial } from './turnPipeline/turnPlan';
 import { TEST_PROMPTS, testInput } from './turnPipeline/turnTestInputs';
 import { collectPins } from './placeholderPins';
@@ -136,8 +136,11 @@ describe('the standalone re-rolls, which render outside a turn', () => {
     const ctx = turnCtx(false, [SLOW]);
     expect(choicesSystemPrompt(WORLD.promptOverrides!.choicesPrompt!, 'English', ctx))
       .toBe(passRequest('choices', false, [SLOW]).systemPrompt);
-    expect(statUpdatesSystemPrompt(WORLD.promptOverrides!.statUpdatesPrompt!, ctx))
-      .toBe('STATS A salt marsh. Let the scene move slowly.');
+    expect(statUpdatesRequest(
+      { system: WORLD.promptOverrides!.statUpdatesPrompt!, user: TEST_PROMPTS.statUpdatesUser },
+      { ctx, action: '', narration: '' },
+      { statCount: 1, quiet: false },
+    ).systemPrompt).toBe('STATS A salt marsh. Let the scene move slowly.');
   });
 });
 

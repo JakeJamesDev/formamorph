@@ -23,6 +23,8 @@ export interface Parsed {
   invalid: number;
   /** The reply was not readable at all (JSON arm only). */
   unreadable: boolean;
+  /** Stats whose maximum the reply moved. No case moves one, so each is invented. Arms the app reader reads only. */
+  maxChanges?: number;
 }
 
 export interface Score {
@@ -40,13 +42,14 @@ export interface Score {
 
 const key = (text: string) => stripMarkdown(text).replace(/^[\s*_+-]+|[\s*_]+$/g, '').replace(/\s+/g, ' ').toLowerCase();
 
-/** One owner's reply in today's `Stat: delta` shape, read by the app's own reader. */
+/** One owner's reply, text lines or the shipped schema object, read by the app's own reader. */
 export function parsePlainLines(raw: string, owner: Owner, snapshot: StatRequestSnapshot = createStatRequest(owner.stats)): Parsed {
   const response = readStatResponse(raw, snapshot);
   return {
     changes: response.updates.filter((u) => u.value !== 0).map((u) => ({ owner: owner.key, stat: u.name, change: u.value })),
-    invalid: response.diagnostics.length,
+    invalid: response.diagnostics.filter((d) => d.reason !== 'textPass').length,
     unreadable: false,
+    maxChanges: response.updates.filter((u) => u.max !== 0).length,
   };
 }
 

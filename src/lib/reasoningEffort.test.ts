@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { reasoningEffortValue, reasoningLevelOptions, promptReasoningLevelOptions, defaultPromptReasoning, defaultPromptReasoningSetting, resolvePromptReasoning, resolveRequestReasoning, reasoningOffRefused, resolveReasoningSetting, resolvePromptReasoningSetting, parseReasoningSetting, parsePromptReasoningSetting, parseReasoningCapability, reasoningCapabilityFromLevels, reasoningRuledOut, defaultReasoningBudgetPct, resolveReasoningBudgetPct, isReasoningEngaged, nativeReasoningSuppressed, MIN_REASONING_BUDGET_PCT, resolveReasoningCapability, UNKNOWN_REASONING_CAPABILITY, type ReasoningCapability, type ReasoningEffortField, type PromptReasoning } from './reasoningEffort';
+import { reasoningEffortValue, reasoningLevelOptions, promptReasoningLevelOptions, defaultPromptReasoning, defaultPromptReasoningSetting, resolvePromptReasoning, resolveRequestReasoning, reasoningOffRefused, resolveReasoningSetting, resolvePromptReasoningSetting, parseReasoningSetting, parsePromptReasoningSetting, parseReasoningCapability, reasoningCapabilityFromLevels, reasoningRuledOut, defaultReasoningBudgetPct, resolveReasoningBudgetPct, isReasoningEngaged, nativeReasoningSuppressed, MIN_REASONING_BUDGET_PCT, resolveReasoningCapability, UNKNOWN_REASONING_CAPABILITY, schemaAccepted, storedAfterResolve, withSchemaRejected, type ReasoningCapability, type ReasoningEffortField, type PromptReasoning } from './reasoningEffort';
 import { resetProbeMemo } from '@/lib/probeMemo';
 import type { AIRequestType } from '@/types';
 
@@ -35,7 +35,7 @@ describe('reasoningEffortValue', () => {
   });
 
   it('sends nothing until the levels question is answered — an unknown record omits the field', () => {
-    expect(reasoningEffortValue('low', { reasons: null, levels: null, budget: null, dialect: 'unknown', offAllowed: null, tools: null, sources: {} })).toBeNull();
+    expect(reasoningEffortValue('low', { reasons: null, levels: null, budget: null, dialect: 'unknown', offAllowed: null, tools: null, structuredOutput: null, sources: {} })).toBeNull();
     expect(reasoningEffortValue('low', null)).toBeNull();
     expect(reasoningEffortValue('low')).toBeNull();
   });
@@ -47,7 +47,7 @@ describe('reasoningEffortValue', () => {
 
   it('sends nothing to a model the record says does not reason, whatever levels it lists', () => {
     const listedButNotReasoning: ReasoningCapability = {
-      reasons: false, levels: ['none', 'low', 'high'], budget: null, dialect: 'unknown', offAllowed: null, tools: null, sources: { reasons: 'native' },
+      reasons: false, levels: ['none', 'low', 'high'], budget: null, dialect: 'unknown', offAllowed: null, tools: null, structuredOutput: null, sources: { reasons: 'native' },
     };
     expect(reasoningEffortValue('high', listedButNotReasoning)).toBeNull();
   });
@@ -56,29 +56,29 @@ describe('reasoningEffortValue', () => {
 describe('the capability record', () => {
   it('reads an empty levels answer as conclusive: the model does not reason, from that same source', () => {
     expect(reasoningCapabilityFromLevels([], 'probe')).toEqual({
-      reasons: false, levels: [], budget: null, dialect: 'unknown', offAllowed: null, tools: null,
+      reasons: false, levels: [], budget: null, dialect: 'unknown', offAllowed: null, tools: null, structuredOutput: null,
       sources: { levels: 'probe', reasons: 'probe' },
     });
   });
 
   it('leaves the reasons question open when levels came back non-empty (accepting `none` proves nothing)', () => {
     expect(reasoningCapabilityFromLevels(['none', 'low'], 'probe')).toEqual({
-      reasons: null, levels: ['none', 'low'], budget: null, dialect: 'unknown', offAllowed: null, tools: null,
+      reasons: null, levels: ['none', 'low'], budget: null, dialect: 'unknown', offAllowed: null, tools: null, structuredOutput: null,
       sources: { levels: 'probe' },
     });
   });
 
   it('rules reasoning out on a negative reasons answer or an empty levels list, never on an unknown one', () => {
-    expect(reasoningRuledOut({ reasons: false, levels: null, budget: null, dialect: 'unknown', offAllowed: null, tools: null, sources: {} })).toBe(true);
+    expect(reasoningRuledOut({ reasons: false, levels: null, budget: null, dialect: 'unknown', offAllowed: null, tools: null, structuredOutput: null, sources: {} })).toBe(true);
     expect(reasoningRuledOut(accepts())).toBe(true);
     expect(reasoningRuledOut(accepts('none', 'low'))).toBe(false);
-    expect(reasoningRuledOut({ reasons: null, levels: null, budget: null, dialect: 'unknown', offAllowed: null, tools: null, sources: {} })).toBe(false);
+    expect(reasoningRuledOut({ reasons: null, levels: null, budget: null, dialect: 'unknown', offAllowed: null, tools: null, structuredOutput: null, sources: {} })).toBe(false);
     expect(reasoningRuledOut(null)).toBe(false);
   });
 
   it('loads a cache entry written as a bare effort list, so an update re-detects nothing', () => {
     expect(parseReasoningCapability(['none', 'low', 'high'])).toEqual({
-      reasons: null, levels: ['none', 'low', 'high'], budget: null, dialect: 'unknown', offAllowed: null, tools: null,
+      reasons: null, levels: ['none', 'low', 'high'], budget: null, dialect: 'unknown', offAllowed: null, tools: null, structuredOutput: null,
       sources: { levels: 'cache' },
     });
   });
@@ -86,17 +86,35 @@ describe('the capability record', () => {
   it('keeps a cached empty list hiding the controls, though its reasons answer is unknown', () => {
     const migrated = parseReasoningCapability([]);
     expect(migrated).toEqual({
-      reasons: null, levels: [], budget: null, dialect: 'unknown', offAllowed: null, tools: null, sources: { levels: 'cache' },
+      reasons: null, levels: [], budget: null, dialect: 'unknown', offAllowed: null, tools: null, structuredOutput: null, sources: { levels: 'cache' },
     });
     expect(reasoningRuledOut(migrated)).toBe(true);
   });
 
   it('loads a stored record back verbatim', () => {
     const stored: ReasoningCapability = {
-      reasons: true, levels: ['none', 'low'], budget: true, dialect: 'unknown', offAllowed: null, tools: null,
+      reasons: true, levels: ['none', 'low'], budget: true, dialect: 'unknown', offAllowed: null, tools: null, structuredOutput: null,
       sources: { reasons: 'native', levels: 'probe', budget: 'engine' },
     };
     expect(parseReasoningCapability(JSON.parse(JSON.stringify(stored)))).toEqual(stored);
+  });
+
+  it('loads a record stored before the schema question as untried', () => {
+    expect(parseReasoningCapability({ reasons: true, levels: null, budget: null })?.structuredOutput).toBeNull();
+    expect(schemaAccepted(parseReasoningCapability({ reasons: true, levels: null, budget: null }))).toBe(true);
+  });
+
+  it('remembers a schema rejection across a reload and every later resolve', () => {
+    const rejected = withSchemaRejected({ ...UNKNOWN_REASONING_CAPABILITY, tools: true, sources: { tools: 'native' } });
+    expect(rejected).toMatchObject({ structuredOutput: false, tools: true, sources: { tools: 'native', structuredOutput: 'observed' } });
+    const reloaded = parseReasoningCapability(JSON.parse(JSON.stringify(rejected)));
+    expect(schemaAccepted(reloaded)).toBe(false);
+    const fresh: ReasoningCapability = { ...UNKNOWN_REASONING_CAPABILITY, reasons: true, dialect: 'lmstudio', sources: { reasons: 'native' } };
+    expect(storedAfterResolve(reloaded, fresh).structuredOutput).toBe(false);
+    // An LM Studio answer replaces the stored record whole, all but the server's own schema answer.
+    const lmStudio = storedAfterResolve({ ...reloaded!, dialect: 'lmstudio', levels: ['none'] }, fresh);
+    expect(lmStudio).toMatchObject({ structuredOutput: false, levels: null, reasons: true });
+    expect(schemaAccepted(withSchemaRejected(null))).toBe(false);
   });
 
   it('drops a stored source it does not know, rather than letting it stand as one', () => {
@@ -362,7 +380,7 @@ describe('resolveReasoningCapability: the budget answer', () => {
   it('answers every question from the native list when it calls the model non-reasoning, sending no probe', async () => {
     const doFetch = lmStudio([{ key: 'cydonia', capabilities: {} }]);
     expect(await resolveReasoningCapability({ ...TARGET, model: 'cydonia' }, doFetch)).toEqual({
-      reasons: false, levels: [], budget: null, dialect: 'lmstudio', offAllowed: null, tools: false,
+      reasons: false, levels: [], budget: null, dialect: 'lmstudio', offAllowed: null, tools: false, structuredOutput: null,
       sources: { reasons: 'native', levels: 'native', dialect: 'native', tools: 'native' },
     });
     // Only the capability GET fired — no POST probe reached the completions URL.

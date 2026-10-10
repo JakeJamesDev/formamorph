@@ -14,6 +14,7 @@ import { DEFAULT_TEXT_ENDPOINT_VALUES, type TextEndpointPresetStore } from '@/li
 import { toolSchema } from '@/lib/tools/toolSchema';
 import { lengthGuidance, outputReserve } from '@/lib/outputLength';
 import type { Tool } from '@/types';
+import type { ResponseSchema } from './responseSchema';
 
 /** A capability record answering the levels question only, as a probe leaves it. */
 const accepts = (...levels: ReasoningEffortField[]): ReasoningCapability => reasoningCapabilityFromLevels(levels, 'probe');
@@ -414,7 +415,7 @@ describe('reasoning split — budget where the record says, effort everywhere el
 
   it('omits the effort on a model the record says does not reason, even where levels are listed', () => {
     const nonReasoning: ReasoningCapability = {
-      reasons: false, levels: ['none', 'low', 'high'], budget: null, dialect: 'unknown', offAllowed: null, tools: null,
+      reasons: false, levels: ['none', 'low', 'high'], budget: null, dialect: 'unknown', offAllowed: null, tools: null, structuredOutput: null,
       sources: { reasons: 'native' },
     };
     const snap = snapshot(external({ reasoning: nonReasoning }), { reasoningEngaged: true, reasoningEffort: 'high' });
@@ -807,7 +808,7 @@ describe('dialects — one spelling per row', () => {
     const proven = speaking('vllm', {
       reasoning: {
         reasons: true, levels: ['none', 'low', 'medium', 'high'], budget: true, dialect: 'vllm',
-        offAllowed: null, tools: null, sources: { reasons: 'observed', levels: 'observed', budget: 'observed', dialect: 'native' },
+        offAllowed: null, tools: null, structuredOutput: null, sources: { reasons: 'observed', levels: 'observed', budget: 'observed', dialect: 'native' },
       },
     });
     expect(speaks(proven)).toEqual({ thinking_token_budget: 500, reasoning_effort: 'high' });
@@ -816,7 +817,7 @@ describe('dialects — one spelling per row', () => {
   it('stays silent on a model the record rules out, off spelling or not', () => {
     for (const dialect of ['vllm', 'anthropic-budget', 'anthropic-adaptive', 'moonshot-k2', 'unknown'] as const) {
       const ruledOut = speaking(dialect, {
-        reasoning: { reasons: false, levels: [], budget: true, dialect, offAllowed: null, tools: null, sources: { reasons: 'native' } },
+        reasoning: { reasons: false, levels: [], budget: true, dialect, offAllowed: null, tools: null, structuredOutput: null, sources: { reasons: 'native' } },
       });
       expect(speaks(ruledOut, { promptReasoning: { narration: 'none' } })).toEqual({});
     }
@@ -1042,6 +1043,25 @@ describe('tools — sent only where the record says the target takes them', () =
     expect(spec.body).not.toHaveProperty('tools');
     expect(spec.body).not.toHaveProperty('tool_choice');
     expect(spec).not.toHaveProperty('tools');
+  });
+});
+
+describe('response schema — sent until the record says the endpoint refuses it', () => {
+  const schema: ResponseSchema = {
+    name: 'stat_changes',
+    schema: { type: 'object', additionalProperties: false, required: ['a'], properties: { a: { type: 'integer', minimum: -20, maximum: 20 } } },
+  };
+
+  it.each([['untried', null], ['accepted', true]])('sends a strict json_schema response format when support is %s', (_name, structuredOutput) => {
+    const target = external({ reasoning: { ...accepts(), structuredOutput } });
+    const spec = buildAiRequestSpec(snapshot(target), call({ requestType: 'statUpdates', responseSchema: schema }));
+    expect(spec.body.response_format).toEqual({ type: 'json_schema', json_schema: { name: 'stat_changes', strict: true, schema: schema.schema } });
+  });
+
+  it('sends no response format to an endpoint that refused one, or for a call without a schema', () => {
+    const refused = external({ reasoning: { ...accepts(), structuredOutput: false } });
+    expect(buildAiRequestSpec(snapshot(refused), call({ responseSchema: schema })).body).not.toHaveProperty('response_format');
+    expect(buildAiRequestSpec(snapshot(external()), call()).body).not.toHaveProperty('response_format');
   });
 });
 

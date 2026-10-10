@@ -36,6 +36,17 @@ describe('AiContextRequestCard', () => {
     expect(screen.getByRole('group', { name: 'Tool Round 1' })).toBeTruthy();
   });
 
+  it('names a text-pass stat reply apart from the updates it skipped', () => {
+    const stats: AiRequestRecord = { ...record, type: 'statUpdates', statDiagnostics: [
+      { name: '', reason: 'textPass' }, { name: 'Mana', reason: 'unknown' },
+    ] };
+    const { rerender } = render(<AiContextRequestCard record={stats} index={0} isOpen={allOpen} onOpenChange={() => {}} />);
+    expect(screen.getByText('The stat reply came back as plain text, not JSON.')).toBeTruthy();
+    expect(screen.getByText('Skipped stat updates: Mana (unknown)')).toBeTruthy();
+    rerender(<AiContextRequestCard record={{ ...stats, statDiagnostics: [{ name: '', reason: 'textPass' }] }} index={0} isOpen={allOpen} onOpenChange={() => {}} />);
+    expect(screen.queryByText(/Skipped stat updates/)).toBeNull();
+  });
+
   it('leaves out the sections the record does not carry', () => {
     const bare: AiRequestRecord = { type: 'pick', messages: [{ role: 'user', content: 'Which section?' }] };
     render(<AiContextRequestCard record={bare} index={2} isOpen={allOpen} onOpenChange={() => {}} />);

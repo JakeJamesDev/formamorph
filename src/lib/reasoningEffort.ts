@@ -33,10 +33,10 @@ const CAPABILITY_SOURCES: readonly ReasoningCapabilitySource[] = [
   'identity', 'native', 'catalog', 'observed', 'probe', 'engine', 'cache',
 ];
 
-/** The six questions a capability record answers. */
-export type ReasoningQuestion = 'reasons' | 'levels' | 'budget' | 'dialect' | 'offAllowed' | 'tools';
+/** The seven questions a capability record answers. */
+export type ReasoningQuestion = 'reasons' | 'levels' | 'budget' | 'dialect' | 'offAllowed' | 'tools' | 'structuredOutput';
 
-const CAPABILITY_QUESTIONS: readonly ReasoningQuestion[] = ['reasons', 'levels', 'budget', 'dialect', 'offAllowed', 'tools'];
+const CAPABILITY_QUESTIONS: readonly ReasoningQuestion[] = ['reasons', 'levels', 'budget', 'dialect', 'offAllowed', 'tools', 'structuredOutput'];
 
 /**
  * What the app knows about one endpoint-and-model pair's native reasoning. Every reader asks this record:
@@ -58,14 +58,21 @@ export interface ReasoningCapability {
   readonly offAllowed: boolean | null;
   /** Whether the endpoint and model take Tools. Only `true` sends them; see `toolsSupported`. */
   readonly tools: boolean | null;
+  /** Whether the endpoint takes a JSON-schema response format. Only `false` withholds one; see `schemaAccepted`. */
+  readonly structuredOutput: boolean | null;
   /** Where each answer came from. */
   readonly sources: Partial<Record<ReasoningQuestion, ReasoningCapabilitySource>>;
 }
 
 /** The record for a target nothing has answered for yet. */
 export const UNKNOWN_REASONING_CAPABILITY: ReasoningCapability = {
-  reasons: null, levels: null, budget: null, dialect: 'unknown', offAllowed: null, tools: null, sources: {},
+  reasons: null, levels: null, budget: null, dialect: 'unknown', offAllowed: null, tools: null, structuredOutput: null, sources: {},
 };
+
+/** True unless a rejection proved the endpoint refuses a JSON-schema response format. Unknown sends one. */
+export function schemaAccepted(capability: ReasoningCapability | null | undefined): boolean {
+  return capability?.structuredOutput !== false;
+}
 
 /** True only where a source said the endpoint and model take Tools. Unknown sends none. */
 export function toolsSupported(capability: ReasoningCapability | null | undefined): boolean {
@@ -75,7 +82,7 @@ export function toolsSupported(capability: ReasoningCapability | null | undefine
 /** The record for a model one source rules out: it reasons not at all, so it accepts no effort literal. */
 export function nonReasoningCapability(source: ReasoningCapabilitySource): ReasoningCapability {
   return {
-    reasons: false, levels: [], budget: null, dialect: 'unknown', offAllowed: null, tools: null,
+    reasons: false, levels: [], budget: null, dialect: 'unknown', offAllowed: null, tools: null, structuredOutput: null,
     sources: { reasons: source, levels: source },
   };
 }
@@ -97,7 +104,7 @@ export function reasoningCapabilityFromLevels(
 ): ReasoningCapability {
   if (levels.length === 0) return nonReasoningCapability(source);
   return {
-    reasons: null, levels, budget: null, dialect: 'unknown', offAllowed: null, tools: null, sources: { levels: source },
+    reasons: null, levels, budget: null, dialect: 'unknown', offAllowed: null, tools: null, structuredOutput: null, sources: { levels: source },
   };
 }
 
@@ -156,12 +163,12 @@ export function parseReasoningCapability(raw: unknown): ReasoningCapability | nu
     return raw.every(isLevel)
       ? {
           reasons: null, levels: raw as ReasoningEffortField[], budget: null, dialect: 'unknown',
-          offAllowed: null, tools: null, sources: { levels: 'cache' },
+          offAllowed: null, tools: null, structuredOutput: null, sources: { levels: 'cache' },
         }
       : null;
   }
   if (!raw || typeof raw !== 'object') return null;
-  const { reasons, levels, budget, dialect, offAllowed, tools, sources } = raw as Record<string, unknown>;
+  const { reasons, levels, budget, dialect, offAllowed, tools, structuredOutput, sources } = raw as Record<string, unknown>;
   const isTriState = (v: unknown) => v === null || typeof v === 'boolean';
   if (!isTriState(reasons) || !isTriState(budget)) return null;
   if (levels !== null && !(Array.isArray(levels) && levels.every(isLevel))) return null;
@@ -173,6 +180,7 @@ export function parseReasoningCapability(raw: unknown): ReasoningCapability | nu
     // A record stored before this answer existed carries none, and the dialect's row decides for it.
     offAllowed: typeof offAllowed === 'boolean' ? offAllowed : null,
     tools: typeof tools === 'boolean' ? tools : null,
+    structuredOutput: typeof structuredOutput === 'boolean' ? structuredOutput : null,
     sources: parseCapabilitySources(sources),
   };
 }
@@ -600,6 +608,7 @@ const lmStudioSource: NativeSource = async (target, doFetch, signal) => {
     budget: true,
     offAllowed: null,
     tools,
+    structuredOutput: null,
     sources: {
       reasons: 'native', budget: 'native', tools: 'native', ...(levels ? { levels: 'native' as const } : {}),
     },
@@ -650,7 +659,7 @@ const llamaCppSource: NativeSource = async (target, doFetch, signal) => {
     budget: null,
     dialect: 'unknown',
     offAllowed: null,
-    tools: null,
+    tools: null, structuredOutput: null,
     sources: { levels: 'native' },
   };
 };
@@ -684,7 +693,7 @@ function openRouterCapability(reasoning: Record<string, unknown>): ReasoningCapa
     budget: budget === true,
     dialect: 'openrouter',
     offAllowed,
-    tools: null,
+    tools: null, structuredOutput: null,
     sources: {
       reasons: 'native', budget: 'native', dialect: 'native', offAllowed: 'native',
       ...(levels ? { levels: 'native' as const } : {}),
@@ -717,7 +726,7 @@ const modelListSource: NativeSource = async (target, doFetch, signal) => {
   const params = (entry as { supported_parameters?: unknown }).supported_parameters;
   if (Array.isArray(params)) {
     return params.some((p) => GATEWAY_REASONING_PARAMS.includes(String(p)))
-      ? { reasons: true, levels: null, budget: null, dialect: 'unknown', offAllowed: null, tools: null, sources: { reasons: 'native' } }
+      ? { reasons: true, levels: null, budget: null, dialect: 'unknown', offAllowed: null, tools: null, structuredOutput: null, sources: { reasons: 'native' } }
       : nonReasoningCapability('native');
   }
 
@@ -742,7 +751,7 @@ const identitySource: NativeSource = async (target) => {
     budget: answer.budget,
     dialect: answer.dialect,
     offAllowed: answer.offAllowed ?? null,
-    tools: null,
+    tools: null, structuredOutput: null,
     sources: {
       reasons: from, budget: from, dialect: from,
       ...(answer.levels === null ? {} : { levels: from }),
@@ -940,7 +949,7 @@ async function gatherAdvertised(
   // sources below. A failed load says nothing and costs the chain nothing.
   if (gathered?.reasons == null && catalogSaysReasons(await loadCatalog(doFetch), target.model)) {
     const listed: ReasoningCapability = {
-      reasons: true, levels: null, budget: null, dialect: 'unknown', offAllowed: null, tools: null, sources: { reasons: 'catalog' },
+      reasons: true, levels: null, budget: null, dialect: 'unknown', offAllowed: null, tools: null, structuredOutput: null, sources: { reasons: 'catalog' },
     };
     return { record: gathered ? mergeReasoningCapability(listed, gathered) : listed, reasonsOpen: false };
   }
@@ -961,7 +970,7 @@ function observedCapability(observation: ReasoningObservation | null | undefined
   const answer = observationAnswer(observation);
   if (answer === null) return null;
   if (!answer) return nonReasoningCapability('observed');
-  return { reasons: true, levels: null, budget: null, dialect: 'unknown', offAllowed: null, tools: null, sources: { reasons: 'observed' } };
+  return { reasons: true, levels: null, budget: null, dialect: 'unknown', offAllowed: null, tools: null, structuredOutput: null, sources: { reasons: 'observed' } };
 }
 
 /**
@@ -982,12 +991,30 @@ export function reasoningRereadsPerSession(capability: ReasoningCapability | nul
 }
 
 /** The record to store after a resolve. A fresh LM Studio answer replaces an LM Studio record whole, since
- *  it may describe another model; every other answer folds in. */
+ *  it may describe another model; every other answer folds in. A learned schema rejection is the server's,
+ *  not the model's, so it survives the replace. */
 export function storedAfterResolve(
   stored: ReasoningCapability | null,
   fresh: ReasoningCapability,
 ): ReasoningCapability {
-  return stored?.dialect === 'lmstudio' && fresh.dialect === 'lmstudio' ? fresh : mergeReasoningCapability(stored, fresh);
+  if (!(stored?.dialect === 'lmstudio' && fresh.dialect === 'lmstudio')) return mergeReasoningCapability(stored, fresh);
+  return stored.structuredOutput === null ? fresh : mergeReasoningCapability(
+    { ...UNKNOWN_REASONING_CAPABILITY, structuredOutput: stored.structuredOutput, sources: pickSource(stored, 'structuredOutput') },
+    fresh,
+  );
+}
+
+/** One question's source from a record, alone. */
+function pickSource(record: ReasoningCapability, question: ReasoningQuestion): ReasoningCapability['sources'] {
+  const source = record.sources[question];
+  return source ? { [question]: source } : {};
+}
+
+/** Folds a learned schema rejection onto a stored record, so the endpoint's later requests take the text pass. */
+export function withSchemaRejected(stored: ReasoningCapability | null): ReasoningCapability {
+  return mergeReasoningCapability(stored, {
+    ...UNKNOWN_REASONING_CAPABILITY, structuredOutput: false, sources: { structuredOutput: 'observed' },
+  });
 }
 
 /**
@@ -1000,7 +1027,7 @@ export function mergeReasoningCapability(
   fresh: ReasoningCapability,
 ): ReasoningCapability {
   if (!stored) return fresh;
-  const pick = <K extends 'reasons' | 'levels' | 'budget' | 'offAllowed' | 'tools'>(question: K): ReasoningCapability[K] =>
+  const pick = <K extends 'reasons' | 'levels' | 'budget' | 'offAllowed' | 'tools' | 'structuredOutput'>(question: K): ReasoningCapability[K] =>
     (fresh[question] !== null ? fresh[question] : stored[question]);
   return {
     reasons: pick('reasons'),
@@ -1008,6 +1035,7 @@ export function mergeReasoningCapability(
     budget: pick('budget'),
     offAllowed: pick('offAllowed'),
     tools: pick('tools'),
+    structuredOutput: pick('structuredOutput'),
     // `unknown` is the dialect's unanswered form, so it keeps whatever the stored record named.
     dialect: fresh.dialect !== 'unknown' ? fresh.dialect : stored.dialect,
     sources: { ...stored.sources, ...fresh.sources },

@@ -1,6 +1,6 @@
 import type { ChatMessage } from '@/types';
 import type { TurnPassRecord, TurnPassRequest, TurnPlanInput, TurnMaterial, TurnPassSubject } from './turnPlan';
-import { renderPromptTemplate, renderPromptTemplateRuns, promptTemplatePieces } from '@/lib/promptTemplate';
+import { renderPromptTemplateRuns, promptTemplatePieces } from '@/lib/promptTemplate';
 import {
   tilePieces, trimEndTiled, trimTiled, collapseBlankLines,
   type AnatomyPiece, type ContextLabel, type TiledRuns,
@@ -18,6 +18,7 @@ import { languageDirective } from '@/lib/languages';
 import { matchLocationResponse } from '@/lib/locationMatch';
 import { parseChoices } from '@/lib/choices';
 import { parseStatUpdates } from '@/lib/statChanges';
+import { statRequestSchema, type StatRequestSnapshot } from '@/lib/statRequest';
 import { parseTimeDelta, parseOpeningDaypart } from '@/lib/gameClock';
 import { cleanDiscoveredDescription, DISCOVER_LATER_LABEL, DISCOVER_PASSAGE_LABEL } from '@/lib/runtimeCharacters';
 import {
@@ -28,6 +29,10 @@ import {
   stripOocDirectives,
   planDirective,
   INLINE_THINKING_DIRECTIVE,
+  defaultStatUpdatesPrompt,
+  defaultStatUpdatesUserPrompt,
+  textStatUpdatesPrompt,
+  textStatUpdatesUserPrompt,
 } from '@/components/game/GamePrompts';
 
 /**
@@ -66,6 +71,9 @@ export const TURN_PASS_CAPS = {
 /** One stat line (a name, a sign and a number) per live stat, plus slack for a stray word. */
 export const statUpdatesCap = (statCount: number): number => 16 * statCount + 16;
 
+/** A `"Name":n,"Name max":n` pair per stat, plus the owner's key and the braces. */
+export const statSchemaCap = (statCount: number): number => 32 * statCount + 32;
+
 /** The longest destination name the reply may echo, plus slack for quoting or a NONE. */
 export const locationChangeCap = (destinations: readonly string[]): number =>
   estimateTokens(Math.max(0, ...destinations.map((name) => name.length))) + 8;
@@ -101,7 +109,7 @@ const assembledTiled = (text: string, contextLabel: ContextLabel): TiledRuns =>
 
 /** One system prompt and one user message, joined to the sidecar that tiles them. */
 const labeledRequest = (
-  base: Omit<TurnPassRequest, 'systemPrompt' | 'messages' | 'anatomy'>,
+  base: Omit<TurnPassRequest<ChatMessage>, 'systemPrompt' | 'messages' | 'anatomy'>,
   system: TiledRuns,
   message: TiledRuns,
 ): TurnPassRequest<ChatMessage> => ({
@@ -142,15 +150,6 @@ export const choicesSystemPrompt = (
   language: string,
   values: Record<string, string>,
 ): string => choicesSystemTiled(template, language, values).content;
-
-/**
- * The stat system prompt. Nothing is appended for any language: the parsing contract is that each line
- * echoes a stat's exact name from the list above it, and that list carries the world's authored names
- * whatever language they are written in — so an "answer in English" rider only invited the model to
- * translate the very names the parser matches on.
- */
-export const statUpdatesSystemPrompt = (template: string, ctx: Record<string, string>): string =>
-  renderPromptTemplate(template, ctx);
 
 /** The digest's user message. A bracketed authorial direction never reaches it — it records story content. */
 export const summaryUserTiled = (template: string, action: string, narration: string): TiledRuns =>
@@ -432,6 +431,46 @@ const choicesPass: TurnPassRecord<string[]> = {
   parseResponse: (raw) => parseChoices(raw),
 };
 
+/** The text pass's prompts. A prompt still at its shipped default takes the text wording; a custom one is
+ *  sent as written. */
+export const statTextPrompts = (system: string, user: string): { system: string; user: string } => ({
+  system: system === defaultStatUpdatesPrompt ? textStatUpdatesPrompt : system,
+  user: user === defaultStatUpdatesUserPrompt ? textStatUpdatesUserPrompt : user,
+});
+
+/**
+ * The stat request: the schema request, carrying the text pass as its fallback. A snapshot marked for the
+ * text pass, or none at all, sends the text pass alone. Nothing is appended for any language: the reply
+ * echoes the stats' authored names, which a translation rider would only invite the model to translate.
+ */
+export function statUpdatesRequest(
+  prompts: { system: string; user: string },
+  values: { ctx: Record<string, string>; action: string; narration: string },
+  base: { statCount: number; statRequest?: StatRequestSnapshot; quiet: boolean },
+): TurnPassRequest<ChatMessage> {
+  const { statRequest } = base;
+  const system = { ...values.ctx, ...statRequest?.context };
+  const user = { '<PLAYER ACTION>': values.action, '<NARRATION>': values.narration };
+  const shared = { type: 'statUpdates' as const, silent: false, quiet: base.quiet, statRequest };
+  const text = statTextPrompts(prompts.system, prompts.user);
+  const textRequest = labeledRequest(
+    { ...shared, maxTokens: statUpdatesCap(base.statCount) },
+    systemTiled(text.system, system),
+    userTiled(text.user, user),
+  );
+  if (!statRequest || statRequest.textPass) return textRequest;
+  const { systemPrompt, messages, maxTokens, anatomy } = textRequest;
+  return {
+    ...labeledRequest(
+      { ...shared, maxTokens: statSchemaCap(statRequest.targets.length) },
+      systemTiled(prompts.system, system),
+      userTiled(prompts.user, user),
+    ),
+    responseSchema: statRequestSchema(statRequest),
+    textFallback: { systemPrompt, messages, maxTokens, anatomy },
+  };
+}
+
 /** How the turn moved the player's stats. */
 const statUpdatesPass: TurnPassRecord<ReturnType<typeof parseStatUpdates>> = {
   id: 'statUpdates',
@@ -440,19 +479,10 @@ const statUpdatesPass: TurnPassRecord<ReturnType<typeof parseStatUpdates>> = {
   fanOut: false,
   // A world with no live stats would only get hallucinated stat names that match nothing.
   isDue: (input) => input.settings.statUpdatesEnabled && input.settings.statCount > 0,
-  buildRequest: (input, material) => labeledRequest(
-    {
-      type: 'statUpdates',
-      maxTokens: statUpdatesCap(input.settings.statCount),
-      silent: false,
-      quiet: quietInBatch(input),
-      statRequest: material.statRequest,
-    },
-    systemTiled(input.prompts.statUpdates, { ...material.ctx, ...material.statRequest?.context }),
-    userTiled(input.prompts.statUpdatesUser, {
-      '<PLAYER ACTION>': material.effectiveAction,
-      '<NARRATION>': material.narration,
-    }),
+  buildRequest: (input, material) => statUpdatesRequest(
+    { system: input.prompts.statUpdates, user: input.prompts.statUpdatesUser },
+    { ctx: material.ctx, action: material.effectiveAction, narration: material.narration },
+    { statCount: input.settings.statCount, statRequest: material.statRequest, quiet: quietInBatch(input) },
   ),
   parseResponse: (raw) => parseStatUpdates(raw),
 };

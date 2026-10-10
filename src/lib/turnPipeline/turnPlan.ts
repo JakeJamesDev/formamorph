@@ -2,6 +2,7 @@ import type { AIRequestType, ChatMessage, Entity, ImageAttachment, RequestMessag
 import type { AnatomyRun, RequestAnatomy } from '@/lib/requestAnatomy';
 import type { ThinkingMode } from '@/contexts/SettingsContext';
 import type { StatRequestSnapshot } from '@/lib/statRequest';
+import type { ResponseSchema } from '@/lib/aiRequest/responseSchema';
 import type { PromptAttachmentsMap } from '@/lib/promptAttachments';
 
 /**
@@ -218,6 +219,10 @@ export function emptyTurnMaterial(seed: TurnMaterialSeed): TurnMaterial {
  *  turn's images to the passes that include them. */
 export interface TurnPassRequest<TMessage extends RequestMessage = RequestMessage> {
   statRequest?: StatRequestSnapshot;
+  /** A schema the reply must follow. */
+  responseSchema?: ResponseSchema;
+  /** What the request sends instead, with no schema, when the endpoint refuses the schema. */
+  textFallback?: Pick<TurnPassRequest<TMessage>, 'systemPrompt' | 'messages' | 'maxTokens' | 'anatomy'>;
   type: AIRequestType;
   systemPrompt: string;
   messages: TMessage[];

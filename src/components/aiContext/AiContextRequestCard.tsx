@@ -133,9 +133,14 @@ export function AiContextRequestCard({ record, index, folded, isOpen, onOpenChan
                 <span className="text-muted-foreground">(empty output)</span>
               )}
             </p>
-            {!!record.statDiagnostics?.length && (
+            {record.statDiagnostics?.some(({ reason }) => reason === 'textPass') && (
+              <p className="mt-2 text-helper text-muted-foreground">The stat reply came back as plain text, not JSON.</p>
+            )}
+            {record.statDiagnostics?.some(({ reason }) => reason !== 'textPass') && (
               <p className="mt-2 whitespace-pre-wrap break-words text-helper text-muted-foreground">
-                Skipped stat updates: {record.statDiagnostics.map(({ name, reason }) => `${name} (${reason})`).join('; ')}
+                Skipped stat updates: {record.statDiagnostics
+                  .filter(({ reason }) => reason !== 'textPass')
+                  .map(({ name, reason }) => `${name} (${reason})`).join('; ')}
               </p>
             )}
           </AiContextSection>

@@ -3,13 +3,14 @@ import { toolSchema, type OfferedFunction, type ToolFunctionSchema } from '@/lib
 import type { ThinkingMode, ReasoningEffort } from '@/contexts/SettingsContext';
 import type { ParagraphLimit } from '@/lib/outputLength';
 import {
-  MAX_REASONING_BUDGET_PCT, nativeReasoningSuppressed, reasoningBudget, reasoningEffortValue, reasoningRuledOut, resolveRequestReasoning, toolsSupported,
+  MAX_REASONING_BUDGET_PCT, nativeReasoningSuppressed, schemaAccepted, reasoningBudget, reasoningEffortValue, reasoningRuledOut, resolveRequestReasoning, toolsSupported,
   type KeptReasoningSettings, type PromptReasoning, type ReasoningCapability, type ReasoningEffortField,
 } from '@/lib/reasoningEffort';
 import { reasoningDialectBody, reasoningDialectBudgetFloor, type ReasoningBodyFields } from '@/lib/reasoningDialect';
 import { resolvePromptSampler, type PromptSampler, type PromptSamplerMap } from '@/lib/promptSamplers';
 import type { EndpointSampler, EndpointSamplerOverrides } from '@/lib/endpointSamplers';
 import { customMaxOutput, type PromptMaxOutputMap } from '@/lib/promptMaxOutput';
+import { responseFormat, type ResponseFormat, type ResponseSchema } from './responseSchema';
 
 /** Everything about the endpoint one call resolved to. The probe/cache state producing it stays outside. */
 export interface AiEndpointTarget {
@@ -69,6 +70,8 @@ export interface AiCall<TTool extends OfferedFunction = OfferedFunction> {
   samplerOverride?: Partial<Record<PromptSampler, number>>;
   /** The functions this prompt offers: its Tools, or an app-internal function. Sent only where the target's record says it takes them. */
   tools?: readonly TTool[];
+  /** A schema the reply must follow. Sent where the target's record has not seen it refused. */
+  responseSchema?: ResponseSchema;
 }
 
 /** The chat-completions body this layer builds. Optional fields are absent, never undefined-valued. The
@@ -88,6 +91,7 @@ export interface AiRequestBody<TMessage extends WireMessage = RequestMessage> ex
   stop?: string[];
   tools?: ToolFunctionSchema[];
   tool_choice?: 'auto';
+  response_format?: ResponseFormat;
 }
 
 /** A complete request, ready for one fetch. */
@@ -280,6 +284,7 @@ function bodyForTarget(snapshot: AiSettingsSnapshot, call: AiCall, target: AiEnd
     // Single-paragraph stop, but not in inline-thinking mode — the <think> block needs newlines.
     ...(requestType === 'narration' && snapshot.paragraphLimit === 'single' && snapshot.thinkingMode !== 'inline' && { stop: ['\n'] }),
     ...(tools && { tools: tools.map(toolSchema), tool_choice: 'auto' }),
+    ...(call.responseSchema && schemaAccepted(target.reasoning) && { response_format: responseFormat(call.responseSchema) }),
   };
 }
 
