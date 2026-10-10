@@ -108,6 +108,11 @@ export function statTraitsInForce(state: TraitForceState, world: TraitWorld): Tr
   return [...heldPlayerTraits(activeTraits(state.traits, state.disabledTraitIds), world), ...playedStatTraits(state, world)];
 }
 
+/** The stat traits in force for one owner's stats: the player's are {@link statTraitsInForce}. An entity's
+ *  own traits move no stats. */
+export const ownerStatTraitsInForce = (state: TraitForceState, world: TraitWorld, ownerId: string): Trait[] =>
+  (ownerId === WORLD_OWNER ? statTraitsInForce(state, world) : []);
+
 /** Each stat trait in force with its record key, so two worlds' sets compare by what the record is under. */
 const keyedStatTraits = (state: TraitForceState, world: TraitWorld): [string, Trait][] => [
   ...heldPlayerTraits(activeTraits(state.traits, state.disabledTraitIds), world).map((t): [string, Trait] => [t.id, t]),

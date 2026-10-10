@@ -152,7 +152,8 @@ import { revealActive } from "../lib/narrationRevealConfig";
 import { CHOICES_TEST_ACTION, CHOICES_TEST_CHOICES, CHOICES_TEST_NARRATION, REVEAL_TEST_NARRATION, REVEAL_TEST_PROFILES, type RevealArrivalEvent } from "../lib/revealTestScripts";
 import { MARKDOWN_SAMPLE } from "../lib/markdownSample";
 import { parseSlashCommand } from "../lib/slashCommands";
-import { normalizeStatChanges, appliedStatDeltas, applyRegen } from "../lib/statChanges";
+import { normalizeStatChanges, appliedStatDeltas } from "../lib/statChanges";
+import { PLAYER_OWNER, regenOwners, statsOf } from "../lib/statOwners";
 import { applyStatResponse, createStatRequest, readStatResponse, statResponseChanges, type StatRequestSnapshot, type StatResponse } from "../lib/statRequest";
 import { resolveEntityTexts, resolveStatNames, resolveStatText } from "../lib/resolveWorldNames";
 import { toDebugEndpoint } from "../lib/promptEndpoints";
@@ -1827,7 +1828,9 @@ const GameViewer = ({
 
       // The same tick runStatCode folds into the pipeline it hands stat code, so both read one regen.
       setPlayerStats((prevStats) => {
-        const { stats, applied } = applyRegen(prevStats, hours, statEnabledRef.current);
+        const tick = regenOwners([{ id: PLAYER_OWNER, stats: prevStats, enabled: statEnabledRef.current }], hours);
+        const stats = [...statsOf(tick.stats, PLAYER_OWNER)];
+        const applied = tick.applied[PLAYER_OWNER];
         for (const stat of stats) {
           if (applied[stat.id] !== undefined) regenChanges[stat.name.toLowerCase()] = applied[stat.id];
         }
@@ -2827,13 +2830,14 @@ const GameViewer = ({
       try {
         const enabled = statEnabledRef.current;
         // The before box runs at the turn's start, so there is no regen yet for it to fold in.
-        const regen = timing === 'before'
-          ? { stats: afterAsks, applied: {} as Record<string, number> }
-          : applyRegen(afterAsks, clock.deltaHours ?? FLAT_HOURS_PER_TURN, enabled);
+        const tick = timing === 'before' ? null
+          : regenOwners([{ id: PLAYER_OWNER, stats: afterAsks, enabled }], clock.deltaHours ?? FLAT_HOURS_PER_TURN);
+        const regenApplied = tick?.applied[PLAYER_OWNER] ?? {};
         // A save runs the world's current stat code, not the copy frozen in the save. Descriptions resolve
         // for the run; names do not — code reaches a stat by its code name, which the turn derives from the
         // authored name, so a chip in a name reads the same in every playthrough.
-        const stats = resolveStatText(refreshSavedStats(regen.stats, authoredStats), resolvePH);
+        const regenStats = tick ? [...statsOf(tick.stats, PLAYER_OWNER)] : afterAsks;
+        const stats = resolveStatText(refreshSavedStats(regenStats, authoredStats), resolvePH);
         // The same slice the player's checkbox switches, so a code switch is that switch.
         const live = liveCodeStateRef.current;
         const held = preTurn ? savedTraits(preTurn, traits)
@@ -2844,8 +2848,8 @@ const GameViewer = ({
         const inForce = preTurn ? inForceOn(held) : live.statTraits;
         const basePins = preTurn ? preTurn.codePins ?? {} : live.codePins;
         const result = await runStatCodeTurn({
-          timing,
-          stats, enabled, previous: before, asks, regenApplied: regen.applied, clock,
+          timing, ownerId: PLAYER_OWNER,
+          stats, enabled, previous: before, asks, regenApplied, clock,
           bearers: {
             ...held, world: gatedWorld(), entities: codeEntities.world, library: codeEntities.library,
             inSceneIds: liveScene().inSceneIds,
@@ -2916,7 +2920,7 @@ const GameViewer = ({
       const live = new Set(enabledStats(rawPlayerStatsRef.current, statEnabledRef.current).map((s) => s.id));
       const baseTraits = base ? savedTraits(base, traits) : null;
       const inForce = baseTraits ? inForceOn(baseTraits) : statTraits;
-      const applied = applyStatResponse(baseStats, response, live, inForce);
+      const applied = applyStatResponse(baseStats, response, live, inForce, PLAYER_OWNER);
       const directApplied = applied.stats;
       setDebugTurns((turns) => turns.map((turn) => ({ ...turn, requests: turn.requests.map((request) =>
         request.statRequestId === response.requestId ? { ...request, statDiagnostics: applied.diagnostics } : request,
@@ -2938,7 +2942,8 @@ const GameViewer = ({
       setHeldStatChanges((prev) => ({ ...prev, ...actualChanges }));
 
       setPlayerStats(directApplied);
-      await runStatCode(baseStats, directApplied, response.updates, clock, base ?? undefined);
+      const asks = response.updates.filter((update) => update.ownerId === PLAYER_OWNER);
+      await runStatCode(baseStats, directApplied, asks, clock, base ?? undefined);
     },
     [runStatCode, setPlayerStats, setRecentStatChanges, setHeldStatChanges, resolvePH, statTraits, traits, inForceOn],
   );

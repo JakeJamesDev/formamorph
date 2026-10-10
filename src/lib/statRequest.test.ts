@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Placeholder, PlayerStat } from '@/types';
-import { createStatRequest, readStatResponse, applyStatResponse, statResponseChanges } from './statRequest';
+import { createStatRequest, readStatResponse, applyStatResponse, statResponseChanges, type StatRequestSnapshot, type StatResponse } from './statRequest';
+import { PLAYER_OWNER } from './statOwners';
 import { collectPins } from './placeholderPins';
 import { resolvePlaceholders } from './placeholders';
 import { resolveStatNames } from './resolveWorldNames';
@@ -28,7 +29,7 @@ describe('stat request names', () => {
       ...material, statRequest: snapshot,
     });
     expect(request.systemPrompt).toContain('- **Health:** 100/100 — Physical condition.');
-    expect(request.statRequest?.targets).toEqual([{ id: 'health', name, plainName: 'Health' }]);
+    expect(request.statRequest?.targets).toEqual([{ id: 'health', name, plainName: 'Health', ownerId: PLAYER_OWNER }]);
     expect(snapshot.context['<STATS DESCRIPTION>']).not.toContain(name === '`Health`' ? '`' : name);
   });
 
@@ -111,6 +112,42 @@ describe('stat request names', () => {
     const reroll = applyStatResponse(baseline, readStatResponse('**Health:** -10\nHealth: +20 MAX', snapshot), new Set(['health']));
     expect(first.stats[0].value).toBe(80);
     expect(reroll.stats[0]).toMatchObject({ name: baseline[0].name, value: 90, max: 120 });
+  });
+
+  it("stamps each update with its target's owner", () => {
+    const response = readStatResponse('Health: -5', createStatRequest([stat()], 'bram'));
+    expect(response.updates).toEqual([{ ownerId: 'bram', id: 'health', name: 'Health', value: -5, max: 0 }]);
+  });
+
+  it('keeps two owners of one stat id apart in the reply', () => {
+    const snapshot: StatRequestSnapshot = { id: 'r', context: {}, targets: [
+      { ownerId: PLAYER_OWNER, id: 'health', name: 'Health', plainName: 'Health' },
+      { ownerId: 'bram', id: 'health', name: 'Bram Health', plainName: 'Bram Health' },
+    ] };
+    expect(readStatResponse('Health: -5\nBram Health: -9', snapshot).updates).toEqual([
+      { ownerId: PLAYER_OWNER, id: 'health', name: 'Health', value: -5, max: 0 },
+      { ownerId: 'bram', id: 'health', name: 'Bram Health', value: -9, max: 0 },
+    ]);
+  });
+
+  it("applies only the named owner's updates, matched by owner and stat id", () => {
+    // Two owners hold one stat id, as two links to one Blueprint do.
+    const response: StatResponse = { requestId: 'r', diagnostics: [], updates: [
+      { ownerId: PLAYER_OWNER, id: 'health', name: 'Health', value: -5, max: 0 },
+      { ownerId: 'bram', id: 'health', name: 'Health', value: -30, max: 10 },
+    ] };
+    const live = new Set(['health']);
+    expect(applyStatResponse([stat()], response, live).stats[0]).toMatchObject({ value: 95, max: 100 });
+    expect(applyStatResponse([stat()], response, live, [], 'bram').stats[0]).toMatchObject({ value: 70, max: 110 });
+  });
+
+  it("reports only the named owner's missing and disabled updates", () => {
+    const response: StatResponse = { requestId: 'r', diagnostics: [], updates: [
+      { ownerId: 'bram', id: 'trust', name: 'Trust', value: 5, max: 0 },
+    ] };
+    expect(applyStatResponse([stat()], response, new Set(['health'])).diagnostics).toEqual([]);
+    expect(applyStatResponse([stat()], response, new Set(['health']), [], 'bram').diagnostics)
+      .toEqual([{ name: 'Trust', reason: 'missing' }]);
   });
 
   it('keeps request IDs out of the saved history change map', () => {
