@@ -93,6 +93,8 @@ When the Origin can't be shown, the editor reveals the touched record on its own
 | Q14 | A connection edited in the Locations list view reveals the list view with the Origin's location selected. The connection stays unselected, because only the canvas selects one. A connection edited on the canvas still selects it there. |
 | Q15 | "No panel open" is a sub-view. An Overview edit made with no custom prompt panel open closes any open panel on reveal. |
 | Q16 | Any in-panel tab that hides a field is a sub-view, including the Overview readme's Introduction and Gameplay tabs. A Gameplay readme edit reveals the Gameplay tab and pulses the field. Where the field identity already names its tab, as the readme fields do, the field opens it; no separate Origin entry is needed. |
+| Q17 | The World Editor mounts no world-writing slider or color picker today, so Q6's control list resolves to checkboxes, selects and toggle groups. The slider and color picker criteria drop from ticket 05 with no test-only mount. A future editor slider or color picker gets the field identity when it is added. |
+| Q18 | Scroll windows must not clip the Landing Pulse. The ring draws in an overlay layer above the page, placed over its target, with the same look and motion. The fix is in the shared pulse, so Take Me There landings get it too. |
 
 Undo-history Q21 (tour) stands. The History Popover is unchanged.
 
