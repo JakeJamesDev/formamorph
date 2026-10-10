@@ -1,8 +1,8 @@
 # History Reveal Origin
 
-Status: ready-for-agent
+Status: done
 Spec session: history-reveal-origin — spec
-Status note: Supersedes undo-history ruling Q6 and replaces Q35's selection rule. Rulings Q1–Q11 settled in the grill on 2026-10-09.
+Status note: Closed 2026-10-10. Tickets 01-07 done. Last landing e21da3ad. Closed without gates. Supersedes undo-history Q6 and Q35's selection rule.
 
 ## Problem Statement
 
