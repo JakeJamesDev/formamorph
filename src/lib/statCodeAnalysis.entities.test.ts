@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { statCodeCompletions, statCodeDiagnostics } from './statCodeAnalysis';
-import { ENTITY_FIELDS, TRAIT_ENTRY_FIELDS } from './statCodeSurface';
+import {
+  DELTA_FIELDS, DELTA_MEMBERS, ENTITY_FIELDS, PREVIOUS_FIELDS, STAT_FIELDS, TRAIT_ENTRY_FIELDS,
+} from './statCodeSurface';
 
 /** Completions for a caret written as `|` in the doc. */
 function labels(doc: string, options?: Parameters<typeof statCodeCompletions>[2]) {
@@ -80,5 +82,38 @@ describe('entities in stat code', () => {
 
   it('leaves a local named entities alone', () => {
     expect(messages('const entities = { x: {} }; entities.x.y = 1; return 1;', { entities })).toEqual([]);
+  });
+});
+
+describe('entity stats in stat code', () => {
+  const withStats = [
+    { ...entities[0], stats: ['Trust', 'Old Grudge'] },
+    { id: 'bram', name: 'Bram', persona: false, traits: [], stats: ['Stock'] },
+  ];
+
+  it('completes an entity’s own stat names, a stat’s fields, and its previous and delta', () => {
+    expect(labels('return entities.Mira.stats.|', { entities: withStats })).toEqual(['Trust']);
+    expect(labels('return entities.Mira.stats["|"];', { entities: withStats, statNames: ['Health'] })).toEqual(['Trust', 'Old Grudge']);
+    expect(labels('return persona.stats["|"];', { entities: withStats, statNames: ['Health'] })).toEqual(['Trust', 'Old Grudge']);
+    expect(labels('return entities.Bram.stats.|', { entities: withStats })).toEqual(['Stock']);
+    expect(labels('return entities.Mira.stats.Trust.|', { entities: withStats })).toEqual(STAT_FIELDS.map((f) => f.name));
+    expect(labels('return entities.Mira.stats["Old Grudge"].previous.|', { entities: withStats }))
+      .toEqual(PREVIOUS_FIELDS.map((f) => f.name));
+    expect(labels('return entities.Bram.stats.Stock.delta.|', { entities: withStats })).toEqual(DELTA_MEMBERS.map((f) => f.name));
+    expect(labels('return entities.Bram.stats.Stock.delta.regen.|', { entities: withStats })).toEqual(DELTA_FIELDS.map((f) => f.name));
+  });
+
+  it('completes the persona’s stats from every persona entity', () => {
+    expect(labels('return persona.stats.|', { entities: withStats })).toEqual(['Trust']);
+    expect(labels('return persona.stats.Trust.|', { entities: withStats })).toEqual(STAT_FIELDS.map((f) => f.name));
+  });
+
+  it('reads an entity’s stats as clean, and flags any write into them as read-only', () => {
+    expect(messages('return entities.Bram.stats.Stock.value + entities.Mira.stats.Trust.delta.actual.value;', { entities: withStats }))
+      .toEqual([]);
+    expect(messages('entities.Bram.stats.Stock.value = 3;', { entities: withStats }))
+      .toEqual(['entities.Bram.stats.Stock.value is read-only.']);
+    expect(messages('persona.stats.Trust.max = 3;', { entities: withStats })).toEqual(['persona.stats.Trust.max is read-only.']);
+    expect(messages('entities.Bram.stats = {};', { entities: withStats })).toEqual(['entities.Bram.stats is read-only.']);
   });
 });

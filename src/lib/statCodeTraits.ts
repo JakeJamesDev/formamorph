@@ -1,9 +1,9 @@
-import type { CascadeOffTraitIds, Entity, EntityGroup, GameState, OwnedTraitStates, Placeholder, Trait, TraitGroup } from '@/types';
+import type { CascadeOffTraitIds, Entity, EntityGroup, GameState, OwnedTraitStates, Placeholder, Stat, Trait, TraitGroup } from '@/types';
 import { buildTree, flattenTree, type TreeGroup, type TreeLeaf } from './groupTree';
 import { canBePlayer, inCast, playsAs, resolveBearers, type Bearer, type BearerWorld } from './bearers';
 import type { SandboxEntity, SandboxPlaceholderNode, SandboxTrait } from './statCodeExecutor';
 import type { CodeEntityNames, CodeTraitPlace } from './statCodeAnalysis';
-import { statCodeName } from './statCodeNames';
+import { statCodeName, statCodeNamed } from './statCodeNames';
 import { refreshChosenTraits } from './traitEffects';
 import { traitGates, traitUnlocked, type AppliedTraitValues, type TraitWorld } from './traitRuntime';
 import { WORLD_OWNER, type GateStates } from './traitGates';
@@ -168,6 +168,12 @@ export function inTreeOrder<G extends TreeGroup, L extends TreeLeaf>(
   return out;
 }
 
+/** Each authored entity's own stats under their code names, by entity id; an entity with none is left out. */
+export const entityCodeStats = (
+  entities: readonly Entity[], placeholders: readonly Placeholder[],
+): Record<string, Stat[]> => Object.fromEntries(entities.filter((entity) => entity.stats?.length)
+  .map((entity) => [entity.id, statCodeNamed(entity.stats ?? [], withOwnPlaceholders(placeholders, entity))]));
+
 /** Every authored entity, persona-only ones included, as the editor reads it: code names only, since the
  *  editor knows no playthrough. Authored order, which decides who holds a shared name. */
 export function entityTraitNames(
@@ -183,6 +189,7 @@ export function entityTraitNames(
       persona: canBePlayer(entity),
       name: statCodeName(entity.name, named),
       traits: traitPlaces(bearers.get(entity.id), entity, world.traits, named),
+      ...(entity.stats?.length ? { stats: entity.stats.map((stat) => statCodeName(stat.name, named)) } : {}),
       ...tab.get(entity.id),
     };
   });

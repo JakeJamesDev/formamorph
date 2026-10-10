@@ -90,6 +90,8 @@ export interface CodeTraitPlace {
 /** One entity as the editor reads it: its code name and the code names of its trait set, owned or linked. */
 export interface CodeEntityNames extends CodeOwnerName {
   traits: readonly CodeTraitPlace[];
+  /** The code names of its own stats, in authored order. Absent ⇒ none. */
+  stats?: readonly string[];
   /** Whether a persona choice can play it, so `persona.placeholders` can reach its own. */
   persona: boolean;
   /** Its Entity folder names, outermost first. Absent ⇒ top level. */
@@ -253,6 +255,14 @@ const DICTIONARY_ENTRY_EXPRESSION = entryExpression('dictionaries');
 const KEY_STEP = String.raw`(?:\??\.([A-Za-z_$][\w$]*)|\??\.?\[\s*["']([^"'\\]*)["']\s*\])`;
 const ENTITY_TRAITS_EXPRESSION = new RegExp(`^entities${KEY_STEP}\\??\\.traits$`);
 const ENTITY_TRAIT_ENTRY_EXPRESSION = new RegExp(`^entities${KEY_STEP}\\??\\.traits${KEY_STEP}$`);
+/** `entities.Name.stats` or `persona.stats`; the entity name is in group 1 or 2, absent for `persona`. */
+const OWNER_STATS_EXPRESSION = new RegExp(`^(?:entities${KEY_STEP}|persona)\\??\\.stats$`);
+/** One entry of an owner's `stats`, then any member steps below it, which group 5 holds. */
+const OWNER_STAT_EXPRESSION = new RegExp(`^(?:entities${KEY_STEP}|persona)\\??\\.stats${KEY_STEP}((?:\\??\\.[A-Za-z_$][\\w$]*)*)$`);
+/** Text that ends in `entities.Name.stats[` or `persona.stats[`, the entity name captured. */
+const OWNER_STATS_BRACKET = new RegExp(`\\b(?:entities\\s*${KEY_STEP}|persona)\\s*\\??\\.\\s*stats\\s*(\\?\\.)?\\[\\s*$`);
+/** A write that lands anywhere inside an owner's `stats`, which is read-only throughout. */
+const OWNER_STATS_WRITE = new RegExp(`^(?:entities${KEY_STEP}|persona)\\??\\.stats(?![\\w$])`);
 /** Text that ends in `entities[`. */
 const ENTITIES_BRACKET = /\bentities\s*(\?\.)?\[\s*$/;
 /** Text that ends in `dictionaries[`. */
@@ -278,6 +288,30 @@ export const traitsOfEntity = (entities: readonly CodeEntityNames[], name: strin
 /** The last authored entity called `name`, which the sandbox keys. An unnamed one is not keyed. */
 export const keyedEntity = (entities: readonly CodeEntityNames[], name: string): CodeEntityNames | undefined =>
   (hasEntityKey(name) ? entities.findLast((entity) => entity.name === name) : undefined);
+
+/** The stat names of the entity an `entities.Name.stats` match names, or of every persona entity for
+ *  `persona.stats`; null when no entities are given. */
+function ownerStatNames(entities: readonly CodeEntityNames[] | undefined, match: RegExpExecArray): readonly string[] | null {
+  if (!entities) return null;
+  const name = entityNamed(match);
+  if (name === undefined) return entities.filter((entity) => entity.persona).flatMap((entity) => entity.stats ?? []);
+  return keyedEntity(entities, name)?.stats ?? [];
+}
+
+/** Whether the surface injects the map an owner-stats match starts at: `persona`, or `entities`. */
+const ownerStatsAllowed = (rules: StatRules, match: RegExpExecArray): boolean =>
+  rules[match[0].startsWith('persona') ? 'persona' : 'entities'];
+
+/** The fields an owner's stat entry, or a turn input below it, carries. `rest` is the member steps after
+ *  the entry. Null for a step no stat entry has. */
+function ownerStatMembers(rest: string): readonly SurfaceEntry[] | null {
+  const steps = rest.replace(/\?/g, '').split('.').filter(Boolean);
+  if (steps.length === 0) return STAT_FIELDS;
+  if (steps.length === 1 && steps[0] === 'previous') return PREVIOUS_FIELDS;
+  if (steps.length === 1 && steps[0] === 'delta') return DELTA_MEMBERS;
+  if (steps.length === 2 && steps[0] === 'delta' && DELTA_MEMBERS.some((member) => member.name === steps[1])) return DELTA_FIELDS;
+  return null;
+}
 
 /** The trait names a persona in the world can hold, or null when no entities are given. */
 export const personaTraitsOf = (entities: readonly CodeEntityNames[] | undefined): readonly string[] | null =>
@@ -499,6 +533,13 @@ function membersAfterDot(
     return names ? mapNameEntries(names, 'trait', true) : null;
   }
   if (rules.entities && ENTITY_TRAIT_ENTRY_EXPRESSION.test(expression)) return TRAIT_ENTRY_FIELDS;
+  const ownerStats = OWNER_STATS_EXPRESSION.exec(expression);
+  if (ownerStats && ownerStatsAllowed(rules, ownerStats)) {
+    const names = ownerStatNames(options.entities, ownerStats);
+    return names ? mapNameEntries(names, 'stat', true) : null;
+  }
+  const ownerStat = OWNER_STAT_EXPRESSION.exec(expression);
+  if (ownerStat && ownerStatsAllowed(rules, ownerStat)) return ownerStatMembers(ownerStat[5]);
   const listed = options.surface.members.get(expression);
   if (listed) return listed;
   if (!rules.stats && !rules.self) return null;
@@ -865,8 +906,17 @@ function checkTraitWrite(
   return { from: field.from, to: field.to, severity: 'error', message };
 }
 
+/** A write below an entity's or the persona's `stats`, which no code can change. */
+function checkOwnerStatsWrite(target: SyntaxNode, code: string): CodeDiagnostic | null {
+  const written = code.slice(target.from, target.to);
+  if (!OWNER_STATS_WRITE.test(written.replace(/\s+/g, '')) || /\.stats\s*$/.test(written)) return null;
+  return { from: target.from, to: target.to, severity: 'error', message: `${written} is read-only.` };
+}
+
 /** What is wrong with a write into `persona`: to one of its own members, or into its traits as `traits`. */
 function checkPersonaWrite(target: SyntaxNode, code: string, assignment: boolean): CodeDiagnostic | null {
+  const stats = checkOwnerStatsWrite(target, code);
+  if (stats) return stats;
   const own = entryRef(target, code, 'persona');
   if (own) {
     const message = `persona.${own.name} is read-only.`;
@@ -878,6 +928,8 @@ function checkPersonaWrite(target: SyntaxNode, code: string, assignment: boolean
 /** What is wrong with a write into `entities`: to the map, to an entry or one of its members, or into an
  *  entry's traits as `traits`. */
 function checkEntityWrite(target: SyntaxNode, code: string, assignment: boolean): CodeDiagnostic | null {
+  const stats = checkOwnerStatsWrite(target, code);
+  if (stats) return stats;
   const readOnly = (from: number, to: number): CodeDiagnostic =>
     ({ from, to, severity: 'error', message: `${code.slice(target.from, target.to)} is read-only.` });
   const entry = entryRef(target, code, 'entities');
@@ -1061,6 +1113,12 @@ export function codeCompletions(
     if (rules.traits && /\btraits\s*(\?\.)?\[\s*$/.test(code.slice(0, node.from))) {
       const names = mapNameEntries(options.traits ?? [], 'trait', false);
       return { from: innerFrom, to: innerTo, options: names.map((entry) => asCompletion(entry, 'text')) };
+    }
+    // Before the bare `stats[` fallback, whose pattern an owner's map also ends in.
+    const ownerStats = OWNER_STATS_BRACKET.exec(code.slice(0, node.from));
+    if (ownerStats && ownerStatsAllowed(rules, ownerStats)) {
+      const names = ownerStatNames(options.entities ?? [], ownerStats) ?? [];
+      return { from: innerFrom, to: innerTo, options: mapNameEntries(names, 'stat', false).map((entry) => asCompletion(entry, 'text')) };
     }
     // Inside `stats["…"]` and any other string alike. The whole literal is replaced, not the part before
     // the caret — a name half-typed in the middle of an old one would otherwise leave its tail behind.

@@ -121,6 +121,7 @@ const group = (entry: SurfaceEntry, children: readonly VariableNode[]): Variable
 interface OwnLists {
   traits?: (at: Path) => readonly VariableNameRow[];
   placeholders: (at: Path) => readonly VariableNameRow[];
+  stats?: (at: Path) => readonly VariableNameRow[];
 }
 
 /** An entity's, the persona's or a dictionary's fields, its maps as name lists. `where` ends their empty messages. */
@@ -128,6 +129,7 @@ const ownerFields = (path: Path, entries: readonly SurfaceEntry[], lists: OwnLis
   fields(path, entries, (entry, at) => {
     if (entry.name === 'traits' && lists.traits) return nameList('Traits', lists.traits(at), `No traits ${where}`, entry.info);
     if (entry.name === 'placeholders') return nameList('Placeholders', lists.placeholders(at), `No placeholders ${where}`, entry.info);
+    if (entry.name === 'stats' && lists.stats) return nameList('Stats', lists.stats(at), `No stats ${where}`, entry.info);
     return undefined;
   });
 
@@ -137,6 +139,11 @@ const statFields = (path: Path): VariableNode[] => fields(path, STAT_FIELDS, (en
   if (entry.name === 'delta') return group(entry, fields(at, DELTA_MEMBERS, (source, sourceAt) => group(source, fields(sourceAt, DELTA_FIELDS))));
   return undefined;
 });
+
+/** One row per stat name, each with a trail. Every stat of a name reads the same fields, so the first one's trail is kept. */
+const statNameRows = (path: Path, stats: readonly Pick<VariableNameRow, 'name' | 'trail'>[]): VariableNameRow[] =>
+  firstOfEach(stats.filter((stat) => stat.name !== ''), (stat) => stat.name)
+    .map((stat) => ({ ...stat, children: statFields(keyed(path, stat.name)) }));
 
 const clockFields = (path: Path): VariableNode[] => fields(path, CLOCK_MEMBERS, (entry, at) =>
   (entry.name === 'previous' ? group(entry, fields(at, CLOCK_PREVIOUS_FIELDS)) : undefined));
@@ -213,11 +220,14 @@ export function buildVariableTree(names?: VariableTreeNames): VariableNode[] {
   };
   const typeOverPlaceholders = (path: Path) => templateRows(path, (at) => placeholderFields(at, 'Wildcard'));
   const typeOverTraits = (path: Path) => templateRows(path, (at) => fields(at, TRAIT_ENTRY_FIELDS));
-  const typeOverLists: OwnLists = { traits: typeOverTraits, placeholders: typeOverPlaceholders };
+  const typeOverLists: OwnLists = {
+    traits: typeOverTraits, placeholders: typeOverPlaceholders, stats: (path) => templateRows(path, statFields),
+  };
 
   const entityFields = (path: Path, entity: CodeEntityNames | null) => ownerFields(path, ENTITY_FIELDS, entity ? {
     traits: (at) => traitRows(at, entity.traits.map((trait) => ({ name: trait.name, trail: trait.path }))),
     placeholders: (at) => ownedRows(entity.id, at, []),
+    stats: (at) => statNameRows(at, (entity.stats ?? []).map((name) => ({ name, trail: [] }))),
   } : typeOverLists, 'on this entity');
 
   const dictionaryFields = (path: Path, dictionaryId: string | null) => ownerFields(path, DICTIONARY_FIELDS, {
@@ -233,6 +243,7 @@ export function buildVariableTree(names?: VariableTreeNames): VariableNode[] {
       personas.flatMap((entity) => ownedRows(entity.id, at, [entity.name])),
       (row) => JSON.stringify([...row.trail.slice(1), row.name]),
     ),
+    stats: (at) => statNameRows(at, personas.flatMap((entity) => (entity.stats ?? []).map((name) => ({ name, trail: [entity.name] })))),
   } : typeOverLists, 'on a persona entity');
 
   const stats = root('stats');

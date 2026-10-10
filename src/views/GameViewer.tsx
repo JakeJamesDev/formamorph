@@ -14,6 +14,9 @@ import { useGameplay } from "@/contexts/GameplayContext";
 import { useAccountDeletion } from "@/contexts/AccountDeletionContext";
 import { type StatClock } from "@/lib/statCodeExecutor";
 import { overlayStatCodeResult, playthroughPlaceholderSet, runStatCodeTurn, withPinWrites, type StatCodeTurn } from "@/lib/statCodeTurn";
+import {
+  entityCodeTurns, entityStatOwners, seedEntityStats, withEntityRegen, withOwnerCodeResults,
+} from "@/lib/entityStats";
 import type { StatCodeTiming } from "@/lib/statCodeTiming";
 import { Button } from "@/components/ui/button";
 import {
@@ -67,7 +70,7 @@ import WorldStorageService from "../services/WorldStorageService";
 import { MenuModal } from "../components/modals/MenuModal";
 import LlmSetupGuide from "../components/modals/LlmSetupGuide";
 import WorldEditor, { type EditorExit } from "./WorldEditor";
-import type { CharacterData, ChatMessage, ChatRole, RequestMessage, ImageAttachment, AIRequestType, AITurnResult, GameLocation, GameState, MediaAsset, Dictionary, Entity, SaveRecord, World, PlayerStat, Trait, PersonaRef, OwnedTraitPicks } from "@/types";
+import type { CharacterData, ChatMessage, ChatRole, RequestMessage, ImageAttachment, AIRequestType, AITurnResult, GameLocation, GameState, MediaAsset, Dictionary, Entity, EntityStatValues, SaveRecord, World, PlayerStat, Trait, PersonaRef, OwnedTraitPicks } from "@/types";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars, estimateTokens } from "../lib/memoryUtils";
 import { parseNarration, stripReasoning, stripReasoningLive, extractReasoning, extractReasoningLive } from "../lib/aiResponse";
@@ -274,7 +277,7 @@ const pageOneNarration = (history: readonly ChatMessage[]) => pageOneTurn(histor
 
 /** The pre-turn state a stat re-roll hands stat code, so code reads and switches as the turn it replaces did. */
 type PreTurnCodeState = Pick<
-  GameState, 'codePins' | 'playerTraits' | 'disabledTraitIds' | 'appliedTraitValues' | 'cascadeOffTraitIds' | 'ownedTraits'
+  GameState, 'codePins' | 'playerTraits' | 'disabledTraitIds' | 'appliedTraitValues' | 'cascadeOffTraitIds' | 'ownedTraits' | 'entityStats'
 >;
 
 /** What one stat-code run left, in the shapes state holds. The before box hands this to the turn's own
@@ -565,6 +568,8 @@ const GameViewer = ({
     setCascadeOffTraitIds,
     ownedTraits,
     setOwnedTraits,
+    entityStats,
+    setEntityStats,
     codePins,
     setCodePins,
     recentStatChanges,
@@ -1064,9 +1069,9 @@ const GameViewer = ({
       // Seed the fixture as an id-keyed record and load it by that id.
       const id = randomUUID();
       await putSaveRecord({ ...(fx.save as unknown as Record<string, unknown>), id, name: fx.saveName } as unknown as SaveRecord);
-      await loadGame(id, locations, stats, entities.map((e) => e.id));
+      await loadGame(id, locations, stats, codeEntities.world);
     })();
-  }, [devRoute?.fixture, locations, stats, entities, loadGame]);
+  }, [devRoute?.fixture, locations, stats, codeEntities, loadGame]);
   const imageAttachments = useImageAttachments();
   const mounted = useMountedRef();
   // DEV dev-router: `attach=sample` stages attached images once the game has a committed turn, through the
@@ -1557,7 +1562,9 @@ const GameViewer = ({
       // end-of-turn elapsed the live pass used, and code re-derives the same value instead of drifting.
       const turnHours = prev.timeDelta ?? FLAT_HOURS_PER_TURN;
       // The turn's code writes go back to the pre-turn Code Pins and traits, so stat code re-makes them once.
+      // Entity stats too: no ask resets them, so without this the replayed regen and code would stack.
       const toPreTurn = () => {
+        setEntityStats(preTurn.entityStats ?? {});
         setCodePins(preTurn.codePins ?? {});
         setPlayerTraits(preTurn.playerTraits);
         setDisabledTraitIds(preTurn.disabledTraitIds ?? []);
@@ -1794,6 +1801,15 @@ const GameViewer = ({
   const activeStats = useMemo(() => enabledStats(playerStats, statEnabled), [playerStats, statEnabled]);
   statEnabledRef.current = statEnabled;
 
+  /** The entity owners whose regen and code run over `values`: everyone in the playthrough, present or not. */
+  const entityOwnersOf = useCallback(
+    (values: EntityStatValues) => entityStatOwners(values, codeEntities.world, personaRef),
+    [codeEntities, personaRef],
+  );
+  // The latest committed entity stats, which the turn callbacks read as they read `rawPlayerStatsRef`.
+  const entityStatsRef = useRef(entityStats);
+  entityStatsRef.current = entityStats;
+
   // The same derivation for a paged-back turn, so history shows the stats that were live on that turn.
   const viewActiveStats = useMemo(
     () => activeUnderTraits(
@@ -1840,6 +1856,7 @@ const GameViewer = ({
         }
         return stats;
       });
+      setEntityStats((prev) => withEntityRegen(prev, entityOwnersOf(prev), hours));
 
       // Update recent (fading text) and held (persistent bar) stat changes with regen changes.
       const mergeRegen = (prev: Record<string, number>) => {
@@ -1877,7 +1894,7 @@ const GameViewer = ({
         }
       }
     },
-    [adjustStatByName, addLogEntry, setPlayerStats, setRecentStatChanges, setHeldStatChanges, setRecentStatFading],
+    [adjustStatByName, addLogEntry, setPlayerStats, setEntityStats, entityOwnersOf, setRecentStatChanges, setHeldStatChanges, setRecentStatFading],
   );
 
   const handleTimePassed = useCallback(
@@ -2376,7 +2393,7 @@ const GameViewer = ({
       beforeBoxDeltasRef.current = {};
       const preBox: TurnCodeState = {
         playerStats: rawPlayerStatsRef.current, codePins, playerTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds,
-        ownedTraits,
+        ownedTraits, entityStats: entityStatsRef.current,
       };
       const beforeBox = await runStatCode(
         rawPlayerStatsRef.current, rawPlayerStatsRef.current, [],
@@ -2842,6 +2859,14 @@ const GameViewer = ({
         // authored name, so a chip in a name reads the same in every playthrough.
         const regenStats = tick ? [...statsOf(tick.stats, PLAYER_OWNER)] : afterAsks;
         const stats = resolveStatText(refreshSavedStats(regenStats, authoredStats), resolvePH);
+        // Every entity in the playthrough runs beside the player, over the same tick. No entity has asks yet.
+        const entityBase = preTurn ? preTurn.entityStats ?? {} : entityStatsRef.current;
+        const owners = entityCodeTurns(
+          entityOwnersOf(entityBase), timing === 'before' ? null : clock.deltaHours ?? FLAT_HOURS_PER_TURN,
+          (ownerId, ticked) => resolveStatText(
+            refreshSavedStats(ticked, codeEntities.world.find((e) => e.id === ownerId)?.stats ?? []), resolvePH,
+          ),
+        );
         // The same slice the player's checkbox switches, so a code switch is that switch.
         const live = liveCodeStateRef.current;
         const held = preTurn ? savedTraits(preTurn, traits)
@@ -2866,8 +2891,12 @@ const GameViewer = ({
           },
           statNameOf: (stat) => resolvePH(stat.name),
           traitNameOf: (trait) => resolveTraitText(trait, trait.name),
+          owners,
         });
         const nextPins = withPinWrites(basePins, result.pinWrites);
+        // Onto the latest values, as the player's stats below: the regen tick can apply while the run awaits.
+        setEntityStats((prev) => withOwnerCodeResults(prev, result.owners));
+        const nextEntityStats = withOwnerCodeResults(entityBase, result.owners);
         setCodePins((prev) => withPinWrites(prev, result.pinWrites));
         if (result.traits) {
           setPlayerTraits(result.traits.acquired);
@@ -2886,9 +2915,10 @@ const GameViewer = ({
           appliedTraitValues: result.traits?.appliedValues ?? held.appliedValues,
           cascadeOffTraitIds: result.traits?.cascadeOffTraitIds ?? held.cascadeOffTraitIds,
           ownedTraits: result.traits?.ownedTraits ?? held.ownedTraits,
+          entityStats: nextEntityStats,
         });
         if (!result.traits && result.moved.length === 0 && result.boundsChanged.length === 0) {
-          return nextPins === basePins ? null : stateAfterRun();
+          return nextPins === basePins && nextEntityStats === entityBase ? null : stateAfterRun();
         }
         // The bars are keyed by the name the player reads, so the run's stats resolve theirs here.
         const codeChanges = appliedStatDeltas(stats, resolveStatNames(result.stats, resolvePH));
@@ -2907,7 +2937,7 @@ const GameViewer = ({
         return null;
       }
     },
-    [setPlayerStats, setRecentStatChanges, setHeldStatChanges, setCodePins, resolvePH, statCodePlaceholders, pinsFor, traits, authoredStats, resolveTraitText, gatedWorld, codeEntities, inForceOn, liveScene,
+    [setPlayerStats, setEntityStats, entityOwnersOf, setRecentStatChanges, setHeldStatChanges, setCodePins, resolvePH, statCodePlaceholders, pinsFor, traits, authoredStats, resolveTraitText, gatedWorld, codeEntities, inForceOn, liveScene,
       setPlayerTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, setOwnedTraits, addLogEntry],
   );
 
@@ -2971,6 +3001,7 @@ const GameViewer = ({
       setAppliedTraitValues(undo.appliedTraitValues ?? {});
       setCascadeOffTraitIds(undo.cascadeOffTraitIds ?? {});
       setOwnedTraits(undo.ownedTraits ?? {});
+      setEntityStats(undo.entityStats ?? {});
       setRecentStatChanges({});
       setHeldStatChanges({});
     }
@@ -4197,7 +4228,7 @@ const GameViewer = ({
       // Cold-load from the main menu: restore the save instead of starting a fresh game. Its world is
       // already in GameData (loaded before this view mounted), so `locations` here are the right ones.
       if (initialSaveId) {
-        void loadGame(initialSaveId, locations, authoredStats, entities.map((e) => e.id));
+        void loadGame(initialSaveId, locations, authoredStats, codeEntities.world);
         return;
       }
 
@@ -4236,6 +4267,8 @@ const GameViewer = ({
       const traitLabel = (trait: Trait) => resolveTraitText(trait, trait.name);
       for (const line of startingTraitLog([...chosenList, ...played.applied], traitLabel)) addLogEntry(line);
       commitTraitState(seedState);
+      // Every authored entity's stats, from the authored list for the same reason as the player's.
+      setEntityStats(seedEntityStats(codeEntities.world));
 
       // Use the player's chosen starting location, else a random starting point (fallback: any location).
       const location = resolveStartingLocation(locations, initialLocationId);
@@ -4339,6 +4372,8 @@ const GameViewer = ({
     resolveWith,
     resolveOpening,
     commitTraitState,
+    setEntityStats,
+    codeEntities,
     resolveTraitText,
     changeLocation,
     addLogEntry,
@@ -4705,7 +4740,7 @@ const GameViewer = ({
         const { world: migrated } = loadWorldData(world, false, { stored: true });
         return await loadGame(
           id, Array.isArray(migrated.locations) ? migrated.locations : [], Array.isArray(migrated.stats) ? migrated.stats : [],
-          Array.isArray(migrated.entities) ? migrated.entities.map((e) => e.id) : [],
+          Array.isArray(migrated.entities) ? migrated.entities : [],
         );
       } catch (error) {
         console.error('Cross-world load failed:', error);
@@ -4713,7 +4748,7 @@ const GameViewer = ({
         return false;
       }
     }
-    return loadGame(id, locations, stats, entities.map((e) => e.id));
+    return loadGame(id, locations, stats, codeEntities.world);
   };
   const menuModal = (extra?: { onEditWorld?: () => void; onShowAiContext?: () => void }) => (
     <MenuModal
