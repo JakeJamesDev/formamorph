@@ -34,6 +34,9 @@ export interface OwnedTraitState {
 /** Entity id → its owned trait state. Absent entity ⇒ nothing chosen. */
 export type OwnedTraitStates = Record<string, OwnedTraitState>;
 
+/** Entity id → its stats during the game, in authored order. */
+export type EntityStatValues = Record<string, PlayerStat[]>;
+
 /** Entity id → the owned trait ids picked at the entry step. */
 export type OwnedTraitPicks = Record<string, string[]>;
 
@@ -204,6 +207,8 @@ export interface GameState {
   cascadeOffTraitIds?: CascadeOffTraitIds;
   /** Each entity's owned traits. Absent ⇒ none. */
   ownedTraits?: OwnedTraitStates;
+  /** Each entity's stat values, by entity id. Absent ⇒ none. */
+  entityStats?: EntityStatValues;
   /** Absent ⇒ none. */
   codePins?: CodePins;
   /** The live scene list — who is physically present this turn, with alias/reveal state for the tab. Legacy

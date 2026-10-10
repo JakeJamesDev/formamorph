@@ -20,6 +20,7 @@ import { activeTraits, recoverStatBases, type AppliedTraitValues } from '../lib/
 import { heldEntityIds, withHeldOwners } from '../lib/ownedTraitState';
 import { pageAssistantIndex, pageNextActionIndex, placeSnapshot } from '../lib/turnHistory';
 import { backfillGameStateStats } from '../lib/statBackfill';
+import { backfillGameStateEntityStats } from '../lib/entityStats';
 import { appendLogEntry, type LogKind } from '../lib/playLog';
 import { registerDevHook } from '../lib/devRouter';
 import { useLibraryEntity } from '../lib/useLibraryEntity';
@@ -33,6 +34,8 @@ import type { MemoryEditMap, MemoryNote } from '../lib/memoryOverrides';
 import type {
   CharacterData,
   CodePins,
+  Entity,
+  EntityStatValues,
   ImageAttachment,
   LogEntry,
   GameLocation,
@@ -107,6 +110,8 @@ function useProvideGameplay() {
   const [cascadeOffTraitIds, setCascadeOffTraitIds] = useState<CascadeOffTraitIds>({});
   // Entity id → its owned traits chosen and switched off. Snapshotted per turn too.
   const [ownedTraits, setOwnedTraits] = useState<OwnedTraitStates>({});
+  // Entity id → its stat values. Snapshotted per turn too.
+  const [entityStats, setEntityStats] = useState<EntityStatValues>({});
   // Placeholder id → the text stat code pinned it to. Snapshotted per turn, so undo and re-roll restore it.
   const [codePins, setCodePins] = useState<CodePins>(EMPTY_PINS);
   // Per-playthrough dictionary set chosen at world entry (or restored from a save). Runtime-only: the
@@ -254,6 +259,7 @@ function useProvideGameplay() {
       ...(Object.keys(appliedTraitValues).length ? { appliedTraitValues } : {}),
       ...(Object.keys(cascadeOffTraitIds).length ? { cascadeOffTraitIds } : {}),
       ...(Object.keys(ownedTraits).length ? { ownedTraits } : {}),
+      ...(Object.keys(entityStats).length ? { entityStats } : {}),
       ...(Object.keys(codePins).length ? { codePins } : {}),
       visibleEntities,
       discoveredEntities,
@@ -275,7 +281,7 @@ function useProvideGameplay() {
       // Add a version flag for backward compatibility
       stateVersion: 2
     };
-  }, [playerStats, playerTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, codePins, visibleEntities, discoveredEntities, suppressedCharacterNames, logEntries, currentLocation,
+  }, [playerStats, playerTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, entityStats, codePins, visibleEntities, discoveredEntities, suppressedCharacterNames, logEntries, currentLocation,
       gameTime, startHour, fullMessageHistory, characterData, choices, isGameStarted, playerNotes, currentPage]);
 
   /** Restore a `GameState` into the live gameplay state, resolving `locationId` against `locations` and
@@ -299,6 +305,7 @@ function useProvideGameplay() {
       setAppliedTraitValues(gameState.appliedTraitValues ?? {});
       setCascadeOffTraitIds(gameState.cascadeOffTraitIds ?? {});
       setOwnedTraits(gameState.ownedTraits ?? {});
+      setEntityStats(gameState.entityStats ?? {});
       setCodePins(gameState.codePins ?? EMPTY_PINS);
       setVisibleEntities(normalizeVisibleEntities(gameState.visibleEntities));
       // Rollback / re-generate also keep the live discovered cast + suppressed names (they carry the
@@ -439,10 +446,16 @@ function useProvideGameplay() {
   /** Load a save by its record `id` from IndexedDB and restore it. A flat envelope (`isSaveEnvelope`, current or
    *  legacy numeric version) loads directly; an older nested shape is flattened off-thread via the
    *  `convertSaveFile` worker, with a best-effort raw load if conversion throws. Returns success.
-   *  `worldEntityIds` given, owned trait state of an entity the playthrough no longer holds is dropped. */
+   *  `worldEntities` given, the owned trait state and stat values of an entity the playthrough no longer holds
+   *  are dropped, and each authored entity's missing stats are backfilled. */
   const loadGame = useCallback(async (
-    saveId: string, locations: GameLocation[], worldStats: Stat[] = [], worldEntityIds?: readonly string[],
+    saveId: string, locations: GameLocation[], worldStats: Stat[] = [], worldEntities?: readonly Pick<Entity, 'id' | 'stats'>[],
   ) => {
+    /** The state with every stat the world has since added, the player's and each entity's. */
+    const backfilled = (state: GameState) => {
+      const players = backfillGameStateStats(state, worldStats);
+      return worldEntities ? backfillGameStateEntityStats(players, worldEntities) : players;
+    };
     try {
       // IndexedDB returns dynamically-shaped data; narrowed by the runtime checks below.
       const savedData = await getSaveRecord(saveId) as SaveObject | null;
@@ -460,19 +473,19 @@ function useProvideGameplay() {
         // Migrate a legacy v1.2 envelope to the current shape (no-op for a save already stamped with
         // APP_VERSION). Same migrateSave the import boundary runs, so both stay in lockstep.
         const migrated = migrateSave(savedData);
-        const held = (state: GameState) => (worldEntityIds
-          ? withHeldOwners(state, heldEntityIds(worldEntityIds, state, migrated.persona))
+        const held = (state: GameState) => (worldEntities
+          ? withHeldOwners(state, heldEntityIds(worldEntities.map((e) => e.id), state, migrated.persona))
           : state);
         // Snapshots are history-free post-migration; reconstitute the live current state with the canonical
         // top-level history so loadGameState restores narration/rollback correctly. Backfill any stat the
         // world has since added (e.g. an updated default world) so an older save shows it — additive only.
         const success = loadGameState(
-          held(backfillGameStateStats({ ...migrated.currentState, fullMessageHistory: migrated.messageHistory ?? [] }, worldStats)),
+          held(backfilled({ ...migrated.currentState, fullMessageHistory: migrated.messageHistory ?? [] })),
           locations,
           { worldStats },
         );
         if (success) {
-          setGameStates(migrated.stateHistory.map((s) => held(backfillGameStateStats(s, worldStats))));
+          setGameStates(migrated.stateHistory.map((s) => held(backfilled(s))));
           // Restore the per-playthrough dictionary set; older saves lack it, so keep the entry-seeded set.
           if (Array.isArray(migrated.dictionaries)) setRuntimeDictionaries(migrated.dictionaries);
           setPlaceholderRolls(migrated.placeholderRolls ?? {});
@@ -524,7 +537,7 @@ function useProvideGameplay() {
           // stat copies up to the current shape (trait aiDescription, body-stat morphBindings, discoveredEntities)
           // — the flat-envelope path gets this via migrateSave, so the nested path must apply it too.
           if (flattenedStates && flattenedStates.length > 0) {
-            setGameStates(flattenedStates.map((s) => backfillGameStateStats(migrateLegacySaveState(s), worldStats)));
+            setGameStates(flattenedStates.map((s) => backfilled(migrateLegacySaveState(s))));
 
             // Show toast message for successful conversion
             toast.success('Old save format converted to new format successfully', {
@@ -539,7 +552,7 @@ function useProvideGameplay() {
             addSystemLogEntry('Old save format converted to new format successfully');
           }
 
-          const success = loadGameState(backfillGameStateStats(migrateLegacySaveState(convertedData), worldStats), locations, { worldStats });
+          const success = loadGameState(backfilled(migrateLegacySaveState(convertedData)), locations, { worldStats });
           if (success) {
             setPersonaRef(undefined);
             // A legacy save predates attachments ⇒ none.
@@ -721,6 +734,8 @@ function useProvideGameplay() {
     setCascadeOffTraitIds,
     ownedTraits,
     setOwnedTraits,
+    entityStats,
+    setEntityStats,
     codePins,
     setCodePins,
     runtimeDictionaries,

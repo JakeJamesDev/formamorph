@@ -97,7 +97,7 @@ const tree = buildVariableTree(editorNames());
 const templateTree = buildVariableTree();
 const emptyTree = buildVariableTree({});
 
-const NAME_LISTS: Record<string, string> = { traits: 'Traits', placeholders: 'Placeholders' };
+const NAME_LISTS: Record<string, string> = { traits: 'Traits', placeholders: 'Placeholders', stats: 'Stats' };
 
 /** A surface list as its level reads: each name-keyed map is a name list under its title. */
 const asLevel = (entries: readonly { name: string }[]) => entries.map((entry) => NAME_LISTS[entry.name] ?? entry.name);
@@ -178,6 +178,19 @@ describe('entities, the persona and dictionaries', () => {
     expect(inserts(tree, 'Entities', 'Mira', 'Traits', 'Keen', 'enabled')).toBe('entities.Mira.traits.Keen.enabled');
     expect(inserts(tree, 'Entities', 'Mira', 'Placeholders', 'Eye Color', 'value')).toBe('entities.Mira.placeholders["Eye Color"].value');
     expect(inserts(tree, 'Entities', 'Old Tom', 'inScene')).toBe('entities["Old Tom"].inScene');
+  });
+
+  it('opens an entity’s Stats over its own stat names, and the persona’s over every persona entity’s', () => {
+    const entities = world.entities.map((entity) => (entity.id === 'mira' ? { ...entity, stats: [stat('m-trust', 'Trust')] }
+      : entity.id === 'tom' ? { ...entity, stats: [stat('t-stock', 'Eel Stock')] } : entity));
+    const withStats = buildVariableTree({
+      ...editorNames(), entities: entityTraitNames({ traits: world.traits, traitGroups: [], entities }, allPlaceholders(world)),
+    });
+    expect(levelAt(withStats, 'Entities', 'Mira', 'Stats')).toEqual(['Trust']);
+    expect(inserts(withStats, 'Entities', 'Old Tom', 'Stats', 'Eel Stock', 'delta', 'regen', 'value'))
+      .toBe('entities["Old Tom"].stats["Eel Stock"].delta.regen.value');
+    expect(levelAt(withStats, 'Entities', 'Rook', 'Stats')).toEqual(['No stats on this entity']);
+    expect(inserts(withStats, 'Persona', 'Stats', 'Trust', 'value')).toBe('persona.stats.Trust.value');
   });
 
   it('lists a world trait under its groups, and an ungrouped one under World', () => {

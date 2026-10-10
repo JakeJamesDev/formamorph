@@ -452,3 +452,27 @@ for (const [rolled, expected] of [['cropped', 11], ['long', 22]] as const) {
     await expect(page.getByText(/(99|60)\s*\/\s*100/)).toHaveCount(0);
   });
 }
+
+// The save predates Bram's stats, so the load seeds Trust at 20 and Calm at 10. Each turn then runs Trust's
+// before box (+1), regen and after box (+10), present or not. Coin reads the regen-but-not-code snapshot.
+test('an entity’s stats run both boxes and regen each turn, and stat code reads them through entities', async ({ page }) => {
+  page.on('pageerror', (error) => console.error(error.message));
+  const world = JSON.parse(readFileSync('src/lib/devFixtures/whiteRoomWorld.json', 'utf8'));
+  const stat = { type: 'number', description: '', min: 0, max: 100, descriptors: [] };
+  const trust = {
+    ...stat, id: 'stat-trust', name: 'Trust', value: 20, regen: 5,
+    beforeCode: 'return self.value + 1;', code: 'return self.value + 10;',
+  };
+  const calm = { ...stat, id: 'stat-calm', name: 'Calm', value: 10, regen: 3 };
+  const bram = { id: 'ent-bram', name: 'Bram', stats: [trust, calm] };
+  await coinWithCode(page, 'return entities.Bram.stats.Trust.value + entities.Bram.stats.Calm.value;', {}, {
+    World: { entities: [...world.entities, bram] },
+  });
+  await mockModel(page, 'Coin: +0');
+  await openApp(page, settings(), { url: '/#dev?view=gameViewer&fixture=whiteRoom' });
+  await playOneTurn(page, ['Count the coins.', 'Count them again.']);
+
+  // Turn two reads Trust 36 + 1 + 5 = 42 (26 on turn one, then +10) and Calm 10 + 3 + 3 = 16. A missing
+  // step lands elsewhere.
+  await expect(page.getByText(/58\s*\/\s*100/).first()).toBeVisible();
+});

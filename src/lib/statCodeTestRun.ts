@@ -14,7 +14,8 @@ import { statCodeName, statCodeNamed } from '@/lib/statCodeNames';
 import { codeDictionaries, sandboxDictionaries, sandboxPlaceholders } from '@/lib/statCodePlaceholders';
 import { placeholderPathExpression, placeholderPathLabel } from '@/lib/statCodePaths';
 import type { StatCodeTiming } from '@/lib/statCodeTiming';
-import { entityTraitNames, sandboxTraits, unplayedEntities } from '@/lib/statCodeTraits';
+import { entityCodeStats, entityTraitNames, sandboxTraits, unplayedEntities } from '@/lib/statCodeTraits';
+import { activeStatEnabled } from '@/lib/traitEffects';
 import type { Stat, Trait, World } from '@/types';
 
 /** Test Code names each bound a run wrote with its Details field label. */
@@ -38,6 +39,8 @@ export interface StatCodeNames {
   traits: readonly Trait[];
   /** Every authored entity's code name and trait code names. */
   entities: CodeEntityNames[];
+  /** Each entity's own stats under their code names, by entity id. */
+  entityStats: Readonly<Record<string, readonly Stat[]>>;
 }
 
 /** The parts of an authored world a stat's code reaches. */
@@ -54,6 +57,7 @@ export function statCodeNames(world: StatCodeWorld): StatCodeNames {
     traitNames: statCodeNamed(world.traits, list).map((trait) => trait.name),
     traits: world.traits,
     entities: entityTraitNames({ ...world, traitGroups: world.traitGroups ?? [] }, list),
+    entityStats: entityCodeStats(world.entities, list),
   };
 }
 
@@ -122,15 +126,22 @@ function nodeKeys(node: SandboxPlaceholderNode): Set<string> {
   return keys;
 }
 
-/** The empty persona holding every trait name and placeholder a persona-capable entity holds, none chosen,
- *  and in the scene. Its traits read as an unplayed entity's do. */
-const personaOfPlayables = (entities: readonly CodeEntityNames[], placeholders: SandboxPlaceholderNode): SandboxEntity => ({
-  name: '',
-  inScene: true,
-  traits: [...new Set(entities.filter((entity) => entity.persona).flatMap((entity) => entity.traits.map((trait) => trait.name)))]
-    .map((name) => ({ name, enabled: false, acquired: false })),
-  placeholders,
-});
+/** The empty persona holding every trait name, placeholder and stat a persona-capable entity holds, none
+ *  chosen, and in the scene. Its traits read as an unplayed entity's do. */
+const personaOfPlayables = (
+  entities: readonly CodeEntityNames[], placeholders: SandboxPlaceholderNode, entityStats: Readonly<Record<string, readonly Stat[]>>,
+): SandboxEntity => {
+  const playables = entities.filter((entity) => entity.persona);
+  const playableStats = playables.flatMap((entity) => entityStats[entity.id] ?? []);
+  return {
+    name: '',
+    inScene: true,
+    traits: [...new Set(playables.flatMap((entity) => entity.traits.map((trait) => trait.name)))]
+      .map((name) => ({ name, enabled: false, acquired: false })),
+    placeholders,
+    stats: { stats: playableStats, enabled: activeStatEnabled(playableStats, []) },
+  };
+};
 
 /** The keys of a missing name from its map's root, `persona` first under `persona`. */
 export const missingSegments = ({ root, segments }: MissingName): readonly string[] =>
@@ -173,7 +184,8 @@ const droppedLine = (lead: string, names: readonly string[] | undefined) =>
  */
 export async function runTestCode(
   code: string, timing: StatCodeTiming, stat: Partial<Stat> & Pick<Stat, 'id' | 'name'>,
-  { codeNamedStats, placeholders, traits, entities }: Pick<StatCodeNames, 'codeNamedStats' | 'placeholders' | 'traits' | 'entities'>,
+  { codeNamedStats, placeholders, traits, entities, entityStats }:
+    Pick<StatCodeNames, 'codeNamedStats' | 'placeholders' | 'traits' | 'entities' | 'entityStats'>,
   { pendingPersona: pending = false, missing }: TestRunOptions = {},
 ): Promise<TestCodeReport> {
   // No playthrough: an unrolled placeholder reads as a fresh draw, no one holds a trait, and no persona plays.
@@ -196,9 +208,13 @@ export async function runTestCode(
     code, stats, stat as Stat,
     {
       clock: TEST_CLOCK[timing], placeholders: placeholderEntries.top, traits: traitEntries,
-      entities: unplayedEntities(entities, owners),
+      // Each entity's stats read as authored, as `stats` does, a switched-off one as off.
+      entities: unplayedEntities(entities, owners).map((entity) => {
+        const own = entity.id ? entityStats[entity.id] : undefined;
+        return own ? { ...entity, stats: { stats: own, enabled: activeStatEnabled(own, []) } } : entity;
+      }),
       dictionaries: sandboxDictionaries(placeholders.dictionaries ?? [], owners),
-      ...(personaNode && { persona: personaOfPlayables(entities, personaNode) }),
+      ...(personaNode && { persona: personaOfPlayables(entities, personaNode, entityStats) }),
     },
   );
   const assumedField = missing ? { assumed } : {};

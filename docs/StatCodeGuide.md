@@ -117,8 +117,8 @@ Stat code can use only these objects. A word in angle brackets stands for a name
 | `stats` | `id`, `name`, `type`, `description`, `enabled`, `min`, `max`, `value`, `regen`, `previous`, `delta` | `stats.<Stat>.value` | Read-only |
 | `clock` | `day`, `daypart`, `deltaHours`, `elapsedHours`, `previous` | `clock.day` | Read-only |
 | `traits` | `enabled`, `acquired`, `id`, `name`, `mode`, `available`, `group`, `playerToggle` | `traits.<Trait>.enabled` | `traits.<Trait>.enabled = true` |
-| `persona` | `id`, `name`, `type`, `pronouns`, `inScene`, `traits`, `placeholders` | `persona.traits.<Trait>.enabled` | `persona.traits.<Trait>.enabled = true` |
-| `entities` | `id`, `name`, `type`, `pronouns`, `inScene`, `traits`, `placeholders` | `entities.<Entity>.traits.<Trait>.enabled` | `entities.<Entity>.traits.<Trait>.enabled = true` |
+| `persona` | `id`, `name`, `type`, `pronouns`, `inScene`, `traits`, `placeholders`, `stats` | `persona.traits.<Trait>.enabled` | `persona.traits.<Trait>.enabled = true` |
+| `entities` | `id`, `name`, `type`, `pronouns`, `inScene`, `traits`, `placeholders`, `stats` | `entities.<Entity>.stats.<Stat>.value` | `entities.<Entity>.traits.<Trait>.enabled = true` |
 | `placeholders` | `id`, `name`, `value`, `values`, `text`, `roll()`, `pin()`, `unpin()` | `placeholders.<Placeholder>.text` | `placeholders.<Placeholder>.pin(<text>)` |
 | `dictionaries` | `id`, `name`, `placeholders` | `dictionaries.<Dictionary>.placeholders.<Placeholder>.text` | `dictionaries.<Dictionary>.placeholders.<Placeholder>.pin(<text>)` |
 | `console` | `log()` | — | `console.log(<text>)` |
@@ -128,6 +128,7 @@ Follow these rules:
 - **A stat compares through `.value`.** Write `stats.<Stat>.value > <n>`. `stats.<Stat>` and `self` alone are whole entries, not numbers.
 - **A trait switches through `.enabled`.** Write `traits.<Trait>.enabled = true`. The editor underlines `traits.<Trait> = true`.
 - **A trait sits under its owner.** `traits` holds the world's own traits only. A trait on the played persona, the custom persona included, is under `persona.traits`. A trait on another entity is under `entities.<Entity>.traits`.
+- **An entity's stats are on its entry.** Read them through `entities.<Entity>.stats`. They're read-only. In an entity's own stat code, `stats` holds that entity's stats.
 - **"After N days" is `clock.day > <n>`.** `clock.day` starts at 1. For timing in hours, use `clock.elapsedHours`. The time of day is `clock.daypart`.
 - **`self` takes writes to `value`, `min`, `max` and `regen`.** Its other fields are read-only. Write your own stat through `self`.
 
@@ -136,7 +137,7 @@ Follow these rules:
 ### Basic Syntax
 <!-- keywords: what language, first script, minimal example, is return required, fixed number -->
 
-Your code is plain JavaScript. Return a number to set the stat's value. The code has access to `stats`, a map of every stat in the game keyed by name, and to `self`, the stat the code belongs to.
+Your code is plain JavaScript. Return a number to set the stat's value. The code has access to `stats`, a map of the owner's stats keyed by name, and to `self`, the stat the code belongs to. The owner is the player, or for a stat on an entity's **Stats** tab, that entity.
 
 ```javascript
 // Example: Return a fixed value
@@ -363,6 +364,7 @@ A write to an unknown trait name is ignored. **Test Code** and the Test Bench bo
 | `name` | The persona's code name, never the name the player typed under **None**. Read-only |
 | `traits` | The persona's own traits by name, owned or linked |
 | `placeholders` | The placeholders the persona owns. See [Owned Placeholders](#owned-placeholders) |
+| `stats` | The persona's own stats by name, as an [entity's `stats`](#entities). Read-only |
 
 `persona` also has the `id`, `type`, `pronouns` and `inScene` of an [entity entry](#entities). `inScene` is always true for the played persona. Each entry in `persona.traits` has the [same members as a `traits` entry](#traits), for the persona's state. Writing `enabled` switches the persona's own trait by the same rules as `traits`.
 
@@ -394,6 +396,9 @@ When the player plays no entity, `persona` is an empty entry. Its `name` is `''`
 | `inScene` | True when the entity is in this turn's scene. Read-only |
 | `traits` | The entity's own traits by name, owned or linked |
 | `placeholders` | The placeholders the entity owns. See [Owned Placeholders](#owned-placeholders) |
+| `stats` | The entity's own stats by name. Read-only |
+
+Each entry in an entity's `stats` has the [same members as a `stats` entry](#stat-properties), `previous` and `delta` included. Code can't write them; a write is ignored and reported. An entity's stats run every turn, whether or not the entity is in the scene. A stat the entity has switched off reads with `enabled` false.
 
 Each entry in an entity's `traits` has the [same members as a `traits` entry](#traits), for that entity's state. Writing `enabled` switches the entity's own trait. The other traits in its groups follow, as after a manual switch. A write to any other field is ignored.
 
@@ -406,6 +411,9 @@ entities.Mira.traits.Calm.enabled = self.value > 50;
 
 // React while Mira is in the scene.
 if (entities.Mira.inScene) self.value += 1;
+
+// Lose a point when Mira's Trust dropped this turn.
+if (entities.Mira.stats.Trust.delta.actual.value < 0) self.value -= 1;
 ```
 
 - `persona` is the played persona's entry, so `persona === entities[persona.name]` when the persona entity has a code name. A persona entity with no code name still plays as `persona`, but it isn't in `entities`.
@@ -416,7 +424,7 @@ if (entities.Mira.inScene) self.value += 1;
 
 A name no entity in the game has reads as a blank entry. Its `name` and `id` are `''`, and every trait reads as off. A switch through it is ignored and reported. Check `entities.Mira.name` to test whether Mira is in the game.
 
-**Test Code** lists every authored entity, with no trait chosen. A switch it makes is reported and never applied.
+**Test Code** lists every authored entity, with no trait chosen and each stat at its starting value. A switch it makes is reported and never applied.
 
 ### Dictionaries
 <!-- keywords: book variables, disabled book, lore owned values -->
@@ -443,6 +451,8 @@ dictionaries.Weather.placeholders.Sky.pin(self.value < 20 ? 'storm' : 'clear');
 <!-- keywords: which script wins, priority, precedence, conflict, race condition, execution sequence, overwrite each other, see other scripts changes -->
 
 Each box is a separate run. Within one run every stat's code reads the same snapshot, so no script sees another stat's writes from that run. After each run, effects apply in this order: trait switches, then bounds, then values, then placeholder pins. A bound a stat set this turn still wins over a bound its own trait switch moved. When two stats write the same placeholder or trait in one run, the later stat in the list wins.
+
+Each run covers the player's stats and every entity's stats over that one snapshot. The player's writes apply first, then each entity's in authored order, so an entity's write wins over the player's.
 
 The two runs are ordered against each other, though: everything the before box wrote is already in place when the after box reads.
 

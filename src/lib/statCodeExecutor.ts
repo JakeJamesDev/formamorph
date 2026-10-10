@@ -141,6 +141,15 @@ export interface SandboxEntity {
   inScene?: boolean;
   /** The entity's owner node in the placeholder tree. Absent, its `placeholders` holds no names. */
   placeholders?: SandboxPlaceholderNode;
+  /** What its `stats` reads, read only. Absent, it holds no stats. */
+  stats?: SandboxStats;
+}
+
+/** One owner's stats as its `stats` map reads them: each entry's turn inputs and enabled flag by stat id. */
+export interface SandboxStats {
+  stats: readonly Stat[];
+  turn?: Readonly<Record<string, StatTurnInputs>>;
+  enabled?: Readonly<Record<string, boolean>>;
 }
 
 /** One entry of the sandbox's `dictionaries`: a book's code name, and its owner node in the placeholder tree. */
@@ -191,6 +200,55 @@ export interface StatTurnInputs {
 /** Each of the four numbers as `read` gives it. */
 const fieldwise = (read: (field: keyof StatNumbers) => number): StatNumbers =>
   ({ value: read('value'), min: read('min'), max: read('max'), regen: read('regen') });
+
+// Only whitelisted plain data crosses into the VM (never `code`/`descriptors`).
+const marshalSnapshot = (stat: Stat): StatSnapshot => ({
+  id: String(stat.id),
+  name: stat.name || '',
+  type: stat.type || 'number',
+  description: stat.description || '',
+  min: stat.min || 0,
+  max: stat.max || 100,
+  value: stat.value || 0,
+  regen: stat.regen || 0,
+});
+
+/** A stat's entry in a `stats` map: its snapshot, whether it is on, and what the turn did to it. */
+function marshalStat(stat: Stat, inputs: StatTurnInputs | undefined, enabled: boolean) {
+  const snapshot = marshalSnapshot(stat);
+  // No pre-turn entry: `previous` reads as this same entry's own current fields.
+  const previous = inputs?.previous ? marshalSnapshot(inputs.previous) : snapshot;
+  // fromEntries types its keys as string; the map is over DELTA_SOURCES, so every source is present.
+  const sources = Object.fromEntries(DELTA_SOURCES.map((source) =>
+    [source, fieldwise((field) => inputs?.delta?.[source]?.[field] ?? 0)])) as Record<DeltaSource, StatNumbers>;
+  return {
+    ...snapshot,
+    enabled,
+    previous,
+    delta: {
+      ...sources,
+      total: fieldwise((field) => DELTA_SOURCES.reduce((sum, source) => sum + sources[source][field], 0)),
+      actual: fieldwise((field) => snapshot[field] - previous[field]),
+    },
+  };
+}
+
+type StatEntry = ReturnType<typeof marshalStat>;
+
+/** Each owner's entries in stat order. */
+const marshalStats = ({ stats, turn, enabled }: SandboxStats): StatEntry[] =>
+  stats.map((stat) => marshalStat(stat, turn?.[stat.id], enabled?.[stat.id] !== false));
+
+/** The entries a `stats` map keys: a live stat wins a shared name over a switched-off one; within each, the
+ *  later one wins. */
+function keyedStatEntries(entries: readonly StatEntry[]): StatEntry[] {
+  const owner = new Map([...entries.filter((entry) => !entry.enabled), ...entries.filter((entry) => entry.enabled)]
+    .map((entry) => [entry.name, entry]));
+  return entries.filter((entry) => owner.get(entry.name) === entry);
+}
+
+/** A `stats` entry for a name no stat has: every field blank, and off. */
+const blankStatEntry = (template: StatEntry): unknown => ({ ...(blankOf(template) as object), enabled: false });
 
 /** One entry of the sandbox's `placeholders` map. `roll` runs on the host; the rest rides in as data.
  *  A list `value` marks an Object, and is what `pin` takes on that entry. */
@@ -535,7 +593,7 @@ const traitData = (entries: readonly SandboxTrait[]) =>
     [name, { enabled, acquired, id, name, mode, available, group, playerToggle }]));
 
 /** The fields on an entity entry that a write never reaches. */
-const ENTITY_READ_ONLY_FIELDS = ['id', 'name', 'type', 'pronouns', 'inScene', 'traits', 'placeholders'] as const;
+const ENTITY_READ_ONLY_FIELDS = ['id', 'name', 'type', 'pronouns', 'inScene', 'traits', 'placeholders', 'stats'] as const;
 
 /** The entities in play keyed by code name, and the played persona, which may be one of them. */
 export interface KeyedEntities<T extends SandboxEntity = SandboxEntity> {
@@ -588,20 +646,35 @@ const readOnlyEntryMapPrelude = (names: string, spec: unknown, body: readonly st
   `})(JSON.stringify, Object.freeze, Object.defineProperty);`,
 ].join('\n');
 
-/** The `entities` and `persona` prelude: each entry with its own trait map and owner view. */
-const entitiesPrelude = ({ byName, persona }: KeyedEntities, { indexOf }: FlatPlaceholderMap): string => {
-  const data = ({ id = '', type = '', pronouns = '', inScene = false, traits, placeholders }: SandboxEntity) =>
-    ({ id, type, pronouns, inScene, traits: traitData(traits), ph: ownerIndex(indexOf, placeholders) });
+/** The `entities` and `persona` prelude: each entry with its own trait map, owner view and read-only stats.
+ *  A write on a stat entry is reported by its full path, with the loose writes. */
+const entitiesPrelude = ({ byName, persona }: KeyedEntities, { indexOf }: FlatPlaceholderMap, blankStat: unknown): string => {
+  const statRows = (name: string, stats: SandboxStats | undefined) => keyedStatEntries(stats ? marshalStats(stats) : [])
+    .map((entry) => [entry.name, entry, `${memberPath(`${entityPath(name)}.stats`, entry.name)}.`]);
+  const data = (name: string, { id = '', type = '', pronouns = '', inScene = false, traits, placeholders, stats }: SandboxEntity) =>
+    ({ id, type, pronouns, inScene, traits: traitData(traits), ph: ownerIndex(indexOf, placeholders), statEntries: statRows(name, stats) });
   const spec = {
-    entities: [...byName].map(([name, entity]) => [name, data(entity)]),
-    persona: hasEntityKey(persona.name) ? null : data(persona),
+    entities: [...byName].map(([name, entity]) => [name, data(name, entity)]),
+    persona: hasEntityKey(persona.name) ? null : data('', persona),
+    blankStat,
   };
   return readOnlyEntryMapPrelude(`entities, persona, ${ENTITY_WRITES}`, spec, [
     `const traitMap = ((keys) => ${trackedMapFactory(TRAIT_MAP)})(Object.keys);`,
+    `const blankStat = spec.blankStat;`,
+    `(${LOCK_STAT})(blankStat, false, () => {});`,
+    `const statMap = (rows) => {`,
+    `  const map = Object.create(null);`,
+    `  for (const [name, entry, prefix] of rows) {`,
+    `    (${LOCK_STAT})(entry, false, (path) => ${LOOSE_NOTE}(prefix + path));`,
+    `    map[name] = freeze(entry);`,
+    `  }`,
+    `  return new Proxy(freeze(map), { get: (target, key) => typeof key !== 'string' || key in target ? target[key] : blankStat });`,
+    `};`,
     `const [entities, readWrites, entry] = entryMap(${JSON.stringify(ENTITY_READ_ONLY_FIELDS)}, spec.entities, {}, (key, data, unknown) => {`,
     `  const [traits, rows] = traitMap(data.traits || {});`,
     `  const placeholders = ${OWNER_VIEW}(data.ph ?? -1, key ? ['entity', key] : ['persona', 'persona'], unknown || !key);`,
-    `  return [{ id: '', type: '', pronouns: '', inScene: false, ...data, name: unknown ? '' : key, traits, placeholders }, rows];`,
+    `  const stats = statMap(data.statEntries || []);`,
+    `  return [{ id: '', type: '', pronouns: '', inScene: false, ...data, name: unknown ? '' : key, traits, placeholders, stats }, rows];`,
     `});`,
     `const persona = spec.persona ? entry('', spec.persona, false) : entities[${JSON.stringify(persona.name)}];`,
     `return [entities, persona, readWrites];`,
@@ -843,50 +916,18 @@ export const executeStatCode = async (
   try {
     const QuickJS = await loadQuickJS();
 
-    // Only whitelisted plain data crosses into the VM (never `code`/`descriptors`).
-    const marshalSnapshot = (stat: Stat): StatSnapshot => ({
-      id: String(stat.id),
-      name: stat.name || '',
-      type: stat.type || 'number',
-      description: stat.description || '',
-      min: stat.min || 0,
-      max: stat.max || 100,
-      value: stat.value || 0,
-      regen: stat.regen || 0,
-    });
-    const marshal = (stat: Stat) => {
-      const snapshot = marshalSnapshot(stat);
-      const inputs = turn?.[stat.id];
-      // No pre-turn entry: `previous` reads as this same entry's own current fields.
-      const previous = inputs?.previous ? marshalSnapshot(inputs.previous) : snapshot;
-      // fromEntries types its keys as string; the map is over DELTA_SOURCES, so every source is present.
-      const sources = Object.fromEntries(DELTA_SOURCES.map((source) =>
-        [source, fieldwise((field) => inputs?.delta?.[source]?.[field] ?? 0)])) as Record<DeltaSource, StatNumbers>;
-      return {
-        ...snapshot,
-        enabled: enabled?.[stat.id] !== false,
-        previous,
-        delta: {
-          ...sources,
-          total: fieldwise((field) => DELTA_SOURCES.reduce((sum, source) => sum + sources[source][field], 0)),
-          actual: fieldwise((field) => snapshot[field] - previous[field]),
-        },
-      };
-    };
     const placeholderMap = flattenPlaceholderMap(placeholders, [
       ...entities.map((entity) => entity.placeholders), persona.placeholders, ...dictionaries.map((book) => book.placeholders),
     ]);
     const keyed = keyedEntities(entities, persona);
-    const statsData = stats.map(marshal);
-    // A live stat wins a shared name over a switched-off one; within each, the later one wins.
-    const owner = new Map([...statsData.filter((entry) => !entry.enabled), ...statsData.filter((entry) => entry.enabled)]
-      .map((entry) => [entry.name, entry]));
-    const keyedStats = statsData.filter((entry) => owner.get(entry.name) === entry);
+    const statsData = marshalStats({ stats, turn, enabled });
+    const keyedStats = keyedStatEntries(statsData);
     // `self` is the current stat's own entry in `stats`. A stat missing from `stats`, or one that loses its
     // name, stands alone.
     const selfIndex = stats.findIndex(stat => stat.id === currentStat.id);
-    const selfData = selfIndex >= 0 ? statsData[selfIndex] : marshal(currentStat);
-    const selfIsEntry = selfIndex >= 0 && owner.get(selfData.name) === selfData;
+    const selfData = selfIndex >= 0 ? statsData[selfIndex] : marshalStat(currentStat, turn?.[currentStat.id], enabled?.[currentStat.id] !== false);
+    const selfIsEntry = selfIndex >= 0 && keyedStats.includes(selfData);
+    const blankStat = blankStatEntry(selfData);
 
     const runtime = QuickJS.newRuntime();
     runtime.setInterruptHandler(shouldInterruptAfterDeadline(Date.now() + EXECUTION_TIMEOUT_MS));
@@ -919,7 +960,7 @@ export const executeStatCode = async (
       // with what `self`'s writable fields hold afterwards, then what it did to `placeholders`, `traits` and
       // the entities' traits.
       const program = [
-        statsPrelude(keyedStats, { ...(blankOf(selfData) as object), enabled: false }, selfIsEntry ? selfData.name : null),
+        statsPrelude(keyedStats, blankStat, selfIsEntry ? selfData.name : null),
         `const ${LOOSE_WRITES} = [];`,
         `const ${LOOSE_NOTE} = (path) => (${ADD_ONCE})(${LOOSE_WRITES}, path);`,
         `const self = ${selfIsEntry ? `stats[${JSON.stringify(selfData.name)}]` : JSON.stringify(selfData)};`,
@@ -931,7 +972,7 @@ export const executeStatCode = async (
         `})(${LOCK_FIELDS});`,
         placeholdersPrelude(placeholderMap),
         trackedMapPrelude({ ...TRAIT_MAP, root: 'traits', reader: TRAIT_WRITES, data: traitData(traits) }),
-        entitiesPrelude(keyed, placeholderMap),
+        entitiesPrelude(keyed, placeholderMap, blankStat),
         dictionariesPrelude(dictionaries, placeholderMap),
         `[(function(${PLACEHOLDER_WRITES}, ${TRAIT_WRITES}, ${ENTITY_WRITES}, ${STAT_WRITES}, ${LOOSE_WRITES}, ${LOOSE_NOTE}, ${DICTIONARY_WRITES}, ${OWNER_VIEW}) {`,
         code,

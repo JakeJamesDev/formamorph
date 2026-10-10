@@ -24,10 +24,11 @@ const traits = [
   { id: 't3', name: FURY, statChanges: [] },
 ] as Trait[];
 
-// Mira can be played and Ash cannot, so only Mira's trait is a persona trait.
+// Mira can be played and Ash cannot, so only Mira's trait is a persona trait. Ash owns a switched-off stat.
+const ashStock = { id: 'a1', name: 'Stock', type: 'number', value: 4, min: 0, max: 10, regen: 0, description: '', enabled: false } as Stat;
 const entities = [
   { id: 'e1', name: 'Mira', persona: true, traits: [{ id: 't4', name: 'Scarred', statChanges: [] }] },
-  { id: 'e2', name: 'Ash', traits: [{ id: 't5', name: 'Loyal', statChanges: [] }] },
+  { id: 'e2', name: 'Ash', traits: [{ id: 't5', name: 'Loyal', statChanges: [] }], stats: [ashStock] },
 ] as Entity[];
 
 const updateStat = vi.fn();
@@ -117,7 +118,10 @@ describe('what each box completes and checks against', () => {
     expect(optionsOf('Before the AI').traits).toEqual(['Brave', 'Night Owl', 'Beast Fury']);
     expect(optionsOf('Before the AI').entities).toEqual([
       { id: 'e1', name: 'Mira', persona: true, traits: [{ id: 't4', name: 'Scarred', path: [], tabPosition: 0 }], folder: [], tabPosition: 0 },
-      { id: 'e2', name: 'Ash', persona: false, traits: [{ id: 't5', name: 'Loyal', path: [], tabPosition: 0 }], folder: [], tabPosition: 1 },
+      {
+        id: 'e2', name: 'Ash', persona: false, traits: [{ id: 't5', name: 'Loyal', path: [], tabPosition: 0 }], stats: ['Stock'],
+        folder: [], tabPosition: 1,
+      },
     ]);
   });
 
@@ -308,7 +312,7 @@ describe('what Test Code reports', () => {
     expect(executeStatCode.mock.calls[0][3].persona).toBeUndefined();
   });
 
-  it('runs with every authored entity listed and nothing chosen, and lists an entity switch without making it', async () => {
+  it('runs with every authored entity listed, nothing chosen and each stat as authored, and lists an entity switch without making it', async () => {
     const user = userEvent.setup();
     executeStatCode.mockResolvedValue({ value: null, error: null, entities: [{ entity: 'Ash', traits: [{ name: 'Loyal', enabled: true }] }] });
     renderCodePanel(stats[0]);
@@ -318,7 +322,7 @@ describe('what Test Code reports', () => {
     await waitFor(() => expect(row()).toHaveTextContent('entities.Ash.traits.Loyal switched on'));
     expect(executeStatCode.mock.calls[0][3].entities).toEqual([
       { id: 'e1', name: 'Mira', traits: [{ name: 'Scarred', enabled: false, acquired: false }] },
-      { id: 'e2', name: 'Ash', traits: [{ name: 'Loyal', enabled: false, acquired: false }] },
+      { id: 'e2', name: 'Ash', traits: [{ name: 'Loyal', enabled: false, acquired: false }], stats: { stats: [ashStock], enabled: { a1: false } } },
     ]);
   });
 

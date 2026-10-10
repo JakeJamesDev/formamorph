@@ -39,12 +39,12 @@ export function clockFieldsAt(path: string): readonly SurfaceEntry[] | null {
 /** Every name the sandbox injects into the program, in the order an author meets them. */
 export const SANDBOX_GLOBALS: readonly SurfaceEntry[] = [
   { name: 'self', detail: 'Stat', info: 'The stat this code belongs to. Write self.value to set its value.' },
-  { name: 'stats', detail: 'object', info: 'Every stat in the world by name. Use stats["Two Words"] for a name with a space.' },
+  { name: 'stats', detail: 'object', info: 'The owner’s stats by name. The owner is the player, or the entity whose stat this is. Use stats["Two Words"] for a name with a space.' },
   { name: 'clock', detail: shapeOf(CLOCK_MEMBERS), info: 'The story clock. Read-only.' },
   { name: 'placeholders', detail: 'object', info: 'The world’s own placeholders by name. An entity’s or a dictionary’s are on its entry. Use placeholders["Two Words"] for a name with a space.' },
   { name: 'traits', detail: 'object', info: 'Every trait in the world by name. Use traits["Two Words"] for a name with a space.' },
-  { name: 'entities', detail: 'object', info: 'Every entity in the game by name, with its own traits and placeholders. Use entities["Two Words"] for a name with a space.' },
-  { name: 'persona', detail: 'object', info: 'The entity the player plays, with its own traits and placeholders. Empty when the player plays no entity.' },
+  { name: 'entities', detail: 'object', info: 'Every entity in the game by name, with its own traits, placeholders and stats. Use entities["Two Words"] for a name with a space.' },
+  { name: 'persona', detail: 'object', info: 'The entity the player plays, with its own traits, placeholders and stats. Empty when the player plays no entity.' },
   { name: 'dictionaries', detail: 'object', info: 'Every dictionary in the game by name, with its own placeholders. A dictionary the player turned off isn’t listed. Use dictionaries["Two Words"] for a name with a space.' },
   { name: 'console', detail: 'object', info: 'Only console.log — output shows up in the browser console.' },
 ];
@@ -146,6 +146,7 @@ export const PERSONA_FIELDS: readonly SurfaceEntry[] = [
   { name: 'inScene', detail: 'boolean', info: 'True when the persona plays. False when the player plays no entity. Read-only.' },
   { name: 'traits', detail: 'object', info: 'The persona’s own traits by name, owned or linked. Use persona.traits["Two Words"] for a name with a space.' },
   { name: 'placeholders', detail: 'object', info: 'The persona’s own placeholders by name. Empty when the player plays no entity.' },
+  { name: 'stats', detail: 'object', info: 'The persona’s own stats by name, each with the fields of a stats entry. Empty when the player plays no entity. Read-only.' },
 ];
 
 /** The members of one entry in `entities`. None takes a write; a trait switches through its own `enabled`. */
@@ -157,6 +158,7 @@ export const ENTITY_FIELDS: readonly SurfaceEntry[] = [
   { name: 'inScene', detail: 'boolean', info: 'True when the entity is in this turn’s scene. Read-only.' },
   { name: 'traits', detail: 'object', info: 'The entity’s own traits by name, owned or linked. Use entities.Mira.traits["Two Words"] for a name with a space.' },
   { name: 'placeholders', detail: 'object', info: 'The entity’s own placeholders by name. Use entities.Mira.placeholders["Two Words"] for a name with a space.' },
+  { name: 'stats', detail: 'object', info: 'The entity’s own stats by name, each with the fields of a stats entry. Read-only. Use entities.Mira.stats["Two Words"] for a name with a space.' },
 ];
 
 /** The members of one entry in `dictionaries`. None takes a write. */

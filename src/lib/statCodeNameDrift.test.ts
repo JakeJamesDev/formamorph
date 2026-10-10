@@ -236,6 +236,42 @@ describe.each(STAT_CODE_TIMINGS)('one entity code name across the sandbox, the c
   });
 });
 
+/** An entity's own stat carries chips too: `entities.Keeper.stats` keys it as the editor offers it. */
+const keeper: Entity = { id: 'e-keeper', name: 'Keeper', stats: [stat({ id: 'k-power', name: CHIPPED })] };
+
+/** The keys the sandbox gives Keeper's `stats`, read back through a pin. */
+async function entityStatKeysInSandbox(rolled: string, timing: StatCodeTiming): Promise<string> {
+  const reader = stat({ id: 's1', name: 'Reader', ...inBox(timing, 'placeholders.Probe.pin(Object.keys(entities.Keeper.stats).join("|"));') });
+  const owned = keeper.stats!.map((s) => ({ ...s, value: s.value ?? 0 }));
+  const out = await runStatCodeTurn({
+    timing, stats: [reader], enabled: {}, previous: [reader], asks: [], regenApplied: {}, clock: {},
+    bearers: {
+      acquired: [], disabledTraitIds: [], appliedValues: {}, entities: [keeper],
+      world: {
+        traits: [], groups: [], entities: [keeper], persona: { source: 'none' },
+        bearers: [{ id: keeper.id, name: keeper.name, traits: [], groups: [] }],
+      },
+    },
+    owners: [{ id: keeper.id, stats: owned, enabled: {}, previous: owned, regenApplied: {} }],
+    statNameOf: (s) => s.name,
+    traitNameOf: (trait) => trait.name,
+    placeholders: { placeholders: [beast, probe], rolls: { world: { 'ph-beast': rolled } } },
+  });
+  return String(out.pinWrites['ph-probe']);
+}
+
+describe.each(STAT_CODE_TIMINGS)('one entity stat code name across the sandbox and the completions (%s box)', (timing) => {
+  it('keys the entity’s stats on the code name whatever the playthrough rolled, and offers that same name', async () => {
+    const keys = await entityStatKeysInSandbox('Wolf', timing);
+    expect(keys).toBe(await entityStatKeysInSandbox('Bear', timing));
+    const editorEntities = entityTraitNames({ traits: [], traitGroups: [], entities: [keeper] }, [beast, probe]);
+    const code = 'entities.Keeper.stats[""]';
+    const offered = statCodeCompletions(code, code.indexOf('""') + 1, { entities: editorEntities })?.options.map((o) => o.label);
+    expect(offered).toEqual([keys]);
+    expect(keys).toBe('Beast Power');
+  });
+});
+
 /**
  * A placeholder is reached by the path the editor shows, and four surfaces have to spell that path the same
  * way: the sandbox builds the map from it, the completions offer it, the editor checks it, and the bench

@@ -190,7 +190,7 @@ describe('the cascade-off list across a save/load round trip', () => {
 
 describe('owned trait state across a save/load round trip', () => {
   const owned = { ash: { chosen: ['tamed', 'scarred'], disabled: ['scarred'] }, bob: { chosen: ['gruff'] } };
-  const held = ['ash', 'bob'];
+  const held = [{ id: 'ash' }, { id: 'bob' }];
 
   it("keeps each entity's chosen and switched-off traits, beside the cascade-off list", async () => {
     const live = mount();
@@ -244,7 +244,7 @@ describe('owned trait state across a save/load round trip', () => {
       await live().saveGame('slot', 'World', 'w1', 'save-owned-3');
     });
     await act(async () => {
-      await live().loadGame('save-owned-3', [], [authored], ['ash']);
+      await live().loadGame('save-owned-3', [], [authored], [{ id: 'ash' }]);
     });
     expect(live().ownedTraits).toEqual({ ash: owned.ash, wren: { chosen: ['brave'] } });
     expect(live().cascadeOffTraitIds).toEqual({ world: ['t'], wren: ['calm'] });
@@ -269,6 +269,21 @@ describe('owned trait state across a save/load round trip', () => {
     expect(live().ownedTraits).toEqual(owned);
   });
 
+  it('keeps each entity’s stat values, backfills a stat the world added, and drops an entity it removed', async () => {
+    const trust: Stat = { ...authored, id: 'trust', name: 'Trust', value: 20 };
+    const stock: Stat = { ...authored, id: 'stock', name: 'Stock', value: 0, starting: 6 };
+    const live = mount();
+    await act(async () => {
+      live().setEntityStats({ ash: [{ ...trust, value: 33 }], gone: [{ ...trust, value: 9 }] });
+    });
+    await act(async () => { await live().saveGame('slot', 'World', 'w1', 'save-entity-stats'); });
+    await act(async () => { live().setEntityStats({}); });
+    await act(async () => {
+      await live().loadGame('save-entity-stats', [], [authored], [{ id: 'ash', stats: [trust, stock] }, { id: 'bob' }]);
+    });
+    expect(live().entityStats).toEqual({ ash: [{ ...trust, value: 33 }, { ...stock, value: 6 }] });
+  });
+
   it("keeps a library persona's state, which the world never holds", async () => {
     const live = mount();
     await act(async () => {
@@ -289,12 +304,12 @@ describe('owned trait state across a save/load round trip', () => {
     await act(async () => { live().setOwnedTraits({ cp: { chosen: ['wizard'] } }); });
     await act(async () => { await live().saveGame('slot', 'World', 'w1', 'save-owned-6'); });
     await act(async () => { live().setOwnedTraits({}); });
-    await act(async () => { await live().loadGame('save-owned-6', [], [authored], ['cp']); });
+    await act(async () => { await live().loadGame('save-owned-6', [], [authored], [{ id: 'cp' }]); });
     expect(live().ownedTraits).toEqual({ cp: { chosen: ['wizard'] } });
     await act(async () => { live().setPersonaRef({ source: 'library', entityId: 'lib' }); });
     await act(async () => { await live().saveGame('slot', 'World', 'w1', 'save-owned-7'); });
     await act(async () => { live().setOwnedTraits({}); });
-    await act(async () => { await live().loadGame('save-owned-7', [], [authored], ['cp']); });
+    await act(async () => { await live().loadGame('save-owned-7', [], [authored], [{ id: 'cp' }]); });
     expect(live().ownedTraits).toEqual({ cp: { chosen: ['wizard'] } });
     expect(live().personaRef).toEqual({ source: 'library', entityId: 'lib' });
   });
@@ -328,7 +343,7 @@ describe('owned trait state across a save/load round trip', () => {
     await act(async () => { live().setPlayerTraits([wizard]); });
     await act(async () => { await live().saveGame('slot', 'World', 'w1', 'save-node-era'); });
     await act(async () => { live().setPlayerTraits([]); });
-    await act(async () => { await live().loadGame('save-node-era', [], [authored], ['cp']); });
+    await act(async () => { await live().loadGame('save-node-era', [], [authored], [{ id: 'cp' }]); });
     expect(live().playerTraits).toEqual([wizard]);
     expect(live().ownedTraits).toEqual({});
     const bearers = inPlayBearers(world, live().personaRef);

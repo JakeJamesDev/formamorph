@@ -32,6 +32,8 @@ export interface StatCodeBoxContext {
   /** Every authored entity's code name and trait code names: completions, name checks, and the run's entries.
    *  The persona-capable ones' traits are what `persona.traits` completes. */
   entities: CodeEntityNames[];
+  /** Each entity's own stats under their code names, by entity id: what a run's `entities.<Entity>.stats` reads. */
+  entityStats: Readonly<Record<string, readonly Stat[]>>;
 }
 
 /**
@@ -62,7 +64,7 @@ export function StatCodeBox({ timing, stat, value, onChange, context }: {
 
   const label = TIMING_LABEL[timing];
   const {
-    codeNamedStats, statNames, selfName, placeholders, placeholderPlaces, traitNames, traitPlaces, traits, entities,
+    codeNamedStats, statNames, selfName, placeholders, placeholderPlaces, traitNames, traitPlaces, traits, entities, entityStats,
   } = context;
 
   /** Drop what the last test said. Editing the code makes every part of that report stale together. */
@@ -100,7 +102,7 @@ export function StatCodeBox({ timing, stat, value, onChange, context }: {
 
     try {
       // A switch is reported here and never applied.
-      const report = await runTestCode(value, timing, { ...stat, name: selfName }, { codeNamedStats, placeholders, traits, entities });
+      const report = await runTestCode(value, timing, { ...stat, name: selfName }, { codeNamedStats, placeholders, traits, entities, entityStats });
       if (report.error) {
         setError(report.error);
         return;

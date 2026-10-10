@@ -26,14 +26,15 @@ export const recordKey = (ownerId: string, traitId: string): string =>
 /** The bearer a stat record belongs to, read back from its key. */
 const recordOwner = (key: string): string => (key.includes('/') ? key.slice(0, key.indexOf('/')) : WORLD_OWNER);
 
-/** The state without the owned trait state, cascade-off lists and stat records of entities it no longer
- *  holds. */
+/** The state without the owned trait state, cascade-off lists, stat records and stat values of entities it no
+ *  longer holds. */
 export function withHeldOwners(state: GameState, held: ReadonlySet<string>): GameState {
-  if (!state.ownedTraits && !state.cascadeOffTraitIds && !state.appliedTraitValues) return state;
+  if (!state.ownedTraits && !state.cascadeOffTraitIds && !state.appliedTraitValues && !state.entityStats) return state;
   const isHeld = (id: string) => id === WORLD_OWNER || held.has(id);
   return {
     ...state,
     ownedTraits: keep(state.ownedTraits, (id) => held.has(id)),
+    entityStats: keep(state.entityStats, (id) => held.has(id)),
     cascadeOffTraitIds: keep(state.cascadeOffTraitIds, isHeld),
     appliedTraitValues: keep(state.appliedTraitValues, (key) => isHeld(recordOwner(key))),
   };

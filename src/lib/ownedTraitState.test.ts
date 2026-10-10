@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { heldEntityIds, ownedTraitStatesFrom, withHeldOwners } from './ownedTraitState';
-import type { GameState } from '@/types';
+import type { GameState, PlayerStat } from '@/types';
 
 const state = (extra: Partial<GameState> = {}) => ({ discoveredEntities: [], ...extra }) as unknown as GameState;
 
@@ -39,6 +39,12 @@ describe('withHeldOwners', () => {
       expect(kept.appliedTraitValues).toEqual({ paladin: { h: 5 } });
       expect(kept.ownedTraits).toEqual(persona ? { lib: { chosen: ['calm'] } } : {});
     }
+  });
+
+  it('drops the stat values of an entity once it is gone', () => {
+    const vigor: PlayerStat = { id: 'v', name: 'Vigor', type: 'number', description: '', min: 0, max: 10, value: 4, regen: 0, descriptors: [] };
+    const pruned = withHeldOwners(state({ entityStats: { ash: [vigor], gone: [vigor] } }), new Set(['ash']));
+    expect(pruned.entityStats).toEqual({ ash: [vigor] });
   });
 
   it('leaves a state with neither map as it is', () => {
