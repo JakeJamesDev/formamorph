@@ -22,6 +22,7 @@ The AI records how a turn moved the stats of everyone in the scene. The present 
 - [ ] The fallback skips entity stats and records a diagnostic.
 - [ ] The token cap scales with stats and owners.
 - [ ] The entity stats probe meets Q28 on the cloud default model and Cydonia for the shipped prompt. Numbers go in the commit body.
+- [ ] Q45: on Cydonia, invented player changes no longer rise above C3's. Ticket 02 landed at 81 against C3's 68. A miss here blocks the release and goes to the user.
 
 ## Completion checks
 

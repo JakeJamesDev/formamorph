@@ -73,6 +73,10 @@ Rulings from the grill, numbered as asked.
 - **Q42** (ticket 04) Code for every owner runs over that one snapshot. Writes and trait switches then apply in owner order: the player first, then entities in authored order, and the later write wins. In an entity stat's code, only `stats` is the owner's; `traits` stays the player's world traits, and the owner's traits are under `entities[x].traits`.
 - **Q43** (ticket 04) Entity-stat morph bindings move to ticket 16, which adds morphs to entity models and lists each entity model's own shape keys in the Body Sliders picker. A binding without a picker can't be authored, so both land together.
 
+- **Q44** (ticket 02) A schema rejection that names a different parameter (a sampler or `max_tokens`) goes to the existing override path, not the text-pass retry. A rejection with no parameter, or one that names `response_format`, `json_schema` or a `guided*` field, retries as Q35 says. In the stat request, a stat whose plain name collides shows its numbered schema key, so the name the model reads is the key it writes.
+
+- **Q45** (ticket 02, user ruling) Ticket 02 lands with a Cydonia miss on one Q28 measure: invented player changes, 81 against C3's 68 (cloud clears). Most of the gap comes from the player being alone in the request. Ticket 05 re-checks the full Q28 bar on Cydonia with entities back in the request, and a miss there blocks the release.
+
 Derived from Q7 and confirmed with the summary:
 
 - An entity stat's morph bindings drive that entity's own model.
