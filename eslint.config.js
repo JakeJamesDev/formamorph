@@ -27,6 +27,13 @@ const noRawTextSize = [
   },
 ]
 
+const formamorph = {
+  rules: {
+    'composed-forwardref': composedForwardRefRule,
+    'no-native-title': noNativeTitleRule,
+  },
+}
+
 export default tseslint.config(
   // 'out' is the Cloudflare Pages upload root the deploy assembles: a copy of dist beside the site.
   // '.scratch' is throwaway work, including vendored third-party source to test against.
@@ -90,18 +97,14 @@ export default tseslint.config(
   },
   {
     files: ['src/**/*.tsx'],
-    plugins: {
-      formamorph: {
-        rules: {
-          'composed-forwardref': composedForwardRefRule,
-          'no-native-title': noNativeTitleRule,
-        },
-      },
-    },
-    rules: {
-      'formamorph/composed-forwardref': 'error',
-      'formamorph/no-native-title': 'error',
-    },
+    plugins: { formamorph },
+    rules: { 'formamorph/composed-forwardref': 'error' },
+  },
+  {
+    // The account site is a second UI surface, so a browser tooltip can't come back there either.
+    files: ['src/**/*.tsx', 'site/**/*.tsx'],
+    plugins: { formamorph },
+    rules: { 'formamorph/no-native-title': 'error' },
   },
   {
     // Tests carry non-TSDoc block comments (e.g. the `@vitest-environment` pragma) — skip tsdoc there.

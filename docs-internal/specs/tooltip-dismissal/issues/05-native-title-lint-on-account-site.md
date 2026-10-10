@@ -1,6 +1,6 @@
 # 05: Native-Title Lint on the Account Site
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Haiku 5.5 (`claude-haiku-5-5`)
 Reasoning effort: low
