@@ -47,6 +47,15 @@ describe('AiContextRequestCard', () => {
     expect(screen.queryByText(/Skipped stat updates/)).toBeNull();
   });
 
+  it('names the entities a text-pass reply left untracked on a line of their own', () => {
+    const stats: AiRequestRecord = { ...record, type: 'statUpdates', statDiagnostics: [
+      { name: '', reason: 'textPass' }, { name: 'Bram', reason: 'skipped' }, { name: 'Odette', reason: 'skipped' },
+    ] };
+    render(<AiContextRequestCard record={stats} index={0} isOpen={allOpen} onOpenChange={() => {}} />);
+    expect(screen.getByText('Skipped entity stats: Bram, Odette')).toBeTruthy();
+    expect(screen.queryByText(/Skipped stat updates/)).toBeNull();
+  });
+
   it('leaves out the sections the record does not carry', () => {
     const bare: AiRequestRecord = { type: 'pick', messages: [{ role: 'user', content: 'Which section?' }] };
     render(<AiContextRequestCard record={bare} index={2} isOpen={allOpen} onOpenChange={() => {}} />);

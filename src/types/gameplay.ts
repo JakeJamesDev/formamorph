@@ -37,6 +37,9 @@ export type OwnedTraitStates = Record<string, OwnedTraitState>;
 /** Entity id → its stats during the game, in authored order. */
 export type EntityStatValues = Record<string, PlayerStat[]>;
 
+/** Entity id → stat id → what one turn moved that stat's value. Unmoved stats are absent. */
+export type EntityStatChanges = Record<string, Record<string, number>>;
+
 /** Entity id → the owned trait ids picked at the entry step. */
 export type OwnedTraitPicks = Record<string, string[]>;
 
@@ -209,6 +212,8 @@ export interface GameState {
   ownedTraits?: OwnedTraitStates;
   /** Each entity's stat values, by entity id. Absent ⇒ none. */
   entityStats?: EntityStatValues;
+  /** What this turn moved each entity stat, AI, regen and code together. Absent ⇒ none. */
+  entityStatChanges?: EntityStatChanges;
   /** Absent ⇒ none. */
   codePins?: CodePins;
   /** The live scene list — who is physically present this turn, with alias/reveal state for the tab. Legacy

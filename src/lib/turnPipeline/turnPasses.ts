@@ -18,7 +18,7 @@ import { languageDirective } from '@/lib/languages';
 import { matchLocationResponse } from '@/lib/locationMatch';
 import { parseChoices } from '@/lib/choices';
 import { parseStatUpdates } from '@/lib/statChanges';
-import { statRequestSchema, type StatRequestSnapshot } from '@/lib/statRequest';
+import { playerTargets, statRequestSchema, type StatRequestSnapshot } from '@/lib/statRequest';
 import { parseTimeDelta, parseOpeningDaypart } from '@/lib/gameClock';
 import { cleanDiscoveredDescription, DISCOVER_LATER_LABEL, DISCOVER_PASSAGE_LABEL } from '@/lib/runtimeCharacters';
 import {
@@ -71,8 +71,8 @@ export const TURN_PASS_CAPS = {
 /** One stat line (a name, a sign and a number) per live stat, plus slack for a stray word. */
 export const statUpdatesCap = (statCount: number): number => 16 * statCount + 16;
 
-/** A `"Name":n,"Name max":n` pair per stat, plus the owner's key and the braces. */
-export const statSchemaCap = (statCount: number): number => 32 * statCount + 32;
+/** A `"Name":n,"Name max":n` pair per stat, each owner's key and braces, and the outer braces. */
+export const statSchemaCap = (statCount: number, ownerCount = 1): number => 32 * statCount + 16 * ownerCount + 16;
 
 /** The longest destination name the reply may echo, plus slack for quoting or a NONE. */
 export const locationChangeCap = (destinations: readonly string[]): number =>
@@ -439,9 +439,10 @@ export const statTextPrompts = (system: string, user: string): { system: string;
 });
 
 /**
- * The stat request: the schema request, carrying the text pass as its fallback. A snapshot marked for the
- * text pass, or none at all, sends the text pass alone. Nothing is appended for any language: the reply
- * echoes the stats' authored names, which a translation rider would only invite the model to translate.
+ * The stat request: the schema request over every owner, carrying the player's text pass as its fallback. A
+ * snapshot marked for the text pass, or none at all, sends the text pass alone. Nothing is appended for any
+ * language: the reply echoes the stats' authored names, which a translation rider would only invite the model
+ * to translate.
  */
 export function statUpdatesRequest(
   prompts: { system: string; user: string },
@@ -449,29 +450,34 @@ export function statUpdatesRequest(
   base: { statCount: number; statRequest?: StatRequestSnapshot; quiet: boolean },
 ): TurnPassRequest<ChatMessage> {
   const { statRequest } = base;
-  const system = { ...values.ctx, ...statRequest?.context };
   const user = { '<PLAYER ACTION>': values.action, '<NARRATION>': values.narration };
   const shared = { type: 'statUpdates' as const, silent: false, quiet: base.quiet, statRequest };
   const text = statTextPrompts(prompts.system, prompts.user);
+  const textStats = statRequest ? playerTargets(statRequest).length : base.statCount;
   const textRequest = labeledRequest(
-    { ...shared, maxTokens: statUpdatesCap(base.statCount) },
-    systemTiled(text.system, system),
+    { ...shared, maxTokens: statUpdatesCap(textStats) },
+    systemTiled(text.system, { ...values.ctx, ...statRequest?.textContext }),
     userTiled(text.user, user),
   );
   if (!statRequest || statRequest.textPass) return textRequest;
   const { systemPrompt, messages, maxTokens, anatomy } = textRequest;
   return {
     ...labeledRequest(
-      { ...shared, maxTokens: statSchemaCap(statRequest.targets.length) },
-      systemTiled(prompts.system, system),
+      { ...shared, maxTokens: statSchemaCap(statRequest.targets.length, 1 + statRequest.entityKeys.length) },
+      systemTiled(prompts.system, { ...values.ctx, ...statRequest.context }),
       userTiled(prompts.user, user),
     ),
     responseSchema: statRequestSchema(statRequest),
-    textFallback: { systemPrompt, messages, maxTokens, anatomy },
+    // With no stat of the player's, the text pass has nothing to ask.
+    ...(textStats > 0 && { textFallback: { systemPrompt, messages, maxTokens, anatomy } }),
   };
 }
 
-/** How the turn moved the player's stats. */
+/** Whether a stat request has a stat to ask about on the path it takes. No snapshot sends the text pass. */
+export const statRequestReady = (snapshot: StatRequestSnapshot | undefined): boolean =>
+  !snapshot || (snapshot.textPass ? playerTargets(snapshot) : snapshot.targets).length > 0;
+
+/** How the turn moved every present owner's stats. */
 const statUpdatesPass: TurnPassRecord<ReturnType<typeof parseStatUpdates>> = {
   id: 'statUpdates',
   type: 'statUpdates',
@@ -479,6 +485,8 @@ const statUpdatesPass: TurnPassRecord<ReturnType<typeof parseStatUpdates>> = {
   fanOut: false,
   // A world with no live stats would only get hallucinated stat names that match nothing.
   isDue: (input) => input.settings.statUpdatesEnabled && input.settings.statCount > 0,
+  // Entities join once the narration names who is present, and the text pass skips them.
+  isReady: (material) => statRequestReady(material.statRequest),
   buildRequest: (input, material) => statUpdatesRequest(
     { system: input.prompts.statUpdates, user: input.prompts.statUpdatesUser },
     { ctx: material.ctx, action: material.effectiveAction, narration: material.narration },

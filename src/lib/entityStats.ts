@@ -1,12 +1,13 @@
 // Entity stats in play: each authored entity's stat values, seeded at a new game and backfilled on load, and
 // the owners whose regen and code run each turn.
 
-import type { Entity, EntityStatValues, PersonaRef, PlayerStat, Trait } from '@/types';
+import type { Entity, EntityStatChanges, EntityStatValues, PersonaRef, PlayerStat, Trait } from '@/types';
 import { inCast, playsAs } from './bearers';
 import { backfillPlayerStats } from './statBackfill';
-import { activeStatEnabled } from './traitEffects';
+import { activeStatEnabled, enabledStats } from './traitEffects';
 import { seedNewGameStats } from './traitRuntime';
-import { regenOwners, statsOf, type OwnerStats, type StatOwner } from './statOwners';
+import { PLAYER_OWNER, regenOwners, statsOf, type OwnerStats, type StatOwner } from './statOwners';
+import { applyStatResponse, type StatRequestOwner, type StatResponse, type StatUpdateDiagnostic } from './statRequest';
 import { overlayStatCodeResult, type OwnerCodeResult, type OwnerCodeTurn } from './statCodeTurn';
 
 type StatEntity = Pick<Entity, 'id' | 'stats'>;
@@ -40,18 +41,75 @@ export function withEntityRegen(values: EntityStatValues, owners: readonly StatO
 }
 
 /** Each owner's part of a code run. `hours` null is the before box, which takes no regen. `prepare` readies an
- *  owner's stats for the sandbox, after the tick. */
+ *  owner's stats for the sandbox, after the tick. With `asks`, `owners` hold this turn's AI changes, and
+ *  `previous` the values from before them. */
 export function entityCodeTurns(
   owners: readonly StatOwner[], hours: number | null, prepare: (ownerId: string, stats: PlayerStat[]) => PlayerStat[],
+  { previous, asks }: { previous?: OwnerStats; asks?: Readonly<Record<string, OwnerCodeTurn['asks']>> } = {},
 ): OwnerCodeTurn[] {
   const tick = hours === null ? null : regenOwners(owners, hours);
   return owners.map((owner) => ({
     id: owner.id,
     stats: prepare(owner.id, tick ? [...statsOf(tick.stats, owner.id)] : [...owner.stats]),
     enabled: owner.enabled,
-    previous: owner.stats,
+    previous: previous?.[owner.id] ?? owner.stats,
     regenApplied: tick?.applied[owner.id] ?? {},
+    ...(asks?.[owner.id]?.length && { asks: asks[owner.id] }),
   }));
+}
+
+/** The present entities whose live stats join the player's in the stat request, each once, in `present` order.
+ *  `present` holds the entities the narration confirmed, names resolved. The played persona stays out. `prepare`
+ *  readies an owner's live stats for the request. */
+export function statRequestOwners(
+  present: readonly Entity[], values: OwnerStats, persona: PersonaRef | undefined,
+  prepare: (stats: PlayerStat[]) => PlayerStat[],
+): StatRequestOwner[] {
+  const seen = new Set<string>();
+  return present.flatMap((entity) => {
+    const held = values[entity.id];
+    if (!held || seen.has(entity.id) || !inCast(entity, persona)) return [];
+    seen.add(entity.id);
+    const stats = prepare(enabledStats([...held], activeStatEnabled(held, ENTITY_STAT_TRAITS)));
+    return stats.length ? [{ id: entity.id, name: entity.name, stats }] : [];
+  });
+}
+
+/** `values` with each entity owner's updates from `response` applied, max before value, by identity. The
+ *  diagnostics are each owner's own: an owner the playthrough no longer holds reports every update missing. */
+export function applyEntityStatResponse(
+  values: EntityStatValues, response: StatResponse,
+): { values: EntityStatValues; diagnostics: StatUpdateDiagnostic[] } {
+  const ownerIds = [...new Set(response.updates.map((u) => u.ownerId).filter((id) => id !== PLAYER_OWNER))];
+  if (!ownerIds.length) return { values, diagnostics: [] };
+  // The response's own diagnostics go out with the player's apply, once.
+  const updatesOnly = { ...response, diagnostics: [] };
+  const next = { ...values };
+  const diagnostics: StatUpdateDiagnostic[] = [];
+  for (const ownerId of ownerIds) {
+    const held = values[ownerId] ?? [];
+    const live = new Set(enabledStats(held, activeStatEnabled(held, ENTITY_STAT_TRAITS)).map((s) => s.id));
+    const applied = applyStatResponse(held, updatesOnly, live, ENTITY_STAT_TRAITS, ownerId);
+    if (values[ownerId]) next[ownerId] = applied.stats;
+    diagnostics.push(...applied.diagnostics);
+  }
+  return { values: next, diagnostics };
+}
+
+/** What each entity stat moved from `baseline` to `values`, by owner, then stat id. Unmoved stats, and owners
+ *  `baseline` lacks, are left out. */
+export function entityStatDeltas(values: EntityStatValues, baseline: EntityStatValues): EntityStatChanges {
+  const out: EntityStatChanges = {};
+  for (const [ownerId, stats] of Object.entries(values)) {
+    const before = baseline[ownerId];
+    if (!before) continue;
+    const moved = Object.fromEntries(stats.flatMap((stat) => {
+      const from = before.find((b) => b.id === stat.id);
+      return from && from.value !== stat.value ? [[stat.id, stat.value - from.value]] : [];
+    }));
+    if (Object.keys(moved).length) out[ownerId] = moved;
+  }
+  return out;
 }
 
 /** Each owner's code result laid onto the latest `values`, which may have moved since the run read its

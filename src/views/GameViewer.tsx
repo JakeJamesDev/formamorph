@@ -15,7 +15,7 @@ import { useAccountDeletion } from "@/contexts/AccountDeletionContext";
 import { type StatClock } from "@/lib/statCodeExecutor";
 import { overlayStatCodeResult, playthroughPlaceholderSet, runStatCodeTurn, withPinWrites, type StatCodeTurn } from "@/lib/statCodeTurn";
 import {
-  entityCodeTurns, entityStatOwners, seedEntityStats, withEntityRegen, withOwnerCodeResults,
+  applyEntityStatResponse, entityCodeTurns, entityStatOwners, seedEntityStats, statRequestOwners, withEntityRegen, withOwnerCodeResults,
 } from "@/lib/entityStats";
 import type { StatCodeTiming } from "@/lib/statCodeTiming";
 import { Button } from "@/components/ui/button";
@@ -118,6 +118,7 @@ import { recordParityRequest, recordParityResponse, recordParityTurn } from "../
 import {
   TURN_PASS_CAPS,
   choicesSystemPrompt,
+  statRequestReady,
   statUpdatesRequest,
   summaryUserMessage,
   discoverEntityPass,
@@ -131,7 +132,7 @@ import { planTurn, planHasPass } from "../lib/turnPipeline/planTurn";
 import { runTurn, type TurnAdvance, type TurnRequestAdapter } from "../lib/turnPipeline/turnRunner";
 import { computeTurnCommit, type TurnCommit } from "../lib/turnPipeline/computeTurnCommit";
 import { classifyTurnError, type TurnErrorKind } from "../lib/turnPipeline/turnErrors";
-import { emptyTurnMaterial, type TurnMaterial, type TurnPassRequest, type TurnPlanInput, type TurnPrompts, type TurnSettings } from "../lib/turnPipeline/turnPlan";
+import { emptyTurnMaterial, type TurnMaterial, type TurnPassRequest, type TurnPassSubject, type TurnPlanInput, type TurnPrompts, type TurnSettings } from "../lib/turnPipeline/turnPlan";
 import { parseTurns, buildVerbatimHistory, buildBandedHistory, extractKeywords, type BandCounts } from "../lib/turnBanding";
 import { anatomyRegions, toAnatomyBlocks, type RequestAnatomy } from "../lib/requestAnatomy";
 import { asTextMessage } from "../lib/aiRequest/imageParts";
@@ -570,6 +571,9 @@ const GameViewer = ({
     setOwnedTraits,
     entityStats,
     setEntityStats,
+    setEntityStatBaseline,
+    resetEntityStats,
+    setSelectedEntityId,
     codePins,
     setCodePins,
     recentStatChanges,
@@ -1546,7 +1550,7 @@ const GameViewer = ({
   // (not the current, already-changed stats), so repeated re-rolls don't stack.
   const handleRegenerateStats = (page = currentPage) => {
     const target = partialRegenTarget(page);
-    if (!target || !statUpdatesEnabled || activeStats.length === 0) return;
+    if (!target || !statUpdatesEnabled || requestStatCount === 0) return;
     const preTurn = regenerateState(gameStates, initialStateRef.current, page);
     if (!preTurn?.playerStats) return;
     const { prev, action } = target;
@@ -1564,7 +1568,7 @@ const GameViewer = ({
       // The turn's code writes go back to the pre-turn Code Pins and traits, so stat code re-makes them once.
       // Entity stats too: no ask resets them, so without this the replayed regen and code would stack.
       const toPreTurn = () => {
-        setEntityStats(preTurn.entityStats ?? {});
+        resetEntityStats(preTurn.entityStats ?? {});
         setCodePins(preTurn.codePins ?? {});
         setPlayerTraits(preTurn.playerTraits);
         setDisabledTraitIds(preTurn.disabledTraitIds ?? []);
@@ -1589,12 +1593,14 @@ const GameViewer = ({
         const snapshot = statRequestFor(enabledStats(
           written ? resolveStatNames(written.playerStats ?? [], resolvePH) : playerStatsRef.current,
           statEnabledRef.current,
-        ));
-        const response = await requestStats(
-          contextValues(null, turnCodeView(written)), snapshot, action, prev.narration ?? "", signal,
-        );
+        ), presentEntitiesOf(splitParticipants(prev.entities ?? [], liveScene(null, turnCodeView(written)).entities, []).diary), base.entityStats ?? {});
+        // A turn with nothing to ask about replays its regen and code over no asks, as the live turn did.
+        const parsed: StatResponse = statRequestReady(snapshot)
+          ? readStatResponse(await requestStats(
+            contextValues(null, turnCodeView(written)), snapshot, action, prev.narration ?? "", signal,
+          ), snapshot)
+          : { requestId: snapshot.id, updates: [], diagnostics: [] };
         if (signal.aborted) return;
-        const parsed = readStatResponse(response, snapshot);
         const statChanges = statResponseChanges(parsed);
         const statCode = applyStatChanges(parsed, {
           deltaHours: turnHours,
@@ -1809,6 +1815,12 @@ const GameViewer = ({
   // The latest committed entity stats, which the turn callbacks read as they read `rawPlayerStatsRef`.
   const entityStatsRef = useRef(entityStats);
   entityStatsRef.current = entityStats;
+  // The live stats a stat request could hold: the player's and every entity's that can be present.
+  const requestStatCount = useMemo(
+    () => activeStats.length
+      + statRequestOwners(codeEntities.world, entityStats, personaRef, (owned) => owned).reduce((n, owner) => n + owner.stats.length, 0),
+    [activeStats, codeEntities, entityStats, personaRef],
+  );
 
   // The same derivation for a paged-back turn, so history shows the stats that were live on that turn.
   const viewActiveStats = useMemo(
@@ -2117,7 +2129,7 @@ const GameViewer = ({
     concurrentTurnRequests,
     choicesEnabled,
     statUpdatesEnabled,
-    statCount: activeStats.length,
+    statCount: requestStatCount,
     locationChangeEnabled,
     locationAutoApply,
     aiClock,
@@ -2366,6 +2378,8 @@ const GameViewer = ({
       // Drain last turn's stat-bar colors and fade any lingering delta text now (they clear during the AI
       // wait), so this turn's changes animate onto clean bars.
       drainStatFeedback();
+      // This turn's entity deltas count from here, before the before box moves anything.
+      setEntityStatBaseline(entityStatsRef.current);
       // Clear the box now (the action is captured in `action`), so anything the player types
       // after choices unlock the box isn't wiped when the turn finishes.
       setPlayerInput("");
@@ -2602,9 +2616,12 @@ const GameViewer = ({
             if (!planHasPass(plan, "choices")) setChoicesReady(true);
             // The scene's cast, whose text resolved with each owner: the diary pass sends it as is.
             const fanOut = splitParticipants(turnParticipants, liveScene(null, codeView).entities, suppressedCharacterNames);
+            // The stat request follows the same confirmed participants: those who took part bring their stats.
             return {
               subjects: { ...material.subjects, ...fanOut },
-              statRequest: statRequestFor(enabledStats(playerStatsRef.current, statEnabledRef.current)),
+              statRequest: statRequestFor(
+                enabledStats(playerStatsRef.current, statEnabledRef.current), presentEntitiesOf(fanOut.diary), entityStatsRef.current,
+              ),
             };
           }
           return;
@@ -2849,6 +2866,8 @@ const GameViewer = ({
       before: PlayerStat[], afterAsks: PlayerStat[], asks: StatCodeTurn["asks"], clock: StatClock,
       preTurn?: PreTurnCodeState,
       timing: StatCodeTiming = 'after',
+      // The entities' values after this turn's AI asks, and the asks, by owner.
+      entityTurn?: { values: EntityStatValues; asks: Record<string, StatCodeTurn["asks"]> },
     ): Promise<TurnCodeState | null> => {
       try {
         const enabled = statEnabledRef.current;
@@ -2861,13 +2880,15 @@ const GameViewer = ({
         // authored name, so a chip in a name reads the same in every playthrough.
         const regenStats = tick ? [...statsOf(tick.stats, PLAYER_OWNER)] : afterAsks;
         const stats = resolveStatText(refreshSavedStats(regenStats, authoredStats), resolvePH);
-        // Every entity in the playthrough runs beside the player, over the same tick. No entity has asks yet.
-        const entityBase = preTurn ? preTurn.entityStats ?? {} : entityStatsRef.current;
+        // Every entity in the playthrough runs beside the player, over the same tick, each over its own asks.
+        const entityPrevious = preTurn ? preTurn.entityStats ?? {} : entityStatsRef.current;
+        const entityBase = entityTurn?.values ?? entityPrevious;
         const owners = entityCodeTurns(
           entityOwnersOf(entityBase), timing === 'before' ? null : clock.deltaHours ?? FLAT_HOURS_PER_TURN,
           (ownerId, ticked) => resolveStatText(
             refreshSavedStats(ticked, codeEntities.world.find((e) => e.id === ownerId)?.stats ?? []), resolvePH,
           ),
+          { previous: entityPrevious, asks: entityTurn?.asks },
         );
         // The same slice the player's checkbox switches, so a code switch is that switch.
         const live = liveCodeStateRef.current;
@@ -2920,7 +2941,7 @@ const GameViewer = ({
           entityStats: nextEntityStats,
         });
         if (!result.traits && result.moved.length === 0 && result.boundsChanged.length === 0) {
-          return nextPins === basePins && nextEntityStats === entityBase ? null : stateAfterRun();
+          return nextPins === basePins && nextEntityStats === entityPrevious ? null : stateAfterRun();
         }
         // The bars are keyed by the name the player reads, so the run's stats resolve theirs here.
         const codeChanges = appliedStatDeltas(stats, resolveStatNames(result.stats, resolvePH));
@@ -2958,9 +2979,18 @@ const GameViewer = ({
       const inForce = baseTraits ? inForceOn(baseTraits) : statTraits;
       const applied = applyStatResponse(baseStats, response, live, inForce, PLAYER_OWNER);
       const directApplied = applied.stats;
+      const entityBase = base ? base.entityStats ?? {} : entityStatsRef.current;
+      const entityApplied = applyEntityStatResponse(entityBase, response);
+      const diagnostics = [...applied.diagnostics, ...entityApplied.diagnostics];
       setDebugTurns((turns) => turns.map((turn) => ({ ...turn, requests: turn.requests.map((request) =>
-        request.statRequestId === response.requestId ? { ...request, statDiagnostics: applied.diagnostics } : request,
+        request.statRequestId === response.requestId ? { ...request, statDiagnostics: diagnostics } : request,
       ) })));
+      // Onto the latest values, owner by owner: regen and code land on these the same way.
+      if (entityApplied.values !== entityBase) {
+        setEntityStats((prev) => ({ ...prev, ...Object.fromEntries(
+          Object.entries(entityApplied.values).filter(([id, stats]) => stats !== entityBase[id] && prev[id]),
+        ) }));
+      }
 
       // Show the *actual* applied change (clamped to min/max and honoring noIncrease/noDecrease), not the
       // raw request — so a stat pinned at its cap shows no delta, and the live bar/text match the history
@@ -2978,10 +3008,13 @@ const GameViewer = ({
       setHeldStatChanges((prev) => ({ ...prev, ...actualChanges }));
 
       setPlayerStats(directApplied);
-      const asks = response.updates.filter((update) => update.ownerId === PLAYER_OWNER);
-      await runStatCode(baseStats, directApplied, asks, clock, base ?? undefined);
+      const asksOf = (ownerId: string) => response.updates.filter((update) => update.ownerId === ownerId);
+      await runStatCode(baseStats, directApplied, asksOf(PLAYER_OWNER), clock, base ?? undefined, 'after', {
+        values: entityApplied.values,
+        asks: Object.fromEntries(Object.keys(entityApplied.values).map((id) => [id, asksOf(id)])),
+      });
     },
-    [runStatCode, setPlayerStats, setRecentStatChanges, setHeldStatChanges, resolvePH, statTraits, traits, inForceOn],
+    [runStatCode, setPlayerStats, setEntityStats, setRecentStatChanges, setHeldStatChanges, resolvePH, statTraits, traits, inForceOn],
   );
 
   // Discard a turn's dangling, unpaired user message. The failure exits (empty narration, request error)
@@ -3003,7 +3036,7 @@ const GameViewer = ({
       setAppliedTraitValues(undo.appliedTraitValues ?? {});
       setCascadeOffTraitIds(undo.cascadeOffTraitIds ?? {});
       setOwnedTraits(undo.ownedTraits ?? {});
-      setEntityStats(undo.entityStats ?? {});
+      resetEntityStats(undo.entityStats ?? {});
       setRecentStatChanges({});
       setHeldStatChanges({});
     }
@@ -3737,9 +3770,16 @@ const GameViewer = ({
       signal,
     });
 
-  /** A stat request snapshot, marked for the text pass when its endpoint has refused the schema. */
-  const statRequestFor = (stats: readonly PlayerStat[]): StatRequestSnapshot =>
-    createStatRequest(stats, PLAYER_OWNER, { textPass: !schemaAccepted(resolveEndpointForKind("statUpdates").reasoning) });
+  /** A stat request snapshot over the player's live `stats` and the live stats of the `present` entities in
+   *  `values`, marked for the text pass when its endpoint has refused the schema. */
+  const statRequestFor = (stats: readonly PlayerStat[], present: readonly Entity[], values: EntityStatValues): StatRequestSnapshot =>
+    createStatRequest(stats, PLAYER_OWNER, {
+      textPass: !schemaAccepted(resolveEndpointForKind("statUpdates").reasoning),
+      entities: statRequestOwners(present, values, personaRef, (owned) => resolveStatNames(owned, resolvePH)),
+    });
+  /** The defined entities among a turn's participants, as the diary fan-out resolves them. */
+  const presentEntitiesOf = (participants: readonly TurnPassSubject[]): Entity[] =>
+    participants.flatMap((subject) => subject.entity ? [subject.entity] : []);
 
   // DEV-only: expose window.__baseline for the fork-local test harness (no-op in production builds).
   const debugTurnsRef = useRef(debugTurns);
@@ -4270,7 +4310,9 @@ const GameViewer = ({
       for (const line of startingTraitLog([...chosenList, ...played.applied], traitLabel)) addLogEntry(line);
       commitTraitState(seedState);
       // Every authored entity's stats, from the authored list for the same reason as the player's.
-      setEntityStats(seedEntityStats(codeEntities.world));
+      resetEntityStats(seedEntityStats(codeEntities.world));
+      // A new game starts with no entity picked in the stat panel or the entity view.
+      setSelectedEntityId(undefined);
 
       // Use the player's chosen starting location, else a random starting point (fallback: any location).
       const location = resolveStartingLocation(locations, initialLocationId);
@@ -4350,6 +4392,8 @@ const GameViewer = ({
   }, [
     initialSaveId,
     loadGame,
+    resetEntityStats,
+    setSelectedEntityId,
     initialTraits,
     initialOwnedTraits,
     traitEntities,
@@ -4374,7 +4418,6 @@ const GameViewer = ({
     resolveWith,
     resolveOpening,
     commitTraitState,
-    setEntityStats,
     codeEntities,
     resolveTraitText,
     changeLocation,

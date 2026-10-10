@@ -67,6 +67,9 @@ export function AiContextSection({ title, open, onOpenChange, children }: { titl
 export function AiContextRequestCard({ record, index, folded, isOpen, onOpenChange, renderText, chips }: AiContextRequestCardProps) {
   const text = (value: string, slot: AiContextTextSlot) => (renderText ? renderText(value, slot) : value);
   const groupOpen = isOpen('group');
+  // The text-pass mark is a notice, and skipped entities get their own line.
+  const skippedEntities = record.statDiagnostics?.filter(({ reason }) => reason === 'skipped') ?? [];
+  const skippedUpdates = record.statDiagnostics?.filter(({ reason }) => reason !== 'textPass' && reason !== 'skipped') ?? [];
   return (
     <Collapsible open={groupOpen} onOpenChange={(o) => onOpenChange('group', o)} className={BOX}>
       <CollapsibleTrigger asChild>
@@ -136,11 +139,14 @@ export function AiContextRequestCard({ record, index, folded, isOpen, onOpenChan
             {record.statDiagnostics?.some(({ reason }) => reason === 'textPass') && (
               <p className="mt-2 text-helper text-muted-foreground">The stat reply came back as plain text, not JSON.</p>
             )}
-            {record.statDiagnostics?.some(({ reason }) => reason !== 'textPass') && (
+            {skippedEntities.length > 0 && (
               <p className="mt-2 whitespace-pre-wrap break-words text-helper text-muted-foreground">
-                Skipped stat updates: {record.statDiagnostics
-                  .filter(({ reason }) => reason !== 'textPass')
-                  .map(({ name, reason }) => `${name} (${reason})`).join('; ')}
+                Skipped entity stats: {skippedEntities.map(({ name }) => name).join(', ')}
+              </p>
+            )}
+            {skippedUpdates.length > 0 && (
+              <p className="mt-2 whitespace-pre-wrap break-words text-helper text-muted-foreground">
+                Skipped stat updates: {skippedUpdates.map(({ name, reason }) => `${name} (${reason})`).join('; ')}
               </p>
             )}
           </AiContextSection>

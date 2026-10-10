@@ -148,6 +148,27 @@ describe('RightPanel — entity stats', () => {
     });
     expect(within(section()!).getByText('11 / 100')).toBeInTheDocument();
   });
+
+  it("shows this turn's change on an entity row, from where the turn started", () => {
+    renderRightPanel({}, {
+      ...stage,
+      seed: (g) => {
+        stage.seed(g);
+        g.setEntityStatBaseline({ ...values, bram: [statFixture('Trust', 34), ...values.bram.slice(1)] });
+        g.setSelectedEntityId('bram');
+      },
+    });
+    expect(within(section()!).getByText('+6')).toBeInTheDocument();
+  });
+
+  it("shows the viewed turn's recorded change on a past page", () => {
+    renderRightPanel({}, {
+      ...stage, page: 1,
+      turns: [{ ...turns[0], entityStatChanges: { bram: { trust: -4 } } }, turns[1]],
+      seed: (g) => { stage.seed(g); g.setSelectedEntityId('bram'); },
+    });
+    expect(within(section()!).getByText('-4')).toBeInTheDocument();
+  });
 });
 
 describe('the entity view and the stat panel', () => {

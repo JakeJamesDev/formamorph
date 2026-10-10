@@ -1244,6 +1244,7 @@ export const RightPanel = ({
     viewTraits: savedTraits,
     viewDisabledTraitIds,
     viewOwnedTraits,
+    viewEntityStatChanges,
     viewStatChanges: recentStatChanges,
     recentStatFading,
     heldStatChanges,
@@ -1446,9 +1447,9 @@ export const RightPanel = ({
                     renderStat={(stat) => (
                       <StatRow
                         stat={stat}
-                        // The entity row change: no entity stat change reaches the panel yet.
-                        change={0}
-                        barDelta={0}
+                        // What the shown turn moved this stat: live, this turn's; on a past page, that turn's.
+                        change={viewEntityStatChanges[shownEntity.id]?.[stat.id] ?? 0}
+                        barDelta={viewEntityStatChanges[shownEntity.id]?.[stat.id] ?? 0}
                         draining={false}
                         page={currentPage}
                         isViewingPast={isViewingPast}
@@ -1469,7 +1470,7 @@ export const RightPanel = ({
               busy={totalPages === 0 || isWaitingForAI || isRevealingNarration || sceneImageJob !== null}
               editing={isEditMode}
               onEditingChange={setIsEditMode}
-              onRegenerate={statUpdatesEnabled && playerStats.length > 0 ? () => onRegenerateStats(currentPage) : undefined}
+              onRegenerate={statUpdatesEnabled && (playerStats.length > 0 || entitiesShowStats) ? () => onRegenerateStats(currentPage) : undefined}
             />
           </ScrollArea>
         </TabsContent>

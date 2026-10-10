@@ -13,7 +13,7 @@ import { pageAssistantIndex } from '@/lib/turnHistory';
 import { LeftPanel, MiddlePanel, RightPanel } from '@/components/game/GamePanels';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { defaultSystemPrompt } from '@/components/game/GamePrompts';
-import type { AITurnResult, ChatMessage, EntityStatValues, GameState, PlayerStat, SceneEntity, Stat, Trait, World } from '@/types';
+import type { AITurnResult, ChatMessage, EntityStatChanges, EntityStatValues, GameState, PlayerStat, SceneEntity, Stat, Trait, World } from '@/types';
 
 /**
  * Render helper for the three gameplay panels (`GamePanels.tsx`).
@@ -73,6 +73,8 @@ export interface TurnFixture {
   scene?: SceneEntity[];
   /** Each entity's stat values as this turn left them. */
   entityStats?: EntityStatValues;
+  /** What this turn moved each entity stat. */
+  entityStatChanges?: EntityStatChanges;
 }
 
 export interface PanelHarnessOptions {
@@ -152,6 +154,7 @@ function snapshotFixture(turn: TurnFixture, stats: PlayerStat[]): GameState {
     playerStats: turn.stats ?? stats,
     playerTraits: turn.traits ?? [],
     ...(turn.entityStats ? { entityStats: turn.entityStats } : {}),
+    ...(turn.entityStatChanges ? { entityStatChanges: turn.entityStatChanges } : {}),
     visibleEntities: turn.scene ?? [],
     logEntries: [],
     gameplayText: turn.narration,
