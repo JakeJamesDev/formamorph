@@ -195,7 +195,7 @@ export function settleKey(key: StepKey, edits: SliceEdit[], holders: readonly Sl
   return key;
 }
 
-const sameOrder = (a: string[], b: string[]) => a.length === b.length && a.every((id, i) => id === b[i]);
+const sameOrder = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((id, i) => id === b[i]);
 
 /** Whether the ids both orders share sit in a different sequence. */
 function reordered(target: string[], source: string[]): boolean {
@@ -302,6 +302,13 @@ const sameIds = (a?: readonly string[], b?: readonly string[]) => (a && b ? same
 const sameKey = (a?: StepKey, b?: StepKey) =>
   !!a && !!b && a.slice === b.slice && a.id === b.id && sameIds(a.ids, b.ids) && a.field === b.field;
 
+/** Whether two writes came from one place. A write without an Origin matches any. */
+function sameOrigin(a?: StepOrigin, b?: StepOrigin): boolean {
+  if (!a || !b) return true;
+  return a.tab === b.tab && a.subTab === b.subTab && a.view === b.view && a.field === b.field
+    && sameOrder(a.ids ?? [], b.ids ?? []);
+}
+
 export interface RecordOptions {
   key?: StepKey;
   /** The event-loop tick the write landed in; writes that share one fold into one Step. */
@@ -313,8 +320,8 @@ export interface RecordOptions {
 
 /**
  * Remembers a write and drops the undone future. Merge precedence, highest first: an open group swallows every
- * write; a keyed write joins the previous Step when the key matches within the pause; a write in the previous
- * Step's tick folds into it.
+ * write; a keyed write joins the previous Step when the key matches within the pause and the Origin matches; a
+ * write in the previous Step's tick folds into it.
  */
 export function record(history: EditorHistory, edits: SliceEdit[], options: RecordOptions = {}): EditorHistory {
   if (!edits.length) return history;
@@ -330,7 +337,8 @@ export function record(history: EditorHistory, edits: SliceEdit[], options: Reco
 
   if (history.group?.started && top) return merge(top);
   if (!history.group && !history.sealed && top) {
-    if (sameKey(options.key, top.key) && now - top.at < history.pauseMs) return merge(top);
+    const typingRun = sameKey(options.key, top.key) && now - top.at < history.pauseMs;
+    if (typingRun && sameOrigin(options.origin, top.origin)) return merge(top);
     if (options.tick !== undefined && top.tick === options.tick) return merge(top);
   }
 

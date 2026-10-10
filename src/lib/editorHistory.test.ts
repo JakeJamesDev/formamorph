@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   beginGroup, canRedo, canUndo, createHistory, diffSlice, endGroup, HISTORY_LIMIT, historyShortcut, jumpTo, markSaved,
   record, recordFieldMove, redo, replaceRecords, settleKey, undo, WORLD_SLICES,
-  type EditorHistory, type RecordOptions, type SliceEdit, type WorldSlices,
+  type EditorHistory, type RecordOptions, type SliceEdit, type StepOrigin, type WorldSlices,
 } from "./editorHistory";
 import { joinLabelParts, stepLabel, stepLabelParts } from "./editorHistoryLabels";
 import type { Entity, GameLocation, Placeholder, Stat } from "@/types";
@@ -210,6 +210,80 @@ describe("merge precedence", () => {
 
     typed(s, "Fo", { key: descriptionKey, tick: 2, now: 300 });
     expect(s.history.steps).toHaveLength(1);
+  });
+
+  describe("an Origin", () => {
+    const here: StepOrigin = { tab: "stats", ids: ["hunger"], subTab: "details", view: "list", field: "stats.hunger.description" };
+    const run = (first: StepOrigin | undefined, second: StepOrigin | undefined) => {
+      const s = session();
+      typed(s, "F", { key: descriptionKey, now: 0, origin: first });
+      typed(s, "Fo", { key: descriptionKey, now: 300, origin: second });
+      return s;
+    };
+
+    it("merges a keyed run typed in one place", () => {
+      const s = run(here, { ...here, ids: [...here.ids!] });
+      expect(s.history.steps).toHaveLength(1);
+      expect(s.history.steps[0].origin).toEqual(here);
+    });
+
+    it.each([
+      ["field", { field: "stats.hunger.name" }],
+      ["tab", { tab: "traits" }],
+      ["selection", { ids: ["hunger", "thirst"] }],
+      ["selection order", { ids: ["thirst", "hunger"] }],
+      ["selected record", { ids: ["thirst"] }],
+      ["sub-view", { subTab: "rules" }],
+      ["Locations view", { view: "canvas" }],
+    ] as const)("starts a new Step for a write from a different %s within the pause", (_name, change) => {
+      const s = run(here, { ...here, ...change });
+      expect(s.history.steps).toHaveLength(2);
+      expect(s.history.steps[1].origin).toEqual({ ...here, ...change });
+    });
+
+    it("starts a new Step when the second write drops the field", () => {
+      const { field: _field, ...fieldless } = here;
+      expect(run(here, fieldless).history.steps).toHaveLength(2);
+    });
+
+    it("reads an absent selection as an empty one", () => {
+      const s = run({ tab: "overview" }, { tab: "overview", ids: [] });
+      expect(s.history.steps).toHaveLength(1);
+    });
+
+    it("merges writes that carry no Origin", () => {
+      expect(run(undefined, undefined).history.steps).toHaveLength(1);
+    });
+
+    it("merges a write without an Origin into a Step that has one, and keeps the first", () => {
+      const s = run(here, undefined);
+      expect(s.history.steps).toHaveLength(1);
+      expect(s.history.steps[0].origin).toEqual(here);
+    });
+
+    it("keeps the Step's first Origin through a merge", () => {
+      const s = session();
+      typed(s, "F", { key: descriptionKey, now: 0, origin: here });
+      typed(s, "Fo", { key: descriptionKey, now: 300, origin: { ...here } });
+      typed(s, "Foo", { key: descriptionKey, now: 600, origin: { ...here, ids: ["hunger"] } });
+      expect(s.history.steps).toHaveLength(1);
+      // The merged writes carry equal but distinct Origins, so only the first one is the same object.
+      expect(s.history.steps[0].origin).toBe(here);
+    });
+
+    it("folds a keyed write from another place into the Step of its own tick", () => {
+      const s = session();
+      typed(s, "F", { key: descriptionKey, tick: 7, now: 0, origin: here });
+      typed(s, "Fo", { key: descriptionKey, tick: 7, now: 300, origin: { ...here, field: "stats.hunger.name" } });
+      expect(s.history.steps).toHaveLength(1);
+    });
+
+    it("folds writes in one tick into one Step whatever their Origins", () => {
+      const s = session();
+      s.write({ stats: s.world.stats.slice(1) }, { tick: 7, origin: here });
+      s.write({ locations: s.world.locations.slice(1) }, { tick: 7, origin: { ...here, tab: "locations" } });
+      expect(s.history.steps).toHaveLength(1);
+    });
   });
 
   it("starts a new Step after a group ends, and after an undo", () => {
