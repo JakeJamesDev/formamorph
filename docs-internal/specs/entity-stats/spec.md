@@ -98,6 +98,9 @@ Rulings from the grill, numbered as asked.
 - **Q57** (ticket 05, user ruling) Ticket 05 lands entity-row deltas that hold for the whole turn. Ticket 18 brings the player's timing to entity rows (the chip fades after 10 s, the band drains at submit) through one per-owner delta piece shared by player and entity rows.
 - **Q58** (ticket 08) Q55 is built now. The new Emberwatch stats get fresh descriptor ids, and the in-game Traits tab reads each bearer's trait stat changes against that bearer's own stats. Ticket 13 takes the hazards of a persona that owns a stat with a world stat's id: a doubled picker item, an own-first rule that can't reach the world stat, and false notes.
 
+- **Q59** (ticket 10) A stat group shows its heading when its subtree holds any stat, as the in-game panel does, and its subgroups nest under it. A group whose subtree holds no stat is left out. Loose stats come first, then groups in authored order, so a world with no groups renders byte for byte as before.
+- **Q60** (ticket 10, user ruling) Ticket 10's probe bar is relative: the grouped request against the shipped flat request in the same batch, on both models. Exact and recall stay within 5 points, wrong signs stay at 0, and invented changes don't rise. C3 runs in the batch for the record. Ticket 17 keeps the absolute Q28 bar.
+
 Derived from Q7 and confirmed with the summary:
 
 - An entity stat's morph bindings drive that entity's own model.
