@@ -1,7 +1,7 @@
 import { TransitionSeries } from '@remotion/transitions';
 import { Fragment, type ReactNode } from 'react';
 import { Composition, Folder } from 'remotion';
-import { CANVAS, type Layout } from './layout';
+import { CANVAS, FPS, type Layout } from './layout';
 import type { CameraPath, CameraStop } from './parts/FrameCamera';
 import { Stage } from './parts/Stage';
 import { FrameScene } from './scenes/FrameScene';
@@ -10,7 +10,6 @@ import { StackScene } from './scenes/StackScene';
 import { TypedTurn } from './scenes/TypedTurn';
 import { WordmarkTitle } from './scenes/WordmarkTitle';
 import { SHOTS, TURN_PROMPT } from './shots';
-import { FPS } from './timeline';
 import { joinElement, overlapFrames, type TransitionName } from './transitions';
 
 type LibraryEntry = {

@@ -1,5 +1,8 @@
 export type Layout = 'wide' | 'tall';
 
+/** Both cuts' frame rate. */
+export const FPS = 60;
+
 export type Size = { width: number; height: number };
 
 /** A box in pixels: its top-left corner and its size. */

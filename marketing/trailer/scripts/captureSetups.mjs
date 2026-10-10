@@ -20,8 +20,18 @@ const HELP_ANSWER = [
 /** Page time between two words of the help answer's stream: about 12 words a second, a fast local model's pace. */
 const HELP_WORD_MS = 80;
 
-/** Worlds the community grid lists: the bundled worlds, with no download or like counts. */
-const LISTED = ['emberwatch', 'veilwood', 'drone', 'slime', 'sugarscape', 'rampage'];
+/**
+ * Worlds the community grid lists: the bundled worlds, with no download or like counts. Each has its own author from
+ * the tests' neutral names, apart from the contest's (ruling Q50).
+ */
+const LISTED = [
+  { file: 'emberwatch', author: 'wren_hallow' },
+  { file: 'veilwood', author: 'corrin' },
+  { file: 'drone', author: 'mirelle' },
+  { file: 'slime', author: 'suneater' },
+  { file: 'sugarscape', author: 'saltmarsh' },
+  { file: 'rampage', author: 'quill' },
+];
 
 /**
  * The entries of the router's canned decided contest (`devEventSample.ts`), in its podium order. Each wears
@@ -73,11 +83,11 @@ const listing = ({ id, name, description, author, tags = [], thumbnail, contestE
   thumbnail,
 });
 
-const bundled = (file, index) => {
+const bundled = ({ file, author }, index) => {
   const { worldOverview } = readJson(`src/defaultworlds/${file}.json`);
   return listing({
     id: `00000000-0000-4000-8000-00000000000${index + 1}`, name: worldOverview.name, description: worldOverview.description,
-    author: worldOverview.author, tags: worldOverview.tags, thumbnail: worldOverview.thumbnail,
+    author, tags: worldOverview.tags, thumbnail: worldOverview.thumbnail,
   }, index);
 };
 

@@ -1,6 +1,6 @@
 import { AbsoluteFill, Composition, Folder, Sequence } from 'remotion';
-import { CANVAS, type Layout } from './layout';
-import { FPS, sceneStarts } from './timeline';
+import { CANVAS, FPS, type Layout } from './layout';
+import { sceneStarts } from './timeline';
 import { Trailer } from './Trailer';
 
 /** Scene frames each row samples: entering, settled, holding, late, and leaving into the join. */
@@ -37,7 +37,7 @@ const Sheet = ({ layout, page }: SheetProps) => {
             <div key={`${scene.id}-${offset}`} style={{ ...cell, position: 'relative', overflow: 'hidden', outline: '1px solid #222' }}>
               <div style={{ ...canvas, position: 'absolute', transform: `scale(${cell.width / canvas.width})`, transformOrigin: '0 0' }}>
                 <Sequence from={-at} layout="none">
-                  <Trailer layout={layout} reading={[]} camera={[]} />
+                  <Trailer layout={layout} reading={[]} dense={[]} camera={[]} />
                 </Sequence>
               </div>
               <div style={{ position: 'absolute', left: 6, top: 4, fontFamily: 'monospace', fontSize: 14, color: '#fff', background: 'rgba(0,0,0,.6)', padding: '1px 5px', borderRadius: 4 }}>

@@ -1,21 +1,21 @@
 import type { ComponentProps, ReactNode } from 'react';
 import { cardBox, readCamera, type CameraReading, type CameraUse } from './framing';
-import type { Layout, Rect, SceneProps } from './layout';
+import { FPS, type Layout, type Rect, type SceneProps } from './layout';
 import { copyReads, measurePills, type PillSpec } from './parts/CopyBlock';
 import type { CameraPath, CameraStop } from './parts/FrameCamera';
-import { cardBob, fullFrame, type CardPose } from './parts/GlassCard';
+import { cardBob, cardLandFrames, fullFrame, type CardPose } from './parts/GlassCard';
+import { readDenseHold, type DenseReading } from './holds';
+import { exitStart } from './motion';
 import { CAPTION_PLACE, STACK_CARDS, STACK_PLACE, TURN_CARDS, type CardPair } from './poses';
 import { readLines, type CopyRead, type LineReading } from './reading';
 import { FrameScene, frameCards } from './scenes/FrameScene';
 import { KineticText } from './scenes/KineticText';
-import { StackScene, stackReads, type StackPane } from './scenes/StackScene';
+import { StackScene, paneRise, stackReads, type StackPane } from './scenes/StackScene';
 import { TitleCard, titleReads, type CallToAction } from './scenes/TitleCard';
 import { TypedTurn, turnReads } from './scenes/TypedTurn';
 import { WordmarkTitle } from './scenes/WordmarkTitle';
 import { SHOTS, TURN_PROMPT, shotFor } from './shots';
 import { joinFor, type Join, type TransitionName } from './transitions';
-
-export const FPS = 60;
 
 type SceneEntry = {
   id: string;
@@ -29,6 +29,8 @@ type SceneEntry = {
   cameras: (layout: Layout) => CameraUse[];
   /** What the scene draws over its cards in a layout, for the subject check: caption pills and panel cards. */
   covers: (layout: Layout) => Cover[];
+  /** The frame the scene's dense card starts to rise, for the dense hold check (ruling Q48), or null for a scene with none. */
+  denseRise: number | null;
 };
 
 /** Something drawn over a shot card: a pill column, measured in the browser, or a card at its pose. */
@@ -52,7 +54,10 @@ const shot = (
   reads: CopyRead[],
   cameras: SceneEntry['cameras'] = () => [],
   covers: SceneEntry['covers'] = () => [],
-): SceneEntry => ({ id, durationInFrames, join: joinFor(out), render, reads, cameras, covers });
+): SceneEntry => ({ id, durationInFrames, join: joinFor(out), render, reads, cameras, covers, denseRise: null });
+
+/** Marks the scene's card that rises at frame `rise` as dense: the subject holds more than one thing the eye must find. */
+const dense = (entry: SceneEntry, rise = 0): SceneEntry => ({ ...entry, denseRise: rise });
 
 /** A scene's own props, without the ones every scene gets. */
 type Own<Props> = Omit<Props, keyof SceneProps>;
@@ -169,7 +174,7 @@ const W13 = frameShot('W13', 380, 'section', {
   camera: both(hold(2, 0.75, 0.75)),
 });
 const W14 = frameShot('W14', 305, 'overlap', { shot: COMMUNITY.shot, depth: SHOTS.contest, caption: COMMUNITY.caption, dot: COMMUNITY.dot, camera: both(FULL) });
-const W15 = frameShot('W15', 187, 'section', {
+const W15 = dense(frameShot('W15', 383, 'section', {
   shot: CONTEST.shot,
   depth: SHOTS.community,
   caption: CONTEST.caption,
@@ -177,7 +182,7 @@ const W15 = frameShot('W15', 187, 'section', {
   callout: { region: { x: 0.135, y: 0.205, width: 0.85, height: 0.09 } },
   // Zoomed only as far as keeps the whole podium callout in frame.
   camera: both(hold(1.12, 0.55, 0.46)),
-});
+}));
 const W16 = kinetic('W16', 160, 'overlap', { lines: ['Use any AI model.'] });
 const W17 = frameShot('W17', 310, 'overlap', {
   shot: SHOTS.engine,
@@ -188,7 +193,7 @@ const W17 = frameShot('W17', 310, 'overlap', {
   cards: { tall: SQUARE_TALL },
 });
 const W18 = frameShot('W18', 180, 'overlap', { shot: SHOTS.avatarClip, depth: SHOTS.entity, caption: ['Pick a 3D avatar.'], dot: 'rose', camera: both(FULL) });
-const W19 = title('W19', 360, { text: 'Play free at formamorph.ai', link: 'formamorph.ai' });
+const W19 = title('W19', 392, { text: 'Play free at formamorph.ai', link: 'formamorph.ai' });
 
 /** A tall card at the stack cards' shape, for a single shot whose subject is wider than the 3:4 window shows. */
 const LANDSCAPE_TALL: CardPair = {
@@ -202,7 +207,8 @@ const T06 = stack('T06', 240, 'overlap', [STATS, ENTITY]);
 const T09 = frameShot('T09', 240, 'overlap', { shot: MAP.shot, depth: SHOTS.profile, caption: MAP.caption, dot: MAP.dot, camera: both(MAP.camera), cards: { tall: LANDSCAPE_TALL } });
 const T10 = stack('T10', 290, 'overlap', [PROFILE, TRAVEL]);
 const T10b = frameShot('T10b', 264, 'section', { shot: BLUEPRINTS.shot, depth: SHOTS.profile, caption: BLUEPRINTS.caption, dot: BLUEPRINTS.dot, camera: both(hold(1, 0.31)) });
-const T11 = stack('T11', 312, 'section', [COMMUNITY, CONTEST]);
+/** The contest pane is the dense one. */
+const T11 = dense(stack('T11', 403, 'section', [COMMUNITY, CONTEST]), paneRise(1));
 
 /** The wide cut: storyboard §2. */
 const WIDE: SceneEntry[] = [W03, W04, W05, W06, W07, W08, W09, W10, W11, W10b, W12a, W12, W13a, W13, W14, W15, W16, W17, W18, W19];
@@ -272,4 +278,14 @@ export const cameraReport = async (layout: Layout): Promise<CameraReading[]> => 
 export const readingReport = (layout: Layout): LineReading[] => {
   const scenes = TIMELINES[layout];
   return scenes.flatMap((scene, i) => readLines(scene.id, scene.reads, scene.durationInFrames, joinFrames(scenes, i - 1), joinFrames(scenes, i), FPS));
+};
+
+/** Every dense card in a cut, its hold measured from the frame it lands on the frames no join covers. */
+export const denseReport = (layout: Layout): DenseReading[] => {
+  const scenes = TIMELINES[layout];
+  return scenes.flatMap((scene, i) =>
+    scene.denseRise === null
+      ? []
+      : [readDenseHold(scene.id, scene.denseRise + cardLandFrames(FPS), exitStart(scene.durationInFrames), scene.durationInFrames, joinFrames(scenes, i), FPS)],
+  );
 };

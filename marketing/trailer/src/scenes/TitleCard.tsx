@@ -1,10 +1,10 @@
-import { AbsoluteFill, spring, useCurrentFrame, useVideoConfig } from 'remotion';
-import type { Layout, SceneProps } from '../layout';
+import { AbsoluteFill, useCurrentFrame, useVideoConfig } from 'remotion';
+import { FPS, type Layout, type SceneProps } from '../layout';
 import { ENTER_FRAMES, SPRINGS, springIn, springOpacity } from '../motion';
 import { TITLE_CARDS } from '../poses';
 import { Pills } from '../parts/CopyBlock';
 import { ShotCard, fullFrame } from '../parts/GlassCard';
-import { Wordmark, WordmarkFilter } from '../parts/Wordmark';
+import { GOO_SETTLE_MS, GooWordmark } from '../parts/GooWordmark';
 import type { CopyRead } from '../reading';
 import { SHOTS } from '../shots';
 import { colors, fonts } from '../theme';
@@ -13,17 +13,23 @@ type Placement = {
   /** How far the wordmark block sits above the canvas center. */
   lift: number;
   fontSize: number;
+  /** The widest the wordmark may be; it shrinks to fit. */
+  markWidth: number;
   tagSize: number;
 };
 
 const PLACEMENT: Record<Layout, Placement> = {
-  wide: { lift: 20, fontSize: 200, tagSize: 26 },
-  tall: { lift: 0, fontSize: 170, tagSize: 28 },
+  wide: { lift: 20, fontSize: 200, markWidth: 1700, tagSize: 26 },
+  tall: { lift: 0, fontSize: 170, markWidth: 960, tagSize: 28 },
 };
 
 const TAGLINE = 'AI text RPG';
-/** Frames each part starts to rise. */
-const RISE = { cards: 0, mark: 12, tag: 40, cta: 80 };
+/** Frame the wordmark's first blob is born. */
+const MARK_FRAME = 12;
+/** Frame the wordmark's blobs have all magnetized into place. */
+const SETTLE_FRAME = MARK_FRAME + Math.ceil((GOO_SETTLE_MS / 1000) * FPS);
+/** Frames each part starts to enter. The tagline and the call to action wait for the letters to settle (ruling Q49). */
+const RISE = { cards: 0, mark: MARK_FRAME, tag: SETTLE_FRAME, cta: SETTLE_FRAME + 40 };
 
 /** The call to action: its line, and the part of it drawn in the accent color as a link. */
 export type CallToAction = { text: string; link: string };
@@ -35,17 +41,15 @@ export const titleReads = (durationInFrames: number, cta?: CallToAction): CopyRe
     ...(cta ? [{ text: cta.text, start: RISE.cta }] : []),
   ].map(({ text, start }) => ({ text, start, from: start + ENTER_FRAMES, until: durationInFrames, end: null }));
 
-/** The end card: the wordmark springs in on the stage between two dimmed cards, then the tagline and an optional call-to-action pill with its link in the accent color (ruling Q37). Everything holds to the last frame. */
+/** The end card: the wordmark coalesces from goo on the stage between two dimmed cards, then the tagline and an optional call-to-action pill with its link in the accent color (ruling Q37). Everything holds to the last frame. */
 export const TitleCard = ({ layout, durationInFrames, cta }: SceneProps & { cta?: CallToAction }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const place = PLACEMENT[layout];
-  const mark = spring({ frame: frame - RISE.mark, fps, config: SPRINGS.mark });
   const tag = springIn(frame, fps, SPRINGS.pill, RISE.tag, ENTER_FRAMES);
 
   return (
     <AbsoluteFill style={{ fontFamily: fonts.body, color: colors.foreground }}>
-      <WordmarkFilter />
       {[SHOTS.library, SHOTS.game].map((shot, i) => (
         <ShotCard
           key={shot.src}
@@ -60,7 +64,7 @@ export const TitleCard = ({ layout, durationInFrames, cta }: SceneProps & { cta?
         />
       ))}
       <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', transform: `translateY(${-place.lift}px)` }}>
-        <Wordmark fontSize={place.fontSize} progress={mark} />
+        <GooWordmark fontSize={place.fontSize} maxWidth={place.markWidth} from={RISE.mark} />
         <p
           style={{
             margin: '28px 0 0',

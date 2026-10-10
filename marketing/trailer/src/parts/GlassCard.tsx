@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react';
-import { AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
+import { AbsoluteFill, interpolate, measureSpring, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import type { Size } from '../layout';
 import { BOB_PIXELS, ENTER_FRAMES, SPRINGS, bob, exitProgress, springIn } from '../motion';
 import type { Shot } from '../shots';
@@ -30,6 +30,9 @@ const LOOK: Record<CardVariant, VariantLook> = {
     style: { border: glass.border, background: colors.panel, backdropFilter: 'blur(18px)', boxShadow: glass.shadow },
   },
 };
+
+/** Frames a shot card takes from its rise to land: its spring settles within 0.5% (ruling Q53). */
+export const cardLandFrames = (fps: number) => measureSpring({ fps, config: SPRINGS.card, threshold: 0.005 });
 
 /** How far a card of a variant floats above and below its rest, in pixels. */
 export const cardBob = (variant: CardVariant) => BOB_PIXELS * LOOK[variant].bob;

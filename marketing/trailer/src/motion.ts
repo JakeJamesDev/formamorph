@@ -6,9 +6,12 @@ export const EXIT_FRAMES = 30;
 
 const gentle = Easing.inOut(Easing.sin);
 
+/** The frame an exit of `frames` starts, so it ends on the scene's last frame. */
+export const exitStart = (durationInFrames: number, frames = EXIT_FRAMES) => durationInFrames - 1 - frames;
+
 /** 1 while a scene holds, falling to 0 over `frames` that end on its last frame. */
 export const exitProgress = (frame: number, durationInFrames: number, frames = EXIT_FRAMES) =>
-  interpolate(frame, [durationInFrames - 1 - frames, durationInFrames - 1], [1, 0], {
+  interpolate(frame, [exitStart(durationInFrames, frames), durationInFrames - 1], [1, 0], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
     easing: gentle,
