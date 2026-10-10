@@ -1,5 +1,5 @@
 import { useId, useMemo, useState, type ReactElement, type ReactNode } from 'react';
-import { Ban, ChevronLeft, Plus, X } from 'lucide-react';
+import { ArrowLeftRight, ChevronLeft, Plus, X } from 'lucide-react';
 import { useTraitStore } from '@/contexts/TraitStoreContext';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -187,13 +187,13 @@ export function TraitRequiresField({ trait, onChange, onOpen, opens = () => true
             className="shrink-0 rounded-full p-0.5 hover:bg-muted disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
             onClick={edit.flip}
           >
-            <Ban className="h-3 w-3" aria-hidden />
+            <ArrowLeftRight className="h-3 w-3" aria-hidden />
           </button>
         </Tip>
         <button
           type="button"
           aria-label={`Remove ${ruleLabel}`}
-          className="shrink-0 rounded-full p-0.5 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+          className="shrink-0 rounded-full p-0.5 hover:bg-muted hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
           onClick={edit.remove}
         >
           <X className="h-3 w-3" aria-hidden />
@@ -227,7 +227,7 @@ export function TraitRequiresField({ trait, onChange, onOpen, opens = () => true
               // Rows have no ids; an index key remounts nothing that holds state.
               <div key={i}>
                 {i > 0 && <div className="py-1 text-center text-meta text-muted-foreground">or</div>}
-                <div data-requirement-row="" className="flex flex-wrap items-center gap-1.5 rounded-md border p-1.5">
+                <div data-requirement-row="" className="flex flex-wrap items-center gap-1.5 rounded-md border bg-background p-1.5">
                   {row.all.map((requirement, j) => (
                     <span key={`${requirement.kind}:${requirement.id}:${bearerKey(bearerOf(requirement))}:${j}`} className="inline-flex max-w-full items-center gap-1.5">
                       {j > 0 && <span className="text-meta text-muted-foreground">and</span>}
@@ -246,7 +246,7 @@ export function TraitRequiresField({ trait, onChange, onOpen, opens = () => true
                   <button
                     type="button"
                     aria-label={`Remove row ${rowText}`}
-                    className="ml-auto shrink-0 rounded-sm p-1 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                    className="ml-auto shrink-0 rounded-sm p-1 text-muted-foreground hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
                     onClick={() => onChange(rows.filter((_, k) => k !== i))}
                   >
                     <X className="h-3.5 w-3.5" aria-hidden />
