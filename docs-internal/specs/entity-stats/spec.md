@@ -77,6 +77,10 @@ Rulings from the grill, numbered as asked.
 
 - **Q45** (ticket 02, user ruling) Ticket 02 lands with a Cydonia miss on one Q28 measure: invented player changes, 81 against C3's 68 (cloud clears). Most of the gap comes from the player being alone in the request. Ticket 05 re-checks the full Q28 bar on Cydonia with entities back in the request, and a miss there blocks the release.
 
+- **Q46** (ticket 04) The editor surfaces for `entities[x].stats` ship with the runtime in ticket 04: completion and the Variable menu list each entity's `stats` with the fields a `stats` entry offers; the Test Code button seeds entity stats at their starting values; the Stat Code Guide documents `stats` on `entities` and `persona` (read only, same entry shape) and that an entity stat's own code reads its owner's stats as `stats`.
+
+- **Q47** (ticket 04) Entity stats run for the same owners that stat code's `entities` holds, including the entity whose traits are the player's. Under None or a library persona, that is the Custom Persona entity, so its stats keep running, as its traits apply. Stats follow the trait rule; ticket 13 moves a played persona's stats to the player.
+
 Derived from Q7 and confirmed with the summary:
 
 - An entity stat's morph bindings drive that entity's own model.
