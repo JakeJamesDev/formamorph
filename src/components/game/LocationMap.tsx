@@ -151,7 +151,8 @@ const LocationMap = ({ locations, connections, currentLocationId, onTravel }: {
   })), [map, currentLocationId]);
 
   const edges = useMemo<Edge[]>(
-    () => [...map.edges, ...implicitEdges].map((edge) => toFlowEdge(edge, connectionStyle, { interactive: false })),
+    // Travel hints often spoil the route, so the player sees only the lines.
+    () => [...map.edges, ...implicitEdges].map((edge) => toFlowEdge({ ...edge, label: undefined }, connectionStyle, { interactive: false })),
     [map, implicitEdges, connectionStyle],
   );
 

@@ -19,6 +19,11 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **🛠️ Developer tooling**
   - **`entity-stats-probe.cli.ts` compares three request shapes for entity stats against today's stat pass.** One call with text lines, one call per entity, and one call with a JSON schema run on Sedge Landing cases with shared stat names. It reports exact replies, misses, invented and misattributed changes, latency and tokens.
 
+#### 🔧 Fixed
+
+- **👤 User-facing**
+  - **The in-game Map no longer shows Connection travel hints, only the lines.** Hints often hold clues or spoilers about a route. The World Editor canvas still shows them.
+
 ---
 
 <details>
