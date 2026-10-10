@@ -24,7 +24,7 @@ import { useRemoveEntity } from './useRemoveEntity';
  * by the host, so they survive a switch between entities. `dialog` is the delete confirmation; the host renders it.
  */
 export function useWorldEntitiesAdapter({
-  selectedId, onSelect, tab, onTabChange, traitId, onTraitIdChange, placeholderId, onPlaceholderIdChange,
+  selectedId, onSelect, tab, onTabChange, traitId, onTraitIdChange, statId, onStatIdChange, placeholderId, onPlaceholderIdChange,
   onOpenWorldPlaceholder, focusField, library,
 }: {
   selectedId: string | null;
@@ -33,6 +33,8 @@ export function useWorldEntitiesAdapter({
   onTabChange: (tab: EntityPanelTab) => void;
   traitId: string | null;
   onTraitIdChange: (id: string | null) => void;
+  statId: string | null;
+  onStatIdChange: (id: string | null) => void;
   placeholderId: string | null;
   onPlaceholderIdChange: (id: string | null) => void;
   onOpenWorldPlaceholder: (id: string) => void;
@@ -101,6 +103,8 @@ export function useWorldEntitiesAdapter({
         onTabChange={onTabChange}
         traitId={traitId}
         onTraitIdChange={onTraitIdChange}
+        statId={statId}
+        onStatIdChange={onStatIdChange}
         placeholderId={placeholderId}
         onPlaceholderIdChange={onPlaceholderIdChange}
         onOpenWorldPlaceholder={onOpenWorldPlaceholder}

@@ -16,6 +16,9 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 #### ➕ Added
 
+- **👤 User-facing**
+  - **Entity Stats:**
+    - **Entities can own stats, set on a new Stats tab in the entity panel in Advanced mode.** The tab works like the Stats tab, with the same search, **+** menu and stat fields. Stats save and export with the world. They don't change play yet.
 - **🛠️ Developer tooling**
   - **`entity-stats-probe.cli.ts` compares three request shapes for entity stats against today's stat pass.** One call with text lines, one call per entity, and one call with a JSON schema run on Sedge Landing cases with shared stat names. It reports exact replies, misses, invented and misattributed changes, latency and tokens.
 

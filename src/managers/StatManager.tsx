@@ -50,6 +50,12 @@ const findBox = (timing: StatCodeTiming) =>
 // The editor is a contenteditable, which the landing's own control list leaves out.
 const boxEditor = (row: HTMLElement) => row.querySelector<HTMLElement>('[contenteditable="true"], textarea');
 
+/** What the stat editor reads and writes besides the world: the stats beside the open one, and its write. */
+export interface StatEditorStore {
+  stats: Stat[];
+  updateStat: (stat: Stat) => void;
+}
+
 /** The stat being edited — a loose, partial Stat while fields are filled in. */
 type EditingStat = Partial<Stat>;
 
@@ -69,13 +75,18 @@ const normalizeStat = (stat: EditingStat): EditingStat => ({
  * `focusField` is the search target the find bar just navigated to. A hit on a tab that isn't showing has no
  * field to mark, so the panel opens the owning tab; the same hint the entity and location panels take.
  */
-const StatManager = ({ stat, tab, onTabChange, focusField }: {
+const StatManager = ({ stat, tab, onTabChange, focusField, store }: {
   stat: Stat;
   tab: StatPanelTab;
   onTabChange: (tab: StatPanelTab) => void;
   focusField?: FocusFieldHint | null;
+  /** The stats this one sits among and where its writes go: an entity's own. Absent = the world's. */
+  store?: StatEditorStore;
 }) => {
-  const { updateStat, stats, placeholders, placeholderGroups, placeholderOwners, placementLetters, traits, traitGroups, entities, entityGroups, dictionaries } = useGameData();
+  const world = useGameData();
+  const { placeholders, placeholderGroups, placeholderOwners, placementLetters, traits, traitGroups, entities, entityGroups, dictionaries } = world;
+  const stats = store?.stats ?? world.stats;
+  const updateStat = store?.updateStat ?? world.updateStat;
   const [newDescriptor, setNewDescriptor] = useState<{ threshold: number | string; description: string }>({
     threshold: "",
     description: "",
@@ -100,13 +111,15 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
   );
   const selfCodeName = statCodeName(editingStat.name, placeholders);
   // Code reaches a stat by its code name, so the rename offer compares the two names the way code reads them.
-  const rename = useRenameField({
+  const worldRename = useRenameField({
     root: 'stats',
     value: editingStat.name ?? '',
     siblings: stats,
     ownId: stat.id,
     codeNameOf: (name) => statCodeName(name, placeholders),
   });
+  // The offer rewrites the world's stat code, which an owned stat's name is not part of.
+  const rename = store ? undefined : worldRename;
   const codePlaceholders = useMemo(
     () => ({ list: placeholders, owners: placeholderOwners, dictionaries: codeDictionaries(dictionaries, placeholders) }),
     [placeholders, placeholderOwners, dictionaries],
@@ -254,9 +267,9 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
             onChange={(v) => handleChange("name", v)}
             placeholders={placeholders}
             ariaLabel="Name"
-            onFocus={rename.onFocus}
-            onBlur={rename.onBlur}
-            onSubmit={rename.onSubmit}
+            onFocus={rename?.onFocus}
+            onBlur={rename?.onBlur}
+            onSubmit={rename?.onSubmit}
           />
         </div>
         <div className="space-y-2" {...fieldFrame('type')}>

@@ -58,7 +58,7 @@ See [SillyTavern cards](#sillytavern-cards) for what each part of the card becom
 The world's **Openings** checkbox turns on by itself once an opening has text, unless you unchecked it. See [Entity Openings](World-Editor-Openings#entity-openings).
 
 ## The panel
-<!-- keywords: pronouns, gender, profile tab, cast or playable, category, can player be them, five tabs -->
+<!-- keywords: pronouns, gender, profile tab, cast or playable, category, can player be them, six tabs -->
 <!-- route: worldEditorEntity.profile -->
 
 Select an entity to open its panel.
@@ -68,6 +68,7 @@ Select an entity to open its panel.
 | **Profile** | **Name**, **Pronouns**, **Locations** and the **Image**. In Advanced mode, also **Aliases**, the **Persona** control, **Type**, **Image Tags** and the **3D Model**. | Simple and Advanced |
 | **Descriptions** | **Player-Facing Description** and **AI-Facing Description**. In Advanced mode, also **AI-Facing Summary**. | Simple and Advanced |
 | **Traits** | The entity's own [traits](World-Editor-Traits#entity-traits) | Advanced only |
+| **Stats** | The entity's own [stats](#entity-stats) | Advanced only |
 | **Placeholders** | The entity's own [placeholders](World-Editor-Placeholders#placeholders-that-belong-to-an-entity-or-a-dictionary) | Advanced only |
 | **Openings** | The entity's own openings, including Self openings for a playable entity | Advanced only |
 
@@ -145,6 +146,18 @@ Each entity stores its own locations in one field. The location's **Entities** p
 The default prompt sends entities from three places, as separate blocks: the player's **current location**, its **sub-locations**, and **reachable** locations.
 
 > ⚠️ **Each entity at the player's location is sent on every turn.** A crowded location uses context all the time. Two or three entities that matter to the scene are better than a full village.
+
+## Entity Stats
+<!-- keywords: npc stat, ally health, trust stat, give an entity a stat, entity owns stats, stats tab on entity -->
+<!-- route: worldEditorEntity.stats -->
+
+**Advanced mode only.** The **Stats** tab holds the stats this entity owns. It works like the world's [Stats](World-Editor-Stats) tab: the same search box, the same **+** menu, and every field a world stat has.
+
+1. Select the entity and open its **Stats** tab.
+2. Click **+**, then **Add Stat**. Text in the search box names the new stat.
+3. Select the stat to edit it. The panel is the same one the **Stats** tab uses.
+
+The stats stay on the entity, in the order you set. Dragging a stat reorders it inside this entity only.
 
 ## Openings
 
