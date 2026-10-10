@@ -183,7 +183,7 @@ describe('the availability rule', () => {
     const user = userEvent.setup();
     renderManager('availability');
     const optional = (start: string, switching: string) =>
-      `Lets the player pick it at game start. It starts ${start}. The player ${switching} switch it during the game.`;
+      `Lets the player pick it at game start. Starts ${start}. The player ${switching} switch it during the game.`;
     expect(screen.getByText(optional('off', "can't"))).toBeInTheDocument();
     await user.click(choice('Starts', 'On'));
     expect(screen.getByText(optional('on', "can't"))).toBeInTheDocument();
@@ -191,9 +191,9 @@ describe('the availability rule', () => {
     expect(screen.getByText(optional('on', 'can'))).toBeInTheDocument();
 
     await user.click(choice('Mode', 'Automatic'));
-    expect(screen.getByText('Turns on whenever its requirements hold. The player never switches it.')).toBeInTheDocument();
+    expect(screen.getByText("On while it meets its requirements. The player can't switch it.")).toBeInTheDocument();
     await user.click(choice('Mode', 'Hidden'));
-    expect(screen.getByText('Turns on whenever its requirements hold. The player never sees it. The AI does.')).toBeInTheDocument();
+    expect(screen.getByText('On while it meets its requirements. Only the AI sees it.')).toBeInTheDocument();
   });
 });
 
