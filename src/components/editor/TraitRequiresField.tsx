@@ -15,8 +15,41 @@ import {
   type ConditionState, type RequirementBearerOption, type RequirementOption,
 } from '@/lib/traitGates';
 import { soleBearerRequirement } from '@/lib/requirementBearers';
+import { joinAnd, summarizeRequirement } from '@/lib/requirementSummary';
 import { cn } from '@/lib/utils';
 import type { Trait, TraitRequirement, TraitRequirementRow } from '@/types';
+
+/**
+ * The rows read back as Needs, then Plus One Of (Needs One Of with no Needs line), then Blocked By last, so
+ * "plus" never follows a blocker list.
+ */
+export function RequirementSummaryText({ rows, name }: { rows: TraitRequirementRow[]; name: (c: TraitRequirement) => string }) {
+  const summary = summarizeRequirement(rows);
+  if (!summary) return <p className="text-helper text-muted-foreground">Always available</p>;
+  const names = (list: TraitRequirement[]) => list.map(name);
+  const blocked = names(summary.blocked);
+  return (
+    <div data-requirement-summary="" className="space-y-0.5 text-helper text-muted-foreground">
+      {summary.needs.length > 0 && <p><span className="font-medium text-foreground">Needs:</span> {joinAnd(names(summary.needs))}</p>}
+      {summary.options.length > 0 && (
+        <>
+          <p className="font-medium text-foreground">{summary.needs.length ? 'Plus One Of:' : 'Needs One Of:'}</p>
+          <ul className="list-disc pl-5">
+            {summary.options.map((option, i) => {
+              const needs = joinAnd(names(option.needs));
+              const by = option.blocked.length ? `blocked by ${joinAnd(names(option.blocked))}` : '';
+              // Options have no ids; the list is rebuilt from the rows on every render.
+              return <li key={i}>{needs && by ? `${needs}, ${by}` : needs || by}</li>;
+            })}
+          </ul>
+        </>
+      )}
+      {blocked.length > 0 && (
+        <p><span className="font-medium text-foreground">Blocked By:</span> {blocked.length === 2 ? blocked.join(' and ') : blocked.join(', ')}</p>
+      )}
+    </div>
+  );
+}
 
 /** Where the open picker adds: a row's index for **And**, or `new` for a row of its own. */
 type AddTarget = number | 'new';
@@ -257,6 +290,8 @@ export function TraitRequiresField({ trait, onChange, onOpen, opens = () => true
           })}
         </div>
       )}
+      {/* Parked: the summary repeated the rows and read as a second, drifting copy of them.
+      <RequirementSummaryText rows={rows} name={(c) => plainText(textOf(c.not ? flipped(c) : c))} /> */}
       {picker('new', (
         <Button type="button" size="sm" variant="outline" className="h-7 gap-1">
           <Plus className="h-3.5 w-3.5" aria-hidden />{rows.length ? 'Or Another Way' : 'Add Requirement'}

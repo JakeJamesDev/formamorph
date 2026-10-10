@@ -69,7 +69,7 @@ describe('the library entity Traits tab', () => {
     await openTraits();
     await userEvent.click(screen.getByText('Oath'));
     await userEvent.click(screen.getByRole('tab', { name: 'Availability' }));
-    const chip = screen.getByText('Paladin').closest('[data-unresolved]');
+    const chip = within(document.querySelector<HTMLElement>('[data-requirement-row]')!).getByText('Paladin').closest('[data-unresolved]');
     expect(chip).not.toBeNull();
     // "Playing as" the entity itself points inside it, so it reads resolved.
     expect(screen.getByRole('button', { name: 'playing as Wolf' }).closest('[data-unresolved]')).toBeNull();

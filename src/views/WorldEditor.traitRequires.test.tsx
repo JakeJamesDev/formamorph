@@ -175,7 +175,7 @@ describe('the Requires field', () => {
   it('reads an unresolved requirement red under its stored name, with nothing to open', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     selectTrait('Guild Mark');
-    const chip = within(requiresField()).getByText('Thief').closest('[data-unresolved]');
+    const chip = within(requiresField().querySelector<HTMLElement>('[data-requirement-row]')!).getByText('Thief').closest('[data-unresolved]');
     expect(chip).toHaveClass('text-destructive');
     expect(within(requiresField()).queryByRole('button', { name: 'Thief' })).toBeNull();
     expect(within(requiresField()).getByRole('button', { name: 'Remove Thief' })).toBeInTheDocument();

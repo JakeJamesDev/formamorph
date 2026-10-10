@@ -339,3 +339,55 @@ describe('TraitRequiresField Not flip', () => {
     expect(option(/^Same Bearer/)).not.toHaveAttribute('aria-disabled', 'true');
   });
 });
+
+// Parked with the summary: its call in TraitRequiresField is commented out.
+describe.skip('TraitRequiresField summary', () => {
+  const extra = { traits: [trait('mage', { name: 'Mage', groupId: null, order: 1 }), trait('rogue', { name: 'Rogue', groupId: null, order: 2 })], traitGroups: [] };
+  const on = (id: string): TraitRequirement => ({ kind: 'trait', id });
+  const off = (id: string): TraitRequirement => ({ kind: 'trait', id, not: true });
+  const smite = (...rows: TraitRequirement[][]) => trait('smite', { name: 'Smite', requires: rows.map((all) => ({ all })) });
+  const summary = () => [...document.querySelectorAll('[data-requirement-summary] :is(p, li)')].map((l) => l.textContent);
+
+  it('reads an empty Requirement as always available', () => {
+    render(<Harness trait={trait('smite', { name: 'Smite' })} />);
+    expect(screen.getByText('Always available')).toBeInTheDocument();
+  });
+
+  it('reads one row as Needs and Blocked By, with no option list', () => {
+    render(<Harness trait={smite([on('brave'), off('paladin'), off('wizard')])} extra={extra} />);
+    expect(summary()).toEqual(['Needs: Brave', 'Blocked By: Paladin and Wizard']);
+  });
+
+  it('joins three Needs with a serial comma and three blockers with commas alone', () => {
+    render(<Harness trait={smite([on('brave'), on('paladin'), on('wizard'), off('mage'), off('rogue'), off('squire')])} extra={{ ...extra, traits: [...extra.traits, trait('squire', { name: 'Squire', groupId: null, order: 3 })] }} />);
+    expect(summary()).toEqual(['Needs: Brave, Paladin, and Wizard', 'Blocked By: Mage, Rogue, Squire']);
+  });
+
+  it('factors a Not every row shares into Blocked By, last, under Needs One Of', () => {
+    render(<Harness trait={smite([on('brave'), off('paladin')], [on('wizard'), off('paladin')])} extra={extra} />);
+    expect(summary()).toEqual(['Needs One Of:', 'Brave', 'Wizard', 'Blocked By: Paladin']);
+  });
+
+  it('lists what each row adds under Plus One Of when the rows share a Need', () => {
+    render(<Harness trait={smite([on('brave'), on('paladin')], [on('brave'), on('wizard'), off('mage'), off('rogue')], [on('brave'), off('paladin')])} extra={extra} />);
+    expect(summary()).toEqual(['Needs: Brave', 'Plus One Of:', 'Paladin', 'Wizard, blocked by Mage and Rogue', 'blocked by Paladin']);
+  });
+
+  it('keeps a Not in only some rows inside those rows', () => {
+    render(<Harness trait={smite([on('brave'), off('paladin')], [on('wizard'), off('mage')])} extra={extra} />);
+    expect(summary()).toEqual(['Needs One Of:', 'Brave, blocked by Paladin', 'Wizard, blocked by Mage']);
+  });
+
+  it('drops the options when one row is only the shared part, since that row already holds', () => {
+    render(<Harness trait={smite([on('brave')], [on('brave'), on('paladin')])} extra={extra} />);
+    expect(summary()).toEqual(['Needs: Brave']);
+  });
+
+  it('tells bearers apart and names them as the chips do', () => {
+    render(<Harness trait={smite(
+      [{ kind: 'trait', id: 'paladin', bearer: { kind: 'you' } }, off('brave')],
+      [on('paladin'), off('brave')],
+    )} />);
+    expect(summary()).toEqual(['Needs One Of:', 'You: Paladin', 'Paladin', 'Blocked By: Brave']);
+  });
+});
