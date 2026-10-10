@@ -30,7 +30,7 @@ Ranked by what sells the app to a Steam visitor who reads the copy without sound
 | 9 | Open Chat: talk with any entity from the library | 3.0.0 | W08 | ✅ |
 | 10 | Formaquestion help window and Morphie | 3.2.0 | W13 | ✅ |
 | 11 | Community contests and events | 2.14 | W15 | ✅ |
-| 12 | 3D VRM avatars | 2.5, 2.18 | W18 | ✅ |
+| 12 | 3D VRM avatars | 2.5, 2.18 | none | ✂️ cut on review (Q60): out of place beside the other features |
 | 13 | Memory: milestones, diary, Memory Manager | 2.6, 2.7 | none | ✂️ |
 | 14 | Scene images every turn (InvokeAI) | 2.8 | none | ✂️ needs an image fixture |
 | 15 | Character cards and SillyTavern lorebook import | 2.0.1 | none | ✂️ a file dialog does not film well |
@@ -71,10 +71,9 @@ Ranked by what sells the app to a Steam visitor who reads the copy without sound
 | W15 | 59.28 s | 383 | ✅ | frame | Share your ideas with the community. / Compete with other creators. | C10 | slight crop that keeps the whole podium callout | section |
 | W16 | 65.07 s | 350 |  | kinetic | Use any AI model. / Run it fully local, with no extra software to install. | stage only | none | overlap |
 | W17 | 70.40 s | 310 |  | frame | Play in your browser or offline on your desktop. | C11 | static crop on the engine panel | overlap |
-| W18 | 75.07 s | 180 |  | frame | Pick a 3D avatar. | C12, as a clip of the idle animation | full frame | overlap |
-| W19 | 77.57 s | 376 |  | title | wordmark, then its pop · AI text RPG · Play free at formamorph.ai | C01 and C02b on two depth cards | full frames; everything holds to the last frame | end |
+| W19 | 75.07 s | 376 |  | title | wordmark, then its pop · AI text RPG · Play free at formamorph.ai | C01 and C02b on two depth cards | full frames; everything holds to the last frame | end |
 
-Total: **5,030 frames, 83.83 s**, under the 90 s target. W01 and W02 are cut (Q30, Q40). The authoring order is map, profile, travel, the traits card, blueprints (Q43). A title card with the letter `a` sits before the shot it introduces (W12a, W13a).
+Total: **4,880 frames, 81.33 s**, under the 90 s target. W01, W02 and W18 are cut (Q30, Q40, Q60). The authoring order is map, profile, travel, the traits card, blueprints (Q43). A title card with the letter `a` sits before the shot it introduces (W12a, W13a).
 
 **Camera (Q22, Q32):** no card zooms or pans. Each card holds one crop for its whole shot; the card's spring, bob and exit drift are the motion.
 
@@ -138,7 +137,7 @@ Derived shot by shot from the wide cut. Four treatments:
 | T13 | 48.98 s | W17 | 310 |  | crop | The engine panel, on a squarer card. | overlap |
 | T14 | 53.65 s | W19 | 376 |  | relayout |  | end |
 
-**Dropped:** W01 and W02 (Q30, Q40), Morphie with its title card (W13a, W13) and the avatar (W18). Total: **3,595 frames, 59.92 s**, under the 60 s that every social platform accepts.
+**Dropped:** W01 and W02 (Q30, Q40), Morphie with its title card (W13a, W13); the avatar (W18) left both cuts (Q60). Total: **3,595 frames, 59.92 s**, under the 60 s that every social platform accepts.
 
 **Authoring order (Q43, Q51):** the traits card parts the Blueprint shot from the rest, so the map stands alone, the profile and the travel shot stack as a pair, and the Blueprint shot stands alone after the card.
 
@@ -170,7 +169,7 @@ Format per ruling Q8: the spec's field list. Ticket 05 copies these rows into ti
 | C09 | — | modal `community`, tab `world` | graphite dark | 2 | 1600x900 | none | pinned listing data (see below) |
 | C10 | — | modal `community`, the **Contest** tab, podium | graphite dark | 2 | 1600x900 | none | pinned listing data and one decided contest, so each world has one badge |
 | C11 | — | modal `settings`, tab `endpoints`, subtab `text`, **Built-In Engine** | graphite dark | 2 | 1600x900 | none | a mocked desktop bridge with a model loaded and ready (below) |
-| C12 | — | modal `avatar` | graphite dark | 2 | 1600x900 | none | the default avatar, a clip of the idle animation on a stepped clock |
+| C12 | — | modal `avatar` | graphite dark | 2 | 1600x900 | none | deferred (Q60): the default avatar, a clip of the idle animation on a stepped clock |
 | C13 | gameViewer | the **Change Location** dialog, from the **Location** tab | graphite dark | 2 | 1600x900 | Drone | site-game.json |
 
 **Capture risks for tickets 02 and 05**

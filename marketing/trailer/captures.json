@@ -179,6 +179,7 @@
     },
     {
       "id": "avatar-clip",
+      "deferred": true,
       "subject": { "x": 0.3, "y": 0.1, "width": 0.4, "height": 0.8 },
       "storyboard": "C12",
       "kind": "page",

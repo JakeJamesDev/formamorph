@@ -196,7 +196,6 @@ const W17 = frameShot('W17', 310, 'overlap', {
   camera: layouts(hold(1.5, 0.5, 0.47), hold(1.1, 0.5, 0.47)),
   cards: { tall: SQUARE_TALL },
 });
-const W18 = frameShot('W18', 180, 'overlap', { shot: SHOTS.avatarClip, depth: SHOTS.entity, caption: ['Pick a 3D avatar.'], dot: 'rose', camera: both(FULL) });
 const W19 = title('W19', 376, { text: 'Play free at formamorph.ai', link: 'formamorph.ai' });
 
 /** A tall card at the stack cards' shape, for a single shot whose subject is wider than the 3:4 window shows. */
@@ -216,10 +215,10 @@ const T10b = frameShot('T10b', 311, 'section', { shot: BLUEPRINTS.shot, depth: S
 const T11 = dense(stack('T11', 403, 'section', [COMMUNITY, CONTEST]), paneRise(1));
 
 /** The wide cut: storyboard §2. */
-const WIDE: SceneEntry[] = [W03, W04, W05, W06, W07, W08, W09, W10, W11, W10b, W12a, W12, W13a, W13, W14, W15, W16, W17, W18, W19];
+const WIDE: SceneEntry[] = [W03, W04, W05, W06, W07, W08, W09, W10, W11, W10b, W12a, W12, W13a, W13, W14, W15, W16, W17, W19];
 
 /**
- * The tall cut: storyboard §4. It drops Morphie with its title card (W13a, W13) and the avatar (W18), and stacks
+ * The tall cut: storyboard §4. It drops Morphie with its title card (W13a, W13), and stacks
  * six wide shots into three.
  */
 const TALL: SceneEntry[] = [
