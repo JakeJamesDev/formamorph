@@ -25,11 +25,11 @@ const IN_GAME_OPTIONS = [
 /** The sentence the three rows make together. */
 function ruleSentence(trait: Trait): string {
   switch (trait.mode ?? 'optional') {
-    case 'alwaysOn': return 'Turns on whenever its requirements hold. The player never switches it.';
-    case 'hidden': return 'Turns on whenever its requirements hold. The player never sees it. The AI does.';
+    case 'alwaysOn': return "On while it meets its requirements. The player can't switch it.";
+    case 'hidden': return 'On while it meets its requirements. Only the AI sees it.';
     default: return [
       'Lets the player pick it at game start.',
-      trait.isDefault ? 'It starts on.' : 'It starts off.',
+      trait.isDefault ? 'Starts on.' : 'Starts off.',
       trait.playerToggle ? 'The player can switch it during the game.' : "The player can't switch it during the game.",
     ].join(' ');
   }
