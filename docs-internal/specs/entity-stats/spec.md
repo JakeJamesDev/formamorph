@@ -90,6 +90,8 @@ Rulings from the grill, numbered as asked.
 
 - **Q53** (ticket 08) Q23 applies to cast bearers. A player bearer keeps the shipped rule (a played persona, or the Custom Persona entity under None or a library persona): its trait change targets its own stat when the id is one of its own, and otherwise the world player stat while it is played. Only an id that matches neither is flagged. The trait stat pickers list the bearer's own stats, plus the world player stats on a player bearer. A starting-value change on an entity's stat behaves as the player's does, with a per-owner applied-values record in the save. The flag is a Test Bench Issues rule at warning severity. Editor limits that existed only because entities couldn't own stat traits are removed.
 
+- **Q54** (ticket 06) The dropdown and the entity section render only when a listed entity has a stat the player can see. The Stats tab opens when only an entity has visible stats. An absent entity is listed only if it owns a visible stat. A new game resets the shared pick, as a loaded save does.
+
 Derived from Q7 and confirmed with the summary:
 
 - An entity stat's morph bindings drive that entity's own model.
