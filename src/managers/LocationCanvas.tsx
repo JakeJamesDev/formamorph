@@ -18,6 +18,7 @@ import { useGameData } from '@/contexts/GameDataContext';
 import FullscreenShell from '@/components/FullscreenShell';
 import { FloatingEdge } from '@/components/FloatingEdge';
 import { toFlowEdge } from '@/lib/canvasEdges';
+import { fieldFrame } from '@/lib/historyField';
 import { useCanvasConnectionStyle, useCanvasGridVisible, useCanvasSnap } from '@/lib/canvasPrefs';
 import { CONNECTION_STYLES, isConnectionStyle, type ConnectionStyle } from '@/lib/canvasEdgePath';
 import { useDevRoute } from '@/lib/devRouter';
@@ -300,6 +301,7 @@ const ConnectionInspector = ({ connection, focus, nameOf, onIntent, onClose }: {
         className="w-full"
         value={directionOf(connection)}
         aria-label="Direction of Travel"
+        {...fieldFrame('connections', connection.id, 'direction')}
         // A single ToggleGroup clears its value when the active item is clicked again; a Connection always
         // runs some direction, so an empty result is ignored rather than stored.
         onValueChange={(v) => { if (v) onIntent(directionIntent(connection, v as ConnectionDirection)); }}

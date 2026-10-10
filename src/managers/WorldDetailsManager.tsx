@@ -26,7 +26,7 @@ import { isOpeningFieldKey, openingsEnabled, setOpeningsEnabled } from "@/lib/op
 import { OpeningsPanel } from "./OpeningsPanel";
 import { OVERVIEW_PANELS, type OverviewPanel } from '@/views/overviewPanels';
 import type { FieldReveal } from '@/views/useHistoryReveal';
-import { fieldPath } from '@/lib/historyField';
+import { fieldFrame, fieldPath } from '@/lib/historyField';
 import { useEditorMode } from "@/lib/editorMode";
 import type { FocusFieldHint } from "@/types";
 
@@ -189,6 +189,7 @@ const CustomPromptsSection = ({ focusField, tab, onTabChange: setTab, onOpenEnti
                 checked={kind === 'opening' ? openingsEnabled(worldOverview, [...entities, ...locations]) : worldPromptEnabled(worldOverview, kind)}
                 disabled={kind === 'opening' && noOpenings}
                 onCheckedChange={(c) => toggle(kind, c === true)}
+                {...fieldFrame('prompts', kind, 'enabled')}
                 aria-label={kind === 'opening'
                   ? "Use this world's openings"
                   : `Use this world's ${PANEL_LABELS[kind].toLowerCase()} prompt`}

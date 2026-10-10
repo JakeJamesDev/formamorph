@@ -439,6 +439,7 @@ const OpeningCard = ({
           onValueChange={(v) => { if (v) onKind(v as OpeningKind); }}
           aria-label={`Opens As, ${a11yLabel}`}
           className="h-6"
+          {...fieldFrame('openings', opening.id, 'kind')}
         >
           <ToggleGroupItem value="action" className="px-2 py-0 text-helper">Player Action</ToggleGroupItem>
           <ToggleGroupItem value="narration" className="px-2 py-0 text-helper">Narration</ToggleGroupItem>
@@ -450,6 +451,7 @@ const OpeningCard = ({
             onValueChange={(v) => { if (v) onSelf(v === 'self'); }}
             aria-label={`Drawn For, ${a11yLabel}`}
             className="h-6"
+            {...fieldFrame('openings', opening.id, 'self')}
           >
             <ToggleGroupItem value="others" className="px-2 py-0 text-helper">Others</ToggleGroupItem>
             <ToggleGroupItem value="self" className="px-2 py-0 text-helper">Self</ToggleGroupItem>

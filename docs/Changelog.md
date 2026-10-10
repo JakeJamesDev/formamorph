@@ -29,6 +29,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Undo and redo in the World Editor restore every location you had selected on the canvas.** Locations that no longer exist drop out of the selection.
     - **Undo and redo in the World Editor scroll to the text field you edited and pulse it.** It pulses on every press, even when you're already on the field. Keyboard focus stays where it was. With reduced motion, the field shows a still ring.
     - **Typing in a different field, tab or selection starts a new undo step in the World Editor.** Undo then takes you back to the field you edited. Typing in one field still joins into one step.
+    - **Undo and redo in the World Editor pulse the checkbox, select or option group you changed.** A chip's pop-out edit pulses the prompt field that holds the chip.
   - **Ctrl+S saves the world in the World Editor.** On a Mac, use Cmd+S. It works while you type in a field, and the **Save** tooltip shows it.
   - **Ctrl+B and Ctrl+I make text bold or italic in fields with a formatting toolbar.** On a Mac, use Cmd+B and Cmd+I. Press the key again to remove the formatting. The **Bold** and **Italic** tooltips show the shortcut.
   - **The World Editor now has undo, redo and a History list for your world's edits.** Press Ctrl+Z, or open History in the app bar to jump to any earlier point.

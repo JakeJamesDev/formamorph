@@ -109,7 +109,7 @@ const GroupManager = ({ group, ownerId, readOnly = false, detailsHeader, details
             if (next !== 'custom') apply(PRESETS[next]);
           }}
         >
-          <SelectTrigger id={`pick-count-${editingGroup.id}`}>
+          <SelectTrigger id={`pick-count-${editingGroup.id}`} {...fieldFrame('pickCount')}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

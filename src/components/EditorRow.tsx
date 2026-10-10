@@ -3,6 +3,7 @@ import { GripVertical, ChevronRight, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tip } from '@/components/ui/tooltip';
+import { fieldFrame } from '@/lib/historyField';
 import { cn } from '@/lib/utils';
 
 /** px of indent per nesting level — also the horizontal drag distance that changes a row's depth. */
@@ -67,7 +68,7 @@ export interface EditorRowProps {
   collapseLabels?: [string, string];
 
   /** The enabled toggle, where the surface offers one. */
-  checkbox?: { checked: boolean; onChange: (checked: boolean) => void; ariaLabel?: string; disabled?: boolean };
+  checkbox?: { checked: boolean; onChange: (checked: boolean) => void; ariaLabel?: string; disabled?: boolean; field?: string };
   /** Between the grip and the label (e.g. a folder glyph on group rows). */
   icon?: ReactNode;
   label: ReactNode;
@@ -173,6 +174,7 @@ export function EditorRow({
             onCheckedChange={(v) => checkbox.onChange(v === true)}
             onClick={(e) => e.stopPropagation()}
             aria-label={checkbox.ariaLabel}
+            {...(checkbox.field !== undefined && fieldFrame(checkbox.field))}
             className={cn(
               'mx-1 shrink-0',
               selected && 'border-primary-foreground data-[state=checked]:border-primary-foreground data-[state=checked]:bg-primary-foreground data-[state=checked]:text-primary',

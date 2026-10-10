@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Label } from '@/components/ui/label';
 import { Hint } from '@/components/ui/typography';
 import { OptionSwitcher } from '@/components/SettingsRows';
+import { fieldFrame } from '@/lib/historyField';
 import { isAlwaysOn } from '@/lib/traitEffects';
 import type { Trait, TraitLinkFields } from '@/types';
 
@@ -46,7 +47,7 @@ export function TraitAvailabilityRule({ trait, onChange, reset }: {
 }) {
   const automatic = isAlwaysOn(trait);
   const row = (label: string, field: keyof TraitLinkFields, control: ReactNode) => (
-    <div className="grid items-center gap-x-3 gap-y-1 sm:grid-cols-[4.5rem_minmax(0,1fr)_auto]">
+    <div className="grid items-center gap-x-3 gap-y-1 sm:grid-cols-[4.5rem_minmax(0,1fr)_auto]" {...fieldFrame(field)}>
       <Label>{label}</Label>
       {control}
       <div className="flex min-h-6 items-center">{reset(field, label)}</div>
