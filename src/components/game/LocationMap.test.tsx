@@ -115,6 +115,13 @@ describe('the Map', () => {
       expect(implicitEdges()).toHaveLength(2 * 149);
     });
 
+    it('draws a Connection without its travel hint', async () => {
+      show({ current: 's7', connections: [{ id: 'c1', a: 's7', b: 's8', aToB: { hint: 'Behind the loose brick' } }] });
+      await drawnAt(2 * 148);
+      expect(document.querySelector('.react-flow__edge[data-id="connection:c1:aToB"]')).not.toBeNull();
+      expect(screen.queryByText('Behind the loose brick')).toBeNull();
+    });
+
     it('adds a hovered location’s arrows, and drops them when the pointer leaves', async () => {
       show({ current: 's7' });
       await drawnAt(2 * 149);
