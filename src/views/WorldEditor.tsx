@@ -180,11 +180,11 @@ const WorldEditorInner = ({
   const {
     updateWorldOverview, worldId, worldOverview,
     loadWorldData, getWorldData,
-    stats, locations, entities, entityGroups, traits, traitGroups, dictionaries, placeholders, placementLetters,
+    stats, statGroups, locations, entities, entityGroups, traits, traitGroups, dictionaries, placeholders, placementLetters,
     worldPlaceholders, placeholderOwners, placeholderGroups,
     addStat, addLocation, addEntity, addTrait, addDictionary,
     addPlaceholder,
-    updateStat, updateEntity, updateEntityGroup, updateLocation, updateTrait, updateTraitGroup,
+    updateStat, updateStatGroup, updateEntity, updateEntityGroup, updateLocation, updateTrait, updateTraitGroup,
     addConnection, updateConnection,
     updateDictionary, addDictionaryEntry, updateDictionaryEntry, updatePlaceholder, updatePlaceholderGroup,
     setLocations, setEntities, setDictionaries,
@@ -467,11 +467,11 @@ const WorldEditorInner = ({
     if (!searching) return [];
     const reachable = new Set<string>(visibleTabs.map((t) => t.value));
     return collectSearchTargets({
-      worldOverview, stats, entities, entityGroups, locations, traits, traitGroups, dictionaries, placeholders, placeholderGroups,
-      updateWorldOverview, updateStat, updateEntity, updateEntityGroup, updateLocation, updateTrait,
+      worldOverview, stats, statGroups, entities, entityGroups, locations, traits, traitGroups, dictionaries, placeholders, placeholderGroups,
+      updateWorldOverview, updateStat, updateStatGroup, updateEntity, updateEntityGroup, updateLocation, updateTrait,
       updateTraitGroup, updateDictionary, updateDictionaryEntry, updatePlaceholder, updatePlaceholderGroup,
     }).filter((t) => reachable.has(t.tab));
-  }, [searching, visibleTabs, worldOverview, stats, entities, entityGroups, locations, traits, traitGroups,
+  }, [searching, visibleTabs, worldOverview, stats, statGroups, updateStatGroup, entities, entityGroups, locations, traits, traitGroups,
       dictionaries, placeholders, placeholderGroups, updateWorldOverview, updateStat, updateEntity, updateEntityGroup,
       updateLocation, updateTrait, updateTraitGroup, updateDictionary, updateDictionaryEntry, updatePlaceholder,
       updatePlaceholderGroup]);
@@ -923,7 +923,7 @@ const WorldEditorInner = ({
   });
   const selectStat = useCallback((id: string | null) => select('stats', id), [select]);
   const statsAdapter = useWorldStatsAdapter({
-    onSelect: selectStat, search, tab: shownStatTab, onTabChange: setStatTab, focusField: findField,
+    selectedId: selections.stats ?? null, onSelect: selectStat, search, tab: shownStatTab, onTabChange: setStatTab, focusField: findField,
   });
   const statsParts = useListEditor(statsAdapter, { selectedId: selections.stats ?? null, onSelect: selectStat, search });
   // The entity panel's tab and its trait and placeholder rows live here, so a new entity keeps them.

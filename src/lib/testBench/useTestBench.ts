@@ -100,7 +100,7 @@ export function useTestBench({
 }: TestBenchWiring): TestBenchHandle {
   const {
     worldId, worldOverview, getWorldData, worldMetadata, updateWorldOverview,
-    setStats, setLocations, setConnections, setEntities, setEntityGroups,
+    setStats, setStatGroups, setLocations, setConnections, setEntities, setEntityGroups,
     setTraits, setTraitGroups, setStatUpdates, setDictionaries, setWorldPlaceholders, setPlaceholderGroups,
   } = useGameData();
 
@@ -301,6 +301,7 @@ export function useTestBench({
     // than this line; none does today, and the rest of the payload is replaced wholesale.
     if (after.worldOverview !== before.worldOverview) updateWorldOverview(after.worldOverview);
     if (after.stats !== before.stats) setStats(after.stats);
+    if (after.statGroups !== before.statGroups) setStatGroups(after.statGroups ?? []);
     if (after.locations !== before.locations) setLocations(after.locations);
     if (after.connections !== before.connections) setConnections(after.connections ?? []);
     if (after.entities !== before.entities) setEntities(after.entities);
@@ -312,7 +313,7 @@ export function useTestBench({
     if (after.placeholders !== before.placeholders) setWorldPlaceholders(after.placeholders ?? []);
     if (after.placeholderGroups !== before.placeholderGroups) setPlaceholderGroups(after.placeholderGroups ?? []);
     noteFirstDownloadEdit();
-  }, [updateWorldOverview, setStats, setLocations, setConnections, setEntities,
+  }, [updateWorldOverview, setStats, setStatGroups, setLocations, setConnections, setEntities,
       setEntityGroups, setTraits, setTraitGroups, setStatUpdates, setDictionaries, setWorldPlaceholders,
       setPlaceholderGroups, noteFirstDownloadEdit]);
   // The image conversion is the one repair the pure pass can't carry — it decodes and re-encodes every

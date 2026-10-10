@@ -236,7 +236,7 @@ describe('an undo of an edit made through a mirror', () => {
   it('returns to the stat whose prompt holds the chip, not to the Placeholders tab', async () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openEditorTab(/Stats/);
-    fireEvent.click(screen.getByRole('button', { name: 'Select Mood' }));
+    fireEvent.click(screen.getByText('Mood', { exact: true }));
     // The chip popover's write: the placeholder, through the shared store.
     await step(() => ctx().updatePlaceholder({ ...ctx().placeholders[0], values: [{ id: 'v-fog', text: 'mist' }] }));
 

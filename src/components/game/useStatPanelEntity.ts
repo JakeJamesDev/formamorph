@@ -26,8 +26,12 @@ export function useStatPanelEntity() {
     [pickable, persona, scene, history, values, selectedEntityId],
   );
   const shownId = statPanelSelection(selectedEntityId, options, firstShowableEntity(scene, pickable, hasEntityVisual)?.id);
+  // The persona sits outside the cast but can be picked, so its authored grouping is found through it too.
+  const shownEntity = [...pickable, ...(persona ? [persona.entity] : [])].find((entity) => entity.id === shownId);
   return {
     options,
+    // The entity's authored stats and groups, which decide where each row sits.
+    authored: shownEntity ? { entity: shownEntity, stats: shownEntity.stats ?? [], groups: shownEntity.statGroups ?? [] } : null,
     shown: options.find((option) => option.id === shownId),
     rows: shownEntityStats(shownId ? values[shownId] : undefined),
     showPicker: options.some((option) => shownEntityStats(values[option.id]).length > 0),

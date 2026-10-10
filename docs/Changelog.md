@@ -22,6 +22,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Entity stats change during play: regen and both code boxes run each turn for every entity, present or not.** A save keeps the values. Stat code reads any entity's stats through `entities.Bram.stats`, read-only, and an entity stat's own code reads its owner's stats as `stats`.
     - **The Stats tab shows the selected entity's stats under yours, with a picker at the top.** Pick an entity, or **(None)** to hide the section. The entity view and the picker share one pick. Entities whose names you haven't learned show as you know them. Hidden stats stay hidden.
     - **The Entities chip sends the stats of each present entity to the AI.** The **Stats** checkbox in the chip's pop-out turns it off. It covers the Here and In Scene scopes with Full or Summary content.
+    - **Stats now go in groups on the Stats tab and on each entity's Stats tab.** Groups nest, reorder and take a description. The stat panel shows each group as a collapsible heading and leaves out a group with no visible stat.
   - **The AI now updates your stats with fewer wrong-direction and made-up changes.** It answers with a change for every stat, 0 included. An endpoint that can't take that format gets the old reply style, and the AI context viewer notes it.
 - **🛠️ Developer tooling**
   - **Entity Stats:**

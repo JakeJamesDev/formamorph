@@ -30,6 +30,7 @@ export interface RevealTarget {
 const SLICE_TABS: Partial<Record<SliceName, RevealTab>> = {
   worldOverview: 'overview',
   stats: 'stats',
+  statGroups: 'stats',
   locations: 'locations',
   connections: 'locations',
   entities: 'entities',

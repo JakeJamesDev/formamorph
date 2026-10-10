@@ -10,7 +10,7 @@ import {
   setWorldPromptOverride, storedWorldPrompt, worldPromptFieldKey, WORLD_PROMPT_KINDS, WORLD_PROMPT_KIND_LABELS,
 } from '@/lib/worldPrompt';
 import type {
-  Dictionary, Entity, EntityGroup, GameLocation, Placeholder, PlaceholderGroup, Stat, Trait, TraitGroup, WorldOverview,
+  Dictionary, Entity, EntityGroup, GameLocation, Placeholder, PlaceholderGroup, Stat, StatGroup, Trait, TraitGroup, WorldOverview,
 } from '@/types';
 
 /**
@@ -91,6 +91,7 @@ export interface ChipSearch {
 export interface SearchSources {
   worldOverview: WorldOverview;
   stats: Stat[];
+  statGroups?: StatGroup[];
   entities: Entity[];
   entityGroups: EntityGroup[];
   locations: GameLocation[];
@@ -100,6 +101,7 @@ export interface SearchSources {
   placeholders: Placeholder[];
   updateWorldOverview: (updates: Partial<WorldOverview>) => void;
   updateStat: (stat: Stat) => void;
+  updateStatGroup?: (group: StatGroup) => void;
   updateEntity: (entity: Entity) => void;
   updateEntityGroup: (group: EntityGroup) => void;
   updateLocation: (location: GameLocation) => void;
@@ -218,6 +220,13 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
       add({ ...where, chipCapable: true }, `descriptors[${i}].description`, 'Descriptor', d.description,
         (r, v) => ({ ...r, descriptors: (r.descriptors ?? []).map((x, j) => (j === i ? { ...x, description: v } : x)) }));
     });
+  });
+
+  (src.statGroups ?? []).forEach((group) => {
+    const where = { tab: 'stats', itemId: group.id, itemLabel: labeled(group.name, 'Group') };
+    const { add } = bind(`statGroup:${group.id}`, group, (next) => src.updateStatGroup?.(next));
+    add({ ...where, chipCapable: true }, 'name', 'Group Name', group.name, (r, v) => ({ ...r, name: v }));
+    add({ ...where, chipCapable: true }, 'aiDescription', 'AI-Facing Description', group.aiDescription, (r, v) => ({ ...r, aiDescription: v }));
   });
 
   // ── Entities ──────────────────────────────────────────────────────────────

@@ -14,6 +14,7 @@ import { dropLocationFromConnections } from '@/lib/locationGraph';
 import { removeLocationPromotingChildren } from '@/lib/locationTree';
 import { newLocationPosition } from '@/lib/locationCanvas';
 import { withDefaultDescriptors } from '@/lib/blankWorld';
+import { removeStatGroup as removeStatGroupFrom } from '@/lib/statGroupTree';
 import { followRename } from '@/lib/statDescriptors';
 import { renamedPlaceholderValues, repinRenamedValues } from '@/lib/traitEffects';
 import { directChipTargets } from '@/lib/placeholders';
@@ -39,6 +40,7 @@ import type {
   WorldMetadata,
   WorldOverview,
   Stat,
+  StatGroup,
   GameLocation,
   Entity,
   EntityGroup,
@@ -65,6 +67,7 @@ const makeDefaultBook = (): Dictionary => ({ id: randomUUID(), name: 'Default', 
 function buildWorldData(
   overview: WorldOverview,
   stats: Stat[],
+  statGroups: StatGroup[],
   locations: GameLocation[],
   connections: Connection[],
   entities: Entity[],
@@ -77,7 +80,7 @@ function buildWorldData(
   placeholderGroups: PlaceholderGroup[],
 ): WorldData {
   return {
-    worldOverview: overview, stats, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, placeholders, placeholderGroups,
+    worldOverview: overview, stats, statGroups, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, placeholders, placeholderGroups,
   };
 }
 
@@ -95,6 +98,7 @@ function useProvideGameData() {
     customPlayerVRM: null // { data, type } of an optional custom player VRM model
   });
   const [stats, setStats] = useState<Stat[]>([]);
+  const [statGroups, setStatGroups] = useState<StatGroup[]>([]);
   const [locations, setLocations] = useState<GameLocation[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [entities, setEntities] = useState<Entity[]>([]);
@@ -150,11 +154,11 @@ function useProvideGameData() {
   }), []);
 
   const slices = useMemo(() => ({
-    worldOverview, stats, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries,
+    worldOverview, stats, statGroups, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries,
     placeholders: worldPlaceholders, placeholderGroups,
-  }), [worldOverview, stats, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, worldPlaceholders, placeholderGroups]);
+  }), [worldOverview, stats, statGroups, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, worldPlaceholders, placeholderGroups]);
   const sliceSetters = useMemo(() => ({
-    worldOverview: setWorldOverview, stats: setStats, locations: setLocations, connections: setConnections,
+    worldOverview: setWorldOverview, stats: setStats, statGroups: setStatGroups, locations: setLocations, connections: setConnections,
     entities: setEntities, entityGroups: setEntityGroups, traits: setTraits, traitGroups: setTraitGroups,
     statUpdates: setStatUpdates, dictionaries: setDictionaries, placeholders: setWorldPlaceholders,
     placeholderGroups: setPlaceholderGroups,
@@ -189,6 +193,7 @@ function useProvideGameData() {
         const descriptors = followRename(stat, next);
         return descriptors === next.descriptors ? next : { ...next, descriptors };
       }))),
+      updateStatGroup: keyedTo('statGroups', replaceIn(setStatGroups)),
       updateLocation: keyedTo('locations', replaceIn(setLocations)),
       updateConnection: keyedTo('connections', replaceIn(setConnections)),
       // A caller that hands over a different `link` is managing the link itself (linking, unlinking, taking a
@@ -209,7 +214,7 @@ function useProvideGameData() {
     };
   }, [keyNext, updateBookUnkeyed, updateEntryUnkeyed]);
   const {
-    keyedTo, updateDictionary, updateDictionaryEntry, updateStat, updateLocation, updateConnection, updateEntity, editEntity,
+    keyedTo, updateDictionary, updateDictionaryEntry, updateStat, updateStatGroup, updateLocation, updateConnection, updateEntity, editEntity,
     updateEntityGroup, updateTrait, updateTraitGroup, updatePlaceholderGroup, updateWorldOverview,
   } = keyed;
   const dictStore = useMemo(() => ({
@@ -226,6 +231,18 @@ function useProvideGameData() {
 
   const removeStat = useCallback((statId: string) => {
     setStats(prevStats => prevStats.filter(stat => stat.id !== statId));
+  }, []);
+
+  const addStatGroup = useCallback((newGroup: StatGroup) => {
+    setStatGroups(prev => [...prev, newGroup]);
+  }, []);
+
+  // Removing a group moves its stats and subgroups up to the group's own parent, so a delete loses the folder only.
+  const removeStatGroup = useCallback((groupId: string) => {
+    const { statGroups: groups, stats: held } = latest.current;
+    const next = removeStatGroupFrom(groups, held, groupId);
+    if (next.groups !== groups) setStatGroups(next.groups);
+    if (next.stats !== held) setStats(next.stats);
   }, []);
 
   // A new location is given a place on the canvas as it is created, wherever it was created from: the map is
@@ -386,6 +403,7 @@ function useProvideGameData() {
 
     // Load other data with array validation
     const nextStats = Array.isArray(worldData.stats) ? worldData.stats : [];
+    const nextStatGroups = Array.isArray(worldData.statGroups) ? worldData.statGroups : [];
     const nextLocations = Array.isArray(worldData.locations) ? worldData.locations : [];
     const nextConnections = Array.isArray(worldData.connections) ? worldData.connections : [];
     const loadedEntities = Array.isArray(worldData.entities) ? worldData.entities : [];
@@ -414,6 +432,7 @@ function useProvideGameData() {
     }
     setWorldId(nextId);
     setStats(nextStats);
+    setStatGroups(nextStatGroups);
     setLocations(nextLocations);
     setConnections(nextConnections);
     setEntities(nextEntities);
@@ -427,12 +446,12 @@ function useProvideGameData() {
 
     // Baseline for dirty detection: a freshly loaded world has no pending changes.
     setSavedWorld(buildWorldData(
-      normalizedOverview, nextStats, nextLocations, nextConnections, nextEntities, nextEntityGroups, nextTraits, nextTraitGroups, nextStatUpdates, nextDictionaries, nextPlaceholders, nextPlaceholderGroups,
+      normalizedOverview, nextStats, nextStatGroups, nextLocations, nextConnections, nextEntities, nextEntityGroups, nextTraits, nextTraitGroups, nextStatUpdates, nextDictionaries, nextPlaceholders, nextPlaceholderGroups,
     ));
     setWorldStored(stored);
 
     return { world: worldData, isDefault };
-  }, [setWorldOverview, setStats, setLocations, setEntities, setTraits, setStatUpdates, setDictionaries, disarmHistory, settleElsewhere]);
+  }, [setWorldOverview, setStats, setStatGroups, setLocations, setEntities, setTraits, setStatUpdates, setDictionaries, disarmHistory, settleElsewhere]);
 
   // Copies follow the traits after every write. The slices are separate states, so the pass reads the
   // committed world rather than one setter's view of it.
@@ -450,8 +469,8 @@ function useProvideGameData() {
 
   // The current editor state as a canonical world payload; the one source consumers serialize/save/export from.
   const getWorldData = useCallback(
-    () => buildWorldData(worldOverview, stats, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, worldPlaceholders, placeholderGroups),
-    [worldOverview, stats, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, worldPlaceholders, placeholderGroups],
+    () => buildWorldData(worldOverview, stats, statGroups, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, worldPlaceholders, placeholderGroups),
+    [worldOverview, stats, statGroups, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, worldPlaceholders, placeholderGroups],
   );
 
   // Every reader takes one list: the world's shared placeholders, then each entity's own in tree order,
@@ -472,7 +491,7 @@ function useProvideGameData() {
   const placeholderOwnerIndex = ownersRef.current;
 
   // The committed state, which every action reads at call time so it keeps one identity.
-  const committed = { entities, entityGroups, traits, traitGroups, locations, placeholders, worldOverview, worldId, savedWorld, worldStored, getWorldData };
+  const committed = { stats, statGroups, entities, entityGroups, traits, traitGroups, locations, placeholders, worldOverview, worldId, savedWorld, worldStored, getWorldData };
   const latest = useRef(committed);
   useLayoutEffect(() => { latest.current = committed; });
 
@@ -687,6 +706,7 @@ function useProvideGameData() {
   const actions = useMemo(() => ({
     updateWorldOverview, loadWorldMetadata,
     addStat, updateStat, removeStat,
+    addStatGroup, updateStatGroup, removeStatGroup,
     addLocation, updateLocation, removeLocation,
     addConnection, updateConnection, removeConnection,
     addEntity, updateEntity, editEntity, removeEntity,
@@ -697,12 +717,13 @@ function useProvideGameData() {
     addDictionaryEntry, updateDictionaryEntry, removeDictionaryEntry,
     addPlaceholder, updatePlaceholder, removePlaceholder,
     addPlaceholderGroup, updatePlaceholderGroup, setPlaceholderGroups,
-    setStats, setLocations, setConnections, setEntities, setEntityGroups, setTraits, setTraitGroups, setStatUpdates,
+    setStats, setStatGroups, setLocations, setConnections, setEntities, setEntityGroups, setTraits, setTraitGroups, setStatUpdates,
     setDictionaries, setWorldPlaceholders,
     loadWorldData, setWorldId, saveWorld, discardChanges, setOwnedLibraryIds, reloadWorld, keepWorldCopy,
   }), [
     updateWorldOverview, loadWorldMetadata,
     addStat, updateStat, removeStat,
+    addStatGroup, updateStatGroup, removeStatGroup,
     addLocation, updateLocation, removeLocation,
     addConnection, updateConnection, removeConnection,
     addEntity, updateEntity, editEntity, removeEntity,
@@ -722,6 +743,7 @@ function useProvideGameData() {
     worldMetadata,
     worldOverview,
     stats,
+    statGroups,
     locations,
     connections,
     entities,
@@ -752,7 +774,7 @@ function useProvideGameData() {
     // Placeholder id → the entity or book that owns it, for the surfaces that read a chip as `Molly › Eyes`.
     placeholderOwners: placeholderOwnerIndex,
   }), [
-    actions, worldMetadata, worldOverview, stats, locations, connections, entities, entityGroups, traits, traitGroups,
+    actions, worldMetadata, worldOverview, stats, statGroups, locations, connections, entities, entityGroups, traits, traitGroups,
     statUpdates, dictionaries, placeholders, worldPlaceholders, placeholderGroups, getWorldData, worldId, worldLoaded,
     isWorldDirty, worldStored, worldChangedElsewhere, dictStore, phStore, placementLetters, placeholderOwnerIndex,
   ]);

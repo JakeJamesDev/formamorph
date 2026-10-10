@@ -131,6 +131,7 @@ export interface StoredWorldRecord {
     version?: string; // stamped on save/export (see lib/version)
     worldOverview: unknown;
     stats: unknown[];
+    statGroups?: unknown[];
     locations: unknown[];
     entities: unknown[];
     entityGroups?: unknown[];

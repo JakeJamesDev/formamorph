@@ -80,19 +80,20 @@ describe('revealing what an undo restored', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     openEditorTab(/Stats/);
     await step(() => fireEvent.click(screen.getByRole('button', { name: 'Add to Stats' })));
+    await step(() => fireEvent.click(screen.getByRole('button', { name: 'Add Stat' })));
     expect(statPanelShown()).toBe(true);
 
     await undo();
     expect(shownEditorTab()).toMatch(/Stats/);
     expect(statPanelShown()).toBe(false);
-    expect(screen.queryAllByRole('button', { name: /^Select / }).map((b) => b.getAttribute('aria-label')))
-      .toEqual(['Select Warmth', 'Select Damp']);
+    expect(screen.queryAllByLabelText('Drag to reorder or nest').map((grip) => grip.parentElement!.textContent))
+      .toEqual(['Warmth', 'Damp']);
   });
 
   it('keeps the open stat when the undo removes a different one', async () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openEditorTab(/Stats/);
-    fireEvent.click(screen.getByRole('button', { name: 'Select Warmth' }));
+    fireEvent.click(screen.getByText('Warmth', { exact: true }));
     expect(openStatName()).toBe('Warmth');
     await step(() => ctx().addStat(stat('s-new', 'Chill') as never));
 

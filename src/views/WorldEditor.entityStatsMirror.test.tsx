@@ -68,7 +68,18 @@ const openMirror = (name: string) => {
 };
 const searchBox = () => screen.getByPlaceholderText('Filter Stats');
 const openAddMenu = (name: string) => fireEvent.click(screen.getByRole('button', { name: `Add to ${name}` }));
-const rowNames = () => screen.queryAllByRole('button', { name: /^Select / }).map((b) => b.getAttribute('aria-label')!.slice('Select '.length));
+/** The search list's rows: a labeled select button each, which the tree's rows do not have. */
+const searchRowNames = () => screen.queryAllByRole('button', { name: /^Select / }).map((b) => b.getAttribute('aria-label')!.slice('Select '.length));
+/** The stat tree's rows: the grips inside the stat list, so the Entities tree beside it never counts. */
+const statList = () => {
+  let el = searchBox().parentElement;
+  while (el && !el.querySelector('[aria-label="Drag to reorder or nest"]')) el = el.parentElement;
+  return el ?? document.body;
+};
+const treeRows = () => within(statList()).queryAllByLabelText('Drag to reorder or nest').map((grip) => grip.parentElement as HTMLElement);
+const rowNames = () => treeRows().map((r) => r.textContent!);
+const treeRow = (name: string) => treeRows().find((r) => within(r).queryByText(name, { exact: true }))!;
+const selectRow = (name: string) => fireEvent.click(within(treeRow(name)).getByText(name, { exact: true }));
 const ownStats = (ctx: () => { entities: World['entities'] }, id: string) => ctx().entities.find((e) => e.id === id)!.stats;
 const panelOpen = () => !!screen.queryByRole('tablist', { name: 'Stat Fields' });
 /** The Details tab's number fields hold no label link, so they are read in the order the panel draws them. */
@@ -104,8 +115,8 @@ describe('the entity Stats tab', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     openMirror('Ash');
     expect(rowNames()).toEqual(['Trust', 'Vigor', 'Hunger']);
-    const trust = screen.getByRole('button', { name: 'Select Trust' }).parentElement as HTMLElement;
-    expect(within(trust).getByLabelText('Drag to reorder')).toBeInTheDocument();
+    const trust = treeRow('Trust');
+    expect(within(trust).getByLabelText('Drag to reorder or nest')).toBeInTheDocument();
     expect(within(trust).getByRole('button', { name: 'Duplicate' })).toBeInTheDocument();
     expect(within(trust).getByRole('button', { name: 'Delete' })).toBeInTheDocument();
     expect(screen.queryByText('Warmth')).toBeNull();
@@ -143,7 +154,7 @@ describe('the entity Stats tab', () => {
   it('opens the same stat panel the Stats tab uses, and writes each field to the entity\'s stat', () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openMirror('Ash');
-    fireEvent.click(screen.getByRole('button', { name: 'Select Trust' }));
+    selectRow('Trust');
     expect(['Details', 'Descriptors', 'Code'].map((name) => statTab(name))).toHaveLength(3);
 
     fireEvent.change(numberField('Regen'), { target: { value: '2' } });
@@ -171,22 +182,20 @@ describe('the entity Stats tab', () => {
   it('duplicates a stat right after its original, and deletes one', () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openMirror('Ash');
-    const trust = () => screen.getByRole('button', { name: 'Select Trust' }).parentElement as HTMLElement;
-    fireEvent.click(within(trust()).getByRole('button', { name: 'Duplicate' }));
+    fireEvent.click(within(treeRow('Trust')).getByRole('button', { name: 'Duplicate' }));
     expect(ownStats(ctx, 'ash')!.map((s) => s.name)).toEqual(['Trust', 'Trust (Copy)', 'Vigor', 'Hunger']);
     expect(new Set(ownStats(ctx, 'ash')!.map((s) => s.id)).size).toBe(4);
     expect(screen.getByLabelText('Name')).toHaveTextContent('Trust (Copy)');
 
     fireEvent.click(screen.getByRole('button', { name: /^Back to Stats/ }));
-    fireEvent.click(within(screen.getByRole('button', { name: 'Select Vigor' }).parentElement as HTMLElement).getByRole('button', { name: 'Delete' }));
+    fireEvent.click(within(treeRow('Vigor')).getByRole('button', { name: 'Delete' }));
     expect(ownStats(ctx, 'ash')!.map((s) => s.name)).toEqual(['Trust', 'Trust (Copy)', 'Hunger']);
   });
 
   it('reorders inside the entity and never moves a world stat', () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openMirror('Ash');
-    // Typing a search draws the flat, sortable list, whose drop handler the mock holds.
-    fireEvent.change(searchBox(), { target: { value: 'r' } });
+    // A drop on the tree, played through the drop handler the mock holds.
     drop('s-trust', 's-hunger');
     expect(ownStats(ctx, 'ash')!.map((s) => s.id)).toEqual(['s-vigor', 's-hunger', 's-trust']);
     expect(ctx().stats.map((s) => s.id)).toEqual(['s-warmth']);
@@ -196,7 +205,7 @@ describe('the entity Stats tab', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     openMirror('Ash');
     fireEvent.change(searchBox(), { target: { value: 'v' } });
-    expect(rowNames()).toEqual(['Vigor']);
+    expect(searchRowNames()).toEqual(['Vigor']);
     fireEvent.change(searchBox(), { target: { value: 'zzz' } });
     expect(screen.getByText('No stats match “zzz”.')).toBeInTheDocument();
   });
@@ -204,7 +213,7 @@ describe('the entity Stats tab', () => {
   it('returns to the list when another entity is selected, and keeps the open stat across a tab switch', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     openMirror('Ash');
-    fireEvent.click(screen.getByRole('button', { name: 'Select Vigor' }));
+    selectRow('Vigor');
     fireEvent.mouseDown(entityFieldsTab('Profile'));
     expect(panelOpen()).toBe(false);
     fireEvent.mouseDown(entityFieldsTab('Stats'));
@@ -212,6 +221,108 @@ describe('the entity Stats tab', () => {
     selectEntity('Odd Wick');
     expect(entityFieldsTab('Stats')).toHaveAttribute('aria-selected', 'true');
     expect(panelOpen()).toBe(false);
+  });
+});
+
+describe('the entity Stats tab groups', () => {
+  const GROUPED: World = benchEditorWorld({
+    stats: [stat('s-warmth', 'Warmth')],
+    statGroups: [{ id: 'g-world', name: 'World Group', parentId: null, order: 0 }],
+    entities: [
+      {
+        id: 'ash', name: 'Ash', playerDescription: 'A wolf.', aiDescription: 'A wolf.', locations: ['harbor'],
+        stats: [
+          stat('s-trust', 'Trust', { groupId: 'g-bond', order: 0 }), stat('s-vigor', 'Vigor', { groupId: null, order: 1 }),
+        ],
+        statGroups: [{ id: 'g-bond', name: 'Bond', parentId: null, order: 0, aiDescription: 'How Ash feels about you.' }],
+      },
+    ],
+  } as Partial<World>);
+  const ownGroups = (ctx: () => { entities: World['entities'] }, id: string) => ctx().entities.find((e) => e.id === id)!.statGroups;
+
+  /** Replaces the Group Name field's text through its composer, as one edit. */
+  const setGroupName = (text: string) => act(async () => {
+    const field = screen.getByRole('textbox', { name: 'Group Name' });
+    getNearestEditorFromDOMNode(field)!.update(() => {
+      $getRoot().clear().append($createParagraphNode().append($createTextNode(text)));
+    }, { discrete: true });
+  });
+
+  it('draws the entity\'s own groups over their stats and none of the world\'s', () => {
+    renderWorldEditorBench(GROUPED, 'advanced');
+    openMirror('Ash');
+    expect(rowNames()).toEqual(['Bond', 'Trust', 'Vigor']);
+    expect(screen.queryByText('World Group')).toBeNull();
+  });
+
+  it('adds a group to the entity only, at its top level, and opens the group panel', () => {
+    const { ctx } = renderWorldEditorBench(GROUPED, 'advanced');
+    openMirror('Ash');
+    openAddMenu('Ash');
+    fireEvent.click(screen.getByRole('button', { name: 'Add Group' }));
+    expect(ownGroups(ctx, 'ash')).toEqual([
+      expect.objectContaining({ id: 'g-bond' }),
+      expect.objectContaining({ name: 'New Group', parentId: null, order: 2 }),
+    ]);
+    expect(ctx().statGroups?.map((g) => g.id)).toEqual(['g-world']);
+    expect(screen.getByLabelText('Group Name')).toBeInTheDocument();
+    expect(entityFieldsTab('Stats')).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('reorders the entity\'s stats by a drop and stores them in the order the tree draws', () => {
+    const { ctx } = renderWorldEditorBench(GROUPED, 'advanced');
+    openMirror('Ash');
+    // Vigor is dropped on Bond's row at offset 0, so it takes the first place at the top level.
+    drop('s-vigor', 'g-bond');
+    expect(ownStats(ctx, 'ash')!.map((s) => s.id)).toEqual(['s-vigor', 's-trust']);
+    expect(rowNames()).toEqual(['Vigor', 'Bond', 'Trust']);
+  });
+
+  it('deletes a group and moves its stats to the top level of the entity', () => {
+    const { ctx } = renderWorldEditorBench(GROUPED, 'advanced');
+    openMirror('Ash');
+    fireEvent.click(within(treeRow('Bond')).getByRole('button', { name: 'Delete' }));
+    expect(ownGroups(ctx, 'ash')).toBeUndefined();
+    expect(ownStats(ctx, 'ash')!.map((s) => s.groupId)).toEqual([null, null]);
+    expect(rowNames()).toEqual(['Trust', 'Vigor']);
+  });
+
+  it('edits a group\'s name through its panel and writes it to the entity', async () => {
+    const { ctx } = renderWorldEditorBench(GROUPED, 'advanced');
+    openMirror('Ash');
+    selectRow('Bond');
+    await setGroupName('Trust Ties');
+    expect(ownGroups(ctx, 'ash')![0]).toMatchObject({ id: 'g-bond', name: 'Trust Ties', aiDescription: 'How Ash feels about you.' });
+    expect(ctx().statGroups![0].name).toBe('World Group');
+  });
+
+  it('undoes a group delete and a drop on the entity', async () => {
+    const step = (action: () => void) => act(async () => { action(); });
+    const { ctx } = renderWorldEditorBench(GROUPED, 'advanced');
+    openMirror('Ash');
+    await step(() => fireEvent.click(within(treeRow('Bond')).getByRole('button', { name: 'Delete' })));
+    expect(ownGroups(ctx, 'ash')).toBeUndefined();
+    await step(() => { fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true }); });
+    expect(ownGroups(ctx, 'ash')?.map((g) => g.id)).toEqual(['g-bond']);
+    expect(ownStats(ctx, 'ash')!.find((s) => s.id === 's-trust')?.groupId).toBe('g-bond');
+
+    await step(() => drop('s-vigor', 'g-bond'));
+    expect(ownStats(ctx, 'ash')!.map((s) => s.id)).toEqual(['s-vigor', 's-trust']);
+    await step(() => { fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true }); });
+    expect(ownStats(ctx, 'ash')!.map((s) => s.id)).toEqual(['s-trust', 's-vigor']);
+  });
+
+  it('undoes a group add away and back', async () => {
+    const step = (action: () => void) => act(async () => { action(); });
+    const { ctx } = renderWorldEditorBench(GROUPED, 'advanced');
+    openMirror('Ash');
+    openAddMenu('Ash');
+    fireEvent.click(screen.getByRole('button', { name: 'Add Group' }));
+    expect(ownGroups(ctx, 'ash')).toHaveLength(2);
+    await step(() => { fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true }); });
+    expect(ownGroups(ctx, 'ash')).toHaveLength(1);
+    await step(() => { fireEvent.keyDown(document.body, { key: 'y', ctrlKey: true }); });
+    expect(ownGroups(ctx, 'ash')).toHaveLength(2);
   });
 });
 
@@ -223,7 +334,7 @@ describe('undo and redo of an entity stat edit', () => {
   it('restores the stat and returns to the entity\'s Stats tab from another tab', async () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openMirror('Ash');
-    fireEvent.click(screen.getByRole('button', { name: 'Select Trust' }));
+    selectRow('Trust');
     fireEvent.change(numberField('Regen'), { target: { value: '5' } });
     expect(ownStats(ctx, 'ash')![0].regen).toBe(5);
     // Away from the entity, to the World Editor's own Stats tab.

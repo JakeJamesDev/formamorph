@@ -12,7 +12,7 @@ const stat = (id: string): Stat => ({ id, name: id } as unknown as Stat);
 const wire = (id: string): Connection => ({ id } as unknown as Connection);
 
 const world = (over: Partial<WorldSlices> = {}): WorldSlices => ({
-  worldOverview: { name: 'Sedge Landing' } as WorldSlices['worldOverview'], stats: [], locations: [], connections: [],
+  worldOverview: { name: 'Sedge Landing' } as WorldSlices['worldOverview'], stats: [], statGroups: [], locations: [], connections: [],
   entities: [], entityGroups: [], traits: [], traitGroups: [], statUpdates: [], dictionaries: [], placeholders: [],
   placeholderGroups: [], ...over,
 });

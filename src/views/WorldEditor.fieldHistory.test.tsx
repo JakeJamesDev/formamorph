@@ -43,7 +43,10 @@ const WORLD: World = benchEditorWorld({
   stats: [stat('s-warmth', 'Warmth'), stat('s-damp', 'Damp'), stat('s-dread', 'Dread')],
 } as Partial<World>);
 
-const rowButton = (name: string) => screen.getByRole('button', { name: `Select ${name}` });
+/** The Stats tab's tree rows, found by their drag grips so the panel's own copy of a name never matches. */
+const treeRows = () => screen.queryAllByLabelText('Drag to reorder or nest').map((grip) => grip.parentElement as HTMLElement);
+const treeRow = (name: string) => treeRows().find((r) => within(r).queryByText(name, { exact: true }))!;
+const rowButton = (name: string) => within(treeRow(name)).getByText(name, { exact: true });
 const statNames = (ctx: () => { stats: { name: string }[] }) => ctx().stats.map((s) => s.name);
 
 /** One author action, then the event loop moves on as it does between two presses. */
@@ -51,7 +54,7 @@ const step = (action: () => void) => act(async () => { action(); });
 /** Lets the event loop move on, so the next write is a new Step and does not fold into the last one. */
 const apart = () => act(async () => { await new Promise((resolve) => setTimeout(resolve, 5)); });
 const removeStat = (name: string) => step(() => {
-  fireEvent.click(within(rowButton(name).parentElement as HTMLElement).getByRole('button', { name: 'Delete' }));
+  fireEvent.click(within(treeRow(name)).getByRole('button', { name: 'Delete' }));
 });
 
 /** The prompt field under a visible label: its label names no editable, so the field is the nearest one below. */

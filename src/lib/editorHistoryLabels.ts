@@ -6,6 +6,7 @@ import {
 export const SLICE_TYPE_NAMES: Record<SliceName, [string, string]> = {
   worldOverview: ["World", "World"],
   stats: ["Stat", "Stats"],
+  statGroups: ["Stat Group", "Stat Groups"],
   locations: ["Location", "Locations"],
   connections: ["Connection", "Connections"],
   entities: ["Entity", "Entities"],
