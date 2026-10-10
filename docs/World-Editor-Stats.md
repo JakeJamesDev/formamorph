@@ -19,7 +19,7 @@ The narrator's prompt tells it to let stats change how an action turns out. A lo
 
 1. Open the **Stats** tab.
 2. Type the stat's name in the **Filter Stats** box.
-3. Select the **+** button (**Add to Stats**). The new stat opens in the panel.
+3. Select the **+** button (**Add to Stats**). In Advanced mode, choose **Add Stat** from its menu. The new stat opens in the panel.
 4. Set **Min**, **Max** and **Initial Value**.
 5. Write its **Description**.
 6. Select **Save**.
@@ -44,6 +44,22 @@ The narrator's prompt tells it to let stats change how an action turns out. A lo
 2. On the **Details** tab, under **Availability**, check **Hidden**.
 
 The player no longer sees the stat. The AI still reads it, and its Regen and code still run.
+
+## How to Group Stats
+<!-- keywords: folder, organize, nest, section, category, collapse, heading, sort stats, long list, subgroup -->
+
+**Advanced mode only.**
+
+1. Open the **Stats** tab.
+2. Select the **+** button (**Add to Stats**), then **Add Group**.
+3. Name the group. Add an **AI-Facing Description** if you want one.
+4. Drag a stat onto the group. Drag a group right to nest it in the group above.
+
+The same steps work on an entity's own **Stats** tab, for the stats that entity owns.
+
+Groups only organize your stats. A group has no pick count, mode or gate. In the game, the stat panel shows each group as a heading that collapses. A group with no visible stat is left out.
+
+> 💡 **Delete** on a group removes the group only. Its stats and subgroups move up one level.
 
 ## How to Add a Stat Descriptor
 <!-- keywords: label, band, threshold, level, word, text for value, range, status, tier, stage, bracket, adjective, name for low health, state names, milestone -->

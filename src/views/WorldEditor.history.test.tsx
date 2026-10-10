@@ -40,8 +40,10 @@ const WORLD: World = benchEditorWorld({
   stats: [stat('s-warmth', 'Warmth'), stat('s-damp', 'Damp'), stat('s-dread', 'Dread')],
 } as Partial<World>);
 
-const rows = () => screen.queryAllByRole('button', { name: /^Select / }).map((b) => b.getAttribute('aria-label')!.slice('Select '.length));
-const row = (name: string) => screen.getByRole('button', { name: `Select ${name}` }).parentElement as HTMLElement;
+/** The Stats tab's tree rows, found by their drag grips so the panel's own copy of a name never matches. */
+const treeRows = () => screen.queryAllByLabelText('Drag to reorder or nest').map((grip) => grip.parentElement as HTMLElement);
+const rows = () => treeRows().map((r) => r.textContent!);
+const row = (name: string) => treeRows().find((r) => within(r).queryByText(name, { exact: true }))!;
 
 /** One author action, then the event loop moves on as it does between two presses. */
 const step = (action: () => void) => act(async () => { action(); });
@@ -320,6 +322,41 @@ describe('the History popover (desktop)', () => {
     expect(listRow('Remove Stat Dread (undone)')).toHaveAttribute('data-undone', 'true');
     expect(listRow('Remove Stat Damp')).not.toHaveAttribute('data-undone');
     expect(listRow('World opened')).not.toHaveAttribute('aria-current');
+  });
+
+  it('records a stat group as its own Step, so Undo and Redo move it', async () => {
+    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+    openEditorTab(/Stats/);
+    await step(() => fireEvent.click(screen.getByRole('button', { name: 'Add to Stats' })));
+    await step(() => fireEvent.click(screen.getByRole('button', { name: 'Add Group' })));
+    expect(ctx().statGroups).toHaveLength(1);
+
+    await openHistory();
+    expect(listRows()).toEqual(['World opened', 'Add Stat Group New Group']);
+
+    await chord('z');
+    expect(ctx().statGroups).toHaveLength(0);
+    await chord('y');
+    expect(ctx().statGroups).toHaveLength(1);
+  });
+
+  it('undoes a group delete as one Step, bringing the group and its stat back together', async () => {
+    const grouped = benchEditorWorld({
+      stats: [{ ...stat('s-warmth', 'Warmth'), groupId: 'g-body', order: 0 }],
+      statGroups: [{ id: 'g-body', name: 'Body', parentId: null, order: 0 }],
+    } as Partial<World>);
+    const { ctx } = renderWorldEditorBench(grouped, 'advanced');
+    openEditorTab(/Stats/);
+    await step(() => fireEvent.click(within(row('Body')).getByRole('button', { name: 'Delete' })));
+    expect(ctx().statGroups).toHaveLength(0);
+    expect(ctx().stats[0].groupId).toBeNull();
+
+    await chord('z');
+    expect(ctx().statGroups?.map((g) => g.id)).toEqual(['g-body']);
+    expect(ctx().stats[0].groupId).toBe('g-body');
+    await chord('y');
+    expect(ctx().statGroups).toHaveLength(0);
+    expect(ctx().stats[0].groupId).toBeNull();
   });
 
   it('moves the world to the row that is clicked, back to World opened and forward to a dimmed row', async () => {

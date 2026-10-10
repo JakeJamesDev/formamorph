@@ -70,7 +70,7 @@ import type { TTSProgress } from './TTSModal';
 import { ConfirmDialog } from '../ConfirmDialog';
 import { HelpButton } from '../HelpButton';
 import { EditTextModal } from '../modals/EditTextModal';
-import type { Entity, PersonaRef, SceneEntity, Trait } from '@/types';
+import type { Entity, PersonaRef, SceneEntity, Stat, StatGroup, Trait } from '@/types';
 import { gateStates } from '@/lib/traitGates';
 import { worldEntitiesOf } from '@/lib/persona';
 import type { TraitCascade } from './SetupTraitList';
@@ -82,6 +82,8 @@ import { LocationTabBody } from './LocationTabBody';
 import { EntityListRow } from './EntityListRow';
 import { TraitsTab } from './TraitsTab';
 import { StatRow } from './StatRow';
+import { StatGroupSections } from './StatGroupSections';
+import { statPanelLayout } from '@/lib/statGroupTree';
 import { PersonaRow } from './PersonaRow';
 import { useNarrationLayout } from '@/lib/useNarrationLayout';
 import { useStatsSnap } from '@/lib/useStatsSnap';
@@ -1199,6 +1201,8 @@ export const MiddlePanel = ({
 const NO_ENTITY = '__none';
 /** An entity row is read-only, so its value never commits. */
 const noCommit = () => {};
+const NO_STAT_GROUPS: StatGroup[] = [];
+const NO_AUTHORED_STATS: Stat[] = [];
 const entityItems = (options: StatPanelOption[]) =>
   options.map((option) => <SelectItem key={option.id} value={option.id}>{option.label}</SelectItem>);
 
@@ -1251,7 +1255,9 @@ export const RightPanel = ({
     locations, connections, traits, traitGroups, viewStats: playerStats, currentLocation, resolveTraitText, resolveEntityText,
     entities: cast, persona, traitEntities, traitLibrary,
   } = useResolvedWorld();
-  const { options: entityOptions, shown: shownEntity, rows: entityRows, showPicker: entitiesShowStats } = useStatPanelEntity();
+  const {
+    options: entityOptions, shown: shownEntity, rows: entityRows, showPicker: entitiesShowStats, authored: shownAuthored,
+  } = useStatPanelEntity();
   const presentOptions = entityOptions.filter((option) => option.present);
   const absentOptions = entityOptions.filter((option) => !option.present);
   // In Chat a scroll moves the viewed turn, so the stat rows snap to it.
@@ -1331,6 +1337,13 @@ export const RightPanel = ({
   const hasShownStats = playerStats.some((stat) => stat.hidden !== true) || entitiesShowStats;
   const shownTab = !hasShownStats && activeTab === 'stats' ? 'traits' : activeTab;
   const anyDescriptors = visibleStats.some(({ stat }) => (stat.descriptors?.length ?? 0) > 0);
+  // The author's groups decide where each row sits, so a save made before a regrouping follows it.
+  const playerLayout = statPanelLayout(
+    gameData?.statGroups ?? NO_STAT_GROUPS, gameData?.stats ?? NO_AUTHORED_STATS, visibleStats, ({ stat }) => stat.id,
+  );
+  const entityLayout = statPanelLayout(
+    shownAuthored?.groups ?? NO_STAT_GROUPS, shownAuthored?.stats ?? NO_AUTHORED_STATS, entityRows, (stat) => stat.id,
+  );
   // On a past page show the viewed turn's location (Location tab); live otherwise.
   const displayLocation = isViewingPast
     ? (locations.find((l) => l.id === viewLocationId) ?? currentLocation)
@@ -1387,56 +1400,67 @@ export const RightPanel = ({
             </div>
           )}
           <ScrollArea className="min-h-0 flex-grow mb-4 relative">
-            {visibleStats.map(({ stat, index }) => {
-              const key = stat.name.toLowerCase();
-              return (
-                <StatRow
-                  key={index}
-                  stat={stat}
-                  change={recentStatChanges[key] || 0}
-                  // Live: a held change grows, else a draining change collapses. History: the turn's own
-                  // change grows in (never drains).
-                  barDelta={isViewingPast
-                    ? (recentStatChanges[key] || 0)
-                    : (heldStatChanges[key] || drainingStatChanges[key] || 0)}
-                  draining={!isViewingPast && !heldStatChanges[key] && !!drainingStatChanges[key]}
-                  page={currentPage}
-                  isViewingPast={isViewingPast}
-                  snap={snapStats}
-                  fading={recentStatFading}
-                  editable={isEditMode && !isViewingPast}
-                  reserveDescriptorLine={anyDescriptors}
-                  onCommitValue={(value) => {
-                    const newStats = [...playerStats];
-                    newStats[index] = { ...stat, value };
-                    commitManualStatEdit(newStats);
-                  }}
-                />
-              );
-            })}
+            <StatGroupSections
+              nodes={playerLayout}
+              idOf={({ stat }) => stat.id}
+              nameOf={resolvePH}
+              renderStat={({ stat, index }) => {
+                const key = stat.name.toLowerCase();
+                return (
+                  <StatRow
+                    stat={stat}
+                    change={recentStatChanges[key] || 0}
+                    // Live: a held change grows, else a draining change collapses. History: the turn's own
+                    // change grows in (never drains).
+                    barDelta={isViewingPast
+                      ? (recentStatChanges[key] || 0)
+                      : (heldStatChanges[key] || drainingStatChanges[key] || 0)}
+                    draining={!isViewingPast && !heldStatChanges[key] && !!drainingStatChanges[key]}
+                    page={currentPage}
+                    isViewingPast={isViewingPast}
+                    snap={snapStats}
+                    fading={recentStatFading}
+                    editable={isEditMode && !isViewingPast}
+                    reserveDescriptorLine={anyDescriptors}
+                    onCommitValue={(value) => {
+                      const newStats = [...playerStats];
+                      newStats[index] = { ...stat, value };
+                      commitManualStatEdit(newStats);
+                    }}
+                  />
+                );
+              }}
+            />
             {entitiesShowStats && shownEntity && (
               <section aria-label={`${shownEntity.label} stats`} data-testid="entity-stats" className="mt-2 border-t border-border pt-2">
                 <h3 className="truncate px-2 pb-1 text-label font-medium">{shownEntity.label}</h3>
                 {entityRows.length === 0 ? (
                   <p role="status" className="py-4 text-center text-muted-foreground">No stats to show.</p>
-                ) : entityRows.map((stat) => (
-                  <StatRow
-                    // Keyed by owner, so a pick starts every row's band flash fresh.
-                    key={`${shownEntity.id}:${stat.id}`}
-                    stat={stat}
-                    // The entity row change: no entity stat change reaches the panel yet.
-                    change={0}
-                    barDelta={0}
-                    draining={false}
-                    page={currentPage}
-                    isViewingPast={isViewingPast}
-                    snap={snapStats}
-                    fading={false}
-                    editable={false}
-                    reserveDescriptorLine={entityRows.some((row) => (row.descriptors?.length ?? 0) > 0)}
-                    onCommitValue={noCommit}
+                ) : (
+                  // Keyed by owner, so a pick starts every row's band flash fresh.
+                  <StatGroupSections
+                    key={shownEntity.id}
+                    nodes={entityLayout}
+                    idOf={(stat) => stat.id}
+                    nameOf={(name) => (shownAuthored ? resolveEntityText(shownAuthored.entity, name) : name)}
+                    renderStat={(stat) => (
+                      <StatRow
+                        stat={stat}
+                        // The entity row change: no entity stat change reaches the panel yet.
+                        change={0}
+                        barDelta={0}
+                        draining={false}
+                        page={currentPage}
+                        isViewingPast={isViewingPast}
+                        snap={snapStats}
+                        fading={false}
+                        editable={false}
+                        reserveDescriptorLine={entityRows.some((row) => (row.descriptors?.length ?? 0) > 0)}
+                        onCommitValue={noCommit}
+                      />
+                    )}
                   />
-                ))}
+                )}
               </section>
             )}
             <StatsActions

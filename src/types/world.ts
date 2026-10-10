@@ -63,6 +63,23 @@ export interface Stat {
   noIncreaseMax?: boolean;
   noDecrease?: boolean;
   noDecreaseMax?: boolean;
+  /** The stat group this stat sits in; null or absent = top level. A group the owner lacks reads as top level. */
+  groupId?: string | null;
+  /** Sibling order among the stats and groups sharing the same parent. */
+  order?: number;
+}
+
+/** A folder grouping stats in the editor and the stat panel; nestable via `parentId`. Organization only: a
+ *  group has no modes, pick counts or gates. */
+export interface StatGroup {
+  id: string;
+  name: string;
+  /** Sent to the AI as the group's heading text. */
+  aiDescription?: string;
+  /** null = top-level; otherwise the parent group's id. */
+  parentId: string | null;
+  /** Sibling order among the stats and groups sharing the same parent. */
+  order?: number;
 }
 
 /** How a trait or stat-update modifies a stat. */
@@ -293,6 +310,8 @@ export interface Entity {
   /** Stats this entity owns: the world stat type, every field. Order is list order. Absent = none. Authored
    *  here only; play does not read them yet. */
   stats?: Stat[];
+  /** Groups for this entity's own stats, nestable via `parentId` like the world's. */
+  statGroups?: StatGroup[];
   /** Off-world only: the shared placeholders this entity's chips use, so they resolve after import. An import
    *  merges them into the world's shared list by name and values and clears the field. */
   sharedPlaceholders?: Placeholder[];
@@ -555,6 +574,8 @@ export interface World {
   version?: string;
   worldOverview: WorldOverview;
   stats: Stat[];
+  /** Folders organizing the player's stats in the editor and the stat panel. */
+  statGroups?: StatGroup[];
   locations: GameLocation[];
   /** Authored travel links between locations (see `Connection`). Absent/empty ⇒ navigation is entirely
    *  implicit, exactly as before the graph existed. */

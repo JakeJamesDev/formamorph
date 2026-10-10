@@ -1,6 +1,6 @@
 import { randomUUID } from "@/lib/uuid";
 import type {
-  World, SaveObject, Stat, GameState, Trait, TraitGroup, Entity, PlayerStat, Connection, ConnectionLeg, GameLocation, Placeholder, PlaceholderValue,
+  World, SaveObject, Stat, StatGroup, GameState, Trait, TraitGroup, Entity, PlayerStat, Connection, ConnectionLeg, GameLocation, Placeholder, PlaceholderValue,
   Opening,
 } from '@/types';
 import { isImplicitPair, parentIndex } from './locationGraph';
@@ -479,6 +479,24 @@ function migrateEntityStats(world: Record<string, unknown>): void {
   });
 }
 
+const groupRecords = (groups: unknown): StatGroup[] =>
+  (Array.isArray(groups) ? groups.filter((g) => g && typeof g === 'object' && typeof (g as StatGroup).id === 'string') : []) as StatGroup[];
+
+/** Keep the world's stat groups, and an entity's own, to the records a group list can hold. A world with none
+ *  keeps none, which the editor's load reads as an empty list; an entity's empty or malformed list is stored as
+ *  absent. Not version-gated, since an import can carry any shape. */
+function migrateStatGroups(world: Record<string, unknown>): void {
+  if ('statGroups' in world) world.statGroups = groupRecords(world.statGroups);
+  if (!Array.isArray(world.entities)) return;
+  world.entities = world.entities.map((raw) => {
+    if (!raw || typeof raw !== 'object' || !('statGroups' in raw)) return raw;
+    const { statGroups, ...rest } = raw as Entity;
+    const kept = groupRecords(statGroups);
+    if (Array.isArray(statGroups) && kept.length === statGroups.length && kept.length) return raw;
+    return kept.length ? { ...rest, statGroups: kept } : rest;
+  });
+}
+
 /**
  * Give every placeholder's values their stable ids. Deliberately NOT version-gated, for the same reason as
  * `foldDictionaryIntoBooks`: shipped 2.x worlds carry `version === APP_VERSION` yet predate the records.
@@ -533,7 +551,7 @@ function migrateStatCode(world: Record<string, unknown>): void {
  * Bring an imported world up to the current format and stamp it with `APP_VERSION`. The dictionary→books
  * fold, the keyword-array migration, the entity-gallery fold, the entity-location flip, the
  * connection-record pair-merge, the Connection-leg conversion, the start-flag rename, the placeholder value-record conversion, the
- * opening-cue move, the player-setting split, the requirement-row wrap, the entity-stat shape guard, the content-link guard and the stat-code route rewrite run unconditionally (they aren't version-gated — see `foldDictionaryIntoBooks`); the
+ * opening-cue move, the player-setting split, the requirement-row wrap, the entity-stat shape guard, the stat-group shape guard, the content-link guard and the stat-code route rewrite run unconditionally (they aren't version-gated — see `foldDictionaryIntoBooks`); the
  * rest is skipped for a world already at `APP_VERSION`. Moves the legacy root `customPlayerVRM` bare
  * data-URL into `worldOverview.customPlayerVRM` as a `MediaAsset`, auto-binds legacy body stats to morphs,
  * and renames v1.2 description keys on entities/locations/traits to the audience-based keys. Remaining field defaults are left to `loadWorldData`. Add further 2.0 → 2.x steps here when the shape changes — a version
@@ -556,6 +574,7 @@ export function migrateWorld(raw: unknown): World {
   migrateRequirementRows(world);
   dropRootTraitLinks(world);
   migrateEntityStats(world);
+  migrateStatGroups(world);
   normalizeContentLinks(world);
   migrateStatCode(world);
   if (world.version === APP_VERSION) return world as unknown as World;

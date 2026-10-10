@@ -1017,3 +1017,41 @@ describe('migrateWorld — entity stats', () => {
     expect(migrateWorld(JSON.parse(JSON.stringify(once))).entities).toEqual(once.entities);
   });
 });
+
+describe('migrateWorld — stat groups', () => {
+  const group = (id: string) => ({ id, name: id, parentId: null });
+  const raw = (extra: Record<string, unknown>) => ({ version: APP_VERSION, ...extra });
+
+  it('leaves a world with no stat groups without the field, for the load to read as an empty list', () => {
+    expect(migrateWorld(raw({}))).not.toHaveProperty('statGroups');
+  });
+
+  it('stores a malformed list as empty', () => {
+    expect(migrateWorld(raw({ statGroups: 'body' })).statGroups).toEqual([]);
+    expect(migrateWorld(raw({ statGroups: null })).statGroups).toEqual([]);
+  });
+
+  it('keeps the groups a world has, and drops a record that is not a group', () => {
+    const out = migrateWorld(raw({ statGroups: [group('a'), null, 'x', { name: 'No Id' }, group('b')] }));
+    expect(out.statGroups?.map((g) => g.id)).toEqual(['a', 'b']);
+  });
+
+  it('leaves an entity\'s groups as they are, and stores an empty or malformed list as absent', () => {
+    const ash = { id: 'ash', name: 'Ash', statGroups: [group('bond')] };
+    const out = migrateWorld(raw({
+      entities: [ash, { id: 'a', name: 'A', statGroups: [] }, { id: 'b', name: 'B', statGroups: 'bond' }, { id: 'c', name: 'C' }],
+    })).entities;
+    expect(out[0]).toEqual(ash);
+    for (const entity of out.slice(1)) expect(entity).not.toHaveProperty('statGroups');
+  });
+
+  it('drops the records of an entity\'s group list that are not groups', () => {
+    const [ash] = migrateWorld(raw({ entities: [{ id: 'ash', name: 'Ash', statGroups: [group('bond'), null, { name: 'No Id' }] }] })).entities;
+    expect(ash.statGroups?.map((g) => g.id)).toEqual(['bond']);
+  });
+
+  it('is idempotent', () => {
+    const once = migrateWorld(raw({ statGroups: [group('a'), null], entities: [{ id: 'ash', name: 'Ash', statGroups: 3 }] }));
+    expect(migrateWorld(JSON.parse(JSON.stringify(once)))).toEqual(once);
+  });
+});

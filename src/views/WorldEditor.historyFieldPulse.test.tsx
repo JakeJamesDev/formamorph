@@ -158,7 +158,7 @@ describe('the field pulse after undo and redo', () => {
   it("pulses the edited row's field, not the first row's", async () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openEditorTab(/Stats/);
-    fireEvent.click(screen.getByRole('button', { name: 'Select Mood' }));
+    fireEvent.click(screen.getByText('Mood', { exact: true }));
     fireEvent.mouseDown(screen.getByRole('tab', { name: /Descriptors/ }));
     const [, second] = screen.getAllByRole('textbox', { name: 'Description' });
     await typeInto(second, 'Serene');
@@ -322,7 +322,7 @@ describe('the field pulse on controls and chips', () => {
   it('pulses a checkbox, and the switch it stands for', async () => {
     const { ctx } = renderWorldEditorBench(CONTROL_WORLD, 'advanced');
     openEditorTab(/Stats/);
-    fireEvent.click(screen.getByRole('button', { name: 'Select Mood' }));
+    fireEvent.click(screen.getByText('Mood', { exact: true }));
     await clickOn(screen.getByRole('checkbox', { name: 'Hidden' }));
     expect(ctx().stats[0].hidden).toBe(true);
     const trigger = await leaveFor(/Entities/);

@@ -16,7 +16,7 @@ const connection = (id: string): Connection => ({ id } as unknown as Connection)
 const overview = (name: string): WorldOverview => ({ name } as unknown as WorldOverview);
 
 const emptyWorld = (over: Partial<WorldSlices> = {}): WorldSlices => ({
-  worldOverview: overview('Sedge Landing'), stats: [], locations: [], connections: [], entities: [], entityGroups: [],
+  worldOverview: overview('Sedge Landing'), stats: [], statGroups: [], locations: [], connections: [], entities: [], entityGroups: [],
   traits: [], traitGroups: [], statUpdates: [], dictionaries: [], placeholders: [], placeholderGroups: [],
   ...over,
 });
@@ -33,6 +33,13 @@ describe('revealTarget', () => {
     const after = [before[0], { ...before[1], name: 'Thirst' }];
     expect(revealTarget(stepOf('stats', before, after), emptyWorld({ stats: before })))
       .toEqual({ tab: 'stats', id: 'thirst' });
+  });
+
+  it('names the stat group an edit rewrote, on the Stats tab', () => {
+    const added = [{ id: 'body', name: 'Body', parentId: null }];
+    const step = stepOf('statGroups', [], added);
+    expect(revealTarget(step, emptyWorld({ statGroups: added }))).toEqual({ tab: 'stats', id: 'body' });
+    expect(revealTarget(step, emptyWorld({ statGroups: [] }))).toEqual({ tab: 'stats', id: 'body', gone: true });
   });
 
   it('marks a record the move removed as gone', () => {

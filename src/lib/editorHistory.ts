@@ -1,5 +1,5 @@
 import type {
-  Connection, Dictionary, Entity, EntityGroup, GameLocation, Placeholder, PlaceholderGroup, Stat, StatUpdate, Trait,
+  Connection, Dictionary, Entity, EntityGroup, GameLocation, Placeholder, PlaceholderGroup, Stat, StatGroup, StatUpdate, Trait,
   TraitGroup, WorldOverview,
 } from "@/types";
 import { canonicalEqual } from "@/lib/canonicalStringify";
@@ -12,10 +12,11 @@ import { canonicalEqual } from "@/lib/canonicalStringify";
  * Session-only and capped. Nothing here is stored with the world, and saving only places a marker.
  */
 
-/** The twelve slices of an open world that the history records. */
+/** The thirteen slices of an open world that the history records. */
 export interface WorldSlices {
   worldOverview: WorldOverview;
   stats: Stat[];
+  statGroups: StatGroup[];
   locations: GameLocation[];
   connections: Connection[];
   entities: Entity[];
@@ -32,7 +33,7 @@ export type SliceName = keyof WorldSlices;
 export type RecordSliceName = Exclude<SliceName, "worldOverview">;
 
 export const WORLD_SLICES: readonly SliceName[] = [
-  "worldOverview", "stats", "locations", "connections", "entities", "entityGroups", "traits", "traitGroups",
+  "worldOverview", "stats", "statGroups", "locations", "connections", "entities", "entityGroups", "traits", "traitGroups",
   "statUpdates", "dictionaries", "placeholders", "placeholderGroups",
 ];
 

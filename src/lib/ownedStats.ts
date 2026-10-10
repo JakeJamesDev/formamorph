@@ -1,9 +1,9 @@
 // Stats an entity owns: pure edits of one entity's own stat list. A stat here is the world stat type.
 
-import { arrayMove } from '@dnd-kit/sortable';
-import type { Entity, Stat } from '@/types';
+import type { Entity, Stat, StatGroup } from '@/types';
 import { newStat, withDefaultDescriptors } from './blankWorld';
 import { followRename } from './statDescriptors';
+import { duplicateStatNode, newStatGroup, removeStatGroup, statRootCount } from './statGroupTree';
 
 /** The entity with its owned stats replaced. An empty list is stored as absent. */
 export function withOwnedStats(entity: Entity, stats: Stat[]): Entity {
@@ -11,11 +11,45 @@ export function withOwnedStats(entity: Entity, stats: Stat[]): Entity {
   return stats.length ? { ...rest, stats } : rest;
 }
 
-const statsOf = (entity: Entity): Stat[] => entity.stats ?? [];
+/** The entity with its owned stats and stat groups replaced. An empty list is stored as absent. */
+export function withOwnedStatTree(entity: Entity, stats: Stat[], groups: StatGroup[]): Entity {
+  const { stats: _stats, statGroups: _groups, ...rest } = entity;
+  return { ...rest, ...(stats.length ? { stats } : {}), ...(groups.length ? { statGroups: groups } : {}) };
+}
 
-/** Append a new stat at the end of the entity's list. */
-export const addOwnedStat = (entity: Entity, id: string, name?: string): Entity =>
-  withOwnedStats(entity, [...statsOf(entity), withDefaultDescriptors(newStat(id, name))]);
+const statsOf = (entity: Entity): Stat[] => entity.stats ?? [];
+const groupsOf = (entity: Entity): StatGroup[] => entity.statGroups ?? [];
+
+/** Append a new stat at the end of the entity's top level. */
+export const addOwnedStat = (entity: Entity, id: string, name?: string): Entity => {
+  const added = withDefaultDescriptors({
+    ...newStat(id, name), groupId: null, order: statRootCount(entity.statGroups, entity.stats),
+  });
+  return withOwnedStats(entity, [...statsOf(entity), added]);
+};
+
+/** Append a new group at the end of the entity's top level. */
+export const addOwnedStatGroup = (entity: Entity, id: string, name?: string): Entity =>
+  withOwnedStatTree(
+    entity, statsOf(entity), [...groupsOf(entity), newStatGroup(id, statRootCount(entity.statGroups, entity.stats), name)],
+  );
+
+/** Replace group `group.id`. */
+export const updateOwnedStatGroup = (entity: Entity, group: StatGroup): Entity =>
+  withOwnedStatTree(entity, statsOf(entity), groupsOf(entity).map((g) => (g.id === group.id ? group : g)));
+
+/** Delete a group; its stats and subgroups move up to its parent. */
+export function removeOwnedStatGroup(entity: Entity, id: string): Entity {
+  const next = removeStatGroup(groupsOf(entity), statsOf(entity), id);
+  return next.groups === entity.statGroups ? entity : withOwnedStatTree(entity, next.stats, next.groups);
+}
+
+/** Copy a stat or a whole group right after its original; `newId` is the copy's id. The entity itself for an id
+ *  it lacks. */
+export function duplicateOwnedStatNode(entity: Entity, id: string): { entity: Entity; newId: string } {
+  const next = duplicateStatNode(groupsOf(entity), statsOf(entity), id);
+  return next.newId === id ? { entity, newId: id } : { entity: withOwnedStatTree(entity, next.stats, next.groups), newId: next.newId };
+}
 
 /** Replace stat `stat.id`. A default descriptor follows the stat's name, as it does on the Stats tab. */
 export const updateOwnedStat = (entity: Entity, stat: Stat): Entity =>
@@ -27,31 +61,3 @@ export const updateOwnedStat = (entity: Entity, stat: Stat): Entity =>
 
 export const removeOwnedStat = (entity: Entity, id: string): Entity =>
   withOwnedStats(entity, statsOf(entity).filter((s) => s.id !== id));
-
-/** The list with a copy of stat `id` right after it, under `newId`. The list itself for an id it lacks. */
-export function withStatCopy(stats: Stat[], id: string, newId: string): Stat[] {
-  const index = stats.findIndex((s) => s.id === id);
-  if (index === -1) return stats;
-  const copy = { ...structuredClone(stats[index]), id: newId };
-  copy.name = `${copy.name} (Copy)`;
-  return [...stats.slice(0, index + 1), copy, ...stats.slice(index + 1)];
-}
-
-/** The list with stat `activeId` moved to the place of `overId`. The list itself for an id it lacks. */
-export function withStatMoved(stats: Stat[], activeId: string, overId: string): Stat[] {
-  const from = stats.findIndex((s) => s.id === activeId);
-  const to = stats.findIndex((s) => s.id === overId);
-  return from === -1 || to === -1 ? stats : arrayMove(stats, from, to);
-}
-
-export const duplicateOwnedStat = (entity: Entity, id: string, newId: string): Entity => {
-  const stats = statsOf(entity);
-  const next = withStatCopy(stats, id, newId);
-  return next === stats ? entity : withOwnedStats(entity, next);
-};
-
-export const moveOwnedStat = (entity: Entity, activeId: string, overId: string): Entity => {
-  const stats = statsOf(entity);
-  const next = withStatMoved(stats, activeId, overId);
-  return next === stats ? entity : withOwnedStats(entity, next);
-};

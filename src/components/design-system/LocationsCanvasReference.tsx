@@ -33,10 +33,10 @@ function noop() { /* the sample has no such slice */ }
 
 // The sample is a world of two slices; the recorder reads the other ten as empty and never writes them.
 const NO_SLICES = {
-  worldOverview: {} as WorldOverview, stats: [], entities: [], entityGroups: [], traits: [], traitGroups: [],
+  worldOverview: {} as WorldOverview, stats: [], statGroups: [], entities: [], entityGroups: [], traits: [], traitGroups: [],
   statUpdates: [], dictionaries: [], placeholders: [], placeholderGroups: [],
 };
-const NO_WRITES = { worldOverview: noop, stats: noop, entities: noop, entityGroups: noop, traits: noop, traitGroups: noop,
+const NO_WRITES = { worldOverview: noop, stats: noop, statGroups: noop, entities: noop, entityGroups: noop, traits: noop, traitGroups: noop,
   statUpdates: noop, dictionaries: noop, placeholders: noop, placeholderGroups: noop };
 
 export function LocationsCanvasReference() {
