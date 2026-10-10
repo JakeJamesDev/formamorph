@@ -9,7 +9,7 @@ import { stubReducedMotion } from '@/test/reducedMotion';
 import { reloadTourProgress } from '@/lib/authoringTour/progress';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import { phValues } from '@/test/placeholderValues';
-import { LANDING_PULSE_CLASS, LANDING_RING_CLASS } from '@/lib/landingPulse';
+import { LANDING_PULSE_CLASS, LANDING_RING_CLASS, landingTarget } from '@/lib/landingPulse';
 import type { World } from '@/types';
 
 /** After an undo or redo, the field the author edited scrolls into view and pulses, and focus stays put. */
@@ -56,11 +56,11 @@ const press = async (key: 'z' | 'y') => {
 const undo = () => press('z');
 const redo = () => press('y');
 
-/** The one element wearing a moving pulse or a still ring. */
+/** The one row a moving pulse or a still ring lands on. */
 const ringed = (name = LANDING_PULSE_CLASS) => {
   const rings = document.querySelectorAll<HTMLElement>(`.${name}`);
   expect(rings).toHaveLength(1);
-  return rings[0];
+  return landingTarget(rings[0]);
 };
 const noRing = () => document.querySelectorAll(`.${LANDING_PULSE_CLASS}, .${LANDING_RING_CLASS}`);
 
@@ -259,14 +259,13 @@ describe('the field pulse after undo and redo', () => {
     clock = vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 60_000);
     await step(() => { fireEvent.change(pronouns(), { target: { value: 'they/them' } }); });
 
-    const starts: Element[] = [];
-    const observer = new MutationObserver((records) => records.forEach((record) => {
-      const el = record.target as Element;
-      if (el.classList.contains(LANDING_PULSE_CLASS) && !record.oldValue?.split(' ').includes(LANDING_PULSE_CLASS)) {
-        starts.push(el);
-      }
-    }));
-    observer.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'], attributeOldValue: true });
+    // Each start draws a new ring.
+    const starts: (HTMLElement | null)[] = [];
+    const observer = new MutationObserver((records) => records.forEach((record) => record.addedNodes.forEach((node) => {
+      const ring = node instanceof Element ? node.querySelector(`.${LANDING_PULSE_CLASS}`) : null;
+      if (ring) starts.push(landingTarget(ring));
+    })));
+    observer.observe(document.body, { subtree: true, childList: true });
     await undo();
     expect(pronouns().value).toBe('they');
     await undo();

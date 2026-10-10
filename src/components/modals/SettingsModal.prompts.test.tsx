@@ -9,6 +9,7 @@ import { SettingsModal } from './SettingsModal';
 import { SURFACE_LABELS, HUB_LABEL } from '@/lib/promptGroups';
 import { CONTEXT_LABELS } from '@/lib/requestAnatomy';
 import { LANDING_PULSE_CLASS } from '@/lib/landingPulse';
+import { ringOn } from '@/test/landing';
 import { DEFAULT_TEXT_ENDPOINT_VALUES, textEndpointPresetCodec } from '@/lib/textEndpointPresets';
 
 const anatomy = vi.hoisted(() => ({ build: vi.fn() }));
@@ -305,7 +306,7 @@ describe('Settings → Prompts jumps', () => {
       fireEvent.click(anatomyRun('Now Message'));
       await waitFor(() => expect(scrolled.map((el) => el.textContent)).toContainEqual(expect.stringContaining('Now Message')));
       expect(scrolled.map((el) => el.textContent)).not.toContainEqual(expect.stringContaining('Recap Message'));
-      expect(scrolled.at(-1)!.classList.contains(LANDING_PULSE_CLASS)).toBe(true);
+      expect(ringOn(scrolled.at(-1) as HTMLElement, LANDING_PULSE_CLASS)).toBe(true);
     } finally {
       Element.prototype.scrollIntoView = realScroll;
     }

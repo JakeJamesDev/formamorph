@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBench';
 import { onStatCodeInsert, statCodeInsertTarget } from '@/lib/formaquestion/statCodeInsert';
 import { LANDING_PULSE_CLASS } from '@/lib/landingPulse';
+import { ringOn } from '@/test/landing';
 import type { World } from '@/types';
 
 /** The stat panel's side of the help window's Insert: the registration, the draft write, the confirm, and the landing. */
@@ -76,7 +77,7 @@ describe('inserting help code into the open stat', () => {
     expect(warmth(ctx).beforeCode).toBe('self.value = 2;');
     expect(panelTab('Code')).toHaveAttribute('aria-selected', 'true');
     await waitFor(() => expect(scrolled).toContain(boxOf(BEFORE_BOX)));
-    expect(boxOf(BEFORE_BOX)!.classList.contains(LANDING_PULSE_CLASS)).toBe(true);
+    expect(ringOn(boxOf(BEFORE_BOX), LANDING_PULSE_CLASS)).toBe(true);
     expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Stat Code Before the AI' }));
     expect(screen.queryByRole('alertdialog')).toBeNull();
   });

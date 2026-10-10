@@ -9,7 +9,7 @@ import { resolveSurface } from '@/lib/surface/surfaceRoute';
 import { routeText, SURFACE_TARGETS } from '@/lib/surface/surfaceTargets';
 import { settingsLanding } from '@/lib/surface/useSurfaceOpenRequest';
 import { stubReducedMotion } from '@/test/reducedMotion';
-import { frames, recordScrolls, rowOf } from '@/test/landing';
+import { endLanding, frames, recordScrolls, ringOn, rowOf } from '@/test/landing';
 import { SettingsModal } from './SettingsModal';
 import { endpointTabForRoute } from './settingsTabs';
 
@@ -61,20 +61,20 @@ describe('Settings Take Me There landing', () => {
     expect(document.activeElement?.getAttribute('role')).toMatch(/radio|combobox/);
   });
 
-  it('pulses the row once, and the class leaves when the animation ends', async () => {
+  it('pulses the row once, and the ring leaves when the animation ends', async () => {
     render(tree({ initialTab: 'display', initialTarget: LAYOUT, requestKey: 'a' }));
-    await waitFor(() => expect(rowOf(LAYOUT)!.classList.contains(LANDING_PULSE_CLASS)).toBe(true));
+    await waitFor(() => expect(ringOn(rowOf(LAYOUT), LANDING_PULSE_CLASS)).toBe(true));
     expect(document.querySelectorAll(`.${LANDING_PULSE_CLASS}`)).toHaveLength(1);
     const row = rowOf(LAYOUT)!;
-    row.dispatchEvent(Object.assign(new Event('animationend', { bubbles: true }), { animationName: LANDING_PULSE_CLASS }));
-    expect(row.classList.contains(LANDING_PULSE_CLASS)).toBe(false);
+    endLanding(row);
+    expect(ringOn(row, LANDING_PULSE_CLASS)).toBe(false);
   });
 
   it('draws the still ring without the pulse under reduced motion', async () => {
     stubReducedMotion();
     render(tree({ initialTab: 'display', initialTarget: LAYOUT, requestKey: 'a' }));
-    await waitFor(() => expect(rowOf(LAYOUT)!.classList.contains(LANDING_RING_CLASS)).toBe(true));
-    expect(rowOf(LAYOUT)!.classList.contains(LANDING_PULSE_CLASS)).toBe(false);
+    await waitFor(() => expect(ringOn(rowOf(LAYOUT), LANDING_RING_CLASS)).toBe(true));
+    expect(ringOn(rowOf(LAYOUT), LANDING_PULSE_CLASS)).toBe(false);
   });
 
   it('leaves the tab open with no error and no toast when the target is not on screen', async () => {
@@ -93,11 +93,11 @@ describe('Settings Take Me There landing', () => {
     const { rerender } = render(tree({ initialTab: 'display', initialTarget: LAYOUT, requestKey: 'a' }));
     await waitFor(() => expect(scrolled).toHaveLength(1));
     const row = rowOf(LAYOUT)!;
-    row.dispatchEvent(Object.assign(new Event('animationend', { bubbles: true }), { animationName: LANDING_PULSE_CLASS }));
+    endLanding(row);
     rerender(tree({ initialTab: 'display', initialTarget: LAYOUT, requestKey: 'b' }));
     await waitFor(() => expect(scrolled).toHaveLength(2));
     expect(scrolled[1]).toBe(row);
-    expect(row.classList.contains(LANDING_PULSE_CLASS)).toBe(true);
+    expect(ringOn(row, LANDING_PULSE_CLASS)).toBe(true);
   });
 
   // The endpoint list is disabled under a built-in preset, which every fresh install has active.
@@ -119,7 +119,7 @@ describe('Settings Take Me There landing', () => {
       requestKey: 'a',
     }));
     await waitFor(() => expect(scrolled).toContain(rowOf(route)));
-    expect(rowOf(route)!.classList.contains(LANDING_PULSE_CLASS)).toBe(true);
+    expect(ringOn(rowOf(route), LANDING_PULSE_CLASS)).toBe(true);
     if (!TAKES_NO_FOCUS.has(route)) expect(rowOf(route)!.contains(document.activeElement)).toBe(true);
   });
 
@@ -128,7 +128,7 @@ describe('Settings Take Me There landing', () => {
     render(tree({ initialTab: 'endpoints', initialEndpointTab: endpointTabForRoute('text'), initialTarget: route, requestKey: 'a' }));
     await waitFor(() => expect(scrolled).toContain(rowOf(route)));
     expect(rowOf(route)!.contains(document.activeElement)).toBe(true);
-    expect(rowOf(route)!.classList.contains(LANDING_PULSE_CLASS)).toBe(true);
+    expect(ringOn(rowOf(route), LANDING_PULSE_CLASS)).toBe(true);
   });
 
   it('waits for a tab panel that mounts after the request', async () => {

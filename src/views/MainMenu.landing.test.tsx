@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderMainMenu } from '@/test/mainMenu';
 import { createSurfaceRequester } from '@/test/surfaceRequest';
 import { stubReducedMotion } from '@/test/reducedMotion';
-import { frames, recordScrolls, rowOf } from '@/test/landing';
+import { endLanding, frames, recordScrolls, ringOn, rowOf } from '@/test/landing';
 import { LANDING_PULSE_CLASS, LANDING_RING_CLASS } from '@/lib/landingPulse';
 import { routeText } from '@/lib/surface/surfaceTargets';
 import WorldStorageService, { type StoredWorldRecord } from '@/services/WorldStorageService';
@@ -71,16 +71,16 @@ describe('Take Me There landing on the main menu', () => {
     const button = await landed(routeText(surface, target));
     expect(button).toHaveTextContent(/^Import /);
     expect(document.activeElement).toBe(button);
-    expect(button).toHaveClass(LANDING_PULSE_CLASS);
+    expect(ringOn(button, LANDING_PULSE_CLASS)).toBe(true);
   });
 
-  it('takes the pulse off when the animation ends, and draws a still ring under reduced motion', async () => {
+  it('removes the pulse when the animation ends, and draws a still ring under reduced motion', async () => {
     stubReducedMotion();
     await renderMenu();
     requester.send('mainMenu.models', 'import-avatar');
     const button = await landed('mainMenu.models#import-avatar');
-    expect(button).toHaveClass(LANDING_RING_CLASS);
-    expect(button).not.toHaveClass(LANDING_PULSE_CLASS);
+    expect(ringOn(button, LANDING_RING_CLASS)).toBe(true);
+    expect(ringOn(button, LANDING_PULSE_CLASS)).toBe(false);
   });
 
   it('lands in the Backup & Restore dialog once it has opened', async () => {
@@ -89,8 +89,8 @@ describe('Take Me There landing on the main menu', () => {
     const button = await landed('backup#start-restore');
     expect(button).toHaveTextContent('Restore');
     expect(document.activeElement).toBe(button);
-    expect(button).toHaveClass(LANDING_PULSE_CLASS);
-    expect(rowOf('backup#start-backup')).not.toHaveClass(LANDING_PULSE_CLASS);
+    expect(ringOn(button, LANDING_PULSE_CLASS)).toBe(true);
+    expect(ringOn(rowOf('backup#start-backup'), LANDING_PULSE_CLASS)).toBe(false);
   });
 
   it('lands on the Import button of the Load Game dialog', async () => {
@@ -113,13 +113,13 @@ describe('Take Me There landing on the main menu', () => {
     await renderMenu();
     requester.send('mainMenu.worlds', 'import-world');
     const button = await landed('mainMenu.worlds#import-world');
-    button.dispatchEvent(Object.assign(new Event('animationend', { bubbles: true }), { animationName: LANDING_PULSE_CLASS }));
-    expect(button).not.toHaveClass(LANDING_PULSE_CLASS);
+    endLanding(button);
+    expect(ringOn(button, LANDING_PULSE_CLASS)).toBe(false);
 
     requester.send('mainMenu.worlds', 'import-world');
     await waitFor(() => expect(scrolled).toHaveLength(2));
     expect(scrolled[1]).toBe(button);
-    expect(button).toHaveClass(LANDING_PULSE_CLASS);
+    expect(ringOn(button, LANDING_PULSE_CLASS)).toBe(true);
   });
 
   it('leaves the surface open with no error and no pulse when the row is not on the page', async () => {
