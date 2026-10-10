@@ -28,10 +28,18 @@ function cancelHoverOpenWhileHeld(next: boolean, details: TooltipPrimitive.Root.
 const WINDOW_LISTENER = { capture: true, passive: true }
 
 /** Adds each listener to the window and returns the remover. */
-function listenOnWindow(listeners: readonly (readonly [type: string, handler: () => void])[]) {
+function listenOnWindow(listeners: readonly (readonly [type: string, handler: (event: Event) => void])[]) {
   listeners.forEach(([type, handler]) => window.addEventListener(type, handler, WINDOW_LISTENER))
   return () => listeners.forEach(([type, handler]) => window.removeEventListener(type, handler, WINDOW_LISTENER))
 }
+
+/** Whether `event` is the window itself losing focus. The capture listener also hears every element's
+ *  blur, which fires on each focus move. */
+const isWindowBlur = (event: Event) => event.target === event.currentTarget
+
+/** Whether `target` sits inside a tooltip trigger whose tip is open. Base UI stamps both attributes. */
+const isOpenTipTrigger = (target: EventTarget | null) =>
+  target instanceof Element && target.closest("[data-base-ui-tooltip-trigger][data-popup-open]") !== null
 
 /** Runs `close` on every event that ends a tip's reason to show. Base UI closes on hover and focus
  *  leaving only, so the module adds the rest here. `close` must do nothing while no tip is open. */
@@ -41,7 +49,13 @@ function useTipDismissal(close: () => void) {
 
   React.useEffect(() => {
     const dismiss = () => closeRef.current()
-    return listenOnWindow(["scroll", "pointerdown", "contextmenu", "dragstart"].map((type) => [type, dismiss] as const))
+    return listenOnWindow([
+      ...["scroll", "pointerdown", "contextmenu", "dragstart"].map((type) => [type, dismiss] as const),
+      ["blur", (event) => { if (isWindowBlur(event)) dismiss() }],
+      ["visibilitychange", () => { if (document.visibilityState === "hidden") dismiss() }],
+      // Capture runs before the newly focused tip's own open, so a tab to another tipped control still opens it.
+      ["focusin", ({ target }) => { if (!isOpenTipTrigger(target)) dismiss() }],
+    ])
   }, [])
 }
 
@@ -53,7 +67,8 @@ function usePointerHold() {
     const release = () => { pointerHeld = false }
     // Blur too: a button released outside the window sends no pointerup here.
     const stop = listenOnWindow([
-      ["pointerdown", press], ["pointerup", release], ["pointercancel", release], ["blur", release],
+      ["pointerdown", press], ["pointerup", release], ["pointercancel", release],
+      ["blur", (event) => { if (isWindowBlur(event)) release() }],
     ])
     return () => { stop(); release() }
   }, [])
@@ -83,8 +98,8 @@ function TooltipProvider({ children }: { children: React.ReactNode }) {
   )
 }
 
-/** The root for a hand-built tip. Like `Tip`, it closes on scroll, press, right-click and drag, and opens
- *  nothing on hover while a pointer button is held. */
+/** The root for a hand-built tip. It closes on every event that closes a `Tip`, and opens nothing on
+ *  hover while a pointer button is held. */
 function Tooltip<Payload = unknown>(
   { actionsRef, open, onOpenChange, ...props }: TooltipPrimitive.Root.Props<Payload>,
 ) {
