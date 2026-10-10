@@ -92,6 +92,9 @@ Rulings from the grill, numbered as asked.
 
 - **Q54** (ticket 06) The dropdown and the entity section render only when a listed entity has a stat the player can see. The Stats tab opens when only an entity has visible stats. An absent entity is listed only if it owns a visible stat. A new game resets the shared pick, as a loaded save does.
 
+- **Q55** (ticket 08, user ruling) In Emberwatch, Mother Hesk and Corvin Vale get their own stats that match the stats their linked class and race traits change (Health and Faith; Renown and Mana). The traits then move the NPCs' own stats, and the world runs clean under the no-target rule.
+- **Q56** (ticket 05, user ruling) Ticket 05 lands its request mechanics with two Q28 misses on record. On the cloud model, recall is 59% against C3's 69–70%: the max keys leave social Trust shifts at 0. On Cydonia, invented player changes are 73 against C3's 68. The Q45 release blocker stays open and moves to ticket 17, a prompt ticket with its own probe A/B.
+
 Derived from Q7 and confirmed with the summary:
 
 - An entity stat's morph bindings drive that entity's own model.
