@@ -13,11 +13,12 @@ import {
 } from './statCodeTraits';
 import { enabledStats } from './traitEffects';
 import {
-  applyCodeTraitSwitches, statTraitsInForce, withCodeBounds, type AppliedTraitValues, type CodeTraitSwitch,
+  applyCodeTraitSwitches, ownerStatTraitsInForce, withCodeBounds, type AppliedTraitValues, type CodeTraitSwitch,
   type TraitRuntimeState,
 } from './traitRuntime';
 import { boxCode, noBoxes, type StatCodeTiming } from './statCodeTiming';
 import { clamp } from './utils';
+import { PLAYER_OWNER } from './statOwners';
 
 /** The trait state a run's switches left, and the log lines they wrote. */
 export interface StatCodeTraitResult {
@@ -26,7 +27,7 @@ export interface StatCodeTraitResult {
   appliedValues: AppliedTraitValues;
   cascadeOffTraitIds: CascadeOffTraitIds;
   ownedTraits: OwnedTraitStates;
-  /** Every stat trait in force after the switches, which the bounds re-derive under. */
+  /** The owner's stat traits in force after the switches, which the bounds re-derive under. */
   inForce: Trait[];
   log: string[];
 }
@@ -38,6 +39,8 @@ export interface StatCodeTurn {
    *  every `delta` as zero and `previous` as `self` whatever the turn carries. `after`, the default, runs
    *  the after-the-AI box over the asks and the regen. */
   timing?: StatCodeTiming;
+  /** The owner whose stats these are; its traits in force derive the bounds. Absent ⇒ the player. */
+  ownerId?: string;
   /** Every stat as the turn's pipeline left it: AI asks and regen applied, code not yet run. Names are the
    *  authored ones, chips and all — code reads each stat's code name, derived here. */
   stats: readonly PlayerStat[];
@@ -239,7 +242,7 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
     traitSwitchesInStatOrder(live, traitWritesByStat, turn.bearers, keyed, placeholderDefs, turn.statNameOf),
     turn.bearers.world, turn.traitNameOf,
   );
-  const active = statTraitsInForce(switched.state, turn.bearers.world);
+  const active = ownerStatTraitsInForce(switched.state, turn.bearers.world, turn.ownerId ?? PLAYER_OWNER);
   const traitResult: StatCodeTraitResult | undefined = switched.state === before ? undefined : {
     acquired: switched.state.traits,
     disabledTraitIds: switched.state.disabledTraitIds,
