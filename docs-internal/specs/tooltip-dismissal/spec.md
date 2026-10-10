@@ -93,9 +93,11 @@ The tooltip module owns this behavior. No call site has to opt in, and no call s
   - Window `blur`, and `visibilitychange` to hidden.
 - **Q3. Suppress while pressed.** No tip opens from hover while a pointer button is held. The hold ends on `pointerup` or `pointercancel`. This covers dnd-kit drags, which start with a press and move past an activation distance.
 - **Q4. FlashTip follows the same rules.** The **Copied** bubble closes on the Q2 triggers, though its owner still passes `open`. A dismissed bubble stays closed until its owner opens it again.
-- **Q5. The dev banner converts.** The dev reload banner moves into React, inside the dev-only tree, so its file list can use `Tip`. It stays behind the dev-only gate.
+- **Q5. The dev banner converts.** The dev reload banner moves into React, inside the dev-only tree, so its file list shows in a themed tip. It stays behind the dev-only gate. Q8 sets how.
 - **Q6. The lint rule covers the site.** The native-title rule's scope grows from the game sources to the account site. A scratch run over the site on 2026-10-09 found no violations, so the extension needs no conversions.
 - **Q7. Popovers are out.** Popovers and hover cards keep their current behavior. A popover is a place the player works in, so it stays open and follows its anchor.
+- **Q8. The banner keeps its own root.** The banner survives an app crash so its **Reload** button still works, so it keeps its own React root outside the App tree and its error boundary. It builds its tip from the exported hand-built parts on the wrapped `Tooltip` root, not from `Tip`. It mounts no second provider and doesn't use the shared tip handle. It passes the app's tip delay on its trigger. Q5's intent is a themed tip, not the literal `Tip` component.
+- **Q9. Each copy shows the bubble.** FlashTip takes an optional `cycle` count from its owner. A change in `cycle` clears the dismissed flag, so a second copy inside the bubble's window shows it again after a press, scroll or blur dismissed it. Owners that pass no `cycle` keep the reset on `open` going from false to true.
 
 ### Tooltip module
 
@@ -107,7 +109,7 @@ The tooltip module owns this behavior. No call site has to opt in, and no call s
 
 ### Dev reload banner
 
-- The banner moves from imperative DOM building into a React component. It mounts only under the dev-only gate. Its file list becomes the text of a `Tip` on the summary line.
+- The banner moves from imperative DOM building into a React component on its own root (Q8). It mounts only under the dev-only gate. Its file list becomes the text of a hand-built tip on the summary line.
 
 ## Testing Decisions
 

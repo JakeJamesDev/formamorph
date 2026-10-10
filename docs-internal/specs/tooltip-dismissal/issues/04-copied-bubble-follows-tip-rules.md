@@ -17,6 +17,7 @@ The **Copied** bubble on a help code block (FlashTip) uses the module's dismissa
 
 - [ ] FlashTip closes on scroll while its owner still passes `open`.
 - [ ] FlashTip shows again when `open` goes from false to true.
+- [ ] A change in the owner's `cycle` count clears the dismissed flag, so a second copy inside the window shows the bubble (Q9).
 - [ ] FlashTip picks up every trigger the shared hook has, with no list of its own.
 - [ ] The existing CodeSnippet tests stay green.
 - [ ] Tests at the tooltip seam. Each fails when its guard is removed.
