@@ -39,12 +39,12 @@ const ROUTED = { id: 'routed', url: 'http://routed.test/v1', model: 'routed-7b' 
 
 /** A plain endpoint whose probe narrowed the levels: reasoning is not ruled out, so the row shows. */
 const reasons: ReasoningCapability = {
-  reasons: null, levels: ['none', 'low', 'medium', 'high'], budget: null, dialect: 'unknown', offAllowed: null, tools: null,
+  reasons: null, levels: ['none', 'low', 'medium', 'high'], budget: null, dialect: 'unknown', offAllowed: null, tools: null, structuredOutput: null,
   sources: { levels: 'probe' },
 };
 /** A model its list says does not reason at all. */
 const ruledOut: ReasoningCapability = {
-  reasons: false, levels: [], budget: false, dialect: 'lmstudio', offAllowed: null, tools: null,
+  reasons: false, levels: [], budget: false, dialect: 'lmstudio', offAllowed: null, tools: null, structuredOutput: null,
   sources: { reasons: 'native', levels: 'native', budget: 'native' },
 };
 

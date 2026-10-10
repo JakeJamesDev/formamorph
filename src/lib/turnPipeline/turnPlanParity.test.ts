@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { planTurn } from './planTurn';
-import { TURN_PASSES, milestoneSelectPass } from './turnPasses';
+import { TURN_PASSES, milestoneSelectPass, statTextPrompts } from './turnPasses';
 import type { TurnMaterial, TurnPassId, TurnPassRecord } from './turnPlan';
 import type { ChatMessage } from '@/types';
 import { planDirective } from '@/components/game/GamePrompts';
@@ -93,7 +93,8 @@ const templateById: Partial<Record<TurnPassId, string>> = {
   character: PROMPTS.character,
   storyboard: PROMPTS.storyboard,
   choices: PROMPTS.choices,
-  statUpdates: PROMPTS.statUpdates,
+  // The run predates the schema request: a replay with no stat snapshot sends the text pass it recorded.
+  statUpdates: statTextPrompts(PROMPTS.statUpdates, PROMPTS.statUpdatesUser).system,
   summary: PROMPTS.summary,
   timePassed: PROMPTS.timePassed,
   openingTime: PROMPTS.openingTime,

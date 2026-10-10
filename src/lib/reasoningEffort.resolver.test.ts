@@ -633,7 +633,7 @@ describe('merging a fresh answer onto a stored record', () => {
     levels: ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'],
     budget: null,
     dialect: 'unknown',
-    offAllowed: null, tools: null,
+    offAllowed: null, tools: null, structuredOutput: null,
     sources: { levels: 'cache' },
   };
 
@@ -649,14 +649,14 @@ describe('merging a fresh answer onto a stored record', () => {
   });
 
   it('keeps a stored answer the fresh record does not carry', () => {
-    const stored: ReasoningCapability = { reasons: true, levels: ['none', 'high'], budget: true, dialect: 'lmstudio', offAllowed: null, tools: null, sources: { reasons: 'native', levels: 'native', budget: 'native', dialect: 'native' } };
-    const fresh: ReasoningCapability = { reasons: null, levels: null, budget: null, dialect: 'unknown', offAllowed: null, tools: null, sources: {} };
+    const stored: ReasoningCapability = { reasons: true, levels: ['none', 'high'], budget: true, dialect: 'lmstudio', offAllowed: null, tools: null, structuredOutput: null, sources: { reasons: 'native', levels: 'native', budget: 'native', dialect: 'native' } };
+    const fresh: ReasoningCapability = { reasons: null, levels: null, budget: null, dialect: 'unknown', offAllowed: null, tools: null, structuredOutput: null, sources: {} };
     expect(mergeReasoningCapability(stored, fresh)).toEqual(stored);
   });
 
   it('takes every fresh answer over the stored one', () => {
-    const stored: ReasoningCapability = { reasons: false, levels: [], budget: null, dialect: 'unknown', offAllowed: null, tools: null, sources: { reasons: 'probe', levels: 'probe' } };
-    const fresh: ReasoningCapability = { reasons: true, levels: ['none', 'low'], budget: true, dialect: 'lmstudio', offAllowed: true, tools: null, sources: { reasons: 'native', levels: 'native', budget: 'native', dialect: 'native' } };
+    const stored: ReasoningCapability = { reasons: false, levels: [], budget: null, dialect: 'unknown', offAllowed: null, tools: null, structuredOutput: null, sources: { reasons: 'probe', levels: 'probe' } };
+    const fresh: ReasoningCapability = { reasons: true, levels: ['none', 'low'], budget: true, dialect: 'lmstudio', offAllowed: true, tools: null, structuredOutput: null, sources: { reasons: 'native', levels: 'native', budget: 'native', dialect: 'native' } };
     expect(mergeReasoningCapability(stored, fresh)).toEqual(fresh);
   });
 });

@@ -3,13 +3,16 @@ import { TURN_PASSES, TURN_PASS_CAPS, sceneTagsPass, SCENE_TAGS_EMPTY_CAST, mile
 import { defaultMilestoneSelectUserPrompt } from '@/components/game/GamePrompts';
 import { renderPromptTemplate } from '@/lib/promptTemplate';
 import { planTurn } from './planTurn';
-import type { ChatMessage, Entity } from '@/types';
+import type { ChatMessage, Entity, PlayerStat } from '@/types';
 import type { TurnMaterial, TurnPassId, TurnPassRecord, TurnPlanInput, TurnSettings } from './turnPlan';
 import { runsTile } from '@/lib/requestAnatomy';
 import { TEST_PROMPTS, testInput } from './turnTestInputs';
 import {
   INLINE_THINKING_DIRECTIVE, OPENING_SCENE_CUE, planDirective, defaultChoicesPrompt,
+  defaultStatUpdatesPrompt, defaultStatUpdatesUserPrompt, textStatUpdatesPrompt, textStatUpdatesUserPrompt,
 } from '@/components/game/GamePrompts';
+import { createStatRequest, statRequestSchema } from '@/lib/statRequest';
+import { PLAYER_OWNER } from '@/lib/statOwners';
 
 // Each pass assembles its own request. These tests call the records directly, with templates whose tokens
 // are recognizable, so a token rendered from the wrong context (or a cap that drifts) is visible.
@@ -60,6 +63,46 @@ const lastMessage = (id: TurnPassId, over: Partial<TurnMaterial> = {}, planOver:
   const messages = build(id, over, planOver, settings).messages;
   return messages[messages.length - 1].content;
 };
+
+const playerStat = (id: string, name: string): PlayerStat => ({
+  id, name, type: 'number', description: '', min: 0, max: 100, value: 80, regen: 0, descriptors: [],
+});
+
+describe('the stat request', () => {
+  const health = createStatRequest([playerStat('health', 'Health')]);
+  const shipped = (over: Partial<TurnMaterial>, prompts = { statUpdates: defaultStatUpdatesPrompt, statUpdatesUser: defaultStatUpdatesUserPrompt }) =>
+    pass('statUpdates').buildRequest(input({ prompts: { ...TEST_PROMPTS, ...prompts } }, { statCount: 1 }), material(over));
+
+  it('sends the shipped prompts with the schema, and today’s text pass as the fallback', () => {
+    const request = shipped({ statRequest: health });
+    expect(request.responseSchema).toEqual(statRequestSchema(health));
+    expect(request.systemPrompt).toContain('Your entire output is one JSON object');
+    expect(request.systemPrompt).toContain('### Player Character\n- **Health:** 80/100');
+    expect(request.messages[0].content).toContain('0 for every value and maximum it did not move');
+    expect(request.textFallback?.systemPrompt).toBe(renderPromptTemplate(textStatUpdatesPrompt, { ...material().ctx, ...health.context }));
+    expect(request.textFallback?.messages[0].content)
+      .toBe(renderPromptTemplate(textStatUpdatesUserPrompt, { '<NARRATION>': material().narration }));
+    expect(request.textFallback?.maxTokens).toBe(32);
+    expect(runsTile(request.textFallback!.systemPrompt, request.textFallback!.anatomy!.system)).toBe(true);
+  });
+
+  it('sends a custom prompt as written on both paths, the schema still riding the first', () => {
+    const request = shipped({ statRequest: health }, { statUpdates: 'MY STATS <STATS DESCRIPTION>', statUpdatesUser: 'MY USER <NARRATION>' });
+    expect(request.responseSchema).toEqual(statRequestSchema(health));
+    expect(request.systemPrompt).toBe(request.textFallback?.systemPrompt);
+    expect(request.messages).toEqual(request.textFallback?.messages);
+    expect(request.systemPrompt.startsWith('MY STATS')).toBe(true);
+  });
+
+  it('sends the text pass alone for an endpoint that refused the schema', () => {
+    const refused = createStatRequest([playerStat('health', 'Health')], PLAYER_OWNER, { textPass: true });
+    const request = shipped({ statRequest: refused });
+    expect(request).not.toHaveProperty('responseSchema');
+    expect(request).not.toHaveProperty('textFallback');
+    expect(request.systemPrompt).toContain('Your entire output is stat-change lines');
+    expect(request.maxTokens).toBe(32);
+  });
+});
 
 describe('turn pass requests', () => {
   describe('the location router', () => {
@@ -306,6 +349,12 @@ describe('turn pass requests', () => {
     it('sizes the stat cap from the world’s stat count', () => {
       expect(build('statUpdates', {}, {}, { statCount: 1 }).maxTokens).toBe(32);
       expect(build('statUpdates', {}, {}, { statCount: 6 }).maxTokens).toBe(112);
+    });
+
+    it('sizes the schema request’s cap from its stat count', () => {
+      const stats = (n: number) => createStatRequest(Array.from({ length: n }, (_, i) => playerStat(`s${i}`, `Stat ${i}`)));
+      expect(build('statUpdates', { statRequest: stats(1) }, {}, { statCount: 1 }).maxTokens).toBe(64);
+      expect(build('statUpdates', { statRequest: stats(6) }, {}, { statCount: 6 }).maxTokens).toBe(224);
     });
 
     it('sizes the location cap from the longest destination name', () => {

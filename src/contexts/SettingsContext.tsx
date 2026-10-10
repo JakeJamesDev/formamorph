@@ -71,7 +71,7 @@ import { planPresetTools } from '../lib/tools/toolPack';
 import { catalogOverridesCodec, saveCatalogOverride, withCatalogOverrides } from '../lib/tools/catalogOverrides';
 import type { ParagraphLimit } from '../lib/outputLength';
 import {
-  resolveReasoningCapability, storedAfterResolve, reasoningRereadsPerSession, isReasoningEngaged, parseReasoningSetting,
+  resolveReasoningCapability, storedAfterResolve, withSchemaRejected, reasoningRereadsPerSession, isReasoningEngaged, parseReasoningSetting,
   parsePromptReasoningSetting, resolveReasoningSetting, resolvePromptReasoningSetting, DEFAULT_REASONING_SETTING,
   parseReasoningCapability, reasoningNeedsResolve, reasoningAwaitingProof, UNKNOWN_REASONING_CAPABILITY,
   type PromptReasoning, type ReasoningSetting, type PromptReasoningSetting, type ReasoningCapability,
@@ -716,6 +716,13 @@ function useProvideSettings() {
     reasoningObservationsRef.current[sig] = observation;
     if (answer !== before || proved) setReasoningObserved((n) => n + 1);
   }, []);
+
+  /** Records that an endpoint-and-model pair refused a JSON-schema response format, so its stat requests take the text pass. */
+  const noteSchemaRejected = useCallback((target: { url: string; model: string }) => {
+    if (unmountRef.current?.signal.aborted) return;
+    const sig = endpointSignature(target.url, target.model);
+    setReasoningCapabilityCache((prev) => storeCapability(prev, sig, withSchemaRejected(prev[sig] ?? null)));
+  }, [setReasoningCapabilityCache, storeCapability]);
 
   const resolveActiveCapability = useCallback(async () => {
     const sig = `${activeEndpointUrl}|${activeModelName}`;
@@ -1790,6 +1797,7 @@ function useProvideSettings() {
     reasoningCapability,
     reasoningEngaged,
     noteReasoningReply,
+    noteSchemaRejected,
     promptReasoning,
     promptReasoningSettings,
     setPromptReasoning,

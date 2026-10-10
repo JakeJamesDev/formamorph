@@ -12,24 +12,31 @@
 //   C3       C2, with a shift in how a character regards the player counted as a change
 //   D        C3, with each stat's change written after a short `evidence` field
 //   E        a gate call names the owners whose stats moved, then B's call runs for each named owner
-// A, B and C derive from the real stat prompt by checked text swaps, so a prompt edit reaches every arm.
+//   C3P      C3 with the player alone, which S's request matches but for the max keys
+//   S        the shipped request: the app's own stat pass builder, prompts and schema, the player's cells only
+// A to E derive from the text pass's prompt by checked text swaps; S is built by the app, so it is what ships.
 //
 // Per reply: exact (every gold move right, nothing spurious), hits / wrong sign / misses, spurious moves,
 // misattributed (a spurious move whose stat the gold moves on another owner), invalid rows, duplicates,
 // cap hits, wall-clock ms, and prompt + completion tokens. `player-only` regrades every arm on player cells.
+// `max` counts invented max changes (no case moves a maximum); only control and S are read for them.
 //
 // Usage: npx vite-node testing/baseline/harness/entity-stats-probe.cli.ts --
 //          [--endpoint URL] [--model ID] [--runs 6] [--pool 3] [--arms control,A,B,C] [--only storm-crowd]
 //          [--ws free|pattern|xgrammar|outlines|lmfe] [--show] [--dump]
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { defaultStatUpdatesPrompt, defaultStatUpdatesUserPrompt } from '@/components/game/GamePrompts';
+// Arms A to E derive from the text pass's prompts, under the names they were written against.
+import {
+  defaultStatUpdatesPrompt as shippedStatPrompt, defaultStatUpdatesUserPrompt as shippedStatUserPrompt,
+  textStatUpdatesPrompt as defaultStatUpdatesPrompt, textStatUpdatesUserPrompt as defaultStatUpdatesUserPrompt,
+} from '@/components/game/GamePrompts';
 import { authoredChipScene } from '@/lib/chipValues/authoredScene';
 import { chipValues } from '@/lib/chipValues/chipValues';
 import { PROMPT_SAMPLER_PINS } from '@/lib/promptSamplers';
 import { renderPromptTemplate } from '@/lib/promptTemplate';
-import { createStatRequest } from '@/lib/statRequest';
-import { statUpdatesCap } from '@/lib/turnPipeline/turnPasses';
+import { createStatRequest, type StatRequestSnapshot } from '@/lib/statRequest';
+import { statUpdatesCap, statUpdatesRequest } from '@/lib/turnPipeline/turnPasses';
 import { migrateWorld } from '@/lib/version';
 import type { PlayerStat } from '@/types';
 import {
@@ -47,7 +54,7 @@ const model = argVal('--model', 'default');
 const runs = Number(argVal('--runs', '6'));
 const pool = Number(argVal('--pool', '3'));
 const only = argVal('--only', '');
-const ALL_ARMS = ['control', 'A', 'A2', 'A3', 'B', 'C', 'C2', 'C3', 'D', 'E'] as const;
+const ALL_ARMS = ['control', 'A', 'A2', 'A3', 'B', 'C', 'C2', 'C3', 'D', 'E', 'S', 'C3P'] as const;
 type Arm = typeof ALL_ARMS[number];
 const arms = argVal('--arms', ALL_ARMS.join(',')).split(',') as Arm[];
 const SEED = 424242;
@@ -101,7 +108,7 @@ function sharedSystem(owners: Owner[]): string {
   return swap(t, STATS_TOKEN, ownerSections(owners));
 }
 
-interface Call { owner?: Owner; system: string; user: string; maxTokens: number; schema?: object }
+interface Call { owner?: Owner; system: string; user: string; maxTokens: number; schema?: object; snapshot?: StatRequestSnapshot }
 const userFor = (narration: string, template = defaultStatUpdatesUserPrompt) => template.replace('<NARRATION>', narration);
 const render = (system: string, owner?: Owner) =>
   renderPromptTemplate(system, owner ? { ...BASE_CTX, ...createStatRequest(owner.stats).context } : BASE_CTX);
@@ -139,7 +146,24 @@ function gatedOwners(raw: string, owners: Owner[]): Owner[] {
   } catch { return []; }
 }
 
+/** The request the app sends for the player's stats, built by the app's own stat pass. */
+function shippedCall(narration: string): Call {
+  const snapshot = createStatRequest(playerOwner.stats);
+  const request = statUpdatesRequest(
+    { system: shippedStatPrompt, user: shippedStatUserPrompt },
+    { ctx: BASE_CTX, action: '', narration },
+    { statCount: playerOwner.stats.length, statRequest: snapshot, quiet: false },
+  );
+  if (!request.responseSchema) throw new Error('The shipped stat request carries no schema.');
+  return {
+    owner: playerOwner, system: request.systemPrompt, user: request.messages[0].content, snapshot,
+    maxTokens: request.maxTokens ?? 0, schema: request.responseSchema.schema,
+  };
+}
+
 function callsFor(arm: Arm, owners: Owner[], narration: string): Call[] {
+  if (arm === 'S') return [shippedCall(narration)];
+  if (arm === 'C3P') return callsFor('C3', [playerOwner], narration);
   if (arm === 'control') {
     return [{ owner: playerOwner, system: render(defaultStatUpdatesPrompt, playerOwner), user: userFor(narration), maxTokens: statUpdatesCap(playerOwner.stats.length) }];
   }
@@ -251,8 +275,12 @@ function parse(arm: Arm, owners: Owner[], calls: Call[], replies: Reply[]): Pars
   if (arm === 'A' || arm === 'A2') return parseOwnerLines(replies[0].raw, owners);
   if (arm === 'A3') return parseOwnerBlocks(replies[0].raw, owners);
   if (arm === 'C' || arm === 'C2' || arm === 'C3' || arm === 'D') return parseJsonReply(replies[0].raw, owners);
-  const parts = calls.flatMap((call, i) => (call.owner ? [parsePlainLines(replies[i].raw, call.owner)] : []));
-  return { changes: parts.flatMap((p) => p.changes), invalid: parts.reduce((n, p) => n + p.invalid, 0), unreadable: false };
+  if (arm === 'C3P') return parseJsonReply(replies[0].raw, [playerOwner]);
+  const parts = calls.flatMap((call, i) => (call.owner ? [parsePlainLines(replies[i].raw, call.owner, call.snapshot)] : []));
+  return {
+    changes: parts.flatMap((p) => p.changes), invalid: parts.reduce((n, p) => n + p.invalid, 0), unreadable: false,
+    maxChanges: parts.reduce((n, p) => n + (p.maxChanges ?? 0), 0),
+  };
 }
 
 const cases = fixture.cases.filter((c) => !only || only.split(',').includes(c.id));
@@ -283,7 +311,7 @@ await Promise.all(Array.from({ length: pool }, async () => {
   while (next < jobs.length) {
     const { arm, c, run } = jobs[next++];
     const owners = ownersOf(c);
-    const scope = arm === 'control' ? ['player'] : owners.map((o) => o.key);
+    const scope = arm === 'control' || arm === 'S' || arm === 'C3P' ? ['player'] : owners.map((o) => o.key);
     try {
       const calls = callsFor(arm, owners, c.narration);
       const t0 = Date.now();
@@ -321,8 +349,8 @@ const mean = (xs: Result[], f: (r: Result) => number) => (xs.length ? sum(xs, f)
 const pct = (k: number, n: number) => (n ? `${k}/${n} (${Math.round((100 * k) / n)}%)` : '-');
 const p90 = (xs: number[]) => xs.sort((a, b) => a - b)[Math.max(0, Math.ceil(xs.length * 0.9) - 1)] ?? NaN;
 
-console.log('\nTOTALS per arm (control is graded on player cells only)');
-console.log('arm      exact          recall          sign spur misattr inv unread dup cap   ms(mean/p90)  tok in/out');
+console.log('\nTOTALS per arm (control and S are graded on player cells only)');
+console.log('arm      exact          recall          sign spur misattr inv unread dup cap max   ms(mean/p90)  tok in/out');
 for (const arm of arms) {
   const xs = results.filter((r) => r.arm === arm);
   if (!xs.length) continue;
@@ -338,6 +366,7 @@ for (const arm of arms) {
     String(xs.filter((r) => r.parsed.unreadable).length).padStart(6),
     String(sum(xs, (r) => r.score.duplicates)).padStart(3),
     String(caps).padStart(3),
+    String(sum(xs, (r) => r.parsed.maxChanges ?? 0)).padStart(3),
     `${Math.round(mean(xs, (r) => r.ms))}/${p90(xs.map((r) => r.ms))}`.padStart(14),
     `${Math.round(mean(xs, (r) => sum([r], (q) => q.replies.reduce((n, x) => n + x.promptTokens, 0))))}/${Math.round(mean(xs, (r) => r.replies.reduce((n, x) => n + x.completionTokens, 0)))}`.padStart(11),
   ].join(' '));

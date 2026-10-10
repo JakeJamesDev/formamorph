@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { Placeholder, PlayerStat } from '@/types';
-import { createStatRequest, readStatResponse, applyStatResponse, statResponseChanges, type StatRequestSnapshot, type StatResponse } from './statRequest';
+import {
+  createStatRequest, readStatResponse, applyStatResponse, statResponseChanges, statRequestSchema, PLAYER_STAT_HEADING,
+  type StatRequestSnapshot, type StatResponse, type StatUpdateDiagnostic,
+} from './statRequest';
+import type { ResponseSchemaNode } from './aiRequest/responseSchema';
 import { PLAYER_OWNER } from './statOwners';
 import { collectPins } from './placeholderPins';
 import { resolvePlaceholders } from './placeholders';
@@ -19,6 +23,8 @@ const stat = (over: Partial<PlayerStat> = {}): PlayerStat => ({
 });
 const apply = (stats: PlayerStat[], raw: string, live = stats) =>
   applyStatResponse(stats, readStatResponse(raw, createStatRequest(stats)), new Set(live.map((s) => s.id)));
+/** What a reply skipped, leaving out the mark every text-pass reply carries. */
+const skipped = (diagnostics: StatUpdateDiagnostic[]) => diagnostics.filter((d) => d.reason !== 'textPass');
 
 describe('stat request names', () => {
   it.each(['**Health**', '=c=Health==', '==Health==', '[Health](https://example.com)', '`Health`'])('sends plain %s through the real stat pass', (name) => {
@@ -29,36 +35,38 @@ describe('stat request names', () => {
       ...material, statRequest: snapshot,
     });
     expect(request.systemPrompt).toContain('- **Health:** 100/100 — Physical condition.');
-    expect(request.statRequest?.targets).toEqual([{ id: 'health', name, plainName: 'Health', ownerId: PLAYER_OWNER }]);
+    expect(request.statRequest?.targets).toEqual([{ id: 'health', name, plainName: 'Health', ownerId: PLAYER_OWNER, ownerKey: PLAYER_STAT_HEADING, key: 'Health', maxKey: 'Health max' }]);
     expect(snapshot.context['<STATS DESCRIPTION>']).not.toContain(name === '`Health`' ? '`' : name);
   });
 
   it.each(['Health: -25', '**Health:** -25', '=c=Health==: -25', '[Health](https://example.com): -25', '- **Health**: -25'])('accepts plain and formatted replies: %s', (reply) => {
     const result = apply([stat({ name: '=c=Health==' })], reply);
     expect(result.stats[0].value).toBe(75);
-    expect(result.diagnostics).toEqual([]);
+    expect(skipped(result.diagnostics)).toEqual([]);
   });
 
   it('preserves symbols on exact matches and only uses symbol removal as a unique fallback', () => {
     const stats = [stat({ name: 'Health+' }), stat({ id: 'other', name: 'Health−' })];
     expect(apply(stats, 'Health+: -5').stats.map((s) => s.value)).toEqual([95, 100]);
-    expect(apply(stats, 'Health: -5').diagnostics).toEqual([{ name: 'Health', reason: 'ambiguous' }]);
+    expect(skipped(apply(stats, 'Health: -5').diagnostics)).toEqual([{ name: 'Health', reason: 'ambiguous' }]);
     expect(apply([stat({ name: '❤️ Health' })], 'Health: -5').stats[0].value).toBe(95);
     expect(apply([stat({ name: '生命力' })], '生命力: -5').stats[0].value).toBe(95);
   });
 
-  it('skips collisions after formatting removal but accepts a unique exact colored name', () => {
+  it('names colliding stats apart by numbered key, and still accepts an exact colored name', () => {
     const stats = [stat({ name: '=r=Health==' }), stat({ id: 'blue', name: '=b=Health==' })];
-    expect(apply(stats, 'Health: -5').stats).toEqual(stats);
-    expect(apply(stats, '**Health:** -5').diagnostics).toEqual([{ name: 'Health', reason: 'ambiguous' }]);
-    expect(apply(stats, '=r=Health==: -5').stats.map((s) => s.value)).toEqual([95, 100]);
-    expect(apply([stat(), stat({ id: 'other' })], 'Health: -5').diagnostics[0].reason).toBe('ambiguous');
+    const chip = createStatRequest(stats).context['<STATS DESCRIPTION>'];
+    expect(chip).toContain('Health (2)');
+    expect(apply(stats, 'Health: -5').stats.map((s) => s.value)).toEqual([95, 100]);
+    expect(apply(stats, '**Health (2):** -5').stats.map((s) => s.value)).toEqual([100, 95]);
+    expect(apply(stats, '=b=Health==: -5').stats.map((s) => s.value)).toEqual([100, 95]);
+    expect(skipped(apply(stats, 'Health (2): -5').diagnostics)).toEqual([]);
   });
 
   it('reports unknown and invalid replies without creating updates', () => {
     const result = apply([stat()], 'Mana: -5\nHealth: 75/100\nNo changes\n   ');
     expect(result.stats[0].value).toBe(100);
-    expect(result.diagnostics.map((d) => d.reason)).toEqual(['unknown', 'invalid', 'invalid']);
+    expect(skipped(result.diagnostics).map((d) => d.reason)).toEqual(['unknown', 'invalid', 'invalid']);
     expect(readStatResponse('', createStatRequest([stat()])).updates).toEqual([]);
   });
 
@@ -79,10 +87,10 @@ describe('stat request names', () => {
     const replacement = stat({ id: 'replacement' });
     const disabled = applyStatResponse([stat(), replacement], response, new Set(['replacement']));
     expect(disabled.stats.map((s) => s.value)).toEqual([100, 100]);
-    expect(disabled.diagnostics).toEqual([{ name: 'Health', reason: 'disabled' }]);
+    expect(skipped(disabled.diagnostics)).toEqual([{ name: 'Health', reason: 'disabled' }]);
     const deleted = applyStatResponse([replacement], response, new Set(['replacement']));
     expect(deleted.stats).toEqual([replacement]);
-    expect(deleted.diagnostics).toEqual([{ name: 'Health', reason: 'missing' }]);
+    expect(skipped(deleted.diagnostics)).toEqual([{ name: 'Health', reason: 'missing' }]);
   });
 
   it.each([['c', 100], ['g', 90], ['y', 50], ['o', 30], ['r', 10]] as const)('updates the pinned %s band without replacing the authored chip', (color, value) => {
@@ -121,8 +129,8 @@ describe('stat request names', () => {
 
   it('keeps two owners of one stat id apart in the reply', () => {
     const snapshot: StatRequestSnapshot = { id: 'r', context: {}, targets: [
-      { ownerId: PLAYER_OWNER, id: 'health', name: 'Health', plainName: 'Health' },
-      { ownerId: 'bram', id: 'health', name: 'Bram Health', plainName: 'Bram Health' },
+      { ownerId: PLAYER_OWNER, id: 'health', name: 'Health', plainName: 'Health', ownerKey: PLAYER_STAT_HEADING, key: 'Health', maxKey: 'Health max' },
+      { ownerId: 'bram', id: 'health', name: 'Bram Health', plainName: 'Bram Health', ownerKey: 'Bram', key: 'Health', maxKey: 'Health max' },
     ] };
     expect(readStatResponse('Health: -5\nBram Health: -9', snapshot).updates).toEqual([
       { ownerId: PLAYER_OWNER, id: 'health', name: 'Health', value: -5, max: 0 },
@@ -152,6 +160,84 @@ describe('stat request names', () => {
 
   it('keeps request IDs out of the saved history change map', () => {
     expect(statResponseChanges(readStatResponse('Health: -5', createStatRequest([stat({ id: 'stable-id' })])))).toEqual([{ health: -5 }]);
+  });
+});
+
+/** Every keyword a schema node uses, at any depth. */
+const keywordsIn = (node: ResponseSchemaNode): string[] => [
+  ...Object.keys(node),
+  ...(node.type === 'object' ? Object.values(node.properties).flatMap(keywordsIn) : []),
+];
+
+describe('the schema request', () => {
+  const stats = [stat({ name: '**Vigor**' }), stat({ id: 'resolve', name: 'Resolve' }), stat({ id: 'vigor-2', name: 'Vigor' })];
+  const json = (body: unknown) => JSON.stringify({ [PLAYER_STAT_HEADING]: body });
+
+  it('requires every stat under the player, each a bounded change beside a bounded max change', () => {
+    const { name, schema } = statRequestSchema(createStatRequest(stats));
+    const bounded = { type: 'integer', minimum: -20, maximum: 20 };
+    const keys = ['Vigor', 'Vigor max', 'Resolve', 'Resolve max', 'Vigor (2)', 'Vigor (2) max'];
+    expect(name).toBe('stat_changes');
+    expect(schema).toEqual({ type: 'object', additionalProperties: false, required: [PLAYER_STAT_HEADING], properties: {
+      [PLAYER_STAT_HEADING]: {
+        type: 'object', additionalProperties: false, required: keys,
+        properties: Object.fromEntries(keys.map((key) => [key, bounded])),
+      },
+    } });
+  });
+
+  it("numbers a stat whose name is another stat's max key", () => {
+    const snapshot = createStatRequest([stat({ name: 'Vigor' }), stat({ id: 'vm', name: 'Vigor max' }), stat({ id: 'v3', name: 'Vigor max (2)' })]);
+    expect(snapshot.targets.map(({ key, maxKey }) => [key, maxKey])).toEqual([
+      ['Vigor', 'Vigor max'], ['Vigor max (2)', 'Vigor max (2) max'], ['Vigor max (2) (2)', 'Vigor max (2) (2) max'],
+    ]);
+    const response = readStatResponse(json({ Vigor: -1, 'Vigor max': -2, 'Vigor max (2)': 3, 'Vigor max (2) max': 4 }), snapshot);
+    expect(response.updates.map(({ id, value, max }) => [id, value, max])).toEqual([['health', -1, -2], ['vm', 3, 4]]);
+  });
+
+  it('uses only keywords the cloud server takes', () => {
+    const allowed = new Set(['type', 'properties', 'required', 'additionalProperties', 'minimum', 'maximum']);
+    expect(keywordsIn(statRequestSchema(createStatRequest(stats)).schema).filter((k) => !allowed.has(k))).toEqual([]);
+  });
+
+  it('reads a reply by key into updates for moved stats only, with no diagnostics', () => {
+    const snapshot = createStatRequest(stats);
+    const response = readStatResponse(json({ Vigor: -4, 'Vigor max': 0, Resolve: 0, 'Resolve max': 0, 'Vigor (2)': 2, 'Vigor (2) max': -5 }), snapshot);
+    expect(response.updates).toEqual([
+      { ownerId: PLAYER_OWNER, id: 'health', name: '**Vigor**', value: -4, max: 0 },
+      { ownerId: PLAYER_OWNER, id: 'vigor-2', name: 'Vigor', value: 2, max: -5 },
+    ]);
+    expect(response.diagnostics).toEqual([]);
+  });
+
+  it('reads a fenced reply, and reports keys and values it cannot place', () => {
+    const snapshot = createStatRequest(stats);
+    const fenced = readStatResponse(`\`\`\`json\n${json({ Resolve: -3, 'Resolve max': 0, Mana: 1, Vigor: 'lots' })}\n\`\`\``, snapshot);
+    expect(fenced.updates).toEqual([{ ownerId: PLAYER_OWNER, id: 'resolve', name: 'Resolve', value: -3, max: 0 }]);
+    expect(fenced.diagnostics).toEqual([{ name: 'Mana', reason: 'unknown' }, { name: 'Vigor', reason: 'invalid' }]);
+    expect(readStatResponse(JSON.stringify({ Bram: { Trust: 2 } }), snapshot).diagnostics)
+      .toEqual([{ name: 'Bram', reason: 'unknown' }]);
+    expect(readStatResponse('{"Player Character":{"Vigor":-4,', snapshot)).toMatchObject({
+      updates: [], diagnostics: [{ reason: 'invalid' }],
+    });
+  });
+
+  it('applies a max change before the value change, on the stat the request named', () => {
+    const snapshot = createStatRequest([stat({ name: 'Health' })]);
+    const response = readStatResponse(json({ Health: 15, 'Health max': 20 }), snapshot);
+    // The stat was renamed after the request went out; identity, not the name, finds it.
+    const live = [stat({ name: 'Vitality' }), stat({ id: 'other', name: 'Health' })];
+    expect(applyStatResponse(live, response, new Set(['health', 'other'])).stats.map(({ name, value, max }) => ({ name, value, max })))
+      .toEqual([{ name: 'Vitality', value: 115, max: 120 }, { name: 'Health', value: 100, max: 100 }]);
+  });
+
+  it('marks every text-pass reply, an empty one included, and no schema reply', () => {
+    const textPass = createStatRequest([stat()], PLAYER_OWNER, { textPass: true });
+    expect(readStatResponse('', textPass).diagnostics).toEqual([{ name: '', reason: 'textPass' }]);
+    expect(readStatResponse('Health: -5', createStatRequest([stat()])).diagnostics).toEqual([{ name: '', reason: 'textPass' }]);
+    // The first refused turn's retry runs on a schema snapshot; nothing moving still marks it.
+    expect(readStatResponse('', createStatRequest([stat()])).diagnostics).toEqual([{ name: '', reason: 'textPass' }]);
+    expect(readStatResponse(json({ Health: 0, 'Health max': 0 }), createStatRequest([stat()])).diagnostics).toEqual([]);
   });
 });
 

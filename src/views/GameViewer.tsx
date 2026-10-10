@@ -94,6 +94,8 @@ import { streamAiToolLoop, type AiToolRound, type ToolExecutor } from "../lib/ai
 import { useAiSettingsSnapshot } from "../lib/aiRequest/useAiSettingsSnapshot";
 import { surfaceRejectedEndpointOverride } from "../lib/aiRequest/rejectedOverrideNotice";
 import { toastAiRequestFailure } from "../lib/aiRequest/aiRequestFailureToast";
+import { SchemaRefused, schemaRejected, withTextFallback } from "../lib/aiRequest/responseSchema";
+import { schemaAccepted } from "../lib/reasoningEffort";
 import { splitSentenceSegments } from "../lib/ttsChunks";
 import { selectDueDigests, applyDigest, applyImportance, parseTurnContent, recentParticipants, selectDueDiaries, pendingDiaryNames, applyDiary, collectCharacterDiary } from "../lib/turnDigest";
 import { navigableDestinations } from "../lib/locationContext";
@@ -113,8 +115,7 @@ import { recordParityRequest, recordParityResponse, recordParityTurn } from "../
 import {
   TURN_PASS_CAPS,
   choicesSystemPrompt,
-  statUpdatesSystemPrompt,
-  statUpdatesCap,
+  statUpdatesRequest,
   summaryUserMessage,
   discoverEntityPass,
   milestoneSelectPass,
@@ -127,7 +128,7 @@ import { planTurn, planHasPass } from "../lib/turnPipeline/planTurn";
 import { runTurn, type TurnAdvance, type TurnRequestAdapter } from "../lib/turnPipeline/turnRunner";
 import { computeTurnCommit, type TurnCommit } from "../lib/turnPipeline/computeTurnCommit";
 import { classifyTurnError, type TurnErrorKind } from "../lib/turnPipeline/turnErrors";
-import { emptyTurnMaterial, type TurnMaterial, type TurnPlanInput, type TurnPrompts, type TurnSettings } from "../lib/turnPipeline/turnPlan";
+import { emptyTurnMaterial, type TurnMaterial, type TurnPassRequest, type TurnPlanInput, type TurnPrompts, type TurnSettings } from "../lib/turnPipeline/turnPlan";
 import { parseTurns, buildVerbatimHistory, buildBandedHistory, extractKeywords, type BandCounts } from "../lib/turnBanding";
 import { anatomyRegions, toAnatomyBlocks, type RequestAnatomy } from "../lib/requestAnatomy";
 import { asTextMessage } from "../lib/aiRequest/imageParts";
@@ -311,6 +312,8 @@ const DIARY_MAX_TOKENS = TURN_PASS_CAPS.diary;
  */
 interface AiCallArgs {
   statRequest?: StatRequestSnapshot;
+  responseSchema?: TurnPassRequest["responseSchema"];
+  textFallback?: TurnPassRequest["textFallback"];
   systemPrompt: string;
   messages: RequestMessage[];
   type: AIRequestType;
@@ -480,6 +483,7 @@ const GameViewer = ({
     thinkingVerbatimTurns,
     thinkingMode,
     noteReasoningReply,
+    noteSchemaRejected,
     thinkingPrompt,
     memoryDigests,
     semanticMemory,
@@ -1575,7 +1579,7 @@ const GameViewer = ({
       try {
         if (signal.aborted) return;
         const base = written ?? preTurn;
-        const snapshot = createStatRequest(enabledStats(
+        const snapshot = statRequestFor(enabledStats(
           written ? resolveStatNames(written.playerStats ?? [], resolvePH) : playerStatsRef.current,
           statEnabledRef.current,
         ));
@@ -2581,7 +2585,7 @@ const GameViewer = ({
             const fanOut = splitParticipants(turnParticipants, liveScene(null, codeView).entities, suppressedCharacterNames);
             return {
               subjects: { ...material.subjects, ...fanOut },
-              statRequest: createStatRequest(enabledStats(playerStatsRef.current, statEnabledRef.current)),
+              statRequest: statRequestFor(enabledStats(playerStatsRef.current, statEnabledRef.current)),
             };
           }
           return;
@@ -3042,19 +3046,25 @@ const GameViewer = ({
   // its own controller, so it gets the same treatment — otherwise it keeps the image server busy after exit.
   useEffect(() => () => { abortControllerRef.current?.abort(); sceneImageAbortRef.current?.abort(); }, []);
 
-  const makeAIRequest = async ({
-    systemPrompt,
-    messages,
-    type: requestType,
-    maxTokens: maxTokensOverride = null,
-    signal,
-    silent = false,
-    attachTurnId,
-    quiet: quietLabel = false,
-    anatomy,
-    statRequest,
-    executeTool: turnExecutor,
-  }: AiCallArgs) => {
+  // A refused schema retries once on the text pass, and the answer that proves it marks the endpoint.
+  const makeAIRequest = (args: AiCallArgs): Promise<string> => withTextFallback(args, sendAIRequest, noteSchemaRejected);
+
+  const sendAIRequest = async (args: AiCallArgs): Promise<string> => {
+    const {
+      systemPrompt,
+      messages,
+      type: requestType,
+      maxTokens: maxTokensOverride = null,
+      signal,
+      silent = false,
+      attachTurnId,
+      quiet: quietLabel = false,
+      anatomy,
+      statRequest,
+      responseSchema,
+      textFallback,
+      executeTool: turnExecutor,
+    } = args;
     // The parity recording observes the seam itself: exactly the arguments this call received, in
     // dispatch order, before anything downstream shapes them. Inert unless the harness armed it. It records
     // text only, so an attached image never enters it.
@@ -3073,7 +3083,9 @@ const GameViewer = ({
     const executeTool = tools.length
       ? turnExecutor ?? snapshotToolExecutor(toolWorld)
       : undefined;
-    const spec = buildAiRequestSpec(snapshot, { systemPrompt, messages, requestType, maxTokensOverride, ...(executeTool && { tools }) });
+    const spec = buildAiRequestSpec(snapshot, {
+      systemPrompt, messages, requestType, maxTokensOverride, ...(executeTool && { tools }), ...(responseSchema && { responseSchema }),
+    });
 
     // Silent requests are only captured into the AI-context viewer when the inspection toggle is on.
     const captureSilent = silent && showSilentRequests && attachTurnId !== undefined;
@@ -3373,6 +3385,8 @@ const GameViewer = ({
       });
       return finalContent;
     } catch (error) {
+      // The text-pass retry speaks for this failure, so it shows no toast of its own.
+      if (spec.body.response_format && textFallback && schemaRejected(error)) throw new SchemaRefused(spec.target, error);
       // No AbortError case: the stream turns both the fetch rejection and the read rejection into a
       // graceful `done`, so a user stop lands on the aborted branch above and never reaches here.
       console.error("Error in makeAIRequest:", error);
@@ -3682,14 +3696,17 @@ const GameViewer = ({
     quiet = false,
   ): Promise<string> =>
     makeAIRequest({
-      systemPrompt: statUpdatesSystemPrompt(resolvedStatUpdatesPrompt, { ...ctx, ...snapshot.context }),
-      statRequest: snapshot,
-      messages: [{ role: "user", content: renderPromptTemplate(statUpdatesUserPrompt, { "<PLAYER ACTION>": action, "<NARRATION>": narration }) }],
-      type: "statUpdates",
-      maxTokens: statUpdatesCap(activeStats.length),
+      ...statUpdatesRequest(
+        { system: resolvedStatUpdatesPrompt, user: statUpdatesUserPrompt },
+        { ctx, action, narration },
+        { statCount: activeStats.length, statRequest: snapshot, quiet },
+      ),
       signal,
-      quiet,
     });
+
+  /** A stat request snapshot, marked for the text pass when its endpoint has refused the schema. */
+  const statRequestFor = (stats: readonly PlayerStat[]): StatRequestSnapshot =>
+    createStatRequest(stats, PLAYER_OWNER, { textPass: !schemaAccepted(resolveEndpointForKind("statUpdates").reasoning) });
 
   // DEV-only: expose window.__baseline for the fork-local test harness (no-op in production builds).
   const debugTurnsRef = useRef(debugTurns);
