@@ -145,6 +145,15 @@ Rulings from the grill, numbered as asked.
   Q64 is still not met: `push-bram` invents 12 player changes on the cloud model and 6 on Cydonia with groups. Placing "holds no reading" beside the framing stopped it, but lost Bram's Trust in two cases. The conditional and code-rendered group sentences were within noise of each other on both models.
 
 - **Q79** (user ruling) The Stats tab's tree matches the Traits tab's for owned stats. An entity that owns a stat, a stat group or a stat Link shows as an entity node, and the author places it in their own stat groups. Stats and stat groups drag across owners with their ids kept, and a Blueprint stat dropped on an entity node links it. Ticket 24.
+- **Q80** (ticket 24) A cross-owner stat move is refused, with a note in the trait form, when it would break a reference. A group drag is refused when anything inside it is refused, and the note names the first hit.
+  - **Trait rows:** a trait row reaches the stat on its current owner, as play routes it (world traits on the player, an entity's own and linked traits, Link overrides included).
+  - **Stat code:** code that stays reads a moved stat on its old owner (`stats.X`, `entities.Owner.stats.X`, `persona.stats.X` for a playable owner), or a moved stat's own code reads a stat that stays. Only exact name lookups count, as in the rename scanner.
+  - **Id clash:** the destination already holds the id, own or through a Link (Detach, Q73).
+  - **Links:** a stat Link, or a group that holds one, moves between entities only, and is refused where **Link Stat** refuses.
+  - **Blueprints:** a linked Blueprint can't leave Blueprints, now with the note. A Blueprint dropped on an entity node links it (Advanced only) and never becomes an own stat.
+  - The Custom Persona node stays at top level.
+  - Morph bindings and descriptor placeholder pins travel and don't refuse a move.
+  - Placement is a new optional `Entity.statPlacement`, apart from `traitPlacement`. In Simple mode, nodes show and existing items drag, as on the **Traits** tab.
 
 Derived from Q7 and confirmed with the summary:
 
