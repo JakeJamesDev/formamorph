@@ -10,6 +10,7 @@ import { rehypePreviewTint } from '@/lib/previewTint';
 import { rehypeQuoteSpans } from '@/lib/rehypeQuoteSpans';
 import { getRevealTiming, type RevealTiming } from '@/lib/revealTimingStore';
 import { cn } from '@/lib/utils';
+import { ExternalLinkDialog } from './ExternalLinkDialog';
 import 'streamdown/styles.css';
 
 // `singleTilde: false` hands `~x~` to remarkSubSuper (subscript); GFM keeps `~~strike~~`.
@@ -33,6 +34,12 @@ const REMARK_PLUGINS: ComponentProps<typeof Streamdown>['remarkPlugins'] = [
 // palette so a fence matches the stat-code editor.
 const PLUGINS: ComponentProps<typeof Streamdown>['plugins'] = {
   code: createCodePlugin({ themes: markdownCodeThemes }),
+};
+
+/** Streamdown memoizes on this object's identity, so it stays a module constant. */
+const LINK_SAFETY: ComponentProps<typeof Streamdown>['linkSafety'] = {
+  enabled: true,
+  renderModal: (props) => <ExternalLinkDialog {...props} />,
 };
 
 /** The fields of Streamdown's sanitize schema we extend. It ships as an opaque plugin tuple. */
@@ -138,6 +145,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer(
         rehypePlugins={rehypePluginsFor(tinted, dialogue)}
         components={allComponents}
         plugins={PLUGINS}
+        linkSafety={LINK_SAFETY}
         controls={false}
         // Committed text renders straight from the parsed blocks. Streamdown's `streaming` mode routes
         // them through state committed in a transition, which leaves finished text a render behind —
