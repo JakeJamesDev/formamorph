@@ -133,6 +133,17 @@ Rulings from the grill, numbered as asked.
 
 - **Q77** (ticket 23) Ticket 23 builds and runs its wording arms, reports, and pauses before prepare. The wording the user picks goes into the default Stat Updates system prompt and lands; if the user picks none, only the probe arms land. The text-pass fallback prompt gets no framing. The group sentence is conditional phrasing in the one static prompt by default. One arm renders the group sentence only when the request has groups, so the report can compare the two.
 
+- **Q78** (ticket 23, user ruling) Wording FB ships in the default Stat Updates system prompt. The role paragraph gains: "Each stat is a number that tracks one thing about one character, and it changes only when the story changes it. The narrator reads the stats each turn to decide what the characters can do and how they act." The Stats intro opens: "Each character's stats sit under their name, a ### heading, and belong to that character. When a character's stats sit in groups, a group bullet names what the stats nested under it share. A group holds no reading of its own; you record changes on its stats." Results in exact / recall / invented player changes, with no wrong signs and no invented max changes anywhere:
+
+  | Model | Arm | Shipped before | FB |
+  |---|---|---|---|
+  | Cloud, 21 × 6 | grouped | 46–52 / 71–72 / 39–43 | 60 / 74–75 / 22–23 |
+  | Cloud, 21 × 6 | flat | 57–58 / 73–75 / 22–29 | 51–55 / 75–77 / 32–34 |
+  | Cydonia, 21 × 3 | grouped | 43–44 exact / 49–50 invented | 54–57 exact / 37–39 invented |
+  | Cydonia, 21 × 3 | flat | 29–32 exact / 63–64 invented | 37 exact / 55–56 invented |
+
+  Q64 is still not met: `push-bram` invents 12 player changes on the cloud model and 6 on Cydonia with groups. Placing "holds no reading" beside the framing stopped it, but lost Bram's Trust in two cases. The conditional and code-rendered group sentences were within noise of each other on both models.
+
 Derived from Q7 and confirmed with the summary:
 
 - An entity stat's morph bindings drive that entity's own model.
