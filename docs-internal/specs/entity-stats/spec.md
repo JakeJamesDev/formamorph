@@ -123,6 +123,8 @@ Rulings from the grill, numbered as asked.
 
 - **Q72** (ticket 13) Ticket 13 lands without the joined owners' stats in the Stats chip outside the stat request. Today the narration, choices and planner prompts don't see the played persona's stats anywhere, which Q11's "they become player stats" doesn't intend. Ticket 20 adds them, with a probe.
 
+- **Q73** (ticket 19, user ruling) After Detach, the entity owns a stat under the Blueprint's id, so Link Stat and **Link To…** refuse to link that Blueprint again, or any group that holds it. Ticket 19 lands the refusal without a reason shown. Ticket 21 adds a reason to every refused Link row, for traits and stats alike, after the user approves the pattern.
+
 Derived from Q7 and confirmed with the summary:
 
 - An entity stat's morph bindings drive that entity's own model.
