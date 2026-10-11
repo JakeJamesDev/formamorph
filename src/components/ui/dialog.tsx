@@ -3,7 +3,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
-import { ignoreLayerPress, keepLayerFocus } from "@/components/ui/shielded-layer"
+import { ignoreLayerDismiss, keepLayerFocus } from "@/components/ui/shielded-layer"
 import { SurfaceLayer, type SurfaceIdName } from "@/components/ui/surface"
 
 const Dialog = DialogPrimitive.Root
@@ -71,10 +71,11 @@ const DialogContent = React.forwardRef<
         className
       )}
       {...props}
-      // The shielded layer counts as inside the dialog: a press there does not close it, and a closing
-      // dialog does not take focus from it.
-      onPointerDownOutside={ignoreLayerPress(props.onPointerDownOutside)}
-      onInteractOutside={ignoreLayerPress(props.onInteractOutside)}
+      // The shielded layer counts as inside the dialog: a press or Escape there does not close it, and a
+      // closing dialog does not take focus from it.
+      onPointerDownOutside={ignoreLayerDismiss(props.onPointerDownOutside)}
+      onInteractOutside={ignoreLayerDismiss(props.onInteractOutside)}
+      onEscapeKeyDown={ignoreLayerDismiss(props.onEscapeKeyDown)}
       onCloseAutoFocus={keepLayerFocus(props.onCloseAutoFocus)}>
       <SurfaceLayer id={surface}>{children}</SurfaceLayer>
       {!hideClose && (
