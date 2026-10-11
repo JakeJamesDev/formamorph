@@ -50,6 +50,7 @@ import { useHelpAi } from './useHelpAi';
 import { setMascotPlacement, setMascotScale, useMascotPlacement, useMascotScale } from './useMascotDevice';
 import { useHelpChat, type HelpExchange } from './useHelpChat';
 import { useHelpSettings } from './useHelpSettings';
+import { SemanticOfferCard } from './SemanticOfferCard';
 import { useSemanticSearch } from './useSemanticSearch';
 import { usePointerDrag, type PointerDrag } from './usePointerDrag';
 import { PromptCompareDialog } from '@/components/prompt/PromptCompareDialog';
@@ -167,7 +168,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
 
   // The conversation lives here, so it outlives the window. The AI check runs only while the window is open.
   const [settings, changeSettings] = useHelpSettings();
-  const semantic = useSemanticSearch(settings, changeSettings);
+  const semantic = useSemanticSearch(settings, changeSettings, open);
   const ai = useHelpAi(open, settings);
   const chat = useHelpChat(index, ai, settings);
   const sent = chat.exchanges.length > 0;
@@ -628,6 +629,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
       failed={failed}
       onRetry={load}
       chat={chat}
+      semantic={semantic}
       settings={settings}
       onSettingsChange={changeSettings}
       draft={view.draft}
@@ -737,6 +739,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
             failed={failed}
             onRetry={load}
             chat={chat}
+            semantic={semantic}
             settings={settings}
             onSettingsChange={changeSettings}
             draft={view.draft}
@@ -803,7 +806,12 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
             },
           })}
         >
-          <GuideBody guide={guide} failed={failed} onRetry={load} view={view} onViewChange={changeViewInWindow} wide={wide} chat={chat} settings={settings} onSettingsChange={changeSettings} onGo={go} />
+          <div className="flex h-full min-h-0 flex-col">
+            <SemanticOfferCard semantic={semantic} variant="framed" />
+            <div className="min-h-0 flex-1">
+              <GuideBody guide={guide} failed={failed} onRetry={load} view={view} onViewChange={changeViewInWindow} wide={wide} chat={chat} settings={settings} onSettingsChange={changeSettings} onGo={go} />
+            </div>
+          </div>
         </FormaquestionFrame>
       )}
       <FormaquestionSettings

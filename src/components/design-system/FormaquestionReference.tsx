@@ -10,6 +10,7 @@ import { GuideBody } from '@/components/formaquestion/GuideBody';
 import { MascotPiece } from '@/components/formaquestion/MascotPiece';
 import { MinimalChat } from '@/components/formaquestion/MinimalChat';
 import { ReaderPiece } from '@/components/formaquestion/ReaderPiece';
+import { IDLE_SEMANTIC_SEARCH } from '@/components/formaquestion/useSemanticSearch';
 import type { HelpChat, HelpExchange } from '@/components/formaquestion/useHelpChat';
 import { createDocsIndex } from '@/lib/docs/docsIndex';
 import { createGuide } from '@/lib/formaquestion/guide';
@@ -168,6 +169,7 @@ function SampleMinimalChrome() {
           failed={false}
           onRetry={() => {}}
           chat={chat}
+          semantic={IDLE_SEMANTIC_SEARCH}
           settings={settings}
           onSettingsChange={changeSettings}
           draft={draft}

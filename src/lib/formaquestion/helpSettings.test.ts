@@ -13,6 +13,7 @@ describe('the default help settings', () => {
   it('equal the values the help session had as constants when the bar run measured it', () => {
     expect(DEFAULT_HELP_SETTINGS).toEqual({
       sources: { keyword: true, aiPicks: true, semantic: false },
+      semanticOffer: 'undecided',
       answerEndpoint: null,
       pickEndpoint: SAME_AS_ANSWER,
       lookup: false,
@@ -111,6 +112,28 @@ describe('the stored help settings', () => {
 
   it('refuse text that is not a settings object, so the defaults stand', () => {
     for (const raw of ['not json', '[]', 'null', '4']) expect(() => helpSettingsCodec.parse(raw)).toThrow();
+  });
+});
+
+describe('the Semantic Search offer', () => {
+  const stored = (value: unknown) => helpSettingsCodec.parse(JSON.stringify(value));
+
+  it('reads as undecided for settings stored before the offer, and decided when their switch was on', () => {
+    expect(stored({ sources: { semantic: false } }).semanticOffer).toBe('undecided');
+    expect(stored({ historyLength: 2 }).semanticOffer).toBe('undecided');
+    expect(stored({ sources: { semantic: true } }).semanticOffer).toBe('decided');
+  });
+
+  it('keeps a stored answer over the switch, and reads a bad value like a missing one', () => {
+    expect(stored({ semanticOffer: 'decided', sources: { semantic: false } }).semanticOffer).toBe('decided');
+    expect(stored({ semanticOffer: 'undecided', sources: { semantic: false } }).semanticOffer).toBe('undecided');
+    expect(stored({ semanticOffer: 'maybe', sources: { semantic: true } }).semanticOffer).toBe('decided');
+    expect(stored({ semanticOffer: 4 }).semanticOffer).toBe('undecided');
+  });
+
+  it('survives the codec', () => {
+    const settings = helpSettingsOf({ semanticOffer: 'decided' });
+    expect(helpSettingsCodec.parse(helpSettingsCodec.serialize(settings))).toEqual(settings);
   });
 });
 

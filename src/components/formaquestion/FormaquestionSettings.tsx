@@ -10,7 +10,6 @@ import { SETTINGS_DIALOG_SIZE } from '@/components/modals/settingsDialogSize';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -27,6 +26,7 @@ import { ToolsTab } from './FormaquestionToolsTab';
 import { useHelpRevealSource } from './useHelpRevealSource';
 import { setMascotPlacement, useMascotPlacement } from './useMascotDevice';
 import { MascotScaleRow } from './MascotScaleRow';
+import { ModelDownloadBar } from './ModelDownloadBar';
 import { isMascotPlacement, isVerticalPlacement, type MascotPlacement, type WindowChrome } from '@/lib/formaquestion/windowBox';
 import { useMascotDraft } from './useMascotDraft';
 import type { SemanticSearch } from './useSemanticSearch';
@@ -36,21 +36,13 @@ import { FORMAQUESTION_SETTINGS_TABS, GENERAL_COPY, placementOptions, type Forma
 const shownPlacement = (placement: MascotPlacement, chrome: WindowChrome): MascotPlacement =>
   (chrome === 'bubble' && isVerticalPlacement(placement) ? 'outside' : placement);
 
-const MB = 1048576;
-
 /** The progress bar of the model download, and the failed state with its retry. */
 function SemanticStatus({ semantic }: { semantic: SemanticSearch }) {
   const { progress, error, downloading } = semantic;
-  const known = progress !== null && progress.total > 0;
   if (downloading) {
     return (
       <Row>
-        <div className="flex items-center gap-2">
-          <Progress className="h-2 flex-1" aria-label="Model download" value={known ? (progress.loaded / progress.total) * 100 : 0} />
-          <span className="text-meta text-muted-foreground whitespace-nowrap">
-            {known ? `${Math.round(progress.loaded / MB)} / ${Math.round(progress.total / MB)} MB` : 'Preparing…'}
-          </span>
-        </div>
+        <ModelDownloadBar progress={progress} />
       </Row>
     );
   }

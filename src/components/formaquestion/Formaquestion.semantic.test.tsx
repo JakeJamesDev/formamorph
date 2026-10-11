@@ -88,7 +88,7 @@ describe('the Semantic Search switch', () => {
     expect(semanticBox(dialog)).toHaveAttribute('aria-checked', 'true');
     await download.report({ loaded: 5 * 1048576, total: 20 * 1048576 });
     expect(within(dialog).getByText('5 / 20 MB')).toBeInTheDocument();
-    expect(storedSemantic()).toBeUndefined();
+    expect(storedSemantic()).not.toBe(true);
 
     await download.finish();
     await waitFor(() => expect(within(dialog).queryByText('5 / 20 MB')).toBeNull());
@@ -99,6 +99,8 @@ describe('the Semantic Search switch', () => {
 
   it('goes on at once, with no download, when the model is on the device', async () => {
     model.cached = true;
+    // An undecided player's switch already went on at the open, so this player has answered the offer.
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ semanticOffer: 'decided' }));
     const { dialog } = await openSettings();
     await userEvent.click(semanticBox(dialog));
 
@@ -116,7 +118,7 @@ describe('the Semantic Search switch', () => {
 
     expect(await within(dialog).findByText('Model download failed: network down')).toBeInTheDocument();
     expect(semanticBox(dialog)).toHaveAttribute('aria-checked', 'false');
-    expect(storedSemantic()).toBeUndefined();
+    expect(storedSemantic()).not.toBe(true);
 
     const second = pendingLoad();
     await userEvent.click(within(dialog).getByRole('button', { name: 'Retry' }));
@@ -168,8 +170,163 @@ describe('the Semantic Search switch', () => {
 
     await download.report({ loaded: 1, total: 2 });
     await download.finish();
-    expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+    expect(storedSemantic()).not.toBe(true);
     expect(errors).not.toHaveBeenCalled();
     errors.mockRestore();
+  });
+});
+
+const storedOffer = () => (JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}') as { semanticOffer?: string }).semanticOffer;
+const offerCard = () => screen.queryByRole('region', { name: 'Semantic Search Offer' });
+
+async function openHelp() {
+  const view = renderReporting(<Formaquestion loadIndex={loadFixture} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Help' }));
+  await screen.findByRole('textbox', { name: 'Ask a Question' });
+  return view;
+}
+
+describe.each(['auto', 'minimal', 'full'] as const)('the Semantic Search offer card under the %s chat style', (chatStyle) => {
+  beforeEach(() => localStorage.setItem(STORAGE_KEY, JSON.stringify({ chatStyle })));
+
+  it('offers Semantic Search as recommended on the first open, and leaves the question field usable', async () => {
+    await openHelp();
+    const card = await screen.findByRole('region', { name: 'Semantic Search Offer' });
+    expect(within(card).getByText('Recommended')).toBeInTheDocument();
+    expect(within(card).getByText(/downloads a small model once/i)).toBeInTheDocument();
+    await userEvent.type(screen.getByRole('textbox', { name: 'Ask a Question' }), 'hi');
+    expect(screen.getByRole('textbox', { name: 'Ask a Question' })).toHaveValue('hi');
+  });
+
+  it('hides for good on No Thanks, across a reload, and starts no download', async () => {
+    const view = await openHelp();
+    await userEvent.click(await screen.findByRole('button', { name: 'No Thanks' }));
+    expect(offerCard()).toBeNull();
+    expect(storedOffer()).toBe('decided');
+    expect(model.load).not.toHaveBeenCalled();
+
+    view.unmount();
+    await openHelp();
+    await waitFor(() => expect(model.embed).not.toHaveBeenCalled());
+    expect(offerCard()).toBeNull();
+  });
+});
+
+describe('the Semantic Search offer card', () => {
+  it('shows again after a close with no pick, across a reload', async () => {
+    const view = await openHelp();
+    await screen.findByRole('region', { name: 'Semantic Search Offer' });
+    fireEvent.click(screen.getByRole('button', { name: 'Close Formaquestion' }));
+    await waitFor(() => expect(screen.queryByRole('textbox', { name: 'Ask a Question' })).toBeNull());
+    fireEvent.click(screen.getByRole('button', { name: 'Help' }));
+    expect(await screen.findByRole('region', { name: 'Semantic Search Offer' })).toBeInTheDocument();
+    expect(storedOffer()).toBeUndefined();
+
+    view.unmount();
+    await openHelp();
+    expect(await screen.findByRole('region', { name: 'Semantic Search Offer' })).toBeInTheDocument();
+  });
+
+  it('follows the download after Turn On, then goes when the model is ready', async () => {
+    const download = pendingLoad();
+    await openHelp();
+    await userEvent.click(await screen.findByRole('button', { name: 'Turn On' }));
+
+    await waitFor(() => expect(model.load).toHaveBeenCalledTimes(1));
+    const card = screen.getByRole('region', { name: 'Semantic Search Offer' });
+    expect(within(card).queryByRole('button', { name: 'Turn On' })).toBeNull();
+    await download.report({ loaded: 5 * 1048576, total: 20 * 1048576 });
+    expect(within(card).getByText('5 / 20 MB')).toBeInTheDocument();
+    expect(storedOffer()).toBe('decided');
+
+    await download.finish();
+    await waitFor(() => expect(offerCard()).toBeNull());
+    expect(storedSemantic()).toBe(true);
+  });
+
+  it('keeps showing a download that runs while the window is closed and opened again', async () => {
+    const download = pendingLoad();
+    await openHelp();
+    await userEvent.click(await screen.findByRole('button', { name: 'Turn On' }));
+    await waitFor(() => expect(model.load).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole('button', { name: 'Close Formaquestion' }));
+    await waitFor(() => expect(screen.queryByRole('textbox', { name: 'Ask a Question' })).toBeNull());
+    fireEvent.click(screen.getByRole('button', { name: 'Help' }));
+
+    await download.report({ loaded: 1048576, total: 2 * 1048576 });
+    const card = await screen.findByRole('region', { name: 'Semantic Search Offer' });
+    expect(within(card).getByText('1 / 2 MB')).toBeInTheDocument();
+    await download.finish();
+    await waitFor(() => expect(offerCard()).toBeNull());
+  });
+
+  it('shows a failed download with Retry, which starts a new download', async () => {
+    const first = pendingLoad();
+    await openHelp();
+    await userEvent.click(await screen.findByRole('button', { name: 'Turn On' }));
+    await waitFor(() => expect(model.load).toHaveBeenCalledTimes(1));
+    await first.fail(new Error('network down'));
+    const card = await screen.findByRole('region', { name: 'Semantic Search Offer' });
+    expect(within(card).getByText('Model download failed: network down')).toBeInTheDocument();
+
+    const second = pendingLoad();
+    await userEvent.click(within(card).getByRole('button', { name: 'Retry' }));
+    await waitFor(() => expect(model.load).toHaveBeenCalledTimes(2));
+    await second.finish();
+    await waitFor(() => expect(offerCard()).toBeNull());
+    expect(storedSemantic()).toBe(true);
+  });
+
+  it('hides a failed download on Dismiss, and the Settings switch still offers Retry', async () => {
+    const first = pendingLoad();
+    await openHelp();
+    await userEvent.click(await screen.findByRole('button', { name: 'Turn On' }));
+    await waitFor(() => expect(model.load).toHaveBeenCalledTimes(1));
+    await first.fail(new Error('network down'));
+    await userEvent.click(await screen.findByRole('button', { name: 'Dismiss' }));
+    expect(offerCard()).toBeNull();
+    expect(storedSemantic()).not.toBe(true);
+  });
+
+  it('turns the switch on with no card when the model got cached while the window was closed', async () => {
+    await openHelp();
+    await screen.findByRole('region', { name: 'Semantic Search Offer' });
+    fireEvent.click(screen.getByRole('button', { name: 'Close Formaquestion' }));
+    await waitFor(() => expect(screen.queryByRole('textbox', { name: 'Ask a Question' })).toBeNull());
+    model.cached = true;
+    fireEvent.click(screen.getByRole('button', { name: 'Help' }));
+    // No flash of the card while the probe runs.
+    expect(offerCard()).toBeNull();
+
+    await waitFor(() => expect(storedSemantic()).toBe(true));
+    expect(offerCard()).toBeNull();
+  });
+
+  it('hides when the player flips the switch in Settings, and stays hidden after it goes off', async () => {
+    pendingLoad();
+    const { dialog } = await openSettings();
+    await userEvent.click(semanticBox(dialog));
+    await waitFor(() => expect(storedOffer()).toBe('decided'));
+    await userEvent.click(semanticBox(dialog));
+    expect(semanticBox(dialog)).toHaveAttribute('aria-checked', 'false');
+    await userEvent.keyboard('{Escape}');
+    // The window comes back with the switch off and the offer answered.
+    await screen.findByRole('textbox', { name: 'Ask a Question' });
+    expect(offerCard()).toBeNull();
+  });
+
+  it('turns the switch on with no card when the model is already on the device', async () => {
+    model.cached = true;
+    await openHelp();
+    await waitFor(() => expect(storedSemantic()).toBe(true));
+    expect(storedOffer()).toBe('decided');
+    expect(offerCard()).toBeNull();
+    expect(model.load).not.toHaveBeenCalled();
+  });
+
+  it('shows no card for a player whose stored switch was on before the offer existed', async () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ sources: { semantic: true } }));
+    await openHelp();
+    expect(offerCard()).toBeNull();
   });
 });
