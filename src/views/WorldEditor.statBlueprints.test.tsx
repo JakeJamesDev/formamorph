@@ -72,7 +72,8 @@ describe('the Stats tab Blueprints group', () => {
     const linked = { ...WORLD, entities: [{ ...WORLD.entities[0], statLinks: [{ id: 'l1', originalId: 'bp-trust', kind: 'stat' as const, originalName: 'Trust', groupId: null }] }] };
     const { ctx } = renderWorldEditorBench(linked, 'advanced');
     openEditorTab(/Stats/);
-    let row: HTMLElement | null = screen.getByText('Trust');
+    // The Blueprint comes first; Ash's link to it draws under Ash's node below.
+    let row: HTMLElement | null = screen.getAllByText('Trust')[0];
     while (row && !within(row).queryByRole('button', { name: 'Delete' })) row = row.parentElement;
     fireEvent.click(within(row!).getByRole('button', { name: 'Delete' }));
     expect(screen.getByText('This also deletes its link.')).toBeInTheDocument();
@@ -190,7 +191,8 @@ describe('Detach on an entity', () => {
     fireEvent.keyDown(screen.getByRole('group', { name: 'Blueprints' }), { key: 'Escape' });
 
     openEditorTab(/Stats/);
-    fireEvent.click(screen.getByText('Trust'));
+    // The Blueprint comes first; Ash's detached Trust draws under Ash's node below.
+    fireEvent.click(screen.getAllByText('Trust')[0]);
     fireEvent.click(screen.getByRole('button', { name: 'Link To…' }));
     expect(within(screen.getByRole('group', { name: 'Link To' })).getByRole('button', { name: 'Ash' }))
       .toHaveAttribute('aria-description', 'Already owns Trust');

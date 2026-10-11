@@ -17,7 +17,7 @@ import StatTree from './StatTree';
  * the same rows and panels.
  */
 export function statListAdapter({
-  stats, groups, names, selectedId, onSelect, onDuplicate, onRemoveStat, onRemoveGroup, onDrop, onWriteGroup, add, placeholder,
+  stats, groups, names, selectedId, onSelect, onDuplicate, onRemoveStat, onRemoveGroup, tree, onWriteGroup, add, placeholder,
   emptyHint, search, tab, onTabChange, focusField, store, padded, links, footer,
 }: {
   stats: Stat[];
@@ -29,8 +29,9 @@ export function statListAdapter({
   onDuplicate: (id: string) => void;
   onRemoveStat: (id: string) => void;
   onRemoveGroup: (id: string) => void;
-  /** Writes the groups and stats a drag produced; the stats come back in tree order. */
-  onDrop: (next: { groups: StatGroup[]; stats: Stat[] }) => void;
+  /** The one-owner tree, with where its drops land (the stats come back in tree order), or a tree of the
+   *  caller's that writes its own drops. */
+  tree: { onDrop: (next: { groups: StatGroup[]; stats: Stat[] }) => void } | { node: ReactNode };
   onWriteGroup: (group: StatGroup) => void;
   add: ListEditorAdapter['add'];
   placeholder: string;
@@ -75,13 +76,13 @@ export function statListAdapter({
   };
 
   return {
-    tree: (
+    tree: 'node' in tree ? tree.node : (
       <StatTree
         stats={stats}
         groups={groups}
         selectedId={selectedId}
         onSelect={onSelect}
-        onDrop={onDrop}
+        onDrop={tree.onDrop}
         onRemoveStat={onRemoveStat}
         onRemoveGroup={onRemoveGroup}
         onDuplicate={onDuplicate}

@@ -36,7 +36,7 @@ export interface LibrarySource<T extends LinkableContent = LinkableContent> {
  * nothing in this world. Bringing a source's new references across is the Connect World References step.
  */
 const WORLD_OWNED_FIELDS = [
-  'id', 'link', 'groupId', 'order', 'traitPlacement', 'locations', 'placeholders', 'sharedPlaceholders', 'blueprints',
+  'id', 'link', 'groupId', 'order', 'traitPlacement', 'statPlacement', 'locations', 'placeholders', 'sharedPlaceholders', 'blueprints',
 ] as const;
 
 /** The library record fields that stamp a revision, newest meaning first. */

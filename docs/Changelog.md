@@ -38,6 +38,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The narrator, choice writer and planner now see your persona's stats in the Stats chip, after your world's stats.** Each persona stat sits in that persona's own groups. A stat whose name matches an earlier stat reads with a number, such as "Trust (2)".
     - **The library character editor now has a Stats tab, and its stats, groups and links travel with the card.** The tab works like the entity panel's Stats tab, side by side. A link stays dormant until a world has its Blueprint.
     - **The AI's default Stat Updates prompt now explains what stats are and how headings and groups arrange them.** Grouped stats get fewer made-up changes. A custom Stat Updates prompt stays as you wrote it.
+    - **The Stats tab now shows a node for each entity that owns stats, as the Traits tab does.** Drag a node into your groups, and drag stats and groups between owners. Drop a Blueprint on an entity to link it. A note explains a refused move.
   - **The AI now updates your stats with fewer wrong-direction and made-up changes.** It answers with a change for every stat, 0 included. An endpoint that can't take that format gets the old reply style, and the AI context viewer notes it.
   - **The World Editor's Content group now lists Entities first and Stats last.** The order is Entities, Locations, Traits, Stats on the side rail and the mobile Sections list.
 - **🛠️ Developer tooling**

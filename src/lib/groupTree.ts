@@ -275,3 +275,61 @@ export function applyDrop<G extends TreeGroup, L extends TreeLeaf>(
   }
   return { groups: g2, leaves: l2 };
 }
+
+/** The projection walked up out of every blocked parent, then replayed at that depth so the rows below agree.
+ *  Null when they would hold the row where it can't be. */
+export function projectionPastBlocked<G extends TreeGroup, L extends TreeLeaf>(
+  items: FlatTreeNode<G, L>[], active: FlatTreeNode<G, L>, overId: string, projection: { depth: number; parentId: string | null },
+  blocked: (id: string) => boolean, indentationWidth: number,
+): { depth: number; parentId: string | null } | null {
+  const parentOf = new Map(items.map((i) => [i.id, i.parentId]));
+  let { depth, parentId } = projection;
+  while (parentId !== null && blocked(parentId)) {
+    parentId = parentOf.get(parentId) ?? null;
+    depth -= 1;
+  }
+  const replayed = depth === projection.depth
+    ? projection
+    : getDropProjection(items, active.id, overId, (depth - active.depth) * indentationWidth, indentationWidth);
+  return replayed.depth === depth && replayed.parentId === parentId ? replayed : null;
+}
+
+/**
+ * What a drop in a tree with entity nodes writes: every owner (an entity's id, null for the world) whose item
+ * moved or changed owner, and the nodes that store where they landed. Unplaced nodes still ending the top level
+ * in `unplacedIds` order stay unplaced. A pinned node's entity is among the touched owners.
+ */
+export function nodeDropWrites<G extends TreeGroup, L extends TreeLeaf>(
+  before: { groups: readonly G[]; leaves: readonly L[] }, after: { groups: readonly G[]; leaves: readonly L[] },
+  nodeIds: ReadonlySet<string>, unplacedIds: readonly string[],
+  ownerBefore: (id: string) => string | null, ownerAfter: (id: string) => string | null,
+): { touched: Set<string | null>; pinned: Set<string> } {
+  const spot = (parent: string | null | undefined, order: number | undefined) => `${parent ?? ''}|${order ?? ''}`;
+  const spotBefore = new Map([
+    ...before.groups.map((g) => [g.id, spot(g.parentId, g.order)] as const),
+    ...before.leaves.map((l) => [l.id, spot(l.groupId, l.order)] as const),
+  ]);
+  const touched = new Set<string | null>();
+  const touch = (id: string, parent: string | null | undefined, order: number | undefined) => {
+    if (spotBefore.get(id) === spot(parent, order) && ownerBefore(id) === ownerAfter(id)) return;
+    touched.add(ownerBefore(id));
+    touched.add(ownerAfter(id));
+  };
+  for (const g of after.groups) if (!nodeIds.has(g.id)) touch(g.id, g.parentId, g.order);
+  for (const l of after.leaves) touch(l.id, l.groupId, l.order);
+
+  const rootIds = [...after.groups.filter((g) => g.parentId === null), ...after.leaves.filter((l) => (l.groupId ?? null) === null)]
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).map((item) => item.id);
+  const stillUnplaced = new Set<string>();
+  for (let i = rootIds.length - 1, j = unplacedIds.length - 1; i >= 0 && j >= 0 && rootIds[i] === unplacedIds[j]; i--, j--) {
+    stillUnplaced.add(unplacedIds[j]);
+  }
+  const groupById = new Map(after.groups.map((g) => [g.id, g]));
+  const pinned = new Set([...nodeIds].filter((id) => {
+    if (stillUnplaced.has(id)) return false;
+    const node = groupById.get(id)!;
+    return unplacedIds.includes(id) || spotBefore.get(id) !== spot(node.parentId, node.order);
+  }));
+  pinned.forEach((id) => touched.add(id));
+  return { touched, pinned };
+}

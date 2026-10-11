@@ -1,4 +1,5 @@
-import { Fragment, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { joinedList } from '@/components/editor/joinedList';
 import { originalsOf, useTraitStore } from '@/contexts/TraitStoreContext';
 import { Link2, Lock, Unlink } from 'lucide-react';
 import { BlueprintIcon, EntityIcon, GroupIcon } from '@/lib/elementIcons';
@@ -47,12 +48,10 @@ const gateMeta = (gate: GateState | undefined, placeholders: Parameters<typeof l
 };
 
 /** `A`, `A and B`, `A, B and C`, each name in bold. */
-const bearerList = (names: readonly string[], placeholders: Placeholder[]) => names.map((n, i) => (
-  <Fragment key={i}>
-    {i === 0 ? '' : i === names.length - 1 ? ' and ' : ', '}
-    <strong><PlaceholderText text={n} placeholders={placeholders} /></strong>
-  </Fragment>
-));
+const bearerList = (names: readonly string[], placeholders: Placeholder[]) => {
+  const bold = (n: string) => <strong><PlaceholderText text={n} placeholders={placeholders} /></strong>;
+  return joinedList(names.map(bold));
+};
 
 /** The line after a refused drop: the entity already has the trait, the Custom Persona entity left the top
  *  level, or a linked Blueprint would leave Blueprints or become owned. The dragged item stays put. */

@@ -93,13 +93,6 @@ export function statBlueprintChoices(world: StatLinkWorld): BearerChoice[] {
   });
 }
 
-/** Whether a regrouped world keeps the Blueprints group at the top level and every linked original inside it. */
-export function dropKeepsBlueprints(next: StatLinkWorld, entities: readonly Entity[]): boolean {
-  if ((statBlueprintsGroup(next.statGroups)?.parentId ?? null) !== null) return false;
-  const held = new Set([...next.stats.map((s) => s.id), ...next.statGroups.map((g) => g.id)]);
-  return entities.every((e) => (e.statLinks ?? []).every((l) => !held.has(l.originalId) || !!statOriginalOf(next, l.originalId)));
-}
-
 /** The world's stats without Blueprints: the player's stats. The same list when it holds no Blueprint. */
 export function playerStatsOf<T extends Stat>(stats: T[], groups: readonly StatGroup[]): T[] {
   const inBlueprints = statBlueprintsSubtreeIds(groups);
