@@ -30,7 +30,7 @@ describe('editor mode', () => {
   });
 
   it('drops Placeholders from the tab strip in Simple only', () => {
-    expect(editorTabsFor(false).map((t) => t.value)).toEqual(['overview', 'stats', 'entities', 'locations', 'traits', 'dictionary']);
+    expect(editorTabsFor(false).map((t) => t.value)).toEqual(['overview', 'entities', 'locations', 'traits', 'stats', 'dictionary']);
     expect(editorTabsFor(true).map((t) => t.value)).toContain('placeholders');
   });
 

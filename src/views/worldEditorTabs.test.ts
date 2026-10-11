@@ -9,7 +9,7 @@ describe('editorTabGroupsFor', () => {
   it('puts Overview alone ahead of the groups, with Dictionary alone in Vocabulary in Simple mode', () => {
     expect(shape(false)).toEqual([
       [null, ['Overview']],
-      ['Content', ['Stats', 'Entities', 'Locations', 'Traits']],
+      ['Content', ['Entities', 'Locations', 'Traits', 'Stats']],
       ['Vocabulary', ['Dictionary']],
     ]);
   });
@@ -17,7 +17,7 @@ describe('editorTabGroupsFor', () => {
   it('adds Placeholders to Vocabulary in Advanced mode', () => {
     expect(shape(true)).toEqual([
       [null, ['Overview']],
-      ['Content', ['Stats', 'Entities', 'Locations', 'Traits']],
+      ['Content', ['Entities', 'Locations', 'Traits', 'Stats']],
       ['Vocabulary', ['Dictionary', 'Placeholders']],
     ]);
   });

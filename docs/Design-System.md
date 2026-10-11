@@ -889,7 +889,7 @@ The World Editor groups its tabs this way:
 | Group | Tabs |
 | --- | --- |
 | Landing tab | Overview |
-| Content | Stats · Entities · Locations · Traits |
+| Content | Entities · Locations · Traits · Stats |
 | Vocabulary | Dictionary · Placeholders (Advanced only) |
 | Logic | None yet, so it draws nothing |
 
