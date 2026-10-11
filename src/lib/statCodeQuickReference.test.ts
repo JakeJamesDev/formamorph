@@ -92,7 +92,7 @@ const editorNames: AnalysisOptions = {
 const editorFindings = (code: string) => statCodeDiagnostics(code, editorNames).map((finding) => finding.message);
 
 /** The result fields a run that changed only what it meant to fills. Any other field reports a dropped write. */
-const APPLIED_FIELDS = new Set(['value', 'error', 'bounds', 'placeholders', 'traits', 'entities']);
+const APPLIED_FIELDS = new Set(['value', 'error', 'bounds', 'statWrites', 'placeholders', 'traits', 'entities']);
 const APPLIED_ENTITY_FIELDS = new Set(['entity', 'traits']);
 
 /** The fields of a run's result that report a dropped write, an entity's own included. */
@@ -102,7 +102,7 @@ const dropped = (result: StatCodeResult) => [
 ];
 
 /** Whether a run left anything for the turn to apply. */
-const landed = (result: StatCodeResult) => result.value !== null || !!result.bounds || !!result.placeholders?.length
+const landed = (result: StatCodeResult) => result.value !== null || !!result.bounds || !!result.statWrites?.length || !!result.placeholders?.length
   || !!result.traits?.length || !!result.entities?.some((entity) => entity.traits?.length);
 
 /** Each object's members as the surface lists them. `console` has no list; the sandbox answers for it below. */
@@ -161,8 +161,8 @@ describe('the Stat Code Guide’s Quick Reference', () => {
     expect(editorFindings(`${runnable(write)};\nreturn 1;`)).toEqual([]);
   });
 
-  it('names every field self takes a write to, and no other', () => {
-    expect(ruleLeadCode('`self` takes writes').slice(1)).toEqual(SELF_WRITABLE_FIELDS);
+  it('names every field self and a stats entry take a write to, and no other', () => {
+    expect(ruleLeadCode('`self` and every `stats` entry take writes')).toEqual(['self', 'stats', ...SELF_WRITABLE_FIELDS]);
   });
 
   it('underlines the whole-trait write the rules warn against', () => {
