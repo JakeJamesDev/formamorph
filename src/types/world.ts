@@ -87,13 +87,14 @@ export interface StatGroup {
   system?: 'blueprints';
 }
 
-/** A node under an entity that points at a Blueprint stat, the original, and reads it live. It stores only its own
- *  place and its overrides. In play the linked stat runs under the original's id, with this entity's own value. */
+/** A node under an entity that points at a Blueprint stat or stat group, the original, and reads it live. It
+ *  stores only its own place and its overrides. In play each linked stat runs under the original stat's id, with
+ *  this entity's own value. */
 export interface StatLink {
   id: string;
-  /** The original's id: a world stat inside the Blueprints group. */
+  /** The original's id: a world stat or stat group inside the Blueprints group. */
   originalId: string;
-  kind: 'stat';
+  kind: 'stat' | 'group';
   /** The original's name when the link was stored, so it travels off-world and rebinds by name. */
   originalName: string;
   /** null = the entity's top level; otherwise one of the entity's own stat groups. */
@@ -101,8 +102,11 @@ export interface StatLink {
   /** Sibling order among the entity's stats, links and groups sharing the same parent. */
   order?: number;
   /** Original stat id → this link's overrides on that stat. A stat absent here, or a field absent in its map,
-   *  reads the original live. */
+   *  reads the original live. A linked group keys its stats here. */
   overrides?: Record<string, StatLinkOverrides>;
+  /** Off-world only: stat id → name for each stat below the original that `overrides` keys, so the keys rebind
+   *  by name when the original does. Dropped when the link binds to a world. */
+  keyNames?: Record<string, string>;
 }
 
 /** The fields a stat link may override, absent ones on the original read as off or empty. The name stays the
@@ -361,8 +365,8 @@ export interface Entity {
   stats?: Stat[];
   /** Groups for this entity's own stats, nestable via `parentId` like the world's. */
   statGroups?: StatGroup[];
-  /** Links to the world's Blueprint stats, placed among the entity's own stats (see lib/statLinks). At most one
-   *  link per original. */
+  /** Links to the world's Blueprint stats and stat groups, placed among the entity's own stats (see
+   *  lib/statLinks). No two links bring the same stat. */
   statLinks?: StatLink[];
   /** Off-world only: the shared placeholders this entity's chips use, so they resolve after import. An import
    *  merges them into the world's shared list by name and values and clears the field. */

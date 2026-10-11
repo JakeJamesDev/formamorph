@@ -1,6 +1,6 @@
-// Stat Blueprints and Links: the world's Blueprints stat group, an entity's links to the stats in it, and the
-// stats each entity owns once its links are read through their originals. This module is the one place that
-// expands a stat link, for the editor and for play.
+// Stat Blueprints and Links: the world's Blueprints stat group, an entity's links to the stats and groups in it,
+// and the stats each entity owns once its links are read through their originals. This module is the one place
+// that expands a stat link, for the editor and for play.
 
 import type { Entity, Stat, StatGroup, StatLink, StatLinkFields, StatLinkOverrides } from '@/types';
 import { effectiveRecord, sameValue, withOverride, withoutOverride, type EffectiveRecord } from './blueprints';
@@ -8,6 +8,8 @@ import { groupsBelow } from './traitTree';
 import { removeStatGroup, statRootCount, statsInTreeOrder } from './statGroupTree';
 import { buildTree, flattenTree, type TreeLeaf } from './groupTree';
 import type { BearerChoice } from './bearerChoices';
+import { randomUUID } from './uuid';
+import { newStat } from './blankWorld';
 
 /** The tree place a link or leaf carries: its group and, when set, its order. */
 export const placeOf = (item: { groupId?: string | null; order?: number }): { groupId: string | null; order?: number } =>
@@ -31,7 +33,7 @@ export function statBlueprintsSubtreeIds(groups: readonly StatGroup[]): Set<stri
   return new Set(blueprints ? [blueprints.id, ...groupsBelow(groups as StatGroup[], blueprints.id).map((g) => g.id)] : []);
 }
 
-/** The world stats inside Blueprints: the only stats a link may point at. */
+/** The world stats inside Blueprints. */
 export function statBlueprintIds(world: StatLinkWorld): Set<string> {
   const inBlueprints = statBlueprintsSubtreeIds(world.statGroups);
   return new Set(world.stats.filter((s) => s.groupId != null && inBlueprints.has(s.groupId)).map((s) => s.id));
@@ -40,6 +42,34 @@ export function statBlueprintIds(world: StatLinkWorld): Set<string> {
 /** The Blueprint stat with this id, or undefined when the id names no stat inside Blueprints. */
 export function statBlueprint(world: StatLinkWorld, id: string): Stat | undefined {
   return statBlueprintIds(world).has(id) ? world.stats.find((s) => s.id === id) : undefined;
+}
+
+/** What a link may point at: a stat or a stat group inside Blueprints. Blueprints itself is not an original. */
+export type StatOriginal = { kind: 'stat'; item: Stat } | { kind: 'group'; item: StatGroup };
+
+/** The original with this id, or null when the id names nothing inside Blueprints. */
+export function statOriginalOf(world: StatLinkWorld, id: string): StatOriginal | null {
+  const inside = statBlueprintsSubtreeIds(world.statGroups);
+  const stat = world.stats.find((s) => s.id === id);
+  if (stat) return stat.groupId != null && inside.has(stat.groupId) ? { kind: 'stat', item: stat } : null;
+  const group = world.statGroups.find((g) => g.id === id);
+  return group && group.system !== 'blueprints' && inside.has(group.id) ? { kind: 'group', item: group } : null;
+}
+
+/** A Blueprint group's live subtree: the groups below it and every stat in it or below it. */
+function statSubtree(world: StatLinkWorld, group: StatGroup): { groups: StatGroup[]; stats: Stat[] } {
+  const groups = groupsBelow(world.statGroups as StatGroup[], group.id);
+  const ids = new Set([group.id, ...groups.map((g) => g.id)]);
+  return { groups, stats: world.stats.filter((s) => s.groupId != null && ids.has(s.groupId)) };
+}
+
+/** The world ids a link to `originalId` brings: the original and, for a group, its live subtree. */
+export function statBroughtIds(world: StatLinkWorld, originalId: string): string[] {
+  const original = statOriginalOf(world, originalId);
+  if (!original) return [];
+  if (original.kind === 'stat') return [originalId];
+  const { groups, stats } = statSubtree(world, original.item);
+  return [originalId, ...groups.map((g) => g.id), ...stats.map((s) => s.id)];
 }
 
 /** The Blueprint stats and the groups that hold one, as a drill-down flyout's rows in tree order. A row in the
@@ -62,9 +92,8 @@ export function statBlueprintChoices(world: StatLinkWorld): BearerChoice[] {
 /** Whether a regrouped world keeps the Blueprints group at the top level and every linked original inside it. */
 export function dropKeepsBlueprints(next: StatLinkWorld, entities: readonly Entity[]): boolean {
   if ((statBlueprintsGroup(next.statGroups)?.parentId ?? null) !== null) return false;
-  const inside = statBlueprintIds(next);
-  const held = new Set(next.stats.map((s) => s.id));
-  return entities.every((e) => (e.statLinks ?? []).every((l) => inside.has(l.originalId) || !held.has(l.originalId)));
+  const held = new Set([...next.stats.map((s) => s.id), ...next.statGroups.map((g) => g.id)]);
+  return entities.every((e) => (e.statLinks ?? []).every((l) => !held.has(l.originalId) || !!statOriginalOf(next, l.originalId)));
 }
 
 /** The world's stats without Blueprints: the player's stats. The same list when it holds no Blueprint. */
@@ -76,13 +105,14 @@ export function playerStatsOf<T extends Stat>(stats: T[], groups: readonly StatG
 
 // ---- One link ----
 
-/** The overridable fields as the original carries them, absent ones read as off or empty. */
+/** The overridable fields as the original carries them, absent ones read as off or empty. The Initial Value is
+ *  the stored starting value when the original has one, since a new game seeds from it. */
 export const statLinkFieldsOf = (stat: Stat): StatLinkFields => ({
   type: stat.type,
   description: stat.description ?? '',
   min: stat.min,
   max: stat.max,
-  value: stat.value ?? 0,
+  value: stat.starting ?? stat.value ?? 0,
   regen: stat.regen ?? 0,
   descriptors: stat.descriptors ?? [],
   thresholdUnit: stat.thresholdUnit ?? 'raw',
@@ -101,17 +131,16 @@ export const statLinkFieldsOf = (stat: Stat): StatLinkFields => ({
 export const statLinkState = (original: Stat, link: StatLink): EffectiveRecord<StatLinkFields> =>
   effectiveRecord(statLinkFieldsOf(original), link.overrides?.[original.id]);
 
-/** The original as `link` reads it, in the link's place. The id and name stay the original's, so in play each
- *  bearer holds its own value under the original's id. */
-export function linkedStat(original: Stat, link: StatLink): Stat {
+/** The original stat as `link` reads it, at `at`: the link's own place by default. The id and name stay the
+ *  original's, so in play each bearer holds its own value under the original's id. */
+export function linkedStat(original: Stat, link: StatLink, at: { groupId: string | null; order?: number } = placeOf(link)): Stat {
   const { groupId: _g, order: _o, ...base } = original;
-  const at = placeOf(link);
-  if (!link.overrides?.[original.id]) return { ...base, ...at };
   const { record, overridden } = statLinkState(original, link);
+  if (!overridden.length && original.starting === undefined) return { ...base, ...at };
   const fields = Object.fromEntries(overridden.map((field) => [field, record[field]]));
-  // An overridden Initial Value stands alone: a stored starting value would otherwise win at the seed.
+  // The Initial Value stands alone: a stored starting value would otherwise win at the seed.
   const { starting: _s, ...rest } = base;
-  return { ...(overridden.includes('value') ? rest : base), ...fields, ...at };
+  return { ...rest, ...(original.starting !== undefined ? { value: record.value } : {}), ...fields, ...at };
 }
 
 /** The link with its map for one original stat replaced; an emptied map drops the key, then the whole map. */
@@ -172,39 +201,44 @@ export const entityStatRootCount = (entity: Entity): number =>
 export const linksStat = (entity: Entity, originalId: string): boolean =>
   (entity.statLinks ?? []).some((l) => l.originalId === originalId);
 
-/** Link a Blueprint stat at the end of the entity's top level. Null when the id is not a Blueprint stat or the
- *  entity already links it. */
-export function addStatLink(world: StatLinkWorld, entity: Entity, originalId: string, id: string): Entity | null {
-  const original = statBlueprint(world, originalId);
-  if (!original || linksStat(entity, originalId)) return null;
-  const link: StatLink = { id, originalId, kind: 'stat', originalName: original.name, groupId: null, order: entityStatRootCount(entity) };
-  return withStatLinks(entity, [...(entity.statLinks ?? []), link]);
+/** Whether the entity's tree already holds the original, or anything a link to it would bring: one of its own
+ *  stats, or a stat or group one of its links brings. */
+export function holdsStatOriginal(world: StatLinkWorld, entity: Entity, originalId: string): boolean {
+  if (linksStat(entity, originalId)) return true;
+  const held = new Set((entity.stats ?? []).map((s) => s.id));
+  for (const link of entity.statLinks ?? []) statBroughtIds(world, link.originalId).forEach((id) => held.add(id));
+  return statBroughtIds(world, originalId).some((id) => held.has(id));
 }
 
-/** Copy a Blueprint stat into the entity as its own stat under `id`, at the end of its top level. Null when the
- *  id is not a Blueprint stat. */
-export function copyStatBlueprint(world: StatLinkWorld, entity: Entity, originalId: string, id: string): Entity | null {
-  const original = statBlueprint(world, originalId);
-  if (!original) return null;
-  const copy: Stat = { ...original, id, groupId: null, order: entityStatRootCount(entity) };
-  return { ...entity, stats: [...(entity.stats ?? []), copy] };
+/** Link a Blueprint stat or group at the end of the entity's top level. Null when the id is not an original or
+ *  the entity already holds it. */
+export function addStatLink(world: StatLinkWorld, entity: Entity, originalId: string, id: string): Entity | null {
+  const original = statOriginalOf(world, originalId);
+  if (!original || holdsStatOriginal(world, entity, originalId)) return null;
+  const link: StatLink = {
+    id, originalId, kind: original.kind, originalName: original.item.name, groupId: null, order: entityStatRootCount(entity),
+  };
+  return withStatLinks(entity, [...(entity.statLinks ?? []), link]);
 }
 
 /** Remove one link. The original is untouched. */
 export const removeStatLink = (entity: Entity, linkId: string): Entity =>
   withStatLinks(entity, (entity.statLinks ?? []).filter((l) => l.id !== linkId));
 
-/** Write an editor's edit of a linked stat as the link's overrides on the fields it changed. The entity as it is
- *  when the original is gone. */
-export function editStatLink(world: StatLinkWorld, entity: Entity, linkId: string, edited: Stat): Entity {
-  const link = entity.statLinks?.find((l) => l.id === linkId);
-  const original = link && world.stats.find((s) => s.id === link.originalId);
+/** Write an editor's edit of one stat a link brings as the link's overrides on the fields it changed. The entity
+ *  as it is when the stat is gone. */
+export function editStatLink(world: StatLinkWorld, entity: Entity, linkId: string, statId: string, edited: Stat): Entity {
+  const original = world.stats.find((s) => s.id === statId);
   return original ? withStatLink(entity, linkId, (l) => setStatLinkEdits(l, original, edited)) : entity;
 }
 
 /** Read one field of one original stat a link brings live again. */
 export const resetStatLinkFieldOn = (entity: Entity, linkId: string, statId: string, field: keyof StatLinkFields): Entity =>
   withStatLink(entity, linkId, (l) => resetStatLinkField(l, statId, field));
+
+/** Read one stat a link brings live again. */
+export const resetStatLinkStatOn = (entity: Entity, linkId: string, statId: string): Entity =>
+  withStatLink(entity, linkId, (l) => withStatOverrides(l, statId, undefined));
 
 /** Read the whole original live again: Reset to Blueprint. */
 export const resetStatLinkOn = (entity: Entity, linkId: string): Entity => withStatLink(entity, linkId, resetStatLinkOverrides);
@@ -237,25 +271,98 @@ export function removeEntityStatGroup(entity: Entity, groupId: string): Entity {
   });
 }
 
-// ---- Resolution ----
-
-/** The entity's stats as play reads them: its own stats and each link's original as the link reads it, in tree
- *  order. A link whose original left Blueprints, or a second link to one original, brings nothing. */
-export function resolvedEntityStats(world: StatLinkWorld, entity: Entity): Stat[] {
-  const links = entity.statLinks ?? [];
-  if (!links.length) return entity.stats ?? [];
-  const blueprints = statBlueprintIds(world);
+/**
+ * Replace a link with the entity's own copy of what it brings, in the link's place. Each stat keeps the
+ * original's id and takes the link's current fields, so the entity's value and any trait change aimed at it carry
+ * over. A linked group's groups get fresh ids. Null when the link or its original is gone.
+ */
+export function detachStatLink(
+  world: StatLinkWorld, entity: Entity, linkId: string, newGroupId: () => string = randomUUID,
+): { entity: Entity; newId: string } | null {
+  const link = entity.statLinks?.find((l) => l.id === linkId);
+  const original = link && statOriginalOf(world, link.originalId);
+  if (!link || !original) return null;
   const own = entity.stats ?? [];
   const held = new Set(own.map((s) => s.id));
-  const linked = links.flatMap((link) => {
-    const original = blueprints.has(link.originalId) && !held.has(link.originalId)
-      ? world.stats.find((s) => s.id === link.originalId) : undefined;
-    if (!original) return [];
-    held.add(original.id);
-    return [linkedStat(original, link)];
-  });
-  return linked.length ? statsInTreeOrder(entity.statGroups ?? [], [...own, ...linked]) : own;
+  const unlinked = removeStatLink(entity, linkId);
+  const withTree = (stats: Stat[], groups: StatGroup[]): Entity => {
+    const allGroups = [...(entity.statGroups ?? []), ...groups];
+    const { stats: _s, statGroups: _g, ...rest } = unlinked;
+    const nextStats = statsInTreeOrder(allGroups, [...own, ...stats]);
+    return { ...rest, ...(nextStats.length ? { stats: nextStats } : {}), ...(allGroups.length ? { statGroups: allGroups } : {}) };
+  };
+  if (original.kind === 'stat') {
+    const copy = held.has(original.item.id) ? [] : [linkedStat(original.item, link)];
+    return { entity: withTree(copy, []), newId: original.item.id };
+  }
+  const sub = statSubtree(world, original.item);
+  const ids = new Map([original.item, ...sub.groups].map((g) => [g.id, newGroupId()] as const));
+  const rootId = ids.get(original.item.id)!;
+  const groups = [
+    { ...original.item, id: rootId, parentId: link.groupId, order: link.order ?? 0 },
+    ...sub.groups.map((g) => ({ ...g, id: ids.get(g.id)!, parentId: ids.get(g.parentId!)! })),
+  ];
+  const stats = sub.stats
+    .filter((s) => !held.has(s.id))
+    .map((s) => linkedStat(s, link, { groupId: ids.get(s.groupId!)!, ...(s.order !== undefined ? { order: s.order } : {}) }));
+  return { entity: withTree(stats, groups), newId: rootId };
 }
+
+// ---- Resolution ----
+
+/** An entity's stat tree as play reads it, with each link expanded. */
+export interface EntityStatTree {
+  /** Its own stats and each linked stat, in tree order. */
+  stats: Stat[];
+  /** Its own groups, then each linked group at its link's place with the groups below it. */
+  groups: StatGroup[];
+  /** A linked stat or group's id → the link that brought it. Own items are absent. */
+  linkOf: ReadonlyMap<string, StatLink>;
+}
+
+/** The entity's links in its tree's order: by place among its own groups, then by order. */
+function statLinksInTreeOrder(entity: Entity): StatLink[] {
+  const byId = new Map((entity.statLinks ?? []).map((l) => [l.id, l]));
+  return statsInTreeOrder(entity.statGroups ?? [], statLinkLeaves(entity)).flatMap((leaf) => byId.get(leaf.id) ?? []);
+}
+
+/**
+ * The entity's stats as play reads them: its own and each link's, a stat link's original in the link's place and
+ * a group link's original there with its live subtree below. Links run in tree order, and anything the entity
+ * owns or an earlier link brought is skipped, so each stat appears once.
+ */
+export function resolvedEntityStatTree(world: StatLinkWorld, entity: Entity): EntityStatTree {
+  const own = entity.stats ?? [];
+  const ownGroups = entity.statGroups ?? [];
+  if (!entity.statLinks?.length) return { stats: own, groups: ownGroups, linkOf: new Map() };
+  const held = new Set(own.map((s) => s.id));
+  const stats: Stat[] = [];
+  const groups: StatGroup[] = [];
+  const linkOf = new Map<string, StatLink>();
+  const take = (id: string, link: StatLink) => { held.add(id); linkOf.set(id, link); };
+  for (const link of statLinksInTreeOrder(entity)) {
+    const original = statOriginalOf(world, link.originalId);
+    if (!original || held.has(original.item.id)) continue;
+    if (original.kind === 'stat') {
+      stats.push(linkedStat(original.item, link));
+      take(original.item.id, link);
+      continue;
+    }
+    // A subgroup already brought took its own subtree with it, so filtering by id keeps the rest in place.
+    const sub = statSubtree(world, original.item);
+    const subGroups = sub.groups.filter((g) => !held.has(g.id));
+    const subStats = sub.stats.filter((s) => !held.has(s.id));
+    groups.push({ ...original.item, parentId: link.groupId, order: link.order ?? 0 }, ...subGroups);
+    stats.push(...subStats.map((s) => linkedStat(s, link, placeOf(s))));
+    for (const item of [original.item, ...subGroups, ...subStats]) take(item.id, link);
+  }
+  if (!stats.length && !groups.length) return { stats: own, groups: ownGroups, linkOf };
+  const allGroups = [...ownGroups, ...groups];
+  return { stats: statsInTreeOrder(allGroups, [...own, ...stats]), groups: allGroups, linkOf };
+}
+
+/** The entity's stats as play reads them; see {@link resolvedEntityStatTree}. */
+export const resolvedEntityStats = (world: StatLinkWorld, entity: Entity): Stat[] => resolvedEntityStatTree(world, entity).stats;
 
 /** Every link to the originals, counted across `entities`. */
 export function statLinksTo(entities: readonly Entity[], originalIds: ReadonlySet<string>): number {
@@ -274,55 +381,178 @@ export interface StatBlueprintsRemoval {
   stats: Stat[];
   statGroups: StatGroup[];
   entities: Entity[];
-  /** Links turned into their entity's own stat. */
+  /** Links turned into their entity's own stats. */
   detached: number;
-  /** Whether any unlinked Blueprint stat or group moves to the top level, where it becomes a player stat. */
+  /** Whether any unlinked Blueprint stat or group moves to the top level, where its stats become player stats. */
   movedUp: boolean;
 }
 
 /**
- * Remove the Blueprints stat group: each link becomes its entity's own stat as the link reads it, under the
- * original's id so the entity keeps its value; each linked original is deleted; the rest move to the top level.
- * Null without a Blueprints group.
+ * Remove the Blueprints stat group: each link into it is detached into its entity, each linked original and
+ * everything below it is deleted, and the rest move to the top level. Null without a Blueprints group.
  */
 export function removeStatBlueprints(world: StatLinkWorld, entities: readonly Entity[]): StatBlueprintsRemoval | null {
   const bp = statBlueprintsGroup(world.statGroups);
   if (!bp) return null;
-  const blueprints = statBlueprintIds(world);
+  const inside = new Set([...statBlueprintIds(world), ...statBlueprintsSubtreeIds(world.statGroups)]);
   const gone = new Set<string>();
   let detached = 0;
   const entitiesOut = entities.map((entity) => {
-    const links = (entity.statLinks ?? []).filter((l) => blueprints.has(l.originalId));
-    if (!links.length) return entity;
-    const own = new Set((entity.stats ?? []).map((s) => s.id));
-    const copies = links.flatMap((link) => {
-      gone.add(link.originalId);
-      const original = world.stats.find((s) => s.id === link.originalId)!;
-      if (own.has(original.id)) return [];
-      own.add(original.id);
-      detached += 1;
-      return [linkedStat(original, link)];
-    });
-    const kept = (entity.statLinks ?? []).filter((l) => !blueprints.has(l.originalId));
-    return withStatLinks({ ...entity, stats: statsInTreeOrder(entity.statGroups ?? [], [...(entity.stats ?? []), ...copies]) }, kept);
+    let next = entity;
+    for (const link of entity.statLinks ?? []) {
+      if (!statOriginalOf(world, link.originalId)) continue;
+      statBroughtIds(world, link.originalId).forEach((id) => gone.add(id));
+      const res = detachStatLink(world, next, link.id);
+      if (res) { next = res.entity; detached += 1; }
+    }
+    return next;
   });
   const stats = world.stats.filter((s) => !gone.has(s.id)).map((s) => (s.groupId === bp.id ? { ...s, groupId: null } : s));
-  const statGroups = world.statGroups.filter((g) => g.id !== bp.id).map((g) => (g.parentId === bp.id ? { ...g, parentId: null } : g));
-  const movedUp = world.stats.some((s) => blueprints.has(s.id) && !gone.has(s.id))
-    || world.statGroups.some((g) => g.parentId === bp.id);
+  const statGroups = world.statGroups
+    .filter((g) => g.id !== bp.id && !gone.has(g.id))
+    .map((g) => (g.parentId === bp.id ? { ...g, parentId: null } : g));
+  const movedUp = [...stats, ...statGroups].some((item) => inside.has(item.id));
   return { stats, statGroups, entities: entitiesOut, detached, movedUp };
 }
 
-/** The world as play reads it: the player's stats without Blueprints, and each entity with its stats resolved
- *  through its links. Each list comes back as given when nothing changes it. */
+/** The world as play reads it: the player's stats without Blueprints, and each entity with its stats and stat
+ *  groups resolved through its links. Each list comes back as given when nothing changes it. */
 export function playStatWorld(world: StatLinkWorld & { stats: Stat[]; entities: Entity[] }): { stats: Stat[]; entities: Entity[] } {
   const stats = playerStatsOf(world.stats, world.statGroups);
   if (!world.entities.some((e) => e.statLinks?.length)) return { stats, entities: world.entities };
   const entities = world.entities.map((e) => {
     if (!e.statLinks?.length) return e;
-    const { statLinks: _l, ...rest } = e;
-    const resolved = resolvedEntityStats(world, e);
-    return resolved.length ? { ...rest, stats: resolved } : rest;
+    const { statLinks: _l, stats: _s, statGroups: _g, ...rest } = e;
+    const tree = resolvedEntityStatTree(world, e);
+    return { ...rest, ...(tree.stats.length ? { stats: tree.stats } : {}), ...(tree.groups.length ? { statGroups: tree.groups } : {}) };
   });
   return { stats, entities };
+}
+
+// ---- The entity Stats tab's tree ----
+
+/** A row of an entity's Stats tab that a link brings. */
+export interface LinkedStatRow {
+  link: StatLink;
+  /** The original stat or group the row reads. */
+  originalId: string;
+  kind: 'stat' | 'group';
+  /** The link's own row, under the link's id: a stat link's stat or a group link's group. Rows below a group
+   *  link's root keep the original ids. */
+  root: boolean;
+  /** No original to read, so the row shows the link's stored name. */
+  unbound: boolean;
+}
+
+export interface EntityStatRows {
+  stats: Stat[];
+  groups: StatGroup[];
+  linked: ReadonlyMap<string, LinkedStatRow>;
+}
+
+/** The entity's Stats tab tree: its own stats and groups with each link expanded as play reads it. A link with no
+ *  original is a stat row with its stored name. */
+export function entityStatRows(world: StatLinkWorld, entity: Entity): EntityStatRows {
+  const tree = resolvedEntityStatTree(world, entity);
+  const linked = new Map<string, LinkedStatRow>();
+  const rowId = (id: string) => {
+    const link = tree.linkOf.get(id);
+    return link && link.originalId === id ? link.id : id;
+  };
+  const mark = (id: string, kind: LinkedStatRow['kind']) => {
+    const link = tree.linkOf.get(id);
+    if (link) linked.set(rowId(id), { link, originalId: id, kind, root: link.originalId === id, unbound: false });
+  };
+  const groups = tree.groups.map((g) => {
+    if (!tree.linkOf.has(g.id)) return g;
+    mark(g.id, 'group');
+    return { ...g, id: rowId(g.id), parentId: g.parentId && rowId(g.parentId) };
+  });
+  const stats = tree.stats.map((s) => {
+    if (!tree.linkOf.has(s.id)) return s;
+    mark(s.id, 'stat');
+    return { ...s, id: rowId(s.id), groupId: s.groupId && rowId(s.groupId) };
+  });
+  const unbound = (entity.statLinks ?? []).filter((l) => !statOriginalOf(world, l.originalId)).map((link): Stat => {
+    linked.set(link.id, { link, originalId: link.originalId, kind: link.kind, root: true, unbound: true });
+    return { ...newStat(link.id, link.originalName), descriptors: [], ...placeOf(link) };
+  });
+  return { stats: unbound.length ? statsInTreeOrder(groups, [...stats, ...unbound]) : stats, groups, linked };
+}
+
+/**
+ * The entity after a drag in its Stats tab tree: its own stats and groups and each link's root row take their new
+ * places. Null when the drag moves a row a group link brings, or drops anything inside one.
+ */
+export function applyEntityStatRows(entity: Entity, rows: EntityStatRows, next: { groups: StatGroup[]; stats: Stat[] }): Entity | null {
+  const linkedGroups = new Set(rows.groups.filter((g) => rows.linked.has(g.id)).map((g) => g.id));
+  const parentBefore = new Map<string, string | null>([
+    ...rows.stats.map((s) => [s.id, s.groupId ?? null] as const),
+    ...rows.groups.map((g) => [g.id, g.parentId] as const),
+  ]);
+  const places = [
+    ...next.stats.map((s) => ({ id: s.id, parentId: s.groupId ?? null })),
+    ...next.groups.map((g) => ({ id: g.id, parentId: g.parentId })),
+  ];
+  for (const { id, parentId } of places) {
+    const row = rows.linked.get(id);
+    if (row && !row.root ? parentId !== parentBefore.get(id) : parentId !== null && linkedGroups.has(parentId)) return null;
+  }
+  const own = new Map((entity.stats ?? []).map((s) => [s.id, s]));
+  const isRow = (id: string) => !rows.linked.has(id) || rows.linked.get(id)!.root;
+  const leaves = [
+    ...next.stats.filter((s) => isRow(s.id)).map((s) => ({ id: s.id, ...placeOf(s) })),
+    ...next.groups.filter((g) => rows.linked.get(g.id)?.root).map((g) => ({ id: g.id, ...placeOf({ groupId: g.parentId, order: g.order }) })),
+  ];
+  return withEntityStatTree(entity, leaves, next.groups.filter((g) => !rows.linked.has(g.id)), (leaf) => {
+    const stat = own.get(leaf.id);
+    return stat && { ...stat, ...placeOf(leaf) };
+  });
+}
+
+// ---- Migration ----
+
+/** Keep one Blueprints group: each later one loses the mark and nests, with what it holds, under the first. */
+export function mergeStatBlueprintsGroups(world: StatLinkWorld): StatGroup[] {
+  const marked = world.statGroups.filter((g) => g.system === 'blueprints');
+  if (marked.length < 2) return world.statGroups as StatGroup[];
+  const [first, ...extra] = marked;
+  const extraIds = new Set(extra.map((g) => g.id));
+  let order = world.stats.filter((s) => s.groupId === first.id).length + world.statGroups.filter((g) => g.parentId === first.id).length;
+  return world.statGroups.map((g) => {
+    if (!extraIds.has(g.id)) return g;
+    const { system: _s, ...rest } = g;
+    return { ...rest, parentId: first.id, order: order++ };
+  });
+}
+
+/**
+ * Keep one link per original on an owner. A link that another one on the owner already brings, the same original
+ * or a stat or group inside a linked group, folds into the outermost such link, the first among equals. Its
+ * overrides fill only the fields the kept link leaves live.
+ */
+export function mergeDuplicateStatLinks(world: StatLinkWorld, links: readonly StatLink[]): StatLink[] {
+  const brought = links.map((l) => new Set(statBroughtIds(world, l.originalId)));
+  const into = links.map((l, i) => {
+    let best = -1;
+    links.forEach((m, j) => {
+      const covers = j !== i && (m.originalId === l.originalId ? j < i : brought[j].has(l.originalId));
+      if (covers && (best === -1 || brought[j].size > brought[best].size)) best = j;
+    });
+    return best;
+  });
+  if (into.every((j) => j === -1)) return [...links];
+  const rootOf = (i: number) => {
+    for (let seen = 0; into[i] !== -1 && seen < links.length; seen++) i = into[i];
+    return i;
+  };
+  const kept = links.map((l) => ({ ...l }));
+  links.forEach((l, i) => {
+    if (into[i] === -1 || !l.overrides) return;
+    const root = kept[rootOf(i)];
+    const map = { ...root.overrides };
+    for (const [statId, fields] of Object.entries(l.overrides)) map[statId] = { ...fields, ...map[statId] };
+    root.overrides = map;
+  });
+  return kept.filter((_, i) => into[i] === -1);
 }

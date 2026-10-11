@@ -73,6 +73,38 @@ describe('bindOwnedStats', () => {
   });
 });
 
+describe('a group link off-world', () => {
+  const social = (id: string): StatGroup => ({ id, name: 'Social', parentId: 'bp' });
+  const here = { stats: [stat('fear', { name: 'Fear', groupId: 'social' })], statGroups: [bp, social('social')] };
+  const there = { stats: [stat('n-fear', { name: 'Fear', groupId: 'n-social' })], statGroups: [bp, social('n-social')] };
+  const grouped = link({ originalId: 'social', kind: 'group', originalName: 'Social', overrides: { fear: { max: { value: 9, blueprint: 100 } } } });
+
+  it('carries the names of the stats its overrides key, then binds the group and its keys by name', () => {
+    const carried = portableOwnedStats(bram({ statLinks: [grouped] }), here).statLinks!;
+    expect(carried[0].keyNames).toEqual({ fear: 'Fear' });
+    const bound = bindOwnedStats(bram({ statLinks: carried }), there).statLinks!;
+    expect(bound).toEqual([{ ...grouped, originalId: 'n-social', overrides: { 'n-fear': grouped.overrides!.fear } }]);
+  });
+
+  it('plays the group’s stats with the link’s overrides', () => {
+    const carried = portableOwnedStats(bram({ statLinks: [grouped] }), here).statLinks!;
+    const played = playLibraryStats(bram({ statLinks: carried }), there);
+    expect(played.stats).toEqual([expect.objectContaining({ id: 'n-fear', max: 9 })]);
+    expect(played.statGroups?.map((g) => g.id)).toEqual(['n-social']);
+  });
+
+  it('never binds a group link to a stat of the same name', () => {
+    const named = { stats: [stat('s', { name: 'Social', groupId: 'bp' })], statGroups: [bp] };
+    expect(bindOwnedStats(bram({ statLinks: [grouped] }), named)).not.toHaveProperty('statLinks');
+  });
+
+  it('compares the same in two worlds', () => {
+    const carried = portableOwnedStats(bram({ statLinks: [grouped] }), here).statLinks!;
+    const bound = bindOwnedStats(bram({ statLinks: carried }), there);
+    expect(comparableOwnedStats(bram({ statLinks: carried }))).toEqual(comparableOwnedStats(bram({ statLinks: [{ ...bound.statLinks![0], keyNames: { 'n-fear': 'Fear' } }] })));
+  });
+});
+
 describe('playLibraryStats', () => {
   it('resolves a bound link into a stat under the Blueprint’s id, with the link’s overrides', () => {
     const overrides = { 'n-trust': { value: { value: 20, blueprint: 7 } } };

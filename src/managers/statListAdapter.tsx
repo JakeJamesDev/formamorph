@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Copy, Link2, X } from 'lucide-react';
+import type { LinkedStatRow } from '@/lib/statLinks';
 import type { ListEditorAdapter, ListEditorRow } from '@/components/listEditorHooks';
 import type { ListSearch } from '@/components/listToolbarHooks';
 import { matchesListSearch, type ListSearchNames } from '@/lib/listSearch';
@@ -17,7 +18,7 @@ import StatTree from './StatTree';
  */
 export function statListAdapter({
   stats, groups, names, selectedId, onSelect, onDuplicate, onRemoveStat, onRemoveGroup, onDrop, onWriteGroup, add, placeholder,
-  emptyHint, search, tab, onTabChange, focusField, store, padded, links,
+  emptyHint, search, tab, onTabChange, focusField, store, padded, links, footer,
 }: {
   stats: Stat[];
   groups: StatGroup[];
@@ -43,17 +44,22 @@ export function statListAdapter({
   store?: StatEditorStore;
   /** The panel sits in a pane that scrolls and pads it, as the entity panel's other tabs do. */
   padded?: boolean;
-  /** The rows among `stats` that are an entity's links, with the panel and footer a link row opens. */
+  /** The rows among `stats` and `groups` that an entity's links bring, with the panel and footer each opens. */
   links?: {
-    ids: ReadonlySet<string>;
+    rows: ReadonlyMap<string, LinkedStatRow>;
     detail: (id: string) => ReactNode;
     footer: (id: string) => ReactNode;
+    onDetach: (linkId: string) => void;
   };
+  /** The footer under any other row's panel. */
+  footer?: (id: string) => ReactNode;
 }): ListEditorAdapter {
   // A search lists stats only. Order is the tree's to change, so these rows draw no grip.
   const rows = (): ListEditorRow[] => stats.map((s) => {
     const remove = { icon: <X className="h-4 w-4" />, destructive: true, onClick: () => { onRemoveStat(s.id); onSelect(null); } };
-    return links?.ids.has(s.id)
+    const linked = links?.rows.get(s.id);
+    if (linked && !linked.root) return { id: s.id, name: s.name, icon: <Link2 className="h-4 w-4 shrink-0 opacity-50" aria-label="Linked" />, actions: [] };
+    return linked
       ? { id: s.id, name: s.name, icon: <Link2 className="h-4 w-4 shrink-0" aria-label="Link" />, actions: [{ ...remove, title: 'Remove Link' }] }
       : {
         id: s.id,
@@ -79,7 +85,8 @@ export function statListAdapter({
         onRemoveStat={onRemoveStat}
         onRemoveGroup={onRemoveGroup}
         onDuplicate={onDuplicate}
-        linkIds={links?.ids}
+        linked={links?.rows}
+        onDetach={links?.onDetach}
         emptyHint={emptyHint}
       />
     ),
@@ -87,9 +94,10 @@ export function statListAdapter({
     names,
     noun: 'stats',
     detail: (id) => {
-      const group = id ? groups.find((g) => g.id === id) : undefined;
+      if (!id) return null;
+      const group = groups.find((g) => g.id === id);
       const stat = shown(id);
-      const panel = stat && links?.ids.has(stat.id) ? links.detail(stat.id) : group
+      const panel = links?.rows.has(id) && (stat ?? group) ? links.detail(id) : group
         ? <StatGroupManager key={group.id} group={group} write={onWriteGroup} />
         : stat && (
           <StatManager
@@ -105,7 +113,7 @@ export function statListAdapter({
     },
     // The tabbed panel keeps its strip above a body that scrolls itself, where the host gives it no padding.
     fills: padded ? undefined : (id) => !!shown(id),
-    footer: links ? (id) => (links.ids.has(id) ? links.footer(id) : undefined) : undefined,
+    footer: links || footer ? (id) => (links?.rows.has(id) ? links.footer(id) : footer?.(id)) : undefined,
     add,
     placeholder,
     holds: (id) => stats.some((s) => s.id === id) || groups.some((g) => g.id === id),
