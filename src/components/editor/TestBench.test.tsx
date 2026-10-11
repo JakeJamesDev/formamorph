@@ -638,6 +638,34 @@ describe('TestBench Opening instrument', () => {
     expect(screen.queryByText('Shaky')).toBeNull();
   });
 
+  it('lists an entity’s own stats under its name, banded and scrubbable like the player’s', async () => {
+    const withMaren: RuleWorld = {
+      ...openingWorld,
+      entities: [{
+        id: 'e1', name: 'Maren', locations: ['harbor'],
+        stats: [{
+          id: 's-trust', name: 'Trust', type: 'number', description: '', min: 5, max: 100, value: 20, regen: 2,
+          descriptors: [{ id: 'b1', threshold: 25, description: 'Wary' }, { id: 'b2', threshold: 100, description: 'Warm' }],
+        }, {
+          id: 's-doubt', name: 'Doubt', type: 'number', description: '', min: 0, max: 10, value: 0, regen: 0, descriptors: [], enabled: false,
+        }],
+      }],
+    };
+    const data = buildOpening(withMaren, buildLens(withMaren, EMPTY_LENS), {});
+    renderBench(withMaren, { tab: 'opening', opening: { data } });
+    expect(screen.getByText('Maren')).toBeInTheDocument();
+    expect(screen.getByText('Trust')).toBeInTheDocument();
+    expect(screen.getByText('Wary')).toBeInTheDocument();
+    expect(screen.getByText('Min 5 · Regen +2')).toBeInTheDocument();
+    expect(screen.getByText('Off at game start: Doubt.')).toBeInTheDocument();
+    // The player's row says the zeros too, so an absent field is never mistaken for a hidden one.
+    expect(screen.getByText('Min 0 · Regen 0')).toBeInTheDocument();
+    screen.getByRole('slider', { name: 'Scrub Trust' }).focus();
+    await userEvent.keyboard('{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}');
+    expect(screen.getByText('Warm')).toBeInTheDocument();
+    expect(screen.getByText('Shaky')).toBeInTheDocument();
+  });
+
   it('opens the assembled first prompt on request', async () => {
     renderOpening();
     await userEvent.click(screen.getByRole('button', { name: /System Prompt/ }));

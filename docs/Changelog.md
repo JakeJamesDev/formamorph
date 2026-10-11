@@ -33,6 +33,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Trait and stat groups in the World Editor now have a Show Heading to AI checkbox, on by default.** Clear it to group only for yourself. The AI then reads the group's members as if ungrouped, and a group inside it moves up one level.
     - **On the Stats tab, Link To… links a Blueprint stat or a whole stat group onto the entities you pick.** A linked group follows the Blueprint live: a stat you add to it reaches every linked entity, and each entity can change each stat.
     - **The stats of the entity you play now join yours in the stat panel and the AI's stat updates.** A stat that shares a world stat's name stays separate. Each entity keeps its values when you switch persona. A persona's trait can pick either stat.
+    - **The Test Bench's Opening tab now lists each entity's own stats as a new game starts them.** Rows show start, range, regen and band after the entity's own traits and Links, and follow the persona you pick. Blueprint stats no longer show as yours.
   - **The AI now updates your stats with fewer wrong-direction and made-up changes.** It answers with a change for every stat, 0 included. An endpoint that can't take that format gets the old reply style, and the AI context viewer notes it.
 - **🛠️ Developer tooling**
   - **Entity Stats:**
