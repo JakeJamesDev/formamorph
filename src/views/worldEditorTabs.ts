@@ -25,10 +25,10 @@ export interface WorldEditorTab {
  *  `devRouter.test.ts`. */
 export const WORLD_EDITOR_TABS = [
   { value: 'overview', label: 'Overview', icon: ELEMENT_ICONS.world },
-  { value: 'stats', label: 'Stats', group: 'content', icon: ELEMENT_ICONS.stat },
   { value: 'entities', label: 'Entities', group: 'content', icon: ELEMENT_ICONS.entities },
   { value: 'locations', label: 'Locations', group: 'content', icon: ELEMENT_ICONS.location },
   { value: 'traits', label: 'Traits', group: 'content', icon: ELEMENT_ICONS.trait },
+  { value: 'stats', label: 'Stats', group: 'content', icon: ELEMENT_ICONS.stat },
   { value: 'dictionary', label: 'Dictionary', group: 'vocabulary', icon: ELEMENT_ICONS.dictionary },
   { value: 'placeholders', label: 'Placeholders', group: 'vocabulary', icon: ELEMENT_ICONS.placeholder, advancedOnly: true },
 ] as const satisfies readonly WorldEditorTab[];
