@@ -23,11 +23,13 @@
 //   SP       SG with each group as a plain `Name: description` line and its stats flat beneath
 //   S0       S, with the stat prompts as committed at --s0-ref (default HEAD, the before arm for an uncommitted edit)
 //   WA..WR   ticket 05's request (ded57a32), with one wording change each (WORDINGS below)
+//   FA..FDG  ticket 23's framings on the request at 9f4400ad (FRAMINGS below); a G suffix sends SG's groups
 // A to E derive from the text pass's prompt by checked text swaps; S is built by the app, so it is what ships.
 //
 // Per reply: exact (every gold move right, nothing spurious), hits / wrong sign / misses, spurious moves,
 // misattributed (a spurious move whose stat the gold moves on another owner), invalid rows, duplicates,
 // cap hits, wall-clock ms, and prompt + completion tokens. `player-only` regrades every arm on player cells.
+// `invented` splits spurious moves into player and entity cells, with push-bram's player cells (Q64) apart.
 // `max` counts invented max changes (no case moves a maximum); only control and S are read for them.
 //
 // Usage: npx vite-node testing/baseline/harness/entity-stats-probe.cli.ts --
@@ -68,7 +70,7 @@ const model = argVal('--model', 'default');
 const runs = Number(argVal('--runs', '6'));
 const pool = Number(argVal('--pool', '3'));
 const only = argVal('--only', '');
-const ALL_ARMS = ['control', 'A', 'A2', 'A3', 'B', 'C', 'C2', 'C3', 'D', 'E', 'S', 'SU', 'SN', 'SG', 'SGB', 'SGO', 'SH', 'SP', 'C3P', 'S0', 'WA', 'WB', 'WC', 'WD', 'WE', 'WF', 'WH', 'WJ', 'WK', 'WL', 'WP', 'WQ', 'WR'] as const;
+const ALL_ARMS = ['control', 'A', 'A2', 'A3', 'B', 'C', 'C2', 'C3', 'D', 'E', 'S', 'SU', 'SN', 'SG', 'SGB', 'SGO', 'SH', 'SP', 'C3P', 'S0', 'WA', 'WB', 'WC', 'WD', 'WE', 'WF', 'WH', 'WJ', 'WK', 'WL', 'WP', 'WQ', 'WR', 'FA', 'FAG', 'FB', 'FBG', 'FR', 'FRG', 'FC', 'FCG', 'FD', 'FDG'] as const;
 type Arm = typeof ALL_ARMS[number];
 const arms = argVal('--arms', ALL_ARMS.join(',')).split(',') as Arm[];
 const SEED = 424242;
@@ -288,6 +290,43 @@ function worded(arm: keyof typeof WORDINGS, owners: Owner[], narration: string):
   };
 }
 
+/** Ticket 23's framing wordings, each a set of checked swaps on the shipped request at FRAMING_REF, flat or grouped. */
+const FRAMING_REF = '9f4400ad';
+const STATS_INTRO = "Each character's stats sit under their name. Current readings";
+const ROLE_LINE = 'You read what happened this turn and record how it moved';
+const IS_STAT = 'A stat is a tracked quantity about one character. It holds its reading until an event in the story moves it.';
+const SHAPES_STORY = 'Stats shape the story: the narrator reads them to decide what each character can do and how they act, so every change you record carries into later turns.';
+const OWNED_LAYOUT = "Each character's stats sit under their name, a ### heading, and belong to that character.";
+const GROUP_BULLET = 'a group bullet names what the stats nested under it share.';
+const GROUPED = `${GROUP_BULLET} A group holds no reading of its own; you record changes on its stats.`;
+const IF_GROUPED = `When a character's stats sit in groups, ${GROUPED}`;
+const ALWAYS_GROUPED = `Some stats sit in groups: ${GROUPED}`;
+const SHAPES_STORY_SHORT = 'Stats shape the story: the narrator reads them to decide what each character can do and how they act.';
+const IF_GROUPED_OWN = `When a character's stats sit in groups, ${GROUP_BULLET} Each stat under a group moves on its own.`;
+const ROLE_FRAMING = 'Each stat is a number that tracks one thing about one character, and it changes only when the story changes it. The narrator reads the stats each turn to decide what the characters can do and how they act.';
+const FRAMINGS = {
+  // All three parts open the Stats section; the group sentence is conditional.
+  FA: [[STATS_INTRO, `${IS_STAT} ${SHAPES_STORY}\n${OWNED_LAYOUT} ${IF_GROUPED}\nCurrent readings`]],
+  // What a stat is and what stats do open the prompt, in the role; the layout opens the Stats section.
+  FB: [[ROLE_LINE, `${ROLE_FRAMING} ${ROLE_LINE}`], [STATS_INTRO, `${OWNED_LAYOUT} ${IF_GROUPED}\nCurrent readings`]],
+  // FA, with the group sentence sent only when the request has groups.
+  FR: [[STATS_INTRO, `${IS_STAT} ${SHAPES_STORY}\n${OWNED_LAYOUT}\nCurrent readings`]],
+  FRG: [[STATS_INTRO, `${IS_STAT} ${SHAPES_STORY}\n${OWNED_LAYOUT} ${ALWAYS_GROUPED}\nCurrent readings`]],
+  // FA, with the story line ending at what the narrator does: no line that a change carries into later turns.
+  FC: [[STATS_INTRO, `${IS_STAT} ${SHAPES_STORY_SHORT}\n${OWNED_LAYOUT} ${IF_GROUPED}\nCurrent readings`]],
+  // FC, with a group sentence that says each stat under a group moves on its own.
+  FD: [[STATS_INTRO, `${IS_STAT} ${SHAPES_STORY_SHORT}\n${OWNED_LAYOUT} ${IF_GROUPED_OWN}\nCurrent readings`]],
+} satisfies Record<string, Array<[string, string]>>;
+const FRAMING_ARMS = { FA: ['FA', false], FAG: ['FA', true], FB: ['FB', false], FBG: ['FB', true], FR: ['FR', false], FRG: ['FRG', true],
+  FC: ['FC', false], FCG: ['FC', true], FD: ['FD', false], FDG: ['FD', true] } as const;
+const isFraming = (arm: Arm): arm is keyof typeof FRAMING_ARMS => arm in FRAMING_ARMS;
+const framingBase = arms.some(isFraming) ? await promptsAt(FRAMING_REF) : undefined;
+function framed(arm: keyof typeof FRAMING_ARMS, owners: Owner[], narration: string): Call {
+  const [wording, groups] = FRAMING_ARMS[arm];
+  const call = shippedCall(owners, narration, groups ? 'described' : undefined, framingBase);
+  return { ...call, system: FRAMINGS[wording].reduce((text, [from, to]) => swap(text, from, to), call.system) };
+}
+
 /** SG with each group bullet in the Stats section reshaped and its stat bullets dedented to the owner's level:
  *  a `####` sub-heading over its description (SH), or a plain `Name: description` line (SP). Prototype only. */
 function regroupedCall(arm: 'SH' | 'SP', owners: Owner[], narration: string): Call {
@@ -311,6 +350,7 @@ function callsFor(arm: Arm, owners: Owner[], narration: string): Call[] {
   if (arm === 'S') return [shippedCall(owners, narration)];
   if (arm === 'S0') return [shippedCall(owners, narration, undefined, s0Prompts)];
   if (isWording(arm)) return [worded(arm, owners, narration)];
+  if (isFraming(arm)) return [framed(arm, owners, narration)];
   if (arm === 'SG') return [shippedCall(owners, narration, 'described')];
   if (arm === 'SH' || arm === 'SP') return [regroupedCall(arm, owners, narration)];
   if (arm === 'SGB') return [shippedCall(owners, narration, 'bare')];
@@ -429,7 +469,7 @@ function parse(arm: Arm, owners: Owner[], calls: Call[], replies: Reply[]): Pars
   if (arm === 'A3') return parseOwnerBlocks(replies[0].raw, owners);
   if (arm === 'C' || arm === 'C2' || arm === 'C3' || arm === 'D') return parseJsonReply(replies[0].raw, owners);
   if (arm === 'C3P') return parseJsonReply(replies[0].raw, [playerOwner]);
-  if (arm === 'S' || arm === 'S0' || arm === 'SU' || arm === 'SN' || arm === 'SG' || arm === 'SGB' || arm === 'SGO' || arm === 'SH' || arm === 'SP' || isWording(arm)) return parsePlainLines(replies[0].raw, playerOwner, calls[0].snapshot, (id) => (id === PLAYER_OWNER ? playerOwner.key : id));
+  if (arm === 'S' || arm === 'S0' || arm === 'SU' || arm === 'SN' || arm === 'SG' || arm === 'SGB' || arm === 'SGO' || arm === 'SH' || arm === 'SP' || isWording(arm) || isFraming(arm)) return parsePlainLines(replies[0].raw, playerOwner, calls[0].snapshot, (id) => (id === PLAYER_OWNER ? playerOwner.key : id));
   const parts = calls.flatMap((call, i) => (call.owner ? [parsePlainLines(replies[i].raw, call.owner, call.snapshot)] : []));
   return {
     changes: parts.flatMap((p) => p.changes), invalid: parts.reduce((n, p) => n + p.invalid, 0), unreadable: false,
@@ -536,6 +576,15 @@ for (const arm of arms) {
   const xs = results.filter((r) => r.arm === arm);
   if (!xs.length) continue;
   console.log(`${arm.padEnd(8)} exact ${pct(xs.filter((r) => r.player.exact).length, xs.length).padEnd(14)} recall ${pct(sum(xs, (r) => r.player.hits), sum(xs, (r) => r.player.expected)).padEnd(14)} spur ${sum(xs, (r) => r.player.spurious)}`);
+}
+
+console.log('\nINVENTED per arm (player cells, entity cells, max changes, and push-bram player cells: the Q64 case)');
+for (const arm of arms) {
+  const xs = results.filter((r) => r.arm === arm);
+  if (!xs.length) continue;
+  const player = sum(xs, (r) => r.player.spurious);
+  const bram = sum(xs.filter((r) => r.case === 'push-bram'), (r) => r.player.spurious);
+  console.log(`${arm.padEnd(8)} player ${String(player).padStart(4)}  entity ${String(sum(xs, (r) => r.score.spurious) - player).padStart(4)}  max ${String(sum(xs, (r) => r.parsed.maxChanges ?? 0)).padStart(3)}  push-bram player ${bram}`);
 }
 
 console.log('\nCELLS per arm (missed or wrong-signed gold moves, then spurious moves; count × case:owner/stat±)');

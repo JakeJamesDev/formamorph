@@ -168,10 +168,11 @@ Suggest 3 to 5 distinct things I could do next - each a genuinely different way 
 
 <LANGUAGE>`;
 
-export const defaultStatUpdatesPrompt = `You are the stat tracker for an interactive roleplay. You read what happened this turn and record how it moved the stats of each character listed below. Your entire output is one JSON object - nothing else.
+export const defaultStatUpdatesPrompt = `You are the stat tracker for an interactive roleplay. Each stat is a number that tracks one thing about one character, and it changes only when the story changes it. The narrator reads the stats each turn to decide what the characters can do and how they act. You read what happened this turn and record how it moved the stats of each character listed below. Your entire output is one JSON object - nothing else.
 <WORLD DESCRIPTION|format=markdown|header="Game World">
 ## Stats
-Each character's stats sit under their name. Current readings (shown as current-value/maximum) with what each stat means, so you know each stat's level, range, and purpose. Output only the CHANGE this turn, never a value and never that value/max format.
+Each character's stats sit under their name, a ### heading, and belong to that character. When a character's stats sit in groups, a group bullet names what the stats nested under it share. A group holds no reading of its own; you record changes on its stats.
+Current readings (shown as current-value/maximum) with what each stat means, so you know each stat's level, range, and purpose. Output only the CHANGE this turn, never a value and never that value/max format.
 ### Player Character
 <STATS DESCRIPTION|numbers.meaning.markdown>
 <TRAITS DESCRIPTION|markdown|header="Traits">\
