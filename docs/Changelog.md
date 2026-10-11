@@ -49,6 +49,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **A stat code bound write sets the number, and traits and the AI move it from there.** A code bound no longer hides trait changes. Deleting the code keeps the bounds. Saves keep the bounds they show.
     - **Stat code can now change the value, min, max, and regen of its owner's other stats.** Write `stats.Health.value`, for example. Writes land in stat order, and the last one wins. A write to an unknown or switched-off stat is dropped.
     - **The stat code editor accepts writes to other stats, and Test Code lists them.** `stats.Health.value = 1` no longer warns, and a misspelled stat name is underlined. Test Code shows each write with its stat name, field, and number.
+    - **A new Dice Roll With Consequences template rolls a d20, pins a placeholder, and changes two other stats.** Find it in the **Templates** menu of the **After the AI** box. A 1 halves one stat and a 20 adds 1 to another.
   - **The AI now updates your stats with fewer wrong-direction and made-up changes.** It answers with a change for every stat, 0 included. An endpoint that can't take that format gets the old reply style, and the AI context viewer notes it.
   - **The World Editor's Content group now lists Entities first and Stats last.** The order is Entities, Locations, Traits, Stats on the side rail and the mobile Sections list.
 - **🛠️ Developer tooling**

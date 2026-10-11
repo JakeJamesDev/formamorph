@@ -224,8 +224,8 @@ export function fillTemplate(code: string, values: Record<string, string>): stri
  * The bundled templates, both boxes' menus in one list. Eight value formulas rather than a longer literal
  * list: a signed rate covers decay and growth, a comparison slot covers both threshold directions, a
  * direction slot covers counting up and down, and "regen toward target" with the target set to the stat's
- * max is the soft-capped regen. Those eight, Bound From Another Stat and the two trait readers run after
- * the AI, so the after menu holds the eleven of them.
+ * max is the soft-capped regen. Those eight, Bound From Another Stat, the two trait readers and Dice Roll
+ * With Consequences run after the AI, so the after menu holds the twelve of them.
  *
  * The before menu holds the three setup shapes instead: pin a placeholder, switch a trait, and set an
  * opening value. Each is a write the AI should read on the same turn, which is the box's whole point.
@@ -329,6 +329,21 @@ return base + (active ? {{bonus:number=10}} : 0);`,
     code: `const base = stats[{{base:stat}}].value;
 const active = entities[{{entity:entity}}].traits[{{trait:trait(entity)}}].enabled;
 return base - (active ? {{penalty:number=10}} : 0);`,
+  },
+  {
+    id: 'builtin-dice-roll-consequences',
+    timing: 'after',
+    name: 'Dice Roll With Consequences',
+    description: 'Roll a d20 each turn and pin the placeholder to the value for that roll. A 1 halves one stat. A 20 adds 1 to another. This stat keeps the roll. Set its range to 1–20. Use only one per world. A second draws the same numbers.',
+    // Writes to one stat field apply in stat order. The last write wins.
+    code: `const roll = Math.floor(Math.random() * 20) + 1;
+const target = placeholders[{{bandPlaceholder:placeholder}}];
+if (target.values.length) target.pin(target.values[Math.floor((roll - 1) / 20 * target.values.length)]);
+const penalty = stats[{{penaltyStat:stat}}];
+const bonus = stats[{{bonusStat:stat}}];
+if (roll === 1) penalty.value = penalty.value / 2;
+if (roll === 20) bonus.value += 1;
+return roll;`,
   },
   {
     id: 'builtin-placeholder-follows-stat',
