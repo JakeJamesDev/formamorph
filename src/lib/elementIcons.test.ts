@@ -34,6 +34,8 @@ const OTHER_MEANINGS: Record<string, { icons: string[]; meaning: string }> = {
   'components/community/RemoteWorldDetailsModal.tsx': { icons: ['Play'], meaning: 'use-preset action' },
   'components/editor/IssuesInstrument.tsx': { icons: ['Play'], meaning: 'run-check action' },
   'components/formaquestion/FormaquestionMascotTab.tsx': { icons: ['Play'], meaning: 'preview action' },
+  'components/formaquestion/FormaquestionGuide.tsx': { icons: ['BookOpen'], meaning: 'Guide full-screen header' },
+  'components/formaquestion/FormaquestionMenu.tsx': { icons: ['BookOpen'], meaning: 'Open Guide item' },
   'components/formaquestion/GuideBody.tsx': { icons: ['BookOpen'], meaning: 'Guide tab' },
   'components/formaquestion/MinimalChat.tsx': { icons: ['PersonStanding'], meaning: 'full-body view toggle' },
   'components/game/AudioPlayer.tsx': { icons: ['Play'], meaning: 'playback' },

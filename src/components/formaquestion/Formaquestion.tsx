@@ -25,12 +25,14 @@ import { bubbleLayout, resizeChat, resizeMascot, FALLBACK_BASE, type BubbleHeigh
 import { chatChrome } from '@/lib/formaquestion/helpSettings';
 import type { MenuActions } from './FormaquestionMenu';
 import { useIsMobile } from '@/lib/useIsMobile';
+import { useMorphFullscreen } from '@/lib/useMorphFullscreen';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { EdgeTab } from './EdgeTab';
 import { FormaquestionFrame, type ResizeHandlers } from './FormaquestionFrame';
 import { FORMAQUESTION_TABS, openSectionChange, useGuideView, type GuideViewChange } from './formaquestionTabs';
 import { placementOptions } from './formaquestionSettingsTabs';
 import { asFormaquestionSettingsTab, type FormaquestionSettingsTab } from './formaquestionSettingsTabs';
+import { FormaquestionGuide } from './FormaquestionGuide';
 import { FormaquestionSettings } from './FormaquestionSettings';
 import { FormaquestionAiContext } from './FormaquestionAiContext';
 import { HELP_CHIP, helpChipVocabulary } from '@/lib/formaquestion/helpChips';
@@ -134,6 +136,8 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
 
   const [open, setOpen] = useState(false);
   const [view, changeView] = useGuideView();
+  // The Guide full screen grows out of the window and shrinks back into it. The window waits under it.
+  const guideMorph = useMorphFullscreen(windowRef);
   const [stored, setStored] = useState<StoredWindow>(() => readStoredWindow() ?? defaultWindow(viewportOf(window)));
   const [viewport, setViewport] = useState<Viewport>(() => viewportOf(window));
   /** The Mascot base's natural size, once its image has loaded. */
@@ -196,7 +200,8 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   // On the desktop the window closes while the dialog is open, and opens again when the dialog closes.
   const [dialog, setDialog] = useState<FormaquestionDialog | null>(null);
   const [settingsTab, setSettingsTab] = useState<FormaquestionSettingsTab>('general');
-  const covered = sheet && dialog !== null;
+  // The Guide full screen covers the screen on both, so the window stays where it is and sinks under it.
+  const covered = (sheet && dialog !== null) || guideMorph.mounted;
   // Before paint, so the dialog's first frame already draws above the sheet.
   useLayoutEffect(() => {
     if (!covered) return;
@@ -394,12 +399,15 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     if (guide && document.activeElement === windowRef.current) focusWindow();
   }, [guide, focusWindow]);
 
+  const guideOpen = guideMorph.mounted;
   // F1 opens the window, then moves focus in when focus is elsewhere, then closes it.
   useEffect(() => {
     if (suspended) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'F1' || event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) return;
       event.preventDefault();
+      // The window waits under the full screen, which Escape closes.
+      if (guideOpen) return;
       // A held key repeats. One press is one step.
       if (event.repeat) return;
       if (!open) openWindow();
@@ -411,9 +419,23 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     // Capture: a prompt field stops keydown from bubbling.
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [suspended, open, openWindow, closeWindow, focusWindow]);
+  }, [suspended, open, guideOpen, openWindow, closeWindow, focusWindow]);
+
+  // The full screen opens on the section the window shows. The reader piece holds it under Minimal and Bubble.
+  // The sheet draws no reader piece, so it has no section to carry.
+  const hasReaderPiece = readsInPiece && !sheet;
+  const { open: openGuideMorph, phase: guidePhase } = guideMorph;
+  const openGuide = useCallback(() => {
+    if (hasReaderPiece && readerId && guide) changeViewInWindow(openSectionChange(readerId, guide.section(readerId)?.page));
+    openGuideMorph();
+  }, [hasReaderPiece, readerId, guide, changeViewInWindow, openGuideMorph]);
+  // It closes onto the section it shows, so the reader piece follows as the full screen shrinks.
+  useEffect(() => {
+    if (guidePhase === 'leaving' && hasReaderPiece && view.sectionId) setReaderId(view.sectionId);
+  }, [guidePhase, hasReaderPiece, view.sectionId]);
 
   // DEV: `#dev?modal=formaquestion&tab=guide&subtab=<section id>&mode=wide` opens the window in one jump.
+  // Add `fullscreen=1` to open the Guide full screen on top.
   // `#dev?modal=formaquestionSettings&tab=general` opens the window and its settings.
   const devRoute = useDevRoute();
   useEffect(() => {
@@ -451,7 +473,8 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
       const w = devRoute.mode === 'wide' ? WIDE_WIDTH : NARROW_WIDTH;
       setStored((current) => (isWide(boxOf(current, 'full')) === (devRoute.mode === 'wide') ? current : { ...current, full: { ...current.full, w } }));
     }
-  }, [devRoute, changeView]);
+    if (devRoute.fullscreen) openGuideMorph();
+  }, [devRoute, changeView, openGuideMorph]);
 
   // Only the whole Mascot widens the box; under Full it ignores the head view, and the sheet draws none (Q25, Q26).
   const readerShown = guide !== null && readerId !== null;
@@ -575,6 +598,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     return { chat: resized.chat, bubble: resized.at };
   }));
   const menuActions: MenuActions = {
+    onOpenGuide: openGuide,
     onOpenAiContext: () => openDialog('aiContext'),
     onOpenSettings: () => openDialog('settings'),
     onClear: chat.exchanges.length > 0 ? chat.clear : undefined,
@@ -813,6 +837,9 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
             </div>
           </div>
         </FormaquestionFrame>
+      )}
+      {!suspended && (
+        <FormaquestionGuide morph={guideMorph} guide={guide} failed={failed} onRetry={load} view={view} onViewChange={changeViewInWindow} semantic={settings.sources.semantic} sheet={sheet} />
       )}
       <FormaquestionSettings
         open={dialog === 'settings' && !suspended}

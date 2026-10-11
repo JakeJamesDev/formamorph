@@ -401,26 +401,26 @@ describe('the window on the screen', () => {
     expect(frame().style.width).toBe(`${WIDE_WIDTH}px`);
   });
 
-  it('orders the title bar controls Wide View, Menu, Close, and Wide View keeps one icon in both states', async () => {
+  it('orders the title bar controls Wide View, Open Guide, Menu, Close, and Wide View keeps one icon in both states', async () => {
     setScreenWidth(1600);
     vi.stubGlobal('innerHeight', 900);
     await openSearch();
     const header = frame().querySelector('header')!;
     const order = () => {
       const buttons = within(header).getAllByRole('button');
-      return ['Wide View', 'More Actions', 'Close Formaquestion'].map((name) => buttons.indexOf(within(header).getByRole('button', { name })));
+      return ['Wide View', 'Open Guide', 'More Actions', 'Close Formaquestion'].map((name) => buttons.indexOf(within(header).getByRole('button', { name })));
     };
-    expect(order()).toEqual([0, 1, 2]);
+    expect(order()).toEqual([0, 1, 2, 3]);
 
     const wideView = within(header).getByRole('button', { name: 'Wide View' });
     const icon = wideView.querySelector('svg')!.getAttribute('class');
     await userEvent.click(wideView);
     expect(wideView).toHaveAttribute('aria-pressed', 'true');
     expect(wideView.querySelector('svg')!.getAttribute('class')).toBe(icon);
-    expect(order()).toEqual([0, 1, 2]);
+    expect(order()).toEqual([0, 1, 2, 3]);
   });
 
-  it('lists Clear Conversation, AI Context and Settings, and hangs from the corner of the button that has room', async () => {
+  it('lists Clear Conversation, Open Guide, AI Context and Settings, and hangs from the corner of the button that has room', async () => {
     setScreenWidth(1600);
     vi.stubGlobal('innerHeight', 900);
     await openSearch();
@@ -432,7 +432,7 @@ describe('the window on the screen', () => {
     at(100);
     await userEvent.click(button);
     const menu = await screen.findByRole('menu');
-    expect(within(menu).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Clear Conversation', 'AI Context', 'Settings']);
+    expect(within(menu).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Clear Conversation', 'Open Guide', 'AI Context', 'Settings']);
     await userEvent.keyboard('{Escape}');
     await waitFor(() => expect(screen.queryByRole('menu')).toBeNull());
 
