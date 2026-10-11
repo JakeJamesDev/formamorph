@@ -1,0 +1,159 @@
+{
+ "_note": "Held-out cases for the entity-stats probe (--cases entity-stats-heldout-cases.json): new Sedge Landing scenes written after the lean-prompt arms were tuned, so no wording was chosen against them. Stats and gold rules follow entity-stats-cases.json.",
+ "cases": [
+  {
+   "id": "mend-net",
+   "present": [
+    "ent-odette",
+    "ent-bram"
+   ],
+   "narration": "You sit on the shingle beside Odette and help her mend the torn eel net. She shows you the knot once, watches you tie the next ten, and pulls each one tight to test it. \"Better than most,\" she says, and hands you the next tear. Bram naps in the shade of the ferry shed.",
+   "expect": {
+    "ent-odette": {
+     "Trust": "+"
+    }
+   },
+   "allow": {}
+  },
+  {
+   "id": "bram-wrench",
+   "present": [
+    "ent-bram"
+   ],
+   "narration": "Halfway through the crossing, the rope jerks and Bram is thrown against the rail. He grips his shoulder and his face goes white. He finishes the haul one-handed, slow and grim, and sits down hard on the landing without a word. You stand on the bank and watch him.",
+   "expect": {
+    "ent-bram": {
+     "Vigor": "-"
+    }
+   },
+   "allow": {}
+  },
+  {
+   "id": "trader-buys",
+   "present": [
+    "ent-odette",
+    "ent-bram"
+   ],
+   "narration": "A trader in a wide hat stops at the firepit and buys five smoked eels from Odette. They haggle in low voices; coins change hands, and he rides off with the eels in a sack. You sit on a log and watch the river. Bram checks the knots on the post.",
+   "expect": {
+    "ent-odette": {
+     "Stock": "-"
+    }
+   },
+   "allow": {}
+  },
+  {
+   "id": "tomas-search",
+   "present": [
+    "ent-tomas"
+   ],
+   "narration": "Tomas blocks the path and holds out his hand for your pack. You give it to him and open the flap yourself. He finds bread, a spare shirt, and the sealed letter. He weighs the letter in his palm, then gives everything back. \"Go on, then,\" he says, and moves aside.",
+   "expect": {
+    "ent-tomas": {
+     "Suspicion": "-"
+    }
+   },
+   "allow": {}
+  },
+  {
+   "id": "steal-eel",
+   "present": [
+    "ent-odette"
+   ],
+   "narration": "While Odette turns to stoke the fire, you lift a smoked eel from the rack and slip it into your coat. When she turns back, she counts the rack with her finger. Her finger stops. Her eyes come up and rest on you, and she says nothing at all.",
+   "expect": {
+    "ent-odette": {
+     "Stock": "-",
+     "Trust": "-"
+    }
+   },
+   "allow": {}
+  },
+  {
+   "id": "flooded-path",
+   "present": [
+    "ent-wick"
+   ],
+   "narration": "You walk the flooded path to the hamlet and back. The mud sucks at your boots to the knee, and twice you have to wade water to your waist. By the time you reach the cottage again, your legs are lead and you can barely lift your feet. Wick looks up from her mending as you pass and goes back to it.",
+   "expect": {
+    "player": {
+     "Vigor": "-"
+    }
+   },
+   "allow": {}
+  },
+  {
+   "id": "wick-song",
+   "present": [
+    "ent-wick",
+    "ent-bram"
+   ],
+   "narration": "After supper, Wick sings an old river song by the hearth, slow and low. Bram taps his pipe on his knee in time. You sit by the door and listen until the song ends and the fire settles.",
+   "expect": {},
+   "allow": {}
+  },
+  {
+   "id": "stray-dog",
+   "present": [
+    "ent-tomas"
+   ],
+   "narration": "On the path a stray dog bursts out of the reeds, snarling, teeth bared, and lunges at your leg. You stumble back and it snaps at the air an inch from your shin before it slinks away. Your hands shake for a long while. Tomas, leaning on his spear by the post, watches the whole thing and says nothing.",
+   "expect": {
+    "player": {
+     "Resolve": "-"
+    }
+   },
+   "allow": {}
+  },
+  {
+   "id": "good-hands",
+   "present": [
+    "ent-bram",
+    "ent-odette"
+   ],
+   "narration": "You hold the raft steady against the current while Bram ties it off. When the last knot is done, he looks at your hands, then at you. \"Good hands,\" he says, and holds out his pipe for you to take a draw. Odette turns her eels and does not look over.",
+   "expect": {
+    "ent-bram": {
+     "Trust": "+"
+    }
+   },
+   "allow": {}
+  },
+  {
+   "id": "tomas-scolds-wick",
+   "present": [
+    "ent-tomas",
+    "ent-wick"
+   ],
+   "narration": "Tomas strides up to the cottage and shouts at Wick for leaving the gate open; the goats are loose in the reeds again. Wick keeps sweeping the step and does not answer him. He stamps off to round up the goats. You stand by the woodpile and keep out of it.",
+   "expect": {},
+   "allow": {}
+  },
+  {
+   "id": "nap-shed",
+   "present": [
+    "ent-bram"
+   ],
+   "narration": "You stretch out on a pile of sacks in the ferry shed and sleep for a solid hour. When you wake, the heaviness is gone from your arms and you feel ready for the road again. Outside, Bram is coiling rope.",
+   "expect": {
+    "player": {
+     "Vigor": "+"
+    }
+   },
+   "allow": {}
+  },
+  {
+   "id": "fisher-lie",
+   "present": [
+    "ent-odette"
+   ],
+   "narration": "You tell Odette you fished these waters as a boy. She hands you a length of line and asks you to tie a river hitch. Your fingers fumble the loop twice. She takes the line back, shakes her head, and laughs once, without warmth.",
+   "expect": {
+    "ent-odette": {
+     "Trust": "-"
+    }
+   },
+   "allow": {}
+  }
+ ]
+}
