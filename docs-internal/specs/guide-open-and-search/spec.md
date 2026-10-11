@@ -55,6 +55,11 @@ Settled with the user on 2026-10-11.
 | Q22 | One history, in memory with the Guide view. It survives a close and a change between layouts, clears on reload, and holds at most 50 entries |
 | Q23 | A press, a focus move or Escape inside the help window never closes a popover, select or menu outside it. A popup inside the help window still closes as today |
 | Q24 | The fix is ticket 08 in this spec |
+| Q25 | Turn On marks the offer decided at once. The card stays only while the download runs or has failed, with the switch's progress and Retry, and hides when the model is ready. After a reload, a failed download shows no card; Retry lives in the Settings switch |
+| Q26 | Replaces Q9's "Guide tab header": in the Full chrome, an Open Guide icon button sits in the title bar beside Wide View and ⋮, in both layouts. Minimal and Bubble have the ⋮ item only |
+| Q27 | Open Guide opens on the reader piece's section in Minimal and Bubble, else the Guide view's section. On close, the full screen's section goes back to both |
+| Q28 | The full screen shares the whole Guide view: query, open pages and section. With no section open, the reader pane shows an empty-state hint beside the rail |
+| Q29 | Q23 extends to dialogs: the dialog, drawer and alert-dialog wrappers also ignore Escape from the help layer. Escape in help never closes an app dialog below it. Help-owned dialogs, which cover the layer, keep their Escape |
 
 ## User Stories
 
