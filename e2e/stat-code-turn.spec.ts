@@ -427,6 +427,46 @@ test('a failed turn puts back the value and the pin the before box made', async 
   expect(narration[1]).not.toContain('serene');
 });
 
+// Coin's code moves Warmth (33 of 50) and caps Resolve (4 of 10). Both bars show it, and the delta shows Warmth's move.
+test('stat code moves another stat, and its bar shows the move', async ({ page }) => {
+  page.on('pageerror', (error) => console.error(error.message));
+  await coinWithCode(page, 'stats.Warmth.value = stats.Warmth.value + 12; stats.Resolve.max = 20;');
+  await mockModel(page, 'Coin: +20');
+  await openApp(page, settings(), { url: '/#dev?view=gameViewer&fixture=whiteRoom' });
+  await playOneTurn(page);
+
+  await expect(page.getByText(/80\s*\/\s*100/).first()).toBeVisible();
+  await expect(page.getByText(/45\s*\/\s*50/).first()).toBeVisible();
+  await expect(page.getByText(/(^|\D)4\s*\/\s*20/).first()).toBeVisible();
+  await expect(page.getByText('+12', { exact: true }).first()).toBeVisible();
+});
+
+// The before box moves Warmth by 5 before the narration comes back empty, so the failure exit has to put
+// Warmth back with the turn.
+test('a failed turn puts back another stat the before box moved', async ({ page }) => {
+  page.on('pageerror', (error) => console.error(error.message));
+  await coinWithCode(page, '', { beforeCode: 'stats.Warmth.value = stats.Warmth.value + 5;' });
+  let narrationCalls = 0;
+  await page.route('**/api/v0/models', (route) => route.fulfill({ status: 404 }));
+  await page.route('**/v1/models', (route) => route.fulfill({ json: { data: [{ id: 'e2e-model' }] } }));
+  await page.route('**/chat/completions', async (route) => {
+    const { messages } = route.request().postDataJSON();
+    const system = messages.find((message: { role: string }) => message.role === 'system')?.content ?? '';
+    const isStats = system.includes('stat tracker');
+    // The first narration comes back empty, which is a failed turn; the second one lands.
+    const text = isStats ? 'Coin: +0' : (narrationCalls += 1) === 1 ? '' : 'You count the coins twice.';
+    await route.fulfill({ contentType: 'text/event-stream', body:
+      `data: ${JSON.stringify({ choices: [{ delta: { content: text }, finish_reason: null }] })}\n\ndata: [DONE]\n\n` });
+  });
+  await openApp(page, settings(), { url: '/#dev?view=gameViewer&fixture=whiteRoom' });
+  await playOneTurn(page, ['Count the coins.', 'Count them again.']);
+
+  // The failed turn's 38 goes back to 33, so the turn that lands leaves 38, never 43.
+  await expect.poll(() => narrationCalls).toBeGreaterThanOrEqual(2);
+  await expect(page.getByText(/38\s*\/\s*50/).first()).toBeVisible();
+  await expect(page.getByText(/43\s*\/\s*50/)).toHaveCount(0);
+});
+
 // A path reaches the placeholder the editor shows, not the world-level one of the same name. Two rolls, one
 // path: the reading follows Molly's own roll, and the world's `Hair` never answers it.
 for (const [rolled, expected] of [['cropped', 11], ['long', 22]] as const) {

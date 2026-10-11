@@ -134,9 +134,10 @@ describe('executeStatCode stats map', () => {
     await expect(run('return Object.values(stats).reduce((sum, s) => sum + s.value, 0);')).resolves.toEqual({ value: 140, error: null });
   });
 
-  it('drops and reports a write to another stat through the map', async () => {
-    await expect(run('stats.Health.value = 1; stats["Night Vision"] = 5;')).resolves
-      .toEqual({ value: null, error: null, readOnlyWrites: ['stats.Health.value', 'stats["Night Vision"]'] });
+  it('writes another stat through the map, and drops and reports an entry replaced whole', async () => {
+    await expect(run('stats.Health.value = 1; stats["Night Vision"] = 5;')).resolves.toEqual({
+      value: null, error: null, statWrites: [{ id: 'h', name: 'Health', value: 1 }], readOnlyWrites: ['stats["Night Vision"]'],
+    });
   });
 });
 
@@ -246,8 +247,9 @@ describe('executeStatCode self and turn inputs', () => {
     expect(await run('self.value = 12; throw new Error("late");')).toMatchObject({ value: null, kind: 'throw' });
   });
 
-  it('drops and reports a write to another stat entry', async () => {
-    expect(await run('stats.Health.value = 1; return stats.Health.value;')).toEqual({ value: 70, error: null, readOnlyWrites: ['stats.Health.value'] });
+  it('reads its own write to another stat entry back in the same run', async () => {
+    expect(await run('stats.Health.value = 1; return stats.Health.value;'))
+      .toEqual({ value: 1, error: null, statWrites: [{ id: 'other', name: 'Health', value: 1 }] });
   });
 });
 

@@ -47,6 +47,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **You can now open the wiki from the help window, on the page and heading you're reading.** Select **Open Wiki** in the **⋮** menu or the full-screen Guide. Check **Don't Ask Again** to skip the confirm, and turn it back on in General settings.
   - **Stat Code:**
     - **A stat code bound write sets the number, and traits and the AI move it from there.** A code bound no longer hides trait changes. Deleting the code keeps the bounds. Saves keep the bounds they show.
+    - **Stat code can now change the value, min, max, and regen of its owner's other stats.** Write `stats.Health.value`, for example. Writes land in stat order, and the last one wins. A write to an unknown or switched-off stat is dropped.
   - **The AI now updates your stats with fewer wrong-direction and made-up changes.** It answers with a change for every stat, 0 included. An endpoint that can't take that format gets the old reply style, and the AI context viewer notes it.
   - **The World Editor's Content group now lists Entities first and Stats last.** The order is Entities, Locations, Traits, Stats on the side rail and the mobile Sections list.
 - **🛠️ Developer tooling**
