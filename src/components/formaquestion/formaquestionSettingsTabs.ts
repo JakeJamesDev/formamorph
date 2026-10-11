@@ -48,6 +48,7 @@ export const GENERAL_COPY = {
     label: 'Backdrop',
     hint: 'Shades the screen behind the chat so the text stands out',
   },
+  wikiConfirm: { label: 'Confirm Before Opening the Wiki', hint: 'Asks before “Open Wiki” opens your browser' },
   reasoning: {
     label: 'Reasoning',
     hint: 'Lets your AI reason before it answers. Answers take longer.',
@@ -59,6 +60,15 @@ export const GENERAL_COPY = {
   semantic: { label: 'Semantic Search', hint: 'Finds sections by meaning, not exact words. Downloads a small model once.' },
   openScreen: { label: 'Use the Open Screen', hint: 'Sends the open screen, your selected item, and its guide section' },
   historyLength: { label: 'History Length', hint: 'Sets how many earlier questions and answers each request holds' },
+} as const;
+
+/** The copy of the Open Wiki confirm. `page` is the docs page's title, or null for the wiki home. */
+export const WIKI_CONFIRM_COPY = {
+  title: 'Open Wiki',
+  description: (page: string | null) => (page === null ? 'Open the wiki home page in your browser?' : `Open the “${page}” page of the wiki in your browser?`),
+  dontAsk: 'Don’t Ask Again',
+  cancel: 'Cancel',
+  open: 'Open',
 } as const;
 
 /** The copy of the Mascot tab. */

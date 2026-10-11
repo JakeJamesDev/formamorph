@@ -38,6 +38,7 @@ describe('the default help settings', () => {
       mascotPresets: EMPTY_MASCOT_PRESET_STORE,
       chatStyle: 'auto',
       scrimOpacity: 60,
+      wikiConfirm: true,
     });
   });
 });
@@ -205,6 +206,19 @@ describe('the scrim opacity', () => {
       const settings = helpSettingsOf({ scrimOpacity });
       expect(helpSettingsCodec.parse(helpSettingsCodec.serialize(settings)).scrimOpacity).toBe(scrimOpacity);
     }
+  });
+});
+
+describe('the wiki confirm', () => {
+  const stored = (value: unknown) => helpSettingsCodec.parse(JSON.stringify(value));
+
+  it('is on for a player who stored nothing, and takes only a boolean', () => {
+    expect(stored({}).wikiConfirm).toBe(true);
+    for (const bad of ['false', 0, null]) expect(stored({ wikiConfirm: bad }).wikiConfirm).toBe(true);
+  });
+
+  it('keeps an off switch across a save and a load', () => {
+    expect(helpSettingsCodec.parse(helpSettingsCodec.serialize(helpSettingsOf({ wikiConfirm: false }))).wikiConfirm).toBe(false);
   });
 });
 

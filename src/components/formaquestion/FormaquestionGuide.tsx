@@ -1,4 +1,4 @@
-import { BookOpen, X } from 'lucide-react';
+import { BookOpen, ExternalLink, X } from 'lucide-react';
 import { FullscreenShell } from '@/components/FullscreenShell';
 import { Tip } from '@/components/ui/tooltip';
 import { Hint } from '@/components/ui/typography';
@@ -14,7 +14,7 @@ import { GuideRail, useGuideActions } from './GuideRail';
  *
  * The mobile screen has room for one part, so it shows the contents, or the open section behind a back row.
  */
-export function FormaquestionGuide({ morph, guide, failed, onRetry, view, onViewChange, semantic, sheet }: {
+export function FormaquestionGuide({ morph, guide, failed, onRetry, view, onViewChange, onOpenWiki, semantic, sheet }: {
   morph: MorphFullscreen;
   /** Null until the docs load. */
   guide: Guide | null;
@@ -22,6 +22,8 @@ export function FormaquestionGuide({ morph, guide, failed, onRetry, view, onView
   onRetry: () => void;
   view: GuideView;
   onViewChange: (change: GuideViewChange) => void;
+  /** Opens the wiki on the section the reader shows. */
+  onOpenWiki: () => void;
   /** The Semantic Search switch is on. */
   semantic: boolean;
   /** The mobile screen. */
@@ -35,6 +37,16 @@ export function FormaquestionGuide({ morph, guide, failed, onRetry, view, onView
         <BookOpen aria-hidden className="h-4 w-4 text-muted-foreground" />
         <span aria-hidden className="text-label font-semibold">Guide</span>
         <div className="ml-auto flex items-center gap-1">
+          <Tip tip="Open Wiki">
+            <button
+              type="button"
+              aria-label="Open Wiki"
+              onClick={onOpenWiki}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-sm opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+            >
+              <ExternalLink aria-hidden className="h-4 w-4" />
+            </button>
+          </Tip>
           <Tip tip="Close (Esc)">
             <button
               type="button"

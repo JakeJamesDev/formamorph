@@ -15,6 +15,8 @@ import { onStatCodeInsert } from '@/lib/formaquestion/statCodeInsert';
 import { createGuide } from '@/lib/formaquestion/guide';
 import { cn } from '@/lib/utils';
 import { wikiPageUrl } from '@/lib/helpTopics';
+import { openExternal } from '@/lib/openExternal';
+import { pageNameOf, wikiTarget, type WikiTarget } from '@/lib/formaquestion/wikiTarget';
 import { isEdge, type Edge } from '@/lib/formaquestion/tabPlace';
 import {
   boxOf, defaultWindow, type MascotSide, dragColumn, dragHandle, dragMascot, isWide, readStoredHeadView, readStoredWindow, swapWidth, viewportOf, windowLayout, withBox,
@@ -53,6 +55,7 @@ import { setMascotPlacement, setMascotScale, useMascotPlacement, useMascotScale 
 import { useHelpChat, type HelpExchange } from './useHelpChat';
 import { useHelpSettings } from './useHelpSettings';
 import { SemanticOfferCard } from './SemanticOfferCard';
+import { WikiConfirmDialog } from './WikiConfirmDialog';
 import { useSemanticSearch } from './useSemanticSearch';
 import { usePointerDrag, type PointerDrag } from './usePointerDrag';
 import { PromptCompareDialog } from '@/components/prompt/PromptCompareDialog';
@@ -107,8 +110,8 @@ interface BubblePress {
 /** The pieces' heights before the first measure: a one-line question and input. */
 const FIRST_HEIGHTS: BubbleHeights = { content: 0, question: 36, input: 44 };
 
-/** Opens a docs section in the wiki, in a new browser tab. */
-const openInWiki = (id: string) => window.open(wikiPageUrl(id), '_blank', 'noopener,noreferrer');
+/** Opens a docs section in the wiki, in the browser. */
+const openInWiki = (id: string) => openExternal(wikiPageUrl(id));
 
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -200,8 +203,10 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   // On the desktop the window closes while the dialog is open, and opens again when the dialog closes.
   const [dialog, setDialog] = useState<FormaquestionDialog | null>(null);
   const [settingsTab, setSettingsTab] = useState<FormaquestionSettingsTab>('general');
+  // The Open Wiki confirm: where Open would go, while the dialog is up. It is an app dialog, so it covers the layer.
+  const [wikiAsk, setWikiAsk] = useState<WikiTarget | null>(null);
   // The Guide full screen covers the screen on both, so the window stays where it is and sinks under it.
-  const covered = (sheet && dialog !== null) || guideMorph.mounted;
+  const covered = (sheet && dialog !== null) || guideMorph.mounted || wikiAsk !== null;
   // Before paint, so the dialog's first frame already draws above the sheet.
   useLayoutEffect(() => {
     if (!covered) return;
@@ -387,7 +392,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     setTarget(null);
     // The coverage test keeps this case from shipping. The wiki is the way out if it ever does.
     if (!sectionId) {
-      window.open(wikiPageUrl(docTargetId(target)), '_blank', 'noopener,noreferrer');
+      openInWiki(docTargetId(target));
       return;
     }
     if (readsInPiece) setReaderId(sectionId);
@@ -597,8 +602,24 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     const resized = resizeChat(input, start, dx, dy);
     return { chat: resized.chat, bubble: resized.at };
   }));
+  // Open Wiki goes to the section the reader shows: the full screen's, the reader piece's, or the Guide view's
+  // where it is on screen. With none open it goes to the wiki home.
+  const shownSectionId = guideOpen
+    ? (sheet && !view.reading ? null : view.sectionId)
+    : hasReaderPiece ? readerId
+      : readsInPiece ? null
+        : (wide ? view.tab !== 'ask' : view.tab === 'guide' && view.reading) ? view.sectionId : null;
+  const wikiOpener = useRef<HTMLElement | null>(null);
+  const openWiki = () => {
+    wikiOpener.current = focusedElement();
+    const section = guide && shownSectionId ? guide.section(shownSectionId) : null;
+    const target = wikiTarget(section);
+    if (!settings.wikiConfirm) openExternal(target.url);
+    else setWikiAsk(target);
+  };
   const menuActions: MenuActions = {
     onOpenGuide: openGuide,
+    onOpenWiki: openWiki,
     onOpenAiContext: () => openDialog('aiContext'),
     onOpenSettings: () => openDialog('settings'),
     onClear: chat.exchanges.length > 0 ? chat.clear : undefined,
@@ -839,8 +860,18 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
         </FormaquestionFrame>
       )}
       {!suspended && (
-        <FormaquestionGuide morph={guideMorph} guide={guide} failed={failed} onRetry={load} view={view} onViewChange={changeViewInWindow} semantic={settings.sources.semantic} sheet={sheet} />
+        <FormaquestionGuide morph={guideMorph} guide={guide} failed={failed} onRetry={load} view={view} onViewChange={changeViewInWindow} onOpenWiki={openWiki} semantic={settings.sources.semantic} sheet={sheet} />
       )}
+      <WikiConfirmDialog
+        confirm={wikiAsk && { page: wikiAsk.page && pageNameOf(guide ? guide.titleOf(wikiAsk.page) : wikiAsk.page) }}
+        onOpen={(dontAskAgain) => {
+          if (wikiAsk) openExternal(wikiAsk.url);
+          if (dontAskAgain) changeSettings({ wikiConfirm: false });
+          setWikiAsk(null);
+        }}
+        onCancel={() => setWikiAsk(null)}
+        returnFocus={() => wikiOpener.current}
+      />
       <FormaquestionSettings
         open={dialog === 'settings' && !suspended}
         onOpenChange={(next) => (next ? setDialog('settings') : closeDialog())}

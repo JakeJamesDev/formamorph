@@ -15,7 +15,7 @@ export function sectionWithId(index: DocsIndex, id: string): DocSection | null {
 }
 
 /** Part 2 or later of a split section. It repeats the heading line of part 1. */
-function isLaterPart(section: DocSection): boolean {
+export function isLaterPart(section: DocSection): boolean {
   const part = /-part-(\d+)$/.exec(section.id);
   return part !== null && section.label === `${section.heading} (Part ${part[1]})`;
 }

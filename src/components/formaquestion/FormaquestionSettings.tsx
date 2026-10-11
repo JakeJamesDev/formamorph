@@ -151,6 +151,12 @@ function GeneralTab({ settings, onChange, semantic, answerTarget }: {
             valueClassName="w-14 shrink-0 whitespace-nowrap"
           />
         </Row>
+        <CheckRow
+          htmlFor="fq-wiki-confirm"
+          checked={settings.wikiConfirm}
+          onChange={(wikiConfirm) => onChange({ wikiConfirm })}
+          {...GENERAL_COPY.wikiConfirm}
+        />
       </Section>
       <Section title="Answer">
         <ReasoningRow settings={settings} onChange={onChange} target={answerTarget} />

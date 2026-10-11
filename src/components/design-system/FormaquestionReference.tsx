@@ -107,6 +107,7 @@ const SHEET_SIZE = { width: 360, height: 560 };
 /** The ⋮ menu of a sample: its Chat Style choice writes the sample's settings, and the dialogs do nothing. */
 const sampleMenu = (settings: HelpSettings, change: (next: HelpSettingsChange) => void, onClear?: () => void): MenuActions => ({
   onOpenGuide: () => {},
+  onOpenWiki: () => {},
   onOpenAiContext: () => {},
   onOpenSettings: () => {},
   onClear,
