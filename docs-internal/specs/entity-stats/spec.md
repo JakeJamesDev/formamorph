@@ -174,6 +174,11 @@ Rulings from the grill, numbered as asked.
   - User presets keep their frozen copy of the old prompt. The changelog tells players to reset for the new default. No migration.
   - The schema-less text prompt stays unchanged.
   - The ticket probes lean with and without a regard line after the narration. If both pass the bar, lean ships without it.
+- **Q85** (ticket 26) Q84's bar, read closely:
+  - Lean flat and lean grouped both ship, since lean renders whatever groups the world has. Each must beat both S and SG.
+  - The tuning set is the 21 Sedge cases on the sedge sheet. The held-out set is the 12 held-out cases. The familiar sheet is outside the bar and serves only the cap check, once on cloud.
+  - The arm without `max` keys only measures their cost. The regard arm decides only whether the regard line ships. Neither is in the bar.
+  - Layout: the role line, then Game World, Traits and Player Notes, then a `## Stats` section that holds each owner's `###` block, then the format lines.
 
 Derived from Q7 and confirmed with the summary:
 
