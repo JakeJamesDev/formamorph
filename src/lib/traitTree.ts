@@ -11,6 +11,7 @@ import type { Entity, StatChange, Trait, TraitGroup, TraitLink, TreePlacement } 
 import { xmlEscape } from './utils';
 import { bearsTraits, heldReason, makeLink, originalOf, resolveBearers } from './bearers';
 import type { HeldReason } from './heldReasons';
+import { traitReaderOutsideBlueprints, type TraitReader, type TraitReaderWorld } from './traitMoveReaders';
 import { randomUUID } from './uuid';
 
 export type TraitTreeNode = GroupTreeNode<TraitGroup, Trait>;
@@ -280,16 +281,21 @@ export function entityRootTraitTree(entity: Entity, world: Pick<WorldTraitLists,
 }
 
 /** Why a drop was refused: the bearer's tree already holds the original `name`; the Custom Persona entity
- *  `name` left the top level; or a linked Blueprint would leave Blueprints. */
+ *  `name` left the top level; something outside Blueprints reads `name` as it would join; or a linked Blueprint
+ *  would leave Blueprints. */
 export type TraitDropRefusal =
   | { reason: 'duplicate'; name: string; bearer: string }
   | { reason: 'root'; name: string }
+  /** A trait or group `name` would join Blueprints while something outside reads it. */
+  | { reason: 'into-blueprints'; name: string; reader: TraitReader }
   /** A Blueprints item moved out of Blueprints, or into an entity, while the `bearers` link it or something below it. */
   | { reason: 'blueprint-linked'; name: string; bearers: string[] };
 
 export interface OwnedTraitDropOptions {
   /** Whether a world row dropped into an entity links it. Off, the row moves in as the entity's own item. */
   createLinks?: boolean;
+  /** The stats whose code may read a trait joining Blueprints. Absent, only requirements count as readers. */
+  codeWorld?: Pick<TraitReaderWorld, 'stats' | 'statGroups' | 'placeholders'>;
 }
 
 /** What a drop in the one tree writes: the world's lists when they changed, and every entity that changed. */
@@ -450,7 +456,7 @@ export function linkRefusal(
 export function applyOwnedTraitDrop(
   world: WorldTraitLists, entities: readonly Entity[],
   collapsedIds: Iterable<string>, activeId: string, overId: string, dragOffset: number, indentationWidth: number,
-  { createLinks = true, emptySystemNodes = true, newLinkId = randomUUID }:
+  { createLinks = true, emptySystemNodes = true, newLinkId = randomUUID, codeWorld }:
     OwnedTraitDropOptions & { emptySystemNodes?: boolean; newLinkId?: () => string } = {},
 ): OwnedTraitDrop | null {
   const tree = ownedTraitTree(world, entities, [], { links: true, emptySystemNodes });
@@ -528,12 +534,18 @@ export function applyOwnedTraitDrop(
     const link = makeLink(world, activeId, newLinkId(), { groupId: null, order: 0 });
     return link && moved([writeEntity(tree.entityNodes.get(to)!, ownerBefore, undefined, link)]);
   }
+  const parentAfter = movedGroup ? movedGroup.parentId : (movedItem as Trait).groupId;
   // A linked Blueprint stays in Blueprints, so every link points into it.
   if (blueprint) {
-    const parentAfter = movedGroup ? movedGroup.parentId : (movedItem as Trait).groupId;
     const leavesBlueprints = parentAfter == null || !blueprintsSubtreeIds(dropped.groups).has(parentAfter);
     const bearers = leavesBlueprints ? entities.filter((e) => e.traitLinks?.some((l) => subtree.has(l.originalId))).map((e) => e.name) : [];
     if (bearers.length) return { kind: 'refused', refusal: { reason: 'blueprint-linked', name: movedItem.name, bearers } };
+  }
+  // An item that joins Blueprints reaches play only through links, so nothing outside may read it.
+  if (!isNode && !blueprint && to === null && parentAfter != null && blueprintsSubtreeIds(dropped.groups).has(parentAfter)) {
+    const movedItems = new Map([...dropped.groups, ...dropped.leaves].filter((item) => subtree.has(item.id)).map((item) => [item.id, item]));
+    const read = traitReaderOutsideBlueprints({ ...world, entities, ...codeWorld }, from, movedItems, blueprintItemIds(world));
+    if (read) return { kind: 'refused', refusal: { reason: 'into-blueprints', ...read } };
   }
   if (!isNode && from !== to && to !== null) {
     for (const { link } of linksCarried(tree, activeId)) {

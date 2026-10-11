@@ -168,7 +168,7 @@ Each entity with stats shows as a node in the world's **Stats** tab, below the w
 - **Drag a stat or a group** onto another entity's node, or out to the world's stats, to move it. It keeps its id.
 - **Drag a Blueprint stat** onto a node to link it, in Advanced mode. The Blueprint stays where it is.
 
-> ⚠️ **A move is refused when something reads the stat where it is now.** That is a trait that changes it, or stat code that reads it by name. A note names it. A move is also refused when the other side already has the stat.
+> ⚠️ **A move is refused when something reads the stat where it is now.** That is a trait that changes it, or stat code that reads it by name. A note names it. A move is also refused when the other side already has the stat. The same check stops a stat from moving into **Blueprints**.
 
 ### What the AI sees
 <!-- keywords: ai sees entity stats, npc stats in prompt, send stats to ai, turn off entity stats, hidden stat ai -->

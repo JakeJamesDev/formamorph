@@ -118,6 +118,10 @@ export function codeRenameChains(code: string, root: ChainRoot): CodeRenameKey[]
   return found;
 }
 
+/** The key names of each chain off `root` in either of the stat's code boxes. */
+export const statCodeChains = (stat: Stat, root: ChainRoot): string[][] =>
+  STAT_CODE_TIMINGS.flatMap((timing) => codeRenameChains(boxCode(stat, timing), root)).map((chain) => chain.map((key) => key.name));
+
 /** Every exact map-lookup of `name` under `root`: the first key of each chain that reads as it. */
 export const codeRenameReferences = (code: string, root: RenameRoot, name: string): CodeRenameKey[] =>
   codeRenameChains(code, root).map((chain) => chain[0]).filter((key) => key.name === name);

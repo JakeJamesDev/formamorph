@@ -164,6 +164,8 @@ describe('the refused-drop note', () => {
       .toBe('Health stays a world stat, because Brave changes it. Remove that stat change first.Dismiss');
     expect(noteFor({ reason: 'read', name: 'Trust', owner: 'Bob', reader: { kind: 'readBy', stat: 'Mood' } }))
       .toBe("Trust stays Bob's stat, because the code of Mood reads it.Dismiss");
+    expect(noteFor({ reason: 'into-blueprints', name: 'Luck', reader: { kind: 'toggle', trait: 'Lit' } }))
+      .toBe('Luck stays out of Blueprints, because Lit switches it on or off. Remove that stat toggle first.Dismiss');
     expect(noteFor({ reason: 'duplicate', name: 'Trust', owner: 'Odette' })).toBe('Odette already has Trust.Dismiss');
     expect(noteFor({ reason: 'held', owner: 'Ash', held: { kind: 'inside', name: 'Social', group: 'Fear' } }))
       .toBe('Ash already links Social, which Fear holds.Dismiss');
