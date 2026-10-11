@@ -542,7 +542,7 @@ Book order sets the order in the prompt.
 | `secondaryAll` | | Boolean | Needs all second keywords, not one |
 | `secondaryExclude` | | Boolean | Inverts the second test: the entry is active only when the second keywords are absent |
 | `useRegex` | | Boolean | Keywords are regular expressions |
-| `matchWholeWords` | | Boolean | Keywords match whole words only. Ignored with `useRegex` |
+| `matchWholeWords` | | Boolean | Keywords match whole words only, regex keywords included |
 | `caseSensitive` | | Boolean | Keywords match case. Absent = any case |
 | `recursive` | | Boolean | Text from other active entries can activate this entry |
 | `position` | | `"before"` \| `"after"` | `"before"` = Background Lore, early in the prompt. `"after"` = Foreground Lore, late. Absent = `"after"` |

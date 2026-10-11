@@ -24,20 +24,48 @@ export function parseKeywords(entry: DictionaryEntry): string[] {
 }
 
 /**
- * The compiled matcher for one keyword under an entry's flags, or null for an unusable key (empty, or a
- * malformed `useRegex` pattern — those never match rather than throwing). `global` yields a span-scanning
- * regex; the default is a stateless boolean-test regex. Substring mode is an escaped literal with the `i`
- * flag, byte-for-byte equivalent to the old `.includes` path but able to report offsets.
+ * The compiled span-scanning matcher for one keyword under an entry's flags, or null for an unusable key
+ * (empty, or a malformed `useRegex` pattern — those never match rather than throwing). Substring mode is an
+ * escaped literal. Whole words are not part of the pattern; `wholeWordAt` filters each match instead.
  */
-function keyMatcher(key: string, entry: DictionaryEntry, global = false): RegExp | null {
+function keyMatcher(key: string, entry: DictionaryEntry): RegExp | null {
   if (!key) return null;
-  const flags = (entry.caseSensitive ? '' : 'i') + (global ? 'g' : '');
+  const flags = (entry.caseSensitive ? '' : 'i') + 'g';
   if (entry.useRegex) {
     try { return new RegExp(key, flags); }
     catch { return null; }
   }
-  const body = entry.matchWholeWords ? `\\b${escapeRegExp(key)}\\b` : escapeRegExp(key);
-  return new RegExp(body, flags);
+  return new RegExp(escapeRegExp(key), flags);
+}
+
+const WORD_FIRST = /^[\p{L}\p{N}_]/u;
+const WORD_LAST = /[\p{L}\p{N}_]$/u;
+
+/** Whether a match at `start..end` stands as a whole word: no word character continues it on either side.
+ *  An edge that is itself a non-word character (`#tag`) is a boundary on its own. */
+function wholeWordAt(text: string, start: number, end: number): boolean {
+  if (start === end) return false;
+  const match = text.slice(start, end);
+  const leftOpen = WORD_FIRST.test(match) && WORD_LAST.test(text.slice(Math.max(0, start - 2), start));
+  const rightOpen = WORD_LAST.test(match) && WORD_FIRST.test(text.slice(end, end + 2));
+  return !leftOpen && !rightOpen;
+}
+
+/** Every occurrence of one keyword in `text`, in order, under the entry's flags. */
+function* keySpanIter(key: string, text: string, entry: DictionaryEntry): Generator<{ start: number; end: number; text: string }> {
+  const re = keyMatcher(key, entry);
+  if (!re || !text) return;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    const start = m.index;
+    const end = start + m[0].length;
+    if (entry.matchWholeWords && !wholeWordAt(text, start, end)) {
+      re.lastIndex = start + 1; // a rejected match may overlap a valid one
+      continue;
+    }
+    yield { start, end, text: m[0] };
+    if (start === re.lastIndex) re.lastIndex++; // guard against zero-length matches
+  }
 }
 
 /** An entry's keywords whose pattern does not compile — always empty unless `useRegex` is on. Such a key
@@ -52,9 +80,7 @@ export function invalidRegexKeys(entry: DictionaryEntry): string[] {
 
 /** Whether one keyword occurs in `haystack`, honoring `useRegex` / `matchWholeWords` / `caseSensitive`. */
 function keyMatches(key: string, haystack: string, entry: DictionaryEntry): boolean {
-  if (!key || !haystack) return false;
-  const re = keyMatcher(key, entry);
-  return re ? re.test(haystack) : false;
+  return !keySpanIter(key, haystack, entry).next().done;
 }
 
 /** Whether any of `keys` occurs in `haystack`. */
@@ -64,15 +90,7 @@ function anyKeyMatches(keys: string[], haystack: string, entry: DictionaryEntry)
 
 /** Every occurrence of one keyword in `text`, with offsets, under the entry's flags. */
 function keySpans(key: string, text: string, entry: DictionaryEntry): { start: number; end: number; text: string }[] {
-  const re = keyMatcher(key, entry, true);
-  if (!re || !text) return [];
-  const out: { start: number; end: number; text: string }[] = [];
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(text)) !== null) {
-    out.push({ start: m.index, end: m.index + m[0].length, text: m[0] });
-    if (m.index === re.lastIndex) re.lastIndex++; // guard against zero-length matches
-  }
-  return out;
+  return [...keySpanIter(key, text, entry)];
 }
 
 /** One located occurrence of a primary keyword. */
@@ -171,11 +189,11 @@ export interface ActivationReport {
   byId: Map<string, EntryActivation>;
 }
 
-/** How an entry's match flags read once `useRegex` has overruled `matchWholeWords`. */
+/** How an entry's match flags read. */
 export function matchRuleOf(entry: DictionaryEntry): MatchRule {
   return {
     regex: !!entry.useRegex,
-    wholeWord: !entry.useRegex && !!entry.matchWholeWords,
+    wholeWord: !!entry.matchWholeWords,
     caseSensitive: !!entry.caseSensitive,
   };
 }
