@@ -20,7 +20,7 @@ import { activeTraits, recoverStatBases, type AppliedTraitValues } from '../lib/
 import { heldEntityIds, withHeldOwners } from '../lib/ownedTraitState';
 import { pageAssistantIndex, pageNextActionIndex, placeSnapshot } from '../lib/turnHistory';
 import { backfillGameStateStats } from '../lib/statBackfill';
-import { backfillGameStateEntityStats, entityStatDeltas } from '../lib/entityStats';
+import { backfillEntityStats, backfillGameStateEntityStats, entityStatDeltas } from '../lib/entityStats';
 import { deltasOf, useStatDeltas } from '../lib/useStatDeltas';
 import { PLAYER_OWNER } from '../lib/statOwners';
 import { normalizeVisibleEntities } from '../lib/sceneEntities';
@@ -161,6 +161,12 @@ function useProvideGameplay() {
     if (personaPending) return;
     setSessionPersona(personaRef?.source === 'library' ? libraryPersona : null);
   }, [personaRef, libraryPersona, personaPending, setSessionPersona]);
+  // The library persona is read live, so its stats backfill whenever its entry or the values change, as a
+  // load backfills the world's.
+  useEffect(() => {
+    if (personaRef?.source !== 'library' || !libraryPersona) return;
+    setEntityStats((prev) => backfillEntityStats(prev, [libraryPersona]));
+  }, [personaRef, libraryPersona, entityStats]);
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     return registerDevHook('setPersona', (ref: PersonaRef | undefined) => setPersonaRef(ref));

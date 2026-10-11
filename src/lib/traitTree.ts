@@ -7,7 +7,7 @@ import {
   removeChildrenOf as removeChildrenOfGeneric, isDescendantGroup as isDescendantGroupGeneric,
   type GroupTreeNode, type FlatTreeNode,
 } from './groupTree';
-import type { Entity, Trait, TraitGroup, TraitLink, TraitPlacement } from '@/types';
+import type { Entity, StatChange, Trait, TraitGroup, TraitLink, TraitPlacement } from '@/types';
 import { xmlEscape } from './utils';
 import { bearsTraits, holdsOriginal, makeLink, originalOf, resolveBearers } from './bearers';
 import { randomUUID } from './uuid';
@@ -297,7 +297,23 @@ export type OwnedTraitDrop =
 export const hasStatEffects = (t: Trait): boolean => t.statChanges.length > 0 || (t.statToggles?.length ?? 0) > 0;
 
 /** The trait's stat changes and stat toggles, each naming one stat. */
-export const statRows = (t: Trait): readonly { statId: string }[] => [...t.statChanges, ...(t.statToggles ?? [])];
+export const statRows = (t: Trait): readonly StatRow[] => [...t.statChanges, ...(t.statToggles ?? [])];
+
+/** One stat change or stat toggle, as routing reads it. */
+export type StatRow = Pick<StatChange, 'statId' | 'target'>;
+
+/** Whose stat a bearer's trait row moves; null when it names neither. */
+export type StatRowSide = 'own' | 'player' | null;
+
+/** Whose stat a bearer's trait row moves: its own stat by id, else a world player stat on a bearer the
+ *  player can play; with `target`, only the player stat. */
+export function statRowSide(
+  row: StatRow, own: ReadonlySet<string>, player: ReadonlySet<string>, canPlay: boolean,
+): StatRowSide {
+  const reachesPlayer = canPlay && player.has(row.statId);
+  if (row.target === 'player') return reachesPlayer ? 'player' : null;
+  return own.has(row.statId) ? 'own' : reachesPlayer ? 'player' : null;
+}
 
 /** The one tree's visible rows, with collapsed groups' children hidden. */
 export const ownedTraitRows = (tree: OwnedTraitTree, collapsedIds: Iterable<string>): FlatTraitNode[] =>

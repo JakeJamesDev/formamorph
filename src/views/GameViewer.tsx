@@ -15,8 +15,8 @@ import { useAccountDeletion } from "@/contexts/AccountDeletionContext";
 import { type StatClock } from "@/lib/statCodeExecutor";
 import { overlayStatCodeResult, playthroughPlaceholderSet, runStatCodeTurn, withPinWrites, type StatCodeTurn } from "@/lib/statCodeTurn";
 import {
-  applyEntityStatResponse, entityCodeTurns, entityStatOwners, seedEntityStats, statOwnerEntities, statRequestOwners, withEntityRegen,
-  withOwnerCodeResults,
+  applyEntityStatResponse, entityCodeTurns, entityStatOwners, personaEntities, personaStatOwners, seedEntityStats, statOwnerEntities,
+  statRequestOwners, withEntityRegen, withOwnerCodeResults,
 } from "@/lib/entityStats";
 import type { StatCodeTiming } from "@/lib/statCodeTiming";
 import { Button } from "@/components/ui/button";
@@ -1825,12 +1825,18 @@ const GameViewer = ({
   // The latest committed entity stats, which the turn callbacks read as they read `rawPlayerStatsRef`.
   const entityStatsRef = useRef(entityStats);
   entityStatsRef.current = entityStats;
-  // The live stats a stat request could hold: the player's and every entity's that can be present.
+  // The entities whose stats are the player's: the played one, and the Custom Persona entity whose traits are.
+  const playedEntities = useMemo(
+    () => personaEntities(persona?.entity, traitEntities, personaRef), [persona, traitEntities, personaRef],
+  );
+  // The live stats a stat request could hold: the player's, the played entities', and every entity's that can be present.
   const requestStatCount = useMemo(
     () => activeStats.length
-      + statRequestOwners(statEntities, entityStats, personaRef, (owned) => owned, entityInForceUnder(ownedTraits), (groups) => groups)
-        .reduce((n, owner) => n + owner.stats.length, 0),
-    [activeStats, statEntities, entityStats, personaRef, entityInForceUnder, ownedTraits],
+      + [
+        ...personaStatOwners(playedEntities, entityStats, (owned) => owned, entityInForceUnder(ownedTraits), (groups) => groups),
+        ...statRequestOwners(statEntities, entityStats, personaRef, (owned) => owned, entityInForceUnder(ownedTraits), (groups) => groups),
+      ].reduce((n, owner) => n + owner.stats.length, 0),
+    [activeStats, playedEntities, statEntities, entityStats, personaRef, entityInForceUnder, ownedTraits],
   );
 
   // The same derivation for a paged-back turn, so history shows the stats that were live on that turn.
@@ -3735,12 +3741,16 @@ const GameViewer = ({
       signal,
     });
 
-  /** A stat request snapshot over the player's live `stats` and the live stats of the `present` entities in
-   *  `values`, marked for the text pass when its endpoint has refused the schema. */
+  /** A stat request snapshot over the player's live `stats`, the played entities' live stats and the live stats
+   *  of the `present` entities in `values`, marked for the text pass when its endpoint has refused the schema. */
   const statRequestFor = (stats: readonly PlayerStat[], present: readonly Entity[], values: EntityStatValues): StatRequestSnapshot =>
     createStatRequest(stats, PLAYER_OWNER, {
       textPass: !schemaAccepted(resolveEndpointForKind("statUpdates").reasoning),
       placement: { groups: resolveStatGroupTexts(authoredStatGroups, resolvePH), authored: authoredStats },
+      personas: personaStatOwners(
+        playedEntities, values, (owned) => resolveStatNames(owned, resolvePH), entityInForceUnder(ownedTraits),
+        (groups) => resolveStatGroupTexts(groups, resolvePH),
+      ),
       entities: statRequestOwners(
         present, values, personaRef, (owned) => resolveStatNames(owned, resolvePH), entityInForceUnder(ownedTraits),
         (groups) => resolveStatGroupTexts(groups, resolvePH),

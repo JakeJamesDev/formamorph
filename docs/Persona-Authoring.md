@@ -165,6 +165,20 @@ Use **Starts On: None** when your world already defines the player. Use **World 
 - **The side panel's Change list follows Allowed Personas** too.
 - **Worlds saved with the older Persona Choice control load as the same rules.** Fixed becomes **Starts On: None**. Cast becomes **World Only**, and also **Starts On: None** when no entity was playable.
 
+## Persona Stats
+<!-- keywords: persona owns stats, my persona's stats, same name twice, two health bars, stats reset on switch, trait changes wrong stat -->
+
+An entity's own stats become the player's stats while the player plays as it. Under **None** and a library persona, the **Custom Persona** entity's stats do the same.
+
+| Where | What happens |
+|---|---|
+| Stat panel | The persona's stats show under its name, below your world's player stats. Pick "*name* (You)" in the entity picker, and no entity section shows. |
+| AI stat updates | The AI updates them with the player's stats. A stat with the same name as a world player stat stays a separate stat. |
+| Persona switch | Each entity keeps its values. Switch back, and they are as you left them. |
+| Library persona edits | A stat you add to a library persona joins the playthrough at its starting value, in a saved game too |
+
+**A persona's stat and a world player stat can share an id.** On a trait the persona owns, pick the stat from the persona's own list to change its own stat. Pick it from the **Player** list to change the world player stat.
+
 ## The Persona Chip
 <!-- keywords: ai forgets my name, inject player info, prompt variable, missing from custom prompt, shows not available, where to place it, detail level, cache friendly order -->
 

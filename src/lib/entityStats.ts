@@ -70,10 +70,33 @@ export function statRequestOwners(
   prepare: (stats: PlayerStat[]) => PlayerStat[], inForce: OwnerStatTraits,
   prepareGroups: (groups: StatGroup[]) => StatGroup[],
 ): StatRequestOwner[] {
+  return requestOwners(present.filter((entity) => inCast(entity, persona)), values, prepare, inForce, prepareGroups);
+}
+
+/** The entities whose stats are the player's, each once: the played one from any source, then each of
+ *  `world` whose traits are the player's under `persona`, as the Custom Persona entity's are under None and
+ *  a library persona. */
+export function personaEntities(played: Entity | undefined, world: readonly Entity[], persona: PersonaRef | undefined): Entity[] {
+  const out = played ? [played] : [];
+  for (const entity of world) if (playsAs(entity, persona) && !out.some((e) => e.id === entity.id)) out.push(entity);
+  return out;
+}
+
+/** The entities the player plays as whose live stats join the player's in the stat request, each once, in
+ *  `personas` order, placed as each entity groups its stats. Arguments as {@link statRequestOwners} takes. */
+export const personaStatOwners = (
+  personas: readonly Entity[], values: OwnerStats,
+  prepare: (stats: PlayerStat[]) => PlayerStat[], inForce: OwnerStatTraits, prepareGroups: (groups: StatGroup[]) => StatGroup[],
+): StatRequestOwner[] => requestOwners(personas, values, prepare, inForce, prepareGroups);
+
+function requestOwners(
+  entities: readonly Entity[], values: OwnerStats,
+  prepare: (stats: PlayerStat[]) => PlayerStat[], inForce: OwnerStatTraits, prepareGroups: (groups: StatGroup[]) => StatGroup[],
+): StatRequestOwner[] {
   const seen = new Set<string>();
-  return present.flatMap((entity) => {
+  return entities.flatMap((entity) => {
     const held = values[entity.id];
-    if (!held || seen.has(entity.id) || !inCast(entity, persona)) return [];
+    if (!held || seen.has(entity.id)) return [];
     seen.add(entity.id);
     const stats = prepare(enabledStats([...held], activeStatEnabled(held, inForce(entity.id))));
     if (!stats.length) return [];

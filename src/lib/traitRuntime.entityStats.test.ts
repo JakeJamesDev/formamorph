@@ -134,6 +134,36 @@ describe('a player bearer’s traits', () => {
     expect(own(on, 'albus', 'h')).toMatchObject({ max: 110, value: 25 });
   });
 
+  it('reach the world player stat on a shared id through a row that targets the player', () => {
+    const oath = trait('oath', [
+      { statId: 'h', value: 10, type: 'max', target: 'player' }, { statId: 'h', value: 3, type: 'starting', target: 'player' },
+      { statId: 'h', value: 4, type: 'starting' },
+    ], { name: 'Oath', statToggles: [{ statId: 'h', enabled: false, target: 'player' }] });
+    const sworn: TraitWorld = {
+      traits: [], groups: [], entities, persona: { source: 'world', entityId: 'albus' },
+      bearers: [{ id: 'world', name: '', traits: [], groups: [] }, bram, { ...albus, traits: [oath] }],
+    };
+    const twin = state({ entityStats: { albus: [stat('h', { value: 20 })] } });
+    const on = flip(twin, 'albus', 'oath', true, sworn);
+    expect(on.stats[0]).toMatchObject({ max: 110, value: 53 });
+    expect(own(on, 'albus', 'h')).toMatchObject({ max: 100, value: 24 });
+    expect(ownerStatTraitsInForce({ ...on, ownedTraits: { albus: { chosen: ['oath'] } } }, sworn, 'albus')
+      .flatMap((t) => [...t.statChanges, ...(t.statToggles ?? [])])).toEqual([{ statId: 'h', value: 4, type: 'starting' }]);
+
+    const off = flip(on, 'albus', 'oath', false, sworn);
+    expect(off.stats[0]).toMatchObject({ max: 100, value: 50 });
+    expect(own(off, 'albus', 'h')).toMatchObject({ max: 100, value: 20 });
+  });
+
+  it("leave every entity's stat values where they were through a persona switch and back", () => {
+    const played = applyOwnedStatTraits(applyPlayedStatTraits(picked, asAlbus).state, asAlbus);
+    const moved = { ...played, entityStats: { bram: [stat('vigor', { value: 12 }), stat('trust', { value: 81 })], albus: [stat('stock', { value: 7 })] } };
+    const away = switchPersonaStats(moved, asAlbus, world(), name).state;
+    const back = switchPersonaStats(away, world(), asAlbus, name).state;
+    expect(back.entityStats).toEqual(moved.entityStats);
+    expect(back.stats).toEqual(moved.stats);
+  });
+
   it('keep their own stats where they are on a persona switch', () => {
     const played = applyOwnedStatTraits(applyPlayedStatTraits(picked, asAlbus).state, asAlbus);
     const away = switchPersonaStats(played, asAlbus, world(), name).state;

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { act, screen, fireEvent, within } from '@testing-library/react';
+import { act, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import {
   benchEditorWorld, entityFieldsTab, openEditorTab, openTraitFieldsTab, renderWorldEditorBench,
 } from '@/test/worldEditorBench';
@@ -228,6 +228,51 @@ describe('an owned trait\'s panel', () => {
     statsTab();
     expect(screen.getByText('Health')).toBeInTheDocument();
     expect(screen.getByText('Player stat changes apply only when you play as them')).toBeInTheDocument();
+  });
+
+  it("tells a persona's own stat from a world player stat with its id, and notes only rows on the player's (Q58)", async () => {
+    const health = { id: 'hp', type: 'number', description: '', min: 0, max: 100, regen: 0, descriptors: [] };
+    const world = {
+      ...WORLD,
+      stats: [{ ...health, name: 'Health' }],
+      traits: WORLD.traits.map((t) => (t.id === 't-paladin' ? { ...t, statToggles: [{ statId: 'hp', enabled: true }] } : t)),
+      entities: WORLD.entities.map((e) => (e.id === 'ash'
+        ? {
+          ...e, stats: [{ ...health, name: 'Ash Health' }],
+          traits: e.traits!.map((t) => (t.id === 't-tamed'
+            ? { ...t, statChanges: [{ statId: 'hp', value: 5, type: 'max' }], statToggles: [{ statId: 'hp', enabled: false }] }
+            : t)),
+        }
+        : e)),
+    } as World;
+    const { ctx } = renderWorldEditorBench(world, 'advanced');
+    openTab(/Traits/);
+    fireEvent.click(treeRow('Tamed')!);
+    fireEvent.mouseDown(within(screen.getByRole('tablist', { name: 'Trait Fields' })).getByRole('tab', { name: 'Stats' }));
+    expect(screen.queryByText(/stat changes apply/i)).toBeNull();
+    expect(screen.queryByText(/Also set by/)).toBeNull();
+
+    const choose = async (trigger: HTMLElement, name: string) => {
+      fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: 'mouse' });
+      await waitFor(() => expect(trigger).toHaveAttribute('aria-expanded', 'true'));
+      const options = await screen.findAllByRole('option', { hidden: true });
+      expect(options.map((o) => o.textContent)).toEqual(['Ash Health', 'Health']);
+      fireEvent.keyDown(options.find((o) => o.textContent === name)!, { key: 'Enter' });
+    };
+    const statPickers = () => screen.getAllByRole('combobox').filter((c) => /Health|Select stat/.test(c.textContent ?? ''));
+    expect(statPickers().map((c) => c.textContent)).toEqual(['Ash Health', 'Ash Health']);
+
+    await choose(statPickers()[0], 'Health');
+    expect(entity(ctx, 'ash').traits!.find((t) => t.id === 't-tamed')!.statChanges)
+      .toEqual([{ statId: 'hp', value: 5, type: 'max', target: 'player' }]);
+    expect(screen.getByText('Player stat changes apply only when you play as them')).toBeInTheDocument();
+
+    await choose(statPickers()[1], 'Health');
+    expect(entity(ctx, 'ash').traits!.find((t) => t.id === 't-tamed')!.statToggles).toEqual([{ statId: 'hp', enabled: false, target: 'player' }]);
+    expect(screen.getByText(/Also set by/)).toBeInTheDocument();
+
+    await choose(statPickers()[0], 'Ash Health');
+    expect(entity(ctx, 'ash').traits!.find((t) => t.id === 't-tamed')!.statChanges).toEqual([{ statId: 'hp', value: 5, type: 'max' }]);
   });
 
   it("picks a stat the entity links from Blueprints as its own", () => {
