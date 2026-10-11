@@ -1,0 +1,540 @@
+{
+ "_note": "Familiar-stat sheet for the entity-stats probe (--sheet familiar): every owner tracks Fear, Morale and Energy, and each entity also tracks Trust in the player. Names come from the stats both test models list most often as moving during a scene. Cases reuse entity-stats-cases.json by id (narration, present); expect/allow follow its rules.",
+ "playerStats": [
+  {
+   "id": "pc-fear",
+   "name": "Fear",
+   "type": "number",
+   "min": 0,
+   "max": 100,
+   "value": 20,
+   "starting": 20,
+   "regen": 0,
+   "description": "",
+   "descriptors": []
+  },
+  {
+   "id": "pc-morale",
+   "name": "Morale",
+   "type": "number",
+   "min": 0,
+   "max": 100,
+   "value": 60,
+   "starting": 60,
+   "regen": 0,
+   "description": "",
+   "descriptors": []
+  },
+  {
+   "id": "pc-energy",
+   "name": "Energy",
+   "type": "number",
+   "min": 0,
+   "max": 100,
+   "value": 60,
+   "starting": 60,
+   "regen": 0,
+   "description": "",
+   "descriptors": []
+  }
+ ],
+ "entityStats": {
+  "ent-bram": [
+   {
+    "id": "bram-fear",
+    "name": "Fear",
+    "type": "number",
+    "min": 0,
+    "max": 100,
+    "value": 20,
+    "starting": 20,
+    "regen": 0,
+    "description": "",
+    "descriptors": []
+   },
+   {
+    "id": "bram-morale",
+    "name": "Morale",
+    "type": "number",
+    "min": 0,
+    "max": 100,
+    "value": 60,
+    "starting": 60,
+    "regen": 0,
+    "description": "",
+    "descriptors": []
+   },
+   {
+    "id": "bram-energy",
+    "name": "Energy",
+    "type": "number",
+    "min": 0,
+    "max": 100,
+    "value": 70,
+    "starting": 70,
+    "regen": 0,
+    "description": "",
+    "descriptors": []
+   },
+   {
+    "id": "bram-trust",
+    "name": "Trust",
+    "type": "number",
+    "min": 0,
+    "max": 100,
+    "value": 20,
+    "starting": 20,
+    "regen": 0,
+    "description": "How far they trust the player.",
+    "descriptors": []
+   }
+  ],
+  "ent-odette": [
+   {
+    "id": "odette-fear",
+    "name": "Fear",
+    "type": "number",
+    "min": 0,
+    "max": 100,
+    "value": 20,
+    "starting": 20,
+    "regen": 0,
+    "description": "",
+    "descriptors": []
+   },
+   {
+    "id": "odette-morale",
+    "name": "Morale",
+    "type": "number",
+    "min": 0,
+    "max": 100,
+    "value": 60,
+    "starting": 60,
+    "regen": 0,
+    "description": "",
+    "descriptors": []
+   },
+   {
+    "id": "odette-energy",
+    "name": "Energy",
+    "type": "number",
+    "min": 0,
+    "max": 100,
+    "value": 70,
+    "starting": 70,
+    "regen": 0,
+    "description": "",
+    "descriptors": []
+   },
+   {
+    "id": "odette-trust",
+    "name": "Trust",
+    "type": "number",
+    "min": 0,
+    "max": 100,
+    "value": 10,
+    "starting": 10,
+    "regen": 0,
+    "description": "How far they trust the player.",
+    "descriptors": []
+   }
+  ],
+  "ent-tomas": [
+   {
+    "id": "tomas-fear",
+    "name": "Fear",
+    "type": "number",
+    "min": 0,
+    "max": 100,
+    "value": 20,
+    "starting": 20,
+    "regen": 0,
+    "description": "",
+    "descriptors": []
+   },
+   {
+    "id": "tomas-morale",
+    "name": "Morale",
+    "type": "number",
+    "min": 0,
+    "max": 100,
+    "value": 60,
+    "starting": 60,
+    "regen": 0,
+    "description": "",
+    "descriptors": []
+   },
+   {
+    "id": "tomas-energy",
+    "name": "Energy",
+    "type": "number",
+    "min": 0,
+    "max": 100,
+    "value": 70,
+    "starting": 70,
+    "regen": 0,
+    "description": "",
+    "descriptors": []
+   },
+   {
+    "id": "tomas-trust",
+    "name": "Trust",
+    "type": "number",
+    "min": 0,
+    "max": 100,
+    "value": 20,
+    "starting": 20,
+    "regen": 0,
+    "description": "How far they trust the player.",
+    "descriptors": []
+   }
+  ],
+  "ent-wick": [
+   {
+    "id": "wick-fear",
+    "name": "Fear",
+    "type": "number",
+    "min": 0,
+    "max": 100,
+    "value": 20,
+    "starting": 20,
+    "regen": 0,
+    "description": "",
+    "descriptors": []
+   },
+   {
+    "id": "wick-morale",
+    "name": "Morale",
+    "type": "number",
+    "min": 0,
+    "max": 100,
+    "value": 60,
+    "starting": 60,
+    "regen": 0,
+    "description": "",
+    "descriptors": []
+   },
+   {
+    "id": "wick-energy",
+    "name": "Energy",
+    "type": "number",
+    "min": 0,
+    "max": 100,
+    "value": 70,
+    "starting": 70,
+    "regen": 0,
+    "description": "",
+    "descriptors": []
+   },
+   {
+    "id": "wick-trust",
+    "name": "Trust",
+    "type": "number",
+    "min": 0,
+    "max": 100,
+    "value": 5,
+    "starting": 5,
+    "regen": 0,
+    "description": "How far they trust the player.",
+    "descriptors": []
+   }
+  ]
+ },
+ "cases": [
+  {
+   "id": "shared-haul",
+   "expect": {
+    "player": {
+     "Energy": "-"
+    },
+    "ent-bram": {
+     "Energy": "-"
+    }
+   },
+   "allow": {
+    "ent-bram": {
+     "Trust": "+"
+    }
+   }
+  },
+  {
+   "id": "bram-alone",
+   "expect": {
+    "ent-bram": {
+     "Energy": "-"
+    }
+   },
+   "allow": {}
+  },
+  {
+   "id": "player-alone",
+   "expect": {
+    "player": {
+     "Energy": "-"
+    }
+   },
+   "allow": {}
+  },
+  {
+   "id": "buy-eels",
+   "expect": {
+    "ent-odette": {
+     "Trust": "+"
+    }
+   },
+   "allow": {
+    "ent-odette": {
+     "Morale": "+"
+    }
+   }
+  },
+  {
+   "id": "quiet-wait",
+   "expect": {},
+   "allow": {}
+  },
+  {
+   "id": "tomas-letter",
+   "expect": {
+    "ent-tomas": {
+     "Trust": "+"
+    }
+   },
+   "allow": {
+    "player": {
+     "Fear": "-"
+    }
+   }
+  },
+  {
+   "id": "mock-eels",
+   "expect": {
+    "ent-odette": {
+     "Trust": "-"
+    }
+   },
+   "allow": {
+    "ent-bram": {
+     "Trust": "+"
+    },
+    "ent-odette": {
+     "Morale": "-"
+    }
+   }
+  },
+  {
+   "id": "storm-crowd",
+   "expect": {
+    "player": {
+     "Energy": "-"
+    },
+    "ent-bram": {
+     "Energy": "-"
+    },
+    "ent-odette": {
+     "Morale": "-"
+    }
+   },
+   "allow": {
+    "player": {
+     "Fear": "+",
+     "Morale": "-"
+    },
+    "ent-bram": {
+     "Fear": "+",
+     "Morale": "-",
+     "Trust": "+"
+    },
+    "ent-odette": {
+     "Fear": "+"
+    }
+   }
+  },
+  {
+   "id": "wick-supper",
+   "expect": {
+    "ent-wick": {
+     "Trust": "+"
+    }
+   },
+   "allow": {
+    "player": {
+     "Energy": "+",
+     "Morale": "+"
+    },
+    "ent-wick": {
+     "Morale": "+"
+    }
+   }
+  },
+  {
+   "id": "rest-by-fire",
+   "expect": {
+    "player": {
+     "Energy": "+"
+    }
+   },
+   "allow": {
+    "player": {
+     "Morale": "+"
+    },
+    "ent-odette": {
+     "Trust": "+"
+    }
+   }
+  },
+  {
+   "id": "slip-gash",
+   "expect": {
+    "player": {
+     "Energy": "-"
+    }
+   },
+   "allow": {
+    "player": {
+     "Fear": "+",
+     "Morale": "-"
+    },
+    "ent-bram": {
+     "Energy": "-",
+     "Trust": "+"
+    }
+   }
+  },
+  {
+   "id": "tomas-lie",
+   "expect": {
+    "ent-tomas": {
+     "Trust": "-"
+    }
+   },
+   "allow": {
+    "player": {
+     "Fear": "+",
+     "Morale": "-"
+    }
+   }
+  },
+  {
+   "id": "carry-water",
+   "expect": {
+    "player": {
+     "Energy": "-"
+    },
+    "ent-wick": {
+     "Trust": "+"
+    }
+   },
+   "allow": {
+    "player": {
+     "Morale": "+"
+    },
+    "ent-wick": {
+     "Morale": "+"
+    }
+   }
+  },
+  {
+   "id": "push-bram",
+   "expect": {
+    "ent-bram": {
+     "Trust": "-"
+    }
+   },
+   "allow": {
+    "ent-bram": {
+     "Morale": "-"
+    }
+   }
+  },
+  {
+   "id": "river-fright",
+   "expect": {
+    "player": {
+     "Fear": "+"
+    }
+   },
+   "allow": {
+    "player": {
+     "Morale": "-"
+    }
+   }
+  },
+  {
+   "id": "absent-ferryman",
+   "expect": {},
+   "allow": {}
+  },
+  {
+   "id": "calm-supper",
+   "expect": {},
+   "allow": {
+    "player": {
+     "Energy": "+",
+     "Morale": "+"
+    }
+   }
+  },
+  {
+   "id": "fare-dispute",
+   "expect": {
+    "ent-bram": {
+     "Trust": "+"
+    },
+    "ent-odette": {
+     "Trust": "-"
+    }
+   },
+   "allow": {
+    "ent-odette": {
+     "Morale": "-"
+    }
+   }
+  },
+  {
+   "id": "drag-log",
+   "expect": {
+    "player": {
+     "Energy": "-"
+    },
+    "ent-tomas": {
+     "Trust": "+"
+    }
+   },
+   "allow": {
+    "player": {
+     "Morale": "+"
+    },
+    "ent-tomas": {
+     "Energy": "-"
+    }
+   }
+  },
+  {
+   "id": "bram-oilskin",
+   "expect": {
+    "ent-bram": {
+     "Trust": "+"
+    }
+   },
+   "allow": {
+    "player": {
+     "Morale": "+"
+    }
+   }
+  },
+  {
+   "id": "eat-three",
+   "expect": {
+    "player": {
+     "Energy": "+"
+    }
+   },
+   "allow": {
+    "player": {
+     "Morale": "+"
+    }
+   }
+  }
+ ]
+}

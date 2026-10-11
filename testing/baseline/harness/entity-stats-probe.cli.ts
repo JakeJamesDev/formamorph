@@ -29,12 +29,19 @@
 // Per reply: exact (every gold move right, nothing spurious), hits / wrong sign / misses, spurious moves,
 // misattributed (a spurious move whose stat the gold moves on another owner), invalid rows, duplicates,
 // cap hits, wall-clock ms, and prompt + completion tokens. `player-only` regrades every arm on player cells.
+//   L        a lean request: the owners' stats as name and reading, one format line, the narration; no world or rules
+//   LT       L, with the shipped regard sentence after the narration
+//   LV       L, asking for every stat's new reading; the probe turns each into its change
+//   LR       L, with a line asking for every change the narration shows, even a small one
+//   LD       L, asking for the changed stats only
+//   XR..XF4G leave-one-out ablations of the request at 84a15574 (ABLATIONS below); a G suffix sends SG's groups
 // `invented` splits spurious moves into player and entity cells, with push-bram's player cells (Q64) apart.
 // `max` counts invented max changes (no case moves a maximum); only control and S are read for them.
 //
 // Usage: npx vite-node testing/baseline/harness/entity-stats-probe.cli.ts --
 //          [--endpoint URL] [--model ID] [--runs 6] [--pool 3] [--arms control,A,B,C] [--only storm-crowd]
-//          [--ws free|pattern|xgrammar|outlines|lmfe] [--s0-ref REF] [--show] [--dump]
+//          [--ws free|pattern|xgrammar|outlines|lmfe] [--s0-ref REF] [--sheet sedge|familiar] [--cases FILE] [--show] [--dump]
+// --sheet familiar swaps every owner's stats for Fear, Morale, Energy and Trust (entity-stats-familiar-cases.json).
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -70,7 +77,8 @@ const model = argVal('--model', 'default');
 const runs = Number(argVal('--runs', '6'));
 const pool = Number(argVal('--pool', '3'));
 const only = argVal('--only', '');
-const ALL_ARMS = ['control', 'A', 'A2', 'A3', 'B', 'C', 'C2', 'C3', 'D', 'E', 'S', 'SU', 'SN', 'SG', 'SGB', 'SGO', 'SH', 'SP', 'C3P', 'S0', 'WA', 'WB', 'WC', 'WD', 'WE', 'WF', 'WH', 'WJ', 'WK', 'WL', 'WP', 'WQ', 'WR', 'FA', 'FAG', 'FB', 'FBG', 'FR', 'FRG', 'FC', 'FCG', 'FD', 'FDG'] as const;
+const ALL_ARMS = ['control', 'A', 'A2', 'A3', 'B', 'C', 'C2', 'C3', 'D', 'E', 'S', 'SU', 'SN', 'SG', 'SGB', 'SGO', 'SH', 'SP', 'C3P', 'S0', 'WA', 'WB', 'WC', 'WD', 'WE', 'WF', 'WH', 'WJ', 'WK', 'WL', 'WP', 'WQ', 'WR', 'FA', 'FAG', 'FB', 'FBG', 'FR', 'FRG', 'FC', 'FCG', 'FD', 'FDG',
+  'XR', 'XRG', 'XL', 'XLG', 'XC', 'XCG', 'XW', 'XWG', 'XT', 'XTG', 'XA', 'XAG', 'XF', 'XFG', 'XU', 'XUG', 'XUA', 'XUAG', 'XA1', 'XA1G', 'XA2', 'XA2G', 'XA3', 'XA3G', 'XA4', 'XA4G', 'XA5', 'XA5G', 'XA6', 'XA6G', 'XF1', 'XF1G', 'XF2', 'XF2G', 'XF3', 'XF3G', 'XF4', 'XF4G', 'XN', 'XNG', 'SV', 'SVG', 'L', 'LR', 'LT', 'LV', 'LD'] as const;
 type Arm = typeof ALL_ARMS[number];
 const arms = argVal('--arms', ALL_ARMS.join(',')).split(',') as Arm[];
 const SEED = 424242;
@@ -88,10 +96,29 @@ const PLAYER = 'Player Character';
 
 const BASELINE = path.resolve('testing/baseline');
 const world = migrateWorld(JSON.parse(readFileSync(path.join(BASELINE, 'sedge-landing.json'), 'utf8')));
-const fixture = JSON.parse(readFileSync(path.join(BASELINE, 'entity-stats-cases.json'), 'utf8')) as {
+const sedgeFixture = JSON.parse(readFileSync(path.join(BASELINE, 'entity-stats-cases.json'), 'utf8')) as {
   entityStats: Record<string, PlayerStat[]>;
   cases: Array<{ id: string; present: string[]; narration: string; expect: GoldCells; allow: GoldCells }>;
 };
+// --cases swaps in another case file over the same entity stats (the held-out set).
+const casesFile = argVal('--cases', '');
+if (casesFile) sedgeFixture.cases = (JSON.parse(readFileSync(path.join(BASELINE, casesFile), 'utf8')) as typeof sedgeFixture).cases;
+const sheet = argVal('--sheet', 'sedge');
+if (sheet !== 'sedge' && sheet !== 'familiar') throw new Error('--sheet takes sedge or familiar.');
+const familiar = sheet === 'familiar'
+  ? JSON.parse(readFileSync(path.join(BASELINE, 'entity-stats-familiar-cases.json'), 'utf8')) as {
+    playerStats: PlayerStat[]; entityStats: Record<string, PlayerStat[]>; cases: Array<{ id: string; expect: GoldCells; allow: GoldCells }>;
+  }
+  : undefined;
+/** The Sedge cases, with the familiar sheet's stats and gold in place when --sheet familiar. */
+const fixture = familiar ? {
+  entityStats: familiar.entityStats,
+  cases: sedgeFixture.cases.map((c) => {
+    const gold = familiar.cases.find((g) => g.id === c.id);
+    if (!gold) throw new Error(`No familiar gold for ${c.id}.`);
+    return { ...c, expect: gold.expect, allow: gold.allow };
+  }),
+} : sedgeFixture;
 
 const location = world.locations.find((candidate) => candidate.id === 'loc-sedge');
 if (!location) throw new Error('Sedge Landing fixture is missing loc-sedge.');
@@ -101,7 +128,7 @@ const BASE_CTX = chipValues(authoredChipScene(world, {
   resolve: (text: string) => text,
   resolveEntity: (_entity, text) => text,
 }));
-const playerOwner: Owner = { key: 'player', name: PLAYER, stats: world.stats as PlayerStat[] };
+const playerOwner: Owner = { key: 'player', name: PLAYER, stats: familiar?.playerStats ?? world.stats as PlayerStat[] };
 const entityOwner = (id: string): Owner => {
   const entity = world.entities.find((e) => e.id === id);
   if (!entity) throw new Error(`No entity ${id} in Sedge Landing.`);
@@ -167,6 +194,9 @@ const BONDS: StatGroup = { id: 'g-bonds', name: 'Bonds', aiDescription: 'Relatio
 const STAT_GROUPS: Record<string, StatGroup> = {
   Vigor: { id: 'g-body', name: 'Body', aiDescription: 'Physical condition.', parentId: null, order: 0 },
   Resolve: { id: 'g-mind', name: 'Mind', aiDescription: 'Will and nerve.', parentId: null, order: 1 },
+  Energy: { id: 'g-body', name: 'Body', aiDescription: 'Physical condition.', parentId: null, order: 0 },
+  Fear: { id: 'g-mind', name: 'Mind', aiDescription: 'Will and nerve.', parentId: null, order: 1 },
+  Morale: { id: 'g-mind', name: 'Mind', aiDescription: 'Will and nerve.', parentId: null, order: 1 },
   Trust: BONDS,
   Suspicion: BONDS,
   Stock: { id: 'g-trade', name: 'Trade', aiDescription: 'Goods for sale.', parentId: null, order: 3 },
@@ -327,6 +357,54 @@ function framed(arm: keyof typeof FRAMING_ARMS, owners: Owner[], narration: stri
   return { ...call, system: FRAMINGS[wording].reduce((text, [from, to]) => swap(text, from, to), call.system) };
 }
 
+/** Leave-one-out ablations of the shipped request at ABLATION_REF: each arm deletes one section or line. */
+const ABLATION_REF = '84a15574';
+const cut = (from: RegExp): [RegExp, string] => [from, ''];
+const ABLATIONS = {
+  // Whole sections.
+  XR: { system: [cut(/ Each stat is a number[^.]*\. The narrator reads the stats[^.]*\./)] },
+  XL: { system: [cut(/Each character's stats sit under their name, a ### heading[^\n]*\n/)] },
+  XC: { system: [cut(/Current readings \(shown as[^\n]*\n/)] },
+  XW: { system: [cut(/## Game World\n[\s\S]*?(?=## Stats\n)/)] },
+  XT: { system: [cut(/## Traits\n[\s\S]*?(?=## What to change\n)/)] },
+  XA: { system: [cut(/## What to change\n[\s\S]*?(?=## Format\n)/)] },
+  XF: { system: [cut(/\n+## Format\n[\s\S]*$/)] },
+  XU: { user: [cut(/ A clear shift in how a character regards the player[^\n]*$/)] },
+  XUA: { user: [cut(/\n\nGive each character's stats[^\n]*$/)] },
+  // One line each, of What to change and Format.
+  XA1: { system: [cut(/- The RIGHT stat in the RIGHT direction[^\n]*\n/)] },
+  XA2: { system: [cut(/- Many turns move no stat at all[^\n]*\n/)] },
+  XA3: { system: [cut(/- List a stat only for a change you can point to[^\n]*\n/)] },
+  XA4: { system: [cut(/- Report each stat that genuinely moved[^\n]*\n/)] },
+  XA5: { system: [cut(/- The amount is a rough judgment[^\n]*\n/)] },
+  XA6: { system: [cut(/- Each stat belongs to the character it sits under[^\n]*\n/)] },
+  XF1: { system: [cut(/- One key per character, named exactly as its heading shows[^\n]*\n/)] },
+  XF2: { system: [cut(/- Put the sign on the number[^\n]*\n/)] },
+  XF3: { system: [cut(/- A value or maximum that did not move gets 0\.\n/)] },
+  XF4: { system: [cut(/\n- Write the whole object on one line\.$/)] },
+  // Vigor's description names what moves it, for the player and every entity with Vigor.
+  SV: { system: [[/Physical energy and stamina\./g, 'Physical energy and stamina. Hard work, injury, and going without food or sleep lower it; rest and food raise it.']] },
+  // The lines both passes read as noise, cut together: the role framing, A1 and A2.
+  XN: { system: [
+    cut(/ Each stat is a number[^.]*\. The narrator reads the stats[^.]*\./),
+    cut(/- The RIGHT stat in the RIGHT direction[^\n]*\n/),
+    cut(/- Many turns move no stat at all[^\n]*\n/),
+  ] },
+} satisfies Record<string, Wording>;
+type AblationArm = keyof typeof ABLATIONS | `${keyof typeof ABLATIONS}G`;
+const ablationOf = (arm: Arm) => (arm.endsWith('G') ? arm.slice(0, -1) : arm);
+const isAblation = (arm: Arm): arm is AblationArm & Arm => /^(X|SV)/.test(arm) && ablationOf(arm) in ABLATIONS;
+const ablationBase = arms.some(isAblation) ? await promptsAt(ABLATION_REF) : undefined;
+function ablated(arm: AblationArm, owners: Owner[], narration: string): Call {
+  const call = shippedCall(owners, narration, arm.endsWith('G') ? 'described' : undefined, ablationBase);
+  const { system = [], user = [] }: Wording = ABLATIONS[ablationOf(arm) as keyof typeof ABLATIONS];
+  return {
+    ...call,
+    system: system.reduce((text, [from, to]) => swap(text, from, to), call.system),
+    user: user.reduce((text, [from, to]) => swap(text, from, to), call.user),
+  };
+}
+
 /** SG with each group bullet in the Stats section reshaped and its stat bullets dedented to the owner's level:
  *  a `####` sub-heading over its description (SH), or a plain `Name: description` line (SP). Prototype only. */
 function regroupedCall(arm: 'SH' | 'SP', owners: Owner[], narration: string): Call {
@@ -346,11 +424,45 @@ function regroupedCall(arm: 'SH' | 'SP', owners: Owner[], narration: string): Ca
   return { ...call, system: call.system.slice(0, start) + section + call.system.slice(end) };
 }
 
+/** What a lean reply holds per stat: every change with 0 (L), every new reading (LV), or only the changed stats (LD). */
+const LEAN_FORMATS = {
+  L: "Its value gives each of that character's stats this turn's change as a signed whole number between -20 and 20, and 0 for a stat that did not change.",
+  LV: "Its value gives each of that character's stats its reading after this turn, as a whole number within that stat's range. A stat that did not change keeps its current reading.",
+  LR: "Its value gives each of that character's stats this turn's change as a signed whole number between -20 and 20, and 0 for a stat that did not change. Record every change the narration shows, even a small one.",
+  LT: "Its value gives each of that character's stats this turn's change as a signed whole number between -20 and 20, and 0 for a stat that did not change.",
+  LD: "Its value holds only the stats this turn changed, each with its change as a signed whole number between -20 and 20. Leave out every stat that did not change; a character with no changed stat gets an empty object.",
+} as const;
+type LeanArm = keyof typeof LEAN_FORMATS;
+const isLean = (arm: Arm): arm is LeanArm => arm in LEAN_FORMATS;
+
+/** The lean request: every owner's stats as name and reading, one format line, then the narration. */
+function leanCall(arm: LeanArm, owners: Owner[], narration: string): Call {
+  const line = (s: PlayerStat) => `- ${s.name}: ${s.value}/${s.max}${s.description ? `. ${s.description}` : ''}`;
+  const system = [
+    "You track the stats of the characters in a roleplay. Read the narration and record how it changed each character's stats.",
+    ...owners.map((o) => `\n### ${o.name}\n${o.stats.map(line).join('\n')}`),
+    `\nOutput one JSON object on one line. One key per character, named as its heading shows. ${LEAN_FORMATS[arm]}`,
+  ].join('\n');
+  const field = (s: PlayerStat) => (arm === 'LV' ? { type: 'integer', minimum: s.min ?? 0, maximum: s.max ?? 100 } : { type: 'integer', minimum: -20, maximum: 20 });
+  const schema = {
+    type: 'object', additionalProperties: false, required: owners.map((o) => o.name),
+    properties: Object.fromEntries(owners.map((o) => [o.name, {
+      type: 'object', additionalProperties: false, required: arm === 'LD' ? [] : o.stats.map((s) => s.name),
+      properties: Object.fromEntries(o.stats.map((s) => [s.name, field(s)])),
+    }])),
+  };
+  const regard = arm === 'LT' ? "\n\nA clear shift in how a character regards the player moves that character's own stat." : '';
+  // Room for a pretty-printed object: the lean prompt carries no one-line rule the model keeps to.
+  return { system, user: `Narration: ${narration}${regard}`, maxTokens: 24 * total(owners) + 24 * owners.length + 32, schema };
+}
+
 function callsFor(arm: Arm, owners: Owner[], narration: string): Call[] {
+  if (isLean(arm)) return [leanCall(arm, owners, narration)];
   if (arm === 'S') return [shippedCall(owners, narration)];
   if (arm === 'S0') return [shippedCall(owners, narration, undefined, s0Prompts)];
   if (isWording(arm)) return [worded(arm, owners, narration)];
   if (isFraming(arm)) return [framed(arm, owners, narration)];
+  if (isAblation(arm)) return [ablated(arm, owners, narration)];
   if (arm === 'SG') return [shippedCall(owners, narration, 'described')];
   if (arm === 'SH' || arm === 'SP') return [regroupedCall(arm, owners, narration)];
   if (arm === 'SGB') return [shippedCall(owners, narration, 'bare')];
@@ -464,12 +576,28 @@ async function complete(call: Call, seed: number): Promise<Reply> {
   }
 }
 
+/** LV's reply with each new reading turned into its change from the current reading; unreadable text passes through. */
+function readingsToChanges(raw: string, owners: Owner[]): string {
+  let body: unknown;
+  try { body = JSON.parse(raw); } catch { return raw; }
+  if (!body || typeof body !== 'object') return raw;
+  return JSON.stringify(Object.fromEntries(Object.entries(body as Record<string, unknown>).map(([name, stats]) => {
+    const owner = owners.find((o) => o.name === name);
+    if (!owner || !stats || typeof stats !== 'object') return [name, stats];
+    return [name, Object.fromEntries(Object.entries(stats as Record<string, unknown>).map(([stat, reading]) => {
+      const current = owner.stats.find((s) => s.name === stat)?.value;
+      return [stat, typeof reading === 'number' && typeof current === 'number' ? reading - current : reading];
+    }))];
+  })));
+}
+
 function parse(arm: Arm, owners: Owner[], calls: Call[], replies: Reply[]): Parsed {
   if (arm === 'A' || arm === 'A2') return parseOwnerLines(replies[0].raw, owners);
   if (arm === 'A3') return parseOwnerBlocks(replies[0].raw, owners);
-  if (arm === 'C' || arm === 'C2' || arm === 'C3' || arm === 'D') return parseJsonReply(replies[0].raw, owners);
+  if (arm === 'LV') return parseJsonReply(readingsToChanges(replies[0].raw, owners), owners);
+  if (arm === 'C' || arm === 'C2' || arm === 'C3' || arm === 'D' || isLean(arm)) return parseJsonReply(replies[0].raw, owners);
   if (arm === 'C3P') return parseJsonReply(replies[0].raw, [playerOwner]);
-  if (arm === 'S' || arm === 'S0' || arm === 'SU' || arm === 'SN' || arm === 'SG' || arm === 'SGB' || arm === 'SGO' || arm === 'SH' || arm === 'SP' || isWording(arm) || isFraming(arm)) return parsePlainLines(replies[0].raw, playerOwner, calls[0].snapshot, (id) => (id === PLAYER_OWNER ? playerOwner.key : id));
+  if (arm === 'S' || arm === 'S0' || arm === 'SU' || arm === 'SN' || arm === 'SG' || arm === 'SGB' || arm === 'SGO' || arm === 'SH' || arm === 'SP' || isWording(arm) || isFraming(arm) || isAblation(arm)) return parsePlainLines(replies[0].raw, playerOwner, calls[0].snapshot, (id) => (id === PLAYER_OWNER ? playerOwner.key : id));
   const parts = calls.flatMap((call, i) => (call.owner ? [parsePlainLines(replies[i].raw, call.owner, call.snapshot)] : []));
   return {
     changes: parts.flatMap((p) => p.changes), invalid: parts.reduce((n, p) => n + p.invalid, 0), unreadable: false,
@@ -498,7 +626,7 @@ interface Result {
 }
 const results: Result[] = [];
 const started = Date.now();
-console.log(`model ${model} · ${endpoint} · runs ${runs} · pool ${pool} · arms ${arms.join(',')}`);
+console.log(`model ${model} · ${endpoint} · runs ${runs} · pool ${pool} · sheet ${sheet} · arms ${arms.join(',')}`);
 const jobs = cases.flatMap((c) => Array.from({ length: runs }, (_, run) => arms.map((arm) => ({ arm, c, run })))).flat();
 let next = 0;
 await Promise.all(Array.from({ length: pool }, async () => {
