@@ -179,6 +179,16 @@ Rulings from the grill, numbered as asked.
   - The tuning set is the 21 Sedge cases on the sedge sheet. The held-out set is the 12 held-out cases. The familiar sheet is outside the bar and serves only the cap check, once on cloud.
   - The arm without `max` keys only measures their cost. The regard arm decides only whether the regard line ships. Neither is in the bar.
   - Layout: the role line, then Game World, Traits and Player Notes, then a `## Stats` section that holds each owner's `###` block, then the format lines.
+- **Q86** (ticket 26 result) Lean missed Q84's bar on Cydonia, so nothing ships, and Q78's FB wording stays the default. Exact % / invented changes for lean flat and lean grouped against the `921dcace` prompt flat and grouped:
+
+  | Set | Lean flat | Lean grouped | Shipped flat | Shipped grouped |
+  |---|---|---|---|---|
+  | Cloud tuning 21 × 6 | 70 / 14 | 61 / 13 | 50 / 34 | 60 / 20 |
+  | Cloud held-out 12 × 6 | 60 / 18 | 63 / 13 | 42 / 18 | 42 / 16 |
+  | Cydonia tuning 21 × 3 | 14 / 94 | 21 / 93 | 33 / 57 | 51 / 38 |
+  | Cydonia held-out 12 × 3 | 3 / 67 | 8 / 66 | 36 / 46 | 42 / 40 |
+
+  Without the "What to change" rules, Cydonia invents small player Vigor and Resolve drops on calm turns. The work stays unlanded on branch `ticket/entity-stats-26` (`ee82c580`). The next step is the user's call.
 
 Derived from Q7 and confirmed with the summary:
 

@@ -13,6 +13,7 @@ Owning effort: [Entity Stats](../../entity-stats/spec.md), rulings Q45, Q56, Q64
 ## Progress
 
 - 2026-10-11, ticket 23 (Q78): wording FB lifts Cydonia. With groups, exact is 54–57% against 43–44%, and invented changes are 37–39 against 49–50. Flat, exact is 37% against 29–32%, and invented changes are 55–56 against 63–64. The blocker stays open until a Cydonia run against the full Q28 bar clears it.
+- 2026-10-11, ticket 26 (Q86): a lean prompt without the "What to change" rules made Cydonia far worse, at 3–21% exact with 66–94 invented changes. The rules are what hold Cydonia's invented changes down. Lean did not ship.
 
 ## Done when
 
