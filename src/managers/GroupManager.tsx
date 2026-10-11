@@ -10,6 +10,7 @@ import { ListDetailFirstRow } from '@/components/ui/list-detail';
 import { Hint } from '@/components/ui/typography';
 import { WorldInput } from '@/components/editor/WorldField';
 import { fieldFrame } from '@/lib/historyField';
+import { GroupAiHeadingField } from '@/components/editor/GroupAiHeadingField';
 
 type PickPreset = 'any' | 'exactlyOne' | 'upToOne' | 'custom';
 
@@ -97,6 +98,12 @@ const GroupManager = ({ group, ownerId, readOnly = false, detailsHeader, details
         placeholders={placeholders}
         readOnly={readOnly}
         resizable
+      />
+      <GroupAiHeadingField
+        group={editingGroup}
+        members="traits"
+        onChange={(v) => handleChange('aiVisible', v)}
+        disabled={readOnly}
       />
       <div className="space-y-2">
         <Label htmlFor={`pick-count-${editingGroup.id}`}>Pick Count</Label>

@@ -78,6 +78,23 @@ describe('the live adapter', () => {
     expect(values['<ENTITIES>']).toContain('  stats:\n    Back:\n      Load: 4/10\n');
   });
 
+  it('leaves out the heading of a group the AI cannot see and keeps its members, in every chip', () => {
+    const nerve: StatGroup = { id: 'nerve', name: 'Nerve', aiDescription: 'Kept from the AI.', parentId: null, aiVisible: false };
+    const back: StatGroup = { id: 'back', name: 'Back', parentId: null, aiVisible: false };
+    const crew: TraitGroup = { id: 'crew', name: 'Crew', aiDescription: 'Also kept back.', parentId: null, aiVisible: false };
+    const load: PlayerStat = { ...grit, id: 'load', name: 'Load', description: '' };
+    const hauler = { ...harbormaster, stats: [{ ...load, groupId: 'back' }], statGroups: [back] };
+    const values = chipValues(liveChipScene(sources({
+      statPlacement: { groups: [nerve], authored: [{ ...grit, groupId: 'nerve' }] },
+      traits: [{ ...seaLegs, groupId: 'crew' }], traitGroups: [crew],
+      entities: [hauler, porter], allEntities: [hauler, porter], entityStats: { harbormaster: [load] },
+    })));
+    expect(values['<STATS DESCRIPTION|numbers.meaning.markdown>']).toBe('- **Grit:** 4/10 — Nerve.');
+    expect(values['<TRAITS DESCRIPTION>']).toBe('Sea Legs: Steady on any deck.');
+    expect(values['<ENTITIES>']).toContain('  stats:\n    Load: 4/10\n');
+    expect(values['<ENTITIES>']).not.toContain('Back');
+  });
+
   it('scopes the scene to the location a turn was routed to', () => {
     expect(liveChipScene(sources(), warehouse).presentIds).toEqual(['porter', 'stray']);
   });

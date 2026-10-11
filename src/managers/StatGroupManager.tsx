@@ -4,6 +4,7 @@ import { Label } from '@/components/ui/label';
 import PlaceholderField, { PlaceholderNameField } from '@/components/prompt/PlaceholderField';
 import { ListDetailFirstRow } from '@/components/ui/list-detail';
 import { fieldFrame } from '@/lib/historyField';
+import { GroupAiHeadingField } from '@/components/editor/GroupAiHeadingField';
 import type { StatGroup } from '@/types';
 
 /** Right-panel editor for a stat group: a name and a description. The player's stats and each entity's own use
@@ -35,6 +36,7 @@ const StatGroupManager = ({ group, write }: { group: StatGroup; write: (group: S
         placeholders={placeholders}
         resizable
       />
+      <GroupAiHeadingField group={editingGroup} members="stats" onChange={(v) => setField('aiVisible', v)} />
     </div>
   );
 };

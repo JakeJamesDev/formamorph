@@ -172,6 +172,35 @@ describe('buildStatContext with stat groups', () => {
       .toBe('Extra: 62/100\nBody:\n  What the body can take.\n  Vigor: 62/100');
   });
 
+  it('sends a hidden group\'s stats as loose stats and lifts its subgroup one level, heading kept', () => {
+    const hidden = groups.map((g) => (g.id === 'body' ? { ...g, aiVisible: false } : g));
+    expect(buildStatContext(authored, values, 'simple', { groups: hidden, authored })).toBe([
+      'Luck: 62/100', 'Vigor: 62/100', 'Grit: 62/100',
+      'Wounds:', '  Bleed: 62/100',
+      'Mind:', '  Focus: 62/100',
+      'Gear:', '  Load:', '    What the pack weighs.', '    Pack: 62/100',
+    ].join('\n'));
+  });
+
+  it('folds a hidden nested group\'s stats into its parent in every format', () => {
+    const hidden = groups.map((g) => (g.id === 'load' ? { ...g, aiVisible: false } : g));
+    const pack = authored.filter((s) => s.id === 'pack');
+    const placement = { groups: hidden, authored };
+    expect(buildStatContext(pack, values, 'simple', placement)).toBe('Gear:\n  Pack: 62/100');
+    expect(buildStatContext(pack, values, 'markdown', placement)).toBe('- **Gear:**\n  - **Pack:** 62/100');
+    expect(buildStatContext(pack, values, 'xml', placement)).toBe([
+      '<group>', '  <name>Gear</name>', '  <stat>', '    <name>Pack</name>', '    <value>62/100</value>', '  </stat>', '</group>',
+    ].join('\n'));
+  });
+
+  it('renders groups marked visible exactly as groups with no mark', () => {
+    const marked = groups.map((g) => ({ ...g, aiVisible: true }));
+    for (const format of ['simple', 'markdown', 'xml'] as const) {
+      expect(buildStatContext(authored, values, format, { groups: marked, authored }))
+        .toBe(buildStatContext(authored, values, format, { groups, authored }));
+    }
+  });
+
   it('renders a world with no groups byte for byte as the flat list, in the given order', () => {
     const flat = [stat('b', 'Beta', null, 1), stat('a', 'Alpha', null, 0), { ...vigor, groupId: null }] as PlayerStat[];
     // The output before stat groups reached the prompt.

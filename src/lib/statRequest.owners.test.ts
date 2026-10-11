@@ -107,6 +107,18 @@ describe('the stat request with entities', () => {
       .toEqual(flat.targets.map(({ ownerKey, key, maxKey }) => [ownerKey, key, maxKey]));
   });
 
+  it('sends a hidden group\'s stats under their owner heading with no group heading', () => {
+    const bonds: StatGroup = { id: 'bonds', name: 'Bonds', aiDescription: 'How Odette regards the player.', parentId: null, aiVisible: false };
+    const grouped: Entity = { ...odette, statGroups: [bonds], stats: [stat({ groupId: 'bonds' })] };
+    const snapshot = createStatRequest([vigor, playerTrust], PLAYER_OWNER, {
+      entities: statRequestOwners([grouped], values, none, (s) => s, noTraits, (groups) => groups),
+    });
+    const prompt = build(snapshot).systemPrompt;
+    expect(prompt).toContain('### Odette\n- **Trust:** 40/100\n');
+    expect(prompt).not.toContain('Bonds');
+    expect(prompt).not.toContain('How Odette regards the player.');
+  });
+
   it('scales the cap with stats and owners', () => {
     expect(build(snapshotFor([])).maxTokens).toBe(statSchemaCap(2, 1));
     expect(build(snapshotFor([bram, odette])).maxTokens).toBe(statSchemaCap(5, 3));

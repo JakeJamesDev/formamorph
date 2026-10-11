@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  buildTraitTree, isDescendantGroup, buildTraitContext,
+  buildTraitTree, isDescendantGroup, buildTraitContext, traitsInContextOrder,
   flattenTraitTree, removeChildrenOf, getTraitDropProjection, applyTraitDrop,
   duplicateTraitNode, ownedTraitTree, applyOwnedTraitDrop, getOwnedTraitDropProjection, linkRowId,
   linkRefusal, entityRootTraitTree, getEntityRootDropProjection, applyEntityRootDrop,
@@ -225,6 +225,73 @@ describe('buildTraitContext', () => {
 
   it('returns an empty string when nothing is selected', () => {
     expect(buildTraitContext([], traits, groups)).toBe('');
+  });
+
+  describe('a group the AI cannot see', () => {
+    // World is hidden and holds Stormtouched and the Clan subgroup; Loner sits between World and Player.
+    const hidden: TraitGroup[] = [
+      { ...groups[0], aiDescription: 'Born of the storm clans.', aiVisible: false },
+      { ...group('clan', 'world', 1), name: 'Clan', aiDescription: 'Sworn to a clan.' },
+      { ...groups[1], order: 2 },
+    ];
+    const all: Trait[] = [
+      traits[0], { ...traits[1] }, { ...traits[2], order: 1 },
+      { id: 'thunder', name: 'Thunderborn', statChanges: [], groupId: 'clan', order: 0 },
+    ];
+    const ids = ['storm', 'quick', 'loner', 'thunder'];
+
+    it('simple: sends its traits ungrouped and its subgroup one level up, heading kept', () => {
+      expect(buildTraitContext(ids, all, hidden)).toBe(
+        'Stormtouched: lightning resistance\n' +
+        'Loner\n' +
+        'Clan:\n' +
+        '  Sworn to a clan.\n' +
+        '  Thunderborn\n' +
+        'Player:\n' +
+        '  Quick: +2 reflexes',
+      );
+    });
+
+    it('markdown: drops its bullet and keeps the subgroup at the top level', () => {
+      expect(buildTraitContext(ids, all, hidden, 'markdown')).toBe(
+        '- **Stormtouched:** lightning resistance\n' +
+        '- **Loner**\n' +
+        '- **Clan:** Sworn to a clan.\n' +
+        '  - **Thunderborn**\n' +
+        '- **Player:**\n' +
+        '  - **Quick:** +2 reflexes',
+      );
+    });
+
+    it('xml: drops its <group> and keeps the subgroup at the top level', () => {
+      expect(buildTraitContext(['storm', 'thunder'], all, hidden, 'xml')).toBe(
+        '<trait>\n  <name>Stormtouched</name>\n  <description>lightning resistance</description>\n</trait>\n' +
+        '<group>\n' +
+        '  <name>Clan</name>\n' +
+        '  <description>Sworn to a clan.</description>\n' +
+        '  <trait>\n    <name>Thunderborn</name>\n  </trait>\n' +
+        '</group>',
+      );
+    });
+
+    it('folds a hidden nested group\'s traits into its visible parent', () => {
+      const nested = hidden.map((g) => ({ ...g, aiVisible: g.id === 'clan' ? false : undefined }));
+      expect(buildTraitContext(['storm', 'thunder'], all, nested)).toBe(
+        'World:\n  Born of the storm clans.\n  Stormtouched: lightning resistance\n  Thunderborn',
+      );
+    });
+
+    it('lists the traits in the order it renders them', () => {
+      expect(traitsInContextOrder(ids, all, hidden).map((t) => t.id)).toEqual(['storm', 'loner', 'thunder', 'quick']);
+    });
+  });
+
+  it('renders groups marked visible exactly as groups with no mark', () => {
+    const marked = groups.map((g) => ({ ...g, aiVisible: true }));
+    for (const format of ['simple', 'markdown', 'xml'] as const) {
+      expect(buildTraitContext(['storm', 'quick', 'loner'], traits, marked, format))
+        .toBe(buildTraitContext(['storm', 'quick', 'loner'], traits, groups, format));
+    }
   });
 });
 

@@ -3,7 +3,7 @@
 // the block sent to the AI. The editor and selection screen build/walk the tree from the two flat world arrays.
 
 import {
-  buildTree, flattenTree, getDropProjection, applyDrop, duplicateNode,
+  buildTree, flattenTree, getDropProjection, applyDrop, duplicateNode, aiVisibleTree,
   removeChildrenOf as removeChildrenOfGeneric, isDescendantGroup as isDescendantGroupGeneric,
   type GroupTreeNode, type FlatTreeNode,
 } from './groupTree';
@@ -583,25 +583,27 @@ export function applyOwnedTraitDrop(
   );
 }
 
-/** The selected traits directly in one group (null: ungrouped), in authored order. */
-const selectedTraitsIn = (traits: Trait[], sel: ReadonlySet<string>, groupId: string | null): Trait[] =>
-  traits
-    .filter((t) => (t.groupId ?? null) === groupId && sel.has(t.id))
-    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+/** The selected traits among one level's nodes, in tree order. */
+const selectedLeaves = (nodes: TraitTreeNode[], sel: ReadonlySet<string>): Trait[] =>
+  nodes.flatMap((node) => (node.kind === 'leaf' && sel.has(node.id) ? [node.leaf] : []));
+
+/** The trait tree the AI reads, with every hidden group's heading lifted out. */
+const aiTraitTree = (groups: TraitGroup[], traits: Trait[]): TraitTreeNode[] => aiVisibleTree(buildTraitTree(groups, traits));
 
 /** The selected traits in the order `buildTraitContext` renders them: ungrouped first, then group by group. */
 export function traitsInContextOrder(selectedIds: Iterable<string>, traits: Trait[], groups: TraitGroup[]): Trait[] {
   const sel = new Set(selectedIds);
-  const selectedIn = (groupId: string | null) => selectedTraitsIn(traits, sel, groupId);
   const walk = (nodes: TraitTreeNode[]): Trait[] =>
-    nodes.flatMap((node) => (node.kind === 'group' ? [...selectedIn(node.id), ...walk(node.children)] : []));
-  return [...selectedIn(null), ...walk(buildTraitTree(groups, traits))];
+    nodes.flatMap((node) => (node.kind === 'group' ? [...selectedLeaves(node.children, sel), ...walk(node.children)] : []));
+  const tree = aiTraitTree(groups, traits);
+  return [...selectedLeaves(tree, sel), ...walk(tree)];
 }
 
 /**
  * Build the trait block sent to the AI: ungrouped selected traits first, then each group (depth-first) that
  * has ≥1 selected trait, emitting the group name + its AI description (if non-blank) above its selected
- * traits. A trait's blank AI description falls back to just its name. Empty → ''.
+ * traits. A group the AI can't see gives its traits and subgroups to its parent. A trait's blank AI
+ * description falls back to just its name. Empty → ''.
  *
  * `format` controls the shape (mirrors the Default/Simple presets): `'simple'` is plain labels + indentation
  * (`World:` / `Name: desc`); `'markdown'` is nested bold bullets (`- **World:** desc` / `- **Name:** desc`)
@@ -622,15 +624,15 @@ export function buildTraitContext(
     const bare = md ? `**${t.name}**` : t.name;
     return t.aiDescription?.trim() ? `${name} ${t.aiDescription.trim()}` : bare;
   };
-  const selectedIn = (groupId: string | null) => selectedTraitsIn(traits, sel, groupId);
+  const tree = aiTraitTree(groups, traits);
 
   const lines: string[] = [];
-  for (const t of selectedIn(null)) lines.push(md ? `- ${traitLine(t)}` : traitLine(t));
+  for (const t of selectedLeaves(tree, sel)) lines.push(md ? `- ${traitLine(t)}` : traitLine(t));
 
   const walk = (nodes: TraitTreeNode[], depth: number) => {
     for (const node of nodes) {
       if (node.kind !== 'group') continue;
-      const groupTraits = selectedIn(node.id);
+      const groupTraits = selectedLeaves(node.children, sel);
       const indent = '  '.repeat(depth);
       const desc = node.group.aiDescription?.trim();
       if (groupTraits.length) {
@@ -647,7 +649,7 @@ export function buildTraitContext(
       walk(node.children, depth + 1);
     }
   };
-  walk(buildTraitTree(groups, traits), 0);
+  walk(tree, 0);
   return lines.join('\n');
 }
 
@@ -655,7 +657,7 @@ export function buildTraitContext(
  *  `<group>` nesting its `<name>`/`<description>`, its traits, and any descendant groups. A group with no
  *  directly-selected trait isn't wrapped but its descendants still surface (mirrors the simple/markdown walk). */
 function buildTraitContextXml(sel: Set<string>, traits: Trait[], groups: TraitGroup[]): string {
-  const selectedIn = (groupId: string | null) => selectedTraitsIn(traits, sel, groupId);
+  const tree = aiTraitTree(groups, traits);
 
   const traitXml = (t: Trait, pad: string): string => {
     const desc = t.aiDescription?.trim();
@@ -668,7 +670,7 @@ function buildTraitContextXml(sel: Set<string>, traits: Trait[], groups: TraitGr
     const out: string[] = [];
     for (const node of nodes) {
       if (node.kind !== 'group') continue;
-      const groupTraits = selectedIn(node.id);
+      const groupTraits = selectedLeaves(node.children, sel);
       const childBlocks = walk(node.children, groupTraits.length ? `${pad}  ` : pad);
       if (!groupTraits.length) {
         out.push(...childBlocks);
@@ -684,7 +686,7 @@ function buildTraitContextXml(sel: Set<string>, traits: Trait[], groups: TraitGr
     return out;
   };
 
-  const lines = selectedIn(null).map((t) => traitXml(t, ''));
-  lines.push(...walk(buildTraitTree(groups, traits), ''));
+  const lines = selectedLeaves(tree, sel).map((t) => traitXml(t, ''));
+  lines.push(...walk(tree, ''));
   return lines.join('\n');
 }

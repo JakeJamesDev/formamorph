@@ -198,6 +198,7 @@ Groups organize the list. A trait group also has text of its own:
 | **Group Name** | The heading on the trait selection screen |
 | **Player-Facing Description** | Text the player reads under the heading |
 | **AI-Facing Description** | A header the AI reads above the group's active traits, such as *"Origin: where this life began"*. A group with no active traits is skipped. |
+| **Show Heading to AI** | Sends the group's name and description to the AI. Clear it to group traits only for yourself: the AI then reads the group's traits as if they had no group, and a group inside it moves up one level. |
 
 ### Pick Count
 

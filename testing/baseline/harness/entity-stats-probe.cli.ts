@@ -18,6 +18,7 @@
 //   SN       S, with no max keys in the schema, the format or the user line
 //   SG       S, with every owner's stats in author-style groups (Body, Mind, Bonds, Trade)
 //   SGB      SG with bare group headings, no descriptions
+//   SGO      SG with every group's heading hidden from the AI (`aiVisible: false`); matches S byte for byte
 //   SH       SG with each group as a #### sub-heading and its stats flat beneath
 //   SP       SG with each group as a plain `Name: description` line and its stats flat beneath
 //   S0       S, with the stat prompts as committed at --s0-ref (default HEAD, the before arm for an uncommitted edit)
@@ -67,7 +68,7 @@ const model = argVal('--model', 'default');
 const runs = Number(argVal('--runs', '6'));
 const pool = Number(argVal('--pool', '3'));
 const only = argVal('--only', '');
-const ALL_ARMS = ['control', 'A', 'A2', 'A3', 'B', 'C', 'C2', 'C3', 'D', 'E', 'S', 'SU', 'SN', 'SG', 'SGB', 'SH', 'SP', 'C3P', 'S0', 'WA', 'WB', 'WC', 'WD', 'WE', 'WF', 'WH', 'WJ', 'WK', 'WL', 'WP', 'WQ', 'WR'] as const;
+const ALL_ARMS = ['control', 'A', 'A2', 'A3', 'B', 'C', 'C2', 'C3', 'D', 'E', 'S', 'SU', 'SN', 'SG', 'SGB', 'SGO', 'SH', 'SP', 'C3P', 'S0', 'WA', 'WB', 'WC', 'WD', 'WE', 'WF', 'WH', 'WJ', 'WK', 'WL', 'WP', 'WQ', 'WR'] as const;
 type Arm = typeof ALL_ARMS[number];
 const arms = argVal('--arms', ALL_ARMS.join(',')).split(',') as Arm[];
 const SEED = 424242;
@@ -168,18 +169,24 @@ const STAT_GROUPS: Record<string, StatGroup> = {
   Suspicion: BONDS,
   Stock: { id: 'g-trade', name: 'Trade', aiDescription: 'Goods for sale.', parentId: null, order: 3 },
 };
-/** Every stat of `stats` in its SG group; `bare` drops the group descriptions (SGB). */
-function grouped(stats: readonly PlayerStat[], bare: boolean): StatPlacement {
-  const groups = [...new Map(stats.map((s) => STAT_GROUPS[s.name]).map((g) => [g.id, bare ? { ...g, aiDescription: '' } : g])).values()];
+type GroupStyle = 'described' | 'bare' | 'hidden';
+const GROUP_STYLE_TRANSFORMS: Record<GroupStyle, (g: StatGroup) => StatGroup> = {
+  described: (g) => g,
+  bare: (g) => ({ ...g, aiDescription: '' }),
+  hidden: (g) => ({ ...g, aiVisible: false }),
+};
+/** Every stat of `stats` in its SG group, styled: `bare` drops the descriptions (SGB), `hidden` the headings (SGO). */
+function grouped(stats: readonly PlayerStat[], style: GroupStyle): StatPlacement {
+  const groups = [...new Map(stats.map((s) => STAT_GROUPS[s.name]).map((g) => [g.id, GROUP_STYLE_TRANSFORMS[style](g)])).values()];
   return { groups, authored: stats.map((s) => ({ ...s, groupId: STAT_GROUPS[s.name].id })) };
 }
 
 /** The request the app sends, built by the app's own stat pass: the player's stats and each present owner's,
  *  in groups when `groups` names a style, from `prompts` when given. */
 function shippedCall(
-  owners: Owner[], narration: string, groups?: 'described' | 'bare', prompts = { system: shippedStatPrompt, user: shippedStatUserPrompt },
+  owners: Owner[], narration: string, groups?: GroupStyle, prompts = { system: shippedStatPrompt, user: shippedStatUserPrompt },
 ): Call {
-  const placement = (stats: readonly PlayerStat[]) => (groups ? { placement: grouped(stats, groups === 'bare') } : {});
+  const placement = (stats: readonly PlayerStat[]) => (groups ? { placement: grouped(stats, groups) } : {});
   const snapshot = createStatRequest(playerOwner.stats, PLAYER_OWNER, {
     ...placement(playerOwner.stats),
     entities: owners.filter((o) => o !== playerOwner).map((o) => ({ id: o.key, name: o.name, stats: o.stats, ...placement(o.stats) })),
@@ -307,6 +314,7 @@ function callsFor(arm: Arm, owners: Owner[], narration: string): Call[] {
   if (arm === 'SG') return [shippedCall(owners, narration, 'described')];
   if (arm === 'SH' || arm === 'SP') return [regroupedCall(arm, owners, narration)];
   if (arm === 'SGB') return [shippedCall(owners, narration, 'bare')];
+  if (arm === 'SGO') return [shippedCall(owners, narration, 'hidden')];
   if (arm === 'SU' || arm === 'SN') return [shippedVariant(arm, owners, narration)];
   if (arm === 'C3P') return callsFor('C3', [playerOwner], narration);
   if (arm === 'control') {
@@ -421,7 +429,7 @@ function parse(arm: Arm, owners: Owner[], calls: Call[], replies: Reply[]): Pars
   if (arm === 'A3') return parseOwnerBlocks(replies[0].raw, owners);
   if (arm === 'C' || arm === 'C2' || arm === 'C3' || arm === 'D') return parseJsonReply(replies[0].raw, owners);
   if (arm === 'C3P') return parseJsonReply(replies[0].raw, [playerOwner]);
-  if (arm === 'S' || arm === 'S0' || arm === 'SU' || arm === 'SN' || arm === 'SG' || arm === 'SGB' || arm === 'SH' || arm === 'SP' || isWording(arm)) return parsePlainLines(replies[0].raw, playerOwner, calls[0].snapshot, (id) => (id === PLAYER_OWNER ? playerOwner.key : id));
+  if (arm === 'S' || arm === 'S0' || arm === 'SU' || arm === 'SN' || arm === 'SG' || arm === 'SGB' || arm === 'SGO' || arm === 'SH' || arm === 'SP' || isWording(arm)) return parsePlainLines(replies[0].raw, playerOwner, calls[0].snapshot, (id) => (id === PLAYER_OWNER ? playerOwner.key : id));
   const parts = calls.flatMap((call, i) => (call.owner ? [parsePlainLines(replies[i].raw, call.owner, call.snapshot)] : []));
   return {
     changes: parts.flatMap((p) => p.changes), invalid: parts.reduce((n, p) => n + p.invalid, 0), unreadable: false,

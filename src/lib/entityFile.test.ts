@@ -410,6 +410,12 @@ describe('a character card’s owned traits', () => {
     ]);
   });
 
+  it('keeps a group hidden from the AI hidden through the card', () => {
+    const hidden = { ...tamer, traitGroups: [{ ...tamer.traitGroups![0], aiVisible: false }] };
+    const parsed = roundTrip(buildEntityCardData(hidden, undefined, {}, undefined, { ...origin, entities: [hidden] }));
+    expect(parsed.traitGroups).toEqual(hidden.traitGroups);
+  });
+
   it('binds on import to the one trait in the new world carrying the name', () => {
     const parsed = roundTrip(buildEntityCardData(tamer, undefined, {}, undefined, origin));
     const world = { traits: [{ id: 'n-paladin', name: 'Paladin', statChanges: [] }], traitGroups: [], entities: [] };
