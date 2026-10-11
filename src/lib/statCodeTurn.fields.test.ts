@@ -150,7 +150,7 @@ describe('runStatCodeTurn entry fields', () => {
   it('reads a switched-off stat as a real entry, its writes dropped and reported', async () => {
     const out = await runStatCodeTurn({
       stats: [
-        stat({ id: 'a', name: 'A', value: 0, code: 'stats.B.value = 9; return (!stats.B.enabled && stats.B.value === 7 && stats.B.max === 40 && stats.B.previous.value === 7) ? 1 : 0;' }),
+        stat({ id: 'a', name: 'A', value: 0, code: 'const real = !stats.B.enabled && stats.B.value === 7 && stats.B.max === 40 && stats.B.previous.value === 7; stats.B.value = 9; return real ? 1 : 0;' }),
         stat({ id: 'b', name: 'B', value: 7, max: 40, code: 'return 99;' }),
       ],
       enabled: { b: false }, previous: [], asks: [], regenApplied: {}, clock: {}, bearers: played(),
@@ -177,13 +177,13 @@ describe('runStatCodeTurn entry fields', () => {
 
   it('drops and reports every read-only stat write, and keeps self’s own writes', async () => {
     const out = await run([[
-      "stats.S1.value = 5; stats.S1.name = 'z'; self.name = 'z'; self.previous.value = 3; self.delta.ai.value = 2;",
+      "stats.S1.previous.value = 5; stats.S1.name = 'z'; self.name = 'z'; self.previous.value = 3; self.delta.ai.value = 2;",
       'self.delta = null; self.value = 4;',
-      "return self.value + (self.name === 'S0' && stats.S1.value === 0 && self.previous.value === 0 && self.delta.ai.value === 0 ? 10 : 0);",
+      "return self.value + (self.name === 'S0' && stats.S1.previous.value === 0 && stats.S1.name === 'S1' && self.previous.value === 0 && self.delta.ai.value === 0 ? 10 : 0);",
     ].join('\n'), 'return 0;']);
     expect(valueOf(out, 's0')).toBe(14);
     const reported = vi.mocked(console.warn).mock.calls.map(([line]) => String(line)).join('\n');
-    for (const path of ['stats.S1.value', 'stats.S1.name', 'stats.S0.name', 'stats.S0.previous.value', 'stats.S0.delta.ai.value', 'stats.S0.delta']) {
+    for (const path of ['stats.S1.previous.value', 'stats.S1.name', 'stats.S0.name', 'stats.S0.previous.value', 'stats.S0.delta.ai.value', 'stats.S0.delta']) {
       expect(reported).toContain(path);
     }
     expect(reported).not.toContain('stats.S0.value');

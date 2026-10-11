@@ -1,7 +1,7 @@
 import type { CascadeOffTraitIds, CodeBounds, CodePins, Dictionary, OwnedTraitStates, Placeholder, PlayerStat, Trait } from '@/types';
 import {
-  executeStatCode, keyedEntities, type EntityTraitWrites, type KeyedEntities, type PlaceholderWrite,
-  type StatClock, type StatCodeResult, type StatTurnInputs, type TraitWrite, type ValueAndMax,
+  CODE_BOUND_FIELDS, executeStatCode, keyedEntities, type EntityTraitWrites, type KeyedEntities, type PlaceholderWrite,
+  type StatClock, type StatCodeResult, type StatTurnInputs, type StatWrite, type TraitWrite, type ValueAndMax,
 } from './statCodeExecutor';
 import { statCodeName, statCodeNamed } from './statCodeNames';
 import {
@@ -161,6 +161,8 @@ const RESULT_WARNINGS = {
   unknownTraits: 'switched traits the world does not have',
   acquiredWrites: 'wrote acquired on',
   readOnlyWrites: 'wrote read-only fields',
+  unknownStatWrites: 'wrote stats that do not exist',
+  disabledStatWrites: 'wrote switched-off stats',
   unknownEntities: 'switched traits of entities not in the game',
 } as const satisfies Partial<Record<keyof StatCodeResult, string>>;
 
@@ -196,11 +198,43 @@ interface OwnerRun {
   writes: OwnerWrites;
 }
 
-/** What one owner's code wrote, by stat id. */
+/** What one owner's code wrote, by the writing stat's id. `stats` holds its writes to its own stat and to
+ *  the owner's others. */
 interface OwnerWrites {
-  values: Map<string, { value: number | null; bounds: CodeBounds | null }>;
+  stats: Map<string, readonly TargetWrite[]>;
   placeholders: Map<string, readonly PlaceholderWrite[]>;
   traits: Map<string, StatTraitWrites>;
+}
+
+/** One stat's fields a box wrote. */
+type TargetWrite = Pick<StatWrite, 'id' | 'value' | keyof CodeBounds>;
+
+/** A target's merged write, as `settleWrites` lays it on. */
+type SettledWrite = { value: number | null; bounds: CodeBounds | null };
+
+/** What one run wrote to stats, its own first. */
+const targetWrites = (stat: PlayerStat, result: StatCodeResult): TargetWrite[] => [
+  ...(result.value !== null || result.bounds ? [{ id: stat.id, ...result.bounds, ...(result.value === null ? {} : { value: result.value }) }] : []),
+  ...result.statWrites ?? [],
+];
+
+/** Each target's writes merged field by field in writer order, the later writer winning a field. */
+function statWritesInStatOrder(
+  writers: readonly PlayerStat[],
+  writes: OwnerWrites['stats'],
+): Map<string, SettledWrite> {
+  const out = new Map<string, SettledWrite>();
+  for (const writer of writers) {
+    for (const { id, value, ...bounds } of writes.get(writer.id) ?? []) {
+      const at = out.get(id) ?? { value: null, bounds: null };
+      const written = Object.fromEntries(CODE_BOUND_FIELDS.flatMap((field) => (bounds[field] === undefined ? [] : [[field, bounds[field]]])));
+      out.set(id, {
+        value: value ?? at.value,
+        bounds: Object.keys(written).length ? { ...at.bounds, ...written } : at.bounds,
+      });
+    }
+  }
+  return out;
 }
 
 function ownerRun(owner: OwnerCodeTurn, timing: StatCodeTiming, placeholderDefs: readonly Placeholder[]): OwnerRun {
@@ -222,7 +256,7 @@ function ownerRun(owner: OwnerCodeTurn, timing: StatCodeTiming, placeholderDefs:
   const coded = named.filter((stat) => owner.enabled[stat.id] !== false && boxCode(stat, timing).trim());
   return {
     owner, named, inputs, coded, live: enabledStats([...owner.stats], owner.enabled),
-    writes: { values: new Map(), placeholders: new Map(), traits: new Map() },
+    writes: { stats: new Map(), placeholders: new Map(), traits: new Map() },
   };
 }
 
@@ -264,9 +298,8 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
         console.error(`Error executing code for stat ${stat.name}:`, result.error);
         return;
       }
-      if (result.value !== null || result.bounds) {
-        writes.values.set(stat.id, { value: result.value, bounds: result.bounds ?? null });
-      }
+      const statWrites = targetWrites(stat, result);
+      if (statWrites.length) writes.stats.set(stat.id, statWrites);
       if (result.placeholders) writes.placeholders.set(stat.id, result.placeholders);
       if (result.traits || result.entities) {
         writes.traits.set(stat.id, { world: result.traits ?? [], entities: result.entities ?? [] });
@@ -306,14 +339,18 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
     log: switched.log,
   };
 
-  const owners = turn.owners && Object.fromEntries(entityRuns.map(({ owner, writes }): [string, OwnerCodeResult] => {
+  const owners = turn.owners && Object.fromEntries(entityRuns.map(({ owner, live, writes }): [string, OwnerCodeResult] => {
     const inForce = ownerStatTraitsInForce(switched.state, turn.bearers.world, owner.id);
-    const result = settleWrites(owner.stats, switched.state.entityStats?.[owner.id] ?? owner.stats, writes.values, inForce);
+    const result = settleWrites(
+      owner.stats, switched.state.entityStats?.[owner.id] ?? owner.stats, statWritesInStatOrder(live, writes.stats), inForce,
+    );
     const settled = result.moved.length || result.boundsChanged.length ? result : { ...result, stats: owner.stats };
     return [owner.id, traitResult ? { ...settled, inForce } : settled];
   }));
   const withOwners = owners ? { owners } : {};
-  const { stats, moved, boundsChanged } = settleWrites(turn.stats, switched.state.stats, playerRun.writes.values, active);
+  const { stats, moved, boundsChanged } = settleWrites(
+    turn.stats, switched.state.stats, statWritesInStatOrder(playerRun.live, playerRun.writes.stats), active,
+  );
   if (!traitResult && moved.length === 0 && boundsChanged.length === 0) {
     return { stats: turn.stats, moved, boundsChanged, pinWrites, ...withOwners };
   }
@@ -326,7 +363,7 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
 function settleWrites(
   start: readonly PlayerStat[],
   current: readonly PlayerStat[],
-  writes: OwnerWrites['values'],
+  writes: ReadonlyMap<string, SettledWrite>,
   active: readonly Trait[],
 ): { stats: PlayerStat[]; moved: string[]; boundsChanged: string[] } {
   const moved: string[] = [];

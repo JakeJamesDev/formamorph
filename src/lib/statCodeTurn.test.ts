@@ -161,15 +161,16 @@ describe('runStatCodeTurn', () => {
     expect(valueOf(out.stats, 'a')).toBe(50);
   }, 15_000);
 
-  it('never writes a stat other than the one the code belongs to', async () => {
+  it('writes another stat of the same owner beside its own', async () => {
     const out = await runStatCodeTurn(turn({
       stats: [
         stat({ id: 'a', value: 50, code: 'stats.B.value = 1; stats.B.max = 1; return 10;' }),
         stat({ id: 'b', name: 'B', value: 80 }),
       ],
     }));
-    expect(valueOf(out.stats, 'b')).toBe(80);
-    expect(out.moved).toEqual(['a']);
+    expect(out.stats.find((s) => s.id === 'b')).toMatchObject({ value: 1, max: 1 });
+    expect(out.moved).toEqual(['a', 'b']);
+    expect(out.boundsChanged).toEqual(['b']);
   });
 
   it('keeps a disabled stat inert and lists it to every other stat', async () => {

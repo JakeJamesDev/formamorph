@@ -51,6 +51,13 @@ describe('executeStatCode entities[x].stats', () => {
     const out = await run('entities.Bram.stats.Trust.value = 99; entities.Bram.stats.Trust.previous.value = 1; return entities.Bram.stats.Trust.value;');
     expect(out.value).toBe(40);
     expect(out.readOnlyWrites).toEqual(['entities.Bram.stats.Trust.value', 'entities.Bram.stats.Trust.previous.value']);
+    expect(out.statWrites).toBeUndefined();
+  });
+
+  it.each(['value', 'min', 'max', 'regen'])('drops a write to %s through the empty persona’s stats and reports it', async (field) => {
+    const persona: SandboxEntity = { name: '', traits: [], stats: { stats: [trust] } };
+    const out = await executeStatCode(`persona.stats.Trust.${field} = 3;`, [trust], makeStat({ id: 'p', name: 'P' }), { persona });
+    expect(out).toEqual({ value: null, error: null, readOnlyWrites: [`persona.stats.Trust.${field}`] });
   });
 
   it('keeps the stats map itself read only', async () => {

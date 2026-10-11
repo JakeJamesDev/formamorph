@@ -56,8 +56,13 @@ export type StatCodeFailure = 'timeout' | 'non-number' | 'throw' | 'bad-write';
 export const CODE_BOUND_FIELDS = ['min', 'max', 'regen'] as const satisfies readonly (keyof CodeBounds)[];
 export type CodeBoundField = (typeof CODE_BOUND_FIELDS)[number];
 
-/** The fields on `self` that a write reaches. Every other stat field is read-only. */
+/** The fields a write reaches on `self` and on every other entry of the owner's own `stats`. Every other
+ *  stat field is read-only. */
 export const SELF_WRITABLE_FIELDS: readonly string[] = ['value', ...CODE_BOUND_FIELDS];
+
+/** What one run wrote to one stat of its owner other than `self`. The value is as written: the turn clamps
+ *  it once every writer's bounds have landed. */
+export type StatWrite = { id: string; name: string } & Partial<Pick<StatNumbers, 'value' | CodeBoundField>>;
 
 export interface StatCodeResult {
   /** The value the code set, by return or by `self.value`, clamped to the range after this run's bound
@@ -68,6 +73,12 @@ export interface StatCodeResult {
   kind?: StatCodeFailure;
   /** The bounds the code assigned on `self`, changed or not. Absent when it assigned none. */
   bounds?: CodeBounds;
+  /** The owner's other stats the code wrote, in map order. Absent when it wrote none. */
+  statWrites?: StatWrite[];
+  /** Stat fields the code wrote through a name no stat has, as code spelled them; each write was dropped. */
+  unknownStatWrites?: string[];
+  /** Fields of switched-off stats the code wrote, as code spelled them; each write was dropped. */
+  disabledStatWrites?: string[];
   /** The placeholders the code wrote or unpinned, in map order. Absent when it touched none. */
   placeholders?: PlaceholderWrite[];
   /** Paths the code wrote that no placeholder answers, as code spelled them; each write was dropped. */
@@ -293,8 +304,8 @@ const DICTIONARY_WRITES = '__formamorphDictionaryWrites';
 // The `placeholders` prelude's view of one owner node, which the owner entries' `placeholders` read.
 const OWNER_VIEW = '__formamorphOwnerPlaceholders';
 const STAT_WRITES = '__formamorphStatWrites';
-// The bounds of `self` the code assigned, in assignment order.
-const BOUND_WRITES = '__formamorphBoundWrites';
+// The writable fields of `self` the code assigned, in assignment order.
+const SELF_ASSIGNED = '__formamorphSelfAssigned';
 // Read-only writes outside every map, as full paths: on a `self` that is no entry of `stats`, and on `clock`.
 const LOOSE_WRITES = '__formamorphLooseWrites';
 const LOOSE_NOTE = '__formamorphLooseNote';
@@ -378,35 +389,40 @@ const LOCK_FIELDS = `(target, fields, prefix, note) => {
   return target;
 }`;
 
-/** JS source of `(entry, isSelf, note) => void`: locks every field of a stat entry, at every depth, except
- *  the ones `self` writes. Each assignment to a bound of `self` is listed in `BOUND_WRITES`, changed or not. */
-const LOCK_STAT = `(entry, isSelf, note) => {
+/** JS source of `(entry, assigned, note) => void`: locks every field of a stat entry, at every depth. With an
+ *  `assigned` list, the writable fields stay open and each assignment to one is listed there, changed or not. */
+const LOCK_STAT = `(entry, assigned, note) => {
   const lock = ${LOCK_FIELDS};
   const deep = (target, prefix) => Object.freeze(lock(target, Object.keys(target), prefix, note));
   for (const source of Object.keys(entry.delta)) deep(entry.delta[source], 'delta.' + source + '.');
   deep(entry.delta, 'delta.');
   deep(entry.previous, 'previous.');
-  if (isSelf) for (const field of ${JSON.stringify(CODE_BOUND_FIELDS)}) {
+  const writable = assigned ? ${JSON.stringify(SELF_WRITABLE_FIELDS)} : [];
+  for (const field of writable) {
     let held = entry[field];
     Object.defineProperty(entry, field, {
-      enumerable: true, get: () => held, set: (next) => { held = next; (${ADD_ONCE})(${BOUND_WRITES}, field); },
+      enumerable: true, get: () => held, set: (next) => { held = next; (${ADD_ONCE})(assigned, field); },
     });
   }
-  const writable = ${JSON.stringify(SELF_WRITABLE_FIELDS)};
-  lock(entry, Object.keys(entry).filter((field) => !(isSelf && writable.includes(field))), '', note);
+  lock(entry, Object.keys(entry).filter((field) => !writable.includes(field)), '', note);
 }`;
 
-/** The `stats` prelude. Rows are `[name, writtenPaths]`, or `[name, null]` for an entry replaced whole. */
+/** The `stats` prelude. Rows are `[name, readOnlyPaths, [[field, number], ...]]` with each writable field
+ *  assigned on an entry other than `self`, or `[name, null]` for an entry replaced whole. `self`'s own
+ *  assignments go to `SELF_ASSIGNED`. */
 const statsPrelude = (entries: readonly { name: string }[], blank: unknown, selfName: string | null): string => trackedMapPrelude({
   root: 'stats',
   reader: STAT_WRITES,
   data: Object.fromEntries(entries.map((entry) => [entry.name, entry])),
   track: `(name, entry, state) => {
     state.written = [];
-    (${LOCK_STAT})(entry, name === ${JSON.stringify(selfName)}, (path) => (${ADD_ONCE})(state.written, path));
+    state.assigned = [];
+    const assigned = name === ${JSON.stringify(selfName)} ? ${SELF_ASSIGNED} : state.assigned;
+    (${LOCK_STAT})(entry, assigned, (path) => (${ADD_ONCE})(state.written, path));
   }`,
   blank: JSON.stringify(blank),
-  row: `(name, state) => state.written.length ? [name, state.written] : null`,
+  row: `(name, state) => state.written.length || state.assigned.length
+    ? [name, state.written, state.assigned.map((field) => [field, state.entry[field]])] : null`,
   replaced: `(name) => [name, null]`,
 });
 
@@ -669,11 +685,11 @@ const entitiesPrelude = ({ byName, persona }: KeyedEntities, { indexOf }: FlatPl
   return readOnlyEntryMapPrelude(`entities, persona, ${ENTITY_WRITES}`, spec, [
     `const traitMap = ((keys) => ${trackedMapFactory(TRAIT_MAP)})(Object.keys);`,
     `const blankStat = spec.blankStat;`,
-    `(${LOCK_STAT})(blankStat, false, () => {});`,
+    `(${LOCK_STAT})(blankStat, null, () => {});`,
     `const statMap = (rows) => {`,
     `  const map = Object.create(null);`,
     `  for (const [name, entry, prefix] of rows) {`,
-    `    (${LOCK_STAT})(entry, false, (path) => ${LOOSE_NOTE}(prefix + path));`,
+    `    (${LOCK_STAT})(entry, null, (path) => ${LOOSE_NOTE}(prefix + path));`,
     `    map[name] = freeze(entry);`,
     `  }`,
     `  return new Proxy(freeze(map), { get: (target, key) => typeof key !== 'string' || key in target ? target[key] : blankStat });`,
@@ -862,19 +878,51 @@ function readPlaceholderWrites(
   return { writes, unknown, unknownOwned, readOnly };
 }
 
-/** The read-only fields the run wrote on `stats` entries, then the loose ones. A `self` that is an entry
- *  reports under its `stats` path. */
-function readStatReadOnlyWrites(dump: string): string[] {
+const isWritableField = (field: unknown): field is 'value' | CodeBoundField =>
+  typeof field === 'string' && SELF_WRITABLE_FIELDS.includes(field);
+
+/** What the run wrote through `stats`, from the reader's dump. A value is a write when it changed; a bound
+ *  is a write whenever it was assigned. A write is kept on a live stat, and dropped and reported on an
+ *  unknown name or a switched-off stat. Any write that is not a finite number fails the run. `readOnly` lists
+ *  the read-only fields on `stats` entries, then the loose ones; a `self` that is an entry reports under its
+ *  `stats` path. */
+function readStatWrites(
+  dump: string,
+  entries: readonly StatEntry[],
+): { writes: StatWrite[]; unknown: string[]; disabled: string[]; readOnly: string[] } | { error: string } {
   const parsed: unknown = JSON.parse(dump);
   const [rows, loose] = Array.isArray(parsed) ? parsed : [];
-  const paths: string[] = [];
+  const byName = new Map(entries.map((entry) => [entry.name, entry]));
+  const writes: StatWrite[] = [];
+  const unknown: string[] = [];
+  const disabled: string[] = [];
+  const readOnly: string[] = [];
   for (const row of Array.isArray(rows) ? rows : []) {
     if (!Array.isArray(row) || typeof row[0] !== 'string') continue;
-    const entry = memberPath('stats', row[0]);
-    if (row[1] === null) paths.push(entry);
-    else paths.push(...readOnlyPaths(entry, row[1]));
+    const [name, readOnlyFields, assigned] = row as [string, unknown, unknown];
+    const path = memberPath('stats', name);
+    if (readOnlyFields === null) { readOnly.push(path); continue; }
+    readOnly.push(...readOnlyPaths(path, readOnlyFields));
+    const entry = byName.get(name);
+    const fields: Partial<StatNumbers> = {};
+    for (const pair of Array.isArray(assigned) ? assigned : []) {
+      if (!Array.isArray(pair) || !isWritableField(pair[0])) continue;
+      const [field, number] = pair as [keyof StatNumbers, unknown];
+      // An unknown name reads its blank entry, whose value is zero.
+      if (field === 'value' && Object.is(number, entry?.value ?? 0)) continue;
+      if (typeof number !== 'number' || !Number.isFinite(number)) return { error: `${path}.${field} must be a finite number` };
+      fields[field] = number;
+    }
+    const written = Object.keys(fields);
+    if (!written.length) continue;
+    if (!entry || !entry.enabled) {
+      (entry ? disabled : unknown).push(...written.map((field) => `${path}.${field}`));
+      continue;
+    }
+    writes.push({ id: entry.id, name, ...fields });
   }
-  return [...paths, ...(Array.isArray(loose) ? loose : []).filter((path): path is string => typeof path === 'string')];
+  readOnly.push(...(Array.isArray(loose) ? loose : []).filter((path): path is string => typeof path === 'string'));
+  return { writes, unknown, disabled, readOnly };
 }
 
 const failure = (what: string, kind: StatCodeFailure): StatCodeResult => ({
@@ -906,7 +954,8 @@ const EMPTY_PERSONA: SandboxEntity = { name: '', traits: [] };
 
 /** Run a stat's untrusted `code` in an isolated QuickJS (WASM) VM over `stats`, `self`, the turn inputs,
  *  the clock, `placeholders`, `traits`, `entities`, `persona` and `dictionaries`. A number return or a `self.value` write sets the
- *  value, clamped; a `self.min`, `self.max` or `self.regen` write sets that bound; a `traits.<name>.enabled`
+ *  value, clamped; a `self.min`, `self.max` or `self.regen` write sets that bound; a write to another entry of
+ *  `stats` sets that stat's field the same way; a `traits.<name>.enabled`
  *  write switches that trait, and an `entities.<entity>.traits.<name>.enabled` write that entity's own; a
  *  failure discards every write. Of two placeholders, traits or entities sharing a name, the later one is the
  *  entry. */
@@ -935,6 +984,7 @@ export const executeStatCode = async (
     const selfIndex = stats.findIndex(stat => stat.id === currentStat.id);
     const selfData = selfIndex >= 0 ? statsData[selfIndex] : marshalStat(currentStat, turn?.[currentStat.id], enabled?.[currentStat.id] !== false);
     const selfIsEntry = selfIndex >= 0 && keyedStats.includes(selfData);
+    const selfName = selfIsEntry ? selfData.name : null;
     const blankStat = blankStatEntry(selfData);
 
     const runtime = QuickJS.newRuntime();
@@ -968,12 +1018,12 @@ export const executeStatCode = async (
       // with what `self`'s writable fields hold afterwards, then what it did to `placeholders`, `traits` and
       // the entities' traits.
       const program = [
-        `const ${BOUND_WRITES} = [];`,
-        statsPrelude(keyedStats, blankStat, selfIsEntry ? selfData.name : null),
+        `const ${SELF_ASSIGNED} = [];`,
+        statsPrelude(keyedStats, blankStat, selfName),
         `const ${LOOSE_WRITES} = [];`,
         `const ${LOOSE_NOTE} = (path) => (${ADD_ONCE})(${LOOSE_WRITES}, path);`,
         `const self = ${selfIsEntry ? `stats[${JSON.stringify(selfData.name)}]` : JSON.stringify(selfData)};`,
-        ...(selfIsEntry ? [] : [`(${LOCK_STAT})(self, true, (path) => ${LOOSE_NOTE}('self.' + path));`]),
+        ...(selfIsEntry ? [] : [`(${LOCK_STAT})(self, ${SELF_ASSIGNED}, (path) => ${LOOSE_NOTE}('self.' + path));`]),
         `const clock = ((lock) => {`,
         `  const clock = ${JSON.stringify(clockObject(clock))};`,
         `  Object.freeze(lock(clock.previous, ['day', 'daypart'], 'clock.previous.', ${LOOSE_NOTE}));`,
@@ -986,7 +1036,7 @@ export const executeStatCode = async (
         `[(function(${PLACEHOLDER_WRITES}, ${TRAIT_WRITES}, ${ENTITY_WRITES}, ${STAT_WRITES}, ${LOOSE_WRITES}, ${LOOSE_NOTE}, ${DICTIONARY_WRITES}, ${OWNER_VIEW}) {`,
         code,
         `})(), self.value, ${CODE_BOUND_FIELDS.map((field) => `self.${field}`).join(', ')}, ${PLACEHOLDER_WRITES}(), ${TRAIT_WRITES}(), ${ENTITY_WRITES}(),`,
-        `  JSON.stringify([JSON.parse(${STAT_WRITES}()), ${LOOSE_WRITES}]), ${DICTIONARY_WRITES}(), JSON.stringify(${BOUND_WRITES})];`,
+        `  JSON.stringify([JSON.parse(${STAT_WRITES}()), ${LOOSE_WRITES}]), ${DICTIONARY_WRITES}(), JSON.stringify(${SELF_ASSIGNED})];`,
       ].join('\n');
 
       const result = vm.evalCode(program);
@@ -1054,6 +1104,8 @@ export const executeStatCode = async (
         if (!Number.isFinite(slot.number)) return nonNumberFailure(`self.${field} must be a finite number`);
         bounds[field] = slot.number;
       }
+      const statWrites = readStatWrites(statsDump, keyedStats);
+      if ('error' in statWrites) return nonNumberFailure(statWrites.error);
       const placeholderWrites = readPlaceholderWrites(writesDump, placeholderMap.nodes);
       if ('error' in placeholderWrites) return failure(placeholderWrites.error, 'bad-write');
       const traitWrites = readTraitWrites(JSON.parse(traitsDump), traits, 'traits');
@@ -1061,7 +1113,7 @@ export const executeStatCode = async (
       const entityWrites = readEntityWrites(entitiesDump, keyed);
       if ('error' in entityWrites) return failure(entityWrites.error, 'bad-write');
       const readOnlyWrites = [
-        ...readStatReadOnlyWrites(statsDump),
+        ...statWrites.readOnly,
         ...placeholderWrites.readOnly,
         ...traitWrites.readOnly,
         ...entityWrites.readOnly,
@@ -1074,6 +1126,9 @@ export const executeStatCode = async (
         value: value === null ? null : clamp(value, min, max),
         error: null,
         ...(Object.keys(bounds).length ? { bounds } : {}),
+        ...(statWrites.writes.length ? { statWrites: statWrites.writes } : {}),
+        ...(statWrites.unknown.length ? { unknownStatWrites: statWrites.unknown } : {}),
+        ...(statWrites.disabled.length ? { disabledStatWrites: statWrites.disabled } : {}),
         ...(placeholderWrites.writes.length ? { placeholders: placeholderWrites.writes } : {}),
         ...(placeholderWrites.unknown.length ? { unknownPlaceholders: placeholderWrites.unknown } : {}),
         ...(placeholderWrites.unknownOwned.length ? { unknownOwnerPlaceholders: placeholderWrites.unknownOwned } : {}),
