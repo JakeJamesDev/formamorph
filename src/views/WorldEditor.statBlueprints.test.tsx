@@ -6,9 +6,9 @@ import {
 import type { Stat, World } from '@/types';
 
 /**
- * Stat Blueprints through the real editor: the Stats tab's Blueprints group, and an entity's Link Stat and Copy
- * Stat with the link's overrides, Resets and stale mark. What lands in the world is read from the live GameData
- * handle.
+ * Stat Blueprints through the real editor: the Stats tab's Blueprints group and Link To…, and an entity's Link
+ * Stat, group links and Detach with the link's overrides, Resets and stale mark. What lands in the world is read
+ * from the live GameData handle.
  */
 
 vi.mock('../services/WorldStorageService', () => ({
@@ -46,7 +46,7 @@ const openMirror = (name: string) => {
   fireEvent.mouseDown(entityFieldsTab('Stats'));
 };
 const openAddMenu = (name: string) => fireEvent.click(screen.getByRole('button', { name: `Add to ${name}` }));
-const pickBlueprint = (action: 'Link Stat' | 'Copy Stat', name: string) => {
+const pickBlueprint = (action: 'Link Stat', name: string) => {
   fireEvent.click(screen.getByRole('button', { name: action }));
   fireEvent.click(within(screen.getByRole('group', { name: 'Blueprints' })).getByRole('button', { name }));
 };
@@ -138,19 +138,82 @@ describe('Link Stat on an entity', () => {
   });
 });
 
-describe('Copy Stat on an entity', () => {
-  it('adds a detached stat with the Blueprint\'s fields under a fresh id', () => {
+/** The tree or list row that holds `text` and an action named `action`. */
+const rowWith = (text: string, action: string): HTMLElement => {
+  let row: HTMLElement | null = screen.getAllByText(text)[0];
+  while (row && !within(row).queryByRole('button', { name: action })) row = row.parentElement;
+  return row!;
+};
+
+describe('Detach on an entity', () => {
+  it('offers no Copy Stat', () => {
+    renderWorldEditorBench(WORLD, 'advanced');
+    openMirror('Ash');
+    openAddMenu('Ash');
+    expect(screen.getByRole('button', { name: 'Link Stat' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Copy Stat' })).toBeNull();
+  });
+
+  it('turns a link into the entity\'s own stat under the Blueprint\'s id at once, with its current values', () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openMirror('Ash');
     openAddMenu('Ash');
-    pickBlueprint('Copy Stat', 'Trust');
+    pickBlueprint('Link Stat', 'Trust');
+    fireEvent.change(numberField('Initial Value'), { target: { value: '9' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Back to Stats' }));
 
-    const [copy] = entityOf(ctx).stats!;
-    expect(copy).toMatchObject({ name: 'Trust', value: 5, groupId: null });
-    expect(copy.id).not.toBe('bp-trust');
+    fireEvent.click(within(rowWith('Trust', 'Detach')).getByRole('button', { name: 'Detach' }));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
     expect(entityOf(ctx).statLinks).toBeUndefined();
+    expect(entityOf(ctx).stats).toEqual([expect.objectContaining({ id: 'bp-trust', name: 'Trust', value: 9, groupId: null })]);
+    expect(screen.getByRole('textbox', { name: 'Name' })).toHaveAttribute('contenteditable', 'true');
 
-    act(() => ctx().updateStat(stat('bp-trust', 'Trust', { groupId: 'bp', value: 7 })));
-    expect(entityOf(ctx).stats![0].value).toBe(5);
+    act(() => ctx().updateStat(stat('bp-trust', 'Trust', { groupId: 'bp', value: 2, max: 50 })));
+    expect(entityOf(ctx).stats![0]).toMatchObject({ value: 9, max: 10 });
+  });
+});
+
+describe('a group link', () => {
+  const GROUPED: World = {
+    ...WORLD,
+    stats: [...WORLD.stats, stat('bp-fear', 'Fear', { groupId: 'bp-social', value: 3 })],
+    statGroups: [...WORLD.statGroups!, { id: 'bp-social', name: 'Social', parentId: 'bp', order: 1 }],
+  };
+
+  it('links a Blueprint group from Link To…, and checks an entity that holds it', () => {
+    const { ctx } = renderWorldEditorBench(GROUPED, 'advanced');
+    openEditorTab(/Stats/);
+    fireEvent.click(screen.getByText('Social'));
+    fireEvent.click(screen.getByRole('button', { name: 'Link To…' }));
+    fireEvent.click(within(screen.getByRole('group', { name: 'Link To' })).getByRole('button', { name: 'Ash' }));
+    expect(entityOf(ctx).statLinks).toEqual([expect.objectContaining({ originalId: 'bp-social', kind: 'group', originalName: 'Social' })]);
+    expect(within(screen.getByRole('group', { name: 'Link To' })).getByRole('button', { name: 'Ash' })).toBeDisabled();
+  });
+
+  it('draws the group in the entity\'s tree, each stat fixed and overridden on its own', () => {
+    const linked = { ...GROUPED, entities: [{ ...GROUPED.entities[0], statLinks: [{ id: 'l1', originalId: 'bp-social', kind: 'group' as const, originalName: 'Social', groupId: null }] }] };
+    const { ctx } = renderWorldEditorBench(linked, 'advanced');
+    openMirror('Ash');
+    expect(within(rowWith('Fear', 'Remove')).getByRole('button', { name: 'Remove' })).toHaveAttribute('aria-disabled', 'true');
+    expect(within(rowWith('Social', 'Detach')).getByRole('button', { name: 'Remove Link' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Fear'));
+    expect(screen.getByText(/Part of the linked/)).toHaveTextContent('Part of the linked Blueprints › Social');
+    expect(within(rowWith('Social', 'Detach')).queryByLabelText('Modified for this link')).toBeNull();
+    fireEvent.change(numberField('Initial Value'), { target: { value: '8' } });
+    expect(entityOf(ctx).statLinks![0].overrides).toEqual({ 'bp-fear': { value: { value: 8, blueprint: 3 } } });
+    fireEvent.click(screen.getByRole('button', { name: 'Back to Stats' }));
+    expect(within(rowWith('Social', 'Detach')).getByLabelText('Modified for this link')).toBeInTheDocument();
+  });
+
+  it('asks before deleting a linked Blueprint group, and takes its links with it', () => {
+    const linked = { ...GROUPED, entities: [{ ...GROUPED.entities[0], statLinks: [{ id: 'l1', originalId: 'bp-social', kind: 'group' as const, originalName: 'Social', groupId: null }] }] };
+    const { ctx } = renderWorldEditorBench(linked, 'advanced');
+    openEditorTab(/Stats/);
+    fireEvent.click(within(rowWith('Social', 'Delete')).getByRole('button', { name: 'Delete' }));
+    expect(screen.getByText('This also deletes its link.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
+    expect(ctx().statGroups.map((g) => g.id)).toEqual(['bp']);
+    expect(entityOf(ctx).statLinks).toBeUndefined();
   });
 });

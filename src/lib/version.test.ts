@@ -1112,4 +1112,33 @@ describe('migrateWorld — stat Blueprints and links', () => {
     expect(out[0].statLinks).toEqual([link]);
     for (const entity of out.slice(1)) expect(entity).not.toHaveProperty('statLinks');
   });
+
+  const social = { id: 'social', name: 'Social', parentId: 'bp' };
+  const fear = { id: 'fear', name: 'Fear', type: 'number', description: '', min: 0, max: 50, value: 5, regen: 0, descriptors: [], groupId: 'social' };
+  const groupLink = { id: 'l2', originalId: 'social', kind: 'group', originalName: 'Social', groupId: null, order: 1 };
+  const { stats: worldStats, statGroups: worldGroups } = world as unknown as { stats: unknown[]; statGroups: unknown[] };
+  const grouped = (links: unknown[], groups: unknown[] = []) => raw({
+    stats: [...worldStats, fear],
+    statGroups: [...worldGroups, social, ...groups],
+    entities: [{ id: 'bram', name: 'Bram', statLinks: links }],
+  });
+
+  it('round-trips a group link through export', () => {
+    const once = migrateWorld(grouped([link, groupLink]));
+    expect(once.entities[0].statLinks).toEqual([link, groupLink]);
+    expect(migrateWorld(JSON.parse(JSON.stringify(once)))).toEqual(once);
+  });
+
+  it('keeps one link per original, and folds a link to a stat inside a linked group into the group link', () => {
+    const fearLink = { id: 'l3', originalId: 'fear', kind: 'stat', originalName: 'Fear', groupId: null, overrides: { fear: { max: { value: 9, blueprint: 50 } } } };
+    const out = migrateWorld(grouped([link, { ...link, id: 'l4' }, fearLink, groupLink])).entities[0].statLinks;
+    expect(out).toEqual([link, { ...groupLink, overrides: fearLink.overrides }]);
+  });
+
+  it('keeps one Blueprints group, nesting a second under the first', () => {
+    const second = { id: 'bp2', name: 'Blueprints', parentId: null, system: 'blueprints' };
+    const out = migrateWorld(grouped([], [second])).statGroups!;
+    expect(out.filter((g) => g.system === 'blueprints').map((g) => g.id)).toEqual(['bp']);
+    expect(out.find((g) => g.id === 'bp2')).toEqual({ id: 'bp2', name: 'Blueprints', parentId: 'bp', order: 2 });
+  });
 });

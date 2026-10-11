@@ -3,7 +3,7 @@
 
 import type { Entity, Stat, StatGroup, StatLink } from '@/types';
 import { rekeyed, uniqueNamed } from './carriedBinding';
-import { playStatWorld, statBlueprintIds, withStatLinks } from './statLinks';
+import { playStatWorld, statBroughtIds, statOriginalOf, withStatLinks } from './statLinks';
 
 /** The world's stat lists a stat Link can point into. A record with no `stats` carries none, so its Links stay
  *  as they are stored. */
@@ -18,12 +18,22 @@ export type OwnedStatFields = Pick<Entity, 'stats' | 'statGroups' | 'statLinks'>
 const linkWorld = (world: StatWorld): { stats: readonly Stat[]; statGroups: readonly StatGroup[] } | null =>
   (world.stats ? { stats: world.stats, statGroups: world.statGroups ?? [] } : null);
 
-/** Each Link naming its original by the world's name for it, so a receiving world can rebind it. */
+/** The world stat or group a Link's original id names, when it is of the Link's kind. */
+const itemOf = (world: { stats: readonly Stat[]; statGroups: readonly StatGroup[] }, link: StatLink): { id: string; name: string } | undefined =>
+  (link.kind === 'group' ? world.statGroups : world.stats).find((item) => item.id === link.originalId);
+
+/** Each Link naming its original, and each other stat its overrides key, by the world's names, so a receiving
+ *  world can rebind them. */
 function portableLinks(links: readonly StatLink[], world?: StatWorld): StatLink[] {
   const bound = world && linkWorld(world);
   return links.map((link) => {
-    const original = bound?.stats.find((s) => s.id === link.originalId);
-    return original ? { ...link, originalName: original.name } : link;
+    const original = bound && itemOf(bound, link);
+    const keyNames = Object.fromEntries(Object.keys(link.overrides ?? {}).filter((id) => id !== link.originalId).flatMap((id) => {
+      const name = bound?.stats.find((s) => s.id === id)?.name ?? link.keyNames?.[id];
+      return name ? [[id, name] as const] : [];
+    }));
+    const { keyNames: _stored, ...rest } = link;
+    return { ...rest, originalName: original ? original.name : link.originalName, ...(Object.keys(keyNames).length ? { keyNames } : {}) };
   });
 }
 
@@ -37,23 +47,31 @@ export function portableOwnedStats(entity: Entity, world?: StatWorld): OwnedStat
 }
 
 /**
- * The entity's stat Links bound to `world`: each by its original's id when that is a Blueprint stat, else by
- * the one Blueprint stat carrying its stored name, else dropped. A Link to an original an earlier Link already
- * took is dropped too, as the resolver keeps the first. The Link's overrides follow its original. The entity as
- * it is when `world` carries no stats.
+ * The entity's stat Links bound to `world`: each by its original's id when that is a Blueprint stat or group of
+ * the Link's kind, else by the one such original carrying its stored name, else dropped. A Link that brings
+ * anything an earlier Link already brings is dropped too, as the resolver keeps the first. Each override key
+ * follows the same rule inside what the bound original brings. The entity as it is when `world` carries no stats.
  */
 export function bindOwnedStats(entity: Entity, world: StatWorld): Entity {
   const bound = linkWorld(world);
   if (!entity.statLinks?.length || !bound) return entity;
-  const linkable = statBlueprintIds(bound);
-  const blueprints = bound.stats.filter((s) => linkable.has(s.id));
+  const originals = (kind: StatLink['kind']) =>
+    (kind === 'group' ? bound.statGroups : bound.stats).filter((item) => statOriginalOf(bound, item.id));
   const taken = new Set<string>();
   const links = entity.statLinks.flatMap((link): StatLink[] => {
-    const original = blueprints.find((s) => s.id === link.originalId) ?? uniqueNamed(blueprints, link.originalName);
-    if (!original || taken.has(original.id)) return [];
-    taken.add(original.id);
-    const overrides = rekeyed(link.overrides, (id) => (id === link.originalId ? original.id : null));
-    const { overrides: _stored, ...rest } = link;
+    const list = originals(link.kind);
+    const original = list.find((item) => item.id === link.originalId) ?? uniqueNamed(list, link.originalName);
+    const ids = original ? statBroughtIds(bound, original.id) : [];
+    if (!original || ids.some((id) => taken.has(id))) return [];
+    ids.forEach((id) => taken.add(id));
+    const stats = bound.stats.filter((s) => ids.includes(s.id));
+    const key = (id: string): string | null => {
+      if (id === link.originalId) return original.id;
+      if (stats.some((s) => s.id === id)) return id;
+      return uniqueNamed(stats, link.keyNames?.[id])?.id ?? null;
+    };
+    const overrides = rekeyed(link.overrides, key);
+    const { overrides: _stored, keyNames: _k, ...rest } = link;
     return [{ ...rest, originalId: original.id, ...(overrides ? { overrides } : {}) }];
   });
   return withStatLinks(entity, links);
@@ -76,6 +94,6 @@ export const comparableOwnedStats = (entity: Entity): { statLinks?: ComparableLi
   (entity.statLinks?.length ? {
     statLinks: entity.statLinks.map((link) => ({
       id: link.id, kind: link.kind, originalName: link.originalName, groupId: link.groupId ?? null, order: link.order,
-      overrides: rekeyed(link.overrides, (id) => (id === link.originalId ? '' : id)),
+      overrides: rekeyed(link.overrides, (id) => (id === link.originalId ? '' : link.keyNames?.[id] ?? id)),
     })),
   } : {});

@@ -15,6 +15,7 @@ import { migrateStatCodeRoutes } from './statCodeRoutes';
 import { CODE_FIELD } from './statCodeTiming';
 import { allPlaceholders, placeholderOwners, type PlaceholderHomesWorld } from './placeholderHomes';
 import { blueprintItemIds } from './traitTree';
+import { mergeDuplicateStatLinks, mergeStatBlueprintsGroups } from './statLinks';
 
 /** Current app version, derived from package.json (see vite.config.js `define`). User-managed. */
 export const APP_VERSION = __APP_VERSION__;
@@ -492,12 +493,26 @@ export function migrateEntityStatFields<T>(entity: T): T {
   return out as T;
 }
 
-/** Keep every entity's stat lists to the records a list can hold ({@link migrateEntityStatFields}), and the
- *  world's stat groups too. A world with no groups keeps none, which the editor's load reads as an empty list.
- *  Not version-gated, since an import can carry any shape. */
+/** The world's stats and stat groups that stat links read, malformed records left out. */
+const statLinkWorldOf = (world: Record<string, unknown>) => ({
+  stats: (Array.isArray(world.stats) ? world.stats.filter((s) => s && typeof s === 'object') : []) as Stat[],
+  statGroups: groupRecords(world.statGroups),
+});
+
+/** Keep every entity's stat lists to the records a list can hold ({@link migrateEntityStatFields}) with one link
+ *  per original, and the world's stat groups with one Blueprints group. A world with no groups keeps none, which
+ *  the editor's load reads as an empty list. Not version-gated, since an import can carry any shape. */
 function migrateStatLists(world: Record<string, unknown>): void {
-  if ('statGroups' in world) world.statGroups = groupRecords(world.statGroups);
-  if (Array.isArray(world.entities)) world.entities = world.entities.map(migrateEntityStatFields);
+  if ('statGroups' in world) world.statGroups = mergeStatBlueprintsGroups(statLinkWorldOf(world));
+  if (!Array.isArray(world.entities)) return;
+  const linkWorld = statLinkWorldOf(world);
+  world.entities = world.entities.map((raw) => {
+    const entity = migrateEntityStatFields(raw) as Entity | null;
+    const links = entity?.statLinks;
+    if (!links) return entity;
+    const kept = mergeDuplicateStatLinks(linkWorld, links);
+    return kept.length === links.length ? entity : { ...entity, statLinks: kept };
+  });
 }
 
 /**

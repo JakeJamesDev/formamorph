@@ -10,8 +10,11 @@ import { BlueprintIcon } from '@/lib/elementIcons';
 import { useEditorMode } from '@/lib/editorMode';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { duplicateStatNode, newStatGroup, statRootCount } from '@/lib/statGroupTree';
-import { dropKeepsBlueprints, removeStatBlueprints, statBlueprintsGroup, statLinksTo, type StatBlueprintsRemoval } from '@/lib/statLinks';
+import {
+  dropKeepsBlueprints, removeStatBlueprints, statBlueprintsGroup, statLinksTo, statOriginalOf, type StatBlueprintsRemoval,
+} from '@/lib/statLinks';
 import { alsoDeletesLinks } from './useRemoveWorldTrait';
+import { StatLinkToButton } from './BearerPicker';
 import { randomUUID } from '@/lib/uuid';
 import type { FocusFieldHint, Stat } from '@/types';
 import type { StatPanelTab } from '@/views/statPanelTabs';
@@ -71,7 +74,7 @@ export function useWorldStatsAdapter({ selectedId, onSelect, search, tab, onTabC
     setStats(next.stats);
     onSelect(next.newId);
   };
-  // A linked Blueprint stat takes its links with it, and Blueprints itself detaches them, so both ask first.
+  // A linked Blueprint stat or group takes its links with it, and Blueprints itself detaches them, so each asks first.
   const askRemoveStat = (id: string) => {
     const links = statLinksTo(entities, new Set([id]));
     if (!links) { removeStat(id); return; }
@@ -81,7 +84,8 @@ export function useWorldStatsAdapter({ selectedId, onSelect, search, tab, onTabC
   const askRemoveGroup = (id: string) => {
     const group = statGroups.find((g) => g.id === id);
     const removal = group?.system === 'blueprints' ? removeStatBlueprints({ stats, statGroups }, entities) : null;
-    const description = removal ? blueprintsLine(removal) : '';
+    const links = statLinksTo(entities, new Set([id]));
+    const description = removal ? blueprintsLine(removal) : links ? alsoDeletesLinks(links) : '';
     if (!description) { removeStatGroup(id); return; }
     setPending({ id, name: group?.name ?? '', isGroup: true, description });
   };
@@ -118,6 +122,10 @@ export function useWorldStatsAdapter({ selectedId, onSelect, search, tab, onTabC
     tab,
     onTabChange,
     focusField,
+    // In Advanced, a Blueprint stat or group links onto entities from here.
+    footer: (id) => (advanced && statOriginalOf({ stats, statGroups }, id)
+      ? <div className="p-3 border-t flex justify-end"><StatLinkToButton originalId={id} /></div>
+      : null),
   });
 
   const name = labelPlaceholders(pending?.name ?? '', placeholders);

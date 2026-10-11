@@ -240,8 +240,7 @@ function useProvideGameData() {
     setStatGroups(prev => [...prev, newGroup]);
   }, []);
 
-  // Removing a group moves its stats and subgroups up to the group's own parent, so a delete loses the folder only.
-  // Blueprints turns each link into its entity's own stat, deletes the linked originals and moves the rest up.
+  // A deleted group's contents move up to its parent, and its links go. Blueprints detaches its links instead.
   const removeStatGroup = useCallback((groupId: string) => {
     const { statGroups: groups, stats: held, entities } = latest.current;
     if (groups.find(g => g.id === groupId)?.system === 'blueprints') {
@@ -255,6 +254,7 @@ function useProvideGameData() {
     const next = removeStatGroupFrom(groups, held, groupId);
     if (next.groups !== groups) setStatGroups(next.groups);
     if (next.stats !== held) setStats(next.stats);
+    setEntities(prevEntities => dropStatLinksTo(prevEntities, new Set([groupId])));
   }, []);
 
   // A new location is given a place on the canvas as it is created, wherever it was created from: the map is

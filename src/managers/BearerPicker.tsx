@@ -2,7 +2,8 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { ArrowLeft, Check, ChevronRight, Link2 } from 'lucide-react';
 import { EntityIcon, GroupIcon, PersonaIcon } from '@/lib/elementIcons';
 import { useGameData, useGameDataOptional } from '@/contexts/GameDataContext';
-import type { Placeholder } from '@/types';
+import type { Entity, Placeholder } from '@/types';
+import { addStatLink, holdsStatOriginal } from '@/lib/statLinks';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -96,23 +97,25 @@ export function BearerList({ choices, label, onPick, held, back, leafIcon = bear
 }
 
 /**
- * The link button in a world trait or group's detail footer: links it to a bearer the way a drag into that
- * bearer does. A bearer that already has it reads checked. The flyout stays open for the next pick.
+ * A **Link To…** button: links an original to each entity picked. An entity that already holds it reads checked.
+ * The flyout stays open for the next pick.
  */
-export function LinkToBearerButton({ originalId }: { originalId: string }) {
-  const { traits, traitGroups, entities, entityGroups, editEntity } = useGameData();
+function LinkToButton({ holds, link }: {
+  /** Whether the entity already holds the original. */
+  holds: (entityId: string) => boolean;
+  link: (entity: Entity) => Entity | null;
+}) {
+  const { entities, entityGroups, editEntity } = useGameData();
   const [open, setOpen] = useState(false);
-  const world = useMemo(() => ({ traits, traitGroups }), [traits, traitGroups]);
   const choices = useMemo(() => bearerChoices(entityGroups, entities), [entityGroups, entities]);
-  const held = useMemo(() => {
-    if (!open) return new Set<string>();
-    return new Set(choices.filter((c) => c.kind === 'bearer' && linkRefusal(world, entities, c.id, originalId)).map((c) => c.id));
-  }, [open, choices, world, entities, originalId]);
+  const held = open
+    ? new Set(choices.filter((c) => c.kind === 'bearer' && holds(c.id)).map((c) => c.id))
+    : new Set<string>();
 
   if (!choices.length) return null;
-  const pick = (bearerId: string) => {
-    if (linkRefusal(world, entities, bearerId, originalId)) return;
-    editEntity(bearerId, (e) => addLink(world, e, originalId, randomUUID()) ?? e);
+  const pick = (entityId: string) => {
+    if (holds(entityId)) return;
+    editEntity(entityId, (e) => link(e) ?? e);
   };
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -126,5 +129,34 @@ export function LinkToBearerButton({ originalId }: { originalId: string }) {
         <BearerList choices={choices} label="Link To" onPick={pick} held={(id) => held.has(id)} />
       </PopoverContent>
     </Popover>
+  );
+}
+
+/** The link button in a world trait or group's detail footer: links it to a bearer the way a drag into that
+ *  bearer does. */
+export function LinkToBearerButton({ originalId }: { originalId: string }) {
+  const { traits, traitGroups, entities } = useGameData();
+  const world = { traits, traitGroups };
+  return (
+    <LinkToButton
+      holds={(id) => !!linkRefusal(world, entities, id, originalId)}
+      link={(e) => addLink(world, e, originalId, randomUUID())}
+    />
+  );
+}
+
+/** The link button in a Blueprint stat or stat group's detail footer. */
+export function StatLinkToButton({ originalId }: { originalId: string }) {
+  const { stats, statGroups, entities } = useGameData();
+  const world = { stats, statGroups };
+  const holds = (entityId: string) => {
+    const entity = entities.find((e) => e.id === entityId);
+    return !entity || holdsStatOriginal(world, entity, originalId);
+  };
+  return (
+    <LinkToButton
+      holds={holds}
+      link={(e) => addStatLink(world, e, originalId, randomUUID())}
+    />
   );
 }
