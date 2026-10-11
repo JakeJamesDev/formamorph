@@ -5,7 +5,7 @@ import type { GateInput } from '@/lib/traitGates';
 import type { PinEditorWorld } from '@/lib/placeholderPins';
 import type { PlacementLetters } from '@/lib/placementLetters';
 import type { PlaceholderOwners } from '@/lib/placeholderHomes';
-import type { Entity, Placeholder, Stat, Trait, TraitGroup } from '@/types';
+import type { Entity, Placeholder, Stat, StatGroup, Trait, TraitGroup } from '@/types';
 
 /**
  * The trait CRUD the trait-editing widgets need. The World Editor binds it to the world; a library entity
@@ -18,6 +18,8 @@ export interface TraitStore {
   entities: Entity[];
   placeholders: Placeholder[];
   stats: Stat[];
+  /** The world's stat groups, so a bearer's links and the Blueprints read off them. Absent off-world. */
+  statGroups?: StatGroup[];
   placementLetters?: PlacementLetters;
   placeholderOwners?: PlaceholderOwners;
   setTraits: (traits: Trait[]) => void;
@@ -75,6 +77,7 @@ export function useTraitStore(): TraitStore {
     entities: world.entities,
     placeholders: world.placeholders,
     stats: world.stats,
+    statGroups: world.statGroups,
     placementLetters: world.placementLetters,
     placeholderOwners: world.placeholderOwners,
     setTraits: world.setTraits,

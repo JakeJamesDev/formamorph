@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
-import { GroupIcon } from '@/lib/elementIcons';
+import { Link2 } from 'lucide-react';
+import { BlueprintIcon, GroupIcon } from '@/lib/elementIcons';
 import {
   applyStatDrop, buildStatTree, flattenStatTree, getStatDropProjection, removeChildrenOf, type FlatStatNode,
 } from '@/lib/statGroupTree';
@@ -15,8 +16,10 @@ import { chipInput } from './chipInput';
  * the world's stats and one entity's own; the caller says where a drop, a delete and a copy land. Groups are
  * folders only: they carry a name and a description and nothing that changes how a stat plays.
  */
-const StatTree = ({ stats, groups, selectedId, onSelect, onDrop, onRemoveStat, onRemoveGroup, onDuplicate, emptyHint }: {
+const StatTree = ({ stats, groups, linkIds, selectedId, onSelect, onDrop, onRemoveStat, onRemoveGroup, onDuplicate, emptyHint }: {
   stats: Stat[];
+  /** The rows among `stats` that are links: they draw a link icon and remove the link, and never duplicate. */
+  linkIds?: ReadonlySet<string>;
   groups: StatGroup[];
   selectedId: string | null;
   onSelect: (id: string) => void;
@@ -42,6 +45,26 @@ const StatTree = ({ stats, groups, selectedId, onSelect, onDrop, onRemoveStat, o
       onDrop(applyStatDrop(groups, stats, collapsed, activeId, overId, offsetLeft, TREE_INDENT)),
     rowSpec: (node) => {
       const isGroup = node.kind === 'group';
+      if (node.group?.system === 'blueprints') {
+        return {
+          lead: 'chevron',
+          collapseLabels: ['Expand group', 'Collapse group'],
+          icon: <BlueprintIcon className="h-4 w-4 shrink-0" aria-hidden />,
+          label: <PlaceholderText text={node.group.name} placeholders={placeholders} />,
+          labelClass: 'font-medium',
+          removeTitle: 'Remove Blueprints',
+          remove: () => onRemoveGroup(node.id),
+        };
+      }
+      if (linkIds?.has(node.id)) {
+        return {
+          lead: 'none',
+          icon: <Link2 className="h-4 w-4 shrink-0" aria-label="Link" />,
+          label: <PlaceholderText text={node.leaf?.name ?? ''} placeholders={placeholders} />,
+          removeTitle: 'Remove Link',
+          remove: () => onRemoveStat(node.id),
+        };
+      }
       return {
         // Only groups collapse; stats get no leading slot (matching the flat list layout).
         lead: isGroup ? 'chevron' : 'none',

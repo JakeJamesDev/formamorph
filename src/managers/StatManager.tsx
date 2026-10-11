@@ -37,7 +37,8 @@ import { labelPlaceholders } from "@/lib/placementLetters";
 import { CODE_BOX_TARGET, CODE_FIELD, REPLACE_CODE_TITLE, replaceCodeDescription, type StatCodeTiming } from "@/lib/statCodeTiming";
 import { findTargetRow, routeText } from "@/lib/surface/surfaceTargets";
 import { useLanding } from "@/lib/surface/useLanding";
-import type { FocusFieldHint, Stat, StatDescriptor, StatType, ThresholdUnit } from "@/types";
+import type { FocusFieldHint, Stat, StatDescriptor, StatLinkFields, StatType, ThresholdUnit } from "@/types";
+import { FieldReset, LabelRow } from '@/components/editor/BlueprintReset';
 import { WorldInput } from '@/components/editor/WorldField';
 import { fieldFrame } from '@/lib/historyField';
 
@@ -56,6 +57,15 @@ export interface StatEditorStore {
   updateStat: (stat: Stat) => void;
   /** The owner whose model the Body Sliders picker lists. Absent = the world's player models. */
   morphOwner?: MorphOwner;
+}
+
+/** A link's edit of the stat it brings: which fields it overrides, which of those the Blueprint changed since,
+ *  and the field Reset. The name stays the Blueprint's. `header` sits above the fields. */
+export interface StatLinkEdit {
+  overridden: readonly (keyof StatLinkFields)[];
+  stale: readonly (keyof StatLinkFields)[];
+  reset: (field: keyof StatLinkFields) => void;
+  header: ReactNode;
 }
 
 /** The stat being edited — a loose, partial Stat while fields are filled in. */
@@ -77,17 +87,20 @@ const normalizeStat = (stat: EditingStat): EditingStat => ({
  * `focusField` is the search target the find bar just navigated to. A hit on a tab that isn't showing has no
  * field to mark, so the panel opens the owning tab; the same hint the entity and location panels take.
  */
-const StatManager = ({ stat, tab, onTabChange, focusField, store }: {
+const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
   stat: Stat;
   tab: StatPanelTab;
   onTabChange: (tab: StatPanelTab) => void;
   focusField?: FocusFieldHint | null;
   /** The stats this one sits among and where its writes go: an entity's own. Absent = the world's. */
   store?: StatEditorStore;
+  /** Edits the stat as an entity's link reads it: writes go to the link's overrides. */
+  link?: StatLinkEdit;
 }) => {
   const world = useGameData();
-  const { placeholders, placeholderGroups, placeholderOwners, placementLetters, traits, traitGroups, entities, entityGroups, dictionaries } = world;
-  const stats = store?.stats ?? world.stats;
+  const { placeholders, placeholderGroups, placeholderOwners, placementLetters, traits, traitGroups, playEntities, entityGroups, dictionaries } = world;
+  // A player stat's code reads the player's stats; a Blueprint's own code reads the world list it sits in.
+  const stats = store?.stats ?? (world.playStats.some((s) => s.id === stat.id) ? world.playStats : world.stats);
   const updateStat = store?.updateStat ?? world.updateStat;
   const [newDescriptor, setNewDescriptor] = useState<{ threshold: number | string; description: string }>({
     threshold: "",
@@ -137,10 +150,10 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store }: {
     [placeholders, placeholderOwners, dictionaries],
   );
   const entityNames = useMemo(
-    () => entityTraitNames({ traits, traitGroups, entities, entityGroups }, placeholders),
-    [traits, traitGroups, entities, entityGroups, placeholders],
+    () => entityTraitNames({ traits, traitGroups, entities: playEntities, entityGroups }, placeholders),
+    [traits, traitGroups, playEntities, entityGroups, placeholders],
   );
-  const entityStats = useMemo(() => entityCodeStats(entities, placeholders), [entities, placeholders]);
+  const entityStats = useMemo(() => entityCodeStats(playEntities, placeholders), [playEntities, placeholders]);
   const traitPlaces = useMemo(
     () => worldTraitPlaces({ traits, traitGroups }, placeholders),
     [traits, traitGroups, placeholders],
@@ -156,6 +169,15 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store }: {
     codeNamedStats, statNames, selfName: selfCodeName,
     placeholders: codePlaceholders, placeholderPlaces, traitNames, traitPlaces, traits, entities: entityNames, entityStats,
   }), [codeNamedStats, statNames, selfCodeName, codePlaceholders, placeholderPlaces, traitNames, traitPlaces, traits, entityNames, entityStats]);
+
+  const resetControl = (field: keyof StatLinkFields, label: string) => (link?.overridden.includes(field)
+    ? <FieldReset field={label} stale={link.stale.includes(field)} onReset={() => link.reset(field)} />
+    : undefined);
+  /** A field's label, ending in its Reset while a link overrides it. */
+  const fieldLabel = (field: keyof StatLinkFields, label: string) => {
+    const reset = resetControl(field, label);
+    return reset ? <LabelRow reset={reset}><Label>{label}</Label></LabelRow> : <Label>{label}</Label>;
+  };
 
   const handleChange = (field: string, value: unknown) => {
     apply({ [field]: value } as EditingStat);
@@ -280,13 +302,14 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store }: {
             onChange={(v) => handleChange("name", v)}
             placeholders={placeholders}
             ariaLabel="Name"
+            readOnly={!!link}
             onFocus={rename?.onFocus}
             onBlur={rename?.onBlur}
             onSubmit={rename?.onSubmit}
           />
         </div>
         <div className="space-y-2" {...fieldFrame('type')}>
-          <Label>Type</Label>
+          {fieldLabel('type', 'Type')}
           <Select
             value={editingStat.type || "number"}
             onValueChange={handleTypeChange}
@@ -302,7 +325,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store }: {
         </div>
       </div>
       <div data-tour-anchor="stat-description" className="space-y-2" {...fieldFrame('description')}>
-        <Label>Description</Label>
+        {fieldLabel('description', 'Description')}
         <PlaceholderNameField
           value={editingStat.description || ""}
           onChange={(v) => handleChange("description", v)}
@@ -325,7 +348,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store }: {
                   <Input type="number" value={100} readOnly disabled />
                 </div>
                 <div {...fieldFrame('value')}>
-                  <Label>Initial Value (%)</Label>
+                  {fieldLabel('value', 'Initial Value (%)')}
                   <WorldInput
                     type="number"
                     min={0}
@@ -335,7 +358,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store }: {
                   />
                 </div>
                 <div {...fieldFrame('regen')}>
-                  <Label>Regen</Label>
+                  {fieldLabel('regen', 'Regen')}
                   <WorldInput
                     type="number"
                     value={editingStat.regen || 0}
@@ -346,7 +369,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store }: {
             ) : (
               <>
                 <div {...fieldFrame('min')}>
-                  <Label>Min</Label>
+                  {fieldLabel('min', 'Min')}
                   <WorldInput
                     type="number"
                     value={editingStat.min || 0}
@@ -354,7 +377,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store }: {
                   />
                 </div>
                 <div {...fieldFrame('max')}>
-                  <Label>Max</Label>
+                  {fieldLabel('max', 'Max')}
                   <WorldInput
                     type="number"
                     value={editingStat.max || 100}
@@ -362,7 +385,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store }: {
                   />
                 </div>
                 <div {...fieldFrame('value')}>
-                  <Label>Initial Value</Label>
+                  {fieldLabel('value', 'Initial Value')}
                   <WorldInput
                     type="number"
                     value={(editingStat.value as number) || 0}
@@ -370,7 +393,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store }: {
                   />
                 </div>
                 <div {...fieldFrame('regen')}>
-                  <Label>Regen</Label>
+                  {fieldLabel('regen', 'Regen')}
                   <WorldInput
                     type="number"
                     value={editingStat.regen || 0}
@@ -381,7 +404,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store }: {
             )}
           </div>
           <div className="space-y-2" {...fieldFrame('morphBindings')}>
-            <Label>Body Sliders</Label>
+            {fieldLabel('morphBindings', 'Body Sliders')}
             <Hint>Binds body sliders to this stat. Its value between Min and Max sets each slider&apos;s position.</Hint>
             <MultiSelect
               key={stat.id}
@@ -405,20 +428,24 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store }: {
           {/* The line decides; the ⓘ defines. Two paragraphs here cost the panel a screen. */}
           <Hint>Enabled keeps the stat active. Hidden hides it from the player only.</Hint>
           <div className="grid grid-cols-2 gap-2">
-            <label className="flex items-center space-x-2 cursor-pointer" {...fieldFrame('enabled')}>
-              <Checkbox
-                checked={editingStat.enabled !== false}
-                onCheckedChange={(c) => handleChange("enabled", c !== false)}
-              />
-              <span>Enabled</span>
-            </label>
-            <label className="flex items-center space-x-2 cursor-pointer" {...fieldFrame('hidden')}>
-              <Checkbox
-                checked={editingStat.hidden === true}
-                onCheckedChange={(c) => handleChange("hidden", c === true)}
-              />
-              <span>Hidden</span>
-            </label>
+            <LabelRow reset={resetControl('enabled', "Enabled")}>
+              <label className="flex items-center space-x-2 cursor-pointer" {...fieldFrame('enabled')}>
+                <Checkbox
+                  checked={editingStat.enabled !== false}
+                  onCheckedChange={(c) => handleChange("enabled", c !== false)}
+                />
+                <span>Enabled</span>
+              </label>
+            </LabelRow>
+            <LabelRow reset={resetControl('hidden', "Hidden")}>
+              <label className="flex items-center space-x-2 cursor-pointer" {...fieldFrame('hidden')}>
+                <Checkbox
+                  checked={editingStat.hidden === true}
+                  onCheckedChange={(c) => handleChange("hidden", c === true)}
+                />
+                <span>Hidden</span>
+              </label>
+            </LabelRow>
           </div>
         </div>
       )}
@@ -427,40 +454,48 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store }: {
           <Label>Prevent AI Changes</Label>
           <Hint>Stops the AI from changing this stat in one direction</Hint>
           <div className="grid grid-cols-2 gap-2">
-            <label className="flex items-center space-x-2 cursor-pointer" {...fieldFrame('noIncrease')}>
-              <Checkbox
-                checked={!!editingStat.noIncrease}
-                onCheckedChange={(c) => handleChange("noIncrease", c === true)}
-              />
-              <span>Don&apos;t Increase</span>
-            </label>
+            <LabelRow reset={resetControl('noIncrease', "Don't Increase")}>
+              <label className="flex items-center space-x-2 cursor-pointer" {...fieldFrame('noIncrease')}>
+                <Checkbox
+                  checked={!!editingStat.noIncrease}
+                  onCheckedChange={(c) => handleChange("noIncrease", c === true)}
+                />
+                <span>Don&apos;t Increase</span>
+              </label>
+            </LabelRow>
 
             {!isPercentage && (
-              <label className="flex items-center space-x-2 cursor-pointer" {...fieldFrame('noIncreaseMax')}>
-                <Checkbox
-                  checked={!!editingStat.noIncreaseMax}
-                  onCheckedChange={(c) => handleChange("noIncreaseMax", c === true)}
-                />
-                <span>Don&apos;t Increase Max</span>
-              </label>
+              <LabelRow reset={resetControl('noIncreaseMax', "Don't Increase Max")}>
+                <label className="flex items-center space-x-2 cursor-pointer" {...fieldFrame('noIncreaseMax')}>
+                  <Checkbox
+                    checked={!!editingStat.noIncreaseMax}
+                    onCheckedChange={(c) => handleChange("noIncreaseMax", c === true)}
+                  />
+                  <span>Don&apos;t Increase Max</span>
+                </label>
+              </LabelRow>
             )}
 
-            <label className="flex items-center space-x-2 cursor-pointer" {...fieldFrame('noDecrease')}>
-              <Checkbox
-                checked={!!editingStat.noDecrease}
-                onCheckedChange={(c) => handleChange("noDecrease", c === true)}
-              />
-              <span>Don&apos;t Decrease</span>
-            </label>
+            <LabelRow reset={resetControl('noDecrease', "Don't Decrease")}>
+              <label className="flex items-center space-x-2 cursor-pointer" {...fieldFrame('noDecrease')}>
+                <Checkbox
+                  checked={!!editingStat.noDecrease}
+                  onCheckedChange={(c) => handleChange("noDecrease", c === true)}
+                />
+                <span>Don&apos;t Decrease</span>
+              </label>
+            </LabelRow>
 
             {!isPercentage && (
-              <label className="flex items-center space-x-2 cursor-pointer" {...fieldFrame('noDecreaseMax')}>
-                <Checkbox
-                  checked={!!editingStat.noDecreaseMax}
-                  onCheckedChange={(c) => handleChange("noDecreaseMax", c === true)}
-                />
-                <span>Don&apos;t Decrease Max</span>
-              </label>
+              <LabelRow reset={resetControl('noDecreaseMax', "Don't Decrease Max")}>
+                <label className="flex items-center space-x-2 cursor-pointer" {...fieldFrame('noDecreaseMax')}>
+                  <Checkbox
+                    checked={!!editingStat.noDecreaseMax}
+                    onCheckedChange={(c) => handleChange("noDecreaseMax", c === true)}
+                  />
+                  <span>Don&apos;t Decrease Max</span>
+                </label>
+              </LabelRow>
             )}
           </div>
         </div>
@@ -468,7 +503,21 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store }: {
     </>
   );
 
+  /** The Resets for fields a tab holds without a label row of their own. */
+  const tabResets = (fields: [keyof StatLinkFields, string][]) => {
+    const shown = fields.filter(([field]) => link?.overridden.includes(field));
+    return shown.length > 0 && (
+      <div className="space-y-1">
+        {shown.map(([field, label]) => (
+          <LabelRow key={field} reset={resetControl(field, label)}><Label>{label}</Label></LabelRow>
+        ))}
+      </div>
+    );
+  };
+
   const descriptors = (
+    <>
+    {tabResets([['descriptors', 'Descriptors'], ['thresholdUnit', 'Threshold Unit']])}
     <StatDescriptorsSection
       stat={editingStat}
       newDescriptor={newDescriptor}
@@ -479,6 +528,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store }: {
       onRemoveDescriptor={handleRemoveDescriptor}
       onUnitChange={handleUnitChange}
     />
+    </>
   );
 
   const code = (
@@ -491,6 +541,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store }: {
 
       <Hint>Code can set this stat&apos;s value, Min, Max, or Regen, pin a placeholder, or switch a trait</Hint>
       <Hint>Turn order: Before the AI, AI stat changes, Regen, After the AI. An empty box is skipped.</Hint>
+      {tabResets([['beforeCode', 'Before the AI'], ['code', 'After the AI']])}
 
       <StatCodeBox
         timing="before"
@@ -510,10 +561,12 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store }: {
   );
 
   const panels: Record<StatPanelTab, ReactNode> = { details, descriptors, code };
+  const header = link?.header;
 
 
   return (
     <>
+      {header && <div className="mb-4">{header}</div>}
       <PanelTabs tabs={tabs} value={tab} onValueChange={onTabChange} stripLabel="Stat Fields" surfaceTabs="worldEditorStat" focus={{ kind: 'stat', id: stat.id, name: stat.name }}>
         {tabs.map((t) => (
           <PanelTabContent key={t.value} value={t.value}>{panels[t.value]}</PanelTabContent>

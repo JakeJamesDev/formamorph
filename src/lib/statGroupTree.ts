@@ -5,7 +5,7 @@
 import {
   buildTree, flattenTree, getDropProjection, applyDrop, duplicateNode,
   removeChildrenOf as removeChildrenOfGeneric,
-  type GroupTreeNode, type FlatTreeNode,
+  type GroupTreeNode, type FlatTreeNode, type TreeLeaf,
 } from './groupTree';
 import type { Stat, StatGroup } from '@/types';
 
@@ -20,7 +20,7 @@ export const newStatGroup = (id: string, order: number, name = NEW_STAT_GROUP_NA
   ({ id, name, aiDescription: '', parentId: null, order });
 
 /** How many stats and stat groups sit at the tree's root: the `order` a new root item takes. */
-export function statRootCount(groups: readonly StatGroup[] | undefined, stats: readonly Stat[] | undefined): number {
+export function statRootCount(groups: readonly StatGroup[] | undefined, stats: readonly Pick<Stat, 'groupId'>[] | undefined): number {
   const known = new Set((groups ?? []).map((g) => g.id));
   return (stats ?? []).filter((s) => s.groupId == null || !known.has(s.groupId)).length
     + (groups ?? []).filter((g) => g.parentId == null || !known.has(g.parentId)).length;
@@ -39,8 +39,8 @@ export const getStatDropProjection = (
 ): { depth: number; parentId: string | null } => getDropProjection(items, activeId, overId, dragOffset, indentationWidth);
 
 /** The stats in the order the Stats tab draws them: group nesting, then sibling order. */
-export const statsInTreeOrder = (groups: StatGroup[], stats: Stat[]): Stat[] =>
-  flattenStatTree(buildStatTree(groups, stats)).flatMap((node) => (node.leaf ? [node.leaf] : []));
+export const statsInTreeOrder = <L extends TreeLeaf = Stat>(groups: readonly StatGroup[], stats: readonly L[]): L[] =>
+  flattenTree(buildTree(groups, stats)).flatMap((node) => (node.leaf ? [node.leaf] : []));
 
 /** Resolve a drag into new groups and stats (re-parent, reindex). Stats come back in tree order. Illegal and
  *  unfound moves change nothing. */
@@ -62,12 +62,12 @@ export function duplicateStatNode(
 
 /** Delete a group. Its subgroups and stats move up to its parent, into the slot the group held, rather than
  *  vanishing under a deleted id. Stats come back in tree order. Unchanged inputs keep identity. */
-export function removeStatGroup(
-  groups: StatGroup[], stats: Stat[], id: string,
-): { groups: StatGroup[]; stats: Stat[] } {
+export function removeStatGroup<L extends TreeLeaf = Stat>(
+  groups: StatGroup[], stats: L[], id: string,
+): { groups: StatGroup[]; stats: L[] } {
   const doomed = groups.find((g) => g.id === id);
   if (!doomed) return { groups, stats };
-  const tree = buildStatTree(groups, stats);
+  const tree = buildTree(groups, stats);
   const above = doomed.parentId === null ? undefined : findGroupNode(tree, doomed.parentId);
   const siblings = above?.kind === 'group' ? above.children : tree;
   const parentId = above?.kind === 'group' ? above.id : null;
@@ -79,7 +79,7 @@ export function removeStatGroup(
   return { groups: nextGroups, stats: statsInTreeOrder(nextGroups, nextStats) };
 }
 
-const findGroupNode = (nodes: StatTreeNode[], id: string): StatTreeNode | undefined => {
+const findGroupNode = <L extends TreeLeaf>(nodes: GroupTreeNode<StatGroup, L>[], id: string): GroupTreeNode<StatGroup, L> | undefined => {
   for (const node of nodes) {
     if (node.kind !== 'group') continue;
     if (node.id === id) return node;

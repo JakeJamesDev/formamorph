@@ -80,7 +80,52 @@ export interface StatGroup {
   parentId: string | null;
   /** Sibling order among the stats and groups sharing the same parent. */
   order?: number;
+  /** `blueprints` marks the world's Blueprints group: its stats are not the player's and reach play only through
+   *  entity links. At most one world group carries it. Never set on an entity's own group. */
+  system?: 'blueprints';
 }
+
+/** A node under an entity that points at a Blueprint stat, the original, and reads it live. It stores only its own
+ *  place and its overrides. In play the linked stat runs under the original's id, with this entity's own value. */
+export interface StatLink {
+  id: string;
+  /** The original's id: a world stat inside the Blueprints group. */
+  originalId: string;
+  kind: 'stat';
+  /** The original's name when the link was stored, so it travels off-world and rebinds by name. */
+  originalName: string;
+  /** null = the entity's top level; otherwise one of the entity's own stat groups. */
+  groupId: string | null;
+  /** Sibling order among the entity's stats, links and groups sharing the same parent. */
+  order?: number;
+  /** Original stat id → this link's overrides on that stat. A stat absent here, or a field absent in its map,
+   *  reads the original live. */
+  overrides?: Record<string, StatLinkOverrides>;
+}
+
+/** The fields a stat link may override, absent ones on the original read as off or empty. The name stays the
+ *  original's; `value` is the Initial Value. */
+export interface StatLinkFields {
+  type: StatType;
+  description: string;
+  min: number;
+  max: number;
+  value: number;
+  regen: number;
+  descriptors: StatDescriptor[];
+  thresholdUnit: ThresholdUnit;
+  beforeCode: string;
+  code: string;
+  morphBindings: string[];
+  enabled: boolean;
+  hidden: boolean;
+  noIncrease: boolean;
+  noIncreaseMax: boolean;
+  noDecrease: boolean;
+  noDecreaseMax: boolean;
+}
+
+export type StatLinkOverrides = BlueprintOverrides<StatLinkFields>;
 
 /** How a trait or stat-update modifies a stat. */
 export interface StatChange {
@@ -312,6 +357,9 @@ export interface Entity {
   stats?: Stat[];
   /** Groups for this entity's own stats, nestable via `parentId` like the world's. */
   statGroups?: StatGroup[];
+  /** Links to the world's Blueprint stats, placed among the entity's own stats (see lib/statLinks). At most one
+   *  link per original. */
+  statLinks?: StatLink[];
   /** Off-world only: the shared placeholders this entity's chips use, so they resolve after import. An import
    *  merges them into the world's shared list by name and values and clears the field. */
   sharedPlaceholders?: Placeholder[];

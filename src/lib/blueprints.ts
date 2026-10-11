@@ -19,7 +19,7 @@ export interface EffectiveRecord<T> {
 }
 
 /** Structural equality over the plain data a field holds: scalars, arrays, records. */
-function sameValue(a: unknown, b: unknown): boolean {
+export function sameValue(a: unknown, b: unknown): boolean {
   if (Object.is(a, b)) return true;
   if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false;
   if (Array.isArray(a) !== Array.isArray(b)) return false;

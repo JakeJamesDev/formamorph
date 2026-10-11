@@ -230,6 +230,25 @@ describe('an owned trait\'s panel', () => {
     expect(screen.getByText('Player stat changes apply only when you play as them')).toBeInTheDocument();
   });
 
+  it("picks a stat the entity links from Blueprints as its own", () => {
+    const world = {
+      ...WORLD,
+      stats: [{ id: 'bp-trust', name: 'Trust', type: 'number', description: '', min: 0, max: 100, regen: 0, descriptors: [], groupId: 'sbp' }],
+      statGroups: [{ id: 'sbp', name: 'Blueprints', parentId: null, system: 'blueprints' }],
+      entities: WORLD.entities.map((e) => (e.id === 'ash'
+        ? {
+          ...e, statLinks: [{ id: 'l-trust', originalId: 'bp-trust', kind: 'stat', originalName: 'Trust', groupId: null }],
+          traits: e.traits!.map((t) => (t.id === 't-tamed' ? { ...t, statChanges: [{ statId: 'bp-trust', value: 5, type: 'max' }] } : t)),
+        }
+        : e)),
+    } as World;
+    renderWorldEditorBench(world, 'advanced');
+    openTab(/Traits/);
+    fireEvent.click(treeRow('Tamed')!);
+    fireEvent.mouseDown(within(screen.getByRole('tablist', { name: 'Trait Fields' })).getByRole('tab', { name: 'Stats' }));
+    expect(screen.getByText('Trust')).toBeInTheDocument();
+  });
+
   it('keeps the Stats tab and no owner line on a world trait', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     openTab(/Traits/);

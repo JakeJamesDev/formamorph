@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
-  addOwnedStat, addOwnedStatGroup, duplicateOwnedStatNode, removeOwnedStat, removeOwnedStatGroup,
+  addOwnedStat, addOwnedStatGroup, duplicateOwnedStatNode, removeOwnedStat,
   updateOwnedStat, updateOwnedStatGroup,
 } from './ownedStats';
+import { removeEntityStatGroup } from './statLinks';
 import type { Entity, Stat, StatGroup } from '@/types';
 
 const stat = (id: string, extra: Partial<Stat> = {}): Stat => ({
@@ -72,14 +73,14 @@ describe('owned stat groups', () => {
 
   it('removes a group, moves its stats up and stores an empty list as absent', () => {
     const start = bram([stat('a', { groupId: 'g' })], [group('g')]);
-    const next = removeOwnedStatGroup(start, 'g');
+    const next = removeEntityStatGroup(start, 'g');
     expect(next.stats?.[0].groupId).toBeNull();
     expect('statGroups' in next).toBe(false);
   });
 
   it('leaves the entity as it was for a group it does not hold', () => {
     const start = bram([stat('a')], [group('g')]);
-    expect(removeOwnedStatGroup(start, 'nope')).toBe(start);
+    expect(removeEntityStatGroup(start, 'nope')).toBe(start);
   });
 
   it('copies a stat right after its original with a fresh id and a "(Copy)" name', () => {

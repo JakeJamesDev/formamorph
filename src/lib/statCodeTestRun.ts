@@ -2,6 +2,7 @@
  * One Test Code run: a stat box's code run once on the authored world, with no playthrough. The editor's
  * Test Code button and Formaquestion's code test both run through here, so both report the same writes.
  */
+import { playStatWorld } from './statLinks';
 import { allPlaceholders, placeholderOwners } from '@/lib/placeholderHomes';
 import { codePinText } from '@/lib/placeholderPins';
 import { PLACEHOLDER_PATH_SEPARATOR } from '@/lib/placeholders';
@@ -44,20 +45,22 @@ export interface StatCodeNames {
 }
 
 /** The parts of an authored world a stat's code reaches. */
-export type StatCodeWorld = Pick<World, 'stats' | 'traits' | 'traitGroups' | 'entities' | 'entityGroups' | 'placeholders' | 'placeholderGroups' | 'dictionaries'>;
+export type StatCodeWorld = Pick<World, 'stats' | 'statGroups' | 'traits' | 'traitGroups' | 'entities' | 'entityGroups' | 'placeholders' | 'placeholderGroups' | 'dictionaries'>;
 
-/** The names of `world` as the stat panel reads them. */
+/** The names of `world` as the stat panel reads them: the player's stats without Blueprints, and each entity's
+ *  with its links. */
 export function statCodeNames(world: StatCodeWorld): StatCodeNames {
   const list = allPlaceholders(world);
-  const codeNamedStats = statCodeNamed(world.stats, list);
+  const play = playStatWorld({ stats: world.stats, statGroups: world.statGroups ?? [], entities: world.entities });
+  const codeNamedStats = statCodeNamed(play.stats, list);
   return {
     codeNamedStats,
     statNames: codeNamedStats.map((stat) => stat.name).filter(Boolean),
     placeholders: { list, owners: placeholderOwners(world), dictionaries: codeDictionaries(world.dictionaries, list) },
     traitNames: statCodeNamed(world.traits, list).map((trait) => trait.name),
     traits: world.traits,
-    entities: entityTraitNames({ ...world, traitGroups: world.traitGroups ?? [] }, list),
-    entityStats: entityCodeStats(world.entities, list),
+    entities: entityTraitNames({ ...world, entities: play.entities, traitGroups: world.traitGroups ?? [] }, list),
+    entityStats: entityCodeStats(play.entities, list),
   };
 }
 

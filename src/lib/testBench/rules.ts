@@ -57,6 +57,7 @@ import { ruleText, rowText } from '@/lib/traitGateLine';
 import { conditionsOf } from '@/lib/requirementRows';
 import { isAlwaysOn } from '@/lib/traitEffects';
 import { statRows } from '@/lib/traitTree';
+import { playerStatsOf, resolvedEntityStats } from '@/lib/statLinks';
 import type {
   DictionaryEntry, Entity, GameLocation, PersonaRef, Placeholder, PlaceholderPin, PlaceholderValue, Stat, StatDescriptor,
   Trait, TraitGroup, TraitLink, TraitRequirement, TraitRequirementRow, World,
@@ -2351,12 +2352,13 @@ const traitStatNoTarget: Rule = {
   summary: (count) => `${count} entity traits change stats that their entity doesn’t own`,
   // A blank row is an edit in progress. A trait on an entity the player can play may also name a player stat.
   check: (world) => {
-    const playerStats = new Set((world.stats ?? []).map((s) => s.id));
+    const statWorld = { stats: world.stats ?? [], statGroups: world.statGroups ?? [] };
+    const playerStats = new Set(playerStatsOf(statWorld.stats, statWorld.statGroups).map((s) => s.id));
     const bearers = bearersOf(world);
     return (world.entities ?? []).flatMap((entity) => {
       const bearer = bearers.get(entity.id);
       if (!bearer) return [];
-      const own = new Set((entity.stats ?? []).map((s) => s.id));
+      const own = new Set(resolvedEntityStats(statWorld, entity).map((s) => s.id));
       const namesOwnedStat = (id: string) => !id || own.has(id) || (canBePlayer(entity) && playerStats.has(id));
       const name = quote(labelOf(entity.name, world));
       return bearer.traits

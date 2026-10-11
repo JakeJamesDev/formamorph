@@ -333,6 +333,16 @@ describe('reference-integrity rules', () => {
       const retargeted = { boast: { statChanges: { value: raise('vigor'), blueprint: raise('hp') } } };
       expect(only(base({ ...shared, entities: [bram([], { traitLinks: [linkTo(retargeted)] })] }), rule)).toEqual([]);
     });
+
+    it('reads a linked Blueprint stat as the entity’s own, and a Blueprint as no player stat', () => {
+      const trust = stat({ id: 'trust', name: 'Trust', groupId: 'sbp' });
+      const shared = { stats: [hp, trust], statGroups: [{ id: 'sbp', name: 'Blueprints', parentId: null, system: 'blueprints' as const }] };
+      const boast = trait({ id: 'boast', name: 'Boast', statChanges: raise('trust') });
+      const statLinks = [{ id: 'l-trust', originalId: 'trust', kind: 'stat' as const, originalName: 'Trust', groupId: null }];
+      expect(only(base({ ...shared, entities: [bram([boast], { statLinks })] }), rule)).toEqual([]);
+      const persona = bram([boast], { persona: true });
+      expect(only(base({ ...shared, entities: [persona] }), rule).map((f) => f.items[0].id)).toEqual(['boast']);
+    });
   });
 
   it('flags a pin to a placeholder that doesn’t exist, from any of the four sources, opening on the source', () => {

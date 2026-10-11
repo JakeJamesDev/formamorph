@@ -26,10 +26,12 @@ const store: { stat: Stat; placeholders: Placeholder[]; writes: Stat[]; rerender
 vi.mock('@/contexts/GameDataContext', () => ({
   useGameData: () => ({
     stats: [store.stat],
+    playStats: [store.stat],
     placeholders: store.placeholders,
     traits: [],
     traitGroups: [],
     entities: [],
+    playEntities: [],
     placementLetters: new Map(),
     placeholderOwners: new Map(),
     updateStat: (next: Stat) => {

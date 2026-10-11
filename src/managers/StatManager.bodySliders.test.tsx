@@ -11,7 +11,7 @@ const wounds = {
 
 vi.mock('@/contexts/GameDataContext', () => ({
   useGameData: () => ({
-    stats: [wounds], placeholders: [], traits: [], traitGroups: [], entities: [], entityGroups: [], dictionaries: [],
+    stats: [wounds], playStats: [wounds], placeholders: [], traits: [], traitGroups: [], entities: [], playEntities: [], entityGroups: [], dictionaries: [],
     placementLetters: new Map(), placeholderOwners: new Map(), worldOverview: {}, updateStat: () => {},
   }),
 }));

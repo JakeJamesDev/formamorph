@@ -922,7 +922,7 @@ const WorldEditorInner = ({
     selectedId: selections.placeholders ?? null, onSelect: selectPlaceholder, search,
   });
   const selectStat = useCallback((id: string | null) => select('stats', id), [select]);
-  const statsAdapter = useWorldStatsAdapter({
+  const { adapter: statsAdapter, dialog: removeWorldStatDialog } = useWorldStatsAdapter({
     selectedId: selections.stats ?? null, onSelect: selectStat, search, tab: shownStatTab, onTabChange: setStatTab, focusField: findField,
   });
   const statsParts = useListEditor(statsAdapter, { selectedId: selections.stats ?? null, onSelect: selectStat, search });
@@ -1056,6 +1056,7 @@ const WorldEditorInner = ({
       {activeTab === "overview" && <WorldOverviewManager />}
       {listEditorParts?.list}
       {removeWorldTraitDialog}
+      {removeWorldStatDialog}
       {placeholdersEditor.dialog}
       {entitiesEditor.dialog}
       {dictionaryEditor.dialog}
