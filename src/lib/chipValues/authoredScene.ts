@@ -1,8 +1,8 @@
 import { flattenEnabledBookEntries } from '../dictionaryUtils';
-import { statPlacementOf } from '../statContext';
+import { ownerStatParts, statPlacementOf } from '../statContext';
 import { entityIdsAt } from '../entityPresence';
 import { allPlaceholders } from '../placeholderHomes';
-import { PLAYER_BEARER, resolveBearers, type Bearer } from '../bearers';
+import { PLAYER_BEARER, playsAs, resolveBearers, type Bearer } from '../bearers';
 import { characterAsPlayer } from '../builtinPlaceholders';
 import { copyLookup, readerFor, type CopyLookup } from '../blueprints';
 import { borneByPlayer, withBearerTrees } from '../ownedTraitsInPlay';
@@ -110,11 +110,19 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
     ? options.resolve(characterAsPlayer(text), playerCopies)
     : resolveBearerText(null, text, { placeholders, rolls: {}, pins: ownPins(trait, player), copies: playerCopies }));
 
+  // Each entity's default traits switch its stats on and off.
+  const ownedStats = enabledOwnerStats(withTraitToggles(
+    Object.fromEntries(entities.filter((e) => e.stats?.length).map((e) => [e.id, (e.stats ?? []).map(atStartingValue)])),
+    treeStatTraits(bearers, Object.fromEntries(bearers.map((b) => [b.id, defaultsOf(b)]))),
+  ));
+
   return {
     overview: worldOverview?.systemPrompt || '',
     // Stats read their authored starting value — the same shape a playthrough's stats carry.
     stats: options.stats ?? stats.map(atStartingValue),
     statPlacement: statPlacementOf(world),
+    // With no persona picked, the Custom Persona entity's stats are the player's, as its traits are.
+    playedStats: ownerStatParts(entities.filter((entity) => playsAs(entity, undefined)), ownedStats),
     // The player bearer's traits, where its tree places them: never Blueprints, and Custom Persona's at the root.
     traits: borneByPlayer(player.traits.filter((trait) => activeIds.has(trait.id))
       .map((trait) => (trait.aiDescription ? { ...trait, aiDescription: playerText(trait, trait.aiDescription) } : trait))),
@@ -124,11 +132,7 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
       const defaults = defaultsOf(bearer);
       return bearer.entity && defaults.length ? [[bearer.id, defaults]] : [];
     })),
-    // Each entity's default traits switch its stats on and off.
-    ownedStats: enabledOwnerStats(withTraitToggles(
-      Object.fromEntries(entities.filter((e) => e.stats?.length).map((e) => [e.id, (e.stats ?? []).map(atStartingValue)])),
-      treeStatTraits(bearers, Object.fromEntries(bearers.map((b) => [b.id, defaultsOf(b)]))),
-    )),
+    ownedStats,
     persona: null,
     location,
     locations,

@@ -174,6 +174,7 @@ An entity's own stats become the player's stats while the player plays as it. Un
 |---|---|
 | Stat panel | The persona's stats show under its name, below your world's player stats. Pick "*name* (You)" in the entity picker, and no entity section shows. |
 | AI stat updates | The AI updates them with the player's stats. A stat with the same name as a world player stat stays a separate stat. |
+| Stats chip | The narrator, choice writer and planner read them after your world's stats. A stat with the same name as an earlier stat reads as "*name* (2)". |
 | Persona switch | Each entity keeps its values. Switch back, and they are as you left them. |
 | Library persona edits | A stat you add to a library persona joins the playthrough at its starting value, in a saved game too |
 

@@ -205,6 +205,14 @@ describe('the lens PC', () => {
       .toBe(block(buildAiContext(w, lens), 'stats').text);
   });
 
+  it("lists the Custom Persona entity's stats after the world's, as the play chip does", () => {
+    const calm: Stat = { ...stats[0], id: 's-calm', name: 'Calm', value: 3, description: '' };
+    const w = world({ entities: [...(world().entities ?? []), { id: 'e-you', name: 'You', customPersona: true, stats: [calm] }] });
+    const lens = buildLens({ ...w, traitGroups: w.traitGroups ?? [] }, at('loc-harbor', 't-sedge'));
+    expect(buildStatBlock(w, lens, '<STATS DESCRIPTION|numbers.markdown>')).toBe('- **Nerve:** 5/10\n- **Tide Sense:** 2/10\n- **Calm:** 3/10');
+    expect(block(buildAiContext(w, lens), 'stats').text).toBe('- **Nerve**\n- **Tide Sense**\n- **Calm**');
+  });
+
   it('replaces the default trait its own exclusive group contributed', () => {
     const asDefault = block(context(at('loc-harbor')), 'traits').text;
     const asSedge = block(context(at('loc-harbor', 't-sedge')), 'traits').text;

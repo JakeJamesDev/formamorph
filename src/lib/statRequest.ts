@@ -1,7 +1,8 @@
 import type { PlayerStat, Trait } from '@/types';
 import type { StatPlacement } from './statContext';
 import { stripMarkdown } from './stripMarkdown';
-import { statChipValues } from './chipValues/chipValues';
+import { statChipPartValues } from './chipValues/chipValues';
+import { maxKeyOf, statKeys } from './statKeys';
 import { applyAiMaxChanges, applyAiStatChanges, parseStatUpdates } from './statChanges';
 import { randomUUID } from './uuid';
 import { PLAYER_OWNER } from './statOwners';
@@ -77,21 +78,6 @@ export interface StatResponse {
   diagnostics: StatUpdateDiagnostic[];
 }
 
-const maxKeyOf = (key: string) => `${key} max`;
-
-/** Unique keys for one owner's stats, in order. A stat takes its plain name and that name's max key, or the
- *  first numbered name whose pair is free, so a stat named "Vigor max" never lands on Vigor's max key. */
-function statKeys(plainNames: readonly string[]): string[] {
-  const taken = new Set<string>();
-  return plainNames.map((plain) => {
-    const base = plain || 'Stat';
-    let key = base;
-    for (let n = 2; taken.has(key) || taken.has(maxKeyOf(key)); n++) key = `${base} (${n})`;
-    taken.add(key).add(maxKeyOf(key));
-    return key;
-  });
-}
-
 /** Unique owner keys, in order, after the keys already `taken`: a plain name, or its first free numbered form. */
 function ownerKeys(names: readonly string[], taken: Set<string>): string[] {
   return names.map((name) => {
@@ -119,13 +105,9 @@ function ownerSection(parts: readonly SectionPart[], ownerKey: string) {
       id, name, plainName: plainNames[start + i], ownerId: part.id, ownerKey, key: keys[start + i], maxKey: maxKeyOf(keys[start + i]),
     }));
     // The chip names each stat by its key, so a numbered key is the name the reply sees.
-    const named = part.stats.map((stat, i) => ({ ...stat, name: keys[start + i] }));
-    return { targets, context: named.length ? statChipValues(named, part.placement) : null };
+    return { targets, stats: part.stats.map((stat, i) => ({ ...stat, name: keys[start + i] })), placement: part.placement };
   });
-  const filled = laid.flatMap((part) => (part.context ? [part.context] : []));
-  const context = filled.length
-    ? Object.fromEntries(Object.keys(filled[0]).map((token) => [token, filled.map((values) => values[token]).join('\n')]))
-    : statChipValues([]);
+  const context = statChipPartValues(laid);
   return { targets: laid.flatMap((part) => part.targets), context };
 }
 

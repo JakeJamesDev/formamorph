@@ -1,0 +1,49 @@
+{
+  "_note": "Cases for the persona stats probe (harness/persona-stats-chip-probe.cli.ts). Sedge Landing under no persona, so the Custom Persona entity's stats are the player's: Calm low (rattled), and a Resolve that clashes with the world's Resolve, so it reads as \"Resolve (2)\". The entity stats of entity-stats-chip-cases.json ride in both arms. `checks` name scorers in the harness. Narration cases run the action; planning cases run the storyboard planner on a fixed scene; choices cases run a fixed passage.",
+  "personaStats": [
+    {
+      "id": "you-calm", "name": "Calm", "type": "number", "min": 0, "max": 100, "value": 10,
+      "description": "Your composure.",
+      "descriptors": [
+        { "id": "yc1", "threshold": 25, "description": "Rattled" },
+        { "id": "yc2", "threshold": 70, "description": "Uneasy" },
+        { "id": "yc3", "threshold": 100, "description": "Steady" }
+      ]
+    },
+    {
+      "id": "you-resolve", "name": "Resolve", "type": "number", "min": 0, "max": 100, "value": 20,
+      "description": "Your will to see the crossing through.",
+      "descriptors": [
+        { "id": "yr1", "threshold": 30, "description": "Wavering" },
+        { "id": "yr2", "threshold": 100, "description": "Firm" }
+      ]
+    }
+  ],
+  "cases": [
+    { "id": "narr-bram", "kind": "narration", "action": "I walk up to the ferryman and ask if he'll take me across.", "checks": ["rattled", "numbered-name", "numeral-leak", "label-leak"] },
+    { "id": "narr-odette", "kind": "narration", "action": "I crouch by the firepit and look over the eel rack.", "checks": ["rattled", "numbered-name", "numeral-leak", "label-leak"] },
+    { "id": "narr-idle", "kind": "narration", "action": "I sit on the edge of the dock and rest my feet.", "checks": ["rattled", "numbered-name", "numeral-leak", "label-leak"] },
+    {
+      "id": "plan-bram", "kind": "planning", "action": "I walk up to the ferryman and ask if he'll take me across.",
+      "scene": "The landing at dusk. The ferryman stands by the raft with the rope in his hand; the river runs high.",
+      "intents": [{ "name": "The ferryman", "text": "I want to finish for the day and keep my distance from strangers." }],
+      "checks": ["rattled", "numbered-name", "numeral-leak", "label-leak"]
+    },
+    {
+      "id": "plan-odette", "kind": "planning", "action": "I crouch by the firepit and look over the eel rack.",
+      "scene": "The firepit by the eel rack. The eel-seller turns the last few eels; smoke drifts low.",
+      "intents": [{ "name": "The eel-seller", "text": "I want this stranger to buy or leave, and I keep one hand near my knife." }],
+      "checks": ["rattled", "numbered-name", "numeral-leak", "label-leak"]
+    },
+    {
+      "id": "choice-bram", "kind": "choices", "scene": ["ent-bram"],
+      "narration": "Bram stands at the landing with the raft rope slack in his hand. He answers you with a short nod and does not meet your eye. The river runs high behind him, brown and quick, and the far bank sits a long pull away.",
+      "checks": ["contract", "numbered-name", "numeral-leak", "label-leak"]
+    },
+    {
+      "id": "choice-odette", "kind": "choices", "scene": ["ent-odette"],
+      "narration": "Odette turns the last few eels on the rack without looking up. Smoke curls past her face. She waits, one hand on the rack, for you to say what you came for.",
+      "checks": ["contract", "numbered-name", "numeral-leak", "label-leak"]
+    }
+  ]
+}
