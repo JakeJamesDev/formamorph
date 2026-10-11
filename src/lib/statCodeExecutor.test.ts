@@ -258,11 +258,12 @@ describe('executeStatCode bound writes', () => {
   const me = makeStat({ id: 'me', min: 10, max: 100, value: 40, regen: 2 });
   const run = (code: string) => executeStatCode(code, [me], me);
 
-  it('reads each bound write back out, and only the ones that changed', async () => {
+  it('reads each bound the code assigned back out, changed or not, and leaves the rest out', async () => {
     expect(await run('self.min = 5; self.max = 60; self.regen = -1;'))
       .toEqual({ value: null, error: null, bounds: { min: 5, max: 60, regen: -1 } });
     expect(await run('self.max = 60; self.regen = self.regen;'))
-      .toEqual({ value: null, error: null, bounds: { max: 60 } });
+      .toEqual({ value: null, error: null, bounds: { max: 60, regen: 2 } });
+    expect(await run('return self.max;')).toEqual({ value: 100, error: null });
   });
 
   it('clamps a value write to the range the same run wrote', async () => {
@@ -279,6 +280,12 @@ describe('executeStatCode bound writes', () => {
       expect(await run(code), code).toMatchObject({ value: null, kind: 'non-number' });
       expect((await run(code)).bounds, code).toBeUndefined();
     }
+  });
+
+  it.each(['value', 'min', 'max', 'regen'])('fails the run on null written to self.%s, discarding every write', async (field) => {
+    const res = await run(`self.max = 60; self.${field} = null;`);
+    expect(res).toMatchObject({ value: null, kind: 'non-number' });
+    expect(res.bounds).toBeUndefined();
   });
 
   it('discards a bound write when the code throws after making it', async () => {

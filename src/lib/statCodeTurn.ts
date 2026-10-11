@@ -1,6 +1,6 @@
 import type { CascadeOffTraitIds, CodeBounds, CodePins, Dictionary, OwnedTraitStates, Placeholder, PlayerStat, Trait } from '@/types';
 import {
-  CODE_BOUND_FIELDS, executeStatCode, keyedEntities, type EntityTraitWrites, type KeyedEntities, type PlaceholderWrite,
+  executeStatCode, keyedEntities, type EntityTraitWrites, type KeyedEntities, type PlaceholderWrite,
   type StatClock, type StatCodeResult, type StatTurnInputs, type TraitWrite, type ValueAndMax,
 } from './statCodeExecutor';
 import { statCodeName, statCodeNamed } from './statCodeNames';
@@ -13,10 +13,10 @@ import {
 } from './statCodeTraits';
 import { enabledStats } from './traitEffects';
 import {
-  applyCodeTraitSwitches, ownerStatTraitsInForce, withCodeBounds, type AppliedTraitValues, type CodeTraitSwitch,
+  applyCodeTraitSwitches, codeDeltaFor, ownerStatTraitsInForce, sameCodeDelta, withCodeDelta, type AppliedTraitValues, type CodeTraitSwitch,
   type TraitRuntimeState,
 } from './traitRuntime';
-import { boxCode, noBoxes, type StatCodeTiming } from './statCodeTiming';
+import { boxCode, type StatCodeTiming } from './statCodeTiming';
 import { clamp } from './utils';
 import { PLAYER_OWNER } from './statOwners';
 
@@ -88,7 +88,7 @@ export interface StatCodeTurnResult {
   stats: readonly PlayerStat[];
   /** Ids of the stats whose value the run moved, in stat order. */
   moved: string[];
-  /** Ids of the stats whose code bounds the run set or cleared, in stat order. */
+  /** Ids of the stats whose code delta the run changed, in stat order. */
   boundsChanged: string[];
   /** Where two stats touched one placeholder, the later stat's action is the one here. */
   pinWrites: PinWrites;
@@ -120,11 +120,8 @@ export function withPinWrites(codePins: CodePins, pinWrites: PinWrites): CodePin
   return next;
 }
 
-const sameBounds = (a: CodeBounds = {}, b: CodeBounds = {}) =>
-  CODE_BOUND_FIELDS.every((field) => a[field] === b[field]);
-
 /** Lay a turn's code result onto the latest stats, which may have moved since the run read its snapshot:
- *  only a value the run moved and the code bounds it changed carry over, re-derived onto the latest bases.
+ *  only a value the run moved and the code delta it changed carry over, re-derived onto the latest bases.
  *  After a trait switch every stat re-derives, under the traits the switch left in force. */
 export function overlayStatCodeResult(
   latest: readonly PlayerStat[],
@@ -137,8 +134,8 @@ export function overlayStatCodeResult(
   return latest.map((stat) => {
     const run = coded.get(stat.id);
     const value = run && result.moved.includes(stat.id) ? run.value : stat.value;
-    if (run && result.boundsChanged.includes(stat.id)) return withCodeBounds(stat, run.codeBounds ?? {}, value, inForce);
-    if (switched) return withCodeBounds(stat, stat.codeBounds ?? {}, value, inForce);
+    if (run && result.boundsChanged.includes(stat.id)) return withCodeDelta(stat, run.codeDelta, value, inForce);
+    if (switched) return withCodeDelta(stat, stat.codeDelta, value, inForce);
     return value === stat.value ? stat : { ...stat, value };
   });
 }
@@ -230,7 +227,7 @@ function ownerRun(owner: OwnerCodeTurn, timing: StatCodeTiming, placeholderDefs:
 }
 
 /** Run every owner's enabled stats' code over one turn in the sandbox, in parallel over one snapshot. A
- *  failing run is logged and leaves its stat unchanged. Empty code clears its stat's code bounds. */
+ *  failing run is logged and leaves its stat unchanged. */
 export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
   const timing = turn.timing ?? 'after';
   const placeholderDefs = turn.placeholders?.placeholders ?? [];
@@ -268,7 +265,7 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
         return;
       }
       if (result.value !== null || result.bounds) {
-        writes.values.set(stat.id, { value: result.value, bounds: result.bounds ? { ...stat.codeBounds, ...result.bounds } : null });
+        writes.values.set(stat.id, { value: result.value, bounds: result.bounds ?? null });
       }
       if (result.placeholders) writes.placeholders.set(stat.id, result.placeholders);
       if (result.traits || result.entities) {
@@ -280,10 +277,6 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
   // Owner order, then stat order: the player first, then each entity, so the later write wins.
   const inOrder = runs.flatMap(({ live, writes }) => live.map((stat) => ({ stat, writes })));
   const pinWrites = pinWritesInStatOrder(inOrder.map(({ stat, writes }) => writes.placeholders.get(stat.id) ?? []));
-  for (const { stat, writes } of inOrder) {
-    // Code bounds outlive one box: only a stat that has emptied both loses them.
-    if (noBoxes(stat) && stat.codeBounds) writes.values.set(stat.id, { value: null, bounds: {} });
-  }
 
   // Trait switches first, so bounds re-derive under them; the code's own bounds and values then go on top.
   const before: TraitRuntimeState = {
@@ -327,8 +320,9 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
   return { stats, moved, boundsChanged, pinWrites, ...(traitResult ? { traits: traitResult } : {}), ...withOwners };
 }
 
-/** `current` with an owner's code writes laid on, re-derived under `active`. `start` is the stats the run
- *  read, in the same order, which `moved` compares against. */
+/** `current` with an owner's code writes laid on, re-derived under `active`. A bound write books its
+ *  difference from the bound `active` derives into the code delta. `start` is the stats the run read, in
+ *  the same order, which `moved` compares against. */
 function settleWrites(
   start: readonly PlayerStat[],
   current: readonly PlayerStat[],
@@ -339,11 +333,12 @@ function settleWrites(
   const boundsChanged: string[] = [];
   const stats = current.map((stat, i) => {
     const write = writes.get(stat.id);
+    const codeDelta = write?.bounds && codeDeltaFor(stat, write.bounds, active);
     // A value-only write keeps the bounds as they stand, which a trait switch may have moved.
     const next = !write ? stat
-      : write.bounds === null ? { ...stat, value: clamp(write.value ?? stat.value, stat.min, stat.max) }
-        : withCodeBounds(stat, write.bounds, write.value ?? stat.value, active);
-    if (write?.bounds && !sameBounds(write.bounds, stat.codeBounds)) boundsChanged.push(stat.id);
+      : !codeDelta ? { ...stat, value: clamp(write.value ?? stat.value, stat.min, stat.max) }
+        : withCodeDelta(stat, codeDelta, write.value ?? stat.value, active);
+    if (codeDelta && !sameCodeDelta(codeDelta, stat.codeDelta)) boundsChanged.push(stat.id);
     if (next.value !== start[i].value) moved.push(stat.id);
     return next.value === stat.value && !boundsChanged.includes(stat.id) ? stat : next;
   });

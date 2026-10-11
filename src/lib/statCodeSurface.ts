@@ -93,8 +93,8 @@ export const PREVIOUS_FIELDS: readonly SurfaceEntry[] = [
   { name: 'name', detail: 'string', info: 'The stat’s code name, at the start of this turn.' },
   { name: 'type', detail: 'string', info: 'number, percentage, or whichever type the stat was given, at the start of this turn.' },
   { name: 'description', detail: 'string', info: 'The stat’s description text, at the start of this turn.' },
-  { name: 'min', detail: 'number', info: 'Lower bound at the start of this turn, traits and code bounds included.' },
-  { name: 'max', detail: 'number', info: 'Upper bound at the start of this turn, traits and code bounds included.' },
+  { name: 'min', detail: 'number', info: 'Lower bound at the start of this turn, traits and code writes included.' },
+  { name: 'max', detail: 'number', info: 'Upper bound at the start of this turn, traits and code writes included.' },
   { name: 'value', detail: 'number', info: 'The value at the start of this turn.' },
   { name: 'regen', detail: 'number', info: 'Regen per story hour at the start of this turn, traits included.' },
 ];

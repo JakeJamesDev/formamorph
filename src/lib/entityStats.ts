@@ -122,7 +122,7 @@ export function applyEntityStatResponse(
     const held = values[ownerId] ?? [];
     const active = inForce(ownerId);
     const live = new Set(enabledStats(held, activeStatEnabled(held, active)).map((s) => s.id));
-    const applied = applyStatResponse(held, updatesOnly, live, active, ownerId);
+    const applied = applyStatResponse(held, updatesOnly, live, ownerId);
     if (values[ownerId]) next[ownerId] = applied.stats;
     diagnostics.push(...applied.diagnostics);
   }

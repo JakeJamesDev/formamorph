@@ -44,6 +44,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The Formaquestion Search tab finds guide sections by meaning while Semantic Search is on.** Word matches show at once, and meaning matches join them when you stop typing. Until the model is on your device, the tab uses words alone.
     - **Formaquestion's search now finds partial words and words with typos, on the Search tab and in Ask.** Type the first letters of a word, or the word with one letter wrong, to find its sections. A word spelled as you typed it still ranks first.
     - **You can now read the Guide full screen from the help window.** Select **Open Guide** in the **⋮** menu, or the button beside it in the title bar. The window and the full screen show the same section, and Esc closes it.
+  - **Stat Code:**
+    - **A stat code bound write sets the number, and traits and the AI move it from there.** A code bound no longer hides trait changes. Deleting the code keeps the bounds. Saves keep the bounds they show.
   - **The AI now updates your stats with fewer wrong-direction and made-up changes.** It answers with a change for every stat, 0 included. An endpoint that can't take that format gets the old reply style, and the AI context viewer notes it.
   - **The World Editor's Content group now lists Entities first and Stats last.** The order is Entities, Locations, Traits, Stats on the side rail and the mobile Sections list.
 - **🛠️ Developer tooling**

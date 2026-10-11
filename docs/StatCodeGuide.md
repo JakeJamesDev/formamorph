@@ -98,7 +98,7 @@ A turn runs your code twice, once on each side of the AI:
 
 > ⚠️ **The before box has no turn behind it yet.** `previous` reads as the stat itself, `delta.ai`, `delta.regen`, `delta.total` and `delta.actual` all read zeros, and the clock reads turn start, so `clock.deltaHours` is `0`. Code that scales the AI's change belongs in the after box.
 
-**Bounds carry across both boxes.** A `self.max` the before box sets persists through an after box that never writes it. Emptying one box leaves the bounds the other set. Emptying both clears them.
+**Bounds carry across both boxes.** A `self.max` the before box sets persists through an after box that never writes it. Emptying a box, or both, leaves the bounds as they are.
 
 ### When Your Code Runs
 
@@ -195,9 +195,9 @@ A stat that a trait switched off still reads as a real entry. Its name, value an
 | Write | Effect |
 | --- | --- |
 | `self.value = n` | Sets the value this turn, clamped to the range. Same as `return n` |
-| `self.min = n` | Sets the floor. Holds until the code writes it again |
-| `self.max = n` | Sets the cap. Holds until the code writes it again |
-| `self.regen = n` | Sets regen per story hour. Holds until the code writes it again |
+| `self.min = n` | Sets the floor to `n` now. Later changes move it from `n` |
+| `self.max = n` | Sets the cap to `n` now. Later changes move it from `n` |
+| `self.regen = n` | Sets regen per story hour to `n` now. Later changes move it from `n` |
 
 A field you do not write keeps what the turn gave it. So a script can move the cap and leave the value to the AI:
 
@@ -207,7 +207,16 @@ const level = stats.Level.value;
 self.max = 50 + level * 10;
 ```
 
-A bound your code sets overrides the authored bound, trait changes, and the AI's max changes for that field. It persists on runs that do not write it. Code-set bounds clear only when both boxes are empty. A write equal to the bound's current number counts as no write. Only `self` accepts writes. A write to another stat's fields is ignored and reported by its path, and the editor underlines it.
+A bound write works like a value write. After `self.max = 20`, the cap reads 20 when the run lands, whatever a trait switch in the same run moved. Every later change moves it from 20:
+
+| Later change | Effect on the cap |
+| --- | --- |
+| A trait that adds 10 to the max switches on | 30 |
+| That trait switches off again | 20 |
+| The AI raises the max by 5 | 25 |
+| The code writes `self.max = 40` | 40 |
+
+No code bound hides the traits or the AI under it. Deleting the code leaves the bounds as they are. Writing `null` to `value`, `min`, `max` or `regen` fails the run, as any other non-number does. Only `self` accepts writes. A write to another stat's fields is ignored and reported by its path, and the editor underlines it.
 
 ### Reading This Turn
 <!-- keywords: old value, how much it moved, overflow, wasted gain, halve damage, multiply narrator change, before and after, excess past maximum, requested amount -->
@@ -450,7 +459,7 @@ dictionaries.Weather.placeholders.Sky.pin(self.value < 20 ? 'storm' : 'clear');
 ### Order of Effects
 <!-- keywords: which script wins, priority, precedence, conflict, race condition, execution sequence, overwrite each other, see other scripts changes -->
 
-Each box is a separate run. Within one run every stat's code reads the same snapshot, so no script sees another stat's writes from that run. After each run, effects apply in this order: trait switches, then bounds, then values, then placeholder pins. A bound a stat set this turn still wins over a bound its own trait switch moved. When two stats write the same placeholder or trait in one run, the later stat in the list wins.
+Each box is a separate run. Within one run every stat's code reads the same snapshot, so no script sees another stat's writes from that run. After each run, effects apply in this order: trait switches, then bounds, then values, then placeholder pins. A bound a stat writes lands at the written number, after the run's trait switches have moved the bounds. When two stats write the same placeholder or trait in one run, the later stat in the list wins.
 
 Each run covers the player's stats and every entity's stats over that one snapshot. The player's writes apply first, then each entity's in authored order, so an entity's write wins over the player's.
 

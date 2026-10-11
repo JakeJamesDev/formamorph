@@ -428,11 +428,11 @@ describe('a code trait switch under undo', () => {
   });
 });
 
-describe('code bounds across a save/load round trip', () => {
+describe('code deltas across a save/load round trip', () => {
   const raiseCap: Trait = { id: 'r', name: 'Robust', statChanges: [{ statId: 'vigor', value: 30, type: 'max' }] };
   const statOf = (g: Gameplay) => g.playerStats.find((s) => s.id === 'vigor')!;
 
-  it('loads a save with no code bound fields with none, its bounds as saved', async () => {
+  it('loads a save with no code delta with none, its bounds as saved', async () => {
     const live = mount();
     await act(async () => {
       commit(live(), { stats: seedStatBases([startStat]), traits: [], disabledTraitIds: [], appliedValues: {} });
@@ -448,12 +448,12 @@ describe('code bounds across a save/load round trip', () => {
     });
     const loaded = statOf(live());
     expect(loaded).toMatchObject({ min: 0, max: 100, value: 100 });
-    expect('codeBounds' in loaded).toBe(false);
+    expect('codeDelta' in loaded).toBe(false);
   });
 
-  it('keeps a code bound through the round trip, still winning the next trait switch', async () => {
+  it('keeps a code delta through the round trip, and the next trait switch moves from it', async () => {
     const live = mount();
-    const coded: PlayerStat = { ...seedStatBases([startStat])[0], max: 40, value: 40, codeBounds: { max: 40 } };
+    const coded: PlayerStat = { ...seedStatBases([startStat])[0], max: 40, value: 40, codeDelta: { max: -60 } };
     await act(async () => {
       commit(live(), { stats: [coded], traits: [raiseCap], disabledTraitIds: ['r'], appliedValues: {} });
     });
@@ -466,12 +466,12 @@ describe('code bounds across a save/load round trip', () => {
     await act(async () => {
       await live().loadGame('save-4', [], [authored]);
     });
-    expect(statOf(live())).toMatchObject({ max: 40, codeBounds: { max: 40 } });
+    expect(statOf(live())).toMatchObject({ max: 40, codeDelta: { max: -60 } });
 
     await act(async () => {
       commit(live(), setTraitEnabled(slice(live()), 'r', true, { traits: [raiseCap], groups: [] }).state);
     });
-    expect(statOf(live())).toMatchObject({ max: 40, value: 40 });
+    expect(statOf(live())).toMatchObject({ max: 70, codeDelta: { max: -60 } });
   });
 });
 

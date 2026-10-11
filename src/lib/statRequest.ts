@@ -1,4 +1,4 @@
-import type { PlayerStat, Trait } from '@/types';
+import type { PlayerStat } from '@/types';
 import type { StatPlacement } from './statContext';
 import { stripMarkdown } from './stripMarkdown';
 import { statChipPartValues } from './chipValues/chipValues';
@@ -255,13 +255,11 @@ export function readStatResponse(raw: string, snapshot: StatRequestSnapshot): St
 }
 
 /** Apply `ownerId`'s updates to that owner's `stats`, caps before values, by identity, preserving authored
- *  text and enforcing the owner's live set. `active` is the owner's traits in force, which the cap under a
- *  code max derives from. The response's own diagnostics come back with the owner's. */
+ *  text and enforcing the owner's live set. The response's own diagnostics come back with the owner's. */
 export function applyStatResponse(
   stats: PlayerStat[],
   response: StatResponse,
   enabledIds: ReadonlySet<string>,
-  active: readonly Trait[] = [],
   ownerId: string = PLAYER_OWNER,
 ): { stats: PlayerStat[]; diagnostics: StatUpdateDiagnostic[] } {
   const owned = response.updates.filter((update) => update.ownerId === ownerId);
@@ -277,7 +275,7 @@ export function applyStatResponse(
       const update = byId.get(stat.id);
       if (!update || !enabledIds.has(stat.id)) return stat;
       const key = stat.name.toLowerCase();
-      const capped = applyAiMaxChanges([stat], { [key]: update.max }, active);
+      const capped = applyAiMaxChanges([stat], { [key]: update.max });
       return applyAiStatChanges(capped, { [key]: update.value })[0];
     }),
     diagnostics,

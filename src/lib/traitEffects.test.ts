@@ -121,13 +121,13 @@ describe('re-reading saved stats from the world', () => {
   it('keeps the numbers the playthrough actually reached, not the author\'s current defaults', () => {
     const saved = [PS('vigor', {
       value: 42, min: 5, max: 90, regen: 3, starting: 10, aiMaxDelta: 8,
-      codeBounds: { max: 90 }, enabled: false, baseMin: 0, baseMax: 100, baseRegen: 1,
+      codeDelta: { max: -18 }, enabled: false, baseMin: 0, baseMax: 100, baseRegen: 1,
     })];
     const authored = [S('vigor', { min: 0, max: 100, regen: 0, enabled: true })];
     const [stat] = refreshSavedStats(saved, authored);
     expect(stat).toMatchObject({
       value: 42, min: 5, max: 90, regen: 3, starting: 10, aiMaxDelta: 8,
-      codeBounds: { max: 90 }, enabled: false, baseMin: 0, baseMax: 100, baseRegen: 1,
+      codeDelta: { max: -18 }, enabled: false, baseMin: 0, baseMax: 100, baseRegen: 1,
     });
   });
 

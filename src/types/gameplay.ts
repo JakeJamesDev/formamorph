@@ -18,8 +18,11 @@ export interface ImageAttachment {
   dataUrl: string;
 }
 
-/** The bounds a stat's own code set on it. Each is absolute; a field the code never set is absent. */
+/** The bounds one run of a stat's code wrote. Each is absolute; a field the code left alone is absent. */
 export type CodeBounds = { min?: number; max?: number; regen?: number };
+
+/** How far stat code has moved each bound over the playthrough. A field code never moved is absent. */
+export type CodeBoundDeltas = CodeBounds;
 
 /** Owner id → the traits a gate cascade turned off, which switch back on once their gate holds again. */
 export type CascadeOffTraitIds = Record<string, string[]>;
@@ -46,10 +49,9 @@ export type OwnedTraitPicks = Record<string, string[]>;
 /** A stat during gameplay — a definition Stat whose live `value` is always a number.
  *
  *  `min`, `max` and `regen` are *effective* bounds, derived from the `base*` fields plus the active traits'
- *  contributions plus `aiMaxDelta`, with each `codeBounds` field replacing its bound last. Everything outside
- *  the trait runtime — the panel, stat code, morph bindings — reads only the effective numbers; the rest is
- *  bookkeeping. All of it is optional so a save written before bounds were derived still loads, its bases
- *  reconstructed at load time. */
+ *  contributions plus `aiMaxDelta` plus `codeDelta`. Everything outside the trait runtime — the panel, stat
+ *  code, morph bindings — reads only the effective numbers; the rest is bookkeeping. All of it is optional so
+ *  a save written before bounds were derived still loads, its bases reconstructed at load time. */
 export type PlayerStat = Omit<Stat, 'value'> & {
   value: number;
   /** The author's own floor, which no trait may dig below. */
@@ -59,9 +61,12 @@ export type PlayerStat = Omit<Stat, 'value'> & {
   /** How far the AI has moved this stat's maximum over the playthrough, kept apart from the trait
    *  contributions so the maximum stays fully derived. */
   aiMaxDelta?: number;
-  /** What the stat's code last set, held until the code runs again. Absent when it set nothing. */
-  codeBounds?: CodeBounds;
+  /** How far stat code has moved each bound, kept apart like `aiMaxDelta` so every layer stays derived. */
+  codeDelta?: CodeBoundDeltas;
 };
+
+/** A player stat as an older save stores it, with each code-set bound as an absolute number in `codeBounds`. */
+export type LegacyCodeBoundsStat = PlayerStat & { codeBounds?: CodeBounds };
 
 /** One row of the live scene list (the Entities tab): who is physically present this turn. `name` is the
  *  real entity name (resolves the portrait) or an ad-hoc/invented name. `alias` is how the player currently

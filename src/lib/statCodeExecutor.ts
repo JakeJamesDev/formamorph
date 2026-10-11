@@ -66,7 +66,7 @@ export interface StatCodeResult {
   error: string | null;
   /** Present exactly when `error` is. */
   kind?: StatCodeFailure;
-  /** The bounds the code wrote on `self`. Absent when it wrote none. */
+  /** The bounds the code assigned on `self`, changed or not. Absent when it assigned none. */
   bounds?: CodeBounds;
   /** The placeholders the code wrote or unpinned, in map order. Absent when it touched none. */
   placeholders?: PlaceholderWrite[];
@@ -190,7 +190,7 @@ export type DeltaSource = (typeof DELTA_SOURCES)[number];
  *  out reads as untouched: `previous` as a copy of the current entry, a change as zero. */
 export interface StatTurnInputs {
   /** The whole stat as it stood at the start of the turn. `min`, `max` and `regen` are the effective
-   *  numbers then, traits and code bounds included. */
+   *  numbers then, traits and code writes included. */
   previous?: Stat;
   /** Each source's change this turn. `ai` is the raw ask, before flags and the range; `regen` is what regen
    *  did, after the enabled gate and clamping. */
@@ -293,6 +293,8 @@ const DICTIONARY_WRITES = '__formamorphDictionaryWrites';
 // The `placeholders` prelude's view of one owner node, which the owner entries' `placeholders` read.
 const OWNER_VIEW = '__formamorphOwnerPlaceholders';
 const STAT_WRITES = '__formamorphStatWrites';
+// The bounds of `self` the code assigned, in assignment order.
+const BOUND_WRITES = '__formamorphBoundWrites';
 // Read-only writes outside every map, as full paths: on a `self` that is no entry of `stats`, and on `clock`.
 const LOOSE_WRITES = '__formamorphLooseWrites';
 const LOOSE_NOTE = '__formamorphLooseNote';
@@ -377,13 +379,19 @@ const LOCK_FIELDS = `(target, fields, prefix, note) => {
 }`;
 
 /** JS source of `(entry, isSelf, note) => void`: locks every field of a stat entry, at every depth, except
- *  the ones `self` writes. */
+ *  the ones `self` writes. Each assignment to a bound of `self` is listed in `BOUND_WRITES`, changed or not. */
 const LOCK_STAT = `(entry, isSelf, note) => {
   const lock = ${LOCK_FIELDS};
   const deep = (target, prefix) => Object.freeze(lock(target, Object.keys(target), prefix, note));
   for (const source of Object.keys(entry.delta)) deep(entry.delta[source], 'delta.' + source + '.');
   deep(entry.delta, 'delta.');
   deep(entry.previous, 'previous.');
+  if (isSelf) for (const field of ${JSON.stringify(CODE_BOUND_FIELDS)}) {
+    let held = entry[field];
+    Object.defineProperty(entry, field, {
+      enumerable: true, get: () => held, set: (next) => { held = next; (${ADD_ONCE})(${BOUND_WRITES}, field); },
+    });
+  }
   const writable = ${JSON.stringify(SELF_WRITABLE_FIELDS)};
   lock(entry, Object.keys(entry).filter((field) => !(isSelf && writable.includes(field))), '', note);
 }`;
@@ -960,6 +968,7 @@ export const executeStatCode = async (
       // with what `self`'s writable fields hold afterwards, then what it did to `placeholders`, `traits` and
       // the entities' traits.
       const program = [
+        `const ${BOUND_WRITES} = [];`,
         statsPrelude(keyedStats, blankStat, selfIsEntry ? selfData.name : null),
         `const ${LOOSE_WRITES} = [];`,
         `const ${LOOSE_NOTE} = (path) => (${ADD_ONCE})(${LOOSE_WRITES}, path);`,
@@ -977,7 +986,7 @@ export const executeStatCode = async (
         `[(function(${PLACEHOLDER_WRITES}, ${TRAIT_WRITES}, ${ENTITY_WRITES}, ${STAT_WRITES}, ${LOOSE_WRITES}, ${LOOSE_NOTE}, ${DICTIONARY_WRITES}, ${OWNER_VIEW}) {`,
         code,
         `})(), self.value, ${CODE_BOUND_FIELDS.map((field) => `self.${field}`).join(', ')}, ${PLACEHOLDER_WRITES}(), ${TRAIT_WRITES}(), ${ENTITY_WRITES}(),`,
-        `  JSON.stringify([JSON.parse(${STAT_WRITES}()), ${LOOSE_WRITES}]), ${DICTIONARY_WRITES}()];`,
+        `  JSON.stringify([JSON.parse(${STAT_WRITES}()), ${LOOSE_WRITES}]), ${DICTIONARY_WRITES}(), JSON.stringify(${BOUND_WRITES})];`,
       ].join('\n');
 
       const result = vm.evalCode(program);
@@ -1024,6 +1033,7 @@ export const executeStatCode = async (
       const entitiesDump = readDump(4 + CODE_BOUND_FIELDS.length);
       const statsDump = readDump(5 + CODE_BOUND_FIELDS.length);
       const dictionariesDump = readDump(6 + CODE_BOUND_FIELDS.length);
+      const assignedBounds: unknown = JSON.parse(readDump(7 + CODE_BOUND_FIELDS.length));
       result.value.dispose();
 
       if (consoleOutput.trim()) {
@@ -1036,10 +1046,11 @@ export const executeStatCode = async (
       if (returned.type === 'undefined' && written.type !== 'number') {
         return nonNumberFailure('self.value must be a number');
       }
-      // A field the code left alone keeps the pipeline's result, so only a changed field is a write.
+      // A bound the code assigned is a write, changed or not; one it left alone keeps the pipeline's result.
       const bounds: CodeBounds = {};
       for (const [field, slot] of boundSlots) {
-        if (slot.type === 'number' && Object.is(slot.number, selfData[field])) continue;
+        const assigned = Array.isArray(assignedBounds) && assignedBounds.includes(field);
+        if (!assigned && slot.type === 'number' && Object.is(slot.number, selfData[field])) continue;
         if (!Number.isFinite(slot.number)) return nonNumberFailure(`self.${field} must be a finite number`);
         bounds[field] = slot.number;
       }

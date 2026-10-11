@@ -117,12 +117,12 @@ describe('runStatCodeTurn entity owners', () => {
     expect(out.traits?.log).toEqual(['Acquired trait: Brave (by Trust)']);
   });
 
-  it('sets an entity stat’s code bounds on that owner alone', async () => {
+  it('sets an entity stat’s code delta on that owner alone', async () => {
     const out = await run(
       [stat({ id: 'trust', name: 'Trust', value: 50 })],
       [owner('bram', [stat({ id: 'trust', name: 'Trust', value: 50, code: 'self.max = 40;' })])],
     );
-    expect(out.owners?.bram.stats[0]).toMatchObject({ max: 40, value: 40, codeBounds: { max: 40 } });
+    expect(out.owners?.bram.stats[0]).toMatchObject({ max: 40, value: 40, codeDelta: { max: -60 } });
     expect(out.owners?.bram.boundsChanged).toEqual(['trust']);
     expect(out.stats[0].max).toBe(100);
   });
