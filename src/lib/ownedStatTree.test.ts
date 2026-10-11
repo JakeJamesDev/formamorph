@@ -289,6 +289,49 @@ describe('applyOwnedStatDrop: what reads a stat', () => {
   });
 });
 
+describe('applyOwnedStatDrop: what reads a stat moving into Blueprints', () => {
+  const intoBlueprints = (out: OwnedStatDrop | null) => {
+    const r = refusal(out);
+    return r?.reason === 'into-blueprints' ? r : null;
+  };
+  // Luck dropped on Trust, one level in, joins Blueprints.
+  const luckIn = (over: Partial<StatReaderWorld>) => drop(world([], over), 'luck', 'trust', 24);
+  const coded = (id: string, code: string) => ({ stats: lists.stats.map((s) => (s.id === id ? { ...s, code } : s)) });
+
+  it('moves a world stat that nothing reads into Blueprints', () => {
+    expect(moved(luckIn({}))?.world?.stats.find((s) => s.id === 'luck')).toMatchObject({ groupId: 'bp' });
+  });
+
+  it('refuses a world stat a trait row reaches, naming the trait', () => {
+    const brave = trait('brave', { statChanges: [{ statId: 'luck', value: 1 }] });
+    expect(intoBlueprints(luckIn({ traits: [brave] })))
+      .toEqual({ reason: 'into-blueprints', name: 'luck', reader: { kind: 'change', trait: 'brave' } });
+    const lit = trait('lit', { statToggles: [{ statId: 'luck', enabled: false }] });
+    expect(intoBlueprints(luckIn({ traits: [lit] }))?.reader).toEqual({ kind: 'toggle', trait: 'lit' });
+  });
+
+  it('refuses a world stat that another stat\'s code reads, naming that stat', () => {
+    expect(intoBlueprints(luckIn(coded('health', 'return stats.luck;')))?.reader).toEqual({ kind: 'readBy', stat: 'health' });
+  });
+
+  it('lets a stat in whose own code reads a stat that stays, since a Blueprint reads its linkers\' stats', () => {
+    expect(luckIn(coded('luck', 'return stats.health;'))?.kind).toBe('moved');
+  });
+
+  it('refuses a group when anything inside it is read, naming the first hit', () => {
+    const brave = trait('brave', { statChanges: [{ statId: 'health', value: 1 }] });
+    // Vitals dropped on Trust, one level in, joins Blueprints with Health.
+    expect(intoBlueprints(drop(world([], { traits: [brave] }), 'vitals', 'trust', 24, ['vitals'])))
+      .toEqual({ reason: 'into-blueprints', name: 'health', reader: { kind: 'change', trait: 'brave' } });
+    expect(drop(world([]), 'vitals', 'trust', 24, ['vitals'])?.kind).toBe('moved');
+  });
+
+  it('still moves a stat within Blueprints and out of it unread', () => {
+    const brave = trait('brave', { statChanges: [{ statId: 'luck', value: 1 }] });
+    expect(drop(world([], { traits: [brave] }), 'trust', 'luck', -24)?.kind).toBe('moved');
+  });
+});
+
 describe('getOwnedStatDropProjection', () => {
   it('projects a stat across owners like any row', () => {
     const tree = ownedStatTree(lists, [ash]);

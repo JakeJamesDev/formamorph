@@ -13,7 +13,7 @@ import { statsInTreeOrder } from './statGroupTree';
 import {
   entityStatRows, resolvedEntityStatTree, statBlueprintsSubtreeIds, statHeldReason, statOriginalOf, type LinkedStatRow,
 } from './statLinks';
-import { brokenStatReader, type StatReader, type StatReaderWorld } from './statMoveReaders';
+import { brokenStatReader, statReaderOutsideBlueprints, type StatReader, type StatReaderWorld } from './statMoveReaders';
 import { randomUUID } from './uuid';
 
 export type FlatStatRow = FlatTreeNode<StatGroup, Stat>;
@@ -167,6 +167,8 @@ export type StatDropRefusal =
   | { reason: 'held'; owner: string; held: HeldReason }
   /** Something reads the stat `name` on its owner, and the move would take it away. */
   | { reason: 'read'; name: string; owner: string | null; reader: StatReader }
+  /** A world stat `name` would join Blueprints while something outside reads it. */
+  | { reason: 'into-blueprints'; name: string; reader: StatReader }
   /** A Blueprints item would leave Blueprints while the `bearers` link it or something in it. */
   | { reason: 'blueprint-linked'; name: string; bearers: string[] }
   /** The Custom Persona entity's node left the top level. */
@@ -273,6 +275,11 @@ export function applyOwnedStatDrop(
     const leaves = parentAfter == null || !statBlueprintsSubtreeIds(dropped.groups).has(parentAfter);
     const bearers = leaves ? entities.filter((e) => e.statLinks?.some((l) => subtree.has(l.originalId))).map((e) => e.name) : [];
     if (bearers.length) return refused({ reason: 'blueprint-linked', name: original.item.name, bearers });
+  }
+  // A world stat that joins Blueprints stops being a player stat, so nothing outside may read it.
+  if (!isNode && from === null && !original && parentAfter != null && statBlueprintsSubtreeIds(dropped.groups).has(parentAfter)) {
+    const read = statReaderOutsideBlueprints(world, world.stats.filter((s) => subtree.has(s.id)));
+    if (read) return refused({ reason: 'into-blueprints', name: read.stat.name, reader: read.reader });
   }
   if (!isNode && from !== to) {
     const refusal = crossOwnerRefusal([...subtree].filter((id) => !tree.entityNodes.has(id)));

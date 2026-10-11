@@ -3,9 +3,8 @@
 
 import type { Entity, Placeholder, Stat, StatChange, Trait, TraitGroup, TraitStatToggle } from '@/types';
 import { canBePlayer, resolveBearers } from './bearers';
-import { codeRenameChains } from './statCodeRename';
+import { statCodeChains } from './statCodeRename';
 import { statCodeName } from './statCodeNames';
-import { boxCode, STAT_CODE_TIMINGS } from './statCodeTiming';
 import { playerStatsOf, resolvedEntityStats, type StatLinkWorld } from './statLinks';
 import { statRowSide } from './traitTree';
 
@@ -53,13 +52,11 @@ function traitReader(world: StatReaderWorld, from: string | null, moved: Readonl
   return null;
 }
 
-/** The first key of each `root` chain in either of the stat's code boxes, with the chain's later keys. */
-const chainsIn = (stat: Stat, root: Parameters<typeof codeRenameChains>[1]) =>
-  STAT_CODE_TIMINGS.flatMap((timing) => codeRenameChains(boxCode(stat, timing), root)).map((chain) => chain.map((key) => key.name));
-
-/** The first stat code that reads one of `moved` on owner `from`, or that a moved stat runs and reads a stat
- *  left behind. Only exact map lookups count. */
-function codeReader(world: StatReaderWorld, from: string | null, moved: ReadonlyMap<string, Stat>): { stat: Stat; reader: StatReader } | null {
+/** The first stat code that reads one of `moved` on owner `from`, or, with `ownCode`, that a moved stat runs and
+ *  reads a stat left behind. Only exact map lookups count. */
+function codeReader(
+  world: StatReaderWorld, from: string | null, moved: ReadonlyMap<string, Stat>, ownCode = true,
+): { stat: Stat; reader: StatReader } | null {
   const placeholders = world.placeholders ?? [];
   const codeName = (name: string) => statCodeName(name, placeholders);
   const owner = from === null ? undefined : world.entities.find((e) => e.id === from);
@@ -71,13 +68,13 @@ function codeReader(world: StatReaderWorld, from: string | null, moved: Readonly
   const movedByName = new Map([...moved.values()].map((s) => [codeName(s.name), s] as const).filter(([name]) => !stayingByName.has(name)));
 
   for (const stat of staying) {
-    for (const [name] of chainsIn(stat, 'stats')) {
+    for (const [name] of statCodeChains(stat, 'stats')) {
       const target = movedByName.get(name);
       if (target) return { stat: target, reader: { kind: 'readBy', stat: stat.name } };
     }
   }
-  for (const stat of moved.values()) {
-    for (const [name] of chainsIn(stat, 'stats')) {
+  for (const stat of ownCode ? moved.values() : []) {
+    for (const [name] of statCodeChains(stat, 'stats')) {
       const left = movedByName.has(name) ? undefined : stayingByName.get(name);
       if (left) return { stat, reader: { kind: 'reads', stat: left.name } };
     }
@@ -87,8 +84,8 @@ function codeReader(world: StatReaderWorld, from: string | null, moved: Readonly
   const key = codeName(owner.name);
   const everyStat = [...world.stats, ...world.entities.flatMap((e) => resolvedEntityStats(world, e))];
   for (const stat of everyStat) {
-    const throughEntities = key ? chainsIn(stat, 'entities').filter(([k, s]) => k === key && s === 'stats').map((c) => c[2]) : [];
-    const throughPersona = canBePlayer(owner) ? chainsIn(stat, 'persona').filter(([s]) => s === 'stats').map((c) => c[1]) : [];
+    const throughEntities = key ? statCodeChains(stat, 'entities').filter(([k, s]) => k === key && s === 'stats').map((c) => c[2]) : [];
+    const throughPersona = canBePlayer(owner) ? statCodeChains(stat, 'persona').filter(([s]) => s === 'stats').map((c) => c[1]) : [];
     for (const name of [...throughEntities, ...throughPersona]) {
       const target = name === undefined ? undefined : movedByName.get(name);
       if (target) return { stat: target, reader: { kind: 'readBy', stat: stat.name } };
@@ -105,4 +102,13 @@ export function brokenStatReader(
   if (!moved.length) return null;
   const byId = new Map(moved.map((s) => [s.id, s]));
   return traitReader(world, from, byId) ?? codeReader(world, from, byId);
+}
+
+/** What reads one of `moved`, world stats outside Blueprints, as a player stat: the first trait row or stat code
+ *  that would stop reading it in Blueprints. A moved stat's own code reads its linkers' stats there, so it never
+ *  counts. Null when nothing does. */
+export function statReaderOutsideBlueprints(world: StatReaderWorld, moved: readonly Stat[]): { stat: Stat; reader: StatReader } | null {
+  if (!moved.length) return null;
+  const byId = new Map(moved.map((s) => [s.id, s]));
+  return traitReader(world, null, byId) ?? codeReader(world, null, byId, false);
 }

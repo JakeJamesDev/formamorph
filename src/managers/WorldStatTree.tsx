@@ -41,8 +41,10 @@ export function StatDropRefusalNotice({ refusal, placeholders, onDismiss }: {
         );
       case 'root':
         return <>{name} stays at the top level, because the Custom Persona can&apos;t go in a group.</>;
-      case 'read': {
-        const stays = refusal.owner === null ? <>{name} stays a world stat</> : <>{name} stays {text(refusal.owner)}&apos;s stat</>;
+      case 'read':
+      case 'into-blueprints': {
+        const stays = refusal.reason === 'into-blueprints' ? <>{name} stays out of Blueprints</>
+          : refusal.owner === null ? <>{name} stays a world stat</> : <>{name} stays {text(refusal.owner)}&apos;s stat</>;
         const { reader } = refusal;
         const other = bold('trait' in reader ? reader.trait : reader.stat);
         switch (reader.kind) {

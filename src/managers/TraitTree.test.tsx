@@ -22,6 +22,16 @@ describe('TraitDropRefusalNotice', () => {
     );
   });
 
+  it('names what keeps a read trait out of Blueprints', () => {
+    const { unmount } = render(<TraitDropRefusalNotice refusal={{ reason: 'into-blueprints', name: 'Brave', reader: { kind: 'requires', trait: "Ash's Bold" } }} placeholders={[]} onDismiss={() => {}} />);
+    expect(screen.getByRole('status')).toHaveTextContent(
+      "Brave stays out of Blueprints, because Ash's Bold requires it. Remove that requirement first.",
+    );
+    unmount();
+    render(<TraitDropRefusalNotice refusal={{ reason: 'into-blueprints', name: 'Brave', reader: { kind: 'readBy', stat: 'Mood' } }} placeholders={[]} onDismiss={() => {}} />);
+    expect(screen.getByRole('status')).toHaveTextContent('Brave stays out of Blueprints, because the code of Mood reads it.');
+  });
+
   it('dismisses', () => {
     const onDismiss = vi.fn();
     render(<TraitDropRefusalNotice refusal={{ reason: 'root', name: 'Newcomer' }} placeholders={[]} onDismiss={onDismiss} />);

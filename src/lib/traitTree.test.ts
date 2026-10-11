@@ -3,9 +3,9 @@ import {
   buildTraitTree, isDescendantGroup, buildTraitContext, traitsInContextOrder,
   flattenTraitTree, removeChildrenOf, getTraitDropProjection, applyTraitDrop,
   duplicateTraitNode, ownedTraitTree, applyOwnedTraitDrop, getOwnedTraitDropProjection, linkRowId,
-  linkRefusal, entityRootTraitTree, getEntityRootDropProjection, applyEntityRootDrop,
+  linkRefusal, entityRootTraitTree, getEntityRootDropProjection, applyEntityRootDrop, type OwnedTraitDropOptions,
 } from './traitTree';
-import type { Entity, Trait, TraitGroup, TraitLink } from '@/types';
+import type { Entity, StatLink, Trait, TraitGroup, TraitLink } from '@/types';
 
 const group = (id: string, parentId: string | null, order: number): TraitGroup =>
   ({ id, name: id, parentId, order });
@@ -691,6 +691,96 @@ describe('applyOwnedTraitDrop with links', () => {
     const out = applyOwnedTraitDrop(strong, [ash], [], 'loner', 'pack', 0, 24, { createLinks: false });
     expect(out?.kind === 'moved' && out.entities.find((e) => e.id === 'ash')?.traits?.find((t) => t.id === 'loner'))
       .toMatchObject({ statChanges: [{ statId: 's', value: 1, type: 'min' }] });
+  });
+});
+
+describe('applyOwnedTraitDrop: what reads a trait moving into Blueprints', () => {
+  // Rows: blueprints, classes, paladin, wizard, lone, loner, brave, ash, pack, bond, tamed.
+  const requires = (id: string, kind: 'trait' | 'group' = 'trait') => ({ requires: [{ all: [{ kind, id }] }] });
+  const lists = {
+    traits: [trait('paladin', 'classes', 0), trait('wizard', 'classes', 1), { ...trait('loner', 'lone', 0), name: 'Loner' }, trait('brave', null, 2)],
+    traitGroups: [{ ...group('blueprints', null, 0), system: 'blueprints' as const }, group('classes', 'blueprints', 0), { ...group('lone', null, 1), name: 'Lone' }],
+  };
+  const ash: Entity = { id: 'ash', name: 'Ash', traits: [trait('pack', null, 0), trait('tamed', 'bond', 0)], traitGroups: [group('bond', null, 1)] };
+  const withTrait = (id: string, over: Partial<Trait>) => ({ ...lists, traits: lists.traits.map((t) => (t.id === id ? { ...t, ...over } : t)) });
+  const stat = (id: string, code: string, groupId: string | null = null) =>
+    ({ id, name: id, type: 'number' as const, description: '', min: 0, max: 100, value: 0, regen: 0, descriptors: [], groupId, code });
+  const codeWorld = (...stats: ReturnType<typeof stat>[]) => ({ stats, statGroups: [{ id: 'sbp', name: 'sbp', parentId: null, system: 'blueprints' as const }], placeholders: [] });
+  // Loner dropped on Wizard joins Classes, inside Blueprints.
+  const lonerIn = (w = lists, ents: Entity[] = [ash], opts: OwnedTraitDropOptions = {}) => applyOwnedTraitDrop(w, ents, [], 'loner', 'wizard', 0, 24, opts);
+  const refusal = (out: ReturnType<typeof applyOwnedTraitDrop>) => (out?.kind === 'refused' ? out.refusal : null);
+
+  it('moves a world trait that nothing reads into Blueprints', () => {
+    const out = lonerIn();
+    expect(out?.kind === 'moved' && out.world?.traits.find((t) => t.id === 'loner')).toMatchObject({ groupId: 'classes' });
+  });
+
+  it('refuses a world trait another world trait requires, naming that trait', () => {
+    expect(refusal(lonerIn(withTrait('brave', requires('loner')))))
+      .toEqual({ reason: 'into-blueprints', name: 'Loner', reader: { kind: 'requires', trait: 'brave' } });
+  });
+
+  it('refuses a world trait an entity\'s trait or a link\'s override requires, naming it as the entity\'s', () => {
+    const owned = { ...ash, traits: ash.traits!.map((t) => (t.id === 'tamed' ? { ...t, ...requires('loner') } : t)) };
+    expect(refusal(lonerIn(lists, [owned]))).toMatchObject({ reader: { kind: 'requires', trait: "Ash's tamed" } });
+    const overrides = { paladin: { requires: { value: requires('loner').requires, blueprint: [] } } };
+    const linker: Entity = { ...ash, traitLinks: [{ id: 'l1', originalId: 'paladin', kind: 'trait', originalName: 'paladin', groupId: null, order: 2, overrides }] };
+    expect(refusal(lonerIn(lists, [linker]))).toMatchObject({ reader: { kind: 'requires', trait: "Ash's paladin" } });
+  });
+
+  it('ignores a Blueprint\'s requirement and the moving trait\'s own', () => {
+    expect(lonerIn(withTrait('paladin', requires('loner')))?.kind).toBe('moved');
+    expect(lonerIn(withTrait('loner', requires('brave')))?.kind).toBe('moved');
+  });
+
+  it('refuses a group named by a requirement or holding a trait one names, naming the first hit', () => {
+    // Lone dropped on Wizard joins Classes with Loner.
+    const loneIn = (w: typeof lists) => applyOwnedTraitDrop(w, [ash], ['lone'], 'lone', 'wizard', 0, 24);
+    expect(refusal(loneIn(withTrait('brave', requires('lone', 'group'))))).toMatchObject({ name: 'Lone', reader: { trait: 'brave' } });
+    expect(refusal(loneIn(withTrait('brave', requires('loner'))))).toMatchObject({ name: 'Loner', reader: { trait: 'brave' } });
+    expect(loneIn(lists)?.kind).toBe('moved');
+    // A requirement that moves in along with what it names still reads it.
+    const hermit = { ...trait('hermit', 'lone', 1), ...requires('loner') };
+    expect(loneIn({ ...lists, traits: [...lists.traits, hermit] })?.kind).toBe('moved');
+  });
+
+  it('refuses a world trait that stat code outside Blueprints reads by name', () => {
+    expect(refusal(lonerIn(lists, [ash], { codeWorld: codeWorld(stat('mood', 'return traits.Loner.acquired ? 1 : 0;')) })))
+      .toEqual({ reason: 'into-blueprints', name: 'Loner', reader: { kind: 'readBy', stat: 'mood' } });
+    expect(refusal(lonerIn(lists, [ash], { codeWorld: codeWorld(stat('mood', "return persona.traits['Loner'] ? 1 : 0;")) })))
+      .toMatchObject({ reader: { kind: 'readBy', stat: 'mood' } });
+    const ownStat = { ...ash, stats: [stat('grit', 'return traits.Loner ? 1 : 0;')] };
+    expect(refusal(lonerIn(lists, [ownStat], { codeWorld: codeWorld() }))).toMatchObject({ reader: { kind: 'readBy', stat: 'grit' } });
+  });
+
+  it('reads a stat Blueprint\'s code where an entity links it, with the link\'s overrides', () => {
+    const linker = (overrides?: StatLink['overrides']) =>
+      ({ ...ash, statLinks: [{ id: 'sl', originalId: 'mood', kind: 'stat' as const, originalName: 'mood', groupId: null, order: 0, ...(overrides ? { overrides } : {}) }] });
+    const bpMood = (code: string) => codeWorld(stat('mood', code, 'sbp'));
+    expect(refusal(lonerIn(lists, [linker()], { codeWorld: bpMood('return traits.Loner;') })))
+      .toMatchObject({ reader: { kind: 'readBy', stat: 'mood' } });
+    const overridden = linker({ mood: { code: { value: 'return traits.Loner;', blueprint: 'return 0;' } } });
+    expect(refusal(lonerIn(lists, [overridden], { codeWorld: bpMood('return 0;') }))).toMatchObject({ reader: { kind: 'readBy', stat: 'mood' } });
+  });
+
+  it('lets a trait in when only an unlinked stat Blueprint\'s code reads it, or a staying trait still answers its name', () => {
+    expect(lonerIn(lists, [ash], { codeWorld: codeWorld(stat('mood', 'return traits.Loner;', 'sbp')) })?.kind).toBe('moved');
+    const twin = { ...lists, traits: [...lists.traits, { ...trait('loner2', null, 3), name: 'Loner' }] };
+    expect(lonerIn(twin, [ash], { codeWorld: codeWorld(stat('mood', 'return traits.Loner;')) })?.kind).toBe('moved');
+  });
+
+  it('refuses an entity trait its own entity\'s requirement or code reads, and moves one nothing reads', () => {
+    // Pack dropped on Wizard leaves Ash for Classes.
+    const packIn = (ents: Entity[], opts: OwnedTraitDropOptions = {}) => applyOwnedTraitDrop(lists, ents, [], 'pack', 'wizard', 0, 24, opts);
+    const gated = { ...ash, traits: ash.traits!.map((t) => (t.id === 'tamed' ? { ...t, ...requires('pack') } : t)) };
+    expect(refusal(packIn([gated]))).toEqual({ reason: 'into-blueprints', name: 'pack', reader: { kind: 'requires', trait: "Ash's tamed" } });
+    expect(refusal(packIn([ash], { codeWorld: codeWorld(stat('mood', 'return entities.Ash.traits.pack;')) })))
+      .toMatchObject({ reader: { kind: 'readBy', stat: 'mood' } });
+    const out = packIn([ash], { codeWorld: codeWorld(stat('mood', 'return persona.traits.pack;')) });
+    expect(out?.kind === 'moved' && out.world?.traits.find((t) => t.id === 'pack')).toMatchObject({ groupId: 'classes' });
+    // Bond, whose Wild requires Tamed beside it, moves in whole.
+    const pair = { ...ash, traits: [...ash.traits!, { ...trait('wild', 'bond', 1), ...requires('tamed') }] };
+    expect(applyOwnedTraitDrop(lists, [pair], ['bond'], 'bond', 'wizard', 0, 24)?.kind).toBe('moved');
   });
 });
 

@@ -62,6 +62,8 @@ To remove a target, select the **×** on its chip. To remove a whole row, select
 
 The item is now a blueprint. The player never picks it directly. Entities get it only through [links](#links).
 
+> ⚠️ **Blueprints refuses the item while something outside it reads the item.** That is a requirement that names it, or stat code that reads it by name. A note names the first one. Remove it, then drag again.
+
 ## How to Link to a Blueprint
 <!-- keywords: give to entity, assign, share, attach, reuse, template, npc class, apply to characters, same perk several npcs, hand out, drag onto character, tick boxes -->
 <!-- route: worldEditor.traits -->

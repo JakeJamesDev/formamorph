@@ -54,13 +54,15 @@ const bearerList = (names: readonly string[], placeholders: Placeholder[]) => {
 };
 
 /** The line after a refused drop: the entity already has the trait, the Custom Persona entity left the top
- *  level, or a linked Blueprint would leave Blueprints or become owned. The dragged item stays put. */
+ *  level, something reads an item joining Blueprints, or a linked Blueprint would leave Blueprints or become
+ *  owned. The dragged item stays put. */
 export function TraitDropRefusalNotice({ refusal, placeholders, onDismiss }: {
   refusal: TraitDropRefusal;
   placeholders: Placeholder[];
   onDismiss: () => void;
 }) {
-  const name = <strong><PlaceholderText text={refusal.name} placeholders={placeholders} /></strong>;
+  const bold = (text: string) => <strong><PlaceholderText text={text} placeholders={placeholders} /></strong>;
+  const name = bold(refusal.name);
   return (
     <DropRefusalNotice onDismiss={onDismiss}>
       {refusal.reason === 'duplicate' ? (
@@ -70,6 +72,12 @@ export function TraitDropRefusalNotice({ refusal, placeholders, onDismiss }: {
           {name} stays in Blueprints, because {bearerList(refusal.bearers, placeholders)}{' '}
           {refusal.bearers.length === 1 ? 'links' : 'link'} to it or to something in it. Remove those links first.
         </>
+      ) : refusal.reason === 'into-blueprints' ? (
+        refusal.reader.kind === 'requires' ? (
+          <>{name} stays out of Blueprints, because {bold(refusal.reader.trait)} requires it. Remove that requirement first.</>
+        ) : (
+          <>{name} stays out of Blueprints, because the code of {bold(refusal.reader.stat)} reads it.</>
+        )
       ) : (
         <>{name} stays at the top level, because the Custom Persona can&apos;t go in a group.</>
       )}
@@ -85,7 +93,7 @@ export function TraitDropRefusalNotice({ refusal, placeholders, onDismiss }: {
  */
 const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSelect: (id: string) => void }) => {
   const {
-    traits, traitGroups, entities, setTraits, setTraitGroups, editEntity, placeholders, gateInput, entityRoot,
+    traits, traitGroups, entities, setTraits, setTraitGroups, editEntity, placeholders, gateInput, entityRoot, stats, statGroups,
   } = useTraitStore();
   const originals = useMemo(() => originalsOf({ traits, traitGroups, entityRoot }), [traits, traitGroups, entityRoot]);
   const { advanced } = useEditorMode();
@@ -231,7 +239,8 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
       }
       // Creating a link is Advanced only; existing links still drag in Simple.
       const next = applyOwnedTraitDrop(
-        lists, entities, collapsed, activeId, overId, offsetLeft, TREE_INDENT, { createLinks: advanced, emptySystemNodes: advanced },
+        lists, entities, collapsed, activeId, overId, offsetLeft, TREE_INDENT,
+        { createLinks: advanced, emptySystemNodes: advanced, codeWorld: { stats, statGroups, placeholders } },
       );
       if (!next) return;
       if (next.kind === 'refused') {
