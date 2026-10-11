@@ -184,3 +184,22 @@ describe('the Variable menu section of the Stat Code Guide', () => {
     expect(index.search(question, 3).map((s) => s.id)).toContain('StatCodeGuide#how-to-insert-a-name-from-your-world');
   });
 });
+
+describe('the other-stat write sections of the Stat Code Guide', () => {
+  const IDS = ['StatCodeGuide#how-to-change-another-stat-from-code', 'StatCodeGuide#writing-to-other-stats'];
+
+  it.each([
+    'how can one of my stat scripts change a different stat, like lowering health when a dice roll comes up 1?',
+    'can my script move another stat at the same time?',
+    'I want one event to hurt Health and raise Luck, do I need code in both stats?',
+    'can a stat script change the max of a different stat?',
+  ])('is in the top 3 for "%s"', (question) => {
+    const top = index.search(question, 3).map((s) => s.id);
+    expect(IDS.some((id) => top.includes(id))).toBe(true);
+  });
+
+  it('is first for a question about two scripts that write one stat', () => {
+    expect(index.search('two of my stat scripts change the same stat, which one wins?', 1).map((s) => s.id))
+      .toEqual(['StatCodeGuide#writing-to-other-stats']);
+  });
+});

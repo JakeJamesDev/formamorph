@@ -1,6 +1,6 @@
 # 07: Guide And Help For Writing Other Stats
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 02, 03, 04
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium

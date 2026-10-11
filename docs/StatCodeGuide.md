@@ -1,7 +1,7 @@
 # 🧮 Stat Code Guide
 <!-- keywords: scripting, automation, custom logic, game mechanics, coding, rules engine -->
 
-This guide explains Formamorph's **stat code**: a small JavaScript script attached to a stat. It can set the stat's value from other stats, set the stat's own bounds, pin a placeholder, or switch a trait. Each stat has two script boxes, one on each side of the AI's turn. In a world file they are the `beforeCode` and `code` fields of an entry in the world's `stats` list. The [World Format](WorldFormat#stats) page describes the rest of a stat.
+This guide explains Formamorph's **stat code**: a small JavaScript script attached to a stat. It can set the stat's value from other stats, set the stat's own bounds, write another stat of the same owner, pin a placeholder, or switch a trait. Each stat has two script boxes, one on each side of the AI's turn. In a world file they are the `beforeCode` and `code` fields of an entry in the world's `stats` list. The [World Format](WorldFormat#stats) page describes the rest of a stat.
 
 ## How to Add Stat Code to a Stat
 <!-- keywords: script, javascript, js, formula, calculate, dynamic, programming, tab, computed value, derived, equation, math, tab is missing, where to write it, depends on another stat, auto update each turn -->
@@ -39,6 +39,17 @@ Select the **Variable** button in the toolbar of a code box on a stat's **Code**
 4. Set `self.value` from `self.previous.value`, the clamped ask and `self.delta.regen.value`. See [Reading This Turn](#reading-this-turn) for an example.
 5. Select **Test Code**.
 
+## How to Change Another Stat from Code
+<!-- keywords: move two stats at once, one event changes several stats, one script hurts health and raises luck, dice roll with a penalty, halve health on a bad roll, bonus on a good roll, hub stat, one box for many stats, write to another stat, change a different stat, cap another stat, raise another stat's max, speed up another stat's regen, my script changes the wrong stat, two scripts fight over one stat, split logic across stats, reaction in each stat's box -->
+<!-- route: worldEditorStat.code -->
+
+1. Open the **Code** tab of the stat that decides the change. This stat is the hub.
+2. In its code box, write the field of the stat to move: `stats.Health.value = stats.Health.value / 2`. Use the **After the AI** box to react to this turn's roll or ask.
+3. Select **Test Code**. It lists every write to another stat, such as `stats.Health.value = 30`.
+4. In **Advanced** mode, open the [Test Bench](Test-Bench#issues) and read **Issues**. It warns when two boxes write one field.
+
+See [Writing to Other Stats](#writing-to-other-stats) for the four fields and the rules.
+
 ## How to Pin a Placeholder from Code
 <!-- keywords: script, javascript, set value, force, wildcard, variable, wording follows a stat, conditional text, override the roll, swap wording by value, lock in, mood changes with number, programmatically -->
 <!-- route: worldEditorStat.code -->
@@ -54,7 +65,7 @@ Select the **Variable** button in the toolbar of a code box on a stat's **Code**
 1. Select **Test Code** to see the error and every write.
 2. Add `console.log()` lines.
 3. Open your browser's developer console. Each line shows there.
-4. In the World Editor's [Test Bench](Test-Bench#issues), read the **Issues** list for writes to unknown names.
+4. In the World Editor's [Test Bench](Test-Bench#issues), read the **Issues** list for writes to unknown names and for two boxes that write one stat field.
 
 ## Overview
 
@@ -65,6 +76,7 @@ Stat code runs in a sandbox on every turn (see [When Your Code Runs](#when-your-
 - **React to thresholds** (e.g., speed penalties when health is below 30%)
 - **Follow time**: how long a turn took, or what time of day it is (see [The Story Clock](#the-story-clock))
 - **Set its own Min, Max, or Regen** (see [Writing to `self`](#writing-to-self))
+- **Write another stat** of the same owner, so one event can move several stats (see [Writing to Other Stats](#writing-to-other-stats))
 - **Shape what the AI asked for** before it lands (see [Reading This Turn](#reading-this-turn))
 - **Pin a placeholder** to any text (see [Placeholders](#placeholders))
 - **Switch a trait** on or off (see [Traits](#traits))
@@ -77,7 +89,7 @@ Stat code runs in a sandbox on every turn (see [When Your Code Runs](#when-your-
 1. Each stat has two optional JavaScript boxes: **Before the AI** and **After the AI**
 2. On every turn, each box runs in a safe environment at its own point in the turn
 3. Each box reads every stat, the story clock, the world's placeholders and traits, and the entities and dictionaries in the game
-4. `return <number>` sets the stat's value, clamped to its range. Writes to `self`, `placeholders`, `traits`, `persona`, `entities` and `dictionaries` apply after the run
+4. `return <number>` sets the stat's value, clamped to its range. Writes to `self`, `stats`, `placeholders`, `traits`, `persona`, `entities` and `dictionaries` apply after the run
 5. A script that throws or times out changes nothing
 
 ### The Two Boxes
@@ -114,7 +126,7 @@ Stat code can use only these objects. A word in angle brackets stands for a name
 | Object | Members | Read | Write |
 | --- | --- | --- | --- |
 | `self` | `id`, `name`, `type`, `description`, `enabled`, `min`, `max`, `value`, `regen`, `previous`, `delta` | `self.value` | `self.value = <n>` |
-| `stats` | `id`, `name`, `type`, `description`, `enabled`, `min`, `max`, `value`, `regen`, `previous`, `delta` | `stats.<Stat>.value` | Read-only |
+| `stats` | `id`, `name`, `type`, `description`, `enabled`, `min`, `max`, `value`, `regen`, `previous`, `delta` | `stats.<Stat>.value` | `stats.<Stat>.value = <n>` |
 | `clock` | `day`, `daypart`, `deltaHours`, `elapsedHours`, `previous` | `clock.day` | Read-only |
 | `traits` | `enabled`, `acquired`, `id`, `name`, `mode`, `available`, `group`, `playerToggle` | `traits.<Trait>.enabled` | `traits.<Trait>.enabled = true` |
 | `persona` | `id`, `name`, `type`, `pronouns`, `inScene`, `traits`, `placeholders`, `stats` | `persona.traits.<Trait>.enabled` | `persona.traits.<Trait>.enabled = true` |
@@ -130,7 +142,7 @@ Follow these rules:
 - **A trait sits under its owner.** `traits` holds the world's own traits only. A trait on the played persona, the custom persona included, is under `persona.traits`. A trait on another entity is under `entities.<Entity>.traits`.
 - **An entity's stats are on its entry.** Read them through `entities.<Entity>.stats`. They're read-only. In an entity's own stat code, `stats` holds that entity's stats.
 - **"After N days" is `clock.day > <n>`.** `clock.day` starts at 1. For timing in hours, use `clock.elapsedHours`. The time of day is `clock.daypart`.
-- **`self` takes writes to `value`, `min`, `max` and `regen`.** Its other fields are read-only. Write your own stat through `self`.
+- **`self` and every `stats` entry take writes to `value`, `min`, `max` and `regen`.** Their other fields are read-only. `stats` holds the stats of the code's own owner. `entities.<Entity>.stats` and `persona.stats` stay read-only.
 
 ## Writing Stat Code
 
@@ -188,9 +200,9 @@ A stat that a trait switched off still reads as a real entry. Its name, value an
 > ℹ️ Only these fields are passed into the sandbox. A stat's own `code` and `descriptors` are **not** available from inside a script.
 
 ### Writing to `self`
-<!-- keywords: raise the ceiling, upper limit, lower limit, regeneration rate, assign, modify another stat, underlined write, scale with level up, this keyword -->
+<!-- keywords: raise the ceiling, upper limit, lower limit, regeneration rate, assign, modify own stat, underlined write, scale with level up, this keyword -->
 
-`self` is the stat the code belongs to. It is the same object that sits in `stats`, so `self.value` and `stats[self.name].value` read alike. Four of its fields take writes:
+`self` is the stat the code belongs to. It is the same object that sits in `stats`, so `self.value` and `stats[self.name].value` read the same. A write through either path is one write. Four of its fields take writes:
 
 | Write | Effect |
 | --- | --- |
@@ -216,7 +228,48 @@ A bound write works like a value write. After `self.max = 20`, the cap reads 20 
 | The AI raises the max by 5 | 25 |
 | The code writes `self.max = 40` | 40 |
 
-No code bound hides the traits or the AI under it. Deleting the code leaves the bounds as they are. Writing `null` to `value`, `min`, `max` or `regen` fails the run, as any other non-number does. Only `self` accepts writes. A write to another stat's fields is ignored and reported by its path, and the editor underlines it.
+No code bound hides the traits or the AI under it. Deleting the code leaves the bounds as they are. Writing `null` to `value`, `min`, `max` or `regen` fails the run, as any other non-number does. Every other field of `self` is read-only. To write a stat other than `self`, see [Writing to Other Stats](#writing-to-other-stats).
+
+### Writing to Other Stats
+<!-- keywords: move another stat, change another stat, hub stat, one event many stats, write stats map, damage health from a roll, raise luck on a twenty, cap another stat, change another stat's max, change another stat's regen, same owner, entity's own stats, npc stat code, two scripts write one stat, which write wins, order of stats, last write wins, target does not see the write, blueprint stat code, each owner's copy, two writers warning, two boxes write one field -->
+<!-- route: worldEditorStat.code -->
+
+Code can write the other stats of its own owner through `stats`. One box can move several stats, so an event needs no reaction code in each target stat. A stat whose code writes other stats is a hub.
+
+```javascript
+// Roll a d20. A 1 halves Health. A 20 adds 1 to Luck.
+const roll = Math.floor(Math.random() * 20) + 1;
+if (roll === 1) stats.Health.value = stats.Health.value / 2;
+if (roll === 20) stats.Luck.value += 1;
+return roll;
+```
+
+Every entry in `stats` takes writes to the same four fields as `self`: `value`, `min`, `max` and `regen`. They work as they do on `self`. A value clamps to the target's range. A bound sets the number now, and later changes move it from there. `stats.Health.max = 20` makes the cap 20 now, and a trait that adds 10 later makes it 30. `null` fails the run.
+
+| Rule | What it means |
+| --- | --- |
+| Same owner only | `stats` holds the stats of the code's own owner. The player's stat code writes the player's stats. An entity stat's code writes that entity's stats |
+| Other owners | `entities.<Entity>.stats` and `persona.stats` stay read-only. A write through them is ignored and reported |
+| Stat order, last write wins | Two writes to one field land in stat order, and the later stat in the list wins. A write through `self` and a write through `stats` count alike. The target's own box is one of the writers |
+| One snapshot per run | A stat's box reads the snapshot the run started from. A hub's write to Health isn't in Health's own box on that run, or in its `delta.actual`. It's in Health's `previous` on the next turn |
+| Blueprint stats | A Blueprint stat's code runs once for each owner that has it. A write to `stats.Mana.value` lands on that owner's own copy of Mana |
+| Unknown or switched-off stats | A write to a name the owner doesn't have, or to a stat a trait switched off, is ignored and reported. The editor underlines an unknown name |
+| A whole entry | `stats.Health = 5` is ignored. Write `stats.Health.value = 5` |
+
+A stat that a hub moved shows the change on its bar, as any code change does. The turn log gets no new line. A failed or stopped turn rolls the write back with the rest of the turn.
+
+**Test Code** lists each write to another stat, such as `stats.Health.value = 30`, and applies none of them to your world. In an entity stat's box, the targets are that entity's stats at their starting values.
+
+#### Two Boxes, One Field
+
+The [Test Bench](Test-Bench#issues) warns when more than one box writes the same field of one stat. The finding names the field and each writer's box. It shows in **Advanced** mode.
+
+- It counts a box that assigns the field, such as `self.max = 10` or `stats.Health.value -= 5`. It counts the target's own box too. The **Before the AI** and **After the AI** boxes of one stat count as two.
+- It doesn't count `return`. A hub that writes `stats.Health.value` and a Health box that only returns a number raise no finding.
+- It reads literal names only: `stats.Health.value`, `stats["Health"].value` and `self.max`. It skips a computed name such as `stats[name].value`. It skips a variable that holds a stat entry too.
+- The same Blueprint stat on two owners isn't a clash, because each owner has its own copy.
+
+A warning isn't an error. Stat order already settles which write wins. The finding shows two boxes that may overwrite each other by mistake.
 
 ### Reading This Turn
 <!-- keywords: old value, how much it moved, overflow, wasted gain, halve damage, multiply narrator change, before and after, excess past maximum, requested amount -->
@@ -459,7 +512,7 @@ dictionaries.Weather.placeholders.Sky.pin(self.value < 20 ? 'storm' : 'clear');
 ### Order of Effects
 <!-- keywords: which script wins, priority, precedence, conflict, race condition, execution sequence, overwrite each other, see other scripts changes -->
 
-Each box is a separate run. Within one run every stat's code reads the same snapshot, so no script sees another stat's writes from that run. After each run, effects apply in this order: trait switches, then bounds, then values, then placeholder pins. A bound a stat writes lands at the written number, after the run's trait switches have moved the bounds. When two stats write the same placeholder or trait in one run, the later stat in the list wins.
+Each box is a separate run. Within one run every stat's code reads the same snapshot, so no script sees another stat's writes from that run. After each run, effects apply in this order: trait switches, then bounds, then values, then placeholder pins. A bound a stat writes lands at the written number, after the run's trait switches have moved the bounds. When two stats write the same placeholder, trait, or stat field in one run, the later stat in the list wins. See [Writing to Other Stats](#writing-to-other-stats).
 
 Each run covers the player's stats and every entity's stats over that one snapshot. The player's writes apply first, then each entity's in authored order, so an entity's write wins over the player's.
 
@@ -641,7 +694,7 @@ return baseRate * activityMultiplier * sizeFactor;
 - The code cannot access external resources (network, files, etc.)
 - Circular dependencies between stats may cause unexpected behavior
 - The code runs in a sandboxed environment with limited JavaScript features
-- Code writes only its own bounds; another stat's entry is read-only
+- Code writes the stats of its own owner only; `entities.<Entity>.stats` and `persona.stats` are read-only
 - **Test Code** runs one box with no player traits, so it cannot preview a long turn or a different daypart. Before the AI runs as the opening turn, where `clock.deltaHours` and `clock.elapsedHours` are both `0`; After the AI runs as a one-hour turn on day one. It shows a trait switch and never applies it to the world
 - Each box's **Templates** menu lists only the templates written for that box
 

@@ -245,7 +245,7 @@ The **Add Pin** button picks the kind of source, then the source, and writes an 
 
 **Before the AI** runs at the start of the turn, before the prompt is built. A value it sets, a placeholder it pins, or a trait it switches is in the prompt for that turn. \`previous\` reads as the stat itself, every \`delta\` reads zero, and the clock reads turn start.
 
-**After the AI** runs after the AI's changes and Regen apply. It reads the values the before box set. Both boxes run every turn. An empty box is skipped. A bound set by one box persists until the other box writes it or both boxes are empty.
+**After the AI** runs after the AI's changes and Regen apply. It reads the values the before box set. Both boxes run every turn. An empty box is skipped. A bound a box sets stays until a later write or change moves it. Emptying a box leaves it as it is.
 
 The **Test Code** button under each box runs that box alone on that box's clock: the opening turn for Before the AI, a one-hour turn on day one for After the AI. Test Code executes the code. Editor underlines are static analysis only.
 
@@ -258,11 +258,20 @@ return health / 2;
 
 A name with a space needs brackets: \`stats["Hit Points"]\`. \`Object.values(stats)\` iterates every stat. A name with a placeholder chip reads in code as that placeholder's name, so a stat named \`{{Beast}} Power\` is \`stats["Beast Power"]\` in every playthrough.
 
-**Writing to \`self\`.** Set \`self.value\`, \`self.min\`, \`self.max\` or \`self.regen\` and the stat takes that number this turn. A bound works like the value: later trait, AI and code changes move it from the number the code set. A field the code doesn't write keeps the turn's value, so a script can set the cap and leave the value to the AI. Only \`self\` accepts writes. Every other stat is read-only.
+**Writing to \`self\`.** Set \`self.value\`, \`self.min\`, \`self.max\` or \`self.regen\` and the stat takes that number this turn. A bound works like the value: later trait, AI and code changes move it from the number the code set. A field the code doesn't write keeps the turn's value, so a script can set the cap and leave the value to the AI.
 
 \`\`\`js
 const level = stats.Level.value;
 self.max = level * 10;
+\`\`\`
+
+**Writing to other stats.** Write \`value\`, \`min\`, \`max\` or \`regen\` on any entry of \`stats\` to move that stat from this box, like \`stats.Health.value = 30\`. Write only your own stats. \`entities.Mira.stats\` and \`persona.stats\` stay read-only.
+
+Two writes to one field land in stat order, and the later stat wins. A stat's own box can't see another stat's write on the same turn. In a Blueprint stat, a write reaches each owner's own copy. **Test Code** lists each write to another stat and applies none. In Advanced mode, the Test Bench warns when two boxes write one field.
+
+\`\`\`js
+// In the Poison stat's box
+if (self.value > 50) stats.Health.value -= 5;
 \`\`\`
 
 **Reading this turn.** Each stat carries the turn's state before the code ran. \`previous\`: the full stat (\`id\`, \`name\`, \`type\`, \`description\`, \`min\`, \`max\`, \`value\` and \`regen\`) at the start of the turn. \`delta\`: every change the turn made. \`delta.ai\` is the AI's requested change. \`delta.regen\` is the regen change. \`delta.total\` is their sum. \`delta.actual\` is current values minus \`previous\`. Each has \`value\`, \`min\`, \`max\` and \`regen\`. \`previous\` and \`delta\` are read-only. Use them to clamp or scale the AI's change before it applies.
