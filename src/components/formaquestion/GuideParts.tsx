@@ -14,6 +14,7 @@ import { targetAttribute } from '@/lib/surface/surfaceTargets';
 import { cn } from '@/lib/utils';
 import { isSearchable } from './formaquestionTabs';
 import { FOCUS_RING, readerComponents } from './readerLinks';
+import { useGuideSearch } from './useGuideSearch';
 
 /** The most sections one search shows. */
 const RESULT_LIMIT = 20;
@@ -38,15 +39,17 @@ export function GuideSearchField({ value, onChange, takesFocus = true, className
   );
 }
 
-export function SearchResults({ guide, query, onOpen, compact = false }: {
+export function SearchResults({ guide, query, semantic, onOpen, compact = false }: {
   guide: Guide;
   query: string;
+  /** The Semantic Search switch is on. */
+  semantic: boolean;
   onOpen: (id: string) => void;
   /** Leaves out the excerpt, for the wide layout's rail. */
   compact?: boolean;
 }) {
   const text = query.trim();
-  const results = useMemo(() => (isSearchable(text) ? guide.index.search(text, RESULT_LIMIT) : []), [guide, text]);
+  const results = useGuideSearch(guide, text, semantic, RESULT_LIMIT);
   if (!isSearchable(text)) return <Hint className="p-3">Type two or more letters</Hint>;
   if (results.length === 0) return <Hint role="status" className="p-3">No sections match “{text}”</Hint>;
   return <SectionRows guide={guide} sections={results} onOpen={onOpen} compact={compact} className="p-1" />;

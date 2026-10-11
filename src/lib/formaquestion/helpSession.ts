@@ -337,18 +337,40 @@ export async function helpSearch({ question, history = [], settings, snapshot, i
     on.aiPicks
       ? requestPicks(index, { question, prompt, earlier: previous?.question, earlierAnswer: previous?.answer, where: hint?.where }, pickSnapshot, activeHelpOptions(settings.presets).pick, { signal, fetchImpl, observe }).catch(() => [])
       : [],
-    on.semantic ? Promise.race([semanticRanking(index, helpQueries(question, previous), embedder), stopped]) : null,
+    on.semantic ? Promise.race([semanticRanking(index, helpQueries(question, previous), { embedder }), stopped]) : null,
   ]);
   const picks = screenRule ? screenPicks(question, allPicks, hint?.section) : allPicks;
-  const keyword: SectionRanking = (query, limit, favor, onSurface) => index.search(query, limit, favor, { onSurface });
   const picked: SectionRanking = (_query, limit) => picks.slice(0, limit);
   const sources: NamedRanking[] = [
-    ...(on.keyword ? [{ source: 'keyword' as const, ranking: keyword }] : []),
+    ...(on.keyword ? [{ source: 'keyword' as const, ranking: keywordRanking(index) }] : []),
     ...(picks.length > 0 ? [{ source: 'aiPicks' as const, ranking: picked }] : []),
     ...(semantic ? [{ source: 'semantic' as const, ranking: semantic }] : []),
   ];
   if (on.keyword && sources.length === 1) return record ? recordedKeyword(index, record) : index;
   return mergedSearch(index, sources, record);
+}
+
+/** The Docs Index search as a source. */
+const keywordRanking = (index: DocsIndex): SectionRanking => (query, limit, favor, onSurface) => index.search(query, limit, favor, { onSurface });
+
+/**
+ * The least similarity a section needs to join the Search tab's results by meaning. Gibberish queries on the
+ * shipped vectors score under it.
+ */
+export const GUIDE_SEMANTIC_FLOOR = 0.37;
+
+/**
+ * The Search tab's search: the keyword search and the semantic ranking, merged as a question's search merges
+ * them. AI Search stays off. With the semantic source off or unable to run, the keyword search alone.
+ */
+export async function guideSearch(index: DocsIndex, query: string, { semantic, limit, embedder }: {
+  semantic: boolean;
+  limit: number;
+  embedder?: HelpEmbedder;
+}): Promise<DocSection[]> {
+  const ranking = semantic ? await semanticRanking(index, [query], { embedder, floor: GUIDE_SEMANTIC_FLOOR }) : null;
+  if (!ranking) return index.search(query, limit);
+  return mergedSearch(index, [{ source: 'keyword', ranking: keywordRanking(index) }, { source: 'semantic', ranking }]).search(query, limit);
 }
 
 /**

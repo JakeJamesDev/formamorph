@@ -73,7 +73,7 @@ export function GuideBody({ guide, failed, onRetry, view, onViewChange, wide, ch
           {helpRowUnlessSearching}
           <ScrollArea className="min-h-0 flex-1" viewportProps={{ 'data-fq-scroll': 'rail' }}>
             {isSearchable(view.query)
-              ? <SearchResults guide={guide} query={view.query} onOpen={openSection} compact />
+              ? <SearchResults guide={guide} query={view.query} semantic={settings.sources.semantic} onOpen={openSection} compact />
               : <ContentsList guide={guide} current={view.sectionId} openPages={view.openPages} onPageOpenChange={setPageOpen} onOpen={openSection} />}
           </ScrollArea>
         </div>
@@ -114,7 +114,7 @@ export function GuideBody({ guide, failed, onRetry, view, onViewChange, wide, ch
         <GuideSearchField value={view.query} onChange={setQuery} className="m-3 mb-1 shrink-0" />
         {helpRowUnlessSearching}
         <ScrollArea className="min-h-0 flex-1" viewportProps={{ 'data-fq-scroll': 'results' }}>
-          <SearchResults guide={guide} query={view.query} onOpen={openSection} />
+          <SearchResults guide={guide} query={view.query} semantic={settings.sources.semantic} onOpen={openSection} />
         </ScrollArea>
       </TabsContent>
       <TabsContent value="guide" className={TAB_PANEL}>

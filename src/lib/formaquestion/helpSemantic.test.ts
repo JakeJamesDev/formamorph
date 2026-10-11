@@ -32,18 +32,18 @@ afterEach(() => {
 
 describe('semanticRanking', () => {
   it('ranks the sections by their vector against the query, best first, up to the limit', async () => {
-    const ranking = await semanticRanking(index, ['test'], embedder);
+    const ranking = await semanticRanking(index, ['test'], { embedder });
     expect(ranking?.('test', 5).map((section) => section.id)).toEqual(['Bench#checks', 'Tools#how-to-try-a-tool', 'Tools#tools', 'Bench#bench']);
     expect(ranking?.('test', 1).map((section) => section.id)).toEqual(['Bench#checks']);
   });
 
   it('ranks a section of the favored page above a nearer one, and leaves a section that points away where it is', async () => {
-    const ranking = await semanticRanking(index, ['test'], embedder);
+    const ranking = await semanticRanking(index, ['test'], { embedder });
     expect(ranking?.('test', 5, { page: 'Tools' }).map((section) => section.id)).toEqual(['Tools#how-to-try-a-tool', 'Bench#checks', 'Tools#tools', 'Bench#bench']);
   });
 
   it('gives no section for a query it did not embed', async () => {
-    const ranking = await semanticRanking(index, ['test'], embedder);
+    const ranking = await semanticRanking(index, ['test'], { embedder });
     expect(ranking?.('another', 5)).toEqual([]);
   });
 });
