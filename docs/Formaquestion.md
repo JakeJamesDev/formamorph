@@ -222,7 +222,7 @@ Answers take longer with reasoning on. The row shows a note instead of the check
 1. Select **⋮** in the Formaquestion title bar, then **Settings**. The **General** tab opens first.
 2. Select the **Semantic Search** checkbox.
 3. Wait while the app downloads the small model. A progress bar shows on the row.
-4. Ask a question. When the download is done, the search also finds sections by meaning.
+4. Ask a question, or type in the **Search** tab. When the download is done, both also find sections by meaning.
 
 If the download fails, the checkbox clears and **Retry** shows. Until the model is ready, questions use the other sources.
 
@@ -365,13 +365,15 @@ An answer can be wrong. Use **Sources** to check it against the guide.
 
 The **Search** tab finds sections by the words you type. It needs no network and no AI.
 
+With [Semantic Search](#how-to-turn-on-semantic-search) on, it also finds sections by meaning. The word matches show at once. The meaning matches join them when you stop typing. Until the model is on your device, the tab uses words alone.
+
 - A search starts at two letters.
 - A word in a section's heading counts more than a word in its text.
 - A section that has more of your words is higher in the list than a section that repeats one word.
 - A plural finds the singular: "blueprints" finds **Blueprint**.
 - Guide sections are higher in the list than changelog sections.
 - A question such as "what's new?" or "what changed?" lists the newest release first. Name a version, such as "what changed in 3.1.1?", to see that release first.
-- **No sections match** shows when no word matches.
+- **No sections match** shows when no word matches. With Semantic Search on, it also needs no section close in meaning.
 
 The search reads each page of this guide, the [Glossary](Glossary), the [World Format](WorldFormat) page and the newest releases in the [Changelog](Changelog).
 

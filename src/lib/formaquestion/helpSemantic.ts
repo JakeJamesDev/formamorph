@@ -37,9 +37,14 @@ function entriesOf(index: DocsIndex, file: SectionVectorsFile): SectionEntry[] {
 
 /**
  * The semantic ranking for these queries, or none when the source can't run: the model is not on the device,
- * the vectors are from another model, or the embedder fails. It never starts a download.
+ * the vectors are from another model, or the embedder fails. It never starts a download. A section under the
+ * floor's similarity to the query is left out.
  */
-export async function semanticRanking(index: DocsIndex, queries: readonly string[], embedder: HelpEmbedder = deviceEmbedder): Promise<SectionRanking | null> {
+export async function semanticRanking(index: DocsIndex, queries: readonly string[], { embedder = deviceEmbedder, floor = -Infinity }: {
+  embedder?: HelpEmbedder;
+  /** The least similarity to the query a section needs. */
+  floor?: number;
+} = {}): Promise<SectionRanking | null> {
   try {
     if (!(await embedder.open())) return null;
     const entries = entriesOf(index, await embedder.vectors());
@@ -51,6 +56,7 @@ export async function semanticRanking(index: DocsIndex, queries: readonly string
       const vector = vectorOf.get(query);
       if (!vector) return [];
       return rankByVector(vector, entries)
+        .filter((hit) => hit.score >= floor)
         .map((hit) => ({ ...hit, score: hit.score * (hit.score > 0 && sectionOf.get(hit.id)?.page === favor?.page ? FAVORED_PAGE_WEIGHT : 1) }))
         .sort((a, b) => b.score - a.score)
         .slice(0, limit)
