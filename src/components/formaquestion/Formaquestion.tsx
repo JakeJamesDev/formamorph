@@ -31,7 +31,7 @@ import { useMorphFullscreen } from '@/lib/useMorphFullscreen';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { EdgeTab } from './EdgeTab';
 import { FormaquestionFrame, type ResizeHandlers } from './FormaquestionFrame';
-import { FORMAQUESTION_TABS, openSectionChange, useGuideView, type GuideViewChange } from './formaquestionTabs';
+import { FORMAQUESTION_TABS, openSectionChange, stepChange, useGuideView, type GuideViewChange } from './formaquestionTabs';
 import { placementOptions } from './formaquestionSettingsTabs';
 import { asFormaquestionSettingsTab, type FormaquestionSettingsTab } from './formaquestionSettingsTabs';
 import { FormaquestionGuide } from './FormaquestionGuide';
@@ -50,6 +50,9 @@ import { BubbleChat } from './BubbleChat';
 import { useBubblePage } from './useBubblePage';
 import { DEFAULT_HELP_PROMPTS, HELP_PROMPT_CHIPS } from '@/lib/formaquestion/helpPrompt';
 import { GuideBody } from './GuideBody';
+import { ReaderHistoryButtons } from './ReaderHistoryButtons';
+import { ReaderScrollContext, useReaderScroll } from './readerScroll';
+import { useReaderHistoryInput } from './useReaderHistoryInput';
 import { useHelpAi } from './useHelpAi';
 import { setMascotPlacement, setMascotScale, useMascotPlacement, useMascotScale } from './useMascotDevice';
 import { useHelpChat, type HelpExchange } from './useHelpChat';
@@ -113,6 +116,8 @@ const FIRST_HEIGHTS: BubbleHeights = { content: 0, question: 36, input: 44 };
 /** Opens a docs section in the wiki, in the browser. */
 const openInWiki = (id: string) => openExternal(wikiPageUrl(id));
 
+const ignoreStep = () => {};
+
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /** The element that holds keyboard focus, or null when nothing does. */
@@ -139,6 +144,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
 
   const [open, setOpen] = useState(false);
   const [view, changeView] = useGuideView();
+  const readerScroll = useReaderScroll(view.history);
   // The Guide full screen grows out of the window and shrinks back into it. The window waits under it.
   const guideMorph = useMorphFullscreen(windowRef);
   const [stored, setStored] = useState<StoredWindow>(() => readStoredWindow() ?? defaultWindow(viewportOf(window)));
@@ -405,6 +411,14 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   }, [guide, focusWindow]);
 
   const guideOpen = guideMorph.mounted;
+  // Back and Forward. The full screen passes over the entries it cannot show.
+  const stepHistory = useCallback((delta: -1 | 1, fullScreen: boolean) => (
+    changeViewInWindow(stepChange(delta, fullScreen, (sectionId) => guide?.section(sectionId)?.page))
+  ), [changeViewInWindow, guide]);
+  const stepInWindow = useCallback((delta: -1 | 1) => stepHistory(delta, false), [stepHistory]);
+  const stepInGuide = useCallback((delta: -1 | 1) => stepHistory(delta, true), [stepHistory]);
+  // Minimal and Bubble read in a piece that the history does not drive, so only the full screen steps there.
+  useReaderHistoryInput({ enabled: !suspended, windowRef, guideOpen, onStep: guideOpen ? stepInGuide : readsInPiece ? ignoreStep : stepInWindow });
   // F1 opens the window, then moves focus in when focus is elsewhere, then closes it.
   useEffect(() => {
     if (suspended) return;
@@ -472,7 +486,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     if (!import.meta.env.DEV || devRoute?.modal !== 'formaquestion') return;
     setOpen(true);
     const tab = FORMAQUESTION_TABS.find((entry) => entry.value === devRoute.tab)?.value;
-    if (devRoute.subtab) changeView({ sectionId: devRoute.subtab, tab: 'guide', reading: true });
+    if (devRoute.subtab) changeView(openSectionChange(devRoute.subtab, undefined));
     else if (tab) changeView({ tab });
     if (devRoute.mode === 'wide' || devRoute.mode === 'narrow') {
       const w = devRoute.mode === 'wide' ? WIDE_WIDTH : NARROW_WIDTH;
@@ -839,6 +853,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
           } : {
             wide,
             onSwapWidth: swap,
+            history: wide ? <ReaderHistoryButtons history={view.history} onStep={stepInWindow} /> : undefined,
             move: moveHandlers,
             resize: resizeHandlers,
             className: `pointer-events-auto fixed ${windowMotion}`,
@@ -854,13 +869,17 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
           <div className="flex h-full min-h-0 flex-col">
             <SemanticOfferCard semantic={semantic} variant="framed" />
             <div className="min-h-0 flex-1">
-              <GuideBody guide={guide} failed={failed} onRetry={load} view={view} onViewChange={changeViewInWindow} wide={wide} chat={chat} settings={settings} onSettingsChange={changeSettings} onGo={go} />
+              <ReaderScrollContext.Provider value={readerScroll}>
+                <GuideBody guide={guide} failed={failed} onRetry={load} view={view} onViewChange={changeViewInWindow} wide={wide} chat={chat} settings={settings} onSettingsChange={changeSettings} onGo={go} />
+              </ReaderScrollContext.Provider>
             </div>
           </div>
         </FormaquestionFrame>
       )}
       {!suspended && (
-        <FormaquestionGuide morph={guideMorph} guide={guide} failed={failed} onRetry={load} view={view} onViewChange={changeViewInWindow} onOpenWiki={openWiki} semantic={settings.sources.semantic} sheet={sheet} />
+        <ReaderScrollContext.Provider value={readerScroll}>
+          <FormaquestionGuide morph={guideMorph} guide={guide} failed={failed} onRetry={load} view={view} onViewChange={changeViewInWindow} onStep={stepInGuide} onOpenWiki={openWiki} semantic={settings.sources.semantic} sheet={sheet} />
+        </ReaderScrollContext.Provider>
       )}
       <WikiConfirmDialog
         confirm={wikiAsk && { page: wikiAsk.page && pageNameOf(guide ? guide.titleOf(wikiAsk.page) : wikiAsk.page) }}

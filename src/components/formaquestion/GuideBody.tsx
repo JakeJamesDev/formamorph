@@ -6,7 +6,7 @@ import type { SurfaceRoute } from '@/lib/surface/surfaceRoute';
 import type { Guide } from '@/lib/formaquestion/guide';
 import type { HelpSettings, HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
 import { AskPanel } from './AskParts';
-import { FORMAQUESTION_TABS, isSearchable, type FormaquestionTab, type GuideView, type GuideViewChange } from './formaquestionTabs';
+import { FORMAQUESTION_TABS, conversationChange, isSearchable, type FormaquestionTab, type GuideView, type GuideViewChange } from './formaquestionTabs';
 import { BackRow, ContentsList, GuideSearchField, GuideUnavailable, Reader, SearchResults } from './GuideParts';
 import { GuideRail, useGuideActions } from './GuideRail';
 import { SurfaceHelpRow } from './SurfaceHelpRow';
@@ -53,7 +53,7 @@ export function GuideBody({ guide, failed, onRetry, view, onViewChange, wide, ch
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           {showsReader && view.sectionId ? (
             <>
-              <BackRow label="Back to Conversation" icon={MessageCircleQuestion} onBack={() => onViewChange({ tab: 'ask' })} />
+              <BackRow label="Back to Conversation" icon={MessageCircleQuestion} onBack={() => onViewChange(conversationChange())} />
               <Reader guide={guide} sectionId={view.sectionId} onOpen={openSection} />
             </>
           ) : ask}
