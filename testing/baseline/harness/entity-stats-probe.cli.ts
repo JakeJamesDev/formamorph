@@ -52,9 +52,18 @@ import {
   defaultStatUpdatesPrompt as shippedStatPrompt, defaultStatUpdatesUserPrompt as shippedStatUserPrompt,
   textStatUpdatesPrompt as defaultStatUpdatesPrompt, textStatUpdatesUserPrompt as defaultStatUpdatesUserPrompt,
 } from '@/components/game/GamePrompts';
+import {
+  DEFAULT_GEN_MIN_P, DEFAULT_GEN_REPETITION_PENALTY, DEFAULT_GEN_TEMPERATURE, DEFAULT_GEN_TOP_K, DEFAULT_GEN_TOP_P, DEFAULT_MAX_TOKENS,
+} from '@/contexts/settingsDefaults';
+import { buildAiRequestSpec, type AiSettingsSnapshot } from '@/lib/aiRequest/aiRequestSpec';
+import type { ResponseSchemaNode } from '@/lib/aiRequest/responseSchema';
 import { authoredChipScene } from '@/lib/chipValues/authoredScene';
 import { chipValues } from '@/lib/chipValues/chipValues';
-import { PROMPT_SAMPLER_PINS } from '@/lib/promptSamplers';
+import { defaultEndpointSamplerOverrides } from '@/lib/endpointSamplers';
+import {
+  DEFAULT_REASONING_SETTING, UNKNOWN_REASONING_CAPABILITY, isReasoningEngaged, resolveReasoningCapability, resolveReasoningSetting,
+  type PromptReasoning,
+} from '@/lib/reasoningEffort';
 import { renderPromptTemplate } from '@/lib/promptTemplate';
 import { createStatRequest, type StatRequestSnapshot } from '@/lib/statRequest';
 import { PLAYER_OWNER } from '@/lib/statOwners';
@@ -546,22 +555,49 @@ function callsFor(arm: Arm, owners: Owner[], narration: string): Call[] {
   return [{ system: render(system), user: userFor(narration, user), maxTokens: 32 * total(owners) + 16 * owners.length + 16, schema }];
 }
 
+// The app's request layer builds every body: default settings, and the endpoint's reasoning record resolved as
+// the app resolves it. The probe adds only `seed`, a non-streamed reply, and the --ws hints.
+const apiToken = process.env.FM_API_TOKEN ?? '';
+const reasoning = await resolveReasoningCapability({ url: endpoint, token: apiToken, model }) ?? UNKNOWN_REASONING_CAPABILITY;
+const promptReasoning: Record<string, PromptReasoning> = {};
+const settings: AiSettingsSnapshot = {
+  resolveTarget: () => ({
+    endpointId: 'probe', url: endpoint, apiToken, model, maxTokens: DEFAULT_MAX_TOKENS, localEngine: false,
+    samplerOverrides: defaultEndpointSamplerOverrides(), reasoning,
+  }),
+  thinkingMode: 'off',
+  reasoningEffort: resolveReasoningSetting(DEFAULT_REASONING_SETTING),
+  reasoningEngaged: isReasoningEngaged('off', resolveReasoningSetting(DEFAULT_REASONING_SETTING), promptReasoning),
+  promptReasoning,
+  promptReasoningBudget: {},
+  promptSamplers: {},
+  promptMaxOutput: {},
+  genTemperature: DEFAULT_GEN_TEMPERATURE,
+  genRepetitionPenalty: DEFAULT_GEN_REPETITION_PENALTY,
+  genTopP: DEFAULT_GEN_TOP_P,
+  genTopK: DEFAULT_GEN_TOP_K,
+  genMinP: DEFAULT_GEN_MIN_P,
+  paragraphLimit: 'auto',
+  disableThinking: false,
+};
+
+/** One call's request, as the app's request layer builds it, with the probe's additions. */
+function requestFor(call: Call, seed: number) {
+  const spec = buildAiRequestSpec(settings, {
+    systemPrompt: call.system,
+    messages: [{ role: 'user', content: call.user }],
+    requestType: 'statUpdates',
+    maxTokensOverride: call.maxTokens,
+    ...(call.schema && { responseSchema: { name: 'stat_changes', schema: call.schema as ResponseSchemaNode } }),
+  });
+  return { spec, body: { ...spec.body, seed, stream: false, ...(call.schema && WHITESPACE[whitespace]) } };
+}
+
 interface Reply { raw: string; capHit: boolean; promptTokens: number; completionTokens: number }
 async function complete(call: Call, seed: number): Promise<Reply> {
+  const { spec, body } = requestFor(call, seed);
   for (let attempt = 0; ; attempt++) {
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model, seed, max_tokens: call.maxTokens, reasoning_effort: 'none', stream: false,
-        temperature: PROMPT_SAMPLER_PINS.statUpdates?.temperature,
-        messages: [{ role: 'system', content: call.system }, { role: 'user', content: call.user }],
-        ...(call.schema ? {
-          response_format: { type: 'json_schema', json_schema: { name: 'stat_changes', strict: true, schema: call.schema } },
-          ...WHITESPACE[whitespace],
-        } : {}),
-      }),
-    });
+    const res = await fetch(spec.url, { method: 'POST', headers: spec.headers, body: JSON.stringify(body) });
     if (res.ok) {
       const body = await res.json() as {
         choices: Array<{ message: { content: string | null }; finish_reason: string }>;
@@ -614,6 +650,8 @@ if (args.includes('--dump')) {
     for (const call of callsFor(arm, ownersOf(c), c.narration)) {
       console.log(`\n===== ${arm}${call.owner ? ` · ${call.owner.name}` : ''} · max ${call.maxTokens}\n--- system\n${call.system}\n--- user\n${call.user}`);
       if (call.schema) console.log(`--- schema\n${JSON.stringify(call.schema)}`);
+      const { messages: _messages, response_format: _format, ...fields } = requestFor(call, SEED).body;
+      console.log(`--- body fields\n${JSON.stringify(fields)}`);
     }
   }
   process.exit(0);
