@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, act, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { Dictionary, Entity, FocusFieldHint, GameLocation, Placeholder, Stat, Trait, WorldOverview } from '@/types';
+import type { Dictionary, Entity, FocusFieldHint, GameLocation, Placeholder, Stat, StatGroup, Trait, WorldOverview } from '@/types';
 import { EditorModeContext } from '@/lib/editorMode';
 import { OPENING_SCENE_CUE } from '@/components/game/GamePrompts';
 import { openingFieldKey } from '@/lib/openings';
@@ -38,9 +38,10 @@ const entities = [
   { id: 'ent1', name: 'Wren', aiDescription: 'A lamp-keeper who does not sleep.', locations: ['loc1'] },
 ] as unknown as Entity[];
 const stats = [{
-  id: 's1', name: 'Warmth', type: 'number', value: 7, min: 0, max: 10,
+  id: 's1', name: 'Warmth', type: 'number', value: 7, min: 0, max: 10, groupId: 'g1',
   descriptors: [{ threshold: 40, description: 'chilled' }, { threshold: 100, description: 'warm' }],
 }] as unknown as Stat[];
+const statGroups: StatGroup[] = [{ id: 'g1', name: 'Body', aiDescription: 'What the cold takes.', parentId: null }];
 const traits = [
   { id: 't1', name: 'Saltborn', aiDescription: 'The tide reads you as its own.', isDefault: true },
   { id: 't2', name: 'Landlocked', aiDescription: 'You have never seen the sea.', isDefault: false },
@@ -73,7 +74,7 @@ vi.mock('@/contexts/GameDataContext', () => ({
       world.rerender();
     },
     entities: world.entities, locations: world.locations,
-    stats, traits, traitGroups: [], dictionaries, placeholders,
+    stats, statGroups, traits, traitGroups: [], dictionaries, placeholders,
   }),
 }));
 vi.mock('@/contexts/SettingsContext', () => ({
@@ -366,6 +367,10 @@ describe('the world narration prompt field', () => {
     expect(values['<TRAITS DESCRIPTION>']).toContain('Saltborn');
     // Not chosen at character creation, so it is not part of the opening the author is previewing.
     expect(values['<TRAITS DESCRIPTION>']).not.toContain('Landlocked');
+  });
+
+  it('previews the stats under their stat groups', async () => {
+    expect((await previewValues())['<STATS DESCRIPTION|numbers>']).toBe('Body:\n  What the cold takes.\n  Warmth: 7/10');
   });
 
   it('carries every format variant, not just the plain one', async () => {

@@ -16,6 +16,10 @@
 //   S        the shipped request: the app's own stat pass builder, prompts and schema, every present owner
 //   SU       S, with C3's user line
 //   SN       S, with no max keys in the schema, the format or the user line
+//   SG       S, with every owner's stats in author-style groups (Body, Mind, Bonds, Trade)
+//   SGB      SG with bare group headings, no descriptions
+//   SH       SG with each group as a #### sub-heading and its stats flat beneath
+//   SP       SG with each group as a plain `Name: description` line and its stats flat beneath
 // A to E derive from the text pass's prompt by checked text swaps; S is built by the app, so it is what ships.
 //
 // Per reply: exact (every gold move right, nothing spurious), hits / wrong sign / misses, spurious moves,
@@ -41,7 +45,8 @@ import { createStatRequest, type StatRequestSnapshot } from '@/lib/statRequest';
 import { PLAYER_OWNER } from '@/lib/statOwners';
 import { statUpdatesCap, statUpdatesRequest } from '@/lib/turnPipeline/turnPasses';
 import { migrateWorld } from '@/lib/version';
-import type { PlayerStat } from '@/types';
+import type { StatPlacement } from '@/lib/statContext';
+import type { PlayerStat, StatGroup } from '@/types';
 import {
   parseJsonReply, parseOwnerBlocks, parseOwnerLines, parsePlainLines, scoreChanges,
   type GoldCells, type Owner, type Parsed, type Score,
@@ -57,7 +62,7 @@ const model = argVal('--model', 'default');
 const runs = Number(argVal('--runs', '6'));
 const pool = Number(argVal('--pool', '3'));
 const only = argVal('--only', '');
-const ALL_ARMS = ['control', 'A', 'A2', 'A3', 'B', 'C', 'C2', 'C3', 'D', 'E', 'S', 'SU', 'SN', 'C3P'] as const;
+const ALL_ARMS = ['control', 'A', 'A2', 'A3', 'B', 'C', 'C2', 'C3', 'D', 'E', 'S', 'SU', 'SN', 'SG', 'SGB', 'SH', 'SP', 'C3P'] as const;
 type Arm = typeof ALL_ARMS[number];
 const arms = argVal('--arms', ALL_ARMS.join(',')).split(',') as Arm[];
 const SEED = 424242;
@@ -149,10 +154,28 @@ function gatedOwners(raw: string, owners: Owner[]): Owner[] {
   } catch { return []; }
 }
 
-/** The request the app sends, built by the app's own stat pass: the player's stats and each present owner's. */
-function shippedCall(owners: Owner[], narration: string): Call {
+// SG's sections, with short neutral descriptions, so headings are the only difference from S.
+const BONDS: StatGroup = { id: 'g-bonds', name: 'Bonds', aiDescription: 'Relationships.', parentId: null, order: 2 };
+const STAT_GROUPS: Record<string, StatGroup> = {
+  Vigor: { id: 'g-body', name: 'Body', aiDescription: 'Physical condition.', parentId: null, order: 0 },
+  Resolve: { id: 'g-mind', name: 'Mind', aiDescription: 'Will and nerve.', parentId: null, order: 1 },
+  Trust: BONDS,
+  Suspicion: BONDS,
+  Stock: { id: 'g-trade', name: 'Trade', aiDescription: 'Goods for sale.', parentId: null, order: 3 },
+};
+/** Every stat of `stats` in its SG group; `bare` drops the group descriptions (SGB). */
+function grouped(stats: readonly PlayerStat[], bare: boolean): StatPlacement {
+  const groups = [...new Map(stats.map((s) => STAT_GROUPS[s.name]).map((g) => [g.id, bare ? { ...g, aiDescription: '' } : g])).values()];
+  return { groups, authored: stats.map((s) => ({ ...s, groupId: STAT_GROUPS[s.name].id })) };
+}
+
+/** The request the app sends, built by the app's own stat pass: the player's stats and each present owner's,
+ *  in groups when `groups` names a style. */
+function shippedCall(owners: Owner[], narration: string, groups?: 'described' | 'bare'): Call {
+  const placement = (stats: readonly PlayerStat[]) => (groups ? { placement: grouped(stats, groups === 'bare') } : {});
   const snapshot = createStatRequest(playerOwner.stats, PLAYER_OWNER, {
-    entities: owners.filter((o) => o !== playerOwner).map((o) => ({ id: o.key, name: o.name, stats: o.stats })),
+    ...placement(playerOwner.stats),
+    entities: owners.filter((o) => o !== playerOwner).map((o) => ({ id: o.key, name: o.name, stats: o.stats, ...placement(o.stats) })),
   });
   const request = statUpdatesRequest(
     { system: shippedStatPrompt, user: shippedStatUserPrompt },
@@ -184,8 +207,30 @@ function shippedVariant(arm: 'SU' | 'SN', owners: Owner[], narration: string): C
   return { ...call, user, system: swap(system, 'A value or maximum that did not move gets 0.', 'A stat that did not move gets 0.'), schema: strip(call.schema as Record<string, unknown>) };
 }
 
+/** SG with each group bullet in the Stats section reshaped and its stat bullets dedented to the owner's level:
+ *  a `####` sub-heading over its description (SH), or a plain `Name: description` line (SP). Prototype only. */
+function regroupedCall(arm: 'SH' | 'SP', owners: Owner[], narration: string): Call {
+  const call = shippedCall(owners, narration, 'described');
+  const names = new Set(Object.values(STAT_GROUPS).map((g) => g.name));
+  const start = call.system.indexOf('## Stats\n');
+  const end = call.system.indexOf('\n## ', start + 1);
+  if (start < 0 || end < 0) throw new Error('Stat prompt drifted: no Stats section.');
+  const section = call.system.slice(start, end).split('\n').map((line) => {
+    const group = /^- \*\*(.+?):\*\*(?: (.*))?$/.exec(line);
+    if (group && names.has(group[1])) {
+      const desc = group[2] ?? '';
+      return arm === 'SH' ? `#### ${group[1]}${desc ? `\n${desc}` : ''}` : `${group[1]}:${desc ? ` ${desc}` : ''}`;
+    }
+    return line.startsWith('  - ') ? line.slice(2) : line;
+  }).join('\n');
+  return { ...call, system: call.system.slice(0, start) + section + call.system.slice(end) };
+}
+
 function callsFor(arm: Arm, owners: Owner[], narration: string): Call[] {
   if (arm === 'S') return [shippedCall(owners, narration)];
+  if (arm === 'SG') return [shippedCall(owners, narration, 'described')];
+  if (arm === 'SH' || arm === 'SP') return [regroupedCall(arm, owners, narration)];
+  if (arm === 'SGB') return [shippedCall(owners, narration, 'bare')];
   if (arm === 'SU' || arm === 'SN') return [shippedVariant(arm, owners, narration)];
   if (arm === 'C3P') return callsFor('C3', [playerOwner], narration);
   if (arm === 'control') {
@@ -300,7 +345,7 @@ function parse(arm: Arm, owners: Owner[], calls: Call[], replies: Reply[]): Pars
   if (arm === 'A3') return parseOwnerBlocks(replies[0].raw, owners);
   if (arm === 'C' || arm === 'C2' || arm === 'C3' || arm === 'D') return parseJsonReply(replies[0].raw, owners);
   if (arm === 'C3P') return parseJsonReply(replies[0].raw, [playerOwner]);
-  if (arm === 'S' || arm === 'SU' || arm === 'SN') return parsePlainLines(replies[0].raw, playerOwner, calls[0].snapshot, (id) => (id === PLAYER_OWNER ? playerOwner.key : id));
+  if (arm === 'S' || arm === 'SU' || arm === 'SN' || arm === 'SG' || arm === 'SGB' || arm === 'SH' || arm === 'SP') return parsePlainLines(replies[0].raw, playerOwner, calls[0].snapshot, (id) => (id === PLAYER_OWNER ? playerOwner.key : id));
   const parts = calls.flatMap((call, i) => (call.owner ? [parsePlainLines(replies[i].raw, call.owner, call.snapshot)] : []));
   return {
     changes: parts.flatMap((p) => p.changes), invalid: parts.reduce((n, p) => n + p.invalid, 0), unreadable: false,

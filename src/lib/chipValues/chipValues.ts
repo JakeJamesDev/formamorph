@@ -10,7 +10,7 @@ import { NONE_PLACEHOLDER } from '../promptFallbacks';
 import {
   decodeVariant, tokenVariant, variableForToken, variableVariantIds, withVariant, type PromptVariable,
 } from '../promptVariables';
-import { buildStatContext } from '../statContext';
+import { buildStatContext, type StatPlacement } from '../statContext';
 import { buildTraitContext } from '../traitTree';
 import type { PlayerStat } from '@/types';
 import type { ChipScene } from './chipScene';
@@ -38,15 +38,16 @@ function familyValues(
 }
 
 /**
- * Every Stats chip token rendered from `stats`: the Stats family on its own. This is the module's one narrow
- * export, for a caller that holds stats but no scene; `chipValues` renders its Stats family through it.
- * Placeholder chips are left as they are.
+ * Every Stats chip token rendered from `stats`, nested as `placement` groups them: the Stats family on its
+ * own. This is the module's one narrow export, for a caller that holds stats but no scene; `chipValues`
+ * renders its Stats family through it. Placeholder chips are left as they are.
  */
-export function statChipValues(stats: PlayerStat[]): Record<string, string> {
+export function statChipValues(stats: PlayerStat[], placement?: StatPlacement): Record<string, string> {
   return familyValues(STATS, (sel) => buildStatContext(
     stats,
     { values: sel.numbers != null, status: sel.descriptions != null, meaning: sel.meaning != null },
     chipFormat(sel.format),
+    placement,
   ));
 }
 
@@ -69,7 +70,7 @@ export function chipValues(scene: ChipScene): Record<string, string> {
   const traitIds = scene.traits.map((trait) => trait.id);
   const values: Record<string, string> = {
     [WORLD.token]: scene.overview,
-    ...statChipValues(scene.stats),
+    ...statChipValues(scene.stats, scene.statPlacement),
     ...familyValues(TRAITS, (sel) => (
       buildTraitContext(traitIds, scene.traits, scene.traitGroups, chipFormat(sel.format)) || NONE_PLACEHOLDER
     )),

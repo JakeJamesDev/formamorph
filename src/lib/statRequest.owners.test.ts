@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Entity, EntityStatValues, PersonaRef, PlayerStat } from '@/types';
+import type { Entity, EntityStatValues, PersonaRef, PlayerStat, StatGroup } from '@/types';
 import { defaultStatUpdatesPrompt, defaultStatUpdatesUserPrompt } from '@/components/game/GamePrompts';
 import {
   createStatRequest, readStatResponse, statRequestSchema, statResponseChanges, PLAYER_STAT_HEADING,
@@ -30,7 +30,7 @@ const values: EntityStatValues = {
 };
 const none: PersonaRef = { source: 'none' };
 const noTraits = () => [];
-const owners = (present: Entity[], persona: PersonaRef = none) => statRequestOwners(present, values, persona, (s) => s, noTraits);
+const owners = (present: Entity[], persona: PersonaRef = none) => statRequestOwners(present, values, persona, (s) => s, noTraits, (g) => g);
 const snapshotFor = (present: Entity[], textPass = false) =>
   createStatRequest([vigor, playerTrust], PLAYER_OWNER, { textPass, entities: owners(present) });
 
@@ -66,7 +66,7 @@ describe('the stat request with entities', () => {
   it('leaves out an entity stat its own trait switches off, and ignores an update to it', () => {
     const wary = { id: 'wary', name: 'Wary', statChanges: [], statToggles: [{ statId: 'stock', enabled: false }] };
     const inForce = (ownerId: string) => (ownerId === 'odette' ? [wary] : []);
-    const asked = statRequestOwners([odette], values, none, (s) => s, inForce);
+    const asked = statRequestOwners([odette], values, none, (s) => s, inForce, (g) => g);
     expect(asked.map((o) => o.stats.map((s) => s.id))).toEqual([['trust']]);
 
     const full = createStatRequest([vigor, playerTrust], PLAYER_OWNER, { entities: owners([odette]) });
@@ -83,6 +83,28 @@ describe('the stat request with entities', () => {
     ] });
     expect(snapshot.entityKeys).toEqual(['Player Character (2)', 'Bram', 'Bram (2)']);
     expect(snapshot.context['<STATS DESCRIPTION>']).toContain('### Bram (2)\nTrust');
+  });
+
+  it('nests each owner\'s stats under its group headings and leaves the schema as the flat request has it', () => {
+    const bonds: StatGroup = { id: 'bonds', name: 'Bonds', aiDescription: 'How {{who}} regards the player.', parentId: null, order: 1 };
+    const body: StatGroup = { id: 'body', name: 'Body', parentId: null, order: 0 };
+    const grouped: Entity = {
+      ...odette, statGroups: [bonds], stats: [stat({ groupId: 'bonds' }), stat({ id: 'stock', name: 'Stock', groupId: null })],
+    };
+    const resolveWho = (groups: StatGroup[]) => groups.map((g) => ({ ...g, aiDescription: g.aiDescription?.replace('{{who}}', 'Odette') }));
+    const playerVigor = { ...vigor, groupId: 'body' };
+    const snapshot = createStatRequest([playerVigor, playerTrust], PLAYER_OWNER, {
+      placement: { groups: [body], authored: [playerVigor, playerTrust] },
+      entities: statRequestOwners([grouped], values, none, (s) => s, noTraits, resolveWho),
+    });
+    expect(build(snapshot).systemPrompt).toContain([
+      '### Player Character', '- **Trust:** 10/100', '- **Body:**', '  - **Vigor:** 50/100', '',
+      '### Odette', '- **Stock:** 12/100', '- **Bonds:** How Odette regards the player.', '  - **Trust:** 40/100', '',
+    ].join('\n'));
+    const flat = createStatRequest([vigor, playerTrust], PLAYER_OWNER, { entities: owners([odette]) });
+    expect(statRequestSchema(snapshot)).toEqual(statRequestSchema(flat));
+    expect(snapshot.targets.map(({ ownerKey, key, maxKey }) => [ownerKey, key, maxKey]))
+      .toEqual(flat.targets.map(({ ownerKey, key, maxKey }) => [ownerKey, key, maxKey]));
   });
 
   it('scales the cap with stats and owners', () => {

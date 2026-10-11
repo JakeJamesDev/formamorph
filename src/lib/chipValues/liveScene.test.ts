@@ -5,7 +5,7 @@ import { resolveBearers, type BearerWorld } from '../bearers';
 import { resolveBearerText, resolveEntityText } from '../placeholders';
 import { buildCharacterUserMessage, buildDiaryUserMessage } from '../stagedPlanning';
 import { buildToolSnapshot } from '../tools/toolSnapshot';
-import type { Entity, GameLocation, PlayerStat, Trait, TraitGroup, TraitLink } from '@/types';
+import type { Entity, GameLocation, PlayerStat, StatGroup, Trait, TraitGroup, TraitLink } from '@/types';
 
 // The harbor: the Quay contains the Warehouse.
 const quay: GameLocation = { id: 'quay', name: 'Quay', aiDescription: 'Wet stone and rope.' };
@@ -28,6 +28,7 @@ const seaLegs: Trait = { id: 'sea-legs', name: 'Sea Legs', aiDescription: 'Stead
 const sources = (over: Partial<LiveSceneSources> = {}): LiveSceneSources => ({
   overview: 'A working harbor.',
   stats: [grit],
+  statPlacement: { groups: [], authored: [grit] },
   traits: [seaLegs],
   traitGroups: [],
   resolve: (text) => text.replaceAll('{{deck}}', 'a wet deck'),
@@ -60,6 +61,21 @@ describe('the live adapter', () => {
     expect(scene.inSceneIds).toEqual(['harbormaster']);
     expect(scene.inSceneNames).toEqual(['the ferryman']);
     expect(chipValues(scene)['<ENTITIES|inscene.name>']).toBe('Harbormaster, the ferryman');
+  });
+
+  it("nests the Stats chip and each present entity's stats under their authored groups, headings resolved", () => {
+    const nerve: StatGroup = { id: 'nerve', name: 'Nerve', aiDescription: 'Steady on {{deck}}.', parentId: null };
+    const back: StatGroup = { id: 'back', name: 'Back', parentId: null };
+    const load: PlayerStat = { ...grit, id: 'load', name: 'Load', description: '' };
+    const hauler = { ...harbormaster, stats: [{ ...load, groupId: 'back' }], statGroups: [back] };
+    // The live copy of Grit predates its grouping; the author's placement decides.
+    const values = chipValues(liveChipScene(sources({
+      statPlacement: { groups: [nerve], authored: [{ ...grit, groupId: 'nerve' }] },
+      entities: [hauler, porter], allEntities: [hauler, porter], entityStats: { harbormaster: [load] },
+    })));
+    expect(values['<STATS DESCRIPTION|numbers.meaning.markdown>'])
+      .toBe('- **Nerve:** Steady on a wet deck.\n  - **Grit:** 4/10 — Nerve.');
+    expect(values['<ENTITIES>']).toContain('  stats:\n    Back:\n      Load: 4/10\n');
   });
 
   it('scopes the scene to the location a turn was routed to', () => {

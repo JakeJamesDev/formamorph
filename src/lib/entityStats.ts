@@ -1,12 +1,13 @@
 // Entity stats in play: each authored entity's stat values, seeded at a new game and backfilled on load, and
 // the owners whose regen and code run each turn.
 
-import type { Entity, EntityStatChanges, EntityStatValues, PersonaRef, PlayerStat } from '@/types';
+import type { Entity, EntityStatChanges, EntityStatValues, PersonaRef, PlayerStat, StatGroup } from '@/types';
 import { inCast, playsAs } from './bearers';
 import { backfillPlayerStats } from './statBackfill';
 import { activeStatEnabled, enabledStats } from './traitEffects';
 import { seedNewGameStats } from './traitRuntime';
 import { PLAYER_OWNER, regenOwners, statsOf, type OwnerStats, type OwnerStatTraits, type StatOwner } from './statOwners';
+import { statPlacementOf } from './statContext';
 import { applyStatResponse, type StatRequestOwner, type StatResponse, type StatUpdateDiagnostic } from './statRequest';
 import { overlayStatCodeResult, type OwnerCodeResult, type OwnerCodeTurn } from './statCodeTurn';
 
@@ -55,12 +56,14 @@ export function entityCodeTurns(
   }));
 }
 
-/** The present entities whose live stats join the player's in the stat request, each once, in `present` order.
- *  `present` holds the entities the narration confirmed, names resolved. The played persona stays out. `prepare`
- *  readies an owner's live stats for the request; `inForce` gives the traits that switch them. */
+/** The present entities whose live stats join the player's in the stat request, each once, in `present` order,
+ *  placed as each entity groups its stats. `present` holds the entities the narration confirmed, names
+ *  resolved. The played persona stays out. `prepare` readies an owner's live stats for the request, `inForce`
+ *  gives the traits that switch them, and `prepareGroups` readies its stat groups. */
 export function statRequestOwners(
   present: readonly Entity[], values: OwnerStats, persona: PersonaRef | undefined,
   prepare: (stats: PlayerStat[]) => PlayerStat[], inForce: OwnerStatTraits,
+  prepareGroups: (groups: StatGroup[]) => StatGroup[],
 ): StatRequestOwner[] {
   const seen = new Set<string>();
   return present.flatMap((entity) => {
@@ -68,7 +71,10 @@ export function statRequestOwners(
     if (!held || seen.has(entity.id) || !inCast(entity, persona)) return [];
     seen.add(entity.id);
     const stats = prepare(enabledStats([...held], activeStatEnabled(held, inForce(entity.id))));
-    return stats.length ? [{ id: entity.id, name: entity.name, stats }] : [];
+    if (!stats.length) return [];
+    const authored = statPlacementOf(entity);
+    const placement = { ...authored, groups: prepareGroups([...authored.groups]) };
+    return [{ id: entity.id, name: entity.name, stats, placement }];
   });
 }
 

@@ -160,7 +160,7 @@ import { parseSlashCommand } from "../lib/slashCommands";
 import { appliedStatDeltas } from "../lib/statChanges";
 import { PLAYER_OWNER, regenOwners, statsOf } from "../lib/statOwners";
 import { applyStatResponse, createStatRequest, readStatResponse, statResponseChanges, type StatRequestSnapshot, type StatResponse } from "../lib/statRequest";
-import { resolveEntityTexts, resolveStatNames, resolveStatText } from "../lib/resolveWorldNames";
+import { resolveEntityTexts, resolveStatGroupTexts, resolveStatNames, resolveStatText } from "../lib/resolveWorldNames";
 import { toDebugEndpoint } from "../lib/promptEndpoints";
 import { AiContextRequestCard, type AiContextCardSection, type AiContextTextSlot } from "@/components/aiContext/AiContextRequestCard";
 import { AiContextExportButton } from "@/components/aiContext/AiContextExportButton";
@@ -406,6 +406,7 @@ const GameViewer = ({
   // happened to be active when the game started.
   const {
     playStats: authoredStats,
+    statGroups: authoredStatGroups,
     traits: authoredTraits,
     locations: authoredLocations,
     connections,
@@ -1825,7 +1826,7 @@ const GameViewer = ({
   // The live stats a stat request could hold: the player's and every entity's that can be present.
   const requestStatCount = useMemo(
     () => activeStats.length
-      + statRequestOwners(codeEntities.world, entityStats, personaRef, (owned) => owned, entityInForceUnder(ownedTraits))
+      + statRequestOwners(codeEntities.world, entityStats, personaRef, (owned) => owned, entityInForceUnder(ownedTraits), (groups) => groups)
         .reduce((n, owner) => n + owner.stats.length, 0),
     [activeStats, codeEntities, entityStats, personaRef, entityInForceUnder, ownedTraits],
   );
@@ -1962,6 +1963,11 @@ const GameViewer = ({
     () => worldPlaceholders.filter((p) => !placeholderOwners.has(p.id)),
     [worldPlaceholders, placeholderOwners],
   );
+  // The author's groups place the player's stats, so a save made before a regrouping follows it.
+  const playerStatPlacement = useMemo(
+    () => ({ groups: authoredStatGroups, authored: authoredStats }),
+    [authoredStatGroups, authoredStats],
+  );
   // Each present bearer's tree, so a cast entity's links reach the AI like its owned traits.
   const sceneBearers = useMemo(() => gatedWorld().bearers, [gatedWorld]);
   // The playthrough as a Chip Scene: the live adapter. A turn's location and a before box in flight each
@@ -1969,6 +1975,7 @@ const GameViewer = ({
   const liveScene = useLiveChipScene({
     overview: worldOverview.systemPrompt || "",
     stats: activeStats,
+    statPlacement: playerStatPlacement,
     traits: activeTraits,
     traitGroups,
     ownedTraits,
@@ -3731,7 +3738,11 @@ const GameViewer = ({
   const statRequestFor = (stats: readonly PlayerStat[], present: readonly Entity[], values: EntityStatValues): StatRequestSnapshot =>
     createStatRequest(stats, PLAYER_OWNER, {
       textPass: !schemaAccepted(resolveEndpointForKind("statUpdates").reasoning),
-      entities: statRequestOwners(present, values, personaRef, (owned) => resolveStatNames(owned, resolvePH), entityInForceUnder(ownedTraits)),
+      placement: { groups: resolveStatGroupTexts(authoredStatGroups, resolvePH), authored: authoredStats },
+      entities: statRequestOwners(
+        present, values, personaRef, (owned) => resolveStatNames(owned, resolvePH), entityInForceUnder(ownedTraits),
+        (groups) => resolveStatGroupTexts(groups, resolvePH),
+      ),
     });
   /** The defined entities among a turn's participants, as the diary fan-out resolves them. */
   const presentEntitiesOf = (participants: readonly TurnPassSubject[]): Entity[] =>

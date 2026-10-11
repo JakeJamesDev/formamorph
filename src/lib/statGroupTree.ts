@@ -26,7 +26,7 @@ export function statRootCount(groups: readonly StatGroup[] | undefined, stats: r
     + (groups ?? []).filter((g) => g.parentId == null || !known.has(g.parentId)).length;
 }
 
-export const buildStatTree = (groups: StatGroup[], stats: Stat[]): StatTreeNode[] => buildTree(groups, stats);
+export const buildStatTree = (groups: readonly StatGroup[], stats: readonly Stat[]): StatTreeNode[] => buildTree(groups, stats);
 
 export const flattenStatTree = (tree: StatTreeNode[]): FlatStatNode[] => flattenTree(tree);
 
@@ -101,7 +101,7 @@ export type StatLayoutNode<T> =
  * directly or below, is left out.
  */
 export function statPanelLayout<T>(
-  groups: StatGroup[], authored: Stat[], items: readonly T[], idOf: (item: T) => string,
+  groups: readonly StatGroup[], authored: readonly Stat[], items: readonly T[], idOf: (item: T) => string,
 ): StatLayoutNode<T>[] {
   const byId = new Map(items.map((item) => [idOf(item), item]));
   const build = (nodes: StatTreeNode[]): StatLayoutNode<T>[] => nodes.flatMap((node): StatLayoutNode<T>[] => {

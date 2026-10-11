@@ -109,6 +109,15 @@ describe('authoredChipScene', () => {
     expect(scene.stats.map((s) => [s.name, s.value])).toEqual([['Warmth', 40], ['Nerve', 10]]);
   });
 
+  it("nests the Stats chips under the world's stat groups, loose stats first", () => {
+    const grouped = world({
+      stats: [{ ...warmth, groupId: 'body' }, nerve],
+      statGroups: [{ id: 'body', name: 'Body', aiDescription: 'What the cold takes.', parentId: null, order: 0 }],
+    });
+    expect(chipValues(authoredChipScene(grouped))['<STATS DESCRIPTION|numbers>'])
+      .toBe('Nerve: 10/100\nBody:\n  What the cold takes.\n  Warmth: 40/100');
+  });
+
   it('holds the default traits in force and leaves the others out', () => {
     expect(authoredChipScene(world()).traits).toEqual([saltborn]);
   });

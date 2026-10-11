@@ -1,4 +1,5 @@
 import { flattenEnabledBookEntries } from '../dictionaryUtils';
+import { statPlacementOf } from '../statContext';
 import { entityIdsAt } from '../entityPresence';
 import { allPlaceholders } from '../placeholderHomes';
 import { PLAYER_BEARER, resolveBearers, type Bearer } from '../bearers';
@@ -113,6 +114,7 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
     overview: worldOverview?.systemPrompt || '',
     // Stats read their authored starting value — the same shape a playthrough's stats carry.
     stats: options.stats ?? stats.map(atStartingValue),
+    statPlacement: statPlacementOf(world),
     // The player bearer's traits, where its tree places them: never Blueprints, and Custom Persona's at the root.
     traits: borneByPlayer(player.traits.filter((trait) => activeIds.has(trait.id))
       .map((trait) => (trait.aiDescription ? { ...trait, aiDescription: playerText(trait, trait.aiDescription) } : trait))),

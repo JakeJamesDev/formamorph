@@ -194,6 +194,17 @@ describe('the lens PC', () => {
       .toBe(block(buildAiContext(w, lens), 'stats').text);
   });
 
+  it("nests the stat block under the world's stat groups, as the play chip does", () => {
+    const w = world({
+      stats: [{ ...stats[0], groupId: 'mind' }],
+      statGroups: [{ id: 'mind', name: 'Mind', aiDescription: `Near ${HAIR_CHIP} water.`, parentId: null }],
+    });
+    const lens = buildLens({ ...w, traitGroups: w.traitGroups ?? [] }, at('loc-harbor', 't-sedge'));
+    expect(buildStatBlock(w, lens, '<STATS DESCRIPTION|numbers.markdown>')).toBe('- **Mind:** Near copper water.\n  - **Nerve:** 5/10');
+    expect(buildStatBlock(w, lens, '<STATS DESCRIPTION|descriptions.markdown>'))
+      .toBe(block(buildAiContext(w, lens), 'stats').text);
+  });
+
   it('replaces the default trait its own exclusive group contributed', () => {
     const asDefault = block(context(at('loc-harbor')), 'traits').text;
     const asSedge = block(context(at('loc-harbor', 't-sedge')), 'traits').text;
