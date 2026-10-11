@@ -166,6 +166,14 @@ Rulings from the grill, numbered as asked.
   - A moving stat's own code never blocks its move into Blueprints.
 
   Known over-refusal, left as is: a world or linked trait that stays and shares a name with the entity trait doesn't clear the code refusal, so the check can refuse a drag that breaks nothing.
+- **Q84** (user ruling, from ticket 23; replaces Q78) The default Stat Updates prompt becomes a lean prompt: a role line, each owner's stats under its heading, and format lines. Ticket 26 builds it. Ticket 23 stays as landed. Evidence: probe arms in `eec488c6`. On the cloud model, lean arm L scored 64–67% exact against 53% for S and 59–60% for SG, with 1–4 invented player cells against 20–32. On 12 held-out scenes, L scored 56% against 42%. On Cydonia, L scored 46%, behind SG at 54%. The agent wrote all gold, including the held-out set.
+  - Lean keeps the world description, traits and notes chips.
+  - Lean renders groups as the app does. The ticket probes lean flat against grouped.
+  - **Ship bar:** lean, built through the app's own builder, beats S and SG on exact and on invented changes, on the cloud model and Cydonia, on the tuning and held-out sets. On a miss, the ticket stops and reports, and nothing ships.
+  - Lean keeps the `<stat> max` keys and a format line for them. A probe arm measures their cost.
+  - User presets keep their frozen copy of the old prompt. The changelog tells players to reset for the new default. No migration.
+  - The schema-less text prompt stays unchanged.
+  - The ticket probes lean with and without a regard line after the narration. If both pass the bar, lean ships without it.
 
 Derived from Q7 and confirmed with the summary:
 
@@ -295,7 +303,7 @@ Derived from Q7 and confirmed with the summary:
 
 - The stat pass builds one request from a list of owners: the player (world player stats, plus the stats of every owner that joins the player) and the present entities with enabled stats. The present entities arrive through the Turn Pipeline's derivation callback after narration (ADR-0001), from the participants the narration confirmed.
 - The system prompt renders one section per owner, with stats nested under visible group headings. The response format is a JSON schema: one key per owner. Under it, each stat's key holds its bare signed change, and a "<key> max" key beside it holds its max change, all bounded integers. Every key is required, so "no change" is an explicit 0. A name clash gets a numbered key, and every prompt shows that numbered name.
-- The default Stat Updates prompts carry the C3 wording: one JSON object on one line, and 0 for a stat that didn't move. They also carry the WL lines: each stat belongs to the character it sits under and moves only for what that character does, goes through or feels, and a clear shift in how a character regards the player moves that character's own stat. They also carry the FB framing (Q78): what a stat is, what stats do for the narrator, and how owner headings and group bullets lay out the list. Custom prompts are not touched.
+- The default Stat Updates prompts carry the C3 wording: one JSON object on one line, and 0 for a stat that didn't move. They also carry the WL lines: each stat belongs to the character it sits under and moves only for what that character does, goes through or feels, and a clear shift in how a character regards the player moves that character's own stat. They also carry the FB framing (Q78): what a stat is, what stats do for the narrator, and how owner headings and group bullets lay out the list. Q84 replaces this with a lean prompt if ticket 26 clears its bar. Custom prompts are not touched.
 - The request layer gains a structured-output field. Schema support is a question on the per-endpoint capability record. A rejection with no parameter, or one that names the schema, retries once in the same turn on the text pass, and only a successful retry stores the rejection. Those turns use today's player-only text prompts, skip entity stats, and add a diagnostic. A rejection that names another parameter goes to the existing override path.
 - The response reader matches owners and stats by identity from the request snapshot, as the current reader does. It returns per-owner updates and diagnostics. Applying runs max changes before values, per owner.
 - The token cap scales with the number of stats and owners in the request.
