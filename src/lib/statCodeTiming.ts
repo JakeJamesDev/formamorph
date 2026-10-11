@@ -36,7 +36,7 @@ export const CODE_FIELD: Record<StatCodeTiming, keyof CodedStat> = { before: 'be
 /** The box a run reads on one stat, empty where that stat leaves the box blank. */
 export const boxCode = (stat: CodedStat, timing: StatCodeTiming): string => stat[CODE_FIELD[timing]] ?? '';
 
-/** Whether a stat leaves both boxes blank, which is what clears its code bounds. */
+/** Whether a stat leaves both boxes blank. */
 export const noBoxes = (stat: CodedStat): boolean =>
   STAT_CODE_TIMINGS.every((timing) => !boxCode(stat, timing).trim());
 

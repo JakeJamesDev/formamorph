@@ -8,7 +8,8 @@ import {
   appliedStatDeltas,
   applyRegen,
 } from './statChanges';
-import type { PlayerStat, Trait } from '@/types';
+import { deriveEffectiveStats } from './traitRuntime';
+import type { PlayerStat } from '@/types';
 
 const stat = (over: Partial<PlayerStat>): PlayerStat => ({
   id: '1',
@@ -191,28 +192,26 @@ describe('parseStatUpdates', () => {
   });
 });
 
-describe('applyAiMaxChanges under a code max', () => {
-  // The cap underneath is base 55 + AI 5 = 60; the code holds the visible cap at 40.
+describe('applyAiMaxChanges on a code-set max', () => {
+  // Base 55 + AI 5 = 60 under code; the code delta sets the cap to 40.
   const coded = (over: Partial<PlayerStat> = {}) => stat({
-    value: 40, min: 0, max: 40, baseMin: 0, baseMax: 55, baseRegen: 0, aiMaxDelta: 5, codeBounds: { max: 40 }, ...over,
+    value: 40, min: 0, max: 40, baseMin: 0, baseMax: 55, baseRegen: 0, aiMaxDelta: 5, codeDelta: { max: -20 }, ...over,
   });
 
-  it('holds the code max and books the ask underneath', () => {
-    expect(applyAiMaxChanges([coded()], { health: 20 })[0]).toMatchObject({ max: 40, value: 40, aiMaxDelta: 25 });
-    expect(applyAiMaxChanges([coded()], { health: -30 })[0]).toMatchObject({ max: 40, value: 40, aiMaxDelta: -25 });
+  it('moves the code-set cap by the ask, and the next derive keeps both moves', () => {
+    const raised = applyAiMaxChanges([coded()], { health: 20 })[0];
+    expect(raised).toMatchObject({ max: 60, value: 40, aiMaxDelta: 25, codeDelta: { max: -20 } });
+    expect(deriveEffectiveStats([raised], [])[0].max).toBe(60);
+    const lowered = applyAiMaxChanges([coded()], { health: -30 })[0];
+    expect(lowered).toMatchObject({ max: 10, value: 10, aiMaxDelta: -25 });
+    expect(deriveEffectiveStats([lowered], [])[0].max).toBe(10);
   });
 
-  it('books only what the floor lets the cap underneath move', () => {
-    const floored = coded({ min: 50, baseMin: 50, value: 50, max: 50 });
+  it('books only what the floor lets the cap move', () => {
+    const floored = coded({ min: 30, baseMin: 30, value: 40 });
     const once = applyAiMaxChanges([floored], { health: -30 })[0];
-    expect(once.aiMaxDelta).toBe(-5);
-    expect(applyAiMaxChanges([once], { health: -30 })[0]).toBe(once);
-  });
-
-  it('derives the cap underneath with the active traits', () => {
-    const raise: Trait = { id: 't', name: 'Robust', statChanges: [{ statId: '1', value: 20, type: 'max' }] };
-    const floored = coded({ min: 50, baseMin: 50, value: 50, max: 50 });
-    expect(applyAiMaxChanges([floored], { health: -30 }, [raise])[0].aiMaxDelta).toBe(-25);
+    expect(once).toMatchObject({ max: 30, aiMaxDelta: -5 });
+    expect(applyAiMaxChanges([once], { health: -30 })[0]).toMatchObject({ max: 30, aiMaxDelta: -5 });
   });
 
   it('books nothing for an ask the flags refuse', () => {

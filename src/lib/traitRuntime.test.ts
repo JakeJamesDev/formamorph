@@ -18,12 +18,14 @@ import {
   traitGateInput,
   traitNameIn,
   traitSwitchLog,
-  withCodeBounds,
+  withCodeDelta,
+  codeDeltaFor,
+  codeBoundsToDeltas,
   type TraitRuntimeState,
   type TraitWorld,
 } from './traitRuntime';
 import { traitOrderIndex } from './traitEffects';
-import type { PersonaRef, PlayerStat, StatChange, Trait, TraitGroup } from '@/types';
+import type { LegacyCodeBoundsStat, PersonaRef, PlayerStat, StatChange, Trait, TraitGroup } from '@/types';
 
 const stat = (id: string, over: Partial<PlayerStat> = {}): PlayerStat => ({
   id,
@@ -103,60 +105,122 @@ describe('deriveEffectiveStats', () => {
   });
 });
 
-describe('deriveEffectiveStats with code bounds', () => {
+describe('deriveEffectiveStats with a code delta', () => {
   const raise = trait('a', [
     { statId: 'h', value: 20, type: 'max' },
     { statId: 'h', value: 10, type: 'min' },
     { statId: 'h', value: 2, type: 'regen' },
   ]);
 
-  it('lets each code bound replace the derived result for its field', () => {
-    const coded = stat('h', { aiMaxDelta: 15, codeBounds: { min: 5, max: 60, regen: -1 } });
-    expect(deriveEffectiveStats([coded], [raise])[0]).toMatchObject({ min: 5, max: 60, regen: -1 });
+  it('adds each code delta on top of the bases, traits and AI delta', () => {
+    const coded = stat('h', { aiMaxDelta: 15, codeDelta: { min: 5, max: -75, regen: -3 } });
+    expect(deriveEffectiveStats([coded], [raise])[0]).toMatchObject({ min: 15, max: 60, regen: -1 });
   });
 
-  it('derives a field the code did not set from the bases and traits', () => {
-    const coded = stat('h', { aiMaxDelta: 15, codeBounds: { max: 60 } });
+  it('derives a field with no code delta from the layers under it', () => {
+    const coded = stat('h', { aiMaxDelta: 15, codeDelta: { max: -75 } });
     expect(deriveEffectiveStats([coded], [raise])[0]).toMatchObject({ min: 10, max: 60, regen: 2 });
   });
 
-  it('floors a code max at the effective min', () => {
-    expect(deriveEffectiveStats([stat('h', { codeBounds: { min: 70, max: 40 } })], [])[0]).toMatchObject({ min: 70, max: 70 });
-    expect(deriveEffectiveStats([stat('h', { codeBounds: { max: 5 } })], [raise])[0]).toMatchObject({ min: 10, max: 10 });
+  it('floors the max at the effective min', () => {
+    expect(deriveEffectiveStats([stat('h', { codeDelta: { min: 70, max: -60 } })], [])[0]).toMatchObject({ min: 70, max: 70 });
   });
 
-  it('returns to the derived cap, AI max delta included, once the code bound is gone', () => {
-    const [coded] = deriveEffectiveStats([stat('h', { aiMaxDelta: 15, codeBounds: { max: 60 } })], []);
-    expect(coded.max).toBe(60);
-    const { codeBounds: _cleared, ...rest } = coded;
-    expect(deriveEffectiveStats([rest], [])[0].max).toBe(115);
-  });
-
-  it('keeps a code bound through a trait switch, and settles the value inside it', () => {
-    const before = state({ stats: [stat('h', { value: 60, min: 0, max: 60, codeBounds: { max: 60 } })] });
+  it('moves a code-set max by a trait switched on and off', () => {
+    const before = state({ stats: [stat('h', { value: 60, max: 60, codeDelta: { max: -40 } })] });
     const on = setTraitEnabled({ ...before, traits: [raise] }, 'a', true, world([raise])).state;
-    expect(boundsOf(on)).toEqual({ min: 10, max: 60, regen: 2 });
-    expect(on.stats[0].codeBounds).toEqual({ max: 60 });
+    expect(boundsOf(on)).toEqual({ min: 10, max: 80, regen: 2 });
+    expect(on.stats[0].codeDelta).toEqual({ max: -40 });
     const off = setTraitEnabled(on, 'a', false, world([raise])).state;
     expect(boundsOf(off)).toEqual({ min: 0, max: 60, regen: 0 });
-    expect(valueOf(off)).toBeLessThanOrEqual(60);
   });
 });
 
-describe('withCodeBounds', () => {
+describe('codeDeltaFor', () => {
+  const raiseCap = trait('a', [{ statId: 'h', value: 20, type: 'max' }]);
+
+  it('books each written bound minus the bound the other layers derive under the traits given', () => {
+    const coded = stat('h', { aiMaxDelta: 5, codeDelta: { min: 3 } });
+    expect(codeDeltaFor(coded, { max: 20, regen: 4 }, [raiseCap])).toEqual({ min: 3, max: -105, regen: 4 });
+  });
+
+  it('replaces an earlier delta for a field the code writes again', () => {
+    expect(codeDeltaFor(stat('h', { codeDelta: { max: -40 } }), { max: 90 }, [])).toEqual({ max: -10 });
+  });
+
+  it('drops a field whose written bound matches the layers under it', () => {
+    expect(codeDeltaFor(stat('h', { codeDelta: { max: -40 } }), { max: 120 }, [raiseCap])).toEqual({});
+  });
+
+  it('measures against the max before the min floor, so the written max lands', () => {
+    const lift = trait('b', [{ statId: 'h', value: 15, type: 'min' }]);
+    const low = stat('h', { min: 15, max: 15, baseMax: 10 });
+    const codeDelta = codeDeltaFor(low, { max: 20 }, [lift]);
+    expect(deriveEffectiveStats([{ ...low, codeDelta }], [lift])[0]).toMatchObject({ min: 15, max: 20 });
+  });
+});
+
+describe('withCodeDelta', () => {
   const raiseCap = trait('a', [{ statId: 'h', value: 20, type: 'max' }]);
   const base = stat('h', { value: 90, max: 120 });
 
-  it('holds exactly the given code bounds, re-derives under the traits, and clamps the value', () => {
-    const next = withCodeBounds({ ...base, codeBounds: { min: 3 } }, { max: 60 }, 90, [raiseCap]);
+  it('holds exactly the given code delta, re-derives under the traits, and clamps the value', () => {
+    const next = withCodeDelta({ ...base, codeDelta: { min: 3 } }, { max: -60 }, 90, [raiseCap]);
     expect(next).toMatchObject({ min: 0, max: 60, value: 60 });
-    expect(next.codeBounds).toEqual({ max: 60 });
+    expect(next.codeDelta).toEqual({ max: -60 });
   });
 
-  it('drops the field and returns to the derived bounds, traits included, when given none', () => {
-    const next = withCodeBounds({ ...base, max: 60, codeBounds: { max: 60 } }, {}, 50, [raiseCap]);
+  it('drops the field when given an empty delta', () => {
+    const next = withCodeDelta({ ...base, max: 60, codeDelta: { max: -60 } }, {}, 50, [raiseCap]);
     expect(next).toMatchObject({ max: 120, value: 50 });
-    expect('codeBounds' in next).toBe(false);
+    expect('codeDelta' in next).toBe(false);
+  });
+});
+
+describe('codeBoundsToDeltas', () => {
+  const raise = trait('a', [
+    { statId: 'h', value: 20, type: 'max' },
+    { statId: 'h', value: 10, type: 'min' },
+    { statId: 'h', value: 2, type: 'regen' },
+  ]);
+  /** A stat as an older save stored it: effective bounds the code bounds replaced, under `raise`. */
+  const legacy = (): LegacyCodeBoundsStat => ({
+    ...stat('h', { aiMaxDelta: 15, min: 5, max: 60, regen: -1, value: 40 }),
+    codeBounds: { min: 5, max: 60, regen: -1 },
+  });
+
+  it('keeps the effective bounds the save showed, with each delta holding the difference', () => {
+    const [migrated] = codeBoundsToDeltas([legacy()], [raise]);
+    expect(migrated.codeDelta).toEqual({ min: -5, max: -75, regen: -3 });
+    expect(migrated).toMatchObject({ min: 5, max: 60, regen: -1, value: 40 });
+    expect(deriveEffectiveStats([migrated], [raise])[0]).toMatchObject({ min: 5, max: 60, regen: -1 });
+    expect('codeBounds' in migrated).toBe(false);
+  });
+
+  it('keeps a floored max the save showed', () => {
+    const floored = { ...stat('h', { min: 70, max: 70 }), codeBounds: { min: 70, max: 40 } };
+    const [migrated] = codeBoundsToDeltas([floored], []);
+    expect(deriveEffectiveStats([migrated], [])[0]).toMatchObject({ min: 70, max: 70 });
+  });
+
+  it('then moves the migrated bounds by a trait switched off', () => {
+    const [migrated] = codeBoundsToDeltas([legacy()], [raise]);
+    const off = setTraitEnabled(state({ stats: [migrated], traits: [raise] }), 'a', false, world([raise])).state;
+    expect(boundsOf(off)).toEqual({ min: -5, max: 40, regen: -3 });
+  });
+
+  it('drops an empty stored field and leaves a stat without one as it is', () => {
+    const plain = stat('h');
+    const [emptied, kept] = codeBoundsToDeltas([{ ...stat('h'), codeBounds: {} }, plain], []);
+    expect('codeBounds' in emptied).toBe(false);
+    expect('codeDelta' in emptied).toBe(false);
+    expect(kept).toBe(plain);
+  });
+
+  it('changes nothing on a second pass', () => {
+    const once = codeBoundsToDeltas([legacy()], [raise]);
+    const twice = codeBoundsToDeltas(once, [raise]);
+    expect(twice[0]).toBe(once[0]);
   });
 });
 

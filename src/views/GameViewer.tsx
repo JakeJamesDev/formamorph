@@ -2953,9 +2953,7 @@ const GameViewer = ({
     ) => {
       const baseStats = base?.playerStats ?? rawPlayerStatsRef.current;
       const live = new Set(enabledStats(rawPlayerStatsRef.current, statEnabledRef.current).map((s) => s.id));
-      const baseTraits = base ? savedTraits(base, traits) : null;
-      const inForce = baseTraits ? inForceOn(baseTraits, base?.entityStats) : statTraits;
-      const applied = applyStatResponse(baseStats, response, live, inForce, PLAYER_OWNER);
+      const applied = applyStatResponse(baseStats, response, live, PLAYER_OWNER);
       const directApplied = applied.stats;
       const entityBase = base ? base.entityStats ?? {} : entityStatsRef.current;
       const entityApplied = applyEntityStatResponse(entityBase, response, entityInForceUnder(base ? base.ownedTraits ?? {} : ownedTraits));
@@ -2987,7 +2985,7 @@ const GameViewer = ({
         asks: Object.fromEntries(Object.keys(entityApplied.values).map((id) => [id, asksOf(id)])),
       });
     },
-    [runStatCode, setPlayerStats, setEntityStats, showStatDeltas, resolvePH, statTraits, traits, inForceOn, entityInForceUnder, ownedTraits],
+    [runStatCode, setPlayerStats, setEntityStats, showStatDeltas, resolvePH, entityInForceUnder, ownedTraits],
   );
 
   // Discard a turn's dangling, unpaired user message. The failure exits (empty narration, request error)
@@ -4196,7 +4194,8 @@ const GameViewer = ({
     (result: GatedTraitResult) => commitGatedTraits(result, 'changes to the world'),
     [commitGatedTraits],
   );
-  useSettleOnSaveLoad(saveLoads, !personaPending, traitState, gatedWorld, traitName, commitLoadSettle);
+  const settleHistory = useMemo(() => ({ states: gameStates, commit: setGameStates }), [gameStates, setGameStates]);
+  useSettleOnSaveLoad(saveLoads, !personaPending, traitState, gatedWorld, traitName, commitLoadSettle, settleHistory);
 
   /**
    * Switch a trait on or off mid-play, acquiring it first if the player doesn't have it yet. Every trait the

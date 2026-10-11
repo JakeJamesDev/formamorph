@@ -146,7 +146,7 @@ describe('stat request names', () => {
     ] };
     const live = new Set(['health']);
     expect(applyStatResponse([stat()], response, live).stats[0]).toMatchObject({ value: 95, max: 100 });
-    expect(applyStatResponse([stat()], response, live, [], 'bram').stats[0]).toMatchObject({ value: 70, max: 110 });
+    expect(applyStatResponse([stat()], response, live, 'bram').stats[0]).toMatchObject({ value: 70, max: 110 });
   });
 
   it("reports only the named owner's missing and disabled updates", () => {
@@ -154,7 +154,7 @@ describe('stat request names', () => {
       { ownerId: 'bram', id: 'trust', name: 'Trust', value: 5, max: 0 },
     ] };
     expect(applyStatResponse([stat()], response, new Set(['health'])).diagnostics).toEqual([]);
-    expect(applyStatResponse([stat()], response, new Set(['health']), [], 'bram').diagnostics)
+    expect(applyStatResponse([stat()], response, new Set(['health']), 'bram').diagnostics)
       .toEqual([{ name: 'Trust', reason: 'missing' }]);
   });
 

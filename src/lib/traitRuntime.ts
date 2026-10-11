@@ -4,15 +4,15 @@
 // Two rules shape everything here:
 //
 // - Bounds are DERIVED, never patched. A stat's effective min/max/regen is its authored base plus the
-//   contributions of whichever traits are active right now plus what the AI has moved. Recomputing instead
-//   of accumulating means bounds cannot drift however many times a trait is toggled.
+//   contributions of whichever traits are active right now plus what the AI and stat code have moved.
+//   Recomputing instead of accumulating means bounds cannot drift however many times a trait is toggled.
 // - Value movement is RECORDED. A trait's stat change that a floor or ceiling refused moved nothing, so
 //   switching it off must give back nothing. Each switch stores what actually moved and the next switch of
 //   that trait reverses it, rather than the authored number.
 
 import type {
-  CascadeOffTraitIds, CodeBounds, EntityStatValues, OwnedTraitPicks, OwnedTraitStates, PersonaRef, PlayerStat, Stat, StatChange, Trait,
-  TraitGroup,
+  CascadeOffTraitIds, CodeBoundDeltas, CodeBounds, EntityStatValues, LegacyCodeBoundsStat, OwnedTraitPicks, OwnedTraitStates, PersonaRef,
+  PlayerStat, Stat, StatChange, Trait, TraitGroup,
 } from '@/types';
 import { clamp } from './utils';
 import { ownedTraitStatesFrom, ownStatsRecordKey, recordKey } from './ownedTraitState';
@@ -187,38 +187,80 @@ function bases(stat: PlayerStat) {
   };
 }
 
+const CODE_BOUND_KEYS = ['min', 'max', 'regen'] as const satisfies readonly (keyof CodeBoundDeltas)[];
+
+/** A stat's bounds from every layer under code, before the max is floored at the min. A trait may raise a
+ *  min and another may lower that raise back, but no trait digs below the author's floor. */
+function boundsUnderCode(stat: PlayerStat, active: readonly Trait[]): Required<CodeBoundDeltas> {
+  const base = bases(stat);
+  const contrib = traitContributions(stat.id, active);
+  return {
+    min: base.min + Math.max(0, contrib.min),
+    max: base.max + contrib.max + (stat.aiMaxDelta ?? 0),
+    regen: base.regen + contrib.regen,
+  };
+}
+
 /**
- * Recompute every stat's min, max and regen from its bases, the active traits and the accumulated AI max
- * delta, then let each code bound replace its field. Values are untouched — this is bounds only.
- *
- * A trait may raise a min and another may lower that raise back, but the floor never drops below the one the
- * author wrote: the summed min contribution only counts when it is positive. Max is floored at the effective
- * min so neither a lowering trait nor a code bound can invert the range.
+ * Recompute every stat's min, max and regen from its bases, the active traits, the accumulated AI max delta
+ * and the code delta. Values are untouched — this is bounds only. Max is floored at the effective min so no
+ * layer can invert the range.
  */
 export function deriveEffectiveStats(stats: PlayerStat[], active: readonly Trait[]): PlayerStat[] {
   return stats.map((stat) => {
-    const base = bases(stat);
-    const contrib = traitContributions(stat.id, active);
-    const code = stat.codeBounds;
-    const min = code?.min ?? base.min + Math.max(0, contrib.min);
-    const max = Math.max(min, code?.max ?? base.max + contrib.max + (stat.aiMaxDelta ?? 0));
-    const regen = code?.regen ?? base.regen + contrib.regen;
+    const under = boundsUnderCode(stat, active);
+    const code = stat.codeDelta;
+    const min = under.min + (code?.min ?? 0);
+    const max = Math.max(min, under.max + (code?.max ?? 0));
+    const regen = under.regen + (code?.regen ?? 0);
     if (min === stat.min && max === stat.max && regen === (stat.regen ?? 0)) return stat;
     return { ...stat, min, max, regen };
   });
 }
 
-/** `stat` holding exactly `bounds` as its code bounds, re-derived under `active`, with `value` clamped in. */
-export function withCodeBounds(
+/** The code delta that makes each written bound `stat`'s bound under `active`; unwritten fields keep theirs. */
+export function codeDeltaFor(stat: PlayerStat, written: CodeBounds, active: readonly Trait[]): CodeBoundDeltas {
+  const under = boundsUnderCode(stat, active);
+  const next: CodeBoundDeltas = { ...stat.codeDelta };
+  for (const field of CODE_BOUND_KEYS) {
+    const bound = written[field];
+    if (bound === undefined) continue;
+    if (bound === under[field]) delete next[field];
+    else next[field] = bound - under[field];
+  }
+  return next;
+}
+
+/** Whether two code deltas move every bound by the same amount. */
+export const sameCodeDelta = (a: CodeBoundDeltas = {}, b: CodeBoundDeltas = {}): boolean =>
+  CODE_BOUND_KEYS.every((field) => (a[field] ?? 0) === (b[field] ?? 0));
+
+/** `stat` carrying exactly `codeDelta`, re-derived under `active`, with `value` clamped in. */
+export function withCodeDelta(
   stat: PlayerStat,
-  bounds: CodeBounds,
+  codeDelta: CodeBoundDeltas | undefined,
   value: number,
   active: readonly Trait[],
 ): PlayerStat {
-  const { codeBounds: _replaced, ...rest } = stat;
-  const next: PlayerStat = Object.keys(bounds).length ? { ...rest, value, codeBounds: bounds } : { ...rest, value };
+  const { codeDelta: _replaced, ...rest } = stat;
+  const next: PlayerStat = codeDelta && Object.keys(codeDelta).length ? { ...rest, value, codeDelta } : { ...rest, value };
   const [derived] = deriveEffectiveStats([next], active);
   return { ...derived, value: clamp(derived.value, derived.min, derived.max) };
+}
+
+/**
+ * Turn the code bounds an older save stored on its player stats into code deltas, under the player's stat
+ * traits in force: each delta is the stored bound minus the bound every other layer derives. The effective
+ * bounds stay as they were, and a stat without stored bounds is the same object, so a second pass changes
+ * nothing.
+ */
+export function codeBoundsToDeltas(stats: readonly LegacyCodeBoundsStat[], active: readonly Trait[]): PlayerStat[] {
+  return stats.map((stat) => {
+    if (!('codeBounds' in stat)) return stat;
+    const { codeBounds = {}, codeDelta: _none, ...rest } = stat;
+    const codeDelta = codeDeltaFor(rest, codeBounds, active);
+    return Object.keys(codeDelta).length ? { ...rest, codeDelta } : rest;
+  });
 }
 
 /**

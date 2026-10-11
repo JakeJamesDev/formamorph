@@ -11,6 +11,8 @@ import { collectPins } from './placeholderPins';
 import type { PlaceholderOwners } from './placeholderHomes';
 import { phValueId, phValues } from '@/test/placeholderValues';
 import { dayAndHour, daypart } from './gameClock';
+import { deriveEffectiveStats, setTraitEnabled } from './traitRuntime';
+import { applyAiMaxChanges } from './statChanges';
 
 const stat = (over: Partial<PlayerStat>): PlayerStat => ({
   id: 'x', name: 'Stat', type: 'number', description: '', min: 0, max: 100, value: 50, regen: 0, descriptors: [],
@@ -353,31 +355,29 @@ describe('runStatCodeTurn timing', () => {
       timing: 'before',
       stats: [seeded({ beforeCode: 'self.max = 40;', code: 'return 30;' })],
     }));
-    expect(before.stats[0].codeBounds).toEqual({ max: 40 });
+    expect(before.stats[0].codeDelta).toEqual({ max: -60 });
     const after = await runStatCodeTurn(turn({ timing: 'after', stats: before.stats }));
-    expect(after.stats[0].codeBounds).toEqual({ max: 40 });
+    expect(after.stats[0].codeDelta).toEqual({ max: -60 });
     expect(after.stats[0]).toMatchObject({ max: 40, value: 30 });
   });
 
-  it('keeps the code bounds of a stat that has only a before box, on the after run', async () => {
-    const stats = [seeded({ max: 40, codeBounds: { max: 40 }, beforeCode: 'self.max = 40;' })];
+  it('keeps the code delta of a stat that has only a before box, on the after run', async () => {
+    const stats = [seeded({ max: 40, codeDelta: { max: -60 }, beforeCode: 'self.max = 40;' })];
     const out = await runStatCodeTurn(turn({ timing: 'after', stats }));
     expect(out.stats).toBe(stats);
   });
 
-  it('keeps the code bounds of a stat that has only an after box, on the before run', async () => {
-    const stats = [seeded({ max: 40, codeBounds: { max: 40 }, code: 'self.max = 40;' })];
+  it('keeps the code delta of a stat that has only an after box, on the before run', async () => {
+    const stats = [seeded({ max: 40, codeDelta: { max: -60 }, code: 'self.max = 40;' })];
     const out = await runStatCodeTurn(turn({ timing: 'before', stats }));
     expect(out.stats).toBe(stats);
   });
 
-  it.each(['before', 'after'] as const)('clears the code bounds on the %s run when both boxes are empty', async (timing) => {
-    const out = await runStatCodeTurn(turn({
-      timing,
-      stats: [seeded({ min: 20, max: 40, codeBounds: { min: 20, max: 40 }, beforeCode: '  ', code: '' })],
-    }));
-    expect('codeBounds' in out.stats[0]).toBe(false);
-    expect(out.boundsChanged).toEqual(['a']);
+  it.each(['before', 'after'] as const)('keeps the code delta on the %s run when both boxes are empty', async (timing) => {
+    const stats = [seeded({ min: 20, max: 40, codeDelta: { min: 20, max: -60 }, beforeCode: '  ', code: '' })];
+    const out = await runStatCodeTurn(turn({ timing, stats }));
+    expect(out.stats).toBe(stats);
+    expect(out.boundsChanged).toEqual([]);
   });
 });
 
@@ -777,25 +777,86 @@ describe('runStatCodeTurn bound writes', () => {
   });
   const only = (out: { stats: readonly PlayerStat[] }) => out.stats[0];
   const raiseCap: Trait = { id: 't', name: 'Robust', statChanges: [{ statId: 'a', value: 20, type: 'max' }] };
+  const boost: Trait = {
+    id: 'b', name: 'Boost',
+    statChanges: [{ statId: 'a', value: 20, type: 'max' }, { statId: 'a', value: 5, type: 'min' }, { statId: 'a', value: 2, type: 'regen' }],
+  };
+  const boostWorld = { traits: [boost], groups: [] };
+  /** The player holds `boost`, switched off. */
+  const boostHeld: StatCodeBearers = { acquired: [boost], disabledTraitIds: [boost.id], appliedValues: {}, world: boostWorld };
+  const boundsOf = (s: PlayerStat) => ({ min: s.min, max: s.max, regen: s.regen });
 
   it.each([
-    ['min', 'self.min = 10;', { min: 10 }],
-    ['max', 'self.max = 80;', { max: 80 }],
-    ['regen', 'self.regen = 3;', { regen: 3 }],
-  ] as const)('lands a self.%s write as a code bound and the effective bound', async (_field, code, expected) => {
+    ['min', 'self.min = 10;', { min: 10 }, { min: 10 }],
+    ['max', 'self.max = 80;', { max: 80 }, { max: -20 }],
+    ['regen', 'self.regen = 3;', { regen: 3 }, { regen: 3 }],
+  ] as const)('lands a self.%s write as the effective bound, its difference in the code delta', async (_field, code, bound, delta) => {
     const out = await runStatCodeTurn(turn({ stats: [seeded({ code })] }));
-    expect(only(out)).toMatchObject(expected);
-    expect(only(out).codeBounds).toEqual(expected);
+    expect(only(out)).toMatchObject(bound);
+    expect(only(out).codeDelta).toEqual(delta);
     expect(out.boundsChanged).toEqual(['a']);
     expect(out.moved).toEqual([]);
   });
 
-  it('leaves a bound the code did not write to the pipeline, and a code bound it did not rewrite in place', async () => {
+  it.each([
+    ['min', 'self.min = 12; traits.Boost.enabled = true;', { min: 12, max: 120, regen: 2 }],
+    ['max', 'self.max = 20; traits.Boost.enabled = true;', { min: 5, max: 20, regen: 2 }],
+    ['regen', 'self.regen = 7; traits.Boost.enabled = true;', { min: 5, max: 120, regen: 7 }],
+  ] as const)('derives the written %s after the run, whatever its own trait switch moved', async (_field, code, bounds) => {
+    const out = await runStatCodeTurn(turn({ stats: [seeded({ code })], bearers: boostHeld }));
+    expect(out.traits?.disabledTraitIds).toEqual([]);
+    expect(boundsOf(only(out))).toEqual(bounds);
+  });
+
+  it('lands a bound write equal to the run’s starting number over its own trait switch', async () => {
     const out = await runStatCodeTurn(turn({
-      stats: [seeded({ min: 5, codeBounds: { min: 5 }, regen: 2, baseRegen: 2, code: 'self.max = 80;' })],
+      stats: [seeded({ code: 'self.max = 100; traits.Boost.enabled = true;' })], bearers: boostHeld,
+    }));
+    expect(boundsOf(only(out))).toEqual({ min: 5, max: 100, regen: 2 });
+    expect(only(out).codeDelta).toEqual({ max: -20 });
+  });
+
+  it.each([
+    ['min', 'self.min = 12;', { min: 17, max: 120, regen: 2 }, { min: 12, max: 100, regen: 0 }],
+    ['max', 'self.max = 20;', { min: 5, max: 40, regen: 2 }, { min: 0, max: 20, regen: 0 }],
+    ['regen', 'self.regen = 7;', { min: 5, max: 120, regen: 9 }, { min: 0, max: 100, regen: 7 }],
+  ] as const)('moves a code-set %s by a trait switched on, then off, on later turns', async (_field, code, on, off) => {
+    const ran = only(await runStatCodeTurn(turn({ stats: [seeded({ value: 10, code })] })));
+    const held = { stats: [ran], traits: [boost], disabledTraitIds: [boost.id], appliedValues: {} };
+    const switchedOn = setTraitEnabled(held, boost.id, true, boostWorld).state;
+    expect(boundsOf(switchedOn.stats[0])).toEqual(on);
+    const switchedOff = setTraitEnabled(switchedOn, boost.id, false, boostWorld).state;
+    expect(boundsOf(switchedOff.stats[0])).toEqual(off);
+  });
+
+  it('adds a later AI max change to the code-set max, and keeps it through the next derive', async () => {
+    const ran = only(await runStatCodeTurn(turn({ stats: [seeded({ value: 10, code: 'self.max = 20;' })] })));
+    const asked = applyAiMaxChanges([ran], { [ran.name.toLowerCase()]: 15 })[0];
+    expect(asked.max).toBe(35);
+    expect(deriveEffectiveStats([asked], [])[0].max).toBe(35);
+  });
+
+  it('books a later code write as a new difference from the layers under it', async () => {
+    const first = await runStatCodeTurn(turn({ stats: [seeded({ code: 'self.max = 20;' })] }));
+    const second = await runStatCodeTurn(turn({ stats: [{ ...only(first), code: 'self.max = 90;' }], bearers: inForce([raiseCap]) }));
+    expect(only(second).max).toBe(90);
+    expect(only(second).codeDelta).toEqual({ max: -30 });
+  });
+
+  it.each(['value', 'min', 'max', 'regen'])('fails the run on null written to self.%s, discarding every write', async (field) => {
+    const other = field === 'value' ? 'self.max = 60;' : 'self.value = 10;';
+    const stats = [seeded({ value: 50, code: `${other} self.${field} = null;` })];
+    const out = await runStatCodeTurn(turn({ stats }));
+    expect(out.stats).toBe(stats);
+    expect(out.boundsChanged).toEqual([]);
+  });
+
+  it('leaves a bound the code did not write to the pipeline, and a code delta it did not rewrite in place', async () => {
+    const out = await runStatCodeTurn(turn({
+      stats: [seeded({ min: 5, codeDelta: { min: 5 }, regen: 2, baseRegen: 2, code: 'self.max = 80;' })],
     }));
     expect(only(out)).toMatchObject({ min: 5, max: 80, regen: 2 });
-    expect(only(out).codeBounds).toEqual({ min: 5, max: 80 });
+    expect(only(out).codeDelta).toEqual({ min: 5, max: -20 });
   });
 
   it('clamps a value write in the same run to the range it just wrote', async () => {
@@ -826,17 +887,15 @@ describe('runStatCodeTurn bound writes', () => {
     expect(only(bram)).toMatchObject({ min: 10, max: 100 });
   });
 
-  it('clears every code bound of a stat with empty code, and the derived cap with its AI delta returns', async () => {
-    const out = await runStatCodeTurn(turn({
-      stats: [seeded({ value: 30, min: 20, max: 40, regen: 5, aiMaxDelta: 15, codeBounds: { min: 20, max: 40, regen: 5 }, code: '  ' })],
-    }));
-    expect(only(out)).toMatchObject({ min: 0, max: 115, regen: 0, value: 30 });
-    expect('codeBounds' in only(out)).toBe(false);
-    expect(out.boundsChanged).toEqual(['a']);
+  it('keeps the code delta of a stat with empty code', async () => {
+    const stats = [seeded({
+      value: 30, min: 20, max: 40, regen: 5, aiMaxDelta: 15, codeDelta: { min: 20, max: -75, regen: 5 }, code: '  ',
+    })];
+    expect((await runStatCodeTurn(turn({ stats }))).stats).toBe(stats);
   });
 
-  it('keeps the code bounds of a disabled stat, whose code never runs', async () => {
-    const stats = [seeded({ max: 40, codeBounds: { max: 40 }, code: '' })];
+  it('keeps the code delta of a disabled stat, whose code never runs', async () => {
+    const stats = [seeded({ max: 40, codeDelta: { max: -60 }, code: '' })];
     const out = await runStatCodeTurn(turn({ stats, enabled: { a: false } }));
     expect(out.stats).toBe(stats);
   });
@@ -849,7 +908,7 @@ describe('runStatCodeTurn bound writes', () => {
   });
 
   it('writes nothing for code that sets a bound to the number it already has', async () => {
-    const stats = [seeded({ max: 40, codeBounds: { max: 40 }, code: 'self.max = 40;' })];
+    const stats = [seeded({ value: 30, max: 40, codeDelta: { max: -60 }, code: 'self.max = 40;' })];
     expect((await runStatCodeTurn(turn({ stats }))).stats).toBe(stats);
   });
 });
@@ -929,12 +988,13 @@ describe('runStatCodeTurn traits', () => {
     expect(health(out).max).toBe(150);
   });
 
-  it('keeps a bound the code wrote this run over the bound its trait switch moved', async () => {
+  it('lands a bound the code wrote this run over the bound its trait switch moved', async () => {
     const out = await runStatCodeTurn(turn({
       stats: [seeded({ id: 'h', name: 'Health', value: 60, code: 'traits.Cursed.enabled = true; self.max = 80;' })],
       bearers: held(),
     }));
-    expect(health(out)).toMatchObject({ max: 80, codeBounds: { max: 80 } });
+    // Cursed lifts the layers under code to 150, so the delta holds the rest.
+    expect(health(out)).toMatchObject({ max: 80, codeDelta: { max: -70 } });
   });
 
   it('applies two stats switching one trait once, the later stat winning', async () => {
@@ -1104,11 +1164,11 @@ describe('overlayStatCodeResult', () => {
     id: 'a', min: 0, max: 100, baseMin: 0, baseMax: 100, baseRegen: 0, aiMaxDelta: 0, ...over,
   });
 
-  it('carries a code bound onto the latest stat, re-derived from its own AI delta', async () => {
+  it('carries a code delta onto the latest stat, re-derived from its own AI delta', async () => {
     const result = await runStatCodeTurn(turn({ stats: [seeded({ value: 50, code: 'self.min = 10;' })] }));
     // An AI max ask landed on the latest copy while the run was in flight.
     const [latest] = overlayStatCodeResult([seeded({ value: 70, max: 120, aiMaxDelta: 20 })], result, []);
-    expect(latest).toMatchObject({ min: 10, max: 120, value: 70, codeBounds: { min: 10 } });
+    expect(latest).toMatchObject({ min: 10, max: 120, value: 70, codeDelta: { min: 10 } });
   });
 
   it('carries only the value the code moved, and leaves an untouched stat as it is', async () => {

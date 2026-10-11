@@ -87,10 +87,10 @@ describe('entityCodeTurns', () => {
 describe('withOwnerCodeResults', () => {
   const values = seedEntityStats([bram, odette]);
 
-  it('lays each owner’s moved values and code bounds onto the latest values', () => {
+  it('lays each owner’s moved values and code deltas onto the latest values', () => {
     // The latest values took a regen tick after the run read its snapshot.
     const latest = withEntityRegen(values, entityStatOwners(values, [bram], { source: 'none' }, noTraits), 1);
-    const run = values.bram.map((s) => (s.id === 'stock' ? { ...s, value: 9, max: 9, codeBounds: { max: 9 } } : { ...s, value: 70 }));
+    const run = values.bram.map((s) => (s.id === 'stock' ? { ...s, value: 9, max: 9, codeDelta: { max: 9 - s.max } } : { ...s, value: 70 }));
     const out = withOwnerCodeResults(latest, { bram: { stats: run, moved: ['trust'], boundsChanged: ['stock'] } }, noTraits);
     expect(out.bram.map((s) => [s.value, s.max])).toEqual([[70, 100], [3, 9]]);
     expect(out.odette).toBe(latest.odette);
