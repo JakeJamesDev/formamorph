@@ -7,8 +7,8 @@ import { allPlaceholders, placeholderOwners } from '@/lib/placeholderHomes';
 import { codePinText } from '@/lib/placeholderPins';
 import { PLACEHOLDER_PATH_SEPARATOR } from '@/lib/placeholders';
 import {
-  CODE_BOUND_FIELDS, entityTraitsPath, executeStatCode, type CodeBoundField, type PlaceholderWrite, type SandboxEntity,
-  type SandboxPlaceholderNode, type TraitWrite,
+  CODE_BOUND_FIELDS, entityTraitsPath, executeStatCode, memberPath, SELF_WRITABLE_FIELDS, type CodeBoundField, type PlaceholderWrite,
+  type SandboxEntity, type SandboxPlaceholderNode, type StatWrite, type TraitWrite,
 } from '@/lib/statCodeExecutor';
 import type { AnalysisOptions, CodeEntityNames, CodePlaceholders, MissingName } from '@/lib/statCodeAnalysis';
 import { statCodeName, statCodeNamed } from '@/lib/statCodeNames';
@@ -176,6 +176,13 @@ const KEEP_DROPPED: ReturnType<typeof droppedFilter> = { trait: () => () => true
 
 const switchLine = (at: string, { name, enabled }: TraitWrite) => `${at}${name} switched ${enabled ? 'on' : 'off'}`;
 
+/** One line per field a run wrote to another stat, as code names it: `stats.Luck.max = 12`. */
+const statWriteLines = ({ name, ...fields }: StatWrite) =>
+  SELF_WRITABLE_FIELDS.flatMap((field) => {
+    const number = fields[field as keyof typeof fields];
+    return typeof number === 'number' ? [`${memberPath('stats', name)}.${field} = ${number}`] : [];
+  });
+
 /** The line of a dropped kind of write, or none when no names are left. */
 const droppedLine = (lead: string, names: readonly string[] | undefined) =>
   (names?.length ? [`${lead} Writes ignored: ${names.join(', ')}.`] : []);
@@ -211,6 +218,8 @@ export async function runTestCode(
     code, stats, stat as Stat,
     {
       clock: TEST_CLOCK[timing], placeholders: placeholderEntries.top, traits: traitEntries,
+      // No trait is on, so a stat is off only as authored; a write to it is dropped as it is in a turn.
+      enabled: activeStatEnabled(stats, []),
       // Each entity's stats read as authored, as `stats` does, a switched-off one as off.
       entities: unplayedEntities(entities, owners).map((entity) => {
         const own = entity.id ? entityStats[entity.id] : undefined;
@@ -232,6 +241,7 @@ export async function runTestCode(
       const bound = outcome.bounds?.[field];
       return bound === undefined ? [] : [`${BOUND_LABELS[field]}: ${bound}`];
     }),
+    ...(outcome.statWrites ?? []).flatMap(statWriteLines),
     // The path the code wrote, not the placeholder's bare name: that is what the author typed.
     ...(outcome.placeholders ?? []).filter((entry) => !isPersonaPin(entry)).map((entry) => pinLine(entry, placeholderPathLabel(entry.path))),
     ...(outcome.traits ?? []).map((entry) => switchLine('', entry)),
@@ -240,6 +250,8 @@ export async function runTestCode(
   ];
   const keep = missing ? droppedFilter(missing) : KEEP_DROPPED;
   const dropped = [
+    ...droppedLine('Unknown stat names.', outcome.unknownStatWrites),
+    ...droppedLine('Switched-off stats.', outcome.disabledStatWrites),
     ...droppedLine('Unknown placeholder paths.', outcome.unknownPlaceholders?.filter(keep.placeholder)),
     ...droppedLine('Placeholders of owners not in the game.', outcome.unknownOwnerPlaceholders?.filter(keep.placeholder)),
     ...droppedLine('Unknown trait names.', outcome.unknownTraits?.filter(keep.trait(null))),

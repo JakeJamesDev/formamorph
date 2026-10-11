@@ -143,6 +143,22 @@ describe('what each box completes and checks against', () => {
       expect([box, offered]).toEqual([box, expect.arrayContaining(['Warmth', 'Damp'])]);
     }
   });
+
+  // The panel hands each box its own name, so the reader can tell a write to another stat from one to self.
+  it('takes a write to another stat in either box, underlines an unknown name on the write side, and completes the four fields', async () => {
+    const { statCodeCompletions, statCodeDiagnostics } = await import('@/lib/statCodeAnalysis');
+    renderCodePanel(stats[0]);
+    for (const box of ['Before the AI', 'After the AI'] as const) {
+      const options = optionsOf(box);
+      expect([box, statCodeDiagnostics('stats.Damp.value += 1;\nstats["Damp"].max = 12;', options)]).toEqual([box, []]);
+      const typo = statCodeDiagnostics('stats.Dmap.value = 1;', options);
+      expect([box, typo.map((d) => d.message)]).toEqual([box, [expect.stringContaining('Dmap')]]);
+
+      const code = 'stats.Damp.';
+      const offered = statCodeCompletions(code, code.length, options)?.options.map((o) => o.label);
+      expect([box, offered]).toEqual([box, expect.arrayContaining(['value', 'min', 'max', 'regen'])]);
+    }
+  });
 });
 
 describe('what Test Code reports', () => {
@@ -350,6 +366,50 @@ describe('what Test Code reports', () => {
 
     await waitFor(() => expect(row()).toHaveTextContent('Unknown trait names. Writes ignored: Nope.'));
     expect(row()).toHaveTextContent('acquired is read-only. Writes ignored: Brave.');
+  });
+
+  it('lists each write to another stat with its stat name, field and number', async () => {
+    const user = userEvent.setup();
+    executeStatCode.mockResolvedValue({
+      value: 5, error: null, bounds: { max: 60 }, statWrites: [{ id: 's2', name: 'Damp', value: 9, max: 12 }],
+    });
+    renderCodePanel(stats[0]);
+
+    await testCode(user, 'self.max = 60; stats.Damp.value = 9; stats.Damp.max = 12; return 5;');
+
+    await waitFor(() => expect(row()).toHaveTextContent('Result: 5 · Max: 60 · stats.Damp.value = 9 · stats.Damp.max = 12'));
+    // Shown only: the written stat is still as authored, and no save went to it. Typing saved the code to Warmth.
+    expect(stats[1]).toMatchObject({ value: 3, max: 10 });
+    expect(updateStat.mock.calls.map(([saved]) => saved.id)).not.toContain('s2');
+  });
+
+  it('names the writes to stats that do not exist or are switched off', async () => {
+    const user = userEvent.setup();
+    executeStatCode.mockResolvedValue({
+      value: null, error: null, unknownStatWrites: ['stats.Dmap.value'], disabledStatWrites: ['stats.Dusk.max'],
+    });
+    renderCodePanel(stats[0]);
+
+    await testCode(user, 'stats.Dmap.value = 1; stats.Dusk.max = 2;');
+
+    await waitFor(() => expect(row()).toHaveTextContent('Unknown stat names. Writes ignored: stats.Dmap.value.'));
+    expect(row()).toHaveTextContent('Switched-off stats. Writes ignored: stats.Dusk.max.');
+  });
+
+  // An entity stat's `stats` is its owner's list, so the targets its code can write are the owner's stats.
+  it('runs an entity stat’s box over its owner’s stats as authored, and lists its writes to them', async () => {
+    const user = userEvent.setup();
+    const hub = { id: 'o1', name: 'Hub', type: 'number', value: 1, min: 0, max: 5, regen: 0, description: '', descriptors: [] } as Stat;
+    const grit = { id: 'o2', name: 'Grit', type: 'number', value: 4, min: 0, max: 8, regen: 0, description: '', descriptors: [] } as Stat;
+    executeStatCode.mockResolvedValue({ value: null, error: null, statWrites: [{ id: 'o2', name: 'Grit', value: 5 }] });
+    render(<StatManager stat={hub} tab="code" onTabChange={() => {}} store={{ stats: [hub, grit], updateStat }} />);
+
+    await testCode(user, 'stats.Grit.value += 1;');
+
+    await waitFor(() => expect(row()).toHaveTextContent('stats.Grit.value = 5'));
+    expect(executeStatCode.mock.calls[0][1]).toEqual([hub, grit]);
+    expect(grit).toMatchObject({ value: 4, max: 8 });
+    expect(updateStat.mock.calls.map(([saved]) => saved.id)).not.toContain('o2');
   });
 
   it('names every read-only write by its path', async () => {

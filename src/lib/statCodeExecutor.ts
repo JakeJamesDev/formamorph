@@ -743,7 +743,7 @@ const readDictionaryWrites = (dump: string): string[] =>
   readEntryWriteRows(dump).flatMap(({ name, fields }) => readOnlyPaths(memberPath('dictionaries', name), fields));
 
 /** How code names an entry of `root`: dot syntax for an identifier, brackets otherwise. */
-const memberPath = (root: string, name: string) =>
+export const memberPath = (root: string, name: string) =>
   /^[A-Za-z_$][\w$]*$/.test(name) ? `${root}.${name}` : `${root}[${JSON.stringify(name)}]`;
 
 /** How code names an entity: through `entities`, or through `persona` for the empty persona. */
