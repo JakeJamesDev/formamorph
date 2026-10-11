@@ -55,27 +55,47 @@ export function portableOwnedStats(entity: Entity, world?: StatWorld): OwnedStat
 export function bindOwnedStats(entity: Entity, world: StatWorld): Entity {
   const bound = linkWorld(world);
   if (!entity.statLinks?.length || !bound) return entity;
-  const originals = (kind: StatLink['kind']) =>
-    (kind === 'group' ? bound.statGroups : bound.stats).filter((item) => statOriginalOf(bound, item.id));
   const taken = new Set<string>();
   const links = entity.statLinks.flatMap((link): StatLink[] => {
-    const list = originals(link.kind);
-    const original = list.find((item) => item.id === link.originalId) ?? uniqueNamed(list, link.originalName);
-    const ids = original ? statBroughtIds(bound, original.id) : [];
-    if (!original || ids.some((id) => taken.has(id))) return [];
-    ids.forEach((id) => taken.add(id));
-    const stats = bound.stats.filter((s) => ids.includes(s.id));
-    const key = (id: string): string | null => {
-      if (id === link.originalId) return original.id;
-      if (stats.some((s) => s.id === id)) return id;
-      return uniqueNamed(stats, link.keyNames?.[id])?.id ?? null;
-    };
-    const overrides = rekeyed(link.overrides, key);
-    const { overrides: _stored, keyNames: _k, ...rest } = link;
-    return [{ ...rest, originalId: original.id, ...(overrides ? { overrides } : {}) }];
+    const found = bindStatLink(link, bound);
+    if (!found || found.ids.some((id) => taken.has(id))) return [];
+    found.ids.forEach((id) => taken.add(id));
+    return [found.link];
   });
   return withStatLinks(entity, links);
 }
+
+type LinkWorld = NonNullable<ReturnType<typeof linkWorld>>;
+
+/** One Link bound to the world's Blueprints, with the ids it brings; null when no Blueprint of its kind matches
+ *  by id or by its stored name. */
+function bindStatLink(link: StatLink, bound: LinkWorld): { link: StatLink; ids: string[] } | null {
+  const list = (link.kind === 'group' ? bound.statGroups : bound.stats).filter((item) => statOriginalOf(bound, item.id));
+  const original = list.find((item) => item.id === link.originalId) ?? uniqueNamed(list, link.originalName);
+  if (!original) return null;
+  const ids = statBroughtIds(bound, original.id);
+  const stats = bound.stats.filter((s) => ids.includes(s.id));
+  const key = (id: string): string | null => {
+    if (id === link.originalId) return original.id;
+    if (stats.some((s) => s.id === id)) return id;
+    return uniqueNamed(stats, link.keyNames?.[id])?.id ?? null;
+  };
+  const overrides = rekeyed(link.overrides, key);
+  const { overrides: _stored, keyNames: _k, ...rest } = link;
+  return { ids, link: { ...rest, originalId: original.id, ...(overrides ? { overrides } : {}) } };
+}
+
+/** A library entity's Links as the world it is opened in reads them: each that binds takes the world's ids, and
+ *  one that does not stays as stored. Nothing is dropped, since the entity stays in the library. */
+export function statLinksBoundTo(entity: Entity, world: StatWorld): Entity {
+  const bound = linkWorld(world);
+  if (!entity.statLinks?.length || !bound) return entity;
+  return withStatLinks(entity, entity.statLinks.map((link) => bindStatLink(link, bound)?.link ?? link));
+}
+
+/** A library entity's Links as the library stores them, named from the world it is opened in. */
+export const statLinksCarriedFrom = (entity: Entity, world: StatWorld): Entity =>
+  (entity.statLinks?.length ? withStatLinks(entity, portableLinks(entity.statLinks, world)) : entity);
 
 /** The entity as play reads it: its Links bound to `world` and then resolved into its own stat list, so a
  *  library entity runs exactly as an authored entity does. The entity as it is without Links. */

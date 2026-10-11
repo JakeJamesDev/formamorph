@@ -36,6 +36,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The Test Bench's Opening tab now lists each entity's own stats as a new game starts them.** Rows show start, range, regen and band after the entity's own traits and Links, and follow the persona you pick. Blueprint stats no longer show as yours.
     - **Link To… and Link Stat tell you why a Blueprint row can't be linked.** A checked row shows a tip on hover and focus, such as "Bram already owns Trust". Screen readers read it too.
     - **The narrator, choice writer and planner now see your persona's stats in the Stats chip, after your world's stats.** Each persona stat sits in that persona's own groups. A stat whose name matches an earlier stat reads with a number, such as "Trust (2)".
+    - **The library character editor now has a Stats tab, and its stats, groups and links travel with the card.** The tab works like the entity panel's Stats tab, side by side. A link stays dormant until a world has its Blueprint.
   - **The AI now updates your stats with fewer wrong-direction and made-up changes.** It answers with a change for every stat, 0 included. An endpoint that can't take that format gets the old reply style, and the AI context viewer notes it.
 - **🛠️ Developer tooling**
   - **Entity Stats:**

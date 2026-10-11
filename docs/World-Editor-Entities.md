@@ -207,15 +207,16 @@ When these openings are in the draw, **Re-generate** on page one shows another g
 > 💡 **`{{user}}` stays in the stored text, as the Player Name chip.** The shown page says the persona's name, or "you" with no persona. The entity's descriptions and the card's lorebook keep the chip too, and there it reads "the player" with no persona.
 
 ## In the library
-<!-- keywords: standalone character, edit outside world, reusable npc, my characters list, saved character editor, credit and labels -->
+<!-- keywords: standalone character, edit outside world, reusable npc, my characters list, saved character editor, credit and labels, library character stats -->
 <!-- route: entityEditor -->
 
-Open an entity in the library's **Entities** tab, and its editor has three tabs.
+Open an entity in the library's **Entities** tab, and its editor has four tabs.
 
 | Tab | What it holds |
 |---|---|
 | **Entity** | **Author** and **Tags** in a column on the left. On the right, the **Profile**, **Descriptions** and **Openings** tabs, with the same fields as the World Editor. |
 | **Traits** | The entity's own [traits](World-Editor-Traits#entity-traits), across the full width. |
+| **Stats** | The entity's own [stats](#entity-stats), across the full width. The stats, groups and links save with the entity's card. A link brings nothing until the world you add the entity to has its Blueprint. |
 | **Placeholders** | The entity's own [placeholders](World-Editor-Placeholders), across the full width. |
 
 The editor opens on **Entity** at **Profile**. The author and tags stay in view on all three of its tabs. On mobile, they show at the top of **Profile** only.

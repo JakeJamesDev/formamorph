@@ -9,12 +9,13 @@ const wounds = {
   id: 's1', name: 'Wounds', type: 'number', description: '', min: 0, max: 10, value: 0, regen: 0, descriptors: [],
 } as unknown as Stat;
 
-vi.mock('@/contexts/GameDataContext', () => ({
-  useGameData: () => ({
+vi.mock('@/contexts/GameDataContext', () => {
+  const world = () => ({
     stats: [wounds], playStats: [wounds], placeholders: [], traits: [], traitGroups: [], entities: [], playEntities: [], entityGroups: [], dictionaries: [],
     placementLetters: new Map(), placeholderOwners: new Map(), worldOverview: {}, updateStat: () => {},
-  }),
-}));
+  });
+  return { useGameData: world, useGameDataOptional: world };
+});
 vi.mock('@/components/prompt/PlaceholderField', () => ({
   PlaceholderNameField: (props: { value: string; ariaLabel?: string }) => (
     <input readOnly value={props.value} aria-label={props.ariaLabel} />

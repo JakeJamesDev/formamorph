@@ -25,23 +25,19 @@ export function entityPanelTabsFor(advanced: boolean) {
 }
 
 /** The panel tabs that the library entity editor puts on its top strip instead of the Entity sub-strip. */
-type LibraryTopTab = 'traits' | 'placeholders';
-const isLibraryTopTab = (value: EntityPanelTab): value is LibraryTopTab => value === 'traits' || value === 'placeholders';
-
-/** The tab only the World Editor's entity panel has: the library editor takes none until library entities carry stats. */
-type WorldOnlyTab = 'stats';
-const isWorldOnlyTab = (value: EntityPanelTab): value is WorldOnlyTab => value === 'stats';
+type LibraryTopTab = 'traits' | 'stats' | 'placeholders';
+const isLibraryTopTab = (value: EntityPanelTab): value is LibraryTopTab =>
+  value === 'traits' || value === 'stats' || value === 'placeholders';
 
 /** The library entity editor's sub-tabs, inside its Entity tab. It sits outside Simple and Advanced mode, so it
- *  shows every one the panel has beyond the World Editor's own. */
+ *  shows each one, the Advanced-only included. */
 export const ENTITY_EDITOR_SUBTABS = ENTITY_PANEL_TABS.filter(
-  (t): t is Exclude<(typeof ENTITY_PANEL_TABS)[number], { value: LibraryTopTab | WorldOnlyTab }> =>
-    !isLibraryTopTab(t.value) && !isWorldOnlyTab(t.value),
+  (t): t is Exclude<(typeof ENTITY_PANEL_TABS)[number], { value: LibraryTopTab }> => !isLibraryTopTab(t.value),
 );
 
 export type EntityEditorSubTab = (typeof ENTITY_EDITOR_SUBTABS)[number]['value'];
 
-/** The library entity editor's top tabs: Entity for the fields, then the panel's own Traits and Placeholders. */
+/** The library entity editor's top tabs: Entity for the fields, then the panel's own Traits, Stats and Placeholders. */
 export const ENTITY_EDITOR_TABS = [
   { value: 'entity', label: 'Entity', icon: ELEMENT_ICONS.entity },
   ...ENTITY_PANEL_TABS.filter(

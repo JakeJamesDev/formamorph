@@ -68,12 +68,11 @@ describe('entityTabForField', () => {
 });
 
 describe('the library entity editor tabs', () => {
-  it('put Traits and Placeholders on the top strip and every other panel tab but Stats on the Entity sub-strip', () => {
-    expect(ENTITY_EDITOR_TABS.map((t) => t.value)).toEqual(['entity', 'traits', 'placeholders']);
+  it('put Traits, Stats and Placeholders on the top strip and every other panel tab on the Entity sub-strip', () => {
+    expect(ENTITY_EDITOR_TABS.map((t) => t.value)).toEqual(['entity', 'traits', 'stats', 'placeholders']);
     expect(ENTITY_EDITOR_SUBTABS.map((t) => t.value)).toEqual(['profile', 'descriptions', 'openings']);
     const both = [...ENTITY_EDITOR_SUBTABS, ...ENTITY_EDITOR_TABS.slice(1)].map((t) => t.value).sort();
-    // Stats is the World Editor panel's alone until library entities carry stats.
-    expect(both).toEqual(ENTITY_PANEL_TABS.map((t) => t.value).filter((v) => v !== 'stats').sort());
+    expect(both).toEqual(ENTITY_PANEL_TABS.map((t) => t.value).sort());
   });
 
   it('puts Stats after Traits in the World Editor panel, Advanced only', () => {

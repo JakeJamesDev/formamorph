@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useGameData } from "@/contexts/GameDataContext";
+import { useGameDataOptional } from "@/contexts/GameDataContext";
 import { DEFAULT_AVATAR_ID } from "./defaultAvatar";
 import { loadBodyMorphNames } from "./vrmMorphLoader";
 import { loadModelMorphNames } from "./modelLoader";
@@ -96,8 +96,8 @@ export function useOwnerMorphSources(owner: MorphOwner | undefined): { sources: 
  * Names are model-agnostic (a binding is the bare morph name); the grouping is display only.
  */
 export function useBodyMorphSources(): { sources: MorphSource[]; loading: boolean; load: () => void } {
-  const { worldOverview } = useGameData();
-  const customUrl = worldOverview?.customPlayerVRM?.data || undefined;
+  // Off world, an owned stat's editor never opens this picker; the hook still runs.
+  const customUrl = useGameDataOptional()?.worldOverview?.customPlayerVRM?.data || undefined;
   const [sources, setSources] = useState<MorphSource[]>([]);
   const [loading, setLoading] = useState(false);
   const loadedRef = useRef(false);

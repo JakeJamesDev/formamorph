@@ -1,5 +1,5 @@
 import { useEditingDraft } from '@/lib/useEditingDraft';
-import { useGameData } from '@/contexts/GameDataContext';
+import { useStatEditorWorld } from '@/lib/useStatEditorWorld';
 import { Label } from '@/components/ui/label';
 import PlaceholderField, { PlaceholderNameField } from '@/components/prompt/PlaceholderField';
 import { ListDetailFirstRow } from '@/components/ui/list-detail';
@@ -10,7 +10,7 @@ import type { StatGroup } from '@/types';
 /** Right-panel editor for a stat group: a name and a description. The player's stats and each entity's own use
  *  the same panel; `write` says where the edit lands. A group sets no modes, pick counts or gates. */
 const StatGroupManager = ({ group, write }: { group: StatGroup; write: (group: StatGroup) => void }) => {
-  const { placeholders } = useGameData();
+  const { placeholders } = useStatEditorWorld();
   const { draft: editingGroup, setField } = useEditingDraft(group, write);
 
   if (!editingGroup) return null;

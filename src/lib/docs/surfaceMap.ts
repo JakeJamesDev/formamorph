@@ -191,6 +191,7 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
 
   'entityEditor.entity': { page: 'World-Editor-Entities', anchor: 'in-the-library' },
   'entityEditor.traits': { page: 'World-Editor-Entities', anchor: 'in-the-library' },
+  'entityEditor.stats': { page: 'World-Editor-Entities', anchor: 'in-the-library' },
   'entityEditor.placeholders': ENTITY_OWNED_PLACEHOLDERS,
   'entityEditorEntity.profile': { page: 'World-Editor-Entities', anchor: 'the-panel' },
   'entityEditorEntity.descriptions': { page: 'World-Editor-Entities', anchor: 'descriptions-and-summaries' },

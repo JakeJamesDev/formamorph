@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useGameData } from '@/contexts/GameDataContext';
+import { useStatEditorWorld } from '@/lib/useStatEditorWorld';
 import { Link2, Unlink } from 'lucide-react';
 import { BlueprintIcon, GroupIcon } from '@/lib/elementIcons';
 import type { LinkedStatRow } from '@/lib/statLinks';
@@ -36,7 +36,7 @@ const StatTree = ({ stats, groups, linked, onDetach, selectedId, onSelect, onDro
   /** Drawn in place of the tree while it holds nothing. */
   emptyHint: ReactNode;
 }) => {
-  const { placeholders } = useGameData();
+  const { placeholders } = useStatEditorWorld();
 
   const adapter: SortableTreeAdapter<FlatStatNode> = {
     visibleDeps: [groups, stats],

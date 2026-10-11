@@ -1,6 +1,7 @@
 import { randomUUID } from "@/lib/uuid";
 import { useState, useMemo, useCallback, useEffect, useRef, type ReactNode } from "react";
-import { useGameData } from "@/contexts/GameDataContext";
+import { useGameDataOptional } from "@/contexts/GameDataContext";
+import { useStatEditorWorld } from "@/lib/useStatEditorWorld";
 import { useEditingDraft } from "@/lib/useEditingDraft";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -97,11 +98,13 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
   /** Edits the stat as an entity's link reads it: writes go to the link's overrides. */
   link?: StatLinkEdit;
 }) => {
-  const world = useGameData();
-  const { placeholders, placeholderGroups, placeholderOwners, placementLetters, traits, traitGroups, playEntities, entityGroups, dictionaries } = world;
+  const { placeholders, placeholderGroups, placeholderOwners, placementLetters, traits, traitGroups, playEntities, entityGroups, dictionaries } = useStatEditorWorld();
+  // A store carries an owner's own stats; only a world stat reads the world, which an owned stat's editor may not have.
+  const world = useGameDataOptional();
+  if (!store && !world) throw new Error('StatManager needs a store or a world');
   // A player stat's code reads the player's stats; a Blueprint's own code reads the world list it sits in.
-  const stats = store?.stats ?? (world.playStats.some((s) => s.id === stat.id) ? world.playStats : world.stats);
-  const updateStat = store?.updateStat ?? world.updateStat;
+  const stats = store?.stats ?? (world!.playStats.some((s) => s.id === stat.id) ? world!.playStats : world!.stats);
+  const updateStat = store?.updateStat ?? world!.updateStat;
   const [newDescriptor, setNewDescriptor] = useState<{ threshold: number | string; description: string }>({
     threshold: "",
     description: "",

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { Entity, Stat, StatGroup, StatLink } from '@/types';
-import { bindOwnedStats, comparableOwnedStats, playLibraryStats, portableOwnedStats } from './portableStats';
+import {
+  bindOwnedStats, comparableOwnedStats, playLibraryStats, portableOwnedStats, statLinksBoundTo, statLinksCarriedFrom,
+} from './portableStats';
 import { statOwnerEntities } from './entityStats';
 
 const stat = (id: string, over: Partial<Stat> = {}): Stat => ({
@@ -135,6 +137,27 @@ describe('comparableOwnedStats', () => {
     const base = bram({ statLinks: [link({ overrides: { trust: { value: { value: 20, blueprint: 5 } } } })] });
     const edited = bram({ statLinks: [link({ overrides: { trust: { value: { value: 30, blueprint: 5 } } } })] });
     expect(comparableOwnedStats(edited)).not.toEqual(comparableOwnedStats(base));
+  });
+});
+
+describe('a library entity’s links in the world its editor opens from', () => {
+  const gone = link({ id: 'l2', originalId: 'bond', originalName: 'Bond' });
+
+  it('binds each link that finds its Blueprint and keeps the rest as stored', () => {
+    const entity = bram({ statLinks: [link(), gone] });
+    const out = statLinksBoundTo(entity, elsewhere);
+    expect(out.statLinks).toEqual([link({ originalId: 'n-trust' }), gone]);
+  });
+
+  it('is the entity as it is when the world carries no stats', () => {
+    const entity = bram({ statLinks: [link()] });
+    expect(statLinksBoundTo(entity, {})).toBe(entity);
+  });
+
+  it('names each bound link from the world’s current name, leaving an unfound one alone', () => {
+    const bound = statLinksBoundTo(bram({ statLinks: [link(), gone] }), elsewhere);
+    const renamed = { ...elsewhere, stats: [elsewhere.stats[0], { ...elsewhere.stats[1], name: 'Faith' }] };
+    expect(statLinksCarriedFrom(bound, renamed).statLinks!.map((l) => l.originalName)).toEqual(['Faith', 'Bond']);
   });
 });
 
