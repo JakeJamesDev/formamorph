@@ -7,6 +7,7 @@ import { docHeadings, forEachProseLine, KEYWORD_LINE, MARKDOWN_LINK, plainText, 
 import type { DocsPages } from './docsChecks';
 import { docsHrefs, docTargetId, hrefParts } from './docsLinks';
 import { sectionParts } from './sectionParts';
+import { createTermExpander } from './termExpansion';
 
 /** The most characters one section holds, so a few sections fit a small model's context. */
 export const SECTION_CHAR_LIMIT = 6000;
@@ -191,15 +192,14 @@ function wordsOf(text: string): string {
 }
 
 /**
- * A text's Porter-stemmed words and numbers, stop words dropped; a hyphenated word also gives its joined
- * form. The `filler` words drop too.
+ * A text's lowercase words and numbers, stop words dropped; a hyphenated word also gives its joined form.
+ * The `filler` words drop too.
  */
-function searchTerms(text: string, filler: ReadonlySet<string>): string[] {
+function searchWords(text: string, filler: ReadonlySet<string>): string[] {
   const words = text.replace(MARKDOWN_LINK, '$1').toLowerCase().match(WORD) ?? [];
   return words
     .flatMap((word) => (word.includes('-') ? [...word.split('-'), word.replace(/-/g, '')] : [word]))
-    .filter((word) => !STOP_WORDS.has(word) && !filler.has(word))
-    .map((word) => stemmer(word));
+    .filter((word) => !STOP_WORDS.has(word) && !filler.has(word));
 }
 
 /** How much a query term in the section's own heading outweighs one body hit. */
@@ -216,6 +216,8 @@ const DEFAULT_SEARCH_LIMIT = 5;
 export const HUB_PAGE_COUNT = 5;
 /** How much a hub section's score is multiplied, unless the query holds its heading as a phrase. */
 const HUB_WEIGHT = 0.5;
+/** How much a partial word or close spelling counts against the exact word, so the exact word ranks first. */
+const FUZZY_WEIGHT = 0.5;
 
 /** The page that holds the released changelog sections, newest first (see `changelogSlice.ts`). */
 export const CHANGELOG_PAGE = 'Changelog';
@@ -291,6 +293,13 @@ interface SectionTerms {
   length: number;
 }
 
+/** One word of a query, as the search scores it. An expanded word holds every stem it matches. */
+interface QueryTerm {
+  stems: string[];
+  weight: number;
+  idf: number;
+}
+
 function termCounts(terms: string[]): Map<string, number> {
   const map = new Map<string, number>();
   for (const term of terms) map.set(term, (map.get(term) ?? 0) + 1);
@@ -310,11 +319,21 @@ export interface DocsIndexInput {
   fillerWords?: boolean;
   /** Whether hub sections rank below specific ones. On unless `false`; the help probe sets it off for its control. */
   hubDemotion?: boolean;
+  /** Whether a query word with no exact match finds partial words and close spellings. On unless `false`; off is the exact-match ranking, for a probe's control. */
+  fuzzy?: boolean;
 }
 
 /** Builds a Docs Index over the given pages. */
-export function createDocsIndex({ pages, sidebar = '', fillerWords = true, hubDemotion = true }: DocsIndexInput): DocsIndex {
+export function createDocsIndex({ pages, sidebar = '', fillerWords = true, hubDemotion = true, fuzzy = true }: DocsIndexInput): DocsIndex {
   const filler = fillerWords ? FILLER_WORDS : NO_WORDS;
+  /** Every indexed word with its stem, for partial-word and close-spelling expansion. */
+  const vocabulary = new Map<string, string>();
+  const indexTerms = (text: string, skip: ReadonlySet<string>) =>
+    searchWords(text, skip).map((word) => {
+      const stem = vocabulary.get(word) ?? stemmer(word);
+      vocabulary.set(word, stem);
+      return stem;
+    });
   const order = sidebarOrder(sidebar);
   const rank = (page: string) => (order.includes(page) ? order.indexOf(page) : order.length);
   const pageNames = Object.keys(pages).sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
@@ -329,20 +348,20 @@ export function createDocsIndex({ pages, sidebar = '', fillerWords = true, hubDe
 
   const sectionTerms: SectionTerms[] = all.map((section) => {
     const lines = section.markdown.split('\n');
-    const bodyTerms = searchTerms(section.level > 0 ? lines.slice(1).join('\n') : section.markdown, filler);
+    const bodyTerms = indexTerms(section.level > 0 ? lines.slice(1).join('\n') : section.markdown, filler);
     const phrases = [...(section.level > 0 ? [section.heading] : []), ...section.keywords.flatMap((list) => list.split(','))]
       .map((phrase) => phrase.trim().toLowerCase())
       .filter(Boolean);
     return {
       section,
       // A heading keeps its filler words, so a control named "Here" still matches itself.
-      heading: new Set(phrases.flatMap((phrase) => searchTerms(phrase, NO_WORDS))),
+      heading: new Set(phrases.flatMap((phrase) => indexTerms(phrase, NO_WORDS))),
       ownHeading: section.level > 0 ? wordsOf(section.heading) : '',
       hub: hubDemotion && otherPagesLinked(section) >= HUB_PAGE_COUNT,
       fillerPhrases: phrases
         .filter((phrase) => (phrase.match(WORD) ?? []).some((word) => filler.has(word)))
-        .map((phrase) => ({ phrase, terms: searchTerms(phrase, NO_WORDS) })),
-      trail: new Set(section.trail.flatMap((heading) => searchTerms(heading, filler))),
+        .map((phrase) => ({ phrase, terms: indexTerms(phrase, NO_WORDS) })),
+      trail: new Set(section.trail.flatMap((heading) => indexTerms(heading, filler))),
       body: termCounts(bodyTerms),
       length: bodyTerms.length,
     };
@@ -354,6 +373,21 @@ export function createDocsIndex({ pages, sidebar = '', fillerWords = true, hubDe
       documentFrequency.set(term, (documentFrequency.get(term) ?? 0) + 1);
     }
   }
+  const expand = createTermExpander(vocabulary);
+  const idfOf = (df: number) => Math.log(1 + (sectionTerms.length - df + 0.5) / (df + 0.5));
+  const holds = (r: SectionTerms, stem: string) => r.body.has(stem) || r.heading.has(stem) || r.trail.has(stem);
+  /** A term that matches only its own stem. */
+  const exactTerm = (stem: string): QueryTerm => ({ stems: [stem], weight: 1, idf: idfOf(documentFrequency.get(stem) ?? 0) });
+  /**
+   * The stems a query word counts as: its own, or else its partial and close matches. An expanded word is one
+   * term, so its idf counts every section that holds any of its matches.
+   */
+  const queryTerm = (word: string, stem: string): QueryTerm => {
+    const stems = fuzzy && !documentFrequency.has(stem) ? expand(word) : [];
+    if (stems.length === 0) return exactTerm(stem);
+    const df = sectionTerms.filter((r) => stems.some((match) => holds(r, match))).length;
+    return { stems, weight: FUZZY_WEIGHT, idf: idfOf(df) };
+  };
 
   return {
     contents: () =>
@@ -368,31 +402,37 @@ export function createDocsIndex({ pages, sidebar = '', fillerWords = true, hubDe
       }),
     search: (query, limit = DEFAULT_SEARCH_LIMIT, favor, { onSurface = false, floor = 0 } = {}) => {
       const ignored = onSurface && fillerWords ? new Set([...filler, ...SCREEN_WORDS]) : filler;
-      const queryTerms = [...new Set(searchTerms(query, ignored))];
-      if (queryTerms.length === 0) return [];
+      const queryTerms = new Map<string, QueryTerm>();
+      for (const word of searchWords(query, ignored)) {
+        const stem = stemmer(word);
+        if (!queryTerms.has(stem)) queryTerms.set(stem, queryTerm(word, stem));
+      }
+      if (queryTerms.size === 0) return [];
       const asked = wordsOf(query);
       const scored = sectionTerms.map((r) => {
         // A section whose own name holds a filler word still matches that name when the query holds it whole.
         const named = r.fillerPhrases.filter(({ phrase }) => asked.includes(wordsOf(phrase))).flatMap(({ terms }) => terms);
-        const terms = [...new Set([...queryTerms, ...named])];
+        const terms = new Map(queryTerms);
+        for (const stem of named) if (!terms.has(stem)) terms.set(stem, exactTerm(stem));
         let score = 0;
         let matched = 0;
-        for (const term of terms) {
-          const tf = r.body.get(term) ?? 0;
-          const inHeading = r.heading.has(term);
-          const inTrail = r.trail.has(term);
-          if (tf === 0 && !inHeading && !inTrail) continue;
+        for (const { stems, weight, idf } of terms.values()) {
+          // An expanded word counts once, at its best match in this section.
+          let best = 0;
+          for (const term of stems) {
+            const tf = r.body.get(term) ?? 0;
+            const body = (tf * (BM25_K1 + 1)) / (tf + BM25_K1 * (1 - BM25_B + (BM25_B * r.length) / averageLength));
+            best = Math.max(best, body + (r.heading.has(term) ? HEADING_WEIGHT : 0) + (r.trail.has(term) ? TRAIL_WEIGHT : 0));
+          }
+          if (best === 0) continue;
           matched++;
-          const df = documentFrequency.get(term) ?? 0;
-          const idf = Math.log(1 + (sectionTerms.length - df + 0.5) / (df + 0.5));
-          const body = (tf * (BM25_K1 + 1)) / (tf + BM25_K1 * (1 - BM25_B + (BM25_B * r.length) / averageLength));
-          score += idf * (body + (inHeading ? HEADING_WEIGHT : 0) + (inTrail ? TRAIL_WEIGHT : 0));
+          score += weight * idf * best;
         }
         // A section that matches more of the query's words ranks above one that repeats a single word.
         // A hub ranks below a specific section of the same strength, unless the query holds its heading as a phrase.
         const asksHub = r.ownHeading.trim() !== '' && asked.includes(r.ownHeading);
         const weight = (r.section.page === favor?.page ? FAVORED_PAGE_WEIGHT : 1) * (r.hub && !asksHub ? HUB_WEIGHT : 1);
-        return { section: r.section, score: score * (matched / terms.length) ** 2 * weight };
+        return { section: r.section, score: score * (matched / terms.size) ** 2 * weight };
       });
       const hits = scored.filter((s) => s.score > 0).sort((a, b) => b.score - a.score);
       const whatsNew = readWhatsNew(query);

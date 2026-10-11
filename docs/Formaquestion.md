@@ -360,7 +360,7 @@ Until the answer starts, a line under your question says what it waits on: **Che
 An answer can be wrong. Use **Sources** to check it against the guide.
 
 ## Search
-<!-- keywords: ranking, results order, plural, nothing found, release notes, minimum letters, latest changes, scoring -->
+<!-- keywords: ranking, results order, plural, nothing found, release notes, minimum letters, latest changes, scoring, typo, misspelling, partial word -->
 <!-- route: formaquestion.search -->
 
 The **Search** tab finds sections by the words you type. It needs no network and no AI.
@@ -371,6 +371,7 @@ With [Semantic Search](#how-to-turn-on-semantic-search) on, it also finds sectio
 - A word in a section's heading counts more than a word in its text.
 - A section that has more of your words is higher in the list than a section that repeats one word.
 - A plural finds the singular: "blueprints" finds **Blueprint**.
+- The start of a word, or a word with a typo, also finds sections. The first four letters of **Placeholder** find it, and so does the word with one letter missing. The search tries this only when no section has the word in any form, and only for words of four letters or more. A word as you typed it counts more.
 - Guide sections are higher in the list than changelog sections.
 - A question such as "what's new?" or "what changed?" lists the newest release first. Name a version, such as "what changed in 3.1.1?", to see that release first.
 - **No sections match** shows when no word matches. With Semantic Search on, it also needs no section close in meaning.

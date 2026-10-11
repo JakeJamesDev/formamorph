@@ -167,6 +167,12 @@ describe('hub sections in the bundled docs', () => {
   it('still finds Settings#output for a question about what it holds', () => {
     expect(index.search('What does Settings → Output hold?', 5).map((s) => s.id)).toContain('Settings#output');
   });
+
+  it.each(['plac', 'placholder'])('leads with placeholder sections for "%s"', (query) => {
+    expect(index.search(query, 3).map((s) => s.heading)).toEqual([
+      expect.stringMatching(/placeholder/i), expect.stringMatching(/placeholder/i), expect.stringMatching(/placeholder/i),
+    ]);
+  });
 });
 
 describe('the Variable menu section of the Stat Code Guide', () => {
