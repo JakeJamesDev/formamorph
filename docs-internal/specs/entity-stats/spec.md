@@ -155,6 +155,11 @@ Rulings from the grill, numbered as asked.
   - Morph bindings and descriptor placeholder pins travel and don't refuse a move.
   - Placement is a new optional `Entity.statPlacement`, apart from `traitPlacement`. In Simple mode, nodes show and existing items drag, as on the **Traits** tab.
 - **Q81** (user ruling, gap from ticket 24) A drag of a world stat or trait into Blueprints is refused while something outside Blueprints reads it, with a note that names the reader, as placeholders do (Blueprints Q54). For stats the readers are Q80's trait rows and stat code. For traits they are other traits' requirements and anything else that names the trait. A group drag is refused when anything inside it is read. Traits had no such check before. Ticket 25.
+- **Q82** (ticket 25) The trait readers for Q81 are:
+  - requirement conditions on the trait or group, in world traits outside Blueprints, entity-owned traits and trait Link overrides;
+  - stat code outside stat Blueprints that reads it through `traits.<Name>` or `persona.traits.<Name>`.
+
+  These are not readers: anything inside Blueprints or moving in with the item, the item's own requirements, `traits.X.group` compared as a value, Test Bench picks and save data. A drag of an entity-owned trait into Blueprints runs the same check, as an entity stat already does under Q80.
 
 Derived from Q7 and confirmed with the summary:
 
