@@ -18,8 +18,12 @@ Stat Links reach full parity with trait Links. An entity can link a whole Bluepr
 - [ ] An entity can link a Blueprint stat group; its stats resolve per bearer as single stat Links do, with Overrides per stat.
 - [ ] A Blueprint stat added to a linked group reaches every bearer; one removed from it leaves every bearer.
 - [ ] **Link To…** on a Blueprint stat or group links it onto the entities picked, skipping any that already link it.
-- [ ] **Detach** on a stat Link turns it into an owned stat with the Link's current values and a fresh id, after a confirm, and keeps the entity's runtime value.
+- [ ] **Detach** on a stat Link turns it into an owned stat with the Link's current values under the Blueprint's id, after a confirm, so the entity's runtime value and any trait change aimed at it carry over.
 - [ ] Each action follows the trait Link's behavior and copy for the same action.
+- [ ] **Detach** is the only way to make an owned stat from a Blueprint (Q65). Ticket 12 landed Copy Stat; this ticket removes it from the stats **+** menu, the entity Stats mirror, the stat-link helpers and their tests. It reuses that conversion for Detach: the Link becomes the entity's own stat with its current values and runtime value.
+- [ ] The unreleased In Progress changelog entry for stat Blueprints is reworded in place to name Detach, not Copy Stat.
+- [ ] A Link can override a Blueprint stat's stored starting value.
+- [ ] Migration keeps one stat Blueprints group per world and one Link per Blueprint per owner, merging any duplicates.
 - [ ] Migration and export round-trip group Links.
 - [ ] Response carries the export-shape reminder.
 

@@ -302,11 +302,11 @@ A trait the player has — chosen at creation or picked up during the game. A tr
 _Avoid_: held
 
 **Link**:
-A node in an entity's trait tree that points at an Original and reads it live until edited. The Original is always a Blueprints item; a top-level item dropped on an entity moves in instead. Its Overrides are its own: default-on, requirements, pins, Player Can Toggle and stat changes, per Original trait. A Link is not a trait.
+A node in an entity's trait tree that points at an Original and reads it live until edited. The Original is always a Blueprints item; a top-level item dropped on an entity moves in instead. Its Overrides are its own: default-on, requirements, pins, Player Can Toggle and stat changes, per Original trait. A Link is not a trait. A stat Link works the same way in an entity's stat tree: it reads a Blueprint stat live, and every field but the name can be overridden. **Detach** turns a Link into the entity's own trait or stat.
 _Avoid_: shared trait, reference, copy; linked copy (that is a library item's world copy)
 
 **Blueprint**:
-A world trait or placeholder that exists to be linked or copied. A Link or a Copy reads its Blueprint live until edited. An Original is a Blueprint trait.
+A world trait, stat or placeholder that exists to be linked or copied. A Link or a Copy reads its Blueprint live until edited. An Original is a Blueprint trait or stat. A Blueprint stat is never a player stat.
 _Avoid_: template, master, source
 
 **Copy**:
@@ -322,7 +322,7 @@ An entity whose trait tree holds a trait, directly or through a Link. The played
 _Avoid_: owner (an owner holds its own traits only), holder
 
 **Original**:
-The world trait or group a Link points at, at the root or under Blueprints. An Original is a Blueprint trait. An entity's own trait is never an Original.
+The world trait, group or stat a Link points at, at the root or under Blueprints. An Original is a Blueprint trait or stat. An entity's own trait or stat is never an Original.
 _Avoid_: source (a listing's term), template, parent
 
 **Automatic**:

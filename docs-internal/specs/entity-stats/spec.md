@@ -13,7 +13,7 @@ Owned traits already promise more. The trait-gates spec says that once entities 
 
 Entities own stats. An owned stat is a stat: it has every field and behavior a world stat has, with nothing left out. Stats work the way traits already do:
 
-- The Stats tab gets a **Blueprints** group. An entity can **Link** or **Copy** a stat Blueprint, and a Link can override any field except the name.
+- The Stats tab gets a **Blueprints** group. An entity can **Link** a stat Blueprint, a Link can override any field except the name, and **Detach** makes it the entity's own stat.
 - Stats get author-made groups, on the Stats tab and inside each entity, for organization.
 - The entity panel gets a **Stats** tab that mirrors the Stats tab for that entity (Advanced only).
 - In game, the stat panel shows the player's stats and, below them, the selected entity's stats. A dropdown at the top picks that entity.
@@ -107,6 +107,8 @@ Rulings from the grill, numbered as asked.
 
 - **Q64** (ticket 10, user ruling) Ticket 10 lands the grouped request (nested as the Traits chip nests traits) with a Q60 miss on record on the cloud model. Over 3 batches of 21 cases × 6 runs, flat against grouped: exact 50.5% vs 47.4%, recall 57.8% vs 59.3%, wrong signs 3 vs 0, invented changes 19 vs 54. The whole rise is one case, `push-bram`, where a Mind or Body heading over Resolve and Vigor leads the model to dock them by 1–2. Other heading shapes didn't fix it. Ticket 17's work on invented player changes re-checks it with groups in the request, and ticket 10's commit body carries the Cydonia numbers.
 
+- **Q65** (ticket 12, user ruling) Stats have no Copy. In the glossary, a Copy reads its Blueprint live, and traits make an owned version with **Detach** on a Link, so stats do the same: **Link Stat**, then **Detach** (ticket 19). Ticket 12 removes its Copy Stat action. The glossary's Blueprint, Link and Original entries now cover stats. This replaces Q19 and the Copy parts of Q61.
+
 Derived from Q7 and confirmed with the summary:
 
 - An entity stat's morph bindings drive that entity's own model.
@@ -134,7 +136,7 @@ Derived from Q7 and confirmed with the summary:
 15. As an author, I want to reorder and nest an entity's stats, so that its list reads in the order I think in.
 16. As an author working in Simple mode, I want the entity Stats tab hidden, as the entity Traits tab is, so that Simple mode stays simple.
 
-### Blueprints, Links and Copies
+### Blueprints, Links and Detach
 
 17. As an author, I want a Blueprints group on the Stats tab, so that I can define Trust once for the whole cast.
 18. As an author, I want a Blueprint stat to stay out of the player's stats, so that a stat meant for entities never shows on the player.
@@ -146,7 +148,7 @@ Derived from Q7 and confirmed with the summary:
 24. As an author, I want a stale mark on an override whose Blueprint field has changed since, so that I notice drift.
 25. As an author, I want a stat Link's name to always be its Blueprint's, so that "Trust" means the same stat everywhere.
 26. As an author, I want an entity to hold at most one Link per Blueprint, so that it never has two Trust stats.
-27. As an author, I want to Copy a stat Blueprint onto an entity, so that I can start from it and then cut it loose.
+27. As an author, I want to Detach a stat Link, so that I can start from a Blueprint and then cut it loose.
 28. As an author, I want each entity to keep its own value of a linked stat, so that Bram's Trust and Odette's Trust move apart.
 
 ### Groups
