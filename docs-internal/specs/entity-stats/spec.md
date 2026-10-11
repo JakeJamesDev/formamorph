@@ -127,6 +127,8 @@ Rulings from the grill, numbered as asked.
 
 - **Q74** (ticket 14) Q40's backfill on load covers the library persona, a live library read. Ticket 13 builds that next to its persona join. Added library characters are snapshots seeded at Enter World and need none. A card with no stats reads as an entity with none, with absent fields and no seeded defaults, as with traits. The library entity editor gains a Stats tab (ticket 22) so authors can give a library character stats there, as they give it traits.
 
+- **Q75** (ticket 20) The authored chip scene (editor previews, the Settings preview, probe fixtures) lists the Custom Persona entity's stats after the world stats, as its Traits chip already does under the None rule. In narration, choices and planning, the Stats chip lists world stats, then each played owner's stats in its own groups, with no owner heading, as the stat request joins them. A name clash is numbered there as in the stat request, so every prompt names a stat the same way. This widens Q44, which kept numbered names to the stat request before persona stats could collide with world stats.
+
 Derived from Q7 and confirmed with the summary:
 
 - An entity stat's morph bindings drive that entity's own model.
