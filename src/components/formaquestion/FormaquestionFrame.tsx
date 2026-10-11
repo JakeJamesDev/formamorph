@@ -21,6 +21,8 @@ export const FormaquestionFrame = forwardRef<HTMLElement, ComponentPropsWithoutR
   wide?: boolean;
   /** Shows the Wide View control. */
   onSwapWidth?: () => void;
+  /** The reader's Back and Forward buttons, beside the title. Wide View passes them. */
+  history?: ReactNode;
   sheet?: boolean;
   menu: MenuActions;
   /** Where the menu renders: the layer that holds the window. */
@@ -31,7 +33,7 @@ export const FormaquestionFrame = forwardRef<HTMLElement, ComponentPropsWithoutR
   /** Pointer handlers for the resize handles. */
   resize?: ResizeHandlers;
   children: ReactNode;
-}>(({ wide = false, onSwapWidth, sheet = false, menu, menuContainer, onClose, move, resize, className, children, ...props }, ref) => (
+}>(({ wide = false, onSwapWidth, history, sheet = false, menu, menuContainer, onClose, move, resize, className, children, ...props }, ref) => (
   <section
     ref={ref}
     role="dialog"
@@ -55,6 +57,7 @@ export const FormaquestionFrame = forwardRef<HTMLElement, ComponentPropsWithoutR
     >
       <CircleHelp aria-hidden className="h-4 w-4 text-muted-foreground" />
       <h2 className="text-label font-semibold">Formaquestion</h2>
+      {history}
       <div className="ml-auto flex items-center gap-1">
         {onSwapWidth && (
           <Tip tip="Wide View">

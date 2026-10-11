@@ -6,6 +6,7 @@ import type { Guide } from '@/lib/formaquestion/guide';
 import type { MorphFullscreen } from '@/lib/useMorphFullscreen';
 import type { GuideView, GuideViewChange } from './formaquestionTabs';
 import { BackRow, Reader, GuideUnavailable } from './GuideParts';
+import { ReaderHistoryButtons } from './ReaderHistoryButtons';
 import { GuideRail, useGuideActions } from './GuideRail';
 
 /**
@@ -14,7 +15,7 @@ import { GuideRail, useGuideActions } from './GuideRail';
  *
  * The mobile screen has room for one part, so it shows the contents, or the open section behind a back row.
  */
-export function FormaquestionGuide({ morph, guide, failed, onRetry, view, onViewChange, onOpenWiki, semantic, sheet }: {
+export function FormaquestionGuide({ morph, guide, failed, onRetry, view, onViewChange, onStep, onOpenWiki, semantic, sheet }: {
   morph: MorphFullscreen;
   /** Null until the docs load. */
   guide: Guide | null;
@@ -22,6 +23,8 @@ export function FormaquestionGuide({ morph, guide, failed, onRetry, view, onView
   onRetry: () => void;
   view: GuideView;
   onViewChange: (change: GuideViewChange) => void;
+  /** Moves the reader's history, passing over entries the full screen cannot show. */
+  onStep: (delta: -1 | 1) => void;
   /** Opens the wiki on the section the reader shows. */
   onOpenWiki: () => void;
   /** The Semantic Search switch is on. */
@@ -36,6 +39,7 @@ export function FormaquestionGuide({ morph, guide, failed, onRetry, view, onView
       <header className="flex shrink-0 items-center gap-2">
         <BookOpen aria-hidden className="h-4 w-4 text-muted-foreground" />
         <span aria-hidden className="text-label font-semibold">Guide</span>
+        <ReaderHistoryButtons history={view.history} fullScreen={{ shown: view.sectionId }} onStep={onStep} />
         <div className="ml-auto flex items-center gap-1">
           <Tip tip="Open Wiki">
             <button

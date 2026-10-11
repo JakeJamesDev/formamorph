@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useContext, useLayoutEffect, useMemo, useRef } from 'react';
 import { ArrowLeft, ChevronDown, type LucideIcon } from 'lucide-react';
 import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import { targetAttribute } from '@/lib/surface/surfaceTargets';
 import { cn } from '@/lib/utils';
 import { isSearchable } from './formaquestionTabs';
 import { FOCUS_RING, readerComponents } from './readerLinks';
+import { ReaderScrollContext } from './readerScroll';
 import { useGuideSearch } from './useGuideSearch';
 
 /** The most sections one search shows. */
@@ -156,6 +157,12 @@ export function Reader({ guide, sectionId, onOpen }: {
   onOpen: (id: string) => void;
 }) {
   const section = guide.section(sectionId);
+  const scroll = useContext(ReaderScrollContext);
+  const viewport = useRef<HTMLDivElement>(null);
+  // Runs when the entry changes, just after the keyed ScrollArea below remounts: it puts the entry's position back.
+  useLayoutEffect(() => {
+    if (viewport.current && scroll) viewport.current.scrollTop = scroll.get();
+  }, [scroll]);
   const components = useMemo(() => readerComponents(onOpen), [onOpen]);
   const body = useMemo(
     () => (section ? withReaderLinks(sectionBody(section), section.page, guide.resolve) : ''),
@@ -165,8 +172,13 @@ export function Reader({ guide, sectionId, onOpen }: {
   const siblings = guide.contents.find((entry) => entry.page === section.page)?.sections ?? [];
   const title = guide.titleOf(section.page);
   return (
-    // Keyed by section, so a new section starts at its top.
-    <ScrollArea key={section.id} className="min-h-0 flex-1" viewportProps={{ 'data-fq-scroll': 'reader' }}>
+    // Keyed by section and entry, so each entry starts at its own position.
+    <ScrollArea
+      key={`${section.id}:${scroll?.entryId ?? ''}`}
+      className="min-h-0 flex-1"
+      viewportRef={viewport}
+      viewportProps={{ 'data-fq-scroll': 'reader', onScroll: (event) => scroll?.set(event.currentTarget.scrollTop) }}
+    >
       <article className="flex flex-col gap-3 p-3 text-label" aria-label={`${title}: ${section.label}`}>
         {/* A page's introduction is named after the page, so the page line would repeat it. */}
         {section.label !== title && <Meta>{title}</Meta>}

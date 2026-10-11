@@ -408,7 +408,9 @@ describe('the window on the screen', () => {
     const header = frame().querySelector('header')!;
     const order = () => {
       const buttons = within(header).getAllByRole('button');
-      return ['Wide View', 'Open Guide', 'More Actions', 'Close Formaquestion'].map((name) => buttons.indexOf(within(header).getByRole('button', { name })));
+      const places = ['Wide View', 'Open Guide', 'More Actions', 'Close Formaquestion'].map((name) => buttons.indexOf(within(header).getByRole('button', { name })));
+      // Wide View adds the Back and Forward buttons ahead of the four.
+      return places.map((place) => place - places[0]);
     };
     expect(order()).toEqual([0, 1, 2, 3]);
 
@@ -418,6 +420,8 @@ describe('the window on the screen', () => {
     expect(wideView).toHaveAttribute('aria-pressed', 'true');
     expect(wideView.querySelector('svg')!.getAttribute('class')).toBe(icon);
     expect(order()).toEqual([0, 1, 2, 3]);
+    const buttons = within(header).getAllByRole('button');
+    expect(buttons.slice(0, 2)).toEqual([within(header).getByRole('button', { name: 'Back' }), within(header).getByRole('button', { name: 'Forward' })]);
   });
 
   it('lists Clear Conversation, Open Guide, Open Wiki, AI Context and Settings, and hangs from the corner of the button that has room', async () => {
@@ -612,11 +616,11 @@ describe('unmount', () => {
   it('removes every window listener it added', async () => {
     const add = vi.spyOn(window, 'addEventListener');
     const remove = vi.spyOn(window, 'removeEventListener');
-    /** The keydown and resize listeners that are on the window now: added, and not removed since. */
+    /** The keydown, mouse and resize listeners that are on the window now: added, and not removed since. */
     const live = () => {
       // The spy takes the type of the last overload, which names one event only.
       const calls = (spy: { mock: { calls: unknown[][] } }) => spy.mock.calls as [string, unknown][];
-      const listeners = calls(add).filter(([type]) => type === 'keydown' || type === 'resize').map(([type, listener]) => ({ type, listener }));
+      const listeners = calls(add).filter(([type]) => ['keydown', 'mousedown', 'mouseup', 'auxclick', 'resize'].includes(type)).map(([type, listener]) => ({ type, listener }));
       for (const [type, listener] of calls(remove)) {
         const at = listeners.findIndex((entry) => entry.type === type && entry.listener === listener);
         if (at >= 0) listeners.splice(at, 1);
@@ -625,8 +629,8 @@ describe('unmount', () => {
     };
 
     const view = await openWindow();
-    // F1, the window's screen fit and the tab's screen fit.
-    expect(live()).toEqual(['keydown', 'resize', 'resize']);
+    // F1, the reader history's keys and mouse buttons, the window's screen fit and the tab's screen fit.
+    expect(live()).toEqual(['auxclick', 'keydown', 'keydown', 'mousedown', 'mouseup', 'resize', 'resize']);
     view.unmount();
     expect(live()).toEqual([]);
   });

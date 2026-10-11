@@ -45,6 +45,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Formaquestion's search now finds partial words and words with typos, on the Search tab and in Ask.** Type the first letters of a word, or the word with one letter wrong, to find its sections. A word spelled as you typed it still ranks first.
     - **You can now read the Guide full screen from the help window.** Select **Open Guide** in the **⋮** menu, or the button beside it in the title bar. The window and the full screen show the same section, and Esc closes it.
     - **You can now open the wiki from the help window, on the page and heading you're reading.** Select **Open Wiki** in the **⋮** menu or the full-screen Guide. Check **Don't Ask Again** to skip the confirm, and turn it back on in General settings.
+    - **The Guide reader has Back and Forward buttons in Wide View and the full-screen Guide.** They step through the sections you opened, and restore your scroll place. Alt+Left, Alt+Right and the mouse side buttons do the same.
   - **Stat Code:**
     - **A stat code bound write sets the number, and traits and the AI move it from there.** A code bound no longer hides trait changes. Deleting the code keeps the bounds. Saves keep the bounds they show.
     - **Stat code can now change the value, min, max, and regen of its owner's other stats.** Write `stats.Health.value`, for example. Writes land in stat order, and the last one wins. A write to an unknown or switched-off stat is dropped.
