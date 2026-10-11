@@ -295,7 +295,7 @@ Derived from Q7 and confirmed with the summary:
 
 - The stat pass builds one request from a list of owners: the player (world player stats, plus the stats of every owner that joins the player) and the present entities with enabled stats. The present entities arrive through the Turn Pipeline's derivation callback after narration (ADR-0001), from the participants the narration confirmed.
 - The system prompt renders one section per owner, with stats nested under visible group headings. The response format is a JSON schema: one key per owner. Under it, each stat's key holds its bare signed change, and a "<key> max" key beside it holds its max change, all bounded integers. Every key is required, so "no change" is an explicit 0. A name clash gets a numbered key, and every prompt shows that numbered name.
-- The default Stat Updates prompts carry the C3 wording: one JSON object on one line, and 0 for a stat that didn't move. They also carry the WL lines: each stat belongs to the character it sits under and moves only for what that character does, goes through or feels, and a clear shift in how a character regards the player moves that character's own stat. Custom prompts are not touched.
+- The default Stat Updates prompts carry the C3 wording: one JSON object on one line, and 0 for a stat that didn't move. They also carry the WL lines: each stat belongs to the character it sits under and moves only for what that character does, goes through or feels, and a clear shift in how a character regards the player moves that character's own stat. They also carry the FB framing (Q78): what a stat is, what stats do for the narrator, and how owner headings and group bullets lay out the list. Custom prompts are not touched.
 - The request layer gains a structured-output field. Schema support is a question on the per-endpoint capability record. A rejection with no parameter, or one that names the schema, retries once in the same turn on the text pass, and only a successful retry stores the rejection. Those turns use today's player-only text prompts, skip entity stats, and add a diagnostic. A rejection that names another parameter goes to the existing override path.
 - The response reader matches owners and stats by identity from the request snapshot, as the current reader does. It returns per-owner updates and diagnostics. Applying runs max changes before values, per owner.
 - The token cap scales with the number of stats and owners in the request.
@@ -309,6 +309,8 @@ Derived from Q7 and confirmed with the summary:
 ### UI
 
 - The entity Stats tab reuses the shared list toolbar and the entity Traits mirror's layout: stacked over the list in the World Editor, with details sliding in over it.
+- The Stats tab's tree shows entity nodes for entities that own stats, stat groups or stat Links, placed through `statPlacement`, as the Traits tab does (Q79). Cross-owner drags keep ids and are refused, with a note, when they would break a reader (Q80). A Blueprint dropped on an entity node links it.
+- A drag into Blueprints, in the Stats or Traits tree, is refused while something outside Blueprints reads the item (Q81–Q83).
 - The in-game stat panel renders the player's stats, then a section for the selected entity. The selection is lifted so that the entity view and the panel's dropdown share it. The dropdown lists present entities first, then absent entities with a visible stat, then (None). An unrevealed entity shows the scene's alias, or Unknown.
 - Stat groups render as collapsible headings in the panel, reusing the stat row.
 
@@ -320,7 +322,7 @@ Derived from Q7 and confirmed with the summary:
 
 ### Data
 
-- World export shape: entity stats, stat Links, stat groups, stat Blueprints and the group AI-visibility flag on trait and stat groups.
+- World export shape: entity stats, stat Links, stat groups, stat placement, stat Blueprints and the group AI-visibility flag on trait and stat groups.
 - Save shape: entity stat values keyed by owner. Load prunes owners no longer in the playthrough.
 - Character card shape: the entity's owned stats, stat Links and stat groups.
 - All are additive on unreleased forms; migration fills defaults (no entity stats, groups visible to the AI).
@@ -331,7 +333,7 @@ Derived from Q7 and confirmed with the summary:
 - **Turn Pipeline seams (ADR-0001):** a fake request adapter and the derivation callback cover owner selection, schema building, the fallback on rejection, response reading, diagnostics and per-owner apply. Prior art: the turn-pipeline parity and commit tests.
 - **Pure stat runtime:** per-owner derivation (traits, trait Links, stat Links, Overrides, untargeted changes) and the stat-code turn with owners. Prior art: the trait-runtime and stat-code-turn tests.
 - **Import boundary:** world, save and card migration, and save pruning on load. Prior art: the version migration and owned-trait pruning tests.
-- **UI harnesses:** the game panels harness for the stat panel, its dropdown, sync and groups; the entity editor tab tests for the Stats mirror. Prior art: the entity traits mirror tests.
+- **UI harnesses:** the game panels harness for the stat panel, its dropdown, sync and groups; the entity editor tab tests for the Stats mirror; the stat tree's entity node, cross-owner and Blueprints refusal cases, plus an e2e drag spec. Prior art: the entity traits mirror tests and `trait-entity-nodes`.
 - **Probe:** the entity stats probe measures every prompt change against Q28 on the cloud default model and on Cydonia, with the player-only control in the same batch.
 - Every guard is proved by reinstating the bug once and watching its test fail.
 
