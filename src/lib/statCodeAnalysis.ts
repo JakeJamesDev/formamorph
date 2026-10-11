@@ -566,45 +566,48 @@ function writeTarget(node: SyntaxNode, code: string): SyntaxNode | null {
   return node.getChild('MemberExpression');
 }
 
-const WRITABLE_LIST = SELF_WRITABLE_FIELDS.map((field) => `self.${field}`).join(', ');
+/** The writable fields as code spells them off `path`: `self.value, self.min, …`. */
+const writableList = (path: string) => SELF_WRITABLE_FIELDS.map((field) => `${path}.${field}`).join(', ');
 
-/** One write to a member: whether it is aimed at the stat's own entry, and what is wrong with it. */
+/** One write to a member: whether it reaches a stat's field, and what is wrong with it. */
 interface WriteCheck {
-  own: boolean;
+  /** Whether the write reaches a field of a stat, the code's own or another's. */
+  writes: boolean;
   problem: CodeDiagnostic | null;
 }
 
-/** A write to `field` on the stat's own entry, reached as `path`: fine for a writable field, an error otherwise. */
-function checkOwnField(field: SyntaxNode | null, path: string, code: string): WriteCheck {
+/** A write to `field` on a stat's entry, reached as `path`: fine for a writable field, an error otherwise.
+ *  The error lists the writable fields off `listedAs`: `self` for the own entry, else the path. */
+function checkField(field: SyntaxNode | null, path: string, code: string, listedAs: string): WriteCheck {
   // A bracketed field can't be named without running the code.
-  if (!field) return { own: true, problem: null };
+  if (!field) return { writes: true, problem: null };
   const name = code.slice(field.from, field.to);
   const known = STAT_FIELDS.some((entry) => entry.name === name);
-  if (known && SELF_WRITABLE_FIELDS.includes(name)) return { own: true, problem: null };
+  if (known && SELF_WRITABLE_FIELDS.includes(name)) return { writes: true, problem: null };
   const suggestion = known ? null : nearestName(name, STAT_FIELDS.map((entry) => entry.name));
-  const message = known ? `${path}.${name} can’t be written. Only ${WRITABLE_LIST} can.`
+  const message = known ? `${path}.${name} can’t be written. Only ${writableList(listedAs)} can.`
     : suggestion ? `${path} has no field “${name}”. Did you mean “${suggestion}”?` : `${path} has no field “${name}”.`;
-  return { own: true, problem: { from: field.from, to: field.to, severity: 'error', message } };
+  return { writes: true, problem: { from: field.from, to: field.to, severity: 'error', message } };
 }
 
-const OTHER_STAT_WRITE = 'This writes to another stat, and stat code can only change its own. Write to self instead.';
-
 function checkWrite(target: SyntaxNode, code: string, tree: Tree, declared: Set<string>, selfName?: string): WriteCheck {
-  const warn = (message: string): WriteCheck => ({ own: false, problem: { from: target.from, to: target.to, severity: 'warning', message } });
   const reachesOwn = (text: string) => reachesOwnStat(statLikeNames(code, tree).get(text) ?? text, selfName);
   // `stats.Name = …` replaces the whole entry, which the host never reads back, even for the stat's own name.
   const targetText = code.slice(target.from, target.to);
-  if (STAT_ENTRY_EXPRESSION.test(targetText)) return warn(reachesOwn(targetText) ? 'Write to self.value instead.' : OTHER_STAT_WRITE);
+  if (STAT_ENTRY_EXPRESSION.test(targetText)) {
+    const message = `Write to ${reachesOwn(targetText) ? 'self' : targetText}.value instead.`;
+    return { writes: false, problem: { from: target.from, to: target.to, severity: 'warning', message } };
+  }
   // Walk in to the stat the chain starts from, so a write nested in `previous` or `delta` is caught too.
   for (let member: SyntaxNode | null = target; member?.name === 'MemberExpression'; member = member.firstChild) {
     const entry = member.firstChild;
     if (!entry) break;
     const text = code.slice(entry.from, entry.to);
-    if (text === 'self' && declared.has('self')) return { own: true, problem: null };
+    if (text === 'self' && declared.has('self')) return { writes: true, problem: null };
     if (!looksLikeStat(code, tree, text)) continue;
-    return reachesOwn(text) ? checkOwnField(member.getChild('PropertyName'), text, code) : warn(OTHER_STAT_WRITE);
+    return checkField(member.getChild('PropertyName'), text, code, reachesOwn(text) ? 'self' : text);
   }
-  return { own: false, problem: null };
+  return { writes: false, problem: null };
 }
 
 /** The variable a member chain starts from, like `placeholders` in `placeholders.Mood.value`. */
@@ -1213,7 +1216,7 @@ export function codeDiagnostics(code: string, options: SurfaceAnalysisOptions): 
   const declared = declaredNames(code, tree);
   let sawReturn = false;
   let sawSyntaxError = false;
-  let sawOwnWrite = false;
+  let sawStatWrite = false;
   let sawPlaceholderWrite = false;
   let sawTraitWrite = false;
   const placeholdersInScope = rules.placeholders && !declared.has('placeholders');
@@ -1261,8 +1264,8 @@ export function codeDiagnostics(code: string, options: SurfaceAnalysisOptions): 
     const target = writeTarget(cursor.node, code);
     if (target && !overlapsAny(target.from, target.to, ranges)) {
       if (statWrites) {
-        const { own, problem } = checkWrite(target, code, tree, declared, options.selfName);
-        if (own) sawOwnWrite = true;
+        const { writes, problem } = checkWrite(target, code, tree, declared, options.selfName);
+        if (writes) sawStatWrite = true;
         if (problem) diagnostics.push(problem);
       }
       if (placeholdersInScope && memberRoot(target, code) === 'placeholders') {
@@ -1359,10 +1362,10 @@ export function codeDiagnostics(code: string, options: SurfaceAnalysisOptions): 
     });
   } while (cursor.next());
 
-  // Code with no return can still set the value through self, pin a placeholder, or switch a trait. Code that
-  // does none of these changes nothing. A missing return on code the parser couldn't finish reading is a
-  // guess about half-typed code.
-  if (surface.missingReturn && !sawReturn && !sawOwnWrite && !sawPlaceholderWrite && !sawTraitWrite && !sawSyntaxError) {
+  // Code with no return can still set a stat through self or the map, pin a placeholder, or switch a trait.
+  // Code that does none of these changes nothing. A missing return on code the parser couldn't finish reading
+  // is a guess about half-typed code.
+  if (surface.missingReturn && !sawReturn && !sawStatWrite && !sawPlaceholderWrite && !sawTraitWrite && !sawSyntaxError) {
     diagnostics.push({
       from: 0,
       to: Math.min(code.length, code.indexOf('\n') === -1 ? code.length : code.indexOf('\n')),

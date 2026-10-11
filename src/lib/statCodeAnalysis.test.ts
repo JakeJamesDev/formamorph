@@ -121,7 +121,7 @@ return scale(total) + min + max;`)).toEqual([]);
     }
   });
 
-  it('warns about a write to another stat’s entry, which the host ignores', () => {
+  it('says nothing about a write to another stat’s entry, which the host takes', () => {
     for (const code of [
       'stats[0].value = 1;\nreturn 2;',
       'stats.Health.value = 1;\nreturn 2;',
@@ -129,10 +129,7 @@ return scale(total) + min + max;`)).toEqual([]);
       'const other = Object.values(stats).find(s => s.id !== self.id);\nother.value = 1;\nreturn 2;',
       'const other = Object.values(stats).find(s => self.id != s.id);\nother.value = 1;\nreturn 2;',
     ]) {
-      const problems = statCodeDiagnostics(code);
-      expect(problems, code).toHaveLength(1);
-      expect(problems[0].severity, code).toBe('warning');
-      expect(problems[0].message, code).toMatch(/another stat/i);
+      expect(statCodeDiagnostics(code), code).toEqual([]);
     }
   });
 
@@ -617,17 +614,44 @@ describe('the stats map in stat code', () => {
       .toEqual(['2 stats are named “Health”. A stat that is on wins the name over a switched-off one. Otherwise this reads the last one authored.']);
   });
 
-  it('warns about a write to another stat through the map, by dot, by bracket, or by a name holding it', () => {
-    for (const code of [
-      'stats.Health.value = 1;\nreturn 2;',
-      'stats["Night Vision"].max += 1;\nreturn 2;',
-      'const hp = stats.Health;\nhp.value -= 1;\nreturn 2;',
-      'stats.Health = 5;\nreturn 2;',
-    ]) {
-      const problems = statCodeDiagnostics(code, { statNames, selfName: 'Mood' });
-      expect(problems, code).toHaveLength(1);
-      expect(problems[0], code).toMatchObject({ severity: 'warning', message: expect.stringMatching(/another stat.*Write to self instead/) });
+  it('raises no warning for a write to another stat through the map, by dot, by bracket, or by a name holding it', () => {
+    for (const field of ['value', 'min', 'max', 'regen']) {
+      for (const code of [
+        `stats.Health.${field} = 1;\nreturn 2;`,
+        `stats["Night Vision"].${field} += 1;\nreturn 2;`,
+        `stats.Health.${field}++;\nreturn 2;`,
+        `const hp = stats.Health;\nhp.${field} -= 1;\nreturn 2;`,
+        `const hub = Object.values(stats).find(s => s.id !== self.id);\nhub.${field} = 1;\nreturn 2;`,
+      ]) {
+        expect(statCodeDiagnostics(code, { statNames, selfName: 'Mood' }), code).toEqual([]);
+      }
     }
+  });
+
+  it('counts a write to another stat as the code doing something, as a write to self is', () => {
+    expect(statCodeDiagnostics('stats.Health.value -= 1;', { statNames, selfName: 'Mood' })).toEqual([]);
+  });
+
+  it('underlines an unknown stat name on the write side as it does on the read side, and a known name not', () => {
+    const options = { statNames, selfName: 'Mood' };
+    const code = 'stats.Helth.value = 1;\nreturn 2;';
+    const [problem] = statCodeDiagnostics(code, options);
+    expect(problem).toMatchObject({ severity: 'error', message: 'No stat is named “Helth”. Did you mean “Health”?' });
+    expect(code.slice(problem.from, problem.to)).toBe('Helth');
+    expect(statCodeDiagnostics(code, options)).toHaveLength(1);
+    // The read of the same name carries the same complaint.
+    expect(messages('return stats.Helth.value;', options)).toEqual([problem.message]);
+    for (const known of ['stats.Health.max += 1;', 'stats["Night Vision"].regen = 2;', 'stats.Health.value++;']) {
+      expect(statCodeDiagnostics(`${known}\nreturn 2;`, options), known).toEqual([]);
+    }
+    expect(messages('stats["Night Vison"].min = 0;\nreturn 2;', options))
+      .toEqual(['No stat is named “Night Vison”. Did you mean “Night Vision”?']);
+  });
+
+  it('warns about replacing a whole entry, which the host drops, for any stat', () => {
+    const options = { statNames, selfName: 'Mood' };
+    expect(messages('stats.Health = 5;\nreturn 2;', options)).toEqual(['Write to stats.Health.value instead.']);
+    expect(messages('stats.Mood = 5;\nreturn 2;', options)).toEqual(['Write to self.value instead.']);
   });
 
   it('takes a write to its own entry through the map as a write to self', () => {
@@ -670,6 +694,18 @@ describe('the stats map in stat code', () => {
     for (const option of completeAt('return stats.|', { statNames })?.options ?? []) expect(option.info).toBeTruthy();
   });
 
+  it('offers the four writable fields after an entry’s dot, with the documentation they carry on self', () => {
+    const writable = ['value', 'min', 'max', 'regen'];
+    const onSelf = (completeAt('return self.|', { statNames })?.options ?? []).filter((option) => writable.includes(option.label));
+    expect(onSelf.map((option) => option.label).sort()).toEqual([...writable].sort());
+    for (const doc of ['stats.Health.|', 'stats["Night Vision"].|', "stats['Night Vision'].|", 'stats[self.name]?.|']) {
+      const offered = (completeAt(`return ${doc}`, { statNames })?.options ?? []).filter((option) => writable.includes(option.label));
+      expect(offered, doc).toEqual(onSelf);
+      // Every entry takes these writes, so no line sends the author back to self.
+      for (const option of offered) expect(option.info, `${doc} ${option.label}`).not.toMatch(/self/);
+    }
+  });
+
   it('checks a write to its own entry through the map exactly as it checks self', () => {
     const options = { statNames, selfName: 'Mood' };
     expect(messages('stats.Mood.valeu = 5;', options)).toEqual(['stats.Mood has no field “valeu”. Did you mean “value”?']);
@@ -678,10 +714,13 @@ describe('the stats map in stat code', () => {
     expect(messages('const me = self;\nme.delta.ai.value = 1;', options)[0]).toMatch(/^me\.delta can’t be written/);
   });
 
-  it('warns about a write nested inside another stat’s entry', () => {
-    for (const code of ['stats.Health.previous.value = 1;\nreturn 2;', 'const hp = stats.Health;\nhp.delta.ai.value = 1;\nreturn 2;']) {
-      expect(messages(code, { statNames, selfName: 'Mood' }), code).toEqual([expect.stringMatching(/another stat/)]);
-    }
+  it('checks a write to another stat’s entry for the field it names, as it does for self', () => {
+    const options = { statNames, selfName: 'Mood' };
+    expect(messages('stats.Health.valeu = 5;\nreturn 2;', options)).toEqual(['stats.Health has no field “valeu”. Did you mean “value”?']);
+    expect(messages('stats.Health.previous.value = 1;\nreturn 2;', options))
+      .toEqual(['stats.Health.previous can’t be written. Only stats.Health.value, stats.Health.min, stats.Health.max, stats.Health.regen can.']);
+    expect(messages('const hp = stats.Health;\nhp.delta.ai.value = 1;\nreturn 2;', options))
+      .toEqual(['hp.delta can’t be written. Only hp.value, hp.min, hp.max, hp.regen can.']);
   });
 
   it('says nothing after a chain that continues past the one lookup', () => {
