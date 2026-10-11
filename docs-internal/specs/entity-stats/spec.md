@@ -111,6 +111,8 @@ Rulings from the grill, numbered as asked.
 
 - **Q66** (ticket 17, user ruling, confirmed in this session) Ticket 17 lands wording WL with misses on record. WL adds two lines: "Each stat belongs to the character it sits under. A stat moves only for what that character does, goes through, or feels this turn." in the system prompt, and "A clear shift in how a character regards the player moves that character's own stat." in the user line. The cloud model clears Q28 (exact 59% vs C3 52%, recall 75% vs 70%, 0 wrong signs). Cydonia misses: exact 30% against ticket 05's 47% and C3's 50%, and invented changes 122 against 98 and 86 (player 82). Q64 also misses: with groups, `push-bram` still invents 12 player changes on the cloud model. Across 13 wordings, every line that lifted cloud recall raised Cydonia's invented changes. Cydonia's main error is draining the player's Vigor on most turns, in today's pass and in C3 as well. The Q45 blocker stays open on the release-blockers list (item 03).
 
+- **Q67** (ticket 14) Ticket 14 makes every library entity a stat owner by id at every site: seed, regen and code, the request when present, the panel, chips, and backfill on load. Its stat Links resolve against the world's Blueprints. A library persona is seeded and kept as a world persona is. Ticket 13 owns the persona-to-player join for both world and library personas, and ticket 14 only guarantees seeded values under the persona's id. The card carries `stats`, `statLinks` and `statGroups`, and its stat Links bind to the world's Blueprints as a card's trait Links do. A Link that can't bind stays dormant and brings nothing.
+
 Derived from Q7 and confirmed with the summary:
 
 - An entity stat's morph bindings drive that entity's own model.
