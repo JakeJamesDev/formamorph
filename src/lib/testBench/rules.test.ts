@@ -599,6 +599,156 @@ describe('reference-integrity rules', () => {
   });
 });
 
+describe('stat code two writers rule', () => {
+  const RULE = 'stat-code-two-writers';
+  const coded = (stats: Stat[]) => only(base({ stats }), RULE);
+
+  it('warns once, naming both boxes, when a hub and the target’s own box write one field', () => {
+    const found = coded([
+      stat({ id: 'h', name: 'Health', code: 'self.value = 10;' }),
+      stat({ id: 'd', name: 'Fate', code: 'stats.Health.value = 1;' }),
+    ]);
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('warning');
+    expect(found[0].message).toBe(
+      'Two boxes write the value of “Health”: After the AI code on “Health” and After the AI code on “Fate”',
+    );
+    expect(found[0].items.map((i) => i.id)).toEqual(['h']);
+  });
+
+  it('warns once when two hubs write one field, and names each box a hub writes from', () => {
+    const found = coded([
+      stat({ id: 'h', name: 'Health' }),
+      stat({ id: 'a', name: 'Fate', beforeCode: 'stats.Health.max = 5;' }),
+      stat({ id: 'b', name: 'Luck', code: 'stats.Health.max = 6;' }),
+    ]);
+    expect(found).toHaveLength(1);
+    expect(found[0].message).toBe(
+      'Two boxes write the max of “Health”: Before the AI code on “Fate” and After the AI code on “Luck”',
+    );
+  });
+
+  it('counts the dot and the bracket literal, and says nothing of a computed name', () => {
+    const health = stat({ id: 'h', name: 'Health' });
+    const pair = (a: string, b: string) => coded([
+      health, stat({ id: 'a', name: 'Fate', code: a }), stat({ id: 'b', name: 'Luck', code: b }),
+    ]);
+    expect(pair('stats.Health.value = 1;', 'stats["Health"]["value"] += 1;')).toHaveLength(1);
+    expect(pair('stats.Health.value = 1;', 'const n = "Health"; stats[n].value = 2;')).toEqual([]);
+    expect(pair('stats.Health.value = 1;', 'stats[`Health`].value = 2;')).toHaveLength(1);
+  });
+
+  it('warns per field, so two writers on different fields stay quiet', () => {
+    expect(coded([
+      stat({ id: 'h', name: 'Health' }),
+      stat({ id: 'a', name: 'Fate', code: 'stats.Health.value = 1;' }),
+      stat({ id: 'b', name: 'Luck', code: 'stats.Health.max = 9;' }),
+    ])).toEqual([]);
+  });
+
+  it('stays quiet for one writer, a read, and one box writing a field twice', () => {
+    expect(coded([stat({ id: 'h', name: 'Health', code: 'self.value = 1;' })])).toEqual([]);
+    expect(coded([
+      stat({ id: 'h', name: 'Health' }),
+      stat({ id: 'a', name: 'Fate', code: 'return stats.Health.value + 1;' }),
+      stat({ id: 'b', name: 'Luck', code: 'stats.Health.value = 1;\nstats.Health.value += 2;' }),
+    ])).toEqual([]);
+  });
+
+  it('counts the before and the after box of one stat as two writers', () => {
+    const found = coded([stat({ id: 'h', name: 'Health', beforeCode: 'self.value = 1;', code: 'self.value += 2;' })]);
+    expect(found).toHaveLength(1);
+    expect(found[0].message).toBe(
+      'Two boxes write the value of “Health”: Before the AI code on “Health” and After the AI code on “Health”',
+    );
+  });
+
+  it('counts the boxes when more than two write one field, and names each', () => {
+    const [found] = coded([
+      stat({ id: 'h', name: 'Health', code: 'self.max = 1;' }),
+      stat({ id: 'a', name: 'Fate', beforeCode: 'stats.Health.max = 2;' }),
+      stat({ id: 'b', name: 'Luck', code: 'stats.Health.max = 3;' }),
+    ]);
+    expect(found.message).toBe(
+      '3 boxes write the max of “Health”: After the AI code on “Health”, Before the AI code on “Fate” and After the AI code on “Luck”',
+    );
+  });
+
+  it('ignores a write to a stat the owner lacks', () => {
+    expect(coded([
+      stat({ id: 'a', name: 'Fate', code: 'stats.Missing.value = 1;' }),
+      stat({ id: 'b', name: 'Luck', code: 'stats.Missing.value = 2;' }),
+    ])).toEqual([]);
+  });
+
+  it('reads a stat by its code name when the name carries a chip', () => {
+    const found = only(base({
+      placeholders: [{ id: 'ph-beast', name: 'Beast', values: phValues(['Wolf', 'Bear']) }],
+      stats: [
+        stat({ id: 'h', name: '{{ph:ph-beast:world:p1}} Power' }),
+        stat({ id: 'a', name: 'Fate', code: 'stats["Beast Power"].value = 1;' }),
+        stat({ id: 'b', name: 'Luck', code: 'stats["Beast Power"].value = 2;' }),
+      ],
+    }), RULE);
+    expect(found).toHaveLength(1);
+  });
+
+  describe('per owner', () => {
+    const blueprints = { id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' as const };
+    const guard = stat({ id: 'guard', name: 'Guard', groupId: 'bp', code: 'self.value = 2;' });
+    const link = (id: string) => ({ id, originalId: 'guard', kind: 'stat' as const, originalName: 'Guard', groupId: null });
+    const bearer = (id: string, over: Partial<Entity> = {}): Entity => ({
+      id, name: id, locations: ['harbor'], playerDescription: 'Seen.', aiDescription: 'A regular.', statLinks: [link(`${id}-link`)], ...over,
+    });
+    const hub = stat({ id: 'hub', name: 'Hub', code: 'stats.Guard.value = 1;' });
+
+    it('warns for the owner whose copy two boxes write, and for no one else', () => {
+      const found = only(base({
+        statGroups: [blueprints], stats: [guard],
+        entities: [bearer('Maren', { stats: [hub] }), bearer('Tobb')],
+      }), RULE);
+      expect(found).toHaveLength(1);
+      expect(found[0].message).toBe(
+        'Two boxes write the value of “Guard” on “Maren”: After the AI code on “Hub” and After the AI code on “Guard”',
+      );
+      expect(found[0].items).toEqual([{ id: 'Maren', name: 'Maren', section: 'entities' }]);
+    });
+
+    it('reads each owner’s copy of a Blueprint stat as its own, so two bearers writing theirs raise nothing', () => {
+      expect(only(base({
+        statGroups: [blueprints], stats: [guard], entities: [bearer('Maren'), bearer('Tobb')],
+      }), RULE)).toEqual([]);
+    });
+
+    it('warns once per owner that holds the same pair of writers', () => {
+      const found = only(base({
+        statGroups: [blueprints], stats: [guard],
+        entities: [bearer('Maren', { stats: [hub] }), bearer('Tobb', { stats: [hub] })],
+      }), RULE);
+      expect(found.map((f) => f.items[0].id)).toEqual(['Maren', 'Tobb']);
+    });
+
+    it('keeps the player’s stats and an entity’s apart, though their names match', () => {
+      expect(only(base({
+        stats: [stat({ id: 'ph', name: 'Health', code: 'self.value = 1;' })],
+        entities: [bearer('Maren', {
+          statLinks: [],
+          stats: [stat({ id: 'eh', name: 'Health' }), stat({ id: 'ef', name: 'Fate', code: 'stats.Health.value = 2;' })],
+        })],
+      }), RULE)).toEqual([]);
+    });
+
+    it('leaves a Blueprint stat out of the player’s owner', () => {
+      // Were Guard the player's, its box and Fate's own box would both write Fate's value.
+      const reaching = stat({ id: 'guard', name: 'Guard', groupId: 'bp', code: 'stats.Fate.value = 3;' });
+      expect(only(base({
+        statGroups: [blueprints],
+        stats: [reaching, stat({ id: 'p', name: 'Fate', code: 'self.value = 1;' })],
+      }), RULE)).toEqual([]);
+    });
+  });
+});
+
 describe('dictionary rules', () => {
   it('flags an entry with no keywords that isn’t constant, and quiets once either is supplied', () => {
     const found = only(base({ dictionaries: [book([entry({ id: 'd1', name: 'Herbs' })])] }), 'dictionary-entry-inert');
@@ -4038,6 +4188,7 @@ const RULE_SCOPE: Record<string, 'simple' | 'advanced'> = {
   'stat-code-overrides-trait': 'advanced',
   'stat-code-unknown-stat': 'advanced',
   'stat-code-before-reads-delta': 'advanced',
+  'stat-code-two-writers': 'advanced',
   'stat-descriptor-coverage-gap': 'advanced',
   'stat-descriptor-duplicate-threshold': 'advanced',
   'stat-descriptor-out-of-range': 'advanced',

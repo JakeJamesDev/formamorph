@@ -35,6 +35,7 @@ import {
 } from '@/lib/statDescriptorGeometry';
 import { statCodeName } from '@/lib/statCodeNames';
 import { boxCode, filledCodeBoxes, noBoxes, TIMING_LABEL } from '@/lib/statCodeTiming';
+import { scanStatWrites } from '@/lib/statCodeWriteScan';
 import { estimateTokens } from '@/lib/memoryUtils';
 import { entityImages } from '@/lib/entityImages';
 import {
@@ -983,6 +984,58 @@ const statCodeBeforeReadsDelta: Rule = {
         [item],
       );
     }),
+};
+
+const statCodeTwoWriters: Rule = {
+  id: 'stat-code-two-writers',
+  severity: 'warning',
+  section: 'stats',
+  advanced: true,
+  summary: (count) => `${count} stat fields are written by more than one box of stat code`,
+  // Judged per owner, because a stat's code reaches its own owner's stats only. A Blueprint stat runs once per
+  // owner that links it, so each owner's copy is its own field.
+  check: (world) => {
+    const placeholders = allPlaceholders(world);
+    const statWorld = { stats: world.stats ?? [], statGroups: world.statGroups ?? [] };
+    const owners = [
+      { entity: null, stats: playerStatsOf(statWorld.stats, statWorld.statGroups) },
+      ...(world.entities ?? []).map((entity) => ({ entity, stats: resolvedEntityStats(statWorld, entity) })),
+    ];
+    return owners.flatMap(({ entity, stats }) => {
+      const byCodeName = new Map<string, Stat>();
+      for (const stat of stats) {
+        const codeName = statCodeName(stat.name, placeholders);
+        if (!byCodeName.has(codeName)) byCodeName.set(codeName, stat);
+      }
+      // Each field by its target and name, with the boxes writing it once each, in stat order.
+      const fields = new Map<string, { target: Stat; field: string; writers: Map<string, string> }>();
+      for (const writer of stats) {
+        for (const box of filledCodeBoxes(writer)) {
+          for (const write of scanStatWrites(box.code)) {
+            const target = write.stat === null ? writer : byCodeName.get(write.stat);
+            if (!target) continue;
+            const key = JSON.stringify([target.id, write.field]);
+            const held = fields.get(key) ?? { target, field: write.field, writers: new Map() };
+            held.writers.set(
+              JSON.stringify([writer.id, box.timing]),
+              `${TIMING_LABEL[box.timing]} code on ${quote(labelOf(writer.name, world))}`,
+            );
+            fields.set(key, held);
+          }
+        }
+      }
+      return [...fields.values()].filter(({ writers }) => writers.size > 1).map(({ target, field, writers }) => {
+        const howMany = writers.size === 2 ? 'Two' : String(writers.size);
+        const at = entity ? ` on ${quote(labelOf(entity.name, world))}` : '';
+        const item = entity ? { ...asItem(entity, world), section: 'entities' as const } : namedItem(target.id, target.name, world);
+        return finding(
+          statCodeTwoWriters,
+          `${howMany} boxes write the ${field} of ${quote(labelOf(target.name, world))}${at}: ${listNames([...writers.values()])}`,
+          [item],
+        );
+      });
+    });
+  },
 };
 
 // ── Dictionary: entries that can never fire ───────────────────────────────────────────────────────────────
@@ -3149,7 +3202,7 @@ export const RULES: readonly Rule[] = [
   aliasLeadingArticle, entityMatchCollision, aliasSelfDuplicate,
   entityLocationOrphan, linkConnectionBroken, traitToggleMissingStat, placeholderPinBroken,
   chipUnknownPlaceholder, placeholderUnused, placeholderPinnedUnused, statCodeUnknownStat,
-  statCodeBeforeReadsDelta,
+  statCodeBeforeReadsDelta, statCodeTwoWriters,
   entrySecondaryWithoutPrimary, entryInert, entryRegexInvalid,
   noStartingLocation, legacyStartLocation, entityNowhere, entityNoCodeName, statDisabledForever,
   statStartingOutOfRange, statStartNoDescriptor, statDescriptorDuplicateThreshold, statDescriptorOutOfRange,
