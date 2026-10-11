@@ -1,0 +1,28 @@
+# 02: Other Traits After the Block
+
+Status: ready-for-agent
+Blocked by: 01
+Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
+Reasoning effort: medium
+
+Rationale: a header rename and chip reorder in default prompt text, plus one probe run read against ticket 01's control.
+
+Parent: [Player Character Block spec](../spec.md)
+
+## What to build
+
+In the six default prompts, the Traits chip's header becomes `Other Traits` and the chip moves to sit after the Persona chip. Nothing moves into or out of the block in this ticket: the persona's own traits already render inside it, and the Traits chip already holds the world's player traits only. Rulings Q5 (traits half), Q11.
+
+With no world player traits, the section vanishes with its heading, by the headed-chip blank rule. With no persona, the block is absent and Other Traits stands first, which is the intended reading for a world without personas. Saved custom prompts keep their own header text and order.
+
+## Acceptance criteria
+
+- [ ] The six default prompts carry `Other Traits` as the Traits chip's header, placed after the Persona chip, asserted as the existing persona prompt tests assert headers and order.
+- [ ] A rendered default narration prompt for a bundled world with no persona and world traits opens its player section at `## Other Traits`; for a world with a persona and no world traits, the section is absent.
+- [ ] A narration probe on the default endpoint with ticket 01's prompt as the in-batch control, at least 6 runs per arm, scoring the existing name-leak and stat-tabulation checks plus whether the narration applies the player's traits to the player. The report states the numbers.
+- [ ] Changelog fragment written.
+
+## Completion checks
+
+- [ ] Run typecheck, lint, tests, and the build; report the timed test result and investigate unexplained process tail time.
+- [ ] Prove each new guard fails when its rule is removed; never remove a real trigger to go green.
