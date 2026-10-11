@@ -9,7 +9,8 @@ import {
 } from './groupTree';
 import type { Entity, StatChange, Trait, TraitGroup, TraitLink, TraitPlacement } from '@/types';
 import { xmlEscape } from './utils';
-import { bearsTraits, holdsOriginal, makeLink, originalOf, resolveBearers } from './bearers';
+import { bearsTraits, heldReason, makeLink, originalOf, resolveBearers } from './bearers';
+import type { HeldReason } from './heldReasons';
 import { randomUUID } from './uuid';
 
 export type TraitTreeNode = GroupTreeNode<TraitGroup, Trait>;
@@ -437,13 +438,20 @@ export function withOwnedLists(entity: Entity, traits: Trait[], traitGroups: Tra
   };
 }
 
+/** What the bearer node already holds that blocks a link to the original; null when it can link. */
+export function linkHeldReason(
+  world: WorldTraitLists, entities: readonly Entity[], nodeId: string, originalId: string,
+): HeldReason | null {
+  const bearerWorld = { ...world, entities };
+  const resolved = resolveBearers(bearerWorld, undefined).bearers.find((b) => b.id === nodeId);
+  return resolved ? heldReason(bearerWorld, resolved, originalId) : null;
+}
+
 /** Why the bearer node can't link the original; null when it can. A bearer's tree holds each original once. */
 export function linkRefusal(
   world: WorldTraitLists, entities: readonly Entity[], nodeId: string, originalId: string,
 ): Extract<TraitDropRefusal, { reason: 'duplicate' }> | null {
-  const bearerWorld = { ...world, entities };
-  const resolved = resolveBearers(bearerWorld, undefined).bearers.find((b) => b.id === nodeId);
-  if (!resolved || !holdsOriginal(bearerWorld, resolved, originalId)) return null;
+  if (!linkHeldReason(world, entities, nodeId, originalId)) return null;
   const name = originalOf(world, originalId)?.item.name ?? '';
   return { reason: 'duplicate', name, bearer: entities.find((e) => e.id === nodeId)?.name ?? '' };
 }

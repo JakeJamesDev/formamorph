@@ -57,7 +57,7 @@ const treeRow = (name: string) => screen.queryAllByLabelText('Drag to reorder or
 
 /** A flyout level's rows in order: `#` marks a group that opens a level, `✓` a held bearer. */
 const flyoutRows = (label: string) => [...screen.getByRole('group', { name: label }).children].map((row) =>
-  `${row.querySelector('.lucide-chevron-right') ? '#' : ''}${(row as HTMLButtonElement).disabled ? '✓' : ''}${row.textContent}`);
+  `${row.querySelector('.lucide-chevron-right') ? '#' : ''}${row.getAttribute('aria-disabled') === 'true' ? '✓' : ''}${row.textContent}`);
 const flyoutRow = (label: string, name: string) => within(screen.getByRole('group', { name: label })).getByRole('button', { name });
 
 beforeEach(() => { localStorage.clear(); });
@@ -149,6 +149,14 @@ describe('the link button', () => {
     fireEvent.click(flyoutRow('Link To', 'Heroes'));
     expect(flyoutRows('Link To')).toEqual(['✓Albus', 'Mira', '#City Guard']);
     expect(flyoutRow('Link To', 'Albus')).toHaveAttribute('aria-pressed', 'true');
+    expect(flyoutRow('Link To', 'Albus')).toHaveAttribute('aria-description', 'Already links Paladin');
+    expect(flyoutRow('Link To', 'Mira')).not.toHaveAttribute('aria-description');
+
+    // A refused row stays focusable and a click on it changes nothing.
+    flyoutRow('Link To', 'Albus').focus();
+    expect(flyoutRow('Link To', 'Albus')).toHaveFocus();
+    fireEvent.click(flyoutRow('Link To', 'Albus'));
+    expect(ctx().entities.find((e) => e.id === 'e-albus')!.traitLinks).toHaveLength(1);
 
     // A pick links through the drag's path; the flyout stays open with the new bearer checked.
     fireEvent.click(flyoutRow('Link To', 'Mira'));

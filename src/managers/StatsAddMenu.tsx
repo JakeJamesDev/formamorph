@@ -14,10 +14,10 @@ const NO_ICON = () => null;
  * The entity Stats tab's + menu: its own adds, then **Link Stat**, a drill-in to the world's Blueprint stats.
  * Lives inside a `ListSearchToolbar` menu; the drill-in's level is menu state.
  */
-export function EntityStatsAddMenu({ world, held, onAddGroup, onAddStat, onLink }: {
+export function EntityStatsAddMenu({ world, refusal, onAddGroup, onAddStat, onLink }: {
   world: StatLinkWorld;
-  /** Whether the entity already holds this Blueprint stat. */
-  held: (originalId: string) => boolean;
+  /** Why the entity can't link this Blueprint stat; null when it can. */
+  refusal: (originalId: string) => string | null;
   onAddGroup: (typed: string) => void;
   onAddStat: (typed: string) => void;
   onLink: (originalId: string) => void;
@@ -34,7 +34,7 @@ export function EntityStatsAddMenu({ world, held, onAddGroup, onAddStat, onLink 
           choices={choices}
           label="Blueprints"
           leafIcon={NO_ICON}
-          held={held}
+          refusal={refusal}
           onPick={(id) => add(() => onLink(id))}
           back={{ label: 'Link Stat', onBack: () => drill(false) }}
         />

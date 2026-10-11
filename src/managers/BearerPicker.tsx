@@ -3,14 +3,17 @@ import { ArrowLeft, Check, ChevronRight, Link2 } from 'lucide-react';
 import { EntityIcon, GroupIcon, PersonaIcon } from '@/lib/elementIcons';
 import { useGameData, useGameDataOptional } from '@/contexts/GameDataContext';
 import type { Entity, Placeholder } from '@/types';
-import { addStatLink, holdsStatOriginal } from '@/lib/statLinks';
+import { addStatLink, statHeldReason } from '@/lib/statLinks';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tip } from '@/components/ui/tooltip';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { bearerChoices, type BearerChoice } from '@/lib/bearerChoices';
+import { heldReasonText, type HeldReason } from '@/lib/heldReasons';
+import { labelPlaceholders } from '@/lib/placementLetters';
 import { addLink } from '@/lib/traitLinks';
-import { linkRefusal } from '@/lib/traitTree';
+import { linkHeldReason } from '@/lib/traitTree';
 import { randomUUID } from '@/lib/uuid';
 import { cn } from '@/lib/utils';
 import { MENU_ROW } from '@/components/menuRow';
@@ -25,14 +28,16 @@ const bearerIcon = (row: Extract<BearerChoice, { kind: 'bearer' }>) => {
 
 /**
  * The bearers a flyout offers, one entity group level at a time: a group row opens its level, and the Back
- * row above returns to the one before. `back` is the Back row on the top level. With `held`, every row
- * starts with a check column, and a held bearer reads checked and can't be picked.
+ * row above returns to the one before. `back` is the Back row on the top level. With `refusal`, every row
+ * starts with a check column, and a row with a reason reads checked and can't be picked. The reason shows
+ * in a tip and is the row's accessible description (`aria-description`), so the row stays reachable by keyboard.
  */
-export function BearerList({ choices, label, onPick, held, back, leafIcon = bearerIcon }: {
+export function BearerList({ choices, label, onPick, refusal, back, leafIcon = bearerIcon }: {
   choices: BearerChoice[];
   label: string;
   onPick: (id: string) => void;
-  held?: (id: string) => boolean;
+  /** The reason a row can't be picked; null when it can. */
+  refusal?: (id: string) => string | null;
   back?: { label: string; onBack: () => void };
   /** The icon before a pickable row; an entity's by default. */
   leafIcon?: (row: Extract<BearerChoice, { kind: 'bearer' }>) => ReactNode;
@@ -48,7 +53,7 @@ export function BearerList({ choices, label, onPick, held, back, leafIcon = bear
     ? { label: choices.find((c) => c.id === levelId)?.name ?? '', onBack: () => go(path.slice(0, -1), 'left') }
     : back;
   const text = (name: string) => <PlaceholderText text={name} placeholders={placeholders} />;
-  const checkSlot = (on: boolean) => held && <Check className={cn('h-4 w-4 shrink-0', on ? 'opacity-100' : 'opacity-0')} aria-hidden />;
+  const checkSlot = (on: boolean) => refusal && <Check className={cn('h-4 w-4 shrink-0', on ? 'opacity-100' : 'opacity-0')} aria-hidden />;
   return (
     <DrillSlide key={levelId ?? ''} from={from}>
       {backRow && (
@@ -74,21 +79,23 @@ export function BearerList({ choices, label, onPick, held, back, leafIcon = bear
                 </button>
               );
             }
-            const isHeld = held?.(row.id) ?? false;
-            return (
+            const refused = refusal?.(row.id);
+            const reason = refused ? labelPlaceholders(refused, placeholders) : null;
+            const button = (
               <button
-                key={row.id}
                 type="button"
-                disabled={isHeld}
-                aria-pressed={held ? isHeld : undefined}
-                className={MENU_ROW}
-                onClick={() => onPick(row.id)}
+                aria-disabled={reason ? true : undefined}
+                aria-pressed={refusal ? !!reason : undefined}
+                aria-description={reason ?? undefined}
+                className={cn(MENU_ROW, 'aria-disabled:cursor-default aria-disabled:opacity-50 aria-disabled:hover:bg-transparent')}
+                onClick={() => { if (!reason) onPick(row.id); }}
               >
-                {checkSlot(isHeld)}
+                {checkSlot(!!reason)}
                 {leafIcon(row)}
                 <span className="min-w-0 flex-1 break-words [overflow-wrap:anywhere]">{text(row.name)}</span>
               </button>
             );
+            return <Tip key={row.id} tip={reason} labelsChild={false} side="right">{button}</Tip>;
           })}
         </div>
       </ScrollArea>
@@ -97,24 +104,27 @@ export function BearerList({ choices, label, onPick, held, back, leafIcon = bear
 }
 
 /**
- * A **Link To…** button: links an original to each entity picked. An entity that already holds it reads checked.
- * The flyout stays open for the next pick.
+ * A **Link To…** button: links an original to each entity picked. An entity that already holds it reads checked,
+ * and its row's tip says why. The flyout stays open for the next pick.
  */
-function LinkToButton({ holds, link }: {
-  /** Whether the entity already holds the original. */
-  holds: (entityId: string) => boolean;
+function LinkToButton({ held, link }: {
+  /** Why the entity already holds the original; null when it can link it. */
+  held: (entityId: string) => HeldReason | null;
   link: (entity: Entity) => Entity | null;
 }) {
   const { entities, entityGroups, editEntity } = useGameData();
   const [open, setOpen] = useState(false);
   const choices = useMemo(() => bearerChoices(entityGroups, entities), [entityGroups, entities]);
-  const held = open
-    ? new Set(choices.filter((c) => c.kind === 'bearer' && holds(c.id)).map((c) => c.id))
-    : new Set<string>();
+  const reasons = open
+    ? new Map(choices.flatMap((c) => {
+      const reason = c.kind === 'bearer' ? held(c.id) : null;
+      return reason ? [[c.id, heldReasonText(reason)] as const] : [];
+    }))
+    : new Map<string, string>();
 
   if (!choices.length) return null;
   const pick = (entityId: string) => {
-    if (holds(entityId)) return;
+    if (held(entityId)) return;
     editEntity(entityId, (e) => link(e) ?? e);
   };
   return (
@@ -126,7 +136,7 @@ function LinkToButton({ holds, link }: {
       </PopoverTrigger>
       {/* Inline, so the editor's modal scroll lock lets the wheel reach the list. */}
       <PopoverContent portal={false} side="top" align="end" className="w-60 overflow-hidden p-1">
-        <BearerList choices={choices} label="Link To" onPick={pick} held={(id) => held.has(id)} />
+        <BearerList choices={choices} label="Link To" onPick={pick} refusal={(id) => reasons.get(id) ?? null} />
       </PopoverContent>
     </Popover>
   );
@@ -139,7 +149,7 @@ export function LinkToBearerButton({ originalId }: { originalId: string }) {
   const world = { traits, traitGroups };
   return (
     <LinkToButton
-      holds={(id) => !!linkRefusal(world, entities, id, originalId)}
+      held={(id) => linkHeldReason(world, entities, id, originalId)}
       link={(e) => addLink(world, e, originalId, randomUUID())}
     />
   );
@@ -149,13 +159,13 @@ export function LinkToBearerButton({ originalId }: { originalId: string }) {
 export function StatLinkToButton({ originalId }: { originalId: string }) {
   const { stats, statGroups, entities } = useGameData();
   const world = { stats, statGroups };
-  const holds = (entityId: string) => {
+  const held = (entityId: string) => {
     const entity = entities.find((e) => e.id === entityId);
-    return !entity || holdsStatOriginal(world, entity, originalId);
+    return entity ? statHeldReason(world, entity, originalId) : null;
   };
   return (
     <LinkToButton
-      holds={holds}
+      held={held}
       link={(e) => addStatLink(world, e, originalId, randomUUID())}
     />
   );

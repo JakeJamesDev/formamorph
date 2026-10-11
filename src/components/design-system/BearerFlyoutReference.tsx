@@ -8,6 +8,7 @@ import { MENU_ROW } from '@/components/menuRow';
 import { DrillSlide, type SlideFrom } from '@/components/DrillSlide';
 import { BearerList } from '@/managers/BearerPicker';
 import { bearerChoices } from '@/lib/bearerChoices';
+import { heldReasonText } from '@/lib/heldReasons';
 import type { Entity, EntityGroup } from '@/types';
 
 const GROUPS: EntityGroup[] = [
@@ -66,7 +67,7 @@ export function BearerFlyoutReference() {
             <BearerList
               choices={bearerChoices(GROUPS, ENTITIES)}
               label="Link To"
-              held={(id) => linked.has(id)}
+              refusal={(id) => (linked.has(id) ? heldReasonText({ kind: 'links', name: 'Hardy' }) : null)}
               onPick={(id) => setLinked(new Set([...linked, id]))}
             />
           </PopoverContent>

@@ -99,7 +99,9 @@ describe('Link Stat on an entity', () => {
 
     openAddMenu('Ash');
     fireEvent.click(screen.getByRole('button', { name: 'Link Stat' }));
-    expect(within(screen.getByRole('group', { name: 'Blueprints' })).getByRole('button', { name: 'Trust' })).toBeDisabled();
+    const trust = within(screen.getByRole('group', { name: 'Blueprints' })).getByRole('button', { name: 'Trust' });
+    expect(trust).toHaveAttribute('aria-disabled', 'true');
+    expect(trust).toHaveAttribute('aria-description', 'Ash already links Trust');
   });
 
   it('overrides a field with its own Reset, marks it stale when the Blueprint moves, and resets everything', () => {
@@ -171,6 +173,28 @@ describe('Detach on an entity', () => {
     act(() => ctx().updateStat(stat('bp-trust', 'Trust', { groupId: 'bp', value: 2, max: 50 })));
     expect(entityOf(ctx).stats![0]).toMatchObject({ value: 9, max: 10 });
   });
+
+  it('explains why the Blueprint can no longer be linked, in Link Stat and in Link To…', () => {
+    renderWorldEditorBench(WORLD, 'advanced');
+    openMirror('Ash');
+    openAddMenu('Ash');
+    pickBlueprint('Link Stat', 'Trust');
+    fireEvent.click(screen.getByRole('button', { name: 'Back to Stats' }));
+    fireEvent.click(within(rowWith('Trust', 'Detach')).getByRole('button', { name: 'Detach' }));
+
+    openAddMenu('Ash');
+    fireEvent.click(screen.getByRole('button', { name: 'Link Stat' }));
+    const trust = within(screen.getByRole('group', { name: 'Blueprints' })).getByRole('button', { name: 'Trust' });
+    expect(trust).toHaveAttribute('aria-disabled', 'true');
+    expect(trust).toHaveAttribute('aria-description', 'Ash already owns Trust');
+    fireEvent.keyDown(screen.getByRole('group', { name: 'Blueprints' }), { key: 'Escape' });
+
+    openEditorTab(/Stats/);
+    fireEvent.click(screen.getByText('Trust'));
+    fireEvent.click(screen.getByRole('button', { name: 'Link To…' }));
+    expect(within(screen.getByRole('group', { name: 'Link To' })).getByRole('button', { name: 'Ash' }))
+      .toHaveAttribute('aria-description', 'Already owns Trust');
+  });
 });
 
 describe('a group link', () => {
@@ -187,7 +211,9 @@ describe('a group link', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Link To…' }));
     fireEvent.click(within(screen.getByRole('group', { name: 'Link To' })).getByRole('button', { name: 'Ash' }));
     expect(entityOf(ctx).statLinks).toEqual([expect.objectContaining({ originalId: 'bp-social', kind: 'group', originalName: 'Social' })]);
-    expect(within(screen.getByRole('group', { name: 'Link To' })).getByRole('button', { name: 'Ash' })).toBeDisabled();
+    const ash = within(screen.getByRole('group', { name: 'Link To' })).getByRole('button', { name: 'Ash' });
+    expect(ash).toHaveAttribute('aria-disabled', 'true');
+    expect(ash).toHaveAttribute('aria-description', 'Already links Social');
   });
 
   it('draws the group in the entity\'s tree, each stat fixed and overridden on its own', () => {

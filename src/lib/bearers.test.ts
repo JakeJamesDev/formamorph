@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
-  PLAYER_BEARER, bearsTraits, editorGateInput, holdsOriginal, inCast, makeLink, originalOf, playsAs, resolveBearers, type BearerWorld,
+  PLAYER_BEARER, bearsTraits, editorGateInput, heldReason, holdsOriginal, inCast, makeLink, originalOf, playsAs, resolveBearers, type BearerWorld,
 } from './bearers';
+import type { HeldReason } from './heldReasons';
 import { remintOwnedTraits } from './ownedTraits';
 import { gateOf, gateStates } from './traitGates';
 import { isShown } from './traitEffects';
@@ -502,6 +503,28 @@ describe('holdsOriginal', () => {
     expect(holdsOriginal(w, cp, 'brave')).toBe(true);
     expect(holdsOriginal(w, cp, 'smite')).toBe(true);
     expect(holdsOriginal(w, bearer(w, PLAYER_BEARER, AS_ALBUS), 'smite')).toBe(false);
+  });
+});
+
+describe('heldReason', () => {
+  const w = world({ entities: [albus, mira, custom, { ...newcomer, traitLinks: [link('cp-smite', 'smite', 'trait')] }] });
+  const reasonOf = (bearerId: string, originalId: string) => heldReason(w, bearer(w, bearerId), originalId);
+
+  it.each([
+    ['mira', 'paladin', { kind: 'links', name: 'Paladin' }, 'a trait linked directly'],
+    ['albus', 'classes', { kind: 'links', name: 'Classes' }, 'a group linked directly'],
+    ['albus', 'paladin', { kind: 'group', name: 'Paladin', group: 'Classes' }, 'a trait inside a linked group'],
+    ['mira', 'classes', { kind: 'inside', name: 'Paladin', group: 'Classes' }, 'a group holding a directly linked trait'],
+    [PLAYER_BEARER, 'brave', { kind: 'player', name: 'Brave' }, 'a root trait the player already has'],
+    ['cp', 'brave', { kind: 'player', name: 'Brave' }, 'a root trait the Custom Persona entity holds through the root'],
+    ['cp', 'smite', { kind: 'links', name: 'Smite' }, 'a Blueprints trait the Custom Persona entity links'],
+  ] satisfies [string, string, HeldReason, string][])('%s holding %s reads %j (%s)', (bearerId, originalId, reason, _case) => {
+    expect(reasonOf(bearerId, originalId)).toEqual(reason);
+  });
+
+  it('gives no reason where a link works', () => {
+    expect(reasonOf('albus', 'smite')).toBeNull();
+    expect(reasonOf('mira', 'wizard')).toBeNull();
   });
 });
 

@@ -1225,6 +1225,7 @@ This pattern differs from two others on purpose. Its entity list sits inside the
 - ⬅️ **Back row.** Above the rows, a Back row with an arrow names the level you're on. It returns one level. On the top level of a menu drill-in, it names the menu row that opened the list and returns to the menu.
 - 👤 **Custom Persona icon.** The entity with the Custom Persona mark sits in its Entities-tab place and carries its own icon.
 - ✅ **Check column.** A flyout that shows held state starts every row with a check column, so group rows and entity rows align. A held entity reads checked and dimmed, and can't be picked.
+- 💬 **Refusal reason.** A held row carries a tip that says why it can't be picked: "Already links Trust", "Already owns Trust", "Already links Body, which holds Trust". A menu that doesn't list the entity starts the line with its name ("Bram already links Trust"). The row stays reachable by keyboard, and screen readers read the reason. A touch screen shows no tip.
 - Rows use the menu's row size and padding. Long names wrap. The list scrolls inside the popover when it outgrows the space.
 
 | Instance | Where | After a pick |
@@ -1240,6 +1241,7 @@ This pattern differs from two others on purpose. Its entity list sits inside the
 | Rows and levels | `bearerChoices` in [`bearerChoices.ts`](../src/lib/bearerChoices.ts) |
 | Menu row | `MENU_ROW` in [`menuRow.ts`](../src/components/menuRow.ts) |
 | Link button | `LinkToBearerButton` in [`BearerPicker.tsx`](../src/managers/BearerPicker.tsx) |
+| Refusal reasons and their text | `HeldReason` and `heldReasonText` in [`heldReasons.ts`](../src/lib/heldReasons.ts) |
 | **+** menu drill-in | `traitsMenu` in [`WorldEditor.tsx`](../src/views/WorldEditor.tsx) |
 | Isolated reference | [`BearerFlyoutReference.tsx`](../src/components/design-system/BearerFlyoutReference.tsx) |
 

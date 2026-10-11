@@ -9,9 +9,10 @@ import {
 } from '@/lib/ownedStats';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import {
-  addStatLink, applyEntityStatRows, detachStatLink, editStatLink, entityStatRows, holdsStatOriginal, removeEntityStatGroup,
-  removeStatLink, resetStatLinkFieldOn, resetStatLinkOn, resetStatLinkStatOn, resolvedEntityStats, statLinkState,
+  addStatLink, applyEntityStatRows, detachStatLink, editStatLink, entityStatRows, removeEntityStatGroup,
+  removeStatLink, resetStatLinkFieldOn, resetStatLinkOn, resetStatLinkStatOn, resolvedEntityStats, statHeldReason, statLinkState,
 } from '@/lib/statLinks';
+import { heldReasonText } from '@/lib/heldReasons';
 import { randomUUID } from '@/lib/uuid';
 import type { Entity, StatGroup } from '@/types';
 import type { StatPanelTab } from '@/views/statPanelTabs';
@@ -128,7 +129,10 @@ const EntityStatsMirror = ({ entity, selectedId, onSelect }: {
       menu: (
         <EntityStatsAddMenu
           world={world}
-          held={(originalId) => holdsStatOriginal(world, entity, originalId)}
+          refusal={(originalId) => {
+            const held = statHeldReason(world, entity, originalId);
+            return held && heldReasonText(held, entity.name);
+          }}
           onAddGroup={(typed) => add((e, id) => addOwnedStatGroup(e, id, typed || undefined))}
           onAddStat={(typed) => add((e, id) => addOwnedStat(e, id, typed || undefined))}
           onLink={(originalId) => add((e, id) => addStatLink(world, e, originalId, id))}
