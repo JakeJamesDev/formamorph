@@ -1,7 +1,8 @@
 # Stat Code v6: Writes To Other Stats
 
-Status: needs-info
-Status note: Grilled 2026-10-04, Q1–Q12; Q13 and Q14 added 2026-10-11. Tickets on hold; more to discuss before they are cut.
+Status: ready-for-agent
+Spec session: stat-code-v6 — spec
+Status note: Grilled 2026-10-04, Q1–Q12; Q13 and Q14 added 2026-10-11. Tickets 01–07 cut 2026-10-11 under `issues/`. Frontier at start: 01, 04.
 
 ## Problem Statement
 
