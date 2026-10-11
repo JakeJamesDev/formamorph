@@ -13,6 +13,7 @@
  */
 import { authoredChipScene } from '@/lib/chipValues/authoredScene';
 import { chipValues, statChipValues } from '@/lib/chipValues/chipValues';
+import { statPlacementOf } from '@/lib/statContext';
 import type { CopyLookup } from '@/lib/blueprints';
 import { allPlaceholders } from '@/lib/placeholderHomes';
 import {
@@ -31,7 +32,7 @@ import type { RuleWorld } from './rules';
 /** The slices of the authored world this instrument reads. */
 export type AiContextWorld = Pick<
   RuleWorld,
-  'worldOverview' | 'stats' | 'locations' | 'connections' | 'entities' | 'traits' | 'traitGroups'
+  'worldOverview' | 'stats' | 'statGroups' | 'locations' | 'connections' | 'entities' | 'traits' | 'traitGroups'
   | 'dictionaries' | 'placeholders'
 >;
 
@@ -162,7 +163,7 @@ export function blockChipPlacedIn(template: string, id: ContextBlockId, position
 /** The lens's stats in the shape `token` asks for, before the lens resolves any chips. An unregistered token
  *  throws, as `blockValue` does. */
 function renderStats(world: AiContextWorld, lens: BenchLens, token: string): string {
-  const value = statChipValues(lensStats(world, lens))[token];
+  const value = statChipValues(lensStats(world, lens), statPlacementOf(world))[token];
   if (value === undefined) throw new Error(`Chip Values has no value for ${token}`);
   return value;
 }

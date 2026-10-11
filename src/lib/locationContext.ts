@@ -1,5 +1,5 @@
 import type { Connection, Entity, GameLocation, PlayerStat } from "@/types";
-import { buildStatContext } from "./statContext";
+import { buildStatContext, statPlacementOf, type ContextFormat } from "./statContext";
 import { entityIdsAt, entityIdsAtAny } from "./entityPresence";
 import { effectiveDestinations } from "./locationGraph";
 import { buildTraitContext, traitsInContextOrder } from "./traitTree";
@@ -13,7 +13,6 @@ import { xmlEscape } from "./utils";
 type MaybeLocation = GameLocation | null;
 
 /** Section-style shape a context builder renders in (mirrors the chip format axis). */
-type ContextFormat = "simple" | "markdown" | "xml";
 
 const pickDescription = (preferSummary: boolean, summary?: string, description?: string) =>
   preferSummary ? summary?.trim() || description : description;
@@ -141,10 +140,11 @@ export type RosterOpts = {
   preferSummary?: boolean; format?: ContextFormat; nameOnly?: boolean; ownedTraits?: OwnedTraitsInForce; ownedStats?: OwnedStatsInForce;
 };
 
-/** An entity's owned stats as roster field lines, nested as its traits are, or '' when it holds none. */
-function ownedStatLines(stats: readonly PlayerStat[], format: ContextFormat): string {
+/** An entity's owned stats as roster field lines, nested as its traits are and under its stat groups, or ''
+ *  when it holds none. */
+function ownedStatLines(entity: Entity, stats: readonly PlayerStat[], format: ContextFormat): string {
   if (!stats.length) return "";
-  const block = buildStatContext([...stats], { values: true, status: true, meaning: true }, format)
+  const block = buildStatContext([...stats], { values: true, status: true, meaning: true }, format, statPlacementOf(entity))
     .split("\n").map((line) => `    ${line}`).join("\n");
   if (format === "xml") return `  <stats>\n${block}\n  </stats>\n`;
   return `${format === "markdown" ? "  - **stats:**" : "  stats:"}\n${block}\n`;
@@ -219,7 +219,7 @@ export function renderEntityRoster(
     const pronouns = entityItem.pronouns?.trim();
     const pronounLine = pronouns ? field("pronouns", pronouns) : "";
     const ownedLines = ownedTraitLines(entityItem, ownedTraits?.[entityItem.id] ?? [], preferSummary, format, field)
-      + ownedStatLines(ownedStats?.[entityItem.id] ?? [], format);
+      + ownedStatLines(entityItem, ownedStats?.[entityItem.id] ?? [], format);
     if (xml) {
       let inner = field("name", entityItem.name);
       inner += aliasLine;

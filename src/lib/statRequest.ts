@@ -1,4 +1,5 @@
 import type { PlayerStat, Trait } from '@/types';
+import type { StatPlacement } from './statContext';
 import { stripMarkdown } from './stripMarkdown';
 import { statChipValues } from './chipValues/chipValues';
 import { applyAiMaxChanges, applyAiStatChanges, parseStatUpdates } from './statChanges';
@@ -50,6 +51,8 @@ export interface StatRequestOwner {
   name: string;
   /** Its live stats, names resolved. */
   stats: readonly PlayerStat[];
+  /** Where its stats sit, group text resolved. Flat when absent. */
+  placement?: StatPlacement;
 }
 
 export interface StatUpdateDiagnostic {
@@ -101,29 +104,29 @@ function ownerKeys(names: readonly string[], taken: Set<string>): string[] {
 }
 
 /** One owner's targets, and its Stats chip values naming each stat by its key. */
-function ownerSection(stats: readonly PlayerStat[], ownerId: string, ownerKey: string) {
+function ownerSection(stats: readonly PlayerStat[], ownerId: string, ownerKey: string, placement?: StatPlacement) {
   const plainNames = stats.map(({ name }) => stripMarkdown(name).trim());
   const keys = statKeys(plainNames);
   const targets = stats.map(({ id, name }, i) => ({
     id, name, plainName: plainNames[i], ownerId, ownerKey, key: keys[i], maxKey: maxKeyOf(keys[i]),
   }));
   // The chip names each stat by its key, so a numbered key is the name the reply sees.
-  return { targets, context: statChipValues(stats.map((stat, i) => ({ ...stat, name: keys[i] }))) };
+  return { targets, context: statChipValues(stats.map((stat, i) => ({ ...stat, name: keys[i] })), placement) };
 }
 
 /** Capture the names and identities this stat request exposes, with plain names in every Stats chip. The
- *  player's targets belong to `ownerId`, keyed `ownerKey` in a schema reply. Each of `entities` follows under
- *  its own heading in every Stats chip value. */
+ *  player's targets belong to `ownerId`, keyed `ownerKey` in a schema reply, and sit as `placement` puts
+ *  them. Each of `entities` follows under its own heading in every Stats chip value. */
 export function createStatRequest(
   stats: readonly PlayerStat[],
   ownerId: string = PLAYER_OWNER,
-  { ownerKey = PLAYER_STAT_HEADING, textPass = false, entities = [] }:
-    { ownerKey?: string; textPass?: boolean; entities?: readonly StatRequestOwner[] } = {},
+  { ownerKey = PLAYER_STAT_HEADING, textPass = false, entities = [], placement }:
+    { ownerKey?: string; textPass?: boolean; entities?: readonly StatRequestOwner[]; placement?: StatPlacement } = {},
 ): StatRequestSnapshot {
-  const player = ownerSection(stats, ownerId, ownerKey);
+  const player = ownerSection(stats, ownerId, ownerKey, placement);
   const owners = entities.filter((owner) => owner.stats.length);
   const keys = ownerKeys(owners.map((owner) => owner.name), new Set([ownerKey]));
-  const sections = owners.map((owner, i) => ({ key: keys[i], ...ownerSection(owner.stats, owner.id, keys[i]) }));
+  const sections = owners.map((owner, i) => ({ key: keys[i], ...ownerSection(owner.stats, owner.id, keys[i], owner.placement) }));
   const context = Object.fromEntries(Object.entries(player.context).map(([token, value]) => [
     token, [value, ...sections.map((section) => `### ${section.key}\n${section.context[token]}`)].join('\n\n'),
   ]));

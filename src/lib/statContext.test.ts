@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { activeDescriptor, buildStatContext } from './statContext';
-import type { PlayerStat, Stat } from '@/types';
+import type { PlayerStat, Stat, StatGroup } from '@/types';
 
 // A minimal PlayerStat; Vigor at 62/100 sits above the 50-threshold descriptor, so "Winded" applies.
 const vigor = {
@@ -102,6 +102,92 @@ describe('buildStatContext', () => {
     expect(buildStatContext([focus], { values: true, status: false, meaning: false }, 'xml')).toBe(
       '<stat>\n  <name>Focus</name>\n  <value>40%</value>\n</stat>',
     );
+  });
+});
+
+describe('buildStatContext with stat groups', () => {
+  const stat = (id: string, name: string, groupId: string | null, order: number) =>
+    ({ ...bandless, id, name, description: '', groupId, order }) as PlayerStat;
+  const values = { values: true, status: false, meaning: false };
+  // Body holds a nested Wounds group, then Vigor; Mind holds Focus; Gear holds only the Load subgroup; Empty holds nothing.
+  const groups: StatGroup[] = [
+    { id: 'body', name: 'Body', aiDescription: 'What the body can take.', parentId: null, order: 1 },
+    { id: 'wounds', name: 'Wounds', aiDescription: '', parentId: 'body', order: 0 },
+    { id: 'mind', name: 'Mind', aiDescription: '', parentId: null, order: 2 },
+    { id: 'gear', name: 'Gear', aiDescription: '', parentId: null, order: 3 },
+    { id: 'load', name: 'Load', aiDescription: 'What the pack weighs.', parentId: 'gear', order: 0 },
+    { id: 'empty', name: 'Empty', aiDescription: 'Nothing here.', parentId: null, order: 4 },
+  ];
+  const authored = [
+    stat('luck', 'Luck', null, 0), stat('vigor', 'Vigor', 'body', 1), stat('bleed', 'Bleed', 'wounds', 0),
+    stat('focus', 'Focus', 'mind', 0), stat('pack', 'Pack', 'load', 0), stat('grit', 'Grit', null, 5),
+  ];
+
+  it('renders loose stats first, then each group under its heading, nested subgroups indented', () => {
+    expect(buildStatContext(authored, values, 'simple', { groups, authored })).toBe([
+      'Luck: 62/100', 'Grit: 62/100',
+      'Body:', '  What the body can take.', '  Vigor: 62/100',
+      '  Wounds:', '    Bleed: 62/100',
+      'Mind:', '  Focus: 62/100',
+      'Gear:', '  Load:', '    What the pack weighs.', '    Pack: 62/100',
+    ].join('\n'));
+  });
+
+  it('nests markdown bullets under a bold group bullet carrying its description', () => {
+    expect(buildStatContext(authored, values, 'markdown', { groups, authored })).toBe([
+      '- **Luck:** 62/100', '- **Grit:** 62/100',
+      '- **Body:** What the body can take.', '  - **Vigor:** 62/100',
+      '  - **Wounds:**', '    - **Bleed:** 62/100',
+      '- **Mind:**', '  - **Focus:** 62/100',
+      '- **Gear:**', '  - **Load:** What the pack weighs.', '    - **Pack:** 62/100',
+    ].join('\n'));
+  });
+
+  it('nests xml <stat> tags inside <group> tags with a name and a description', () => {
+    const only = authored.filter((s) => ['vigor', 'bleed'].includes(s.id));
+    expect(buildStatContext(only, values, 'xml', { groups: [{ ...groups[0], name: 'Body & Soul' }, groups[1]], authored })).toBe([
+      '<group>', '  <name>Body &amp; Soul</name>', '  <description>What the body can take.</description>',
+      '  <stat>', '    <name>Vigor</name>', '    <value>62/100</value>', '  </stat>',
+      '  <group>', '    <name>Wounds</name>',
+      '    <stat>', '      <name>Bleed</name>', '      <value>62/100</value>', '    </stat>',
+      '  </group>',
+      '</group>',
+    ].join('\n'));
+  });
+
+  it('drops a group whose subtree holds none of the given stats', () => {
+    const out = buildStatContext([authored[3]], values, 'simple', { groups, authored });
+    expect(out).toBe('Mind:\n  Focus: 62/100');
+  });
+
+  it('places a stat where the author put it, not where its live copy says', () => {
+    // A save made before a regrouping still carries Focus in Body.
+    const stale = { ...authored[3], groupId: 'body' } as PlayerStat;
+    expect(buildStatContext([stale], values, 'simple', { groups, authored })).toBe('Mind:\n  Focus: 62/100');
+  });
+
+  it('lists a stat the authored list lacks with the loose stats', () => {
+    const extra = stat('extra', 'Extra', 'body', 0);
+    expect(buildStatContext([authored[1], extra], values, 'simple', { groups, authored }))
+      .toBe('Extra: 62/100\nBody:\n  What the body can take.\n  Vigor: 62/100');
+  });
+
+  it('renders a world with no groups byte for byte as the flat list, in the given order', () => {
+    const flat = [stat('b', 'Beta', null, 1), stat('a', 'Alpha', null, 0), { ...vigor, groupId: null }] as PlayerStat[];
+    // The output before stat groups reached the prompt.
+    const before = {
+      simple: 'Beta: 62/100\nAlpha: 62/100\nVigor: 62/100 (Winded) — Physical stamina.',
+      markdown: '- **Beta:** 62/100\n- **Alpha:** 62/100\n- **Vigor:** 62/100 (Winded) — Physical stamina.',
+      xml: [
+        '<stat>\n  <name>Beta</name>\n  <value>62/100</value>\n</stat>',
+        '<stat>\n  <name>Alpha</name>\n  <value>62/100</value>\n</stat>',
+        '<stat>\n  <name>Vigor</name>\n  <value>62/100</value>\n  <status>Winded</status>\n  <meaning>Physical stamina.</meaning>\n</stat>',
+      ].join('\n'),
+    };
+    for (const format of ['simple', 'markdown', 'xml'] as const) {
+      expect(buildStatContext(flat, all, format, { groups: [], authored: flat })).toBe(before[format]);
+      expect(buildStatContext(flat, all, format)).toBe(before[format]);
+    }
   });
 });
 

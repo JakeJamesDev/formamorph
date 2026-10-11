@@ -1,4 +1,4 @@
-import type { DictionaryEntry, Entity, GameLocation, StatDescriptor, Trait, TraitGroup } from '@/types';
+import type { DictionaryEntry, Entity, GameLocation, StatDescriptor, StatGroup, Trait, TraitGroup } from '@/types';
 import { hasPlaceholders } from './placeholders';
 import { mapPreservingIdentity } from './utils';
 
@@ -77,6 +77,10 @@ export function resolveOwnedTraitTexts(
     return traits === e.traits && traitGroups === e.traitGroups ? e : { ...e, traits, traitGroups };
   });
 }
+
+/** Each stat group's name and AI description under `resolve`. */
+export const resolveStatGroupTexts = (groups: StatGroup[], resolve: ResolveText): StatGroup[] =>
+  resolveAiTexts(groups, () => resolve) ?? [];
 
 export function resolveLocationNames(locations: GameLocation[], resolve: ResolveText): GameLocation[] {
   return mapPreservingIdentity(locations, (l) => {

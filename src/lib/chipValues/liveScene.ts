@@ -10,6 +10,7 @@ import type { ResolvedPersona } from '../persona';
 import { treeStatTraits } from '../traitRuntime';
 import { enabledOwnerStats, withTraitToggles, type OwnerStats } from '../statOwners';
 import { resolveEntityTexts, resolveOwnedTraitTexts, type ResolveEntityText } from '../resolveWorldNames';
+import type { StatPlacement } from '../statContext';
 import type { ChipScene, ChipSceneTime } from './chipScene';
 
 /** A trait's own text under its own pins; an owned trait passes its owner. */
@@ -20,6 +21,8 @@ export interface LiveSceneSources {
   overview: string;
   /** The stats in force under the active traits. */
   stats: PlayerStat[];
+  /** Where the world's stats sit, as authored. */
+  statPlacement: StatPlacement;
   /** The traits in force, in authored order. */
   traits: Trait[];
   traitGroups: TraitGroup[];
@@ -105,6 +108,7 @@ export function liveChipScene(
   return {
     overview: sources.overview,
     stats: box?.activeStats ?? sources.stats,
+    statPlacement: sources.statPlacement,
     traits,
     traitGroups: player ? borneByPlayer(player.groups) : sources.traitGroups,
     ownedTraits: ownedInForce,
@@ -140,16 +144,16 @@ function inForceByOwner(states: OwnedTraitStates | undefined): OwnedTraitsInForc
 /** The live adapter: one memoized builder over the playthrough's contexts. */
 export function useLiveChipScene(sources: LiveSceneSources): (location?: GameLocation | null, box?: SceneWrites | null) => ChipScene {
   const {
-    overview, stats, traits, traitGroups, ownedTraits, bearers, entityStats, resolve, resolveTrait, resolveEntity, persona,
+    overview, stats, statPlacement, traits, traitGroups, ownedTraits, bearers, entityStats, resolve, resolveTrait, resolveEntity, persona,
     location, locations, connections, entities, allEntities, participants, notes, time, placeholders,
   } = sources;
   return useCallback(
     (at?: GameLocation | null, box?: SceneWrites | null) => liveChipScene({
-      overview, stats, traits, traitGroups, ownedTraits, bearers, entityStats, resolve, resolveTrait, resolveEntity, persona,
+      overview, stats, statPlacement, traits, traitGroups, ownedTraits, bearers, entityStats, resolve, resolveTrait, resolveEntity, persona,
       location, locations, connections, entities, allEntities, participants, notes, time, placeholders,
     }, at, box),
     [
-      overview, stats, traits, traitGroups, ownedTraits, bearers, entityStats, resolve, resolveTrait, resolveEntity, persona,
+      overview, stats, statPlacement, traits, traitGroups, ownedTraits, bearers, entityStats, resolve, resolveTrait, resolveEntity, persona,
       location, locations, connections, entities, allEntities, participants, notes, time, placeholders,
     ],
   );

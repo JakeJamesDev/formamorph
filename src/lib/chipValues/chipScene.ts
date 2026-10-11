@@ -2,6 +2,7 @@ import type {
   Connection, DictionaryEntry, Entity, GameLocation, Placeholder, PlayerStat, Trait, TraitGroup,
 } from '@/types';
 import type { OwnedStatsInForce, OwnedTraitsInForce } from '../locationContext';
+import type { StatPlacement } from '../statContext';
 import type { ResolvedPersona } from '../persona';
 import type { ResolveEntityText } from '../resolveWorldNames';
 import type { WorldCalendar } from '../gameClock';
@@ -22,6 +23,8 @@ export interface ChipScene {
   overview: string;
   /** The stats with their current values. */
   stats: PlayerStat[];
+  /** Where the stats sit. A flat list when absent. */
+  statPlacement?: StatPlacement;
   /** The traits in force. An adapter that holds per-trait pins resolves those before it builds the scene. */
   traits: Trait[];
   traitGroups: TraitGroup[];
