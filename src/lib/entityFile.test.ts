@@ -4,7 +4,7 @@ import { readLibraryDetails } from './contentAuthor';
 import { embedEntityCard, readEntityCard } from './entityCard';
 import { PLAYER_NAME } from './builtinPlaceholders';
 import { SELF_ENTITY, adoptOwnedTraits } from './portableTraits';
-import type { Entity } from '@/types';
+import type { Entity, Stat } from '@/types';
 
 import { phValues } from '@/test/placeholderValues';
 const entity: Entity = {
@@ -329,6 +329,54 @@ describe('a character card’s openings', () => {
     });
     expect(parsed.openings?.map((o) => [o.text, o.kind])).toEqual([['Kept.', 'action']]);
     expect(parsed).not.toHaveProperty('openingWeights');
+  });
+});
+
+/** Owned stats on a character card: stats, stat groups and stat links travel; a link names its Blueprint. */
+describe('a character card’s owned stats', () => {
+  const trust: Stat = { id: 'trust', name: 'Trust', type: 'number', description: '', min: 0, max: 50, value: 5, regen: 0, descriptors: [], groupId: 'bp' };
+  const origin = { stats: [trust], statGroups: [{ id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' as const }] };
+  const mood: Stat = { id: 'mood', name: 'Mood', type: 'number', description: '', min: 0, max: 10, value: 3, regen: 1, descriptors: [] };
+  const ash: Entity = {
+    id: 'ash', name: 'Ash',
+    stats: [mood],
+    statGroups: [{ id: 'g-feel', name: 'Feelings', parentId: null }],
+    statLinks: [{ id: 'l1', originalId: 'trust', kind: 'stat', originalName: 'Old Name', groupId: null, overrides: { trust: { value: { value: 9, blueprint: 5 } } } }],
+  };
+  const roundTrip = (card: unknown) => parseEntityCardData(JSON.parse(JSON.stringify(card)));
+
+  it('carries the owned stats, groups and links through the card, naming each link’s Blueprint', () => {
+    const parsed = roundTrip(buildEntityCardData(ash, undefined, {}, undefined, { traits: [], traitGroups: [], entities: [ash], ...origin }));
+    expect(parsed.stats).toEqual(ash.stats);
+    expect(parsed.statGroups).toEqual(ash.statGroups);
+    expect(parsed.statLinks).toEqual([{ ...ash.statLinks![0], originalName: 'Trust' }]);
+  });
+
+  it('adds to a world whose Blueprint has other ids by binding the link to the one carrying its name', () => {
+    const parsed = roundTrip(buildEntityCardData(ash, undefined, {}, undefined, { traits: [], traitGroups: [], entities: [ash], ...origin }));
+    const world = { traits: [], traitGroups: [], entities: [], stats: [{ ...trust, id: 'n-trust' }], statGroups: origin.statGroups };
+    const added = adoptOwnedTraits(parsed, world);
+    expect(added.statLinks![0]).toMatchObject({ originalId: 'n-trust', overrides: { 'n-trust': ash.statLinks![0].overrides!.trust } });
+    expect(added.stats).toEqual(ash.stats);
+  });
+
+  it('fills a card that carries no stats with none', () => {
+    const parsed = roundTrip(buildEntityCardData({ id: 'x', name: 'X' }));
+    expect(parsed).not.toHaveProperty('stats');
+    expect(parsed).not.toHaveProperty('statGroups');
+    expect(parsed).not.toHaveProperty('statLinks');
+  });
+
+  it('keeps each list to the records it can hold and drops a malformed one', () => {
+    const parsed = parseEntityCardData({
+      formamorphKind: 'entity', name: 'X',
+      stats: [mood, null, 'x', { name: 'No Id' }],
+      statGroups: 'feelings',
+      statLinks: [ash.statLinks![0], { id: 'no-original' }],
+    });
+    expect(parsed.stats).toEqual([mood]);
+    expect(parsed).not.toHaveProperty('statGroups');
+    expect(parsed.statLinks).toEqual([ash.statLinks![0]]);
   });
 });
 

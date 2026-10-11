@@ -1,7 +1,11 @@
 // An entity's owned traits and links off-world: named on the way out, bound to a receiving world on the way in.
 
-import type { Entity, Placeholder, PlaceholderGroup, RequirementBearer, Trait, TraitGroup, TraitLink, TraitRequirement } from '@/types';
+import type {
+  Entity, Placeholder, PlaceholderGroup, RequirementBearer, Stat, StatGroup, Trait, TraitGroup, TraitLink, TraitRequirement,
+} from '@/types';
 import { linksInTreeOrder, originalOf } from './bearers';
+import { rekeyed, uniqueNamed } from './carriedBinding';
+import { bindOwnedStats, type StatWorld } from './portableStats';
 import { remintOwnedTraits } from './ownedTraits';
 import { worldBlueprints } from './placeholderBlueprints';
 import { blueprintItemIds, groupsBelow } from './traitTree';
@@ -11,8 +15,9 @@ import { mapConditions, notFlag } from './requirementRows';
  *  its own id. */
 export const SELF_ENTITY = 'self';
 
-/** The traits, groups, and entities a requirement or a link can point at in one world. */
-export interface TraitWorld {
+/** The traits, groups, and entities a requirement or a link can point at in one world, and its stats when a
+ *  carried entity's stat Links bind to them. */
+export interface TraitWorld extends StatWorld {
   traits: readonly Trait[];
   traitGroups: readonly TraitGroup[];
   entities: readonly Entity[];
@@ -25,12 +30,14 @@ type Named = { id: string; name: string };
 type EntityBearer = Extract<RequirementBearer, { kind: 'entity' }>;
 type Original = NonNullable<ReturnType<typeof originalOf>>;
 
-/** A world's trait lists and its blueprints, when a record carries traits. A record with no placeholder folders has no blueprints. */
+/** A world's trait lists, its stats and its blueprints, when a record carries traits. A record with no placeholder folders has no blueprints. */
 export const traitWorldOf = (data: {
   traits?: readonly Trait[]; traitGroups?: readonly TraitGroup[]; entities?: readonly Entity[];
   placeholders?: readonly Placeholder[]; placeholderGroups?: readonly PlaceholderGroup[];
+  stats?: readonly Stat[]; statGroups?: readonly StatGroup[];
 }): TraitWorld | undefined => (data.traits ? {
   traits: data.traits, traitGroups: data.traitGroups ?? [], entities: data.entities ?? [],
+  ...(data.stats ? { stats: data.stats, statGroups: data.statGroups ?? [] } : {}),
   blueprints: worldBlueprints({ placeholders: [...data.placeholders ?? []], placeholderGroups: [...data.placeholderGroups ?? []] }),
 } : undefined);
 
@@ -50,13 +57,6 @@ function targets(world: TraitWorld, except?: string) {
 }
 
 const NO_TARGETS: ReturnType<typeof targets> = { trait: [], group: [], playingAs: [] };
-
-/** The one item carrying `name`, else null: no match and two matches both bind nothing. */
-export function uniqueNamed<T extends Named>(list: readonly T[], name: string | undefined): T | null {
-  const wanted = name?.trim();
-  const named = wanted ? list.filter((item) => item.name.trim() === wanted) : [];
-  return named.length === 1 ? named[0] : null;
-}
 
 const isSelf = (r: TraitRequirement, entityId: string) =>
   r.kind === 'playingAs' && (r.id === SELF_ENTITY || r.id === entityId);
@@ -78,15 +78,6 @@ function withLinks<T extends Portable>(entity: T, links: TraitLink[] | undefined
 
 /** The trait ids a link's own data keys: its overrides. */
 const keyedIds = (link: TraitLink): string[] => Object.keys(link.overrides ?? {});
-
-/** The map with each key rewritten, a key that maps to null dropped; absent when nothing is left. */
-function rekeyed<V>(map: Record<string, V> | undefined, key: (id: string) => string | null): Record<string, V> | undefined {
-  const out = Object.fromEntries(Object.entries(map ?? {}).flatMap(([id, v]) => {
-    const next = key(id);
-    return next === null ? [] : [[next, v] as const];
-  }));
-  return Object.keys(out).length ? out : undefined;
-}
 
 /** The world original the link points at by id, when it is one of the `linkable` Blueprints items of the link's kind. */
 function originalById(world: TraitWorld, linkable: ReadonlySet<string>, link: TraitLink): Original | null {
@@ -265,12 +256,13 @@ export const comparableOwnedTraits = (entity: Entity): { traits?: Trait[]; trait
 
 /**
  * A carried entity joining `world` as a new copy: its owned traits and links bound as {@link bindOwnedTraits}
- * does, under fresh ids when any of them collides with an id the world already holds.
+ * does, under fresh ids when any of them collides with an id the world already holds, and its stat Links bound
+ * as {@link bindOwnedStats} does.
  */
 export function adoptOwnedTraits(entity: Entity, world: TraitWorld): Entity {
   const held = targets(world, entity.id);
   const heldLinks = world.entities.filter((e) => e.id !== entity.id).flatMap((e) => e.traitLinks ?? []);
   const taken = new Set([...held.trait, ...held.group, ...heldLinks].map((item) => item.id));
   const collides = [...ownIds(entity), ...(entity.traitLinks ?? []).map((l) => l.id)].some((id) => taken.has(id));
-  return bindOwnedTraits(collides ? remintOwnedTraits(entity) : entity, world);
+  return bindOwnedStats(bindOwnedTraits(collides ? remintOwnedTraits(entity) : entity, world), world);
 }

@@ -28,6 +28,7 @@ import { appendLogEntry, type LogKind } from '../lib/playLog';
 import { registerDevHook } from '../lib/devRouter';
 import { useLibraryEntity } from '../lib/useLibraryEntity';
 import { bindCarriedBlueprints, blueprintBindWorld } from '../lib/blueprintTravel';
+import { playLibraryStats } from '../lib/portableStats';
 import { useGameData } from './GameDataContext';
 import { addedCharacters } from '../lib/ownedTraitsInPlay';
 import { libraryBooksInPlay } from '../lib/dictionarySelection';
@@ -142,14 +143,18 @@ function useProvideGameplay() {
   const [entityImageIndex, setEntityImageIndex] = useState<Record<string, number>>({});
   // Who the player plays (see lib/persona). Envelope state beside the dictionaries, so an undo leaves it.
   const [personaRef, setPersonaRef] = useState<PersonaRef | undefined>(undefined);
-  // A library persona is a live read, never a copy. Its copies bind to this world's blueprints.
+  // A library persona is a live read, never a copy. Its copies bind to this world's blueprints, and its stat
+  // Links resolve into stats against this world's Blueprints.
   const { entity: storedPersona, pending: personaPending } = useLibraryEntity(
     personaRef?.source === 'library' ? personaRef.entityId : null,
   );
-  const { worldPlaceholders, placeholderGroups, dictionaries: worldBooks } = useGameData();
+  const { worldPlaceholders, placeholderGroups, dictionaries: worldBooks, stats: worldStats, statGroups: worldStatGroups } = useGameData();
   const libraryPersona = useMemo(
-    () => storedPersona && bindCarriedBlueprints(storedPersona, blueprintBindWorld({ placeholders: worldPlaceholders, placeholderGroups })).entity,
-    [storedPersona, worldPlaceholders, placeholderGroups],
+    () => storedPersona && bindCarriedBlueprints(
+      playLibraryStats(storedPersona, { stats: worldStats, statGroups: worldStatGroups }),
+      blueprintBindWorld({ placeholders: worldPlaceholders, placeholderGroups }),
+    ).entity,
+    [storedPersona, worldStats, worldStatGroups, worldPlaceholders, placeholderGroups],
   );
   // A library persona's placeholders join the session's set, and its Wildcards are drawn when it lands.
   useEffect(() => {

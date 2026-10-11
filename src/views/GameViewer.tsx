@@ -15,7 +15,8 @@ import { useAccountDeletion } from "@/contexts/AccountDeletionContext";
 import { type StatClock } from "@/lib/statCodeExecutor";
 import { overlayStatCodeResult, playthroughPlaceholderSet, runStatCodeTurn, withPinWrites, type StatCodeTurn } from "@/lib/statCodeTurn";
 import {
-  applyEntityStatResponse, entityCodeTurns, entityStatOwners, seedEntityStats, statRequestOwners, withEntityRegen, withOwnerCodeResults,
+  applyEntityStatResponse, entityCodeTurns, entityStatOwners, seedEntityStats, statOwnerEntities, statRequestOwners, withEntityRegen,
+  withOwnerCodeResults,
 } from "@/lib/entityStats";
 import type { StatCodeTiming } from "@/lib/statCodeTiming";
 import { Button } from "@/components/ui/button";
@@ -1813,12 +1814,13 @@ const GameViewer = ({
     (owned: OwnedTraitStates) => (ownerId: string) => bearerStatTraitsInForce(owned, gatedWorld(), ownerId),
     [gatedWorld],
   );
+  const statEntities = useMemo(() => statOwnerEntities(codeEntities), [codeEntities]);
   /** The entity owners whose regen and code run over `values`: everyone in the playthrough, present or not.
    *  `owned` is the owned trait state their toggles read, the live one by default. */
   const entityOwnersOf = useCallback(
     (values: EntityStatValues, owned: OwnedTraitStates = ownedTraits) =>
-      entityStatOwners(values, codeEntities.world, personaRef, entityInForceUnder(owned)),
-    [codeEntities, personaRef, entityInForceUnder, ownedTraits],
+      entityStatOwners(values, statEntities, personaRef, entityInForceUnder(owned)),
+    [statEntities, personaRef, entityInForceUnder, ownedTraits],
   );
   // The latest committed entity stats, which the turn callbacks read as they read `rawPlayerStatsRef`.
   const entityStatsRef = useRef(entityStats);
@@ -1826,9 +1828,9 @@ const GameViewer = ({
   // The live stats a stat request could hold: the player's and every entity's that can be present.
   const requestStatCount = useMemo(
     () => activeStats.length
-      + statRequestOwners(codeEntities.world, entityStats, personaRef, (owned) => owned, entityInForceUnder(ownedTraits), (groups) => groups)
+      + statRequestOwners(statEntities, entityStats, personaRef, (owned) => owned, entityInForceUnder(ownedTraits), (groups) => groups)
         .reduce((n, owner) => n + owner.stats.length, 0),
-    [activeStats, codeEntities, entityStats, personaRef, entityInForceUnder, ownedTraits],
+    [activeStats, statEntities, entityStats, personaRef, entityInForceUnder, ownedTraits],
   );
 
   // The same derivation for a paged-back turn, so history shows the stats that were live on that turn.
@@ -2855,7 +2857,7 @@ const GameViewer = ({
         const owners = entityCodeTurns(
           entityOwnersOf(entityBase, preTurn ? preTurn.ownedTraits ?? {} : undefined), timing === 'before' ? null : clock.deltaHours ?? FLAT_HOURS_PER_TURN,
           (ownerId, ticked) => resolveStatText(
-            refreshSavedStats(ticked, codeEntities.world.find((e) => e.id === ownerId)?.stats ?? []), resolvePH,
+            refreshSavedStats(ticked, statEntities.find((e) => e.id === ownerId)?.stats ?? []), resolvePH,
           ),
           { previous: entityPrevious, asks: entityTurn?.asks },
         );
@@ -2929,7 +2931,7 @@ const GameViewer = ({
         return null;
       }
     },
-    [setPlayerStats, setEntityStats, entityOwnersOf, entityInForceUnder, addStatDeltas, setCodePins, resolvePH, statCodePlaceholders, pinsFor, traits, authoredStats, resolveTraitText, gatedWorld, codeEntities, inForceOn, liveScene,
+    [setPlayerStats, setEntityStats, entityOwnersOf, entityInForceUnder, addStatDeltas, setCodePins, resolvePH, statCodePlaceholders, pinsFor, traits, authoredStats, resolveTraitText, gatedWorld, codeEntities, statEntities, inForceOn, liveScene,
       setPlayerTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, setOwnedTraits, addLogEntry],
   );
 
@@ -4272,7 +4274,7 @@ const GameViewer = ({
       }
       // The persona's linked stat traits apply after the world picks; then each entity's own traits apply to its stats.
       const played = applyPlayedStatTraits({
-        ...seedState, ownedTraits: ownedTraitStatesFrom(initialOwnedTraits), entityStats: seedEntityStats(codeEntities.world),
+        ...seedState, ownedTraits: ownedTraitStatesFrom(initialOwnedTraits), entityStats: seedEntityStats(statOwnerEntities({ world: codeEntities.world, library: seedLibrary })),
       }, seedWorld);
       seedState = applyOwnedStatTraits(played.state, seedWorld);
       // Logs are write-time strings shown raw, and each trait here is authored (chips intact), so each resolves

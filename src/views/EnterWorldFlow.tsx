@@ -24,6 +24,7 @@ import {
   withLibraryDefaults, withLocationPick, withPersonaPick, withSettledTraits, type EntryDraft, type EntryTraitWorld,
 } from '@/lib/entryDraft';
 import { bindLibraryEntity, blueprintBindWorld } from '@/lib/blueprintTravel';
+import { playLibraryStats } from '@/lib/portableStats';
 import { hasWorldAdditionDefaults, restoreWorldAdditionDefaults, saveWorldAdditionDefaults } from '@/lib/worldAdditionDefaults';
 import {
   hasPersonaChoice, namedStartLocation, offeredPersonas, offeredStartLocations, preselectPersona, readWorldPersona,
@@ -84,7 +85,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
 }, ref) {
   const isMountedRef = useMountedRef();
   const {
-    traits: rawTraits, traitGroups: rawTraitGroups, stats: rawStats, locations: rawLocations, placeholders,
+    traits: rawTraits, traitGroups: rawTraitGroups, stats: rawStats, statGroups: rawStatGroups, locations: rawLocations, placeholders,
     dictionaries: worldBooks, entities: worldEntities, worldPlaceholders, placeholderGroups,
   } = useGameData();
   const { beginSession, endSession, rolls } = usePlaceholderSession();
@@ -126,10 +127,10 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
   // The raw world's traits, whose names carried requirements were stored under and bind to, and its blueprints.
   const rawTraitWorld = useMemo(
     () => ({
-      traits: rawTraits, traitGroups: rawTraitGroups, entities: worldEntities,
+      traits: rawTraits, traitGroups: rawTraitGroups, entities: worldEntities, stats: rawStats, statGroups: rawStatGroups,
       ...blueprintBindWorld({ placeholders: worldPlaceholders, placeholderGroups }),
     }),
-    [rawTraits, rawTraitGroups, worldEntities, worldPlaceholders, placeholderGroups],
+    [rawTraits, rawTraitGroups, worldEntities, rawStats, rawStatGroups, worldPlaceholders, placeholderGroups],
   );
   // The library entities in the cast, loaded in full on pick so their owned traits join the tree.
   const [libraryCastData, setLibraryCastData] = useState<ReadonlyMap<string, Entity>>(() => new Map());
@@ -302,7 +303,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
   const loadPersonaPick = async (ref: PersonaRef): Promise<PersonaPick> => {
     if (ref.source !== 'library') return { ref };
     try {
-      return { ref, libraryEntity: await EntityStorageService.getEntityData(ref.entityId) };
+      return { ref, libraryEntity: playLibraryStats(await EntityStorageService.getEntityData(ref.entityId), rawTraitWorld) };
     } catch (error) {
       if (error instanceof LibraryRecordNotFoundError) return { ref: { source: 'none' } };
       throw error;

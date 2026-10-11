@@ -29,6 +29,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Stats tab Blueprints let you define a stat once and give it to many entities.** On an entity's Stats tab, **Link Stat** follows the Blueprint live and **Copy Stat** makes the entity's own stat. A link can change any field but the name, with **Reset** per field. Each entity keeps its own value.
     - **Entity stat rows now show a turn's change with the same timing as yours.** The change fades after 10 seconds, the bar keeps its color until your next action, and then it drains away.
     - **The AI now reads stats under their group headings in the Stats chips, the Entities chip and the stat request.** The AI also reads each group's name and description. Stats outside a group come first, as before.
+    - **Library characters keep their stats on a character card and play with them in any world.** The card carries the stats, stat groups and stat links. A library character or persona then acts like an authored entity.
   - **The AI now updates your stats with fewer wrong-direction and made-up changes.** It answers with a change for every stat, 0 included. An endpoint that can't take that format gets the old reply style, and the AI context viewer notes it.
 - **🛠️ Developer tooling**
   - **Entity Stats:**

@@ -19,7 +19,9 @@ import { adoptOwnedTraits } from '@/lib/portableTraits';
 import { dropBookBlueprintChips, dropEntityBlueprintChips } from '@/lib/blueprintChips';
 import { blueprintIds } from '@/lib/placeholderBlueprints';
 import { bindCarriedBlueprints, blueprintBindWorld } from '@/lib/blueprintTravel';
-import type { Dictionary, Entity, GameLocation, Placeholder, PlaceholderGroup, Trait, TraitGroup, WorldOverview } from '@/types';
+import type {
+  Dictionary, Entity, GameLocation, Placeholder, PlaceholderGroup, Stat, StatGroup, Trait, TraitGroup, WorldOverview,
+} from '@/types';
 
 /** The world slices this pass reads out of a stored record. */
 interface StoredContent extends Record<string, unknown> {
@@ -31,6 +33,8 @@ interface StoredContent extends Record<string, unknown> {
   locations?: GameLocation[];
   traits?: Trait[];
   traitGroups?: TraitGroup[];
+  stats?: Stat[];
+  statGroups?: StatGroup[];
 }
 
 /** One stored world, named for a picker and for what a failure says. */
@@ -116,6 +120,7 @@ export async function addCopyToStoredWorld(
     const entity: Entity = {
       ...adoptOwnedTraits(withEntityLocations(rest as Entity, Object.values(used)), {
         traits: data.traits ?? [], traitGroups: data.traitGroups ?? [], entities: kept,
+        stats: data.stats ?? [], statGroups: data.statGroups ?? [],
       }),
       link: {
         ...linkToSource(source),
