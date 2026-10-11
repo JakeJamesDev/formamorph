@@ -79,6 +79,11 @@ describe('scoreChanges', () => {
     expect(score).toMatchObject({ hits: 0, misses: 1, spurious: 1, misattributed: 1, exact: false });
   });
 
+  it('names each missed and spurious cell with its direction', () => {
+    const score = scoreChanges([{ owner: 'player', stat: 'Vigor', change: -5 }, { owner: 'ent-bram', stat: 'Vigor', change: 3 }], expectBram, {}, scope);
+    expect(score).toMatchObject({ missedCells: ['ent-bram/Vigor-'], spuriousCells: ['player/Vigor-'] });
+  });
+
   it('separates a wrong sign from a miss', () => {
     expect(scoreChanges([{ owner: 'ent-bram', stat: 'Vigor', change: 4 }], expectBram, {}, scope).wrongSign).toBe(1);
     expect(scoreChanges([], expectBram, {}, scope).misses).toBe(1);

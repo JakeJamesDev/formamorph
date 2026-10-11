@@ -38,6 +38,10 @@ export interface Score {
   /** Rows that repeat an owner/stat pair already reported. */
   duplicates: number;
   exact: boolean;
+  /** `owner/stat` plus the gold direction, for each gold move the reply missed or signed wrong. */
+  missedCells: string[];
+  /** `owner/stat` plus the reply's direction, for each spurious move. */
+  spuriousCells: string[];
 }
 
 const key = (text: string) => stripMarkdown(text).replace(/^[\s*_+-]+|[\s*_]+$/g, '').replace(/\s+/g, ' ').toLowerCase();
@@ -140,13 +144,15 @@ export function scoreChanges(changes: Change[], expect: GoldCells, allow: GoldCe
     Object.entries(gold[owner] ?? {}).find(([name]) => key(name) === key(stat))?.[1];
 
   let expected = 0, hits = 0, wrongSign = 0, misses = 0;
+  const missedCells: string[] = [], spuriousCells: string[] = [];
   for (const owner of scope) {
     for (const [stat, want] of Object.entries(expect[owner] ?? {})) {
       expected++;
       const got = sign(totals.get(`${owner}\u0000${key(stat)}`)?.sum ?? 0);
-      if (got === want) hits++;
-      else if (got) wrongSign++;
+      if (got === want) { hits++; continue; }
+      if (got) wrongSign++;
       else misses++;
+      missedCells.push(`${owner}/${stat}${want}`);
     }
   }
   let spurious = 0, misattributed = 0, duplicates = 0;
@@ -155,9 +161,10 @@ export function scoreChanges(changes: Change[], expect: GoldCells, allow: GoldCe
     const got = sign(cell.sum);
     if (!got || lookup(expect, cell.owner, cell.stat) || lookup(allow, cell.owner, cell.stat) === got) continue;
     spurious++;
+    spuriousCells.push(`${cell.owner}/${cell.stat}${got}`);
     if (Object.entries(expect).some(([owner, cells]) => owner !== cell.owner && lookup({ [owner]: cells }, owner, cell.stat))) {
       misattributed++;
     }
   }
-  return { expected, hits, wrongSign, misses, spurious, misattributed, duplicates, exact: hits === expected && !spurious };
+  return { expected, hits, wrongSign, misses, spurious, misattributed, duplicates, exact: hits === expected && !spurious, missedCells, spuriousCells };
 }

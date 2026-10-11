@@ -127,7 +127,7 @@ Now write my options - one per line, each a single action I take.`;
 
 export const defaultStatUpdatesUserPrompt = `Narration: <NARRATION>
 
-Give each character's stats their change from this narration: 0 for every value and maximum it did not move.`;
+Give each character's stats their change from this narration: 0 for every value and maximum it did not move. A clear shift in how a character regards the player moves that character's own stat.`;
 
 /** The text pass's user message: what the default prompt falls back to on an endpoint that refuses the schema. */
 export const textStatUpdatesUserPrompt = `Narration: <NARRATION>
@@ -182,6 +182,7 @@ Each character's stats sit under their name. Current readings (shown as current-
 - List a stat only for a change you can point to in the narration - a real exertion, injury, loss, or gain, or a clear shift in how a character regards the player. A stat being relevant, on the character's mind, or thematically related is NOT a change. When you're unsure whether a stat moved, leave it out.
 - Report each stat that genuinely moved and no others. If two stats plainly shifted, give both; if one did, give one; if none did, give nothing. Don't pad the list with a related-but-unmoved stat, and don't drop one the turn clearly hit.
 - The amount is a rough judgment, not a calculation - no one knows the exact number. Pick a small whole number scaled loosely to the stat's range and how big the moment was, and commit to it. Never report the value because you're unsure of the change.
+- Each stat belongs to the character it sits under. A stat moves only for what that character does, goes through, or feels this turn.
 
 ## Format
 - One key per character, named exactly as its heading shows. Under it, two keys per stat of that character: the stat's name, holding this turn's change to the stat's value, and the stat's name followed by " max", holding this turn's change to the stat's maximum. Each is one signed whole number between -20 and 20.

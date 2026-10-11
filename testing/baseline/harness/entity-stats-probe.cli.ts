@@ -20,6 +20,8 @@
 //   SGB      SG with bare group headings, no descriptions
 //   SH       SG with each group as a #### sub-heading and its stats flat beneath
 //   SP       SG with each group as a plain `Name: description` line and its stats flat beneath
+//   S0       S, with the stat prompts as committed at --s0-ref (default HEAD, the before arm for an uncommitted edit)
+//   WA..WR   ticket 05's request (ded57a32), with one wording change each (WORDINGS below)
 // A to E derive from the text pass's prompt by checked text swaps; S is built by the app, so it is what ships.
 //
 // Per reply: exact (every gold move right, nothing spurious), hits / wrong sign / misses, spurious moves,
@@ -29,9 +31,12 @@
 //
 // Usage: npx vite-node testing/baseline/harness/entity-stats-probe.cli.ts --
 //          [--endpoint URL] [--model ID] [--runs 6] [--pool 3] [--arms control,A,B,C] [--only storm-crowd]
-//          [--ws free|pattern|xgrammar|outlines|lmfe] [--show] [--dump]
-import { readFileSync } from 'node:fs';
+//          [--ws free|pattern|xgrammar|outlines|lmfe] [--s0-ref REF] [--show] [--dump]
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 // Arms A to E derive from the text pass's prompts, under the names they were written against.
 import {
   defaultStatUpdatesPrompt as shippedStatPrompt, defaultStatUpdatesUserPrompt as shippedStatUserPrompt,
@@ -62,7 +67,7 @@ const model = argVal('--model', 'default');
 const runs = Number(argVal('--runs', '6'));
 const pool = Number(argVal('--pool', '3'));
 const only = argVal('--only', '');
-const ALL_ARMS = ['control', 'A', 'A2', 'A3', 'B', 'C', 'C2', 'C3', 'D', 'E', 'S', 'SU', 'SN', 'SG', 'SGB', 'SH', 'SP', 'C3P'] as const;
+const ALL_ARMS = ['control', 'A', 'A2', 'A3', 'B', 'C', 'C2', 'C3', 'D', 'E', 'S', 'SU', 'SN', 'SG', 'SGB', 'SH', 'SP', 'C3P', 'S0', 'WA', 'WB', 'WC', 'WD', 'WE', 'WF', 'WH', 'WJ', 'WK', 'WL', 'WP', 'WQ', 'WR'] as const;
 type Arm = typeof ALL_ARMS[number];
 const arms = argVal('--arms', ALL_ARMS.join(',')).split(',') as Arm[];
 const SEED = 424242;
@@ -170,15 +175,17 @@ function grouped(stats: readonly PlayerStat[], bare: boolean): StatPlacement {
 }
 
 /** The request the app sends, built by the app's own stat pass: the player's stats and each present owner's,
- *  in groups when `groups` names a style. */
-function shippedCall(owners: Owner[], narration: string, groups?: 'described' | 'bare'): Call {
+ *  in groups when `groups` names a style, from `prompts` when given. */
+function shippedCall(
+  owners: Owner[], narration: string, groups?: 'described' | 'bare', prompts = { system: shippedStatPrompt, user: shippedStatUserPrompt },
+): Call {
   const placement = (stats: readonly PlayerStat[]) => (groups ? { placement: grouped(stats, groups === 'bare') } : {});
   const snapshot = createStatRequest(playerOwner.stats, PLAYER_OWNER, {
     ...placement(playerOwner.stats),
     entities: owners.filter((o) => o !== playerOwner).map((o) => ({ id: o.key, name: o.name, stats: o.stats, ...placement(o.stats) })),
   });
   const request = statUpdatesRequest(
-    { system: shippedStatPrompt, user: shippedStatUserPrompt },
+    prompts,
     { ctx: BASE_CTX, action: '', narration },
     { statCount: playerOwner.stats.length, statRequest: snapshot, quiet: false },
   );
@@ -189,13 +196,15 @@ function shippedCall(owners: Owner[], narration: string, groups?: 'described' | 
   };
 }
 
+/** The stat request's user line, after the narration. */
+const USER_LINE = /Give each character's stats[^\n]*$/;
 const C3_USER = "Give each character's stats their change from this narration: 0 for every stat it did not move.";
 const C3_FORMAT = "- One key per character, named exactly as its heading shows. Its value gives each of that character's stats this turn's change as one signed whole number between -20 and 20.";
 
 /** S with C3's user line (SU), or with no max keys at all, in the schema, the format or the user line (SN). */
 function shippedVariant(arm: 'SU' | 'SN', owners: Owner[], narration: string): Call {
   const call = shippedCall(owners, narration);
-  const user = swap(call.user, /Give each character's stats[^\n]*$/, C3_USER);
+  const user = swap(call.user, USER_LINE, C3_USER);
   if (arm === 'SU') return { ...call, user };
   const strip = (node: Record<string, unknown>): Record<string, unknown> => {
     if (node.type !== 'object') return node;
@@ -205,6 +214,71 @@ function shippedVariant(arm: 'SU' | 'SN', owners: Owner[], narration: string): C
   };
   const system = swap(call.system, /- One key per character, named exactly as its heading shows\. Under it[^\n]*/, C3_FORMAT);
   return { ...call, user, system: swap(system, 'A value or maximum that did not move gets 0.', 'A stat that did not move gets 0.'), schema: strip(call.schema as Record<string, unknown>) };
+}
+
+/** The stat prompt pair as committed at a ref, imported from a copy of GamePrompts.ts at that ref. */
+async function promptsAt(ref: string): Promise<{ system: string; user: string }> {
+  const source = execFileSync('git', ['show', `${ref}:src/components/game/GamePrompts.ts`], { encoding: 'utf8' });
+  const dir = mkdtempSync(path.join(tmpdir(), 'fm-prompts-'));
+  const file = path.join(dir, 'GamePrompts.ts');
+  writeFileSync(file, source);
+  try {
+    const mod = await import(pathToFileURL(file).href) as { defaultStatUpdatesPrompt: string; defaultStatUpdatesUserPrompt: string };
+    return { system: mod.defaultStatUpdatesPrompt, user: mod.defaultStatUpdatesUserPrompt };
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+const s0Prompts = arms.includes('S0') ? await promptsAt(argVal('--s0-ref', 'HEAD')) : undefined;
+
+/** One wording change on the stat prompts ticket 17 started from, each a checked text swap. */
+type Wording = { system?: Array<[string | RegExp, string]>; user?: Array<[string | RegExp, string]> };
+const MAX_KEY_FORMAT = /- One key per character, named exactly as its heading shows\. Under it[^\n]*/;
+const SPLIT_MAX = '- One key per character, named exactly as its heading shows. Under it, each stat\'s name holds this turn\'s change to that stat as one signed whole number between -20 and 20.\n- Beside each stat, its name followed by " max" holds this turn\'s change to the stat\'s maximum, in the same form. A maximum moves only when the turn changes how high that stat can go.';
+const REGARD_ROUTE = "- A shift in how a character regards the player changes that character's own stat for it.";
+const WA_USER = "Give each character's stats their change from this narration, a shift in how a character regards the player included: 0 for every value and maximum it did not move.";
+const STANDING = ["When you're unsure whether a stat moved, leave it out.", "When you're unsure whether a stat moved, leave it out.\n- A stat's current reading and the traits show where it stands before this turn. Only an event in this narration moves it."] as const;
+const WH_USER = "Give each character's stats their change from this narration: 0 for every value and maximum it did not move. A clear shift in how a character regards the player moves that character's own stat.";
+const OWNED = "A stat moves only for what that character does, goes through, or feels this turn.";
+const OWNED_INTRO = ["Each character's stats sit under their name.", `Each character's stats sit under their name. ${OWNED}`] as const;
+const OWNED_LAST = ['\n\n## Format', `\n- Each stat belongs to the character it sits under. ${OWNED}\n\n## Format`] as const;
+const SPLIT_SWAPS: Array<[string | RegExp, string]> = [[MAX_KEY_FORMAT, SPLIT_MAX], ['A value or maximum that did not move gets 0.', 'A stat or maximum that did not move gets 0.']];
+const REGARD_LAST = ['\n\n## Format', `\n${REGARD_ROUTE}\n\n## Format`] as const;
+const WORDINGS = {
+  // The user line names the regard shift beside the physical changes.
+  WA: { user: [[USER_LINE, WA_USER]] },
+  // The format gives the value key its own line and the max key a second one, with C3's user line.
+  WB: { system: SPLIT_SWAPS, user: [[USER_LINE, C3_USER]] },
+  // The regard rule names the owner the change goes to, last in What to change.
+  WC: { system: [REGARD_LAST] },
+  WD: { system: [...SPLIT_SWAPS, REGARD_LAST], user: [[USER_LINE, C3_USER]] },
+  // A rule that a stat's reading and the traits are its starting point, not a change.
+  WE: { system: [STANDING] },
+  WF: { system: [STANDING], user: [[USER_LINE, WA_USER]] },
+  // WE, with the regard shift last in the user line and scoped to the regarding character's stat.
+  WH: { system: [STANDING], user: [[USER_LINE, WH_USER]] },
+  // A rule that a stat moves only for its own character, in the Stats intro; then with WH's user line.
+  WJ: { system: [OWNED_INTRO] },
+  WK: { system: [OWNED_INTRO], user: [[USER_LINE, WH_USER]] },
+  // The same rule, last in What to change, with WH's user line.
+  WL: { system: [OWNED_LAST], user: [[USER_LINE, WH_USER]] },
+  // The owner rule last in the user line, with no regard sentence.
+  WP: { user: [[USER_LINE, `Give each character's stats their change from this narration: 0 for every value and maximum it did not move. ${OWNED}`]] },
+  // WL, with the zeros last in the user line.
+  WQ: { system: [OWNED_LAST], user: [[USER_LINE, "Give each character's stats their change from this narration. A clear shift in how a character regards the player moves that character's own stat. Every value and maximum the narration did not move gets 0."]] },
+  // WL, with the regard sentence naming only the other characters.
+  WR: { system: [OWNED_LAST], user: [[USER_LINE, "Give each character's stats their change from this narration: 0 for every value and maximum it did not move. When another character's regard for the player clearly shifts, that character's own stat moves."]] },
+} satisfies Record<string, Wording>;
+const isWording = (arm: Arm): arm is keyof typeof WORDINGS => arm in WORDINGS;
+const wordingBase = arms.some(isWording) ? await promptsAt('ded57a32') : undefined;
+function worded(arm: keyof typeof WORDINGS, owners: Owner[], narration: string): Call {
+  const call = shippedCall(owners, narration, undefined, wordingBase);
+  const { system = [], user = [] }: Wording = WORDINGS[arm];
+  return {
+    ...call,
+    system: system.reduce((text, [from, to]) => swap(text, from, to), call.system),
+    user: user.reduce((text, [from, to]) => swap(text, from, to), call.user),
+  };
 }
 
 /** SG with each group bullet in the Stats section reshaped and its stat bullets dedented to the owner's level:
@@ -228,6 +302,8 @@ function regroupedCall(arm: 'SH' | 'SP', owners: Owner[], narration: string): Ca
 
 function callsFor(arm: Arm, owners: Owner[], narration: string): Call[] {
   if (arm === 'S') return [shippedCall(owners, narration)];
+  if (arm === 'S0') return [shippedCall(owners, narration, undefined, s0Prompts)];
+  if (isWording(arm)) return [worded(arm, owners, narration)];
   if (arm === 'SG') return [shippedCall(owners, narration, 'described')];
   if (arm === 'SH' || arm === 'SP') return [regroupedCall(arm, owners, narration)];
   if (arm === 'SGB') return [shippedCall(owners, narration, 'bare')];
@@ -345,7 +421,7 @@ function parse(arm: Arm, owners: Owner[], calls: Call[], replies: Reply[]): Pars
   if (arm === 'A3') return parseOwnerBlocks(replies[0].raw, owners);
   if (arm === 'C' || arm === 'C2' || arm === 'C3' || arm === 'D') return parseJsonReply(replies[0].raw, owners);
   if (arm === 'C3P') return parseJsonReply(replies[0].raw, [playerOwner]);
-  if (arm === 'S' || arm === 'SU' || arm === 'SN' || arm === 'SG' || arm === 'SGB' || arm === 'SH' || arm === 'SP') return parsePlainLines(replies[0].raw, playerOwner, calls[0].snapshot, (id) => (id === PLAYER_OWNER ? playerOwner.key : id));
+  if (arm === 'S' || arm === 'S0' || arm === 'SU' || arm === 'SN' || arm === 'SG' || arm === 'SGB' || arm === 'SH' || arm === 'SP' || isWording(arm)) return parsePlainLines(replies[0].raw, playerOwner, calls[0].snapshot, (id) => (id === PLAYER_OWNER ? playerOwner.key : id));
   const parts = calls.flatMap((call, i) => (call.owner ? [parsePlainLines(replies[i].raw, call.owner, call.snapshot)] : []));
   return {
     changes: parts.flatMap((p) => p.changes), invalid: parts.reduce((n, p) => n + p.invalid, 0), unreadable: false,
@@ -452,6 +528,16 @@ for (const arm of arms) {
   const xs = results.filter((r) => r.arm === arm);
   if (!xs.length) continue;
   console.log(`${arm.padEnd(8)} exact ${pct(xs.filter((r) => r.player.exact).length, xs.length).padEnd(14)} recall ${pct(sum(xs, (r) => r.player.hits), sum(xs, (r) => r.player.expected)).padEnd(14)} spur ${sum(xs, (r) => r.player.spurious)}`);
+}
+
+console.log('\nCELLS per arm (missed or wrong-signed gold moves, then spurious moves; count × case:owner/stat±)');
+const tally = (cells: string[]) => [...cells.reduce((m, c) => m.set(c, (m.get(c) ?? 0) + 1), new Map<string, number>())]
+  .sort((a, b) => b[1] - a[1]).map(([cell, n]) => `${n}×${cell}`).join(' ') || '-';
+for (const arm of arms) {
+  const xs = results.filter((r) => r.arm === arm);
+  if (!xs.length) continue;
+  console.log(`${arm.padEnd(8)} missed ${tally(xs.flatMap((r) => r.score.missedCells.map((c) => `${r.case}:${c}`)))}`);
+  console.log(`${''.padEnd(8)} spur   ${tally(xs.flatMap((r) => r.score.spuriousCells.map((c) => `${r.case}:${c}`)))}`);
 }
 
 console.log('\nEXACT per case');
