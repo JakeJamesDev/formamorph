@@ -17,6 +17,9 @@ export function wikiPageUrl(id: string): string {
   return `${WIKI_BASE}/${id}`;
 }
 
+/** The wiki's home page. */
+export const WIKI_HOME_URL = WIKI_BASE;
+
 export interface HelpTopic {
   /** Dialog title. */
   title: string;

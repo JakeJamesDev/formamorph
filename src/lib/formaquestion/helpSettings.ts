@@ -85,6 +85,8 @@ export interface HelpSettings {
   readonly chatStyle: ChatStyle;
   /** The Scrim's opacity in percent: the panel of the app background behind the minimal column. 0 draws nothing. */
   readonly scrimOpacity: number;
+  /** Open Wiki asks before it opens the browser. Don't Ask Again in that dialog turns it off. */
+  readonly wikiConfirm: boolean;
 }
 
 /** The Scrim opacity's range and step, in percent. */
@@ -128,6 +130,7 @@ export const DEFAULT_HELP_SETTINGS: HelpSettings = {
   mascotPresets: EMPTY_MASCOT_PRESET_STORE,
   chatStyle: 'auto',
   scrimOpacity: 60,
+  wikiConfirm: true,
 };
 
 /** A change to the settings: any field, and inside `sources` and `reveal` only the values it names. */
@@ -193,6 +196,7 @@ export const helpSettingsCodec: Codec<HelpSettings> = {
       mascotPresets: isRecord,
       chatStyle: isChatStyle,
       scrimOpacity: (value) => isBetween(SCRIM_OPACITY_MIN, SCRIM_OPACITY_MAX)(value) && (value as number) % SCRIM_OPACITY_STEP === 0,
+      wikiConfirm: isBool,
     });
     const storedSources = isRecord(sources) ? sources : {};
     const storedTools = parseHelpTools(tools);

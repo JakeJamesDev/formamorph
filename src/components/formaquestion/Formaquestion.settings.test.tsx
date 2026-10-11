@@ -80,8 +80,8 @@ describe('Formaquestion Settings', () => {
 
     expect(within(dialog).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['General', 'Endpoint', 'Prompts', 'Tools', 'Mascot']);
     expect(within(dialog).getByRole('tab', { name: 'General' })).toHaveAttribute('data-state', 'active');
-    // Mascot, Reasoning, Keyword Search, AI Search, Semantic Search, Use the Open Screen.
-    expect(within(dialog).getAllByRole('checkbox').map((box) => box.getAttribute('aria-checked'))).toEqual(['false', 'false', 'true', 'true', 'false', 'true']);
+    // Mascot, Confirm Before Opening the Wiki, Reasoning, Keyword Search, AI Search, Semantic Search, Use the Open Screen.
+    expect(within(dialog).getAllByRole('checkbox').map((box) => box.getAttribute('aria-checked'))).toEqual(['false', 'true', 'false', 'true', 'true', 'false', 'true']);
     expect(within(dialog).getByRole('spinbutton', { name: 'History Length' })).toHaveValue(4);
 
     expect(screen.getByRole('dialog', { name: 'Formaquestion' })).toHaveAttribute('data-state', 'closed');
