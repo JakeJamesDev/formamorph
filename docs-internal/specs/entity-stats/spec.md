@@ -190,6 +190,16 @@ Rulings from the grill, numbered as asked.
 
   Without the "What to change" rules, Cydonia invents small player Vigor and Resolve drops on calm turns. The work stays unlanded on branch `ticket/entity-stats-26` (`ee82c580`).
 - **Q87** (user ruling) Ticket 26 runs one more arm: lean with the "What to change" rules added back, against the same Q84 and Q85 bar. If it passes, it ships. If it misses, the ticket stops and reports again.
+- **Q88** (ticket 26 result) Lean with the rules missed the bar too, so nothing ships. Exact % / invented changes:
+
+  | Set | Lean flat | Lean grouped | Shipped flat | Shipped grouped |
+  |---|---|---|---|---|
+  | Cydonia tuning 21 × 3 | 30 / 60 | 27 / 63 | 32 / 59 | 49 / 42 |
+  | Cydonia held-out 12 × 3 | 14 / 52 | 25 / 45 | 33 / 45 | 42 / 43 |
+  | Cloud tuning 21 × 6 | 23 / 4 | 22 / 3 | 53 / 28 | 59 / 23 |
+  | Cloud held-out 12 × 6 | 33 / 6 | 28 / 0 | 42 / 17 | 42 / 17 |
+
+  On cloud, the model padded the JSON with whitespace until the token cap in 66–81% of replies. Cydonia had no cap hits and still missed. Branch `ticket/entity-stats-26` is at `7dd85ce3`, not landed.
 
 Derived from Q7 and confirmed with the summary:
 
