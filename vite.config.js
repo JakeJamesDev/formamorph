@@ -1,8 +1,9 @@
 /// <reference types="vitest/config" />
 import { defineConfig } from 'vitest/config'
+import { searchForWorkspaceRoot } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
-import { readFileSync } from 'fs'
+import { readFileSync, realpathSync } from 'fs'
 import { createRequire } from 'module'
 import { releasedMinorChangelog } from './src/lib/docs/changelogSlice'
 
@@ -14,6 +15,8 @@ const syncAppOrigin = process.env.E2E_SYNC_APP_ORIGIN
 const portArg = process.argv.findIndex((arg) => arg === '--port' || arg.startsWith('--port='))
 const cachePort = portArg < 0 ? '5173' : process.argv[portArg].split('=')[1] ?? process.argv[portArg + 1]
 const devCacheDir = path.resolve(__dirname, 'node_modules/.vite', `${path.basename(__dirname)}-${cachePort}`)
+// A worktree's linked node_modules resolves outside its root, where Vite refuses files such as the QuickJS wasm.
+const servedRoots = [searchForWorkspaceRoot(process.cwd()), realpathSync(path.resolve(__dirname, 'node_modules'))]
 
 const directSyncAppModules = {
   name: 'direct-sync-app-modules',
@@ -118,6 +121,7 @@ export default defineConfig({
     rollupOptions: { output: { inlineDynamicImports: true } },
   },
   server: {
+    fs: { allow: servedRoots },
     // When the baseline harness spawns the dev server (BASELINE_NO_WATCH=1) it disables watching and HMR
     // entirely: the harness reads source once at page load and never needs live reload, so a developer editing
     // ANY file (src included) while a long scripted run is in flight can't restart the page under it. A normal
