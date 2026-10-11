@@ -125,6 +125,8 @@ Rulings from the grill, numbered as asked.
 
 - **Q73** (ticket 19, user ruling) After Detach, the entity owns a stat under the Blueprint's id, so Link Stat and **Link To…** refuse to link that Blueprint again, or any group that holds it. Ticket 19 lands the refusal without a reason shown. Ticket 21 adds a reason to every refused Link row, for traits and stats alike, after the user approves the pattern.
 
+- **Q74** (ticket 14) Q40's backfill on load covers the library persona, a live library read. Ticket 13 builds that next to its persona join. Added library characters are snapshots seeded at Enter World and need none. A card with no stats reads as an entity with none, with absent fields and no seeded defaults, as with traits. The library entity editor gains a Stats tab (ticket 22) so authors can give a library character stats there, as they give it traits.
+
 Derived from Q7 and confirmed with the summary:
 
 - An entity stat's morph bindings drive that entity's own model.
