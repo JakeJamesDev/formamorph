@@ -62,6 +62,10 @@ Settled with the user on 2026-10-11.
 | Q29 | Q23 extends to dialogs: the dialog, drawer and alert-dialog wrappers also ignore Escape from the help layer. Escape in help never closes an app dialog below it. Help-owned dialogs, which cover the layer, keep their Escape |
 | Q30 | Fuzzy keywords try prefixes first. Close spellings apply only when no indexed word starts with the query word, so "plac" never leads with "plan". A typo that is also the start of another word gets no correction |
 | Q31 | A query word with a digit never expands: version numbers and counts match exactly |
+| Q32 | Ticket 06 runs three arms in each batch: as shipped with Semantic on, the control (fuzzy off, Semantic off), and fuzzy-only. 5 runs per arm in each of two batches |
+| Q33 | Q16's 93% Take Me There applies to the live route of each answer (its first non-lead source), as no regression against the in-batch control. The offline route probe re-runs as a check |
+| Q34 | The probe builds section vectors from the current docs in memory. The shipped vectors file is rebuilt at release, not in ticket 06 |
+| Q35 | In the full-screen Guide, Back and Forward skip conversation entries and land on the nearest section entry. A button is disabled when no section entry is left in its direction |
 
 ## User Stories
 
