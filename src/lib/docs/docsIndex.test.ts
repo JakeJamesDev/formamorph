@@ -181,6 +181,16 @@ describe('Docs Index search: guide above the changelog', () => {
     expect(ids).not.toContain('Changelog#minor-changes');
   });
 
+  it('keeps the release lead and the guide-first order for topic words that are typos', () => {
+    const ids = index().search('what changed with the profle imge in 3.1.2?', 20).map((s) => s.id);
+    expect(ids.slice(0, NEWEST_RELEASE.length)).toEqual(NEWEST_RELEASE);
+    expect(ids[NEWEST_RELEASE.length]).toBe('Avatars#user-profile');
+    const typos = index().search('the profle imge', 20).map((s) => s.id);
+    expect(typos[0]).toBe('Avatars#user-profile');
+    expect(typos.slice(1).every((id) => id.startsWith('Changelog#'))).toBe(true);
+    expect(typos).toContain('Changelog#-fixed');
+  });
+
   it('leads with the release a question names, and with none when the index lacks it', () => {
     expect(index().search('what was fixed in 3.1.1?')[0]?.id).toBe('Changelog#-311--released-2026-09-20');
     expect(index().search('what changed in 3.0?').map((s) => s.id)).not.toContain('Changelog#-312--released-2026-09-30');
@@ -492,6 +502,13 @@ describe('Docs Index search: hub sections', () => {
   it('finds a hub when the question holds its heading as a phrase', () => {
     expect(index.search('stat overview')[0]?.id).toBe('Overview#stat-overview');
   });
+
+  it('ranks a specific section above a hub for a task question with a typo', () => {
+    expect(index.search('hungr').map((s) => s.id)).toEqual(['Stats#tracking', 'Overview#stat-overview']);
+    const ids = index.search('how do I add a stat to track hungr?').map((s) => s.id);
+    expect(ids.indexOf('Stats#tracking')).toBeLessThan(ids.indexOf('Overview#stat-overview'));
+    expect(ids).toContain('Overview#stat-overview');
+  });
 });
 
 describe('Docs Index search: score floor', () => {
@@ -514,5 +531,63 @@ describe('Docs Index search: score floor', () => {
   it('keeps the top hit under a full floor', () => {
     expect(index.search(question, 5, undefined, { floor: 1 }).map((s) => s.id)).toEqual(['Editor#find-and-replace']);
     expect(index.search('rename a group', 5, undefined, { floor: 1 })[0]?.id).toBe('Library#groups');
+  });
+});
+
+describe('Docs Index search: partial words and close spellings', () => {
+  const pages = {
+    Placeholders: '# Placeholders\n\nNames that change each play.\n\n## How to Make a Placeholder\n\nPress **New**.\n\n## Placeholder Values\n\nEach value has a weight.',
+    Library: '# Library\n\nThe board.\n\n## Moving\n\nPut a tile in its place.',
+    Turns: '# Turns\n\nOne exchange.\n\n## Planning\n\nThe plan sets the next turn.',
+  };
+  const index = createDocsIndex({ pages });
+  const ids = (query: string) => index.search(query, 10).map((s) => s.id);
+  const placeholderSections = ['Placeholders#placeholders', 'Placeholders#how-to-make-a-placeholder', 'Placeholders#placeholder-values'];
+
+  it('finds a word from its start, ranking a heading match above a body match', () => {
+    const hits = ids('plac');
+    expect(hits.slice(0, 3).sort()).toEqual([...placeholderSections].sort());
+    expect(hits.slice(3)).toEqual(['Library#moving']);
+  });
+
+  it('finds a word one letter off, and two letters off in a long word', () => {
+    expect(ids('placholder').sort()).toEqual([...placeholderSections].sort());
+    expect(ids('palceholders').sort()).toEqual([...placeholderSections].sort());
+    expect(ids('plceholdr').sort()).toEqual([...placeholderSections].sort());
+    expect(ids('mving')).toEqual(['Library#moving']);
+  });
+
+  it('matches a close spelling only when no word starts with the query word', () => {
+    expect(ids('plac')).not.toContain('Turns#planning');
+    expect(ids('plna')).toEqual(['Turns#planning']);
+  });
+
+  it('allows a short word one letter off, never two', () => {
+    expect(ids('mvng')).toEqual([]);
+  });
+
+  it('keeps a word with an exact match exact', () => {
+    expect(ids('place')).toEqual(['Library#moving']);
+  });
+
+  it('keeps a word under four letters exact', () => {
+    expect(ids('pla')).toEqual([]);
+  });
+
+  it('keeps a version number exact', () => {
+    const versions = createDocsIndex({ pages: { Notes: '# Notes\n\n## Fixes\n\nVersion 3.1.20 fixes tiles.' } });
+    expect(versions.search('3.1.2')).toEqual([]);
+  });
+
+  it('ranks an exact match above a close spelling of the same strength', () => {
+    const tied = createDocsIndex({ pages: { Alpha: '# Alpha\n\n## Tiles\n\nSort them.', Beta: '# Beta\n\n## Folders\n\nSort them.' } });
+    expect(tied.search('tils folders').map((s) => s.id)).toEqual(['Beta#folders', 'Alpha#tiles']);
+  });
+
+  it('matches exact words only when fuzzy matching is off', () => {
+    const strict = createDocsIndex({ pages, fuzzy: false });
+    expect(strict.search('plac')).toEqual([]);
+    expect(strict.search('placholder')).toEqual([]);
+    expect(strict.search('placeholder')).toHaveLength(3);
   });
 });
