@@ -17,6 +17,7 @@ import type { FormaquestionSettingsTab } from './formaquestionSettingsTabs';
 import { DEFAULT_HELP_SETTINGS } from '@/lib/formaquestion/helpSettings';
 import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
 import type { HelpAi } from './useHelpAi';
+import { IDLE_SEMANTIC_SEARCH } from './useSemanticSearch';
 
 /** Take Me There landing in the help window: its own view tabs and settings tabs land a target row. */
 
@@ -138,7 +139,7 @@ describe('Formaquestion Settings rows', () => {
         // Minimal shows every General row; Bubble hides Mascot Position (Q9), which the bubble suite covers.
         settings={{ ...DEFAULT_HELP_SETTINGS, chatStyle: 'minimal' }}
         onChange={() => {}}
-        semantic={{ on: false, downloading: false, progress: null, error: null, setOn: () => {} }}
+        semantic={IDLE_SEMANTIC_SEARCH}
         answerTarget={{ reasoning: UNKNOWN_REASONING_CAPABILITY, localEngine: false, maxTokens: undefined }}
       />
     </SettingsProvider>,

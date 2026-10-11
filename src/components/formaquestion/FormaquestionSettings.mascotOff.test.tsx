@@ -14,9 +14,9 @@ import { mascotStoreOf } from '@/test/helpFixtures';
 import { renderReporting } from '@/test/surfaceReporter';
 import { FormaquestionSettings } from './FormaquestionSettings';
 import type { FormaquestionSettingsTab } from './formaquestionSettingsTabs';
-import type { SemanticSearch } from './useSemanticSearch';
+import { IDLE_SEMANTIC_SEARCH } from './useSemanticSearch';
 
-const SEMANTIC: SemanticSearch = { on: false, downloading: false, progress: null, error: null, setOn: () => {} };
+const SEMANTIC = IDLE_SEMANTIC_SEARCH;
 const OFF_LINE = 'The Mascot is off. Enable it in “General” to customize it.';
 
 let current: HelpSettings;

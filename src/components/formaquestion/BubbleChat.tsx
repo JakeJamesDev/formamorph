@@ -19,6 +19,8 @@ import type { BubblePage } from './useBubblePage';
 import { usePillFade, type PillFadeProps } from './usePillFade';
 import { ScrollArrow } from './ScrollArrow';
 import { useFollowEnd } from './useAskParts';
+import { SemanticOfferCard } from './SemanticOfferCard';
+import type { SemanticSearch } from './useSemanticSearch';
 import { speakerName } from '@/lib/formaquestion/helpSpeaker';
 import type { HelpChat, HelpExchange } from './useHelpChat';
 import type { DragHandlers } from './usePointerDrag';
@@ -70,7 +72,7 @@ type Place = (box: WindowBox, sized?: boolean) => CSSProperties;
  * answer's Thinking toggle, its Sources popover and Take Me There (Q14, Q22). The bubble and the strip share the folds. Without
  * an exchange the bubble shows only the guide's load state, and no strip draws.
  */
-function Speech({ layout, place, page, exchange, guide, failed, onRetry, chat, settings, onSettingsChange, onOpen, onGo, contentRef }: {
+function Speech({ layout, place, page, exchange, guide, failed, onRetry, chat, semantic, settings, onSettingsChange, onOpen, onGo, contentRef }: {
   layout: BubbleLayout;
   place: Place;
   page: BubblePage;
@@ -79,6 +81,7 @@ function Speech({ layout, place, page, exchange, guide, failed, onRetry, chat, s
   failed: boolean;
   onRetry: () => void;
   chat: HelpChat;
+  semantic: SemanticSearch;
   settings: HelpSettings;
   onSettingsChange: (change: HelpSettingsChange) => void;
   onOpen: (id: string) => void;
@@ -114,6 +117,8 @@ function Speech({ layout, place, page, exchange, guide, failed, onRetry, chat, s
           viewportProps={{ 'data-fq-scroll': 'conversation', onScroll }}
         >
           <div ref={contentRef} role="log" aria-label="Conversation" aria-busy={page.newest && chat.busy} className="px-3 py-2">
+            {/* Inside the bubble, so the layout measures it with the text. */}
+            {guide && exchange && <SemanticOfferCard semantic={semantic} variant="framed" className="-mx-1 mb-2 rounded-xl border" />}
             {!guide && (failed ? (
               <div role="alert" className="flex flex-col items-start gap-2">
                 <span>The guide did not load</span>
@@ -169,7 +174,7 @@ function Speech({ layout, place, page, exchange, guide, failed, onRetry, chat, s
  * her feet. The layout places every piece; this draws them and reports the heights the layout stacks.
  */
 export function BubbleChat({
-  layout, page, mascot, guide, failed, onRetry, chat, settings, onSettingsChange, draft, onDraftChange, onOpen, onGo,
+  layout, page, mascot, guide, failed, onRetry, chat, semantic, settings, onSettingsChange, draft, onDraftChange, onOpen, onGo,
   move, resize, mascotResize, headToggle, menu, onClose, onHeights, reader,
 }: {
   layout: BubbleLayout;
@@ -182,6 +187,8 @@ export function BubbleChat({
   failed: boolean;
   onRetry: () => void;
   chat: HelpChat;
+  /** The Semantic Search switch and its offer card. */
+  semantic: SemanticSearch;
   settings: HelpSettings;
   onSettingsChange: (change: HelpSettingsChange) => void;
   draft: string;
@@ -275,12 +282,19 @@ export function BubbleChat({
           failed={failed}
           onRetry={onRetry}
           chat={chat}
+          semantic={semantic}
           settings={settings}
           onSettingsChange={onSettingsChange}
           onOpen={onOpen}
           onGo={onGo}
           contentRef={contentRef}
         />
+      )}
+      {/* Before the first answer the chat room is empty, so the card takes its top. */}
+      {guide && !exchange && (
+        <div className="flex" style={place(layout.chat, false)}>
+          <SemanticOfferCard semantic={semantic} variant="floating" className="w-full" />
+        </div>
       )}
       {exchange && (
         // The question leans toward her, so it mirrors with the group (Q6).

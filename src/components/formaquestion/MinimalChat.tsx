@@ -20,6 +20,8 @@ import { emptyRoomLine, speakerName } from '@/lib/formaquestion/helpSpeaker';
 import { ResizeHandles, type ResizeHandlers } from './FormaquestionFrame';
 import { targetAttribute } from '@/lib/surface/surfaceTargets';
 import { ScrollArrow } from './ScrollArrow';
+import { SemanticOfferCard } from './SemanticOfferCard';
+import type { SemanticSearch } from './useSemanticSearch';
 import type { PillFade } from './usePillFade';
 import { FormaquestionMenu, type MenuActions } from './FormaquestionMenu';
 import type { HelpChat } from './useHelpChat';
@@ -119,12 +121,14 @@ export function AskPill({ draft, onDraftChange, chat }: { draft: string; onDraft
  * The minimal chrome's chat column: a pill, the conversation as floating bubbles, and the ask field. No frame,
  * no title bar, no tabs. Older bubbles fade out at the top, and no scroll bar draws.
  */
-export function MinimalChat({ guide, failed, onRetry, chat, settings, onSettingsChange, draft, onDraftChange, onOpen, onGo, move, resize, large, head, headSide = 'left', headToggle, menu, onClose, height }: {
+export function MinimalChat({ guide, failed, onRetry, chat, semantic, settings, onSettingsChange, draft, onDraftChange, onOpen, onGo, move, resize, large, head, headSide = 'left', headToggle, menu, onClose, height }: {
   /** Null until the docs load. */
   guide: Guide | null;
   failed: boolean;
   onRetry: () => void;
   chat: HelpChat;
+  /** The Semantic Search switch and its offer card. */
+  semantic: SemanticSearch;
   settings: HelpSettings;
   onSettingsChange: (change: HelpSettingsChange) => void;
   draft: string;
@@ -166,6 +170,7 @@ export function MinimalChat({ guide, failed, onRetry, chat, settings, onSettings
         <Pill move={move} large={large} headToggle={headToggle} menu={menu} onClose={onClose} />
         {headSide === 'right' && head}
       </div>
+      <SemanticOfferCard semantic={semantic} variant="floating" />
       <div className="relative min-h-0 flex-1">
       {/* A grid content wrapper lets the log fill a short column, so the bubbles sit at its foot. */}
       <ScrollArea

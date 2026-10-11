@@ -31,10 +31,16 @@ export interface HelpSources {
 /** The Search Endpoint choice that sends the search request where answers go. */
 export const SAME_AS_ANSWER = 'same-as-answer';
 
+/** Whether the player has answered the Semantic Search offer card. A flip of the switch answers it too. */
+export type SemanticOffer = 'undecided' | 'decided';
+const isSemanticOffer = (value: unknown): value is SemanticOffer => value === 'undecided' || value === 'decided';
+
 /** Every setting a help question carries. */
 export interface HelpSettings {
   /** The sources whose rankings the search of a question merges. */
   readonly sources: HelpSources;
+  /** The state of the Semantic Search offer card. The card shows while it is undecided and the source is off. */
+  readonly semanticOffer: SemanticOffer;
   /** The text-endpoint preset answers go to, or null to follow the active endpoint. */
   readonly answerEndpoint: string | null;
   /** The preset picks go to, `SAME_AS_ANSWER`, or null to follow the active endpoint. */
@@ -98,6 +104,7 @@ export function chatChrome({ chatStyle, mascot }: Pick<HelpSettings, 'chatStyle'
 /** The settings of a player who has changed nothing. The help bar run measures these. */
 export const DEFAULT_HELP_SETTINGS: HelpSettings = {
   sources: { keyword: true, aiPicks: true, semantic: false },
+  semanticOffer: 'undecided',
   answerEndpoint: null,
   pickEndpoint: SAME_AS_ANSWER,
   lookup: false,
@@ -163,6 +170,7 @@ export const helpSettingsCodec: Codec<HelpSettings> = {
     if (!isRecord(stored)) throw new Error('not a help settings object');
     const { sources, reveal, presets, tools, toolSwitches, mascotPresets, ...rest } = pick<HelpSettings>(stored, DEFAULT_HELP_SETTINGS, {
       sources: isRecord,
+      semanticOffer: isSemanticOffer,
       answerEndpoint: isPresetId,
       pickEndpoint: (value) => value === SAME_AS_ANSWER || isPresetId(value),
       lookup: isBool,
@@ -188,11 +196,14 @@ export const helpSettingsCodec: Codec<HelpSettings> = {
     });
     const storedSources = isRecord(sources) ? sources : {};
     const storedTools = parseHelpTools(tools);
+    const parsedSources = pick(storedSources, DEFAULT_HELP_SETTINGS.sources, { keyword: isBool, aiPicks: isBool, semantic: isBool });
     return {
       ...rest,
+      // A stored switch that is on counts as decided.
+      semanticOffer: isSemanticOffer(stored.semanticOffer) ? stored.semanticOffer : parsedSources.semantic ? 'decided' : 'undecided',
       reveal: parseHelpReveal(reveal),
       presets: parseHelpPresetStore(presets),
-      sources: pick(storedSources, DEFAULT_HELP_SETTINGS.sources, { keyword: isBool, aiPicks: isBool, semantic: isBool }),
+      sources: parsedSources,
       tools: storedTools,
       toolSwitches: parseHelpToolSwitches(toolSwitches, storedTools),
       mascotPresets: parseMascotPresetStore(mascotPresets),
