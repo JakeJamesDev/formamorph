@@ -3,11 +3,11 @@
 // the block sent to the AI. The editor and selection screen build/walk the tree from the two flat world arrays.
 
 import {
-  buildTree, flattenTree, getDropProjection, applyDrop, duplicateNode, aiVisibleTree,
+  buildTree, flattenTree, getDropProjection, applyDrop, duplicateNode, aiVisibleTree, projectionPastBlocked, nodeDropWrites,
   removeChildrenOf as removeChildrenOfGeneric, isDescendantGroup as isDescendantGroupGeneric,
   type GroupTreeNode, type FlatTreeNode,
 } from './groupTree';
-import type { Entity, StatChange, Trait, TraitGroup, TraitLink, TraitPlacement } from '@/types';
+import type { Entity, StatChange, Trait, TraitGroup, TraitLink, TreePlacement } from '@/types';
 import { xmlEscape } from './utils';
 import { bearsTraits, heldReason, makeLink, originalOf, resolveBearers } from './bearers';
 import type { HeldReason } from './heldReasons';
@@ -139,13 +139,16 @@ export function placeableGroupIds(groups: readonly TraitGroup[]): Set<string> {
   return new Set(groups.filter((g) => !inBlueprints.has(g.id)).map((g) => g.id));
 }
 
-/** The entity node's placement when its group is a world group outside Blueprints; a gone, foreign or Blueprints
- *  group reads as none. The Custom Persona entity's node sits at the top level only. */
-export function effectivePlacement(entity: Entity, placeableIds: ReadonlySet<string>): TraitPlacement | null {
-  const p = entity.traitPlacement;
+/** An entity node's stored placement when its group is one of `placeableIds`; a gone, foreign or Blueprints group
+ *  reads as none. The Custom Persona entity's node sits at the top level only. */
+export function nodePlacement(p: TreePlacement | undefined, entity: Entity, placeableIds: ReadonlySet<string>): TreePlacement | null {
   if (p && p.groupId !== null && entity.customPersona) return null;
   return p && (p.groupId === null || placeableIds.has(p.groupId)) ? p : null;
 }
+
+/** The entity node's place in the Traits tree; see {@link nodePlacement}. */
+export const effectivePlacement = (entity: Entity, placeableIds: ReadonlySet<string>): TreePlacement | null =>
+  nodePlacement(entity.traitPlacement, entity, placeableIds);
 
 type WorldTraitLists = { traits: readonly Trait[]; traitGroups: readonly TraitGroup[] };
 
@@ -366,24 +369,6 @@ export function getOwnedTraitDropProjection(
   return replayed;
 }
 
-/** The projection walked up out of every blocked parent, then replayed at that depth so the rows below agree.
- *  Null when they would hold the row where it can't be. */
-function projectionPastBlocked(
-  items: FlatTraitNode[], active: FlatTraitNode, overId: string, projection: DropProjection,
-  blocked: (id: string) => boolean, indentationWidth: number,
-): DropProjection | null {
-  const parentOf = new Map(items.map((i) => [i.id, i.parentId]));
-  let { depth, parentId } = projection;
-  while (parentId !== null && blocked(parentId)) {
-    parentId = parentOf.get(parentId) ?? null;
-    depth -= 1;
-  }
-  const replayed = depth === projection.depth
-    ? projection
-    : getDropProjection(items, active.id, overId, (depth - active.depth) * indentationWidth, indentationWidth);
-  return replayed.depth === depth && replayed.parentId === parentId ? replayed : null;
-}
-
 /** Where a drag in a one-entity tree would land. Nothing lands inside a link's rows, which are its original's. */
 export function getEntityRootDropProjection(
   tree: OwnedTraitTree, items: FlatTraitNode[], activeId: string, overId: string, dragOffset: number, indentationWidth: number,
@@ -507,7 +492,7 @@ export function applyOwnedTraitDrop(
   }
 
   /** The entity's lists and links as the drop leaves them. `added` joins its links at the dragged row's place. */
-  const writeEntity = (entity: Entity, ownerAfter: (id: string) => string | null, placement?: TraitPlacement, added?: TraitLink): Entity => {
+  const writeEntity = (entity: Entity, ownerAfter: (id: string) => string | null, placement?: TreePlacement, added?: TraitLink): Entity => {
     // The entity node's id stands for the entity's root, which its own lists store as null.
     const fromNode = (parent: string | null | undefined) => (parent === entity.id ? null : parent ?? null);
     const mine = (id: string) => ownerAfter(id) === entity.id;
@@ -558,35 +543,12 @@ export function applyOwnedTraitDrop(
   }
 
   const ownerAfter = (id: string) => (subtree.has(id) && from !== to ? to : ownerBefore(id));
-  const spot = (parent: string | null | undefined, order: number | undefined) => `${parent ?? ''}|${order ?? ''}`;
-  const spotBefore = new Map([
-    ...tree.groups.map((g) => [g.id, spot(g.parentId, g.order)] as const),
-    ...tree.traits.map((t) => [t.id, spot(t.groupId, t.order)] as const),
-  ]);
-  const touched = new Set<string | null>();
-  const touchOwners = (id: string, parent: string | null | undefined, order: number | undefined) => {
-    if (spotBefore.get(id) === spot(parent, order) && ownerBefore(id) === ownerAfter(id)) return;
-    touched.add(ownerBefore(id));
-    touched.add(ownerAfter(id));
-  };
-  for (const g of dropped.groups) if (!tree.entityNodes.has(g.id)) touchOwners(g.id, g.parentId, g.order);
-  for (const t of dropped.leaves) touchOwners(t.id, t.groupId, t.order);
-
-  // Unplaced nodes still ending the top level in entity order stay unplaced; the rest store where they landed.
   const placeable = placeableGroupIds(world.traitGroups);
   const unplaced = [...tree.entityNodes.values()].filter((e) => !effectivePlacement(e, placeable)).map((e) => e.id);
-  const rootIds = [...dropped.groups.filter((g) => g.parentId === null), ...dropped.leaves.filter((t) => (t.groupId ?? null) === null)]
-    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).map((item) => item.id);
-  const stillUnplaced = new Set<string>();
-  for (let i = rootIds.length - 1, j = unplaced.length - 1; i >= 0 && j >= 0 && rootIds[i] === unplaced[j]; i--, j--) {
-    stillUnplaced.add(unplaced[j]);
-  }
-  const pinned = new Set([...tree.entityNodes.keys()].filter((id) => {
-    if (stillUnplaced.has(id)) return false;
-    const node = groupById.get(id)!;
-    return unplaced.includes(id) || spotBefore.get(id) !== spot(node.parentId, node.order);
-  }));
-  pinned.forEach((id) => touched.add(id));
+  const { touched, pinned } = nodeDropWrites(
+    { groups: tree.groups, leaves: tree.traits }, { groups: dropped.groups, leaves: dropped.leaves },
+    new Set(tree.entityNodes.keys()), unplaced, ownerBefore, ownerAfter,
+  );
   if (!touched.size) return null;
 
   // A hidden empty Blueprints group had no row to move, so it stays with its parent, after the reindexed siblings.

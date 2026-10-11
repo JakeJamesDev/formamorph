@@ -21,9 +21,12 @@ describe('the Persona role', () => {
     for (const role of ['cast', 'playable', 'only', 'custom'] as const) expect(personaRole(personaRolePatch(role))).toBe(role);
   });
 
-  it('clears the Persona marks and the node placement when an entity takes the Custom Persona role', () => {
-    expect(personaRolePatch('custom')).toStrictEqual({ persona: undefined, personaOnly: undefined, customPersona: true, traitPlacement: undefined });
+  it('clears the Persona marks and both node placements when an entity takes the Custom Persona role', () => {
+    expect(personaRolePatch('custom')).toStrictEqual({
+      persona: undefined, personaOnly: undefined, customPersona: true, traitPlacement: undefined, statPlacement: undefined,
+    });
     expect(personaRolePatch('playable')).not.toHaveProperty('traitPlacement');
+    expect(personaRolePatch('playable')).not.toHaveProperty('statPlacement');
   });
 });
 

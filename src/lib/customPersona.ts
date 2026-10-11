@@ -10,14 +10,14 @@ export type PersonaRole = 'cast' | 'playable' | 'only' | 'custom';
 export const personaRole = (e: Pick<Entity, 'persona' | 'personaOnly' | 'customPersona'>): PersonaRole =>
   (e.customPersona ? 'custom' : !e.persona ? 'cast' : e.personaOnly ? 'only' : 'playable');
 
-/** The fields a role writes. The Custom Persona role clears the Persona marks, and its node's placement so it
- *  moves to the end of the Traits tab's top level. */
+/** The fields a role writes. The Custom Persona role clears the Persona marks, and its nodes' placements so
+ *  they move to the end of the Traits and Stats tabs' top level. */
 export function personaRolePatch(role: PersonaRole): Partial<Entity> {
   return {
     persona: role === 'playable' || role === 'only' ? true : undefined,
     personaOnly: role === 'only' ? true : undefined,
     customPersona: role === 'custom' ? true : undefined,
-    ...(role === 'custom' ? { traitPlacement: undefined } : {}),
+    ...(role === 'custom' ? { traitPlacement: undefined, statPlacement: undefined } : {}),
   };
 }
 

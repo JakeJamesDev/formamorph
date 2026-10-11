@@ -6,9 +6,9 @@ import PlaceholderText from '@/components/prompt/PlaceholderText';
 import type { Entity } from '@/types';
 import { ListDetailFirstRow } from '@/components/ui/list-detail';
 
-/** The Traits tab's panel for an entity node: the entity's name and a way to its editor. Its traits sit in
- *  the tree beside it, so the panel doesn't repeat them. */
-export const EntityTraitNodePanel = ({ entity, onOpenEntity }: { entity: Entity; onOpenEntity: () => void }) => {
+/** The Traits and Stats tabs' panel for an entity node: the entity's name and a way to its editor. What it owns sits in
+ *  the tree beside it, so the panel doesn't repeat it. */
+export const EntityNodePanel = ({ entity, onOpenEntity }: { entity: Entity; onOpenEntity: () => void }) => {
   const { placeholders } = useGameData();
   return (
     <div className="space-y-4">

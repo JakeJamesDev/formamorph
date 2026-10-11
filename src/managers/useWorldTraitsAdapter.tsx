@@ -17,7 +17,7 @@ import type { EntityPanelTab } from '@/views/entityPanelTabs';
 import { focusFieldForItem } from '@/views/findFocus';
 import type { TraitPanelTab } from '@/views/traitPanelTabs';
 import { LinkToBearerButton } from './BearerPicker';
-import { EntityTraitNodePanel } from './EntityTraitNodePanel';
+import { EntityNodePanel } from './EntityNodePanel';
 import GroupManager from './GroupManager';
 import { LinkedFromLine, LinkedTraitManager, LinkFooter, ThisLinkSection } from './TraitLinkPanel';
 import TraitManager from './TraitManager';
@@ -157,7 +157,7 @@ export function useWorldTraitsAdapter({ selectedId, onSelect, navigate, tab, onT
     <>
       {group && <GroupManager key={group.id} group={group} ownerId={owned?.entity.id} />}
       {traitNode && (
-        <EntityTraitNodePanel
+        <EntityNodePanel
           key={traitNode.id}
           entity={traitNode}
           onOpenEntity={() => navigate('entities', traitNode.id, 'traits')}

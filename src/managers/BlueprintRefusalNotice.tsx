@@ -1,5 +1,5 @@
-import { Fragment, type ReactNode } from 'react';
 import { DropRefusalNotice } from '@/components/editor/DropRefusalNotice';
+import { joinedList as joined } from '@/components/editor/joinedList';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import type { BlueprintRefusal, BlueprintUse } from '@/lib/placeholderBlueprints';
 import type { Placeholder } from '@/types';
@@ -8,16 +8,6 @@ const KIND_LABEL: Record<BlueprintUse['kind'], string> = {
   trait: 'Trait', blueprint: 'Blueprint', copy: 'Copy', entity: 'Entity', location: 'Location', stat: 'Stat',
   'stat-update': 'Stat Update', entry: 'Entry', overview: 'Overview', placeholder: 'Placeholder',
 };
-
-/** `A`, `A and B`, `A, B and C`. */
-function joined(items: ReactNode[]): ReactNode {
-  return items.map((item, i) => (
-    <Fragment key={i}>
-      {i === 0 ? '' : i === items.length - 1 ? ' and ' : ', '}
-      {item}
-    </Fragment>
-  ));
-}
 
 /** The line after a move across the Blueprints edge was refused, naming what holds each placeholder on
  *  its side. `removing` words it for the group's own removal. */

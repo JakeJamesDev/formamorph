@@ -221,9 +221,9 @@ export interface TraitGroup {
   system?: 'blueprints';
 }
 
-/** An entity node's place in the world's Traits tree. The parent is a world group, never an entity's own and
- *  never Blueprints: a placement that names Blueprints or a group below it reads as the top level. */
-export interface TraitPlacement {
+/** An entity node's place in the world's Traits or Stats tree. The parent is a world group, never an entity's own
+ *  and never Blueprints: a placement that names Blueprints or a group below it reads as the top level. */
+export interface TreePlacement {
   /** null = top level. */
   groupId: string | null;
   order: number;
@@ -366,7 +366,7 @@ export interface Entity {
   traitLinks?: TraitLink[];
   /** Where this entity's node sits in the world's Traits tree: a world group and a sibling order. Absent,
    *  or a group that no longer exists, = the end of the top level. */
-  traitPlacement?: TraitPlacement;
+  traitPlacement?: TreePlacement;
   /** Stats this entity owns: the world stat type, every field. Order is list order. Absent = none. Authored
    *  here only; play does not read them yet. */
   stats?: Stat[];
@@ -375,6 +375,9 @@ export interface Entity {
   /** Links to the world's Blueprint stats and stat groups, placed among the entity's own stats (see
    *  lib/statLinks). No two links bring the same stat. */
   statLinks?: StatLink[];
+  /** Where this entity's node sits in the world's Stats tree: a world stat group and a sibling order. Absent,
+   *  or a group that no longer exists, = the end of the top level. */
+  statPlacement?: TreePlacement;
   /** Off-world only: the shared placeholders this entity's chips use, so they resolve after import. An import
    *  merges them into the world's shared list by name and values and clears the field. */
   sharedPlaceholders?: Placeholder[];

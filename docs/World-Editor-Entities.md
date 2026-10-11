@@ -159,6 +159,17 @@ The default prompt sends entities from three places, as separate blocks: the pla
 
 The stats stay on the entity, in the order you set. Dragging a stat reorders it inside this entity only.
 
+### Entity nodes on the Stats tab
+<!-- keywords: move stat to npc, move stat between entities, entity in stat group, drag stat to character, why can't i move this stat -->
+
+Each entity with stats shows as a node in the world's **Stats** tab, below the world's stats.
+
+- **Drag the node** into one of your stat groups to place it there. It can't go in **Blueprints**.
+- **Drag a stat or a group** onto another entity's node, or out to the world's stats, to move it. It keeps its id.
+- **Drag a Blueprint stat** onto a node to link it, in Advanced mode. The Blueprint stays where it is.
+
+> ⚠️ **A move is refused when something reads the stat where it is now.** That is a trait that changes it, or stat code that reads it by name. A note names it. A move is also refused when the other side already has the stat.
+
 ### What the AI sees
 <!-- keywords: ai sees entity stats, npc stats in prompt, send stats to ai, turn off entity stats, hidden stat ai -->
 

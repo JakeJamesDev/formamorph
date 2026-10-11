@@ -923,7 +923,8 @@ const WorldEditorInner = ({
   });
   const selectStat = useCallback((id: string | null) => select('stats', id), [select]);
   const { adapter: statsAdapter, dialog: removeWorldStatDialog } = useWorldStatsAdapter({
-    selectedId: selections.stats ?? null, onSelect: selectStat, search, tab: shownStatTab, onTabChange: setStatTab, focusField: findField,
+    selectedId: selections.stats ?? null, onSelect: selectStat, navigate: navigateToBenchItem, search, tab: shownStatTab,
+    onTabChange: setStatTab, focusField: findField,
   });
   const statsParts = useListEditor(statsAdapter, { selectedId: selections.stats ?? null, onSelect: selectStat, search });
   // The entity panel's tab and its trait and placeholder rows live here, so a new entity keeps them.

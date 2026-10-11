@@ -1,7 +1,7 @@
 // Bearers: who has which traits. A bearer is the player or an entity whose tree holds a trait, directly or
 // through a link. This module is the one place that expands a link to its original's live subtree.
 
-import type { Entity, PersonaRef, Trait, TraitGroup, TraitLink, TraitPlacement, TraitRequirement } from '@/types';
+import type { Entity, PersonaRef, Trait, TraitGroup, TraitLink, TreePlacement, TraitRequirement } from '@/types';
 import { WORLD_OWNER, type GateInput, type GateOwner } from './traitGates';
 import { effectivePlacement, groupsBelow, offeredWorldTraits, ownsTraits, placeableGroupIds } from './traitTree';
 import { buildTree, flattenTree } from './groupTree';
@@ -84,7 +84,7 @@ export function originalOf(
 
 /** A link to `originalId` at `place`, reading the original live, or null when the id is not an original. */
 export function makeLink(
-  world: Pick<BearerWorld, 'traits' | 'traitGroups'>, originalId: string, id: string, place: TraitPlacement,
+  world: Pick<BearerWorld, 'traits' | 'traitGroups'>, originalId: string, id: string, place: TreePlacement,
 ): TraitLink | null {
   const original = originalOf(world, originalId);
   if (!original) return null;

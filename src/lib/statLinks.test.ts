@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Entity, Stat, StatGroup } from '@/types';
 import { heldReasonText } from './heldReasons';
 import {
-  addStatLink, applyEntityStatRows, detachStatLink, dropKeepsBlueprints, dropStatLinksTo, editStatLink, entityStatRows,
+  addStatLink, applyEntityStatRows, detachStatLink, dropStatLinksTo, editStatLink, entityStatRows,
   holdsStatOriginal, statHeldReason, linkedStat, mergeDuplicateStatLinks, mergeStatBlueprintsGroups, playStatWorld, playerStatsOf,
   removeEntityStatGroup, removeStatBlueprints, removeStatLink, resetStatLinkFieldOn, resetStatLinkOn, resetStatLinkStatOn,
   resolvedEntityStatTree, resolvedEntityStats, statBlueprintChoices, statLinkState, statLinksTo, withEntityStatTree,
@@ -147,21 +147,6 @@ describe('statBlueprintChoices', () => {
   });
 });
 
-describe('dropKeepsBlueprints', () => {
-  const linked = [addStatLink(world, bram(), 'trust', 'l1')!];
-
-  it('refuses a drop that takes a linked Blueprint out of Blueprints, and allows an unlinked one', () => {
-    const out = (id: string) => world.stats.map((s) => (s.id === id ? { ...s, groupId: null } : s));
-    expect(dropKeepsBlueprints({ ...world, stats: out('trust') }, linked)).toBe(false);
-    expect(dropKeepsBlueprints({ ...world, stats: out('fear') }, linked)).toBe(true);
-  });
-
-  it('refuses a drop that nests the Blueprints group', () => {
-    const nested = [{ ...bp, parentId: 'g' }, sub, { id: 'g', name: 'G', parentId: null }];
-    expect(dropKeepsBlueprints({ ...world, statGroups: nested }, [])).toBe(false);
-  });
-});
-
 describe('removing Blueprint stats', () => {
   const linked = editStatLink(world, addStatLink(world, bram(), 'trust', 'l1')!, 'l1', 'trust', { ...trust, value: 20 });
 
@@ -243,12 +228,6 @@ describe('a group link', () => {
 
   it('refuses the Blueprints group itself', () => {
     expect(addStatLink(groupWorld, bram(), 'bp', 'l1')).toBeNull();
-  });
-
-  it('keeps a linked group inside Blueprints on a drop', () => {
-    const out = groupWorld.statGroups.map((g) => (g.id === 'bp-social' ? { ...g, parentId: null } : g));
-    expect(dropKeepsBlueprints({ ...groupWorld, statGroups: out }, [linked])).toBe(false);
-    expect(dropKeepsBlueprints(groupWorld, [linked])).toBe(true);
   });
 
   it('drops the links to a deleted group', () => {
