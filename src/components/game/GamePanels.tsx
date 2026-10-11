@@ -83,6 +83,8 @@ import { LocationTabBody } from './LocationTabBody';
 import { EntityListRow } from './EntityListRow';
 import { TraitsTab } from './TraitsTab';
 import { StatRow } from './StatRow';
+import { rowDelta } from '@/lib/useStatDeltas';
+import { PLAYER_OWNER } from '@/lib/statOwners';
 import { StatGroupSections } from './StatGroupSections';
 import { statPanelLayout } from '@/lib/statGroupTree';
 import { PersonaRow } from './PersonaRow';
@@ -1249,10 +1251,8 @@ export const RightPanel = ({
     viewOwnedTraits,
     viewEntityStatChanges,
     viewEntityStats,
-    viewStatChanges: recentStatChanges,
-    recentStatFading,
-    heldStatChanges,
-    drainingStatChanges,
+    viewStatChanges,
+    statDeltas,
     personaRef,
     setSelectedEntityId,
   } = useGameplay();
@@ -1419,17 +1419,10 @@ export const RightPanel = ({
                 return (
                   <StatRow
                     stat={stat}
-                    change={recentStatChanges[key] || 0}
-                    // Live: a held change grows, else a draining change collapses. History: the turn's own
-                    // change grows in (never drains).
-                    barDelta={isViewingPast
-                      ? (recentStatChanges[key] || 0)
-                      : (heldStatChanges[key] || drainingStatChanges[key] || 0)}
-                    draining={!isViewingPast && !heldStatChanges[key] && !!drainingStatChanges[key]}
+                    {...rowDelta(statDeltas, PLAYER_OWNER, key, isViewingPast ? (viewStatChanges[key] || 0) : null)}
                     page={currentPage}
                     isViewingPast={isViewingPast}
                     snap={snapStats}
-                    fading={recentStatFading}
                     editable={isEditMode && !isViewingPast}
                     reserveDescriptorLine={anyDescriptors}
                     onCommitValue={(value) => {
@@ -1456,14 +1449,11 @@ export const RightPanel = ({
                     renderStat={(stat) => (
                       <StatRow
                         stat={stat}
-                        // What the shown turn moved this stat: live, this turn's; on a past page, that turn's.
-                        change={viewEntityStatChanges[shownEntity.id]?.[stat.id] ?? 0}
-                        barDelta={viewEntityStatChanges[shownEntity.id]?.[stat.id] ?? 0}
-                        draining={false}
+                        {...rowDelta(statDeltas, shownEntity.id, stat.id,
+                          isViewingPast ? (viewEntityStatChanges[shownEntity.id]?.[stat.id] ?? 0) : null)}
                         page={currentPage}
                         isViewingPast={isViewingPast}
                         snap={snapStats}
-                        fading={false}
                         editable={false}
                         reserveDescriptorLine={entityRows.some((row) => (row.descriptors?.length ?? 0) > 0)}
                         onCommitValue={noCommit}

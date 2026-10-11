@@ -21,6 +21,8 @@ import { heldEntityIds, withHeldOwners } from '../lib/ownedTraitState';
 import { pageAssistantIndex, pageNextActionIndex, placeSnapshot } from '../lib/turnHistory';
 import { backfillGameStateStats } from '../lib/statBackfill';
 import { backfillGameStateEntityStats, entityStatDeltas } from '../lib/entityStats';
+import { deltasOf, useStatDeltas } from '../lib/useStatDeltas';
+import { PLAYER_OWNER } from '../lib/statOwners';
 import { normalizeVisibleEntities } from '../lib/sceneEntities';
 import { appendLogEntry, type LogKind } from '../lib/playLog';
 import { registerDevHook } from '../lib/devRouter';
@@ -182,16 +184,10 @@ function useProvideGameplay() {
   const added = useMemo(() => addedCharacters(discoveredEntities), [discoveredEntities]);
   // Added characters' and library books' placeholders join the session's set, and their Wildcards are drawn.
   useEffect(() => { setSessionLibraryAdditions(added, libraryDictionaries); }, [added, libraryDictionaries, setSessionLibraryAdditions]);
-  const [recentStatChanges, setRecentStatChanges] = useState<Record<string, number>>({});
-  // When true, the lingering delta text (+3/-2) fades out fast because a new turn started before its
-  // normal ~10s timeout. Reset when the next turn's changes land.
-  const [recentStatFading, setRecentStatFading] = useState(false);
-  // Like recentStatChanges but never auto-cleared: drives the persistent +/- bar coloring so the player
-  // keeps seeing how each stat moved last turn. Overwritten only when stats change again.
-  const [heldStatChanges, setHeldStatChanges] = useState<Record<string, number>>({});
-  // A snapshot of the held deltas being drained (collapse-animated away) at the start of a new action,
-  // so last turn's bars clear cleanly before this turn's grow animation. Cosmetic-only; cleared on a timer.
-  const [drainingStatChanges, setDrainingStatChanges] = useState<Record<string, number>>({});
+  // Every owner's live chips and bands. Entity rows follow the turn's entity deltas; the player's are written.
+  // After `playerStats` in hook order, so a regen `add` reads the changes the stats updater just filled.
+  const statDeltas = useStatDeltas(entityStatChanges);
+  const clearStatDeltas = statDeltas.clear;
   const [activeTab, setActiveTab] = useState("stats");
   // The entity the entity view and the stat panel both show: an id, null for (None), undefined before any
   // pick. Runtime-only, like the gallery position. An id that matches no entity reads as no pick.
@@ -322,6 +318,7 @@ function useProvideGameplay() {
       if (!opts?.keepLiveHistory) {
         // A loaded save is another playthrough: the old pick may name an entity this one never met.
         setSelectedEntityId(undefined);
+        clearStatDeltas();
         setDiscoveredEntities(gameState.discoveredEntities ?? []);
         setSuppressedCharacterNames(gameState.suppressedCharacterNames ?? []);
       }
@@ -375,7 +372,7 @@ function useProvideGameplay() {
       addSystemLogEntry('Failed to load game state');
       return false;
     }
-  }, [addSystemLogEntry, resetEntityStats]);
+  }, [addSystemLogEntry, resetEntityStats, clearStatDeltas]);
 
   /** Persist the current turn to IndexedDB as a flat envelope (`currentState` + `stateHistory` +
    *  `APP_VERSION`), stamping `worldName`/`worldId` for per-world folders. A fresh `id` creates a new save;
@@ -666,11 +663,12 @@ function useProvideGameplay() {
   // Stat deltas: while live, the animated last-turn changes; while viewing the past, the change this turn
   // made — vs the previous page's stats, or (on the opening turn, which has no predecessor) vs each stat's
   // starting value, so turn 1 still shows its deltas.
+  const livePlayerChips = deltasOf(statDeltas.recent, PLAYER_OWNER);
   const viewStatChanges: Record<string, number> = useMemo(
     () => (viewedSnapshot
       ? pageStatDeltas(viewStats, gameStates[currentPage - 2]?.playerStats)
-      : recentStatChanges),
-    [viewedSnapshot, viewStats, gameStates, currentPage, recentStatChanges],
+      : livePlayerChips),
+    [viewedSnapshot, viewStats, gameStates, currentPage, livePlayerChips],
   );
   // Per-turn player notes: on the current page the live scratchpad; on a past page that turn's frozen notes
   // (from its assistant message), falling back to the snapshot's global notes for pre-per-turn-notes saves.
@@ -783,14 +781,7 @@ function useProvideGameplay() {
     memoryNotes,
     setMemoryNotes,
     runtimeDictionary,
-    recentStatChanges,
-    setRecentStatChanges,
-    recentStatFading,
-    setRecentStatFading,
-    heldStatChanges,
-    setHeldStatChanges,
-    drainingStatChanges,
-    setDrainingStatChanges,
+    statDeltas,
     activeTab,
     setActiveTab,
     traitsView,

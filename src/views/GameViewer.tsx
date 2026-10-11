@@ -157,7 +157,7 @@ import { revealActive } from "../lib/narrationRevealConfig";
 import { CHOICES_TEST_ACTION, CHOICES_TEST_CHOICES, CHOICES_TEST_NARRATION, REVEAL_TEST_NARRATION, REVEAL_TEST_PROFILES, type RevealArrivalEvent } from "../lib/revealTestScripts";
 import { MARKDOWN_SAMPLE } from "../lib/markdownSample";
 import { parseSlashCommand } from "../lib/slashCommands";
-import { normalizeStatChanges, appliedStatDeltas } from "../lib/statChanges";
+import { appliedStatDeltas } from "../lib/statChanges";
 import { PLAYER_OWNER, regenOwners, statsOf } from "../lib/statOwners";
 import { applyStatResponse, createStatRequest, readStatResponse, statResponseChanges, type StatRequestSnapshot, type StatResponse } from "../lib/statRequest";
 import { resolveEntityTexts, resolveStatNames, resolveStatText } from "../lib/resolveWorldNames";
@@ -576,12 +576,7 @@ const GameViewer = ({
     setSelectedEntityId,
     codePins,
     setCodePins,
-    recentStatChanges,
-    setRecentStatChanges,
-    setRecentStatFading,
-    heldStatChanges,
-    setHeldStatChanges,
-    setDrainingStatChanges,
+    statDeltas,
     addLogEntry,
     addSystemLogEntry,
     setContextMemoryIds,
@@ -653,6 +648,10 @@ const GameViewer = ({
     pendingAttachments,
     setPendingAttachments,
   } = useGameplay();
+  const {
+    show: showStatDeltas, add: addStatDeltas, hold: holdStatDeltas, settle: settleStatDeltas,
+    drain: drainStatDeltas, drop: dropStatDeltas,
+  } = statDeltas;
 
   // --- Placeholder resolution, before anything reads a name ---------------------------------------------
   // One hook, shared with the gameplay panels, so the two cannot resolve a name differently. Below this line
@@ -1560,7 +1559,7 @@ const GameViewer = ({
       // the pre-turn baseline, then re-run the regen/starvation tick (thresholded on that baseline) WITHOUT
       // re-advancing game time. Not awaited, so regen stacks before stat code — the same order the live turn
       // uses. Without this the re-roll dropped the turn's regen and left stale held deltas on the bar.
-      setHeldStatChanges({});
+      holdStatDeltas(PLAYER_OWNER, {});
       // The turn's own measured duration, so a re-roll reproduces the regen and stat code the turn actually
       // charged rather than a flat hour (unmeasured turns store nothing and fall back to that hour anyway).
       // `gameTime` already includes this turn — only the latest turn is ever re-rolled — so it is the
@@ -1862,7 +1861,7 @@ const GameViewer = ({
     (hours: number, thresholdStats: PlayerStat[]) => {
       // New turn's changes are landing — make sure any pending text fade-out flag is cleared so this
       // turn's delta text shows normally (covers a response that beat the submit-time fade timer).
-      setRecentStatFading(false);
+      settleStatDeltas();
 
       // Track regen changes
       const regenChanges: Record<string, number> = {};
@@ -1879,16 +1878,8 @@ const GameViewer = ({
       });
       setEntityStats((prev) => withEntityRegen(prev, entityOwnersOf(prev), hours));
 
-      // Update recent (fading text) and held (persistent bar) stat changes with regen changes.
-      const mergeRegen = (prev: Record<string, number>) => {
-        const newChanges = { ...prev };
-        Object.entries(regenChanges).forEach(([key, value]) => {
-          newChanges[key] = (newChanges[key] || 0) + value;
-        });
-        return newChanges;
-      };
-      setRecentStatChanges(mergeRegen);
-      setHeldStatChanges(mergeRegen);
+      // Add the regen to the chips and bands. Read when the update applies, after the stats updater filled it.
+      addStatDeltas(PLAYER_OWNER, regenChanges);
 
       const health = thresholdStats.find((s) => s.name === "Health");
       const hunger = thresholdStats.find((s) => s.name === "Hunger");
@@ -1905,17 +1896,11 @@ const GameViewer = ({
           // The loss scales by the turn's measured hours, so it's usually fractional — the log reads to a
           // tenth rather than printing the raw float. The stat still takes the exact amount.
           addLogEntry(`You're starving! Lost ${Math.round(healthLoss * 10) / 10} health.`);
-          // Add health loss to recent changes
-          const applyLoss = (prev: Record<string, number>) => ({
-            ...prev,
-            health: (prev.health || 0) - healthLoss,
-          });
-          setRecentStatChanges(applyLoss);
-          setHeldStatChanges(applyLoss);
+          addStatDeltas(PLAYER_OWNER, { health: -healthLoss });
         }
       }
     },
-    [adjustStatByName, addLogEntry, setPlayerStats, setEntityStats, entityOwnersOf, setRecentStatChanges, setHeldStatChanges, setRecentStatFading],
+    [adjustStatByName, addLogEntry, setPlayerStats, setEntityStats, entityOwnersOf, addStatDeltas, settleStatDeltas],
   );
 
   const handleTimePassed = useCallback(
@@ -2258,7 +2243,7 @@ const GameViewer = ({
 
     // Reset the persistent bar deltas for this turn, then let stat changes + regen below re-fill them. The
     // before box already moved before the narration, so its share is laid straight back over the reset.
-    setHeldStatChanges(beforeBoxDeltasRef.current);
+    holdStatDeltas(PLAYER_OWNER, beforeBoxDeltasRef.current);
 
     // Apply stat changes. Stat code runs inside; it is awaited below, before the snapshot arms, so the
     // snapshot holds its writes even when the sandbox first loads on this turn.
@@ -2386,7 +2371,7 @@ const GameViewer = ({
     try {
       // Drain last turn's stat-bar colors and fade any lingering delta text now (they clear during the AI
       // wait), so this turn's changes animate onto clean bars.
-      drainStatFeedback();
+      drainStatDeltas();
       // This turn's entity deltas count from here, before the before box moves anything.
       setEntityStatBaseline(entityStatsRef.current);
       // Clear the box now (the action is captured in `action`), so anything the player types
@@ -2812,9 +2797,6 @@ const GameViewer = ({
   playerStatsRef.current = playerStats;
   const rawPlayerStatsRef = useRef(rawPlayerStats);
   rawPlayerStatsRef.current = rawPlayerStats;
-  // Pending "clear recent changes" timer, tracked so a new turn or unmount can cancel it.
-  const recentStatTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const drainStatTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // What this turn's before box moved, kept because the commit clears the bar deltas before the AI's own
   // land. Without it a value the box showed on the bar loses its color halfway through the turn.
   const beforeBoxDeltasRef = useRef<Record<string, number>>({});
@@ -2831,35 +2813,6 @@ const GameViewer = ({
   // touches them between it and the box — and undoing the box alone spares a trait the player switched
   // by hand while the AI was thinking. Null between turns and once a turn commits.
   const beforeBoxUndoRef = useRef<TurnCodeState | null>(null);
-  useEffect(
-    () => () => {
-      if (recentStatTimerRef.current) clearTimeout(recentStatTimerRef.current);
-      if (drainStatTimerRef.current) clearTimeout(drainStatTimerRef.current);
-    },
-    [],
-  );
-
-  // Clear last turn's stat feedback for a fresh turn. Bars: snapshot the held deltas so they collapse-
-  // animate away (matching .stat-delta-drain), clearing the live map immediately so this turn starts clean.
-  // Text: if any +/- delta text is still up, fade it out now instead of waiting out its ~10s timer. The
-  // text clear reuses recentStatTimerRef, so a fast response's applyStatChanges cancels it before it wipes
-  // the new turn's text.
-  const drainStatFeedback = useCallback(() => {
-    if (Object.keys(heldStatChanges).length > 0) {
-      setDrainingStatChanges(heldStatChanges);
-      setHeldStatChanges({});
-      if (drainStatTimerRef.current) clearTimeout(drainStatTimerRef.current);
-      drainStatTimerRef.current = setTimeout(() => setDrainingStatChanges({}), 550);
-    }
-    if (Object.keys(recentStatChanges).length > 0) {
-      setRecentStatFading(true);
-      if (recentStatTimerRef.current) clearTimeout(recentStatTimerRef.current);
-      recentStatTimerRef.current = setTimeout(() => {
-        setRecentStatChanges({});
-        setRecentStatFading(false);
-      }, 350);
-    }
-  }, [heldStatChanges, recentStatChanges, setHeldStatChanges, setDrainingStatChanges, setRecentStatChanges, setRecentStatFading]);
 
   // The world's list and books; the run joins the library entities' and library books' pools itself.
   const statCodePlaceholders = useMemo(() => playthroughPlaceholderSet({
@@ -2960,8 +2913,7 @@ const GameViewer = ({
         setPlayerStats((prev) => overlayStatCodeResult(prev, result, inForce));
         // Fold the code-derived movement into the live delta feedback, so a code stat's bar/text animates
         // live — matching the history view (pageStatDeltas diffs the final, post-code snapshot).
-        setRecentStatChanges((prev) => normalizeStatChanges([prev, codeChanges]));
-        setHeldStatChanges((prev) => normalizeStatChanges([prev, codeChanges]));
+        addStatDeltas(PLAYER_OWNER, codeChanges);
         // The commit resets the bar deltas mid-turn, so the before box's own share is re-laid over that.
         if (timing === 'before') beforeBoxDeltasRef.current = codeChanges;
         return stateAfterRun();
@@ -2970,7 +2922,7 @@ const GameViewer = ({
         return null;
       }
     },
-    [setPlayerStats, setEntityStats, entityOwnersOf, entityInForceUnder, setRecentStatChanges, setHeldStatChanges, setCodePins, resolvePH, statCodePlaceholders, pinsFor, traits, authoredStats, resolveTraitText, gatedWorld, codeEntities, inForceOn, liveScene,
+    [setPlayerStats, setEntityStats, entityOwnersOf, entityInForceUnder, addStatDeltas, setCodePins, resolvePH, statCodePlaceholders, pinsFor, traits, authoredStats, resolveTraitText, gatedWorld, codeEntities, inForceOn, liveScene,
       setPlayerTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, setOwnedTraits, addLogEntry],
   );
 
@@ -3008,14 +2960,9 @@ const GameViewer = ({
       const resolvedApplied = resolveStatNames(directApplied, resolvePH);
       const actualChanges = appliedStatDeltas(resolveStatNames(baseStats, resolvePH), resolvedApplied);
 
-      // Surface the changes, then clear the highlight after 10s. Cancel any prior timer first so a
-      // stale clear can't wipe a newer turn's changes.
-      setRecentStatChanges(actualChanges);
-      if (recentStatTimerRef.current) clearTimeout(recentStatTimerRef.current);
-      recentStatTimerRef.current = setTimeout(() => setRecentStatChanges({}), 10000);
-      // Held changes drive the persistent bar coloring (no fade). Merge this call's deltas over the
-      // per-turn reset done by the caller, so AI changes and regen combine into one turn delta.
-      setHeldStatChanges((prev) => ({ ...prev, ...actualChanges }));
+      // The chips show the changes for 10 s; the bands take them over the caller's per-turn reset, so AI
+      // changes and regen combine into one turn delta.
+      showStatDeltas(PLAYER_OWNER, actualChanges);
 
       setPlayerStats(directApplied);
       const asksOf = (ownerId: string) => response.updates.filter((update) => update.ownerId === ownerId);
@@ -3024,7 +2971,7 @@ const GameViewer = ({
         asks: Object.fromEntries(Object.keys(entityApplied.values).map((id) => [id, asksOf(id)])),
       });
     },
-    [runStatCode, setPlayerStats, setEntityStats, setRecentStatChanges, setHeldStatChanges, resolvePH, statTraits, traits, inForceOn, entityInForceUnder, ownedTraits],
+    [runStatCode, setPlayerStats, setEntityStats, showStatDeltas, resolvePH, statTraits, traits, inForceOn, entityInForceUnder, ownedTraits],
   );
 
   // Discard a turn's dangling, unpaired user message. The failure exits (empty narration, request error)
@@ -3047,8 +2994,7 @@ const GameViewer = ({
       setCascadeOffTraitIds(undo.cascadeOffTraitIds ?? {});
       setOwnedTraits(undo.ownedTraits ?? {});
       resetEntityStats(undo.entityStats ?? {});
-      setRecentStatChanges({});
-      setHeldStatChanges({});
+      dropStatDeltas();
     }
     setFullMessageHistory((prev) =>
       prev[prev.length - 1]?.role === "user" ? prev.slice(0, -1) : prev,

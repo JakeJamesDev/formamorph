@@ -5,6 +5,7 @@ import { LeftPanel, RightPanel } from './GamePanels';
 import { defaultSystemPrompt } from './GamePrompts';
 import { renderInGame, renderRightPanel, statFixture, type Gameplay, type TurnFixture } from '@/test/gamePanels';
 import type { EntityStatValues, SceneEntity } from '@/types';
+import { PLAYER_OWNER } from '@/lib/statOwners';
 
 vi.mock('@/views/VRMViewer', () => import('@/test/stubs/vrmViewer'));
 vi.mock('@/lib/useTtsPlayback', () => import('@/test/stubs/ttsPlayback'));
@@ -167,8 +168,8 @@ describe('RightPanel — entity stats', () => {
     expect(within(section()!).getByText('11 / 100')).toBeInTheDocument();
   });
 
-  it("shows this turn's change on an entity row, from where the turn started", () => {
-    renderRightPanel({}, {
+  it("shows this turn's change on an entity row once the stat response lands, from where the turn started", () => {
+    const view = renderRightPanel({}, {
       ...stage,
       seed: (g) => {
         stage.seed(g);
@@ -176,7 +177,35 @@ describe('RightPanel — entity stats', () => {
         g.setSelectedEntityId('bram');
       },
     });
+    expect(within(section()!).queryByText('+6')).not.toBeInTheDocument();
+    act(() => { view.gameplay().statDeltas.show(PLAYER_OWNER, {}); });
     expect(within(section()!).getByText('+6')).toBeInTheDocument();
+  });
+
+  it('shows no change for any owner after a save loads', () => {
+    const view = renderRightPanel({}, {
+      ...stage,
+      seed: (g) => {
+        stage.seed(g);
+        g.setEntityStatBaseline({ ...values, bram: [statFixture('Trust', 34), ...values.bram.slice(1)] });
+        g.setSelectedEntityId('bram');
+      },
+    });
+    act(() => { view.gameplay().statDeltas.show(PLAYER_OWNER, { vigor: -3 }); });
+    expect(screen.getByText('-3')).toBeInTheDocument();
+    act(() => { view.gameplay().loadGameState(view.gameplay().gameStates[1], []); });
+    act(() => { view.gameplay().setSelectedEntityId('bram'); });
+    expect(screen.queryByText('-3')).not.toBeInTheDocument();
+    expect(within(section()!).queryByText('+6')).not.toBeInTheDocument();
+    const { recent, held, draining } = view.gameplay().statDeltas;
+    expect({ recent, held, draining }).toEqual({ recent: {}, held: {}, draining: {} });
+  });
+
+  it("keeps the player's change through a rollback", () => {
+    const view = renderRightPanel({}, stage);
+    act(() => { view.gameplay().statDeltas.show(PLAYER_OWNER, { vigor: -3 }); });
+    act(() => { view.gameplay().loadGameState(view.gameplay().gameStates[1], [], { keepLiveHistory: true }); });
+    expect(screen.getByText('-3')).toBeInTheDocument();
   });
 
   it("shows the viewed turn's recorded change on a past page", () => {
