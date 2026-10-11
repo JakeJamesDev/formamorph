@@ -4,7 +4,9 @@ import type { ChipScene } from './chipScene';
 import { knownPersonaLine } from '../personaContext';
 import { NONE_PLACEHOLDER } from '../promptFallbacks';
 import { decodeVariant, encodeVariant, variableForToken, variableVariantIds, withVariant } from '../promptVariables';
-import type { Connection, DictionaryEntry, Entity, GameLocation, PlayerStat, Trait, TraitGroup } from '@/types';
+import type { Connection, DictionaryEntry, Entity, GameLocation, PlayerStat, StatGroup, Trait, TraitGroup } from '@/types';
+import { createStatRequest } from '../statRequest';
+import { PLAYER_OWNER } from '../statOwners';
 import type { ResolvedPersona } from '../persona';
 
 // The town: Old Town contains North Gate and the Market; North Gate contains the Gatehouse.
@@ -290,6 +292,63 @@ describe('the Stats chip', () => {
 
   it('renders the placeholder with no stats', () => {
     expect(chipValues(scene({ stats: [] }))['<STATS DESCRIPTION|numbers.descriptions>']).toBe(NONE_PLACEHOLDER);
+  });
+});
+
+describe("the played entities' stats in the Stats chip", () => {
+  const calm: PlayerStat = { ...health, id: 'calm', name: 'Calm', description: 'Composure.', value: 30, descriptors: [] };
+  const statsOf = (over: Partial<ChipScene>) => chipValues(scene(over));
+  const played = (...stats: PlayerStat[]) => ({ stats, placement: { groups: [], authored: stats } });
+
+  it("lists each played entity's stats after the world's, in each format", () => {
+    const values = statsOf({ playedStats: [played(calm)] });
+    expect(values['<STATS DESCRIPTION|numbers>']).toBe('Health: 62/100\nCalm: 30/100');
+    expect(values['<STATS DESCRIPTION|numbers.meaning.markdown>'])
+      .toBe('- **Health:** 62/100 — Physical stamina.\n- **Calm:** 30/100 — Composure.');
+    expect(values['<STATS DESCRIPTION|numbers.xml>']).toBe(
+      '<stat>\n  <name>Health</name>\n  <value>62/100</value>\n</stat>\n<stat>\n  <name>Calm</name>\n  <value>30/100</value>\n</stat>',
+    );
+  });
+
+  it('lays each owner out by its own groups', () => {
+    const mind: StatGroup = { id: 'mind', name: 'Mind', parentId: null };
+    const grouped = { ...calm, groupId: 'mind' };
+    const values = statsOf({ playedStats: [{ stats: [grouped], placement: { groups: [mind], authored: [grouped] } }] });
+    expect(values['<STATS DESCRIPTION|numbers>']).toBe('Health: 62/100\nMind:\n  Calm: 30/100');
+  });
+
+  it('renders as before when no played entity holds a stat', () => {
+    const before = statsOf({});
+    expect(statsOf({ playedStats: [played()] })).toEqual(before);
+    // Two world stats that share a name stay as the author wrote them.
+    const twin = { ...health, id: 'twin' };
+    expect(statsOf({ stats: [health, twin], playedStats: [played()] })['<STATS DESCRIPTION|numbers>'])
+      .toBe('Health: 62/100\nHealth: 62/100');
+  });
+
+  it('lists the played stats alone when the world has none', () => {
+    expect(statsOf({ stats: [], playedStats: [played(calm)] })['<STATS DESCRIPTION|numbers>']).toBe('Calm: 30/100');
+  });
+
+  it('numbers a played stat whose name clashes, as the stat request keys it', () => {
+    const own = { ...health, id: 'own-health', name: '**Health**', value: 10 };
+    const healthMax = { ...calm, id: 'health-max', name: 'Health max' };
+    const values = statsOf({ playedStats: [played(own, healthMax)] });
+    expect(values['<STATS DESCRIPTION|numbers>']).toBe('Health: 62/100\nHealth (2): 10/100\nHealth max (2): 30/100');
+    const request = createStatRequest([health], PLAYER_OWNER, {
+      personas: [{ id: 'persona', name: 'Traveler', stats: [own, healthMax] }],
+    });
+    expect(request.targets.map((t) => t.key)).toEqual(['Health', 'Health (2)', 'Health max (2)']);
+  });
+
+  it('compares names as resolved', () => {
+    const named = { ...calm, name: '{{vital}}' };
+    const values = statsOf({ playedStats: [played(named)], resolve: (text) => text.replaceAll('{{vital}}', 'Health') });
+    expect(values['<STATS DESCRIPTION|numbers>']).toBe('Health: 62/100\nHealth (2): 30/100');
+  });
+
+  it('renders a hidden stat, since hidden only hides it from the player', () => {
+    expect(statsOf({ playedStats: [played({ ...calm, hidden: true })] })['<STATS DESCRIPTION|numbers>']).toContain('Calm: 30/100');
   });
 });
 

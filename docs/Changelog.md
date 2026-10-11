@@ -35,11 +35,13 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The stats of the entity you play now join yours in the stat panel and the AI's stat updates.** A stat that shares a world stat's name stays separate. Each entity keeps its values when you switch persona. A persona's trait can pick either stat.
     - **The Test Bench's Opening tab now lists each entity's own stats as a new game starts them.** Rows show start, range, regen and band after the entity's own traits and Links, and follow the persona you pick. Blueprint stats no longer show as yours.
     - **Link To… and Link Stat tell you why a Blueprint row can't be linked.** A checked row shows a tip on hover and focus, such as "Bram already owns Trust". Screen readers read it too.
+    - **The narrator, choice writer and planner now see your persona's stats in the Stats chip, after your world's stats.** Each persona stat sits in that persona's own groups. A stat whose name matches an earlier stat reads with a number, such as "Trust (2)".
   - **The AI now updates your stats with fewer wrong-direction and made-up changes.** It answers with a change for every stat, 0 included. An endpoint that can't take that format gets the old reply style, and the AI context viewer notes it.
 - **🛠️ Developer tooling**
   - **Entity Stats:**
     - **`entity-stats-chip-probe.cli.ts` compares the Entities chip with its stats piece on and off.** It runs narration, planner and choices cases on Sedge Landing and reports uptake, leaks, choice contract and dialogue share.
     - **`entity-stats-probe.cli.ts` names each missed and invented change, and tests stat prompts from any git ref.** The `S0` arm sends the stat prompts as committed at `--s0-ref`. A cell table lists each case's missed and invented changes per arm.
+    - **`persona-stats-chip-probe.cli.ts` compares the Stats chip with and without the played persona's stats.** It runs narration, storyboard and choices cases on Sedge Landing, with a name clash, and reports uptake, leaks and numbered names.
   - **`entity-stats-probe.cli.ts` compares three request shapes for entity stats against today's stat pass.** One call with text lines, one call per entity, and one call with a JSON schema run on Sedge Landing cases with shared stat names. It reports exact replies, misses, invented and misattributed changes, latency and tokens.
 
 #### 🔧 Fixed

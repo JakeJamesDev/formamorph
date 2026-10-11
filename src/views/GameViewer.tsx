@@ -1989,6 +1989,7 @@ const GameViewer = ({
     ownedTraits,
     bearers: sceneBearers,
     entityStats,
+    playedEntities,
     resolve: resolvePH,
     resolveTrait: resolveTraitText,
     resolveEntity: resolveEntityText,

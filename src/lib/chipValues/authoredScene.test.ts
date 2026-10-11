@@ -77,6 +77,12 @@ describe('authoredChipScene and entity stats', () => {
     expect(authoredChipScene(world()).ownedStats ?? {}).toEqual({});
   });
 
+  it("lists the Custom Persona entity's switched-on stats after the world's, and no other entity's", () => {
+    const you: Entity = { id: 'you', name: 'You', customPersona: true, stats: [stock, dread] };
+    const scene = authoredChipScene(world({ entities: [{ ...wren, stats: [trust] }, harrow, you] }));
+    expect(chipValues(scene)['<STATS DESCRIPTION|numbers>']).toBe('Warmth: 40/100\nNerve: 10/100\nStock: 5/50');
+  });
+
   it('reads a linked Blueprint per bearer, and never as a player stat', () => {
     const blueprint: Stat = { ...trust, groupId: 'bp' };
     const link = (id: string) => ({ id, originalId: 'trust', kind: 'stat' as const, originalName: 'Trust', groupId: null });

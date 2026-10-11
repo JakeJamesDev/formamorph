@@ -10,7 +10,9 @@ import { NONE_PLACEHOLDER } from '../promptFallbacks';
 import {
   decodeVariant, tokenVariant, variableForToken, variableVariantIds, withVariant, type PromptVariable,
 } from '../promptVariables';
-import { buildStatContext, type StatPlacement } from '../statContext';
+import { buildStatContext, type StatChipPart, type StatPlacement } from '../statContext';
+import { statKeys } from '../statKeys';
+import { stripMarkdown } from '../stripMarkdown';
 import { buildTraitContext } from '../traitTree';
 import type { PlayerStat } from '@/types';
 import type { ChipScene } from './chipScene';
@@ -51,6 +53,31 @@ export function statChipValues(stats: PlayerStat[], placement?: StatPlacement): 
   ));
 }
 
+/** Every Stats chip token over `parts`, each part laid out by its own placement after the earlier parts'. A
+ *  part with no stats adds nothing; with none at all, the chip reads as empty. */
+export function statChipPartValues(parts: readonly StatChipPart[]): Record<string, string> {
+  const filled = parts.filter((part) => part.stats.length).map((part) => statChipValues([...part.stats], part.placement));
+  if (!filled.length) return statChipValues([]);
+  return Object.fromEntries(Object.keys(filled[0]).map((token) => [token, filled.map((values) => values[token]).join('\n')]));
+}
+
+/** The player's parts: the world's stats, then each played entity's. A played stat whose plain name clashes
+ *  with an earlier stat takes the numbered key the stat request gives it; every other name stays as written. */
+export function playerStatParts(
+  world: StatChipPart, played: readonly StatChipPart[], plainName: (name: string) => string,
+): StatChipPart[] {
+  if (!played.some((part) => part.stats.length)) return [world];
+  const keys = statKeys([world, ...played].flatMap((part) => part.stats.map((stat) => plainName(stat.name))));
+  let at = world.stats.length;
+  return [world, ...played.map((part) => ({
+    ...part,
+    stats: part.stats.map((stat) => {
+      const key = keys[at++];
+      return key === plainName(stat.name) ? stat : { ...stat, name: key };
+    }),
+  }))];
+}
+
 /**
  * Turn a Chip Scene into a value for every scene-derived chip token the registry defines: World
  * Description, Stats, Traits, Persona, Location, Entities, Notes, Time and the lore blocks. Each family
@@ -70,7 +97,11 @@ export function chipValues(scene: ChipScene): Record<string, string> {
   const traitIds = scene.traits.map((trait) => trait.id);
   const values: Record<string, string> = {
     [WORLD.token]: scene.overview,
-    ...statChipValues(scene.stats, scene.statPlacement),
+    // The played entities' stats are the player's, after the world's.
+    ...statChipPartValues(playerStatParts(
+      { stats: scene.stats, placement: scene.statPlacement }, scene.playedStats ?? [],
+      (name) => stripMarkdown(scene.resolve(name)).trim(),
+    )),
     ...familyValues(TRAITS, (sel) => (
       buildTraitContext(traitIds, scene.traits, scene.traitGroups, chipFormat(sel.format)) || NONE_PLACEHOLDER
     )),

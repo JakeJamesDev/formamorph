@@ -12,8 +12,7 @@
  * Pure and world-shaped: no React, no storage, no world mutation.
  */
 import { authoredChipScene } from '@/lib/chipValues/authoredScene';
-import { chipValues, statChipValues } from '@/lib/chipValues/chipValues';
-import { statPlacementOf } from '@/lib/statContext';
+import { chipValues } from '@/lib/chipValues/chipValues';
 import type { CopyLookup } from '@/lib/blueprints';
 import { allPlaceholders } from '@/lib/placeholderHomes';
 import {
@@ -160,17 +159,12 @@ export function blockChipPlacedIn(template: string, id: ContextBlockId, position
   return placedChip(template, (key) => key === want);
 }
 
-/** The lens's stats in the shape `token` asks for, before the lens resolves any chips. An unregistered token
+/** The stats block any Stats chip renders for the lens PC, with the PC's chips resolved. An unregistered token
  *  throws, as `blockValue` does. */
-function renderStats(world: AiContextWorld, lens: BenchLens, token: string): string {
-  const value = statChipValues(lensStats(world, lens), statPlacementOf(world))[token];
+export function buildStatBlock(world: AiContextWorld, lens: BenchLens, token: string): string {
+  const value = chipValues(lensScene(world, lens))[token];
   if (value === undefined) throw new Error(`Chip Values has no value for ${token}`);
   return value;
-}
-
-/** The stats block any Stats chip renders for the lens PC, with the PC's chips resolved. */
-export function buildStatBlock(world: AiContextWorld, lens: BenchLens, token: string): string {
-  return resolveLensText(renderStats(world, lens, token), allPlaceholders(world), lens.pins);
 }
 
 /** The scopes' rosters, each paired with the entity block that renders it. */
@@ -193,6 +187,17 @@ function lensStats(world: AiContextWorld, lens: BenchLens): PlayerStat[] {
   return enabledStats(stats, lens.statEnabled);
 }
 
+/** The world's opening as the lens PC meets it: its location, traits and stats, every chip read through its pins. */
+function lensScene(world: AiContextWorld, lens: BenchLens) {
+  const placeholders = allPlaceholders(world);
+  return authoredChipScene(world, {
+    location: lens.location,
+    activeTraitIds: activeTraitIds(world, lens),
+    stats: lensStats(world, lens),
+    resolve: (text: string, copies?: CopyLookup) => resolveLensText(text, placeholders, lens.pins, copies),
+  });
+}
+
 /**
  * Everything the AI Context instrument shows for `lens`. The location is the lens's, and every chip resolves
  * through the lens PC's pins, so a world whose text is placeholder-driven reads as that character sees it.
@@ -204,17 +209,10 @@ export function buildAiContext(world: AiContextWorld, lens: BenchLens): AiContex
   const locations = world.locations ?? [];
   const connections = world.connections ?? [];
   const entities = world.entities ?? [];
-  const placeholders = allPlaceholders(world);
   const location = lens.location;
-  const resolve = (text: string, copies?: CopyLookup) => resolveLensText(text, placeholders, lens.pins, copies);
-
-  const scene = authoredChipScene(world, {
-    location,
-    activeTraitIds: activeTraitIds(world, lens),
-    stats: lensStats(world, lens),
-    resolve,
-  });
+  const scene = lensScene(world, lens);
   const values = chipValues(scene);
+  const resolve = scene.resolve;
 
   // Each scope drops whoever a higher-precedence one already listed, exactly as the entity blocks do — a
   // roster that listed someone twice would disagree with the text beside it.

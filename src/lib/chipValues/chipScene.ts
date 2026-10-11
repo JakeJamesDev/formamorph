@@ -2,7 +2,7 @@ import type {
   Connection, DictionaryEntry, Entity, GameLocation, Placeholder, PlayerStat, Trait, TraitGroup,
 } from '@/types';
 import type { OwnedStatsInForce, OwnedTraitsInForce } from '../locationContext';
-import type { StatPlacement } from '../statContext';
+import type { StatChipPart, StatPlacement } from '../statContext';
 import type { ResolvedPersona } from '../persona';
 import type { ResolveEntityText } from '../resolveWorldNames';
 import type { WorldCalendar } from '../gameClock';
@@ -25,6 +25,9 @@ export interface ChipScene {
   stats: PlayerStat[];
   /** Where the stats sit. A flat list when absent. */
   statPlacement?: StatPlacement;
+  /** The switched-on stats of each entity the player plays as, at their current values, each placed by its
+   *  owner. They follow `stats` in the Stats chip. None when absent. */
+  playedStats?: readonly StatChipPart[];
   /** The traits in force. An adapter that holds per-trait pins resolves those before it builds the scene. */
   traits: Trait[];
   traitGroups: TraitGroup[];

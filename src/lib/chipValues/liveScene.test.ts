@@ -193,6 +193,38 @@ describe('the live adapter', () => {
     it('holds none for a playthrough with no entity stats', () => {
       expect(chipValues(liveChipScene(sources()))['<ENTITIES>']).not.toContain('stats:');
     });
+
+    describe('of the entities the player plays as', () => {
+      const mind: StatGroup = { id: 'mind', name: 'Mind', parentId: null };
+      const calm: PlayerStat = { ...grit, id: 'calm', name: 'Calm', value: 7, groupId: 'mind' };
+      const veiled: PlayerStat = { ...grit, id: 'veiled', name: 'Veiled', value: 2, hidden: true };
+      const wren: Entity = { id: 'wren', name: 'Wren', persona: true, stats: [calm, veiled, off], statGroups: [mind] };
+      const playing = (over: Partial<LiveSceneSources> = {}) => liveChipScene(sources({
+        playedEntities: [wren], entityStats: { wren: [calm, veiled, off], harbormaster: [trust] }, ...over,
+      }));
+
+      it("lists their switched-on stats after the world's, hidden ones included, placed by their own groups", () => {
+        expect(chipValues(playing())['<STATS DESCRIPTION|numbers>']).toBe('Grit: 4/10\nVeiled: 2/10\nMind:\n  Calm: 7/10');
+      });
+
+      it('switches their stats with their own traits in force', () => {
+        const stirred: Trait = { id: 'stirred', name: 'Stirred', statChanges: [], statToggles: [{ statId: 'dread', enabled: true }] };
+        const scene = playing({ bearers: [{ id: 'wren', traits: [stirred], groups: [] }], ownedTraits: { wren: { chosen: ['stirred'] } } });
+        expect(chipValues(scene)['<STATS DESCRIPTION|numbers>']).toContain('Dread: 4/10');
+      });
+
+      it('reads the values a before box wrote', () => {
+        const scene = liveChipScene(sources({ playedEntities: [wren], entityStats: { wren: [calm] } }), null, {
+          activeStats: [grit], activeTraits: [], ownedTraits: {}, entityStats: { wren: [{ ...calm, value: 9 }] },
+          resolve: (text) => text, resolveTrait: (_trait, text) => text, resolveEntity: (_entity, text) => text,
+        });
+        expect(chipValues(scene)['<STATS DESCRIPTION|numbers>']).toContain('Calm: 9/10');
+      });
+
+      it("leaves a cast member's stats out of the Stats chip", () => {
+        expect(chipValues(playing())['<STATS DESCRIPTION|numbers>']).not.toContain('Trust');
+      });
+    });
   });
 
   describe('owned traits', () => {
