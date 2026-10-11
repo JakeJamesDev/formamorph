@@ -307,6 +307,7 @@ function cardOwnedTraits(obj: Record<string, unknown>): Pick<Entity, 'traits' | 
     parentId: typeof g.parentId === 'string' ? g.parentId : null,
     ...(typeof g.playerDescription === 'string' ? { playerDescription: g.playerDescription } : {}),
     ...(typeof g.aiDescription === 'string' ? { aiDescription: g.aiDescription } : {}),
+    ...(g.aiVisible === false ? { aiVisible: false } : {}),
     ...(typeof g.order === 'number' ? { order: g.order } : {}),
     ...(typeof g.minPicks === 'number' ? { minPicks: g.minPicks } : {}),
     ...(typeof g.maxPicks === 'number' ? { maxPicks: g.maxPicks } : {}),

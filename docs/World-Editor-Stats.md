@@ -59,6 +59,8 @@ The same steps work on an entity's own **Stats** tab, for the stats that entity 
 
 Groups only organize your stats. A group has no pick count, mode or gate. In the game, the stat panel shows each group as a heading that collapses. A group with no visible stat is left out.
 
+To group stats only for yourself, clear **Show Heading to AI** on the group. The AI then reads the group's stats as if they had no group, and a group inside it moves up one level. The stat panel still shows the group.
+
 > 💡 **Delete** on a group removes the group only. Its stats and subgroups move up one level.
 
 ## How to Add a Stat Descriptor

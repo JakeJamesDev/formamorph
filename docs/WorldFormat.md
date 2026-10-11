@@ -276,6 +276,7 @@ A group holds traits and other groups. Both the world and each entity have a `tr
 | `name` | ✓ | String | The heading on the setup screen |
 | `playerDescription` | | String | Text the player reads under the heading |
 | `aiDescription` | | String | A header the AI reads above the group's active traits |
+| `aiVisible` | | Boolean | `false` keeps the group's name and description from the AI. Its traits and subgroups move up one level. Absent = `true` |
 | `parentId` | ✓ | String \| `null` | The parent group's `id`. `null` = the top level |
 | `order` | | Number | The order among items with the same parent |
 | `minPicks` | | Number | The fewest traits placed directly in the group that must be active. Absent = 0 |

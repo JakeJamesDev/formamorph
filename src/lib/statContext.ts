@@ -1,5 +1,6 @@
 import type { PlayerStat, Stat, StatDescriptor, StatGroup } from '@/types';
 import { NONE_PLACEHOLDER } from './promptFallbacks';
+import { headingReachesAi } from './groupTree';
 import { statPanelLayout, type StatLayoutNode } from './statGroupTree';
 import { sortedDescriptors, thresholdValue, type BandedStat } from './statDescriptorGeometry';
 import { xmlEscape } from './utils';
@@ -72,6 +73,13 @@ function statEntry(stat: PlayerStat, pieces: StatPieces, format: ContextFormat):
   return body ? `${stat.name}: ${body}` : stat.name;
 }
 
+/** The layout as the AI reads it: a group whose heading the AI can't see gives its slot to its children. */
+const aiVisibleLayout = <T>(nodes: StatLayoutNode<T>[]): StatLayoutNode<T>[] => nodes.flatMap((node) => {
+  if (node.kind === 'stat') return [node];
+  const children = aiVisibleLayout(node.children);
+  return headingReachesAi(node.group) ? [{ ...node, children }] : children;
+});
+
 const indented = (text: string, pad: string) => text.split('\n').map((line) => `${pad}${line}`).join('\n');
 
 /** One group as `format` heads it: its name and description, then its body indented one level. */
@@ -111,7 +119,8 @@ export function buildStatContext(
       node.kind === 'group' ? [groupBlock(node.group, render(node.children).join('\n'), format)] : []
     ))];
   };
-  const groups = render(statPanelLayout(placement.groups, placement.authored, stats, (stat) => stat.id)
+  // A stat a hidden top-level group gives up lands at the top level, so it reads as loose.
+  const groups = render(aiVisibleLayout(statPanelLayout(placement.groups, placement.authored, stats, (stat) => stat.id))
     .filter((node) => node.kind === 'group'));
   return [...stats.filter((stat) => !grouped.has(stat.id)).map(entry), ...groups].join('\n');
 }

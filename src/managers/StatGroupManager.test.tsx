@@ -40,6 +40,17 @@ describe('StatGroupManager', () => {
     expect(write).toHaveBeenLastCalledWith({ ...group, aiDescription: 'Hurt and tired.' });
   });
 
+  it('shows the heading to the AI by default, and writes only the off state', () => {
+    const write = vi.fn();
+    render(<StatGroupManager group={group} write={write} />);
+    const toggle = screen.getByRole('checkbox', { name: 'Show Heading to AI' });
+    expect(toggle).toBeChecked();
+    fireEvent.click(toggle);
+    expect(write).toHaveBeenLastCalledWith({ ...group, aiVisible: false });
+    fireEvent.click(toggle);
+    expect(write).toHaveBeenLastCalledWith({ ...group, aiVisible: undefined });
+  });
+
   it('offers no pick counts, modes or gates, which stat groups do not have', () => {
     render(<StatGroupManager group={group} write={() => {}} />);
     expect(screen.queryByText(/Pick Count/)).toBeNull();

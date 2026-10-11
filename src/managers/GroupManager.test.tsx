@@ -63,4 +63,16 @@ describe('GroupManager', () => {
       expect(written()).toMatchObject({ minPicks: 2, maxPicks: undefined });
     });
   });
+
+  it('shows the heading to the AI by default, writes the off state, and locks the toggle on a link', () => {
+    const { unmount } = render(<GroupManager group={group} />);
+    const toggle = screen.getByRole('checkbox', { name: 'Show Heading to AI' });
+    expect(toggle).toBeChecked();
+    fireEvent.click(toggle);
+    expect(data.updateTraitGroup).toHaveBeenLastCalledWith({ ...group, aiVisible: false });
+    unmount();
+    render(<GroupManager group={{ ...group, aiVisible: false }} readOnly />);
+    expect(screen.getByRole('checkbox', { name: 'Show Heading to AI' })).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Show Heading to AI' })).toBeDisabled();
+  });
 });

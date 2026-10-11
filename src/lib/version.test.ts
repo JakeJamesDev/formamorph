@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { APP_VERSION, migrateWorld, migrateSave, isSaveEnvelope, migrateCarriedPlaceholders } from './version';
 import { placeholderWeight } from './placeholders';
+import { headingReachesAi } from './groupTree';
 import { entityIdsAt } from './entityPresence';
 import { buildEntityContext, navigableDestinationEntries } from './locationContext';
 import { effectiveDestinations } from './locationGraph';
@@ -1053,6 +1054,31 @@ describe('migrateWorld — stat groups', () => {
   it('is idempotent', () => {
     const once = migrateWorld(raw({ statGroups: [group('a'), null], entities: [{ id: 'ash', name: 'Ash', statGroups: 3 }] }));
     expect(migrateWorld(JSON.parse(JSON.stringify(once)))).toEqual(once);
+  });
+});
+
+describe('migrateWorld — group AI visibility', () => {
+  const group = (id: string, extra: Record<string, unknown> = {}) => ({ id, name: id, parentId: null, ...extra });
+  const groupsOf = (world: World) => [
+    ...(world.traitGroups ?? []), ...(world.statGroups ?? []),
+    ...world.entities.flatMap((e) => [...(e.traitGroups ?? []), ...(e.statGroups ?? [])]),
+  ];
+
+  it('loads every group of a world from before the toggle with its heading visible to the AI', () => {
+    const out = migrateWorld({
+      traitGroups: [group('t')], statGroups: [group('s')],
+      entities: [{ id: 'ash', name: 'Ash', traitGroups: [group('et')], statGroups: [group('es')] }],
+    });
+    expect(groupsOf(out).map((g) => [g.id, headingReachesAi(g)])).toEqual([['t', true], ['s', true], ['et', true], ['es', true]]);
+  });
+
+  it('keeps a hidden heading hidden through an export and an import', () => {
+    const hidden = { aiVisible: false };
+    const out = migrateWorld(JSON.parse(JSON.stringify(migrateWorld({
+      version: APP_VERSION, traitGroups: [group('t', hidden)], statGroups: [group('s', hidden)],
+      entities: [{ id: 'ash', name: 'Ash', traitGroups: [group('et', hidden)], statGroups: [group('es', hidden)] }],
+    }))));
+    expect(groupsOf(out).map((g) => [g.id, g.aiVisible])).toEqual([['t', false], ['s', false], ['et', false], ['es', false]]);
   });
 });
 

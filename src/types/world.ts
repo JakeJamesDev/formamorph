@@ -76,6 +76,8 @@ export interface StatGroup {
   name: string;
   /** Sent to the AI as the group's heading text. */
   aiDescription?: string;
+  /** `false` hides the heading from the AI and moves the group's stats up one level. Absent = visible. */
+  aiVisible?: boolean;
   /** null = top-level; otherwise the parent group's id. */
   parentId: string | null;
   /** Sibling order among the stats and groups sharing the same parent. */
@@ -192,6 +194,8 @@ export interface TraitGroup {
   playerDescription?: string;
   /** Sent to the AI as a header above this group's selected traits. */
   aiDescription?: string;
+  /** `false` hides the heading from the AI and moves the group's traits up one level. Absent = visible. */
+  aiVisible?: boolean;
   /** null = top-level; otherwise the parent group's id. */
   parentId: string | null;
   /** Sibling order among items sharing the same parent. */

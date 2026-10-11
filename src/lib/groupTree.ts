@@ -64,6 +64,20 @@ export function buildTree<G extends TreeGroup, L extends TreeLeaf>(groups: reado
   return build(null);
 }
 
+/** Whether the AI reads a group's name and description. */
+export const headingReachesAi = (group: { aiVisible?: boolean }): boolean => group.aiVisible !== false;
+
+/** The tree as the AI reads it: a group whose heading the AI can't see gives its slot to its children. */
+export function aiVisibleTree<G extends TreeGroup & { aiVisible?: boolean }, L extends TreeLeaf>(
+  nodes: GroupTreeNode<G, L>[],
+): GroupTreeNode<G, L>[] {
+  return nodes.flatMap((node) => {
+    if (node.kind === 'leaf') return [node];
+    const children = aiVisibleTree(node.children);
+    return headingReachesAi(node.group) ? [{ ...node, children }] : children;
+  });
+}
+
 /** True if `candidateId` is `ancestorId` itself or nested anywhere beneath it — guards illegal moves. */
 export function isDescendantGroup<G extends TreeGroup>(groups: G[], ancestorId: string, candidateId: string): boolean {
   const byId = new Map(groups.map((g) => [g.id, g]));

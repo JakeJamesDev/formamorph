@@ -487,6 +487,17 @@ describe("buildEntityContext", () => {
     it("keeps the name-only content to names", () => {
       expect(renderEntityRoster(["wolf"], [wolf], { ownedTraits, nameOnly: true })).toBe("Ash");
     });
+
+    it("lists a hidden group's traits with no heading", () => {
+      const hidden = { ...wolf, traitGroups: wolf.traitGroups!.map((g) => ({ ...g, aiVisible: false })) };
+      expect(renderEntityRoster(["wolf"], [hidden], { ownedTraits })).toBe(
+        "Ash\n" +
+        "  description: A gray wolf.\n" +
+        "  traits:\n" +
+        "    Calm: Ash waits before acting.\n" +
+        "    Tamed: Ash obeys the player.\n",
+      );
+    });
   });
 
   it("skips a rostered id that resolves to no entity, and is N/A when none of them do", () => {
