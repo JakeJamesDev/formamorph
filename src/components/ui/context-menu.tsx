@@ -2,6 +2,7 @@ import * as React from "react"
 import * as ContextMenuPrimitive from "@radix-ui/react-context-menu"
 import { Check } from "lucide-react"
 
+import { useLayerDismiss } from "@/components/ui/layer-dismiss"
 import { cn } from "@/lib/utils"
 
 /** How far the finger that opened the menu may drift before the hold reads as a drag instead. */
@@ -107,24 +108,29 @@ const ContextMenuContent = React.forwardRef<
   React.ElementRef<typeof ContextMenuPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof ContextMenuPrimitive.Content>
   & { /** Where the menu renders. Defaults to the document body. */ container?: HTMLElement }
->(({ className, onPointerDownOutside, container, ...props }, ref) => (
-  <ContextMenuPrimitive.Portal container={container}>
-    <ContextMenuPrimitive.Content
-      ref={ref}
-      className={cn(
-        "z-50 min-w-44 overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
-        className
-      )}
-      onPointerDownOutside={(event) => {
-        onPointerDownOutside?.(event)
-        // Only a primary press ends in a click. A right-click outside closes this menu and opens the next
-        // one in the same press, and the click it would swallow is the author's first pick from that menu.
-        if (!event.defaultPrevented && event.detail.originalEvent.button === 0) swallowNextClick()
-      }}
-      {...props}
-    />
-  </ContextMenuPrimitive.Portal>
-))
+>(({ className, onPointerDownOutside, container, ...props }, ref) => {
+  const [contentRef, guard] = useLayerDismiss(ref)
+  return (
+    <ContextMenuPrimitive.Portal container={container}>
+      <ContextMenuPrimitive.Content
+        ref={contentRef}
+        className={cn(
+          "z-50 min-w-44 overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+          className
+        )}
+        {...props}
+        onPointerDownOutside={guard((event) => {
+          onPointerDownOutside?.(event)
+          // Only a primary press ends in a click. A right-click outside closes this menu and opens the next
+          // one in the same press, and the click it would swallow is the author's first pick from that menu.
+          if (!event.defaultPrevented && event.detail.originalEvent.button === 0) swallowNextClick()
+        })}
+        onInteractOutside={guard(props.onInteractOutside)}
+        onEscapeKeyDown={guard(props.onEscapeKeyDown)}
+      />
+    </ContextMenuPrimitive.Portal>
+  )
+})
 ContextMenuContent.displayName = ContextMenuPrimitive.Content.displayName
 
 /** Shared row chrome. The tick's column is held even by a plain action, so every label in one menu starts

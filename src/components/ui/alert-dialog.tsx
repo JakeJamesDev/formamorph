@@ -3,7 +3,7 @@ import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog"
 
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
-import { keepLayerFocus } from "@/components/ui/shielded-layer"
+import { ignoreLayerDismiss, keepLayerFocus } from "@/components/ui/shielded-layer"
 import { SurfaceLayer, type SurfaceIdName } from "@/components/ui/surface"
 
 const AlertDialog = AlertDialogPrimitive.Root
@@ -42,8 +42,9 @@ const AlertDialogContent = React.forwardRef<
         className
       )}
       {...props}
-      // A closing alert does not take focus from the shielded layer. An alert never closes on an outside
-      // press, so it needs no press guard.
+      // Escape in the shielded layer does not close the alert, and a closing alert does not take focus from
+      // the layer. An alert never closes on an outside press, so it needs no press guard.
+      onEscapeKeyDown={ignoreLayerDismiss(props.onEscapeKeyDown)}
       onCloseAutoFocus={keepLayerFocus(props.onCloseAutoFocus)}>
       <SurfaceLayer id={surface}>{children}</SurfaceLayer>
     </AlertDialogPrimitive.Content>

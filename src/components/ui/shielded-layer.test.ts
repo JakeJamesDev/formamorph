@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { coverShieldedLayer, ensureShieldedLayer, ignoreLayerPress, inShieldedLayer, keepLayerFocus } from './shielded-layer';
+import { coverShieldedLayer, ensureShieldedLayer, ignoreLayerDismiss, inShieldedLayer, keepLayerFocus } from './shielded-layer';
 
 /** Dispatches a bubbling event on `target` and reports whether a `document` listener saw it. */
 function reachesDocument(target: Element, event: Event): boolean {
@@ -103,7 +103,7 @@ describe('the shielded layer', () => {
 
   it('prevents a dialog close for a press in the layer, and passes every other press to the caller', () => {
     const caller = vi.fn();
-    const guard = ignoreLayerPress(caller);
+    const guard = ignoreLayerDismiss(caller);
     const inside = new Event('pointerdown', { bubbles: true, cancelable: true });
     const layerButton = childOfLayer();
     layerButton.addEventListener('pointerdown', guard);

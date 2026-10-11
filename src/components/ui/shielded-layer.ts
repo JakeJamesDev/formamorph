@@ -11,13 +11,14 @@
  * | traps focus with `focusin` and `focusout` on `document`  | `focusin` stops at the host; a `focusout` that     |
  * |                                                          | moves focus into the layer stops at `<body>`       |
  * | cancels `wheel` and `touchmove` outside it on `document` | both stop at the host                              |
- * | closes on a press outside it                             | the wrappers call `inShieldedLayer` and prevent    |
+ * | closes on a press outside it, or on Escape anywhere      | the wrappers call `ignoreLayerDismiss`             |
  * | returns focus to its opener when it closes               | both                                               |
  *
- * A press must still reach `document`, because popovers and menus dismiss from there. React handles each
+ * Popovers, selects and context menus dismiss the same way and call `ignoreLayerDismiss` too. A press must
+ * still reach `document`, because a popup inside the layer dismisses from there. React handles each
  * stopped event first: its listeners sit on the mount inside the host.
  *
- * This module imports nothing: the account site bundles the dialog wrappers that read it.
+ * This module imports nothing: the account site bundles the wrappers that read it.
  */
 
 const MARK = 'data-shielded-layer';
@@ -49,10 +50,16 @@ export function inShieldedLayer(node: EventTarget | null): boolean {
   return node instanceof Element && node.closest(`[${MARK}]`) !== null;
 }
 
-/** A dialog's outside-press handler that ignores a press in the layer and passes every other one on. */
-export function ignoreLayerPress<E extends Event>(handler?: (event: E) => void): (event: E) => void {
+/**
+ * A dismiss handler (outside press, outside interaction or Escape) that ignores an event from the layer and
+ * passes every other one on. With `content`, a popup rendered inside the layer keeps every dismissal.
+ */
+export function ignoreLayerDismiss<E extends Event>(
+  handler?: (event: E) => void,
+  content?: { readonly current: Element | null },
+): (event: E) => void {
   return (event) => {
-    if (inShieldedLayer(event.target)) event.preventDefault();
+    if (inShieldedLayer(event.target) && !inShieldedLayer(content?.current ?? null)) event.preventDefault();
     else handler?.(event);
   };
 }

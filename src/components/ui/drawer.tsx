@@ -2,7 +2,7 @@ import * as React from 'react';
 import { Drawer as DrawerPrimitive } from 'vaul';
 
 import { cn } from '@/lib/utils';
-import { ignoreLayerPress, keepLayerFocus } from '@/components/ui/shielded-layer';
+import { ignoreLayerDismiss, keepLayerFocus } from '@/components/ui/shielded-layer';
 
 // shadcn-style Drawer over vaul. Deviation from the stock recipe: DrawerContent does NOT bake in an overlay, so
 // a non-modal drawer (`<Drawer modal={false}>`) leaves whatever is behind it visible and interactive. Render
@@ -39,10 +39,11 @@ const DrawerContent = React.forwardRef<
         className,
       )}
       {...props}
-      // The shielded layer counts as inside the drawer: a press there does not close it, and a closing
-      // drawer does not take focus from it.
-      onPointerDownOutside={ignoreLayerPress(props.onPointerDownOutside)}
-      onInteractOutside={ignoreLayerPress(props.onInteractOutside)}
+      // The shielded layer counts as inside the drawer: a press or Escape there does not close it, and a
+      // closing drawer does not take focus from it.
+      onPointerDownOutside={ignoreLayerDismiss(props.onPointerDownOutside)}
+      onInteractOutside={ignoreLayerDismiss(props.onInteractOutside)}
+      onEscapeKeyDown={ignoreLayerDismiss(props.onEscapeKeyDown)}
       onCloseAutoFocus={keepLayerFocus(props.onCloseAutoFocus)}
     >
       <div className="mx-auto mt-4 h-2 w-[100px] shrink-0 rounded-full bg-muted" />
