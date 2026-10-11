@@ -55,7 +55,7 @@ Stat code may write another stat of the same owner through the `stats` map: its 
 - `self` is still the same object as its map entry, so a write through either path is one write.
 - A write to an unknown stat name reaches the blank entry the map already hands out. The write is recorded and reported as a dropped write, by its path, as an unknown placeholder write is. Nothing throws.
 - A write to a disabled stat is recorded and reported as a dropped write.
-- `null` written to any writable field is a bad write and fails the run, as a non-number is today.
+- `null` written to any writable field fails the run with the existing `non-number` kind, the same as a string. No new failure kind and no change to the Test Bench reason line (Q15).
 - Writing other stats works in both boxes. One surface list, one drift guard.
 
 **2. Executor result.**
@@ -125,7 +125,7 @@ A good test drives a run and reads what came out: the stats, the stored bounds, 
 
 ## Further Notes
 
-- Grilled 2026-10-04. Q1 all four fields; Q2 stat order, last write wins; Q3 bench warning; Q4 new spec; Q5 and Q9 `null` is the one release, empty-boxes clear removed; Q6 Test Code lists hub writes, live delta as today, no log line; Q7 unknown and disabled targets dropped and reported, editor underlines; Q8 one new template plus a sweep; Q10 `null` on `self` too; Q11 finding per stat and field, any two writers; Q12 stale stored bound explained in the guide, no new UI; Q13 (2026-10-11) same owner only, after Entity Stats landed; **Q14 (2026-10-11) bounds are ledgers: a write sets the number now, later changes move from it, `null` is an error.** Q14 supersedes Q5, Q9, Q10, and Q12: there is no stored override, so no release and no stale bound.
+- Grilled 2026-10-04. Q1 all four fields; Q2 stat order, last write wins; Q3 bench warning; Q4 new spec; Q5 and Q9 `null` is the one release, empty-boxes clear removed; Q6 Test Code lists hub writes, live delta as today, no log line; Q7 unknown and disabled targets dropped and reported, editor underlines; Q8 one new template plus a sweep; Q10 `null` on `self` too; Q11 finding per stat and field, any two writers; Q12 stale stored bound explained in the guide, no new UI; Q13 (2026-10-11) same owner only, after Entity Stats landed; **Q14 (2026-10-11) bounds are ledgers: a write sets the number now, later changes move from it, `null` is an error.** Q14 supersedes Q5, Q9, Q10, and Q12: there is no stored override, so no release and no stale bound. Q15 (ticket 01): `null` on a stat field keeps the `non-number` failure kind; only tests are added.
 - **Behavior change for shipped worlds.** A code bound no longer hides the trait and AI layers under it; traits add on top of the written number. Checked 2026-10-11: no bundled world writes a bound, and the user's wip worlds only read `self.max`. A stat whose code was deleted keeps its ledger in an in-progress playthrough. A new playthrough is unaffected.
 - Builds on Entity Stats: owners, owner order, per-owner code bounds, Blueprint stats. Tickets base on a commit after that effort lands.
 - The v2 story "code writes only its own stat's bounds so two scripts never race" is superseded. The race is now author-visible through the bench rule and settled by stat order.
