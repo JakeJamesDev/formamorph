@@ -121,6 +121,8 @@ Rulings from the grill, numbered as asked.
 
 - **Q71** (ticket 11) Byte-identical request bodies at the toggle's default satisfy ticket 11's probe criterion, with the dump result in the commit body. A second dump also shows that the SG fixture with every group hidden renders byte for byte as the flat request S. That ties the toggle-off shape to arms already measured, so no live run is needed.
 
+- **Q72** (ticket 13) Ticket 13 lands without the joined owners' stats in the Stats chip outside the stat request. Today the narration, choices and planner prompts don't see the played persona's stats anywhere, which Q11's "they become player stats" doesn't intend. Ticket 20 adds them, with a probe.
+
 Derived from Q7 and confirmed with the summary:
 
 - An entity stat's morph bindings drive that entity's own model.
