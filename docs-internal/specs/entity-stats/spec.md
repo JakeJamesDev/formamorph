@@ -201,6 +201,8 @@ Rulings from the grill, numbered as asked.
 
   On cloud, the model padded the JSON with whitespace until the token cap in 66–81% of replies. Cydonia had no cap hits and still missed. Branch `ticket/entity-stats-26` is at `7dd85ce3`, not landed.
 
+  A rerun through the app's request layer (`buildAiRequestSpec`, default settings) matched Q86 and Q88 within noise. Both lean versions still miss. The branch is at `f23f3940`, with the probe port, not landed.
+
 Derived from Q7 and confirmed with the summary:
 
 - An entity stat's morph bindings drive that entity's own model.
