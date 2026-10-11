@@ -1,7 +1,7 @@
 # Stat Code v6: Writes To Other Stats
 
 Status: needs-info
-Status note: Grilled 2026-10-04, Q1–Q12. Tickets on hold; more to discuss before they are cut.
+Status note: Grilled 2026-10-04, Q1–Q12; Q13 added 2026-10-11 after Entity Stats landed. Tickets on hold; more to discuss before they are cut.
 
 ## Problem Statement
 
@@ -11,7 +11,7 @@ The case that prompted this: a d20 stat that rolls, pins the result text to a pl
 
 ## Solution
 
-Stat code may write another stat through the `stats` map: its `value`, `min`, `max`, and `regen`. The rules it already has for placeholder pins and trait switches apply: writes land in stat order, the last write wins, and the Test Bench warns when two boxes write one field. A code bound now has one release, writing `null`, on `self` or on any stat. The empty-boxes clear from v5 goes away.
+Stat code may write another stat of the same owner through the `stats` map: its `value`, `min`, `max`, and `regen`. The rules it already has for placeholder pins and trait switches apply: writes land in stat order within the owner, then owner order, the last write wins, and the Test Bench warns when two boxes write one field. A code bound now has one release, writing `null`, on `self` or on any stat. The empty-boxes clear from v5 goes away.
 
 ## User Stories
 
@@ -20,6 +20,9 @@ Stat code may write another stat through the `stats` map: its `value`, `min`, `m
 3. As a world author, I want `stats.Name.value += 1` and `stats.Name.value = x` both to land, so that the map reads and writes like `self`.
 4. As a world author, I want a write to another stat to clamp to that stat's effective range, so that a hub cannot push a target past its cap.
 5. As a world author, I want two boxes that write one stat field to land in stat order with the last write winning, so that the rule is the one I already know from pins and trait switches.
+5a. As a world author, I want an entity stat's code to write its owner's other stats through `stats`, so that an NPC's own hub works as the player's does.
+5b. As a world author, I want `entities[x].stats` and `persona.stats` to stay read-only, so that one owner's code never moves another owner's values.
+5c. As a world author, I want a Blueprint stat's code that writes `stats.Name` to reach each owner's own copy, so that one script serves every bearer.
 6. As a world author, I want the Test Bench to warn when two boxes write the same stat field, so that a race is loud before I ship.
 7. As a world author, I want that warning to count the target's own box as a writer, so that a hub fighting the stat's own code is caught too.
 8. As a world author, I want a write to a stat name that does not exist to be dropped and reported, so that a typo never throws at run time.
@@ -47,7 +50,7 @@ Stat code may write another stat through the `stats` map: its `value`, `min`, `m
 
 **1. Sandbox surface.**
 
-- Every entry in `stats` takes writes to `value`, `min`, `max`, and `regen`. The lock that made other entries read-only is lifted for those four fields. `id`, `name`, `type`, `description`, `previous`, and `delta` stay read-only on every entry, `self` included.
+- Every entry in the owner's own `stats` map takes writes to `value`, `min`, `max`, and `regen`. The lock that made other entries read-only is lifted for those four fields. `entities[x].stats` and `persona.stats` keep their read-only lock and their dropped-write report, as Entity Stats Q9 and Q41 rule. `id`, `name`, `type`, `description`, `previous`, and `delta` stay read-only on every entry, `self` included.
 - `self` is still the same object as its map entry, so a write through either path is one write.
 - A write to an unknown stat name reaches the blank entry the map already hands out. The write is recorded and reported as a dropped write, by its path, as an unknown placeholder write is. Nothing throws.
 - A write to a disabled stat is recorded and reported as a dropped write.
@@ -62,10 +65,11 @@ Stat code may write another stat through the `stats` map: its `value`, `min`, `m
 
 **3. Per-turn run.**
 
-- The run collects every stat's writes keyed by target id, in stat order. For one target field, the last writer in stat order wins. Stat order is the world's authored stat list, the order that already settles pins and trait switches.
+- The run collects every stat's writes keyed by target id, in stat order within each owner. For one target field, the last writer wins: stat order within the owner, then owner order across owners, the player first and entities in authored order, as Entity Stats Q42 already settles pins and trait switches. Since writes stay inside one owner, owner order only matters for pins and switches.
+- A Blueprint stat's code runs once per owner with that owner's `stats`, so a write to `stats.Name` lands on each owner's own copy.
 - Values are clamped to the target's effective range after its bounds write, as a self write is today.
 - Bounds writes lay over the target's stored code bounds field by field. A `null` removes that field from the stored bounds. A target with no stored bounds and only releases ends with none.
-- The empty-boxes clear is removed: a stat with two empty boxes keeps whatever code bounds are stored on it. This reopens a v5 ruling on new evidence: a stat with no code can now carry a code bound a hub stored.
+- The empty-boxes clear is removed for every owner: a stat with two empty boxes keeps whatever code bounds are stored on it. This reopens a v5 ruling on new evidence: a stat with no code can now carry a code bound a hub stored.
 - Each box still runs in parallel over one snapshot. A hub's write to Health is not visible to Health's box on the same run, and not in Health's `delta.actual` during that run. It is in Health's `previous` on the next turn.
 - Live delta feedback folds hub moves in as it folds self moves in. No log entry is written for a hub write.
 - Rollback and re-roll are unchanged: hub writes are part of the run's stat result and go back with the turn's snapshot.
@@ -75,11 +79,11 @@ Stat code may write another stat through the `stats` map: its `value`, `min`, `m
 - The "writes to another stat, write to self instead" diagnostic is removed, with its tests.
 - The unknown-stat underline covers write paths as it covers read paths.
 - Completions after a stat map entry's dot offer the four writable fields with the same documentation they carry on `self`, and `null` is mentioned in the bound fields' hover text.
-- Test Code lists the box's writes to other stats beside its own value, bounds, pins, and switches: stat name, field, and the number or "released". These are shown, never applied.
+- Test Code lists the box's writes to other stats beside its own value, bounds, pins, and switches: stat name, field, and the number or "released". These are shown, never applied. On an entity stat's box the targets are its owner's stats, seeded at their starting values as Entity Stats Q46 seeds them.
 
 **5. Test Bench.**
 
-- A new rule, two writers on one stat field. It scans every box in the world for a write to `self.<field>` or to `stats.<Name>.<field>` by dot or bracket literal, resolves `self` to the owning stat, and reports each stat field with more than one writing box. Severity warning. The finding names the field and each writer with its box label. Computed names are out of reach and the rule says nothing about them.
+- A new rule, two writers on one stat field. It scans every box in the world, per owner, for a write to `self.<field>` or to `stats.<Name>.<field>` by dot or bracket literal, resolves `self` to the owning stat, and reports each owner's stat field with more than one writing box. A Blueprint stat's box counts once per owner it runs for. Severity warning. The finding names the field and each writer with its box label. Computed names are out of reach and the rule says nothing about them.
 - The rule runs in the static pass; it does not spin the VM.
 
 **6. Templates.**
@@ -89,7 +93,7 @@ Stat code may write another stat through the `stats` map: its `value`, `min`, `m
 
 **7. Docs.**
 
-- The stat code guide gains a section on writing other stats: the four fields, stat order and last write wins, the same-run snapshot rule, `null` as the one release, and the note that a stored bound outlives the code that wrote it in a playthrough edited mid-game.
+- The stat code guide gains a section on writing other stats: the four fields, same owner only, stat order and last write wins, the same-run snapshot rule, `null` as the one release, the Blueprint per-owner note, and the note that a stored bound outlives the code that wrote it in a playthrough edited mid-game. The existing lines that call `entities[x].stats` and `persona.stats` read-only stay.
 - The in-app help for the Code tab gets the matching line. The changelog entry ships with the feature.
 
 **8. Shapes.**
@@ -111,7 +115,7 @@ A good test drives a run and reads what came out: the stats, the stored bounds, 
 ## Out of Scope
 
 - Writing `previous`, `delta`, `id`, `name`, `type`, or `description` on any entry.
-- Writes to stats owned by entities. The `stats` field on an entity entry stays reserved.
+- Writes to another owner's stats through `entities[x].stats` or `persona.stats`. Entity Stats Q9 and Q41 stand (Q13).
 - A turn-log line naming the writer.
 - A play-time marker for a stored code bound.
 - Summing deltas when two boxes write one field.
@@ -119,6 +123,7 @@ A good test drives a run and reads what came out: the stats, the stored bounds, 
 
 ## Further Notes
 
-- Grilled 2026-10-04. Q1 all four fields; Q2 stat order, last write wins; Q3 bench warning; Q4 new spec; Q5 and Q9 `null` is the one release, empty-boxes clear removed; Q6 Test Code lists hub writes, live delta as today, no log line; Q7 unknown and disabled targets dropped and reported, editor underlines; Q8 one new template plus a sweep; Q10 `null` on `self` too; Q11 finding per stat and field, any two writers; Q12 stale stored bound explained in the guide, no new UI.
+- Grilled 2026-10-04. Q1 all four fields; Q2 stat order, last write wins; Q3 bench warning; Q4 new spec; Q5 and Q9 `null` is the one release, empty-boxes clear removed; Q6 Test Code lists hub writes, live delta as today, no log line; Q7 unknown and disabled targets dropped and reported, editor underlines; Q8 one new template plus a sweep; Q10 `null` on `self` too; Q11 finding per stat and field, any two writers; Q12 stale stored bound explained in the guide, no new UI; Q13 (2026-10-11) same owner only, after Entity Stats landed.
 - **Behavior change for shipped worlds.** A stat whose code was deleted no longer resets its stored bounds in an in-progress playthrough. A new playthrough is unaffected. The user ruled this in.
+- Builds on Entity Stats: owners, owner order, per-owner code bounds, Blueprint stats. Tickets base on a commit after that effort lands.
 - The v2 story "code writes only its own stat's bounds so two scripts never race" is superseded. The race is now author-visible through the bench rule and settled by stat order.
