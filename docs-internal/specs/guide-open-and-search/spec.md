@@ -22,6 +22,8 @@ Semantic Search exists for the Ask tab, but it is off by default, the Search tab
 - The keyword search matches partial words and close spellings, on the Search tab and in Ask.
 - The Search tab merges Semantic Search with the keyword search, the same way Ask does.
 - On first open, a card in the help window offers Semantic Search as recommended. The player picks **Turn On** or **No Thanks**. When the model is already on the device, Semantic Search turns on with no card.
+- In Wide View and the full-screen Guide, **< >** Back and Forward buttons move through the reader's view history, as in a browser.
+- A press, a focus move or Escape in the help window no longer closes a popup below it, such as a select or popover in Settings.
 
 ## Rulings
 
@@ -47,6 +49,12 @@ Settled with the user on 2026-10-11.
 | Q16 | Ask probes with fuzzy keywords and Semantic Search on match or beat 77.5% answer quality and 93% Take Me There on the cloud model |
 | Q17 | A card left unanswered shows again on the next open |
 | Q18 | The full-screen Guide header has an Open Wiki button |
+| Q19 | Wide View and the full-screen Guide show Back and Forward buttons. Each reader change is a history entry: a section opened from any place, and in Wide View a switch to the conversation |
+| Q20 | Back and Forward restore the scroll position the entry had |
+| Q21 | Alt+Left / Alt+Right and the mouse back and forward buttons also move through history, while the input is in the help window |
+| Q22 | One history, in memory with the Guide view. It survives a close and a change between layouts, clears on reload, and holds at most 50 entries |
+| Q23 | A press, a focus move or Escape inside the help window never closes a popover, select or menu outside it. A popup inside the help window still closes as today |
+| Q24 | The fix is ticket 08 in this spec |
 
 ## User Stories
 
@@ -90,6 +98,17 @@ Settled with the user on 2026-10-11.
 38. As a player using the Bubble or Minimal chat style, I want the same menu items and card, so that every style offers the same help.
 39. As a keyboard player, I want every new control to be reachable and labeled, so that I can use them without a mouse.
 40. As a docs maintainer, I want the semantic vectors to stay in sync with the docs, so that meaning match never ranks a stale section.
+41. As a player in Wide View or the full-screen Guide, I want Back and Forward buttons, so that I can return to a section I read before.
+42. As a player, I want Back to return me to where I was in that section, so that I do not scroll again.
+43. As a player in Wide View, I want Back to return from a section to the conversation, so that one history covers both.
+44. As a player, I want Alt+Left and Alt+Right to move through history, so that the browser keys work.
+45. As a player with a mouse, I want its back and forward buttons to move through history, so that they act as in a browser and never leave the app.
+46. As a player, I want the history to survive closing the window and switching to full screen, so that I keep my trail.
+47. As a player at the start or end of my history, I want the matching button disabled, so that I know there is nowhere to go.
+48. As a player who goes back and then opens a new section, I want the forward entries dropped, so that history acts as in a browser.
+49. As a player with a Settings popup open, I want a click in the help window to leave the popup open, so that help never changes the screen below it.
+50. As a player, I want Escape in the help window to act on help only, so that it never closes a popup below it.
+51. As a player, I want a popup inside the help window to still close when I click elsewhere in help, so that help's own menus act as before.
 
 ## Implementation Decisions
 
@@ -107,6 +126,8 @@ Settled with the user on 2026-10-11.
 - **Open Wiki** builds the URL from the wiki base and the reader's section id. The section id already follows the wiki's anchor rule; a split section's part suffix drops. One shared function opens external links. Desktop already routes `window.open` to the system browser. Android needs a check that `window.open` leaves the WebView, and a fix if it does not.
 - **The wiki confirm** is a small dialog in the help window's layer, with the target page named, Open and Cancel, and the Don't Ask Again checkbox.
 - **The ⋮ menu** gains Open Guide and Open Wiki in both chromes.
+- **Reader history** joins the Guide view state: a list of entries (a section id, or the conversation) with scroll positions, and a cursor. A reader change pushes an entry and drops the forward entries. Back and Forward move the cursor and do not push. History records in every layout, so the trail stays whole when the player moves to Wide View. The buttons show only in Wide View and the full-screen Guide. The mouse side buttons are caught inside the help window, so they never reach the app's own route history.
+- **Outside-press guard for popups:** the popover, select, dropdown-menu and context-menu wrappers ignore an outside press, focus move or Escape whose target is in the shielded layer, when their own content is outside the layer. Content inside the layer keeps today's dismissal. The guard lives beside `ignoreLayerPress` and keeps that module import-free for the account site bundle.
 - **The glossary** entry for Search Source changes: the Search tab uses Keyword and Semantic.
 
 ## Testing Decisions
@@ -116,6 +137,8 @@ Settled with the user on 2026-10-11.
 - **Help session search** (prior art: the help session sources tests, with a fake embedder): the Search tab's merged ranking, the keyword-only fallback when the model is not on the device, and the similarity floor.
 - **Help settings** (prior art: the help settings tests): defaults, parse of stored values, and that a switch flip marks the offer decided.
 - **Formaquestion component** (prior art: the landing tests): the ⋮ items in both chromes, the expand button, the full-screen Guide keeping its section both ways, the card's three outcomes, the silent turn-on when the model is cached, the wiki confirm and its Don't Ask Again path, and the URL for a section, a split section and no section.
+- **Reader history** (prior art: the Formaquestion component tests): push, Back, Forward, forward entries dropped on a new open, the 50-entry cap, scroll restored, the keys and mouse buttons, and history kept across a close and a layout change.
+- **Outside-press guard** (prior art: the shielded-layer and context-menu tests): a press, focus move and Escape in the layer leave an outside popup open; a press in the layer still closes a popup inside it; a press elsewhere still closes both. Each guard proven to bite.
 - **Probes**: the help retrieval and baseline probes on the cloud model, with fuzzy keywords and Semantic Search on, against the Q16 bar. In-batch controls with today's ranking.
 - **UI verification** through the dev-router for the card, the full-screen Guide and the confirm, in both themes.
 
