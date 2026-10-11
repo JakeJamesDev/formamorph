@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { Entity, Stat, StatGroup } from '@/types';
+import { heldReasonText } from './heldReasons';
 import {
   addStatLink, applyEntityStatRows, detachStatLink, dropKeepsBlueprints, dropStatLinksTo, editStatLink, entityStatRows,
-  holdsStatOriginal, linkedStat, mergeDuplicateStatLinks, mergeStatBlueprintsGroups, playStatWorld, playerStatsOf,
+  holdsStatOriginal, statHeldReason, linkedStat, mergeDuplicateStatLinks, mergeStatBlueprintsGroups, playStatWorld, playerStatsOf,
   removeEntityStatGroup, removeStatBlueprints, removeStatLink, resetStatLinkFieldOn, resetStatLinkOn, resetStatLinkStatOn,
   resolvedEntityStatTree, resolvedEntityStats, statBlueprintChoices, statLinkState, statLinksTo, withEntityStatTree,
 } from './statLinks';
@@ -252,6 +253,65 @@ describe('a group link', () => {
 
   it('drops the links to a deleted group', () => {
     expect(dropStatLinksTo([linked], new Set(['bp-social']))[0].statLinks).toBeUndefined();
+  });
+});
+
+describe('statHeldReason', () => {
+  const love = stat('love', { groupId: 'bp-kin', order: 0 });
+  const kin: StatGroup = { id: 'bp-kin', name: 'Kin', parentId: 'bp-social' };
+  const w = { stats: [health, trust, fear, love], statGroups: [bp, sub, kin] };
+
+  it('says the entity already links the Blueprint', () => {
+    const linked = addStatLink(w, bram(), 'trust', 'l1')!;
+    expect(statHeldReason(w, linked, 'trust')).toEqual({ kind: 'links', name: 'trust' });
+  });
+
+  it('says the entity owns the stat under the Blueprint id after Detach', () => {
+    const linked = addStatLink(w, bram(), 'trust', 'l1')!;
+    const detached = detachStatLink(w, linked, 'l1')!.entity;
+    expect(detached.statLinks).toBeUndefined();
+    expect(statHeldReason(w, detached, 'trust')).toEqual({ kind: 'owns', name: 'trust' });
+  });
+
+  it('says the entity links a group that holds the Blueprint', () => {
+    const linked = addStatLink(w, bram(), 'bp-social', 'l1')!;
+    expect(statHeldReason(w, linked, 'love')).toEqual({ kind: 'group', name: 'love', group: 'Social' });
+  });
+
+  it('says the entity already links something the group would bring', () => {
+    const linked = addStatLink(w, bram(), 'fear', 'l1')!;
+    expect(statHeldReason(w, linked, 'bp-social')).toEqual({ kind: 'inside', name: 'fear', group: 'Social' });
+  });
+
+  it('names an own stat a group would bring', () => {
+    expect(statHeldReason(w, bram({ stats: [{ ...love, groupId: null }] }), 'bp-social')).toEqual({ kind: 'owns', name: 'love' });
+  });
+
+  it('gives no reason for a Blueprint the entity holds nothing of', () => {
+    const linked = addStatLink(w, bram(), 'fear', 'l1')!;
+    expect(statHeldReason(w, linked, 'trust')).toBeNull();
+    expect(statHeldReason(w, bram(), 'trust')).toBeNull();
+  });
+
+  it('refuses a link exactly when it gives a reason', () => {
+    const linked = addStatLink(w, bram(), 'bp-social', 'l1')!;
+    for (const id of ['trust', 'fear', 'love', 'bp-social', 'bp-kin']) {
+      expect(addStatLink(w, linked, id, 'l2') === null).toBe(statHeldReason(w, linked, id) !== null);
+    }
+  });
+});
+
+describe('heldReasonText', () => {
+  it.each([
+    [{ kind: 'links', name: 'Trust' }, undefined, 'Already links Trust'],
+    [{ kind: 'owns', name: 'Trust' }, undefined, 'Already owns Trust'],
+    [{ kind: 'group', name: 'Trust', group: 'Social' }, undefined, 'Already links Social, which holds Trust'],
+    [{ kind: 'inside', name: 'Fear', group: 'Social' }, undefined, 'Already links Fear, which Social holds'],
+    [{ kind: 'player', name: 'Hardy' }, undefined, 'Already holds Hardy as a player trait'],
+    [{ kind: 'links', name: 'Trust' }, 'Bram', 'Bram already links Trust'],
+    [{ kind: 'owns', name: 'Trust' }, 'Bram', 'Bram already owns Trust'],
+  ] as const)('%j with subject %s reads "%s"', (reason, subject, text) => {
+    expect(heldReasonText(reason, subject)).toBe(text);
   });
 });
 

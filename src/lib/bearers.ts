@@ -6,6 +6,7 @@ import { WORLD_OWNER, type GateInput, type GateOwner } from './traitGates';
 import { effectivePlacement, groupsBelow, offeredWorldTraits, ownsTraits, placeableGroupIds } from './traitTree';
 import { buildTree, flattenTree } from './groupTree';
 import { effectiveLinkTrait } from './blueprints';
+import type { HeldReason } from './heldReasons';
 
 /** The player bearer's id: the world's root traits. It is the player's world key, so None and a library
  *  persona share the same state. */
@@ -254,12 +255,26 @@ export function editorGateInput(world: BearerWorld): GateInput {
 }
 
 /**
- * Whether the bearer's tree already holds `originalId`, or anything a link to it would bring. The player
- * bearer and the Custom Persona entity hold every root item outside Blueprints, whatever the persona the
- * bearer was resolved under, so the check reads the same in the editor and in play.
+ * Why the bearer's tree already holds `originalId`, or anything a link to it would bring; null when it holds
+ * none of it. The player bearer and the Custom Persona entity hold every root item outside Blueprints,
+ * whatever the persona the bearer was resolved under, so the check reads the same in the editor and in play.
  */
-export function holdsOriginal(world: BearerWorld, bearer: Bearer, originalId: string): boolean {
-  const held = new Set(bearer.linkOf.keys());
-  if (bearer.entity === null || bearer.entity.customPersona) for (const id of playerHeldIds(world)) held.add(id);
-  return broughtIds(world, originalId).some((id) => held.has(id));
+export function heldReason(world: BearerWorld, bearer: Bearer, originalId: string): HeldReason | null {
+  const name = originalOf(world, originalId)?.item.name ?? '';
+  const brought = broughtIds(world, originalId);
+  const direct = bearer.linkOf.get(originalId);
+  if (direct) {
+    return direct.originalId === originalId
+      ? { kind: 'links', name: name || direct.originalName }
+      : { kind: 'group', name, group: direct.originalName };
+  }
+  const inside = brought.map((id) => bearer.linkOf.get(id)).find((link) => link);
+  if (inside) return { kind: 'inside', name: inside.originalName, group: name };
+  if (bearer.entity !== null && !bearer.entity.customPersona) return null;
+  const playerHeld = playerHeldIds(world);
+  return brought.some((id) => playerHeld.has(id)) ? { kind: 'player', name } : null;
 }
+
+/** Whether the bearer's tree already holds `originalId`, or anything a link to it would bring. */
+export const holdsOriginal = (world: BearerWorld, bearer: Bearer, originalId: string): boolean =>
+  heldReason(world, bearer, originalId) !== null;

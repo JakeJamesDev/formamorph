@@ -24,9 +24,10 @@ describe('BearerFlyoutReference', () => {
     expect(row('Link To', 'Newcomer').querySelector('.lucide-circle-user-round')).not.toBeNull();
     expect(row('Link To', 'Sam').querySelector('.lucide-circle-user-round')).toBeNull();
     fireEvent.click(row('Link To', 'Heroes'));
-    expect(row('Link To', 'Albus')).toBeDisabled();
+    expect(row('Link To', 'Albus')).toHaveAttribute('aria-disabled', 'true');
+    expect(row('Link To', 'Albus')).toHaveAttribute('aria-description', 'Already links Hardy');
     fireEvent.click(row('Link To', 'Mira'));
-    expect(row('Link To', 'Mira')).toBeDisabled();
+    expect(row('Link To', 'Mira')).toHaveAttribute('aria-disabled', 'true');
     expect(screen.getByText('The sample links Albus, Mira.')).toBeInTheDocument();
   });
 });

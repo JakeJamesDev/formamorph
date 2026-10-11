@@ -8,6 +8,7 @@ import { groupsBelow } from './traitTree';
 import { removeStatGroup, statRootCount, statsInTreeOrder } from './statGroupTree';
 import { buildTree, flattenTree, type TreeLeaf } from './groupTree';
 import type { BearerChoice } from './bearerChoices';
+import type { HeldReason } from './heldReasons';
 import { randomUUID } from './uuid';
 import { newStat } from './blankWorld';
 
@@ -201,14 +202,28 @@ export const entityStatRootCount = (entity: Entity): number =>
 export const linksStat = (entity: Entity, originalId: string): boolean =>
   (entity.statLinks ?? []).some((l) => l.originalId === originalId);
 
-/** Whether the entity's tree already holds the original, or anything a link to it would bring: one of its own
- *  stats, or a stat or group one of its links brings. */
-export function holdsStatOriginal(world: StatLinkWorld, entity: Entity, originalId: string): boolean {
-  if (linksStat(entity, originalId)) return true;
-  const held = new Set((entity.stats ?? []).map((s) => s.id));
-  for (const link of entity.statLinks ?? []) statBroughtIds(world, link.originalId).forEach((id) => held.add(id));
-  return statBroughtIds(world, originalId).some((id) => held.has(id));
+/** Why the entity's tree already holds the original, or anything a link to it would bring: one of its own
+ *  stats, or a stat or group one of its links brings. Null when it holds none of it. */
+export function statHeldReason(world: StatLinkWorld, entity: Entity, originalId: string): HeldReason | null {
+  const name = statOriginalOf(world, originalId)?.item.name ?? '';
+  const direct = (entity.statLinks ?? []).find((l) => l.originalId === originalId);
+  if (direct) return { kind: 'links', name: name || direct.originalName };
+  const brought = new Set(statBroughtIds(world, originalId));
+  const own = (entity.stats ?? []).find((s) => brought.has(s.id));
+  if (own) return { kind: 'owns', name: own.name };
+  for (const link of entity.statLinks ?? []) {
+    const linked = statBroughtIds(world, link.originalId);
+    if (!linked.some((id) => brought.has(id))) continue;
+    return linked.includes(originalId)
+      ? { kind: 'group', name, group: link.originalName }
+      : { kind: 'inside', name: link.originalName, group: name };
+  }
+  return null;
 }
+
+/** Whether the entity's tree already holds the original, or anything a link to it would bring. */
+export const holdsStatOriginal = (world: StatLinkWorld, entity: Entity, originalId: string): boolean =>
+  statHeldReason(world, entity, originalId) !== null;
 
 /** Link a Blueprint stat or group at the end of the entity's top level. Null when the id is not an original or
  *  the entity already holds it. */
