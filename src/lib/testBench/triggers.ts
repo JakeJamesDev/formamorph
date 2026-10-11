@@ -219,7 +219,7 @@ function classify(
     };
   }
 
-  if (entry.matchWholeWords && !entry.useRegex) {
+  if (entry.matchWholeWords) {
     const loose = matchHits({ ...entry, matchWholeWords: false }, scanned);
     if (loose.length > 0) {
       return { nearMiss: 'whole-word-blocked', nearMissKeywords: [loose[0].keyword], nearMissSample: wordAround(scanned, loose[0]) };

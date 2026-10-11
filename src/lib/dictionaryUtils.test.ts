@@ -114,6 +114,30 @@ describe('getActivatedDictionary — lorebook activation fields', () => {
     expect(getActivatedDictionary([art], ['start here'])).toEqual([]);
   });
 
+  it('matchWholeWords applies to regex keys', () => {
+    const wand = entry({ id: 'w', key: ['wands?'], value: 'x', useRegex: true, matchWholeWords: true });
+    expect(getActivatedDictionary([wand], ['wand'])).toEqual([wand]); // no character before or after
+    expect(getActivatedDictionary([wand], ['two Wands.'])).toEqual([wand]);
+    expect(getActivatedDictionary([wand], ['they wander'])).toEqual([]);
+  });
+
+  it('a rejected first match does not hide a later whole-word match', () => {
+    const wand = entry({ id: 'w', key: ['wand'], value: 'x', useRegex: true, matchWholeWords: true });
+    expect(getActivatedDictionary([wand], ['they wander, then raise a wand'])).toEqual([wand]);
+  });
+
+  it('matchWholeWords treats non-ASCII letters as word characters', () => {
+    const caf = entry({ id: 'c', key: ['caf'], value: 'x', matchWholeWords: true });
+    expect(getActivatedDictionary([caf], ['the café'])).toEqual([]);
+    expect(getActivatedDictionary([caf], ['the caf opens'])).toEqual([caf]);
+  });
+
+  it('matchWholeWords gates secondary keys too', () => {
+    const e = entry({ id: 's', key: ['dragon'], secondaryKeys: ['red'], value: 'x', matchWholeWords: true });
+    expect(getActivatedDictionary([e], ['a dragon in a reddish glow'])).toEqual([]);
+    expect(getActivatedDictionary([e], ['a red dragon'])).toEqual([e]);
+  });
+
   it('secondaryAll requires every secondary keyword', () => {
     const e = entry({ id: 'sa', key: ['dragon'], secondaryKeys: ['red', 'ancient'], secondaryAll: true, value: 'x' });
     expect(getActivatedDictionary([e], ['a red dragon'])).toEqual([]); // missing "ancient"
@@ -216,6 +240,21 @@ describe('matchSpans — located occurrences under an entry\'s flags', () => {
       { start: 0, end: 3, text: 'art', keyword: 'art' },
       { start: 15, end: 18, text: 'art', keyword: 'art' },
     ]);
+  });
+
+  it('retries one character on after a rejected match, so an overlapping whole word still counts', () => {
+    // "a b" fails at "xa"; the whole word "b" lies inside that rejected match.
+    const e = entry({ key: ['a b|b'], useRegex: true, matchWholeWords: true });
+    expect(matchSpans(e, 'xa b')).toEqual([{ start: 3, end: 4, text: 'b', keyword: 'a b|b' }]);
+  });
+
+  it('a whole-word regex never reports a zero-length match', () => {
+    expect(matchSpans(entry({ key: ['x*'], useRegex: true, matchWholeWords: true }), 'a b')).toEqual([]);
+  });
+
+  it('a non-word edge is a boundary on its own', () => {
+    const e = entry({ key: ['#tag'], matchWholeWords: true });
+    expect(matchSpans(e, 'x#tag #tags')).toEqual([{ start: 1, end: 5, text: '#tag', keyword: '#tag' }]);
   });
 
   it('treats the key as a regex with useRegex and reports the real matched text', () => {
@@ -333,8 +372,7 @@ describe('explainActivation — report matches getActivatedDictionary and attrib
     ];
     const report = explainActivation(dict, scene('a'));
     expect(report.byId.get('plain')!.rule).toEqual({ regex: false, wholeWord: false, caseSensitive: false });
-    // useRegex wins over matchWholeWords
-    expect(report.byId.get('rx')!.rule).toEqual({ regex: true, wholeWord: false, caseSensitive: false });
+    expect(report.byId.get('rx')!.rule).toEqual({ regex: true, wholeWord: true, caseSensitive: false });
     expect(report.byId.get('ww')!.rule).toEqual({ regex: false, wholeWord: true, caseSensitive: true });
   });
 });

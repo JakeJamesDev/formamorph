@@ -5122,8 +5122,10 @@ const GameViewer = ({
               return region;
             };
             const ruleLabel = (rule: MatchRule): string => {
-              const how = rule.regex ? "regex" : rule.wholeWord ? "whole word" : "substring";
-              return rule.caseSensitive ? `${how}, case-sensitive` : how;
+              const parts = [rule.regex ? "regex" : rule.wholeWord ? "whole word" : "substring"];
+              if (rule.regex && rule.wholeWord) parts.push("whole word");
+              if (rule.caseSensitive) parts.push("case-sensitive");
+              return parts.join(", ");
             };
             const reasonBadge = (reason: EntryActivation["reason"]): string =>
               reason === "constant" ? "always on"

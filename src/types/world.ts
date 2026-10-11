@@ -510,7 +510,7 @@ export interface DictionaryEntry {
   secondaryExclude?: boolean;
   /** Treat the keywords as regular expressions instead of plain substrings. */
   useRegex?: boolean;
-  /** Match keywords as whole words (word boundaries) instead of substrings; ignored when `useRegex`. */
+  /** Match keywords as whole words (word boundaries) instead of substrings, regex keywords included. */
   matchWholeWords?: boolean;
   /** Match keywords case-sensitively (default: case-insensitive). */
   caseSensitive?: boolean;

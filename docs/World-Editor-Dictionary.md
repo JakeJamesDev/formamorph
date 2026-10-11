@@ -68,7 +68,7 @@ Use the **Matching** tab only when an entry activates at the wrong time, or does
 |---|---|
 | **Name** | Names the entry in the list, and goes before the Value in the prompt. When it's blank, the game uses the first Trigger Keyword. |
 | **Trigger Keywords** | Press Enter after each keyword. One match is enough to activate the entry. |
-| **Whole Words** | Matches complete words only, so *art* doesn't match inside *cart*. **Regex** ignores this checkbox. |
+| **Whole Words** | Matches complete words only, so *art* doesn't match inside *cart*. Works with **Regex** too. |
 | **Case-Sensitive** | Off by default |
 | **Value** | The text injected into the prompt |
 
