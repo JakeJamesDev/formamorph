@@ -11,7 +11,7 @@ import type { Entity } from '@/types';
 
 /**
  * The library entity editor and the World Editor's entity panel share one tab organization. The library's
- * Entity tab holds the panel's tabs as sub-tabs, with Traits and Placeholders on the top strip, and each field
+ * Entity tab holds the panel's tabs as sub-tabs, with Traits, Stats and Placeholders on the top strip, and each field
  * sits in the same tab in both.
  */
 
@@ -95,7 +95,7 @@ async function fieldsByTab(skip: string[] = []) {
 }
 
 describe('the two entity editors', () => {
-  it('show the same field tabs, with Traits and Placeholders on the library top strip and Stats in the World Editor only', () => {
+  it('show the same field tabs, with Traits, Stats and Placeholders on the library top strip', () => {
     renderLibrary();
     const libraryTop = topTabNames();
     const librarySub = fieldTabNames();
@@ -103,7 +103,7 @@ describe('the two entity editors', () => {
     render(<SettingsProvider><WorldPanel /></SettingsProvider>);
     const worldTabs = fieldTabNames();
 
-    expect(libraryTop).toEqual(['Entity', 'Traits', 'Placeholders']);
+    expect(libraryTop).toEqual(['Entity', 'Traits', 'Stats', 'Placeholders']);
     expect(librarySub).toEqual(['Profile', 'Descriptions', 'Openings']);
     expect(worldTabs).toEqual(['Profile', 'Descriptions', 'Traits', 'Stats', 'Placeholders', 'Openings']);
   });
@@ -118,7 +118,7 @@ describe('the two entity editors', () => {
     expect(fieldTabNames()).toEqual(['Profile', 'Descriptions']);
     cleanup();
     render(simple(<EntityEditorModal entityId={null} draft={entity} onClose={vi.fn()} />));
-    expect(topTabNames()).toEqual(['Entity', 'Traits', 'Placeholders']);
+    expect(topTabNames()).toEqual(['Entity', 'Traits', 'Stats', 'Placeholders']);
     expect(fieldTabNames()).toEqual(['Profile', 'Descriptions', 'Openings']);
   });
 

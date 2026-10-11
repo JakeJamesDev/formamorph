@@ -23,8 +23,8 @@ const store: { stat: Stat; placeholders: Placeholder[]; writes: Stat[]; rerender
   stat: rockets, placeholders: [], writes: [], rerender: () => {},
 };
 
-vi.mock('@/contexts/GameDataContext', () => ({
-  useGameData: () => ({
+vi.mock('@/contexts/GameDataContext', () => {
+  const world = () => ({
     stats: [store.stat],
     playStats: [store.stat],
     placeholders: store.placeholders,
@@ -39,8 +39,9 @@ vi.mock('@/contexts/GameDataContext', () => ({
       store.stat = next;
       store.rerender();
     },
-  }),
-}));
+  });
+  return { useGameData: world, useGameDataOptional: world };
+});
 // Neither the chip field nor the morph picker is under test; both pull in editors this test has no use for.
 vi.mock('@/components/prompt/PlaceholderField', () => ({
   PlaceholderNameField: (props: { value: string; ariaLabel?: string }) => (

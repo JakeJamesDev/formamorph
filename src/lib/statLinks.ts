@@ -22,6 +22,9 @@ export interface StatLinkWorld {
   statGroups: readonly StatGroup[];
 }
 
+/** A world with no stats: no Blueprint to link or bind. */
+export const NO_STAT_WORLD: StatLinkWorld = { stats: [], statGroups: [] };
+
 // ---- The Blueprints group ----
 
 /** The world's Blueprints stat group, when the author added one. */

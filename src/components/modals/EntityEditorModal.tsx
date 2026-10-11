@@ -15,6 +15,7 @@ import { useIsMobile } from '@/lib/useIsMobile';
 import { TagsField } from '@/components/TagsField';
 import { LibraryAuthorField } from '@/components/LibraryAuthorField';
 import LibraryPlaceholdersEditor from '@/managers/LibraryPlaceholdersEditor';
+import LibraryStatsEditor from '@/managers/LibraryStatsEditor';
 import LibraryTraitsEditor, { type LibraryEditorWorld } from '@/managers/LibraryTraitsEditor';
 import PlaceholderPaletteBar from '@/components/prompt/PlaceholderPaletteBar';
 import { EMPTY_LETTERS, entityPlacementLetters, labelPlaceholders } from '@/lib/placementLetters';
@@ -266,6 +267,13 @@ const EntityEditorModal = ({
           <ChipInsertTargetProvider>
             <LibraryTraitsEditor
               entity={entity} setEntity={setEntity} placeholders={pool} onOpenEntity={() => setTab('entity')} world={traitWorld}
+              detailHeader={<PlaceholderPaletteBar placeholders={pool} className={DETAIL_PALETTE_CLASS} />}
+            />
+          </ChipInsertTargetProvider>
+        ) : entity && tab === 'stats' ? (
+          <ChipInsertTargetProvider>
+            <LibraryStatsEditor
+              entity={entity} setEntity={setEntity} placeholders={pool} world={traitWorld}
               detailHeader={<PlaceholderPaletteBar placeholders={pool} className={DETAIL_PALETTE_CLASS} />}
             />
           </ChipInsertTargetProvider>

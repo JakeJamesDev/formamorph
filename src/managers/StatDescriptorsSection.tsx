@@ -15,7 +15,8 @@ import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { PlaceholderNameField } from '@/components/prompt/PlaceholderField';
 import { PinPopoverButton } from '@/components/editor/PinPopoverButton';
-import { useGameData } from '@/contexts/GameDataContext';
+import { useGameDataOptional } from '@/contexts/GameDataContext';
+import { useStatEditorWorld } from '@/lib/useStatEditorWorld';
 import { useEditorMode } from '@/lib/editorMode';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { activeDescriptor } from '@/lib/statContext';
@@ -162,8 +163,9 @@ export const StatDescriptorsSection = ({
   stat, newDescriptor, setNewDescriptor, onDescriptorChange, onDescriptorBlur, onAddDescriptor,
   onRemoveDescriptor, onUnitChange,
 }: StatDescriptorsSectionProps) => {
-  const world = useGameData();
-  const { placeholders, placementLetters, placeholderOwners } = world;
+  const { placeholders, placementLetters, placeholderOwners } = useStatEditorWorld();
+  // Off world, a pin has no rival placements to read.
+  const world = useGameDataOptional();
   const { advanced } = useEditorMode();
   // The bar and the tips are text surfaces: a chip reads there by its name and letter, as it does in a row.
   const chipText = (text: string) => labelPlaceholders(text, placeholders, { letters: placementLetters, owners: placeholderOwners });
