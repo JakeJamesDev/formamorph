@@ -19,6 +19,18 @@ import { useGuideSearch } from './useGuideSearch';
 /** The most sections one search shows. */
 const RESULT_LIMIT = 20;
 
+/** What the Guide shows until the docs load: a loading line, or a retry after a failed load. */
+export function GuideUnavailable({ failed, onRetry }: { failed: boolean; onRetry: () => void }) {
+  return failed ? (
+    <div role="alert" className="flex flex-col items-start gap-2 p-3">
+      <Hint>The guide did not load</Hint>
+      <Button variant="outline" size="sm" onClick={onRetry}>Try Again</Button>
+    </div>
+  ) : (
+    <Hint role="status" className="p-3">Loading the guide…</Hint>
+  );
+}
+
 export function GuideSearchField({ value, onChange, takesFocus = true, className }: {
   value: string;
   onChange: (text: string) => void;

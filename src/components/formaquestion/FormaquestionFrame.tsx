@@ -1,5 +1,5 @@
 import { forwardRef, type ComponentPropsWithoutRef, type ReactNode } from 'react';
-import { CircleHelp, PanelLeft, X } from 'lucide-react';
+import { CircleHelp, Maximize2, PanelLeft, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tip } from '@/components/ui/tooltip';
 import { useMediaQuery } from '@/lib/useMediaQuery';
@@ -13,7 +13,7 @@ import type { DragHandlers } from './usePointerDrag';
 export type ResizeHandlers = Readonly<Record<ResizeHandle, DragHandlers>>;
 
 /**
- * The Formaquestion window's frame: a title bar that moves it, the Wide View toggle, the ⋮ menu, the Close
+ * The Formaquestion window's frame: a title bar that moves it, the Wide View toggle, Open Guide, the ⋮ menu, the Close
  * control, the content, and the handles on its sides and corners that resize it. The caller places it
  * and owns the moves. As a mobile sheet it has no frame lines and larger controls.
  */
@@ -69,6 +69,11 @@ export const FormaquestionFrame = forwardRef<HTMLElement, ComponentPropsWithoutR
             </Button>
           </Tip>
         )}
+        <Tip tip="Open Guide">
+          <Button variant="ghost" size="icon" aria-label="Open Guide" onClick={menu.onOpenGuide} className={sheet ? 'h-12 w-12' : 'h-8 w-8'}>
+            <Maximize2 className="h-4 w-4" aria-hidden />
+          </Button>
+        </Tip>
         <FormaquestionMenu {...menu} container={menuContainer} large={sheet} />
         <Tip tip={sheet ? 'Close' : 'Close (F1)'}>
           <button

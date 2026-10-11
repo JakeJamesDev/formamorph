@@ -233,7 +233,8 @@ export const DEV_MODAL_TABS = {
   // action box and two ride the latest turn's action.
   gameViewerAttach: [DEV_ATTACH_SAMPLE],
   // The Formaquestion window's parts (`#dev?modal=formaquestion&tab=guide`). `subtab=…` takes a docs
-  // section id and opens it in the reader. `mode=wide` or `mode=narrow` picks the layout.
+  // section id and opens it in the reader. `mode=wide` or `mode=narrow` picks the layout. `fullscreen=1`
+  // opens the Guide full screen over the window.
   formaquestion: ['ask', 'search', 'guide'],
   // Formaquestion Settings (`#dev?modal=formaquestionSettings&tab=general`).
   formaquestionSettings: ['general', 'endpoint', 'prompts', 'tools', 'mascot'],

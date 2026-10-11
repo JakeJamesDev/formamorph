@@ -1,17 +1,14 @@
 import { useCallback } from 'react';
 import { BookOpen, MessageCircleQuestion, Search } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Hint } from '@/components/ui/typography';
 import type { SurfaceRoute } from '@/lib/surface/surfaceRoute';
 import type { Guide } from '@/lib/formaquestion/guide';
 import type { HelpSettings, HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
 import { AskPanel } from './AskParts';
-import {
-  FORMAQUESTION_TABS, isSearchable, openSectionChange, type FormaquestionTab, type GuideView, type GuideViewChange,
-} from './formaquestionTabs';
-import { BackRow, ContentsList, GuideSearchField, Reader, SearchResults } from './GuideParts';
+import { FORMAQUESTION_TABS, isSearchable, type FormaquestionTab, type GuideView, type GuideViewChange } from './formaquestionTabs';
+import { BackRow, ContentsList, GuideSearchField, GuideUnavailable, Reader, SearchResults } from './GuideParts';
+import { GuideRail, useGuideActions } from './GuideRail';
 import { SurfaceHelpRow } from './SurfaceHelpRow';
 import type { HelpChat } from './useHelpChat';
 
@@ -37,29 +34,13 @@ export function GuideBody({ guide, failed, onRetry, view, onViewChange, wide, ch
   /** Opens the surface an answer's Take Me There names. */
   onGo: (route: SurfaceRoute) => void;
 }) {
-  const openSection = useCallback(
-    (sectionId: string) => onViewChange(openSectionChange(sectionId, guide?.section(sectionId)?.page)),
-    [guide, onViewChange],
-  );
-  const setQuery = (query: string) => onViewChange({ query });
+  const { openSection, setQuery, setPageOpen } = useGuideActions(guide, onViewChange);
   const setDraft = useCallback((draft: string) => onViewChange({ draft }), [onViewChange]);
-  const setPageOpen = (page: string, open: boolean) => onViewChange((current) => ({
-    openPages: open ? [...current.openPages, page] : current.openPages.filter((name) => name !== page),
-  }));
   const helpRow = guide && <SurfaceHelpRow guide={guide} current={view.sectionId} onOpen={openSection} />;
   // Search results take the place of the lists the row leads.
   const helpRowUnlessSearching = !isSearchable(view.query) && helpRow;
 
-  if (!guide) {
-    return failed ? (
-      <div role="alert" className="flex flex-col items-start gap-2 p-3">
-        <Hint>The guide did not load</Hint>
-        <Button variant="outline" size="sm" onClick={onRetry}>Try Again</Button>
-      </div>
-    ) : (
-      <Hint role="status" className="p-3">Loading the guide…</Hint>
-    );
-  }
+  if (!guide) return <GuideUnavailable failed={failed} onRetry={onRetry} />;
 
   const ask = <AskPanel guide={guide} chat={chat} settings={settings} onSettingsChange={onSettingsChange} draft={view.draft} onDraftChange={setDraft} onOpen={openSection} onGo={onGo} />;
 
@@ -68,15 +49,7 @@ export function GuideBody({ guide, failed, onRetry, view, onViewChange, wide, ch
     const showsReader = view.sectionId !== null && view.tab !== 'ask';
     return (
       <div className="flex h-full min-h-0" data-fq-layout="wide">
-        <div className="flex min-h-0 w-56 shrink-0 flex-col border-r">
-          <GuideSearchField value={view.query} onChange={setQuery} takesFocus={showsReader} className="m-2 shrink-0" />
-          {helpRowUnlessSearching}
-          <ScrollArea className="min-h-0 flex-1" viewportProps={{ 'data-fq-scroll': 'rail' }}>
-            {isSearchable(view.query)
-              ? <SearchResults guide={guide} query={view.query} semantic={settings.sources.semantic} onOpen={openSection} compact />
-              : <ContentsList guide={guide} current={view.sectionId} openPages={view.openPages} onPageOpenChange={setPageOpen} onOpen={openSection} />}
-          </ScrollArea>
-        </div>
+        <GuideRail guide={guide} view={view} onViewChange={onViewChange} semantic={settings.sources.semantic} takesFocus={showsReader} className="flex min-h-0 w-56 shrink-0 flex-col border-r" />
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           {showsReader && view.sectionId ? (
             <>
