@@ -117,6 +117,8 @@ Rulings from the grill, numbered as asked.
 
 - **Q69** (ticket 19) Trait Link behavior wins where the ticket text differs. Detach runs at once with no confirm, and undo covers it. A whole stat group is linked only through **Link To…** on a Blueprint group, as trait groups are; the entity **+** menu gets no new pattern. Detaching a group Link gives its groups fresh ids, while its stats keep the Blueprint's ids. Migration nests extra Blueprints stat groups under the first one. It also drops a second Link to the same Original on one owner, folding its Overrides into fields the first doesn't override. A group Link plus a Link to a stat inside it count as duplicates: the group wins and the stat Link's Overrides fold in.
 
+- **Q70** (ticket 13) Stats follow the trait rule (Q47). Under a library persona, the Custom Persona entity is a Bearer "You" whose traits apply to the player, so its stats join the player's beside the library persona's. Each sits under its own heading in the panel and keeps its own keys in the request. No owner's stats run unseen.
+
 Derived from Q7 and confirmed with the summary:
 
 - An entity stat's morph bindings drive that entity's own model.
