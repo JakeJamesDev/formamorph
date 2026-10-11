@@ -188,7 +188,8 @@ Rulings from the grill, numbered as asked.
   | Cydonia tuning 21 × 3 | 14 / 94 | 21 / 93 | 33 / 57 | 51 / 38 |
   | Cydonia held-out 12 × 3 | 3 / 67 | 8 / 66 | 36 / 46 | 42 / 40 |
 
-  Without the "What to change" rules, Cydonia invents small player Vigor and Resolve drops on calm turns. The work stays unlanded on branch `ticket/entity-stats-26` (`ee82c580`). The next step is the user's call.
+  Without the "What to change" rules, Cydonia invents small player Vigor and Resolve drops on calm turns. The work stays unlanded on branch `ticket/entity-stats-26` (`ee82c580`).
+- **Q87** (user ruling) Ticket 26 runs one more arm: lean with the "What to change" rules added back, against the same Q84 and Q85 bar. If it passes, it ships. If it misses, the ticket stops and reports again.
 
 Derived from Q7 and confirmed with the summary:
 
