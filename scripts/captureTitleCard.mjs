@@ -3,6 +3,7 @@
 //
 //   npm run title-card
 //   node scripts/captureTitleCard.mjs --base http://localhost:5180 --only alt --t 2.5
+//   node scripts/captureTitleCard.mjs --layout banner   (2560x1440 YouTube banner, youtube-banner-*)
 //
 // Chromium is the encoder, so the script needs no image dependency of its own.
 import { chromium } from '@playwright/test';
@@ -16,7 +17,9 @@ const arg = (name, fallback) => {
 const BASE = arg('base', 'http://localhost:5180');
 const PAGE = `${BASE}/build-assets/title-card/`;
 const OUT = 'thumbnails';
-const SIZE = { width: 1920, height: 1080 };
+const banner = arg('layout', '') === 'banner';
+const SIZE = banner ? { width: 2560, height: 1440 } : { width: 1920, height: 1080 };
+const NAME = banner ? 'youtube-banner' : 'title-card';
 const WEBP_QUALITY = 0.9;
 const ALL = ['default', 'alt'];
 const only = arg('only', '').split(',').filter(Boolean);
@@ -46,6 +49,7 @@ for (const avatar of wanted) {
   const url = new URL(PAGE);
   url.searchParams.set('avatar', avatar);
   url.searchParams.set('scale', '1');
+  if (banner) url.searchParams.set('layout', 'banner');
   if (t) url.searchParams.set('t', t);
   await page.goto(url.href);
   await page.evaluate(() => document.fonts.ready);
@@ -53,9 +57,9 @@ for (const avatar of wanted) {
   // One more frame so spring bones settle after the pose lands.
   await page.waitForTimeout(500);
   const png = await page.screenshot({ clip: { x: 0, y: 0, ...SIZE } });
-  writeFileSync(`${OUT}/title-card-${avatar}.png`, png);
-  writeFileSync(`${OUT}/title-card-${avatar}.webp`, await toWebp(png));
-  console.log(`wrote ${OUT}/title-card-${avatar}.{png,webp}`);
+  writeFileSync(`${OUT}/${NAME}-${avatar}.png`, png);
+  writeFileSync(`${OUT}/${NAME}-${avatar}.webp`, await toWebp(png));
+  console.log(`wrote ${OUT}/${NAME}-${avatar}.{png,webp}`);
 }
 
 await browser.close();

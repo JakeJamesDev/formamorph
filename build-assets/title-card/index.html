@@ -9,6 +9,8 @@
     avatar=default|alt   which bundled VRM to render (alt is the release-channel model beside this folder)
     t=<seconds>          idle-animation frame to freeze on (default 1.4)
     scale=1              1:1 pixels instead of fit-to-window
+    layout=banner        2560x1440 YouTube banner; wordmark and face sit in the 1546x423 all-devices band
+    guides=1             outline the banner's TV, desktop and all-devices areas
 
   `npm run title-card` captures both models to thumbnails/ as PNG and WebP.
 -->
@@ -48,6 +50,18 @@
   .mark h1 span { font-weight: var(--w); }
   .mark h1 i { font-style: normal; background: linear-gradient(95deg, #a78bfa 0%, #f0abfc 55%, #fb7185 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .mark p { margin: 20px 0 0 6px; font-size: 22px; font-weight: 300; letter-spacing: .3em; text-transform: uppercase; color: var(--muted); }
+
+  /* Banner: everything that must read sits in the all-devices band (x 507-2053, y 508-931). */
+  .banner #stage { width: 2560px; height: 1440px; }
+  .banner #avatar { width: 2560px; height: 1440px; }
+  .banner .shade { background:
+      linear-gradient(90deg, rgba(10,12,16,.55) 0, rgba(10,12,16,.92) 22%, rgba(10,12,16,.7) 42%, rgba(10,12,16,.3) 62%, rgba(10,12,16,.6) 100%),
+      linear-gradient(0deg, rgba(10,12,16,.9) 0, rgba(10,12,16,0) 30%, rgba(10,12,16,0) 70%, rgba(10,12,16,.9) 100%); }
+  .banner .mark { left: 600px; bottom: auto; top: 720px; transform: translateY(-50%); }
+  .banner .mark h1 { font-size: 150px; }
+  .banner .mark p { font-size: 25px; }
+  .banner .rule { left: 606px; bottom: auto; top: 838px; width: 680px; }
+  .guide { position: absolute; border: 3px solid #3b82f6; box-sizing: border-box; pointer-events: none; }
 </style>
 </head>
 <body>
@@ -80,9 +94,19 @@
 
   const params = new URLSearchParams(location.search);
 
+  const banner = params.get('layout') === 'banner';
+  const W = banner ? 2560 : 1920, H = banner ? 1440 : 1080;
+  if (banner) document.body.classList.add('banner');
   const stage = document.getElementById('stage');
+  if (params.get('guides')) {
+    for (const [l, t, w, h] of [[0, 0, 2560, 1440], [0, 508, 2560, 424], [507, 508, 1546, 424]]) {
+      const g = document.createElement('div'); g.className = 'guide';
+      Object.assign(g.style, { left: `${l}px`, top: `${t}px`, width: `${w}px`, height: `${h}px` });
+      stage.append(g);
+    }
+  }
   function fit() {
-    const s = params.get('scale') ? Number(params.get('scale')) : Math.min(innerWidth / 1920, innerHeight / 1080);
+    const s = params.get('scale') ? Number(params.get('scale')) : Math.min(innerWidth / W, innerHeight / H);
     stage.style.transform = `scale(${s})`;
   }
   addEventListener('resize', fit); fit();
@@ -90,11 +114,13 @@
   // Same single light as the app's VRM viewer. MToon blows out under stacked lights.
   const canvas = document.getElementById('avatar');
   const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
-  renderer.setPixelRatio(1); renderer.setSize(1920, 1080, false);
+  renderer.setPixelRatio(1); renderer.setSize(W, H, false);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(22, 1920 / 1080, 0.1, 50);
+  const camera = new THREE.PerspectiveCamera(22, W / H, 0.1, 50);
   camera.position.set(0, 0.95, 4.6); camera.lookAt(0, 0.85, 0);
+  // Banner: closer and higher so the face lands in the band, offset so the model stands right of the wordmark.
+  if (banner) { camera.position.set(-0.62, 1.42, 4.3); camera.lookAt(-0.62, 1.32, 0); }
   const light = new THREE.DirectionalLight(0xffffff, Math.PI); light.position.set(1, 1, 1).normalize(); scene.add(light);
 
   // Mixamo → VRM rig map, same as the app's VRM viewer.
