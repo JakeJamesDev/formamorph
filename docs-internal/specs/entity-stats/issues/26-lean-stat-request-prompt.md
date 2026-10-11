@@ -1,6 +1,8 @@
 # 26: Lean Stat Request Prompt
 
-Status: ready-for-agent
+Status: wontfix
+
+Closed as missed: lean failed the Q84 bar on Cydonia, without the What to change rules (Q86) and with them (Q88). A rerun through the app's request layer gave the same result. The 921dcace prompt stays the default.
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
