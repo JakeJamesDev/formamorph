@@ -4,10 +4,11 @@
  * or replaying turns. Loaded via dynamic `import()` so each fixture is a separate chunk fetched only when
  * `loadDevFixture` runs (DEV-gated), never in the production bundle. See `devRouter.ts` / [[formamorph-dev-router]].
  */
-import type { Entity, World, SaveObject } from '@/types';
+import type { Entity, EntityStatValues, World, SaveObject } from '@/types';
+import { DEFAULT_AVATAR_URL } from './defaultAvatar';
 
 /** The names the router can boot. Kept in lockstep with `loadDevFixture` by `devRouter.test.ts`. */
-export const DEV_FIXTURES = ['whiteRoom', 'thousandTurns', 'writtenOpening', 'pickedOpening', 'entityStats'] as const;
+export const DEV_FIXTURES = ['whiteRoom', 'thousandTurns', 'writtenOpening', 'pickedOpening', 'entityStats', 'entityMorphs'] as const;
 export type DevFixtureName = (typeof DEV_FIXTURES)[number];
 
 // Real-sized images for the long save, fetched from the dev server.
@@ -43,6 +44,16 @@ const ENTITY_STATS_CAST = [
   { id: 'dev-wick', name: 'Wick', image: portrait('#3e5c7a'), stats: [devStat('Nerve', 70), devStat('Stamina', 55)] },
   { id: 'dev-odette', name: 'Odette', stats: [devStat('Stock', 12)] },
 ] as unknown as Entity[];
+
+/** The `entityMorphs` fixture's entity: the bundled avatar as an entity model, its Bulk stat bound to a face
+ *  shape key, since the avatar's face meshes are the ones that carry shape keys. */
+const MORPH_STAT = devStat('Bulk', 100, { morphBindings: ['Fcl_ALL_Surprised'] });
+const MORPH_ENTITY = {
+  id: 'dev-golem', name: 'Golem',
+  model: { name: 'default-avatar.vrm', type: 'model/gltf-binary', data: DEFAULT_AVATAR_URL },
+  stats: [MORPH_STAT],
+} as unknown as Entity;
+const morphValues = (value: number) => ({ [MORPH_ENTITY.id]: [{ ...MORPH_STAT, value }] }) as unknown as EntityStatValues;
 
 /** Page one of the `writtenOpening` fixture. */
 export const WRITTEN_OPENING_TEXT = 'The white room hums. A door you did not see before stands open.';
@@ -114,6 +125,27 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
           )),
         },
         saveName: 'DEV: Entity Stats',
+      };
+    }
+    case 'entityMorphs': {
+      // The white room with the Golem in the scene: Bulk at 100 on the live page, 10 on every earlier one.
+      const [world, save] = await Promise.all([
+        import('./devFixtures/whiteRoomWorld.json'),
+        import('./devFixtures/whiteRoomSave.json'),
+      ]);
+      const base = world.default as unknown as World;
+      const saved = save.default as unknown as SaveObject;
+      const scene = [{ name: 'Golem', revealed: true }];
+      return {
+        world: { ...base, entities: [...base.entities, MORPH_ENTITY] },
+        save: {
+          ...saved,
+          currentState: { ...saved.currentState, visibleEntities: scene, entityStats: morphValues(100) },
+          stateHistory: saved.stateHistory.map((state, index, all) => ({
+            ...state, visibleEntities: scene, entityStats: morphValues(index === all.length - 1 ? 100 : 10),
+          })),
+        },
+        saveName: 'DEV: Entity Morphs',
       };
     }
     case 'writtenOpening': {

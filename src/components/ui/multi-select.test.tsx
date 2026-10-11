@@ -52,3 +52,13 @@ describe('MultiSelect search', () => {
     expect(onValueChange).toHaveBeenLastCalledWith(['c']);
   });
 });
+
+describe('MultiSelect empty list', () => {
+  it('shows the empty line instead of a Select All with nothing to select', async () => {
+    const user = userEvent.setup();
+    render(<MultiSelect options={[]} defaultValue={[]} onValueChange={vi.fn()} emptyIndicator="Nothing to bind" />);
+    await user.click(screen.getByRole('combobox'));
+    expect(await screen.findByText('Nothing to bind')).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: /Select all/ })).toBeNull();
+  });
+});

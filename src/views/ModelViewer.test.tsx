@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vite
 import { render, act } from '@testing-library/react';
 import type * as ThreeNS from 'three';
 import ModelViewer from './ModelViewer';
+import { morphMesh } from '@/test/morphMesh';
 
 /**
  * The viewer needs a real WebGL context, which jsdom has none of, so `WebGLRenderer` and `OrbitControls` are
@@ -41,7 +42,10 @@ const mocks = vi.hoisted(() => {
     controls: MockControls | null;
     /** What the mocked GLTFLoader hands to the component's onLoad. Set per test. */
     loadResult: { scene: unknown; animations: unknown[] } | null;
-  } = { renderer: null, controls: null, loadResult: null };
+    /** Holds onLoad instead of calling it, so a test can land the load late. */
+    deferLoad: boolean;
+    pendingLoad: ((result: unknown) => void) | null;
+  } = { renderer: null, controls: null, loadResult: null, deferLoad: false, pendingLoad: null };
 
   return { state, MockRenderer, MockControls };
 });
@@ -55,7 +59,10 @@ vi.mock('three/examples/jsm/controls/OrbitControls.js', () => ({ OrbitControls: 
 
 vi.mock('three/examples/jsm/loaders/GLTFLoader.js', () => ({
   GLTFLoader: class {
-    load(_url: string, onLoad: (result: unknown) => void) { onLoad(mocks.state.loadResult); }
+    load(_url: string, onLoad: (result: unknown) => void) {
+      if (mocks.state.deferLoad) mocks.state.pendingLoad = onLoad;
+      else onLoad(mocks.state.loadResult);
+    }
   },
 }));
 vi.mock('three/examples/jsm/loaders/FBXLoader.js', () => ({ FBXLoader: class { load() {} } }));
@@ -105,6 +112,8 @@ let frame: FrameRequestCallback | undefined;
 beforeEach(() => {
   frame = undefined;
   mocks.state.loadResult = gltf();
+  mocks.state.deferLoad = false;
+  mocks.state.pendingLoad = null;
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ blob: () => Promise.resolve(new Blob(['x'])) }));
   URL.createObjectURL = vi.fn(() => 'blob:model');
   URL.revokeObjectURL = vi.fn();
@@ -207,5 +216,50 @@ describe('ModelViewer teardown', () => {
 
     expect(stop).toHaveBeenCalled();
     expect(cancelAnimationFrame).toHaveBeenCalled();
+  });
+});
+
+describe('ModelViewer morphs', () => {
+  const morphScene = (names: string[]) => ({ scene: morphMesh(names), animations: [] });
+  const influence = (name: string) => {
+    const mesh = loadedMesh();
+    return mesh.morphTargetInfluences![mesh.morphTargetDictionary![name]];
+  };
+  const settle = () => act(async () => { await Promise.resolve(); await Promise.resolve(); });
+
+  it('applies the morphs it is given once the model loads', async () => {
+    mocks.state.loadResult = morphScene(['Belly', 'Fat']);
+    render(<ModelViewer model={MODEL} modelType="glb" morphValues={{ Belly: 0.5 }} />);
+    await settle();
+
+    expect(influence('Belly')).toBeCloseTo(0.5);
+    expect(influence('Fat')).toBe(0);
+  });
+
+  it('moves the shape keys when the morphs change, without reloading the model', async () => {
+    mocks.state.loadResult = morphScene(['Belly', 'Fat']);
+    const view = render(<ModelViewer model={MODEL} modelType="glb" morphValues={{ Belly: 0.5 }} />);
+    await settle();
+
+    view.rerender(<ModelViewer model={MODEL} modelType="glb" morphValues={{ Fat: 0.8 }} />);
+    await settle();
+
+    expect(influence('Fat')).toBeCloseTo(0.8);
+    // A key the new map drops goes back to rest instead of holding the old turn's shape.
+    expect(influence('Belly')).toBe(0);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves a load that lands after unmount out of the gone scene', async () => {
+    mocks.state.loadResult = morphScene(['Belly']);
+    mocks.state.deferLoad = true;
+    const view = render(<ModelViewer model={MODEL} modelType="glb" morphValues={{ Belly: 0.5 }} />);
+    await settle();
+    view.unmount();
+
+    mocks.state.pendingLoad!(mocks.state.loadResult);
+
+    expect(loadedMesh().parent).toBeNull();
+    expect(influence('Belly')).toBe(0);
   });
 });

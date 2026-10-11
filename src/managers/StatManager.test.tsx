@@ -45,7 +45,10 @@ vi.mock('@/components/prompt/PlaceholderField', () => ({
     <input readOnly value={props.value} aria-label={props.ariaLabel} data-chip-field="" />
   ),
 }));
-vi.mock('@/lib/useBodyMorphNames', () => ({ useBodyMorphSources: () => ({ sources: [], loading: false, load: () => {} }) }));
+vi.mock('@/lib/useBodyMorphNames', () => ({
+  useBodyMorphSources: () => ({ sources: [], loading: false, load: () => {} }),
+  useOwnerMorphSources: () => ({ sources: [], loading: false, load: () => {} }),
+}));
 
 /** Renders the manager against the live store, re-rendering whenever it writes. The panel's tab belongs to
  *  the editor, so the harness stands in for that slot and opens on whichever tab a case is about. */

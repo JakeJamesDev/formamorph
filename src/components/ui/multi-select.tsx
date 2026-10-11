@@ -1103,7 +1103,8 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 								<CommandEmpty>
 									{emptyIndicator || "No results found."}
 								</CommandEmpty>{" "}
-								{!searchValue && (
+								{/* Select All is an item too: on an empty list it would hide the empty line. */}
+								{!searchValue && getAllOptions().length > 0 && (
 									<>
 									<CommandGroup>
 										<CommandItem

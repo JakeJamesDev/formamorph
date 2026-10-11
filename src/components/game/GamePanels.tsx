@@ -58,6 +58,7 @@ import { Tip } from "@/components/ui/tooltip";
 import { Pager } from "@/components/ui/pagination";
 import VRMViewer from '@/views/VRMViewer';
 import { EntityVisual, hasEntityVisual } from './EntityVisual';
+import { useEntityStatMorphs } from '@/lib/useEntityStatMorphs';
 import { useEntityVisualPreference } from '@/lib/useEntityVisualPreference';
 import { useEntityGallery } from '@/lib/useEntityGallery';
 import TtsPlaybackBar from './TtsPlaybackBar';
@@ -178,6 +179,7 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
   const entityViewEntity = (hasEntityVisual(pickedEntity) ? pickedEntity : undefined) ?? firstShowable;
   const entityViewPreference = useEntityVisualPreference(entityViewEntity?.id);
   const entityViewGallery = useEntityGallery(entityViewEntity);
+  const entityViewMorphs = useEntityStatMorphs(entityViewEntity);
 
   // Clicking an entity swaps the in-section image when the viewer is open; otherwise it opens the
   // entity popup (collapsed, on mobile, the entity has no image, or it's already the shown entity). A
@@ -296,6 +298,7 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
                         onPreferenceChange={entityViewPreference.onPreferenceChange}
                         imageIndex={entityViewGallery.imageIndex}
                         onImageStep={entityViewGallery.onImageStep}
+                        morphValues={entityViewMorphs}
                       />
                     </div>
                   </div>

@@ -29,10 +29,10 @@ export function EntityDescription({ text, resolveText = identity, children }: {
  * The entity card's body: the picture, then the description area and the entity's sound. `children` is
  * the description area. The visual props are the gameplay-held picture state `EntityVisual` takes.
  */
-export function EntityCardBody({ entity, children, preference, onPreferenceChange, imageIndex, onImageStep }: {
+export function EntityCardBody({ entity, children, preference, onPreferenceChange, imageIndex, onImageStep, morphValues }: {
   entity: Entity;
   children: ReactNode;
-} & Pick<ComponentProps<typeof EntityVisual>, 'preference' | 'onPreferenceChange' | 'imageIndex' | 'onImageStep'>) {
+} & Pick<ComponentProps<typeof EntityVisual>, 'preference' | 'onPreferenceChange' | 'imageIndex' | 'onImageStep' | 'morphValues'>) {
   return (
     <div className="flex-grow min-h-0 flex flex-col gap-4 p-4">
       {/* Picture takes 3/4 of the body height (aspect ratio preserved); description fills the rest. */}
@@ -44,6 +44,7 @@ export function EntityCardBody({ entity, children, preference, onPreferenceChang
             onPreferenceChange={onPreferenceChange}
             imageIndex={imageIndex}
             onImageStep={onImageStep}
+            morphValues={morphValues}
           />
         </div>
       )}
