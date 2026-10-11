@@ -160,6 +160,12 @@ Rulings from the grill, numbered as asked.
   - stat code outside stat Blueprints that reads it through `traits.<Name>` or `persona.traits.<Name>`.
 
   These are not readers: anything inside Blueprints or moving in with the item, the item's own requirements, `traits.X.group` compared as a value, Test Bench picks and save data. A drag of an entity-owned trait into Blueprints runs the same check, as an entity stat already does under Q80.
+- **Q83** (ticket 25 review) Three readings that follow from Q80 and Q82:
+  - `entities.<owner>.traits.<Name>` in stat code reads an entity-owned trait.
+  - A stat Blueprint's code counts where an entity links it, with that Link's code overrides. An unlinked Blueprint's code never counts.
+  - A moving stat's own code never blocks its move into Blueprints.
+
+  Known over-refusal, left as is: a world or linked trait that stays and shares a name with the entity trait doesn't clear the code refusal, so the check can refuse a drag that breaks nothing.
 
 Derived from Q7 and confirmed with the summary:
 
