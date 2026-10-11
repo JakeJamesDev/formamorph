@@ -1,11 +1,12 @@
-import { describe, expect, it, vi } from 'vitest';
-import { act, fireEvent, screen, within } from '@testing-library/react';
+import { describe, expect, it, onTestFinished, vi } from 'vitest';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { LeftPanel, RightPanel } from './GamePanels';
 import { defaultSystemPrompt } from './GamePrompts';
 import { renderInGame, renderRightPanel, statFixture, type Gameplay, type TurnFixture } from '@/test/gamePanels';
 import type { EntityStatValues, SceneEntity } from '@/types';
 import { PLAYER_OWNER } from '@/lib/statOwners';
+import EntityStorageService from '@/services/EntityStorageService';
 
 vi.mock('@/views/VRMViewer', () => import('@/test/stubs/vrmViewer'));
 vi.mock('@/lib/useTtsPlayback', () => import('@/test/stubs/ttsPlayback'));
@@ -257,5 +258,68 @@ describe('the entity view and the stat panel', () => {
     await choose('(None)');
     expect(section()).toBeNull();
     expect(shownInView()).toContain('Bram');
+  });
+});
+
+describe('RightPanel — the stats of the entity the player plays as (Q11, Q16, Q49, Q70)', () => {
+  const mira = { id: 'mira', name: 'Mira', persona: true, image: PICTURE };
+  const played = { ...values, mira: [statFixture('Trust', 60), statFixture('Calm', 5)] };
+  const asMira = (pick?: string) => ({
+    world: { entities: [bram, odette, wick, mira] } as never, turns, stats: [statFixture('Vigor', 50), statFixture('Trust', 10)],
+    seed: (g: Gameplay) => {
+      g.setEntityStats(played);
+      g.setVisibleEntities(now);
+      g.setPersonaRef({ source: 'world', entityId: 'mira' });
+      if (pick) g.setSelectedEntityId(pick);
+    },
+  });
+  const personaSection = (name: string) => screen.getByRole('region', { name: `${name} stats` });
+
+  it("shows the persona's stats in the player's part under its name, a same-named world stat beside them", () => {
+    renderRightPanel({}, asMira('bram'));
+    expect(within(personaSection('Mira')).getByText('Trust')).toBeInTheDocument();
+    expect(within(personaSection('Mira')).getByText('60 / 100')).toBeInTheDocument();
+    expect(within(personaSection('Mira')).getByText('Calm')).toBeInTheDocument();
+    expect(screen.getAllByText('Trust')).toHaveLength(3);
+    expect(screen.getByText('10 / 100')).toBeInTheDocument();
+    expect(within(section()!).getByText('40 / 100')).toBeInTheDocument();
+  });
+
+  it('lists the persona as "(You)" and shows no entity section when it is picked', async () => {
+    renderRightPanel({}, asMira('bram'));
+    await choose('Mira (You)');
+    expect(screen.getByRole('combobox', { name: 'Entity stats' })).toHaveTextContent('Mira (You)');
+    expect(section()).toBeNull();
+    expect(within(personaSection('Mira')).getByText('60 / 100')).toBeInTheDocument();
+  });
+
+  it('opens the Stats tab when only the persona has stats, with no dropdown', () => {
+    renderRightPanel({}, {
+      world: { entities: [mira] } as never, turns, stats: [],
+      seed: (g) => { g.setEntityStats({ mira: played.mira }); g.setPersonaRef({ source: 'world', entityId: 'mira' }); },
+    });
+    expect(screen.getByRole('tab', { name: /Stats/ })).toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: 'Entity stats' })).toBeNull();
+    expect(within(personaSection('Mira')).getByText('Calm')).toBeInTheDocument();
+  });
+
+  it("shows a library persona's stats and the Custom Persona entity's, each under its own heading", async () => {
+    // Shade's values come from its live library entry; only the world's Custom Persona entity is seeded here.
+    const shade = { id: 'l-shade', name: 'Shade', persona: true, stats: [statFixture('Trust', 30)] };
+    await EntityStorageService.storeEntity({ id: shade.id, name: shade.name, data: shade });
+    onTestFinished(() => EntityStorageService.deleteEntity(shade.id));
+    const custom = { id: 'w-you', name: 'Wanderer', customPersona: true };
+    renderRightPanel({}, {
+      world: { entities: [bram, custom] } as never, turns, stats: [statFixture('Vigor', 50)],
+      seed: (g) => {
+        g.setEntityStats({ 'w-you': [statFixture('Trust', 70)] });
+        g.setPersonaRef({ source: 'library', entityId: shade.id });
+      },
+    });
+    // The Custom Persona entity carries the library persona's name, as its Traits node does.
+    await waitFor(() => expect(screen.getAllByRole('region', { name: 'Shade stats' })).toHaveLength(2));
+    const [library, marked] = screen.getAllByTestId('persona-stats');
+    expect(within(library).getByText('30 / 100')).toBeInTheDocument();
+    expect(within(marked).getByText('70 / 100')).toBeInTheDocument();
   });
 });

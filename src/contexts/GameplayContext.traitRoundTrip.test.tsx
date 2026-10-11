@@ -2,8 +2,9 @@
 // survive a save/load round trip, because that is where a lost one would silently rebalance a stat. Storage is
 // real (in-memory) — the provider writes to IndexedDB. Must be imported before anything touches `indexedDB`.
 import 'fake-indexeddb/auto';
-import { describe, it, expect, vi } from 'vitest';
-import { render, act } from '@testing-library/react';
+import { describe, it, expect, onTestFinished, vi } from 'vitest';
+import { render, act, waitFor } from '@testing-library/react';
+import EntityStorageService from '@/services/EntityStorageService';
 import { GameplayProvider, useGameplay } from './GameplayContext';
 import { GameDataProvider } from './GameDataContext';
 import { PlaceholderSessionProvider } from './PlaceholderSessionContext';
@@ -303,6 +304,24 @@ describe('owned trait state across a save/load round trip', () => {
     expect(live().viewEntityStatChanges).toEqual({});
     await act(async () => { live().setUserPage(1); });
     expect(live().viewEntityStatChanges).toEqual({ ash: { trust: 6 } });
+  });
+
+  it("backfills a stat the library persona gained since the save, at its starting value (Q74)", async () => {
+    const trust: Stat = { ...authored, id: 'trust', name: 'Trust', value: 20 };
+    const stock: Stat = { ...authored, id: 'stock', name: 'Stock', value: 0, starting: 6 };
+    const lib = { id: 'lib-q74', name: 'Shade', persona: true, stats: [trust] };
+    await EntityStorageService.storeEntity({ id: lib.id, name: lib.name, data: lib });
+    onTestFinished(() => EntityStorageService.deleteEntity(lib.id));
+    const live = mount();
+    await act(async () => {
+      live().setPersonaRef({ source: 'library', entityId: lib.id });
+      live().setEntityStats({ [lib.id]: [{ ...trust, value: 33 }] });
+    });
+    await act(async () => { await live().saveGame('slot', 'World', 'w1', 'save-q74'); });
+    await act(async () => { await EntityStorageService.storeEntity({ id: lib.id, name: lib.name, data: { ...lib, stats: [trust, stock] } }); });
+    await act(async () => { live().setEntityStats({}); });
+    await act(async () => { await live().loadGame('save-q74', [], [authored], []); });
+    await waitFor(() => expect(live().entityStats[lib.id]).toEqual([{ ...trust, value: 33 }, { ...stock, value: 6 }]));
   });
 
   it("keeps a library persona's state, which the world never holds", async () => {

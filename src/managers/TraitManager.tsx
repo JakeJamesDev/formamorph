@@ -21,14 +21,14 @@ import { labelPlaceholders } from '@/lib/placementLetters';
 import { traitConflicts, type TraitConflict } from '@/lib/traitEffects';
 import { updateOwnedTrait } from '@/lib/ownedTraits';
 import { canBePlayer } from '@/lib/bearers';
-import { statRows } from '@/lib/traitTree';
+import { statRows, statRowSide, type StatRow, type StatRowSide } from '@/lib/traitTree';
 import { useEditorMode } from '@/lib/editorMode';
 import { HelpButton } from '@/components/HelpButton';
 import { Hint, Meta } from '@/components/ui/typography';
 import { traitPanelTabsFor, traitTabForField, type TraitPanelTab } from '@/views/traitPanelTabs';
 import { FieldReset, LabelRow } from '@/components/editor/BlueprintReset';
 import type {
-  Entity, FocusFieldHint, Placeholder, PlaceholderPin, Stat, Trait, StatChange, TraitLinkFields, TraitRequirement, TraitRequirementRow, TraitStatToggle,
+  Entity, FocusFieldHint, Placeholder, PlaceholderPin, Stat, StatGroup, Trait, StatChange, TraitLinkFields, TraitRequirement, TraitRequirementRow, TraitStatToggle,
 } from '@/types';
 import { WorldInput } from '@/components/editor/WorldField';
 import { fieldFrame } from '@/lib/historyField';
@@ -75,29 +75,56 @@ const ConflictNote = ({ conflict, placeholders, onOpen }: {
 /** The line under a world persona's stat sections when its traits change a player stat, which they do only
  *  while it is played. The Custom Persona entity's traits are the player's, so it gets none. */
 export function BearerStatNote({ bearer, traits }: { bearer: Entity; traits: readonly Trait[] }) {
-  const { stats } = useTraitStore();
+  const { stats, statGroups } = useTraitStore();
   if (!bearer.persona || bearer.customPersona) return null;
-  const player = new Set(stats.map((s) => s.id));
-  const named = traits.flatMap(statRows).some((row) => player.has(row.statId));
+  const sideOf = bearerRowSide({ stats, statGroups: statGroups ?? [] }, bearer);
+  const named = traits.flatMap(statRows).some((row) => sideOf(row) === 'player');
   return named ? <Hint>Player stat changes apply only when you play as them</Hint> : null;
+}
+
+/** Whose stat each of a bearer's trait rows moves, as play routes it. */
+const bearerRowSide = (world: { stats: Stat[]; statGroups: StatGroup[] }, bearer: Entity) => {
+  const own = new Set(resolvedEntityStats(world, bearer).map((s) => s.id));
+  const player = new Set(playerStatsOf(world.stats, world.statGroups).map((s) => s.id));
+  return (row: StatRow) => statRowSide(row, own, player, canBePlayer(bearer));
+};
+
+/** The picker value of a player stat on a bearer's trait, kept apart from an own stat with the same id. */
+const PLAYER_ITEM = 'player:';
+
+/** A stat row's picker value: its Player item when it moves a player stat on a bearer. */
+const pickerValue = (row: StatRow, side: StatRowSide) => (side === 'player' ? PLAYER_ITEM + row.statId : row.statId);
+
+/** `row` pointed at the stat a picker value names; a Player item targets the player. */
+function pickedRow<R extends StatRow>(row: R, value: string): R {
+  const rest = { ...row };
+  delete rest.target;
+  return value.startsWith(PLAYER_ITEM)
+    ? { ...rest, statId: value.slice(PLAYER_ITEM.length), target: 'player' }
+    : { ...rest, statId: value };
 }
 
 /** One labeled list of stats a trait's stat rows can name. */
 interface StatChoices {
   label?: string;
   stats: readonly Stat[];
+  /** The list of a bearer's player stats, whose items target the player. */
+  player?: boolean;
 }
 
 /** The stat options of a trait's stat row, under a heading per list when there is more than one. */
 function StatOptions({ choices, label }: { choices: readonly StatChoices[]; label: (name: string) => string }) {
-  const items = (list: readonly Stat[]) => list.map((stat) => <SelectItem key={stat.id} value={stat.id}>{label(stat.name)}</SelectItem>);
-  if (choices.length === 1) return <>{items(choices[0].stats)}</>;
+  const items = (choice: StatChoices) => choice.stats.map((stat) => {
+    const value = choice.player ? PLAYER_ITEM + stat.id : stat.id;
+    return <SelectItem key={value} value={value}>{label(stat.name)}</SelectItem>;
+  });
+  if (choices.length === 1) return <>{items(choices[0])}</>;
   return (
     <>
       {choices.map((choice) => (
         <SelectGroup key={choice.label}>
           <SelectLabel>{choice.label}</SelectLabel>
-          {items(choice.stats)}
+          {items(choice)}
         </SelectGroup>
       ))}
     </>
@@ -180,7 +207,8 @@ const TraitManager = ({
 
   const handleStatChangeUpdate = (index: number, field: string, value: string | number) => {
     const updatedStatChanges = [...editingTrait.statChanges];
-    updatedStatChanges[index] = { ...updatedStatChanges[index], [field]: value } as StatChange;
+    const row = updatedStatChanges[index];
+    updatedStatChanges[index] = field === 'statId' ? pickedRow(row, String(value)) : { ...row, [field]: value } as StatChange;
     apply({ statChanges: updatedStatChanges });
   };
 
@@ -195,9 +223,13 @@ const TraitManager = ({
   const updateStatToggle = (index: number, patch: Partial<TraitStatToggle>) =>
     setStatToggles(statToggles.map((t, i) => (i === index ? { ...t, ...patch } : t)));
 
+  // A bearer's rows route to its own stats or the player's; world traits rival only the ones on the player's.
+  const statWorld = { stats, statGroups: statGroups ?? [] };
+  const rowSide = bearer ? bearerRowSide(statWorld, bearer) : () => null;
+  const playerToggles = bearer ? statToggles.filter((toggle) => rowSide(toggle) === 'player') : statToggles;
   // Computed off the saved world (edits write through on every keystroke), so the note follows a drag or a
   // change in another trait without any extra plumbing.
-  const conflicts = traitConflicts(editingTrait, traits, traitGroups);
+  const conflicts = traitConflicts({ ...editingTrait, statToggles: playerToggles }, traits, traitGroups);
 
   const pins = editingTrait.placeholderPins ?? [];
   const setPins = (next: PlaceholderPin[]) => apply({ placeholderPins: next.length ? next : undefined });
@@ -223,10 +255,9 @@ const TraitManager = ({
   // A bearer's trait changes the bearer's own stats; one the player can play also changes the player's.
   const statLabel = (name: string) => labelPlaceholders(name, placeholders, { letters: placementLetters, owners: placeholderOwners });
   // A bearer's own stats include its links; the player's leave the Blueprints out.
-  const statWorld = { stats, statGroups: statGroups ?? [] };
   const statChoices: StatChoices[] = !bearer ? [{ stats }] : [
     { label: statLabel(bearer.name), stats: resolvedEntityStats(statWorld, bearer) },
-    ...(canBePlayer(bearer) ? [{ label: 'Player', stats: playerStatsOf(stats, statWorld.statGroups) }] : []),
+    ...(canBePlayer(bearer) ? [{ label: 'Player', stats: playerStatsOf(stats, statWorld.statGroups), player: true }] : []),
   ];
   const shownTab = tabs.some((t) => t.value === tab) ? tab : 'details';
 
@@ -318,7 +349,7 @@ const TraitManager = ({
         {editingTrait.statChanges.map((statChange, index) => (
           <div key={index} className="flex space-x-2">
             <Select
-              value={statChange.statId}
+              value={pickerValue(statChange, rowSide(statChange))}
               onValueChange={(value) => handleStatChangeUpdate(index, 'statId', value)}
             >
               <SelectTrigger {...fieldFrame('statChanges', String(index), 'statId')}>
@@ -371,7 +402,11 @@ const TraitManager = ({
         {statToggles.map((toggle, index) => (
           <div key={index} className="space-y-1">
           <div className="flex space-x-2">
-            <Select value={toggle.statId} onValueChange={(v) => updateStatToggle(index, { statId: v })} disabled={readOnly}>
+            <Select
+              value={pickerValue(toggle, rowSide(toggle))}
+              onValueChange={(v) => setStatToggles(statToggles.map((t, i) => (i === index ? pickedRow(t, v) : t)))}
+              disabled={readOnly}
+            >
               <SelectTrigger {...fieldFrame('statToggles', String(index), 'statId')}>
                 <SelectValue placeholder="Select stat" />
               </SelectTrigger>
@@ -399,7 +434,9 @@ const TraitManager = ({
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
-          <ConflictNote conflict={conflicts.stats[toggle.statId]} placeholders={placeholders} onOpen={onOpenTrait} />
+          {playerToggles.includes(toggle) && (
+            <ConflictNote conflict={conflicts.stats[toggle.statId]} placeholders={placeholders} onOpen={onOpenTrait} />
+          )}
           </div>
         ))}
         {!readOnly && (

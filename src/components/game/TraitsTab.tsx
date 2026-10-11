@@ -19,6 +19,7 @@ import type { Entity, Stat, StatChange, Trait, TraitGroup, TraitsPanelView } fro
 import { Tip } from '@/components/ui/tooltip';
 import { gateLine } from '@/lib/traitGateLine';
 import { isAlwaysOn, isHidden } from '@/lib/traitEffects';
+import { statRowSide } from '@/lib/traitTree';
 import { TraitCascadeNotice, type TraitCascade } from './SetupTraitList';
 
 /** What a trait's stat-change list needs of a stat: its name, and whether the player may see it at all. */
@@ -111,18 +112,21 @@ export const TraitsTab = ({
     (trait: Trait, bearerId: string = WORLD_OWNER) => resolveTraitText(trait, trait.playerDescription ?? '', bearerId),
     [resolveTraitText],
   );
-  // The stats a bearer's trait changes: the player's for the player, and an entity's own first.
-  const statsFor = React.useMemo(() => {
+  // The stat a bearer's trait change moves: the player's for the player, and an entity's own as its row routes.
+  const statOf = React.useMemo(() => {
+    const player = new Map(stats.map((s) => [s.id, s]));
+    const playerIds = new Set(player.keys());
     const cache = new Map<string, Map<string, TraitTabStat>>();
-    return (bearerId: string) => {
+    const ownOf = (bearerId: string) => {
       let found = cache.get(bearerId);
-      if (!found) {
-        const own = bearerId === WORLD_OWNER ? [] : ownerStats?.[bearerId] ?? [];
-        const player = bearerId === WORLD_OWNER || playerEntityIds.includes(bearerId) ? stats : [];
-        found = new Map([...player, ...own].map((s) => [s.id, s]));
-        cache.set(bearerId, found);
-      }
+      if (!found) cache.set(bearerId, found = new Map((ownerStats?.[bearerId] ?? []).map((s) => [s.id, s])));
       return found;
+    };
+    return (bearerId: string, change: StatChange): TraitTabStat | undefined => {
+      if (bearerId === WORLD_OWNER) return player.get(change.statId);
+      const own = ownOf(bearerId);
+      const side = statRowSide(change, new Set(own.keys()), playerIds, playerEntityIds.includes(bearerId));
+      return side === 'own' ? own.get(change.statId) : side === 'player' ? player.get(change.statId) : undefined;
     };
   }, [stats, ownerStats, playerEntityIds]);
   const filtering = query.trim() !== '';
@@ -151,7 +155,7 @@ export const TraitsTab = ({
     // A change is listed only if the player can see the stat it targets: hidden stats stay behind the
     // scenes, and one whose stat the world no longer has would otherwise print a raw id.
     const changes = trait.statChanges
-      .map((change) => ({ change, stat: statsFor(bearerId).get(change.statId) }))
+      .map((change) => ({ change, stat: statOf(bearerId, change) }))
       .filter((c): c is { change: StatChange; stat: TraitTabStat } => c.stat !== undefined && c.stat.hidden !== true);
     const isExpanded = view.expanded.has(rowKey);
     const description = describe(trait, bearerId).trim();

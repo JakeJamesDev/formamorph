@@ -103,30 +103,48 @@ function ownerKeys(names: readonly string[], taken: Set<string>): string[] {
   });
 }
 
-/** One owner's targets, and its Stats chip values naming each stat by its key. */
-function ownerSection(stats: readonly PlayerStat[], ownerId: string, ownerKey: string, placement?: StatPlacement) {
-  const plainNames = stats.map(({ name }) => stripMarkdown(name).trim());
+/** One owner's stats as a section holds them. */
+type SectionPart = Pick<StatRequestOwner, 'id' | 'stats' | 'placement'>;
+
+/** One section's targets under `ownerKey`, and its Stats chip values naming each stat by its key. Each part
+ *  keeps its owner and its own layout, its stats after the earlier parts'; keys are unique across the parts. */
+function ownerSection(parts: readonly SectionPart[], ownerKey: string) {
+  const plainNames = parts.flatMap((part) => part.stats.map(({ name }) => stripMarkdown(name).trim()));
   const keys = statKeys(plainNames);
-  const targets = stats.map(({ id, name }, i) => ({
-    id, name, plainName: plainNames[i], ownerId, ownerKey, key: keys[i], maxKey: maxKeyOf(keys[i]),
-  }));
-  // The chip names each stat by its key, so a numbered key is the name the reply sees.
-  return { targets, context: statChipValues(stats.map((stat, i) => ({ ...stat, name: keys[i] })), placement) };
+  let at = 0;
+  const laid = parts.map((part) => {
+    const start = at;
+    at += part.stats.length;
+    const targets = part.stats.map(({ id, name }, i) => ({
+      id, name, plainName: plainNames[start + i], ownerId: part.id, ownerKey, key: keys[start + i], maxKey: maxKeyOf(keys[start + i]),
+    }));
+    // The chip names each stat by its key, so a numbered key is the name the reply sees.
+    const named = part.stats.map((stat, i) => ({ ...stat, name: keys[start + i] }));
+    return { targets, context: named.length ? statChipValues(named, part.placement) : null };
+  });
+  const filled = laid.flatMap((part) => (part.context ? [part.context] : []));
+  const context = filled.length
+    ? Object.fromEntries(Object.keys(filled[0]).map((token) => [token, filled.map((values) => values[token]).join('\n')]))
+    : statChipValues([]);
+  return { targets: laid.flatMap((part) => part.targets), context };
 }
 
 /** Capture the names and identities this stat request exposes, with plain names in every Stats chip. The
  *  player's targets belong to `ownerId`, keyed `ownerKey` in a schema reply, and sit as `placement` puts
- *  them. Each of `entities` follows under its own heading in every Stats chip value. */
+ *  them. The stats of `personas`, the entities the player plays as, follow in the player's section, each
+ *  owner's own. Each of `entities` follows under its own heading in every Stats chip value. */
 export function createStatRequest(
   stats: readonly PlayerStat[],
   ownerId: string = PLAYER_OWNER,
-  { ownerKey = PLAYER_STAT_HEADING, textPass = false, entities = [], placement }:
-    { ownerKey?: string; textPass?: boolean; entities?: readonly StatRequestOwner[]; placement?: StatPlacement } = {},
+  { ownerKey = PLAYER_STAT_HEADING, textPass = false, entities = [], personas = [], placement }: {
+    ownerKey?: string; textPass?: boolean; entities?: readonly StatRequestOwner[]; personas?: readonly StatRequestOwner[];
+    placement?: StatPlacement;
+  } = {},
 ): StatRequestSnapshot {
-  const player = ownerSection(stats, ownerId, ownerKey, placement);
+  const player = ownerSection([{ id: ownerId, stats, placement }, ...personas], ownerKey);
   const owners = entities.filter((owner) => owner.stats.length);
   const keys = ownerKeys(owners.map((owner) => owner.name), new Set([ownerKey]));
-  const sections = owners.map((owner, i) => ({ key: keys[i], ...ownerSection(owner.stats, owner.id, keys[i], owner.placement) }));
+  const sections = owners.map((owner, i) => ({ key: keys[i], ...ownerSection([owner], keys[i]) }));
   const context = Object.fromEntries(Object.entries(player.context).map(([token, value]) => [
     token, [value, ...sections.map((section) => `### ${section.key}\n${section.context[token]}`)].join('\n\n'),
   ]));

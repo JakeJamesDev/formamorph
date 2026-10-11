@@ -91,7 +91,7 @@ import { PersonaRow } from './PersonaRow';
 import { useNarrationLayout } from '@/lib/useNarrationLayout';
 import { useStatsSnap } from '@/lib/useStatsSnap';
 import { firstShowableEntity, type StatPanelOption } from '@/lib/statPanelEntities';
-import { useStatPanelEntity } from './useStatPanelEntity';
+import { useStatPanelEntity, type StatPanelOwner } from './useStatPanelEntity';
 
 import { parseSavedReasoning } from '@/lib/savedReasoning';
 
@@ -1330,8 +1330,11 @@ export const RightPanel = ({
     [viewOwnedTraits, gateWorld],
   );
   const {
-    options: entityOptions, shown: shownEntity, rows: entityRows, showPicker: entitiesShowStats, authored: shownAuthored,
+    options: entityOptions, shown: shownEntity, section: entitySection, players: playedOwners, showPicker: entitiesShowStats,
   } = useStatPanelEntity(entityInForce);
+  const playedRows = playedOwners.filter((owner) => owner.rows.length > 0);
+  // Stats the player sees besides the world's own.
+  const ownersShowStats = entitiesShowStats || playedRows.length > 0;
   const presentOptions = entityOptions.filter((option) => option.present);
   const absentOptions = entityOptions.filter((option) => !option.present);
   // Filtered for display but carrying each stat's index in the full array, which the edit slider writes back to.
@@ -1344,15 +1347,36 @@ export const RightPanel = ({
   // keeps its shape as values move in and out of bands; a world that names none of them pays nothing, and a
   // stat the player never sees can't put the line there for the ones they do.
   // A world with no stat the player can see gets no Stats tab; the panel then opens on Traits.
-  const hasShownStats = playerStats.some((stat) => stat.hidden !== true) || entitiesShowStats;
+  const hasShownStats = playerStats.some((stat) => stat.hidden !== true) || ownersShowStats;
   const shownTab = !hasShownStats && activeTab === 'stats' ? 'traits' : activeTab;
   const anyDescriptors = visibleStats.some(({ stat }) => (stat.descriptors?.length ?? 0) > 0);
   // The author's groups decide where each row sits, so a save made before a regrouping follows it.
   const playerLayout = statPanelLayout(
     gameData?.statGroups ?? NO_STAT_GROUPS, gameData?.stats ?? NO_AUTHORED_STATS, visibleStats, ({ stat }) => stat.id,
   );
-  const entityLayout = statPanelLayout(
-    shownAuthored?.groups ?? NO_STAT_GROUPS, shownAuthored?.stats ?? NO_AUTHORED_STATS, entityRows, (stat) => stat.id,
+
+  /** One owner's read-only stat rows, under its own groups. Keyed by owner, so a pick starts every row's band
+   *  flash fresh. */
+  const ownerStatRows = (owner: StatPanelOwner) => (
+    <StatGroupSections
+      key={owner.entity.id}
+      nodes={statPanelLayout(owner.groups, owner.stats, owner.rows, (stat) => stat.id)}
+      idOf={(stat) => stat.id}
+      nameOf={(name) => resolveEntityText(owner.entity, name)}
+      renderStat={(stat) => (
+        <StatRow
+          stat={stat}
+          {...rowDelta(statDeltas, owner.entity.id, stat.id,
+            isViewingPast ? (viewEntityStatChanges[owner.entity.id]?.[stat.id] ?? 0) : null)}
+          page={currentPage}
+          isViewingPast={isViewingPast}
+          snap={snapStats}
+          editable={false}
+          reserveDescriptorLine={owner.rows.some((row) => (row.descriptors?.length ?? 0) > 0)}
+          onCommitValue={noCommit}
+        />
+      )}
+    />
   );
   // On a past page show the viewed turn's location (Location tab); live otherwise.
   const displayLocation = isViewingPast
@@ -1434,33 +1458,18 @@ export const RightPanel = ({
                 );
               }}
             />
-            {entitiesShowStats && shownEntity && (
+            {playedRows.map((owner) => (
+              <section key={owner.entity.id} aria-label={`${owner.entity.name} stats`} data-testid="persona-stats" className="mt-2">
+                <h3 className="truncate px-2 pb-1 text-label font-medium">{owner.entity.name}</h3>
+                {ownerStatRows(owner)}
+              </section>
+            ))}
+            {entitiesShowStats && shownEntity && entitySection && (
               <section aria-label={`${shownEntity.label} stats`} data-testid="entity-stats" className="mt-2 border-t border-border pt-2">
                 <h3 className="truncate px-2 pb-1 text-label font-medium">{shownEntity.label}</h3>
-                {entityRows.length === 0 ? (
+                {entitySection.rows.length === 0 ? (
                   <p role="status" className="py-4 text-center text-muted-foreground">No stats to show.</p>
-                ) : (
-                  // Keyed by owner, so a pick starts every row's band flash fresh.
-                  <StatGroupSections
-                    key={shownEntity.id}
-                    nodes={entityLayout}
-                    idOf={(stat) => stat.id}
-                    nameOf={(name) => (shownAuthored ? resolveEntityText(shownAuthored.entity, name) : name)}
-                    renderStat={(stat) => (
-                      <StatRow
-                        stat={stat}
-                        {...rowDelta(statDeltas, shownEntity.id, stat.id,
-                          isViewingPast ? (viewEntityStatChanges[shownEntity.id]?.[stat.id] ?? 0) : null)}
-                        page={currentPage}
-                        isViewingPast={isViewingPast}
-                        snap={snapStats}
-                        editable={false}
-                        reserveDescriptorLine={entityRows.some((row) => (row.descriptors?.length ?? 0) > 0)}
-                        onCommitValue={noCommit}
-                      />
-                    )}
-                  />
-                )}
+                ) : ownerStatRows(entitySection)}
               </section>
             )}
             <StatsActions
@@ -1469,7 +1478,7 @@ export const RightPanel = ({
               busy={totalPages === 0 || isWaitingForAI || isRevealingNarration || sceneImageJob !== null}
               editing={isEditMode}
               onEditingChange={setIsEditMode}
-              onRegenerate={statUpdatesEnabled && (playerStats.length > 0 || entitiesShowStats) ? () => onRegenerateStats(currentPage) : undefined}
+              onRegenerate={statUpdatesEnabled && (playerStats.length > 0 || ownersShowStats) ? () => onRegenerateStats(currentPage) : undefined}
             />
           </ScrollArea>
         </TabsContent>

@@ -5,8 +5,10 @@ import {
   createStatRequest, readStatResponse, statRequestSchema, statResponseChanges, PLAYER_STAT_HEADING,
   type StatRequestSnapshot,
 } from './statRequest';
-import { applyEntityStatResponse, entityCodeTurns, entityStatDeltas, entityStatOwners, statRequestOwners } from './entityStats';
-import { PLAYER_OWNER } from './statOwners';
+import {
+  applyEntityStatResponse, entityCodeTurns, entityStatDeltas, entityStatOwners, personaEntities, personaStatOwners, statRequestOwners,
+} from './entityStats';
+import { PLAYER_OWNER, type OwnerStatTraits } from './statOwners';
 import { TURN_PASSES, statRequestReady, statSchemaCap, statUpdatesCap } from './turnPipeline/turnPasses';
 import { emptyTurnMaterial, type TurnPassRequest } from './turnPipeline/turnPlan';
 import { testInput, TEST_PROMPTS } from './turnPipeline/turnTestInputs';
@@ -146,6 +148,96 @@ describe('the stat request with entities', () => {
     const applied = applyEntityStatResponse({ odette: values.odette }, response, noTraits);
     expect(applied.values).toEqual({ odette: values.odette });
     expect(applied.diagnostics).toEqual([{ name: 'Trust', reason: 'missing' }]);
+  });
+});
+
+describe('the played persona in the stat request', () => {
+  // Mira is played and owns a Trust of her own beside the world's player Trust.
+  const playing: PersonaRef = { source: 'world', entityId: 'mira' };
+  const miraValues: EntityStatValues = { ...values, mira: [stat({ value: 60 }), stat({ id: 'calm', name: 'Calm', value: 5 })] };
+  const personaOwners = (personas: Entity[] = [mira], held: EntityStatValues = miraValues, inForce: OwnerStatTraits = noTraits) =>
+    personaStatOwners(personas, held, (s) => s, inForce, (g) => g);
+  const joined = (textPass = false) => createStatRequest([vigor, playerTrust], PLAYER_OWNER, {
+    textPass, personas: personaOwners(), entities: statRequestOwners([bram, mira], miraValues, playing, (s) => s, noTraits, (g) => g),
+  });
+
+  it("puts the persona's stats in the player's section, a same-named one under a numbered key", () => {
+    const snapshot = joined();
+    expect(snapshot.targets.map((t) => [t.ownerId, t.ownerKey, t.key])).toEqual([
+      [PLAYER_OWNER, PLAYER_STAT_HEADING, 'Vigor'], [PLAYER_OWNER, PLAYER_STAT_HEADING, 'Trust'],
+      ['mira', PLAYER_STAT_HEADING, 'Trust (2)'], ['mira', PLAYER_STAT_HEADING, 'Calm'], ['bram', 'Bram', 'Trust'],
+    ]);
+    expect(snapshot.entityKeys).toEqual(['Bram']);
+    expect(build(snapshot).systemPrompt).toContain(
+      '### Player Character\n- **Vigor:** 50/100\n- **Trust:** 10/100\n- **Trust (2):** 60/100\n- **Calm:** 5/100\n\n### Bram\n',
+    );
+    const { schema } = statRequestSchema(snapshot);
+    expect(schema.type === 'object' && schema.required).toEqual([PLAYER_STAT_HEADING, 'Bram']);
+  });
+
+  it('lands each change on its own stat: the world Trust, then the persona Trust', () => {
+    const snapshot = joined();
+    const reply = JSON.stringify({
+      [PLAYER_STAT_HEADING]: { Vigor: 0, 'Vigor max': 0, Trust: 2, 'Trust max': 0, 'Trust (2)': -7, 'Trust (2) max': 0, Calm: 0, 'Calm max': 0 },
+      Bram: { Trust: 0, 'Trust max': 0 },
+    });
+    const response = readStatResponse(reply, snapshot);
+    expect(response.updates).toEqual([
+      { ownerId: PLAYER_OWNER, id: 'trust', name: 'Trust', value: 2, max: 0 },
+      { ownerId: 'mira', id: 'trust', name: 'Trust', value: -7, max: 0 },
+    ]);
+    expect(applyEntityStatResponse(miraValues, response, noTraits).values.mira[0].value).toBe(53);
+    expect(statResponseChanges(response)).toEqual([{ trust: 2 }]);
+  });
+
+  it("covers the persona's stats on the text pass, and skips only the entities", () => {
+    const snapshot = joined(true);
+    expect(build(snapshot).systemPrompt).toContain('- **Trust (2):** 60/100');
+    const response = readStatResponse('Trust (2): -3', snapshot);
+    expect(response.updates).toEqual([{ ownerId: 'mira', id: 'trust', name: 'Trust', value: -3, max: 0 }]);
+    expect(response.diagnostics).toEqual([{ name: '', reason: 'textPass' }, { name: 'Bram', reason: 'skipped' }]);
+  });
+
+  it('runs for a player whose only live stats are the persona\'s', () => {
+    const snapshot = createStatRequest([], PLAYER_OWNER, { textPass: true, personas: personaOwners() });
+    expect(statRequestReady(snapshot)).toBe(true);
+    expect(build(snapshot).systemPrompt).toContain('- **Trust:** 60/100\n- **Calm:** 5/100\n');
+  });
+
+  it("lays the persona's stats out by its own groups, after the world's", () => {
+    const mood: StatGroup = { id: 'mood', name: 'Mood', parentId: null, order: 0 };
+    const grouped: Entity = { ...mira, statGroups: [mood], stats: [stat({ id: 'calm', name: 'Calm', groupId: 'mood' })] };
+    const snapshot = createStatRequest([vigor], PLAYER_OWNER, { personas: personaOwners([grouped], { mira: [stat({ id: 'calm', name: 'Calm', value: 5, groupId: 'mood' })] }) });
+    expect(build(snapshot).systemPrompt).toContain('### Player Character\n- **Vigor:** 50/100\n- **Mood:**\n  - **Calm:** 5/100\n');
+  });
+
+  it("leaves out a persona stat its own trait switches off, and a persona that holds no stats", () => {
+    const calmOff = { id: 'still', name: 'Still', statChanges: [], statToggles: [{ statId: 'calm', enabled: false }] };
+    expect(personaOwners([mira], miraValues, () => [calmOff]).map((o) => o.stats.map((s) => s.id))).toEqual([['trust']]);
+    expect(personaOwners([{ id: 'nobody', name: 'Nobody' }, mira, mira]).map((o) => o.id)).toEqual(['mira']);
+  });
+
+  it('joins the played entity from any source, and the Custom Persona entity whose traits are the player\'s', () => {
+    const custom: Entity = { id: 'custom', name: 'You', customPersona: true };
+    const shade: Entity = { id: 'shade', name: 'Shade', persona: true };
+    const world = [bram, mira, custom];
+    const ids = (played: Entity | undefined, ref: PersonaRef) => personaEntities(played, world, ref).map((e) => e.id);
+    expect(ids(mira, playing)).toEqual(['mira']);
+    expect(ids(shade, { source: 'library', entityId: 'shade' })).toEqual(['shade', 'custom']);
+    expect(ids({ ...custom, name: 'Ash' }, none)).toEqual(['custom']);
+    expect(personaEntities({ ...custom, name: 'Ash' }, world, none)[0].name).toBe('Ash');
+    expect(ids(undefined, none)).toEqual(['custom']);
+  });
+
+  it('joins a library persona and the Custom Persona entity, each change on its own owner', () => {
+    const shade: Entity = { id: 'shade', name: 'Shade', persona: true };
+    const custom: Entity = { id: 'custom', name: 'You', customPersona: true };
+    const held: EntityStatValues = { shade: [stat({ value: 30 })], custom: [stat({ value: 70 })] };
+    const snapshot = createStatRequest([vigor], PLAYER_OWNER, { personas: personaOwners([shade, custom], held) });
+    expect(snapshot.targets.map((t) => [t.ownerId, t.key])).toEqual([[PLAYER_OWNER, 'Vigor'], ['shade', 'Trust'], ['custom', 'Trust (2)']]);
+    const reply = { [PLAYER_STAT_HEADING]: { Vigor: 0, 'Vigor max': 0, Trust: 4, 'Trust max': 0, 'Trust (2)': -4, 'Trust (2) max': 0 } };
+    const applied = applyEntityStatResponse(held, readStatResponse(JSON.stringify(reply), snapshot), noTraits);
+    expect([applied.values.shade[0].value, applied.values.custom[0].value]).toEqual([34, 66]);
   });
 });
 

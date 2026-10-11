@@ -56,7 +56,7 @@ import {
 import { ruleText, rowText } from '@/lib/traitGateLine';
 import { conditionsOf } from '@/lib/requirementRows';
 import { isAlwaysOn } from '@/lib/traitEffects';
-import { statRows } from '@/lib/traitTree';
+import { statRows, statRowSide, type StatRow } from '@/lib/traitTree';
 import { playerStatsOf, resolvedEntityStats } from '@/lib/statLinks';
 import type {
   DictionaryEntry, Entity, GameLocation, PersonaRef, Placeholder, PlaceholderPin, PlaceholderValue, Stat, StatDescriptor,
@@ -2359,10 +2359,10 @@ const traitStatNoTarget: Rule = {
       const bearer = bearers.get(entity.id);
       if (!bearer) return [];
       const own = new Set(resolvedEntityStats(statWorld, entity).map((s) => s.id));
-      const namesOwnedStat = (id: string) => !id || own.has(id) || (canBePlayer(entity) && playerStats.has(id));
+      const namesOwnedStat = (row: StatRow) => !row.statId || statRowSide(row, own, playerStats, canBePlayer(entity)) !== null;
       const name = quote(labelOf(entity.name, world));
       return bearer.traits
-        .filter((trait) => statRows(trait).some((row) => !namesOwnedStat(row.statId)))
+        .filter((trait) => statRows(trait).some((row) => !namesOwnedStat(row)))
         .map((trait) => {
           const item = bearerTraitItem(trait, bearer, world);
           return finding(traitStatNoTarget, `${quote(item.name)} on ${name} changes a stat that ${name} doesn’t own`, [item]);

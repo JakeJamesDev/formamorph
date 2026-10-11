@@ -141,12 +141,19 @@ export interface StatChange {
   type?: 'min' | 'max' | 'starting' | 'regen';
   /** Stat-update cadence, e.g. 'hour'. */
   interval?: string;
+  /** On a trait the player can bear, the world player stat, even where the bearer owns a stat with this id. */
+  target?: StatRowTarget;
 }
+
+/** Which owner's stat a bearer's trait row names when the id alone could mean two. */
+export type StatRowTarget = 'player';
 
 /** A stat this trait switches on or off while active; overrides the stat's own `enabled` default. */
 export interface TraitStatToggle {
   statId: string;
   enabled: boolean;
+  /** As on {@link StatChange}. */
+  target?: StatRowTarget;
 }
 
 /** A placeholder its source forces to a fixed value while the source is active, masking that playthrough's

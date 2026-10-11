@@ -18,7 +18,7 @@ import { clamp } from './utils';
 import { ownedTraitStatesFrom, ownStatsRecordKey, recordKey } from './ownedTraitState';
 import { activeOwnedTraitIds } from './ownedTraitsInPlay';
 import { exclusiveSiblings, inAuthoredOrder, isAlwaysOn, isHidden } from './traitEffects';
-import { hasStatEffects, offeredWorldTraits } from './traitTree';
+import { hasStatEffects, offeredWorldTraits, type StatRow } from './traitTree';
 import {
   gateOf, gateStates, modeRefuses, overfills, playerOwnerIds, settle, underfills, WORLD_OWNER, type GateEntity, type GateInput, type GateOwner, type GateStates, type GateTraitRef,
 } from './traitGates';
@@ -95,15 +95,21 @@ const isPlayerBearer = (world: TraitWorld, ownerId: string): boolean => playerEn
 const ownStatIds = (state: Pick<TraitForceState, 'entityStats'>, ownerId: string): ReadonlySet<string> =>
   new Set((state.entityStats?.[ownerId] ?? []).map((s) => s.id));
 
-/** A player bearer's trait as it acts on the player's stats: its changes and toggles on the bearer's own
- *  stats left out. The same trait when it has none. */
-function withoutOwnStatRows(trait: Trait, own: ReadonlySet<string>): Trait {
-  if (!own.size) return trait;
-  const statChanges = trait.statChanges.filter((x) => !own.has(x.statId));
-  const statToggles = trait.statToggles?.filter((x) => !own.has(x.statId));
+/** The trait with only the stat changes and toggles `keep` accepts; the same trait when it accepts all. */
+function withStatRows(trait: Trait, keep: (row: StatRow) => boolean): Trait {
+  const statChanges = trait.statChanges.filter(keep);
+  const statToggles = trait.statToggles?.filter(keep);
   if (statChanges.length === trait.statChanges.length && statToggles?.length === trait.statToggles?.length) return trait;
   return { ...trait, statChanges, ...(statToggles ? { statToggles } : {}) };
 }
+
+/** A player bearer's trait as it acts on the player's stats: its rows on the bearer's own stats left out, a
+ *  row that targets the player kept. */
+const withoutOwnStatRows = (trait: Trait, own: ReadonlySet<string>): Trait =>
+  withStatRows(trait, (row) => row.target === 'player' || !own.has(row.statId));
+
+/** A bearer's trait as it acts on the bearer's own stats: its rows that target the player left out. */
+const withoutPlayerRows = (trait: Trait): Trait => withStatRows(trait, (row) => row.target !== 'player');
 
 /** Each player entity bearer's active traits that change the player's stats, owned or linked, with the bearer
  *  that holds them: the played persona's, and the Custom Persona entity's. */
@@ -128,15 +134,15 @@ export function statTraitsInForce(state: TraitForceState, world: TraitWorld): Tr
   return [...heldPlayerTraits(activeTraits(state.traits, state.disabledTraitIds), world), ...playedStatTraits(state, world)];
 }
 
-/** Each bearer's traits among its `active` ids that change stats, in its tree order; none for an owner with
- *  no tree. */
+/** Each bearer's traits among its `active` ids that change its own stats, in its tree order; none for an owner
+ *  with no tree. */
 export function treeStatTraits(
   trees: readonly Pick<GateOwner, 'id' | 'traits'>[], active: Readonly<Record<string, readonly string[]>>,
 ): (ownerId: string) => Trait[] {
   const byId = new Map(trees.map((tree) => [tree.id, tree]));
   return (ownerId) => {
     const on = new Set(active[ownerId] ?? []);
-    return (byId.get(ownerId)?.traits ?? []).filter((t) => on.has(t.id) && hasStatEffects(t));
+    return (byId.get(ownerId)?.traits ?? []).flatMap((t) => (on.has(t.id) ? [withoutPlayerRows(t)] : [])).filter(hasStatEffects);
   };
 }
 
@@ -387,7 +393,8 @@ const changesAny = (trait: Trait, stats: readonly PlayerStat[]): boolean =>
 
 /** {@link settleSwitch} on an entity's own stats, its lists already moved; the same state when the entity
  *  holds no stats, or the trait changes none of them and has nothing to reverse. */
-function moveOwnStats(state: TraitRuntimeState, ownerId: string, trait: Trait, on: boolean, world: TraitWorld): TraitRuntimeState {
+function moveOwnStats(state: TraitRuntimeState, ownerId: string, bearerTrait: Trait, on: boolean, world: TraitWorld): TraitRuntimeState {
+  const trait = withoutPlayerRows(bearerTrait);
   const stats = state.entityStats?.[ownerId];
   const key = ownStatsRecordKey(ownerId, trait.id);
   const record = state.appliedValues[key];
