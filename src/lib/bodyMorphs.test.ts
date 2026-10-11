@@ -3,6 +3,7 @@ import type { Stat } from "@/types";
 import {
   normalizeStat,
   statMorphMap,
+  entityStatMorphMap,
   mergeBodyMorphs,
   boundMorphNamesExcluding,
   autoBindLegacyBodyStats,
@@ -80,6 +81,24 @@ describe("statMorphMap", () => {
   it("falls back to the live max for a stat absent from the authored world", () => {
     const live = [stat({ id: "runtime", name: "R", max: 20, value: 10, morphBindings: ["Fat"] })];
     expect(statMorphMap(live, [])).toEqual({ Fat: 0.5 });
+  });
+});
+
+describe("entityStatMorphMap", () => {
+  it("drives each bound shape key from the entity's own stat, scaled against its authored max", () => {
+    const authored = [stat({ id: "hp", name: "Wounds", max: 50, morphBindings: ["Bruise"] })];
+    const live = [stat({ id: "hp", name: "Wounds", max: 100, value: 25, morphBindings: ["Bruise"] })];
+    expect(entityStatMorphMap(live, authored)).toEqual({ Bruise: 0.5 });
+  });
+  it("leaves a disabled stat's shape keys at rest", () => {
+    const live = [
+      stat({ id: "a", name: "A", value: 50, morphBindings: ["Bruise"], enabled: false }),
+      stat({ id: "b", name: "B", value: 50, morphBindings: ["Fat"] }),
+    ];
+    expect(entityStatMorphMap(live, [])).toEqual({ Fat: 0.5 });
+  });
+  it("is empty for an entity with no stat values", () => {
+    expect(entityStatMorphMap(undefined, undefined)).toEqual({});
   });
 });
 

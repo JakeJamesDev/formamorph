@@ -1,23 +1,31 @@
-import React, { useRef, useEffect } from 'react';
+import { useRef, useEffect } from 'react';
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
-import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { cn } from '@/lib/utils';
+import { createModelLoader, loadedRoot } from '@/lib/modelLoader';
+import { applyMorphInfluences } from '@/lib/modelMorphs';
 import type { MediaAsset } from '@/types';
 
 interface ModelViewerProps {
   model: Partial<MediaAsset>;
   modelType: string;
   className?: string;
+  /** Morph influences keyed by shape-key name, applied to every mesh that carries the key. */
+  morphValues?: Readonly<Record<string, number>>;
 }
+
+const NO_MORPHS: Readonly<Record<string, number>> = {};
 
 /** Square fallback for the frames before layout has measured the container (and for jsdom, which reports 0). */
 const FALLBACK_SIZE = 400;
 
-const ModelViewer = ({ model, modelType, className }: ModelViewerProps) => {
+const ModelViewer = ({ model, modelType, className, morphValues = NO_MORPHS }: ModelViewerProps) => {
   const mountRef = useRef<HTMLDivElement | null>(null);
+  // The loaded model and the influences last applied to it, so a morph change never reloads the model.
+  const objectRef = useRef<THREE.Object3D | null>(null);
+  const morphsRef = useRef(morphValues);
+  const appliedRef = useRef<Readonly<Record<string, number>>>(NO_MORPHS);
+  morphsRef.current = morphValues;
 
   useEffect(() => {
     if (!model || !model.data) return;
@@ -72,21 +80,10 @@ const ModelViewer = ({ model, modelType, className }: ModelViewerProps) => {
     fillLight.position.set(-1, -0.5, -1).normalize();
     scene.add(fillLight);
 
-    let loader;
-    switch (modelType) {
-      case 'glb':
-      case 'gltf':
-        loader = new GLTFLoader();
-        break;
-      case 'fbx':
-        loader = new FBXLoader();
-        break;
-      case 'obj':
-        loader = new OBJLoader();
-        break;
-      default:
-        console.error('Unsupported model type');
-        return;
+    const loader = createModelLoader(modelType);
+    if (!loader) {
+      console.error('Unsupported model type');
+      return;
     }
 
     // Decode the data URL via fetch rather than by hand: a per-character `atob` loop over a multi-MB model
@@ -102,9 +99,13 @@ const ModelViewer = ({ model, modelType, className }: ModelViewerProps) => {
     }).catch((error) => console.error('Error reading model data:', error));
 
     const loadModel = (url: string) => loader.load(url, (loaded) => {
-      // GLTFLoader yields a { scene } wrapper; FBX/OBJ loaders yield the Object3D directly.
-      const object = 'scene' in loaded ? loaded.scene : loaded;
+      // A model swapped or unmounted mid-load leaves this result to a scene that's gone.
+      if (disposed) return;
+      const object = loadedRoot(loaded);
       scene.add(object);
+      objectRef.current = object;
+      applyMorphInfluences(object, morphsRef.current, NO_MORPHS);
+      appliedRef.current = morphsRef.current;
 
       // Play every clip the file carries. A Blender/glTF export splits motion into one clip per animated
       // object, so playing only the first would leave the rest of the model frozen. `animations` lives on
@@ -152,6 +153,8 @@ const ModelViewer = ({ model, modelType, className }: ModelViewerProps) => {
 
     return () => {
       disposed = true;
+      objectRef.current = null;
+      appliedRef.current = NO_MORPHS;
       observer?.disconnect();
       cancelAnimationFrame(animationFrameId);
       mixer?.stopAllAction();
@@ -178,6 +181,13 @@ const ModelViewer = ({ model, modelType, className }: ModelViewerProps) => {
       controls.dispose();
     };
   }, [model, modelType]);
+
+  useEffect(() => {
+    const object = objectRef.current;
+    if (!object || morphValues === appliedRef.current) return;
+    applyMorphInfluences(object, morphValues, appliedRef.current);
+    appliedRef.current = morphValues;
+  }, [morphValues]);
 
   return <div ref={mountRef} className={cn('w-full h-full min-h-0', className)} />;
 };

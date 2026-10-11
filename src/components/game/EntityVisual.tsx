@@ -41,15 +41,19 @@ const DefaultToggle = ({ active, onClick }: { active: boolean; onClick: () => vo
  * the primary picture plainly. Both live in gameplay state, so the host supplies them — see
  * `useEntityVisualPreference` and `useEntityGallery`.
  *
+ * `morphValues` comes from the host for the same reason: the stat values live in gameplay state.
+ *
  * Fills its container, so the caller owns the sizing.
  */
-export const EntityVisual = ({ entity, className, preference, onPreferenceChange, imageIndex = 0, onImageStep }: {
+export const EntityVisual = ({ entity, className, preference, onPreferenceChange, imageIndex = 0, onImageStep, morphValues }: {
   entity: EntityVisualSource;
   className?: string;
   preference?: 'model' | 'image';
   onPreferenceChange?: (next: 'model' | 'image' | undefined) => void;
   imageIndex?: number;
   onImageStep?: (by: number) => void;
+  /** The shape keys the entity's own stats drive on its model, in every viewer this opens. */
+  morphValues?: Readonly<Record<string, number>>;
 }) => {
   const [zoomOpen, setZoomOpen] = useState(false);
   const [modelOpen, setModelOpen] = useState(false);
@@ -65,7 +69,7 @@ export const EntityVisual = ({ entity, className, preference, onPreferenceChange
 
   if (!current) {
     return model ? (
-      <ModelViewer model={model} modelType={resolveModelType(model)} className={className} />
+      <ModelViewer model={model} modelType={resolveModelType(model)} morphValues={morphValues} className={className} />
     ) : null;
   }
 
@@ -99,7 +103,7 @@ export const EntityVisual = ({ entity, className, preference, onPreferenceChange
 
   return (
     <Slot className={className} fill={showingModel}>
-      {showingModel ? <ModelViewer model={model} modelType={resolveModelType(model)} /> : picture}
+      {showingModel ? <ModelViewer model={model} modelType={resolveModelType(model)} morphValues={morphValues} /> : picture}
       <CornerButton
         label={showingModel ? 'View image' : 'View 3D model'}
         onClick={() => (showingModel ? setZoomOpen(true) : setModelOpen(true))}
@@ -119,7 +123,7 @@ export const EntityVisual = ({ entity, className, preference, onPreferenceChange
           {/* Mounted plainly, not gated on `modelOpen`: the dialog animates out over 200ms, and dropping the
               viewer the moment it closes empties the window mid-animation. Radix unmounts the content once
               the animation finishes, which is what releases the viewer's WebGL context. */}
-          <ModelViewer model={model} modelType={resolveModelType(model)} className="flex-grow" />
+          <ModelViewer model={model} modelType={resolveModelType(model)} morphValues={morphValues} className="flex-grow" />
           {onPreferenceChange && (
             <DialogFooter className="flex-shrink-0 sm:justify-center">
               <DefaultToggle active={preference === 'model'} onClick={toggle('model')} />

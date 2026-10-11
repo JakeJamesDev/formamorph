@@ -1,9 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useGameData } from "@/contexts/GameDataContext";
 import { DEFAULT_AVATAR_ID } from "./defaultAvatar";
 import { loadBodyMorphNames } from "./vrmMorphLoader";
+import { loadModelMorphNames } from "./modelLoader";
+import { useMountedRef } from "./useMountedRef";
 import ModelStorageService from "@/services/ModelStorageService";
 import type { MorphSource } from "./bodyMorphs";
+import type { MediaAsset } from "@/types";
 
 // Morph names cached by a stable key (model id, or the custom VRM's data URL) so re-opening the picker —
 // or editing another stat — never reloads a model.
@@ -30,10 +33,59 @@ function morphsForModel(id: string): Promise<string[]> {
   });
 }
 
-/** Read the world's embedded custom VRM morphs. Keyed by a short slice of the data URL so the cache
- *  doesn't hold a second copy of the whole base64 payload. */
+/** Cache key for an embedded model: its length and both ends of its data URL, so the cache doesn't hold a second
+ *  copy of the whole base64 payload. Two files from one exporter share a head; their tails differ. */
+const dataKey = (kind: string, dataUrl: string) =>
+  `${kind}:${dataUrl.length}:${dataUrl.slice(0, 128)}:${dataUrl.slice(-128)}`;
+
+/** Read the world's embedded custom VRM morphs. */
 function morphsForCustom(dataUrl: string): Promise<string[]> {
-  return cachedLoad(`custom:${dataUrl.length}:${dataUrl.slice(0, 128)}`, () => loadBodyMorphNames(dataUrl));
+  return cachedLoad(dataKey("custom", dataUrl), () => loadBodyMorphNames(dataUrl));
+}
+
+/** The model an owned stat's body sliders bind to: its owner's own. */
+export interface MorphOwner {
+  /** Group heading: the owner's name. */
+  name: string;
+  model?: Partial<MediaAsset>;
+}
+
+/**
+ * Body slider names an owned stat can bind: the shape keys on its owner's model, across every mesh. No model,
+ * or a model with no shape keys, lists none. Lazy and cached like `useBodyMorphSources`.
+ */
+export function useOwnerMorphSources(owner: MorphOwner | undefined): { sources: MorphSource[]; loading: boolean; load: () => void } {
+  const model = owner?.model?.data ? owner.model : undefined;
+  const name = owner?.name ?? "";
+  const [morphs, setMorphs] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const loadedRef = useRef(false);
+  const modelRef = useRef(model);
+  modelRef.current = model;
+  const mounted = useMountedRef();
+
+  const load = useCallback(() => {
+    if (loadedRef.current || !model?.data) return;
+    loadedRef.current = true;
+    setLoading(true);
+    void cachedLoad(dataKey("owner", model.data), () => loadModelMorphNames(model)).then((names) => {
+      // A model swapped mid-load leaves this result to a model that's gone.
+      if (!mounted.current || modelRef.current !== model) return;
+      setMorphs(names);
+      setLoading(false);
+    });
+  }, [model, mounted]);
+
+  // A swapped model invalidates the loaded set; allow a reload on the next picker open.
+  useEffect(() => {
+    loadedRef.current = false;
+    setMorphs([]);
+    setLoading(false);
+  }, [model]);
+
+  // The heading follows the owner's current name, so a rename after the load shows.
+  const sources = useMemo(() => (morphs.length ? [{ heading: name, morphs }] : []), [morphs, name]);
+  return { sources, loading, load };
 }
 
 /**

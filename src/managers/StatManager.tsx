@@ -25,7 +25,7 @@ import { useRenameField } from "@/lib/useCodeRename";
 import { StatCodeBox, type StatCodeBoxContext } from "./StatCodeBox";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { PlaceholderNameField } from "@/components/prompt/PlaceholderField";
-import { useBodyMorphSources } from "@/lib/useBodyMorphNames";
+import { useBodyMorphSources, useOwnerMorphSources, type MorphOwner } from "@/lib/useBodyMorphNames";
 import { boundMorphNamesExcluding, buildMorphGroups } from "@/lib/bodyMorphs";
 import { clamp } from "@/lib/utils";
 import { useEditorMode } from '@/lib/editorMode';
@@ -54,6 +54,8 @@ const boxEditor = (row: HTMLElement) => row.querySelector<HTMLElement>('[content
 export interface StatEditorStore {
   stats: Stat[];
   updateStat: (stat: Stat) => void;
+  /** The owner whose model the Body Sliders picker lists. Absent = the world's player models. */
+  morphOwner?: MorphOwner;
 }
 
 /** The stat being edited — a loose, partial Stat while fields are filled in. */
@@ -94,9 +96,19 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store }: {
   const writeStat = useCallback((next: EditingStat) => updateStat(next as Stat), [updateStat]);
   const { draft: editingStat, apply } = useEditingDraft<EditingStat>(stat, writeStat, normalizeStat);
 
-  // Body sliders available to this stat: every model's morph names (grouped by model) minus those already
-  // owned by another stat (each slider binds to a single stat). Loaded lazily when the picker opens.
-  const { sources: morphSources, loading: morphsLoading, load: loadMorphs } = useBodyMorphSources();
+  // Body sliders available to this stat: the owner's model's shape keys, or for a world stat every model's
+  // (grouped by model), minus those already owned by another stat (each slider binds to a single stat).
+  // Loaded lazily when the picker opens.
+  const worldMorphs = useBodyMorphSources();
+  const ownerMorphs = useOwnerMorphSources(store?.morphOwner);
+  const { sources: morphSources, loading: morphsLoading, load: loadMorphs } = store?.morphOwner ? ownerMorphs : worldMorphs;
+  // The owner's model offers nothing to bind; a binding already on the stat stays removable.
+  let ownerMorphsEmpty: string | undefined;
+  if (store?.morphOwner && !morphSources.length) {
+    ownerMorphsEmpty = store.morphOwner.model?.data
+      ? "This entity's 3D model has no body sliders"
+      : "This entity has no 3D model. Add one to bind its body sliders.";
+  }
   const morphGroups = useMemo(() => {
     const taken = boundMorphNamesExcluding(stats, stat.id);
     return buildMorphGroups(morphSources, taken);
@@ -378,7 +390,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store }: {
               onValueChange={(v) => handleChange("morphBindings", v)}
               onOpenChange={(open) => { if (open) loadMorphs(); }}
               placeholder="Select body sliders"
-              emptyIndicator={morphsLoading ? "Loading sliders…" : undefined}
+              emptyIndicator={morphsLoading ? "Loading sliders…" : ownerMorphsEmpty}
               maxCount={6}
             />
           </div>

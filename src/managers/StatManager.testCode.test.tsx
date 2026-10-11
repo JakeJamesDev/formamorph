@@ -37,6 +37,7 @@ vi.mock('@/contexts/GameDataContext', () => ({
 }));
 vi.mock('@/lib/useBodyMorphNames', () => ({
   useBodyMorphSources: () => ({ sources: [], loading: false, load: vi.fn() }),
+  useOwnerMorphSources: () => ({ sources: [], loading: false, load: vi.fn() }),
 }));
 vi.mock('@/components/prompt/PlaceholderField', () => ({
   PlaceholderNameField: (props: { value?: string }) => <input aria-label="Name" defaultValue={props.value} />,

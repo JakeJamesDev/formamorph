@@ -7,6 +7,7 @@ import { EntityCardBody, EntityDescription } from '../game/EntityCard';
 import { useEntityTextResolver } from "@/lib/usePlaceholderResolver";
 import { useEntityVisualPreference } from "@/lib/useEntityVisualPreference";
 import { useEntityGallery } from "@/lib/useEntityGallery";
+import { useEntityStatMorphs } from "@/lib/useEntityStatMorphs";
 import type { Entity } from "@/types";
 import { Tip } from "@/components/ui/tooltip";
 
@@ -31,6 +32,7 @@ export const EntityModal = ({ entity, isOpen, onOpenChange, editing }: {
   const resolveEntityText = useEntityTextResolver();
   const { preference, onPreferenceChange } = useEntityVisualPreference(entity?.id);
   const { imageIndex, onImageStep } = useEntityGallery(entity);
+  const morphValues = useEntityStatMorphs(entity ?? undefined);
 
   // 'edit' and 'preview' are mutually exclusive: entering one leaves the other.
   const [mode, setMode] = useState<'view' | 'edit' | 'preview'>('view');
@@ -113,6 +115,7 @@ export const EntityModal = ({ entity, isOpen, onOpenChange, editing }: {
           onPreferenceChange={onPreferenceChange}
           imageIndex={imageIndex}
           onImageStep={onImageStep}
+          morphValues={morphValues}
         >
               {mode === 'edit' ? (
                 <div className="flex flex-col gap-2">

@@ -62,6 +62,15 @@ export function statMorphMap(
   return map;
 }
 
+/** The morph influences an entity's own stats drive on its model: its enabled stats, scaled against the
+ *  entity's authored stats. */
+export function entityStatMorphMap(
+  values: readonly Stat[] | undefined,
+  authored: readonly Stat[] | undefined,
+): Record<string, number> {
+  return statMorphMap((values ?? []).filter((stat) => stat.enabled !== false), authored);
+}
+
 /** Compose base (customization-chosen) morphs with stat-driven morphs, summing overlapping keys —
  *  matching the historical `base + percent`. Sums may exceed 1; three.js clamps influences itself. */
 export function mergeBodyMorphs(

@@ -35,7 +35,11 @@ const EntityStatsMirror = ({ entity, selectedId, onSelect }: {
   const groups = entity.statGroups ?? NO_GROUPS;
 
   const edit = (change: (e: Entity) => Entity) => editEntity(entity.id, change);
-  const store: StatEditorStore = { stats, updateStat: (stat) => edit((e) => updateOwnedStat(e, stat)) };
+  const store: StatEditorStore = {
+    stats,
+    updateStat: (stat) => edit((e) => updateOwnedStat(e, stat)),
+    morphOwner: { name: labelPlaceholders(entity.name, placeholders), model: entity.model },
+  };
 
   const adapter = statListAdapter({
     stats,

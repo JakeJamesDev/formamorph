@@ -15,6 +15,7 @@ vi.mock('@/lib/useEntityVisualPreference', () => ({
   useEntityVisualPreference: () => ({ preference: 'image', onPreferenceChange: () => {} }),
 }));
 vi.mock('@/lib/useEntityGallery', () => ({ useEntityGallery: () => ({ imageIndex: 0, onImageStep: () => {} }) }));
+vi.mock('@/lib/useEntityStatMorphs', () => ({ useEntityStatMorphs: () => ({}) }));
 
 const entity: Entity = { id: 'e1', name: 'Grey Mouse', playerDescription: 'A wiry scavenger.' };
 
