@@ -7,7 +7,9 @@ import { dropBlueprintChips } from './blueprintChips';
 import { mapEntityChips, mapOwnedTraitRefs, type PlaceholderHomesWorld } from './placeholderHomes';
 import { worldBlueprints } from './placeholderBlueprints';
 import { decodePlaceholderToken, PLACEHOLDER_TOKEN_SOURCE, remapPlaceholderIds } from './placeholders';
-import { bindOwnedTraits, uniqueNamed, type TraitWorld } from './portableTraits';
+import { uniqueNamed } from './carriedBinding';
+import { playLibraryStats } from './portableStats';
+import { bindOwnedTraits, type TraitWorld } from './portableTraits';
 
 /** The blueprints the entity's copies read: each from `pool`, else from what the entity already carries. */
 export function carriedBlueprints(entity: Pick<Entity, 'placeholders' | 'blueprints'>, pool: readonly Placeholder[]): Placeholder[] {
@@ -185,9 +187,9 @@ const overrideTexts = (
   }));
 
 /** A library entity as a world holds it: its owned traits and links bound as {@link bindOwnedTraits} binds
- *  them, and its copies bound to the world's blueprints. */
+ *  them, its stat Links resolved into the stats it plays with, and its copies bound to the world's blueprints. */
 export const bindLibraryEntity = (entity: Entity, world: TraitWorld & BlueprintBindWorld): Entity =>
-  bindCarriedBlueprints(bindOwnedTraits(entity, world), world).entity;
+  bindCarriedBlueprints(playLibraryStats(bindOwnedTraits(entity, world), world), world).entity;
 
 /** What a world's carried entities bind to, read from its shared list and its placeholder folders. */
 export const blueprintBindWorld = (world: PlaceholderHomesWorld): BlueprintBindWorld =>

@@ -1,6 +1,6 @@
 # 14: Library Characters Carry Their Stats
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 04, 09, 12
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: high

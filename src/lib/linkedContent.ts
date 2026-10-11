@@ -1,4 +1,5 @@
 import { adoptBookPlaceholders, adoptEntityPlaceholders } from '@/lib/placeholderHomes';
+import { comparableOwnedStats } from '@/lib/portableStats';
 import { adoptOwnedTraits, comparableOwnedTraits, traitWorldOf, type TraitWorld } from '@/lib/portableTraits';
 import { bindCarriedBlueprints } from '@/lib/blueprintTravel';
 import { followedLibraryId } from '@/lib/publishLinks';
@@ -150,6 +151,7 @@ export function chipTexts(item: LinkableContent): string[] {
 function authoredContent(item: LinkableContent): unknown {
   const shed: Record<string, unknown> = withoutWorldFields(item);
   if (!('entries' in item) && (item.traits || item.traitLinks)) Object.assign(shed, comparableOwnedTraits(item));
+  if (!('entries' in item) && item.statLinks) Object.assign(shed, comparableOwnedStats(item));
   if (Array.isArray(shed.entries)) {
     shed.entries = (shed.entries as { id?: string }[]).map(({ id: _entryId, ...entry }) => entry);
   }
@@ -325,11 +327,13 @@ function syncList<T extends LinkableContent>(
  * `placeholders` is the world's shared list, which the updated content resolves its references against;
  * `toAdd` is what the world gains for references no copy had a connection for. `unlinkedCopies` names each
  * let-go copy as this world holds it, entities first. The world's `traits` and `traitGroups`, when given, bind
- * an updated entity's owned trait requirements; its `placeholderGroups`, when given, bind its copies.
+ * an updated entity's owned trait requirements, and its `stats` and `statGroups` its stat Links; its
+ * `placeholderGroups`, when given, bind its copies.
  */
 export function syncWorldContent(
   world: WorldContent & {
     placeholders: Placeholder[]; placeholderGroups?: PlaceholderGroup[]; traits?: TraitWorld['traits']; traitGroups?: TraitWorld['traitGroups'];
+    stats?: TraitWorld['stats']; statGroups?: TraitWorld['statGroups'];
   },
   sources: LibrarySource[],
 ): WorldContent & { updated: number; unlinked: number; unlinkedCopies: UnlinkedCopy[]; toAdd: Placeholder[] } {

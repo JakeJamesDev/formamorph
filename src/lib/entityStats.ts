@@ -13,6 +13,11 @@ import { overlayStatCodeResult, type OwnerCodeResult, type OwnerCodeTurn } from 
 
 type StatEntity = Pick<Entity, 'id' | 'stats'>;
 
+/** Every entity that can own stats in a playthrough: the world's, then the library's, which are the library
+ *  persona and the characters added at Enter World. */
+export const statOwnerEntities = (entities: { world: readonly Entity[]; library: readonly Entity[] }): Entity[] =>
+  [...entities.world, ...entities.library];
+
 /** Each authored entity that owns stats, every stat seeded as a new game seeds the player's. */
 export const seedEntityStats = (entities: readonly StatEntity[]): EntityStatValues =>
   Object.fromEntries(entities.filter((e) => e.stats?.length).map((e) => [e.id, seedNewGameStats(e.stats ?? [])]));

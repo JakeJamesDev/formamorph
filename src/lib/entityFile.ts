@@ -1,11 +1,12 @@
 import { randomUUID } from "@/lib/uuid";
 import type {
-  BlueprintOverride, Entity, Opening, Placeholder, PlaceholderPin, LibraryDetails, RequirementBearer, StatChange, Trait, TraitGroup,
+  BlueprintOverride, Entity, Opening, Placeholder, PlaceholderPin, LibraryDetails, RequirementBearer, Stat, StatChange, StatGroup,
+  StatLink, Trait, TraitGroup,
   TraitLink, TraitLinkOverrides, TraitRequirement, TraitRequirementRow, TraitStatToggle,
 } from '@/types';
 import { readLibraryDetails } from './contentAuthor';
 import { remintOpenings } from './openings';
-import { APP_VERSION, WORLD_FILE_KIND, SAVE_FILE_KIND, migrateCarriedPlaceholders } from './version';
+import { APP_VERSION, WORLD_FILE_KIND, SAVE_FILE_KIND, migrateCarriedPlaceholders, migrateEntityStatFields } from './version';
 import { DICTIONARY_FILE_KIND } from './dictionaryFile';
 import type { WorldAssociation } from './compatibleWorlds';
 import { readComponentFileLinks, type ComponentFileLinks, type ComponentFileSource } from './componentFileLinks';
@@ -19,6 +20,7 @@ import { IMAGE_CAPS, bytesToDataUrl, dataUrlMime, measureDataUrl, optimizeImageD
 import { entityImages, primaryImage } from './entityImages';
 import { fetchAsDataUrl, isRemoteImage } from './imageSource';
 import { morphCardImage } from './morphArtCanvas';
+import { portableOwnedStats, type OwnedStatFields } from './portableStats';
 import { portableOwnedTraits, type TraitWorld } from './portableTraits';
 import { carriedBlueprints } from './blueprintTravel';
 import { notFlag } from './requirementRows';
@@ -62,6 +64,11 @@ export interface EntityCardData {
   traitGroups?: TraitGroup[];
   /** The entity's links, each storing its original's name so a receiving world can bind it. */
   traitLinks?: TraitLink[];
+  /** The entity's owned stats and stat groups (see lib/portableStats). */
+  stats?: Stat[];
+  statGroups?: StatGroup[];
+  /** The entity's stat links, each storing its Blueprint's name so a receiving world can bind it. */
+  statLinks?: StatLink[];
   /** Where this character came from, so an importer can reconnect it (see lib/componentFileLinks). */
   source?: ComponentFileSource;
   /** The worlds this character is offered for, by listing id. Never the worlds themselves. */
@@ -110,6 +117,7 @@ export function buildEntityCardData(
     ...(entity.openings?.length && entity.openingWeights && Object.keys(entity.openingWeights).length
       ? { openingWeights: entity.openingWeights } : {}),
     ...portableOwnedTraits(entity, world),
+    ...portableOwnedStats(entity, world),
     ...(links.source ? { source: links.source } : {}),
     ...(links.associations?.length ? { associations: links.associations } : {}),
   };
@@ -164,6 +172,7 @@ export function parseEntityCardData(raw: unknown): Entity {
     ...(carried.openings ? { openings: carried.openings } : {}),
     ...(carried.openingWeights ? { openingWeights: carried.openingWeights } : {}),
     ...cardOwnedTraits(obj),
+    ...cardOwnedStats(obj),
   };
 }
 
@@ -308,6 +317,14 @@ function cardOwnedTraits(obj: Record<string, unknown>): Pick<Entity, 'traits' | 
     ...(traitGroups.length ? { traitGroups } : {}),
     ...(traitLinks.length ? { traitLinks } : {}),
   };
+}
+
+/** The card's owned stats, groups and links, each list kept to the records it can hold. A card with none reads
+ *  as an entity with none. */
+function cardOwnedStats(obj: Record<string, unknown>): OwnedStatFields {
+  const { stats, statGroups, statLinks } = obj;
+  const { stats: s, statGroups: g, statLinks: l } = migrateEntityStatFields({ stats, statGroups, statLinks }) as OwnedStatFields;
+  return { ...(s ? { stats: s } : {}), ...(g ? { statGroups: g } : {}), ...(l ? { statLinks: l } : {}) };
 }
 
 /** One card row as an opening, or nothing when it is not one. An unknown kind reads as a Player Action. The

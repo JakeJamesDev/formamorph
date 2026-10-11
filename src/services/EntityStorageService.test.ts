@@ -61,6 +61,20 @@ describe('EntityStorageService', () => {
     expect(read.traitLinks![0].overrides!.smite.requires).toEqual({ value: [{ all: [paladin] }], blueprint: [] });
   });
 
+  it('reads a character that holds no stats as one with none, and keeps each stat list to the records it can hold', async () => {
+    await EntityStorageService.storeEntity(record('e1'));
+    expect(await EntityStorageService.getEntityData('e1')).not.toHaveProperty('stats');
+    const messy = {
+      id: 'e1', name: 'Mara', stats: [{ id: 'grit', name: 'Grit' }, null, { name: 'No Id' }], statGroups: 'feelings',
+      statLinks: [{ id: 'l', originalId: 'trust' }, { id: 'no-original' }],
+    } as unknown as StoredEntityRecord['data'];
+    await EntityStorageService.storeEntity({ id: 'e1', name: 'Mara', data: messy });
+    const read = await EntityStorageService.getEntityData('e1');
+    expect(read.stats?.map((s) => s.id)).toEqual(['grit']);
+    expect(read).not.toHaveProperty('statGroups');
+    expect(read.statLinks?.map((l) => l.id)).toEqual(['l']);
+  });
+
   it('leaves the community link unset on a hand-made character', async () => {
     await EntityStorageService.storeEntity(record('e1'));
     const stored = await readRaw('e1');

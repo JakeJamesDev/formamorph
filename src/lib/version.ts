@@ -464,52 +464,40 @@ function dropRootTraitLinks(world: Record<string, unknown>): void {
   });
 }
 
-/** Keep an entity's owned stats to the records a stat list can hold: a list of objects with an id. Any other
- *  shape, and an empty list, is stored as absent. Not version-gated, since an import can carry any shape. */
-function migrateEntityStats(world: Record<string, unknown>): void {
-  if (!Array.isArray(world.entities)) return;
-  world.entities = world.entities.map((raw) => {
-    if (!raw || typeof raw !== 'object' || !('stats' in raw)) return raw;
-    const { stats, ...rest } = raw as Entity;
-    const kept = Array.isArray(stats)
-      ? stats.filter((s) => s && typeof s === 'object' && typeof (s as Stat).id === 'string')
-      : [];
-    if (Array.isArray(stats) && kept.length === stats.length && kept.length) return raw;
-    return kept.length ? { ...rest, stats: kept } : rest;
-  });
+const hasStringId = (v: unknown): v is { id: string } => !!v && typeof v === 'object' && typeof (v as { id?: unknown }).id === 'string';
+
+const groupRecords = (groups: unknown): StatGroup[] => (Array.isArray(groups) ? groups.filter(hasStringId) : []) as StatGroup[];
+
+/** The records each of an entity's stat lists can hold: an id, and for a link an original's id too. */
+const ENTITY_STAT_LISTS: Record<'stats' | 'statGroups' | 'statLinks', (item: unknown) => boolean> = {
+  stats: hasStringId,
+  statGroups: hasStringId,
+  statLinks: (item) => hasStringId(item) && typeof (item as { originalId?: unknown }).originalId === 'string',
+};
+
+/** One entity with its owned stats, stat groups and stat links kept to the records each list can hold. Any other
+ *  shape, and an empty list, is stored as absent; an entity with no such list passes through. A library entity
+ *  never passes through `migrateWorld`, so its read boundary and a card's import call this too. Idempotent. */
+export function migrateEntityStatFields<T>(entity: T): T {
+  if (!entity || typeof entity !== 'object') return entity;
+  let out: Record<string, unknown> = entity as Record<string, unknown>;
+  for (const [key, holds] of Object.entries(ENTITY_STAT_LISTS)) {
+    if (!(key in out)) continue;
+    const list = out[key];
+    const kept = Array.isArray(list) ? list.filter(holds) : [];
+    if (Array.isArray(list) && kept.length === list.length && kept.length) continue;
+    const { [key]: _old, ...rest } = out;
+    out = kept.length ? { ...rest, [key]: kept } : rest;
+  }
+  return out as T;
 }
 
-const groupRecords = (groups: unknown): StatGroup[] =>
-  (Array.isArray(groups) ? groups.filter((g) => g && typeof g === 'object' && typeof (g as StatGroup).id === 'string') : []) as StatGroup[];
-
-/** Keep the world's stat groups, and an entity's own, to the records a group list can hold. A world with none
- *  keeps none, which the editor's load reads as an empty list; an entity's empty or malformed list is stored as
- *  absent. Not version-gated, since an import can carry any shape. */
-function migrateStatGroups(world: Record<string, unknown>): void {
+/** Keep every entity's stat lists to the records a list can hold ({@link migrateEntityStatFields}), and the
+ *  world's stat groups too. A world with no groups keeps none, which the editor's load reads as an empty list.
+ *  Not version-gated, since an import can carry any shape. */
+function migrateStatLists(world: Record<string, unknown>): void {
   if ('statGroups' in world) world.statGroups = groupRecords(world.statGroups);
-  if (!Array.isArray(world.entities)) return;
-  world.entities = world.entities.map((raw) => {
-    if (!raw || typeof raw !== 'object' || !('statGroups' in raw)) return raw;
-    const { statGroups, ...rest } = raw as Entity;
-    const kept = groupRecords(statGroups);
-    if (Array.isArray(statGroups) && kept.length === statGroups.length && kept.length) return raw;
-    return kept.length ? { ...rest, statGroups: kept } : rest;
-  });
-}
-
-/** Keep an entity's stat links to the records a link list can hold: an id and an original's id. Any other shape,
- *  and an empty list, is stored as absent. Not version-gated, since an import can carry any shape. */
-function migrateStatLinks(world: Record<string, unknown>): void {
-  if (!Array.isArray(world.entities)) return;
-  world.entities = world.entities.map((raw) => {
-    if (!raw || typeof raw !== 'object' || !('statLinks' in raw)) return raw;
-    const { statLinks, ...rest } = raw as Entity;
-    const kept = Array.isArray(statLinks)
-      ? statLinks.filter((l) => l && typeof l === 'object' && typeof l.id === 'string' && typeof l.originalId === 'string')
-      : [];
-    if (Array.isArray(statLinks) && kept.length === statLinks.length && kept.length) return raw;
-    return kept.length ? { ...rest, statLinks: kept } : rest;
-  });
+  if (Array.isArray(world.entities)) world.entities = world.entities.map(migrateEntityStatFields);
 }
 
 /**
@@ -588,9 +576,7 @@ export function migrateWorld(raw: unknown): World {
   migrateExclusiveGroups(world);
   migrateRequirementRows(world);
   dropRootTraitLinks(world);
-  migrateEntityStats(world);
-  migrateStatGroups(world);
-  migrateStatLinks(world);
+  migrateStatLists(world);
   normalizeContentLinks(world);
   migrateStatCode(world);
   if (world.version === APP_VERSION) return world as unknown as World;

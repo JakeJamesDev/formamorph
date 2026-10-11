@@ -36,7 +36,7 @@ import { adoptOwnedTraits } from '@/lib/portableTraits';
 import { blueprintChipsRemovedNotice, dropBookBlueprintChips, dropEntityBlueprintChips } from '@/lib/blueprintChips';
 import { blueprintIds } from '@/lib/placeholderBlueprints';
 import { bindCarriedBlueprints, blueprintBindWorld } from '@/lib/blueprintTravel';
-import type { Dictionary, Entity, GameLocation, Placeholder, PlaceholderGroup, Trait, TraitGroup } from '@/types';
+import type { Dictionary, Entity, GameLocation, Placeholder, PlaceholderGroup, Stat, StatGroup, Trait, TraitGroup } from '@/types';
 
 const HELP_TOPIC = 'library.linkedContent';
 
@@ -71,6 +71,9 @@ interface LibraryLinkingOptions {
   /** The world's own traits and groups, which an entity's owned trait requirements name or bind to. */
   traits: Trait[];
   traitGroups: TraitGroup[];
+  /** The world's stats and stat groups, which an entity's stat Links name or bind to. */
+  stats: Stat[];
+  statGroups: StatGroup[];
   updateEntity: (entity: Entity) => void;
   updateDictionary: (book: Dictionary) => void;
   setEntities: (entities: Entity[]) => void;
@@ -144,6 +147,8 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
     placeholderGroups: options.placeholderGroups,
     traits: options.traits,
     traitGroups: options.traitGroups,
+    stats: options.stats,
+    statGroups: options.statGroups,
     writeItem: (item) => (kindOf(item) === 'dictionary'
       ? updateDictionary(item as Dictionary)
       : updateEntity(item as Entity)),
@@ -177,6 +182,7 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
     const next = syncWorldContent({
       entities: current.entities, dictionaries: current.dictionaries, placeholders: current.worldPlaceholders,
       placeholderGroups: current.placeholderGroups, traits: current.traits, traitGroups: current.traitGroups,
+      stats: current.stats, statGroups: current.statGroups,
     }, sources);
     if (!next.updated && !next.unlinked) return;
     if (next.entities !== current.entities) current.setEntities(next.entities);
@@ -233,8 +239,8 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
 
   const saveToLibrary = useCallback(async (item: LinkableContent) => {
     try {
-      const { traits, traitGroups, entities } = latest.current;
-      const source = await saveCopyToLibrary(item, placeholders, locations, undefined, { traits, traitGroups, entities });
+      const { traits, traitGroups, entities, stats, statGroups } = latest.current;
+      const source = await saveCopyToLibrary(item, placeholders, locations, undefined, { traits, traitGroups, entities, stats, statGroups });
       applyLink(item, source, false);
       toast.success(`“${source.name}” saved to your library.`);
     } catch (error) {
@@ -288,6 +294,7 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
         }));
         const placed = adoptOwnedTraits(withEntityLocations(rest as Entity, Object.values(used)), {
           traits: current.traits, traitGroups: current.traitGroups, entities: [...current.entities, ...added],
+          stats: current.stats, statGroups: current.statGroups,
         });
         added.push(placed);
         current.addEntityToWorld(withConnections(placed, { ...adopted.connections, ...used }));
@@ -489,9 +496,10 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
   /** The world was saved or rolled back, so nothing is waiting on it any more. */
   const clearPendingLinks = useCallback(() => setPendingIds([]), []);
 
-  const { traits, traitGroups, entities, worldPlaceholders } = options;
+  const { traits, traitGroups, entities, stats, statGroups, worldPlaceholders } = options;
   const traitWorld = useMemo(
-    () => ({ traits, traitGroups, entities, placeholders: worldPlaceholders }), [traits, traitGroups, entities, worldPlaceholders],
+    () => ({ traits, traitGroups, entities, stats, statGroups, placeholders: worldPlaceholders }),
+    [traits, traitGroups, entities, stats, statGroups, worldPlaceholders],
   );
 
   const dialogs: ReactNode = (

@@ -14,7 +14,7 @@ import {
   bundledListingIds, bundledSources, followBundled, resolveBundledLinks,
   type LocalLibraryItem,
 } from '@/lib/worldBundle';
-import type { Dictionary, Entity, GameLocation, Placeholder, Trait, TraitGroup } from '@/types';
+import type { Dictionary, Entity, GameLocation, Placeholder, Stat, StatGroup, Trait, TraitGroup } from '@/types';
 
 /** The slices of a world this pass reads and rewrites. A stored record's `data` satisfies it. */
 export interface BundleWorld {
@@ -24,6 +24,8 @@ export interface BundleWorld {
   locations?: GameLocation[];
   traits?: Trait[];
   traitGroups?: TraitGroup[];
+  stats?: Stat[];
+  statGroups?: StatGroup[];
 }
 
 /**
@@ -103,6 +105,7 @@ export async function linkBundledContent<T extends BundleWorld>(
     if (!content) continue;
     placed.set(group.bundledFrom, await saveCopyToLibrary(content, available, world.locations ?? [], undefined, {
       traits: world.traits ?? [], traitGroups: world.traitGroups ?? [], entities: world.entities ?? [],
+      ...(world.stats ? { stats: world.stats, statGroups: world.statGroups ?? [] } : {}),
     }));
     created += 1;
   }

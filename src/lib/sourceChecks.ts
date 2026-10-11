@@ -9,7 +9,7 @@ import { listNames } from '@/lib/utils';
 import { applyLibraryUpdate, unlink, type LibrarySource, type LinkableContent } from '@/lib/linkedContent';
 import type { LibraryKind } from '@/lib/librarySources';
 import { traitWorldOf } from '@/lib/portableTraits';
-import type { Dictionary, Entity, Placeholder, Trait, TraitGroup } from '@/types';
+import type { Dictionary, Entity, Placeholder, Stat, StatGroup, Trait, TraitGroup } from '@/types';
 
 /**
  * What a check said about one source.
@@ -30,6 +30,8 @@ export interface SourceCheckWorld {
   placeholders?: Placeholder[];
   traits?: Trait[];
   traitGroups?: TraitGroup[];
+  stats?: Stat[];
+  statGroups?: StatGroup[];
 }
 
 /** One copy in a world that follows a published source. */
