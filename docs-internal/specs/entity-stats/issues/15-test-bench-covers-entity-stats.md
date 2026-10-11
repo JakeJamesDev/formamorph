@@ -1,6 +1,6 @@
 # 15: Test Bench Covers Entity Stats
 
-Status: ready-for-human
+Status: done
 Blocked by: 08, 12
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: high

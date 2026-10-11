@@ -1,6 +1,6 @@
 # 22: Library Entity Editor Stats Tab
 
-Status: ready-for-human
+Status: done
 Blocked by: 14, 19
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: high
