@@ -85,7 +85,7 @@ export interface PanelHarnessOptions {
   page?: number;
   /** Fields merged over the blank authored world. */
   world?: Partial<World>;
-  /** The player's stats (also seeded as the world's stat definitions). */
+  /** The player's stats, also seeded as the world's stat definitions unless `world.stats` names its own. */
   stats?: PlayerStat[];
   /** The live narration-reveal text, which lives in its own store rather than in context. */
   gameplayText?: string;
@@ -196,7 +196,7 @@ const Stage =({ options, stats, expose, children }: {
   expose({ gameplay, gameData, settings });
 
   useEffect(() => {
-    gameData.loadWorldData(worldFixture({ ...options.world, stats: stats as unknown as Stat[] }));
+    gameData.loadWorldData(worldFixture({ ...options.world, stats: options.world?.stats ?? (stats as unknown as Stat[]) }));
     options.settings?.(settings);
     gameplay.setPlayerStats(stats);
     if (options.turns?.length) {

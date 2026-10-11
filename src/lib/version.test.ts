@@ -1055,3 +1055,35 @@ describe('migrateWorld — stat groups', () => {
     expect(migrateWorld(JSON.parse(JSON.stringify(once)))).toEqual(once);
   });
 });
+
+describe('migrateWorld — stat Blueprints and links', () => {
+  const raw = (extra: Record<string, unknown>) => ({ version: APP_VERSION, ...extra });
+  const link = {
+    id: 'l1', originalId: 'trust', kind: 'stat', originalName: 'Trust', groupId: null, order: 0,
+    overrides: { trust: { value: { value: 20, blueprint: 5 } } },
+  };
+  const world = raw({
+    stats: [{ id: 'trust', name: 'Trust', type: 'number', description: '', min: 0, max: 50, value: 5, regen: 0, descriptors: [], groupId: 'bp' }],
+    statGroups: [{ id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' }],
+    entities: [{ id: 'bram', name: 'Bram', statLinks: [link] }],
+  });
+
+  it('round-trips the Blueprints group, the links and their overrides through export', () => {
+    const once = migrateWorld(world);
+    expect(once.statGroups?.[0].system).toBe('blueprints');
+    expect(once.entities[0].statLinks).toEqual([link]);
+    expect(migrateWorld(JSON.parse(JSON.stringify(once)))).toEqual(once);
+  });
+
+  it('drops a record that is not a link, and stores an empty or malformed list as absent', () => {
+    const out = migrateWorld(raw({
+      entities: [
+        { id: 'a', name: 'A', statLinks: [link, null, { id: 'x' }] },
+        { id: 'b', name: 'B', statLinks: [] },
+        { id: 'c', name: 'C', statLinks: 'trust' },
+      ],
+    })).entities;
+    expect(out[0].statLinks).toEqual([link]);
+    for (const entity of out.slice(1)) expect(entity).not.toHaveProperty('statLinks');
+  });
+});

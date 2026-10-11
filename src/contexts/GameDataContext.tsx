@@ -9,6 +9,7 @@ import { onWorldChangedElsewhere, type WorldChange } from '@/lib/worldChangeSign
 import { migrateWorld, APP_VERSION } from '@/lib/version';
 import { dropLocationFromEntities } from '@/lib/entityPresence';
 import { dropLinksTo, removeBlueprints } from '@/lib/traitLinks';
+import { dropStatLinksTo, playStatWorld, removeStatBlueprints } from '@/lib/statLinks';
 import { neededCopies, syncBlueprintCopies } from '@/lib/blueprintCopies';
 import { dropLocationFromConnections } from '@/lib/locationGraph';
 import { removeLocationPromotingChildren } from '@/lib/locationTree';
@@ -229,8 +230,10 @@ function useProvideGameData() {
     setStats(prevStats => [...prevStats, withDefaultDescriptors(newStat)]);
   }, []);
 
+  // A Blueprint stat takes its links with it.
   const removeStat = useCallback((statId: string) => {
     setStats(prevStats => prevStats.filter(stat => stat.id !== statId));
+    setEntities(prevEntities => dropStatLinksTo(prevEntities, new Set([statId])));
   }, []);
 
   const addStatGroup = useCallback((newGroup: StatGroup) => {
@@ -238,8 +241,17 @@ function useProvideGameData() {
   }, []);
 
   // Removing a group moves its stats and subgroups up to the group's own parent, so a delete loses the folder only.
+  // Blueprints turns each link into its entity's own stat, deletes the linked originals and moves the rest up.
   const removeStatGroup = useCallback((groupId: string) => {
-    const { statGroups: groups, stats: held } = latest.current;
+    const { statGroups: groups, stats: held, entities } = latest.current;
+    if (groups.find(g => g.id === groupId)?.system === 'blueprints') {
+      const removed = removeStatBlueprints({ stats: held, statGroups: groups }, entities);
+      if (!removed) return;
+      setStatGroups(removed.statGroups);
+      setStats(removed.stats);
+      setEntities(removed.entities);
+      return;
+    }
     const next = removeStatGroupFrom(groups, held, groupId);
     if (next.groups !== groups) setStatGroups(next.groups);
     if (next.stats !== held) setStats(next.stats);
@@ -738,6 +750,7 @@ function useProvideGameData() {
   ]);
 
   const worldLoaded = savedWorld !== null;
+  const playWorld = useMemo(() => playStatWorld({ stats, statGroups, entities }), [stats, statGroups, entities]);
   const value = useMemo(() => ({
     ...actions,
     worldMetadata,
@@ -748,6 +761,10 @@ function useProvideGameData() {
     connections,
     entities,
     entityGroups,
+    // The world as play reads it: the player's stats without Blueprints, and each entity's stats with its
+    // links read through their Blueprints. The editor reads `stats` and `entities`.
+    playStats: playWorld.stats,
+    playEntities: playWorld.entities,
     traits,
     traitGroups,
     statUpdates,
@@ -774,7 +791,7 @@ function useProvideGameData() {
     // Placeholder id → the entity or book that owns it, for the surfaces that read a chip as `Molly › Eyes`.
     placeholderOwners: placeholderOwnerIndex,
   }), [
-    actions, worldMetadata, worldOverview, stats, statGroups, locations, connections, entities, entityGroups, traits, traitGroups,
+    actions, worldMetadata, worldOverview, stats, statGroups, locations, connections, entities, entityGroups, playWorld, traits, traitGroups,
     statUpdates, dictionaries, placeholders, worldPlaceholders, placeholderGroups, getWorldData, worldId, worldLoaded,
     isWorldDirty, worldStored, worldChangedElsewhere, dictStore, phStore, placementLetters, placeholderOwnerIndex,
   ]);

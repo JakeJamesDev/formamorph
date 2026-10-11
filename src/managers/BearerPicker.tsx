@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { ArrowLeft, Check, ChevronRight, Link2 } from 'lucide-react';
 import { EntityIcon, GroupIcon, PersonaIcon } from '@/lib/elementIcons';
 import { useGameData, useGameDataOptional } from '@/contexts/GameDataContext';
@@ -17,17 +17,24 @@ import { DrillSlide, type SlideFrom } from '@/components/DrillSlide';
 
 const NO_PLACEHOLDERS: Placeholder[] = [];
 
+const bearerIcon = (row: Extract<BearerChoice, { kind: 'bearer' }>) => {
+  const Icon = row.customPersona ? PersonaIcon : EntityIcon;
+  return <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />;
+};
+
 /**
  * The bearers a flyout offers, one entity group level at a time: a group row opens its level, and the Back
  * row above returns to the one before. `back` is the Back row on the top level. With `held`, every row
  * starts with a check column, and a held bearer reads checked and can't be picked.
  */
-export function BearerList({ choices, label, onPick, held, back }: {
+export function BearerList({ choices, label, onPick, held, back, leafIcon = bearerIcon }: {
   choices: BearerChoice[];
   label: string;
   onPick: (id: string) => void;
   held?: (id: string) => boolean;
   back?: { label: string; onBack: () => void };
+  /** The icon before a pickable row; an entity's by default. */
+  leafIcon?: (row: Extract<BearerChoice, { kind: 'bearer' }>) => ReactNode;
 }) {
   // Off-world (the showcase) there are no placeholders to draw.
   const placeholders = useGameDataOptional()?.placeholders ?? NO_PLACEHOLDERS;
@@ -67,7 +74,6 @@ export function BearerList({ choices, label, onPick, held, back }: {
               );
             }
             const isHeld = held?.(row.id) ?? false;
-            const Icon = row.customPersona ? PersonaIcon : EntityIcon;
             return (
               <button
                 key={row.id}
@@ -78,7 +84,7 @@ export function BearerList({ choices, label, onPick, held, back }: {
                 onClick={() => onPick(row.id)}
               >
                 {checkSlot(isHeld)}
-                <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                {leafIcon(row)}
                 <span className="min-w-0 flex-1 break-words [overflow-wrap:anywhere]">{text(row.name)}</span>
               </button>
             );

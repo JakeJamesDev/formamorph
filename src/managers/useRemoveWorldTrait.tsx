@@ -6,7 +6,7 @@ import { linksTo, removeBlueprints, type BlueprintsRemoval } from '@/lib/traitLi
 import { groupHoldsItems } from '@/lib/traitTree';
 
 /** The line a removal's confirmation adds for the links that go with it. */
-const alsoDeletesLinks = (links: number): string =>
+export const alsoDeletesLinks = (links: number): string =>
   `This also deletes ${links === 1 ? 'its link' : `its ${links} links`}.`;
 
 /** What removing Blueprints does: the detached links, and the items that move up. */

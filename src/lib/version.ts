@@ -497,6 +497,21 @@ function migrateStatGroups(world: Record<string, unknown>): void {
   });
 }
 
+/** Keep an entity's stat links to the records a link list can hold: an id and an original's id. Any other shape,
+ *  and an empty list, is stored as absent. Not version-gated, since an import can carry any shape. */
+function migrateStatLinks(world: Record<string, unknown>): void {
+  if (!Array.isArray(world.entities)) return;
+  world.entities = world.entities.map((raw) => {
+    if (!raw || typeof raw !== 'object' || !('statLinks' in raw)) return raw;
+    const { statLinks, ...rest } = raw as Entity;
+    const kept = Array.isArray(statLinks)
+      ? statLinks.filter((l) => l && typeof l === 'object' && typeof l.id === 'string' && typeof l.originalId === 'string')
+      : [];
+    if (Array.isArray(statLinks) && kept.length === statLinks.length && kept.length) return raw;
+    return kept.length ? { ...rest, statLinks: kept } : rest;
+  });
+}
+
 /**
  * Give every placeholder's values their stable ids. Deliberately NOT version-gated, for the same reason as
  * `foldDictionaryIntoBooks`: shipped 2.x worlds carry `version === APP_VERSION` yet predate the records.
@@ -575,6 +590,7 @@ export function migrateWorld(raw: unknown): World {
   dropRootTraitLinks(world);
   migrateEntityStats(world);
   migrateStatGroups(world);
+  migrateStatLinks(world);
   normalizeContentLinks(world);
   migrateStatCode(world);
   if (world.version === APP_VERSION) return world as unknown as World;

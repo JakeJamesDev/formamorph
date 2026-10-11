@@ -405,7 +405,7 @@ const GameViewer = ({
   // state*: a resolved name stored in state stops being resolvable, so it would freeze the pins that
   // happened to be active when the game started.
   const {
-    stats: authoredStats,
+    playStats: authoredStats,
     traits: authoredTraits,
     locations: authoredLocations,
     connections,

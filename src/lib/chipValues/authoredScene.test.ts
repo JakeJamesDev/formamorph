@@ -76,6 +76,22 @@ describe('authoredChipScene and entity stats', () => {
   it('holds none when no entity owns a stat', () => {
     expect(authoredChipScene(world()).ownedStats ?? {}).toEqual({});
   });
+
+  it('reads a linked Blueprint per bearer, and never as a player stat', () => {
+    const blueprint: Stat = { ...trust, groupId: 'bp' };
+    const link = (id: string) => ({ id, originalId: 'trust', kind: 'stat' as const, originalName: 'Trust', groupId: null });
+    const scene = authoredChipScene(world({
+      stats: [warmth, blueprint],
+      statGroups: [{ id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' }],
+      entities: [
+        { ...wren, statLinks: [{ ...link('l1'), overrides: { trust: { value: { value: 60, blueprint: 30 } } } }] },
+        { ...harrow, statLinks: [link('l2')] },
+      ],
+    }));
+    expect(scene.stats.map((s) => s.name)).toEqual(['Warmth']);
+    expect(scene.ownedStats?.wren.map((s) => [s.name, s.value])).toEqual([['Trust', 60]]);
+    expect(scene.ownedStats?.harrow.map((s) => [s.name, s.value])).toEqual([['Trust', 30]]);
+  });
 });
 
 describe('authoredChipScene', () => {

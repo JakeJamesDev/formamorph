@@ -33,7 +33,7 @@ const entities = [
 
 const updateStat = vi.fn();
 vi.mock('@/contexts/GameDataContext', () => ({
-  useGameData: () => ({ updateStat, stats, placeholders: [beast], traits, traitGroups: [], entities }),
+  useGameData: () => ({ updateStat, stats, playStats: stats, placeholders: [beast], traits, traitGroups: [], entities, playEntities: entities }),
 }));
 vi.mock('@/lib/useBodyMorphNames', () => ({
   useBodyMorphSources: () => ({ sources: [], loading: false, load: vi.fn() }),

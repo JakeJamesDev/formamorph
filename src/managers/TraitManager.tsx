@@ -8,6 +8,7 @@ import { Trash2 } from "lucide-react";
 import { EntityIcon } from '@/lib/elementIcons';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PanelTabContent, PanelTabs } from "@/components/ui/panel-tabs";
+import { playerStatsOf, resolvedEntityStats } from '@/lib/statLinks';
 import type { SurfaceLedgerName } from "@/components/ui/surface";
 import PlaceholderField, { PlaceholderNameField } from '@/components/prompt/PlaceholderField';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
@@ -141,7 +142,7 @@ const TraitManager = ({
   focusField?: FocusFieldHint | null;
 }) => {
   const {
-    updateTrait, editEntity, stats, placeholders, placementLetters, placeholderOwners, traits, traitGroups, pinWorld, entities,
+    updateTrait, editEntity, stats, statGroups, placeholders, placementLetters, placeholderOwners, traits, traitGroups, pinWorld, entities,
   } = useTraitStore();
   const ownerId = owner?.id;
   // A link or an owned trait previews as its bearer's text: the bearer's name, copies and pins.
@@ -221,9 +222,11 @@ const TraitManager = ({
   const tabs = traitPanelTabsFor(advanced);
   // A bearer's trait changes the bearer's own stats; one the player can play also changes the player's.
   const statLabel = (name: string) => labelPlaceholders(name, placeholders, { letters: placementLetters, owners: placeholderOwners });
+  // A bearer's own stats include its links; the player's leave the Blueprints out.
+  const statWorld = { stats, statGroups: statGroups ?? [] };
   const statChoices: StatChoices[] = !bearer ? [{ stats }] : [
-    { label: statLabel(bearer.name), stats: bearer.stats ?? [] },
-    ...(canBePlayer(bearer) ? [{ label: 'Player', stats }] : []),
+    { label: statLabel(bearer.name), stats: resolvedEntityStats(statWorld, bearer) },
+    ...(canBePlayer(bearer) ? [{ label: 'Player', stats: playerStatsOf(stats, statWorld.statGroups) }] : []),
   ];
   const shownTab = tabs.some((t) => t.value === tab) ? tab : 'details';
 

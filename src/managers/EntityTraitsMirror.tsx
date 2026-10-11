@@ -14,7 +14,7 @@ import EntityTraitsEditor, { type EntityTraitStore } from './EntityTraitsEditor'
  */
 function useWorldEntityTraitStore(entity: Entity): EntityTraitStore {
   const world = useGameData();
-  const { traits, traitGroups, entities, placeholders, stats, placementLetters, placeholderOwners, editEntity } = world;
+  const { traits, traitGroups, entities, placeholders, stats, statGroups, placementLetters, placeholderOwners, editEntity } = world;
   const gateInput = useMemo(
     () => editorGateInput({ traits, traitGroups, entities }),
     [traits, traitGroups, entities],
@@ -28,6 +28,7 @@ function useWorldEntityTraitStore(entity: Entity): EntityTraitStore {
       entities: [],
       placeholders,
       stats,
+      statGroups,
       placementLetters,
       placeholderOwners,
       ...ownedTraitWrites(edit),
@@ -36,7 +37,7 @@ function useWorldEntityTraitStore(entity: Entity): EntityTraitStore {
       pinWorld: world,
     };
     return { ...store, entityRoot };
-  }, [entity, traits, traitGroups, placeholders, stats, placementLetters, placeholderOwners, editEntity, gateInput, world]);
+  }, [entity, traits, traitGroups, placeholders, stats, statGroups, placementLetters, placeholderOwners, editEntity, gateInput, world]);
 }
 
 /**

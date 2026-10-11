@@ -14,8 +14,9 @@ import {
 import { resolveStartingLocation } from '../startingLocation';
 import { treeStatTraits } from '../traitRuntime';
 import { enabledOwnerStats, withTraitToggles } from '../statOwners';
+import { playStatWorld } from '../statLinks';
 import type {
-  Connection, Dictionary, Entity, EntityGroup, GameLocation, Placeholder, PlayerStat, Stat, Trait,
+  Connection, Dictionary, Entity, EntityGroup, GameLocation, Placeholder, PlayerStat, Stat, StatGroup, Trait,
   TraitGroup, WorldOverview,
 } from '@/types';
 import type { ChipScene } from './chipScene';
@@ -24,6 +25,7 @@ import type { ChipScene } from './chipScene';
 export interface AuthoredWorld {
   worldOverview: WorldOverview;
   stats: Stat[];
+  statGroups?: StatGroup[];
   locations: GameLocation[];
   connections?: Connection[];
   entities: Entity[];
@@ -63,9 +65,10 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
   // Destructuring defaults are runtime-only backstops: the type demands the slices, but a hand-edited
   // world JSON can still arrive without one, and a preview should read empty rather than fail.
   const {
-    worldOverview, stats = [], locations = [], connections = [], entities = [], traits = [],
-    traitGroups = [], dictionaries = [],
+    worldOverview, locations = [], connections = [], traits = [], traitGroups = [], dictionaries = [],
   } = world;
+  // Blueprint stats are not the player's, and each entity's links read through their Blueprints.
+  const { stats, entities } = playStatWorld({ stats: world.stats ?? [], statGroups: world.statGroups ?? [], entities: world.entities ?? [] });
   const placeholders = allPlaceholders(world);
   // A world with no locations yet previews as "nowhere" rather than failing.
   const location = options.location !== undefined ? options.location : resolveStartingLocation(locations, null) ?? null;

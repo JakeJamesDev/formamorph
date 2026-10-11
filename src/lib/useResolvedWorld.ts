@@ -139,7 +139,7 @@ export function useResolvedAuthoredWorld(
   personaName: string | null = null,
 ) {
   const {
-    stats: rawStats, locations: rawLocations, connections, entities: rawEntities,
+    playStats: rawStats, locations: rawLocations, connections, playEntities: rawEntities,
     traits: rawTraits, traitGroups: rawTraitGroups,
   } = useGameData();
   const { rolls, placeholders } = usePlaceholderSession();
@@ -236,7 +236,7 @@ export function usePersonaName(rolls: PlaceholderRolls, pins: Record<string, str
 
 export function useResolvedWorld(): ResolvedWorld {
   const {
-    traits: rawTraits, traitGroups: rawTraitGroups, locations: rawLocations, entities: rawEntities, worldPlaceholders,
+    traits: rawTraits, traitGroups: rawTraitGroups, locations: rawLocations, playEntities: rawEntities, worldPlaceholders,
   } = useGameData();
   const { rolls, placeholders } = usePlaceholderSession();
   const {

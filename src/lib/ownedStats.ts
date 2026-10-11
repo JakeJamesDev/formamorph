@@ -3,7 +3,8 @@
 import type { Entity, Stat, StatGroup } from '@/types';
 import { newStat, withDefaultDescriptors } from './blankWorld';
 import { followRename } from './statDescriptors';
-import { duplicateStatNode, newStatGroup, removeStatGroup, statRootCount } from './statGroupTree';
+import { duplicateStatNode, newStatGroup } from './statGroupTree';
+import { entityStatRootCount } from './statLinks';
 
 /** The entity with its owned stats replaced. An empty list is stored as absent. */
 export function withOwnedStats(entity: Entity, stats: Stat[]): Entity {
@@ -23,7 +24,7 @@ const groupsOf = (entity: Entity): StatGroup[] => entity.statGroups ?? [];
 /** Append a new stat at the end of the entity's top level. */
 export const addOwnedStat = (entity: Entity, id: string, name?: string): Entity => {
   const added = withDefaultDescriptors({
-    ...newStat(id, name), groupId: null, order: statRootCount(entity.statGroups, entity.stats),
+    ...newStat(id, name), groupId: null, order: entityStatRootCount(entity),
   });
   return withOwnedStats(entity, [...statsOf(entity), added]);
 };
@@ -31,18 +32,13 @@ export const addOwnedStat = (entity: Entity, id: string, name?: string): Entity 
 /** Append a new group at the end of the entity's top level. */
 export const addOwnedStatGroup = (entity: Entity, id: string, name?: string): Entity =>
   withOwnedStatTree(
-    entity, statsOf(entity), [...groupsOf(entity), newStatGroup(id, statRootCount(entity.statGroups, entity.stats), name)],
+    entity, statsOf(entity), [...groupsOf(entity), newStatGroup(id, entityStatRootCount(entity), name)],
   );
 
 /** Replace group `group.id`. */
 export const updateOwnedStatGroup = (entity: Entity, group: StatGroup): Entity =>
   withOwnedStatTree(entity, statsOf(entity), groupsOf(entity).map((g) => (g.id === group.id ? group : g)));
 
-/** Delete a group; its stats and subgroups move up to its parent. */
-export function removeOwnedStatGroup(entity: Entity, id: string): Entity {
-  const next = removeStatGroup(groupsOf(entity), statsOf(entity), id);
-  return next.groups === entity.statGroups ? entity : withOwnedStatTree(entity, next.stats, next.groups);
-}
 
 /** Copy a stat or a whole group right after its original; `newId` is the copy's id. The entity itself for an id
  *  it lacks. */

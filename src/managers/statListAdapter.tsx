@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Copy, X } from 'lucide-react';
+import { Copy, Link2, X } from 'lucide-react';
 import type { ListEditorAdapter, ListEditorRow } from '@/components/listEditorHooks';
 import type { ListSearch } from '@/components/listToolbarHooks';
 import { matchesListSearch, type ListSearchNames } from '@/lib/listSearch';
@@ -17,7 +17,7 @@ import StatTree from './StatTree';
  */
 export function statListAdapter({
   stats, groups, names, selectedId, onSelect, onDuplicate, onRemoveStat, onRemoveGroup, onDrop, onWriteGroup, add, placeholder,
-  emptyHint, search, tab, onTabChange, focusField, store, padded,
+  emptyHint, search, tab, onTabChange, focusField, store, padded, links,
 }: {
   stats: Stat[];
   groups: StatGroup[];
@@ -43,16 +43,24 @@ export function statListAdapter({
   store?: StatEditorStore;
   /** The panel sits in a pane that scrolls and pads it, as the entity panel's other tabs do. */
   padded?: boolean;
+  /** The rows among `stats` that are an entity's links, with the panel and footer a link row opens. */
+  links?: {
+    ids: ReadonlySet<string>;
+    detail: (id: string) => ReactNode;
+    footer: (id: string) => ReactNode;
+  };
 }): ListEditorAdapter {
   // A search lists stats only. Order is the tree's to change, so these rows draw no grip.
-  const rows = (): ListEditorRow[] => stats.map((s) => ({
-    id: s.id,
-    name: s.name,
-    actions: [
-      { icon: <Copy className="h-4 w-4" />, title: 'Duplicate', onClick: () => onDuplicate(s.id) },
-      { icon: <X className="h-4 w-4" />, destructive: true, title: 'Delete', onClick: () => { onRemoveStat(s.id); onSelect(null); } },
-    ],
-  }));
+  const rows = (): ListEditorRow[] => stats.map((s) => {
+    const remove = { icon: <X className="h-4 w-4" />, destructive: true, onClick: () => { onRemoveStat(s.id); onSelect(null); } };
+    return links?.ids.has(s.id)
+      ? { id: s.id, name: s.name, icon: <Link2 className="h-4 w-4 shrink-0" aria-label="Link" />, actions: [{ ...remove, title: 'Remove Link' }] }
+      : {
+        id: s.id,
+        name: s.name,
+        actions: [{ icon: <Copy className="h-4 w-4" />, title: 'Duplicate', onClick: () => onDuplicate(s.id) }, { ...remove, title: 'Delete' }],
+      };
+  });
 
   // A search that leaves the open stat out blanks its detail (drift log #2).
   const shown = (id: string | null) => {
@@ -71,6 +79,7 @@ export function statListAdapter({
         onRemoveStat={onRemoveStat}
         onRemoveGroup={onRemoveGroup}
         onDuplicate={onDuplicate}
+        linkIds={links?.ids}
         emptyHint={emptyHint}
       />
     ),
@@ -80,7 +89,7 @@ export function statListAdapter({
     detail: (id) => {
       const group = id ? groups.find((g) => g.id === id) : undefined;
       const stat = shown(id);
-      const panel = group
+      const panel = stat && links?.ids.has(stat.id) ? links.detail(stat.id) : group
         ? <StatGroupManager key={group.id} group={group} write={onWriteGroup} />
         : stat && (
           <StatManager
@@ -96,6 +105,7 @@ export function statListAdapter({
     },
     // The tabbed panel keeps its strip above a body that scrolls itself, where the host gives it no padding.
     fills: padded ? undefined : (id) => !!shown(id),
+    footer: links ? (id) => (links.ids.has(id) ? links.footer(id) : undefined) : undefined,
     add,
     placeholder,
     holds: (id) => stats.some((s) => s.id === id) || groups.some((g) => g.id === id),
