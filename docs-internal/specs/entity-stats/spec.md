@@ -131,6 +131,8 @@ Rulings from the grill, numbered as asked.
 
 - **Q76** (user ruling) Ticket 23 tries framing the stat request with three parts: what a stat is, how owner headings and groups lay out the list, and what stats in general can do to the story. The framing goes in the built-in Stat Updates prompt only; other prompts and custom prompts don't get it. Its bar is report only: the probe numbers on both models go to the user, who rules whether a wording ships.
 
+- **Q77** (ticket 23) Ticket 23 builds and runs its wording arms, reports, and pauses before prepare. The wording the user picks goes into the default Stat Updates system prompt and lands; if the user picks none, only the probe arms land. The text-pass fallback prompt gets no framing. The group sentence is conditional phrasing in the one static prompt by default. One arm renders the group sentence only when the request has groups, so the report can compare the two.
+
 Derived from Q7 and confirmed with the summary:
 
 - An entity stat's morph bindings drive that entity's own model.
