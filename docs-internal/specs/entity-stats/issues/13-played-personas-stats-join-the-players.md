@@ -19,6 +19,7 @@ When the player plays an authored entity, its stats become the player's stats, a
 - [ ] A same-named persona stat and world player stat are two stats in the panel, the request and stat code.
 - [ ] The stat request tells the two apart, and each change lands on the right one.
 - [ ] Switching persona and back keeps every entity's stat values.
+- [ ] On load, a library persona's stats backfill as Q40 rules for every owner: a stat its library entry gained since the save is added at its starting value (Q74).
 - [ ] The join covers a library persona as well as a world one (Q67). Whichever of tickets 13 and 14 lands second adds the test for a library persona.
 - [ ] A persona that owns a stat with a world player stat's id (Q58): the trait stat picker shows each stat once, a trait can still reach the world stat, and no false "player stat changes" or toggle-conflict note shows.
 - [ ] The played persona is never an entity owner in the request. In the panel's dropdown it stays "<name> (You)", and picking it shows no entity section (Q49).
