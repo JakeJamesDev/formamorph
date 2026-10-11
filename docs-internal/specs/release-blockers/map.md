@@ -1,6 +1,6 @@
 # Release blockers
 
-Status: done
+Status: in-progress
 
 Label: wayfinder:map
 
@@ -28,6 +28,8 @@ Everything in `issues/` is closed, so nothing on this list stands between the cu
   mutation-proven. Details in [02](issues/02-update-available-uncached-world.md).
 
 ## Open blockers
+
+- **03 — Stat request invents changes on Cydonia** (from Entity Stats, Q66). The shipped stat request scores 30% exact with 122 invented changes on Cydonia 24B; the cloud model clears its bar. Details in [03](issues/03-cydonia-stat-request.md).
 
 _(none)_
 

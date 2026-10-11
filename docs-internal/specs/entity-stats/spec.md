@@ -109,6 +109,8 @@ Rulings from the grill, numbered as asked.
 
 - **Q65** (ticket 12, user ruling) Stats have no Copy. In the glossary, a Copy reads its Blueprint live, and traits make an owned version with **Detach** on a Link, so stats do the same: **Link Stat**, then **Detach** (ticket 19). Ticket 12 removes its Copy Stat action. The glossary's Blueprint, Link and Original entries now cover stats. This replaces Q19 and the Copy parts of Q61.
 
+- **Q66** (ticket 17, user ruling, confirmed in this session) Ticket 17 lands wording WL with misses on record. WL adds two lines: "Each stat belongs to the character it sits under. A stat moves only for what that character does, goes through, or feels this turn." in the system prompt, and "A clear shift in how a character regards the player moves that character's own stat." in the user line. The cloud model clears Q28 (exact 59% vs C3 52%, recall 75% vs 70%, 0 wrong signs). Cydonia misses: exact 30% against ticket 05's 47% and C3's 50%, and invented changes 122 against 98 and 86 (player 82). Q64 also misses: with groups, `push-bram` still invents 12 player changes on the cloud model. Across 13 wordings, every line that lifted cloud recall raised Cydonia's invented changes. Cydonia's main error is draining the player's Vigor on most turns, in today's pass and in C3 as well. The Q45 blocker stays open on the release-blockers list (item 03).
+
 Derived from Q7 and confirmed with the summary:
 
 - An entity stat's morph bindings drive that entity's own model.
