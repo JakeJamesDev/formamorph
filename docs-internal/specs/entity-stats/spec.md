@@ -119,6 +119,8 @@ Rulings from the grill, numbered as asked.
 
 - **Q70** (ticket 13) Stats follow the trait rule (Q47). Under a library persona, the Custom Persona entity is a Bearer "You" whose traits apply to the player, so its stats join the player's beside the library persona's. Each sits under its own heading in the panel and keeps its own keys in the request. No owner's stats run unseen.
 
+- **Q71** (ticket 11) Byte-identical request bodies at the toggle's default satisfy ticket 11's probe criterion, with the dump result in the commit body. A second dump also shows that the SG fixture with every group hidden renders byte for byte as the flat request S. That ties the toggle-off shape to arms already measured, so no live run is needed.
+
 Derived from Q7 and confirmed with the summary:
 
 - An entity stat's morph bindings drive that entity's own model.
