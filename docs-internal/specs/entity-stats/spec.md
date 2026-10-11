@@ -105,6 +105,8 @@ Rulings from the grill, numbered as asked.
 - **Q62** (ticket 16) Stat morphs drive the entity's model everywhere in play: the entity view, its model dialog, and the entity card. Editor previews and the Authoring Tour stay unmorphed. On an entity with no model or no shape keys, the Body Sliders field stays, with an empty list and an empty-state line, so an existing binding can still be removed. A switched-off entity stat drives no morph. The picker lists the union of shape keys across the model's meshes.
 - **Q63** (ticket 18) A full load clears every owner's deltas, the player's included; rollback and regenerate keep theirs. This fixes an in-game Load that kept last turn's player deltas. On a turn with no stat response, entity rows behave exactly as the player's rows do.
 
+- **Q64** (ticket 10, user ruling) Ticket 10 lands the grouped request (nested as the Traits chip nests traits) with a Q60 miss on record on the cloud model. Over 3 batches of 21 cases × 6 runs, flat against grouped: exact 50.5% vs 47.4%, recall 57.8% vs 59.3%, wrong signs 3 vs 0, invented changes 19 vs 54. The whole rise is one case, `push-bram`, where a Mind or Body heading over Resolve and Vigor leads the model to dock them by 1–2. Other heading shapes didn't fix it. Ticket 17's work on invented player changes re-checks it with groups in the request, and ticket 10's commit body carries the Cydonia numbers.
+
 Derived from Q7 and confirmed with the summary:
 
 - An entity stat's morph bindings drive that entity's own model.
