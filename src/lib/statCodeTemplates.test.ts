@@ -256,7 +256,7 @@ describe('built-in templates', () => {
   /** The world's names, the way the picker fills a slot of each kind. */
   const pickFor = (slot: TemplateSlot): string | undefined => {
     switch (slot.type) {
-      case 'stat': return slot.name === 'secondStat' ? 'Strength' : 'Health';
+      case 'stat': return slot.name === 'secondStat' || slot.name === 'bonusStat' ? 'Strength' : 'Health';
       case 'placeholder': return placeholders[0].name;
       case 'trait': return slot.owner === PERSONA_TRAIT_OWNER ? scarred.name : slot.owner ? wounded.name : traits[0].name;
       case 'entity': return mira.name;
@@ -356,6 +356,64 @@ describe('built-in templates', () => {
         .toBe('placeholders["Hair Color"].value');
       expect(fillTemplate('traits[{{t:trait}}].enabled', { t: 'Night Owl' }))
         .toBe('traits["Night Owl"].enabled');
+    });
+  });
+
+  describe('Dice Roll With Consequences', () => {
+    const template = BUILT_IN_TEMPLATES.find(t => t.id === 'builtin-dice-roll-consequences')!;
+    const values = { bandPlaceholder: 'Mood', penaltyStat: 'Health', bonusStat: 'Strength' };
+    // The sandbox's Math.random is QuickJS's own and cannot be seeded, so each case fixes the die.
+    // `faces` is the unit draw the code scales by 20: 0 rolls a 1, 0.5 an 11, 0.99 a 20.
+    const rollWith = (faces: number) =>
+      executeStatCode(`Math.random = () => ${faces};\n${fillTemplate(template.code, values)}`, world, self, castOptions);
+
+    it('lists the two target stats and the placeholder as slots, captioned like the other templates', () => {
+      expect(parseTemplateSlots(template.code).slots.map(slot => [slot.type, humanizeSlotName(slot.name)])).toEqual([
+        ['placeholder', 'Band Placeholder'],
+        ['stat', 'Penalty Stat'],
+        ['stat', 'Bonus Stat'],
+      ]);
+    });
+
+    it('halves the penalty stat on a 1 and writes nothing else', async () => {
+      const result = await rollWith(0);
+      expect(result).toEqual({
+        value: 1, error: null,
+        statWrites: [{ id: 'h', name: 'Health', value: 40 }],
+        placeholders: [phWrite('Mood', 'calm')],
+      });
+    });
+
+    it('adds 1 to the bonus stat on a 20 and writes nothing else', async () => {
+      const result = await rollWith(0.99);
+      expect(result).toEqual({
+        value: 20, error: null,
+        statWrites: [{ id: 's', name: 'Strength', value: 21 }],
+        placeholders: [phWrite('Mood', 'furious')],
+      });
+    });
+
+    it('leaves both stats alone on any other roll and still pins the band', async () => {
+      // A roll of 11 sits in the third of the placeholder's four bands.
+      expect(await rollWith(0.5)).toEqual({ value: 11, error: null, placeholders: [phWrite('Mood', 'angry')] });
+      // The rolls next to each edge are plain rolls: 2 does not halve, 19 does not add.
+      const two = await rollWith(0.06);
+      expect([two.value, two.statWrites, two.placeholders]).toEqual([2, undefined, [phWrite('Mood', 'calm')]]);
+      const nineteen = await rollWith(0.9);
+      expect([nineteen.value, nineteen.statWrites, nineteen.placeholders]).toEqual([19, undefined, [phWrite('Mood', 'furious')]]);
+    });
+
+    // Four bands over 20 rolls change at 5 to 6, 10 to 11 and 15 to 16.
+    it('moves the pinned band at the edges between bands', async () => {
+      const pinned = async (faces: number) => (await rollWith(faces)).placeholders;
+      expect(await pinned(0.21)).toEqual([phWrite('Mood', 'calm')]);
+      expect(await pinned(0.26)).toEqual([phWrite('Mood', 'wary')]);
+      expect(await pinned(0.51)).toEqual([phWrite('Mood', 'angry')]);
+      expect(await pinned(0.76)).toEqual([phWrite('Mood', 'furious')]);
+    });
+
+    it('is in the After the AI menu', () => {
+      expect(templatesForTiming(BUILT_IN_TEMPLATES, 'after')).toContain(template);
     });
   });
 
