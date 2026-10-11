@@ -129,6 +129,8 @@ Rulings from the grill, numbered as asked.
 
 - **Q75** (ticket 20) The authored chip scene (editor previews, the Settings preview, probe fixtures) lists the Custom Persona entity's stats after the world stats, as its Traits chip already does under the None rule. In narration, choices and planning, the Stats chip lists world stats, then each played owner's stats in its own groups, with no owner heading, as the stat request joins them. A name clash is numbered there as in the stat request, so every prompt names a stat the same way. This widens Q44, which kept numbered names to the stat request before persona stats could collide with world stats.
 
+- **Q76** (user ruling) Ticket 23 tries framing the stat request with three parts: what a stat is, how owner headings and groups lay out the list, and what stats in general can do to the story. The framing goes in the built-in Stat Updates prompt only; other prompts and custom prompts don't get it. Its bar is report only: the probe numbers on both models go to the user, who rules whether a wording ships.
+
 Derived from Q7 and confirmed with the summary:
 
 - An entity stat's morph bindings drive that entity's own model.
@@ -249,16 +251,16 @@ Derived from Q7 and confirmed with the summary:
 - A stat Link stores its Original's id, the Original's name, its group, its order and its Overrides. An Override stores the Blueprint's value it was made against, so a stale Override can be detected. This follows the trait and placeholder Link models.
 - The Stats tab's tree gains groups, with a system Blueprints group. A Blueprint stat is excluded from the player's stats everywhere: seeding, the stat request, chips, the panel and stat code.
 - Trait groups and stat groups gain an AI-visibility flag, default on. Prompt building reads it when it renders headings.
-- Owners are resolved through the bearer resolution that owned traits use: a bearer's stat tree is its own stats plus its stat Links expanded against their Blueprints. The played persona's resolved stats join the player's stats under the persona, as separate stats.
+- Owners are resolved through the bearer resolution that owned traits use: a bearer's stat tree is its own stats plus its stat Links expanded against their Blueprints. The played persona's resolved stats join the player's stats under the persona, as separate stats. Under a library persona, the Custom Persona entity's stats join as well.
 - Runtime values live in gameplay state, keyed by owner, then stat id. Owned-trait state is the precedent. The authored world is never written during play.
-- Effective stats are derived per owner by the same derive step the player uses: base, plus the bearer's trait stat changes, plus the AI's max delta, then code bounds. A trait stat change finds its target among the bearer's own stats by id, or by Blueprint for a linked stat. A change with no target is dropped and reported to the editor.
+- Effective stats are derived per owner by the same derive step the player uses: base, plus the bearer's trait stat changes, plus the AI's max delta, then code bounds. A trait stat change finds its target among the bearer's own stats by id, or by Blueprint for a linked stat. On a player bearer (the played persona, or the Custom Persona entity), a change with no own target falls through to the world player stat, and an optional `target: 'player'` field reaches the world stat even when an own stat shares its id. On a cast bearer, a change with no target is dropped, and the Test Bench flags it.
 
 ### The stat request
 
-- The stat pass builds one request from a list of owners: the player (world player stats plus the played persona's stats) and the present entities with enabled stats. The present entities arrive through the Turn Pipeline's derivation callback after narration (ADR-0001), from the participants the narration confirmed.
-- The system prompt renders one section per owner, with stats nested under visible group headings. The response format is a JSON schema: one key per owner, and under it one entry per stat holding a change and an optional max change, each a bounded integer. Every key is required, so "no change" is an explicit 0.
-- The default Stat Updates prompts change to the C3 wording: one JSON object on one line, 0 for a stat that didn't move, and a clear shift in how a character regards the player counts as a change. Custom prompts are not touched.
-- The request layer gains a structured-output field. A schema rejection is detected and remembered per endpoint through the existing capability pattern. On rejection, the turn falls back to today's player-only text pass and adds a diagnostic.
+- The stat pass builds one request from a list of owners: the player (world player stats, plus the stats of every owner that joins the player) and the present entities with enabled stats. The present entities arrive through the Turn Pipeline's derivation callback after narration (ADR-0001), from the participants the narration confirmed.
+- The system prompt renders one section per owner, with stats nested under visible group headings. The response format is a JSON schema: one key per owner. Under it, each stat's key holds its bare signed change, and a "<key> max" key beside it holds its max change, all bounded integers. Every key is required, so "no change" is an explicit 0. A name clash gets a numbered key, and every prompt shows that numbered name.
+- The default Stat Updates prompts carry the C3 wording: one JSON object on one line, and 0 for a stat that didn't move. They also carry the WL lines: each stat belongs to the character it sits under and moves only for what that character does, goes through or feels, and a clear shift in how a character regards the player moves that character's own stat. Custom prompts are not touched.
+- The request layer gains a structured-output field. Schema support is a question on the per-endpoint capability record. A rejection with no parameter, or one that names the schema, retries once in the same turn on the text pass, and only a successful retry stores the rejection. Those turns use today's player-only text prompts, skip entity stats, and add a diagnostic. A rejection that names another parameter goes to the existing override path.
 - The response reader matches owners and stats by identity from the request snapshot, as the current reader does. It returns per-owner updates and diagnostics. Applying runs max changes before values, per owner.
 - The token cap scales with the number of stats and owners in the request.
 - The request schema and its whitespace hints avoid keywords the cloud server rejects (`uniqueItems`).
@@ -271,12 +273,13 @@ Derived from Q7 and confirmed with the summary:
 ### UI
 
 - The entity Stats tab reuses the shared list toolbar and the entity Traits mirror's layout: stacked over the list in the World Editor, with details sliding in over it.
-- The in-game stat panel renders the player's stats, then a section for the selected entity. The selection is lifted so that the entity view and the panel's dropdown share it. The dropdown lists present entities first, then the rest, then (None). An unrevealed entity shows its player description.
+- The in-game stat panel renders the player's stats, then a section for the selected entity. The selection is lifted so that the entity view and the panel's dropdown share it. The dropdown lists present entities first, then absent entities with a visible stat, then (None). An unrevealed entity shows the scene's alias, or Unknown.
 - Stat groups render as collapsible headings in the panel, reusing the stat row.
 
 ### Prompts
 
-- The Entities chip gains a stats piece, on by default. It renders each present entity's visible-to-AI stats with value, status and meaning, nested by group.
+- The Entities chip gains a stats piece, on by default. It renders each entity's enabled stats with value, status and meaning, nested by group, in the Here and In Scene scopes and in Full and Summary content.
+- The Stats chip outside the stat request lists the world player stats, then the stats of every owner that joins the player.
 - Stats chips and the Traits chip skip the heading of a group with the AI-visibility flag off.
 
 ### Data
@@ -303,10 +306,10 @@ Derived from Q7 and confirmed with the summary:
 - Write access to another owner's stats from stat code.
 - Changes to custom Stat Updates prompts.
 - The leftover world-level stat update rules, which no turn runs.
-- Prompt work on the two weaknesses the probe found: the cloud model under-reports entity changes, and Cydonia invents player changes that today's pass also invents.
+- Cydonia's invented player changes past ticket 17's wording. They are release blocker 03 on the standing release-blockers list.
 
 ## Further Notes
 
-- Evidence for the request shape: the entity stats probe, 22 cases, cloud default model and Cydonia, 2026-10-10. C3 scored 56% exact and 68% recall on the cloud model and 48% and 100% on Cydonia, with no wrong signs on either. One call per entity scored 18%; text lines never wrote the player's lines.
+- Evidence for the request shape: the entity stats probe, 22 cases (21 after Q30), cloud default model and Cydonia, 2026-10-10. C3 scored 56% exact and 68% recall on the cloud model and 48% and 100% on Cydonia, with no wrong signs on either. One call per entity scored 18%; text lines never wrote the player's lines.
 - The cloud server ignores every whitespace switch tried. A fixed-shape object written on one line avoids the padding that list values cause.
 - ⚠️ This effort changes the world, save and character card export shapes.
