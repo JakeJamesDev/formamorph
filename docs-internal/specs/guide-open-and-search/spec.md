@@ -60,6 +60,8 @@ Settled with the user on 2026-10-11.
 | Q27 | Open Guide opens on the reader piece's section in Minimal and Bubble, else the Guide view's section. On close, the full screen's section goes back to both |
 | Q28 | The full screen shares the whole Guide view: query, open pages and section. With no section open, the reader pane shows an empty-state hint beside the rail |
 | Q29 | Q23 extends to dialogs: the dialog, drawer and alert-dialog wrappers also ignore Escape from the help layer. Escape in help never closes an app dialog below it. Help-owned dialogs, which cover the layer, keep their Escape |
+| Q30 | Fuzzy keywords try prefixes first. Close spellings apply only when no indexed word starts with the query word, so "plac" never leads with "plan". A typo that is also the start of another word gets no correction |
+| Q31 | A query word with a digit never expands: version numbers and counts match exactly |
 
 ## User Stories
 
