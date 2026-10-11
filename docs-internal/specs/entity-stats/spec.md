@@ -1,6 +1,7 @@
 # Entity Stats
 
-Status: ready-for-agent
+Status: done
+Status note: 2026-10-11. Tickets 01–25 are done and 26 is wontfix. Last landing is 1db1d488. Closed without gates. Release blocker 03 (Cydonia) stays open. Persona stat placement in prompts moves to a new effort.
 Spec session: entity-stats — spec
 
 ## Problem Statement
