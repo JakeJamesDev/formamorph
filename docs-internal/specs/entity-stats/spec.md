@@ -144,6 +144,8 @@ Rulings from the grill, numbered as asked.
 
   Q64 is still not met: `push-bram` invents 12 player changes on the cloud model and 6 on Cydonia with groups. Placing "holds no reading" beside the framing stopped it, but lost Bram's Trust in two cases. The conditional and code-rendered group sentences were within noise of each other on both models.
 
+- **Q79** (user ruling) The Stats tab's tree matches the Traits tab's for owned stats. An entity that owns a stat, a stat group or a stat Link shows as an entity node, and the author places it in their own stat groups. Stats and stat groups drag across owners with their ids kept, and a Blueprint stat dropped on an entity node links it. Ticket 24.
+
 Derived from Q7 and confirmed with the summary:
 
 - An entity stat's morph bindings drive that entity's own model.
