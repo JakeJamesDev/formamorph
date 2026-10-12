@@ -207,7 +207,7 @@ A stat that a trait switched off still reads as a real entry. Its name, value an
 | Write | Effect |
 | --- | --- |
 | `self.value = n` | Sets the value this turn, clamped to the range. Same as `return n` |
-| `self.min = n` | Sets the floor to `n` now. Later changes move it from `n` |
+| `self.min = n` | Sets the floor to `n` now, but never below the authored min. Later changes move it from `n` |
 | `self.max = n` | Sets the cap to `n` now. Later changes move it from `n` |
 | `self.regen = n` | Sets regen per story hour to `n` now. Later changes move it from `n` |
 
@@ -244,7 +244,7 @@ if (roll === 20) stats.Luck.value += 1;
 return roll;
 ```
 
-Every entry in `stats` takes writes to the same four fields as `self`: `value`, `min`, `max` and `regen`. They work as they do on `self`. A value clamps to the target's range. A bound sets the number now, and later changes move it from there. `stats.Health.max = 20` makes the cap 20 now, and a trait that adds 10 later makes it 30. `null` fails the run.
+Every entry in `stats` takes writes to the same four fields as `self`: `value`, `min`, `max` and `regen`. They work as they do on `self`. A value clamps to the target's range. A bound sets the number now, and later changes move it from there. A min never goes below the authored min. `stats.Health.max = 20` makes the cap 20 now, and a trait that adds 10 later makes it 30. `null` fails the run.
 
 | Rule | What it means |
 | --- | --- |
@@ -601,7 +601,7 @@ const randomFactor = 0.8 + (Math.random() * 0.4);
 return baseDamage * skillMultiplier * randomFactor;
 ```
 
-> ⚠️ **`Math.random()` is reseeded from the clock each time your code runs.** Two stats' code running in the same turn often draw the **same** first value, and a stat whose value you re-check within the same instant can get the same number back. Turns are far enough apart in real play that a once-per-turn roll varies. If you need two independent rolls, or a roll that changes on demand, mix in the clock: `(Math.random() * 100 + clock.elapsedHours) % 100` stays evenly spread and advances on its own.
+> 💡 **Each stat's code draws its own `Math.random()` numbers.** The sandbox seeds from the clock, and two stats' code in one turn starts at different times, so two dice stats roll independently.
 
 #### Diminishing Returns
 

@@ -54,7 +54,7 @@ export type OwnedTraitPicks = Record<string, string[]>;
  *  a save written before bounds were derived still loads, its bases reconstructed at load time. */
 export type PlayerStat = Omit<Stat, 'value'> & {
   value: number;
-  /** The author's own floor, which no trait may dig below. */
+  /** The author's own floor, which no layer may dig below. */
   baseMin?: number;
   baseMax?: number;
   baseRegen?: number;

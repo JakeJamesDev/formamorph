@@ -258,7 +258,7 @@ return health / 2;
 
 A name with a space needs brackets: \`stats["Hit Points"]\`. \`Object.values(stats)\` iterates every stat. A name with a placeholder chip reads in code as that placeholder's name, so a stat named \`{{Beast}} Power\` is \`stats["Beast Power"]\` in every playthrough.
 
-**Writing to \`self\`.** Set \`self.value\`, \`self.min\`, \`self.max\` or \`self.regen\` and the stat takes that number this turn. A bound works like the value: later trait, AI and code changes move it from the number the code set. A field the code doesn't write keeps the turn's value, so a script can set the cap and leave the value to the AI.
+**Writing to \`self\`.** Set \`self.value\`, \`self.min\`, \`self.max\` or \`self.regen\` and the stat takes that number this turn. A min never goes below the authored min. A bound works like the value: later trait, AI and code changes move it from the number the code set. A field the code doesn't write keeps the turn's value, so a script can set the cap and leave the value to the AI.
 
 \`\`\`js
 const level = stats.Level.value;

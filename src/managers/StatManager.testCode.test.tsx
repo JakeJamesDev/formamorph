@@ -459,13 +459,14 @@ describe('a box tests itself', () => {
 
   it('runs the box whose button was pressed, on that box’s own code', async () => {
     const user = userEvent.setup();
-    executeStatCode.mockResolvedValue({ value: 11, error: null });
-    renderCodePanel({ ...stats[0], beforeCode: 'return 11;', code: 'return 22;' } as Stat);
+    // Inside Warmth's 0–10, so each Result shows the number its box returned.
+    executeStatCode.mockResolvedValue({ value: 4, error: null });
+    renderCodePanel({ ...stats[0], beforeCode: 'return 4;', code: 'return 6;' } as Stat);
 
     await user.click(screen.getByRole('button', { name: 'Test Code Before the AI' }));
 
-    await waitFor(() => expect(row('Before the AI')).toHaveTextContent('Result: 11'));
-    expect(executeStatCode.mock.calls[0][0]).toBe('return 11;');
+    await waitFor(() => expect(row('Before the AI')).toHaveTextContent('Result: 4'));
+    expect(executeStatCode.mock.calls[0][0]).toBe('return 4;');
     // The other box stays silent: its code was never run.
     expect(row('After the AI')).not.toHaveTextContent('Result:');
   });
@@ -501,21 +502,22 @@ describe('a box tests itself', () => {
 
   it('clears only the edited box’s report', async () => {
     const user = userEvent.setup();
-    executeStatCode.mockResolvedValue({ value: 11, error: null });
-    renderCodePanel({ ...stats[0], beforeCode: 'return 11;' } as Stat);
+    // Inside Warmth's 0–10, so each Result shows the number its box returned.
+    executeStatCode.mockResolvedValue({ value: 4, error: null });
+    renderCodePanel({ ...stats[0], beforeCode: 'return 4;' } as Stat);
 
     await user.click(screen.getByRole('button', { name: 'Test Code Before the AI' }));
-    await waitFor(() => expect(row('Before the AI')).toHaveTextContent('Result: 11'));
+    await waitFor(() => expect(row('Before the AI')).toHaveTextContent('Result: 4'));
 
-    executeStatCode.mockResolvedValue({ value: 22, error: null });
-    await testCode(user, 'return 22;');
-    await waitFor(() => expect(row('After the AI')).toHaveTextContent('Result: 22'));
+    executeStatCode.mockResolvedValue({ value: 6, error: null });
+    await testCode(user, 'return 6;');
+    await waitFor(() => expect(row('After the AI')).toHaveTextContent('Result: 6'));
     // Running and editing the other box left this one's report where it was.
-    expect(row('Before the AI')).toHaveTextContent('Result: 11');
+    expect(row('Before the AI')).toHaveTextContent('Result: 4');
 
     await user.type(screen.getByLabelText('Stat Code Before the AI'), ' ');
     expect(row('Before the AI')).not.toHaveTextContent('Result:');
-    expect(row('After the AI')).toHaveTextContent('Result: 22');
+    expect(row('After the AI')).toHaveTextContent('Result: 6');
   });
 
   // The whole point of a per-box menu: what it inserts lands in that box and runs from that box's own
@@ -536,7 +538,8 @@ describe('a box tests itself', () => {
     expect(screen.getByLabelText('Stat Code After the AI')).toHaveValue('');
 
     await user.click(screen.getByRole('button', { name: 'Test Code Before the AI' }));
-    await waitFor(() => expect(row('Before the AI')).toHaveTextContent('Result: 50'));
+    // The template's 50 lands inside Warmth's 0–10.
+    await waitFor(() => expect(row('Before the AI')).toHaveTextContent('Result: 10'));
     expect(executeStatCode.mock.calls[0][0]).toBe(inserted);
   });
 

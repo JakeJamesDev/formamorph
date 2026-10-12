@@ -126,6 +126,24 @@ describe('deriveEffectiveStats with a code delta', () => {
     expect(deriveEffectiveStats([stat('h', { codeDelta: { min: 70, max: -60 } })], [])[0]).toMatchObject({ min: 70, max: 70 });
   });
 
+  it('floors the min at the authored base, traits and code delta together', () => {
+    const lower = trait('b', [{ statId: 'h', value: -30, type: 'min' }]);
+    expect(deriveEffectiveStats([stat('h', { min: 10, baseMin: 10, codeDelta: { min: -5 } })], [])[0].min).toBe(10);
+    // The trait's -30 and the code's +25 sum to -5: the floor applies to the sum, not each layer.
+    expect(deriveEffectiveStats([stat('h', { min: 10, baseMin: 10, codeDelta: { min: 25 } })], [lower])[0].min).toBe(10);
+    expect(deriveEffectiveStats([stat('h', { min: 10, baseMin: 10, codeDelta: { min: 35 } })], [lower])[0].min).toBe(15);
+  });
+
+  it('holds a code-set min at the authored base once the trait under it switches off', () => {
+    const lift = trait('a', [{ statId: 'h', value: 10, type: 'min' }]);
+    const on = setTraitEnabled(state({ traits: [lift] }), 'a', true, world([lift])).state;
+    expect(boundsOf(on).min).toBe(10);
+    const coded = { ...on, stats: [withCodeDelta(on.stats[0], codeDeltaFor(on.stats[0], { min: 5 }, [lift]), 50, [lift])] };
+    expect(boundsOf(coded).min).toBe(5);
+    const off = setTraitEnabled(coded, 'a', false, world([lift])).state;
+    expect(boundsOf(off).min).toBe(0);
+  });
+
   it('moves a code-set max by a trait switched on and off', () => {
     const before = state({ stats: [stat('h', { value: 60, max: 60, codeDelta: { max: -40 } })] });
     const on = setTraitEnabled({ ...before, traits: [raise] }, 'a', true, world([raise])).state;
@@ -150,6 +168,14 @@ describe('codeDeltaFor', () => {
 
   it('drops a field whose written bound matches the layers under it', () => {
     expect(codeDeltaFor(stat('h', { codeDelta: { max: -40 } }), { max: 120 }, [raiseCap])).toEqual({});
+  });
+
+  it('measures the min before the authored floor', () => {
+    const lower = trait('b', [{ statId: 'h', value: -30, type: 'min' }]);
+    const floored = stat('h', { min: 10, baseMin: 10 });
+    const codeDelta = codeDeltaFor(floored, { min: 20 }, [lower]);
+    expect(codeDelta).toEqual({ min: 40 });
+    expect(deriveEffectiveStats([{ ...floored, codeDelta }], [lower])[0].min).toBe(20);
   });
 
   it('measures against the max before the min floor, so the written max lands', () => {
@@ -203,10 +229,30 @@ describe('codeBoundsToDeltas', () => {
     expect(deriveEffectiveStats([migrated], [])[0]).toMatchObject({ min: 70, max: 70 });
   });
 
-  it('then moves the migrated bounds by a trait switched off', () => {
+  it('then moves the migrated bounds by a trait switched off, the min held at the authored floor', () => {
     const [migrated] = codeBoundsToDeltas([legacy()], [raise]);
     const off = setTraitEnabled(state({ stats: [migrated], traits: [raise] }), 'a', false, world([raise])).state;
-    expect(boundsOf(off)).toEqual({ min: -5, max: 40, regen: -3 });
+    expect(boundsOf(off)).toEqual({ min: 0, max: 40, regen: -3 });
+  });
+
+  it('derives a stored bound as an override until the settle books it, then holds the difference as a delta', () => {
+    const lift = trait('b', [{ statId: 'h', value: 20, type: 'max' }]);
+    const loaded: LegacyCodeBoundsStat = { ...stat('h', { max: 60 }), codeBounds: { max: 60 } };
+    // A switch in the window between load and settle derives the stored bound, not the base.
+    const early = setTraitEnabled(state({ stats: [loaded], traits: [lift] }), 'b', true, world([lift])).state;
+    expect(boundsOf(early).max).toBe(60);
+    const [settled] = codeBoundsToDeltas(early.stats, [lift]);
+    expect('codeBounds' in settled).toBe(false);
+    expect(settled.codeDelta).toEqual({ max: -60 });
+    expect(deriveEffectiveStats([settled], [lift])[0].max).toBe(60);
+    expect(deriveEffectiveStats([settled], [])[0].max).toBe(40);
+  });
+
+  it('raises a stored min below the authored min to it once the settle books the delta', () => {
+    const loaded: LegacyCodeBoundsStat = { ...stat('h', { min: -5, baseMin: 0 }), codeBounds: { min: -5 } };
+    expect(deriveEffectiveStats([loaded], [])[0].min).toBe(-5);
+    const [settled] = codeBoundsToDeltas([loaded], []);
+    expect(deriveEffectiveStats([settled], [])[0].min).toBe(0);
   });
 
   it('drops an empty stored field and leaves a stat without one as it is', () => {

@@ -12,7 +12,7 @@ import {
   acquireTrait, applyCodeTraitSwitches, heldPlayerTraits, seedStatBases, setTraitEnabled, switchPlayerTrait, type TraitRuntimeState,
 } from '@/lib/traitRuntime';
 import { inPlayBearers } from '@/lib/ownedTraitsInPlay';
-import type { PlayerStat, Stat, Trait } from '@/types';
+import type { LegacyCodeBoundsStat, PlayerStat, Stat, Trait } from '@/types';
 
 vi.mock('@/lib/useTtsPlayback', () => import('@/test/stubs/ttsPlayback'));
 
@@ -283,6 +283,18 @@ describe('owned trait state across a save/load round trip', () => {
       await live().loadGame('save-entity-stats', [], [authored], [{ id: 'ash', stats: [trust, stock] }, { id: 'bob' }]);
     });
     expect(live().entityStats).toEqual({ ash: [{ ...trust, value: 33 }, { ...stock, value: 6 }] });
+  });
+
+  it('drops the stored code bounds key from each entity stat, live and in every snapshot, with no migration', async () => {
+    const trust: LegacyCodeBoundsStat = { ...authored, id: 'trust', name: 'Trust', value: 20, max: 40, codeBounds: { max: 40 } };
+    const live = mount();
+    await act(async () => { live().setEntityStats({ ash: [trust] }); });
+    await act(async () => { live().setGameStates([live().saveCurrentGameState()]); });
+    await act(async () => { await live().saveGame('slot', 'World', 'w1', 'save-entity-bounds'); });
+    await act(async () => { await live().loadGame('save-entity-bounds', [], [authored], [{ id: 'ash' }]); });
+    const { codeBounds: _dropped, ...kept } = trust;
+    expect(live().entityStats).toEqual({ ash: [kept] });
+    expect(live().gameStates.map((state) => state.entityStats)).toEqual([{ ash: [kept] }]);
   });
 
   it('records what a turn moved each entity stat, live, in its snapshot, and on its past page', async () => {

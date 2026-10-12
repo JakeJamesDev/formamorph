@@ -681,6 +681,29 @@ describe('stat code two writers rule', () => {
     ])).toEqual([]);
   });
 
+  it('resolves a shared name as the sandbox does: the later stat wins, a live one over one authored off', () => {
+    const writers = [
+      stat({ id: 'a', name: 'Fate', code: 'stats.Health.value = 1;' }),
+      stat({ id: 'b', name: 'Luck', code: 'stats.Health.value = 2;' }),
+    ];
+    const later = coded([stat({ id: 'h1', name: 'Health' }), stat({ id: 'h2', name: 'Health' }), ...writers]);
+    expect(later.map((f) => f.items[0].id)).toEqual(['h2']);
+    const live = coded([stat({ id: 'h1', name: 'Health' }), stat({ id: 'h2', name: 'Health', enabled: false }), ...writers]);
+    expect(live.map((f) => f.items[0].id)).toEqual(['h1']);
+  });
+
+  it('counts no box of a stat authored off as a writer, and no stat authored off as a target', () => {
+    expect(coded([
+      stat({ id: 'h', name: 'Health', code: 'self.value = 1;' }),
+      stat({ id: 'a', name: 'Fate', enabled: false, code: 'stats.Health.value = 2;' }),
+    ])).toEqual([]);
+    expect(coded([
+      stat({ id: 'h', name: 'Health', enabled: false }),
+      stat({ id: 'a', name: 'Fate', code: 'stats.Health.value = 1;' }),
+      stat({ id: 'b', name: 'Luck', code: 'stats.Health.value = 2;' }),
+    ])).toEqual([]);
+  });
+
   it('reads a stat by its code name when the name carries a chip', () => {
     const found = only(base({
       placeholders: [{ id: 'ph-beast', name: 'Beast', values: phValues(['Wolf', 'Bear']) }],

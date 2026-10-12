@@ -76,6 +76,10 @@ describe('executeStatCode writes to other stats', () => {
     });
   });
 
+  it('reports a write of 0 to an unknown name, which the blank entry already reads', async () => {
+    expect(await run('stats.Nope.value = 0;')).toEqual({ value: null, error: null, unknownStatWrites: ['stats.Nope.value'] });
+  });
+
   it('drops and reports a write to a switched-off stat', async () => {
     expect(await run('stats.Off.value = 1; stats.Off.regen = 2; stats.Luck.value = 6;')).toEqual({
       value: null, error: null, disabledStatWrites: ['stats.Off.value', 'stats.Off.regen'], statWrites: [{ id: 'l', name: 'Luck', value: 6 }],
