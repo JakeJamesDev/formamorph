@@ -78,6 +78,7 @@ Spec-session rulings for ticket sessions.
 | Q37 | (ticket 01) The lore chip is the one exception to "live values first" in the in-game Preview: it keeps today's fall-through to the sample lore, since a turn activates lore per request. Showing the live scene's enabled lore in Preview is a separate product change, out of scope here |
 | Q38 | (ticket 02) The Entities stats axis has three stored states: scope default, off, on. The stats-on id stays out of the chip label like the six new ids; the off id keeps showing "No Stats" as today |
 | Q39 | (ticket 02) Ticket 02 hides the six new axes from the dialog behind a registry flag the shell reads. Ticket 05 removes the flag when it adds the rows and switches the dialog to lock groups |
+| Q40 | (ticket 03) The Settings sample scene gives Wren one authored stat and one trait, so every Only With spelling renders lines there and the sample test keeps its no-placeholder rule. Only the sample preview changes |
 
 ## User Stories
 
