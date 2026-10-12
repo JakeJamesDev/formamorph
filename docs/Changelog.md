@@ -56,6 +56,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **`persona-stats-chip-probe.cli.ts` compares the Stats chip with and without the played persona's stats.** It runs narration, storyboard and choices cases on Sedge Landing, with a name clash, and reports uptake, leaks and numbered names.
   - **`entity-stats-probe.cli.ts` compares three request shapes for entity stats against today's stat pass.** One call with text lines, one call per entity, and one call with a JSON schema run on Sedge Landing cases with shared stat names. It reports exact replies, misses, invented and misattributed changes, latency and tokens.
   - **The player name header probe compares the narration prompt with and without the player's name in its persona heading.** It scores name leaks and stat tabulation on the default endpoint.
+- **⚙️ Backend**
+  - **Re-rolled choices and stats now show their Request Anatomy in the AI-context viewer.** A re-roll builds its request from the same pass record as a live turn, so it sends the same prompt and cap.
 
 #### 🔧 Fixed
 

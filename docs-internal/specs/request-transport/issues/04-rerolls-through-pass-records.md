@@ -1,6 +1,6 @@
 # 04: Re-Rolls Through The Pass Records
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01, 02
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
