@@ -94,6 +94,7 @@ const DIALOGS: Record<DevModal, DialogRoute> = {
   // Raised by the app itself, never by the player: a refused build, an error toast, the Android back button.
   updateRequired: { ancestor: null },
   errorDetails: { ancestor: null },
+  imageSetup: { ancestor: null },
   exitApp: { ancestor: null },
   designSystem: { ancestor: null },
 

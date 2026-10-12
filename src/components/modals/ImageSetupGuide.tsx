@@ -1,5 +1,11 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useEffect, useSyncExternalStore } from "react";
 import type { ImageProviderId } from "@/lib/imageGen";
+import { useDevRoute } from "@/lib/devRouter";
+import {
+  closeImageSetupGuide, getImageSetupGuideState, subscribeImageSetupGuide, toastImageFailure,
+} from "@/lib/imageGen/failureToast";
+import { imageConnectionError } from "@/lib/imageGen/http";
 import { Code, Snippet } from "./guideBits";
 
 const TITLES: Record<ImageProviderId, string> = {
@@ -22,7 +28,7 @@ const ImageSetupGuide = ({
   onOpenChange: (open: boolean) => void;
 }) => (
   <Dialog open={open} onOpenChange={onOpenChange}>
-    <DialogContent aria-describedby={undefined} className="sm:max-w-[560px]">
+    <DialogContent surface="imageSetup" aria-describedby={undefined} className="sm:max-w-[560px]">
       <DialogHeader>
         <DialogTitle>{TITLES[provider]}</DialogTitle>
       </DialogHeader>
@@ -84,5 +90,23 @@ const ImageSetupGuide = ({
     </DialogContent>
   </Dialog>
 );
+
+/** The guide a failed image request's Fix connection link opens; mounted once, beside the toast container. */
+export function ImageSetupGuideHost() {
+  const { open, provider } = useSyncExternalStore(subscribeImageSetupGuide, getImageSetupGuideState);
+
+  // DEV: `#dev?modal=imageSetup` raises a canned ComfyUI connection toast.
+  const devRoute = useDevRoute();
+  useEffect(() => {
+    if (import.meta.env.DEV && devRoute?.modal === 'imageSetup') {
+      toastImageFailure(
+        imageConnectionError('comfyui', 'http://localhost:8188', 'POST', 'http://localhost:8188/prompt', new TypeError('Failed to fetch')),
+        '',
+      );
+    }
+  }, [devRoute?.modal]);
+
+  return <ImageSetupGuide provider={provider} open={open} onOpenChange={(next) => { if (!next) closeImageSetupGuide(); }} />;
+}
 
 export default ImageSetupGuide;

@@ -135,6 +135,7 @@ Select a preset in **Preset** to switch to it. See [Image Presets](#image-preset
 
 ## Providers
 <!-- keywords: supported backends, which image service, compare options, default ports, local versus paid, gallery folder, face fix slow, detector download -->
+<!-- route: imageSetup -->
 
 | Provider | Runs on | Default address | Setup |
 |---|---|---|---|
