@@ -45,13 +45,16 @@ export interface GateStat {
   hidden?: boolean;
 }
 
+/** Owner id → stat id → that owner's stat. */
+export type GateStats = Readonly<Record<string, Readonly<Record<string, GateStat>>>>;
+
 export interface GateInput {
   /** Every present bearer, the player first. */
   owners: readonly GateOwner[];
   /** Owner id → its active trait ids. */
   active: Readonly<Record<string, readonly string[]>>;
-  /** Owner id → stat id → that owner's stat. Absent, every stat Condition is unresolved. */
-  stats?: Readonly<Record<string, Readonly<Record<string, GateStat>>>>;
+  /** Absent, every stat Condition is unresolved. */
+  stats?: GateStats;
   entities: readonly GateEntity[];
   persona: PersonaRef;
   /** Every world trait and group a requirement can name, whether or not a present bearer holds it. Absent,

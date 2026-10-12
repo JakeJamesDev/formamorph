@@ -32,6 +32,19 @@ describe('the on-demand stat-code check', () => {
     ]))).toEqual([]);
   });
 
+  it("reads a stat gate against each stat's authored start", async () => {
+    const at = (start: number) => {
+      const world = base([stat({ id: 'rage', name: 'Rage', value: start, code: 'if (!traits.Berserk.available) throw new Error("locked"); return 1;' })]);
+      world.traits = [{
+        id: 'berserk', name: 'Berserk', statChanges: [],
+        requires: [{ all: [{ kind: 'stat', id: 'rage', operator: '>=', value: 80, unit: 'raw' }] }],
+      }];
+      return checkStatCode(world);
+    };
+    expect(await at(85)).toEqual([]);
+    expect((await at(70)).map((f) => f.ruleId)).toEqual([STAT_CODE_EXECUTION.id]);
+  });
+
   it('runs code that reads a placeholder the world has, and reports none', async () => {
     const world = base([stat({ id: 's1', name: 'Fertility', code: 'return placeholders.Mood.value === "calm" ? 1 : 2;' })]);
     world.placeholders = [{ id: 'mood', name: 'Mood', values: [{ id: 'v:calm', text: 'calm' }] }];

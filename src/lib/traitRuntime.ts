@@ -17,10 +17,11 @@ import type {
 import { clamp } from './utils';
 import { ownedTraitStatesFrom, ownStatsRecordKey, recordKey } from './ownedTraitState';
 import { activeOwnedTraitIds } from './ownedTraitsInPlay';
-import { exclusiveSiblings, inAuthoredOrder, isAlwaysOn, isHidden } from './traitEffects';
+import { activeStatEnabled, exclusiveSiblings, inAuthoredOrder, isAlwaysOn, isHidden } from './traitEffects';
 import { hasStatEffects, offeredWorldTraits, type StatRow } from './traitTree';
 import {
-  gateOf, gateStates, modeRefuses, overfills, playerOwnerIds, settle, underfills, WORLD_OWNER, type GateEntity, type GateInput, type GateOwner, type GateStates, type GateTraitRef,
+  gateOf, gateStates, modeRefuses, overfills, playerOwnerIds, settle, underfills, WORLD_OWNER, type GateEntity, type GateInput, type GateOwner, type GateStat,
+  type GateStates, type GateStats, type GateTraitRef,
 } from './traitGates';
 
 /** What a trait's last switch actually moved: record key → stat id → value delta, keyed as `recordKey` and
@@ -48,6 +49,9 @@ export type TraitWorld = {
   traits: Trait[];
   groups: TraitGroup[];
   persona?: PersonaRef;
+  /** A commit's one stat snapshot, which every settle in that commit reads (Q19). Absent ⇒ gates read the
+   *  state's live stats. */
+  gateStats?: GateStats;
 } & (
   | { entities?: readonly GateEntity[]; bearers?: undefined }
   /** Every present bearer as the gate module reads it, the player first (see lib/bearers). Absent ⇒ only
@@ -615,24 +619,44 @@ export interface CodeTraitSwitch {
   ownerId?: string;
 }
 
-/** Every bearer's traits and active set, as the gate module reads them. */
-export const traitGateInput = (
-  state: Pick<TraitRuntimeState, 'traits' | 'disabledTraitIds' | 'ownedTraits'>, world: TraitWorld,
-): GateInput => ({
+/** One owner's stats as a stat Condition reads them; a stat the traits in force switch off is inert. */
+function ownerGateStats(stats: readonly PlayerStat[], inForce: readonly Trait[]): Record<string, GateStat> {
+  const enabled = activeStatEnabled(stats, inForce);
+  return Object.fromEntries(stats.map((s): [string, GateStat] => [s.id, {
+    name: s.name, value: s.value, min: s.min, max: s.max,
+    ...(enabled[s.id] === false ? { inert: true } : {}),
+    ...(s.hidden ? { hidden: true } : {}),
+  }]));
+}
+
+/** The slice the gates' stats are read from. */
+export type GateStatState = TraitForceState & { stats: readonly PlayerStat[] };
+
+/** Every owner's live stats as gates read them: the player's under the world owner, each entity's under its
+ *  id, on their effective bounds. */
+export function gateStatsOf(state: GateStatState, world: TraitWorld): GateStats {
+  return {
+    [WORLD_OWNER]: ownerGateStats(state.stats, statTraitsInForce(state, world)),
+    ...Object.fromEntries(Object.entries(state.entityStats ?? {}).map(([ownerId, stats]) =>
+      [ownerId, ownerGateStats(stats, bearerStatTraitsInForce(state.ownedTraits, world, ownerId))])),
+  };
+}
+
+/** Every bearer's traits, active set and stats, as the gate module reads them. */
+export const traitGateInput = (state: GateStatState, world: TraitWorld): GateInput => ({
   owners: world.bearers ?? [{ id: WORLD_OWNER, name: '', ...offeredWorldTraits(world.traits, world.groups) }],
   active: {
     ...activeOwnedTraitIds(state.ownedTraits ?? {}),
     [WORLD_OWNER]: heldPlayerTraits(activeTraits(state.traits, state.disabledTraitIds), world).map((t) => t.id),
   },
+  stats: world.gateStats ?? gateStatsOf(state, world),
   entities: world.entities ?? [],
   persona: world.persona ?? { source: 'none' },
   originals: { traits: world.traits, groups: world.groups },
 });
 
 /** Every bearer's gate on each of its traits, for one read of the state. */
-export const traitGates = (
-  state: Pick<TraitRuntimeState, 'traits' | 'disabledTraitIds' | 'ownedTraits'>, world: TraitWorld,
-): GateStates => gateStates(traitGateInput(state, world));
+export const traitGates = (state: GateStatState, world: TraitWorld): GateStates => gateStates(traitGateInput(state, world));
 
 /** Whether the bearer's requirements on a trait hold in `gates`. A trait with no gate state is open. */
 export const traitUnlocked = (gates: GateStates, ownerId: string, traitId: string): boolean =>

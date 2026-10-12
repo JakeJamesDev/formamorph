@@ -15,6 +15,7 @@ import { codeDictionaries, sandboxDictionaries, sandboxPlaceholders } from '@/li
 import { entityTraitNames, sandboxTraits, unplayedEntities } from '@/lib/statCodeTraits';
 import { labelPlaceholders, worldPlacementLetters } from '@/lib/placementLetters';
 import { finding, STAT_CODE_EXECUTION, STAT_CODE_UNKNOWN_NAME, type Finding, type RuleWorld } from './rules';
+import { startingGateStats } from '@/lib/gateStats';
 import type { Stat } from '@/types';
 
 export { STAT_CODE_EXECUTION, STAT_CODE_UNKNOWN_NAME } from './rules';
@@ -62,9 +63,13 @@ export async function checkStatCode(world: RuleWorld): Promise<Finding[]> {
   const placeholders = coded.length
     ? sandboxPlaceholders({ placeholders: placeholderDefs, owners: placeholderOwners(world), rolls: {} })
     : null;
+  // Stat Conditions read the authored start, as Enter World's do (Q23, Q33).
   const traits = coded.length ? sandboxTraits({
     acquired: [], disabledTraitIds: [], appliedValues: {},
-    world: { traits: world.traits, groups: world.traitGroups ?? [] },
+    world: {
+      traits: world.traits, groups: world.traitGroups ?? [],
+      gateStats: startingGateStats({ stats: world.stats, statGroups: world.statGroups, entities: world.entities ?? [] }),
+    },
   }, placeholderDefs) : [];
   // No persona plays, so a write through `persona` names nothing the check can judge.
   const owners = placeholders?.owners ?? new Map();

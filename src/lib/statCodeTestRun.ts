@@ -17,6 +17,7 @@ import { placeholderPathExpression, placeholderPathLabel } from '@/lib/statCodeP
 import type { StatCodeTiming } from '@/lib/statCodeTiming';
 import { entityCodeStats, entityTraitNames, sandboxTraits, unplayedEntities } from '@/lib/statCodeTraits';
 import { activeStatEnabled } from '@/lib/traitEffects';
+import { startingGateStatsOf } from '@/lib/gateStats';
 import type { Stat, Trait, World } from '@/types';
 
 /** Test Code names each bound a run wrote with its Details field label. */
@@ -202,8 +203,12 @@ export async function runTestCode(
   // A pending run's empty persona holds the playable entities' traits and placeholders, so a write to one is kept.
   const placeholderEntries = sandboxPlaceholders({ placeholders: placeholders.list, owners: placeholders.owners, rolls: {} });
   const owners = placeholderEntries.owners;
+  // Stat Conditions read the authored start, as Enter World's do (Q23, Q33).
   const traitEntries = sandboxTraits(
-    { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [...traits], groups: [] } },
+    {
+      acquired: [], disabledTraitIds: [], appliedValues: {},
+      world: { traits: [...traits], groups: [], gateStats: startingGateStatsOf(codeNamedStats, entityStats) },
+    },
     placeholders.list,
   );
   const personaNode = pending ? personaPlaceholders(entities, owners) : undefined;
