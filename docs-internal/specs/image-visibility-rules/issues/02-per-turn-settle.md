@@ -19,6 +19,7 @@ A stat-gated trait follows the stat in play (Q9, Q13, Q19). Rage drains below 80
 - Settle on load (the existing after-render effect) gains stat values. No new step.
 - Trait toggles by hand and persona switches keep their existing settle calls and read live values.
 - The gate input builder in the trait runtime reads the player's stats from gameplay stats and entity stats from the values the turn already keeps.
+- Until this ticket lands, in-play gate inputs carry no stats, so a stat gate that opened at setup cascades off at the first in-play settle (ticket 01 note). Closing that gap is part of this ticket's acceptance.
 
 ## Acceptance criteria
 
