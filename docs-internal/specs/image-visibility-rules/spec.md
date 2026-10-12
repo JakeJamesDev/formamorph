@@ -56,6 +56,9 @@ Settled in the grill, 2026-10-12. A ruling reopens on new evidence, never on a n
 | Q26 | (Ticket 02 intent, 2026-10-12) The per-turn settle follows the stat-code switch path: log lines ("Trait switched off: Berserk"), no cascade banner. A banner from a hand switch is not cleared by the next turn. Open to reopen after the user sees it in play. |
 | Q27 | (Ticket 04 intent, 2026-10-12) On the Availability tab the chips are the rule's sentence. The parked requirement summary stays parked and the mode sentence lists no Conditions. The player-facing rule text helpers render stat Conditions; ticket 08's "Shown while" line uses them. |
 | Q28 | (Ticket 04 intent, 2026-10-12) In the editor the `you` bearer lists the player owner set for persona 'none': the world's player stats plus the Custom Persona entity's own stats. A world persona's own stats stay under that entity's bearer. |
+| Q29 | (Ticket 06 intent, 2026-10-12) Image rows travel through the same four card paths as trait rows: named on export, bound on import under Q24/Q25, re-pointed when owned traits re-mint, compared by name. Stories 33–34 land in ticket 06. |
+| Q30 | (Ticket 06 intent, 2026-10-12) The card JSON carries slot 0's rows as `primaryImageRequires` beside the object-element `extraImages`. |
+| Q31 | (Ticket 06 intent, 2026-10-12) Replacing an image in place keeps the slot's rule; delete drops the rule with the image; reorder carries it. |
 
 Review notes (Opus second opinion, 2026-10-12) that shaped the Implementation Decisions without a ruling: card codec drops unknown Condition kinds; slot 0 travels as card pixels with no JSON home for its rule; requirement equality ignores operator and value; growth treats every Not as holding; the gallery index is a raw position; the `you` bearer must cover persona stats; re-generate and stat re-roll replay stat code; settle on load already exists.
 
