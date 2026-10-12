@@ -55,6 +55,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### 🔧 Fixed
 
 - **👤 User-facing**
+  - **A new turn no longer shows the previous turn's thought while it waits for its own.** The thought panel clears when you send an action, re-generate or rewind, and fills again as the new reasoning streams. Each saved turn keeps its own thought.
   - **The in-game Map no longer shows Connection travel hints, only the lines.** Hints often hold clues or spoilers about a route. The World Editor canvas still shows them.
   - **Loading a save in game no longer shows stat changes from the turn before the load.** Your stats and every entity's stats start with no change shown.
   - **A dictionary entry's Whole Words checkbox now works with Regex keywords.** `wands?` no longer matches inside *wander*. Letters with accents now count as part of a word, so *caf* no longer matches inside *café*. Imported SillyTavern regex entries with whole words on now match whole words only.

@@ -1234,6 +1234,8 @@ const GameViewer = ({
     setFullMessageHistory(rewound);
     setDiscoveredEntities((prev) => pruneDiscoveredToHistory(prev, rewound));
     setSceneImages((prev) => pruneSceneImages(prev, rewound));
+    // The live thought belongs to a discarded turn; the now-latest turn shows its own saved one.
+    setLiveReasoning({ text: "", ms: 0, active: false });
   };
 
   /** Roll back to `page` (a Chat bubble's own turn), or to the viewed page. */
@@ -2359,8 +2361,12 @@ const GameViewer = ({
     setIsWaitingForAI(true);
     // Not revealing yet — the narration stream flips this on. Until then the reveal view shows the
     // committed narration, never the stale last-turn text (which would otherwise animate all at once
-    // during setup, most visibly on re-generate).
+    // during setup, most visibly on re-generate). The live reasoning is cleared for the same reason: the
+    // last turn's thought would otherwise sit on this pending turn until its narration stream opens. The
+    // committed turn keeps its own copy in its saved message.
     setIsRevealingNarration(false);
+    turnReasoningRef.current = { text: "", ms: 0 };
+    setLiveReasoning({ text: "", ms: 0, active: false });
 
     // What the turn's own derivations carry between passes. The pipeline's material holds everything the
     // requests render from; these are the view-side reads that outlive a single pass.
