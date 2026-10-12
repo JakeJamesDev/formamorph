@@ -309,8 +309,8 @@ export default function EditorFindBar({
   const replaceCurrent = () => {
     if (!current) return;
     if (current.chip) {
-      // The hit is a chip. Text cannot stand in for one; its pop-out is where it changes.
-      setNotice('That match is a chip — change it from its pop-out. Skipped.');
+      // The hit is a chip. Text cannot stand in for one; its Chip Options is where it changes.
+      setNotice('That match is a chip — change it in its Chip Options. Skipped.');
       step(1);
       return;
     }
@@ -334,7 +334,7 @@ export default function EditorFindBar({
       ? ` ${summary.skipped} skipped in ${summary.skippedFields.length} field${summary.skippedFields.length === 1 ? '' : 's'} that can't hold ${missingChip}.`
       : '';
     const chips = summary.chips
-      ? ` ${summary.chips} chip${summary.chips === 1 ? '' : 's'} left as ${summary.chips === 1 ? 'it is' : 'they are'} — a chip changes from its pop-out.`
+      ? ` ${summary.chips} chip${summary.chips === 1 ? '' : 's'} left as ${summary.chips === 1 ? 'it is' : 'they are'} — a chip changes in its Chip Options.`
       : '';
     setNotice(`Replaced ${summary.replaced} match${summary.replaced === 1 ? '' : 'es'} across ${summary.fields} field${summary.fields === 1 ? '' : 's'}.${skipped}${chips}`);
   };

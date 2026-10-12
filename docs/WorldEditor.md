@@ -175,7 +175,7 @@ A search covers the whole world, on every tab the current mode shows. It matches
 - Select the **X** button in a box to empty it and keep typing.
 - **Match case** and **Match whole word** stay on when you fold the bar back. An icon in the box shows each one that's on. Select it to open the options.
 - **Replace all** asks first, and says how many matches and fields it changes.
-- A chip can't be replaced as text. Change it from its pop-out.
+- A chip can't be replaced as text. Change it in its Chip Options.
 - A field that can't hold a chip is skipped when you replace text with a placeholder.
 
 In Advanced mode, the replace row can put a placeholder chip in place of text. Select the swap button, then pick a placeholder in **Choose Placeholder**.

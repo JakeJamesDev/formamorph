@@ -175,10 +175,12 @@ Each entity with stats shows as a node in the world's **Stats** tab, below the w
 
 The **Entities** chip lists each entity's stats under its entry. Each stat shows its range, its [Descriptor](World-Editor-Stats#stat-descriptors) and its **Description**.
 
-- **Only entities in the scene get stats.** That means the **Here** and **In Scene** scopes, in **Full** or **Summary** content. **Name** content sends names only.
+- **Stats are on for the Here and In Scene scopes.** They are off for **In Sub** and **Reachable**. Check **Stats** under **Include** in [Chip Options](Prompts#chip-options) to send them there. **Name** content sends names only.
 - **Hidden stats are sent.** **Hidden** hides a stat from the player, and the AI still reads it.
 - **A stat that is switched off isn't sent.**
-- **The chip's Stats checkbox turns them off.** It's on by default.
+- **Clear Include → Stats to leave them out.**
+- **Stat Detail picks which parts of each stat the AI reads:** **Range**, **Descriptor** and **Description**. At least one stays checked.
+- **Only With keeps the entities that own stats or traits.** To send only entities with stats, check **Stats** under **Only With**. See [How to Send Only Entities With Stats](Prompts#how-to-send-only-entities-with-stats).
 
 ## Openings
 

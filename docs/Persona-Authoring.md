@@ -187,7 +187,7 @@ The **Persona** chip sends the persona to the AI. The built-in prompt presets al
 
 > ⚠️ **Your own prompt gets no persona until you add the chip.** A prompt in **Custom Prompts** replaces the player's prompt, and nothing is added to it. Without the chip, the AI never sees the player's name or description. The same is true of a player's own custom preset.
 
-Select the placed chip to open its pop-out and set **Content**:
+Select the placed chip to open [Chip Options](Prompts#chip-options) and set **Content**:
 
 | Content | Sends | Use it for |
 |---|---|---|
@@ -195,7 +195,16 @@ Select the placed chip to open its pop-out and set **Content**:
 | **Summary** | The short AI summary, or the full description when there is none, the names of its active traits, and its stats | A shorter prompt |
 | **Name** | The name and pronouns only, as plain text | Inside a sentence |
 
-Clear **Stats** to leave the persona's stats out of **Full** and **Summary**. **Format** works as on the other list chips: **Simple**, **Markdown** or **XML**. **Name** sends plain text, so it locks **Format**.
+These rows work with **Content**:
+
+| Row | What it does |
+|---|---|
+| **Only With** | Check **Stats** or **Traits** to send the persona only when it owns one of them. Otherwise the chip sends what it sends with no persona. |
+| **Include** | Clear **Traits** or **Stats** to leave them out of **Full** and **Summary**. Both are on by default. |
+| **Stat Detail** | Pick **Range**, **Descriptor** and **Description** for each stat. At least one stays checked. |
+| **Format** | **Simple**, **Markdown** or **XML**, as on the other list chips |
+
+**Name** sends plain text. It turns off **Include** and **Stat Detail**, and it locks **Format**. **Only With** still works. Clearing **Include → Stats** turns off **Stat Detail**.
 
 | Detail | What to do |
 |---|---|

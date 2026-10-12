@@ -174,7 +174,7 @@ Built-in Placeholders (**Player Name**, **Character Name**) keep the chip shape 
 A blueprint chip keeps the chip shape and its placeholder's accent. It carries a leading `LayoutTemplate` icon, the Blueprint element icon, from [`BlueprintMark`](../src/components/prompt/BlueprintMark.tsx) in the same three places. `Link2` keeps the linked-copy meaning. The showcase's **Blueprint Chips** card shows it.
 
 - The palette and the `{` menu list them first, under a quiet **Built-in** heading.
-- A placed Built-in chip opens no pop-out. Its tooltip says what it becomes.
+- A placed Built-in chip opens no Chip Options. Its tooltip says what it becomes.
 - A palette chip that the focused field refuses stays in place, dimmed, so the strip doesn't reflow.
 
 Preview reads each Built-in chip by one rule:
@@ -1709,6 +1709,68 @@ The pattern adds no player-facing text. The reference labels **Play Landing**, *
 | Isolated reference | [`PanelCrashCardReference.tsx`](../src/components/design-system/PanelCrashCardReference.tsx) |
 
 Open `#dev?modal=designSystem&tab=panel-crash-card` for the card in both themes, beside a list at desktop width and alone at phone width.
+
+## Pattern: Chip Options
+
+**Purpose:** Show every setting of one placed chip in a centered dialog, and for a prompt chip, show the text it sends beside the settings.
+
+> 📝 **Proposal.** The layout was settled with the user in the Chip Options spec (rulings Q1, Q18, Q19 and Q20). The user has not yet approved it in the showcase. Production already uses it, so approval is the next step.
+
+**Density:** Compact. One short row per setting, 5.5rem for the name and the rest for the control.
+
+### Composition
+
+- 🪟 **Dialog.** A centered `Dialog` with the app's content shell. It stays centered on every screen size and scrolls inside, at most 85dvh tall. It nests in the dialog it opens from, such as Settings or the entity editor.
+- 🏷️ **Header.** The title is **Chip Options**. The description line holds the chip's color swatch and its label.
+- ↔️ **Two panes for a prompt chip.** The rows sit on the left at about 1.15 parts, and **What the AI Reads** sits on the right at 1 part. The dialog is `max-w-3xl`.
+- 📄 **One column for the rest.** Placeholder chips and Tool argument chips show the rows alone, in `max-w-md`.
+- 📏 **Rows.** The name sits in a fixed column, and the control fills the rest. A pick-one setting is a segmented control up to three options, and a dropdown from four. A pick-many setting is a group of inline checkboxes with labels, never pills.
+- 🔒 **Lock groups.** The last checked piece of a group, such as **Stat Detail**, stays checked and disabled.
+- 🌫️ **Moot rows.** A row that has no effect under the current picks is disabled, and its tooltip says why.
+- 💬 **Help.** An option's help is the tooltip of its segment or dropdown item. A checkbox's help is the tooltip of its label. A read-only control's help says why it is shut.
+- ➖ **Placement.** **Label**, **Header**, **Prepend** and **Append** sit below a rule.
+- 🔘 **Footer.** **Re-Pick…** and **Edit Value** sit right-aligned under a rule, only where the chip has them. **Re-Pick…** swaps the body for the picker, with a **Back** control.
+- 📖 **What the AI Reads.** A title over a bordered box on a muted fill. The box holds the chip's value as the prompt sends it. **Header**, **Prepend** and **Append** show one shade dimmer.
+- 💡 **Hover and focus.** A control lights the text it produces with a `primary` tint, and every line without it dims. A piece such as **Range** lights only its own part of the stat line. A control that produces no text, such as **Scope** or **Format**, lights nothing.
+- 📊 **Real data first.** The pane reads the live scene in a game, the authored world in the World Editor and the sample scene in Settings. It never carries its own data.
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| The dialog, its rows, the footer and the pane | `ChipOptionsDialog` in [`ChipOptionsDialog.tsx`](../src/components/prompt/ChipOptionsDialog.tsx) |
+| The rows of one chip | The axes in [`promptVariables.ts`](../src/lib/promptVariables.ts) |
+| The affix fields | `AffixInput` in [`ChipOptionsDialog.tsx`](../src/components/prompt/ChipOptionsDialog.tsx) |
+| The text the pane shows, with its origins | `resolveTokenRuns` in [`promptTemplate.ts`](../src/lib/promptTemplate.ts) |
+| The glyph on a chip that uses **Only With** | [`TokenChip.tsx`](../src/components/prompt/TokenChip.tsx) |
+| Isolated reference | [`ChipOptionsReference.tsx`](../src/components/design-system/ChipOptionsReference.tsx) |
+
+Build a new chip setting as an axis in the registry. Do not draw a control in the dialog by hand.
+
+### Responsive behavior
+
+- Below `sm` the panes stack, with the rows above **What the AI Reads**.
+- The dialog never grows past 85dvh. The body scrolls inside, and the footer stays in view.
+- A row's control shrinks first. The name keeps its column.
+
+### State reference
+
+| State | Treatment |
+| --- | --- |
+| Editable | Every control live. |
+| Read-only | Every control disabled. The rows and the pane still show. |
+| Moot | The row is disabled. Its tooltip names the pick that made it moot. |
+| Locked | The last checked piece of a lock group is checked and disabled. |
+| Lit | The text the hovered or focused control produces has a `primary` tint. Other lines are at 40% opacity. |
+| Nothing to light | A control with no text, such as **Scope**, leaves the pane as it is. |
+| No chip rows | The dialog reads "No options for this variable." |
+| Re-Pick | The picker replaces the body. **Back** returns to the rows. |
+
+### Writing review
+
+The title is **Chip Options**. The pane title is **What the AI Reads**. The rows are **Only With**, **Include** and **Stat Detail**, in Title Case, as are **Scope**, **Content**, **Format**, **Label**, **Header**, **Prepend** and **Append**. Help lines follow the Writing Guide: verb first, with no on and off preamble. This review is local; it does not certify STE compliance.
+
+Open `#dev?modal=designSystem&tab=chip-options` for the dialog on an **Entities** chip, a **Stats** chip and a placeholder chip, with an **Editable** switch. Open `#dev?modal=chipOptions` for the dialog inside Settings, on a canned **Entities** chip.
 
 ## UI and prototype workflow
 

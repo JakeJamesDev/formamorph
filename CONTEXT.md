@@ -268,8 +268,12 @@ The plain-value snapshot of one moment that chip values are built from: the worl
 _Avoid_: context, view, snapshot (unqualified)
 
 **Chip Values**:
-The module that turns a Chip Scene into a value for every chip token the registry defines, walking the registry's axes so no token can be missed. Per-turn tokens (Player Action, Narration, Character Name, Subject, activated lore) are not scene-derived and come from the pass records or the sample turn instead.
+The module that turns a Chip Scene into the value of any chip token, on demand, as a memoized lookup by token key. Per-turn tokens (Player Action, Narration, Character Name, Subject, activated lore) are not scene-derived and come from the pass records or the sample turn instead.
 _Avoid_: context values, value map
+
+**Chip Options**:
+The centered dialog a placed chip opens, for prompt chips and placeholder chips alike. A prompt chip gets two panes: its rows on the left and **What the AI Reads**, the chip's value as the prompt sends it, on the right. A placeholder chip and a Tool argument chip get one column of rows. The Entities and Persona chips add three rows: **Only With** (keep only entities that own stats, traits or either), **Include** (each entity's traits and stats, on or off) and **Stat Detail** (Range, Descriptor and Description of each stat).
+_Avoid_: pop-out, popover, chip menu (that is the editor's palette)
 
 ### Placeholders
 

@@ -116,6 +116,7 @@ The words Formamorph uses, and what each one means. Each term links the page tha
 | [Prompt](Prompts#the-prompts) | The text the app sends to the AI for one request, such as **Narration** or **Choices** |
 | [Prompt Preset](Prompts#prompt-presets) | One full set of prompts with their options |
 | [Chip](World-Editor-Placeholders) | A box in text that the app fills with a value. In world text, a chip places a placeholder. In a [prompt](Prompts#the-chip-editor), it places game data, such as your stats. |
+| [Chip Options](Prompts#chip-options) | The dialog a placed chip opens. A prompt chip shows **What the AI Reads** beside its rows. The **Entities** and **Persona** chips add **Only With**, **Include** and **Stat Detail**. |
 | [Request Anatomy](Prompts#anatomy) | A labeled map of every message in one request, which marks the text you typed |
 | [Custom Prompts](Prompts#world-prompts-and-the-diff-viewer) | A world's own narration, choices or stats prompt, which replaces yours while you play it |
 | [Tool](Tools) | A function the AI can call during a request to get information it does not have. A Tool only reads. Formaquestion has its own list of Tools, which you switch on and off on this device. |

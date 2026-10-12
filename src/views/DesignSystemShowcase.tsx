@@ -9,6 +9,7 @@ import { SupporterFlairReference } from '@/components/design-system/SupporterFla
 import { PresetHeaderReference } from '@/components/design-system/PresetHeaderReference';
 import { LandingPulseReference } from '@/components/design-system/LandingPulseReference';
 import { PanelCrashCardReference } from '@/components/design-system/PanelCrashCardReference';
+import { ChipOptionsReference } from '@/components/design-system/ChipOptionsReference';
 import { useDevRoute } from '@/lib/devRouter';
 import { BookOpen, MonitorCog } from 'lucide-react';
 import { OptionSwitcher, Row, Section } from '@/components/SettingsRows';
@@ -424,6 +425,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Panel Crash Card',
     description: 'The card a crashed editor panel shows in its own place',
     Component: PanelCrashCardReference,
+  },
+  {
+    id: 'chip-options',
+    label: 'Chip Options',
+    description: 'Chip settings in a centered dialog, with a live sample of what the chip sends',
+    Component: ChipOptionsReference,
   },
 ];
 
