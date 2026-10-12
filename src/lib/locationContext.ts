@@ -4,9 +4,8 @@ import { entityIdsAt, entityIdsAtAny } from "./entityPresence";
 import { effectiveDestinations } from "./locationGraph";
 import { buildTraitContext, traitsInContextOrder } from "./traitTree";
 import { NONE_PLACEHOLDER } from "./promptFallbacks";
-import {
-  decodeVariant, encodeVariant, tokenVariant, variableAxes, variableForToken, withVariant,
-} from "./promptVariables";
+import { decodeChipKey, decodeVariant, tokenVariant, variableForToken } from "./promptVariables";
+import { memoLookup, type ValueLookup } from "./promptValues";
 import { xmlEscape } from "./utils";
 
 /** The location a builder is scoped to, or none at all (no world, or nowhere resolved yet). */
@@ -479,7 +478,7 @@ export function buildReachableEntitiesContext(
 export type ContextOpts = { preferSummary?: boolean; nameOnly?: boolean; format?: ContextFormat; noStats?: boolean };
 
 // What each registry option means to the builders. The ids come from the registry; only their meaning is
-// spelled here, and an option with no meaning throws so the drift guard fails before a prompt renders a
+// spelled here, and an option with no meaning throws so the render guard fails before a prompt renders a
 // raw token.
 const CONTENT_OPTS: Record<string, ContextOpts> = { summary: { preferSummary: true }, name: { nameOnly: true } };
 const STATS_OPTS: Record<string, ContextOpts> = { nostats: { noStats: true } };
@@ -507,7 +506,7 @@ function chipStats(optionId: string | null): ContextOpts {
   return opts;
 }
 
-/** The builder options one concrete scoped chip token encodes, read through the same tables as the expander. */
+/** The builder options one concrete scoped chip token encodes, read through the same tables as the lookup. */
 export function scopedChipOpts(token: string): ContextOpts {
   const variable = variableForToken(token);
   if (!variable) throw new Error(`No chip is registered for ${token}`);
@@ -515,33 +514,32 @@ export function scopedChipOpts(token: string): ContextOpts {
   return { ...chipContent(selection.content), ...chipStats(selection.stats ?? null), format: chipFormat(selection.format) };
 }
 
-/**
- * Every concrete token one scoped chip family produces — scope × content × stats × format — mapped to its
- * built value. The content, stats and format options are read from the chip's registry axes, so an option added there
- * reaches every value builder at once; the scopes are the caller's, since a builder can serve a subset.
- *
- * Shared so the live game and the world editor's preview enumerate the same set: a variant only one of them
- * generates renders as a raw `<TOKEN>` wherever it was missed.
- */
-export function expandScopedTokens(
+/** One chip as a lookup: a key the chip at `base` spells renders from its decoded axes on first read; `build`
+ *  returns undefined for a selection it does not serve. */
+export function chipFamilyValues(
   base: string,
-  scopes: Record<string, (opts: ContextOpts) => string>,
-): Record<string, string> {
+  build: (selection: Record<string, string | null>) => string | undefined,
+): ValueLookup {
   const variable = variableForToken(base);
   if (!variable) throw new Error(`No chip is registered for ${base}`);
-  const axes = variableAxes(variable);
-  const options = (axisId: string): (string | null)[] =>
-    axes.find((axis) => axis.id === axisId)?.options.map((option) => option.id) ?? [null];
-  const values: Record<string, string> = {};
-  for (const [scope, build] of Object.entries(scopes)) {
-    for (const content of options("content")) {
-      for (const stats of options("stats")) {
-        for (const format of options("format")) {
-          const id = encodeVariant(variable, { scope: scope || null, content, stats, format });
-          values[withVariant(base, id)] = build({ ...chipContent(content), ...chipStats(stats), format: chipFormat(format) });
-        }
-      }
-    }
-  }
-  return values;
+  return memoLookup((key) => {
+    const decoded = decodeChipKey(key);
+    return decoded?.variable === variable ? build(decoded.selection) : undefined;
+  });
+}
+
+/**
+ * One scoped chip family as a lookup: a key of `base` renders through its scope's builder with the content,
+ * stats and format its axes pick. The scopes are the caller's, since a builder can serve a subset; a key in
+ * any other scope has no value.
+ */
+export function scopedChipValues(
+  base: string,
+  scopes: Record<string, (opts: ContextOpts) => string>,
+): ValueLookup {
+  return chipFamilyValues(base, ({ scope, content, stats, format }) => {
+    const id = scope ?? "";
+    const build = Object.hasOwn(scopes, id) ? scopes[id] : undefined;
+    return build?.({ ...chipContent(content ?? null), ...chipStats(stats ?? null), format: chipFormat(format ?? null) });
+  });
 }

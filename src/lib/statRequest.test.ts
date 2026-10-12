@@ -36,7 +36,7 @@ describe('stat request names', () => {
     });
     expect(request.systemPrompt).toContain('- **Health:** 100/100 — Physical condition.');
     expect(request.statRequest?.targets).toEqual([{ id: 'health', name, plainName: 'Health', ownerId: PLAYER_OWNER, ownerKey: PLAYER_STAT_HEADING, key: 'Health', maxKey: 'Health max' }]);
-    expect(snapshot.context['<STATS DESCRIPTION>']).not.toContain(name === '`Health`' ? '`' : name);
+    expect(snapshot.context('<STATS DESCRIPTION>')).not.toContain(name === '`Health`' ? '`' : name);
   });
 
   it.each(['Health: -25', '**Health:** -25', '=c=Health==: -25', '[Health](https://example.com): -25', '- **Health**: -25'])('accepts plain and formatted replies: %s', (reply) => {
@@ -55,7 +55,7 @@ describe('stat request names', () => {
 
   it('names colliding stats apart by numbered key, and still accepts an exact colored name', () => {
     const stats = [stat({ name: '=r=Health==' }), stat({ id: 'blue', name: '=b=Health==' })];
-    const chip = createStatRequest(stats).context['<STATS DESCRIPTION>'];
+    const chip = createStatRequest(stats).context('<STATS DESCRIPTION>');
     expect(chip).toContain('Health (2)');
     expect(apply(stats, 'Health: -5').stats.map((s) => s.value)).toEqual([95, 100]);
     expect(apply(stats, '**Health (2):** -5').stats.map((s) => s.value)).toEqual([100, 95]);
@@ -128,7 +128,7 @@ describe('stat request names', () => {
   });
 
   it('keeps two owners of one stat id apart in the reply', () => {
-    const snapshot: StatRequestSnapshot = { id: 'r', context: {}, textContext: {}, entityKeys: [], targets: [
+    const snapshot: StatRequestSnapshot = { id: 'r', context: () => undefined, textContext: () => undefined, entityKeys: [], targets: [
       { ownerId: PLAYER_OWNER, id: 'health', name: 'Health', plainName: 'Health', ownerKey: PLAYER_STAT_HEADING, key: 'Health', maxKey: 'Health max' },
       { ownerId: 'bram', id: 'health', name: 'Bram Health', plainName: 'Bram Health', ownerKey: 'Bram', key: 'Health', maxKey: 'Health max' },
     ] };

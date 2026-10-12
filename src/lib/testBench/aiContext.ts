@@ -22,6 +22,7 @@ import {
 import { estimateTokens } from '@/lib/memoryUtils';
 import { NONE_PLACEHOLDER } from '@/lib/promptFallbacks';
 import { placedChip } from '@/lib/promptTemplate';
+import type { ValueLookup } from '@/lib/promptValues';
 import { splitToken, variableForToken } from '@/lib/promptVariables';
 import { enabledStats } from '@/lib/traitEffects';
 import type { Entity, GameLocation, PlayerStat } from '@/types';
@@ -130,9 +131,9 @@ const prefersSummary = (id: ContextBlockId): boolean => scopedChipOpts(BLOCK_TOK
 
 /** A block's value from the module's output: its token's value, or its parts' values joined, placeholders
  *  skipped. A token the module has no value for throws, so the table cannot name a chip no prompt can hold. */
-function blockValue(id: ContextBlockId, values: Record<string, string>): string {
+function blockValue(id: ContextBlockId, values: ValueLookup): string {
   const valueOf = (token: string): string => {
-    const value = values[token];
+    const value = values(token);
     if (value === undefined) throw new Error(`Chip Values has no value for ${token}`);
     return value;
   };
@@ -163,7 +164,7 @@ export function blockChipPlacedIn(template: string, id: ContextBlockId, position
 /** The stats block any Stats chip renders for the lens PC, with the PC's chips resolved. An unregistered token
  *  throws, as `blockValue` does. */
 export function buildStatBlock(world: AiContextWorld, lens: BenchLens, token: string): string {
-  const value = chipValues(lensScene(world, lens))[token];
+  const value = chipValues(lensScene(world, lens))(token);
   if (value === undefined) throw new Error(`Chip Values has no value for ${token}`);
   return value;
 }

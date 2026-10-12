@@ -30,8 +30,9 @@ import { migrateWorld } from '@/lib/version';
 import { readTavernJson } from '@/lib/tavernCard';
 import { buildNarrationPrompt } from '@/lib/turnPipeline/narrationPrompt';
 import { renderPromptTemplate } from '@/lib/promptTemplate';
-import { ALL_PROMPT_VARIABLES, variableVariantIds, withVariant } from '@/lib/promptVariables';
-import { expandScopedTokens, buildLocationContext, renderEntityRoster } from '@/lib/locationContext';
+import { decodeChipKey } from '@/lib/promptVariables';
+import { scopedChipValues, buildLocationContext, renderEntityRoster } from '@/lib/locationContext';
+import { layerValues, mapValues } from '@/lib/promptValues';
 import { buildTraitContext } from '@/lib/traitTree';
 import { personaContextValues } from '@/lib/personaContext';
 import { collectPins } from '@/lib/placeholderPins';
@@ -156,22 +157,20 @@ function buildSystem(world, entities, active, action, history) {
   const location = world.locations.find((l) => l.isStarting) ?? world.locations[0];
   const ids = entities.map((e) => e.id);
 
-  const values = Object.fromEntries(ALL_PROMPT_VARIABLES.flatMap((v) =>
-    [null, ...variableVariantIds(v)].map((id) => [withVariant(v.token, id), 'N/A'])));
-  Object.assign(values, {
-    ...expandScopedTokens('<LOCATION>', { '': (opts) => buildLocationContext(location, opts) }),
-    ...expandScopedTokens('<ENTITIES>', { '': (opts) => renderEntityRoster(ids, entities, opts) }),
-    ...personaContextValues(null),
-    '<WORLD DESCRIPTION>': overview.systemPrompt || '',
-    '<NOTES>': 'N/A',
-  });
+  const own = { '<WORLD DESCRIPTION>': overview.systemPrompt || '', '<NOTES>': 'N/A' };
   for (const format of ['simple', 'markdown', 'xml']) {
-    values[format === 'simple' ? '<TRAITS DESCRIPTION>' : `<TRAITS DESCRIPTION|${format}>`] = active.length
+    own[format === 'simple' ? '<TRAITS DESCRIPTION>' : `<TRAITS DESCRIPTION|${format}>`] = active.length
       ? buildTraitContext(active.map((t) => t.id), world.traits, world.traitGroups ?? [], format)
       : 'N/A';
   }
-  for (const key in values) values[key] = resolvePH(values[key]);
-  Object.assign(values, worldPromptChipValues(overview, false, resolvePH));
+  const scene = layerValues(
+    (key) => (decodeChipKey(key) ? 'N/A' : undefined),
+    scopedChipValues('<LOCATION>', { '': (opts) => buildLocationContext(location, opts) }),
+    scopedChipValues('<ENTITIES>', { '': (opts) => renderEntityRoster(ids, entities, opts) }),
+    personaContextValues(null),
+    own,
+  );
+  const values = layerValues(mapValues(scene, resolvePH), worldPromptChipValues(overview, false, resolvePH));
 
   return buildNarrationPrompt({
     template: resolveWorldPrompt(overview, 'narration', defaultSystemPrompt, false),

@@ -312,6 +312,19 @@ export function encodeVariant(variable: PromptVariable, selection: Record<string
   return ids.length ? ids.join('.') : null;
 }
 
+/** A chip key's variable and the per-axis selection its id spells, or undefined when its variable cannot
+ *  spell it: an unknown base, an affix, or an id outside the variable's own axes or out of axis order. */
+export function decodeChipKey(key: string): { variable: PromptVariable; selection: Record<string, string | null> } | undefined {
+  const variable = variableForToken(key);
+  if (!variable) return undefined;
+  if (key === variable.token) return { variable, selection: decodeVariant(variable, null) };
+  const stem = `${variable.token.slice(0, -1)}|`;
+  if (!key.startsWith(stem) || !key.endsWith('>')) return undefined;
+  const id = key.slice(stem.length, -1);
+  const selection = decodeVariant(variable, id);
+  return encodeVariant(variable, selection) === id ? { variable, selection } : undefined;
+}
+
 /** Every non-null variant id any variable supports (incl. multi-axis combos) — drives the parser's token
  *  regex. Longest-first so a compound id (`descriptions.markdown`) isn't masked by a prefix (`descriptions`). */
 export const ALL_VARIANT_IDS: string[] = [
@@ -351,8 +364,7 @@ export const TOKEN_PATTERN =
 /** The character an affix cannot contain (it delimits the affix in the token). */
 export const AFFIX_FORBIDDEN = '"';
 
-/** A token taken apart. `key` is the token WITHOUT affixes — the string `buildContextValues` precomputes
- *  and the renderer looks values up by. */
+/** A token taken apart. `key` is the token WITHOUT affixes — the string the renderer looks a value up by. */
 export interface TokenParts {
   base: string;
   variantId: string | null;
@@ -446,7 +458,7 @@ export function variantLabelForToken(token: string): string | null {
   return labels.length ? labels.join(', ') : null;
 }
 
-/** The affix-free key a chip is identified by — the same string `buildContextValues` keys values on, so
+/** The affix-free key a chip is identified by — the same string Chip Values look a value up by, so
  *  one placement's wording never makes it a different chip. Falls back to the token itself for a family
  *  that does not parse here (placeholders). */
 export function chipTokenKey(token: string): string {

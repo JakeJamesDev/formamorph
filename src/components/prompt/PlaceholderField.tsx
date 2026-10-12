@@ -3,6 +3,7 @@ import PromptField from './PromptField';
 import ChipInput from './ChipInput';
 import { promptVocabulary, usePlaceholderChipVocabulary, worldPromptVocabulary } from '@/lib/chipVocabulary';
 import type { PromptVariable } from '@/lib/promptVariables';
+import { layerValues, type TokenValues } from '@/lib/promptValues';
 import { decodePlaceholderToken, directChipTargets, parsePlaceholderText } from '@/lib/placeholders';
 import { builtinForToken, hasBuiltin } from '@/lib/builtinPlaceholders';
 import {
@@ -54,7 +55,7 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, ownerName, b
   trait?: { owned: boolean };
   /** Makes this a world custom prompt: the field also holds prompt variables, offered from its own toolbar
    *  and previewed from `previewValues`. `sampleData` badges that preview (see `PromptField`). */
-  promptChips?: { variables: PromptVariable[]; previewValues: Record<string, string>; sampleData?: boolean | string };
+  promptChips?: { variables: PromptVariable[]; previewValues: TokenValues; sampleData?: boolean | string };
   /** The field's caption, rendered by the field itself so it can share a row (see `PromptField`). */
   label?: ReactNode;
   /** Sits right after the caption (see `PromptField`). */
@@ -98,7 +99,7 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, ownerName, b
     [rolls, value, placeholders, pinRows, ownerName, bearer],
   );
   const promptValues = promptChips?.previewValues;
-  const previewValues = useMemo(() => (promptValues ? { ...promptValues, ...chipValues } : chipValues), [promptValues, chipValues]);
+  const previewValues = useMemo(() => (promptValues ? layerValues(promptValues, chipValues) : chipValues), [promptValues, chipValues]);
   // A value edit goes through the same store a chip rename does, and a pin edit through the writer its source
   // kind uses on the pin editors. Writes made since the world last rendered build on each other, so two in
   // one tick never drop the first.

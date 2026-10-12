@@ -26,6 +26,7 @@ import { authoredChipScene } from '@/lib/chipValues/authoredScene';
 import { chipValues, entityStatsField } from '@/lib/chipValues/chipValues';
 import { resolveEntityText } from '@/lib/placeholders';
 import { renderPromptTemplate } from '@/lib/promptTemplate';
+import { layerValues } from '@/lib/promptValues';
 import { buildCharacterUserMessage } from '@/lib/stagedPlanning';
 import { migrateWorld } from '@/lib/version';
 import type { Entity, Stat } from '@/types';
@@ -99,7 +100,7 @@ function request(arm: Arm, c: Case): { system: string; user: string } {
   const { entity, field } = caseCharacter(c);
   const who = CHARACTERS[c.entity];
   return {
-    system: renderPromptTemplate(defaultCharacterPrompt, { ...SYSTEM_VALUES, '<CHARACTER NAME>': entity.name }),
+    system: renderPromptTemplate(defaultCharacterPrompt, layerValues(SYSTEM_VALUES, { '<CHARACTER NAME>': entity.name })),
     user: buildCharacterUserMessage({
       character: { name: entity.name, entity, stance: who.stance },
       stats: arm === 'stats' ? field : undefined,

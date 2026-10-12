@@ -4,6 +4,12 @@ import { describe, expect, it, vi } from 'vitest';
 import { emptyToolSnapshot, sampleToolSnapshot } from '@/lib/tools/toolSnapshot';
 import { emptyCodeWorld, openWorld } from '@/test/helpFixtures';
 import { createHelpWorldRegistry, helpWorld, useHelpWorld, useHelpWorldSource } from './helpWorld';
+import { allSpelledTokens } from '@/test/chipTokens';
+import type { ToolSnapshot } from '@/lib/tools/toolSnapshot';
+
+/** A snapshot with its chip lookup read out over every token a prompt can spell, so two builds compare by value. */
+const readable = ({ chips, ...rest }: ToolSnapshot) =>
+  ({ ...rest, chips: Object.fromEntries(allSpelledTokens().map((token) => [token, chips(token)])) });
 
 describe('the open-world registry', () => {
   it('holds no world until a source registers, and the newest source wins', () => {
@@ -52,7 +58,7 @@ describe('the registry hooks', () => {
     const reader = renderHook(() => useHelpWorld());
     expect(reader.result.current).toBeUndefined();
     const source = renderHook(() => useHelpWorldSource(build, emptyCodeWorld));
-    expect(helpWorld.get()?.snapshot()).toEqual(build());
+    expect(readable(helpWorld.get()!.snapshot())).toEqual(readable(build()));
     expect(helpWorld.get()?.authored()).toEqual(emptyCodeWorld());
     expect(reader.result.current).toBe(helpWorld.get());
     source.unmount();

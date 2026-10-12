@@ -4,6 +4,7 @@
  */
 import type { Tool, ToolHandler, ToolParam } from '@/types';
 import { resolvePromptSegments } from '@/lib/promptTemplate';
+import { layerValues } from '@/lib/promptValues';
 import { splitToken } from '@/lib/promptVariables';
 import { argChipName, parseToolTemplate } from './argChips';
 import { isRecord } from './toolValidation';
@@ -113,15 +114,15 @@ const argText = (value: ToolArgValue | undefined) => (value === undefined ? '' :
 function runTemplate(tool: Tool, body: string, args: ToolArgs, snapshot: ToolSnapshot): ToolCallResult {
   const segments = parseToolTemplate(body);
   const params = new Set(tool.params.map((p) => p.name));
-  const values: Record<string, string> = { ...snapshot.chips };
+  const own: Record<string, string> = {};
   for (const segment of segments) {
     if (segment.type !== 'variable' || splitToken(segment.token)) continue;
     const name = argChipName(segment.token);
     // Each chip resolves on its own, so an argument's text is never read as a chip.
-    if (name === null) values[segment.token] = snapshot.resolve(segment.token);
-    else if (params.has(name)) values[segment.token] = argText(args[name]);
+    if (name === null) own[segment.token] = snapshot.resolve(segment.token);
+    else if (params.has(name)) own[segment.token] = argText(args[name]);
   }
-  const text = resolvePromptSegments(segments, values).map((part) => part.text).join('');
+  const text = resolvePromptSegments(segments, layerValues(snapshot.chips, own)).map((part) => part.text).join('');
   return { text: text.trim() ? text : tool.emptyResult };
 }
 

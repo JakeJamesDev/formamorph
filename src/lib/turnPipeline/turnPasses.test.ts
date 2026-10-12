@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { TURN_PASSES, TURN_PASS_CAPS, sceneTagsPass, SCENE_TAGS_EMPTY_CAST, milestoneSelectPass } from './turnPasses';
 import { defaultMilestoneSelectUserPrompt } from '@/components/game/GamePrompts';
 import { renderPromptTemplate } from '@/lib/promptTemplate';
+import { layerValues } from '@/lib/promptValues';
 import { planTurn } from './planTurn';
 import type { ChatMessage, Entity, PlayerStat } from '@/types';
 import type { TurnMaterial, TurnPassId, TurnPassRecord, TurnPlanInput, TurnSettings } from './turnPlan';
@@ -79,7 +80,7 @@ describe('the stat request', () => {
     expect(request.systemPrompt).toContain('Your entire output is one JSON object');
     expect(request.systemPrompt).toContain('### Player Character\n- **Health:** 80/100');
     expect(request.messages[0].content).toContain('0 for every value and maximum it did not move');
-    expect(request.textFallback?.systemPrompt).toBe(renderPromptTemplate(textStatUpdatesPrompt, { ...material().ctx, ...health.context }));
+    expect(request.textFallback?.systemPrompt).toBe(renderPromptTemplate(textStatUpdatesPrompt, layerValues(material().ctx, health.context)));
     expect(request.textFallback?.messages[0].content)
       .toBe(renderPromptTemplate(textStatUpdatesUserPrompt, { '<NARRATION>': material().narration }));
     expect(request.textFallback?.maxTokens).toBe(32);

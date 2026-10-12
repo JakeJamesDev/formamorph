@@ -31,6 +31,7 @@ import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
 import { type MarkdownAction, HIGHLIGHT_COLORS } from '@/lib/markdownToolbar';
 import { type PromptVariable } from '@/lib/promptVariables';
 import { resolvePromptSegments } from '@/lib/promptTemplate';
+import type { TokenValues } from '@/lib/promptValues';
 import {
   tintValue, emptyMarker, stripTintSentinels, tintMarkStyle, emptyMarkStyle,
   TINT_MARK_CLASS, EMPTY_MARK_CLASS, EMPTY_MARK_LABEL,
@@ -434,7 +435,7 @@ const EDITOR_CLASS =
  *  chip and the Insert key) so it's obvious which text came from which variable. */
 function PreviewPane({ value, previewValues, vocab, scrollRef, onScroll }: {
   value: string;
-  previewValues: Record<string, string>;
+  previewValues: TokenValues;
   vocab: ChipVocabulary;
   scrollRef?: React.Ref<HTMLDivElement>;
   onScroll?: React.UIEventHandler<HTMLDivElement>;
@@ -475,7 +476,7 @@ function PreviewPane({ value, previewValues, vocab, scrollRef, onScroll }: {
  *  (see previewTint). Author text and values are scrubbed first, so neither can forge a pairing. */
 function MarkdownPreviewPane({ value, previewValues, vocab, scrollRef, onScroll }: {
   value: string;
-  previewValues?: Record<string, string>;
+  previewValues?: TokenValues;
   vocab: ChipVocabulary;
   scrollRef?: React.Ref<HTMLDivElement>;
   onScroll?: React.UIEventHandler<HTMLDivElement>;
@@ -510,7 +511,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   variables?: PromptVariable[];
   /** Override the token family (e.g. world placeholders). Defaults to the prompt vocabulary from `variables`. */
   vocabulary?: ChipVocabulary;
-  previewValues?: Record<string, string>;
+  previewValues?: TokenValues;
   /** Token → the value each chip opens on. Given with `previewValues`, the field offers a Values tab that
    *  shows every chip open on its value. */
   openValues?: Record<string, OpenValueView>;

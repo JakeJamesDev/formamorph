@@ -3,7 +3,7 @@ import { buildPersonaContext, knownPersonaLine, personaContextValues } from './p
 import type { ResolvedPersona } from './persona';
 import { renderEntityRoster } from './locationContext';
 import { renderPromptTemplate } from './promptTemplate';
-import { variableForToken, variableVariantIds, withVariant } from './promptVariables';
+import { foreignTokens, spelledTokens } from '@/test/chipTokens';
 import { NONE_PLACEHOLDER } from './promptFallbacks';
 import type { Entity } from '@/types';
 
@@ -83,14 +83,12 @@ describe('the known-person line', () => {
 });
 
 describe('personaContextValues', () => {
-  const variable = variableForToken('<PERSONA>')!;
-  const every = ['<PERSONA>', ...variableVariantIds(variable).map((id) => withVariant('<PERSONA>', id))];
-
-  it('holds a value for every token the chip can produce', () => {
+  it('holds a value for every token a prompt can spell on the chip', () => {
     const values = personaContextValues(persona);
-    expect(Object.keys(values).sort()).toEqual([...every].sort());
-    expect(values['<PERSONA|name.xml>']).toBe('Traveler (they/them)');
-    expect(values['<PERSONA|summary.markdown>']).toBe(buildPersonaContext(persona, { preferSummary: true, format: 'markdown' }));
+    for (const token of spelledTokens('<PERSONA>')) expect(values(token), token).toBeTruthy();
+    for (const token of foreignTokens('<PERSONA>')) expect(values(token), token).toBeUndefined();
+    expect(values('<PERSONA|name.xml>')).toBe('Traveler (they/them)');
+    expect(values('<PERSONA|summary.markdown>')).toBe(buildPersonaContext(persona, { preferSummary: true, format: 'markdown' }));
   });
 
   it('renders an affixed placement as nothing at all with no persona, header included', () => {

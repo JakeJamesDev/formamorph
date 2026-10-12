@@ -3,6 +3,7 @@ import { chipValues } from './chipValues';
 import type { ChipScene } from './chipScene';
 import { defaultStatUpdatesPrompt, textStatUpdatesPrompt } from '@/components/game/GamePrompts';
 import { renderPromptTemplate } from '../promptTemplate';
+import { layerValues } from '../promptValues';
 import { createStatRequest, statRequestSchema } from '../statRequest';
 import { PLAYER_OWNER } from '../statOwners';
 import { NONE_PLACEHOLDER } from '../promptFallbacks';
@@ -56,24 +57,24 @@ describe("the persona's own stats in the Persona chip", () => {
   const values = chipValues(scene());
 
   it('nests the stats after the traits, under its own groups, in each format', () => {
-    expect(values['<PERSONA|markdown>']).toContain([
+    expect(values('<PERSONA|markdown>')).toContain([
       '  - **stats:**',
       '    - **Calm:** 30/100 — Composure.',
       '    - **Body:**',
       '      - **Health (2):** 10/100 (Winded) — Old wounds.',
     ].join('\n'));
-    expect(values['<PERSONA>']).toContain('  stats:\n    Calm: 30/100 — Composure.\n    Body:\n      Health (2): 10/100 (Winded) — Old wounds.');
-    expect(values['<PERSONA|xml>']).toContain('  <stats>\n');
-    expect(values['<PERSONA|xml>']).toContain('<name>Health (2)</name>');
+    expect(values('<PERSONA>')).toContain('  stats:\n    Calm: 30/100 — Composure.\n    Body:\n      Health (2): 10/100 (Winded) — Old wounds.');
+    expect(values('<PERSONA|xml>')).toContain('  <stats>\n');
+    expect(values('<PERSONA|xml>')).toContain('<name>Health (2)</name>');
     for (const token of ['<PERSONA>', '<PERSONA|markdown>', '<PERSONA|xml>']) {
-      expect(values[token].indexOf('Scarred')).toBeGreaterThan(-1);
-      expect(values[token].indexOf('Scarred')).toBeLessThan(values[token].indexOf('Calm'));
+      expect(values(token)!.indexOf('Scarred')).toBeGreaterThan(-1);
+      expect(values(token)!.indexOf('Scarred')).toBeLessThan(values(token)!.indexOf('Calm'));
     }
   });
 
   it('leaves the Stats chip holding the world stats alone', () => {
-    expect(values['<STATS DESCRIPTION|numbers>']).toBe('Health: 62/100');
-    expect(values['<STATS DESCRIPTION|numbers.meaning.markdown>']).toBe('- **Health:** 62/100 — Physical stamina.');
+    expect(values('<STATS DESCRIPTION|numbers>')).toBe('Health: 62/100');
+    expect(values('<STATS DESCRIPTION|numbers.meaning.markdown>')).toBe('- **Health:** 62/100 — Physical stamina.');
   });
 
   it('names a clashing stat by the numbered key the stat request gives it', () => {
@@ -81,34 +82,34 @@ describe("the persona's own stats in the Persona chip", () => {
       personas: [travelerOwner],
     });
     expect(request.targets.find((target) => target.id === 'own-health')?.key).toBe('Health (2)');
-    expect(values['<PERSONA|markdown>']).toContain('**Health (2):**');
-    expect(values['<PERSONA|markdown>']).not.toMatch(/\*\*Health:\*\*/);
+    expect(values('<PERSONA|markdown>')).toContain('**Health (2):**');
+    expect(values('<PERSONA|markdown>')).not.toMatch(/\*\*Health:\*\*/);
   });
 
   it('keeps the stats block in Summary, with the trait names on one line', () => {
-    expect(values['<PERSONA|summary>']).toContain('  traits: Scarred\n  stats:\n    Calm: 30/100 — Composure.');
+    expect(values('<PERSONA|summary>')).toContain('  traits: Scarred\n  stats:\n    Calm: 30/100 — Composure.');
   });
 
   it('drops the stats field in the No Stats state, and leaves Name bare', () => {
     for (const token of ['<PERSONA|nostats>', '<PERSONA|summary.nostats.markdown>', '<PERSONA|nostats.xml>']) {
-      expect(values[token]).toContain('Scarred');
-      expect(values[token]).not.toMatch(/stats/);
-      expect(values[token]).not.toContain('Calm');
+      expect(values(token)).toContain('Scarred');
+      expect(values(token)).not.toMatch(/stats/);
+      expect(values(token)).not.toContain('Calm');
     }
-    expect(values['<PERSONA|name>']).toBe('Traveler (they/them)');
+    expect(values('<PERSONA|name>')).toBe('Traveler (they/them)');
   });
 
   it('shows no stats field for a persona that owns none', () => {
     const bare = chipValues(scene({ ownedStats: {}, playedStats: [{ ownerId: 'traveler', stats: [] }] }));
-    expect(bare['<PERSONA|markdown>']).toContain('Scarred');
-    expect(bare['<PERSONA|markdown>']).not.toContain('stats');
-    expect(bare['<STATS DESCRIPTION|numbers>']).toBe('Health: 62/100');
+    expect(bare('<PERSONA|markdown>')).toContain('Scarred');
+    expect(bare('<PERSONA|markdown>')).not.toContain('stats');
+    expect(bare('<STATS DESCRIPTION|numbers>')).toBe('Health: 62/100');
   });
 
   it('reads the none placeholder with no persona, and the played stats stay with the world stats', () => {
     const none = chipValues(scene({ persona: null, playerName: null }));
-    expect(none['<PERSONA|markdown>']).toBe(NONE_PLACEHOLDER);
-    expect(none['<STATS DESCRIPTION|numbers>']).toBe('Health: 62/100\nCalm: 30/100\nBody:\n  Health (2): 10/100');
+    expect(none('<PERSONA|markdown>')).toBe(NONE_PLACEHOLDER);
+    expect(none('<STATS DESCRIPTION|numbers>')).toBe('Health: 62/100\nCalm: 30/100\nBody:\n  Health (2): 10/100');
   });
 
   it("keeps another played entity's stats in the Stats chip, numbered after the world's", () => {
@@ -120,8 +121,8 @@ describe("the persona's own stats in the Persona chip", () => {
         { ownerId: 'custom', stats: [marked] },
       ],
     }));
-    expect(both['<STATS DESCRIPTION|numbers>']).toBe('Health: 62/100\nHealth (3): 40/100');
-    expect(both['<PERSONA|markdown>']).toContain('**Health (2):** 10/100');
+    expect(both('<STATS DESCRIPTION|numbers>')).toBe('Health: 62/100\nHealth (3): 40/100');
+    expect(both('<PERSONA|markdown>')).toContain('**Health (2):** 10/100');
   });
 });
 
@@ -132,7 +133,7 @@ describe('the stat request with a played persona that owns stats', () => {
   const ctx = chipValues(scene());
 
   it('renders the schema prompt, its keys and the text pass as before the stats fold', () => {
-    expect(renderPromptTemplate(defaultStatUpdatesPrompt, { ...ctx, ...request.context })).toMatchInlineSnapshot(`
+    expect(renderPromptTemplate(defaultStatUpdatesPrompt, layerValues(ctx, request.context))).toMatchInlineSnapshot(`
       "You are the stat tracker for an interactive roleplay. Each stat is a number that tracks one thing about one character, and it changes only when the story changes it. The narrator reads the stats each turn to decide what the characters can do and how they act. You read what happened this turn and record how it moved the stats of each character listed below. Your entire output is one JSON object - nothing else.
 
       ## Game World
@@ -161,7 +162,7 @@ describe('the stat request with a played persona that owns stats', () => {
       - A value or maximum that did not move gets 0.
       - Write the whole object on one line."
     `);
-    expect(renderPromptTemplate(textStatUpdatesPrompt, { ...ctx, ...request.textContext })).toMatchInlineSnapshot(`
+    expect(renderPromptTemplate(textStatUpdatesPrompt, layerValues(ctx, request.textContext))).toMatchInlineSnapshot(`
       "You are the stat tracker for an interactive roleplay. You read what happened this turn and record how it moved the player's stats. Your entire output is stat-change lines - nothing else.
 
       ## Game World

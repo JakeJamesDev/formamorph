@@ -26,6 +26,7 @@ import { authoredChipScene } from '@/lib/chipValues/authoredScene';
 import { chipValues, sceneEntityChipValues } from '@/lib/chipValues/chipValues';
 import { resolveEntityText } from '@/lib/placeholders';
 import { renderPromptTemplate } from '@/lib/promptTemplate';
+import { layerValues } from '@/lib/promptValues';
 import { buildNarrationPrompt } from '@/lib/turnPipeline/narrationPrompt';
 import { migrateWorld } from '@/lib/version';
 import type { Entity, Stat } from '@/types';
@@ -94,10 +95,10 @@ function request(arm: typeof ARMS[number], c: typeof fixture.cases[number]): { s
   }
   if (c.kind === 'choices') {
     // The choice writer reads only who is in the scene, through the scene-roster override.
-    const values = { ...ctx, ...sceneEntityChipValues(SCENES[arm], c.scene ?? []), '<LANGUAGE>': '' };
+    const values = layerValues(ctx, sceneEntityChipValues(SCENES[arm], c.scene ?? []), { '<LANGUAGE>': '' });
     return {
       system: renderPromptTemplate(defaultChoicesPrompt, values),
-      user: renderPromptTemplate(defaultChoicesUserPrompt, { ...values, '<NARRATION>': c.narration ?? '' }),
+      user: renderPromptTemplate(defaultChoicesUserPrompt, layerValues(values, { '<NARRATION>': c.narration ?? '' })),
       max: 220,
     };
   }
@@ -143,8 +144,8 @@ async function complete(model: string, req: ReturnType<typeof request>, seed: nu
 const cases = fixture.cases.filter((c) => !only || only.split(',').includes(c.id));
 if (args.includes('--dump')) {
   for (const arm of ARMS) {
-    console.log(`\n--- ${arm}: Entities chip\n${CTX[arm]['<ENTITIES|markdown>']}`);
-    console.log(`--- ${arm}: Entities summary chip\n${CTX[arm]['<ENTITIES|summary.markdown>']}`);
+    console.log(`\n--- ${arm}: Entities chip\n${CTX[arm]('<ENTITIES|markdown>')}`);
+    console.log(`--- ${arm}: Entities summary chip\n${CTX[arm]('<ENTITIES|summary.markdown>')}`);
   }
   for (const c of cases) console.log(`\n=== ${c.id} (on)\n${JSON.stringify(request('on', c), null, 2).slice(0, 6000)}`);
   process.exit(0);

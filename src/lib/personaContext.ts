@@ -1,6 +1,7 @@
-import { expandScopedTokens, renderEntityRoster, type OwnedTraitsInForce, type RosterOpts } from './locationContext';
+import { renderEntityRoster, scopedChipValues, type OwnedTraitsInForce, type RosterOpts } from './locationContext';
 import type { ResolvedPersona } from './persona';
 import { NONE_PLACEHOLDER } from './promptFallbacks';
+import type { ValueLookup } from './promptValues';
 import type { PlayerStat } from '@/types';
 
 /** The line under a world persona's block: the world's entities know this person, and its name means the player. */
@@ -24,13 +25,13 @@ export function buildPersonaContext(persona: ResolvedPersona | null, opts: Roste
   return persona.source === 'world' ? `${block}${knownPersonaLine(entity.name)}\n` : block;
 }
 
-/** Every `<PERSONA>` token (content × stats × format) mapped to its value, the persona's own `stats` nested
- *  in its block unless the token switches them off. */
+/** Every `<PERSONA>` token as a lookup, the persona's own `stats` nested in its block unless the token
+ *  switches them off. */
 export function personaContextValues(
   persona: ResolvedPersona | null, ownedTraits?: OwnedTraitsInForce, stats: readonly PlayerStat[] = [],
-): Record<string, string> {
+): ValueLookup {
   const ownedStats = persona && stats.length ? { [persona.entity.id]: stats } : undefined;
-  return expandScopedTokens('<PERSONA>', {
+  return scopedChipValues('<PERSONA>', {
     '': (opts) => buildPersonaContext(persona, { ...opts, ownedTraits, ownedStats: opts.noStats ? undefined : ownedStats }),
   });
 }

@@ -84,7 +84,7 @@ describe('the stat request with entities', () => {
       { id: 'c', name: 'Bram', stats: [stat()] },
     ] });
     expect(snapshot.entityKeys).toEqual(['Player Character (2)', 'Bram', 'Bram (2)']);
-    expect(snapshot.context['<STATS DESCRIPTION>']).toContain('### Bram (2)\nTrust');
+    expect(snapshot.context('<STATS DESCRIPTION>')).toContain('### Bram (2)\nTrust');
   });
 
   it('nests each owner\'s stats under its group headings and leaves the schema as the flat request has it', () => {

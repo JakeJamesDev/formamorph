@@ -1,6 +1,7 @@
 import type { ChatMessage } from '@/types';
 import type { TurnPassRecord, TurnPassRequest, TurnPlanInput, TurnMaterial, TurnPassSubject } from './turnPlan';
 import { renderPromptTemplateRuns, promptTemplatePieces } from '@/lib/promptTemplate';
+import { layerValues, type TokenValues } from '@/lib/promptValues';
 import {
   tilePieces, trimEndTiled, trimTiled, collapseBlankLines,
   type AnatomyPiece, type ContextLabel, type TiledRuns,
@@ -88,14 +89,14 @@ export const SCENE_TAGS_EMPTY_CAST = 'nobody - an empty scene';
  */
 
 /** A system prompt and the runs over it: what the author typed, against the values its chips inject. */
-const systemTiled = (template: string, values: Record<string, string>): TiledRuns =>
+const systemTiled = (template: string, values: TokenValues): TiledRuns =>
   renderPromptTemplateRuns(template, values, { source: 'system-template' });
 
 /** A user-message template and the runs over it. A few of the chips a user message carries hold what an
  *  earlier prompt wrote — the action, the narration, who is in frame — so those name what wrote them. */
 const userTiled = (
   template: string,
-  values: Record<string, string>,
+  values: TokenValues,
   tokens?: Record<string, ContextLabel>,
 ): TiledRuns =>
   renderPromptTemplateRuns(template, values, {
@@ -141,14 +142,14 @@ export const effectiveActionFor = (input: TurnPlanInput): string =>
 export const choicesSystemTiled = (
   template: string,
   language: string,
-  values: Record<string, string>,
+  values: TokenValues,
 ): TiledRuns =>
-  trimEndTiled(systemTiled(template, { ...values, '<LANGUAGE>': languageDirective('choices', language) }));
+  trimEndTiled(systemTiled(template, layerValues(values, { '<LANGUAGE>': languageDirective('choices', language) })));
 
 export const choicesSystemPrompt = (
   template: string,
   language: string,
-  values: Record<string, string>,
+  values: TokenValues,
 ): string => choicesSystemTiled(template, language, values).content;
 
 /** The digest's user message. A bracketed authorial direction never reaches it — it records story content. */
@@ -179,10 +180,8 @@ const discoverUserTiled = (template: string, subject: TurnPassSubject, firstPass
  */
 const quietInBatch = (input: TurnPlanInput): boolean => input.settings.concurrentTurnRequests;
 
-const stageValues = (material: TurnMaterial): Record<string, string> => ({
-  ...material.ctx,
-  '<ACTIVE CHARACTER GUIDANCE>': material.activeCharacterGuidance,
-});
+const stageValues = (material: TurnMaterial): TokenValues =>
+  layerValues(material.ctx, { '<ACTIVE CHARACTER GUIDANCE>': material.activeCharacterGuidance });
 
 const subjectOf = (material: TurnMaterial): TurnPassSubject => {
   if (!material.subject) throw new Error('this pass runs once per subject, and none was given');
@@ -304,7 +303,7 @@ const characterPass: TurnPassRecord<string> = {
     const subject = subjectOf(material);
     return labeledRequest(
       { type: 'character', maxTokens: TURN_PASS_CAPS.character, silent: false, quiet: false },
-      systemTiled(input.prompts.character, { ...stageValues(material), '<CHARACTER NAME>': subject.name }),
+      systemTiled(input.prompts.character, layerValues(stageValues(material), { '<CHARACTER NAME>': subject.name })),
       assembledTiled(
         buildCharacterUserMessage({
           character: { name: subject.name, stance: subject.stance, entity: subject.entity },
@@ -417,10 +416,7 @@ export const choicesPass: TurnPassRecord<string[]> = {
   isDue: (input) => input.settings.choicesEnabled,
   buildRequest: (input, material) => labeledRequest(
     { type: 'choices', maxTokens: TURN_PASS_CAPS.choices, silent: false, quiet: quietInBatch(input) },
-    choicesSystemTiled(input.prompts.choices, input.settings.language, {
-      ...material.ctx,
-      ...material.sceneEntityTokens,
-    }),
+    choicesSystemTiled(input.prompts.choices, input.settings.language, layerValues(material.ctx, material.sceneEntityTokens)),
     userTiled(input.prompts.choicesUser, {
       '<PLAYER ACTION>': material.effectiveAction,
       '<NARRATION>': material.narration,
@@ -444,7 +440,7 @@ export const statTextPrompts = (system: string, user: string): { system: string;
  */
 export function statUpdatesRequest(
   prompts: { system: string; user: string },
-  values: { ctx: Record<string, string>; action: string; narration: string },
+  values: { ctx: TokenValues; action: string; narration: string },
   base: { statCount: number; statRequest?: StatRequestSnapshot; quiet: boolean },
 ): TurnPassRequest<ChatMessage> {
   const { statRequest } = base;
@@ -454,7 +450,7 @@ export function statUpdatesRequest(
   const textStats = statRequest ? playerTargets(statRequest).length : base.statCount;
   const textRequest = labeledRequest(
     { ...shared, maxTokens: statUpdatesCap(textStats) },
-    systemTiled(text.system, { ...values.ctx, ...statRequest?.textContext }),
+    systemTiled(text.system, layerValues(values.ctx, statRequest?.textContext)),
     userTiled(text.user, user),
   );
   if (!statRequest || statRequest.textPass) return textRequest;
@@ -462,7 +458,7 @@ export function statUpdatesRequest(
   return {
     ...labeledRequest(
       { ...shared, maxTokens: statSchemaCap(statRequest.targets.length, 1 + statRequest.entityKeys.length) },
-      systemTiled(prompts.system, { ...values.ctx, ...statRequest.context }),
+      systemTiled(prompts.system, layerValues(values.ctx, statRequest.context)),
       userTiled(prompts.user, user),
     ),
     responseSchema: statRequestSchema(statRequest),

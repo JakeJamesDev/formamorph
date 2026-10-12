@@ -6,6 +6,7 @@ import { DISCOVER_LATER_LABEL, DISCOVER_PASSAGE_LABEL } from './runtimeCharacter
 import { milestoneMomentValues } from './milestoneMemory';
 import { chipValues } from './chipValues/chipValues';
 import { sampleChipScene } from './chipValues/sampleScene';
+import { layerValues, type TokenValues, type ValueLookup } from './promptValues';
 
 /**
  * The one pool the prompt editor's Preview draws on, in two layers.
@@ -75,7 +76,7 @@ const TURN_VALUES: Record<string, string> = {
  * Every sampled token: the sample world's scene values from Chip Values, and the sample turn's per-turn
  * values. The derived tokens stay out, so a sample never shadows the player's real setting.
  */
-export const SAMPLE_PREVIEW_VALUES: Record<string, string> = { ...TURN_VALUES, ...chipValues(sampleChipScene()) };
+export const SAMPLE_PREVIEW_VALUES: ValueLookup = layerValues(TURN_VALUES, chipValues(sampleChipScene()));
 
 /** Settings the derived layer reads. Exactly the inputs the real guidance functions take. */
 export interface DerivedPreviewSettings {
@@ -114,11 +115,12 @@ export function derivedPreviewValues(s: DerivedPreviewSettings): Record<string, 
 
 /**
  * The values a Preview should use: samples underneath, real settings-derived guidance over them, and a live
- * game's own context over that. Callers pass `live` only when a playthrough is running.
+ * game's own context over that. Callers pass `live` only when a playthrough is running. A live lookup renders
+ * any scene token on its first read, so an in-game token never falls through to the sample world.
  */
 export function composePreviewValues(
   settings: DerivedPreviewSettings,
-  live?: Record<string, string>,
-): Record<string, string> {
-  return { ...SAMPLE_PREVIEW_VALUES, ...derivedPreviewValues(settings), ...(live ?? {}) };
+  live?: TokenValues,
+): ValueLookup {
+  return layerValues(SAMPLE_PREVIEW_VALUES, derivedPreviewValues(settings), live);
 }

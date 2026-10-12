@@ -25,8 +25,11 @@ import {
 } from '@/components/game/GamePrompts';
 import { authoredChipScene } from '@/lib/chipValues/authoredScene';
 import { chipValues, sceneEntityChipValues } from '@/lib/chipValues/chipValues';
+import { allSpelledTokens } from '@/test/chipTokens';
+import { PLAYER_NAME_HEADER_KEY } from '@/lib/builtinPlaceholders';
 import { resolveEntityText } from '@/lib/placeholders';
 import { renderPromptTemplate } from '@/lib/promptTemplate';
+import { layerValues } from '@/lib/promptValues';
 import { buildStoryboardUserMessage } from '@/lib/stagedPlanning';
 import { buildNarrationPrompt } from '@/lib/turnPipeline/narrationPrompt';
 import { migrateWorld } from '@/lib/version';
@@ -75,8 +78,8 @@ const SCENES = { on: sceneOn, off: { ...sceneOn, playedStats: [] } };
 const CTX = { on: chipValues(SCENES.on), off: chipValues(SCENES.off) };
 // The off arm is the chip as it was: the same world with no persona stats at all.
 const before = chipValues(sceneOf(cast));
-for (const token of Object.keys(before)) {
-  if (CTX.off[token] !== before[token]) throw new Error(`The off arm differs from the shipped chip at ${token}.`);
+for (const token of [...allSpelledTokens(), PLAYER_NAME_HEADER_KEY]) {
+  if (CTX.off(token) !== before(token)) throw new Error(`The off arm differs from the shipped chip at ${token}.`);
 }
 
 const STAT_LABELS = ['Vigor', 'Resolve', 'Calm', 'Trust', 'Stock'];
@@ -106,10 +109,10 @@ function request(arm: typeof ARMS[number], c: Case): { system: string; user: str
   }
   if (c.kind === 'choices') {
     // The choice writer reads only who is in the scene, through the scene-roster override.
-    const values = { ...ctx, ...sceneEntityChipValues(SCENES[arm], Array.isArray(c.scene) ? c.scene : []), '<LANGUAGE>': '' };
+    const values = layerValues(ctx, sceneEntityChipValues(SCENES[arm], Array.isArray(c.scene) ? c.scene : []), { '<LANGUAGE>': '' });
     return {
       system: renderPromptTemplate(defaultChoicesPrompt, values),
-      user: renderPromptTemplate(defaultChoicesUserPrompt, { ...values, '<NARRATION>': c.narration ?? '' }),
+      user: renderPromptTemplate(defaultChoicesUserPrompt, layerValues(values, { '<NARRATION>': c.narration ?? '' })),
       max: 220,
     };
   }
@@ -154,7 +157,7 @@ async function complete(model: string, req: ReturnType<typeof request>, seed: nu
 
 const cases = fixture.cases.filter((c) => !only || only.split(',').includes(c.id));
 if (args.includes('--dump')) {
-  for (const arm of ARMS) console.log(`\n--- ${arm}: Stats chip\n${CTX[arm]['<STATS DESCRIPTION|descriptions.markdown>']}`);
+  for (const arm of ARMS) console.log(`\n--- ${arm}: Stats chip\n${CTX[arm]('<STATS DESCRIPTION|descriptions.markdown>')}`);
   const precall = ARMS.map((arm) => renderPromptTemplate(defaultThinkingPrompt, CTX[arm]));
   console.log(`\nprecall planner bodies identical across arms: ${precall[0] === precall[1]}`);
   for (const c of cases) console.log(`\n=== ${c.id} (on)\n${JSON.stringify(request('on', c), null, 2).slice(0, 6000)}`);
