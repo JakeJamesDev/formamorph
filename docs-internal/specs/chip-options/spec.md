@@ -75,6 +75,9 @@ Spec-session rulings for ticket sessions.
 | Q34 | (ticket 04) Row names for today's axes are the axis's own label. A single unnamed axis reads Mode. The Stats chip's three toggles form one Stat Detail row. The Entities and Persona stats toggle is one Include row with a Stats checkbox, which ticket 05 extends with Traits |
 | Q35 | (ticket 04) Two panes for prompt-variable chips everywhere, scene chips in a Tool template included. One column for placeholder, Tool argument and Formaquestion help-prompt chips |
 | Q36 | (ticket 04) Width is max-w-3xl with two panes and max-w-md with one column, both at most 85vh and scrolling inside |
+| Q37 | (ticket 01) The lore chip is the one exception to "live values first" in the in-game Preview: it keeps today's fall-through to the sample lore, since a turn activates lore per request. Showing the live scene's enabled lore in Preview is a separate product change, out of scope here |
+| Q38 | (ticket 02) The Entities stats axis has three stored states: scope default, off, on. The stats-on id stays out of the chip label like the six new ids; the off id keeps showing "No Stats" as today |
+| Q39 | (ticket 02) Ticket 02 hides the six new axes from the dialog behind a registry flag the shell reads. Ticket 05 removes the flag when it adds the rows and switches the dialog to lock groups |
 
 ## User Stories
 
@@ -129,6 +132,7 @@ Spec-session rulings for ticket sessions.
 - Filters that name a particular stat or trait, or compare a stat's value.
 - Filters on Location or other chips.
 - Wiring real data into the prototype.
+- The in-game Preview showing the live scene's enabled lore for the Dictionary chip (Q37).
 
 ## Further Notes
 
