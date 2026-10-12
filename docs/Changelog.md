@@ -72,6 +72,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **A dictionary entry's Whole Words checkbox now works with Regex keywords.** `wands?` no longer matches inside *wander*. Letters with accents now count as part of a word, so *caf* no longer matches inside *café*. Imported SillyTavern regex entries with whole words on now match whole words only.
   - **The World Editor refuses a drag into Blueprints while something still reads the trait or stat.** That is a requirement, a stat change or toggle, or stat code. A note names the reader.
   - **A click or Escape in the help window no longer closes a menu, popover, list or dialog below it.** A menu inside the help window still closes when you click elsewhere in it.
+  - **Regenerate Memory and a character's Regenerate wait for background passes, with a spinner you can cancel.** Each button waits its turn instead of staying unavailable or racing a pass. Leaving the game or loading a save also stops them.
 - **⚙️ Backend**
   - **Background passes between turns follow Concurrent Requests, and a failing pass no longer stalls the ones behind it.** With the setting off they run one at a time, and with it on they run together. Leaving the game or loading a save stops a running pass.
   - **A new character's diary now carries its description, and a name that never becomes a character gets no diary.** Descriptions and diaries run in the background queue, and the status bar shows "Describing character…". A short name like "Aldric" now finds "Sergeant Aldric" for its diary.

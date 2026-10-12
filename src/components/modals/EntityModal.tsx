@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Pencil, RefreshCw, Loader2 } from "lucide-react";
+import { Pencil, RefreshCw, Loader2, X } from "lucide-react";
 import { EntityCardBody, EntityDescription } from '../game/EntityCard';
 import { useEntityTextResolver } from "@/lib/usePlaceholderResolver";
 import { useEntityVisualPreference } from "@/lib/useEntityVisualPreference";
@@ -17,10 +17,10 @@ export interface EntityDescriptionEditing {
   /** Write a replacement description through to the discovered entity. */
   onSave: (text: string) => void;
   /** Rewrite the description from the character's accumulated story context. Resolves to the new text,
-   *  or null when the model returned nothing usable. */
-  onRegenerate: (signal: AbortSignal) => Promise<string | null>;
-  /** True while other AI work is in flight, which is when regeneration is unavailable. */
-  busy: boolean;
+   *  null when the model returned nothing usable, or undefined when the request was canceled. */
+  onRegenerate: (signal: AbortSignal) => Promise<string | null | undefined>;
+  /** True while a regeneration waits behind other AI work. */
+  waiting: boolean;
 }
 
 export const EntityModal = ({ entity, isOpen, onOpenChange, editing }: {
@@ -81,7 +81,7 @@ export const EntityModal = ({ entity, isOpen, onOpenChange, editing }: {
     setRegenError(false);
     try {
       const next = await editing.onRegenerate(controller.signal);
-      if (controller.signal.aborted) return;
+      if (controller.signal.aborted || next === undefined) return;
       if (!next) { setRegenError(true); return; }
       setPreview(next);
       setMode('preview');
@@ -90,6 +90,12 @@ export const EntityModal = ({ entity, isOpen, onOpenChange, editing }: {
     } finally {
       if (!controller.signal.aborted) setRegenerating(false);
     }
+  };
+
+  const cancelRegenerate = () => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setRegenerating(false);
   };
 
   const keepPreview = () => {
@@ -150,15 +156,20 @@ export const EntityModal = ({ entity, isOpen, onOpenChange, editing }: {
                       <Button variant="ghost" size="sm" onClick={startEdit} disabled={regenerating}>
                         <Pencil className="h-4 w-4 mr-1" /> Edit
                       </Button>
+                      {regenerating && (
+                        <Button variant="ghost" size="sm" onClick={cancelRegenerate}>
+                          <X className="h-4 w-4 mr-1" /> Cancel
+                        </Button>
+                      )}
                       <Tip
-                        tip={editing.busy ? 'Available once the story is done generating' : undefined}
+                        tip={regenerating && editing.waiting ? 'Waits for the story to finish' : undefined}
                         labelsChild={false}
                       >
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={regenerate}
-                          disabled={regenerating || editing.busy}
+                          disabled={regenerating}
                         >
                           {regenerating
                             ? <Loader2 className="h-4 w-4 mr-1 animate-spin" />

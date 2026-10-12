@@ -88,11 +88,19 @@ export interface QueueEnv {
 
 export interface BackgroundPassQueue {
   update(snapshot: QueueSnapshot): void;
-  /** Cancels every running pass. Leaving the game and loading a save call it. */
+  /**
+   * Runs a player-started request as a foreground job: it waits until no turn, scene render or pass holds
+   * the model, then holds the queue while it runs. `cancel` removes a waiting job and aborts a running one;
+   * `abort` and `dispose` do the same. Resolves to the job's value in a wrapper, or null when it was canceled, so a job may return null itself.
+   */
+  runForeground<T>(job: (signal: AbortSignal) => Promise<T>, cancel?: AbortSignal): Promise<{ value: T } | null>;
+  /** Cancels every running pass and foreground job. Leaving the game and loading a save call it. */
   abort(): void;
   dispose(): void;
   /** The kinds running now; a new set on every change. */
   running(): ReadonlySet<BackgroundPassKind>;
+  /** A foreground job is waiting for the model. */
+  waiting(): boolean;
   subscribe(listener: () => void): () => void;
 }
 
@@ -360,6 +368,9 @@ export function createBackgroundPassQueue(env: QueueEnv): BackgroundPassQueue {
   const ownWrites = new WeakMap<ChatMessage[], ChatMessage[]>();
   const listeners = new Set<() => void>();
   let lastSession = env.session();
+  // Foreground jobs start oldest first, one at a time, and keep every pass from starting while any waits or runs.
+  const foregroundWaiting: Array<{ run(): void; drop(): void }> = [];
+  let foregroundRunning = false;
 
   const publish = () => {
     runningKinds = new Set([...runningItems.values()].map((item) => item.kind));
@@ -416,6 +427,14 @@ export function createBackgroundPassQueue(env: QueueEnv): BackgroundPassQueue {
   const tick = () => {
     // A new session waits for its first snapshot; the one held is the old save's.
     if (disposed || !snapshot || snapshot.busy || env.session() !== lastSession) return;
+    if (foregroundRunning) return;
+    if (foregroundWaiting.length > 0) {
+      if (runningItems.size === 0) {
+        foregroundWaiting.shift()!.run();
+        publish();
+      }
+      return;
+    }
     const { items: due, prune } = dueItems(snapshot, env);
     if (prune) env.setMilestoneSelection(prune);
     if (!snapshot.concurrent && runningItems.size > 0) return;
@@ -449,17 +468,66 @@ export function createBackgroundPassQueue(env: QueueEnv): BackgroundPassQueue {
       snapshot = next;
       tick();
     },
+    runForeground<T>(job: (signal: AbortSignal) => Promise<T>, cancel?: AbortSignal) {
+      return new Promise<{ value: T } | null>((resolve, reject) => {
+        if (disposed || cancel?.aborted) return resolve(null);
+        const own = new AbortController();
+        const queueSignal = controller.signal;
+        const stop = () => own.abort();
+        const onCancel = () => {
+          own.abort();
+          const at = foregroundWaiting.indexOf(entry);
+          if (at < 0) return;
+          foregroundWaiting.splice(at, 1);
+          entry.drop();
+          publish();
+          tick();
+        };
+        const entry = {
+          drop: () => {
+            cancel?.removeEventListener('abort', onCancel);
+            resolve(null);
+          },
+          run: () => {
+            foregroundRunning = true;
+            queueSignal.addEventListener('abort', stop, { once: true });
+            const done = () => {
+              cancel?.removeEventListener('abort', onCancel);
+              queueSignal.removeEventListener('abort', stop);
+              foregroundRunning = false;
+              if (disposed) return;
+              publish();
+              tick();
+            };
+            let started: Promise<T>;
+            try { started = job(own.signal); } catch (error) { started = Promise.reject(error); }
+            started.then(
+              (value) => { done(); resolve(own.signal.aborted ? null : { value }); },
+              (error: unknown) => { done(); if (own.signal.aborted) resolve(null); else reject(error); },
+            );
+          },
+        };
+        cancel?.addEventListener('abort', onCancel, { once: true });
+        foregroundWaiting.push(entry);
+        publish();
+        tick();
+      });
+    },
     abort() {
       controller.abort();
       controller = new AbortController();
+      foregroundWaiting.splice(0).forEach((entry) => entry.drop());
+      publish();
     },
     dispose() {
       disposed = true;
       controller.abort();
+      foregroundWaiting.splice(0).forEach((entry) => entry.drop());
       runningItems.clear();
       listeners.clear();
     },
     running: () => runningKinds,
+    waiting: () => foregroundWaiting.length > 0,
     subscribe(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);

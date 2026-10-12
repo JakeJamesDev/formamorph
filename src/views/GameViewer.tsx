@@ -3613,23 +3613,32 @@ const GameViewer = ({
     });
   }, [passQueue, fullMessageHistory, parseEffectiveTurns, milestoneSelection, memoryPins, isWaitingForAI, sceneImageJob, concurrentTurnRequests, memoryDigests, describeCharacters, characterDiaries, thinkingMode, allEntities, suppressedCharacterNames]);
 
+  const fullMessageHistoryRef = useRef(fullMessageHistory);
+  fullMessageHistoryRef.current = fullMessageHistory;
+
   // Regenerate one memory on demand (Memory Manager): re-run the digest prompt on that turn and land the
   // result in the override layer as AI text — no pin and no importance bump, because the player authored
   // nothing here; the selector's verdict still governs it. Silent, like every other digest request.
-  // Returns false when the turn has nothing to summarize or the call fails, so the caller can toast.
-  const regenerateMemory = useCallback(async (turnId: string): Promise<boolean> => {
-    const target = digestTarget(fullMessageHistory, turnId);
-    if (!target) return false;
+  // It is a foreground queue job: it waits for running passes, holds the queue, and `signal` cancels it.
+  // Returns false when the turn has nothing to summarize or the call fails, and undefined when canceled.
+  const regenerateMemory = useCallback(async (turnId: string, signal: AbortSignal): Promise<boolean | undefined> => {
+    if (!passQueue) return false;
     try {
-      const digest = await sendAiRequestRef.current(buildDigestRequestRef.current(target));
-      const trimmed = (digest ?? "").trim();
-      if (!trimmed) return false;
-      setMemoryEdits((prev) => ({ ...prev, [turnId]: { text: trimmed, source: 'ai' } }));
-      return true;
+      const run = await passQueue.runForeground(async (queueSignal) => {
+        // Read at start: a pass that ran first may have written this turn's digest.
+        const target = digestTarget(fullMessageHistoryRef.current, turnId);
+        if (!target) return false;
+        const digest = await sendAiRequestRef.current({ ...buildDigestRequestRef.current(target), signal: queueSignal });
+        const trimmed = (digest ?? "").trim();
+        if (!trimmed || queueSignal.aborted) return false;
+        setMemoryEdits((prev) => ({ ...prev, [turnId]: { text: trimmed, source: 'ai' } }));
+        return true;
+      }, signal);
+      return run ? run.value : undefined;
     } catch {
       return false;
     }
-  }, [fullMessageHistory, setMemoryEdits]);
+  }, [passQueue, setMemoryEdits]);
 
   // Embedding drainer: keep a vector on hand for everything the semantic features score at turn time —
   // turn digests (semanticMemory) and dictionary entries (semanticLore) — so scoring is a sync lookup.
@@ -3713,16 +3722,17 @@ const GameViewer = ({
     ));
   }, [setDiscoveredEntities]);
 
-  /** Any AI work that a regeneration must wait behind, so a manual regen never contends with narration
-   *  or a background pass for a single local GPU. */
-  const regenBusy = isWaitingForAI || passesRunning.size > 0 || sceneImageJob !== null;
+  /** A regeneration waits behind the turn, a scene render and running passes, so it never contends with
+   *  them for a single local GPU. */
+  const regenWaiting = useSyncExternalStore(subscribePasses, () => passQueue?.waiting() ?? false);
 
   /**
    * Rewrite a discovered character's description from everything the story has shown of them since.
    * The supplemental context comes from exactly one source, picked by the memory settings; see
-   * lib/discoveredRegen. Resolves to the new text, or null when nothing usable came back.
+   * lib/discoveredRegen. A foreground queue job: `signal` cancels it while it waits or runs.
+   * Resolves to the new text, null when nothing usable came back, or undefined when canceled.
    */
-  const regenerateDiscoveredDescription = useCallback(async (entity: Entity, signal: AbortSignal): Promise<string | null> => {
+  const discoveredDescriptionJob = useCallback(async (entity: Entity, signal: AbortSignal): Promise<string | null> => {
     const record = discoveredEntities.find((d) => d.entity.id === entity.id);
     const name = entity.name;
     const source = selectRegenSource({ semanticMemory, characterDiaries, memoryDigests });
@@ -3745,12 +3755,14 @@ const GameViewer = ({
     }
     if (signal.aborted) return null;
 
+    // Read at start: a pass that ran first may have written the digests and diaries this reads.
+    const history = fullMessageHistoryRef.current;
     const context = buildRegenContext({
-      history: fullMessageHistory,
+      history,
       name,
       sourceTurnId: record?.sourceTurnId,
       source,
-      diaryEntries: source === 'diary' ? collectCharacterDiary(fullMessageHistory, name, -1) : undefined,
+      diaryEntries: source === 'diary' ? collectCharacterDiary(history, name, -1) : undefined,
       semantic,
     });
 
@@ -3765,7 +3777,16 @@ const GameViewer = ({
     });
     if (signal.aborted) return null;
     return cleanDiscoveredDescription(response ?? "", name) || null;
-  }, [discoveredEntities, semanticMemory, characterDiaries, memoryDigests, fullMessageHistory]);
+  }, [discoveredEntities, semanticMemory, characterDiaries, memoryDigests]);
+
+  const regenerateDiscoveredDescription = useCallback(
+    async (entity: Entity, signal: AbortSignal): Promise<string | null | undefined> => {
+      if (!passQueue) return null;
+      const run = await passQueue.runForeground((queueSignal) => discoveredDescriptionJob(entity, queueSignal), signal);
+      return run ? run.value : undefined;
+    },
+    [passQueue, discoveredDescriptionJob],
+  );
 
   const handleSendAction = () => {
     const input = playerInput.trim();
@@ -4523,7 +4544,7 @@ const GameViewer = ({
             // Edit + regenerate are offered for discovered characters only; an authored entity belongs to
             // the world, which play never writes.
             editing={found && isDiscovered ? {
-              busy: regenBusy,
+              waiting: regenWaiting,
               onSave: (text) => updateDiscoveredDescription(found.id, text),
               onRegenerate: (signal) => regenerateDiscoveredDescription(found, signal),
             } : undefined}

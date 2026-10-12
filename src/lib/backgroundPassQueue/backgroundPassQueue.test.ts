@@ -730,3 +730,209 @@ describe('cancel for discover and diary', () => {
     expect(h.names()).toEqual(['discoverEntity:t1:Mira']);
   });
 });
+
+describe('foreground jobs', () => {
+  /** A foreground job the test settles by hand. */
+  function job() {
+    const state = { started: 0, signal: undefined as AbortSignal | undefined, finish: (_value: string) => {} };
+    const run = (signal: AbortSignal) => new Promise<string>((resolve) => {
+      state.started += 1;
+      state.signal = signal;
+      state.finish = resolve;
+    });
+    return { state, run };
+  }
+
+  it('runs at once when nothing holds the model', async () => {
+    const h = host([], { memoryDigests: false });
+    h.render();
+    const { state, run } = job();
+    const result = h.queue.runForeground(run);
+    expect(state.started).toBe(1);
+    state.finish('done');
+    expect(await result).toEqual({ value: 'done' });
+  });
+
+  it('tells a job that returns null from a canceled one', async () => {
+    const h = host([], { memoryDigests: false });
+    h.render();
+    expect(await h.queue.runForeground(async () => null)).toEqual({ value: null });
+    h.queue.dispose();
+    expect(await h.queue.runForeground(async () => null)).toBeNull();
+  });
+
+  it('waits behind a running pass, then runs', async () => {
+    const h = host(historyOf({ id: 't1' }));
+    h.render();
+    const { state, run } = job();
+    const result = h.queue.runForeground(run);
+    expect(state.started).toBe(0);
+    expect(h.queue.waiting()).toBe(true);
+    await h.sent[0].answer('First.');
+    expect(state.started).toBe(1);
+    expect(h.queue.waiting()).toBe(false);
+    state.finish('done');
+    expect(await result).toEqual({ value: 'done' });
+  });
+
+  it('waits behind every running pass in concurrent mode', async () => {
+    const h = host(historyOf({ id: 't1' }, { id: 't2' }), { concurrent: true });
+    h.render();
+    const { state, run } = job();
+    void h.queue.runForeground(run);
+    await h.sent[0].answer('First.');
+    expect(state.started).toBe(0);
+    await h.sent[1].answer('Second.');
+    expect(state.started).toBe(1);
+  });
+
+  it('waits while a turn runs', () => {
+    const h = host([], { busy: true });
+    h.render();
+    const { state, run } = job();
+    void h.queue.runForeground(run);
+    expect(state.started).toBe(0);
+    h.gate.busy = false;
+    h.render();
+    expect(state.started).toBe(1);
+  });
+
+  it('holds the queue while it runs, then lets the passes go', async () => {
+    const h = host(historyOf({ id: 't1' }), { memoryDigests: false });
+    h.render();
+    const { state, run } = job();
+    void h.queue.runForeground(run);
+    h.gate.memoryDigests = true;
+    h.render();
+    expect(h.sent).toHaveLength(0);
+    state.finish('done');
+    await h.settle();
+    expect(h.targets()).toEqual(['summary:t1']);
+  });
+
+  it('keeps new passes out while a job waits', async () => {
+    const h = host(historyOf({ id: 't1' }), { concurrent: true });
+    h.render();
+    const { run } = job();
+    void h.queue.runForeground(run);
+    h.replaceHistory(historyOf({ id: 't1' }, { id: 't2' }));
+    expect(h.targets()).toEqual(['summary:t1']);
+  });
+
+  it('removes a job canceled while waiting, and the passes behind it go on', async () => {
+    const h = host(historyOf({ id: 't1' }));
+    h.render();
+    const { state, run } = job();
+    const cancel = new AbortController();
+    const result = h.queue.runForeground(run, cancel.signal);
+    cancel.abort();
+    expect(await result).toBeNull();
+    expect(h.queue.waiting()).toBe(false);
+    await h.sent[0].answer('First.');
+    expect(state.started).toBe(0);
+    expect(h.targets()).toEqual(['summary:t1', 'milestoneSelect:t1']);
+  });
+
+  it('aborts a job canceled while running and frees the queue', async () => {
+    const h = host(historyOf({ id: 't1' }), { memoryDigests: false });
+    h.render();
+    const { state, run } = job();
+    const cancel = new AbortController();
+    const result = h.queue.runForeground(run, cancel.signal);
+    h.gate.memoryDigests = true;
+    h.render();
+    cancel.abort();
+    expect(state.signal!.aborted).toBe(true);
+    state.finish('late');
+    expect(await result).toBeNull();
+    await h.settle();
+    expect(h.targets()).toEqual(['summary:t1']);
+  });
+
+  it('runs the oldest waiting job first, one at a time', async () => {
+    const h = host([], { busy: true });
+    h.render();
+    const first = job();
+    const second = job();
+    void h.queue.runForeground(first.run);
+    void h.queue.runForeground(second.run);
+    h.gate.busy = false;
+    h.render();
+    expect([first.state.started, second.state.started]).toEqual([1, 0]);
+    first.state.finish('a');
+    await flush();
+    expect(second.state.started).toBe(1);
+  });
+
+  it('cancels a waiting job and aborts a running one on abort', async () => {
+    const h = host(historyOf({ id: 't1' }));
+    h.render();
+    const running = job();
+    const waiting = job();
+    const first = h.queue.runForeground(running.run);
+    const second = h.queue.runForeground(waiting.run);
+    await h.sent[0].answer('First.');
+    expect(running.state.started).toBe(1);
+    h.queue.abort();
+    expect(running.state.signal!.aborted).toBe(true);
+    running.state.finish('late');
+    expect(await first).toBeNull();
+    expect(await second).toBeNull();
+    expect(waiting.state.started).toBe(0);
+  });
+
+  it('aborts a running job on dispose', async () => {
+    const h = host([], { memoryDigests: false });
+    h.render();
+    const { state, run } = job();
+    const result = h.queue.runForeground(run);
+    h.queue.dispose();
+    expect(state.signal!.aborted).toBe(true);
+    state.finish('late');
+    expect(await result).toBeNull();
+  });
+
+  it('resolves null for a job sent after dispose or with a canceled signal', async () => {
+    const h = host([], { memoryDigests: false });
+    h.render();
+    const cancel = new AbortController();
+    cancel.abort();
+    const { state, run } = job();
+    expect(await h.queue.runForeground(run, cancel.signal)).toBeNull();
+    h.queue.dispose();
+    expect(await h.queue.runForeground(run)).toBeNull();
+    expect(state.started).toBe(0);
+  });
+
+  it('rejects when the job fails and frees the queue', async () => {
+    const h = host(historyOf({ id: 't1' }), { memoryDigests: false });
+    h.render();
+    const result = h.queue.runForeground(() => Promise.reject(new Error('boom')));
+    await expect(result).rejects.toThrow('boom');
+    h.gate.memoryDigests = true;
+    h.render();
+    expect(h.targets()).toEqual(['summary:t1']);
+  });
+
+  it('rejects and frees the queue when the job throws before it returns a promise', async () => {
+    const h = host(historyOf({ id: 't1' }), { memoryDigests: false });
+    h.render();
+    const result = h.queue.runForeground<string>(() => { throw new Error('sync'); });
+    await expect(result).rejects.toThrow('sync');
+    h.gate.memoryDigests = true;
+    h.render();
+    expect(h.targets()).toEqual(['summary:t1']);
+  });
+
+  it('tells its listeners when a job starts waiting and stops', async () => {
+    const h = host(historyOf({ id: 't1' }));
+    h.render();
+    const seen: boolean[] = [];
+    h.queue.subscribe(() => seen.push(h.queue.waiting()));
+    const { run } = job();
+    void h.queue.runForeground(run);
+    await h.sent[0].answer('First.');
+    expect(seen[0]).toBe(true);
+    expect(seen[seen.length - 1]).toBe(false);
+  });
+});
