@@ -23,7 +23,7 @@ The two-axis review of the six landed tickets (2026-10-11) found no blocking def
 - `quiet` is documented on the transport's request type as "the transport never reads it". Move it to the view-side request wrapper, or drop the field from the transport's type.
 
 **Spec**
-- Changelog: the Request Anatomy line names re-rolls only; the spec lists digests and diaries too. Add "silent passes wait while a manual scene render runs". Add the backfill order change (below). Fold each into the existing unreleased entry rather than adding a new one.
+- Changelog: three new fragments, each named after its feature per the changelog.d README (ruled 2026-10-11; a worktree writes fragments only, and prepare lands each as its own entry). One: digests and diaries show their Request Anatomy in the AI-context viewer; the existing re-roll line stays as it is. Two: silent passes wait while a manual scene render runs. Three: backfills run oldest turn first (Q21).
 - Test the Show Silent Requests gate on the status label with a mounted render, and the view's variant-name lookup in the diary request (a diary for "Aldric" carries "Sergeant Aldric"'s text).
 
 **Rulings from the review (2026-10-11)**
@@ -41,5 +41,5 @@ No world or save shape change. The changelog edit is a fragment in `docs-interna
 - [ ] The queue's digest and diary apply share one function; the target types share a base.
 - [ ] `quiet` is no longer a documented no-op on the transport's type.
 - [ ] Two new tests: the Show Silent Requests gate, and the variant-name diary lookup through the view.
-- [ ] The unreleased changelog entry names Request Anatomy for digests and diaries, the scene-render wait, and the oldest-first backfill.
+- [ ] Three changelog fragments: Request Anatomy for digests and diaries, the scene-render wait, the oldest-first backfill.
 - [ ] Four gates green.
