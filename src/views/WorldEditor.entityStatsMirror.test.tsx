@@ -83,8 +83,8 @@ const selectRow = (name: string) => fireEvent.click(within(treeRow(name)).getByT
 const ownStats = (ctx: () => { entities: World['entities'] }, id: string) => ctx().entities.find((e) => e.id === id)!.stats;
 const panelOpen = () => !!screen.queryByRole('tablist', { name: 'Stat Fields' });
 /** The Details tab's number fields hold no label link, so they are read in the order the panel draws them. */
-const numberField = (name: 'Min' | 'Max' | 'Initial Value' | 'Regen') =>
-  screen.getAllByRole('spinbutton')[['Min', 'Max', 'Initial Value', 'Regen'].indexOf(name)];
+const numberField = (name: 'Base Value' | 'Min' | 'Max' | 'Regen') =>
+  screen.getAllByRole('spinbutton')[['Base Value', 'Min', 'Max', 'Regen'].indexOf(name)];
 /** Replaces the Name field's text through its composer, as one edit. */
 const setName = (text: string) => act(async () => {
   const field = screen.getByRole('textbox', { name: 'Name' });

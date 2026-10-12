@@ -52,8 +52,8 @@ const pickBlueprint = (action: 'Link Stat', name: string) => {
 };
 const entityOf = (ctx: () => { entities: World['entities'] }) => ctx().entities.find((e) => e.id === 'ash')!;
 /** The Details tab's number fields, in the order the panel draws them. */
-const numberField = (name: 'Min' | 'Max' | 'Initial Value' | 'Regen') =>
-  screen.getAllByRole('spinbutton')[['Min', 'Max', 'Initial Value', 'Regen'].indexOf(name)];
+const numberField = (name: 'Base Value' | 'Min' | 'Max' | 'Regen') =>
+  screen.getAllByRole('spinbutton')[['Base Value', 'Min', 'Max', 'Regen'].indexOf(name)];
 
 beforeEach(() => { localStorage.clear(); });
 
@@ -93,10 +93,10 @@ describe('Link Stat on an entity', () => {
     expect(entityOf(ctx).statLinks).toEqual([expect.objectContaining({ originalId: 'bp-trust', kind: 'stat', groupId: null })]);
     expect(entityOf(ctx).stats).toBeUndefined();
     expect(screen.getByText(/Linked from/)).toHaveTextContent('Linked from Blueprints › Trust');
-    expect(numberField('Initial Value')).toHaveValue(5);
+    expect(numberField('Base Value')).toHaveValue(5);
 
     act(() => ctx().updateStat(stat('bp-trust', 'Trust', { groupId: 'bp', value: 7 })));
-    expect(numberField('Initial Value')).toHaveValue(7);
+    expect(numberField('Base Value')).toHaveValue(7);
 
     openAddMenu('Ash');
     fireEvent.click(screen.getByRole('button', { name: 'Link Stat' }));
@@ -111,7 +111,7 @@ describe('Link Stat on an entity', () => {
     openAddMenu('Ash');
     pickBlueprint('Link Stat', 'Trust');
 
-    fireEvent.change(numberField('Initial Value'), { target: { value: '9' } });
+    fireEvent.change(numberField('Base Value'), { target: { value: '9' } });
     fireEvent.change(numberField('Regen'), { target: { value: '2' } });
     expect(entityOf(ctx).statLinks![0].overrides).toEqual({
       'bp-trust': { value: { value: 9, blueprint: 5 }, regen: { value: 2, blueprint: 0 } },
@@ -121,10 +121,10 @@ describe('Link Stat on an entity', () => {
 
     act(() => ctx().updateStat(stat('bp-trust', 'Trust', { groupId: 'bp', value: 6 })));
     expect(screen.getAllByText('Blueprint changed')).toHaveLength(1);
-    expect(numberField('Initial Value')).toHaveValue(9);
+    expect(numberField('Base Value')).toHaveValue(9);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Reset Initial Value' }));
-    expect(numberField('Initial Value')).toHaveValue(6);
+    fireEvent.click(screen.getByRole('button', { name: 'Reset Base Value' }));
+    expect(numberField('Base Value')).toHaveValue(6);
     expect(Object.keys(entityOf(ctx).statLinks![0].overrides!['bp-trust'])).toEqual(['regen']);
 
     fireEvent.click(screen.getByRole('button', { name: 'Reset to Blueprint' }));
@@ -162,7 +162,7 @@ describe('Detach on an entity', () => {
     openMirror('Ash');
     openAddMenu('Ash');
     pickBlueprint('Link Stat', 'Trust');
-    fireEvent.change(numberField('Initial Value'), { target: { value: '9' } });
+    fireEvent.change(numberField('Base Value'), { target: { value: '9' } });
     fireEvent.click(screen.getByRole('button', { name: 'Back to Stats' }));
 
     fireEvent.click(within(rowWith('Trust', 'Detach')).getByRole('button', { name: 'Detach' }));
@@ -228,7 +228,7 @@ describe('a group link', () => {
     fireEvent.click(screen.getByText('Fear'));
     expect(screen.getByText(/Part of the linked/)).toHaveTextContent('Part of the linked Blueprints › Social');
     expect(within(rowWith('Social', 'Detach')).queryByLabelText('Modified for this link')).toBeNull();
-    fireEvent.change(numberField('Initial Value'), { target: { value: '8' } });
+    fireEvent.change(numberField('Base Value'), { target: { value: '8' } });
     expect(entityOf(ctx).statLinks![0].overrides).toEqual({ 'bp-fear': { value: { value: 8, blueprint: 3 } } });
     fireEvent.click(screen.getByRole('button', { name: 'Back to Stats' }));
     expect(within(rowWith('Social', 'Detach')).getByLabelText('Modified for this link')).toBeInTheDocument();

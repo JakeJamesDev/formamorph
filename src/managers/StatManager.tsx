@@ -38,7 +38,8 @@ import { labelPlaceholders } from "@/lib/placementLetters";
 import { CODE_BOX_TARGET, CODE_FIELD, REPLACE_CODE_TITLE, replaceCodeDescription, type StatCodeTiming } from "@/lib/statCodeTiming";
 import { findTargetRow, routeText } from "@/lib/surface/surfaceTargets";
 import { useLanding } from "@/lib/surface/useLanding";
-import type { FocusFieldHint, Stat, StatDescriptor, StatLinkFields, StatType, ThresholdUnit } from "@/types";
+import type { FocusFieldHint, RegenUnit, Stat, StatDescriptor, StatLinkFields, StatType, ThresholdUnit } from "@/types";
+import { REGEN_UNIT_LABELS, REGEN_UNITS, regenPer, regenPerHour, regenUnitOf } from "@/lib/regenUnits";
 import { FieldReset, LabelRow } from '@/components/editor/BlueprintReset';
 import { WorldInput } from '@/components/editor/WorldField';
 import { fieldFrame } from '@/lib/historyField';
@@ -293,6 +294,42 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
   // empty one. The shared list stays whole: it is what the dev-router ledger is guarded against.
   const tabs = statPanelTabsFor(advanced).filter((t) => t.value !== 'code' || isNumeric);
 
+  // `regen` stays per hour; the unit only sets the span the number reads in. Picking a unit keeps the number
+  // shown, so typing 2 then picking Day means 2 per day.
+  const regenUnit = regenUnitOf(editingStat);
+  const regenShown = regenPer(editingStat.regen || 0, regenUnit);
+  const regenLinkFields = (['regen', 'regenUnit'] as const).filter((f) => link?.overridden.includes(f));
+  const regenReset = link && regenLinkFields.length > 0
+    ? <FieldReset field="Regen" stale={regenLinkFields.some((f) => link.stale.includes(f))} onReset={() => link.reset('regen')} />
+    : undefined;
+  const regenField = (
+    <div {...fieldFrame('regen')}>
+      {regenReset ? <LabelRow reset={regenReset}><Label>Regen</Label></LabelRow> : <Label>Regen</Label>}
+      <div className="flex gap-1">
+        <WorldInput
+          type="number"
+          className="min-w-0 flex-1"
+          aria-label="Regen"
+          value={regenShown}
+          onChange={(e) => handleChange("regen", regenPerHour(Number(e.target.value), regenUnit))}
+        />
+        <Select
+          value={regenUnit}
+          onValueChange={(unit: RegenUnit) => apply({ regenUnit: unit, regen: regenPerHour(regenShown, unit) })}
+        >
+          <SelectTrigger className="w-auto shrink-0 gap-1 px-2" aria-label="Regen Unit">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {REGEN_UNITS.map((unit) => (
+              <SelectItem key={unit} value={unit}>/ {REGEN_UNIT_LABELS[unit]}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+  );
+
   const details = (
     <>
       {/* The identity line: the name takes the room it needs and the type select keeps a fixed width, so
@@ -342,16 +379,8 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {isPercentage ? (
               <>
-                <div>
-                  <Label>Min</Label>
-                  <Input type="number" value={0} readOnly disabled />
-                </div>
-                <div>
-                  <Label>Max</Label>
-                  <Input type="number" value={100} readOnly disabled />
-                </div>
                 <div {...fieldFrame('value')}>
-                  {fieldLabel('value', 'Initial Value (%)')}
+                  {fieldLabel('value', 'Base Value (%)')}
                   <WorldInput
                     type="number"
                     min={0}
@@ -360,17 +389,26 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
                     onChange={(e) => handleChange("value", clamp(Number(e.target.value), 0, 100))}
                   />
                 </div>
-                <div {...fieldFrame('regen')}>
-                  {fieldLabel('regen', 'Regen')}
-                  <WorldInput
-                    type="number"
-                    value={editingStat.regen || 0}
-                    onChange={(e) => handleChange("regen", Number(e.target.value))}
-                  />
+                <div>
+                  <Label>Min</Label>
+                  <Input type="number" value={0} readOnly disabled />
                 </div>
+                <div>
+                  <Label>Max</Label>
+                  <Input type="number" value={100} readOnly disabled />
+                </div>
+                {regenField}
               </>
             ) : (
               <>
+                <div {...fieldFrame('value')}>
+                  {fieldLabel('value', 'Base Value')}
+                  <WorldInput
+                    type="number"
+                    value={(editingStat.value as number) || 0}
+                    onChange={(e) => handleChange("value", Number(e.target.value))}
+                  />
+                </div>
                 <div {...fieldFrame('min')}>
                   {fieldLabel('min', 'Min')}
                   <WorldInput
@@ -387,22 +425,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
                     onChange={(e) => handleChange("max", Number(e.target.value))}
                   />
                 </div>
-                <div {...fieldFrame('value')}>
-                  {fieldLabel('value', 'Initial Value')}
-                  <WorldInput
-                    type="number"
-                    value={(editingStat.value as number) || 0}
-                    onChange={(e) => handleChange("value", Number(e.target.value))}
-                  />
-                </div>
-                <div {...fieldFrame('regen')}>
-                  {fieldLabel('regen', 'Regen')}
-                  <WorldInput
-                    type="number"
-                    value={editingStat.regen || 0}
-                    onChange={(e) => handleChange("regen", Number(e.target.value))}
-                  />
-                </div>
+                {regenField}
               </>
             )}
           </div>

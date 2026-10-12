@@ -55,8 +55,8 @@ async function openStats(draft: Entity = ash, traitWorld?: LibraryEditorWorld) {
   await userEvent.click(screen.getByRole('tab', { name: 'Stats' }));
 }
 
-const numberField = (name: 'Min' | 'Max' | 'Initial Value' | 'Regen') =>
-  screen.getAllByRole('spinbutton')[['Min', 'Max', 'Initial Value', 'Regen'].indexOf(name)];
+const numberField = (name: 'Base Value' | 'Min' | 'Max' | 'Regen') =>
+  screen.getAllByRole('spinbutton')[['Base Value', 'Min', 'Max', 'Regen'].indexOf(name)];
 const searchBox = () => screen.getByPlaceholderText('Search or add new stats');
 const openAddMenu = () => userEvent.click(screen.getByRole('button', { name: /^Add to Ash/ }));
 const selectedRow = () => within(document.querySelector('[data-editor-row-selected]') as HTMLElement);
@@ -72,13 +72,13 @@ describe('the library entity Stats tab', () => {
     expect(screen.getByText('Grit')).toBeInTheDocument();
     await userEvent.click(screen.getByText('Grit'));
     expect(screen.getByLabelText('Name')).toHaveTextContent('Grit');
-    expect(numberField('Initial Value')).toBeInTheDocument();
+    expect(numberField('Base Value')).toBeInTheDocument();
   });
 
   it('keeps the list beside the details, with no back row', async () => {
     await openStats();
     await userEvent.click(screen.getByText('Grit'));
-    expect(numberField('Initial Value')).toBeInTheDocument();
+    expect(numberField('Base Value')).toBeInTheDocument();
     expect(screen.getByText('Feelings')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Stats' })).not.toBeInTheDocument();
   });
@@ -86,7 +86,7 @@ describe('the library entity Stats tab', () => {
   it('saves an edit to an own stat with the entity', async () => {
     await openStats();
     await userEvent.click(screen.getByText('Grit'));
-    fireEvent.change(numberField('Initial Value'), { target: { value: '7' } });
+    fireEvent.change(numberField('Base Value'), { target: { value: '7' } });
     const saved = await saveEntity();
     expect(saved.stats!.find((s) => s.id === 'grit')!.value).toBe(7);
     expect(saved.stats!.find((s) => s.id === 'mood')!.value).toBe(3);
@@ -168,8 +168,8 @@ describe("the library entity Stats tab's links", () => {
     await openStats(ash, world);
     await userEvent.click(screen.getByText('Trust'));
     expect(screen.getByText(/^Linked from/)).toHaveTextContent('Linked from Blueprints › Trust');
-    expect(numberField('Initial Value')).toHaveValue(5);
-    fireEvent.change(numberField('Initial Value'), { target: { value: '9' } });
+    expect(numberField('Base Value')).toHaveValue(5);
+    fireEvent.change(numberField('Base Value'), { target: { value: '9' } });
     const link = (await saveEntity()).statLinks![0];
     expect(link).toMatchObject({ id: 'l-trust', originalId: 'n-trust', originalName: 'Trust', order: 5 });
     expect(link.overrides!['n-trust'].value).toEqual({ value: 9, blueprint: 5 });
@@ -195,7 +195,7 @@ describe("the library entity Stats tab's links", () => {
   it('keeps a Link the world lacks as the card stored it', async () => {
     await openStats(ash, world);
     await userEvent.click(screen.getByText('Grit'));
-    fireEvent.change(numberField('Initial Value'), { target: { value: '8' } });
+    fireEvent.change(numberField('Base Value'), { target: { value: '8' } });
     expect((await saveEntity()).statLinks!.find((l) => l.id === 'l-bond')).toEqual(ash.statLinks![1]);
   });
 });
