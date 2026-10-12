@@ -2,6 +2,7 @@
 import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach } from 'vitest';
 import EntityStorageService, { type StoredEntityRecord } from './EntityStorageService';
+import type { Entity } from '@/types';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 
 import { phValues } from '@/test/placeholderValues';
@@ -138,6 +139,17 @@ describe('EntityStorageService', () => {
       downloadedAt: '2026-07-01T00:00:00.000Z',
       sourceUpdatedAt: '2026-07-01T00:00:00.000Z',
     });
+  });
+
+  it('shows slot 0 on the library grid, its Visibility rule ignored', async () => {
+    const images = [{ data: 'data:slot0', requires: [{ all: [{ kind: 'trait' as const, id: 'knight' }] }] }, { data: 'data:slot1' }];
+    await EntityStorageService.storeEntity({ id: 'g1', name: 'Wren', data: { id: 'g1', name: 'Wren', images } });
+    expect((await EntityStorageService.getEntityMetadata()).find((m) => m.id === 'g1')?.image).toBe('data:slot0');
+  });
+
+  it('reads a gallery stored as data strings as images, once', async () => {
+    await EntityStorageService.storeEntity({ id: 'g2', name: 'Old', data: { id: 'g2', name: 'Old', images: ['data:a', 'data:b'] } as unknown as Entity });
+    expect((await EntityStorageService.getEntityData('g2')).images).toEqual([{ data: 'data:a' }, { data: 'data:b' }]);
   });
 
   it('flags a persona on the metadata the Personas filter reads, and only a persona', async () => {

@@ -29,7 +29,7 @@ import { GenerateImageButton } from '../components/GenerateImageButton';
 import type { ImageCap } from '../lib/imageOptim';
 import type { ImageSubjectKind } from '@/lib/imagePrompt';
 import { useEditorMode } from '@/lib/editorMode';
-import type { Placeholder } from '@/types';
+import type { GalleryImage, Placeholder } from '@/types';
 import { Tip } from '@/components/ui/tooltip';
 import { fieldFrame } from '@/lib/historyField';
 
@@ -39,8 +39,8 @@ interface ImageWidgetProps {
   /** The Authoring Tour's `data-tour-anchor` for the widget, when a step points at it. */
   tourAnchor?: string;
   /** The pictures this subject carries, in order; slot 0 is the primary. */
-  images: string[];
-  onImagesChange: (next: string[]) => void;
+  images: GalleryImage[];
+  onImagesChange: (next: GalleryImage[]) => void;
   /** How many pictures may be held. One (the default) renders as a plain single upload with no gallery chrome.
    *  Pass Infinity for an unbounded gallery. */
   slots?: number;
@@ -166,6 +166,13 @@ const AddTile = ({ htmlFor, selected, onSelect, onUrl, onFiles }: {
   );
 };
 
+/** `list` with slot `index` showing `data` under the slot's own rule; an empty `data` drops the slot and its rule. */
+function withSlotData(list: readonly GalleryImage[], index: number, data: string): GalleryImage[] {
+  const next: (GalleryImage | undefined)[] = [...list];
+  next[index] = data ? { ...list[index], data } : undefined;
+  return next.filter((img): img is GalleryImage => !!img);
+}
+
 /**
  * The picture half of the widget: the image-upload → embedded-prompt confirmation → generate-image stack
  * shared by the Location and Entity editors. Owns the `pendingPrompt` handshake: an uploaded image's
@@ -200,7 +207,8 @@ export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
   const { promptImagesBatch, dialog: batchDialog } = useDownscalePrompt();
 
   // Filled slots, plus a trailing empty one to upload into while there is room.
-  const shown = images.slice(0, slots);
+  const shownImages = images.slice(0, slots);
+  const shown = shownImages.map((img) => img.data);
   const rows = shown.length < slots ? [...shown, ''] : shown;
   // One slot renders as the plain uploader it always was; several earn the frame-and-strip pane.
   const gallery = slots > 1;
@@ -223,11 +231,7 @@ export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
   const openSlot = rows.findIndex((url) => !url);
 
   /** Write one slot; an emptied slot drops out rather than leaving a hole for the next one to fall into. */
-  const setSlot = (index: number, value: string) => {
-    const next = [...shown];
-    next[index] = value;
-    onImagesChange(next.filter(Boolean));
-  };
+  const setSlot = (index: number, value: string) => onImagesChange(withSlotData(shownImages, index, value));
 
   /** Take a generated picture. It fills the open slot where there is one, and otherwise asks which picture it
    *  replaces, resolving false if the author decides it replaces none of them. */
@@ -279,9 +283,7 @@ export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
         thumbs.forEach(URL.revokeObjectURL);
       }
     }
-    const next = [...shown];
-    stored.forEach((url, k) => { next[index + k] = url; });
-    onImagesChange(next.filter(Boolean));
+    onImagesChange(stored.reduce((next, url, k) => withSlotData(next, index + k, url), shownImages));
   };
 
   // The pane behind the framed picture. A framed picture refuses drops itself, so without this a drag over
@@ -308,7 +310,7 @@ export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
     const from = tileIds.indexOf(String(active.id));
     const to = tileIds.indexOf(String(over.id));
     if (from === -1 || to === -1) return;
-    onImagesChange(arrayMove(shown, from, to).filter(Boolean));
+    onImagesChange(arrayMove(shownImages, from, to));
     // Follow the picture, not the position — otherwise dragging the framed one leaves the frame behind.
     setSelected(followReorder(showing, from, to));
   };

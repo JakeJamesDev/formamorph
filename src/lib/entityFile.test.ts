@@ -15,7 +15,7 @@ const entity: Entity = {
   aiDescription: 'Wren knows every channel of the fen.',
   aiSummary: 'marsh guide',
   imageTags: 'woman, cloak, reeds',
-  images: ['data:image/webp;base64,AAAA', 'data:image/webp;base64,BBBB'],
+  images: [{ data: 'data:image/webp;base64,AAAA' }, { data: 'data:image/webp;base64,BBBB' }],
   model: { data: 'data:model', type: 'model/gltf-binary' },
   sound: { data: 'data:sound', type: 'audio/mpeg' },
 };
@@ -173,7 +173,7 @@ describe('parseEntityCardData', () => {
     expect(a.id).not.toBe('orig-id');
     expect(a.id).not.toBe(b.id);
     // Only the carried extras come back; the primary is the card's own pixels, added by the importer.
-    expect(a.images).toEqual(['data:image/webp;base64,BBBB']);
+    expect(a.images).toEqual([{ data: 'data:image/webp;base64,BBBB' }]);
     expect(a.name).toBe('Wren');
     expect(a.imageTags).toBe('woman, cloak, reeds');
   });

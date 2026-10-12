@@ -4,6 +4,7 @@ import { adoptOwnedTraits, comparableOwnedTraits, traitWorldOf, type TraitWorld 
 import { bindCarriedBlueprints } from '@/lib/blueprintTravel';
 import { followedLibraryId } from '@/lib/publishLinks';
 import { entityTexts } from '@/lib/entityTexts';
+import { entityImages } from '@/lib/entityImages';
 import { randomUUID } from '@/lib/uuid';
 import type { CommunityLink, ContentLink, Dictionary, Entity, Placeholder, PlaceholderGroup } from '@/types';
 
@@ -150,7 +151,9 @@ export function chipTexts(item: LinkableContent): string[] {
  *  own, so two identical books never share them. */
 function authoredContent(item: LinkableContent): unknown {
   const shed: Record<string, unknown> = withoutWorldFields(item);
-  if (!('entries' in item) && (item.traits || item.traitLinks)) Object.assign(shed, comparableOwnedTraits(item));
+  // A world file read before migration still holds data strings; the library copy holds images.
+  if (!('entries' in item) && item.images) shed.images = entityImages(item);
+  if (!('entries' in item) && (item.traits || item.traitLinks || item.images)) Object.assign(shed, comparableOwnedTraits(item));
   if (!('entries' in item) && item.statLinks) Object.assign(shed, comparableOwnedStats(item));
   if (Array.isArray(shed.entries)) {
     shed.entries = (shed.entries as { id?: string }[]).map(({ id: _entryId, ...entry }) => entry);

@@ -35,7 +35,7 @@ describe('APP_VERSION', () => {
 describe('migrateWorld — entity galleries', () => {
   it('folds a pre-gallery portrait into the gallery', () => {
     const out = migrateWorld({ worldOverview: {}, entities: [{ id: 'e', name: 'Wren', image: 'a' }] });
-    expect(out.entities[0].images).toEqual(['a']);
+    expect(out.entities[0].images).toEqual([{ data: 'a' }]);
     expect('image' in out.entities[0]).toBe(false);
   });
 
@@ -45,12 +45,19 @@ describe('migrateWorld — entity galleries', () => {
       worldOverview: {},
       entities: [{ id: 'e', name: 'Wren', image: 'a' }],
     });
-    expect(out.entities[0].images).toEqual(['a']);
+    expect(out.entities[0].images).toEqual([{ data: 'a' }]);
   });
 
-  it('leaves an authored gallery alone', () => {
-    const out = migrateWorld({ worldOverview: {}, entities: [{ id: 'e', name: 'Wren', images: ['a', 'b'] }] });
-    expect(out.entities[0].images).toEqual(['a', 'b']);
+  it('wraps each image of a string gallery once, and a second pass changes no byte', () => {
+    const once = migrateWorld({ version: APP_VERSION, worldOverview: {}, entities: [{ id: 'e', name: 'Wren', images: ['a', 'b'] }] });
+    expect(once.entities[0].images).toEqual([{ data: 'a' }, { data: 'b' }]);
+    expect(JSON.stringify(migrateWorld(JSON.parse(JSON.stringify(once))))).toBe(JSON.stringify(once));
+  });
+
+  it('leaves an authored gallery alone, rules and all', () => {
+    const images = [{ data: 'a', requires: [{ all: [{ kind: 'trait', id: 'knight' }] }] }, { data: 'b' }];
+    const out = migrateWorld({ worldOverview: {}, entities: [{ id: 'e', name: 'Wren', images }] });
+    expect(out.entities[0].images).toEqual(images);
   });
 });
 

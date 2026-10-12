@@ -2,7 +2,7 @@
  * Where a world keeps its images, and the size budget for each. DOM-free, so workers can count images.
  */
 import type { World } from '@/types';
-import { entityImages } from './entityImages';
+import { entityImageData } from './entityImages';
 
 /** A per-use size budget for an image field. `maxDim` caps the longest edge (px); `maxBytes` the encoded size. */
 export interface ImageCap {
@@ -27,7 +27,7 @@ export function worldImageSlots(world: World): ImageSlot[] {
   if (thumb) slots.push({ url: thumb, cap: IMAGE_CAPS.thumbnail, path: 'thumbnail' });
   for (const e of world.entities ?? []) {
     // Every picture in the gallery counts, so a world's second and third portraits are budgeted like the first.
-    entityImages(e).forEach((url, i) => slots.push({ url, cap: IMAGE_CAPS.entity, path: `entity:${e.id}:${i}` }));
+    entityImageData(e).forEach((url, i) => slots.push({ url, cap: IMAGE_CAPS.entity, path: `entity:${e.id}:${i}` }));
   }
   for (const l of world.locations ?? []) {
     if (l.backgroundImage) slots.push({ url: l.backgroundImage, cap: IMAGE_CAPS.background, path: `location:${l.id}` });

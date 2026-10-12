@@ -989,7 +989,7 @@ describe('world personas in the Persona category', () => {
 describe('EnterWorldWorkspace cast pages', () => {
   const owned = (id: string, extra: Partial<Trait> = {}): Trait => ({ id, name: id[0].toUpperCase() + id.slice(1), statChanges: [], ...extra });
   const ash: Entity = {
-    id: 'ash', name: 'Ash', persona: true, images: ['data:image/png;base64,ash'], playerDescription: 'A grey wolf.',
+    id: 'ash', name: 'Ash', persona: true, images: [{ data: 'data:image/png;base64,ash' }], playerDescription: 'A grey wolf.',
     traitPlacement: { groupId: 'origin', order: 1 },
     traits: [owned('tamed', { isDefault: true }), owned('guard', { requires: [{ all: [{ kind: 'playingAs', id: 'ash' }] }] })],
   };

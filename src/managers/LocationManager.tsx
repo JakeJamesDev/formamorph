@@ -174,8 +174,8 @@ const LocationManager = ({ location, tab, onTabChange, focusField }: {
         <ImageTagsField
           label="Background Image"
           tourAnchor="location-image"
-          images={editingLocation.backgroundImage ? [editingLocation.backgroundImage] : []}
-          onImagesChange={(list) => handleChange('backgroundImage', list[0] ?? '')}
+          images={editingLocation.backgroundImage ? [{ data: editingLocation.backgroundImage }] : []}
+          onImagesChange={(list) => handleChange('backgroundImage', list[0]?.data ?? '')}
           imageId={`location-image-${editingLocation.id}`}
           cap={IMAGE_CAPS.background}
           description={editingLocation.aiDescription || editingLocation.playerDescription}

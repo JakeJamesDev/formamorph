@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import type { World } from '@/types';
+import type { Entity, World } from '@/types';
 
 vi.mock('react-toastify', () => ({
   toast: Object.assign(vi.fn(() => 'progress-toast'), {
@@ -77,6 +77,23 @@ describe('useDownscalePrompt progress toast', () => {
     expect(toast).not.toHaveBeenCalled();
   });
 
+  it('promptEntity downscales the gallery and keeps each image’s rule on its own slot', async () => {
+    const wounded = [{ all: [{ kind: 'stat' as const, id: 'hp', operator: '<' as const, value: 20, unit: 'percent' as const }] }];
+    const maren: Entity = {
+      id: 'e1', name: 'Maren',
+      images: [{ data: 'data:image/png;base64,big' }, { data: 'data:image/png;base64,hurt', requires: wounded }],
+    };
+    render(<Host />);
+    let run!: Promise<Entity>;
+    act(() => { run = api.promptEntity(maren); });
+
+    fireEvent.click(await screen.findByText('Downscale'));
+    expect((await run).images).toEqual([
+      { data: 'data:image/webp;base64,small' },
+      { data: 'data:image/webp;base64,small', requires: wounded },
+    ]);
+  });
+
   it('promptImage reports through the shared toast', async () => {
     render(<Host />);
     let run!: Promise<string>;
@@ -100,7 +117,7 @@ describe('useDownscalePrompt — the Optimize offer counts only what converts', 
   const worldWith = (thumbnail: string, images: string[] = []) => ({
     id: 'w',
     worldOverview: { thumbnail },
-    entities: images.length ? [{ id: 'e1', name: 'Maren', images }] : [],
+    entities: images.length ? [{ id: 'e1', name: 'Maren', images: images.map((data) => ({ data })) }] : [],
     locations: [],
   } as unknown as World);
 
@@ -189,7 +206,7 @@ describe('useDownscalePrompt — within-budget convertibles are still offered Op
   const worldWith = (thumbnail: string, images: string[] = []) => ({
     id: 'w',
     worldOverview: { thumbnail },
-    entities: images.length ? [{ id: 'e1', name: 'Maren', images }] : [],
+    entities: images.length ? [{ id: 'e1', name: 'Maren', images: images.map((data) => ({ data })) }] : [],
     locations: [],
   } as unknown as World);
 

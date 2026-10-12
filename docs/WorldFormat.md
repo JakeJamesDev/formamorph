@@ -111,6 +111,7 @@ Import runs every world through a migration. The migration changes an older shap
 | A flat `dictionary` list | One book named "Default" in `dictionaries` |
 | A dictionary `key` or `secondaryKeys` as one comma-separated string | A list of keywords |
 | An entity `image` string | The first item of `images` |
+| An entity `images` list of strings | Each string as `{ "data": … }` |
 | A location `entities` list | Each entity's `locations` |
 | A location `connections` list of names | Records in the top-level `connections` |
 | A connection with `from`, `to`, `twoWay` and `aiHint` | A connection with `a`, `b` and legs |
@@ -339,7 +340,7 @@ A connection needs at least one leg. Both legs = two-way. A leg has one optional
 | `playerDescription` | | String | What the player reads |
 | `aiDescription` | | String | The full description the AI reads |
 | `aiSummary` | | String | A short description the AI reads where the full one is too long |
-| `images` | | [Image](#media-fields)[] | The gallery. The first image is the main one |
+| `images` | | [Gallery image](#media-fields)[] | The gallery, in author order. The first image is the main one |
 | `tags` | | String[] | Listing tags for Community Creations |
 | `imageTags` | | String | Comma-separated tags for image generation |
 | `sound` | | [MediaAsset](#media-fields) | A sound |
@@ -575,10 +576,17 @@ An entity or a book in a world can follow a library item. Its `link` object reco
 ## Media Fields
 <!-- keywords: base64, embed binary, encode image, huge file size, web address string, audio encoding, mime, asset object -->
 
-**Images** (`thumbnail`, location `backgroundImage`, entity `images`, book `thumbnail`) hold one string:
+**Images** (`thumbnail`, location `backgroundImage`, a gallery image's `data`, book `thumbnail`) hold one string:
 
 - A base64 data URL, such as `data:image/png;base64,…`
 - Or an `http` or `https` URL. The app loads the image from that address
+
+**Gallery images** (entity `images`) are objects:
+
+| Field | Req. | Type | Meaning |
+|---|---|---|---|
+| `data` | ✓ | Image | The picture |
+| `requires` | | [Requirement rows](#trait-requirements) | The Visibility rule. Absent = always shown |
 
 **Background music** (`bgm`) is a base64 data URL.
 

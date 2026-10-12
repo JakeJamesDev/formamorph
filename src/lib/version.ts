@@ -91,9 +91,10 @@ function foldDictionaryIntoBooks(world: Record<string, unknown>): void {
 }
 
 /**
- * Fold every entity's legacy single `image` into the `images` gallery. Deliberately NOT version-gated, for
- * the same reason as `foldDictionaryIntoBooks`: shipped 2.x worlds carry `version === APP_VERSION` yet
- * predate the gallery, so this must also run on already-current worlds.
+ * Fold every entity's legacy single `image` into the `images` gallery and wrap each data string as an image.
+ * Deliberately NOT version-gated, for the same reason as `foldDictionaryIntoBooks`: shipped worlds carry
+ * `version === APP_VERSION` yet predate the gallery or the image object, so this must also run on
+ * already-current worlds.
  */
 function migrateEntityGalleries(world: Record<string, unknown>): void {
   if (!Array.isArray(world.entities)) return;

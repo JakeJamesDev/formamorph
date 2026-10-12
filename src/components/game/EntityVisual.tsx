@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ImageZoomViewer } from '@/components/ImageZoomViewer';
 import { GalleryControls, type GalleryControlsProps } from '@/components/GalleryControls';
 import { resolveModelType } from '@/lib/UtilityComponents';
-import { entityImages } from '@/lib/entityImages';
+import { entityImageData, entityImages } from '@/lib/entityImages';
 import ModelViewer from '@/views/ModelViewer';
 import { SwipeImage } from './SwipeImage';
 import type { Entity } from '@/types';
@@ -58,7 +58,7 @@ export const EntityVisual = ({ entity, className, preference, onPreferenceChange
   const [zoomOpen, setZoomOpen] = useState(false);
   const [modelOpen, setModelOpen] = useState(false);
 
-  const images = entityImages(entity);
+  const images = entityImageData(entity);
   // A held index outlives the gallery it was taken from (an edited world, a reused panel), so clamp it here
   // rather than trusting it to still point at a picture.
   const index = images.length ? Math.min(imageIndex, images.length - 1) : 0;

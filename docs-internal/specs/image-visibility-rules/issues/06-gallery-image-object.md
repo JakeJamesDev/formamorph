@@ -1,6 +1,6 @@
 # 06: Gallery image becomes an object
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -30,3 +30,17 @@ Each gallery image can carry Requirement Rows (Q11). Nothing evaluates them yet;
 - [ ] Changelog fragment written. Gates green: `typecheck`, `lint`, `test`, `build`.
 
 ## Comments
+
+**Sites touched (2026-10-12).** Spec-session rulings Q29 (image rules travel the four card paths), Q30 (`primaryImageRequires`), Q31 (replace keeps the slot's rule).
+
+| Site | Change |
+|---|---|
+| `types/world.ts` | `GalleryImage { data, requires? }`; `Entity.images` holds it |
+| `lib/entityImages.ts` | `entityImages` returns objects and wraps strings; `entityImageData` for painters; `primaryImage` is slot 0's data; `migrateEntityImages` wraps in place; `hasImageRules`, `mapImageRules` |
+| Migration boundaries | `migrateWorld` (through `migrateEntityGalleries`), the card codec (`cardImage`), the library read (`EntityStorageService.getEntityData`) |
+| Card codec, `lib/entityFile.ts` | `extraImages` objects, `primaryImageRequires`; `parseEntityCardData(raw, pixels?)` puts the card pixels first with slot 0's rule |
+| Card travel | `portableImages` names, `bindOwnedTraits` binds, `remintOwnedTraits` re-points, `comparableOwnedTraits` and `contentMatchesSource` compare |
+| Writers | `imageOptimCore` (world and entity), `embedRemoteImages`, `testBench/imageWebpFix`, the `image-mislabeled` fix, `useDownscalePrompt`, `MainMenu` import, `stPersonaImport`, `tavernCard`, Tavern PNG import, `backupIndex` (through the optim core) |
+| Painters | `EntityVisual`, `imageSlots`, Test Bench image slots, `promptImagesBatch` callers read `entityImageData` |
+| Editor | `ImageTagsField` holds `GalleryImage[]`: reorder moves objects, delete drops the rule, replace keeps it; `LocationManager` wraps its one background |
+| Other | Authoring Tour example image; `docs/WorldFormat.md` gallery image table |

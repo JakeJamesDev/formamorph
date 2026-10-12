@@ -1,5 +1,5 @@
 import { LibraryStore, type StoredRecord } from './LibraryStore';
-import { primaryImage } from '@/lib/entityImages';
+import { migrateEntityImages, primaryImage } from '@/lib/entityImages';
 import { describePlaceholders } from '@/lib/placeholders';
 import { EMPTY_LETTERS, entityPlacementLetters, labelPlaceholders } from '@/lib/placementLetters';
 import { migrateCarriedPlaceholders, migrateEntityRequirementRows, migrateEntityStatFields } from '@/lib/version';
@@ -62,11 +62,11 @@ class EntityStorageService {
   }
 
   /** Load one character's full entity; rejects if missing. A library character never passes through
-   *  `migrateWorld`, so its carried defs take the value-record conversion and its trait gates take
-   *  Requirement Rows and its stat lists keep to the records they can hold here — the single read boundary the
-   *  editor and add-to-world both go through. */
+   *  `migrateWorld`, so its carried defs take the value-record conversion, its trait gates take
+   *  Requirement Rows, its gallery takes image objects and its stat lists keep to the records they can
+   *  hold here — the single read boundary the editor and add-to-world both go through. */
   async getEntityData(id: string): Promise<Entity> {
-    const entity = migrateEntityStatFields(migrateEntityRequirementRows(await this.store.getData(id)));
+    const entity = migrateEntityImages(migrateEntityStatFields(migrateEntityRequirementRows(await this.store.getData(id))));
     return {
       ...entity,
       ...(entity.placeholders ? { placeholders: migrateCarriedPlaceholders(entity.placeholders) } : {}),

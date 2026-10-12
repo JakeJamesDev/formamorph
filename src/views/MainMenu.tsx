@@ -83,7 +83,7 @@ import { importedDefaultPersona, isJsonFile, isStPersonaBackupFile, readStPerson
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
 import { useWorldExport } from '@/lib/useWorldExport';
 import { IMAGE_CAPS, applyWorldOptimize, applyEntityImagesOptimize, countWorldImages } from '@/lib/imageOptim';
-import { entityImages, primaryImage } from '@/lib/entityImages';
+import { entityImageData, entityImages, primaryImage } from '@/lib/entityImages';
 import { withOptimizeProgress } from '@/lib/optimizeProgress';
 import { remoteWorldImages } from '@/lib/embedRemoteImages';
 import { warmCachedImages } from '@/lib/remoteImageCache';
@@ -1134,14 +1134,14 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     // A lone card that carries relationships is reviewed. Its portrait still goes through the downscale
     // offer first, so the review stores the same picture an ordinary import would.
     if (parsed.length === 1 && !skipped && hasComponentLinks(parsed[0].links)) {
-      const mode = await promptImagesBatch(entityImages(parsed[0].entity), IMAGE_CAPS.entity);
+      const mode = await promptImagesBatch(entityImageData(parsed[0].entity), IMAGE_CAPS.entity);
       const record = await applyEntityImagesOptimize(parsed[0].entity, mode, () => {});
       await reviewComponentFile('entity', record, parsed[0].links, parsed[0].libraryDetails);
       return;
     }
 
     if (parsed.length) {
-      const mode = await promptImagesBatch(parsed.flatMap((p) => entityImages(p.entity)), IMAGE_CAPS.entity);
+      const mode = await promptImagesBatch(parsed.flatMap((p) => entityImageData(p.entity)), IMAGE_CAPS.entity);
       const now = new Date().toISOString();
       let lorebooks = 0;
       let stored = 0;
@@ -1195,7 +1195,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       toastError(err, 'Could not read that persona backup.');
       return;
     }
-    const mode = await promptImagesBatch(backup.personas.flatMap((p) => entityImages(p.entity)), IMAGE_CAPS.entity);
+    const mode = await promptImagesBatch(backup.personas.flatMap((p) => entityImageData(p.entity)), IMAGE_CAPS.entity);
     const now = new Date().toISOString();
     const failed = new Set<string>();
     const total = mode === 'off' ? 0 : backup.personas.filter((p) => p.entity.images?.length).length;

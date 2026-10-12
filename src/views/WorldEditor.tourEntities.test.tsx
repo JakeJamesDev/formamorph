@@ -232,7 +232,7 @@ describe('In Game — Entities', () => {
 
     fireEvent.click(noteButton('Use Example')!);
     await waitFor(() => expect(noteButton('Next')).toBeEnabled());
-    expect(ctx().entities.at(-1)?.images).toEqual(['data:image/webp;base64,maren']);
+    expect(ctx().entities.at(-1)?.images).toEqual([{ data: 'data:image/webp;base64,maren' }]);
     expect(within(playerSees()).getByRole('img', { name: 'Maren' })).toHaveAttribute('src', 'data:image/webp;base64,maren');
     // The roster stays, with nothing of the picture in it.
     expect(narration().textContent).toContain('- **Maren**');

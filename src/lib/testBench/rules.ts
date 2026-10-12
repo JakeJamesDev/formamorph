@@ -37,7 +37,7 @@ import { statCodeName, statsByCodeName } from '@/lib/statCodeNames';
 import { boxCode, filledCodeBoxes, noBoxes, TIMING_LABEL } from '@/lib/statCodeTiming';
 import { scanStatWrites } from '@/lib/statCodeWriteScan';
 import { estimateTokens } from '@/lib/memoryUtils';
-import { entityImages } from '@/lib/entityImages';
+import { entityImageData, entityImages } from '@/lib/entityImages';
 import {
   dataUrlBytes, dataUrlMime, dataUrlRealMime, imageFormatLabel, isConvertibleImage, isRemoteImage,
   relabelDataUrl, sniffDataUrlMime,
@@ -3215,7 +3215,7 @@ const embeddedImageSlots = (world: RuleWorld): Array<{ item: FindingItem; url: s
   ...(world.worldOverview?.thumbnail
     ? [{ item: worldItem(world), url: world.worldOverview.thumbnail, cap: IMAGE_CAPS.thumbnail }]
     : []),
-  ...(world.entities ?? []).flatMap((e) => entityImages(e).map((url) => ({
+  ...(world.entities ?? []).flatMap((e) => entityImageData(e).map((url) => ({
     item: { ...asItem(e, world), section: 'entities' as const }, url, cap: IMAGE_CAPS.entity,
   }))),
   ...(world.locations ?? []).flatMap((l) => (l.backgroundImage
@@ -3286,7 +3286,10 @@ const imageMislabeled: Rule = {
       : { ...world, worldOverview: { ...world.worldOverview, thumbnail: nextThumb } };
     out = withSlice(out, 'entities', mapChanged(world.entities ?? [], (entity) => {
       const images = entityImages(entity);
-      const next = mapChanged(images, relabelDataUrl);
+      const next = mapChanged(images, (img) => {
+        const data = relabelDataUrl(img.data);
+        return data === img.data ? img : { ...img, data };
+      });
       return next === images ? entity : { ...entity, images: next };
     }));
     out = withSlice(out, 'locations', mapChanged(world.locations ?? [], (location) => {

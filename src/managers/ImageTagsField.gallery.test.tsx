@@ -1,9 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { IMAGE_CAPS } from '../lib/imageOptim';
 import ImageTagsField from './ImageTagsField';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import type { GalleryImage, TraitRequirementRow } from '@/types';
 
 // The uploader itself is covered by its own tests; here it stands in as a marker carrying the slot's value
 // and the id its file input would use, which is what the add tile's label points at.
@@ -18,6 +19,7 @@ vi.mock('../lib/UtilityComponents', async () => {
       return (
         <div data-testid="slot" data-value={value ?? ''} data-slot-id={id} data-instance={String(instance.current)}>
           <button onClick={() => onChange('')}>remove</button>
+          <button onClick={() => onChange(`${value}-new`)}>replace</button>
         </div>
       );
     },
@@ -44,13 +46,14 @@ vi.mock('@/lib/imageOptim', async (importOriginal) => ({
 const A = 'data:image/webp;base64,AAAA';
 const B = 'data:image/webp;base64,BBBB';
 const C = 'data:image/webp;base64,CCCC';
+const wrap = (urls: string[]) => urls.map((data) => ({ data }));
 
-const setup = (images: string[], slots = 4) => {
+const setup = (images: (string | GalleryImage)[], slots = 4) => {
   const onImagesChange = vi.fn();
   render(
     <ImageTagsField
       label="Image"
-      images={images}
+      images={images.map((img) => (typeof img === 'string' ? { data: img } : img))}
       onImagesChange={onImagesChange}
       slots={slots}
       imageId="x"
@@ -121,14 +124,14 @@ describe('ImageTagsField gallery', () => {
         .map((n) => [n.getAttribute('data-value'), n.getAttribute('data-instance')]),
     );
     const { rerender } = render(
-      <ImageTagsField label="Image" images={[A, B, C]} onImagesChange={vi.fn()} slots={4} imageId="x"
+      <ImageTagsField label="Image" images={wrap([A, B, C])} onImagesChange={vi.fn()} slots={4} imageId="x"
         cap={IMAGE_CAPS.entity} kind="character" onTagsChange={vi.fn()} />,
     );
     const before = instances();
 
     // The reorder a drag produces.
     rerender(
-      <ImageTagsField label="Image" images={[C, A, B]} onImagesChange={vi.fn()} slots={4} imageId="x"
+      <ImageTagsField label="Image" images={wrap([C, A, B])} onImagesChange={vi.fn()} slots={4} imageId="x"
         cap={IMAGE_CAPS.entity} kind="character" onTagsChange={vi.fn()} />,
     );
 
@@ -139,7 +142,7 @@ describe('ImageTagsField gallery', () => {
 
   it('keeps the frame in range when the pictures behind it are removed', () => {
     const { rerender } = render(
-      <ImageTagsField label="Image" images={[A, B, C]} onImagesChange={vi.fn()} slots={4} imageId="x"
+      <ImageTagsField label="Image" images={wrap([A, B, C])} onImagesChange={vi.fn()} slots={4} imageId="x"
         cap={IMAGE_CAPS.entity} kind="character" onTagsChange={vi.fn()} />,
     );
     // Frame the third picture, then drop back to one: the trailing empty slot means index 1 would still be
@@ -147,7 +150,7 @@ describe('ImageTagsField gallery', () => {
     fireEvent.click(tile('Image 3'));
 
     rerender(
-      <ImageTagsField label="Image" images={[A]} onImagesChange={vi.fn()} slots={4} imageId="x"
+      <ImageTagsField label="Image" images={wrap([A])} onImagesChange={vi.fn()} slots={4} imageId="x"
         cap={IMAGE_CAPS.entity} kind="character" onTagsChange={vi.fn()} />,
     );
 
@@ -205,7 +208,7 @@ describe('ImageTagsField gallery', () => {
       dataTransfer: { files: [], types: ['text/uri-list'], getData: (t: string) => (t === 'text/uri-list' ? 'https://files.example/c.png' : '') },
     });
 
-    await waitFor(() => expect(onImagesChange).toHaveBeenCalledWith([A, B, 'https://files.example/c.png']));
+    await waitFor(() => expect(onImagesChange).toHaveBeenCalledWith(wrap([A, B, 'https://files.example/c.png'])));
   });
 
   it('takes no drop once every slot is full', () => {
@@ -294,5 +297,48 @@ describe('ImageTagsField gallery', () => {
     expect(screen.queryByLabelText('Add an Image')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Primary image' })).toBeNull();
     expect(slotWrapper(A).className).not.toMatch(/hidden/);
+  });
+});
+
+describe('ImageTagsField gallery — each image’s Visibility rule', () => {
+  const hurt: TraitRequirementRow[] = [{ all: [{ kind: 'stat', id: 'hp', operator: '<', value: 20, unit: 'percent' }] }];
+  const knight: TraitRequirementRow[] = [{ all: [{ kind: 'trait', id: 'knight' }] }];
+  const gallery = (): GalleryImage[] => [{ data: A, requires: hurt }, { data: B, requires: knight }, { data: C }];
+
+  beforeEach(() => { vi.clearAllMocks(); });
+  afterEach(() => { vi.restoreAllMocks(); });
+
+  it('moves with its image when a tile is dragged', async () => {
+    // jsdom lays nothing out; set the tiles 100px apart in a row so the keyboard sensor finds a neighbor.
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      const tile = this.closest<HTMLElement>('[aria-roledescription="sortable"]');
+      if (!tile?.parentElement) return DOMRect.fromRect({ x: 0, y: 0, width: 10000, height: 300 });
+      return DOMRect.fromRect({ x: [...tile.parentElement.children].indexOf(tile) * 100, y: 0, width: 90, height: 90 });
+    });
+    const user = userEvent.setup();
+    const { onImagesChange } = setup(gallery());
+
+    tile('Primary image').focus();
+    await user.keyboard('[Space]');
+    await user.keyboard('[ArrowRight]');
+    await user.keyboard('[Space]');
+
+    expect(onImagesChange).toHaveBeenCalledWith([{ data: B, requires: knight }, { data: A, requires: hurt }, { data: C }]);
+  });
+
+  it('leaves with its image when the image is removed, and the others keep theirs', () => {
+    const { onImagesChange } = setup(gallery());
+
+    fireEvent.click(within(slotWrapper(A)).getByText('remove'));
+
+    expect(onImagesChange).toHaveBeenCalledWith([{ data: B, requires: knight }, { data: C }]);
+  });
+
+  it('stays on its slot when the picture there is replaced (Q31)', () => {
+    const { onImagesChange } = setup(gallery());
+
+    fireEvent.click(within(slotWrapper(B)).getByText('replace'));
+
+    expect(onImagesChange).toHaveBeenCalledWith([{ data: A, requires: hurt }, { data: `${B}-new`, requires: knight }, { data: C }]);
   });
 });
