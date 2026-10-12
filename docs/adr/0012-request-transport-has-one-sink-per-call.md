@@ -37,7 +37,7 @@ The view builds a plain context and attaches the adapters a request type needs: 
 - ✅ Abort, retract, trim and failure classification are tested with a fake AI Stream and a recording sink.
 - ✅ Concurrent requests never share a listener.
 - ✅ The parity recorder still records at the transport's entry, the seam the fixture was recorded at.
-- ⚠️ The narration presentation still lives in the view as an adapter on the sink. The Narration Stream is the next step.
+- ✅ The Narration Stream sits on a narration request's sink and owns the sentence cursor. The reveal, read-aloud, the scene list and history listen to it.
 
 ## Alternatives rejected
 
