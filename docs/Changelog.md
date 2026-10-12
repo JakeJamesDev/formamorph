@@ -23,7 +23,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Entity stats change during play: regen and both code boxes run each turn for every entity, present or not.** A save keeps the values. Stat code reads any entity's stats through `entities.Bram.stats`, read-only, and an entity stat's own code reads its owner's stats as `stats`.
     - **The AI now updates the stats of every entity in the scene, in the same request as yours.** It reads stats under their group headings, and the default Stat Updates prompt explains what stats are. On an endpoint that can't take the format, only your stats update.
     - **The Stats tab shows the selected entity's stats under yours, with a picker at the top.** Pick an entity, or **(None)** to hide the section. Each entity stat shows its change this turn with the same timing as yours. Hidden stats stay hidden.
-    - **The Entities chip sends each present entity's stats, in their groups, to the AI.** The **Stats** checkbox in the chip's pop-out turns it off. It covers the Here and In Scene scopes with Full or Summary content.
+    - **The Entities chip sends each present entity's stats, in their groups, to the AI.** The **Include** row in the chip's Chip Options turns it off. Stats are on for the Here and In Scene scopes and off for Sub-Locations and Reachable until you turn them on, with Full or Summary content.
     - **An entity's own traits and trait links now change its own stats, in the World Editor and in play.** They never change the player's stats. The Issues tab warns about a change to a stat the entity doesn't own, and the Test Bench lists each entity's starting stats.
     - **An entity stat's Body Sliders now shape that entity's own 3D model in play.** The picker lists the entity model's sliders. The entity view, its model window and the entity card show the stats of the turn on screen.
     - **Stats tab Blueprints let you define a stat or stat group once and give it to many entities.** **Link Stat** and **Link To…** follow the Blueprint live, and **Detach** turns a link into the entity's own stat. A link can change any field but the name. A refused row tells you why.
@@ -51,13 +51,6 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The AI's notes now list your persona's own stats inside its block, and your world's player stats under Other Stats.** The **Persona** chip gains a **Stats** toggle. The choices prompt now reads your persona's summary, with its traits and stats.
     - **Under Staged thinking, each character now plans its turn with its own stats in view.** Its planning request lists its stats after its background, as the narration sees them. It still never sees your stats.
     - **The Test Bench's AI Context tab now lists a Persona block, before Stats and Traits.** It shows your Custom Persona entity's traits and stats as the AI reads them. A world with no Custom Persona entity shows it empty.
-  - **Chip Options:**
-    - **Selecting a placed chip now opens Chip Options, a centered dialog, in place of the small pop-out.** Prompt chips get a second pane, What the AI Reads. Long option lists are dropdowns, and help lines show as tooltips.
-    - **The Entities and Persona chips' Chip Options now have Only With, Include and Stat Detail rows.** Only With keeps entities that own stats or traits. Include turns each entity's traits and stats on or off. Stat Detail picks Range, Descriptor and Description.
-    - **A filter icon now shows after the label of an Entities or Persona chip that uses Only With.** Hover the icon to read the picks, such as "Only With Stats or Traits". The label does not change.
-    - **The What the AI Reads pane in Chip Options now shows the chip's value as the prompt sends it.** It updates on every pick. The Header, Prepend and Append show dimmed.
-    - **Hovering or focusing a control in Chip Options now lights the text it adds in What the AI Reads.** The rest dims. Range, Descriptor and Description light only their own part of each stat line.
-    - **Chip Options picks for Only With, Include or Stat Detail don't load in older versions of Formamorph.** An older version shows the raw chip text in their place, and the AI reads it as text.
   - **Stat Conditions:**
     - **Test Bench warns when a trait requires a stat it changes, or a percent of a stat with no range.** A Condition on a stat its bearer lacks shows as an unresolved requirement.
     - **The Availability tab can gate a trait on a stat, such as Rage >= 80.** Pick a stat from the **Requires** picker, then pick the operator from a list and set the number and Raw or %. **Not** flips it.
@@ -67,6 +60,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Each gallery image now has a cog that sets its Visibility rule.** A badge marks an image with a rule, and a "Shown while" line reads it under the framed image. The primary image warns that it ignores its rule outside play.
     - **An entity's image in play now follows its Visibility rules as the story changes.** The panel, zoom viewer and persona row show the first visible image and page through visible images only. A past turn shows that turn's images.
     - **The wiki and help window now explain Visibility rules and stat Conditions.** Ask how to show a portrait only when hurt. Take Me There opens the entity's Profile tab and a trait's Availability tab.
+  - **Selecting a placed chip now opens Chip Options, a dialog that shows what the AI reads as you pick.** Entities and Persona chips gain **Only With**, **Include** and **Stat Detail** rows, and a filter icon when Only With is on. Those picks show as raw text in older versions.
   - **The AI now updates your stats with fewer wrong-direction and made-up changes.** It answers with a change for every stat, 0 included. An endpoint that can't take that format gets the old reply style, and the AI context viewer notes it.
   - **The World Editor's Content group now lists Entities first and Stats last.** The order is Entities, Locations, Traits, Stats on the side rail and the mobile Sections list.
   - **A new Time Per Turn setting sets the story time each turn adds while Measured Clock is off.** It's under **Output** → **Time**, one hour by default. Enter an amount and pick a unit, or enter 0 to hold the clock still. The Time section now shows without Memory Summaries; only Time in Memory needs them.
@@ -99,6 +93,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **A click or Escape in the help window no longer closes a menu, popover, list or dialog below it.** A menu inside the help window still closes when you click elsewhere in it.
   - **Regenerate Memory and a character's Regenerate wait for background passes, with a spinner you can cancel.** Each button waits its turn instead of staying unavailable or racing a pass. Leaving the game or loading a save also stops them.
   - **An image request that can't reach the image server now names the server and what to check.** The toast's Fix Connection link opens that server's setup guide. Before, it showed only "Failed to fetch". A dropped connection while ComfyUI draws no longer stops the image.
+  - **The World Editor's Auto Save setting is now Autosave, the name the game's saves use.** The Save menu, Settings, the unsaved-changes prompt and the Guide all say **Autosave** and **Autosave Pause**.
 - **⚙️ Backend**
   - **Background Pass Queue:**
     - **Backfilled digests and character descriptions now run oldest turn first.** The oldest turn leaves the context window first. In serial mode, a new character can wait behind older unknown names.
