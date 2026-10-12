@@ -47,10 +47,22 @@ const sampleTown: GameLocation = {
 /** A one-value placeholder, which reads the same on every draw. */
 const fixed = (id: string, name: string, text: string): Placeholder => ({ id, name, values: [{ id: `${id}-1`, text }] });
 
+const stat = (id: string, name: string, value: number, description: string, bands: [number, string][]): Stat => ({
+  id, name, type: 'number', description, min: 0, max: 100, value, regen: 0,
+  descriptors: bands.map(([threshold, word], i) => ({ id: `${id}-${i}`, threshold, description: word })),
+});
+
+const trait = (id: string, name: string, aiDescription: string): Trait => ({
+  id, name, aiDescription, isDefault: true, statChanges: [],
+});
+
+// Wren owns one stat and one trait, so the Entities chip's Only With and Include rows show lines in the sample.
 const wren: Entity = {
   id: 'wren', name: 'Wren', locations: ['landing'], placeholders: [fixed('wren-pole', 'Pole', 'a hooked ash pole')],
   aiDescription: 'The lamp-keeper, gray-haired and unhurried, who has watched this shore longer than anyone will admit. Carries a hooked pole she uses for everything but its purpose.',
   aiSummary: 'The unhurried lamp-keeper.',
+  traits: [trait('wren-night-watch', 'Night Watch', 'Keeps the lamp lit through the dark hours, whatever the weather.')],
+  stats: [stat('wren-patience', 'Patience', 70, 'How long she waits on a stranger before she speaks.', [[30, 'Short'], [80, 'Measured'], [100, 'Endless']])],
 };
 const gull: Entity = {
   id: 'gull', name: 'a gull', locations: ['landing'],
@@ -61,21 +73,16 @@ const bell: Entity = {
   id: 'bell', name: 'Bell', locations: ['boathouse'],
   aiDescription: 'A boat-mender working by feel in the dark of the boathouse, talking to the hull.',
   aiSummary: 'A boat-mender working in the dark.',
+  traits: [trait('bell-by-touch', 'By Touch', 'Reads a hull with his fingers, and needs no light to find a leak.')],
+  stats: [stat('bell-focus', 'Focus', 60, 'How steady his hands stay on a repair.', [[30, 'Scattered'], [80, 'Steady'], [100, 'Absorbed']])],
 };
 const harrow: Entity = {
   id: 'harrow', name: 'Harrow', locations: ['sample-town'],
   aiDescription: 'The man who sells maps in Sample Town, and is not currently at his stall.',
   aiSummary: 'The map-seller, absent from his stall.',
+  traits: [trait('harrow-no-questions', 'No Questions', 'Sells a map to anyone, and never asks where it will be used.')],
+  stats: [stat('harrow-eagerness', 'Eagerness', 45, 'How badly he wants the next sale.', [[30, 'Idle'], [70, 'Keen'], [100, 'Desperate']])],
 };
-
-const stat = (id: string, name: string, value: number, description: string, bands: [number, string][]): Stat => ({
-  id, name, type: 'number', description, min: 0, max: 100, value, regen: 0,
-  descriptors: bands.map(([threshold, word], i) => ({ id: `${id}-${i}`, threshold, description: word })),
-});
-
-const trait = (id: string, name: string, aiDescription: string): Trait => ({
-  id, name, aiDescription, isDefault: true, statChanges: [],
-});
 
 /** The sample world the Settings preview renders when no game runs. */
 const SAMPLE_WORLD: AuthoredWorld = {
