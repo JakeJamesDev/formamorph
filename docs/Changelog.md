@@ -66,6 +66,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The World Editor's Content group now lists Entities first and Stats last.** The order is Entities, Locations, Traits, Stats on the side rail and the mobile Sections list.
   - **A new Time Per Turn setting sets the story time each turn adds while Measured Clock is off.** It's under **Output** → **Time**, one hour by default. Enter an amount and pick a unit, or enter 0 to hold the clock still. The Time section now shows without Memory Summaries; only Time in Memory needs them.
   - **The stat panel's Regen field now takes a unit, so a stat can regen 1 per day.** Pick **Minute**, **Hour**, **Day** or **Week** beside the number. Hour is the default, so existing stats don't change. Initial Value is now **Base Value** and comes first in the row, since traits can still change where a stat starts.
+  - **A new Autosaves Kept setting keeps the last few autosaves for each world, named by turn.** It's under **Data** → **Saves**, and starts at one, as before. Each turn adds an autosave until the world has that many, then replaces the oldest. Lowering it removes the oldest extras on the next autosave.
 - **🛠️ Developer tooling**
   - **Entity Stats:**
     - **`entity-stats-chip-probe.cli.ts` compares the Entities chip with its stats piece on and off.** It runs narration, planner and choices cases on Sedge Landing and reports uptake, leaks, choice contract and dialogue share.
