@@ -66,6 +66,7 @@ Settled with the user on 2026-10-11.
 | Q33 | Q16's 93% Take Me There applies to the live route of each answer (its first non-lead source), as no regression against the in-batch control. The offline route probe re-runs as a check |
 | Q34 | The probe builds section vectors from the current docs in memory. The shipped vectors file is rebuilt at release, not in ticket 06 |
 | Q35 | In the full-screen Guide, Back and Forward skip conversation entries and land on the nearest section entry. A button is disabled when no section entry is left in its direction |
+| Q36 | Ruled by the user in the ticket 06 session: Q16 is met. Answer quality 77.4% against the 77.5% bar counts, since the in-batch control runs 73.9% today (+3.5). Route hit 67.5% vs control 67.6%; offline route probe 93%. Ask's semantic source keeps a similarity floor of 0.45, tuned on the known set only |
 
 ## User Stories
 
@@ -166,3 +167,5 @@ Settled with the user on 2026-10-11.
 - The semantic model and its cache are shared with semantic memory. One download serves both.
 - The section vectors ship with the app. Docs edits must regenerate them, as today.
 - New copy (card, menu items, confirm, settings switch) gets a copy-sweep pass.
+- **Open:** with the floor, follow-up questions trail the control (70% vs 77%, 10 questions, two batches). Not yet probed further.
+- **Release:** 24 shipped section vectors are stale; ticket 06 lists them. Rebuild with `npm run build:help-vectors` before release.
