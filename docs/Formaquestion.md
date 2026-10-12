@@ -103,9 +103,17 @@ The **Open Guide** button is in the title bar of the **Full** style, next to **W
 2. Select **⋮**, then **Open Wiki**. In the full-screen Guide, select **Open Wiki** in the header.
 3. In the confirm, select **Open**.
 
-Your browser opens the wiki on the page and heading of the section that shows. With no section open, it opens the wiki home page. The confirm names the page.
+Your browser opens the wiki on the page and heading of the section that shows. With no section open, it opens the wiki home page. See [The Wiki Confirm](#the-wiki-confirm).
 
-- To skip the confirm, check **Don’t Ask Again**, then select **Open**. **Cancel** keeps the confirm on, also with the box checked.
+## The Wiki Confirm
+<!-- keywords: open the wiki question, leave the app, open in browser, don't ask again, skip the confirm, cancel, which page opens -->
+<!-- route: formaquestionWikiConfirm -->
+
+The confirm shows before your browser opens the wiki. It names the wiki page that opens.
+
+- **Open** opens the page in your browser.
+- **Cancel** closes the confirm, and the app stays as it is. The confirm stays on, also with the box checked.
+- **Don’t Ask Again**, checked when you select **Open**, skips the confirm next time.
 - To turn the confirm back on, select the **Confirm Before Opening the Wiki** checkbox in the **Window** group of the **General** tab. See [General](#general).
 
 ## How to Go Back and Forward in the Guide

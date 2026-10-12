@@ -213,7 +213,7 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
   formaquestionSettings: FORMAQUESTION_SETTINGS,
   formaquestionCompare: { page: 'Formaquestion', anchor: 'prompts' },
   formaquestionAiContext: { page: 'Formaquestion', anchor: 'ai-context' },
-  formaquestionWikiConfirm: { page: 'Formaquestion', anchor: 'guide' },
+  formaquestionWikiConfirm: { page: 'Formaquestion', anchor: 'the-wiki-confirm' },
   'formaquestionSettings.general': { page: 'Formaquestion', anchor: 'general' },
   'formaquestionSettings.endpoint': { page: 'Formaquestion', anchor: 'endpoint' },
   'formaquestionSettings.prompts': { page: 'Formaquestion', anchor: 'prompts' },
