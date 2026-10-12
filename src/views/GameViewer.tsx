@@ -2,7 +2,7 @@ import { randomUUID } from "@/lib/uuid";
 import { ownedTraitStatesFrom } from '@/lib/ownedTraitState';
 import { bearerPins, inPlayBearers, inPlayLibrary } from '@/lib/ownedTraitsInPlay';
 import { libraryBooksInPlay } from '@/lib/dictionarySelection';
-import React, { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo, lazy, Suspense } from "react";
+import React, { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo, useSyncExternalStore, lazy, Suspense } from "react";
 import { useGameData } from "../contexts/GameDataContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useSettingsOpenRequest } from "@/lib/useSettingsOpenRequest";
@@ -99,7 +99,7 @@ import { transportRequest, type TransportContext, type TransportRequest, type Tr
 import { toastAiRequestFailure } from "../lib/aiRequest/aiRequestFailureToast";
 import { schemaAccepted } from "../lib/reasoningEffort";
 import { completeSentencePrefix, narrationStream, type NarrationListener } from "../lib/aiRequest/narrationStream";
-import { selectDueDigests, applyDigest, applyImportance, parseTurnContent, recentParticipants, selectDueDiaries, pendingDiaryNames, applyDiary, collectCharacterDiary } from "../lib/turnDigest";
+import { parseTurnContent, recentParticipants, selectDueDiaries, pendingDiaryNames, applyDiary, collectCharacterDiary } from "../lib/turnDigest";
 import { navigableDestinations } from "../lib/locationContext";
 import { chipValues, sceneEntityChipValues } from "../lib/chipValues/chipValues";
 import { useLiveChipScene, type SceneWrites } from "../lib/chipValues/liveScene";
@@ -121,8 +121,14 @@ import {
   discoverEntityPass,
   milestoneSelectPass,
   sceneTagsPass,
+  summaryPass,
 } from "../lib/turnPipeline/turnPasses";
-import { diaryRequest, digestRequest } from "./handBuiltRequests";
+import { diaryRequest } from "./handBuiltRequests";
+import {
+  createBackgroundPassQueue, digestTarget,
+  type BackgroundPassKind, type BackgroundPassQueue, type DigestTarget,
+} from "../lib/backgroundPassQueue/backgroundPassQueue";
+import { BackgroundPassStatus, type StatusPassKind } from "../components/game/BackgroundPassStatus";
 import { buildNarrationPrompt, type DictionaryDebug } from "../lib/turnPipeline/narrationPrompt";
 import { buildPlannerBand } from "../lib/turnPipeline/plannerBand";
 import { readNarration, selectVisitorAdditions, presentSceneEntities, splitParticipants } from "../lib/turnPipeline/narrationReading";
@@ -138,7 +144,7 @@ import {
   markFindHits, markFraction, parseFindTerms, planFindHits, type FindMarked,
 } from "@/lib/findMarks";
 import { buildStamper, hoursByPosition, FLAT_HOURS_PER_TURN } from "../lib/gameClock";
-import { milestoneCandidates, agedMilestoneCandidates, resolveMilestoneDrop, resolveMilestoneKeep, applyIncrementalVerdict } from "../lib/milestoneMemory";
+import { agedMilestoneCandidates, resolveMilestoneDrop } from "../lib/milestoneMemory";
 import { applyMemoryOverrides, activeNotes } from "../lib/memoryOverrides";
 import { buildRelevanceScores, vectorKey } from "../lib/memoryRelevance";
 import { entryVectorKey, entryEmbedText } from "../lib/semanticDictionary";
@@ -323,6 +329,7 @@ const DIGEST_MAX_REHYDRATIONS = 3;
 const CHOICES_PRESENCE_TURNS = 3;
 
 const NO_OWNED_TRAITS: OwnedTraitPicks = {};
+const NO_PASSES: ReadonlySet<BackgroundPassKind> = new Set();
 
 const GameViewer = ({
   initialTraits = [],
@@ -861,14 +868,10 @@ const GameViewer = ({
   // This turn's captured reasoning (native `reasoning` stream field + inline <think>) + think duration (ms),
   // set by the narration request's stream and read into the committed turn JSON. Also drives the live block.
   const turnReasoningRef = useRef<{ text: string; ms: number }>({ text: "", ms: 0 });
-  const digestDrainingRef = useRef(false); // a memory digest is in flight (serializes the drainer)
-  const [digestActive, setDigestActive] = useState(false); // drives the status-bar indicator for a running digest
   const diaryDrainingRef = useRef(false); // a character diary entry is in flight (serializes the drainer)
   const [diaryActive, setDiaryActive] = useState(false); // drives the status-bar indicator for a running diary pass
   const discoverDrainingRef = useRef(false); // a runtime-character describe request is in flight (serializes the drainer)
   const [discoverActive, setDiscoverActive] = useState(false); // drives the status-bar indicator for a running discovery pass
-  const milestoneDrainingRef = useRef(false); // a milestone selection is in flight (serializes the drainer)
-  const [milestoneActive, setMilestoneActive] = useState(false); // drives the status-bar indicator for a running selection
   const embedDrainingRef = useRef(false); // an embedding batch is in flight (serializes the drainer)
   // Digest vectors by vectorKey, hydrated from the embedding cache and topped up by the drainer.
   // Session-local derived data — never persisted with the save.
@@ -2022,7 +2025,7 @@ const GameViewer = ({
   });
 
   /** The plan input a pass dispatched outside a turn builds its request from — the scene-tag pass, which
-   *  the scene-image flow drives on a turn already stored, the character-note drainer and rewrite, and the
+   *  the scene-image flow drives on a turn already stored, the background passes, the regenerates, and the
    *  choices and stats re-rolls. */
   const standalonePassInput = (): TurnPlanInput => ({
     action: "",
@@ -2067,6 +2070,16 @@ const GameViewer = ({
   };
   const buildMilestoneSelectRef = useRef(buildMilestoneSelect);
   buildMilestoneSelectRef.current = buildMilestoneSelect;
+
+  /** The digest request for one stored turn, attached to that turn. */
+  const buildDigestRequest = (target: DigestTarget) => summaryPass.buildRequest(standalonePassInput(), {
+    ...emptyTurnMaterial({
+      action: target.action, effectiveAction: target.action, turnId: target.turnId, baseCtx: contextValues(), destinations: [],
+    }),
+    narration: target.narration,
+  });
+  const buildDigestRequestRef = useRef(buildDigestRequest);
+  buildDigestRequestRef.current = buildDigestRequest;
 
   /** The settings-derived booleans this turn's shape depends on. */
   const turnSettings = (): TurnSettings => ({
@@ -3471,7 +3484,7 @@ const GameViewer = ({
     });
   }, [isWaitingForAI, sceneImageJob, fullMessageHistory]);
 
-  // Hold the latest sendAiRequest so the digest drainer always calls a fresh closure without
+  // Hold the latest sendAiRequest so the background passes always call a fresh closure without
   // re-running its effect every render (sendAiRequest is rebuilt each render by design).
   const sendAiRequestRef = useRef(sendAiRequest);
   sendAiRequestRef.current = sendAiRequest;
@@ -3535,135 +3548,51 @@ const GameViewer = ({
   sendGameActionRef.current = sendGameAction;
   useBaselineTestHook(debugTurnsRef, sendGameActionRef);
 
-  // Memory-digest drainer: summarize each completed turn silently (serialized, one at a time) and
-  // patch the digest back onto that turn. Only runs while idle (just after a turn commits) so it never
-  // contends with the active turn's requests. Patching the history re-runs this effect, which picks up
-  // the next due turn until none remain (also backfills older turns when first enabled mid-game).
+  // The Background Pass Queue runs the digest and milestone passes between turns. It lives as long as the
+  // view: leaving the game disposes it, which cancels its running passes.
+  const passSessionRef = useRef(0); // bumped on load and new game, so a pass from the old session applies nothing
+  const [passQueue, setPassQueue] = useState<BackgroundPassQueue | null>(null);
   useEffect(() => {
-    if (!memoryDigests || isWaitingForAI || diaryActive || discoverActive || digestDrainingRef.current || diaryDrainingRef.current || discoverDrainingRef.current) return;
-    const due = selectDueDigests(fullMessageHistory);
-    if (due.length === 0) return;
-    // Oldest due turn first — it's closest to leaving the context window (matters when backfilling).
-    const turnId = due[due.length - 1];
-    const idx = fullMessageHistory.findIndex(
-      (m) => m.role === "assistant" && parseTurnContent(m.content)?.turnId === turnId,
-    );
-    const narrationText = idx >= 0 ? parseTurnContent(fullMessageHistory[idx].content)?.narration ?? "" : "";
-    if (!narrationText.trim()) return;
-    // The digest runs on an aged-out turn, so its action is the paired user message (as parseTurns pairs them).
-    const playerAction = idx > 0 && fullMessageHistory[idx - 1].role === "user" ? fullMessageHistory[idx - 1].content : "";
+    const queue = createBackgroundPassQueue({
+      send: (request) => sendAiRequestRef.current(request),
+      digestRequest: (target) => buildDigestRequestRef.current(target),
+      milestoneRequest: (kept, fresh, attachTurnId) => buildMilestoneSelectRef.current(kept, fresh, attachTurnId),
+      setHistory: setFullMessageHistory,
+      setMilestoneSelection,
+      session: () => passSessionRef.current,
+    });
+    setPassQueue(queue);
+    return () => queue.dispose();
+  }, [setFullMessageHistory, setMilestoneSelection]);
+  const subscribePasses = useCallback(
+    (listener: () => void) => passQueue?.subscribe(listener) ?? (() => {}),
+    [passQueue],
+  );
+  const passesRunning = useSyncExternalStore(subscribePasses, () => passQueue?.running() ?? NO_PASSES);
 
-    digestDrainingRef.current = true;
-    setDigestActive(true);
-    (async () => {
-      try {
-        const digest = await sendAiRequestRef.current(digestRequest({
-          summaryPrompt, summaryUserPrompt, ctx: contextValues(), playerAction, narration: narrationText, turnId,
-        }));
-        const trimmed = (digest ?? "").trim();
-        if (trimmed) setFullMessageHistory((prev) => applyDigest(prev, turnId, trimmed) ?? prev);
-      } catch {
-        // Non-fatal: the turn stays due and is retried on a later idle tick.
-      } finally {
-        digestDrainingRef.current = false;
-        setDigestActive(false);
-      }
-    })();
-  }, [memoryDigests, isWaitingForAI, diaryActive, discoverActive, fullMessageHistory, summaryPrompt, summaryUserPrompt, contextValues, setFullMessageHistory]);
-
-  // Milestone-selection drainer (incremental, T4): once every due digest is written, silently judge
-  // only the NEWLY-ARRIVED digests against the already-kept list (see lib/milestoneMemory). Old
-  // verdicts persist — an old memory changes state only via an explicit Forget (supersession) or a
-  // player pin — so the whole-list flip-flop is dead by construction. A malformed reply keeps every
-  // new entry and touches nothing old: fail-safe, never fail-drop. Selection entries whose turns
-  // left the candidate set (rollback) are pruned so a re-aging turn is judged fresh.
   useEffect(() => {
-    if (!memoryDigests || isWaitingForAI || diaryActive || discoverActive || digestDrainingRef.current || diaryDrainingRef.current || discoverDrainingRef.current || milestoneDrainingRef.current) return;
-    if (selectDueDigests(fullMessageHistory).length > 0) return; // digests first — the selector reads them
-    // Overridden turns: the selector judges the text that actually rides, and never sees a memory the
-    // player deleted (a tombstone strips the summary, so it isn't a candidate at all).
-    const turns = parseEffectiveTurns(fullMessageHistory);
-    const candidates = milestoneCandidates(turns);
-    if (candidates.length === 0) return;
-    const candSet = new Set(candidates.map((t) => t.turnId ?? ""));
-    let selection = milestoneSelection;
-    if (selection && selection.seen.some((id) => !candSet.has(id))) {
-      selection = {
-        seen: selection.seen.filter((id) => candSet.has(id)),
-        selected: selection.selected === null ? null : selection.selected.filter((id) => candSet.has(id)),
-      };
-    }
-    const seenSet = new Set(selection?.seen ?? []);
-    const freshCands = candidates.filter((t) => t.turnId && !seenSet.has(t.turnId));
-    if (freshCands.length === 0) {
-      if (selection !== milestoneSelection) setMilestoneSelection(selection); // commit the prune
-      return;
-    }
-    // The kept-old context mirrors what actually rides: the selector's surviving verdicts with the
-    // player's pins applied (a pin-dropped memory is gone and can't be "forgotten" again).
-    const oldCands = candidates.filter((t) => t.turnId && seenSet.has(t.turnId));
-    const selObj = selection
-      ? { seen: seenSet, selected: selection.selected === null ? null : new Set(selection.selected) }
-      : null;
-    const keptIds = resolveMilestoneKeep(oldCands, selObj, memoryPins);
-    const shownOld = oldCands.filter((t) => keptIds.has(t.turnId!));
-    const attachTurnId = turns[turns.length - 1]?.turnId;
-    const stableSelection = selection;
-
-    const { request, parse } = buildMilestoneSelectRef.current(
-      shownOld.map((t) => (t.summary ?? "").trim()),
-      freshCands.map((t) => (t.summary ?? "").trim()),
-      attachTurnId,
-    );
-
-    milestoneDrainingRef.current = true;
-    setMilestoneActive(true);
-    (async () => {
-      try {
-        const reply = await sendAiRequestRef.current(request);
-        const verdict = parse((reply ?? "").trim());
-        // Write-time importance: the selector rates a moment once, as it ages in, and the rating rides
-        // the turn from then on. Unrated keeps stay unrated (neutral), never zero.
-        if (verdict && verdict.weights.size > 0) {
-          const byTurnId = new Map<string, number>();
-          verdict.weights.forEach((w, i) => {
-            const id = freshCands[i]?.turnId;
-            if (id) byTurnId.set(id, w);
-          });
-          setFullMessageHistory((prev) => applyImportance(prev, byTurnId));
-        }
-        setMilestoneSelection(applyIncrementalVerdict(
-          stableSelection,
-          shownOld.map((t) => t.turnId!),
-          freshCands.map((t) => t.turnId!),
-          verdict,
-        ));
-      } catch {
-        // Non-fatal: the selection stays stale and is retried on a later idle tick; until then the
-        // previous selection (or keep-everything-unseen) applies.
-      } finally {
-        milestoneDrainingRef.current = false;
-        setMilestoneActive(false);
-      }
-    })();
-  }, [memoryDigests, isWaitingForAI, diaryActive, discoverActive, fullMessageHistory, narrationVerbatimTurns, milestoneSelection, setMilestoneSelection, setFullMessageHistory, memoryPins, parseEffectiveTurns]);
+    passQueue?.update({
+      history: fullMessageHistory,
+      effectiveTurns: parseEffectiveTurns(fullMessageHistory),
+      milestoneSelection,
+      memoryPins,
+      // Interim until diary and discover join the queue: a running one holds it.
+      busy: isWaitingForAI || sceneImageJob !== null || diaryDrainingRef.current || discoverDrainingRef.current,
+      concurrent: concurrentTurnRequests,
+      memoryDigests,
+    });
+    // diaryActive, discoverActive and allEntities re-tick it: the drainers ending, and the entity list changing.
+  }, [passQueue, fullMessageHistory, parseEffectiveTurns, milestoneSelection, memoryPins, isWaitingForAI, sceneImageJob, diaryActive, discoverActive, concurrentTurnRequests, memoryDigests, allEntities]);
 
   // Regenerate one memory on demand (Memory Manager): re-run the digest prompt on that turn and land the
   // result in the override layer as AI text — no pin and no importance bump, because the player authored
   // nothing here; the selector's verdict still governs it. Silent, like every other digest request.
   // Returns false when the turn has nothing to summarize or the call fails, so the caller can toast.
   const regenerateMemory = useCallback(async (turnId: string): Promise<boolean> => {
-    const idx = fullMessageHistory.findIndex(
-      (m) => m.role === "assistant" && parseTurnContent(m.content)?.turnId === turnId,
-    );
-    if (idx < 0) return false;
-    const narrationText = parseTurnContent(fullMessageHistory[idx].content)?.narration ?? "";
-    if (!narrationText.trim()) return false;
-    const playerAction = idx > 0 && fullMessageHistory[idx - 1].role === "user" ? fullMessageHistory[idx - 1].content : "";
+    const target = digestTarget(fullMessageHistory, turnId);
+    if (!target) return false;
     try {
-      const digest = await sendAiRequestRef.current(digestRequest({
-        summaryPrompt, summaryUserPrompt, ctx: contextValues(), playerAction, narration: narrationText, turnId,
-      }));
+      const digest = await sendAiRequestRef.current(buildDigestRequestRef.current(target));
       const trimmed = (digest ?? "").trim();
       if (!trimmed) return false;
       setMemoryEdits((prev) => ({ ...prev, [turnId]: { text: trimmed, source: 'ai' } }));
@@ -3671,7 +3600,7 @@ const GameViewer = ({
     } catch {
       return false;
     }
-  }, [fullMessageHistory, summaryPrompt, summaryUserPrompt, contextValues, setMemoryEdits]);
+  }, [fullMessageHistory, setMemoryEdits]);
 
   // Embedding drainer: keep a vector on hand for everything the semantic features score at turn time —
   // turn digests (semanticMemory) and dictionary entries (semanticLore) — so scoring is a sync lookup.
@@ -3722,7 +3651,7 @@ const GameViewer = ({
         const cached = await getVectors(missing);
         cached.forEach((vec, key) => embedVectorsRef.current.set(key, vec));
         // Embed the rest in bounded batches, looping to completion — nothing re-triggers this effect
-        // when a batch lands (unlike the digest drainer, it never touches history), so a first-enable
+        // when a batch lands (unlike the background passes, it never touches history), so a first-enable
         // backfill must finish in one pass.
         const toEmbed = missing.filter((k) => !cached.has(k));
         for (let start = 0; start < toEmbed.length; start += 8) {
@@ -3743,12 +3672,14 @@ const GameViewer = ({
 
   // Character-diary drainer (write side): for each completed turn with participants, silently write a
   // first-person diary entry per participant as an idle-time job, patched back onto that turn's `diaries`
-  // map. Mirrors the digest drainer, and serializes against it (only one silent job runs at a time) so a
+  // map. Serializes against the Background Pass Queue (only one silent job runs at a time) so a
   // local endpoint isn't hit twice. Runs one participant per tick; patching re-runs the effect until the
   // due turn is fully covered, then the next due turn. Gated on Staged thinking — the entries are only
   // read by the staged character pass, so writing them in any other mode would just waste requests.
   useEffect(() => {
-    if (!characterDiaries || thinkingMode !== "staged" || isWaitingForAI || digestActive || discoverActive || digestDrainingRef.current || diaryDrainingRef.current || discoverDrainingRef.current) return;
+    // Interim until diary and discover join the queue: any queued pass holds this drainer. Read live, so a
+    // pass the queue started earlier in this commit counts.
+    if (!characterDiaries || thinkingMode !== "staged" || isWaitingForAI || discoverActive || passQueue?.running().size || diaryDrainingRef.current || discoverDrainingRef.current) return;
     const due = selectDueDiaries(fullMessageHistory);
     if (due.length === 0) return;
     // Oldest due turn first — closest to leaving the context window.
@@ -3777,7 +3708,7 @@ const GameViewer = ({
         setDiaryActive(false);
       }
     })();
-  }, [characterDiaries, thinkingMode, isWaitingForAI, digestActive, discoverActive, fullMessageHistory, allEntities, resolveEntityText, diaryPrompt, contextValues, setFullMessageHistory]);
+  }, [characterDiaries, thinkingMode, isWaitingForAI, passQueue, passesRunning, discoverActive, fullMessageHistory, allEntities, resolveEntityText, diaryPrompt, contextValues, setFullMessageHistory]);
 
   // Runtime characters (Slice 2): promote a narration-confirmed character into a persisted entity.
   // Idle-gated and serialized like the diary drainer; runs before the diary pass so a new character is
@@ -3786,7 +3717,8 @@ const GameViewer = ({
   // flows through the authored-entity path. Gated on Describe New Characters — the request is the only
   // part that costs anything; finding the name happened for free during the turn.
   useEffect(() => {
-    if (!describeCharacters || isWaitingForAI || digestActive || diaryActive || digestDrainingRef.current || diaryDrainingRef.current || discoverDrainingRef.current) return;
+    // Interim until diary and discover join the queue: any queued pass holds this drainer, read live.
+    if (!describeCharacters || isWaitingForAI || diaryActive || passQueue?.running().size || diaryDrainingRef.current || discoverDrainingRef.current) return;
     // Suppressed names ride in as "known" so a deleted character is never re-proposed, whichever path
     // named it — the heuristic or staged planning.
     const knownNames = [...allEntities.map((e) => e.name), ...suppressedCharacterNames];
@@ -3818,7 +3750,7 @@ const GameViewer = ({
         setDiscoverActive(false);
       }
     })();
-  }, [describeCharacters, isWaitingForAI, digestActive, diaryActive, fullMessageHistory, allEntities, suppressedCharacterNames, currentLocation, setDiscoveredEntities]);
+  }, [describeCharacters, isWaitingForAI, passQueue, passesRunning, diaryActive, fullMessageHistory, allEntities, suppressedCharacterNames, currentLocation, setDiscoveredEntities]);
 
   // --- Discovered-character description: player edit + regenerate -----------------------------------
   // A discovered character's description is minted from the single passage that introduced them, so it
@@ -3836,7 +3768,7 @@ const GameViewer = ({
 
   /** Any AI work that a regeneration must wait behind — the same gates the discover drainer respects,
    *  so a manual regen never contends with narration for a single local GPU. */
-  const regenBusy = isWaitingForAI || digestActive || diaryActive || discoverActive || sceneImageJob !== null;
+  const regenBusy = isWaitingForAI || passesRunning.size > 0 || diaryActive || discoverActive || sceneImageJob !== null;
 
   /**
    * Rewrite a discovered character's description from everything the story has shown of them since.
@@ -3998,6 +3930,7 @@ const GameViewer = ({
     // as the rest of the world data, and holds for a world file with no id.
     if (!isInitialized.current && worldLoaded) {
       isInitialized.current = true;
+      passSessionRef.current += 1;
 
       // Cold-load from the main menu: restore the save instead of starting a fresh game. Its world is
       // already in GameData (loaded before this view mounted), so `locations` here are the right ones.
@@ -4203,6 +4136,11 @@ const GameViewer = ({
   // Extract the displayed narration from an assistant message (see lib/aiResponse).
   const parseAssistantMessage = parseNarration;
 
+  const silentPassesRunning = useMemo(
+    (): ReadonlySet<StatusPassKind> => (diaryActive ? new Set<StatusPassKind>([...passesRunning, "diary"]) : passesRunning),
+    [passesRunning, diaryActive],
+  );
+
   // Status line shown above the input while a turn is being generated, naming the current AI
   // request (Narration / Choices / Stat Updates / Location) so the player knows what's processing.
   const progressBar = (() => {
@@ -4251,43 +4189,7 @@ const GameViewer = ({
         </div>
       );
     }
-    if (digestActive && showSilentRequests) {
-      return (
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-meta text-muted-foreground whitespace-nowrap">
-            Summarizing turn…
-          </span>
-          <div className="flex-grow">
-            <IndeterminateProgress />
-          </div>
-        </div>
-      );
-    }
-    if (milestoneActive && showSilentRequests) {
-      return (
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-meta text-muted-foreground whitespace-nowrap">
-            Selecting memories…
-          </span>
-          <div className="flex-grow">
-            <IndeterminateProgress />
-          </div>
-        </div>
-      );
-    }
-    if (diaryActive && showSilentRequests) {
-      return (
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-meta text-muted-foreground whitespace-nowrap">
-            Writing diary…
-          </span>
-          <div className="flex-grow">
-            <IndeterminateProgress />
-          </div>
-        </div>
-      );
-    }
-    return null;
+    return showSilentRequests ? <BackgroundPassStatus running={silentPassesRunning} /> : null;
   })();
 
   // The context meter's history math is O(turns) (parseTurns + banding), so memoize it: this recomputes
@@ -4505,8 +4407,10 @@ const GameViewer = ({
       includeSceneImages: opts?.includeSceneImages,
     });
   const handleMenuLoad = async (id: string, targetWorldId?: string) => {
-    // A render from the outgoing session must not finish into the loaded one under a dead turn id.
+    // A render or a background pass from the outgoing session must not finish into the loaded one.
     cancelSceneImage();
+    passSessionRef.current += 1;
+    passQueue?.abort();
     // The loaded save draws its own opening on first need, with nothing shown yet.
     openingSessionRef.current = newOpeningSession();
     // A save from another (installed) world: swap GameData to that world first, then restore the save against

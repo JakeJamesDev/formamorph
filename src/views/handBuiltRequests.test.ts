@@ -3,9 +3,9 @@ import type { Entity } from '@/types';
 import { TURN_PASSES, TURN_PASS_CAPS } from '@/lib/turnPipeline/turnPasses';
 import { emptyTurnMaterial, type TurnMaterial, type TurnPassId, type TurnPassRequest } from '@/lib/turnPipeline/turnPlan';
 import { TEST_PROMPTS, testInput } from '@/lib/turnPipeline/turnTestInputs';
-import { diaryRequest, digestRequest, type HandBuiltRequest } from './handBuiltRequests';
+import { diaryRequest, type HandBuiltRequest } from './handBuiltRequests';
 
-// Characterizes the two hand-built drainer requests against their pass records. Goes away with the builders.
+// Characterizes the hand-built diary request against its pass record. Goes away with the builder.
 
 const passOf = (id: TurnPassId) => TURN_PASSES.find((p) => p.id === id)!;
 
@@ -43,46 +43,6 @@ const wireWithPassQuiet = (hand: HandBuiltRequest, pass: TurnPassRequest) => {
   expect(pass.quiet).toBe(true);
   return { ...wire(hand), quiet: true };
 };
-
-describe('the digest drainer request against the summary pass', () => {
-  const hand = digestRequest({
-    summaryPrompt: TEST_PROMPTS.summary, summaryUserPrompt: TEST_PROMPTS.summaryUser,
-    ctx: WORLD, playerAction: ACTION, narration: NARRATION, turnId: TURN_ID,
-  });
-  const pass = passOf('summary').buildRequest(sequential, material());
-
-  it('matches on the prompt, messages, type, cap, silent flag and attach turn id', () => {
-    expect(wireWithPassQuiet(hand, pass)).toEqual(wire(pass));
-    expect(pass.systemPrompt).toBe('SUMMARY Sedge Landing');
-    expect(pass.messages).toEqual([{ role: 'user', content: `Digest: ${ACTION} | ${NARRATION}` }]);
-    expect(pass).toMatchObject({ type: 'summary', maxTokens: TURN_PASS_CAPS.summary, silent: true, attachTurnId: TURN_ID });
-  });
-
-  it('differs by Request Anatomy alone, which only the pass record carries', () => {
-    expect(hand).not.toHaveProperty('anatomy');
-    expect(pass.anatomy).toBeDefined();
-  });
-
-  it('differs by the context values: the view\'s own against the turn\'s base context', () => {
-    const viewSide = digestRequest({
-      summaryPrompt: TEST_PROMPTS.summary, summaryUserPrompt: TEST_PROMPTS.summaryUser,
-      ctx: { '<WORLD DESCRIPTION>': 'Sedge Landing, after the move' }, playerAction: ACTION, narration: NARRATION, turnId: TURN_ID,
-    });
-    expect(viewSide.systemPrompt).toBe('SUMMARY Sedge Landing, after the move');
-    expect(pass.systemPrompt).toBe('SUMMARY Sedge Landing');
-    expect(viewSide.messages).toEqual(pass.messages);
-  });
-
-  it('differs by the action: the paired user message against the effective action', () => {
-    const opening = digestRequest({
-      summaryPrompt: TEST_PROMPTS.summary, summaryUserPrompt: TEST_PROMPTS.summaryUser,
-      ctx: WORLD, playerAction: 'Begin at the ferry.', narration: NARRATION, turnId: TURN_ID,
-    });
-    const openingPass = passOf('summary').buildRequest(sequential, material({ effectiveAction: 'START GAME' }));
-    expect(opening.messages).toEqual([{ role: 'user', content: `Digest: Begin at the ferry. | ${NARRATION}` }]);
-    expect(openingPass.messages).toEqual([{ role: 'user', content: `Digest: START GAME | ${NARRATION}` }]);
-  });
-});
 
 describe('the diary drainer request against the diary pass', () => {
   const build = (name: string, allEntities: Entity[]) => diaryRequest({

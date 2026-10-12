@@ -155,9 +155,6 @@ export const choicesSystemPrompt = (
 export const summaryUserTiled = (template: string, action: string, narration: string): TiledRuns =>
   userTiled(template, { '<PLAYER ACTION>': stripOocDirectives(action), '<NARRATION>': narration });
 
-export const summaryUserMessage = (template: string, action: string, narration: string): string =>
-  summaryUserTiled(template, action, narration).content;
-
 /** A headed block chip's value: its header over the text, or nothing at all. */
 const headedBlock = (header: string, text: string): string => (text.trim() ? `${header}\n${text}` : '');
 
@@ -496,9 +493,10 @@ export const statUpdatesPass: TurnPassRecord<ReturnType<typeof parseStatUpdates>
 };
 
 /**
- * This turn's memory digest. Only runs in the batch — dispatched one at a time, it is the idle drainer's job.
+ * This turn's memory digest. Due in the batch only; the Background Pass Queue writes any digest a turn
+ * leaves behind.
  */
-const summaryPass: TurnPassRecord<string> = {
+export const summaryPass: TurnPassRecord<string> = {
   id: 'summary',
   type: 'summary',
   stage: 'postNarration',

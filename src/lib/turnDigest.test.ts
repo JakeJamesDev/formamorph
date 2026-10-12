@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { AITurnResult, ChatMessage } from '@/types';
-import { parseTurnContent, serializeTurnContent, selectDueDigests, applyDigest, clearTurnDerived, selectDueDiaries, pendingDiaryNames, applyDiary, collectCharacterDiary, recentParticipants, applyImportance } from './turnDigest';
+import { dueDigests } from './backgroundPassQueue/backgroundPassQueue';
+import { parseTurnContent, serializeTurnContent, applyDigest, clearTurnDerived, selectDueDiaries, pendingDiaryNames, applyDiary, collectCharacterDiary, recentParticipants, applyImportance } from './turnDigest';
 
 const user = (content: string): ChatMessage => ({ role: 'user', content });
 
@@ -44,51 +45,6 @@ describe('parseTurnContent / serializeTurnContent', () => {
   });
 });
 
-describe('selectDueDigests', () => {
-  it('digests every completed turn by default (skipRecent 0), newest-first', () => {
-    const history = [
-      ...pair('a1', { turnId: 't1' }),
-      ...pair('a2', { turnId: 't2' }),
-      ...pair('a3', { turnId: 't3' }),
-    ];
-    expect(selectDueDigests(history)).toEqual(['t3', 't2', 't1']);
-  });
-
-  it('skips the most recent `skipRecent` assistant turns', () => {
-    const history = [
-      ...pair('a1', { turnId: 't1' }),
-      ...pair('a2', { turnId: 't2' }),
-      ...pair('a3', { turnId: 't3' }),
-      ...pair('a4', { turnId: 't4' }),
-    ];
-    // floor of 2 keeps t4, t3 verbatim; t2, t1 are due (most-recent-first).
-    expect(selectDueDigests(history, 2)).toEqual(['t2', 't1']);
-  });
-
-  it('does not re-select turns that already have a summary', () => {
-    const history = [
-      ...pair('a1', { turnId: 't1', summary: 'done' }),
-      ...pair('a2', { turnId: 't2' }),
-      ...pair('a3', { turnId: 't3' }),
-    ];
-    expect(selectDueDigests(history, 1)).toEqual(['t2']);
-  });
-
-  it('skips pre-digest turns lacking a turnId', () => {
-    const history = [
-      ...pair('a1', {}), // legacy, no turnId
-      ...pair('a2', { turnId: 't2' }),
-      ...pair('a3', { turnId: 't3' }),
-    ];
-    expect(selectDueDigests(history, 1)).toEqual(['t2']);
-  });
-
-  it('returns nothing when every turn is within the verbatim floor', () => {
-    const history = [...pair('a1', { turnId: 't1' }), ...pair('a2', { turnId: 't2' })];
-    expect(selectDueDigests(history, 3)).toEqual([]);
-  });
-});
-
 describe('applyDigest', () => {
   it('patches the summary onto the matching turn and leaves others untouched', () => {
     const history = [
@@ -112,7 +68,7 @@ describe('applyDigest', () => {
 
 describe('clearTurnDerived', () => {
   const history = () => [
-    ...pair('a1', { turnId: 't1', summary: 's1', diaries: { Bram: 'd1' } }),
+    ...pair('a1', { turnId: 't1', narration: 'The bridge holds.', summary: 's1', diaries: { Bram: 'd1' } }),
     ...pair('a2', { turnId: 't2', summary: 's2', diaries: { Odette: 'd2' } }),
   ];
 
@@ -122,7 +78,7 @@ describe('clearTurnDerived', () => {
     expect(t1.summary).toBeUndefined();
     expect(t1.diaries).toBeUndefined();
     expect(t1.turnId).toBe('t1'); // identity + other fields preserved
-    expect(selectDueDigests(out)).toContain('t1'); // drainer will rebuild it
+    expect(dueDigests(out).map((t) => t.turnId)).toContain('t1'); // the queue rebuilds it
     // Other turns untouched.
     const t2 = parseTurnContent(out[3].content)!;
     expect(t2.summary).toBe('s2');
