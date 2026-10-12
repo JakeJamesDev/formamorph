@@ -1,6 +1,6 @@
 # 10: Help topic and glossary
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 07, 08
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: low
@@ -27,3 +27,9 @@ The help window answers "how do I show a portrait only when hurt" and "can a tra
 - [ ] Changelog fragment written. Gates green: `typecheck`, `lint`, `test`, `build`.
 
 ## Comments
+
+- Help search probe, 2026-10-12, bundled index and rebuilt `sectionVectors.json` (542 sections):
+  - "show image when hurt": keyword rank 1 (`World-Editor-Entities#visibility-rules`); semantic rank 2, score 0.352 against 0.396 for the top hit.
+  - "how do I show a portrait only when hurt": keyword rank 1; semantic rank 2, 0.344.
+  - "can a trait need a stat": keyword rank 1 (`World-Editor-Traits#stat-conditions`); semantic misses the top five.
+- Route lines: the cog sits on the entity panel's Profile tab, which is no Take Me There target, so the Visibility rules section routes to `worldEditorEntity.profile`. The stat Conditions section routes to `worldEditorTrait.availability`.

@@ -199,6 +199,63 @@ An image field takes an uploaded file or a web address. See [Upload or link](Wor
 
 A generated image goes into the first free slot. With no free slot, **Replace which image?** asks which image it takes the place of. **Cancel** changes nothing.
 
+## Visibility rules
+<!-- keywords: show image when hurt, wounded portrait, portrait only when injured, image changes with health, hide image, change image in game, art follows story, transformation art, armored portrait, conditional image, image per state, stat threshold image, form change image -->
+<!-- route: worldEditorEntity.profile -->
+
+A **Visibility rule** makes an image show only in the right state. Give the wounded portrait a rule that reads *Health < 20%*, and it shows while the entity is hurt.
+
+An image with no rule always shows. In play, the entity shows the **first image that is visible**, counting from the left. The rule uses the same [requirement rows](World-Editor-Traits#requirements) as a trait's **Requires** field, including [stat conditions](World-Editor-Traits#stat-conditions).
+
+### How to add a rule
+<!-- keywords: cog on thumbnail, add visibility rule, edit rule, shown while, badge on image, eye badge -->
+
+1. Select the entity, then open its **Profile** tab.
+2. Hover over the image's thumbnail, then select the cog on its corner. Its tooltip reads **Visibility Rule**. On a touch screen, the cog always shows.
+3. Select **Add Requirement**, then pick a trait or a stat.
+4. Select **And** to add a condition to the same row. Select **Or Another Way** to add a row.
+
+An image shows while **any one row** holds. A row holds when **all** its conditions hold.
+
+A thumbnail with a rule carries an eye badge. The line under the selected thumbnail reads the rule: *Shown while Health < 20% and not Healed*.
+
+A condition checks the entity that owns the image, unless you pick another bearer. To read the player's traits or stats, pick **You**. *Shown while You: Night Vision* shows the true form to a player who has Night Vision.
+
+### Order sets priority
+
+Put the special states first and the fallback last. For a rule on each of *Wounded* and *Armored*, and none on *Plain*:
+
+| Place | Image | Rule | Shows |
+|---|---|---|---|
+| 1 | Wounded | *Health < 20%* | While Health is under 20% |
+| 2 | Armored | *Knight and You: Trusted Ally* | While both hold, and Wounded doesn't |
+| 3 | Plain | None | The rest of the time |
+
+- Drag a thumbnail to reorder. The rule goes with its image.
+- When you replace an image, the new image keeps the rule.
+- When you delete an image, its rule goes too.
+
+### The primary image
+
+The first image is the **primary**. Outside play, the primary always shows and rules are ignored: in the library, on listings, on a character card and in setup.
+
+In play, the first visible image takes its place. The editor warns when the primary has a rule, so leave it without one and use it as the fallback.
+
+### What the player sees
+
+- The entity panel, the zoom view and the persona row show the same visible image. Each updates when a turn commits.
+- Paging skips hidden images.
+- A player stays on the image they paged to while it stays visible. When it hides, the view moves to the first visible image, and returns when the rule holds again.
+- An image whose trait or stat is gone never shows.
+- When every image hides, the entity shows its 3D model if it has one. Otherwise it shows no image.
+- The player's view follows the turn on screen, so paging back through history shows the images from that turn.
+
+> 💡 **A rule only shows or hides.** There's no *hide when* direction. To hide an image while *Werewolf* is on, give it the rule *not Werewolf*.
+
+> 💡 **Never hide every image.** Keep one image with no rule, or two images that cover a condition and its Not. The [Test Bench](World-Editor-Traits#test-bench-checks) warns when an entity can end up with none.
+
+The narrator never sees the images or their rules.
+
 ## SillyTavern cards
 <!-- keywords: field mapping, what converts, card fields, alternate greetings, example dialogue, v2 spec, user tag, char tag -->
 

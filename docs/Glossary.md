@@ -150,7 +150,9 @@ The words Formamorph uses, and what each one means. Each term links the page tha
 | [Pick Count](World-Editor-Traits#pick-count) | How many traits the player must and can pick from a group: **Any**, **Exactly One**, **Up to One** or **Custom** |
 | [Requirement](World-Editor-Traits#requirements) | What a trait needs before it is available: a list of rows. The trait opens when any one row holds. |
 | [Requirement Row](World-Editor-Traits#rows) | One way to open a trait. It holds when every Condition in it holds. |
-| [Condition](World-Editor-Traits#conditions) | One check in a row: a trait, any trait in a group, or a persona. **Not** makes it hold while the target is off. |
+| [Condition](World-Editor-Traits#conditions) | One check in a row: a trait, any trait in a group, a persona, or a stat. **Not** makes it hold while the target is off. |
+| [Stat Condition](World-Editor-Traits#stat-conditions) | A Condition that compares a stat to a number, raw or as a percent of the stat's range. *Rage >= 80* |
+| [Visibility Rule](World-Editor-Entities#visibility-rules) | Rows on a gallery image that decide when it shows in play. With no rows, it always shows. |
 | [Bearer](World-Editor-Traits#whose-trait-counts) | The entity that has a trait. You are the bearer **You**. |
 | [Blueprint](World-Editor-Traits#blueprints) | A trait or [placeholder](World-Editor-Placeholders#blueprints) in the **Blueprints** group. It exists to be linked or copied. |
 | [Link](World-Editor-Traits#links) | Gives a Blueprint trait to an entity. It reads the Blueprint live until you change a field. |

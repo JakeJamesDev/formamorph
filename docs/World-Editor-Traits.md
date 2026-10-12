@@ -241,7 +241,7 @@ During the game:
 
 A **row** is one way to open the trait. It holds when every condition in it holds, so a row means **and**. The trait opens when any one row holds, so rows mean **or**.
 
-- **Add Requirement** adds the first condition. It opens a search with three lists: **Traits**, **Any Trait in a Group** and **Playing As**.
+- **Add Requirement** adds the first condition. It opens a search with these lists: **Traits**, **Any Trait in a Group**, **Playing As**, and one list of **Stats** for each bearer.
 - **And** (in a row) adds another condition to that row.
 - **Or Another Way** (below the rows) adds a new row.
 - The **X** at the end of a row removes the whole row. Remove the last condition in a row, and the row goes too.
@@ -250,7 +250,7 @@ For example, two rows read *Knight and Heavy Build*, then *Mercenary*. The trait
 
 ### Conditions
 
-A **condition** checks one target. A target is a trait, any trait in a group, or a persona the player plays as. Select a condition to open its target.
+A **condition** checks one target. A target is a trait, any trait in a group, a persona the player plays as, or a stat. Select a condition to open its target. A [stat condition](#stat-conditions) has nowhere to open, so it reads as plain text.
 
 Select **Require it to be off** on a condition's chip to make it **Not**. A Not condition shows a **NOT** mark and a dashed border, and it holds while its target is off. Select the button again to require the target instead.
 
@@ -269,9 +269,45 @@ A trait's own state never counts toward its own requirements. A condition whose 
 
 > 💡 **Use Not on an Automatic trait to switch it off in some cases.** *Automatic unless Paladin* turns the trait on, and off again if the player takes Paladin.
 
+### Stat conditions
+<!-- keywords: stat threshold, needs a stat, rage at 80, health under, percent of max, raw or percent, greater than, less than, not equal, trait needs stat, turns off when stat drops, comes back when stat recovers -->
+<!-- route: worldEditorTrait.availability -->
+
+A **stat condition** compares a bearer's stat to a number. *Berserk* requires *Rage >= 80*, so it opens at 80 Rage or more.
+
+1. Open the trait's **Availability** tab.
+2. Under **Requires**, select **Add Requirement**, then pick a stat from a **Stats** list.
+3. Pick the **Operator**, type the **Value**, and pick **Raw** or **%**.
+
+| Choice | What it does |
+|---|---|
+| **Operator** | One of `>`, `<`, `>=`, `<=`, `=` or `≠` |
+| **Raw** | Compares the number in the stat's own units. *Gold > 100* |
+| **%** | Compares the share of the stat's range, from its min to its max. *Health < 20%* keeps working when you change the max. |
+
+- **Not** works like on any condition. *not Health = 0* is one chip.
+- Add the same stat twice in one row for a range. *Rage >= 20* and *Rage < 80* are two conditions.
+- To check another bearer's stat, pick that bearer, as with a trait. The list holds that bearer's own stats.
+- **=** and **≠** compare the number the stat bar shows, rounded. A bar that reads 20 matches *= 20*.
+- A stat with the same min and max reads 0%, so a **%** condition on it is always 0%. Use **Raw** or widen the range.
+- A stat that's switched off, or gone, never holds. The chip reads red under its saved name.
+
+#### When the game checks
+
+The game reads the stats once per turn, after the turn's stat changes have landed. A trait that requires a stat then follows it:
+
+- The trait turns off when its condition stops holding. Its stat changes reverse, and the log says *Trait switched off: Berserk*.
+- The trait returns when its condition holds again.
+- A trait the player switched off by hand stays off, even when its condition holds.
+- One turn settles once. A stat that moves up and down during the turn never flickers the trait.
+
+A trait's own stat changes don't make the game check again in the same turn. A trait that raises the stat its own condition reads can flip its own gate on the next turn. The [Test Bench](#test-bench-checks) warns about this.
+
+> 💡 **Gate on a different stat than the trait changes.** *Berserk* requires *Rage >= 80* and adds Strength. It's safe. If it also lowered Rage, it could turn itself off.
+
 ### What the player reads
 
-A locked trait shows its requirements as one line: *Requires Knight and not Paladin, or Mercenary*. Conditions join with **and** and rows join with **or**. A trait that opens shows the rows that opened it, as *Unlocked by …*. Conditions on a [Hidden](#hidden-traits) trait are left out of the line the player reads. A row with nothing left to show is dropped. A trait with no row left to show reads **Locked**.
+A locked trait shows its requirements as one line: *Requires Knight and not Paladin, or Mercenary*. Stat conditions read the same way: *Requires Rage >= 80*, with **%** after a percent. Conditions join with **and** and rows join with **or**. A trait that opens shows the rows that opened it, as *Unlocked by …*. Conditions on a [Hidden](#hidden-traits) trait are left out of the line the player reads, and so are conditions on a hidden stat or a switched-off stat. A row with nothing left to show is dropped. A trait with no row left to show reads **Locked**.
 
 ### Whose trait counts
 
@@ -444,6 +480,7 @@ It shows an error when:
 
 - A trait can never unlock for its bearer. For example, Albus links *Smite*, but nothing on Albus gives *Paladin*.
 - A condition names a trait or group the world no longer has. The check reports each condition.
+- A [Visibility rule](World-Editor-Entities#visibility-rules) on an image names a trait or group the world no longer has, or a stat its bearer doesn't have.
 - Requirements loop through a **Not** and can never settle. For example, *A* requires *B*, and *B* requires *not A*. Two traits that exclude each other, such as *A: not B* and *B: not A*, are fine.
 - A trait's **Stat Availability** names a stat that doesn't exist.
 - A group's **At Least** is above its **At Most**.
@@ -455,6 +492,9 @@ It shows a warning when:
 - More **Automatic** traits can be active together than a group's maximum allows. The check can report a group that never fills, because it ignores the maximums of other groups.
 - A group marks more traits as default than its maximum allows. Some defaults won't apply.
 - A row can never hold, such as *Paladin and not Paladin*. Remove the row or change a condition.
+- A trait requires a stat that the trait changes itself, including the stat's min, max or on/off state. Its own effect can flip the requirement.
+- A **%** condition reads a stat whose min and max are equal. It always reads 0%.
+- Every image of an entity has a Visibility rule, and no two images cover a condition and its Not. The entity can end up with no image.
 - A trait has **Starts** set to **On**, but no starting choice meets its requirements, so it starts unselected. Two defaults that exclude each other count: the later one starts unselected.
 - A bearer needs a copy of a blueprint and has none. The warning names the bearer and the trait or chip that needs it.
 - A copy removed the value that a pin names. The pin pins nothing.
