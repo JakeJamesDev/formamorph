@@ -41,7 +41,7 @@ type AddTarget = number | 'new';
  * by bearer, and `textOf` the rule text of one Condition.
  */
 export function RequirementRowsField({
-  rows, owner, states, options, statSections = [], textOf, placeholders, offWorld = false, onChange, onOpen, opens = () => true, labelAside,
+  rows, owner, states, options, statSections = [], textOf, placeholders, offWorld = false, onChange, onOpen, opens = () => true, label = 'Requires', labelAside,
 }: {
   rows: TraitRequirementRow[];
   owner: string;
@@ -54,6 +54,8 @@ export function RequirementRowsField({
   onChange: (rows: TraitRequirementRow[]) => void;
   onOpen: (requirement: TraitRequirement) => void;
   opens?: (requirement: TraitRequirement) => boolean;
+  /** The field's name, for a host whose rows are not a trait's requirement. */
+  label?: string;
   labelAside?: ReactNode;
 }) {
   const [target, setTarget] = useState<AddTarget | null>(null);
@@ -250,7 +252,7 @@ export function RequirementRowsField({
 
   return (
     <div className="space-y-2" role="group" aria-labelledby={labelId}>
-      <div className="flex items-center gap-2"><Label id={labelId}>Requires</Label>{labelAside}</div>
+      <div className="flex items-center gap-2"><Label id={labelId}>{label}</Label>{labelAside}</div>
       {rows.length > 0 && (
         <div>
           {rows.map((row, i) => {

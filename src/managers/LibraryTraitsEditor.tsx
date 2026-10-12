@@ -1,17 +1,11 @@
 import { useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import { Hint } from '@/components/ui/typography';
 import type { EntityRoot, TraitStore } from '@/contexts/TraitStoreContext';
-import { editorGateInput } from '@/lib/bearers';
-import { startingGateStats } from '@/lib/gateStats';
+import { libraryGateInput, type LibraryEditorWorld } from '@/lib/libraryGateInput';
 import { ownedTraitWrites } from '@/lib/ownedTraits';
-import { bindOwnedTraits, linksBoundTo, linksCarriedFrom, type TraitWorld } from '@/lib/portableTraits';
+import { linksBoundTo, linksCarriedFrom } from '@/lib/portableTraits';
 import type { Entity, Placeholder } from '@/types';
 import EntityTraitsEditor, { type EntityTraitStore } from './EntityTraitsEditor';
-
-const NO_WORLD: TraitWorld = { traits: [], traitGroups: [], entities: [] };
-
-/** The world a library entity's editor was opened from: what its links and requirements read. */
-export type LibraryEditorWorld = TraitWorld & { placeholders: readonly Placeholder[] };
 
 /**
  * A trait store over one library entity: its own traits fill the tree's root, and every write lands on it.
@@ -36,12 +30,7 @@ function libraryTraitStore(
       if (e.id !== id) return e;
       return world ? linksCarriedFrom(change(linksBoundTo(e, world)), world) : change(e);
     }),
-    // Standalone, "playing as" itself resolves and an outward requirement reads by its stored name. Only the
-    // entity's own stats are offered, so the world's stats stay out.
-    gateInput: editorGateInput({
-      traits: world?.traits ?? [], traitGroups: world?.traitGroups ?? [],
-      entities: [...(world?.entities ?? []).filter((e) => e.id !== entity.id), bindOwnedTraits(entity, world ?? NO_WORLD)],
-    }, startingGateStats({ entities: [entity] })),
+    gateInput: libraryGateInput(entity, world),
     pinWorld: null,
     offWorld: true,
   };

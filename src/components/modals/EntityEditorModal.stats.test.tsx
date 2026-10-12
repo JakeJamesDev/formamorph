@@ -6,7 +6,7 @@ import EntityEditorModal from './EntityEditorModal';
 import { SettingsProvider } from '@/contexts/SettingsContext';
 import EntityStorageService from '@/services/EntityStorageService';
 import { buildEntityCardData, parseEntityCardData } from '@/lib/entityFile';
-import type { LibraryEditorWorld } from '@/managers/LibraryTraitsEditor';
+import type { LibraryEditorWorld } from '@/lib/libraryGateInput';
 import type { Entity, Stat } from '@/types';
 
 /** The library entity editor's Stats tab: the World Editor's tree and panel over the entity's own stats. */

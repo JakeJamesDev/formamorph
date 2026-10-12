@@ -1,7 +1,7 @@
 // Trait gates: what a requirement list unlocks, and what a selection settles to. Every owner is one bearer
 // and gates on its own active set; the player's owners (the world root and the played entity) read as one.
 
-import type { PersonaRef, RequirementBearer, StatRequirement, Trait, TraitGroup, TraitRequirement } from '@/types';
+import type { PersonaRef, RequirementBearer, StatRequirement, Trait, TraitGroup, TraitRequirement, TraitRequirementRow } from '@/types';
 import { defaultPicks, exclusiveSiblings, isAlwaysOn, isHidden, traitOrderIndex } from './traitEffects';
 // The generic tree, not traitTree: that module reads the bearer resolver, which reads this one.
 import { buildTree, flattenTree } from './groupTree';
@@ -223,7 +223,7 @@ const activeSets = (input: GateInput): ActiveIn => {
 
 /** Whether a Condition's target is on for `trait`. The trait itself and its exclusive siblings in its own tree
  *  never count (Q26); another bearer's copy of a sibling does. */
-function targetOn(req: Exclude<TraitRequirement, StatRequirement>, trait: Located<Trait>, activeIn: ActiveIn, idx: Index): boolean {
+function targetOn(req: Exclude<TraitRequirement, StatRequirement>, trait: Located<{ id: string }>, activeIn: ActiveIn, idx: Index): boolean {
   if (req.kind === 'playingAs') return idx.persona.source === 'world' && idx.persona.entityId === req.id;
   const set = idx.bearerSet(req.bearer, trait.owner);
   const rivals = idx.owners.get(trait.owner.id)?.rivals.get(trait.item.id);
@@ -263,7 +263,7 @@ function statHolds(req: StatRequirement, from: GateOwner, idx: Index): boolean {
 }
 
 /** Whether one Condition holds for `trait` against `activeIn`: its target is on, or off under Not. */
-function requirementHolds(req: TraitRequirement, trait: Located<Trait>, activeIn: ActiveIn, idx: Index): boolean {
+function requirementHolds(req: TraitRequirement, trait: Located<{ id: string }>, activeIn: ActiveIn, idx: Index): boolean {
   if (req.kind === 'stat') return statHolds(req, trait.owner, idx);
   return req.not ? !targetOn(req, trait, activeIn, idx) : targetOn(req, trait, activeIn, idx);
 }
@@ -340,22 +340,38 @@ export function gateStates(input: GateInput): GateStates {
   for (const { owner, traits } of idx.owners.values()) {
     const states = new Map<string, GateState>();
     for (const trait of traits.values()) {
-      const rows = (trait.item.requires ?? []).map((row): RowState => {
-        const conditions = row.all.map((req): ConditionState => {
-          const named = requirementText(req, idx);
-          // A stat resolves against the trait owner's bearer set, which the text alone does not read.
-          const stat = req.kind === 'stat' ? idx.statOf(req, owner) : null;
-          const unresolved = named.unresolved || (req.kind === 'stat' && (!stat || !!stat.inert));
-          const hidden = req.kind === 'trait' ? idx.hiddenTraits.has(req.id) : !!stat && (!!stat.hidden || !!stat.inert);
-          return { text: named.text, unresolved, hidden, holds: !unresolved && requirementHolds(req, trait, activeIn, idx) };
-        });
-        return { holds: conditions.every((c) => c.holds), conditions };
-      });
+      const rows = rowStatesOf(trait.item.requires ?? [], trait, activeIn, idx);
       states.set(trait.item.id, { unlocked: rows.length === 0 || rows.some((r) => r.holds), rows });
     }
     out.set(owner.id, states);
   }
   return out;
+}
+
+/** Each row's state for `rows` read from `holder`: a stat resolves against the holder's bearer set, which the
+ *  text alone does not read. */
+function rowStatesOf(rows: readonly TraitRequirementRow[], holder: Located<{ id: string }>, activeIn: ActiveIn, idx: Index): RowState[] {
+  return rows.map((row): RowState => {
+    const conditions = row.all.map((req): ConditionState => {
+      const named = requirementText(req, idx);
+      const stat = req.kind === 'stat' ? idx.statOf(req, holder.owner) : null;
+      const unresolved = named.unresolved || (req.kind === 'stat' && (!stat || !!stat.inert));
+      const hidden = req.kind === 'trait' ? idx.hiddenTraits.has(req.id) : !!stat && (!!stat.hidden || !!stat.inert);
+      return { text: named.text, unresolved, hidden, holds: !unresolved && requirementHolds(req, holder, activeIn, idx) };
+    });
+    return { holds: conditions.every((c) => c.holds), conditions };
+  });
+}
+
+/**
+ * The state of loose Requirement Rows, such as an image's Visibility rule, read from `ownerId`: that owner when
+ * the input holds it, else an owner with no traits (an entity that only bears stats and images).
+ */
+export function ruleStates(input: GateInput, ownerId: string, rows: readonly TraitRequirementRow[]): RowState[] {
+  const idx = index(input);
+  const owner = idx.owners.get(ownerId)?.owner
+    ?? { id: ownerId, name: idx.entities.get(ownerId)?.name ?? '', traits: [], groups: [] };
+  return rowStatesOf(rows, { owner, item: { id: `rule:${ownerId}` } }, activeSets(input), idx);
 }
 
 export interface SettleResult {

@@ -313,6 +313,7 @@ export const EntityImageWidget = ({ value, onChange, placeholders = [], ownerId,
     onTagsChange={(t) => onChange('imageTags', t)}
     placeholders={placeholders}
     ownerId={ownerId}
+    ruleOwnerId={value.id}
   >
     {children}
   </ImageWidget>

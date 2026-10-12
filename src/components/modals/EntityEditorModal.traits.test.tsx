@@ -6,7 +6,7 @@ import EntityEditorModal from './EntityEditorModal';
 import { SettingsProvider } from '@/contexts/SettingsContext';
 import EntityStorageService from '@/services/EntityStorageService';
 import { SELF_ENTITY } from '@/lib/portableTraits';
-import type { LibraryEditorWorld } from '@/managers/LibraryTraitsEditor';
+import type { LibraryEditorWorld } from '@/lib/libraryGateInput';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import { phValues } from '@/test/placeholderValues';
 import type { Entity } from '@/types';

@@ -446,7 +446,12 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       void import('@/lib/devPaneSamples').then(({ devCustomCodeSample }) => setDevCodeSample(devCustomCodeSample()));
     }
     // Library editors open on a blank draft — nothing is stored, so these are reachable on a fresh profile.
-    if (devRoute?.modal === 'entityEditor') setDraftEntity({ id: randomUUID(), name: 'New Character' });
+    // `fixture=gallery` opens it on an entity whose images carry Visibility rules.
+    if (devRoute?.modal === 'entityEditor') {
+      if (devRoute.fixture === 'gallery') {
+        void import('@/lib/devPaneSamples').then(({ devGalleryEntity }) => setDraftEntity(devGalleryEntity(randomUUID())));
+      } else setDraftEntity({ id: randomUUID(), name: 'New Character' });
+    }
     if (devRoute?.modal === 'dictionaryEditor') setDraftDictionary({ id: randomUUID(), name: 'New Dictionary', enabled: true, entries: [] });
     // The publish dialog names itself from a payload, so it opens on a canned world rather than on
     // whatever the library happens to hold — it is reachable on an empty profile that way.
@@ -487,7 +492,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     if (!devRoute?.modal && devRoute?.tab && (MAIN_MENU_CARD_TABS as readonly string[]).includes(devRoute.tab)) {
       setCardType(devRoute.tab as typeof cardType);
     }
-  }, [devRoute?.modal, devRoute?.tab, openCommunityBrowser]);
+  }, [devRoute?.modal, devRoute?.tab, devRoute?.fixture, openCommunityBrowser]);
 
   // DEV: the Authoring Tour always runs on a world of its own, so its route opens a new blank one.
   useEffect(() => {
