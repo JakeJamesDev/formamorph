@@ -443,9 +443,9 @@ function useProvideSettings() {
   const [imageAttachments, setImageAttachments] = usePersistentState<boolean>(`${APP_ID}_imageAttachments`, DEFAULT_IMAGE_ATTACHMENTS, boolCodec);
   // Master switch over every prompt's Tools; the endpoint capability gate still applies when on.
   const [toolsEnabled, setToolsEnabled] = usePersistentState<boolean>(`${APP_ID}_toolsEnabled`, DEFAULT_TOOLS_ENABLED, boolCodec);
-  // Autosave the world's single autosave slot after every completed turn (starting with the opening). On by default.
+  // Autosave after every completed turn (starting with the opening). On by default.
   const [autosaveEnabled, setAutosaveEnabled] = usePersistentState<boolean>(`${APP_ID}_autosaveEnabled`, true, boolCodec);
-  // How many autosaves each world keeps, the oldest overwritten. One by default.
+  // How many autosaves each world keeps, the oldest deleted. One by default.
   const [autosaveSlots, setAutosaveSlots] = usePersistentState<number>(`${APP_ID}_autosaveSlots`, AUTOSAVE_SLOTS, intCodec);
   // The World Editor saves on its own, in both hosts. One preference for every world.
   const [editorAutoSave, setEditorAutoSave] = usePersistentState<boolean>(`${APP_ID}_editorAutoSave`, DEFAULT_EDITOR_AUTO_SAVE, boolCodec);
