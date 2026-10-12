@@ -79,6 +79,9 @@ Spec-session rulings for ticket sessions.
 | Q38 | (ticket 02) The Entities stats axis has three stored states: scope default, off, on. The stats-on id stays out of the chip label like the six new ids; the off id keeps showing "No Stats" as today |
 | Q39 | (ticket 02) Ticket 02 hides the six new axes from the dialog behind a registry flag the shell reads. Ticket 05 removes the flag when it adds the rows and switches the dialog to lock groups |
 | Q40 | (ticket 03) The Settings sample scene gives Wren one authored stat and one trait, so every Only With spelling renders lines there and the sample test keeps its no-placeholder rule. Only the sample preview changes |
+| Q41 | (ticket 09) The ticket writes one changelog fragment with the forward-compatibility note. The spec session folds the five landed Chip Options entries into one and corrects the entity-stats line on main after the ticket lands; a ticket branch never edits the changelog |
+| Q42 | (ticket 09) Chip Options gets an entry in CONTEXT.md beside the corrected Chip Values entry, and a row in the player Glossary |
+| Q43 | (ticket 09) The forward-compatibility line says "an older version", with no version number. The Design System section lands marked Proposal with its showcase reference; the user approves the pattern at hand-off |
 
 ## User Stories
 
