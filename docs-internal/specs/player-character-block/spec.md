@@ -40,6 +40,8 @@ Rulings from the discussion, numbered as asked.
 - **Q21** (ticket 03) The Test Bench AI Context panel's Stats block shows what the Stats chip sends, world stats only. The Custom Persona entity's stats now travel in the Persona chip, which the Bench has no block for; ticket 05 adds one.
 - **Q22** (ticket 03) The Open Chat bundled world's own prompts follow the defaults: its choices Persona chip takes Summary, and its narration and choices prompts take the Other Traits and Other Stats headers and the Persona-first order. The saved-prompt guarantee covers users' prompts, not bundled worlds. No shape change.
 - **Q23** (ticket 03) The block ships as built. The probe's leak checks held in both arms with the block's numbers in the prompt, and its uptake proxies resolved no change in either direction.
+- **Q24** (ticket 05) The Bench has no export or request card, so the ticket's export criterion is struck. The Persona block is one more entry in the Bench's block list and needs no button.
+- **Q25** (ticket 04) The character's own stats stay in the character pass identity block as built. The probe showed no leak and no length change, and a clear gain where a stat names a concrete fact the scene can use.
 
 ## User Stories
 
@@ -77,7 +79,7 @@ Rulings from the discussion, numbered as asked.
 21. As a player, I want the choices step to see my persona's traits and stats, so that the options still fit who I am after the fold.
 22. As a player, I want the stat tracker's request unchanged, so that stat changes keep landing on the right owner.
 23. As a player, I want the planner's Cast to keep labeling me "Player Character", so that the planner's player rule still fires.
-24. As a player, I want the continuity planner, director, character pass and storyboard prompts to carry the same block and sections, so that every stage reads me the same way.
+24. As a player, I want the continuity planner, director, character pass and storyboard prompts to carry the same block and Other Traits, so that every stage reads me the same way.
 25. As a player, I want the character pass to read the character's own stats and none of mine, so that a character acts from its own condition.
 26. As a player, I want the planner and director to stay free of stats, so that the narrator alone decides outcomes.
 
@@ -117,11 +119,13 @@ Rulings from the discussion, numbered as asked.
 
 ## Testing Decisions
 
-A good test renders through a public seam and asserts the text the model receives, never the helper that built it. Three seams:
+A good test renders through a public seam and asserts the text the model receives, never the helper that built it. Five seams:
 
 - **The template renderer.** A template with a `{{user}}` header renders the name in every format, a blank name renders the header text as written, a missing value leaves the token in place, and a blank chip value drops the whole headed section. Prior art: the prompt header and template tests.
 - **The chip values map.** From a scene with a played persona that owns stats, the Persona chip's Markdown, Simple and XML values nest the stats after the traits; the Stats chip holds the world stats alone; a clashing name carries its numbered key in both; the off state of the new axis drops the stats field; a null persona yields the none placeholder. Prior art: the chip values, persona context and authored scene tests.
 - **The default prompt text.** The six defaults carry the new headers in the new order, and the choices prompt sends Summary. Prior art: the GamePrompts persona tests.
+- **The character user-message builder** (ticket 04). A selected entity with stats carries the stats field after its background; one without, and an ad-hoc character, carry none. Prior art: the staged planning tests.
+- **The AI Context lens** (ticket 05). The Persona block equals the Persona chip's Markdown value for the authored scene and sits before Stats and Traits. Prior art: the Test Bench AI Context lens tests.
 
 Model behavior is proven by probe numbers, not unit tests: each step's arm against an in-batch control on the default endpoint, per the probe skill.
 
@@ -137,4 +141,4 @@ Model behavior is proven by probe numbers, not unit tests: each step's arm again
 
 - The headed-chip blank rule means `## Other Traits` disappears on a world with no player traits, as Emberwatch shows. That is the intended shape, not a gap.
 - Mock renders of the target shape from the bundled worlds were produced during the discussion and live only in `.scratch/`; the tests above replace them.
-- Q75 of the entity-stats spec is reversed for the narration, choices and planning prompts and should carry a note pointing here.
+- Q75 of the entity-stats spec is reversed for the narration, choices and planning prompts and carries a note pointing here.
