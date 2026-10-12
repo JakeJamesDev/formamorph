@@ -11,6 +11,7 @@ import type { BearerChoice } from './bearerChoices';
 import type { HeldReason } from './heldReasons';
 import { randomUUID } from './uuid';
 import { newStat } from './blankWorld';
+import { regenUnitOf } from './regenUnits';
 
 /** The tree place a link or leaf carries: its group and, when set, its order. */
 export const placeOf = (item: { groupId?: string | null; order?: number }): { groupId: string | null; order?: number } =>
@@ -102,7 +103,7 @@ export function playerStatsOf<T extends Stat>(stats: T[], groups: readonly StatG
 
 // ---- One link ----
 
-/** The overridable fields as the original carries them, absent ones read as off or empty. The Initial Value is
+/** The overridable fields as the original carries them, absent ones read as off or empty. The Base Value is
  *  the stored starting value when the original has one, since a new game seeds from it. */
 export const statLinkFieldsOf = (stat: Stat): StatLinkFields => ({
   type: stat.type,
@@ -111,6 +112,7 @@ export const statLinkFieldsOf = (stat: Stat): StatLinkFields => ({
   max: stat.max,
   value: stat.starting ?? stat.value ?? 0,
   regen: stat.regen ?? 0,
+  regenUnit: regenUnitOf(stat),
   descriptors: stat.descriptors ?? [],
   thresholdUnit: stat.thresholdUnit ?? 'raw',
   beforeCode: stat.beforeCode ?? '',
@@ -135,7 +137,7 @@ export function linkedStat(original: Stat, link: StatLink, at: { groupId: string
   const { record, overridden } = statLinkState(original, link);
   if (!overridden.length && original.starting === undefined) return { ...base, ...at };
   const fields = Object.fromEntries(overridden.map((field) => [field, record[field]]));
-  // The Initial Value stands alone: a stored starting value would otherwise win at the seed.
+  // The Base Value stands alone: a stored starting value would otherwise win at the seed.
   const { starting: _s, ...rest } = base;
   return { ...rest, ...(original.starting !== undefined ? { value: record.value } : {}), ...fields, ...at };
 }
@@ -163,10 +165,16 @@ export function setStatLinkEdits(link: StatLink, original: Stat, edited: Stat): 
   return overrides === before ? link : withStatOverrides(link, original.id, overrides);
 }
 
+/** Fields one Reset clears together: Regen's number and the unit it shows in are one field on screen. */
+const RESET_WITH: Partial<Record<keyof StatLinkFields, (keyof StatLinkFields)[]>> = { regen: ['regenUnit'] };
+
 /** The link reading `field` on one original stat live again. The same link when it did not override it. */
 export function resetStatLinkField(link: StatLink, statId: string, field: keyof StatLinkFields): StatLink {
   const current = link.overrides?.[statId];
-  return current?.[field] ? withStatOverrides(link, statId, withoutOverride(current, field)) : link;
+  if (!current) return link;
+  let next: StatLinkOverrides | undefined = current;
+  for (const f of [field, ...(RESET_WITH[field] ?? [])]) next = withoutOverride(next, f);
+  return next === current ? link : withStatOverrides(link, statId, next);
 }
 
 /** The link reading its original live everywhere: Reset to Blueprint. */

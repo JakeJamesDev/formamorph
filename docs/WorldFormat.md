@@ -25,7 +25,7 @@ The import adds a new world. It never replaces the world you exported. Import sk
 1. Add an object to the top-level `stats` list.
 2. Give it a new `id` and a `name`. Stat code and the AI find a stat by its name, so keep names unique.
 3. Set `type` to `"number"`, or to `"percentage"` for a 0–100 stat.
-4. Set `min`, `max`, `value` (the **Initial Value**) and `regen`.
+4. Set `min`, `max`, `value` (the **Base Value**) and `regen`.
 5. Write a `description`, and set `descriptors` to `[]` or to a list of [descriptors](#stat-descriptors).
 
 ```json
@@ -181,9 +181,10 @@ Each stat is a number the player has. The AI reads it, and [stat code](StatCodeG
 | `description` | ✓ | String | What the stat means |
 | `min` | ✓ | Number | The lowest value |
 | `max` | ✓ | Number | The highest value |
-| `value` | | Number | The **Initial Value**: what a new game starts at. Absent or `0` = `min` |
+| `value` | | Number | The **Base Value**: what a new game starts at, before traits apply. Absent or `0` = `min` |
 | `starting` | | Number | The value a save gets when it did not have this stat yet. A new game also measures turn one's change from it. Absent = `value`. Keep it equal to `value` |
 | `regen` | ✓ | Number | The change per story hour. Negative drains |
+| `regenUnit` | | `"minutes"` \| `"hours"` \| `"days"` \| `"weeks"` | The span the editor shows **Regen** per. `regen` stays per hour. Absent = `"hours"` |
 | `descriptors` | ✓ | [Descriptor](#stat-descriptors)[] | Text for each band of values |
 | `thresholdUnit` | | `"raw"` \| `"percent"` | What a descriptor's `threshold` measures. `"raw"` = the stat's own units. `"percent"` = a percent of `min` to `max`. Absent = `"raw"`. A `percentage` stat is always percent |
 | `beforeCode` | | String | Stat code that runs before the AI's turn. Its changes reach that turn's prompt. See the [Stat Code Guide](StatCodeGuide) |

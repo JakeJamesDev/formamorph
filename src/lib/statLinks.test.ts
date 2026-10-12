@@ -90,7 +90,15 @@ describe('overrides', () => {
     expect(resetStatLinkOn(two, 'l1').statLinks![0].overrides).toBeUndefined();
   });
 
-  it('drops a stored starting value when the Initial Value is overridden', () => {
+  it('resets the Regen unit with the Regen number, since the two are one field on screen', () => {
+    const daily = editStatLink(world, overridden, 'l1', 'trust', { ...linkedStat(trust, link), regen: 1 / 24, regenUnit: 'days' });
+    expect(Object.keys(daily.statLinks![0].overrides!.trust)).toEqual(['value', 'regen', 'regenUnit']);
+    expect(resolvedEntityStats(world, daily)[0]).toMatchObject({ regen: 1 / 24, regenUnit: 'days' });
+    const reset = resetStatLinkFieldOn(daily, 'l1', 'trust', 'regen');
+    expect(Object.keys(reset.statLinks![0].overrides!.trust)).toEqual(['value']);
+  });
+
+  it('drops a stored starting value when the Base Value is overridden', () => {
     expect(linkedStat({ ...trust, starting: 3 }, link).starting).toBeUndefined();
   });
 });

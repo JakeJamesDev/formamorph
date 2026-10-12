@@ -53,7 +53,7 @@ const WORLD: World = benchEditorWorld({
 const openTab = (name: RegExp) => fireEvent.mouseDown(screen.getByRole('tab', { name }));
 
 const FIELD_LABELS =
-  /^(Name|Type|Description|Min|Max|Initial Value|Initial Value \(%\)|Regen|Body Sliders|Availability|Prevent AI Changes|Stat Descriptors|Dynamic Value Calculation|Before the AI|After the AI)$/;
+  /^(Name|Type|Description|Min|Max|Base Value|Base Value \(%\)|Regen|Body Sliders|Availability|Prevent AI Changes|Stat Descriptors|Dynamic Value Calculation|Before the AI|After the AI)$/;
 
 /** Every field label the panel shows, in document order. The panel's own strip carries a Code tab and a
  *  Details tab, so the match is taken from the panel body rather than the whole editor. */
@@ -108,7 +108,7 @@ describe('the World Editor stat panel tabs', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     selectStat('Warmth');
     expect(panelLabels()).toEqual([
-      'Name', 'Type', 'Description', 'Min', 'Max', 'Initial Value', 'Regen', 'Body Sliders',
+      'Name', 'Type', 'Description', 'Base Value', 'Min', 'Max', 'Regen', 'Body Sliders',
       'Availability', 'Prevent AI Changes',
     ]);
     expect(panelSwitches()).toEqual([
@@ -155,7 +155,7 @@ describe('the World Editor stat panel tabs', () => {
     selectStat('Warmth');
     expect(panelTabNames()).toEqual([]);
     expect(panelLabels()).toEqual([
-      'Name', 'Type', 'Description', 'Min', 'Max', 'Initial Value', 'Regen', 'Body Sliders',
+      'Name', 'Type', 'Description', 'Base Value', 'Min', 'Max', 'Regen', 'Body Sliders',
     ]);
     expect(screen.queryByText('Enabled')).toBeNull();
     expect(screen.queryByText('Hidden')).toBeNull();
@@ -180,7 +180,7 @@ describe('the World Editor stat panel tabs', () => {
     pickEditorMode('Simple');
     expect(panelTabNames()).toEqual([]);
     expect(panelLabels()).toEqual([
-      'Name', 'Type', 'Description', 'Min', 'Max', 'Initial Value', 'Regen', 'Body Sliders',
+      'Name', 'Type', 'Description', 'Base Value', 'Min', 'Max', 'Regen', 'Body Sliders',
     ]);
 
     // The switch wears the hidden-data marker, whose own label joins its accessible name.
@@ -194,12 +194,49 @@ describe('the World Editor stat panel tabs', () => {
     selectStat('Resolve');
     expect(panelTabNames()).toEqual(['Details', 'Descriptors', 'Code']);
     expect(panelLabels()).toEqual([
-      'Name', 'Type', 'Description', 'Min', 'Max', 'Initial Value (%)', 'Regen', 'Body Sliders',
+      'Name', 'Type', 'Description', 'Base Value (%)', 'Min', 'Max', 'Regen', 'Body Sliders',
       'Availability', 'Prevent AI Changes',
     ]);
     const min = rangeInput('Min');
     const max = rangeInput('Max');
     expect([min.value, max.value]).toEqual(['0', '100']);
     expect([min.disabled, max.disabled]).toEqual([true, true]);
+  });
+});
+
+describe('the Regen field', () => {
+  const regenBox = () => screen.getByRole('spinbutton', { name: 'Regen' });
+  const pickRegenUnit = (name: string) => {
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Regen Unit' }), { key: 'Enter' });
+    fireEvent.keyDown(screen.getByRole('option', { name: `/ ${name}` }), { key: 'Enter' });
+  };
+  const warmth = (ctx: () => { stats: World['stats'] }) => ctx().stats.find((s) => s.id === 's1')!;
+
+  it('reads per hour by default and stores what is typed as the per-hour rate', () => {
+    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+    selectStat('Warmth');
+    expect(screen.getByRole('combobox', { name: 'Regen Unit' })).toHaveTextContent('/ Hour');
+    fireEvent.change(regenBox(), { target: { value: '2' } });
+    expect(warmth(ctx).regen).toBe(2);
+  });
+
+  it('keeps the number shown when the unit changes, so 2 then Day is 2 per day', () => {
+    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+    selectStat('Warmth');
+    fireEvent.change(regenBox(), { target: { value: '2' } });
+    pickRegenUnit('Day');
+    expect(regenBox()).toHaveValue(2);
+    expect(warmth(ctx)).toMatchObject({ regenUnit: 'days' });
+    expect(warmth(ctx).regen).toBeCloseTo(2 / 24, 12);
+  });
+
+  it('shows a stored per-hour rate in the stat’s own unit', () => {
+    const world = benchEditorWorld({
+      stats: [{ ...WORLD.stats[0], regen: 0.5, regenUnit: 'days' }],
+    } as Partial<World>);
+    renderWorldEditorBench(world, 'advanced');
+    selectStat('Warmth');
+    expect(regenBox()).toHaveValue(12);
+    expect(screen.getByRole('combobox', { name: 'Regen Unit' })).toHaveTextContent('/ Day');
   });
 });

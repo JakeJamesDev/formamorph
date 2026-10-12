@@ -27,6 +27,9 @@ export interface StatDescriptor {
 /** What a descriptor threshold's number means: the stat's own units, or a percentage of min→max. */
 export type ThresholdUnit = 'raw' | 'percent';
 
+/** The span the editor shows Regen per. `regen` itself is always per hour. */
+export type RegenUnit = 'minutes' | 'hours' | 'days' | 'weeks';
+
 /** A world-defined stat: its schema (type, range, descriptors) plus its live/starting value. */
 export interface Stat {
   id: string;
@@ -35,11 +38,14 @@ export interface Stat {
   description: string;
   min: number;
   max: number;
-  /** Initial value at game start (definition-side). */
+  /** Base Value at game start (definition-side), before traits apply. */
   starting?: number;
   /** Live value. */
   value?: number;
+  /** The change per story hour. */
   regen: number;
+  /** The span the editor shows `regen` per. Absent = hours. */
+  regenUnit?: RegenUnit;
   descriptors: StatDescriptor[];
   /** How this stat's descriptor thresholds read: `raw` in the stat's own units (bands stay put when the
    *  range changes), `percent` as a share of min→max (bands rescale). Absent = raw. */
@@ -110,7 +116,7 @@ export interface StatLink {
 }
 
 /** The fields a stat link may override, absent ones on the original read as off or empty. The name stays the
- *  original's; `value` is the Initial Value. */
+ *  original's; `value` is the Base Value. */
 export interface StatLinkFields {
   type: StatType;
   description: string;
@@ -118,6 +124,7 @@ export interface StatLinkFields {
   max: number;
   value: number;
   regen: number;
+  regenUnit: RegenUnit;
   descriptors: StatDescriptor[];
   thresholdUnit: ThresholdUnit;
   beforeCode: string;
