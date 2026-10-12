@@ -60,9 +60,26 @@ Settled in the grill, 2026-10-12. A ruling reopens on new evidence, never on a n
 | Q30 | (Ticket 06 intent, 2026-10-12) The card JSON carries slot 0's rows as `primaryImageRequires` beside the object-element `extraImages`. |
 | Q31 | (Ticket 06 intent, 2026-10-12) Replacing an image in place keeps the slot's rule; delete drops the rule with the image; reorder carries it. |
 | Q32 | (Ticket 02 intent, 2026-10-12) The before box (stat code at turn start) is its own run with its own snapshot: its writes landed, no switch effects yet. No per-turn settle follows it. The per-turn settle runs once after the after-AI run, before the turn snapshot arms. |
-| Q33 | (Ticket 02 intent, 2026-10-12) Stat code's `traits.X.available` resolves stat Conditions against the run-start stats. The editor's code test run and the Test Bench code check read authored-start stats (Q23) so a test run agrees with Enter World; Landed as a drop-in in ticket 02; no Backlog entry. |
+| Q33 | (Ticket 02 intent, 2026-10-12) Stat code's `traits.X.available` resolves stat Conditions against the run-start stats. The editor's code test run and the Test Bench code check read authored-start stats (Q23) so a test run agrees with Enter World. Landed as a drop-in in ticket 02; no Backlog entry. |
 | Q34 | (Ticket 07 intent, 2026-10-12) The entity image follows the viewed turn, like the stat and trait panels, so it agrees with the stat bar beside it. |
 | Q35 | (Ticket 07 intent, 2026-10-12) Visibility is derived, never written. The stored gallery index is the author-order image the player last paged to; the viewer shows it while visible and the primary while it is hidden, and returns to it when it comes back. Viewing a turn never writes gallery state. Refines Q10. |
+| Q36 | (Ticket 07 intent, 2026-10-12) The in-play persona picker shows slot 0 for every option, the current persona included. Picker lists are catalog surfaces and show covers; the persona row beside the game shows the visible primary. |
+| Q37 | (Spec review, 2026-10-12) The stat chip's operator is a dropdown, not a segmented control. Six symbols in a row took too much room on a small control. The user's call on seeing it. |
+
+### Spec review fold-in (2026-10-12)
+
+An Opus review of the landed code against this spec found no ruling broken. Folded in on main after the tickets closed: the operator dropdown (Q37); the zero-span percent warning on image rules (`image-rule-percent-zero-span`); complementary stat pairs in the all-hideable check; the `stat` kind in the World Format doc; stop-gap wording removed from the changelog and the stat-gated-trait entry moved to the player bucket. The re-generate and re-roll settle was already covered by the per-turn settle test, so no test was added.
+
+## Backlog
+
+Correct behavior with a known rough edge, left for a later effort:
+
+- **Q26 banner.** The per-turn settle writes log lines only. The user may want a cascade banner after seeing it in play.
+- **Semantic help search** misses "can a trait need a stat" in its top five and ranks "show image when hurt" second. Keyword search ranks both first. Ticket 10 comments have the numbers.
+- **A fully hidden entity can still win the panel slot.** The panel picks by authored gallery, so an entity whose every image is hidden and that has no model can show an empty frame while another entity has a visible image.
+- **An image ruled on a switched-off stat hides with no image-side warning.** The missing-target rule skips inert stats on purpose (Q21); the stats rules judge them.
+- **`= 20.5` can never hold.** `=` and `≠` round the reading, but the value box accepts decimals. Either clamp the box to the stat's display precision or round the value on entry.
+- **Zero-span `= 0%` always holds.** Q22's 0% reading means a percent `=` Condition on a flat stat is always true. Both zero-span rules warn.
 
 Review notes (Opus second opinion, 2026-10-12) that shaped the Implementation Decisions without a ruling: card codec drops unknown Condition kinds; slot 0 travels as card pixels with no JSON home for its rule; requirement equality ignores operator and value; growth treats every Not as holding; the gallery index is a raw position; the `you` bearer must cover persona stats; re-generate and stat re-roll replay stat code; settle on load already exists.
 
@@ -135,7 +152,7 @@ Review notes (Opus second opinion, 2026-10-12) that shaped the Implementation De
 - "Own entity" is stored as an absent bearer, as trait rows do. A card import mints a new entity id, so an explicit self id would stop resolving after import.
 - Requirement equality, the chip editor's duplicate check, the requirement summary and the portable-trait comparison all include operator, value and unit. "Rage > 20 and Rage < 80" is two Conditions, not a duplicate.
 - The rule text helpers render a stat Condition as `<name> <operator> <value>` with `%` appended under percent. The player's line follows the same Hidden filtering as trait Conditions: a Condition on a hidden or inert stat is left out, and a row left with none is dropped.
-- The chip picker lists, per bearer, that bearer's own stats. The `you` bearer reads the same owners as the player owner set, so the played persona's and the Custom Persona's own stats are listed and resolve. Blueprint stats resolve through the owning entity's links as they do elsewhere.
+- The chip picker lists, per bearer, that bearer's own stats. The `you` bearer reads the same owners as the player owner set: in the editor, where no persona is played, that is the world's player stats plus the Custom Persona's own stats (Q28); in play it includes the played persona's own stats. Blueprint stats resolve through the owning entity's links as they do elsewhere.
 
 ### Evaluation
 
@@ -162,13 +179,14 @@ Review notes (Opus second opinion, 2026-10-12) that shaped the Implementation De
 - The gallery thumbnail gains a hover cog and a rule badge. The cog opens a popover that mounts the rows editor with the entity as default bearer. The Requires field today takes a trait and reads the trait store, so the rows editor is lifted to a rows-and-owner-shaped component that both the Availability tab and the popover mount. The popover sits inside the entity editor dialog, so it uses the modal popover mode.
 - The summary sentence under the selected thumbnail reuses the rule text helpers with the "Shown while" lead.
 - A slot 0 rule shows an inline warning under the thumbnail, not a blocker.
-- The picker gains a Stats section per bearer; picking a stat opens the operator and value controls on the chip. Operator is a segmented control of six symbols. Unit is a two-state toggle, raw units or `%`.
+- The picker gains a Stats section per bearer; picking a stat opens the operator and value controls on the chip. Operator is a dropdown of six symbols (Q37). Unit is a two-state toggle, raw units or `%`.
 
 ### Test Bench
 
 - The existing unresolved-requirement rule learns the stat kind, so a rule that names a missing stat reports there. No separate missing-stat rule.
 - `image-rule-missing-target`: an image rule names a missing trait, group or stat.
-- `entity-images-all-hideable`: every image carries a rule and no pair of images forms `X` / `not X` on the same single Condition.
+- `entity-images-all-hideable`: every image carries a rule and no pair of images carries complementary single Conditions: `X` / `not X`, or two stat Conditions on one reading whose operators split the number line (`> n` / `<= n`, `< n` / `>= n`, `= n` / `≠ n`), Not folded in.
+- `image-rule-percent-zero-span`: a percent Condition in an image rule on a stat with `min === max`. The trait-side twin is `requirement-percent-zero-span`.
 - `trait-gate-reads-own-stat`: a trait's gate reads a stat the trait changes, including changes to that stat's min or max and stat toggles, since percent reads the effective max.
 - `requirement-percent-zero-span`: percent on a stat with `min === max`.
 - The slot 0 warning is editor-only, not a Test Bench rule.

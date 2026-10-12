@@ -1,7 +1,7 @@
 // Trait gates: what a requirement list unlocks, and what a selection settles to. Every owner is one bearer
 // and gates on its own active set; the player's owners (the world root and the played entity) read as one.
 
-import type { PersonaRef, RequirementBearer, StatRequirement, Trait, TraitGroup, TraitRequirement, TraitRequirementRow } from '@/types';
+import type { PersonaRef, RequirementBearer, StatComparison, StatRequirement, Trait, TraitGroup, TraitRequirement, TraitRequirementRow } from '@/types';
 import { defaultPicks, exclusiveSiblings, isAlwaysOn, isHidden, traitOrderIndex } from './traitEffects';
 // The generic tree, not traitTree: that module reads the bearer resolver, which reads this one.
 import { buildTree, flattenTree } from './groupTree';
@@ -330,6 +330,20 @@ export const flipped = (req: TraitRequirement): TraitRequirement => {
   const { not, ...plain } = req;
   // The rest of a union loses its discriminant link; `plain` keeps every field of `req`'s own kind.
   return (not ? plain : { ...plain, not: true }) as TraitRequirement;
+};
+
+const COMPLEMENT: Record<StatComparison, StatComparison> = { '>': '<=', '<=': '>', '<': '>=', '>=': '<', '=': '≠', '≠': '=' };
+
+/** The operator a stat Condition holds under once its Not is folded in. */
+const effectiveOperator = (req: StatRequirement): StatComparison => (req.not ? COMPLEMENT[req.operator] : req.operator);
+
+/** Whether exactly one of the two Conditions holds in every state: a Condition and its Not, or two stat
+ *  Conditions on one reading whose operators split the number line (`> n` and `<= n`, `= n` and `≠ n`). */
+export const complementary = (a: TraitRequirement, b: TraitRequirement): boolean => {
+  if (sameRequirement(a, flipped(b))) return true;
+  if (a.kind !== 'stat' || b.kind !== 'stat') return false;
+  return a.id === b.id && bearerKey(bearerOf(a)) === bearerKey(bearerOf(b)) && a.value === b.value && a.unit === b.unit
+    && effectiveOperator(a) === COMPLEMENT[effectiveOperator(b)];
 };
 
 /** Each owner's gate on each of its traits, against the input's active sets. */

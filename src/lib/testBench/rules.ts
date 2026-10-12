@@ -51,7 +51,7 @@ import {
   type BearerWorld,
 } from '@/lib/bearers';
 import {
-  WORLD_OWNER, alwaysOnOverMax, deadRows, flipped, gateOf, gateStates, groupPickState, neverUnlockable, playerOwnerIds, sameRequirement, settleDefaults,
+  WORLD_OWNER, alwaysOnOverMax, complementary, deadRows, gateOf, gateStates, groupPickState, neverUnlockable, playerOwnerIds, sameRequirement, settleDefaults,
   unstableCycles, type GateInput, type GateOwner, type GateState, type GateStat, type GateStates, type GateStats, type GateTraitRef,
 } from '@/lib/traitGates';
 import { startingGateStats } from '@/lib/gateStats';
@@ -2416,10 +2416,22 @@ interface DeadImageCondition {
   stat: boolean;
 }
 
+/** A percent Condition in an image rule on a stat whose min equals its max. */
+interface ZeroSpanImageCondition {
+  entity: Entity;
+  /** 1-based slot in the gallery. */
+  position: number;
+  /** Quoted. */
+  condition: string;
+  /** The stat's name, unquoted. */
+  stat: string;
+}
+
 interface ImageRuleReport {
   missing: DeadImageCondition[];
-  /** Entities whose every image carries a rule, with no two images covering a Condition and its Not. */
+  /** Entities whose every image carries a rule, with no two images covering complementary Conditions. */
   hideable: Entity[];
+  zeroSpans: ZeroSpanImageCondition[];
 }
 
 /** The image-rule findings, once per world object. A ruled image reads as a stand-in trait on its entity's owner,
@@ -2451,10 +2463,17 @@ const imageReportOf = (world: RuleWorld): ImageRuleReport => {
 
   const missing: DeadImageCondition[] = [];
   const hideable: Entity[] = [];
+  const zeroSpans: ZeroSpanImageCondition[] = [];
   for (const { entity, images } of ruled) {
     const stateOf = (i: number) => gateOf(states, entity.id, imageId(entity, i));
     images.forEach((img, i) => (img.requires ?? []).forEach((row, r) => row.all.forEach((req, c) => {
       const state = stateOf(i)?.rows[r]?.conditions[c];
+      if (req.kind === 'stat' && req.unit === 'percent' && !state?.unresolved) {
+        const read = readFrom(entity, req).flatMap((id) => (stats[id]?.[req.id] ? [stats[id][req.id]] : []));
+        if (read.length > 0 && read.every((s) => s.min === s.max)) {
+          zeroSpans.push({ entity, position: i + 1, condition: quote(labelOf(state!.text, world)), stat: labelOf(read[0].name, world) });
+        }
+      }
       if (!state?.unresolved) return;
       // A switched-off stat is not missing: the stats rules judge it.
       if (req.kind === 'stat' && readFrom(entity, req).some((id) => stats[id]?.[req.id]?.inert)) return;
@@ -2465,15 +2484,16 @@ const imageReportOf = (world: RuleWorld): ImageRuleReport => {
     })));
     // An empty row always holds, so its image never hides.
     if (!images.every((img) => img.requires?.length && img.requires.every((row) => row.all.length))) continue;
-    // One Condition and its Not, each alone in the only row of its image, always leave one image showing.
+    // Two complementary Conditions (X and not X, or `> n` and `<= n` on one reading), each alone in the only
+    // row of its image, always leave one image showing.
     const single = images.flatMap((img, i) => {
       const req = img.requires?.length === 1 && img.requires[0].all.length === 1 ? img.requires[0].all[0] : null;
       return req && !stateOf(i)?.rows[0]?.conditions[0]?.unresolved ? [req] : [];
     });
-    const covered = single.some((a, i) => single.some((b, j) => j > i && sameRequirement(a, flipped(b))));
+    const covered = single.some((a, i) => single.some((b, j) => j > i && complementary(a, b)));
     if (!covered) hideable.push(entity);
   }
-  report = { missing, hideable };
+  report = { missing, hideable, zeroSpans };
   imageReportsByWorld.set(world, report);
   return report;
 };
@@ -2503,7 +2523,22 @@ const entityImagesAllHideable: Rule = {
     const item = asItem(entity, world);
     return finding(
       entityImagesAllHideable,
-      `${quote(item.name)} can end up with no image — every image has a Visibility rule, and no two images cover a Condition and its Not`,
+      `${quote(item.name)} can end up with no image — every image has a Visibility rule, and no two images cover a Condition and its opposite`,
+      [item],
+    );
+  }),
+};
+
+const imageRulePercentZeroSpan: Rule = {
+  id: 'image-rule-percent-zero-span',
+  severity: 'warning',
+  section: 'entities',
+  summary: (count) => `${count} image rules read a percent of a stat with no range`,
+  check: (world) => imageReportOf(world).zeroSpans.map(({ entity, position, condition, stat }) => {
+    const item = asItem(entity, world);
+    return finding(
+      imageRulePercentZeroSpan,
+      `${quote(item.name)}, image ${position} requires ${condition}, but ${quote(stat)} has the same min and max, so it always reads 0% — use a raw number or widen its range`,
       [item],
     );
   }),
@@ -3431,7 +3466,7 @@ export const RULES: readonly Rule[] = [
   traitGroupDefaultsOverMax, traitGroupAlwaysOnOverMax, traitGroupTooSmall, traitGroupMinAboveMax, traitGroupMinUnreachable,
   traitGroupDefaultsBelowMin, traitRequirementNeverUnlockable, traitRequirementUnstable, traitRequirementUnresolved,
   traitRequirementRowNeverHolds, traitGateReadsOwnStat, requirementPercentZeroSpan, traitDefaultGated,
-  imageRuleMissingTarget, entityImagesAllHideable, traitLinkRedundant, traitStatNoTarget,
+  imageRuleMissingTarget, entityImagesAllHideable, imageRulePercentZeroSpan, traitLinkRedundant, traitStatNoTarget,
   copyPinRemovedValue, blueprintRefusedField, copyEditedUnused, copyMissing,
   placeholderWeightUnknownValue, wildcardSingleValue,
   placeholderPinUnknownValue, placeholderPinConflict, placeholderPinCycle, placeholderPinSelf,

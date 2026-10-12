@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { useState } from 'react';
 import { fireEvent, render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { RequirementRowsField } from './RequirementRowsField';
 import { requirementStatSections } from '@/lib/requirementStatOptions';
@@ -47,7 +48,11 @@ const addRage = async (label: RegExp = /^Add Requirement$|^Or Another Way$/) => 
   fireEvent.click(await screen.findByRole('option', { name: /^Rage/ }));
 };
 const chip = (name: string) => screen.getByRole('group', { name });
-const operator = (name: string) => screen.getByRole('radio', { name });
+const operatorBox = () => screen.getByRole('combobox', { name: 'Operator' });
+const pickOperator = async (name: string) => {
+  await userEvent.click(operatorBox());
+  await userEvent.click(await screen.findByRole('option', { name }));
+};
 
 describe('a stat Condition in the rows editor', () => {
   it('lists each bearer’s stats and places a chip with an operator, a value and a unit', async () => {
@@ -60,9 +65,17 @@ describe('a stat Condition in the rows editor', () => {
     fireEvent.click(screen.getByRole('option', { name: /^Rage/ }));
     expect(rows()).toEqual([{ all: [{ kind: 'stat', id: 'rage', operator: '>=', value: 50, unit: 'raw' }] }]);
     const rage = chip('Rage >= 50');
-    expect(within(rage).getAllByRole('radio').map((r) => r.textContent)).toEqual(['>', '<', '>=', '<=', '=', '≠', 'Raw', '%']);
+    expect(within(rage).getByRole('combobox', { name: 'Operator' })).toHaveTextContent('>=');
+    expect(within(rage).getAllByRole('radio').map((r) => r.textContent)).toEqual(['Raw', '%']);
     expect(within(rage).getByRole('spinbutton', { name: 'Value' })).toHaveValue(50);
-    expect(operator('Greater than or equal to')).toBeChecked();
+    await userEvent.click(operatorBox());
+    const options = await screen.findAllByRole('option');
+    expect(options.map((o) => o.textContent)).toEqual(['>', '<', '>=', '<=', '=', '≠']);
+    for (const name of ['Greater than', 'Less than', 'Greater than or equal to', 'Less than or equal to', 'Equal to', 'Not equal to']) {
+      expect(screen.getByRole('option', { name })).toBeInTheDocument();
+    }
+    expect(screen.getByRole('option', { name: 'Greater than or equal to' })).toHaveAttribute('aria-selected', 'true');
+    await userEvent.keyboard('{Escape}');
     expect(screen.queryByRole('button', { name: 'Rage >= 50' })).not.toBeInTheDocument();
   });
 
@@ -77,7 +90,7 @@ describe('a stat Condition in the rows editor', () => {
   it('updates the chip text as the operator and the value change', async () => {
     render(<Harness />);
     await addRage();
-    fireEvent.click(operator('Less than'));
+    await pickOperator('Less than');
     expect(chip('Rage < 50')).toBeInTheDocument();
     fireEvent.change(screen.getByRole('spinbutton', { name: 'Value' }), { target: { value: '80' } });
     expect(chip('Rage < 80')).toBeInTheDocument();
@@ -125,7 +138,8 @@ describe('a stat Condition in the rows editor', () => {
     fireEvent.click(await screen.findByRole('option', { name: /^Rage/ }));
     expect(rows()[0].all).toHaveLength(2);
     const second = screen.getByRole('group', { name: 'Rage >= 50' });
-    fireEvent.click(within(second).getByRole('radio', { name: 'Less than' }));
+    await userEvent.click(within(second).getByRole('combobox', { name: 'Operator' }));
+    await userEvent.click(await screen.findByRole('option', { name: 'Less than' }));
     fireEvent.change(within(second).getByRole('spinbutton', { name: 'Value' }), { target: { value: '80' } });
     expect(rows()[0].all.map((c) => c.kind === 'stat' && `${c.operator} ${c.value}`)).toEqual(['> 20', '< 80']);
   });
@@ -134,8 +148,10 @@ describe('a stat Condition in the rows editor', () => {
     const stat = (operator: '>' | '<', value: number): TraitRequirement => ({ kind: 'stat', id: 'rage', operator, value, unit: 'raw' });
     render(<Harness initial={[{ all: [stat('>', 20), stat('<', 20)] }]} />);
     const [, second] = screen.getAllByRole('group', { name: /^Rage/ });
-    expect(within(second).getByRole('radio', { name: 'Greater than' })).toBeDisabled();
-    expect(within(second).getByRole('radio', { name: 'Less than' })).not.toBeDisabled();
+    await userEvent.click(within(second).getByRole('combobox', { name: 'Operator' }));
+    expect(await screen.findByRole('option', { name: 'Greater than' })).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByRole('option', { name: 'Less than' })).not.toHaveAttribute('aria-disabled', 'true');
+    await userEvent.keyboard('{Escape}');
     fireEvent.change(within(second).getByRole('spinbutton', { name: 'Value' }), { target: { value: '30' } });
     expect(rows()[0].all[1]).toMatchObject({ operator: '<', value: 30 });
   });

@@ -252,7 +252,7 @@ In play, the first visible image takes its place. The editor warns when the prim
 
 > 💡 **A rule only shows or hides.** There's no *hide when* direction. To hide an image while *Werewolf* is on, give it the rule *not Werewolf*.
 
-> 💡 **Never hide every image.** Keep one image with no rule, or two images that cover a condition and its Not. The [Test Bench](World-Editor-Traits#test-bench-checks) warns when an entity can end up with none.
+> 💡 **Never hide every image.** Keep one image with no rule, or two images with opposite conditions, such as *Health < 20%* and *Health >= 20%*. The [Test Bench](World-Editor-Traits#test-bench-checks) warns when an entity can end up with none.
 
 The narrator never sees the images or their rules.
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import type { StatComparison, StatRequirement, ThresholdUnit } from '@/types';
 
@@ -46,9 +47,9 @@ function ValueInput({ value, accepts, onChange }: { value: number; accepts: (val
 }
 
 /**
- * The controls a stat Condition chip carries: a segmented operator, the number it compares to, and whether
+ * The controls a stat Condition chip carries: an operator dropdown, the number it compares to, and whether
  * that number is in raw units or a percent of the stat's span. `accepts` says whether a replacement would
- * repeat another Condition in the row; such an operator stays off and such a number stays a draft.
+ * repeat another Condition in the row; such an operator is disabled and such a number stays a draft.
  */
 export function StatConditionControls({ requirement, accepts, onChange }: {
   requirement: StatRequirement;
@@ -57,25 +58,27 @@ export function StatConditionControls({ requirement, accepts, onChange }: {
 }) {
   return (
     <>
-      <ToggleGroup
-        type="single"
-        aria-label="Operator"
+      <Select
         value={requirement.operator}
-        onValueChange={(v) => { if (v) onChange({ ...requirement, operator: v as StatComparison }); }}
-        className="h-8 shrink-0"
+        onValueChange={(v) => onChange({ ...requirement, operator: v as StatComparison })}
       >
-        {OPERATORS.map((o) => (
-          <ToggleGroupItem
-            key={o.value}
-            value={o.value}
-            aria-label={o.name}
-            disabled={o.value !== requirement.operator && !accepts({ ...requirement, operator: o.value })}
-            className={ITEM_CLASS}
-          >
-            {o.value}
-          </ToggleGroupItem>
-        ))}
-      </ToggleGroup>
+        <SelectTrigger size="sm" aria-label="Operator" className="h-6 w-auto shrink-0 gap-1 px-2 text-helper">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent className="min-w-0">
+          {OPERATORS.map((o) => (
+            <SelectItem
+              key={o.value}
+              value={o.value}
+              disabled={o.value !== requirement.operator && !accepts({ ...requirement, operator: o.value })}
+              className="pl-7 pr-3 text-helper"
+            >
+              {/* The item text names the option, so the spoken name rides on the symbol. */}
+              <span aria-label={o.name}>{o.value}</span>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
       <ValueInput
         value={requirement.value}
         accepts={(value) => accepts({ ...requirement, value })}
