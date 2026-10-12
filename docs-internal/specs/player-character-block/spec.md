@@ -1,6 +1,7 @@
 # Player Character Block
 
-Status: ready-for-agent
+Status: done
+Status note: 2026-10-11. Tickets 01–05 are done. Last landing is 4ef15f83c. Closed without gates.
 Spec session: player-character-block — spec
 
 ## Problem Statement
