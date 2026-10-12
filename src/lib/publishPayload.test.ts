@@ -105,6 +105,11 @@ describe('entityPublishPayload', () => {
     expect(entityPublishPayload(entity({ image: 'data:portrait' })).thumbnail).toBe('data:portrait');
   });
 
+  it('sends slot 0 as the listing art, its Visibility rule ignored', () => {
+    const images = [{ data: 'data:slot0', requires: [{ all: [{ kind: 'trait' as const, id: 'knight' }] }] }, { data: 'data:slot1' }];
+    expect(entityPublishPayload(entity({ images })).thumbnail).toBe('data:slot0');
+  });
+
   it('omits the thumbnail when there is no portrait, so the server supplies stand-in art', () => {
     expect(entityPublishPayload(entity()).thumbnail).toBeUndefined();
   });

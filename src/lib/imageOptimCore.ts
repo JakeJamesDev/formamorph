@@ -2,7 +2,7 @@
  * The optimize rules and field walks, over an injected codec. DOM-free, so a worker runs them with an encoder
  * of its own; `imageOptim` binds them to the encode worker for the main thread.
  */
-import type { Entity, World } from '@/types';
+import type { Entity, GalleryImage, World } from '@/types';
 import { dataUrlRealMime, isConvertibleImage, isRemoteImage, reencodeKeepsAnimation } from './imageBytes';
 import { entityImages } from './entityImages';
 import { IMAGE_CAPS, countWorldImages, type ImageCap } from './imageSlots';
@@ -108,8 +108,8 @@ export async function downscaleWorldImages(
   const thumbnail = await opt(world.worldOverview?.thumbnail, IMAGE_CAPS.thumbnail);
   const entities: World['entities'] = [];
   for (const e of world.entities ?? []) {
-    const images: string[] = [];
-    for (const url of entityImages(e)) images.push((await opt(url, IMAGE_CAPS.entity)) ?? url);
+    const images: GalleryImage[] = [];
+    for (const img of entityImages(e)) images.push({ ...img, data: (await opt(img.data, IMAGE_CAPS.entity)) ?? img.data });
     entities.push({ ...e, images });
   }
   const locations: World['locations'] = [];
@@ -164,9 +164,9 @@ export async function applyEntityImagesOptimize(
   onImage?: () => void,
 ): Promise<Entity> {
   if (mode === 'off') return entity;
-  const images: string[] = [];
-  for (const url of entityImages(entity)) {
-    images.push((await applyImageOptimize(codec, url, mode, IMAGE_CAPS.entity)) ?? url);
+  const images: GalleryImage[] = [];
+  for (const img of entityImages(entity)) {
+    images.push({ ...img, data: (await applyImageOptimize(codec, img.data, mode, IMAGE_CAPS.entity)) ?? img.data });
     onImage?.();
   }
   return images.length ? { ...entity, images } : entity;

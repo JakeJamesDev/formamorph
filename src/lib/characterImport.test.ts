@@ -30,7 +30,7 @@ afterEach(async () => {
 describe('SillyTavern JSON import', () => {
   it('imports a real file through the shared entry point and keeps library fields separate', async () => {
     const result = await importCharacterFile(file(card));
-    expect(result.entity).toMatchObject({ name: 'Mara', images: ['https://example.com/mara.png'] });
+    expect(result.entity).toMatchObject({ name: 'Mara', images: [{ data: 'https://example.com/mara.png' }] });
     expect(result.entity.aiDescription).toBe('{{char}} knows {{user}}.\n\nPersonality: Patient\n\nScenario: At the dock');
     expect(result.entity.openings?.map(({ text, kind }) => ({ text, kind }))).toEqual([
       { text: '*{{char}} waves.*', kind: 'narration' }, { text: 'Welcome back.', kind: 'narration' },

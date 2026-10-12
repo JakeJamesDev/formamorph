@@ -3819,15 +3819,15 @@ describe('world-level rules', () => {
 
   it('budgets an entity portrait against the entity cap, opening on the entity', () => {
     const big = `data:image/webp;base64,${'A'.repeat(900_000)}`;
-    const found = only(world([{ id: 'e1', name: 'Maren', images: [big] }]), 'world-oversized-images');
+    const found = only(world([{ id: 'e1', name: 'Maren', images: [{ data: big }] }]), 'world-oversized-images');
     expect(found).toHaveLength(1);
     expect(found[0].items[0]).toMatchObject({ id: 'e1', section: 'entities' });
-    expect(runRules(world([{ id: 'e1', name: 'Maren', images: [`data:image/webp;base64,${'A'.repeat(1_000)}`] }]))).toEqual([]);
+    expect(runRules(world([{ id: 'e1', name: 'Maren', images: [{ data: `data:image/webp;base64,${'A'.repeat(1_000)}` }] }]))).toEqual([]);
   });
 
   it('leaves a linked image alone — it contributes no bytes to the world', () => {
     expect(only(
-      world([{ id: 'e1', name: 'Maren', images: ['https://example.com/a-very-large-portrait.png'] }]),
+      world([{ id: 'e1', name: 'Maren', images: [{ data: 'https://example.com/a-very-large-portrait.png' }] }]),
       'world-oversized-images',
     )).toEqual([]);
   });
@@ -3848,9 +3848,9 @@ describe('the lossless-WebP conversion rule', () => {
         { id: 'quay', name: 'The Quay', backgroundImage: image('image/svg+xml') },
       ],
       entities: [
-        { ...resident, images: [image('image/png')] },
-        { ...resident, id: 'e2', name: 'Maren', images: ['https://example.com/portrait.png'] },
-        { ...resident, id: 'e3', name: 'Tallow', images: [image('image/webp')] },
+        { ...resident, images: [{ data: image('image/png') }] },
+        { ...resident, id: 'e2', name: 'Maren', images: [{ data: 'https://example.com/portrait.png' }] },
+        { ...resident, id: 'e3', name: 'Tallow', images: [{ data: image('image/webp') }] },
       ],
     }),
   });
@@ -3872,7 +3872,7 @@ describe('the lossless-WebP conversion rule', () => {
   });
 
   it('says nothing about a world whose every image is already WebP', () => {
-    expect(only(world([{ id: 'e1', name: 'Maren', images: [image('image/webp')] }]), 'image-not-webp')).toEqual([]);
+    expect(only(world([{ id: 'e1', name: 'Maren', images: [{ data: image('image/webp') }] }]), 'image-not-webp')).toEqual([]);
   });
 
   // Real magic numbers under a lying label — the bundled-world case where a JPEG marked image/png was
@@ -3884,14 +3884,14 @@ describe('the lossless-WebP conversion rule', () => {
 
   it('ignores an image whose PNG label hides JPEG bytes — the shrink it promises cannot happen', () => {
     expect(only(
-      world([{ id: 'e1', name: 'Maren', images: [withBytes('image/png', JPEG_BYTES)] }]),
+      world([{ id: 'e1', name: 'Maren', images: [{ data: withBytes('image/png', JPEG_BYTES) }] }]),
       'image-not-webp',
     )).toEqual([]);
   });
 
   it('names the format the bytes are, not the one the label claims', () => {
     const [found] = only(
-      world([{ id: 'e1', name: 'Maren', images: [withBytes('image/png', BMP_BYTES)] }]),
+      world([{ id: 'e1', name: 'Maren', images: [{ data: withBytes('image/png', BMP_BYTES) }] }]),
       'image-not-webp',
     );
     expect(found.message).toContain('BMP');
@@ -3911,7 +3911,7 @@ describe('the lossless-WebP conversion rule', () => {
   });
 
   it('collapses a world full of PNGs into one row carrying a Fix', () => {
-    const many = world([1, 2, 3].map((n) => ({ id: `e${n}`, name: `Face ${n}`, images: [image('image/png')] })));
+    const many = world([1, 2, 3].map((n) => ({ id: `e${n}`, name: `Face ${n}`, images: [{ data: image('image/png') }] })));
     const [group] = groupFindings(only(many, 'image-not-webp'));
     expect(group.headline).toBe('3 embedded images would be smaller as lossless WebP');
     expect(group.items).toHaveLength(3);
@@ -3934,9 +3934,10 @@ describe('the mislabeled-image rule', () => {
       name: 'Sedge Landing', description: '', systemPrompt: 'Narrate the fen.', readme: 'A fen primer.',
       thumbnail: withBytes('image/png', JPEG_BYTES),
     } as WorldOverview,
-    entities: [{ id: 'e1', name: 'Maren', images: [withBytes('image/jpeg', PNG_BYTES)] } as Entity],
+    entities: [{ id: 'e1', name: 'Maren', images: [{ data: withBytes('image/jpeg', PNG_BYTES), requires: MAREN_RULE }] } as Entity],
     locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true, backgroundImage: withBytes('image/gif', JPEG_BYTES) }],
   });
+  const MAREN_RULE = [{ all: [{ kind: 'stat' as const, id: 'hp', operator: '<' as const, value: 20, unit: 'percent' as const }] }];
 
   it('flags each lying label, naming what it claims and what the bytes are', () => {
     const found = only(lying(), 'image-mislabeled');
@@ -3947,17 +3948,18 @@ describe('the mislabeled-image rule', () => {
   });
 
   it('says nothing for honest labels or bytes it cannot recognize', () => {
-    const honest = world([{ id: 'e1', name: 'Maren', images: [withBytes('image/png', PNG_BYTES)] }]);
+    const honest = world([{ id: 'e1', name: 'Maren', images: [{ data: withBytes('image/png', PNG_BYTES) }] }]);
     expect(only(honest, 'image-mislabeled')).toEqual([]);
     // The opaque payloads every other fixture uses — no signature, so no verdict to disagree with.
-    const opaque = world([{ id: 'e1', name: 'Maren', images: [`data:image/png;base64,${'A'.repeat(80)}`] }]);
+    const opaque = world([{ id: 'e1', name: 'Maren', images: [{ data: `data:image/png;base64,${'A'.repeat(80)}` }] }]);
     expect(only(opaque, 'image-mislabeled')).toEqual([]);
   });
 
   it('Fix relabels the thumbnail, a gallery image and a background in one pass', () => {
     const fixed = applyRuleFix(lying(), 'image-mislabeled');
     expect(fixed.worldOverview?.thumbnail?.startsWith('data:image/jpeg;')).toBe(true);
-    expect(fixed.entities?.[0].images?.[0].startsWith('data:image/png;')).toBe(true);
+    expect(fixed.entities?.[0].images?.[0].data.startsWith('data:image/png;')).toBe(true);
+    expect(fixed.entities?.[0].images?.[0].requires).toEqual(MAREN_RULE);
     expect(fixed.locations?.[0].backgroundImage?.startsWith('data:image/jpeg;')).toBe(true);
     expect(only(fixed, 'image-mislabeled')).toEqual([]);
   });
@@ -4133,7 +4135,7 @@ const FIX_FIXTURES: Record<string, RuleWorld> = {
     ],
   },
   // JPEG magic numbers under a PNG label — the fix rewrites the label to what the bytes say.
-  'image-mislabeled': world([{ id: 'e1', name: 'Maren', images: ['data:image/png;base64,/9j/4AAQSkZJRgAB'] }]),
+  'image-mislabeled': world([{ id: 'e1', name: 'Maren', images: [{ data: 'data:image/png;base64,/9j/4AAQSkZJRgAB' }] }]),
 };
 
 describe('quick fixes', () => {

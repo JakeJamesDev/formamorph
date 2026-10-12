@@ -312,6 +312,13 @@ export interface Trait {
 /** A trait's non-Optional mode. */
 export type TraitMode = 'alwaysOn' | 'hidden';
 
+/** One picture in an entity's gallery. */
+export interface GalleryImage {
+  data: Base64Data;
+  /** The Visibility rule: in play any one row that holds shows the image. Absent or empty = always shown. */
+  requires?: TraitRequirementRow[];
+}
+
 /** A character or object in the world, with separate player-facing and AI-facing descriptions plus optional media. */
 export interface Entity {
   id: string;
@@ -344,7 +351,7 @@ export interface Entity {
   /** The entity's gallery, in author order. Slot 0 is the primary — the one picture shown wherever only one
    *  fits (library grid, listing art, character-card pixels) — and in game the player pages through the rest.
    *  Read it through `lib/entityImages`, which also covers records written before the gallery. */
-  images?: Base64Data[];
+  images?: GalleryImage[];
   /**
    * Listing tags, the same kind a world carries — how somebody browsing Community Creations finds this.
    *

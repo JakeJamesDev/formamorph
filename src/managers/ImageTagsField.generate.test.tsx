@@ -29,6 +29,7 @@ vi.mock('../components/GenerateImageButton', () => ({
 
 const A = 'data:image/webp;base64,AAAA';
 const B = 'data:image/webp;base64,BBBB';
+const wrap = (urls: string[]) => urls.map((data) => ({ data }));
 const LINK = 'https://files.example/c.png';
 const GENERATED = 'data:image/webp;base64,GGGG';
 
@@ -36,7 +37,7 @@ const GENERATED = 'data:image/webp;base64,GGGG';
 const entitySetup = (images: string[]) => {
   const onImagesChange = vi.fn();
   const Host = () => {
-    const [value, setValue] = useState({ id: 'e1', name: 'Ada', images } as Entity);
+    const [value, setValue] = useState<Entity>({ id: 'e1', name: 'Ada', images: wrap(images) });
     return (
       <EntityGalleryField
         value={value}
@@ -57,7 +58,7 @@ const locationSetup = (images: string[]) => {
   render(
     <ImageTagsField
       label="Background Image"
-      images={images}
+      images={wrap(images)}
       onImagesChange={onImagesChange}
       imageId="loc"
       cap={IMAGE_CAPS.background}
@@ -79,7 +80,7 @@ describe('ImageTagsField generated-image placement on an entity', () => {
 
     generate();
 
-    await waitFor(() => expect(onImagesChange).toHaveBeenCalledWith([A, GENERATED]));
+    await waitFor(() => expect(onImagesChange).toHaveBeenCalledWith(wrap([A, GENERATED])));
     expect(picker()).toBeNull();
   });
 
@@ -88,7 +89,7 @@ describe('ImageTagsField generated-image placement on an entity', () => {
 
     generate();
 
-    await waitFor(() => expect(onImagesChange).toHaveBeenCalledWith([GENERATED]));
+    await waitFor(() => expect(onImagesChange).toHaveBeenCalledWith(wrap([GENERATED])));
   });
 
   it('adds a new image to an entity that already holds two uploads, and asks nothing', async () => {
@@ -96,7 +97,7 @@ describe('ImageTagsField generated-image placement on an entity', () => {
 
     generate();
 
-    await waitFor(() => expect(onImagesChange).toHaveBeenCalledWith([A, B, GENERATED]));
+    await waitFor(() => expect(onImagesChange).toHaveBeenCalledWith(wrap([A, B, GENERATED])));
     expect(picker()).toBeNull();
     // The generate dialog is told the picture was kept, so it may close.
     await waitFor(() => expect(placed).toHaveBeenCalledWith(true));
@@ -117,7 +118,7 @@ describe('ImageTagsField generated-image placement on an entity', () => {
 
     generate();
 
-    await waitFor(() => expect(onImagesChange).toHaveBeenCalledWith([A, B, LINK, GENERATED]));
+    await waitFor(() => expect(onImagesChange).toHaveBeenCalledWith(wrap([A, B, LINK, GENERATED])));
     expect(picker()).toBeNull();
   });
 });
@@ -134,7 +135,7 @@ describe('ImageTagsField generated-image placement on a location', () => {
     expect(onImagesChange).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Replace' }));
-    await waitFor(() => expect(onImagesChange).toHaveBeenCalledWith([GENERATED]));
+    await waitFor(() => expect(onImagesChange).toHaveBeenCalledWith(wrap([GENERATED])));
     await waitFor(() => expect(placed).toHaveBeenCalledWith(true));
   });
 
@@ -156,6 +157,6 @@ describe('ImageTagsField generated-image placement on a location', () => {
     generate();
     fireEvent.click(await screen.findByRole('button', { name: 'Replace' }));
 
-    await waitFor(() => expect(onImagesChange).toHaveBeenCalledWith([GENERATED]));
+    await waitFor(() => expect(onImagesChange).toHaveBeenCalledWith(wrap([GENERATED])));
   });
 });

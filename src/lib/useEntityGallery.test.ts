@@ -17,7 +17,7 @@ vi.mock('@/contexts/GameplayContext', () => ({
 
 beforeEach(() => { state.index = {}; });
 
-const three = { id: 'sedge', images: ['a', 'b', 'c'] };
+const three = { id: 'sedge', images: [{ data: 'a' }, { data: 'b' }, { data: 'c' }] };
 
 describe('useEntityGallery', () => {
   it('starts on the primary and steps forward', () => {
@@ -53,7 +53,7 @@ describe('useEntityGallery', () => {
   });
 
   it('does nothing for an entity with a single picture', () => {
-    const { result } = renderHook(() => useEntityGallery({ id: 'lone', images: ['a'] }));
+    const { result } = renderHook(() => useEntityGallery({ id: 'lone', images: [{ data: 'a' }] }));
     act(() => result.current.onImageStep(1));
     expect(state.index).toEqual({});
   });

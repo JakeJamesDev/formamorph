@@ -573,7 +573,7 @@ const ENTITY_STEPS: readonly TourStep[] = [
     title: 'Image',
     body: 'Add a picture of the entity. Players see it on the entity’s card, and the AI never reads it.',
     isComplete: (world, items) => entityImages(tourEntity(world, items)).length > 0,
-    useExample: async (api, world, items) => patchEntity(api, world, items, { images: [await loadTourImage('maren')] }),
+    useExample: async (api, world, items) => patchEntity(api, world, items, { images: [{ data: await loadTourImage('maren') }] }),
     inPlay: { sees: 'entityCard', scene: 'entity', readers: [{ prompt: 'Narration Prompt', reads: 'entities' }] },
   },
   {

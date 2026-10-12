@@ -117,7 +117,7 @@ export function readTavernJson(text: string): TavernImport | null {
   const avatar = str(data.avatar);
   try {
     const url = new URL(avatar);
-    if (url.protocol === 'https:' || url.protocol === 'http:') result.entity.images = [avatar];
+    if (url.protocol === 'https:' || url.protocol === 'http:') result.entity.images = [{ data: avatar }];
   } catch { /* Missing or malformed avatar leaves the portrait empty. */ }
   return result;
 }

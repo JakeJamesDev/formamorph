@@ -1,7 +1,7 @@
 // An entity's owned traits and links off-world: named on the way out, bound to a receiving world on the way in.
 
 import type {
-  Entity, Placeholder, PlaceholderGroup, RequirementBearer, Stat, StatGroup, StatRequirement, Trait, TraitGroup, TraitLink, TraitRequirement,
+  Entity, GalleryImage, Placeholder, PlaceholderGroup, RequirementBearer, Stat, StatGroup, StatRequirement, Trait, TraitGroup, TraitLink, TraitRequirement,
 } from '@/types';
 import { linksInTreeOrder, originalOf } from './bearers';
 import { playerStatsOf, resolvedEntityStats } from './statLinks';
@@ -11,6 +11,7 @@ import { remintOwnedTraits } from './ownedTraits';
 import { worldBlueprints } from './placeholderBlueprints';
 import { blueprintItemIds, groupsBelow } from './traitTree';
 import { mapConditions, notFlag } from './requirementRows';
+import { hasImageRules, mapImageRules, withImageRules } from './entityImages';
 
 /** Off-world, a "playing as" or a named bearer on the entity itself names it by this id, since each copy has
  *  its own id. */
@@ -167,13 +168,8 @@ export function linksBoundTo(entity: Entity, world: TraitWorld): Entity {
 export const linksCarriedFrom = (entity: Entity, world: TraitWorld): Entity =>
   withLinks(entity, entity.traitLinks && portableLinks(entity.traitLinks, world));
 
-/**
- * The entity's owned traits and links as they travel: a requirement into the entity keeps its id, one out of
- * it also stores its target's name, a named bearer stores its name, and the entity itself reads
- * {@link SELF_ENTITY}. Each link stores its original's name and the names of the traits its data keys.
- */
-export function portableOwnedTraits(entity: Entity, world?: TraitWorld): Portable {
-  if (!entity.traits?.length && !entity.traitGroups?.length && !entity.traitLinks?.length) return {};
+/** One of the entity's Conditions as it travels: see {@link portableOwnedTraits}. */
+function portableRequirement(entity: Entity, world?: TraitWorld): (req: TraitRequirement) => TraitRequirement {
   const inside = ownIds(entity);
   const pool = world ? targets(world, entity.id) : NO_TARGETS;
   const bearer = (b: EntityBearer): RequirementBearer => {
@@ -181,13 +177,27 @@ export function portableOwnedTraits(entity: Entity, world?: TraitWorld): Portabl
     const name = world?.entities.find((e) => e.id === b.id)?.name ?? b.name;
     return name ? { ...b, name } : b;
   };
-  const traits = withRequires(entity, (req) => {
+  return (req) => {
     if (isSelf(req, entity.id)) return { ...req, id: SELF_ENTITY, name: entity.name };
     const r = withBearer(req, bearer);
     if (pointsInside(r, entity, inside)) return r;
     const name = pool[r.kind].find((item) => item.id === r.id)?.name ?? r.name;
     return name ? { ...r, name } : r;
-  });
+  };
+}
+
+/** The entity's gallery as it travels: each Visibility rule's Conditions named as an owned trait's are. */
+export const portableImages = (entity: Entity, world?: TraitWorld): GalleryImage[] =>
+  mapImageRules(entity, portableRequirement(entity, world));
+
+/**
+ * The entity's owned traits and links as they travel: a requirement into the entity keeps its id, one out of
+ * it also stores its target's name, a named bearer stores its name, and the entity itself reads
+ * {@link SELF_ENTITY}. Each link stores its original's name and the names of the traits its data keys.
+ */
+export function portableOwnedTraits(entity: Entity, world?: TraitWorld): Portable {
+  if (!entity.traits?.length && !entity.traitGroups?.length && !entity.traitLinks?.length) return {};
+  const traits = withRequires(entity, portableRequirement(entity, world));
   return {
     ...(traits?.length ? { traits } : {}),
     ...(entity.traitGroups?.length ? { traitGroups: entity.traitGroups } : {}),
@@ -196,13 +206,13 @@ export function portableOwnedTraits(entity: Entity, world?: TraitWorld): Portabl
 }
 
 /**
- * The entity's owned traits and links bound to `world`. A requirement into the entity stays; "playing as"
- * itself names the entity. An outward one keeps an id the world holds, else takes the one target carrying its
- * stored name. No match, or two, clears the id: the requirement stays unresolved and reads by its name. A
- * named bearer binds the same way among the world's entities. Links bind as {@link bindLinks} does.
+ * The entity's owned traits, links and image Visibility rules bound to `world`. A requirement into the entity
+ * stays; "playing as" itself names the entity. An outward one keeps an id the world holds, else takes the one
+ * target carrying its stored name. No match, or two, clears the id: the requirement stays unresolved and reads
+ * by its name. A named bearer binds the same way among the world's entities. Links bind as {@link bindLinks} does.
  */
 export function bindOwnedTraits(entity: Entity, world: TraitWorld): Entity {
-  if (!entity.traits?.length && !entity.traitLinks?.length) return entity;
+  if (!entity.traits?.length && !entity.traitLinks?.length && !hasImageRules(entity)) return entity;
   const inside = ownIds(entity);
   const pool = targets(world, entity.id);
   const others = world.entities.filter((e) => e.id !== entity.id);
@@ -230,7 +240,7 @@ export function bindOwnedTraits(entity: Entity, world: TraitWorld): Entity {
     return { ...r, id: uniqueNamed(list, r.name)?.id ?? '' };
   };
   const traits = withRequires(entity, bind);
-  const bound = traits ? { ...entity, traits } : entity;
+  const bound = withImageRules(traits ? { ...entity, traits } : entity, bind);
   return entity.traitLinks ? withLinks(bound, bindLinks(entity, entity.traitLinks, world)) : bound;
 }
 
@@ -250,13 +260,13 @@ function comparableLink(link: TraitLink): ComparableLink {
 }
 
 /**
- * The entity's owned traits and links as two copies compare them: a requirement out of it by the name it
- * stores (its id is each world's own), one into it by id, "playing as" itself as {@link SELF_ENTITY}, and a
- * named bearer by its name. Links compare as {@link comparableLink} reads them.
+ * The entity's owned traits, links and image Visibility rules as two copies compare them: a requirement out
+ * of it by the name it stores (its id is each world's own), one into it by id, "playing as" itself as
+ * {@link SELF_ENTITY}, and a named bearer by its name. Links compare as {@link comparableLink} reads them.
  */
-export const comparableOwnedTraits = (entity: Entity): { traits?: Trait[]; traitLinks?: ComparableLink[] } => {
+export const comparableOwnedTraits = (entity: Entity): { traits?: Trait[]; traitLinks?: ComparableLink[]; images?: GalleryImage[] } => {
   const inside = ownIds(entity);
-  const traits = withRequires(entity, (req) => {
+  const comparable = (req: TraitRequirement): TraitRequirement => {
     const not = notFlag(req.not);
     if (isSelf(req, entity.id)) return { kind: req.kind, id: SELF_ENTITY, ...not };
     const r = withBearer(req, (b) => comparableBearer(b, entity.id));
@@ -264,9 +274,11 @@ export const comparableOwnedTraits = (entity: Entity): { traits?: Trait[]; trait
     const comparison = r.kind === 'stat' ? { operator: r.operator, value: r.value, unit: r.unit } : {};
     if (pointsInside(r, entity, inside) || !r.name) return { kind: r.kind, id: r.id, ...bearer, ...comparison, ...not } as TraitRequirement;
     return { kind: r.kind, id: '', name: r.name, ...bearer, ...comparison, ...not } as TraitRequirement;
-  });
+  };
+  const traits = withRequires(entity, comparable);
   return {
     ...(traits ? { traits } : {}),
+    ...(hasImageRules(entity) ? { images: mapImageRules(entity, comparable) } : {}),
     ...(entity.traitLinks?.length ? { traitLinks: entity.traitLinks.map(comparableLink) } : {}),
   };
 };

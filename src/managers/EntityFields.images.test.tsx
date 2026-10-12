@@ -25,7 +25,7 @@ const B = 'data:image/webp;base64,BBBB';
 
 describe('EntityGalleryField open slot', () => {
   it('offers the upload prompt and the link box as its alternative on an entity with two uploads', () => {
-    render(<EntityGalleryField value={{ id: 'e1', name: 'Ada', images: [A, B] } as Entity} onChange={vi.fn()} />);
+    render(<EntityGalleryField value={{ id: 'e1', name: 'Ada', images: [{ data: A }, { data: B }] } as Entity} onChange={vi.fn()} />);
 
     expect(screen.getByText('Click to upload image')).toBeTruthy();
     expect(screen.getByLabelText('Image URL').getAttribute('placeholder')).toBe('Or paste an image URL');

@@ -5,6 +5,7 @@ import { randomUUID } from './uuid';
 import { newTrait } from './blankWorld';
 import { WORLD_OWNER, type GateOwner } from './traitGates';
 import { mapConditions } from './requirementRows';
+import { hasImageRules, withImageRules } from './entityImages';
 import { effectivePlacement, offeredWorldTraits, ownsTraits, placeableGroupIds } from './traitTree';
 
 const traitsOf = (entity: Entity): Trait[] => entity.traits ?? [];
@@ -76,17 +77,18 @@ export function findOwnedItem(
 }
 
 /** A copy of the entity whose owned traits and groups have fresh ids, so the copy shares none with the
- *  source. Requirements that point inside the entity follow; ones that point out of it keep their target.
+ *  source. Requirements that point inside the entity follow, the images' Visibility rules included; ones that
+ *  point out of it keep their target.
  *  `entityIds` maps each copied entity to its copy, so "playing as" the source becomes "playing as" the copy. */
 export function remintOwnedTraits(entity: Entity, entityIds: ReadonlyMap<string, string> = new Map()): Entity {
   const links = entity.traitLinks ?? [];
-  if (!entity.traits?.length && !entity.traitGroups?.length && !links.length) return entity;
+  if (!entity.traits?.length && !entity.traitGroups?.length && !links.length && !hasImageRules(entity)) return entity;
   const ids = new Map([...traitsOf(entity), ...groupsOf(entity), ...links].map((item) => [item.id, randomUUID()] as const));
   const remap = (id: string | null | undefined) => (id ? ids.get(id) ?? id : id);
   const remapRequirement = (r: TraitRequirement): TraitRequirement =>
     ({ ...r, id: (r.kind === 'playingAs' ? entityIds.get(r.id) : ids.get(r.id)) ?? r.id });
   const reminted = withOwnedTraits(
-    entity,
+    withImageRules(entity, remapRequirement),
     traitsOf(entity).map((t) => ({
       ...t,
       id: remap(t.id)!,

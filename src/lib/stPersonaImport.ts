@@ -120,7 +120,7 @@ export async function readStPersonaFiles(backup: File, images: File[]): Promise<
     const mime = file.type || EXTENSION_MIME[file.name.split('.').pop()?.toLowerCase() ?? ''] || 'image/png';
     try {
       const bytes = new Uint8Array(await file.arrayBuffer());
-      persona.entity.images = [await optimizeImageDataUrl(bytesToDataUrl(bytes, mime), IMAGE_CAPS.entity)];
+      persona.entity.images = [{ data: await optimizeImageDataUrl(bytesToDataUrl(bytes, mime), IMAGE_CAPS.entity) }];
     } catch (err) {
       // An unreadable avatar leaves that persona imageless, and the report lists it.
       console.error('Error reading persona image:', file.name, err);

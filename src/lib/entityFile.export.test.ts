@@ -23,7 +23,7 @@ vi.mock('./morphArtCanvas', () => ({ morphCardImage: (...a: unknown[]) => morphC
 
 const { exportEntityCard } = await import('./entityFile');
 
-const entity = (images: string[]): Entity => ({ id: 'e1', name: 'Mara', images } as Entity);
+const entity = (images: string[]): Entity => ({ id: 'e1', name: 'Mara', images: images.map((data) => ({ data })) });
 
 beforeEach(() => {
   fetchAsDataUrl.mockReset();
@@ -49,6 +49,15 @@ describe('exportEntityCard with a linked portrait', () => {
 
     await expect(exportEntityCard(entity(['https://files.example/mara.png'])))
       .rejects.toThrow(/files\.example/);
+  });
+
+  it('draws the card from slot 0, its Visibility rule ignored', async () => {
+    const ruled: Entity = { id: 'e1', name: 'Mara', images: [
+      { data: 'data:image/webp;base64,SLOT0', requires: [{ all: [{ kind: 'trait', id: 'knight' }] }] },
+      { data: 'data:image/webp;base64,SLOT1' },
+    ] };
+    await exportEntityCard(ruled);
+    expect(fetch).toHaveBeenCalledWith('data:image/webp;base64,SLOT0');
   });
 
   it('leaves an embedded portrait alone — no download for a card that already has its bytes', async () => {

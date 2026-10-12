@@ -189,7 +189,7 @@ describe('Steps that match intent', () => {
     await outsideAct(() => history().batch('Optimize Images', async () => {
       ctx().updateWorldOverview({ thumbnail: 'data:image/webp;base64,AA' });
       await nextTask();
-      ctx().setEntities((prev) => prev.map((e) => ({ ...e, images: ['data:image/webp;base64,BB'] })));
+      ctx().setEntities((prev) => prev.map((e) => ({ ...e, images: [{ data: 'data:image/webp;base64,BB' }] })));
       await nextTask();
       ctx().setLocations((prev) => prev.map((l) => ({ ...l, backgroundImage: 'data:image/webp;base64,CC' })));
     }));

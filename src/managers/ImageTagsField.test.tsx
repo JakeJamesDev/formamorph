@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/re
 import { IMAGE_CAPS } from '../lib/imageOptim';
 import ImageTagsField from './ImageTagsField';
 import { EntityGalleryField } from './EntityFields';
-import type { Entity } from '@/types';
+import type { GalleryImage } from '@/types';
 
 // Stub the heavy leaf children; the upload stub exposes a button that fires the embedded-prompt handshake,
 // and carries its slot's value and input id, which is what the add tile's label points at.
@@ -69,7 +69,7 @@ describe('ImageTagsField uploads on an entity', () => {
   /** The entity's own widget, as the Entity panel configures it. */
   const gallery = (images: string[]) => {
     const onChange = vi.fn();
-    render(<EntityGalleryField value={{ id: 'e1', name: 'Ada', images } as Entity} onChange={onChange} />);
+    render(<EntityGalleryField value={{ id: 'e1', name: 'Ada', images: images.map((data) => ({ data })) }} onChange={onChange} />);
     return { onChange };
   };
 
@@ -89,9 +89,9 @@ describe('ImageTagsField uploads on an entity', () => {
     fireEvent.drop(addTile(), { dataTransfer: { files, types: ['Files'], getData: () => '' } });
 
     await waitFor(() => expect(onChange).toHaveBeenCalledWith('images', expect.any(Array)));
-    const [, images] = onChange.mock.calls[0] as [string, string[]];
+    const [, images] = onChange.mock.calls[0] as [string, GalleryImage[]];
     expect(images).toHaveLength(5);
-    expect(images.slice(0, 2)).toEqual([DATA_A, DATA_B]);
+    expect(images.slice(0, 2)).toEqual([{ data: DATA_A }, { data: DATA_B }]);
   });
 
   it('keeps every picture of an import with more than two uploads, and still offers the picker', () => {
@@ -105,7 +105,7 @@ describe('ImageTagsField uploads on an entity', () => {
     const location = (images: string[]) => render(
       <ImageTagsField
         label="Background Image"
-        images={images}
+        images={images.map((data) => ({ data }))}
         onImagesChange={() => {}}
         imageId="loc"
         cap={IMAGE_CAPS.background}

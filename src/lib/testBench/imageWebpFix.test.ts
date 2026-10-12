@@ -46,6 +46,20 @@ describe('convertWorldImagesToWebp — correcting a lying format label', () => {
     expect(reencodeImageDataUrl).toHaveBeenCalledWith(dataUrl('image/png', PNG));
   });
 
+  it('converts a gallery image and keeps each image’s rule on its own slot', async () => {
+    const wounded = [{ all: [{ kind: 'stat' as const, id: 'hp', operator: '<' as const, value: 20, unit: 'percent' as const }] }];
+    const knight = [{ all: [{ kind: 'trait' as const, id: 'knight' }] }];
+    const world = {
+      ...worldWithThumbnail(''),
+      entities: [{ id: 'e1', name: 'Wren', images: [{ data: dataUrl('image/png', PNG), requires: wounded }, { data: dataUrl('image/jpeg', JPEG), requires: knight }] }],
+    } as RuleWorld;
+    const run = await convertWorldImagesToWebp(world);
+    expect(run.world.entities?.[0].images).toEqual([
+      { data: 'data:image/webp;base64,encoded', requires: wounded },
+      { data: dataUrl('image/jpeg', JPEG), requires: knight },
+    ]);
+  });
+
   it('leaves an honestly labeled world untouched, by reference', async () => {
     const world = worldWithThumbnail(dataUrl('image/jpeg', JPEG));
     const run = await convertWorldImagesToWebp(world);

@@ -52,7 +52,7 @@ const WEBP = image('image/webp', 'B');
 const WORLD = benchEditorWorld({
   entities: [{
     id: 'resident', name: 'Odd Wick', playerDescription: 'The lamp-keeper.',
-    aiDescription: 'Keeps the harbor lamps lit.', locations: ['harbor'], images: [PNG],
+    aiDescription: 'Keeps the harbor lamps lit.', locations: ['harbor'], images: [{ data: PNG }],
   }],
   locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true, backgroundImage: JPEG }],
 } as unknown as Partial<World>);
@@ -76,7 +76,7 @@ type WorldPayload = Omit<World, 'id' | 'version'>;
 
 const imagesOf = (ctx: () => { getWorldData: () => WorldPayload }) => {
   const world = ctx().getWorldData();
-  return { portrait: world.entities[0].images?.[0], background: world.locations[0].backgroundImage };
+  return { portrait: world.entities[0].images?.[0].data, background: world.locations[0].backgroundImage };
 };
 
 beforeEach(() => {
@@ -125,7 +125,7 @@ describe('WorldEditor — converting a world’s images to lossless WebP', () =>
     fireEvent.click(button);
     // The author replaces the very picture being converted before the encode comes back.
     act(() => {
-      ctx().setEntities([{ ...WORLD.entities[0], images: [image('image/png', 'C')] }]);
+      ctx().setEntities([{ ...WORLD.entities[0], images: [{ data: image('image/png', 'C') }] }]);
     });
     await finish(WEBP);
 
@@ -189,7 +189,7 @@ describe('WorldEditor — a world whose pictures live in more than one place', (
     entities: [{
       id: 'resident', name: 'Odd Wick', playerDescription: 'The lamp-keeper.',
       aiDescription: 'Keeps the harbor lamps lit.', locations: ['harbor'],
-      images: [image('image/png', 'E'), image('image/bmp', 'F')],
+      images: [{ data: image('image/png', 'E') }, { data: image('image/bmp', 'F') }],
     }],
     locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true, backgroundImage: image('image/png', 'G') }],
   } as unknown as Partial<World>);
@@ -204,7 +204,7 @@ describe('WorldEditor — a world whose pictures live in more than one place', (
 
     const world = ctx().getWorldData();
     expect(world.worldOverview.thumbnail).toBe(WEBP);
-    expect(world.entities[0].images).toEqual([WEBP, WEBP]);
+    expect(world.entities[0].images).toEqual([{ data: WEBP }, { data: WEBP }]);
     expect(world.locations[0].backgroundImage).toBe(WEBP);
   });
 

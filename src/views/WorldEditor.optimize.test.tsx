@@ -41,7 +41,7 @@ vi.mock('@/lib/useDownscalePrompt', async (importOriginal) => {
         return {
           ...world,
           worldOverview: { ...world.worldOverview, thumbnail: WEBP },
-          entities: world.entities.map((e) => ({ ...e, images: [WEBP] })),
+          entities: world.entities.map((e) => ({ ...e, images: [{ data: WEBP }] })),
           locations: world.locations.map((l) => ({ ...l, backgroundImage: WEBP })),
         };
       },
@@ -55,7 +55,7 @@ const WORLD = benchEditorWorld({
     systemPrompt: '', use3DModel: true, tags: [],
   },
   locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true, backgroundImage: PNG }],
-  entities: [{ id: 'resident', name: 'Odd Wick', images: [PNG], locations: ['harbor'] }],
+  entities: [{ id: 'resident', name: 'Odd Wick', images: [{ data: PNG }], locations: ['harbor'] }],
 } as Partial<World>);
 
 beforeEach(() => {
@@ -94,11 +94,11 @@ describe('Optimize Images', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Optimize Images' }));
     await waitFor(() => expect(ctx().locations[0].backgroundImage).toBe(WEBP));
     expect(ctx().worldOverview.thumbnail).toBe(WEBP);
-    expect(ctx().entities[0].images).toEqual([WEBP]);
+    expect(ctx().entities[0].images).toEqual([{ data: WEBP }]);
 
     await act(async () => { fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true }); });
     expect(ctx().worldOverview.thumbnail).toBe(PNG);
-    expect(ctx().entities[0].images).toEqual([PNG]);
+    expect(ctx().entities[0].images).toEqual([{ data: PNG }]);
     expect(ctx().locations[0].backgroundImage).toBe(PNG);
 
     // Nothing earlier is left to undo.
