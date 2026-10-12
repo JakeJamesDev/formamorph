@@ -48,6 +48,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The AI's notes now head your persona's block with its name, such as "Sylvie (Player Character)".** A chip's Header can hold the **Player Name** built-in in every format. With no persona, it reads "the player".
     - **The AI's notes now list your world's player traits under Other Traits, after your persona.** A world with no player traits drops the section. Saved custom prompts keep their own headers and order.
     - **The AI's notes now list your persona's own stats inside its block, and your world's player stats under Other Stats.** The **Persona** chip gains a **Stats** toggle. The choices prompt now reads your persona's summary, with its traits and stats.
+    - **Under Staged thinking, each character now plans its turn with its own stats in view.** Its planning request lists its stats after its background, as the narration sees them. It still never sees your stats.
   - **The AI now updates your stats with fewer wrong-direction and made-up changes.** It answers with a change for every stat, 0 included. An endpoint that can't take that format gets the old reply style, and the AI context viewer notes it.
   - **The World Editor's Content group now lists Entities first and Stats last.** The order is Entities, Locations, Traits, Stats on the side rail and the mobile Sections list.
 - **🛠️ Developer tooling**

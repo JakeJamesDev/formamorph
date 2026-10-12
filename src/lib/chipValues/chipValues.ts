@@ -3,7 +3,7 @@ import { formatAbsolute } from '../gameClock';
 import {
   buildDestinationsContext, buildLocationContext, buildParentLocationContext, buildReachableEntitiesContext,
   buildReachableLocationsContext, buildSublocationEntitiesContext, buildSublocationsContext, chipFormat,
-  expandScopedTokens, renderEntityRoster, sublocationEntityIds, type ContextOpts,
+  expandScopedTokens, ownedStatLines, renderEntityRoster, sublocationEntityIds, type ContextOpts,
 } from '../locationContext';
 import { personaContextValues } from '../personaContext';
 import { PLAYER_NAME, PLAYER_NAME_HEADER_KEY } from '../builtinPlaceholders';
@@ -15,7 +15,7 @@ import { buildStatContext, type StatChipPart, type StatPlacement } from '../stat
 import { statKeys } from '../statKeys';
 import { stripMarkdown } from '../stripMarkdown';
 import { buildTraitContext } from '../traitTree';
-import type { PlayerStat } from '@/types';
+import type { Entity, PlayerStat } from '@/types';
 import type { ChipScene } from './chipScene';
 
 const WORLD = variableForToken('<WORLD DESCRIPTION>')!;
@@ -162,4 +162,11 @@ function entityScopes(scene: ChipScene): Record<string, (opts: ContextOpts) => s
 export function sceneEntityChipValues(scene: ChipScene, sceneIds: string[]): Record<string, string> {
   const { '': here } = entityScopes({ ...scene, presentIds: sceneIds });
   return resolveAll(expandScopedTokens(ENTITIES.token, { '': here }), scene.resolve);
+}
+
+/** An entity's stats field in the scene, as the Entities chip's markdown form renders it, or '' when it holds
+ *  none. An ad-hoc character, with no entity, holds none. */
+export function entityStatsField(scene: ChipScene, entity: Entity | undefined): string {
+  const stats = (entity && scene.ownedStats?.[entity.id]) ?? [];
+  return entity && stats.length ? scene.resolve(ownedStatLines(entity, stats, 'markdown')) : '';
 }

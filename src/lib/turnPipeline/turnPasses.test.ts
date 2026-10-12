@@ -213,6 +213,14 @@ describe('turn pass requests', () => {
       expect(request.maxTokens).toBe(TURN_PASS_CAPS.character);
     });
 
+    it("sends the character's own stats in its identity block, and the diary pass none", () => {
+      const stats = '  - **stats:**\n    - **Vigor:** 12/100 (Spent)\n';
+      const subject = { name: 'Bram', entity: BRAM, stats };
+      expect(build('character', { subject }).messages[0].content)
+        .toContain('The one-armed ferryman.\n  - **stats:**\n    - **Vigor:** 12/100 (Spent)\n\n');
+      expect(lastMessage('diary', { subject })).not.toContain('Vigor');
+    });
+
     it('refuses to build a fan-out request with no subject', () => {
       expect(() => build('character')).toThrow(/subject/);
       expect(() => build('diary')).toThrow(/subject/);

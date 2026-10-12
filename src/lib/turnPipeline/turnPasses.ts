@@ -308,6 +308,7 @@ const characterPass: TurnPassRecord<string> = {
       assembledTiled(
         buildCharacterUserMessage({
           character: { name: subject.name, stance: subject.stance, entity: subject.entity },
+          stats: subject.stats,
           scene: material.directorScene,
           action: material.effectiveAction,
           diary: subject.diary,

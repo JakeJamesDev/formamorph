@@ -142,7 +142,7 @@ export type RosterOpts = {
 
 /** An entity's owned stats as roster field lines, nested as its traits are and under its stat groups, or ''
  *  when it holds none. */
-function ownedStatLines(entity: Entity, stats: readonly PlayerStat[], format: ContextFormat): string {
+export function ownedStatLines(entity: Entity, stats: readonly PlayerStat[], format: ContextFormat): string {
   if (!stats.length) return "";
   const block = buildStatContext([...stats], { values: true, status: true, meaning: true }, format, statPlacementOf(entity))
     .split("\n").map((line) => `    ${line}`).join("\n");
