@@ -126,6 +126,7 @@ export function sampleChipScene(): ChipScene {
   return {
     ...authoredChipScene(SAMPLE_WORLD),
     persona,
+    playerName: persona.entity.name,
     inSceneIds: [wren.id],
     notes: 'Traveler is looking for the person who sold them a false map.',
     // Day 3, evening on the default calendar.

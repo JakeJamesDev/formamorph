@@ -5,6 +5,7 @@ import { resolveBearers, type BearerWorld } from '../bearers';
 import { resolveBearerText, resolveEntityText } from '../placeholders';
 import { buildCharacterUserMessage, buildDiaryUserMessage } from '../stagedPlanning';
 import { buildToolSnapshot } from '../tools/toolSnapshot';
+import { renderPromptTemplate } from '../promptTemplate';
 import type { Entity, GameLocation, PlayerStat, StatGroup, Trait, TraitGroup, TraitLink } from '@/types';
 
 // The harbor: the Quay contains the Warehouse.
@@ -150,6 +151,23 @@ describe('the live adapter', () => {
     const diary = buildDiaryUserMessage({ name: 'Porter', entity, narration: 'Porter waved.' });
     expect(diary).toContain('Porter, a hauler.');
     expect(diary).not.toContain('{{');
+  });
+
+  it("carries the played persona's name as the Player Name, which a chip Header reads", () => {
+    const header = '<PERSONA|markdown|header="{{user}} (Player Character)">';
+    const wren: Entity = { id: 'wren', name: 'Wren', persona: true, aiDescription: 'Rows the ferry.' };
+    const played = chipValues(liveChipScene(sources({ persona: { source: 'world', entity: wren } })));
+    expect(played['header:{{user}}']).toBe('Wren');
+    expect(renderPromptTemplate(header, played)).toMatch(/^\n## Wren \(Player Character\)\n- \*\*Wren\*\*/);
+    // Prompt text never takes the Player Name.
+    expect(renderPromptTemplate('Speak to {{user}}.', played)).toBe('Speak to {{user}}.');
+    const blank = chipValues(liveChipScene(sources({ persona: { source: 'library', entity: { ...wren, name: ' ' } } })));
+    expect(blank['header:{{user}}']).toBe('');
+    // With nobody played, the Header reads the player, and the Persona chip itself drops out.
+    const none = chipValues(liveChipScene(sources()));
+    expect(none['header:{{user}}']).toBe('the player');
+    expect(renderPromptTemplate(`A${header}<NOTES|format=markdown|header="{{user}} notes">B`, { ...none, '<NOTES>': 'Find the map.' }))
+      .toBe('A\n## The Player Notes\nFind the map.\nB');
   });
 
   it("resolves the persona's own text with the persona as the Character Name", () => {

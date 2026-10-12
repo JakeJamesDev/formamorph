@@ -186,16 +186,17 @@ describe('default XML section boundaries', () => {
     const output = renderPromptTemplate(template, {
       ...SAMPLE_PREVIEW_VALUES,
       ...personaContextValues(present ? { source: 'library', entity: { id: 'traveler', name: 'Traveler', pronouns: 'they/them' } } : null),
+      'header:{{user}}': present ? 'Traveler' : 'the player',
     });
     const sections = output.slice(output.indexOf('<traits>'), output.indexOf('<current_location>'));
     const document = new DOMParser().parseFromString(`<root>${sections}</root>`, 'application/xml');
     expect(document.querySelector('parsererror')).toBeNull();
     expect(Array.from(document.documentElement.children, node => node.tagName)).toEqual(
-      present ? ['traits', 'player_character', 'important_player_notes'] : ['traits', 'important_player_notes'],
+      present ? ['traits', 'traveler_player_character', 'important_player_notes'] : ['traits', 'important_player_notes'],
     );
     expect(document.querySelector('traits > trait')).not.toBeNull();
-    expect(document.querySelector('player_character > entity > name')?.textContent ?? '').toBe(present ? 'Traveler' : '');
-    expect(document.querySelector('player_character > entity > pronouns')?.textContent ?? '').toBe(present ? 'they/them' : '');
+    expect(document.querySelector('traveler_player_character > entity > name')?.textContent ?? '').toBe(present ? 'Traveler' : '');
+    expect(document.querySelector('traveler_player_character > entity > pronouns')?.textContent ?? '').toBe(present ? 'they/them' : '');
   });
 
   it.each([[1, 'root'], [2, 'world'], [3, 'traits']] as const)(

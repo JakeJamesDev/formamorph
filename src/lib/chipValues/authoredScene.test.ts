@@ -77,6 +77,13 @@ describe('authoredChipScene and entity stats', () => {
     expect(authoredChipScene(world()).ownedStats ?? {}).toEqual({});
   });
 
+  it('carries the Custom Persona entity’s name as the Player Name, and the player without one', () => {
+    const you: Entity = { id: 'you', name: 'Sylvie', customPersona: true };
+    expect(chipValues(authoredChipScene(world({ entities: [wren, { ...wren, id: 'p', name: 'Odd', persona: true }, you] })))['header:{{user}}'])
+      .toBe('Sylvie');
+    expect(chipValues(authoredChipScene(world()))['header:{{user}}']).toBe('the player');
+  });
+
   it("lists the Custom Persona entity's switched-on stats after the world's, and no other entity's", () => {
     const you: Entity = { id: 'you', name: 'You', customPersona: true, stats: [stock, dread] };
     const scene = authoredChipScene(world({ entities: [{ ...wren, stats: [trust] }, harrow, you] }));

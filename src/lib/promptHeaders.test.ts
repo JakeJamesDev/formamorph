@@ -205,3 +205,59 @@ describe('authored prompt headers', () => {
     expect(vocab.setHeader!('<NOTES>', 'notes')).toBe('<NOTES|header="notes">');
   });
 });
+
+describe('the Player Name in a Header', () => {
+  const persona = (variantId: string | null) =>
+    joinToken({ base: '<PERSONA>', variantId, header: '{{user}} (Player Character)' });
+  const values = (name: string | undefined, body = 'Meet Mira.') => ({
+    '<PERSONA>': body, '<PERSONA|markdown>': body, '<PERSONA|xml>': body,
+    ...(name === undefined ? {} : { 'header:{{user}}': name }),
+  });
+
+  it.each([
+    [null, '\nSYLVIE THORNWHISTLE (PLAYER CHARACTER):\nMeet Mira.\n'],
+    ['markdown', '\n## Sylvie Thornwhistle (Player Character)\nMeet Mira.\n'],
+    ['xml', '\n<sylvie_thornwhistle_player_character>\nMeet Mira.\n</sylvie_thornwhistle_player_character>\n'],
+  ])('renders the name in the %s frame', (variantId, expected) => {
+    expect(renderPromptTemplate(persona(variantId), values('Sylvie Thornwhistle'))).toBe(expected);
+  });
+
+  it('resolves before title-casing and escaping, in any spelling, with a possessive kept', () => {
+    const token = joinToken({ base: '<PERSONA>', variantId: 'markdown', header: 'notes for {{ User }}’s *kin*' });
+    expect(renderPromptTemplate(token, values('wren'))).toBe('\n## Notes for Wren’s \\*Kin\\*\nMeet Mira.\n');
+    expect(renderPromptTemplate(persona('markdown'), values('the player'))).toBe('\n## The Player (Player Character)\nMeet Mira.\n');
+  });
+
+  it.each([
+    [null, '\n(PLAYER CHARACTER):\nMeet Mira.\n'],
+    ['markdown', '\n## (Player Character)\nMeet Mira.\n'],
+    ['xml', '\n<player_character>\nMeet Mira.\n</player_character>\n'],
+  ])('renders the rest of the %s Header as written for a blank name', (variantId, expected) => {
+    expect(renderPromptTemplate(persona(variantId), values(''))).toBe(expected);
+    expect(renderPromptTemplate(persona(variantId), values('  '))).toBe(expected);
+  });
+
+  it('leaves the token in the Header when the map has no Player Name', () => {
+    expect(renderPromptTemplate(persona(null), values(undefined))).toBe('\n{{USER}} (PLAYER CHARACTER):\nMeet Mira.\n');
+  });
+
+  it.each(['', 'N/A'])('drops the whole headed section for a blank chip value: %j', body => {
+    const template = `Before\n${persona('markdown')}\nAfter`;
+    expect(renderPromptTemplate(template, values('Sylvie', body))).toBe('Before\n\nAfter');
+  });
+
+  it('keeps a Player Name typed in prompt text or an affix as written', () => {
+    const token = joinToken({ base: '<PERSONA>', variantId: null, pre: '{{user}}: ' });
+    expect(renderPromptTemplate(`Speak to {{user}}. ${token}`, values('Sylvie'))).toBe('Speak to {{user}}. {{user}}: Meet Mira.');
+  });
+
+  it('shows the resolved heading as the static frame in Request Anatomy', () => {
+    const template = `Before${persona('markdown')}After`;
+    const { content, runs } = renderPromptTemplateRuns(template, values('Sylvie'), { source: 'system-template' });
+    expect(content).toBe('Before\n## Sylvie (Player Character)\nMeet Mira.\nAfter');
+    expect(runsTile(content, runs)).toBe(true);
+    const owned = runs.find(run => run.chip === '<PERSONA|markdown>')!;
+    expect(owned).toMatchObject({ section: true });
+    expect(content.slice(owned.start, owned.end)).toBe('\n## Sylvie (Player Character)\nMeet Mira.\n');
+  });
+});
