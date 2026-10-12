@@ -53,6 +53,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The Test Bench's AI Context tab now lists a Persona block, before Stats and Traits.** It shows your Custom Persona entity's traits and stats as the AI reads them. A world with no Custom Persona entity shows it empty.
   - **Chip Options:**
     - **Selecting a placed chip now opens Chip Options, a centered dialog, in place of the small pop-out.** Prompt chips get a second pane, What the AI Reads. Long option lists are dropdowns, and help lines show as tooltips.
+    - **The Entities and Persona chips' Chip Options now have Only With, Include and Stat Detail rows.** Only With keeps entities that own stats or traits. Include turns each entity's traits and stats on or off. Stat Detail picks Range, Descriptor and Description.
   - **Stat Conditions:**
     - **Test Bench warns when a trait requires a stat it changes, or a percent of a stat with no range.** A Condition on a stat its bearer lacks shows as an unresolved requirement.
     - **The Availability tab can gate a trait on a stat, such as Rage >= 80.** Pick a stat from the **Requires** picker, then set the operator, the number and Raw or %. **Not** flips it.

@@ -10,7 +10,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tip } from '@/components/ui/tooltip';
 import type { ChipVocabulary } from '@/lib/chipVocabulary';
 import { HISTORY_OVERLAY_ATTRIBUTE } from '@/lib/historyField';
-import { AFFIX_FORBIDDEN, isValidAffix, type PromptVariantAxis } from '@/lib/promptVariables';
+import { AFFIX_FORBIDDEN, isValidAffix, toggleIsOn, toggleOptionFor, type PromptVariantAxis } from '@/lib/promptVariables';
 import { cn } from '@/lib/utils';
 
 const FULL = 'full'; // control value for an axis's default option (null id)
@@ -21,6 +21,8 @@ const NEWLINE_MARK = '↵';
 // Segmented up to this many options; a longer list is a dropdown.
 const MAX_SEGMENTS = 3;
 
+const MOOT_NAME_TIP = 'Name content sends only names';
+const MOOT_STATS_TIP = 'Check Stats under Include to pick Stat Detail';
 const LABEL_TIP = 'Tells this placement apart from others on the same placeholder. Stays with the chip when you move or copy it.';
 const HEADER_TIP = 'Starts a section when the chip has a value';
 const PREPEND_TIP = "Adds text before the value, only when the value isn't empty. Spaces count, so check Preview.";
@@ -131,7 +133,7 @@ function PickOne({ axis, label, active, editable, onPick }: {
 function OptionRows({ token, vocab, editable, update, hasActions }: Omit<ChipOptionsBodyProps, 'onRepick' | 'onEditValue' | 'twoPane'> & {
   hasActions: boolean;
 }) {
-  const axes = vocab.axes(token).filter((axis) => !axis.hiddenInDialog);
+  const axes = vocab.axes(token);
   const selection = vocab.selection(token);
   const affixes = vocab.affixes(token);
   const header = vocab.header?.(token) ?? null;
@@ -147,24 +149,28 @@ function OptionRows({ token, vocab, editable, update, hasActions }: Omit<ChipOpt
     });
   };
 
-  // How many off-by-default toggles are on: the last one is locked so a stats block is never nameless.
-  const toggleOnCount = axes.filter((a) => a.toggle && !a.onByDefault && selection[a.id] != null).length;
-  // Today's off-by-default toggles are the Stats chip's pieces; registry lock groups replace this split.
-  const toggleRow = (onByDefault: boolean) => {
-    const label = onByDefault ? 'Include' : 'Stat Detail';
-    const group = axes.filter((a) => a.toggle && !!a.onByDefault === onByDefault);
+  // Name content sends no stats or traits, so only Only With stays live.
+  const namesOnly = selection.content === 'name';
+  const statsAxis = axes.find((a) => a.toggle && a.id === 'stats');
+  const statsOff = !!statsAxis && !toggleIsOn(statsAxis, selection);
+  const moot = (row: string) =>
+    row !== 'Only With' && namesOnly ? MOOT_NAME_TIP : row === 'Stat Detail' && statsOff ? MOOT_STATS_TIP : undefined;
+
+  const toggleRow = (name: string, group: PromptVariantAxis[]) => {
+    const mootTip = moot(name);
     return (
-      <Row key={label} label={label}>
-        <div role="group" aria-label={label} className="flex min-h-7 flex-wrap items-center gap-x-4 gap-y-1">
+      <Row key={name} label={name} tip={mootTip ?? group.find((a) => a.rowHelp)?.rowHelp}>
+        <div role="group" aria-label={name} className="flex min-h-7 flex-wrap items-center gap-x-4 gap-y-1">
           {group.map((axis) => {
-            const stored = axis.options.find((o) => o.id != null)?.id ?? null;
-            const holdsStored = selection[axis.id] != null;
-            const isOn = holdsStored !== !!axis.onByDefault;
-            const disabled = !editable || (!axis.onByDefault && isOn && toggleOnCount === 1);
+            const isOn = toggleIsOn(axis, selection);
+            // The last piece on in a lock group stays on, so a stat is never sent as a bare name.
+            const lockedOn = isOn && !!axis.lockGroup
+              && axes.filter((a) => a.toggle && a.lockGroup === axis.lockGroup && toggleIsOn(a, selection)).length === 1;
+            const disabled = !editable || !!mootTip || lockedOn;
             return (
               <Tip key={axis.id} tip={axis.help} labelsChild={false}>
                 <label className={cn('flex items-center gap-1.5 text-meta', disabled ? 'cursor-default' : 'cursor-pointer')}>
-                  <Checkbox checked={isOn} disabled={disabled} onCheckedChange={() => setAxis(axis.id, holdsStored ? null : stored)} />
+                  <Checkbox checked={isOn} disabled={disabled} onCheckedChange={() => setAxis(axis.id, toggleOptionFor(axis, selection, !isOn))} />
                   {axis.label}
                 </label>
               </Tip>
@@ -176,12 +182,12 @@ function OptionRows({ token, vocab, editable, update, hasActions }: Omit<ChipOpt
   };
 
   const rows: ReactNode[] = [];
-  const placedGroups = new Set<boolean>();
+  const placedRows = new Set<string>();
   for (const axis of axes) {
     if (axis.toggle) {
-      const onByDefault = !!axis.onByDefault;
-      if (!placedGroups.has(onByDefault)) rows.push(toggleRow(onByDefault));
-      placedGroups.add(onByDefault);
+      const name = axis.row ?? axis.label;
+      if (!placedRows.has(name)) rows.push(toggleRow(name, axes.filter((a) => a.toggle && (a.row ?? a.label) === name)));
+      placedRows.add(name);
       continue;
     }
     const label = axis.label || 'Mode';
