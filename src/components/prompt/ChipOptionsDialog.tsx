@@ -1,4 +1,4 @@
-import { useId, useMemo, useState, type ReactElement, type ReactNode } from 'react';
+import { Fragment, useId, useMemo, useState, type ReactElement, type ReactNode } from 'react';
 import DrillPicker from './DrillPicker';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -10,7 +10,8 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tip } from '@/components/ui/tooltip';
 import type { ChipVocabulary } from '@/lib/chipVocabulary';
 import { HISTORY_OVERLAY_ATTRIBUTE } from '@/lib/historyField';
-import { resolveTokenParts } from '@/lib/promptTemplate';
+import { splitRunLines, type TextOrigin } from '@/lib/markedText';
+import { resolveTokenRuns } from '@/lib/promptTemplate';
 import { AFFIX_FORBIDDEN, isValidAffix, toggleIsOn, toggleOptionFor, type PromptVariantAxis } from '@/lib/promptVariables';
 import type { TokenValues } from '@/lib/promptValues';
 import { cn } from '@/lib/utils';
@@ -59,6 +60,18 @@ export function AffixInput({ label, value, disabled, onChange }: {
       className="h-7 text-meta font-mono"
     />
   );
+}
+
+/** Lights `origin` in the right pane while the pointer is over the control or focus is inside it. */
+type Light = (origin: TextOrigin | null) => void;
+
+/** The handlers that light `origin` from a control, or none for a control that lights nothing. */
+function lightProps(origin: TextOrigin | undefined, light: Light) {
+  if (!origin) return {};
+  return {
+    onMouseEnter: () => light(origin), onMouseLeave: () => light(null),
+    onFocus: () => light(origin), onBlur: () => light(null),
+  };
 }
 
 /** One short row: its name on the left, its control on the right. */
@@ -133,8 +146,9 @@ function PickOne({ axis, label, active, editable, onPick }: {
 }
 
 /** The controls face: one row per axis in the chip's order, then the placement fields below a rule. */
-function OptionRows({ token, vocab, editable, update, hasActions }: Omit<ChipOptionsBodyProps, 'reads' | 'onRepick' | 'onEditValue' | 'twoPane'> & {
+function OptionRows({ token, vocab, editable, update, hasActions, light }: Omit<ChipOptionsBodyProps, 'reads' | 'onRepick' | 'onEditValue' | 'twoPane'> & {
   hasActions: boolean;
+  light: Light;
 }) {
   const axes = vocab.axes(token);
   const selection = vocab.selection(token);
@@ -172,7 +186,8 @@ function OptionRows({ token, vocab, editable, update, hasActions }: Omit<ChipOpt
             const disabled = !editable || !!mootTip || lockedOn;
             return (
               <Tip key={axis.id} tip={axis.help} labelsChild={false}>
-                <label className={cn('flex items-center gap-1.5 text-meta', disabled ? 'cursor-default' : 'cursor-pointer')}>
+                <label className={cn('flex items-center gap-1.5 text-meta', disabled ? 'cursor-default' : 'cursor-pointer')}
+                  {...lightProps(axis.lights, light)}>
                   <Checkbox checked={isOn} disabled={disabled} onCheckedChange={() => setAxis(axis.id, toggleOptionFor(axis, selection, !isOn))} />
                   {axis.label}
                 </label>
@@ -196,8 +211,10 @@ function OptionRows({ token, vocab, editable, update, hasActions }: Omit<ChipOpt
     const label = axis.label || 'Mode';
     rows.push(
       <Row key={axis.id} label={label}>
-        <PickOne axis={axis} label={label} active={selection[axis.id] ?? FULL} editable={editable}
-          onPick={(optionId) => setAxis(axis.id, optionId)} />
+        <div {...lightProps(axis.lights, light)}>
+          <PickOne axis={axis} label={label} active={selection[axis.id] ?? FULL} editable={editable}
+            onPick={(optionId) => setAxis(axis.id, optionId)} />
+        </div>
       </Row>,
     );
   }
@@ -221,17 +238,23 @@ function OptionRows({ token, vocab, editable, update, hasActions }: Omit<ChipOpt
         <div className={cn('space-y-2.5', rows.length > 0 && 'border-t pt-3')}>
           {header != null && (
             <Row label="Header" tip={HEADER_TIP}>
-              <Input aria-label="Header" value={header} disabled={!editable} className="h-7 text-meta"
-                onChange={(e) => { const next = e.target.value; update((t) => vocab.setHeader?.(t, next) ?? t); }} />
+              <div {...lightProps('header', light)}>
+                <Input aria-label="Header" value={header} disabled={!editable} className="h-7 text-meta"
+                  onChange={(e) => { const next = e.target.value; update((t) => vocab.setHeader?.(t, next) ?? t); }} />
+              </div>
             </Row>
           )}
           {affixes && (
             <>
               <Row label="Prepend" tip={PREPEND_TIP}>
-                <AffixInput label="Prepend" value={affixes.pre} disabled={!editable} onChange={(v) => setAffix('pre', v)} />
+                <div {...lightProps('prepend', light)}>
+                  <AffixInput label="Prepend" value={affixes.pre} disabled={!editable} onChange={(v) => setAffix('pre', v)} />
+                </div>
               </Row>
               <Row label="Append" tip={APPEND_TIP}>
-                <AffixInput label="Append" value={affixes.post} disabled={!editable} onChange={(v) => setAffix('post', v)} />
+                <div {...lightProps('append', light)}>
+                  <AffixInput label="Append" value={affixes.post} disabled={!editable} onChange={(v) => setAffix('post', v)} />
+                </div>
               </Row>
             </>
           )}
@@ -241,22 +264,43 @@ function OptionRows({ token, vocab, editable, update, hasActions }: Omit<ChipOpt
   );
 }
 
+const PLACEMENT: readonly TextOrigin[] = ['header', 'prepend', 'append'];
+
 /** The right pane of a prompt chip: what the token renders to in the field's own scene, header and affixes
- *  included, the placement text one shade dimmer than the chip's value. */
-function ReadsPane({ token, reads }: { token: string; reads: TokenValues | undefined }) {
+ *  included, the placement text one shade dimmer than the chip's value. While a control is lit, the text it
+ *  produces is highlighted and every line without it dims. */
+function ReadsPane({ token, reads, lit }: { token: string; reads: TokenValues | undefined; lit: TextOrigin | null }) {
   const titleId = useId();
-  const rendered = useMemo(() => (reads ? resolveTokenParts(token, reads) : undefined), [token, reads]);
+  const rendered = useMemo(() => (reads ? resolveTokenRuns(token, reads) : undefined), [token, reads]);
+  // A value control lights only what its renderer reported; the placement fields always light their own text.
+  const active = lit && rendered && (rendered.reported || PLACEMENT.includes(lit)) ? lit : null;
   return (
     <section aria-labelledby={titleId} className="flex min-h-0 flex-col gap-1.5">
       <p id={titleId} className="text-meta font-medium">What the AI Reads</p>
       <div className="min-h-32 flex-1 whitespace-pre-wrap rounded-md border bg-muted/40 px-3 py-2 text-label">
-        {rendered && (
-          <>
-            <span data-placement="" className="text-muted-foreground">{rendered.before}</span>
-            {rendered.value}
-            <span data-placement="" className="text-muted-foreground">{rendered.after}</span>
-          </>
-        )}
+        {rendered && splitRunLines(rendered.runs).map((line, i) => {
+          // A line break or indent alone never keeps its line lit.
+          const lineLit = !!active && line.some((run) => run.origins.includes(active) && run.text.trim() !== '');
+          return (
+            <Fragment key={i}>
+              {line.map((run, j) => {
+                const placement = run.origins.some((origin) => PLACEMENT.includes(origin));
+                const runLit = !!active && run.origins.includes(active);
+                const className = cn(
+                  placement && 'text-muted-foreground',
+                  runLit && 'rounded-sm bg-primary/15 text-foreground',
+                  active && !lineLit && 'opacity-40',
+                );
+                if (!className) return run.text;
+                return (
+                  <span key={j} data-placement={placement ? '' : undefined} data-lit={runLit ? '' : undefined} className={className}>
+                    {run.text}
+                  </span>
+                );
+              })}
+            </Fragment>
+          );
+        })}
       </div>
     </section>
   );
@@ -265,6 +309,7 @@ function ReadsPane({ token, reads }: { token: string; reads: TokenValues | undef
 /** Mounted with the dialog's content, so closing forgets a Re-Pick walk. */
 function ChipOptionsBody({ token, vocab, editable, update, reads, onRepick, onEditValue, twoPane }: ChipOptionsBodyProps) {
   const [repicking, setRepicking] = useState(false);
+  const [lit, setLit] = useState<TextOrigin | null>(null);
 
   if (repicking && onRepick) {
     return (
@@ -285,7 +330,7 @@ function ChipOptionsBody({ token, vocab, editable, update, reads, onRepick, onEd
   }
 
   const hasActions = !!onRepick || !!onEditValue;
-  const rows = <OptionRows token={token} vocab={vocab} editable={editable} update={update} hasActions={hasActions} />;
+  const rows = <OptionRows token={token} vocab={vocab} editable={editable} update={update} hasActions={hasActions} light={setLit} />;
   return (
     <>
       <ScrollArea className="min-h-0">
@@ -294,7 +339,7 @@ function ChipOptionsBody({ token, vocab, editable, update, reads, onRepick, onEd
             // The panes stack on a narrow screen, controls first.
             <div className="grid gap-5 sm:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
               <div>{rows}</div>
-              <ReadsPane token={token} reads={reads} />
+              <ReadsPane token={token} reads={reads} lit={lit} />
             </div>
           ) : (
             rows

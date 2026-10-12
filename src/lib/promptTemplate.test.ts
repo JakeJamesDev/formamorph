@@ -473,12 +473,20 @@ describe('resolveTokenParts', () => {
     const token = joinToken({ base: '<NOTES>', header: 'Player Notes', headerFormat: 'markdown', pre: 'Read ', post: ' twice' });
     expect(resolveTokenParts(token, { '<NOTES>': 'the ferryman' })).toEqual({
       before: '\n## Player Notes\nRead ', value: 'the ferryman', after: ' twice\n',
+      header: { pre: '\n## Player Notes\n', post: '\n' }, pre: 'Read ', post: ' twice', valueStart: 0,
     });
   });
 
+  it('places the value a Header trims at its start in the held value', () => {
+    const parts = resolveTokenParts(joinToken({ base: '<NOTES>', header: 'Player Notes' }), ferryman)!;
+    expect(parts.value).toBe('  the ferryman');
+    expect(ferryman['<NOTES>'].slice(parts.valueStart, parts.valueStart + parts.value.length)).toBe(parts.value);
+  });
+
   it('reads as nothing for a blank value under a placement and as the placeholder bare', () => {
-    expect(resolveTokenParts(joinToken({ base: '<NOTES>', pre: 'Remember: ' }), { '<NOTES>': NONE_PLACEHOLDER })).toEqual({ before: '', value: '', after: '' });
-    expect(resolveTokenParts('<NOTES>', { '<NOTES>': NONE_PLACEHOLDER })).toEqual({ before: '', value: NONE_PLACEHOLDER, after: '' });
+    const none = { before: '', value: '', after: '', header: { pre: '', post: '' }, pre: '', post: '', valueStart: 0 };
+    expect(resolveTokenParts(joinToken({ base: '<NOTES>', pre: 'Remember: ' }), { '<NOTES>': NONE_PLACEHOLDER })).toEqual(none);
+    expect(resolveTokenParts('<NOTES>', { '<NOTES>': NONE_PLACEHOLDER })).toEqual({ ...none, value: NONE_PLACEHOLDER });
   });
 
   it('has no parts for a token with no value', () => {

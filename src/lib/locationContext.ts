@@ -1,11 +1,12 @@
 import type { Connection, Entity, GameLocation, PlayerStat } from "@/types";
-import { buildStatContext, statPlacementOf, type ContextFormat, type StatPieces } from "./statContext";
+import { statContextRuns, statPlacementOf, type ContextFormat, type StatPieces } from "./statContext";
+import { indentRuns, joinRuns, mark, runs, textOf, type MarkedRun, type MarkedText, type TextOrigin } from "./markedText";
 import { entityIdsAt, entityIdsAtAny } from "./entityPresence";
 import { effectiveDestinations } from "./locationGraph";
 import { buildTraitContext, traitsInContextOrder } from "./traitTree";
 import { NONE_PLACEHOLDER } from "./promptFallbacks";
 import { decodeChipKey, decodeVariant, tokenVariant, variableForToken } from "./promptVariables";
-import { memoLookup, type ValueLookup } from "./promptValues";
+import { fromMarked, memoLookup, type ValueLookup } from "./promptValues";
 import { xmlEscape } from "./utils";
 
 /** The location a builder is scoped to, or none at all (no world, or nowhere resolved yet). */
@@ -168,29 +169,47 @@ export function passesOnlyWith(entityId: string, opts: Pick<RosterOpts, "onlyWit
 export function ownedStatLines(
   entity: Entity, stats: readonly PlayerStat[], format: ContextFormat, pieces: StatPieces = ALL_STAT_PIECES,
 ): string {
-  if (!stats.length) return "";
-  const block = buildStatContext([...stats], pieces, format, statPlacementOf(entity))
-    .split("\n").map((line) => `    ${line}`).join("\n");
-  if (format === "xml") return `  <stats>\n${block}\n  </stats>\n`;
-  return `${format === "markdown" ? "  - **stats:**" : "  stats:"}\n${block}\n`;
+  return textOf(ownedStatRuns(entity, stats, format, pieces));
 }
 
-/** An entity's owned traits in force as roster field lines, or '' when none is. */
-function ownedTraitLines(
+/** {@link ownedStatLines} as runs marked as stats lines. */
+function ownedStatRuns(
+  entity: Entity, stats: readonly PlayerStat[], format: ContextFormat, pieces: StatPieces = ALL_STAT_PIECES,
+): MarkedRun[] {
+  if (!stats.length) return [];
+  const block = indentRuns(statContextRuns([...stats], pieces, format, statPlacementOf(entity)), "    ");
+  if (format === "xml") return mark(["stats"], "  <stats>\n", block, "\n  </stats>\n");
+  return mark(["stats"], `${format === "markdown" ? "  - **stats:**" : "  stats:"}\n`, block, "\n");
+}
+
+/** An entity's owned traits in force as roster field lines marked as traits lines, or none when none is. */
+function ownedTraitRuns(
   entity: Entity,
   ids: readonly string[],
   preferSummary: boolean,
   format: ContextFormat,
   field: (key: string, value: string) => string,
-): string {
+): MarkedRun[] {
   const traits = entity.traits ?? [];
   const groups = entity.traitGroups ?? [];
   const inForce = traitsInContextOrder(ids, traits, groups);
-  if (!inForce.length) return "";
-  if (preferSummary) return field("traits", inForce.map((t) => t.name).join(", "));
-  const block = buildTraitContext(ids, traits, groups, format).split("\n").map((line) => `    ${line}`).join("\n");
-  if (format === "xml") return `  <traits>\n${block}\n  </traits>\n`;
-  return `${format === "markdown" ? "  - **traits:**" : "  traits:"}\n${block}\n`;
+  if (!inForce.length) return [];
+  if (preferSummary) return mark(["traits"], field("traits", inForce.map((t) => t.name).join(", ")));
+  const block = indentRuns(runs(buildTraitContext(ids, traits, groups, format)), "    ");
+  if (format === "xml") return mark(["traits"], "  <traits>\n", block, "\n  </traits>\n");
+  return mark(["traits"], `${format === "markdown" ? "  - **traits:**" : "  traits:"}\n`, block, "\n");
+}
+
+/** The placeholder a roster that lists no one renders, marked as Only With's while a filter is on. */
+export const emptyRosterRuns = (opts: Pick<RosterOpts, "onlyWith">): MarkedRun[] =>
+  mark(hasOnlyWith(opts) ? ["ownsStats", "ownsTraits"] : [], NONE_PLACEHOLDER);
+
+/** The Only With picks an entity passes, as the origins its block carries. */
+export function ownedKinds(entityId: string, opts: Pick<RosterOpts, "ownedTraits" | "ownedStats">): TextOrigin[] {
+  return [
+    ...(opts.ownedStats?.[entityId]?.length ? ["ownsStats" as const] : []),
+    ...(opts.ownedTraits?.[entityId]?.length ? ["ownsTraits" as const] : []),
+  ];
 }
 
 /**
@@ -212,13 +231,24 @@ export function renderEntityRoster(
   entities: Entity[],
   opts: RosterOpts = {},
 ): string {
+  return textOf(entityRosterRuns(allIds, entities, opts));
+}
+
+/** {@link renderEntityRoster} as marked runs: each entity block marked with the Only With picks it passes,
+ *  and its content, traits and stats lines marked as theirs. */
+export function entityRosterRuns(
+  allIds: string[],
+  entities: Entity[],
+  opts: RosterOpts = {},
+): MarkedRun[] {
   const { preferSummary = false, format = "simple", nameOnly = false, ownedTraits, ownedStats, noTraits, noStats, statPieces } = opts;
   const entityIds = allIds.filter((id) => passesOnlyWith(id, opts));
   if (nameOnly) {
-    const names = entityIds
-      .map((id) => entities.find((e) => e.id === id)?.name)
-      .filter(Boolean);
-    return names.length ? names.join(", ") : NONE_PLACEHOLDER;
+    const named = entityIds.flatMap((id) => {
+      const name = entities.find((e) => e.id === id)?.name;
+      return name ? [mark(["content", ...ownedKinds(id, opts)], name)] : [];
+    });
+    return named.length ? joinRuns(named, ", ") : emptyRosterRuns(opts);
   }
   const md = format === "markdown";
   const xml = format === "xml";
@@ -227,9 +257,9 @@ export function renderEntityRoster(
     xml ? `  <${key}>${xmlEscape(String(value))}</${key}>\n`
     : md ? `  - **${key}:** ${value}\n`
     : `  ${key}: ${value}\n`;
-  if (entityIds.length === 0) return NONE_PLACEHOLDER;
+  if (entityIds.length === 0) return emptyRosterRuns(opts);
 
-  let output = "";
+  const output: MarkedRun[] = [];
   entityIds.forEach((entityId: string) => {
     const entityItem = entities.find((f) => f.id === entityId);
     if (!entityItem) return;
@@ -244,28 +274,25 @@ export function renderEntityRoster(
       : "";
     const pronouns = entityItem.pronouns?.trim();
     const pronounLine = pronouns ? field("pronouns", pronouns) : "";
-    const ownedLines = (noTraits ? "" : ownedTraitLines(entityItem, ownedTraits?.[entityItem.id] ?? [], preferSummary, format, field))
-      + (noStats ? "" : ownedStatLines(entityItem, ownedStats?.[entityItem.id] ?? [], format, statPieces));
-    if (xml) {
-      let inner = field("name", entityItem.name);
-      inner += aliasLine;
-      inner += pronounLine;
-      if (hasDesc) inner += field(descKey, entityDescription!);
-      inner += appendAllowedFields(entityItem, AI_ENTITY_FIELDS, field);
-      inner += ownedLines;
-      output += `<entity>\n${inner}</entity>\n`;
-      return;
-    }
-    output += head(entityItem.name);
-    output += aliasLine;
-    output += pronounLine;
-    if (hasDesc) output += field(descKey, entityDescription!);
-    output += appendAllowedFields(entityItem, AI_ENTITY_FIELDS, field);
-    output += ownedLines;
+    const ownedLines = runs(
+      noTraits ? "" : ownedTraitRuns(entityItem, ownedTraits?.[entityItem.id] ?? [], preferSummary, format, field),
+      noStats ? "" : ownedStatRuns(entityItem, ownedStats?.[entityItem.id] ?? [], format, statPieces),
+    );
+    const fields = runs(
+      aliasLine,
+      pronounLine,
+      hasDesc ? mark(["content"], field(descKey, entityDescription!)) : "",
+      appendAllowedFields(entityItem, AI_ENTITY_FIELDS, field),
+      ownedLines,
+    );
+    const block = xml
+      ? runs("<entity>\n", field("name", entityItem.name), fields, "</entity>\n")
+      : runs(head(entityItem.name), fields);
+    output.push(...mark(ownedKinds(entityItem.id, opts), block));
   });
 
   // All listed ids failed to resolve to a real entity → treat as empty.
-  return output || NONE_PLACEHOLDER;
+  return output.length ? output : emptyRosterRuns(opts);
 }
 
 /**
@@ -320,10 +347,20 @@ export function buildSublocationEntitiesContext(
   entities: Entity[],
   opts: RosterOpts & { excludeIds?: string[] } = {},
 ): string {
-  if (!current) return NONE_PLACEHOLDER;
+  return textOf(sublocationEntityRuns(current, locations, entities, opts));
+}
+
+/** {@link buildSublocationEntitiesContext} as marked runs. */
+export function sublocationEntityRuns(
+  current: MaybeLocation,
+  locations: GameLocation[],
+  entities: Entity[],
+  opts: RosterOpts & { excludeIds?: string[] } = {},
+): MarkedRun[] {
+  if (!current) return runs(NONE_PLACEHOLDER);
   const exclude = new Set(opts.excludeIds ?? []);
   const ids = sublocationEntityIds(current, locations, entities).filter((id) => !exclude.has(id));
-  return renderEntityRoster(ids, entities, opts);
+  return entityRosterRuns(ids, entities, opts);
 }
 
 /** One place the player can move to, and how the trip is made. */
@@ -496,10 +533,20 @@ export function buildReachableEntitiesContext(
   entities: Entity[],
   opts: RosterOpts & { excludeIds?: string[] } = {},
 ): string {
-  if (!current) return NONE_PLACEHOLDER;
+  return textOf(reachableEntityRuns(current, locations, entities, opts));
+}
+
+/** {@link buildReachableEntitiesContext} as marked runs. */
+export function reachableEntityRuns(
+  current: MaybeLocation,
+  locations: GameLocation[],
+  entities: Entity[],
+  opts: RosterOpts & { excludeIds?: string[] } = {},
+): MarkedRun[] {
+  if (!current) return runs(NONE_PLACEHOLDER);
   const exclude = new Set(opts.excludeIds ?? []);
   const ids = reachableEntityIds(current, locations, entities).filter((id) => !exclude.has(id));
-  return renderEntityRoster(ids, entities, opts);
+  return entityRosterRuns(ids, entities, opts);
 }
 
 /** The axes a scoped context chip carries, as the builders take them. `noStats` is the stored stats-off pick;
@@ -554,10 +601,7 @@ function chipRoster(selection: Record<string, string | null | undefined>): Conte
 export function scopedChipOpts(token: string): ContextOpts {
   const variable = variableForToken(token);
   if (!variable) throw new Error(`No chip is registered for ${token}`);
-  const selection = decodeVariant(variable, tokenVariant(token));
-  return {
-    ...chipContent(selection.content), ...chipStats(selection.stats ?? null), ...chipRoster(selection), format: chipFormat(selection.format),
-  };
+  return scopedOpts(decodeVariant(variable, tokenVariant(token)));
 }
 
 /** One chip as a lookup: a key the chip at `base` spells renders from its decoded axes on first read; `build`
@@ -566,12 +610,30 @@ export function chipFamilyValues(
   base: string,
   build: (selection: Record<string, string | null>) => string | undefined,
 ): ValueLookup {
+  return memoLookup(chipFamily(base, build));
+}
+
+/** {@link chipFamilyValues} over a builder that reports origins: the lookup's `marked` holds its runs. */
+export function chipFamilyRuns(
+  base: string,
+  build: (selection: Record<string, string | null>) => MarkedText | undefined,
+): ValueLookup {
+  return fromMarked(chipFamily(base, build));
+}
+
+function chipFamily<T>(base: string, build: (selection: Record<string, string | null>) => T | undefined): (key: string) => T | undefined {
   const variable = variableForToken(base);
   if (!variable) throw new Error(`No chip is registered for ${base}`);
-  return memoLookup((key) => {
+  return (key) => {
     const decoded = decodeChipKey(key);
     return decoded?.variable === variable ? build(decoded.selection) : undefined;
-  });
+  };
+}
+
+/** The builder options a scoped chip's decoded axes pick. */
+function scopedOpts(selection: Record<string, string | null>): ContextOpts {
+  const { content, stats, format } = selection;
+  return { ...chipContent(content ?? null), ...chipStats(stats ?? null), ...chipRoster(selection), format: chipFormat(format ?? null) };
 }
 
 /**
@@ -583,12 +645,18 @@ export function scopedChipValues(
   base: string,
   scopes: Record<string, (opts: ContextOpts) => string>,
 ): ValueLookup {
-  return chipFamilyValues(base, (selection) => {
-    const { scope, content, stats, format } = selection;
-    const id = scope ?? "";
-    const build = Object.hasOwn(scopes, id) ? scopes[id] : undefined;
-    return build?.({
-      ...chipContent(content ?? null), ...chipStats(stats ?? null), ...chipRoster(selection), format: chipFormat(format ?? null),
-    });
-  });
+  return chipFamilyValues(base, (selection) => scopeBuilder(scopes, selection.scope)?.(scopedOpts(selection)));
+}
+
+/** {@link scopedChipValues} over builders that report origins. */
+export function scopedChipRuns(
+  base: string,
+  scopes: Record<string, (opts: ContextOpts) => MarkedText>,
+): ValueLookup {
+  return chipFamilyRuns(base, (selection) => scopeBuilder(scopes, selection.scope)?.(scopedOpts(selection)));
+}
+
+function scopeBuilder<T>(scopes: Record<string, T>, scope: string | null | undefined): T | undefined {
+  const id = scope ?? "";
+  return Object.hasOwn(scopes, id) ? scopes[id] : undefined;
 }

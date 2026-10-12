@@ -56,6 +56,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The Entities and Persona chips' Chip Options now have Only With, Include and Stat Detail rows.** Only With keeps entities that own stats or traits. Include turns each entity's traits and stats on or off. Stat Detail picks Range, Descriptor and Description.
     - **A filter icon now shows after the label of an Entities or Persona chip that uses Only With.** Hover the icon to read the picks, such as "Only With Stats or Traits". The label does not change.
     - **The What the AI Reads pane in Chip Options now shows the chip's value as the prompt sends it.** It updates on every pick. The Header, Prepend and Append show dimmed.
+    - **Hovering or focusing a control in Chip Options now lights the text it adds in What the AI Reads.** The rest dims. Range, Descriptor and Description light only their own part of each stat line.
   - **Stat Conditions:**
     - **Test Bench warns when a trait requires a stat it changes, or a percent of a stat with no range.** A Condition on a stat its bearer lacks shows as an unresolved requirement.
     - **The Availability tab can gate a trait on a stat, such as Rage >= 80.** Pick a stat from the **Requires** picker, then pick the operator from a list and set the number and Raw or %. **Not** flips it.

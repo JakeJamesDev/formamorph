@@ -26,7 +26,18 @@ const dialog = () => screen.getByRole('dialog', { name: 'Chip Options' });
 const region = () => within(dialog()).getByRole('region', { name: 'What the AI Reads' });
 // The rendered value box, which follows the pane's title.
 const pane = () => region().lastElementChild as HTMLElement;
-const placement = () => [...pane().querySelectorAll('[data-placement]')].map((el) => el.textContent);
+/** The placement text on each side of the value, each side's runs joined. */
+function placement(): string[] {
+  const sides: string[] = [];
+  let open = false;
+  for (const node of pane().childNodes) {
+    const placed = node instanceof HTMLElement && node.hasAttribute('data-placement');
+    if (placed && open) sides[sides.length - 1] += node.textContent;
+    else if (placed) sides.push(node.textContent ?? '');
+    open = placed;
+  }
+  return sides;
+}
 
 async function open(user: ReturnType<typeof userEvent.setup>) {
   await user.click(document.querySelector<HTMLElement>('[data-chip]')!);

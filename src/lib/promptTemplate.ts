@@ -3,7 +3,8 @@ import { NONE_PLACEHOLDER } from './promptFallbacks';
 import { promptHeader } from './promptHeader';
 import { decodePlaceholderToken, parsePlaceholderText } from './placeholders';
 import { PLAYER_NAME_HEADER_KEY, withPlayerName } from './builtinPlaceholders';
-import { readValue, type TokenValues } from './promptValues';
+import { readMarked, readValue, type TokenValues } from './promptValues';
+import { mark, runs, sliceRuns, textOf, type MarkedRun } from './markedText';
 import { tilePieces, type AnatomyPiece, type AnatomySource, type ContextLabel, type TiledRuns } from './requestAnatomy';
 
 /** A prompt template parsed into an ordered run of literal text and variable tokens. */
@@ -163,6 +164,13 @@ export interface RenderedToken {
   before: string;
   value: string;
   after: string;
+  /** The Header's frame on each side, the outer part of `before` and `after`. */
+  header: { pre: string; post: string };
+  /** The Prepend and Append, the inner part of `before` and `after`. */
+  pre: string;
+  post: string;
+  /** Where `value` starts in the value the map holds. */
+  valueStart: number;
 }
 
 /** {@link resolveToken}, with the value kept apart from the text that wraps it. */
@@ -172,10 +180,36 @@ export function resolveTokenParts(token: string, values: TokenValues): RenderedT
   const value = readValue(values, parts.key);
   if (value === undefined) return undefined;
   const header = promptHeader(headerText(parts.header, values), chipHeaderFormat(parts));
-  const none: RenderedToken = { before: '', value: '', after: '' };
-  // The value's own edge line breaks would shift the static frame.
-  if (header) return isBlankValue(value) ? none
-    : { before: `${header.pre}${parts.pre}`, value: value.replace(/^(?:[ \t]*\r?\n)+/, '').trimEnd(), after: `${parts.post}${header.post}` };
+  const none: RenderedToken = { before: '', value: '', after: '', header: { pre: '', post: '' }, pre: '', post: '', valueStart: 0 };
+  const placed = (frame: RenderedToken['header'], shown: string, valueStart: number): RenderedToken => ({
+    before: `${frame.pre}${parts.pre}`, value: shown, after: `${parts.post}${frame.post}`,
+    header: frame, pre: parts.pre, post: parts.post, valueStart,
+  });
+  if (header) {
+    if (isBlankValue(value)) return none;
+    // The value's own edge line breaks would shift the static frame.
+    const lead = /^(?:[ \t]*\r?\n)*/.exec(value)![0].length;
+    return placed(header, value.slice(lead).trimEnd(), lead);
+  }
   if (!parts.pre && !parts.post) return { ...none, value };
-  return isBlankValue(value) ? none : { before: parts.pre, value, after: parts.post };
+  return isBlankValue(value) ? none : placed(none.header, value, 0);
+}
+
+/** {@link resolveTokenParts} as marked runs: the placement text marked as Header, Prepend and Append, and the
+ *  value as the map's report gives it. `reported` is false where the map reports no runs for the key, or
+ *  reports runs that do not spell its value; the value is then one run with no origin. */
+export function resolveTokenRuns(token: string, values: TokenValues): { runs: MarkedRun[]; reported: boolean } | undefined {
+  const rendered = resolveTokenParts(token, values);
+  const key = splitToken(token)?.key;
+  if (!rendered || key === undefined) return undefined;
+  const report = readMarked(values, key);
+  const reported = !!report && textOf(report) === readValue(values, key);
+  const value = reported ? sliceRuns(report, rendered.valueStart, rendered.valueStart + rendered.value.length) : runs(rendered.value);
+  return {
+    runs: runs(
+      mark(['header'], rendered.header.pre), mark(['prepend'], rendered.pre), value,
+      mark(['append'], rendered.post), mark(['header'], rendered.header.post),
+    ),
+    reported,
+  };
 }
