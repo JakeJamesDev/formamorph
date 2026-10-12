@@ -72,6 +72,7 @@ Settled with the user on 2026-10-11.
 | Q39 | Accepted as built: a card with a failed download has a Dismiss button that hides it. Retry stays in the Settings switch |
 | Q40 | Review follow-ups: ticket 09 adds this effort to the player docs; ticket 10 checks hover cards, the chip typeahead and Base UI popups under help, and adds a dev route for the wiki confirm |
 | Q41 | Recorded by the spec session as built, not ruled by the user: Back to the conversation does not restore its scroll (it follows its newest message); full screen also skips the section it already shows; the floor batches replaced the fuzzy-only arm with an unfloored arm |
+| Q42 | Page chip typeaheads (the `{` chip typeahead and tag suggestions) move from z-70 to z-60: above dialogs and popovers, below the help window, so they never draw over help or take its presses. Base UI tooltips closing on an outside press or Escape is not a leak (WCAG 1.4.13). The app uses no hover cards |
 
 ## User Stories
 
