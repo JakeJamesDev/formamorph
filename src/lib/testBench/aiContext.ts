@@ -37,7 +37,7 @@ export type AiContextWorld = Pick<
 
 /** The blocks, in the order the prompts lay them out: the world, then who you are, then where you are. */
 export type ContextBlockId =
-  | 'world' | 'stats' | 'traits'
+  | 'world' | 'persona' | 'stats' | 'traits'
   | 'location' | 'sublocations' | 'parent' | 'reachable' | 'destinations'
   | 'entities' | 'subEntities' | 'reachableEntities'
   | 'dictionary';
@@ -109,6 +109,7 @@ export const EMPTY_AI_CONTEXT: AiContextData = {
 // positions under one row, Background first, so it shows every entry a turn could inject.
 const BLOCK_TOKENS: Record<ContextBlockId, { label: string; token: string; parts?: string[] }> = {
   world: { label: 'World Description', token: '<WORLD DESCRIPTION>' },
+  persona: { label: 'Persona', token: '<PERSONA|markdown>' },
   stats: { label: 'Stats', token: '<STATS DESCRIPTION|descriptions.markdown>' },
   traits: { label: 'Traits', token: '<TRAITS DESCRIPTION|markdown>' },
   location: { label: 'Location', token: '<LOCATION|markdown>' },
