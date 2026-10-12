@@ -1360,7 +1360,7 @@ const GameViewer = ({
   // toasts once on failure (see autosaveGame). Gated on the setting.
   useEffect(() => {
     if (turnCommitNonce === 0 || !autosaveEnabled) return;
-    void autosaveGame(worldOverview.name, worldId ? String(worldId) : undefined);
+    void autosaveGame(worldOverview.name, worldId ? String(worldId) : undefined, totalPages);
     // Only re-fire on a new committed turn — reading the latest setting/world at fire time is intentional.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [turnCommitNonce]);

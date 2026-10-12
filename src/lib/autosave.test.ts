@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { findAutosaveId, AUTOSAVE_NAME } from './autosave';
+import { autosaveName, autosaveSlotId, findAutosaveId, AUTOSAVE_NAME } from './autosave';
 import type { SaveRecord } from '@/types';
 
 const rec = (over: Partial<SaveRecord>): SaveRecord =>
@@ -31,5 +31,28 @@ describe('findAutosaveId', () => {
 
   it('returns undefined when there is no autosave yet', () => {
     expect(findAutosaveId([], 'Any', 'w1')).toBeUndefined();
+  });
+});
+
+describe('rolling autosaves', () => {
+  const at = (id: string, minute: number, over: Partial<SaveRecord> = {}) =>
+    rec({ id, worldId: 'w1', isAutosave: true, currentState: { timestamp: new Date(Date.UTC(2026, 8, 29, 12, minute)).toISOString() } as never, ...over });
+
+  it('opens a new slot until the world has five, then overwrites the oldest', () => {
+    const four = [at('a', 4), at('b', 1), at('c', 3), at('d', 2)];
+    expect(autosaveSlotId(four, 'Any', 'w1')).toBeUndefined();
+    const five = [...four, at('e', 5)];
+    expect(autosaveSlotId(five, 'Any', 'w1')).toBe('b');
+  });
+
+  it('counts only this world\'s autosaves, never a manual save', () => {
+    const records = [at('a', 1), at('b', 2), at('c', 3), at('d', 4), at('x', 0, { worldId: 'w2' }), at('m', 0, { isAutosave: false })];
+    expect(autosaveSlotId(records, 'Any', 'w1')).toBeUndefined();
+    expect(autosaveSlotId(records, 'Any', 'w1', 4)).toBe('a');
+  });
+
+  it('names an autosave by its turn', () => {
+    expect(autosaveName(12)).toBe('Autosave · Turn 12');
+    expect(autosaveName(undefined)).toBe('Autosave');
   });
 });

@@ -306,7 +306,7 @@ Saves, the Authoring Tour, and stored data. To back up your worlds, saves, libra
 
 ### Saves
 
-**Autosave** saves after every turn to an **Autosave** slot for each world. It never changes your own saves. The slot shows under **Load Game** with an **Auto** tag. Autosave starts after the opening scene.
+**Autosave** saves after every turn and keeps the last five for each world, named by turn. It never changes your own saves. Autosaves show under **Load Game** with an **Auto** tag. Autosave starts after the opening scene.
 
 ### Authoring
 

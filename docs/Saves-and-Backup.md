@@ -101,7 +101,7 @@ On a Mac, **Download** opens the new `.dmg` file in your browser. Open the file 
 
 A save holds the full story and a copy of each turn, so **Rewind to Here** still works after you load it. It also holds your notes, memories, persona, the game's dictionaries and the images you attached to actions.
 
-The autosave is not in this list. You cannot save over it.
+Autosaves are not in this list. You cannot save over them.
 
 ## The Load Game Dialog
 <!-- keywords: erase a slot, rename, world not installed, wrong world, old version, compatibility, convert, reorder, game time, remove old -->
@@ -143,7 +143,7 @@ Saves from older versions of Formamorph load too. Formamorph converts a save in 
 ## Autosave
 <!-- keywords: automatic, forgot, crash, closed tab, lost progress, recover, disable, auto tag, browser closed -->
 
-**Autosave** saves your game after every turn. Each world has one **Autosave** slot, and each turn replaces it.
+**Autosave** saves your game after every turn. Each world keeps its last five autosaves, named by turn, such as **Autosave · Turn 12**. A new turn adds one until there are five, then replaces the oldest.
 
 - It starts after the opening scene, and it also saves after **Re-generate**.
 - It never changes your own saves.
