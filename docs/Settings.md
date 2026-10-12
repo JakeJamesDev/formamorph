@@ -243,6 +243,7 @@ The **Preset** list holds your saved endpoints. **Demo AI** is the shared cloud 
 | **Context Window (tokens)** | **Advanced.** How much the model keeps in context. **Detect** asks the server. |
 | **Max Output Tokens** | **Advanced.** Caps how long each answer can be. It does not cap reasoning. Select **Override Endpoint Limit** to set it; without it, there is **No Limit**. |
 | **Sampling** | **Advanced.** A section of five rows: **Temperature**, **Repetition Penalty**, **Top-p**, **Top-k** and **Min-p**. Each has a checkbox. An unchecked row sends nothing. Per-prompt values and built-in prompt values come before **Temperature** and **Repetition Penalty**. |
+| **Don't Send Temperature** | **Advanced.** Under **Sampling**. The endpoint sends no temperature at all, not even a built-in prompt's own value. For models that accept only their own temperature and refuse any other. |
 
 **Reset AI Endpoint**, at the bottom of the tab, sets the URL, model name, token and limits back to their defaults.
 

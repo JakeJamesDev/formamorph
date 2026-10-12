@@ -500,6 +500,7 @@ function useProvideSettings() {
   const setApiToken = useMemo(() => patchText('apiToken'), [patchText]);
   const setModelName = useMemo(() => patchText('model'), [patchText]);
   const setContextWindowOverride = useMemo(() => patchText('contextWindowOverride'), [patchText]);
+  const setOmitTemperature = useMemo(() => patchText('omitTemperature'), [patchText]);
   const setMaxTokens = useCallback((value: number) => {
     setTextPresetStore((store) => {
       const current = textActiveValues(store).maxOutputOverride;
@@ -1684,6 +1685,8 @@ function useProvideSettings() {
     maxOutputOverrideEnabled: maxOutputOverride.enabled,
     setMaxOutputOverrideEnabled,
     endpointSamplerOverrides: textValues.samplerOverrides,
+    omitTemperature: textValues.omitTemperature,
+    setOmitTemperature,
     setEndpointSamplerEnabled,
     setEndpointSamplerValue,
     disableEndpointOverride,

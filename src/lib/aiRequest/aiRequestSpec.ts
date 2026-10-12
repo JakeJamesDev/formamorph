@@ -28,6 +28,8 @@ export interface AiEndpointTarget {
   localEngine: boolean;
   /** Per-endpoint sampler switches and remembered values. The engine ignores these. */
   samplerOverrides: EndpointSamplerOverrides;
+  /** Send no temperature at all, for models that reject any value but their own. Beats every other source. */
+  omitTemperature?: boolean;
   /** What is known about this target's native reasoning: whether the model reasons, which effort literals the
    *  endpoint accepts, and whether it takes a token budget. An unanswered question sends no field. */
   reasoning: ReasoningCapability;
@@ -134,6 +136,7 @@ function resolveSampler(
   sampler: PromptSampler,
   override?: number,
 ): ResolvedSampler {
+  if (sampler === 'temperature' && target.omitTemperature && !localEngine) return { value: undefined };
   const setting = snapshot.promptSamplers[requestType]?.[sampler];
   if (setting?.custom) return { value: setting.value, source: 'prompt' };
   if (override !== undefined) return { value: override, source: 'prompt' };

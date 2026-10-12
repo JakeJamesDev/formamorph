@@ -22,11 +22,11 @@ export interface TextEndpointEditorModel {
   edited: EditedTextPreset;
   fields: Pick<S,
     | 'endpointUrl' | 'apiToken' | 'modelName' | 'maxTokens' | 'maxOutputOverrideEnabled'
-    | 'contextWindow' | 'contextWindowOverride' | 'detectedContextWindow' | 'detectStatus'
+    | 'contextWindow' | 'contextWindowOverride' | 'detectedContextWindow' | 'detectStatus' | 'omitTemperature'
   > & { samplerOverrides: S['endpointSamplerOverrides'] };
   edit: Pick<S,
     | 'setEndpointUrl' | 'setApiToken' | 'setModelName' | 'setMaxTokens' | 'setMaxOutputOverrideEnabled'
-    | 'setContextWindowOverride' | 'detectContextWindow'
+    | 'setContextWindowOverride' | 'detectContextWindow' | 'setOmitTemperature'
   > & { setSamplerEnabled: S['setEndpointSamplerEnabled']; setSamplerValue: S['setEndpointSamplerValue'] };
   onSelect: (id: string) => void;
   onAdd: (name: string) => void;
@@ -57,6 +57,7 @@ export function activePresetEditor(s: TextEndpointSource): TextEndpointEditorMod
       detectedContextWindow: s.detectedContextWindow,
       detectStatus: s.detectStatus,
       samplerOverrides: s.endpointSamplerOverrides,
+      omitTemperature: s.omitTemperature,
     },
     edit: {
       setEndpointUrl: s.setEndpointUrl,
@@ -68,6 +69,7 @@ export function activePresetEditor(s: TextEndpointSource): TextEndpointEditorMod
       detectContextWindow: s.detectContextWindow,
       setSamplerEnabled: s.setEndpointSamplerEnabled,
       setSamplerValue: s.setEndpointSamplerValue,
+      setOmitTemperature: s.setOmitTemperature,
     },
     onSelect: s.selectTextEndpointPreset,
     onAdd: s.addTextEndpointPreset,
@@ -115,6 +117,7 @@ export function presetEditor(s: PresetEditorSource, id: string, view: PresetEdit
       detectedContextWindow: detected,
       detectStatus: view.detectStatus,
       samplerOverrides: values.samplerOverrides,
+      omitTemperature: values.omitTemperature,
     },
     edit: {
       setEndpointUrl: (endpoint) => edit(() => ({ endpoint })),
@@ -126,6 +129,7 @@ export function presetEditor(s: PresetEditorSource, id: string, view: PresetEdit
       detectContextWindow: view.detectContextWindow,
       setSamplerEnabled: (sampler, enabled) => editSampler(sampler, { enabled }),
       setSamplerValue: (sampler, value) => editSampler(sampler, { value }),
+      setOmitTemperature: (omitTemperature) => edit(() => ({ omitTemperature })),
     },
     onSelect,
     onAdd,

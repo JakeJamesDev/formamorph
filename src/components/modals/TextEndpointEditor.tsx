@@ -65,12 +65,12 @@ export function TextEndpointEditor({ model, advanced, onOpenConnectionGuide, pre
 }) {
   const { presets, edited, fields, edit, onSelect, onAdd, onRename, onDelete, onReset } = model;
   const {
-    endpointUrl, apiToken, modelName, maxTokens, maxOutputOverrideEnabled, samplerOverrides,
+    endpointUrl, apiToken, modelName, maxTokens, maxOutputOverrideEnabled, samplerOverrides, omitTemperature,
     contextWindow, contextWindowOverride, detectedContextWindow, detectStatus,
   } = fields;
   const {
     setEndpointUrl, setApiToken, setModelName, setMaxTokens, setMaxOutputOverrideEnabled,
-    setContextWindowOverride, detectContextWindow, setSamplerEnabled, setSamplerValue,
+    setContextWindowOverride, detectContextWindow, setSamplerEnabled, setSamplerValue, setOmitTemperature,
   } = edit;
   const builtIn = edited.builtIn;
   const sharedEndpointActive = builtIn && !edited.engine;
@@ -289,6 +289,18 @@ export function TextEndpointEditor({ model, advanced, onOpenConnectionGuide, pre
                 <div className="grid gap-4 pt-3">
                   {samplerControls.map((control) => <SamplerControl key={control.id} {...control} />)}
                 </div>
+                <div className="flex items-center gap-2 pt-3">
+                  <Checkbox
+                    id="omitTemperature"
+                    checked={!!omitTemperature}
+                    disabled={sharedEndpointActive}
+                    onCheckedChange={(checked) => setOmitTemperature(checked === true)}
+                  />
+                  <label htmlFor="omitTemperature" className="text-label">Don&apos;t Send Temperature</label>
+                </div>
+                <p className="text-helper text-muted-foreground">
+                  For models that accept only their own temperature. Overrides every temperature setting, built-in ones included.
+                </p>
               </Section>
             </>)}
           </div>

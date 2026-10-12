@@ -22,6 +22,8 @@ export interface TextEndpointValues {
   contextWindowOverride: number | null;
   maxOutputOverride: EndpointMaxOutputOverride;
   samplerOverrides: EndpointSamplerOverrides;
+  /** Never send a temperature, not even a built-in prompt's pinned one, for models that accept only their own. */
+  omitTemperature?: boolean;
 }
 
 export type TextEndpointValueKey = keyof TextEndpointValues;
@@ -133,6 +135,7 @@ function coerceValues(rec: Record<string, unknown>): TextEndpointValues {
         : null,
     maxOutputOverride: coerceEndpointMaxOutputOverride(rec.maxOutputOverride, num('maxTokens', d.maxOutputOverride.value)),
     samplerOverrides: coerceEndpointSamplerOverrides(rec.samplerOverrides),
+    ...(rec.omitTemperature === true && { omitTemperature: true }),
   };
 }
 

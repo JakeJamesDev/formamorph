@@ -29,6 +29,8 @@ export interface ResolvedPromptEndpoint {
   model: string;
   maxTokens: number | undefined;
   samplerOverrides: EndpointSamplerOverrides;
+  /** Send no temperature at all on this endpoint. */
+  omitTemperature?: boolean;
   /** Manual context-window override on the resolved preset; null = detect or fall back. */
   contextWindowOverride: number | null;
   /** The resolved target is the built-in Default. */
@@ -108,6 +110,7 @@ export function resolvePromptEndpoint(
       // The engine's own cap, whether it was pinned to or merely selected.
       maxTokens: active.engineMaxTokens,
       samplerOverrides: e.samplerOverrides,
+      omitTemperature: e.omitTemperature,
       contextWindowOverride: e.contextWindowOverride,
       isBuiltIn: true,
       localEngine: true,
@@ -122,6 +125,7 @@ export function resolvePromptEndpoint(
       model: active.values.model,
       maxTokens: active.maxTokens,
       samplerOverrides: active.values.samplerOverrides,
+      omitTemperature: active.values.omitTemperature,
       contextWindowOverride: active.values.contextWindowOverride,
       isBuiltIn: active.isBuiltIn,
       localEngine: false,
@@ -136,6 +140,7 @@ export function resolvePromptEndpoint(
     model: values.model,
     maxTokens: values.maxOutputOverride.enabled ? values.maxOutputOverride.value : undefined,
     samplerOverrides: values.samplerOverrides,
+    omitTemperature: values.omitTemperature,
     contextWindowOverride: values.contextWindowOverride,
     isBuiltIn: routed === DEFAULT_TEXT_PRESET_ID,
     localEngine: false,

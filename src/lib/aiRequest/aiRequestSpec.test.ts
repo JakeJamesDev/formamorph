@@ -205,6 +205,17 @@ describe('temperature and penalty — pinned, global, custom, omitted', () => {
     expect(buildRequestBody(snapshot(target), call({ requestType: 'summary' })).temperature).toBe(0);
   });
 
+  it('sends no temperature at all on an endpoint that omits it, pins and overrides included', () => {
+    const target = external({
+      omitTemperature: true,
+      samplerOverrides: { ...defaultEndpointSamplerOverrides(), temperature: { enabled: true, value: 1.4 } },
+    });
+    const snap = snapshot(target, { promptSamplers: { narration: { temperature: { custom: true, value: 0.9 } } } });
+
+    expect(buildRequestBody(snap, call({ requestType: 'summary' }))).not.toHaveProperty('temperature');
+    expect(buildRequestBody(snap, call())).not.toHaveProperty('temperature');
+  });
+
   it('keeps a custom prompt sampler ahead of an enabled endpoint override', () => {
     const target = external({ samplerOverrides: {
       ...defaultEndpointSamplerOverrides(),
