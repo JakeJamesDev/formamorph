@@ -1,5 +1,6 @@
 import { HIGHLIGHT_PALETTE } from './highlightUtils';
 import { escapeRegExp } from './utils';
+import type { TextOrigin } from './markedText';
 
 /** An optional alternate form a variable's chip can be switched to via its pop-out. `id: null` is the
  *  default form with no token suffix; a non-null id contributes to the token suffix (e.g. `|summary`). */
@@ -43,6 +44,8 @@ export interface PromptVariantAxis {
   readOnly?: boolean;
   /** One line under a read-only axis: why it takes no input, and what unlocks it. */
   readOnlyHelp?: string;
+  /** The rendered text this axis's control lights in Chip Options, where the chip's renderer reports it. */
+  lights?: TextOrigin;
 }
 
 /** Registry of the angle-bracket variables that prompt templates can embed. The base `token`
@@ -98,6 +101,7 @@ const ENTITY_SCOPE_AXIS: PromptVariantAxis = {
 const CONTENT_AXIS: PromptVariantAxis = {
   id: 'content',
   label: 'Content',
+  lights: 'content',
   options: [
     { id: null, label: 'Full', help: 'Full detail for each item.' },
     SUMMARY_VARIANT,
@@ -109,6 +113,7 @@ const CONTENT_AXIS: PromptVariantAxis = {
 const PERSONA_CONTENT_AXIS: PromptVariantAxis = {
   id: 'content',
   label: 'Content',
+  lights: 'content',
   options: [
     { id: null, label: 'Full', help: "Sends the persona's name, aliases, pronouns, and full description" },
     { id: 'summary', label: 'Summary', help: 'Sends the short AI summary, or the full description if there is none' },
@@ -134,15 +139,15 @@ const STAT_DETAIL_ROW_HELP = 'Picks which parts of each stat the AI reads';
 // is always present; at least one piece must stay on (enforced in the editor). The old single-select ids
 // `numbers` (Range) and `descriptions` (Descriptor) are kept, so existing tokens still render; `meaning` is new.
 const STAT_VALUES_AXIS: PromptVariantAxis = {
-  id: 'numbers', label: 'Range', toggle: true, lockGroup: 'statDetail', row: 'Stat Detail', rowHelp: STAT_DETAIL_ROW_HELP, help: 'e.g. "10/100".',
+  id: 'numbers', label: 'Range', toggle: true, lights: 'range', lockGroup: 'statDetail', row: 'Stat Detail', rowHelp: STAT_DETAIL_ROW_HELP, help: 'e.g. "10/100".',
   options: [{ id: null, label: 'Range' }, { id: 'numbers', label: 'Range' }],
 };
 const STAT_STATUS_AXIS: PromptVariantAxis = {
-  id: 'descriptions', label: 'Descriptor', toggle: true, lockGroup: 'statDetail', row: 'Stat Detail', help: 'e.g. "Critical".',
+  id: 'descriptions', label: 'Descriptor', toggle: true, lights: 'descriptor', lockGroup: 'statDetail', row: 'Stat Detail', help: 'e.g. "Critical".',
   options: [{ id: null, label: 'Descriptor' }, { id: 'descriptions', label: 'Descriptor' }],
 };
 const STAT_MEANING_AXIS: PromptVariantAxis = {
-  id: 'meaning', label: 'Description', toggle: true, lockGroup: 'statDetail', row: 'Stat Detail', help: 'e.g. "Physical stamina."',
+  id: 'meaning', label: 'Description', toggle: true, lights: 'meaning', lockGroup: 'statDetail', row: 'Stat Detail', help: 'e.g. "Physical stamina."',
   options: [{ id: null, label: 'Description' }, { id: 'meaning', label: 'Description' }],
 };
 
@@ -158,27 +163,29 @@ function rosterToggle(
 
 // Only With: keep only the entities that own a picked kind. Off by default; picks read as or.
 const ONLY_WITH_STATS_AXIS = rosterToggle('withstats', 'Stats', 'withstats', 'Keeps only entities that own stats', {
-  row: 'Only With', rowHelp: 'Keeps entities that own any checked kind',
+  row: 'Only With', rowHelp: 'Keeps entities that own any checked kind', lights: 'ownsStats',
 });
-const ONLY_WITH_TRAITS_AXIS = rosterToggle('withtraits', 'Traits', 'withtraits', 'Keeps only entities that own traits', { row: 'Only With' });
+const ONLY_WITH_TRAITS_AXIS = rosterToggle('withtraits', 'Traits', 'withtraits', 'Keeps only entities that own traits', {
+  row: 'Only With', lights: 'ownsTraits',
+});
 const PERSONA_ONLY_WITH_STATS_AXIS = { ...ONLY_WITH_STATS_AXIS, help: 'Sends the persona only when it owns stats',
   rowHelp: 'Sends the persona only if it owns any checked kind' };
 const PERSONA_ONLY_WITH_TRAITS_AXIS = { ...ONLY_WITH_TRAITS_AXIS, help: 'Sends the persona only when it owns traits' };
 // Include Traits and the Stat Detail pieces are on by default, so each stored id is the off state.
 const INCLUDE_TRAITS_AXIS = rosterToggle('traits', 'Traits', 'notraits', "Sends each entity's owned traits", {
-  onByDefault: true, row: 'Include', rowHelp: 'Picks what each entity sends besides its name',
+  onByDefault: true, row: 'Include', rowHelp: 'Picks what each entity sends besides its name', lights: 'traits',
 });
 const PERSONA_INCLUDE_TRAITS_AXIS = { ...INCLUDE_TRAITS_AXIS, help: "Sends the persona's owned traits",
   rowHelp: 'Picks what the persona sends besides its name' };
 const ROSTER_STAT_DETAIL_AXES: PromptVariantAxis[] = [
-  rosterToggle('range', 'Range', 'norange', 'Sends each stat\'s value and bounds, like "10/100"', { onByDefault: true, lockGroup: 'statDetail', row: 'Stat Detail', rowHelp: STAT_DETAIL_ROW_HELP }),
-  rosterToggle('descriptor', 'Descriptor', 'nodescriptor', 'Sends the word for the stat\'s current level, like "Critical"', { onByDefault: true, lockGroup: 'statDetail', row: 'Stat Detail' }),
-  rosterToggle('description', 'Description', 'nodescription', "Sends what the stat measures", { onByDefault: true, lockGroup: 'statDetail', row: 'Stat Detail' }),
+  rosterToggle('range', 'Range', 'norange', 'Sends each stat\'s value and bounds, like "10/100"', { onByDefault: true, lockGroup: 'statDetail', row: 'Stat Detail', rowHelp: STAT_DETAIL_ROW_HELP, lights: 'range' }),
+  rosterToggle('descriptor', 'Descriptor', 'nodescriptor', 'Sends the word for the stat\'s current level, like "Critical"', { onByDefault: true, lockGroup: 'statDetail', row: 'Stat Detail', lights: 'descriptor' }),
+  rosterToggle('description', 'Description', 'nodescription', "Sends what the stat measures", { onByDefault: true, lockGroup: 'statDetail', row: 'Stat Detail', lights: 'meaning' }),
 ];
 
 // The Entities chip's stats piece: null is the scope's default (on for Here and In Scene), `nostats` stores off, `stats` on.
 const ENTITY_STATS_AXIS: PromptVariantAxis = {
-  id: 'stats', label: 'Stats', toggle: true, onByDefault: true, row: 'Include',
+  id: 'stats', label: 'Stats', toggle: true, onByDefault: true, row: 'Include', lights: 'stats',
   onByDefaultWhen: (selection) => selection.scope == null || selection.scope === 'inscene',
   help: "Sends each entity's stats: range, descriptor and description.",
   options: [{ id: null, label: 'Stats' }, { id: 'nostats', label: 'No Stats' }, { id: 'stats', label: 'Stats', hideInLabel: true, on: true }],

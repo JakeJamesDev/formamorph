@@ -1,16 +1,17 @@
 import { buildDictionaryContext } from '../dictionaryUtils';
 import { formatAbsolute } from '../gameClock';
 import {
-  buildDestinationsContext, buildLocationContext, buildParentLocationContext, buildReachableEntitiesContext,
-  buildReachableLocationsContext, buildSublocationEntitiesContext, buildSublocationsContext, chipFormat,
-  chipFamilyValues, hasOnlyWith, ownedStatLines, renderEntityRoster, scopedChipValues, sublocationEntityIds, type ContextOpts,
+  buildDestinationsContext, buildLocationContext, buildParentLocationContext, buildReachableLocationsContext,
+  buildSublocationsContext, chipFamilyRuns, chipFamilyValues, chipFormat, entityRosterRuns, hasOnlyWith, ownedStatLines,
+  reachableEntityRuns, scopedChipRuns, scopedChipValues, sublocationEntityIds, sublocationEntityRuns, type ContextOpts,
 } from '../locationContext';
+import { joinRuns, mark, textOf, type MarkedText } from '../markedText';
 import { personaContextValues } from '../personaContext';
 import { PLAYER_NAME, PLAYER_NAME_HEADER_KEY } from '../builtinPlaceholders';
 import { NONE_PLACEHOLDER } from '../promptFallbacks';
 import { variableForToken, type PromptVariable } from '../promptVariables';
-import { mapValues, memoLookup, type ValueLookup } from '../promptValues';
-import { buildStatContext, type StatChipPart, type StatPlacement } from '../statContext';
+import { fromMarked, mapValues, readMarked, withMarked, type ValueLookup } from '../promptValues';
+import { statContextRuns, type StatChipPart, type StatPlacement } from '../statContext';
 import { statKeys } from '../statKeys';
 import { stripMarkdown } from '../stripMarkdown';
 import { buildTraitContext } from '../traitTree';
@@ -35,7 +36,7 @@ const NO_PLAYER = PLAYER_NAME.resolve({ before: ' ' }, { kind: 'reference' });
  * renders its Stats family through it. Placeholder chips are left as they are.
  */
 export function statChipValues(stats: PlayerStat[], placement?: StatPlacement): ValueLookup {
-  return chipFamilyValues(STATS.token, (sel) => buildStatContext(
+  return chipFamilyRuns(STATS.token, (sel) => statContextRuns(
     stats,
     { values: sel.numbers != null, status: sel.descriptions != null, meaning: sel.meaning != null },
     chipFormat(sel.format),
@@ -48,7 +49,9 @@ export function statChipValues(stats: PlayerStat[], placement?: StatPlacement): 
 export function statChipPartValues(parts: readonly StatChipPart[]): ValueLookup {
   const filled = parts.filter((part) => part.stats.length).map((part) => statChipValues([...part.stats], part.placement));
   if (!filled.length) return statChipValues([]);
-  return memoLookup((key) => (filled[0](key) === undefined ? undefined : filled.map((values) => values(key)).join('\n')));
+  return fromMarked((key) => (
+    filled[0](key) === undefined ? undefined : joinRuns(filled.map((values) => readMarked(values, key) ?? []), '\n')
+  ));
 }
 
 /** Each played entity's part after the world's stats. A played stat whose plain name clashes with an earlier
@@ -104,17 +107,23 @@ export function chipValues(scene: ChipScene): ValueLookup {
       reachable: (opts) => buildReachableLocationsContext(location, locations, opts),
       destinations: (opts) => buildDestinationsContext(location, locations, connections, opts),
     })],
-    [ENTITIES, scopedChipValues(ENTITIES.token, entityScopes(scene))],
+    [ENTITIES, scopedChipRuns(ENTITIES.token, entityScopes(scene))],
   ]);
-  return mapValues((key) => {
-    if (key === PLAYER_NAME_HEADER_KEY) return scene.playerName == null ? NO_PLAYER : scene.playerName.trim();
+  const familyOf = (key: string) => {
     const variable = variableForToken(key);
-    return variable && families.get(variable)?.(key);
-  }, (value) => scene.resolve(value));
+    return variable && families.get(variable);
+  };
+  return mapValues(withMarked((key) => {
+    if (key === PLAYER_NAME_HEADER_KEY) return scene.playerName == null ? NO_PLAYER : scene.playerName.trim();
+    return familyOf(key)?.(key);
+  }, (key) => {
+    const family = familyOf(key);
+    return family ? readMarked(family, key) : undefined;
+  }), (value) => scene.resolve(value));
 }
 
 /** The Entities chip's scope builders over one scene. */
-function entityScopes(scene: ChipScene): Record<string, (opts: ContextOpts) => string> {
+function entityScopes(scene: ChipScene): Record<string, (opts: ContextOpts) => MarkedText> {
   const { location, locations, entities, presentIds, inSceneIds, inSceneNames = [], ownedTraits, ownedStats } = scene;
   const outer = scene.outerScopeEntities ?? entities;
   // Roster precedence: here > sub-location > reachable. A character shows only in the highest scope it
@@ -126,14 +135,15 @@ function entityScopes(scene: ChipScene): Record<string, (opts: ContextOpts) => s
   // Here and In Scene list stats unless the chip switches them off; the lower scopes only when it switches them on.
   const lowerOpts = (opts: ContextOpts) => ({ ...roster(opts), noStats: !opts.statsOn });
   return {
-    '': (opts) => renderEntityRoster(presentIds, entities, roster(opts)),
-    sublocations: (opts) => buildSublocationEntitiesContext(location, locations, outer, { ...lowerOpts(opts), excludeIds: presentIds }),
-    reachable: (opts) => buildReachableEntitiesContext(location, locations, outer, { ...lowerOpts(opts), excludeIds: reachableExclude }),
+    '': (opts) => entityRosterRuns(presentIds, entities, roster(opts)),
+    sublocations: (opts) => sublocationEntityRuns(location, locations, outer, { ...lowerOpts(opts), excludeIds: presentIds }),
+    reachable: (opts) => reachableEntityRuns(location, locations, outer, { ...lowerOpts(opts), excludeIds: reachableExclude }),
     inscene: (opts) => {
-      const block = renderEntityRoster(inSceneIds, entities, roster(opts));
+      const block = entityRosterRuns(inSceneIds, entities, roster(opts));
       // A name with no entity record owns nothing, so a filter drops it.
       if (!opts.nameOnly || !inSceneNames.length || hasOnlyWith(opts)) return block;
-      return [...(block === NONE_PLACEHOLDER ? [] : [block]), ...inSceneNames].join(', ');
+      const names = inSceneNames.map((name) => mark(['content'], name));
+      return joinRuns([...(textOf(block) === NONE_PLACEHOLDER ? [] : [block]), ...names], ', ');
     },
   };
 }
@@ -145,7 +155,7 @@ function entityScopes(scene: ChipScene): Record<string, (opts: ContextOpts) => s
  */
 export function sceneEntityChipValues(scene: ChipScene, sceneIds: string[]): ValueLookup {
   const { '': here } = entityScopes({ ...scene, presentIds: sceneIds });
-  return mapValues(scopedChipValues(ENTITIES.token, { '': here }), (value) => scene.resolve(value));
+  return mapValues(scopedChipRuns(ENTITIES.token, { '': here }), (value) => scene.resolve(value));
 }
 
 /** An entity's stats field in the scene, as the Entities chip's markdown form renders it, or '' when it holds

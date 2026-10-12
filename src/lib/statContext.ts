@@ -4,6 +4,7 @@ import { headingReachesAi } from './groupTree';
 import { statPanelLayout, type StatLayoutNode } from './statGroupTree';
 import { sortedDescriptors, thresholdValue, type BandedStat } from './statDescriptorGeometry';
 import { xmlEscape } from './utils';
+import { indentRuns, joinRuns, mark, runs, textOf, type MarkedRun, type MarkedText, type TextOrigin } from './markedText';
 
 /**
  * The descriptor a value falls under, or undefined when it sits above every band. Bands sort ascending and
@@ -69,25 +70,33 @@ export const ownerStatParts = (
   held: Readonly<Record<string, readonly PlayerStat[]>>,
 ): OwnerStatPart[] => owners.map((owner) => ({ ownerId: owner.id, stats: held[owner.id] ?? [], placement: statPlacementOf(owner) }));
 
-/** One stat in `format`: a line, or a multi-line `<stat>` block in xml. */
-function statEntry(stat: PlayerStat, pieces: StatPieces, format: ContextFormat): string {
+/** One stat in `format`: a line, or a multi-line `<stat>` block in xml. Each piece is marked as its own. */
+function statEntry(stat: PlayerStat, pieces: StatPieces, format: ContextFormat): MarkedRun[] {
   const descriptor = activeDescriptor(stat, stat.value);
   const valueStr = statValueLabel(stat, stat.value);
   if (format === 'xml') {
-    const child = (tag: string, value: string | number) => `\n  <${tag}>${xmlEscape(String(value))}</${tag}>`;
-    let inner = child('name', stat.name);
-    if (pieces.values) inner += child('value', valueStr);
-    if (pieces.status && descriptor) inner += child('status', descriptor.description);
-    if (pieces.meaning && stat.description) inner += child('meaning', stat.description);
-    return `<stat>${inner}\n</stat>`;
+    // The line break and indent stay unmarked, so a piece marks only its tag.
+    const child = (tag: string, value: string | number, ...origins: TextOrigin[]) =>
+      runs('\n  ', mark(origins, `<${tag}>${xmlEscape(String(value))}</${tag}>`));
+    return runs(
+      '<stat>',
+      child('name', stat.name),
+      pieces.values ? child('value', valueStr, 'range') : '',
+      pieces.status && descriptor ? child('status', descriptor.description, 'descriptor') : '',
+      pieces.meaning && stat.description ? child('meaning', stat.description, 'meaning') : '',
+      '\n</stat>',
+    );
   }
-  let body = '';
-  if (pieces.values) body += valueStr;
+  let body: MarkedRun[] = pieces.values ? mark(['range'], valueStr) : [];
   // Descriptor is parenthesized when it trails a value, bare when it stands alone.
-  if (pieces.status && descriptor) body += pieces.values ? ` (${descriptor.description})` : descriptor.description;
-  if (pieces.meaning && stat.description) body += body ? ` — ${stat.description}` : stat.description;
-  if (format === 'markdown') return `- ${body ? `**${stat.name}:** ${body}` : `**${stat.name}**`}`;
-  return body ? `${stat.name}: ${body}` : stat.name;
+  if (pieces.status && descriptor) {
+    const text = pieces.values ? `(${descriptor.description})` : descriptor.description;
+    body = runs(body, pieces.values ? ' ' : '', mark(['descriptor'], text));
+  }
+  if (pieces.meaning && stat.description) body = runs(body, textOf(body) ? ' — ' : '', mark(['meaning'], stat.description));
+  const hasBody = textOf(body) !== '';
+  if (format === 'markdown') return hasBody ? runs(`- **${stat.name}:** `, body) : runs(`- **${stat.name}**`);
+  return hasBody ? runs(`${stat.name}: `, body) : runs(stat.name);
 }
 
 /** The layout as the AI reads it: a group whose heading the AI can't see gives its slot to its children. */
@@ -97,17 +106,15 @@ const aiVisibleLayout = <T>(nodes: StatLayoutNode<T>[]): StatLayoutNode<T>[] => 
   return headingReachesAi(node.group) ? [{ ...node, children }] : children;
 });
 
-const indented = (text: string, pad: string) => text.split('\n').map((line) => `${pad}${line}`).join('\n');
-
 /** One group as `format` heads it: its name and description, then its body indented one level. */
-function groupBlock(group: StatGroup, body: string, format: ContextFormat): string {
+function groupBlock(group: StatGroup, body: MarkedText, format: ContextFormat): MarkedRun[] {
   const desc = group.aiDescription?.trim();
   if (format === 'xml') {
     const head = [`  <name>${xmlEscape(group.name)}</name>`, ...(desc ? [`  <description>${xmlEscape(desc)}</description>`] : [])];
-    return ['<group>', ...head, indented(body, '  '), '</group>'].join('\n');
+    return joinRuns(['<group>', ...head, indentRuns(body, '  '), '</group>'], '\n');
   }
-  if (format === 'markdown') return `- **${group.name}:**${desc ? ` ${desc}` : ''}\n${indented(body, '  ')}`;
-  return [`${group.name}:`, ...(desc ? [`  ${desc}`] : []), indented(body, '  ')].join('\n');
+  if (format === 'markdown') return runs(`- **${group.name}:**${desc ? ` ${desc}` : ''}\n`, indentRuns(body, '  '));
+  return joinRuns([`${group.name}:`, ...(desc ? [`  ${desc}`] : []), indentRuns(body, '  ')], '\n');
 }
 
 /**
@@ -124,20 +131,30 @@ export function buildStatContext(
   format: ContextFormat = 'simple',
   placement?: StatPlacement,
 ): string {
-  if (!stats.length) return NONE_PLACEHOLDER;
+  return textOf(statContextRuns(stats, pieces, format, placement));
+}
+
+/** {@link buildStatContext} as marked runs, each Stat Detail piece marked inside its stat line. */
+export function statContextRuns(
+  stats: PlayerStat[],
+  pieces: StatPieces,
+  format: ContextFormat = 'simple',
+  placement?: StatPlacement,
+): MarkedRun[] {
+  if (!stats.length) return runs(NONE_PLACEHOLDER);
   const entry = (stat: PlayerStat) => statEntry(stat, pieces, format);
-  if (!placement?.groups.length) return stats.map(entry).join('\n');
+  if (!placement?.groups.length) return joinRuns(stats.map(entry), '\n');
   const grouped = new Set<string>();
   // A group's own stats come before its subgroups; each stat rendered here counts as grouped.
-  const render = (nodes: StatLayoutNode<PlayerStat>[]): string[] => {
+  const render = (nodes: StatLayoutNode<PlayerStat>[]): MarkedRun[][] => {
     const own = nodes.flatMap((node) => (node.kind === 'stat' ? [node.item] : []));
     own.forEach((stat) => grouped.add(stat.id));
     return [...own.map(entry), ...nodes.flatMap((node) => (
-      node.kind === 'group' ? [groupBlock(node.group, render(node.children).join('\n'), format)] : []
+      node.kind === 'group' ? [groupBlock(node.group, joinRuns(render(node.children), '\n'), format)] : []
     ))];
   };
   // A stat a hidden top-level group gives up lands at the top level, so it reads as loose.
   const groups = render(aiVisibleLayout(statPanelLayout(placement.groups, placement.authored, stats, (stat) => stat.id))
     .filter((node) => node.kind === 'group'));
-  return [...stats.filter((stat) => !grouped.has(stat.id)).map(entry), ...groups].join('\n');
+  return joinRuns([...stats.filter((stat) => !grouped.has(stat.id)).map(entry), ...groups], '\n');
 }

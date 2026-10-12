@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { layerValues, mapValues, memoLookup, omitValues, readValue } from './promptValues';
+import { fromMarked, layerValues, mapValues, memoLookup, omitValues, readMarked, readValue } from './promptValues';
 
 describe('readValue', () => {
   it('reads a map and a lookup alike', () => {
@@ -58,5 +58,35 @@ describe('mapValues', () => {
     expect(values('<NOTES>')).toBe('<NOTES>=NOTES');
     expect(values('<TIME>')).toBeUndefined();
     expect(calls).toBe(1);
+  });
+});
+
+describe('marked runs through the combinators', () => {
+  const reporting = fromMarked((key) => (key === '<NOTES>' ? [{ text: 'the ', origins: [] }, { text: 'ferryman', origins: ['content'] }] : undefined));
+
+  it('reads a value as the text of its runs and keeps the runs', () => {
+    expect(reporting('<NOTES>')).toBe('the ferryman');
+    expect(readMarked(reporting, '<NOTES>')).toEqual([{ text: 'the ', origins: [] }, { text: 'ferryman', origins: ['content'] }]);
+    expect(readMarked({ '<NOTES>': 'the ferryman' }, '<NOTES>')).toBeUndefined();
+  });
+
+  it('reports the runs of the layer whose value wins, and none under a layer with no report', () => {
+    expect(readMarked(layerValues({ '<TIME>': 'Noon' }, reporting), '<NOTES>')).toEqual(readMarked(reporting, '<NOTES>'));
+    expect(readMarked(layerValues(reporting, { '<NOTES>': 'Someone else.' }), '<NOTES>')).toBeUndefined();
+  });
+
+  it('keeps the runs without a second pass where the map leaves the value alone', () => {
+    // A map that draws anew on each call, as a fresh placeholder roll does.
+    let draws = 0;
+    const values = mapValues(reporting, (value) => (value.includes('{{roll}}') ? value.replace('{{roll}}', String(draws++)) : value));
+    expect(values('<NOTES>')).toBe('the ferryman');
+    expect(readMarked(values, '<NOTES>')).toBe(readMarked(reporting, '<NOTES>'));
+  });
+
+  it('maps each run and omits the omitted keys', () => {
+    expect(readMarked(mapValues(reporting, (value) => value.toUpperCase()), '<NOTES>'))
+      .toEqual([{ text: 'THE ', origins: [] }, { text: 'FERRYMAN', origins: ['content'] }]);
+    expect(readMarked(omitValues(reporting, (key) => key === '<NOTES>'), '<NOTES>')).toBeUndefined();
+    expect(readMarked(memoLookup(reporting), '<NOTES>')).toEqual(readMarked(reporting, '<NOTES>'));
   });
 });
