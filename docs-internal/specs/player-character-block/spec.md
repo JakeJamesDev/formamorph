@@ -29,6 +29,9 @@ Rulings from the discussion, numbered as asked.
 - **Q10** The stat request and the text pass keep their layouts. The schema's `Player Character` section, its heading and its keys are unchanged.
 - **Q11** The work ships as three steps, each its own ticket and its own probe: the header, the traits fold, then the stats fold with the choices variant change.
 - **Q12** Emberwatch authors its five stats on the world, not on its personas, so playing Sylvie leaves her block without stats and fills Other Stats. Moving those stats onto the personas is a content change for another effort.
+- **Q13** (ticket 01) With no persona, the chip values map carries the Player Name built-in's reference reading, "the player", so a custom header such as `{{user}} stats` reads "The Player Stats". A header is read by the AI, never spoken to the player, so the opening's "you" form never applies. A played persona with a blank name still substitutes the empty string (Q2). An authored scene with no Custom Persona entity is the same no-persona case.
+- **Q14** (ticket 01) The six default Persona chips are those headed "Player Character": narration, choices, continuity planner, director, character pass and storyboard. The opening runs the narration prompt and has no chip of its own. The planner keeps its post line, and Scene Tags keeps its own header.
+- **Q15** (ticket 01) The Player Name travels in the chip values map under a header-only key derived from the built-in's token, not the bare token. The renderer fills body built-in chips from the map and the placeholder-field previews depend on that, so a bare key would make a typed `{{user}}` in a prompt body render the name, which Out of Scope forbids.
 
 ## User Stories
 
@@ -66,7 +69,7 @@ Rulings from the discussion, numbered as asked.
 21. As a player, I want the choices step to see my persona's traits and stats, so that the options still fit who I am after the fold.
 22. As a player, I want the stat tracker's request unchanged, so that stat changes keep landing on the right owner.
 23. As a player, I want the planner's Cast to keep labeling me "Player Character", so that the planner's player rule still fires.
-24. As a player, I want the director, character pass, storyboard and opening prompts to carry the same block and sections, so that every stage reads me the same way.
+24. As a player, I want the continuity planner, director, character pass and storyboard prompts to carry the same block and sections, so that every stage reads me the same way.
 
 ### Verification
 
@@ -78,7 +81,7 @@ Rulings from the discussion, numbered as asked.
 
 ### The header token
 
-- The template renderer resolves `{{user}}` inside a chip's header text before the header is framed. The value comes from the chip values map, keyed by the built-in's token, as world prompt placeholder chips already travel. A map without the key leaves the text as written.
+- The template renderer resolves `{{user}}` inside a chip's header text before the header is framed. The value comes from the chip values map under a header-only key derived from the built-in's token (Q15). A map without the key leaves the text as written.
 - Resolution runs before title-casing and escaping, so a name with a capital is left alone and an all-lowercase name is capitalized as any header word is. The XML frame slugs the resolved text into the tag name.
 - A blank value substitutes the empty string. No fallback text is added.
 - Request Anatomy keeps treating the header as the static frame; it shows the resolved text.
@@ -92,7 +95,7 @@ Rulings from the discussion, numbered as asked.
 
 ### Default prompts
 
-- Six default prompts change: narration, choices, director, character pass, storyboard and opening. In each, the Persona chip comes first with header `{{user}} (Player Character)`, then the Traits chip as `Other Traits`, then the Stats chip as `Other Stats`.
+- Six default prompts change: narration, choices, continuity planner, director, character pass and storyboard. In each, the Persona chip comes first with header `{{user}} (Player Character)`, then the Traits chip as `Other Traits`, then the Stats chip as `Other Stats`.
 - The choices prompt's Persona chip switches from Name to Summary content.
 - The stat request prompt, the text stat pass and the planner's Cast rules are untouched.
 - Each step is one prompt diff with its own probe. Step one changes only headers. Step two moves nothing but renames and reorders the Traits chip. Step three moves the persona's stats and changes the choices variant.
