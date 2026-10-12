@@ -9,6 +9,8 @@ export interface PromptVariant {
   help?: string;
   /** Keep this option out of the chip label's pick list. */
   hideInLabel?: boolean;
+  /** For a toggle axis: this stored id means the piece is on, where the axis's other stored ids mean off. */
+  on?: boolean;
 }
 
 /** One independent dimension of a variable's variants (e.g. Stats has a `content` axis and a `format`
@@ -24,12 +26,17 @@ export interface PromptVariantAxis {
   /** Render as an independent checkbox (on = its non-null option) rather than a single-select control. */
   toggle?: boolean;
   /** For a toggle axis: the checkbox is on while the axis holds its default (null) option, and clearing it
-   *  stores the non-null one. The bare token then keeps the piece. */
+   *  stores the non-null one, unless that option is marked `on`. The bare token then keeps the piece. */
   onByDefault?: boolean;
+  /** For a toggle axis: whether the piece is on while it holds its default (null) option, read from the
+   *  chip's other picks. Absent, `onByDefault` decides. */
+  onByDefaultWhen?: (selection: Record<string, string | null>) => boolean;
   /** For a toggle axis: one chip's toggle axes with this name form a group whose last piece on stays on. */
   lockGroup?: string;
-  /** Leave the axis out of Chip Options. Its stored id still parses and survives an edit. */
-  hiddenInDialog?: boolean;
+  /** For a toggle axis: the Chip Options row its checkbox sits in. Axes that share a row name share a row. */
+  row?: string;
+  /** One line for the row, read from the first axis of the row that carries it. */
+  rowHelp?: string;
   /** Help shown beside a toggle axis's checkbox. */
   help?: string;
   /** Show the stored choice and take no input. For an axis whose options exist but cannot differ here. */
@@ -121,19 +128,21 @@ const FORMAT_AXIS: PromptVariantAxis = {
   ],
 };
 
+const STAT_DETAIL_ROW_HELP = 'Picks which parts of each stat the AI reads';
+
 // Stats content is three independent pieces (each a checkbox), plus the shared format axis. The stat's Name
 // is always present; at least one piece must stay on (enforced in the editor). The old single-select ids
 // `numbers` (Range) and `descriptions` (Descriptor) are kept, so existing tokens still render; `meaning` is new.
 const STAT_VALUES_AXIS: PromptVariantAxis = {
-  id: 'numbers', label: 'Range', toggle: true, lockGroup: 'statDetail', help: 'e.g. "10/100".',
+  id: 'numbers', label: 'Range', toggle: true, lockGroup: 'statDetail', row: 'Stat Detail', rowHelp: STAT_DETAIL_ROW_HELP, help: 'e.g. "10/100".',
   options: [{ id: null, label: 'Range' }, { id: 'numbers', label: 'Range' }],
 };
 const STAT_STATUS_AXIS: PromptVariantAxis = {
-  id: 'descriptions', label: 'Descriptor', toggle: true, lockGroup: 'statDetail', help: 'e.g. "Critical".',
+  id: 'descriptions', label: 'Descriptor', toggle: true, lockGroup: 'statDetail', row: 'Stat Detail', help: 'e.g. "Critical".',
   options: [{ id: null, label: 'Descriptor' }, { id: 'descriptions', label: 'Descriptor' }],
 };
 const STAT_MEANING_AXIS: PromptVariantAxis = {
-  id: 'meaning', label: 'Description', toggle: true, lockGroup: 'statDetail', help: 'e.g. "Physical stamina."',
+  id: 'meaning', label: 'Description', toggle: true, lockGroup: 'statDetail', row: 'Stat Detail', help: 'e.g. "Physical stamina."',
   options: [{ id: null, label: 'Description' }, { id: 'meaning', label: 'Description' }],
 };
 
@@ -142,35 +151,42 @@ function rosterToggle(
   id: string, label: string, stored: string, help: string, extra: Partial<PromptVariantAxis> = {},
 ): PromptVariantAxis {
   return {
-    id, label, toggle: true, help, hiddenInDialog: true, ...extra,
+    id, label, toggle: true, help, ...extra,
     options: [{ id: null, label }, { id: stored, label, hideInLabel: true }],
   };
 }
 
 // Only With: keep only the entities that own a picked kind. Off by default; picks read as or.
-const ONLY_WITH_STATS_AXIS = rosterToggle('withstats', 'Stats', 'withstats', 'Keeps only entities that own stats');
-const ONLY_WITH_TRAITS_AXIS = rosterToggle('withtraits', 'Traits', 'withtraits', 'Keeps only entities that own traits');
-const PERSONA_ONLY_WITH_STATS_AXIS = { ...ONLY_WITH_STATS_AXIS, help: 'Sends the persona only when it owns stats' };
+const ONLY_WITH_STATS_AXIS = rosterToggle('withstats', 'Stats', 'withstats', 'Keeps only entities that own stats', {
+  row: 'Only With', rowHelp: 'Keeps entities that own any checked kind',
+});
+const ONLY_WITH_TRAITS_AXIS = rosterToggle('withtraits', 'Traits', 'withtraits', 'Keeps only entities that own traits', { row: 'Only With' });
+const PERSONA_ONLY_WITH_STATS_AXIS = { ...ONLY_WITH_STATS_AXIS, help: 'Sends the persona only when it owns stats',
+  rowHelp: 'Sends the persona only if it owns any checked kind' };
 const PERSONA_ONLY_WITH_TRAITS_AXIS = { ...ONLY_WITH_TRAITS_AXIS, help: 'Sends the persona only when it owns traits' };
 // Include Traits and the Stat Detail pieces are on by default, so each stored id is the off state.
-const INCLUDE_TRAITS_AXIS = rosterToggle('traits', 'Traits', 'notraits', "Sends each entity's owned traits", { onByDefault: true });
-const PERSONA_INCLUDE_TRAITS_AXIS = { ...INCLUDE_TRAITS_AXIS, help: "Sends the persona's owned traits" };
+const INCLUDE_TRAITS_AXIS = rosterToggle('traits', 'Traits', 'notraits', "Sends each entity's owned traits", {
+  onByDefault: true, row: 'Include', rowHelp: 'Picks what each entity sends besides its name',
+});
+const PERSONA_INCLUDE_TRAITS_AXIS = { ...INCLUDE_TRAITS_AXIS, help: "Sends the persona's owned traits",
+  rowHelp: 'Picks what the persona sends besides its name' };
 const ROSTER_STAT_DETAIL_AXES: PromptVariantAxis[] = [
-  rosterToggle('range', 'Range', 'norange', 'Sends each stat\'s value and bounds, like "10/100"', { onByDefault: true, lockGroup: 'statDetail' }),
-  rosterToggle('descriptor', 'Descriptor', 'nodescriptor', 'Sends the word for the stat\'s current level, like "Critical"', { onByDefault: true, lockGroup: 'statDetail' }),
-  rosterToggle('description', 'Description', 'nodescription', "Sends what the stat measures", { onByDefault: true, lockGroup: 'statDetail' }),
+  rosterToggle('range', 'Range', 'norange', 'Sends each stat\'s value and bounds, like "10/100"', { onByDefault: true, lockGroup: 'statDetail', row: 'Stat Detail', rowHelp: STAT_DETAIL_ROW_HELP }),
+  rosterToggle('descriptor', 'Descriptor', 'nodescriptor', 'Sends the word for the stat\'s current level, like "Critical"', { onByDefault: true, lockGroup: 'statDetail', row: 'Stat Detail' }),
+  rosterToggle('description', 'Description', 'nodescription', "Sends what the stat measures", { onByDefault: true, lockGroup: 'statDetail', row: 'Stat Detail' }),
 ];
 
 // The Entities chip's stats piece: null is the scope's default (on for Here and In Scene), `nostats` stores off, `stats` on.
 const ENTITY_STATS_AXIS: PromptVariantAxis = {
-  id: 'stats', label: 'Stats', toggle: true, onByDefault: true,
+  id: 'stats', label: 'Stats', toggle: true, onByDefault: true, row: 'Include',
+  onByDefaultWhen: (selection) => selection.scope == null || selection.scope === 'inscene',
   help: "Sends each entity's stats: range, descriptor and description.",
-  options: [{ id: null, label: 'Stats' }, { id: 'nostats', label: 'No Stats' }, { id: 'stats', label: 'Stats', hideInLabel: true }],
+  options: [{ id: null, label: 'Stats' }, { id: 'nostats', label: 'No Stats' }, { id: 'stats', label: 'Stats', hideInLabel: true, on: true }],
 };
 
 // The Persona chip's stats piece: on in a bare token, `nostats` turns it off.
 const PERSONA_STATS_AXIS: PromptVariantAxis = {
-  ...ENTITY_STATS_AXIS, help: "Sends the persona's own stats: range, descriptor and description",
+  ...ENTITY_STATS_AXIS, onByDefaultWhen: undefined, help: "Sends the persona's own stats: range, descriptor and description",
   options: ENTITY_STATS_AXIS.options.slice(0, 2),
 };
 
@@ -340,6 +356,26 @@ export function encodeVariant(variable: PromptVariable, selection: Record<string
     .map((axis) => selection[axis.id])
     .filter((v): v is string => v != null);
   return ids.length ? ids.join('.') : null;
+}
+
+/** Whether a toggle axis's piece is on while it holds its default (null) option. */
+function toggleDefaultOn(axis: PromptVariantAxis, selection: Record<string, string | null>): boolean {
+  return axis.onByDefaultWhen ? axis.onByDefaultWhen(selection) : !!axis.onByDefault;
+}
+
+/** Whether a toggle axis's piece is on under a selection. A stored id is the piece on, unless the axis is
+ *  on by default and the id is not marked `on`. */
+export function toggleIsOn(axis: PromptVariantAxis, selection: Record<string, string | null>): boolean {
+  const stored = selection[axis.id] ?? null;
+  if (stored === null) return toggleDefaultOn(axis, selection);
+  return axis.options.find((o) => o.id === stored)?.on ?? !axis.onByDefault;
+}
+
+/** The option id that makes a toggle axis's piece `on` under a selection: null when that is the default. */
+export function toggleOptionFor(axis: PromptVariantAxis, selection: Record<string, string | null>, on: boolean): string | null {
+  if (on === toggleDefaultOn(axis, selection)) return null;
+  const stored = axis.options.filter((o) => o.id != null && (o.on ?? !axis.onByDefault) === on);
+  return stored[0]?.id ?? null;
 }
 
 /** A chip key's variable and the per-axis selection its id spells, or undefined when its variable cannot

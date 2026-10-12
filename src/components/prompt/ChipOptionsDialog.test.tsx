@@ -47,6 +47,8 @@ function PlaceholderHarness({ initial }: { initial: string }) {
 const stored = () => screen.getByTestId('stored').textContent;
 const chip = () => document.querySelector<HTMLElement>('[data-chip]')!;
 const dialog = () => screen.getByRole('dialog', { name: 'Chip Options' });
+const row = (name: string) => within(dialog()).getByRole('group', { name });
+const box = (rowName: string, name: string) => within(row(rowName)).getByRole('checkbox', { name });
 
 async function open(user: ReturnType<typeof userEvent.setup>) {
   await user.click(chip());
@@ -86,7 +88,7 @@ describe('Chip Options', () => {
     expect(within(options).getByRole('combobox', { name: 'Scope' })).toHaveTextContent('Here');
     expect(within(options).getByRole('radiogroup', { name: 'Content' })).toBeInTheDocument();
     expect(within(options).getByRole('radiogroup', { name: 'Format' })).toBeInTheDocument();
-    expect(within(options).getByRole('checkbox', { name: 'Stats' })).toBeChecked();
+    expect(box('Include', 'Stats')).toBeChecked();
   });
 
   it('writes each row to the token and reads it back on reopen, without closing between changes', async () => {
@@ -98,7 +100,7 @@ describe('Chip Options', () => {
     expect(dialog()).toBeInTheDocument();
     await user.click(within(dialog()).getByRole('radio', { name: 'Summary' }));
     await user.click(within(dialog()).getByRole('radio', { name: 'XML' }));
-    await user.click(within(dialog()).getByRole('checkbox', { name: 'Stats' }));
+    await user.click(box('Include', 'Stats'));
     expect(stored()).toBe('<ENTITIES|inscene.summary.nostats.xml>');
 
     await user.keyboard('{Escape}');
@@ -107,16 +109,92 @@ describe('Chip Options', () => {
     expect(within(options).getByRole('combobox', { name: 'Scope' })).toHaveTextContent('In Scene');
     expect(within(options).getByRole('radio', { name: 'Summary' })).toBeChecked();
     expect(within(options).getByRole('radio', { name: 'XML' })).toBeChecked();
-    expect(within(options).getByRole('checkbox', { name: 'Stats' })).not.toBeChecked();
+    expect(box('Include', 'Stats')).not.toBeChecked();
   });
 
-  it('leaves the hidden roster pieces out and keeps their ids through an edit', async () => {
+  it('shows the roster rows in order and keeps every stored id through an edit', async () => {
     const user = userEvent.setup();
     renderReporting(<Field initial="<ENTITIES|withstats.notraits.nodescriptor>" />);
     const options = await open(user);
-    expect(within(options).getAllByRole('checkbox').map((box) => box.closest('label')?.textContent)).toEqual(['Stats']);
+    expect(within(options).getAllByRole('group').map((g) => g.getAttribute('aria-label'))).toEqual(['Only With', 'Include', 'Stat Detail']);
+    expect(box('Only With', 'Stats')).toBeChecked();
+    expect(box('Only With', 'Traits')).not.toBeChecked();
+    expect(box('Include', 'Traits')).not.toBeChecked();
+    expect(box('Stat Detail', 'Descriptor')).not.toBeChecked();
     await user.click(within(options).getByRole('radio', { name: 'XML' }));
     expect(stored()).toBe('<ENTITIES|withstats.notraits.nodescriptor.xml>');
+  });
+
+  it('writes each new roster row and reads it back on reopen', async () => {
+    const user = userEvent.setup();
+    renderReporting(<Field initial="<ENTITIES>" />);
+    await open(user);
+    await user.click(box('Only With', 'Traits'));
+    await user.click(box('Include', 'Traits'));
+    await user.click(box('Stat Detail', 'Range'));
+    expect(stored()).toBe('<ENTITIES|withtraits.notraits.norange>');
+    await user.keyboard('{Escape}');
+    await open(user);
+    expect(box('Only With', 'Traits')).toBeChecked();
+    expect(box('Include', 'Traits')).not.toBeChecked();
+    expect(box('Stat Detail', 'Range')).not.toBeChecked();
+  });
+
+  it('disables Include and Stat Detail under Name content and leaves Only With live', async () => {
+    const user = userEvent.setup();
+    renderReporting(<Field initial="<ENTITIES|name>" />);
+    await open(user);
+    for (const checkbox of [box('Include', 'Traits'), box('Include', 'Stats'), box('Stat Detail', 'Range')]) expect(checkbox).toBeDisabled();
+    await user.click(box('Only With', 'Stats'));
+    expect(stored()).toBe('<ENTITIES|withstats.name>');
+  });
+
+  it('disables Stat Detail while stats are off and locks the last detail piece on', async () => {
+    const user = userEvent.setup();
+    renderReporting(<Field initial="<ENTITIES|nodescriptor.nodescription>" />);
+    await open(user);
+    expect(box('Stat Detail', 'Range')).toBeChecked();
+    expect(box('Stat Detail', 'Range')).toBeDisabled();
+    expect(box('Stat Detail', 'Descriptor')).toBeEnabled();
+    await user.click(box('Include', 'Stats'));
+    expect(stored()).toBe('<ENTITIES|nostats.nodescriptor.nodescription>');
+    for (const name of ['Range', 'Descriptor', 'Description']) expect(box('Stat Detail', name)).toBeDisabled();
+  });
+
+  it('reads and writes all three Include Stats states per scope', async () => {
+    const user = userEvent.setup();
+    renderReporting(<Field initial="<ENTITIES|sublocations>" />);
+    await open(user);
+    expect(box('Include', 'Stats')).not.toBeChecked();
+    await user.click(box('Include', 'Stats'));
+    expect(stored()).toBe('<ENTITIES|sublocations.stats>');
+    expect(box('Include', 'Stats')).toBeChecked();
+    await user.click(box('Include', 'Stats'));
+    expect(stored()).toBe('<ENTITIES|sublocations>');
+    await user.click(within(dialog()).getByRole('combobox', { name: 'Scope' }));
+    await user.click(await screen.findByRole('option', { name: 'In Scene' }));
+    expect(stored()).toBe('<ENTITIES|inscene>');
+    expect(box('Include', 'Stats')).toBeChecked();
+  });
+
+  it('shows a stored stats-on id on Reachable as checked', async () => {
+    const user = userEvent.setup();
+    renderReporting(<Field initial="<ENTITIES|reachable.stats>" />);
+    await open(user);
+    expect(box('Include', 'Stats')).toBeChecked();
+    await user.click(box('Include', 'Stats'));
+    expect(stored()).toBe('<ENTITIES|reachable>');
+  });
+
+  it('gives the Persona chip the same rows', async () => {
+    const user = userEvent.setup();
+    renderReporting(<Field initial="<PERSONA>" />);
+    await open(user);
+    expect(within(dialog()).getAllByRole('group').map((g) => g.getAttribute('aria-label'))).toEqual(['Only With', 'Include', 'Stat Detail']);
+    await user.click(box('Only With', 'Stats'));
+    await user.click(box('Include', 'Stats'));
+    expect(stored()).toBe('<PERSONA|withstats.nostats>');
+    expect(box('Stat Detail', 'Range')).toBeDisabled();
   });
 
   it('shows an option help line as the tooltip of its segment and its dropdown item', async () => {
@@ -159,7 +237,7 @@ describe('Chip Options', () => {
     const options = await open(user);
     expect(within(options).getByRole('combobox', { name: 'Scope' })).toBeDisabled();
     for (const radio of within(options).getAllByRole('radio')) expect(radio).toBeDisabled();
-    expect(within(options).getByRole('checkbox', { name: 'Stats' })).toBeDisabled();
+    for (const checkbox of within(options).getAllByRole('checkbox')) expect(checkbox).toBeDisabled();
     for (const name of ['Header', 'Prepend', 'Append']) expect(within(options).getByLabelText(name)).toBeDisabled();
     expect(stored()).toBe('<ENTITIES|markdown>');
   });
