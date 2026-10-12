@@ -36,6 +36,9 @@ Rulings from the discussion, numbered as asked.
 - **Q17** (ticket 03) The block holds only the Persona chip's own entity (Q4). Under a library persona, the Custom Persona entity's stats stay in Other Stats after the world stats with their numbered keys, as its traits sit at the player root in Other Traits. Only the played library entity's stats move into the block.
 - **Q18** (ticket 03) Only narration, choices and storyboard carried a Stats chip. The continuity planner and the director gain one: the persona's own stats in the block and an Other Stats chip after Other Traits, in the same variants narration uses. The character pass stays free of the player's stats: its Persona chip is set to No Stats and it gets no Other Stats chip.
 - **Q19** (ticket 04) The character pass gets the selected character's own stats inside its identity block in the user message, rendered as the narration Entities chip renders an entity's stats. A character with no stats gets no stats field. This is its own ticket with its own probe.
+- **Q20** (ticket 03) Reverses Q18 on evidence: the continuity planner dropped the Stats chip by design, since the narrator and not the plan owns outcomes. The planner and the director stay stat-free: their Persona chips are No Stats and they carry no Other Stats chip. Narration, choices and storyboard carry Other Stats.
+- **Q21** (ticket 03) The Test Bench AI Context panel's Stats block shows what the Stats chip sends, world stats only. The Custom Persona entity's stats now travel in the Persona chip, which the Bench has no block for; ticket 05 adds one.
+- **Q22** (ticket 03) The Open Chat bundled world's own prompts follow the defaults: its choices Persona chip takes Summary, and its narration and choices prompts take the Other Traits and Other Stats headers and the Persona-first order. The saved-prompt guarantee covers users' prompts, not bundled worlds. No shape change.
 
 ## User Stories
 
@@ -75,7 +78,7 @@ Rulings from the discussion, numbered as asked.
 23. As a player, I want the planner's Cast to keep labeling me "Player Character", so that the planner's player rule still fires.
 24. As a player, I want the continuity planner, director, character pass and storyboard prompts to carry the same block and sections, so that every stage reads me the same way.
 25. As a player, I want the character pass to read the character's own stats and none of mine, so that a character acts from its own condition.
-26. As a player, I want the planner and director to read my stats, so that the plan fits what I can do.
+26. As a player, I want the planner and director to stay free of stats, so that the narrator alone decides outcomes.
 
 ### Verification
 
@@ -101,7 +104,7 @@ Rulings from the discussion, numbered as asked.
 
 ### Default prompts
 
-- Six default prompts change: narration, choices, continuity planner, director, character pass and storyboard. In each, the Persona chip comes first with header `{{user}} (Player Character)`, then the Traits chip as `Other Traits`. Narration, choices, planner, director and storyboard then carry the Stats chip as `Other Stats`; the character pass carries none and its Persona chip is No Stats (Q18).
+- Six default prompts change: narration, choices, continuity planner, director, character pass and storyboard. In each, the Persona chip comes first with header `{{user}} (Player Character)`, then the Traits chip as `Other Traits`. Narration, choices and storyboard then carry the Stats chip as `Other Stats`; the planner, director and character pass carry none and their Persona chips are No Stats (Q20).
 - The character pass renders the selected character's own stats in its identity block, as the Entities chip renders an entity's stats (Q19).
 - The choices prompt's Persona chip switches from Name to Summary content.
 - The stat request prompt, the text stat pass and the planner's Cast rules are untouched.
@@ -126,7 +129,7 @@ Model behavior is proven by probe numbers, not unit tests: each step's arm again
 - Moving Emberwatch's world stats onto its personas (Q12).
 - `{{user}}` inside prompt bodies. The casing rule that keeps it out stands.
 - The stat request's layout, keys or schema.
-- The stat panel and any other UI surface. This effort changes prompt text only.
+- The stat panel and any other UI surface beyond the Test Bench AI Context panel's Persona block (ticket 05).
 - Rewriting saved custom prompts to the new headers.
 
 ## Further Notes
