@@ -64,21 +64,21 @@ export function statChipPartValues(parts: readonly StatChipPart[]): Record<strin
   return Object.fromEntries(Object.keys(filled[0]).map((token) => [token, filled.map((values) => values[token]).join('\n')]));
 }
 
-/** The player's parts: the world's stats, then each played entity's. A played stat whose plain name clashes
- *  with an earlier stat takes the numbered key the stat request gives it; every other name stays as written. */
-export function playerStatParts(
-  world: StatChipPart, played: readonly StatChipPart[], plainName: (name: string) => string,
-): StatChipPart[] {
-  if (!played.some((part) => part.stats.length)) return [world];
+/** Each played entity's part after the world's stats. A played stat whose plain name clashes with an earlier
+ *  stat takes the numbered key the stat request gives it; every other name stays as written. */
+export function playedStatParts<P extends StatChipPart>(
+  world: StatChipPart, played: readonly P[], plainName: (name: string) => string,
+): P[] {
+  if (!played.some((part) => part.stats.length)) return [];
   const keys = statKeys([world, ...played].flatMap((part) => part.stats.map((stat) => plainName(stat.name))));
   let at = world.stats.length;
-  return [world, ...played.map((part) => ({
+  return played.map((part) => ({
     ...part,
     stats: part.stats.map((stat) => {
       const key = keys[at++];
       return key === plainName(stat.name) ? stat : { ...stat, name: key };
     }),
-  }))];
+  }));
 }
 
 /**
@@ -98,18 +98,18 @@ export function chipValues(scene: ChipScene): Record<string, string> {
   };
 
   const traitIds = scene.traits.map((trait) => trait.id);
+  const world = { stats: scene.stats, placement: scene.statPlacement };
+  const played = playedStatParts(world, scene.playedStats ?? [], (name) => stripMarkdown(scene.resolve(name)).trim());
+  // The persona's own stats render in its block; any other played entity's follow the world's.
+  const personaId = scene.persona?.entity.id;
   const values: Record<string, string> = {
     [WORLD.token]: scene.overview,
-    // The played entities' stats are the player's, after the world's.
-    ...statChipPartValues(playerStatParts(
-      { stats: scene.stats, placement: scene.statPlacement }, scene.playedStats ?? [],
-      (name) => stripMarkdown(scene.resolve(name)).trim(),
-    )),
+    ...statChipPartValues([world, ...played.filter((part) => part.ownerId !== personaId)]),
     ...familyValues(TRAITS, (sel) => (
       buildTraitContext(traitIds, scene.traits, scene.traitGroups, chipFormat(sel.format)) || NONE_PLACEHOLDER
     )),
-    // The played entity's owned traits render in its own block, as a cast member's do.
-    ...personaContextValues(scene.persona, scene.ownedTraits),
+    // The played entity's owned traits and stats render in its own block, as a cast member's do.
+    ...personaContextValues(scene.persona, scene.ownedTraits, played.find((part) => part.ownerId === personaId)?.stats),
     [PLAYER_NAME_HEADER_KEY]: scene.playerName == null ? NO_PLAYER : scene.playerName.trim(),
     ...familyValues(DICTIONARY, (sel) => {
       const position = sel.variant === 'before' ? 'before' : 'after';

@@ -242,6 +242,20 @@ describe('the live adapter', () => {
       it("leaves a cast member's stats out of the Stats chip", () => {
         expect(chipValues(playing())['<STATS DESCRIPTION|numbers>']).not.toContain('Trust');
       });
+
+      it("nests the persona's own stats in its block at their live values, and leaves the world's in the Stats chip", () => {
+        const scene = liveChipScene(sources({
+          persona: { source: 'world', entity: wren }, playedEntities: [wren], entityStats: { wren: [calm, veiled, off] },
+        }), null, {
+          activeStats: [grit], activeTraits: [], ownedTraits: {}, entityStats: { wren: [{ ...calm, value: 9 }, veiled, off] },
+          resolve: (text) => text, resolveTrait: (_trait, text) => text, resolveEntity: (_entity, text) => text,
+        });
+        const values = chipValues(scene);
+        expect(values['<STATS DESCRIPTION|numbers>']).toBe('Grit: 4/10');
+        expect(values['<PERSONA>']).toContain('  stats:\n    Veiled: 2/10');
+        expect(values['<PERSONA>']).toContain('    Mind:\n      Calm: 9/10');
+        expect(values['<PERSONA>']).not.toContain('Dread');
+      });
     });
   });
 

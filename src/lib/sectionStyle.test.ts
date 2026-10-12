@@ -192,7 +192,9 @@ describe('default XML section boundaries', () => {
     const document = new DOMParser().parseFromString(`<root>${sections}</root>`, 'application/xml');
     expect(document.querySelector('parsererror')).toBeNull();
     expect(Array.from(document.documentElement.children, node => node.tagName)).toEqual(
-      present ? ['traveler_player_character', 'other_traits', 'important_player_notes'] : ['other_traits', 'important_player_notes'],
+      present
+        ? ['traveler_player_character', 'other_traits', 'other_stats', 'important_player_notes']
+        : ['other_traits', 'other_stats', 'important_player_notes'],
     );
     expect(document.querySelector('other_traits > trait')).not.toBeNull();
     expect(document.querySelector('traveler_player_character > entity > name')?.textContent ?? '').toBe(present ? 'Traveler' : '');

@@ -12,7 +12,7 @@ import { migrateWorld } from '@/lib/version';
 import { PLAYER_BEARER, resolveBearers } from '@/lib/bearers';
 import { borneByPlayer } from '@/lib/ownedTraitsInPlay';
 import { defaultPicks } from '@/lib/traitEffects';
-import type { Entity, Trait, TraitGroup, World } from '@/types';
+import type { Entity, PlayerStat, Trait, TraitGroup, World } from '@/types';
 
 // The six default prompts that carry the Persona block; the expectation is written out, not read from the templates.
 const BLOCKED: PromptTextKey[] = [
@@ -53,6 +53,51 @@ function renderFor(raw: string, played?: string): string {
     : opening;
   return renderPromptTemplate(defaults.systemPrompt, chipValues(scene));
 }
+
+/** Drone's opening with a played library persona that owns one stat. */
+function personaWithStats() {
+  const calm: PlayerStat = {
+    id: 'calm', name: 'Calm', type: 'number', description: 'Composure.', min: 0, max: 100, value: 10, regen: 0, descriptors: [],
+  };
+  const traveler: Entity = { id: 'traveler', name: 'Traveler', aiDescription: 'A road-worn traveler.', stats: [calm] };
+  return {
+    ...authoredChipScene(migrateWorld(JSON.parse(droneRaw))),
+    persona: { source: 'library' as const, entity: traveler },
+    playerName: traveler.name,
+    playedStats: [{ ownerId: traveler.id, stats: [calm] }],
+  };
+}
+
+// The default prompts that carry a Stats chip; written out, not read from the templates.
+const STATTED: PromptTextKey[] = ['choicesPrompt', 'storyboardPrompt', 'systemPrompt'];
+// The Persona prompts that read none of the player's stats.
+const STAT_FREE: PromptTextKey[] = ['characterPrompt', 'directorPrompt', 'thinkingPrompt'];
+const STATS = variableForToken('<STATS DESCRIPTION>')!;
+
+describe('the Other Stats chip in the default prompts', () => {
+  it.each(STATTED)('heads the Stats chip "Other Stats" after Other Traits in %s', (key) => {
+    const stats = chipsOf(defaults[key], STATS);
+    const traits = chipsOf(defaults[key], TRAITS);
+    expect(stats.map((chip) => chip.header)).toEqual(['Other Stats']);
+    expect(stats[0].index).toBeGreaterThan(traits[0].index);
+  });
+
+  it.each(STAT_FREE)("keeps the player's stats out of %s", (key) => {
+    const out = renderPromptTemplate(defaults[key], chipValues(personaWithStats()));
+    expect(chipsOf(defaults[key], STATS)).toEqual([]);
+    expect(out).toContain('\n## Traveler (Player Character)\n');
+    expect(out).not.toContain('Calm');
+  });
+
+  it("sends the persona's stats in the block of every prompt with Other Stats", () => {
+    const values = chipValues(personaWithStats());
+    for (const key of STATTED) {
+      const out = renderPromptTemplate(defaults[key], values);
+      expect(out, key).toContain('Calm');
+      expect(out.indexOf('Calm'), key).toBeLessThan(out.indexOf('## Other Stats'));
+    }
+  });
+});
 
 describe('the Other Traits chip in the default prompts', () => {
   it.each(BLOCKED)('heads the Traits chip "Other Traits" after the Persona chip in %s', (key) => {

@@ -296,10 +296,10 @@ describe('the Stats chip', () => {
   });
 });
 
-describe("the played entities' stats in the Stats chip", () => {
+describe("the stats of played entities that are not the persona, in the Stats chip", () => {
   const calm: PlayerStat = { ...health, id: 'calm', name: 'Calm', description: 'Composure.', value: 30, descriptors: [] };
   const statsOf = (over: Partial<ChipScene>) => chipValues(scene(over));
-  const played = (...stats: PlayerStat[]) => ({ stats, placement: { groups: [], authored: stats } });
+  const played = (...stats: PlayerStat[]) => ({ ownerId: 'marked', stats, placement: { groups: [], authored: stats } });
 
   it("lists each played entity's stats after the world's, in each format", () => {
     const values = statsOf({ playedStats: [played(calm)] });
@@ -314,7 +314,7 @@ describe("the played entities' stats in the Stats chip", () => {
   it('lays each owner out by its own groups', () => {
     const mind: StatGroup = { id: 'mind', name: 'Mind', parentId: null };
     const grouped = { ...calm, groupId: 'mind' };
-    const values = statsOf({ playedStats: [{ stats: [grouped], placement: { groups: [mind], authored: [grouped] } }] });
+    const values = statsOf({ playedStats: [{ ownerId: 'marked', stats: [grouped], placement: { groups: [mind], authored: [grouped] } }] });
     expect(values['<STATS DESCRIPTION|numbers>']).toBe('Health: 62/100\nMind:\n  Calm: 30/100');
   });
 

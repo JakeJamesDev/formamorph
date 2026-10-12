@@ -12,8 +12,9 @@ import type { ResolvedPersona } from '@/lib/persona';
 const FULL: PromptTextKey[] = [
   'systemPrompt', 'thinkingPrompt', 'directorPrompt', 'storyboardPrompt', 'characterPrompt', 'sceneTagsPrompt',
 ];
-const NAME: PromptTextKey[] = ['choicesPrompt', 'summaryPrompt', 'milestoneSelectPrompt', 'diaryPrompt'];
-const COVERED = new Set<PromptTextKey>([...FULL, ...NAME]);
+const SUMMARY: PromptTextKey[] = ['choicesPrompt'];
+const NAME: PromptTextKey[] = ['summaryPrompt', 'milestoneSelectPrompt', 'diaryPrompt'];
+const COVERED = new Set<PromptTextKey>([...FULL, ...SUMMARY, ...NAME]);
 // The prompts whose persona block is headed "Player Character"; the scene-tags prompt has its own header.
 const HEADED: PromptTextKey[] = [
   'characterPrompt', 'choicesPrompt', 'directorPrompt', 'storyboardPrompt', 'systemPrompt', 'thinkingPrompt',
@@ -26,6 +27,7 @@ const persona: ResolvedPersona = {
     name: 'Persona Fixture',
     pronouns: 'they/them',
     aiDescription: 'A fixture description only the Full variant carries.',
+    aiSummary: 'A fixture summary only the Summary variant carries.',
   },
 };
 
@@ -50,10 +52,11 @@ function withoutPersona(template: string): string {
 const styles = BUILTIN_PRESETS.map((b) => ({ name: b.name, style: b.style, values: buildStyledValues(PROMPT_TEXT_DEFAULTS, b.style) }));
 
 describe('the persona chip in the default prompts', () => {
-  it.each(styles)('places Full and Name where the coverage table says, in the $name preset', ({ values }) => {
+  it.each(styles)('places Full, Summary and Name where the coverage table says, in the $name preset', ({ values }) => {
     for (const key of PROMPT_TEXT_KEYS) {
       const contents = personaContents(values[key]);
       if (FULL.includes(key)) expect(contents, key).toContain(null);
+      else if (SUMMARY.includes(key)) expect(contents, key).toEqual(['summary']);
       else if (NAME.includes(key)) expect(contents, key).toEqual(expect.arrayContaining(['name']));
       else expect(contents, key).toEqual([]);
     }
@@ -65,6 +68,7 @@ describe('the persona chip in the default prompts', () => {
       const out = renderPromptTemplate(values[key], ctx);
       expect(out.includes('Persona Fixture'), key).toBe(COVERED.has(key));
       expect(out.includes('only the Full variant carries'), key).toBe(FULL.includes(key));
+      expect(out.includes('only the Summary variant carries'), key).toBe(SUMMARY.includes(key));
     }
   });
 

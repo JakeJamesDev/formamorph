@@ -145,6 +145,11 @@ const ENTITY_STATS_AXIS: PromptVariantAxis = {
   options: [{ id: null, label: 'Stats' }, { id: 'nostats', label: 'No Stats' }],
 };
 
+// The Persona chip's stats piece, shaped as the Entities chip's so a bare token sends stats.
+const PERSONA_STATS_AXIS: PromptVariantAxis = {
+  ...ENTITY_STATS_AXIS, help: "Sends the persona's own stats: range, descriptor and description",
+};
+
 // Each variable gets a fixed palette slot so its color is stable everywhere (chip + preview, every prompt).
 const WORLD: PromptVariable = { token: '<WORLD DESCRIPTION>', label: 'World', color: HIGHLIGHT_PALETTE[0], affixable: true };
 const STATS: PromptVariable = { token: '<STATS DESCRIPTION>', label: 'Stats', color: HIGHLIGHT_PALETTE[1], axes: [STAT_VALUES_AXIS, STAT_STATUS_AXIS, STAT_MEANING_AXIS, FORMAT_AXIS] };
@@ -152,7 +157,7 @@ const TRAITS: PromptVariable = { token: '<TRAITS DESCRIPTION>', label: 'Traits',
 const LOCATION: PromptVariable = { token: '<LOCATION>', label: 'Location', color: HIGHLIGHT_PALETTE[3], axes: [LOCATION_SCOPE_AXIS, CONTENT_AXIS, FORMAT_AXIS], affixable: true };
 // The entity the player plays. Affixable so a placement can carry its own heading, which then disappears
 // with the value when no persona is set.
-const PERSONA: PromptVariable = { token: '<PERSONA>', label: 'Persona', color: HIGHLIGHT_PALETTE[17], axes: [PERSONA_CONTENT_AXIS, FORMAT_AXIS], affixable: true };
+const PERSONA: PromptVariable = { token: '<PERSONA>', label: 'Persona', color: HIGHLIGHT_PALETTE[17], axes: [PERSONA_CONTENT_AXIS, PERSONA_STATS_AXIS, FORMAT_AXIS], affixable: true };
 const NOTES: PromptVariable = { token: '<NOTES>', label: 'Notes', color: HIGHLIGHT_PALETTE[4], affixable: true };
 const LENGTH: PromptVariable = { token: '<LENGTH GUIDANCE>', label: 'Length Guidance', color: HIGHLIGHT_PALETTE[5] };
 const MARKDOWN: PromptVariable = {

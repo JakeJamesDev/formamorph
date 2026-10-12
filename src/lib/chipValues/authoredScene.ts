@@ -4,6 +4,7 @@ import { entityIdsAt } from '../entityPresence';
 import { allPlaceholders } from '../placeholderHomes';
 import { PLAYER_BEARER, playsAs, resolveBearers, type Bearer } from '../bearers';
 import { characterAsPlayer } from '../builtinPlaceholders';
+import { resolvePersona } from '../persona';
 import { copyLookup, readerFor, type CopyLookup } from '../blueprints';
 import { borneByPlayer, withBearerTrees } from '../ownedTraitsInPlay';
 import { resolveBearerText, resolveEntityText, resolvePlaceholders } from '../placeholders';
@@ -60,8 +61,8 @@ const atStartingValue = (stat: Stat): PlayerStat => ({ ...stat, value: typeof st
  * The world being edited as a Chip Scene: its own opening. The scene is at the starting location with the
  * cast the author placed there, every stat at its authored starting value, the traits the author marked
  * default, and every enabled lore entry (nothing has been typed yet, so no keyword has fired to narrow
- * them). No persona is picked, so the Custom Persona entity plays as under None. There are no notes and no
- * clock: a world has none until a player enters it.
+ * them). No persona is picked, so the Custom Persona entity is the persona, as under None. There are no
+ * notes and no clock: a world has none until a player enters it.
  */
 export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOptions = {}): ChipScene {
   // Destructuring defaults are runtime-only backstops: the type demands the slices, but a hand-edited
@@ -135,7 +136,8 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
       return bearer.entity && defaults.length ? [[bearer.id, defaults]] : [];
     })),
     ownedStats,
-    persona: null,
+    // Under None the Custom Persona entity is the persona, as play resolves it.
+    persona: resolvePersona(undefined, cast, []).persona,
     // Under None the Custom Persona entity plays, so its name is the Player Name.
     playerName: played[0]?.name ?? null,
     location,

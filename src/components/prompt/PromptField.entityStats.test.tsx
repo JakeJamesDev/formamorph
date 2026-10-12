@@ -39,3 +39,15 @@ describe('the Entities chip’s Stats checkbox', () => {
     expect(screen.getByRole('checkbox', { name: /Range/ })).toBeDisabled();
   });
 });
+
+describe('the Persona chip’s Stats checkbox', () => {
+  it('is checked on a saved token and writes `nostats` when cleared', async () => {
+    const onChange = vi.fn();
+    const { container } = render(<Field initial={'<PERSONA|summary.markdown|header="{{user}} (Player Character)">'} onChange={onChange} />);
+    await userEvent.click(container.querySelector('[data-chip-token]')!);
+    const box = screen.getByRole('checkbox', { name: /Stats/ });
+    expect(box).toBeChecked();
+    await userEvent.click(box);
+    await waitFor(() => expect(onChange).toHaveBeenLastCalledWith('<PERSONA|summary.nostats.markdown|header="{{user}} (Player Character)">'));
+  });
+});
