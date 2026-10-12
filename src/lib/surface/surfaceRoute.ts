@@ -40,6 +40,7 @@ const DIALOGS: Record<DevModal, DialogRoute> = {
   formaquestion: { host: 'any' },
   formaquestionSettings: { host: 'any' },
   formaquestionAiContext: { host: 'any' },
+  formaquestionWikiConfirm: { ancestor: 'formaquestion' },
   formaquestionCompare: { ancestor: 'formaquestionSettings.prompts' },
   settingsCompare: { ancestor: 'settings.prompts' },
 

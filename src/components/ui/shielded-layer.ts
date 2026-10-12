@@ -25,7 +25,7 @@ const MARK = 'data-shielded-layer';
 
 export type ShieldedLayerName = 'window' | 'toasts';
 
-/** Above dialogs, popovers and selects (z-50). Below the chip typeahead (z-70) and tooltips (z-80). */
+/** Above dialogs, popovers and selects (z-50) and the chip typeaheads (z-60). Below tooltips (z-80). */
 const LAYER_Z_INDEX: Record<ShieldedLayerName, number> = { window: 65, toasts: 66 };
 /** Below dialogs, for a layer that a dialog covers. */
 const COVERED_Z_INDEX = 40;

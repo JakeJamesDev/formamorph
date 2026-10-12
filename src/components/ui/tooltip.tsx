@@ -131,7 +131,7 @@ const TooltipTrigger = TooltipPrimitive.Trigger
 
 const TooltipPortal = TooltipPrimitive.Portal
 
-/** Sits above dialogs (z-50) and the prompt chip typeahead (z-70): a tip can be raised from inside both. */
+/** Sits above dialogs (z-50), the prompt chip typeahead (z-60) and the help window (z-65): a tip can be raised from inside each. */
 const TooltipPositioner = React.forwardRef<HTMLDivElement, TooltipPrimitive.Positioner.Props>(
   ({ className, sideOffset = 6, ...props }, ref) => (
     <TooltipPrimitive.Positioner
