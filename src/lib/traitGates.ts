@@ -1,7 +1,7 @@
 // Trait gates: what a requirement list unlocks, and what a selection settles to. Every owner is one bearer
 // and gates on its own active set; the player's owners (the world root and the played entity) read as one.
 
-import type { PersonaRef, RequirementBearer, Trait, TraitGroup, TraitRequirement } from '@/types';
+import type { PersonaRef, RequirementBearer, StatRequirement, Trait, TraitGroup, TraitRequirement } from '@/types';
 import { defaultPicks, exclusiveSiblings, isAlwaysOn, isHidden, traitOrderIndex } from './traitEffects';
 // The generic tree, not traitTree: that module reads the bearer resolver, which reads this one.
 import { buildTree, flattenTree } from './groupTree';
@@ -33,11 +33,25 @@ export interface GateEntity {
   customPersona?: boolean;
 }
 
+/** One stat as a stat Condition reads it: its value on its effective min→max. */
+export interface GateStat {
+  name: string;
+  value: number;
+  min: number;
+  max: number;
+  /** Switched off: a Condition on it is unresolved (Q21). */
+  inert?: boolean;
+  /** Hidden from the player, so player-facing lines leave a Condition on it out. */
+  hidden?: boolean;
+}
+
 export interface GateInput {
   /** Every present bearer, the player first. */
   owners: readonly GateOwner[];
   /** Owner id → its active trait ids. */
   active: Readonly<Record<string, readonly string[]>>;
+  /** Owner id → stat id → that owner's stat. Absent, every stat Condition is unresolved. */
+  stats?: Readonly<Record<string, Readonly<Record<string, GateStat>>>>;
   entities: readonly GateEntity[];
   persona: PersonaRef;
   /** Every world trait and group a requirement can name, whether or not a present bearer holds it. Absent,
@@ -50,7 +64,7 @@ export interface ConditionState {
   text: string;
   holds: boolean;
   unresolved: boolean;
-  /** The target is a Hidden trait, so player-facing lines leave it out (Q14). */
+  /** The target is a Hidden trait, or a hidden or inert stat, so player-facing lines leave it out (Q14, Q21). */
   hidden: boolean;
 }
 
@@ -104,9 +118,11 @@ export const bearerOf = (req: TraitRequirement): RequirementBearer | undefined =
 export const bearerKey = (bearer?: RequirementBearer): string =>
   (bearer === undefined ? 'same' : bearer.kind === 'you' ? 'you' : `entity:${bearer.id}`);
 
-/** Whether two requirements add the same gate: the same target under the same bearer, both plain or both Not. */
+/** Whether two requirements add the same gate: the same target under the same bearer, both plain or both Not,
+ *  and for a stat the same comparison. */
 export const sameRequirement = (a: TraitRequirement, b: TraitRequirement): boolean =>
-  a.kind === b.kind && a.id === b.id && bearerKey(bearerOf(a)) === bearerKey(bearerOf(b)) && !a.not === !b.not;
+  a.kind === b.kind && a.id === b.id && bearerKey(bearerOf(a)) === bearerKey(bearerOf(b)) && !a.not === !b.not
+  && (a.kind !== 'stat' || (b.kind === 'stat' && a.operator === b.operator && a.value === b.value && a.unit === b.unit));
 
 interface Located<T> { owner: GateOwner; item: T }
 
@@ -172,7 +188,22 @@ function index(input: GateInput) {
     (bearer === undefined ? setOf(from) : bearer.kind === 'you' ? playerIds : new Set([bearer.id]));
   const traitsBelow = (set: ReadonlySet<string>, groupId: string): string[] =>
     [...set].flatMap((ownerId) => owners.get(ownerId)?.below.get(groupId) ?? []);
-  return { owners, traitNames, groupNames, hiddenTraits, entities, playerIds, bearerSet, traitsBelow, persona: input.persona };
+  const stats = input.stats ?? {};
+  const statNames = new Map<string, string>();
+  for (const set of Object.values(stats)) for (const [id, stat] of Object.entries(set)) if (!statNames.has(id)) statNames.set(id, stat.name);
+  /** The stat a stat Condition on `from` reads: the first owner in its bearer's set holding the id. Null when
+   *  the named bearer is gone or no owner in the set holds it. */
+  const statOf = (req: StatRequirement, from: GateOwner): GateStat | null => {
+    if (req.bearer?.kind === 'entity' && !entities.has(req.bearer.id) && !owners.has(req.bearer.id)) return null;
+    for (const ownerId of bearerSet(req.bearer, from)) {
+      const stat = stats[ownerId]?.[req.id];
+      if (stat) return stat;
+    }
+    return null;
+  };
+  return {
+    owners, traitNames, groupNames, hiddenTraits, statNames, entities, playerIds, bearerSet, traitsBelow, statOf, persona: input.persona,
+  };
 }
 
 type Index = ReturnType<typeof index>;
@@ -189,7 +220,7 @@ const activeSets = (input: GateInput): ActiveIn => {
 
 /** Whether a Condition's target is on for `trait`. The trait itself and its exclusive siblings in its own tree
  *  never count (Q26); another bearer's copy of a sibling does. */
-function targetOn(req: TraitRequirement, trait: Located<Trait>, activeIn: ActiveIn, idx: Index): boolean {
+function targetOn(req: Exclude<TraitRequirement, StatRequirement>, trait: Located<Trait>, activeIn: ActiveIn, idx: Index): boolean {
   if (req.kind === 'playingAs') return idx.persona.source === 'world' && idx.persona.entityId === req.id;
   const set = idx.bearerSet(req.bearer, trait.owner);
   const rivals = idx.owners.get(trait.owner.id)?.rivals.get(trait.item.id);
@@ -199,15 +230,46 @@ function targetOn(req: TraitRequirement, trait: Located<Trait>, activeIn: Active
   return idx.traitsBelow(set, req.id).some(counts);
 }
 
+/** Where a stat reads on a stat Condition's scale: its value, or its share of min→max with a zero span at 0%
+ *  (Q22). */
+const statReading = (stat: GateStat, unit: StatRequirement['unit']): number => {
+  if (unit === 'raw') return stat.value;
+  const span = stat.max - stat.min;
+  return span === 0 ? 0 : ((stat.value - stat.min) / span) * 100;
+};
+
+/** Whether `reading` compares to `value` as `operator` says. Equality reads the rounded number the stat bar
+ *  shows. */
+function compares(reading: number, operator: StatRequirement['operator'], value: number): boolean {
+  switch (operator) {
+    case '>': return reading > value;
+    case '<': return reading < value;
+    case '>=': return reading >= value;
+    case '<=': return reading <= value;
+    case '=': return Math.round(reading) === value;
+    case '≠': return Math.round(reading) !== value;
+  }
+}
+
+/** Whether a stat Condition on `from` holds: its stat resolves and is not inert, and it compares, or fails to
+ *  under Not. */
+function statHolds(req: StatRequirement, from: GateOwner, idx: Index): boolean {
+  const stat = idx.statOf(req, from);
+  if (!stat || stat.inert) return false;
+  return compares(statReading(stat, req.unit), req.operator, req.value) !== !!req.not;
+}
+
 /** Whether one Condition holds for `trait` against `activeIn`: its target is on, or off under Not. */
 function requirementHolds(req: TraitRequirement, trait: Located<Trait>, activeIn: ActiveIn, idx: Index): boolean {
+  if (req.kind === 'stat') return statHolds(req, trait.owner, idx);
   return req.not ? !targetOn(req, trait, activeIn, idx) : targetOn(req, trait, activeIn, idx);
 }
 
 /** The Condition test for positive growth: every Not Condition on a target that exists holds, so growth stays
- *  monotone and a Condition whose target is gone never holds (Q27). */
+ *  monotone and a Condition whose target is gone never holds (Q27). A stat Condition reads no active set, so
+ *  it evaluates directly. */
 const growthHolds = (trait: Located<Trait>, activeIn: ActiveIn, idx: Index) => (req: TraitRequirement): boolean =>
-  (req.not ? resolves(req, idx) : requirementHolds(req, trait, activeIn, idx));
+  (req.not && req.kind !== 'stat' ? resolves(req, idx) : requirementHolds(req, trait, activeIn, idx));
 
 /** The bearer's name as the text reads it, or null when the named entity is gone. */
 function bearerName(bearer: RequirementBearer, idx: Index): string | null {
@@ -216,7 +278,7 @@ function bearerName(bearer: RequirementBearer, idx: Index): string | null {
 }
 
 /** Whether a Condition's target, and its named bearer, still exist. */
-function resolves(req: TraitRequirement, idx: Index): boolean {
+function resolves(req: Exclude<TraitRequirement, StatRequirement>, idx: Index): boolean {
   if (req.kind === 'playingAs') return idx.entities.has(req.id);
   const target = req.kind === 'trait' ? idx.traitNames.has(req.id) : idx.groupNames.has(req.id);
   return target && (!req.bearer || bearerName(req.bearer, idx) !== null);
@@ -235,9 +297,14 @@ function requirementText(req: TraitRequirement, idx: Index): { text: string; unr
     ? (idx.traitNames.has(req.id)
       ? { text: idx.traitNames.get(req.id)!, unresolved: false }
       : { text: req.name ?? 'a missing trait', unresolved: true })
-    : (idx.groupNames.has(req.id)
-      ? { text: `any ${idx.groupNames.get(req.id)}`, unresolved: false }
-      : { text: req.name ? `any ${req.name}` : 'any trait in a missing group', unresolved: true });
+    : req.kind === 'group'
+      ? (idx.groupNames.has(req.id)
+        ? { text: `any ${idx.groupNames.get(req.id)}`, unresolved: false }
+        : { text: req.name ? `any ${req.name}` : 'any trait in a missing group', unresolved: true })
+      : {
+        text: `${idx.statNames.get(req.id) ?? req.name ?? 'a missing stat'} ${req.operator} ${req.value}${req.unit === 'percent' ? '%' : ''}`,
+        unresolved: !idx.statNames.has(req.id),
+      };
   const target = { ...named, text: `${not}${named.text}` };
   if (!req.bearer) return target;
   const name = bearerName(req.bearer, idx);
@@ -269,9 +336,12 @@ export function gateStates(input: GateInput): GateStates {
     for (const trait of traits.values()) {
       const rows = (trait.item.requires ?? []).map((row): RowState => {
         const conditions = row.all.map((req): ConditionState => {
-          const { text, unresolved } = requirementText(req, idx);
-          const hidden = req.kind === 'trait' && idx.hiddenTraits.has(req.id);
-          return { text, unresolved, hidden, holds: !unresolved && requirementHolds(req, trait, activeIn, idx) };
+          const named = requirementText(req, idx);
+          // A stat resolves against the trait owner's bearer set, which the text alone does not read.
+          const stat = req.kind === 'stat' ? idx.statOf(req, owner) : null;
+          const unresolved = named.unresolved || (req.kind === 'stat' && (!stat || !!stat.inert));
+          const hidden = req.kind === 'trait' ? idx.hiddenTraits.has(req.id) : !!stat && (!!stat.hidden || !!stat.inert);
+          return { text: named.text, unresolved, hidden, holds: !unresolved && requirementHolds(req, trait, activeIn, idx) };
         });
         return { holds: conditions.every((c) => c.holds), conditions };
       });
@@ -308,7 +378,7 @@ const byRank = <T extends Located<Trait>>(items: readonly T[], rank: ReadonlyMap
 
 /** The traits a Condition on `from` names, in the owners it reads, either polarity. */
 function targetsOf(req: TraitRequirement, from: GateOwner, idx: Index): Located<Trait>[] {
-  if (req.kind === 'playingAs') return [];
+  if (req.kind === 'playingAs' || req.kind === 'stat') return [];
   const set = idx.bearerSet(req.bearer, from);
   const ids = req.kind === 'trait' ? [req.id] : [...new Set(idx.traitsBelow(set, req.id))];
   return [...set].flatMap((ownerId) => ids.flatMap((id) => idx.owners.get(ownerId)?.traits.get(id) ?? []));
@@ -578,9 +648,10 @@ export function neverUnlockable(input: Omit<GateInput, 'active'>): GateTraitRef[
   const personas = new Set(input.entities.filter((e) => e.persona).map((e) => e.id));
   const open = new Set<string>();
   const activeIn: ActiveIn = (ownerId, id) => open.has(key(ownerId, id));
-  const canHold = (trait: Located<Trait>) => (req: TraitRequirement) => (req.kind === 'playingAs' && !req.not
-    ? personas.has(req.id)
-    : growthHolds(trait, activeIn, idx)(req));
+  // A stat can move either way in play, so its Condition counts as holding (Q20).
+  const canHold = (trait: Located<Trait>) => (req: TraitRequirement) => (req.kind === 'stat' ? true
+    : req.kind === 'playingAs' && !req.not ? personas.has(req.id)
+      : growthHolds(trait, activeIn, idx)(req));
   const all = [...idx.owners.values()].flatMap((o) => [...o.traits.values()]);
   for (let grew = true; grew;) {
     grew = false;
@@ -694,8 +765,9 @@ export function deadRows(input: Omit<GateInput, 'active'>): RowRef[] {
   // Two Conditions share a bearer when they read the same owners, however each names it: "You:" on the
   // player's own trait reads what no bearer does.
   const sameOwners = (a: ReadonlySet<string>, b: ReadonlySet<string>) => a.size === b.size && [...a].every((id) => b.has(id));
+  // A stat Condition is satisfiable both ways, so it clashes with nothing (Q20).
   const clash = (owner: GateOwner) => (plain: TraitRequirement, not: TraitRequirement): boolean => {
-    if (plain.not || !not.not) return false;
+    if (plain.not || !not.not || plain.kind === 'stat' || not.kind === 'stat') return false;
     if (plain.kind === 'playingAs' || not.kind === 'playingAs') return plain.kind === not.kind && plain.id === not.id;
     const set = idx.bearerSet(plain.bearer, owner);
     if (!sameOwners(set, idx.bearerSet(not.bearer, owner))) return false;
@@ -769,7 +841,7 @@ function opensTogether(targets: Located<Trait>[], idx: Index, stuck: ReadonlySet
   const pending = new Set<string>();
   const clashes = (t: Located<Trait>) =>
     [...(idx.owners.get(t.owner.id)?.rivals.get(t.item.id) ?? [])].some((id) => picked.has(key(t.owner.id, id)));
-  const satisfiers = (req: Exclude<TraitRequirement, { kind: 'playingAs' }>, t: Located<Trait>): Located<Trait>[] => {
+  const satisfiers = (req: Exclude<TraitRequirement, { kind: 'playingAs' } | StatRequirement>, t: Located<Trait>): Located<Trait>[] => {
     const set = idx.bearerSet(req.bearer, t.owner);
     const rivals = idx.owners.get(t.owner.id)?.rivals.get(t.item.id);
     const ids = req.kind === 'trait' ? [req.id] : [...new Set(idx.traitsBelow(set, req.id))];
@@ -791,8 +863,8 @@ function opensTogether(targets: Located<Trait>[], idx: Index, stuck: ReadonlySet
       return false;
     };
     // Each Condition of a row opens in turn before the next; the trait itself joins after the last. A Not
-    // Condition counts as met, as in `neverUnlockable`.
-    const meet = (req: TraitRequirement, then: () => boolean) => (req.not ? then() : req.kind === 'playingAs'
+    // Condition and a stat Condition count as met, as in `neverUnlockable`.
+    const meet = (req: TraitRequirement, then: () => boolean) => (req.not || req.kind === 'stat' ? then() : req.kind === 'playingAs'
       ? idx.persona.source === 'world' && idx.persona.entityId === req.id && then()
       : satisfiers(req, t).some((s) => open(s, then)));
     const rows = t.item.requires ?? [];

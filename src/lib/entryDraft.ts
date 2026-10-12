@@ -1,8 +1,9 @@
 import type { DictionarySelectionItem } from './dictionarySelection';
 import { locationForPersonaPick, withoutPersona, type PersonaPickContext } from './personaPick';
 import { resolveBearers } from './bearers';
+import { startingGateStats } from './gateStats';
 import { WORLD_OWNER, settle, settleDefaults, type GateInput, type GateOwner, type SettleResult } from './traitGates';
-import type { CascadeOffTraitIds, Entity, OwnedTraitPicks, PersonaRef, Trait, TraitGroup } from '@/types';
+import type { CascadeOffTraitIds, Entity, OwnedTraitPicks, PersonaRef, Stat, StatGroup, Trait, TraitGroup } from '@/types';
 
 /** Choices retained for one visit to Enter World. */
 export interface EntryDraft {
@@ -45,7 +46,16 @@ export interface EntryTraitWorld {
   entities: readonly Entity[];
   /** The library persona and the added library entities, in the order added. */
   library: readonly Entity[];
+  /** The world's stats, which stat Conditions read at their authored start. Absent, those stay unresolved. */
+  stats?: readonly Stat[];
+  statGroups?: readonly StatGroup[];
 }
+
+/** The gate input over every present bearer under `persona`, without the active sets. */
+const entryGateBase = (world: EntryTraitWorld, persona: PersonaRef): Omit<GateInput, 'active'> => ({
+  ...resolveBearers(world, persona, world.library).gate,
+  stats: startingGateStats(world, world.library),
+});
 
 /** Every present bearer under `persona`: the player, the world's entities, then the library entities. */
 export const entryOwners = (world: EntryTraitWorld, persona: PersonaRef): readonly GateOwner[] =>
@@ -55,7 +65,7 @@ export const entryOwners = (world: EntryTraitWorld, persona: PersonaRef): readon
 export const entryGateInput = (
   world: EntryTraitWorld, draft: Pick<EntryDraft, 'traitIds' | 'ownedTraitIds' | 'persona'>,
 ): GateInput => ({
-  ...resolveBearers(world, draft.persona, world.library).gate,
+  ...entryGateBase(world, draft.persona),
   active: { ...draft.ownedTraitIds, [WORLD_OWNER]: draft.traitIds },
 });
 
@@ -73,7 +83,7 @@ export function withSettledTraits(draft: EntryDraft, result: Pick<SettleResult, 
 /** Every owner's default picks under `persona`. */
 export function entryDefaults(world: EntryTraitWorld, persona: PersonaRef): Pick<EntryDraft, 'traitIds' | 'ownedTraitIds'> {
   const { [WORLD_OWNER]: traitIds = [], ...ownedTraitIds } =
-    settleDefaults(resolveBearers(world, persona, world.library).gate).active;
+    settleDefaults(entryGateBase(world, persona)).active;
   return { traitIds, ownedTraitIds };
 }
 

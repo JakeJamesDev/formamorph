@@ -1,9 +1,10 @@
 // An entity's owned traits and links off-world: named on the way out, bound to a receiving world on the way in.
 
 import type {
-  Entity, Placeholder, PlaceholderGroup, RequirementBearer, Stat, StatGroup, Trait, TraitGroup, TraitLink, TraitRequirement,
+  Entity, Placeholder, PlaceholderGroup, RequirementBearer, Stat, StatGroup, StatRequirement, Trait, TraitGroup, TraitLink, TraitRequirement,
 } from '@/types';
 import { linksInTreeOrder, originalOf } from './bearers';
+import { playerStatsOf, resolvedEntityStats } from './statLinks';
 import { rekeyed, uniqueNamed } from './carriedBinding';
 import { bindOwnedStats, type StatWorld } from './portableStats';
 import { remintOwnedTraits } from './ownedTraits';
@@ -44,7 +45,11 @@ export const traitWorldOf = (data: {
 const ownIds = (entity: Entity): Set<string> =>
   new Set([...(entity.traits ?? []), ...(entity.traitGroups ?? [])].map((item) => item.id));
 
-/** Every trait and group of the world and of its entities other than `except`. */
+/** Whether a requirement points inside the entity: at one of its own traits, groups or stats. */
+const pointsInside = (r: TraitRequirement, entity: Entity, inside: ReadonlySet<string>): boolean =>
+  (r.kind === 'stat' ? !!entity.stats?.some((s) => s.id === r.id) : r.kind !== 'playingAs' && inside.has(r.id));
+
+/** Every trait, group and stat of the world and of its entities other than `except`. */
 function targets(world: TraitWorld, except?: string) {
   const others = world.entities.filter((e) => e.id !== except);
   const lists: Record<TraitRequirement['kind'], readonly Named[]> = {
@@ -52,13 +57,14 @@ function targets(world: TraitWorld, except?: string) {
     group: [...world.traitGroups, ...others.flatMap((e) => e.traitGroups ?? [])],
     // Only a persona can be played as.
     playingAs: others.filter((e) => e.persona),
+    stat: [...world.stats ?? [], ...others.flatMap((e) => e.stats ?? [])],
   };
   return lists;
 }
 
-const NO_TARGETS: ReturnType<typeof targets> = { trait: [], group: [], playingAs: [] };
+const NO_TARGETS: ReturnType<typeof targets> = { trait: [], group: [], playingAs: [], stat: [] };
 
-const isSelf = (r: TraitRequirement, entityId: string) =>
+const isSelf = (r: TraitRequirement, entityId: string): r is Extract<TraitRequirement, { kind: 'playingAs' }> =>
   r.kind === 'playingAs' && (r.id === SELF_ENTITY || r.id === entityId);
 
 const isSelfBearer = (b: EntityBearer, entityId: string) => b.id === SELF_ENTITY || b.id === entityId;
@@ -178,7 +184,7 @@ export function portableOwnedTraits(entity: Entity, world?: TraitWorld): Portabl
   const traits = withRequires(entity, (req) => {
     if (isSelf(req, entity.id)) return { ...req, id: SELF_ENTITY, name: entity.name };
     const r = withBearer(req, bearer);
-    if (r.kind !== 'playingAs' && inside.has(r.id)) return r;
+    if (pointsInside(r, entity, inside)) return r;
     const name = pool[r.kind].find((item) => item.id === r.id)?.name ?? r.name;
     return name ? { ...r, name } : r;
   });
@@ -205,11 +211,21 @@ export function bindOwnedTraits(entity: Entity, world: TraitWorld): Entity {
     if (others.some((e) => e.id === b.id)) return b;
     return { ...b, id: uniqueNamed(others, b.name)?.id ?? '' };
   };
+  const statWorld = world.stats && { stats: world.stats, statGroups: world.statGroups ?? [] };
+  // A stat binds among its bearer's stats, since names like Health repeat across entities (Q25).
+  const statsOf = (r: StatRequirement, at: NonNullable<typeof statWorld>): readonly Named[] => {
+    if (!r.bearer) return at.stats;
+    if (r.bearer.kind === 'you') return playerStatsOf([...at.stats], at.statGroups);
+    const id = r.bearer.id;
+    const held = id === entity.id ? entity : others.find((e) => e.id === id);
+    return held ? resolvedEntityStats(at, held) : [];
+  };
   const bind = (req: TraitRequirement): TraitRequirement => {
     if (isSelf(req, entity.id)) return { ...req, id: entity.id };
     const r = withBearer(req, bearer);
-    if (r.kind !== 'playingAs' && inside.has(r.id)) return r;
-    const list = pool[r.kind];
+    // A world record that carries no stats has none to bind a stat Condition to.
+    if (pointsInside(r, entity, inside) || (r.kind === 'stat' && !statWorld)) return r;
+    const list = r.kind === 'stat' ? statsOf(r, statWorld!) : pool[r.kind];
     if (list.some((item) => item.id === r.id)) return r;
     return { ...r, id: uniqueNamed(list, r.name)?.id ?? '' };
   };
@@ -245,8 +261,9 @@ export const comparableOwnedTraits = (entity: Entity): { traits?: Trait[]; trait
     if (isSelf(req, entity.id)) return { kind: req.kind, id: SELF_ENTITY, ...not };
     const r = withBearer(req, (b) => comparableBearer(b, entity.id));
     const bearer = r.kind !== 'playingAs' && r.bearer ? { bearer: r.bearer } : {};
-    if ((r.kind !== 'playingAs' && inside.has(r.id)) || !r.name) return { kind: r.kind, id: r.id, ...bearer, ...not } as TraitRequirement;
-    return { kind: r.kind, id: '', name: r.name, ...bearer, ...not } as TraitRequirement;
+    const comparison = r.kind === 'stat' ? { operator: r.operator, value: r.value, unit: r.unit } : {};
+    if (pointsInside(r, entity, inside) || !r.name) return { kind: r.kind, id: r.id, ...bearer, ...comparison, ...not } as TraitRequirement;
+    return { kind: r.kind, id: '', name: r.name, ...bearer, ...comparison, ...not } as TraitRequirement;
   });
   return {
     ...(traits ? { traits } : {}),
