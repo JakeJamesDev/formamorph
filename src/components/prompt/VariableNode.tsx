@@ -12,7 +12,7 @@ import { ChipVocabularyContext } from '@/lib/chipVocabulary';
 import type { ChipVocabulary } from '@/lib/chipVocabulary';
 import { remintPlaceholderPlacements } from '@/lib/placeholders';
 import { OpenValueChip } from './OpenValueChip';
-import { EditValueContext, OpenValuesContext } from './openValueContext';
+import { ChipReadsContext, EditValueContext, OpenValuesContext } from './openValueContext';
 import { startPlacedChipDrag, type ChipDragKey } from './chipDragSource';
 import { ChipOptionsDialog } from './ChipOptionsDialog';
 
@@ -46,6 +46,7 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
   const dragKey = useContext(PromptDragContext);
   const vocab = useContext(ChipVocabularyContext);
   const openValues = useContext(OpenValuesContext);
+  const reads = useContext(ChipReadsContext);
   const { ask } = useContext(EditValueContext);
   const [open, setOpen] = useState(false);
   const [renaming, setRenaming] = useState(false);
@@ -152,6 +153,7 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
       trigger={chip}
       token={token}
       vocab={vocab}
+      reads={reads}
       editable={editable && known}
       update={update}
       onRepick={repickable ? repick : undefined}

@@ -153,14 +153,29 @@ function headerText(header: string | undefined, values: TokenValues): string | u
  * parse here and returns undefined, leaving that family's own lookup to handle it.
  */
 export function resolveToken(token: string, values: TokenValues): string | undefined {
+  const rendered = resolveTokenParts(token, values);
+  return rendered && `${rendered.before}${rendered.value}${rendered.after}`;
+}
+
+/** What one token renders to, split into the chip's own value and the placement text around it: the Header's
+ *  frame and the Prepend and Append. `before + value + after` is exactly {@link resolveToken}'s text. */
+export interface RenderedToken {
+  before: string;
+  value: string;
+  after: string;
+}
+
+/** {@link resolveToken}, with the value kept apart from the text that wraps it. */
+export function resolveTokenParts(token: string, values: TokenValues): RenderedToken | undefined {
   const parts = splitToken(token);
   if (!parts) return undefined;
   const value = readValue(values, parts.key);
   if (value === undefined) return undefined;
   const header = promptHeader(headerText(parts.header, values), chipHeaderFormat(parts));
+  const none: RenderedToken = { before: '', value: '', after: '' };
   // The value's own edge line breaks would shift the static frame.
-  if (header) return isBlankValue(value) ? ''
-    : `${header.pre}${parts.pre}${value.replace(/^(?:[ \t]*\r?\n)+/, '').trimEnd()}${parts.post}${header.post}`;
-  if (!parts.pre && !parts.post) return value;
-  return isBlankValue(value) ? '' : `${parts.pre}${value}${parts.post}`;
+  if (header) return isBlankValue(value) ? none
+    : { before: `${header.pre}${parts.pre}`, value: value.replace(/^(?:[ \t]*\r?\n)+/, '').trimEnd(), after: `${parts.post}${header.post}` };
+  if (!parts.pre && !parts.post) return { ...none, value };
+  return isBlankValue(value) ? none : { before: parts.pre, value, after: parts.post };
 }

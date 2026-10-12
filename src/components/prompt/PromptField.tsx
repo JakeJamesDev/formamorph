@@ -46,7 +46,7 @@ import { ValueEdgesPlugin } from './ValueEdgesPlugin';
 import { OpenValueLayoutPlugin } from './OpenValueLayoutPlugin';
 import { ActiveValuePlugin } from './ActiveValuePlugin';
 import {
-  ActiveValueContext, EditValueContext, OpenValuesContext,
+  ActiveValueContext, ChipReadsContext, EditValueContext, OpenValuesContext,
   type ActiveValueRelay, type EditValueRelay, type OpenValueView,
 } from './openValueContext';
 import { buildEditorState, createEchoLedger, serializeRoot, $applyMarkdownAction } from './promptFieldState';
@@ -504,7 +504,7 @@ function MarkdownPreviewPane({ value, previewValues, vocab, scrollRef, onScroll 
  * With `markdown`, it also gains a formatting toolbar and its Preview renders markdown instead of tinting
  * chips — for author-facing prose fields (world description, readme) that the player reads as markdown.
  */
-const PromptField = ({ value, onChange, variables = [], vocabulary, previewValues, openValues, onReroll, insertOwnerId, markdown = false, resizable = false, placeholder, className, readOnly = false, ariaLabel, sampleData = false, onRequestEdit, readOnlyReason, onRequestFullscreen, fullscreen: fullscreenProp, insertTrigger, label, info, labelAside, hint, tourAnchor, historyField }: {
+const PromptField = ({ value, onChange, variables = [], vocabulary, previewValues, chipReads, openValues, onReroll, insertOwnerId, markdown = false, resizable = false, placeholder, className, readOnly = false, ariaLabel, sampleData = false, onRequestEdit, readOnlyReason, onRequestFullscreen, fullscreen: fullscreenProp, insertTrigger, label, info, labelAside, hint, tourAnchor, historyField }: {
   value: string;
   onChange: (v: string) => void;
   /** Prompt-variable palette (used when no explicit `vocabulary` is given — the default prompt family). */
@@ -512,6 +512,8 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   /** Override the token family (e.g. world placeholders). Defaults to the prompt vocabulary from `variables`. */
   vocabulary?: ChipVocabulary;
   previewValues?: TokenValues;
+  /** What a chip's Chip Options reads, for a field that has no Preview to take `previewValues` from. */
+  chipReads?: TokenValues;
   /** Token → the value each chip opens on. Given with `previewValues`, the field offers a Values tab that
    *  shows every chip open on its value. */
   openValues?: Record<string, OpenValueView>;
@@ -987,6 +989,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   return (
     <LexicalComposer initialConfig={initialConfig}>
       <ChipVocabularyContext.Provider value={vocab}>
+      <ChipReadsContext.Provider value={chipReads ?? previewValues}>
       <OpenValuesContext.Provider value={openValues ?? NO_OPEN_VALUES}>
       <EditValueContext.Provider value={editValue}>
       <ActiveValueContext.Provider value={activeValue}>
@@ -1034,6 +1037,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
       </ActiveValueContext.Provider>
       </EditValueContext.Provider>
       </OpenValuesContext.Provider>
+      </ChipReadsContext.Provider>
       </ChipVocabularyContext.Provider>
     </LexicalComposer>
   );

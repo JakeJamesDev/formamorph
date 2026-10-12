@@ -146,6 +146,15 @@ describe('editing a Tool', () => {
     expect(saved()[0].handler).toEqual({ kind: 'script', code: '' });
   });
 
+  it('shows a Template scene chip its value on the world Try It runs on', async () => {
+    const user = userEvent.setup();
+    await openEditor(user, [weather({ handler: { kind: 'template', body: '<LOCATION>' } })]);
+    await user.click(tab('Handler'));
+    await user.click(document.querySelector<HTMLElement>('[data-chip]')!);
+    const reads = within(screen.getByRole('dialog', { name: 'Chip Options' })).getByRole('region', { name: 'What the AI Reads' });
+    expect(reads).toHaveTextContent('The Landing');
+  });
+
   it('restores each handler type’s fields when you switch back, until the edit ends', async () => {
     const user = userEvent.setup();
     await openEditor(user);
