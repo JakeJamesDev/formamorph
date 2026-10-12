@@ -481,7 +481,8 @@ export type ContextOpts = { preferSummary?: boolean; nameOnly?: boolean; format?
 // spelled here, and an option with no meaning throws so the render guard fails before a prompt renders a
 // raw token.
 const CONTENT_OPTS: Record<string, ContextOpts> = { summary: { preferSummary: true }, name: { nameOnly: true } };
-const STATS_OPTS: Record<string, ContextOpts> = { nostats: { noStats: true } };
+// Stats on reads as the scope's default.
+const STATS_OPTS: Record<string, ContextOpts> = { nostats: { noStats: true }, stats: {} };
 const FORMATS: Record<string, ContextFormat> = { markdown: "markdown", xml: "xml" };
 
 /** The builders' format for a chip's format option; the default option is the plain shape. */

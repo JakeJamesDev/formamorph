@@ -2,17 +2,14 @@ import { describe, it, expect } from 'vitest';
 import {
   SAMPLE_PREVIEW_VALUES, DERIVED_TOKENS, derivedPreviewValues, composePreviewValues, languagePreviewValue,
 } from './previewValuePool';
-import { ALL_PROMPT_VARIABLES, variableVariantIds, withVariant, baseToken } from './promptVariables';
 import { resolveToken } from './promptTemplate';
 import { personaContextValues } from './personaContext';
 import { chipValues } from './chipValues/chipValues';
 import { sampleChipScene } from './chipValues/sampleScene';
-import { spelledTokens } from '@/test/chipTokens';
+import { allSpelledTokens, spelledTokens } from '@/test/chipTokens';
 
 /** Every concrete token the chip vocabulary can produce, variants and all. */
-const everyToken = ALL_PROMPT_VARIABLES.flatMap((v) =>
-  [null, ...variableVariantIds(v)].map((id) => withVariant(baseToken(v.token), id)),
-);
+const everyToken = allSpelledTokens();
 
 const SETTINGS = {
   paragraphLimit: 'auto' as const,

@@ -7,24 +7,29 @@ export interface PromptVariant {
   id: string | null;
   label: string;
   help?: string;
+  /** Keep this option out of the chip label's pick list. */
+  hideInLabel?: boolean;
 }
 
 /** One independent dimension of a variable's variants (e.g. Stats has a `content` axis and a `format`
  *  axis). Each axis renders as its own segmented control in the pop-out. A variable with a single axis can
  *  just use `variants`; multi-axis variables use `axes`. The token suffix is the non-null option ids of
  *  every axis joined by `.` in axis order (e.g. content `descriptions` + format `markdown` →
- *  `<STATS DESCRIPTION|descriptions.markdown>`). Option ids must be unique across a variable's axes. */
+ *  `<STATS DESCRIPTION|descriptions.markdown>`). Option ids must be unique across a variable's axes and
+ *  match `[a-z]+`. */
 export interface PromptVariantAxis {
   id: string;
   label: string;
   options: PromptVariant[]; // first entry (id:null) is the default
-  /** Render as an independent checkbox (on = its non-null option) rather than a single-select control. A
-   *  variable's toggle axes form one "at least one must stay on" group in the editor. */
+  /** Render as an independent checkbox (on = its non-null option) rather than a single-select control. */
   toggle?: boolean;
   /** For a toggle axis: the checkbox is on while the axis holds its default (null) option, and clearing it
-   *  stores the non-null one. The bare token then keeps the piece, and the axis sits outside the "one piece
-   *  stays on" group. */
+   *  stores the non-null one. The bare token then keeps the piece. */
   onByDefault?: boolean;
+  /** For a toggle axis: one chip's toggle axes with this name form a group whose last piece on stays on. */
+  lockGroup?: string;
+  /** Leave the axis out of Chip Options. Its stored id still parses and survives an edit. */
+  hiddenInDialog?: boolean;
   /** Help shown beside a toggle axis's checkbox. */
   help?: string;
   /** Show the stored choice and take no input. For an axis whose options exist but cannot differ here. */
@@ -120,29 +125,53 @@ const FORMAT_AXIS: PromptVariantAxis = {
 // is always present; at least one piece must stay on (enforced in the editor). The old single-select ids
 // `numbers` (Range) and `descriptions` (Descriptor) are kept, so existing tokens still render; `meaning` is new.
 const STAT_VALUES_AXIS: PromptVariantAxis = {
-  id: 'numbers', label: 'Range', toggle: true, help: 'e.g. "10/100".',
+  id: 'numbers', label: 'Range', toggle: true, lockGroup: 'statDetail', help: 'e.g. "10/100".',
   options: [{ id: null, label: 'Range' }, { id: 'numbers', label: 'Range' }],
 };
 const STAT_STATUS_AXIS: PromptVariantAxis = {
-  id: 'descriptions', label: 'Descriptor', toggle: true, help: 'e.g. "Critical".',
+  id: 'descriptions', label: 'Descriptor', toggle: true, lockGroup: 'statDetail', help: 'e.g. "Critical".',
   options: [{ id: null, label: 'Descriptor' }, { id: 'descriptions', label: 'Descriptor' }],
 };
 const STAT_MEANING_AXIS: PromptVariantAxis = {
-  id: 'meaning', label: 'Description', toggle: true, help: 'e.g. "Physical stamina."',
+  id: 'meaning', label: 'Description', toggle: true, lockGroup: 'statDetail', help: 'e.g. "Physical stamina."',
   options: [{ id: null, label: 'Description' }, { id: 'meaning', label: 'Description' }],
 };
 
-// The Entities chip's stats piece. On by default, so a bare token (every prompt saved before it) sends stats;
-// the non-null id is the off state.
+/** A toggle axis on the Entities and Persona chips that the chip label never names. */
+function rosterToggle(
+  id: string, label: string, stored: string, help: string, extra: Partial<PromptVariantAxis> = {},
+): PromptVariantAxis {
+  return {
+    id, label, toggle: true, help, hiddenInDialog: true, ...extra,
+    options: [{ id: null, label }, { id: stored, label, hideInLabel: true }],
+  };
+}
+
+// Only With: keep only the entities that own a picked kind. Off by default; picks read as or.
+const ONLY_WITH_STATS_AXIS = rosterToggle('withstats', 'Stats', 'withstats', 'Keeps only entities that own stats');
+const ONLY_WITH_TRAITS_AXIS = rosterToggle('withtraits', 'Traits', 'withtraits', 'Keeps only entities that own traits');
+const PERSONA_ONLY_WITH_STATS_AXIS = { ...ONLY_WITH_STATS_AXIS, help: 'Sends the persona only when it owns stats' };
+const PERSONA_ONLY_WITH_TRAITS_AXIS = { ...ONLY_WITH_TRAITS_AXIS, help: 'Sends the persona only when it owns traits' };
+// Include Traits and the Stat Detail pieces are on by default, so each stored id is the off state.
+const INCLUDE_TRAITS_AXIS = rosterToggle('traits', 'Traits', 'notraits', "Sends each entity's owned traits", { onByDefault: true });
+const PERSONA_INCLUDE_TRAITS_AXIS = { ...INCLUDE_TRAITS_AXIS, help: "Sends the persona's owned traits" };
+const ROSTER_STAT_DETAIL_AXES: PromptVariantAxis[] = [
+  rosterToggle('range', 'Range', 'norange', 'Sends each stat\'s value and bounds, like "10/100"', { onByDefault: true, lockGroup: 'statDetail' }),
+  rosterToggle('descriptor', 'Descriptor', 'nodescriptor', 'Sends the word for the stat\'s current level, like "Critical"', { onByDefault: true, lockGroup: 'statDetail' }),
+  rosterToggle('description', 'Description', 'nodescription', "Sends what the stat measures", { onByDefault: true, lockGroup: 'statDetail' }),
+];
+
+// The Entities chip's stats piece: null is the scope's default (on for Here and In Scene), `nostats` stores off, `stats` on.
 const ENTITY_STATS_AXIS: PromptVariantAxis = {
   id: 'stats', label: 'Stats', toggle: true, onByDefault: true,
   help: "Sends each entity's stats: range, descriptor and description.",
-  options: [{ id: null, label: 'Stats' }, { id: 'nostats', label: 'No Stats' }],
+  options: [{ id: null, label: 'Stats' }, { id: 'nostats', label: 'No Stats' }, { id: 'stats', label: 'Stats', hideInLabel: true }],
 };
 
-// The Persona chip's stats piece, shaped as the Entities chip's so a bare token sends stats.
+// The Persona chip's stats piece: on in a bare token, `nostats` turns it off.
 const PERSONA_STATS_AXIS: PromptVariantAxis = {
   ...ENTITY_STATS_AXIS, help: "Sends the persona's own stats: range, descriptor and description",
+  options: ENTITY_STATS_AXIS.options.slice(0, 2),
 };
 
 // Each variable gets a fixed palette slot so its color is stable everywhere (chip + preview, every prompt).
@@ -152,7 +181,10 @@ const TRAITS: PromptVariable = { token: '<TRAITS DESCRIPTION>', label: 'Traits',
 const LOCATION: PromptVariable = { token: '<LOCATION>', label: 'Location', color: HIGHLIGHT_PALETTE[3], axes: [LOCATION_SCOPE_AXIS, CONTENT_AXIS, FORMAT_AXIS], affixable: true };
 // The entity the player plays. Affixable so a placement can carry its own heading, which then disappears
 // with the value when no persona is set.
-const PERSONA: PromptVariable = { token: '<PERSONA>', label: 'Persona', color: HIGHLIGHT_PALETTE[17], axes: [PERSONA_CONTENT_AXIS, PERSONA_STATS_AXIS, FORMAT_AXIS], affixable: true };
+const PERSONA: PromptVariable = { token: '<PERSONA>', label: 'Persona', color: HIGHLIGHT_PALETTE[17], axes: [
+  PERSONA_ONLY_WITH_STATS_AXIS, PERSONA_ONLY_WITH_TRAITS_AXIS, PERSONA_CONTENT_AXIS, PERSONA_INCLUDE_TRAITS_AXIS, PERSONA_STATS_AXIS,
+  ...ROSTER_STAT_DETAIL_AXES, FORMAT_AXIS,
+], affixable: true };
 const NOTES: PromptVariable = { token: '<NOTES>', label: 'Notes', color: HIGHLIGHT_PALETTE[4], affixable: true };
 const LENGTH: PromptVariable = { token: '<LENGTH GUIDANCE>', label: 'Length Guidance', color: HIGHLIGHT_PALETTE[5] };
 const MARKDOWN: PromptVariable = {
@@ -167,7 +199,9 @@ const MARKDOWN: PromptVariable = {
 // Director prompt only: expands to the cast-size guidance derived from the Limit Active Characters setting.
 const ACTIVE_CHARACTER: PromptVariable = { token: '<ACTIVE CHARACTER GUIDANCE>', label: 'Active Character Guidance', color: HIGHLIGHT_PALETTE[13] };
 // Entities are one chip whose `scope` axis picks here / sub-locations / reachable siblings.
-const ENTITIES: PromptVariable = { token: '<ENTITIES>', label: 'Entities', color: HIGHLIGHT_PALETTE[8], axes: [ENTITY_SCOPE_AXIS, CONTENT_AXIS, ENTITY_STATS_AXIS, FORMAT_AXIS], affixable: true };
+const ENTITIES: PromptVariable = { token: '<ENTITIES>', label: 'Entities', color: HIGHLIGHT_PALETTE[8], axes: [
+  ENTITY_SCOPE_AXIS, ONLY_WITH_STATS_AXIS, ONLY_WITH_TRAITS_AXIS, CONTENT_AXIS, INCLUDE_TRAITS_AXIS, ENTITY_STATS_AXIS, ...ROSTER_STAT_DETAIL_AXES, FORMAT_AXIS,
+], affixable: true };
 // The activated-dictionary lore for the turn — supplied by GameViewer per turn (narration prompt only). The
 // `before` variant renders the early "## Background Lore" block; the default renders the late "## Foreground Lore".
 const DICTIONARY: PromptVariable = {
@@ -278,18 +312,14 @@ export function variableAxes(variable: PromptVariable): PromptVariantAxis[] {
   return [];
 }
 
-/** All non-null combined variant ids a variable can produce (cross-product of its axes' options, each
- *  axis contributing its id or nothing), joined by `.` in axis order. Excludes the all-default (empty). */
-export function variableVariantIds(variable: PromptVariable): string[] {
-  let combos: string[][] = [[]];
-  for (const axis of variableAxes(variable)) {
-    combos = combos.flatMap((c) => axis.options.map((o) => (o.id ? [...c, o.id] : c)));
-  }
-  return [...new Set(combos.filter((c) => c.length > 0).map((c) => c.join('.')))];
+/** Every non-null option id of a variable's axes, in axis order. */
+export function variableOptionIds(variable: PromptVariable): string[] {
+  return variableAxes(variable).flatMap((axis) => axis.options.flatMap((o) => (o.id ? [o.id] : [])));
 }
 
 /** Split a token's combined id into a per-axis selection (`{ content: 'descriptions', format: 'markdown' }`),
- *  each axis defaulting to null. Parts are matched to axes by id, so order in the token doesn't matter. */
+ *  each axis defaulting to null. Parts are matched to axes by id, so order in the token doesn't matter; a
+ *  later part on an axis wins over an earlier one. */
 export function decodeVariant(variable: PromptVariable, id: string | null): Record<string, string | null> {
   const axes = variableAxes(variable);
   const selection: Record<string, string | null> = {};
@@ -325,16 +355,18 @@ export function decodeChipKey(key: string): { variable: PromptVariable; selectio
   return encodeVariant(variable, selection) === id ? { variable, selection } : undefined;
 }
 
-/** Every non-null variant id any variable supports (incl. multi-axis combos) — drives the parser's token
- *  regex. Longest-first so a compound id (`descriptions.markdown`) isn't masked by a prefix (`descriptions`). */
-export const ALL_VARIANT_IDS: string[] = [
-  ...new Set(ALL_PROMPT_VARIABLES.flatMap(variableVariantIds)),
-].sort((a, b) => b.length - a.length);
+/** The canonical spelling of a variant id on `variable`: its ids decoded and re-encoded in axis order. */
+function canonicalVariant(variable: PromptVariable, id: string | null): string | null {
+  return id && encodeVariant(variable, decodeVariant(variable, id));
+}
 
 /**
  * The token grammar, shared by the template parser, the style downcast and the chip editor:
  *
  *     `<BASE [|variantId] [|pre="…"] [|post="…"] [|format=markdown|xml] [|header="…"]>`
+ *
+ * The variant id is any `.`-joined run of the base's own option ids, in any order. An id the base does not
+ * know, another base's included, fails the match.
  *
  * Affixes are the connective words around a chip used inside a sentence ("Now you are at X, inside Y"),
  * and they render only when the chip has a value — see `renderPromptTemplate`. They live in the token
@@ -349,22 +381,28 @@ export const ALL_VARIANT_IDS: string[] = [
  * simply fails to match and stays literal text, exactly as an unknown variant id does. That is what makes
  * `serialize(parse(x)) === x` hold by construction rather than by care.
  */
-const TOKEN_BASES = ALL_PROMPT_VARIABLES.map((v) => v.token.slice(0, -1)) // drop trailing '>'
-  .sort((a, b) => b.length - a.length) // longest-first so a short base can't mask a longer one
-  .map(escapeRegExp)
-  .join('|');
+// Longest-first so a short base can't mask a longer one.
+const BY_BASE_LENGTH = [...ALL_PROMPT_VARIABLES].sort((a, b) => b.token.length - a.token.length);
+const baseSource = (variable: PromptVariable) => escapeRegExp(variable.token.slice(0, -1)); // drop trailing '>'
+const TOKEN_BASES = BY_BASE_LENGTH.map(baseSource).join('|');
+const OPTION_IDS = new Map(ALL_PROMPT_VARIABLES.map((v) => [v, new Set(variableOptionIds(v))]));
+/** A base followed by an optional run of its own option ids. */
+function baseWithVariant(variable: PromptVariable): string {
+  const ids = [...OPTION_IDS.get(variable)!].join('|');
+  return ids ? `${baseSource(variable)}(?:\\|(?:${ids})(?:\\.(?:${ids}))*)?` : baseSource(variable);
+}
 // `[^"]+` (not `*`): an empty affix has no canonical spelling, so `pre=""` must not parse.
 const AFFIX_BODY = '"([^"]+)"';
 // Header uses JSON string escaping; affixes retain their literal grammar.
 const HEADER_BODY = '"((?:[^"\\\\\\x00-\\x1f]|\\\\(?:["\\\\/bfnrt]|u[0-9a-fA-F]{4}))*)"';
-export const TOKEN_PATTERN =
-  `(?:${TOKEN_BASES})(?:\\|(?:${ALL_VARIANT_IDS.map(escapeRegExp).join('|')}))?` +
-  `(?:\\|pre=${AFFIX_BODY})?(?:\\|post=${AFFIX_BODY})?(?:\\|format=(markdown|xml))?(?:\\|header=${HEADER_BODY})?>`;
+const TOKEN_TAIL = `(?:\\|pre=${AFFIX_BODY})?(?:\\|post=${AFFIX_BODY})?(?:\\|format=(markdown|xml))?(?:\\|header=${HEADER_BODY})?>`;
+export const TOKEN_PATTERN = `(?:${BY_BASE_LENGTH.map(baseWithVariant).join('|')})${TOKEN_TAIL}`;
 
 /** The character an affix cannot contain (it delimits the affix in the token). */
 export const AFFIX_FORBIDDEN = '"';
 
-/** A token taken apart. `key` is the token WITHOUT affixes — the string the renderer looks a value up by. */
+/** A token taken apart. `key` is the token WITHOUT affixes, its variant in axis order — the string the
+ *  renderer looks a value up by. */
 export interface TokenParts {
   base: string;
   variantId: string | null;
@@ -376,19 +414,19 @@ export interface TokenParts {
   key: string;
 }
 
-// Anchored, non-global twin of the parser's regex, with the pieces captured.
-const TOKEN_EXACT = new RegExp(
-  `^(${TOKEN_BASES})(?:\\|(${ALL_VARIANT_IDS.map(escapeRegExp).join('|')}))?` +
-    `(?:\\|pre=${AFFIX_BODY})?(?:\\|post=${AFFIX_BODY})?(?:\\|format=(markdown|xml))?(?:\\|header=${HEADER_BODY})?>$`,
-);
+// Anchored twin of the parser's regex; the variant run is captured loosely and checked against its base's ids.
+const TOKEN_EXACT = new RegExp(`^(${TOKEN_BASES})(?:\\|([a-z]+(?:\\.[a-z]+)*))?${TOKEN_TAIL}$`);
 
-/** Take a token apart, or null when it isn't a canonical token. */
+/** Take a token apart, or null when it isn't a canonical token. The key spells the variant in axis order. */
 export function splitToken(token: string): TokenParts | null {
   const m = TOKEN_EXACT.exec(token);
   if (!m) return null;
   const base = `${m[1]}>`;
   const variantId = m[2] ?? null;
-  return { base, variantId, pre: m[3] ?? '', post: m[4] ?? '', key: withVariant(base, variantId),
+  const variable = VAR_BY_BASE.get(base)!;
+  const known = OPTION_IDS.get(variable)!;
+  if (variantId && !variantId.split('.').every((part) => known.has(part))) return null;
+  return { base, variantId, pre: m[3] ?? '', post: m[4] ?? '', key: withVariant(base, canonicalVariant(variable, variantId)),
     ...(m[5] === 'markdown' || m[5] === 'xml' ? { headerFormat: m[5] } : {}),
     ...(m[6] !== undefined ? { header: JSON.parse(`"${m[6]}"`) as string } : {}) };
 }
@@ -453,7 +491,7 @@ export function variantLabelForToken(token: string): string | null {
     .flatMap((axis) => {
       const chosen = selection[axis.id];
       const opt = chosen != null ? axis.options.find((o) => o.id === chosen) : undefined;
-      return opt ? [opt.label] : [];
+      return opt && !opt.hideInLabel ? [opt.label] : [];
     });
   return labels.length ? labels.join(', ') : null;
 }

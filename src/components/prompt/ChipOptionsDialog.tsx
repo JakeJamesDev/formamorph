@@ -131,7 +131,7 @@ function PickOne({ axis, label, active, editable, onPick }: {
 function OptionRows({ token, vocab, editable, update, hasActions }: Omit<ChipOptionsBodyProps, 'onRepick' | 'onEditValue' | 'twoPane'> & {
   hasActions: boolean;
 }) {
-  const axes = vocab.axes(token);
+  const axes = vocab.axes(token).filter((axis) => !axis.hiddenInDialog);
   const selection = vocab.selection(token);
   const affixes = vocab.affixes(token);
   const header = vocab.header?.(token) ?? null;
