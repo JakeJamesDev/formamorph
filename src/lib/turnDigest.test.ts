@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { AITurnResult, ChatMessage } from '@/types';
 import { dueDigests } from './backgroundPassQueue/backgroundPassQueue';
-import { parseTurnContent, serializeTurnContent, applyDigest, clearTurnDerived, selectDueDiaries, pendingDiaryNames, applyDiary, collectCharacterDiary, recentParticipants, applyImportance } from './turnDigest';
+import { parseTurnContent, serializeTurnContent, applyDigest, clearTurnDerived, applyDiary, collectCharacterDiary, recentParticipants, applyImportance } from './turnDigest';
 
 const user = (content: string): ChatMessage => ({ role: 'user', content });
 
@@ -96,56 +96,6 @@ describe('clearTurnDerived', () => {
     const input = history();
     expect(clearTurnDerived(input, 'stale-id', { diaries: true })).toBeNull();
     expect(parseTurnContent(input[1].content)?.summary).toBe('s1');
-  });
-});
-
-describe('selectDueDiaries', () => {
-  it('selects turns with participants missing any diary entry, newest-first', () => {
-    const history = [
-      ...pair('a1', { turnId: 't1', entities: ['Mira'] }),
-      ...pair('a2', { turnId: 't2', entities: ['Kael', 'Mira'] }),
-    ];
-    expect(selectDueDiaries(history)).toEqual(['t2', 't1']);
-  });
-
-  it('skips turns with no participants', () => {
-    const history = [
-      ...pair('a1', { turnId: 't1', entities: [] }),
-      ...pair('a2', { turnId: 't2' }), // entities undefined
-      ...pair('a3', { turnId: 't3', entities: ['Mira'] }),
-    ];
-    expect(selectDueDiaries(history)).toEqual(['t3']);
-  });
-
-  it('does not re-select a fully-covered turn but does one with a new participant', () => {
-    const history = [
-      ...pair('a1', { turnId: 't1', entities: ['Mira'], diaries: { Mira: 'I waved.' } }),
-      ...pair('a2', { turnId: 't2', entities: ['Kael', 'Mira'], diaries: { Kael: 'I watched.' } }),
-    ];
-    // t1 is covered; t2 still needs Mira.
-    expect(selectDueDiaries(history)).toEqual(['t2']);
-  });
-
-  it('skips turns lacking a turnId', () => {
-    const history = [...pair('a1', { entities: ['Mira'] })];
-    expect(selectDueDiaries(history)).toEqual([]);
-  });
-});
-
-describe('pendingDiaryNames', () => {
-  it('returns only the participants still missing an entry', () => {
-    const history = [
-      ...pair('a1', { turnId: 't1', entities: ['Kael', 'Mira'], diaries: { Kael: 'I watched.' } }),
-    ];
-    expect(pendingDiaryNames(history, 't1')).toEqual(['Mira']);
-  });
-
-  it('returns empty for a fully-covered or unknown turn', () => {
-    const history = [
-      ...pair('a1', { turnId: 't1', entities: ['Mira'], diaries: { Mira: 'done' } }),
-    ];
-    expect(pendingDiaryNames(history, 't1')).toEqual([]);
-    expect(pendingDiaryNames(history, 'nope')).toEqual([]);
   });
 });
 

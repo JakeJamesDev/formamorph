@@ -1,6 +1,8 @@
 import type { ChatMessage } from '@/types';
 import type { TransportRequest } from '@/lib/aiRequest/requestTransport';
-import { applyDigest, applyImportance, parseTurnContent } from '@/lib/turnDigest';
+import { applyDiary, applyDigest, applyImportance, parseTurnContent } from '@/lib/turnDigest';
+import { sameCharacterName } from '@/lib/entityMatch';
+import { cleanDiscoveredDescription } from '@/lib/runtimeCharacters';
 import type { BandTurn } from '@/lib/turnBanding';
 import {
   applyIncrementalVerdict, milestoneCandidates, resolveMilestoneKeep,
@@ -13,7 +15,7 @@ import {
  * through a session guard, and sets a failed pass aside for the rest of the idle window.
  */
 
-export type BackgroundPassKind = 'digest' | 'milestone';
+export type BackgroundPassKind = 'discover' | 'digest' | 'diary' | 'milestone';
 
 /** The selector's verdict as the save stores it. */
 export interface StoredMilestoneSelection {
@@ -32,12 +34,34 @@ export interface QueueSnapshot {
   busy: boolean;
   concurrent: boolean;
   memoryDigests: boolean;
+  describeCharacters: boolean;
+  /** Character Diaries is on and Staged thinking reads them. */
+  characterDiaries: boolean;
+  /** The cast: every entity a diary can be written as. */
+  entityNames: readonly string[];
+  /** Deleted characters, never described again. */
+  suppressedNames: readonly string[];
 }
 
 /** One stored turn a digest summarizes. `action` is the paired user message as stored. */
 export interface DigestTarget {
   turnId: string;
   action: string;
+  narration: string;
+}
+
+/** One name a stored turn introduces that no entity backs yet. */
+export interface DiscoverTarget {
+  turnId: string;
+  name: string;
+  narration: string;
+  locationId?: string;
+}
+
+/** One participant of a stored turn who has no diary entry yet. */
+export interface DiaryTarget {
+  turnId: string;
+  name: string;
   narration: string;
 }
 
@@ -50,9 +74,14 @@ export interface MilestoneRequest {
 export interface QueueEnv {
   send(request: TransportRequest): Promise<string>;
   digestRequest(target: DigestTarget): TransportRequest;
+  discoverRequest(target: DiscoverTarget): TransportRequest;
+  /** Built when the pass starts, so it reads the entity text a discover just wrote. */
+  diaryRequest(target: DiaryTarget): TransportRequest;
   milestoneRequest(kept: string[], fresh: string[], attachTurnId: string): MilestoneRequest;
   setHistory(update: (prev: ChatMessage[]) => ChatMessage[]): void;
   setMilestoneSelection(selection: StoredMilestoneSelection | null): void;
+  /** Adds the described character to the save's discovered entities. */
+  addDiscovered(target: DiscoverTarget, description: string): void;
   /** The view's session counter, bumped on load and on new game. */
   session(): number;
 }
@@ -71,6 +100,7 @@ export interface BackgroundPassQueue {
 interface PassWriter {
   history(update: (prev: ChatMessage[]) => ChatMessage[]): void;
   selection(selection: StoredMilestoneSelection | null): void;
+  discovered(target: DiscoverTarget, description: string): void;
   /** Whether `history` still holds the narration the pass read. */
   isCurrent(history: ChatMessage[]): boolean;
 }
@@ -84,6 +114,8 @@ interface PreparedPass {
 interface DueItem {
   kind: BackgroundPassKind;
   key: string;
+  /** The character a discover describes; one runs per character at a time. */
+  group?: string;
   turnId: string;
   narration: string;
   /** The state the pass reads; an applied pass stays out while a snapshot still shows this state. */
@@ -164,28 +196,114 @@ function narrationOf(history: ChatMessage[], turnId: string): string | undefined
   return undefined;
 }
 
+const isKnown = (name: string, names: readonly string[]) => names.some((known) => sameCharacterName(name, known));
+
+/** The assistant turns a pass can read: an id, narration and participants. Oldest first. */
+function participantTurns(history: ChatMessage[]) {
+  const turns: Array<{
+    turnId: string; narration: string; names: string[]; diaries: Record<string, string> | undefined; locationId?: string;
+  }> = [];
+  for (const message of history) {
+    if (message.role !== 'assistant') continue;
+    const turn = parseTurnContent(message.content);
+    if (!turn?.turnId || !turn.narration?.trim() || !turn.entities?.length) continue;
+    turns.push({ turnId: turn.turnId, narration: turn.narration, names: turn.entities, diaries: turn.diaries, locationId: turn.locationId });
+  }
+  return turns;
+}
+
+/** Every (turn, name) pair a name no entity backs makes due for a description, oldest turn first. */
+export function dueDiscoveries(history: ChatMessage[], knownNames: readonly string[]): DiscoverTarget[] {
+  const due: DiscoverTarget[] = [];
+  for (const turn of participantTurns(history)) {
+    for (const name of turn.names) {
+      if (name.trim() && !isKnown(name, knownNames)) {
+        due.push({ turnId: turn.turnId, name, narration: turn.narration, locationId: turn.locationId });
+      }
+    }
+  }
+  return due;
+}
+
+/** Every (turn, name) pair still missing a diary entry, oldest turn first. */
+export function dueDiaries(history: ChatMessage[]): DiaryTarget[] {
+  const due: DiaryTarget[] = [];
+  for (const turn of participantTurns(history)) {
+    for (const name of turn.names) {
+      if (turn.diaries?.[name] === undefined) due.push({ turnId: turn.turnId, name, narration: turn.narration });
+    }
+  }
+  return due;
+}
+
 /**
- * The due passes in serial priority order: digests oldest first, then the milestone once no digest is due.
+ * The due passes in serial priority order: discover, digest, diary, then the milestone once no digest is due.
  * `prune` is the selection without verdicts on turns that left, when nothing fresh carries it.
  */
 function dueItems(snapshot: QueueSnapshot, env: QueueEnv): { items: DueItem[]; prune: StoredMilestoneSelection | null } {
-  if (!snapshot.memoryDigests) return { items: [], prune: null };
-  const digests = dueDigests(snapshot.history);
-  const items: DueItem[] = digests.map((target) => ({
-    kind: 'digest',
-    key: `digest:${target.turnId}`,
-    turnId: target.turnId,
-    narration: target.narration,
-    signature: target.narration,
-    prepare: () => ({
-      request: env.digestRequest(target),
-      apply: (reply, write) => {
-        write.history((prev) => (write.isCurrent(prev) ? applyDigest(prev, target.turnId, reply) ?? prev : prev));
-        return true;
-      },
-    }),
-  }));
-  if (digests.length > 0) return { items, prune: null }; // the selector reads every digest
+  const items: DueItem[] = [];
+  if (snapshot.describeCharacters) {
+    const known = [...snapshot.entityNames, ...snapshot.suppressedNames];
+    for (const target of dueDiscoveries(snapshot.history, known)) {
+      items.push({
+        kind: 'discover',
+        key: `discover:${target.turnId}:${target.name}`,
+        group: target.name,
+        turnId: target.turnId,
+        narration: target.narration,
+        signature: target.narration,
+        prepare: () => ({
+          request: env.discoverRequest(target),
+          apply: (reply, write) => {
+            const description = cleanDiscoveredDescription(reply, target.name);
+            if (!description) return false;
+            write.discovered(target, description);
+            return true;
+          },
+        }),
+      });
+    }
+  }
+  const digests = snapshot.memoryDigests ? dueDigests(snapshot.history) : [];
+  for (const target of digests) {
+    items.push({
+      kind: 'digest',
+      key: `digest:${target.turnId}`,
+      turnId: target.turnId,
+      narration: target.narration,
+      signature: target.narration,
+      prepare: () => ({
+        request: env.digestRequest(target),
+        apply: (reply, write) => {
+          write.history((prev) => (write.isCurrent(prev) ? applyDigest(prev, target.turnId, reply) ?? prev : prev));
+          return true;
+        },
+      }),
+    });
+  }
+  if (snapshot.characterDiaries) {
+    for (const target of dueDiaries(snapshot.history)) {
+      // A new name waits until its entity shows in a snapshot, so the request reads the description. A name
+      // no entity backs and no discover is coming for never gets one.
+      if (!isKnown(target.name, snapshot.entityNames)) continue;
+      items.push({
+        kind: 'diary',
+        key: `diary:${target.turnId}:${target.name}`,
+        turnId: target.turnId,
+        narration: target.narration,
+        signature: target.narration,
+        prepare: () => ({
+          request: env.diaryRequest(target),
+          // An empty entry is stored too, so the participant is not asked again.
+          apply: (reply, write) => {
+            write.history((prev) => (write.isCurrent(prev) ? applyDiary(prev, target.turnId, target.name, reply) ?? prev : prev));
+            return true;
+          },
+        }),
+      });
+    }
+  }
+  if (!snapshot.memoryDigests || digests.length > 0) return { items, prune: null }; // the selector reads every digest
   const latest = latestTurn(snapshot.history);
   if (!latest) return { items, prune: null };
   const plan = planMilestone(snapshot.effectiveTurns, snapshot.milestoneSelection, snapshot.memoryPins);
@@ -233,18 +351,18 @@ export function createBackgroundPassQueue(env: QueueEnv): BackgroundPassQueue {
   let snapshot: QueueSnapshot | null = null;
   let controller = new AbortController();
   let disposed = false;
-  const runningItems = new Map<string, BackgroundPassKind>();
+  const runningItems = new Map<string, Pick<DueItem, 'kind' | 'group'>>();
   let runningKinds: ReadonlySet<BackgroundPassKind> = new Set();
   const setAside = new Set<string>();
   // An applied pass by key, with the signature it read: a render can lag behind the write it made.
-  const applied = new Map<string, string>();
+  const applied = new Map<string, { signature: string; group?: string }>();
   // Each history the queue wrote, mapped to the one it wrote over.
   const ownWrites = new WeakMap<ChatMessage[], ChatMessage[]>();
   const listeners = new Set<() => void>();
   let lastSession = env.session();
 
   const publish = () => {
-    runningKinds = new Set(runningItems.values());
+    runningKinds = new Set([...runningItems.values()].map((item) => item.kind));
     listeners.forEach((listener) => listener());
   };
 
@@ -269,7 +387,7 @@ export function createBackgroundPassQueue(env: QueueEnv): BackgroundPassQueue {
     const session = env.session();
     const isCurrent = (history: ChatMessage[]) =>
       env.session() === session && narrationOf(history, item.turnId) === item.narration;
-    runningItems.set(item.key, item.kind);
+    runningItems.set(item.key, { kind: item.kind, group: item.group });
     void (async () => {
       let outcome: 'applied' | 'setAside' | 'dropped' | 'canceled';
       try {
@@ -278,7 +396,9 @@ export function createBackgroundPassQueue(env: QueueEnv): BackgroundPassQueue {
         if (signal.aborted || disposed) outcome = 'canceled';
         else if (!snapshot || !isCurrent(snapshot.history)) outcome = 'dropped';
         else {
-          const write: PassWriter = { history: writeHistory, selection: env.setMilestoneSelection, isCurrent };
+          const write: PassWriter = {
+            history: writeHistory, selection: env.setMilestoneSelection, discovered: env.addDiscovered, isCurrent,
+          };
           outcome = prepared.apply((reply ?? '').trim(), write) ? 'applied' : 'setAside';
         }
       } catch {
@@ -287,7 +407,7 @@ export function createBackgroundPassQueue(env: QueueEnv): BackgroundPassQueue {
       if (disposed) return;
       runningItems.delete(item.key);
       if (outcome === 'setAside') setAside.add(item.key);
-      if (outcome === 'applied') applied.set(item.key, item.signature);
+      if (outcome === 'applied') applied.set(item.key, { signature: item.signature, group: item.group });
       publish();
       tick();
     })();
@@ -301,8 +421,18 @@ export function createBackgroundPassQueue(env: QueueEnv): BackgroundPassQueue {
     if (!snapshot.concurrent && runningItems.size > 0) return;
     const dueKeys = new Set(due.map((item) => item.key));
     for (const key of applied.keys()) if (!dueKeys.has(key)) applied.delete(key);
-    const ready = due.filter((item) =>
-      !runningItems.has(item.key) && !setAside.has(item.key) && applied.get(item.key) !== item.signature);
+    // One discover per character: not while another runs or has applied, nor twice in one start.
+    const claimed = [...runningItems.values(), ...applied.values()].flatMap((entry) => entry.group ?? []);
+    const ready: DueItem[] = [];
+    for (const item of due) {
+      if (runningItems.has(item.key) || setAside.has(item.key) || applied.get(item.key)?.signature === item.signature) continue;
+      const { group } = item;
+      if (group !== undefined) {
+        if (claimed.some((name) => sameCharacterName(name, group))) continue;
+        claimed.push(group);
+      }
+      ready.push(item);
+    }
     const toStart = snapshot.concurrent ? ready : ready.slice(0, 1);
     if (toStart.length === 0) return;
     toStart.forEach(start);
@@ -313,6 +443,7 @@ export function createBackgroundPassQueue(env: QueueEnv): BackgroundPassQueue {
     update(next) {
       if (disposed) return;
       const session = env.session();
+      if (session !== lastSession) applied.clear();
       if (session !== lastSession || (snapshot && isForeign(next.history, snapshot.history))) setAside.clear();
       lastSession = session;
       snapshot = next;

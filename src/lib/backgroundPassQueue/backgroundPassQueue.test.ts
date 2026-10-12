@@ -5,7 +5,7 @@ import { parseTurns } from '@/lib/turnBanding';
 import { parseIncrementalMilestoneReply } from '@/lib/milestoneMemory';
 import { parseTurnContent, serializeTurnContent } from '@/lib/turnDigest';
 import {
-  createBackgroundPassQueue, type QueueEnv, type QueueSnapshot, type StoredMilestoneSelection,
+  createBackgroundPassQueue, dueDiaries, dueDiscoveries, type QueueEnv, type QueueSnapshot, type StoredMilestoneSelection,
 } from './backgroundPassQueue';
 
 /**
@@ -13,13 +13,21 @@ import {
  * it, and a small host stands in for the view, re-rendering a snapshot after each state write.
  */
 
-interface Turn { id: string; narration?: string; summary?: string }
+interface Turn {
+  id: string; narration?: string; summary?: string; entities?: string[]; diaries?: Record<string, string>; locationId?: string;
+}
 
-const turn = ({ id, narration = `Narration of ${id}.`, summary }: Turn): ChatMessage[] => [
+const turn = ({ id, narration = `Narration of ${id}.`, summary, entities, diaries, locationId }: Turn): ChatMessage[] => [
   { role: 'user', content: `Action for ${id}` },
   {
     role: 'assistant',
-    content: serializeTurnContent({ narration, choices: [], stat_changes: [], turnId: id, ...(summary !== undefined ? { summary } : {}) }),
+    content: serializeTurnContent({
+      narration, choices: [], stat_changes: [], turnId: id,
+      ...(summary !== undefined ? { summary } : {}),
+      ...(entities ? { entities } : {}),
+      ...(diaries ? { diaries } : {}),
+      ...(locationId ? { locationId } : {}),
+    }),
   },
 ];
 const historyOf = (...turns: Turn[]) => turns.flatMap(turn);
@@ -40,16 +48,29 @@ function host(initial: ChatMessage[], over: Partial<QueueSnapshot> = {}) {
   let selection: StoredMilestoneSelection | null = null;
   let session = 0;
   let dirty = false;
-  const gate = { busy: false, concurrent: false, memoryDigests: true, ...over };
+  const descriptions = new Map<string, string>();
+  const uncommitted: Array<{ name: string; description: string }> = [];
+  const gate = {
+    busy: false, concurrent: false, memoryDigests: true,
+    describeCharacters: false, characterDiaries: false, entityNames: [] as string[], suppressedNames: [] as string[],
+    ...over,
+  };
   const sent: Sent[] = [];
+  const discovered: Array<{ name: string; turnId: string; description: string; locationId?: string }> = [];
 
-  const render = (rendered = history) => queue.update({
-    history: rendered,
-    effectiveTurns: parseTurns(rendered),
-    milestoneSelection: selection,
-    memoryPins: {},
-    ...gate,
-  });
+  const render = (rendered = history) => {
+    for (const { name, description } of uncommitted.splice(0)) {
+      descriptions.set(name, description);
+      gate.entityNames = [...gate.entityNames, name];
+    }
+    queue.update({
+      history: rendered,
+      effectiveTurns: parseTurns(rendered),
+      milestoneSelection: selection,
+      memoryPins: {},
+      ...gate,
+    });
+  };
   /** Lets every answered request land, then re-renders until the host is stable, as React would. */
   const settle = async () => {
     await flush();
@@ -74,6 +95,21 @@ function host(initial: ChatMessage[], over: Partial<QueueSnapshot> = {}) {
       type: 'summary', systemPrompt: 'SUMMARY', silent: true, attachTurnId: target.turnId,
       messages: [{ role: 'user', content: `${target.action} | ${target.narration}` }],
     }),
+    discoverRequest: (target) => ({
+      type: 'discoverEntity', systemPrompt: 'DISCOVER', silent: true, attachTurnId: target.turnId,
+      messages: [{ role: 'user', content: `${target.name} | ${target.narration}` }],
+    }),
+    // A diary carries the entity text that exists when the pass starts.
+    diaryRequest: (target) => ({
+      type: 'diary', systemPrompt: 'DIARY', silent: true, attachTurnId: target.turnId,
+      messages: [{ role: 'user', content: `${target.name} | ${descriptions.get(target.name) ?? 'no description'}` }],
+    }),
+    // The entity joins the cast at the next render, as React state does.
+    addDiscovered: (target, description) => {
+      discovered.push({ name: target.name, turnId: target.turnId, description, locationId: target.locationId });
+      uncommitted.push({ name: target.name, description });
+      dirty = true;
+    },
     milestoneRequest: (kept, fresh, attachTurnId) => ({
       request: { type: 'milestoneSelect', systemPrompt: 'SELECT', silent: true, attachTurnId, messages: [{ role: 'user', content: fresh.join('\n') }] },
       parse: (reply) => parseIncrementalMilestoneReply(reply, kept.length, fresh.length),
@@ -100,6 +136,12 @@ function host(initial: ChatMessage[], over: Partial<QueueSnapshot> = {}) {
     gate,
     /** The turn ids each request targets, in send order. */
     targets: () => sent.map((s) => `${s.request.type}:${s.request.attachTurnId}`),
+    /** Every request sent, as `type:turn:name` for the per-name passes. */
+    names: () => sent.map((s) => `${s.request.type}:${s.request.attachTurnId}:${String(s.request.messages[0].content).split(' | ')[0]}`),
+    discovered,
+    diaryOf: (id: string, name: string) => history
+      .map((m) => (m.role === 'assistant' ? parseTurnContent(m.content) : null))
+      .find((t) => t?.turnId === id)?.diaries?.[name],
     summaryOf: (id: string) => history
       .map((m) => (m.role === 'assistant' ? parseTurnContent(m.content) : null))
       .find((t) => t?.turnId === id)?.summary,
@@ -110,7 +152,11 @@ function host(initial: ChatMessage[], over: Partial<QueueSnapshot> = {}) {
       render();
     },
     history: () => history,
-    newSession: () => { session += 1; },
+    /** A load or new game: the old save's pending entities go with it. */
+    newSession: () => {
+      session += 1;
+      uncommitted.length = 0;
+    },
   };
 }
 
@@ -386,5 +432,301 @@ describe('session guard', () => {
     h.replaceHistory(historyOf({ id: 't1', summary: 'First.' }));
     await h.sent[0].answer('Keep: 1, 2');
     expect(h.selection()).toBeNull();
+  });
+});
+
+describe('the due selectors', () => {
+  const rawTurn = (fields: Record<string, unknown>): ChatMessage => ({
+    role: 'assistant', content: JSON.stringify({ narration: 'n', choices: [], stat_changes: [], ...fields }),
+  });
+
+  it('lists a discover for every unknown name, oldest turn first, with the turn\'s location', () => {
+    const history = [
+      rawTurn({ turnId: 't1', narration: 'Old.', entities: ['Goblin'] }),
+      rawTurn({ turnId: 't2', narration: 'A mouse squeaks.', entities: ['Alice', 'Mouse'], locationId: 'loc-1' }),
+    ];
+    expect(dueDiscoveries(history, ['Alice'])).toEqual([
+      { turnId: 't1', name: 'Goblin', narration: 'Old.', locationId: undefined },
+      { turnId: 't2', name: 'Mouse', narration: 'A mouse squeaks.', locationId: 'loc-1' },
+    ]);
+  });
+
+  it('skips a name a known one covers, variants included', () => {
+    const history = [rawTurn({ turnId: 't1', narration: 'He nods.', entities: ['Aldric', 'Alice'] })];
+    expect(dueDiscoveries(history, ['Sergeant Aldric', 'Alice'])).toEqual([]);
+  });
+
+  it('ignores turns without an id, without narration, or without participants', () => {
+    const history = [
+      rawTurn({ narration: 'No id.', entities: ['Ghost'] }),
+      rawTurn({ turnId: 't2', narration: '   ', entities: ['Wraith'] }),
+      rawTurn({ turnId: 't3', narration: 'Quiet.', entities: [] }),
+      rawTurn({ turnId: 't4', narration: 'Quiet.' }),
+    ];
+    expect(dueDiscoveries(history, [])).toEqual([]);
+    expect(dueDiaries(history)).toEqual([]);
+  });
+
+  it('lists a diary for every participant missing an entry, oldest turn first', () => {
+    const history = [
+      rawTurn({ turnId: 't1', narration: 'One.', entities: ['Mira'], diaries: { Mira: 'I waved.' } }),
+      rawTurn({ turnId: 't2', narration: 'Two.', entities: ['Kael', 'Mira'], diaries: { Kael: 'I watched.' } }),
+      rawTurn({ turnId: 't3', narration: 'Three.', entities: ['Kael'] }),
+    ];
+    expect(dueDiaries(history)).toEqual([
+      { turnId: 't2', name: 'Mira', narration: 'Two.' },
+      { turnId: 't3', name: 'Kael', narration: 'Three.' },
+    ]);
+  });
+});
+
+const FERRY_HAND = 'A ferry hand with a limp.';
+const cast = { describeCharacters: true, characterDiaries: true, memoryDigests: false };
+
+describe('diary after discover', () => {
+  it('writes a new name\'s diary only after its discover, and the diary carries the description', async () => {
+    const h = host(historyOf({ id: 't1', entities: ['Mira'] }), cast);
+    h.render();
+    expect(h.names()).toEqual(['discoverEntity:t1:Mira']);
+    await h.sent[0].answer(FERRY_HAND);
+    expect(h.discovered).toEqual([{ name: 'Mira', turnId: 't1', description: FERRY_HAND, locationId: undefined }]);
+    expect(h.names()).toEqual(['discoverEntity:t1:Mira', 'diary:t1:Mira']);
+    expect(h.sent[1].request.messages[0].content).toBe(`Mira | ${FERRY_HAND}`);
+    await h.sent[1].answer('I met the ferry hand.');
+    expect(h.diaryOf('t1', 'Mira')).toBe('I met the ferry hand.');
+  });
+
+  it('writes a known entity\'s diary at once', () => {
+    const h = host(historyOf({ id: 't1', entities: ['Odette'] }), { ...cast, entityNames: ['Odette'] });
+    h.render();
+    expect(h.names()).toEqual(['diary:t1:Odette']);
+  });
+
+  it('writes no diary for a suppressed name, and no discover', () => {
+    const h = host(historyOf({ id: 't1', entities: ['Mira'] }), { ...cast, suppressedNames: ['Mira'] });
+    h.render();
+    expect(h.sent).toHaveLength(0);
+  });
+
+  it('writes no diary for a name with Describe New Characters off', () => {
+    const h = host(historyOf({ id: 't1', entities: ['Mira', 'Odette'] }), { ...cast, describeCharacters: false, entityNames: ['Odette'] });
+    h.render();
+    expect(h.names()).toEqual(['diary:t1:Odette']);
+  });
+
+  it('defers the diary of a name whose discover was set aside and lets the other names proceed', async () => {
+    const h = host(historyOf({ id: 't1', entities: ['Mira', 'Odette'] }), { ...cast, entityNames: ['Odette'] });
+    h.render();
+    await h.sent[0].fail();
+    expect(h.names()).toEqual(['discoverEntity:t1:Mira', 'diary:t1:Odette']);
+    await h.sent[1].answer('I watched the ferry.');
+    expect(h.names()).toHaveLength(2);
+  });
+
+  it('retries a discover set aside after a history change the queue did not make', async () => {
+    const h = host(historyOf({ id: 't1', entities: ['Mira'] }), cast);
+    h.render();
+    await h.sent[0].fail();
+    h.replaceHistory([...h.history(), ...turn({ id: 't2' })]);
+    expect(h.names()).toEqual(['discoverEntity:t1:Mira', 'discoverEntity:t1:Mira']);
+  });
+
+  it('sets aside a discover whose description is unusable, and writes no diary for the name', async () => {
+    const h = host(historyOf({ id: 't1', entities: ['Mira'] }), cast);
+    h.render();
+    await h.sent[0].answer('   ');
+    expect(h.discovered).toEqual([]);
+    expect(h.names()).toEqual(['discoverEntity:t1:Mira']);
+  });
+
+  it('writes no diary with Character Diaries off', () => {
+    const h = host(historyOf({ id: 't1', entities: ['Odette'] }), { ...cast, characterDiaries: false, entityNames: ['Odette'] });
+    h.render();
+    expect(h.sent).toHaveLength(0);
+  });
+
+  it('stores an empty diary, so the participant is not asked again', async () => {
+    const h = host(historyOf({ id: 't1', entities: ['Odette'] }), { ...cast, entityNames: ['Odette'] });
+    h.render();
+    await h.sent[0].answer('  ');
+    expect(h.diaryOf('t1', 'Odette')).toBe('');
+    expect(h.sent).toHaveLength(1);
+  });
+
+  it('does not write a diary for a turn whose narration is blank', () => {
+    const h = host(historyOf({ id: 't1', narration: ' ', entities: ['Odette', 'Mira'] }), { ...cast, entityNames: ['Odette'] });
+    h.render();
+    expect(h.sent).toHaveLength(0);
+  });
+
+  it('asks for each pair on its own, oldest turn first, so one stuck pair hides none behind it', async () => {
+    const h = host(
+      historyOf({ id: 't1', entities: ['Odette', 'Ines'] }, { id: 't2', entities: ['Odette'] }),
+      { ...cast, entityNames: ['Odette', 'Ines'] },
+    );
+    h.render();
+    await h.sent[0].fail();
+    await h.sent[1].answer('Ines.');
+    await h.sent[2].answer('Odette again.');
+    expect(h.names()).toEqual(['diary:t1:Odette', 'diary:t1:Ines', 'diary:t2:Odette']);
+    expect(h.diaryOf('t1', 'Odette')).toBeUndefined();
+  });
+
+  it('holds the diary until the new entity shows in a render, so the request reads the description', async () => {
+    const h = host(historyOf({ id: 't1', entities: ['Mira'] }), { ...cast, concurrent: true });
+    h.render();
+    await h.sent[0].answerQuietly(FERRY_HAND);
+    expect(h.names()).toEqual(['discoverEntity:t1:Mira']);
+    await h.settle();
+    expect(h.names()).toEqual(['discoverEntity:t1:Mira', 'diary:t1:Mira']);
+    expect(h.sent[1].request.messages[0].content).toBe(`Mira | ${FERRY_HAND}`);
+  });
+
+  it('describes a name again in a new session, whatever the old save applied', async () => {
+    const h = host(historyOf({ id: 't1', entities: ['Mira'] }), cast);
+    h.render();
+    await h.sent[0].answerQuietly(FERRY_HAND);
+    h.newSession();
+    h.queue.abort();
+    h.replaceHistory(historyOf({ id: 't1', entities: ['Mira'] }));
+    expect(h.names().filter((n) => n.startsWith('discoverEntity'))).toHaveLength(2);
+  });
+
+  it('reports a running discover and a running diary', async () => {
+    const h = host(historyOf({ id: 't1', entities: ['Mira'] }), cast);
+    const seen: string[][] = [];
+    h.queue.subscribe(() => seen.push([...h.queue.running()]));
+    h.render();
+    await h.sent[0].answer(FERRY_HAND);
+    await h.sent[1].answer('Noted.');
+    expect(seen).toEqual([['discover'], [], ['diary'], []]);
+  });
+});
+
+describe('one discover per name', () => {
+  it('describes the name from its oldest turn and writes nothing for the newer ones', async () => {
+    const h = host(historyOf({ id: 't1', entities: ['Mira'] }, { id: 't2', entities: ['Mira'] }), { ...cast, concurrent: true });
+    h.render();
+    expect(h.names()).toEqual(['discoverEntity:t1:Mira']);
+    await h.sent[0].answerQuietly(FERRY_HAND);
+    expect(h.names().filter((n) => n.startsWith('discoverEntity'))).toEqual(['discoverEntity:t1:Mira']);
+    await h.settle();
+    expect(h.discovered).toHaveLength(1);
+  });
+
+  it('lets the next turn\'s pair for the same name try after one is set aside', async () => {
+    const h = host(historyOf({ id: 't1', entities: ['Mira'] }, { id: 't2', entities: ['Mira'] }), cast);
+    h.render();
+    await h.sent[0].fail();
+    expect(h.names()).toEqual(['discoverEntity:t1:Mira', 'discoverEntity:t2:Mira']);
+  });
+
+  it('treats a variant of a name as the same character', () => {
+    const h = host(historyOf({ id: 't1', entities: ['Sergeant Aldric', 'Aldric'] }), { ...cast, concurrent: true });
+    h.render();
+    expect(h.names()).toEqual(['discoverEntity:t1:Sergeant Aldric']);
+  });
+
+  it('hands the turn\'s location to the new entity', async () => {
+    const h = host(historyOf({ id: 't1', entities: ['Mira'], locationId: 'dock' }), cast);
+    h.render();
+    await h.sent[0].answer(FERRY_HAND);
+    expect(h.discovered[0].locationId).toBe('dock');
+  });
+});
+
+describe('priority across the four kinds', () => {
+  it('runs discover, digest, diary, then milestone, one at a time', async () => {
+    const h = host(
+      historyOf({ id: 't1', entities: ['Mira', 'Odette'] }),
+      { ...cast, memoryDigests: true, entityNames: ['Odette'] },
+    );
+    h.render();
+    await h.sent[0].answer(FERRY_HAND);
+    await h.sent[1].answer('Summary.');
+    await h.sent[2].answer('Mira diary.');
+    await h.sent[3].answer('Odette diary.');
+    await h.sent[4].answer('Keep: 1');
+    expect(h.sent.map((s) => s.request.type)).toEqual(['discoverEntity', 'summary', 'diary', 'diary', 'milestoneSelect']);
+    expect(h.names().slice(2, 4)).toEqual(['diary:t1:Mira', 'diary:t1:Odette']);
+  });
+
+  it('starts every ready pass together in concurrent mode, holding a new name\'s diary for its discover', () => {
+    const h = host(
+      historyOf({ id: 't1', entities: ['Mira', 'Odette'] }),
+      { ...cast, memoryDigests: true, concurrent: true, entityNames: ['Odette'] },
+    );
+    h.render();
+    expect(h.sent.map((s) => s.request.type)).toEqual(['discoverEntity', 'summary', 'diary']);
+    expect(h.sent[2].request.messages[0].content).toContain('Odette');
+  });
+});
+
+describe('the session guard on discover and diary', () => {
+  it('writes no entity for a discover whose session changed', async () => {
+    const h = host(historyOf({ id: 't1', entities: ['Mira'] }), cast);
+    h.render();
+    h.newSession();
+    await h.sent[0].answer(FERRY_HAND);
+    expect(h.discovered).toEqual([]);
+  });
+
+  it('writes no entity for a discover whose turn narration changed, and redoes it', async () => {
+    const h = host(historyOf({ id: 't1', entities: ['Mira'] }), cast);
+    h.render();
+    h.gate.busy = true;
+    h.replaceHistory(historyOf({ id: 't1', narration: 'Edited narration.', entities: ['Mira'] }));
+    await h.sent[0].answer(FERRY_HAND);
+    expect(h.discovered).toEqual([]);
+    h.gate.busy = false;
+    h.render();
+    expect(h.sent[1].request.messages[0].content).toContain('Edited narration.');
+  });
+
+  it('writes no entity for a discover whose turn was rolled back', async () => {
+    const h = host(historyOf({ id: 't1', entities: ['Mira'] }), cast);
+    h.render();
+    h.gate.busy = true;
+    h.replaceHistory([]);
+    await h.sent[0].answer(FERRY_HAND);
+    expect(h.discovered).toEqual([]);
+  });
+
+  it('drops a diary whose narration changed', async () => {
+    const h = host(historyOf({ id: 't1', entities: ['Odette'] }), { ...cast, entityNames: ['Odette'] });
+    h.render();
+    h.gate.busy = true;
+    h.replaceHistory(historyOf({ id: 't1', narration: 'Edited narration.', entities: ['Odette'] }));
+    await h.sent[0].answer('Old text diary.');
+    expect(h.diaryOf('t1', 'Odette')).toBeUndefined();
+  });
+});
+
+describe('cancel for discover and diary', () => {
+  it('writes no entity for a canceled discover and does not set it aside', async () => {
+    const h = host(historyOf({ id: 't1', entities: ['Mira'] }), cast);
+    h.render();
+    h.queue.abort();
+    expect(h.sent[0].signal.aborted).toBe(true);
+    await h.sent[0].answer(FERRY_HAND);
+    expect(h.discovered).toEqual([]);
+    expect(h.names()).toEqual(['discoverEntity:t1:Mira', 'discoverEntity:t1:Mira']);
+  });
+
+  it('applies nothing for a canceled diary', async () => {
+    const h = host(historyOf({ id: 't1', entities: ['Odette'] }), { ...cast, entityNames: ['Odette'] });
+    h.render();
+    h.queue.abort();
+    await h.sent[0].answer('Late diary.');
+    expect(h.diaryOf('t1', 'Odette')).toBeUndefined();
+  });
+
+  it('waits while a turn runs, then starts the discover', () => {
+    const h = host(historyOf({ id: 't1', entities: ['Mira'] }), { ...cast, busy: true });
+    h.render();
+    expect(h.sent).toHaveLength(0);
+    h.gate.busy = false;
+    h.render();
+    expect(h.names()).toEqual(['discoverEntity:t1:Mira']);
   });
 });

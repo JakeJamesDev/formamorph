@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  selectDueDiscovery,
+  findEntityByCharacterName,
   materializeDiscoveredEntity,
   discoveredAsEntities,
   cleanDiscoveredDescription,
@@ -45,39 +45,20 @@ describe('selectReachableVisitors', () => {
   });
 });
 
-describe('selectDueDiscovery', () => {
-  const known = ['Alice']; // one authored entity
+describe('findEntityByCharacterName', () => {
+  const sergeant: Entity = { id: 's', name: 'Sergeant Aldric' };
+  const aldric: Entity = { id: 'a', name: 'Aldric' };
 
-  it('picks the newest turn holding an unknown participant', () => {
-    const history: ChatMessage[] = [
-      turn({ turnId: 't1', narration: 'Old.', entities: ['Goblin'] }),
-      turn({ turnId: 't2', narration: 'A mouse squeaks.', entities: ['Alice', 'Mouse'], locationId: 'loc-1' }),
-    ];
-    const due = selectDueDiscovery(history, known);
-    expect(due).toEqual({ turnId: 't2', name: 'Mouse', narration: 'A mouse squeaks.', locationId: 'loc-1' });
+  it('finds a variant of the name', () => {
+    expect(findEntityByCharacterName('Aldric', [sergeant])).toBe(sergeant);
   });
 
-  it('skips authored/known participants', () => {
-    const history = [turn({ turnId: 't1', narration: 'Hi.', entities: ['Alice'] })];
-    expect(selectDueDiscovery(history, known)).toBeNull();
+  it('prefers the exact name over a variant, whatever the order', () => {
+    expect(findEntityByCharacterName(' aldric ', [sergeant, aldric])).toBe(aldric);
   });
 
-  it('skips a name that is a variant of an already-known one (no duplicate identity)', () => {
-    const history = [turn({ turnId: 't1', narration: 'He nods.', entities: ['Aldric'] })];
-    expect(selectDueDiscovery(history, ['Sergeant Aldric'])).toBeNull();
-  });
-
-  it('returns null when nothing is due', () => {
-    expect(selectDueDiscovery([], known)).toBeNull();
-    expect(selectDueDiscovery([turn({ turnId: 't1', narration: 'x', entities: [] })], known)).toBeNull();
-  });
-
-  it('ignores turns without an id or narration', () => {
-    const history = [
-      turn({ narration: 'No id.', entities: ['Ghost'] }),
-      turn({ turnId: 't2', narration: '   ', entities: ['Wraith'] }),
-    ];
-    expect(selectDueDiscovery(history, known)).toBeNull();
+  it('returns undefined for a name no entity backs', () => {
+    expect(findEntityByCharacterName('Mira', [sergeant, aldric])).toBeUndefined();
   });
 });
 
