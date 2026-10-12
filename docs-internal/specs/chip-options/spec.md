@@ -64,6 +64,18 @@ Settled with the user on 2026-10-12 after a second review.
 | Q28 | The dialog ships as two tickets: the shell with today's rows, then the Entities and Persona rows |
 | Q29 | The What the AI Reads pane is for prompt chips only. Placeholder chips and Tool argument chips open the one-column dialog with their current rows |
 
+Spec-session rulings for ticket sessions.
+
+| # | Ruling |
+|---|---|
+| Q30 | (ticket 04) The shell keeps today's lock rule, the last non-default toggle on is locked. Ticket 05 switches the dialog to the registry's lock groups |
+| Q31 | (ticket 04) The dialog title is Chip Options. The chip's color swatch and label sit in the description line under it |
+| Q32 | (ticket 04) The shell's right pane shows the title What the AI Reads over an empty bordered box, no placeholder text. The prototype's raw-token footer is dropped; the footer holds Re-Pick and Edit Value, right-aligned |
+| Q33 | (ticket 04) Registry help lines become tooltips: an option's help on its segment or dropdown item, a toggle axis's help on its checkbox label, read-only help on the disabled control, and the Label, Header and Prepend/Append help on their row labels. A chip with no rows keeps the "No options for this variable." line |
+| Q34 | (ticket 04) Row names for today's axes are the axis's own label. A single unnamed axis reads Mode. The Stats chip's three toggles form one Stat Detail row. The Entities and Persona stats toggle is one Include row with a Stats checkbox, which ticket 05 extends with Traits |
+| Q35 | (ticket 04) Two panes for prompt-variable chips everywhere, scene chips in a Tool template included. One column for placeholder, Tool argument and Formaquestion help-prompt chips |
+| Q36 | (ticket 04) Width is max-w-3xl with two panes and max-w-md with one column, both at most 85vh and scrolling inside |
+
 ## User Stories
 
 1. As a prompt author, I want the chip's options in a dialog with room, so that related choices sit together and I can read them all at once.
