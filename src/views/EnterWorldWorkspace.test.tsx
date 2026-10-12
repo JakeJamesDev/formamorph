@@ -1055,6 +1055,21 @@ describe('EnterWorldWorkspace cast pages', () => {
     expect(within(main).getByRole('checkbox', { name: 'Guard' })).not.toBeDisabled();
   });
 
+  it("shows slot 0 on an entity's page even when slot 0 carries a Visibility rule that would hide it in play", async () => {
+    const user = userEvent.setup();
+    const ruled: Entity = {
+      ...ash,
+      images: [
+        { data: 'data:image/png;base64,ash', requires: [{ all: [{ kind: 'trait', id: 'knight', name: 'Knight' }] }] },
+        { data: 'data:image/png;base64,other' },
+      ],
+    };
+    render(<CastHarness cast={{ ...castWorld, entities: [ruled, bob] }} />);
+    await user.click(within(nav()).getByRole('button', { name: /^Ash/ }));
+    const main = screen.getByRole('main');
+    expect(within(main).getByTestId('persona-portrait').querySelector('img')).toHaveAttribute('src', 'data:image/png;base64,ash');
+  });
+
   it('places a world entity node where the author put it, with the user icon, and ends the top level with the rest', () => {
     render(<CastHarness />);
     const text = nav().textContent!;

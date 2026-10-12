@@ -296,6 +296,7 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
                       <EntityVisual
                         key={entityViewEntity.id}
                         entity={entityViewEntity}
+                        images={entityViewGallery.images}
                         preference={entityViewPreference.preference}
                         onPreferenceChange={entityViewPreference.onPreferenceChange}
                         imageIndex={entityViewGallery.imageIndex}

@@ -31,7 +31,7 @@ export const EntityModal = ({ entity, isOpen, onOpenChange, editing }: {
 }) => {
   const resolveEntityText = useEntityTextResolver();
   const { preference, onPreferenceChange } = useEntityVisualPreference(entity?.id);
-  const { imageIndex, onImageStep } = useEntityGallery(entity);
+  const { images, imageIndex, onImageStep } = useEntityGallery(entity);
   const morphValues = useEntityStatMorphs(entity ?? undefined);
 
   // 'edit' and 'preview' are mutually exclusive: entering one leaves the other.
@@ -117,6 +117,7 @@ export const EntityModal = ({ entity, isOpen, onOpenChange, editing }: {
         </DialogHeader>
         <EntityCardBody
           entity={entity}
+          images={images}
           preference={preference}
           onPreferenceChange={onPreferenceChange}
           imageIndex={imageIndex}

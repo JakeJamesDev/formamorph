@@ -9,7 +9,7 @@ import { resolveModelType } from '@/lib/UtilityComponents';
 import { entityImageData, entityImages } from '@/lib/entityImages';
 import ModelViewer from '@/views/ModelViewer';
 import { SwipeImage } from './SwipeImage';
-import type { Entity } from '@/types';
+import type { Base64Data, Entity } from '@/types';
 import { Tip } from '@/components/ui/tooltip';
 
 /** The visual an entity can be shown by, if it has one at all. */
@@ -39,14 +39,16 @@ const DefaultToggle = ({ active, onClick }: { active: boolean; onClick: () => vo
  * `onPreferenceChange` is what makes the preference offerable at all, and `onImageStep` what makes the gallery
  * pageable: without them (the World Editor's preview, which has no playthrough to hold either in) this shows
  * the primary picture plainly. Both live in gameplay state, so the host supplies them — see
- * `useEntityVisualPreference` and `useEntityGallery`.
+ * `useEntityVisualPreference` and `useEntityGallery`, which also supplies the visible `images` in play.
  *
  * `morphValues` comes from the host for the same reason: the stat values live in gameplay state.
  *
  * Fills its container, so the caller owns the sizing.
  */
-export const EntityVisual = ({ entity, className, preference, onPreferenceChange, imageIndex = 0, onImageStep, morphValues }: {
+export const EntityVisual = ({ entity, className, images: inPlay, preference, onPreferenceChange, imageIndex = 0, onImageStep, morphValues }: {
   entity: EntityVisualSource;
+  /** The images visible in play, in author order. Absent, the authored gallery, rules ignored. */
+  images?: readonly Base64Data[];
   className?: string;
   preference?: 'model' | 'image';
   onPreferenceChange?: (next: 'model' | 'image' | undefined) => void;
@@ -58,7 +60,7 @@ export const EntityVisual = ({ entity, className, preference, onPreferenceChange
   const [zoomOpen, setZoomOpen] = useState(false);
   const [modelOpen, setModelOpen] = useState(false);
 
-  const images = entityImageData(entity);
+  const images = inPlay ?? entityImageData(entity);
   // A held index outlives the gallery it was taken from (an edited world, a reused panel), so clamp it here
   // rather than trusting it to still point at a picture.
   const index = images.length ? Math.min(imageIndex, images.length - 1) : 0;
@@ -154,7 +156,7 @@ const Slot = ({ className, fill, children }: {
 
 /** The showing picture plus, when there is a pageable gallery behind it, the controls to move through it. */
 const Picture = ({ images, index, gallery, name, onZoom }: {
-  images: string[];
+  images: readonly string[];
   index: number;
   gallery?: GalleryControlsProps;
   name: string;

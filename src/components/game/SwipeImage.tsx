@@ -21,7 +21,7 @@ const prefersReducedMotion = () =>
  * far more likely to be a selection or a drag-out than a swipe.
  */
 export function SwipeImage({ images, index, onStep, alt, onZoom, className }: {
-  images: string[];
+  images: readonly string[];
   index: number;
   onStep: (by: number) => void;
   alt: string;
