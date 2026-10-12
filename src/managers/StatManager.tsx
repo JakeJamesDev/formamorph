@@ -305,7 +305,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
   const regenField = (
     <div {...fieldFrame('regen')}>
       {regenReset ? <LabelRow reset={regenReset}><Label>Regen</Label></LabelRow> : <Label>Regen</Label>}
-      <div className="flex gap-1">
+      <div className="flex items-center gap-1.5">
         <WorldInput
           type="number"
           className="min-w-0 flex-1"
@@ -313,16 +313,23 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
           value={regenShown}
           onChange={(e) => handleChange("regen", regenPerHour(Number(e.target.value), regenUnit))}
         />
+        <span className="shrink-0 text-meta text-muted-foreground" aria-hidden="true">per</span>
         <Select
           value={regenUnit}
           onValueChange={(unit: RegenUnit) => apply({ regenUnit: unit, regen: regenPerHour(regenShown, unit) })}
         >
           <SelectTrigger className="w-auto shrink-0 gap-1 px-2" aria-label="Regen Unit">
-            <SelectValue />
+            {/* Every label stacks invisibly under the value, so the trigger holds the widest one's width. */}
+            <span className="grid text-left">
+              {REGEN_UNITS.map((unit) => (
+                <span key={unit} aria-hidden className="invisible col-start-1 row-start-1">{REGEN_UNIT_LABELS[unit]}</span>
+              ))}
+              <span className="col-start-1 row-start-1"><SelectValue /></span>
+            </span>
           </SelectTrigger>
           <SelectContent>
             {REGEN_UNITS.map((unit) => (
-              <SelectItem key={unit} value={unit}>/ {REGEN_UNIT_LABELS[unit]}</SelectItem>
+              <SelectItem key={unit} value={unit}>{REGEN_UNIT_LABELS[unit]}</SelectItem>
             ))}
           </SelectContent>
         </Select>

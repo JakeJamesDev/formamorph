@@ -206,16 +206,20 @@ describe('the World Editor stat panel tabs', () => {
 
 describe('the Regen field', () => {
   const regenBox = () => screen.getByRole('spinbutton', { name: 'Regen' });
+  /** The unit the trigger shows, without the hidden labels that hold its width. */
+  const shownUnit = () => [...screen.getByRole('combobox', { name: 'Regen Unit' }).querySelectorAll('span')]
+    .filter((el) => !el.closest('[aria-hidden]') && el.children.length === 0)
+    .map((el) => el.textContent).join('');
   const pickRegenUnit = (name: string) => {
     fireEvent.keyDown(screen.getByRole('combobox', { name: 'Regen Unit' }), { key: 'Enter' });
-    fireEvent.keyDown(screen.getByRole('option', { name: `/ ${name}` }), { key: 'Enter' });
+    fireEvent.keyDown(screen.getByRole('option', { name }), { key: 'Enter' });
   };
   const warmth = (ctx: () => { stats: World['stats'] }) => ctx().stats.find((s) => s.id === 's1')!;
 
   it('reads per hour by default and stores what is typed as the per-hour rate', () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     selectStat('Warmth');
-    expect(screen.getByRole('combobox', { name: 'Regen Unit' })).toHaveTextContent('/ Hour');
+    expect(shownUnit()).toBe('Hour');
     fireEvent.change(regenBox(), { target: { value: '2' } });
     expect(warmth(ctx).regen).toBe(2);
   });
@@ -237,6 +241,6 @@ describe('the Regen field', () => {
     renderWorldEditorBench(world, 'advanced');
     selectStat('Warmth');
     expect(regenBox()).toHaveValue(12);
-    expect(screen.getByRole('combobox', { name: 'Regen Unit' })).toHaveTextContent('/ Day');
+    expect(shownUnit()).toBe('Day');
   });
 });
