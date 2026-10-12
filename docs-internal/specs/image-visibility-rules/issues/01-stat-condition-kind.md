@@ -1,6 +1,6 @@
 # 01: Stat Condition kind, evaluator, rule text, card codec
 
-Status: ready-for-human
+Status: done
 Blocked by: none
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high

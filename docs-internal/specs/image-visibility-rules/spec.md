@@ -1,6 +1,7 @@
 # Image Visibility Rules and Stat Conditions
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-10-12. Tickets 01-10 done. Last landing 24a80f883; review fold-in 9955a4d60. Closed without gates.
 Spec session: image-visibility-rules — spec
 
 ## Problem Statement
