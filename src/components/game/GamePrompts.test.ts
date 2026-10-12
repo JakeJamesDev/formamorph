@@ -41,9 +41,9 @@ describe('default prompts carry the expected variable chips', () => {
       '<MARKDOWN GUIDANCE>',
       '<WORLD DESCRIPTION>',
       '<DICTIONARY|before>',
-      '<STATS DESCRIPTION|descriptions.markdown>',
       '<PERSONA|markdown>',
       '<TRAITS DESCRIPTION|markdown>',
+      '<STATS DESCRIPTION|descriptions.markdown>',
       '<NOTES>',
       '<LOCATION|markdown>',
       '<LOCATION|sublocations.summary.markdown>',
@@ -60,9 +60,9 @@ describe('default prompts carry the expected variable chips', () => {
   it('choices prompt', () => {
     expect(tokensIn(defaultChoicesPrompt)).toEqual([
       '<WORLD DESCRIPTION>',
-      '<STATS DESCRIPTION|descriptions.markdown>',
-      '<PERSONA|name.markdown>',
+      '<PERSONA|summary.markdown>',
       '<TRAITS DESCRIPTION|markdown>',
+      '<STATS DESCRIPTION|descriptions.markdown>',
       '<NOTES>',
       '<LOCATION|summary.markdown>',
       '<LOCATION|sublocations.summary.markdown>',
@@ -91,11 +91,9 @@ describe('default prompts carry the expected variable chips', () => {
   });
 
   it('thinking (pre-call) prompt', () => {
-    // The reframed continuity planner (director+storyboarder fusion) drops the stats chip - the narrator,
-    // not the plan, owns outcome, so stats are noise here. Same context set as the staged director.
     expect(tokensIn(defaultThinkingPrompt)).toEqual([
       '<WORLD DESCRIPTION>',
-      '<PERSONA|markdown>',
+      '<PERSONA|nostats.markdown>',
       '<TRAITS DESCRIPTION|markdown>',
       '<LOCATION|summary.markdown>',
       '<LOCATION|sublocations.summary.markdown>',
@@ -110,7 +108,7 @@ describe('default prompts carry the expected variable chips', () => {
   it('staged director prompt', () => {
     expect(tokensIn(defaultDirectorPrompt)).toEqual([
       '<WORLD DESCRIPTION>',
-      '<PERSONA|markdown>',
+      '<PERSONA|nostats.markdown>',
       '<TRAITS DESCRIPTION|markdown>',
       '<LOCATION|summary.markdown>',
       '<LOCATION|sublocations.summary.markdown>',
@@ -127,7 +125,7 @@ describe('default prompts carry the expected variable chips', () => {
     expect(tokensIn(defaultCharacterPrompt)).toEqual([
       '<CHARACTER NAME>',
       '<WORLD DESCRIPTION>',
-      '<PERSONA|markdown>',
+      '<PERSONA|nostats.markdown>',
       '<TRAITS DESCRIPTION|markdown>',
       '<LOCATION|summary.markdown>',
       '<LOCATION|sublocations.summary.markdown>',
@@ -142,9 +140,9 @@ describe('default prompts carry the expected variable chips', () => {
   it('staged storyboard prompt', () => {
     expect(tokensIn(defaultStoryboardPrompt)).toEqual([
       '<WORLD DESCRIPTION>',
-      '<STATS DESCRIPTION|descriptions.markdown>',
       '<PERSONA|markdown>',
       '<TRAITS DESCRIPTION|markdown>',
+      '<STATS DESCRIPTION|descriptions.markdown>',
       '<LOCATION|summary.markdown>',
       '<LOCATION|sublocations.summary.markdown>',
       '<LOCATION|reachable.summary.markdown>',

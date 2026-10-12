@@ -174,7 +174,7 @@ An entity's own stats become the player's stats while the player plays as it. Un
 |---|---|
 | Stat panel | The persona's stats show under its name, below your world's player stats. Pick "*name* (You)" in the entity picker, and no entity section shows. |
 | AI stat updates | The AI updates them with the player's stats. A stat with the same name as a world player stat stays a separate stat. |
-| Stats chip | The narrator, choice writer and planner read them after your world's stats. A stat with the same name as an earlier stat reads as "*name* (2)". |
+| AI prompts | The narrator, choice writer and storyboard planner read the persona's own stats in its **Persona** block. Under a library persona, the **Custom Persona** entity's stats come after your world's stats under **Other Stats**. A stat with the same name as an earlier stat reads as "*name* (2)". |
 | Persona switch | Each entity keeps its values. Switch back, and they are as you left them. |
 | Library persona edits | A stat you add to a library persona joins the playthrough at its starting value, in a saved game too |
 
@@ -191,11 +191,11 @@ Select the placed chip to open its pop-out and set **Content**:
 
 | Content | Sends | Use it for |
 |---|---|---|
-| **Full** | Name, aliases, pronouns, full description and active traits | Prompts that write or plan the scene |
-| **Summary** | The short AI summary, or the full description when there is none, and the names of its active traits | A shorter prompt |
+| **Full** | Name, aliases, pronouns, full description, active traits and stats | Prompts that write or plan the scene |
+| **Summary** | The short AI summary, or the full description when there is none, the names of its active traits, and its stats | A shorter prompt |
 | **Name** | The name and pronouns only, as plain text | Inside a sentence |
 
-**Format** works as on the other list chips: **Simple**, **Markdown** or **XML**. **Name** sends plain text, so it locks **Format**.
+Clear **Stats** to leave the persona's stats out of **Full** and **Summary**. **Format** works as on the other list chips: **Simple**, **Markdown** or **XML**. **Name** sends plain text, so it locks **Format**.
 
 | Detail | What to do |
 |---|---|

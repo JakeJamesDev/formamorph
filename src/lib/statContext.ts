@@ -58,11 +58,16 @@ export interface StatChipPart {
 export const statPlacementOf = (owner: { stats?: readonly Stat[]; statGroups?: readonly StatGroup[] }): StatPlacement =>
   ({ groups: owner.statGroups ?? [], authored: owner.stats ?? [] });
 
+/** One entity's stats as a Stats chip part, with the entity that owns them. */
+export interface OwnerStatPart extends StatChipPart {
+  ownerId: string;
+}
+
 /** Each owner's stats from `held` as a Stats chip part, placed as that owner authored them. */
 export const ownerStatParts = (
   owners: readonly { id: string; stats?: readonly Stat[]; statGroups?: readonly StatGroup[] }[],
   held: Readonly<Record<string, readonly PlayerStat[]>>,
-): StatChipPart[] => owners.map((owner) => ({ stats: held[owner.id] ?? [], placement: statPlacementOf(owner) }));
+): OwnerStatPart[] => owners.map((owner) => ({ ownerId: owner.id, stats: held[owner.id] ?? [], placement: statPlacementOf(owner) }));
 
 /** One stat in `format`: a line, or a multi-line `<stat>` block in xml. */
 function statEntry(stat: PlayerStat, pieces: StatPieces, format: ContextFormat): string {

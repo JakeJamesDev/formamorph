@@ -101,6 +101,16 @@ describe('the Open Chat default world', () => {
   const chipKeys = (template: string) => new Set(parsePromptTemplate(template).flatMap((s) =>
     s.type === 'variable' ? [splitToken(s.token)?.key ?? s.token] : []));
 
+  it.each(['narration', 'choices'] as const)('places Other Traits, then Other Stats, after the headed Persona chip in its %s prompt', (kind) => {
+    const placed = parsePromptTemplate(worldPrompt(world.worldOverview, kind) ?? '').flatMap((s) => {
+      const parts = s.type === 'variable' ? splitToken(s.token) : null;
+      return parts?.header ? [`${parts.base}: ${parts.header}`] : [];
+    });
+    const persona = placed.findIndex((chip) => chip.startsWith('<PERSONA>'));
+    expect(persona).toBeGreaterThan(-1);
+    expect(placed.slice(persona + 1, persona + 3)).toEqual(['<TRAITS DESCRIPTION>: Other Traits', '<STATS DESCRIPTION>: Other Stats']);
+  });
+
   // The Reply Length chip is the one length control of a message, so the built-in length chip stays out.
   it.each(['narration', 'choices'] as const)('keeps every context chip of the built-in %s prompt in its own', (kind) => {
     const own = chipKeys(worldPrompt(world.worldOverview, kind) ?? '');

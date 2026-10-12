@@ -84,10 +84,14 @@ describe('authoredChipScene and entity stats', () => {
     expect(chipValues(authoredChipScene(world()))['header:{{user}}']).toBe('the player');
   });
 
-  it("lists the Custom Persona entity's switched-on stats after the world's, and no other entity's", () => {
+  it("nests the Custom Persona entity's switched-on stats in its block, and no other entity's", () => {
     const you: Entity = { id: 'you', name: 'You', customPersona: true, stats: [stock, dread] };
     const scene = authoredChipScene(world({ entities: [{ ...wren, stats: [trust] }, harrow, you] }));
-    expect(chipValues(scene)['<STATS DESCRIPTION|numbers>']).toBe('Warmth: 40/100\nNerve: 10/100\nStock: 5/50');
+    const values = chipValues(scene);
+    expect(scene.persona).toEqual({ source: 'custom', entity: expect.objectContaining({ id: 'you' }) });
+    expect(values['<STATS DESCRIPTION|numbers>']).toBe('Warmth: 40/100\nNerve: 10/100');
+    expect(values['<PERSONA>']).toBe('You\n  stats:\n    Stock: 5/50\n');
+    expect(values['<PERSONA|nostats>']).toBe('You\n');
   });
 
   it('reads a linked Blueprint per bearer, and never as a player stat', () => {
