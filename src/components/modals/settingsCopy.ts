@@ -610,10 +610,15 @@ Small steps matter: 1.05 to 1.15 is typical. High values can break names and pun
   },
 
   // ── Data · Saves ────────────────────────────────────────────────────────────
+  autosaveSlots: {
+    label: 'Autosaves Kept',
+    description: 'How many autosaves each world keeps; a new turn replaces the oldest',
+  },
   autosave: {
     label: 'Autosave',
-    description: 'Saves after every turn to a per-world Autosave slot',
-    info: `- Never touches your manual saves
+    description: 'Saves after every turn to the world\'s autosaves',
+    info: `- Named by turn
+- Never touches your manual saves
 - Appears under **Load Game** with an **Auto** tag
 - Starts once the opening scene finishes`,
   },

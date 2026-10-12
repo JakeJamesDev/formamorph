@@ -81,7 +81,7 @@ The words Formamorph uses, and what each one means. Each term links the page tha
 | [Local Replacement](LinkedContent#the-three-link-states) | A linked copy of another author's item that you edited. No update overwrites it. |
 | [Entity Card](Library#how-to-export-an-entity-or-a-dictionary) | An exported entity: a `.webp` image of its portrait with the entity's data inside |
 | [Save](Saves-and-Backup) | One game's progress, with every turn, your notes and your memories |
-| [Autosave](Saves-and-Backup#autosave) | The save slot that each world gets, written after every turn |
+| [Autosave](Saves-and-Backup#autosave) | The saves each world keeps, written after every turn: one by default, more with **Autosaves Kept** |
 | [Backup](Saves-and-Backup#the-backup--restore-dialog) | One file with your worlds, saves, library entities and library dictionaries |
 | [Avatar](Avatars) | A 3D model of you, the player, from a VRM file |
 | [Permissive License](Avatars#the-permissive-license) | A VRM license that allows every use the community needs. An Avatar needs it to publish. |
