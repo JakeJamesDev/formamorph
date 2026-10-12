@@ -3,7 +3,7 @@ import { formatAbsolute } from '../gameClock';
 import {
   buildDestinationsContext, buildLocationContext, buildParentLocationContext, buildReachableEntitiesContext,
   buildReachableLocationsContext, buildSublocationEntitiesContext, buildSublocationsContext, chipFormat,
-  chipFamilyValues, ownedStatLines, renderEntityRoster, scopedChipValues, sublocationEntityIds, type ContextOpts,
+  chipFamilyValues, hasOnlyWith, ownedStatLines, renderEntityRoster, scopedChipValues, sublocationEntityIds, type ContextOpts,
 } from '../locationContext';
 import { personaContextValues } from '../personaContext';
 import { PLAYER_NAME, PLAYER_NAME_HEADER_KEY } from '../builtinPlaceholders';
@@ -120,17 +120,19 @@ function entityScopes(scene: ChipScene): Record<string, (opts: ContextOpts) => s
   // Roster precedence: here > sub-location > reachable. A character shows only in the highest scope it
   // belongs to, so the lower scopes drop the ids the higher ones list.
   const reachableExclude = [...presentIds, ...sublocationEntityIds(location, locations, outer)];
-  // Every scope renders each entity with its owned traits in force.
-  const roster = (opts: ContextOpts) => ({ ...opts, ownedTraits });
-  // Only the scopes of who is present carry stats, and the chip's stats piece can switch them off.
-  const presentOpts = (opts: ContextOpts) => ({ ...roster(opts), ownedStats: opts.noStats ? undefined : ownedStats });
+  // Every scope renders each entity with its owned traits in force. The scene's owned stats go to every
+  // scope, since Only With counts them; whether a scope lists them is `noStats`.
+  const roster = (opts: ContextOpts) => ({ ...opts, ownedTraits, ownedStats });
+  // Here and In Scene list stats unless the chip switches them off; the lower scopes only when it switches them on.
+  const lowerOpts = (opts: ContextOpts) => ({ ...roster(opts), noStats: !opts.statsOn });
   return {
-    '': (opts) => renderEntityRoster(presentIds, entities, presentOpts(opts)),
-    sublocations: (opts) => buildSublocationEntitiesContext(location, locations, outer, { ...roster(opts), excludeIds: presentIds }),
-    reachable: (opts) => buildReachableEntitiesContext(location, locations, outer, { ...roster(opts), excludeIds: reachableExclude }),
+    '': (opts) => renderEntityRoster(presentIds, entities, roster(opts)),
+    sublocations: (opts) => buildSublocationEntitiesContext(location, locations, outer, { ...lowerOpts(opts), excludeIds: presentIds }),
+    reachable: (opts) => buildReachableEntitiesContext(location, locations, outer, { ...lowerOpts(opts), excludeIds: reachableExclude }),
     inscene: (opts) => {
-      const block = renderEntityRoster(inSceneIds, entities, presentOpts(opts));
-      if (!opts.nameOnly || !inSceneNames.length) return block;
+      const block = renderEntityRoster(inSceneIds, entities, roster(opts));
+      // A name with no entity record owns nothing, so a filter drops it.
+      if (!opts.nameOnly || !inSceneNames.length || hasOnlyWith(opts)) return block;
       return [...(block === NONE_PLACEHOLDER ? [] : [block]), ...inSceneNames].join(', ');
     },
   };

@@ -1,4 +1,4 @@
-import { renderEntityRoster, scopedChipValues, type OwnedTraitsInForce, type RosterOpts } from './locationContext';
+import { passesOnlyWith, renderEntityRoster, scopedChipValues, type OwnedTraitsInForce, type RosterOpts } from './locationContext';
 import type { ResolvedPersona } from './persona';
 import { NONE_PLACEHOLDER } from './promptFallbacks';
 import type { ValueLookup } from './promptValues';
@@ -17,6 +17,8 @@ export const knownPersonaLine = (name: string): string =>
 export function buildPersonaContext(persona: ResolvedPersona | null, opts: RosterOpts = {}): string {
   if (!persona) return NONE_PLACEHOLDER;
   const { entity } = persona;
+  // A persona the filter drops reads as no persona, with no known-person line.
+  if (!passesOnlyWith(entity.id, opts)) return NONE_PLACEHOLDER;
   if (opts.nameOnly) {
     const pronouns = entity.pronouns?.trim();
     return pronouns ? `${entity.name} (${pronouns})` : entity.name;
@@ -32,6 +34,6 @@ export function personaContextValues(
 ): ValueLookup {
   const ownedStats = persona && stats.length ? { [persona.entity.id]: stats } : undefined;
   return scopedChipValues('<PERSONA>', {
-    '': (opts) => buildPersonaContext(persona, { ...opts, ownedTraits, ownedStats: opts.noStats ? undefined : ownedStats }),
+    '': (opts) => buildPersonaContext(persona, { ...opts, ownedTraits, ownedStats }),
   });
 }

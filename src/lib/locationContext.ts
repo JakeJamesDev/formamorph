@@ -1,5 +1,5 @@
 import type { Connection, Entity, GameLocation, PlayerStat } from "@/types";
-import { buildStatContext, statPlacementOf, type ContextFormat } from "./statContext";
+import { buildStatContext, statPlacementOf, type ContextFormat, type StatPieces } from "./statContext";
 import { entityIdsAt, entityIdsAtAny } from "./entityPresence";
 import { effectiveDestinations } from "./locationGraph";
 import { buildTraitContext, traitsInContextOrder } from "./traitTree";
@@ -133,17 +133,43 @@ export type OwnedTraitsInForce = Readonly<Record<string, readonly string[]>>;
 /** Entity id → the stats it owns that are switched on, at their current values. Absent entity ⇒ none. */
 export type OwnedStatsInForce = Readonly<Record<string, readonly PlayerStat[]>>;
 
+/** Which kinds an entity must own, at least one, to stay in a roster. */
+export type OnlyWith = { stats?: boolean; traits?: boolean };
+
 /** How a roster renders: the chip content and format, each entity's owned traits in force, and the owned
- *  stats to list under it. Absent `ownedStats` lists none. */
+ *  stats to list under it. Absent `ownedStats` lists none. `onlyWith` filters on what the scene owns, so it
+ *  counts `ownedTraits` and `ownedStats` whether or not the roster lists them. */
 export type RosterOpts = {
   preferSummary?: boolean; format?: ContextFormat; nameOnly?: boolean; ownedTraits?: OwnedTraitsInForce; ownedStats?: OwnedStatsInForce;
+  onlyWith?: OnlyWith;
+  /** Leave owned traits out. */
+  noTraits?: boolean;
+  /** Leave owned stats out. */
+  noStats?: boolean;
+  /** The pieces an owned stat line carries; all three when absent. */
+  statPieces?: StatPieces;
 };
 
+const ALL_STAT_PIECES: StatPieces = { values: true, status: true, meaning: true };
+
+/** Whether `opts` filters the roster at all. */
+export const hasOnlyWith = (opts: Pick<RosterOpts, "onlyWith">): boolean => !!(opts.onlyWith?.stats || opts.onlyWith?.traits);
+
+/** Whether an entity owns a picked kind in force: an entry in `ownedStats` for Stats, in `ownedTraits` for
+ *  Traits. True for every entity when no filter is on. */
+export function passesOnlyWith(entityId: string, opts: Pick<RosterOpts, "onlyWith" | "ownedTraits" | "ownedStats">): boolean {
+  if (!hasOnlyWith(opts)) return true;
+  const { onlyWith, ownedTraits, ownedStats } = opts;
+  return !!((onlyWith?.stats && ownedStats?.[entityId]?.length) || (onlyWith?.traits && ownedTraits?.[entityId]?.length));
+}
+
 /** An entity's owned stats as roster field lines, nested as its traits are and under its stat groups, or ''
- *  when it holds none. */
-export function ownedStatLines(entity: Entity, stats: readonly PlayerStat[], format: ContextFormat): string {
+ *  when it holds none. `pieces` picks the parts of each stat line. */
+export function ownedStatLines(
+  entity: Entity, stats: readonly PlayerStat[], format: ContextFormat, pieces: StatPieces = ALL_STAT_PIECES,
+): string {
   if (!stats.length) return "";
-  const block = buildStatContext([...stats], { values: true, status: true, meaning: true }, format, statPlacementOf(entity))
+  const block = buildStatContext([...stats], pieces, format, statPlacementOf(entity))
     .split("\n").map((line) => `    ${line}`).join("\n");
   if (format === "xml") return `  <stats>\n${block}\n  </stats>\n`;
   return `${format === "markdown" ? "  - **stats:**" : "  stats:"}\n${block}\n`;
@@ -182,11 +208,12 @@ function ownedTraitLines(
  * field as the Traits chip renders them; the summary content lists their names on one `traits` line.
  */
 export function renderEntityRoster(
-  entityIds: string[],
+  allIds: string[],
   entities: Entity[],
   opts: RosterOpts = {},
 ): string {
-  const { preferSummary = false, format = "simple", nameOnly = false, ownedTraits, ownedStats } = opts;
+  const { preferSummary = false, format = "simple", nameOnly = false, ownedTraits, ownedStats, noTraits, noStats, statPieces } = opts;
+  const entityIds = allIds.filter((id) => passesOnlyWith(id, opts));
   if (nameOnly) {
     const names = entityIds
       .map((id) => entities.find((e) => e.id === id)?.name)
@@ -217,8 +244,8 @@ export function renderEntityRoster(
       : "";
     const pronouns = entityItem.pronouns?.trim();
     const pronounLine = pronouns ? field("pronouns", pronouns) : "";
-    const ownedLines = ownedTraitLines(entityItem, ownedTraits?.[entityItem.id] ?? [], preferSummary, format, field)
-      + ownedStatLines(entityItem, ownedStats?.[entityItem.id] ?? [], format);
+    const ownedLines = (noTraits ? "" : ownedTraitLines(entityItem, ownedTraits?.[entityItem.id] ?? [], preferSummary, format, field))
+      + (noStats ? "" : ownedStatLines(entityItem, ownedStats?.[entityItem.id] ?? [], format, statPieces));
     if (xml) {
       let inner = field("name", entityItem.name);
       inner += aliasLine;
@@ -408,7 +435,8 @@ export function buildSceneEntitiesContext(
   opts: RosterOpts = {},
 ): string {
   if (names.length === 0) return NONE_PLACEHOLDER;
-  if (opts.nameOnly) return names.join(', ');
+  // A name with no entity record owns nothing, so a filter drops it with the roster path below.
+  if (opts.nameOnly && !hasOnlyWith(opts)) return names.join(', ');
   const ids = names.map((n) => entityNamed(entities, n)?.id).filter((id): id is string => !!id);
   return renderEntityRoster(ids, entities, opts);
 }
@@ -474,15 +502,18 @@ export function buildReachableEntitiesContext(
   return renderEntityRoster(ids, entities, opts);
 }
 
-/** The axes a scoped context chip carries, as the builders take them. */
-export type ContextOpts = { preferSummary?: boolean; nameOnly?: boolean; format?: ContextFormat; noStats?: boolean };
+/** The axes a scoped context chip carries, as the builders take them. `noStats` is the stored stats-off pick;
+ *  `statsOn` is the stored stats-on pick, which the scopes that default to no stats read. */
+export type ContextOpts = {
+  preferSummary?: boolean; nameOnly?: boolean; format?: ContextFormat; noStats?: boolean; statsOn?: boolean;
+  onlyWith?: OnlyWith; noTraits?: boolean; statPieces?: StatPieces;
+};
 
 // What each registry option means to the builders. The ids come from the registry; only their meaning is
 // spelled here, and an option with no meaning throws so the render guard fails before a prompt renders a
 // raw token.
 const CONTENT_OPTS: Record<string, ContextOpts> = { summary: { preferSummary: true }, name: { nameOnly: true } };
-// Stats on reads as the scope's default.
-const STATS_OPTS: Record<string, ContextOpts> = { nostats: { noStats: true }, stats: {} };
+const STATS_OPTS: Record<string, ContextOpts> = { nostats: { noStats: true }, stats: { statsOn: true } };
 const FORMATS: Record<string, ContextFormat> = { markdown: "markdown", xml: "xml" };
 
 /** The builders' format for a chip's format option; the default option is the plain shape. */
@@ -507,12 +538,26 @@ function chipStats(optionId: string | null): ContextOpts {
   return opts;
 }
 
+/** The Only With, Include Traits and Stat Detail picks of the Entities and Persona chips. A stored id is the
+ *  Only With pick on, and the Include or Stat Detail piece off. Other chips carry none of these axes. */
+function chipRoster(selection: Record<string, string | null | undefined>): ContextOpts {
+  const onlyWith: OnlyWith = { stats: selection.withstats != null, traits: selection.withtraits != null };
+  const pieces: StatPieces = { values: selection.range == null, status: selection.descriptor == null, meaning: selection.description == null };
+  return {
+    ...(onlyWith.stats || onlyWith.traits ? { onlyWith } : {}),
+    ...(selection.traits != null ? { noTraits: true } : {}),
+    ...(pieces.values && pieces.status && pieces.meaning ? {} : { statPieces: pieces }),
+  };
+}
+
 /** The builder options one concrete scoped chip token encodes, read through the same tables as the lookup. */
 export function scopedChipOpts(token: string): ContextOpts {
   const variable = variableForToken(token);
   if (!variable) throw new Error(`No chip is registered for ${token}`);
   const selection = decodeVariant(variable, tokenVariant(token));
-  return { ...chipContent(selection.content), ...chipStats(selection.stats ?? null), format: chipFormat(selection.format) };
+  return {
+    ...chipContent(selection.content), ...chipStats(selection.stats ?? null), ...chipRoster(selection), format: chipFormat(selection.format),
+  };
 }
 
 /** One chip as a lookup: a key the chip at `base` spells renders from its decoded axes on first read; `build`
@@ -531,16 +576,19 @@ export function chipFamilyValues(
 
 /**
  * One scoped chip family as a lookup: a key of `base` renders through its scope's builder with the content,
- * stats and format its axes pick. The scopes are the caller's, since a builder can serve a subset; a key in
- * any other scope has no value.
+ * stats, roster options and format its axes pick. The scopes are the caller's, since a builder can serve a
+ * subset; a key in any other scope has no value.
  */
 export function scopedChipValues(
   base: string,
   scopes: Record<string, (opts: ContextOpts) => string>,
 ): ValueLookup {
-  return chipFamilyValues(base, ({ scope, content, stats, format }) => {
+  return chipFamilyValues(base, (selection) => {
+    const { scope, content, stats, format } = selection;
     const id = scope ?? "";
     const build = Object.hasOwn(scopes, id) ? scopes[id] : undefined;
-    return build?.({ ...chipContent(content ?? null), ...chipStats(stats ?? null), format: chipFormat(format ?? null) });
+    return build?.({
+      ...chipContent(content ?? null), ...chipStats(stats ?? null), ...chipRoster(selection), format: chipFormat(format ?? null),
+    });
   });
 }
