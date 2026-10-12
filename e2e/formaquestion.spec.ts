@@ -33,6 +33,18 @@ const settings = (page: Page) => page.getByRole('dialog', { name: 'Settings' });
 
 type Box = { x: number; y: number; width: number; height: number };
 
+/** A world whose entity description offers one placeholder to the `{` typeahead. */
+const TYPEAHEAD_WORLD = {
+  id: 'e2e-help-typeahead',
+  worldOverview: { name: 'E2E Help Typeahead', description: '', author: '' },
+  locations: [],
+  stats: [],
+  entities: [{ id: 'ent-0', name: 'Walker', type: 'Person', aiDescription: 'Before after' }],
+  traits: [],
+  statUpdates: [],
+  placeholders: [{ id: 'ph-town', name: 'Town', values: [{ id: 'town-0', text: 'Harrow' }] }],
+};
+
 /** Which surface holds keyboard focus. */
 async function focusOwner(page: Page): Promise<string> {
   return page.evaluate(() => {
@@ -308,6 +320,45 @@ test.describe('Formaquestion on a desktop screen', () => {
     await expect(font).toHaveText(picked!);
     expect(picked).not.toBe(before);
     await expect(helpWindow(page)).toBeVisible();
+  });
+
+  test('a chip typeahead paints above its dialog and under the window, and a press where they overlap reaches the window', async ({ page }) => {
+    await openApp(page);
+    await page.evaluate(async (world) => {
+      const dev = (window as unknown as { __fmDev: { putWorld(w: unknown): Promise<string>; editWorld(id: string): Promise<void> } }).__fmDev;
+      await dev.editWorld(await dev.putWorld(world));
+    }, TYPEAHEAD_WORLD);
+    await gotoDev(page, 'mainMenu', { modal: 'worldEditor', tab: 'entities', subtab: 'descriptions' });
+    await page.getByText('Walker', { exact: true }).first().click();
+    const editor = page.locator('[data-find-field="AI-Facing Description"] [contenteditable="true"]').first();
+    await editor.click();
+    await page.keyboard.press('Home');
+    await page.keyboard.type('{');
+    const menu = page.getByTestId('chip-typeahead');
+    await expect(menu).toBeVisible();
+    const box = (await menu.boundingBox())!;
+    const center = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    const topAt = () => page.evaluate(({ x, y }) => {
+      const el = document.elementFromPoint(x, y);
+      if (el?.closest('#formaquestion-window')) return 'window';
+      return el?.closest('[data-testid="chip-typeahead"]') ? 'typeahead' : 'other';
+    }, center);
+    expect(await topAt()).toBe('typeahead');
+
+    await openHelp(page);
+    await expect(menu).toBeVisible();
+    // Drag the window by its title bar so that the menu's center lands 200px in and 120px down, inside its body.
+    const win = await settledBox(page);
+    const grip = { x: win.x + 120, y: win.y + 20 };
+    await page.mouse.move(grip.x, grip.y);
+    await page.mouse.down();
+    await page.mouse.move(grip.x + (center.x - 200 - win.x), grip.y + (center.y - 120 - win.y), { steps: 5 });
+    await page.mouse.up();
+    expect(await topAt()).toBe('window');
+
+    await page.mouse.click(center.x, center.y);
+    await expect(editor).toHaveText('{Before after');
+    await expect(menu).toBeVisible();
   });
 
   test('the window paints above the dialog, takes the wheel under its scroll lock, and a screen reader still sees it', async ({ page }) => {

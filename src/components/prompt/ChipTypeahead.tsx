@@ -269,8 +269,8 @@ export function ChipTypeaheadPlugin({ trigger, vocab }: {
     <div
       data-testid="chip-typeahead"
       // `pointer-events-auto`: a modal Radix dialog sets `pointer-events: none` on the body, so anything
-      // portaled out of its content is visible but unclickable.
-      className="pointer-events-auto fixed z-[70] w-56 rounded-md border border-border bg-popover p-1 shadow-md"
+      // portaled out of its content is visible but unclickable. z-60: above dialogs, below the help window.
+      className="pointer-events-auto fixed z-[60] w-56 rounded-md border border-border bg-popover p-1 shadow-md"
       style={{
         left: Math.min(match.rect.left, window.innerWidth - 240),
         ...(below ? { top: match.rect.bottom + 4 } : { bottom: window.innerHeight - match.rect.top + 4 }),
