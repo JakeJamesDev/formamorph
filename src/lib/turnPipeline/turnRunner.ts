@@ -1,4 +1,3 @@
-import type { AiStreamEvent } from '@/lib/aiRequest/aiStream';
 import type {
   TurnMaterial,
   TurnPassRecord,
@@ -16,8 +15,8 @@ import { withImageParts } from '@/lib/aiRequest/imageParts';
  * with a typed result rather than a thrown error.
  *
  * Both concurrency modes take the same path: a stage is either dispatched as one batch or one pass at a
- * time, and that is the only thing the knob decides. Narration stream events are forwarded verbatim, in
- * arrival order, so reveal pacing and TTS stay in the view.
+ * time, and that is the only thing the knob decides. What a request streams is the Request Transport's
+ * business, so reveal pacing and TTS stay outside the runner (ADR-0012).
  */
 
 /** What one dispatched request produced. Fan-out passes contribute one of these per subject. */
@@ -55,8 +54,6 @@ export type TurnResult =
 /** What the adapter is told beyond the request itself. */
 export interface TurnRequestContext {
   signal: AbortSignal;
-  /** Set for the narration only: the stream's events, as they arrive. */
-  onEvent?: (event: AiStreamEvent) => void;
 }
 
 /** The pipeline's one seam: production sends the real AI call, tests a fake, the harness a recorder. */
@@ -90,8 +87,6 @@ export interface TurnRunnerInput {
   request: TurnRequestAdapter;
   signal: AbortSignal;
   advance?: TurnAdvance;
-  /** The narration stream's events, forwarded in the order the stream emitted them. */
-  onNarrationEvent?: (event: AiStreamEvent) => void;
   /**
    * One request has answered — called the moment it settles, not when its stage does, so a caller waiting on
    * a single pass inside a batch is released by that pass rather than by the slowest of its siblings.
@@ -118,7 +113,7 @@ const isBatched = (stage: TurnStage, plan: TurnPlan): boolean =>
   stage === 'postNarration' && plan.concurrency === 'parallel';
 
 export async function runTurn(input: TurnRunnerInput): Promise<TurnResult> {
-  const { plan, request, signal, advance, onNarrationEvent, onPassSettled } = input;
+  const { plan, request, signal, advance, onPassSettled } = input;
   let material: TurnMaterial = { ...input.material };
   const passes: TurnPassOutcome[] = [];
   // The request that ended the turn, recorded where it fails — so nothing downstream has to read anything
@@ -152,10 +147,7 @@ export async function runTurn(input: TurnRunnerInput): Promise<TurnResult> {
       : request;
 
   const send = (planned: PlannedRequest): Promise<string> => {
-    const answer = request(planned.request, {
-      signal,
-      ...(planned.pass.stage === 'narration' && onNarrationEvent ? { onEvent: onNarrationEvent } : {}),
-    });
+    const answer = request(planned.request, { signal });
     return answer.then(
       (raw) => {
         onPassSettled?.(planned.pass.id, { ok: true });

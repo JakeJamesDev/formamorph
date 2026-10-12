@@ -401,7 +401,7 @@ export function buildStagedPlan(args: {
   return parts.join("\n\n");
 }
 
-/** The AI-request callback the staged pipeline drives (a subset of GameViewer's makeAIRequest). */
+/** The AI-request callback the staged pipeline drives (a subset of the Request Transport's request). */
 export type StagedRequestFn = (
   systemPrompt: string,
   messages: ChatMessage[],
@@ -427,7 +427,7 @@ export interface StagedPlanningResult {
  * Run the staged planning pipeline for one turn: director (scene + cast) → one motivation pass per
  * chosen character (sequential, capped) → storyboarder. Returns the plan plus the cast names to
  * confirm against the narration afterward. On abort it returns early with an empty plan; the caller
- * should re-check `signal.aborted` and bail. `request` is GameViewer's makeAIRequest, injected so this
+ * should re-check `signal.aborted` and bail. `request` sends through the Request Transport, injected so this
  * stays pure/testable.
  */
 export async function runStagedPlanning(ctx: {
