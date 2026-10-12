@@ -338,8 +338,16 @@ One alternative in a Requirement. A row holds when every Condition in it holds (
 _Avoid_: clause, branch, group (a group is a trait group)
 
 **Condition**:
-One check in a Requirement Row: a trait, any trait in a group, or a persona the player plays as, with an optional Bearer. A Condition can carry the Not flag, and then it holds while its target is off. Not is a flag on a Condition, not a separate item.
+One check in a Requirement Row: a trait, any trait in a group, a persona the player plays as, or a stat, with an optional Bearer. A Condition can carry the Not flag, and then it holds while its target is off. Not is a flag on a Condition, not a separate item.
 _Avoid_: exclusion, negation, rule, requirement (a Requirement is the whole gate)
+
+**Stat Condition**:
+A Condition that compares a Bearer's stat to a number with one of six operators (`>`, `<`, `>=`, `<=`, `=`, `≠`). The number is raw, in the stat's units, or a percent of the stat's min-to-max span; the author picks per Condition. Traits and image Visibility rules share it. The game reads stats once per turn commit, after the stat pass, and a Condition on an inert or missing stat does not hold.
+_Avoid_: stat gate, stat requirement, threshold (a descriptor's word)
+
+**Visibility rule**:
+Requirement Rows on one gallery image. In play the image shows while any row holds, and an image with no rows always shows. The primary is the first visible image in author order. Outside play slot 0 shows and rules are ignored. The summary reads "Shown while …". The trait side of the same rows is a Requirement.
+_Avoid_: image condition, image gate, hide rule (a rule only shows; Not covers hiding), image requirement
 
 **Hidden (trait)**:
 A trait Mode that is Automatic and never shown to the player. The AI reads it like any active trait. Only dev tools, the Prompt viewer and Test Bench show its name. Its Stat changes apply.
