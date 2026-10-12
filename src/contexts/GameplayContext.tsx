@@ -1,7 +1,7 @@
 import { randomUUID } from "@/lib/uuid";
 import { createContext, useContext, useState, useRef, useCallback, useEffect, useMemo, type ReactNode } from 'react';
-import { putSaveRecord, getSaveRecord, getAllSaveRecords } from '../components/modals/dbUtils';
-import { autosaveName, autosaveSlotId } from '../lib/autosave';
+import { putSaveRecord, getSaveRecord, getAllSaveRecords, deleteSaveRecord } from '../components/modals/dbUtils';
+import { autosaveName, autosavePlan } from '../lib/autosave';
 import { toast } from 'react-toastify';
 import { toastError } from '@/lib/linkToast';
 import { convertSaveFile, terminateWorker } from '../lib/saveConversionWorkerUtils';
@@ -447,13 +447,15 @@ function useProvideGameplay() {
   // Autosave has failed at least once this session — used to toast only once, re-armed on a later success.
   const autosaveFailedRef = useRef(false);
 
-  /** Autosave this turn into the world's rolling slots: a new one while it has fewer than five, else over its
-   *  oldest, so the last five turns can always be gone back to. `turn` names the save. Silent on success;
-   *  toasts once per session on failure and keeps trying on later turns. */
-  const autosaveGame = useCallback(async (worldName: string, worldId?: string, turn?: number) => {
-    const slotId = autosaveSlotId(await getAllSaveRecords(), worldName, worldId);
-    const ok = await saveGame(autosaveName(turn), worldName, worldId, slotId, { isAutosave: true });
+  /** Autosave this turn into the world's rolling slots: a new one while it has fewer than `slots`, else over
+   *  its oldest, so the last `slots` turns can always be gone back to. Extras past `slots`, left by lowering the
+   *  setting, are deleted once the new one is written. `turn` names the save. Silent on success; toasts once
+   *  per session on failure and keeps trying on later turns. */
+  const autosaveGame = useCallback(async (worldName: string, worldId?: string, turn?: number, slots?: number) => {
+    const plan = autosavePlan(await getAllSaveRecords(), worldName, worldId, slots);
+    const ok = await saveGame(autosaveName(turn), worldName, worldId, plan.slotId, { isAutosave: true });
     if (ok) {
+      for (const id of plan.trim) await deleteSaveRecord(id);
       autosaveFailedRef.current = false;
     } else if (!autosaveFailedRef.current) {
       autosaveFailedRef.current = true;

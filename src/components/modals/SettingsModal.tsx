@@ -64,6 +64,7 @@ import PromptField from '../prompt/PromptField';
 import { PROMPT_KIND_VARIABLES, PROMPT_KIND_USER_VARIABLES, NOW_LINE_VARIABLES, SUBJECT, type PromptVariable } from '@/lib/promptVariables';
 import { defaultPromptSampler } from '@/lib/promptSamplers';
 import { numInput } from '@/lib/numInput';
+import { MAX_AUTOSAVE_SLOTS } from '@/lib/autosave';
 import { FieldError } from '@/components/ui/typography';
 import { SamplerControl, type SamplerControlProps } from './SamplerControl';
 import { EndpointRouteField } from './EndpointRouteField';
@@ -462,6 +463,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     toolsEnabled,
     autosaveEnabled,
     setAutosaveEnabled,
+    autosaveSlots,
+    setAutosaveSlots,
     editorAutoSave,
     setEditorAutoSave,
     editorAutoSaveIdleSeconds,
@@ -527,6 +530,10 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     imageTagPrompt,
     setImageTagPrompt,
   } = settings;
+  // Autosaves Kept as it stood when Settings opened: lowering it below that warns until Settings closes.
+  const [autosaveSlotsAtOpen, setAutosaveSlotsAtOpen] = useState(autosaveSlots);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- taken on open only; the edits after it are what it is compared with
+  useEffect(() => { if (isOpen) setAutosaveSlotsAtOpen(autosaveSlots); }, [isOpen]);
   const themeState = useTheme();
   const desktop = isDesktop();
   const [connectionGuideOpen, setConnectionGuideOpen] = useState(false);
@@ -1991,6 +1998,26 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                 onChange={setAutosaveEnabled}
                 {...rowCopy('autosave')}
               />
+              {autosaveEnabled && (
+                <Row htmlFor="autosaveSlots" {...rowCopy('autosaveSlots')}>
+                  <div className="grid gap-1">
+                    <Input
+                      id="autosaveSlots"
+                      type="number"
+                      min={1}
+                      max={MAX_AUTOSAVE_SLOTS}
+                      value={autosaveSlots}
+                      onChange={(e) => setAutosaveSlots(Math.min(MAX_AUTOSAVE_SLOTS, Math.floor(numInput(e.target.value, 1))))}
+                      className="w-20"
+                    />
+                    {autosaveSlots < autosaveSlotsAtOpen && (
+                      <p role="status" className="text-helper text-destructive">
+                        Each world&apos;s oldest autosaves past {autosaveSlots} are deleted on its next autosave.
+                      </p>
+                    )}
+                  </div>
+                </Row>
+              )}
               </Section>
 
               <Section title="Authoring">

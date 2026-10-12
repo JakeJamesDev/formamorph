@@ -1,7 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 import { openApp } from './app';
 
-/** Autosave keeps the world's last five turns, each named by its turn, overwriting the oldest. */
+/** Autosave keeps the world's last turns, as many as Autosaves Kept says, each named by its turn, overwriting
+ *  the oldest; lowering the setting trims the extras on the next autosave. */
 
 async function play(page: Page, action: string) {
   await page.getByPlaceholder(/Type your action/).fill(action);
@@ -22,7 +23,7 @@ const autosaveNames = (page: Page) => page.evaluate(() => new Promise<string[]>(
   };
 }));
 
-test('seven turns leave the five latest autosaves, named by turn', async ({ page }, testInfo) => {
+test('seven turns keeping five leave the five latest autosaves, named by turn, and lowering it to two trims the rest', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop', 'storage behaviour, not layout');
   page.on('pageerror', (error) => console.error(error.message));
   await page.route('**/api/v0/models', (route) => route.fulfill({ status: 404 }));
@@ -34,7 +35,7 @@ test('seven turns leave the five latest autosaves, named by turn', async ({ page
   await openApp(page, {
     FORMAMORPH_thinkingMode: 'off', FORMAMORPH_choicesEnabled: false,
     FORMAMORPH_locationChangeEnabled: false, FORMAMORPH_memoryDigests: false, FORMAMORPH_aiClock: false,
-    FORMAMORPH_autosaveEnabled: true,
+    FORMAMORPH_autosaveEnabled: true, FORMAMORPH_autosaveSlots: 5,
   }, { url: '/#dev?view=gameViewer&fixture=whiteRoom' });
 
   for (let i = 1; i <= 7; i++) await play(page, `I knock, time ${i}.`);
@@ -44,4 +45,25 @@ test('seven turns leave the five latest autosaves, named by turn', async ({ page
   // The fixture opens mid-story, so the turn numbers are read, not assumed: five consecutive, the latest last.
   const turns = names.map((name) => Number(name.split('Turn ')[1])).sort((a, b) => a - b);
   expect(turns[4] - turns[0]).toBe(4);
+
+  // Lowered in Settings: a warning until Settings closes, then the next autosave leaves two.
+  await page.getByRole('button', { name: 'Menu' }).click();
+  await page.getByRole('button', { name: 'Settings' }).click();
+  const settings = page.getByRole('dialog', { name: 'Settings' });
+  await settings.getByRole('tab', { name: 'Data' }).click();
+  await settings.getByLabel('Autosaves Kept').fill('2');
+  await expect(settings.getByRole('status').filter({ hasText: 'past 2 are deleted' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(settings).toBeHidden();
+  // Reopened, 2 is where it now stands: nothing was lowered this time, so no warning.
+  await page.getByRole('button', { name: 'Menu' }).click();
+  await page.getByRole('button', { name: 'Settings' }).click();
+  await settings.getByRole('tab', { name: 'Data' }).click();
+  await expect(settings.getByLabel('Autosaves Kept')).toHaveValue('2');
+  await expect(settings.getByText(/are deleted on its next autosave/)).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await expect(settings).toBeHidden();
+  await play(page, 'I knock once more.');
+  await expect.poll(() => autosaveNames(page)).toHaveLength(2);
 });
+

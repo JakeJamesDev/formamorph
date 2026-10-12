@@ -143,7 +143,7 @@ Saves from older versions of Formamorph load too. Formamorph converts a save in 
 ## Autosave
 <!-- keywords: automatic, forgot, crash, closed tab, lost progress, recover, disable, auto tag, browser closed -->
 
-**Autosave** saves your game after every turn. Each world keeps its last five autosaves, named by turn, such as **Autosave · Turn 12**. A new turn adds one until there are five, then replaces the oldest.
+**Autosave** saves your game after every turn, named by turn, such as **Autosave · Turn 12**. **Autosaves Kept** sets how many each world keeps; it starts at one. A new turn adds an autosave until the world has that many, then replaces the oldest. If you lower it, the world's oldest extra autosaves are deleted on its next autosave.
 
 - It starts after the opening scene, and it also saves after **Re-generate**.
 - It never changes your own saves.
@@ -151,7 +151,7 @@ Saves from older versions of Formamorph load too. Formamorph converts a save in 
 - It shows under **Load Game** with an **Auto** tag. You can load, export or delete it.
 - If an autosave fails, a message shows once. Your own saves still work.
 
-To turn it off, clear **Autosave** in the **Saves** section of the [Settings](Settings#saves) **Data** tab.
+To turn it off, clear **Autosave** in the **Saves** section of the [Settings](Settings#saves) **Data** tab. **Autosaves Kept** is in the same section.
 
 ## Quick Start
 <!-- keywords: continue button, not a resume, new run instantly, lightning icon -->
