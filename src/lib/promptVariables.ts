@@ -532,6 +532,20 @@ export function variantLabelForToken(token: string): string | null {
   return labels.length ? labels.join(', ') : null;
 }
 
+const ONLY_WITH_AXIS_IDS = new Set([ONLY_WITH_STATS_AXIS.id, ONLY_WITH_TRAITS_AXIS.id]);
+
+/** What a token's Only With picks read as (`Only With Stats or Traits`), or null while no pick is on. The
+ *  chip face shows a glyph with this text as its tooltip; the label never names the picks. */
+export function onlyWithForToken(token: string): string | null {
+  const variable = variableForToken(token);
+  if (!variable) return null;
+  const selection = decodeVariant(variable, tokenVariant(token));
+  const picks = variableAxes(variable)
+    .filter((axis) => ONLY_WITH_AXIS_IDS.has(axis.id) && selection[axis.id] != null)
+    .map((axis) => axis.label);
+  return picks.length ? `Only With ${picks.join(' or ')}` : null;
+}
+
 /** The affix-free key a chip is identified by — the same string Chip Values look a value up by, so
  *  one placement's wording never makes it a different chip. Falls back to the token itself for a family
  *  that does not parse here (placeholders). */

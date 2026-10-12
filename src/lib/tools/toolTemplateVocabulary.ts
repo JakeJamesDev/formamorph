@@ -52,6 +52,7 @@ export function toolTemplateVocabulary(params: readonly ToolParam[]): ChipVocabu
     label: (t) => familyOf(t).label(t),
     hint: (t) => familyOf(t).hint?.(t),
     variantLabel: (t) => familyOf(t).variantLabel(t),
+    onlyWith: (t) => familyOf(t).onlyWith(t),
     color: (t) => familyOf(t).color(t),
     axes: (t) => familyOf(t).axes(t),
     selection: (t) => familyOf(t).selection(t),

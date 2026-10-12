@@ -16,7 +16,7 @@ import { promptHeader } from './promptHeader';
 import { placeholderAccent } from './highlightUtils';
 import {
   labelForToken, colorForToken, variableForToken, baseToken, tokenVariant, splitToken, joinToken,
-  variantLabelForToken, variableAxes, decodeVariant, encodeVariant,
+  variantLabelForToken, onlyWithForToken, variableAxes, decodeVariant, encodeVariant,
   type PromptVariable, type PromptVariantAxis,
 } from './promptVariables';
 import {
@@ -132,6 +132,8 @@ export interface ChipVocabulary {
   hint?(token: string): string | undefined;
   /** The active non-default mode label shown in parens on the chip, or null. */
   variantLabel(token: string): string | null;
+  /** What the chip's Only With picks read as, or null. Drawn as a glyph after the label, not in it. */
+  onlyWith(token: string): string | null;
   /** Accent color, or undefined. */
   color(token: string): string | undefined;
   /** The pop-out axes for this token (empty = no options). */
@@ -211,6 +213,7 @@ export function promptVocabulary(palette: PromptVariable[]): ChipVocabulary {
     promptChip: (t) => variableForToken(t) != null,
     label: labelForToken,
     variantLabel: variantLabelForToken,
+    onlyWith: onlyWithForToken,
     color: colorForToken,
     axes: (t) => {
       const v = variableForToken(t);
@@ -330,6 +333,7 @@ export function plainVocabulary(): ChipVocabulary {
     isKnown: () => false,
     label: (t) => t,
     variantLabel: () => null,
+    onlyWith: () => null,
     color: () => undefined,
     axes: () => [],
     selection: () => ({}),
@@ -476,6 +480,7 @@ export function placeholderVocabulary(
       return `${d.mode === 'unique' ? 'Unique' : 'World'} · ${values}`;
     },
     variantLabel: (t) => (decodePlaceholderToken(t)?.mode === 'unique' ? 'Unique' : null),
+    onlyWith: () => null,
     color: (t) => {
       const builtin = builtinForToken(t);
       if (builtin) return builtin.accent;
@@ -691,6 +696,7 @@ export function worldPromptVocabulary(prompt: ChipVocabulary, placeholder: ChipV
     display: (t) => familyOf(t).display?.(t),
     hint: (t) => familyOf(t).hint?.(t),
     variantLabel: (t) => familyOf(t).variantLabel(t),
+    onlyWith: (t) => familyOf(t).onlyWith(t),
     color: (t) => familyOf(t).color(t),
     axes: (t) => familyOf(t).axes(t),
     selection: (t) => familyOf(t).selection(t),
