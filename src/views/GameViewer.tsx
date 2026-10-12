@@ -116,11 +116,13 @@ import { useBaselineTestHook } from "../lib/baselineTestHook";
 import { recordParityTurn } from "../lib/turnPipeline/parityRecorder";
 import {
   statRequestReady,
+  choicesPass,
+  statUpdatesPass,
   discoverEntityPass,
   milestoneSelectPass,
   sceneTagsPass,
 } from "../lib/turnPipeline/turnPasses";
-import { choicesRerollRequest, diaryRequest, digestRequest, statsRerollRequest } from "./handBuiltRequests";
+import { diaryRequest, digestRequest } from "./handBuiltRequests";
 import { buildNarrationPrompt, type DictionaryDebug } from "../lib/turnPipeline/narrationPrompt";
 import { buildPlannerBand } from "../lib/turnPipeline/plannerBand";
 import { readNarration, selectVisitorAdditions, presentSceneEntities, splitParticipants } from "../lib/turnPipeline/narrationReading";
@@ -2020,7 +2022,8 @@ const GameViewer = ({
   });
 
   /** The plan input a pass dispatched outside a turn builds its request from — the scene-tag pass, which
-   *  the scene-image flow drives on a turn already stored, and the character-note drainer and rewrite. */
+   *  the scene-image flow drives on a turn already stored, the character-note drainer and rewrite, and the
+   *  choices and stats re-rolls. */
   const standalonePassInput = (): TurnPlanInput => ({
     action: "",
     isGameStarted: true,
@@ -3473,22 +3476,24 @@ const GameViewer = ({
   const sendAiRequestRef = useRef(sendAiRequest);
   sendAiRequestRef.current = sendAiRequest;
 
-  // Build + issue the choices/stats requests for the standalone re-rolls (handleRegenerateChoices/Stats),
-  // which ask outside a turn and so have no Turn Plan to run — a live turn's copies are the pass records'
-  // (lib/turnPipeline/turnPasses). Callers own the enable-guard and result handling; `quiet` suppresses the
-  // status label.
+  // The choices/stats requests for the standalone re-rolls (handleRegenerateChoices/Stats), built by the pass
+  // records a live turn uses. Callers own the enable-guard and result handling. `quiet: false` keeps the
+  // re-roll's own status label; the pass records quiet it under Concurrent Requests.
+  const rerollMaterial = (ctx: Record<string, string>, action: string, narration: string): TurnMaterial => ({
+    ...emptyTurnMaterial({ action, effectiveAction: action, turnId: "", baseCtx: ctx, destinations: [] }),
+    ctx,
+    narration,
+  });
   const requestChoices = (
     ctx: Record<string, string>,
     sceneEntityTokens: Record<string, string>,
     action: string,
     narration: string,
     signal: AbortSignal,
-    quiet = false,
   ): Promise<string> =>
     sendAiRequest({
-      ...choicesRerollRequest({
-        choicesPrompt: resolvedChoicesPrompt, choicesUserPrompt, language, ctx, sceneEntityTokens, action, narration, quiet,
-      }),
+      ...choicesPass.buildRequest(standalonePassInput(), { ...rerollMaterial(ctx, action, narration), sceneEntityTokens }),
+      quiet: false,
       signal,
     });
   const requestStats = (
@@ -3497,13 +3502,10 @@ const GameViewer = ({
     action: string,
     narration: string,
     signal: AbortSignal,
-    quiet = false,
   ): Promise<string> =>
     sendAiRequest({
-      ...statsRerollRequest({
-        statUpdatesPrompt: resolvedStatUpdatesPrompt, statUpdatesUserPrompt, ctx, action, narration,
-        statCount: activeStats.length, statRequest: snapshot, quiet,
-      }),
+      ...statUpdatesPass.buildRequest(standalonePassInput(), { ...rerollMaterial(ctx, action, narration), statRequest: snapshot }),
+      quiet: false,
       signal,
     });
 

@@ -411,7 +411,7 @@ export const narrationPass: TurnPassRecord<string> = {
 };
 
 /** What the player could do next. Sees only who is in the scene, never the whole location roster. */
-const choicesPass: TurnPassRecord<string[]> = {
+export const choicesPass: TurnPassRecord<string[]> = {
   id: 'choices',
   type: 'choices',
   stage: 'postNarration',
@@ -478,7 +478,7 @@ export const statRequestReady = (snapshot: StatRequestSnapshot | undefined): boo
   !snapshot || (snapshot.textPass ? playerTargets(snapshot) : snapshot.targets).length > 0;
 
 /** How the turn moved every present owner's stats. */
-const statUpdatesPass: TurnPassRecord<ReturnType<typeof parseStatUpdates>> = {
+export const statUpdatesPass: TurnPassRecord<ReturnType<typeof parseStatUpdates>> = {
   id: 'statUpdates',
   type: 'statUpdates',
   stage: 'postNarration',
