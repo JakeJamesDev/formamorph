@@ -1,0 +1,84 @@
+import { describe, it, expect } from 'vitest';
+import droneRaw from '@/defaultworlds/drone.json?raw';
+import emberwatchRaw from '@/defaultworlds/emberwatch.json?raw';
+import { PROMPT_TEXT_DEFAULTS } from './GamePrompts';
+import { BUILTIN_PRESETS, type PromptTextKey } from '@/lib/promptPresets';
+import { buildStyledValues } from '@/lib/sectionStyle';
+import { parsePromptTemplate, renderPromptTemplate } from '@/lib/promptTemplate';
+import { splitToken, variableForToken, type PromptVariable } from '@/lib/promptVariables';
+import { authoredChipScene } from '@/lib/chipValues/authoredScene';
+import { chipValues } from '@/lib/chipValues/chipValues';
+import { migrateWorld } from '@/lib/version';
+import { PLAYER_BEARER, resolveBearers } from '@/lib/bearers';
+import { borneByPlayer } from '@/lib/ownedTraitsInPlay';
+import { defaultPicks } from '@/lib/traitEffects';
+import type { Entity, Trait, TraitGroup, World } from '@/types';
+
+// The six default prompts that carry the Persona block; the expectation is written out, not read from the templates.
+const BLOCKED: PromptTextKey[] = [
+  'characterPrompt', 'choicesPrompt', 'directorPrompt', 'storyboardPrompt', 'systemPrompt', 'thinkingPrompt',
+];
+
+const PERSONA = variableForToken('<PERSONA>')!;
+const TRAITS = variableForToken('<TRAITS DESCRIPTION>')!;
+const markdown = BUILTIN_PRESETS.find((b) => b.style === 'markdown')!;
+const defaults = buildStyledValues(PROMPT_TEXT_DEFAULTS, markdown.style);
+
+/** The chips of one kind a template carries, in order, with their header text. */
+function chipsOf(template: string, variable: PromptVariable): Array<{ index: number; header?: string }> {
+  return parsePromptTemplate(template).flatMap((seg, index) =>
+    seg.type === 'variable' && variableForToken(seg.token) === variable
+      ? [{ index, header: splitToken(seg.token)?.header }]
+      : []);
+}
+
+/** The world's player traits when a world entity is played: the player bearer's default traits, as a playthrough reads them. */
+function traitsUnderWorldPersona(world: World, entity: Entity): { traits: Trait[]; traitGroups: TraitGroup[] } {
+  const { bearers } = resolveBearers(
+    { traits: world.traits, traitGroups: world.traitGroups ?? [], entities: world.entities },
+    { source: 'world', entityId: entity.id },
+  );
+  const player = bearers.find((bearer) => bearer.id === PLAYER_BEARER)!;
+  const active = new Set(defaultPicks(player.traits, player.groups));
+  return { traits: borneByPlayer(player.traits.filter((trait) => active.has(trait.id))), traitGroups: borneByPlayer(player.groups) };
+}
+
+/** The narration prompt rendered for a bundled world's opening scene, or with a world entity played when one is given. */
+function renderFor(raw: string, played?: string): string {
+  const world = migrateWorld(JSON.parse(raw));
+  const opening = authoredChipScene(world);
+  const entity = played ? world.entities.find((candidate) => candidate.name === played)! : null;
+  const scene = entity
+    ? { ...opening, ...traitsUnderWorldPersona(world, entity), persona: { source: 'world' as const, entity }, playerName: entity.name }
+    : opening;
+  return renderPromptTemplate(defaults.systemPrompt, chipValues(scene));
+}
+
+describe('the Other Traits chip in the default prompts', () => {
+  it.each(BLOCKED)('heads the Traits chip "Other Traits" after the Persona chip in %s', (key) => {
+    const traits = chipsOf(defaults[key], TRAITS);
+    // The narration prompt also carries a name-only Persona chip in its body; the block is the headed one.
+    const block = chipsOf(defaults[key], PERSONA).filter((chip) => chip.header === '{{user}} (Player Character)');
+    expect(traits.map((chip) => chip.header)).toEqual(['Other Traits']);
+    expect(block).toHaveLength(1);
+    expect(traits[0].index).toBeGreaterThan(block[0].index);
+  });
+
+  it('opens the player section at "## Other Traits" for a world with world traits and no persona', () => {
+    const out = renderFor(droneRaw);
+    expect(out).toContain('\n## Other Traits\n');
+    expect(out).not.toContain('(Player Character)');
+    expect(out).not.toContain('\n## Traits\n');
+  });
+
+  it('drops the section, heading included, when the played world persona leaves no world player traits', () => {
+    // The premise comes from Emberwatch's own data, not from the scene: its traits belong to entities, none to the player root.
+    const world = migrateWorld(JSON.parse(emberwatchRaw));
+    const sylvie = world.entities.find((entity) => entity.name === 'Sylvie Thornwhistle')!;
+    expect(traitsUnderWorldPersona(world, sylvie).traits).toEqual([]);
+    const out = renderFor(emberwatchRaw, 'Sylvie Thornwhistle');
+    expect(out).toContain('\n## Sylvie Thornwhistle (Player Character)\n');
+    expect(out).not.toContain('Other Traits');
+    expect(out).not.toContain('\n## Traits\n');
+  });
+});

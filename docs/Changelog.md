@@ -46,6 +46,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **A stat's code now keeps a value above its old max when other code or a trait raises that max.** A code min no longer drops below the authored min. The Test Bench warning skips writes inside strings and stats switched off, and reads a duplicate stat name as stat code does.
   - **Persona:**
     - **The AI's notes now head your persona's block with its name, such as "Sylvie (Player Character)".** A chip's Header can hold the **Player Name** built-in in every format. With no persona, it reads "the player".
+    - **The AI's notes now list your world's player traits under Other Traits, after your persona.** A world with no player traits drops the section. Saved custom prompts keep their own headers and order.
   - **The AI now updates your stats with fewer wrong-direction and made-up changes.** It answers with a change for every stat, 0 included. An endpoint that can't take that format gets the old reply style, and the AI context viewer notes it.
   - **The World Editor's Content group now lists Entities first and Stats last.** The order is Entities, Locations, Traits, Stats on the side rail and the mobile Sections list.
 - **🛠️ Developer tooling**
