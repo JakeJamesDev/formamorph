@@ -1,4 +1,6 @@
-import type { CascadeOffTraitIds, CodeBounds, CodePins, Dictionary, OwnedTraitStates, Placeholder, PlayerStat, Trait } from '@/types';
+import type {
+  CascadeOffTraitIds, CodeBounds, CodePins, Dictionary, EntityStatValues, OwnedTraitStates, Placeholder, PlayerStat, Trait,
+} from '@/types';
 import {
   CODE_BOUND_FIELDS, executeStatCode, keyedEntities, type EntityTraitWrites, type KeyedEntities, type PlaceholderWrite,
   type StatClock, type StatCodeResult, type StatTurnInputs, type StatWrite, type TraitWrite, type ValueAndMax,
@@ -13,9 +15,10 @@ import {
 } from './statCodeTraits';
 import { enabledStats } from './traitEffects';
 import {
-  applyCodeTraitSwitches, codeDeltaFor, ownerStatTraitsInForce, sameCodeDelta, withCodeDelta, type AppliedTraitValues, type CodeTraitSwitch,
-  type TraitRuntimeState,
+  applyCodeTraitSwitches, codeDeltaFor, gateStatsOf, ownerStatTraitsInForce, sameCodeDelta, withCodeDelta, type AppliedTraitValues,
+  type CodeTraitSwitch, type TraitRuntimeState, type TraitWorld,
 } from './traitRuntime';
+import { WORLD_OWNER, type GateStats } from './traitGates';
 import { boxCode, type StatCodeTiming } from './statCodeTiming';
 import { clamp } from './utils';
 import { PLAYER_OWNER } from './statOwners';
@@ -67,6 +70,12 @@ export interface StatCodeTurn {
   /** The entities whose stats also run this turn, in authored order. Every owner's code reads one snapshot,
    *  and `entities[x].stats` reads theirs. Their writes apply after the turn owner's, the later winning. */
   owners?: readonly OwnerCodeTurn[];
+  /** Every owner's stats as gates read them at the turn's start; the run lays its owners' stats over them.
+   *  Absent ⇒ gates read only the run's owners. */
+  gateStats?: GateStats;
+  /** Stat id → the value a penalty takes from the turn owner's stat after the run, unless code moves that stat:
+   *  the starvation penalty. */
+  penalties?: Readonly<Record<string, number>>;
 }
 
 /** One entity owner's part of a turn, in the same terms as the turn owner's. */
@@ -96,6 +105,9 @@ export interface StatCodeTurnResult {
   traits?: StatCodeTraitResult;
   /** Each entity owner's result by owner id; absent when the turn named none. */
   owners?: Readonly<Record<string, OwnerCodeResult>>;
+  /** The one stat snapshot every settle in the run read (Q19): asks, regen, `penalties` and code writes landed,
+   *  before any trait switch moved a stat. */
+  gateStats: GateStats;
 }
 
 /** Placeholder id → what code pinned it to, or null where code unpinned it. An Object's pin is a list. */
@@ -272,9 +284,24 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
   const [playerRun, ...entityRuns] = [main, ...turn.owners ?? []].map((owner) => ownerRun(owner, timing, placeholderDefs));
   const runs = [playerRun, ...entityRuns];
   const anyCoded = runs.some((run) => run.coded.length);
+  const world = turn.bearers.world;
+  const before: TraitRuntimeState = {
+    stats: [...turn.stats],
+    traits: [...turn.bearers.acquired],
+    disabledTraitIds: [...turn.bearers.disabledTraitIds],
+    appliedValues: turn.bearers.appliedValues,
+    cascadeOffTraitIds: turn.bearers.cascadeOffTraitIds,
+    ownedTraits: turn.bearers.ownedTraits,
+    entityStats: Object.fromEntries((turn.owners ?? []).map((owner) => [owner.id, [...owner.stats]])),
+  };
+  const gateStatsAt = (mainStats: PlayerStat[], ownerStats: EntityStatValues): GateStats =>
+    ({ ...turn.gateStats, ...runGateStats(before, main.id, mainStats, ownerStats, world) });
   // Resolved once, so every stat's code reads the same placeholders and the same traits.
-  const traits = anyCoded ? sandboxTraits(turn.bearers, placeholderDefs) : [];
-  const cast = anyCoded ? codeEntities(turn.bearers, placeholderDefs) : null;
+  const readBearers = anyCoded
+    ? { ...turn.bearers, world: { ...world, gateStats: gateStatsAt([...turn.stats], before.entityStats ?? {}) } }
+    : turn.bearers;
+  const traits = anyCoded ? sandboxTraits(readBearers, placeholderDefs) : [];
+  const cast = anyCoded ? codeEntities(readBearers, placeholderDefs) : null;
   // The library's pools join the run as the session's Placeholder Set joins them.
   const placeholderSet = turn.placeholders && withLibraryPlaceholders(withBooksInPlay(turn.placeholders), turn.bearers.library ?? []);
   const sandbox = anyCoded && placeholderSet ? sandboxPlaceholders(placeholderSet) : null;
@@ -311,24 +338,26 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
   const inOrder = runs.flatMap(({ live, writes }) => live.map((stat) => ({ stat, writes })));
   const pinWrites = pinWritesInStatOrder(inOrder.map(({ stat, writes }) => writes.placeholders.get(stat.id) ?? []));
 
+  const mainWrites = statWritesInStatOrder(playerRun.live, playerRun.writes.stats);
+  const ownerWrites = new Map(entityRuns.map(({ owner, live, writes }) => [owner.id, statWritesInStatOrder(live, writes.stats)]));
+  // The snapshot every settle below reads: the code writes landed with no switch yet, then the penalties.
+  const landedMain = withPenalties(
+    settleWrites(turn.stats, turn.stats, mainWrites, ownerStatTraitsInForce(before, world, main.id)), turn.penalties,
+  );
+  const landedOwners = Object.fromEntries(entityRuns.map(({ owner }) => [owner.id, settleWrites(
+    owner.stats, owner.stats, ownerWrites.get(owner.id) ?? new Map(), ownerStatTraitsInForce(before, world, owner.id),
+  ).stats]));
+  const gateStats = gateStatsAt(landedMain, landedOwners);
+
   // Trait switches first, so bounds re-derive under them; the code's own bounds and values then go on top.
-  const before: TraitRuntimeState = {
-    stats: [...turn.stats],
-    traits: [...turn.bearers.acquired],
-    disabledTraitIds: [...turn.bearers.disabledTraitIds],
-    appliedValues: turn.bearers.appliedValues,
-    cascadeOffTraitIds: turn.bearers.cascadeOffTraitIds,
-    ownedTraits: turn.bearers.ownedTraits,
-    entityStats: Object.fromEntries((turn.owners ?? []).map((owner) => [owner.id, [...owner.stats]])),
-  };
   const keyed = inPlay && keyedEntities(inPlay.entities, inPlay.persona);
   const switches = inOrder.map(({ stat, writes }) => ({ stat, written: writes.traits.get(stat.id) }));
   const switched = applyCodeTraitSwitches(
     before,
     traitSwitchesInStatOrder(switches, turn.bearers, keyed, placeholderDefs, turn.statNameOf),
-    turn.bearers.world, turn.traitNameOf,
+    { ...world, gateStats }, turn.traitNameOf,
   );
-  const active = ownerStatTraitsInForce(switched.state, turn.bearers.world, main.id);
+  const active = ownerStatTraitsInForce(switched.state, world, main.id);
   const traitResult: StatCodeTraitResult | undefined = switched.state === before ? undefined : {
     acquired: switched.state.traits,
     disabledTraitIds: switched.state.disabledTraitIds,
@@ -339,22 +368,43 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
     log: switched.log,
   };
 
-  const owners = turn.owners && Object.fromEntries(entityRuns.map(({ owner, live, writes }): [string, OwnerCodeResult] => {
-    const inForce = ownerStatTraitsInForce(switched.state, turn.bearers.world, owner.id);
+  const owners = turn.owners && Object.fromEntries(entityRuns.map(({ owner }): [string, OwnerCodeResult] => {
+    const inForce = ownerStatTraitsInForce(switched.state, world, owner.id);
     const result = settleWrites(
-      owner.stats, switched.state.entityStats?.[owner.id] ?? owner.stats, statWritesInStatOrder(live, writes.stats), inForce,
+      owner.stats, switched.state.entityStats?.[owner.id] ?? owner.stats, ownerWrites.get(owner.id) ?? new Map(), inForce,
     );
     const settled = result.moved.length || result.boundsChanged.length ? result : { ...result, stats: owner.stats };
     return [owner.id, traitResult ? { ...settled, inForce } : settled];
   }));
   const withOwners = owners ? { owners } : {};
-  const { stats, moved, boundsChanged } = settleWrites(
-    turn.stats, switched.state.stats, statWritesInStatOrder(playerRun.live, playerRun.writes.stats), active,
-  );
+  const { stats, moved, boundsChanged } = settleWrites(turn.stats, switched.state.stats, mainWrites, active);
   if (!traitResult && moved.length === 0 && boundsChanged.length === 0) {
-    return { stats: turn.stats, moved, boundsChanged, pinWrites, ...withOwners };
+    return { stats: turn.stats, moved, boundsChanged, pinWrites, gateStats, ...withOwners };
   }
-  return { stats, moved, boundsChanged, pinWrites, ...(traitResult ? { traits: traitResult } : {}), ...withOwners };
+  return { stats, moved, boundsChanged, pinWrites, gateStats, ...(traitResult ? { traits: traitResult } : {}), ...withOwners };
+}
+
+/** The run's owners' stats as gates read them. The turn owner's go in its own slot: the world owner's for the
+ *  player, its id for an entity. */
+function runGateStats(
+  state: TraitRuntimeState, mainId: string, main: PlayerStat[], owners: EntityStatValues, world: TraitWorld,
+): GateStats {
+  if (mainId === PLAYER_OWNER) return gateStatsOf({ ...state, stats: main, entityStats: owners }, world);
+  const { [WORLD_OWNER]: _player, ...entities } = gateStatsOf({ ...state, stats: [], entityStats: { ...owners, [mainId]: main } }, world);
+  return entities;
+}
+
+/** The landed stats with each penalty taken from a stat the run left unmoved, clamped into its bounds. A stat
+ *  the code moved keeps the code's value, as the overlay keeps it over a penalty applied meanwhile. */
+function withPenalties(
+  landed: { stats: PlayerStat[]; moved: readonly string[] }, penalties: StatCodeTurn['penalties'],
+): PlayerStat[] {
+  if (!penalties) return landed.stats;
+  return landed.stats.map((stat) => {
+    const loss = penalties[stat.id];
+    if (loss === undefined || landed.moved.includes(stat.id)) return stat;
+    return { ...stat, value: clamp(stat.value - loss, stat.min, stat.max) };
+  });
 }
 
 /** `current` with an owner's code writes laid on, re-derived under `active`. A bound write books its

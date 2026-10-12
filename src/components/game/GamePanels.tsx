@@ -1323,7 +1323,11 @@ export const RightPanel = ({
     () => activeStatEnabled(playerStats, statTraitsInForce(viewTraitState, gateWorld)),
     [playerStats, viewTraitState, gateWorld],
   );
-  const traitGates = React.useMemo(() => gateStates(traitGateInput(viewTraitState, gateWorld)), [viewTraitState, gateWorld]);
+  // Stat Conditions read the viewed turn's stats.
+  const traitGates = React.useMemo(
+    () => gateStates(traitGateInput({ ...viewTraitState, stats: playerStats, entityStats: viewEntityStats }, gateWorld)),
+    [viewTraitState, playerStats, viewEntityStats, gateWorld],
+  );
   // Each entity's own traits switch its stats on and off, on the viewed turn.
   const entityInForce = React.useCallback(
     (ownerId: string) => bearerStatTraitsInForce(viewOwnedTraits, gateWorld, ownerId),

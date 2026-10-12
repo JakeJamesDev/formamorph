@@ -67,6 +67,16 @@ describe('settling traits on save load', () => {
     expect(result.log).toEqual([]);
   });
 
+  it("reads the save's stat values for a stat Condition", () => {
+    // The author gated Ward on h 60 or more since the save; the save stands at 70 with Ward's 20 in it.
+    const gated: Trait = { ...ward, requires: [{ all: [{ kind: 'stat', id: 'h', operator: '>=', value: 60, unit: 'raw' }] }] };
+    const at = (value: number) => saved({ traits: [gated], stats: [{ ...stat, value }], appliedValues: { ward: { h: 20 } } });
+    expect(loadInto(at(70), { traits: [gated], groups: [] })).not.toHaveBeenCalled();
+    const commit = loadInto(at(55), { traits: [gated], groups: [] });
+    expect(on(commit.mock.calls[0][0].state)).toEqual([]);
+    expect(valueOf(commit.mock.calls[0][0].state)).toBe(35);
+  });
+
   it('commits nothing when the save already matches the world', () => {
     const state = saved({ traits: [ring, ward], stats: [{ ...stat, value: 70 }], appliedValues: { ring: {}, ward: { h: 20 } } });
     expect(loadInto(state, { traits: [ring, ward], groups: [] })).not.toHaveBeenCalled();

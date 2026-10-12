@@ -56,9 +56,11 @@ export function sandboxTraits(bearers: StatCodeBearers, placeholders: readonly P
   }));
 }
 
-/** Every bearer's gate on its traits, against the state the run reads. */
-const gatesOf = (bearers: StatCodeBearers): GateStates =>
-  traitGates({ traits: [...bearers.acquired], disabledTraitIds: [...bearers.disabledTraitIds], ownedTraits: bearers.ownedTraits }, bearers.world);
+/** Every bearer's gate on its traits, against the state the run reads. Stat Conditions read the world's
+ *  `gateStats`; without them none resolves. */
+const gatesOf = (bearers: StatCodeBearers): GateStates => traitGates(
+  { traits: [...bearers.acquired], disabledTraitIds: [...bearers.disabledTraitIds], ownedTraits: bearers.ownedTraits, stats: [] }, bearers.world,
+);
 
 /** The read-only fields of a trait entry: who it is, how it switches, and whether its Bearer's gate holds. */
 function traitIdentity(

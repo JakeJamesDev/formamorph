@@ -3,7 +3,7 @@
 import type { Entity, Stat, StatGroup } from '@/types';
 import { statMax, statMin, statStartValue } from './statDescriptorGeometry';
 import { playerStatsOf, resolvedEntityStats } from './statLinks';
-import { WORLD_OWNER, type GateInput, type GateStat } from './traitGates';
+import { WORLD_OWNER, type GateStat, type GateStats } from './traitGates';
 
 /** A stat at its authored start, on its authored min→max. */
 export const startingGateStat = (stat: Stat): GateStat => ({
@@ -18,6 +18,12 @@ export const startingGateStat = (stat: Stat): GateStat => ({
 const byId = (stats: readonly Stat[]): Record<string, GateStat> =>
   Object.fromEntries(stats.map((s) => [s.id, startingGateStat(s)]));
 
+/** Each owner's stats at their authored start: the player's under the world owner, each entity's under its id. */
+export const startingGateStatsOf = (player: readonly Stat[], entities: Readonly<Record<string, readonly Stat[]>>): GateStats => ({
+  [WORLD_OWNER]: byId(player),
+  ...Object.fromEntries(Object.entries(entities).map(([id, stats]) => [id, byId(stats)])),
+});
+
 /** What the starting stat sets read from a world. */
 export interface GateStatWorld {
   stats?: readonly Stat[];
@@ -30,10 +36,10 @@ export interface GateStatWorld {
  * under the world owner, then each entity's own and linked stats under its id. `library` holds the library
  * entities the playthrough carries.
  */
-export function startingGateStats(world: GateStatWorld, library: readonly Entity[] = []): NonNullable<GateInput['stats']> {
+export function startingGateStats(world: GateStatWorld, library: readonly Entity[] = []): GateStats {
   const linkWorld = { stats: world.stats ?? [], statGroups: world.statGroups ?? [] };
-  return {
-    [WORLD_OWNER]: byId(playerStatsOf([...linkWorld.stats], linkWorld.statGroups)),
-    ...Object.fromEntries([...world.entities, ...library].map((e) => [e.id, byId(resolvedEntityStats(linkWorld, e))])),
-  };
+  return startingGateStatsOf(
+    playerStatsOf([...linkWorld.stats], linkWorld.statGroups),
+    Object.fromEntries([...world.entities, ...library].map((e) => [e.id, resolvedEntityStats(linkWorld, e)])),
+  );
 }

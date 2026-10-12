@@ -1215,7 +1215,7 @@ describe('traitGateInput', () => {
       ],
       groups: [{ id: 'blueprints', name: 'Blueprints', parentId: null, system: 'blueprints' }],
     };
-    const [player] = traitGateInput({ traits: [], disabledTraitIds: [] }, world).owners;
+    const [player] = traitGateInput({ traits: [], disabledTraitIds: [], stats: [] }, world).owners;
     expect(player.traits.map((t) => t.id)).toEqual(['brave']);
     expect(player.groups).toEqual([]);
   });

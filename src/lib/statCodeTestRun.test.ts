@@ -93,3 +93,16 @@ describe('runTestCode writes to other stats', () => {
     ]);
   });
 });
+
+describe('runTestCode trait gates', () => {
+  it("reads a stat gate against each stat's authored start", async () => {
+    const berserk = {
+      id: 'berserk', name: 'Berserk', statChanges: [],
+      requires: [{ all: [{ kind: 'stat' as const, id: 'h', operator: '>=' as const, value: 80, unit: 'raw' as const }] }],
+    };
+    const at = (value: number) => statCodeNames({ ...world, stats: [{ ...health, value }], traits: [berserk] });
+    const code = 'return traits.Berserk.available ? 1 : 0;';
+    expect((await runTestCode(code, 'after', health, at(85))).value).toBe(1);
+    expect((await runTestCode(code, 'after', health, at(70))).value).toBe(0);
+  });
+});

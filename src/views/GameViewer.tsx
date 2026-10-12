@@ -187,10 +187,13 @@ import {
 import { usePlaceholderSession } from "../contexts/PlaceholderSessionContext";
 import {
   acquireTrait, activeTraits as traitsInForce, applyOwnedStatTraits, applyPlayedStatTraits, bearerStatTraitsInForce, heldPlayerTraits, playedStatTraits, seedNewGameStats, startingTraitLog,
-  settleTraits, statTraitsInForce, switchPersonaStats, switchPlayerTrait, traitNameIn,
+  gateStatsOf, settleTraits, statTraitsInForce, switchPersonaStats, switchPlayerTrait, traitNameIn,
   type GatedTraitResult, type TraitRuntimeState, type TraitWorld,
 } from "../lib/traitRuntime";
+import type { GateStats } from "../lib/traitGates";
+import { starvationLoss } from "../lib/starvation";
 import { useSettleOnSaveLoad } from "../lib/useSettleOnSaveLoad";
+import { useTurnSettle } from "../lib/useTurnSettle";
 import type { TraitCascade } from "../components/game/SetupTraitList";
 import { savedTraits } from "../lib/statCodeTraits";
 import { parseKeywords, locateMatches, type EntryActivation, type MatchHit, type MatchRule } from "../lib/dictionaryUtils";
@@ -1522,10 +1525,10 @@ const GameViewer = ({
       // A re-roll replays the whole turn, so the before box runs again first, on the clock as it read at
       // turn start. Its writes are the baseline the asks then land on, and the request reads them.
       beforeBoxDeltasRef.current = {};
-      const written = await runStatCode(
+      const written = (await runStatCode(
         preTurn.playerStats ?? [], preTurn.playerStats ?? [], [],
         { deltaHours: 0, elapsedHours: gameTime - turnHours, calendar }, preTurn, 'before',
-      );
+      ))?.written ?? null;
       // The box has written by the time the request can be stopped, so every exit that abandons the
       // re-roll puts the pre-turn state back rather than leaving those writes over a turn with no asks.
       let committed = false;
@@ -1548,12 +1551,13 @@ const GameViewer = ({
           deltaHours: turnHours,
           elapsedHours: gameTime,
           calendar,
-        }, base);
+        }, base, base.playerStats);
         applyRegenTick(turnHours, base.playerStats);
         patchLatestTurn({ stat_changes: statChanges });
         committed = true;
-        // Code writes land after the sandbox settles; the snapshot waits for them.
-        await statCode;
+        // Code writes land after the sandbox settles; the settle and the snapshot wait for them.
+        const run = await statCode;
+        await settleTurn(run?.gateStats ?? null);
         armTurnSnapshot();
       } finally {
         if (!committed && written) {
@@ -1830,23 +1834,16 @@ const GameViewer = ({
       // Add the regen to the chips and bands. Read when the update applies, after the stats updater filled it.
       addStatDeltas(PLAYER_OWNER, regenChanges);
 
-      const health = thresholdStats.find((s) => s.name === "Health");
-      const hunger = thresholdStats.find((s) => s.name === "Hunger");
-      // Both stats must be live: a disabled Hunger frozen at a low value must not silently drain a Health
-      // the player can see — or a hidden Health at all.
-      const starvationOn = (s?: PlayerStat) => !!s && statEnabledRef.current[s.id] !== false;
-      if (starvationOn(health) && starvationOn(hunger) && health && hunger) {
-        // This turn's AI changes and the regen above are both still queued, so the penalty subtracts via an
-        // updater, which lands on the regenerated Health rather than overwriting it. The threshold reads the
-        // pre-turn Hunger (thresholdStats), which the caller passes explicitly.
-        if (hunger.value <= 20) {
-          const healthLoss = 5 * hours;
-          adjustStatByName("Health", -healthLoss);
-          // The loss scales by the turn's measured hours, so it's usually fractional — the log reads to a
-          // tenth rather than printing the raw float. The stat still takes the exact amount.
-          addLogEntry(`You're starving! Lost ${Math.round(healthLoss * 10) / 10} health.`);
-          addStatDeltas(PLAYER_OWNER, { health: -healthLoss });
-        }
+      // This turn's AI changes and the regen above are both still queued, so the penalty subtracts via an
+      // updater, which lands on the regenerated Health rather than overwriting it. The threshold reads the
+      // pre-turn Hunger (thresholdStats), which the caller passes explicitly.
+      const healthLoss = starvationLoss(thresholdStats, statEnabledRef.current, hours);
+      if (healthLoss !== null) {
+        adjustStatByName("Health", -healthLoss);
+        // The loss scales by the turn's measured hours, so it's usually fractional — the log reads to a
+        // tenth rather than printing the raw float. The stat still takes the exact amount.
+        addLogEntry(`You're starving! Lost ${Math.round(healthLoss * 10) / 10} health.`);
+        addStatDeltas(PLAYER_OWNER, { health: -healthLoss });
       }
     },
     [adjustStatByName, addLogEntry, setPlayerStats, setEntityStats, entityOwnersOf, addStatDeltas, settleStatDeltas],
@@ -2228,16 +2225,19 @@ const GameViewer = ({
     // snapshot holds its writes even when the sandbox first loads on this turn.
     // A turn with no stat response still runs code, over zero asks: the request off, the request failed,
     // or the opening turn.
+    // The starvation check below reads the same pre-turn stats, so the run's stat snapshot holds the penalty.
     const statCode = commit.statResponse
-      ? applyStatChanges(commit.statResponse, commit.clock)
-      : runStatCode(rawPlayerStatsRef.current, rawPlayerStatsRef.current, [], commit.clock);
+      ? applyStatChanges(commit.statResponse, commit.clock, null, playerStats)
+      : runStatCode(rawPlayerStatsRef.current, rawPlayerStatsRef.current, [], commit.clock, undefined, 'after', { thresholdStats: playerStats });
 
     // Advance the clock by what this turn actually took (the flat hour when unmeasured).
     handleTimePassed(commit.turnHours);
 
     // Snapshot this turn once the updates above commit (deferred so the snapshot captures the finalized
     // message, applied stat changes, code writes, and advanced time rather than a stale mid-batch read).
-    await statCode;
+    // The per-turn settle runs first, against the run's one stat snapshot (Q9, Q19).
+    const run = await statCode;
+    await settleTurn(run?.gateStats ?? null);
     armTurnSnapshot();
     // The turn committed, so the before box's writes stand.
     beforeBoxUndoRef.current = null;
@@ -2384,10 +2384,10 @@ const GameViewer = ({
         playerStats: rawPlayerStatsRef.current, codePins, playerTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds,
         ownedTraits, entityStats: entityStatsRef.current,
       };
-      const beforeBox = await runStatCode(
+      const beforeBox = (await runStatCode(
         rawPlayerStatsRef.current, rawPlayerStatsRef.current, [],
         { deltaHours: 0, elapsedHours: gameTime, calendar }, undefined, 'before',
-      );
+      ))?.written ?? null;
       beforeBoxUndoRef.current = beforeBox ? preBox : null;
       const codeView = turnCodeView(beforeBox);
 
@@ -2802,15 +2802,20 @@ const GameViewer = ({
   // Run one of a stat's two code boxes over this turn, regen included, and fold what it moved into the live
   // delta feedback. Its own callback because a turn with no stat response runs it directly. A re-roll passes
   // the pre-turn state, so code reads placeholders and traits as the turn it replaces did. Hands back what
-  // the run left, for the before box's caller: its passes run before React re-renders with these writes.
+  // the run left, for the before box's caller: its passes run before React re-renders with these writes, and
+  // the run's stat snapshot, for the per-turn settle. Null when the run failed.
   const runStatCode = useCallback(
     async (
       before: PlayerStat[], afterAsks: PlayerStat[], asks: StatCodeTurn["asks"], clock: StatClock,
       preTurn?: PreTurnCodeState,
       timing: StatCodeTiming = 'after',
-      // The entities' values after this turn's AI asks, and the asks, by owner.
-      entityTurn?: { values: EntityStatValues; asks: Record<string, StatCodeTurn["asks"]> },
-    ): Promise<TurnCodeState | null> => {
+      { entityTurn, thresholdStats }: {
+        /** The entities' values after this turn's AI asks, and the asks, by owner. */
+        entityTurn?: { values: EntityStatValues; asks: Record<string, StatCodeTurn["asks"]> };
+        /** The pre-turn stats the regen tick's starvation check reads. Absent ⇒ no penalty lands beside the run. */
+        thresholdStats?: readonly PlayerStat[];
+      } = {},
+    ): Promise<{ written: TurnCodeState | null; gateStats: GateStats } | null> => {
       try {
         const enabled = statEnabledRef.current;
         // The before box runs at the turn's start, so there is no regen yet for it to fold in.
@@ -2841,11 +2846,19 @@ const GameViewer = ({
           };
         const inForce = preTurn ? inForceOn(held, entityBase) : live.statTraits;
         const basePins = preTurn ? preTurn.codePins ?? {} : live.codePins;
+        const world = gatedWorld();
+        // The starvation penalty the regen tick lands beside this run, so the run's stat snapshot holds it.
+        const healthLoss = tick && thresholdStats ? starvationLoss(thresholdStats, enabled, clock.deltaHours ?? FLAT_HOURS_PER_TURN) : null;
+        const health = healthLoss === null ? undefined : stats.find((s) => s.name === "Health");
         const result = await runStatCodeTurn({
           timing, ownerId: PLAYER_OWNER,
           stats, enabled, previous: before, asks, regenApplied, clock,
+          gateStats: gateStatsOf({
+            traits: held.acquired, disabledTraitIds: held.disabledTraitIds, ownedTraits: held.ownedTraits, stats, entityStats: entityBase,
+          }, world),
+          ...(health && healthLoss !== null ? { penalties: { [health.id]: healthLoss } } : {}),
           bearers: {
-            ...held, world: gatedWorld(), entities: codeEntities.world, library: codeEntities.library,
+            ...held, world, entities: codeEntities.world, library: codeEntities.library,
             inSceneIds: liveScene().inSceneIds,
           },
           placeholders: {
@@ -2884,7 +2897,8 @@ const GameViewer = ({
           entityStats: nextEntityStats,
         });
         if (!result.traits && result.moved.length === 0 && result.boundsChanged.length === 0) {
-          return nextPins === basePins && nextEntityStats === entityPrevious ? null : stateAfterRun();
+          const written = nextPins === basePins && nextEntityStats === entityPrevious ? null : stateAfterRun();
+          return { written, gateStats: result.gateStats };
         }
         // The bars are keyed by the name the player reads, so the run's stats resolve theirs here.
         const codeChanges = appliedStatDeltas(stats, resolveStatNames(result.stats, resolvePH));
@@ -2896,7 +2910,7 @@ const GameViewer = ({
         addStatDeltas(PLAYER_OWNER, codeChanges);
         // The commit resets the bar deltas mid-turn, so the before box's own share is re-laid over that.
         if (timing === 'before') beforeBoxDeltasRef.current = codeChanges;
-        return stateAfterRun();
+        return { written: stateAfterRun(), gateStats: result.gateStats };
       } catch (error) {
         console.error("Error processing stat code:", error);
         return null;
@@ -2914,6 +2928,8 @@ const GameViewer = ({
       response: StatResponse,
       clock: StatClock = {},
       base: (Pick<GameState, 'playerStats'> & PreTurnCodeState) | null = null,
+      // The pre-turn stats the regen tick's starvation check reads.
+      thresholdStats?: readonly PlayerStat[],
     ) => {
       const baseStats = base?.playerStats ?? rawPlayerStatsRef.current;
       const live = new Set(enabledStats(rawPlayerStatsRef.current, statEnabledRef.current).map((s) => s.id));
@@ -2944,9 +2960,12 @@ const GameViewer = ({
 
       setPlayerStats(directApplied);
       const asksOf = (ownerId: string) => response.updates.filter((update) => update.ownerId === ownerId);
-      await runStatCode(baseStats, directApplied, asksOf(PLAYER_OWNER), clock, base ?? undefined, 'after', {
-        values: entityApplied.values,
-        asks: Object.fromEntries(Object.keys(entityApplied.values).map((id) => [id, asksOf(id)])),
+      return runStatCode(baseStats, directApplied, asksOf(PLAYER_OWNER), clock, base ?? undefined, 'after', {
+        entityTurn: {
+          values: entityApplied.values,
+          asks: Object.fromEntries(Object.keys(entityApplied.values).map((id) => [id, asksOf(id)])),
+        },
+        thresholdStats,
       });
     },
     [runStatCode, setPlayerStats, setEntityStats, showStatDeltas, resolvePH, entityInForceUnder, ownedTraits],
@@ -3852,6 +3871,15 @@ const GameViewer = ({
   );
   const settleHistory = useMemo(() => ({ states: gameStates, commit: setGameStates }), [gameStates, setGameStates]);
   useSettleOnSaveLoad(saveLoads, !personaPending, traitState, gatedWorld, traitName, commitLoadSettle, settleHistory);
+  // The per-turn settle writes log lines and leaves the banner alone, as a stat-code switch does (Q26).
+  const commitTurnSettle = useCallback(
+    (result: GatedTraitResult) => {
+      commitTraitState(result.state);
+      for (const line of result.log) addLogEntry(line);
+    },
+    [commitTraitState, addLogEntry],
+  );
+  const settleTurn = useTurnSettle(traitState, gatedWorld, traitName, commitTurnSettle);
 
   /**
    * Switch a trait on or off mid-play, acquiring it first if the player doesn't have it yet. Every trait the
