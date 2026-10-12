@@ -32,6 +32,10 @@ Rulings from the discussion, numbered as asked.
 - **Q13** (ticket 01) With no persona, the chip values map carries the Player Name built-in's reference reading, "the player", so a custom header such as `{{user}} stats` reads "The Player Stats". A header is read by the AI, never spoken to the player, so the opening's "you" form never applies. A played persona with a blank name still substitutes the empty string (Q2). An authored scene with no Custom Persona entity is the same no-persona case.
 - **Q14** (ticket 01) The six default Persona chips are those headed "Player Character": narration, choices, continuity planner, director, character pass and storyboard. The opening runs the narration prompt and has no chip of its own. The planner keeps its post line, and Scene Tags keeps its own header.
 - **Q15** (ticket 01) The Player Name travels in the chip values map under a header-only key derived from the built-in's token, not the bare token. The renderer fills body built-in chips from the map and the placeholder-field previews depend on that, so a bare key would make a typed `{{user}}` in a prompt body render the name, which Out of Scope forbids.
+- **Q16** (ticket 03) The authored scene's persona is the Custom Persona entity, source custom, when the world has one, as live play resolves under None. The editor preview then shows the block with that entity's traits and stats. A world without that entity keeps a null persona and no block.
+- **Q17** (ticket 03) The block holds only the Persona chip's own entity (Q4). Under a library persona, the Custom Persona entity's stats stay in Other Stats after the world stats with their numbered keys, as its traits sit at the player root in Other Traits. Only the played library entity's stats move into the block.
+- **Q18** (ticket 03) Only narration, choices and storyboard carried a Stats chip. The continuity planner and the director gain one: the persona's own stats in the block and an Other Stats chip after Other Traits, in the same variants narration uses. The character pass stays free of the player's stats: its Persona chip is set to No Stats and it gets no Other Stats chip.
+- **Q19** (ticket 04) The character pass gets the selected character's own stats inside its identity block in the user message, rendered as the narration Entities chip renders an entity's stats. A character with no stats gets no stats field. This is its own ticket with its own probe.
 
 ## User Stories
 
@@ -70,12 +74,14 @@ Rulings from the discussion, numbered as asked.
 22. As a player, I want the stat tracker's request unchanged, so that stat changes keep landing on the right owner.
 23. As a player, I want the planner's Cast to keep labeling me "Player Character", so that the planner's player rule still fires.
 24. As a player, I want the continuity planner, director, character pass and storyboard prompts to carry the same block and sections, so that every stage reads me the same way.
+25. As a player, I want the character pass to read the character's own stats and none of mine, so that a character acts from its own condition.
+26. As a player, I want the planner and director to read my stats, so that the plan fits what I can do.
 
 ### Verification
 
-25. As the developer, I want each of the three steps probed on the default endpoint with an in-batch control, so that no step ships on one pretty output.
-26. As the developer, I want the stats-fold probe to score whether the narrator still lets the player's stats shape outcomes, so that "Other" is proven not to read as someone else's.
-27. As the developer, I want the name-leak and stat-tabulation checks the narration probe already scores to run on every arm, so that the fold does not regress the shipped rules.
+27. As the developer, I want each of the three steps probed on the default endpoint with an in-batch control, so that no step ships on one pretty output.
+28. As the developer, I want the stats-fold probe to score whether the narrator still lets the player's stats shape outcomes, so that "Other" is proven not to read as someone else's.
+29. As the developer, I want the name-leak and stat-tabulation checks the narration probe already scores to run on every arm, so that the fold does not regress the shipped rules.
 
 ## Implementation Decisions
 
@@ -95,7 +101,8 @@ Rulings from the discussion, numbered as asked.
 
 ### Default prompts
 
-- Six default prompts change: narration, choices, continuity planner, director, character pass and storyboard. In each, the Persona chip comes first with header `{{user}} (Player Character)`, then the Traits chip as `Other Traits`, then the Stats chip as `Other Stats`.
+- Six default prompts change: narration, choices, continuity planner, director, character pass and storyboard. In each, the Persona chip comes first with header `{{user}} (Player Character)`, then the Traits chip as `Other Traits`. Narration, choices, planner, director and storyboard then carry the Stats chip as `Other Stats`; the character pass carries none and its Persona chip is No Stats (Q18).
+- The character pass renders the selected character's own stats in its identity block, as the Entities chip renders an entity's stats (Q19).
 - The choices prompt's Persona chip switches from Name to Summary content.
 - The stat request prompt, the text stat pass and the planner's Cast rules are untouched.
 - Each step is one prompt diff with its own probe. Step one changes only headers. Step two moves nothing but renames and reorders the Traits chip. Step three moves the persona's stats and changes the choices variant.
