@@ -85,7 +85,7 @@ describe('the Other Stats chip in the default prompts', () => {
   it.each(STAT_FREE)("keeps the player's stats out of %s", (key) => {
     const out = renderPromptTemplate(defaults[key], chipValues(personaWithStats()));
     expect(chipsOf(defaults[key], STATS)).toEqual([]);
-    expect(out).toContain('\n## Traveler (Player Character)\n');
+    expect(out).toContain('\n## Player Character\n');
     expect(out).not.toContain('Calm');
   });
 
@@ -103,7 +103,7 @@ describe('the Other Traits chip in the default prompts', () => {
   it.each(BLOCKED)('heads the Traits chip "Other Traits" after the Persona chip in %s', (key) => {
     const traits = chipsOf(defaults[key], TRAITS);
     // The narration prompt also carries a name-only Persona chip in its body; the block is the headed one.
-    const block = chipsOf(defaults[key], PERSONA).filter((chip) => chip.header === '{{user}} (Player Character)');
+    const block = chipsOf(defaults[key], PERSONA).filter((chip) => chip.header === 'Player Character');
     expect(traits.map((chip) => chip.header)).toEqual(['Other Traits']);
     expect(block).toHaveLength(1);
     expect(traits[0].index).toBeGreaterThan(block[0].index);
@@ -112,7 +112,7 @@ describe('the Other Traits chip in the default prompts', () => {
   it('opens the player section at "## Other Traits" for a world with world traits and no persona', () => {
     const out = renderFor(droneRaw);
     expect(out).toContain('\n## Other Traits\n');
-    expect(out).not.toContain('(Player Character)');
+    expect(out).not.toContain('Player Character');
     expect(out).not.toContain('\n## Traits\n');
   });
 
@@ -122,7 +122,7 @@ describe('the Other Traits chip in the default prompts', () => {
     const sylvie = world.entities.find((entity) => entity.name === 'Sylvie Thornwhistle')!;
     expect(traitsUnderWorldPersona(world, sylvie).traits).toEqual([]);
     const out = renderFor(emberwatchRaw, 'Sylvie Thornwhistle');
-    expect(out).toContain('\n## Sylvie Thornwhistle (Player Character)\n');
+    expect(out).toContain('\n## Player Character\n');
     expect(out).not.toContain('Other Traits');
     expect(out).not.toContain('\n## Traits\n');
   });

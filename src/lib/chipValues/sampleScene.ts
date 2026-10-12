@@ -1,6 +1,7 @@
 import type { Entity, GameLocation, Placeholder, Stat, Trait, WorldOverview } from '@/types';
 import type { ResolvedPersona } from '../persona';
 import { authoredChipScene, type AuthoredWorld } from './authoredScene';
+import { ownerStatParts } from '../statContext';
 import type { ChipScene } from './chipScene';
 
 // Generic on purpose, so no one takes the preview for their own world. Code-only, never in the library.
@@ -108,25 +109,35 @@ const SAMPLE_WORLD: AuthoredWorld = {
 /** The sample world's dictionaries, for a reader that takes them beside the scene. */
 export const sampleDictionaries = () => SAMPLE_WORLD.dictionaries ?? [];
 
-/** The player the sample plays: a library persona, so no known-person line. */
+/** The player the sample plays: a library persona, so no known-person line. It owns one trait and one
+ *  stat, so the preview shows the block as an authored persona fills it. */
+const travelerTrait = trait('false-map', 'False Map', 'Carries a chart that lies, and knows which parts.');
+const travelerStat = stat('nerve', 'Nerve', 55, 'How steady the hands stay when the water rises.', [[30, 'Shaking'], [70, 'Steady'], [100, 'Unshakable']]);
 const persona: ResolvedPersona = {
   source: 'library',
   entity: {
     id: 'traveler', name: 'Traveler', pronouns: 'they/them',
     aiDescription: 'Salt-stained and slow to speak, carrying a map they no longer trust.',
     aiSummary: 'A quiet, salt-stained wanderer.',
+    traits: [travelerTrait],
+    stats: [travelerStat],
   },
 };
 
 /**
  * The sample world as a Chip Scene: its authored opening, plus the player state a world alone lacks — a
- * persona, notes, a clock, and Wren as the one character who has spoken.
+ * persona with its own trait and stat, notes, a clock, and Wren as the one character who has spoken.
  */
 export function sampleChipScene(): ChipScene {
+  const authored = authoredChipScene(SAMPLE_WORLD);
+  const travelerStats = [{ ...travelerStat, value: travelerStat.value ?? travelerStat.min }];
   return {
-    ...authoredChipScene(SAMPLE_WORLD),
+    ...authored,
     persona,
     playerName: persona.entity.name,
+    ownedTraits: { ...authored.ownedTraits, [persona.entity.id]: [travelerTrait.id] },
+    ownedStats: { ...authored.ownedStats, [persona.entity.id]: travelerStats },
+    playedStats: ownerStatParts([persona.entity], { [persona.entity.id]: travelerStats }),
     inSceneIds: [wren.id],
     notes: 'Traveler is looking for the person who sold them a false map.',
     // Day 3, evening on the default calendar.
