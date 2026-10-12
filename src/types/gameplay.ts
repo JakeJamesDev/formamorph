@@ -360,7 +360,7 @@ export interface PlaceholderRolls {
 export interface SaveRecord extends SaveObject {
   id: string;
   name: string;
-  /** Device-local: marks the per-world autosave slot (one per world, overwritten each turn). Like `id`, it's
+  /** Device-local: marks one of the world's rolling autosaves (the last five turns, the oldest overwritten). Like `id`, it's
    *  stripped from the exported `.json` — a downloaded autosave re-imports as an ordinary manual save. */
   isAutosave?: boolean;
 }
