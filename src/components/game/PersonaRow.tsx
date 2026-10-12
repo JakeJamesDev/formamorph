@@ -11,7 +11,7 @@ import { useResolvedWorld } from '@/lib/useResolvedWorld';
 import { useDevRoute } from '@/lib/devRouter';
 import { inGamePersonas } from '@/lib/personaInGame';
 import { pickedAtStart } from '@/lib/runtimeCharacters';
-import { primaryImage } from '@/lib/entityImages';
+import { useEntityGallery } from '@/lib/useEntityGallery';
 import { thumbFit } from '@/lib/thumbAspect';
 import { cn } from '@/lib/utils';
 import { offeredPersonas, rememberWorldPersona, samePersonaRef, worldAllowedPersonas } from '@/lib/personaPick';
@@ -66,7 +66,8 @@ export function PersonaRow({ onChange }: { onChange: (ref: PersonaRef, name: str
     onChange(choice, picked?.name ?? null);
     showPicker(false);
   };
-  const image = primaryImage(persona?.entity);
+  // The visible primary, as the panel shows it.
+  const [image] = useEntityGallery(persona?.entity).images;
   return (
     <div className="flex items-center gap-2 pl-2" data-testid="persona-row">
       <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted">
