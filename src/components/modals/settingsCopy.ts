@@ -249,11 +249,11 @@ Runs one extra request per turn. Edit its prompt under **Prompts → Summaries**
   },
   timePerTurn: {
     label: 'Time Per Turn',
-    description: 'Story time each turn adds while Measured Clock is off',
-    info: `How far the clock moves each turn: \`1h\` by default, or \`0\`, \`5m\`, \`2h\`, \`1d\`.
+    description: 'Sets how much story time each turn adds',
+    info: `Moves the clock this far each turn. The default is 1 hour.
 
-- \`0\` holds the clock still, so short scenes don't run days ahead
-- Accepts minutes (\`m\`), hours (\`h\`, or a plain number), days (\`d\`) and weeks (\`w\`)
+- Enter an amount, then pick minutes, hours, days or weeks
+- Enter 0 to hold the clock still, so short scenes don't run days ahead
 - Feeds the **Log** panel's clock, stat regeneration, and **Time in Memory**`,
   },
   semanticLore: {

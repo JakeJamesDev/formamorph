@@ -3,7 +3,7 @@ import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render } from '@testing-library/react';
 import { SettingsProvider, useSettings } from '@/contexts/SettingsContext';
-import { settingsUseAdvancedValues, HIDDEN_SETTING_DEFAULTS, type SettingsAdvancedInput } from './settingsAdvancedData';
+import { settingsUseAdvancedValues, sectionHiddenFields, HIDDEN_SETTING_DEFAULTS, type SettingsAdvancedInput } from './settingsAdvancedData';
 
 /** A fresh install: every hidden setting sitting on the value it shipped with. */
 const untouched: SettingsAdvancedInput = { ...HIDDEN_SETTING_DEFAULTS };
@@ -27,6 +27,7 @@ describe('settingsUseAdvancedValues', () => {
     ['scene recall on', { semanticRehydration: true }],
     ['time in memory on', { timeContext: true }],
     ['the measured clock on', { aiClock: true }],
+    ['a different time per turn', { fixedTurnHours: 0 }],
     ['semantic lore on', { semanticLore: true }],
     ['character descriptions on', { describeCharacters: true }],
     ['diaries on', { characterDiaries: true }],
@@ -61,6 +62,12 @@ describe('settingsUseAdvancedValues', () => {
     expect(settingsUseAdvancedValues({ markdownOutput: false })).toBe(true);
   });
 
+  it('compares Time Per Turn only while Measured Clock is off, where its row shows', () => {
+    const fields = (aiClock: boolean) => sectionHiddenFields({ ...untouched, aiClock, fixedTurnHours: 0, reasoningCapability: null });
+    expect(fields(false)).toHaveProperty('fixedTurnHours', 0);
+    expect(fields(true)).not.toHaveProperty('fixedTurnHours');
+  });
+
   // Context Window is filled in on connect, so it says nothing about what the player chose.
   it('has no field for the auto-detected context window', () => {
     expect(Object.keys(HIDDEN_SETTING_DEFAULTS)).not.toContain('contextWindow');
@@ -81,7 +88,7 @@ describe('the hidden-field defaults match the live ones', () => {
   it.each(([
     'paragraphLimit', 'markdownOutput', 'reasoningEffort', 'limitActiveCharacters', 'activeCharacterLimit',
     'memoryDigests', 'semanticMemory', 'semanticBandCap', 'semanticRehydration', 'timeContext', 'aiClock',
-    'semanticLore', 'characterDiaries', 'describeCharacters', 'semanticDiaries', 'concurrentTurnRequests',
+    'fixedTurnHours', 'semanticLore', 'characterDiaries', 'describeCharacters', 'semanticDiaries', 'concurrentTurnRequests',
     'showReasoning', 'showSilentRequests', 'maxTokens', 'imagePortraitWidth', 'imagePortraitHeight',
     'imageLandscapeWidth', 'imageLandscapeHeight', 'imageInvokeBoard', 'imageInvokeEncoder', 'imageInvokeVae',
   ] as (keyof SettingsAdvancedInput)[]))('%s', (key) => {

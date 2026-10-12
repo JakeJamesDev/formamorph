@@ -195,7 +195,7 @@ Turn on **Show Reasoning** to read what a mode wrote.
 |---|---|
 | **Time in Memory** | Shows when **Memory Summaries** is on. Marks each memory with when it happened, such as day and time of day. Without it, the AI guesses how long ago things were. |
 | **Measured Clock** | Lets the events of each turn set how much story time passes. Without it, each action takes the **Time Per Turn**. Adds one small request per turn. |
-| **Time Per Turn** | Shows when **Measured Clock** is off. The story time each turn adds: `1h` by default, or `0`, `5m`, `2h`, `1d`. `0` holds the clock still. |
+| **Time Per Turn** | Shows when **Measured Clock** is off. The story time each turn adds, as an amount and a unit (minutes, hours, days or weeks). The default is 1 hour. Enter 0 to hold the clock still. |
 
 See [When Each Memory Happened](Memory#when-each-memory-happened).
 

@@ -242,6 +242,13 @@ describe('computeTurnCommit — the clock', () => {
     expect(commit?.clock.elapsedHours).toBe(4);
   });
 
+  it('never runs the clock backward on a negative Time Per Turn', () => {
+    const { plan, result } = runOf([{ id: 'narration', raw: NARRATION }], {}, { aiClock: false });
+    const commit = computeTurnCommit({ result, plan, context: context({ gameTime: 4, fixedTurnHours: -2 }) });
+    expect(commit?.turnHours).toBe(0);
+    expect(commit?.clock.elapsedHours).toBe(4);
+  });
+
   it('keeps the flat hour for an unreadable reply while Measured Clock is on, whatever the Time Per Turn', () => {
     const { plan, result } = runOf([
       { id: 'narration', raw: NARRATION },

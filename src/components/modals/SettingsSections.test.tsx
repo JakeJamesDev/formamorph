@@ -128,6 +128,32 @@ describe('Output section', () => {
     await waitFor(() => expect(embeddingModel.start).toHaveBeenCalledTimes(1));
   });
 
+  it('sets Time Per Turn in hours, and holds a blank amount back', async () => {
+    const user = userEvent.setup();
+    const setFixedTurnHours = vi.fn();
+    mount('output', { aiClock: false, fixedTurnHours: 1, setFixedTurnHours });
+    const amount = screen.getByRole('spinbutton', { name: 'Time Per Turn' });
+    await user.clear(amount);
+    expect(amount.getAttribute('aria-invalid')).toBe('true');
+    expect(setFixedTurnHours).not.toHaveBeenCalled();
+    await user.type(amount, '3');
+    expect(setFixedTurnHours).toHaveBeenLastCalledWith(3);
+  });
+
+  it('shows a Time Per Turn that changes elsewhere', () => {
+    const tree = (fixedTurnHours: number) => (
+      <ThemeProvider>
+        <SettingsProvider>
+          <Harness section="output" mode="advanced" overrides={{ aiClock: false, fixedTurnHours }} />
+        </SettingsProvider>
+      </ThemeProvider>
+    );
+    const { rerender } = render(tree(1));
+    rerender(tree(48));
+    expect((screen.getByRole('spinbutton', { name: 'Time Per Turn' }) as HTMLInputElement).value).toBe('2');
+    expect(screen.getByRole('combobox', { name: 'Time Unit' }).textContent).toBe('Days');
+  });
+
   it('shows the Advanced sections only in Advanced', () => {
     const { unmount } = mount('output', {}, 'simple');
     expect(screen.queryByText('Memory')).toBeNull();
