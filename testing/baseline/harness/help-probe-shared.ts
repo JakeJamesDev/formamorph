@@ -1,9 +1,15 @@
 /** What the help probes share: the settings snapshot and the summary math. */
 import type { AiSettingsSnapshot } from '@/lib/aiRequest/aiRequestSpec';
+import sidebar from '../../../docs/_Sidebar.md?raw';
+import { BUNDLED_DOCS } from '@/lib/docs/bundledDocsIndex';
+import { createDocsIndex, type DocsIndex } from '@/lib/docs/docsIndex';
 import { defaultEndpointSamplerOverrides } from '@/lib/endpointSamplers';
 import { HELP_PICK_SYSTEM_PROMPT } from '@/lib/formaquestion/helpPrompt';
 import { pickMessage, type PickQuestion } from '@/lib/formaquestion/helpPicks';
 import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
+
+/** The bundled docs with exact keywords: the ranking before guide-open-and-search ticket 01. */
+export const exactDocsIndex = (): DocsIndex => createDocsIndex({ pages: BUNDLED_DOCS, sidebar, fuzzy: false });
 
 export interface ProbeTarget {
   endpoint: string;

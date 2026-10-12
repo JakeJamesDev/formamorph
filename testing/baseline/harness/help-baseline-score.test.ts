@@ -157,8 +157,13 @@ describe('summarize', () => {
     expect(summarize(rows.slice(2)).invented).toBe(0.5);
   });
 
+  it('gives the route hit share over the answers to questions that expect a surface', () => {
+    const rows = [{ ...row('a', 1, {}), routeHit: true }, { ...row('a', 2, {}), routeHit: false }, { ...row('b', 1, {}), routeHit: true }, row('c', 1, {})];
+    expect(summarize(rows).routeHit).toBeCloseTo(2 / 3);
+  });
+
   it('gives no rate for a set with no answer of that kind', () => {
-    expect(summarize([row('a', 1, {})])).toMatchObject({ uncovered: 0, missedFlag: null });
+    expect(summarize([row('a', 1, {})])).toMatchObject({ uncovered: 0, missedFlag: null, routeHit: null });
     expect(summarize([])).toMatchObject({ covered: 0, groundedCorrect: null, promptTokens: null });
   });
 });

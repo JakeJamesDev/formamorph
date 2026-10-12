@@ -22,6 +22,10 @@
 //              before ticket 35
 //   unfiltered with `--unfiltered`: retrieval over an index that does not ignore filler words, as before ticket 36
 //   hub-old    with `--hub-old`: retrieval over an index that ranks hub sections like any other, as before ticket 38
+//   search-old with `--search-old`: retrieval with exact keywords and Semantic Search off, as before ticket 01
+//              of guide-open-and-search
+//   fuzzy-only with `--fuzzy-only`: retrieval with fuzzy keywords and Semantic Search off
+//   unfloored  with `--unfloored`: retrieval with no Semantic Search floor, as before ticket 06; needs `--semantic`
 //   floor-old  with `--floor-old`: retrieval with no score floor, as before ticket 41
 //   floor-alt  with `--floor-alt N`: retrieval with the score floor at N, to compare two floors
 //   v-goal, v-close, v-labels, v-order  with `--variants a,b`: retrieval with the answer request rewritten as
@@ -29,6 +33,9 @@
 //   frame-a, frame-b  with `--frames a,b`: retrieval with the Voice framed as `help-voice-frames.ts`
 //              says, as measured in ticket 16
 //   no-docs    the control: the same model, samplers, screen line and language, with no guide text and no Voice
+//
+// With `--semantic`, every session arm but search-old and fuzzy-only runs with Semantic Search on, over section
+// vectors built in memory from the docs as they are now.
 //
 // A follow-up runs after its first question in the same arm and run, with that answer as the history.
 // The request body comes from the app's AI Request Spec, so the sampler pins are the app's. The probe adds
@@ -47,10 +54,11 @@
 //   wrong, no flag  a covered question with an answer that misses its keys and has no flag to warn the player
 //   sources    a keyed section is among the answer's sources
 //   missed flag a question the guide does not cover, with no flag
+//   route hit  a task or here question that expects a surface, and the answer's Take Me There button opens it
 // Then the worst questions of each docs arm with a first cause. Read the answers before you name a cause.
 //
 // Usage: npm run probe:help -- [--endpoint URL] [--model default] [--token T] [--runs 5] [--parallel 4]
-//          [--lookup] [--keyword-only] [--pick-old] [--keep-old] [--howto-old] [--old] [--rank-old] [--follow-old] [--unfiltered] [--hub-old] [--screen-old] [--floor-old] [--floor-alt 0.35] [--variants v-goal,v-close,v-labels,v-order] [--only id,id] [--kinds task,here,followUp,language,changelog,uncovered] [--worst 10] [--show]
+//          [--lookup] [--keyword-only] [--pick-old] [--keep-old] [--howto-old] [--old] [--rank-old] [--follow-old] [--unfiltered] [--hub-old] [--screen-old] [--search-old] [--fuzzy-only] [--unfloored] [--semantic] [--floor-old] [--floor-alt 0.35] [--variants v-goal,v-close,v-labels,v-order] [--only id,id] [--kinds task,here,followUp,language,changelog,uncovered] [--worst 10] [--show]
 //          [--mascot on|off] [--voice TEXT] [--mascot-off]  (the Mascot switch, on as shipped, and the rig's Voice, the default rig's when absent)
 //          [--frames frame-a,frame-b]  (needs the Mascot on and a Voice)
 //          [--rescore FILE]  (scores a saved batch again with the keys as they are now; sends nothing)
@@ -71,10 +79,12 @@ import { DEFAULT_MASCOT_RIG } from '@/lib/formaquestion/mascot';
 import { DEFAULT_MASCOT_NAME } from '@/lib/formaquestion/mascotPresets';
 import { surfaceHint } from '@/lib/formaquestion/surfaceHint';
 import type { RequestMessage } from '@/types';
-import { mean, noUsage, probeSnapshot, send, sessionFetch, withoutEarlierAnswer, type ProbeTarget, type Usage } from './help-probe-shared';
+import { exactDocsIndex, mean, noUsage, probeSnapshot, send, sessionFetch, withoutEarlierAnswer, type ProbeTarget, type Usage } from './help-probe-shared';
 import { ANSWER_VARIANTS, answerVariant, type AnswerVariant } from './help-answer-variants';
 import { VOICE_FRAMES, voiceFrame, type VoiceFrame } from './help-voice-frames';
 import { BASELINE_KINDS, loadBaselineCases, type BaselineCase, type BaselineKind } from './help-baseline-cases';
+import { nodeEmbedder } from './help-node-embedder';
+import { liveRouteVerdict } from './help-route-score';
 import { inLanguage, scoreAnswer, summarize, worstQuestions, type ScoredRow, type Summary } from './help-baseline-score';
 
 const args = process.argv.slice(2);
@@ -108,7 +118,7 @@ const mascotSettings = {
 };
 if (frames.length > 0 && !(mascotSettings.mascot && mascotVoice.trim())) throw new Error('--frames needs the Mascot on and a Voice');
 
-type Arm = AnswerVariant | VoiceFrame | 'retrieval' | 'keyword-only' | 'pick-old' | 'keep-old' | 'howto-old' | 'old' | 'rank-old' | 'follow-old' | 'unfiltered' | 'hub-old' | 'screen-old' | 'floor-old' | 'floor-alt' | 'lookup' | 'mascot-off' | 'no-docs';
+type Arm = AnswerVariant | VoiceFrame | 'retrieval' | 'keyword-only' | 'pick-old' | 'keep-old' | 'howto-old' | 'old' | 'rank-old' | 'follow-old' | 'unfiltered' | 'hub-old' | 'screen-old' | 'search-old' | 'fuzzy-only' | 'unfloored' | 'floor-old' | 'floor-alt' | 'lookup' | 'mascot-off' | 'no-docs';
 
 interface Sample extends Usage {
   /** The time from the question to the end of the answer, in milliseconds. A saved batch can have none. */
@@ -131,6 +141,8 @@ interface Batch {
   picked?: string[];
   /** The Mascot switch and the Voice the session arms carried. A batch from before the Mascot has none. */
   mascot?: { on: boolean; voice: string };
+  /** Semantic Search on in the session arms. A batch from before the switch has none. */
+  semantic?: boolean;
   rows: Row[];
 }
 
@@ -145,6 +157,10 @@ const untieredIndex = createDocsIndex({
 // The same pages with filler words in the search: the ranking before ticket 36.
 const unfilteredIndex = createDocsIndex({ pages: BUNDLED_DOCS, sidebar, fillerWords: false });
 const hubOldIndex = createDocsIndex({ pages: BUNDLED_DOCS, sidebar, hubDemotion: false });
+const exactIndex = exactDocsIndex();
+const semantic = args.includes('--semantic') && !rescoreFile;
+if (args.includes('--unfloored') && !semantic) throw new Error('--unfloored needs --semantic');
+const nodeSemantic = semantic ? await nodeEmbedder(index) : null;
 /** The index that keeps screen words in a question over an open screen: the search never gets the option. */
 const screenOldIndex: DocsIndex = { ...index, search: (query, limit, favor, options) => index.search(query, limit, favor, options && { ...options, onSurface: false }) };
 /** The index with the help session's score floor set to `floor`; searches that ask for no floor keep none. */
@@ -186,9 +202,10 @@ async function askSession(target: ProbeTarget, arm: Arm, c: BaselineCase, histor
     : isVariant(arm) ? answerVariant(sessionFetch(usage), arm)
     : isFrame(arm) ? voiceFrame(sessionFetch(usage), arm, mascotVoice.trim(), DEFAULT_MASCOT_NAME) : sessionFetch(usage);
   const session = askHelp({
-    question: c.question, history: arm === 'follow-old' ? history.map(({ sources: _, ...exchange }) => exchange) : history, language: c.language, surface: c.surface, index: untiered ? untieredIndex : arm === 'unfiltered' ? unfilteredIndex : arm === 'hub-old' ? hubOldIndex : arm === 'screen-old' ? screenOldIndex : arm === 'floor-old' ? floorOldIndex : arm === 'floor-alt' ? floorAltIndex : index,
-    settings: helpSettingsOf({ lookup, ...mascotSettings, ...(arm === 'mascot-off' && { mascot: false }), ...(arm === 'keyword-only' && { sources: { aiPicks: false } }) }),
-    snapshot: probeSnapshot(target, lookup), fetchImpl,
+    question: c.question, history: arm === 'follow-old' ? history.map(({ sources: _, ...exchange }) => exchange) : history, language: c.language, surface: c.surface, index: untiered ? untieredIndex : arm === 'unfiltered' ? unfilteredIndex : arm === 'hub-old' ? hubOldIndex : arm === 'search-old' ? exactIndex : arm === 'screen-old' ? screenOldIndex : arm === 'floor-old' ? floorOldIndex : arm === 'floor-alt' ? floorAltIndex : index,
+    settings: helpSettingsOf({ lookup, ...mascotSettings, ...(arm === 'mascot-off' && { mascot: false }), sources: { semantic: semantic && arm !== 'search-old' && arm !== 'fuzzy-only', ...(arm === 'keyword-only' && { aiPicks: false }) } }),
+    snapshot: probeSnapshot(target, lookup), fetchImpl, embedder: nodeSemantic?.embedder,
+    ...(arm === 'unfloored' && { semanticFloor: -Infinity }),
     ...(arm === 'keep-old' && { screenRule: false }),
     ...(arm === 'howto-old' && { howToRule: false }),
   });
@@ -263,19 +280,29 @@ async function runBatch(): Promise<Batch> {
     token: argVal('--token', process.env.PROBE_TOKEN ?? ''),
   };
   const runs = Number(argVal('--runs', '5'));
-  const arms: Arm[] = ['retrieval', ...variants, ...frames, ...(args.includes('--keyword-only') ? ['keyword-only' as const] : []), ...(args.includes('--pick-old') ? ['pick-old' as const] : []), ...(args.includes('--keep-old') ? ['keep-old' as const] : []), ...(args.includes('--howto-old') ? ['howto-old' as const] : []), ...(args.includes('--old') ? ['old' as const] : []), ...(args.includes('--rank-old') ? ['rank-old' as const] : []), ...(args.includes('--follow-old') ? ['follow-old' as const] : []), ...(args.includes('--unfiltered') ? ['unfiltered' as const] : []), ...(args.includes('--hub-old') ? ['hub-old' as const] : []), ...(args.includes('--screen-old') ? ['screen-old' as const] : []), ...(args.includes('--floor-old') ? ['floor-old' as const] : []), ...(floorAlt ? ['floor-alt' as const] : []), ...(args.includes('--lookup') ? ['lookup' as const] : []), ...(args.includes('--mascot-off') ? ['mascot-off' as const] : []), 'no-docs'];
+  const arms: Arm[] = ['retrieval', ...variants, ...frames, ...(args.includes('--keyword-only') ? ['keyword-only' as const] : []), ...(args.includes('--pick-old') ? ['pick-old' as const] : []), ...(args.includes('--keep-old') ? ['keep-old' as const] : []), ...(args.includes('--howto-old') ? ['howto-old' as const] : []), ...(args.includes('--old') ? ['old' as const] : []), ...(args.includes('--rank-old') ? ['rank-old' as const] : []), ...(args.includes('--follow-old') ? ['follow-old' as const] : []), ...(args.includes('--unfiltered') ? ['unfiltered' as const] : []), ...(args.includes('--hub-old') ? ['hub-old' as const] : []), ...(args.includes('--screen-old') ? ['screen-old' as const] : []), ...(args.includes('--search-old') ? ['search-old' as const] : []), ...(args.includes('--fuzzy-only') ? ['fuzzy-only' as const] : []), ...(args.includes('--unfloored') ? ['unfloored' as const] : []), ...(args.includes('--floor-old') ? ['floor-old' as const] : []), ...(floorAlt ? ['floor-alt' as const] : []), ...(args.includes('--lookup') ? ['lookup' as const] : []), ...(args.includes('--mascot-off') ? ['mascot-off' as const] : []), 'no-docs'];
   const ask = (arm: Arm, c: BaselineCase, history: EarlierExchange[]) =>
     (arm === 'no-docs' ? askNoDocs(target, c, history) : arm === 'old' ? askOld(target, c, history) : askSession(target, arm, c, history));
+
+  let done = 0;
+  /** One line per answer on stderr, so a long run can be watched while the report stays on stdout. */
+  const progress = (r: Row) => process.stderr.write(`${++done} · ${r.caseId} · ${r.arm} · run ${r.run} · ${r.sample ? `${r.sample.sources.length} sources${r.sample.flagged ? ' · flagged' : ''}` : `failed: ${r.error}`}\n`);
 
   /** One question, sent once more after a failed request. */
   async function row(arm: Arm, c: BaselineCase, run: number, history: EarlierExchange[]): Promise<Row> {
     for (let attempt = 1; ; attempt++) {
+      let result: Row;
       try {
-        return { caseId: c.id, arm, run, sample: await ask(arm, c, history) };
+        result = { caseId: c.id, arm, run, sample: await ask(arm, c, history) };
       } catch (error) {
-        if (attempt === 2) return { caseId: c.id, arm, run, sample: null, error: error instanceof Error ? error.message : String(error) };
-        await new Promise((resolve) => setTimeout(resolve, 3000));
+        if (attempt < 2) {
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+          continue;
+        }
+        result = { caseId: c.id, arm, run, sample: null, error: error instanceof Error ? error.message : String(error) };
       }
+      progress(result);
+      return result;
     }
   }
 
@@ -299,11 +326,11 @@ async function runBatch(): Promise<Batch> {
     }
   }
 
-  console.log(`help-baseline · ${target.endpoint} · model ${target.model} · mascot ${mascotArg} · ${cases.length} questions × ${arms.length} arms × ${runs} runs`);
+  console.log(`help-baseline · ${target.endpoint} · model ${target.model} · mascot ${mascotArg} · semantic ${semantic ? 'on' : 'off'} · ${cases.length} questions × ${arms.length} arms × ${runs} runs`);
   const started = Date.now();
   const rows = (await pool(jobs, parallel)).flat();
   console.log(`${rows.length} answers in ${((Date.now() - started) / 1000).toFixed(0)}s, ${rows.filter((r) => r.error).length} failed`);
-  return { endpoint: target.endpoint, model: target.model, runs, arms, picked: asked.map((c) => c.id), mascot: { on: mascotSettings.mascot, voice: mascotVoice }, rows };
+  return { endpoint: target.endpoint, model: target.model, runs, arms, picked: asked.map((c) => c.id), mascot: { on: mascotSettings.mascot, voice: mascotVoice }, semantic, rows };
 }
 
 const batch = rescoreFile ? JSON.parse(readFileSync(rescoreFile, 'utf8')) as Batch : await runBatch();
@@ -330,6 +357,9 @@ const scored: ScoredRow[] = batch.rows.flatMap((r) => {
     promptTokens: r.sample.promptTokens,
     answerTokens: r.sample.answerTokens,
     ...(c.language && { inLanguage: inLanguage(c.language, r.sample.answer) }),
+    ...(c.expectSurface && {
+      routeHit: liveRouteVerdict(c.expectSurface, { status: 'answered', flagged: r.sample.flagged, answer: r.sample.answer, sources: index.get(r.sample.sources), lead: r.sample.lead ? { id: r.sample.lead } : undefined }) === 'hit',
+    }),
   }];
 });
 
@@ -341,19 +371,19 @@ const summaryCells = (s: Summary, arm: Arm) => {
   const session = (value: number | null) => (arm === 'no-docs' ? '–' : pct(value));
   return [
     String(s.covered + s.uncovered), session(s.groundedCorrect), session(s.otherSource), pct(s.keysMet), pct(s.wrongStep), pct(s.invented), session(s.falseFlag),
-    session(s.wrongNoFlag), session(s.sourceAccuracy), session(s.missedFlag), pct(s.inLanguage), s.promptTokens === null ? '–' : `${s.promptTokens} / ${s.answerTokens}`,
+    session(s.wrongNoFlag), session(s.sourceAccuracy), session(s.missedFlag), pct(s.inLanguage), session(s.routeHit), s.promptTokens === null ? '–' : `${s.promptTokens} / ${s.answerTokens}`,
   ];
 };
 
 const report: string[] = [];
 const failed = batch.rows.filter((r) => r.error);
-const mascotLine = batch.mascot ? ` · mascot ${batch.mascot.on ? 'on' : 'off'}` : '';
-report.push(`# Help baseline\n\n${batch.endpoint} · model \`${batch.model}\`${mascotLine} · ${batch.runs} runs per arm · ${scored.length} answers scored, ${failed.length} failed`);
+const switchesLine = `${batch.mascot ? ` · mascot ${batch.mascot.on ? 'on' : 'off'}` : ''}${batch.semantic === undefined ? '' : ` · semantic ${batch.semantic ? 'on' : 'off'}`}`;
+report.push(`# Help baseline\n\n${batch.endpoint} · model \`${batch.model}\`${switchesLine} · ${batch.runs} runs per arm · ${scored.length} answers scored, ${failed.length} failed`);
 for (const arm of batch.arms) {
   const ofArm = scored.filter((r) => r.arm === arm);
   const kindRows = (Object.keys(KIND_LABELS) as ReportKind[]).filter((kind) => ofArm.some((r) => r.kind === kind));
   report.push(`## Arm: ${arm}\n\n${table(
-    ['Questions', 'Answers', 'Grounded-correct', 'Correct, other source', 'Keys met', 'Wrong step', 'Invented name', 'False flag', 'Wrong, no flag', 'Right source', 'Missed flag', 'In language', 'Tokens in / out'],
+    ['Questions', 'Answers', 'Grounded-correct', 'Correct, other source', 'Keys met', 'Wrong step', 'Invented name', 'False flag', 'Wrong, no flag', 'Right source', 'Missed flag', 'In language', 'Route hit', 'Tokens in / out'],
     [
       ...kindRows.map((kind) => [KIND_LABELS[kind], ...summaryCells(summarize(ofArm.filter((r) => r.kind === kind)), arm)]),
       ['**All**', ...summaryCells(summarize(ofArm), arm)],
@@ -381,6 +411,7 @@ for (const arm of batch.arms.filter((a) => a !== 'no-docs')) {
     worst.map((q) => [q.caseId, pct(q.correct), pct(q.factShare), pct(q.sourced), pct(q.flagged), pct(q.wrongStep), q.likelyCause, caseById.get(q.caseId)?.question ?? '']),
   )}`);
 }
+if (nodeSemantic?.stale.length) report.push(`## Stale section vectors\n\nThe probe embedded every section from the docs as they are now. The shipped vectors file holds no current vector for ${nodeSemantic.stale.length}: ${nodeSemantic.stale.join(', ')}.`);
 const text = report.join('\n\n');
 console.log(`\n${text}`);
 
