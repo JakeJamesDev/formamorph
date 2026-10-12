@@ -1,8 +1,8 @@
 # Stat Code v6: Writes To Other Stats
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-10-11. Tickets 01–08 done; last landing 9779a1bc. Gates green on 2026-10-11.
 Spec session: stat-code-v6 — spec
-Status note: Grilled 2026-10-04, Q1–Q12; Q13–Q19 added 2026-10-11. Tickets 01–07 landed; 08 is the review fold-in.
 
 ## Problem Statement
 

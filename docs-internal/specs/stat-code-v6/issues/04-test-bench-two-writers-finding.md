@@ -1,6 +1,6 @@
 # 04: Test Bench Two-Writers Finding
 
-Status: ready-for-human
+Status: done
 Blocked by: None
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
