@@ -262,8 +262,10 @@ Each requirement has a `kind`:
 | `"trait"` | `id`, `name`, `bearer` | The bearer has the trait with this `id` |
 | `"group"` | `id`, `name`, `bearer` | The bearer has any trait in the group with this `id` |
 | `"playingAs"` | `id`, `name` | The player plays as the entity with this `id` |
+| `"stat"` | `id`, `name`, `bearer`, `operator`, `value`, `unit` | The bearer's stat with this `id` compares true against `value` |
 
 - `name` is optional. It holds the target's name, so a requirement still reads when the target is gone.
+- A `"stat"` requirement's `operator` is one of `">"`, `"<"`, `">="`, `"<="`, `"="` or `"≠"`. Its `unit` is `"raw"` for the stat's own units or `"percent"` for a share of the stat's min→max span. `{ "kind": "stat", "id": "health", "operator": "<", "value": 20, "unit": "percent" }` holds while Health is under 20% of its range.
 - `bearer` is optional. Absent = the trait's own bearer. `{ "kind": "you" }` checks the player. `{ "kind": "entity", "id": "<entity id>", "name": "…" }` checks that entity.
 - `not` is optional. `true` flips the requirement: it holds while its target is off. `{ "kind": "trait", "id": "paladin", "not": true }` holds while the bearer doesn't have Paladin.
 - A requirement whose target is gone never holds, with or without `not`.

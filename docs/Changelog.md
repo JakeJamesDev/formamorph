@@ -58,9 +58,10 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The What the AI Reads pane in Chip Options now shows the chip's value as the prompt sends it.** It updates on every pick. The Header, Prepend and Append show dimmed.
   - **Stat Conditions:**
     - **Test Bench warns when a trait requires a stat it changes, or a percent of a stat with no range.** A Condition on a stat its bearer lacks shows as an unresolved requirement.
-    - **The Availability tab can gate a trait on a stat, such as Rage >= 80.** Pick a stat from the **Requires** picker, then set the operator, the number and Raw or %. **Not** flips it.
+    - **The Availability tab can gate a trait on a stat, such as Rage >= 80.** Pick a stat from the **Requires** picker, then pick the operator from a list and set the number and Raw or %. **Not** flips it.
+    - **Stat-gated traits turn off and return in play as their stat crosses the threshold.** Each turn reads the stats once, after AI changes, regen and stat code land. A trait's own effects never flip it back that turn. Hand switch-offs stay off.
   - **Visibility Rules:**
-    - **Test Bench warns when an image's Visibility rule names something missing, or when every image of an entity can hide.** The message names the entity and the image position. A pair of images that are a Condition and its Not never hides.
+    - **Test Bench warns when a Visibility rule names something missing or every image of an entity can hide.** It also warns on a percent of a stat with no range. Two images with opposite conditions, such as Health < 20% and Health >= 20%, never both hide.
     - **Each gallery image now has a cog that sets its Visibility rule.** A badge marks an image with a rule, and a "Shown while" line reads it under the framed image. The primary image warns that it ignores its rule outside play.
     - **An entity's image in play now follows its Visibility rules as the story changes.** The panel, zoom viewer and persona row show the first visible image and page through visible images only. A past turn shows that turn's images.
     - **The wiki and help window now explain Visibility rules and stat Conditions.** Ask how to show a portrait only when hurt. Take Me There opens the entity's Profile tab and a trait's Availability tab.
@@ -75,10 +76,9 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **`entity-stats-probe.cli.ts` names each missed and invented change, and tests stat prompts from any git ref.** The `S0` arm sends the stat prompts as committed at `--s0-ref`. A cell table lists each case's missed and invented changes per arm.
     - **`persona-stats-chip-probe.cli.ts` compares the Stats chip with and without the played persona's stats.** It runs narration, storyboard and choices cases on Sedge Landing, with a name clash, and reports uptake, leaks and numbered names.
   - **Stat Conditions:**
-    - **Trait Availability rules can compare a stat to a number in world and card JSON.** Six operators, raw or percent of the span, any bearer. Setup reads each stat's authored start; the editor comes later.
-    - **Stat-gated traits now turn off and return in play as their stat crosses the threshold.** Every settle in a turn reads one stat snapshot, taken after AI changes, regen, starvation and stat code. A trait's own effects never flip it back that turn. Hand switch-offs stay off.
+    - **Trait Availability rules can compare a stat to a number in world and card JSON.** Six operators, raw or percent of the span, any bearer. Setup reads each stat's authored start.
   - **Visibility Rules:**
-    - **Gallery images in world and card JSON are now objects that can carry a Visibility rule.** Each `images` element is `{ data, requires? }`, and string galleries migrate on load. A card's `extraImages` follow, and `primaryImageRequires` holds slot 0's rule. Nothing evaluates the rule yet.
+    - **Gallery images in world and card JSON are now objects that can carry a Visibility rule.** Each `images` element is `{ data, requires? }`, and string galleries migrate on load. A card's `extraImages` follow, and `primaryImageRequires` holds slot 0's rule.
   - **`entity-stats-probe.cli.ts` compares three request shapes for entity stats against today's stat pass.** One call with text lines, one call per entity, and one call with a JSON schema run on Sedge Landing cases with shared stat names. It reports exact replies, misses, invented and misattributed changes, latency and tokens.
   - **The player name header probe compares the narration prompt with and without the player's name in its persona heading.** It scores name leaks and stat tabulation on the default endpoint.
 - **⚙️ Backend**

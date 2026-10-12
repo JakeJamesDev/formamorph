@@ -2414,7 +2414,7 @@ describe('trait gate rules', () => {
 
     describe('every image hideable', () => {
       const rule = 'entity-images-all-hideable';
-      const message = '“Ash” can end up with no image — every image has a Visibility rule, and no two images cover a Condition and its Not';
+      const message = '“Ash” can end up with no image — every image has a Visibility rule, and no two images cover a Condition and its opposite';
 
       it('fires when every image carries a rule', () => {
         const found = only(pictured([image([hasTamed]), image([atLeast('rage', 80)])]), rule);
@@ -2452,6 +2452,30 @@ describe('trait gate rules', () => {
         expect(only(pictured([image([not]), image([hasTamed]), image([x])]), rule)).toEqual([]);
       });
 
+      it.each([
+        ['> and <=', '>', '<='],
+        ['< and >=', '<', '>='],
+        ['= and ≠', '=', '≠'],
+      ] as const)('stays silent when two images split a stat’s number line with %s', (_, a, b) => {
+        const low = atLeast('rage', 80, { operator: a });
+        const high = atLeast('rage', 80, { operator: b });
+        expect(only(pictured([image([low]), image([high])]), rule)).toEqual([]);
+        // A Not folds into the operator: "not > 80" is "<= 80", so it pairs with "> 80", not with "<= 80".
+        const notLow = { ...low, not: true } as TraitRequirement;
+        expect(only(pictured([image([notLow]), image([low])]), rule)).toEqual([]);
+        expect(ids(only(pictured([image([notLow]), image([high])]), rule))).toEqual([['ash']]);
+      });
+
+      it('fires when a stat pair differs in value, unit or bearer, or does not split the line', () => {
+        const over = atLeast('rage', 80, { operator: '>' });
+        const pair = (second: Partial<StatRequirement>) => ids(only(pictured([image([over]), image([{ ...over, operator: '<=', ...second }])]), rule));
+        expect(pair({ value: 50 })).toEqual([['ash']]);
+        expect(pair({ unit: 'percent' })).toEqual([['ash']]);
+        expect(pair({ bearer: { kind: 'you' } })).toEqual([['ash']]);
+        expect(pair({ operator: '<' })).toEqual([['ash']]);
+        expect(pair({ operator: '>=' })).toEqual([['ash']]);
+      });
+
       it('fires when the opposing pair is not the same single Condition', () => {
         const x = atLeast('rage', 80);
         const near = (over: Partial<StatRequirement>) => ids(only(pictured([image([x]), image([{ ...x, ...over, not: true }])]), rule));
@@ -2474,6 +2498,35 @@ describe('trait gate rules', () => {
         const bree: Entity = { ...holder([image([hasTamed])]), id: 'bree', name: 'Bree' };
         const found = only(crowd([holder([image([hasTamed]), image()]), bree]), rule);
         expect(ids(found)).toEqual([['bree']]);
+      });
+    });
+
+    describe('percent on a zero-span stat', () => {
+      const rule = 'image-rule-percent-zero-span';
+      const flat = stat({ id: 'rage', name: 'Rage', min: 10, max: 10, starting: 10 });
+      const percent = atLeast('rage', 50, { unit: 'percent' });
+      const flatAsh = (images: GalleryImage[]) => crowd([holder(images, { stats: [flat] })]);
+
+      it('fires for a percent Condition on a stat whose min equals its max, naming the image', () => {
+        const found = only(flatAsh([image(), image([percent])]), rule);
+        expect(ids(found)).toEqual([['ash']]);
+        expect(found[0].severity).toBe('warning');
+        expect(found[0].message).toBe(
+          '“Ash”, image 2 requires “Rage >= 50%”, but “Rage” has the same min and max, so it always reads 0% — use a raw number or widen its range',
+        );
+      });
+
+      it('stays silent on a raw Condition, on a stat with a range, or on a stat the bearer lacks', () => {
+        expect(only(flatAsh([image([atLeast('rage', 50)])]), rule)).toEqual([]);
+        expect(only(pictured([image([percent])]), rule)).toEqual([]);
+        expect(only(flatAsh([image([{ ...percent, id: 'gone', name: 'Gone' }])]), rule)).toEqual([]);
+      });
+
+      it('reads the range of the bearer the Condition names', () => {
+        const onYou = { ...percent, bearer: { kind: 'you' } } as StatRequirement;
+        // Ash's Rage is flat; the player's Rage has a range.
+        expect(only(flatAsh([image([onYou])]), rule)).toEqual([]);
+        expect(only(flatAsh([image([percent])]), rule)).toHaveLength(1);
       });
     });
   });
@@ -4573,6 +4626,7 @@ const RULE_SCOPE: Record<string, 'simple' | 'advanced'> = {
   // The same rows editor as a trait gate, mounted on the gallery thumbnail.
   'image-rule-missing-target': 'simple',
   'entity-images-all-hideable': 'simple',
+  'image-rule-percent-zero-span': 'simple',
   // A link row's menu removes it in both modes.
   'trait-link-redundant': 'simple',
   'world-empty-system-prompt': 'simple',

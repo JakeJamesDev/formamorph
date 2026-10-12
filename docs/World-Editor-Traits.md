@@ -493,8 +493,8 @@ It shows a warning when:
 - A group marks more traits as default than its maximum allows. Some defaults won't apply.
 - A row can never hold, such as *Paladin and not Paladin*. Remove the row or change a condition.
 - A trait requires a stat that the trait changes itself, including the stat's min, max or on/off state. Its own effect can flip the requirement.
-- A **%** condition reads a stat whose min and max are equal. It always reads 0%.
-- Every image of an entity has a Visibility rule, and no two images cover a condition and its Not. The entity can end up with no image.
+- A **%** condition, in a trait's rule or an image's Visibility rule, reads a stat whose min and max are equal. It always reads 0%.
+- Every image of an entity has a Visibility rule, and no two images have opposite conditions. The entity can end up with no image.
 - A trait has **Starts** set to **On**, but no starting choice meets its requirements, so it starts unselected. Two defaults that exclude each other count: the later one starts unselected.
 - A bearer needs a copy of a blueprint and has none. The warning names the bearer and the trait or chip that needs it.
 - A copy removed the value that a pin names. The pin pins nothing.
