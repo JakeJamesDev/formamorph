@@ -7,6 +7,7 @@ import {
   DEFAULT_QUOTE_COLOR_LIGHT, DEFAULT_QUOTE_ITALIC, DEFAULT_SCENE_IMAGE_AUTO, DEFAULT_THEME_COLOR,
 } from '@/contexts/settingsDefaults';
 import { HIDDEN_SETTING_DEFAULTS } from '@/lib/settingsAdvancedData';
+import { FLAT_HOURS_PER_TURN } from '@/lib/gameClock';
 import { DEFAULT_REASONING_SETTING, resolveReasoningSetting } from '@/lib/reasoningEffort';
 import { withFontTuning } from '@/lib/fontTuning';
 import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
@@ -30,7 +31,7 @@ type LocalSettingsValues = Pick<SettingsSource,
   | 'choicesEnabled' | 'statUpdatesEnabled' | 'locationChangeEnabled' | 'locationAutoApply'
   | 'thinkingMode' | 'limitActiveCharacters' | 'activeCharacterLimit' | 'nativeReasoning' | 'toolsEnabled'
   | 'memoryDigests' | 'semanticMemory' | 'semanticBandCap' | 'semanticRehydration'
-  | 'timeContext' | 'aiClock' | 'semanticLore' | 'describeCharacters' | 'characterDiaries' | 'semanticDiaries'
+  | 'timeContext' | 'aiClock' | 'fixedTurnHours' | 'semanticLore' | 'describeCharacters' | 'characterDiaries' | 'semanticDiaries'
   | 'continueChoiceMode' | 'concurrentTurnRequests' | 'imageAttachments'
 > & { quoteColorLight: string | null; quoteColorDark: string | null };
 
@@ -85,6 +86,7 @@ export const LOCAL_SETTINGS_DEFAULTS: LocalSettingsValues = {
   semanticRehydration: HIDDEN_SETTING_DEFAULTS.semanticRehydration,
   timeContext: HIDDEN_SETTING_DEFAULTS.timeContext,
   aiClock: HIDDEN_SETTING_DEFAULTS.aiClock,
+  fixedTurnHours: FLAT_HOURS_PER_TURN,
   semanticLore: HIDDEN_SETTING_DEFAULTS.semanticLore,
   describeCharacters: HIDDEN_SETTING_DEFAULTS.describeCharacters,
   characterDiaries: HIDDEN_SETTING_DEFAULTS.characterDiaries,
@@ -167,6 +169,7 @@ export function useLocalSettingsSource(report: (status: string) => void): Settin
       setSemanticRehydration: set('semanticRehydration'),
       setTimeContext: set('timeContext'),
       setAiClock: set('aiClock'),
+      setFixedTurnHours: set('fixedTurnHours'),
       setSemanticLore: set('semanticLore'),
       setDescribeCharacters: set('describeCharacters'),
       setCharacterDiaries: set('characterDiaries'),

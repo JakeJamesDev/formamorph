@@ -65,7 +65,7 @@ The words Formamorph uses, and what each one means. Each term links the page tha
 | [Pinned Memory](Memory#how-to-pin-or-forget-a-memory) | A memory you made the story keep. **Forget This Memory** does the opposite. |
 | [Semantic Memory](Memory#memory-settings) | Sends the memories most related to your action, not only the newest |
 | [Scene Recall](Memory#memory-settings) | Sends a past scene word for word when your action goes back to it |
-| [Measured Clock](Memory#when-each-memory-happened) | Lets each turn's events set how much story time passes. Without it, each turn is one hour. |
+| [Measured Clock](Memory#when-each-memory-happened) | Lets each turn's events set how much story time passes. Without it, each turn takes the **Time Per Turn** setting, one hour by default. |
 | [Character Diaries](Memory#memory-settings) | First-person diary entries that each entity present writes. They shape its motivation. |
 
 ## 📚 Your Library and Saves

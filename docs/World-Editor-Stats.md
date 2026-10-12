@@ -113,7 +113,7 @@ In Simple mode the panel shows the basic fields with no tabs.
 | **Description** | What the stat represents. Sent to the AI when the chip's **Description** piece is on. Takes placeholder chips. |
 | **Min** / **Max** | The range. The value always stays in it. A percentage stat locks these at 0 and 100, so you set only its **Initial Value (%)**. |
 | **Initial Value** | Where the stat starts. |
-| **Regen** | Added to the value for each hour of story time that passes. With **Measured Clock** off, each turn is one hour. A positive number heals over time, and a negative number drains. An inactive stat gets no Regen. |
+| **Regen** | Added to the value for each hour of story time that passes. With **Measured Clock** off, each turn takes the player's **Time Per Turn**, one hour by default. A positive number heals over time, and a negative number drains. An inactive stat gets no Regen. |
 | **Body Sliders** | Binds the [Avatar's](Avatars#in-the-game) body sliders to this stat. The value, from Min to Max, sets each slider's position. Each slider belongs to one stat only. |
 
 ### Availability

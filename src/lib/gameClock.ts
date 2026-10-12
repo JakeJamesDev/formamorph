@@ -206,3 +206,29 @@ export function buildStamper(args: {
 export function formatNow(nowHours: number, calendar?: WorldCalendar): string {
   return `It is now ${formatAbsolute(nowHours, calendar)}.`;
 }
+
+const DURATION_UNIT_HOURS: Record<string, number> = { m: 1 / 60, min: 1 / 60, h: 1, d: 24, w: 168 };
+
+/**
+ * A span of story time the player typed: `0`, `30m`, `2h`, `1.5h`, `1d`, `1h 30m`. A bare number means hours.
+ * Null for anything else, or a span past MAX_TURN_HOURS.
+ */
+export function parseDurationInput(input: string): number | null {
+  const text = input.trim().toLowerCase().replace(/,/g, '.');
+  if (!text) return null;
+  const tokens = [...text.matchAll(/(\d+(?:\.\d+)?)\s*(min|m|h|d|w)?/g)];
+  // Every character must belong to a token (or be a space), so "2 hours ago" is not read as 2h.
+  if (!tokens.length || tokens.map((t) => t[0]).join('').replace(/\s/g, '') !== text.replace(/\s/g, '')) return null;
+  const hours = tokens.reduce((sum, [, value, unit]) => sum + Number(value) * DURATION_UNIT_HOURS[unit ?? 'h'], 0);
+  return Number.isFinite(hours) && hours <= MAX_TURN_HOURS ? hours : null;
+}
+
+/** A span of story time for the player: `45 min`, `2 h 30 min`, `3 d 4 h`, `0 min`. Whole minutes. */
+export function formatDuration(hours: number): string {
+  const minutes = Math.round(Math.abs(hours) * 60);
+  const d = Math.floor(minutes / 1440);
+  const h = Math.floor((minutes % 1440) / 60);
+  const m = minutes % 60;
+  const parts = [d && `${d} d`, h && `${h} h`, m && `${m} min`].filter(Boolean);
+  return `${hours < 0 ? '−' : ''}${parts.length ? parts.join(' ') : '0 min'}`;
+}

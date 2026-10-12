@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   parseTimeDelta,
+  parseDurationInput,
+  formatDuration,
   hoursByPosition,
   MAX_TURN_HOURS,
   FLAT_HOURS_PER_TURN,
@@ -285,5 +287,25 @@ describe('parseTimeDelta — spelled-out counts', () => {
   it('ignores a bare word with no unit — prose is not a measurement', () => {
     expect(parseTimeDelta('a while')).toBeNull();
     expect(parseTimeDelta('one')).toBeNull();
+  });
+});
+
+describe('parseDurationInput', () => {
+  it.each([
+    ['0', 0], ['1', 1], ['30m', 0.5], ['15 min', 0.25], ['1.5h', 1.5], ['1,5h', 1.5], ['1d', 24], ['1h 30m', 1.5], ['2w', 336],
+  ])('reads %s as %d hours', (input, hours) => {
+    expect(parseDurationInput(input)).toBe(hours);
+  });
+
+  it.each(['', 'soon', '2 hours ago', '10:30', '9999w'])('refuses %j', (input) => {
+    expect(parseDurationInput(input)).toBeNull();
+  });
+});
+
+describe('formatDuration', () => {
+  it.each([
+    [0, '0 min'], [0.25, '15 min'], [1, '1 h'], [2.5, '2 h 30 min'], [76, '3 d 4 h'],
+  ])('spells %d hours as %s', (hours, text) => {
+    expect(formatDuration(hours)).toBe(text);
   });
 });

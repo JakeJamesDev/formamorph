@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import type { ThinkingMode } from '@/contexts/SettingsContext';
+import { formatDuration, parseDurationInput } from '@/lib/gameClock';
 import { CONTINUE_CHOICE_MODES, type ContinueChoiceMode } from '@/contexts/settingsDefaults';
 import { Row, CheckRow, Section, SubGroup, OptionSwitcher, CheckboxOptionGroup } from '@/components/SettingsRows';
 import { SETTINGS_COPY, SETTINGS_OPTIONS, REASONING_EFFORT_HELP, REASONING_NOTES, TOOLS_NOTES, type SettingOptionCopy } from '@/components/modals/settingsCopy';
@@ -40,6 +42,7 @@ export function OutputSettingsSection({ source, mode, nativeReasoningRuledOut }:
     semanticRehydration, setSemanticRehydration,
     timeContext, setTimeContext,
     aiClock, setAiClock,
+    fixedTurnHours, setFixedTurnHours,
     semanticLore, setSemanticLore,
     describeCharacters, setDescribeCharacters,
     characterDiaries, setCharacterDiaries,
@@ -256,24 +259,25 @@ export function OutputSettingsSection({ source, mode, nativeReasoningRuledOut }:
       )}
       </Section>
 
-      {/* Both rows are about the story's clock rather than what the AI remembers, so they get their
-          own section — gated on Memory Summaries, which is what they already depended on as rows. */}
-      {memoryDigests && (
+      {/* The story's clock. It runs without memories too (the Log, stat regeneration), so only Time in
+          Memory is gated on Memory Summaries. */}
       <Section title="Time" hint="How long each turn takes, and when things happened.">
+      {memoryDigests && (
       <CheckRow
         htmlFor="timeContext"
         checked={timeContext}
         onChange={setTimeContext}
         {...rowCopy('timeInMemory')}
       />
+      )}
       <CheckRow
         htmlFor="aiClock"
         checked={aiClock}
         onChange={setAiClock}
         {...rowCopy('measuredClock')}
       />
+      {!aiClock && <TimePerTurnRow hours={fixedTurnHours} onChange={setFixedTurnHours} />}
       </Section>
-      )}
 
       {/* Semantic Lore acts on the dictionary, not on memories — it sat under Memory only because it
           shares Semantic Memory's on-device model, whose download progress stays up there. */}
@@ -350,5 +354,28 @@ export function OutputSettingsSection({ source, mode, nativeReasoningRuledOut }:
       </Section>
       )}
     </div>
+  );
+}
+
+/** The story time a turn costs while Measured Clock is off, typed as `0`, `5m`, `1h` or `1d`. */
+function TimePerTurnRow({ hours, onChange }: { hours: number; onChange: (hours: number) => void }) {
+  const [text, setText] = useState(() => formatDuration(hours));
+  const parsed = parseDurationInput(text);
+  const commit = () => {
+    if (parsed !== null) onChange(parsed);
+    setText(formatDuration(parsed ?? hours));
+  };
+  return (
+    <Row htmlFor="timePerTurn" {...rowCopy('timePerTurn')}>
+      <Input
+        id="timePerTurn"
+        className={`w-32 ${parsed === null ? 'border-destructive' : ''}`}
+        value={text}
+        aria-invalid={parsed === null}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => { if (e.key === 'Enter') commit(); }}
+      />
+    </Row>
   );
 }

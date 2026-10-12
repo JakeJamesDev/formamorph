@@ -43,6 +43,9 @@ export interface TurnCommitContext {
   playerInFrame?: boolean;
   /** Story hours elapsed before this turn. */
   gameTime: number;
+  /** Story hours a turn costs while Measured Clock is off: the player's Time Per Turn. Defaults to the flat
+   *  hour. */
+  fixedTurnHours?: number;
   /** The world's time frame as it stands; the opening turn replaces it with the hour it just measured. */
   calendar?: WorldCalendar;
   /** Ids for materialized entities — the one thing here that isn't a function of its inputs, so it enters
@@ -110,10 +113,13 @@ export function computeTurnCommit({ result, plan, context }: TurnCommitInput): T
     : Object.entries(stats?.values ?? {}).map(([name, delta]) => ({ [name]: delta }));
   const statMaxChanges = stats?.maxes ?? {};
 
-  // The measured duration, or the flat hour the game has always charged. An unreadable, out-of-range or
-  // absent reply resolves to the flat hour rather than to zero, so a bad answer cannot freeze the clock.
+  // The measured duration when the clock pass ran. An unreadable, out-of-range or absent reply resolves to the
+  // flat hour rather than to zero, so a bad answer cannot freeze a clock the player asked to measure. With the
+  // pass off, the turn costs the player's Time Per Turn, which may be zero.
   const measuredHours = answerOf<number | null>(passes, 'timePassed');
-  const turnHours = measuredHours ?? FLAT_HOURS_PER_TURN;
+  const clockPassRan = passes.some((outcome) => outcome.id === 'timePassed');
+  const fixedHours = clockPassRan ? FLAT_HOURS_PER_TURN : (context.fixedTurnHours ?? FLAT_HOURS_PER_TURN);
+  const turnHours = measuredHours ?? fixedHours;
 
   // Seed the story's opening hour, on the opening turn only: a retroactive answer would re-date every
   // memory stamp already written. An unreadable answer leaves it null, which reads as the shipped default.
@@ -158,7 +164,8 @@ export function computeTurnCommit({ result, plan, context }: TurnCommitInput): T
     ...(context.reasoning.text ? { reasoning: context.reasoning } : {}),
     ...(context.playerInFrame !== undefined ? { playerInFrame: context.playerInFrame } : {}),
     ...(summary ? { summary } : {}),
-    ...(measuredHours !== null ? { timeDelta: turnHours } : {}),
+    // A turn without a stored delta reads back as the flat hour, so only a time that differs is stored.
+    ...(measuredHours !== null || turnHours !== FLAT_HOURS_PER_TURN ? { timeDelta: turnHours } : {}),
     ...(Object.keys(diaries).length ? { diaries } : {}),
   };
 
