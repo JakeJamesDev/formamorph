@@ -78,7 +78,6 @@ import { parseNarration, stripReasoning, stripReasoningLive, extractReasoning, e
 import { setLiveReasoning, getLiveReasoning } from "../lib/reasoningStreamStore";
 import { activeCharacterGuidance } from "../components/game/GamePrompts";
 import {
-  buildDiaryUserMessage,
   buildStagedPlan,
   matchCastToEntities,
   classifyCast,
@@ -117,15 +116,12 @@ import { renderPromptTemplate } from "../lib/promptTemplate";
 import { useBaselineTestHook } from "../lib/baselineTestHook";
 import { recordParityRequest, recordParityResponse, recordParityTurn } from "../lib/turnPipeline/parityRecorder";
 import {
-  TURN_PASS_CAPS,
-  choicesSystemPrompt,
   statRequestReady,
-  statUpdatesRequest,
-  summaryUserMessage,
   discoverEntityPass,
   milestoneSelectPass,
   sceneTagsPass,
 } from "../lib/turnPipeline/turnPasses";
+import { choicesRerollRequest, diaryRequest, digestRequest, statsRerollRequest } from "./handBuiltRequests";
 import { buildNarrationPrompt, type DictionaryDebug } from "../lib/turnPipeline/narrationPrompt";
 import { buildPlannerBand } from "../lib/turnPipeline/plannerBand";
 import { readNarration, selectVisitorAdditions, presentSceneEntities, splitParticipants } from "../lib/turnPipeline/narrationReading";
@@ -301,15 +297,9 @@ const activeUnderTraits = (
   return { activeTraits: inForce, activeStats: enabledStats(stats, activeStatEnabled(stats, [...inForce, ...played])) };
 };
 
-// Each completed turn is digested as soon as it commits (same-turn), so a summary is always ready for
-// the next turn's context assembly. Per-pass caps and their sizing live with the pass records.
-const DIGEST_MAX_TOKENS = TURN_PASS_CAPS.summary;
-
 // The lore blocks the module emits for a scene, which play fills per turn instead.
 const DICTIONARY_VARIABLE = variableForToken('<DICTIONARY>')!;
 const LORE_TOKENS = ['<DICTIONARY>', ...variableVariantIds(DICTIONARY_VARIABLE).map((id) => withVariant('<DICTIONARY>', id))];
-
-const DIARY_MAX_TOKENS = TURN_PASS_CAPS.diary;
 
 /**
  * One AI call's arguments. A turn pass's own `TurnPassRequest` already has this shape, so the pipeline's
@@ -3716,12 +3706,10 @@ const GameViewer = ({
     quiet = false,
   ): Promise<string> =>
     makeAIRequest({
-      systemPrompt: choicesSystemPrompt(resolvedChoicesPrompt, language, { ...ctx, ...sceneEntityTokens }),
-      messages: [{ role: "user", content: renderPromptTemplate(choicesUserPrompt, { "<PLAYER ACTION>": action, "<NARRATION>": narration }) }],
-      type: "choices",
-      maxTokens: TURN_PASS_CAPS.choices,
+      ...choicesRerollRequest({
+        choicesPrompt: resolvedChoicesPrompt, choicesUserPrompt, language, ctx, sceneEntityTokens, action, narration, quiet,
+      }),
       signal,
-      quiet,
     });
   const requestStats = (
     ctx: Record<string, string>,
@@ -3732,11 +3720,10 @@ const GameViewer = ({
     quiet = false,
   ): Promise<string> =>
     makeAIRequest({
-      ...statUpdatesRequest(
-        { system: resolvedStatUpdatesPrompt, user: statUpdatesUserPrompt },
-        { ctx, action, narration },
-        { statCount: activeStats.length, statRequest: snapshot, quiet },
-      ),
+      ...statsRerollRequest({
+        statUpdatesPrompt: resolvedStatUpdatesPrompt, statUpdatesUserPrompt, ctx, action, narration,
+        statCount: activeStats.length, statRequest: snapshot, quiet,
+      }),
       signal,
     });
 
@@ -3788,14 +3775,9 @@ const GameViewer = ({
     setDigestActive(true);
     (async () => {
       try {
-        const digest = await makeAIRequestRef.current({
-          systemPrompt: renderPromptTemplate(summaryPrompt, contextValues()),
-          messages: [{ role: "user", content: summaryUserMessage(summaryUserPrompt, playerAction, narrationText) }],
-          type: "summary",
-          maxTokens: DIGEST_MAX_TOKENS,
-          silent: true,
-          attachTurnId: turnId, // so the viewer shows it under the turn it summarizes
-        });
+        const digest = await makeAIRequestRef.current(digestRequest({
+          summaryPrompt, summaryUserPrompt, ctx: contextValues(), playerAction, narration: narrationText, turnId,
+        }));
         const trimmed = (digest ?? "").trim();
         if (trimmed) setFullMessageHistory((prev) => applyDigest(prev, turnId, trimmed) ?? prev);
       } catch {
@@ -3897,14 +3879,9 @@ const GameViewer = ({
     if (!narrationText.trim()) return false;
     const playerAction = idx > 0 && fullMessageHistory[idx - 1].role === "user" ? fullMessageHistory[idx - 1].content : "";
     try {
-      const digest = await makeAIRequestRef.current({
-        systemPrompt: renderPromptTemplate(summaryPrompt, contextValues()),
-        messages: [{ role: "user", content: summaryUserMessage(summaryUserPrompt, playerAction, narrationText) }],
-        type: "summary",
-        maxTokens: DIGEST_MAX_TOKENS,
-        silent: true,
-        attachTurnId: turnId,
-      });
+      const digest = await makeAIRequestRef.current(digestRequest({
+        summaryPrompt, summaryUserPrompt, ctx: contextValues(), playerAction, narration: narrationText, turnId,
+      }));
       const trimmed = (digest ?? "").trim();
       if (!trimmed) return false;
       setMemoryEdits((prev) => ({ ...prev, [turnId]: { text: trimmed, source: 'ai' } }));
@@ -4000,22 +3977,14 @@ const GameViewer = ({
     const narrationText = dueTurn?.narration ?? "";
     const name = pendingDiaryNames(fullMessageHistory, turnId)[0];
     if (!narrationText.trim() || !name) return;
-    const found = allEntities.find((e) => e.name.trim().toLowerCase() === name.trim().toLowerCase());
-    // The diary request sends the entity's text as it stands, so it resolves here with its owner.
-    const entity = found && resolveEntityTexts([found], resolveEntityText)[0];
 
     diaryDrainingRef.current = true;
     setDiaryActive(true);
     (async () => {
       try {
-        const entry = await makeAIRequestRef.current({
-          systemPrompt: renderPromptTemplate(diaryPrompt, contextValues()),
-          messages: [{ role: "user", content: buildDiaryUserMessage({ name, entity, narration: narrationText }) }],
-          type: "diary",
-          maxTokens: DIARY_MAX_TOKENS,
-          silent: true,
-          attachTurnId: turnId, // so the viewer shows it under the turn it records
-        });
+        const entry = await makeAIRequestRef.current(diaryRequest({
+          diaryPrompt, ctx: contextValues(), name, narration: narrationText, turnId, allEntities, resolveEntityText,
+        }));
         const trimmed = (entry ?? "").trim();
         // Store even an empty result (as "") so the participant isn't retried forever on a blank reply.
         setFullMessageHistory((prev) => applyDiary(prev, turnId, name, trimmed) ?? prev);
