@@ -43,6 +43,7 @@ export const ALWAYS_RUN = {
   'src/lib/viewportSizing.test.ts': 'reads view sources and src/index.css',
   'src/lib/worldSearchLabels.test.ts': 'scans src/managers sources',
   'src/managers/fieldLabels.test.ts': 'scans src/managers sources',
+  'src/test/tokenCorpus.ts': 'scans every src file and bundled world for prompt tokens; selects promptTokenGrammar.test.ts',
 };
 
 /** Tests, and modules that tests import, that read from disk, but only what the module graph already covers. */

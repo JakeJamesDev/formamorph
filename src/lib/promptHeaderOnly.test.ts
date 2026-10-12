@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { promptVocabulary } from './chipVocabulary';
-import { ALL_PROMPT_VARIABLES, splitToken, variableAxes, variableVariantIds } from './promptVariables';
+import { ALL_PROMPT_VARIABLES, splitToken, variableAxes, variableOptionIds } from './promptVariables';
+import { variantSpan } from '@/test/chipTokens';
 import { renderPromptTemplate, renderPromptTemplateRuns, parsePromptTemplate, serializeSegments } from './promptTemplate';
 import { runsTile } from './requestAnatomy';
 import { buildNarrationPrompt } from './turnPipeline/narrationPrompt';
@@ -20,7 +21,7 @@ describe('Header-only formatting', () => {
   });
 
   it.each(raw)('preserves the exact $label body and existing variant choices', variable => {
-    for (const variant of [null, ...variableVariantIds(variable)]) {
+    for (const variant of [null, ...variantSpan(variable)]) {
       const base = variant ? `${variable.token.slice(0, -1)}|${variant}>` : variable.token;
       const body = 'First line\n<b>Keep this</b> &amp; **that**\n\nLast line';
       expect(vocab.axes(base).some(axis => axis.id === 'format')).toBe(false);
@@ -49,7 +50,7 @@ describe('Header-only formatting', () => {
       expect(vocab.selection(token).format).toBe('xml');
       const xml = new DOMParser().parseFromString(renderPromptTemplate(token, { [base]: body }), 'application/xml');
       expect(xml.querySelector('parsererror')).toBeNull();
-      expect(variableVariantIds(variable)).not.toContain('xml');
+      expect(variableOptionIds(variable)).not.toContain('xml');
     }
   });
 

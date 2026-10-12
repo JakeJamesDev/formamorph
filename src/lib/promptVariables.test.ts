@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   baseToken, tokenVariant, withVariant, variantLabelForToken,
   variableForToken, labelForToken, colorForToken,
-  variableAxes, decodeVariant, encodeVariant, ALL_VARIANT_IDS, NOW_LINE_VARIABLES,
+  variableAxes, decodeVariant, encodeVariant, NOW_LINE_VARIABLES,
   PROMPT_KIND_VARIABLES,
   type PromptVariable,
 } from './promptVariables';
@@ -83,12 +83,7 @@ describe('multi-axis variants (Stats: content × format)', () => {
     expect(encodeVariant(STATS, { numbers: null, descriptions: null, meaning: null, format: null })).toBeNull();
   });
 
-  it('lists every combined id, and a compound is not masked by its prefix', () => {
-    for (const id of ['descriptions', 'numbers', 'markdown', 'descriptions.markdown', 'numbers.markdown', 'summary', 'sublocations', 'reachable.summary.markdown']) {
-      expect(ALL_VARIANT_IDS).toContain(id);
-    }
-    // The real contract behind the longest-first ordering: a compound id decodes to BOTH axes rather than
-    // being truncated to its bare prefix (e.g. 'descriptions.markdown' isn't collapsed to 'descriptions').
+  it('decodes a compound id to both axes rather than its bare prefix', () => {
     expect(decodeVariant(STATS, 'descriptions.markdown')).toEqual({ numbers: null, descriptions: 'descriptions', meaning: null, format: 'markdown' });
   });
 
@@ -119,7 +114,9 @@ describe('multi-axis variants (Stats: content × format)', () => {
 
   it('gives Entities a scope axis (Here/Sub/Reachable) plus content, stats and format', () => {
     const ENT = variableForToken('<ENTITIES>')!;
-    expect(variableAxes(ENT).map((a) => a.id)).toEqual(['scope', 'content', 'stats', 'format']);
+    expect(variableAxes(ENT).map((a) => a.id)).toEqual([
+      'scope', 'withstats', 'withtraits', 'content', 'traits', 'stats', 'range', 'descriptor', 'description', 'format',
+    ]);
     expect(variantLabelForToken('<ENTITIES|reachable.summary.markdown>')).toBe('Reachable, Summary, Markdown');
     expect(variantLabelForToken('<ENTITIES|markdown>')).toBe('Markdown');
   });

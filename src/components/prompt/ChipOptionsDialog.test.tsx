@@ -110,6 +110,15 @@ describe('Chip Options', () => {
     expect(within(options).getByRole('checkbox', { name: 'Stats' })).not.toBeChecked();
   });
 
+  it('leaves the hidden roster pieces out and keeps their ids through an edit', async () => {
+    const user = userEvent.setup();
+    renderReporting(<Field initial="<ENTITIES|withstats.notraits.nodescriptor>" />);
+    const options = await open(user);
+    expect(within(options).getAllByRole('checkbox').map((box) => box.closest('label')?.textContent)).toEqual(['Stats']);
+    await user.click(within(options).getByRole('radio', { name: 'XML' }));
+    expect(stored()).toBe('<ENTITIES|withstats.notraits.nodescriptor.xml>');
+  });
+
   it('shows an option help line as the tooltip of its segment and its dropdown item', async () => {
     const user = userEvent.setup();
     renderReporting(<TooltipProvider><Field initial="<ENTITIES>" /></TooltipProvider>);

@@ -1,6 +1,6 @@
 # 02: Vocabulary And Grammar
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -17,6 +17,7 @@ The prompt variable registry gains the new pieces on the Entities and Persona ch
 - The registry gains an explicit lock group on toggle axes. The Stats chip's pieces form one group; the Entities Stat Detail pieces and the Persona Stat Detail pieces form their own. Only With, Include and the stats toggle belong to none. The dialog enforces the group in ticket 05.
 - The parser accepts any dotted combination of ids known to the token's base, in any order. Two ids from one axis or a repeated id decode last-wins. An unknown id, or an id valid only for another base, leaves the token as text.
 - Decode and encode handle the new ids. Encode writes ids in registry order. An unchanged selection encodes to the bare token.
+- Ticket 01's value lookup accepts a key only in canonical axis order. A parsed token's key is normalized through decode and encode before lookup, so an any-order spelling renders instead of falling through as raw text.
 - Every spelling in a default prompt or a bundled world parses to the same selection as before, affix, format and header segments included.
 - None of the new ids joins the chip label's pick list (Q27).
 - Until ticket 03 lands, the renderer ignores the new ids. A token that carries one still renders its base value.
