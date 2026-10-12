@@ -126,7 +126,8 @@ describe('the flyout offers Edit Value', () => {
   it('not on a read-only field', async () => {
     render(<Field text={`Welcome to ${world('town', 'p1')}.`} readOnly />);
     await openFlyout('Town');
-    expect(screen.getByRole('tab', { name: 'Values' })).toBeEnabled();
+    // Chip Options is modal, so the field's tabs sit behind it.
+    expect(screen.getByRole('tab', { name: 'Values', hidden: true })).toBeEnabled();
     expect(editValueItem()).toBeNull();
   });
 

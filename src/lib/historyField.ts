@@ -26,8 +26,11 @@ export function fieldOf(node: EventTarget | null): string | undefined {
   return node.closest(`[${HISTORY_FIELD_ATTRIBUTE}]`)?.getAttribute(HISTORY_FIELD_ATTRIBUTE) ?? undefined;
 }
 
+/** The attribute of a dialog whose controls edit the field that opened it, such as Chip Options. */
+export const HISTORY_OVERLAY_ATTRIBUTE = 'data-history-overlay';
+
 // A pop-out or option list renders in a portal, outside the frame of the field that opened it.
-const OVERLAY = '[data-radix-popper-content-wrapper], [role="listbox"], [role="menu"]';
+const OVERLAY = `[data-radix-popper-content-wrapper], [role="listbox"], [role="menu"], [${HISTORY_OVERLAY_ATTRIBUTE}]`;
 
 /** The frame of a field. Of several, the one on screen wins: a layout can draw a field twice and hide one. */
 export function findHistoryField(root: ParentNode, field: string): HTMLElement | null {
