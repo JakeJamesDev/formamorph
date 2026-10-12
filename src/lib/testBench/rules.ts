@@ -51,8 +51,8 @@ import {
   type BearerWorld,
 } from '@/lib/bearers';
 import {
-  WORLD_OWNER, alwaysOnOverMax, deadRows, gateOf, gateStates, groupPickState, neverUnlockable, sameRequirement, settleDefaults,
-  unstableCycles, type GateInput, type GateOwner, type GateState, type GateStat, type GateStates, type GateTraitRef,
+  WORLD_OWNER, alwaysOnOverMax, deadRows, flipped, gateOf, gateStates, groupPickState, neverUnlockable, playerOwnerIds, sameRequirement, settleDefaults,
+  unstableCycles, type GateInput, type GateOwner, type GateState, type GateStat, type GateStates, type GateStats, type GateTraitRef,
 } from '@/lib/traitGates';
 import { startingGateStats } from '@/lib/gateStats';
 import { ruleText, rowText } from '@/lib/traitGateLine';
@@ -61,7 +61,7 @@ import { isAlwaysOn } from '@/lib/traitEffects';
 import { statRows, statRowSide, type StatRow } from '@/lib/traitTree';
 import { playerStatsOf, resolvedEntityStats } from '@/lib/statLinks';
 import type {
-  DictionaryEntry, Entity, GameLocation, PersonaRef, Placeholder, PlaceholderPin, PlaceholderValue, Stat, StatDescriptor, StatRequirement,
+  DictionaryEntry, Entity, GalleryImage, GameLocation, PersonaRef, Placeholder, PlaceholderPin, PlaceholderValue, Stat, StatDescriptor, StatRequirement,
   Trait, TraitGroup, TraitLink, TraitRequirement, TraitRequirementRow, World,
 } from '@/types';
 
@@ -1922,6 +1922,18 @@ const personaChoices = (world: RuleWorld): PersonaRef[] => [
   ...(world.entities ?? []).filter((e) => e.persona).map((e): PersonaRef => ({ source: 'world', entityId: e.id })),
 ];
 
+/** The owners a stat Condition on `ownerId`'s trait or image reads: its named bearer, the player set for `you`
+ *  (the world's player and every persona, Q28), else `ownerId` itself. */
+const statReadOwners = (world: RuleWorld, ownerId: string, req: StatRequirement): string[] => {
+  if (req.bearer?.kind === 'entity') return [req.bearer.id];
+  if (req.bearer?.kind === 'you') return [WORLD_OWNER, ...(world.entities ?? []).filter(canBePlayer).map((e) => e.id)];
+  return [ownerId];
+};
+
+/** The stats a stat Condition on `ownerId` reads, one per owner that holds it. */
+const statsReadBy = (world: RuleWorld, stats: GateStats, ownerId: string, req: StatRequirement): GateStat[] =>
+  statReadOwners(world, ownerId, req).flatMap((id) => stats[id]?.[req.id] ?? []);
+
 /** A bearer as a finding names it: the entity, or null for the player's own root. */
 const bearerName = (bearer: Bearer | undefined): string | null => (bearer?.entity ? bearer.name : null);
 
@@ -2036,15 +2048,8 @@ const gateReportOf = (world: RuleWorld): GateReport => {
 
   // Stat Conditions read each stat's authored start, as Enter World does (Q23).
   const stats = startingGateStats({ stats: world.stats, statGroups: world.statGroups, entities: world.entities ?? [] });
-  // The owners a stat Condition reads: its named bearer, the player set for `you` (the world's player and every
-  // persona, Q28), else the trait's own owner.
-  const readOwners = (gate: HeldGate, req: StatRequirement): string[] => {
-    if (req.bearer?.kind === 'entity') return [req.bearer.id];
-    if (req.bearer?.kind === 'you') return [WORLD_OWNER, ...(world.entities ?? []).filter(canBePlayer).map((e) => e.id)];
-    return [gate.owner.id];
-  };
-  const statsRead = (gate: HeldGate, req: StatRequirement): GateStat[] =>
-    readOwners(gate, req).flatMap((ownerId) => stats[ownerId]?.[req.id] ?? []);
+  const readOwners = (gate: HeldGate, req: StatRequirement): string[] => statReadOwners(world, gate.owner.id, req);
+  const statsRead = (gate: HeldGate, req: StatRequirement): GateStat[] => statsReadBy(world, stats, gate.owner.id, req);
 
   const plain = bearerWorldOf(world);
   const editor = { ...editorGateInput(plain), stats };
@@ -2394,6 +2399,114 @@ const traitDefaultGated: Rule = {
       );
     });
   },
+};
+
+// ── Image Visibility rules ────────────────────────────────────────────────────────────────────────────────
+
+/** A Condition on one gallery image that names something its bearer no longer has. */
+interface DeadImageCondition {
+  entity: Entity;
+  /** 1-based, in the entity's gallery order. */
+  position: number;
+  /** Quoted. */
+  condition: string;
+  /** The row it sits in, quoted, when the row holds other Conditions too. */
+  row: string | null;
+  /** A stat Condition: the stat is missing from its bearer, not deleted from the world. */
+  stat: boolean;
+}
+
+interface ImageRuleReport {
+  missing: DeadImageCondition[];
+  /** Entities whose every image carries a rule, with no two images covering a Condition and its Not. */
+  hideable: Entity[];
+}
+
+/** The image-rule findings, once per world object. A ruled image reads as a stand-in trait on its entity's owner,
+ *  so a Condition resolves as it does in a trait gate. */
+const imageReportsByWorld = new WeakMap<RuleWorld, ImageRuleReport>();
+const imageReportOf = (world: RuleWorld): ImageRuleReport => {
+  let report = imageReportsByWorld.get(world);
+  if (report) return report;
+  const ruled = (world.entities ?? []).map((entity) => ({ entity, images: entityImages(entity) }))
+    .filter(({ images }) => images.some((img) => img.requires?.length));
+  const stats = startingGateStats({ stats: world.stats, statGroups: world.statGroups, entities: world.entities ?? [] });
+  const imageId = (entity: Entity, i: number) => `image\u0000${entity.id}\u0000${i}`;
+  const asTrait = (entity: Entity, i: number, requires: TraitRequirementRow[]): Trait =>
+    ({ id: imageId(entity, i), name: '', statChanges: [], requires });
+  const input = editorGateInput(bearerWorldOf(world));
+  const ownerOf = (entity: Entity, images: readonly GalleryImage[]): GateOwner => {
+    const existing = input.owners.find((o) => o.id === entity.id);
+    const imageTraits = images.flatMap((img, i) => (img.requires?.length ? [asTrait(entity, i, img.requires)] : []));
+    return { id: entity.id, name: entity.name ?? '', groups: [], ...existing, traits: [...(existing?.traits ?? []), ...imageTraits] };
+  };
+  const swapped = new Map(ruled.map(({ entity, images }) => [entity.id, ownerOf(entity, images)]));
+  const owners = [...input.owners.map((o) => swapped.get(o.id) ?? o), ...[...swapped.values()].filter((o) => !input.owners.some((x) => x.id === o.id))];
+  const states = gateStates({ ...input, owners, stats });
+  // The owners the evaluator reads a stat Condition from: its named bearer, else the player's set when the
+  // entity is part of it, else the entity alone.
+  const player = playerOwnerIds({ source: 'none' }, input.entities);
+  const readFrom = (entity: Entity, req: StatRequirement): string[] =>
+    (req.bearer?.kind === 'entity' ? [req.bearer.id] : req.bearer?.kind === 'you' || player.includes(entity.id) ? player : [entity.id]);
+
+  const missing: DeadImageCondition[] = [];
+  const hideable: Entity[] = [];
+  for (const { entity, images } of ruled) {
+    const stateOf = (i: number) => gateOf(states, entity.id, imageId(entity, i));
+    images.forEach((img, i) => (img.requires ?? []).forEach((row, r) => row.all.forEach((req, c) => {
+      const state = stateOf(i)?.rows[r]?.conditions[c];
+      if (!state?.unresolved) return;
+      // A switched-off stat is not missing: the stats rules judge it.
+      if (req.kind === 'stat' && readFrom(entity, req).some((id) => stats[id]?.[req.id]?.inert)) return;
+      const texts = stateOf(i)!.rows[r].conditions.map((cond) => labelOf(cond.text, world));
+      missing.push({
+        entity, position: i + 1, condition: quote(texts[c]), row: row.all.length > 1 ? quote(rowText(texts)) : null, stat: req.kind === 'stat',
+      });
+    })));
+    // An empty row always holds, so its image never hides.
+    if (!images.every((img) => img.requires?.length && img.requires.every((row) => row.all.length))) continue;
+    // One Condition and its Not, each alone in the only row of its image, always leave one image showing.
+    const single = images.flatMap((img, i) => {
+      const req = img.requires?.length === 1 && img.requires[0].all.length === 1 ? img.requires[0].all[0] : null;
+      return req && !stateOf(i)?.rows[0]?.conditions[0]?.unresolved ? [req] : [];
+    });
+    const covered = single.some((a, i) => single.some((b, j) => j > i && sameRequirement(a, flipped(b))));
+    if (!covered) hideable.push(entity);
+  }
+  report = { missing, hideable };
+  imageReportsByWorld.set(world, report);
+  return report;
+};
+
+const imageRuleMissingTarget: Rule = {
+  id: 'image-rule-missing-target',
+  severity: 'error',
+  section: 'entities',
+  summary: (count) => `${count} image rules name something their bearer doesn’t have`,
+  check: (world) => imageReportOf(world).missing.map(({ entity, position, condition, row, stat }) => {
+    const item = asItem(entity, world);
+    const gone = stat ? 'which names a stat its bearer doesn’t have' : 'which this world no longer has';
+    return finding(
+      imageRuleMissingTarget,
+      `${quote(item.name)}, image ${position} requires ${condition}, ${gone}${row ? `, so ${row} never holds` : ''}`,
+      [item],
+    );
+  }),
+};
+
+const entityImagesAllHideable: Rule = {
+  id: 'entity-images-all-hideable',
+  severity: 'warning',
+  section: 'entities',
+  summary: (count) => `${count} entities can end up with no image`,
+  check: (world) => imageReportOf(world).hideable.map((entity) => {
+    const item = asItem(entity, world);
+    return finding(
+      entityImagesAllHideable,
+      `${quote(item.name)} can end up with no image — every image has a Visibility rule, and no two images cover a Condition and its Not`,
+      [item],
+    );
+  }),
 };
 
 // ── Trait links ───────────────────────────────────────────────────────────────────────────────────────────
@@ -3318,7 +3431,7 @@ export const RULES: readonly Rule[] = [
   traitGroupDefaultsOverMax, traitGroupAlwaysOnOverMax, traitGroupTooSmall, traitGroupMinAboveMax, traitGroupMinUnreachable,
   traitGroupDefaultsBelowMin, traitRequirementNeverUnlockable, traitRequirementUnstable, traitRequirementUnresolved,
   traitRequirementRowNeverHolds, traitGateReadsOwnStat, requirementPercentZeroSpan, traitDefaultGated,
-  traitLinkRedundant, traitStatNoTarget,
+  imageRuleMissingTarget, entityImagesAllHideable, traitLinkRedundant, traitStatNoTarget,
   copyPinRemovedValue, blueprintRefusedField, copyEditedUnused, copyMissing,
   placeholderWeightUnknownValue, wildcardSingleValue,
   placeholderPinUnknownValue, placeholderPinConflict, placeholderPinCycle, placeholderPinSelf,
