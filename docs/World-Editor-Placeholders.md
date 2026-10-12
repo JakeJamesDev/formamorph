@@ -33,7 +33,7 @@ Or type `{` in a field and the new name, then pick **New Placeholder "…"** in 
 A Wildcard with two values or more can weight them.
 
 1. Select the placeholder.
-2. Under **Values**, select a value chip. A pop-out opens.
+2. Under **Values**, select a value chip. A **Draw Weight** box opens.
 3. Type a number in **Draw Weight**. A value with weight 2 rolls twice as often as a value with weight 1.
 4. Optional: in the **Chips** style, select the eye button beside **Values**. Its tooltip reads **Show roll chances**, and each chip then shows its chance.
 
@@ -103,7 +103,7 @@ The toggle offers **Wildcard** and **Object**. A Variable has no button: the lin
 ## Draw Weight
 <!-- keywords: benched, disable an option, zero means never, default is one, turn off option -->
 
-Each value of a Wildcard with two values or more has a **Draw Weight**. A value with no weight counts as 1. Weight 0 keeps the value in the list and never picks it. The pop-out then reads **Benched**.
+Each value of a Wildcard with two values or more has a **Draw Weight**. A value with no weight counts as 1. Weight 0 keeps the value in the list and never picks it. The box then reads **Benched**.
 
 ## Parts
 <!-- keywords: nested, inside another, compose, sub item, pieces, combine several, arrow name -->
@@ -113,7 +113,7 @@ A value that is exactly one chip is a **part** of the placeholder that holds it.
 ## World or Unique
 <!-- keywords: same everywhere, different each spot, consistent across text, separate roll, duplicates, repeat result, scope, per use, two must differ -->
 
-Each chip of a Wildcard chooses how it shares the roll. Select the placed chip to open its pop-out, and pick **World** or **Unique**:
+Each chip of a Wildcard chooses how it shares the roll. Select the placed chip to open [Chip Options](Prompts#chip-options), and pick **World** or **Unique**:
 
 | Scope | Behavior |
 |---|---|
@@ -131,12 +131,12 @@ A placeholder that can't roll locks the choice on **World**.
 |---|---|---|
 | **World** | The placeholder's name | `Town Name` |
 | **Unique** | The name plus a letter, one sequence per placeholder | `Town Name (A)`, `Town Name (B)` … `Town Name (AA)` |
-| **Labeled** | The label you typed in the chip's pop-out | `Hometown` |
+| **Labeled** | The label you typed in Chip Options | `Hometown` |
 
 The letters follow the order of the world: entities first, in the order of the Entities tree. Then locations, traits, trait groups, stats, dictionaries, the world's own prompt fields and openings, and last the placeholders' own values.
 
 - **Letters aren't stored.** Remove the first chip, and the next one becomes **(A)**. A letter tells two chips apart, but it isn't a permanent name.
-- **Give a Unique chip a Label** in its pop-out when you want a name that stays. Only Unique chips have the **Label** field.
+- **Give a Unique chip a Label** in Chip Options when you want a name that stays. Only Unique chips have the **Label** field.
 - **Hover a chip** to see its mode and its values.
 - A chip in longer text keeps its braces where the name prints as plain text: `The {Tavern Name (A)} Inn`.
 
@@ -147,7 +147,7 @@ A text field that holds a chip has a **Values** tab beside **Edit**. It opens ev
 
 - **Edit a value in place.** The change writes to the placeholder's value, or to the pin that sets it.
 - **Step through the values** with **Previous Value** and **Next Value**.
-- **Edit Value** in a chip's pop-out opens this tab.
+- **Edit Value** in Chip Options opens this tab.
 
 The tab shows when the world has a placeholder. It is disabled until the text holds a chip.
 
@@ -179,7 +179,7 @@ A pin keeps a placeholder at one value while a condition is true. The playthroug
 | A stat descriptor | The stat is in that band | The pin button on the [descriptor row](World-Editor-Stats#pins-on-a-descriptor) |
 | A location | The player is there | The location's [**Pins** tab](World-Editor-Locations#placeholder-pins) |
 | A trait | The trait is active | The trait's [**Pins** tab](World-Editor-Traits#placeholder-pins). A trait can [pin a blueprint](World-Editor-Traits#pins-by-blueprint), and each bearer's copy takes the pin. |
-| A placeholder value | That value is the placeholder's current value | The pin button beside the value. Its pop-out has **Add Placeholder Pin**. |
+| A placeholder value | That value is the placeholder's current value | The pin button beside the value. Its panel has **Add Placeholder Pin**. |
 
 When two sources pin the same placeholder, the higher row in this table wins. [Stat code](StatCodeGuide) can also pin and unpin a placeholder, and a code pin wins over all four.
 

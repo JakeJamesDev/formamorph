@@ -410,6 +410,39 @@ describe('history controls reference', () => {
   });
 });
 
+describe('chip options reference', () => {
+  it('opens the production dialog on each sample and writes no storage', async () => {
+    const user = userEvent.setup();
+    renderShowcase();
+    await user.click(screen.getByRole('tab', { name: 'Chip Options' }));
+    expect(screen.getByRole('region', { name: 'Chip Options Reference' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Open Entities Chip' }));
+    const entities = await screen.findByRole('dialog', { name: 'Chip Options' });
+    expect(within(entities).getByText('What the AI Reads')).toBeInTheDocument();
+    for (const row of ['Only With', 'Include', 'Stat Detail']) {
+      expect(within(entities).getByRole('group', { name: row })).toBeInTheDocument();
+    }
+    const onlyWithStats = within(within(entities).getByRole('group', { name: 'Only With' })).getByRole('checkbox', { name: 'Stats' });
+    expect(onlyWithStats).not.toBeChecked();
+    await user.click(onlyWithStats);
+    expect(onlyWithStats).toBeChecked();
+    await user.keyboard('{Escape}');
+
+    await user.click(screen.getByRole('button', { name: 'Open Placeholder Chip' }));
+    const placeholder = await screen.findByRole('dialog', { name: 'Chip Options' });
+    expect(within(placeholder).queryByText('What the AI Reads')).toBeNull();
+    await user.keyboard('{Escape}');
+
+    await user.click(screen.getByRole('checkbox', { name: 'Editable' }));
+    await user.click(screen.getByRole('button', { name: 'Open Stats Chip' }));
+    const readOnly = await screen.findByRole('dialog', { name: 'Chip Options' });
+    within(within(readOnly).getByRole('group', { name: 'Stat Detail' })).getAllByRole('checkbox')
+      .forEach((box) => expect(box).toBeDisabled());
+    expect(localStorage).toHaveLength(0);
+  });
+});
+
 describe('surface app bar reference', () => {
   it('draws the bar in order with a sample world name and its controls, touching no storage', async () => {
     const user = userEvent.setup();

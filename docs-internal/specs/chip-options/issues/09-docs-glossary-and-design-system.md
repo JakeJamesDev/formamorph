@@ -1,6 +1,6 @@
 # 09: Docs, Glossary And Design System
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 05, 06, 07
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium

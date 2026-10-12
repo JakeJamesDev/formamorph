@@ -256,10 +256,57 @@ Each prompt editor is a chip editor. A **chip** is a box in the text. When the a
 
 - **A chip sends text, and no chip sends nothing.** The app adds nothing to a prompt that you did not place. Delete the **Notes** chip, and the AI never reads your notes.
 - **The bar above the editor lists the chips this prompt can use.** Select a chip to put it at the cursor, or drag it into the text.
-- **Select a placed chip to open its pop-out.** The pop-out sets what the chip sends. Some chips have a **Scope** or **Content** choice, such as **Full** or **Summary**. The **Stats**, **Traits**, **Location**, **Entities** and **Persona** chips have a **Format** of **Simple**, **Markdown** or **XML**. The **Entities** chip also has a **Stats** checkbox, on by default, that sends each entity's stats. Some chips also have **Header**, **Prepend** and **Append** text.
+- **Select a placed chip to open Chip Options.** The dialog sets what the chip sends. See [Chip Options](#chip-options).
 - **The editor has two tabs.** **Edit** holds the template. **Preview** shows the text with each chip filled in. Outside a game, a **Sample data** tag marks the sample values. **Preview** is off while the prompt has no chips.
 
 The editor has **Undo** and **Redo** buttons. **Edit full screen** opens the editor in a large window. For the chips that carry the persona and names, see [Personas for Authors](Persona-Authoring).
+
+## Chip Options
+<!-- keywords: chip settings, chip popup, pop out, options for a chip, what does this chip send, what the ai reads, scope content format, header prepend append, only with, include, stat detail -->
+
+**Chip Options** is a dialog with the settings of one placed chip. It shows only the rows that chip has.
+
+- **A prompt chip has two panes.** The left pane holds the rows. The right pane, **What the AI Reads**, shows the text the chip sends with your picks. It includes the **Header**, **Prepend** and **Append** text, in a dimmer shade.
+- **Hover or focus a row to see what it adds.** The text it adds lights up, and the rest dims. A **Stat Detail** piece lights only its own part of each stat line.
+- **The pane reads real data where it can.** In a game it reads the live scene. In the World Editor it reads the authored world. In Settings it reads sample data.
+- **Placeholder chips and Tool argument chips have one pane.** They show their rows and no **What the AI Reads**.
+- **A narrow screen stacks the panes.** The rows come first.
+- **A list of four options or more is a dropdown.** A short list is a row of buttons. Hover an option to read what it does.
+- **Read-only presets show every row, disabled.**
+- **Re-Pick…** aims a placeholder chip at another value. **Edit Value** opens the chip's value for typing.
+
+| Row | Chips | What it does |
+|---|---|---|
+| **Scope** | **Location**, **Entities** | Picks which locations or entities the chip lists |
+| **Only With** | **Entities**, **Persona** | Keeps only entities that own **Stats**, **Traits** or either |
+| **Content** | **Location**, **Entities**, **Persona** | Sends **Full** detail, a **Summary**, or the **Name** only |
+| **Include** | **Entities**, **Persona** | Sends each entity's **Traits** and **Stats**, each on or off |
+| **Stat Detail** | **Stats**, **Entities**, **Persona** | Sends **Range**, **Descriptor** and **Description** for each stat. At least one stays checked. |
+| **Format** | **Stats**, **Traits**, **Location**, **Entities**, **Persona** | Shapes the text as **Simple**, **Markdown** or **XML** |
+| **Label**, **Header**, **Prepend**, **Append** | Placement fields, below a rule | **Header** starts a section. **Prepend** and **Append** wrap the value. A chip with no value sends none of them. |
+
+- **Include Stats is on by default** for **Here** and **In Scene**. It is off for **In Sub** and **Reachable**.
+- **Name content turns off Include and Stat Detail.** **Only With** still works, so the name list holds only the entities that pass.
+- **Include Stats off turns off Stat Detail.**
+- **A bare chip sends what it sent before.** Chips in saved presets and worlds keep working.
+
+> ⚠️ **An older version of Formamorph can't read the new picks.** A preset or world that uses **Only With**, **Include** or **Stat Detail** picks shows the raw chip text there, and the AI reads it as text.
+
+## How to Send Only Entities With Stats
+<!-- keywords: only entities with stats, only npcs with stats, filter entities by stats, skip entities without stats, send only characters that own stats, entities that have traits, keep cast short, trim the entity list, stat pass cast -->
+<!-- route: chipOptions -->
+
+Use **Only With** on the **Entities** chip. The chip then lists only the entities that own stats.
+
+1. In the prompt, select the **Entities** chip. Chip Options opens.
+2. Under **Only With**, check **Stats**.
+3. Optional: check **Traits** too. The chip then keeps an entity that owns stats or traits.
+4. Read **What the AI Reads** to check the list.
+
+- **The chip shows a filter icon while a pick is on.** Hover the icon to read the picks, such as "Only With Stats or Traits". The chip's label does not change.
+- **An entity owns stats when at least one of its stats is on.** The same holds for traits. A switched-off stat or trait doesn't count.
+- **Include doesn't change who stays.** An entity with stats stays even when you clear **Include → Stats**.
+- **The Persona chip has the same row.** A persona that fails the pick sends what no persona sends: `N/A`, or nothing when the chip has a **Header**, **Prepend** or **Append**.
 
 ## World Prompts and the Diff Viewer
 <!-- keywords: custom prompt notice, compare, green and red, what changed, authors instructions, ignore, use mine instead, overrides my preset, raw, side by side -->

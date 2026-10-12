@@ -185,6 +185,23 @@ describe('the Variable menu section of the Stat Code Guide', () => {
   });
 });
 
+describe('the Chip Options sections of the Prompts guide', () => {
+  it.each([
+    'how do I send only entities with stats?',
+    'how do I keep entities that have no stats out of the Entities chip?',
+    'how do I filter the entities a prompt sends?',
+  ])('answers "%s" in its top 3', (question) => {
+    expect(index.search(question, 3).map((s) => s.id)).toContain('Prompts#how-to-send-only-entities-with-stats');
+  });
+
+  it.each([
+    'what are the rows in Chip Options?',
+    'what does Stat Detail do on the Entities chip?',
+  ])('answers "%s" in its top 3', (question) => {
+    expect(index.search(question, 3).map((s) => s.id)).toContain('Prompts#chip-options');
+  });
+});
+
 describe('the other-stat write sections of the Stat Code Guide', () => {
   const IDS = ['StatCodeGuide#how-to-change-another-stat-from-code', 'StatCodeGuide#writing-to-other-stats'];
 
