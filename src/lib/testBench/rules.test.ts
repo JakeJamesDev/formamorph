@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type {
   Dictionary, DictionaryEntry, Entity, GameLocation, Placeholder, PlaceholderPin, Stat, Trait, TraitGroup, TraitLink,
-  StatRequirement, TraitRequirement, TraitRequirementRow, WorldOverview,
+  GalleryImage, StatRequirement, TraitRequirement, TraitRequirementRow, WorldOverview,
 } from '@/types';
 import { estimateTokens } from '@/lib/memoryUtils';
 import { IMAGE_CAPS } from '@/lib/imageOptim';
@@ -2326,6 +2326,158 @@ describe('trait gate rules', () => {
     });
   });
 
+  describe('image Visibility rules', () => {
+    const rage = stat({ id: 'rage', name: 'Rage', min: 0, max: 100, starting: 50 });
+    const atLeast = (id: string, value: number, over: Partial<StatRequirement> = {}): StatRequirement =>
+      ({ kind: 'stat', id, operator: '>=', value, unit: 'raw', ...over });
+    const tamed = trait({ id: 'tamed', name: 'Tamed' });
+    const hasTamed: TraitRequirement = { kind: 'trait', id: 'tamed', name: 'Tamed' };
+    const image = (...rows: TraitRequirement[][]): GalleryImage =>
+      ({ data: 'data:image/webp;base64,AAAA', ...(rows.length ? { requires: rows.map((all) => ({ all })) } : {}) });
+    // Ash owns Rage, so a Condition with no bearer reads it.
+    const holder = (images: GalleryImage[], over: Partial<Entity> = {}): Entity =>
+      ({ ...resident, id: 'ash', name: 'Ash', stats: [rage], images, ...over });
+    const crowd = (entities: Entity[], over: Partial<RuleWorld> = {}) =>
+      gates([tamed], { stats: [rage], entities: [resident, ...entities], ...over });
+    const pictured = (images: GalleryImage[], over: Partial<RuleWorld> = {}) => crowd([holder(images)], over);
+
+    describe('missing target', () => {
+      const rule = 'image-rule-missing-target';
+
+      it.each([
+        ['a trait', { kind: 'trait', id: 'gone', name: 'Vowed' } as TraitRequirement, '“Vowed”, which this world no longer has'],
+        ['a group', { kind: 'group', id: 'gone', name: 'Class' } as TraitRequirement, '“any Class”, which this world no longer has'],
+        ['a stat', atLeast('gone', 80, { name: 'Fury' }), '“Fury >= 80”, which names a stat its bearer doesn’t have'],
+      ])('fires for %s, naming the entity and the image', (_, req, tail) => {
+        const found = only(pictured([image(), image([req])]), rule);
+        expect(found.map((f) => [f.severity, f.message])).toEqual([['error', `“Ash”, image 2 requires ${tail}`]]);
+        expect(ids(found)).toEqual([['ash']]);
+      });
+
+      it('stays silent once the target exists', () => {
+        const w = pictured([image(), image([hasTamed], [atLeast('rage', 80)], [{ kind: 'group', id: 'g', name: 'Class' }])], {
+          traitGroups: [{ id: 'g', name: 'Class', parentId: null }],
+        });
+        expect(only(w, rule)).toEqual([]);
+      });
+
+      it('names the row that can no longer hold when it has other Conditions', () => {
+        const found = only(pictured([image([hasTamed, { kind: 'trait', id: 'gone', name: 'Vowed' }])]), rule);
+        expect(found.map((f) => f.message)).toEqual(['“Ash”, image 1 requires “Vowed”, which this world no longer has, so “Tamed and Vowed” never holds']);
+      });
+
+      it('reads a stat on the bearer the Condition names', () => {
+        const onBree = atLeast('rage', 80, { bearer: { kind: 'entity', id: 'bree' } });
+        const named = (stats: Stat[]) => crowd([holder([image([onBree])]), { ...resident, id: 'bree', name: 'Bree', stats }]);
+        expect(only(named([]), rule)).toHaveLength(1);
+        expect(only(named([rage]), rule)).toEqual([]);
+      });
+
+      it('leaves a stat that is switched off to the stats rules', () => {
+        const off = stat({ id: 'rage', name: 'Rage', enabled: false });
+        const w = (stats: Stat[]) => crowd([holder([image([atLeast('rage', 80)])], { stats })]);
+        expect(only(w([off]), rule)).toEqual([]);
+        // The same Condition on an entity with no such stat at all still reports.
+        expect(only(w([]), rule)).toHaveLength(1);
+      });
+
+      it('reads the entity’s own stat for a Condition with no bearer', () => {
+        const w = (own: Stat[]) => gates([], { stats: [rage], entities: [resident, holder([image([atLeast('rage', 80)])], { stats: own })] });
+        expect(only(w([]), rule)).toHaveLength(1);
+        expect(only(w([rage]), rule)).toEqual([]);
+      });
+
+      it('judges a rule on slot 0 like any other', () => {
+        const found = only(pictured([image([{ kind: 'trait', id: 'gone', name: 'Vowed' }]), image()]), rule);
+        expect(found.map((f) => f.message)).toEqual(['“Ash”, image 1 requires “Vowed”, which this world no longer has']);
+      });
+
+      it('resolves a trait the entity owns, beside the stand-ins for its images', () => {
+        const bold = trait({ id: 'bold', name: 'Bold' });
+        const w = (target: string) => crowd([holder([image([{ kind: 'trait', id: target, name: 'Bold' }])], { traits: [bold] })]);
+        expect(only(w('bold'), rule)).toEqual([]);
+        expect(ids(only(w('gone'), rule))).toEqual([['ash']]);
+      });
+
+      it('reads the player’s stats for a you bearer, and leaves one switched off to the stats rules', () => {
+        const you = atLeast('rage', 80, { bearer: { kind: 'you' } });
+        const w = (stats: Stat[]) => crowd([holder([image([you])], { stats: [] })], { stats });
+        expect(only(w([rage]), rule)).toEqual([]);
+        expect(ids(only(w([]), rule))).toEqual([['ash']]);
+        expect(only(w([stat({ id: 'rage', name: 'Rage', enabled: false })]), rule)).toEqual([]);
+      });
+
+      it('raises nothing for a gallery with no rules', () => {
+        expect(only(pictured([image(), image()]), rule)).toEqual([]);
+      });
+    });
+
+    describe('every image hideable', () => {
+      const rule = 'entity-images-all-hideable';
+      const message = '“Ash” can end up with no image — every image has a Visibility rule, and no two images cover a Condition and its Not';
+
+      it('fires when every image carries a rule', () => {
+        const found = only(pictured([image([hasTamed]), image([atLeast('rage', 80)])]), rule);
+        expect(found.map((f) => [f.severity, f.message])).toEqual([['warning', message]]);
+        expect(ids(found)).toEqual([['ash']]);
+      });
+
+      it('fires for a lone image with a rule', () => {
+        expect(only(pictured([image([hasTamed])]), rule)).toHaveLength(1);
+      });
+
+      it('stays silent when one image has no rule, an empty rule included', () => {
+        expect(only(pictured([image([hasTamed]), image()]), rule)).toEqual([]);
+        expect(only(pictured([image([hasTamed]), { data: 'data:image/webp;base64,AAAA', requires: [] }]), rule)).toEqual([]);
+      });
+
+      it('stays silent when a row has no Conditions, since an empty row always holds', () => {
+        const always: GalleryImage = { data: 'data:image/webp;base64,AAAA', requires: [{ all: [] }] };
+        expect(only(pictured([image([hasTamed]), always]), rule)).toEqual([]);
+        expect(only(pictured([{ ...always, requires: [{ all: [hasTamed] }, { all: [] }] }]), rule)).toEqual([]);
+      });
+
+      it('stays silent for an entity with no images', () => {
+        expect(only(pictured([]), rule)).toEqual([]);
+        expect(only(gates([]), rule)).toEqual([]);
+      });
+
+      it.each([
+        ['a trait', hasTamed],
+        ['a stat', atLeast('rage', 80)],
+        ['a stat as a percent', atLeast('rage', 50, { unit: 'percent' })],
+      ])('stays silent when two images form X and not X on %s', (_, x) => {
+        const not = { ...x, not: true } as TraitRequirement;
+        expect(only(pictured([image([x]), image([not])]), rule)).toEqual([]);
+        expect(only(pictured([image([not]), image([hasTamed]), image([x])]), rule)).toEqual([]);
+      });
+
+      it('fires when the opposing pair is not the same single Condition', () => {
+        const x = atLeast('rage', 80);
+        const near = (over: Partial<StatRequirement>) => ids(only(pictured([image([x]), image([{ ...x, ...over, not: true }])]), rule));
+        expect(near({ value: 50 })).toEqual([['ash']]);
+        expect(near({ operator: '>' })).toEqual([['ash']]);
+        expect(near({ unit: 'percent' })).toEqual([['ash']]);
+        expect(near({ bearer: { kind: 'you' } })).toEqual([['ash']]);
+        // Two plain Conditions, or a Not that sits in a row with another Condition, cover nothing.
+        expect(ids(only(pictured([image([x]), image([x])]), rule))).toEqual([['ash']]);
+        expect(ids(only(pictured([image([hasTamed, x]), image([{ ...hasTamed, not: true }])]), rule))).toEqual([['ash']]);
+        expect(ids(only(pictured([image([hasTamed], [x]), image([{ ...hasTamed, not: true }])]), rule))).toEqual([['ash']]);
+      });
+
+      it('fires when the pair names a target that is gone, since neither image can show', () => {
+        const gone: TraitRequirement = { kind: 'trait', id: 'gone', name: 'Vowed' };
+        expect(ids(only(pictured([image([gone]), image([{ ...gone, not: true }])]), rule))).toEqual([['ash']]);
+      });
+
+      it('judges each entity apart', () => {
+        const bree: Entity = { ...holder([image([hasTamed])]), id: 'bree', name: 'Bree' };
+        const found = only(crowd([holder([image([hasTamed]), image()]), bree]), rule);
+        expect(ids(found)).toEqual([['bree']]);
+      });
+    });
+  });
+
   describe('gated defaults', () => {
     const rule = 'trait-default-gated';
     const def = { isDefault: true };
@@ -4418,6 +4570,9 @@ const RULE_SCOPE: Record<string, 'simple' | 'advanced'> = {
   'trait-requirement-row-never-holds': 'simple',
   'trait-gate-reads-own-stat': 'simple',
   'requirement-percent-zero-span': 'simple',
+  // The same rows editor as a trait gate, mounted on the gallery thumbnail.
+  'image-rule-missing-target': 'simple',
+  'entity-images-all-hideable': 'simple',
   // A link row's menu removes it in both modes.
   'trait-link-redundant': 'simple',
   'world-empty-system-prompt': 'simple',
