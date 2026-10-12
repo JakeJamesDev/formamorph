@@ -144,6 +144,8 @@ export interface ScoredRow {
   answerTokens: number;
   /** A language question: the answer is in the AI Language. */
   inLanguage?: boolean;
+  /** A question that expects a surface: the answer's Take Me There button opens it. */
+  routeHit?: boolean;
 }
 
 /** The rates of a set of answers, each from 0 to 1. Null when the set has no answer the rate counts. */
@@ -167,6 +169,8 @@ export interface Summary {
   /** An uncovered question with no flag. */
   missedFlag: number | null;
   inLanguage: number | null;
+  /** Of the answers to questions that expect a surface, the share whose button opens it. */
+  routeHit: number | null;
   promptTokens: number | null;
   answerTokens: number | null;
 }
@@ -194,6 +198,7 @@ export function summarize(rows: readonly ScoredRow[]): Summary {
     uncovered: uncovered.length,
     missedFlag: rate(uncovered, (s) => !s.flagged),
     inLanguage: rate(spoken, (r) => r.inLanguage === true),
+    routeHit: rate(rows.filter((r) => r.routeHit !== undefined), (r) => r.routeHit === true),
     promptTokens: round(mean(rows.map((r) => r.promptTokens))),
     answerTokens: round(mean(rows.map((r) => r.answerTokens))),
   };

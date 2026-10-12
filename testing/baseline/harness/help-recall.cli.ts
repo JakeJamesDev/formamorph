@@ -17,6 +17,8 @@
 //   keep-old  with `--ai`: shipped, where a question that points at the open screen keeps every pick, as before
 //             ticket 47
 //   howto-old with `--ai`: shipped, where the open page's how-tos join every question, as before ticket 49
+//   semantic-on with `--ai`: shipped, with Semantic Search on over section vectors embedded fresh in Node
+//   search-old with `--ai`: shipped, with exact keywords, as before guide-open-and-search ticket 01
 // The pick prompt, the pick list and the rank merge are the app's.
 //
 // `--screen` asks every task and follow-up over one open screen, as the app does; the "here" questions keep
@@ -31,7 +33,7 @@
 //   at5     a keyed section is among the block's five sections, with no size budget (recall@5)
 //   sent    a keyed section is in the block that fits the request's size budget
 //
-// Usage: npm run probe:help-recall -- [--arms keyword,semantic,hybrid,ai,ai+keyword,ai+keyword+semantic,shipped,pick-old,keep-old,howto-old] [--sets known,blind] [--text head|full|chunks]
+// Usage: npm run probe:help-recall -- [--arms keyword,semantic,hybrid,ai,ai+keyword,ai+keyword+semantic,shipped,pick-old,keep-old,howto-old,semantic-on,search-old] [--sets known,blind] [--text head|full|chunks]
 //          [--screen library|stats|game]
 //          [--ai] [--runs 5] [--parallel 4] [--endpoint URL] [--model default] [--token T] [--show]
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -40,14 +42,16 @@ import { buildAiRequestSpec } from '@/lib/aiRequest/aiRequestSpec';
 import { bundledDocsIndex } from '@/lib/docs/bundledDocsIndex';
 import { CHANGELOG_PAGE, FAVORED_PAGE_WEIGHT, type DocSection, type DocsIndex } from '@/lib/docs/docsIndex';
 import { guideSections, type GuideSection } from '@/lib/formaquestion/guideSections';
-import { HELP_PICK_MAX_TOKENS, HELP_PICK_SYSTEM_PROMPT, pickList, pickMessage, readPicks } from '@/lib/formaquestion/helpPicks';
+import { HELP_PICK_MAX_TOKENS, pickList, pickMessage, readPicks } from '@/lib/formaquestion/helpPicks';
+import { HELP_PICK_SYSTEM_PROMPT } from '@/lib/formaquestion/helpPrompt';
 import { askHelp, HELP_SECTION_LIMIT, helpSearch, helpSections, type EarlierExchange, type HelpQuestion } from '@/lib/formaquestion/helpSession';
-import { DEFAULT_HELP_SETTINGS } from '@/lib/formaquestion/helpSettings';
+import { DEFAULT_HELP_SETTINGS, helpSettingsOf } from '@/lib/formaquestion/helpSettings';
 import { mergeRanks, rankByVector } from '@/lib/formaquestion/rankMerge';
 import { surfaceHint } from '@/lib/formaquestion/surfaceHint';
 import { EMBEDDING_MODEL_ID } from '@/lib/memoryRelevance';
 import type { Surface } from '@/lib/surface/surfaceRegistry';
-import { mean, noUsage, probeSnapshot, sessionFetch, withoutEarlierAnswer, type ProbeTarget, type Usage } from './help-probe-shared';
+import { exactDocsIndex, mean, noUsage, probeSnapshot, sessionFetch, withoutEarlierAnswer, type ProbeTarget, type Usage } from './help-probe-shared';
+import { nodeEmbedder } from './help-node-embedder';
 import { loadBlindCases, loadKnownCases, RECALL_KINDS, RECALL_SETS, type RecallCase, type RecallKind, type RecallSet } from './help-recall-cases';
 import { chunksOf, scoreRecall, summarizeRecall, type RecallScore } from './help-recall-score';
 
@@ -56,7 +60,7 @@ const argVal = (flag: string, fallback: string) => {
   const i = args.indexOf(flag);
   return i >= 0 ? args[i + 1] : fallback;
 };
-const ARMS = ['keyword', 'semantic', 'hybrid', 'ai', 'ai+keyword', 'ai+keyword+semantic', 'shipped', 'pick-old', 'keep-old', 'howto-old'] as const;
+const ARMS = ['keyword', 'semantic', 'hybrid', 'ai', 'ai+keyword', 'ai+keyword+semantic', 'shipped', 'pick-old', 'keep-old', 'howto-old', 'semantic-on', 'search-old'] as const;
 type Arm = (typeof ARMS)[number];
 /** The values of a comma list flag, each one of `allowed`. */
 function listArg<T extends string>(flag: string, allowed: readonly T[]): T[] {
@@ -66,7 +70,7 @@ function listArg<T extends string>(flag: string, allowed: readonly T[]): T[] {
   return values as T[];
 }
 /** The arms that run the help session's own search. */
-const SESSION_ARMS = ['shipped', 'pick-old', 'keep-old', 'howto-old'] as const satisfies readonly Arm[];
+const SESSION_ARMS = ['shipped', 'pick-old', 'keep-old', 'howto-old', 'semantic-on', 'search-old'] as const satisfies readonly Arm[];
 const isSessionArm = (arm: Arm): arm is (typeof SESSION_ARMS)[number] => (SESSION_ARMS as readonly Arm[]).includes(arm);
 const isAiArm = (arm: Arm) => arm.startsWith('ai') || isSessionArm(arm);
 // The arms that send requests run only with `--ai`.
@@ -96,6 +100,9 @@ if (screens.length > 1) throw new Error(`--screen takes one screen, not ${screen
 const screen = screens.at(0);
 
 const index = bundledDocsIndex();
+const exactIndex = exactDocsIndex();
+const SEMANTIC_ON = helpSettingsOf({ sources: { semantic: true } });
+const nodeSemantic = args.includes('--ai') && arms.includes('semantic-on') ? await nodeEmbedder(index) : null;
 const cases = [...loadKnownCases(), ...loadBlindCases()]
   .filter((c) => sets.includes(c.set))
   .map((c): RecallCase => (screen && !c.surface ? { ...c, surface: SCREENS[screen] } : c));
@@ -362,7 +369,10 @@ if (arms.some(isAiArm)) {
           ? withoutEarlierAnswer(sessionFetch(usage), PICKS.lines, { question: c.question, earlier: history.at(-1)?.question, earlierAnswer: history.at(-1)?.answer, where: hint?.where })
           : sessionFetch(usage);
         const asked = performance.now();
-        const search = await helpSearch({ question: c.question, history, settings: DEFAULT_HELP_SETTINGS, snapshot: probeSnapshot(target), index, hint, screenRule: arm !== 'keep-old', fetchImpl });
+        const search = await helpSearch({
+          question: c.question, history, settings: arm === 'semantic-on' ? SEMANTIC_ON : DEFAULT_HELP_SETTINGS, snapshot: probeSnapshot(target),
+          index: arm === 'search-old' ? exactIndex : index, hint, screenRule: arm !== 'keep-old', embedder: nodeSemantic?.embedder, fetchImpl,
+        });
         found.set(`${arm}|${c.id}`, { search, ms: performance.now() - asked, usage });
       })), parallel);
       shippedFailed += [...found.values()].filter(({ usage }) => usage.requests === 0).length;
@@ -407,6 +417,7 @@ const table = (head: string[], lines: string[][]) =>
 const ARM_LABELS: Record<Arm, string> = {
   keyword: 'Keyword', semantic: 'Semantic', hybrid: 'Hybrid', ai: 'AI picks', 'ai+keyword': 'AI picks + keyword', 'ai+keyword+semantic': 'AI picks + keyword + semantic',
   shipped: 'Shipped switches', 'pick-old': 'Pick with no earlier answer', 'keep-old': 'Every pick over the screen', 'howto-old': 'Page how-tos on every question',
+  'semantic-on': 'Shipped with Semantic Search', 'search-old': 'Shipped with exact keywords',
 };
 const KIND_LABELS: Record<RecallKind, string> = { task: 'Task', here: 'Here', followUp: 'Follow-up' };
 const ranArms = ARMS.filter((arm) => rows.some((r) => r.arm === arm));

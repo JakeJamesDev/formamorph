@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatRouteReport, routeReports, routeRows, scoreRoute, type RouteRow } from './help-route-score';
+import { formatRouteReport, liveRouteVerdict, routeReports, routeRows, scoreRoute, type RouteRow } from './help-route-score';
 
 describe('scoreRoute', () => {
   it('hits when the route is the expected surface', () => {
@@ -20,6 +20,20 @@ describe('scoreRoute', () => {
 
   it('misses a question with no single surface when the section carries a route', () => {
     expect(scoreRoute(null, 'settings.display')).toBe('miss');
+  });
+});
+
+describe('liveRouteVerdict', () => {
+  const answered = { status: 'answered' as const, flagged: false };
+  const sources = [{ id: 'lead', route: 'settings.output' }, { id: 'hit', route: 'settings.display' }];
+
+  it('scores the route the button opens, past the open screen lead', () => {
+    expect(liveRouteVerdict('settings.display', { ...answered, sources, lead: { id: 'lead' } })).toBe('hit');
+    expect(liveRouteVerdict('settings.output', { ...answered, sources, lead: { id: 'lead' } })).toBe('miss');
+  });
+
+  it('gives no-route for a flagged answer, which shows no button', () => {
+    expect(liveRouteVerdict('settings.display', { ...answered, flagged: true, sources, lead: { id: 'lead' } })).toBe('no-route');
   });
 });
 
