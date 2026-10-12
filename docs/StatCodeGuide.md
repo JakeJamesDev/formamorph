@@ -536,7 +536,7 @@ The two runs are ordered against each other, though: everything the before box w
 
 **Why start and end are both given.** A turn spans time. An eight-hour sleep that begins at 15:00 has `clock.previous.daypart === 'afternoon'` and `clock.daypart === 'night'`. Neither reading alone describes the turn.
 
-> ⚠️ **With the clock off, `clock.deltaHours` is always `1`** and every turn advances the story by one hour. Your code works either way; it just gets a flat number instead of a measured one. The setting is **Measured Clock**, under [Settings](Settings#time) → **Output** → **Time**, in **Advanced** mode.
+> ⚠️ **With the clock off, `clock.deltaHours` is always the Time Per Turn setting** (`1` unless the player changes it), and every turn advances the story by that much. Your code works either way; it just gets a flat number instead of a measured one. The setting is **Measured Clock**, under [Settings](Settings#time) → **Output** → **Time**, in **Advanced** mode.
 
 ### Examples
 <!-- keywords: sample scripts, cookbook, survival needs, decay over time, combat math, rng, randomness same number, soft cap, copy paste ideas -->

@@ -241,10 +241,19 @@ Runs one extra request per turn. Edit its prompt under **Prompts → Summaries**
     label: 'Measured Clock',
     description: 'Measures how much story time each turn takes',
     experimental: true,
-    info: `Lets the turn's events set how much story time passes. Without it, every action costs a flat **one hour**.
+    info: `Lets the turn's events set how much story time passes. Without it, each action costs the **Time Per Turn** below.
 
 - A few spoken words cost minutes; a night's rest costs hours; *"three weeks later"* costs three weeks
 - Adds one small request per turn, next to choices and stat updates
+- Feeds the **Log** panel's clock, stat regeneration, and **Time in Memory**`,
+  },
+  timePerTurn: {
+    label: 'Time Per Turn',
+    description: 'Story time each turn adds while Measured Clock is off',
+    info: `How far the clock moves each turn: \`1h\` by default, or \`0\`, \`5m\`, \`2h\`, \`1d\`.
+
+- \`0\` holds the clock still, so short scenes don't run days ahead
+- Accepts minutes (\`m\`), hours (\`h\`, or a plain number), days (\`d\`) and weeks (\`w\`)
 - Feeds the **Log** panel's clock, stat regeneration, and **Time in Memory**`,
   },
   semanticLore: {
