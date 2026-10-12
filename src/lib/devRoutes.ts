@@ -154,7 +154,8 @@ export const DEV_MODAL_TABS = {
   // panel, so pair it with a world that has an entity to select. `openings` and `placeholders` are Advanced only.
   worldEditorEntity: ['profile', 'descriptions', 'traits', 'stats', 'placeholders', 'openings'],
   // The library entity editor (`#dev?modal=entityEditor&tab=placeholders`). It opens on a blank draft and is
-  // never in Simple mode, so every tab is reachable.
+  // never in Simple mode, so every tab is reachable. `fixture=gallery` opens it on an entity whose images carry
+  // Visibility rules (`#dev?modal=entityEditor&tab=entity&subtab=profile&fixture=gallery`).
   entityEditor: ['entity', 'traits', 'stats', 'placeholders'],
   dictionaryEditor: ['overview', 'dictionary', 'placeholders'],
   // Its Entity tab's sub-tabs, reached with `subtab=…` (`#dev?modal=entityEditor&tab=entity&subtab=openings`).

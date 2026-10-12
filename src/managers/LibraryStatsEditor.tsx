@@ -5,7 +5,7 @@ import { statLinksBoundTo, statLinksCarriedFrom } from '@/lib/portableStats';
 import { NO_STAT_WORLD, type StatLinkWorld } from '@/lib/statLinks';
 import type { Entity, Placeholder } from '@/types';
 import EntityStatsEditor from './EntityStatsEditor';
-import type { LibraryEditorWorld } from './LibraryTraitsEditor';
+import type { LibraryEditorWorld } from '@/lib/libraryGateInput';
 
 /**
  * A library entity's Stats tab: the shared entity stats editor, side by side, over the entity's own stats.

@@ -14,6 +14,11 @@ export function ruleText(rows: readonly string[][]): string {
   return `${texts.slice(0, -1).join(', ')}, or ${texts[texts.length - 1]}`;
 }
 
+/** "Shown while A and B, or C" for an image's Visibility rule; null with no rows. Author tools, so nothing is left out. */
+export function shownWhileLine(rows: readonly RowState[]): string | null {
+  return rows.length ? `Shown while ${ruleText(rows.map((row) => row.conditions.map((c) => c.text)))}` : null;
+}
+
 /**
  * "Requires A and B, or C" for a locked trait, "Unlocked by A" for an open one, nothing for an ungated one.
  * The player's line leaves out Hidden targets and drops a row left with none; a locked trait with no row

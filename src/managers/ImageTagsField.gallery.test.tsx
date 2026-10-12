@@ -309,9 +309,10 @@ describe('ImageTagsField gallery — each image’s Visibility rule', () => {
   afterEach(() => { vi.restoreAllMocks(); });
 
   it('moves with its image when a tile is dragged', async () => {
-    // jsdom lays nothing out; set the tiles 100px apart in a row so the keyboard sensor finds a neighbor.
+    // jsdom lays nothing out; set the tiles 100px apart in a row so the keyboard sensor finds a neighbor. A
+    // tile is the box that holds the draggable button.
     vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
-      const tile = this.closest<HTMLElement>('[aria-roledescription="sortable"]');
+      const tile = [...this.children].some((child) => child.matches('[aria-roledescription="sortable"]')) ? this : null;
       if (!tile?.parentElement) return DOMRect.fromRect({ x: 0, y: 0, width: 10000, height: 300 });
       return DOMRect.fromRect({ x: [...tile.parentElement.children].indexOf(tile) * 100, y: 0, width: 90, height: 90 });
     });
