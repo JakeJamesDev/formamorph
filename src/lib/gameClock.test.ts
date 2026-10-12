@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   parseTimeDelta,
-  parseDurationInput,
-  formatDuration,
+  splitTurnHours,
+  joinTurnHours,
   hoursByPosition,
   MAX_TURN_HOURS,
   FLAT_HOURS_PER_TURN,
@@ -290,22 +290,32 @@ describe('parseTimeDelta — spelled-out counts', () => {
   });
 });
 
-describe('parseDurationInput', () => {
+describe('splitTurnHours', () => {
   it.each([
-    ['0', 0], ['1', 1], ['30m', 0.5], ['15 min', 0.25], ['1.5h', 1.5], ['1,5h', 1.5], ['1d', 24], ['1h 30m', 1.5], ['2w', 336],
-  ])('reads %s as %d hours', (input, hours) => {
-    expect(parseDurationInput(input)).toBe(hours);
-  });
-
-  it.each(['', 'soon', '2 hours ago', '10:30', '9999w'])('refuses %j', (input) => {
-    expect(parseDurationInput(input)).toBeNull();
+    [0, '0', 'hours'], [0.25, '15', 'minutes'], [1, '1', 'hours'], [1.5, '90', 'minutes'], [5, '5', 'hours'],
+    [24, '1', 'days'], [76, '76', 'hours'], [168, '1', 'weeks'], [336, '2', 'weeks'], [1 / 7, String(1 / 7), 'hours'],
+  ] as const)('shows %d hours as %s %s', (hours, amount, unit) => {
+    expect(splitTurnHours(hours)).toEqual({ amount, unit });
   });
 });
 
-describe('formatDuration', () => {
+describe('joinTurnHours', () => {
   it.each([
-    [0, '0 min'], [0.25, '15 min'], [1, '1 h'], [2.5, '2 h 30 min'], [76, '3 d 4 h'],
-  ])('spells %d hours as %s', (hours, text) => {
-    expect(formatDuration(hours)).toBe(text);
+    ['0', 'minutes', 0], ['15', 'minutes', 0.25], ['1.5', 'hours', 1.5], ['2', 'days', 48], ['1', 'weeks', 168],
+  ] as const)('reads %s %s as %d hours', (amount, unit, hours) => {
+    expect(joinTurnHours(amount, unit)).toBe(hours);
+  });
+
+  it.each([['', 'hours'], [' ', 'hours'], ['-1', 'hours'], ['abc', 'hours'], ['53', 'weeks']] as const)(
+    'refuses %j %s', (amount, unit) => {
+      expect(joinTurnHours(amount, unit)).toBeNull();
+    },
+  );
+
+  it('round-trips every split', () => {
+    for (const hours of [0, 0.25, 1, 1.5, 24, 76, 336, 1 / 7]) {
+      const { amount, unit } = splitTurnHours(hours);
+      expect(joinTurnHours(amount, unit)).toBeCloseTo(hours, 9);
+    }
   });
 });

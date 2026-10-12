@@ -118,7 +118,7 @@ export function computeTurnCommit({ result, plan, context }: TurnCommitInput): T
   // pass off, the turn costs the player's Time Per Turn, which may be zero.
   const measuredHours = answerOf<number | null>(passes, 'timePassed');
   const clockPassRan = passes.some((outcome) => outcome.id === 'timePassed');
-  const fixedHours = clockPassRan ? FLAT_HOURS_PER_TURN : (context.fixedTurnHours ?? FLAT_HOURS_PER_TURN);
+  const fixedHours = clockPassRan ? FLAT_HOURS_PER_TURN : Math.max(0, context.fixedTurnHours ?? FLAT_HOURS_PER_TURN);
   const turnHours = measuredHours ?? fixedHours;
 
   // Seed the story's opening hour, on the opening turn only: a retroactive answer would re-date every
