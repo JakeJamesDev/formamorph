@@ -17,6 +17,7 @@ export const REF_SAFE_COMPOSED_CHILDREN = [
   'WorldActionButton',
   'TokenChip', // src/components/prompt/TokenChip.tsx
   'ToggleGroupItem', // src/components/ui/toggle-group.tsx
+  'SelectItem', // src/components/ui/select.tsx
   'TabsTrigger', // src/components/ui/tabs.tsx
   'Checkbox', // src/components/ui/checkbox.tsx
   'RemoteImg', // src/lib/useRemoteImage.tsx

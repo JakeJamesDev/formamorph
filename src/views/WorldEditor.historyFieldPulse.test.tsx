@@ -401,12 +401,14 @@ describe('the field pulse on controls and chips', () => {
     expect(document.activeElement).toBe(trigger);
   });
 
-  it('pulses the host prompt field after a chip pop-out edit', async () => {
+  it('pulses the host prompt field after a Chip Options edit', async () => {
     const { ctx } = renderWorldEditorBench(CONTROL_WORLD, 'advanced');
     openWick(/Descriptions/);
     await clickOn(within(promptFieldUnder('AI-Facing Description')).getByText('Weather'));
     await clickOn(screen.getByRole('radio', { name: 'Unique' }));
     expect(ctx().entities[0].aiDescription).not.toBe(`Keeps lamps in ${CHIP}.`);
+    // Chip Options is modal, so the author closes it before leaving the tab.
+    await clickOn(within(screen.getByRole('dialog', { name: 'Chip Options' })).getByRole('button', { name: 'Close' }));
     const trigger = await leaveFor(/Stats/);
 
     await undo();

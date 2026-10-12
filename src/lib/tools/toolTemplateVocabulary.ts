@@ -48,6 +48,7 @@ export function toolTemplateVocabulary(params: readonly ToolParam[]): ChipVocabu
   return {
     parse: parseToolTemplate,
     isKnown: (t) => familyOf(t).isKnown(t),
+    promptChip: (t) => familyOf(t).promptChip?.(t) ?? false,
     label: (t) => familyOf(t).label(t),
     hint: (t) => familyOf(t).hint?.(t),
     variantLabel: (t) => familyOf(t).variantLabel(t),

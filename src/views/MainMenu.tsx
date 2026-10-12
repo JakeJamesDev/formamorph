@@ -420,7 +420,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
   useEffect(() => {
     if (!import.meta.env.DEV) return;
-    if (devRoute?.modal === 'settings' || devRoute?.modal === 'settingsCompare') setShowSettings(true);
+    if (devRoute?.modal === 'settings' || devRoute?.modal === 'settingsCompare' || devRoute?.modal === 'chipOptions') setShowSettings(true);
     if (devRoute?.modal === 'menu') setShowLoadDialog(true);
     if (devRoute?.modal === 'backup') setShowBackup(true);
     if (devRoute?.modal === 'community') openCommunityBrowser();

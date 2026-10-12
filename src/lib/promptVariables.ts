@@ -31,9 +31,6 @@ export interface PromptVariantAxis {
   readOnly?: boolean;
   /** One line under a read-only axis: why it takes no input, and what unlocks it. */
   readOnlyHelp?: string;
-  /** Lay the options out this many per row instead of all on one. For axes with enough options that a
-   *  single row squeezes the labels unreadably. */
-  columns?: number;
 }
 
 /** Registry of the angle-bracket variables that prompt templates can embed. The base `token`
@@ -66,8 +63,6 @@ const SUMMARY_VARIANT: PromptVariant = {
 const LOCATION_SCOPE_AXIS: PromptVariantAxis = {
   id: 'scope',
   label: 'Scope',
-  // Three per row: the scopes that name ONE place lead, the two that list many follow.
-  columns: 3,
   options: [
     { id: null, label: 'Current', help: 'The location the player is in right now.' },
     { id: 'sublocations', label: 'Sub', help: "The current location's direct sub-locations." },

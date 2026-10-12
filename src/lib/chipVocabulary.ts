@@ -119,6 +119,8 @@ export interface ChipVocabulary {
   parse(text: string): PromptSegment[];
   /** True if the token is a well-formed member of this family (renders as a chip). */
   isKnown(token: string): boolean;
+  /** True for a prompt variable chip, which stands for a value rendered from the scene. */
+  promptChip?(token: string): boolean;
   /** Friendly chip label: what the token stands for, bare. Rename edits this; the remove button is named
    *  by it. */
   label(token: string): string;
@@ -206,6 +208,7 @@ export function promptVocabulary(palette: PromptVariable[]): ChipVocabulary {
   return {
     parse: parsePromptTemplate,
     isKnown: (t) => variableForToken(t) != null,
+    promptChip: (t) => variableForToken(t) != null,
     label: labelForToken,
     variantLabel: variantLabelForToken,
     color: colorForToken,
@@ -683,6 +686,7 @@ export function worldPromptVocabulary(prompt: ChipVocabulary, placeholder: ChipV
   return {
     parse: parseTemplateWithPlaceholders,
     isKnown: (t) => familyOf(t).isKnown(t),
+    promptChip: (t) => familyOf(t).promptChip?.(t) ?? false,
     label: (t) => familyOf(t).label(t),
     display: (t) => familyOf(t).display?.(t),
     hint: (t) => familyOf(t).hint?.(t),

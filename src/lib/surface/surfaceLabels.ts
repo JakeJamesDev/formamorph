@@ -83,6 +83,7 @@ const ENTRIES: [string, string][] = [
   ['formaquestionSettings', 'Formaquestion Settings'],
   ['formaquestionCompare', 'Compare'],
   ['settingsCompare', 'Compare'],
+  ['chipOptions', 'Chip Options'],
   ['formaquestionAiContext', 'AI Context'],
   ['formaquestionWikiConfirm', WIKI_CONFIRM_COPY.title],
   ['designSystemGroupPicker.picker', 'Add To Group'],

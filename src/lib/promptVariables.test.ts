@@ -150,11 +150,10 @@ describe('the Dictionary chip is narration-scoped', () => {
 });
 
 describe('phase 2 registry changes', () => {
-  it('offers Parent alongside the other location scopes, three per row', () => {
+  it('offers Parent alongside the other location scopes', () => {
     const LOC = variableForToken('<LOCATION>')!;
     const scope = variableAxes(LOC).find((a) => a.id === 'scope')!;
     expect(scope.options.map((o) => o.label)).toEqual(['Current', 'Sub', 'Parent', 'Reachable', 'Destinations']);
-    expect(scope.columns).toBe(3); // Current|Sub|Parent / Reachable|Destinations
     expect(variantLabelForToken('<LOCATION|parent.name>')).toBe('Parent, Name');
   });
 

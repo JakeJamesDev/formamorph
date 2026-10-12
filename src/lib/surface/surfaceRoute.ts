@@ -43,6 +43,7 @@ const DIALOGS: Record<DevModal, DialogRoute> = {
   formaquestionWikiConfirm: { ancestor: 'formaquestion' },
   formaquestionCompare: { ancestor: 'formaquestionSettings.prompts' },
   settingsCompare: { ancestor: 'settings.prompts' },
+  chipOptions: { ancestor: 'settings.prompts' },
 
   menu: { host: 'mainMenu' },
   intro: { host: 'mainMenu' },

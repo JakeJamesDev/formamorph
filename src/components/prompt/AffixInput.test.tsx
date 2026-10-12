@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { AffixInput } from './VariableNode';
+import { AffixInput } from './ChipOptionsDialog';
 
 const setup = (value: string) => {
   const onChange = vi.fn();

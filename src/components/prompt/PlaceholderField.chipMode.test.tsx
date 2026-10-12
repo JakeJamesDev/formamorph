@@ -4,6 +4,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import PlaceholderField from './PlaceholderField';
 import PromptField from './PromptField';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { EditorPreviewRollsProvider } from '@/contexts/EditorPreviewRollsContext';
 import { PlaceholderStoreProvider, placeholderStore } from '@/contexts/PlaceholderStoreContext';
 import { promptVocabulary } from '@/lib/chipVocabulary';
@@ -66,10 +67,11 @@ describe('the mode control on a chip that can only be World', () => {
     expect(modeItem('Unique')).toBeDisabled();
   });
 
-  it('says why it takes no input, and what unlocks it', async () => {
-    render(<Field text={`She has ${world('hair', 'h1')} hair.`} />);
+  it('says why it takes no input, and what unlocks it, as its tooltip', async () => {
+    render(<TooltipProvider><Field text={`She has ${world('hair', 'h1')} hair.`} /></TooltipProvider>);
     await openFlyout('Hair');
-    expect(screen.getByText(/Unique would change nothing\. Unlocks once the placeholder can roll\./)).toBeInTheDocument();
+    await userEvent.hover(screen.getByRole('radiogroup', { name: 'Mode' }));
+    expect(await screen.findByText(/Unique would change nothing\. Unlocks once the placeholder can roll\./)).toBeVisible();
   });
 
   it('shows the same on a plain Object', async () => {

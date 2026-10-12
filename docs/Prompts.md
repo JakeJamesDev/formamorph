@@ -250,6 +250,7 @@ A field shows only while its feature can send it.
 
 ## The Chip Editor
 <!-- keywords: variables, macros, template tags, insert stats, curly braces, dynamic values, pill, pop out, blocks, fill in -->
+<!-- route: chipOptions -->
 
 Each prompt editor is a chip editor. A **chip** is a box in the text. When the app sends the request, it puts a value in each chip, such as the world description, the stats or your action.
 

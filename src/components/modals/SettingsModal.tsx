@@ -72,6 +72,7 @@ import { TextEndpointEditor } from './TextEndpointEditor';
 import { activePresetEditor } from './textEndpointEditorModel';
 import { ReadOnlyNotice } from '@/components/prompt/ReadOnlyNotice';
 import { PromptCompareDialog } from '@/components/prompt/PromptCompareDialog';
+import { DevChipOptions } from '@/components/prompt/DevChipOptions';
 import { PromptResetCompare } from '@/components/prompt/PromptResetCompare';
 import { promptVocabulary } from '@/lib/chipVocabulary';
 import { ATTACHMENT_PROMPTS, includesAttachments } from '@/lib/promptAttachments';
@@ -237,6 +238,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   // DEV dev-router: `#dev?modal=settingsCompare` opens the compare view on a canned Narration edit.
   const [devCompare, setDevCompare] = useState(false);
   useEffect(() => { if (import.meta.env.DEV && devRoute?.modal === 'settingsCompare') setDevCompare(true); }, [devRoute]);
+  // DEV dev-router: `#dev?modal=chipOptions` opens Chip Options on a canned Entities chip.
+  const [devChipOptions, setDevChipOptions] = useState(false);
+  useEffect(() => { if (import.meta.env.DEV && devRoute?.modal === 'chipOptions') setDevChipOptions(true); }, [devRoute]);
   const routeMode = import.meta.env.DEV && (devRoute?.mode === 'simple' || devRoute?.mode === 'advanced')
     ? devRoute.mode
     : undefined;
@@ -2098,6 +2102,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
         surface="settingsCompare"
       />
     )}
+    {import.meta.env.DEV && <DevChipOptions open={devChipOptions && isOpen} onOpenChange={setDevChipOptions} />}
     </>
   );
 };
