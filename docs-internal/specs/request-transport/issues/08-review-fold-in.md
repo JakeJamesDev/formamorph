@@ -1,6 +1,6 @@
 # 08: Fold In The Spec Review Of Tickets 01–06
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 07
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium

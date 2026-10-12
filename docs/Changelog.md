@@ -61,6 +61,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **`entity-stats-probe.cli.ts` compares three request shapes for entity stats against today's stat pass.** One call with text lines, one call per entity, and one call with a JSON schema run on Sedge Landing cases with shared stat names. It reports exact replies, misses, invented and misattributed changes, latency and tokens.
   - **The player name header probe compares the narration prompt with and without the player's name in its persona heading.** It scores name leaks and stat tabulation on the default endpoint.
 - **⚙️ Backend**
+  - **Request Anatomy:**
+    - **Digests and diaries now show their Request Anatomy in the AI-context viewer.** The Background Pass Queue builds them from the same pass records as a live turn, so each request is labeled.
   - **Re-rolled choices and stats now show their Request Anatomy in the AI-context viewer.** A re-roll builds its request from the same pass record as a live turn, so it sends the same prompt and cap.
 
 #### 🔧 Fixed
@@ -75,6 +77,9 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **A click or Escape in the help window no longer closes a menu, popover, list or dialog below it.** A menu inside the help window still closes when you click elsewhere in it.
   - **Regenerate Memory and a character's Regenerate wait for background passes, with a spinner you can cancel.** Each button waits its turn instead of staying unavailable or racing a pass. Leaving the game or loading a save also stops them.
 - **⚙️ Backend**
+  - **Background Pass Queue:**
+    - **Backfilled digests and character descriptions now run oldest turn first.** The oldest turn leaves the context window first. In serial mode, a new character can wait behind older unknown names.
+    - **Background passes now wait while a scene render runs.** A pass no longer competes with the image server for one graphics card. It starts again when the render ends.
   - **Background passes between turns follow Concurrent Requests, and a failing pass no longer stalls the ones behind it.** With the setting off they run one at a time, and with it on they run together. Leaving the game or loading a save stops a running pass.
   - **A new character's diary now carries its description, and a name that never becomes a character gets no diary.** Descriptions and diaries run in the background queue, and the status bar shows "Describing character…". A short name like "Aldric" now finds "Sergeant Aldric" for its diary.
 

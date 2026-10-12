@@ -1,5 +1,6 @@
 import { stripReasoningLive } from '@/lib/aiResponse';
 import { splitSentenceSegments } from '@/lib/ttsChunks';
+import { fanOut } from './fanOut';
 import type { TransportSink } from './requestTransport';
 
 /**
@@ -40,7 +41,7 @@ function prefixBeforeLast(text: string, segments: string[]): string {
 
 /** A transport sink for one narration request that tells `listeners` its sentence events. */
 export function narrationStream(...listeners: NarrationListener[]): TransportSink {
-  const emit = (event: NarrationEvent) => { for (const listener of listeners) listener(event); };
+  const emit = fanOut(listeners);
   // Sentences already emitted for the current round.
   let emittedCount = 0;
   let persisted = false;

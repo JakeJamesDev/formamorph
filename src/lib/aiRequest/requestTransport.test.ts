@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Tool } from '@/types';
 import { defaultEndpointSamplerOverrides } from '@/lib/endpointSamplers';
 import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
-import type { AiSettingsSnapshot } from './aiRequestSpec';
+import { sseFrame, sseResponse, sseTokens, textSnapshot, textTarget } from '@/test/aiTextFixtures';
 import { AiStreamError } from './aiStream';
 import { TOOL_CATALOG } from '@/lib/tools/toolCatalog';
 import type { ResponseSchema } from './responseSchema';
@@ -12,23 +12,6 @@ import {
 } from './requestTransport';
 
 // --- A fake AI Stream: scripted SSE bodies behind the stream's own fetch seam -----------------------------
-
-const frame = (delta: Record<string, unknown>, finishReason: string | null = null): string =>
-  `data: ${JSON.stringify({ choices: [{ delta, finish_reason: finishReason }] })}\n\n`;
-
-/** A reply streamed one token at a time, ending on `finish`. */
-const prose = (tokens: string[], finish = 'stop'): string[] => [...tokens.map((content) => frame({ content })), frame({}, finish)];
-
-const ok = (frames: string[]): Response => {
-  const encoder = new TextEncoder();
-  const body = new ReadableStream<Uint8Array>({
-    start(controller) {
-      for (const f of frames) controller.enqueue(encoder.encode(f));
-      controller.close();
-    },
-  });
-  return { ok: true, status: 200, body, headers: new Headers() } as unknown as Response;
-};
 
 /** A body that streams `frames`, then stays open until the request is stopped, which errors it. */
 const hanging = (frames: string[], signal: AbortSignal | undefined, onDrained: () => void): Response => {
@@ -44,7 +27,7 @@ const hanging = (frames: string[], signal: AbortSignal | undefined, onDrained: (
       return new Promise(() => {});
     },
   });
-  return { ok: true, status: 200, body, headers: new Headers() } as unknown as Response;
+  return new Response(body, { headers: { 'Content-Type': 'text/event-stream' } });
 };
 
 type Script = Array<(init: RequestInit) => Response | Promise<Response>>;
@@ -61,42 +44,23 @@ const scripted = (script: Script) => {
 // --- Context ----------------------------------------------------------------------------------------------
 
 const target = (over: Partial<TransportTarget> = {}): TransportTarget => ({
-  endpointId: 'cloud',
+  ...textTarget({
+    url: 'https://api.example.test/v1/chat/completions',
+    apiToken: 'token',
+    model: 'test-model',
+    maxTokens: 400,
+    reasoning: { ...UNKNOWN_REASONING_CAPABILITY, tools: true, sources: { tools: 'native' } },
+  }),
   presetId: null,
   presetName: 'Cloud',
-  url: 'https://api.example.test/v1/chat/completions',
-  apiToken: 'token',
-  model: 'test-model',
-  maxTokens: 400,
-  localEngine: false,
-  samplerOverrides: defaultEndpointSamplerOverrides(),
-  reasoning: { ...UNKNOWN_REASONING_CAPABILITY, tools: true, sources: { tools: 'native' } },
   ...over,
-});
-
-const settings = (t: TransportTarget): AiSettingsSnapshot => ({
-  resolveTarget: () => t,
-  thinkingMode: 'off',
-  reasoningEffort: 'auto',
-  reasoningEngaged: false,
-  promptReasoning: {},
-  promptReasoningBudget: {},
-  promptSamplers: {},
-  promptMaxOutput: {},
-  genTemperature: 0.9,
-  genRepetitionPenalty: 1.1,
-  genTopP: 0.95,
-  genTopK: 40,
-  genMinP: 0.05,
-  paragraphLimit: 'none',
-  disableThinking: false,
 });
 
 // A real catalog Tool, offered to narration; the request's own executor answers its calls.
 const LOOKUP: Tool = { ...TOOL_CATALOG.find((t) => t.id === 'get_entity')!, offeredTo: ['narration'] };
 
 const context = (fetchImpl: typeof fetch, over: Partial<TransportContext> = {}): TransportContext => ({
-  settings: settings(target()),
+  settings: textSnapshot(target()),
   resolveEndpoint: () => target(),
   tools: [],
   enabledTools: {},
@@ -145,7 +109,7 @@ const quietErrors = () => vi.spyOn(console, 'error').mockImplementation(() => {}
 
 describe('a plain reply', () => {
   it('answers the stripped final text and reports open, deltas and done in order', async () => {
-    const fetchImpl = scripted([() => ok(prose(['<think>hm</think>', 'The gulls ', 'cry.']))]);
+    const fetchImpl = scripted([() => sseResponse(sseTokens(['<think>hm</think>', 'The gulls ', 'cry.']))]);
     const { text, types, events } = await send(request(), context(fetchImpl));
     expect(text).toBe('The gulls cry.');
     expect(types).toEqual(['requestCaptured', 'opened', 'delta', 'delta', 'delta', 'responseCaptured', 'done']);
@@ -153,7 +117,7 @@ describe('a plain reply', () => {
   });
 
   it('captures the wire body with the request and the raw reply with the response', async () => {
-    const fetchImpl = scripted([() => ok(prose(['<think>hm</think>', 'Rain.']))]);
+    const fetchImpl = scripted([() => sseResponse(sseTokens(['<think>hm</think>', 'Rain.']))]);
     const { events } = await send(request(), context(fetchImpl));
     const captured = events.find((e) => e.type === 'requestCaptured');
     const answered = events.find((e) => e.type === 'responseCaptured');
@@ -171,7 +135,7 @@ describe('a plain reply', () => {
 
   it('notes the reasoning capability from the raw reply', async () => {
     const noteReasoningReply = vi.fn();
-    const fetchImpl = scripted([() => ok(prose(['<think>hm</think>', 'Rain.']))]);
+    const fetchImpl = scripted([() => sseResponse(sseTokens(['<think>hm</think>', 'Rain.']))]);
     await send(request(), context(fetchImpl, { noteReasoningReply }));
     expect(noteReasoningReply).toHaveBeenCalledWith(expect.objectContaining({ model: 'test-model' }), '', '<think>hm</think>Rain.', null);
   });
@@ -179,14 +143,14 @@ describe('a plain reply', () => {
 
 describe('the length cap', () => {
   it('trims a capped narration to its last complete sentence', async () => {
-    const fetchImpl = scripted([() => ok(prose(['The tide turns. The boat ', 'drifts to'], 'length'))]);
+    const fetchImpl = scripted([() => sseResponse(sseTokens(['The tide turns. The boat ', 'drifts to'], 'length'))]);
     const { text, events } = await send(request(), context(fetchImpl));
     expect(text).toBe('The tide turns.');
     expect(events.at(-1)).toMatchObject({ type: 'done', text: 'The tide turns.' });
   });
 
   it('leaves a capped stats reply whole', async () => {
-    const fetchImpl = scripted([() => ok(prose(['Health: -2. Gold: +', '5'], 'length'))]);
+    const fetchImpl = scripted([() => sseResponse(sseTokens(['Health: -2. Gold: +', '5'], 'length'))]);
     const { text } = await send(request({ type: 'statUpdates' }), context(fetchImpl));
     expect(text).toBe('Health: -2. Gold: +5');
   });
@@ -208,7 +172,7 @@ describe('stopping a request', () => {
 
   it('emits canceled, and nothing after it, when stopped after text arrived', async () => {
     const controller = new AbortController();
-    const fetchImpl = scripted([(init) => hanging(prose(['The gulls '], 'stop').slice(0, 1), init.signal ?? undefined, () => controller.abort())]);
+    const fetchImpl = scripted([(init) => hanging(sseTokens(['The gulls '], 'stop').slice(0, 1), init.signal ?? undefined, () => controller.abort())]);
     const { text, types } = await send(request({ signal: controller.signal }), context(fetchImpl));
     expect(text).toBe('');
     expect(types).toEqual(['requestCaptured', 'opened', 'delta', 'canceled']);
@@ -217,14 +181,14 @@ describe('stopping a request', () => {
 
 describe('a Tool round after streamed text', () => {
   const callFrames = [
-    frame({ content: 'Let me check the ledger.' }),
-    frame({ tool_calls: [{ index: 0, id: 'call-0', type: 'function', function: { name: LOOKUP.name, arguments: '{}' } }] }),
-    frame({}, 'tool_calls'),
+    sseFrame({ content: 'Let me check the ledger.' }),
+    sseFrame({ tool_calls: [{ index: 0, id: 'call-0', type: 'function', function: { name: LOOKUP.name, arguments: '{}' } }] }),
+    sseFrame({}, 'tool_calls'),
   ];
   const executeTool: ToolExecutor = async () => ({ text: 'Maela keeps the ledger.' });
 
   it('retracts the streamed text and answers only the next round', async () => {
-    const fetchImpl = scripted([() => ok(callFrames), () => ok(prose(['Maela ', 'smiles.']))]);
+    const fetchImpl = scripted([() => sseResponse(callFrames), () => sseResponse(sseTokens(['Maela ', 'smiles.']))]);
     const ctx = context(fetchImpl, { tools: [LOOKUP], enabledTools: { [LOOKUP.id]: true }, toolsEnabled: true });
     const { text, types, events } = await send(request({ executeTool }), ctx);
     expect(text).toBe('Maela smiles.');
@@ -236,7 +200,7 @@ describe('a Tool round after streamed text', () => {
   });
 
   it('retracts once when a later round calls again without text', async () => {
-    const fetchImpl = scripted([() => ok(callFrames), () => ok(callFrames.slice(1)), () => ok(prose(['Maela smiles.']))]);
+    const fetchImpl = scripted([() => sseResponse(callFrames), () => sseResponse(callFrames.slice(1)), () => sseResponse(sseTokens(['Maela smiles.']))]);
     const ctx = context(fetchImpl, { tools: [LOOKUP], enabledTools: { [LOOKUP.id]: true }, toolsEnabled: true });
     const { types } = await send(request({ executeTool }), ctx);
     expect(types.filter((t) => t === 'toolCalls')).toHaveLength(2);
@@ -244,7 +208,7 @@ describe('a Tool round after streamed text', () => {
   });
 
   it('retracts nothing when the round streamed no text', async () => {
-    const fetchImpl = scripted([() => ok(callFrames.slice(1)), () => ok(prose(['Maela smiles.']))]);
+    const fetchImpl = scripted([() => sseResponse(callFrames.slice(1)), () => sseResponse(sseTokens(['Maela smiles.']))]);
     const ctx = context(fetchImpl, { tools: [LOOKUP], enabledTools: { [LOOKUP.id]: true }, toolsEnabled: true });
     const { types } = await send(request({ executeTool }), ctx);
     expect(types).not.toContain('retract');
@@ -288,7 +252,7 @@ describe('a refused schema', () => {
     quietErrors();
     const noteSchemaRejected = vi.fn();
     const refused = () => new Response(JSON.stringify({ error: { message: 'response_format is not supported' } }), { status: 400 });
-    const ctx = context(scripted([refused, () => ok(prose(['Health: -2']))]), { noteSchemaRejected });
+    const ctx = context(scripted([refused, () => sseResponse(sseTokens(['Health: -2']))]), { noteSchemaRejected });
     const schema: ResponseSchema = { name: 'stats', schema: { type: 'object', properties: {}, required: [], additionalProperties: false } };
     const { text, types } = await send(request({ type: 'statUpdates', responseSchema: schema, textFallback: { systemPrompt: 'Answer in lines.' } }), ctx);
     expect(text).toBe('Health: -2');
@@ -301,11 +265,11 @@ describe('a refused schema', () => {
 describe('silent capture', () => {
   it('captures a silent request onto its own turn only with Show Silent Requests on', async () => {
     const silent = request({ type: 'summary', silent: true, attachTurnId: 't1' });
-    const off = await send(silent, context(scripted([() => ok(prose(['A digest.']))])));
+    const off = await send(silent, context(scripted([() => sseResponse(sseTokens(['A digest.']))])));
     expect(off.types).not.toContain('requestCaptured');
     expect(off.types).not.toContain('responseCaptured');
 
-    const on = await send(silent, context(scripted([() => ok(prose(['A digest.']))]), { showSilentRequests: true }));
+    const on = await send(silent, context(scripted([() => sseResponse(sseTokens(['A digest.']))]), { showSilentRequests: true }));
     expect(on.events.find((e) => e.type === 'requestCaptured')).toMatchObject({ attachTo: 't1' });
     expect(on.events.find((e) => e.type === 'responseCaptured')).toMatchObject({ attachTo: 't1' });
   });
@@ -314,7 +278,7 @@ describe('silent capture', () => {
 describe('a presentation error', () => {
   it('logs a sink that throws on a token and carries the request on', async () => {
     const logged = quietErrors();
-    const fetchImpl = scripted([() => ok(prose(['The gulls ', 'cry.']))]);
+    const fetchImpl = scripted([() => sseResponse(sseTokens(['The gulls ', 'cry.']))]);
     const text = await transportRequest(request(), context(fetchImpl), (event) => {
       if (event.type === 'delta') throw new Error('bad split');
     });
