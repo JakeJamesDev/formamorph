@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useSettings } from '@/contexts/SettingsContext';
@@ -38,8 +38,9 @@ export const MemoryManagerModal = ({
 }: {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Re-run the digest prompt for a turn; resolves false when there's nothing to summarize or it failed. */
-  onRegenerate?: (turnId: string) => Promise<boolean>;
+  /** Re-run the digest prompt for a turn, waiting behind other AI work; `signal` cancels it. Resolves false
+   *  when there's nothing to summarize or it failed, and undefined when it was canceled. */
+  onRegenerate?: (turnId: string, signal: AbortSignal) => Promise<boolean | undefined>;
 }) => {
   const {
     fullMessageHistory,
@@ -48,7 +49,6 @@ export const MemoryManagerModal = ({
     memoryEdits, setMemoryEdits,
     memoryDeleted, setMemoryDeleted,
     memoryNotes, setMemoryNotes,
-    isWaitingForAI,
     gameTime, calendar,
     contextMemoryIds, rehydratedMemoryIds,
   } = useGameplay();
@@ -63,6 +63,9 @@ export const MemoryManagerModal = ({
   const [confirmReset, setConfirmReset] = useState(false);
   // The oldest memory anchors the scene; deleting it is allowed but warned about once (see ledger docs).
   const [confirmOldest, setConfirmOldest] = useState<string | null>(null);
+  const regenerateAbortRef = useRef<AbortController | null>(null);
+  // Leaving the game drops a regeneration that still waits or runs.
+  useEffect(() => () => regenerateAbortRef.current?.abort(), []);
 
   const ledger = useMemo(
     () => buildMemoryLedger({
@@ -154,13 +157,23 @@ export const MemoryManagerModal = ({
 
   const regenerate = async (row: MemoryRow) => {
     if (!onRegenerate) return;
+    const controller = new AbortController();
+    regenerateAbortRef.current = controller;
     setRegenerating(row.id);
-    const ok = await onRegenerate(row.id);
+    const ok = await onRegenerate(row.id, controller.signal);
+    if (controller.signal.aborted) return; // the Cancel press already reset the row
     setRegenerating(null);
+    if (ok === undefined) return; // the queue canceled it
     if (!ok) { toast.error('Could not rewrite that memory — try again in a moment.'); return; }
     // Regenerating over a rewrite discards the player's text, so the auto-pin that came with it goes too —
     // otherwise a keep-pin outlives the intent that set it, on text the player never wrote.
     if (row.edited === 'player') setPin(row.id, null);
+  };
+
+  const cancelRegenerate = () => {
+    regenerateAbortRef.current?.abort();
+    regenerateAbortRef.current = null;
+    setRegenerating(null);
   };
 
   const resetAll = () => {
@@ -331,15 +344,22 @@ export const MemoryManagerModal = ({
                                     <Pencil className="h-3.5 w-3.5" />
                                   </Button>
                                 </Tip>
+                                {!row.isNote && onRegenerate && regenerating === row.id && (
+                                  <Tip tip="Cancel Rewrite">
+                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={cancelRegenerate}>
+                                      <X className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </Tip>
+                                )}
                                 {!row.isNote && onRegenerate && (
-                                  // Editing stays live mid-turn, but a regeneration is an AI request:
-                                  // it waits for the turn rather than contending with it.
-                                  <Tip tip={isWaitingForAI ? 'Wait for the Current Turn to Finish' : 'Have the Story Write This Memory Again'}>
+                                  // A regeneration is an AI request: it waits behind the turn and the
+                                  // background passes, with a spinner and a cancel, rather than contending.
+                                  <Tip tip="Have the Story Write This Memory Again">
                                     <Button
                                       variant="ghost"
                                       size="icon"
                                       className="h-6 w-6"
-                                      disabled={regenerating !== null || isWaitingForAI}
+                                      disabled={regenerating !== null}
                                       onClick={() => regenerate(row)}
                                     >
                                       {regenerating === row.id

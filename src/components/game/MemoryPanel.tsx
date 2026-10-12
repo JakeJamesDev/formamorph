@@ -24,7 +24,7 @@ import { Tip } from '@/components/ui/tooltip';
 const PANEL_FILTERS: MemoryFilter[] = ['all', 'verbatim', 'summary', 'held', 'custom'];
 
 export const MemoryPanel = ({ onRegenerateMemory }: {
-  onRegenerateMemory?: (turnId: string) => Promise<boolean>;
+  onRegenerateMemory?: (turnId: string, signal: AbortSignal) => Promise<boolean | undefined>;
 }) => {
   const {
     fullMessageHistory,

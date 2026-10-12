@@ -114,7 +114,7 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
   requestKey?: string;
   onEntityClick: (entityId: string) => void;
   /** Re-run the digest prompt for one turn (Memory Manager's regenerate); owned by GameViewer. */
-  onRegenerateMemory?: (turnId: string) => Promise<boolean>;
+  onRegenerateMemory?: (turnId: string, signal: AbortSignal) => Promise<boolean | undefined>;
   /** The narration prompt this world actually sends: the world's own unless declined, else the preset's. */
   narrationPrompt: string;
 }) => {
