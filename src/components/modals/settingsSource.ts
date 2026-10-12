@@ -32,7 +32,7 @@ export type OutputSettingsSource = Pick<SettingsValue,
   | 'toolsEnabled' | 'setToolsEnabled'
   | 'memoryDigests' | 'setMemoryDigests' | 'semanticMemory' | 'setSemanticMemory'
   | 'semanticBandCap' | 'setSemanticBandCap' | 'semanticRehydration' | 'setSemanticRehydration'
-  | 'timeContext' | 'setTimeContext' | 'aiClock' | 'setAiClock'
+  | 'timeContext' | 'setTimeContext' | 'aiClock' | 'setAiClock' | 'fixedTurnHours' | 'setFixedTurnHours'
   | 'semanticLore' | 'setSemanticLore'
   | 'describeCharacters' | 'setDescribeCharacters' | 'characterDiaries' | 'setCharacterDiaries'
   | 'semanticDiaries' | 'setSemanticDiaries'

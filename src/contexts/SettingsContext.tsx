@@ -83,6 +83,7 @@ import {
 import type { SettingsTabId } from '@/components/modals/settingsTabs';
 import type { SurfaceRoute } from '@/lib/surface/surfaceRoute';
 import { useMountedRef } from '@/lib/useMountedRef';
+import { FLAT_HOURS_PER_TURN } from '@/lib/gameClock';
 
 /** A request to open the Settings modal at a given tab (and, for `endpoints`, a given sub-tab). The nonce
  *  distinguishes two identical requests so the second one still re-opens the modal. */
@@ -429,6 +430,9 @@ function useProvideSettings() {
   // request to every turn, and the measurement needs probe evidence before defaulting on
   // (docs-internal/designs/time-system/design.md, phase 2).
   const [aiClock, setAiClock] = usePersistentState<boolean>(`${APP_ID}_aiClock`, false, boolCodec);
+  // Story hours each turn costs while Measured Clock is off. The default is the flat hour the game has always
+  // charged; 0 holds the clock still.
+  const [fixedTurnHours, setFixedTurnHours] = usePersistentState<number>(`${APP_ID}_fixedTurnHours`, FLAT_HOURS_PER_TURN, floatCodec);
   // Fire the post-narration aux requests (choices + stat updates + location router) concurrently instead of
   // one after another. Default on: ~29% faster turns on a parallel-capable endpoint (LM Studio "Parallel",
   // Ollama), harmless on serial endpoints (they queue). Turn off if a VRAM-tight local engine slows or OOMs
@@ -1645,6 +1649,8 @@ function useProvideSettings() {
     setTimeContext,
     aiClock,
     setAiClock,
+    fixedTurnHours,
+    setFixedTurnHours,
     concurrentTurnRequests,
     setConcurrentTurnRequests,
     imageAttachments,

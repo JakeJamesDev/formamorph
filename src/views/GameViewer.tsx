@@ -499,6 +499,7 @@ const GameViewer = ({
     semanticBandCap,
     timeContext,
     aiClock,
+    fixedTurnHours,
     nowLinePrompt,
     timePassedPrompt,
     openingTimePrompt,
@@ -2762,6 +2763,7 @@ const GameViewer = ({
           reasoning: turnReasoningRef.current,
           playerInFrame,
           gameTime,
+          fixedTurnHours,
           calendar,
         },
       });

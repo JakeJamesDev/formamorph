@@ -192,7 +192,7 @@ The side panel's clock reads the same way: **Day 1, morning**, not a count of ho
 | **Times of Day** | Coarse: *dawn*, *morning*, *midday*, *afternoon*, *evening*, *night*. Never a clock reading. |
 
 > [!NOTE]
-> **The Memory tab dates nothing while Measured Clock is off.** Without it every turn costs a flat hour, so a date would only be a turn count. **Time in Memory** still dates what it sends to the AI, at that flat hour. Turn Measured Clock on partway through a story, and the earlier turns are dated at that flat hour. The scale is wrong, but the order is right.
+> **The Memory tab dates nothing while Measured Clock is off.** Without it every turn costs the same **Time Per Turn** (one hour unless you change it), so a date would only be a turn count. **Time in Memory** still dates what it sends to the AI, at that time per turn. Turn Measured Clock on partway through a story, and the earlier turns are dated at that time per turn. The scale is wrong, but the order is right.
 
 Both settings are in Settings → **Output** → **Time**, in **Advanced** mode. **Measured Clock** decides whether the game measures time. **Time in Memory** decides whether the AI is told.
 

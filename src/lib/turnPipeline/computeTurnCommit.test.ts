@@ -226,6 +226,31 @@ describe('computeTurnCommit — the clock', () => {
     expect(commit?.clock.elapsedHours).toBe(5);
   });
 
+  it('charges the player\'s Time Per Turn when the clock pass never ran, and stores it on the turn', () => {
+    const { plan, result } = runOf([{ id: 'narration', raw: NARRATION }], {}, { aiClock: false });
+    const commit = computeTurnCommit({ result, plan, context: context({ gameTime: 4, fixedTurnHours: 0.25 }) });
+    expect(commit?.turnHours).toBe(0.25);
+    expect(commit?.turn.timeDelta).toBe(0.25);
+    expect(commit?.clock.elapsedHours).toBe(4.25);
+  });
+
+  it('holds the clock still on a Time Per Turn of zero', () => {
+    const { plan, result } = runOf([{ id: 'narration', raw: NARRATION }], {}, { aiClock: false });
+    const commit = computeTurnCommit({ result, plan, context: context({ gameTime: 4, fixedTurnHours: 0 }) });
+    expect(commit?.turnHours).toBe(0);
+    expect(commit?.turn.timeDelta).toBe(0);
+    expect(commit?.clock.elapsedHours).toBe(4);
+  });
+
+  it('keeps the flat hour for an unreadable reply while Measured Clock is on, whatever the Time Per Turn', () => {
+    const { plan, result } = runOf([
+      { id: 'narration', raw: NARRATION },
+      { id: 'timePassed', raw: 'no idea' },
+    ]);
+    const commit = computeTurnCommit({ result, plan, context: context({ gameTime: 10, fixedTurnHours: 0 }) });
+    expect(commit?.turnHours).toBe(FLAT_HOURS_PER_TURN);
+  });
+
   it('builds the opening turn\'s clock from the hour it just measured, not the world default', () => {
     const { plan, result } = runOf(
       [
