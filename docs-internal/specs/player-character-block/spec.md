@@ -39,6 +39,7 @@ Rulings from the discussion, numbered as asked.
 - **Q20** (ticket 03) Reverses Q18 on evidence: the continuity planner dropped the Stats chip by design, since the narrator and not the plan owns outcomes. The planner and the director stay stat-free: their Persona chips are No Stats and they carry no Other Stats chip. Narration, choices and storyboard carry Other Stats.
 - **Q21** (ticket 03) The Test Bench AI Context panel's Stats block shows what the Stats chip sends, world stats only. The Custom Persona entity's stats now travel in the Persona chip, which the Bench has no block for; ticket 05 adds one.
 - **Q22** (ticket 03) The Open Chat bundled world's own prompts follow the defaults: its choices Persona chip takes Summary, and its narration and choices prompts take the Other Traits and Other Stats headers and the Persona-first order. The saved-prompt guarantee covers users' prompts, not bundled worlds. No shape change.
+- **Q23** (ticket 03) The block ships as built. The probe's leak checks held in both arms with the block's numbers in the prompt, and its uptake proxies resolved no change in either direction.
 
 ## User Stories
 
