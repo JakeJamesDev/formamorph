@@ -190,11 +190,11 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
   const [traitCascade, setTraitCascade] = useState<TraitCascade | null>(null);
   // Every bearer in the cast: the player, the world's entities, and the library entities.
   const entryWorld = useMemo<EntryTraitWorld>(
-    () => ({ traits, traitGroups, entities: resolvedWorldEntities, library: libraryCast }),
-    [traits, traitGroups, resolvedWorldEntities, libraryCast],
+    () => ({ traits, traitGroups, entities: resolvedWorldEntities, library: libraryCast, stats: rawStats, statGroups: rawStatGroups }),
+    [traits, traitGroups, resolvedWorldEntities, libraryCast, rawStats, rawStatGroups],
   );
   const rawEntryWorld: EntryTraitWorld = {
-    traits: rawTraits, traitGroups: rawTraitGroups, entities: worldEntities, library: libraryCast,
+    traits: rawTraits, traitGroups: rawTraitGroups, entities: worldEntities, library: libraryCast, stats: rawStats, statGroups: rawStatGroups,
   };
   // A library entity that joins the cast starts on its own defaults.
   useEffect(() => {

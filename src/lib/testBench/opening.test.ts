@@ -790,6 +790,12 @@ describe('entity stats at game start', () => {
     expect(row).toMatchObject({ value: 35, min: 0, max: 150, regen: 3, traitShift: 15, descriptor: 'Warm' });
   });
 
+  it('gates a default trait on the entity’s own stat at its authored start, as Enter World does', () => {
+    const gatedOn = (value: number) => maren({ traits: [{ ...hardy, requires: [{ all: [{ kind: 'stat', id: 's-trust', operator: '>=', value, unit: 'raw' }] }] }] });
+    expect(marenOf(staged([gatedOn(20)]))!.stats[0]).toMatchObject({ value: 35, max: 150 });
+    expect(marenOf(staged([gatedOn(25)]))!.stats[0]).toMatchObject({ value: 20, max: 100 });
+  });
+
   it('leaves out a trait a fresh game does not pick', () => {
     const [row] = marenOf(staged([maren({ traits: [stoic] })]))!.stats;
     expect(row).toMatchObject({ value: 20, max: 100, traitShift: 0 });

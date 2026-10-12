@@ -18,6 +18,7 @@ import { defaultNarrationUserPrompt, defaultSystemPrompt } from '@/components/ga
 import { copyLookup, readerFor, type CopyLookup } from '@/lib/blueprints';
 import { bearerPriming } from '@/lib/ownedTraitsInPlay';
 import { resolveBearers } from '@/lib/bearers';
+import { startingGateStats } from '@/lib/gateStats';
 import { entityStatOwners, seedEntityStats } from '@/lib/entityStats';
 import { ownedTraitStatesFrom } from '@/lib/ownedTraitState';
 import { allPlaceholders } from '@/lib/placeholderHomes';
@@ -313,7 +314,9 @@ function settleEntityStats(world: OpeningWorld, active: readonly Trait[], person
 } {
   const { entities } = playStatWorld({ stats: world.stats ?? [], statGroups: world.statGroups ?? [], entities: world.entities ?? [] });
   const bearerWorld = bearerWorldOf(world);
-  const { gate } = resolveBearers(bearerWorld, persona);
+  const { gate: bearerGate } = resolveBearers(bearerWorld, persona);
+  // Stat Conditions read the authored start, as Enter World's do (Q23).
+  const gate = { ...bearerGate, stats: startingGateStats({ ...world, entities: world.entities ?? [] }) };
   // Each bearer's default picks, gated against the world traits the lens PC leaves active.
   const picks = settle({
     ...gate, active: { ...settleDefaults(gate).active, [WORLD_OWNER]: active.map((t) => t.id) },
