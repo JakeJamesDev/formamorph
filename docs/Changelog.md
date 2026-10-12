@@ -45,7 +45,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The Test Bench warns when two boxes of stat code write the same field of one stat.** The warning names the field and each box. It checks each owner on its own, so every entity's copy of a Blueprint stat counts on its own.
     - **A stat's code now keeps a value above its old max when other code or a trait raises that max.** A code min no longer drops below the authored min. The Test Bench warning skips writes inside strings and stats switched off, and reads a duplicate stat name as stat code does.
   - **Persona:**
-    - **The AI's notes now head your persona's block with its name, such as "Sylvie (Player Character)".** A chip's Header can hold the **Player Name** built-in in every format. With no persona, it reads "the player".
+    - **A chip's Header can now hold the Player Name built-in, in every format.** It reads your persona's name, or "the player" with no persona. The default prompts keep the plain "Player Character" heading, since the block opens with the name.
     - **The AI's notes now list your world's player traits under Other Traits, after your persona.** A world with no player traits drops the section. Saved custom prompts keep their own headers and order.
     - **The AI's notes now list your persona's own stats inside its block, and your world's player stats under Other Stats.** The **Persona** chip gains a **Stats** toggle. The choices prompt now reads your persona's summary, with its traits and stats.
     - **Under Staged thinking, each character now plans its turn with its own stats in view.** Its planning request lists its stats after its background, as the narration sees them. It still never sees your stats.

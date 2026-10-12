@@ -143,3 +143,4 @@ Model behavior is proven by probe numbers, not unit tests: each step's arm again
 - The headed-chip blank rule means `## Other Traits` disappears on a world with no player traits, as Emberwatch shows. That is the intended shape, not a gap.
 - Mock renders of the target shape from the bundled worlds were produced during the discussion and live only in `.scratch/`; the tests above replace them.
 - Q75 of the entity-stats spec is reversed for the narration, choices and planning prompts and carries a note pointing here.
+- After the close (2026-10-11), the six default persona headers went back to `Player Character`: the block's own first line is the persona's name, so the Player Name in the heading repeated it. The header built-in stays for custom prompts (Q1, Q13, Q15 unchanged). No probe, since that heading is what shipped before. The sample scene's Traveler now owns one trait and one stat, so the preview shows the block as an authored persona fills it.

@@ -72,13 +72,13 @@ describe('the persona chip in the default prompts', () => {
     }
   });
 
-  it.each(styles)('heads the six headed persona blocks with the Player Name, in the $name preset', ({ style, values }) => {
+  // The block's own first line is the persona's name, so the default header carries no Player Name.
+  it.each(styles)('heads the six headed persona blocks "Player Character", in the $name preset', ({ style, values }) => {
     const headed = PROMPT_TEXT_KEYS.filter((key) => parsePromptTemplate(values[key]).some((seg) =>
-      seg.type === 'variable' && variableForToken(seg.token) === PERSONA && splitToken(seg.token)?.header === '{{user}} (Player Character)'));
+      seg.type === 'variable' && variableForToken(seg.token) === PERSONA && splitToken(seg.token)?.header === 'Player Character'));
     expect(headed.sort()).toEqual(HEADED);
     const ctx = { ...SAMPLE_PREVIEW_VALUES, ...personaContextValues(persona), 'header:{{user}}': 'Persona Fixture' };
-    const heading = { markdown: '## Persona Fixture (Player Character)', labels: 'PERSONA FIXTURE (PLAYER CHARACTER):',
-      xml: '<persona_fixture_player_character>' }[style];
+    const heading = { markdown: '## Player Character', labels: 'PLAYER CHARACTER:', xml: '<player_character>' }[style];
     for (const key of HEADED) expect(renderPromptTemplate(values[key], ctx), key).toContain(`\n${heading}\n`);
   });
 

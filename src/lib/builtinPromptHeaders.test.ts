@@ -24,7 +24,7 @@ describe('built-in Header adoption', () => {
     }
     for (const key of ['thinkingPrompt', 'directorPrompt'] as const) {
       const persona = parsePromptTemplate(PROMPT_TEXT_DEFAULTS[key]).find(seg => seg.type === 'variable' && splitToken(seg.token)?.base === '<PERSONA>');
-      expect(persona && persona.type === 'variable' && splitToken(persona.token)).toMatchObject({ header: '{{user}} (Player Character)', pre: '', post: 'In the Cast, this is Player Character.' });
+      expect(persona && persona.type === 'variable' && splitToken(persona.token)).toMatchObject({ header: 'Player Character', pre: '', post: 'In the Cast, this is Player Character.' });
     }
     expect(PROMPT_TEXT_DEFAULTS.choicesUserPrompt).toContain('header="The scene just told to me, the player character"');
     expect(PROMPT_TEXT_DEFAULTS.statUpdatesUserPrompt).toContain('Narration: <NARRATION>');
@@ -103,7 +103,7 @@ describe('built-in Header adoption', () => {
         expect(xml.querySelector('root > guidelines')).not.toBeNull();
         expect(xml.querySelector('root > game_world')).not.toBeNull();
         expect(xml.querySelector('root > other_traits')).not.toBeNull();
-        expect(xml.querySelector('root > wren_player_character')).not.toBeNull();
+        expect(xml.querySelector('root > player_character')).not.toBeNull();
         expect(xml.querySelector('root > output')).not.toBeNull();
       }
     });
