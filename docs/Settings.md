@@ -222,7 +222,7 @@ See [When Each Memory Happened](Memory#when-each-memory-happened).
 
 ### Performance
 
-**Advanced.** **Concurrent Requests** sends the choices, the stat updates and the location change at the same time, not one after another. Turns are faster on endpoints that handle parallel requests. Turn it off if a local model with little memory slows down under the load.
+**Advanced.** **Concurrent Requests** sends the choices, the stat updates and the location change at the same time, not one after another. Turns are faster on endpoints that handle parallel requests. Requests between turns, like memory summaries, also run together when it is on and one at a time when it is off. Turn it off if a local model with little memory slows down under the load.
 
 ## Endpoints
 <!-- keywords: temperature, samplers, creativity, response length, cut off, context size, gpu layers, out of memory, api key, repetitive text -->

@@ -85,26 +85,6 @@ export function pruneTurnMap<T>(map: Record<string, T>, history: ChatMessage[]):
 }
 
 /**
- * Pick the `turnId`s of assistant turns that are due for a digest: those with a stable id and no
- * summary yet. `skipRecent` optionally excludes the N most recent assistant turns (default 0 — every
- * completed turn is digested, including the newest, since the drainer only runs once a turn is fully
- * committed). Pre-digest turns lacking a `turnId` are skipped (they can't be addressed by the
- * apply-guard). Returns ids most-recent-first; the drainer decides which end to process.
- */
-export function selectDueDigests(history: ChatMessage[], skipRecent = 0): string[] {
-  const due: string[] = [];
-  let assistantSeen = 0;
-  for (let i = history.length - 1; i >= 0; i--) {
-    if (history[i].role !== 'assistant') continue;
-    assistantSeen += 1;
-    if (assistantSeen <= skipRecent) continue;
-    const parsed = parseTurnContent(history[i].content);
-    if (parsed?.turnId && !parsed.summary) due.push(parsed.turnId);
-  }
-  return due;
-}
-
-/**
  * Patch `summary` onto the assistant turn whose `turnId` matches, returning the new history.
  * Returns `null` if no turn matches — the turn was rolled back or regenerated while the digest was
  * in flight, so its result is discarded (the apply-guard). Other turns are returned untouched.
@@ -236,10 +216,10 @@ export function applyDiary(
 }
 
 /**
- * Drop a turn's derived-from-narration data so the drainers regenerate it. Editing a turn's narration
+ * Drop a turn's derived-from-narration data so the background passes regenerate it. Editing a turn's narration
  * makes its stored digest (`summary`) — and, when `diaries` is set, its character diary entries — disagree
- * with the visible text; nulling those fields makes `selectDueDigests`/`selectDueDiaries` re-select the
- * turn and the drainers rebuild lazily. Returns `null` if no turn matches the id (rolled back / regenerated
+ * with the visible text; nulling those fields makes the digest and `selectDueDiaries` re-select the
+ * turn and the background passes rebuild lazily. Returns `null` if no turn matches the id (rolled back / regenerated
  * away), mirroring the apply-guards. Other turns are untouched.
  */
 export function clearTurnDerived(

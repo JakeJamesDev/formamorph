@@ -303,7 +303,7 @@ Runs one extra request per participant. Edit its prompt under **Prompts → Diar
   concurrentRequests: {
     label: 'Concurrent Requests',
     description: 'Runs each turn’s follow-up requests at the same time',
-    info: `Sends choices, stat updates, and the location change together instead of one after another.
+    info: `Sends choices, stat updates, and the location change together instead of one after another. Requests between turns, like memory summaries, run together too.
 
 - Faster turns on endpoints that handle parallel requests (e.g. LM Studio's **Parallel** setting)
 - Turn off if a memory-tight local model slows down under the load`,
