@@ -83,6 +83,41 @@ The best matches are first. Each result shows the section, its page and the star
 
 To go back to the list of pages, select **Contents** above the section.
 
+## How to Open the Guide Full Screen
+<!-- keywords: bigger guide, large view, read the docs at length, expand, maximize, enlarge the manual, big reader, full-screen reader, open guide button, wider reading, read more at once -->
+<!-- route: formaquestion -->
+
+1. Open Formaquestion.
+2. Select **Open Guide** in the title bar. Or select **⋮**, then **Open Guide**.
+3. Type in **Search the Guide**, or select a page in the contents on the left.
+4. Select a section. It shows on the right.
+5. To go back to the small window, select **Close Guide**, or press Escape.
+
+The **Open Guide** button is in the title bar of the **Full** style, next to **Wide View**. The **Minimal** and **Bubble** styles have **Open Guide** in the **⋮** menu only. The full screen and the small window share one Guide view. They have the same search text, open pages and section, so you keep your place both ways. See [Guide](#guide).
+
+## How to Open the Wiki
+<!-- keywords: wiki, browser, website, online docs, github wiki, read outside the app, external docs, same page in the browser, open docs in my browser, leave the app, confirm, don't ask again, stop the question -->
+<!-- route: formaquestion -->
+
+1. Open Formaquestion, and open the section that you want to read in the wiki.
+2. Select **⋮**, then **Open Wiki**. In the full-screen Guide, select **Open Wiki** in the header.
+3. In the confirm, select **Open**.
+
+Your browser opens the wiki on the page and heading of the section that shows. With no section open, it opens the wiki home page. The confirm names the page.
+
+- To skip the confirm, check **Don’t Ask Again**, then select **Open**. **Cancel** keeps the confirm on, also with the box checked.
+- To turn the confirm back on, select the **Confirm Before Opening the Wiki** checkbox in the **Window** group of the **General** tab. See [General](#general).
+
+## How to Go Back and Forward in the Guide
+<!-- keywords: previous section, next section, history, return to the last page, undo a link, browser buttons, arrows, alt left, alt right, mouse side buttons, retrace, where was I, step back, step forward -->
+<!-- route: formaquestion -->
+
+1. Select **Wide View** in the title bar, or open the Guide full screen.
+2. Open a few sections.
+3. Select **Back** or **Forward**, next to the title.
+
+You can also press Alt+Left for Back and Alt+Right for Forward while the cursor is in the window. The mouse back and forward buttons do the same while the pointer is over it. They never change the screen of the app. A button is off when there is no section in its direction. See [The Window](#the-window).
+
 ## How to Get Help for the Screen You Have Open
 <!-- keywords: this page, current, where am i, context, here, contextual, this dialog, this menu, relevant section, what am i seeing, explain this tab, suggested topic -->
 <!-- route: formaquestion -->
@@ -216,15 +251,19 @@ While **Answer Endpoint** is **Use Active Endpoint**, the heading names the acti
 Answers take longer with reasoning on. The row shows a note instead of the checkbox when your model cannot reason. See [General](#general).
 
 ## How to Turn On Semantic Search
-<!-- keywords: search by meaning, meaning search, embedding, download search model, better matches, similar words, find sections by idea, small model download, smarter search, retry download -->
+<!-- keywords: search by meaning, meaning search, embedding, download search model, better matches, similar words, find sections by idea, small model download, smarter search, retry download, recommended, offer, card, turn on, no thanks, dismiss -->
 <!-- route: formaquestionSettings.general#semantic-search -->
 
-1. Select **⋮** in the Formaquestion title bar, then **Settings**. The **General** tab opens first.
-2. Select the **Semantic Search** checkbox.
-3. Wait while the app downloads the small model. A progress bar shows on the row.
-4. Ask a question, or type in the **Search** tab. When the download is done, both also find sections by meaning.
+1. Select **Turn On** on the **Semantic Search** card at the top of the window. See [The Semantic Search Card](#the-semantic-search-card).
+2. Wait while the app downloads the small model. The card shows a progress bar.
+3. Ask a question, or type in the **Search** tab. When the download is done, both also find sections by meaning.
 
-If the download fails, the checkbox clears and **Retry** shows. Until the model is ready, questions use the other sources.
+If no card shows, use the setting instead:
+
+1. Select **⋮** in the Formaquestion title bar, then **Settings**. The **General** tab opens first.
+2. Select the **Semantic Search** checkbox. A progress bar shows on the row.
+
+If the download fails, the checkbox clears and **Retry** shows. The card has **Retry** too. Until the model is ready, questions use the other sources.
 
 ## How to Write Your Own Help Prompt
 <!-- keywords: change how answers read, custom prompt, edit the help prompt, answer style, shorter answers, tone of help, duplicate default, rewrite instructions, reset prompt, compare to default, prompt chips -->
@@ -310,8 +349,10 @@ Formaquestion is one window for the whole app. It shows above every dialog, and 
 | Control | What it does |
 |---|---|
 | Title bar | Drag it to move the window |
+| **Back** and **Forward** | Move through the sections you opened. They show next to the title while **Wide View** is on. See [How to Go Back and Forward in the Guide](#how-to-go-back-and-forward-in-the-guide). |
 | **Wide View** | Changes between the narrow and the wide layout. It stays lit while the wide view is on |
-| **⋮** | Opens a menu with **Clear Conversation**, the **Chat Style** choices, the **Mascot Position** choices, **AI Context** and **Settings**. The mobile-size sheet has no **Mascot Position** choices. |
+| **Open Guide** | Shows the Guide full screen. The **Full** style has it in the title bar. See [Guide](#guide). |
+| **⋮** | Opens a menu with **Clear Conversation**, the **Chat Style** choices, the **Mascot Position** choices, **Open Guide**, **Open Wiki**, **AI Context** and **Settings**. The mobile-size sheet has no **Mascot Position** choices. |
 | **Close** | Closes the window |
 | Bottom right corner | Drag it to change the size of the window |
 
@@ -326,6 +367,9 @@ F1 does one of three things:
 - The window stays whole on the screen. When the browser window gets smaller, Formaquestion moves back inside it.
 - This device keeps the place of the window and a size for **Minimal** and **Full**, and the mascot's own place for **Bubble**. A change between **Minimal** and **Full** keeps the place. They are not in a backup or an export.
 - The narrow layout shows one tab at a time. The wide layout shows the search field and the contents on the left, and the conversation or a section on the right. **Back to Conversation**, above a section, shows the conversation again. The layout changes at a width of 560 pixels, so the corner changes it too.
+- The Back and Forward history holds the last 50 steps. Each section you open is a step, and so is a change from a section to the conversation in **Wide View**. **Back** returns you to the place you had in that section. The history stays when you close the window or change the layout, and a reload clears it. A section you open after **Back** replaces the steps ahead of it.
+- The **Minimal** and **Bubble** styles read in a separate reader beside the chat. That reader adds no steps and has no **Back** or **Forward**. Alt+Left, Alt+Right and the mouse buttons work there only in the full-screen Guide, which has **Back** and **Forward** in every style.
+- In the full screen, **Back** and **Forward** skip the conversation. They go to the closest section in their direction.
 - While the welcome animation plays, the **Help** tab does not show and F1 does nothing.
 - The **Chat Style** sets how the window looks. **Full** is this window. **Minimal** is a bare chat column with no title bar, no tabs and no **Wide View**. **Bubble** shows the mascot speaking the newest answer. **Auto** is **Bubble** while the mascot is on and **Full** while it's off. Pick a style in the **⋮** menu or on the **General** tab. See [Mascot](#mascot).
 
@@ -391,6 +435,28 @@ The **Guide** tab lists each page of this guide. Select a page to show or hide i
 - **On This Page**, under a section, lists the other sections of the same page.
 - A link to a guide page opens that section in the window.
 - A link to a website opens in your browser.
+- **Open Guide** shows the Guide full screen. See [How to Open the Guide Full Screen](#how-to-open-the-guide-full-screen).
+
+The full screen has the search field and the contents on the left, and the section on the right. With no section open, the right side says **Select a section to read**. The header holds **Back** and **Forward**, **Open Wiki** and **Close Guide**. Escape closes the full screen too, and the window shows the section you ended on. A mobile-size screen shows one part at a time. It shows the contents, or a section with **Contents** above it.
+
+## The Semantic Search Card
+<!-- keywords: first open, ask me to turn on, search by meaning prompt, download once, card won't go away, card gone, decide later, failed download -->
+<!-- route: formaquestion -->
+
+The card offers [Semantic Search](#how-to-turn-on-semantic-search) at the top of the window. It says **Recommended** and that the app downloads a small model once. It shows in each chat style. You can ask a question while it shows.
+
+| Button | What it does |
+|---|---|
+| **Turn On** | Turns on Semantic Search and starts the download. The card shows the progress, then hides when the model is ready. |
+| **No Thanks** | Hides the card. It does not show again. The **Semantic Search** checkbox in **General** still works. |
+| **Retry** | Shows after a failed download. Starts the download again. |
+| **Dismiss** | Shows after a failed download. Hides the card. **Retry** stays on the **Semantic Search** row in **General**. |
+
+- You see the card until you choose, also when you used Formaquestion before.
+- Close the window with no choice, and the card shows again the next time you open it.
+- The card does not show when you already set the **Semantic Search** checkbox.
+- The card does not show when the model is already on your device. Semantic Search turns on with no card.
+- After a reload, a failed download shows no card. Use **Retry** on the **Semantic Search** row.
 
 ## Formaquestion Settings
 <!-- keywords: gear, options, configure help, help settings, turn off search, plain chat -->
@@ -405,7 +471,7 @@ The **Guide** tab lists each page of this guide. Select a page to show or hide i
 <!-- keywords: mascot switch, turn off the mascot, turn on the mascot, chat style, window style, reasoning, thinking, effort, reasoning budget, answer reveal, answer animation, fade in, keyword search, ai search, open screen, history length, extra request, earlier questions, no guide -->
 <!-- route: formaquestionSettings.general -->
 
-The **General** tab sets how the window looks, how your AI answers, how a question finds its guide sections, and what the request holds. Its rows are in four groups: **Window**, **Answer**, **Search** and **Request**. **Mascot**, **Chat Style**, **Mascot Position**, **Mascot Scale** and **Backdrop** are in **Window**.
+The **General** tab sets how the window looks, how your AI answers, how a question finds its guide sections, and what the request holds. Its rows are in four groups: **Window**, **Answer**, **Search** and **Request**. **Mascot**, **Chat Style**, **Mascot Position**, **Mascot Scale**, **Backdrop** and **Confirm Before Opening the Wiki** are in **Window**.
 
 | Setting | Default | What it does |
 |---|---|---|
@@ -414,11 +480,12 @@ The **General** tab sets how the window looks, how your AI answers, how a questi
 | **Mascot Position** | Outside | Sets where the mascot stands around the chat: **Above**, **Below**, **Inside** or **Outside**. The **⋮** menu has the same choices. Under **Bubble**, only **Inside** and **Outside** show. Hidden while the mascot is off. |
 | **Mascot Scale** | 25% | Sizes the mascot beside the chat. **Auto** fits the height of the chat. A percent, from 25% to 150%, is a share of the base image's size in pixels. This device keeps it, outside your mascot card. Hidden while the mascot is off. |
 | **Backdrop** | 60% | Shades the screen behind the chat so the text stands out, from 0 to 100% in steps of 5. The backdrop shows with the **Bubble** and **Minimal** styles. Set 0 for none. |
+| **Confirm Before Opening the Wiki** | On | Asks before **Open Wiki** opens your browser. **Don’t Ask Again** in the confirm clears it. See [How to Open the Wiki](#how-to-open-the-wiki). |
 | **Reasoning** | Off | Lets your AI reason before it answers, so answers take longer. The levels and the budget come from the **Answer Endpoint**. **Global** follows **Native Reasoning** under Settings → Output. The **AI Search** request never reasons. For a model that cannot reason, a note shows in place of the control. |
 | **Answer Reveal** | Fade | Sets how each answer appears as it streams. **Choose reveal animation…** opens the same dialog as **Narration Reveal**, with its own values: a change to one never changes the other. With every effect off, answers show with no animation. |
 | **Keyword Search** | On | Finds the guide sections that have the words of your question |
 | **AI Search** | On | Sends one more request for each question, in which your AI chooses guide sections from the list of headings |
-| **Semantic Search** | Off | Finds guide sections by meaning, with a small model on your device. The first time you turn it on, the app downloads the model and shows the progress. If the download fails, the checkbox clears and **Retry** starts it again. Until the model is ready, questions use the other sources. |
+| **Semantic Search** | Off | Finds guide sections by meaning, with a small model on your device. The first time you turn it on, the app downloads the model and shows the progress. If the download fails, the checkbox clears and **Retry** starts it again. Until the model is ready, questions use the other sources. A card at the top of the window offers it first. See [The Semantic Search Card](#the-semantic-search-card). |
 | **Use the Open Screen** | On | Sends the open screen, your selected item, and its guide section |
 | **History Length** | 4 | Sets how many earlier questions and answers each request holds, from 0 to 20. 0 sends each question alone. |
 
@@ -684,6 +751,7 @@ On a screen narrower than 768 pixels, Formaquestion fills the screen. It has the
 - The sheet opens above an open dialog. When you close the sheet, the dialog is as you left it.
 - The keyboard does not open until you select a field. With the keyboard open, the sheet fits the space above it.
 - The sheet has no **Wide View**, and you cannot move it or change its size.
+- **Open Guide** in the title bar shows the Guide full screen. See [Guide](#guide).
 - With the mascot on, the sheet shows the mascot's head at the left of the pill, over a dimmed backdrop. A source name opens its section on the wiki in your browser, not in a reader. See [Mascot](#mascot).
 - **Formaquestion Settings** and **AI Context** fill the screen, so the sheet hides while one is open. When you close it, the sheet shows again as you left it, and an answer that was coming in continues.
 - On Android, the back action closes the sheet first, before a dialog under it.
