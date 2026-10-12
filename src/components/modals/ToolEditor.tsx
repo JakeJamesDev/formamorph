@@ -25,6 +25,7 @@ import {
 } from '@/lib/tools/toolDraft';
 import { toolScriptSurface } from '@/lib/tools/toolScriptSurface';
 import { toolTemplateVocabulary } from '@/lib/tools/toolTemplateVocabulary';
+import type { ValueLookup } from '@/lib/promptValues';
 import type { ToolNameProblem } from '@/lib/tools/toolValidation';
 import { TOOL_EDIT_TABS, type ToolEditTab } from './toolsView';
 import { ToolTryIt, type TryItWorld } from './ToolTryIt';
@@ -247,8 +248,10 @@ function ScriptReference({ globals }: { globals: readonly { name: string; detail
   );
 }
 
-function HandlerTab({ draft, onChange, onKindChange, problems, placeholderNames }: TabProps & {
+function HandlerTab({ draft, onChange, onKindChange, problems, placeholderNames, chipReads }: TabProps & {
   onKindChange: (kind: ToolHandler['kind']) => void; placeholderNames: readonly string[];
+  /** The scene chips' values on the world Try It runs on, which Chip Options shows. */
+  chipReads: ValueLookup;
 }) {
   const id = useId();
   const { handler, params } = draft;
@@ -325,7 +328,7 @@ function HandlerTab({ draft, onChange, onKindChange, problems, placeholderNames 
       )}
       {handler.kind === 'template' && (
         <PromptField
-          label="Template" ariaLabel="Template" vocabulary={vocabulary}
+          label="Template" ariaLabel="Template" vocabulary={vocabulary} chipReads={chipReads}
           hint="Returns this text. Insert a parameter to place what the AI passed."
           value={handler.body} onChange={(body) => setHandler({ ...handler, body })}
         />
@@ -400,7 +403,8 @@ export function ToolEditor({
   };
   // Autocomplete lists the shared placeholders of the world Try It runs on.
   const { snapshot } = world;
-  const placeholderNames = useMemo(() => Object.keys(snapshot().placeholders), [snapshot]);
+  const toolSnapshot = useMemo(() => snapshot(), [snapshot]);
+  const placeholderNames = useMemo(() => Object.keys(toolSnapshot.placeholders), [toolSnapshot]);
 
   return (
     <div className="flex flex-col flex-1 min-h-0 gap-3">
@@ -425,7 +429,7 @@ export function ToolEditor({
             <div className="pr-3 pb-1">
               <TabsContent value="definition" className="mt-0"><DefinitionTab {...body} /></TabsContent>
               <TabsContent value="parameters" className="mt-0"><ParametersTab {...body} /></TabsContent>
-              <TabsContent value="handler" className="mt-0"><HandlerTab {...body} onKindChange={switchKind} placeholderNames={placeholderNames} /></TabsContent>
+              <TabsContent value="handler" className="mt-0"><HandlerTab {...body} onKindChange={switchKind} placeholderNames={placeholderNames} chipReads={toolSnapshot.chips} /></TabsContent>
             </div>
           </ScrollArea>
         </Tabs>

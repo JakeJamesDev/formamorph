@@ -41,7 +41,7 @@ describe('inline conditional text in the prompt editor', () => {
 
   it('opens the chip from its heading and saves edits inside the token', async () => {
     const onChange = vi.fn();
-    render(<Field onChange={onChange} />);
+    const { container } = render(<Field onChange={onChange} />);
     const heading = screen.getByText('## Player Character');
     expect(heading.tagName).toBe('MARK');
     expect(onChange).not.toHaveBeenCalled();
@@ -52,7 +52,8 @@ describe('inline conditional text in the prompt editor', () => {
     await waitFor(() => expect(onChange).toHaveBeenLastCalledWith(
       'Before\n<PERSONA|markdown|pre="\n## Our Traveler\n"|post="\n">\nAfter',
     ));
-    expect(screen.getByText('## Our Traveler')).toBeInTheDocument();
+    // The chip face, not the dialog's What the AI Reads pane, which shows the same heading.
+    expect(within(container).getByText('## Our Traveler')).toBeInTheDocument();
     await userEvent.keyboard('{Escape}');
     await userEvent.click(screen.getByRole('tab', { name: 'Preview' }));
     expect(screen.getByText(/## Our Traveler/).textContent).toBe('\n## Our Traveler\nMira\n');

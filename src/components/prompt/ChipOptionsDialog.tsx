@@ -1,4 +1,4 @@
-import { useId, useState, type ReactElement, type ReactNode } from 'react';
+import { useId, useMemo, useState, type ReactElement, type ReactNode } from 'react';
 import DrillPicker from './DrillPicker';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -10,7 +10,9 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tip } from '@/components/ui/tooltip';
 import type { ChipVocabulary } from '@/lib/chipVocabulary';
 import { HISTORY_OVERLAY_ATTRIBUTE } from '@/lib/historyField';
+import { resolveTokenParts } from '@/lib/promptTemplate';
 import { AFFIX_FORBIDDEN, isValidAffix, toggleIsOn, toggleOptionFor, type PromptVariantAxis } from '@/lib/promptVariables';
+import type { TokenValues } from '@/lib/promptValues';
 import { cn } from '@/lib/utils';
 
 const FULL = 'full'; // control value for an axis's default option (null id)
@@ -76,6 +78,7 @@ interface ChipOptionsBodyProps {
   vocab: ChipVocabulary;
   editable: boolean;
   update: ChipOptionsProps['update'];
+  reads: TokenValues | undefined;
   onRepick?: ChipOptionsProps['onRepick'];
   onEditValue?: ChipOptionsProps['onEditValue'];
   twoPane: boolean;
@@ -130,7 +133,7 @@ function PickOne({ axis, label, active, editable, onPick }: {
 }
 
 /** The controls face: one row per axis in the chip's order, then the placement fields below a rule. */
-function OptionRows({ token, vocab, editable, update, hasActions }: Omit<ChipOptionsBodyProps, 'onRepick' | 'onEditValue' | 'twoPane'> & {
+function OptionRows({ token, vocab, editable, update, hasActions }: Omit<ChipOptionsBodyProps, 'reads' | 'onRepick' | 'onEditValue' | 'twoPane'> & {
   hasActions: boolean;
 }) {
   const axes = vocab.axes(token);
@@ -238,19 +241,29 @@ function OptionRows({ token, vocab, editable, update, hasActions }: Omit<ChipOpt
   );
 }
 
-/** The right pane of a prompt chip. */
-function ReadsPane() {
+/** The right pane of a prompt chip: what the token renders to in the field's own scene, header and affixes
+ *  included, the placement text one shade dimmer than the chip's value. */
+function ReadsPane({ token, reads }: { token: string; reads: TokenValues | undefined }) {
   const titleId = useId();
+  const rendered = useMemo(() => (reads ? resolveTokenParts(token, reads) : undefined), [token, reads]);
   return (
     <section aria-labelledby={titleId} className="flex min-h-0 flex-col gap-1.5">
       <p id={titleId} className="text-meta font-medium">What the AI Reads</p>
-      <div className="min-h-32 flex-1 rounded-md border bg-muted/40" />
+      <div className="min-h-32 flex-1 whitespace-pre-wrap rounded-md border bg-muted/40 px-3 py-2 text-label">
+        {rendered && (
+          <>
+            <span data-placement="" className="text-muted-foreground">{rendered.before}</span>
+            {rendered.value}
+            <span data-placement="" className="text-muted-foreground">{rendered.after}</span>
+          </>
+        )}
+      </div>
     </section>
   );
 }
 
 /** Mounted with the dialog's content, so closing forgets a Re-Pick walk. */
-function ChipOptionsBody({ token, vocab, editable, update, onRepick, onEditValue, twoPane }: ChipOptionsBodyProps) {
+function ChipOptionsBody({ token, vocab, editable, update, reads, onRepick, onEditValue, twoPane }: ChipOptionsBodyProps) {
   const [repicking, setRepicking] = useState(false);
 
   if (repicking && onRepick) {
@@ -281,7 +294,7 @@ function ChipOptionsBody({ token, vocab, editable, update, onRepick, onEditValue
             // The panes stack on a narrow screen, controls first.
             <div className="grid gap-5 sm:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
               <div>{rows}</div>
-              <ReadsPane />
+              <ReadsPane token={token} reads={reads} />
             </div>
           ) : (
             rows
@@ -313,6 +326,9 @@ export interface ChipOptionsProps {
   trigger?: ReactElement;
   token: string;
   vocab: ChipVocabulary;
+  /** The values a prompt chip renders from: the Preview tab's lookup in a game, the authored world in the
+   *  World Editor, the sample scene in Settings. The right pane shows none without it. */
+  reads?: TokenValues;
   /** False shows every control disabled. */
   editable: boolean;
   /** Writes the token that `change` makes of the live one. */
@@ -324,7 +340,7 @@ export interface ChipOptionsProps {
 }
 
 /** Chip Options: a placed chip's settings in a centered dialog that nests in the dialog it opens from. */
-export function ChipOptionsDialog({ open, onOpenChange, trigger, token, vocab, editable, update, onRepick, onEditValue }: ChipOptionsProps) {
+export function ChipOptionsDialog({ open, onOpenChange, trigger, token, vocab, reads, editable, update, onRepick, onEditValue }: ChipOptionsProps) {
   const color = vocab.color(token);
   const twoPane = vocab.promptChip?.(token) ?? false;
   return (
@@ -344,7 +360,7 @@ export function ChipOptionsDialog({ open, onOpenChange, trigger, token, vocab, e
             {vocab.label(token)}
           </DialogDescription>
         </DialogHeader>
-        <ChipOptionsBody token={token} vocab={vocab} editable={editable} update={update}
+        <ChipOptionsBody token={token} vocab={vocab} reads={reads} editable={editable} update={update}
           onRepick={onRepick} onEditValue={onEditValue} twoPane={twoPane} />
       </DialogContent>
     </Dialog>
