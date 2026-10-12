@@ -3,6 +3,7 @@ import { useTraitStore } from '@/contexts/TraitStoreContext';
 import { RequirementRowsField } from '@/components/editor/RequirementRowsField';
 import { WORLD_OWNER, conditionTexts, gateOf, gateStates, ownerHolding, requirementOptions } from '@/lib/traitGates';
 import { joinAnd, summarizeRequirement } from '@/lib/requirementSummary';
+import { requirementStatSections } from '@/lib/requirementStatOptions';
 import type { Trait, TraitRequirement, TraitRequirementRow } from '@/types';
 
 /**
@@ -51,12 +52,13 @@ export function TraitRequiresField({ trait, onChange, onOpen, opens, bearerId, l
   labelAside?: ReactNode;
 }) {
   const { gateInput, placeholders, offWorld } = useTraitStore();
-  const { states, options, owner, textOf } = useMemo(() => {
+  const { states, options, statSections, owner, textOf } = useMemo(() => {
     const gates = gateStates(gateInput);
     const holder = ownerHolding(gateInput.owners, trait.id)?.id ?? WORLD_OWNER;
     const gate = (bearerId !== undefined ? gateOf(gates, bearerId, trait.id) : undefined) ?? gateOf(gates, holder, trait.id);
     return {
       states: gate?.rows ?? [], options: requirementOptions(gateInput, trait.id), owner: bearerId ?? holder,
+      statSections: requirementStatSections(gateInput, bearerId ?? holder),
       textOf: conditionTexts(gateInput),
     };
   }, [gateInput, trait.id, bearerId]);
@@ -67,6 +69,7 @@ export function TraitRequiresField({ trait, onChange, onOpen, opens, bearerId, l
       owner={owner}
       states={states}
       options={options}
+      statSections={statSections}
       textOf={textOf}
       placeholders={placeholders}
       offWorld={offWorld}

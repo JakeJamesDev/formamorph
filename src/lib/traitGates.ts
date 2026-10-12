@@ -284,6 +284,9 @@ function resolves(req: Exclude<TraitRequirement, StatRequirement>, idx: Index): 
   return target && (!req.bearer || bearerName(req.bearer, idx) !== null);
 }
 
+/** What follows the stat's name in a stat Condition's text: the operator, then the number, with `%` under percent. */
+export const statTail = (req: StatRequirement): string => `${req.operator} ${req.value}${req.unit === 'percent' ? '%' : ''}`;
+
 /** "Paladin", "not any Class", "Ash: not Tamed" (Q11). */
 function requirementText(req: TraitRequirement, idx: Index): { text: string; unresolved: boolean } {
   const not = req.not ? 'not ' : '';
@@ -302,7 +305,7 @@ function requirementText(req: TraitRequirement, idx: Index): { text: string; unr
         ? { text: `any ${idx.groupNames.get(req.id)}`, unresolved: false }
         : { text: req.name ? `any ${req.name}` : 'any trait in a missing group', unresolved: true })
       : {
-        text: `${idx.statNames.get(req.id) ?? req.name ?? 'a missing stat'} ${req.operator} ${req.value}${req.unit === 'percent' ? '%' : ''}`,
+        text: `${idx.statNames.get(req.id) ?? req.name ?? 'a missing stat'} ${statTail(req)}`,
         unresolved: !idx.statNames.has(req.id),
       };
   const target = { ...named, text: `${not}${named.text}` };

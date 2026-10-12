@@ -55,6 +55,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Selecting a placed chip now opens Chip Options, a centered dialog, in place of the small pop-out.** Prompt chips get a second pane, What the AI Reads. Long option lists are dropdowns, and help lines show as tooltips.
   - **Stat Conditions:**
     - **Test Bench warns when a trait requires a stat it changes, or a percent of a stat with no range.** A Condition on a stat its bearer lacks shows as an unresolved requirement.
+    - **The Availability tab can gate a trait on a stat, such as Rage >= 80.** Pick a stat from the **Requires** picker, then set the operator, the number and Raw or %. **Not** flips it.
   - **The AI now updates your stats with fewer wrong-direction and made-up changes.** It answers with a change for every stat, 0 included. An endpoint that can't take that format gets the old reply style, and the AI context viewer notes it.
   - **The World Editor's Content group now lists Entities first and Stats last.** The order is Entities, Locations, Traits, Stats on the side rail and the mobile Sections list.
 - **🛠️ Developer tooling**
