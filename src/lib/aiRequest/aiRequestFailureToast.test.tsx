@@ -10,6 +10,7 @@ import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
 import type { AiRequestSpec } from './aiRequestSpec';
 import { streamAiRequest } from './aiStream';
 import { toastAiRequestFailure } from './aiRequestFailureToast';
+import { rejectedEndpointOverride } from './rejectedOverride';
 import { surfaceRejectedEndpointOverride } from './rejectedOverrideNotice';
 
 const spec: AiRequestSpec = {
@@ -73,7 +74,9 @@ describe('rejected endpoint override after a stream failure', () => {
     const disable = vi.fn();
     render(<ThemedToastContainer />);
 
-    expect(surfaceRejectedEndpointOverride(error, spec, 'Rejected', disable)).toBe('topP');
+    const override = rejectedEndpointOverride(error, spec);
+    expect(override).toBe('topP');
+    act(() => surfaceRejectedEndpointOverride({ kind: 'rejectedOverride', error, override: override!, endpointId: spec.target.endpointId, presetName: 'Rejected' }, disable));
     expect(disable).toHaveBeenCalledWith('rejected', 'topP');
     await screen.findByText('top_p is not supported');
     await screen.findByText('Top P override disabled for Rejected.');

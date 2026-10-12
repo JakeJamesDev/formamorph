@@ -2,6 +2,8 @@
 
 **Status:** Accepted · **Date:** 2026-08-13
 
+> The Request Transport fills the request adapter, with one sink per call: see [ADR-0012](0012-request-transport-has-one-sink-per-call.md).
+
 ## Context
 
 The Turn Pipeline spec settled on a single injection point:

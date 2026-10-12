@@ -1,24 +1,18 @@
 import { toastError } from '@/lib/linkToast';
-import type { AiRequestSpec } from './aiRequestSpec';
 import { AiStreamError } from './aiStream';
-import { rejectedEndpointOverride, rejectedEndpointOverrideLabel, type RejectedEndpointOverride } from './rejectedOverride';
+import { rejectedEndpointOverrideLabel, type RejectedEndpointOverride } from './rejectedOverride';
+import type { RejectedOverrideFailure } from './requestTransport';
 
-/** Disables and explains a structured endpoint rejection. */
+/** Disables and explains the endpoint override a structured rejection named. */
 export function surfaceRejectedEndpointOverride(
-  error: unknown,
-  spec: AiRequestSpec,
-  presetName: string,
+  { error, override, endpointId, presetName }: RejectedOverrideFailure,
   disable: (endpointId: string, override: RejectedEndpointOverride) => void,
-): RejectedEndpointOverride | null {
-  const override = rejectedEndpointOverride(error, spec);
-  if (!override) return null;
-
-  disable(spec.target.endpointId, override);
+): void {
+  disable(endpointId, override);
   const serverMessage = error instanceof AiStreamError ? error.serverError?.message : undefined;
   toastError(
     error,
     { headline: serverMessage ?? 'The server rejected this request.' },
     `${rejectedEndpointOverrideLabel(override)} override disabled for ${presetName}.`,
   );
-  return override;
 }

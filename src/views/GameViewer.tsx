@@ -71,7 +71,7 @@ import WorldStorageService from "../services/WorldStorageService";
 import { MenuModal } from "../components/modals/MenuModal";
 import LlmSetupGuide from "../components/modals/LlmSetupGuide";
 import WorldEditor, { type EditorExit } from "./WorldEditor";
-import type { CharacterData, ChatMessage, ChatRole, RequestMessage, ImageAttachment, AIRequestType, AITurnResult, GameLocation, GameState, MediaAsset, Dictionary, Entity, EntityStatValues, SaveRecord, World, PlayerStat, Trait, PersonaRef, OwnedTraitPicks, OwnedTraitStates } from "@/types";
+import type { CharacterData, ChatMessage, ChatRole, ImageAttachment, AIRequestType, AITurnResult, GameLocation, GameState, MediaAsset, Dictionary, Entity, EntityStatValues, SaveRecord, World, PlayerStat, Trait, PersonaRef, OwnedTraitPicks, OwnedTraitStates } from "@/types";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars, estimateTokens } from "../lib/memoryUtils";
 import { parseNarration, stripReasoning, stripReasoningLive, extractReasoning, extractReasoningLive } from "../lib/aiResponse";
@@ -90,14 +90,13 @@ import { selectRelevantDiary } from "../lib/semanticDiary";
 import { selectDueDiscovery, materializeDiscoveredEntity, discoveredAsEntities, cleanDiscoveredDescription, pruneDiscoveredToHistory, pickedAtStart, INITIAL_SOURCE_TURN_ID } from "../lib/runtimeCharacters";
 import { entityIdsAt } from "../lib/entityPresence";
 import { selectRegenSource, buildRegenContext } from "../lib/discoveredRegen";
-import { outputReserve, trimToLastSentence } from "../lib/outputLength";
-import { buildAiRequestSpec, outputCaps, type AiEndpointTarget, type AiSettingsSnapshot } from "../lib/aiRequest/aiRequestSpec";
-import { ABORTED_FINISH_REASON, DEFAULT_REASONING_THROTTLE_MS, LENGTH_FINISH_REASON } from "../lib/aiRequest/aiStream";
-import { streamAiToolLoop, type AiToolRound, type ToolExecutor } from "../lib/aiRequest/toolLoop";
+import { outputReserve } from "../lib/outputLength";
+import { outputCaps, type AiEndpointTarget, type AiSettingsSnapshot } from "../lib/aiRequest/aiRequestSpec";
+import { DEFAULT_REASONING_THROTTLE_MS } from "../lib/aiRequest/aiStream";
 import { useAiSettingsSnapshot } from "../lib/aiRequest/useAiSettingsSnapshot";
 import { surfaceRejectedEndpointOverride } from "../lib/aiRequest/rejectedOverrideNotice";
+import { transportRequest, type TransportContext, type TransportRequest, type TransportSink } from "../lib/aiRequest/requestTransport";
 import { toastAiRequestFailure } from "../lib/aiRequest/aiRequestFailureToast";
-import { SchemaRefused, schemaRejected, withTextFallback } from "../lib/aiRequest/responseSchema";
 import { schemaAccepted } from "../lib/reasoningEffort";
 import { splitSentenceSegments } from "../lib/ttsChunks";
 import { selectDueDigests, applyDigest, applyImportance, parseTurnContent, recentParticipants, selectDueDiaries, pendingDiaryNames, applyDiary, collectCharacterDiary } from "../lib/turnDigest";
@@ -105,7 +104,7 @@ import { navigableDestinations } from "../lib/locationContext";
 import { chipValues, sceneEntityChipValues } from "../lib/chipValues/chipValues";
 import { useLiveChipScene, type SceneWrites } from "../lib/chipValues/liveScene";
 import { buildToolSnapshot, type ToolMemorySource } from "../lib/tools/toolSnapshot";
-import { snapshotToolExecutor, toolsOfferedTo } from "../lib/tools/toolOffer";
+import { snapshotToolExecutor } from "../lib/tools/toolOffer";
 import { useHelpWorldSource } from "../lib/formaquestion/helpWorld";
 import type { ChipSceneTime } from "../lib/chipValues/chipScene";
 import { useResolvedWorld } from "@/lib/useResolvedWorld";
@@ -114,7 +113,7 @@ import { resolveStartingLocation } from "../lib/startingLocation";
 import { variableForToken, variableVariantIds, tokenVariant, withVariant } from "../lib/promptVariables";
 import { renderPromptTemplate } from "../lib/promptTemplate";
 import { useBaselineTestHook } from "../lib/baselineTestHook";
-import { recordParityRequest, recordParityResponse, recordParityTurn } from "../lib/turnPipeline/parityRecorder";
+import { recordParityTurn } from "../lib/turnPipeline/parityRecorder";
 import {
   statRequestReady,
   discoverEntityPass,
@@ -129,10 +128,9 @@ import { planTurn, planHasPass } from "../lib/turnPipeline/planTurn";
 import { runTurn, type TurnAdvance, type TurnRequestAdapter } from "../lib/turnPipeline/turnRunner";
 import { computeTurnCommit, type TurnCommit } from "../lib/turnPipeline/computeTurnCommit";
 import { classifyTurnError, type TurnErrorKind } from "../lib/turnPipeline/turnErrors";
-import { emptyTurnMaterial, type TurnMaterial, type TurnPassRequest, type TurnPassSubject, type TurnPlanInput, type TurnPrompts, type TurnSettings } from "../lib/turnPipeline/turnPlan";
+import { emptyTurnMaterial, type TurnMaterial, type TurnPassSubject, type TurnPlanInput, type TurnPrompts, type TurnSettings } from "../lib/turnPipeline/turnPlan";
 import { parseTurns, buildVerbatimHistory, buildBandedHistory, extractKeywords, type BandCounts } from "../lib/turnBanding";
-import { anatomyRegions, toAnatomyBlocks, type RequestAnatomy } from "../lib/requestAnatomy";
-import { asTextMessage } from "../lib/aiRequest/imageParts";
+import { anatomyRegions, toAnatomyBlocks } from "../lib/requestAnatomy";
 import type { PromptJumpTarget } from "../lib/promptJump";
 import {
   markFindHits, markFraction, parseFindTerms, planFindHits, type FindMarked,
@@ -158,7 +156,6 @@ import { appliedStatDeltas } from "../lib/statChanges";
 import { PLAYER_OWNER, regenOwners, statsOf } from "../lib/statOwners";
 import { applyStatResponse, createStatRequest, readStatResponse, statResponseChanges, type StatRequestSnapshot, type StatResponse } from "../lib/statRequest";
 import { resolveEntityTexts, resolveStatGroupTexts, resolveStatNames, resolveStatText } from "../lib/resolveWorldNames";
-import { toDebugEndpoint } from "../lib/promptEndpoints";
 import { AiContextRequestCard, type AiContextCardSection, type AiContextTextSlot } from "@/components/aiContext/AiContextRequestCard";
 import { AiContextExportButton } from "@/components/aiContext/AiContextExportButton";
 import type { AiRequestRecord } from "@/lib/aiContext/requestRecord";
@@ -300,48 +297,6 @@ const activeUnderTraits = (
 // The lore blocks the module emits for a scene, which play fills per turn instead.
 const DICTIONARY_VARIABLE = variableForToken('<DICTIONARY>')!;
 const LORE_TOKENS = ['<DICTIONARY>', ...variableVariantIds(DICTIONARY_VARIABLE).map((id) => withVariant('<DICTIONARY>', id))];
-
-/**
- * One AI call's arguments. A turn pass's own `TurnPassRequest` already has this shape, so the pipeline's
- * request adapter hands its request straight through with only the turn's signal added.
- */
-interface AiCallArgs {
-  statRequest?: StatRequestSnapshot;
-  responseSchema?: TurnPassRequest["responseSchema"];
-  textFallback?: TurnPassRequest["textFallback"];
-  systemPrompt: string;
-  messages: RequestMessage[];
-  type: AIRequestType;
-  /** Absent (or null) leaves the request type's own default cap to apply downstream. */
-  maxTokens?: number | null;
-  signal?: AbortSignal;
-  /**
-   * Inspection sidecar for the AI-context viewer (see lib/requestAnatomy). Captured with the request and
-   * dropped here — the request spec is built from `systemPrompt` and `messages` alone, so it never reaches
-   * the network.
-   */
-  anatomy?: RequestAnatomy;
-  /**
-   * Silent requests (the memory digest) run without UI noise: no "Generating…" label, and they surface in
-   * the status bar / AI-context viewer only when the "Show Silent Requests" setting is on. When captured,
-   * they attach to the turn named by `attachTurnId` (the turn the digest summarizes — usually the one just
-   * committed, or an older turn when backfilling), so the viewer shows the request under the right turn
-   * rather than whatever turn happens to be current.
-   */
-  silent?: boolean;
-  attachTurnId?: string;
-  /**
-   * Skip setting the "Generating…" status label. The concurrent batch fires its passes at once; each would
-   * otherwise stomp the shared label, so the batch sets one stable label itself instead.
-   */
-  quiet?: boolean;
-  /**
-   * What runs the Tools this prompt offers. The turn's adapter closure supplies one executor for the whole
-   * turn, so every request in it reads one snapshot; absent, the request builds its own. The pipeline's
-   * runner never sees it.
-   */
-  executeTool?: ToolExecutor;
-}
 
 // A stable empty array for turns with no scene image, so the panel's prop identity doesn't churn.
 const EMPTY_IMAGES: string[] = [];
@@ -904,7 +859,7 @@ const GameViewer = ({
   const ttsModalRef = useRef<TTSModalHandle>(null);
   const ttsSentenceCursorRef = useRef(0); // count of complete sentences already sent to streaming TTS
   const entitySentenceCursorRef = useRef(0); // count of complete sentences already parsed for the entity tab
-  // This turn's scene-list inputs, read by makeAIRequest's narration streaming (which lives at component
+  // This turn's scene-list inputs, read by sendAiRequest's narration streaming (which lives at component
   // scope, not inside the turn function): the planner cast (null in Off/Inline) and the prior-narration
   // reveal corpus. Set just before the narration request each turn.
   const sceneListCtxRef = useRef<{ cast: DirectorCastMember[] | null; prior: string }>({ cast: null, prior: "" });
@@ -1664,7 +1619,7 @@ const GameViewer = ({
   // `liveRecall` marks the real turn's call: it evaluates the cooldown at the current turn and
   // records what fired. The meter leaves it false and replays the live call's window.
   // contextValues is declared further down (it depends on callbacks defined below), so the history
-  // builder reaches it through a ref rather than the closure — same dodge as makeAIRequestRef.
+  // builder reaches it through a ref rather than the closure — same dodge as sendAiRequestRef.
   const contextValuesRef = useRef<(loc?: GameLocation | null) => Record<string, string>>(() => ({}));
 
   // Narration's resolved target backs every budget the story history is trimmed against — the window and the
@@ -2143,7 +2098,7 @@ const GameViewer = ({
 
   /**
    * What one failure tells the player. Recovery guidance is the toast's own text. `spokeForItself` is the
-   * failed request when makeAIRequest already surfaced its own toast — it does that for foreground
+   * failed request when sendAiRequest already surfaced its own toast — it does that for foreground
    * requests only, so a silent pass that can't reach the server still needs the generic one.
    */
   const reportTurnFailure = (kind: TurnErrorKind, error: unknown, spokeForItself: boolean, isOpeningTurn: boolean) => {
@@ -2603,7 +2558,7 @@ const GameViewer = ({
           // Assembled once the up-front router has settled the location, and before the planner reads it.
           if (event.stage === "planning") return assembleNarration();
           if (event.stage === "narration") {
-            // Hand the streaming narration (inside makeAIRequest) this turn's scene-list inputs so it can
+            // Hand the streaming narration (inside sendAiRequest) this turn's scene-list inputs so it can
             // keep the Entities tab live per sentence.
             sceneListCtxRef.current = { cast: sceneCast, prior: priorNarration };
             return;
@@ -2698,8 +2653,8 @@ const GameViewer = ({
         }
       };
 
-      /** The pipeline's one seam. Production sends the real AI call; nothing else is injected. */
-      const request: TurnRequestAdapter = (spec, context) => makeAIRequest({ ...spec, signal: context.signal, executeTool });
+      /** The pipeline's request seam, filled by the Request Transport. */
+      const request: TurnRequestAdapter = (spec, context) => sendAiRequest({ ...spec, signal: context.signal, executeTool });
 
       const result = await runTurn({
         plan,
@@ -3072,364 +3027,257 @@ const GameViewer = ({
   // its own controller, so it gets the same treatment — otherwise it keeps the image server busy after exit.
   useEffect(() => () => { abortControllerRef.current?.abort(); sceneImageAbortRef.current?.abort(); }, []);
 
-  // A refused schema retries once on the text pass, and the answer that proves it marks the endpoint.
-  const makeAIRequest = (args: AiCallArgs): Promise<string> => withTextFallback(args, sendAIRequest, noteSchemaRejected);
+  // The Request Transport's context: plain values, read once per request.
+  const transportContext = (): TransportContext => ({
+    settings: aiSnapshot,
+    resolveEndpoint: resolveEndpointForKind,
+    tools: allTools,
+    enabledTools,
+    toolsEnabled,
+    toolSnapshot: toolWorld,
+    showSilentRequests,
+    noteReasoningReply,
+    noteSchemaRejected,
+  });
 
-  const sendAIRequest = async (args: AiCallArgs): Promise<string> => {
-    const {
-      systemPrompt,
-      messages,
-      type: requestType,
-      maxTokens: maxTokensOverride = null,
-      signal,
-      silent = false,
-      attachTurnId,
-      quiet: quietLabel = false,
-      anatomy,
-      statRequest,
-      responseSchema,
-      textFallback,
-      executeTool: turnExecutor,
-    } = args;
-    // The parity recording observes the seam itself: exactly the arguments this call received, in
-    // dispatch order, before anything downstream shapes them. Inert unless the harness armed it. It records
-    // text only, so an attached image never enters it.
-    const paritySeq = recordParityRequest({ systemPrompt, messages: messages.map(asTextMessage), type: requestType, maxTokens: maxTokensOverride, silent, attachTurnId });
+  /** Updates the debug turn a capture belongs to: the current turn, or the turn a silent request names. */
+  const updateDebugTurn = (attachTo: string | null, update: (turn: DebugTurn) => DebugTurn) => setDebugTurns((prev) => {
+    if (!prev.length) return prev;
+    const idx = attachTo === null ? prev.length - 1 : prev.findIndex((t) => t.turnId === attachTo);
+    if (idx === -1) return prev;
+    const next = prev.slice();
+    next[idx] = update(next[idx]);
+    return next;
+  });
 
-    // Where this prompt sends: its pinned preset, or the active endpoint when it follows the selection.
-    // Resolved once here and handed to the spec layer, so the capture below and the request body can never
-    // disagree about which target answered.
-    const target = resolveEndpointForKind(requestType);
-
-    // Already resolved above, so the spec layer and the capture can't disagree about the target.
-    const snapshot = snapshotFor(target);
-    // Every request of a prompt that offers Tools carries them; the spec layer sends them where the target
-    // takes them. A request outside a turn (a drainer, a re-roll) reads a snapshot of its own.
-    const tools = toolsOfferedTo(requestType, allTools, enabledTools, toolsEnabled);
-    const executeTool = tools.length
-      ? turnExecutor ?? snapshotToolExecutor(toolWorld)
-      : undefined;
-    const spec = buildAiRequestSpec(snapshot, {
-      systemPrompt, messages, requestType, maxTokensOverride, ...(executeTool && { tools }), ...(responseSchema && { responseSchema }),
-    });
-
-    // Silent requests are only captured into the AI-context viewer when the inspection toggle is on.
-    const captureSilent = silent && showSilentRequests && attachTurnId !== undefined;
-    // Unique id tying this call's captured request to its response (concurrent same-type calls otherwise
-    // overwrite each other by matching on type + empty-response).
-    const captureId = randomUUID();
-    // Append a captured request payload onto the matching debug turn (the current turn for foreground
-    // requests, or the `attachTurnId` turn for a silent digest). No-op if that turn isn't found.
-    const captureRequest = () => setDebugTurns((prev) => {
-      if (!prev.length) return prev;
-      const idx = silent ? prev.findIndex((t) => t.turnId === attachTurnId) : prev.length - 1;
-      if (idx === -1) return prev;
-      const next = prev.slice();
-      // Attach the dictionary activation to the narration request only (the sole request that injects lore).
+  /** The AI-context viewer's adapter: each capture lands on its turn, the response on its own request. */
+  const captureSink = (requestType: AIRequestType): TransportSink => (event) => {
+    if (event.type === "requestCaptured") {
+      // The dictionary activation rides the narration request only, the sole request that injects lore.
       const dictionary = requestType === "narration" ? pendingDictionaryDebugRef.current ?? undefined : undefined;
-      next[idx] = {
-        ...next[idx],
-        requests: [
-          ...next[idx].requests,
-          {
-            type: requestType,
-            // The wire messages, so the viewer shows exactly what was sent (the `/no_think` switch included).
-            messages: spec.body.messages,
-            id: captureId,
-            statRequestId: statRequest?.id,
-            dictionary,
-            // The sidecar indexes the messages the caller stated; the wire list prepends the system
-            // message, which `toAnatomyBlocks` accounts for when the viewer lines the two up.
-            anatomy,
-            endpoint: toDebugEndpoint(target, spec.body, spec.target.reasoning.dialect),
-          },
-        ],
-      };
-      return next;
-    });
+      updateDebugTurn(event.attachTo, (turn) => ({ ...turn, requests: [...turn.requests, { ...event.record, dictionary }] }));
+    } else if (event.type === "responseCaptured") {
+      updateDebugTurn(event.attachTo, (turn) => ({
+        ...turn,
+        requests: turn.requests.map((r) => (r.id === event.id ? { ...r, ...event.response } : r)),
+      }));
+    }
+  };
 
-    // From a round's Tool calls until the next round's first token, this request is looking up.
+  /** Shows what a failure needs: the rejected override's notice, or the one failure toast. */
+  const failureSink: TransportSink = (event) => {
+    if (event.type !== "failure") return;
+    const { failure } = event;
+    if (failure.kind === "rejectedOverride") surfaceRejectedEndpointOverride(failure, disableEndpointOverride);
+    else toastAiRequestFailure(failure.error, () => setConnectionGuideOpen(true));
+  };
+
+  /** From a round's Tool calls until the next round's first token, the request is looking up. */
+  const lookupSink = (): { sink: TransportSink; end: () => void } => {
     let lookingUp = false;
-    const startLookup = () => {
-      if (lookingUp) return;
-      lookingUp = true;
-      setToolLookups((n) => n + 1);
-    };
-    const endLookup = () => {
+    const end = () => {
       if (!lookingUp) return;
       lookingUp = false;
       setToolLookups((n) => n - 1);
     };
-
-    try {
-      // Surface which request is currently running (silent requests use the digest status indicator instead).
-      if (!silent && !quietLabel) setAiRequestType(requestType);
-
-      // Capture the exact payload into the AI-context viewer.
-      if (!silent || captureSilent) captureRequest();
-
-      let content = "";
-      let finishReason: string | null = null;
-      // Reasoning capture (narration only): native `reasoning`/`reasoning_content` stream field, plus timing so
-      // the block can show "Thought for Ns" — `firstTokenAt` is the first token of any kind, `narrationAt` the
-      // first visible narration token, so their gap is the think time for both native and inline-<think> paths.
-      // The stream's own `firstContentAt` can't stand in for `narrationAt`: inline reasoning arrives as
-      // content, so it would stamp the think time at zero on that path.
-      let reasoningText = "";
-      let firstTokenAt = 0;
-      let narrationAt = 0;
-      let lastLiveReasoningTick = 0;
-      // Opt-in streaming TTS: synthesize narration sentence-by-sentence as it arrives (needs a model).
-      const ttsStreaming = streamNarrationAudio && ttsLoaded && requestType === "narration";
-
-      // Clear the narration for this turn's fresh reveal (reset re-seeds the reveal's base timing) and
-      // mark the reveal live — from here the reveal view shows the streaming gameplayText, not committed.
-      // Runs on the stream's `response` debug, i.e. once the endpoint has accepted the request and has a
-      // body: a dead endpoint throws before that and must leave the previous turn's narration on screen.
-      let streamOpened = false;
-      const openStream = () => {
-        streamOpened = true;
-        if (requestType === "narration") { fadeReveal.reset(); smoothReveal.reset(); setIsRevealingNarration(true); entitySentenceCursorRef.current = 0; assistantAddedRef.current = false; turnReasoningRef.current = { text: "", ms: 0 }; setLiveReasoning({ text: "", ms: 0, active: false }); }
-        if (ttsStreaming) { ttsModalRef.current?.streamStart(); ttsSentenceCursorRef.current = 0; }
-      };
-
-      // Stream the scratchpad into the live block while still thinking (before narration). Two sources feed
-      // it: the native `reasoning` field the stream accumulates, and an inline <think> body still open
-      // inside `content`.
-      const renderLiveReasoning = () => {
-        lastLiveReasoningTick = performance.now();
-        const liveText = [reasoningText.trim(), extractReasoningLive(content)].filter(Boolean).join("\n\n").trim();
-        if (liveText) setLiveReasoning({ text: liveText, ms: 0, active: true });
-      };
-      // The content path needs its own cadence: reasoning events arrive already throttled by the stream,
-      // but inline <think> rides content, which is unthrottled and would re-render the block per token.
-      const pushLiveReasoningThrottled = () => {
-        if (performance.now() - lastLiveReasoningTick <= DEFAULT_REASONING_THROTTLE_MS) return;
-        renderLiveReasoning();
-      };
-
-      // One narration content delta. Everything downstream reads the accumulated `content`.
-      const onNarrationDelta = () => {
-        if (!narrationAt) pushLiveReasoningThrottled();
-        // Trim leading whitespace so the streamed text matches the final `.trim()`'d commit — after a
-        // reasoning model's <think> block is stripped it leaves leading blank lines, and that shift
-        // otherwise makes the reveal re-animate every paragraph at the end.
-        const display = stripReasoningLive(content).replace(/^\s+/, '');
-        if (!narrationAt && display.length > 0) narrationAt = performance.now();
-        // Narration has begun: collapse the reasoning block, stamping the think duration.
-        if (narrationAt && getLiveReasoning().active) {
-          const lr = getLiveReasoning();
-          setLiveReasoning({ text: lr.text, ms: Math.max(0, Math.round(narrationAt - firstTokenAt)), active: false });
-        }
-        // Split once per token; streaming TTS, the entity tab, and the reveal all read these.
-        const segments = splitSentenceSegments(display);
-        if (fadeRevealActive) {
-          // Fade path: reveal only complete sentences (hold the in-progress trailing one). The pacer
-          // times each sentence's arrival and paces the cascade from that measured rate — no
-          // tokens/sec estimate needed here; a burst of sentences just fills its backlog buffer.
-          fadeReveal.push(
-            segments.length > 1
-              ? display.slice(0, display.length - segments[segments.length - 1].length).replace(/\s+$/, '')
-              : '',
-          );
-        } else {
-          // Classic path: trail the full stream, smoothing it out character-by-character.
-          smoothReveal.push(display);
-        }
-
-        // Feed newly-completed sentences to streaming TTS, holding back the last (in-progress) one.
-        if (ttsStreaming) {
-          const completeCount = segments.length - 1;
-          for (let i = ttsSentenceCursorRef.current; i < completeCount; i++) {
-            ttsModalRef.current?.streamSentence(segments[i]);
-          }
-          if (completeCount > ttsSentenceCursorRef.current) ttsSentenceCursorRef.current = completeCount;
-        }
-
-        // Keep the scene list live as each sentence completes: the planner cast is present from the
-        // start, and a name flips from its alias to the real name the moment the narration says it
-        // (with no planner, this falls back to the narration parse). Reapplied authoritatively at the end.
-        const completeSentences = segments.length - 1;
-        const newSentence = completeSentences > entitySentenceCursorRef.current;
-        if (newSentence) {
-          entitySentenceCursorRef.current = completeSentences;
-          const { cast: turnCast, prior } = sceneListCtxRef.current;
-          setVisibleEntities((previous) => buildSceneList({ cast: turnCast, entities: allEntities, narrationSoFar: display, priorNarration: prior, previous }));
-        }
-
-        // Persist the in-progress assistant message: add it once (as soon as narration content
-        // arrives — so an abort before any text still drops the lone user turn), then refresh it only
-        // on sentence boundaries. Writing it every token re-renders the whole app and copies the
-        // history array per token, which compounds as history grows and starves the streaming reveal.
-        // The visible narration comes from the sentence-buffered reveal (gameplayText), not this
-        // message, and the final text is committed once the turn finishes.
-        const shouldPersist = assistantAddedRef.current ? newSentence : display.length > 0;
-        if (shouldPersist) {
-          assistantAddedRef.current = true;
-          const message = {
-            role: "assistant" as const,
-            content: JSON.stringify({
-              narration: display,
-              choices: [],
-              stat_changes: [],
-              turnId: currentTurnIdRef.current,
-            }),
-          };
-          setFullMessageHistory((prev) => {
-            if (prev.length > 0 && prev[prev.length - 1].role === "assistant") {
-              const updatedHistory = [...prev];
-              updatedHistory[updatedHistory.length - 1] = message;
-              return updatedHistory;
-            }
-            return [...prev, message];
-          });
-        }
-      };
-
-      // A round that streamed text ended in calls: that text is not the reply, so clear it from every surface.
-      const retractNarration = () => {
-        if (!content.trim()) return;
-        content = "";
-        narrationAt = 0;
-        if (requestType === "choices") setChoices([]);
-        if (requestType !== "narration") return;
-        fadeReveal.reset(); smoothReveal.reset();
-        entitySentenceCursorRef.current = 0;
-        if (assistantAddedRef.current) {
-          assistantAddedRef.current = false;
-          setFullMessageHistory((prev) => (prev.at(-1)?.role === "assistant" ? prev.slice(0, -1) : prev));
-        }
-        if (ttsStreaming) { ttsModalRef.current?.streamStart(); ttsSentenceCursorRef.current = 0; }
-      };
-
-      // Tool rounds are silent requests: kept for the AI-context viewer only when the inspection toggle is on.
-      const toolRounds: AiToolRound[] = [];
-      const events = streamAiToolLoop(spec, { signal, execute: executeTool, captureRounds: showSilentRequests });
-      for await (const event of events) {
-        if (event.type === "debug") {
-          // The endpoint answered: commit to this turn's reveal. The `request` debug is already captured
-          // above, and a malformed frame is logged rather than failing the turn.
-          if (event.debug.kind === "response") openStream();
-          if (event.debug.kind === "parse") console.error("Error parsing streaming response:", event.debug.error);
-          continue;
-        }
-        if (event.type === "toolRound") { toolRounds.push(event.round); continue; }
-        if (event.type === "toolCalls") { retractNarration(); startLookup(); continue; }
-        if (event.type === "roundStarted") { endLookup(); continue; }
-        if (event.type === "done") {
-          // `done` replaces the running values with the stream's own finals.
-          content = event.result.content;
-          reasoningText = event.result.reasoningText;
-          finishReason = event.result.finishReason;
-          break;
-        }
-        if (!firstTokenAt) firstTokenAt = performance.now();
-        if (event.type === "reasoning") reasoningText = event.text;
-        else content = event.content;
-        // Per-token rendering must not take the turn down with it: one bad sentence split or scene-list
-        // build logs and the stream carries on, the way the SSE loop's own catch does.
-        try {
-          if (event.type === "reasoning") {
-            if (requestType === "narration" && !narrationAt) renderLiveReasoning();
-          } else if (requestType === "narration") {
-            onNarrationDelta();
-          } else if (requestType === "choices") {
-            // Stream choices in live, but not over a still-fading narration: the drain commits them.
-            const choicesList = parseChoices(stripReasoningLive(content));
-            if (choicesList.length > 0 && !(fadeRevealActive && !fadeReveal.isDrained())) setChoices(choicesList);
-          }
-          // For statUpdates type, we do nothing during streaming
-        } catch (e) {
-          console.error("Error parsing streaming response:", e);
-        }
+    const sink: TransportSink = (event) => {
+      if (event.type === "toolCalls" && !lookingUp) {
+        lookingUp = true;
+        setToolLookups((n) => n + 1);
       }
+      if (event.type === "roundStarted") end();
+    };
+    return { sink, end };
+  };
 
-      // Aborted mid-stream: the stream ends gracefully carrying its partial content, but this turn still
-      // drops everything and commits nothing — the narration the player keeps is the assistant message
-      // already persisted during streaming, which the abort handler snapshots.
-      if (signal?.aborted || finishReason === ABORTED_FINISH_REASON) {
-        if (streamOpened) {
-          if (requestType === "narration") { fadeReveal.reset(); smoothReveal.reset(); }
-          if (ttsStreaming) ttsModalRef.current?.streamCancel();
-        }
-        return "";
+  /** Live choices: each delta parses the list, and a retracted round clears it. */
+  const choicesSink: TransportSink = (event) => {
+    if (event.type === "retract") setChoices([]);
+    if (event.type !== "delta") return;
+    // Not over a still-fading narration: the drain commits them.
+    const choicesList = parseChoices(stripReasoningLive(event.content));
+    if (choicesList.length > 0 && !(fadeRevealActive && !fadeReveal.isDrained())) setChoices(choicesList);
+  };
+
+  /** The narration's presentation: reveal, read-aloud, scene list, partial persistence and live reasoning. */
+  const narrationPresenter = (): TransportSink => {
+    let content = "";
+    // The think time is `firstTokenAt` (any token) to `narrationAt` (first visible narration), inline <think> included.
+    let reasoningText = "";
+    let firstTokenAt = 0;
+    let narrationAt = 0;
+    let lastLiveReasoningTick = 0;
+    // Opt-in streaming TTS: synthesize narration sentence-by-sentence as it arrives (needs a model).
+    const ttsStreaming = streamNarrationAudio && ttsLoaded;
+
+    // Clear the narration for this turn's fresh reveal (reset re-seeds the reveal's base timing) and
+    // mark the reveal live — from here the reveal view shows the streaming gameplayText, not committed.
+    // Runs once the endpoint has accepted the request and has a body: a dead endpoint throws before
+    // that and must leave the previous turn's narration on screen.
+    const openStream = () => {
+      fadeReveal.reset(); smoothReveal.reset(); setIsRevealingNarration(true); entitySentenceCursorRef.current = 0; assistantAddedRef.current = false; turnReasoningRef.current = { text: "", ms: 0 }; setLiveReasoning({ text: "", ms: 0, active: false });
+      if (ttsStreaming) { ttsModalRef.current?.streamStart(); ttsSentenceCursorRef.current = 0; }
+    };
+
+    // Stream the scratchpad into the live block while still thinking (before narration). Two sources feed
+    // it: the native `reasoning` field the stream accumulates, and an inline <think> body still open
+    // inside `content`.
+    const renderLiveReasoning = () => {
+      lastLiveReasoningTick = performance.now();
+      const liveText = [reasoningText.trim(), extractReasoningLive(content)].filter(Boolean).join("\n\n").trim();
+      if (liveText) setLiveReasoning({ text: liveText, ms: 0, active: true });
+    };
+    // The content path needs its own cadence: reasoning events arrive already throttled by the stream,
+    // but inline <think> rides content, which is unthrottled and would re-render the block per token.
+    const pushLiveReasoningThrottled = () => {
+      if (performance.now() - lastLiveReasoningTick <= DEFAULT_REASONING_THROTTLE_MS) return;
+      renderLiveReasoning();
+    };
+
+    // One narration content delta. Everything downstream reads the accumulated `content`.
+    const onNarrationDelta = () => {
+      if (!narrationAt) pushLiveReasoningThrottled();
+      // Trim leading whitespace so the streamed text matches the final `.trim()`'d commit — after a
+      // reasoning model's <think> block is stripped it leaves leading blank lines, and that shift
+      // otherwise makes the reveal re-animate every paragraph at the end.
+      const display = stripReasoningLive(content).replace(/^\s+/, '');
+      if (!narrationAt && display.length > 0) narrationAt = performance.now();
+      // Narration has begun: collapse the reasoning block, stamping the think duration.
+      if (narrationAt && getLiveReasoning().active) {
+        const lr = getLiveReasoning();
+        setLiveReasoning({ text: lr.text, ms: Math.max(0, Math.round(narrationAt - firstTokenAt)), active: false });
       }
-
-      // Show the raw output (including any <think> block) in the AI-context viewer, but return the
-      // cleaned text so reasoning never reaches the narration, TTS, choices/stats/location, or history.
-      const rawContent = content.trim();
-      // Teach the capability record what this reply showed. Every request type counts, so a model is judged
-      // on whatever it answered most recently rather than on narration alone.
-      noteReasoningReply(spec.target, reasoningText, rawContent, spec.reasoningLevel ?? null);
-      let finalContent = stripReasoning(content).trim();
-      // On a mid-sentence truncation (hit the token cap), trim back to the last complete sentence.
-      if (requestType === "narration") {
-        // Capture this turn's reasoning: the native `reasoning` stream field plus any inline <think> body
-        // (the two are mutually exclusive in practice). `ms` is the gap from the first token to the first
-        // narration token — the think time. Stored for the block + the committed turn (empty ⇒ no block).
-        const inlineReasoning = extractReasoning(content);
-        const reasoning = [reasoningText.trim(), inlineReasoning].filter(Boolean).join("\n\n").trim();
-        const ms = reasoning ? Math.max(0, Math.round((narrationAt || performance.now()) - (firstTokenAt || narrationAt || performance.now()))) : 0;
-        turnReasoningRef.current = { text: reasoning, ms };
-        setLiveReasoning({ text: reasoning, ms, active: false });
-        if (finishReason === LENGTH_FINISH_REASON) finalContent = trimToLastSentence(finalContent);
-        // Hand the authoritative final text (incl. any held last sentence) to the active reveal. The
-        // pacer drains any remaining backlog at its measured rate (capped to not dawdle on the tail).
-        if (fadeRevealActive) fadeReveal.finish(finalContent);
-        else smoothReveal.finish(finalContent);
-        // Flush any sentence(s) still unsent (incl. a final one with no trailing terminator), then end.
-        if (ttsStreaming) {
-          const segments = splitSentenceSegments(finalContent);
-          for (let i = ttsSentenceCursorRef.current; i < segments.length; i++) {
-            ttsModalRef.current?.streamSentence(segments[i]);
-          }
-          ttsModalRef.current?.streamEnd();
-        }
-      }
-      // Pair the answer with its request in the parity recording, so a replay can feed the same material
-      // back and reach the same next-turn prompts.
-      recordParityResponse(paritySeq, rawContent);
-
-      // Record the raw output on this turn's matching request so the AI-context viewer can show it
-      // (silent digests record onto the turn they summarize, mirroring captureRequest above).
-      if (!silent || captureSilent) setDebugTurns((prev) => {
-        if (!prev.length) return prev;
-        const idx = silent ? prev.findIndex((t) => t.turnId === attachTurnId) : prev.length - 1;
-        if (idx === -1) return prev;
-        const next = prev.slice();
-        const turn = { ...next[idx] };
-        turn.requests = turn.requests.map((r) =>
-          r.id === captureId ? {
-            ...r, response: rawContent,
-            ...(reasoningText.trim() ? { reasoning: reasoningText } : {}),
-            ...(toolRounds.length ? { toolRounds } : {}),
-            statDiagnostics: statRequest ? readStatResponse(finalContent, statRequest).diagnostics : undefined,
-          } : r,
+      // Split once per token; streaming TTS, the entity tab, and the reveal all read these.
+      const segments = splitSentenceSegments(display);
+      if (fadeRevealActive) {
+        // Fade path: reveal only complete sentences (hold the in-progress trailing one). The pacer
+        // times each sentence's arrival and paces the cascade from that measured rate — no
+        // tokens/sec estimate needed here; a burst of sentences just fills its backlog buffer.
+        fadeReveal.push(
+          segments.length > 1
+            ? display.slice(0, display.length - segments[segments.length - 1].length).replace(/\s+$/, '')
+            : '',
         );
-        next[idx] = turn;
-        return next;
-      });
-      return finalContent;
-    } catch (error) {
-      // The text-pass retry speaks for this failure, so it shows no toast of its own.
-      if (spec.body.response_format && textFallback && schemaRejected(error)) throw new SchemaRefused(spec.target, error);
-      // No AbortError case: the stream turns both the fetch rejection and the read rejection into a
-      // graceful `done`, so a user stop lands on the aborted branch above and never reaches here.
-      console.error("Error in makeAIRequest:", error);
-      const rejectedOverride = surfaceRejectedEndpointOverride(error, spec, target.presetName, disableEndpointOverride);
-      if (rejectedOverride) {
-        // A persisted settings change must explain itself even when the caller otherwise suppresses failures.
-        if (silent) throw error;
-      } else if (silent) {
-        // A failed silent request (the digest) is non-fatal — let the drainer swallow it without a toast.
-        throw error;
       } else {
-        // The turn knows this failure toast already showed, because it knows the failed request wasn't silent.
-        toastAiRequestFailure(error, () => setConnectionGuideOpen(true));
+        // Classic path: trail the full stream, smoothing it out character-by-character.
+        smoothReveal.push(display);
       }
-      throw error;
+
+      // Feed newly-completed sentences to streaming TTS, holding back the last (in-progress) one.
+      if (ttsStreaming) {
+        const completeCount = segments.length - 1;
+        for (let i = ttsSentenceCursorRef.current; i < completeCount; i++) {
+          ttsModalRef.current?.streamSentence(segments[i]);
+        }
+        if (completeCount > ttsSentenceCursorRef.current) ttsSentenceCursorRef.current = completeCount;
+      }
+
+      // Keep the scene list live as each sentence completes: the planner cast is present from the
+      // start, and a name flips from its alias to the real name the moment the narration says it
+      // (with no planner, this falls back to the narration parse). Reapplied authoritatively at the end.
+      const completeSentences = segments.length - 1;
+      const newSentence = completeSentences > entitySentenceCursorRef.current;
+      if (newSentence) {
+        entitySentenceCursorRef.current = completeSentences;
+        const { cast: turnCast, prior } = sceneListCtxRef.current;
+        setVisibleEntities((previous) => buildSceneList({ cast: turnCast, entities: allEntities, narrationSoFar: display, priorNarration: prior, previous }));
+      }
+
+      // Persist the in-progress assistant message: add it once (as soon as narration content
+      // arrives — so an abort before any text still drops the lone user turn), then refresh it only
+      // on sentence boundaries. Writing it every token re-renders the whole app and copies the
+      // history array per token, which compounds as history grows and starves the streaming reveal.
+      // The visible narration comes from the sentence-buffered reveal (gameplayText), not this
+      // message, and the final text is committed once the turn finishes.
+      const shouldPersist = assistantAddedRef.current ? newSentence : display.length > 0;
+      if (shouldPersist) {
+        assistantAddedRef.current = true;
+        const message = {
+          role: "assistant" as const,
+          content: JSON.stringify({
+            narration: display,
+            choices: [],
+            stat_changes: [],
+            turnId: currentTurnIdRef.current,
+          }),
+        };
+        setFullMessageHistory((prev) => {
+          if (prev.length > 0 && prev[prev.length - 1].role === "assistant") {
+            const updatedHistory = [...prev];
+            updatedHistory[updatedHistory.length - 1] = message;
+            return updatedHistory;
+          }
+          return [...prev, message];
+        });
+      }
+    };
+
+    // The transport retracted a round's text: clear it from every surface.
+    const retractNarration = () => {
+      content = "";
+      narrationAt = 0;
+      fadeReveal.reset(); smoothReveal.reset();
+      entitySentenceCursorRef.current = 0;
+      if (assistantAddedRef.current) {
+        assistantAddedRef.current = false;
+        setFullMessageHistory((prev) => (prev.at(-1)?.role === "assistant" ? prev.slice(0, -1) : prev));
+      }
+      if (ttsStreaming) { ttsModalRef.current?.streamStart(); ttsSentenceCursorRef.current = 0; }
+    };
+
+    // The final text: stamp this turn's reasoning, hand the reveal its authoritative text, flush read-aloud.
+    const finishNarration = (text: string, raw: string, finalReasoning: string) => {
+      // The native field plus any inline <think> body (mutually exclusive in practice). `ms` is the think
+      // time. Stored for the block + the committed turn (empty ⇒ no block).
+      const reasoning = [finalReasoning.trim(), extractReasoning(raw)].filter(Boolean).join("\n\n").trim();
+      const ms = reasoning ? Math.max(0, Math.round((narrationAt || performance.now()) - (firstTokenAt || narrationAt || performance.now()))) : 0;
+      turnReasoningRef.current = { text: reasoning, ms };
+      setLiveReasoning({ text: reasoning, ms, active: false });
+      // The pacer drains any remaining backlog at its measured rate (capped to not dawdle on the tail).
+      if (fadeRevealActive) fadeReveal.finish(text);
+      else smoothReveal.finish(text);
+      // Flush any sentence(s) still unsent (incl. a final one with no trailing terminator), then end.
+      if (ttsStreaming) {
+        const segments = splitSentenceSegments(text);
+        for (let i = ttsSentenceCursorRef.current; i < segments.length; i++) {
+          ttsModalRef.current?.streamSentence(segments[i]);
+        }
+        ttsModalRef.current?.streamEnd();
+      }
+    };
+
+    return (event) => {
+      if (event.type === "opened") openStream();
+      else if (event.type === "reasoning" || event.type === "delta") {
+        if (!firstTokenAt) firstTokenAt = performance.now();
+        if (event.type === "reasoning") {
+          reasoningText = event.text;
+          if (!narrationAt) renderLiveReasoning();
+        } else {
+          content = event.content;
+          onNarrationDelta();
+        }
+      } else if (event.type === "retract") retractNarration();
+      else if (event.type === "canceled") {
+        fadeReveal.reset(); smoothReveal.reset();
+        if (ttsStreaming) ttsModalRef.current?.streamCancel();
+      } else if (event.type === "done") finishNarration(event.text, event.raw, event.reasoningText);
+    };
+  };
+
+  /** Sends one request through the Request Transport, with the adapters its type presents through. */
+  const sendAiRequest = async (args: TransportRequest): Promise<string> => {
+    const { type: requestType, silent = false, quiet = false } = args;
+    // Surface which request is running (silent requests use the digest status indicator instead).
+    if (!silent && !quiet) setAiRequestType(requestType);
+    const lookups = lookupSink();
+    const sinks = [captureSink(requestType), failureSink, lookups.sink];
+    if (requestType === "narration") sinks.push(narrationPresenter());
+    if (requestType === "choices") sinks.push(choicesSink);
+    try {
+      return await transportRequest(args, transportContext(), (event) => { for (const sink of sinks) sink(event); });
     } finally {
-      endLookup();
+      lookups.end();
     }
   };
 
@@ -3551,7 +3399,7 @@ const GameViewer = ({
       narration,
       sceneCast: cast.map((c) => c.name),
     });
-    const actionTags = await makeAIRequest({ ...request, signal });
+    const actionTags = await sendAiRequest({ ...request, signal });
     if (signal.aborted) return "";
     const line = composeSceneTags({ characters: cast, locationTags, actionTags, places, knownTags });
     // Stored whether or not an image follows, so the player can read and edit what would be sent.
@@ -3688,10 +3536,10 @@ const GameViewer = ({
     });
   }, [isWaitingForAI, sceneImageJob, fullMessageHistory]);
 
-  // Hold the latest makeAIRequest so the digest drainer always calls a fresh closure without
-  // re-running its effect every render (makeAIRequest is rebuilt each render by design).
-  const makeAIRequestRef = useRef(makeAIRequest);
-  makeAIRequestRef.current = makeAIRequest;
+  // Hold the latest sendAiRequest so the digest drainer always calls a fresh closure without
+  // re-running its effect every render (sendAiRequest is rebuilt each render by design).
+  const sendAiRequestRef = useRef(sendAiRequest);
+  sendAiRequestRef.current = sendAiRequest;
 
   // Build + issue the choices/stats requests for the standalone re-rolls (handleRegenerateChoices/Stats),
   // which ask outside a turn and so have no Turn Plan to run — a live turn's copies are the pass records'
@@ -3705,7 +3553,7 @@ const GameViewer = ({
     signal: AbortSignal,
     quiet = false,
   ): Promise<string> =>
-    makeAIRequest({
+    sendAiRequest({
       ...choicesRerollRequest({
         choicesPrompt: resolvedChoicesPrompt, choicesUserPrompt, language, ctx, sceneEntityTokens, action, narration, quiet,
       }),
@@ -3719,7 +3567,7 @@ const GameViewer = ({
     signal: AbortSignal,
     quiet = false,
   ): Promise<string> =>
-    makeAIRequest({
+    sendAiRequest({
       ...statsRerollRequest({
         statUpdatesPrompt: resolvedStatUpdatesPrompt, statUpdatesUserPrompt, ctx, action, narration,
         statCount: activeStats.length, statRequest: snapshot, quiet,
@@ -3775,7 +3623,7 @@ const GameViewer = ({
     setDigestActive(true);
     (async () => {
       try {
-        const digest = await makeAIRequestRef.current(digestRequest({
+        const digest = await sendAiRequestRef.current(digestRequest({
           summaryPrompt, summaryUserPrompt, ctx: contextValues(), playerAction, narration: narrationText, turnId,
         }));
         const trimmed = (digest ?? "").trim();
@@ -3838,7 +3686,7 @@ const GameViewer = ({
     setMilestoneActive(true);
     (async () => {
       try {
-        const reply = await makeAIRequestRef.current(request);
+        const reply = await sendAiRequestRef.current(request);
         const verdict = parse((reply ?? "").trim());
         // Write-time importance: the selector rates a moment once, as it ages in, and the rating rides
         // the turn from then on. Unrated keeps stay unrated (neutral), never zero.
@@ -3879,7 +3727,7 @@ const GameViewer = ({
     if (!narrationText.trim()) return false;
     const playerAction = idx > 0 && fullMessageHistory[idx - 1].role === "user" ? fullMessageHistory[idx - 1].content : "";
     try {
-      const digest = await makeAIRequestRef.current(digestRequest({
+      const digest = await sendAiRequestRef.current(digestRequest({
         summaryPrompt, summaryUserPrompt, ctx: contextValues(), playerAction, narration: narrationText, turnId,
       }));
       const trimmed = (digest ?? "").trim();
@@ -3982,7 +3830,7 @@ const GameViewer = ({
     setDiaryActive(true);
     (async () => {
       try {
-        const entry = await makeAIRequestRef.current(diaryRequest({
+        const entry = await sendAiRequestRef.current(diaryRequest({
           diaryPrompt, ctx: contextValues(), name, narration: narrationText, turnId, allEntities, resolveEntityText,
         }));
         const trimmed = (entry ?? "").trim();
@@ -4016,7 +3864,7 @@ const GameViewer = ({
     setDiscoverActive(true);
     (async () => {
       try {
-        const description = await makeAIRequestRef.current(
+        const description = await sendAiRequestRef.current(
           buildDiscoverRequestRef.current({ name: due.name, turnId: due.turnId, firstPassage: due.narration }),
         );
         // Small models parrot the prompt labels and get token-capped mid-word — sanitize before storing.
@@ -4093,7 +3941,7 @@ const GameViewer = ({
       semantic,
     });
 
-    const response = await makeAIRequestRef.current({
+    const response = await sendAiRequestRef.current({
       ...buildDiscoverRequestRef.current({
         name,
         turnId: record?.sourceTurnId,
