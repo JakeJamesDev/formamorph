@@ -2001,14 +2001,14 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
               {autosaveEnabled && (
                 <Row htmlFor="autosaveSlots" {...rowCopy('autosaveSlots')}>
                   <div className="grid gap-1">
-                    <Input
+                    <ValueSlider
                       id="autosaveSlots"
-                      type="number"
+                      value={autosaveSlots}
                       min={1}
                       max={MAX_AUTOSAVE_SLOTS}
-                      value={autosaveSlots}
-                      onChange={(e) => setAutosaveSlots(Math.min(MAX_AUTOSAVE_SLOTS, Math.floor(numInput(e.target.value, 1))))}
-                      className="w-20"
+                      step={1}
+                      onChange={setAutosaveSlots}
+                      format={String}
                     />
                     {autosaveSlots < autosaveSlotsAtOpen && (
                       <p role="status" className="text-helper text-destructive">

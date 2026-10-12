@@ -448,10 +448,10 @@ function useProvideGameplay() {
   const autosaveFailedRef = useRef(false);
 
   /** Write this turn as a new autosave, then delete the world's oldest past `slots`, so the last `slots` turns
-   *  can always be gone back to. `turn` names the save. Silent on success; toasts once per session on failure
-   *  and keeps trying on later turns. */
+   *  can always be gone back to. `turn` names the save, and a regenerate replaces its turn's autosave. Silent
+   *  on success; toasts once per session on failure and keeps trying on later turns. */
   const autosaveGame = useCallback(async (worldName: string, worldId?: string, turn?: number, slots?: number) => {
-    const trim = autosavesToTrim(await getAllSaveRecords(), worldName, worldId, slots);
+    const trim = autosavesToTrim(await getAllSaveRecords(), worldName, worldId, slots, turn);
     const ok = await saveGame(autosaveName(turn), worldName, worldId, undefined, { isAutosave: true });
     if (ok) {
       for (const id of trim) await deleteSaveRecord(id);
