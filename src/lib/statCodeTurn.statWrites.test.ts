@@ -87,6 +87,18 @@ describe('runStatCodeTurn writes to other stats', () => {
     expect(find((await run([raise, fill, health()])).stats, 'h')).toMatchObject({ value: 150, max: 200 });
   });
 
+  it('lands a stat’s own return inside the max a hub raised in the same run', async () => {
+    const raise = hub('stats.Health.max = 200;');
+    const out = await run([raise, health({ code: 'return 150;' })]);
+    expect(find(out.stats, 'h')).toMatchObject({ value: 150, max: 200 });
+  });
+
+  it('lands a stat’s own value write inside the max its own trait switch raised', async () => {
+    const boost: Trait = { id: 'b', name: 'Boost', statChanges: [{ statId: 'h', value: 100, type: 'max' }] };
+    const out = await run([health({ code: 'traits.Boost.enabled = true; self.value = 150;' })], { bearers: bearers([boost], ['b']) });
+    expect(find(out.stats, 'h')).toMatchObject({ value: 150, max: 200 });
+  });
+
   it('orders a target’s self write and a hub’s write on one field by stat order', async () => {
     const own = health({ code: 'return 5;' });
     const writer = hub('stats.Health.value = 30;');

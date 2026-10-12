@@ -7,7 +7,7 @@ import { allPlaceholders, placeholderOwners } from '@/lib/placeholderHomes';
 import { codePinText } from '@/lib/placeholderPins';
 import { PLACEHOLDER_PATH_SEPARATOR } from '@/lib/placeholders';
 import {
-  CODE_BOUND_FIELDS, entityTraitsPath, executeStatCode, memberPath, SELF_WRITABLE_FIELDS, type CodeBoundField, type PlaceholderWrite,
+  clampToOwnRange, CODE_BOUND_FIELDS, entityTraitsPath, executeStatCode, memberPath, SELF_WRITABLE_FIELDS, type CodeBoundField, type PlaceholderWrite,
   type SandboxEntity, type SandboxPlaceholderNode, type StatWrite, type TraitWrite,
 } from '@/lib/statCodeExecutor';
 import type { AnalysisOptions, CodeEntityNames, CodePlaceholders, MissingName } from '@/lib/statCodeAnalysis';
@@ -267,7 +267,8 @@ export async function runTestCode(
     }),
   ];
   return {
-    error: null, value: outcome.value, writes,
+    // Applies nothing, so the value lands in the range the run left on itself.
+    error: null, value: outcome.value === null ? null : clampToOwnRange(outcome.value, stat as Stat, outcome.bounds), writes,
     ...(pending && {
       pending: [
         ...(personaWrites?.traits ?? []).map((entry) => switchLine(`${entityTraitsPath('')}.`, entry)),

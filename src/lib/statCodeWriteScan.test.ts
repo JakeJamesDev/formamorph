@@ -52,6 +52,25 @@ describe('scanStatWrites', () => {
     expect(scanStatWrites('const url = "http://x";\nself.value = 1;')).toEqual([{ stat: null, field: 'value' }]);
   });
 
+  it('leaves a write form inside a string alone, and still reads a bracket key', () => {
+    expect(scanStatWrites([
+      'const tip = "stats.Health.value = 1";',
+      "console.log('self.max = 2', `stats.Luck.min = 3`);",
+      'stats["Health"].max = 4;',
+    ].join('\n'))).toEqual([{ stat: 'Health', field: 'max' }]);
+  });
+
+  it('leaves a write form in an array of strings alone, and reads a write in a template’s ${}', () => {
+    expect(scanStatWrites('const lines = ["self.value = 1"];')).toEqual([]);
+    expect(scanStatWrites('const note = `rolled ${stats.Luck.value += 1}`;')).toEqual([{ stat: 'Luck', field: 'value' }]);
+  });
+
+  it('reads no postfix step across a line break, as JS reads none', () => {
+    expect(scanStatWrites('const a = stats.Health.value\n--b;')).toEqual([]);
+    expect(scanStatWrites('const a = self.max\n++b;')).toEqual([]);
+    expect(scanStatWrites('stats.Health.value\n= 2;')).toEqual([{ stat: 'Health', field: 'value' }]);
+  });
+
   it('reads a write that follows an opening brace, a semicolon or a line start', () => {
     expect(scanStatWrites('if (a) { self.value = 1 }\nstats.Luck.max = 2')).toEqual([
       { stat: null, field: 'value' },

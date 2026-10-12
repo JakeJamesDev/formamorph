@@ -289,7 +289,7 @@ return base + (clock.daypart === {{when:daypart=night}} ? {{bonus:number=20}} : 
     id: 'builtin-random-roll',
     timing: 'after',
     name: 'Random Per-Turn Roll',
-    description: 'A fresh random value each turn, spread across this stat’s range. Use only one per world. A second draws the same numbers.',
+    description: 'A fresh random value each turn, spread across this stat’s range.',
     code: `// clock.elapsedHours keeps the roll moving even when the clock seed hasn't changed between turns.
 const roll = (Math.random() * 100 + clock.elapsedHours) % 100;
 return self.min + (self.max - self.min) * (roll / 100);`,
@@ -334,7 +334,7 @@ return base - (active ? {{penalty:number=10}} : 0);`,
     id: 'builtin-dice-roll-consequences',
     timing: 'after',
     name: 'Dice Roll With Consequences',
-    description: 'Roll a d20 each turn and pin the placeholder to the value for that roll. A 1 halves one stat. A 20 adds 1 to another. This stat keeps the roll. Set its range to 1–20. Use only one per world. A second draws the same numbers.',
+    description: 'Roll a d20 each turn and pin the placeholder to the value for that roll. A 1 halves one stat. A 20 adds 1 to another. This stat keeps the roll. Set its range to 1–20.',
     // Writes to one stat field apply in stat order. The last write wins.
     code: `const roll = Math.floor(Math.random() * 20) + 1;
 const target = placeholders[{{bandPlaceholder:placeholder}}];

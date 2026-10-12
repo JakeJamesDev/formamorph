@@ -3,7 +3,7 @@
  * (No DOM needed; node keeps the QuickJS WASM engine loading through its filesystem path.)
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { executeStatCode, type SandboxPlaceholderNode, type SandboxTrait, type StatCodeRunOptions } from './statCodeExecutor';
+import { clampToOwnRange, executeStatCode, type SandboxPlaceholderNode, type SandboxTrait, type StatCodeRunOptions } from './statCodeExecutor';
 import { phMap, phNode, phUnpin, phWrite } from '@/test/sandboxPlaceholders';
 import { PLACEHOLDER_ENTRY_MEMBERS } from './statCodePaths';
 import type { Stat } from '@/types';
@@ -35,10 +35,10 @@ describe('executeStatCode', () => {
     expect(await executeStatCode('return 42;', [], makeStat({}))).toEqual({ value: 42, error: null });
   });
 
-  it('clamps the result to the stat min/max', async () => {
+  it('hands back a returned number as written, for the turn to clamp once every bound has landed', async () => {
     const stat = makeStat({ min: 0, max: 50 });
-    expect((await executeStatCode('return 999;', [], stat)).value).toBe(50);
-    expect((await executeStatCode('return -999;', [], stat)).value).toBe(0);
+    expect((await executeStatCode('return 999;', [], stat)).value).toBe(999);
+    expect((await executeStatCode('return -999;', [], stat)).value).toBe(-999);
   });
 
   it('errors when the code does not return a number', async () => {
@@ -226,8 +226,8 @@ describe('executeStatCode self and turn inputs', () => {
     expect(await run('self.value = self.value; return undefined;')).toEqual({ value: null, error: null });
   });
 
-  it('clamps a self.value write to the stat range', async () => {
-    expect((await run('self.value = 500;')).value).toBe(100);
+  it('hands back a self.value write as written', async () => {
+    expect((await run('self.value = 500;')).value).toBe(500);
   });
 
   it('fails on a non-number return even after a valid write', async () => {
@@ -268,13 +268,18 @@ describe('executeStatCode bound writes', () => {
     expect(await run('return self.max;')).toEqual({ value: 100, error: null });
   });
 
-  it('clamps a value write to the range the same run wrote', async () => {
-    expect(await run('self.max = 30; self.value = 90;')).toEqual({ value: 30, error: null, bounds: { max: 30 } });
-    expect(await run('self.min = 50; return 20;')).toEqual({ value: 50, error: null, bounds: { min: 50 } });
+  it('hands back a value write beside the bounds the same run wrote, unclamped', async () => {
+    expect(await run('self.max = 30; self.value = 90;')).toEqual({ value: 90, error: null, bounds: { max: 30 } });
+    expect(await run('self.min = 50; return 20;')).toEqual({ value: 20, error: null, bounds: { min: 50 } });
   });
 
-  it('floors the written max at the written min when it clamps the value', async () => {
-    expect((await run('self.min = 70; self.max = 20; self.value = 0;')).value).toBe(70);
+  it('clamps to the range the run left on itself, the written max floored at the written min', () => {
+    expect(clampToOwnRange(90, me, { max: 30 })).toBe(30);
+    expect(clampToOwnRange(20, me, { min: 50 })).toBe(50);
+    expect(clampToOwnRange(0, me, { min: 70, max: 20 })).toBe(70);
+    expect(clampToOwnRange(500, me)).toBe(100);
+    expect(clampToOwnRange(0, me)).toBe(10);
+    expect(clampToOwnRange(3, me, { min: 5 })).toBe(10);
   });
 
   it('fails the run on a bound that is not a finite number, discarding every write', async () => {

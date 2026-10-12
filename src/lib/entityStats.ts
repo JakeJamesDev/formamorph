@@ -1,7 +1,7 @@
 // Entity stats in play: each authored entity's stat values, seeded at a new game and backfilled on load, and
 // the owners whose regen and code run each turn.
 
-import type { Entity, EntityStatChanges, EntityStatValues, PersonaRef, PlayerStat, StatGroup } from '@/types';
+import type { Entity, EntityStatChanges, EntityStatValues, LegacyCodeBoundsStat, PersonaRef, PlayerStat, StatGroup } from '@/types';
 import { inCast, playsAs } from './bearers';
 import { backfillPlayerStats } from './statBackfill';
 import { activeStatEnabled, enabledStats } from './traitEffects';
@@ -165,6 +165,20 @@ export function withOwnerCodeResults(
 export function backfillGameStateEntityStats<S extends { entityStats?: EntityStatValues }>(state: S, entities: readonly StatEntity[]): S {
   const next = backfillEntityStats(state.entityStats, entities);
   return next === state.entityStats || !Object.keys(next).length ? state : { ...state, entityStats: next };
+}
+
+/** A saved state with no entity stat carrying stored code bounds; the same state when none carries them. */
+export function withoutEntityCodeBounds<S extends { entityStats?: EntityStatValues }>(state: S): S {
+  const saved = state.entityStats;
+  const carries = (stat: LegacyCodeBoundsStat) => 'codeBounds' in stat;
+  if (!saved || !Object.values(saved).some((stats) => stats.some(carries))) return state;
+  const entityStats = Object.fromEntries(Object.entries(saved).map(([id, stats]) =>
+    [id, stats.map((stat: LegacyCodeBoundsStat) => {
+      if (!carries(stat)) return stat;
+      const { codeBounds: _dropped, ...rest } = stat;
+      return rest;
+    })]));
+  return { ...state, entityStats };
 }
 
 /** The entity owners whose regen and code run, in authored order: every entity in the playthrough that holds

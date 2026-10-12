@@ -2,7 +2,7 @@ import type { CodeBounds, Stat } from '@/types';
 import { getQuickJS, shouldInterruptAfterDeadline, type QuickJSWASMModule } from 'quickjs-emscripten';
 import { clamp } from './utils';
 import { VALUE_JOIN } from './placeholders';
-import { hasEntityKey } from './statCodeNames';
+import { hasEntityKey, statsByCodeName } from './statCodeNames';
 import {
   PLACEHOLDER_ENTRY_MEMBERS, placeholderPathExpression, placeholderPathLabel, type PlaceholderPathRoot,
 } from './statCodePaths';
@@ -65,8 +65,8 @@ export const SELF_WRITABLE_FIELDS: readonly string[] = ['value', ...CODE_BOUND_F
 export type StatWrite = { id: string; name: string } & Partial<Pick<StatNumbers, 'value' | CodeBoundField>>;
 
 export interface StatCodeResult {
-  /** The value the code set, by return or by `self.value`, clamped to the range after this run's bound
-   *  writes; null when it left the value alone. */
+  /** The value the code set, by return or by `self.value`, as written: the turn clamps it once every bound
+   *  and trait switch has landed. Null when it left the value alone. */
   value: number | null;
   error: string | null;
   /** Present exactly when `error` is. */
@@ -224,6 +224,15 @@ const marshalSnapshot = (stat: Stat): StatSnapshot => ({
   regen: stat.regen || 0,
 });
 
+/** `value` clamped to the range an authored `stat` holds after a run's own bound writes, the min floored at
+ *  the authored min and the max at the min: where the value lands when no other writer and no trait moves
+ *  the bounds. */
+export function clampToOwnRange(value: number, stat: Stat, bounds: CodeBounds = {}): number {
+  const snapshot = marshalSnapshot(stat);
+  const min = Math.max(snapshot.min, bounds.min ?? snapshot.min);
+  return clamp(value, min, Math.max(min, bounds.max ?? snapshot.max));
+}
+
 /** A stat's entry in a `stats` map: its snapshot, whether it is on, and what the turn did to it. */
 function marshalStat(stat: Stat, inputs: StatTurnInputs | undefined, enabled: boolean) {
   const snapshot = marshalSnapshot(stat);
@@ -250,11 +259,9 @@ type StatEntry = ReturnType<typeof marshalStat>;
 const marshalStats = ({ stats, turn, enabled }: SandboxStats): StatEntry[] =>
   stats.map((stat) => marshalStat(stat, turn?.[stat.id], enabled?.[stat.id] !== false));
 
-/** The entries a `stats` map keys: a live stat wins a shared name over a switched-off one; within each, the
- *  later one wins. */
+/** The entries a `stats` map keys, in stat order. */
 function keyedStatEntries(entries: readonly StatEntry[]): StatEntry[] {
-  const owner = new Map([...entries.filter((entry) => !entry.enabled), ...entries.filter((entry) => entry.enabled)]
-    .map((entry) => [entry.name, entry]));
+  const owner = statsByCodeName(entries, (entry) => entry.name, (entry) => entry.enabled);
   return entries.filter((entry) => owner.get(entry.name) === entry);
 }
 
@@ -908,8 +915,8 @@ function readStatWrites(
     for (const pair of Array.isArray(assigned) ? assigned : []) {
       if (!Array.isArray(pair) || !isWritableField(pair[0])) continue;
       const [field, number] = pair as [keyof StatNumbers, unknown];
-      // An unknown name reads its blank entry, whose value is zero.
-      if (field === 'value' && Object.is(number, entry?.value ?? 0)) continue;
+      // An unknown name has no value to keep, so any assignment through it is a write.
+      if (field === 'value' && entry && Object.is(number, entry.value)) continue;
       if (typeof number !== 'number' || !Number.isFinite(number)) return { error: `${path}.${field} must be a finite number` };
       fields[field] = number;
     }
@@ -954,7 +961,7 @@ const EMPTY_PERSONA: SandboxEntity = { name: '', traits: [] };
 
 /** Run a stat's untrusted `code` in an isolated QuickJS (WASM) VM over `stats`, `self`, the turn inputs,
  *  the clock, `placeholders`, `traits`, `entities`, `persona` and `dictionaries`. A number return or a `self.value` write sets the
- *  value, clamped; a `self.min`, `self.max` or `self.regen` write sets that bound; a write to another entry of
+ *  value; a `self.min`, `self.max` or `self.regen` write sets that bound; a write to another entry of
  *  `stats` sets that stat's field the same way; a `traits.<name>.enabled`
  *  write switches that trait, and an `entities.<entity>.traits.<name>.enabled` write that entity's own; a
  *  failure discards every write. Of two placeholders, traits or entities sharing a name, the later one is the
@@ -1120,10 +1127,8 @@ export const executeStatCode = async (
         ...readDictionaryWrites(dictionariesDump),
       ];
 
-      const min = bounds.min ?? selfData.min;
-      const max = Math.max(min, bounds.max ?? selfData.max);
       const settled = (value: number | null): StatCodeResult => ({
-        value: value === null ? null : clamp(value, min, max),
+        value,
         error: null,
         ...(Object.keys(bounds).length ? { bounds } : {}),
         ...(statWrites.writes.length ? { statWrites: statWrites.writes } : {}),

@@ -189,13 +189,12 @@ function bases(stat: PlayerStat) {
 
 const CODE_BOUND_KEYS = ['min', 'max', 'regen'] as const satisfies readonly (keyof CodeBoundDeltas)[];
 
-/** A stat's bounds from every layer under code, before the max is floored at the min. A trait may raise a
- *  min and another may lower that raise back, but no trait digs below the author's floor. */
+/** A stat's bounds from every layer under code, before any floor. A code delta is measured against these. */
 function boundsUnderCode(stat: PlayerStat, active: readonly Trait[]): Required<CodeBoundDeltas> {
   const base = bases(stat);
   const contrib = traitContributions(stat.id, active);
   return {
-    min: base.min + Math.max(0, contrib.min),
+    min: base.min + contrib.min,
     max: base.max + contrib.max + (stat.aiMaxDelta ?? 0),
     regen: base.regen + contrib.regen,
   };
@@ -203,16 +202,20 @@ function boundsUnderCode(stat: PlayerStat, active: readonly Trait[]): Required<C
 
 /**
  * Recompute every stat's min, max and regen from its bases, the active traits, the accumulated AI max delta
- * and the code delta. Values are untouched — this is bounds only. Max is floored at the effective min so no
- * layer can invert the range.
+ * and the code delta. Values are untouched — this is bounds only. The min is floored at the authored base
+ * min, traits and code together, so no layer digs below the author's floor; the max is floored at that min
+ * so no layer can invert the range. An older save's stored code bound, until the load settle books it as a
+ * delta, replaces its field outright, as that save read it.
  */
 export function deriveEffectiveStats(stats: PlayerStat[], active: readonly Trait[]): PlayerStat[] {
   return stats.map((stat) => {
     const under = boundsUnderCode(stat, active);
     const code = stat.codeDelta;
-    const min = under.min + (code?.min ?? 0);
-    const max = Math.max(min, under.max + (code?.max ?? 0));
-    const regen = under.regen + (code?.regen ?? 0);
+    // A live stat never carries the key; one loaded from an older save does until the settle runs.
+    const stored = (stat as LegacyCodeBoundsStat).codeBounds;
+    const min = stored?.min ?? Math.max(bases(stat).min, under.min + (code?.min ?? 0));
+    const max = Math.max(min, stored?.max ?? under.max + (code?.max ?? 0));
+    const regen = stored?.regen ?? under.regen + (code?.regen ?? 0);
     if (min === stat.min && max === stat.max && regen === (stat.regen ?? 0)) return stat;
     return { ...stat, min, max, regen };
   });
@@ -251,8 +254,8 @@ export function withCodeDelta(
 /**
  * Turn the code bounds an older save stored on its player stats into code deltas, under the player's stat
  * traits in force: each delta is the stored bound minus the bound every other layer derives. The effective
- * bounds stay as they were, and a stat without stored bounds is the same object, so a second pass changes
- * nothing.
+ * bounds stay as they were, except a stored min below the authored min, which rises to it. A stat without
+ * stored bounds is the same object, so a second pass changes nothing.
  */
 export function codeBoundsToDeltas(stats: readonly LegacyCodeBoundsStat[], active: readonly Trait[]): PlayerStat[] {
   return stats.map((stat) => {

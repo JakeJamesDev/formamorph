@@ -20,7 +20,7 @@ import { activeTraits, recoverStatBases, type AppliedTraitValues } from '../lib/
 import { heldEntityIds, withHeldOwners } from '../lib/ownedTraitState';
 import { pageAssistantIndex, pageNextActionIndex, placeSnapshot } from '../lib/turnHistory';
 import { backfillGameStateStats } from '../lib/statBackfill';
-import { backfillEntityStats, backfillGameStateEntityStats, entityStatDeltas } from '../lib/entityStats';
+import { backfillEntityStats, backfillGameStateEntityStats, entityStatDeltas, withoutEntityCodeBounds } from '../lib/entityStats';
 import { deltasOf, useStatDeltas } from '../lib/useStatDeltas';
 import { PLAYER_OWNER } from '../lib/statOwners';
 import { normalizeVisibleEntities } from '../lib/sceneEntities';
@@ -469,9 +469,10 @@ function useProvideGameplay() {
   const loadGame = useCallback(async (
     saveId: string, locations: GameLocation[], worldStats: Stat[] = [], worldEntities?: readonly Pick<Entity, 'id' | 'stats'>[],
   ) => {
-    /** The state with every stat the world has since added, the player's and each entity's. */
+    /** The state with every stat the world has since added, the player's and each entity's, and no entity stat
+     *  carrying stored code bounds. */
     const backfilled = (state: GameState) => {
-      const players = backfillGameStateStats(state, worldStats);
+      const players = backfillGameStateStats(withoutEntityCodeBounds(state), worldStats);
       return worldEntities ? backfillGameStateEntityStats(players, worldEntities) : players;
     };
     try {

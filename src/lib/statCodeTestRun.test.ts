@@ -25,6 +25,11 @@ describe('runTestCode bound writes', () => {
     expect(report.writes).toHaveLength(1);
   });
 
+  it('reports the result in the range the run left on itself', async () => {
+    expect((await runTestCode('self.max = 60; return 90;', 'after', health, statCodeNames(world))).value).toBe(60);
+    expect((await runTestCode('return 500;', 'after', health, statCodeNames(world))).value).toBe(100);
+  });
+
   it.each(['value', 'min', 'max', 'regen'])('fails on null written to self.%s and lists no writes', async (field) => {
     const report = await runTestCode(`self.max = 60; self.${field} = null;`, 'after', health, statCodeNames(world));
     expect(report.error).toContain(`self.${field} must be`);
