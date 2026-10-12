@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { autosaveName, autosavePlan, findAutosaveId, AUTOSAVE_NAME } from './autosave';
+import { autosaveName, autosavesToTrim, findAutosaveId, AUTOSAVE_NAME } from './autosave';
 import type { SaveRecord } from '@/types';
 
 const rec = (over: Partial<SaveRecord>): SaveRecord =>
@@ -38,29 +38,28 @@ describe('rolling autosaves', () => {
   const at = (id: string, minute: number, over: Partial<SaveRecord> = {}) =>
     rec({ id, worldId: 'w1', isAutosave: true, currentState: { timestamp: new Date(Date.UTC(2026, 8, 29, 12, minute)).toISOString() } as never, ...over });
 
-  it('keeps one autosave by default, overwritten each turn', () => {
-    expect(autosavePlan([], 'Any', 'w1')).toEqual({ trim: [] });
-    expect(autosavePlan([at('a', 1)], 'Any', 'w1')).toEqual({ slotId: 'a', trim: [] });
+  it('keeps one autosave by default, the old one deleted each turn', () => {
+    expect(autosavesToTrim([], 'Any', 'w1')).toEqual([]);
+    expect(autosavesToTrim([at('a', 1)], 'Any', 'w1')).toEqual(['a']);
   });
 
-  it('opens a new slot until the world has as many as it keeps, then overwrites the oldest', () => {
+  it('deletes nothing until the world has as many as it keeps, then the oldest', () => {
     const four = [at('a', 4), at('b', 1), at('c', 3), at('d', 2)];
-    expect(autosavePlan(four, 'Any', 'w1', 5)).toEqual({ trim: [] });
+    expect(autosavesToTrim(four, 'Any', 'w1', 5)).toEqual([]);
     const five = [...four, at('e', 5)];
-    expect(autosavePlan(five, 'Any', 'w1', 5)).toEqual({ slotId: 'b', trim: [] });
+    expect(autosavesToTrim(five, 'Any', 'w1', 5)).toEqual(['b']);
   });
 
-  it('trims the oldest extras once the setting is lowered, and overwrites the newest of those that go', () => {
+  it('deletes the oldest extras once the setting is lowered', () => {
     const five = [at('a', 4), at('b', 1), at('c', 3), at('d', 2), at('e', 5)];
-    // Oldest first: b, d, c, a, e. Keeping two leaves e and the new save, which takes the place of a, the
-    // newest that goes.
-    expect(autosavePlan(five, 'Any', 'w1', 2)).toEqual({ slotId: 'a', trim: ['b', 'd', 'c'] });
+    // Oldest first: b, d, c, a, e. Keeping two leaves e and the new save.
+    expect(autosavesToTrim(five, 'Any', 'w1', 2)).toEqual(['b', 'd', 'c', 'a']);
   });
 
   it('counts only this world\'s autosaves, never a manual save', () => {
     const records = [at('a', 1), at('b', 2), at('c', 3), at('d', 4), at('x', 0, { worldId: 'w2' }), at('m', 0, { isAutosave: false })];
-    expect(autosavePlan(records, 'Any', 'w1', 5)).toEqual({ trim: [] });
-    expect(autosavePlan(records, 'Any', 'w1', 4)).toEqual({ slotId: 'a', trim: [] });
+    expect(autosavesToTrim(records, 'Any', 'w1', 5)).toEqual([]);
+    expect(autosavesToTrim(records, 'Any', 'w1', 4)).toEqual(['a']);
   });
 
   it('names an autosave by its turn', () => {
