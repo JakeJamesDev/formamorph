@@ -24,7 +24,7 @@ const autosaveNames = (page: Page) => page.evaluate(() => new Promise<string[]>(
 }));
 
 test('seven turns keeping five leave the five latest autosaves, named by turn, and lowering it to two trims the rest', async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== 'desktop', 'storage behaviour, not layout');
+  test.skip(testInfo.project.name !== 'desktop', 'storage behavior, not layout');
   page.on('pageerror', (error) => console.error(error.message));
   await page.route('**/api/v0/models', (route) => route.fulfill({ status: 404 }));
   await page.route('**/v1/models', (route) => route.fulfill({ json: { data: [{ id: 'e2e-model' }] } }));
@@ -52,7 +52,7 @@ test('seven turns keeping five leave the five latest autosaves, named by turn, a
   const settings = page.getByRole('dialog', { name: 'Settings' });
   await settings.getByRole('tab', { name: 'Data' }).click();
   await settings.getByLabel('Autosaves Kept').fill('2');
-  await expect(settings.getByRole('status').filter({ hasText: 'past 2 are deleted' })).toBeVisible();
+  await expect(settings.getByRole('status').filter({ hasText: 'autosaves past 2 on its next autosave' })).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(settings).toBeHidden();
   // Reopened, 2 is where it now stands: nothing was lowered this time, so no warning.
@@ -60,7 +60,7 @@ test('seven turns keeping five leave the five latest autosaves, named by turn, a
   await page.getByRole('button', { name: 'Settings' }).click();
   await settings.getByRole('tab', { name: 'Data' }).click();
   await expect(settings.getByLabel('Autosaves Kept')).toHaveValue('2');
-  await expect(settings.getByText(/are deleted on its next autosave/)).toHaveCount(0);
+  await expect(settings.getByText(/on its next autosave/)).toHaveCount(0);
   await page.keyboard.press('Escape');
   await expect(settings).toBeHidden();
   await play(page, 'I knock once more.');

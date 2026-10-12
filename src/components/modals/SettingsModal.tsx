@@ -2012,7 +2012,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                     />
                     {autosaveSlots < autosaveSlotsAtOpen && (
                       <p role="status" className="text-helper text-destructive">
-                        Each world&apos;s oldest autosaves past {autosaveSlots} are deleted on its next autosave.
+                        Deletes each world&apos;s oldest autosaves past {autosaveSlots} on its next autosave
                       </p>
                     )}
                   </div>
