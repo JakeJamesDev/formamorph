@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { liveChipScene, type LiveSceneSources } from './liveScene';
-import { chipValues } from './chipValues';
+import { chipValues, entityStatsField } from './chipValues';
 import { resolveBearers, type BearerWorld } from '../bearers';
 import { resolveBearerText, resolveEntityText } from '../placeholders';
 import { buildCharacterUserMessage, buildDiaryUserMessage } from '../stagedPlanning';
@@ -210,6 +210,38 @@ describe('the live adapter', () => {
 
     it('holds none for a playthrough with no entity stats', () => {
       expect(chipValues(liveChipScene(sources()))['<ENTITIES>']).not.toContain('stats:');
+    });
+
+    describe('in the character pass', () => {
+      // The previous turn moved Trust from its authored 6 to 9.
+      const ledger: Entity = { ...harbormaster, stats: [trust] };
+      const scene = liveChipScene(sources({
+        entities: [ledger, porter], allEntities: [ledger, porter],
+        entityStats: { harbormaster: [{ ...trust, value: 9, description: 'Calm on {{deck}}.' }] },
+      }));
+      const brief = (name: string, entity?: Entity) => buildCharacterUserMessage({
+        character: { name, entity }, stats: entityStatsField(scene, entity), scene: '', action: 'Wave.',
+      });
+
+      it("gives a character its own stats after its background, as the narration's Entities chip gives them", () => {
+        const field = entityStatsField(scene, ledger);
+        expect(field).toContain('**Trust:** 9/10');
+        expect(field).toContain('Calm on a wet deck.');
+        expect(chipValues(scene)['<ENTITIES|markdown>']).toContain(field);
+        expect(brief('Harbormaster', ledger)).toContain(`not this exact moment): Keeps the ledger.\n${field.trimEnd()}\n\n`);
+      });
+
+      it('gives no stats field to a character with no stats, or to one the director introduced', () => {
+        expect(entityStatsField(scene, porter)).toBe('');
+        expect(brief('Porter', porter)).not.toContain('stats');
+        expect(entityStatsField(scene, undefined)).toBe('');
+        expect(brief('the ferryman')).not.toContain('stats');
+        // The builder holds the same rule: a field handed to an ad-hoc character stays out.
+        const adHoc = buildCharacterUserMessage({
+          character: { name: 'the ferryman' }, stats: entityStatsField(scene, ledger), scene: '', action: 'Wave.',
+        });
+        expect(adHoc).not.toContain('stats');
+      });
     });
 
     describe('of the entities the player plays as', () => {

@@ -319,19 +319,24 @@ export function matchCastToEntities(
 const entityBlurb = (entity: Entity): string =>
   entity.aiSummary?.trim() || entity.aiDescription?.trim() || "";
 
-/** Build the user message for one character's motivation pass (entity vs. ad-hoc identity line). */
+/**
+ * Build the user message for one character's motivation pass (entity vs. ad-hoc identity line). `stats` is a
+ * defined character's own stats field, rendered as the Entities chip renders it; it follows the background.
+ */
 export function buildCharacterUserMessage(args: {
   character: ChosenCharacter;
+  stats?: string;
   scene: string;
   action: string;
   diary?: string[];
   recap?: string;
 }): string {
-  const { character, scene, action, diary, recap } = args;
+  const { character, stats, scene, action, diary, recap } = args;
   // The blurb is a general baseline, not this turn's pose — framed so a static description doesn't
   // re-anchor the character to its opening stance every turn (the recap/scene carry the live situation).
+  const statsField = stats?.trim() ? `\n${stats.trimEnd()}` : "";
   const identity = character.entity
-    ? `You are ${character.name}.\nMy background (who I am in general, not this exact moment): ${entityBlurb(character.entity) || "(no description provided)"}`
+    ? `You are ${character.name}.\nMy background (who I am in general, not this exact moment): ${entityBlurb(character.entity) || "(no description provided)"}${statsField}`
     : `You are ${character.name}.\n(Introduced by the director and not a predefined character — portray yourself as a fitting minor presence.)`;
 
   const diaryBlock = diary && diary.length

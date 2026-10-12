@@ -101,7 +101,7 @@ import { schemaAccepted } from "../lib/reasoningEffort";
 import { completeSentencePrefix, narrationStream, type NarrationListener } from "../lib/aiRequest/narrationStream";
 import { parseTurnContent, recentParticipants, collectCharacterDiary } from "../lib/turnDigest";
 import { navigableDestinations } from "../lib/locationContext";
-import { chipValues, sceneEntityChipValues } from "../lib/chipValues/chipValues";
+import { chipValues, entityStatsField, sceneEntityChipValues } from "../lib/chipValues/chipValues";
 import { useLiveChipScene, type SceneWrites } from "../lib/chipValues/liveScene";
 import { buildToolSnapshot, type ToolMemorySource } from "../lib/tools/toolSnapshot";
 import { snapshotToolExecutor } from "../lib/tools/toolOffer";
@@ -2637,6 +2637,7 @@ const GameViewer = ({
                   name: member.name,
                   stance: member.stance,
                   entity: member.entity,
+                  stats: entityStatsField(castScene, member.entity),
                   diary: diaryFor(member.name),
                 })),
               },

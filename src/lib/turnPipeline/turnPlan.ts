@@ -124,6 +124,8 @@ export interface TurnPassSubject {
   stance?: string;
   /** The defined entity this name resolves to; absent for an ad-hoc, planner-invented name. */
   entity?: Entity;
+  /** The character's own stats field, as the narration's Entities chip renders it this turn. Absent for none. */
+  stats?: string;
   /** The character's own diary entries, oldest first, as the motivation pass is fed them. */
   diary?: string[];
   /** What the story showed of a noted character after their first passage, oldest first. Only a rewrite
