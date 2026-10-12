@@ -38,10 +38,12 @@ function WithWorld({ world, children }: { world: World; children: ReactNode }) {
  */
 export function renderGameViewer(
   world: World,
-  { onExitToMenu = () => {}, registry = null, children }: {
+  { onExitToMenu = () => {}, registry = null, children, inGameplay }: {
     onExitToMenu?: () => void;
     registry?: SurfaceReporter | null;
     children?: ReactNode;
+    /** Rendered beside the game view, inside its Gameplay provider, so a probe can read play state. */
+    inGameplay?: ReactNode;
   } = {},
 ) {
   stubReachableEndpoint();
@@ -62,6 +64,7 @@ export function renderGameViewer(
                           <SurfaceLayer id="gameViewer">
                             <GameplayProvider>
                               <GameViewer initialCharacterData={null} onExitToMenu={onExitToMenu} />
+                              {inGameplay}
                             </GameplayProvider>
                           </SurfaceLayer>
                         </SurfaceReporterContext.Provider>
