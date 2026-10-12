@@ -1,8 +1,8 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { renderGameViewer } from '@/test/gameViewer';
+import { harborWorld, renderGameViewer } from '@/test/gameViewer';
 import { useGameplay } from '@/contexts/GameplayContext';
-import type { ChatMessage, World } from '@/types';
+import type { ChatMessage } from '@/types';
 
 /** The partial assistant message a streamed narration persists, seen through the history it writes. */
 
@@ -15,15 +15,6 @@ vi.mock('react-toastify', () => ({
   toast: Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn(), info: vi.fn(), warn: vi.fn(), dismiss: vi.fn(), isActive: vi.fn() }),
   ToastContainer: () => null,
 }));
-
-const WORLD = {
-  id: 'w1',
-  worldOverview: {
-    name: 'Sedge Landing', description: '', author: '', thumbnail: null, bgm: null,
-    systemPrompt: '', use3DModel: false, tags: [],
-  },
-  stats: [], locations: [{ id: 'harbor', name: 'Harbor', isStarting: true }], entities: [], traits: [], statUpdates: [],
-} as unknown as World;
 
 /** Every history the game view rendered, in order. */
 let histories: ChatMessage[][];
@@ -66,7 +57,7 @@ function stubModel() {
 const settle = () => new Promise((resolve) => setTimeout(resolve, 50));
 
 async function startOpeningTurn() {
-  renderGameViewer(WORLD, { inGameplay: <HistoryProbe /> });
+  renderGameViewer(harborWorld(), { inGameplay: <HistoryProbe /> });
   fireEvent.click(await screen.findByRole('button', { name: 'Keep Playing' }));
   const model = stubModel();
   const box = await screen.findByPlaceholderText(/Type your action/);

@@ -36,8 +36,6 @@ export interface TransportRequest {
   /** Fails without a toast, and is captured only with the inspection toggle on, onto `attachTurnId`'s turn. */
   silent?: boolean;
   attachTurnId?: string;
-  /** Skips the status label; a concurrent batch sets one label itself. The transport never reads it. */
-  quiet?: boolean;
   statRequest?: StatRequestSnapshot;
   responseSchema?: ResponseSchema;
   /** What the request sends instead when the endpoint refuses its schema. */

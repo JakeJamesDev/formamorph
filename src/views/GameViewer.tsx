@@ -99,6 +99,7 @@ import { transportRequest, type TransportContext, type TransportRequest, type Tr
 import { toastAiRequestFailure } from "../lib/aiRequest/aiRequestFailureToast";
 import { schemaAccepted } from "../lib/reasoningEffort";
 import { completeSentencePrefix, narrationStream, type NarrationListener } from "../lib/aiRequest/narrationStream";
+import { fanOut } from "../lib/aiRequest/fanOut";
 import { parseTurnContent, recentParticipants, collectCharacterDiary } from "../lib/turnDigest";
 import { navigableDestinations } from "../lib/locationContext";
 import { chipValues, entityStatsField, sceneEntityChipValues } from "../lib/chipValues/chipValues";
@@ -330,6 +331,12 @@ const CHOICES_PRESENCE_TURNS = 3;
 
 const NO_OWNED_TRAITS: OwnedTraitPicks = {};
 const NO_PASSES: ReadonlySet<BackgroundPassKind> = new Set();
+
+/** A transport request plus the view's own status-label switch. */
+interface ViewRequest extends TransportRequest {
+  /** Skips the status label; a concurrent batch sets one label itself. */
+  quiet?: boolean;
+}
 
 const GameViewer = ({
   initialTraits = [],
@@ -856,7 +863,7 @@ const GameViewer = ({
   const [ttsGenerating, setTtsGenerating] = useState(false);
   const [ttsProgress, setTtsProgress] = useState<TTSProgress | null>(null);
   const ttsModalRef = useRef<TTSModalHandle>(null);
-  // This turn's scene-list inputs, read by the narration's scene-list adapter (which lives at component
+  // This turn's scene-list inputs, read by the narration's scene-list listener (which lives at component
   // scope, not inside the turn function): the planner cast (null in Off/Inline) and the prior-narration
   // reveal corpus. Set just before the narration request each turn.
   const sceneListCtxRef = useRef<{ cast: DirectorCastMember[] | null; prior: string }>({ cast: null, prior: "" });
@@ -1575,7 +1582,7 @@ const GameViewer = ({
 
   // The milestone turn ids removed from every stage's history: the selector's verdict (only over turns
   // it actually saw; unseen turns always survive) with the player's pins applied on top. Recomputed
-  // cheaply — the AI call itself lives in the selection drainer below. Only AGED candidates filter
+  // cheaply — the AI call itself lives in the Background Pass Queue below. Only AGED candidates filter
   // context; a fresh turn's verdict is display-only until it leaves the narration verbatim floor.
   // The player's memory override layer, applied at the single point every memory consumer reads through:
   // rewrites replace the digest text, tombstoned turns lose their summary (so they leave the band, the
@@ -2033,8 +2040,8 @@ const GameViewer = ({
     prompts: turnPrompts(),
   });
 
-  /** The character-note request for one character, attached to the turn that introduced them. The drainer
-   *  sends a first note; the rewrite adds what the story has shown of them since. */
+  /** The character-note request for one character, attached to the turn that introduced them. The
+   *  Background Pass Queue sends a first note; the rewrite adds what the story has shown of them since. */
   const buildDiscoverRequest = (args: {
     name: string;
     turnId: string | undefined;
@@ -3063,7 +3070,7 @@ const GameViewer = ({
     return next;
   });
 
-  /** The AI-context viewer's adapter: each capture lands on its turn, the response on its own request. */
+  /** The AI-context viewer's sink: each capture lands on its turn, the response on its own request. */
   const captureSink = (requestType: AIRequestType): TransportSink => (event) => {
     if (event.type === "requestCaptured") {
       // The dictionary activation rides the narration request only, the sole request that injects lore.
@@ -3166,7 +3173,7 @@ const GameViewer = ({
    * text. Opening clears the last turn's narration and marks the reveal live, so a dead endpoint, which
    * fails before opening, leaves the previous narration on screen.
    */
-  const revealAdapter: NarrationListener = (event) => {
+  const revealListener: NarrationListener = (event) => {
     if (event.type === "opened") {
       fadeReveal.reset(); smoothReveal.reset();
       setIsRevealingNarration(true);
@@ -3182,7 +3189,7 @@ const GameViewer = ({
   };
 
   /** Streaming read-aloud: synthesizes each sentence as it completes. */
-  const readAloudAdapter: NarrationListener = (event) => {
+  const readAloudListener: NarrationListener = (event) => {
     const tts = ttsModalRef.current;
     if (event.type === "opened" || event.type === "retract") tts?.streamStart();
     else if (event.type === "sentence") tts?.streamSentence(event.text);
@@ -3194,14 +3201,14 @@ const GameViewer = ({
    * The scene list, rebuilt per completed sentence: a name flips from its alias to the real name the moment
    * the narration says it. The turn reapplies it authoritatively at the end.
    */
-  const sceneListAdapter: NarrationListener = (event) => {
+  const sceneListListener: NarrationListener = (event) => {
     if (event.type !== "display" || !event.boundary) return;
     const { cast, prior } = sceneListCtxRef.current;
     setVisibleEntities((previous) => buildSceneList({ cast, entities: allEntities, narrationSoFar: event.text, priorNarration: prior, previous }));
   };
 
   /** The in-progress assistant message in history. The turn commits the final text when it finishes. */
-  const historyAdapter: NarrationListener = (event) => {
+  const historyListener: NarrationListener = (event) => {
     if (event.type === "partial") {
       const message = {
         role: "assistant" as const,
@@ -3213,27 +3220,26 @@ const GameViewer = ({
     }
   };
 
-  /** The narration's presentation: live reasoning on the transport, the rest on the Narration Stream. */
-  const narrationPresentation = (): TransportSink => {
-    const listeners = [revealAdapter, sceneListAdapter, historyAdapter];
+  /** The narration's sink: live reasoning on the transport, the rest on the Narration Stream. */
+  const narrationSink = (): TransportSink => {
+    const listeners = [revealListener, sceneListListener, historyListener];
     // Opt-in streaming read-aloud needs a loaded model.
-    if (streamNarrationAudio && ttsLoaded) listeners.push(readAloudAdapter);
-    const sinks = [liveReasoningSink(), narrationStream(...listeners)];
+    if (streamNarrationAudio && ttsLoaded) listeners.push(readAloudListener);
+    const toScreen = fanOut([liveReasoningSink(), narrationStream(...listeners)]);
     // Unmount aborts the turn, and its canceled event must not reach the screen.
-    return (event) => { if (mounted.current) for (const sink of sinks) sink(event); };
+    return (event) => { if (mounted.current) toScreen(event); };
   };
 
-  /** Sends one request through the Request Transport, with the adapters its type presents through. */
-  const sendAiRequest = async (args: TransportRequest): Promise<string> => {
+  /** Sends one request through the Request Transport, with the sinks its type reports to. */
+  const sendAiRequest = async (args: ViewRequest): Promise<string> => {
     const { type: requestType, silent = false, quiet = false } = args;
-    // Surface which request is running (silent requests use the digest status indicator instead).
     if (!silent && !quiet) setAiRequestType(requestType);
     const lookups = lookupSink();
     const sinks = [captureSink(requestType), failureSink, lookups.sink];
-    if (requestType === "narration") sinks.push(narrationPresentation());
+    if (requestType === "narration") sinks.push(narrationSink());
     if (requestType === "choices") sinks.push(choicesSink);
     try {
-      return await transportRequest(args, transportContext(), (event) => { for (const sink of sinks) sink(event); });
+      return await transportRequest(args, transportContext(), fanOut(sinks));
     } finally {
       lookups.end();
     }
@@ -3630,7 +3636,7 @@ const GameViewer = ({
         if (!target) return false;
         const digest = await sendAiRequestRef.current({ ...buildDigestRequestRef.current(target), signal: queueSignal });
         const trimmed = (digest ?? "").trim();
-        if (!trimmed || queueSignal.aborted) return false;
+        if (!trimmed || queueSignal.aborted || !mounted.current) return false;
         setMemoryEdits((prev) => ({ ...prev, [turnId]: { text: trimmed, source: 'ai' } }));
         return true;
       }, signal);
@@ -3638,7 +3644,7 @@ const GameViewer = ({
     } catch {
       return false;
     }
-  }, [passQueue, setMemoryEdits]);
+  }, [passQueue, setMemoryEdits, mounted]);
 
   // Embedding drainer: keep a vector on hand for everything the semantic features score at turn time —
   // turn digests (semanticMemory) and dictionary entries (semanticLore) — so scoring is a sync lookup.

@@ -106,7 +106,7 @@ interface PlannedRequest {
 
 /**
  * The post-narration passes are the only ones the concurrency knob batches: they depend on the narration
- * and on nothing from each other. Batched, one failure is absorbed and the drainers backfill it later;
+ * and on nothing from each other. Batched, one failure is absorbed and the Background Pass Queue backfills it later;
  * dispatched one at a time, a failure ends the turn.
  */
 const isBatched = (stage: TurnStage, plan: TurnPlan): boolean =>
@@ -210,7 +210,7 @@ export async function runTurn(input: TurnRunnerInput): Promise<TurnResult> {
         const settled = await Promise.allSettled(planned.map(send));
         if (signal.aborted) return { status: 'aborted', run: run() };
         // A failed request contributes an empty outcome rather than ending the turn — its feature is either
-        // backfilled by an idle drainer or simply absent this turn.
+        // backfilled by the Background Pass Queue or simply absent this turn.
         const batch = planned.map((entry, i) => {
           const answer = settled[i];
           return answer.status === 'fulfilled' ? outcomeOf(entry, answer.value) : failedOutcome(entry, answer.reason);

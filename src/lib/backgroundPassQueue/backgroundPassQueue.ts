@@ -43,26 +43,26 @@ export interface QueueSnapshot {
   suppressedNames: readonly string[];
 }
 
-/** One stored turn a digest summarizes. `action` is the paired user message as stored. */
-export interface DigestTarget {
+/** What every pass target names: a stored turn and the narration the pass reads. */
+interface TurnTarget {
   turnId: string;
-  action: string;
   narration: string;
 }
 
+/** One stored turn a digest summarizes. `action` is the paired user message as stored. */
+export interface DigestTarget extends TurnTarget {
+  action: string;
+}
+
 /** One name a stored turn introduces that no entity backs yet. */
-export interface DiscoverTarget {
-  turnId: string;
+export interface DiscoverTarget extends TurnTarget {
   name: string;
-  narration: string;
   locationId?: string;
 }
 
 /** One participant of a stored turn who has no diary entry yet. */
-export interface DiaryTarget {
-  turnId: string;
+export interface DiaryTarget extends TurnTarget {
   name: string;
-  narration: string;
 }
 
 export interface MilestoneRequest {
@@ -132,6 +132,12 @@ interface DueItem {
 }
 
 const isWritten = (summary: unknown) => typeof summary === 'string';
+
+/** Stores a reply on its turn, only while the turn still holds the narration the pass read. Never sets the pass aside. */
+const storeOnTurn = (write: PassWriter, store: (history: ChatMessage[]) => ChatMessage[] | null): true => {
+  write.history((prev) => (write.isCurrent(prev) ? store(prev) ?? prev : prev));
+  return true;
+};
 
 /** The digest target at `index`, paired with the user message before it as stored. */
 const targetAt = (history: ChatMessage[], index: number, turnId: string, narration: string): DigestTarget => {
@@ -282,10 +288,7 @@ function dueItems(snapshot: QueueSnapshot, env: QueueEnv): { items: DueItem[]; p
       signature: target.narration,
       prepare: () => ({
         request: env.digestRequest(target),
-        apply: (reply, write) => {
-          write.history((prev) => (write.isCurrent(prev) ? applyDigest(prev, target.turnId, reply) ?? prev : prev));
-          return true;
-        },
+        apply: (reply, write) => storeOnTurn(write, (prev) => applyDigest(prev, target.turnId, reply)),
       }),
     });
   }
@@ -303,10 +306,7 @@ function dueItems(snapshot: QueueSnapshot, env: QueueEnv): { items: DueItem[]; p
         prepare: () => ({
           request: env.diaryRequest(target),
           // An empty entry is stored too, so the participant is not asked again.
-          apply: (reply, write) => {
-            write.history((prev) => (write.isCurrent(prev) ? applyDiary(prev, target.turnId, target.name, reply) ?? prev : prev));
-            return true;
-          },
+          apply: (reply, write) => storeOnTurn(write, (prev) => applyDiary(prev, target.turnId, target.name, reply)),
         }),
       });
     }

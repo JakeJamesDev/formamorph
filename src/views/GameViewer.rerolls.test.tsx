@@ -1,10 +1,10 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { renderGameViewer } from '@/test/gameViewer';
+import { harborWorld, renderGameViewer } from '@/test/gameViewer';
 import { createSurfaceRequester } from '@/test/surfaceRequest';
 import { sseResponse, sseReply } from '@/test/aiTextFixtures';
 import { transportRequest, type TransportRequest } from '@/lib/aiRequest/requestTransport';
-import type { AIRequestType, PlayerStat, World } from '@/types';
+import type { AIRequestType, PlayerStat } from '@/types';
 
 /** The choices and stats re-rolls on a mounted game: their status label, and the request they send. */
 
@@ -24,14 +24,7 @@ vi.mock('react-toastify', () => ({
 
 const vigor: PlayerStat = { id: 'vigor', name: 'Vigor', type: 'number', description: '', min: 0, max: 100, value: 50, regen: 0, descriptors: [] };
 
-const WORLD = {
-  id: 'w1',
-  worldOverview: {
-    name: 'Sedge Landing', description: '', author: '', thumbnail: null, bgm: null,
-    systemPrompt: '', use3DModel: false, tags: [],
-  },
-  stats: [vigor], locations: [{ id: 'harbor', name: 'Harbor', isStarting: true }], entities: [], traits: [], statUpdates: [],
-} as unknown as World;
+const WORLD = harborWorld({ stats: [vigor] });
 
 const NARRATION = 'The ferry bell rings twice across the water.';
 

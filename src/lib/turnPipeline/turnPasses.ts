@@ -127,10 +127,10 @@ export const effectiveActionFor = (input: TurnPlanInput): string =>
   isOpening(input) ? 'START GAME' : input.action;
 
 /**
- * The four assemblies a pass shares with a caller that asks the same thing outside a turn — the idle
- * drainers, which work on a turn that has already been stored, and the standalone re-rolls. Those callers
- * have no Turn Plan to run, so they call these directly rather than fabricating one; what matters is that
- * the wording, and the conditions on it, exist once.
+ * The four assemblies a pass shares with a caller that asks the same thing outside a turn — the
+ * Background Pass Queue, which works on a turn that has already been stored, and the standalone
+ * re-rolls. Those callers have no Turn Plan to run, so they call these directly rather than
+ * fabricating one; what matters is that the wording, and the conditions on it, exist once.
  */
 
 /**
@@ -575,7 +575,7 @@ export const diaryPass: TurnPassRecord<string> = {
 };
 
 /**
- * A lasting description for a participant the narration invented. The idle drainer and the player's
+ * A lasting description for a participant the narration invented. The Background Pass Queue and the player's
  * rewrite build theirs here too; a rewrite adds the subject's later material.
  */
 export const discoverEntityPass: TurnPassRecord<string> = {

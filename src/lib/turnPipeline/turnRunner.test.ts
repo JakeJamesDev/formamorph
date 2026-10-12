@@ -252,7 +252,7 @@ describe('the concurrency knob', () => {
     const { result, types, peakInFlight } = await run({ settings: { concurrentTurnRequests: false } });
     ok(result);
     expect(peakInFlight).toBe(1);
-    // The digest, diaries and discoveries are the drainers' job outside the batch, so they are not due here.
+    // The digest, diaries and discoveries are the Background Pass Queue's job outside the batch, so they are not due here.
     expect(types).toEqual([
       'locationChange',
       'director',
@@ -618,7 +618,7 @@ describe('the request that ended the turn', () => {
   });
 
   it('is left unset when a batch absorbed the only failure', async () => {
-    // A batched failure is backfilled by an idle drainer; the turn finished, so nothing ended it.
+    // A batched failure is backfilled by the Background Pass Queue; the turn finished, so nothing ended it.
     const { result } = await run({
       answers: {
         diary: () => {

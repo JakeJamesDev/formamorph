@@ -43,6 +43,10 @@ export const sseFrame = (delta: Record<string, unknown>, finishReason: string | 
 export const sseReply = (content: string, finishReason = 'stop'): string[] =>
   [sseFrame({ content }), sseFrame({}, finishReason), 'data: [DONE]\n\n'];
 
+/** A reply streamed one token per frame, ending on `finishReason`, with no `[DONE]` line. */
+export const sseTokens = (tokens: string[], finishReason = 'stop'): string[] =>
+  [...tokens.map((content) => sseFrame({ content })), sseFrame({}, finishReason)];
+
 export function sseResponse(chunks: string[]): Response {
   const encoder = new TextEncoder();
   return new Response(new ReadableStream<Uint8Array>({
