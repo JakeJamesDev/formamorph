@@ -63,7 +63,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **⚙️ Backend**
   - **Request Anatomy:**
     - **Digests and diaries now show their Request Anatomy in the AI-context viewer.** The Background Pass Queue builds them from the same pass records as a live turn, so each request is labeled.
-  - **Re-rolled choices and stats now show their Request Anatomy in the AI-context viewer.** A re-roll builds its request from the same pass record as a live turn, so it sends the same prompt and cap.
+    - **Re-rolled choices and stats now show their Request Anatomy in the AI-context viewer.** A re-roll builds its request from the same pass record as a live turn, so it sends the same prompt and cap.
 
 #### 🔧 Fixed
 
@@ -81,8 +81,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Background Pass Queue:**
     - **Backfilled digests and character descriptions now run oldest turn first.** The oldest turn leaves the context window first. In serial mode, a new character can wait behind older unknown names.
     - **Background passes now wait while a scene render runs.** A pass no longer competes with the image server for one graphics card. It starts again when the render ends.
-  - **Background passes between turns follow Concurrent Requests, and a failing pass no longer stalls the ones behind it.** With the setting off they run one at a time, and with it on they run together. Leaving the game or loading a save stops a running pass.
-  - **A new character's diary now carries its description, and a name that never becomes a character gets no diary.** Descriptions and diaries run in the background queue, and the status bar shows "Describing character…". A short name like "Aldric" now finds "Sergeant Aldric" for its diary.
+    - **Background passes between turns follow Concurrent Requests, and a failing pass no longer stalls the ones behind it.** With the setting off they run one at a time, and with it on they run together. Leaving the game or loading a save stops a running pass.
+    - **A new character's diary now carries its description, and a name that never becomes a character gets no diary.** Descriptions and diaries run in the background queue, and the status bar shows "Describing character…". A short name like "Aldric" now finds "Sergeant Aldric" for its diary.
 
 ---
 
