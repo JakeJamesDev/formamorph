@@ -17,6 +17,7 @@ The Entities and Persona chips show their full row set in Chip Options.
 - Include Stats reads the scope's stats piece: on by default for Here and In Scene, off by default for Sub-Locations and Reachable (Q24).
 - Name content disables Include and Stat Detail; Only With stays live (Q26). Stats off disables Stat Detail. The last Stat Detail piece on is locked.
 - Tooltips on the rows follow the Writing Guide.
+- Ticket 04's shell names toggle rows by polarity: an on-by-default toggle lands in Include, any other in Stat Detail. The new detail ids are off-states, so that split goes; the rows and their locks come from the registry's lock groups (Q30).
 
 Rulings: Q4, Q13, Q23, Q24, Q26, Q28.
 
