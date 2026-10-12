@@ -52,15 +52,16 @@ import {
 } from '@/lib/bearers';
 import {
   WORLD_OWNER, alwaysOnOverMax, deadRows, gateOf, gateStates, groupPickState, neverUnlockable, sameRequirement, settleDefaults,
-  unstableCycles, type GateInput, type GateOwner, type GateState, type GateStates, type GateTraitRef,
+  unstableCycles, type GateInput, type GateOwner, type GateState, type GateStat, type GateStates, type GateTraitRef,
 } from '@/lib/traitGates';
+import { startingGateStats } from '@/lib/gateStats';
 import { ruleText, rowText } from '@/lib/traitGateLine';
 import { conditionsOf } from '@/lib/requirementRows';
 import { isAlwaysOn } from '@/lib/traitEffects';
 import { statRows, statRowSide, type StatRow } from '@/lib/traitTree';
 import { playerStatsOf, resolvedEntityStats } from '@/lib/statLinks';
 import type {
-  DictionaryEntry, Entity, GameLocation, PersonaRef, Placeholder, PlaceholderPin, PlaceholderValue, Stat, StatDescriptor,
+  DictionaryEntry, Entity, GameLocation, PersonaRef, Placeholder, PlaceholderPin, PlaceholderValue, Stat, StatDescriptor, StatRequirement,
   Trait, TraitGroup, TraitLink, TraitRequirement, TraitRequirementRow, World,
 } from '@/types';
 
@@ -1957,6 +1958,24 @@ interface DeadCondition {
   condition: string;
   /** The row it sits in, quoted, when the row holds other Conditions too. */
   row: string | null;
+  /** A stat Condition: the stat is missing from its bearer, not deleted from the world. */
+  stat: boolean;
+}
+
+/** A trait whose gate reads a stat the trait changes. */
+interface OwnStatRead {
+  gate: HeldGate;
+  /** The stat's name, unquoted. */
+  stat: string;
+}
+
+/** A percent Condition on a stat with no span. */
+interface ZeroSpanCondition {
+  gate: HeldGate;
+  /** Quoted. */
+  condition: string;
+  /** The stat's name, unquoted. */
+  stat: string;
 }
 
 /** A default that starts unselected on every bearer that holds its gate. */
@@ -1981,6 +2000,10 @@ interface GateReport {
   offDefaults: OffDefault[];
   /** Groups whose minimum a bearer can't meet, under every persona choice that holds the bearer. */
   picks: PickShortfall[];
+  /** One per trait and stat: the gate reads a stat the trait's own effects change. */
+  ownStatReads: OwnStatRead[];
+  /** Percent Conditions on a stat whose minimum equals its maximum. */
+  zeroSpans: ZeroSpanCondition[];
 }
 
 /** One group on one bearer that can't meet its minimum. */
@@ -2011,8 +2034,20 @@ const gateReportOf = (world: RuleWorld): GateReport => {
     (gate?.rows ?? []).map((row) => row.conditions.map((c) => labelOf(c.text, world)));
   const quotedRules = (rows: string[][]) => ruleText(rows.map((row) => row.map(quote)));
 
+  // Stat Conditions read each stat's authored start, as Enter World does (Q23).
+  const stats = startingGateStats({ stats: world.stats, statGroups: world.statGroups, entities: world.entities ?? [] });
+  // The owners a stat Condition reads: its named bearer, the player set for `you` (the world's player and every
+  // persona, Q28), else the trait's own owner.
+  const readOwners = (gate: HeldGate, req: StatRequirement): string[] => {
+    if (req.bearer?.kind === 'entity') return [req.bearer.id];
+    if (req.bearer?.kind === 'you') return [WORLD_OWNER, ...(world.entities ?? []).filter(canBePlayer).map((e) => e.id)];
+    return [gate.owner.id];
+  };
+  const statsRead = (gate: HeldGate, req: StatRequirement): GateStat[] =>
+    readOwners(gate, req).flatMap((ownerId) => stats[ownerId]?.[req.id] ?? []);
+
   const plain = bearerWorldOf(world);
-  const editor = editorGateInput(plain);
+  const editor = { ...editorGateInput(plain), stats };
   const editorStates = gateStates(editor);
   const linksOf = new Map(resolveBearers(plain, undefined).bearers.map((b) => [b.id, b.linkOf]));
   const held: HeldGate[] = editor.owners.flatMap((owner) => owner.traits.map((trait) => {
@@ -2034,6 +2069,8 @@ const gateReportOf = (world: RuleWorld): GateReport => {
     gateOf(editorStates, gate.owner.id, gate.trait.id)?.rows.forEach((row, i) => row.conditions.forEach((c, j) => {
       if (!c.unresolved) return;
       const req = rows[i].all[j];
+      // A switched-off stat is not missing: a trait can toggle it on, and the stats rules judge it.
+      if (req.kind === 'stat' && statsRead(gate, req).some((s) => s.inert)) return;
       if (gate.link) {
         if (gate.link.overrides?.[gate.trait.id]?.requires) openLinks.add(pairKey(gate.link.id, gate.trait.id));
         if (inOriginal(gate, req)) return;
@@ -2042,7 +2079,32 @@ const gateReportOf = (world: RuleWorld): GateReport => {
       }
       unresolved.push({
         gate, not: !!req.not, condition: quote(gate.rows[i][j]), row: row.conditions.length > 1 ? quote(rowText(gate.rows[i])) : null,
+        stat: req.kind === 'stat',
       });
+    }));
+  }
+
+  // A link reports only a Condition its own override adds; the original's gate reports the rest.
+  const ownStatReads: OwnStatRead[] = [];
+  const zeroSpans: ZeroSpanCondition[] = [];
+  for (const gate of held) {
+    const overridden = !!gate.link?.overrides?.[gate.trait.id]?.requires;
+    const effects = [...(gate.trait.statChanges ?? []), ...(gate.trait.statToggles ?? [])];
+    const reported = new Set<string>();
+    (gate.trait.requires ?? []).forEach((row, i) => row.all.forEach((req, j) => {
+      if (req.kind !== 'stat' || (gate.link && (!overridden || inOriginal(gate, req)))) return;
+      const read = statsRead(gate, req);
+      const stat = labelOf(read[0]?.name ?? req.name ?? '', world);
+      // An effect lands on the trait's owner, or on the player's stat for a `target: 'player'` row.
+      const readers = readOwners(gate, req);
+      const changes = effects.some((row) => row.statId === req.id && readers.includes(row.target === 'player' ? WORLD_OWNER : gate.owner.id));
+      if (changes && !reported.has(req.id)) {
+        reported.add(req.id);
+        ownStatReads.push({ gate, stat });
+      }
+      if (req.unit === 'percent' && read.length > 0 && read.every((s) => s.min === s.max)) {
+        zeroSpans.push({ gate, condition: quote(gate.rows[i][j]), stat });
+      }
     }));
   }
   const heldAt = new Map(held.map((g) => [pairKey(g.owner.id, g.trait.id), g]));
@@ -2060,7 +2122,9 @@ const gateReportOf = (world: RuleWorld): GateReport => {
 
   // A pass over each persona choice: the bearers it holds and how a gate finding names their traits.
   const passOver = (source: BearerWorld, persona: PersonaRef) => {
-    const { bearers, gate } = resolveBearers(source, persona);
+    const resolved = resolveBearers(source, persona);
+    const { bearers } = resolved;
+    const gate = { ...resolved.gate, stats };
     const byId = new Map(bearers.map((b) => [b.id, b]));
     let states: GateStates | undefined;
     const named = (r: GateTraitRef): GateTrait => {
@@ -2109,7 +2173,7 @@ const gateReportOf = (world: RuleWorld): GateReport => {
     && (other.keys.length > loop.keys.length || (other.keys.length === loop.keys.length && j < i))
     && loop.keys.every((k) => other.keys.includes(k)))).map((loop) => loop.traits);
 
-  const input = editorGateInput(openable);
+  const input = { ...editorGateInput(openable), stats };
   // A link that overrides a trait's rows holds a gate of its own, judged apart from the original's.
   const overrideKey = (link: TraitLink | undefined, traitId: string): string | null =>
     (link?.overrides?.[traitId]?.requires ? pairKey(link.id, traitId) : null);
@@ -2178,7 +2242,7 @@ const gateReportOf = (world: RuleWorld): GateReport => {
     else if (defaults.length === runs && defaults[0].min <= (defaults[0].group.maxPicks ?? Infinity)) picks.push(defaults[0]);
   }
 
-  report = { unresolved, deadRows: dead, stuck, unstable, offDefaults, picks };
+  report = { unresolved, deadRows: dead, stuck, unstable, offDefaults, picks, ownStatReads, zeroSpans };
   gateReportsByWorld.set(world, report);
   return report;
 };
@@ -2246,16 +2310,21 @@ const traitRequirementUnstable: Rule = {
 const heldItem = (gate: HeldGate, world: RuleWorld): FindingItem =>
   (gate.link ? linkItem(gate.link, gate.trait.name, world) : namedItem(gate.trait.id, gate.trait.name, world));
 
+/** The trait a held gate belongs to, as a finding names it, with the entity that links it. */
+const subjectOf = (gate: HeldGate, item: FindingItem, world: RuleWorld): string =>
+  onBearer(quote(item.name), gate.link ? quote(labelOf(gate.owner.name, world)) : null);
+
 const traitRequirementUnresolved: Rule = {
   id: 'trait-requirement-unresolved',
   severity: 'error',
   section: 'traits',
   summary: (count) => `${count} requirements name something this world no longer has`,
-  check: (world) => gateReportOf(world).unresolved.map(({ gate, not, condition, row }) => {
+  check: (world) => gateReportOf(world).unresolved.map(({ gate, not, condition, row, stat }) => {
     const item = heldItem(gate, world);
-    const subject = onBearer(quote(item.name), gate.link ? quote(labelOf(gate.owner.name, world)) : null);
+    const subject = subjectOf(gate, item, world);
     // The world lost a Not Condition's target, not the "not" the chip reads.
-    const gone = not ? 'which names something this world no longer has' : 'which this world no longer has';
+    const gone = stat ? 'which names a stat its bearer doesn’t have'
+      : not ? 'which names something this world no longer has' : 'which this world no longer has';
     return finding(
       traitRequirementUnresolved,
       `${subject} requires ${condition}, ${gone}${row ? `, so ${row} never holds` : ''}`,
@@ -2273,6 +2342,39 @@ const traitRequirementRowNeverHolds: Rule = {
     const item = heldItem(gate, world);
     const subject = gate.link ? `${quote(labelOf(gate.owner.name, world))} links ${quote(item.name)} with` : `${quote(item.name)} has`;
     return finding(traitRequirementRowNeverHolds, `${subject} a row that can never hold: ${row}`, [item]);
+  }),
+};
+
+const traitGateReadsOwnStat: Rule = {
+  id: 'trait-gate-reads-own-stat',
+  severity: 'warning',
+  section: 'traits',
+  summary: (count) => `${count} traits require a stat that they change themselves`,
+  // Any stat effect counts: a value, a min or max (percent reads the effective max), or a stat toggle.
+  check: (world) => gateReportOf(world).ownStatReads.map(({ gate, stat }) => {
+    const item = heldItem(gate, world);
+    const subject = subjectOf(gate, item, world);
+    return finding(
+      traitGateReadsOwnStat,
+      `${subject} requires ${quote(stat)} and changes ${quote(stat)} — its own effect can flip the requirement, so gate it on another stat`,
+      [item],
+    );
+  }),
+};
+
+const requirementPercentZeroSpan: Rule = {
+  id: 'requirement-percent-zero-span',
+  severity: 'warning',
+  section: 'traits',
+  summary: (count) => `${count} percent requirements read a stat with no range`,
+  check: (world) => gateReportOf(world).zeroSpans.map(({ gate, condition, stat }) => {
+    const item = heldItem(gate, world);
+    const subject = subjectOf(gate, item, world);
+    return finding(
+      requirementPercentZeroSpan,
+      `${subject} requires ${condition}, but ${quote(stat)} has the same min and max, so it always reads 0% — use a raw number or widen its range`,
+      [item],
+    );
   }),
 };
 
@@ -3212,7 +3314,7 @@ export const RULES: readonly Rule[] = [
   entityLongDescriptionNoSummary, aiSummaryHidesDescription, locationNoEntities,
   traitGroupDefaultsOverMax, traitGroupAlwaysOnOverMax, traitGroupTooSmall, traitGroupMinAboveMax, traitGroupMinUnreachable,
   traitGroupDefaultsBelowMin, traitRequirementNeverUnlockable, traitRequirementUnstable, traitRequirementUnresolved,
-  traitRequirementRowNeverHolds, traitDefaultGated,
+  traitRequirementRowNeverHolds, traitGateReadsOwnStat, requirementPercentZeroSpan, traitDefaultGated,
   traitLinkRedundant, traitStatNoTarget,
   copyPinRemovedValue, blueprintRefusedField, copyEditedUnused, copyMissing,
   placeholderWeightUnknownValue, wildcardSingleValue,
