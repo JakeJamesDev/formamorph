@@ -17,8 +17,8 @@ export const defaultSystemPrompt = `You are the narrator stage of an interactive
 <WORLD DESCRIPTION|format=markdown|header="Game World">\
 <DICTIONARY|before|format=markdown|header="Background Lore">\
 <STATS DESCRIPTION|descriptions.markdown|header="Player Stats">\
-<TRAITS DESCRIPTION|markdown|header="Traits">\
 <PERSONA|markdown|header="{{user}} (Player Character)">\
+<TRAITS DESCRIPTION|markdown|header="Other Traits">\
 <NOTES|format=markdown|header="Important Player Notes">\
 <LOCATION|markdown|header="Current Location">\
 <LOCATION|sublocations.summary.markdown|header="Sublocations">\
@@ -145,8 +145,8 @@ Now record what this turn changed - the player's action and its outcome - in one
 export const defaultChoicesPrompt = `You are the player choice writer for an interactive roleplay. Your one job is to offer the player a short list of distinct actions their character could take next, in the player's own first-person voice. You never narrate events or act in the story - a separate step already wrote what just happened; you only propose what the player might do about it.
 <WORLD DESCRIPTION|format=markdown|header="Game World">\
 <STATS DESCRIPTION|descriptions.markdown|header="Player Stats">\
-<TRAITS DESCRIPTION|markdown|header="Traits">\
 <PERSONA|name.markdown|header="{{user}} (Player Character)">\
+<TRAITS DESCRIPTION|markdown|header="Other Traits">\
 <NOTES|format=markdown|header="Player Notes">\
 <LOCATION|summary.markdown|header="Current Location">\
 <LOCATION|sublocations.summary.markdown|header="Sublocations">\
@@ -224,8 +224,8 @@ Output a destination's exact name from the list above only if the player charact
 // as private stage directions (planDirective); the player never sees it.
 export const defaultThinkingPrompt = `You are the continuity planner for an interactive story. Before the scene is written, you set the stage the narrator then plays out: who is here, exactly how they are placed, and the grounded beats - action and spoken words alike - that follow from the player's action. You never write the narration itself, and you never decide whether the player's own action succeeds - the narrator judges that.
 <WORLD DESCRIPTION|format=markdown|header="Game World">\
-<TRAITS DESCRIPTION|markdown|header="Traits">\
 <PERSONA|markdown|post="In the Cast, this is Player Character."|header="{{user}} (Player Character)">\
+<TRAITS DESCRIPTION|markdown|header="Other Traits">\
 <LOCATION|summary.markdown|header="Current Location">\
 <LOCATION|sublocations.summary.markdown|header="Sublocations">\
 <LOCATION|reachable.summary.markdown|header="Reachable Locations">\
@@ -451,8 +451,8 @@ export function planDirective(plan: string): string {
 // Pass 1: pick who is in the scene and what is carrying over. Output is parsed into a cast list.
 export const defaultDirectorPrompt = `You are the director of an interactive roleplay. Before the scene is written, set the stage: describe where we are and who is here. Do not write the narration.
 <WORLD DESCRIPTION|format=markdown|header="Game World">\
-<TRAITS DESCRIPTION|markdown|header="Traits">\
 <PERSONA|markdown|post="In the Cast, this is Player Character."|header="{{user}} (Player Character)">\
+<TRAITS DESCRIPTION|markdown|header="Other Traits">\
 <LOCATION|summary.markdown|header="Current Location">\
 <LOCATION|sublocations.summary.markdown|header="Sublocations">\
 <LOCATION|reachable.summary.markdown|header="Reachable Locations">\
@@ -487,8 +487,8 @@ export const defaultCharacterPrompt = `You ARE <CHARACTER NAME>, one character i
 
 Refer to the player in the third person - "the player character" or "them" - never "you" (write "I pin the player character to the wall", not "I pin you").
 <WORLD DESCRIPTION|format=markdown|header="Game World">\
-<TRAITS DESCRIPTION|markdown|header="Traits">\
 <PERSONA|markdown|header="{{user}} (Player Character)">\
+<TRAITS DESCRIPTION|markdown|header="Other Traits">\
 <LOCATION|summary.markdown|header="Current Location">\
 <LOCATION|sublocations.summary.markdown|header="Sublocations">\
 <LOCATION|reachable.summary.markdown|header="Reachable Locations">
@@ -500,8 +500,8 @@ My background is who I am in general; the recap and scene below are where things
 export const defaultStoryboardPrompt = `You are the storyboarder for an interactive roleplay. You are the only stage that sees everything - what just happened, the director's scene, and what each character independently intends - so your job is to reconcile them into one coherent plan for this turn. The characters decided their actions blind to each other, so resolve any overlaps or conflicts, order the actions sensibly, and keep everything consistent with what just happened. The "Character intentions" lines are written in the first person from each character's own point of view and are proposed, attempted actions for you to reconcile and adjudicate - not accomplished facts. Do not write the narration.
 <WORLD DESCRIPTION|format=markdown|header="Game World">\
 <STATS DESCRIPTION|descriptions.markdown|header="Player Stats">\
-<TRAITS DESCRIPTION|markdown|header="Traits">\
 <PERSONA|markdown|header="{{user}} (Player Character)">\
+<TRAITS DESCRIPTION|markdown|header="Other Traits">\
 <LOCATION|summary.markdown|header="Current Location">\
 <LOCATION|sublocations.summary.markdown|header="Sublocations">\
 <LOCATION|reachable.summary.markdown|header="Reachable Locations">\
