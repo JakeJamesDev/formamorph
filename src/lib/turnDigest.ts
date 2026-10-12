@@ -141,34 +141,6 @@ export function applyImportance(history: ChatMessage[], byTurnId: Map<string, nu
   return found ? next : history;
 }
 
-/**
- * Pick the `turnId`s of assistant turns due for a character diary entry: those with a stable id and at
- * least one participant (`entities`) that has no diary entry yet. Turns with no participants are skipped
- * (no one to write). Returns ids most-recent-first; the drainer decides which end to process.
- */
-export function selectDueDiaries(history: ChatMessage[]): string[] {
-  const due: string[] = [];
-  for (let i = history.length - 1; i >= 0; i--) {
-    if (history[i].role !== 'assistant') continue;
-    const parsed = parseTurnContent(history[i].content);
-    if (!parsed?.turnId || !parsed.entities?.length) continue;
-    if (parsed.entities.some((name) => parsed.diaries?.[name] === undefined)) due.push(parsed.turnId);
-  }
-  return due;
-}
-
-/** The participant names on a turn still missing a diary entry (empty if the turn is fully covered). */
-export function pendingDiaryNames(history: ChatMessage[], turnId: string): string[] {
-  for (const message of history) {
-    if (message.role !== 'assistant') continue;
-    const parsed = parseTurnContent(message.content);
-    if (parsed?.turnId === turnId) {
-      return (parsed.entities ?? []).filter((name) => parsed.diaries?.[name] === undefined);
-    }
-  }
-  return [];
-}
-
 /** Whether a trimmed diary entry carries a memory: a `nothing notable` entry does not. */
 export const diaryHoldsMemory = (text: string) => text.toLowerCase() !== 'nothing notable';
 
@@ -218,7 +190,7 @@ export function applyDiary(
 /**
  * Drop a turn's derived-from-narration data so the background passes regenerate it. Editing a turn's narration
  * makes its stored digest (`summary`) — and, when `diaries` is set, its character diary entries — disagree
- * with the visible text; nulling those fields makes the digest and `selectDueDiaries` re-select the
+ * with the visible text; nulling those fields makes the digest and diary passes re-select the
  * turn and the background passes rebuild lazily. Returns `null` if no turn matches the id (rolled back / regenerated
  * away), mirroring the apply-guards. Other turns are untouched.
  */

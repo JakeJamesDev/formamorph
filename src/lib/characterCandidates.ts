@@ -4,7 +4,7 @@
  * Why this exists: `turnParticipants` is built from `findEntityNames` (already-known entities only)
  * plus director/ad-hoc candidates that ONLY staged planning produces. On pure narration all three
  * are blind to a character the narrator has just invented, so it never becomes a participant, never
- * reaches `selectDueDiscovery`, and never becomes known — discovery required already having been
+ * reaches the queue's discover pass, and never becomes known — discovery required already having been
  * discovered. Measured on a real session: a doctor who speaks on 23 of 50 turns was invisible on
  * every one. Design and measurements: docs-internal/specs/narrator-character-discovery/spec.md.
  *
@@ -295,7 +295,7 @@ export function qualifiesAsCharacter(evidence: CandidateEvidence): boolean {
 /**
  * Character names in `text` that no known term already accounts for. Matching against exclusions
  * uses `sameCharacterName`, so a variant ("Chen" of "Doctor Chen") is treated as the known name
- * rather than a second character — the same rule `selectDueDiscovery` already applies.
+ * rather than a second character — the same rule the queue's discover pass applies.
  *
  * `priorEvidence` carries earlier turns' tallies so repetition accumulates; omit it to judge one
  * passage alone.

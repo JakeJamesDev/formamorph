@@ -72,6 +72,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **A click or Escape in the help window no longer closes a menu, popover, list or dialog below it.** A menu inside the help window still closes when you click elsewhere in it.
 - **⚙️ Backend**
   - **Background passes between turns follow Concurrent Requests, and a failing pass no longer stalls the ones behind it.** With the setting off they run one at a time, and with it on they run together. Leaving the game or loading a save stops a running pass.
+  - **A new character's diary now carries its description, and a name that never becomes a character gets no diary.** Descriptions and diaries run in the background queue, and the status bar shows "Describing character…". A short name like "Aldric" now finds "Sergeant Aldric" for its diary.
 
 ---
 

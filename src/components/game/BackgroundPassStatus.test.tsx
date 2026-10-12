@@ -1,15 +1,28 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { BackgroundPassStatus, type StatusPassKind } from './BackgroundPassStatus';
+import type { BackgroundPassKind } from '@/lib/backgroundPassQueue/backgroundPassQueue';
+import { BackgroundPassStatus } from './BackgroundPassStatus';
 
-const statusFor = (...running: StatusPassKind[]) => render(<BackgroundPassStatus running={new Set(running)} />);
+const statusFor = (...running: BackgroundPassKind[]) => render(<BackgroundPassStatus running={new Set(running)} />);
 
 describe('BackgroundPassStatus', () => {
-  it('shows one label by precedence: digest, then milestone, then diary', () => {
-    statusFor('diary', 'milestone', 'digest');
+  it('shows one label by precedence: digest, then milestone, then diary, then discover', () => {
+    statusFor('discover', 'diary', 'milestone', 'digest');
     expect(screen.getByText('Summarizing turn…')).toBeTruthy();
     expect(screen.queryByText('Selecting memories…')).toBeNull();
     expect(screen.queryByText('Writing diary…')).toBeNull();
+    expect(screen.queryByText('Describing character…')).toBeNull();
+  });
+
+  it('shows the diary over the discover', () => {
+    statusFor('discover', 'diary');
+    expect(screen.getByText('Writing diary…')).toBeTruthy();
+    expect(screen.queryByText('Describing character…')).toBeNull();
+  });
+
+  it('shows the discover alone', () => {
+    statusFor('discover');
+    expect(screen.getByText('Describing character…')).toBeTruthy();
   });
 
   it('shows the milestone over the diary', () => {

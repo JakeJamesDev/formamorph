@@ -1,6 +1,6 @@
 import { randomUUID } from "@/lib/uuid";
 import type { ChatMessage, Entity, GameLocation, DiscoveredEntity } from '@/types';
-import { parseTurnContent, survivingTurnIds } from '@/lib/turnDigest';
+import { survivingTurnIds } from '@/lib/turnDigest';
 import { stripReasoning } from '@/lib/aiResponse';
 import { trimToLastSentence } from '@/lib/outputLength';
 import { escapeRegExp } from '@/lib/utils';
@@ -16,37 +16,16 @@ export const DISCOVER_LATER_LABEL = 'What the story has shown of them since:';
 /**
  * Pure helpers for "runtime characters" (Slice 2): promoting a director-invented ad-hoc character that
  * the narration confirmed into a persisted, per-playthrough `Entity`. Deterministic and unit-testable —
- * the idle drainer in GameViewer wires these to a silent describe request + `discoveredEntities` state.
+ * the Background Pass Queue wires these to a silent describe request + `discoveredEntities` state.
  */
-
-/** One turn's participant that isn't backed by any known (authored or already-discovered) entity. */
-export interface DueDiscovery {
-  turnId: string;
-  name: string;
-  narration: string;
-  locationId?: string;
-}
 
 /**
- * The newest committed turn holding a participant name not already accounted for by `knownNames`
- * (authored + already-discovered names), or `null` when everything is covered. A participant counts as
- * known when `sameCharacterName` matches any known name, so a variant ("Aldric" of "Sergeant Aldric")
- * doesn't spawn a duplicate entity. Newest-first so a freshly invented character materializes on the
- * next idle tick; self-terminating once its name joins the known set.
+ * The entity a participant name stands for: an exact (case-insensitive) name first, then a variant, so
+ * "Aldric" finds "Sergeant Aldric" the way discovery counts it as known. Undefined for a name no entity backs.
  */
-export function selectDueDiscovery(history: ChatMessage[], knownNames: string[]): DueDiscovery | null {
-  const isKnown = (n: string) => knownNames.some((k) => sameCharacterName(n, k));
-  for (let i = history.length - 1; i >= 0; i--) {
-    const message = history[i];
-    if (message.role !== 'assistant') continue;
-    const turn = parseTurnContent(message.content);
-    if (!turn?.turnId || !turn.narration?.trim() || !turn.entities?.length) continue;
-    const name = turn.entities.find((n) => n.trim() && !isKnown(n));
-    if (name) {
-      return { turnId: turn.turnId, name, narration: turn.narration, locationId: turn.locationId };
-    }
-  }
-  return null;
+export function findEntityByCharacterName<T extends { name: string }>(name: string, entities: readonly T[]): T | undefined {
+  const exact = entities.find((e) => e.name.trim().toLowerCase() === name.trim().toLowerCase());
+  return exact ?? entities.find((e) => sameCharacterName(e.name, name));
 }
 
 /** Sentinel `sourceTurnId` for a world-authored character present from the start — anchored to no turn,

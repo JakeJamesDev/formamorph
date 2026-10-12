@@ -548,9 +548,9 @@ const openingTimePass: TurnPassRecord<number | null> = {
 
 /**
  * One participant's private record of the turn. Diaries are read only by the staged character pass, so
- * they are only written in that mode; like the digest, they are the drainer's job outside the batch.
+ * they are only written in that mode; like the digest, they are the queue's job outside the batch.
  */
-const diaryPass: TurnPassRecord<string> = {
+export const diaryPass: TurnPassRecord<string> = {
   id: 'diary',
   type: 'diary',
   stage: 'postNarration',
