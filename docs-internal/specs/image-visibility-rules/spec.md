@@ -59,6 +59,8 @@ Settled in the grill, 2026-10-12. A ruling reopens on new evidence, never on a n
 | Q29 | (Ticket 06 intent, 2026-10-12) Image rows travel through the same four card paths as trait rows: named on export, bound on import under Q24/Q25, re-pointed when owned traits re-mint, compared by name. Stories 33–34 land in ticket 06. |
 | Q30 | (Ticket 06 intent, 2026-10-12) The card JSON carries slot 0's rows as `primaryImageRequires` beside the object-element `extraImages`. |
 | Q31 | (Ticket 06 intent, 2026-10-12) Replacing an image in place keeps the slot's rule; delete drops the rule with the image; reorder carries it. |
+| Q32 | (Ticket 02 intent, 2026-10-12) The before box (stat code at turn start) is its own run with its own snapshot: its writes landed, no switch effects yet. No per-turn settle follows it. The per-turn settle runs once after the after-AI run, before the turn snapshot arms. |
+| Q33 | (Ticket 02 intent, 2026-10-12) Stat code's `traits.X.available` resolves stat Conditions against the run-start stats. The editor's code test run and the Test Bench code check read authored-start stats (Q23) so a test run agrees with Enter World; if that is not a drop-in in ticket 02, they stay unresolved and the gap goes to the Backlog. |
 
 Review notes (Opus second opinion, 2026-10-12) that shaped the Implementation Decisions without a ruling: card codec drops unknown Condition kinds; slot 0 travels as card pixels with no JSON home for its rule; requirement equality ignores operator and value; growth treats every Not as holding; the gallery index is a raw position; the `you` bearer must cover persona stats; re-generate and stat re-roll replay stat code; settle on load already exists.
 
