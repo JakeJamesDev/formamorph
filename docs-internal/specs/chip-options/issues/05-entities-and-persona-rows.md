@@ -18,6 +18,8 @@ The Entities and Persona chips show their full row set in Chip Options.
 - Name content disables Include and Stat Detail; Only With stays live (Q26). Stats off disables Stat Detail. The last Stat Detail piece on is locked.
 - Tooltips on the rows follow the Writing Guide.
 - Ticket 04's shell names toggle rows by polarity: an on-by-default toggle lands in Include, any other in Stat Detail. The new detail ids are off-states, so that split goes; the rows and their locks come from the registry's lock groups (Q30). Ticket 02 hides the six new axes behind a registry flag; this ticket removes the flag (Q39).
+- The shell reads the Entities stats axis as two-state: on `reachable.stats` its Stats box shows unchecked and a click clears to the scope default, and it never writes the `stats` id. This ticket makes the Include Stats checkbox read and write all three states (Q38).
+- Lock groups are names scoped to one variable (`lockGroup: 'statDetail'` on each of the three chips). Read a group within one chip's axes only.
 
 Rulings: Q4, Q13, Q23, Q24, Q26, Q28.
 
