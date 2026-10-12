@@ -6,6 +6,7 @@ import {
   expandScopedTokens, renderEntityRoster, sublocationEntityIds, type ContextOpts,
 } from '../locationContext';
 import { personaContextValues } from '../personaContext';
+import { PLAYER_NAME, PLAYER_NAME_HEADER_KEY } from '../builtinPlaceholders';
 import { NONE_PLACEHOLDER } from '../promptFallbacks';
 import {
   decodeVariant, tokenVariant, variableForToken, variableVariantIds, withVariant, type PromptVariable,
@@ -24,6 +25,8 @@ const NOTES = variableForToken('<NOTES>')!;
 const TIME = variableForToken('<TIME>')!;
 const DICTIONARY = variableForToken('<DICTIONARY>')!;
 const ENTITIES = variableForToken('<ENTITIES>')!;
+// A Header is reference text, cased mid-sentence; its title-casing capitalizes the words that lead.
+const NO_PLAYER = PLAYER_NAME.resolve({ before: ' ' }, { kind: 'reference' });
 
 /** Every concrete token one chip produces: its base form and each variant the registry defines. */
 const familyTokens = (variable: PromptVariable): string[] =>
@@ -81,8 +84,8 @@ export function playerStatParts(
 /**
  * Turn a Chip Scene into a value for every scene-derived chip token the registry defines: World
  * Description, Stats, Traits, Persona, Location, Entities, Notes, Time and the lore blocks. Each family
- * walks its registry axes, so a token cannot be missed; the map holds no other token. Placeholder chips are
- * resolved in every value.
+ * walks its registry axes, so a token cannot be missed. The one other key is the Player Name, which only a
+ * chip Header reads. Placeholder chips are resolved in every value.
  */
 export function chipValues(scene: ChipScene): Record<string, string> {
   const { location, locations, connections } = scene;
@@ -107,6 +110,7 @@ export function chipValues(scene: ChipScene): Record<string, string> {
     )),
     // The played entity's owned traits render in its own block, as a cast member's do.
     ...personaContextValues(scene.persona, scene.ownedTraits),
+    [PLAYER_NAME_HEADER_KEY]: scene.playerName == null ? NO_PLAYER : scene.playerName.trim(),
     ...familyValues(DICTIONARY, (sel) => {
       const position = sel.variant === 'before' ? 'before' : 'after';
       const entries = scene.lore.filter((entry) => (entry.position ?? 'after') === position);

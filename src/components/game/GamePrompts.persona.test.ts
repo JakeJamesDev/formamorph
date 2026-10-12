@@ -3,7 +3,7 @@ import { PROMPT_TEXT_DEFAULTS } from './GamePrompts';
 import { BUILTIN_PRESETS, PROMPT_TEXT_KEYS, type PromptTextKey } from '@/lib/promptPresets';
 import { buildStyledValues } from '@/lib/sectionStyle';
 import { parsePromptTemplate, renderPromptTemplate, serializeSegments } from '@/lib/promptTemplate';
-import { decodeVariant, tokenVariant, variableForToken } from '@/lib/promptVariables';
+import { decodeVariant, splitToken, tokenVariant, variableForToken } from '@/lib/promptVariables';
 import { personaContextValues } from '@/lib/personaContext';
 import { SAMPLE_PREVIEW_VALUES } from '@/lib/previewValuePool';
 import type { ResolvedPersona } from '@/lib/persona';
@@ -14,6 +14,10 @@ const FULL: PromptTextKey[] = [
 ];
 const NAME: PromptTextKey[] = ['choicesPrompt', 'summaryPrompt', 'milestoneSelectPrompt', 'diaryPrompt'];
 const COVERED = new Set<PromptTextKey>([...FULL, ...NAME]);
+// The prompts whose persona block is headed "Player Character"; the scene-tags prompt has its own header.
+const HEADED: PromptTextKey[] = [
+  'characterPrompt', 'choicesPrompt', 'directorPrompt', 'storyboardPrompt', 'systemPrompt', 'thinkingPrompt',
+];
 
 const persona: ResolvedPersona = {
   source: 'library',
@@ -43,7 +47,7 @@ function withoutPersona(template: string): string {
   ));
 }
 
-const styles = BUILTIN_PRESETS.map((b) => ({ name: b.name, values: buildStyledValues(PROMPT_TEXT_DEFAULTS, b.style) }));
+const styles = BUILTIN_PRESETS.map((b) => ({ name: b.name, style: b.style, values: buildStyledValues(PROMPT_TEXT_DEFAULTS, b.style) }));
 
 describe('the persona chip in the default prompts', () => {
   it.each(styles)('places Full and Name where the coverage table says, in the $name preset', ({ values }) => {
@@ -62,6 +66,16 @@ describe('the persona chip in the default prompts', () => {
       expect(out.includes('Persona Fixture'), key).toBe(COVERED.has(key));
       expect(out.includes('only the Full variant carries'), key).toBe(FULL.includes(key));
     }
+  });
+
+  it.each(styles)('heads the six headed persona blocks with the Player Name, in the $name preset', ({ style, values }) => {
+    const headed = PROMPT_TEXT_KEYS.filter((key) => parsePromptTemplate(values[key]).some((seg) =>
+      seg.type === 'variable' && variableForToken(seg.token) === PERSONA && splitToken(seg.token)?.header === '{{user}} (Player Character)'));
+    expect(headed.sort()).toEqual(HEADED);
+    const ctx = { ...SAMPLE_PREVIEW_VALUES, ...personaContextValues(persona), 'header:{{user}}': 'Persona Fixture' };
+    const heading = { markdown: '## Persona Fixture (Player Character)', labels: 'PERSONA FIXTURE (PLAYER CHARACTER):',
+      xml: '<persona_fixture_player_character>' }[style];
+    for (const key of HEADED) expect(renderPromptTemplate(values[key], ctx), key).toContain(`\n${heading}\n`);
   });
 
   it.each(styles)('renders every prompt unchanged with no persona set, in the $name preset', ({ values }) => {

@@ -2,6 +2,7 @@ import { TOKEN_PATTERN, splitToken, type TokenParts } from './promptVariables';
 import { NONE_PLACEHOLDER } from './promptFallbacks';
 import { promptHeader } from './promptHeader';
 import { decodePlaceholderToken, parsePlaceholderText } from './placeholders';
+import { PLAYER_NAME_HEADER_KEY, withPlayerName } from './builtinPlaceholders';
 import { tilePieces, type AnatomyPiece, type AnatomySource, type ContextLabel, type TiledRuns } from './requestAnatomy';
 
 /** A prompt template parsed into an ordered run of literal text and variable tokens. */
@@ -135,6 +136,12 @@ export function chipHeaderFormat(parts: TokenParts): 'markdown' | 'xml' | undefi
   return parts.headerFormat ?? parts.variantId?.split('.').find((id): id is 'markdown' | 'xml' => id === 'markdown' || id === 'xml');
 }
 
+/** A Header with its Player Name from the map, before it is framed. A map without one leaves the token. */
+function headerText(header: string | undefined, values: Record<string, string>): string | undefined {
+  const name = values[PLAYER_NAME_HEADER_KEY];
+  return name === undefined || header === undefined ? header : withPlayerName(header, name);
+}
+
 /**
  * What one token renders to, or `undefined` when it has no value in the map (callers keep the raw token).
  * An empty string is a real result — an affixed placement whose value is absent renders as nothing — so
@@ -149,7 +156,7 @@ export function resolveToken(token: string, values: Record<string, string>): str
   if (!parts) return undefined;
   const value = values[parts.key];
   if (value === undefined) return undefined;
-  const header = promptHeader(parts.header, chipHeaderFormat(parts));
+  const header = promptHeader(headerText(parts.header, values), chipHeaderFormat(parts));
   // The value's own edge line breaks would shift the static frame.
   if (header) return isBlankValue(value) ? ''
     : `${header.pre}${parts.pre}${value.replace(/^(?:[ \t]*\r?\n)+/, '').trimEnd()}${parts.post}${header.post}`;

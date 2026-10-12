@@ -60,7 +60,8 @@ const atStartingValue = (stat: Stat): PlayerStat => ({ ...stat, value: typeof st
  * The world being edited as a Chip Scene: its own opening. The scene is at the starting location with the
  * cast the author placed there, every stat at its authored starting value, the traits the author marked
  * default, and every enabled lore entry (nothing has been typed yet, so no keyword has fired to narrow
- * them). There is no persona, no notes and no clock: a world has none until a player enters it.
+ * them). No persona is picked, so the Custom Persona entity plays as under None. There are no notes and no
+ * clock: a world has none until a player enters it.
  */
 export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOptions = {}): ChipScene {
   // Destructuring defaults are runtime-only backstops: the type demands the slices, but a hand-edited
@@ -110,6 +111,7 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
     ? options.resolve(characterAsPlayer(text), playerCopies)
     : resolveBearerText(null, text, { placeholders, rolls: {}, pins: ownPins(trait, player), copies: playerCopies }));
 
+  const played = entities.filter((entity) => playsAs(entity, undefined));
   // Each entity's default traits switch its stats on and off.
   const ownedStats = enabledOwnerStats(withTraitToggles(
     Object.fromEntries(entities.filter((e) => e.stats?.length).map((e) => [e.id, (e.stats ?? []).map(atStartingValue)])),
@@ -122,7 +124,7 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
     stats: options.stats ?? stats.map(atStartingValue),
     statPlacement: statPlacementOf(world),
     // With no persona picked, the Custom Persona entity's stats are the player's, as its traits are.
-    playedStats: ownerStatParts(entities.filter((entity) => playsAs(entity, undefined)), ownedStats),
+    playedStats: ownerStatParts(played, ownedStats),
     // The player bearer's traits, where its tree places them: never Blueprints, and Custom Persona's at the root.
     traits: borneByPlayer(player.traits.filter((trait) => activeIds.has(trait.id))
       .map((trait) => (trait.aiDescription ? { ...trait, aiDescription: playerText(trait, trait.aiDescription) } : trait))),
@@ -134,6 +136,8 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
     })),
     ownedStats,
     persona: null,
+    // Under None the Custom Persona entity plays, so its name is the Player Name.
+    playerName: played[0]?.name ?? null,
     location,
     locations,
     connections,

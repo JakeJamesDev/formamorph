@@ -30,7 +30,9 @@ import {
   topLevelPlaceholders,
 } from './placeholderTree';
 import { placeholderGroupOf, placeholderGroupsInTreeOrder } from './placeholderGroups';
-import { BUILTIN_HEADING, BUILTIN_PLACEHOLDERS, builtinForToken, type BuiltinPlaceholder } from './builtinPlaceholders';
+import {
+  BUILTIN_HEADING, BUILTIN_PLACEHOLDERS, PLAYER_NAME, builtinForToken, withPlayerName, type BuiltinPlaceholder,
+} from './builtinPlaceholders';
 import type { PlaceholderGroup } from '@/types';
 import { acceptsBlueprintChips, isBlueprintChip, type ChipField } from './blueprintChips';
 import { blueprintIds } from './placeholderBlueprints';
@@ -262,7 +264,9 @@ export function promptVocabulary(palette: PromptVariable[]): ChipVocabulary {
     headerBoundaries: (t) => {
       const parts = splitToken(t);
       const v = variableForToken(t);
-      return parts && v ? promptHeader(parts.header, parts.headerFormat ?? decodeVariant(v, parts.variantId).format) : null;
+      // The editor has no playthrough, so the Player Name reads as its label.
+      const header = parts?.header && withPlayerName(parts.header, PLAYER_NAME.label);
+      return parts && v ? promptHeader(header, parts.headerFormat ?? decodeVariant(v, parts.variantId).format) : null;
     },
     palette: () => palette.map((v) => ({ token: v.token, label: v.label, color: v.color })),
     freshInsertToken: (t) => t,

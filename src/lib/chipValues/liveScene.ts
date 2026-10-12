@@ -119,6 +119,7 @@ export function liveChipScene(
     ownedTraits: ownedInForce,
     ownedStats,
     persona,
+    playerName: persona?.entity.name ?? null,
     location: loc,
     locations: sources.locations,
     connections: sources.connections,

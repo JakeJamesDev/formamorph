@@ -85,7 +85,8 @@ describe('the drift guard', () => {
       return [base, ...variableVariantIds(variable).map((id) => withVariant(base, id))];
     });
     const values = chipValues(scene());
-    expect(Object.keys(values).sort()).toEqual([...expected].sort());
+    // The Player Name rides along for chip Headers.
+    expect(Object.keys(values).sort()).toEqual([...expected, 'header:{{user}}'].sort());
     for (const token of expected) expect(values[token], token).toBeTruthy();
   });
 });
