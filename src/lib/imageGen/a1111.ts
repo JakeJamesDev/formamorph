@@ -1,7 +1,7 @@
 // Automatic1111 / Forge txt2img provider. The user launches the WebUI with
 // `--api --cors-allow-origins=<origin>`; we POST to `${endpointUrl}/sdapi/v1/txt2img`.
 import type { ImageGenOpts, ImageGenParams, ImageProgress, ImageProvider } from './types';
-import { trimUrl, authHeaders, toPngDataUrl, POLL_INTERVAL_MS, readBody, refusalDetails } from './http';
+import { trimUrl, authHeaders, toPngDataUrl, POLL_INTERVAL_MS, readBody, refusalDetails, reachFetch } from './http';
 import { DetailedError } from '../errorDetails';
 
 interface A1111Body {
@@ -95,7 +95,7 @@ export const a1111Provider: ImageProvider = async (params: ImageGenParams, opts:
   const poller = opts.onProgress ? startProgressPoller(base, opts) : undefined;
   try {
     const url = `${base}/sdapi/v1/txt2img`;
-    const res = await fetch(url, {
+    const res = await reachFetch('a1111', opts.endpointUrl, url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders(opts.apiToken, 'Basic') },
       body: JSON.stringify(buildA1111Body(params)),

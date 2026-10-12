@@ -6,7 +6,7 @@ import { randomUUID } from "@/lib/uuid";
 import type { ImageGenOpts, ImageGenParams, ImageProvider } from './types';
 import { bytesToDataUrl } from '../imageOptim';
 import { DetailedError } from '../errorDetails';
-import { trimUrl, authHeaders, POLL_INTERVAL_MS } from './http';
+import { trimUrl, authHeaders, POLL_INTERVAL_MS, reachFetch } from './http';
 
 /** The canonical ComfyUI txt2img API-format graph, with %tokens% for the values we inject. Users can edit
  *  this in Settings or paste their own "Save (API Format)" export as long as the tokens are present. */
@@ -286,8 +286,13 @@ async function pollHistory(base: string, promptId: string, opts: ImageGenOpts): 
   let consecutiveErrors = 0;
   for (;;) {
     if (opts.signal?.aborted) throw new DOMException('Aborted', 'AbortError');
-    const res = await fetch(`${base}/history/${promptId}`, { headers, signal: opts.signal });
-    if (res.ok) {
+    // A dropped connection counts like a bad status: the run goes on server-side, so one blip must not end it.
+    const res = await fetch(`${base}/history/${promptId}`, { headers, signal: opts.signal })
+      .catch((error: unknown) => {
+        if ((error as Error).name === 'AbortError') throw error;
+        return null;
+      });
+    if (res?.ok) {
       consecutiveErrors = 0;
       const history = await res.json();
       try {
@@ -301,7 +306,7 @@ async function pollHistory(base: string, promptId: string, opts: ImageGenOpts): 
         }
       }
     } else if (++consecutiveErrors >= MAX_POLL_ERRORS) {
-      throw new Error(`ComfyUI stopped responding while generating (HTTP ${res.status}).`);
+      throw new Error(`ComfyUI stopped responding while generating${res ? ` (HTTP ${res.status})` : ''}.`);
     }
     await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
   }
@@ -317,7 +322,7 @@ export const comfyuiProvider: ImageProvider = async (params: ImageGenParams, opt
   const watcher = watchComfyProgress(base, clientId, () => promptId, opts);
 
   try {
-    const res = await fetch(`${base}/prompt`, {
+    const res = await reachFetch('comfyui', opts.endpointUrl, `${base}/prompt`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...auth },
       body: JSON.stringify({ prompt: graph, client_id: clientId }),
@@ -344,7 +349,7 @@ export const comfyuiProvider: ImageProvider = async (params: ImageGenParams, opt
     ]);
 
     const img = await pollHistory(base, promptId, opts);
-    const view = await fetch(viewUrl(base, img), { headers: auth, signal: opts.signal });
+    const view = await reachFetch('comfyui', opts.endpointUrl, viewUrl(base, img), { headers: auth, signal: opts.signal });
     if (!view.ok) throw new Error(`Failed to fetch image: HTTP ${view.status}`);
     const bytes = new Uint8Array(await view.arrayBuffer());
     return bytesToDataUrl(bytes, view.headers.get('content-type') || 'image/png');

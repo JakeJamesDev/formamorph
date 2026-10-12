@@ -58,6 +58,7 @@ const ENTRIES: [string, string][] = [
   ['entity', 'Entity'],
   ['enterWorld', 'Enter World'],
   ['errorDetails', 'Error Details'],
+  ['imageSetup', 'Image Setup'],
   ['export', 'Export story'],
   ['intro', 'Introduction'],
   ['location', 'Change Location'],

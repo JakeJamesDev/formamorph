@@ -11,7 +11,9 @@
 // mixed content).
 import type { ImageGenOpts, ImageGenParams, ImageProgress, ImageProvider } from './types';
 import { bytesToDataUrl } from '../imageOptim';
-import { trimUrl, authHeaders, POLL_INTERVAL_MS, readBody, refusalDetails } from './http';
+import {
+  trimUrl, authHeaders, POLL_INTERVAL_MS, readBody, refusalDetails, reachFetch, imageConnectionError, imageConnectionMessage,
+} from './http';
 import { DetailedError } from '../errorDetails';
 
 /** Model bases this provider can build a graph for. */
@@ -502,7 +504,7 @@ export function invokeConnectionMessage(error: unknown, endpointUrl: string): st
     }
     return `InvokeAI answered with HTTP ${error.status} at ${base}. Check the server and its logs.`;
   }
-  return `Couldn't reach InvokeAI at ${base}. Check it's running and that the app's origin is in its allow_origins (Settings → How to Set Up).`;
+  return imageConnectionMessage('invokeai', endpointUrl).replace(/\.$/, ' (Settings → How to Set Up).');
 }
 
 /** Fetch the model list from /api/v2/models/. */
@@ -729,8 +731,11 @@ export const invokeaiProvider: ImageProvider = async (params: ImageGenParams, op
   } catch (error) {
     if ((error as Error).name === 'AbortError') throw error;
     // A rejected token and an unreachable host both land here and need opposite advice.
-    const message = invokeConnectionMessage(error, opts.endpointUrl);
-    throw error instanceof InvokeHttpError ? new DetailedError(message, error.details) : new Error(message);
+    if (error instanceof InvokeHttpError) throw new DetailedError(invokeConnectionMessage(error, opts.endpointUrl), error.details);
+    if (error instanceof TypeError) {
+      throw imageConnectionError('invokeai', opts.endpointUrl, 'GET', `${base}/api/v2/models/`, error);
+    }
+    throw error;
   }
   const model = findModel(models, params.model);
   if (!model) {
@@ -774,7 +779,7 @@ export const invokeaiProvider: ImageProvider = async (params: ImageGenParams, op
   const runGraph = async (graph: Graph): Promise<QueueItem> => {
     itemId = null;
     const enqueueUrl = `${base}/api/v1/queue/default/enqueue_batch`;
-    const res = await fetch(enqueueUrl, {
+    const res = await reachFetch('invokeai', opts.endpointUrl, enqueueUrl, {
       method: 'POST', headers: jsonHeaders,
       body: JSON.stringify({ batch: { graph, runs: 1 }, prepend: false }),
       signal: opts.signal,
@@ -871,7 +876,7 @@ export const invokeaiProvider: ImageProvider = async (params: ImageGenParams, op
     }
 
     const viewUrl = `${base}/api/v1/images/i/${encodeURIComponent(name)}/full`;
-    const view = await fetch(viewUrl, { headers: auth, signal: opts.signal });
+    const view = await reachFetch('invokeai', opts.endpointUrl, viewUrl, { headers: auth, signal: opts.signal });
     if (!view.ok) {
       throw new DetailedError(`Failed to fetch image: HTTP ${view.status}`, refusalDetails('GET', viewUrl, view, await readBody(view)));
     }

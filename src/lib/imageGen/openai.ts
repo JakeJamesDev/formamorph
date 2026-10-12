@@ -2,8 +2,13 @@
 // exposure), so this always routes through the Electron desktop bridge (net-fetch in the main process).
 import type { ImageGenOpts, ImageGenParams, ImageProvider } from './types';
 import { desktopFetch } from './desktop';
-import { trimUrl, authHeaders, abortable, refusalDetails } from './http';
+import { trimUrl, authHeaders, abortable, refusalDetails, imageConnectionError } from './http';
 import { DetailedError } from '../errorDetails';
+
+/** True when the desktop bridge's request got no response. IPC rethrows main-process errors as plain
+ *  Errors, so only the text tells a network failure apart: Chromium `net::ERR_*` codes or undici's "fetch failed". */
+const isBridgeNetworkError = (error: unknown): boolean =>
+  error instanceof Error && /net::ERR_|fetch failed/i.test(error.message);
 
 // OpenAI's Images API only accepts a fixed set of sizes; snap the requested dimensions to the nearest
 // by aspect ratio (square / portrait / landscape).
@@ -44,7 +49,10 @@ export const openaiProvider: ImageProvider = async (params: ImageGenParams, opts
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders(opts.apiToken, 'Bearer') },
     body: JSON.stringify(body),
-  }), opts.signal);
+  }), opts.signal).catch((error: unknown) => {
+    if (isBridgeNetworkError(error)) throw imageConnectionError('openai', opts.endpointUrl, 'POST', url, error);
+    throw error;
+  });
   if (!res.ok) throw new DetailedError(`HTTP ${res.status}`, refusalDetails('POST', url, res, res.body));
   return parseOpenAIResponse(JSON.parse(res.body));
 };

@@ -86,6 +86,7 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
   entity: { page: 'How-to-Play', anchor: 'the-entity-dialog' },
   enterWorld: { page: 'Starting-a-Game', anchor: 'the-enter-world-dialog' },
   errorDetails: { page: 'How-to-Play', anchor: 'error-details' },
+  imageSetup: { page: 'Image-Generation', anchor: 'providers' },
   export: { page: 'How-to-Play', anchor: 'how-to-export-the-story' },
   gameViewer: { page: 'How-to-Play', anchor: 'the-game-screen' },
   intro: { page: 'Starting-a-Game', anchor: 'the-welcome-animation' },

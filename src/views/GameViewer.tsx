@@ -176,6 +176,7 @@ import { addToPending, setTurnAttachments, latestTurnAttachments, pruneAttachmen
 import { useImageAttachments } from "../lib/useImageAttachments";
 import { useMountedRef } from "../lib/useMountedRef";
 import { generateImage, buildImageRequest } from "../lib/imageGen";
+import { toastImageFailure } from "../lib/imageGen/failureToast";
 import { buildImagePrompt } from "../lib/imagePrompt";
 import { downloadBlob } from "../lib/downloadBlob";
 import { rollbackState, regenerateState, canRegenerate, lastTurnAction, markRegeneratedTurn, markPrunedTurns, snapshotPageIndex, placeSnapshot, sliceHistoryToPage, pageAssistantIndex } from "../lib/turnHistory";
@@ -3442,7 +3443,8 @@ const GameViewer = ({
       setSceneImages((prev) => addSceneImage(prev, turnId, dataUrl));
     } catch (error) {
       if ((error as Error).name === "AbortError") return;
-      toastError(error, args.tagsOnly ? "Couldn't write tags for this scene." : "Couldn't draw this scene.");
+      if (args.tagsOnly) toastError(error, "Couldn't write tags for this scene.");
+      else toastImageFailure(error, "Couldn't draw this scene.");
       addSystemLogEntry(args.tagsOnly ? "Scene tags failed" : "Scene image failed");
     } finally {
       setSceneImageJob(null);
