@@ -239,9 +239,9 @@ export function resolveBearers(
 /**
  * The gate input the editor reads: the whole world as the player's owner, Blueprints included so every row
  * reads its gate, then each entity bearer with its links expanded, a persona-only one included since the
- * author sees every tree. Nothing is active and there is no persona.
+ * author sees every tree. Nothing is active and there is no persona. `stats` are what a stat Condition reads.
  */
-export function editorGateInput(world: BearerWorld): GateInput {
+export function editorGateInput(world: BearerWorld, stats?: GateInput['stats']): GateInput {
   const { bearers, gate } = resolveBearers(world, undefined);
   const placeable = placeableGroupIds(world.traitGroups);
   return {
@@ -251,6 +251,7 @@ export function editorGateInput(world: BearerWorld): GateInput {
       ...bearers.filter((b) => b.entity).map((b) => gateOwner(b, effectivePlacement(b.entity!, placeable)?.groupId ?? null)),
     ],
     active: {},
+    ...(stats ? { stats } : {}),
   };
 }
 

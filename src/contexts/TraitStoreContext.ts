@@ -1,6 +1,7 @@
 import { createContext, useContext, useMemo } from 'react';
 import { useGameDataOptional } from '@/contexts/GameDataContext';
 import { editorGateInput } from '@/lib/bearers';
+import { startingGateStats } from '@/lib/gateStats';
 import type { GateInput } from '@/lib/traitGates';
 import type { PinEditorWorld } from '@/lib/placeholderPins';
 import type { PlacementLetters } from '@/lib/placementLetters';
@@ -65,9 +66,14 @@ export function useTraitStore(): TraitStore {
   const traits = world?.traits;
   const traitGroups = world?.traitGroups;
   const entities = world?.entities;
+  const stats = world?.stats;
+  const statGroups = world?.statGroups;
   const gateInput = useMemo(
-    () => editorGateInput({ traits: traits ?? [], traitGroups: traitGroups ?? [], entities: entities ?? [] }),
-    [traits, traitGroups, entities],
+    () => editorGateInput(
+      { traits: traits ?? [], traitGroups: traitGroups ?? [], entities: entities ?? [] },
+      startingGateStats({ stats, statGroups, entities: entities ?? [] }),
+    ),
+    [traits, traitGroups, entities, stats, statGroups],
   );
   if (provided) return provided;
   if (!world) throw new Error('useTraitStore needs a world or a TraitStoreContext');

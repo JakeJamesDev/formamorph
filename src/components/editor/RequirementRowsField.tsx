@@ -7,12 +7,15 @@ import {
   BreadcrumbPicker, BreadcrumbPickerList, type BreadcrumbPickerRow, type BreadcrumbPickerSection,
 } from '@/components/ui/breadcrumb-picker';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
+import { StatConditionControls } from '@/components/editor/StatConditionControls';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import {
-  bearerKey, bearerOf, flipped, sameRequirement, withBearer,
+  bearerKey, bearerOf, flipped, sameRequirement, statTail, withBearer,
   type ConditionState, type RequirementBearerOption, type RequirementOption, type RequirementOptions, type RowState,
 } from '@/lib/traitGates';
 import { soleBearerRequirement } from '@/lib/requirementBearers';
+import { joinAnd } from '@/lib/requirementSummary';
+import type { RequirementStatSection } from '@/lib/requirementStatOptions';
 import { cn } from '@/lib/utils';
 import type { Placeholder, TraitRequirement, TraitRequirementRow } from '@/types';
 
@@ -28,17 +31,23 @@ type AddTarget = number | 'new';
  * reads as plain text; a chip whose target is gone reads red under its stored name. Each chip flips between
  * plain and Not; a Not chip shows a NOT mark and a dashed border.
  *
+ * A stat Condition has its own chip: the stat's name, then a segmented operator, the number and a Raw / %
+ * toggle, all editable in place. It reads as plain text, since a stat has nowhere to open, and an edit that
+ * would repeat another Condition in the row is held back. The same stat can sit in a row twice, once as a
+ * floor and once as a ceiling.
+ *
  * The host supplies everything the rows read: `owner` is the bearer id the rows default to, `states` the
- * rows' evaluated state in the same order, `options` the targets an author can add, and `textOf` the rule
- * text of one Condition.
+ * rows' evaluated state in the same order, `options` the targets an author can add, `statSections` the stats
+ * by bearer, and `textOf` the rule text of one Condition.
  */
 export function RequirementRowsField({
-  rows, owner, states, options, textOf, placeholders, offWorld = false, onChange, onOpen, opens = () => true, labelAside,
+  rows, owner, states, options, statSections = [], textOf, placeholders, offWorld = false, onChange, onOpen, opens = () => true, labelAside,
 }: {
   rows: TraitRequirementRow[];
   owner: string;
   states: readonly RowState[];
   options: RequirementOptions;
+  statSections?: readonly RequirementStatSection[];
   textOf: (requirement: TraitRequirement) => string;
   placeholders: readonly Placeholder[];
   offWorld?: boolean;
@@ -71,19 +80,19 @@ export function RequirementRowsField({
     const all = row.all.filter((_, j) => j !== index);
     return all.length ? [{ all }] : [];
   }));
-  // A flip never repeats a Condition in its row, nor turns a one-chip row into a copy of another.
-  const canFlip = (rowIndex: number, index: number) => {
+  // A replacement never repeats another Condition in its row, nor turns a one-chip row into a copy of another.
+  const canReplace = (rowIndex: number, index: number, next: TraitRequirement) => {
     const row = rows[rowIndex];
-    const next = flipped(row.all[index]);
-    if (row.all.some((other) => sameRequirement(other, next))) return false;
+    if (row.all.some((other, j) => j !== index && sameRequirement(other, next))) return false;
     return row.all.length > 1 || !rows.some((r, k) => k !== rowIndex && r.all.length === 1 && sameRequirement(r.all[0], next));
   };
-  const flipCondition = (rowIndex: number, index: number) => onChange(rows.map((row, i) =>
-    (i === rowIndex ? { all: row.all.map((req, j) => (j === index ? flipped(req) : req)) } : row)));
-  // What a playing-as row, an off-world row and a target with one possible bearer add at once; any other
-  // target asks which bearer first.
+  const replaceCondition = (rowIndex: number, index: number, next: TraitRequirement) => onChange(rows.map((row, i) =>
+    (i === rowIndex ? { all: row.all.map((req, j) => (j === index ? next : req)) } : row)));
+  // A stat row names its bearer in the section it sits in, so it needs no bearer page. What a playing-as row,
+  // an off-world row and a target with one possible bearer add at once; any other target asks which bearer first.
   const atOnce = (option: RequirementOption) =>
-    (option.requirement.kind === 'playingAs' || offWorld ? option.requirement : soleBearerRequirement(option, owner));
+    (option.requirement.kind === 'playingAs' || option.requirement.kind === 'stat' || offWorld
+      ? option.requirement : soleBearerRequirement(option, owner));
   const pick = (option: RequirementOption) => {
     const requirement = atOnce(option);
     if (requirement) add(requirement);
@@ -102,16 +111,21 @@ export function RequirementRowsField({
   const targets = (heading: string, list: RequirementOption[]): BreadcrumbPickerSection<RequirementOption> => ({
     heading,
     rows: list.map((option) => ({
-      key: `${option.requirement.kind}:${option.requirement.id}`,
+      // One stat can sit under several bearers.
+      key: `${option.requirement.kind}:${option.requirement.id}${option.requirement.kind === 'stat' ? `:${bearerKey(bearerOf(option.requirement))}` : ''}`,
       value: option,
       name: option.label,
       breadcrumb: option.breadcrumb,
       disabled: exhausted(option),
     })),
   });
+  // Off-world only the entity's own stats exist to read.
+  const statTargets = statSections.filter((s) => !offWorld || s.own).map((s) => targets(s.heading, s.options));
+  const searchable = joinAnd(['traits', 'groups', ...(statTargets.length ? ['stats'] : []), ...(offWorld ? [] : ['personas'])]);
   const sections = [
     targets('Traits', options.traits),
     targets('Any Trait in a Group', options.groups),
+    ...statTargets,
     ...(offWorld ? [] : [targets('Playing As', options.personas)]),
   ];
 
@@ -146,24 +160,46 @@ export function RequirementRowsField({
     </div>
   );
 
-  const chip = (requirement: TraitRequirement, state: ConditionState | undefined, edit: { remove: () => void; flip: () => void; canFlip: boolean }) => {
+  const chip = (
+    requirement: TraitRequirement,
+    state: ConditionState | undefined,
+    edit: { remove: () => void; replace: (next: TraitRequirement) => void; accepts: (next: TraitRequirement) => boolean },
+  ) => {
     // The rule reads "not Paladin"; a Not chip shows its target, "Paladin", behind the NOT mark.
     const ruleLabel = labelPlaceholders(state?.text ?? '', placeholders);
     const targetText = requirement.not ? textOf(flipped(requirement)) : state?.text ?? '';
     const targetLabel = labelPlaceholders(targetText, placeholders);
     const unresolved = !!state?.unresolved;
     const mark = requirement.not && <><span className="text-meta font-semibold tracking-wide">NOT</span>{' '}</>;
+    // A stat chip shows the stat's name, with the comparison in its controls rather than in the text.
+    const stat = requirement.kind === 'stat' ? requirement : null;
+    const tail = stat ? ` ${statTail(stat)}` : '';
+    const statName = targetText.endsWith(tail) ? targetText.slice(0, targetText.length - tail.length) : targetText;
     return (
       <span
+        role={stat ? 'group' : undefined}
+        aria-label={stat ? ruleLabel : undefined}
         data-unresolved={unresolved || undefined}
         data-not={requirement.not || undefined}
         className={cn(
           'inline-flex max-w-full items-center gap-0.5 rounded-full border bg-secondary py-0.5 pl-2.5 pr-1 text-label',
+          stat && 'flex-wrap gap-y-1',
           requirement.not && 'border-dashed',
           unresolved && 'border-destructive text-destructive',
         )}
       >
-        {unresolved || !opens(requirement) ? (
+        {stat ? (
+          <>
+            <span className="min-w-0 truncate">{mark}<PlaceholderText text={statName} placeholders={placeholders} /></span>
+            <span className="ml-1.5 inline-flex items-center gap-1.5 text-foreground">
+              <StatConditionControls
+                requirement={stat}
+                accepts={edit.accepts}
+                onChange={edit.replace}
+              />
+            </span>
+          </>
+        ) : unresolved || !opens(requirement) ? (
           <span className="min-w-0 truncate">{mark}{targetLabel}</span>
         ) : (
           <button
@@ -179,9 +215,9 @@ export function RequirementRowsField({
             type="button"
             aria-label={requirement.not ? `Require ${targetLabel} instead` : `Require ${targetLabel} to be off`}
             aria-pressed={!!requirement.not}
-            disabled={!edit.canFlip}
+            disabled={!edit.accepts(flipped(requirement))}
             className="shrink-0 rounded-full p-0.5 hover:bg-muted disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-            onClick={edit.flip}
+            onClick={() => edit.replace(flipped(requirement))}
           >
             <ArrowLeftRight className="h-3 w-3" aria-hidden />
           </button>
@@ -204,7 +240,7 @@ export function RequirementRowsField({
       open={target === key}
       onOpenChange={(next) => changeTarget(next ? key : null)}
       closeOnPick={false}
-      searchPlaceholder={offWorld ? 'Search traits and groups' : 'Search traits, groups, and personas'}
+      searchPlaceholder={`Search ${searchable}`}
       renderText={renderText}
       plainText={plainText}
       page={(target === key && bearerPage) || undefined}
@@ -229,8 +265,8 @@ export function RequirementRowsField({
                       {j > 0 && <span className="text-meta text-muted-foreground">and</span>}
                       {chip(requirement, states[i]?.conditions[j], {
                         remove: () => removeCondition(i, j),
-                        flip: () => flipCondition(i, j),
-                        canFlip: canFlip(i, j),
+                        replace: (next) => replaceCondition(i, j, next),
+                        accepts: (next) => canReplace(i, j, next),
                       })}
                     </span>
                   ))}
