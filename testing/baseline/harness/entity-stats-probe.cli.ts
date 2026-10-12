@@ -65,6 +65,7 @@ import {
   type PromptReasoning,
 } from '@/lib/reasoningEffort';
 import { renderPromptTemplate } from '@/lib/promptTemplate';
+import { layerValues } from '@/lib/promptValues';
 import { createStatRequest, type StatRequestSnapshot } from '@/lib/statRequest';
 import { PLAYER_OWNER } from '@/lib/statOwners';
 import { statUpdatesCap, statUpdatesRequest } from '@/lib/turnPipeline/turnPasses';
@@ -151,7 +152,7 @@ function swap(text: string, from: string | RegExp, to: string): string {
   if (out === text) throw new Error(`Stat prompt drifted: ${String(from).slice(0, 60)} not found.`);
   return out;
 }
-const statsBlock = (owner: Owner) => createStatRequest(owner.stats).context[STATS_TOKEN];
+const statsBlock = (owner: Owner) => createStatRequest(owner.stats).context(STATS_TOKEN);
 const ownerSections = (owners: Owner[]) => owners.map((o) => `### ${o.name}\n${statsBlock(o)}`).join('\n\n');
 
 function sharedSystem(owners: Owner[]): string {
@@ -163,7 +164,7 @@ function sharedSystem(owners: Owner[]): string {
 interface Call { owner?: Owner; system: string; user: string; maxTokens: number; schema?: object; snapshot?: StatRequestSnapshot }
 const userFor = (narration: string, template = defaultStatUpdatesUserPrompt) => template.replace('<NARRATION>', narration);
 const render = (system: string, owner?: Owner) =>
-  renderPromptTemplate(system, owner ? { ...BASE_CTX, ...createStatRequest(owner.stats).context } : BASE_CTX);
+  renderPromptTemplate(system, owner ? layerValues(BASE_CTX, createStatRequest(owner.stats).context) : BASE_CTX);
 const total = (owners: Owner[]) => owners.reduce((n, o) => n + o.stats.length, 0);
 
 const SOCIAL_RULE = ['a real exertion, injury, loss, or gain.', 'a real exertion, injury, loss, or gain, or a clear shift in how a character regards the player.'] as const;

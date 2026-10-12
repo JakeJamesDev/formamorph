@@ -1,5 +1,6 @@
 import type { Entity, ChatMessage, AIRequestType, SceneEntity } from "@/types";
 import { renderPromptTemplate } from "./promptTemplate";
+import { layerValues, type TokenValues } from "./promptValues";
 import { collectCharacterDiary } from "./turnDigest";
 import { selectRelevantDiary } from "./semanticDiary";
 import { sameCharacterName, matchNames, findEntityNames, stripQuotedSpeech } from "./entityMatch";
@@ -437,7 +438,7 @@ export interface StagedPlanningResult {
  */
 export async function runStagedPlanning(ctx: {
   action: string;
-  stageValues: Record<string, string>;
+  stageValues: TokenValues;
   lastStory: string;
   entities: Entity[];
   presentEntityIds: string[];
@@ -500,7 +501,7 @@ export async function runStagedPlanning(ctx: {
       : [];
     const diary = diaryRetrieval ? selectRelevantDiary(all, diaryRetrieval.queryVec, diaryRetrieval.vectorsByKey) : all;
     return request(
-      renderPromptTemplate(characterPrompt, { ...stageValues, "<CHARACTER NAME>": member.name }),
+      renderPromptTemplate(characterPrompt, layerValues(stageValues, { "<CHARACTER NAME>": member.name })),
       [{ role: "user", content: buildCharacterUserMessage({ character: member, scene, action, diary, recap: lastStory }) }],
       "character", caps.character, signal,
     );

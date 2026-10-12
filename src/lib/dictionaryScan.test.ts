@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildScanCorpus, scannableMessageText } from './dictionaryScan';
+import { chipValues } from './chipValues/chipValues';
 import type { ChatMessage } from '@/types';
 
 const msg = (role: ChatMessage['role'], content: string): ChatMessage => ({ role, content });
@@ -38,6 +39,21 @@ describe('buildScanCorpus — scans exactly the blocks the prompt renders', () =
       '<LOCATION|markdown|header="current location">\n<ENTITIES|markdown|pre="Nearby: "|header="cast">' });
     expect(scene.find(source => source.region === '<LOCATION|markdown>')?.text).toBe(base.ctx['<LOCATION|markdown>']);
     expect(scene.find(source => source.region === '<ENTITIES|markdown>')?.text).toBe(base.ctx['<ENTITIES|markdown>']);
+  });
+
+  it('reads a lazy chip lookup as the prompt does, rendering only the blocks the template places', () => {
+    const scene = chipValues({
+      overview: '', stats: [], traits: [], traitGroups: [], persona: null, connections: [], lore: [], notes: '', time: null,
+      location: { id: 'vault', name: 'Vault', aiDescription: 'a deep vault' },
+      locations: [{ id: 'vault', name: 'Vault', aiDescription: 'a deep vault' }],
+      entities: [{ id: 'rustjaw', name: 'Rustjaw', locations: ['vault'], aiSummary: 'a scavenger', aiDescription: 'a scavenger' }],
+      presentIds: ['rustjaw'], inSceneIds: [], resolve: (text) => text,
+    });
+    const read: string[] = [];
+    const ctx = (key: string) => { read.push(key); return scene(key); };
+    const { scene: sources } = buildScanCorpus({ ...base, template: '<ENTITIES|summary.xml|header="cast">', ctx });
+    expect(sources.find((s) => s.region === '<ENTITIES|summary.xml>')?.text).toBe(scene('<ENTITIES|summary.xml>'));
+    expect(read).toEqual(['<ENTITIES|summary.xml>']);
   });
 
   it('uses the rendered variant, not the base token', () => {

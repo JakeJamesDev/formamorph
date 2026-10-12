@@ -111,8 +111,9 @@ import type { ChipSceneTime } from "../lib/chipValues/chipScene";
 import { useResolvedWorld } from "@/lib/useResolvedWorld";
 import { usePersonaNotice } from "@/lib/usePersonaNotice";
 import { resolveStartingLocation } from "../lib/startingLocation";
-import { variableForToken, variableVariantIds, tokenVariant, withVariant } from "../lib/promptVariables";
+import { variableForToken, tokenVariant } from "../lib/promptVariables";
 import { renderPromptTemplate } from "../lib/promptTemplate";
+import { layerValues, omitValues, type TokenValues } from "../lib/promptValues";
 import { useBaselineTestHook } from "../lib/baselineTestHook";
 import { recordParityTurn } from "../lib/turnPipeline/parityRecorder";
 import {
@@ -303,9 +304,8 @@ const activeUnderTraits = (
   return { activeTraits: inForce, activeStats: enabledStats(stats, activeStatEnabled(stats, [...inForce, ...played])) };
 };
 
-// The lore blocks the module emits for a scene, which play fills per turn instead.
+// The lore chip, whose blocks play fills per turn instead of from the scene.
 const DICTIONARY_VARIABLE = variableForToken('<DICTIONARY>')!;
-const LORE_TOKENS = ['<DICTIONARY>', ...variableVariantIds(DICTIONARY_VARIABLE).map((id) => withVariant('<DICTIONARY>', id))];
 
 // A stable empty array for turns with no scene image, so the panel's prop identity doesn't churn.
 const EMPTY_IMAGES: string[] = [];
@@ -1615,7 +1615,7 @@ const GameViewer = ({
   // records what fired. The meter leaves it false and replays the live call's window.
   // contextValues is declared further down (it depends on callbacks defined below), so the history
   // builder reaches it through a ref rather than the closure — same dodge as sendAiRequestRef.
-  const contextValuesRef = useRef<(loc?: GameLocation | null) => Record<string, string>>(() => ({}));
+  const contextValuesRef = useRef<(loc?: GameLocation | null) => TokenValues>(() => ({}));
 
   // Narration's resolved target backs every budget the story history is trimmed against — the window and the
   // reserved output belong to whichever endpoint narration actually sends to, not the globally-selected one.
@@ -1949,20 +1949,19 @@ const GameViewer = ({
     locationOverride?: GameLocation | null,
     /** The world under a before box's writes; absent, every value reads live state. */
     box?: SceneWrites | null,
-  ): Record<string, string> => {
+  ): TokenValues => {
     const scene = liveScene(locationOverride, box);
-    const values = chipValues(scene);
     // Lore activates per turn inside the narration prompt builder, so the scene-level lore blocks are
-    // dropped here and the Preview tab falls through to the pool's samples for them.
-    for (const token of LORE_TOKENS) delete values[token];
+    // dropped here. The lore chip is the one in-game token the Preview tab reads from the pool's samples.
+    const values = omitValues(chipValues(scene), (key) => variableForToken(key) === DICTIONARY_VARIABLE);
     // The placeholder chips this world's own custom prompts place, keyed by token. A preset places none.
-    return { ...values, ...worldPromptChipValues(worldOverview, declinedWorldPrompts, scene.resolve) };
+    return layerValues(values, worldPromptChipValues(worldOverview, declinedWorldPrompts, scene.resolve));
   }, [liveScene, worldOverview, declinedWorldPrompts]);
   contextValuesRef.current = contextValues;
 
   // Scene-roster override for the entity chips: choices and re-roll prompts see only who is in the scene.
   const sceneEntityOverride = useCallback(
-    (sceneLoc: GameLocation | null, sceneEntities: Entity[]): Record<string, string> =>
+    (sceneLoc: GameLocation | null, sceneEntities: Entity[]): TokenValues =>
       sceneEntityChipValues(liveScene(sceneLoc), entityIdsAt(sceneLoc?.id, sceneEntities)),
     [liveScene],
   );
@@ -1973,7 +1972,7 @@ const GameViewer = ({
   // (action / narration / speaking character) are assembled fresh per request, so there is nothing live to
   // show between turns — those fall through to the shared pool's samples rather than to a second set of
   // placeholder strings kept here, which is how the two copies used to drift.
-  const promptPreviewValues = useMemo<Record<string, string>>(() => contextValues(), [contextValues]);
+  const promptPreviewValues = useMemo<TokenValues>(() => contextValues(), [contextValues]);
   // Recall searches the committed history as the narration prompt's memory reads it; digests off, no memory.
   // Its meaning match reads the drainer's vectors under the drainer's own gates.
   const toolMemorySource = useCallback(
@@ -3508,14 +3507,14 @@ const GameViewer = ({
   // The choices/stats requests for the standalone re-rolls (handleRegenerateChoices/Stats), built by the pass
   // records a live turn uses. Callers own the enable-guard and result handling. `quiet: false` keeps the
   // re-roll's own status label; the pass records quiet it under Concurrent Requests.
-  const rerollMaterial = (ctx: Record<string, string>, action: string, narration: string): TurnMaterial => ({
+  const rerollMaterial = (ctx: TokenValues, action: string, narration: string): TurnMaterial => ({
     ...emptyTurnMaterial({ action, effectiveAction: action, turnId: "", baseCtx: ctx, destinations: [] }),
     ctx,
     narration,
   });
   const requestChoices = (
-    ctx: Record<string, string>,
-    sceneEntityTokens: Record<string, string>,
+    ctx: TokenValues,
+    sceneEntityTokens: TokenValues,
     action: string,
     narration: string,
     signal: AbortSignal,
@@ -3526,7 +3525,7 @@ const GameViewer = ({
       signal,
     });
   const requestStats = (
-    ctx: Record<string, string>,
+    ctx: TokenValues,
     snapshot: StatRequestSnapshot,
     action: string,
     narration: string,

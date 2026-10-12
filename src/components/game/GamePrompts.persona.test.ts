@@ -6,6 +6,7 @@ import { parsePromptTemplate, renderPromptTemplate, serializeSegments } from '@/
 import { decodeVariant, splitToken, tokenVariant, variableForToken } from '@/lib/promptVariables';
 import { personaContextValues } from '@/lib/personaContext';
 import { SAMPLE_PREVIEW_VALUES } from '@/lib/previewValuePool';
+import { layerValues } from '@/lib/promptValues';
 import type { ResolvedPersona } from '@/lib/persona';
 
 // The spec's default coverage table, written out: the expectation must not come from the templates it checks.
@@ -63,7 +64,7 @@ describe('the persona chip in the default prompts', () => {
   });
 
   it.each(styles)('sends the persona to the covered prompts and nowhere else, in the $name preset', ({ values }) => {
-    const ctx = { ...SAMPLE_PREVIEW_VALUES, ...personaContextValues(persona) };
+    const ctx = layerValues(SAMPLE_PREVIEW_VALUES, personaContextValues(persona));
     for (const key of PROMPT_TEXT_KEYS) {
       const out = renderPromptTemplate(values[key], ctx);
       expect(out.includes('Persona Fixture'), key).toBe(COVERED.has(key));
@@ -77,13 +78,13 @@ describe('the persona chip in the default prompts', () => {
     const headed = PROMPT_TEXT_KEYS.filter((key) => parsePromptTemplate(values[key]).some((seg) =>
       seg.type === 'variable' && variableForToken(seg.token) === PERSONA && splitToken(seg.token)?.header === 'Player Character'));
     expect(headed.sort()).toEqual(HEADED);
-    const ctx = { ...SAMPLE_PREVIEW_VALUES, ...personaContextValues(persona), 'header:{{user}}': 'Persona Fixture' };
+    const ctx = layerValues(SAMPLE_PREVIEW_VALUES, personaContextValues(persona), { 'header:{{user}}': 'Persona Fixture' });
     const heading = { markdown: '## Player Character', labels: 'PLAYER CHARACTER:', xml: '<player_character>' }[style];
     for (const key of HEADED) expect(renderPromptTemplate(values[key], ctx), key).toContain(`\n${heading}\n`);
   });
 
   it.each(styles)('renders every prompt unchanged with no persona set, in the $name preset', ({ values }) => {
-    const ctx = { ...SAMPLE_PREVIEW_VALUES, ...personaContextValues(null) };
+    const ctx = layerValues(SAMPLE_PREVIEW_VALUES, personaContextValues(null));
     for (const key of PROMPT_TEXT_KEYS) {
       expect(renderPromptTemplate(values[key], ctx), key).toBe(renderPromptTemplate(withoutPersona(values[key]), ctx));
     }

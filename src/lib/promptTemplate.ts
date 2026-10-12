@@ -3,6 +3,7 @@ import { NONE_PLACEHOLDER } from './promptFallbacks';
 import { promptHeader } from './promptHeader';
 import { decodePlaceholderToken, parsePlaceholderText } from './placeholders';
 import { PLAYER_NAME_HEADER_KEY, withPlayerName } from './builtinPlaceholders';
+import { readValue, type TokenValues } from './promptValues';
 import { tilePieces, type AnatomyPiece, type AnatomySource, type ContextLabel, type TiledRuns } from './requestAnatomy';
 
 /** A prompt template parsed into an ordered run of literal text and variable tokens. */
@@ -71,14 +72,14 @@ function isBlankValue(value: string): boolean {
 }
 
 /** Resolve all placements, retaining tokens without a value; values use keys without Header or affixes. */
-export function renderPromptTemplate(template: string, values: Record<string, string>): string {
+export function renderPromptTemplate(template: string, values: TokenValues): string {
   return resolvePromptSegments(parseTemplateWithPlaceholders(template), values).map(part => part.text).join('');
 }
 
 /** Resolve every placement for every rendering surface; each chip's text is self-contained. */
-export function resolvePromptSegments(segments: PromptSegment[], values: Record<string, string>) {
+export function resolvePromptSegments(segments: PromptSegment[], values: TokenValues) {
   return segments.map(segment => {
-    const resolved = segment.type === 'variable' ? resolveToken(segment.token, values) ?? values[segment.token] : undefined;
+    const resolved = segment.type === 'variable' ? resolveToken(segment.token, values) ?? readValue(values, segment.token) : undefined;
     return { segment, resolved: resolved !== undefined,
       text: segment.type === 'text' ? segment.value : resolved ?? segment.token };
   });
@@ -94,7 +95,7 @@ export function resolvePromptSegments(segments: PromptSegment[], values: Record<
  */
 export function renderPromptTemplateRuns(
   template: string,
-  values: Record<string, string>,
+  values: TokenValues,
   labels: TemplateLabels,
 ): TiledRuns {
   return tilePieces(promptTemplatePieces(template, values, labels));
@@ -112,7 +113,7 @@ export interface TemplateLabels {
  *  (the narration's OOC rider, a mode directive) before tiling the message as a whole. */
 export function promptTemplatePieces(
   template: string,
-  values: Record<string, string>,
+  values: TokenValues,
   labels: TemplateLabels,
 ): AnatomyPiece[] {
   return resolvePromptSegments(parseTemplateWithPlaceholders(template), values).map(({ segment, text, resolved }) => {
@@ -137,8 +138,8 @@ export function chipHeaderFormat(parts: TokenParts): 'markdown' | 'xml' | undefi
 }
 
 /** A Header with its Player Name from the map, before it is framed. A map without one leaves the token. */
-function headerText(header: string | undefined, values: Record<string, string>): string | undefined {
-  const name = values[PLAYER_NAME_HEADER_KEY];
+function headerText(header: string | undefined, values: TokenValues): string | undefined {
+  const name = readValue(values, PLAYER_NAME_HEADER_KEY);
   return name === undefined || header === undefined ? header : withPlayerName(header, name);
 }
 
@@ -151,10 +152,10 @@ function headerText(header: string | undefined, values: Record<string, string>):
  * all. Values are keyed by the affix-free token; a token from another chip family (placeholders) doesn't
  * parse here and returns undefined, leaving that family's own lookup to handle it.
  */
-export function resolveToken(token: string, values: Record<string, string>): string | undefined {
+export function resolveToken(token: string, values: TokenValues): string | undefined {
   const parts = splitToken(token);
   if (!parts) return undefined;
-  const value = values[parts.key];
+  const value = readValue(values, parts.key);
   if (value === undefined) return undefined;
   const header = promptHeader(headerText(parts.header, values), chipHeaderFormat(parts));
   // The value's own edge line breaks would shift the static frame.

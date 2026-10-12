@@ -5,6 +5,7 @@ import { PROMPT_TEXT_KEYS, type PromptValues } from './promptPresets';
 import { defaultSystemPrompt, defaultDiscoverEntityPrompt, PROMPT_TEXT_DEFAULTS } from '@/components/game/GamePrompts';
 import { SAMPLE_PREVIEW_VALUES } from './previewValuePool';
 import { personaContextValues } from './personaContext';
+import { layerValues } from './promptValues';
 import { parsePromptTemplate, renderPromptTemplate } from './promptTemplate';
 import { joinToken, splitToken } from './promptVariables';
 
@@ -183,11 +184,11 @@ describe('chip affixes survive a style downcast (gate 6)', () => {
 describe('default XML section boundaries', () => {
   it.each([true, false])('keeps traits and the optional player character as siblings (persona: %s)', (present) => {
     const template = buildStyledValues(PROMPT_TEXT_DEFAULTS, 'xml').systemPrompt;
-    const output = renderPromptTemplate(template, {
-      ...SAMPLE_PREVIEW_VALUES,
-      ...personaContextValues(present ? { source: 'library', entity: { id: 'traveler', name: 'Traveler', pronouns: 'they/them' } } : null),
-      'header:{{user}}': present ? 'Traveler' : 'the player',
-    });
+    const output = renderPromptTemplate(template, layerValues(
+      SAMPLE_PREVIEW_VALUES,
+      personaContextValues(present ? { source: 'library', entity: { id: 'traveler', name: 'Traveler', pronouns: 'they/them' } } : null),
+      { 'header:{{user}}': present ? 'Traveler' : 'the player' },
+    ));
     const sections = output.slice(output.indexOf(present ? '<player_character>' : '<other_traits>'), output.indexOf('<current_location>'));
     const document = new DOMParser().parseFromString(`<root>${sections}</root>`, 'application/xml');
     expect(document.querySelector('parsererror')).toBeNull();

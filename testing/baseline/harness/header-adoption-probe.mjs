@@ -3,8 +3,9 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { PROMPT_TEXT_DEFAULTS } from '@/components/game/GamePrompts';
 import { buildStyledValues } from '@/lib/sectionStyle';
-import { ALL_PROMPT_VARIABLES, variableVariantIds, withVariant } from '@/lib/promptVariables';
-import { expandScopedTokens, buildLocationContext, renderEntityRoster } from '@/lib/locationContext';
+import { decodeChipKey } from '@/lib/promptVariables';
+import { scopedChipValues, buildLocationContext, renderEntityRoster } from '@/lib/locationContext';
+import { layerValues } from '@/lib/promptValues';
 import { buildTraitContext } from '@/lib/traitTree';
 import { personaContextValues } from '@/lib/personaContext';
 import { buildNarrationPrompt } from '@/lib/turnPipeline/narrationPrompt';
@@ -27,22 +28,23 @@ if (capture) {
       const scene = corpus.cases.find(c => c.name === name);
       const style = index ? 'xml' : kind === 'choices' ? 'labels' : 'markdown';
       const prompts = templates?.[style] ?? buildStyledValues(PROMPT_TEXT_DEFAULTS, style);
-      const empty = Object.fromEntries(ALL_PROMPT_VARIABLES.flatMap(v =>
-        [null, ...variableVariantIds(v)].map(id => [withVariant(v.token, id), 'N/A'])));
       const entities = scene.entities.map((e, i) => ({ id: String(i), name: e.name, aiDescription: e.description, type: e.type }));
       const location = { id: 'landing', name: 'The Ferry Landing', aiDescription: corpus.location, entities: entities.map(e => e.id) };
-      const ctx = {
-        ...empty,
-        ...expandScopedTokens('<LOCATION>', { '': opts => buildLocationContext(location, opts) }),
-        ...expandScopedTokens('<ENTITIES>', { '': opts => renderEntityRoster(location.entities, entities, opts) }),
-        ...personaContextValues(null),
+      const own = {
         '<WORLD DESCRIPTION>': corpus.world, '<NOTES>': '', '<LANGUAGE>': '',
         '<PLAYER ACTION>': scene.action, '<NARRATION>': scene.prevNarration,
       };
       for (const format of ['simple', 'markdown', 'xml']) {
-        ctx[format === 'simple' ? '<TRAITS DESCRIPTION>' : `<TRAITS DESCRIPTION|${format}>`] =
+        own[format === 'simple' ? '<TRAITS DESCRIPTION>' : `<TRAITS DESCRIPTION|${format}>`] =
           buildTraitContext(['identity'], [{ id: 'identity', name: 'Identity', aiDescription: corpus.playerTrait }], [], format);
       }
+      const ctx = layerValues(
+        key => (decodeChipKey(key) ? 'N/A' : undefined),
+        scopedChipValues('<LOCATION>', { '': opts => buildLocationContext(location, opts) }),
+        scopedChipValues('<ENTITIES>', { '': opts => renderEntityRoster(location.entities, entities, opts) }),
+        personaContextValues(null),
+        own,
+      );
       const input = testInput({ action: scene.action, prompts: { ...TEST_PROMPTS,
         thinking: prompts.thinkingPrompt, choices: prompts.choicesPrompt, choicesUser: prompts.choicesUserPrompt,
         narrationUser: prompts.narrationUserPrompt, oocDirective: prompts.oocDirectivePrompt } },

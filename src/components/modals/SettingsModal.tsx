@@ -51,6 +51,7 @@ import { cn } from "@/lib/utils";
 import { PanelShell } from "@/components/PanelShell";
 import { useMorphFullscreen } from "@/lib/useMorphFullscreen";
 import { composePreviewValues, languagePreviewValue } from "@/lib/previewValuePool";
+import { layerValues, type TokenValues } from "@/lib/promptValues";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -213,7 +214,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   /** Starts the Authoring Tour on a new world. Only the main menu supplies it, so a running game hides the row. */
   onStartAuthoringTour?: () => void;
   /** Live variable values for the prompt-editor Preview tab. Supplied only in game; absent → no Preview. */
-  previewValues?: Record<string, string>;
+  previewValues?: TokenValues;
   /** The open world as a Tool Snapshot, for Try It. Supplied only in game; absent, Try It uses the sample world. */
   toolWorld?: () => ToolSnapshot;
   /** DEV dev-router: open on this top-level tab instead of the default (see `devRouter.ts`). */
@@ -668,7 +669,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   );
   // The choices prompt's language chip names itself in the directive, so its preview says "choices" where
   // the pool's default says "narration".
-  const choicesPreviewValues = { ...effectivePreviewValues, ...languagePreviewValue('choices', language) };
+  const choicesPreviewValues = layerValues(effectivePreviewValues, languagePreviewValue('choices', language));
 
   // The selected prompt sub-tab, so the Reset button can target just that prompt.
   const [promptTab, setPromptTab] = useState(initialPromptTab ?? 'narration');

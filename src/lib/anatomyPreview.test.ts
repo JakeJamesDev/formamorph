@@ -507,10 +507,10 @@ describe('the hub and the editor Preview tell one story', () => {
 
   it('renders the same current-turn values the field previews sample', () => {
     const pool = SAMPLE_PREVIEW_VALUES;
-    expect(text('scenetags')).toContain(pool['<IN FRAME>']);
-    expect(text('statupdates')).toContain(pool['<NARRATION>']);
-    expect(text('summary')).toContain(pool['<PLAYER ACTION>']);
-    expect(text('character')).toContain(pool['<CHARACTER NAME>']);
+    expect(text('scenetags')).toContain(pool('<IN FRAME>'));
+    expect(text('statupdates')).toContain(pool('<NARRATION>'));
+    expect(text('summary')).toContain(pool('<PLAYER ACTION>'));
+    expect(text('character')).toContain(pool('<CHARACTER NAME>'));
   });
 
   it('describes the subject with the words the sample turn owns', () => {

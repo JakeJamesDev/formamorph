@@ -3,6 +3,7 @@ import type { StatPlacement } from './statContext';
 import { stripMarkdown } from './stripMarkdown';
 import { statChipPartValues } from './chipValues/chipValues';
 import { maxKeyOf, statKeys } from './statKeys';
+import { mapValues, type ValueLookup } from './promptValues';
 import { applyAiMaxChanges, applyAiStatChanges, parseStatUpdates } from './statChanges';
 import { randomUUID } from './uuid';
 import { PLAYER_OWNER } from './statOwners';
@@ -36,9 +37,9 @@ export interface StatRequestSnapshot {
   /** The player's targets first, then each entity owner's. */
   targets: StatRequestTarget[];
   /** Every owner's section, for the schema request. */
-  context: Record<string, string>;
+  context: ValueLookup;
   /** The player's section alone, for the text pass. */
-  textContext: Record<string, string>;
+  textContext: ValueLookup;
   /** Each entity owner's key, in order. The text pass skips them. */
   entityKeys: string[];
   /** The request takes the text pass, because its endpoint refused the schema. */
@@ -127,9 +128,8 @@ export function createStatRequest(
   const owners = entities.filter((owner) => owner.stats.length);
   const keys = ownerKeys(owners.map((owner) => owner.name), new Set([ownerKey]));
   const sections = owners.map((owner, i) => ({ key: keys[i], ...ownerSection([owner], keys[i]) }));
-  const context = Object.fromEntries(Object.entries(player.context).map(([token, value]) => [
-    token, [value, ...sections.map((section) => `### ${section.key}\n${section.context[token]}`)].join('\n\n'),
-  ]));
+  const context = mapValues(player.context, (value, token) =>
+    [value, ...sections.map((section) => `### ${section.key}\n${section.context(token)}`)].join('\n\n'));
   return {
     id: randomUUID(),
     targets: [...player.targets, ...sections.flatMap((section) => section.targets)],

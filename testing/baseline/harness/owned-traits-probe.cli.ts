@@ -29,6 +29,9 @@ import { authoredChipScene } from '@/lib/chipValues/authoredScene';
 import { chipValues } from '@/lib/chipValues/chipValues';
 import { withBearerTrees } from '@/lib/ownedTraitsInPlay';
 import { personaContextValues } from '@/lib/personaContext';
+import type { ValueLookup } from '@/lib/promptValues';
+import { allSpelledTokens } from '@/test/chipTokens';
+import { PLAYER_NAME_HEADER_KEY } from '@/lib/builtinPlaceholders';
 import { NONE_PLACEHOLDER } from '@/lib/promptFallbacks';
 import { buildTraitContext } from '@/lib/traitTree';
 import { resolveEntityText } from '@/lib/placeholders';
@@ -120,15 +123,19 @@ function buildCtx(linked: boolean) {
   const personaBlock = (token: string) => buildTraitContext(inForce[persona.id] ?? [], played.traits ?? [], played.traitGroups ?? [],
     token.includes('xml') ? 'xml' : token.includes('markdown') ? 'markdown' : 'simple');
   const bare = personaContextValues({ source: 'world', entity: played });
-  const before = Object.fromEntries(Object.entries(after).map(([token, value]) => [token,
-    token.startsWith('<TRAITS DESCRIPTION') ? (value === NONE_PLACEHOLDER ? personaBlock(token) : `${value}\n${personaBlock(token)}`)
-    : token in bare ? bare[token] : value]));
+  const before: ValueLookup = (token) => {
+    const value = after(token);
+    if (value === undefined) return undefined;
+    return token.startsWith('<TRAITS DESCRIPTION') ? (value === NONE_PLACEHOLDER ? personaBlock(token) : `${value}\n${personaBlock(token)}`)
+      : bare(token) ?? value;
+  };
   return { before, after };
 }
 const CTX = buildCtx(args.includes('--linked'));
 if (args.includes('--linked')) {
   const owned = buildCtx(false);
-  const differ = ARMS.flatMap((arm) => Object.keys(owned[arm]).filter((token) => owned[arm][token] !== CTX[arm][token]).map((t) => `${arm} ${t}`));
+  const tokens = [...allSpelledTokens(), PLAYER_NAME_HEADER_KEY];
+  const differ = ARMS.flatMap((arm) => tokens.filter((token) => owned[arm](token) !== CTX[arm](token)).map((t) => `${arm} ${t}`));
   console.log(differ.length ? `linked chips differ from owned: ${differ.join(', ')}` : 'linked chips match the owned build byte for byte');
 }
 
@@ -200,10 +207,10 @@ async function complete(model: string, req: ReturnType<typeof request>, seed: nu
 const cases = fixture.cases.filter((c) => !only || only.split(',').includes(c.id));
 if (args.includes('--dump')) {
   for (const arm of ARMS) {
-    console.log(`\n--- ${arm}: Traits chip\n${CTX[arm]['<TRAITS DESCRIPTION|markdown>']}`);
-    console.log(`--- ${arm}: Entities chip\n${CTX[arm]['<ENTITIES|markdown>']}`);
-    console.log(`--- ${arm}: Entities summary chip\n${CTX[arm]['<ENTITIES|summary.markdown>']}`);
-    console.log(`--- ${arm}: Persona chip\n${CTX[arm]['<PERSONA|markdown>']}`);
+    console.log(`\n--- ${arm}: Traits chip\n${CTX[arm]('<TRAITS DESCRIPTION|markdown>')}`);
+    console.log(`--- ${arm}: Entities chip\n${CTX[arm]('<ENTITIES|markdown>')}`);
+    console.log(`--- ${arm}: Entities summary chip\n${CTX[arm]('<ENTITIES|summary.markdown>')}`);
+    console.log(`--- ${arm}: Persona chip\n${CTX[arm]('<PERSONA|markdown>')}`);
   }
   process.exit(0);
 }

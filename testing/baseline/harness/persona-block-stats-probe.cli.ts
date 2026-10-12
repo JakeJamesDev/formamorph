@@ -31,6 +31,7 @@ import { authoredChipScene } from '@/lib/chipValues/authoredScene';
 import { chipValues, playedStatParts, sceneEntityChipValues, statChipPartValues } from '@/lib/chipValues/chipValues';
 import { resolveEntityText } from '@/lib/placeholders';
 import { renderPromptTemplate } from '@/lib/promptTemplate';
+import { layerValues, type ValueLookup } from '@/lib/promptValues';
 import { buildStoryboardUserMessage } from '@/lib/stagedPlanning';
 import { statPlacementOf } from '@/lib/statContext';
 import { stripMarkdown } from '@/lib/stripMarkdown';
@@ -119,14 +120,14 @@ const scene = {
 const blockCtx = chipValues(scene);
 // The control arm's Stats chip is ticket 02's: the world's stats, then the persona's, numbered on a clash.
 const world = { stats: scene.stats, placement: scene.statPlacement };
-const CTX: Record<Arm, Record<string, string>> = {
+const CTX: Record<Arm, ValueLookup> = {
   block: blockCtx,
-  control: {
-    ...blockCtx,
-    ...statChipPartValues([world, ...playedStatParts(world, scene.playedStats, (name) => stripMarkdown(name).trim())]),
-  },
+  control: layerValues(
+    blockCtx,
+    statChipPartValues([world, ...playedStatParts(world, scene.playedStats, (name) => stripMarkdown(name).trim())]),
+  ),
 };
-if (!CTX.control[OTHER_STATS.replace(/\|header="[^"]*"/, '')]?.includes('Resolve (2)')) {
+if (!CTX.control(OTHER_STATS.replace(/\|header="[^"]*"/, ''))?.includes('Resolve (2)')) {
   throw new Error('The control Stats chip does not carry the numbered persona stat.');
 }
 
@@ -166,10 +167,10 @@ function request(arm: Arm, c: Case): { system: string; user: string; max?: numbe
   }
   if (c.kind === 'choices') {
     // The choice writer reads only who is in the scene, through the scene-roster override.
-    const values = { ...ctx, ...sceneEntityChipValues(scene, Array.isArray(c.scene) ? c.scene : []), '<LANGUAGE>': '' };
+    const values = layerValues(ctx, sceneEntityChipValues(scene, Array.isArray(c.scene) ? c.scene : []), { '<LANGUAGE>': '' });
     return {
       system: renderPromptTemplate(TEMPLATES[arm].choices, values),
-      user: renderPromptTemplate(defaultChoicesUserPrompt, { ...values, '<NARRATION>': c.narration ?? '' }),
+      user: renderPromptTemplate(defaultChoicesUserPrompt, layerValues(values, { '<NARRATION>': c.narration ?? '' })),
       max: 220,
     };
   }

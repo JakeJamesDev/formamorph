@@ -2,6 +2,7 @@ import type { AIRequestType, ChatMessage, Entity, ImageAttachment, RequestMessag
 import type { AnatomyRun, RequestAnatomy } from '@/lib/requestAnatomy';
 import type { ThinkingMode } from '@/contexts/SettingsContext';
 import type { StatRequestSnapshot } from '@/lib/statRequest';
+import type { TokenValues } from '@/lib/promptValues';
 import type { ResponseSchema } from '@/lib/aiRequest/responseSchema';
 import type { PromptAttachmentsMap } from '@/lib/promptAttachments';
 
@@ -145,11 +146,11 @@ export interface TurnMaterial {
   effectiveAction: string;
   turnId: string;
   /** Context values scoped to this turn's location (after any auto-resolved move). */
-  ctx: Record<string, string>;
+  ctx: TokenValues;
   /** Context values scoped to the location the turn began in — what the digest and diary passes see. */
-  baseCtx: Record<string, string>;
+  baseCtx: TokenValues;
   /** Entity chips narrowed to who is actually in the scene, for the choices pass. */
-  sceneEntityTokens: Record<string, string>;
+  sceneEntityTokens: TokenValues;
   /** Names the location router may answer with. */
   destinations: string[];
   /**

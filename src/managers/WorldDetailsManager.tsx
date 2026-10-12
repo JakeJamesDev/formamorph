@@ -13,6 +13,7 @@ import { PROMPT_KIND_VARIABLES } from "@/lib/promptVariables";
 import { authoredChipScene } from "@/lib/chipValues/authoredScene";
 import { chipValues } from "@/lib/chipValues/chipValues";
 import { composePreviewValues, languagePreviewValue } from "@/lib/previewValuePool";
+import { layerValues, omitValues } from "@/lib/promptValues";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Hint } from "@/components/ui/typography";
@@ -83,9 +84,9 @@ const CustomPromptsSection = ({ focusField, tab, onTabChange: setTab, onOpenEnti
   const previewValues = useMemo(
     () => {
       // A world has no notes or clock, so the pool's sample turn supplies both, as it does the per-turn chips.
-      const { '<NOTES>': _notes, '<TIME>': _time, ...authored } = chipValues(authoredChipScene({
+      const authored = omitValues(chipValues(authoredChipScene({
         worldOverview, stats, statGroups, locations, connections, entities, traits, traitGroups, dictionaries, placeholders,
-      }));
+      })), (key) => key === '<NOTES>' || key === '<TIME>');
       return composePreviewValues(
         {
           paragraphLimit, maxTokens, markdownOutput, sectionStyle: activeSectionStyle,
@@ -229,7 +230,7 @@ const CustomPromptsSection = ({ focusField, tab, onTabChange: setTab, onOpenEnti
                 // The choices prompt's language chip names itself in the directive, so its preview says
                 // "choices" where the pool's default says "narration".
                 previewValues: kind === 'choices'
-                  ? { ...previewValues, ...languagePreviewValue('choices', language) }
+                  ? layerValues(previewValues, languagePreviewValue('choices', language))
                   : previewValues,
                 sampleData: 'Your world, sample turn',
               }}

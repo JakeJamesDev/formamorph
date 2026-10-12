@@ -1,5 +1,6 @@
 import { parsePromptTemplate } from './promptTemplate';
 import { splitToken } from './promptVariables';
+import { readValue, type TokenValues } from './promptValues';
 import { parseTurnContent } from './turnDigest';
 import type { ScanSource } from './dictionaryUtils';
 import type { ChatMessage } from '@/types';
@@ -37,7 +38,7 @@ export interface ScanCorpusInput {
   /** The active system-prompt template, before rendering — decides which blocks are in scope. */
   template: string;
   /** Rendered chip values by token (the same map handed to `renderPromptTemplate`). */
-  ctx: Record<string, string>;
+  ctx: TokenValues;
   /** The player's action for this turn, as sent. */
   action: string;
   /** Player notes as rendered: the resolved `<NOTES>` chip, or the raw fallback section's text. */
@@ -68,7 +69,7 @@ export function buildScanCorpus({ template, ctx, action, notes, history }: ScanC
     const key = splitToken(segment.token)?.key ?? segment.token;
     if (!isScannedSceneToken(key) || seen.has(key)) continue;
     seen.add(key);
-    const text = ctx[key];
+    const text = readValue(ctx, key);
     if (text) scene.push({ region: key, text });
   }
   if (action) scene.push({ region: 'action', text: action });
