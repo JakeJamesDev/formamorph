@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type {
   Dictionary, DictionaryEntry, Entity, GameLocation, Placeholder, PlaceholderPin, Stat, Trait, TraitGroup, TraitLink,
-  TraitRequirement, TraitRequirementRow, WorldOverview,
+  StatRequirement, TraitRequirement, TraitRequirementRow, WorldOverview,
 } from '@/types';
 import { estimateTokens } from '@/lib/memoryUtils';
 import { IMAGE_CAPS } from '@/lib/imageOptim';
@@ -2168,6 +2168,164 @@ describe('trait gate rules', () => {
     });
   });
 
+  describe('stat Conditions', () => {
+    const rage = stat({ id: 'rage', name: 'Rage', min: 0, max: 100, starting: 50 });
+    const atLeast = (id: string, value: number, over: Partial<StatRequirement> = {}): StatRequirement =>
+      ({ kind: 'stat', id, operator: '>=', value, unit: 'raw', ...over });
+    const berserk = (req: StatRequirement, over: Partial<Trait> = {}) => gated('berserk', [req], over);
+    const messages = (w: RuleWorld, rule: string) => only(w, rule).map((f) => f.message);
+
+    describe('unresolved requirements', () => {
+      const rule = 'trait-requirement-unresolved';
+
+      it('names a stat the world lacks, and passes the same Condition once the stat exists', () => {
+        const req = atLeast('rage', 80, { name: 'Rage' });
+        expect(messages(gates([berserk(req)]), rule)).toEqual([
+          '“BERSERK” requires “Rage >= 80”, which names a stat its bearer doesn’t have',
+        ]);
+        expect(runRules(gates([berserk(req)], { stats: [rage] }))).toEqual([]);
+      });
+
+      it('reads a stat on another bearer, and flags one that bearer does not own', () => {
+        const ashOwns = (stats: Stat[]): Entity => ({ ...resident, id: 'ash', name: 'Ash', stats });
+        const req = atLeast('hunger', 70, { name: 'Hunger', bearer: { kind: 'entity', id: 'ash' } });
+        const hunger = stat({ id: 'hunger', name: 'Hunger', starting: 10 });
+        expect(runRules(gates([berserk(req)], { entities: [resident, ashOwns([hunger])] }))).toEqual([]);
+        // Rage exists in the world, but Ash does not own it.
+        expect(messages(gates([berserk(atLeast('rage', 80, { name: 'Rage', bearer: { kind: 'entity', id: 'ash' } }))], {
+          stats: [rage], entities: [resident, ashOwns([])],
+        }), rule)).toEqual(['“BERSERK” requires “Ash: Rage >= 80”, which names a stat its bearer doesn’t have']);
+      });
+
+      it('leaves a switched-off stat to the disabled-stat rule', () => {
+        const off = stat({ id: 'rage', name: 'Rage', enabled: false });
+        const w = gates([berserk(atLeast('rage', 80))], { stats: [off] });
+        expect(only(w, rule)).toEqual([]);
+        expect(only(w, 'stat-disabled-forever')).toHaveLength(1);
+      });
+    });
+
+    describe('trait gate reads own stat', () => {
+      const rule = 'trait-gate-reads-own-stat';
+      const gate = atLeast('rage', 80);
+
+      it.each([
+        ['a value change', { statChanges: [{ statId: 'rage', value: 5 }] }],
+        ['a max change', { statChanges: [{ statId: 'rage', value: 20, type: 'max' as const }] }],
+        ['a stat toggle', { statToggles: [{ statId: 'rage', enabled: true }] }],
+      ])('fires for %s', (_, effect) => {
+        const found = only(gates([berserk(gate, effect)], { stats: [rage] }), rule);
+        expect(ids(found)).toEqual([['berserk']]);
+        expect(found[0].message).toBe('“BERSERK” requires “Rage” and changes “Rage” — its own effect can flip the requirement, so gate it on another stat');
+      });
+
+      it('stays silent when the trait changes another stat, or no gate reads the stat', () => {
+        const calm = stat({ id: 'calm', name: 'Calm' });
+        expect(only(gates([berserk(gate, { statChanges: [{ statId: 'calm', value: 5 }] })], { stats: [rage, calm] }), rule)).toEqual([]);
+        expect(only(gates([trait({ id: 'plain', name: 'Plain', statChanges: [{ statId: 'rage', value: 5 }] })], { stats: [rage] }), rule)).toEqual([]);
+      });
+
+      it('reports one stat once however many Conditions read it', () => {
+        const twice = rowed('berserk', [{ all: [gate] }, { all: [atLeast('rage', 60)] }], { statChanges: [{ statId: 'rage', value: 5 }] });
+        expect(only(gates([twice], { stats: [rage] }), rule)).toHaveLength(1);
+      });
+
+      it('reads a trait an entity owns', () => {
+        const owner: Entity = { ...resident, id: 'ash', name: 'Ash', stats: [rage], traits: [berserk(gate, { statChanges: [{ statId: 'rage', value: 5 }] })] };
+        expect(ids(only(gates([], { entities: [resident, owner] }), rule))).toEqual([['berserk']]);
+      });
+    });
+
+    describe('per bearer', () => {
+      const bree = (over: Partial<Entity> = {}): Entity => ({ ...resident, id: 'bree', name: 'Bree', ...over });
+      const onBree = { kind: 'entity' as const, id: 'bree' };
+
+      it('reads the stat of the bearer the Condition names, not another owner’s with the same id', () => {
+        const effect = { statChanges: [{ statId: 'rage', value: 5 }] };
+        const ash = (req: StatRequirement): Entity => ({ ...resident, id: 'ash', name: 'Ash', stats: [rage], traits: [berserk(req, effect)] });
+        const rule = 'trait-gate-reads-own-stat';
+        // Ash's trait changes Ash's Rage; the Condition reads Bree's.
+        expect(only(gates([], { entities: [resident, ash(atLeast('rage', 80, { bearer: onBree })), bree({ stats: [rage] })] }), rule)).toEqual([]);
+        expect(only(gates([], { entities: [resident, ash(atLeast('rage', 80))] }), rule)).toHaveLength(1);
+      });
+
+      it('reads the range of the bearer the Condition names', () => {
+        const flat = stat({ id: 'rage', name: 'Rage', min: 10, max: 10, starting: 10 });
+        const rule = 'requirement-percent-zero-span';
+        const w = (bearer?: StatRequirement['bearer']) => gates([berserk(atLeast('rage', 50, { unit: 'percent', ...(bearer ? { bearer } : {}) }))], {
+          stats: [rage], entities: [resident, bree({ stats: [flat] })],
+        });
+        expect(only(w(onBree), rule)).toHaveLength(1);
+        expect(only(w(), rule)).toEqual([]);
+      });
+
+      it('leaves a stat that is switched off on its bearer to the stats rules', () => {
+        const off = stat({ id: 'rage', name: 'Rage', enabled: false });
+        const w = gates([berserk(atLeast('rage', 80, { bearer: onBree }))], { stats: [rage], entities: [resident, bree({ stats: [off] })] });
+        expect(only(w, 'trait-requirement-unresolved')).toEqual([]);
+      });
+
+      it('reports a link only for a Condition its own override adds', () => {
+        const rule = 'trait-gate-reads-own-stat';
+        const smite = trait({ id: 'smite', name: 'Smite', groupId: 'blueprints', statChanges: [{ statId: 'rage', value: 5 }] });
+        const link = (overrides?: TraitLink['overrides']): TraitLink =>
+          ({ id: 'l-smite', originalId: 'smite', kind: 'trait', originalName: 'Smite', groupId: null, ...(overrides ? { overrides } : {}) });
+        const w = (traitLink: TraitLink) => gates([smite], {
+          traitGroups: [{ id: 'blueprints', name: 'Blueprints', parentId: null, system: 'blueprints' }],
+          entities: [resident, bree({ stats: [rage], traitLinks: [traitLink] })],
+        });
+        const gate = { smite: { requires: { value: [{ all: [atLeast('rage', 80)] }], blueprint: [] } } };
+        const found = only(w(link(gate)), rule);
+        expect(found.map((f) => f.message)).toEqual([
+          '“Smite” on “Bree” requires “Rage” and changes “Rage” — its own effect can flip the requirement, so gate it on another stat',
+        ]);
+        expect(ids(found)).toEqual([['l-smite']]);
+        expect(only(w(link()), rule)).toEqual([]);
+      });
+    });
+
+    describe('percent on a zero-span stat', () => {
+      const rule = 'requirement-percent-zero-span';
+      const flat = stat({ id: 'rage', name: 'Rage', min: 10, max: 10, starting: 10 });
+      const percent = atLeast('rage', 50, { unit: 'percent' });
+
+      it('fires for a percent Condition on a stat whose min equals its max', () => {
+        const found = only(gates([berserk(percent)], { stats: [flat] }), rule);
+        expect(ids(found)).toEqual([['berserk']]);
+        expect(found[0].message).toBe(
+          '“BERSERK” requires “Rage >= 50%”, but “Rage” has the same min and max, so it always reads 0% — use a raw number or widen its range',
+        );
+      });
+
+      it('stays silent on a raw Condition, or on a stat with a range', () => {
+        expect(only(gates([berserk(atLeast('rage', 50))], { stats: [flat] }), rule)).toEqual([]);
+        expect(only(gates([berserk(percent)], { stats: [rage] }), rule)).toEqual([]);
+      });
+    });
+
+    describe('static analyses', () => {
+      it('treats a stat-gated trait as unlockable both ways', () => {
+        // A threshold the stat can reach, and one it can never reach at its authored start, both pass.
+        const never = ['trait-requirement-never-unlockable', 'trait-requirement-row-never-holds', 'trait-requirement-unstable'];
+        for (const value of [80, 500]) {
+          const w = gates([berserk(atLeast('rage', value))], { stats: [rage] });
+          for (const rule of never) expect(only(w, rule)).toEqual([]);
+        }
+      });
+
+      it('still reports a trait whose trait Conditions can never be met', () => {
+        const loop = [rowed('a', [{ all: [atLeast('rage', 80), ref('c')] }]), gated('c', needs('a'))];
+        expect(ids(only(gates(loop, { stats: [rage] }), 'trait-requirement-never-unlockable'))).toEqual([['a', 'c']]);
+      });
+
+      it('still reports a row whose trait Conditions clash', () => {
+        const clash = rowed('a', [{ all: [atLeast('rage', 80), ref('b'), not(ref('b'))] }]);
+        const w = gates([clash, trait({ id: 'b', name: 'B' })], { stats: [rage] });
+        expect(only(w, 'trait-requirement-row-never-holds')).toHaveLength(1);
+      });
+    });
+  });
+
   describe('gated defaults', () => {
     const rule = 'trait-default-gated';
     const def = { isDefault: true };
@@ -4256,6 +4414,8 @@ const RULE_SCOPE: Record<string, 'simple' | 'advanced'> = {
   'trait-requirement-unresolved': 'simple',
   'trait-requirement-unstable': 'simple',
   'trait-requirement-row-never-holds': 'simple',
+  'trait-gate-reads-own-stat': 'simple',
+  'requirement-percent-zero-span': 'simple',
   // A link row's menu removes it in both modes.
   'trait-link-redundant': 'simple',
   'world-empty-system-prompt': 'simple',
