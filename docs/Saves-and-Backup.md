@@ -145,7 +145,7 @@ Saves from older versions of Formamorph load too. Formamorph converts a save in 
 
 **Autosave** saves your game after every turn, named by turn, such as **Autosave · Turn 12**. **Autosaves Kept** sets how many each world keeps; it starts at one. A new turn adds an autosave until the world has that many, then replaces the oldest. If you lower it, the world's oldest extra autosaves are deleted on its next autosave.
 
-- It starts after the opening scene, and it also saves after **Re-generate**.
+- It starts after the opening scene. After **Re-generate**, it replaces that turn's autosave.
 - It never changes your own saves.
 - It never keeps scene images.
 - It shows under **Load Game** with an **Auto** tag. You can load, export or delete it.

@@ -306,7 +306,7 @@ Saves, the Authoring Tour, and stored data. To back up your worlds, saves, libra
 
 ### Saves
 
-**Autosave** saves after every turn, named by turn. It never changes your own saves. **Autosaves Kept** sets how many autosaves each world keeps; it starts at one, and a new turn replaces the oldest. Lowering it shows a red warning while Settings is open: each world's oldest extras are deleted on its next autosave. Autosaves show under **Load Game** with an **Auto** tag. Autosave starts after the opening scene.
+**Autosave** saves after every turn, named by turn. It never changes your own saves. **Autosaves Kept** sets how many autosaves each world keeps; it starts at one, and a new turn replaces the oldest, and **Re-generate** replaces its turn's autosave. Lowering it shows a red warning while Settings is open: each world's oldest extras are deleted on its next autosave. Autosaves show under **Load Game** with an **Auto** tag. Autosave starts after the opening scene.
 
 ### Authoring
 

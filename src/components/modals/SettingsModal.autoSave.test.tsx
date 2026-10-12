@@ -35,7 +35,8 @@ const openData = (mode: SettingsMode = 'simple', onStartAuthoringTour?: () => vo
 );
 
 const toggle = () => screen.getByRole('checkbox', { name: 'Auto Save' });
-const slider = () => screen.queryByRole('slider');
+// The pause slider, not Autosaves Kept beside it in the Data tab.
+const slider = () => document.getElementById('editorAutoSaveIdleSeconds')?.querySelector<HTMLElement>('[role="slider"]') ?? null;
 const preference = () => screen.getByLabelText('Editor preference').textContent;
 
 beforeEach(() => localStorage.clear());

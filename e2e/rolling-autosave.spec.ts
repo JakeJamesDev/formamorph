@@ -51,7 +51,10 @@ test('seven turns keeping five leave the five latest autosaves, named by turn, a
   await page.getByRole('button', { name: 'Settings' }).click();
   const settings = page.getByRole('dialog', { name: 'Settings' });
   await settings.getByRole('tab', { name: 'Data' }).click();
-  await settings.getByLabel('Autosaves Kept').fill('2');
+  const slider = settings.locator('#autosaveSlots').getByRole('slider');
+  await slider.focus();
+  await page.keyboard.press('Home');
+  await page.keyboard.press('ArrowRight');
   await expect(settings.getByRole('status').filter({ hasText: 'autosaves past 2 on its next autosave' })).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(settings).toBeHidden();
@@ -59,7 +62,7 @@ test('seven turns keeping five leave the five latest autosaves, named by turn, a
   await page.getByRole('button', { name: 'Menu' }).click();
   await page.getByRole('button', { name: 'Settings' }).click();
   await settings.getByRole('tab', { name: 'Data' }).click();
-  await expect(settings.getByLabel('Autosaves Kept')).toHaveValue('2');
+  await expect(settings.locator('#autosaveSlots').getByRole('slider')).toHaveAttribute('aria-valuenow', '2');
   await expect(settings.getByText(/on its next autosave/)).toHaveCount(0);
   await page.keyboard.press('Escape');
   await expect(settings).toBeHidden();
