@@ -31,7 +31,7 @@ export interface CodeRenameKey {
 }
 
 /** The key of one member step, or null where only a run could name it. */
-function keyOf(member: SyntaxNode, object: SyntaxNode, code: string): CodeRenameKey | null {
+export function memberRenameKey(member: SyntaxNode, object: SyntaxNode, code: string): CodeRenameKey | null {
   const optional = code.slice(object.to, member.to).trimStart().startsWith('?.');
   const span = { optional, objectTo: object.to, memberTo: member.to };
   const property = member.getChild('PropertyName');
@@ -67,7 +67,7 @@ function chainAt(node: SyntaxNode, code: string, root: ChainRoot): CodeRenameKey
   const keys: CodeRenameKey[] = [];
   for (const member of members) {
     const object = member.firstChild;
-    const key = object && keyOf(member, object, code);
+    const key = object && memberRenameKey(member, object, code);
     // Nothing below an unreadable key can be resolved either, so the chain ends here.
     if (!key) break;
     keys.push(key);

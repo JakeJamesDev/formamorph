@@ -60,7 +60,7 @@ export const spliced = (code: string, edits: readonly CodeSplice[]): string =>
 
 /** What one key becomes: the key alone where the author's form survives, the whole member expression where
  *  a dot form has to become a bracket to hold a name no identifier can spell. */
-function rewrittenKey(key: CodeRenameKey, newName: string): CodeSplice {
+export function rewrittenKey(key: CodeRenameKey, newName: string): CodeSplice {
   if (key.quote) return { from: key.keyFrom, to: key.keyTo, insert: quoted(newName, key.quote) };
   if (IDENTIFIER.test(newName)) return { from: key.keyFrom, to: key.keyTo, insert: newName };
   return { from: key.objectTo, to: key.memberTo, insert: `${key.optional ? '?.' : ''}[${quoted(newName, "'")}]` };
