@@ -3,16 +3,15 @@
  * item. Each name is read through its card, and a route over several holders through each holder too.
  */
 
-import { codeCard, type CodeCardItem } from './codeCards';
+import { codeCard, placeholderHolders, type CodeCardItem } from './codeCards';
 import { boxUses, type CodeStatUse } from './codeStatUses';
 import type { CodeBox, CodeCardWorld, CodeWorldLookup } from './codeWorldLookup';
-import { placeholderAt, type SurfaceAnalysisOptions } from './statCodeAnalysis';
+import type { SurfaceAnalysisOptions } from './statCodeAnalysis';
 import { codeDictionaries } from './statCodePlaceholders';
-import { parseCode, resolveCodeName, type PlaceholderOwner } from './statCodeResolver';
+import { parseCode, resolveCodeName } from './statCodeResolver';
 import { STAT_CODE_SURFACE } from './statCodeSurface';
 import { statCodeBoxes, type CodeOwners, type StatCodeBox } from './statCodeTargets';
 import { entityTraitNames, worldTraitPlaces } from './statCodeTraits';
-import type { Placeholder } from '@/types';
 
 /** An item other than a stat. */
 export type OtherUseItem = Exclude<CodeCardItem, { kind: 'stat' }>;
@@ -33,17 +32,6 @@ function matcherOf(item: OtherUseItem, world: CodeCardWorld): (found: CodeCardIt
   }
 }
 
-/** The placeholder a route over several holders reaches in each one, read as if that holder were the only one. */
-function holderPlaceholders(owner: PlaceholderOwner, path: readonly string[], options: SurfaceAnalysisOptions): Placeholder[] {
-  const { lookup } = options;
-  const narrowed: SurfaceAnalysisOptions[] = owner.route === 'owner' && lookup
-    ? lookup.ownerEntityIds().map((id) => ({ ...options, lookup: { ...lookup, ownerEntityIds: () => [id] } }))
-    : owner.route === 'persona'
-      ? (options.entities ?? []).filter((entity) => entity.persona).map((entity) => ({ ...options, entities: [entity] }))
-      : [];
-  return narrowed.flatMap((each) => placeholderAt(owner, path, each) ?? []);
-}
-
 /** What the name at `pos` reaches: its card's item, and each holder's where its route reaches several (T12-4). */
 function itemsAt(code: string, pos: number, options: SurfaceAnalysisOptions): CodeCardItem[] {
   const item = codeCard(code, pos, options)?.item;
@@ -54,7 +42,7 @@ function itemsAt(code: string, pos: number, options: SurfaceAnalysisOptions): Co
     items.push(...(options.lookup?.traits(name.owner, name.key) ?? []).map(({ trait }): CodeCardItem => ({ kind: 'trait', traitId: trait.id })));
   }
   if (name.kind === 'placeholder') {
-    items.push(...holderPlaceholders(name.owner, name.path, options).map((p): CodeCardItem => ({ kind: 'placeholder', placeholderId: p.id })));
+    items.push(...placeholderHolders(name.owner, name.path, options).map(({ placeholder }): CodeCardItem => ({ kind: 'placeholder', placeholderId: placeholder.id })));
   }
   return items;
 }

@@ -8,13 +8,14 @@ import { isMethodEntry, type CodeAccess, type SurfaceEntry } from '@/lib/codeSur
 import { canBePlayer } from '@/lib/bearers';
 import type { DocTarget } from '@/lib/docs/docsLinks';
 import type {
-  CodeDictionaryRecord, CodeEntityRecord, CodeOwnerRecord, CodePlaceholderRecord, CodeStatRecord, CodeTraitRecord, CodeWorldLookup,
+  CodeDictionaryRecord, CodeEntityRecord, CodeHoldersRecord, CodeOwnerRecord, CodePlaceholderHolder, CodePlaceholderRecord,
+  CodeStatRecord, CodeTraitRecord, CodeWorldLookup,
 } from '@/lib/codeWorldLookup';
 import { placeholderKindNoun, placeholderWeight } from '@/lib/placeholders';
 import { REGEN_UNIT_LABELS, regenPer, regenUnitOf } from '@/lib/regenUnits';
 import { isUnknownEntry, memberEntries, placeholderAt, type SurfaceAnalysisOptions } from '@/lib/statCodeAnalysis';
 import { isIdentifier } from '@/lib/statCodePaths';
-import { parseCode, resolveCodeName, type CodeMapOwner, type CodeValue } from '@/lib/statCodeResolver';
+import { parseCode, resolveCodeName, type CodeMapOwner, type CodeValue, type PlaceholderOwner } from '@/lib/statCodeResolver';
 import { DAYPART_OPTIONS, parseTemplateSlots } from '@/lib/statCodeTemplates';
 import type { Placeholder, Stat, TraitMode } from '@/types';
 
@@ -186,8 +187,10 @@ function statDetails(record: CodeStatRecord): Pick<CodeCard, 'description' | 'ro
 
 const TRAIT_MODE_LABEL: Record<TraitMode | 'optional', string> = { optional: 'Optional', alwaysOn: 'Automatic', hidden: 'Hidden' };
 
-/** A trait's World Details: Mode always, then Requires and Changes where it has them, then Bearers. */
-export function traitRows({ trait, requires, changes, bearers }: CodeTraitRecord): CodeCardRow[] {
+/** A trait's World Details: Mode, then Requires and Changes where set, then Bearers. Only Bearers for mixed holders (Q37). */
+export function traitRows(record: CodeTraitRecord | CodeHoldersRecord): CodeCardRow[] {
+  if (!record.trait) return [bearersRow(record.bearers)];
+  const { trait, requires, changes, bearers } = record;
   return [
     { label: 'Mode', value: TRAIT_MODE_LABEL[trait.mode ?? 'optional'] },
     // One line per Requirement Row; a row after the first holds instead of the ones above it.
@@ -197,7 +200,8 @@ export function traitRows({ trait, requires, changes, bearers }: CodeTraitRecord
   ];
 }
 
-function traitDetails(record: CodeTraitRecord): Pick<CodeCard, 'description' | 'rows' | 'item'> {
+function traitDetails(record: CodeTraitRecord | CodeHoldersRecord): Pick<CodeCard, 'description' | 'rows' | 'item'> {
+  if (!record.trait) return { rows: traitRows(record) };
   const { trait, entityId } = record;
   const description = trait.playerDescription || trait.aiDescription;
   return {
@@ -213,16 +217,40 @@ export function placeholderValues(placeholder: Placeholder): CodeCardValues {
   return { values: values.slice(0, CARD_LIST_CAP), more: Math.max(0, values.length - CARD_LIST_CAP) };
 }
 
-function placeholderDetails({ placeholder, owner, pins }: CodePlaceholderRecord): Pick<CodeCard, 'rows' | 'item' | 'allowedValues'> {
+function placeholderDetails(record: CodePlaceholderRecord | CodeHoldersRecord): Pick<CodeCard, 'rows' | 'item' | 'allowedValues'> {
+  if (!record.placeholder) return { rows: [bearersRow(record.bearers)] };
+  const { placeholder, owner, pins, bearers } = record;
   return {
     rows: [
       { label: 'Owner', value: owner },
       { label: 'Kind', value: placeholderKindNoun(placeholder) },
       ...(pins.length ? [{ label: 'Pinned By', value: pins.join('\n') }] : []),
+      ...(bearers ? [bearersRow(bearers)] : []),
     ],
     item: { kind: 'placeholder', placeholderId: placeholder.id },
     allowedValues: placeholderValues(placeholder),
   };
+}
+
+/** Each entity `persona` or `owner` reaches, with options that read it as the only one. */
+function reachedEntities(owner: PlaceholderOwner, options: SurfaceAnalysisOptions): [string, SurfaceAnalysisOptions][] {
+  const { lookup } = options;
+  if (owner.route === 'owner' && lookup) {
+    return lookup.ownerEntityIds().map((id) => [id, { ...options, lookup: { ...lookup, ownerEntityIds: () => [id] } }]);
+  }
+  if (owner.route !== 'persona') return [];
+  return (options.entities ?? []).filter((entity) => entity.persona).map((entity) => [entity.id, { ...options, entities: [entity] }]);
+}
+
+/** Each entity a `persona` or `owner` placeholder route reaches that holds the placeholder, with it. */
+export function placeholderHolders(
+  owner: PlaceholderOwner, path: readonly string[], options: SurfaceAnalysisOptions,
+  reached = reachedEntities(owner, options),
+): CodePlaceholderHolder[] {
+  return reached.flatMap(([entityId, each]) => {
+    const placeholder = placeholderAt(owner, path, each);
+    return placeholder ? [{ entityId, placeholder }] : [];
+  });
 }
 
 /** An entity's World Details: what it is, then the names its maps hold. */
@@ -364,8 +392,14 @@ export function codeCard(code: string, pos: number, options: SurfaceAnalysisOpti
     }
     case 'placeholder': {
       const card = world('placeholder', name.path.reduce(keyPath, `${ownerPrefix(name.owner)}placeholders`), 'Placeholder');
-      const placeholder = options.lookup && placeholderAt(name.owner, name.path, options);
-      const record = placeholder && options.lookup?.placeholder(placeholder);
+      const { lookup } = options;
+      if (!lookup) return card;
+      // A route that reaches two or more entities follows Q37 (T15-1).
+      const reached = reachedEntities(name.owner, options);
+      const placeholder = reached.length < 2 && placeholderAt(name.owner, name.path, options);
+      const record = reached.length > 1
+        ? lookup.heldPlaceholder(placeholderHolders(name.owner, name.path, options, reached))
+        : placeholder && lookup.placeholder(placeholder);
       return record ? { ...card, ...placeholderDetails(record) } : card;
     }
     case 'entity': {
