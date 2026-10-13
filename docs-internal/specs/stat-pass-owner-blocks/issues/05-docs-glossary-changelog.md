@@ -15,7 +15,7 @@ The docs say how the stat tracker sees owners.
 
 - **Guide.** The stat tracker page describes the three blocks and the three reply keys. The prompt chips page tells a custom-prompt author how to add the In Scene Entities chip with Only With Stats to get entity stats back.
 - **CONTEXT.md.** The stat request entry names the three owner kinds.
-- **Changelog.** One fragment under Minor, Added, 🛠️, with the lead stating subject, surface and outcome, and the save note folded in: a save of a bundled world from an older version shows the old loose stats beside the persona's until a new game.
+- **Changelog.** (Overruled by spec Q34: two entries under 👤.) One fragment under Minor, Added, 🛠️, with the lead stating subject, surface and outcome, and the save note folded in: a save of a bundled world from an older version shows the old loose stats beside the persona's until a new game.
 - The Open Chat bundled world's prompts follow the defaults; check nothing there names the old heading.
 
 Rulings: Q10, Q11, Q20.

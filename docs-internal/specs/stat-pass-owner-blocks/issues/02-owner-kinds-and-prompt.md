@@ -17,7 +17,7 @@ The stat request tells the played persona, the loose world stats and each presen
 - **The Stats chip in the stat pass** carries the loose world stats only. The entity sections it appended go away.
 - **The default prompt.** The Persona chip headed `Player Character`, then the Entities chip in the In Scene scope, both with Only With Stats, Summary content, Include Traits and Stats, and Range, Descriptor and Description. Then the Stats chip headed Other Stats and the Traits chip headed Other Traits. The owner rule applies to headed blocks only; the loose block gets no ownership prose. The format section names the three key kinds. The Q76 framing stays.
 - **The Settings preview.** The sample scene gains one present entity that owns a stat, so the In Scene block renders there.
-- **Probes.** The entity-stats and persona-block stat harnesses gain the new prompt as an arm. Both models, in-batch controls. The Q28 bar must clear on player and entity cells. Rampage and Slime cases measure world-stat recall; that number is reported for the user's ruling and goes in the spec's Further Notes.
+- **Probes.** (Overruled by spec Q29: the entity-stats harness alone.) The entity-stats and persona-block stat harnesses gain the new prompt as an arm. Both models, in-batch controls. The Q28 bar must clear on player and entity cells. Rampage and Slime cases measure world-stat recall; that number is reported for the user's ruling and goes in the spec's Further Notes.
 
 Rulings: Q1, Q2, Q4, Q8, Q10, Q11, Q12, Q13, Q16.
 
