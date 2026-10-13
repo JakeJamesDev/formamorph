@@ -3,9 +3,8 @@
  * first code test call, since it pulls in the analysis and the sandbox engine.
  */
 import { statCodeDiagnostics, type AnalysisOptions, type CodeDiagnostic, type EntryNoun, type MissingName } from '@/lib/statCodeAnalysis';
-import { statCodeName } from '@/lib/statCodeNames';
 import { memberStep, placeholderPathExpression } from '@/lib/statCodePaths';
-import { analysisOptionsOf, missingSegments, runTestCode, statCodeNames, statNamed, type StatCodeWorld, type TestCodeReport } from '@/lib/statCodeTestRun';
+import { analysisOptionsOf, findStat, missingSegments, runTestCode, statCodeNames, type StatCodeWorld, type TestCodeReport } from '@/lib/statCodeTestRun';
 import type { StatCodeTiming } from '@/lib/statCodeTiming';
 
 /** The most characters of code one finding quotes. */
@@ -76,8 +75,9 @@ function analysis(code: string, options: AnalysisOptions): Omit<CodeTestResult, 
 }
 
 /**
- * Tests `code` from the `box` box of the stat `statName` names. With no world, the analysis runs with every
- * name check off and the run is skipped. An unknown stat reads as a blank `self`.
+ * Tests `code` from the `box` box of the stat `statName` names: a world stat, a Blueprint stat, or an
+ * entity's own stat, which runs with its `owner`. With no world, the analysis runs with every name check off
+ * and the run is skipped. An unknown stat reads as a blank `self`.
  */
 export async function testStatCode(code: string, box: StatCodeTiming, statName: string, world: StatCodeWorld | undefined): Promise<CodeTestResult> {
   if (!world) {
@@ -85,12 +85,12 @@ export async function testStatCode(code: string, box: StatCodeTiming, statName: 
     return { world: false, errors, warnings };
   }
   const names = statCodeNames(world);
-  const stat = statNamed(world, statName.trim());
-  const selfName = stat ? statCodeName(stat.name, names.placeholders.list) : '';
-  const { missing, ...found } = analysis(code, analysisOptionsOf(names, selfName));
+  const found = findStat(world, names, statName.trim());
+  const selfName = found?.stat.name ?? '';
+  const { missing, ...rest } = analysis(code, analysisOptionsOf(names, selfName));
   return {
     world: true,
-    ...found,
-    run: await runTestCode(code, box, stat ? { ...stat, name: selfName } : { id: crypto.randomUUID(), name: '' }, names, { pendingPersona: true, missing }),
+    ...rest,
+    run: await runTestCode(code, box, found?.stat ?? { id: crypto.randomUUID(), name: '' }, names, { pendingPersona: true, missing, owner: found?.owner }),
   };
 }

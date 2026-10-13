@@ -277,6 +277,54 @@ describe('a code test call', () => {
   });
 });
 
+describe('a code test call on an owned or Blueprint stat', () => {
+  // Bram owns Rage and Grit and can be played, and Dread and Awe are Blueprint stats of one group.
+  const stage = (): StatCodeWorld => ({
+    ...sedge(),
+    stats: [stat('Courage', 40), stat('Int', 32), { ...stat('Dread', 4), groupId: 'bp-fear' }, { ...stat('Awe', 6), groupId: 'bp-fear' }],
+    statGroups: [{ id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' }, { id: 'bp-fear', name: 'Fear', parentId: 'bp' }],
+    entities: [{ id: 'bram', name: 'Bram', persona: true, stats: [stat('Rage', 3), stat('Grit', 8)] }],
+  });
+  const testOn = async (world: StatCodeWorld, ...calls: TestCall[]) => {
+    const fetchImpl = script(testFrames(...calls), sseReply('Done.'));
+    await collect(ask(fetchImpl, {}, { world: openWorld(undefined, () => world) }));
+    return results(fetchImpl);
+  };
+
+  it('runs an entity’s stat with the world’s stats as `stats` and its entity as `owner`, and lists each write by route', async () => {
+    const world = stage();
+    const before = structuredClone(world);
+    const code = 'stats.Courage.value = 45; owner.stats.Grit.max = 12; entities.Bram.stats.Grit.regen = 1; persona.stats.Grit.value = 2;';
+    const [result] = await testOn(world, { code, stat: 'Rage' });
+    expect(result.run).toEqual({
+      error: null,
+      value: null,
+      writes: ['stats.Courage.value = 45', 'owner.stats.Grit.max = 12', 'owner.stats.Grit.regen = 1'],
+      pending: ['persona.stats.Grit.value = 2'],
+      assumed: [],
+      dropped: [],
+    });
+    expect(world).toEqual(before);
+  });
+
+  it('runs a Blueprint stat with an owner that holds its group’s stats only, and names a write outside the group as dropped', async () => {
+    const [result] = await testOn(stage(), { code: 'owner.stats.Awe.value = 7; owner.stats.Courage.value = 1; return Object.keys(owner.stats).length;', stat: 'Dread' });
+    expect(result.run).toMatchObject({
+      error: null,
+      value: 2,
+      writes: ['owner.stats.Awe.value = 7'],
+      dropped: ['Unknown stat names. Writes ignored: owner.stats.Courage.value.'],
+    });
+  });
+
+  it('finds an owned stat by name only after the world’s own', async () => {
+    const world: StatCodeWorld = { ...stage(), entities: [{ id: 'bram', name: 'Bram', stats: [{ ...stat('Courage', 5), id: 'twin' }] }] };
+    const [result] = await testOn(world, { code: 'return Object.keys(owner.stats).length + 1;', stat: 'Courage' });
+    // The world's Courage runs, with no owner: its `owner.stats` is empty.
+    expect(result.run?.value).toBe(1);
+  });
+});
+
 describe('a code test call on a half-built world', () => {
   // Wren can be played and owns Mood; Ash cannot and owns Grudge. Seasoned is on Wren alone.
   const halfBuilt = (): StatCodeWorld => ({

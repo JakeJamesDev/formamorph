@@ -215,6 +215,7 @@ describe('whose code a box holds', () => {
 
 describe('what Test Code reports', () => {
   beforeEach(() => {
+    worldExtra.current = {};
     executeStatCode.mockReset();
     updateStat.mockReset();
   });
@@ -448,20 +449,53 @@ describe('what Test Code reports', () => {
     expect(row()).toHaveTextContent('Switched-off stats. Writes ignored: stats.Dusk.max.');
   });
 
-  // An entity stat's `stats` is its owner's list, so the targets its code can write are the owner's stats.
-  it('runs an entity stat’s box over its owner’s stats as authored, and lists its writes to them', async () => {
+  const hub = { id: 'o1', name: 'Hub', type: 'number', value: 1, min: 0, max: 5, regen: 0, description: '', descriptors: [] } as Stat;
+  const grit = { id: 'o2', name: 'Grit', type: 'number', value: 4, min: 0, max: 8, regen: 0, description: '', descriptors: [] } as Stat;
+
+  // An entity stat's `stats` is the world's list and its `owner.stats` its own, which is what the run is handed.
+  it('runs an entity stat’s box over the world’s stats and its entity as owner, and lists its writes to its own stats', async () => {
     const user = userEvent.setup();
-    const hub = { id: 'o1', name: 'Hub', type: 'number', value: 1, min: 0, max: 5, regen: 0, description: '', descriptors: [] } as Stat;
-    const grit = { id: 'o2', name: 'Grit', type: 'number', value: 4, min: 0, max: 8, regen: 0, description: '', descriptors: [] } as Stat;
-    executeStatCode.mockResolvedValue({ value: null, error: null, statWrites: [{ id: 'o2', name: 'Grit', value: 5 }] });
-    render(<StatManager stat={hub} tab="code" onTabChange={() => {}} store={{ stats: [hub, grit], updateStat, ownerId: 'hubby' }} />);
+    executeStatCode.mockResolvedValue({ value: null, error: null, ownerStatWrites: [{ ownerId: 'e2', writes: [{ id: 'o2', name: 'Grit', value: 5 }] }] });
+    render(<StatManager stat={hub} tab="code" onTabChange={() => {}} store={{ stats: [hub, grit], updateStat, ownerId: 'e2' }} />);
 
-    await testCode(user, 'stats.Grit.value += 1;');
+    await testCode(user, 'owner.stats.Grit.value += 1;');
 
-    await waitFor(() => expect(row()).toHaveTextContent('stats.Grit.value = 5'));
-    expect(executeStatCode.mock.calls[0][1]).toEqual([hub, grit]);
+    await waitFor(() => expect(row()).toHaveTextContent('owner.stats.Grit.value = 5'));
+    const [, runStats, , options] = executeStatCode.mock.calls[0];
+    expect(runStats).toEqual(stats);
+    expect(options.owner).toMatchObject({ id: 'e2', name: 'Ash', stats: { stats: [hub, grit] } });
     expect(grit).toMatchObject({ value: 4, max: 8 });
     expect(updateStat.mock.calls.map(([saved]) => saved.id)).not.toContain('o2');
+  });
+
+  it('runs a Blueprint stat’s box over the world’s stats and an owner that holds its group’s stats only', async () => {
+    const user = userEvent.setup();
+    const blueprints = { id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' };
+    const social = { id: 'bp-social', name: 'Social', parentId: 'bp' };
+    const fear = { ...hub, id: 'f', name: 'Fear', groupId: 'bp-social' } as Stat;
+    const calm = { ...grit, id: 'c', name: 'Calm', groupId: 'bp-social' } as Stat;
+    worldExtra.current = { stats: [...stats, fear, calm], statGroups: [blueprints, social] };
+    executeStatCode.mockResolvedValue({ value: null, error: null, ownerStatWrites: [{ ownerId: '', writes: [{ id: 'c', name: 'Calm', value: 5 }] }] });
+    renderCodePanel(fear);
+
+    await testCode(user, 'owner.stats.Calm.value += 1;');
+
+    await waitFor(() => expect(row()).toHaveTextContent('owner.stats.Calm.value = 5'));
+    const [, runStats, , options] = executeStatCode.mock.calls[0];
+    expect(runStats).toEqual(stats);
+    expect(options.owner).toMatchObject({ name: '', stats: { stats: [fear, calm] } });
+    expect(options.owner.id).toBeUndefined();
+  });
+
+  it('runs a world stat’s box with no owner', async () => {
+    const user = userEvent.setup();
+    executeStatCode.mockResolvedValue({ value: 3, error: null });
+    renderCodePanel(stats[0]);
+
+    await testCode(user, 'return 3;');
+
+    await waitFor(() => expect(row()).toHaveTextContent('Result: 3'));
+    expect(executeStatCode.mock.calls[0][3].owner).toBeUndefined();
   });
 
   it('names every read-only write by its path', async () => {
