@@ -18,6 +18,7 @@ Spec: Q11, Q13, Q15, Q20, Q26, Q28; Implementation Decisions: Trait rows, Person
 - [ ] Trait rows read Mode, Requires, Changes and Bearers in glossary terms
 - [ ] Placeholder values show weights; weight-0 values are faded; a Copy shows its own weights
 - [ ] Entity, dictionary and persona cards show what the spec lists
+- [ ] The box-bound lookup supplies the owner's trait and placeholder names, so completion offers them after `owner.traits["` and `owner.placeholders.`, and their cards show details (T01-1, T01-3)
 - [ ] Changelog fragment; four gates green
 
 ## Blocked by

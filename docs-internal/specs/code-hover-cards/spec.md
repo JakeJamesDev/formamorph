@@ -59,6 +59,9 @@ Settled with the user on 2026-10-12 and 2026-10-13.
 | Q30 | In a Blueprint stat's box, a card on `owner.stats.X` shows the Blueprint's own values, plus a Bearers row listing who runs the code. Q28's effective values apply where one Link or Copy is meant |
 | Q31 | A stat's own `self` lines count as uses in Find All Uses. A Blueprint box with no bearers is still listed, marked No Bearers |
 | Q32 | The cards link to the Stat Code Guide's own headings for `self`, `stats` and `owner`: `StatCodeGuide#self`, `#stats`, `#owner`. Owner-route ticket 07 added them (2175dff98) |
+| T01-1 | Ticket 01: "completion does not change" means no regressions. Where the old regexes were wrong, completion follows the tree toward what the sandbox has: `owner.traits.X.` offers trait fields, `owner.traits["` offers nothing until the editor knows owner trait names, spaced and `?.` chains offer members, a dot in a comment offers nothing. A root the code declares itself keeps the sandbox list in completion; hover treats it as the author's own name. Each fix gets its own test; existing tests stay unchanged |
+| T01-2 | The resolver keeps completion's stat-like heuristic: a variable declared from `stats` or `self` reads as a stat. The card model shows no card for a member the resolved entry doesn't have, so `n.toFixed` on such a variable gets none. Ticket 02 |
+| T01-3 | The resolver resolves `owner.placeholders.X`. Completion and cards get owner trait and placeholder names from the box-bound lookup. Ticket 07 |
 | O1 | Owner-route lands first. Its `stats` (world stats in every box), `owner`, and writes on every route (its Q1–Q5) are this spec's baseline. Its tickets 01–07 landed on 2026-10-13. Find All Uses waits on its ticket 08 |
 
 ## User Stories

@@ -20,6 +20,7 @@ Spec: Q1, Q17, Q19 (mock Standard preset); Implementation Decisions: Card model,
 - [ ] Hover opens a card on stat code, Tool script and template dialog names; read-only previews show none
 - [ ] Signature shows kind, path and type; the badge reads Writable, Read-only or Writable After This Run
 - [ ] Access derives from the executor's writable-field lists; a test fails if the two disagree
+- [ ] A member the resolved entry doesn't have gets no card: `const n = stats.HP.value; n.toFixed` shows nothing, although the resolver's stat-like heuristic (kept for completion) resolves it (T01-2)
 - [ ] Escape closes an open card without leaving full screen; a second Escape leaves
 - [ ] Cards work inside a dialog (pointer events, no clipping) in both themes
 - [ ] Changelog fragment; four gates green
