@@ -6,6 +6,7 @@
 import type { ToolParam } from '@/types';
 import { closeSentence, readOnlyEntries, type CodeSurface, type SurfaceEntry } from '@/lib/codeSurface';
 import type { InsertSnippet } from '@/lib/codeSnippets';
+import { TOOL_GUIDE_LINKS } from '@/lib/codeGuideLinks';
 import { BUILTIN_MEMBERS, LANGUAGE_NAMES, SANDBOX_BUILTINS } from '@/lib/statCodeSurface';
 import { listOptions, namedParams } from './toolDraft';
 import { TOOL_SCRIPT_INPUTS } from './toolScript';
@@ -96,5 +97,6 @@ export function toolScriptSurface(params: readonly ToolParam[], placeholderNames
     snippets: [...argEntries.map((entry) => ({ label: `Argument: ${entry.name}`, text: argAccess(entry.name) })), ...STATIC_SNIPPETS],
     missingReturn: 'This script never returns, so the Tool sends its empty result.',
     statMaps: false,
+    guide: TOOL_GUIDE_LINKS,
   };
 }

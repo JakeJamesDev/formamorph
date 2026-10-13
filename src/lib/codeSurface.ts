@@ -7,6 +7,7 @@
  */
 
 import type { InsertSnippet } from '@/lib/codeSnippets';
+import type { DocTarget } from '@/lib/docs/docsLinks';
 
 /** Whether code can write a name: now, only from the next run on, or not at all. */
 export type CodeAccess = 'writable' | 'afterRun' | 'readOnly';
@@ -80,6 +81,8 @@ export interface CodeSurface {
   missingReturn: string | null;
   /** True when `stats`, `self`, `placeholders` and `traits` are stat code's maps, with their rules. */
   statMaps: boolean;
+  /** The Guide heading of each global that has one, for its card's Read in the Guide link. */
+  guide?: Readonly<Record<string, DocTarget>>;
 }
 
 const knownNames = new WeakMap<CodeSurface, ReadonlySet<string>>();

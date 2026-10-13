@@ -12,6 +12,7 @@ import {
   DELTA_SOURCES, PLACEHOLDER_WRITABLE_FIELD, SELF_WRITABLE_FIELDS, TRAIT_WRITABLE_FIELD, type DeltaSource,
 } from '@/lib/statCodeExecutor';
 import { nearestName, readOnlyEntries, surfaceKnownNames, withAccess, type CodeSurface, type SurfaceEntry } from '@/lib/codeSurface';
+import { STAT_CODE_GUIDE_LINKS } from '@/lib/codeGuideLinks';
 import type { PlaceholderKindNoun } from '@/lib/placeholders';
 
 /** An object's members as its completion detail: `{ a, b }`. */
@@ -282,6 +283,7 @@ export const STAT_CODE_SURFACE: CodeSurface = {
   snippets: [],
   missingReturn: 'This code never returns a number or writes self.value, so the stat keeps its value.',
   statMaps: true,
+  guide: STAT_CODE_GUIDE_LINKS,
 };
 
 /**

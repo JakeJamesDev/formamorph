@@ -47,7 +47,7 @@ export function cardTooltipView(card: CodeCard, dismiss: () => void, actions: Co
   const { open } = actions;
   return {
     // Open leaves the code box, so the card closes first.
-    dom: renderCodeCard(card, { ...actions, open: open && ((item) => { dismiss(); open(item); }) }),
+    dom: renderCodeCard(card, { ...actions, open: open && ((item) => { dismiss(); open(item); }), guide: dismiss }),
     mount: () => window.addEventListener('keydown', close, true),
     destroy: () => window.removeEventListener('keydown', close, true),
   };

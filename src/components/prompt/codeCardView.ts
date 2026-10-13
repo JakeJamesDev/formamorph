@@ -3,6 +3,9 @@
 import { ACCESS_LABEL } from '@/lib/codeSurface';
 import type { OpenCodeCardItem } from '@/lib/codeCardOpen';
 import type { CodeCard, CodeCardSignature } from '@/lib/codeCards';
+import { docTargetId } from '@/lib/docs/docsLinks';
+import { openDocsFromClick } from '@/lib/formaquestion/docsOpener';
+import { wikiPageUrl } from '@/lib/helpTopics';
 
 /** `path: type`, or `path(params): result` for a method whose type is an arrow. */
 export function signatureText({ kind, path, type }: CodeCardSignature): string {
@@ -28,7 +31,11 @@ export interface CodeCardActions {
   goTo?: (at: number) => void;
   /** Open the card's world item in the World Editor. */
   open?: OpenCodeCardItem;
+  /** Called after the Guide link is used, so the host can close the card. The link shows only where this is set. */
+  guide?: () => void;
 }
+
+const LINK_CLASS = 'text-primary underline-offset-2 hover:underline focus-visible:underline';
 
 function element<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, text?: string): HTMLElementTagNameMap[K] {
   const node = document.createElement(tag);
@@ -98,17 +105,29 @@ export function renderCodeCard(card: CodeCard, actions: CodeCardActions = {}): H
     root.append(row);
   }
 
-  const { goTo, open } = actions;
+  const { goTo, open, guide } = actions;
   const bar = element('section', 'flex flex-wrap gap-x-3 gap-y-1 px-2.5 py-1.5');
   const link = (text: string, onClick: () => void) => {
-    const button = element('button', 'text-primary underline-offset-2 hover:underline focus-visible:underline', text);
+    const button = element('button', LINK_CLASS, text);
     button.type = 'button';
     button.addEventListener('click', onClick);
     bar.append(button);
   };
   const { item } = card;
   if (open && item) link('Open', () => open(item));
-  if (goTo) for (const { at, line } of card.links ?? []) link(`Go to Line ${line}`, () => goTo(at));
+  for (const entry of card.links ?? []) {
+    if (entry.id === 'goToLine' && goTo) link(`Go to Line ${entry.line}`, () => goTo(entry.at));
+    // A real link, so a modified click or a window with no reader still reaches the wiki.
+    if (entry.id === 'guide' && guide) {
+      const anchor = element('a', LINK_CLASS, 'Read in the Guide');
+      anchor.href = wikiPageUrl(docTargetId(entry.target));
+      anchor.target = '_blank';
+      anchor.rel = 'noopener noreferrer';
+      // A modified click opens a tab and leaves the page, and the card, as they were.
+      anchor.addEventListener('click', (event) => { if (openDocsFromClick(event, entry.target)) guide(); });
+      bar.append(anchor);
+    }
+  }
   if (bar.childElementCount) root.append(bar);
   return root;
 }
