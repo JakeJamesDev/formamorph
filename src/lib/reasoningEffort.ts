@@ -985,9 +985,10 @@ export function reasoningNeedsResolve(capability: ReasoningCapability | null | u
 }
 
 /** True for a record LM Studio's model list answered. A model loaded behind the same name (`default`, or
- *  any name the list lacks) changes those answers, so the list is read again once per session. */
+ *  any name the list lacks) changes those answers, so the list is read again once per session. Also true
+ *  for a record an identity row answered: the row ships with the app, so an update must reach the cache. */
 export function reasoningRereadsPerSession(capability: ReasoningCapability | null | undefined): boolean {
-  return capability?.dialect === 'lmstudio';
+  return capability?.dialect === 'lmstudio' || capability?.sources.dialect === 'identity';
 }
 
 /** The record to store after a resolve. A fresh LM Studio answer replaces an LM Studio record whole, since

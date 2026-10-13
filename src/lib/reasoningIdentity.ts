@@ -172,18 +172,20 @@ const MOONSHOT_ROW: ReasoningIdentityRow = {
   },
 };
 
-/** The Novita model families that switch thinking with `enable_thinking`: DeepSeek from V3.1, GLM from 4.5. */
-const NOVITA_THINKING: readonly { prefix: string; from: number }[] = [
+/** The Novita model families that think: DeepSeek from V3.1, GLM from 4.5. `alwaysFrom` is the first
+ *  generation that ignores `enable_thinking` and always reasons. */
+const NOVITA_THINKING: readonly { prefix: string; from: number; alwaysFrom?: number }[] = [
   { prefix: 'deepseek/deepseek-v', from: 301 },
-  { prefix: 'zai-org/glm-', from: 405 },
+  { prefix: 'zai-org/glm-', from: 405, alwaysFrom: 503 },
 ];
 
 /**
  * Novita's OpenAI-compatible API. It switches thinking with `enable_thinking`, which defaults to on, and
  * takes no effort literal or token budget. Only the families its reference lists are claimed, with DeepSeek
  * V4 added from a failed turn that reasoned with no field sent; every other id falls through to the chain.
+ * GLM-5.3 always reasons and ignores the switch, so it refuses off rather than sending a field it drops.
  *
- * Read on 2026-09-30 from Novita's chat-completions API reference.
+ * Read on 2026-09-30 and again on 2026-10-13 (GLM-5.3) from Novita's chat-completions API reference.
  */
 const NOVITA_ROW: ReasoningIdentityRow = {
   hosts: ['api.novita.ai'],
@@ -191,9 +193,9 @@ const NOVITA_ROW: ReasoningIdentityRow = {
     const family = NOVITA_THINKING.find((f) => modelId.startsWith(f.prefix));
     if (!family) return null;
     const version = generation(modelId.slice(family.prefix.length), /^(\d+)(?:\.(\d+))?/);
-    return version !== null && version >= family.from
-      ? { dialect: 'novita', reasons: true, levels: [], budget: false }
-      : null;
+    if (version === null || version < family.from) return null;
+    const always = family.alwaysFrom !== undefined && version >= family.alwaysFrom;
+    return { dialect: 'novita', reasons: true, levels: [], budget: false, ...(always && { offAllowed: false }) };
   },
 };
 
