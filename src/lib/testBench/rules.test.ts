@@ -523,14 +523,115 @@ describe('reference-integrity rules', () => {
     expect(only(coded('return stats["Vigor"].value;'), 'stat-code-unknown-stat')).toEqual([]);
   });
 
-  it('leaves a read through another owner’s stats alone, since the world’s stats are not its map', () => {
-    const coded = (code: string) => base({ stats: [stat({ id: 's1', name: 'Mana', code }), stat({ id: 's2', name: 'Vigor' })] });
-    expect(only(coded('return entities["The Creature"].stats.Rampage.value;'), 'stat-code-unknown-stat')).toEqual([]);
-    expect(only(coded('return entities.Bram?.stats["Trust"].value;'), 'stat-code-unknown-stat')).toEqual([]);
-    expect(only(coded('return persona.stats.Rampage.value;'), 'stat-code-unknown-stat')).toEqual([]);
+  it('checks a read through another owner’s stats against that owner, not the world', () => {
+    const bram: Entity = { ...resident, id: 'bram', name: 'Bram', persona: true, stats: [stat({ id: 'trust', name: 'Trust' })] };
+    const coded = (code: string) => base({
+      stats: [stat({ id: 's1', name: 'Mana', code }), stat({ id: 's2', name: 'Vigor' })], entities: [resident, bram],
+    });
+    expect(only(coded('return entities.Bram?.stats["Trust"].value + persona.stats.Trust.value;'), 'stat-code-unknown-stat')).toEqual([]);
+    // A world stat's name is no entity's.
+    expect(only(coded('return entities.Bram.stats.Vigor.value;'), 'stat-code-unknown-stat').map((f) => f.message)).toEqual([
+      'After the AI code on “Mana” looks up a stat named “Vigor” on “Bram”, which does not exist',
+    ]);
     // The world's own map still checks, beside a qualified read in the same code.
     const mixed = only(coded('return entities.Bram.stats.Trust.value + stats.Vigro.value;'), 'stat-code-unknown-stat');
     expect(mixed.map((f) => f.message)).toEqual([expect.stringContaining('Vigro')]);
+  });
+
+  describe('across owners', () => {
+    const RULE = 'stat-code-unknown-stat';
+    const blueprints = { id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' as const };
+    const creature = (over: Partial<Entity> = {}): Entity => ({
+      ...resident, id: 'creature', name: 'The Creature', stats: [stat({ id: 'rage', name: 'Rage' })], ...over,
+    });
+    const messages = (w: RuleWorld) => only(w, RULE).map((f) => f.message);
+    const worldBox = (code: string, entities: Entity[] = [creature()]) =>
+      base({ stats: [stat({ id: 'alarm', name: 'Alarm', code }), stat({ id: 'dest', name: 'Destruction' })], entities });
+    const ownedBox = (code: string) => base({
+      stats: [stat({ id: 'dest', name: 'Destruction' })],
+      entities: [creature({ stats: [stat({ id: 'rage', name: 'Rage' }), stat({ id: 'fury', name: 'Fury', code })] })],
+    });
+
+    it('checks an owned box’s stats against the world and owner.stats against its owner', () => {
+      expect(messages(ownedBox('return stats.Destruction.value + owner.stats.Rage.value + owner.stats["Fury"].value;'))).toEqual([]);
+      const found = only(ownedBox('return stats.Rage.value + owner.stats.Rgae.value;'), RULE);
+      expect(found.map((f) => f.message)).toEqual([
+        'After the AI code on “Fury” of “The Creature” looks up a stat named “Rage”, which does not exist',
+        'After the AI code on “Fury” of “The Creature” looks up a stat named “Rgae” on its owner, which does not exist',
+      ]);
+      expect(found[0].items).toEqual([{ id: 'creature', name: 'The Creature', section: 'entities' }]);
+    });
+
+    it('reports an unknown name after entities and persona in an owned box and a world box', () => {
+      expect(messages(ownedBox('entities["The Creature"].stats.Rgae.value = 1; persona.stats.Stamina.max = 2;'))).toEqual([
+        'After the AI code on “Fury” of “The Creature” looks up a stat named “Rgae” on “The Creature”, which does not exist',
+        'After the AI code on “Fury” of “The Creature” looks up a stat named “Stamina” on the persona, but no entity that can be played has it',
+      ]);
+      expect(messages(worldBox('entities["The Creature"].stats.Rgae.value = 1; persona.stats.Stamina.max = 2;'))).toEqual([
+        'After the AI code on “Alarm” looks up a stat named “Rgae” on “The Creature”, which does not exist',
+        'After the AI code on “Alarm” looks up a stat named “Stamina” on the persona, but no entity that can be played has it',
+      ]);
+    });
+
+    it('names a missing entity, and leaves a computed entity name alone', () => {
+      expect(messages(worldBox('return entities.Brm.stats.Rage.value;'))).toEqual([
+        'After the AI code on “Alarm” looks up a stat on “Brm”, but no entity is named “Brm”',
+      ]);
+      expect(messages(worldBox('const who = "Brm"; return entities[who].stats.Rage.value;'))).toEqual([]);
+    });
+
+    it('reads persona.stats against every entity that can be played, and reports a name none of them has', () => {
+      const tobb = creature({ id: 'tobb', name: 'Tobb', persona: true, stats: [stat({ id: 'stam', name: 'Stamina' })] });
+      const maren = creature({ id: 'maren', name: 'Maren', customPersona: true, stats: [] });
+      const bram = creature({ id: 'bram', name: 'Bram', stats: [stat({ id: 'grit', name: 'Grit' })] });
+      expect(messages(worldBox('return persona.stats.Stamina.value;', [tobb, maren, bram]))).toEqual([]);
+      expect(messages(worldBox('return persona.stats.Grit.value;', [tobb, maren, bram]))).toEqual([
+        'After the AI code on “Alarm” looks up a stat named “Grit” on the persona, but no entity that can be played has it',
+      ]);
+    });
+
+    it('reports owner.stats in a world box, since a world stat has no owner', () => {
+      expect(messages(worldBox('owner.stats.Rage.value = 1;'))).toEqual([
+        'After the AI code on “Alarm” looks up “Rage” on its owner, but a world stat has no owner',
+      ]);
+    });
+
+    it('checks a Blueprint box’s owner.stats against its Blueprint group, and its stats against the world', () => {
+      const guards = { id: 'guards', name: 'Guards', parentId: 'bp' };
+      const blueprint = (code: string) => base({
+        statGroups: [blueprints, guards],
+        stats: [
+          stat({ id: 'dest', name: 'Destruction' }),
+          stat({ id: 'guard', name: 'Guard', groupId: 'guards', code }),
+          stat({ id: 'watch', name: 'Watch', groupId: 'guards' }),
+        ],
+        entities: [creature()],
+      });
+      expect(messages(blueprint('return owner.stats.Watch.value + stats.Destruction.value;'))).toEqual([]);
+      const found = only(blueprint('return stats.Watch.value + owner.stats.Rage.value;'), RULE);
+      expect(found.map((f) => f.message)).toEqual([
+        'After the AI code on “Guard” looks up a stat named “Watch”, which does not exist',
+        'After the AI code on “Guard” looks up a stat named “Rage” on its owner, which does not exist',
+      ]);
+      expect(found[0].items).toEqual([{ id: 'guard', name: 'Guard' }]);
+    });
+
+    it('scans a bearer’s own code on a linked stat once, with the bearer as its owner', () => {
+      const guard = stat({ id: 'guard', name: 'Guard', groupId: 'bp', code: 'return owner.stats.Guard.value + stats.Vigro.value;' });
+      const bearer = (code?: string) => creature({
+        statLinks: [{
+          id: 'link', originalId: 'guard', kind: 'stat', originalName: 'Guard', groupId: null,
+          ...(code ? { overrides: { guard: { code: { value: code, blueprint: guard.code ?? '' } } } } : {}),
+        }],
+      });
+      const linked = (code?: string) => messages(base({ statGroups: [blueprints], stats: [guard], entities: [bearer(code)] }));
+      // The bearer's copy holds the Blueprint's code, which the Blueprint's own row already reports.
+      const own = 'After the AI code on “Guard” looks up a stat named “Vigro”, which does not exist';
+      expect(linked()).toEqual([own]);
+      expect(linked('return owner.stats.Rage.value + owner.stats.Rgae.value;')).toEqual([
+        own, 'After the AI code on “Guard” of “The Creature” looks up a stat named “Rgae” on its owner, which does not exist',
+      ]);
+    });
   });
 
   it('leaves a computed map key alone — there is no literal to check', () => {
@@ -733,7 +834,7 @@ describe('stat code two writers rule', () => {
     const bearer = (id: string, over: Partial<Entity> = {}): Entity => ({
       id, name: id, locations: ['harbor'], playerDescription: 'Seen.', aiDescription: 'A regular.', statLinks: [link(`${id}-link`)], ...over,
     });
-    const hub = stat({ id: 'hub', name: 'Hub', code: 'stats.Guard.value = 1;' });
+    const hub = stat({ id: 'hub', name: 'Hub', code: 'owner.stats.Guard.value = 1;' });
 
     it('warns for the owner whose copy two boxes write, and for no one else', () => {
       const found = only(base({
@@ -761,14 +862,17 @@ describe('stat code two writers rule', () => {
       expect(found.map((f) => f.items[0].id)).toEqual(['Maren', 'Tobb']);
     });
 
-    it('keeps the player’s stats and an entity’s apart, though their names match', () => {
-      expect(only(base({
+    it('keeps the world’s stats and an entity’s apart, though their names match', () => {
+      const maren = (code: string) => only(base({
         stats: [stat({ id: 'ph', name: 'Health', code: 'self.value = 1;' })],
         entities: [bearer('Maren', {
           statLinks: [],
-          stats: [stat({ id: 'eh', name: 'Health' }), stat({ id: 'ef', name: 'Fate', code: 'stats.Health.value = 2;' })],
+          stats: [stat({ id: 'eh', name: 'Health' }), stat({ id: 'ef', name: 'Fate', code })],
         })],
-      }), RULE)).toEqual([]);
+      }), RULE);
+      expect(maren('owner.stats.Health.value = 2;')).toEqual([]);
+      // `stats` is the world's in every box, so the same write without `owner` races the world's own box.
+      expect(maren('stats.Health.value = 2;').map((f) => f.items[0].id)).toEqual(['ph']);
     });
 
     it('leaves a Blueprint stat out of the player’s owner', () => {
@@ -778,6 +882,91 @@ describe('stat code two writers rule', () => {
         statGroups: [blueprints],
         stats: [reaching, stat({ id: 'p', name: 'Fate', code: 'self.value = 1;' })],
       }), RULE)).toEqual([]);
+    });
+  });
+
+  describe('across owners', () => {
+    const blueprints = { id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' as const };
+    const destruction = (code?: string) => stat({ id: 'dest', name: 'Destruction', ...(code ? { code } : {}) });
+    const creature = (stats: Stat[], over: Partial<Entity> = {}): Entity => ({
+      id: 'creature', name: 'The Creature', locations: ['harbor'], playerDescription: 'Huge.', aiDescription: 'A beast.', stats, ...over,
+    });
+    const rage = (code?: string) => stat({ id: 'rage', name: 'Rage', ...(code ? { code } : {}) });
+
+    it('warns once, naming both writers, when a Creature box and a world box write one world field', () => {
+      const found = only(base({
+        stats: [destruction('self.value = 1;')],
+        entities: [creature([rage('stats.Destruction.value = 50;')])],
+      }), RULE);
+      expect(found).toHaveLength(1);
+      expect(found[0].message).toBe(
+        'Two boxes write the value of “Destruction”: After the AI code on “Destruction” and After the AI code on “Rage” of “The Creature”',
+      );
+      expect(found[0].items).toEqual([{ id: 'dest', name: 'Destruction' }]);
+    });
+
+    it('counts owner.stats, entities["Name"].stats, persona.stats and self as one target when they reach one stat', () => {
+      const found = only(base({
+        stats: [
+          stat({ id: 'w1', name: 'Alarm', code: 'entities["The Creature"].stats.Rage.max = 5;' }),
+          stat({ id: 'w2', name: 'Dread', beforeCode: 'persona.stats["Rage"].max = 6;' }),
+        ],
+        entities: [creature([rage('self.max = 7;'), stat({ id: 'fury', name: 'Fury', code: 'owner.stats.Rage.max = 8;' })], { persona: true })],
+      }), RULE);
+      expect(found).toHaveLength(1);
+      expect(found[0].message).toBe(
+        '4 boxes write the max of “Rage” on “The Creature”: After the AI code on “Alarm”, Before the AI code on “Dread”, '
+        + 'After the AI code on “Rage” and After the AI code on “Fury”',
+      );
+      expect(found[0].items).toEqual([{ id: 'creature', name: 'The Creature', section: 'entities' }]);
+    });
+
+    it('reads entities.Name by dot as well, and leaves a computed entity name out of reach', () => {
+      const pair = (code: string) => only(base({
+        stats: [stat({ id: 'w1', name: 'Alarm', code })],
+        entities: [creature([rage('self.value = 1;')])],
+      }), RULE);
+      expect(pair('entities.Bram.stats.Rage.value = 2;')).toEqual([]);
+      expect(pair('const who = "The Creature"; entities[who].stats.Rage.value = 2;')).toEqual([]);
+      const dotted = only(base({
+        stats: [stat({ id: 'w1', name: 'Alarm', code: 'entities.Bram.stats.Rage.value = 2;' })],
+        entities: [creature([rage('self.value = 1;')], { id: 'bram', name: 'Bram' })],
+      }), RULE);
+      expect(dotted.map((f) => f.items[0].id)).toEqual(['bram']);
+    });
+
+    it('reaches every entity that can be played through persona, and no other', () => {
+      const tobb: Entity = creature([rage('self.value = 1;')], { id: 'tobb', name: 'Tobb', persona: true });
+      const maren: Entity = creature([rage('self.value = 1;')], { id: 'maren', name: 'Maren', customPersona: true });
+      const bram: Entity = creature([rage('self.value = 1;')], { id: 'bram', name: 'Bram' });
+      const found = only(base({
+        stats: [stat({ id: 'w1', name: 'Alarm', code: 'persona.stats.Rage.value = 2;' })],
+        entities: [tobb, maren, bram],
+      }), RULE);
+      expect(found.map((f) => f.items[0].id)).toEqual(['tobb', 'maren']);
+    });
+
+    it('reaches no stat through owner in a world box, since a world stat has no owner', () => {
+      expect(only(base({
+        stats: [destruction('self.value = 1;'), stat({ id: 'w1', name: 'Alarm', code: 'owner.stats.Destruction.value = 2;' })],
+      }), RULE)).toEqual([]);
+    });
+
+    it('counts each bearer of a Blueprint box as a writer of a world field', () => {
+      const guard = stat({ id: 'guard', name: 'Guard', groupId: 'bp', code: 'stats.Destruction.value += 1;' });
+      const bearer = (id: string): Entity => ({
+        id, name: id, locations: ['harbor'], playerDescription: 'Seen.', aiDescription: 'A regular.',
+        statLinks: [{ id: `${id}-link`, originalId: 'guard', kind: 'stat', originalName: 'Guard', groupId: null }],
+      });
+      const bearers = (...ids: string[]) => only(base({
+        statGroups: [blueprints], stats: [destruction(), guard], entities: ids.map(bearer),
+      }), RULE);
+      const found = bearers('Maren', 'Tobb');
+      expect(found).toHaveLength(1);
+      expect(found[0].message).toBe(
+        'Two boxes write the value of “Destruction”: After the AI code on “Guard” of “Maren” and After the AI code on “Guard” of “Tobb”',
+      );
+      expect(bearers('Maren')).toEqual([]);
     });
   });
 });

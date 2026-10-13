@@ -5,7 +5,7 @@
  * nothing against a fake.)
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import type { Stat, WorldOverview } from '@/types';
+import type { Entity, Stat, WorldOverview } from '@/types';
 import { checkStatCode, STAT_CODE_EXECUTION, STAT_CODE_UNKNOWN_NAME } from './statCodeCheck';
 import { groupFindings, type RuleWorld } from './rules';
 
@@ -217,6 +217,80 @@ describe('the on-demand stat-code check', () => {
     });
     expect(found).toHaveLength(1);
     expect(found[0].items[0].name).toBe('{Beast} Power');
+  });
+
+  describe('owned and Blueprint boxes', () => {
+    const blueprints = { id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' as const };
+    const creature = (stats: Stat[], over: Partial<Entity> = {}): Entity => ({ id: 'creature', name: 'The Creature', stats, ...over });
+    const owned = (stats: Stat[], world: Stat[] = []): RuleWorld => ({ ...base(world), entities: [creature(stats)] });
+
+    it('reports a failing owned box on its entity, naming the stat and the entity', async () => {
+      const found = await checkStatCode(owned([stat({ id: 'rage', name: 'Rage', code: 'throw new Error("nope");' })]));
+      expect(found.map((f) => [f.ruleId, f.message])).toEqual([[
+        STAT_CODE_EXECUTION.id, 'After the AI code on “Rage” of “The Creature” throws when it runs, so the stat keeps its manual value',
+      ]]);
+      expect(found[0].items).toEqual([{ id: 'creature', name: 'The Creature', section: 'entities' }]);
+    });
+
+    it('runs an owned box with its entity as owner and the world as stats, every owner at its starting values', async () => {
+      const check = 'if (owner.stats.Rage.value !== 7) throw new Error("owner");\n'
+        + 'if (stats.Destruction.value !== 3) throw new Error("world");\n'
+        + 'if (entities["The Creature"].stats.Rage.value !== 7) throw new Error("entry");\nreturn 1;';
+      const world = owned(
+        [stat({ id: 'rage', name: 'Rage', starting: 7 }), stat({ id: 'fury', name: 'Fury', code: check })],
+        [stat({ id: 'dest', name: 'Destruction', starting: 3 })],
+      );
+      expect(await checkStatCode(world)).toEqual([]);
+      // A world box reads the same entity through `entities`, and its own owner is empty.
+      world.stats = [...world.stats, stat({
+        id: 'alarm', name: 'Alarm',
+        code: 'if (entities["The Creature"].stats.Rage.value !== 7 || owner.stats.Rage.name) throw new Error("x"); return 1;',
+      })];
+      expect(await checkStatCode(world)).toEqual([]);
+    });
+
+    it('runs a Blueprint box once, with its group’s stats alone as owner, however many bearers it has', async () => {
+      const guards = { id: 'guards', name: 'Guards', parentId: 'bp' };
+      const blueprint = (code: string): RuleWorld => {
+        const link = (id: string) => ({ id, originalId: 'guards', kind: 'group' as const, originalName: 'Guards', groupId: null });
+        return {
+          ...base([
+            stat({ id: 'dest', name: 'Destruction', starting: 3 }),
+            stat({ id: 'guard', name: 'Guard', groupId: 'guards', code }),
+            stat({ id: 'watch', name: 'Watch', groupId: 'guards', starting: 4 }),
+          ]),
+          statGroups: [blueprints, guards],
+          entities: [
+            creature([stat({ id: 'rage', name: 'Rage' })], { statLinks: [link('l1')] }),
+            creature([], { id: 'tobb', name: 'Tobb', statLinks: [link('l2')] }),
+          ],
+        };
+      };
+      expect(await checkStatCode(blueprint(
+        'if (owner.stats.Watch.value !== 4 || owner.stats.Rage.name || stats.Destruction.value !== 3) throw new Error("x");\nreturn 1;',
+      ))).toEqual([]);
+      const found = await checkStatCode(blueprint('throw new Error("nope");'));
+      expect(found.map((f) => [f.message, f.items])).toEqual([[
+        'After the AI code on “Guard” throws when it runs, so the stat keeps its manual value', [{ id: 'guard', name: 'Guard' }],
+      ]]);
+    });
+
+    it('runs a bearer’s overridden code on a linked stat once, with the bearer as owner', async () => {
+      const guard = stat({ id: 'guard', name: 'Guard', groupId: 'bp', code: 'return 1;' });
+      const bearer = (code: string) => creature([stat({ id: 'rage', name: 'Rage', starting: 7 })], {
+        statLinks: [{
+          id: 'link', originalId: 'guard', kind: 'stat', originalName: 'Guard', groupId: null,
+          overrides: { guard: { code: { value: code, blueprint: 'return 1;' } } },
+        }],
+      });
+      const linked = (code: string) => checkStatCode({ ...base([guard]), statGroups: [blueprints], entities: [bearer(code)] });
+      expect(await linked('if (owner.stats.Rage.value !== 7) throw new Error("owner"); return 2;')).toEqual([]);
+      const found = await linked('throw new Error("nope");');
+      expect(found.map((f) => [f.message, f.items])).toEqual([[
+        'After the AI code on “Guard” of “The Creature” throws when it runs, so the stat keeps its manual value',
+        [{ id: 'creature', name: 'The Creature', section: 'entities' }],
+      ]]);
+    });
   });
 
   it('collapses its findings into one counted row like any other rule', async () => {

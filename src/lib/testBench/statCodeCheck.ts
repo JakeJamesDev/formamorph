@@ -7,14 +7,15 @@
  * module owns the rows this raises ({@link STAT_CODE_EXECUTION}, {@link STAT_CODE_UNKNOWN_NAME}), so an
  * execution failure lists, groups and sorts exactly like a static finding.
  */
-import { executeStatCode, type StatCodeFailure, type StatCodeResult } from '@/lib/statCodeExecutor';
+import { executeStatCode, type SandboxEntity, type StatCodeFailure, type StatCodeResult } from '@/lib/statCodeExecutor';
 import { allPlaceholders, placeholderOwners } from '@/lib/placeholderHomes';
 import { statCodeNamed } from '@/lib/statCodeNames';
-import { filledCodeBoxes, TIMING_LABEL } from '@/lib/statCodeTiming';
+import { boxCode, filledCodeBoxes, noBoxes, TIMING_LABEL, type CodeBox } from '@/lib/statCodeTiming';
+import { blueprintGroupStats, playerStatsOf, resolvedEntityStats, statBlueprintIds } from '@/lib/statLinks';
 import { codeDictionaries, sandboxDictionaries, sandboxPlaceholders } from '@/lib/statCodePlaceholders';
 import { entityTraitNames, sandboxTraits, unplayedEntities } from '@/lib/statCodeTraits';
 import { labelPlaceholders, worldPlacementLetters } from '@/lib/placementLetters';
-import { finding, STAT_CODE_EXECUTION, STAT_CODE_UNKNOWN_NAME, type Finding, type RuleWorld } from './rules';
+import { finding, STAT_CODE_EXECUTION, STAT_CODE_UNKNOWN_NAME, type Finding, type FindingItem, type RuleWorld } from './rules';
 import { startingGateStats } from '@/lib/gateStats';
 import type { Stat } from '@/types';
 
@@ -48,50 +49,93 @@ function unknownNames({ unknownPlaceholders = [], unknownTraits = [] }: StatCode
   return parts.length ? parts.join(' and ') : null;
 }
 
+/** One box the check runs: the stat whose code it is, the owner it runs for, and how its row names it. */
+interface CodedBox {
+  stat: Stat;
+  box: CodeBox;
+  /** Absent for a world stat: `owner` is the empty entry. */
+  owner?: SandboxEntity;
+  /** The stat, quoted, then its entity for an owned box. */
+  name: string;
+  item: FindingItem;
+}
+
 /**
  * Run each filled box once and report the ones that fail, then the ones whose writes named nothing. A blank
- * box never reaches the sandbox, so a world of plain stats costs nothing.
+ * box never reaches the sandbox, so a world of plain stats costs nothing. A world stat runs with no owner, an
+ * entity's own stat with its entity, and a Blueprint stat once with its group alone as owner (Q10).
  */
 export async function checkStatCode(world: RuleWorld): Promise<Finding[]> {
+  const statWorld = { stats: world.stats ?? [], statGroups: world.statGroups ?? [] };
+  const authoredEntities = world.entities ?? [];
+  if ([...statWorld.stats, ...authoredEntities.flatMap((e) => e.stats ?? [])].every(noBoxes)) return [];
+
   const placeholderDefs = allPlaceholders(world);
-  // Under their code names, so the run reaches a stat by the name the rules and the editor name it by.
-  const stats = statCodeNamed(atStartingValues(world.stats), placeholderDefs);
-  // One run per filled box: the two hold different code, so each gets its own row naming which it is.
-  const coded = stats.flatMap((stat) => filledCodeBoxes(stat).map((box) => ({ stat, box })));
   const letters = worldPlacementLetters(world);
+  // Under their code names, so the run reaches a stat by the name the rules and the editor name it by.
+  const seeded = (stats: readonly Stat[]) => statCodeNamed(atStartingValues([...stats]), placeholderDefs);
+  // The row names a stat or entity as the author sees it in the list, not as code reaches it.
+  const label = (text: string | undefined) => labelPlaceholders(text ?? '', placeholderDefs, { letters }).trim() || 'Untitled';
+  const stats = seeded(playerStatsOf(statWorld.stats, statWorld.statGroups));
   // Turn one has no rolls yet, so an unrolled placeholder reads as a fresh draw; the player holds no traits.
-  const placeholders = coded.length
-    ? sandboxPlaceholders({ placeholders: placeholderDefs, owners: placeholderOwners(world), rolls: {} })
-    : null;
+  const placeholders = sandboxPlaceholders({ placeholders: placeholderDefs, owners: placeholderOwners(world), rolls: {} });
   // Stat Conditions read the authored start, as Enter World's do (Q23, Q33).
-  const traits = coded.length ? sandboxTraits({
+  const traits = sandboxTraits({
     acquired: [], disabledTraitIds: [], appliedValues: {},
     world: {
       traits: world.traits, groups: world.traitGroups ?? [],
-      gateStats: startingGateStats({ stats: world.stats, statGroups: world.statGroups, entities: world.entities ?? [] }),
+      gateStats: startingGateStats({ stats: world.stats, statGroups: world.statGroups, entities: authoredEntities }),
     },
-  }, placeholderDefs) : [];
-  // No persona plays, so a write through `persona` names nothing the check can judge.
-  const owners = placeholders?.owners ?? new Map();
-  const entities = coded.length ? unplayedEntities(entityTraitNames(
-    { traits: world.traits, traitGroups: world.traitGroups ?? [], entities: world.entities ?? [] }, placeholderDefs,
-  ), owners) : [];
-  const dictionaries = sandboxDictionaries(codeDictionaries(world.dictionaries, placeholderDefs), owners);
-  const results = await Promise.all(coded.map(async ({ stat, box }) => {
+  }, placeholderDefs);
+  // No persona plays, so a write through `persona` names nothing the check can judge. Every entity's stats
+  // start at their starting values, and an owned box's `owner` is its entity's own entry.
+  const resolved = new Map(authoredEntities.map((entity) => [entity.id, seeded(resolvedEntityStats(statWorld, entity))]));
+  const entities: SandboxEntity[] = unplayedEntities(entityTraitNames(
+    { traits: world.traits, traitGroups: world.traitGroups ?? [], entities: authoredEntities }, placeholderDefs,
+  ), placeholders.owners).map((entity) => ({ ...entity, stats: { stats: resolved.get(entity.id ?? '') ?? [] } }));
+  const entryOf = new Map(entities.map((entity) => [entity.id, entity]));
+  const dictionaries = sandboxDictionaries(codeDictionaries(world.dictionaries, placeholderDefs), placeholders.owners);
+
+  // One run per filled box: the two hold different code, so each gets its own row naming which it is.
+  const boxesOf = (stat: Stat, name: string, item: FindingItem, owner?: SandboxEntity): CodedBox[] =>
+    filledCodeBoxes(stat).map((box) => ({ stat, box, owner, name, item }));
+  const statRow = (stat: Stat) => ({ name: `“${label(stat.name)}”`, item: { id: stat.id, name: label(stat.name) } });
+  const blueprints = statBlueprintIds(statWorld);
+  const coded: CodedBox[] = [
+    ...stats.flatMap((stat) => {
+      const { name, item } = statRow(statWorld.stats.find((s) => s.id === stat.id) ?? stat);
+      return boxesOf(stat, name, item);
+    }),
+    ...statWorld.stats.filter((stat) => blueprints.has(stat.id)).flatMap((stat) => {
+      const group = seeded(blueprintGroupStats(statWorld, stat));
+      const { name, item } = statRow(stat);
+      const own = group.find((entry) => entry.id === stat.id) ?? stat;
+      return boxesOf(own, name, item, { name: '', traits: [], stats: { stats: group } });
+    }),
+    ...authoredEntities.flatMap((entity) => {
+      const owner = entryOf.get(entity.id);
+      const item: FindingItem = { id: entity.id, name: label(entity.name), section: 'entities' };
+      const ownStats = new Map((entity.stats ?? []).map((stat) => [stat.id, stat]));
+      return (owner?.stats?.stats ?? []).flatMap((stat) => {
+        // A linked stat runs only a box its link overrides; the Blueprint's own run covers the rest.
+        const original = ownStats.has(stat.id) ? undefined : statWorld.stats.find((s) => s.id === stat.id);
+        const authored = ownStats.get(stat.id) ?? original ?? stat;
+        return boxesOf(stat, `“${label(authored.name)}” of “${item.name}”`, item, owner)
+          .filter(({ box }) => !original || box.code !== boxCode(original, box.timing));
+      });
+    }),
+  ];
+  const results = await Promise.all(coded.map(async ({ stat, box, owner, name, item }) => {
     const result = await executeStatCode(box.code, stats, stat, {
-      placeholders: placeholders?.top ?? [], traits, entities, dictionaries,
+      placeholders: placeholders.top, traits, entities, owner, dictionaries,
     });
-    const label = TIMING_LABEL[box.timing];
-    // The row names the stat as the author sees it in the list, not as code reaches it.
-    const authored = world.stats?.find((entry) => entry.id === stat.id)?.name ?? stat.name;
-    const name = labelPlaceholders(authored ?? '', placeholderDefs, { letters }).trim() || 'Untitled';
-    const item = [{ id: stat.id, name }];
+    const timing = TIMING_LABEL[box.timing];
     if (result.error) {
-      return finding(STAT_CODE_EXECUTION, `${label} code on “${name}” ${FAILURE[result.kind ?? 'throw']}`, item);
+      return finding(STAT_CODE_EXECUTION, `${timing} code on ${name} ${FAILURE[result.kind ?? 'throw']}`, [item]);
     }
     const unknown = unknownNames(result);
     return unknown
-      ? finding(STAT_CODE_UNKNOWN_NAME, `${label} code on “${name}” writes to unknown names. Writes ignored: ${unknown}`, item)
+      ? finding(STAT_CODE_UNKNOWN_NAME, `${timing} code on ${name} writes to unknown names. Writes ignored: ${unknown}`, [item])
       : null;
   }));
   return results.filter((found): found is Finding => found !== null);
