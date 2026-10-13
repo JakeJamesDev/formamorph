@@ -109,8 +109,10 @@ Editor:
 - Variable menu: an Owner group appears in an owned or Blueprint stat's box. The Stats group lists world stats in every box.
 - The stat-code surface tables (globals, entity fields, persona fields) gain `owner` and lose the read-only wording on `stats`.
 - Self detection follows the owner. In an owned box, `owner.stats.<own name>` is the running stat, not `stats.<own name>`. The "write to `self` instead" hint and the missing-return check use that path.
+- Ticket 03 ruling: in an owned box, `stats.<own name>` is a world stat that shares the name. It gets no `self` hint, but it still counts as a write for the missing-return check, as every write to another stat does (v6 Q18). Only the hint follows the running stat.
 - The missing-name check knows `owner` as a root, beside `stats`, `entities`, and `persona`.
 - Templates follow Q13: the stat slot's picker has both lists, and each inserts its own route.
+- Ticket 04 rulings: the box context carries an owner kind (entity, Blueprint, or none) and separate world and owner stat name lists; ticket 03 reuses them for completion. In a Blueprint box, the Owner group lists what the Blueprint group holds (stats, and its traits and placeholders), by analogy with Q10, never a union over bearers. A stat slot keeps its template text: a pick from the owner list rewrites the `stats` right before the slot to `owner.stats`, and the saved template shape does not change. The picker shows owner stats first, then world stats, each with an Owner or World trail. The template editor's Variable menu shows the Owner group only when the dialog opened from an owned or Blueprint box.
 
 Test Code:
 
@@ -124,6 +126,15 @@ Test Bench:
 - `persona.stats.X` resolves to every entity that can be played (Q11). Each bearer of a Blueprint box is a separate writer (Q12).
 - The unknown-stat rule scans owned and linked boxes as well as world boxes. It checks `stats.X` against the world stats, `owner.stats.X` against the owner's stats, and `entities[x].stats.Y` and `persona.stats.Y` against that entity's stats.
 - The Issues run that executes every box also runs owned and Blueprint boxes, each with its `owner`.
+- Ticket 06 rulings:
+  - In the two-writers finding, a writer from another owner than the target's is labeled with its stat and owner, for example `After the AI code on “Rage” of “The Creature”`. A Blueprint bearer is labeled the same way. A same-owner writer keeps the bare label. The finding points at the target: the stat row for a world stat, the entity row for an entity stat.
+  - `persona.stats.Y` is unknown only when no entity that can be played has Y, including a world where no entity can be played.
+  - `entities.N.stats.Y` with no entity named N is reported, and the message names the missing entity.
+  - `owner.stats.Y` in a world-stat box is always reported, because the owner is empty.
+  - In a Blueprint box, `owner.stats.Y` is checked against the Blueprint group's stats (Q10), and the Issues run runs the box once with that group-only owner, also when nothing bears it.
+  - An owned box's findings point at its entity row. A Blueprint stat's own findings point at its stat row.
+  - A link whose bearer overrides `code` or `beforeCode` is that bearer's own box: the Issues run runs it once with the bearer as `owner`, and its row names the stat and the bearer and points at the entity.
+  - A world-stat writer keeps the bare label in the two-writers finding, also when it writes an entity's stat.
 
 Bundled worlds:
 
