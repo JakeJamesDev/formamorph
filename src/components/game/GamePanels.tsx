@@ -437,6 +437,7 @@ const ActionInput = ({
   placeholder,
   disabled,
   onFocusChange,
+  corner,
 }: {
   value: string;
   setValue: (value: string) => void;
@@ -445,6 +446,8 @@ const ActionInput = ({
   disabled: boolean;
   /** Told when the box gains or loses focus, which is when it expands and collapses. */
   onFocusChange?: (focused: boolean) => void;
+  /** Shown in the box's top-right corner, where it hides itself while the box is closed; the open box's text keeps clear of it. */
+  corner?: React.ReactNode;
 }) => {
   // The wrapper mirrors the grown height so the box is real layout, not an overlay: the row above it moves
   // up instead of being covered, which is what lets it clear the on-screen keyboard.
@@ -481,8 +484,11 @@ const ActionInput = ({
           "absolute inset-x-0 bottom-0 w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-helper leading-normal placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
           stateClass,
           focused ? "z-20 shadow-lg" : "h-10",
+          focused && corner && "pr-10",
         )}
       />
+      {/* Always mounted: the corner hides itself when the box closes, but an open list keeps it up. */}
+      {corner && <div className="absolute right-1 top-1 z-30">{corner}</div>}
     </div>
   );
 };
@@ -1155,6 +1161,7 @@ export const MiddlePanel = ({
               )}
               <ActionInput
                 onFocusChange={setInputFocused}
+                corner={<SentPromptLog visible={inputFocused} onPick={setPlayerInput} />}
                 value={playerInput}
                 setValue={setPlayerInput}
                 onKeyDown={handleKeyPress}
@@ -1185,30 +1192,25 @@ export const MiddlePanel = ({
                   ),
                 }}
               />
-              {/* The sent-prompt log sits on Send while the box is open, so text from a failed turn is one click
-                  from coming back. */}
-              <div className="flex flex-col items-end gap-1">
-                <SentPromptLog visible={inputFocused} onPick={setPlayerInput} />
-                {isWaitingForAI ? (
-                  <Button
-                    onClick={abortGeneration}
-                    variant="destructive"
-                    aria-label="Stop generating"
-                    className="border-dashed border-2 w-12 sm:w-32"
-                  >
-                    <Square className="h-4 w-4" />
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={handleSendAction}
-                    disabled={disabled}
-                    aria-label="Send"
-                    className="border-dashed border-2 w-12 sm:w-32"
-                  >
-                    <Send className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
+              {isWaitingForAI ? (
+                <Button
+                  onClick={abortGeneration}
+                  variant="destructive"
+                  aria-label="Stop generating"
+                  className="border-dashed border-2 w-12 sm:w-32"
+                >
+                  <Square className="h-4 w-4" />
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleSendAction}
+                  disabled={disabled}
+                  aria-label="Send"
+                  className="border-dashed border-2 w-12 sm:w-32"
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
+              )}
             </div>
           </div>
         </div>

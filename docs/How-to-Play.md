@@ -15,7 +15,7 @@ You play by writing what you do. The AI narrator writes what happens next. The s
 
 While the AI writes, the **Send** button turns red and becomes **Stop generating**. Select it to stop the turn.
 
-If a turn fails, the text you sent isn't lost. While the action box is open, the button above **Send** lists what you sent before, newest first. Select one to put it back in the box.
+If a turn fails, the text you sent isn't lost. While the action box is open, the **Sent prompts** button in its top-right corner lists what you sent before, newest first. Select one to put it back in the box.
 
 > 💡 Success isn't guaranteed. The narrator decides how your attempt goes, and your stats shape it.
 

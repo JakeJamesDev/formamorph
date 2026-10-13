@@ -23,8 +23,18 @@ test('a failed send leaves its text in the sent-prompt log, which puts it back i
 
   // Hidden while the box is closed; shown once it is focused.
   await expect(page.getByRole('button', { name: 'Sent prompts' })).toHaveCount(0);
+  const send = page.getByRole('button', { name: 'Send' });
+  const sendBefore = await send.boundingBox();
   await box.focus();
-  await page.getByRole('button', { name: 'Sent prompts' }).click();
+  const log = page.getByRole('button', { name: 'Sent prompts' });
+  await expect(log).toBeVisible();
+  // It sits in the box's corner, so showing it moves nothing around the box.
+  expect(await send.boundingBox()).toEqual(sendBefore);
+  const [wrap, button] = [await page.getByTestId('action-input-wrap').boundingBox(), await log.boundingBox()];
+  expect(button!.x + button!.width).toBeLessThanOrEqual(wrap!.x + wrap!.width);
+  expect(button!.y).toBeGreaterThanOrEqual(wrap!.y);
+  await page.screenshot({ path: test.info().outputPath('box.png') });
+  await log.click();
   await page.getByTestId('sent-prompts').getByText(ACTION).click();
   await expect(box).toHaveValue(ACTION);
 });

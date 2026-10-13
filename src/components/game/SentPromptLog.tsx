@@ -6,7 +6,7 @@ import { Tip } from '@/components/ui/tooltip';
 import { clearSentPrompts, formatSentAt, useSentPrompts } from '@/lib/sentPromptLog';
 
 /**
- * The button above Send, shown while the action box is open, that lists every action sent, newest first. Picking one puts it back in the box, so
+ * The button in the action box's corner, shown while the box is open, that lists every action sent, newest first. Picking one puts it back in the box, so
  * text from a turn whose request failed is not lost.
  */
 export function SentPromptLog({ visible, onPick }: {
@@ -25,7 +25,7 @@ export function SentPromptLog({ visible, onPick }: {
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-12 sm:w-32"
+            className="h-7 w-7"
             aria-label="Sent prompts"
             // Pressing it must not blur the action box first, or the button would vanish before the click lands.
             onMouseDown={(e) => e.preventDefault()}
