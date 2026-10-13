@@ -35,3 +35,7 @@ Write a changelog fragment under the Entity Stats topic.
 ## Blocked by
 
 - 01 (`stats` Means The World, `owner` Is The Owner)
+
+## Comments
+
+- 2026-10-13, spec session, handoff from ticket 01 (efab99992): the executor returns `ownerStatWrites: [{ ownerId, writes }]`, so far only for the run's own owner. `stats` is read-only when `owner` is set (`writable: !owner` in the stats prelude); this ticket opens it. An `owner.traits` row on an entry of its own carries `owner: true` with `entity: ''`.

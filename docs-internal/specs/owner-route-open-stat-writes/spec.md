@@ -88,7 +88,8 @@ Sandbox (executor):
 - The executor gains `owner` as a run input: the owning entity, or the empty entry. It is bound beside `entities` and `persona`. When the owner is in the game, `owner` is the same object as its `entities` entry, as `persona` is today.
 - The `stats` argument is always the world stats, without Blueprint stats (a Blueprint stat is never a world stat). An owned stat's `self` binds to its entry in `owner.stats`. In world-stat code, `self` stays its entry in `stats`.
 - `owner` writes are keyed by entity id, not by name. The empty `owner` is its own entry, so its dropped writes never reach the persona. `owner` is still the owner's own entry when a later entity with the same name hides it in `entities`.
-- A dropped-write report names the path as the code wrote it, for example `owner.stats.Rage.value`.
+- A dropped-write report names the path as the code wrote it, for example `owner.stats.Rage.value`. One exception (ticket 01): when `owner` and the owner's `entities` entry are one object, the owner's stat map reports under `owner.stats.…` on both routes. The entry's own fields keep their `entities.<Name>` path. A separate owner entry (hidden by a same-name entity, or the empty owner) reports `owner.…` throughout.
+- Ticket 01 changes the editor, Test Code, and the Test Bench only where its gates force it, for example the missing-name check accepting `owner`. Tickets 03–06 own the rest.
 - The stat map on an `entities` entry uses the same lock as `stats`: the four writable fields are tracked, and every other field stays a read-only getter that reports its path.
 - The result gains writes keyed by owner: the target entity, then the same stat-write rows `statWrites` holds today. `statWrites` keeps the world-stat writes. The unknown, switched-off, and read-only lists cover every route and name the full path.
 - Writing a whole stat map, or replacing a whole entry, stays a read-only write.
