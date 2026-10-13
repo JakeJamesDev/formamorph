@@ -67,9 +67,10 @@ export interface StatCodeTurn {
   /** A trait's name as the player reads it, for the trait switch log. Required for the same reason
    *  `statNameOf` is; code reaches the trait by its code name, which the turn derives itself. */
   traitNameOf: (trait: Trait) => string;
-  /** The entities whose stats also run this turn, in authored order. Every owner's code reads one snapshot:
-   *  the player's stats as `stats`, its own as `owner.stats`, and each one's as `entities[x].stats`. Their
-   *  writes apply after the turn owner's, the later winning. */
+  /** The entities whose stats also run this turn, in owner order: world entities in authored order, then
+   *  library entities in pick order. Every owner's code reads one snapshot: the player's stats as `stats`,
+   *  its own as `owner.stats`, and each one's as `entities[x].stats`. Every write lands in owner order, the
+   *  turn owner first, then stat order within each writer's owner; the later write wins a field. */
   owners?: readonly OwnerCodeTurn[];
   /** Every owner's stats as gates read them at the turn's start; the run lays its owners' stats over them.
    *  Absent ⇒ gates read only the run's owners. */
@@ -211,10 +212,9 @@ interface OwnerRun {
   writes: OwnerWrites;
 }
 
-/** What one owner's code wrote, by the writing stat's id. `stats` holds its writes to its own stat and to
- *  the owner's others. */
+/** What one owner's code wrote, by the writing stat's id. `stats` holds its stat writes by target owner id. */
 interface OwnerWrites {
-  stats: Map<string, readonly TargetWrite[]>;
+  stats: Map<string, ReadonlyMap<string, readonly TargetWrite[]>>;
   placeholders: Map<string, readonly PlaceholderWrite[]>;
   traits: Map<string, StatTraitWrites>;
 }
@@ -225,27 +225,35 @@ type TargetWrite = Pick<StatWrite, 'id' | 'value' | keyof CodeBounds>;
 /** A target's merged write, as `settleWrites` lays it on. */
 type SettledWrite = { value: number | null; bounds: CodeBounds | null };
 
-/** What one run wrote to its owner's stats, its own first: through `stats` for a world stat, through
- *  `owner.stats` for the stat of the entity `ownerId`. */
-const targetWrites = (stat: PlayerStat, result: StatCodeResult, ownerId: string | null): TargetWrite[] => [
-  ...(result.value !== null || result.bounds ? [{ id: stat.id, ...result.bounds, ...(result.value === null ? {} : { value: result.value }) }] : []),
-  ...(ownerId === null ? result.statWrites : result.ownerStatWrites?.find((row) => row.ownerId === ownerId)?.writes) ?? [],
-];
+/** What one run wrote, by target owner id: its own stat first, under `ownerId`; its `stats` writes under
+ *  `worldId`, none when the turn has no world run; then each entity's. */
+function targetWrites(stat: PlayerStat, result: StatCodeResult, ownerId: string, worldId: string | null): Map<string, TargetWrite[]> {
+  const out = new Map<string, TargetWrite[]>();
+  const add = (id: string, writes: readonly TargetWrite[] = []) => {
+    if (writes.length) out.set(id, [...out.get(id) ?? [], ...writes]);
+  };
+  if (result.value !== null || result.bounds) add(ownerId, [{ id: stat.id, ...result.bounds, ...(result.value === null ? {} : { value: result.value }) }]);
+  if (worldId !== null) add(worldId, result.statWrites);
+  for (const row of result.ownerStatWrites ?? []) add(row.ownerId, row.writes);
+  return out;
+}
 
-/** Each target's writes merged field by field in writer order, the later writer winning a field. */
-function statWritesInStatOrder(
-  writers: readonly PlayerStat[],
-  writes: OwnerWrites['stats'],
-): Map<string, SettledWrite> {
-  const out = new Map<string, SettledWrite>();
-  for (const writer of writers) {
-    for (const { id, value, ...bounds } of writes.get(writer.id) ?? []) {
-      const at = out.get(id) ?? { value: null, bounds: null };
-      const written = Object.fromEntries(CODE_BOUND_FIELDS.flatMap((field) => (bounds[field] === undefined ? [] : [[field, bounds[field]]])));
-      out.set(id, {
-        value: value ?? at.value,
-        bounds: Object.keys(written).length ? { ...at.bounds, ...written } : at.bounds,
-      });
+/** Each target owner's writes, each target stat's merged field by field in writer order, the later writer
+ *  winning a field. */
+function statWritesByOwner(writers: readonly { stat: PlayerStat; writes: OwnerWrites }[]): Map<string, Map<string, SettledWrite>> {
+  const out = new Map<string, Map<string, SettledWrite>>();
+  for (const { stat: writer, writes } of writers) {
+    for (const [ownerId, targets] of writes.stats.get(writer.id) ?? []) {
+      const owner = out.get(ownerId) ?? new Map<string, SettledWrite>();
+      out.set(ownerId, owner);
+      for (const { id, value, ...bounds } of targets) {
+        const at = owner.get(id) ?? { value: null, bounds: null };
+        const written = Object.fromEntries(CODE_BOUND_FIELDS.flatMap((field) => (bounds[field] === undefined ? [] : [[field, bounds[field]]])));
+        owner.set(id, {
+          value: value ?? at.value,
+          bounds: Object.keys(written).length ? { ...at.bounds, ...written } : at.bounds,
+        });
+      }
     }
   }
   return out;
@@ -338,8 +346,8 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
         console.error(`Error executing code for stat ${stat.name}:`, result.error);
         return;
       }
-      const statWrites = targetWrites(stat, result, ownerEntry ? ownerEntry.id : null);
-      if (statWrites.length) writes.stats.set(stat.id, statWrites);
+      const statWrites = targetWrites(stat, result, run.owner.id, worldRun?.owner.id ?? null);
+      if (statWrites.size) writes.stats.set(stat.id, statWrites);
       if (result.placeholders) writes.placeholders.set(stat.id, result.placeholders);
       if (result.traits || result.entities) {
         writes.traits.set(stat.id, { world: result.traits ?? [], entities: result.entities ?? [] });
@@ -351,8 +359,10 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
   const inOrder = runs.flatMap((run) => run.live.map((stat) => ({ stat, writes: run.writes, owner: ownerEntries.get(run) })));
   const pinWrites = pinWritesInStatOrder(inOrder.map(({ stat, writes }) => writes.placeholders.get(stat.id) ?? []));
 
-  const mainWrites = statWritesInStatOrder(playerRun.live, playerRun.writes.stats);
-  const ownerWrites = new Map(entityRuns.map(({ owner, live, writes }) => [owner.id, statWritesInStatOrder(live, writes.stats)]));
+  // Merged per target before the first settle, so the gate snapshot and the penalties see every owner's writes.
+  const writesByOwner = statWritesByOwner(inOrder);
+  const mainWrites = writesByOwner.get(main.id) ?? new Map<string, SettledWrite>();
+  const ownerWrites = new Map(entityRuns.map(({ owner }) => [owner.id, writesByOwner.get(owner.id) ?? new Map<string, SettledWrite>()]));
   // The snapshot every settle below reads: the code writes landed with no switch yet, then the penalties.
   const landedMain = withPenalties(
     settleWrites(turn.stats, turn.stats, mainWrites, ownerStatTraitsInForce(before, world, main.id)), turn.penalties,

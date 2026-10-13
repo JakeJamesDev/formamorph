@@ -130,14 +130,15 @@ describe('runStatCodeTurn writes to other stats', () => {
     expect(warned()).toContain('stats.Health.value, stats.Health.max');
   });
 
-  it('drops and reports a write through entities[x].stats, leaving the entity’s stat alone', async () => {
+  it('lands a write through entities[x].stats on that entity’s stat, with no warning', async () => {
     const trust = stat({ id: 'trust', name: 'Trust', value: 30 });
     const out = await run([hub('entities.Bram.stats.Trust.value = 99;')], { owners: [owner('bram', [trust])] });
-    expect(valueOf(out.owners?.bram.stats, 'trust')).toBe(30);
-    expect(warned()).toContain('entities.Bram.stats.Trust.value');
+    expect(valueOf(out.owners?.bram.stats, 'trust')).toBe(99);
+    expect(out.owners?.bram.moved).toEqual(['trust']);
+    expect(warned()).toBe('');
   });
 
-  it('lets an entity stat’s code write its owner’s other stats, and only its owner’s', async () => {
+  it('lands an entity stat’s `owner.stats` write on its owner alone', async () => {
     const calm = stat({ id: 'calm', name: 'Calm', value: 10 });
     const out = await run([stat({ id: 'calm', name: 'Calm', value: 70 })], {
       owners: [owner('bram', [hub('owner.stats.Calm.value += 5;'), calm]), owner('odette', [calm])],

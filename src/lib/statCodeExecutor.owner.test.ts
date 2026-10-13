@@ -54,9 +54,32 @@ describe('executeStatCode owner', () => {
     expect(out.unknownStatWrites).toEqual(['owner.stats.Nope.regen']);
   });
 
-  it('keeps the world stats read only in an entity stat’s code', async () => {
-    const out = await asRage('stats.Gold.value = 9;');
-    expect(out).toEqual({ value: null, error: null, readOnlyWrites: ['stats.Gold.value'] });
+  it('returns a world-stat write from an entity stat’s code as a world write', async () => {
+    const out = await asRage('stats.Gold.value = 9; stats.Gold.max = 50;');
+    expect(out).toEqual({ value: null, error: null, statWrites: [{ id: 'g', name: 'Gold', value: 9, max: 50 }] });
+  });
+
+  it('keys a write to another entity’s stats by that entity’s id, beside the owner’s own', async () => {
+    const odette: SandboxEntity = { id: 'odette', name: 'Odette', traits: [], stats: { stats: [makeStat({ id: 'o', name: 'Calm', value: 3 })] } };
+    const live = { ...bram, stats: { stats: [rage, stock] } };
+    const out = await asRage('entities.Odette.stats.Calm.regen = 2; owner.stats.Stock.value = 1;', [live, odette], live);
+    expect(out.ownerStatWrites).toEqual([
+      { ownerId: 'bram', writes: [{ id: 'k', name: 'Stock', value: 1 }] },
+      { ownerId: 'odette', writes: [{ id: 'o', name: 'Calm', regen: 2 }] },
+    ]);
+  });
+
+  it.each(['id', 'name', 'type', 'description', 'previous', 'delta'])('keeps %s read only on every route', async (field) => {
+    const odette: SandboxEntity = { id: 'odette', name: 'Odette', traits: [], stats: { stats: [makeStat({ id: 'o', name: 'Calm' })] } };
+    const mira: SandboxEntity = { id: 'mira', name: '', traits: [], stats: { stats: [makeStat({ id: 'm', name: 'Grit' })] } };
+    const out = await executeStatCode(
+      `stats.Gold.${field} = 1; owner.stats.Stock.${field} = 1; entities.Odette.stats.Calm.${field} = 1; persona.stats.Grit.${field} = 1;`,
+      [gold], rage, { entities: [bram, odette], persona: mira, owner: bram },
+    );
+    expect(out).toEqual({
+      value: null, error: null,
+      readOnlyWrites: [`stats.Gold.${field}`, `owner.stats.Stock.${field}`, `entities.Odette.stats.Calm.${field}`, `persona.stats.Grit.${field}`],
+    });
   });
 
   it('reports a read-only field on the owner’s stats by its `owner` path on either route', async () => {
