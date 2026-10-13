@@ -91,6 +91,35 @@ describe('hover cards in the code editor', () => {
     expect(details?.textContent).toBe('TypeNumberRange0 – 100Regen+1 per story hourOwnerWorld');
   });
 
+  describe('a name the code declares', () => {
+    const code = 'const tired = 1;\nreturn tired;';
+
+    it('shows its kind, with Go to Line moving the caret to the declaration', async () => {
+      const user = userEvent.setup();
+      render(<Harness initial={code} />);
+      const field = await editor('Stat code');
+      // `hover` finds the first match, which is the declaration; the card for the use is what the test reads.
+      const at = field.textContent!.lastIndexOf('tired');
+      fireEvent.mouseMove(field.querySelectorAll('.cm-line')[1], { clientX: at + 1.5, clientY: 5 });
+      const shown = await openCard();
+      expect(shown.textContent).toContain('(const) tired');
+      expect(shown.textContent).not.toContain('tired:');
+
+      await user.click(within(shown).getByRole('button', { name: 'Go to Line 1' }));
+      const view = EditorView.findFromDOM(field.closest<HTMLElement>('.cm-editor')!)!;
+      expect(view.state.selection.main.head).toBe(code.indexOf('tired'));
+      await waitFor(() => expect(card()).toBeNull());
+    });
+
+    it('offers no Go to Line on the declaration itself', async () => {
+      render(<Harness initial={code} />);
+      hover(await editor('Stat code'), 'tired');
+      const shown = await openCard();
+      expect(shown.textContent).toContain('(const) tired');
+      expect(within(shown).queryByRole('button')).toBeNull();
+    });
+  });
+
   it('closes on Escape without leaving full screen; a second Escape leaves', async () => {
     const user = userEvent.setup();
     render(<Harness initial="return self.value;" />);
@@ -169,12 +198,23 @@ describe('the card in the completion list', () => {
     expect(labels()[0]).not.toBe('Health');
   });
 
-  it('keeps a plain info line for an option that has no card', async () => {
+  it('shows the declared card for a name the code declares, with no Go to Line', async () => {
     const user = userEvent.setup();
     await typeAndList(user, 'const mine = 1; return mi');
+    await waitFor(() => expect(pane()?.querySelector('[data-code-card]')).toBeTruthy());
+    expect(pane()!.textContent).toContain('(const) mine');
+    expect(pane()!.textContent).toContain('Declared on line 1');
+    // The pane can't move the caret, so it offers no link.
+    expect(within(pane()!).queryByRole('button')).toBeNull();
+  });
+
+  it('keeps a plain info line for an option that has no card', async () => {
+    const user = userEvent.setup();
+    // A stat name offered inside a string that is no map key has no card.
+    await typeAndList(user, 'return x === "He', ['Health']);
     await waitFor(() => expect(pane()).toBeTruthy());
-    expect(pane()!.textContent).toContain('Declared in this code');
     expect(pane()!.querySelector('[data-code-card]')).toBeNull();
+    expect(pane()!.textContent).toBeTruthy();
   });
 });
 
@@ -209,6 +249,21 @@ describe('cards from the keyboard', () => {
     const heard = liveRegion(field).textContent!;
     expect(heard).toContain('Writable');
     expect(heard).toContain('Regen per story hour, with traits applied');
+  });
+
+  it('offers Go to Line on a declared name’s card, and the link moves the caret', async () => {
+    const user = userEvent.setup();
+    const code = 'const tired = 1;\nreturn tired;';
+    render(<Harness initial={code} />);
+    const field = await editor('Stat code');
+    const view = viewOf(field);
+    view.focus();
+    view.dispatch({ selection: { anchor: code.lastIndexOf('tired') + 1 } });
+    await user.keyboard(chord);
+    const shown = await openCard();
+    await user.click(within(shown).getByRole('button', { name: 'Go to Line 1' }));
+    expect(view.state.selection.main.head).toBe(code.indexOf('tired'));
+    await waitFor(() => expect(card()).toBeNull());
   });
 
   it('announces a second press on the same name again', async () => {
@@ -421,7 +476,7 @@ describe('cards from a tap', () => {
 describe('hover cards in the template dialog', () => {
   const stats = [{ id: 's1', name: 'Warmth', type: 'number', value: 7, min: 0, max: 10 }] as unknown as Stat[];
 
-  async function openTemplate(user: ReturnType<typeof userEvent.setup>, onOpenChange = vi.fn()) {
+  async function openTemplate(user: ReturnType<typeof userEvent.setup>, onOpenChange = vi.fn(), code = 'return self.max;') {
     render(
       <TooltipProvider>
         <StatCodeTemplateDialog
@@ -435,9 +490,9 @@ describe('hover cards in the template dialog', () => {
     await user.click(field);
     await user.keyboard('{Control>}a{/Control}{Backspace}');
     // One key at a time, each confirmed: under load CodeMirror can drop a key sent mid-update.
-    const code = 'return self.max;';
     for (let i = 0; i < code.length; i++) {
-      await user.keyboard(code[i]);
+      // `{{` is how user-event types one brace.
+      await user.keyboard(code[i] === '{' ? '{{' : code[i]);
       await waitFor(() => expect(field.textContent).toBe(code.slice(0, i + 1)));
     }
     return field;
@@ -459,6 +514,15 @@ describe('hover cards in the template dialog', () => {
     const shown = await openCard();
     expect(shown.textContent).toContain('(global) self: Stat');
     expect(shown.querySelector('dl')).toBeNull();
+  });
+
+  it('shows a slot’s type and default', async () => {
+    const user = userEvent.setup();
+    hover(await openTemplate(user, vi.fn(), 'return {{amount:number=5}};'), 'amount');
+    const shown = await openCard();
+    expect(shown.textContent).toContain('(slot) amount: number');
+    expect(shown.textContent).toContain('Default');
+    expect(within(shown).getByText('5')).toBeTruthy();
   });
 
   it('closes the card on Escape and keeps the dialog open; a second Escape closes the dialog', async () => {

@@ -5,6 +5,7 @@ import type { CodeCard, CodeCardSignature } from '@/lib/codeCards';
 
 /** `path: type`, or `path(params): result` for a method whose type is an arrow. */
 export function signatureText({ kind, path, type }: CodeCardSignature): string {
+  if (type === undefined) return path;
   const arrow = kind === 'method' ? /^\((.*)\)\s*=>\s*(.+)$/.exec(type) : null;
   return arrow ? `${path}(${arrow[1]}): ${arrow[2]}` : `${path}: ${type}`;
 }
@@ -16,6 +17,12 @@ export function cardAnnouncement({ signature, access, description, rows = [] }: 
     ...rows.map((row) => `${row.label}: ${row.value}`),
   ];
   return parts.filter(Boolean).map((part) => part.replace(/\.+$/, '')).join('. ');
+}
+
+/** What the card's controls do. A host that leaves one out gets the card without that control. */
+export interface CodeCardActions {
+  /** Move the caret to the declaration at this offset. */
+  goTo?: (at: number) => void;
 }
 
 function element<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, text?: string): HTMLElementTagNameMap[K] {
@@ -30,8 +37,9 @@ export function renderInfoLine(text: string): HTMLElement {
   return element('div', 'px-2.5 py-1.5 text-helper text-muted-foreground', text);
 }
 
-/** The card's DOM: the signature with its badge, the description, then World Details, one rule between sections. */
-export function renderCodeCard(card: CodeCard): HTMLElement {
+/** The card's DOM: the signature with its badge, the description, World Details, a slot's default, then its
+ *  links, one rule between sections. */
+export function renderCodeCard(card: CodeCard, actions: CodeCardActions = {}): HTMLElement {
   const root = element('div', 'code-card w-[22.5rem] max-w-[calc(100vw-2rem)] divide-y divide-border text-helper');
   root.dataset.codeCard = '';
 
@@ -61,6 +69,24 @@ export function renderCodeCard(card: CodeCard): HTMLElement {
       rows.append(element('dt', 'text-muted-foreground', row.label), element('dd', 'min-w-0 break-words text-popover-foreground', row.value));
     }
     root.append(rows);
+  }
+
+  if (card.defaultValue !== undefined) {
+    const row = element('section', 'flex items-baseline gap-2 px-2.5 py-1.5');
+    row.append(element('span', 'text-muted-foreground', 'Default'), element('span', 'min-w-0 break-words font-mono text-popover-foreground', card.defaultValue));
+    root.append(row);
+  }
+
+  const { goTo } = actions;
+  if (goTo && card.links?.length) {
+    const bar = element('section', 'flex flex-wrap gap-x-3 gap-y-1 px-2.5 py-1.5');
+    for (const link of card.links) {
+      const button = element('button', 'text-primary underline-offset-2 hover:underline focus-visible:underline', `Go to Line ${link.line}`);
+      button.type = 'button';
+      button.addEventListener('click', () => goTo(link.at));
+      bar.append(button);
+    }
+    root.append(bar);
   }
   return root;
 }

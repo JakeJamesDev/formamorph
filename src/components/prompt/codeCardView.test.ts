@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
+import type { CodeCard } from '@/lib/codeCards';
 import { cardAnnouncement, renderCodeCard } from './codeCardView';
 
 describe('cardAnnouncement', () => {
@@ -56,6 +57,27 @@ describe('renderCodeCard', () => {
     const details = card.querySelector('dl[aria-label="World Details"]');
     expect([...details!.children].map((cell) => `${cell.tagName}:${cell.textContent}`)).toEqual(['DT:Range', 'DD:0 – 100', 'DT:Owner', 'DD:World']);
     expect(card.lastElementChild).toBe(details);
+  });
+
+  it('writes a declared name with no type', () => {
+    const card = renderCodeCard({ from: 0, to: 5, signature: { kind: 'const', path: 'tired' } });
+    expect(card.querySelector('section')?.textContent).toBe('(const) tired');
+  });
+
+  it('shows a slot’s default', () => {
+    const card = renderCodeCard({ from: 0, to: 5, signature: { kind: 'slot', path: 'amount', type: 'number' }, defaultValue: '5' });
+    expect(card.textContent).toContain('Default5');
+  });
+
+  it('draws Go to Line only for a host that can move the caret', () => {
+    const declared: CodeCard = { from: 0, to: 5, signature: { kind: 'const', path: 'tired' }, links: [{ id: 'goToLine', at: 6, line: 4 }] };
+    expect(renderCodeCard(declared).querySelector('button')).toBeNull();
+
+    const moves: number[] = [];
+    const button = renderCodeCard(declared, { goTo: (at) => moves.push(at) }).querySelector('button');
+    expect(button?.textContent).toBe('Go to Line 4');
+    button?.click();
+    expect(moves).toEqual([6]);
   });
 
   it('leaves the description section out when the card has none', () => {

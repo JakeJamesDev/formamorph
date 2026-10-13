@@ -8,7 +8,7 @@ import {
   EditorView, closeHoverTooltips, keymap, showTooltip, ViewPlugin, type Tooltip, type TooltipView,
 } from '@codemirror/view';
 import type { CodeCard } from '@/lib/codeCards';
-import { cardAnnouncement, renderCodeCard } from '@/components/prompt/codeCardView';
+import { cardAnnouncement, renderCodeCard, type CodeCardActions } from '@/components/prompt/codeCardView';
 
 /** How long a caret rests on a name after a tap before its card opens. */
 export const CARET_PAUSE_MS = 500;
@@ -28,9 +28,15 @@ interface CaretCard {
 const openCaretCard = StateEffect.define<CaretCard>();
 const closeCaretCard = StateEffect.define<null>();
 
+/** Moves the caret to `at` and closes the cards: a caret card closes on the move itself. */
+export function goToDeclaration(view: EditorView, at: number): void {
+  view.dispatch({ selection: { anchor: at }, scrollIntoView: true, effects: closeHoverTooltips });
+  view.focus();
+}
+
 /** The tooltip view of a card. A dialog or full screen takes Escape on the document in the capture phase,
  *  so an open card takes it on the window first, closes through `dismiss` and stops it there. */
-export function cardTooltipView(card: CodeCard, dismiss: () => void): TooltipView {
+export function cardTooltipView(card: CodeCard, dismiss: () => void, actions?: CodeCardActions): TooltipView {
   const close = (event: KeyboardEvent) => {
     if (event.key !== 'Escape') return;
     event.preventDefault();
@@ -38,7 +44,7 @@ export function cardTooltipView(card: CodeCard, dismiss: () => void): TooltipVie
     dismiss();
   };
   return {
-    dom: renderCodeCard(card),
+    dom: renderCodeCard(card, actions),
     mount: () => window.addEventListener('keydown', close, true),
     destroy: () => window.removeEventListener('keydown', close, true),
   };
@@ -75,7 +81,9 @@ export function createCaretCards(cardAt: (state: EditorState, pos: number) => Co
         pos: open.card.from,
         end: open.card.to,
         above: false,
-        create: (view) => cardTooltipView(open.card, () => view.dispatch({ effects: closeCaretCard.of(null) })),
+        create: (view) => cardTooltipView(
+          open.card, () => view.dispatch({ effects: closeCaretCard.of(null) }), { goTo: (at) => goToDeclaration(view, at) },
+        ),
       };
     }),
   });
