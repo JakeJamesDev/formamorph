@@ -173,6 +173,19 @@ export function setStatLinkEdits(link: StatLink, original: Stat, edited: Stat): 
   return overrides === before ? link : withStatOverrides(link, original.id, overrides);
 }
 
+/**
+ * The link with its override of one code box set to `code`, as a rename rewrites both sides. The snapshot of
+ * the Blueprint's code moves from `before` to `after` only where it read `before`, so a stale override stays stale.
+ */
+export function setStatLinkCode(
+  link: StatLink, statId: string, field: 'code' | 'beforeCode', code: string, before: string, after: string,
+): StatLink {
+  const current = link.overrides?.[statId]?.[field];
+  if (!current) return link;
+  const blueprint = current.blueprint === before ? after : current.blueprint;
+  return withStatOverrides(link, statId, withOverride(link.overrides?.[statId], field, code, blueprint));
+}
+
 /** Fields one Reset clears together: Regen's number and the unit it shows in are one field on screen. */
 const RESET_WITH: Partial<Record<keyof StatLinkFields, (keyof StatLinkFields)[]>> = { regen: ['regenUnit'] };
 

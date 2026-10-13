@@ -156,15 +156,16 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
   }, [store, isBlueprint, codeNamedStats, world, stat, placeholders]);
   const ownerStatNames = useMemo(() => namesOf(ownerStats), [ownerStats]);
   // Code reaches a stat by its code name, so the rename offer compares the two names the way code reads them.
-  const worldRename = useRenameField({
+  const nameRename = useRenameField({
     root: 'stats',
     value: editingStat.name ?? '',
     siblings: stats,
     ownId: stat.id,
     codeNameOf: (name) => statCodeName(name, placeholders),
+    stat: { id: stat.id, entityId: store?.ownerId },
   });
-  // The offer rewrites the world's stat code, which an owned stat's name is not part of.
-  const rename = store ? undefined : worldRename;
+  // A link's name stays the Blueprint's, so its field never renames.
+  const rename = link ? undefined : nameRename;
   const codePlaceholders = useMemo(
     () => ({ list: placeholders, owners: placeholderOwners, dictionaries: codeDictionaries(dictionaries, placeholders) }),
     [placeholders, placeholderOwners, dictionaries],

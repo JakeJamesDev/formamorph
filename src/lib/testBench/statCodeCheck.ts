@@ -10,8 +10,9 @@
 import { executeStatCode, type SandboxEntity, type StatCodeFailure, type StatCodeResult } from '@/lib/statCodeExecutor';
 import { allPlaceholders, placeholderOwners } from '@/lib/placeholderHomes';
 import { statCodeNamed } from '@/lib/statCodeNames';
-import { boxCode, filledCodeBoxes, noBoxes, TIMING_LABEL, type CodeBox } from '@/lib/statCodeTiming';
-import { blueprintGroupStats, playerStatsOf, resolvedEntityStats, statBlueprintIds } from '@/lib/statLinks';
+import { noBoxes, TIMING_LABEL, type CodeBox } from '@/lib/statCodeTiming';
+import { statCodeBoxes, statCodeOwners } from '@/lib/statCodeTargets';
+import { playerStatsOf, resolvedEntityStats } from '@/lib/statLinks';
 import { codeDictionaries, sandboxDictionaries, sandboxPlaceholders } from '@/lib/statCodePlaceholders';
 import { entityTraitNames, sandboxTraits, unplayedEntities } from '@/lib/statCodeTraits';
 import { labelPlaceholders, worldPlacementLetters } from '@/lib/placementLetters';
@@ -96,35 +97,23 @@ export async function checkStatCode(world: RuleWorld): Promise<Finding[]> {
   const entryOf = new Map(entities.map((entity) => [entity.id, entity]));
   const dictionaries = sandboxDictionaries(codeDictionaries(world.dictionaries, placeholderDefs), placeholders.owners);
 
-  // One run per filled box: the two hold different code, so each gets its own row naming which it is.
-  const boxesOf = (stat: Stat, name: string, item: FindingItem, owner?: SandboxEntity): CodedBox[] =>
-    filledCodeBoxes(stat).map((box) => ({ stat, box, owner, name, item }));
-  const statRow = (stat: Stat) => ({ name: `“${label(stat.name)}”`, item: { id: stat.id, name: label(stat.name) } });
-  const blueprints = statBlueprintIds(statWorld);
-  const coded: CodedBox[] = [
-    ...stats.flatMap((stat) => {
-      const { name, item } = statRow(statWorld.stats.find((s) => s.id === stat.id) ?? stat);
-      return boxesOf(stat, name, item);
-    }),
-    ...statWorld.stats.filter((stat) => blueprints.has(stat.id)).flatMap((stat) => {
-      const group = seeded(blueprintGroupStats(statWorld, stat));
-      const { name, item } = statRow(stat);
-      const own = group.find((entry) => entry.id === stat.id) ?? stat;
-      return boxesOf(own, name, item, { name: '', traits: [], stats: { stats: group } });
-    }),
-    ...authoredEntities.flatMap((entity) => {
+  // One run per filled box: the two hold different code, so each gets its own row naming which it is. A
+  // linked stat runs only a box its link overrides; the Blueprint's own run covers the rest.
+  const owners = statCodeOwners({ ...statWorld, entities: authoredEntities, placeholders: placeholderDefs });
+  const coded = statCodeBoxes(owners).map(({ timing, code, stat: authored, entity, owner: reads }): CodedBox => {
+    const box = { timing, code };
+    if (entity) {
       const owner = entryOf.get(entity.id);
+      const stat = owner?.stats?.stats.find((entry) => entry.id === authored.id) ?? authored;
       const item: FindingItem = { id: entity.id, name: label(entity.name), section: 'entities' };
-      const ownStats = new Map((entity.stats ?? []).map((stat) => [stat.id, stat]));
-      return (owner?.stats?.stats ?? []).flatMap((stat) => {
-        // A linked stat runs only a box its link overrides; the Blueprint's own run covers the rest.
-        const original = ownStats.has(stat.id) ? undefined : statWorld.stats.find((s) => s.id === stat.id);
-        const authored = ownStats.get(stat.id) ?? original ?? stat;
-        return boxesOf(stat, `“${label(authored.name)}” of “${item.name}”`, item, owner)
-          .filter(({ box }) => !original || box.code !== boxCode(original, box.timing));
-      });
-    }),
-  ];
+      return { stat, box, owner, name: `“${label(authored.name)}” of “${item.name}”`, item };
+    }
+    const row = { name: `“${label(authored.name)}”`, item: { id: authored.id, name: label(authored.name) } };
+    if (!reads) return { stat: stats.find((entry) => entry.id === authored.id) ?? authored, box, ...row };
+    const group = seeded(reads.stats);
+    const own = group.find((entry) => entry.id === authored.id) ?? authored;
+    return { stat: own, box, owner: { name: '', traits: [], stats: { stats: group } }, ...row };
+  });
   const results = await Promise.all(coded.map(async ({ stat, box, owner, name, item }) => {
     const result = await executeStatCode(box.code, stats, stat, {
       placeholders: placeholders.top, traits, entities, owner, dictionaries,

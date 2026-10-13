@@ -13,7 +13,10 @@ const PLAN: CodeRenamePlan = {
   root: 'stats',
   oldName: 'Hunger',
   newName: 'Appetite',
-  edits: [{ id: 'dev-stamina', name: 'Stamina', boxes: {} }, { id: 'dev-mood', name: 'Mood', boxes: {} }],
+  edits: [
+    { home: { kind: 'stat', statId: 'dev-stamina' }, name: 'Stamina', boxes: {} },
+    { home: { kind: 'stat', statId: 'dev-mood' }, name: 'Mood', boxes: {} },
+  ],
   references: 3,
 };
 
