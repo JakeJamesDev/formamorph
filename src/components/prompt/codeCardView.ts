@@ -16,6 +16,11 @@ function element<K extends keyof HTMLElementTagNameMap>(tag: K, className: strin
   return node;
 }
 
+/** An info line for a completion option that has no card, padded to sit in the same pane. */
+export function renderInfoLine(text: string): HTMLElement {
+  return element('div', 'px-2.5 py-1.5 text-helper text-muted-foreground', text);
+}
+
 /** The card's DOM: the signature with its badge, then the description, one rule between sections. */
 export function renderCodeCard(card: CodeCard): HTMLElement {
   const root = element('div', 'code-card w-[22.5rem] max-w-[calc(100vw-2rem)] divide-y divide-border text-helper');

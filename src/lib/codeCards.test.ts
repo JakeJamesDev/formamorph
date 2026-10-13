@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { codeCard, type CodeCard } from './codeCards';
-import type { SurfaceAnalysisOptions } from './statCodeAnalysis';
+import { codeCard, completionCard, type CodeCard } from './codeCards';
+import { codeCompletions, type SurfaceAnalysisOptions } from './statCodeAnalysis';
 import { STAT_CODE_SURFACE } from './statCodeSurface';
 import { toolScriptSurface } from './tools/toolScriptSurface';
 import { phValues } from '@/test/placeholderValues';
@@ -147,5 +147,59 @@ describe('codeCard: a Tool script', () => {
 
   it('reads no stat-code map', () => {
     expect(cardAt('return st|ats.Health;', tool)).toBeNull();
+  });
+});
+
+describe('completionCard: the card for an option the list offers', () => {
+  const listed: SurfaceAnalysisOptions = { ...world, statNames: ['Health', 'Max HP'] };
+
+  /** The card the option labelled `label` shows, with the caret written as `|`. */
+  function optionCard(doc: string, label: string, options: SurfaceAnalysisOptions = listed): CodeCard | null {
+    const caret = doc.indexOf('|');
+    expect(caret, 'every case marks its caret with |').toBeGreaterThanOrEqual(0);
+    const code = doc.replace('|', '');
+    const result = codeCompletions(code, caret, options);
+    expect(result, 'the list opens here').not.toBeNull();
+    return completionCard(code, result!, label, options);
+  }
+
+  it.each([
+    ['return clo|', 'clock', '(global) clock: { day, daypart, deltaHours, elapsedHours, previous } [readOnly]'],
+    ['return self.re|', 'regen', '(property) Stat.regen: number [writable]'],
+    ['return stats.He|', 'Health', '(stat) stats.Health: Stat'],
+    ['return stats["He|', 'Health', '(stat) stats.Health: Stat'],
+    ['return stats[|', '"Max HP"', '(stat) stats["Max HP"]: Stat'],
+    ['return Math.m|', 'min', '(method) Math.min: (...n) => number'],
+  ])('%s offers %s', (doc, label, expected) => {
+    expect(line(optionCard(doc, label))).toBe(expected);
+  });
+
+  it('cards a single-quoted key', () => {
+    expect(line(optionCard(`return stats['He|`, 'Health'))).toBe('(stat) stats.Health: Stat');
+  });
+
+  it('has no card for a stat name offered inside a string that is no map key', () => {
+    expect(optionCard('return x === "He|"', 'Health')).toBeNull();
+  });
+
+  it('cards an option of one character', () => {
+    expect(line(optionCard('return stats.|', 'X', { ...world, statNames: ['X'] }))).toBe('(stat) stats.X: Stat');
+  });
+
+  it('cards an option of an owner’s own map', () => {
+    const entity: SurfaceAnalysisOptions = { ...owned, ownerStatNames: ['Grit'] };
+    expect(line(optionCard('return owner.stats.Gr|', 'Grit', entity))).toBe('(stat) owner.stats.Grit: Stat');
+  });
+
+  it('reads the option as taken, not as typed', () => {
+    // `Hea` is no stat name; the card is for the option the author would insert over it.
+    expect(line(optionCard('return stats.Hea|', 'Health'))).toBe('(stat) stats.Health: Stat');
+  });
+
+  it.each([
+    ['a keyword', 'return |', 'return'],
+    ['a name the code declares', 'const mine = 1; return mi|', 'mine'],
+  ])('has no card for %s', (_name, doc, label) => {
+    expect(optionCard(doc, label)).toBeNull();
   });
 });

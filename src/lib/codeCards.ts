@@ -68,6 +68,24 @@ const fromEntry = (
   description: entry.info,
 });
 
+/**
+ * The card for the completion option labelled `label`, read as the code the option would make: the label
+ * replaces `replaces`, and the card is the one for the name it spells. Null where the label is no name a
+ * card describes, as with a keyword or a name the author declared.
+ */
+export function completionCard(
+  code: string,
+  replaces: { from: number; to: number },
+  label: string,
+  options: SurfaceAnalysisOptions,
+): CodeCard | null {
+  // A key typed inside a string has no closing quote yet, and the tree reads an open string as no key at all.
+  const quote = code[replaces.from - 1];
+  const close = quote === '"' || quote === "'" ? quote : '';
+  const taken = code.slice(0, replaces.from) + label + close + code.slice(replaces.to);
+  return codeCard(taken, replaces.from + Math.floor(label.length / 2), options);
+}
+
 /** The card for the name at `pos`, or null where the code names nothing a card can describe. */
 export function codeCard(code: string, pos: number, options: SurfaceAnalysisOptions): CodeCard | null {
   const name = resolveCodeName(code, pos, options);
