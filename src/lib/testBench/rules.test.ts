@@ -523,6 +523,16 @@ describe('reference-integrity rules', () => {
     expect(only(coded('return stats["Vigor"].value;'), 'stat-code-unknown-stat')).toEqual([]);
   });
 
+  it('leaves a read through another owner’s stats alone, since the world’s stats are not its map', () => {
+    const coded = (code: string) => base({ stats: [stat({ id: 's1', name: 'Mana', code }), stat({ id: 's2', name: 'Vigor' })] });
+    expect(only(coded('return entities["The Creature"].stats.Rampage.value;'), 'stat-code-unknown-stat')).toEqual([]);
+    expect(only(coded('return entities.Bram?.stats["Trust"].value;'), 'stat-code-unknown-stat')).toEqual([]);
+    expect(only(coded('return persona.stats.Rampage.value;'), 'stat-code-unknown-stat')).toEqual([]);
+    // The world's own map still checks, beside a qualified read in the same code.
+    const mixed = only(coded('return entities.Bram.stats.Trust.value + stats.Vigro.value;'), 'stat-code-unknown-stat');
+    expect(mixed.map((f) => f.message)).toEqual([expect.stringContaining('Vigro')]);
+  });
+
   it('leaves a computed map key alone — there is no literal to check', () => {
     const w = base({
       stats: [stat({ id: 's1', name: 'Mana', code: 'const key = "Vigor";\nreturn stats[key].value;' })],

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import droneRaw from '@/defaultworlds/drone.json?raw';
+import openChatRaw from '@/defaultworlds/open-chat.json?raw';
+import rampageRaw from '@/defaultworlds/rampage.json?raw';
 import emberwatchRaw from '@/defaultworlds/emberwatch.json?raw';
 import { PROMPT_TEXT_DEFAULTS } from './GamePrompts';
 import { BUILTIN_PRESETS, type PromptTextKey } from '@/lib/promptPresets';
@@ -54,14 +55,14 @@ function renderFor(raw: string, played?: string): string {
   return renderPromptTemplate(defaults.systemPrompt, chipValues(scene));
 }
 
-/** Drone's opening with a played library persona that owns one stat. */
+/** Rampage's opening, whose world keeps two loose stats, with a played library persona that owns one stat. */
 function personaWithStats() {
   const calm: PlayerStat = {
     id: 'calm', name: 'Calm', type: 'number', description: 'Composure.', min: 0, max: 100, value: 10, regen: 0, descriptors: [],
   };
   const traveler: Entity = { id: 'traveler', name: 'Traveler', aiDescription: 'A road-worn traveler.', stats: [calm] };
   return {
-    ...authoredChipScene(migrateWorld(JSON.parse(droneRaw))),
+    ...authoredChipScene(migrateWorld(JSON.parse(rampageRaw))),
     persona: { source: 'library' as const, entity: traveler },
     playerName: traveler.name,
     playedStats: [{ ownerId: traveler.id, stats: [calm] }],
@@ -110,7 +111,7 @@ describe('the Other Traits chip in the default prompts', () => {
   });
 
   it('opens the player section at "## Other Traits" for a world with world traits and no persona', () => {
-    const out = renderFor(droneRaw);
+    const out = renderFor(openChatRaw);
     expect(out).toContain('\n## Other Traits\n');
     expect(out).not.toContain('Player Character');
     expect(out).not.toContain('\n## Traits\n');

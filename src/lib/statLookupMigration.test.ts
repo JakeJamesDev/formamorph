@@ -132,7 +132,13 @@ describe('migrateStatLookups', () => {
 });
 
 describe('migrateStatLookups on the bundled worlds', () => {
-  const worlds = import.meta.glob<{ default: { stats?: Stat[] } }>('../defaultworlds/*.json', { eager: true });
+  type BundledWorld = { stats?: Stat[]; entities?: { name: string; stats?: Stat[] }[] };
+  const worlds = import.meta.glob<{ default: BundledWorld }>('../defaultworlds/*.json', { eager: true });
+  /** A world's stat lists by owner: the world's own, then each entity's. The old flat list is their union. */
+  const ownersOf = (world: BundledWorld) => [
+    { name: '', stats: world.stats ?? [] },
+    ...(world.entities ?? []).filter((e) => e.stats?.length).map((e) => ({ name: e.name, stats: e.stats ?? [] })),
+  ];
   /** Each bundled stat's code as the worlds shipped it at 2.14.0, before the map. */
   const BEFORE: Array<[string, string, string]> = [
     ['drone', 'Mobility', `const power = stats.find(s => s.name === 'Power').value;
@@ -156,18 +162,23 @@ return Math.round(stamina * 0.7 + 30 - sugar * 0.4);`],
   ];
 
   it('covers every bundled stat that carries code', () => {
-    const coded = Object.entries(worlds).flatMap(([path, world]) =>
-      (world.default.stats ?? []).filter((s) => s.code?.trim()).map((s) => `${path.match(/(\w+)\.json$/)?.[1]}/${s.name}`));
+    const coded = Object.entries(worlds).flatMap(([path, world]) => ownersOf(world.default)
+      .flatMap((owner) => owner.stats).filter((s) => s.code?.trim()).map((s) => `${path.match(/(\w+)\.json$/)?.[1]}/${s.name}`));
     expect(coded.sort()).toEqual(BEFORE.map(([file, name]) => `${file}/${name}`).sort());
   });
 
   it.each(BEFORE)('%s %s: the migrated code returns what the array form returned', async (file, name, before) => {
-    const stats = worlds[`../defaultworlds/${file}.json`].default.stats ?? [];
-    const stat = stats.find((s) => s.name === name) as Stat;
+    const world = worlds[`../defaultworlds/${file}.json`].default;
+    const owners = ownersOf(world);
+    // The worlds shipped one flat list; a stat's code now reads its owner's list and the others through `entities`.
+    const flat = owners.flatMap((owner) => owner.stats);
+    const own = owners.find((owner) => owner.stats.some((s) => s.name === name))!.stats;
+    const stat = own.find((s) => s.name === name) as Stat;
+    const entities = owners.filter((owner) => owner.name).map((owner) => ({ name: owner.name, traits: [], stats: { stats: owner.stats } }));
     // The array form ran as a plain function over the stat list; these formulas read nothing else.
-    const overArray = new Function('stats', 'currentStatId', before)(stats, stat.id) as number;
-    const migrated = await executeStatCode(migrateStatLookups(before), stats, stat);
-    const shipped = await executeStatCode(stat.code ?? '', stats, stat);
+    const overArray = new Function('stats', 'currentStatId', before)(flat, stat.id) as number;
+    const migrated = await executeStatCode(migrateStatLookups(before), flat, stat);
+    const shipped = await executeStatCode(stat.code ?? '', own, stat, { entities });
     expect(migrated).toMatchObject({ error: null, value: overArray });
     expect(shipped).toMatchObject({ error: null, value: overArray });
   });

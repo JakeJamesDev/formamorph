@@ -21,141 +21,6 @@
   },
   "stats": [
     {
-      "id": "health",
-      "name": "Health",
-      "type": "number",
-      "description": "Represents the player's physical well-being and ability to sustain damage",
-      "min": 0,
-      "max": 100,
-      "value": 100,
-      "starting": 100,
-      "regen": 3,
-      "thresholdUnit": "percent",
-      "descriptors": [
-        {
-          "id": "health_critical",
-          "threshold": 10,
-          "description": "Critical condition. Severely hurt, barely upright, in real trouble."
-        },
-        {
-          "id": "health_injured",
-          "threshold": 40,
-          "description": "Injured. Multiple knocks and strains, movement impaired."
-        },
-        {
-          "id": "health_hurt",
-          "threshold": 70,
-          "description": "Hurt. Minor scrapes and bruises, some pain, but generally functional."
-        },
-        {
-          "id": "health_healthy",
-          "threshold": 100,
-          "description": "Healthy. No significant injuries, operating at full capacity."
-        }
-      ]
-    },
-    {
-      "id": "stamina",
-      "name": "Stamina",
-      "type": "number",
-      "description": "Represents the player's energy and ability to perform physical actions",
-      "min": 0,
-      "max": 100,
-      "value": 100,
-      "starting": 100,
-      "regen": 6,
-      "thresholdUnit": "percent",
-      "descriptors": [
-        {
-          "id": "stamina_exhausted",
-          "threshold": 10,
-          "description": "Exhausted. Barely able to move, risk of collapse, unable to perform strenuous actions."
-        },
-        {
-          "id": "stamina_tired",
-          "threshold": 40,
-          "description": "Tired. Movements are sluggish, difficulty in sustained physical activities."
-        },
-        {
-          "id": "stamina_winded",
-          "threshold": 70,
-          "description": "Winded. Slightly out of breath, can perform most actions but not at peak efficiency."
-        },
-        {
-          "id": "stamina_energetic",
-          "threshold": 100,
-          "description": "Energetic. Full of energy, capable of performing any physical action without hindrance."
-        }
-      ]
-    },
-    {
-      "id": "assimilation",
-      "name": "Assimilation",
-      "type": "number",
-      "description": "How far the slime has spread through the player. Climbs steadily on its own, spikes on slime contact, and falls with remedies, rest, and salt-scrubbing.",
-      "min": 0,
-      "max": 100,
-      "value": 10,
-      "starting": 10,
-      "regen": 2,
-      "descriptors": [
-        {
-          "id": "assim_early",
-          "threshold": 15,
-          "description": "Early signs. A faint green tint under the fingernails; skin cool to the touch. Nothing anyone would notice in this fog."
-        },
-        {
-          "id": "assim_translucent",
-          "threshold": 40,
-          "description": "Translucent. Skin faintly see-through at the wrists and temples; joints move too smoothly. The player can compress their hands and arms through gaps bones should forbid, and slimes pause before striking — half-reading them as kin."
-        },
-        {
-          "id": "assim_softening",
-          "threshold": 70,
-          "description": "Softening. The player’s outline blurs in the rain; grip fails on anything heavy; recent memories arrive syrupy and out of order. Slimes ignore them entirely now. People very much do not."
-        },
-        {
-          "id": "assim_assimilated",
-          "threshold": 100,
-          "description": "Assimilated. The player settles into the goo — calm, painless, and no longer the person who started tonight. The story ends here, quietly."
-        }
-      ]
-    },
-    {
-      "id": "panic",
-      "name": "Panic",
-      "type": "number",
-      "description": "The player’s fear level. Rises in encounters and darkness; settles in safety and light.",
-      "min": 0,
-      "max": 100,
-      "value": 0,
-      "starting": 0,
-      "regen": -2,
-      "thresholdUnit": "percent",
-      "descriptors": [
-        {
-          "id": "panic_level",
-          "threshold": 25,
-          "description": "Level. Breathing even, thoughts in order."
-        },
-        {
-          "id": "panic_rattled",
-          "threshold": 50,
-          "description": "Rattled. Jumping at drips and shadows; hands not quite steady."
-        },
-        {
-          "id": "panic_fraying",
-          "threshold": 75,
-          "description": "Fraying. Tunnel vision, snap decisions, the urge to just run somewhere, anywhere."
-        },
-        {
-          "id": "panic_broken",
-          "threshold": 100,
-          "description": "Panicking. The player acts before thinking — loud, fast, and visible to everything."
-        }
-      ]
-    },
-    {
       "id": "suspicion",
       "name": "Suspicion",
       "type": "number",
@@ -323,6 +188,368 @@
   ],
   "entities": [
     {
+      "id": "ea378f83-4cd3-49b0-bd37-ce699c184782",
+      "name": "The Resident",
+      "type": "Person",
+      "playerDescription": "A resident of Ashburn with sea-glass fingertips and one night to reach the Chemical Works.",
+      "aiDescription": "{{char}} is a resident of Ashburn on the night of the slime outbreak, already infected and heading for the Chemical Works.",
+      "aiSummary": "An infected resident of Ashburn.",
+      "customPersona": true,
+      "traits": [
+        {
+          "id": "night_shift_nurse",
+          "name": "Night-Shift Nurse",
+          "groupId": "e1fe79eb-767b-45fd-b21c-426bc227dffe",
+          "order": 0,
+          "isDefault": true,
+          "playerDescription": "You know which pharmacy shelves matter, and what a body can take.",
+          "aiDescription": "The player is a night-shift nurse: they know which remedies actually slow the film, how to dress a wound, and how to talk to exhausted officials. Treatments they apply work better than they should.",
+          "statChanges": [
+            {
+              "statId": "assimilation",
+              "value": -1,
+              "type": "regen"
+            },
+            {
+              "statId": "health",
+              "value": 1,
+              "type": "regen"
+            }
+          ]
+        },
+        {
+          "id": "dock_worker",
+          "name": "Dock Worker",
+          "groupId": "e1fe79eb-767b-45fd-b21c-426bc227dffe",
+          "order": 1,
+          "playerDescription": "Twenty years on the Harborfront. You know every gate, gap, and gantry.",
+          "aiDescription": "The player worked the Ashburn docks for years: they know the Harborfront’s gates, catwalks, and shortcuts, including the seawall route to the chemical works, and hard work built a durable body.",
+          "statChanges": [
+            {
+              "statId": "stamina",
+              "value": 15,
+              "type": "max"
+            },
+            {
+              "statId": "health",
+              "value": 10,
+              "type": "max"
+            }
+          ]
+        },
+        {
+          "id": "ashburn_student",
+          "name": "Ashburn High Student",
+          "groupId": "e1fe79eb-767b-45fd-b21c-426bc227dffe",
+          "order": 2,
+          "playerDescription": "You know the school, the shortcuts, and which fences have loose boards.",
+          "aiDescription": "The player is an Ashburn High student: young, quick to recover, and intimately familiar with the school-turned-shelter, the alleys between districts, and every fence with a loose board.",
+          "statChanges": [
+            {
+              "statId": "stamina",
+              "value": 2,
+              "type": "regen"
+            },
+            {
+              "statId": "panic",
+              "value": -1,
+              "type": "regen"
+            }
+          ]
+        },
+        {
+          "id": "steady_hands",
+          "name": "Steady Hands",
+          "groupId": "9f1d6767-84da-428d-b031-7a4c1507c505",
+          "order": 0,
+          "isDefault": true,
+          "playerDescription": "Slow breath, clean decisions.",
+          "aiDescription": "The player stays deliberate under pressure — fear drains away quickly and rarely drives their choices.",
+          "statChanges": [
+            {
+              "statId": "panic",
+              "value": -2,
+              "type": "regen"
+            },
+            {
+              "statId": "stamina",
+              "value": 5,
+              "type": "max"
+            }
+          ]
+        },
+        {
+          "id": "runners_instinct",
+          "name": "Runner's Instinct",
+          "groupId": "9f1d6767-84da-428d-b031-7a4c1507c505",
+          "order": 1,
+          "playerDescription": "First to move, last to tire — and always a little wired.",
+          "aiDescription": "The player’s instinct is to move: deep stamina reserves and fast recovery, but their nerves run hot and settle slowly.",
+          "statChanges": [
+            {
+              "statId": "stamina",
+              "value": 20,
+              "type": "max"
+            },
+            {
+              "statId": "stamina",
+              "value": 2,
+              "type": "regen"
+            },
+            {
+              "statId": "panic",
+              "value": 1,
+              "type": "regen"
+            }
+          ]
+        },
+        {
+          "id": "morbid_curiosity",
+          "name": "Morbid Curiosity",
+          "groupId": "9f1d6767-84da-428d-b031-7a4c1507c505",
+          "order": 2,
+          "playerDescription": "You take notes while other people scream. It gets you closer than is wise.",
+          "aiDescription": "The player is more fascinated than afraid: they can hold themselves together far past the point others break, observing details everyone else misses — and it draws them closer to danger than is wise.",
+          "statChanges": [
+            {
+              "statId": "panic",
+              "value": 25,
+              "type": "max"
+            },
+            {
+              "statId": "stamina",
+              "value": -1,
+              "type": "regen"
+            }
+          ]
+        },
+        {
+          "id": "salt_packets",
+          "name": "Salt Packets",
+          "groupId": "ea234cd7-5798-48d2-9231-4b11595246b1",
+          "order": 0,
+          "playerDescription": "Two pockets full of diner salt. The slimes have opinions about it.",
+          "aiDescription": "The player carries handfuls of diner salt packets: a thrown handful makes any slime recoil and buys seconds, and a salted doorway holds all night. The supply is finite — track its use.",
+          "statChanges": []
+        },
+        {
+          "id": "long_coat",
+          "name": "Long Coat & Gloves",
+          "groupId": "ea234cd7-5798-48d2-9231-4b11595246b1",
+          "order": 1,
+          "playerDescription": "Covers the wrists, the temples, the tint. People see a coat, not a condition.",
+          "aiDescription": "The player wears a long coat and gloves that hide the visible signs of assimilation — patrols and civilians see a bundled-up resident, not a condition, until the signs pass what fabric can cover.",
+          "statChanges": [
+            {
+              "statId": "suspicion",
+              "value": 25,
+              "type": "max"
+            }
+          ]
+        },
+        {
+          "id": "pocket_radio",
+          "name": "Pocket Radio",
+          "groupId": "ea234cd7-5798-48d2-9231-4b11595246b1",
+          "order": 2,
+          "playerDescription": "Tuned to the quarantine band. Knowing beats guessing.",
+          "aiDescription": "The player carries a pocket radio tuned to the quarantine band: they overhear patrol movements, checkpoint rotations, and the municipal broadcast before anyone else reacts to it.",
+          "statChanges": [
+            {
+              "statId": "panic",
+              "value": -1,
+              "type": "regen"
+            }
+          ]
+        },
+        {
+          "id": "fight_it",
+          "name": "Fight It",
+          "order": 3,
+          "playerToggle": true,
+          "playerDescription": "Clench yourself back into shape. It works. It takes everything you have.",
+          "aiDescription": "ACTIVE: the player is consciously fighting the assimilation — flexing warmth back into their hands, reciting their own name, refusing the softness. The spread slows while this holds, but the sustained effort is deeply draining.",
+          "statChanges": [
+            {
+              "statId": "assimilation",
+              "value": -2,
+              "type": "regen"
+            },
+            {
+              "statId": "stamina",
+              "value": -3,
+              "type": "regen"
+            }
+          ]
+        }
+      ],
+      "traitGroups": [
+        {
+          "id": "e1fe79eb-767b-45fd-b21c-426bc227dffe",
+          "name": "Background",
+          "parentId": null,
+          "order": 0,
+          "exclusive": true,
+          "playerDescription": "Who you were yesterday, when Ashburn was just damp. Pick one.",
+          "aiDescription": "The player's background:"
+        },
+        {
+          "id": "9f1d6767-84da-428d-b031-7a4c1507c505",
+          "name": "Disposition",
+          "parentId": null,
+          "order": 1,
+          "exclusive": true,
+          "playerDescription": "How you carry a very bad night. Pick one.",
+          "aiDescription": "The player's disposition under pressure:"
+        },
+        {
+          "id": "ea234cd7-5798-48d2-9231-4b11595246b1",
+          "name": "Pockets",
+          "parentId": null,
+          "order": 2,
+          "playerDescription": "What you grabbed on the way out the door. Take any.",
+          "aiDescription": "What the player is carrying tonight:"
+        }
+      ],
+      "stats": [
+        {
+          "id": "health",
+          "name": "Health",
+          "type": "number",
+          "description": "Represents the player's physical well-being and ability to sustain damage",
+          "min": 0,
+          "max": 100,
+          "value": 100,
+          "starting": 100,
+          "regen": 3,
+          "thresholdUnit": "percent",
+          "descriptors": [
+            {
+              "id": "health_critical",
+              "threshold": 10,
+              "description": "Critical condition. Severely hurt, barely upright, in real trouble."
+            },
+            {
+              "id": "health_injured",
+              "threshold": 40,
+              "description": "Injured. Multiple knocks and strains, movement impaired."
+            },
+            {
+              "id": "health_hurt",
+              "threshold": 70,
+              "description": "Hurt. Minor scrapes and bruises, some pain, but generally functional."
+            },
+            {
+              "id": "health_healthy",
+              "threshold": 100,
+              "description": "Healthy. No significant injuries, operating at full capacity."
+            }
+          ]
+        },
+        {
+          "id": "stamina",
+          "name": "Stamina",
+          "type": "number",
+          "description": "Represents the player's energy and ability to perform physical actions",
+          "min": 0,
+          "max": 100,
+          "value": 100,
+          "starting": 100,
+          "regen": 6,
+          "thresholdUnit": "percent",
+          "descriptors": [
+            {
+              "id": "stamina_exhausted",
+              "threshold": 10,
+              "description": "Exhausted. Barely able to move, risk of collapse, unable to perform strenuous actions."
+            },
+            {
+              "id": "stamina_tired",
+              "threshold": 40,
+              "description": "Tired. Movements are sluggish, difficulty in sustained physical activities."
+            },
+            {
+              "id": "stamina_winded",
+              "threshold": 70,
+              "description": "Winded. Slightly out of breath, can perform most actions but not at peak efficiency."
+            },
+            {
+              "id": "stamina_energetic",
+              "threshold": 100,
+              "description": "Energetic. Full of energy, capable of performing any physical action without hindrance."
+            }
+          ]
+        },
+        {
+          "id": "assimilation",
+          "name": "Assimilation",
+          "type": "number",
+          "description": "How far the slime has spread through the player. Climbs steadily on its own, spikes on slime contact, and falls with remedies, rest, and salt-scrubbing.",
+          "min": 0,
+          "max": 100,
+          "value": 10,
+          "starting": 10,
+          "regen": 2,
+          "descriptors": [
+            {
+              "id": "assim_early",
+              "threshold": 15,
+              "description": "Early signs. A faint green tint under the fingernails; skin cool to the touch. Nothing anyone would notice in this fog."
+            },
+            {
+              "id": "assim_translucent",
+              "threshold": 40,
+              "description": "Translucent. Skin faintly see-through at the wrists and temples; joints move too smoothly. The player can compress their hands and arms through gaps bones should forbid, and slimes pause before striking — half-reading them as kin."
+            },
+            {
+              "id": "assim_softening",
+              "threshold": 70,
+              "description": "Softening. The player’s outline blurs in the rain; grip fails on anything heavy; recent memories arrive syrupy and out of order. Slimes ignore them entirely now. People very much do not."
+            },
+            {
+              "id": "assim_assimilated",
+              "threshold": 100,
+              "description": "Assimilated. The player settles into the goo — calm, painless, and no longer the person who started tonight. The story ends here, quietly."
+            }
+          ]
+        },
+        {
+          "id": "panic",
+          "name": "Panic",
+          "type": "number",
+          "description": "The player’s fear level. Rises in encounters and darkness; settles in safety and light.",
+          "min": 0,
+          "max": 100,
+          "value": 0,
+          "starting": 0,
+          "regen": -2,
+          "thresholdUnit": "percent",
+          "descriptors": [
+            {
+              "id": "panic_level",
+              "threshold": 25,
+              "description": "Level. Breathing even, thoughts in order."
+            },
+            {
+              "id": "panic_rattled",
+              "threshold": 50,
+              "description": "Rattled. Jumping at drips and shadows; hands not quite steady."
+            },
+            {
+              "id": "panic_fraying",
+              "threshold": 75,
+              "description": "Fraying. Tunnel vision, snap decisions, the urge to just run somewhere, anywhere."
+            },
+            {
+              "id": "panic_broken",
+              "threshold": 100,
+              "description": "Panicking. The player acts before thinking — loud, fast, and visible to everything."
+            }
+          ]
+        }
+      ]
+    },
+    {
       "id": "1739142165670",
       "name": "Green Slime",
       "aliases": [
@@ -424,222 +651,8 @@
       ]
     }
   ],
-  "traits": [
-    {
-      "id": "night_shift_nurse",
-      "name": "Night-Shift Nurse",
-      "groupId": "e1fe79eb-767b-45fd-b21c-426bc227dffe",
-      "order": 0,
-      "isDefault": true,
-      "playerDescription": "You know which pharmacy shelves matter, and what a body can take.",
-      "aiDescription": "The player is a night-shift nurse: they know which remedies actually slow the film, how to dress a wound, and how to talk to exhausted officials. Treatments they apply work better than they should.",
-      "statChanges": [
-        {
-          "statId": "assimilation",
-          "value": -1,
-          "type": "regen"
-        },
-        {
-          "statId": "health",
-          "value": 1,
-          "type": "regen"
-        }
-      ]
-    },
-    {
-      "id": "dock_worker",
-      "name": "Dock Worker",
-      "groupId": "e1fe79eb-767b-45fd-b21c-426bc227dffe",
-      "order": 1,
-      "playerDescription": "Twenty years on the Harborfront. You know every gate, gap, and gantry.",
-      "aiDescription": "The player worked the Ashburn docks for years: they know the Harborfront’s gates, catwalks, and shortcuts, including the seawall route to the chemical works, and hard work built a durable body.",
-      "statChanges": [
-        {
-          "statId": "stamina",
-          "value": 15,
-          "type": "max"
-        },
-        {
-          "statId": "health",
-          "value": 10,
-          "type": "max"
-        }
-      ]
-    },
-    {
-      "id": "ashburn_student",
-      "name": "Ashburn High Student",
-      "groupId": "e1fe79eb-767b-45fd-b21c-426bc227dffe",
-      "order": 2,
-      "playerDescription": "You know the school, the shortcuts, and which fences have loose boards.",
-      "aiDescription": "The player is an Ashburn High student: young, quick to recover, and intimately familiar with the school-turned-shelter, the alleys between districts, and every fence with a loose board.",
-      "statChanges": [
-        {
-          "statId": "stamina",
-          "value": 2,
-          "type": "regen"
-        },
-        {
-          "statId": "panic",
-          "value": -1,
-          "type": "regen"
-        }
-      ]
-    },
-    {
-      "id": "steady_hands",
-      "name": "Steady Hands",
-      "groupId": "9f1d6767-84da-428d-b031-7a4c1507c505",
-      "order": 0,
-      "isDefault": true,
-      "playerDescription": "Slow breath, clean decisions.",
-      "aiDescription": "The player stays deliberate under pressure — fear drains away quickly and rarely drives their choices.",
-      "statChanges": [
-        {
-          "statId": "panic",
-          "value": -2,
-          "type": "regen"
-        },
-        {
-          "statId": "stamina",
-          "value": 5,
-          "type": "max"
-        }
-      ]
-    },
-    {
-      "id": "runners_instinct",
-      "name": "Runner's Instinct",
-      "groupId": "9f1d6767-84da-428d-b031-7a4c1507c505",
-      "order": 1,
-      "playerDescription": "First to move, last to tire — and always a little wired.",
-      "aiDescription": "The player’s instinct is to move: deep stamina reserves and fast recovery, but their nerves run hot and settle slowly.",
-      "statChanges": [
-        {
-          "statId": "stamina",
-          "value": 20,
-          "type": "max"
-        },
-        {
-          "statId": "stamina",
-          "value": 2,
-          "type": "regen"
-        },
-        {
-          "statId": "panic",
-          "value": 1,
-          "type": "regen"
-        }
-      ]
-    },
-    {
-      "id": "morbid_curiosity",
-      "name": "Morbid Curiosity",
-      "groupId": "9f1d6767-84da-428d-b031-7a4c1507c505",
-      "order": 2,
-      "playerDescription": "You take notes while other people scream. It gets you closer than is wise.",
-      "aiDescription": "The player is more fascinated than afraid: they can hold themselves together far past the point others break, observing details everyone else misses — and it draws them closer to danger than is wise.",
-      "statChanges": [
-        {
-          "statId": "panic",
-          "value": 25,
-          "type": "max"
-        },
-        {
-          "statId": "stamina",
-          "value": -1,
-          "type": "regen"
-        }
-      ]
-    },
-    {
-      "id": "salt_packets",
-      "name": "Salt Packets",
-      "groupId": "ea234cd7-5798-48d2-9231-4b11595246b1",
-      "order": 0,
-      "playerDescription": "Two pockets full of diner salt. The slimes have opinions about it.",
-      "aiDescription": "The player carries handfuls of diner salt packets: a thrown handful makes any slime recoil and buys seconds, and a salted doorway holds all night. The supply is finite — track its use.",
-      "statChanges": []
-    },
-    {
-      "id": "long_coat",
-      "name": "Long Coat & Gloves",
-      "groupId": "ea234cd7-5798-48d2-9231-4b11595246b1",
-      "order": 1,
-      "playerDescription": "Covers the wrists, the temples, the tint. People see a coat, not a condition.",
-      "aiDescription": "The player wears a long coat and gloves that hide the visible signs of assimilation — patrols and civilians see a bundled-up resident, not a condition, until the signs pass what fabric can cover.",
-      "statChanges": [
-        {
-          "statId": "suspicion",
-          "value": 25,
-          "type": "max"
-        }
-      ]
-    },
-    {
-      "id": "pocket_radio",
-      "name": "Pocket Radio",
-      "groupId": "ea234cd7-5798-48d2-9231-4b11595246b1",
-      "order": 2,
-      "playerDescription": "Tuned to the quarantine band. Knowing beats guessing.",
-      "aiDescription": "The player carries a pocket radio tuned to the quarantine band: they overhear patrol movements, checkpoint rotations, and the municipal broadcast before anyone else reacts to it.",
-      "statChanges": [
-        {
-          "statId": "panic",
-          "value": -1,
-          "type": "regen"
-        }
-      ]
-    },
-    {
-      "id": "fight_it",
-      "name": "Fight It",
-      "order": 3,
-      "playerToggle": true,
-      "playerDescription": "Clench yourself back into shape. It works. It takes everything you have.",
-      "aiDescription": "ACTIVE: the player is consciously fighting the assimilation — flexing warmth back into their hands, reciting their own name, refusing the softness. The spread slows while this holds, but the sustained effort is deeply draining.",
-      "statChanges": [
-        {
-          "statId": "assimilation",
-          "value": -2,
-          "type": "regen"
-        },
-        {
-          "statId": "stamina",
-          "value": -3,
-          "type": "regen"
-        }
-      ]
-    }
-  ],
-  "traitGroups": [
-    {
-      "id": "e1fe79eb-767b-45fd-b21c-426bc227dffe",
-      "name": "Background",
-      "parentId": null,
-      "order": 0,
-      "exclusive": true,
-      "playerDescription": "Who you were yesterday, when Ashburn was just damp. Pick one.",
-      "aiDescription": "The player's background:"
-    },
-    {
-      "id": "9f1d6767-84da-428d-b031-7a4c1507c505",
-      "name": "Disposition",
-      "parentId": null,
-      "order": 1,
-      "exclusive": true,
-      "playerDescription": "How you carry a very bad night. Pick one.",
-      "aiDescription": "The player's disposition under pressure:"
-    },
-    {
-      "id": "ea234cd7-5798-48d2-9231-4b11595246b1",
-      "name": "Pockets",
-      "parentId": null,
-      "order": 2,
-      "playerDescription": "What you grabbed on the way out the door. Take any.",
-      "aiDescription": "What the player is carrying tonight:"
-    }
-  ],
+  "traits": [],
+  "traitGroups": [],
   "statUpdates": [],
   "dictionaries": [
     {

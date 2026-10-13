@@ -62,7 +62,9 @@
           "threshold": 100,
           "description": "Hale. Whole and ready."
         }
-      ]
+      ],
+      "groupId": "fc0c44dc-14b8-4394-9d39-fc04a2fedeae",
+      "order": 0
     },
     {
       "id": "mana",
@@ -96,7 +98,9 @@
           "threshold": 100,
           "description": "Brimming. Power hums under the skin."
         }
-      ]
+      ],
+      "groupId": "fc0c44dc-14b8-4394-9d39-fc04a2fedeae",
+      "order": 1
     },
     {
       "id": "faith",
@@ -130,7 +134,9 @@
           "threshold": 100,
           "description": "Radiant. Warmth answers before the prayer is finished."
         }
-      ]
+      ],
+      "groupId": "fc0c44dc-14b8-4394-9d39-fc04a2fedeae",
+      "order": 2
     },
     {
       "id": "gold",
@@ -164,7 +170,9 @@
           "threshold": 100,
           "description": "Flush. Heavy pockets and heavier attention."
         }
-      ]
+      ],
+      "groupId": "fc0c44dc-14b8-4394-9d39-fc04a2fedeae",
+      "order": 3
     },
     {
       "id": "renown",
@@ -198,7 +206,18 @@
           "threshold": 100,
           "description": "Famed. Songs at the Cinder and Crown, and a captain's ear on demand."
         }
-      ]
+      ],
+      "groupId": "fc0c44dc-14b8-4394-9d39-fc04a2fedeae",
+      "order": 4
+    }
+  ],
+  "statGroups": [
+    {
+      "id": "fc0c44dc-14b8-4394-9d39-fc04a2fedeae",
+      "name": "Blueprints",
+      "system": "blueprints",
+      "parentId": null,
+      "order": 0
     }
   ],
   "locations": [
@@ -385,7 +404,49 @@
       "traitPlacement": {
         "groupId": null,
         "order": 2
-      }
+      },
+      "statLinks": [
+        {
+          "id": "fda98652-13fc-4c54-9940-53704b462361",
+          "originalId": "health",
+          "kind": "stat",
+          "originalName": "Health",
+          "groupId": null,
+          "order": 0
+        },
+        {
+          "id": "ee7c7a21-32a6-41c1-bd6f-64c4cf46ab84",
+          "originalId": "mana",
+          "kind": "stat",
+          "originalName": "Mana",
+          "groupId": null,
+          "order": 1
+        },
+        {
+          "id": "0d21ea9f-04a5-4d0f-96ee-b872396da23d",
+          "originalId": "faith",
+          "kind": "stat",
+          "originalName": "Faith",
+          "groupId": null,
+          "order": 2
+        },
+        {
+          "id": "93092ab5-88be-4a33-bf12-438dd262dbe4",
+          "originalId": "gold",
+          "kind": "stat",
+          "originalName": "Gold",
+          "groupId": null,
+          "order": 3
+        },
+        {
+          "id": "e3d02a6a-9b1c-488f-95cc-14a8331a17a8",
+          "originalId": "renown",
+          "kind": "stat",
+          "originalName": "Renown",
+          "groupId": null,
+          "order": 4
+        }
+      ]
     },
     {
       "id": "6d14f861-781e-5b30-9996-e271ac3c39d2",
@@ -480,6 +541,48 @@
           "values": [],
           "blueprintId": "55ffa1d2-deff-50e7-a162-a055d4c38c06"
         }
+      ],
+      "statLinks": [
+        {
+          "id": "13f29380-6c73-40d0-9d82-0818b24aae1a",
+          "originalId": "health",
+          "kind": "stat",
+          "originalName": "Health",
+          "groupId": null,
+          "order": 0
+        },
+        {
+          "id": "332363da-b1a4-405f-8d73-f7049744716a",
+          "originalId": "mana",
+          "kind": "stat",
+          "originalName": "Mana",
+          "groupId": null,
+          "order": 1
+        },
+        {
+          "id": "39c38a13-200e-4564-b77d-2a2bfbd50207",
+          "originalId": "faith",
+          "kind": "stat",
+          "originalName": "Faith",
+          "groupId": null,
+          "order": 2
+        },
+        {
+          "id": "689b39f8-c729-40bd-b9f5-be8bf9fcc3da",
+          "originalId": "gold",
+          "kind": "stat",
+          "originalName": "Gold",
+          "groupId": null,
+          "order": 3
+        },
+        {
+          "id": "0dfbf22e-8538-4159-9179-f34ec5f79799",
+          "originalId": "renown",
+          "kind": "stat",
+          "originalName": "Renown",
+          "groupId": null,
+          "order": 4
+        }
       ]
     },
     {
@@ -561,6 +664,48 @@
           "name": "Heritage",
           "values": [],
           "blueprintId": "55ffa1d2-deff-50e7-a162-a055d4c38c06"
+        }
+      ],
+      "statLinks": [
+        {
+          "id": "1af9e1bc-616b-4d35-ae0a-d956b21653fd",
+          "originalId": "health",
+          "kind": "stat",
+          "originalName": "Health",
+          "groupId": null,
+          "order": 0
+        },
+        {
+          "id": "2f8be654-5721-4e82-a681-deb2bb361d4c",
+          "originalId": "mana",
+          "kind": "stat",
+          "originalName": "Mana",
+          "groupId": null,
+          "order": 1
+        },
+        {
+          "id": "ba036be5-7a8d-4dcc-aac7-fdceb1c53e4f",
+          "originalId": "faith",
+          "kind": "stat",
+          "originalName": "Faith",
+          "groupId": null,
+          "order": 2
+        },
+        {
+          "id": "4fddf718-82a5-4367-bf40-3cae01f3a528",
+          "originalId": "gold",
+          "kind": "stat",
+          "originalName": "Gold",
+          "groupId": null,
+          "order": 3
+        },
+        {
+          "id": "5c063dd3-7c64-45d5-8e78-24efe786f579",
+          "originalId": "renown",
+          "kind": "stat",
+          "originalName": "Renown",
+          "groupId": null,
+          "order": 4
         }
       ]
     },
