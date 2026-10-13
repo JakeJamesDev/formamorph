@@ -4,7 +4,7 @@
  * then its Blueprint.
  */
 
-import type { Dictionary, Entity, Placeholder, Stat, StatGroup, Trait, TraitGroup } from '@/types';
+import type { Dictionary, Entity, EntityGroup, Placeholder, Stat, StatGroup, Trait, TraitGroup } from '@/types';
 import { effectiveCopy } from './blueprints';
 import { editorGateInput, resolveBearers, type BearerWorld } from './bearers';
 import { startingGateStats } from './gateStats';
@@ -16,7 +16,7 @@ import { blueprintGroupStats } from './statLinks';
 import { placeholderPathMap } from './statCodePaths';
 import { codeDictionaries } from './statCodePlaceholders';
 import type { StatOwner, TraitOwner } from './statCodeResolver';
-import { overridesBox, type CodeOwner, type CodeOwners } from './statCodeTargets';
+import { overridesBox, statCodeOwners, type CodeOwner, type CodeOwners } from './statCodeTargets';
 import type { StatCodeTiming } from './statCodeTiming';
 import { entityTraitNames, worldTraitPlaces } from './statCodeTraits';
 import { conditionTexts, WORLD_OWNER } from './traitGates';
@@ -25,7 +25,7 @@ import { conditionTexts, WORLD_OWNER } from './traitGates';
 export interface CodeStatRecord {
   /** Null where the route reaches several unrelated stats, so only their owners show (Q34). */
   stat: Stat | null;
-  /** The Owner row: the entity's name, World, Blueprint, or every playable entity that has the stat. */
+  /** The Owner row: the entity's name, World, Blueprint, or each of several playable entities that has the stat. */
   owner: string;
   /** The entity that holds the stat. Absent for a world or Blueprint stat. */
   entityId?: string;
@@ -123,13 +123,21 @@ export interface CodeBox {
   self: Stat;
 }
 
-/** The authored world beyond its stats, for trait, placeholder, entity and dictionary cards. */
+/** The authored world a stat code box's cards read. */
 export interface CodeCardWorld extends PinEditorWorld {
   traits: readonly Trait[];
   traitGroups: readonly TraitGroup[];
   entities: readonly Entity[];
+  entityGroups?: readonly EntityGroup[];
   statGroups?: readonly StatGroup[];
   dictionaries?: readonly Dictionary[];
+}
+
+/** Each box's lookup over `world`. The world's owners resolve once, on the first card any box opens. */
+export function statBoxLookups(world: CodeCardWorld): (box: CodeBox) => CodeWorldLookup {
+  let owners: CodeOwners | undefined;
+  const ownersOf = () => (owners ??= statCodeOwners(world));
+  return (box) => lazyLookup(() => statBoxLookup(ownersOf(), box, world));
 }
 
 const WORLD = 'World';
@@ -356,6 +364,8 @@ export function statBoxLookup(owners: CodeOwners, box: CodeBox, world?: CodeCard
           return target ? onEntity(target, key) : null;
         }
         case 'persona': {
+          // One playable entity is no route over several: its stat reads as `entities[...]` reads it (T15-1).
+          if (owners.playable.length === 1) return onEntity(owners.playable[0], key);
           // Values show only where every holder links one Blueprint stat, which then supplies them (Q34).
           const holders = owners.playable.flatMap((target) => {
             const stat = target.byCodeName.get(key);
