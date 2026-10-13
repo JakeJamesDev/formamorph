@@ -82,7 +82,7 @@ describe('Find All Uses for other kinds', () => {
   });
 
   it('matches persona.traits through every entity that can be played, not only the first (T12-4)', () => {
-    // Ann is played first, so the card shows her Brave; Tom's world Brave is reached all the same.
+    // Ann's Brave and Tom's world Brave differ, so the card names neither; each is reached all the same.
     expect(rows(usesOf({ kind: 'trait', traitId: 'ann-brave', entityId: 'ann' }))).toEqual(['Mara › Health before 3']);
     expect(rows(usesOf({ kind: 'trait', traitId: 'brave' }))).toContain('Mara › Health before 3');
   });

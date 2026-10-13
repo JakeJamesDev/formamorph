@@ -42,7 +42,7 @@ export interface CodeTraitRecord {
   requires: readonly (readonly string[])[];
   /** Each stat change and stat switch, as "Stamina max +10" or "Fatigue off". */
   changes: readonly string[];
-  /** **You** for the player, then each entity whose tree has the trait. */
+  /** **You**, then each entity whose tree has the trait; on a route over several entities, the reached holders. */
   bearers: readonly string[];
 }
 
@@ -53,6 +53,21 @@ export interface CodePlaceholderRecord {
   owner: string;
   /** Each Pin on it in precedence order, as "Trait: Brave: calm". */
   pins: readonly string[];
+  /** On a route over several entities, the ones it reaches that hold it. */
+  bearers?: readonly string[];
+}
+
+/** A route over several entities whose holders hold different items, so only the holders show (Q37). */
+export interface CodeHoldersRecord {
+  trait?: null;
+  placeholder?: null;
+  bearers: readonly string[];
+}
+
+/** One entity a placeholder route over several entities reaches, and what it holds there. */
+export interface CodePlaceholderHolder {
+  entityId: string;
+  placeholder: Placeholder;
 }
 
 export interface CodeEntityRecord {
@@ -82,11 +97,13 @@ export interface CodeWorldLookup {
   ownerEntityIds(): readonly string[];
   /** The stat `key` names on `owner`'s map, or null where the map has no such stat. */
   stat(owner: StatOwner, key: string): CodeStatRecord | null;
-  /** The first holder's trait, where the route reaches several entities. */
-  trait(owner: TraitOwner, key: string): CodeTraitRecord | null;
+  /** On a route over several entities, the trait every holder shares, or only the holders (Q37). */
+  trait(owner: TraitOwner, key: string): CodeTraitRecord | CodeHoldersRecord | null;
   /** Each holder's trait, for a route that reaches several entities. */
   traits(owner: TraitOwner, key: string): CodeTraitRecord[];
   placeholder(placeholder: Placeholder): CodePlaceholderRecord | null;
+  /** The placeholder every holder shares, one Copy or the Blueprint of all, or only the holders (Q37). */
+  heldPlaceholder(holders: readonly CodePlaceholderHolder[]): CodePlaceholderRecord | CodeHoldersRecord | null;
   entity(key: string): CodeEntityRecord | null;
   dictionary(key: string): CodeDictionaryRecord | null;
   /** The entities the player can play. */
@@ -132,6 +149,7 @@ export function lazyLookup(make: () => CodeWorldLookup): CodeWorldLookup {
     trait: (owner, key) => at().trait(owner, key),
     traits: (owner, key) => at().traits(owner, key),
     placeholder: (placeholder) => at().placeholder(placeholder),
+    heldPlaceholder: (holders) => at().heldPlaceholder(holders),
     entity: (key) => at().entity(key),
     dictionary: (key) => at().dictionary(key),
     persona: () => at().persona(),
@@ -179,6 +197,15 @@ function cardIndex(owners: CodeOwners, world: CodeCardWorld) {
   const placeholderNames = (ownerId: string) => map.owners.get(ownerId)?.children.map((child) => child.name) ?? [];
 
   return {
+    entityName: nameOf,
+    /** The one placeholder `held` reads: the same one, or the Blueprint every Copy in it shares. */
+    sharedPlaceholder(held: readonly Placeholder[]): Placeholder | null {
+      const [first] = held;
+      if (held.every((placeholder) => placeholder.id === first.id)) return first;
+      const family = (placeholder: Placeholder) => placeholder.blueprintId ?? placeholder.id;
+      if (!held.every((placeholder) => family(placeholder) === family(first))) return null;
+      return placeholders.find((candidate) => candidate.id === family(first)) ?? null;
+    },
     worldTrait(key: string): CodeTraitRecord | null {
       const trait = world.traits.find((candidate) => candidate.id === worldTraits.get(key));
       return trait ? traitRecord(trait) : null;
@@ -268,10 +295,19 @@ export function statBoxLookup(owners: CodeOwners, box: CodeBox, world?: CodeCard
     if (box.owner.kind === 'blueprint') return bearerOwners().map((owner) => owner.entity.id);
     return [box.owner.entityId];
   };
-  /** The trait `key` names in each of `entityIds`' sets that has one, in that order. */
-  const traitsOn = (entityIds: readonly string[], key: string): CodeTraitRecord[] => {
+  /** Each of `entityIds` whose set has a trait `key` names, in that order, with that trait. */
+  const holdersOf = (entityIds: readonly string[], key: string): { name: string; record: CodeTraitRecord }[] => {
     const index = cards();
-    return index ? entityIds.flatMap((id) => index.entityTrait(id, key) ?? []) : [];
+    return index ? entityIds.flatMap((id) => {
+      const record = index.entityTrait(id, key);
+      return record ? [{ name: index.entityName(id), record }] : [];
+    }) : [];
+  };
+  const traitsOn = (entityIds: readonly string[], key: string) => holdersOf(entityIds, key).map((holder) => holder.record);
+  /** The entities `persona` or `owner` reaches, where there are two or more (T15-1). */
+  const severalReached = (route: TraitOwner['route']): readonly string[] | null => {
+    const reached = route === 'persona' ? owners.playable.map((target) => target.entity.id) : route === 'owner' ? ownerEntityIds() : [];
+    return reached.length > 1 ? reached : null;
   };
   const traits = (owner: TraitOwner, key: string): CodeTraitRecord[] => {
     switch (owner.route) {
@@ -334,9 +370,24 @@ export function statBoxLookup(owners: CodeOwners, box: CodeBox, world?: CodeCard
         }
       }
     },
-    trait: (owner, key) => traits(owner, key)[0] ?? null,
+    trait(owner, key) {
+      const reached = severalReached(owner.route);
+      if (!reached) return traits(owner, key)[0] ?? null;
+      const holders = holdersOf(reached, key);
+      if (!holders.length) return null;
+      const bearers = holders.map((holder) => holder.name);
+      const [{ record }] = holders;
+      return holders.every((holder) => holder.record.trait.id === record.trait.id) ? { ...record, bearers } : { trait: null, bearers };
+    },
     traits,
     placeholder: (placeholder) => cards()?.placeholder(placeholder) ?? null,
+    heldPlaceholder(holders) {
+      const index = cards();
+      if (!index || !holders.length) return null;
+      const bearers = holders.map((holder) => index.entityName(holder.entityId));
+      const shared = index.sharedPlaceholder(holders.map((holder) => holder.placeholder));
+      return shared ? { ...index.placeholder(shared), bearers } : { placeholder: null, bearers };
+    },
     entity(key) {
       const target = owners.byName.get(key);
       return target ? entityRecord(target) : null;
