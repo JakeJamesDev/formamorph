@@ -154,7 +154,7 @@ The words Formamorph uses, and what each one means. Each term links the page tha
 | [Condition](World-Editor-Traits#conditions) | One check in a row: a trait, any trait in a group, a persona, or a stat. **Not** makes it hold while the target is off. |
 | [Stat Condition](World-Editor-Traits#stat-conditions) | A Condition that compares a stat to a number, raw or as a percent of the stat's range. *Rage >= 80* |
 | [Visibility Rule](World-Editor-Entities#visibility-rules) | Rows on a gallery image that decide when it shows in play. With no rows, it always shows. |
-| [Bearer](World-Editor-Traits#whose-trait-counts) | The entity that has a trait. You are the bearer **You**. |
+| [Owner](World-Editor-Traits#whose-trait-counts) | The entity or dictionary that has a trait, a stat or a placeholder, as its own or through a link or copy. You are the owner **You**. |
 | [Blueprint](World-Editor-Traits#blueprints) | A trait or [placeholder](World-Editor-Placeholders#blueprints) in the **Blueprints** group. It exists to be linked or copied. |
 | [Link](World-Editor-Traits#links) | Gives a Blueprint trait to an entity. It reads the Blueprint live until you change a field. |
 | [Original](World-Editor-Traits#links) | The Blueprint trait or group that a Link points at |

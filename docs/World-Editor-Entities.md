@@ -221,7 +221,7 @@ An image shows while **any one row** holds. A row holds when **all** its conditi
 
 A thumbnail with a rule carries an eye badge. The line under the selected thumbnail reads the rule: *Shown while Health < 20% and not Healed*.
 
-A condition checks the entity that owns the image, unless you pick another bearer. To read the player's traits or stats, pick **You**. *Shown while You: Night Vision* shows the true form to a player who has Night Vision.
+A condition checks the entity that owns the image, unless you pick another owner. To read the player's traits or stats, pick **You**. *Shown while You: Night Vision* shows the true form to a player who has Night Vision.
 
 ### Order sets priority
 

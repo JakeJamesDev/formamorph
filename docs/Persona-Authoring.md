@@ -116,13 +116,13 @@ Open the entity's **Profile** tab and set **Persona** to **Custom Persona**. The
 
 | Rule | Detail |
 |---|---|
-| One per world | While one entity holds the mark, the choice is disabled on every other entity. A hint names the holder. |
+| One per world | While one entity holds the mark, the choice is disabled on every other entity. A hint names the entity that has it. |
 | Not in the cast | The mark takes the place of **Playable** and **Persona-Only**, and the entity acts as Persona-Only. It never joins a scene. |
 | A normal entity | It owns traits, links and [copies](World-Editor-Placeholders#copies). You name it. |
 | Stat traits | Its own traits can have **Stat Changes** and **Stat Availability**, the same as a **Playable** or **Persona-Only** entity's |
 | Self openings | Its [Self Openings](World-Editor-Openings#self-openings) draw for a player who picks **None**, or a library persona with no Self openings of its own |
 | At the top level | It stays at the top level of the **Traits** tab, in the order you set. A drop into a group is refused. |
-| Always a bearer | The **Traits** and **Placeholders** tabs list it, so you can drag and link to it while it is empty. |
+| Always an owner | The **Traits** and **Placeholders** tabs list it, so you can drag and link to it while it is empty. |
 | Duplicate | A duplicate drops the mark. |
 
 Its traits are the player's when the player picks **None** or a library persona. A world persona keeps its own traits. The picks carry over between **None** and library personas.
@@ -238,7 +238,7 @@ Both fallbacks take a capital at the start of a sentence. A possessive follows: 
 Type `{` in one of an entity's own fields and pick **Character Name** under **Built-in**. It reads as the name of the entity that owns the text. Write one description that names its owner, and it stays right after a rename.
 
 - **The menu offers it only in an entity's own fields**, such as its descriptions and its openings. A book, a location or a world field doesn't offer it.
-- **In trait text, type `{{char}}`.** It becomes the chip and names the trait's bearer. See [Entity Traits](World-Editor-Traits#entity-traits).
+- **In trait text, type `{{char}}`.** It becomes the chip and names the trait's owner. See [Entity Traits](World-Editor-Traits#entity-traits).
 - **In trait text the player carries, it reads as Player Name.** A *Paladin* text then names each Paladin, the player included.
 - **SillyTavern imports write it for you.** A card's `{{char}}` becomes this chip. In a card's embedded lorebook, `{{char}}` becomes the card's name as plain text.
 

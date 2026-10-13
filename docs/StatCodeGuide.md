@@ -143,7 +143,7 @@ Follow these rules:
 - **A trait switches through `.enabled`.** Write `traits.<Trait>.enabled = true`. The editor underlines `traits.<Trait> = true`.
 - **A trait sits under its owner.** `traits` holds the world's own traits only. A trait on the entity that owns the stat is under `owner.traits`. A trait on the played persona is under `persona.traits`. A trait on another entity is under `entities.<Entity>.traits`, the Custom Persona under a library persona included.
 - **`stats` is the world's stats in every box.** It means the same in an entity's stat code as in a world stat's code, as `traits` does. It never holds the entity's own stats.
-- **An entity's stat code reads its own entity's stats through `owner.stats`.** `owner` is the entity that owns the running stat, so `owner.stats.<Stat>.value` is the entity's own stat. In a Blueprint stat's code, `owner` is the bearer the run is for. In a world stat's code, it's an empty entry: reads are blank, and a write is ignored and reported.
+- **An entity's stat code reads its own entity's stats through `owner.stats`.** `owner` is the entity that owns the running stat, so `owner.stats.<Stat>.value` is the entity's own stat. In a Blueprint stat's code, `owner` is the entity the run is for. In a world stat's code, it's an empty entry: reads are blank, and a write is ignored and reported.
 - **Another entity's stats are under `entities.<Entity>.stats`.** The played persona's are under `persona.stats`.
 - **"After N days" is `clock.day > <n>`.** `clock.day` starts at 1. For timing in hours, use `clock.elapsedHours`. The time of day is `clock.daypart`.
 - **`self` and every `stats` entry take writes to `value`, `min`, `max` and `regen`.** So does every stat entry under `owner.stats`, `entities.<Entity>.stats` and `persona.stats`. Their other fields are read-only.
@@ -153,7 +153,7 @@ Follow these rules:
 ### Basic Syntax
 <!-- keywords: what language, first script, minimal example, is return required, fixed number -->
 
-Your code is plain JavaScript. Return a number to set the stat's value. The code has access to `stats`, a map of the world's stats keyed by name, and to `self`, the stat the code belongs to. It also has `owner`, the entity that owns the stat: empty for a world stat, and the bearer for a Blueprint stat (see [Owner](#owner)).
+Your code is plain JavaScript. Return a number to set the stat's value. The code has access to `stats`, a map of the world's stats keyed by name, and to `self`, the stat the code belongs to. It also has `owner`, the entity that owns the stat: empty for a world stat, and the entity the run is for in a Blueprint stat (see [Owner](#owner)).
 
 ```javascript
 // Example: Return a fixed value
@@ -175,7 +175,7 @@ A script does not have to return anything. One that only writes `self`, a placeh
 `stats` is a map of the world's stats keyed by name, in every box. An entity's stat code gets the same map as a world stat's code, as `traits` does. It never holds the entity's own stats: those are under `owner.stats`. Each entry has the [same members as `self`](#stat-properties), and takes writes to `value`, `min`, `max` and `regen` (see [Writing to Other Stats](#writing-to-other-stats)). To read a stat by name, see [Accessing Other Stats](#accessing-other-stats).
 
 ### Owner
-<!-- keywords: own stats, read the entity's other stats, script on a monster's stat, this entity, entity's own stat, self entity, creature code, npc code, blueprint bearer, empty owner, owner is blank, owner stats, owner traits, owner placeholders -->
+<!-- keywords: own stats, read the entity's other stats, script on a monster's stat, this entity, entity's own stat, self entity, creature code, npc code, blueprint owner, empty owner, owner is blank, owner stats, owner traits, owner placeholders -->
 <!-- route: worldEditorStat.code -->
 
 `owner` is the entity that owns the running stat. It has the same members as an [entity entry](#entities): `id`, `name`, `type`, `pronouns`, `inScene`, `traits`, `placeholders` and `stats`. So code reaches the entity's own stats as `owner.stats`, its own traits as `owner.traits`, and its own placeholders as `owner.placeholders`.
@@ -183,7 +183,7 @@ A script does not have to return anything. One that only writes `self`, a placeh
 | Box | What `owner` is |
 | --- | --- |
 | A stat on an entity's **Stats** tab | That entity |
-| A Blueprint stat | The bearer the run is for. The code runs once for each bearer |
+| A Blueprint stat | The entity the run is for. The code runs once for each owner |
 | A world stat | An empty entry |
 
 In an entity stat's code, `self` is the same entry as `owner.stats.<own name>`, so a write through either route is one write.
@@ -312,7 +312,7 @@ Every stat entry on every route takes writes to the same four fields as `self`: 
 | Owner order, last write wins | Two writes to one field land in owner order, and the later write wins. The order is the world's own stats first, then the world's entities in the order you authored them, then the library entities in the order the player picked them. The played persona sits in that order like any entity, so a library persona lands last |
 | Stat order inside one owner | Writes from one owner's stats land in the order of that owner's stat list. A write through `self` and a write through any route count alike. The target's own box is one of the writers |
 | One snapshot per run | Every box of every owner reads the snapshot the run started from. A hub's write to Health isn't in Health's own box on that run, or in its `delta.actual`. It's in Health's `previous` on the next turn |
-| Blueprint stats | A Blueprint stat's code runs once for each bearer. In it, `owner` is that bearer, and `owner.stats.Mana.value` lands on that bearer's own copy of Mana. A write through `stats` lands on the world stat |
+| Blueprint stats | A Blueprint stat's code runs once for each owner. In it, `owner` is the entity the run is for, and `owner.stats.Mana.value` lands on that owner's own copy of Mana. A write through `stats` lands on the world stat |
 | Unknown or switched-off stats | A write to a name the target doesn't have, or to a stat a trait switched off, is ignored and reported. The editor underlines an unknown name |
 | An entity not in the game | A write through `entities.<Entity>.stats` to an entity that isn't in the game is ignored and reported |
 | Fields that stay read-only | `id`, `name`, `type`, `description`, `previous` and `delta` never take a write, on any route |
@@ -331,7 +331,7 @@ The [Test Bench](Test-Bench#issues) warns when more than one box writes the same
 - It reads literal names only: `stats.Health.value`, `stats["Health"].value`, `owner.stats.Rage.value`, `entities.Mira.stats.Trust.value` and `self.max`. It skips a computed name such as `stats[name].value`. It skips a variable that holds a stat entry too.
 - Two routes that reach one stat count as one target. `owner.stats.Rage.value`, `entities.Creature.stats.Rage.value` and `persona.stats.Rage.value` are one field when they reach the same stat.
 - `persona.stats` reaches every entity that the player can play, because the world doesn't know which one the player picks.
-- A Blueprint stat's box counts once for each bearer. Each bearer's own copy of the stat is judged on its own, so two bearers don't clash on their own stats. A Blueprint box that writes a world stat's field gets the warning when it has two or more bearers (see [A Note on Accumulating Stats](#a-note-on-accumulating-stats)).
+- A Blueprint stat's box counts once for each owner. Each owner's own copy of the stat is judged on its own, so two owners don't clash on their own stats. A Blueprint box that writes a world stat's field gets the warning when it has two or more owners (see [A Note on Accumulating Stats](#a-note-on-accumulating-stats)).
 
 A warning isn't an error. Owner order, then stat order, already settles which write wins. The finding shows two boxes that may overwrite each other by mistake.
 
@@ -463,7 +463,7 @@ A write to an unknown placeholder name is ignored. **Test Code** and the Test Be
 | `id` | Unique identifier. Read-only |
 | `name` | Code name. Read-only |
 | `mode` | `'optional'`, `'alwaysOn'` or `'hidden'`. Read-only |
-| `available` | True when the trait's requirements hold for its bearer now. Read-only |
+| `available` | True when the trait's requirements hold for its owner now. Read-only |
 | `group` | The code name of the trait's group, or `''` when it has none. Read-only |
 | `playerToggle` | True when the player can switch the trait during the game. Read-only |
 
@@ -784,7 +784,7 @@ Most stat code is a **formula**: it reads other stats and returns an answer, and
 
 Formamorph runs it once per turn. A re-roll of a turn's stat changes runs it again by design: the re-roll rebuilds the turn from its starting values, so the total is not counted twice. A running total is more fragile than a formula. Prefer a formula where one will do.
 
-**A Blueprint stat's write to a world stat moves the stat once, not once for each bearer.** The code runs once for each bearer, but every run reads one snapshot. Two bearers that each write `stats.Alert.value += 5` both write the snapshot's Alert plus 5. The later write wins, so Alert rises by 5, not by 10. To count each bearer, write to `owner.stats`, where each bearer has its own copy. The [Test Bench](Test-Bench#issues) warns on a Blueprint box that writes a world stat's field when two or more bearers run it.
+**A Blueprint stat's write to a world stat moves the stat once, not once for each owner.** The code runs once for each owner, but every run reads one snapshot. Two owners that each write `stats.Alert.value += 5` both write the snapshot's Alert plus 5. The later write wins, so Alert rises by 5, not by 10. To count each owner, write to `owner.stats`, where each owner has its own copy. The [Test Bench](Test-Bench#issues) warns on a Blueprint box that writes a world stat's field when two or more owners run it.
 
 ## Troubleshooting
 <!-- keywords: no effect, value never changes, nan, silent failure, checklist, capital letters matter, ignored writes -->
