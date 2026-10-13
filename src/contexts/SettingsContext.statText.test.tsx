@@ -39,15 +39,15 @@ describe('the text pair a turn carries', () => {
   const builtin = builtinStatTextPrompts('labels');
 
   it('is the built-in pair when no world prompt applies', () => {
-    expect(statTextFor(builtin, false)).toEqual(builtin);
+    expect(statTextFor(builtin, { worldPrompt: false })).toEqual(builtin);
   });
 
   it('keeps the world prompt as written but still follows the preset for the user message', () => {
-    expect(statTextFor(builtin, true)).toEqual({ system: null, user: builtin.user });
+    expect(statTextFor(builtin, { worldPrompt: true })).toEqual({ system: null, user: builtin.user });
   });
 
   it('sends a user preset as written on both sides', () => {
-    expect(statTextFor(null, false)).toEqual({ system: null, user: null });
-    expect(statTextFor(null, true)).toEqual({ system: null, user: null });
+    expect(statTextFor(null, { worldPrompt: false })).toEqual({ system: null, user: null });
+    expect(statTextFor(null, { worldPrompt: true })).toEqual({ system: null, user: null });
   });
 });

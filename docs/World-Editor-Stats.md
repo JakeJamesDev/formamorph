@@ -32,7 +32,7 @@ After each narration, a separate request reads the turn and records which stats 
 - **The reply is one object with one key for each block.** Under each key, a stat has two entries: its name for the change in value, and its name plus ` max` for the change in maximum.
 - **A stat that shares a name with an earlier stat reads as "*name* (2)".** The world's stats come first, then the persona's.
 
-On an endpoint that can't take that format, the request falls back to stat-change lines. The fallback covers the persona's stats and the world's stats. Entity stats don't update there. A custom preset or a world's own **Stats** prompt is sent as written.
+On an endpoint that can't take that format, the request falls back to stat-change lines. The fallback covers the persona's stats and the world's stats. Entity stats don't update there. A custom preset is sent as written. A world's own **Stats** prompt is sent as written too, with your preset's user message.
 
 > 💡 A saved world prompt for **Stats** or your own **Stat Updates** preset keeps its own layout. To get entity stats back in it, see [How to Get Entity Stats Into a Custom Stat Prompt](Prompts#how-to-get-entity-stats-into-a-custom-stat-prompt).
 

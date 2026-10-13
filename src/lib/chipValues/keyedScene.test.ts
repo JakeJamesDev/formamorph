@@ -22,8 +22,11 @@ const market: GameLocation = { id: 'market', name: 'Market', parentId: 'town', a
 const health = stat('health', 'Health', 62);
 // The traveler's own Health clashes with the world's, so the request keys it "Health (2)".
 const travelerHealth = stat('traveler-health', 'Health', 10);
-// Each of these owners holds two stats of one name, so the request keys the second "Mood (2)".
-const moods = (owner: string) => [stat(`${owner}-mood-a`, 'Mood', 30), stat(`${owner}-mood-b`, 'Mood', 70)];
+// Each of these owners holds two stats of one name, so the request keys the second "Mood (2)", which reads "Warm" up to 80.
+const moods = (owner: string) => [
+  stat(`${owner}-mood-a`, 'Mood', 30),
+  { ...stat(`${owner}-mood-b`, 'Mood', 70), descriptors: [{ id: 'warm', threshold: 80, description: 'Warm' }] },
+];
 
 const entity = (id: string, name: string, locations: string[]): Entity => ({ id, name, locations, aiDescription: `${name} is here.` });
 const traveler = entity('traveler', 'Traveler', ['hall']);
@@ -135,5 +138,10 @@ describe('the keyed scene for the stat pass', () => {
     expect(render(keyed)).toMatch(/## In Scene\n[^#]*- \*\*Guard\*\*/);
     expect(render(keyed)).toContain('**Mood (2):** 70/100');
     expect(render(raw)).not.toContain('Mood (2)');
+  });
+
+  it('renders a keyed In Scene stat in the default stat prompt with its range, descriptor and description', () => {
+    const inScene = renderPromptTemplate(defaultStatUpdatesPrompt, keyed).split('## In Scene\n')[1].split('\n## ')[0];
+    expect(inScene).toContain('**Mood (2):** 70/100 (Warm) — Mood meaning.');
   });
 });
