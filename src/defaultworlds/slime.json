@@ -613,14 +613,14 @@
     },
     {
       "id": "1ff7457e-f2cb-4754-adff-5f582308782a",
-      "name": "{{ph:e514c574-03ec-430d-8f73-1ce21f562a3d:world:b3e7f8e6-96f2-44ce-8ffe-9900b590fd18}}",
+      "name": "{{ph:df2b66a8-69e4-4b75-ab96-f75beb51a872:world:011c84f3-5319-4552-a333-b321af8da2a0:sname}}",
       "aliases": [
         "neighbor",
         "my neighbor"
       ],
       "type": "Person",
-      "playerDescription": "Your neighbor — sixty percent slime for a week now and oddly serene about it. Still waters the lawn at night. Gives advice that is about forty percent useful.",
-      "aiDescription": "{{ph:e514c574-03ec-430d-8f73-1ce21f562a3d:world:1f9ced22-c175-419f-94e6-c5801434c772}}, the player's neighbor on Crescent Row: half-assimilated for over a week and long past panicking about it — translucent to the elbows, faintly luminous, calmly keeping up their routines. They know more about living with the change than any doctor: what slows it, what feeds it, and what the slimes do and don't notice. Their advice is dry, unhurried, and about forty percent useful. They are the picture of where the player's road ends if the cure stays unfound — and they seem okay with that, which should not be comforting.",
+      "playerDescription": "Your neighbor — sixty percent slime for a week now and oddly serene about it. These days they {{ph:df2b66a8-69e4-4b75-ab96-f75beb51a872:world:e9b31942-7ed6-4104-b1d1-44ab0dc70326:shabit}}. Gives advice that is about forty percent useful.",
+      "aiDescription": "{{ph:df2b66a8-69e4-4b75-ab96-f75beb51a872:world:b0dcfd77-5697-4693-bce8-026767a0cb32:sname}}, the player's neighbor on Crescent Row: half-assimilated for over a week and long past panicking about it — translucent to the elbows, faintly luminous, calmly keeping up their routines: lately they {{ph:df2b66a8-69e4-4b75-ab96-f75beb51a872:world:21a92b22-f4ba-4757-b4c7-720dcc9d885b:shabit}}. They know more about living with the change than any doctor: what slows it, what feeds it, and what the slimes do and don't notice. Their advice is dry, unhurried, and about forty percent useful. They are the picture of where the player's road ends if the cure stays unfound — and they seem okay with that, which should not be comforting.",
       "aiSummary": "The neighbor: serenely half-assimilated local who knows how to live with the change.",
       "imageTags": "middle-aged person with faintly translucent green-tinged arms, bathrobe, watering can, foggy night porch",
       "images": [],
@@ -628,6 +628,183 @@
       "model": null,
       "locations": [
         "87697a8b-2d2b-4031-ad2a-6c8a94edf23d"
+      ],
+      "placeholders": [
+        {
+          "id": "df2b66a8-69e4-4b75-ab96-f75beb51a872",
+          "name": "neighbor",
+          "roll": true,
+          "values": [
+            {
+              "id": "5f4c30eb-ee03-494b-9273-b33899f8fd70",
+              "text": "{{ph:fd2b3584-4856-41e6-a657-0643c1efee6d:world:fb976afa-0ef7-42a9-9ace-01913ce544fc}}"
+            },
+            {
+              "id": "f348a3cf-2ef5-4e23-af26-161d5db88468",
+              "text": "{{ph:93a2f6be-5157-4560-8fd5-9076ea9c6769:world:2c298f52-7007-4c84-a632-a9695aa182ce}}"
+            },
+            {
+              "id": "0af0c3d9-6903-45ff-8f84-14ef13dc66f2",
+              "text": "{{ph:70af0f5b-797f-4fdf-81a4-55f837df599a:world:fc2b3dc8-888c-44b4-b6b7-f608ca931cc7}}"
+            },
+            {
+              "id": "6d382b5f-9fb9-4f4d-8529-96c4f05bf37a",
+              "text": "{{ph:7eff0496-e095-4088-af2b-e0abf1e86bab:world:dd7f5c54-ec0b-4681-83bd-cc708932bd2a}}"
+            }
+          ]
+        },
+        {
+          "id": "fd2b3584-4856-41e6-a657-0643c1efee6d",
+          "name": "Mr. Duffy",
+          "roll": false,
+          "ownerId": "df2b66a8-69e4-4b75-ab96-f75beb51a872",
+          "values": [
+            {
+              "id": "455ea067-4ab0-4b8d-96b2-3b35f88e2a57",
+              "text": "{{ph:85a04ad3-f0ee-41c2-988a-4cca5eb14a0d:world:6f69a154-edc7-4e1b-85fd-29c27066de9d}}"
+            },
+            {
+              "id": "95ccc0a2-6e2f-4bf0-8f24-03f223d7e7d0",
+              "text": "{{ph:91625157-f1ed-4630-9465-1e26065b0260:world:5295d402-f187-4a85-8f51-787e132239a1}}"
+            }
+          ]
+        },
+        {
+          "id": "85a04ad3-f0ee-41c2-988a-4cca5eb14a0d",
+          "name": "name",
+          "values": [
+            {
+              "id": "b26714ce-d7aa-4ce2-b032-412307a62813",
+              "text": "Mr. Duffy"
+            }
+          ],
+          "ownerId": "fd2b3584-4856-41e6-a657-0643c1efee6d"
+        },
+        {
+          "id": "91625157-f1ed-4630-9465-1e26065b0260",
+          "name": "habit",
+          "values": [
+            {
+              "id": "e971252a-e1a9-4717-8ffd-8b5279d37c2d",
+              "text": "mow the lawn at midnight, a faint green glow trailing the mower"
+            }
+          ],
+          "ownerId": "fd2b3584-4856-41e6-a657-0643c1efee6d"
+        },
+        {
+          "id": "93a2f6be-5157-4560-8fd5-9076ea9c6769",
+          "name": "Mrs. Okafor",
+          "roll": false,
+          "ownerId": "df2b66a8-69e4-4b75-ab96-f75beb51a872",
+          "values": [
+            {
+              "id": "aa1d70c9-7a29-4578-bf95-8816b022eb95",
+              "text": "{{ph:dafa276a-a0cb-43c7-8666-f0e744211df2:world:450f7208-4a24-4d06-bb94-20f8d629a213}}"
+            },
+            {
+              "id": "1d6826a0-496b-4034-91df-fc4975294468",
+              "text": "{{ph:6cd9e785-beee-4284-95f6-8920068bd84d:world:b3d4327a-26d9-435b-96ee-1f909c198b12}}"
+            }
+          ]
+        },
+        {
+          "id": "dafa276a-a0cb-43c7-8666-f0e744211df2",
+          "name": "name",
+          "values": [
+            {
+              "id": "cb034876-f437-4ef2-922d-9d2898227334",
+              "text": "Mrs. Okafor"
+            }
+          ],
+          "ownerId": "93a2f6be-5157-4560-8fd5-9076ea9c6769"
+        },
+        {
+          "id": "6cd9e785-beee-4284-95f6-8920068bd84d",
+          "name": "habit",
+          "values": [
+            {
+              "id": "e704c2de-ae9b-4ee7-8e2f-45767811e523",
+              "text": "bake for the whole street and never mention that the bread comes out translucent"
+            }
+          ],
+          "ownerId": "93a2f6be-5157-4560-8fd5-9076ea9c6769"
+        },
+        {
+          "id": "70af0f5b-797f-4fdf-81a4-55f837df599a",
+          "name": "Old Pete",
+          "roll": false,
+          "ownerId": "df2b66a8-69e4-4b75-ab96-f75beb51a872",
+          "values": [
+            {
+              "id": "f9058540-cca9-4b2f-8806-b8ff7d425881",
+              "text": "{{ph:e99f0461-8618-47a1-acdc-ee1ca15851b1:world:050f07bc-b764-4e8b-99fe-69280a89cd03}}"
+            },
+            {
+              "id": "ab88f105-a91b-42ae-b00c-14f01c7e3898",
+              "text": "{{ph:08f2f486-280b-4478-9129-a403abce068e:world:ac4fdd9b-c2be-4285-84f9-6c8e8e4d8c7c}}"
+            }
+          ]
+        },
+        {
+          "id": "e99f0461-8618-47a1-acdc-ee1ca15851b1",
+          "name": "name",
+          "values": [
+            {
+              "id": "130c0d49-a49c-423d-9cd9-93f811047850",
+              "text": "Old Pete"
+            }
+          ],
+          "ownerId": "70af0f5b-797f-4fdf-81a4-55f837df599a"
+        },
+        {
+          "id": "08f2f486-280b-4478-9129-a403abce068e",
+          "name": "habit",
+          "values": [
+            {
+              "id": "5af1365c-6045-40fd-b95e-78d2677f1f12",
+              "text": "sit on the porch singing to the storm drains, and something down there sings back"
+            }
+          ],
+          "ownerId": "70af0f5b-797f-4fdf-81a4-55f837df599a"
+        },
+        {
+          "id": "7eff0496-e095-4088-af2b-e0abf1e86bab",
+          "name": "Ms. Aristide",
+          "roll": false,
+          "ownerId": "df2b66a8-69e4-4b75-ab96-f75beb51a872",
+          "values": [
+            {
+              "id": "a1107698-4faf-4674-8e94-fd0f1239c798",
+              "text": "{{ph:cd3fda3b-cea0-4867-83ea-d2e445709472:world:b5761733-e381-4351-8f26-9bcc7f1fda0f}}"
+            },
+            {
+              "id": "6ae20caf-bc9b-452d-895b-7c81a38b44ec",
+              "text": "{{ph:b9224a6b-42b9-425e-9a40-0dc86d283b26:world:7279f52d-1b0b-4368-bb42-2d4342286175}}"
+            }
+          ]
+        },
+        {
+          "id": "cd3fda3b-cea0-4867-83ea-d2e445709472",
+          "name": "name",
+          "values": [
+            {
+              "id": "9e33ba6a-faeb-4389-979a-89b3ff269878",
+              "text": "Ms. Aristide"
+            }
+          ],
+          "ownerId": "7eff0496-e095-4088-af2b-e0abf1e86bab"
+        },
+        {
+          "id": "b9224a6b-42b9-425e-9a40-0dc86d283b26",
+          "name": "habit",
+          "values": [
+            {
+              "id": "1dddd785-c36b-4e73-9ee1-20ddab888a50",
+              "text": "keep a careful notebook of how the change feels, and offer to read from it"
+            }
+          ],
+          "ownerId": "7eff0496-e095-4088-af2b-e0abf1e86bab"
+        }
       ]
     },
     {
@@ -761,30 +938,34 @@
           ],
           "value": "Slimes are drawn to warmth and motion and calm around the half-changed. They engulf; they never bite, tear, or bleed anything. They are unhurried because the night is long and the city is not going anywhere."
         }
+      ],
+      "placeholders": [
+        {
+          "id": "f36a86e6-3977-4cc2-9a2e-3d58bd129d53",
+          "name": "rumor",
+          "values": [
+            {
+              "id": "c21a074e-da07-4796-9061-90226480a1c2",
+              "text": "the harbor glowed for three nights before the first pool moved"
+            },
+            {
+              "id": "502f91b6-2d27-480e-9030-e210739e87de",
+              "text": "someone flushed something they shouldn't have"
+            },
+            {
+              "id": "a6a644b4-73b9-48ff-a287-cac0a56905f2",
+              "text": "the plant's night watchman never clocked out in '86"
+            },
+            {
+              "id": "c1e18ab7-ced4-47fd-a2c8-a682632b2003",
+              "text": "the rain tasted sweet the week before it started"
+            }
+          ]
+        }
       ]
     }
   ],
   "placeholders": [
-    {
-      "id": "e514c574-03ec-430d-8f73-1ce21f562a3d",
-      "name": "neighbor",
-      "values": [
-        "Mr. Duffy",
-        "Mrs. Okafor",
-        "Old Pete",
-        "Ms. Aristide"
-      ]
-    },
-    {
-      "id": "f36a86e6-3977-4cc2-9a2e-3d58bd129d53",
-      "name": "rumor",
-      "values": [
-        "the harbor glowed for three nights before the first pool moved",
-        "someone flushed something they shouldn't have",
-        "the plant's night watchman never clocked out in '86",
-        "the rain tasted sweet the week before it started"
-      ]
-    },
     {
       "id": "4756330b-6425-4097-bd86-ce38669df7b2",
       "name": "signoff",

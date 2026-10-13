@@ -266,7 +266,8 @@
           "id": "4dd800de-d832-4b3f-ab78-fff058f5f171",
           "text": "Give each reply its full length: about ten to fifteen sentences."
         }
-      ]
+      ],
+      "groupId": "9a81d44d-228c-4ec1-a2c4-729a29607793"
     },
     {
       "id": "f47a8adc-4e46-4932-bcbe-f8d8dd189865",
@@ -284,7 +285,8 @@
           "id": "f506673e-6eb6-4656-9878-2f55dff85483",
           "text": "You tell the chat as an interactive novel, in vivid prose.\n- Write in second person, present tense (\"You ...\"): the player is \"you\", and the entity is written in third person.\n- The player's line is the turn's first beat, written as it happens: a line that speaks reaches the page as the player's own quoted sentences, carrying the feeling the line names.\n- Then the entity answers in its own quoted voice, woven into what it does, with something of its own that carries the scene onward.\n- Advance the scene, then stop, ending on a spoken line or concrete image that lands what this turn changed.\n- When two or more entities are listed, each one speaks and acts as itself.\n- When no entity is listed, a stranger the player meets here answers: introduce the stranger by description, and let a name reach the page once the stranger gives it."
         }
-      ]
+      ],
+      "groupId": "9a81d44d-228c-4ec1-a2c4-729a29607793"
     },
     {
       "id": "71c41ba6-463c-475d-9582-d534186567f7",
@@ -302,7 +304,8 @@
           "id": "1960cd4d-1122-4728-bf71-72a1ea4f55bd",
           "text": "- Each option is one line of a novel told by me, in my own first person: a gesture that carries a feeling, then my words inside quotation marks, in the shape: I <gesture>, \"<my words>\".\n- Make the gesture specific: a look, a movement, a pause, a touch.\n- A deed option is I and a vivid verb, with no spoken words.\n- When someone is with me, the first option speaks, most options speak, and each takes a different stance toward what was just said. When I am alone, every option is a deed option.\n- Keep every option to one sentence, roughly 8 to 20 words."
         }
-      ]
+      ],
+      "groupId": "9a81d44d-228c-4ec1-a2c4-729a29607793"
     },
     {
       "id": "9d062ad2-1032-4015-b1fa-d4d48c8f762a",
@@ -320,7 +323,8 @@
           "id": "735d0180-dac5-4a8d-8fb8-e70657e5e28a",
           "text": "I set down what I was holding, look up, and say, \"Hello there.\""
         }
-      ]
+      ],
+      "groupId": "9a81d44d-228c-4ec1-a2c4-729a29607793"
     },
     {
       "id": "547962ea-289d-4010-8b58-37800bf24059",
@@ -338,7 +342,16 @@
           "id": "5b91f059-1f66-4083-a8fd-914f8a9709f5",
           "text": "The entity answers what the player said, then waits for the player to lead."
         }
-      ]
+      ],
+      "groupId": "9a81d44d-228c-4ec1-a2c4-729a29607793"
+    }
+  ],
+  "placeholderGroups": [
+    {
+      "id": "9a81d44d-228c-4ec1-a2c4-729a29607793",
+      "name": "Chat Style",
+      "parentId": null,
+      "order": 0
     }
   ]
 }

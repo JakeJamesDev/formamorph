@@ -447,6 +447,62 @@
             }
           ]
         }
+      ],
+      "placeholders": [
+        {
+          "id": "7982d34f-8c2c-4f68-80e3-7791a29c39e5",
+          "name": "designation",
+          "values": [
+            {
+              "id": "b2ed64fb-39ba-4702-b0de-33cfe133c8a7",
+              "text": "C1PH3R"
+            },
+            {
+              "id": "98af55f3-9bfe-4ccc-a36c-2f8da6d507db",
+              "text": "Z3PHYR"
+            },
+            {
+              "id": "3dc6a9f7-090c-47ef-a76f-223822d2c22b",
+              "text": "T1T4N"
+            },
+            {
+              "id": "b057f129-3a62-4b06-84fe-76b89a3fa17e",
+              "text": "Axiom-0"
+            },
+            {
+              "id": "3b6cd277-f4bd-42ce-8233-116ca8f6843c",
+              "text": "R0GU3"
+            },
+            {
+              "id": "b6f368e1-1f78-4c63-96fd-51e7c5350779",
+              "text": "PR1SM"
+            },
+            {
+              "id": "cd4f74f3-0893-4b1b-acfc-19c285232ef4",
+              "text": "Q4-T6"
+            },
+            {
+              "id": "be9174da-2f58-4f03-a7ca-ecf9cabf7679",
+              "text": "VX-77"
+            },
+            {
+              "id": "6c024a8a-3732-4f8a-a197-a0b08591befa",
+              "text": "B8-ZN"
+            },
+            {
+              "id": "a6146045-aff3-437c-855e-e99c83195140",
+              "text": "J3-P0"
+            },
+            {
+              "id": "e1c5ac21-ed2a-4691-a215-0f8737ee2608",
+              "text": "D9-KR"
+            },
+            {
+              "id": "9301a7b3-27be-4102-97d0-b81954bfb767",
+              "text": "ZO-12"
+            }
+          ]
+        }
       ]
     },
     {
@@ -540,24 +596,6 @@
         "a decorated tank commander",
         "a robotics student",
         "an arcade-hall regular who never grew up"
-      ]
-    },
-    {
-      "id": "7982d34f-8c2c-4f68-80e3-7791a29c39e5",
-      "name": "designation",
-      "values": [
-        "C1PH3R",
-        "Z3PHYR",
-        "T1T4N",
-        "Axiom-0",
-        "R0GU3",
-        "PR1SM",
-        "Q4-T6",
-        "VX-77",
-        "B8-ZN",
-        "J3-P0",
-        "D9-KR",
-        "ZO-12"
       ]
     }
   ],
