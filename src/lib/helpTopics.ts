@@ -204,7 +204,7 @@ The pinned value doesn't have to come from the placeholder's own list. The box s
 
 A value that is a chip pins that part. Pin a Wildcard to the value holding *isAsian* and every chip of it takes that variant. The box names such a value after the part it holds, exactly as the Values list does, so you pick by the thing rather than by the words it joins to. A chip inside a longer value is prose, so that one reads as what it will resolve to.
 
-**Pin a blueprint** to reach every bearer's own copy of it. Albus's *Paladin* pins his copy of *Class Garb*, and nobody else's. A link can replace this list for one bearer.
+**Pin a blueprint** to reach every owner's own copy of it. Albus's *Paladin* pins his copy of *Class Garb*, and nobody else's. A link can replace this list for one owner.
 
 When two active traits pin the same placeholder, the one lower in the trait list wins. The row says so whenever that applies. A location's pin outranks a trait's, and a stat band's outranks both. A placeholder value's pin ranks under all three.`,
   },
@@ -269,7 +269,7 @@ self.max = level * 10;
 
 Two writes to one field land in owner order, and the later write wins. The order is the world's stats, then the world's entities as authored, then the library entities as picked. Inside one owner, stat order decides.
 
-Every box reads the same snapshot. A box can't see another box's write on the same turn. In a Blueprint stat, \`owner\` is each bearer in turn, so \`owner.stats\` reaches that bearer's own copy. A write to a world stat moves it once, not once for each bearer.
+Every box reads the same snapshot. A box can't see another box's write on the same turn. In a Blueprint stat, \`owner\` is the entity the run is for, so \`owner.stats\` reaches that owner's own copy. A write to a world stat moves it once, not once for each owner.
 
 A write to an unknown stat, a switched-off stat, or an entity that isn't in the game is ignored and reported. **Test Code** lists each write to another stat with its owner and applies none. In Advanced mode, the Test Bench warns when two boxes write one field.
 

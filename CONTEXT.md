@@ -318,19 +318,19 @@ A world trait, stat or placeholder that exists to be linked or copied. A Link or
 _Avoid_: template, master, source
 
 **Copy**:
-An entity-owned placeholder that reads a Blueprint placeholder live, under the Blueprint's value ids. Its Overrides reword, reweight or remove one value at a time; its own values sit beside. Always named after its Blueprint; one per Blueprint per owner.
-_Avoid_: instance, clone, bearer placeholder
+A placeholder in an owner's list that reads a Blueprint placeholder live, under the Blueprint's value ids. Its Overrides reword, reweight or remove one value at a time; its own values sit beside. Always named after its Blueprint; one per Blueprint per owner.
+_Avoid_: instance, clone
 
 **Override**:
 One field a Link or a Copy sets for itself, stored with the Blueprint's value it was made against. A field with no Override reads the Blueprint live. **Reset** returns one field; **Reset to Blueprint** returns them all. An Override is stale when the Blueprint changed that field since.
 _Avoid_: local value, patch, delta
 
-**Bearer**:
-An entity whose trait tree holds a trait, directly or through a Link. The played persona is the Bearer "You"; so is the entity with the **Custom Persona** mark under None and a library persona. Requirements and pins resolve per Bearer.
-_Avoid_: owner (an owner holds its own traits only; the `owner` stat-code global is the one exception), holder
+**Owner**:
+The entity or dictionary whose tree holds a trait, stat or placeholder, as its own item or through a Link or Copy. The played persona is the owner **You**; so is the entity with the **Custom Persona** mark under None and a library persona. The world is never an owner. Requirements and pins resolve per owner. Where it matters, the editor says **Own** or **Linked**.
+_Avoid_: bearer, holder
 
 **`owner` (stat-code global)**:
-The entity that owns the running stat, with the same fields as an `entities` entry, so code reaches its own stats as `owner.stats`. For a Blueprint stat it is the Bearer the run is for. In a world stat's code it is an empty entry, and a write through it is dropped and reported.
+The entity that owns the running stat, with the same fields as an `entities` entry, so code reaches its own stats as `owner.stats`. For a Blueprint stat it is the entity the run is for. In a world stat's code it is an empty entry, and a write through it is dropped and reported.
 _Avoid_: self (the running stat's own entry), persona (the played entity)
 
 **Original**:
@@ -350,11 +350,11 @@ One alternative in a Requirement. A row holds when every Condition in it holds (
 _Avoid_: clause, branch, group (a group is a trait group)
 
 **Condition**:
-One check in a Requirement Row: a trait, any trait in a group, a persona the player plays as, or a stat, with an optional Bearer. A Condition can carry the Not flag, and then it holds while its target is off. Not is a flag on a Condition, not a separate item.
+One check in a Requirement Row: a trait, any trait in a group, a persona the player plays as, or a stat, with an optional owner. A Condition can carry the Not flag, and then it holds while its target is off. Not is a flag on a Condition, not a separate item.
 _Avoid_: exclusion, negation, rule, requirement (a Requirement is the whole gate)
 
 **Stat Condition**:
-A Condition that compares a Bearer's stat to a number with one of six operators (`>`, `<`, `>=`, `<=`, `=`, `≠`). The number is raw, in the stat's units, or a percent of the stat's min-to-max span; the author picks per Condition. Traits and image Visibility rules share it. The game reads stats once per turn commit, after the stat pass, and a Condition on an inert or missing stat does not hold.
+A Condition that compares an owner's stat to a number with one of six operators (`>`, `<`, `>=`, `<=`, `=`, `≠`). The number is raw, in the stat's units, or a percent of the stat's min-to-max span; the author picks per Condition. Traits and image Visibility rules share it. The game reads stats once per turn commit, after the stat pass, and a Condition on an inert or missing stat does not hold.
 _Avoid_: stat gate, stat requirement, threshold (a descriptor's word)
 
 **Visibility rule**:

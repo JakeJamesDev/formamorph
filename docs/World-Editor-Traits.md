@@ -35,7 +35,7 @@ A new trait goes to the top level of the list. Drag it to put it in a group.
 2. Open the **Availability** tab.
 3. Under **Requires**, select **Add Requirement**.
 4. Pick a target in the **Traits**, **Any Trait in a Group** or **Playing As** list.
-5. Pick whose trait counts: **Same Bearer**, **You**, or an entity. A **Playing As** target skips this step, and so does a target that only one bearer can have.
+5. Pick whose trait counts: **Same Owner**, **You**, or an entity. A **Playing As** target skips this step, and so does a target that only one owner can have.
 6. Optional: to need a second target as well, select **And** in the same row and pick it. The trait then needs both.
 7. Optional: to open the trait another way, select **Or Another Way** and pick a target for the new row. Any one row is enough.
 
@@ -233,7 +233,7 @@ During the game:
 > 💡 **Give an Exactly One group a default.** Set **Starts** to **On** for one trait, so a new game starts with a valid answer. With two defaults in an **Up to One** group, the first in the list wins.
 
 ## Requirements
-<!-- keywords: rows, and, or another way, not, exclude, cant have both, only when not, condition, who must have it, either or, any of, depends on player class, npc needs player choice, owner check, relationship perk, holder -->
+<!-- keywords: rows, and, or another way, not, exclude, cant have both, only when not, condition, who must have it, either or, any of, depends on player class, npc needs player choice, owner check, relationship perk -->
 
 **Requires** on the **Availability** tab makes a trait available only when its requirements hold. A trait with no requirements is always available. The requirements are rows of conditions.
 
@@ -241,7 +241,7 @@ During the game:
 
 A **row** is one way to open the trait. It holds when every condition in it holds, so a row means **and**. The trait opens when any one row holds, so rows mean **or**.
 
-- **Add Requirement** adds the first condition. It opens a search with these lists: **Traits**, **Any Trait in a Group**, **Playing As**, and one list of **Stats** for each bearer.
+- **Add Requirement** adds the first condition. It opens a search with these lists: **Traits**, **Any Trait in a Group**, **Playing As**, and one list of **Stats** for each owner.
 - **And** (in a row) adds another condition to that row.
 - **Or Another Way** (below the rows) adds a new row.
 - The **X** at the end of a row removes the whole row. Remove the last condition in a row, and the row goes too.
@@ -256,7 +256,7 @@ Select **Require it to be off** on a condition's chip to make it **Not**. A Not 
 
 | Not condition | Holds when |
 |---|---|
-| *not Paladin* | The bearer doesn't have Paladin on |
+| *not Paladin* | The owner doesn't have Paladin on |
 | *not any Class* | No trait in the Class group is on |
 | *not playing as Sir Aldric* | The player plays any other persona |
 | *Ash: not Tamed* | Ash doesn't have Tamed on |
@@ -273,7 +273,7 @@ A trait's own state never counts toward its own requirements. A condition whose 
 <!-- keywords: stat threshold, needs a stat, rage at 80, health under, percent of max, raw or percent, greater than, less than, not equal, trait needs stat, turns off when stat drops, comes back when stat recovers -->
 <!-- route: worldEditorTrait.availability -->
 
-A **stat condition** compares a bearer's stat to a number. *Berserk* requires *Rage >= 80*, so it opens at 80 Rage or more.
+A **stat condition** compares an owner's stat to a number. *Berserk* requires *Rage >= 80*, so it opens at 80 Rage or more.
 
 1. Open the trait's **Availability** tab.
 2. Under **Requires**, select **Add Requirement**, then pick a stat from a **Stats** list.
@@ -287,7 +287,7 @@ A **stat condition** compares a bearer's stat to a number. *Berserk* requires *R
 
 - **Not** works like on any condition. *not Health = 0* is one chip.
 - Add the same stat twice in one row for a range. *Rage >= 20* and *Rage < 80* are two conditions.
-- To check another bearer's stat, pick that bearer, as with a trait. The list holds that bearer's own stats.
+- To check another owner's stat, pick that owner, as with a trait. The list holds that owner's own stats.
 - **=** and **≠** compare the number the stat bar shows, rounded. A bar that reads 20 matches *= 20*.
 - A stat with the same min and max reads 0%, so a **%** condition on it is always 0%. Use **Raw** or widen the range.
 - A stat that's switched off, or gone, never holds. The chip reads red under its saved name.
@@ -311,24 +311,24 @@ A locked trait shows its requirements as one line: *Requires Knight and not Pala
 
 ### Whose trait counts
 
-The entity that has a trait is its **bearer**. The player is one bearer, marked **You**. Each entity in the cast is another.
+The entity that has a trait, as its own or through a link, is its **owner**. The player is one owner, marked **You**. Each entity in the cast is another.
 
-A condition checks the same bearer by default. *Smite* requires *Paladin* means Paladin on the entity that has Smite. The player's *Wizard* never unlocks Smite for anyone else.
+A condition checks the same owner by default. *Smite* requires *Paladin* means Paladin on the entity that has Smite. The player's *Wizard* never unlocks Smite for anyone else.
 
-To check another bearer, pick one after you pick the target. When only one bearer can have the target, the search skips this step and adds the condition at once.
+To check another owner, pick one after you pick the target. When only one owner can have the target, the search skips this step and adds the condition at once.
 
-| Bearer | The condition holds when |
+| Owner | The condition holds when |
 |---|---|
-| **Same Bearer** | Whoever has the trait also has the target. This is the default. |
+| **Same Owner** | Whoever has the trait also has the target. This is the default. |
 | **You** | The player has the target |
 | An entity | That entity has the target. The list shows only entities that can have it. |
 
 For example, *Squire* requires **You**: *Paladin*. A squire entity gets its Squire trait only when the player is a Paladin.
 
-A condition that names an entity describes a relationship to someone else. When the player plays that entity, the relationship can't apply to themself, so the row with that condition can never hold. The game drops that row. *Squire to Albus* requires *Albus: Paladin*, so it is offered to every player except Albus. A trait with a second row, such as *Paladin* on the same bearer, stays and opens by that row. A trait with no row left is not offered. An entity's own traits keep every row, so Albus can still gate his own trait on *Albus: Paladin*.
+A condition that names an entity describes a relationship to someone else. When the player plays that entity, the relationship can't apply to themself, so the row with that condition can never hold. The game drops that row. *Squire to Albus* requires *Albus: Paladin*, so it is offered to every player except Albus. A trait with a second row, such as *Paladin* on the same owner, stays and opens by that row. A trait with no row left is not offered. An entity's own traits keep every row, so Albus can still gate his own trait on *Albus: Paladin*.
 
 ## Entity Traits
-<!-- keywords: npc perks, npc abilities, give character a class, companion skills, name the holder, can npcs have stats, move to character -->
+<!-- keywords: npc perks, npc abilities, give character a class, companion skills, name the owner, can npcs have stats, move to character -->
 <!-- route: worldEditorEntity.traits -->
 
 An entity can have traits of its own. Each entity with traits shows as a node in the **Traits** tab, below the world's traits.
@@ -340,7 +340,7 @@ The entity's **Traits** tab is the **Traits** tab for that entity alone. It show
 
 An entity's active traits describe it to the AI, the same way the player's do. When the player plays the entity as a [persona](Persona-Authoring), its traits are the player's.
 
-> 💡 **Type `{{char}}` in a trait's text to name its bearer.** It shows as the **Character Name** chip. On an entity, it reads as that entity's name. On the player's traits, it reads as the persona's name, or "the player" with no persona. One *Paladin* text then names each Paladin.
+> 💡 **Type `{{char}}` in a trait's text to name its owner.** It shows as the **Character Name** chip. On an entity, it reads as that entity's name. On the player's traits, it reads as the persona's name, or "the player" with no persona. One *Paladin* text then names each Paladin.
 
 To give a world trait or group to one entity, drag it onto the entity's node. It moves to that entity. A [Blueprints](#blueprints) item links instead, in Advanced mode.
 
@@ -374,7 +374,7 @@ Select a link to edit it. The link's **Details** tab starts with **Linked from**
 | **Starts** | Selects the trait for this entity when a new game starts. A linked group lists each of its traits under **Enabled by Default** in **This Link**. |
 | **Requires** | Replaces the original's whole list of rows |
 | **Placeholder Pins** | Replaces the original's whole list |
-| **Mode** | Makes the trait Optional, Automatic or Hidden for this entity. One bearer can have a trait innately, and another can pick it. |
+| **Mode** | Makes the trait Optional, Automatic or Hidden for this entity. One owner can have a trait innately, and another can pick it. |
 | **In Game** | Locks (**Fixed**) or opens (**Toggleable**) the trait for this entity |
 | **Stat Changes** | Replaces the original's whole list |
 
@@ -399,15 +399,15 @@ A link is **live until edited**. Each field you change becomes an override. The 
 - **Reset** sits at the end of an overridden field's label row. It returns that field to the original.
 - **Reset to Blueprint** sits in the footer below every tab. It returns every override on the link. On a trait in a linked group, it returns that trait's overrides. It is disabled while nothing is overridden.
 - **Blueprint changed** shows beside a field's **Reset** when the original changed that field after you set your override. Your value may be stale. Edit the field again, or reset it, and the marker clears. It shows on the tab that holds the field, never in the tree.
-- **Edit Blueprint** in the footer selects the original. Edit there to change every bearer. It shows in the World Editor's **Traits** tab, not in an entity's **Traits** tab.
+- **Edit Blueprint** in the footer selects the original. Edit there to change every owner. It shows in the World Editor's **Traits** tab, not in an entity's **Traits** tab.
 
-A linked group's shape stays live. To add, remove or move a trait for one bearer only, use **Detach**.
+A linked group's shape stays live. To add, remove or move a trait for one owner only, use **Detach**.
 
 ### Detach
 
 On a link row's menu, **Detach** takes the place of **Duplicate**. It turns the link into the entity's own trait. The trait no longer follows the original, so edit it freely.
 
-**Detach** rewrites the trait's text so it keeps this bearer's values. Each [blueprint chip](World-Editor-Placeholders#blueprint-chips) and each [pin by blueprint](#pins-by-blueprint) now names the entity's own [copy](World-Editor-Placeholders#copies). Any copy the trait needs and the entity lacks is made. Dragging an original onto an entity as its own trait, and moving an entity's own trait to another entity, do the same rewrite.
+**Detach** rewrites the trait's text so it keeps this owner's values. Each [blueprint chip](World-Editor-Placeholders#blueprint-chips) and each [pin by blueprint](#pins-by-blueprint) now names the entity's own [copy](World-Editor-Placeholders#copies). Any copy the trait needs and the entity lacks is made. Dragging an original onto an entity as its own trait, and moving an entity's own trait to another entity, do the same rewrite.
 
 On a **Playable**, **Persona-Only** or Custom Persona entity, the trait keeps its **Stat Changes** and **Stat Availability**. On any other entity, a confirmation asks first, and the trait comes without them.
 
@@ -418,7 +418,7 @@ An entity's links go with it to the library, to an entity card and into a world 
 1. The Blueprints trait or group with the same id, when the world has it
 2. Else the one Blueprints trait or group of its kind with the same name
 
-With no match, or two, the link is dropped. A top-level trait never matches. A link to a trait the entity already has is dropped too. A requirement that names a bearer, such as "Albus: Paladin", binds to the one entity with that name. A library persona's links bind to the world the player enters.
+With no match, or two, the link is dropped. A top-level trait never matches. A link to a trait the entity already has is dropped too. A requirement that names an owner, such as "Albus: Paladin", binds to the one entity with that name. A library persona's links bind to the world the player enters.
 
 The library entity editor shows links but never makes them. Opened from a world, it shows them live, with **Reset**, **Remove Link** and **Detach**, and you can still remove a link that world lacks. Opened from the library, it shows them by name only.
 
@@ -441,7 +441,7 @@ Placeholders have a [Blueprints group](World-Editor-Placeholders#blueprints) of 
 
 Set the mark on the entity's **Profile** tab. **Custom Persona** is the fourth choice of the **Persona** control, beside **Cast**, **Playable** and **Persona-Only**. See [How to Make a Custom Persona](Persona-Authoring#how-to-make-a-custom-persona) for the steps and [Custom Persona](Persona-Authoring#custom-persona) for the full rules.
 
-- **The Traits and Placeholders tabs always list it** as a bearer, so you can drag to it and link to it while it is empty.
+- **The Traits and Placeholders tabs always list it** as an owner, so you can drag to it and link to it while it is empty.
 - **Drag a top-level trait onto it to make the trait the persona's.** The trait leaves the top level, so a player with a world persona no longer gets it.
 - **Its traits can change stats.** They apply when the player has no world persona.
 - **The picks carry over.** A player who switches between **None** and a library persona keeps their Custom Persona picks.
@@ -451,11 +451,11 @@ Set the mark on the entity's **Profile** tab. **Custom Persona** is the fourth c
 > 💡 With Advanced mode off, links, Blueprints and the Custom Persona entity still show when they hold something, and you can still edit them. Only making new ones needs Advanced mode.
 
 ## Pins by Blueprint
-<!-- keywords: outfit per class, each holder own value, npc wording leaks, who is affected, per character variation, precedence of text -->
+<!-- keywords: outfit per class, each owner own value, npc wording leaks, who is affected, per character variation, precedence of text -->
 
 **Advanced mode only.** A trait pin can pin a [blueprint placeholder](World-Editor-Placeholders#blueprints). In the pin's placeholder list, pick the blueprint, then pick its value. You set the value one time, on the original.
 
-On each bearer, the pin traces the blueprint to that bearer's own [copy](World-Editor-Placeholders#copies). Albus's *Paladin* pins *Class Garb*. Albus's copy of *Class Garb* holds the pin, and no other bearer's copy changes.
+On each owner, the pin traces the blueprint to that owner's own [copy](World-Editor-Placeholders#copies). Albus's *Paladin* pins *Class Garb*. Albus's copy of *Class Garb* holds the pin, and no other owner's copy changes.
 
 A link can override its **Placeholder Pins** list. Albus's link can pin *silvered plate*, and another Paladin's link can pin *a plain tabard*.
 
@@ -474,13 +474,13 @@ An entity's own trait pins never reach anyone else's text. Albus's class never c
 ## Test Bench Checks
 <!-- keywords: validation, errors warnings, can never unlock, impossible setup, broken reference, problems found, redundant, unused, debug my perks -->
 
-The **Test Bench** checks every bearer as if the player picked it. That includes **Playable** and **Persona-Only** entities and the Custom Persona entity.
+The **Test Bench** checks every owner as if the player picked it. That includes **Playable** and **Persona-Only** entities and the Custom Persona entity.
 
 It shows an error when:
 
-- A trait can never unlock for its bearer. For example, Albus links *Smite*, but nothing on Albus gives *Paladin*.
+- A trait can never unlock for its owner. For example, Albus links *Smite*, but nothing on Albus gives *Paladin*.
 - A condition names a trait or group the world no longer has. The check reports each condition.
-- A [Visibility rule](World-Editor-Entities#visibility-rules) on an image names a trait or group the world no longer has, or a stat its bearer doesn't have.
+- A [Visibility rule](World-Editor-Entities#visibility-rules) on an image names a trait or group the world no longer has, or a stat its owner doesn't have.
 - Requirements loop through a **Not** and can never settle. For example, *A* requires *B*, and *B* requires *not A*. Two traits that exclude each other, such as *A: not B* and *B: not A*, are fine.
 - A trait's **Stat Availability** names a stat that doesn't exist.
 - A group's **At Least** is above its **At Most**.
@@ -496,10 +496,10 @@ It shows a warning when:
 - A **%** condition, in a trait's rule or an image's Visibility rule, reads a stat whose min and max are equal. It always reads 0%.
 - Every image of an entity has a Visibility rule, and no two images have opposite conditions. The entity can end up with no image.
 - A trait has **Starts** set to **On**, but no starting choice meets its requirements, so it starts unselected. Two defaults that exclude each other count: the later one starts unselected.
-- A bearer needs a copy of a blueprint and has none. The warning names the bearer and the trait or chip that needs it.
+- An owner needs a copy of a blueprint and has none. The warning names the owner and the trait or chip that needs it.
 - A copy removed the value that a pin names. The pin pins nothing.
 - A blueprint chip or a pin by blueprint sits where it is refused, such as in a location or a world placeholder.
-- A link is redundant, because another link on the same bearer already brings its original.
+- A link is redundant, because another link on the same owner already brings its original.
 - An entity's trait or link changes a stat that the entity doesn't own. The row does nothing.
 
 It shows a note when:
