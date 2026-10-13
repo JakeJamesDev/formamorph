@@ -392,7 +392,7 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
   /** The cards the caret opens: the keyboard chord and a tap. */
   const caretCards = createCaretCards(
     (state, pos) => codeCard(state.doc.toString(), pos, analysisOptions()),
-    () => ({ navigation: options.navigation?.(), statUses: options.lookup?.()?.statUses }),
+    () => ({ navigation: options.navigation?.(), uses: options.lookup?.()?.uses }),
   );
   /** The card for the name under the pointer. */
   const cards = hoverTooltip((view, pos) => {

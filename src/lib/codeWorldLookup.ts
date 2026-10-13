@@ -9,7 +9,9 @@ import { effectiveCopy } from './blueprints';
 import { editorGateInput, resolveBearers, type BearerWorld } from './bearers';
 import { startingGateStats } from './gateStats';
 import { pinsTargeting, type PinEditorWorld } from './placeholderPins';
-import { statUses, type CodeStatUse, type StatUseItem } from './codeStatUses';
+import type { CodeCardItem } from './codeCards';
+import { itemUses } from './codeItemUses';
+import { statUses, type CodeStatUse } from './codeStatUses';
 import { blueprintGroupStats } from './statLinks';
 import { placeholderPathMap } from './statCodePaths';
 import { codeDictionaries } from './statCodePlaceholders';
@@ -80,14 +82,17 @@ export interface CodeWorldLookup {
   ownerEntityIds(): readonly string[];
   /** The stat `key` names on `owner`'s map, or null where the map has no such stat. */
   stat(owner: StatOwner, key: string): CodeStatRecord | null;
+  /** The first holder's trait, where the route reaches several entities. */
   trait(owner: TraitOwner, key: string): CodeTraitRecord | null;
+  /** Each holder's trait, for a route that reaches several entities. */
+  traits(owner: TraitOwner, key: string): CodeTraitRecord[];
   placeholder(placeholder: Placeholder): CodePlaceholderRecord | null;
   entity(key: string): CodeEntityRecord | null;
   dictionary(key: string): CodeDictionaryRecord | null;
   /** The entities the player can play. */
   persona(): readonly string[];
-  /** Every box and line whose code reaches the stat. */
-  statUses(item: StatUseItem): CodeStatUse[];
+  /** Every box and line whose code reaches the item. */
+  uses(item: CodeCardItem): CodeStatUse[];
 }
 
 /** Whose code a box holds: an entity's own stat or Link, or a Blueprint stat. */
@@ -125,11 +130,12 @@ export function lazyLookup(make: () => CodeWorldLookup): CodeWorldLookup {
     ownerEntityIds: () => at().ownerEntityIds(),
     stat: (owner, key) => at().stat(owner, key),
     trait: (owner, key) => at().trait(owner, key),
+    traits: (owner, key) => at().traits(owner, key),
     placeholder: (placeholder) => at().placeholder(placeholder),
     entity: (key) => at().entity(key),
     dictionary: (key) => at().dictionary(key),
     persona: () => at().persona(),
-    statUses: (item) => at().statUses(item),
+    uses: (item) => at().uses(item),
   };
 }
 
@@ -210,6 +216,18 @@ function cardIndex(owners: CodeOwners, world: CodeCardWorld) {
   };
 }
 
+type CardIndex = ReturnType<typeof cardIndex>;
+const cardIndexes = new WeakMap<CodeCardWorld, WeakMap<CodeOwners, CardIndex>>();
+
+/** One index per world and owners, so a scan that binds a lookup to every box builds it once. */
+function sharedCardIndex(owners: CodeOwners, world: CodeCardWorld): CardIndex {
+  let byOwners = cardIndexes.get(world);
+  if (!byOwners) cardIndexes.set(world, byOwners = new WeakMap());
+  let index = byOwners.get(owners);
+  if (!index) byOwners.set(owners, index = cardIndex(owners, world));
+  return index;
+}
+
 /** A lookup over `owners`, bound to `box`. Without `world`, cards on traits, placeholders and dictionaries
  *  get no World Details, and an entity's lists hold its stats only. */
 export function statBoxLookup(owners: CodeOwners, box: CodeBox, world?: CodeCardWorld): CodeWorldLookup {
@@ -233,8 +251,7 @@ export function statBoxLookup(owners: CodeOwners, box: CodeBox, world?: CodeCard
   let groupMap: ReadonlyMap<string, Stat> | undefined;
   const blueprintGroup = () => (groupMap ??= owners.byCodeName(blueprintGroupStats(owners.statWorld, box.self)));
 
-  let index: ReturnType<typeof cardIndex> | undefined;
-  const cards = () => (world ? (index ??= cardIndex(owners, world)) : null);
+  const cards = () => (world ? sharedCardIndex(owners, world) : null);
 
   const onEntity = (owner: CodeOwner, key: string): CodeStatRecord | null => {
     const stat = owner.byCodeName.get(key);
@@ -251,14 +268,24 @@ export function statBoxLookup(owners: CodeOwners, box: CodeBox, world?: CodeCard
     if (box.owner.kind === 'blueprint') return bearerOwners().map((owner) => owner.entity.id);
     return [box.owner.entityId];
   };
-  /** The first of `entityIds` whose set has the trait `key` names. */
-  const traitOn = (entityIds: readonly string[], key: string) => {
+  /** The trait `key` names in each of `entityIds`' sets that has one, in that order. */
+  const traitsOn = (entityIds: readonly string[], key: string): CodeTraitRecord[] => {
     const index = cards();
-    for (const id of entityIds) {
-      const record = index?.entityTrait(id, key);
-      if (record) return record;
+    return index ? entityIds.flatMap((id) => index.entityTrait(id, key) ?? []) : [];
+  };
+  const traits = (owner: TraitOwner, key: string): CodeTraitRecord[] => {
+    switch (owner.route) {
+      case 'world': {
+        const record = cards()?.worldTrait(key);
+        return record ? [record] : [];
+      }
+      case 'owner': return traitsOn(ownerEntityIds(), key);
+      case 'entity': {
+        const target = owners.byName.get(owner.entity);
+        return target ? traitsOn([target.entity.id], key) : [];
+      }
+      case 'persona': return traitsOn(owners.playable.map((target) => target.entity.id), key);
     }
-    return null;
   };
 
   return {
@@ -307,17 +334,8 @@ export function statBoxLookup(owners: CodeOwners, box: CodeBox, world?: CodeCard
         }
       }
     },
-    trait(owner, key) {
-      switch (owner.route) {
-        case 'world': return cards()?.worldTrait(key) ?? null;
-        case 'owner': return traitOn(ownerEntityIds(), key);
-        case 'entity': {
-          const target = owners.byName.get(owner.entity);
-          return target ? traitOn([target.entity.id], key) : null;
-        }
-        case 'persona': return traitOn(owners.playable.map((target) => target.entity.id), key);
-      }
-    },
+    trait: (owner, key) => traits(owner, key)[0] ?? null,
+    traits,
     placeholder: (placeholder) => cards()?.placeholder(placeholder) ?? null,
     entity(key) {
       const target = owners.byName.get(key);
@@ -325,6 +343,10 @@ export function statBoxLookup(owners: CodeOwners, box: CodeBox, world?: CodeCard
     },
     dictionary: (key) => cards()?.dictionary(key) ?? null,
     persona: () => owners.playable.map(entityName),
-    statUses: (item) => statUses(owners, item),
+    uses: (item) => {
+      if (item.kind === 'stat') return statUses(owners, item);
+      // Other kinds are read the way their cards are, so they need the world beyond its stats.
+      return world ? itemUses(owners, world, item, (other) => statBoxLookup(owners, other, world)) : [];
+    },
   };
 }

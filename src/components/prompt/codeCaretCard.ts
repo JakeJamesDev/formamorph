@@ -7,7 +7,7 @@ import { StateEffect, StateField, type EditorState, type Extension } from '@code
 import {
   EditorView, closeHoverTooltips, keymap, showTooltip, ViewPlugin, type Tooltip, type TooltipView,
 } from '@codemirror/view';
-import type { CodeCard, CodeCardStatItem } from '@/lib/codeCards';
+import type { CodeCard, CodeCardItem } from '@/lib/codeCards';
 import type { CodeCardNavigation } from '@/lib/codeCardNavigation';
 import type { CodeStatUse } from '@/lib/codeStatUses';
 import { cardAnnouncement, renderCodeCard, renderCodeUses, type CodeCardActions } from '@/components/prompt/codeCardView';
@@ -95,8 +95,8 @@ export function cardTooltipView(card: CodeCard, dismiss: () => void, actions: Co
 export interface CardLinks {
   /** Absent where the host hides Open and Find All Uses. */
   navigation?: CodeCardNavigation;
-  /** Every use of a stat. Absent where the box has no world. */
-  statUses?: (item: CodeCardStatItem) => readonly CodeStatUse[];
+  /** Every use of an item. Absent where the box has no world. */
+  uses?: (item: CodeCardItem) => readonly CodeStatUse[];
 }
 
 export interface CaretCards {
@@ -148,12 +148,12 @@ export function createCaretCards(
 
   /** One set of controls for hover and caret cards alike. */
   const actions = (view: EditorView, card: CodeCard): CodeCardActions => {
-    const { navigation, statUses } = links();
+    const { navigation, uses } = links();
     return {
       goTo: (at) => goToDeclaration(view, at),
       open: navigation?.open,
-      findUses: navigation && statUses && ((item) => view.dispatch({
-        effects: [closeHoverTooltips, openCaretCard.of({ card, announce: false, uses: statUses(item) })],
+      findUses: navigation && uses && ((item) => view.dispatch({
+        effects: [closeHoverTooltips, openCaretCard.of({ card, announce: false, uses: uses(item) })],
       })),
     };
   };
