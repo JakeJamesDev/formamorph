@@ -608,12 +608,20 @@ describe('reference-integrity rules', () => {
         entities: [creature()],
       });
       expect(messages(blueprint('return owner.stats.Watch.value + stats.Destruction.value;'))).toEqual([]);
-      const found = only(blueprint('return stats.Watch.value + owner.stats.Rage.value;'), RULE);
+      const w = blueprint('return stats.Watch.value + owner.stats.Rage.value;');
+      const found = only(w, RULE);
       expect(found.map((f) => f.message)).toEqual([
         'After the AI code on “Guard” looks up a stat named “Watch”, which does not exist',
-        'After the AI code on “Guard” looks up a stat named “Rage” on its owner, which does not exist',
       ]);
       expect(found[0].items).toEqual([{ id: 'guard', name: 'Guard' }]);
+      // A bearer can hold more than the group, so an owner.stats miss is only a warning.
+      expect(only(w, 'stat-code-unknown-blueprint-owner-stat').map(({ severity, message, items }) => ({ severity, message, items }))).toEqual([{
+        severity: 'warning',
+        message: 'After the AI code on “Guard” looks up a stat named “Rage” on its owner, which its Blueprint group does not have',
+        items: [{ id: 'guard', name: 'Guard' }],
+      }]);
+      // A bearer's own box reads the bearer's stats, so its miss stays an error.
+      expect(only(ownedBox('return owner.stats.Rgae.value;'), 'stat-code-unknown-blueprint-owner-stat')).toEqual([]);
     });
 
     it('scans a bearer’s own code on a linked stat once, with the bearer as its owner', () => {
@@ -4774,6 +4782,7 @@ const RULE_SCOPE: Record<string, 'simple' | 'advanced'> = {
   'stat-code-unknown-name': 'advanced',
   'stat-code-overrides-trait': 'advanced',
   'stat-code-unknown-stat': 'advanced',
+  'stat-code-unknown-blueprint-owner-stat': 'advanced',
   'stat-code-before-reads-delta': 'advanced',
   'stat-code-two-writers': 'advanced',
   'stat-descriptor-coverage-gap': 'advanced',

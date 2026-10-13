@@ -269,6 +269,14 @@ describe('applyOwnedStatDrop: what reads a stat', () => {
       .toEqual({ reason: 'read', name: 'grit', owner: 'Ash', reader: { kind: 'reads', stat: 'tame' } });
   });
 
+  it('refuses entity stats moving to the world together when one reads another through owner.stats', () => {
+    const bonded = { ...ash, stats: [stat('grit', 'bond', 1), stat('tame', 'bond', 0, { code: 'return owner.stats.grit;' })] };
+    expect(read(drop(world([bonded, bob]), a('bond'), 'luck', -24, [a('bond')])))
+      .toEqual({ reason: 'read', name: 'tame', owner: 'Ash', reader: { kind: 'reads', stat: 'grit' } });
+    // Another entity owns both afterwards, so the read still lands.
+    expect(drop(world([bonded, bob]), a('bond'), b('nerve'), 0, [a('bond')])?.kind).toBe('moved');
+  });
+
   it('reads stats as the world stats in every box', () => {
     // An entity stat's `stats.health` is the world's Health, so moving Health off the world breaks it.
     const tameReads = { ...ash, stats: ash.stats!.map((s) => (s.id === 'tame' ? { ...s, code: 'return stats.health;' } : s)) };

@@ -880,12 +880,14 @@ describe('runStatCodeTurn bound writes', () => {
     expect(only(out)).toMatchObject({ min: 10, max: 120 });
   });
 
-  it("derives another owner's bounds without the player's traits in force", async () => {
+  it("derives an entity owner's bounds without the player's traits in force", async () => {
     const stats = [seeded({ code: 'self.min = 10;' })];
-    const player = await runStatCodeTurn(turn({ stats, bearers: inForce([raiseCap]) }));
-    const bram = await runStatCodeTurn(turn({ ownerId: 'bram', stats, bearers: inForce([raiseCap]) }));
-    expect(only(player)).toMatchObject({ min: 10, max: 120 });
-    expect(only(bram)).toMatchObject({ min: 10, max: 100 });
+    const out = await runStatCodeTurn(turn({
+      stats, bearers: inForce([raiseCap]),
+      owners: [{ id: 'bram', stats, enabled: {}, previous: stats, regenApplied: {} }],
+    }));
+    expect(only(out)).toMatchObject({ min: 10, max: 120 });
+    expect(only(out.owners!.bram)).toMatchObject({ min: 10, max: 100 });
   });
 
   it('keeps the code delta of a stat with empty code', async () => {

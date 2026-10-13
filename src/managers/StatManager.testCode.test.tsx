@@ -512,14 +512,14 @@ describe('what Test Code reports', () => {
   it('names every read-only write by its path', async () => {
     const user = userEvent.setup();
     executeStatCode.mockResolvedValue({
-      value: null, error: null, readOnlyWrites: ['clock.hour', 'stats.Health.max', 'entities.Ash.traits.Brave.mode'],
+      value: null, error: null, readOnlyWrites: ['clock.hour', 'stats.Health.name', 'entities.Ash.traits.Brave.mode'],
     });
     renderCodePanel(stats[0]);
 
-    await testCode(user, 'clock.hour = 3; stats.Health.max = 9; entities.Ash.traits.Brave.mode = "x";');
+    await testCode(user, 'clock.hour = 3; stats.Health.name = "x"; entities.Ash.traits.Brave.mode = "x";');
 
     await waitFor(() => expect(row())
-      .toHaveTextContent('Read-only fields. Writes ignored: clock.hour, stats.Health.max, entities.Ash.traits.Brave.mode.'));
+      .toHaveTextContent('Read-only fields. Writes ignored: clock.hour, stats.Health.name, entities.Ash.traits.Brave.mode.'));
   });
 
   it('still counts the problems when the run itself threw', async () => {

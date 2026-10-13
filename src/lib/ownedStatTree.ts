@@ -335,7 +335,7 @@ export function applyOwnedStatDrop(
     const movedLinks = new Set(movedRows.flatMap((rowId) => (linkedRow(rowId)?.root ? [linkedRow(rowId)!.link.id] : [])));
     const ownMoved = new Set(movedRows.filter((rowId) => !linkedRow(rowId)).map(realId));
     const moved = sourceTree.stats.filter((s) => ownMoved.has(s.id) || movedLinks.has(sourceTree.linkOf.get(s.id)?.id ?? ''));
-    const broken = brokenStatReader(world, from, moved);
+    const broken = brokenStatReader(world, from, to, moved);
     return broken && { reason: 'read', name: broken.stat.name, owner: nameOf(from), reader: broken.reader };
   }
 }

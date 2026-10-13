@@ -78,6 +78,14 @@ Rulings from the spec review (2026-10-13):
 - **Q12** The two-writers rule counts each bearer of one Blueprint box as a writer. So a Blueprint box with two or more bearers that writes a world stat field gets the warning: every bearer reads one snapshot, so the stat moves once, not once per bearer. The guide explains this.
 - **Q13** In an owned or Blueprint stat's box, a template's stat slot lists the owner's stats, which insert `owner.stats[...]`, and the world stats, which insert `stats[...]`.
 
+Rulings from the closing review (2026-10-13):
+
+- **Q14** Formaquestion's default code rider names `owner.stats` beside the world's `stats`. The user waived probe numbers for this line.
+- **Q15** An unknown `owner.stats` name in a Blueprint box is a warning in the editor and on the Test Bench, because a bearer can hold more stats than the group.
+- **Q16** The changelog folds this effort into the Entity Stats group, and the v6 Stat Code lines it supersedes go.
+- **Q17** CONTEXT.md's Bearer avoid line keeps the clause that names the `owner` stat-code global as the one exception.
+- The review's plain fixes land with these rulings: the stat move check knows the destination, so a moved stat that reaches `owner` breaks a move to the world; the unused turn-owner path goes; stale comments and guide lines follow owner order.
+
 Settled before the grill, same day:
 
 - `stats` is the world stats in every owner's code. This reverses Entity Stats Q29, and Q42 for `stats`.
@@ -176,6 +184,8 @@ A good test drives a public seam with a small world and asserts what an author s
 - Export shape: no world or save field changes. Only stat code strings in bundled worlds change.
 
 ## Further Notes
+
+- Backlog (closing review): trait and placeholder renames still scan world-stat boxes only, so entity-owned and link-override boxes that name a renamed trait or placeholder get no rewrite. The stat code help topic's "exposes nothing else" list predates `entities`, `persona`, `dictionaries`, and `owner`.
 
 - Origin: code on The Creature's stats in City Rampage had no route to Destruction, while `traits` already meant the world traits in every box.
 - v6 kept other owners read-only so one owner's code could not move another's values behind the turn. v6 then made writes ordered and visible, so that reason no longer holds.
