@@ -261,11 +261,39 @@ describe('applyOwnedStatDrop: what reads a stat', () => {
     expect(read(drop(world([tamer, bob]), a('bond'), b('nerve'), 0, [a('bond')]))?.name).toBe('tame');
   });
 
-  it('refuses a stat that staying code reads by name, and one whose own code reads a stat left behind', () => {
+  it('refuses a stat that staying code reads by name, and one whose own owner.stats reads a stat left behind', () => {
     const luckReads = { ...lists, stats: lists.stats.map((s) => (s.id === 'luck' ? { ...s, code: 'return stats.health + 1;' } : s)) };
     expect(read(drop(world([ash], luckReads), 'health', a('grit'), 0))?.reader).toEqual({ kind: 'readBy', stat: 'luck' });
+    const gritReads = { ...ash, stats: ash.stats!.map((s) => (s.id === 'grit' ? { ...s, beforeCode: "return owner.stats['tame'];" } : s)) };
+    expect(read(drop(world([gritReads, bob]), a('grit'), b('nerve'), 0)))
+      .toEqual({ reason: 'read', name: 'grit', owner: 'Ash', reader: { kind: 'reads', stat: 'tame' } });
+  });
+
+  it('reads stats as the world stats in every box', () => {
+    // An entity stat's `stats.health` is the world's Health, so moving Health off the world breaks it.
+    const tameReads = { ...ash, stats: ash.stats!.map((s) => (s.id === 'tame' ? { ...s, code: 'return stats.health;' } : s)) };
+    expect(read(drop(world([tameReads]), 'health', a('grit'), 0))?.reader).toEqual({ kind: 'readBy', stat: 'tame' });
+    // And its `stats.grit` never named its own Grit, so moving Grit away breaks nothing.
+    const gritByStats = { ...ash, stats: ash.stats!.map((s) => (s.id === 'tame' ? { ...s, code: 'return stats.grit;' } : s)) };
+    expect(drop(world([gritByStats, bob]), a('grit'), b('nerve'), 0)?.kind).toBe('moved');
+    // A moved world stat's own `stats.luck` still reads the world's Luck from its new owner.
     const healthReads = { ...lists, stats: lists.stats.map((s) => (s.id === 'health' ? { ...s, beforeCode: "return stats['luck'];" } : s)) };
-    expect(read(drop(world([ash], healthReads), 'health', a('grit'), 0))?.reader).toEqual({ kind: 'reads', stat: 'luck' });
+    expect(drop(world([ash], healthReads), 'health', a('grit'), 0)?.kind).toBe('moved');
+  });
+
+  it('refuses an entity stat that a staying stat of its entity reads through owner.stats', () => {
+    const tameReads = { ...ash, stats: ash.stats!.map((s) => (s.id === 'tame' ? { ...s, code: 'return owner.stats.grit;' } : s)) };
+    expect(read(drop(world([tameReads, bob]), a('grit'), b('nerve'), 0))?.reader).toEqual({ kind: 'readBy', stat: 'tame' });
+  });
+
+  it('refuses an entity stat that a Blueprint reads through owner.stats for that bearer, or a link override reads', () => {
+    const bpReads = { ...lists, stats: lists.stats.map((s) => (s.id === 'trust' ? { ...s, code: 'return owner.stats.grit;' } : s)) };
+    const bearer = { ...ash, statLinks: [link('l1', 'trust', 'stat', null, 2)] };
+    expect(read(drop(world([bearer, bob], bpReads), a('grit'), b('nerve'), 0))?.reader).toEqual({ kind: 'readBy', stat: 'trust' });
+    // Bob bears it too but holds no Grit, so moving his Nerve reads nothing.
+    expect(drop(world([bearer, { ...bob, statLinks: [link('l2', 'trust', 'stat', null, 1)] }], bpReads), b('nerve'), a('grit'), 0)?.kind).toBe('moved');
+    const overriding = { ...bearer, statLinks: [{ ...link('l1', 'trust', 'stat', null, 2), overrides: { trust: { code: { value: 'return owner.stats.grit;', blueprint: '' } } } }] };
+    expect(read(drop(world([overriding, bob]), a('grit'), b('nerve'), 0))?.reader).toEqual({ kind: 'readBy', stat: 'trust' });
   });
 
   it('refuses an entity stat that code reads through entities, or through persona while it can be played', () => {
@@ -276,9 +304,10 @@ describe('applyOwnedStatDrop: what reads a stat', () => {
     expect(drop(world([ash, bob], viaPersona), b('nerve'), a('grit'), 0)?.kind).toBe('moved');
   });
 
-  it('reads a Blueprint\'s code as its linkers\', not the world\'s', () => {
+  it('reads a Blueprint\'s stats as the world\'s, and never reaches a Blueprint through stats', () => {
     const bpReads = { ...lists, stats: lists.stats.map((s) => (s.id === 'trust' ? { ...s, code: 'return stats.health + 1;' } : s)) };
-    expect(drop(world([ash], bpReads), 'health', a('grit'), 0)?.kind).toBe('moved');
+    const bearer = { ...ash, statLinks: [link('l1', 'trust', 'stat', null, 2)] };
+    expect(read(drop(world([bearer, bob], bpReads), 'health', b('nerve'), 0))?.reader).toEqual({ kind: 'readBy', stat: 'trust' });
     const healthReads = { ...lists, stats: lists.stats.map((s) => (s.id === 'health' ? { ...s, code: 'return stats.trust;' } : s)) };
     expect(drop(world([ash], healthReads), 'health', a('grit'), 0)?.kind).toBe('moved');
   });
@@ -286,6 +315,14 @@ describe('applyOwnedStatDrop: what reads a stat', () => {
   it('lets a stat go when a staying stat still answers its name', () => {
     const twins = { ...lists, stats: [...lists.stats.map((s) => (s.id === 'luck' ? { ...s, code: 'return stats.health;' } : s)), stat('health2', null, 3, { name: 'health' })] };
     expect(drop(world([ash], twins), 'health', a('grit'), 0)?.kind).toBe('moved');
+    // The twin the name reads now goes, and the one left answers instead.
+    expect(drop(world([ash], twins), 'health2', a('grit'), 0)?.kind).toBe('moved');
+  });
+
+  it('lets an entity stat go when another entity that can be played still answers persona', () => {
+    const viaPersona = { ...lists, stats: lists.stats.map((s) => (s.id === 'luck' ? { ...s, code: 'return persona.stats.nerve;' } : s)) };
+    const nervy = { ...ash, persona: true, stats: [...ash.stats!, stat('ash-nerve', null, 2, { name: 'nerve' })] };
+    expect(drop(world([nervy, { ...bob, persona: true }], viaPersona), b('nerve'), a('grit'), 0)?.kind).toBe('moved');
   });
 });
 

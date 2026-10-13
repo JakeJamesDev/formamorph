@@ -198,7 +198,7 @@ export interface StatCodeReference {
 }
 
 /** One chain that names a stat: its route, and the key that names the stat. */
-interface RouteKey {
+export interface RouteKey {
   route: StatReferenceRoute;
   key: CodeRenameKey;
 }
@@ -206,7 +206,7 @@ interface RouteKey {
 type StatReferenceRoute = StatRoute & { root: StatCodeReference['route']; stat: string };
 
 /** The route each chain off a global spells, in text order. */
-function routesIn(code: string): RouteKey[] {
+export function routesIn(code: string): RouteKey[] {
   const found: RouteKey[] = codeRenameChains(code, 'stats').map((chain) => ({ route: { root: 'stats', stat: chain[0].name }, key: chain[0] }));
   for (const root of ['owner', 'persona'] as const) {
     for (const chain of codeRenameChains(code, root)) {
