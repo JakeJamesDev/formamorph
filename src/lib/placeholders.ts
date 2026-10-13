@@ -1595,11 +1595,14 @@ export function resolveEntityText(entity: { name: string } | null, text: string,
   return resolvePlaceholders(text, { ...opts, character: entity && resolvePlaceholders(entity.name, noOwner) });
 }
 
-/** Resolve a trait's own text with its bearer as the Character Name. With no entity bearer the player bears
+/** Resolve a trait's own text with its owner as the Character Name. With no entity owner the player owns
  *  it, so the Character Name reads as the Player Name. */
-export function resolveBearerText(bearer: { name: string } | null, text: string, opts: ResolveOptions): string {
-  return resolveEntityText(bearer, bearer ? text : characterAsPlayer(text), opts);
+export function resolveOwnerText(owner: { name: string } | null, text: string, opts: ResolveOptions): string {
+  return resolveEntityText(owner, owner ? text : characterAsPlayer(text), opts);
 }
+
+/** Alias kept while call sites move to {@link resolveOwnerText}. */
+export const resolveBearerText = resolveOwnerText;
 
 /** One placeholder as play reads it right now: what it resolves to, and each authored value resolved. */
 export interface PlaceholderReading {

@@ -150,15 +150,18 @@ export function treeStatTraits(
   };
 }
 
-/** An entity bearer's active traits that change stats, owned or linked, in its tree order. None for an
- *  entity that isn't a bearer in play. */
-export const bearerStatTraitsInForce = (ownedTraits: OwnedTraitStates | undefined, world: TraitWorld, ownerId: string): Trait[] =>
+/** An entity owner's active traits that change stats, owned or linked, in its tree order. None for an
+ *  entity that isn't an owner in play. */
+export const entityStatTraitsInForce = (ownedTraits: OwnedTraitStates | undefined, world: TraitWorld, ownerId: string): Trait[] =>
   treeStatTraits(entityBearers(world), activeOwnedTraitIds(ownedTraits ?? {}))(ownerId);
+
+/** Alias kept while call sites move to {@link entityStatTraitsInForce}. */
+export const bearerStatTraitsInForce = entityStatTraitsInForce;
 
 /** The stat traits in force for one owner's stats: the player's are {@link statTraitsInForce}; an entity's
  *  are its own. A change on a stat the owner lacks finds nothing to move. */
 export const ownerStatTraitsInForce = (state: TraitForceState, world: TraitWorld, ownerId: string): Trait[] =>
-  (ownerId === WORLD_OWNER ? statTraitsInForce(state, world) : bearerStatTraitsInForce(state.ownedTraits, world, ownerId));
+  (ownerId === WORLD_OWNER ? statTraitsInForce(state, world) : entityStatTraitsInForce(state.ownedTraits, world, ownerId));
 
 /** Each stat trait in force with its record key, so two worlds' sets compare by what the record is under. */
 const keyedStatTraits = (state: TraitForceState, world: TraitWorld): [string, Trait][] => [
@@ -448,7 +451,7 @@ function moveOwnStats(state: TraitRuntimeState, ownerId: string, bearerTrait: Tr
   const key = ownStatsRecordKey(ownerId, trait.id);
   const record = state.appliedValues[key];
   if (!stats || (record === undefined && !changesAny(trait, stats))) return state;
-  const moved = settleSwitch(stats, record, trait, on, bearerStatTraitsInForce(state.ownedTraits, world, ownerId));
+  const moved = settleSwitch(stats, record, trait, on, entityStatTraitsInForce(state.ownedTraits, world, ownerId));
   return {
     ...state,
     entityStats: { ...state.entityStats, [ownerId]: moved.stats },
@@ -502,7 +505,7 @@ export function applyOwnedStatTraits(state: TraitRuntimeState, world: TraitWorld
     if (!stats) continue;
     const records: AppliedTraitValues = {};
     const on: Trait[] = [];
-    for (const trait of bearerStatTraitsInForce(next.ownedTraits, world, owner.id)) {
+    for (const trait of entityStatTraitsInForce(next.ownedTraits, world, owner.id)) {
       on.push(trait);
       if (!changesAny(trait, stats)) continue;
       const moved = settleSwitch(stats, undefined, trait, true, on);
@@ -638,7 +641,7 @@ export function gateStatsOf(state: GateStatState, world: TraitWorld): GateStats 
   return {
     [WORLD_OWNER]: ownerGateStats(state.stats, statTraitsInForce(state, world)),
     ...Object.fromEntries(Object.entries(state.entityStats ?? {}).map(([ownerId, stats]) =>
-      [ownerId, ownerGateStats(stats, bearerStatTraitsInForce(state.ownedTraits, world, ownerId))])),
+      [ownerId, ownerGateStats(stats, entityStatTraitsInForce(state.ownedTraits, world, ownerId))])),
   };
 }
 

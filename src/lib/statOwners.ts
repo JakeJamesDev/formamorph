@@ -4,10 +4,8 @@
 import type { PlayerStat, Trait } from '@/types';
 import { applyRegen } from './statChanges';
 import { activeStatEnabled } from './traitEffects';
-import { WORLD_OWNER } from './traitGates';
 
-/** The player's owner id, the one owned traits key the player by. */
-export const PLAYER_OWNER = WORLD_OWNER;
+export { PLAYER_OWNER } from './traitGates';
 
 /** Runtime stat values by owner id, each owner's stats in their own order. A stat id is unique only
  *  within its owner. */

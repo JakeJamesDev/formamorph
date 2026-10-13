@@ -8,8 +8,8 @@ import { refreshChosenTraits } from './traitEffects';
 import { traitGates, traitUnlocked, type AppliedTraitValues, type TraitWorld } from './traitRuntime';
 import { WORLD_OWNER, type GateStates } from './traitGates';
 
-/** Every Bearer's trait state, the authored world code switches it against, and who is in play and in the scene. */
-export interface StatCodeBearers {
+/** Every owner's trait state, the authored world code switches it against, and who is in play and in the scene. */
+export interface StatCodeOwners {
   /** The player's list, chosen at creation or acquired during the game. Switched-off ones stay listed. */
   acquired: readonly Trait[];
   disabledTraitIds: readonly string[];
@@ -29,11 +29,14 @@ export interface StatCodeBearers {
   inSceneIds?: readonly string[];
 }
 
+/** Alias kept while call sites move to {@link StatCodeOwners}. */
+export type StatCodeBearers = StatCodeOwners;
+
 /** The player's traits as a saved state holds them, each re-read from the world as play reads them. */
 export function savedTraits(
   saved: Pick<GameState, 'playerTraits' | 'disabledTraitIds' | 'appliedTraitValues' | 'cascadeOffTraitIds' | 'ownedTraits'>,
   authored: Trait[],
-): Pick<StatCodeBearers, 'acquired' | 'disabledTraitIds' | 'appliedValues' | 'cascadeOffTraitIds' | 'ownedTraits'> {
+): Pick<StatCodeOwners, 'acquired' | 'disabledTraitIds' | 'appliedValues' | 'cascadeOffTraitIds' | 'ownedTraits'> {
   return {
     acquired: refreshChosenTraits(saved.playerTraits, authored),
     disabledTraitIds: saved.disabledTraitIds ?? [],
@@ -45,7 +48,7 @@ export function savedTraits(
 
 /** The sandbox's `traits` entries, one per authored trait in authored order, under their code names — the
  *  rule that names stats, so a chip in a trait's name never reaches code as this playthrough's roll. */
-export function sandboxTraits(bearers: StatCodeBearers, placeholders: readonly Placeholder[]): SandboxTrait[] {
+export function sandboxTraits(bearers: StatCodeOwners, placeholders: readonly Placeholder[]): SandboxTrait[] {
   const acquired = new Set(bearers.acquired.map((t) => t.id));
   const off = new Set(bearers.disabledTraitIds);
   const gates = gatesOf(bearers);
@@ -58,7 +61,7 @@ export function sandboxTraits(bearers: StatCodeBearers, placeholders: readonly P
 
 /** Every bearer's gate on its traits, against the state the run reads. Stat Conditions read the world's
  *  `gateStats`; without them none resolves. */
-const gatesOf = (bearers: StatCodeBearers): GateStates => traitGates(
+const gatesOf = (bearers: StatCodeOwners): GateStates => traitGates(
   { traits: [...bearers.acquired], disabledTraitIds: [...bearers.disabledTraitIds], ownedTraits: bearers.ownedTraits, stats: [] }, bearers.world,
 );
 
@@ -103,7 +106,7 @@ const NO_PERSONA: CodeEntity = { id: '', name: '', type: '', pronouns: '', inSce
 
 /** The entity the player plays: the picked world or library persona, else the Custom Persona entity under
  *  None. Null when none plays. */
-function playedPersonaId(bearers: StatCodeBearers): string | null {
+function playedPersonaId(bearers: StatCodeOwners): string | null {
   const { persona, entities } = bearers.world;
   if (!persona) return null;
   if (persona.source !== 'none') return persona.entityId;
@@ -112,7 +115,7 @@ function playedPersonaId(bearers: StatCodeBearers): string | null {
 
 /** One entity's entry: its Bearer's own trait set, owned or linked, under the authored code names. */
 function codeEntity(
-  bearers: StatCodeBearers,
+  bearers: StatCodeOwners,
   placeholders: readonly Placeholder[],
   authored: Entity,
   gates: GateStates,
@@ -139,7 +142,7 @@ function codeEntity(
 }
 
 /** Every entity in play, the played persona among them: the world's cast and persona, then the library's. */
-export function codeEntities(bearers: StatCodeBearers, placeholders: readonly Placeholder[]): CodeEntities {
+export function codeEntities(bearers: StatCodeOwners, placeholders: readonly Placeholder[]): CodeEntities {
   const ref = bearers.world.persona;
   const world = (bearers.entities ?? []).filter((e) => playsAs(e, ref) || inCast(e, ref));
   const id = playedPersonaId(bearers);
@@ -224,7 +227,7 @@ export const unplayedEntities = (
 }));
 
 /** Whose trait maps hold one trait: the world's `traits`, the persona's, and each entity's by code name. */
-export interface TraitHolders {
+export interface TraitOwnerMaps {
   world: boolean;
   persona: boolean;
   entities: readonly string[];
@@ -232,7 +235,7 @@ export interface TraitHolders {
 
 /** Whose trait maps hold a trait, as the editor reads the world: the world's own `traits` when it is a world
  *  trait, each entity whose set holds it owned or linked, and `persona` when one of those can be played. */
-export function traitHolders(world: BearerWorld, placeholders: readonly Placeholder[], traitId: string): TraitHolders {
+export function traitOwnerMaps(world: BearerWorld, placeholders: readonly Placeholder[], traitId: string): TraitOwnerMaps {
   const codeNameOf = (trait: Trait, entity: Entity) =>
     statCodeName(authoredTraitName(trait, entity, world.traits), withOwnPlaceholders(placeholders, entity));
   const bearers = resolveBearers(world, undefined).bearers.flatMap((bearer) => (bearer.entity ? [{ entity: bearer.entity, traits: bearer.traits }] : []));
@@ -251,3 +254,7 @@ export function traitHolders(world: BearerWorld, placeholders: readonly Placehol
     entities: holding.map(({ entity }) => statCodeName(entity.name, withOwnPlaceholders(placeholders, entity))),
   };
 }
+
+// Old names, kept while call sites move to the owner names.
+export type TraitHolders = TraitOwnerMaps;
+export const traitHolders = traitOwnerMaps;

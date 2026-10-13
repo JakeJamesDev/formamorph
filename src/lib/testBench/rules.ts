@@ -51,6 +51,7 @@ import {
   broughtIds, canBePlayer, editorGateInput, linksInTreeOrder, originalOf, PLAYER_BEARER, resolveBearers, type Bearer,
   type BearerWorld,
 } from '@/lib/bearers';
+import type { OwnerWorld } from '@/lib/owners';
 import {
   WORLD_OWNER, alwaysOnOverMax, complementary, deadRows, gateOf, gateStates, groupPickState, neverUnlockable, playerOwnerIds, sameRequirement, settleDefaults,
   unstableCycles, type GateInput, type GateOwner, type GateState, type GateStat, type GateStates, type GateStats, type GateTraitRef,
@@ -1852,7 +1853,7 @@ const traitGroupAlwaysOnOverMax: Rule = {
   check: (world) => {
     const found = new Map<string, { bearer: Bearer | undefined; group: TraitGroup; traits: Trait[] }>();
     for (const persona of personaChoices(world)) {
-      const { bearers, gate } = resolveBearers(bearerWorldOf(world), persona);
+      const { bearers, gate } = resolveBearers(ownerWorldOf(world), persona);
       for (const over of alwaysOnOverMax(gate)) {
         const k = pairKey(over.ownerId, over.groupId);
         if ((found.get(k)?.traits.length ?? 0) >= over.traitIds.length) continue;
@@ -1943,8 +1944,11 @@ const traitGroupTooSmall: Rule = {
 
 // ── Trait gates ───────────────────────────────────────────────────────────────────────────────────────────
 
-/** The slices the bearer resolver reads. */
-export type BearerSource = Partial<Pick<RuleWorld, 'traits' | 'traitGroups' | 'entities'>>;
+/** The slices the owner resolver reads. */
+export type OwnerSource = Partial<Pick<RuleWorld, 'traits' | 'traitGroups' | 'entities'>>;
+
+/** Alias kept while call sites move to {@link OwnerSource}. */
+export type BearerSource = OwnerSource;
 
 const pairKey = (a: string, b: string) => `${a}\u0000${b}`;
 
@@ -1957,8 +1961,8 @@ interface OpenGates {
 
 const NONE_OPEN: OpenGates = { traits: new Set(), links: new Set() };
 
-/** The world as the bearer resolver reads it, with every gate in `open` emptied. */
-export function bearerWorldOf(world: BearerSource, open: OpenGates = NONE_OPEN): BearerWorld {
+/** The world as the owner resolver reads it, with every gate in `open` emptied. */
+export function ownerWorldOf(world: OwnerSource, open: OpenGates = NONE_OPEN): OwnerWorld {
   const opened = (t: Trait): Trait => (open.traits.has(t.id) ? { ...t, requires: [] } : t);
   const openLink = (link: TraitLink): TraitLink => (link.overrides ? {
     ...link,
@@ -1975,6 +1979,9 @@ export function bearerWorldOf(world: BearerSource, open: OpenGates = NONE_OPEN):
     })),
   };
 }
+
+/** Alias kept while call sites move to {@link ownerWorldOf}. */
+export const bearerWorldOf = ownerWorldOf;
 
 /** None, then playing as each world persona, persona-only ones included. */
 const personaChoices = (world: RuleWorld): PersonaRef[] => [
@@ -2111,7 +2118,7 @@ const gateReportOf = (world: RuleWorld): GateReport => {
   const readOwners = (gate: HeldGate, req: StatRequirement): string[] => statReadOwners(world, gate.owner.id, req);
   const statsRead = (gate: HeldGate, req: StatRequirement): GateStat[] => statsReadBy(world, stats, gate.owner.id, req);
 
-  const plain = bearerWorldOf(world);
+  const plain = ownerWorldOf(world);
   const editor = { ...editorGateInput(plain), stats };
   const editorStates = gateStates(editor);
   const linksOf = new Map(resolveBearers(plain, undefined).bearers.map((b) => [b.id, b.linkOf]));
@@ -2208,7 +2215,7 @@ const gateReportOf = (world: RuleWorld): GateReport => {
     return { bearers: byId, gate, named };
   };
 
-  const openable = bearerWorldOf(world, { traits: openTraits, links: openLinks });
+  const openable = ownerWorldOf(world, { traits: openTraits, links: openLinks });
   const passes = personaChoices(world).map((persona) => {
     const pass = passOver(openable, persona);
     const holds = new Map(pass.gate.owners.map((o) => [o.id, new Set(o.traits.map((t) => t.id))]));
@@ -2506,7 +2513,7 @@ const imageReportOf = (world: RuleWorld): ImageRuleReport => {
   const imageId = (entity: Entity, i: number) => `image\u0000${entity.id}\u0000${i}`;
   const asTrait = (entity: Entity, i: number, requires: TraitRequirementRow[]): Trait =>
     ({ id: imageId(entity, i), name: '', statChanges: [], requires });
-  const input = editorGateInput(bearerWorldOf(world));
+  const input = editorGateInput(ownerWorldOf(world));
   const ownerOf = (entity: Entity, images: readonly GalleryImage[]): GateOwner => {
     const existing = input.owners.find((o) => o.id === entity.id);
     const imageTraits = images.flatMap((img, i) => (img.requires?.length ? [asTrait(entity, i, img.requires)] : []));
@@ -2657,7 +2664,7 @@ const bearersByWorld = new WeakMap<RuleWorld, Map<string, Bearer>>();
 const bearersOf = (world: RuleWorld): Map<string, Bearer> => {
   let bearers = bearersByWorld.get(world);
   if (!bearers) {
-    bearers = new Map(resolveBearers(bearerWorldOf(world), undefined).bearers.map((b) => [b.id, b]));
+    bearers = new Map(resolveBearers(ownerWorldOf(world), undefined).bearers.map((b) => [b.id, b]));
     bearersByWorld.set(world, bearers);
   }
   return bearers;
@@ -2668,7 +2675,7 @@ const needsByWorld = new WeakMap<RuleWorld, Map<string, Map<string, CopyNeed>>>(
 const needsOf = (world: RuleWorld): Map<string, Map<string, CopyNeed>> => {
   let needs = needsByWorld.get(world);
   if (!needs) {
-    needs = copyNeeds({ ...bearerWorldOf(world), placeholders: world.placeholders ?? [], placeholderGroups: world.placeholderGroups ?? [] });
+    needs = copyNeeds({ ...ownerWorldOf(world), placeholders: world.placeholders ?? [], placeholderGroups: world.placeholderGroups ?? [] });
     needsByWorld.set(world, needs);
   }
   return needs;
