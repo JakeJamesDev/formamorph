@@ -9,6 +9,12 @@ export function signatureText({ kind, path, type }: CodeCardSignature): string {
   return arrow ? `${path}(${arrow[1]}): ${arrow[2]}` : `${path}: ${type}`;
 }
 
+/** What a screen reader hears when a card opens: the signature, the badge and the description. */
+export function cardAnnouncement({ signature, access, description }: CodeCard): string {
+  const parts = [`${signature.kind} ${signatureText(signature)}`, access ? ACCESS_LABEL[access] : '', description ?? ''];
+  return parts.filter(Boolean).map((part) => part.replace(/\.+$/, '')).join('. ');
+}
+
 function element<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, text?: string): HTMLElementTagNameMap[K] {
   const node = document.createElement(tag);
   node.className = className;
