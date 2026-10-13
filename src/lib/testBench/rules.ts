@@ -922,9 +922,10 @@ const placeholderPinnedUnused: Rule = {
 const NAME_THEN_LITERAL = /\.name\s*[!=]==?\s*(["'`])((?:\\.|(?!\1).)*)\1/g;
 const LITERAL_THEN_NAME = /(["'`])((?:\\.|(?!\1).)*)\1\s*[!=]==?\s*[\w$]+(?:\??\.[\w$]+)*\??\.name\b/g;
 // The map form: `stats.Vigor` names the stat by identifier, `stats["Vigor"]` (any quote style) by bracket
-// key; a computed bracket key or an array-method call like `stats.find(` matches neither, as intended.
-const MAP_DOT = /\bstats\.([A-Za-z_$][\w$]*)\b(?!\s*\()/g;
-const MAP_BRACKET = /\bstats\[\s*(["'`])((?:\\.|(?!\1).)*)\1\s*\]/g;
+// key; a computed bracket key or an array-method call like `stats.find(` matches neither, as intended. A
+// member-qualified `.stats` (`entities[...].stats`, `persona.stats`) is another owner's map, not the world's.
+const MAP_DOT = /(?<![\w$.])stats\.([A-Za-z_$][\w$]*)\b(?!\s*\()/g;
+const MAP_BRACKET = /(?<![\w$.])stats\[\s*(["'`])((?:\\.|(?!\1).)*)\1\s*\]/g;
 
 /** Every stat name a piece of code names, unescaped — by `.name` comparison or by map lookup. Template
  *  literals with `${}` are dynamic and skipped — there is no literal name to check. */

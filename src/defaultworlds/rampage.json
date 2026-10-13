@@ -21,107 +21,6 @@
   },
   "stats": [
     {
-      "id": "health",
-      "name": "Health",
-      "description": "Represents the player's physical well-being and ability to sustain damage",
-      "min": 0,
-      "max": 100,
-      "value": 100,
-      "regen": 3,
-      "descriptors": [
-        {
-          "id": "health_critical",
-          "threshold": 10,
-          "description": "Critical condition. Severely wounded, barely conscious, and at risk of death."
-        },
-        {
-          "id": "health_injured",
-          "threshold": 40,
-          "description": "Injured. Suffering from multiple wounds, movement impaired, combat effectiveness reduced."
-        },
-        {
-          "id": "health_hurt",
-          "threshold": 70,
-          "description": "Hurt. Minor injuries present, some pain, but generally functional."
-        },
-        {
-          "id": "health_healthy",
-          "threshold": 100,
-          "description": "Healthy. No significant injuries, operating at full capacity."
-        }
-      ],
-      "type": "number",
-      "starting": 100,
-      "thresholdUnit": "percent"
-    },
-    {
-      "id": "stamina",
-      "name": "Stamina",
-      "description": "Represents the player's energy and ability to perform physical actions",
-      "min": 0,
-      "max": 100,
-      "value": 100,
-      "regen": 6,
-      "descriptors": [
-        {
-          "id": "stamina_exhausted",
-          "threshold": 10,
-          "description": "Exhausted. Barely able to move, risk of collapse, unable to perform strenuous actions."
-        },
-        {
-          "id": "stamina_tired",
-          "threshold": 40,
-          "description": "Tired. Movements are sluggish, difficulty in sustained physical activities."
-        },
-        {
-          "id": "stamina_winded",
-          "threshold": 70,
-          "description": "Winded. Slightly out of breath, can perform most actions but not at peak efficiency."
-        },
-        {
-          "id": "stamina_energetic",
-          "threshold": 100,
-          "description": "Energetic. Full of energy, capable of performing any physical action without hindrance."
-        }
-      ],
-      "type": "number",
-      "starting": 100,
-      "thresholdUnit": "percent"
-    },
-    {
-      "id": "rampage",
-      "name": "Rampage",
-      "type": "number",
-      "min": 0,
-      "max": 100,
-      "starting": 10,
-      "regen": -2,
-      "description": "The creature's building fury. It rises as they cause destruction and fuels their most devastating attacks.",
-      "descriptors": [
-        {
-          "id": 1,
-          "threshold": 25,
-          "description": "Calm. Just getting started; their blows land like an ordinary monster's."
-        },
-        {
-          "id": 2,
-          "threshold": 50,
-          "description": "Riled. Anger is building; their attacks hit noticeably harder."
-        },
-        {
-          "id": 3,
-          "threshold": 80,
-          "description": "Furious. On a tear — sweeping, building-leveling strikes."
-        },
-        {
-          "id": 4,
-          "threshold": 100,
-          "description": "Unstoppable. Pure destruction; nothing in the city is safe."
-        }
-      ],
-      "value": 10
-    },
-    {
       "id": "1782763259631",
       "name": "Destruction",
       "type": "number",
@@ -189,7 +88,7 @@
           "description": "Last resort: Aegis-One and experimental weapons are cleared to engage."
         }
       ],
-      "code": "const destruction = stats.Destruction.value;\nconst rampage = stats.Rampage.value;\nreturn Math.round(destruction * 0.6 + rampage * 0.4);"
+      "code": "const destruction = stats.Destruction.value;\nconst rampage = entities[\"The Creature\"].stats.Rampage.value;\nreturn Math.round(destruction * 0.6 + rampage * 0.4);"
     }
   ],
   "locations": [
@@ -312,6 +211,338 @@
     }
   ],
   "entities": [
+    {
+      "id": "5f7e8ab6-7e6a-46f3-bc6b-85e3f5923431",
+      "name": "The Creature",
+      "type": "Creature",
+      "playerDescription": "A colossal creature wading out of the bay, taller than the towers of Neonspire.",
+      "aiDescription": "{{char}} is a colossal creature rampaging through Neonspire, and the earth shakes with every step.",
+      "aiSummary": "A colossal creature rampaging through a city.",
+      "customPersona": true,
+      "traits": [
+        {
+          "id": "43d6f631-3784-42ff-9a12-a2a072dd6b16",
+          "name": "Masculine",
+          "playerDescription": "You are masculine in presentation.",
+          "aiDescription": "The player character is male.",
+          "statChanges": [],
+          "groupId": "dcd9df65-88fe-4851-afc7-8e6f6d5814bc",
+          "isDefault": true,
+          "order": 0
+        },
+        {
+          "id": "0de4d83b-180c-41f7-99a3-b0cee9b02632",
+          "name": "Feminine",
+          "playerDescription": "You are feminine in presentation.",
+          "aiDescription": "The player character is female.",
+          "statChanges": [],
+          "groupId": "dcd9df65-88fe-4851-afc7-8e6f6d5814bc",
+          "isDefault": false,
+          "order": 1
+        },
+        {
+          "id": "ee972433-381a-41f8-939c-966f607a9f52",
+          "name": "Reptile",
+          "playerDescription": "You are a hulking reptilian Kaiju with sharp fangs and claws, crushing those below underneath your two feet.",
+          "aiDescription": "The player character is a bi-pedal reptilian Kaiju with sharp teeth and claws.",
+          "statChanges": [],
+          "groupId": "5927c5c9-d030-462f-82a7-dde2710d2f77",
+          "isDefault": true,
+          "order": 0
+        },
+        {
+          "id": "27324f66-1759-4c5d-b535-151be13d9548",
+          "name": "Insect",
+          "playerDescription": "You are a hulking insectoid Kaiju with mandibles and spiked limbs, crushing those below underneath your two skittering feet.",
+          "aiDescription": "The player character is a bi-pedal insectoid Kaiju with mandibles and spiked limbs.",
+          "statChanges": [],
+          "groupId": "5927c5c9-d030-462f-82a7-dde2710d2f77",
+          "isDefault": false,
+          "order": 1
+        },
+        {
+          "id": "6fb2d510-23a4-4c69-aca7-86314364a617",
+          "name": "Arachnid",
+          "playerDescription": "You are a hulking arachnid Kaiju with poisonous mandibles and eight massive furry legs.",
+          "aiDescription": "The player character is an arachnid Kaiju with poisonous mandibles and eight furry legs.",
+          "statChanges": [],
+          "groupId": "5927c5c9-d030-462f-82a7-dde2710d2f77",
+          "isDefault": false,
+          "order": 2
+        },
+        {
+          "id": "a8581d0c-3b5a-405c-b8e9-80a8958fffd1",
+          "name": "Giant",
+          "playerDescription": "You are a giant human.",
+          "aiDescription": "The player character is a giant human.",
+          "statChanges": [],
+          "groupId": "5927c5c9-d030-462f-82a7-dde2710d2f77",
+          "isDefault": false,
+          "order": 3
+        },
+        {
+          "id": "armored_hide",
+          "name": "Armored Hide",
+          "statChanges": [
+            {
+              "statId": "health",
+              "value": 20,
+              "type": "max"
+            },
+            {
+              "statId": "stamina",
+              "value": -10,
+              "type": "max"
+            }
+          ],
+          "playerDescription": "Your skin is incredibly tough, shrugging off military fire — but all that bulk slows you down.",
+          "groupId": "929b816e-8c1c-45a9-8bd8-8a3c59d5ddc3",
+          "order": 0,
+          "aiDescription": "The player character is resilient to ballistics but slower to move and react."
+        },
+        {
+          "id": "short_fuse",
+          "name": "Short Fuse",
+          "statChanges": [
+            {
+              "statId": "rampage",
+              "value": 25,
+              "type": "starting"
+            },
+            {
+              "statId": "stamina",
+              "value": -5,
+              "type": "max"
+            }
+          ],
+          "playerDescription": "Your fury builds fast and runs hot, so you reach full rampage sooner.",
+          "groupId": "929b816e-8c1c-45a9-8bd8-8a3c59d5ddc3",
+          "order": 1,
+          "aiDescription": "The player character builds Rampage quickly but loses more stamina in the process."
+        },
+        {
+          "id": "unrelenting",
+          "name": "Unrelenting",
+          "statChanges": [
+            {
+              "statId": "stamina",
+              "value": 20,
+              "type": "max"
+            },
+            {
+              "statId": "health",
+              "value": -10,
+              "type": "max"
+            }
+          ],
+          "playerDescription": "You attack tirelessly and never let up, though you push your body hard to do it.",
+          "groupId": "929b816e-8c1c-45a9-8bd8-8a3c59d5ddc3",
+          "order": 2,
+          "aiDescription": "The player character preserves stamina but loses health more easily."
+        },
+        {
+          "id": "596b32ce-3899-4187-9543-1545ed63ca22",
+          "name": "Breath Weapon",
+          "groupId": "929b816e-8c1c-45a9-8bd8-8a3c59d5ddc3",
+          "order": 3,
+          "playerDescription": "A devastating ranged breath attack — fire, venom, or energy to match your type. Each blast takes a lot out of you.",
+          "aiDescription": "The player has a devastating ranged breath weapon (fire, venom, or energy, matching their kaiju type). It levels whole blocks and swats aircraft, but each blast is deeply exhausting.",
+          "statChanges": [
+            {
+              "statId": "stamina",
+              "value": -10,
+              "type": "max"
+            }
+          ]
+        },
+        {
+          "id": "568f9bf4-737b-41ee-a8b6-fa46d01569bc",
+          "name": "Regenerator",
+          "groupId": "929b816e-8c1c-45a9-8bd8-8a3c59d5ddc3",
+          "order": 4,
+          "playerDescription": "Your wounds visibly knit closed. The healing burns energy you could have spent smashing.",
+          "aiDescription": "The player regenerates: wounds visibly knit closed over minutes. The healing constantly draws on their energy.",
+          "statChanges": [
+            {
+              "statId": "health",
+              "value": 2,
+              "type": "regen"
+            },
+            {
+              "statId": "stamina",
+              "value": -1,
+              "type": "regen"
+            }
+          ]
+        },
+        {
+          "id": "9ae76163-b617-4a2c-b049-711383086798",
+          "name": "Wings",
+          "groupId": "929b816e-8c1c-45a9-8bd8-8a3c59d5ddc3",
+          "order": 5,
+          "playerDescription": "Vast wings that can carry you between districts and over the military’s heads — on a lighter, more fragile frame.",
+          "aiDescription": "The player has vast wings: they can glide or fly short distances between districts, over cordons and armor entirely. Their frame is lighter and more fragile for it.",
+          "statChanges": [
+            {
+              "statId": "health",
+              "value": -10,
+              "type": "max"
+            }
+          ]
+        },
+        {
+          "id": "53b1a4bc-9281-4e39-9fe5-2e1e6d77db34",
+          "name": "Berserk State",
+          "order": 6,
+          "playerToggle": true,
+          "playerDescription": "Let the fury off its leash. Your Rampage feeds itself while this is on — but your wounds get worse, not better.",
+          "aiDescription": "ACTIVE: the player is berserk — fury feeding itself, attacks wild and relentless, ignoring pain and caution entirely. Their wounds go untended and worsen while it lasts.",
+          "statChanges": [
+            {
+              "statId": "rampage",
+              "value": 5,
+              "type": "regen"
+            },
+            {
+              "statId": "health",
+              "value": -4,
+              "type": "regen"
+            }
+          ]
+        }
+      ],
+      "traitGroups": [
+        {
+          "id": "dcd9df65-88fe-4851-afc7-8e6f6d5814bc",
+          "name": "Body",
+          "playerDescription": "How you present. Pick one.",
+          "aiDescription": "The player’s presentation:",
+          "parentId": null,
+          "order": 0,
+          "exclusive": true
+        },
+        {
+          "id": "929b816e-8c1c-45a9-8bd8-8a3c59d5ddc3",
+          "name": "Mutations",
+          "playerDescription": "Optional mutations — each trades something for something. Take any.",
+          "aiDescription": "The player’s mutations:",
+          "parentId": null,
+          "order": 1
+        },
+        {
+          "id": "5927c5c9-d030-462f-82a7-dde2710d2f77",
+          "name": "Type",
+          "playerDescription": "What kind of colossus you are. Pick one.",
+          "aiDescription": "The player’s kaiju type:",
+          "parentId": "dcd9df65-88fe-4851-afc7-8e6f6d5814bc",
+          "order": 2,
+          "exclusive": true
+        }
+      ],
+      "stats": [
+        {
+          "id": "health",
+          "name": "Health",
+          "description": "Represents the player's physical well-being and ability to sustain damage",
+          "min": 0,
+          "max": 100,
+          "value": 100,
+          "regen": 3,
+          "descriptors": [
+            {
+              "id": "health_critical",
+              "threshold": 10,
+              "description": "Critical condition. Severely wounded, barely conscious, and at risk of death."
+            },
+            {
+              "id": "health_injured",
+              "threshold": 40,
+              "description": "Injured. Suffering from multiple wounds, movement impaired, combat effectiveness reduced."
+            },
+            {
+              "id": "health_hurt",
+              "threshold": 70,
+              "description": "Hurt. Minor injuries present, some pain, but generally functional."
+            },
+            {
+              "id": "health_healthy",
+              "threshold": 100,
+              "description": "Healthy. No significant injuries, operating at full capacity."
+            }
+          ],
+          "type": "number",
+          "starting": 100,
+          "thresholdUnit": "percent"
+        },
+        {
+          "id": "stamina",
+          "name": "Stamina",
+          "description": "Represents the player's energy and ability to perform physical actions",
+          "min": 0,
+          "max": 100,
+          "value": 100,
+          "regen": 6,
+          "descriptors": [
+            {
+              "id": "stamina_exhausted",
+              "threshold": 10,
+              "description": "Exhausted. Barely able to move, risk of collapse, unable to perform strenuous actions."
+            },
+            {
+              "id": "stamina_tired",
+              "threshold": 40,
+              "description": "Tired. Movements are sluggish, difficulty in sustained physical activities."
+            },
+            {
+              "id": "stamina_winded",
+              "threshold": 70,
+              "description": "Winded. Slightly out of breath, can perform most actions but not at peak efficiency."
+            },
+            {
+              "id": "stamina_energetic",
+              "threshold": 100,
+              "description": "Energetic. Full of energy, capable of performing any physical action without hindrance."
+            }
+          ],
+          "type": "number",
+          "starting": 100,
+          "thresholdUnit": "percent"
+        },
+        {
+          "id": "rampage",
+          "name": "Rampage",
+          "type": "number",
+          "min": 0,
+          "max": 100,
+          "starting": 10,
+          "regen": -2,
+          "description": "The creature's building fury. It rises as they cause destruction and fuels their most devastating attacks.",
+          "descriptors": [
+            {
+              "id": 1,
+              "threshold": 25,
+              "description": "Calm. Just getting started; their blows land like an ordinary monster's."
+            },
+            {
+              "id": 2,
+              "threshold": 50,
+              "description": "Riled. Anger is building; their attacks hit noticeably harder."
+            },
+            {
+              "id": 3,
+              "threshold": 80,
+              "description": "Furious. On a tear — sweeping, building-leveling strikes."
+            },
+            {
+              "id": 4,
+              "threshold": 100,
+              "description": "Unstoppable. Pure destruction; nothing in the city is safe."
+            }
+          ],
+          "value": 10
+        }
+      ]
+    },
     {
       "id": "1739140807977",
       "name": "Battle Tank",
@@ -450,226 +681,8 @@
       ]
     }
   ],
-  "traits": [
-    {
-      "id": "43d6f631-3784-42ff-9a12-a2a072dd6b16",
-      "name": "Masculine",
-      "playerDescription": "You are masculine in presentation.",
-      "aiDescription": "The player character is male.",
-      "statChanges": [],
-      "groupId": "dcd9df65-88fe-4851-afc7-8e6f6d5814bc",
-      "isDefault": true,
-      "order": 0
-    },
-    {
-      "id": "0de4d83b-180c-41f7-99a3-b0cee9b02632",
-      "name": "Feminine",
-      "playerDescription": "You are feminine in presentation.",
-      "aiDescription": "The player character is female.",
-      "statChanges": [],
-      "groupId": "dcd9df65-88fe-4851-afc7-8e6f6d5814bc",
-      "isDefault": false,
-      "order": 1
-    },
-    {
-      "id": "ee972433-381a-41f8-939c-966f607a9f52",
-      "name": "Reptile",
-      "playerDescription": "You are a hulking reptilian Kaiju with sharp fangs and claws, crushing those below underneath your two feet.",
-      "aiDescription": "The player character is a bi-pedal reptilian Kaiju with sharp teeth and claws.",
-      "statChanges": [],
-      "groupId": "5927c5c9-d030-462f-82a7-dde2710d2f77",
-      "isDefault": true,
-      "order": 0
-    },
-    {
-      "id": "27324f66-1759-4c5d-b535-151be13d9548",
-      "name": "Insect",
-      "playerDescription": "You are a hulking insectoid Kaiju with mandibles and spiked limbs, crushing those below underneath your two skittering feet.",
-      "aiDescription": "The player character is a bi-pedal insectoid Kaiju with mandibles and spiked limbs.",
-      "statChanges": [],
-      "groupId": "5927c5c9-d030-462f-82a7-dde2710d2f77",
-      "isDefault": false,
-      "order": 1
-    },
-    {
-      "id": "6fb2d510-23a4-4c69-aca7-86314364a617",
-      "name": "Arachnid",
-      "playerDescription": "You are a hulking arachnid Kaiju with poisonous mandibles and eight massive furry legs.",
-      "aiDescription": "The player character is an arachnid Kaiju with poisonous mandibles and eight furry legs.",
-      "statChanges": [],
-      "groupId": "5927c5c9-d030-462f-82a7-dde2710d2f77",
-      "isDefault": false,
-      "order": 2
-    },
-    {
-      "id": "a8581d0c-3b5a-405c-b8e9-80a8958fffd1",
-      "name": "Giant",
-      "playerDescription": "You are a giant human.",
-      "aiDescription": "The player character is a giant human.",
-      "statChanges": [],
-      "groupId": "5927c5c9-d030-462f-82a7-dde2710d2f77",
-      "isDefault": false,
-      "order": 3
-    },
-    {
-      "id": "armored_hide",
-      "name": "Armored Hide",
-      "statChanges": [
-        {
-          "statId": "health",
-          "value": 20,
-          "type": "max"
-        },
-        {
-          "statId": "stamina",
-          "value": -10,
-          "type": "max"
-        }
-      ],
-      "playerDescription": "Your skin is incredibly tough, shrugging off military fire — but all that bulk slows you down.",
-      "groupId": "929b816e-8c1c-45a9-8bd8-8a3c59d5ddc3",
-      "order": 0,
-      "aiDescription": "The player character is resilient to ballistics but slower to move and react."
-    },
-    {
-      "id": "short_fuse",
-      "name": "Short Fuse",
-      "statChanges": [
-        {
-          "statId": "rampage",
-          "value": 25,
-          "type": "starting"
-        },
-        {
-          "statId": "stamina",
-          "value": -5,
-          "type": "max"
-        }
-      ],
-      "playerDescription": "Your fury builds fast and runs hot, so you reach full rampage sooner.",
-      "groupId": "929b816e-8c1c-45a9-8bd8-8a3c59d5ddc3",
-      "order": 1,
-      "aiDescription": "The player character builds Rampage quickly but loses more stamina in the process."
-    },
-    {
-      "id": "unrelenting",
-      "name": "Unrelenting",
-      "statChanges": [
-        {
-          "statId": "stamina",
-          "value": 20,
-          "type": "max"
-        },
-        {
-          "statId": "health",
-          "value": -10,
-          "type": "max"
-        }
-      ],
-      "playerDescription": "You attack tirelessly and never let up, though you push your body hard to do it.",
-      "groupId": "929b816e-8c1c-45a9-8bd8-8a3c59d5ddc3",
-      "order": 2,
-      "aiDescription": "The player character preserves stamina but loses health more easily."
-    },
-    {
-      "id": "596b32ce-3899-4187-9543-1545ed63ca22",
-      "name": "Breath Weapon",
-      "groupId": "929b816e-8c1c-45a9-8bd8-8a3c59d5ddc3",
-      "order": 3,
-      "playerDescription": "A devastating ranged breath attack — fire, venom, or energy to match your type. Each blast takes a lot out of you.",
-      "aiDescription": "The player has a devastating ranged breath weapon (fire, venom, or energy, matching their kaiju type). It levels whole blocks and swats aircraft, but each blast is deeply exhausting.",
-      "statChanges": [
-        {
-          "statId": "stamina",
-          "value": -10,
-          "type": "max"
-        }
-      ]
-    },
-    {
-      "id": "568f9bf4-737b-41ee-a8b6-fa46d01569bc",
-      "name": "Regenerator",
-      "groupId": "929b816e-8c1c-45a9-8bd8-8a3c59d5ddc3",
-      "order": 4,
-      "playerDescription": "Your wounds visibly knit closed. The healing burns energy you could have spent smashing.",
-      "aiDescription": "The player regenerates: wounds visibly knit closed over minutes. The healing constantly draws on their energy.",
-      "statChanges": [
-        {
-          "statId": "health",
-          "value": 2,
-          "type": "regen"
-        },
-        {
-          "statId": "stamina",
-          "value": -1,
-          "type": "regen"
-        }
-      ]
-    },
-    {
-      "id": "9ae76163-b617-4a2c-b049-711383086798",
-      "name": "Wings",
-      "groupId": "929b816e-8c1c-45a9-8bd8-8a3c59d5ddc3",
-      "order": 5,
-      "playerDescription": "Vast wings that can carry you between districts and over the military’s heads — on a lighter, more fragile frame.",
-      "aiDescription": "The player has vast wings: they can glide or fly short distances between districts, over cordons and armor entirely. Their frame is lighter and more fragile for it.",
-      "statChanges": [
-        {
-          "statId": "health",
-          "value": -10,
-          "type": "max"
-        }
-      ]
-    },
-    {
-      "id": "53b1a4bc-9281-4e39-9fe5-2e1e6d77db34",
-      "name": "Berserk State",
-      "order": 6,
-      "playerToggle": true,
-      "playerDescription": "Let the fury off its leash. Your Rampage feeds itself while this is on — but your wounds get worse, not better.",
-      "aiDescription": "ACTIVE: the player is berserk — fury feeding itself, attacks wild and relentless, ignoring pain and caution entirely. Their wounds go untended and worsen while it lasts.",
-      "statChanges": [
-        {
-          "statId": "rampage",
-          "value": 5,
-          "type": "regen"
-        },
-        {
-          "statId": "health",
-          "value": -4,
-          "type": "regen"
-        }
-      ]
-    }
-  ],
-  "traitGroups": [
-    {
-      "id": "dcd9df65-88fe-4851-afc7-8e6f6d5814bc",
-      "name": "Body",
-      "playerDescription": "How you present. Pick one.",
-      "aiDescription": "The player’s presentation:",
-      "parentId": null,
-      "order": 0,
-      "exclusive": true
-    },
-    {
-      "id": "929b816e-8c1c-45a9-8bd8-8a3c59d5ddc3",
-      "name": "Mutations",
-      "playerDescription": "Optional mutations — each trades something for something. Take any.",
-      "aiDescription": "The player’s mutations:",
-      "parentId": null,
-      "order": 1
-    },
-    {
-      "id": "5927c5c9-d030-462f-82a7-dde2710d2f77",
-      "name": "Type",
-      "playerDescription": "What kind of colossus you are. Pick one.",
-      "aiDescription": "The player’s kaiju type:",
-      "parentId": "dcd9df65-88fe-4851-afc7-8e6f6d5814bc",
-      "order": 2,
-      "exclusive": true
-    }
-  ],
+  "traits": [],
+  "traitGroups": [],
   "statUpdates": [],
   "dictionaries": [
     {

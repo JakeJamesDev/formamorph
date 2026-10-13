@@ -21,176 +21,6 @@
   },
   "stats": [
     {
-      "id": "health",
-      "name": "Health",
-      "type": "number",
-      "description": "Represents the player's physical well-being and ability to sustain damage",
-      "min": 0,
-      "max": 100,
-      "value": 100,
-      "starting": 100,
-      "regen": 3,
-      "thresholdUnit": "percent",
-      "descriptors": [
-        {
-          "id": "health_critical",
-          "threshold": 10,
-          "description": "Critical condition. Severely wounded, barely conscious, and at risk of death."
-        },
-        {
-          "id": "health_injured",
-          "threshold": 40,
-          "description": "Injured. Suffering from multiple wounds, movement impaired, combat effectiveness reduced."
-        },
-        {
-          "id": "health_hurt",
-          "threshold": 70,
-          "description": "Hurt. Minor injuries present, some pain, but generally functional."
-        },
-        {
-          "id": "health_healthy",
-          "threshold": 100,
-          "description": "Healthy. No significant injuries, operating at full capacity."
-        }
-      ]
-    },
-    {
-      "id": "stamina",
-      "name": "Stamina",
-      "type": "number",
-      "description": "Represents the player's energy and ability to perform physical actions",
-      "min": 0,
-      "max": 100,
-      "value": 100,
-      "starting": 100,
-      "regen": 6,
-      "thresholdUnit": "percent",
-      "descriptors": [
-        {
-          "id": "stamina_exhausted",
-          "threshold": 10,
-          "description": "Exhausted. Barely able to move, risk of collapse, unable to perform strenuous actions."
-        },
-        {
-          "id": "stamina_tired",
-          "threshold": 40,
-          "description": "Tired. Movements are sluggish, difficulty in sustained physical activities."
-        },
-        {
-          "id": "stamina_winded",
-          "threshold": 70,
-          "description": "Winded. Slightly out of breath, can perform most actions but not at peak efficiency."
-        },
-        {
-          "id": "stamina_energetic",
-          "threshold": 100,
-          "description": "Energetic. Full of energy, capable of performing any physical action without hindrance."
-        }
-      ]
-    },
-    {
-      "id": "stress",
-      "name": "Stress",
-      "type": "number",
-      "description": "Represents the player's mental and emotional strain",
-      "min": 0,
-      "max": 100,
-      "value": 0,
-      "starting": 0,
-      "regen": -3,
-      "thresholdUnit": "percent",
-      "descriptors": [
-        {
-          "id": "stress_calm",
-          "threshold": 25,
-          "description": "Calm. Relaxed and clear-headed, able to make rational decisions easily."
-        },
-        {
-          "id": "stress_tense",
-          "threshold": 50,
-          "description": "Tense. Feeling pressure, slightly irritable, may have difficulty concentrating."
-        },
-        {
-          "id": "stress_anxious",
-          "threshold": 75,
-          "description": "Anxious. High tension, prone to emotional outbursts, decision-making impaired."
-        },
-        {
-          "id": "stress_breakdown",
-          "threshold": 100,
-          "description": "Mental breakdown. Overwhelmed by stress, irrational behavior, risk of panic attacks."
-        }
-      ]
-    },
-    {
-      "id": "satiety",
-      "name": "Satiety",
-      "type": "number",
-      "description": "Represents the player's need for food; falls steadily as time passes",
-      "min": 0,
-      "max": 100,
-      "value": 90,
-      "starting": 90,
-      "regen": -4,
-      "thresholdUnit": "percent",
-      "descriptors": [
-        {
-          "id": "satiety_starving",
-          "threshold": 25,
-          "description": "Starving. Intense hunger pains, weak and dizzy, risk of fainting, decreased cognitive function."
-        },
-        {
-          "id": "satiety_hungry",
-          "threshold": 50,
-          "description": "Hungry. Strong desire for food, stomach growling, difficulty concentrating."
-        },
-        {
-          "id": "satiety_peckish",
-          "threshold": 75,
-          "description": "Peckish. Slight hunger, starting to think about food."
-        },
-        {
-          "id": "satiety_satisfied",
-          "threshold": 100,
-          "description": "Satisfied. Full, no desire for food."
-        }
-      ]
-    },
-    {
-      "id": "toxin",
-      "name": "Toxin",
-      "type": "number",
-      "description": "Poison in the player's body; rises from eating toxic fungi and fades slowly on its own",
-      "min": 0,
-      "max": 100,
-      "value": 0,
-      "starting": 0,
-      "regen": -2,
-      "thresholdUnit": "percent",
-      "descriptors": [
-        {
-          "id": "toxin_clear",
-          "threshold": 20,
-          "description": "Clear. No poison worth naming; senses steady."
-        },
-        {
-          "id": "toxin_queasy",
-          "threshold": 45,
-          "description": "Queasy. A metallic taste; colors slightly too bright."
-        },
-        {
-          "id": "toxin_poisoned",
-          "threshold": 75,
-          "description": "Poisoned. Stomach cramps, cold sweat, sounds arriving late."
-        },
-        {
-          "id": "toxin_overwhelmed",
-          "threshold": 100,
-          "description": "Overwhelmed. The wood melts and rearranges; nothing the player sees or hears can be trusted."
-        }
-      ]
-    },
-    {
       "id": "attention",
       "name": "Predator Attention",
       "type": "number",
@@ -356,6 +186,424 @@
     }
   ],
   "entities": [
+    {
+      "id": "b9d6e959-177a-4593-a1ee-7a41e2d7d30e",
+      "name": "The Wanderer",
+      "type": "Person",
+      "playerDescription": "You are lost in the Veilwood, with the trail gone and the canopy blocking the sky.",
+      "aiDescription": "{{char}} is lost in the Veilwood, a drowned forest where the canopy swallows daylight and the fog never lifts.",
+      "aiSummary": "A traveler lost in a drowned forest.",
+      "customPersona": true,
+      "traits": [
+        {
+          "id": "iron_constitution",
+          "name": "Iron Constitution",
+          "groupId": "a300c220-1209-48f7-a96b-8acd7dab3948",
+          "order": 0,
+          "isDefault": true,
+          "playerDescription": "Hard to hurt, quick to mend.",
+          "aiDescription": "The player is remarkably resilient — they withstand more damage and recover from wounds faster than most.",
+          "statChanges": [
+            {
+              "statId": "health",
+              "value": 20,
+              "type": "max"
+            },
+            {
+              "statId": "health",
+              "value": 2,
+              "type": "regen"
+            }
+          ]
+        },
+        {
+          "id": "endurance_athlete",
+          "name": "Endurance Athlete",
+          "groupId": "a300c220-1209-48f7-a96b-8acd7dab3948",
+          "order": 1,
+          "playerDescription": "Built for the long haul — but the engine wants fuel.",
+          "aiDescription": "The player can sustain hard physical effort for a long time, at the cost of a fast metabolism that burns through food.",
+          "statChanges": [
+            {
+              "statId": "stamina",
+              "value": 25,
+              "type": "max"
+            },
+            {
+              "statId": "stamina",
+              "value": 2,
+              "type": "regen"
+            },
+            {
+              "statId": "satiety",
+              "value": -1,
+              "type": "regen"
+            }
+          ]
+        },
+        {
+          "id": "survivalist",
+          "name": "Survivalist",
+          "groupId": "a300c220-1209-48f7-a96b-8acd7dab3948",
+          "order": 2,
+          "playerDescription": "Needs less, endures more.",
+          "aiDescription": "The player is adapted to harsh conditions — they need less food than most and shake off poisons faster.",
+          "statChanges": [
+            {
+              "statId": "satiety",
+              "value": 2,
+              "type": "regen"
+            },
+            {
+              "statId": "toxin",
+              "value": -1,
+              "type": "regen"
+            }
+          ]
+        },
+        {
+          "id": "zen_master",
+          "name": "Zen Master",
+          "groupId": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
+          "order": 0,
+          "isDefault": true,
+          "playerDescription": "The dark is just the dark.",
+          "aiDescription": "The player stays calm under pressure — fear passes through them and drains away quickly.",
+          "statChanges": [
+            {
+              "statId": "stress",
+              "value": -2,
+              "type": "regen"
+            },
+            {
+              "statId": "stamina",
+              "value": 10,
+              "type": "max"
+            }
+          ]
+        },
+        {
+          "id": "adrenaline_junkie",
+          "name": "Adrenaline Junkie",
+          "groupId": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
+          "order": 1,
+          "playerDescription": "Fear is fuel. It just never quite switches off.",
+          "aiDescription": "The player thrives on danger — deeper energy reserves and faster recovery, but their nerves never fully settle.",
+          "statChanges": [
+            {
+              "statId": "stamina",
+              "value": 20,
+              "type": "max"
+            },
+            {
+              "statId": "stamina",
+              "value": 2,
+              "type": "regen"
+            },
+            {
+              "statId": "stress",
+              "value": 2,
+              "type": "regen"
+            }
+          ]
+        },
+        {
+          "id": "stress_eater",
+          "name": "Stress Eater",
+          "groupId": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
+          "order": 2,
+          "playerDescription": "Calm comes by the mouthful.",
+          "aiDescription": "Eating soothes the player — their fear fades fast, but their appetite runs ahead of their supplies.",
+          "statChanges": [
+            {
+              "statId": "stress",
+              "value": -3,
+              "type": "regen"
+            },
+            {
+              "statId": "satiety",
+              "value": -2,
+              "type": "regen"
+            }
+          ]
+        },
+        {
+          "id": "iron_stomach",
+          "name": "Iron Stomach",
+          "groupId": "4f031bb9-0c43-45f3-9f32-a9800bfe4f83",
+          "order": 0,
+          "playerDescription": "A gut that argues with poison — and usually wins.",
+          "aiDescription": "The player tolerates toxins far better than most and purges them faster.",
+          "statChanges": [
+            {
+              "statId": "toxin",
+              "value": 25,
+              "type": "max"
+            },
+            {
+              "statId": "toxin",
+              "value": -1,
+              "type": "regen"
+            }
+          ]
+        },
+        {
+          "id": "hearty_appetite",
+          "name": "Hearty Appetite",
+          "groupId": "4f031bb9-0c43-45f3-9f32-a9800bfe4f83",
+          "order": 1,
+          "playerDescription": "You can eat big when the chance comes, and it carries you further.",
+          "aiDescription": "The player can eat large amounts when food is available and draws more benefit from every meal.",
+          "statChanges": [
+            {
+              "statId": "satiety",
+              "value": 20,
+              "type": "max"
+            },
+            {
+              "statId": "health",
+              "value": 5,
+              "type": "max"
+            }
+          ]
+        },
+        {
+          "id": "keen_eye",
+          "name": "Keen Eye",
+          "groupId": "4f031bb9-0c43-45f3-9f32-a9800bfe4f83",
+          "order": 2,
+          "playerDescription": "You see the wrong color and the too-still shadow before they see you.",
+          "aiDescription": "The player notices what others miss — a wrong color on a cap, a too-still shadow, predator sign before the predator. They blunder into danger far less often.",
+          "statChanges": [
+            {
+              "statId": "attention",
+              "value": -1,
+              "type": "regen"
+            }
+          ]
+        },
+        {
+          "id": "move_quietly",
+          "name": "Move Quietly",
+          "order": 3,
+          "playerToggle": true,
+          "playerDescription": "Slow, tested steps and shallow breathing. Hard to track — and tiring.",
+          "aiDescription": "ACTIVE: the player moves slowly and deliberately — testing each step, breathing shallow, touching nothing. They are very hard to hear or track, but cover ground slowly and the sustained tension is tiring.",
+          "statChanges": [
+            {
+              "statId": "attention",
+              "value": -3,
+              "type": "regen"
+            },
+            {
+              "statId": "stamina",
+              "value": -2,
+              "type": "regen"
+            }
+          ]
+        }
+      ],
+      "traitGroups": [
+        {
+          "id": "a300c220-1209-48f7-a96b-8acd7dab3948",
+          "name": "Constitution",
+          "parentId": null,
+          "order": 0,
+          "exclusive": true,
+          "playerDescription": "What your body brings to a bad week. Pick one.",
+          "aiDescription": "The player's physical constitution:"
+        },
+        {
+          "id": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
+          "name": "Temperament",
+          "parentId": null,
+          "order": 1,
+          "exclusive": true,
+          "playerDescription": "How your mind meets the dark. Pick one.",
+          "aiDescription": "The player's temperament under pressure:"
+        },
+        {
+          "id": "4f031bb9-0c43-45f3-9f32-a9800bfe4f83",
+          "name": "Instincts",
+          "parentId": null,
+          "order": 2,
+          "playerDescription": "Instincts worth having in a place like this. Take any.",
+          "aiDescription": "The player's learned instincts:"
+        }
+      ],
+      "stats": [
+        {
+          "id": "health",
+          "name": "Health",
+          "type": "number",
+          "description": "Represents the player's physical well-being and ability to sustain damage",
+          "min": 0,
+          "max": 100,
+          "value": 100,
+          "starting": 100,
+          "regen": 3,
+          "thresholdUnit": "percent",
+          "descriptors": [
+            {
+              "id": "health_critical",
+              "threshold": 10,
+              "description": "Critical condition. Severely wounded, barely conscious, and at risk of death."
+            },
+            {
+              "id": "health_injured",
+              "threshold": 40,
+              "description": "Injured. Suffering from multiple wounds, movement impaired, combat effectiveness reduced."
+            },
+            {
+              "id": "health_hurt",
+              "threshold": 70,
+              "description": "Hurt. Minor injuries present, some pain, but generally functional."
+            },
+            {
+              "id": "health_healthy",
+              "threshold": 100,
+              "description": "Healthy. No significant injuries, operating at full capacity."
+            }
+          ]
+        },
+        {
+          "id": "stamina",
+          "name": "Stamina",
+          "type": "number",
+          "description": "Represents the player's energy and ability to perform physical actions",
+          "min": 0,
+          "max": 100,
+          "value": 100,
+          "starting": 100,
+          "regen": 6,
+          "thresholdUnit": "percent",
+          "descriptors": [
+            {
+              "id": "stamina_exhausted",
+              "threshold": 10,
+              "description": "Exhausted. Barely able to move, risk of collapse, unable to perform strenuous actions."
+            },
+            {
+              "id": "stamina_tired",
+              "threshold": 40,
+              "description": "Tired. Movements are sluggish, difficulty in sustained physical activities."
+            },
+            {
+              "id": "stamina_winded",
+              "threshold": 70,
+              "description": "Winded. Slightly out of breath, can perform most actions but not at peak efficiency."
+            },
+            {
+              "id": "stamina_energetic",
+              "threshold": 100,
+              "description": "Energetic. Full of energy, capable of performing any physical action without hindrance."
+            }
+          ]
+        },
+        {
+          "id": "stress",
+          "name": "Stress",
+          "type": "number",
+          "description": "Represents the player's mental and emotional strain",
+          "min": 0,
+          "max": 100,
+          "value": 0,
+          "starting": 0,
+          "regen": -3,
+          "thresholdUnit": "percent",
+          "descriptors": [
+            {
+              "id": "stress_calm",
+              "threshold": 25,
+              "description": "Calm. Relaxed and clear-headed, able to make rational decisions easily."
+            },
+            {
+              "id": "stress_tense",
+              "threshold": 50,
+              "description": "Tense. Feeling pressure, slightly irritable, may have difficulty concentrating."
+            },
+            {
+              "id": "stress_anxious",
+              "threshold": 75,
+              "description": "Anxious. High tension, prone to emotional outbursts, decision-making impaired."
+            },
+            {
+              "id": "stress_breakdown",
+              "threshold": 100,
+              "description": "Mental breakdown. Overwhelmed by stress, irrational behavior, risk of panic attacks."
+            }
+          ]
+        },
+        {
+          "id": "satiety",
+          "name": "Satiety",
+          "type": "number",
+          "description": "Represents the player's need for food; falls steadily as time passes",
+          "min": 0,
+          "max": 100,
+          "value": 90,
+          "starting": 90,
+          "regen": -4,
+          "thresholdUnit": "percent",
+          "descriptors": [
+            {
+              "id": "satiety_starving",
+              "threshold": 25,
+              "description": "Starving. Intense hunger pains, weak and dizzy, risk of fainting, decreased cognitive function."
+            },
+            {
+              "id": "satiety_hungry",
+              "threshold": 50,
+              "description": "Hungry. Strong desire for food, stomach growling, difficulty concentrating."
+            },
+            {
+              "id": "satiety_peckish",
+              "threshold": 75,
+              "description": "Peckish. Slight hunger, starting to think about food."
+            },
+            {
+              "id": "satiety_satisfied",
+              "threshold": 100,
+              "description": "Satisfied. Full, no desire for food."
+            }
+          ]
+        },
+        {
+          "id": "toxin",
+          "name": "Toxin",
+          "type": "number",
+          "description": "Poison in the player's body; rises from eating toxic fungi and fades slowly on its own",
+          "min": 0,
+          "max": 100,
+          "value": 0,
+          "starting": 0,
+          "regen": -2,
+          "thresholdUnit": "percent",
+          "descriptors": [
+            {
+              "id": "toxin_clear",
+              "threshold": 20,
+              "description": "Clear. No poison worth naming; senses steady."
+            },
+            {
+              "id": "toxin_queasy",
+              "threshold": 45,
+              "description": "Queasy. A metallic taste; colors slightly too bright."
+            },
+            {
+              "id": "toxin_poisoned",
+              "threshold": 75,
+              "description": "Poisoned. Stomach cramps, cold sweat, sounds arriving late."
+            },
+            {
+              "id": "toxin_overwhelmed",
+              "threshold": 100,
+              "description": "Overwhelmed. The wood melts and rearranges; nothing the player sees or hears can be trusted."
+            }
+          ]
+        }
+      ]
+    },
     {
       "id": "1725036145521",
       "name": "Ember Speckle",
@@ -523,243 +771,8 @@
       ]
     }
   ],
-  "traits": [
-    {
-      "id": "iron_constitution",
-      "name": "Iron Constitution",
-      "groupId": "a300c220-1209-48f7-a96b-8acd7dab3948",
-      "order": 0,
-      "isDefault": true,
-      "playerDescription": "Hard to hurt, quick to mend.",
-      "aiDescription": "The player is remarkably resilient — they withstand more damage and recover from wounds faster than most.",
-      "statChanges": [
-        {
-          "statId": "health",
-          "value": 20,
-          "type": "max"
-        },
-        {
-          "statId": "health",
-          "value": 2,
-          "type": "regen"
-        }
-      ]
-    },
-    {
-      "id": "endurance_athlete",
-      "name": "Endurance Athlete",
-      "groupId": "a300c220-1209-48f7-a96b-8acd7dab3948",
-      "order": 1,
-      "playerDescription": "Built for the long haul — but the engine wants fuel.",
-      "aiDescription": "The player can sustain hard physical effort for a long time, at the cost of a fast metabolism that burns through food.",
-      "statChanges": [
-        {
-          "statId": "stamina",
-          "value": 25,
-          "type": "max"
-        },
-        {
-          "statId": "stamina",
-          "value": 2,
-          "type": "regen"
-        },
-        {
-          "statId": "satiety",
-          "value": -1,
-          "type": "regen"
-        }
-      ]
-    },
-    {
-      "id": "survivalist",
-      "name": "Survivalist",
-      "groupId": "a300c220-1209-48f7-a96b-8acd7dab3948",
-      "order": 2,
-      "playerDescription": "Needs less, endures more.",
-      "aiDescription": "The player is adapted to harsh conditions — they need less food than most and shake off poisons faster.",
-      "statChanges": [
-        {
-          "statId": "satiety",
-          "value": 2,
-          "type": "regen"
-        },
-        {
-          "statId": "toxin",
-          "value": -1,
-          "type": "regen"
-        }
-      ]
-    },
-    {
-      "id": "zen_master",
-      "name": "Zen Master",
-      "groupId": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
-      "order": 0,
-      "isDefault": true,
-      "playerDescription": "The dark is just the dark.",
-      "aiDescription": "The player stays calm under pressure — fear passes through them and drains away quickly.",
-      "statChanges": [
-        {
-          "statId": "stress",
-          "value": -2,
-          "type": "regen"
-        },
-        {
-          "statId": "stamina",
-          "value": 10,
-          "type": "max"
-        }
-      ]
-    },
-    {
-      "id": "adrenaline_junkie",
-      "name": "Adrenaline Junkie",
-      "groupId": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
-      "order": 1,
-      "playerDescription": "Fear is fuel. It just never quite switches off.",
-      "aiDescription": "The player thrives on danger — deeper energy reserves and faster recovery, but their nerves never fully settle.",
-      "statChanges": [
-        {
-          "statId": "stamina",
-          "value": 20,
-          "type": "max"
-        },
-        {
-          "statId": "stamina",
-          "value": 2,
-          "type": "regen"
-        },
-        {
-          "statId": "stress",
-          "value": 2,
-          "type": "regen"
-        }
-      ]
-    },
-    {
-      "id": "stress_eater",
-      "name": "Stress Eater",
-      "groupId": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
-      "order": 2,
-      "playerDescription": "Calm comes by the mouthful.",
-      "aiDescription": "Eating soothes the player — their fear fades fast, but their appetite runs ahead of their supplies.",
-      "statChanges": [
-        {
-          "statId": "stress",
-          "value": -3,
-          "type": "regen"
-        },
-        {
-          "statId": "satiety",
-          "value": -2,
-          "type": "regen"
-        }
-      ]
-    },
-    {
-      "id": "iron_stomach",
-      "name": "Iron Stomach",
-      "groupId": "4f031bb9-0c43-45f3-9f32-a9800bfe4f83",
-      "order": 0,
-      "playerDescription": "A gut that argues with poison — and usually wins.",
-      "aiDescription": "The player tolerates toxins far better than most and purges them faster.",
-      "statChanges": [
-        {
-          "statId": "toxin",
-          "value": 25,
-          "type": "max"
-        },
-        {
-          "statId": "toxin",
-          "value": -1,
-          "type": "regen"
-        }
-      ]
-    },
-    {
-      "id": "hearty_appetite",
-      "name": "Hearty Appetite",
-      "groupId": "4f031bb9-0c43-45f3-9f32-a9800bfe4f83",
-      "order": 1,
-      "playerDescription": "You can eat big when the chance comes, and it carries you further.",
-      "aiDescription": "The player can eat large amounts when food is available and draws more benefit from every meal.",
-      "statChanges": [
-        {
-          "statId": "satiety",
-          "value": 20,
-          "type": "max"
-        },
-        {
-          "statId": "health",
-          "value": 5,
-          "type": "max"
-        }
-      ]
-    },
-    {
-      "id": "keen_eye",
-      "name": "Keen Eye",
-      "groupId": "4f031bb9-0c43-45f3-9f32-a9800bfe4f83",
-      "order": 2,
-      "playerDescription": "You see the wrong color and the too-still shadow before they see you.",
-      "aiDescription": "The player notices what others miss — a wrong color on a cap, a too-still shadow, predator sign before the predator. They blunder into danger far less often.",
-      "statChanges": [
-        {
-          "statId": "attention",
-          "value": -1,
-          "type": "regen"
-        }
-      ]
-    },
-    {
-      "id": "move_quietly",
-      "name": "Move Quietly",
-      "order": 3,
-      "playerToggle": true,
-      "playerDescription": "Slow, tested steps and shallow breathing. Hard to track — and tiring.",
-      "aiDescription": "ACTIVE: the player moves slowly and deliberately — testing each step, breathing shallow, touching nothing. They are very hard to hear or track, but cover ground slowly and the sustained tension is tiring.",
-      "statChanges": [
-        {
-          "statId": "attention",
-          "value": -3,
-          "type": "regen"
-        },
-        {
-          "statId": "stamina",
-          "value": -2,
-          "type": "regen"
-        }
-      ]
-    }
-  ],
-  "traitGroups": [
-    {
-      "id": "a300c220-1209-48f7-a96b-8acd7dab3948",
-      "name": "Constitution",
-      "parentId": null,
-      "order": 0,
-      "exclusive": true,
-      "playerDescription": "What your body brings to a bad week. Pick one.",
-      "aiDescription": "The player's physical constitution:"
-    },
-    {
-      "id": "3b535bd1-4b49-44ee-9a88-3247a20588b1",
-      "name": "Temperament",
-      "parentId": null,
-      "order": 1,
-      "exclusive": true,
-      "playerDescription": "How your mind meets the dark. Pick one.",
-      "aiDescription": "The player's temperament under pressure:"
-    },
-    {
-      "id": "4f031bb9-0c43-45f3-9f32-a9800bfe4f83",
-      "name": "Instincts",
-      "parentId": null,
-      "order": 2,
-      "playerDescription": "Instincts worth having in a place like this. Take any.",
-      "aiDescription": "The player's learned instincts:"
-    }
-  ],
+  "traits": [],
+  "traitGroups": [],
   "statUpdates": [],
   "dictionaries": [
     {

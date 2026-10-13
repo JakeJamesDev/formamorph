@@ -1,6 +1,6 @@
 # 04: Bundled Worlds Own Their Player Stats
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -29,3 +29,23 @@ Rulings: Q5, Q18, Q19, Q20, Q21.
 - [ ] The code test passes for every stat in every bundled world.
 - [ ] The six persona names are in this ticket's Comments with the user's sign-off.
 - [ ] A new game in Rampage shows Health under the persona and Destruction under the world in the stat panel.
+
+## Comments
+
+**Persona names, for sign-off (Q21).** The user answered the proposal with one change, for Drone, and left the other five as proposed.
+
+| World | Custom Persona | Note |
+|---|---|---|
+| Drone | `{{designation}}` | Placeholder with six robotic designations: Unit-07, Cog-9, Rivet-4, Axiom-0, Node-12, Vector-3. One roll per playthrough (user ruling) |
+| Rampage | The Creature | |
+| Slime | The Resident | |
+| Sugarscape | The Cursed | |
+| Valentines | The Student | |
+| Veilwood | The Wanderer | |
+
+**Ruling folds (spec Q22 to Q25).**
+- Each world's root traits and trait groups moved onto its persona with the stats, so the stat rows stay alive. Open Chat's traits stay loose. Emberwatch's root stays.
+- A persona trait's row on a loose world stat (Long Coat → Suspicion, Student Council President → Pursuit, Keen Eye and Move Quietly → Predator Attention) still moves the world stat. A test pins it.
+- Alert Level reads `entities["The Creature"].stats.Rampage`. The Test Bench rule `stat-code-unknown-stat` no longer treats a member-qualified `.stats` read as a world lookup (Q25).
+- The `Entity` doc comments that said owned traits carry no stat rows, and that play does not read owned stats, are corrected.
+- The Rampage acceptance line is proved at the seed seam, not driven in the stat panel.

@@ -19,177 +19,7 @@
     "openingCue": "I wake with my cheek in a hillside of ice cream and my mouth already watering. The hunger is awake too — I can feel it looking around through my eyes. Far off, past the rainbow, one strip of the horizon has no color at all.",
     "openingCueEnabled": true
   },
-  "stats": [
-    {
-      "id": "health",
-      "name": "Health",
-      "type": "number",
-      "description": "Represents the player's physical well-being and ability to sustain damage",
-      "min": 0,
-      "max": 100,
-      "value": 100,
-      "starting": 100,
-      "regen": 3,
-      "thresholdUnit": "percent",
-      "descriptors": [
-        {
-          "id": "health_critical",
-          "threshold": 10,
-          "description": "Critical condition. Severely battered, barely conscious, in real trouble."
-        },
-        {
-          "id": "health_injured",
-          "threshold": 40,
-          "description": "Injured. Bruised and aching, movement impaired."
-        },
-        {
-          "id": "health_hurt",
-          "threshold": 70,
-          "description": "Hurt. Minor knocks and scrapes, some pain, but generally functional."
-        },
-        {
-          "id": "health_healthy",
-          "threshold": 100,
-          "description": "Healthy. No significant injuries, operating at full capacity."
-        }
-      ]
-    },
-    {
-      "id": "stamina",
-      "name": "Stamina",
-      "type": "number",
-      "description": "Represents the player's energy and ability to perform physical actions",
-      "min": 0,
-      "max": 100,
-      "value": 100,
-      "starting": 100,
-      "regen": 6,
-      "thresholdUnit": "percent",
-      "descriptors": [
-        {
-          "id": "stamina_exhausted",
-          "threshold": 10,
-          "description": "Exhausted. Barely able to move, risk of collapse, unable to perform strenuous actions."
-        },
-        {
-          "id": "stamina_tired",
-          "threshold": 40,
-          "description": "Tired. Movements are sluggish, difficulty in sustained physical activities."
-        },
-        {
-          "id": "stamina_winded",
-          "threshold": 70,
-          "description": "Winded. Slightly out of breath, can perform most actions but not at peak efficiency."
-        },
-        {
-          "id": "stamina_energetic",
-          "threshold": 100,
-          "description": "Energetic. Full of energy, capable of performing any physical action without hindrance."
-        }
-      ]
-    },
-    {
-      "id": "craving",
-      "name": "Craving",
-      "type": "number",
-      "description": "The curse of unending hunger. Climbs relentlessly on its own; eating anything quiets it for a while.",
-      "min": 0,
-      "max": 100,
-      "value": 30,
-      "starting": 30,
-      "regen": 3,
-      "descriptors": [
-        {
-          "id": "craving_quiet",
-          "threshold": 20,
-          "description": "Quiet. The hunger naps; thoughts are entirely the player's own."
-        },
-        {
-          "id": "craving_murmuring",
-          "threshold": 45,
-          "description": "Murmuring. Sweet smells keep finding the player; their mouth waters at nothing."
-        },
-        {
-          "id": "craving_roaring",
-          "threshold": 75,
-          "description": "Roaring. The player's hands drift toward food on their own; resisting takes real, visible effort."
-        },
-        {
-          "id": "craving_ravenous",
-          "threshold": 100,
-          "description": "Ravenous. The curse takes the wheel — the player will eat the nearest edible thing unless something stops them."
-        }
-      ]
-    },
-    {
-      "id": "fullness",
-      "name": "Fullness",
-      "type": "number",
-      "description": "How much the player has eaten. Rises with every bite and falls slowly as they digest.",
-      "min": 0,
-      "max": 100,
-      "value": 10,
-      "starting": 10,
-      "regen": -2,
-      "thresholdUnit": "percent",
-      "descriptors": [
-        {
-          "id": "fullness_empty",
-          "threshold": 10,
-          "description": "Empty. Hollow and rumbling — the curse loves this."
-        },
-        {
-          "id": "fullness_comfortable",
-          "threshold": 40,
-          "description": "Comfortable. Fed and fully mobile."
-        },
-        {
-          "id": "fullness_full",
-          "threshold": 70,
-          "description": "Full. Stretched and slower; jumping is a bad idea."
-        },
-        {
-          "id": "fullness_overstuffed",
-          "threshold": 100,
-          "description": "Overstuffed. Waddling at best — running is a fantasy, and the player mostly wants to lie down in the frosting."
-        }
-      ]
-    },
-    {
-      "id": "stickiness",
-      "name": "Stickiness",
-      "type": "number",
-      "description": "How much sugar, syrup, and cream coats the player. Rises from messy eating, gummy pools, and sugar dust; falls when they wash, especially in the cream surf.",
-      "min": 0,
-      "max": 100,
-      "value": 5,
-      "starting": 5,
-      "regen": 1,
-      "hidden": true,
-      "descriptors": [
-        {
-          "id": "stickiness_clean",
-          "threshold": 20,
-          "description": "Clean-ish. A dusting of powdered sugar; unremarkable to the wildlife."
-        },
-        {
-          "id": "stickiness_dusted",
-          "threshold": 45,
-          "description": "Dusted. Tacky fingers, sparkling hair; a passing swarmer's antennae twitch toward the player."
-        },
-        {
-          "id": "stickiness_sticky",
-          "threshold": 75,
-          "description": "Sticky. Trailing caramel threads; sprinkle swarmers change course toward the player."
-        },
-        {
-          "id": "stickiness_dessert",
-          "threshold": 100,
-          "description": "A walking dessert. Syrup-coated head to toe — every creature in sight considers the player food."
-        }
-      ]
-    }
-  ],
+  "stats": [],
   "locations": [
     {
       "id": "339009b2-6b28-4ff5-bba7-3de73283361b",
@@ -289,6 +119,408 @@
     }
   ],
   "entities": [
+    {
+      "id": "85394909-e809-414f-bfdc-636d48d269ee",
+      "name": "The Cursed",
+      "type": "Person",
+      "playerDescription": "You woke up hungry, with a curse riding your appetite through a world of dessert.",
+      "aiDescription": "{{char}} is cursed with an unending hunger and trapped in the Sugarscape, a realm built entirely of dessert.",
+      "aiSummary": "A hungry castaway in a world of dessert.",
+      "customPersona": true,
+      "traits": [
+        {
+          "id": "grazer",
+          "name": "Grazer",
+          "groupId": "4b78ed0f-74d0-4bd2-856c-80a30b104185",
+          "order": 0,
+          "isDefault": true,
+          "playerDescription": "Little and often. The curse stays drowsy if you keep it snacking.",
+          "aiDescription": "The player manages the curse by grazing — small bites, often. The hunger builds noticeably slower for them.",
+          "statChanges": [
+            {
+              "statId": "craving",
+              "value": -1,
+              "type": "regen"
+            }
+          ]
+        },
+        {
+          "id": "glutton",
+          "name": "Glutton",
+          "groupId": "4b78ed0f-74d0-4bd2-856c-80a30b104185",
+          "order": 1,
+          "playerDescription": "Go big. You can pack it away like a champion — and the curse loves you for it.",
+          "aiDescription": "The player can eat enormous amounts in one sitting before feeling it — but the curse burns hotter in them.",
+          "statChanges": [
+            {
+              "statId": "fullness",
+              "value": 25,
+              "type": "max"
+            },
+            {
+              "statId": "craving",
+              "value": 1,
+              "type": "regen"
+            }
+          ]
+        },
+        {
+          "id": "iron_will",
+          "name": "Iron Will",
+          "groupId": "4b78ed0f-74d0-4bd2-856c-80a30b104185",
+          "order": 2,
+          "playerDescription": "You've told it no before. It costs you.",
+          "aiDescription": "The player resists the curse better than anyone — the hunger builds slowly — but the constant refusal wears them down.",
+          "statChanges": [
+            {
+              "statId": "craving",
+              "value": -2,
+              "type": "regen"
+            },
+            {
+              "statId": "stamina",
+              "value": -1,
+              "type": "regen"
+            }
+          ]
+        },
+        {
+          "id": "nimble",
+          "name": "Nimble",
+          "groupId": "3f42677b-98c9-4b19-9abb-fc237d44a65d",
+          "order": 0,
+          "isDefault": true,
+          "playerDescription": "Quick over the crumb fields, quicker up a wafer tree.",
+          "aiDescription": "The player is quick and light on their feet, recovering breath fast between sprints.",
+          "statChanges": [
+            {
+              "statId": "stamina",
+              "value": 10,
+              "type": "max"
+            },
+            {
+              "statId": "stamina",
+              "value": 2,
+              "type": "regen"
+            }
+          ]
+        },
+        {
+          "id": "sturdy",
+          "name": "Sturdy",
+          "groupId": "3f42677b-98c9-4b19-9abb-fc237d44a65d",
+          "order": 1,
+          "playerDescription": "Takes a pouncer ram like a compliment.",
+          "aiDescription": "The player is solidly built — they shrug off rams, tumbles, and cyclone landings that would flatten others.",
+          "statChanges": [
+            {
+              "statId": "health",
+              "value": 20,
+              "type": "max"
+            },
+            {
+              "statId": "stamina",
+              "value": -5,
+              "type": "max"
+            }
+          ]
+        },
+        {
+          "id": "featherlight",
+          "name": "Featherlight",
+          "groupId": "3f42677b-98c9-4b19-9abb-fc237d44a65d",
+          "order": 2,
+          "playerDescription": "Cyclones throw you further — but you land softer.",
+          "aiDescription": "The player is unusually light: fast and far-jumping, tossed further by cyclones and rams but landing soft. Less mass to absorb a real hit.",
+          "statChanges": [
+            {
+              "statId": "stamina",
+              "value": 15,
+              "type": "max"
+            },
+            {
+              "statId": "health",
+              "value": -10,
+              "type": "max"
+            }
+          ]
+        },
+        {
+          "id": "iron_stomach",
+          "name": "Iron Stomach",
+          "groupId": "0b78fbb1-d278-4cfc-ae00-e0c0d9bd6e3d",
+          "order": 0,
+          "playerDescription": "Room for seconds. And thirds.",
+          "aiDescription": "The player can eat far past the point most people would burst, staying mobile where others would be waddling.",
+          "statChanges": [
+            {
+              "statId": "fullness",
+              "value": 20,
+              "type": "max"
+            }
+          ]
+        },
+        {
+          "id": "hearty_appetite",
+          "name": "Hearty Appetite",
+          "groupId": "0b78fbb1-d278-4cfc-ae00-e0c0d9bd6e3d",
+          "order": 1,
+          "playerDescription": "Meals actually satisfy you. The curse hates that.",
+          "aiDescription": "Food genuinely satisfies the player — every meal quiets the curse longer than it should.",
+          "statChanges": [
+            {
+              "statId": "craving",
+              "value": -1,
+              "type": "regen"
+            },
+            {
+              "statId": "fullness",
+              "value": 10,
+              "type": "max"
+            }
+          ]
+        },
+        {
+          "id": "sugar_rush",
+          "name": "Sugar Rush",
+          "groupId": "0b78fbb1-d278-4cfc-ae00-e0c0d9bd6e3d",
+          "order": 2,
+          "playerDescription": "Everything you eat hits like rocket fuel — and burns off just as fast.",
+          "aiDescription": "Sugar hits the player like rocket fuel: bursts of speed and energy after eating, with a hunger that comes back sooner.",
+          "statChanges": [
+            {
+              "statId": "stamina",
+              "value": 2,
+              "type": "regen"
+            },
+            {
+              "statId": "craving",
+              "value": 1,
+              "type": "regen"
+            }
+          ]
+        },
+        {
+          "id": "gritted_teeth",
+          "name": "Gritted Teeth",
+          "order": 3,
+          "playerToggle": true,
+          "playerDescription": "White-knuckle the curse into silence. It works. It costs.",
+          "aiDescription": "ACTIVE: the player is actively white-knuckling the curse — jaw set, fists closed, refusing every smell. The craving quiets while this holds, but the effort is visibly exhausting.",
+          "statChanges": [
+            {
+              "statId": "craving",
+              "value": -3,
+              "type": "regen"
+            },
+            {
+              "statId": "stamina",
+              "value": -2,
+              "type": "regen"
+            }
+          ]
+        }
+      ],
+      "traitGroups": [
+        {
+          "id": "4b78ed0f-74d0-4bd2-856c-80a30b104185",
+          "name": "Appetite",
+          "parentId": null,
+          "order": 0,
+          "exclusive": true,
+          "playerDescription": "How the curse sits in your stomach. Pick one.",
+          "aiDescription": "How the player's curse expresses itself:"
+        },
+        {
+          "id": "3f42677b-98c9-4b19-9abb-fc237d44a65d",
+          "name": "Build",
+          "parentId": null,
+          "order": 1,
+          "exclusive": true,
+          "playerDescription": "What you're working with. Pick one.",
+          "aiDescription": "The player's build:"
+        },
+        {
+          "id": "0b78fbb1-d278-4cfc-ae00-e0c0d9bd6e3d",
+          "name": "Pantry Tricks",
+          "parentId": null,
+          "order": 2,
+          "playerDescription": "Tricks for a world made of pudding. Take any.",
+          "aiDescription": "The player's tricks and habits:"
+        }
+      ],
+      "stats": [
+        {
+          "id": "health",
+          "name": "Health",
+          "type": "number",
+          "description": "Represents the player's physical well-being and ability to sustain damage",
+          "min": 0,
+          "max": 100,
+          "value": 100,
+          "starting": 100,
+          "regen": 3,
+          "thresholdUnit": "percent",
+          "descriptors": [
+            {
+              "id": "health_critical",
+              "threshold": 10,
+              "description": "Critical condition. Severely battered, barely conscious, in real trouble."
+            },
+            {
+              "id": "health_injured",
+              "threshold": 40,
+              "description": "Injured. Bruised and aching, movement impaired."
+            },
+            {
+              "id": "health_hurt",
+              "threshold": 70,
+              "description": "Hurt. Minor knocks and scrapes, some pain, but generally functional."
+            },
+            {
+              "id": "health_healthy",
+              "threshold": 100,
+              "description": "Healthy. No significant injuries, operating at full capacity."
+            }
+          ]
+        },
+        {
+          "id": "stamina",
+          "name": "Stamina",
+          "type": "number",
+          "description": "Represents the player's energy and ability to perform physical actions",
+          "min": 0,
+          "max": 100,
+          "value": 100,
+          "starting": 100,
+          "regen": 6,
+          "thresholdUnit": "percent",
+          "descriptors": [
+            {
+              "id": "stamina_exhausted",
+              "threshold": 10,
+              "description": "Exhausted. Barely able to move, risk of collapse, unable to perform strenuous actions."
+            },
+            {
+              "id": "stamina_tired",
+              "threshold": 40,
+              "description": "Tired. Movements are sluggish, difficulty in sustained physical activities."
+            },
+            {
+              "id": "stamina_winded",
+              "threshold": 70,
+              "description": "Winded. Slightly out of breath, can perform most actions but not at peak efficiency."
+            },
+            {
+              "id": "stamina_energetic",
+              "threshold": 100,
+              "description": "Energetic. Full of energy, capable of performing any physical action without hindrance."
+            }
+          ]
+        },
+        {
+          "id": "craving",
+          "name": "Craving",
+          "type": "number",
+          "description": "The curse of unending hunger. Climbs relentlessly on its own; eating anything quiets it for a while.",
+          "min": 0,
+          "max": 100,
+          "value": 30,
+          "starting": 30,
+          "regen": 3,
+          "descriptors": [
+            {
+              "id": "craving_quiet",
+              "threshold": 20,
+              "description": "Quiet. The hunger naps; thoughts are entirely the player's own."
+            },
+            {
+              "id": "craving_murmuring",
+              "threshold": 45,
+              "description": "Murmuring. Sweet smells keep finding the player; their mouth waters at nothing."
+            },
+            {
+              "id": "craving_roaring",
+              "threshold": 75,
+              "description": "Roaring. The player's hands drift toward food on their own; resisting takes real, visible effort."
+            },
+            {
+              "id": "craving_ravenous",
+              "threshold": 100,
+              "description": "Ravenous. The curse takes the wheel — the player will eat the nearest edible thing unless something stops them."
+            }
+          ]
+        },
+        {
+          "id": "fullness",
+          "name": "Fullness",
+          "type": "number",
+          "description": "How much the player has eaten. Rises with every bite and falls slowly as they digest.",
+          "min": 0,
+          "max": 100,
+          "value": 10,
+          "starting": 10,
+          "regen": -2,
+          "thresholdUnit": "percent",
+          "descriptors": [
+            {
+              "id": "fullness_empty",
+              "threshold": 10,
+              "description": "Empty. Hollow and rumbling — the curse loves this."
+            },
+            {
+              "id": "fullness_comfortable",
+              "threshold": 40,
+              "description": "Comfortable. Fed and fully mobile."
+            },
+            {
+              "id": "fullness_full",
+              "threshold": 70,
+              "description": "Full. Stretched and slower; jumping is a bad idea."
+            },
+            {
+              "id": "fullness_overstuffed",
+              "threshold": 100,
+              "description": "Overstuffed. Waddling at best — running is a fantasy, and the player mostly wants to lie down in the frosting."
+            }
+          ]
+        },
+        {
+          "id": "stickiness",
+          "name": "Stickiness",
+          "type": "number",
+          "description": "How much sugar, syrup, and cream coats the player. Rises from messy eating, gummy pools, and sugar dust; falls when they wash, especially in the cream surf.",
+          "min": 0,
+          "max": 100,
+          "value": 5,
+          "starting": 5,
+          "regen": 1,
+          "hidden": true,
+          "descriptors": [
+            {
+              "id": "stickiness_clean",
+              "threshold": 20,
+              "description": "Clean-ish. A dusting of powdered sugar; unremarkable to the wildlife."
+            },
+            {
+              "id": "stickiness_dusted",
+              "threshold": 45,
+              "description": "Dusted. Tacky fingers, sparkling hair; a passing swarmer's antennae twitch toward the player."
+            },
+            {
+              "id": "stickiness_sticky",
+              "threshold": 75,
+              "description": "Sticky. Trailing caramel threads; sprinkle swarmers change course toward the player."
+            },
+            {
+              "id": "stickiness_dessert",
+              "threshold": 100,
+              "description": "A walking dessert. Syrup-coated head to toe — every creature in sight considers the player food."
+            }
+          ]
+        }
+      ]
+    },
     {
       "id": "1739136187546",
       "name": "Cream Cyclone",
@@ -433,228 +665,8 @@
       ]
     }
   ],
-  "traits": [
-    {
-      "id": "grazer",
-      "name": "Grazer",
-      "groupId": "4b78ed0f-74d0-4bd2-856c-80a30b104185",
-      "order": 0,
-      "isDefault": true,
-      "playerDescription": "Little and often. The curse stays drowsy if you keep it snacking.",
-      "aiDescription": "The player manages the curse by grazing — small bites, often. The hunger builds noticeably slower for them.",
-      "statChanges": [
-        {
-          "statId": "craving",
-          "value": -1,
-          "type": "regen"
-        }
-      ]
-    },
-    {
-      "id": "glutton",
-      "name": "Glutton",
-      "groupId": "4b78ed0f-74d0-4bd2-856c-80a30b104185",
-      "order": 1,
-      "playerDescription": "Go big. You can pack it away like a champion — and the curse loves you for it.",
-      "aiDescription": "The player can eat enormous amounts in one sitting before feeling it — but the curse burns hotter in them.",
-      "statChanges": [
-        {
-          "statId": "fullness",
-          "value": 25,
-          "type": "max"
-        },
-        {
-          "statId": "craving",
-          "value": 1,
-          "type": "regen"
-        }
-      ]
-    },
-    {
-      "id": "iron_will",
-      "name": "Iron Will",
-      "groupId": "4b78ed0f-74d0-4bd2-856c-80a30b104185",
-      "order": 2,
-      "playerDescription": "You've told it no before. It costs you.",
-      "aiDescription": "The player resists the curse better than anyone — the hunger builds slowly — but the constant refusal wears them down.",
-      "statChanges": [
-        {
-          "statId": "craving",
-          "value": -2,
-          "type": "regen"
-        },
-        {
-          "statId": "stamina",
-          "value": -1,
-          "type": "regen"
-        }
-      ]
-    },
-    {
-      "id": "nimble",
-      "name": "Nimble",
-      "groupId": "3f42677b-98c9-4b19-9abb-fc237d44a65d",
-      "order": 0,
-      "isDefault": true,
-      "playerDescription": "Quick over the crumb fields, quicker up a wafer tree.",
-      "aiDescription": "The player is quick and light on their feet, recovering breath fast between sprints.",
-      "statChanges": [
-        {
-          "statId": "stamina",
-          "value": 10,
-          "type": "max"
-        },
-        {
-          "statId": "stamina",
-          "value": 2,
-          "type": "regen"
-        }
-      ]
-    },
-    {
-      "id": "sturdy",
-      "name": "Sturdy",
-      "groupId": "3f42677b-98c9-4b19-9abb-fc237d44a65d",
-      "order": 1,
-      "playerDescription": "Takes a pouncer ram like a compliment.",
-      "aiDescription": "The player is solidly built — they shrug off rams, tumbles, and cyclone landings that would flatten others.",
-      "statChanges": [
-        {
-          "statId": "health",
-          "value": 20,
-          "type": "max"
-        },
-        {
-          "statId": "stamina",
-          "value": -5,
-          "type": "max"
-        }
-      ]
-    },
-    {
-      "id": "featherlight",
-      "name": "Featherlight",
-      "groupId": "3f42677b-98c9-4b19-9abb-fc237d44a65d",
-      "order": 2,
-      "playerDescription": "Cyclones throw you further — but you land softer.",
-      "aiDescription": "The player is unusually light: fast and far-jumping, tossed further by cyclones and rams but landing soft. Less mass to absorb a real hit.",
-      "statChanges": [
-        {
-          "statId": "stamina",
-          "value": 15,
-          "type": "max"
-        },
-        {
-          "statId": "health",
-          "value": -10,
-          "type": "max"
-        }
-      ]
-    },
-    {
-      "id": "iron_stomach",
-      "name": "Iron Stomach",
-      "groupId": "0b78fbb1-d278-4cfc-ae00-e0c0d9bd6e3d",
-      "order": 0,
-      "playerDescription": "Room for seconds. And thirds.",
-      "aiDescription": "The player can eat far past the point most people would burst, staying mobile where others would be waddling.",
-      "statChanges": [
-        {
-          "statId": "fullness",
-          "value": 20,
-          "type": "max"
-        }
-      ]
-    },
-    {
-      "id": "hearty_appetite",
-      "name": "Hearty Appetite",
-      "groupId": "0b78fbb1-d278-4cfc-ae00-e0c0d9bd6e3d",
-      "order": 1,
-      "playerDescription": "Meals actually satisfy you. The curse hates that.",
-      "aiDescription": "Food genuinely satisfies the player — every meal quiets the curse longer than it should.",
-      "statChanges": [
-        {
-          "statId": "craving",
-          "value": -1,
-          "type": "regen"
-        },
-        {
-          "statId": "fullness",
-          "value": 10,
-          "type": "max"
-        }
-      ]
-    },
-    {
-      "id": "sugar_rush",
-      "name": "Sugar Rush",
-      "groupId": "0b78fbb1-d278-4cfc-ae00-e0c0d9bd6e3d",
-      "order": 2,
-      "playerDescription": "Everything you eat hits like rocket fuel — and burns off just as fast.",
-      "aiDescription": "Sugar hits the player like rocket fuel: bursts of speed and energy after eating, with a hunger that comes back sooner.",
-      "statChanges": [
-        {
-          "statId": "stamina",
-          "value": 2,
-          "type": "regen"
-        },
-        {
-          "statId": "craving",
-          "value": 1,
-          "type": "regen"
-        }
-      ]
-    },
-    {
-      "id": "gritted_teeth",
-      "name": "Gritted Teeth",
-      "order": 3,
-      "playerToggle": true,
-      "playerDescription": "White-knuckle the curse into silence. It works. It costs.",
-      "aiDescription": "ACTIVE: the player is actively white-knuckling the curse — jaw set, fists closed, refusing every smell. The craving quiets while this holds, but the effort is visibly exhausting.",
-      "statChanges": [
-        {
-          "statId": "craving",
-          "value": -3,
-          "type": "regen"
-        },
-        {
-          "statId": "stamina",
-          "value": -2,
-          "type": "regen"
-        }
-      ]
-    }
-  ],
-  "traitGroups": [
-    {
-      "id": "4b78ed0f-74d0-4bd2-856c-80a30b104185",
-      "name": "Appetite",
-      "parentId": null,
-      "order": 0,
-      "exclusive": true,
-      "playerDescription": "How the curse sits in your stomach. Pick one.",
-      "aiDescription": "How the player's curse expresses itself:"
-    },
-    {
-      "id": "3f42677b-98c9-4b19-9abb-fc237d44a65d",
-      "name": "Build",
-      "parentId": null,
-      "order": 1,
-      "exclusive": true,
-      "playerDescription": "What you're working with. Pick one.",
-      "aiDescription": "The player's build:"
-    },
-    {
-      "id": "0b78fbb1-d278-4cfc-ae00-e0c0d9bd6e3d",
-      "name": "Pantry Tricks",
-      "parentId": null,
-      "order": 2,
-      "playerDescription": "Tricks for a world made of pudding. Take any.",
-      "aiDescription": "The player's tricks and habits:"
-    }
-  ],
+  "traits": [],
+  "traitGroups": [],
   "statUpdates": [],
   "dictionaries": [
     {
