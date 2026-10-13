@@ -35,7 +35,7 @@ export function EditableChip({ value, onCommit, onRemove, sortable = false, getS
    *  so the placeholders inside it can be drawn as chips; `value` still names the chip for a screen reader. */
   label?: ReactNode;
   /** Given these, editing opens a chip editor instead of a text input, so a value holding placeholders can
-   *  be edited in place — and its chips keep their World/Unique pop-out while it is open. */
+   *  be edited in place — and its chips keep their World/Unique Chip Options while it is open. */
   placeholders?: Placeholder[];
   /** The host field's vocabulary, so the chip editor refuses what the field refuses. */
   vocabulary?: ChipVocabulary;

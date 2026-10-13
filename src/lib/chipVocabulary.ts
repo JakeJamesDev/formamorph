@@ -16,7 +16,7 @@ import { promptHeader } from './promptHeader';
 import { placeholderAccent } from './highlightUtils';
 import {
   labelForToken, colorForToken, variableForToken, baseToken, tokenVariant, splitToken, joinToken,
-  variantLabelForToken, onlyWithForToken, variableAxes, decodeVariant, encodeVariant,
+  variantLabelForToken, onlyWithForToken, variableAxes, decodeVariant, encodeVariant, dropRedundantToggles,
   type PromptVariable, type PromptVariantAxis,
 } from './promptVariables';
 import {
@@ -136,7 +136,7 @@ export interface ChipVocabulary {
   onlyWith(token: string): string | null;
   /** Accent color, or undefined. */
   color(token: string): string | undefined;
-  /** The pop-out axes for this token (empty = no options). */
+  /** The Chip Options axes for this token (empty = no options). */
   axes(token: string): PromptVariantAxis[];
   /** Current per-axis selection for the token. */
   selection(token: string): Record<string, string | null>;
@@ -194,7 +194,7 @@ export interface ChipVocabulary {
   rename?(token: string, next: string): void;
   /** True for a reserved chip, which has nothing to rename or re-aim. */
   fixed?(token: string): boolean;
-  /** True for a Built-in Placeholder chip, which carries the Built-in mark and opens no pop-out. */
+  /** True for a Built-in Placeholder chip, which carries the Built-in mark and opens no Chip Options. */
   builtin?(token: string): boolean;
   /** True for a chip naming a blueprint, which carries the blueprint mark. */
   blueprint?(token: string): boolean;
@@ -241,7 +241,8 @@ export function promptVocabulary(palette: PromptVariable[]): ChipVocabulary {
         return joinToken({ ...splitToken(t), base: baseToken(t),
           headerFormat: optionId === 'markdown' || optionId === 'xml' ? optionId : undefined });
       }
-      const next = { ...decodeVariant(v, tokenVariant(t)), [axisId]: optionId };
+      const changed = { ...decodeVariant(v, tokenVariant(t)), [axisId]: optionId };
+      const next = axisId === 'scope' ? dropRedundantToggles(v, changed) : changed;
       // Preserve placement metadata while changing one selected axis.
       const parts = splitToken(t);
       return joinToken({ ...parts, base: baseToken(t), variantId: encodeVariant(v, next) });
@@ -285,8 +286,8 @@ const PLACEHOLDER_MODE_AXIS: PromptVariantAxis = {
   id: 'mode',
   label: '',
   options: [
-    { id: null, label: 'World', help: 'Rolls the same value everywhere in the World.' },
-    { id: 'unique', label: 'Unique', help: 'Rolls its own value for this instance.' },
+    { id: null, label: 'World', help: 'Rolls the same value everywhere in the world' },
+    { id: 'unique', label: 'Unique', help: 'Rolls its own value for this instance' },
   ],
 };
 

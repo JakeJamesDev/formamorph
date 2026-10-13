@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
+import { sentenceShapeViolation } from '@/test/copyShape';
 import {
   baseToken, tokenVariant, withVariant, variantLabelForToken,
   variableForToken, labelForToken, colorForToken,
   variableAxes, decodeVariant, encodeVariant, NOW_LINE_VARIABLES,
-  PROMPT_KIND_VARIABLES,
+  PROMPT_KIND_VARIABLES, ALL_PROMPT_VARIABLES,
   type PromptVariable,
 } from './promptVariables';
 
@@ -180,3 +181,42 @@ describe('phase 2 registry changes', () => {
     expect(NOW_LINE_VARIABLES.every((v) => v.affixable)).toBe(true);
   });
 });
+
+describe('stat detail help', () => {
+  const help = (token: string) => Object.fromEntries(
+    variableAxes(variableForToken(token)!).filter((axis) => axis.row === 'Stat Detail').map((axis) => [axis.label, axis.help]),
+  );
+
+  it('reads the same on the Stats, Entities and Persona chips', () => {
+    const stats = help('<STATS DESCRIPTION>');
+    expect(Object.keys(stats)).toEqual(['Range', 'Descriptor', 'Description']);
+    expect(help('<ENTITIES>')).toEqual(stats);
+    expect(help('<PERSONA>')).toEqual(stats);
+  });
+
+  it('starts each piece with a verb and ends none with a period', () => {
+    for (const text of Object.values(help('<STATS DESCRIPTION>'))) {
+      expect(text).toMatch(/^Sends /);
+      expect(text).not.toMatch(/\.$/);
+    }
+  });
+});
+
+describe('registry help lines', () => {
+  const lines = ALL_PROMPT_VARIABLES.flatMap((variable) => variableAxes(variable).flatMap((axis) => [
+    axis.help, axis.rowHelp, axis.readOnlyHelp, ...axis.options.map((option) => option.help),
+  ].filter((text): text is string => !!text)));
+
+  it('covers every axis and option help the dialog shows as a tooltip', () => {
+    expect(lines.length).toBeGreaterThan(40);
+  });
+
+  it('follow the help-line shape, with no dash aside and no "character" for an entity', () => {
+    for (const text of lines) {
+      expect(sentenceShapeViolation(text), text).toBeNull();
+      expect(text, text).not.toMatch(/ — | - /);
+      expect(text, text).not.toMatch(/\bcharacters?\b/i);
+    }
+  });
+});
+

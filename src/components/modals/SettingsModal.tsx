@@ -1415,7 +1415,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                   The prompt sent to your text model to turn a subject’s description into booru tags. The
                   <span className="mx-1 font-medium">Subject</span>chip expands per kind — character: “{SUBJECT_GUIDANCE.character}”; location: “{SUBJECT_GUIDANCE.location}”; world: “{SUBJECT_GUIDANCE.world}”.
                 </p>
-                <PromptField value={imageTagPrompt} onChange={setImageTagPrompt} variables={[SUBJECT]} />
+                <PromptField value={imageTagPrompt} onChange={setImageTagPrompt} variables={[SUBJECT]} chipReads={effectivePreviewValues} />
                 <div className="flex justify-start flex-shrink-0">
                   <ConfirmDialog
                     {...SETTINGS_CONFIRMS.resetTagPrompt}

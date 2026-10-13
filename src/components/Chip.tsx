@@ -90,7 +90,7 @@ export function Chip({ label, removeLabel, onRemove, className, innerRef, style,
           <button
             type="button"
             onPointerDown={(e) => e.stopPropagation()}
-            // The click stops here too: the chip around it opens a pop-out on click, and a pop-out opened
+            // The click stops here too: the chip around it opens Chip Options on click, and a popover opened
             // by the click that removed its anchor lands in the corner of the screen.
             onClick={(e) => { e.stopPropagation(); onRemove(name); }}
             className="hover:text-destructive"

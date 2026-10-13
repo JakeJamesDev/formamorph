@@ -424,7 +424,7 @@ export interface ReplaceSummary {
   fields: number;
   skipped: number;
   skippedFields: string[];
-  /** Hits that were chips. A chip is changed from its own pop-out, never by a text replace. */
+  /** Hits that were chips. A chip is changed in Chip Options, never by a text replace. */
   chips: number;
 }
 

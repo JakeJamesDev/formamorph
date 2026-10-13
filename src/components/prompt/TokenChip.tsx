@@ -13,7 +13,7 @@ import BlueprintMark from './BlueprintMark';
  * One chip token drawn as its pill: the shared chip shape, the vocabulary's accent, and the
  * `Name (Variant)` label composition.
  *
- * Presentational and read-only — the editor wraps it in the pop-out, the drag handle and the remove (×);
+ * Presentational and read-only — the editor wraps it in the Chip Options trigger, the drag handle and the remove (×);
  * the Request Anatomy wraps it in a button onto the editor. Both render this, so a chip cannot read one
  * way in the field the player typed it into and another in the request it produced.
  *
@@ -52,7 +52,7 @@ export const TokenChip = forwardRef<HTMLSpanElement, TokenChipProps>(function To
   ref,
 ) {
   const color = neutral ? undefined : vocab.color(token);
-  // Reflect the mode in the chip text so it's readable at a glance, not only in the pop-out.
+  // Reflect the mode in the chip text so it's readable at a glance, not only in Chip Options.
   const variantLabel = vocab.variantLabel(token);
   const name = vocab.label(token);
   const shown = vocab.display?.(token) ?? (variantLabel ? `${name} (${variantLabel})` : name);

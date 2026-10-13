@@ -250,7 +250,6 @@ A field shows only while its feature can send it.
 
 ## The Chip Editor
 <!-- keywords: variables, macros, template tags, insert stats, curly braces, dynamic values, pill, pop out, blocks, fill in -->
-<!-- route: chipOptions -->
 
 Each prompt editor is a chip editor. A **chip** is a box in the text. When the app sends the request, it puts a value in each chip, such as the world description, the stats or your action.
 
@@ -263,6 +262,7 @@ The editor has **Undo** and **Redo** buttons. **Edit full screen** opens the edi
 
 ## Chip Options
 <!-- keywords: chip settings, chip popup, pop out, options for a chip, what does this chip send, what the ai reads, scope content format, header prepend append, only with, include, stat detail -->
+<!-- route: chipOptions -->
 
 **Chip Options** is a dialog with the settings of one placed chip. It shows only the rows that chip has.
 
@@ -283,6 +283,7 @@ The editor has **Undo** and **Redo** buttons. **Edit full screen** opens the edi
 | **Include** | **Entities**, **Persona** | Sends each entity's **Traits** and **Stats**, each on or off |
 | **Stat Detail** | **Stats**, **Entities**, **Persona** | Sends **Range**, **Descriptor** and **Description** for each stat. At least one stays checked. |
 | **Format** | **Stats**, **Traits**, **Location**, **Entities**, **Persona** | Shapes the text as **Simple**, **Markdown** or **XML** |
+| **Mode** | **Markdown Guidance**, **Dictionary** | Picks the one form the chip sends, such as **Foreground** or **Background** lore |
 | **Label**, **Header**, **Prepend**, **Append** | Placement fields, below a rule | **Header** starts a section. **Prepend** and **Append** wrap the value. A chip with no value sends none of them. |
 
 - **Include Stats is on by default** for **Here** and **In Scene**. It is off for **In Sub** and **Reachable**.

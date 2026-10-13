@@ -9,7 +9,7 @@ import type { PlaceholderOwnerRef } from './placeholderHomes';
 import { CHARACTER_NAME, PLAYER_NAME } from './builtinPlaceholders';
 
 import { phValues } from '@/test/placeholderValues';
-import { PROMPT_KIND_VARIABLES } from './promptVariables';
+import { PROMPT_KIND_VARIABLES, toggleIsOn, variableAxes, variableForToken } from './promptVariables';
 const P = (id: string, values: string[]): Placeholder => ({ id, name: `name-${id}`, values: phValues(values) });
 const tok = (id: string, mode: 'world' | 'unique', pid = 'p1') => encodePlaceholderToken({ id, mode, placementId: pid });
 
@@ -390,6 +390,28 @@ describe('chip affixes in the editor vocabulary (gate 8)', () => {
     const switched = vocab.setAxis(t, 'scope', 'reachable');
     expect(vocab.affixes(switched)).toEqual({ pre: ' with ', post: ' present' });
     expect(vocab.selection(switched).scope).toBe('reachable');
+  });
+
+  it.each([
+    // The stored id now says what the new scope's default says, so it goes.
+    ['<ENTITIES|reachable.stats>', null, '<ENTITIES>'],
+    ['<ENTITIES|reachable.stats>', 'inscene', '<ENTITIES|inscene>'],
+    ['<ENTITIES|nostats>', 'reachable', '<ENTITIES|reachable>'],
+    ['<ENTITIES|nostats.summary>', 'sublocations', '<ENTITIES|sublocations.summary>'],
+    // The stored id still differs from the new scope's default, so it stays.
+    ['<ENTITIES|nostats>', 'inscene', '<ENTITIES|inscene.nostats>'],
+    ['<ENTITIES|reachable.stats>', 'sublocations', '<ENTITIES|sublocations.stats>'],
+    ['<ENTITIES|stats>', 'reachable', '<ENTITIES|reachable.stats>'],
+  ])('moves the scope of %s to %s and drops a stats id that now means nothing', (token, scope, expected) => {
+    expect(vocab.setAxis(token, 'scope', scope)).toBe(expected);
+  });
+
+  it('renders the same stats before and after the scope switch drops an id', () => {
+    const before = vocab.selection('<ENTITIES|reachable.stats>');
+    const after = vocab.selection(vocab.setAxis('<ENTITIES|reachable.stats>', 'scope', null));
+    const entities = variableAxes(variableForToken('<ENTITIES>')!).find((axis) => axis.id === 'stats')!;
+    expect(toggleIsOn(entities, before)).toBe(true);
+    expect(toggleIsOn(entities, after)).toBe(true);
   });
 
   it('reports the same variant label affixed or not, so the chip reads the same', () => {

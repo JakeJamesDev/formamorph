@@ -29,7 +29,7 @@ const stepIndex = (index: number, direction: StepDirection, count: number): numb
 
 /**
  * A chip editor for world text that can embed placeholders. Reuses the prompt chip editor with the
- * placeholder token family: the toolbar inserts the world's placeholders, and a Wildcard chip's pop-out
+ * placeholder token family: the toolbar inserts the world's placeholders, and a Wildcard chip's Chip Options
  * offers World | Unique (only once it has 2+ values). Stores the same token-string as the rest of the field.
  *
  * A Preview tab (from `PromptField`) swaps each chip for its author-time value — Variable → its value,

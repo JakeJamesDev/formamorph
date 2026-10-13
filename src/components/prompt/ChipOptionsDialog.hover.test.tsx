@@ -5,6 +5,8 @@ import userEvent from '@testing-library/user-event';
 import PromptField from './PromptField';
 import { promptVocabulary } from '@/lib/chipVocabulary';
 import { SAMPLE_PREVIEW_VALUES } from '@/lib/previewValuePool';
+import { chipValues } from '@/lib/chipValues/chipValues';
+import { sampleChipScene } from '@/lib/chipValues/sampleScene';
 import { joinToken } from '@/lib/promptVariables';
 import type { TokenValues } from '@/lib/promptValues';
 import { renderReporting } from '@/test/surfaceReporter';
@@ -137,6 +139,19 @@ describe('Chip Options: hover highlighting', () => {
     expect(litText()).toEqual([]);
     expect(dimmed()).toBe('');
     await user.hover(segmented('Format'));
+    expect(litText()).toEqual([]);
+    expect(dimmed()).toBe('');
+  });
+
+  it('dims nothing while the hovered control has no text in this scene', async () => {
+    // Nobody in the scene owns a trait, so Include Traits produces no line to light.
+    const user = await open('<ENTITIES>', chipValues({ ...sampleChipScene(), ownedTraits: {} }));
+    expect(pane().textContent).not.toContain('traits');
+    await user.hover(checkbox('Include', 'Traits'));
+    expect(litText()).toEqual([]);
+    expect(dimmed()).toBe('');
+    // An empty Header has no text to light either.
+    await user.hover(within(dialog()).getByLabelText('Header'));
     expect(litText()).toEqual([]);
     expect(dimmed()).toBe('');
   });
