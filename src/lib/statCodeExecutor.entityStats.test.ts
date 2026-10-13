@@ -47,23 +47,50 @@ describe('executeStatCode entities[x].stats', () => {
     expect(out.value).toBe(10);
   });
 
-  it('drops a write to an entity’s stat and reports it as a read-only write', async () => {
+  it('returns a write to an entity’s stat keyed by its id, and reports its read-only fields', async () => {
     const out = await run('entities.Bram.stats.Trust.value = 99; entities.Bram.stats.Trust.previous.value = 1; return entities.Bram.stats.Trust.value;');
-    expect(out.value).toBe(40);
-    expect(out.readOnlyWrites).toEqual(['entities.Bram.stats.Trust.value', 'entities.Bram.stats.Trust.previous.value']);
+    expect(out.value).toBe(99);
+    expect(out.ownerStatWrites).toEqual([{ ownerId: 'bram', writes: [{ id: 't', name: 'Trust', value: 99 }] }]);
+    expect(out.readOnlyWrites).toEqual(['entities.Bram.stats.Trust.previous.value']);
     expect(out.statWrites).toBeUndefined();
   });
 
-  it.each(['value', 'min', 'max', 'regen'])('drops a write to %s through the empty persona’s stats and reports it', async (field) => {
-    const persona: SandboxEntity = { name: '', traits: [], stats: { stats: [trust] } };
+  it.each(['value', 'min', 'max', 'regen'])('returns a write to %s through the persona’s stats, keyed by its id', async (field) => {
+    const persona: SandboxEntity = { id: 'mira', name: '', traits: [], stats: { stats: [trust] } };
     const out = await executeStatCode(`persona.stats.Trust.${field} = 3;`, [trust], makeStat({ id: 'p', name: 'P' }), { persona });
-    expect(out).toEqual({ value: null, error: null, readOnlyWrites: [`persona.stats.Trust.${field}`] });
+    expect(out).toEqual({ value: null, error: null, ownerStatWrites: [{ ownerId: 'mira', writes: [{ id: 't', name: 'Trust', [field]: 3 }] }] });
   });
 
-  it('keeps the stats map itself read only', async () => {
-    const out = await run('entities.Bram.stats = {}; entities.Bram.stats.Trust = 3; return entities.Bram.stats.Trust.value;');
-    expect(out.value).toBe(40);
-    expect(out.readOnlyWrites).toEqual(['entities.Bram.stats']);
+  it('drops a write through the empty persona’s stats and reports it', async () => {
+    const out = await executeStatCode('persona.stats.Trust.value = 3;', [trust], makeStat({ id: 'p', name: 'P' }));
+    expect(out).toEqual({ value: null, error: null, unknownStatWrites: ['persona.stats.Trust.value'] });
+  });
+
+  it('drops a write through a persona with no id, which no owner stands behind, and reports it', async () => {
+    const persona: SandboxEntity = { name: '', traits: [], stats: { stats: [trust] } };
+    const out = await executeStatCode('persona.stats.Trust.max = 3;', [trust], makeStat({ id: 'p', name: 'P' }), { persona });
+    expect(out).toEqual({ value: null, error: null, unknownStatWrites: ['persona.stats.Trust.max'] });
+  });
+
+  it('fails the run on a write that is not a finite number, discarding every write', async () => {
+    const out = await run('stats.P.max = 50; entities.Bram.stats.Trust.regen = null;');
+    expect(out).toMatchObject({ value: null, kind: 'non-number', error: expect.stringContaining('entities.Bram.stats.Trust.regen must be a finite number') });
+    expect(out.statWrites).toBeUndefined();
+  });
+
+  it('drops a write to a switched-off stat, an unknown stat and an absent entity, each by its full path', async () => {
+    const out = await run('entities.Bram.stats.Stock.value = 1; entities.Bram.stats.Nope.max = 2; entities.Ghost.stats.Trust.regen = 3;'
+      + ' entities["Old Rook"].stats.Trust.value = 4;');
+    expect(out).toEqual({
+      value: null, error: null,
+      disabledStatWrites: ['entities.Bram.stats.Stock.value'],
+      unknownStatWrites: ['entities.Bram.stats.Nope.max', 'entities.Ghost.stats.Trust.regen', 'entities["Old Rook"].stats.Trust.value'],
+    });
+  });
+
+  it('keeps the stats map and a whole entry read only', async () => {
+    const out = await run('entities.Bram.stats = {}; entities.Bram.stats.Trust = 3;');
+    expect(out).toEqual({ value: null, error: null, readOnlyWrites: ['entities.Bram.stats.Trust', 'entities.Bram.stats'] });
   });
 
   it('reads an unknown stat, and every stat of an entity with none, as a blank entry', async () => {

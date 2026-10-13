@@ -56,12 +56,11 @@ export type StatCodeFailure = 'timeout' | 'non-number' | 'throw' | 'bad-write';
 export const CODE_BOUND_FIELDS = ['min', 'max', 'regen'] as const satisfies readonly (keyof CodeBounds)[];
 export type CodeBoundField = (typeof CODE_BOUND_FIELDS)[number];
 
-/** The fields a write reaches on `self` and on every other stat of its owner: `stats` in world-stat code,
- *  `owner.stats` in an entity stat's. Every other stat field is read-only. */
+/** The fields a write reaches on every stat, whatever route reaches it. Every other stat field is read-only. */
 export const SELF_WRITABLE_FIELDS: readonly string[] = ['value', ...CODE_BOUND_FIELDS];
 
-/** What one run wrote to one stat of its owner other than `self`. The value is as written: the turn clamps
- *  it once every writer's bounds have landed. */
+/** What one run wrote to one stat other than `self`. The value is as written: the turn clamps it once every
+ *  writer's bounds have landed. */
 export type StatWrite = { id: string; name: string } & Partial<Pick<StatNumbers, 'value' | CodeBoundField>>;
 
 export interface StatCodeResult {
@@ -75,7 +74,8 @@ export interface StatCodeResult {
   bounds?: CodeBounds;
   /** The world stats other than `self` the code wrote through `stats`, in map order. Absent when it wrote none. */
   statWrites?: StatWrite[];
-  /** The entity stats other than `self` the code wrote, by owner. Absent when it wrote none. */
+  /** The entity stats other than `self` the code wrote, by owner: the run's own owner first, then each other
+   *  entity in map order. Absent when it wrote none. */
   ownerStatWrites?: OwnerStatWrites[];
   /** Stat fields the code wrote through a name no stat has, as code spelled them; each write was dropped. */
   unknownStatWrites?: string[];
@@ -163,7 +163,7 @@ export interface SandboxEntity {
   inScene?: boolean;
   /** The entity's owner node in the placeholder tree. Absent, its `placeholders` holds no names. */
   placeholders?: SandboxPlaceholderNode;
-  /** What its `stats` reads; read only except on `owner`. Absent, it holds no stats. */
+  /** What its `stats` reads and takes writes on. Absent, it holds no stats. */
   stats?: SandboxStats;
 }
 
@@ -325,6 +325,8 @@ const STAT_WRITES = '__formamorphStatWrites';
 // `owner.stats`, which the entities prelude hangs on the owner's entry, and the reader of its writes.
 const OWNER_STATS = '__formamorphOwnerStats';
 const OWNER_STAT_WRITES = '__formamorphOwnerStatWrites';
+// The reader of every other entity entry's stat writes.
+const ENTITY_STAT_WRITES = '__formamorphEntityStatWrites';
 // The writable fields of `self` the code assigned, in assignment order.
 const SELF_ASSIGNED = '__formamorphSelfAssigned';
 // Read-only writes outside every map, as full paths: on a `self` that is no entry of `stats`, and on `clock`.
@@ -428,29 +430,14 @@ const LOCK_STAT = `(entry, assigned, note) => {
   lock(entry, Object.keys(entry).filter((field) => !writable.includes(field)), '', note);
 }`;
 
-/** One stat map the code writes through: `stats`, or `owner.stats`. */
-interface StatMapSpec {
-  root: string;
-  reader: string;
-  entries: readonly { name: string }[];
-  blank: unknown;
-  /** `self`'s name when `self` is an entry of this map. */
-  selfName: string | null;
-  /** False locks the writable fields too, so a write to one is read only. */
-  writable: boolean;
-}
-
-/** A stat map's prelude. Rows are `[name, readOnlyPaths, [[field, number], ...]]` with each writable field
+/** A stat map's kind. Rows are `[name, readOnlyPaths, [[field, number], ...]]` with each writable field
  *  assigned on an entry other than `self`, or `[name, null]` for an entry replaced whole. `self`'s own
- *  assignments go to `SELF_ASSIGNED`. */
-const statsPrelude = ({ root, reader, entries, blank, selfName, writable }: StatMapSpec): string => trackedMapPrelude({
-  root,
-  reader,
-  data: Object.fromEntries(entries.map((entry) => [entry.name, entry])),
+ *  assignments, on the entry named `selfName`, go to `SELF_ASSIGNED`. */
+const statMapKind = (blank: unknown, selfName: string | null): TrackedMapKind => ({
   track: `(name, entry, state) => {
     state.written = [];
     state.assigned = [];
-    const assigned = ${writable} ? (name === ${JSON.stringify(selfName)} ? ${SELF_ASSIGNED} : state.assigned) : null;
+    const assigned = name === ${JSON.stringify(selfName)} ? ${SELF_ASSIGNED} : state.assigned;
     (${LOCK_STAT})(entry, assigned, (path) => (${ADD_ONCE})(state.written, path));
   }`,
   blank: JSON.stringify(blank),
@@ -458,6 +445,22 @@ const statsPrelude = ({ root, reader, entries, blank, selfName, writable }: Stat
     ? [name, state.written, state.assigned.map((field) => [field, state.entry[field]])] : null`,
   replaced: `(name) => [name, null]`,
 });
+
+/** A stat map's data: its entries keyed by name. */
+const statMapData = (entries: readonly { name: string }[]) => Object.fromEntries(entries.map((entry) => [entry.name, entry]));
+
+/** One top-level stat map the code writes through: `stats`, or `owner.stats`. */
+interface StatMapSpec {
+  root: string;
+  reader: string;
+  entries: readonly { name: string }[];
+  blank: unknown;
+  /** `self`'s name when `self` is an entry of this map. */
+  selfName: string | null;
+}
+
+const statsPrelude = ({ root, reader, entries, blank, selfName }: StatMapSpec): string =>
+  trackedMapPrelude({ ...statMapKind(blank, selfName), root, reader, data: statMapData(entries) });
 
 /** The `placeholders` map as the prelude and the write reader both read it: its top-level keys, and every
  *  node it holds under an index apiece. */
@@ -722,48 +725,48 @@ function ownerPlace({ byName, persona }: KeyedEntities, owner: SandboxEntity | u
 /** The reader tag on the row of an `owner` entry of its own. */
 const OWN_OWNER_TAG = 'owner';
 
-/** The `entities`, `persona` and `owner` prelude: each entry with its own trait map, owner view and read-only
- *  stats; the owner's entry holds `owner.stats` instead. A write on a read-only stat entry is reported by its
- *  full path, with the loose writes. */
+/** The `entities`, `persona` and `owner` prelude: each entry with its own trait map, owner view and stat map;
+ *  the owner's entry holds `owner.stats`. The stat-write reader's rows are `[key, unknown, statMapRows]`. */
 const entitiesPrelude = (
   { byName, persona }: KeyedEntities, { indexOf }: FlatPlaceholderMap, blankStat: unknown, place: OwnerPlace,
+  statEntriesOf: (entity: SandboxEntity) => StatEntry[],
 ): string => {
-  const statRows = (name: string, stats: SandboxStats | undefined) => keyedStatEntries(stats ? marshalStats(stats) : [])
-    .map((entry) => [entry.name, entry, `${memberPath(`${entityPath(name)}.stats`, entry.name)}.`]);
-  const data = (name: string, { id = '', type = '', pronouns = '', inScene = false, traits, placeholders, stats }: SandboxEntity, owner: boolean) =>
-    ({ id, type, pronouns, inScene, traits: traitData(traits), ph: ownerIndex(indexOf, placeholders), statEntries: owner ? [] : statRows(name, stats), owner });
+  const data = (entity: SandboxEntity, owner: boolean) => {
+    const { id = '', type = '', pronouns = '', inScene = false, traits, placeholders } = entity;
+    return {
+      id, type, pronouns, inScene, traits: traitData(traits), ph: ownerIndex(indexOf, placeholders),
+      stats: owner ? {} : statMapData(statEntriesOf(entity)), owner,
+    };
+  };
   const own = place.kind === 'own' ? place.entity : undefined;
   const spec = {
-    entities: [...byName].map(([name, entity]) => [name, data(name, entity, place.kind === 'entity' && place.name === name)]),
-    persona: hasEntityKey(persona.name) ? null : data('', persona, place.kind === 'persona'),
+    entities: [...byName].map(([name, entity]) => [name, data(entity, place.kind === 'entity' && place.name === name)]),
+    persona: hasEntityKey(persona.name) ? null : data(persona, place.kind === 'persona'),
     ownerName: place.kind === 'entity' ? place.name : null,
     // An owner entry of its own carries its name; the empty owner's placeholders belong to no one.
-    ownEntry: own === undefined ? null : { ...(own ? { ...data('', own, true), name: own.name } : { owner: true, absent: true }), own: true },
-    blankStat,
+    ownEntry: own === undefined ? null : { ...(own ? { ...data(own, true), name: own.name } : { owner: true, absent: true }), own: true },
   };
-  return readOnlyEntryMapPrelude(`entities, persona, owner, ${ENTITY_WRITES}`, spec, [
+  return readOnlyEntryMapPrelude(`entities, persona, owner, ${ENTITY_WRITES}, ${ENTITY_STAT_WRITES}`, spec, [
     `const traitMap = ((keys) => ${trackedMapFactory(TRAIT_MAP)})(Object.keys);`,
-    `const blankStat = spec.blankStat;`,
-    `(${LOCK_STAT})(blankStat, null, () => {});`,
-    `const statMap = (rows) => {`,
-    `  const map = Object.create(null);`,
-    `  for (const [name, entry, prefix] of rows) {`,
-    `    (${LOCK_STAT})(entry, null, (path) => ${LOOSE_NOTE}(prefix + path));`,
-    `    map[name] = freeze(entry);`,
-    `  }`,
-    `  return new Proxy(freeze(map), { get: (target, key) => typeof key !== 'string' || key in target ? target[key] : blankStat });`,
+    `const statMapOf = ((keys) => ${trackedMapFactory(statMapKind(blankStat, null))})(Object.keys);`,
+    `const statReaders = [];`,
+    `const statMap = (key, unknown, data) => {`,
+    `  const [map, rows] = statMapOf(data);`,
+    `  statReaders.push([key, unknown, rows]);`,
+    `  return map;`,
     `};`,
     `const [entities, readWrites, entry] = entryMap(${JSON.stringify(ENTITY_READ_ONLY_FIELDS)}, spec.entities, {}, (key, data, unknown) => {`,
     `  const [traits, rows] = traitMap(data.traits || {});`,
     `  const placeholders = data.own ? ${OWNER_VIEW}(data.ph ?? -1, ['owner', 'owner'], !!data.absent)`,
     `    : ${OWNER_VIEW}(data.ph ?? -1, key ? ['entity', key] : ['persona', 'persona'], unknown || !key);`,
-    `  const stats = data.owner ? ${OWNER_STATS} : statMap(data.statEntries || []);`,
+    `  const stats = data.owner ? ${OWNER_STATS} : statMap(key, unknown, data.stats || {});`,
     `  return [{ id: '', type: '', pronouns: '', inScene: false, ...data, name: data.own ? data.name || '' : unknown ? '' : key, traits, placeholders, stats }, rows];`,
     `});`,
     `const persona = spec.persona ? entry('', spec.persona, false) : entities[${JSON.stringify(persona.name)}];`,
     `const owner = spec.ownEntry ? entry('', spec.ownEntry, false, ${JSON.stringify(OWN_OWNER_TAG)})`,
     `  : spec.ownerName !== null ? entities[spec.ownerName] : persona;`,
-    `return [entities, persona, owner, readWrites];`,
+    `const readStatWrites = () => stringify(statReaders.map(([key, unknown, rows]) => [key, unknown, rows()]).filter((row) => row[2].length));`,
+    `return [entities, persona, owner, readWrites, readStatWrites];`,
   ]);
 };
 
@@ -952,17 +955,24 @@ function readPlaceholderWrites(
 const isWritableField = (field: unknown): field is 'value' | CodeBoundField =>
   typeof field === 'string' && SELF_WRITABLE_FIELDS.includes(field);
 
-/** What the run wrote through one stat map, from its reader's dump. A value is a write when it changed; a
+/** What a run wrote through one stat map. */
+interface StatMapWrites {
+  writes: StatWrite[];
+  unknown: string[];
+  disabled: string[];
+  readOnly: string[];
+}
+
+/** What the run wrote through one stat map, from its reader's rows. A value is a write when it changed; a
  *  bound is a write whenever it was assigned. A write is kept on a live stat, and dropped and reported on an
  *  unknown name or a switched-off stat. Any write that is not a finite number fails the run. `readOnly` lists
  *  the read-only fields on the map's entries; a `self` that is an entry reports under its path in the map. */
 function readStatWrites(
-  dump: string,
+  rows: unknown,
   entries: readonly StatEntry[],
   /** How code names the map. */
   root: string,
-): { writes: StatWrite[]; unknown: string[]; disabled: string[]; readOnly: string[] } | { error: string } {
-  const rows: unknown = JSON.parse(dump);
+): StatMapWrites | { error: string } {
   const byName = new Map(entries.map((entry) => [entry.name, entry]));
   const writes: StatWrite[] = [];
   const unknown: string[] = [];
@@ -993,6 +1003,35 @@ function readStatWrites(
     writes.push({ id: entry.id, name, ...fields });
   }
   return { writes, unknown, disabled, readOnly };
+}
+
+/** What the run wrote through each entity entry's stat map but `owner.stats`, keyed by entity id. A write
+ *  through an entry no entity stands behind, an unknown name or the empty persona, is an unknown stat. */
+function readEntityStatWrites(
+  dump: string,
+  { byName, persona }: KeyedEntities,
+  statEntriesOf: (entity: SandboxEntity) => StatEntry[],
+): (Omit<StatMapWrites, 'writes'> & { owners: OwnerStatWrites[] }) | { error: string } {
+  const parsed: unknown = JSON.parse(dump);
+  const out = { owners: [] as OwnerStatWrites[], unknown: [] as string[], disabled: [] as string[], readOnly: [] as string[] };
+  for (const row of Array.isArray(parsed) ? parsed : []) {
+    if (!Array.isArray(row) || typeof row[0] !== 'string') continue;
+    const [key, isUnknown, rows] = row as [string, unknown, unknown];
+    const entity = isUnknown === true ? undefined : key ? byName.get(key) : persona;
+    const root = `${entity ? entityPath(key) : memberPath('entities', key)}.stats`;
+    const read = readStatWrites(rows, entity ? statEntriesOf(entity) : [], root);
+    if ('error' in read) return read;
+    out.unknown.push(...read.unknown);
+    out.disabled.push(...read.disabled);
+    out.readOnly.push(...read.readOnly);
+    if (!read.writes.length) continue;
+    if (entity?.id) out.owners.push({ ownerId: entity.id, writes: read.writes });
+    else {
+      out.unknown.push(...read.writes.flatMap(({ id: _id, name, ...fields }) =>
+        Object.keys(fields).map((field) => `${memberPath(root, name)}.${field}`)));
+    }
+  }
+  return out;
 }
 
 const failure = (what: string, kind: StatCodeFailure): StatCodeResult => ({
@@ -1028,8 +1067,8 @@ const EMPTY_PERSONA: SandboxEntity = { name: '', traits: [] };
 /** Run a stat's untrusted `code` in an isolated QuickJS (WASM) VM over the world `stats`, `self`, the turn
  *  inputs, the clock, `placeholders`, `traits`, `entities`, `persona`, `owner` and `dictionaries`. A number
  *  return or a `self.value` write sets the value; a `self.min`, `self.max` or `self.regen` write sets that
- *  bound; a write to another stat of the owner, through `stats` for a world stat or `owner.stats` for an
- *  entity's, sets that stat's field the same way; a `traits.<name>.enabled` write switches that trait, and an
+ *  bound; a write to any other stat, through `stats`, `owner.stats`, `entities[x].stats` or `persona.stats`,
+ *  sets that stat's field the same way; a `traits.<name>.enabled` write switches that trait, and an
  *  `entities.<entity>.traits.<name>.enabled` write that entity's own; a failure discards every write. Of two
  *  placeholders, traits or entities sharing a name, the later one is the entry. */
 export const executeStatCode = async (
@@ -1056,6 +1095,15 @@ export const executeStatCode = async (
     const keyedStats = keyedStatEntries(statsData);
     const ownerStatsData = owner?.stats ? marshalStats(owner.stats) : [];
     const keyedOwnerStats = keyedStatEntries(ownerStatsData);
+    // Each entity's keyed stat entries, marshaled once for the prelude and the reader.
+    const entityStatEntries = new Map<SandboxEntity, StatEntry[]>();
+    const statEntriesOf = (entity: SandboxEntity): StatEntry[] => {
+      const known = entityStatEntries.get(entity);
+      if (known) return known;
+      const entries = keyedStatEntries(entity.stats ? marshalStats(entity.stats) : []);
+      entityStatEntries.set(entity, entries);
+      return entries;
+    };
     // `self` is the current stat's own entry: in `owner.stats` for an entity's stat, else in `stats`. A stat
     // in neither, or one that loses its name, stands alone.
     const ownIndex = owner?.stats?.stats.findIndex((stat) => stat.id === currentStat.id) ?? -1;
@@ -1101,13 +1149,9 @@ export const executeStatCode = async (
       // the entities' traits.
       const program = [
         `const ${SELF_ASSIGNED} = [];`,
-        // World-stat code writes its owner's stats through `stats`; an entity stat's code, through `owner.stats`.
+        statsPrelude({ root: 'stats', reader: STAT_WRITES, entries: keyedStats, blank: blankStat, selfName: selfNameIn('stats') }),
         statsPrelude({
-          root: 'stats', reader: STAT_WRITES, entries: keyedStats, blank: blankStat, selfName: selfNameIn('stats'), writable: !owner,
-        }),
-        statsPrelude({
-          root: OWNER_STATS, reader: OWNER_STAT_WRITES, entries: keyedOwnerStats, blank: blankStat,
-          selfName: selfNameIn(OWNER_STATS), writable: true,
+          root: OWNER_STATS, reader: OWNER_STAT_WRITES, entries: keyedOwnerStats, blank: blankStat, selfName: selfNameIn(OWNER_STATS),
         }),
         `const ${LOOSE_WRITES} = [];`,
         `const ${LOOSE_NOTE} = (path) => (${ADD_ONCE})(${LOOSE_WRITES}, path);`,
@@ -1120,12 +1164,13 @@ export const executeStatCode = async (
         `})(${LOCK_FIELDS});`,
         placeholdersPrelude(placeholderMap),
         trackedMapPrelude({ ...TRAIT_MAP, root: 'traits', reader: TRAIT_WRITES, data: traitData(traits) }),
-        entitiesPrelude(keyed, placeholderMap, blankStat, place),
+        entitiesPrelude(keyed, placeholderMap, blankStat, place, statEntriesOf),
         dictionariesPrelude(dictionaries, placeholderMap),
-        `[(function(${PLACEHOLDER_WRITES}, ${TRAIT_WRITES}, ${ENTITY_WRITES}, ${STAT_WRITES}, ${LOOSE_WRITES}, ${LOOSE_NOTE}, ${DICTIONARY_WRITES}, ${OWNER_VIEW}, ${OWNER_STATS}, ${OWNER_STAT_WRITES}) {`,
+        `[(function(${PLACEHOLDER_WRITES}, ${TRAIT_WRITES}, ${ENTITY_WRITES}, ${STAT_WRITES}, ${LOOSE_WRITES}, ${LOOSE_NOTE}, ${DICTIONARY_WRITES}, ${OWNER_VIEW}, ${OWNER_STATS}, ${OWNER_STAT_WRITES}, ${ENTITY_STAT_WRITES}) {`,
         code,
         `})(), self.value, ${CODE_BOUND_FIELDS.map((field) => `self.${field}`).join(', ')}, ${PLACEHOLDER_WRITES}(), ${TRAIT_WRITES}(), ${ENTITY_WRITES}(),`,
-        `  ${STAT_WRITES}(), ${DICTIONARY_WRITES}(), JSON.stringify(${SELF_ASSIGNED}), ${OWNER_STAT_WRITES}(), JSON.stringify(${LOOSE_WRITES})];`,
+        `  ${STAT_WRITES}(), ${DICTIONARY_WRITES}(), JSON.stringify(${SELF_ASSIGNED}), ${OWNER_STAT_WRITES}(), JSON.stringify(${LOOSE_WRITES}),`,
+        `  ${ENTITY_STAT_WRITES}()];`,
       ].join('\n');
 
       const result = vm.evalCode(program);
@@ -1175,6 +1220,7 @@ export const executeStatCode = async (
       const assignedBounds: unknown = JSON.parse(readDump(7 + CODE_BOUND_FIELDS.length));
       const ownerStatsDump = readDump(8 + CODE_BOUND_FIELDS.length);
       const loose: unknown = JSON.parse(readDump(9 + CODE_BOUND_FIELDS.length));
+      const entityStatsDump = readDump(10 + CODE_BOUND_FIELDS.length);
       result.value.dispose();
 
       if (consoleOutput.trim()) {
@@ -1195,21 +1241,28 @@ export const executeStatCode = async (
         if (!Number.isFinite(slot.number)) return nonNumberFailure(`self.${field} must be a finite number`);
         bounds[field] = slot.number;
       }
-      const statWrites = readStatWrites(statsDump, keyedStats, 'stats');
+      const statWrites = readStatWrites(JSON.parse(statsDump), keyedStats, 'stats');
       if ('error' in statWrites) return nonNumberFailure(statWrites.error);
-      const ownerStatWrites = readStatWrites(ownerStatsDump, keyedOwnerStats, 'owner.stats');
+      const ownerStatWrites = readStatWrites(JSON.parse(ownerStatsDump), keyedOwnerStats, 'owner.stats');
       if ('error' in ownerStatWrites) return nonNumberFailure(ownerStatWrites.error);
+      const entityStatWrites = readEntityStatWrites(entityStatsDump, keyed, statEntriesOf);
+      if ('error' in entityStatWrites) return nonNumberFailure(entityStatWrites.error);
+      const ownerRows: OwnerStatWrites[] = [
+        ...(owner && ownerStatWrites.writes.length ? [{ ownerId: owner.id ?? '', writes: ownerStatWrites.writes }] : []),
+        ...entityStatWrites.owners,
+      ];
       const placeholderWrites = readPlaceholderWrites(writesDump, placeholderMap.nodes);
       if ('error' in placeholderWrites) return failure(placeholderWrites.error, 'bad-write');
       const traitWrites = readTraitWrites(JSON.parse(traitsDump), traits, 'traits');
       if ('error' in traitWrites) return failure(traitWrites.error, 'bad-write');
       const entityWrites = readEntityWrites(entitiesDump, keyed, place);
       if ('error' in entityWrites) return failure(entityWrites.error, 'bad-write');
-      const unknownStatWrites = [...statWrites.unknown, ...ownerStatWrites.unknown];
-      const disabledStatWrites = [...statWrites.disabled, ...ownerStatWrites.disabled];
+      const unknownStatWrites = [...statWrites.unknown, ...ownerStatWrites.unknown, ...entityStatWrites.unknown];
+      const disabledStatWrites = [...statWrites.disabled, ...ownerStatWrites.disabled, ...entityStatWrites.disabled];
       const readOnlyWrites = [
         ...statWrites.readOnly,
         ...ownerStatWrites.readOnly,
+        ...entityStatWrites.readOnly,
         ...(Array.isArray(loose) ? loose : []).filter((path): path is string => typeof path === 'string'),
         ...placeholderWrites.readOnly,
         ...traitWrites.readOnly,
@@ -1222,8 +1275,7 @@ export const executeStatCode = async (
         error: null,
         ...(Object.keys(bounds).length ? { bounds } : {}),
         ...(statWrites.writes.length ? { statWrites: statWrites.writes } : {}),
-        ...(owner && ownerStatWrites.writes.length
-          ? { ownerStatWrites: [{ ownerId: owner.id ?? '', writes: ownerStatWrites.writes }] } : {}),
+        ...(ownerRows.length ? { ownerStatWrites: ownerRows } : {}),
         ...(unknownStatWrites.length ? { unknownStatWrites } : {}),
         ...(disabledStatWrites.length ? { disabledStatWrites } : {}),
         ...(placeholderWrites.writes.length ? { placeholders: placeholderWrites.writes } : {}),

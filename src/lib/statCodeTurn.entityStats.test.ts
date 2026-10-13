@@ -75,15 +75,15 @@ describe('runStatCodeTurn entity owners', () => {
       .toEqual(['Stat Gold wrote stats that do not exist: owner.stats.Trust.value']);
   });
 
-  it('keeps the world stats read only in an entity stat’s code', async () => {
+  it('lands a world-stat write from an entity stat’s code, with no warning', async () => {
     const out = await run(
       [stat({ id: 'gold', name: 'Gold', value: 5 })],
       [owner('bram', [stat({ id: 'trust', name: 'Trust', value: 30, code: 'stats.Gold.value = 99; return 1;' })])],
     );
-    expect(valueOf(out.stats, 'gold')).toBe(5);
+    expect(valueOf(out.stats, 'gold')).toBe(99);
+    expect(out.moved).toEqual(['gold']);
     expect(valueOf(out.owners?.bram.stats, 'trust')).toBe(1);
-    expect(vi.mocked(console.warn).mock.calls.map(([line]) => String(line)))
-      .toEqual(['Stat Trust wrote read-only fields: stats.Gold.value']);
+    expect(console.warn).not.toHaveBeenCalled();
   });
 
   it('keeps the player’s code reading the player’s stats as `stats`', async () => {
