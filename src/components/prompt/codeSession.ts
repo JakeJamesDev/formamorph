@@ -31,12 +31,13 @@ import { forceLinting, linter, lintGutter, type Diagnostic } from '@codemirror/l
 import { codeHighlightStyle, SLOT_CLASS } from '@/lib/codeHighlight';
 import { findSlotRanges } from '@/lib/statCodeTemplates';
 import {
-  codeCompletions, codeDiagnostics, type CodeEntityNames, type CodeOwnerKind, type CodePlaceholders, type SurfaceAnalysisOptions,
+  codeCompletions, codeDiagnostics, type CodeDiagnostic, type CodeEntityNames, type CodeOwnerKind, type CodePlaceholders, type SurfaceAnalysisOptions,
 } from '@/lib/statCodeAnalysis';
 import { codeCard, completionCard } from '@/lib/codeCards';
 import { renderCodeCard, renderInfoLine } from '@/components/prompt/codeCardView';
 import { cardTooltipView, createCaretCards, goToDeclaration } from '@/components/prompt/codeCaretCard';
 import type { OpenCodeCardItem } from '@/lib/codeCardOpen';
+import { quickFixes, quickFixGutter } from '@/components/prompt/codeQuickFix';
 import { TOOLTIP_DELAY_MS } from '@/components/ui/tooltip';
 import type { CodeSurface } from '@/lib/codeSurface';
 import type { CodeWorldLookup } from '@/lib/codeWorldLookup';
@@ -153,6 +154,24 @@ const editorTheme = EditorView.theme({
     backgroundColor: 'hsl(var(--popover))',
   },
   '.cm-gutter-lint .cm-gutterElement': { padding: '0 0.2rem' },
+  '.cm-diagnosticAction': {
+    display: 'block',
+    margin: '0.25rem 0 0.125rem',
+    padding: '0.125rem 0.5rem',
+    border: '1px solid hsl(var(--border))',
+    borderRadius: '0.25rem',
+    backgroundColor: 'hsl(var(--accent))',
+    color: 'hsl(var(--accent-foreground))',
+    fontSize: '0.75rem',
+  },
+  '.cm-gutter-fixes .cm-gutterElement': { padding: '0 0.1rem', color: 'hsl(var(--warning))', cursor: 'pointer' },
+  '.cm-fixLightbulb': { display: 'inline-flex', height: '100%', alignItems: 'center' },
+  '.cm-tooltip[data-code-fixes]': {
+    border: '1px solid hsl(var(--border))',
+    borderRadius: '0.375rem',
+    backgroundColor: 'hsl(var(--popover))',
+    boxShadow: '0 4px 12px hsl(var(--foreground) / 0.12)',
+  },
   '.cm-tooltip.cm-tooltip-hover': {
     border: '1px solid hsl(var(--border))',
     borderRadius: '0.375rem',
@@ -230,7 +249,7 @@ export interface CodeSession {
   redo: () => void;
   canUndo: () => boolean;
   canRedo: () => boolean;
-  /** Show the margin of lint marks beside the line numbers. Full screen only — it costs a column. */
+  /** Show the margins of lint marks and fix lightbulbs beside the line numbers. Full screen only: they cost columns. */
   setLintGutter: (show: boolean) => void;
   /** What the code can reach. Re-lints when it changes. */
   setSurface: (surface: CodeSurface) => void;
@@ -278,6 +297,25 @@ export interface CodeSessionOptions {
   onChange: (value: string) => void;
   /** Any update at all, so the toolbar can re-read what undo and redo have to offer. */
   onUpdate?: () => void;
+}
+
+/** A diagnostic as the linter shows it, its fixes as the error card's buttons. */
+function lintDiagnostic({ fixes, missing: _missing, ...diagnostic }: CodeDiagnostic, code: string): Diagnostic {
+  if (!fixes?.length) return diagnostic;
+  const flagged = code.slice(diagnostic.from, diagnostic.to);
+  return {
+    ...diagnostic,
+    actions: fixes.map((fix) => ({
+      name: fix.label,
+      apply: (view, from, to) => {
+        // An edit inside the flagged text since the lint leaves the fix's span stale.
+        if (view.state.sliceDoc(from, to) !== flagged) return;
+        
+        const shift = from - diagnostic.from;
+        view.dispatch({ changes: { from: fix.from + shift, to: fix.to + shift, insert: fix.insert }, userEvent: 'input.complete' });
+      },
+    })),
+  };
 }
 
 const sameNames = (a?: readonly string[], b?: readonly string[]) =>
@@ -332,7 +370,10 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
   };
 
   const codeLinter = linter(
-    (view): Diagnostic[] => codeDiagnostics(view.state.doc.toString(), analysisOptions()),
+    (view): Diagnostic[] => {
+      const code = view.state.doc.toString();
+      return codeDiagnostics(code, analysisOptions()).map((diagnostic) => lintDiagnostic(diagnostic, code));
+    },
     {
       delay: 400,
       needsRefresh: (update) => update.transactions.some((tr) => tr.effects.some((effect) => effect.is(worldListsChanged))),
@@ -419,6 +460,7 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
         codeLinter,
         cards,
         caretCards.extension,
+        quickFixes,
         // A completion list or a diagnostic is taller than the field it belongs to, so it is positioned
         // against the window instead — otherwise the box, the panel it scrolls in, or the dialog around
         // it cuts the popup off wherever the caret happens to be low.
@@ -518,7 +560,7 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
       relint();
     },
     setLintGutter(show) {
-      view.dispatch({ effects: gutter.reconfigure(show ? lintGutter() : []) });
+      view.dispatch({ effects: gutter.reconfigure(show ? [lintGutter(), quickFixGutter] : []) });
     },
     focus() { view.focus(); },
     destroy() { view.destroy(); },

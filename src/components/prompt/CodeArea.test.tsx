@@ -304,8 +304,8 @@ describe('CodeArea', () => {
       fields()[0].closest('.cm-editor')?.querySelector('.cm-gutter-lint'),
     ).toBeTruthy());
     const columns = [...fields()[0].closest('.cm-editor')!.querySelectorAll('.cm-gutters > .cm-gutter')]
-      .map(column => (column.classList.contains('cm-gutter-lint') ? 'lint' : 'numbers'));
-    expect(columns).toEqual(['lint', 'numbers']);
+      .map(column => (column.classList.contains('cm-gutter-lint') ? 'lint' : column.classList.contains('cm-gutter-fixes') ? 'fixes' : 'numbers'));
+    expect(columns).toEqual(['lint', 'fixes', 'numbers']);
   });
 
   // Whether the rule actually reaches the bottom is a layout fact, and jsdom has no layout — that part

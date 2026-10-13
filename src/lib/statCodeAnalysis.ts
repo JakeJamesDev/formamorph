@@ -11,6 +11,8 @@ import type { CodeWorldLookup } from '@/lib/codeWorldLookup';
 import type { PlaceholderOwners } from '@/lib/placeholderHomes';
 import { placeholderKindNoun } from '@/lib/placeholders';
 import { hasEntityKey } from '@/lib/statCodeNames';
+import { memberRenameKey } from '@/lib/codeRenameChains';
+import { rewrittenKey } from '@/lib/statCodeRename';
 import { findSlotRanges, parseTemplateSlots } from '@/lib/statCodeTemplates';
 import type { Placeholder } from '@/types';
 import {
@@ -41,6 +43,16 @@ export interface CodeDiagnostic {
   message: string;
   /** Set on an unknown name that no owner in the world holds and no near name matches. */
   missing?: MissingName;
+  /** What can fix it, the near name first. */
+  fixes?: CodeFix[];
+}
+
+/** One fix for a diagnostic: the text that replaces a stretch of the code. */
+export interface CodeFix {
+  label: string;
+  from: number;
+  to: number;
+  insert: string;
 }
 
 /** A name the world does not have yet, by the global the code reaches it through. */
@@ -524,7 +536,7 @@ function checkField(field: SyntaxNode | null, path: string, code: string, listed
   const suggestion = known ? null : nearestName(name, STAT_FIELDS.map((entry) => entry.name));
   const message = known ? `${path}.${name} can’t be written. Only ${writableList(listedAs)} can.`
     : suggestion ? `${path} has no field “${name}”. Did you mean “${suggestion}”?` : `${path} has no field “${name}”.`;
-  return { writes: true, problem: { from: field.from, to: field.to, severity: 'error', message } };
+  return { writes: true, problem: suggested({ from: field.from, to: field.to, severity: 'error', message }, suggestion) };
 }
 
 function checkWrite(
@@ -674,7 +686,7 @@ function checkEntryName(
   }
   const suggestion = nearestName(name, [...new Set(names)]);
   const message = suggestion ? `No ${noun} is named “${name}”. Did you mean “${suggestion}”?` : `No ${noun} is named “${name}”.`;
-  return tagMissing({ from, to, severity: 'error', message }, suggestion, missing ?? false);
+  return suggested({ from, to, severity: 'error', message }, suggestion, missing ?? false);
 }
 
 /** Whether some owner holds `name` or a name near it: a wrong owner or a typo, not a missing name. */
@@ -684,9 +696,23 @@ const heldNear = (name: string, held: ReadonlySet<string>) => held.has(name) || 
 const checkTraitName = (ref: EntryRef, names: readonly string[], held: ReadonlySet<string>) =>
   checkEntryName(ref, names, 'trait', undefined, heldNear(ref.name, held) ? undefined : { kind: 'trait', root: 'traits', segments: [ref.name] });
 
-/** The diagnostic with `missing` set when it suggests no name. */
-const tagMissing = (diagnostic: CodeDiagnostic, suggestion: string | null, missing: MissingName | false): CodeDiagnostic =>
-  (suggestion || !missing ? diagnostic : { ...diagnostic, missing });
+/** The diagnostic with its near name as the first fix, or with `missing` set when it suggests no name. */
+const suggested = (diagnostic: CodeDiagnostic, suggestion: string | null, missing: MissingName | false = false): CodeDiagnostic => {
+  if (suggestion) {
+    const { from, to } = diagnostic;
+    return { ...diagnostic, fixes: [{ label: `Change to ${suggestion}`, from, to, insert: suggestion }] };
+  }
+  return missing ? { ...diagnostic, missing } : diagnostic;
+};
+
+/** A fix on a map key, rewritten by the rename offer's key splice. Any other fix stays as it is. */
+function keyFix(fix: CodeFix, code: string, tree: Tree): CodeFix {
+  const node = tree.resolveInner(fix.from, 1);
+  const member = node.from === fix.from && node.to === fix.to ? keyOwner(node) : null;
+  const object = member?.firstChild;
+  const key = member && object && object.from < fix.from ? memberRenameKey(member, object, code) : null;
+  return key ? { ...fix, ...rewrittenKey(key, fix.insert) } : fix;
+}
 
 /** Every name a node of `map` takes, under any owner. */
 function placeholderNames(map: PlaceholderPathMap): Set<string> {
@@ -729,7 +755,7 @@ function checkPlaceholderPath(refs: readonly EntryRef[], placeholders: CodePlace
   const lead = node ? `Unknown placeholder name “${ref.name}” under “${placeholderPathLabel(node.path)}”`
     : `Unknown placeholder name “${ref.name}”`;
   const segments = refs.slice(0, refs.length - rest.length + 1).map((at) => at.name);
-  out.push(tagMissing({
+  out.push(suggested({
     from: ref.from, to: ref.to, severity: 'error',
     message: suggestion ? `${lead}. Did you mean “${suggestion}”?` : `${lead}.`,
   }, suggestion, !suggestion && !heldNear(ref.name, placeholderNames(map)) && { kind: 'placeholder', root: 'placeholders', segments }));
@@ -762,7 +788,7 @@ function checkOwnedPlaceholderPath(
       : `“${route.owner}” has no placeholder named “${ref.name}”.`;
   const suggestion = nearestName(ref.name, node.children.map((child) => child.name));
   const segments = [...route.owner === undefined ? [] : [route.owner], ...route.segments.slice(0, route.segments.length - rest.length + 1)];
-  return tagMissing({
+  return suggested({
     from: ref.from, to: ref.to, severity: 'warning',
     message: suggestion ? `${lead} Did you mean “${suggestion}”?` : lead,
   }, suggestion, !suggestion && !heldNear(ref.name, placeholderNames(map)) && { kind: 'placeholder', root: ROUTE_GLOBAL[chain.kind], segments });
@@ -831,7 +857,7 @@ function checkTraitWrite(
   const suggestion = known ? null : nearestName(name, TRAIT_ENTRY_FIELDS.map((f) => f.name));
   const message = known ? `${path}.${name} can’t be written. Only ${path}.${TRAIT_WRITABLE_FIELD} can.`
     : suggestion ? `A trait has no field “${name}”. Did you mean “${suggestion}”?` : `A trait has no field “${name}”.`;
-  return { from: field.from, to: field.to, severity: 'error', message };
+  return suggested({ from: field.from, to: field.to, severity: 'error', message }, suggestion);
 }
 
 /** What is wrong with a write into `persona`: to one of its own members, or into its traits as `traits`. */
@@ -876,7 +902,7 @@ function checkClockField(member: SyntaxNode, code: string): CodeDiagnostic | nul
   if (!fields || fields.some((entry) => entry.name === name)) return null;
   const suggestion = nearestName(name, fields.map((entry) => entry.name));
   const lead = `${path} has no field “${name}”.`;
-  return { from: field.from, to: field.to, severity: 'error', message: suggestion ? `${lead} Did you mean “${suggestion}”?` : lead };
+  return suggested({ from: field.from, to: field.to, severity: 'error', message: suggestion ? `${lead} Did you mean “${suggestion}”?` : lead }, suggestion);
 }
 
 /** Operators that read their operands as numbers. */
@@ -942,7 +968,7 @@ function checkOwnerName(ref: EntryRef, names: readonly string[], noun: 'entity' 
   if (names.includes(ref.name)) return checkEntryName(ref, names, noun);
   const lead = `Unknown ${noun} name “${ref.name}”. A library ${noun} can have it.`;
   const suggestion = nearestName(ref.name, [...new Set(names)]);
-  return tagMissing(
+  return suggested(
     { from: ref.from, to: ref.to, severity: 'warning', message: suggestion ? `${lead} Did you mean “${suggestion}”?` : lead },
     suggestion, { kind: noun, root: noun === 'entity' ? 'entities' : 'dictionaries', segments: [ref.name] },
   );
@@ -978,7 +1004,7 @@ function checkOwnerStatName(
   if (names.includes(ref.name)) return null;
   const lead = entity ? `“${entity.name}” has no stat named “${ref.name}”.` : `Unknown persona stat name “${ref.name}”. A library persona can have it.`;
   const suggestion = nearestName(ref.name, names);
-  return { from: ref.from, to: ref.to, severity: 'warning', message: suggestion ? `${lead} Did you mean “${suggestion}”?` : lead };
+  return suggested({ from: ref.from, to: ref.to, severity: 'warning', message: suggestion ? `${lead} Did you mean “${suggestion}”?` : lead }, suggestion);
 }
 
 /** What is wrong with a trait name on a known entity: its set has no trait called that. A later library
@@ -990,7 +1016,7 @@ function checkEntityTraitName(
   if (!names || names.includes(trait.name)) return null;
   const suggestion = nearestName(trait.name, [...new Set(names)]);
   const lead = `“${entity.name}” has no trait named “${trait.name}”.`;
-  return tagMissing(
+  return suggested(
     { from: trait.from, to: trait.to, severity: 'warning', message: suggestion ? `${lead} Did you mean “${suggestion}”?` : lead },
     suggestion, !heldNear(trait.name, held) && { kind: 'trait', root: 'entities', segments: [entity.name, trait.name] },
   );
@@ -1002,7 +1028,7 @@ function checkPersonaTraitName({ name, from, to }: EntryRef, names: readonly str
   if (names.includes(name)) return null;
   const lead = `Unknown persona trait name “${name}”. A library persona can have it.`;
   const suggestion = nearestName(name, [...new Set(names)]);
-  return tagMissing(
+  return suggested(
     { from, to, severity: 'warning', message: suggestion ? `${lead} Did you mean “${suggestion}”?` : lead },
     suggestion, !heldNear(name, held) && { kind: 'trait', root: 'persona', segments: [name] },
   );
@@ -1296,14 +1322,14 @@ export function codeDiagnostics(code: string, options: SurfaceAnalysisOptions): 
     if (declared.has(name) || known.has(name)) continue;
     if (overlapsAny(from, to, ranges)) continue;
     const suggestion = nearestName(name, [...known, ...declared]);
-    diagnostics.push({
+    diagnostics.push(suggested({
       from,
       to,
       severity: 'error',
       message: suggestion
         ? `“${name}” isn’t available in ${surface.label}. Did you mean “${suggestion}”?`
         : `“${name}” isn’t available in ${surface.label}.`,
-    });
+    }, suggestion));
   } while (cursor.next());
 
   // Code with no return can still set a stat through self or the map, pin a placeholder, or switch a trait.
@@ -1327,6 +1353,7 @@ export function codeDiagnostics(code: string, options: SurfaceAnalysisOptions): 
       seen.add(key);
       return true;
     })
+    .map((diagnostic) => (diagnostic.fixes ? { ...diagnostic, fixes: diagnostic.fixes.map((fix) => keyFix(fix, code, tree)) } : diagnostic))
     .sort((a, b) => a.from - b.from);
 }
 

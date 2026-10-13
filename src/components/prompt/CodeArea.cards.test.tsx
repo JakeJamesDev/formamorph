@@ -166,6 +166,8 @@ describe('the card in the completion list', () => {
   it('shows the full card for the selected option in the info pane', async () => {
     const user = userEvent.setup();
     await typeAndList(user, 'return self.reg');
+    // A list opened mid-typing shows its earlier pick until the update for the last key lands.
+    await waitFor(() => expect(popup()?.querySelector('[aria-selected] .cm-completionLabel')?.textContent).toBe('regen'));
     await waitFor(() => expect(pane()).toBeTruthy());
     const shown = pane()!.querySelector<HTMLElement>('[data-code-card]');
     expect(shown?.textContent).toContain('(property) Stat.regen: number');
@@ -495,6 +497,8 @@ describe('hover cards in the template dialog', () => {
       await user.keyboard(code[i] === '{' ? '{{' : code[i]);
       await waitFor(() => expect(field.textContent).toBe(code.slice(0, i + 1)));
     }
+    // A list opened mid-typing lingers until its update runs, and its pane holds a card of its own.
+    await waitFor(() => expect(document.querySelector('.cm-tooltip-autocomplete')).toBeNull());
     return field;
   }
 
