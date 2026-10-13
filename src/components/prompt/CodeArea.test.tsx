@@ -891,16 +891,27 @@ describe('CodeArea', () => {
   });
 
   describe('on a surface other than stat code', () => {
-    it('offers that surface’s inserts in the Variable menu, and none of stat code’s', async () => {
+    it('drills that surface’s own tree in the Variable menu, and none of stat code’s', async () => {
       const user = userEvent.setup();
-      render(<Harness surface={SCRIPT} />);
+      const variables = () => [{
+        kind: 'group' as const, label: 'Arguments',
+        children: [{ kind: 'field' as const, label: 'name', detail: 'string', info: 'Who.', insert: 'args.name' }],
+      }];
+      render(<Harness surface={SCRIPT} extra={{ variables }} />);
       await user.click(await editor());
 
       await user.click(screen.getByLabelText('Variable'));
       expect(screen.queryByText('This Stat')).toBeNull();
-      await user.click(screen.getByText('An argument'));
+      await user.click(screen.getByText('Arguments'));
+      await user.click(screen.getByText('name'));
 
       expect(owned()).toBe('args.name');
+    });
+
+    it('shows no Variable menu when the surface gives no tree', async () => {
+      render(<Harness surface={SCRIPT} />);
+      await editor();
+      expect(screen.queryByLabelText('Variable')).toBeNull();
     });
 
     it('reads names against that surface, and re-reads them when the surface changes', async () => {

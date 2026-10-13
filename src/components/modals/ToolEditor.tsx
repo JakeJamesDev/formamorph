@@ -1,4 +1,4 @@
-import { useId, useMemo, type ReactNode } from 'react';
+import { useCallback, useId, useMemo, type ReactNode } from 'react';
 import { Info, Plus, Trash2 } from 'lucide-react';
 import type { Tool, ToolHandler, ToolParam, ToolParamType } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -25,6 +25,7 @@ import {
 } from '@/lib/tools/toolDraft';
 import { infoWithAccess, type SurfaceEntry } from '@/lib/codeSurface';
 import { toolScriptSurface } from '@/lib/tools/toolScriptSurface';
+import { buildToolVariableTree, type ToolVariableNames } from '@/lib/tools/toolVariableTree';
 import { toolTemplateVocabulary } from '@/lib/tools/toolTemplateVocabulary';
 import type { ValueLookup } from '@/lib/promptValues';
 import type { ToolNameProblem } from '@/lib/tools/toolValidation';
@@ -249,8 +250,10 @@ function ScriptReference({ globals }: { globals: readonly SurfaceEntry[] }) {
   );
 }
 
-function HandlerTab({ draft, onChange, onKindChange, problems, placeholderNames, chipReads }: TabProps & {
+function HandlerTab({ draft, onChange, onKindChange, problems, placeholderNames, chipReads, names }: TabProps & {
   onKindChange: (kind: ToolHandler['kind']) => void; placeholderNames: readonly string[];
+  /** The Try It world's names, which the script's Variable menu lists. */
+  names: ToolVariableNames;
   /** The scene chips' values on the world Try It runs on, which Chip Options shows. */
   chipReads: ValueLookup;
 }) {
@@ -261,6 +264,7 @@ function HandlerTab({ draft, onChange, onKindChange, problems, placeholderNames,
   const handlerError = problems.handler && HANDLER_PROBLEM[problems.handler];
   const surface = useMemo(() => toolScriptSurface(params, placeholderNames), [params, placeholderNames]);
   const vocabulary = useMemo(() => toolTemplateVocabulary(params), [params]);
+  const variables = useCallback(() => buildToolVariableTree(params, names), [params, names]);
   const setHandler = (next: ToolHandler) => onChange({ ...draft, handler: next });
   const kind = HANDLER_KINDS.find((k) => k.value === handler.kind) ?? HANDLER_KINDS[0];
   return (
@@ -336,7 +340,7 @@ function HandlerTab({ draft, onChange, onKindChange, problems, placeholderNames,
       )}
       {handler.kind === 'script' && (
         <CodeArea
-          label="Script" ariaLabel="Script" rows={10} surface={surface}
+          label="Script" ariaLabel="Script" rows={10} surface={surface} variables={variables}
           info={<ScriptReference globals={surface.globals} />}
           value={handler.code} onChange={(code) => setHandler({ ...handler, code })}
         />
@@ -402,7 +406,7 @@ export function ToolEditor({
     const next = withHandlerKind(draft, kind, keptHandlers);
     onDraftChange(next.draft, next.kept);
   };
-  // Autocomplete lists the shared placeholders of the world Try It runs on.
+  // Autocomplete and the Variable menu list the names of the world Try It runs on.
   const { snapshot } = world;
   const toolSnapshot = useMemo(() => snapshot(), [snapshot]);
   const placeholderNames = useMemo(() => Object.keys(toolSnapshot.placeholders), [toolSnapshot]);
@@ -430,7 +434,7 @@ export function ToolEditor({
             <div className="pr-3 pb-1">
               <TabsContent value="definition" className="mt-0"><DefinitionTab {...body} /></TabsContent>
               <TabsContent value="parameters" className="mt-0"><ParametersTab {...body} /></TabsContent>
-              <TabsContent value="handler" className="mt-0"><HandlerTab {...body} onKindChange={switchKind} placeholderNames={placeholderNames} chipReads={toolSnapshot.chips} /></TabsContent>
+              <TabsContent value="handler" className="mt-0"><HandlerTab {...body} onKindChange={switchKind} placeholderNames={placeholderNames} chipReads={toolSnapshot.chips} names={toolSnapshot} /></TabsContent>
             </div>
           </ScrollArea>
         </Tabs>

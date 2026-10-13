@@ -80,6 +80,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The stat panel's Regen field now takes a unit, so a stat can regen 1 per day.** Pick **Minute**, **Hour**, **Day** or **Week** beside the number. Hour is the default, so existing stats don't change. Initial Value is now **Base Value** and comes first in the row, since traits can still change where a stat starts.
   - **A new Autosaves Kept setting keeps the last few autosaves for each world, named by turn.** It's under **Data** → **Saves**, and starts at one, as before. Each turn adds an autosave until the world has that many, then replaces the oldest. A re-generate replaces its turn's autosave.
   - **Four bundled worlds now show placeholder ownership on the World Editor's Placeholders tab.** Drone, Slime and Valentines give a placeholder to the entity or dictionary book that uses it. Slime's neighbor now rolls a name and a matching habit. Open Chat's five style placeholders sit in a Chat Style folder.
+  - **The Tool script's Variable menu now works like stat code's, one level at a time down to a field.** It lists the arguments, the scene, and the world's entities, locations, dictionary entries and placeholders by name. Pick a field to insert its full path.
 - **🛠️ Developer tooling**
   - **Entity Stats:**
     - **`entity-stats-chip-probe.cli.ts` compares the Entities chip with its stats piece on and off.** It runs narration, planner and choices cases on Sedge Landing and reports uptake, leaks, choice contract and dialogue share.

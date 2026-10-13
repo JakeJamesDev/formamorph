@@ -13,7 +13,6 @@ export const SCRIPT_SURFACE: CodeSurface = {
     ['Math', [{ name: 'max', detail: '(...n) => number', info: 'The largest.' }]],
   ]),
   languageNames: ['JSON'],
-  snippets: [{ label: 'An argument', text: 'args.name', select: 'name' }],
   missingReturn: 'This script never returns a result.',
   statMaps: false,
 };
