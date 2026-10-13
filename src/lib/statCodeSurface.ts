@@ -138,8 +138,8 @@ export const TRAIT_ENTRY_FIELDS: readonly SurfaceEntry[] = [
 /** The one field on a trait entry that a write reaches. */
 export const TRAIT_WRITABLE_FIELD = 'enabled';
 
-/** The members of `persona`. None takes a write; a trait switches through its own `enabled`, and a stat takes
- *  writes to its value, min, max and regen. */
+/** The members of `persona`. The members are read-only; a trait switches through its own `enabled`, and a
+ *  stats entry takes writes to its value, min, max and regen while its identity fields stay read-only. */
 export const PERSONA_FIELDS: readonly SurfaceEntry[] = [
   { name: 'id', detail: 'string', info: 'The persona entity’s unique id. Empty when the player plays no entity. Read-only.' },
   { name: 'name', detail: 'string', info: 'The persona’s code name. Empty when the player plays no entity. Read-only.' },
@@ -151,8 +151,9 @@ export const PERSONA_FIELDS: readonly SurfaceEntry[] = [
   { name: 'stats', detail: 'object', info: 'The persona’s own stats by name, each with the fields of a stats entry. Empty when the player plays no entity. Entries take writes to value, min, max and regen.' },
 ];
 
-/** The members of one entry in `entities`, and of `owner`. None takes a write; a trait switches through its own
- *  `enabled`, and a stat takes writes to its value, min, max and regen. */
+/** The members of one entry in `entities`, and of `owner`. The members are read-only; a trait switches through
+ *  its own `enabled`, and a stats entry takes writes to its value, min, max and regen while its identity fields
+ *  stay read-only. */
 export const ENTITY_FIELDS: readonly SurfaceEntry[] = [
   { name: 'id', detail: 'string', info: 'The entity’s unique id. Read-only.' },
   { name: 'name', detail: 'string', info: 'The entity’s code name. Read-only.' },

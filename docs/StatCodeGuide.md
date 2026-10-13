@@ -153,7 +153,7 @@ Follow these rules:
 ### Basic Syntax
 <!-- keywords: what language, first script, minimal example, is return required, fixed number -->
 
-Your code is plain JavaScript. Return a number to set the stat's value. The code has access to `stats`, a map of the world's stats keyed by name, and to `self`, the stat the code belongs to. For a stat on an entity's **Stats** tab, it also has `owner`, that entity (see [Owner](#owner)).
+Your code is plain JavaScript. Return a number to set the stat's value. The code has access to `stats`, a map of the world's stats keyed by name, and to `self`, the stat the code belongs to. It also has `owner`, the entity that owns the stat: empty for a world stat, and the bearer for a Blueprint stat (see [Owner](#owner)).
 
 ```javascript
 // Example: Return a fixed value
@@ -333,7 +333,7 @@ The [Test Bench](Test-Bench#issues) warns when more than one box writes the same
 - `persona.stats` reaches every entity that the player can play, because the world doesn't know which one the player picks.
 - A Blueprint stat's box counts once for each bearer. Each bearer's own copy of the stat is judged on its own, so two bearers don't clash on their own stats. A Blueprint box that writes a world stat's field gets the warning when it has two or more bearers (see [A Note on Accumulating Stats](#a-note-on-accumulating-stats)).
 
-A warning isn't an error. Stat order already settles which write wins. The finding shows two boxes that may overwrite each other by mistake.
+A warning isn't an error. Owner order, then stat order, already settles which write wins. The finding shows two boxes that may overwrite each other by mistake.
 
 ### Reading This Turn
 <!-- keywords: old value, how much it moved, overflow, wasted gain, halve damage, multiply narrator change, before and after, excess past maximum, requested amount -->
@@ -583,7 +583,7 @@ dictionaries.Weather.placeholders.Sky.pin(self.value < 20 ? 'storm' : 'clear');
 ### Order of Effects
 <!-- keywords: which script wins, priority, precedence, conflict, race condition, execution sequence, overwrite each other, see other scripts changes -->
 
-Each box is a separate run. Within one run every stat's code reads the same snapshot, so no script sees another stat's writes from that run. After each run, effects apply in this order: trait switches, then bounds, then values, then placeholder pins. A bound a stat writes lands at the written number, after the run's trait switches have moved the bounds. When two stats write the same placeholder, trait, or stat field in one run, the later stat in the list wins. See [Writing to Other Stats](#writing-to-other-stats).
+Each box is a separate run. Within one run every stat's code reads the same snapshot, so no script sees another stat's writes from that run. After each run, effects apply in this order: trait switches, then bounds, then values, then placeholder pins. A bound a stat writes lands at the written number, after the run's trait switches have moved the bounds. When two stats write the same placeholder, trait, or stat field in one run, owner order decides first, then the later stat in the list wins. See [Writing to Other Stats](#writing-to-other-stats).
 
 Each run covers the world's stats and every entity's stats over that one snapshot. Writes land in owner order, then stat order within one owner. The last write to a field wins. See [Writing to Other Stats](#writing-to-other-stats) for the order.
 

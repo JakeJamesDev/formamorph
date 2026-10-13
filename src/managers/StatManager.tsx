@@ -137,7 +137,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
     return buildMorphGroups(morphSources, taken);
   }, [morphSources, stats, stat.id]);
 
-  // The code names Test Code runs under: the owner's stats, or the world's for a world stat.
+  // The code names of the stats beside this one, which `owner.stats` reads when an entity owns them.
   const codeNamedStats = useMemo(() => statCodeNamed(stats, placeholders), [stats, placeholders]);
   const selfCodeName = statCodeName(editingStat.name, placeholders);
   // Whose code this is: an entity's own stat runs under that entity, a Blueprint stat under each bearer, a world stat under none.

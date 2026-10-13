@@ -21,7 +21,7 @@ export type StatReader =
   | { kind: 'change' | 'toggle'; trait: string }
   /** The code of `stat`, which stays or runs elsewhere, reads the stat. */
   | { kind: 'readBy'; stat: string }
-  /** The moved stat's own code reads `stat`, which stays. */
+  /** The moved stat's own code reads `stat` through `owner`, which stays, or which the world's empty owner lacks. */
   | { kind: 'reads'; stat: string };
 
 /** The owner a bearer's row reaches: an entity's id, null for the world, undefined for none. */
@@ -53,10 +53,12 @@ function traitReader(world: StatReaderWorld, from: string | null, moved: Readonl
 
 /**
  * The first stat code that reads one of `moved` on owner `from` and would read nothing once it leaves, or a
- * moved stat's own code whose `owner.stats` reads a stat left behind on `from`. Only exact map lookups count.
- * A Blueprint box counts once per bearer.
+ * moved stat's own code whose `owner.stats` reads a stat left behind on `from`, or reads any stat when `toWorld`
+ * leaves it no owner. Only exact map lookups count. A Blueprint box counts once per bearer.
  */
-function codeReader(world: StatReaderWorld, from: string | null, moved: ReadonlyMap<string, Stat>): { stat: Stat; reader: StatReader } | null {
+function codeReader(
+  world: StatReaderWorld, from: string | null, moved: ReadonlyMap<string, Stat>, toWorld = false,
+): { stat: Stat; reader: StatReader } | null {
   const owners = statCodeOwners({
     stats: world.stats, statGroups: world.statGroups, entities: world.entities, placeholders: world.placeholders ?? [],
   });
@@ -73,7 +75,7 @@ function codeReader(world: StatReaderWorld, from: string | null, moved: Readonly
       for (const { route } of routes) {
         const targets = routeTargets(owners, run, route);
         if (leaves && route.root === 'owner') {
-          const left = targets.find((target) => !isMoved(target));
+          const left = toWorld ? targets[0] : targets.find((target) => !isMoved(target));
           if (left) return { stat: moved.get(run.self.id) ?? run.self, reader: { kind: 'reads', stat: left.stat.name } };
           continue;
         }
@@ -86,14 +88,14 @@ function codeReader(world: StatReaderWorld, from: string | null, moved: Readonly
   return null;
 }
 
-/** What the move of `moved`, stats of owner `from` (null = the world), to another owner would break: the
- *  first trait row or stat code that reads one of them there. Null when nothing does. */
+/** What the move of `moved`, stats of owner `from`, to owner `to` (null = the world) would break: the first
+ *  trait row or stat code that reads one of them there. Null when nothing does. */
 export function brokenStatReader(
-  world: StatReaderWorld, from: string | null, moved: readonly Stat[],
+  world: StatReaderWorld, from: string | null, to: string | null, moved: readonly Stat[],
 ): { stat: Stat; reader: StatReader } | null {
   if (!moved.length) return null;
   const byId = new Map(moved.map((s) => [s.id, s]));
-  return traitReader(world, from, byId) ?? codeReader(world, from, byId);
+  return traitReader(world, from, byId) ?? codeReader(world, from, byId, to === null);
 }
 
 /** What reads one of `moved`, world stats outside Blueprints, as a player stat: the first trait row or stat code

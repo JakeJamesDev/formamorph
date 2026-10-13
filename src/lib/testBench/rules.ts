@@ -940,6 +940,40 @@ const codeOwnersOf = (world: RuleWorld): CodeOwners => statCodeOwners({
   stats: world.stats, statGroups: world.statGroups, entities: world.entities, placeholders: allPlaceholders(world),
 });
 
+/** Every unknown stat name in stat code, each once per box. `blueprintOwner` marks an `owner.stats` miss in a
+ *  Blueprint box, where a bearer can hold more than the group. */
+const unknownStatMisses = (world: RuleWorld): { label: string; item: FindingItem; miss: string; blueprintOwner: boolean }[] => {
+  const owners = codeOwnersOf(world);
+  const inWorld = owners.world.byCodeName;
+  return codeBoxesOf(world, owners).flatMap(({ code, label, item, ownerStats, blueprint }) => {
+    const misses = new Map<string, boolean>();
+    const miss = (text: string, blueprintOwner = false) => misses.set(text, blueprintOwner);
+    for (const name of comparedStatNames(code)) {
+      if (!inWorld.has(name) && !ownerStats?.has(name)) miss(`looks up a stat named ${quote(name)}, which does not exist`);
+    }
+    for (const { root, entity = '', stat } of scanStatLookups(code)) {
+      const named = quote(stat);
+      if (root === 'stats') {
+        if (!inWorld.has(stat)) miss(`looks up a stat named ${named}, which does not exist`);
+      } else if (root === 'owner') {
+        if (!ownerStats) miss(`looks up ${named} on its owner, but a world stat has no owner`);
+        else if (ownerStats.has(stat)) continue;
+        else if (blueprint) miss(`looks up a stat named ${named} on its owner, which its Blueprint group does not have`, true);
+        else miss(`looks up a stat named ${named} on its owner, which does not exist`);
+      } else if (root === 'persona') {
+        if (!owners.playable.some((o) => o.byCodeName.has(stat))) {
+          miss(`looks up a stat named ${named} on the persona, but no entity that can be played has it`);
+        }
+      } else {
+        const target = owners.byName.get(entity);
+        if (!target) miss(`looks up a stat on ${quote(entity)}, but no entity is named ${quote(entity)}`);
+        else if (!target.byCodeName.has(stat)) miss(`looks up a stat named ${named} on ${quote(entity)}, which does not exist`);
+      }
+    }
+    return [...misses].map(([text, blueprintOwner]) => ({ label, item, miss: text, blueprintOwner }));
+  });
+};
+
 const statCodeUnknownStat: Rule = {
   id: 'stat-code-unknown-stat',
   severity: 'error',
@@ -947,34 +981,20 @@ const statCodeUnknownStat: Rule = {
   advanced: true,
   summary: (count) => `${count} stats’ code looks up stat names that don’t exist`,
   // Code reaches a stat by its code name, which is the same in every playthrough.
-  check: (world) => {
-    const owners = codeOwnersOf(world);
-    const inWorld = owners.world.byCodeName;
-    return codeBoxesOf(world, owners).flatMap(({ code, label, item, ownerStats }) => {
-      const misses = new Set<string>();
-      for (const name of comparedStatNames(code)) {
-        if (!inWorld.has(name) && !ownerStats?.has(name)) misses.add(`looks up a stat named ${quote(name)}, which does not exist`);
-      }
-      for (const { root, entity = '', stat } of scanStatLookups(code)) {
-        const named = quote(stat);
-        if (root === 'stats') {
-          if (!inWorld.has(stat)) misses.add(`looks up a stat named ${named}, which does not exist`);
-        } else if (root === 'owner') {
-          if (!ownerStats) misses.add(`looks up ${named} on its owner, but a world stat has no owner`);
-          else if (!ownerStats.has(stat)) misses.add(`looks up a stat named ${named} on its owner, which does not exist`);
-        } else if (root === 'persona') {
-          if (!owners.playable.some((o) => o.byCodeName.has(stat))) {
-            misses.add(`looks up a stat named ${named} on the persona, but no entity that can be played has it`);
-          }
-        } else {
-          const target = owners.byName.get(entity);
-          if (!target) misses.add(`looks up a stat on ${quote(entity)}, but no entity is named ${quote(entity)}`);
-          else if (!target.byCodeName.has(stat)) misses.add(`looks up a stat named ${named} on ${quote(entity)}, which does not exist`);
-        }
-      }
-      return [...misses].map((miss) => finding(statCodeUnknownStat, `${label} ${miss}`, [item]));
-    });
-  },
+  check: (world) => unknownStatMisses(world)
+    .filter(({ blueprintOwner }) => !blueprintOwner)
+    .map(({ label, item, miss }) => finding(statCodeUnknownStat, `${label} ${miss}`, [item])),
+};
+
+const statCodeUnknownBlueprintOwnerStat: Rule = {
+  id: 'stat-code-unknown-blueprint-owner-stat',
+  severity: 'warning',
+  section: 'stats',
+  advanced: true,
+  summary: (count) => `${count} Blueprint stats’ code looks up owner stats their Blueprint group doesn’t have`,
+  check: (world) => unknownStatMisses(world)
+    .filter(({ blueprintOwner }) => blueprintOwner)
+    .map(({ label, item, miss }) => finding(statCodeUnknownBlueprintOwnerStat, `${label} ${miss}`, [item])),
 };
 
 /** One filled box the static rules read: its code, how a finding names it, and the stats its `owner.stats`
@@ -984,15 +1004,19 @@ interface OwnedCodeBox {
   label: string;
   item: FindingItem;
   ownerStats: ReadonlyMap<string, Stat> | null;
+  /** A Blueprint stat's own box, whose `owner.stats` holds the group alone. */
+  blueprint: boolean;
 }
 
 /** Every box of stat code once, as a finding names it. An entity's own box and its link's name the entity. */
 const codeBoxesOf = (world: RuleWorld, owners: CodeOwners): OwnedCodeBox[] => statCodeBoxes(owners).map((box) => {
   const label = `${TIMING_LABEL[box.timing]} code on ${quote(labelOf(box.stat.name, world))}`;
   const ownerStats = box.owner?.byCodeName ?? null;
-  if (!box.entity) return { code: box.code, label, item: namedItem(box.stat.id, box.stat.name, world), ownerStats };
+  if (!box.entity) {
+    return { code: box.code, label, item: namedItem(box.stat.id, box.stat.name, world), ownerStats, blueprint: !!box.owner };
+  }
   const item = { ...asItem(box.entity, world), section: 'entities' as const };
-  return { code: box.code, label: `${label} of ${quote(labelOf(box.entity.name, world))}`, item, ownerStats };
+  return { code: box.code, label: `${label} of ${quote(labelOf(box.entity.name, world))}`, item, ownerStats, blueprint: false };
 });
 
 // A read of a stat's `delta`, in either lookup form. A bare `delta` is nothing the sandbox injects, so only
@@ -3488,7 +3512,7 @@ const imageMislabeled: Rule = {
 export const RULES: readonly Rule[] = [
   aliasLeadingArticle, entityMatchCollision, aliasSelfDuplicate,
   entityLocationOrphan, linkConnectionBroken, traitToggleMissingStat, placeholderPinBroken,
-  chipUnknownPlaceholder, placeholderUnused, placeholderPinnedUnused, statCodeUnknownStat,
+  chipUnknownPlaceholder, placeholderUnused, placeholderPinnedUnused, statCodeUnknownStat, statCodeUnknownBlueprintOwnerStat,
   statCodeBeforeReadsDelta, statCodeTwoWriters,
   entrySecondaryWithoutPrimary, entryInert, entryRegexInvalid,
   noStartingLocation, legacyStartLocation, entityNowhere, entityNoCodeName, statDisabledForever,

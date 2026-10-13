@@ -2864,7 +2864,7 @@ const GameViewer = ({
         const healthLoss = tick && thresholdStats ? starvationLoss(thresholdStats, enabled, clock.deltaHours ?? FLAT_HOURS_PER_TURN) : null;
         const health = healthLoss === null ? undefined : stats.find((s) => s.name === "Health");
         const result = await runStatCodeTurn({
-          timing, ownerId: PLAYER_OWNER,
+          timing,
           stats, enabled, previous: before, asks, regenApplied, clock,
           gateStats: gateStatsOf({
             traits: held.acquired, disabledTraitIds: held.disabledTraitIds, ownedTraits: held.ownedTraits, stats, entityStats: entityBase,
