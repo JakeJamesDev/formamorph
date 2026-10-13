@@ -107,8 +107,10 @@ describe('the top level', () => {
     expect(tree.map(labelOf)).toEqual(['This Stat', 'Stats', 'Traits', 'Entities', 'Persona', 'Placeholders', 'Dictionaries', 'Clock']);
   });
 
-  it('reaches every global but console', () => {
-    const roots = new Set(variableTreeLeaves(tree).map((field) => field.insert.match(/^\w+/)![0]));
+  // `owner` is empty in a world stat's code, so only an owned or Blueprint stat's menu reaches it.
+  it('reaches every global but console, an owned stat’s menu included', () => {
+    const owned = buildVariableTree(editorNames(), { kind: 'entity', entity: null });
+    const roots = new Set(variableTreeLeaves(owned).map((field) => field.insert.match(/^\w+/)![0]));
     expect(SANDBOX_GLOBALS.map((entry) => entry.name).filter((name) => !roots.has(name))).toEqual(['console']);
   });
 });

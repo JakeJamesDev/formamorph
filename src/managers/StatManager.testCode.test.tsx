@@ -168,7 +168,7 @@ describe('what each box completes and checks against', () => {
 
 describe('whose code a box holds', () => {
   const ownerOf = (box: 'Before the AI' | 'After the AI') => editorProps.get(`Stat Code ${box}`)!.owner;
-  const worldNamesOf = (box: 'Before the AI' | 'After the AI') => editorProps.get(`Stat Code ${box}`)!.worldStatNames;
+  const worldNamesOf = (box: 'Before the AI' | 'After the AI') => editorProps.get(`Stat Code ${box}`)!.statNames;
   const hub = { id: 'o1', name: 'Hub', type: 'number', value: 1, min: 0, max: 5, regen: 0, description: '', descriptors: [] } as Stat;
   const grit = { id: 'o2', name: 'Grit', type: 'number', value: 4, min: 0, max: 8, regen: 0, description: '', descriptors: [] } as Stat;
 
@@ -191,11 +191,6 @@ describe('whose code a box holds', () => {
       }]);
       expect([box, worldNamesOf(box)]).toEqual([box, ['Warmth', 'Damp']]);
     }
-  });
-
-  it('keeps an owned stat’s own list for completion and checking, which the editor ticket moves', () => {
-    render(<StatManager stat={hub} tab="code" onTabChange={() => {}} store={{ stats: [hub, grit], updateStat, ownerId: 'e2' }} />);
-    expect(editorProps.get('Stat Code After the AI')!.statNames).toEqual(['Hub', 'Grit']);
   });
 
   it('gives a Blueprint stat its group’s stats as the owner’s, and the world’s play stats under Stats', () => {
@@ -244,6 +239,22 @@ describe('what Test Code reports', () => {
     await waitFor(() => expect(row()).toHaveTextContent('Result: 3'));
     await waitFor(() => expect(row()).toHaveTextContent('1 error in this code'));
     expect(executeStatCode.mock.calls[0][1]).toBe(stats);
+  });
+
+  it('reads an owned stat’s code against the owner’s stats under owner.stats and the world’s under stats', async () => {
+    const user = userEvent.setup();
+    executeStatCode.mockResolvedValue({ value: 1, error: null });
+    const hub = { id: 'o1', name: 'Hub', type: 'number', value: 1, min: 0, max: 5, regen: 0, description: '', descriptors: [] } as Stat;
+    const grit = { ...hub, id: 'o2', name: 'Grit' } as Stat;
+    render(<StatManager stat={hub} tab="code" onTabChange={() => {}} store={{ stats: [hub, grit], updateStat, ownerId: 'e2' }} />);
+
+    // Grit is the owner's and Damp is the world's, so each route finds its own name. Warmth is the world's, not the owner's.
+    await testCode(user, 'owner.stats.Grit.value = stats.Damp.value;\nreturn 1;');
+    await waitFor(() => expect(row()).toHaveTextContent('Result: 1'));
+    expect(row()).not.toHaveTextContent('in this code');
+
+    await testCode(user, 'owner.stats.Warmth.value = 1;\nreturn stats.Grit.value;');
+    await waitFor(() => expect(row()).toHaveTextContent('2 errors in this code'));
   });
 
   it('leaves a clean result clean, with nothing to qualify it', async () => {

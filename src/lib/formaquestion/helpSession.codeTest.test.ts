@@ -296,6 +296,8 @@ describe('a code test call on an owned or Blueprint stat', () => {
     const before = structuredClone(world);
     const code = 'stats.Courage.value = 45; owner.stats.Grit.max = 12; entities.Bram.stats.Grit.regen = 1; persona.stats.Grit.value = 2;';
     const [result] = await testOn(world, { code, stat: 'Rage' });
+    // The editor's reader checks the same box: `owner.stats` is Bram's, so Grit is a known name.
+    expect(result.errors).toEqual([]);
     expect(result.run).toEqual({
       error: null,
       value: null,
@@ -309,6 +311,9 @@ describe('a code test call on an owned or Blueprint stat', () => {
 
   it('runs a Blueprint stat with an owner that holds its group’s stats only, and names a write outside the group as dropped', async () => {
     const [result] = await testOn(stage(), { code: 'owner.stats.Awe.value = 7; owner.stats.Courage.value = 1; return Object.keys(owner.stats).length;', stat: 'Dread' });
+    // A bearer can hold stats beyond its group, so the reader warns on Courage and raises no error.
+    expect(result.errors).toEqual([]);
+    expect(result.warnings).toEqual([expect.objectContaining({ text: 'Courage' })]);
     expect(result.run).toMatchObject({
       error: null,
       value: 2,

@@ -45,6 +45,16 @@ function InsertMenu({ items, label, Icon, onPick }: {
   );
 }
 
+const NO_NAMES: readonly string[] = [];
+
+/** The stat names `owner.stats` keys: the entity's, the Blueprint group's, none for a world stat's empty owner,
+ *  and unknown where the owner carries no names. */
+const ownerStatNamesOf = (owner: VariableTreeOwner | null | undefined): readonly string[] | undefined => {
+  if (owner === undefined) return undefined;
+  if (owner === null) return NO_NAMES;
+  return (owner.kind === 'entity' ? owner.entity?.stats : owner.statNames) ?? undefined;
+};
+
 interface CodeAreaProps {
   value: string;
   onChange: (next: string) => void;
@@ -58,14 +68,14 @@ interface CodeAreaProps {
   slots?: boolean;
   /** What the code can reach: the Variable menu, completions and diagnostics all read it. */
   surface: CodeSurface;
-  /** The world's stat names, completed after `stats` and inside string literals, and checked by name. */
+  /** The world's stat names, which `stats` keys in every box: completed after `stats` and inside string
+   *  literals, checked by name, and listed under the Variable menu's Stats group. */
   statNames?: readonly string[];
-  /** The world's stat names, which `stats` keys in every box: what the Variable menu's Stats group lists.
-   *  Absent, it lists `statNames`. */
-  worldStatNames?: readonly string[];
-  /** What `owner` holds: gives the Variable menu an Owner group. Absent in a world stat's box. */
+  /** What `owner` holds: gives the Variable menu an Owner group, and completion and checks the owner's stats.
+   *  Null in a world stat's box, where `owner` is empty. Absent, `owner.stats` names are not checked. */
   owner?: VariableTreeOwner | null;
-  /** The name of the stat the code belongs to, so a write to it through `stats` is not flagged. */
+  /** The name of the stat the code belongs to, so a write to it through `owner.stats` (or `stats` in a world
+   *  stat's box) reads as a write to `self`. */
   selfName?: string;
   /** The world's placeholders, completed after `placeholders` and checked by name. */
   placeholders?: CodePlaceholders;
@@ -85,7 +95,7 @@ interface CodeAreaProps {
 function CodeAreaBody({
   value, onChange, ariaLabel, placeholder, label, info, slots, surface, preview, className, rows = 8, fullscreen,
   onToggleFullscreen, session, active, expose, variableTree,
-}: Omit<CodeAreaProps, 'statNames' | 'worldStatNames' | 'owner' | 'selfName' | 'placeholders' | 'traits' | 'entities'> & {
+}: Omit<CodeAreaProps, 'statNames' | 'owner' | 'selfName' | 'placeholders' | 'traits' | 'entities'> & {
   fullscreen: boolean;
   onToggleFullscreen: () => void;
   /** The one editor both copies take turns hosting. Null until its chunk has loaded. */
@@ -273,8 +283,8 @@ export function CodeArea(props: CodeAreaProps) {
 
   // A template has no world, so its tree types over each name.
   const variableTree = useCallback(() => {
-    const { slots: template, statNames, worldStatNames, owner, placeholders, traits, entities } = latest.current;
-    return buildVariableTree(template ? undefined : { statNames: worldStatNames ?? statNames, placeholders, traits, entities }, owner);
+    const { slots: template, statNames, owner, placeholders, traits, entities } = latest.current;
+    return buildVariableTree(template ? undefined : { statNames, placeholders, traits, entities }, owner);
   }, []);
 
   const { ariaLabel, placeholder, slots } = props;
@@ -290,6 +300,8 @@ export function CodeArea(props: CodeAreaProps) {
         slots,
         surface: latest.current.surface,
         statNames: latest.current.statNames,
+        owner: latest.current.owner?.kind,
+        ownerStatNames: ownerStatNamesOf(latest.current.owner),
         selfName: latest.current.selfName,
         placeholders: latest.current.placeholders,
         traits: latest.current.traits?.map((trait) => trait.name),
@@ -310,6 +322,9 @@ export function CodeArea(props: CodeAreaProps) {
   useEffect(() => { session?.setSurface(props.surface); }, [session, props.surface]);
   // Stats are renamed and added while a code field is open, so the completions follow the list.
   useEffect(() => { session?.setStatNames(props.statNames); }, [session, props.statNames]);
+  const ownerKind = props.owner?.kind;
+  const ownerStatNames = ownerStatNamesOf(props.owner);
+  useEffect(() => { session?.setOwner(ownerKind, ownerStatNames); }, [session, ownerKind, ownerStatNames]);
   useEffect(() => { session?.setSelfName(props.selfName); }, [session, props.selfName]);
   useEffect(() => { session?.setPlaceholders(props.placeholders); }, [session, props.placeholders]);
   // The session completes and checks names; the groups are the Variable menu's alone.

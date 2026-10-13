@@ -30,7 +30,7 @@ import {
 import { forceLinting, linter, lintGutter, type Diagnostic } from '@codemirror/lint';
 import { codeHighlightStyle, SLOT_CLASS } from '@/lib/codeHighlight';
 import { findSlotRanges } from '@/lib/statCodeTemplates';
-import { codeCompletions, codeDiagnostics, type CodeEntityNames, type CodePlaceholders } from '@/lib/statCodeAnalysis';
+import { codeCompletions, codeDiagnostics, type CodeEntityNames, type CodeOwnerKind, type CodePlaceholders } from '@/lib/statCodeAnalysis';
 import type { CodeSurface } from '@/lib/codeSurface';
 import type { InsertSelection } from '@/lib/codeSnippets';
 
@@ -220,6 +220,8 @@ export interface CodeSession {
   setSurface: (surface: CodeSurface) => void;
   /** The world's stat names, for completions and name checks. Re-lints when the names change. */
   setStatNames: (names: readonly string[] | undefined) => void;
+  /** Whose code this is, and the stat names `owner.stats` keys. Re-lints when either changes. */
+  setOwner: (owner: CodeOwnerKind | undefined, statNames: readonly string[] | undefined) => void;
   /** The name of the stat the code belongs to. Re-lints when it changes. */
   setSelfName: (name: string | undefined) => void;
   /** The world's placeholders, for completions and name checks. Re-lints when the list changes. */
@@ -239,9 +241,13 @@ export interface CodeSessionOptions {
   slots?: boolean;
   /** What the code can reach: completions and diagnostics read this. */
   surface: CodeSurface;
-  /** The world's stat names. Absent, stat names are neither offered nor checked. */
+  /** The world's stat names, which `stats` keys. Absent, stat names are neither offered nor checked. */
   statNames?: readonly string[];
-  /** The name of the stat the code belongs to, so a write through `stats` to it counts as its own. */
+  /** Whose code this is: an entity's own stat, or a Blueprint stat. Absent in a world stat's box. */
+  owner?: CodeOwnerKind;
+  /** The stat names `owner.stats` keys. Absent, they are neither offered nor checked. */
+  ownerStatNames?: readonly string[];
+  /** The name of the stat the code belongs to, so a write to it counts as its own. */
   selfName?: string;
   /** The world's placeholders. Absent, placeholder names are neither offered nor checked. */
   placeholders?: CodePlaceholders;
@@ -267,6 +273,8 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
   // every render that could rebuild an extension around it.
   let surface: CodeSurface = options.surface;
   let statNames: readonly string[] | undefined = options.statNames;
+  let owner: CodeOwnerKind | undefined = options.owner;
+  let ownerStatNames: readonly string[] | undefined = options.ownerStatNames;
   let selfName: string | undefined = options.selfName;
   let placeholders: CodePlaceholders | undefined = options.placeholders;
   let traits: readonly string[] | undefined = options.traits;
@@ -277,7 +285,7 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
   const complete = (context: CompletionContext): CMCompletionResult | null => {
     const doc = context.state.doc.toString();
     const result = codeCompletions(doc, context.pos, {
-      surface, slots: options.slots, statNames, selfName, placeholders, traits, entities,
+      surface, slots: options.slots, statNames, owner, ownerStatNames, selfName, placeholders, traits, entities,
     });
     if (!result || result.options.length === 0) return null;
     // Explicit means the author asked for the list; otherwise an empty word is every option at once.
@@ -289,7 +297,7 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
 
   const codeLinter = linter(
     (view): Diagnostic[] => codeDiagnostics(view.state.doc.toString(), {
-      surface, slots: options.slots, statNames, selfName, placeholders, traits, entities,
+      surface, slots: options.slots, statNames, owner, ownerStatNames, selfName, placeholders, traits, entities,
     }),
     {
       delay: 400,
@@ -403,6 +411,12 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
     setStatNames(next) {
       if (sameNames(next, statNames)) return;
       statNames = next;
+      relint();
+    },
+    setOwner(nextOwner, nextNames) {
+      if (nextOwner === owner && sameNames(nextNames, ownerStatNames)) return;
+      owner = nextOwner;
+      ownerStatNames = nextNames;
       relint();
     },
     setSelfName(next) {

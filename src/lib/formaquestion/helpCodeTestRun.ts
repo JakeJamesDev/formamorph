@@ -87,7 +87,8 @@ export async function testStatCode(code: string, box: StatCodeTiming, statName: 
   const names = statCodeNames(world);
   const found = findStat(world, names, statName.trim());
   const selfName = found?.stat.name ?? '';
-  const { missing, ...rest } = analysis(code, analysisOptionsOf(names, selfName));
+  const owner = found?.owner && { kind: found.owner.entityId ? 'entity' as const : 'blueprint' as const, statNames: found.owner.stats.map((owned) => owned.name) };
+  const { missing, ...rest } = analysis(code, analysisOptionsOf(names, selfName, owner));
   return {
     world: true,
     ...rest,

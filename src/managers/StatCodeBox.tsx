@@ -17,11 +17,6 @@ export type StatCodeBoxOwner = { kind: 'entity'; entityId: string } | { kind: 'b
 
 /** Everything both boxes complete against and run under, derived once by the panel that holds them. */
 export interface StatCodeBoxContext {
-  /** The stats beside the edited one under their code names: an owned stat's are its entity's. Completions offer
-   *  these, and a run reaches them. */
-  codeNamedStats: Stat[];
-  /** Those code names alone, for the editor's completions and its reader. */
-  statNames: string[];
   /** Whose code the boxes hold. Null for a world stat. */
   owner: StatCodeBoxOwner | null;
   /** The world's play stats under their code names, without Blueprint stats: what `stats` keys in every box. */
@@ -78,7 +73,7 @@ export function StatCodeBox({ timing, stat, value, onChange, context }: {
 
   const label = TIMING_LABEL[timing];
   const {
-    statNames, selfName, placeholders, placeholderPlaces, traitNames, traitPlaces, traits, entities, entityStats,
+    selfName, placeholders, placeholderPlaces, traitNames, traitPlaces, traits, entities, entityStats,
     owner, worldStats, worldStatNames, ownerStats, ownerStatNames,
   } = context;
 
@@ -119,7 +114,9 @@ export function StatCodeBox({ timing, stat, value, onChange, context }: {
       // Only the editor's chunk holds the reader, and CodeArea fetches that chunk on demand — so this
       // stays off the world editor's own bundle.
       const { statCodeDiagnostics, summarizeProblems } = await import('@/lib/statCodeAnalysis');
-      setProblems(summarizeProblems(statCodeDiagnostics(value, analysisOptionsOf({ statNames, placeholders, traitNames, entities }, selfName))));
+      setProblems(summarizeProblems(statCodeDiagnostics(value, analysisOptionsOf(
+        { statNames: worldStatNames, placeholders, traitNames, entities }, selfName, owner ? { kind: owner.kind, statNames: ownerStatNames } : undefined,
+      ))));
     } catch {
       // What the run itself found is the point; the count is what the editor adds to it.
     }
@@ -151,8 +148,7 @@ export function StatCodeBox({ timing, stat, value, onChange, context }: {
         onChange={write}
         ariaLabel={`Stat Code ${label}`}
         surface={STAT_CODE_SURFACE}
-        statNames={statNames}
-        worldStatNames={worldStatNames}
+        statNames={worldStatNames}
         owner={treeOwner}
         selfName={selfName}
         placeholders={placeholders}

@@ -137,10 +137,8 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
     return buildMorphGroups(morphSources, taken);
   }, [morphSources, stats, stat.id]);
 
-  // The code names `stats` is keyed by, for the code field's completions and name checks. Test Code runs
-  // under the same names, so what completes is what runs.
+  // The code names Test Code runs under: the owner's stats, or the world's for a world stat.
   const codeNamedStats = useMemo(() => statCodeNamed(stats, placeholders), [stats, placeholders]);
-  const statNames = useMemo(() => namesOf(codeNamedStats), [codeNamedStats]);
   const selfCodeName = statCodeName(editingStat.name, placeholders);
   // Whose code this is: an entity's own stat runs under that entity, a Blueprint stat under each bearer, a world stat under none.
   const isBlueprint = !store && !!world && !world.playStats.some((s) => s.id === stat.id);
@@ -188,10 +186,10 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
   );
   // One surface for both boxes: what completes in either is what runs in either.
   const codeContext = useMemo<StatCodeBoxContext>(() => ({
-    codeNamedStats, statNames, selfName: selfCodeName, owner, worldStats, worldStatNames, ownerStats, ownerStatNames,
+    selfName: selfCodeName, owner, worldStats, worldStatNames, ownerStats, ownerStatNames,
     placeholders: codePlaceholders, placeholderPlaces, traitNames, traitPlaces, traits, entities: entityNames, entityStats,
   }), [
-    codeNamedStats, statNames, selfCodeName, owner, worldStats, worldStatNames, ownerStats, ownerStatNames,
+    selfCodeName, owner, worldStats, worldStatNames, ownerStats, ownerStatNames,
     codePlaceholders, placeholderPlaces, traitNames, traitPlaces, traits, entityNames, entityStats,
   ]);
 

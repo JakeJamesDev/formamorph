@@ -100,6 +100,9 @@ export interface CodeEntityNames extends CodeOwnerName {
   tabPosition?: number;
 }
 
+/** Whose code a stat box holds: an entity's own stat, or a Blueprint stat. */
+export type CodeOwnerKind = 'entity' | 'blueprint';
+
 export interface AnalysisOptions {
   /** Treat `{{name:type=default}}` spans as opaque. Template editing only. */
   slots?: boolean;
@@ -110,9 +113,16 @@ export interface AnalysisOptions {
   /** The world's entities, in authored order. Absent, entity and persona trait names are neither offered nor
    *  checked. A library entity can carry another name, so an unknown one is only a warning. */
   entities?: readonly CodeEntityNames[];
-  /** The world's stat names, in authored order. Absent, stat names are neither offered nor checked. */
+  /** The world's stat names, in authored order: what `stats` keys in every box. Absent, stat names are neither
+   *  offered nor checked. */
   statNames?: readonly string[];
-  /** The name of the stat the code belongs to, so a write through `stats` to that name counts as its own. */
+  /** Whose code this is. Absent in a world stat's box. */
+  owner?: CodeOwnerKind;
+  /** The stat names `owner.stats` keys: the entity's own, or a Blueprint group's. None in a world stat's box,
+   *  where `owner` is empty. Absent, `owner.stats` names are neither offered nor checked. */
+  ownerStatNames?: readonly string[];
+  /** The name of the stat the code belongs to, so a write to that name counts as its own: through
+   *  `owner.stats` in an owned box, through `stats` in a world stat's. */
   selfName?: string;
 }
 
@@ -126,8 +136,8 @@ export interface SurfaceAnalysisOptions extends AnalysisOptions {
 function statRulesOf(surface: CodeSurface) {
   const has = (name: string) => surface.statMaps && surfaceHasGlobal(surface, name);
   return {
-    stats: has('stats'), self: has('self'), placeholders: has('placeholders'), traits: has('traits'), persona: has('persona'),
-    entities: has('entities'), dictionaries: has('dictionaries'),
+    stats: has('stats'), self: has('self'), owner: has('owner'), placeholders: has('placeholders'), traits: has('traits'),
+    persona: has('persona'), entities: has('entities'), dictionaries: has('dictionaries'),
   };
 }
 
@@ -189,11 +199,12 @@ function statLikeNames(code: string, tree: Tree): Map<string, string> {
   return names;
 }
 
-/** Whether stat-like source reaches the current stat's own entry: `self`, or `stats` indexed by its own name.
+/** Whether stat-like source reaches the current stat's own entry: `self`, or the map that holds it indexed by
+ *  its own name. That map is `owner.stats` in an owned box and `stats` in a world stat's.
  *  A `!==` against `self.id` finds some other stat, so it doesn't count. */
-const reachesOwnStat = (text: string, selfName?: string) =>
+const reachesOwnStat = (text: string, selfName: string | undefined, owned: boolean) =>
   /\bself\b/.test(text.replace(/!==?\s*self\.id\b|\bself\.id\s*!==?/g, ''))
-  || (selfName !== undefined && indexesStat(text, selfName));
+  || (selfName !== undefined && indexesStat(text, selfName, owned));
 
 /**
  * The source of the expression a `.` hangs off, scanned backwards over the member chain. Read from the
@@ -255,14 +266,22 @@ const DICTIONARY_ENTRY_EXPRESSION = entryExpression('dictionaries');
 const KEY_STEP = String.raw`(?:\??\.([A-Za-z_$][\w$]*)|\??\.?\[\s*["']([^"'\\]*)["']\s*\])`;
 const ENTITY_TRAITS_EXPRESSION = new RegExp(`^entities${KEY_STEP}\\??\\.traits$`);
 const ENTITY_TRAIT_ENTRY_EXPRESSION = new RegExp(`^entities${KEY_STEP}\\??\\.traits${KEY_STEP}$`);
-/** `entities.Name.stats` or `persona.stats`; the entity name is in group 1 or 2, absent for `persona`. */
-const OWNER_STATS_EXPRESSION = new RegExp(`^(?:entities${KEY_STEP}|persona)\\??\\.stats$`);
+/** The source of an owner's stat map: `entities.Name.stats`, `persona.stats` or `owner.stats`. The entity name is
+ *  in group 1 or 2, absent for the other two. */
+const OWNER_STATS_MAP = `(?:entities${KEY_STEP}|persona|owner)\\??\\.stats`;
+const OWNER_STATS_EXPRESSION = new RegExp(`^${OWNER_STATS_MAP}$`);
 /** One entry of an owner's `stats`, then any member steps below it, which group 5 holds. */
-const OWNER_STAT_EXPRESSION = new RegExp(`^(?:entities${KEY_STEP}|persona)\\??\\.stats${KEY_STEP}((?:\\??\\.[A-Za-z_$][\\w$]*)*)$`);
-/** Text that ends in `entities.Name.stats[` or `persona.stats[`, the entity name captured. */
-const OWNER_STATS_BRACKET = new RegExp(`\\b(?:entities\\s*${KEY_STEP}|persona)\\s*\\??\\.\\s*stats\\s*(\\?\\.)?\\[\\s*$`);
-/** A write that lands anywhere inside an owner's `stats`, which is read-only throughout. */
-const OWNER_STATS_WRITE = new RegExp(`^(?:entities${KEY_STEP}|persona)\\??\\.stats(?![\\w$])`);
+const OWNER_STAT_EXPRESSION = new RegExp(`^${OWNER_STATS_MAP}${KEY_STEP}((?:\\??\\.[A-Za-z_$][\\w$]*)*)$`);
+/** Text that ends in `entities.Name.stats[`, `persona.stats[` or `owner.stats[`, the entity name captured. */
+const OWNER_STATS_BRACKET = new RegExp(`\\b(?:entities\\s*${KEY_STEP}|persona|owner)\\s*\\??\\.\\s*stats\\s*(\\?\\.)?\\[\\s*$`);
+/** One entry of any stat map, the key literal or computed: every key reads a stat, if only a blank one. The
+ *  map is `stats`, or an owner's `stats`. */
+const STAT_ENTRY_EXPRESSION = new RegExp(`^(?:stats|${OWNER_STATS_MAP})(\\??\\.[A-Za-z_$][\\w$]*|\\??\\.?\\[[^[\\]]*\\])$`);
+/** One stat picked out of `Object.values(<stat map>)`, the call's arguments captured. `filter` hands back
+ *  another array, so it stays quiet. */
+const ITERATED_STAT_EXPRESSION = new RegExp(
+  `^Object\\.values\\(\\s*(?:stats|${OWNER_STATS_MAP})\\s*\\)(?:\\.(?:find|at|pop|shift)(?<args>\\(.*\\))|\\[[^[\\]]*\\])$`,
+);
 /** Text that ends in `entities[`. */
 const ENTITIES_BRACKET = /\bentities\s*(\?\.)?\[\s*$/;
 /** Text that ends in `dictionaries[`. */
@@ -289,18 +308,23 @@ export const traitsOfEntity = (entities: readonly CodeEntityNames[], name: strin
 export const keyedEntity = (entities: readonly CodeEntityNames[], name: string): CodeEntityNames | undefined =>
   (hasEntityKey(name) ? entities.findLast((entity) => entity.name === name) : undefined);
 
-/** The stat names of the entity an `entities.Name.stats` match names, or of every persona entity for
- *  `persona.stats`; null when no entities are given. */
-function ownerStatNames(entities: readonly CodeEntityNames[] | undefined, match: RegExpExecArray): readonly string[] | null {
+/** The global an owner-stats match starts at: `persona`, `owner`, or `entities`. */
+const statsRootOf = (match: RegExpExecArray): 'persona' | 'owner' | 'entities' =>
+  (match[0].startsWith('persona') ? 'persona' : match[0].startsWith('owner') ? 'owner' : 'entities');
+
+/** The stat names of the map an owner-stats match reaches: the entity an `entities.Name.stats` names, every
+ *  persona entity for `persona.stats`, or the box's owner for `owner.stats`. Null where the names are not given. */
+function ownerStatNames(options: AnalysisOptions, match: RegExpExecArray): readonly string[] | null {
+  const root = statsRootOf(match);
+  if (root === 'owner') return options.ownerStatNames ?? null;
+  const { entities } = options;
   if (!entities) return null;
-  const name = entityNamed(match);
-  if (name === undefined) return entities.filter((entity) => entity.persona).flatMap((entity) => entity.stats ?? []);
-  return keyedEntity(entities, name)?.stats ?? [];
+  if (root === 'persona') return entities.filter((entity) => entity.persona).flatMap((entity) => entity.stats ?? []);
+  return keyedEntity(entities, entityNamed(match))?.stats ?? [];
 }
 
-/** Whether the surface injects the map an owner-stats match starts at: `persona`, or `entities`. */
-const ownerStatsAllowed = (rules: StatRules, match: RegExpExecArray): boolean =>
-  rules[match[0].startsWith('persona') ? 'persona' : 'entities'];
+/** Whether the surface injects the map an owner-stats match starts at: `persona`, `owner`, or `entities`. */
+const ownerStatsAllowed = (rules: StatRules, match: RegExpExecArray): boolean => rules[statsRootOf(match)];
 
 /** The fields an owner's stat entry, or a turn input below it, carries. `rest` is the member steps after
  *  the entry. Null for a step no stat entry has. */
@@ -415,12 +439,6 @@ function nodeEntry(node: PlaceholderPathNode): SurfaceEntry {
   return { name: node.name, detail: 'placeholder', info: `The “${node.name}” placeholder in this world.${held}` };
 }
 
-/** One entry of `stats`, the key literal or computed: every key reads a stat, if only a blank one. */
-const STAT_ENTRY_EXPRESSION = /^stats(\??\.[A-Za-z_$][\w$]*|\??\.?\[[^[\]]*\])$/;
-/** One stat picked out of `Object.values(stats)`, the call's arguments captured. `filter` hands back another
- *  array, so it stays quiet. */
-const ITERATED_STAT_EXPRESSION = /^Object\.values\(\s*stats\s*\)(?:\.(?:find|at|pop|shift)(\(.*\))|\[[^[\]]*\])$/;
-
 /** Whether a parenthesized argument list closes only at its last character, so nothing chains after it. */
 function closesAtEnd(args: string): boolean {
   let depth = 0;
@@ -435,15 +453,19 @@ function closesAtEnd(args: string): boolean {
 function looksLikeStat(code: string, tree: Tree, expression: string): boolean {
   if (expression === 'self' || STAT_ENTRY_EXPRESSION.test(expression)) return true;
   const iterated = ITERATED_STAT_EXPRESSION.exec(expression);
-  if (iterated) return iterated[1] === undefined || closesAtEnd(iterated[1]);
+  if (iterated) return iterated.groups?.args === undefined || closesAtEnd(iterated.groups.args);
   return statLikeNames(code, tree).has(expression);
 }
 
-/** Whether `text` indexes `stats` by the literal `name`, by dot or by bracket. */
-function indexesStat(text: string, name: string): boolean {
+/** Whether `text` indexes the map that holds the running stat by the literal `name`, by dot or by bracket:
+ *  `owner.stats` when `owned`, else the world's `stats`, which no member of another owner's `stats` is. */
+function indexesStat(text: string, name: string, owned: boolean): boolean {
   const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  if (new RegExp(`\\bstats\\s*(?:\\?\\.)?\\[\\s*(["'\`])${escaped}\\1\\s*\\]`).test(text)) return true;
-  return isIdentifier(name) && new RegExp(`\\bstats\\s*\\??\\.\\s*${escaped}(?![\\w$])`).test(text);
+  // The world's `stats` has no dot in front of it: a dotted one is a member of another object, caught in group 1.
+  const map = owned ? String.raw`()\bowner\s*\??\.\s*stats` : String.raw`(\??\.\s*)?\bstats`;
+  const reaches = (pattern: string) => [...text.matchAll(new RegExp(pattern, 'g'))].some((match) => !match[1]);
+  if (reaches(`${map}\\s*(?:\\?\\.)?\\[\\s*(["'\`])${escaped}\\2\\s*\\]`)) return true;
+  return isIdentifier(name) && reaches(`${map}\\s*\\??\\.\\s*${escaped}(?![\\w$])`);
 }
 
 /**
@@ -518,6 +540,7 @@ function membersAfterDot(
   if (rules.traits && expression === 'traits') return options.traits ? mapNameEntries(options.traits, 'trait', true) : null;
   if (rules.traits && TRAIT_ENTRY_EXPRESSION.test(expression)) return TRAIT_ENTRY_FIELDS;
   if (rules.persona && expression === 'persona') return PERSONA_FIELDS;
+  if (rules.owner && expression === 'owner') return ENTITY_FIELDS;
   if (rules.persona && PERSONA_TRAITS_EXPRESSION.test(expression)) {
     const names = personaTraitsOf(options.entities);
     return names ? personaTraitEntries(names, true) : null;
@@ -535,7 +558,7 @@ function membersAfterDot(
   if (rules.entities && ENTITY_TRAIT_ENTRY_EXPRESSION.test(expression)) return TRAIT_ENTRY_FIELDS;
   const ownerStats = OWNER_STATS_EXPRESSION.exec(expression);
   if (ownerStats && ownerStatsAllowed(rules, ownerStats)) {
-    const names = ownerStatNames(options.entities, ownerStats);
+    const names = ownerStatNames(options, ownerStats);
     return names ? mapNameEntries(names, 'stat', true) : null;
   }
   const ownerStat = OWNER_STAT_EXPRESSION.exec(expression);
@@ -590,8 +613,10 @@ function checkField(field: SyntaxNode | null, path: string, code: string, listed
   return { writes: true, problem: { from: field.from, to: field.to, severity: 'error', message } };
 }
 
-function checkWrite(target: SyntaxNode, code: string, tree: Tree, declared: Set<string>, selfName?: string): WriteCheck {
-  const reachesOwn = (text: string) => reachesOwnStat(statLikeNames(code, tree).get(text) ?? text, selfName);
+function checkWrite(
+  target: SyntaxNode, code: string, tree: Tree, declared: Set<string>, selfName: string | undefined, owned: boolean,
+): WriteCheck {
+  const reachesOwn = (text: string) => reachesOwnStat(statLikeNames(code, tree).get(text) ?? text, selfName, owned);
   // `stats.Name = …` replaces the whole entry, which the host never reads back, even for the stat's own name.
   const targetText = code.slice(target.from, target.to);
   if (STAT_ENTRY_EXPRESSION.test(targetText)) {
@@ -650,23 +675,27 @@ function memberKey(node: SyntaxNode, code: string): EntryRef | null {
 /** The name a `root.Name` or `root["Name"]` member names, or null for any other member and for a key only a
  *  run could know. */
 function entryRef(
-  node: SyntaxNode, code: string, root: 'placeholders' | 'traits' | 'stats' | 'persona' | 'entities' | 'dictionaries',
+  node: SyntaxNode, code: string, root: 'placeholders' | 'traits' | 'stats' | 'persona' | 'owner' | 'entities' | 'dictionaries',
 ): EntryRef | null {
   const object = node.firstChild;
   if (object?.name !== 'VariableName' || code.slice(object.from, object.to) !== root) return null;
   return memberKey(node, code);
 }
 
-/** Whether `node` is `persona.traits`, the persona's trait map. */
-function isPersonaTraits(node: SyntaxNode | null, code: string): boolean {
+/** Whether `node` is `persona.traits` or `owner.traits`, `root`'s trait map. */
+function isRootTraits(node: SyntaxNode | null, code: string, root: 'persona' | 'owner'): boolean {
   if (node?.name !== 'MemberExpression') return false;
   const property = node.getChild('PropertyName');
-  return !!property && code.slice(property.from, property.to) === 'traits' && !!entryRef(node, code, 'persona');
+  return !!property && code.slice(property.from, property.to) === 'traits' && !!entryRef(node, code, root);
 }
 
 /** The name a `persona.traits.Name` or `persona.traits["Name"]` member names, as `entryRef` reads `traits`. */
 const personaTraitRef = (node: SyntaxNode, code: string): EntryRef | null =>
-  (isPersonaTraits(node.firstChild, code) ? memberKey(node, code) : null);
+  (isRootTraits(node.firstChild, code, 'persona') ? memberKey(node, code) : null);
+
+/** The trait an `owner.traits.Name` member names. */
+const ownerTraitRef = (node: SyntaxNode, code: string): EntryRef | null =>
+  (isRootTraits(node.firstChild, code, 'owner') ? memberKey(node, code) : null);
 
 /** An `entities.Name.traits.Trait` member: the entity and the trait it names. */
 function entityTraitParts(node: SyntaxNode, code: string): { entity: EntryRef; trait: EntryRef } | null {
@@ -909,17 +938,8 @@ function checkTraitWrite(
   return { from: field.from, to: field.to, severity: 'error', message };
 }
 
-/** A write below an entity's or the persona's `stats`, which no code can change. */
-function checkOwnerStatsWrite(target: SyntaxNode, code: string): CodeDiagnostic | null {
-  const written = code.slice(target.from, target.to);
-  if (!OWNER_STATS_WRITE.test(written.replace(/\s+/g, '')) || /\.stats\s*$/.test(written)) return null;
-  return { from: target.from, to: target.to, severity: 'error', message: `${written} is read-only.` };
-}
-
 /** What is wrong with a write into `persona`: to one of its own members, or into its traits as `traits`. */
 function checkPersonaWrite(target: SyntaxNode, code: string, assignment: boolean): CodeDiagnostic | null {
-  const stats = checkOwnerStatsWrite(target, code);
-  if (stats) return stats;
   const own = entryRef(target, code, 'persona');
   if (own) {
     const message = `persona.${own.name} is read-only.`;
@@ -928,11 +948,17 @@ function checkPersonaWrite(target: SyntaxNode, code: string, assignment: boolean
   return checkTraitWrite(target, code, assignment, personaTraitRef);
 }
 
+/** What is wrong with a write into `owner`: to one of its own members, or into its traits as `traits`. A write
+ *  to a stat below `owner.stats` is a stat write, which `checkWrite` reads. */
+function checkOwnerWrite(target: SyntaxNode, code: string, assignment: boolean): CodeDiagnostic | null {
+  const own = entryRef(target, code, 'owner');
+  if (own) return { from: own.from, to: own.to, severity: 'error', message: `owner.${own.name} is read-only.` };
+  return checkTraitWrite(target, code, assignment, ownerTraitRef);
+}
+
 /** What is wrong with a write into `entities`: to the map, to an entry or one of its members, or into an
  *  entry's traits as `traits`. */
 function checkEntityWrite(target: SyntaxNode, code: string, assignment: boolean): CodeDiagnostic | null {
-  const stats = checkOwnerStatsWrite(target, code);
-  if (stats) return stats;
   const readOnly = (from: number, to: number): CodeDiagnostic =>
     ({ from, to, severity: 'error', message: `${code.slice(target.from, target.to)} is read-only.` });
   const entry = entryRef(target, code, 'entities');
@@ -1029,6 +1055,36 @@ function checkOwnerName(ref: EntryRef, names: readonly string[], noun: 'entity' 
 const checkEntityName = (ref: EntryRef, entities: readonly CodeEntityNames[]) =>
   checkOwnerName(ref, keyedEntityNames(entities), 'entity');
 
+/** A stat key off an owner's `stats`: the map `entities.Name.stats`, `persona.stats` or `owner.stats`, and the key. */
+function ownerStatRef(node: SyntaxNode, code: string): { match: RegExpExecArray; ref: EntryRef } | null {
+  const map = node.firstChild;
+  if (map?.name !== 'MemberExpression') return null;
+  const match = OWNER_STATS_EXPRESSION.exec(code.slice(map.from, map.to));
+  const ref = match && memberKey(node, code);
+  return match && ref?.name ? { match, ref } : null;
+}
+
+/** What is wrong with a stat name off an owner's `stats`. The owner's own list is exact: an unknown name is an
+ *  error, but a warning in a Blueprint box, where a bearer can hold more than its group. Another entity's or the
+ *  persona's can be a library entity's, so it is only a warning. */
+function checkOwnerStatName(
+  { match, ref }: { match: RegExpExecArray; ref: EntryRef }, options: AnalysisOptions,
+): CodeDiagnostic | null {
+  const root = statsRootOf(match);
+  if (root === 'owner') {
+    const problem = options.ownerStatNames ? checkEntryName(ref, options.ownerStatNames, 'stat') : null;
+    return problem && options.owner === 'blueprint' ? { ...problem, severity: 'warning' } : problem;
+  }
+  const entity = root === 'entities' && options.entities ? keyedEntity(options.entities, entityNamed(match)) : undefined;
+  const holders = root === 'persona' ? (options.entities ?? []).filter((held) => held.persona && held.stats) : entity?.stats ? [entity] : [];
+  if (holders.length === 0) return null;
+  const names = [...new Set(holders.flatMap((held) => held.stats ?? []))];
+  if (names.includes(ref.name)) return null;
+  const lead = entity ? `“${entity.name}” has no stat named “${ref.name}”.` : `Unknown persona stat name “${ref.name}”. A library persona can have it.`;
+  const suggestion = nearestName(ref.name, names);
+  return { from: ref.from, to: ref.to, severity: 'warning', message: suggestion ? `${lead} Did you mean “${suggestion}”?` : lead };
+}
+
 /** What is wrong with a trait name on a known entity: its set has no trait called that. A later library
  *  entity can take the name with another set, so this is only a warning. */
 function checkEntityTraitName(
@@ -1120,7 +1176,7 @@ export function codeCompletions(
     // Before the bare `stats[` fallback, whose pattern an owner's map also ends in.
     const ownerStats = OWNER_STATS_BRACKET.exec(code.slice(0, node.from));
     if (ownerStats && ownerStatsAllowed(rules, ownerStats)) {
-      const names = ownerStatNames(options.entities ?? [], ownerStats) ?? [];
+      const names = ownerStatNames(options, ownerStats) ?? [];
       return { from: innerFrom, to: innerTo, options: mapNameEntries(names, 'stat', false).map((entry) => asCompletion(entry, 'text')) };
     }
     // Inside `stats["…"]` and any other string alike. The whole literal is replaced, not the part before
@@ -1162,8 +1218,13 @@ export function codeCompletions(
   // The word being typed is itself a definition while it's being typed; offering it back is noise.
   const typed = code.slice(from, pos);
   // Right after `stats[` a quoted name leads the list; `self.name` or a variable of the author's can go there too.
-  const quotedStats = rules.stats && /\bstats\s*(\?\.)?\[\s*$/.test(beforeWord)
-    ? mapNameEntries(options.statNames ?? [], 'stat', false).map((entry) => ({ ...asCompletion(entry, 'text', 2), label: JSON.stringify(entry.name) }))
+  // The list is the map's own: an owner's `stats` keys the owner's stats, and the bare `stats` the world's.
+  const ownerBracket = OWNER_STATS_BRACKET.exec(beforeWord);
+  const quotedNames = ownerBracket
+    ? (ownerStatsAllowed(rules, ownerBracket) ? ownerStatNames(options, ownerBracket) ?? [] : null)
+    : rules.stats && /\bstats\s*(\?\.)?\[\s*$/.test(beforeWord) ? options.statNames ?? [] : null;
+  const quotedStats = quotedNames
+    ? mapNameEntries(quotedNames, 'stat', false).map((entry) => ({ ...asCompletion(entry, 'text', 2), label: JSON.stringify(entry.name) }))
     : [];
   return {
     from,
@@ -1222,6 +1283,7 @@ export function codeDiagnostics(code: string, options: SurfaceAnalysisOptions): 
   const placeholdersInScope = rules.placeholders && !declared.has('placeholders');
   const traitsInScope = rules.traits && !declared.has('traits');
   const personaInScope = rules.persona && !declared.has('persona');
+  const ownerInScope = rules.owner && !declared.has('owner');
   const personaTraits = personaTraitsOf(options.entities);
   // Every trait name any owner holds: a miss among these is a wrong owner, not a missing trait.
   const heldTraits = new Set([...options.traits ?? [], ...(options.entities ?? []).flatMap((entity) => entity.traits.map((trait) => trait.name))]);
@@ -1230,16 +1292,19 @@ export function codeDiagnostics(code: string, options: SurfaceAnalysisOptions): 
   const statsInScope = rules.stats && !declared.has('stats');
   const clockInScope = rules.stats && !declared.has('clock');
   const selfInScope = rules.self && !declared.has('self');
-  /** Whether an operand is a whole stat entry: `self`, or one key of `stats`. */
+  /** Whether an operand is a whole stat entry: `self`, or one key of `stats` or of an owner's `stats`. */
   const isStatEntry = (operand: SyntaxNode) => {
     if (operand.name === 'VariableName') return selfInScope && code.slice(operand.from, operand.to) === 'self';
     const root = operand.name === 'MemberExpression' ? operand.firstChild : null;
-    return statsInScope && root?.name === 'VariableName' && code.slice(root.from, root.to) === 'stats';
+    if (statsInScope && root?.name === 'VariableName' && code.slice(root.from, root.to) === 'stats') return true;
+    const route = operand.name === 'MemberExpression' ? memberRoot(operand, code) : null;
+    return STAT_ENTRY_EXPRESSION.test(code.slice(operand.from, operand.to)) && ownerRootInScope(route);
   };
   const inSlot = (from: number, to: number) => overlapsAny(from, to, ranges);
   /** Whether a chain's root is an owner global the code has not shadowed. */
   const ownerRootInScope = (root: string | null) =>
-    (root === 'entities' && entitiesInScope) || (root === 'persona' && personaInScope) || (root === 'dictionaries' && dictionariesInScope);
+    (root === 'entities' && entitiesInScope) || (root === 'persona' && personaInScope) || (root === 'owner' && ownerInScope)
+    || (root === 'dictionaries' && dictionariesInScope);
   /** Whether a placeholder chain's root is in scope: the world's map, or an owner global. */
   const chainRootInScope = (root: string | null) => (root === 'placeholders' ? placeholdersInScope : ownerRootInScope(root));
   const statWrites = rules.stats || rules.self;
@@ -1264,7 +1329,7 @@ export function codeDiagnostics(code: string, options: SurfaceAnalysisOptions): 
     const target = writeTarget(cursor.node, code);
     if (target && !overlapsAny(target.from, target.to, ranges)) {
       if (statWrites) {
-        const { writes, problem } = checkWrite(target, code, tree, declared, options.selfName);
+        const { writes, problem } = checkWrite(target, code, tree, declared, options.selfName, options.owner !== undefined);
         if (writes) sawStatWrite = true;
         if (problem) diagnostics.push(problem);
       }
@@ -1283,6 +1348,11 @@ export function codeDiagnostics(code: string, options: SurfaceAnalysisOptions): 
         sawTraitWrite = true;
         const personaProblem = checkPersonaWrite(target, code, cursor.type.name === 'AssignmentExpression');
         if (personaProblem) diagnostics.push(personaProblem);
+      }
+      if (ownerInScope && memberRoot(target, code) === 'owner') {
+        sawTraitWrite = true;
+        const ownerProblem = checkOwnerWrite(target, code, cursor.type.name === 'AssignmentExpression');
+        if (ownerProblem) diagnostics.push(ownerProblem);
       }
       if (entitiesInScope && memberRoot(target, code) === 'entities') {
         sawTraitWrite = true;
@@ -1337,6 +1407,13 @@ export function codeDiagnostics(code: string, options: SurfaceAnalysisOptions): 
       const ref = entryRef(cursor.node, code, 'stats');
       // The empty key reaches an unnamed stat, which no name list carries.
       const problem = ref?.name && !overlapsAny(ref.from, ref.to, ranges) ? checkEntryName(ref, options.statNames, 'stat', undefined, { kind: 'stat', root: 'stats', segments: [ref.name] }) : null;
+      if (problem) diagnostics.push(problem);
+    }
+    if (cursor.type.name === 'MemberExpression') {
+      const statRef = ownerStatRef(cursor.node, code);
+      const root = statRef && statsRootOf(statRef.match);
+      const reachable = root === 'owner' ? ownerInScope : root === 'persona' ? personaInScope : root === 'entities' && entitiesInScope;
+      const problem = statRef && reachable && !overlapsAny(statRef.ref.from, statRef.ref.to, ranges) ? checkOwnerStatName(statRef, options) : null;
       if (problem) diagnostics.push(problem);
     }
     if (cursor.type.name === 'MemberExpression' && clockInScope) {
