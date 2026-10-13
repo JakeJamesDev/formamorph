@@ -139,7 +139,7 @@ Test Bench:
 Renames (ticket 08, added 2026-10-13 at the user's request through the Code Hover Cards spec):
 
 - Renaming a world stat offers to rewrite `stats.X` in every box in the world. Renaming an entity's own stat offers to rewrite `owner.stats.X`, `entities[x].stats.X`, and `persona.stats.X` where each reaches it. A same-name stat on another owner is never rewritten.
-- The Test Bench's route-to-target resolution becomes one shared module. The Test Bench, the rename planner, and later Code Hover Cards' Find All Uses use it.
+- The Test Bench's route-to-target resolution becomes one shared module. The Test Bench, the rename planner, and later Code Hover Cards' Find All Uses use it. Each reference carries its box, route, target stat, and the key's range in the box's code.
 
 Bundled worlds:
 

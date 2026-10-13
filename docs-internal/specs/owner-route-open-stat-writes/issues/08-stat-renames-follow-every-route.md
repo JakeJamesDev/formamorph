@@ -15,7 +15,7 @@ Renaming a stat updates every code reference to it, on every route and in every 
 - Renaming an entity's own stat offers a rename too. Today it offers nothing. The rewrite covers `owner.stats.X` in that entity's own boxes and its Blueprint bearer runs, `entities[x].stats.X` wherever `x` names that entity, and `persona.stats.X` when that entity can be played.
 - A reference that reaches another stat with the same name is left alone. A world stat and an owned stat that share a name never rewrite each other's references.
 
-The route-to-target resolution the Test Bench rules use (box owners, write targets, the boxes of a world) moves into one shared module. The Test Bench and the rename planner both use it. The Code Hover Cards spec's Find All Uses reuses it later, so its interface takes a world and returns each reference with its box, its route, and the stat it reaches.
+The route-to-target resolution the Test Bench rules use (box owners, write targets, the boxes of a world) moves into one shared module. The Test Bench and the rename planner both use it. The Code Hover Cards spec's Find All Uses reuses it later, so its interface takes a world and returns each reference with its box, its route, the stat it reaches, and the key's range (from and to) in the box's code.
 
 ## Acceptance criteria
 
