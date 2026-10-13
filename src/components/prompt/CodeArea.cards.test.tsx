@@ -1,10 +1,11 @@
 import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { useState } from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { EditorView } from '@codemirror/view';
 import { CodeArea } from './CodeArea';
+import { completionCard } from '@/lib/codeCards';
 import type { CodeSurface } from '@/lib/codeSurface';
 import { STAT_CODE_SURFACE } from '@/lib/statCodeSurface';
 import { toolScriptSurface } from '@/lib/tools/toolScriptSurface';
@@ -12,9 +13,15 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { StatCodeTemplateDialog } from '@/components/modals/StatCodeTemplateDialog';
 import type { Stat } from '@/types';
 
-function Harness({ initial, surface = STAT_CODE_SURFACE }: { initial: string; surface?: CodeSurface }) {
+// A pass-through, so a test can count the cards the completion list builds.
+vi.mock('@/lib/codeCards', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/codeCards')>();
+  return { ...actual, completionCard: vi.fn(actual.completionCard) };
+});
+
+function Harness({ initial, surface = STAT_CODE_SURFACE, statNames }: { initial: string; surface?: CodeSurface; statNames?: readonly string[] }) {
   const [value, setValue] = useState(initial);
-  return <CodeArea value={value} onChange={setValue} ariaLabel="Stat code" surface={surface} />;
+  return <CodeArea value={value} onChange={setValue} ariaLabel="Stat code" surface={surface} statNames={statNames} />;
 }
 
 /** The live editor under `label`, once its chunk has replaced the plain stand-in. */
@@ -91,6 +98,70 @@ describe('hover cards in the code editor', () => {
 
     await user.keyboard('{Escape}');
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+});
+
+describe('the card in the completion list', () => {
+  const popup = () => document.querySelector<HTMLElement>('.cm-tooltip-autocomplete');
+  /** The pane beside the list, which holds the card for the selected option. */
+  const pane = () => document.querySelector<HTMLElement>('.cm-completionInfo');
+  const built = vi.mocked(completionCard);
+
+  /** Types into the empty field one key at a time, each confirmed, then waits for the list. */
+  async function typeAndList(user: ReturnType<typeof userEvent.setup>, code: string, statNames?: readonly string[]) {
+    render(<Harness initial="" statNames={statNames} />);
+    const field = await editor('Stat code');
+    await user.click(field);
+    for (let i = 0; i < code.length; i++) {
+      await user.keyboard(code[i]);
+      await waitFor(() => expect(field.textContent).toBe(code.slice(0, i + 1)));
+    }
+    await waitFor(() => expect(popup()).toBeTruthy());
+  }
+
+  beforeEach(() => { built.mockClear(); });
+
+  it('shows the full card for the selected option in the info pane', async () => {
+    const user = userEvent.setup();
+    await typeAndList(user, 'return self.reg');
+    await waitFor(() => expect(pane()).toBeTruthy());
+    const shown = pane()!.querySelector<HTMLElement>('[data-code-card]');
+    expect(shown?.textContent).toContain('(property) Stat.regen: number');
+    expect(shown?.textContent).toContain('Writable');
+    expect(shown?.textContent).toContain('Regen per story hour, with traits applied');
+  });
+
+  it('shows a world name’s card, with the same signature the hover card gives', async () => {
+    const user = userEvent.setup();
+    await typeAndList(user, 'return stats.Hea', ['Health', 'Heat']);
+    await waitFor(() => expect(pane()?.querySelector('[data-code-card]')).toBeTruthy());
+    expect(pane()!.textContent).toContain('(stat) stats.Health: Stat');
+  });
+
+  it('builds a card for the shown option only, and one more for each option the author moves to', async () => {
+    const user = userEvent.setup();
+    const names = ['Health', 'Heat', 'Heart', 'Hearth', 'Hero'];
+    await typeAndList(user, 'return stats.He', names);
+    await waitFor(() => expect(pane()?.querySelector('[data-code-card]')).toBeTruthy());
+    await waitFor(() => expect(within(popup()!).getAllByRole('option')).toHaveLength(names.length));
+    // Every list the keystrokes raised built the card of its selected option, the first, and no other.
+    const labels = () => built.mock.calls.map(([, , label]) => label);
+    expect(new Set(labels())).toEqual(new Set(['Health']));
+
+    // A key aimed at a list that has only just opened is ignored for a beat.
+    await new Promise((resolve) => { setTimeout(resolve, 150); });
+    built.mockClear();
+    await user.keyboard('{ArrowDown}');
+    await waitFor(() => expect(built).toHaveBeenCalledTimes(1));
+    expect(labels()[0]).not.toBe('Health');
+  });
+
+  it('keeps a plain info line for an option that has no card', async () => {
+    const user = userEvent.setup();
+    await typeAndList(user, 'const mine = 1; return mi');
+    await waitFor(() => expect(pane()).toBeTruthy());
+    expect(pane()!.textContent).toContain('Declared in this code');
+    expect(pane()!.querySelector('[data-code-card]')).toBeNull();
   });
 });
 

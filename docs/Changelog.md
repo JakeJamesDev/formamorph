@@ -62,6 +62,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Code Hover Cards:**
     - **Hovering a name in stat code, a Tool script or the template editor now shows a card that explains it.** The card shows the name's kind, path and type, a Writable, Read-Only or Writable After This Run badge, and its description. The first Escape closes the card, and the next one leaves full screen.
     - **The Variable menu and the Tool script reference now state whether each field is writable or read-only.** Help lines for stat code, Tool script and completion names also follow one writing style.
+    - **The code editor's completion list now shows the same card as hover beside the selected option.** The card shows the name's kind, path, type, access badge and description. Options with no card keep their info line.
   - **Selecting a placed chip now opens Chip Options, a dialog that shows what the AI reads as you pick.** Entities and Persona chips gain **Only With**, **Include** and **Stat Detail** rows, and a filter icon when Only With is on. Those picks show as raw text in older versions.
   - **The AI now updates your stats with fewer wrong-direction and made-up changes.** It answers with a change for every stat, 0 included. An endpoint that can't take that format gets the old reply style, and the AI context viewer notes it.
   - **The World Editor's Content group now lists Entities first and Stats last.** The order is Entities, Locations, Traits, Stats on the side rail and the mobile Sections list.

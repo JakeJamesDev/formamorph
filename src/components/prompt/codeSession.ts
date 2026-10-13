@@ -33,8 +33,8 @@ import { findSlotRanges } from '@/lib/statCodeTemplates';
 import {
   codeCompletions, codeDiagnostics, type CodeEntityNames, type CodeOwnerKind, type CodePlaceholders, type SurfaceAnalysisOptions,
 } from '@/lib/statCodeAnalysis';
-import { codeCard } from '@/lib/codeCards';
-import { renderCodeCard } from '@/components/prompt/codeCardView';
+import { codeCard, completionCard } from '@/lib/codeCards';
+import { renderCodeCard, renderInfoLine } from '@/components/prompt/codeCardView';
 import { TOOLTIP_DELAY_MS } from '@/components/ui/tooltip';
 import type { CodeSurface } from '@/lib/codeSurface';
 import type { InsertSelection } from '@/lib/codeSnippets';
@@ -130,8 +130,9 @@ const editorTheme = EditorView.theme({
     borderRadius: '0.375rem',
     backgroundColor: 'hsl(var(--popover))',
     color: 'hsl(var(--muted-foreground))',
-    padding: '0.375rem 0.5rem',
-    maxWidth: '18rem',
+    // The card and the plain info line pad themselves, so one pane fits both. The width is the card's.
+    padding: 0,
+    maxWidth: '22.5rem',
   },
   '.cm-diagnostic': {
     backgroundColor: 'hsl(var(--popover))',
@@ -301,13 +302,26 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
    *  what the sandbox exposes. */
   const complete = (context: CompletionContext): CMCompletionResult | null => {
     const doc = context.state.doc.toString();
-    const result = codeCompletions(doc, context.pos, analysisOptions());
+    const analysis = analysisOptions();
+    const result = codeCompletions(doc, context.pos, analysis);
     if (!result || result.options.length === 0) return null;
     // Explicit means the author asked for the list; otherwise an empty word is every option at once.
     if (!context.explicit && result.from === result.to && !context.matchBefore(/["'.]|\{\{/)) return null;
     // No `validFor`: which list applies depends on where the caret is, and a stat name may carry a space,
     // so re-asking on every keystroke is both cheaper to reason about and always right.
-    return { from: result.from, to: result.to, options: result.options };
+    return {
+      from: result.from,
+      to: result.to,
+      options: result.options.map(({ info, ...option }) => ({
+        ...option,
+        // CodeMirror calls this for the selected option only, so a list of fifty builds one card.
+        info: () => {
+          const card = completionCard(doc, result, option.label, analysis);
+          if (card) return renderCodeCard(card);
+          return info ? renderInfoLine(info) : null;
+        },
+      })),
+    };
   };
 
   const codeLinter = linter(
