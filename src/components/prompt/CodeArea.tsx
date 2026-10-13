@@ -16,7 +16,7 @@ import { SLOT_SNIPPETS, snippetSelection, type InsertSelection, type InsertSnipp
 import { buildVariableTree, type VariableNode, type VariableTreeOwner } from '@/lib/statCodeVariableTree';
 import type { CodeSurface } from '@/lib/codeSurface';
 import type { CodeWorldLookup } from '@/lib/codeWorldLookup';
-import type { OpenCodeCardItem } from '@/lib/codeCardOpen';
+import type { CodeCardNavigation } from '@/lib/codeCardNavigation';
 import type { CodeSession } from '@/components/prompt/codeSession';
 import type { CodeEntityNames, CodePlaceholders, CodeTraitPlace } from '@/lib/statCodeAnalysis';
 
@@ -87,8 +87,12 @@ interface CodeAreaProps {
   entities?: readonly CodeEntityNames[];
   /** What cards ask the world, bound to this box. Absent, cards show no World Details. */
   lookup?: CodeWorldLookup;
-  /** Where a card's Open goes. Absent, cards show no Open. */
-  onOpenItem?: OpenCodeCardItem;
+  /** Where a card's Open and Find All Uses go. Absent, cards show neither. */
+  navigation?: CodeCardNavigation;
+  /** A line (from 1) to put the caret on once the editor is ready. */
+  revealLine?: number;
+  /** Called once `revealLine` is shown. */
+  onLineRevealed?: () => void;
   /** What the code produces. Given this, the field grows the Edit | Preview pair, which becomes a
    *  side-by-side split once full screen has the width for it. */
   preview?: ReactNode;
@@ -315,13 +319,14 @@ export function CodeArea(props: CodeAreaProps) {
         traits: latest.current.traits?.map((trait) => trait.name),
         entities: latest.current.entities,
         lookup: () => latest.current.lookup,
-        openItem: () => {
-          const open = latest.current.onOpenItem;
-          return open && ((item) => {
-            // The item is in the World Editor behind the overlay.
-            if (latestMorph.current.mounted) latestMorph.current.close();
-            open(item);
-          });
+        navigation: () => {
+          const navigation = latest.current.navigation;
+          // Both lead into the World Editor behind the overlay.
+          const leaveFullscreen = () => { if (latestMorph.current.mounted) latestMorph.current.close(); };
+          return navigation && {
+            open: (item) => { leaveFullscreen(); navigation.open(item); },
+            goToUse: (use) => { leaveFullscreen(); navigation.goToUse(use); },
+          };
         },
         onChange: (next) => latest.current.onChange(next),
         onUpdate,
@@ -348,6 +353,12 @@ export function CodeArea(props: CodeAreaProps) {
   const traitNames = useMemo(() => props.traits?.map((trait) => trait.name), [props.traits]);
   useEffect(() => { session?.setTraits(traitNames); }, [session, traitNames]);
   useEffect(() => { session?.setEntities(props.entities); }, [session, props.entities]);
+  const { revealLine } = props;
+  useEffect(() => {
+    if (!session || revealLine === undefined) return;
+    session.revealLine(revealLine);
+    latest.current.onLineRevealed?.();
+  }, [session, revealLine]);
 
   return (
     <>

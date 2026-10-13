@@ -7,9 +7,10 @@ import { StateEffect, StateField, type EditorState, type Extension } from '@code
 import {
   EditorView, closeHoverTooltips, keymap, showTooltip, ViewPlugin, type Tooltip, type TooltipView,
 } from '@codemirror/view';
-import type { CodeCard } from '@/lib/codeCards';
-import type { OpenCodeCardItem } from '@/lib/codeCardOpen';
-import { cardAnnouncement, renderCodeCard, type CodeCardActions } from '@/components/prompt/codeCardView';
+import type { CodeCard, CodeCardStatItem } from '@/lib/codeCards';
+import type { CodeCardNavigation } from '@/lib/codeCardNavigation';
+import type { CodeStatUse } from '@/lib/codeStatUses';
+import { cardAnnouncement, renderCodeCard, renderCodeUses, type CodeCardActions } from '@/components/prompt/codeCardView';
 
 /** How long a caret rests on a name after a tap before its card opens. */
 export const CARET_PAUSE_MS = 500;
@@ -24,6 +25,8 @@ interface CaretCard {
   card: CodeCard;
   /** True when the author asked from the keyboard, who needs the card read out. */
   announce: boolean;
+  /** Set once Find All Uses pins the card: the list that hangs off it. */
+  uses?: readonly CodeStatUse[];
 }
 
 const openCaretCard = StateEffect.define<CaretCard>();
@@ -35,9 +38,15 @@ export function goToDeclaration(view: EditorView, at: number): void {
   view.focus();
 }
 
+/** A pinned card's list and where its rows go. */
+interface PinnedUses {
+  uses: readonly CodeStatUse[];
+  goToUse: (use: CodeStatUse) => void;
+}
+
 /** The tooltip view of a card. A dialog or full screen takes Escape on the document in the capture phase,
  *  so an open card takes it on the window first, closes through `dismiss` and stops it there. */
-export function cardTooltipView(card: CodeCard, dismiss: () => void, actions: CodeCardActions = {}): TooltipView {
+export function cardTooltipView(card: CodeCard, dismiss: () => void, actions: CodeCardActions = {}, pinned?: PinnedUses): TooltipView {
   const close = (event: KeyboardEvent) => {
     if (event.key !== 'Escape') return;
     event.preventDefault();
@@ -45,26 +54,65 @@ export function cardTooltipView(card: CodeCard, dismiss: () => void, actions: Co
     dismiss();
   };
   const { open } = actions;
-  return {
-    // Open leaves the code box, so the card closes first.
-    dom: renderCodeCard(card, { ...actions, open: open && ((item) => { dismiss(); open(item); }), guide: dismiss }),
-    mount: () => window.addEventListener('keydown', close, true),
-    destroy: () => window.removeEventListener('keydown', close, true),
+  // Open and a use's row leave the code box, so the card closes first.
+  const cardDom = renderCodeCard(card, { ...actions, open: open && ((item) => { dismiss(); open(item); }), guide: dismiss });
+  if (!pinned) {
+    return {
+      dom: cardDom,
+      mount: () => window.addEventListener('keydown', close, true),
+      destroy: () => window.removeEventListener('keydown', close, true),
+    };
+  }
+  // Pinned: the list hangs below, and a press anywhere else closes both.
+  const usesDom = renderCodeUses(pinned.uses, (use) => { dismiss(); pinned.goToUse(use); });
+  cardDom.classList.add('code-card-box');
+  usesDom.classList.add('code-card-box');
+  delete cardDom.dataset.codeCard;
+  const dom = document.createElement('div');
+  dom.className = 'flex flex-col gap-1';
+  dom.dataset.codeCard = '';
+  dom.dataset.codeCardPinned = '';
+  dom.append(cardDom, usesDom);
+  const pressOutside = (event: PointerEvent) => {
+    if (!(event.target instanceof Node) || !dom.contains(event.target)) dismiss();
   };
+  return {
+    dom,
+    mount: () => {
+      window.addEventListener('keydown', close, true);
+      window.addEventListener('pointerdown', pressOutside, true);
+      // The link that pinned the card went with the card it was on.
+      (usesDom.querySelector('button') ?? usesDom).focus({ preventScroll: true });
+    },
+    destroy: () => {
+      window.removeEventListener('keydown', close, true);
+      window.removeEventListener('pointerdown', pressOutside, true);
+    },
+  };
+}
+
+/** What a card's links reach, read when a card opens. */
+export interface CardLinks {
+  /** Absent where the host hides Open and Find All Uses. */
+  navigation?: CodeCardNavigation;
+  /** Every use of a stat. Absent where the box has no world. */
+  statUses?: (item: CodeCardStatItem) => readonly CodeStatUse[];
 }
 
 export interface CaretCards {
   extension: Extension;
+  /** The controls of `card` in `view`: Go to Line, Open, and Find All Uses, which pins it. */
+  actions: (view: EditorView, card: CodeCard) => CodeCardActions;
   /** False while touch is the last input, where the caret pause owns the card and hover would open a second. */
   hoverAllowed: () => boolean;
-  /** Closes a caret card on another name, and returns true when one is already open on `from`. */
+  /** Closes a caret card on another name, and returns true when one is already open on `from` or pinned. */
   closeUnlessOpenAt: (view: EditorView, from: number) => boolean;
 }
 
 /** `cardAt` reads the card for a position against the editor's current world; null where nothing is named. */
 export function createCaretCards(
   cardAt: (state: EditorState, pos: number) => CodeCard | null,
-  openItem: () => OpenCodeCardItem | undefined = () => undefined,
+  links: () => CardLinks = () => ({}),
 ): CaretCards {
   let touching = false;
   let tapEndedAt = -Infinity;
@@ -87,13 +135,28 @@ export function createCaretCards(
         pos: open.card.from,
         end: open.card.to,
         above: false,
-        create: (view) => cardTooltipView(
-          open.card, () => view.dispatch({ effects: closeCaretCard.of(null) }),
-          { goTo: (at) => goToDeclaration(view, at), open: openItem() },
-        ),
+        create: (view) => {
+          const goToUse = links().navigation?.goToUse;
+          return cardTooltipView(
+            open.card, () => view.dispatch({ effects: closeCaretCard.of(null) }), actions(view, open.card),
+            open.uses && goToUse ? { uses: open.uses, goToUse } : undefined,
+          );
+        },
       };
     }),
   });
+
+  /** One set of controls for hover and caret cards alike. */
+  const actions = (view: EditorView, card: CodeCard): CodeCardActions => {
+    const { navigation, statUses } = links();
+    return {
+      goTo: (at) => goToDeclaration(view, at),
+      open: navigation?.open,
+      findUses: navigation && statUses && ((item) => view.dispatch({
+        effects: [closeHoverTooltips, openCaretCard.of({ card, announce: false, uses: statUses(item) })],
+      })),
+    };
+  };
 
   const clearPause = () => {
     if (pauseTimer !== undefined) { clearTimeout(pauseTimer); pauseTimer = undefined; }
@@ -173,11 +236,13 @@ export function createCaretCards(
 
   return {
     extension: [field, plugin, chord],
+    actions,
     hoverAllowed: () => !touching,
     closeUnlessOpenAt(view, from) {
       const open = view.state.field(field);
       if (!open) return false;
-      if (open.card.from === from) return true;
+      // A pinned card stays while the pointer crosses other names.
+      if (open.card.from === from || open.uses) return true;
       view.dispatch({ effects: closeCaretCard.of(null) });
       return false;
     },

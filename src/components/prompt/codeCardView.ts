@@ -1,11 +1,13 @@
 /** Draws a code card model as plain DOM, in the app's popover and code tokens. */
 
 import { ACCESS_LABEL } from '@/lib/codeSurface';
-import type { OpenCodeCardItem } from '@/lib/codeCardOpen';
-import type { CodeCard, CodeCardSignature } from '@/lib/codeCards';
+import type { OpenCodeCardItem } from '@/lib/codeCardNavigation';
+import { canFindUses, type CodeCard, type CodeCardSignature, type CodeCardStatItem } from '@/lib/codeCards';
+import type { CodeStatUse } from '@/lib/codeStatUses';
 import { docTargetId } from '@/lib/docs/docsLinks';
 import { openDocsFromClick } from '@/lib/formaquestion/docsOpener';
 import { wikiPageUrl } from '@/lib/helpTopics';
+import { TIMING_SHORT } from '@/lib/statCodeTiming';
 
 /** `path: type`, or `path(params): result` for a method whose type is an arrow. */
 export function signatureText({ kind, path, type }: CodeCardSignature): string {
@@ -31,6 +33,8 @@ export interface CodeCardActions {
   goTo?: (at: number) => void;
   /** Open the card's world item in the World Editor. */
   open?: OpenCodeCardItem;
+  /** Pin the card and list every use of its stat. */
+  findUses?: (item: CodeCardStatItem) => void;
   /** Called after the Guide link is used, so the host can close the card. The link shows only where this is set. */
   guide?: () => void;
 }
@@ -105,7 +109,7 @@ export function renderCodeCard(card: CodeCard, actions: CodeCardActions = {}): H
     root.append(row);
   }
 
-  const { goTo, open, guide } = actions;
+  const { goTo, open, findUses, guide } = actions;
   const bar = element('section', 'flex flex-wrap gap-x-3 gap-y-1 px-2.5 py-1.5');
   const link = (text: string, onClick: () => void) => {
     const button = element('button', LINK_CLASS, text);
@@ -115,6 +119,7 @@ export function renderCodeCard(card: CodeCard, actions: CodeCardActions = {}): H
   };
   const { item } = card;
   if (open && item) link('Open', () => open(item));
+  if (findUses && item && canFindUses(item)) link('Find All Uses', () => findUses(item));
   for (const entry of card.links ?? []) {
     if (entry.id === 'goToLine' && goTo) link(`Go to Line ${entry.line}`, () => goTo(entry.at));
     // A real link, so a modified click or a window with no reader still reaches the wiki.
@@ -129,5 +134,35 @@ export function renderCodeCard(card: CodeCard, actions: CodeCardActions = {}): H
     }
   }
   if (bar.childElementCount) root.append(bar);
+  return root;
+}
+
+/** A use as its row reads: the stat, its box and its line. */
+export function rowText({ entity, stat, timing, line }: CodeStatUse): string {
+  return `${entity ? `${entity} › ` : ''}${stat} · ${TIMING_SHORT[timing]} · Line ${line}`;
+}
+
+/** The Find All Uses popover: a count, then one button per box and line. */
+export function renderCodeUses(uses: readonly CodeStatUse[], onPick: (use: CodeStatUse) => void): HTMLElement {
+  const root = element('section', 'code-uses w-[22.5rem] max-w-[calc(100vw-2rem)] py-1 text-helper');
+  root.dataset.codeUses = '';
+  root.setAttribute('aria-label', 'Uses');
+  if (!uses.length) {
+    root.append(element('p', 'px-2.5 py-1 text-muted-foreground', 'No uses in stat code'));
+    return root;
+  }
+  root.append(element('h3', 'px-2.5 py-1 text-muted-foreground', uses.length === 1 ? '1 Use' : `${uses.length} Uses`));
+  const list = element('ul', '');
+  for (const use of uses) {
+    const button = element('button', 'flex w-full items-baseline justify-between gap-2 px-2.5 py-1 text-left text-popover-foreground hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground focus-visible:outline-none');
+    button.type = 'button';
+    button.append(element('span', 'min-w-0 break-words', rowText(use)));
+    if (use.noBearers) button.append(element('span', 'shrink-0 text-meta text-muted-foreground', 'No Bearers'));
+    button.addEventListener('click', () => onPick(use));
+    const item = element('li', '');
+    item.append(button);
+    list.append(item);
+  }
+  root.append(list);
   return root;
 }

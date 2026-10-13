@@ -18,6 +18,9 @@ export const TIMING_LABEL: Record<StatCodeTiming, string> = {
   after: 'After the AI',
 };
 
+/** A box's name where its stat is named beside it, as in a Find All Uses row. */
+export const TIMING_SHORT: Record<StatCodeTiming, string> = { before: 'Before', after: 'After' };
+
 /** Each box's target on the stat's Code tab, for a landing on it. */
 export const CODE_BOX_TARGET = { before: 'before-code', after: 'after-code' } as const satisfies Record<StatCodeTiming, string>;
 

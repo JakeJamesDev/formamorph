@@ -11,7 +11,8 @@ import { STAT_CODE_SURFACE } from "@/lib/statCodeSurface";
 import { CODE_BOX_TARGET, TIMING_LABEL, type StatCodeTiming } from "@/lib/statCodeTiming";
 import { targetAttribute } from "@/lib/surface/surfaceTargets";
 import type { CodeBoxOwner, CodeWorldLookup } from "@/lib/codeWorldLookup";
-import { useCodeCardOpen } from "@/lib/codeCardOpen";
+import { useCodeCardNavigation } from "@/lib/codeCardNavigation";
+import { settleCodeUseReveal, type CodeUseReveal } from "@/lib/codeUseReveal";
 import type { Stat, Trait } from "@/types";
 
 export type { CodeBoxOwner as StatCodeBoxOwner } from "@/lib/codeWorldLookup";
@@ -55,13 +56,15 @@ export interface StatCodeBoxContext {
  * A run here is handed no turn, so `previous` reads as the stat itself and every `delta` reads zero, which
  * is what the before box reads in play too.
  */
-export function StatCodeBox({ timing, stat, value, onChange, context }: {
+export function StatCodeBox({ timing, stat, value, onChange, context, reveal }: {
   timing: StatCodeTiming;
   /** The stat as the panel currently holds it, mid-edit: what the run reads as `self`. */
   stat: Partial<Stat> & Pick<Stat, 'id'>;
   value: string;
   onChange: (code: string) => void;
   context: StatCodeBoxContext;
+  /** A Find All Uses row bound for this box. */
+  reveal?: CodeUseReveal | null;
 }) {
   /** What the last run wrote: the value, each bound, each placeholder, then each trait switch, as one
    *  line. Null when it wrote nothing. */
@@ -80,7 +83,7 @@ export function StatCodeBox({ timing, stat, value, onChange, context }: {
     owner, worldStats, worldStatNames, ownerStats, ownerStatNames, lookup,
   } = context;
   const boxLookup = useMemo(() => lookup?.(timing), [lookup, timing]);
-  const openItem = useCodeCardOpen();
+  const navigation = useCodeCardNavigation();
 
   // What the Variable menu's Owner group lists. An entity the editor has no names for, as in the library, still lists its stats.
   const treeOwner = useMemo<VariableTreeOwner | null>(() => {
@@ -160,7 +163,9 @@ export function StatCodeBox({ timing, stat, value, onChange, context }: {
         traits={traitPlaces}
         entities={entities}
         lookup={boxLookup}
-        onOpenItem={openItem}
+        navigation={navigation}
+        revealLine={reveal?.line}
+        onLineRevealed={() => { if (reveal) settleCodeUseReveal(reveal); }}
         // Its caption is the section heading, which full screen leaves behind — so the field names
         // itself in the toolbar and stays labeled in both states.
         label={label}

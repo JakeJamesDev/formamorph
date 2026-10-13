@@ -35,8 +35,8 @@ import {
 } from '@/lib/statCodeAnalysis';
 import { codeCard, completionCard } from '@/lib/codeCards';
 import { renderCodeCard, renderInfoLine } from '@/components/prompt/codeCardView';
-import { cardTooltipView, createCaretCards, goToDeclaration } from '@/components/prompt/codeCaretCard';
-import type { OpenCodeCardItem } from '@/lib/codeCardOpen';
+import { cardTooltipView, createCaretCards } from '@/components/prompt/codeCaretCard';
+import type { CodeCardNavigation } from '@/lib/codeCardNavigation';
 import { quickFixes, quickFixGutter } from '@/components/prompt/codeQuickFix';
 import { TOOLTIP_DELAY_MS } from '@/components/ui/tooltip';
 import type { CodeSurface } from '@/lib/codeSurface';
@@ -64,6 +64,15 @@ function build(view: EditorView): DecorationSet {
   for (const { from, to } of findSlotRanges(view.state.doc.toString())) builder.add(from, to, slotMark);
   return builder.finish();
 }
+
+/** A code card's box: the hover card, and the pinned card and its uses list. */
+const CARD_BOX = {
+  border: '1px solid hsl(var(--border))',
+  borderRadius: '0.375rem',
+  backgroundColor: 'hsl(var(--popover))',
+  color: 'hsl(var(--popover-foreground))',
+  boxShadow: '0 4px 12px hsl(var(--foreground) / 0.12)',
+};
 
 const editorTheme = EditorView.theme({
   // Grown by its host rather than sized in percentages: the host is a flex column with a floor, and a
@@ -172,13 +181,12 @@ const editorTheme = EditorView.theme({
     backgroundColor: 'hsl(var(--popover))',
     boxShadow: '0 4px 12px hsl(var(--foreground) / 0.12)',
   },
-  '.cm-tooltip.cm-tooltip-hover': {
-    border: '1px solid hsl(var(--border))',
-    borderRadius: '0.375rem',
-    backgroundColor: 'hsl(var(--popover))',
-    color: 'hsl(var(--popover-foreground))',
-    boxShadow: '0 4px 12px hsl(var(--foreground) / 0.12)',
-  },
+  '.cm-tooltip.cm-tooltip-hover': CARD_BOX,
+  // A pinned card and its uses list are two boxes in one tooltip, so the tooltip itself draws nothing.
+  '.cm-tooltip[data-code-card-pinned]': { border: 'none', backgroundColor: 'transparent' },
+  '.code-card-box': CARD_BOX,
+  // Scrolls natively, as the completion list does.
+  '[data-code-uses] ul': { maxHeight: '14rem', overflowY: 'auto' },
 });
 
 /** Tooltips hang off `<body>` so nothing clips them, which puts them under the `pointer-events: none` a
@@ -264,6 +272,8 @@ export interface CodeSession {
   /** The world's trait names, for completions and name checks. Re-lints when the list changes. */
   setTraits: (traits: readonly string[] | undefined) => void;
   setEntities: (entities: readonly CodeEntityNames[] | undefined) => void;
+  /** Move the caret to the start of the code on `line` (from 1), center it, and focus the editor. */
+  revealLine: (line: number) => void;
   focus: () => void;
   destroy: () => void;
 }
@@ -292,8 +302,8 @@ export interface CodeSessionOptions {
   entities?: readonly CodeEntityNames[];
   /** The box's world lookup, read when a card opens. Absent, cards show no World Details. */
   lookup?: () => CodeWorldLookup | undefined;
-  /** Where a card's Open goes, read when a card opens. Absent, cards show no Open. */
-  openItem?: () => OpenCodeCardItem | undefined;
+  /** Where a card's Open and Find All Uses go, read when a card opens. Absent, cards show neither. */
+  navigation?: () => CodeCardNavigation | undefined;
   onChange: (value: string) => void;
   /** Any update at all, so the toolbar can re-read what undo and redo have to offer. */
   onUpdate?: () => void;
@@ -382,7 +392,7 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
   /** The cards the caret opens: the keyboard chord and a tap. */
   const caretCards = createCaretCards(
     (state, pos) => codeCard(state.doc.toString(), pos, analysisOptions()),
-    () => options.openItem?.(),
+    () => ({ navigation: options.navigation?.(), statUses: options.lookup?.()?.statUses }),
   );
   /** The card for the name under the pointer. */
   const cards = hoverTooltip((view, pos) => {
@@ -394,10 +404,7 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
       pos: card.from,
       end: card.to,
       above: false,
-      create: () => cardTooltipView(
-        card, () => view.dispatch({ effects: closeHoverTooltips }),
-        { goTo: (at) => goToDeclaration(view, at), open: options.openItem?.() },
-      ),
+      create: () => cardTooltipView(card, () => view.dispatch({ effects: closeHoverTooltips }), caretCards.actions(view, card)),
     };
   }, { hoverTime: TOOLTIP_DELAY_MS, hideOnChange: true });
 
@@ -561,6 +568,13 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
     },
     setLintGutter(show) {
       view.dispatch({ effects: gutter.reconfigure(show ? [lintGutter(), quickFixGutter] : []) });
+    },
+    revealLine(line) {
+      const { doc } = view.state;
+      const at = doc.line(Math.min(Math.max(1, line), doc.lines));
+      const anchor = at.from + (/^\s*/.exec(at.text)?.[0].length ?? 0);
+      view.dispatch({ selection: { anchor }, effects: EditorView.scrollIntoView(anchor, { y: 'center' }) });
+      view.focus();
     },
     focus() { view.focus(); },
     destroy() { view.destroy(); },
