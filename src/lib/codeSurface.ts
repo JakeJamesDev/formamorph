@@ -6,7 +6,6 @@
  * A surface describes a sandbox; it never widens one. The exposure lives in each executor.
  */
 
-import type { InsertSnippet } from '@/lib/codeSnippets';
 import type { DocTarget } from '@/lib/docs/docsLinks';
 
 /** Whether code can write a name: now, only from the next run on, or not at all. */
@@ -75,8 +74,6 @@ export interface CodeSurface {
   members: ReadonlyMap<string, readonly SurfaceEntry[]>;
   /** Language-level names a reference may use without being a typo. Never offered. */
   languageNames: readonly string[];
-  /** The Variable menu, as a flat list. Empty where `statMaps` is set: stat code's menu is a drill tree. */
-  snippets: readonly InsertSnippet[];
   /** The warning for code that neither returns nor writes anything, or null when that is fine. */
   missingReturn: string | null;
   /** True when `stats`, `self`, `placeholders` and `traits` are stat code's maps, with their rules. */

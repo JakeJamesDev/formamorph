@@ -59,6 +59,8 @@ export interface VariableNameRow {
   /** Folder, group, holder or owner names, outermost first. */
   trail: readonly string[];
   children: readonly VariableNode[];
+  /** Set on a name that is itself a value: picking it inserts this instead of opening `children`. */
+  field?: VariableField;
 }
 
 /** A level that lists the world's names. Never empty: an empty one is a group with an empty marker. */

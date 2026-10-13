@@ -61,10 +61,6 @@ describe('placeholders', () => {
     expect(messages('return placeholders.Weather + placeholders["Hair Color"];')).toEqual([]);
     expect(messages('placeholders.Weather = "sun";')).toEqual(['This script never returns, so the Tool sends its empty result.']);
   });
-
-  it('offers a snippet that reads one placeholder by name', () => {
-    expect(surface.snippets.map((s) => s.text)).toContain('placeholders["Name"]');
-  });
 });
 
 describe('args', () => {
@@ -79,10 +75,6 @@ describe('args', () => {
   it('follows the parameters as they change', () => {
     expect(toolScriptSurface([]).members.get('args')).toEqual([]);
     expect(toolScriptSurface([{ ...params[0], name: '' }]).members.get('args')).toEqual([]);
-  });
-
-  it('offers one Variable menu entry per parameter, bracketed where the name needs it', () => {
-    expect(surface.snippets.slice(0, 3).map((s) => s.text)).toEqual(['args.name', 'args.mood', 'args["place-name"]']);
   });
 });
 

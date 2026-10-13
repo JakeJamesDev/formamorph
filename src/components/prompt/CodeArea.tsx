@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Columns2, Maximize2, Minimize2, Redo2, Square, Undo2, Braces, Variable, type LucideIcon } from 'lucide-react';
+import { Columns2, Maximize2, Minimize2, Redo2, Square, Undo2, Braces, type LucideIcon } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tip } from '@/components/ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -85,6 +85,8 @@ interface CodeAreaProps {
   traits?: readonly CodeTraitPlace[];
   /** The world's entities and their trait names, completed after `entities` and `persona.traits` and checked by name. */
   entities?: readonly CodeEntityNames[];
+  /** The Variable menu's tree where the surface has no stat maps, built on each open. Absent there, no menu. */
+  variables?: () => readonly VariableNode[];
   /** What cards ask the world, bound to this box. Absent, cards show no World Details. */
   lookup?: CodeWorldLookup;
   /** Where a card's Open and Find All Uses go. Absent, cards show neither. */
@@ -104,7 +106,7 @@ interface CodeAreaProps {
  *  value without the outer component recursing into itself. */
 function CodeAreaBody({
   value, onChange, ariaLabel, placeholder, label, info, slots, surface, preview, className, rows = 8, fullscreen,
-  onToggleFullscreen, session, active, expose, variableTree,
+  onToggleFullscreen, session, active, expose, variableTree, variables,
 }: Omit<CodeAreaProps, 'statNames' | 'owner' | 'selfName' | 'placeholders' | 'traits' | 'entities' | 'lookup'> & {
   fullscreen: boolean;
   onToggleFullscreen: () => void;
@@ -114,7 +116,7 @@ function CodeAreaBody({
   active: boolean;
   /** The inline copy reports its own field up, so full screen knows which box to grow out of. */
   expose?: (element: HTMLElement | null) => void;
-  /** The stat code Variable menu's tree, built from the names as they are now. */
+  /** The Variable menu's tree, built from the names as they are now. */
   variableTree: () => readonly VariableNode[];
 }) {
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -191,9 +193,9 @@ function CodeAreaBody({
           {label && <Label className="leading-none">{label}</Label>}
           {info}
           {slots && <InsertMenu items={SLOT_SNIPPETS} label="Slot" Icon={Braces} onPick={insertSnippet} />}
-          {surface.statMaps
-            ? <VariableMenu build={variableTree} onPick={(field) => insert(field.insert, field.selection)} />
-            : <InsertMenu items={surface.snippets} label="Variable" Icon={Variable} onPick={insertSnippet} />}
+          {(surface.statMaps || variables) && (
+            <VariableMenu build={variableTree} onPick={(field) => insert(field.insert, field.selection)} />
+          )}
         </div>
         <div className="flex flex-shrink-0 items-center gap-1">
           <Tip tip="Undo">
@@ -295,7 +297,8 @@ export function CodeArea(props: CodeAreaProps) {
 
   // A template has no world, so its tree types over each name.
   const variableTree = useCallback(() => {
-    const { slots: template, statNames, owner, placeholders, traits, entities } = latest.current;
+    const { slots: template, statNames, owner, placeholders, traits, entities, surface, variables } = latest.current;
+    if (!surface.statMaps) return variables?.() ?? [];
     return buildVariableTree(template ? undefined : { statNames, placeholders, traits, entities }, owner);
   }, []);
 

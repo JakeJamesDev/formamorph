@@ -110,7 +110,7 @@ function VariablePanel({ build, onPick, onClose }: {
           >
             <BreadcrumbPickerList
               sections={[{ rows: pickerRows(level.names) }]}
-              onPick={(row) => drill(levelOf(row.name, row.children))}
+              onPick={(row) => (row.field ? onPick(row.field) : drill(levelOf(row.name, row.children)))}
               searchPlaceholder={`Search ${level.label.toLowerCase()}`}
             />
           </div>
@@ -146,7 +146,7 @@ function VariablePanel({ build, onPick, onClose }: {
 }
 
 /**
- * The stat code Variable menu: the sandbox's globals, drilled level by level down to a field, which inserts
+ * The code Variable menu: the sandbox's globals, drilled level by level down to a field, which inserts
  * its whole path. `build` is read on each open, so the menu lists the names as they are then.
  */
 export function VariableMenu({ build, onPick }: { build: () => readonly VariableNode[]; onPick: (field: VariableField) => void }) {

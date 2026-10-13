@@ -280,7 +280,6 @@ export const STAT_CODE_SURFACE: CodeSurface = {
   members: BUILTIN_MEMBERS,
   languageNames: LANGUAGE_NAMES,
   // The Variable menu is the drill tree in `statCodeVariableTree`.
-  snippets: [],
   missingReturn: 'This code never returns a number or writes self.value, so the stat keeps its value.',
   statMaps: true,
   guide: STAT_CODE_GUIDE_LINKS,
