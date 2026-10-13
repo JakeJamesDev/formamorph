@@ -1,6 +1,7 @@
 # Spec: Chip Options
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-10-13. Tickets 01–10 done; last landing 2ead85633. Closed without gates.
 Spec session: chip-options — spec
 
 ## Problem Statement
