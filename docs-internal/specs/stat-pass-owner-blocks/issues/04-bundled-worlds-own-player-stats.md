@@ -36,7 +36,7 @@ Rulings: Q5, Q18, Q19, Q20, Q21.
 
 | World | Custom Persona | Note |
 |---|---|---|
-| Drone | `{{designation}}` | Placeholder with six robotic designations: Unit-07, Cog-9, Rivet-4, Axiom-0, Node-12, Vector-3. One roll per playthrough (user ruling) |
+| Drone | `{{designation}}` | Placeholder with six robotic designations: C1PH3R, Z3PHYR, T1T4N, Axiom-0, R0GU3, PR1SM (Cipher, Zephyr, Titan, Axiom, Rogue, Prism in leetspeak, Axiom kept by user ruling). One roll per playthrough (user ruling) |
 | Rampage | The Creature | |
 | Slime | The Resident | |
 | Sugarscape | The Cursed | |
