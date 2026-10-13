@@ -182,6 +182,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **A toast's close button and View Details link now work while a dialog is open.** Before, a click went through the toast to the dialog behind it.
   - **The Open External Link confirm on a markdown link now works over a dialog.** Its buttons take your click, Esc closes only the confirm, and focus goes back to the link. It now matches the app's other confirms.
   - **The ring that undo and Take Me There draw around a field shows in full at a scroll area's edge.** The ring follows the field as it scrolls.
+  - **On Novita, GLM-5.3 and GLM-5.3 Flash now get room to think on prompts with Native Reasoning off.** These models always think and ignore Novita's off switch. Short passes such as Location Change no longer fail with "The model reached its token limit before it wrote an answer." They use the prompt's kept strength.
 - **🛠️ Developer tooling**
   - **The dev held-updates bar shows the full file paths in a themed tip, not a native tooltip.** The bar now runs in its own React root, so it still works after the app crashes.
 

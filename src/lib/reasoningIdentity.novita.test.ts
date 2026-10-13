@@ -2,7 +2,10 @@ import { describe, it, expect } from 'vitest';
 import { reasoningIdentityAnswer } from './reasoningIdentity';
 import { buildRequestBody, type AiEndpointTarget, type AiSettingsSnapshot } from '@/lib/aiRequest/aiRequestSpec';
 import { defaultEndpointSamplerOverrides } from '@/lib/endpointSamplers';
-import { UNKNOWN_REASONING_CAPABILITY, type ReasoningCapability } from '@/lib/reasoningEffort';
+import {
+  UNKNOWN_REASONING_CAPABILITY, reasoningRereadsPerSession, resolveReasoningCapability, storedAfterResolve,
+  type ReasoningCapability,
+} from '@/lib/reasoningEffort';
 
 /**
  * Novita switches thinking with `enable_thinking`, default on. Source, read live on 2026-09-30: Novita's
@@ -24,6 +27,11 @@ describe('Novita model ids name the dialect', () => {
       expect(reasoningIdentityAnswer(NOVITA, model)).toBeNull();
     },
   );
+
+  // Novita's reference: "Models whose reasoning is always on, such as `zai-org/glm-5.3`, ignore this parameter."
+  it.each(['zai-org/glm-5.3', 'zai-org/glm-5.3-flash', 'zai-org/glm-6'])('claims %s as an always-on reasoner', (model) => {
+    expect(reasoningIdentityAnswer(NOVITA, model)).toEqual({ dialect: 'novita', reasons: true, levels: [], budget: false, offAllowed: false });
+  });
 
   it('claims nothing for the same model served from another host', () => {
     expect(reasoningIdentityAnswer('https://openrouter.ai/api/v1/chat/completions', 'deepseek/deepseek-v4-flash')).toBeNull();
@@ -57,5 +65,43 @@ describe('a switched-off pass on Novita', () => {
   it('leaves narration, which ships on, to the model default', () => {
     const body = buildRequestBody(snapshot, { systemPrompt: 's', messages: [{ role: 'user', content: 'x' }], requestType: 'narration' });
     expect(body).not.toHaveProperty('enable_thinking');
+  });
+});
+
+describe('GLM-5.3 on Novita', () => {
+  const MODEL = 'zai-org/glm-5.3-flash';
+  /** The record the row wrote before it knew GLM-5.3 ignores the switch, with a tools answer since probed. */
+  const stale: ReasoningCapability = {
+    ...UNKNOWN_REASONING_CAPABILITY, dialect: 'novita', reasons: true, levels: [], budget: false, tools: true,
+    sources: { reasons: 'identity', budget: 'identity', dialect: 'identity', levels: 'identity', tools: 'probe' },
+  };
+  const noFetch = (() => { throw new Error('the reread sent a request'); }) as unknown as typeof fetch;
+
+  it('rereads a cached record once per session, with no request, and keeps its tools answer', async () => {
+    expect(reasoningRereadsPerSession(stale)).toBe(true);
+    const fresh = await resolveReasoningCapability({ url: NOVITA, token: 't', model: MODEL }, noFetch, { stored: stale });
+    if (!fresh) throw new Error('the reread answered nothing');
+    expect(storedAfterResolve(stale, fresh)).toMatchObject({ offAllowed: false, tools: true });
+  });
+
+  // The reported failure: an 11-token Location Change sent `enable_thinking: false`, which GLM-5.3 ignored.
+  it('gives a switched-off pass thought room instead of a switch the model ignores', () => {
+    const answer = reasoningIdentityAnswer(NOVITA, MODEL);
+    if (!answer) throw new Error('Novita row claimed nothing');
+    const target: AiEndpointTarget = {
+      endpointId: 'novita', url: NOVITA, apiToken: 't', model: MODEL, maxTokens: undefined, localEngine: false,
+      samplerOverrides: defaultEndpointSamplerOverrides(),
+      reasoning: { ...UNKNOWN_REASONING_CAPABILITY, ...answer, offAllowed: answer.offAllowed ?? null },
+    };
+    const snapshot: AiSettingsSnapshot = {
+      resolveTarget: () => target, thinkingMode: 'off', reasoningEffort: 'auto', reasoningEngaged: true,
+      promptReasoning: {}, promptReasoningBudget: {}, promptSamplers: {}, promptMaxOutput: {}, genTemperature: 0.9,
+      genRepetitionPenalty: 1.1, genTopP: 0.95, genTopK: 40, genMinP: 0.05, paragraphLimit: 'none', disableThinking: false,
+    };
+    const body = buildRequestBody(snapshot, {
+      systemPrompt: 's', messages: [{ role: 'user', content: 'x' }], requestType: 'locationChange', maxTokensOverride: 11,
+    });
+    expect(body).not.toHaveProperty('enable_thinking');
+    expect(body.max_tokens).toBeGreaterThan(11);
   });
 });
