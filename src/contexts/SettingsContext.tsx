@@ -27,7 +27,8 @@ import {
 } from '../lib/textEndpointPresets';
 import type { EndpointSampler } from '../lib/endpointSamplers';
 import type { RejectedEndpointOverride } from '../lib/aiRequest/rejectedOverride';
-import { fetchContextLength, detectedContextCodec, type DetectedContextEntry } from '../lib/contextLength';
+import { fetchContextLength } from '../lib/contextLength';
+import { ProbeBackoff, PROBE_RETRY_MIN_MS, nextProbeDelay } from '../lib/probeBackoff';
 import { normalizeEndpointUrl } from '../lib/endpointUrl';
 import { registerDevHook } from '../lib/devRouter';
 import { AUTOSAVE_SLOTS } from '../lib/autosave';
@@ -565,12 +566,22 @@ function useProvideSettings() {
   const activeApiToken = apiToken;
   const activeModelName = modelName;
 
-  // Context window (tokens): auto-detected from the active endpoint, with an optional manual override.
-  // Stored with the `endpoint|model` it came from, so another endpoint never inherits it.
-  const [detectedContextEntry, setDetectedContextEntry] = usePersistentState<DetectedContextEntry | null>(
-    `${APP_ID}_detectedContextWindow`, null, detectedContextCodec);
+  // Detected context windows (tokens) per `endpoint|model`, for the active endpoint and routed ones alike,
+  // so the editor and a pinned prompt read the same value. A manual override on the preset beats it.
+  const CONTEXT_CACHE_CAP = 30;
+  const [contextCache, setContextCache] = usePersistentState<Record<string, number>>(
+    `${APP_ID}_routedContextWindows`, {}, {
+      parse: (r) => { try { const o = JSON.parse(r); return o && typeof o === 'object' && !Array.isArray(o) && Object.values(o).every((v) => typeof v === 'number') ? o : {}; } catch { return {}; } },
+      serialize: (v) => JSON.stringify(v),
+    });
+  const rememberContext = useCallback((sig: string, detected: number) => setContextCache((prev) => {
+    const next = { ...prev, [sig]: detected };
+    const keys = Object.keys(next);
+    if (keys.length > CONTEXT_CACHE_CAP) delete next[keys[0]];
+    return next;
+  }), [setContextCache]);
   const activeContextSig = endpointSignature(activeEndpointUrl, activeModelName);
-  const detectedContextWindow = detectedContextEntry?.sig === activeContextSig ? detectedContextEntry.tokens : null;
+  const detectedContextWindow = (contextCache[activeContextSig] as number | undefined) ?? null;
   const [detectStatus, setDetectStatus] = useState<DetectStatus>('idle');
 
   // Desktop bundled-model runtime. Only meaningful when the local engine is active (desktop + no custom
@@ -618,28 +629,41 @@ function useProvideSettings() {
   const detectReqRef = useRef(0);
   // The request id still matches after an unmount, so it alone cannot stop a late answer.
   const mountedRef = useMountedRef();
-  const detectContextWindow = useCallback(async (force = false) => {
+  /** Detects the active endpoint's window. Resolves true on an answer, false on none, null when superseded. */
+  const detectActiveContext = useCallback(async (force: boolean): Promise<boolean | null> => {
     // Token this probe so a slow one for a since-abandoned endpoint can't overwrite a newer endpoint's
     // detected window: switching A→B fires a new probe (higher token), and A's late result is discarded.
     const reqId = ++detectReqRef.current;
     setDetectStatus('detecting');
     const detected = await fetchContextLength(activeEndpointUrl, activeApiToken, activeModelName);
-    if (!mountedRef.current || reqId !== detectReqRef.current) return; // superseded by a newer detect
+    if (!mountedRef.current || reqId !== detectReqRef.current) return null;
     if (detected !== null) {
-      setDetectedContextEntry({ sig: activeContextSig, tokens: detected });
+      rememberContext(activeContextSig, detected);
       if (force) setContextWindowOverride(null); // snap the field back to the detected value
       setDetectStatus('success');
-    } else {
-      setDetectStatus(force ? 'error' : 'idle'); // auto-attempts fail quietly
+      return true;
     }
-  }, [activeEndpointUrl, activeApiToken, activeModelName, activeContextSig, setDetectedContextEntry, setContextWindowOverride, mountedRef]);
+    setDetectStatus(force ? 'error' : 'idle'); // auto-attempts fail quietly
+    return false;
+  }, [activeEndpointUrl, activeApiToken, activeModelName, activeContextSig, rememberContext, setContextWindowOverride, mountedRef]);
+  const detectContextWindow = useCallback(async (force = false) => { await detectActiveContext(force); }, [detectActiveContext]);
 
   // Auto-detect on connect (custom endpoint only); debounced so editing the URL doesn't fire per keystroke.
+  // A failed attempt retries on a doubling backoff, so a server started after the app is still found.
   useEffect(() => {
     if (!onUserEndpoint) return;
-    const id = setTimeout(() => { void detectContextWindow(false); }, 1000);
-    return () => clearTimeout(id);
-  }, [onUserEndpoint, detectContextWindow]);
+    let delay = PROBE_RETRY_MIN_MS;
+    let id: ReturnType<typeof setTimeout>;
+    let cancelled = false;
+    const attempt = async () => {
+      const ok = await detectActiveContext(false);
+      if (ok !== false || cancelled) return;
+      id = setTimeout(() => { void attempt(); }, delay);
+      delay = nextProbeDelay(delay);
+    };
+    id = setTimeout(() => { void attempt(); }, 1000);
+    return () => { cancelled = true; clearTimeout(id); };
+  }, [onUserEndpoint, detectActiveContext]);
 
   // What each endpoint+model answered about its native reasoning, resolved once and remembered per
   // `endpoint|model` so flipping between endpoints (or swapping the model on one) doesn't re-detect. A missing
@@ -1265,21 +1289,10 @@ function useProvideSettings() {
   // before routing existed — and a built-in prompt preset carries none, so its prompts all follow.
   // Deliberately excluded from preset sharing: it names endpoint presets, whose ids mean nothing elsewhere.
 
-  // Context windows for routed endpoints, keyed by the same `endpoint|model` signature the reasoning-support
-  // cache uses. The active endpoint has its own detect effect; a routed one is probed lazily on first use.
-  const [routedContextCache, setRoutedContextCache] = usePersistentState<Record<string, number>>(
-    `${APP_ID}_routedContextWindows`, {}, {
-      parse: (r) => { try { const o = JSON.parse(r); return o && typeof o === 'object' && !Array.isArray(o) && Object.values(o).every((v) => typeof v === 'number') ? o : {}; } catch { return {}; } },
-      serialize: (v) => JSON.stringify(v),
-    });
-  // Signatures already probed this session, so a miss fires one probe rather than one per request.
+  // A routed endpoint's window is probed lazily on first use; a miss retries on a backoff, never per render.
+  const routedContextProbe = useRef(new ProbeBackoff());
+  // Signatures whose reasoning support was already resolved this session, so a miss fires one resolve.
   const routedProbedRef = useRef<Set<string>>(new Set());
-  const rememberRoutedContext = useCallback((sig: string, detected: number) => setRoutedContextCache((prev) => {
-    const next = { ...prev, [sig]: detected };
-    const keys = Object.keys(next);
-    if (keys.length > REASONING_CACHE_CAP) delete next[keys[0]];
-    return next;
-  }), [setRoutedContextCache]);
 
   /**
    * Everything one prompt kind needs to build its request. An unpinned kind returns exactly the active
@@ -1322,16 +1335,20 @@ function useProvideSettings() {
       return { ...resolved, url, presetName, contextWindow, reasoning: withEngineBudget(reasoningCapability) };
     }
     const sig = endpointSignature(url, resolved.model);
-    // Probe a routed target's real window once per signature. Fire-and-forget: this turn uses the preset's
-    // override (or the shipped default) and the detected value applies from the next request on.
+    // Probe a routed target's real window. Fire-and-forget: this turn uses the preset's override (or the
+    // shipped default) and the detected value applies from the next request on. The active endpoint's own
+    // detect effect covers its signature.
+    if (!resolved.localEngine && contextCache[sig] === undefined && sig !== activeContextSig
+      && routedContextProbe.current.begin(sig, Date.now())) {
+      void fetchContextLength(url, resolved.apiToken, resolved.model).then((detected) => {
+        routedContextProbe.current.end(sig, detected !== null, Date.now());
+        if (detected === null || unmountRef.current?.signal.aborted) return;
+        rememberContext(sig, detected);
+      });
+    }
+    // Probe a routed target's reasoning support once per signature.
     if (!routedProbedRef.current.has(sig)) {
       routedProbedRef.current.add(sig);
-      if (routedContextCache[sig] === undefined) {
-        void fetchContextLength(url, resolved.apiToken, resolved.model).then((detected) => {
-          if (detected === null || unmountRef.current?.signal.aborted) return;
-          rememberRoutedContext(sig, detected);
-        }).catch(() => { /* an unreachable routed endpoint surfaces as a request failure, not here */ });
-      }
       const routedStored = reasoningCapabilityCache[sig];
       if ((reasoningNeedsResolve(routedStored) || reasoningRereadsPerSession(routedStored)) && !resolvedSignatures.current.has(sig)) {
         resolvedSignatures.current.add(sig);
@@ -1359,13 +1376,13 @@ function useProvideSettings() {
       // A manual override on the preset always beats the probe; the local engine uses its own window.
       contextWindow: resolved.localEngine
         ? localContextSize
-        : resolved.contextWindowOverride ?? routedContextCache[sig] ?? DEFAULT_CONTEXT_WINDOW,
+        : resolved.contextWindowOverride ?? contextCache[sig] ?? DEFAULT_CONTEXT_WINDOW,
       reasoning: withEngineBudget(reasoningCapabilityCache[sig] ?? null),
     };
   }, [
-    promptEndpoints, textPresetStore, activeEndpointState,
-    contextWindow, reasoningCapability, routedContextCache, reasoningCapabilityCache, localContextSize,
-    activeTextEndpointPresetName, rememberRoutedContext, cacheReasoningCapability,
+    promptEndpoints, textPresetStore, activeEndpointState, activeContextSig,
+    contextWindow, reasoningCapability, contextCache, reasoningCapabilityCache, localContextSize,
+    activeTextEndpointPresetName, rememberContext, cacheReasoningCapability,
   ]);
 
   /** The routed-cache signature of the preset `id` names. */
@@ -1375,16 +1392,16 @@ function useProvideSettings() {
   }, [textPresetStore]);
   /** The context window detected for a preset that is not the active one, or null. */
   const detectedContextWindowFor = useCallback(
-    (id: string): number | null => routedContextCache[presetSignature(id).sig] ?? null,
-    [routedContextCache, presetSignature],
+    (id: string): number | null => contextCache[presetSignature(id).sig] ?? null,
+    [contextCache, presetSignature],
   );
   /** Ask a preset that is not the active one for its context window, and remember the answer. */
   const detectContextWindowFor = useCallback(async (id: string): Promise<number | null> => {
     const { values, sig } = presetSignature(id);
     const detected = await fetchContextLength(normalizeEndpointUrl(values.endpoint), values.apiToken, values.model);
-    if (detected !== null && !unmountRef.current?.signal.aborted) rememberRoutedContext(sig, detected);
+    if (detected !== null && !unmountRef.current?.signal.aborted) rememberContext(sig, detected);
     return detected;
-  }, [presetSignature, rememberRoutedContext]);
+  }, [presetSignature, rememberContext]);
 
   // Engine claims from outside the prompt presets: Formaquestion's routes.
   const [engineClaims, setEngineClaims] = useState<ReadonlySet<string>>(() => new Set());
