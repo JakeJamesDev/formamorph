@@ -11,7 +11,7 @@
 import { Compartment, EditorState, RangeSetBuilder, StateEffect, type Extension } from '@codemirror/state';
 import {
   EditorView, keymap, lineNumbers, placeholder as placeholderExt, highlightSpecialChars,
-  tooltips, Decoration, ViewPlugin,
+  tooltips, Decoration, ViewPlugin, hoverTooltip, closeHoverTooltips,
   type DecorationSet, type ViewUpdate,
 } from '@codemirror/view';
 import {
@@ -30,7 +30,12 @@ import {
 import { forceLinting, linter, lintGutter, type Diagnostic } from '@codemirror/lint';
 import { codeHighlightStyle, SLOT_CLASS } from '@/lib/codeHighlight';
 import { findSlotRanges } from '@/lib/statCodeTemplates';
-import { codeCompletions, codeDiagnostics, type CodeEntityNames, type CodeOwnerKind, type CodePlaceholders } from '@/lib/statCodeAnalysis';
+import {
+  codeCompletions, codeDiagnostics, type CodeEntityNames, type CodeOwnerKind, type CodePlaceholders, type SurfaceAnalysisOptions,
+} from '@/lib/statCodeAnalysis';
+import { codeCard } from '@/lib/codeCards';
+import { renderCodeCard } from '@/components/prompt/codeCardView';
+import { TOOLTIP_DELAY_MS } from '@/components/ui/tooltip';
 import type { CodeSurface } from '@/lib/codeSurface';
 import type { InsertSelection } from '@/lib/codeSnippets';
 
@@ -144,6 +149,13 @@ const editorTheme = EditorView.theme({
     backgroundColor: 'hsl(var(--popover))',
   },
   '.cm-gutter-lint .cm-gutterElement': { padding: '0 0.2rem' },
+  '.cm-tooltip.cm-tooltip-hover': {
+    border: '1px solid hsl(var(--border))',
+    borderRadius: '0.375rem',
+    backgroundColor: 'hsl(var(--popover))',
+    color: 'hsl(var(--popover-foreground))',
+    boxShadow: '0 4px 12px hsl(var(--foreground) / 0.12)',
+  },
 });
 
 /** Tooltips hang off `<body>` so nothing clips them, which puts them under the `pointer-events: none` a
@@ -280,13 +292,16 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
   let traits: readonly string[] | undefined = options.traits;
   let entities: readonly CodeEntityNames[] | undefined = options.entities;
 
+  /** What the analysis reads the code against, as it stands now. */
+  const analysisOptions = (): SurfaceAnalysisOptions => ({
+    surface, slots: options.slots, statNames, owner, ownerStatNames, selfName, placeholders, traits, entities,
+  });
+
   /** The one completion source. Everything it offers comes from the analysis module; nothing here knows
    *  what the sandbox exposes. */
   const complete = (context: CompletionContext): CMCompletionResult | null => {
     const doc = context.state.doc.toString();
-    const result = codeCompletions(doc, context.pos, {
-      surface, slots: options.slots, statNames, owner, ownerStatNames, selfName, placeholders, traits, entities,
-    });
+    const result = codeCompletions(doc, context.pos, analysisOptions());
     if (!result || result.options.length === 0) return null;
     // Explicit means the author asked for the list; otherwise an empty word is every option at once.
     if (!context.explicit && result.from === result.to && !context.matchBefore(/["'.]|\{\{/)) return null;
@@ -296,14 +311,37 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
   };
 
   const codeLinter = linter(
-    (view): Diagnostic[] => codeDiagnostics(view.state.doc.toString(), {
-      surface, slots: options.slots, statNames, owner, ownerStatNames, selfName, placeholders, traits, entities,
-    }),
+    (view): Diagnostic[] => codeDiagnostics(view.state.doc.toString(), analysisOptions()),
     {
       delay: 400,
       needsRefresh: (update) => update.transactions.some((tr) => tr.effects.some((effect) => effect.is(worldListsChanged))),
     },
   );
+  /** The card for the name under the pointer. Full screen and a dialog take Escape on the document in the
+   *  capture phase, so an open card takes it on the window first and stops it there. */
+  const cards = hoverTooltip((view, pos) => {
+    const card = codeCard(view.state.doc.toString(), pos, analysisOptions());
+    if (!card) return null;
+    return {
+      pos: card.from,
+      end: card.to,
+      above: false,
+      create: () => {
+        const close = (event: KeyboardEvent) => {
+          if (event.key !== 'Escape') return;
+          event.preventDefault();
+          event.stopPropagation();
+          view.dispatch({ effects: closeHoverTooltips });
+        };
+        return {
+          dom: renderCodeCard(card),
+          mount: () => window.addEventListener('keydown', close, true),
+          destroy: () => window.removeEventListener('keydown', close, true),
+        };
+      },
+    };
+  }, { hoverTime: TOOLTIP_DELAY_MS, hideOnChange: true });
+
   /** Set by Escape, so the next Tab moves focus instead of indenting — otherwise a keyboard-only user is
    *  trapped in the field. Spent by that Tab, and dropped by anything else typed in between. */
   let tabEscapes = false;
@@ -347,6 +385,7 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
           icons: false,
         }),
         codeLinter,
+        cards,
         // A completion list or a diagnostic is taller than the field it belongs to, so it is positioned
         // against the window instead — otherwise the box, the panel it scrolls in, or the dialog around
         // it cuts the popup off wherever the caret happens to be low.

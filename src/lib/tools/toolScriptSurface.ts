@@ -4,10 +4,14 @@
  * `toolScript`; it never widens it.
  */
 import type { ToolParam } from '@/types';
-import type { CodeSurface, SurfaceEntry } from '@/lib/codeSurface';
+import { readOnlyEntries, type CodeSurface, type SurfaceEntry } from '@/lib/codeSurface';
 import type { InsertSnippet } from '@/lib/codeSnippets';
 import { BUILTIN_MEMBERS, LANGUAGE_NAMES, SANDBOX_BUILTINS } from '@/lib/statCodeSurface';
 import { listOptions, namedParams } from './toolDraft';
+import { TOOL_SCRIPT_INPUTS } from './toolScript';
+
+/** Whether `path` reads through a global the script gets frozen. */
+const isFrozenPath = (path: string) => (TOOL_SCRIPT_INPUTS as readonly string[]).includes(path.split('.')[0]);
 
 const shapeOf = (entries: readonly SurfaceEntry[]) => `{ ${entries.map((entry) => entry.name).join(', ')} }`;
 
@@ -81,13 +85,13 @@ export function toolScriptSurface(params: readonly ToolParam[], placeholderNames
       { name: 'scene', detail: shapeOf(SCENE_MEMBERS), info: 'The current scene. Read-only.' },
       { name: 'placeholders', detail: 'object', info: 'Each shared placeholder’s value by name. Use placeholders["Two Words"] for a name with a space. Read-only.' },
       { name: 'console', detail: 'object', info: 'Only console.log. Output shows in the browser console.' },
-    ],
+    ].map((entry) => (isFrozenPath(entry.name) ? { ...entry, access: 'readOnly' as const } : entry)),
     builtins: BUILTINS,
-    members: new Map([
+    members: new Map(([
       ...BUILTIN_MEMBERS, ['Date', DATE_MEMBERS],
       ['args', argEntries], ['world', WORLD_MEMBERS], ['scene', SCENE_MEMBERS], ['placeholders', placeholderEntries],
       ['scene.location', LOCATION_MEMBERS], ['scene.time', TIME_MEMBERS],
-    ]),
+    ] as const).map(([path, entries]) => [path, isFrozenPath(path) ? readOnlyEntries(entries) : entries])),
     languageNames: LANGUAGE_NAMES,
     snippets: [...argEntries.map((entry) => ({ label: `Argument: ${entry.name}`, text: argAccess(entry.name) })), ...STATIC_SNIPPETS],
     missingReturn: 'This script never returns, so the Tool sends its empty result.',
