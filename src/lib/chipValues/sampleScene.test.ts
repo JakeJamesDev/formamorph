@@ -3,6 +3,8 @@ import { sampleChipScene } from './sampleScene';
 import { chipValues } from './chipValues';
 import { NONE_PLACEHOLDER } from '../promptFallbacks';
 import { spelledTokens } from '@/test/chipTokens';
+import { renderPromptTemplate } from '../promptTemplate';
+import { defaultStatUpdatesPrompt } from '@/components/game/GamePrompts';
 
 describe('sampleChipScene', () => {
   it('opens on the Landing with the sample cast, as a player mid-scene would see it', () => {
@@ -25,5 +27,11 @@ describe('sampleChipScene', () => {
 
   it('renders the sample clock as the old preview did', () => {
     expect(chipValues(sampleChipScene())('<TIME>')).toBe('Day 3, evening');
+  });
+
+  it('fills both owner blocks of the default stat prompt in the Settings preview', () => {
+    const prompt = renderPromptTemplate(defaultStatUpdatesPrompt, chipValues(sampleChipScene()));
+    expect(prompt).toMatch(/## Player Character\n- \*\*Traveler\*\*[^#]*- \*\*Nerve:\*\* 55\/100/);
+    expect(prompt).toMatch(/## In Scene\n- \*\*Wren\*\*[^#]*- \*\*Patience:\*\* 70\/100/);
   });
 });

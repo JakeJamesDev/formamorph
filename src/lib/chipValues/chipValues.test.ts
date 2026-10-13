@@ -362,9 +362,10 @@ describe("the stats of played entities that are not the persona, in the Stats ch
     const values = statsOf({ playedStats: [played(own, healthMax)] });
     expect(values('<STATS DESCRIPTION|numbers>')).toBe('Health: 62/100\nHealth (2): 10/100\nHealth max (2): 30/100');
     const request = createStatRequest([health], PLAYER_OWNER, {
-      personas: [{ id: 'persona', name: 'Traveler', stats: [own, healthMax] }],
+      persona: { id: 'persona', name: 'Traveler', stats: [own, healthMax] },
     });
-    expect(request.targets.map((t) => t.key)).toEqual(['Health', 'Health (2)', 'Health max (2)']);
+    // The persona's targets come first in the request; its keys number after the loose stat's.
+    expect(request.targets.map((t) => t.key)).toEqual(['Health (2)', 'Health max (2)', 'Health']);
   });
 
   it('compares names as resolved', () => {

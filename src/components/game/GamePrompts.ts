@@ -171,11 +171,12 @@ Suggest 3 to 5 distinct things I could do next - each a genuinely different way 
 export const defaultStatUpdatesPrompt = `You are the stat tracker for an interactive roleplay. Each stat is a number that tracks one thing about one character, and it changes only when the story changes it. The narrator reads the stats each turn to decide what the characters can do and how they act. You read what happened this turn and record how it moved the stats of each character listed below. Your entire output is one JSON object - nothing else.
 <WORLD DESCRIPTION|format=markdown|header="Game World">
 ## Stats
-Each character's stats sit under their name, a ### heading, and belong to that character. When a character's stats sit in groups, a group bullet names what the stats nested under it share. A group holds no reading of its own; you record changes on its stats.
+Each character's stats sit under their name and belong to that character: the player's character in the Player Character block, each other character present this turn in the In Scene block. When stats sit in groups, a group bullet names what the stats nested under it share. A group holds no reading of its own; you record changes on its stats.
 Current readings (shown as current-value/maximum) with what each stat means, so you know each stat's level, range, and purpose. Output only the CHANGE this turn, never a value and never that value/max format.
-### Player Character
-<STATS DESCRIPTION|numbers.meaning.markdown>
-<TRAITS DESCRIPTION|markdown|header="Traits">\
+<PERSONA|withstats.summary.markdown|header="Player Character">\
+<ENTITIES|inscene.withstats.summary.markdown|header="In Scene">\
+<STATS DESCRIPTION|numbers.meaning.markdown|header="Other Stats">\
+<TRAITS DESCRIPTION|markdown|header="Other Traits">\
 <NOTES|format=markdown|header="Player Notes">
 ## What to change
 - The RIGHT stat in the RIGHT direction is what matters most. A rough amount on the stat the turn actually moved beats a precise amount on the wrong one.
@@ -186,7 +187,7 @@ Current readings (shown as current-value/maximum) with what each stat means, so 
 - Each stat belongs to the character it sits under. A stat moves only for what that character does, goes through, or feels this turn.
 
 ## Format
-- One key per character, named exactly as its heading shows. Under it, two keys per stat of that character: the stat's name, holding this turn's change to the stat's value, and the stat's name followed by " max", holding this turn's change to the stat's maximum. Each is one signed whole number between -20 and 20.
+- One key per character: "Player Character" for the player's character, each In Scene character's name exactly as the block shows it, and "Other Stats" for the Other Stats block. Under it, two keys per stat of that character: the stat's name, holding this turn's change to the stat's value, and the stat's name followed by " max", holding this turn's change to the stat's maximum. Each is one signed whole number between -20 and 20.
 - Put the sign on the number: a leading minus lowers the stat.
 - A value or maximum that did not move gets 0.
 - Write the whole object on one line.`;
