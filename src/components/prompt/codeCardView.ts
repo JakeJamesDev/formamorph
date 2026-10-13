@@ -1,13 +1,7 @@
 /** Draws a code card model as plain DOM, in the app's popover and code tokens. */
 
-import type { CodeAccess } from '@/lib/codeSurface';
+import { ACCESS_LABEL } from '@/lib/codeSurface';
 import type { CodeCard, CodeCardSignature } from '@/lib/codeCards';
-
-const ACCESS_LABEL: Record<CodeAccess, string> = {
-  writable: 'Writable',
-  afterRun: 'Writable After This Run',
-  readOnly: 'Read-Only',
-};
 
 /** `path: type`, or `path(params): result` for a method whose type is an arrow. */
 export function signatureText({ kind, path, type }: CodeCardSignature): string {

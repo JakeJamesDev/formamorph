@@ -61,6 +61,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The wiki and help window now explain Visibility rules and stat Conditions.** Ask how to show a portrait only when hurt. Take Me There opens the entity's Profile tab and a trait's Availability tab.
   - **Code Hover Cards:**
     - **Hovering a name in stat code, a Tool script or the template editor now shows a card that explains it.** The card shows the name's kind, path and type, a Writable, Read-Only or Writable After This Run badge, and its description. The first Escape closes the card, and the next one leaves full screen.
+    - **The Variable menu and the Tool script reference now state whether each field is writable or read-only.** Help lines for stat code, Tool script and completion names also follow one writing style.
   - **Selecting a placed chip now opens Chip Options, a dialog that shows what the AI reads as you pick.** Entities and Persona chips gain **Only With**, **Include** and **Stat Detail** rows, and a filter icon when Only With is on. Those picks show as raw text in older versions.
   - **The AI now updates your stats with fewer wrong-direction and made-up changes.** It answers with a change for every stat, 0 included. An endpoint that can't take that format gets the old reply style, and the AI context viewer notes it.
   - **The World Editor's Content group now lists Entities first and Stats last.** The order is Entities, Locations, Traits, Stats on the side rail and the mobile Sections list.
@@ -97,6 +98,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **An image request that can't reach the image server now names the server and what to check.** The toast's Fix Connection link opens that server's setup guide. Before, it showed only "Failed to fetch". A dropped connection while ComfyUI draws no longer stops the image.
   - **The World Editor's Auto Save setting is now Autosave, the name the game's saves use.** The Save menu, Settings, the unsaved-changes prompt and the Guide all say **Autosave** and **Autosave Pause**.
   - **Code completion now lists members after owner traits and after chains with spaces or `?.`, and nothing in comments.** `owner.traits.Brave.` lists the trait's fields. `stats . Health .` and `scene?.location.` list their members.
+  - **Escape in a code box inside a dialog now closes only the completion list.** The next Escape closes the dialog, as before.
 - **⚙️ Backend**
   - **Background Pass Queue:**
     - **Backfilled digests and character descriptions now run oldest turn first.** The oldest turn leaves the context window first. In serial mode, a new character can wait behind older unknown names.

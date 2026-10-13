@@ -7,6 +7,7 @@ import { DrillSlide, type SlideFrom } from '@/components/DrillSlide';
 import { MENU_ROW } from '@/components/menuRow';
 import { InsertMenuButton } from '@/components/prompt/InsertMenuButton';
 import { BreadcrumbPickerList, type BreadcrumbPickerRow } from '@/components/ui/breadcrumb-picker';
+import { infoWithAccess } from '@/lib/codeSurface';
 import type { VariableField, VariableNameRow, VariableNode } from '@/lib/statCodeVariableTree';
 import { cn } from '@/lib/utils';
 
@@ -122,7 +123,7 @@ function VariablePanel({ build, onPick, onClose }: {
                 }
                 if (row.kind === 'field') {
                   return (
-                    <Tip key={index} tip={row.field.info} side="right" labelsChild={false}>
+                    <Tip key={index} tip={infoWithAccess(row.field)} side="right" labelsChild={false}>
                       <button type="button" className={MENU_ROW} onClick={() => onPick(row.field)}>
                         <span className={ROW_TEXT}>{row.field.label}</span>
                       </button>

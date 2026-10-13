@@ -120,7 +120,8 @@ describe('the Code Templates editor’s Variable menu', () => {
     const field = STAT_FIELDS[0];
     expect(screen.getByRole('button', { name: field.name })).toHaveFocus();
     await user.hover(screen.getByRole('button', { name: field.name }));
-    expect(await screen.findByText(field.info, { selector: 'div' })).toBeVisible();
+    // The menu draws no badge, so the tooltip states the field's access as text.
+    expect(await screen.findByText(`${field.info}. Read-only.`, { selector: 'div' })).toBeVisible();
 
     await user.keyboard('{Backspace}');
     expect(level('Variable')).toBeInTheDocument();

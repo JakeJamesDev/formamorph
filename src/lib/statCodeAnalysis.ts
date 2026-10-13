@@ -181,7 +181,7 @@ const PLURAL: Record<EntryNoun, string> = {
 function mapNameEntries(names: readonly string[], kind: EntryNoun, dotted: boolean): SurfaceEntry[] {
   return [...new Set(names)]
     .filter((name) => !dotted || isIdentifier(name))
-    .map((name) => ({ name, detail: kind, info: `The “${name}” ${kind} in this world.` }));
+    .map((name) => ({ name, detail: kind, info: `The “${name}” ${kind} in this world` }));
 }
 
 /** One key of a member chain, by dot or by quoted bracket; the name is in group 1 or group 2. No
@@ -250,7 +250,7 @@ export const personaTraitsOf = (entities: readonly CodeEntityNames[] | undefined
 const personaTraitEntries = (names: readonly string[], dotted: boolean): SurfaceEntry[] =>
   [...new Set(names)]
     .filter((name) => !dotted || isIdentifier(name))
-    .map((name) => ({ name, detail: 'trait', info: `The “${name}” trait a persona in this world holds.` }));
+    .map((name) => ({ name, detail: 'trait', info: `The “${name}” trait of a persona in this world` }));
 
 /** Which tree a placeholder chain walks: the world's `placeholders`, or one owner entry's `placeholders`. */
 type PlaceholderRouteKind = 'world' | 'entity' | 'persona' | 'dictionary';
@@ -306,10 +306,10 @@ function routeStart(
 function nodeEntry(node: PlaceholderPathNode): SurfaceEntry {
   if (!node.placeholder) {
     const noun = node.owner?.kind === 'dictionary' ? 'book' : 'entity';
-    return { name: node.name, detail: noun, info: `The “${node.name}” ${noun}, and the placeholders it owns.` };
+    return { name: node.name, detail: noun, info: `The “${node.name}” ${noun}, with its own placeholders` };
   }
-  const held = node.children.length ? ' It holds placeholders of its own.' : '';
-  return { name: node.name, detail: 'placeholder', info: `The “${node.name}” placeholder in this world.${held}` };
+  const own = node.children.length ? '. It has placeholders of its own.' : '';
+  return { name: node.name, detail: 'placeholder', info: `The “${node.name}” placeholder in this world${own}` };
 }
 
 /** Whether a parenthesized argument list closes only at its last character, so nothing chains after it. */
@@ -1039,7 +1039,7 @@ export function codeCompletions(
       from,
       to: pos,
       options: names.map((name) => ({
-        label: name, type: 'variable', detail: 'slot', info: `The “${name}” slot declared in this template.`,
+        label: name, type: 'variable', detail: 'slot', info: `The “${name}” slot declared in this template`,
       })),
     };
   }
@@ -1075,7 +1075,7 @@ export function codeCompletions(
       ...surface.globals.map((entry) => asCompletion(entry, 'variable', 1)),
       ...[...declared]
         .filter((name) => name !== typed && !known.has(name))
-        .map((name) => ({ label: name, type: 'variable' as const, detail: 'yours', info: 'Declared in this code.' })),
+        .map((name) => ({ label: name, type: 'variable' as const, detail: 'yours', info: 'Declared in this code' })),
       ...surface.builtins.map((entry) => asCompletion(entry, 'variable')),
       ...KEYWORDS.map((keyword) => ({ label: keyword, type: 'keyword' as const })),
     ],

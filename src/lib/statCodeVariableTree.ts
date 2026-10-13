@@ -6,7 +6,7 @@
 
 import type { AnalysisOptions, CodeEntityNames, CodeTraitPlace } from '@/lib/statCodeAnalysis';
 import { WORLD_BREADCRUMB } from '@/lib/traitGates';
-import type { SurfaceEntry } from '@/lib/codeSurface';
+import type { CodeAccess, SurfaceEntry } from '@/lib/codeSurface';
 import { placeholderKindNoun, type PlaceholderKindNoun } from '@/lib/placeholders';
 import {
   isPlaceholderEntryMember, memberStep, placeholderPathMap, type PlaceholderPathMap, type PlaceholderPathNode,
@@ -39,6 +39,8 @@ export interface VariableField {
   label: string;
   detail: string;
   info: string;
+  /** Absent on a method. The menu draws no badge, so it states this as text. */
+  access?: CodeAccess;
   insert: string;
   selection?: VariableSelection;
 }
@@ -100,6 +102,7 @@ function typeOver(path: Path): Path {
 
 const field = (path: Path, entry: SurfaceEntry, call = ''): VariableField => ({
   kind: 'field', label: entry.name, detail: entry.detail, info: entry.info, insert: `${path.text}.${entry.name}${call}`,
+  ...(entry.access ? { access: entry.access } : {}),
   ...(path.selection ? { selection: path.selection } : {}),
 });
 
@@ -216,7 +219,7 @@ const traitRows = (path: Path, traits: readonly TraitPlace[]): VariableNameRow[]
   }));
 
 /** The Owner group's header. */
-const OWNER_INFO = 'The entity that owns this stat, with its own stats, traits and placeholders. In a Blueprint stat it is the bearer the code runs for. Empty in a world stat.';
+const OWNER_INFO = 'The entity that owns this stat, with its own stats, traits and placeholders. It’s the bearer the code runs for in a Blueprint stat, and empty in a world stat.';
 
 /**
  * Builds the Variable menu's top level. Without `names`, every name list is one type-over row. `stats` lists the
