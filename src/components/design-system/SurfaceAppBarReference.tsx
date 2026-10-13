@@ -114,11 +114,11 @@ export function SurfaceAppBarReference() {
                       icon: <ActionIcon.export className="mr-2 h-4 w-4 shrink-0" />,
                       onClick: () => setAction('Export World.'),
                     }, {
-                      label: 'Auto Save',
+                      label: 'Autosave',
                       checked: autoSave,
                       onClick: () => {
                         setAutoSave(!autoSave);
-                        setAction(autoSave ? 'Auto Save off.' : 'Auto Save on.');
+                        setAction(autoSave ? 'Autosave off.' : 'Autosave on.');
                       },
                     }]}
                   />

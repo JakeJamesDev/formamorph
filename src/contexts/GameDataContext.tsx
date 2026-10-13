@@ -682,7 +682,7 @@ function useProvideGameData() {
   }, [setDictionaries, writeIntent, beginHistorySave, settleElsewhere]);
   // One write at a time, in the order asked, so an older world never lands over a newer one.
   const saveQueue = useRef<Promise<unknown>>(Promise.resolve());
-  /** `markSaved` false is an auto save: it leaves History's Saved marker and its Steps alone. */
+  /** `markSaved` false is an autosave: it leaves History's Saved marker and its Steps alone. */
   const saveWorld = useCallback((options: { markSaved?: boolean } = {}): Promise<SaveResult> => {
     const run = saveQueue.current.then(() => writeWorld(options.markSaved ?? true));
     // A save that throws still frees the queue for the next one.

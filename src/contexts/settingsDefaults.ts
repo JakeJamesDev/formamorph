@@ -228,9 +228,9 @@ export const DEFAULT_QUOTE_COLOR_DARK: string | null = null;
 
 // The global Tools switch. On sends each prompt its offered Tools; each Tool is still opt-in.
 export const DEFAULT_TOOLS_ENABLED = true;
-// The World Editor's Auto Save. Off saves only on Save and Ctrl+S.
+// The World Editor's Autosave. Off saves only on Save and Ctrl+S.
 export const DEFAULT_EDITOR_AUTO_SAVE = true;
-// Seconds the World Editor waits after the last change before an auto save. The slider spans the min and max.
+// Seconds the World Editor waits after the last change before an autosave. The slider spans the min and max.
 export const DEFAULT_EDITOR_AUTO_SAVE_IDLE_S = 30;
 export const MIN_EDITOR_AUTO_SAVE_IDLE_S = 10;
 export const MAX_EDITOR_AUTO_SAVE_IDLE_S = 300;

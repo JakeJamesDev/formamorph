@@ -71,7 +71,7 @@ afterEach(() => {
 });
 
 describe('a save of the open world in another tab', () => {
-  it('pauses auto save and asks, and Escape does not dismiss it', async () => {
+  it('pauses autosave and asks, and Escape does not dismiss it', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     await openOptedIn();
     await type(30);
@@ -88,7 +88,7 @@ describe('a save of the open world in another tab', () => {
     expect(screen.getByRole('alertdialog', { name: TITLE })).toBeInTheDocument();
   });
 
-  it('pauses auto save as it is heard, before the next render', async () => {
+  it('pauses autosave as it is heard, before the next render', async () => {
     await openOptedIn();
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     // A full count: the save is due on the next timer.
@@ -141,7 +141,7 @@ describe('a save of the open world in another tab', () => {
 });
 
 describe('Keep Mine', () => {
-  it('resumes auto save, and the next save writes this tab’s world', async () => {
+  it('resumes autosave, and the next save writes this tab’s world', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     await openOptedIn();
     await type(30);
@@ -215,7 +215,7 @@ const deletedElsewhere = () => act(() => { otherTab.postMessage({ worldId: 'w1',
 const deletedDialog = () => screen.findByRole('alertdialog', { name: DELETED });
 
 describe('a delete of the open world in another tab', () => {
-  it('pauses auto save and asks, and Escape or an outside press does not dismiss it', async () => {
+  it('pauses autosave and asks, and Escape or an outside press does not dismiss it', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     await openOptedIn();
     await type(30);

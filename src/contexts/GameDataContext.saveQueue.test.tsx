@@ -7,7 +7,7 @@ import { GameDataProvider, useGameData } from './GameDataContext';
 import WorldStorageService from '@/services/WorldStorageService';
 import type { World } from '@/types';
 
-/** Saves write one at a time, in the order asked, so an auto save in flight never lands over a newer one. */
+/** Saves write one at a time, in the order asked, so an autosave in flight never lands over a newer one. */
 
 const WORLD = {
   id: 'w-queue', version: '3.0.0',

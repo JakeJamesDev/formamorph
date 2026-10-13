@@ -1,7 +1,7 @@
 import type { SliceEdit } from '@/lib/editorHistory';
 
 /**
- * Measures a committed world change for auto save: one unit per character of text changed, and a fixed weight
+ * Measures a committed world change for autosave: one unit per character of text changed, and a fixed weight
  * per discrete action (a toggle, a pick, an image, an add, a remove, a reorder).
  */
 

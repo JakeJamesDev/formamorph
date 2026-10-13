@@ -2,7 +2,7 @@
 // All build on the same two-column `grid grid-cols-[minmax(0,1fr)_minmax(0,3fr)]` (a fixed 1:3 with a 0
 // floor so a wide control can't squeeze the label column; stacked to one column below `sm`) with a
 // right-aligned label on wider screens.
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 import { FlaskConical, Info, Sparkles } from 'lucide-react';
 import { Streamdown } from 'streamdown';
 import remarkGfm from 'remark-gfm';
@@ -57,11 +57,13 @@ export function HintInfo({ children }: { children: string }) {
 /** A titled block of setting rows: a small-caps header with a hairline rule, so a long tab reads as a few
  *  named groups instead of one undifferentiated list. Sections space themselves via the tab's outer grid. */
 export function Section({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
+  const titleId = useId();
+  // The title names the group, so two sections can hold rows with the same label.
   return (
-    <section className="grid gap-4">
+    <section role="group" aria-labelledby={titleId} className="grid gap-4">
       <div className="space-y-1">
         <div className="flex items-baseline gap-3">
-          <h3 className="text-meta font-semibold uppercase tracking-wider text-muted-foreground">{title}</h3>
+          <h3 id={titleId} className="text-meta font-semibold uppercase tracking-wider text-muted-foreground">{title}</h3>
           <div className="h-hairline flex-1 bg-border" />
         </div>
         {hint && <Hint>{hint}</Hint>}

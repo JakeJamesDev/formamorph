@@ -99,7 +99,7 @@ describe('a chosen pause', () => {
 });
 
 describe('the count', () => {
-  it('resets on a good auto save and keeps what was edited while it ran', async () => {
+  it('resets on a good autosave and keeps what was edited while it ran', async () => {
     const { scheduler, save, settle } = setup();
     scheduler.add(AUTO_SAVE_THRESHOLD);
     await vi.advanceTimersByTimeAsync(0);
@@ -153,7 +153,7 @@ describe('while a save runs', () => {
     expect(save).toHaveBeenCalledTimes(1);
   });
 
-  it('runs a manual save after the auto save it waited for', async () => {
+  it('runs a manual save after the autosave it waited for', async () => {
     const { scheduler, settle } = setup();
     scheduler.add(AUTO_SAVE_THRESHOLD);
     await vi.advanceTimersByTimeAsync(0);
@@ -193,8 +193,8 @@ describe('afterSaves', () => {
   });
 });
 
-describe('a failed auto save', () => {
-  it('pauses auto save until a manual save succeeds', async () => {
+describe('a failed autosave', () => {
+  it('pauses autosave until a manual save succeeds', async () => {
     const { scheduler, save, settle } = setup();
     scheduler.add(AUTO_SAVE_THRESHOLD);
     await vi.advanceTimersByTimeAsync(0);

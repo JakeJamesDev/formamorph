@@ -1216,9 +1216,9 @@ const GameViewer = ({
   const surfaceNav = useSurfaceNav();
   // What follows the in-game editor's unsaved prompt: the rest of the request, or its refusal.
   const editorLeave = useRef<{ then: () => void; cancel: () => void } | null>(null);
-  // The open editor's save and discard, which run through its auto save.
+  // The open editor's save and discard, which run through its autosave.
   const editorExit = useRef<EditorExit | null>(null);
-  // Taken as the prompt opens: an auto save wrote the world during this visit.
+  // Taken as the prompt opens: an autosave wrote the world during this visit.
   const [editorPromptAutoSaved, setEditorPromptAutoSaved] = useState(false);
   // A request for the main menu, waiting on the leave prompt. Leaving keeps it pending for the menu.
   const [leaveForSurface, setLeaveForSurface] = useState<{ clear: () => void } | null>(null);
@@ -4629,7 +4629,7 @@ const GameViewer = ({
         // A dismissal is a refusal of whatever waited on the prompt.
         onOpenChange={(open) => { setShowEditorExitPrompt(open); if (!open) takeEditorLeave()?.cancel(); }}
         autoSaved={editorPromptAutoSaved}
-        // The editor saves and discards, so the prompt shares auto save's lock and its failure toast.
+        // The editor saves and discards, so the prompt shares autosave's lock and its failure toast.
         onSave={async () => {
           // No editor means nothing to save; the prompt stays up rather than close on a save that never ran.
           const exit = editorExit.current;

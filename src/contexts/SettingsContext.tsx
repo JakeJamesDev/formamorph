@@ -449,7 +449,7 @@ function useProvideSettings() {
   const [autosaveSlots, setAutosaveSlots] = usePersistentState<number>(`${APP_ID}_autosaveSlots`, AUTOSAVE_SLOTS, intCodec);
   // The World Editor saves on its own, in both hosts. One preference for every world.
   const [editorAutoSave, setEditorAutoSave] = usePersistentState<boolean>(`${APP_ID}_editorAutoSave`, DEFAULT_EDITOR_AUTO_SAVE, boolCodec);
-  // Seconds of quiet before the editor auto saves a small change. A stored value outside the slider's range is pulled in.
+  // Seconds of quiet before the editor autosaves a small change. A stored value outside the slider's range is pulled in.
   const idleCodec = {
     parse: (r: string) => clampEditorAutoSaveIdle(intCodec.parse(r)),
     serialize: intCodec.serialize,
