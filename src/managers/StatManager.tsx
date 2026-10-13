@@ -25,6 +25,8 @@ import { worldPlaceholderPlaces } from "@/lib/statCodePlaceholderPlaces";
 import { useRenameField } from "@/lib/useCodeRename";
 import { StatCodeBox, type StatCodeBoxContext, type StatCodeBoxOwner } from "./StatCodeBox";
 import { blueprintGroupStats } from "@/lib/statLinks";
+import { statCodeOwners, type CodeOwners } from "@/lib/statCodeTargets";
+import { lazyLookup, statBoxLookup } from "@/lib/codeWorldLookup";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { PlaceholderNameField } from "@/components/prompt/PlaceholderField";
 import { useBodyMorphSources, useOwnerMorphSources, type MorphOwner } from "@/lib/useBodyMorphNames";
@@ -185,13 +187,23 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
     () => worldPlaceholderPlaces({ list: placeholders, owners: placeholderOwners, groups: placeholderGroups }),
     [placeholders, placeholderOwners, placeholderGroups],
   );
+  // Cards read the authored world, so the library, which has none, gets no lookup. Built on a card's first question.
+  const lookup = useMemo(() => {
+    if (!world) return undefined;
+    let owners: CodeOwners | undefined;
+    const ownersOf = () => (owners ??= statCodeOwners({
+      stats: world.stats, statGroups: world.statGroups, entities: world.entities, placeholders: world.placeholders,
+    }));
+    const self: Stat = { ...stat, ...editingStat, id: stat.id, name: selfCodeName };
+    return (timing: StatCodeTiming) => lazyLookup(() => statBoxLookup(ownersOf(), { owner, timing, self }));
+  }, [world, stat, editingStat, selfCodeName, owner]);
   // One surface for both boxes: what completes in either is what runs in either.
   const codeContext = useMemo<StatCodeBoxContext>(() => ({
     selfName: selfCodeName, owner, worldStats, worldStatNames, ownerStats, ownerStatNames,
-    placeholders: codePlaceholders, placeholderPlaces, traitNames, traitPlaces, traits, entities: entityNames, entityStats,
+    placeholders: codePlaceholders, placeholderPlaces, traitNames, traitPlaces, traits, entities: entityNames, entityStats, lookup,
   }), [
     selfCodeName, owner, worldStats, worldStatNames, ownerStats, ownerStatNames,
-    codePlaceholders, placeholderPlaces, traitNames, traitPlaces, traits, entityNames, entityStats,
+    codePlaceholders, placeholderPlaces, traitNames, traitPlaces, traits, entityNames, entityStats, lookup,
   ]);
 
   const resetControl = (field: keyof StatLinkFields, label: string) => (link?.overridden.includes(field)

@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 import { SLOT_SNIPPETS, snippetSelection, type InsertSelection, type InsertSnippet } from '@/lib/codeSnippets';
 import { buildVariableTree, type VariableNode, type VariableTreeOwner } from '@/lib/statCodeVariableTree';
 import type { CodeSurface } from '@/lib/codeSurface';
+import type { CodeWorldLookup } from '@/lib/codeWorldLookup';
 import type { CodeSession } from '@/components/prompt/codeSession';
 import type { CodeEntityNames, CodePlaceholders, CodeTraitPlace } from '@/lib/statCodeAnalysis';
 
@@ -83,6 +84,8 @@ interface CodeAreaProps {
   traits?: readonly CodeTraitPlace[];
   /** The world's entities and their trait names, completed after `entities` and `persona.traits` and checked by name. */
   entities?: readonly CodeEntityNames[];
+  /** What cards ask the world, bound to this box. Absent, cards show no World Details. */
+  lookup?: CodeWorldLookup;
   /** What the code produces. Given this, the field grows the Edit | Preview pair, which becomes a
    *  side-by-side split once full screen has the width for it. */
   preview?: ReactNode;
@@ -95,7 +98,7 @@ interface CodeAreaProps {
 function CodeAreaBody({
   value, onChange, ariaLabel, placeholder, label, info, slots, surface, preview, className, rows = 8, fullscreen,
   onToggleFullscreen, session, active, expose, variableTree,
-}: Omit<CodeAreaProps, 'statNames' | 'owner' | 'selfName' | 'placeholders' | 'traits' | 'entities'> & {
+}: Omit<CodeAreaProps, 'statNames' | 'owner' | 'selfName' | 'placeholders' | 'traits' | 'entities' | 'lookup'> & {
   fullscreen: boolean;
   onToggleFullscreen: () => void;
   /** The one editor both copies take turns hosting. Null until its chunk has loaded. */
@@ -306,6 +309,7 @@ export function CodeArea(props: CodeAreaProps) {
         placeholders: latest.current.placeholders,
         traits: latest.current.traits?.map((trait) => trait.name),
         entities: latest.current.entities,
+        lookup: () => latest.current.lookup,
         onChange: (next) => latest.current.onChange(next),
         onUpdate,
       });
