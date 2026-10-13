@@ -1,6 +1,6 @@
 # 03: Text Fallback By Preset And Style
 
-Status: ready-for-human
+Status: done
 Blocked by: 02
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium

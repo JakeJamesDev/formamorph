@@ -1,6 +1,7 @@
 # Spec: Stat Pass Owner Blocks
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-10-13. Tickets 01–06 done; last landing b2844bd51. Closed without gates.
 Spec session: stat-pass-owner-blocks — spec
 
 ## Problem Statement
