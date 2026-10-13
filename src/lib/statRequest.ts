@@ -40,10 +40,8 @@ export interface StatRequestSnapshot {
   id: string;
   /** The played persona's targets first, then the loose stats', then each entity owner's. */
   targets: StatRequestTarget[];
-  /** The Stats chip over the loose stats alone, for the schema request. */
+  /** The Stats chip over the loose stats alone, for both passes. */
   context: ValueLookup;
-  /** The Stats chip over the loose stats and the persona's, for the text pass. */
-  textContext: ValueLookup;
   /** Each entity owner's key, in order. The text pass skips them. */
   entityKeys: string[];
   /** Every entity present this turn, stat-less ones included: the stat pass's In Scene. */
@@ -142,7 +140,6 @@ export function createStatRequest(
     id: randomUUID(),
     targets: [personaPart, [world, ...otherParts], sections].flat().flatMap((part) => part.targets),
     context: statChipPartValues([world, ...otherParts]),
-    textContext: statChipPartValues([world, ...personaPart, ...otherParts]),
     entityKeys: keys,
     inSceneIds: [...inSceneIds],
     ...(textPass && { textPass }),

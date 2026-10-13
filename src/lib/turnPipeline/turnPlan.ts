@@ -83,6 +83,8 @@ export interface TurnPrompts {
   choicesUser: string;
   statUpdates: string;
   statUpdatesUser: string;
+  /** The built-in preset's text pass prompts; a null side sends the matching stat prompt as written. */
+  statText: { system: string | null; user: string | null };
   summary: string;
   summaryUser: string;
   milestoneSelect: string;

@@ -129,7 +129,7 @@ export const defaultStatUpdatesUserPrompt = `Narration: <NARRATION>
 
 Give each character's stats their change from this narration: 0 for every value and maximum it did not move. A clear shift in how a character regards the player moves that character's own stat.`;
 
-/** The text pass's user message: what the default prompt falls back to on an endpoint that refuses the schema. */
+/** The text pass's user message: what a built-in preset falls back to on an endpoint that refuses the schema. */
 export const textStatUpdatesUserPrompt = `Narration: <NARRATION>
 
 List only the stats this narration actually moved - each a stat name, a colon, and one signed whole-number change (not a value, not a fraction, no slash). Nothing if nothing changed. No prose.`;
@@ -192,13 +192,15 @@ Current readings (shown as current-value/maximum) with what each stat means, so 
 - A value or maximum that did not move gets 0.
 - Write the whole object on one line.`;
 
-/** The text pass's system prompt: what the default prompt falls back to on an endpoint that refuses the schema. */
-export const textStatUpdatesPrompt = `You are the stat tracker for an interactive roleplay. You read what happened this turn and record how it moved the player's stats. Your entire output is stat-change lines - nothing else.
+/** The text pass's system prompt: what a built-in preset falls back to, in its style, on an endpoint that refuses the schema. */
+export const textStatUpdatesPrompt = `You are the stat tracker for an interactive roleplay. You read what happened this turn and record how it moved the stats of the player's character and of the world. Your entire output is stat-change lines - nothing else.
 <WORLD DESCRIPTION|format=markdown|header="Game World">
-## Player Stats
+## Stats
+When there is a Player Character block, it holds the player's stats. The Other Stats block holds the rest.
 Current readings (shown as current-value/maximum) with what each stat means, so you know each stat's level, range, and purpose. Output only the CHANGE this turn, never a value and never that value/max format.
-<STATS DESCRIPTION|numbers.meaning.markdown>
-<TRAITS DESCRIPTION|markdown|header="Traits">\
+<PERSONA|withstats.summary.markdown|header="Player Character">\
+<STATS DESCRIPTION|numbers.meaning.markdown|header="Other Stats">\
+<TRAITS DESCRIPTION|markdown|header="Other Traits">\
 <NOTES|format=markdown|header="Player Notes">
 ## What to change
 - The RIGHT stat in the RIGHT direction is what matters most. A rough amount on the stat the turn actually moved beats a precise amount on the wrong one.
@@ -206,6 +208,7 @@ Current readings (shown as current-value/maximum) with what each stat means, so 
 - List a stat only for a change you can point to in the narration - a real exertion, injury, loss, or gain. A stat being relevant, on the character's mind, or thematically related is NOT a change. When you're unsure whether a stat moved, leave it out.
 - Report each stat that genuinely moved and no others. If two stats plainly shifted, give both; if one did, give one; if none did, give nothing. Don't pad the list with a related-but-unmoved stat, and don't drop one the turn clearly hit.
 - The amount is a rough judgment, not a calculation - no one knows the exact number. Pick a small whole number scaled loosely to the stat's range and how big the moment was, and commit to it. Never report the value because you're unsure of the change.
+- The stats under Player Character belong to that character. They move only for what that character does, goes through, or feels this turn.
 
 ## Format
 - One line per changed stat: its exact name from the list above (written plainly - never a + or - on the name), a colon, then one signed whole number. Nothing else on the line.

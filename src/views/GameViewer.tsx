@@ -53,7 +53,8 @@ import { drawPoolEntry, drawUnseenOpening, openingOwner, openingPool, type Drawn
 import { drawNewGameOpening } from "@/lib/newGameOpening";
 import { customPersonaEntity } from "@/lib/blueprints";
 import { worldEntitiesOf, type PersonaPick } from "@/lib/persona";
-import { resolveWorldPrompt, worldPromptChipValues, useWorldPromptOptOut } from "@/lib/worldPrompt";
+import { resolveWorldPrompt, hasWorldPrompt, worldPromptChipValues, useWorldPromptOptOut } from "@/lib/worldPrompt";
+import { statTextFor } from "@/lib/statTextPrompts";
 import { useWorldPromptPresets, resolveEffectivePreset } from "@/lib/worldPromptPreset";
 import { groupPromptPreset, loadTabOrganization } from "@/lib/libraryOrganization";
 import { EntityModal } from "../components/modals/EntityModal";
@@ -496,6 +497,7 @@ const GameViewer = ({
     imageLandscapeHeight,
     showSilentRequests,
     activeSectionStyle,
+    statTextPrompts,
     locationBackground,
     backgroundOverlay,
     allTools,
@@ -510,6 +512,7 @@ const GameViewer = ({
   const resolvedChoicesPrompt = resolveWorldPrompt(worldOverview, 'choices', choicesPrompt, declinedWorldPrompts);
   const resolvedStatUpdatesPrompt =
     resolveWorldPrompt(worldOverview, 'statUpdates', statUpdatesPrompt, declinedWorldPrompts);
+  const worldStatPromptApplies = !declinedWorldPrompts && hasWorldPrompt(worldOverview, 'statUpdates');
 
   const {
     setCharacterData,
@@ -2014,6 +2017,7 @@ const GameViewer = ({
     choicesUser: choicesUserPrompt,
     statUpdates: resolvedStatUpdatesPrompt,
     statUpdatesUser: statUpdatesUserPrompt,
+    statText: statTextFor(statTextPrompts, worldStatPromptApplies),
     summary: summaryPrompt,
     summaryUser: summaryUserPrompt,
     milestoneSelect: milestoneSelectPrompt,

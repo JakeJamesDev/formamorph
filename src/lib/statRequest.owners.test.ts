@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Entity, EntityStatValues, PersonaRef, PlayerStat, StatGroup } from '@/types';
-import { defaultStatUpdatesPrompt, defaultStatUpdatesUserPrompt } from '@/components/game/GamePrompts';
+import { defaultStatUpdatesPrompt, defaultStatUpdatesUserPrompt, textStatUpdatesPrompt, textStatUpdatesUserPrompt } from '@/components/game/GamePrompts';
 import {
   createStatRequest, keyedScene, readStatResponse, statRequestSchema, statResponseChanges, OTHER_STATS_HEADING, PLAYER_STAT_HEADING,
   type StatRequestSnapshot,
@@ -40,7 +40,12 @@ const snapshotFor = (present: Entity[], textPass = false) =>
   createStatRequest([vigor, playerTrust], PLAYER_OWNER, { textPass, entities: owners(present), inSceneIds: present.map((e) => e.id) });
 
 const statPass = TURN_PASSES.find((pass) => pass.id === 'statUpdates')!;
-const shipped = testInput({ prompts: { ...TEST_PROMPTS, statUpdates: defaultStatUpdatesPrompt, statUpdatesUser: defaultStatUpdatesUserPrompt } });
+const shipped = testInput({
+  prompts: {
+    ...TEST_PROMPTS, statUpdates: defaultStatUpdatesPrompt, statUpdatesUser: defaultStatUpdatesUserPrompt,
+    statText: { system: textStatUpdatesPrompt, user: textStatUpdatesUserPrompt },
+  },
+});
 const material = emptyTurnMaterial({ action: 'Haul', effectiveAction: 'Haul', turnId: 'turn', baseCtx: {}, destinations: [] });
 /** The playthrough the stat pass reads: `cast` and the played `persona`, each owning its live stats in `held`. */
 const sceneOf = (
@@ -266,7 +271,10 @@ describe('the played persona in the stat request', () => {
 
   it("covers the persona's stats on the text pass, and skips only the entities", () => {
     const snapshot = joined(true);
-    expect(build(snapshot).systemPrompt).toContain('- **Trust (2):** 60/100');
+    const { systemPrompt } = build(snapshot, miraScene());
+    expect(systemPrompt).toContain('- **Trust (2):** 60/100');
+    expect(systemPrompt.indexOf('## Player Character')).toBeLessThan(systemPrompt.indexOf('## Other Stats'));
+    expect(systemPrompt).not.toContain('Bram');
     const response = readStatResponse('Trust (2): -3', snapshot);
     expect(response.updates).toEqual([{ ownerId: 'mira', id: 'trust', name: 'Trust', value: -3, max: 0 }]);
     expect(response.diagnostics).toEqual([{ name: '', reason: 'textPass' }, { name: 'Bram', reason: 'skipped' }]);
@@ -275,15 +283,20 @@ describe('the played persona in the stat request', () => {
   it('runs for a player whose only live stats are the persona\'s', () => {
     const snapshot = createStatRequest([], PLAYER_OWNER, { textPass: true, persona: personaOwners()[0] });
     expect(statRequestReady(snapshot)).toBe(true);
-    expect(build(snapshot).systemPrompt).toContain('- **Trust:** 60/100\n- **Calm:** 5/100\n');
+    expect(build(snapshot, sceneOf([], { persona: mira, held: miraValues })).systemPrompt)
+      .toMatch(/## Player Character\n[\s\S]*- \*\*Trust:\*\* 60\/100[\s\S]*- \*\*Calm:\*\* 5\/100/);
   });
 
-  it("lays the persona's stats out by its own groups after the world's on the text pass, and leaves them out of the Stats chip", () => {
+  it("lays the persona's stats out by its own groups in the text pass's Player Character block, and leaves them out of the Stats chip", () => {
     const mood: StatGroup = { id: 'mood', name: 'Mood', parentId: null, order: 0 };
     const grouped: Entity = { ...mira, statGroups: [mood], stats: [stat({ id: 'calm', name: 'Calm', groupId: 'mood' })] };
-    const snapshot = createStatRequest([vigor], PLAYER_OWNER, { persona: personaOwners([grouped], { mira: [stat({ id: 'calm', name: 'Calm', value: 5, groupId: 'mood' })] })[0] });
-    expect(snapshot.textContext('<STATS DESCRIPTION|numbers.markdown>')).toBe('- **Vigor:** 50/100\n- **Mood:**\n  - **Calm:** 5/100');
+    const held = { mira: [stat({ id: 'calm', name: 'Calm', value: 5, groupId: 'mood' })] };
+    const snapshot = createStatRequest([vigor], PLAYER_OWNER, { textPass: true, persona: personaOwners([grouped], held)[0] });
     expect(snapshot.context('<STATS DESCRIPTION|numbers.markdown>')).toBe('- **Vigor:** 50/100');
+    const { systemPrompt } = build(snapshot, sceneOf([vigor], { persona: grouped, held }));
+    expect(systemPrompt).toContain('## Player Character');
+    expect(systemPrompt).toMatch(/- \*\*Mood:\*\*\n\s+- \*\*Calm:\*\* 5\/100/);
+    expect(systemPrompt).toContain('## Other Stats\n- **Vigor:** 50/100\n');
   });
 
   it("leaves out a persona stat its own trait switches off, and a persona that holds no stats", () => {

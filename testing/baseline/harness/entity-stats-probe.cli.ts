@@ -56,10 +56,8 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-// Arms A to E derive from the text pass's prompts, under the names they were written against.
 import {
   defaultStatUpdatesPrompt as shippedStatPrompt, defaultStatUpdatesUserPrompt as shippedStatUserPrompt,
-  textStatUpdatesPrompt as defaultStatUpdatesPrompt, textStatUpdatesUserPrompt as defaultStatUpdatesUserPrompt,
 } from '@/components/game/GamePrompts';
 import {
   DEFAULT_GEN_MIN_P, DEFAULT_GEN_REPETITION_PENALTY, DEFAULT_GEN_TEMPERATURE, DEFAULT_GEN_TOP_K, DEFAULT_GEN_TOP_P, DEFAULT_MAX_TOKENS,
@@ -262,7 +260,7 @@ function grouped(stats: readonly PlayerStat[], style: GroupStyle): StatPlacement
 /** The stat pass's request for `snapshot` over `ctx`, as the app builds it. */
 function requestCall(snapshot: StatRequestSnapshot, ctx: ValueLookup, narration: string, prompts: { system: string; user: string }): Call {
   const request = statUpdatesRequest(
-    prompts, { ctx, action: '', narration }, { statCount: playerOwner.stats.length, statRequest: snapshot, quiet: false },
+    { ...prompts, text: { system: null, user: null } }, { ctx, action: '', narration }, { statCount: playerOwner.stats.length, statRequest: snapshot, quiet: false },
   );
   if (!request.responseSchema) throw new Error('The stat request carries no schema.');
   return {
@@ -305,7 +303,7 @@ function baseLayoutCall(owners: Owner[], narration: string, groups: GroupStyle |
     entities: others.map((o) => ({ id: o.key, name: o.name, stats: o.stats, ...placement(o.stats) })),
   });
   const sections = others.map((o, i) => ({ key: snapshot.entityKeys[i], values: createStatRequest(o.stats, o.key, placement(o.stats)).context }));
-  const context = mapValues(snapshot.textContext, (value, token) =>
+  const context = mapValues(snapshot.context, (value, token) =>
     [value, ...sections.map((section) => `### ${section.key}\n${section.values(token)}`)].join('\n\n'));
   return requestCall({ ...snapshot, context }, BASE_CTX, narration, prompts);
 }
@@ -330,19 +328,28 @@ function shippedVariant(arm: 'SU' | 'SN', owners: Owner[], narration: string): C
   return { ...call, user, system: swap(system, 'A value or maximum that did not move gets 0.', 'A stat that did not move gets 0.'), schema: strip(call.schema as Record<string, unknown>) };
 }
 
-/** The stat prompt pair as committed at a ref, imported from a copy of GamePrompts.ts at that ref. */
-async function promptsAt(ref: string): Promise<{ system: string; user: string }> {
+/** The stat prompt pair as committed at a ref, imported from a copy of GamePrompts.ts at that ref. `text` is
+ *  the text pass's pair. */
+async function promptsAt(ref: string): Promise<{ system: string; user: string; text: { system: string; user: string } }> {
   const source = execFileSync('git', ['show', `${ref}:src/components/game/GamePrompts.ts`], { encoding: 'utf8' });
   const dir = mkdtempSync(path.join(tmpdir(), 'fm-prompts-'));
   const file = path.join(dir, 'GamePrompts.ts');
   writeFileSync(file, source);
   try {
-    const mod = await import(pathToFileURL(file).href) as { defaultStatUpdatesPrompt: string; defaultStatUpdatesUserPrompt: string };
-    return { system: mod.defaultStatUpdatesPrompt, user: mod.defaultStatUpdatesUserPrompt };
+    const mod = await import(pathToFileURL(file).href) as {
+      defaultStatUpdatesPrompt: string; defaultStatUpdatesUserPrompt: string;
+      textStatUpdatesPrompt: string; textStatUpdatesUserPrompt: string;
+    };
+    return {
+      system: mod.defaultStatUpdatesPrompt, user: mod.defaultStatUpdatesUserPrompt,
+      text: { system: mod.textStatUpdatesPrompt, user: mod.textStatUpdatesUserPrompt },
+    };
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
 }
+// Arms A to E derive from the text pass's prompts as they stood before the owner blocks, under the names they were written against.
+const { text: { system: defaultStatUpdatesPrompt, user: defaultStatUpdatesUserPrompt } } = await promptsAt('62e87af3c');
 const s0Prompts = arms.includes('S0') ? await promptsAt(argVal('--s0-ref', 'HEAD')) : undefined;
 const BASE_LAYOUT_ARMS: readonly Arm[] = ['SB', 'SU', 'SN', 'SG', 'SGB', 'SGO', 'SH', 'SP'];
 const basePrompts = arms.some((arm) => BASE_LAYOUT_ARMS.includes(arm)) ? await promptsAt(BASE_REF) : undefined;
