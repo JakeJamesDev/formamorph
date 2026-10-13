@@ -8,6 +8,9 @@
 
 import type { InsertSnippet } from '@/lib/codeSnippets';
 
+/** Whether code can write a name: now, only from the next run on, or not at all. */
+export type CodeAccess = 'writable' | 'afterRun' | 'readOnly';
+
 /** One reachable name and what an author needs to know about it. */
 export interface SurfaceEntry {
   name: string;
@@ -15,7 +18,25 @@ export interface SurfaceEntry {
   detail: string;
   /** The one-line explanation shown beside the entry. */
   info: string;
+  /** Absent on a method, and on a map whose own entries carry the access. */
+  access?: CodeAccess;
 }
+
+/** Whether an entry is a function, by the arrow its detail spells. */
+export const isMethodEntry = (entry: SurfaceEntry): boolean => /^\(.*\)\s*=>/.test(entry.detail);
+
+/** `entries` with each field's access. A method and a name in `maps` carry none. */
+const applyAccess = (entries: readonly SurfaceEntry[], accessOf: (name: string) => CodeAccess, maps: readonly string[]) =>
+  entries.map((entry) => (isMethodEntry(entry) || maps.includes(entry.name) ? entry : { ...entry, access: accessOf(entry.name) }));
+
+/** `entries` with each field's access, from an executor's own list of the fields a write reaches. */
+export const withAccess = (
+  entries: readonly SurfaceEntry[], writable: readonly string[], when: Exclude<CodeAccess, 'readOnly'>, maps: readonly string[] = [],
+): SurfaceEntry[] => applyAccess(entries, (name) => (writable.includes(name) ? when : 'readOnly'), maps);
+
+/** `entries` where no write reaches any field. */
+export const readOnlyEntries = (entries: readonly SurfaceEntry[], maps: readonly string[] = []): SurfaceEntry[] =>
+  applyAccess(entries, () => 'readOnly', maps);
 
 /**
  * The names one kind of code can reach, their members, and how its reader talks about it.

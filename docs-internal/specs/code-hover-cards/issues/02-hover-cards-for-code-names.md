@@ -1,6 +1,6 @@
 # 02: Hover Cards For Code Names
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -18,7 +18,7 @@ Spec: Q1, Q17, Q19 (mock Standard preset); Implementation Decisions: Card model,
 ## Acceptance criteria
 
 - [ ] Hover opens a card on stat code, Tool script and template dialog names; read-only previews show none
-- [ ] Signature shows kind, path and type; the badge reads Writable, Read-only or Writable After This Run
+- [ ] Signature shows kind, path and type; the badge reads Writable, Read-Only or Writable After This Run (T02-1)
 - [ ] Access derives from the executor's writable-field lists; a test fails if the two disagree
 - [ ] A member the resolved entry doesn't have gets no card: `const n = stats.HP.value; n.toFixed` shows nothing, although the resolver's stat-like heuristic (kept for completion) resolves it (T01-2)
 - [ ] Escape closes an open card without leaving full screen; a second Escape leaves

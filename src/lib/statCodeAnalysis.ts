@@ -25,7 +25,8 @@ import {
 } from '@/lib/statCodePaths';
 import {
   codeResolver, declaredNames, keyOwner, memberKey, parseCode, statLikeNames,
-  type CodeOwnerKind, type CodeValue, type EntryRef, type PlaceholderOwner, type StatOwner, type TraitOwner,
+  type CodeOwnerKind, type CodeValue, type EntryRef, type PlaceholderOwner, type ResolvedCodeName, type StatOwner,
+  type TraitOwner,
 } from '@/lib/statCodeResolver';
 
 export type { CodeOwnerKind };
@@ -440,6 +441,29 @@ function membersOf(value: CodeValue, options: SurfaceAnalysisOptions, rules: Sta
     case 'listed': return options.surface.members.get(value.path) ?? null;
     default: return null;
   }
+}
+
+/** The members a resolved value carries, as completion offers them after its dot. */
+export const memberEntries = (value: CodeValue, options: SurfaceAnalysisOptions): readonly SurfaceEntry[] | null =>
+  membersOf(value, options, statRulesOf(options.surface));
+
+/** Whether a map entry's key is missing from the names its map holds. False where those names are not given. */
+export function isUnknownEntry(name: ResolvedCodeName, options: SurfaceAnalysisOptions): boolean {
+  const keysOf = (): readonly SurfaceEntry[] | null | undefined => {
+    switch (name.kind) {
+      case 'stat': return mapKeyEntries({ is: 'statMap', owner: name.owner }, options, false);
+      case 'trait': return mapKeyEntries({ is: 'traitMap', owner: name.owner }, options, false);
+      case 'entity': return mapKeyEntries({ is: 'entityMap' }, options, false);
+      case 'dictionary': return mapKeyEntries({ is: 'dictionaryMap' }, options, false);
+      case 'placeholder': {
+        const route = placeholderRouteOf(name.owner, name.path.slice(0, -1));
+        return route && placeholderKeysInBrackets(route, options, statRulesOf(options.surface));
+      }
+      default: return null;
+    }
+  };
+  const keys = keysOf();
+  return !!keys && !keys.some((entry) => entry.name === name.key);
 }
 
 /** The member expression an assignment, `++` or `--` writes to, or null when it writes something else. */

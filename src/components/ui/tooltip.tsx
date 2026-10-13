@@ -5,8 +5,9 @@ import { cn } from "@/lib/utils"
 
 /** Shared open delay, and the window in which moving to a neighboring trigger opens instantly. Both
  *  live on the provider so no call site can retune them. Native `title` waited about a second; this is
- *  fast enough to feel like part of the app and slow enough not to fire while the pointer crosses. */
-const TOOLTIP_DELAY_MS = 400
+ *  fast enough to feel like part of the app and slow enough not to fire while the pointer crosses.
+ *  The code editor's hover cards wait the same. */
+export const TOOLTIP_DELAY_MS = 400
 
 type TipPayload = Pick<TipProps, "side" | "align"> & { tip: string }
 

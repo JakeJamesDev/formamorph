@@ -59,6 +59,12 @@ export type CodeBoundField = (typeof CODE_BOUND_FIELDS)[number];
 /** The fields a write reaches on every stat, whatever route reaches it. Every other stat field is read-only. */
 export const SELF_WRITABLE_FIELDS: readonly string[] = ['value', ...CODE_BOUND_FIELDS];
 
+/** The one field on a trait entry a write reaches. The switch lands after the run. */
+export const TRAIT_WRITABLE_FIELD = 'enabled';
+
+/** The one field on a placeholder entry a write reaches, with `pin` as its alias. The pin lands after the run. */
+export const PLACEHOLDER_WRITABLE_FIELD = 'value';
+
 /** What one run wrote to one stat other than `self`. The value is as written: the turn clamps it once every
  *  writer's bounds have landed. */
 export type StatWrite = { id: string; name: string } & Partial<Pick<StatNumbers, 'value' | CodeBoundField>>;
@@ -529,7 +535,7 @@ const placeholdersPrelude = ({ top, nodes, indexOf }: FlatPlaceholderMap): strin
     `      state.text = isArray(v) ? v.join(${JSON.stringify(VALUE_JOIN)}) : String(v);`,
     `      state.assigned = true; state.unpinned = false;`,
     `    };`,
-    `    define(target, 'value', { enumerable: true, get: () => state.value, set });`,
+    `    define(target, ${JSON.stringify(PLACEHOLDER_WRITABLE_FIELD)}, { enumerable: true, get: () => state.value, set });`,
     `    define(target, 'text', { enumerable: true, get: () => state.text });`,
     `    target.pin = set;`,
     `    target.unpin = () => { state.unpinned = true; };`,
@@ -636,7 +642,7 @@ const TRAIT_MAP: TrackedMapKind = {
   track: `(name, entry, state) => {
     state.enabled = entry.enabled; state.acquired = entry.acquired; state.assigned = false; state.acquiredWritten = false;
     state.readOnly = [];
-    Object.defineProperty(entry, 'enabled', { enumerable: true, get: () => state.enabled, set: (v) => { state.enabled = v; state.assigned = true; } });
+    Object.defineProperty(entry, ${JSON.stringify(TRAIT_WRITABLE_FIELD)}, { enumerable: true, get: () => state.enabled, set: (v) => { state.enabled = v; state.assigned = true; } });
     Object.defineProperty(entry, 'acquired', { enumerable: true, get: () => state.acquired, set: () => { state.acquiredWritten = true; } });
     for (const field of ${JSON.stringify(TRAIT_READ_ONLY_FIELDS)}) {
       const value = entry[field];

@@ -8,27 +8,29 @@
  * caught by the drift guard beside this file.
  */
 
-import { DELTA_SOURCES, type DeltaSource } from '@/lib/statCodeExecutor';
-import { nearestName, surfaceKnownNames, type CodeSurface, type SurfaceEntry } from '@/lib/codeSurface';
+import {
+  DELTA_SOURCES, PLACEHOLDER_WRITABLE_FIELD, SELF_WRITABLE_FIELDS, TRAIT_WRITABLE_FIELD, type DeltaSource,
+} from '@/lib/statCodeExecutor';
+import { nearestName, readOnlyEntries, surfaceKnownNames, withAccess, type CodeSurface, type SurfaceEntry } from '@/lib/codeSurface';
 import type { PlaceholderKindNoun } from '@/lib/placeholders';
 
 /** An object's members as its completion detail: `{ a, b }`. */
 const shapeOf = (entries: readonly SurfaceEntry[]) => `{ ${entries.map((entry) => entry.name).join(', ')} }`;
 
 /** The fields on `clock.previous`: the story clock at the start of the turn. Read-only. */
-export const CLOCK_PREVIOUS_FIELDS: readonly SurfaceEntry[] = [
+export const CLOCK_PREVIOUS_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'day', detail: 'number', info: 'Day number at the start of this turn.' },
   { name: 'daypart', detail: 'string', info: 'Daypart at the start of this turn.' },
-];
+]);
 
 /** The members of `clock`: the story clock at the end of the turn, then `previous` for its start. Read-only. */
-export const CLOCK_MEMBERS: readonly SurfaceEntry[] = [
+export const CLOCK_MEMBERS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'day', detail: 'number', info: 'Day number at the end of this turn.' },
   { name: 'daypart', detail: 'string', info: 'Daypart at the end of this turn — night, dawn, morning, midday, afternoon or evening.' },
   { name: 'deltaHours', detail: 'number', info: 'Story hours this turn consumed.' },
   { name: 'elapsedHours', detail: 'number', info: 'Total story hours at the end of this turn.' },
   { name: 'previous', detail: shapeOf(CLOCK_PREVIOUS_FIELDS), info: 'The clock at the start of this turn: day and daypart.' },
-];
+]);
 
 /** The fields of the clock object that `path` names, or null when `path` is no clock object. */
 export function clockFieldsAt(path: string): readonly SurfaceEntry[] | null {
@@ -41,7 +43,7 @@ export const SANDBOX_GLOBALS: readonly SurfaceEntry[] = [
   { name: 'self', detail: 'Stat', info: 'The stat this code belongs to. Write self.value to set its value.' },
   { name: 'owner', detail: 'object', info: 'The entity that owns this stat, with the fields of an entities entry. A Blueprint stat’s owner is the bearer. Empty in a world stat’s code. Use owner.stats["Two Words"] for a name with a space.' },
   { name: 'stats', detail: 'object', info: 'The world’s stats by name, in every stat’s code. An entity’s own are on owner.stats. Use stats["Two Words"] for a name with a space.' },
-  { name: 'clock', detail: shapeOf(CLOCK_MEMBERS), info: 'The story clock. Read-only.' },
+  { name: 'clock', detail: shapeOf(CLOCK_MEMBERS), info: 'The story clock. Read-only.', access: 'readOnly' },
   { name: 'placeholders', detail: 'object', info: 'The world’s own placeholders by name. An entity’s or a dictionary’s are on its entry. Use placeholders["Two Words"] for a name with a space.' },
   { name: 'traits', detail: 'object', info: 'Every trait in the world by name. Use traits["Two Words"] for a name with a space.' },
   { name: 'entities', detail: 'object', info: 'Every entity in the game by name, with its own traits, placeholders and stats. Use entities["Two Words"] for a name with a space.' },
@@ -51,12 +53,12 @@ export const SANDBOX_GLOBALS: readonly SurfaceEntry[] = [
 ];
 
 /** The fields on every member of `delta`. */
-export const DELTA_FIELDS: readonly SurfaceEntry[] = [
+export const DELTA_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'value', detail: 'number', info: 'The change to the value.' },
   { name: 'min', detail: 'number', info: 'The change to the lower bound.' },
   { name: 'max', detail: 'number', info: 'The change to the upper bound.' },
   { name: 'regen', detail: 'number', info: 'The change to regen per story hour.' },
-];
+]);
 
 /** What each change source means. Keyed off the executor's own list, as the clock is. */
 const DELTA_SOURCE_INFO: Record<DeltaSource, SurfaceEntry> = {
@@ -65,14 +67,14 @@ const DELTA_SOURCE_INFO: Record<DeltaSource, SurfaceEntry> = {
 };
 
 /** The members of a stat's `delta`: one per change source, then their sum and what landed. */
-export const DELTA_MEMBERS: readonly SurfaceEntry[] = [
+export const DELTA_MEMBERS: readonly SurfaceEntry[] = readOnlyEntries([
   ...DELTA_SOURCES.map((source) => DELTA_SOURCE_INFO[source]),
   { name: 'total', detail: shapeOf(DELTA_FIELDS), info: 'Every source added up: what this turn asked of the stat, before flags and the range.' },
   { name: 'actual', detail: shapeOf(DELTA_FIELDS), info: 'Current values minus previous.' },
-];
+]);
 
 /** The fields on a stat object inside `stats`, `self` included. Anything else is `undefined`. */
-export const STAT_FIELDS: readonly SurfaceEntry[] = [
+export const STAT_FIELDS: readonly SurfaceEntry[] = withAccess([
   { name: 'id', detail: 'string', info: 'The stat’s unique id.' },
   { name: 'name', detail: 'string', info: 'The stat’s code name: the authored name, with each placeholder chip read as that placeholder’s own name.' },
   { name: 'type', detail: 'string', info: 'number, percentage, or whichever type the stat was given.' },
@@ -84,12 +86,12 @@ export const STAT_FIELDS: readonly SurfaceEntry[] = [
   { name: 'regen', detail: 'number', info: 'Regen per story hour, with traits applied. Writable.' },
   { name: 'previous', detail: 'Stat', info: 'The whole stat as it stood at the start of this turn. Read-only.' },
   { name: 'delta', detail: shapeOf(DELTA_MEMBERS), info: 'Every change this turn made to the stat, by source. Read-only.' },
-];
+], SELF_WRITABLE_FIELDS, 'writable');
 
-export { SELF_WRITABLE_FIELDS } from '@/lib/statCodeExecutor';
+export { PLACEHOLDER_WRITABLE_FIELD, SELF_WRITABLE_FIELDS, TRAIT_WRITABLE_FIELD } from '@/lib/statCodeExecutor';
 
 /** The fields on a stat's `previous`: the whole stat as it stood at the start of this turn. Read-only. */
-export const PREVIOUS_FIELDS: readonly SurfaceEntry[] = [
+export const PREVIOUS_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'id', detail: 'string', info: 'Unique id, at the start of this turn.' },
   { name: 'name', detail: 'string', info: 'The stat’s code name, at the start of this turn.' },
   { name: 'type', detail: 'string', info: 'number, percentage, or whichever type the stat was given, at the start of this turn.' },
@@ -98,7 +100,7 @@ export const PREVIOUS_FIELDS: readonly SurfaceEntry[] = [
   { name: 'max', detail: 'number', info: 'Upper bound at the start of this turn, traits and code writes included.' },
   { name: 'value', detail: 'number', info: 'The value at the start of this turn.' },
   { name: 'regen', detail: 'number', info: 'Regen per story hour at the start of this turn, traits included.' },
-];
+]);
 
 /**
  * The members of one entry in `placeholders`. An Object's `value` holds every value in force rather than
@@ -107,7 +109,7 @@ export const PREVIOUS_FIELDS: readonly SurfaceEntry[] = [
  */
 export function placeholderEntryFields(kind: PlaceholderKindNoun): readonly SurfaceEntry[] {
   const list = kind === 'Object';
-  return [
+  return withAccess([
     { name: 'id', detail: 'string', info: 'The placeholder’s unique id. Read-only.' },
     { name: 'name', detail: 'string', info: 'The placeholder’s code name. Read-only.' },
     list
@@ -120,11 +122,11 @@ export function placeholderEntryFields(kind: PlaceholderKindNoun): readonly Surf
       ? { name: 'pin', detail: '(list) => void', info: 'Pin the placeholder to a list of text, after this run. One text pins a one-item list.' }
       : { name: 'pin', detail: '(text) => void', info: 'Pin the placeholder to any text, after this run.' },
     { name: 'unpin', detail: '() => void', info: 'Remove the pin that code set, after this run. The rolled value shows again.' },
-  ];
+  ], [PLACEHOLDER_WRITABLE_FIELD], 'afterRun');
 }
 
 /** The members of one entry in `traits` and in an entity's `traits`. */
-export const TRAIT_ENTRY_FIELDS: readonly SurfaceEntry[] = [
+export const TRAIT_ENTRY_FIELDS: readonly SurfaceEntry[] = withAccess([
   { name: 'enabled', detail: 'boolean', info: 'True when the trait is held and on. Write it to switch the trait on or off, after this run.' },
   { name: 'acquired', detail: 'boolean', info: 'True when the trait is held, on or off. Read-only.' },
   { name: 'id', detail: 'string', info: 'The trait’s unique id. Read-only.' },
@@ -133,14 +135,14 @@ export const TRAIT_ENTRY_FIELDS: readonly SurfaceEntry[] = [
   { name: 'available', detail: 'boolean', info: 'True when the trait’s requirements hold for its owner now. Read-only.' },
   { name: 'group', detail: 'string', info: 'The code name of the trait’s group. Empty when it has none. Read-only.' },
   { name: 'playerToggle', detail: 'boolean', info: 'True when the player can switch the trait during the game. Read-only.' },
-];
+], [TRAIT_WRITABLE_FIELD], 'afterRun');
 
-/** The one field on a trait entry that a write reaches. */
-export const TRAIT_WRITABLE_FIELD = 'enabled';
+/** The members of an owner entry that are maps. Their own entries carry the access. */
+const OWNER_MAPS = ['traits', 'placeholders', 'stats'];
 
 /** The members of `persona`. The members are read-only; a trait switches through its own `enabled`, and a
  *  stats entry takes writes to its value, min, max and regen while its identity fields stay read-only. */
-export const PERSONA_FIELDS: readonly SurfaceEntry[] = [
+export const PERSONA_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'id', detail: 'string', info: 'The persona entity’s unique id. Empty when the player plays no entity. Read-only.' },
   { name: 'name', detail: 'string', info: 'The persona’s code name. Empty when the player plays no entity. Read-only.' },
   { name: 'type', detail: 'string', info: 'The persona’s type text. Empty when it has none. Read-only.' },
@@ -149,12 +151,12 @@ export const PERSONA_FIELDS: readonly SurfaceEntry[] = [
   { name: 'traits', detail: 'object', info: 'The persona’s own traits by name, owned or linked. Use persona.traits["Two Words"] for a name with a space.' },
   { name: 'placeholders', detail: 'object', info: 'The persona’s own placeholders by name. Empty when the player plays no entity.' },
   { name: 'stats', detail: 'object', info: 'The persona’s own stats by name, each with the fields of a stats entry. Empty when the player plays no entity. Entries take writes to value, min, max and regen.' },
-];
+], OWNER_MAPS);
 
 /** The members of one entry in `entities`, and of `owner`. The members are read-only; a trait switches through
  *  its own `enabled`, and a stats entry takes writes to its value, min, max and regen while its identity fields
  *  stay read-only. */
-export const ENTITY_FIELDS: readonly SurfaceEntry[] = [
+export const ENTITY_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'id', detail: 'string', info: 'The entity’s unique id. Read-only.' },
   { name: 'name', detail: 'string', info: 'The entity’s code name. Read-only.' },
   { name: 'type', detail: 'string', info: 'The entity’s type text. Empty when it has none. Read-only.' },
@@ -163,14 +165,14 @@ export const ENTITY_FIELDS: readonly SurfaceEntry[] = [
   { name: 'traits', detail: 'object', info: 'The entity’s own traits by name, owned or linked. Use entities.Mira.traits["Two Words"] for a name with a space.' },
   { name: 'placeholders', detail: 'object', info: 'The entity’s own placeholders by name. Use entities.Mira.placeholders["Two Words"] for a name with a space.' },
   { name: 'stats', detail: 'object', info: 'The entity’s own stats by name, each with the fields of a stats entry. Entries take writes to value, min, max and regen. Use entities.Mira.stats["Two Words"] for a name with a space.' },
-];
+], OWNER_MAPS);
 
 /** The members of one entry in `dictionaries`. None takes a write. */
-export const DICTIONARY_FIELDS: readonly SurfaceEntry[] = [
+export const DICTIONARY_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'id', detail: 'string', info: 'The dictionary’s unique id. Read-only.' },
   { name: 'name', detail: 'string', info: 'The dictionary’s code name. Read-only.' },
   { name: 'placeholders', detail: 'object', info: 'The dictionary’s own placeholders by name. Use dictionaries.Lore.placeholders["Two Words"] for a name with a space.' },
-];
+], OWNER_MAPS);
 
 /** Built-ins the VM already has. Listed so a reference to one isn't flagged, and so completions offer the
  *  handful that stat code actually reaches for rather than everything a JS engine defines. */
