@@ -54,7 +54,7 @@ describe('codeCard: globals and their members', () => {
       from: doc.indexOf('value'), to: doc.indexOf('value') + 5,
       signature: { kind: 'property', path: 'Stat.value', type: 'number' },
       access: 'writable',
-      description: 'Current value, with this turn’s AI change and regen applied. Writable.',
+      description: 'Current value, with this turn’s AI change and regen applied',
     });
   });
 });

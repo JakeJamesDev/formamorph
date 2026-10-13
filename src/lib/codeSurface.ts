@@ -11,6 +11,24 @@ import type { InsertSnippet } from '@/lib/codeSnippets';
 /** Whether code can write a name: now, only from the next run on, or not at all. */
 export type CodeAccess = 'writable' | 'afterRun' | 'readOnly';
 
+/** The badge label for each access, in the card's AP title case. */
+export const ACCESS_LABEL: Record<CodeAccess, string> = {
+  writable: 'Writable',
+  afterRun: 'Writable After This Run',
+  readOnly: 'Read-Only',
+};
+
+/** `text` ended by a period, unless it already ends a sentence. */
+export const closeSentence = (text: string): string => (/[.!?]$/.test(text) ? text : `${text}.`);
+
+/** The access as a closing sentence, for a list that draws no badge. Prose keeps "read-only" in sentence case. */
+const accessSentence = (access: CodeAccess): string => closeSentence(ACCESS_LABEL[access].charAt(0) + ACCESS_LABEL[access].slice(1).toLowerCase());
+
+/** `info` closed by its access as a sentence. Info lines carry no access words, so the badge-less lists add them here. */
+export function infoWithAccess({ info, access }: Pick<SurfaceEntry, 'info' | 'access'>): string {
+  return access ? `${closeSentence(info)} ${accessSentence(access)}` : info;
+}
+
 /** One reachable name and what an author needs to know about it. */
 export interface SurfaceEntry {
   name: string;

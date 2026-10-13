@@ -23,6 +23,7 @@ import {
   draftProblems, finishDraft, hasDraftProblems, namedParams, renameParam, withHandlerKind,
   type DraftProblems, type KeptHandlers, type HandlerProblem, type ParamProblem,
 } from '@/lib/tools/toolDraft';
+import { infoWithAccess, type SurfaceEntry } from '@/lib/codeSurface';
 import { toolScriptSurface } from '@/lib/tools/toolScriptSurface';
 import { toolTemplateVocabulary } from '@/lib/tools/toolTemplateVocabulary';
 import type { ValueLookup } from '@/lib/promptValues';
@@ -215,7 +216,7 @@ function ParametersTab({ draft, onChange, problems }: TabProps) {
 }
 
 /** An ⓘ beside the Script label that opens the table of values a script can read. */
-function ScriptReference({ globals }: { globals: readonly { name: string; detail: string; info: string }[] }) {
+function ScriptReference({ globals }: { globals: readonly SurfaceEntry[] }) {
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -229,7 +230,7 @@ function ScriptReference({ globals }: { globals: readonly { name: string; detail
       <DialogContent className="flex max-h-[85dvh] flex-col sm:max-w-[640px]">
         <DialogHeader className="shrink-0">
           <DialogTitle>What a Script Can Read</DialogTitle>
-          <DialogDescription>Reads these read-only values. Returns text, or any other value as JSON.</DialogDescription>
+          <DialogDescription>Lists the values a script can read. A script returns text, or any other value as JSON.</DialogDescription>
         </DialogHeader>
         <ScrollArea className="-mx-1 min-h-0 flex-1 px-1">
           <dl aria-label="What the script can read" className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 pr-1 text-label">
@@ -237,7 +238,7 @@ function ScriptReference({ globals }: { globals: readonly { name: string; detail
               <div key={entry.name} className="contents">
                 <dt className="font-mono">{entry.name}</dt>
                 <dd className="min-w-0 text-muted-foreground">
-                  <span className="font-mono break-words text-foreground/80">{entry.detail}</span> {entry.info}
+                  <span className="font-mono break-words text-foreground/80">{entry.detail}</span> {infoWithAccess(entry)}
                 </dd>
               </div>
             ))}

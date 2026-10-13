@@ -50,7 +50,7 @@ describe('hover cards in the code editor', () => {
     const shown = await openCard();
     expect(shown.textContent).toContain('(property) Stat.regen: number');
     expect(shown.textContent).toContain('Writable');
-    expect(shown.textContent).toContain('Regen per story hour, with traits applied.');
+    expect(shown.textContent).toContain('Regen per story hour, with traits applied');
   });
 
   it.each([

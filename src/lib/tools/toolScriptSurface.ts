@@ -4,7 +4,7 @@
  * `toolScript`; it never widens it.
  */
 import type { ToolParam } from '@/types';
-import { readOnlyEntries, type CodeSurface, type SurfaceEntry } from '@/lib/codeSurface';
+import { closeSentence, readOnlyEntries, type CodeSurface, type SurfaceEntry } from '@/lib/codeSurface';
 import type { InsertSnippet } from '@/lib/codeSnippets';
 import { BUILTIN_MEMBERS, LANGUAGE_NAMES, SANDBOX_BUILTINS } from '@/lib/statCodeSurface';
 import { listOptions, namedParams } from './toolDraft';
@@ -20,30 +20,30 @@ const ENTITY_SHAPE = '{ id, name, aliases, type, pronouns, description, summary,
 
 /** The members of `world`. */
 export const WORLD_MEMBERS: readonly SurfaceEntry[] = [
-  { name: 'entities', detail: `${ENTITY_SHAPE}[]`, info: 'Every entity. During the game, this includes the characters the playthrough discovered. Each one’s placeholders maps its own placeholder names to their values.' },
-  { name: 'locations', detail: '{ id, name, description, summary }[]', info: 'Every location.' },
-  { name: 'dictionary', detail: '{ id, name, keys, value, placeholders }[]', info: 'Every enabled dictionary entry. Each one’s placeholders maps its book’s placeholder names to their values.' },
+  { name: 'entities', detail: `${ENTITY_SHAPE}[]`, info: 'Every entity, including the ones the playthrough discovered during the game. Each entity’s placeholders maps its placeholder names to their values.' },
+  { name: 'locations', detail: '{ id, name, description, summary }[]', info: 'Every location' },
+  { name: 'dictionary', detail: '{ id, name, keys, value, placeholders }[]', info: 'Every enabled dictionary entry. Each entry’s placeholders maps its dictionary’s placeholder names to their values.' },
 ];
 
 const LOCATION_MEMBERS: readonly SurfaceEntry[] = [
-  { name: 'id', detail: 'string', info: 'The location’s unique id.' },
-  { name: 'name', detail: 'string', info: 'The location’s name.' },
+  { name: 'id', detail: 'string', info: 'Unique id of the location' },
+  { name: 'name', detail: 'string', info: 'Name of the location' },
 ];
 
 const TIME_MEMBERS: readonly SurfaceEntry[] = [
-  { name: 'elapsed', detail: 'number', info: 'Story hours since the opening.' },
+  { name: 'elapsed', detail: 'number', info: 'Story hours since the opening' },
 ];
 
 /** The members of `scene`. */
 export const SCENE_MEMBERS: readonly SurfaceEntry[] = [
-  { name: 'location', detail: `${shapeOf(LOCATION_MEMBERS)} | null`, info: 'Where the scene is, or null when it is nowhere.' },
-  { name: 'present', detail: 'string[]', info: 'The names of the people at the location.' },
-  { name: 'inScene', detail: 'string[]', info: 'The names of the people who took part in the scene.' },
+  { name: 'location', detail: `${shapeOf(LOCATION_MEMBERS)} | null`, info: 'Where the scene is, or null when the scene has no location' },
+  { name: 'present', detail: 'string[]', info: 'Names of the entities at the location' },
+  { name: 'inScene', detail: 'string[]', info: 'Names of the entities that took part in the scene' },
   { name: 'stats', detail: 'object', info: 'Each stat’s current value by name. Use scene.stats["Two Words"] for a name with a space.' },
-  { name: 'traits', detail: 'string[]', info: 'The names of the traits in force.' },
-  { name: 'persona', detail: 'string | null', info: 'The player character’s name, or null.' },
-  { name: 'notes', detail: 'string', info: 'The player’s notes.' },
-  { name: 'time', detail: `${shapeOf(TIME_MEMBERS)} | null`, info: 'The story clock, or null while it is off.' },
+  { name: 'traits', detail: 'string[]', info: 'Names of the traits that apply now' },
+  { name: 'persona', detail: 'string | null', info: 'Name of the entity the player plays, or null' },
+  { name: 'notes', detail: 'string', info: 'The player’s notes' },
+  { name: 'time', detail: `${shapeOf(TIME_MEMBERS)} | null`, info: 'The story clock, or null while it’s off' },
 ];
 
 const TYPE_DETAIL: Record<Exclude<ToolParam['type'], 'enum'>, string> = { string: 'string', number: 'number', boolean: 'boolean' };
@@ -53,8 +53,8 @@ function argEntry(param: ToolParam): SurfaceEntry {
   const detail = param.type === 'enum'
     ? listOptions(param).map((o) => JSON.stringify(o)).join(' | ') || 'string'
     : TYPE_DETAIL[param.type];
-  const described = param.description.trim() || 'What the AI passed.';
-  return { name: param.name, detail, info: param.required ? described : `${described} Absent when the AI leaves it out.` };
+  const described = param.description.trim() || 'What the AI passed';
+  return { name: param.name, detail, info: param.required ? described : `${closeSentence(described)} Absent when the AI leaves it out.` };
 }
 
 // The story clock is the scene's, so the real-world clock says so in this surface's own words.
@@ -80,10 +80,10 @@ export function toolScriptSurface(params: readonly ToolParam[], placeholderNames
   return {
     label: 'a Tool script',
     globals: [
-      { name: 'args', detail: shapeOf(argEntries), info: 'The arguments the AI sent, checked against the parameters. Read-only.' },
-      { name: 'world', detail: shapeOf(WORLD_MEMBERS), info: 'The world’s entities, locations and dictionary. Read-only.' },
-      { name: 'scene', detail: shapeOf(SCENE_MEMBERS), info: 'The current scene. Read-only.' },
-      { name: 'placeholders', detail: 'object', info: 'Each shared placeholder’s value by name. Use placeholders["Two Words"] for a name with a space. Read-only.' },
+      { name: 'args', detail: shapeOf(argEntries), info: 'The arguments the AI sent, checked against the parameters' },
+      { name: 'world', detail: shapeOf(WORLD_MEMBERS), info: 'The world’s entities, locations and dictionary' },
+      { name: 'scene', detail: shapeOf(SCENE_MEMBERS), info: 'The current scene' },
+      { name: 'placeholders', detail: 'object', info: 'Each shared placeholder’s value by name. Use placeholders["Two Words"] for a name with a space.' },
       { name: 'console', detail: 'object', info: 'Only console.log. Output shows in the browser console.' },
     ].map((entry) => (isFrozenPath(entry.name) ? { ...entry, access: 'readOnly' as const } : entry)),
     builtins: BUILTINS,

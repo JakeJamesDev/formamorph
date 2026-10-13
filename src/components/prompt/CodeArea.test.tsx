@@ -757,7 +757,7 @@ describe('CodeArea', () => {
 
       await user.hover(screen.getByRole('button', { name: 'regen' }));
       const regen = STAT_FIELDS.find((entry) => entry.name === 'regen')!;
-      expect(await screen.findByText(regen.info, { selector: 'div' })).toBeVisible();
+      expect(await screen.findByText(`${regen.info}. Writable.`, { selector: 'div' })).toBeVisible();
     });
 
     it('keeps an empty group, with its one marker row disabled', async () => {
