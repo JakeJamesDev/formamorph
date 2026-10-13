@@ -79,6 +79,11 @@ Settled with the user on 2026-10-12 and 2026-10-13.
 | T07-7 | Entity card: the player description, then Type (when set), Persona ("Can be played"), Stats, Traits, Placeholders as capped comma lists ("None" when empty). Dictionary card: description, Placeholders, Entries count |
 | T07-8 | The `persona` card shows a **Can Play** row of playable entities, and its description carries the library-persona note |
 | T07-9 | `clock.daypart` and `clock.previous.daypart` show the six dayparts as Allowed Values, without weights |
+| Q36 | Code editing shows only in Advanced mode, so Open never meets a tab Simple mode hides. Open needs no mode handling |
+| T11-1 | A Blueprint stat's card (no entity id) matches the Blueprint and every linked copy. A card for an entity's own stat or one bearer's copy matches that owner only |
+| T11-2 | A Find All Uses row reads "Stat · Before · Line 3", or "Entity › Stat · After · Line 7" for an entity's own stat or a Link override box. A Blueprint box with no bearers carries a muted No Bearers tag. Rows follow world box order, then line order |
+| T11-3 | The link reads Find All Uses with no count, so a card never scans on open. The popover heading carries the count ("3 Uses") |
+| T11-4 | The link shows on every stat card that has Open. With no uses, the popover says "No uses in stat code" |
 | T08-1 | The completion pane shows the declared-name card too (Q4: the same card). The card's description reads "Declared on line N", so neither surface loses today's "Declared in this code". The pane leaves out the Go to Line link, which it can't act on; hover keeps it. Ticket 04's tests that pinned no card for a declared name change to expect it |
 | O1 | Owner-route lands first. Its `stats` (world stats in every box), `owner`, and writes on every route (its Q1–Q5) are this spec's baseline. Its tickets 01–07 landed on 2026-10-13. Find All Uses waits on its ticket 08 |
 

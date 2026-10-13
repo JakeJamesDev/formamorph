@@ -11,7 +11,9 @@ Extends 11 to four more kinds. Opus at medium.
 
 Find All Uses works on traits, placeholders, entities and dictionaries too, matching the item rather than its name. Every card with Open has Find All Uses.
 
-Spec: Q22; Implementation Decisions: Find All Uses.
+Spec: Q22, T11-1..4; Implementation Decisions: Find All Uses.
+
+Handoff from ticket 11: navigation lives in `CodeCardNavigationContext` (`open`, `goToUse`), and `canFindUses()` in the code-cards module is the one gate to widen for the other kinds.
 
 ## Acceptance criteria
 
