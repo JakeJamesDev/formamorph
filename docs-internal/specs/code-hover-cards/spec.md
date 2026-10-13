@@ -1,8 +1,8 @@
 # Spec: Code Hover Cards
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-10-14. Tickets 01–16 done; last landing a4bd72913. Closed without gates.
 Spec session: code-hover-cards — spec
-Blocked by: owner-route-open-stat-writes ticket 08 (shared route-to-target module) for the Find All Uses tickets. Its tickets 01–07 landed on 2026-10-13.
 
 ## Problem Statement
 
