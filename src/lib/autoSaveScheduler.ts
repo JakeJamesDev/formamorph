@@ -14,7 +14,7 @@ type SaveKind = 'manual' | 'auto';
 export interface AutoSaveScheduler {
   /** Adds a committed change's units and restarts the idle pause. */
   add(units: number): void;
-  /** Runs a manual save. One asked for during an auto save runs after it; during a manual one, it joins it. */
+  /** Runs a manual save. One asked for during an autosave runs after it; during a manual one, it joins it. */
   manual(save: () => Promise<boolean>): Promise<boolean>;
   /** Off stops the timer; the count still grows, so turning it on saves what piled up. */
   setEnabled(enabled: boolean): void;
@@ -28,7 +28,7 @@ export interface AutoSaveScheduler {
   readonly state: { count: number; saving: boolean; failed: boolean };
 }
 
-/** `save` is the auto save. A save that resolves false or throws is a failed one. */
+/** `save` is the autosave. A save that resolves false or throws is a failed one. */
 export function createAutoSaveScheduler({ save, idleMs = AUTO_SAVE_IDLE_MS }: {
   save: () => Promise<boolean>;
   idleMs?: number;
@@ -36,7 +36,7 @@ export function createAutoSaveScheduler({ save, idleMs = AUTO_SAVE_IDLE_MS }: {
   let count = 0;
   let enabled = false;
   let idle = idleMs;
-  // A failed auto save pauses until a manual save succeeds, so a full disk toasts once.
+  // A failed autosave pauses until a manual save succeeds, so a full disk toasts once.
   let failed = false;
   let running: { kind: SaveKind; done: Promise<boolean> } | null = null;
   let timer: ReturnType<typeof setTimeout> | undefined;

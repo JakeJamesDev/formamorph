@@ -89,7 +89,7 @@ A setting's brief line, a help line under a field, a tooltip, and a ⓘ popover 
 | Rule | Passes | Fails |
 | --- | --- | --- |
 | **Second person or no subject.** Start with the verb. Never "the app" or "Formamorph" as the subject, never "we". | `Saves every few minutes while you work` | `The app saves every few minutes`, `We save your work` |
-| **No on/off preamble.** The label is the on state. State the effect once, then the consequence or trade-off. | `Shorter intervals show changes sooner but use more data` | `When Auto-Save is on, the app saves… When it is off…` |
+| **No on/off preamble.** The label is the on state. State the effect once, then the consequence or trade-off. | `Shorter intervals show changes sooner but use more data` | `When Autosave is on, the app saves… When it is off…` |
 | **Contractions, and the period rule.** One sentence takes no period. Two or more sentences end with one. | `You'll be signed out` | `You will be signed out.` |
 | **Common words, no figurative language.** "Trash", "badge", "bandwidth" pass. Metaphor, idiom, "simply", "easy", and exclamation marks fail. | `Sends requests to your model server` | `Points requests at your model server`, `Rides the narration history` |
 

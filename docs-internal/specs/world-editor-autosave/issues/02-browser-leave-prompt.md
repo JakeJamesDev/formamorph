@@ -7,13 +7,13 @@ Reasoning effort: medium
 
 Rationale: one browser event wired to an existing dirty flag, in two hosts, with a clean teardown.
 
-Parent: [World Editor Auto Save spec](../spec.md)
+Parent: [World Editor Autosave spec](../spec.md)
 
 ## What to build
 
 Closing or reloading the browser tab while the open world has unsaved changes shows the browser's leave prompt. Today it shows nothing and the changes are lost.
 
-- The prompt shows whenever the world is dirty, with Auto Save on or off.
+- The prompt shows whenever the world is dirty, with Autosave on or off.
 - It applies in the World Editor from the menu and in the in-game world editor.
 - With a clean world, or with the editor closed, no prompt shows.
 - The listener is removed when the editor closes, so it never outlives the editor.

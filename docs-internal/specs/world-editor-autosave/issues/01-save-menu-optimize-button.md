@@ -7,11 +7,11 @@ Reasoning effort: medium
 
 Rationale: a rearrangement of existing app-bar parts with an existing split-button pattern; no new state.
 
-Parent: [World Editor Auto Save spec](../spec.md)
+Parent: [World Editor Autosave spec](../spec.md)
 
 ## What to build
 
-The World Editor's app bar gets the layout auto save will live in. Nothing about saving changes yet.
+The World Editor's app bar gets the layout autosave will live in. Nothing about saving changes yet.
 
 - Save becomes a split button. The face saves as today and keeps the Save (Ctrl+S) tooltip, the disabled-when-clean state and the Authoring Tour's save anchor. The chevron opens a menu holding **Export World**. The chevron stays enabled when the face is disabled.
 - The **More world actions** menu goes away in Advanced mode. The separate Export World icon goes away in Simple mode. Both modes reach Export World from the Save menu.

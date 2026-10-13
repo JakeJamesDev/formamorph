@@ -22,14 +22,14 @@ export function useAutoSave({ enabled, idleMs, worldId, stored, dirty, onChange,
   stored: boolean;
   dirty: boolean;
   onChange: (listener: (change: CommittedChange) => void) => () => void;
-  /** The auto save. It resolves false on a failure. */
+  /** The autosave. It resolves false on a failure. */
   save: () => Promise<boolean>;
 }) {
   const saveRef = useRef(save);
   const worldIdRef = useRef(worldId);
   useLayoutEffect(() => { saveRef.current = save; worldIdRef.current = worldId; });
   const mounted = useMountedRef();
-  // The world an auto save wrote during this visit.
+  // The world an autosave wrote during this visit.
   const [autoSavedId, setAutoSavedId] = useState<string | null>(null);
   const [scheduler] = useState(() => createAutoSaveScheduler({
     save: () => {
@@ -48,7 +48,7 @@ export function useAutoSave({ enabled, idleMs, worldId, stored, dirty, onChange,
   useEffect(() => {
     if (!worldId || !stored) return;
     let live = true;
-    // An unreadable record reads as a default: auto save then waits for a save by hand.
+    // An unreadable record reads as a default: autosave then waits for a save by hand.
     Promise.resolve()
       .then(() => WorldStorageService.isUneditedDefault(worldId))
       .then((unedited) => { if (live && !unedited) setNotDefault(worldId); }, () => {});
@@ -91,7 +91,7 @@ export function useAutoSave({ enabled, idleMs, worldId, stored, dirty, onChange,
     manual,
     afterSaves: scheduler.afterSaves,
     afterSavesRender,
-    /** An auto save wrote the open world during this visit. */
+    /** An autosave wrote the open world during this visit. */
     autoSaved: worldId !== null && autoSavedId === worldId,
   };
 }

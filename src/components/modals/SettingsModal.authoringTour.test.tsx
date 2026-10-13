@@ -1,7 +1,7 @@
 // Storage is real (in-memory): SettingsProvider and the modal both read it on mount.
 import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { SettingsProvider } from '@/contexts/SettingsContext';
 import { ThemeProvider } from '@/components/theme-provider';
 import { SettingsModal } from './SettingsModal';
@@ -43,7 +43,7 @@ describe('Start Authoring Tour in Settings', () => {
   it.each<SettingsMode>(['simple', 'advanced'])('is hidden during a game in %s mode', (mode) => {
     openData(mode);
     // The Data tab is on screen, so the row's absence is not a tab that failed to open.
-    expect(screen.getByText('Autosave')).toBeInTheDocument();
+    expect(within(screen.getByRole('group', { name: 'Saves' })).getByText('Autosave')).toBeInTheDocument();
     expect(startButton()).not.toBeInTheDocument();
   });
 });

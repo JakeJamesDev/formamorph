@@ -11,7 +11,7 @@ import WorldStorageService from '../services/WorldStorageService';
 
 /**
  * The World Editor saves on its own once enough has changed, or once a change sits through the idle pause.
- * A world joins in at its first save by hand; a failed auto save pauses it until a save by hand works.
+ * A world joins in at its first save by hand; a failed autosave pauses it until a save by hand works.
  */
 
 vi.mock('../services/WorldStorageService', () => ({
@@ -124,7 +124,7 @@ describe('the idle pause', () => {
 });
 
 describe('a never-saved world', () => {
-  it('does not auto save until its first save by hand', async () => {
+  it('does not autosave until its first save by hand', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     renderWorldEditorBench(benchEditorWorld({}), 'simple');
     await screen.findByDisplayValue('Sedge Landing');
@@ -149,7 +149,7 @@ const openFromLibrary = async () => {
 };
 
 describe('a world from the library', () => {
-  it('auto saves from its first edit', async () => {
+  it('autosaves from its first edit', async () => {
     await openFromLibrary();
     await waitFor(() => expect(isUneditedDefault).toHaveBeenCalledWith('w1'));
     await nextTask();
@@ -173,7 +173,7 @@ describe('a world from the library', () => {
 });
 
 describe('History', () => {
-  it('keeps the Saved marker, and a typed run across an auto save undoes in one press', async () => {
+  it('keeps the Saved marker, and a typed run across an autosave undoes in one press', async () => {
     // A frozen clock keeps the typed run inside the merge pause, as fast typing does.
     vi.useFakeTimers({ toFake: ['Date'] });
     const bench = await openOptedIn();
@@ -204,7 +204,7 @@ describe('a world back to what is on disk', () => {
   });
 });
 
-describe('Exit Without Saving during an auto save', () => {
+describe('Exit Without Saving during an autosave', () => {
   it('waits for the save, then rolls back to the world it wrote', async () => {
     const bench = await openOptedIn();
     let finish!: () => void;
@@ -225,7 +225,7 @@ describe('Exit Without Saving during an auto save', () => {
 });
 
 describe('the Authoring Tour', () => {
-  it('holds auto save while it runs, and its end saves what piled up (Q29)', async () => {
+  it('holds autosave while it runs, and its end saves what piled up (Q29)', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     await openOptedIn();
     act(() => writeTourRecord('w1', { step: TOUR_STEPS[0].id, items: {} }));
@@ -241,14 +241,14 @@ describe('the Authoring Tour', () => {
   });
 });
 
-describe('a clean leave during an auto save', () => {
+describe('a clean leave during an autosave', () => {
   it('waits for the save, then asks, since the save left the world apart from disk', async () => {
     const bench = await openOptedIn();
     let finish!: () => void;
     storeWorld.mockImplementationOnce(() => new Promise<void>((resolve) => { finish = resolve; }));
     for (let i = 0; i < 10; i += 1) await type(30);
     await waitFor(() => expect(storeWorld).toHaveBeenCalledTimes(1));
-    // Back to what is on disk while the auto save still runs.
+    // Back to what is on disk while the autosave still runs.
     fireEvent.change(nameField(), { target: { value: 'Brinewell' } });
     await nextTask();
     expect(bench.ctx().isWorldDirty).toBe(false);
@@ -266,7 +266,7 @@ describe('a clean leave during an auto save', () => {
 describe('the unsaved-changes prompt', () => {
   const askToLeave = () => fireEvent.click(document.querySelector('.lucide-arrow-left')!.closest('button')!);
 
-  it('says Auto Save kept the rest only once an auto save wrote the world', async () => {
+  it('says Autosave kept the rest only once an autosave wrote the world', async () => {
     await openOptedIn();
     await type(30);
     askToLeave();
@@ -278,11 +278,11 @@ describe('the unsaved-changes prompt', () => {
     await waitFor(() => expect(storeWorld).toHaveBeenCalledTimes(1));
     await type(5);
     askToLeave();
-    expect(await screen.findByText(/Auto Save kept the rest/)).toBeInTheDocument();
+    expect(await screen.findByText(/Autosave kept the rest/)).toBeInTheDocument();
   });
 });
 
-describe('a failed auto save', () => {
+describe('a failed autosave', () => {
   it('toasts once, shows Failed, and pauses until a save by hand works', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     await openOptedIn();
@@ -321,12 +321,12 @@ describe('the idle pause setting', () => {
   });
 });
 
-describe('Auto Save off', () => {
+describe('Autosave off', () => {
   it('saves only by hand, from the Save menu checkbox', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     await openOptedIn();
     fireEvent.click(screen.getByRole('button', { name: 'Save options' }));
-    const toggle = await screen.findByRole('checkbox', { name: 'Auto Save' });
+    const toggle = await screen.findByRole('checkbox', { name: 'Autosave' });
     expect(toggle).toBeChecked();
     fireEvent.click(toggle);
     expect(toggle).not.toBeChecked();

@@ -134,7 +134,7 @@ function listToolbarTarget(tab: string): TargetAttribute | undefined {
 
 const RAIL_STORAGE_KEY = 'formamorph.worldEditor.navRail';
 
-/** What a host's own unsaved-changes prompt needs from the editor: a save and a discard that go through auto save. */
+/** What a host's own unsaved-changes prompt needs from the editor: a save and a discard that go through autosave. */
 export interface EditorExit {
   /** Resolves false on a failure, after the failure toast. */
   save: () => Promise<boolean>;
@@ -142,7 +142,7 @@ export interface EditorExit {
   discard: (then: () => void) => void;
   /** Runs `then` now when no save runs, or after the render that follows the running saves. */
   afterSavesRender: (then: () => void) => void;
-  /** An auto save wrote the open world during this visit, so Exit drops only the changes since then. */
+  /** An autosave wrote the open world during this visit, so Exit drops only the changes since then. */
   autoSaved: boolean;
 }
 
@@ -623,7 +623,7 @@ const WorldEditorInner = ({
     exportDictionary: (book) => { void exportDictionary(book); },
   });
 
-  // The Save face walks every save through its states, the tour's and auto saves included.
+  // The Save face walks every save through its states, the tour's and autosaves included.
   const saveStatus = useSaveStatus(isWorldDirty);
   const mounted = useMountedRef();
   const runSave = (markSaved: boolean) => saveStatus.track(async () => {
@@ -640,7 +640,7 @@ const WorldEditorInner = ({
   const { onChange: onWorldChange } = historyMoves;
   const { edited: saveFaceEdited } = saveStatus;
   useEffect(() => onWorldChange(saveFaceEdited), [onWorldChange, saveFaceEdited]);
-  // The tour saves on every Next itself. A save or delete in another tab holds auto save until the author answers.
+  // The tour saves on every Next itself. A save or delete in another tab holds autosave until the author answers.
   const autoSave = useAutoSave({
     enabled: editorAutoSave && !touring && !worldChangedElsewhere,
     idleMs: editorAutoSaveIdleSeconds * 1000,
@@ -1205,7 +1205,7 @@ const WorldEditorInner = ({
     icon: <ActionIcon.export className="mr-2 h-4 w-4 shrink-0" />,
     onClick: exportCurrentWorld,
   }, {
-    label: 'Auto Save',
+    label: 'Autosave',
     checked: editorAutoSave,
     onClick: () => setEditorAutoSave(!editorAutoSave),
   }];

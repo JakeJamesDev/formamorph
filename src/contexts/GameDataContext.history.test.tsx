@@ -144,7 +144,7 @@ describe('the world history', () => {
     expect(history().canUndo).toBe(false);
   });
 
-  it('tells auto save which writes merged into the Step before, so a burst counts as one action (Q30)', async () => {
+  it('tells autosave which writes merged into the Step before, so a burst counts as one action (Q30)', async () => {
     const { ctx, history } = await open();
     const merged: boolean[] = [];
     const stop = history().onChange((change) => { merged.push(change.merged); });
