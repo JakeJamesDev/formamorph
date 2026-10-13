@@ -24,7 +24,7 @@ import {
 } from '@codemirror/language';
 import { javascript } from '@codemirror/lang-javascript';
 import {
-  acceptCompletion, autocompletion,
+  acceptCompletion, autocompletion, closeCompletion, completionStatus,
   type CompletionContext, type CompletionResult as CMCompletionResult,
 } from '@codemirror/autocomplete';
 import { forceLinting, linter, lintGutter, type Diagnostic } from '@codemirror/lint';
@@ -364,6 +364,20 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
     },
   ]);
 
+  /** A dialog or full screen takes Escape on the document in the capture phase, ahead of the completion
+   *  keymap, so an open list takes it on the window first and stops it there. */
+  const completionEscape = ViewPlugin.define((target) => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || completionStatus(target.state) !== 'active') return;
+      if (!(event.target instanceof Node) || !target.contentDOM.contains(event.target)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      closeCompletion(target);
+    };
+    window.addEventListener('keydown', onKeyDown, true);
+    return { destroy: () => window.removeEventListener('keydown', onKeyDown, true) };
+  });
+
   const view = new EditorView({
     state: EditorState.create({
       doc: options.doc,
@@ -395,6 +409,7 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
         gutter.of([]),
         lineNumbers(),
         tabKeys,
+        completionEscape,
         // `autocompletion()` installs `completionKeymap` at the top precedence itself, which is what puts
         // the popup ahead of the Escape binding above.
         keymap.of([...defaultKeymap, ...historyKeymap]),
