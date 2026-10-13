@@ -1,6 +1,7 @@
 # Owner Route And Open Stat Writes
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-10-13. Tickets 01–08 done; last landing 44125b0ad, review fold-in e5a2b3c21. Gates green on 2026-10-13 at e5a2b3c21; none run at close.
 Spec session: owner-route-open-stat-writes — spec
 
 ## Problem Statement
