@@ -136,6 +136,11 @@ Test Bench:
   - A link whose bearer overrides `code` or `beforeCode` is that bearer's own box: the Issues run runs it once with the bearer as `owner`, and its row names the stat and the bearer and points at the entity.
   - A world-stat writer keeps the bare label in the two-writers finding, also when it writes an entity's stat.
 
+Renames (ticket 08, added 2026-10-13 at the user's request through the Code Hover Cards spec):
+
+- Renaming a world stat offers to rewrite `stats.X` in every box in the world. Renaming an entity's own stat offers to rewrite `owner.stats.X`, `entities[x].stats.X`, and `persona.stats.X` where each reaches it. A same-name stat on another owner is never rewritten.
+- The Test Bench's route-to-target resolution becomes one shared module. The Test Bench, the rename planner, and later Code Hover Cards' Find All Uses use it.
+
 Bundled worlds:
 
 - The drone (Mobility, Firepower) and The Student (Agility) read their own stats through `stats`. Their code moves to `owner.stats`. Entity stats are in no release, so there is no migration; the bundled code is rewritten in place.
@@ -143,6 +148,7 @@ Bundled worlds:
 Docs:
 
 - The Stat Code Guide drops the read-only and same-owner lines, documents `owner`, and states the owner-order rule. The sections are Quick Reference, How to Change Another Stat from Code, Accessing Other Stats, Writing to Other Stats, Two Boxes, One Field, Order of Effects, Average of All Stats, Persona, Entities, and Limitations.
+- The guide has one heading each for `self`, `stats`, and `owner`, so the Code Hover Cards spec can link each global to its own anchor (its Q32). Ticket 07 reports the final anchors to that spec's session.
 - The Persona section says that under a library persona, code reaches the Custom Persona's stats through `entities[...]`, not `persona`.
 - The accumulating-stats note explains Q12: a Blueprint box's world-stat write moves the stat once, not once per bearer.
 - CONTEXT.md gains an entry for the `owner` stat-code global: the entity that owns the running stat, or the bearer for a Blueprint stat. The Bearer entry's avoid line stays, because it covers prose, not the code name. The Quick Reference test keeps its rows tied to the surface tables.
