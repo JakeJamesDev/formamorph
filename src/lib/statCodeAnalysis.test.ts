@@ -271,6 +271,15 @@ describe('statCodeCompletions', () => {
     expect(labels('return Object.values(stats).find(s => s.value > 0).name.|')).toEqual([]);
   });
 
+  it('reads a chain written with spaces around its dots', () => {
+    expect(labels('return stats . Health .|', { statNames: ['Health'] })).toEqual(STAT_FIELDS.map((field) => field.name));
+  });
+
+  it('offers nothing after a dot inside a comment', () => {
+    expect(labels('// stats.|\nreturn 1;', { statNames: ['Health'] })).toEqual([]);
+    expect(labels('/* self.| */ return 1;')).toEqual([]);
+  });
+
   it('still names a stat behind the operators an expression is written with', () => {
     const doc = 'const me = stats[self.name];\nif (!me.|) return 0;';
     expect(labels(doc)).toContain('value');

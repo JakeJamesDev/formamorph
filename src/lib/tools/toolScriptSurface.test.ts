@@ -92,6 +92,11 @@ describe('completions and diagnostics read the surface', () => {
     expect(labelsAt('return scene.location.|')).toEqual(['id', 'name']);
   });
 
+  it('reads the path through optional chaining and spaces, as the sandbox does', () => {
+    expect(labelsAt('return scene?.location?.|')).toEqual(['id', 'name']);
+    expect(labelsAt('return scene . location .|')).toEqual(['id', 'name']);
+  });
+
   it('flags stat-code names in the Tool script’s words', () => {
     expect(messages('return stats.Health;')).toEqual(['“stats” isn’t available in a Tool script.']);
   });

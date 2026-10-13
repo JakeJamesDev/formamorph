@@ -73,10 +73,11 @@ const SLOT_PATTERN = /\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*(?::\s*([A-Za-z]+)\s*(?:
 
 /** Where each slot sits in the source, for surfaces that colour the syntax rather than fill it in. Shares
  *  the one pattern, so a slot the parser accepts is a slot the editor marks. */
-export function findSlotRanges(code: string): { from: number; to: number }[] {
+export function findSlotRanges(code: string): { from: number; to: number; name: string }[] {
   return [...(code || '').matchAll(SLOT_PATTERN)].map(match => ({
     from: match.index,
     to: match.index + match[0].length,
+    name: match[1],
   }));
 }
 
