@@ -1,5 +1,6 @@
 import type { ChatMessage } from '@/types';
-import type { TurnPassRecord, TurnPassRequest, TurnPlanInput, TurnMaterial, TurnPassSubject, TurnPrompts } from './turnPlan';
+import type { TurnPassRecord, TurnPassRequest, TurnPlanInput, TurnMaterial, TurnPassSubject } from './turnPlan';
+import type { StatText, StatTextPrompts } from '@/lib/statTextPrompts';
 import { renderPromptTemplateRuns, promptTemplatePieces } from '@/lib/promptTemplate';
 import { layerValues, type TokenValues } from '@/lib/promptValues';
 import {
@@ -425,11 +426,11 @@ export const choicesPass: TurnPassRecord<string[]> = {
 export interface StatPrompts {
   system: string;
   user: string;
-  text: TurnPrompts['statText'];
+  text: StatText;
 }
 
 /** The text pass's prompts. A side with no built-in text wording is sent as written. */
-const resolveStatText = ({ system, user, text }: StatPrompts): { system: string; user: string } => ({
+const resolveStatText = ({ system, user, text }: StatPrompts): StatTextPrompts => ({
   system: text.system ?? system,
   user: text.user ?? user,
 });

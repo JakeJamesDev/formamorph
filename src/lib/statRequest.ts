@@ -110,7 +110,8 @@ function keyedParts(parts: readonly OwnerPart[]) {
       maxKey: maxKeyOf(keys[start + i]),
     }));
     // The chip names each stat by its key, so a numbered key is the name the reply sees.
-    return { targets, stats: part.stats.map((stat, i) => ({ ...stat, name: keys[start + i] })), placement: part.placement };
+    const keyed = part.stats.map((stat, i) => ({ ...stat, name: keys[start + i] }));
+    return { ownerKey: part.ownerKey, targets, stats: keyed, placement: part.placement };
   });
 }
 
@@ -130,16 +131,16 @@ export function createStatRequest(
   const others = played.map((owner) => ({ ...owner, ownerKey: OTHER_STATS_HEADING }));
   const own = persona ? [{ ...persona, ownerKey: PLAYER_STAT_HEADING }] : [];
   // Stat keys run loose, persona, played, as the narration's chips number a played stat.
-  const [world, ...rest] = keyedParts([loose, ...own, ...others]);
-  const personaPart = persona ? rest.slice(0, 1) : [];
-  const otherParts = rest.slice(personaPart.length);
+  const player = keyedParts([loose, ...own, ...others]);
+  const personaParts = player.filter((part) => part.ownerKey === PLAYER_STAT_HEADING);
+  const otherStatsParts = player.filter((part) => part.ownerKey === OTHER_STATS_HEADING);
   const owners = entities.filter((owner) => owner.stats.length);
   const keys = ownerKeys(owners.map((owner) => owner.name), new Set([PLAYER_STAT_HEADING, OTHER_STATS_HEADING]));
   const sections = owners.flatMap((owner, i) => keyedParts([{ ...owner, ownerKey: keys[i] }]));
   return {
     id: randomUUID(),
-    targets: [personaPart, [world, ...otherParts], sections].flat().flatMap((part) => part.targets),
-    context: statChipPartValues([world, ...otherParts]),
+    targets: [...personaParts, ...otherStatsParts, ...sections].flatMap((part) => part.targets),
+    context: statChipPartValues(otherStatsParts),
     entityKeys: keys,
     inSceneIds: [...inSceneIds],
     ...(textPass && { textPass }),
@@ -175,7 +176,7 @@ export function keyedScene(scene: ChipScene, snapshot: StatRequestSnapshot): Chi
   };
 }
 
-/** The player's targets alone: what the text pass asks about. */
+/** The persona's, loose and played targets, with no entity owner's: what the text pass asks about. */
 export function playerTargets(snapshot: StatRequestSnapshot): StatRequestTarget[] {
   const entityKeys = new Set(snapshot.entityKeys);
   return snapshot.targets.filter((target) => !entityKeys.has(target.ownerKey));

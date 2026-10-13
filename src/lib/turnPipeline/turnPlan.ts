@@ -2,6 +2,7 @@ import type { AIRequestType, ChatMessage, Entity, ImageAttachment, RequestMessag
 import type { AnatomyRun, RequestAnatomy } from '@/lib/requestAnatomy';
 import type { ThinkingMode } from '@/contexts/SettingsContext';
 import type { StatRequestSnapshot } from '@/lib/statRequest';
+import type { StatText } from '@/lib/statTextPrompts';
 import type { TokenValues } from '@/lib/promptValues';
 import type { ResponseSchema } from '@/lib/aiRequest/responseSchema';
 import type { PromptAttachmentsMap } from '@/lib/promptAttachments';
@@ -83,8 +84,8 @@ export interface TurnPrompts {
   choicesUser: string;
   statUpdates: string;
   statUpdatesUser: string;
-  /** The built-in preset's text pass prompts; a null side sends the matching stat prompt as written. */
-  statText: { system: string | null; user: string | null };
+  /** The built-in preset's text pass prompts. */
+  statText: StatText;
   summary: string;
   summaryUser: string;
   milestoneSelect: string;

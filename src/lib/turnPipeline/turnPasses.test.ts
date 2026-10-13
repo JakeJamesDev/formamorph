@@ -73,7 +73,7 @@ const playerStat = (id: string, name: string): PlayerStat => ({
 
 describe('the stat request', () => {
   const health = createStatRequest([playerStat('health', 'Health')]);
-  const builtin = (style: SectionStyle) => statTextFor(builtinStatTextPrompts(style), false);
+  const builtin = (style: SectionStyle) => statTextFor(builtinStatTextPrompts(style), { worldPrompt: false });
   const shipped = (over: Partial<TurnMaterial>, prompts: Partial<TurnPrompts> = {}) =>
     pass('statUpdates').buildRequest(
       input({
@@ -134,7 +134,7 @@ describe('the stat request', () => {
   it('sends a world’s own Stats prompt as written on the fallback, with the built-in preset’s text user message', () => {
     const text = builtinStatTextPrompts('markdown');
     const request = shipped({ statRequest: health }, {
-      statUpdates: 'WORLD STATS <STATS DESCRIPTION>', statText: statTextFor(text, true),
+      statUpdates: 'WORLD STATS <STATS DESCRIPTION>', statText: statTextFor(text, { worldPrompt: true }),
     });
     expect(request.textFallback?.systemPrompt).toBe(request.systemPrompt);
     expect(request.textFallback?.systemPrompt.startsWith('WORLD STATS')).toBe(true);

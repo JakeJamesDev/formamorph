@@ -78,18 +78,23 @@ export function customizedPromptKinds(overview: WorldOverview | null | undefined
   return WORLD_PROMPT_KINDS.filter((kind) => hasWorldPrompt(overview, kind));
 }
 
-/**
- * The system prompt to actually send for this pass: the world's, unless it has none or the player declined
- * this world's prompts, in which case their own preset stands. Passes with no kind of their own ignore this.
- */
+/** The world's prompt for this pass as play sends it: null when it has none or the player declined this world's prompts. */
+export function appliedWorldPrompt(
+  overview: WorldOverview | null | undefined,
+  kind: WorldPromptKind,
+  optedOut: boolean,
+): string | null {
+  return optedOut ? null : worldPrompt(overview, kind);
+}
+
+/** The system prompt to send for this pass: the applied world prompt, else the preset's. Passes with no kind of their own ignore this. */
 export function resolveWorldPrompt(
   overview: WorldOverview | null | undefined,
   kind: WorldPromptKind,
   presetPrompt: string,
   optedOut: boolean,
 ): string {
-  if (optedOut) return presetPrompt;
-  return worldPrompt(overview, kind) ?? presetPrompt;
+  return appliedWorldPrompt(overview, kind, optedOut) ?? presetPrompt;
 }
 
 /** Every stored custom prompt, switched on or not: world text that places chips like any other field. */

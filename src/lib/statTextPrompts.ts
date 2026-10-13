@@ -13,11 +13,11 @@ export const builtinStatTextPrompts = (style: SectionStyle): StatTextPrompts => 
   user: styleTemplate(textStatUpdatesUserPrompt, style),
 });
 
-/** The text pair a turn carries; a null side is sent as written. A world's own Stats prompt drops the system side. */
-export const statTextFor = (
-  builtin: StatTextPrompts | null,
-  worldPromptApplies: boolean,
-): { system: string | null; user: string | null } => ({
-  system: worldPromptApplies ? null : builtin?.system ?? null,
+/** The text pair a turn carries; a null side sends the matching stat prompt as written. */
+export type StatText = { [Side in keyof StatTextPrompts]: string | null };
+
+/** The turn's text pair. A world's own Stats prompt (`worldPrompt`) drops the system side. */
+export const statTextFor = (builtin: StatTextPrompts | null, { worldPrompt }: { worldPrompt: boolean }): StatText => ({
+  system: worldPrompt ? null : builtin?.system ?? null,
   user: builtin?.user ?? null,
 });
