@@ -2,7 +2,7 @@ import { HIGHLIGHT_PALETTE } from './highlightUtils';
 import { escapeRegExp } from './utils';
 import type { TextOrigin } from './markedText';
 
-/** An optional alternate form a variable's chip can be switched to via its pop-out. `id: null` is the
+/** An optional alternate form a variable's chip can be switched to in Chip Options. `id: null` is the
  *  default form with no token suffix; a non-null id contributes to the token suffix (e.g. `|summary`). */
 export interface PromptVariant {
   id: string | null;
@@ -15,7 +15,7 @@ export interface PromptVariant {
 }
 
 /** One independent dimension of a variable's variants (e.g. Stats has a `content` axis and a `format`
- *  axis). Each axis renders as its own segmented control in the pop-out. A variable with a single axis can
+ *  axis). Each axis renders as its own row in Chip Options. A variable with a single axis can
  *  just use `variants`; multi-axis variables use `axes`. The token suffix is the non-null option ids of
  *  every axis joined by `.` in axis order (e.g. content `descriptions` + format `markdown` →
  *  `<STATS DESCRIPTION|descriptions.markdown>`). Option ids must be unique across a variable's axes and
@@ -51,14 +51,14 @@ export interface PromptVariantAxis {
 /** Registry of the angle-bracket variables that prompt templates can embed. The base `token`
  *  (brackets included) is what lives in the prompt string and what GameViewer substitutes at runtime;
  *  `label` is the friendly text shown on the chip; `color` is its accent (shared with the AI context
- *  viewer's palette); `variants` (when present) are the modes the chip pop-out offers. Adding a variable
+ *  viewer's palette); `variants` (when present) are the modes Chip Options offers. Adding a variable
  *  here makes it available to the chip toolbar and the parser. */
 export interface PromptVariable {
   token: string; // exact base token, e.g. '<WORLD DESCRIPTION>'
   label: string; // friendly chip label, e.g. 'World'
   color: string; // chip/preview accent, from HIGHLIGHT_PALETTE
-  variants?: PromptVariant[]; // single-axis pop-out modes; first entry is the default/full form
-  axes?: PromptVariantAxis[]; // multi-axis pop-out (takes precedence over `variants`)
+  variants?: PromptVariant[]; // single-axis Chip Options modes; first entry is the default/full form
+  axes?: PromptVariantAxis[]; // multi-axis Chip Options (takes precedence over `variants`)
   /** Offers the prefix/suffix fields: this chip renders one short value that can sit inside a sentence,
    *  rather than a multi-line block. See docs-internal/designs/chip-affixes/design.md. */
   affixable?: boolean;
@@ -70,7 +70,7 @@ export type PromptKind = 'narration' | 'thinking' | 'choices' | 'statupdates' | 
 const SUMMARY_VARIANT: PromptVariant = {
   id: 'summary',
   label: 'Summary',
-  help: 'Sends the short AI summary, falling back to the full description where none is set.',
+  help: 'Sends the short AI summary, or the full description if there is none',
 };
 
 // Location and entity context are each ONE chip with a `scope` axis (current/sub-locations/reachable/…), a
@@ -79,11 +79,11 @@ const LOCATION_SCOPE_AXIS: PromptVariantAxis = {
   id: 'scope',
   label: 'Scope',
   options: [
-    { id: null, label: 'Current', help: 'The location the player is in right now.' },
-    { id: 'sublocations', label: 'Sub', help: "The current location's direct sub-locations." },
-    { id: 'parent', label: 'Parent', help: 'The single location that contains this one (nothing at the top level).' },
-    { id: 'reachable', label: 'Reachable', help: 'The location that contains this one, plus its neighbors (same parent).' },
-    { id: 'destinations', label: 'Destinations', help: 'Everywhere reachable from here — connections + sub-locations + the containing location and its neighbors.' },
+    { id: null, label: 'Current', help: 'Sends the location the player is in' },
+    { id: 'sublocations', label: 'Sub', help: "Sends the current location's direct sub-locations" },
+    { id: 'parent', label: 'Parent', help: 'Sends the containing location, or nothing at the top level' },
+    { id: 'reachable', label: 'Reachable', help: 'Sends the containing location and its neighbors' },
+    { id: 'destinations', label: 'Destinations', help: 'Sends connections, sub-locations, the containing location and its neighbors' },
   ],
 };
 
@@ -91,10 +91,10 @@ const ENTITY_SCOPE_AXIS: PromptVariantAxis = {
   id: 'scope',
   label: 'Scope',
   options: [
-    { id: null, label: 'Here', help: 'Characters and things at the current location.' },
-    { id: 'sublocations', label: 'In Sub', help: 'Characters and things in the direct sub-locations.' },
-    { id: 'reachable', label: 'Reachable', help: 'Characters and things in the containing location and its neighbors.' },
-    { id: 'inscene', label: 'In Scene', help: 'Whoever has actually taken part in the last few turns, wherever they are from.' },
+    { id: null, label: 'Here', help: 'Sends the entities at the current location' },
+    { id: 'sublocations', label: 'In Sub', help: 'Sends the entities in the direct sub-locations' },
+    { id: 'reachable', label: 'Reachable', help: 'Sends the entities in the containing location and its neighbors' },
+    { id: 'inscene', label: 'In Scene', help: 'Sends the entities from the last few turns, wherever they are' },
   ],
 };
 
@@ -103,9 +103,9 @@ const CONTENT_AXIS: PromptVariantAxis = {
   label: 'Content',
   lights: 'content',
   options: [
-    { id: null, label: 'Full', help: 'Full detail for each item.' },
+    { id: null, label: 'Full', help: 'Sends full detail for each item' },
     SUMMARY_VARIANT,
-    { id: 'name', label: 'Name', help: 'Just the name (or a comma-separated list of names), with no description or labels — for use inside a sentence.' },
+    { id: 'name', label: 'Name', help: 'Sends only the names, comma-separated, for use inside a sentence' },
   ],
 };
 
@@ -127,27 +127,31 @@ const FORMAT_AXIS: PromptVariantAxis = {
   id: 'format',
   label: 'Format',
   options: [
-    { id: null, label: 'Simple', help: 'Plain lines — no bullets or bold.' },
-    { id: 'markdown', label: 'Markdown', help: 'Markdown: bullets with bold names.' },
-    { id: 'xml', label: 'XML', help: 'XML: nested tags per item.' },
+    { id: null, label: 'Simple', help: 'Writes plain lines, with no bullets or bold' },
+    { id: 'markdown', label: 'Markdown', help: 'Writes bullets with bold names' },
+    { id: 'xml', label: 'XML', help: 'Writes nested tags for each item' },
   ],
 };
 
 const STAT_DETAIL_ROW_HELP = 'Picks which parts of each stat the AI reads';
+// One wording for each piece on the Stats, Entities and Persona chips, so the three read the same everywhere.
+const STAT_RANGE_HELP = "Sends each stat's value and bounds, like \"10/100\"";
+const STAT_DESCRIPTOR_HELP = "Sends the word for the stat's current level, like \"Critical\"";
+const STAT_DESCRIPTION_HELP = 'Sends what the stat measures';
 
 // Stats content is three independent pieces (each a checkbox), plus the shared format axis. The stat's Name
 // is always present; at least one piece must stay on (enforced in the editor). The old single-select ids
 // `numbers` (Range) and `descriptions` (Descriptor) are kept, so existing tokens still render; `meaning` is new.
 const STAT_VALUES_AXIS: PromptVariantAxis = {
-  id: 'numbers', label: 'Range', toggle: true, lights: 'range', lockGroup: 'statDetail', row: 'Stat Detail', rowHelp: STAT_DETAIL_ROW_HELP, help: 'e.g. "10/100".',
+  id: 'numbers', label: 'Range', toggle: true, lights: 'range', lockGroup: 'statDetail', row: 'Stat Detail', rowHelp: STAT_DETAIL_ROW_HELP, help: STAT_RANGE_HELP,
   options: [{ id: null, label: 'Range' }, { id: 'numbers', label: 'Range' }],
 };
 const STAT_STATUS_AXIS: PromptVariantAxis = {
-  id: 'descriptions', label: 'Descriptor', toggle: true, lights: 'descriptor', lockGroup: 'statDetail', row: 'Stat Detail', help: 'e.g. "Critical".',
+  id: 'descriptions', label: 'Descriptor', toggle: true, lights: 'descriptor', lockGroup: 'statDetail', row: 'Stat Detail', help: STAT_DESCRIPTOR_HELP,
   options: [{ id: null, label: 'Descriptor' }, { id: 'descriptions', label: 'Descriptor' }],
 };
 const STAT_MEANING_AXIS: PromptVariantAxis = {
-  id: 'meaning', label: 'Description', toggle: true, lights: 'meaning', lockGroup: 'statDetail', row: 'Stat Detail', help: 'e.g. "Physical stamina."',
+  id: 'meaning', label: 'Description', toggle: true, lights: 'meaning', lockGroup: 'statDetail', row: 'Stat Detail', help: STAT_DESCRIPTION_HELP,
   options: [{ id: null, label: 'Description' }, { id: 'meaning', label: 'Description' }],
 };
 
@@ -178,16 +182,16 @@ const INCLUDE_TRAITS_AXIS = rosterToggle('traits', 'Traits', 'notraits', "Sends 
 const PERSONA_INCLUDE_TRAITS_AXIS = { ...INCLUDE_TRAITS_AXIS, help: "Sends the persona's owned traits",
   rowHelp: 'Picks what the persona sends besides its name' };
 const ROSTER_STAT_DETAIL_AXES: PromptVariantAxis[] = [
-  rosterToggle('range', 'Range', 'norange', 'Sends each stat\'s value and bounds, like "10/100"', { onByDefault: true, lockGroup: 'statDetail', row: 'Stat Detail', rowHelp: STAT_DETAIL_ROW_HELP, lights: 'range' }),
-  rosterToggle('descriptor', 'Descriptor', 'nodescriptor', 'Sends the word for the stat\'s current level, like "Critical"', { onByDefault: true, lockGroup: 'statDetail', row: 'Stat Detail', lights: 'descriptor' }),
-  rosterToggle('description', 'Description', 'nodescription', "Sends what the stat measures", { onByDefault: true, lockGroup: 'statDetail', row: 'Stat Detail', lights: 'meaning' }),
+  rosterToggle('range', 'Range', 'norange', STAT_RANGE_HELP, { onByDefault: true, lockGroup: 'statDetail', row: 'Stat Detail', rowHelp: STAT_DETAIL_ROW_HELP, lights: 'range' }),
+  rosterToggle('descriptor', 'Descriptor', 'nodescriptor', STAT_DESCRIPTOR_HELP, { onByDefault: true, lockGroup: 'statDetail', row: 'Stat Detail', lights: 'descriptor' }),
+  rosterToggle('description', 'Description', 'nodescription', STAT_DESCRIPTION_HELP, { onByDefault: true, lockGroup: 'statDetail', row: 'Stat Detail', lights: 'meaning' }),
 ];
 
 // The Entities chip's stats piece: null is the scope's default (on for Here and In Scene), `nostats` stores off, `stats` on.
 const ENTITY_STATS_AXIS: PromptVariantAxis = {
   id: 'stats', label: 'Stats', toggle: true, onByDefault: true, row: 'Include', lights: 'stats',
   onByDefaultWhen: (selection) => selection.scope == null || selection.scope === 'inscene',
-  help: "Sends each entity's stats: range, descriptor and description.",
+  help: "Sends each entity's stats: range, descriptor and description",
   options: [{ id: null, label: 'Stats' }, { id: 'nostats', label: 'No Stats' }, { id: 'stats', label: 'Stats', hideInLabel: true, on: true }],
 };
 
@@ -216,7 +220,7 @@ const MARKDOWN: PromptVariable = {
   color: HIGHLIGHT_PALETTE[6],
   variants: [
     { id: null, label: 'Guidance', help: 'Tells the AI how to use Markdown, or to write plain prose while Markdown is off' },
-    { id: 'definitions', label: 'Definitions', help: 'Lists the inline syntax the story displays, with no usage direction. Empty while Markdown is off.' },
+    { id: 'definitions', label: 'Definitions', help: 'Lists the inline syntax the story displays, with no usage direction. Sends nothing while Markdown is off.' },
   ],
 };
 // Director prompt only: expands to the cast-size guidance derived from the Limit Active Characters setting.
@@ -233,8 +237,8 @@ const DICTIONARY: PromptVariable = {
   color: HIGHLIGHT_PALETTE[11],
   affixable: true,
   variants: [
-    { id: null, label: 'Foreground', help: 'Keyword-triggered lore placed late for high recency — the "## Foreground Lore" block.' },
-    { id: 'before', label: 'Background', help: 'Lore placed early with the world setup — the "## Background Lore" block.' },
+    { id: null, label: 'Foreground', help: 'Sends keyword-triggered lore late in the prompt, under "## Foreground Lore"' },
+    { id: 'before', label: 'Background', help: 'Sends lore early with the world setup, under "## Background Lore"' },
   ],
 };
 // Runtime value-token for the staged character pass — the name of the character whose motivation is being written.
@@ -383,6 +387,18 @@ export function toggleOptionFor(axis: PromptVariantAxis, selection: Record<strin
   if (on === toggleDefaultOn(axis, selection)) return null;
   const stored = axis.options.filter((o) => o.id != null && (o.on ?? !axis.onByDefault) === on);
   return stored[0]?.id ?? null;
+}
+
+/** Resets each scope-dependent toggle whose stored id says what its default now says, such as an Entities
+ *  `stats` id after the scope moves to one where stats are on by default. The render is unchanged. */
+export function dropRedundantToggles(variable: PromptVariable, selection: Record<string, string | null>): Record<string, string | null> {
+  const next = { ...selection };
+  for (const axis of variableAxes(variable)) {
+    if (axis.toggle && axis.onByDefaultWhen && next[axis.id] != null && toggleIsOn(axis, next) === toggleDefaultOn(axis, next)) {
+      next[axis.id] = null;
+    }
+  }
+  return next;
 }
 
 /** A chip key's variable and the per-axis selection its id spells, or undefined when its variable cannot

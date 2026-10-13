@@ -7,7 +7,7 @@ import { encodePlaceholderToken } from '@/lib/placeholders';
 import { phValues } from '@/test/placeholderValues';
 import type { Placeholder } from '@/types';
 
-/** The Player Name chip names a reserved value, so its pop-out has nothing to re-aim. */
+/** The Player Name chip names a reserved value, so its Chip Options has nothing to re-aim. */
 
 const WORLD: Placeholder[] = [{ id: 'eye', name: 'Eye', values: phValues(['blue', 'green']) }];
 
@@ -17,7 +17,7 @@ function Harness({ value }: { value: string }) {
 
 const rePick = () => screen.queryByRole('button', { name: /Re-Pick/ });
 
-describe('VariableNode pop-out — Player Name', () => {
+describe('VariableNode Chip Options — Player Name', () => {
   it('offers no Re-Pick on the Player Name chip', async () => {
     const user = userEvent.setup();
     render(<Harness value="Hi {{user}}" />);
@@ -38,14 +38,14 @@ describe('VariableNode pop-out — Player Name', () => {
 describe('VariableNode — Built-in chips', () => {
   const eye = encodePlaceholderToken({ id: 'eye', mode: 'world', placementId: 'p1' });
 
-  it.each(['Player Name', 'Character Name'])('opens no pop-out on %s', async (label) => {
+  it.each(['Player Name', 'Character Name'])('opens no Chip Options on %s', async (label) => {
     const user = userEvent.setup();
     render(<Harness value="{{user}} and {{char}}" />);
     await user.click(screen.getByText(label));
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
-  it('still opens the pop-out on a placeholder chip', async () => {
+  it('still opens Chip Options on a placeholder chip', async () => {
     const user = userEvent.setup();
     render(<Harness value={eye} />);
     await user.click(screen.getByText('Eye'));

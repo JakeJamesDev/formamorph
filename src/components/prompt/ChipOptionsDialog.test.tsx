@@ -208,6 +208,47 @@ describe('Chip Options', () => {
     expect(await screen.findByText(IN_SCENE_HELP)).toBeVisible();
   });
 
+  it.each([
+    ['<ENTITIES|name>', 'Include'],
+    ['<PERSONA|name>', 'Include'],
+    ['<PERSONA|name>', 'Stat Detail'],
+  ])('explains the disabled %s row on %s in words that fit the persona too', async (token, rowName) => {
+    const user = userEvent.setup();
+    renderReporting(<TooltipProvider><Field initial={token} /></TooltipProvider>);
+    await open(user);
+    await user.hover(within(dialog()).getByText(rowName));
+    // The persona's Name content still sends pronouns, so the tip never says it sends only names.
+    expect(await screen.findByText('Name content sends no stats or traits')).toBeVisible();
+    expect(screen.queryByText(/only names/i)).toBeNull();
+  });
+
+  it('drops a stats id that means nothing when the scope changes', async () => {
+    const user = userEvent.setup();
+    renderReporting(<Field initial="<ENTITIES|reachable.stats>" />);
+    await open(user);
+    await user.click(within(dialog()).getByRole('combobox', { name: 'Scope' }));
+    await user.click(await screen.findByRole('option', { name: 'Here' }));
+    expect(stored()).toBe('<ENTITIES>');
+    expect(box('Include', 'Stats')).toBeChecked();
+  });
+
+  it('stacks the panes below the small breakpoint, rows first', async () => {
+    const user = userEvent.setup();
+    renderReporting(<Field initial="<ENTITIES>" />);
+    const options = await open(user);
+    const reads = within(options).getByRole('region', { name: 'What the AI Reads' });
+    const rows = within(options).getByRole('group', { name: 'Include' });
+    const grid = reads.parentElement!;
+    expect(grid.contains(rows)).toBe(true);
+    // jsdom has no layout, so the contract is the class list: one column until `sm`, two from `sm` up.
+    const classes = grid.className.split(/\s+/);
+    expect(classes).toContain('grid');
+    expect(classes.filter((name) => /^grid-cols-/.test(name))).toEqual([]);
+    expect(classes.filter((name) => /^sm:grid-cols-\[.+\]$/.test(name))).toHaveLength(1);
+    // The rows come before the pane in reading order, so the stack puts them on top.
+    expect(rows.compareDocumentPosition(reads) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it('shows the Stats chip pieces as checkboxes and locks the last one on', async () => {
     const user = userEvent.setup();
     renderReporting(<Field initial="<STATS DESCRIPTION|numbers.descriptions>" />);

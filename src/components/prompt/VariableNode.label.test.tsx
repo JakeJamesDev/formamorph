@@ -9,7 +9,7 @@ import { phValues } from '@/test/placeholderValues';
 import type { Placeholder } from '@/types';
 
 /**
- * The Label input in a placed chip's pop-out. It writes straight into the token, shows only while the chip
+ * The Label input in a placed chip's Chip Options. It writes straight into the token, shows only while the chip
  * is Unique, and a trip through World keeps the text for the way back.
  */
 
@@ -28,7 +28,7 @@ function Harness({ token }: { token: string }) {
 const value = () => screen.getByTestId('value').textContent ?? '';
 const labelInput = () => screen.queryByRole('textbox', { name: 'Label' });
 
-describe('VariableNode pop-out — Label', () => {
+describe('VariableNode Chip Options — Label', () => {
   it('is absent on a World chip', async () => {
     const user = userEvent.setup();
     render(<Harness token={encodePlaceholderToken({ id: 'eye', mode: 'world', placementId: 'p1' })} />);

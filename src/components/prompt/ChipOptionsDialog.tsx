@@ -24,7 +24,7 @@ const NEWLINE_MARK = '↵';
 // Segmented up to this many options; a longer list is a dropdown.
 const MAX_SEGMENTS = 3;
 
-const MOOT_NAME_TIP = 'Name content sends only names';
+const MOOT_NAME_TIP = 'Name content sends no stats or traits';
 const MOOT_STATS_TIP = 'Check Stats under Include to pick Stat Detail';
 const LABEL_TIP = 'Tells this placement apart from others on the same placeholder. Stays with the chip when you move or copy it.';
 const HEADER_TIP = 'Starts a section when the chip has a value';
@@ -273,7 +273,10 @@ function ReadsPane({ token, reads, lit }: { token: string; reads: TokenValues | 
   const titleId = useId();
   const rendered = useMemo(() => (reads ? resolveTokenRuns(token, reads) : undefined), [token, reads]);
   // A value control lights only what its renderer reported; the placement fields always light their own text.
-  const active = lit && rendered && (rendered.reported || PLACEMENT.includes(lit)) ? lit : null;
+  const litOrigin = lit && rendered && (rendered.reported || PLACEMENT.includes(lit)) ? lit : null;
+  const producesText = !!litOrigin && !!rendered?.runs.some((run) => run.origins.includes(litOrigin) && run.text.trim() !== '');
+  // A control whose text the scene never produced dims nothing.
+  const active = producesText ? litOrigin : null;
   return (
     <section aria-labelledby={titleId} className="flex min-h-0 flex-col gap-1.5">
       <p id={titleId} className="text-meta font-medium">What the AI Reads</p>

@@ -11,7 +11,7 @@ import type { Placeholder } from '@/types';
 
 import { phValues } from '@/test/placeholderValues';
 /**
- * Re-aiming a placed chip from its own pop-out: the picker opens on the path the chip already carries, and
+ * Re-aiming a placed chip in Chip Options: the picker opens on the path the chip already carries, and
  * whatever the author settles on moves that chip rather than replacing it. The two kinds of step read
  * differently — a variant names one branch, a slot routes through whichever value rolls — so the picker
  * keeps them apart and marks the slot a roll can miss.
@@ -54,7 +54,7 @@ const value = () => screen.getByTestId('value').textContent ?? '';
 const picker = () => screen.getByTestId('drill-picker');
 const rowNames = () => within(picker()).getAllByTestId('drill-picker-row').map((r) => r.textContent ?? '');
 
-/** Open the placed chip's pop-out and walk into its picker. A Unique chip says so in its own label, so the
+/** Open the placed chip's Chip Options and walk into its picker. A Unique chip says so in its own label, so the
  *  chip is found by what its path reads as rather than by the whole pill. */
 async function openPicker(user: ReturnType<typeof userEvent.setup>, path: string) {
   await user.click(screen.getByText(new RegExp(`^${path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}( \\(Unique\\))?$`)));
