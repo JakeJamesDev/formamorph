@@ -130,6 +130,104 @@ describe('codeCard: no card', () => {
   });
 });
 
+describe('codeCard: a name the code declares', () => {
+  /** The kind and the link, without an inferred type. */
+  const declared = (doc: string) => {
+    const card = cardAt(doc);
+    return card && { kind: card.signature.kind, path: card.signature.path, type: card.signature.type, links: card.links };
+  };
+
+  it.each([
+    ['const tired = 1;\nreturn ti|red;', 'const'],
+    ['let tired = 1;\nreturn ti|red;', 'let'],
+    ['var tired = 1;\nreturn ti|red;', 'var'],
+    ['function tired() { return 1; }\nreturn ti|red();', 'function'],
+    ['const f = (tired) => ti|red + 1;', 'parameter'],
+    ['const f = tired => ti|red + 1;', 'parameter'],
+    ['return xs.map(tired => ti|red);', 'parameter'],
+    ['class tired {}\nreturn new ti|red();', 'class'],
+    ['function f(a, tired) { return ti|red; }', 'parameter'],
+    ['try { f(); } catch (tired) { return ti|red; }', 'parameter'],
+    ['for (const tired of [1]) { x += ti|red; }', 'const'],
+    ['const { tired } = self;\nreturn ti|red;', 'const'],
+    ['const [tired] = [1];\nreturn ti|red;', 'const'],
+  ])('%s', (doc, kind) => {
+    expect(declared(doc)).toMatchObject({ kind, path: 'tired', type: undefined });
+  });
+
+  it('links to the line that declares the name, counted from 1', () => {
+    expect(declared('const a = 1;\nconst b = 2;\nconst tired = 3;\nreturn ti|red;')?.links).toEqual([
+      { id: 'goToLine', at: 'const a = 1;\nconst b = 2;\nconst '.length, line: 3 },
+    ]);
+  });
+
+  it('links a name a nested block declares to its first declaration', () => {
+    expect(declared('let tired = 1;\nif (a) { var tired = 2; }\nreturn ti|red;')?.links).toEqual([
+      { id: 'goToLine', at: 'let '.length, line: 1 },
+    ]);
+  });
+
+  it('has no link on the declaration itself, where the caret already is', () => {
+    expect(declared('const ti|red = 1;')).toMatchObject({ kind: 'const', links: undefined });
+  });
+
+  it('reads a global the code declares as the author’s own name, not the sandbox’s', () => {
+    expect(declared('const stats = {};\nreturn st|ats;')).toMatchObject({ kind: 'const', path: 'stats' });
+  });
+
+  it('says which line declares it, carries no access badge, and links to that line', () => {
+    expect(cardAt('const a = 0;\nconst tired = 1;\nreturn ti|red;')).toEqual({
+      from: 'const a = 0;\nconst tired = 1;\nreturn '.length, to: 'const a = 0;\nconst tired = 1;\nreturn tired'.length,
+      signature: { kind: 'const', path: 'tired' },
+      description: 'Declared on line 2',
+      links: [{ id: 'goToLine', at: 'const a = 0;\nconst '.length, line: 2 }],
+    });
+  });
+
+  it('says the line on the declaration itself too', () => {
+    expect(cardAt('const a = 0;\nconst ti|red = 1;')?.description).toBe('Declared on line 2');
+  });
+});
+
+describe('codeCard: a template slot', () => {
+  const slots: SurfaceAnalysisOptions = { ...world, slots: true };
+  const slotCard = (doc: string) => cardAt(doc, slots);
+
+  it('shows its type and default', () => {
+    expect(slotCard('return {{am|ount:number=5}};')).toMatchObject({
+      signature: { kind: 'slot', path: 'amount', type: 'number' },
+      defaultValue: '5',
+    });
+  });
+
+  it('spans the whole slot', () => {
+    const doc = 'return {{amount:number=5}};';
+    expect(slotCard(doc.replace('amount', 'am|ount'))).toMatchObject({
+      from: doc.indexOf('{{'), to: doc.indexOf('}}') + 2,
+    });
+  });
+
+  it('reads a slot with no type as text, and shows no default where none is declared', () => {
+    const card = slotCard('return {{wo|rd}};');
+    expect(card?.signature).toEqual({ kind: 'slot', path: 'word', type: 'text' });
+    expect(card?.defaultValue).toBeUndefined();
+  });
+
+  it('lists a choice’s options in its type', () => {
+    expect(slotCard('return x {{op|erator:choice(>|<)=>}} 3;')?.signature.type).toBe('choice(>|<)');
+  });
+
+  it('shows the first declaration’s type and default at a repeat', () => {
+    const card = slotCard('{{amount:number=5}} + {{am|ount}}');
+    expect(card?.signature.type).toBe('number');
+    expect(card?.defaultValue).toBe('5');
+  });
+
+  it('gives a card only where the editor reads slots', () => {
+    expect(cardAt('return {{am|ount:number=5}};')).toBeNull();
+  });
+});
+
 describe('codeCard: a Tool script', () => {
   const tool: SurfaceAnalysisOptions = {
     surface: toolScriptSurface([{ name: 'size', type: 'number', description: 'How big.', required: true, options: [] }], ['Weather']),
@@ -196,10 +294,13 @@ describe('completionCard: the card for an option the list offers', () => {
     expect(line(optionCard('return stats.Hea|', 'Health'))).toBe('(stat) stats.Health: Stat');
   });
 
-  it.each([
-    ['a keyword', 'return |', 'return'],
-    ['a name the code declares', 'const mine = 1; return mi|', 'mine'],
-  ])('has no card for %s', (_name, doc, label) => {
-    expect(optionCard(doc, label)).toBeNull();
+  it('has no card for a keyword', () => {
+    expect(optionCard('return |', 'return')).toBeNull();
+  });
+
+  it('cards a name the code declares, with the line that declares it', () => {
+    const card = optionCard('const mine = 1; return mi|', 'mine');
+    expect(card?.signature).toEqual({ kind: 'const', path: 'mine' });
+    expect(card?.description).toBe('Declared on line 1');
   });
 });

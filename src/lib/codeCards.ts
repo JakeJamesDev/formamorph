@@ -3,22 +3,30 @@
  * so the card and the completion list never describe a name two ways. The editor only draws the model.
  */
 
+import type { SyntaxNode } from '@lezer/common';
 import { isMethodEntry, type CodeAccess, type SurfaceEntry } from '@/lib/codeSurface';
 import type { CodeStatRecord, CodeWorldLookup } from '@/lib/codeWorldLookup';
 import { REGEN_UNIT_LABELS, regenPer, regenUnitOf } from '@/lib/regenUnits';
 import { isUnknownEntry, memberEntries, type SurfaceAnalysisOptions } from '@/lib/statCodeAnalysis';
 import { isIdentifier } from '@/lib/statCodePaths';
-import { resolveCodeName, type CodeMapOwner, type CodeValue } from '@/lib/statCodeResolver';
+import { parseCode, resolveCodeName, type CodeMapOwner, type CodeValue } from '@/lib/statCodeResolver';
+import { parseTemplateSlots } from '@/lib/statCodeTemplates';
 import type { Stat } from '@/types';
 
-/** What a card names: a sandbox global, a member of one, or an entry of one of the world's maps. */
-export type CodeCardKind = 'global' | 'property' | 'method' | 'stat' | 'trait' | 'placeholder' | 'entity' | 'dictionary';
+/** What a name the code declares is, as the author wrote it. */
+export type DeclarationKind = 'const' | 'let' | 'var' | 'function' | 'class' | 'parameter';
 
-/** The card's first line: what the name is, the path it reads as, and its type. */
+/** What a card names: a sandbox global, a member of one, an entry of one of the world's maps, a name the
+ *  code declares, or a template slot. */
+export type CodeCardKind =
+  | 'global' | 'property' | 'method' | 'stat' | 'trait' | 'placeholder' | 'entity' | 'dictionary'
+  | DeclarationKind | 'slot';
+
+/** The card's first line: what the name is, the path it reads as, and its type. A declared name has no type. */
 export interface CodeCardSignature {
   kind: CodeCardKind;
   path: string;
-  type: string;
+  type?: string;
 }
 
 /** One World Details row. */
@@ -32,6 +40,11 @@ export type CodeCardItem =
   | { kind: 'stat'; statId: string; entityId?: string }
   | { kind: 'entity'; entityId: string };
 
+/** An action a card offers. */
+export type CodeCardLink =
+  /** Move the caret to the declaration at `at`, on `line` (from 1). */
+  | { id: 'goToLine'; at: number; line: number };
+
 export interface CodeCard {
   /** The span of code the card describes. */
   from: number;
@@ -43,6 +56,9 @@ export interface CodeCard {
   /** World Details, from the box's lookup. */
   rows?: CodeCardRow[];
   item?: CodeCardItem;
+  /** What a slot starts as. Absent where the template declares none. */
+  defaultValue?: string;
+  links?: CodeCardLink[];
 }
 
 /** `base` and one key, by dot where the key allows it. */
@@ -166,7 +182,7 @@ const fromEntry = (
 /**
  * The card for the completion option labelled `label`, read as the code the option would make: the label
  * replaces `replaces`, and the card is the one for the name it spells. Null where the label is no name a
- * card describes, as with a keyword or a name the author declared.
+ * card describes, as with a keyword.
  */
 export function completionCard(
   code: string,
@@ -179,6 +195,28 @@ export function completionCard(
   const close = quote === '"' || quote === "'" ? quote : '';
   const taken = code.slice(0, replaces.from) + label + close + code.slice(replaces.to);
   return codeCard(taken, replaces.from + Math.floor(label.length / 2), options);
+}
+
+/** The slot's type as the template wrote it: a choice keeps its options. */
+const slotTypeText = (slot: { type: string; options?: string[] }) =>
+  slot.options?.length ? `${slot.type}(${slot.options.join('|')})` : slot.type;
+
+/** How the code declared the name at `at`, read from where the declaration sits in the tree. */
+function declarationKind(code: string, at: number): DeclarationKind {
+  for (let node: SyntaxNode | null = parseCode(code).resolveInner(at, 1); node; node = node.parent) {
+    switch (node.name) {
+      // A parameter reaches its ParamList first, so a FunctionDeclaration here is the function's own name.
+      case 'FunctionDeclaration': return 'function';
+      case 'ClassDeclaration': return 'class';
+      case 'ParamList': case 'CatchClause': return 'parameter';
+      case 'VariableDeclaration': case 'ForOfSpec': case 'ForSpec': case 'ForInSpec': {
+        const keyword = /\b(const|let|var)\b/.exec(code.slice(node.from, at));
+        if (keyword) return keyword[1] as DeclarationKind;
+        break;
+      }
+    }
+  }
+  return 'var';
 }
 
 /** The card for the name at `pos`, or null where the code names nothing a card can describe. */
@@ -209,6 +247,26 @@ export function codeCard(code: string, pos: number, options: SurfaceAnalysisOpti
       return world('placeholder', name.path.reduce(keyPath, `${ownerPrefix(name.owner)}placeholders`), 'Placeholder');
     case 'entity': return world('entity', keyPath('entities', name.key), 'Entity');
     case 'dictionary': return world('dictionary', keyPath('dictionaries', name.key), 'Dictionary');
+    case 'declared': {
+      const line = code.slice(0, name.at).split('\n').length;
+      return {
+        ...span,
+        signature: { kind: declarationKind(code, name.at), path: name.key },
+        description: `Declared on line ${line}`,
+        // On the declaration itself the caret is already there.
+        ...(name.from === name.at ? {} : { links: [{ id: 'goToLine' as const, at: name.at, line }] }),
+      };
+    }
+    case 'slot': {
+      // A repeated name reads as its first declaration, as the form does.
+      const slot = parseTemplateSlots(code).slots.find((candidate) => candidate.name === name.key);
+      if (!slot) return null;
+      return {
+        ...span,
+        signature: { kind: 'slot', path: slot.name, type: slotTypeText(slot) },
+        ...(slot.defaultValue !== undefined ? { defaultValue: slot.defaultValue } : {}),
+      };
+    }
     default: return null;
   }
 }

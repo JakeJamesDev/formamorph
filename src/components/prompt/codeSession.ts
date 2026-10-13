@@ -35,7 +35,7 @@ import {
 } from '@/lib/statCodeAnalysis';
 import { codeCard, completionCard } from '@/lib/codeCards';
 import { renderCodeCard, renderInfoLine } from '@/components/prompt/codeCardView';
-import { cardTooltipView, createCaretCards } from '@/components/prompt/codeCaretCard';
+import { cardTooltipView, createCaretCards, goToDeclaration } from '@/components/prompt/codeCaretCard';
 import { TOOLTIP_DELAY_MS } from '@/components/ui/tooltip';
 import type { CodeSurface } from '@/lib/codeSurface';
 import type { CodeWorldLookup } from '@/lib/codeWorldLookup';
@@ -347,7 +347,7 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
       pos: card.from,
       end: card.to,
       above: false,
-      create: () => cardTooltipView(card, () => view.dispatch({ effects: closeHoverTooltips })),
+      create: () => cardTooltipView(card, () => view.dispatch({ effects: closeHoverTooltips }), { goTo: (at) => goToDeclaration(view, at) }),
     };
   }, { hoverTime: TOOLTIP_DELAY_MS, hideOnChange: true });
 
