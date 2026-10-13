@@ -33,9 +33,9 @@ import {
   describeInThresholdUnits, describeThreshold, descriptorSpans, isThresholdOutOfRange, sortedDescriptors,
   statStartValue, thresholdValue, uncoveredSpan, valueThreshold,
 } from '@/lib/statDescriptorGeometry';
-import { statCodeName, statsByCodeName } from '@/lib/statCodeNames';
-import { boxCode, filledCodeBoxes, noBoxes, TIMING_LABEL } from '@/lib/statCodeTiming';
-import { scanStatWrites } from '@/lib/statCodeWriteScan';
+import { hasEntityKey, statCodeName, statsByCodeName } from '@/lib/statCodeNames';
+import { boxCode, filledCodeBoxes, noBoxes, TIMING_LABEL, type StatCodeTiming } from '@/lib/statCodeTiming';
+import { scanStatLookups, scanStatWrites, type ScannedWrite } from '@/lib/statCodeWriteScan';
 import { estimateTokens } from '@/lib/memoryUtils';
 import { entityImageData, entityImages } from '@/lib/entityImages';
 import {
@@ -59,7 +59,7 @@ import { ruleText, rowText } from '@/lib/traitGateLine';
 import { conditionsOf } from '@/lib/requirementRows';
 import { isAlwaysOn } from '@/lib/traitEffects';
 import { statRows, statRowSide, type StatRow } from '@/lib/traitTree';
-import { playerStatsOf, resolvedEntityStats } from '@/lib/statLinks';
+import { blueprintGroupStats, playerStatsOf, resolvedEntityStats, statBlueprintIds, type StatLinkWorld } from '@/lib/statLinks';
 import type {
   DictionaryEntry, Entity, GalleryImage, GameLocation, PersonaRef, Placeholder, PlaceholderPin, PlaceholderValue, Stat, StatDescriptor, StatRequirement,
   Trait, TraitGroup, TraitLink, TraitRequirement, TraitRequirementRow, World,
@@ -921,26 +921,78 @@ const placeholderPinnedUnused: Rule = {
 // `==`/`!=` forms — any comparison against `.name` names a stat.
 const NAME_THEN_LITERAL = /\.name\s*[!=]==?\s*(["'`])((?:\\.|(?!\1).)*)\1/g;
 const LITERAL_THEN_NAME = /(["'`])((?:\\.|(?!\1).)*)\1\s*[!=]==?\s*[\w$]+(?:\??\.[\w$]+)*\??\.name\b/g;
-// The map form: `stats.Vigor` names the stat by identifier, `stats["Vigor"]` (any quote style) by bracket
-// key; a computed bracket key or an array-method call like `stats.find(` matches neither, as intended. A
-// member-qualified `.stats` (`entities[...].stats`, `persona.stats`) is another owner's map, not the world's.
-const MAP_DOT = /(?<![\w$.])stats\.([A-Za-z_$][\w$]*)\b(?!\s*\()/g;
-const MAP_BRACKET = /(?<![\w$.])stats\[\s*(["'`])((?:\\.|(?!\1).)*)\1\s*\]/g;
+/** Every stat name a `.name` comparison in code names, unescaped. Template literals with `${}` are dynamic and
+ *  skipped — there is no literal name to check. */
+const comparedStatNames = (code: string): string[] => [NAME_THEN_LITERAL, LITERAL_THEN_NAME]
+  .flatMap((re) => [...code.matchAll(re)].map((m) => m[2]))
+  .filter((literal) => literal && !literal.includes('${'))
+  .map((literal) => literal.replace(/\\(.)/g, '$1'));
 
-/** Every stat name a piece of code names, unescaped — by `.name` comparison or by map lookup. Template
- *  literals with `${}` are dynamic and skipped — there is no literal name to check. */
-const statNamesInCode = (code: string): string[] => {
-  const names: string[] = [];
-  for (const re of [NAME_THEN_LITERAL, LITERAL_THEN_NAME, MAP_BRACKET]) {
-    for (const m of code.matchAll(re)) {
-      const literal = m[2];
-      if (!literal || literal.includes('${')) continue;
-      names.push(literal.replace(/\\(.)/g, '$1'));
-    }
+/** Every world stat name a piece of code names, by `.name` comparison or by a lookup in `stats`. */
+const statNamesInCode = (code: string): string[] => [
+  ...comparedStatNames(code),
+  ...scanStatLookups(code).flatMap((lookup) => (lookup.root === 'stats' ? [lookup.stat] : [])),
+];
+
+/** One owner whose stat code runs, with its stats as play reads them: the world, or an entity. */
+interface CodeOwner {
+  entity: Entity | null;
+  stats: Stat[];
+  /** Its stats as its stat map keys them by code name. */
+  byCodeName: ReadonlyMap<string, Stat>;
+}
+
+type EntityOwner = CodeOwner & { entity: Entity };
+
+/** Every owner stat code reaches, with no playthrough: every authored entity is in the game. */
+interface CodeOwners {
+  world: CodeOwner;
+  /** The world, then each entity in authored order. */
+  all: CodeOwner[];
+  /** Each entity as `entities` keys it by code name. */
+  byName: ReadonlyMap<string, EntityOwner>;
+  /** What `persona` may be (Q11). */
+  playable: EntityOwner[];
+  statWorld: StatLinkWorld;
+  /** Stats as a stat map keys them by code name. */
+  byCodeName: (stats: readonly Stat[]) => ReadonlyMap<string, Stat>;
+}
+
+/** A stat authored off runs no code and takes no write. */
+const isStatOn = (stat: Stat) => stat.enabled !== false;
+
+function statCodeOwners(world: RuleWorld): CodeOwners {
+  const placeholders = allPlaceholders(world);
+  const codeName = (text: string | undefined) => statCodeName(text, placeholders);
+  const statWorld = { stats: world.stats ?? [], statGroups: world.statGroups ?? [] };
+  const byCodeName = (stats: readonly Stat[]) => statsByCodeName(stats, (stat) => codeName(stat.name), isStatOn);
+  const owner = <E extends Entity | null>(entity: E, stats: Stat[]) => ({ entity, stats, byCodeName: byCodeName(stats) });
+  const worldOwner = owner(null, playerStatsOf(statWorld.stats, statWorld.statGroups));
+  const entities = (world.entities ?? []).map((entity) => owner(entity, resolvedEntityStats(statWorld, entity)));
+  return {
+    world: worldOwner,
+    all: [worldOwner, ...entities],
+    byName: new Map(entities.map((o) => [codeName(o.entity.name), o] as const).filter(([name]) => hasEntityKey(name))),
+    playable: entities.filter((o) => canBePlayer(o.entity)),
+    statWorld,
+    byCodeName,
+  };
+}
+
+/** Each owner's stat a scanned write lands on, from `writer`'s box run for `owner`. */
+function writeTargets(owners: CodeOwners, owner: CodeOwner, writer: Stat, write: ScannedWrite): [CodeOwner, Stat][] {
+  const on = (target: CodeOwner | undefined): [CodeOwner, Stat][] => {
+    const stat = target && write.stat !== null ? target.byCodeName.get(write.stat) : undefined;
+    return target && stat ? [[target, stat]] : [];
+  };
+  switch (write.root) {
+    case 'self': return [[owner, writer]];
+    case 'stats': return on(owners.world);
+    case 'owner': return owner.entity ? on(owner) : [];
+    case 'entities': return on(owners.byName.get(write.entity ?? ''));
+    case 'persona': return owners.playable.flatMap((target) => on(target));
   }
-  for (const m of code.matchAll(MAP_DOT)) names.push(m[1]);
-  return names;
-};
+}
 
 const statCodeUnknownStat: Rule = {
   id: 'stat-code-unknown-stat',
@@ -948,22 +1000,75 @@ const statCodeUnknownStat: Rule = {
   section: 'stats',
   advanced: true,
   summary: (count) => `${count} stats’ code looks up stat names that don’t exist`,
+  // Code reaches a stat by its code name, which is the same in every playthrough.
   check: (world) => {
-    // Code reaches a stat by its code name, which is the same in every playthrough.
-    const stats = world.stats ?? [];
-    const known = new Set(stats.map((s) => statCodeName(s.name, allPlaceholders(world))));
-    return stats.flatMap((stat) => {
-      const item = namedItem(stat.id, stat.name, world);
-      return filledCodeBoxes(stat).flatMap((box) => [...new Set(statNamesInCode(box.code))]
-        .filter((name) => !known.has(name))
-        .map((name) => finding(
-          statCodeUnknownStat,
-          `${TIMING_LABEL[box.timing]} code on ${quote(item.name)} looks up a stat named ${quote(name)}, which does not exist`,
-          [item],
-        )));
+    const owners = statCodeOwners(world);
+    const inWorld = owners.world.byCodeName;
+    return codeBoxesOf(world, owners).flatMap(({ code, label, item, ownerStats }) => {
+      const misses = new Set<string>();
+      for (const name of comparedStatNames(code)) {
+        if (!inWorld.has(name) && !ownerStats?.has(name)) misses.add(`looks up a stat named ${quote(name)}, which does not exist`);
+      }
+      for (const { root, entity = '', stat } of scanStatLookups(code)) {
+        const named = quote(stat);
+        if (root === 'stats') {
+          if (!inWorld.has(stat)) misses.add(`looks up a stat named ${named}, which does not exist`);
+        } else if (root === 'owner') {
+          if (!ownerStats) misses.add(`looks up ${named} on its owner, but a world stat has no owner`);
+          else if (!ownerStats.has(stat)) misses.add(`looks up a stat named ${named} on its owner, which does not exist`);
+        } else if (root === 'persona') {
+          if (!owners.playable.some((o) => o.byCodeName.has(stat))) {
+            misses.add(`looks up a stat named ${named} on the persona, but no entity that can be played has it`);
+          }
+        } else {
+          const target = owners.byName.get(entity);
+          if (!target) misses.add(`looks up a stat on ${quote(entity)}, but no entity is named ${quote(entity)}`);
+          else if (!target.byCodeName.has(stat)) misses.add(`looks up a stat named ${named} on ${quote(entity)}, which does not exist`);
+        }
+      }
+      return [...misses].map((miss) => finding(statCodeUnknownStat, `${label} ${miss}`, [item]));
     });
   },
 };
+
+/** One filled box the static rules read: its code, how a finding names it, and the stats its `owner.stats`
+ *  holds, null in a world stat's box. */
+interface OwnedCodeBox {
+  code: string;
+  label: string;
+  item: FindingItem;
+  ownerStats: ReadonlyMap<string, Stat> | null;
+}
+
+/**
+ * Every box of stat code once: the world's, each Blueprint stat's with its group as `owner.stats` (Q10), and
+ * each entity's own. A bearer's linked stat adds only a box whose code its link overrides.
+ */
+function codeBoxesOf(world: RuleWorld, owners: CodeOwners): OwnedCodeBox[] {
+  const { statWorld, byCodeName } = owners;
+  const label = (stat: Stat, timing: StatCodeTiming) => `${TIMING_LABEL[timing]} code on ${quote(labelOf(stat.name, world))}`;
+  const blueprints = statBlueprintIds(statWorld);
+  const ofWorld = (stat: Stat, ownerStats: ReadonlyMap<string, Stat> | null): OwnedCodeBox[] => filledCodeBoxes(stat).map((box) => ({
+    code: box.code, label: label(stat, box.timing), item: namedItem(stat.id, stat.name, world), ownerStats,
+  }));
+  return [
+    ...owners.world.stats.flatMap((stat) => ofWorld(stat, null)),
+    ...statWorld.stats.filter((stat) => blueprints.has(stat.id))
+      .flatMap((stat) => ofWorld(stat, byCodeName(blueprintGroupStats(statWorld, stat)))),
+    ...owners.all.flatMap(({ entity, stats, byCodeName: ownerStats }) => {
+      if (!entity) return [];
+      const ownIds = new Set((entity.stats ?? []).map((stat) => stat.id));
+      const item = { ...asItem(entity, world), section: 'entities' as const };
+      const ofEntity = ` of ${quote(labelOf(entity.name, world))}`;
+      return stats.flatMap((stat) => {
+        const original = ownIds.has(stat.id) ? null : statWorld.stats.find((s) => s.id === stat.id);
+        return filledCodeBoxes(stat)
+          .filter((box) => !original || box.code !== boxCode(original, box.timing))
+          .map((box) => ({ code: box.code, label: `${label(stat, box.timing)}${ofEntity}`, item, ownerStats }));
+      });
+    }),
+  ];
+}
 
 // A read of a stat's `delta`, in either lookup form. A bare `delta` is nothing the sandbox injects, so only
 // a member read counts — which also leaves an author's own variable of that name alone.
@@ -988,52 +1093,56 @@ const statCodeBeforeReadsDelta: Rule = {
     }),
 };
 
+/** One owner's stat field that stat code writes, with each box that writes it once. */
+interface WrittenField {
+  owner: CodeOwner;
+  target: Stat;
+  field: string;
+  /** Keyed by the writer's owner, stat and box. The label names the box without its owner. */
+  writers: Map<string, { owner: CodeOwner; label: string }>;
+}
+
 const statCodeTwoWriters: Rule = {
   id: 'stat-code-two-writers',
   severity: 'warning',
   section: 'stats',
   advanced: true,
   summary: (count) => `${count} stat fields are written by more than one box of stat code`,
-  // Judged per owner, because a stat's code reaches its own owner's stats only. A Blueprint stat runs once per
-  // owner that links it, so each owner's copy is its own field.
+  // Judged per owner and field across every box in the world. A Blueprint stat runs once per bearer, so each
+  // bearer's box is its own writer and each bearer's copy its own target.
   check: (world) => {
-    const placeholders = allPlaceholders(world);
-    const statWorld = { stats: world.stats ?? [], statGroups: world.statGroups ?? [] };
-    const owners = [
-      { entity: null, stats: playerStatsOf(statWorld.stats, statWorld.statGroups) },
-      ...(world.entities ?? []).map((entity) => ({ entity, stats: resolvedEntityStats(statWorld, entity) })),
-    ];
-    // A stat authored off runs no code and takes no write.
-    const isOn = (stat: Stat) => stat.enabled !== false;
-    return owners.flatMap(({ entity, stats }) => {
-      const byCodeName = statsByCodeName(stats, (stat) => statCodeName(stat.name, placeholders), isOn);
-      // Each field by its target and name, with the boxes writing it once each, in stat order.
-      const fields = new Map<string, { target: Stat; field: string; writers: Map<string, string> }>();
-      for (const writer of stats.filter(isOn)) {
+    const owners = statCodeOwners(world);
+    const fields = new Map<string, WrittenField>();
+    for (const owner of owners.all) {
+      for (const writer of owner.stats.filter(isStatOn)) {
         for (const box of filledCodeBoxes(writer)) {
           for (const write of scanStatWrites(box.code)) {
-            const target = write.stat === null ? writer : byCodeName.get(write.stat);
-            if (!target || !isOn(target)) continue;
-            const key = JSON.stringify([target.id, write.field]);
-            const held = fields.get(key) ?? { target, field: write.field, writers: new Map() };
-            held.writers.set(
-              JSON.stringify([writer.id, box.timing]),
-              `${TIMING_LABEL[box.timing]} code on ${quote(labelOf(writer.name, world))}`,
-            );
-            fields.set(key, held);
+            for (const [targetOwner, target] of writeTargets(owners, owner, writer, write)) {
+              if (!isStatOn(target)) continue;
+              const key = JSON.stringify([targetOwner.entity?.id ?? null, target.id, write.field]);
+              const held = fields.get(key) ?? { owner: targetOwner, target, field: write.field, writers: new Map() };
+              held.writers.set(JSON.stringify([owner.entity?.id ?? null, writer.id, box.timing]), {
+                owner, label: `${TIMING_LABEL[box.timing]} code on ${quote(labelOf(writer.name, world))}`,
+              });
+              fields.set(key, held);
+            }
           }
         }
       }
-      return [...fields.values()].filter(({ writers }) => writers.size > 1).map(({ target, field, writers }) => {
-        const howMany = writers.size === 2 ? 'Two' : String(writers.size);
-        const at = entity ? ` on ${quote(labelOf(entity.name, world))}` : '';
-        const item = entity ? { ...asItem(entity, world), section: 'entities' as const } : namedItem(target.id, target.name, world);
-        return finding(
-          statCodeTwoWriters,
-          `${howMany} boxes write the ${field} of ${quote(labelOf(target.name, world))}${at}: ${listNames([...writers.values()])}`,
-          [item],
-        );
-      });
+    }
+    return [...fields.values()].filter(({ writers }) => writers.size > 1).map(({ owner, target, field, writers }) => {
+      const howMany = writers.size === 2 ? 'Two' : String(writers.size);
+      const { entity } = owner;
+      const at = entity ? ` on ${quote(labelOf(entity.name, world))}` : '';
+      const item = entity ? { ...asItem(entity, world), section: 'entities' as const } : namedItem(target.id, target.name, world);
+      // A writer from another entity names it; a world box and a same-owner box need no owner.
+      const labels = [...writers.values()].map(({ owner: from, label }) =>
+        (from.entity && from !== owner ? `${label} of ${quote(labelOf(from.entity.name, world))}` : label));
+      return finding(
+        statCodeTwoWriters,
+        `${howMany} boxes write the ${field} of ${quote(labelOf(target.name, world))}${at}: ${listNames(labels)}`,
+        [item],
+      );
     });
   },
 };
