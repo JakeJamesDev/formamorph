@@ -90,6 +90,7 @@ Settled with the user on 2026-10-12 and 2026-10-13.
 | Q37 | A trait or placeholder card on a route that reaches several entities follows Q34: one shared item shows that item plus a Bearers list; mixed items show only the Bearers list. Ticket 15 |
 | T15-1 | On a route that reaches two or more entities, Bearers lists only the reached entities, as Q34's Owner list does. A route that reaches one entity (one playable for `persona`) is not a multi-entity route: it keeps the plain card with T07-6's full Bearers |
 | T12-3 | Placeholders follow T11-1: a Blueprint placeholder's card matches the Blueprint and every Copy; a Copy's card matches that Copy only |
+| T16-1 | On the `owner` card in an entity's box, the entity's description replaces the `owner` global's info line, as a world name's authored description does on every card. With no entity description, the info line stays |
 | T08-1 | The completion pane shows the declared-name card too (Q4: the same card). The card's description reads "Declared on line N", so neither surface loses today's "Declared in this code". The pane leaves out the Go to Line link, which it can't act on; hover keeps it. Ticket 04's tests that pinned no card for a declared name change to expect it |
 | O1 | Owner-route lands first. Its `stats` (world stats in every box), `owner`, and writes on every route (its Q1–Q5) are this spec's baseline. Its tickets 01–07 landed on 2026-10-13. Find All Uses waits on its ticket 08 |
 
@@ -202,6 +203,7 @@ Settled with the user on 2026-10-12 and 2026-10-13.
   8. Open with the entity row reveal.
   9. Guide-link table and Tools doc headings, and the Design System entry.
 - Escape inside a dialog: a separate fix on main makes Escape close the completion list without closing the dialog, by the same window-capture pattern as the card's Escape. The card and the list each own a listener; merging them into one "close the open popup" handler is optional cleanup, not owed by any ticket.
+- Ticket 16 (a4bd72913): Test Code's and the help code test's trait names now follow Traits-tab order, as the editor's do. The code editor still takes a box's analysis options as separate props; the stat code box feeds them from the one shared builder.
 - The mock in [mock.html](mock.html) is the visual reference. Its sample world is invented. Its labels are sentence case and its trait row says "Held"; the spec's labels win.
 - An agent reviewed the spec against the code on 2026-10-13. Its findings became Q20–Q29 and the decisions on identity, bracket keys, Escape, the lightbulb gutter and lazy completion cards.
 - CodeMirror's default keymap binds Ctrl+I to select the enclosing syntax node. That is why the shortcut is a chord.
