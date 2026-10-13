@@ -170,15 +170,19 @@ return Math.round(stamina * 0.7 + 30 - sugar * 0.4);`],
   it.each(BEFORE)('%s %s: the migrated code returns what the array form returned', async (file, name, before) => {
     const world = worlds[`../defaultworlds/${file}.json`].default;
     const owners = ownersOf(world);
-    // The worlds shipped one flat list; a stat's code now reads its owner's list and the others through `entities`.
+    // The array form reads one flat list; the shipped code reads `stats`, `owner.stats` and `entities`.
     const flat = owners.flatMap((owner) => owner.stats);
-    const own = owners.find((owner) => owner.stats.some((s) => s.name === name))!.stats;
-    const stat = own.find((s) => s.name === name) as Stat;
-    const entities = owners.filter((owner) => owner.name).map((owner) => ({ name: owner.name, traits: [], stats: { stats: owner.stats } }));
+    const worldStats = owners.find((owner) => !owner.name)?.stats ?? [];
+    const holder = owners.find((owner) => owner.stats.some((s) => s.name === name))!;
+    const stat = holder.stats.find((s) => s.name === name) as Stat;
+    const entities = owners.filter((owner) => owner.name)
+      .map((owner) => ({ id: owner.name, name: owner.name, traits: [], stats: { stats: owner.stats } }));
     // The array form ran as a plain function over the stat list; these formulas read nothing else.
     const overArray = new Function('stats', 'currentStatId', before)(flat, stat.id) as number;
     const migrated = await executeStatCode(migrateStatLookups(before), flat, stat);
-    const shipped = await executeStatCode(stat.code ?? '', own, stat, { entities });
+    const shipped = await executeStatCode(stat.code ?? '', worldStats, stat, {
+      entities, owner: entities.find((entity) => entity.name === holder.name),
+    });
     expect(migrated).toMatchObject({ error: null, value: overArray });
     expect(shipped).toMatchObject({ error: null, value: overArray });
   });

@@ -507,7 +507,7 @@
               "description": "Untouchable. Full speed — nobody in this school can lay a ribbon on you."
             }
           ],
-          "code": "const stamina = stats.Stamina.value;\nconst sugar = stats.Sugar.value;\nreturn Math.round(stamina * 0.7 + 30 - sugar * 0.4);"
+          "code": "const stamina = owner.stats.Stamina.value;\nconst sugar = owner.stats.Sugar.value;\nreturn Math.round(stamina * 0.7 + 30 - sugar * 0.4);"
         }
       ]
     },

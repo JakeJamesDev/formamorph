@@ -216,19 +216,20 @@ export const isIdentifier = (name: string): boolean => IDENTIFIER.test(name);
 /** One member step: `.Name` for an identifier, `["Name"]` for anything else. */
 export const memberStep = (name: string): string => (isIdentifier(name) ? `.${name}` : `[${JSON.stringify(name)}]`);
 
-/** Where a path starts: the world's `placeholders`, an owner entry's, or the persona's. */
-export type PlaceholderPathRoot = PlaceholderOwnerRef['kind'] | 'persona';
+/** Where a path starts: the world's `placeholders`, an owner entry's, the persona's, or the running stat's
+ *  owner's. */
+export type PlaceholderPathRoot = PlaceholderOwnerRef['kind'] | 'persona' | 'owner';
 
 /** The global each kind of owner's entry hangs off. */
 export const OWNER_GLOBAL: Record<PlaceholderOwnerRef['kind'], string> = { entity: 'entities', dictionary: 'dictionaries' };
 
 /** A path as the whole expression: `placeholders.Hair`, `entities["Old Molly"].placeholders["Eye Color"]`.
- *  Under an owner, the first segment is the owner's name, or `persona`. */
+ *  Under an owner, the first segment is the owner's name, or `persona` or `owner`. */
 export const placeholderPathExpression = (segments: readonly string[], root?: PlaceholderPathRoot): string => {
   const steps = (list: readonly string[]) => list.map(memberStep).join('');
   if (!root) return `placeholders${steps(segments)}`;
   const [owner, ...rest] = segments;
-  const head = root === 'persona' ? 'persona' : `${OWNER_GLOBAL[root]}${memberStep(owner)}`;
+  const head = root === 'persona' || root === 'owner' ? root : `${OWNER_GLOBAL[root]}${memberStep(owner)}`;
   return `${head}.placeholders${steps(rest)}`;
 };
 

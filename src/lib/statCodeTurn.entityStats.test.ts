@@ -52,13 +52,38 @@ describe('runStatCodeTurn entity owners', () => {
   });
   afterEach(() => vi.restoreAllMocks());
 
-  it('runs an entity stat’s code over its owner’s stats as `stats`', async () => {
-    const trust = stat({ id: 'trust', name: 'Trust', value: 30, code: 'return stats.Stock.value + (stats.Gold.name === "" ? 1 : 0);' });
+  it('runs an entity stat’s code over the world stats as `stats` and its owner’s as `owner.stats`', async () => {
+    const trust = stat({
+      id: 'trust', name: 'Trust', value: 30,
+      code: 'return owner.stats.Stock.value + stats.Gold.value * 2 + (stats.Stock.name === "" ? 20 : 0) + (owner.stats.Gold.name === "" ? 40 : 0);',
+    });
     const stock = stat({ id: 'stock', name: 'Stock', value: 12 });
     const out = await run([stat({ id: 'gold', name: 'Gold', value: 5 })], [owner('bram', [trust, stock])]);
-    expect(valueOf(out.owners?.bram.stats, 'trust')).toBe(13);
+    expect(valueOf(out.owners?.bram.stats, 'trust')).toBe(12 + 10 + 20 + 40);
     expect(out.owners?.bram.moved).toEqual(['trust']);
     expect(valueOf(out.stats, 'gold')).toBe(5);
+  });
+
+  it('hands world-stat code an empty `owner`, whose writes are dropped and reported', async () => {
+    const out = await run(
+      [stat({ id: 'gold', name: 'Gold', value: 5, code: 'const read = owner.stats.Trust.value; owner.stats.Trust.value = 99; return read + (owner.name === "" ? 7 : 0);' })],
+      [owner('bram', [stat({ id: 'trust', name: 'Trust', value: 30 })])],
+    );
+    expect(valueOf(out.stats, 'gold')).toBe(7);
+    expect(valueOf(out.owners?.bram.stats, 'trust')).toBe(30);
+    expect(vi.mocked(console.warn).mock.calls.map(([line]) => String(line)))
+      .toEqual(['Stat Gold wrote stats that do not exist: owner.stats.Trust.value']);
+  });
+
+  it('keeps the world stats read only in an entity stat’s code', async () => {
+    const out = await run(
+      [stat({ id: 'gold', name: 'Gold', value: 5 })],
+      [owner('bram', [stat({ id: 'trust', name: 'Trust', value: 30, code: 'stats.Gold.value = 99; return 1;' })])],
+    );
+    expect(valueOf(out.stats, 'gold')).toBe(5);
+    expect(valueOf(out.owners?.bram.stats, 'trust')).toBe(1);
+    expect(vi.mocked(console.warn).mock.calls.map(([line]) => String(line)))
+      .toEqual(['Stat Trust wrote read-only fields: stats.Gold.value']);
   });
 
   it('keeps the player’s code reading the player’s stats as `stats`', async () => {

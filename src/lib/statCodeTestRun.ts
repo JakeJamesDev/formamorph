@@ -7,7 +7,7 @@ import { allPlaceholders, placeholderOwners } from '@/lib/placeholderHomes';
 import { codePinText } from '@/lib/placeholderPins';
 import { PLACEHOLDER_PATH_SEPARATOR } from '@/lib/placeholders';
 import {
-  clampToOwnRange, CODE_BOUND_FIELDS, entityTraitsPath, executeStatCode, memberPath, SELF_WRITABLE_FIELDS, type CodeBoundField, type PlaceholderWrite,
+  clampToOwnRange, CODE_BOUND_FIELDS, entityTraitsPath, executeStatCode, memberPath, traitWritesPath, SELF_WRITABLE_FIELDS, type CodeBoundField, type PlaceholderWrite,
   type SandboxEntity, type SandboxPlaceholderNode, type StatWrite, type TraitWrite,
 } from '@/lib/statCodeExecutor';
 import type { AnalysisOptions, CodeEntityNames, CodePlaceholders, MissingName } from '@/lib/statCodeAnalysis';
@@ -236,8 +236,8 @@ export async function runTestCode(
   );
   const assumedField = missing ? { assumed } : {};
   if (outcome.error) return { error: outcome.error, value: null, writes: [], ...(pending && { pending: [] }), ...assumedField, dropped: [] };
-  // The executor names the empty persona ''.
-  const personaWrites = pending ? outcome.entities?.find(({ entity }) => entity === '') : undefined;
+  // The executor names the empty persona '', and the empty `owner` too, which it marks.
+  const personaWrites = pending ? outcome.entities?.find((row) => row.entity === '' && !row.owner) : undefined;
   const personaKeys = personaNode ? nodeKeys(personaNode) : new Set<string>();
   const isPersonaPin = (entry: PlaceholderWrite) => personaKeys.has(pinKey(entry.id, entry.path));
   const pinLine = (entry: PlaceholderWrite, at: string) => ('unpin' in entry ? `${at} unpinned` : `${at} = ${codePinText(entry.value)}`);
@@ -250,8 +250,8 @@ export async function runTestCode(
     // The path the code wrote, not the placeholder's bare name: that is what the author typed.
     ...(outcome.placeholders ?? []).filter((entry) => !isPersonaPin(entry)).map((entry) => pinLine(entry, placeholderPathLabel(entry.path))),
     ...(outcome.traits ?? []).map((entry) => switchLine('', entry)),
-    ...(outcome.entities ?? []).filter((entry) => entry !== personaWrites).flatMap(({ entity, traits: switched = [] }) =>
-      switched.map((entry) => switchLine(`${entityTraitsPath(entity)}.`, entry))),
+    ...(outcome.entities ?? []).filter((entry) => entry !== personaWrites).flatMap((row) =>
+      (row.traits ?? []).map((entry) => switchLine(`${traitWritesPath(row)}.`, entry))),
   ];
   const keep = missing ? droppedFilter(missing) : KEEP_DROPPED;
   const dropped = [
@@ -263,10 +263,13 @@ export async function runTestCode(
     ...droppedLine('acquired is read-only.', outcome.acquiredWrites),
     ...droppedLine('Unknown entity names.', outcome.unknownEntities?.filter(keep.entity)),
     ...droppedLine('Read-only fields.', outcome.readOnlyWrites),
-    ...(outcome.entities ?? []).flatMap(({ entity, unknownTraits, acquiredWrites }) => {
-      const at = (names: string[]) => names.map((name) => `${entityTraitsPath(entity)}.${name}`);
+    ...(outcome.entities ?? []).flatMap((row) => {
+      const { entity, unknownTraits, acquiredWrites } = row;
+      const at = (names: string[]) => names.map((name) => `${traitWritesPath(row)}.${name}`);
+      // No missing name sits under `owner`, so its unknown traits all stay.
+      const kept = row.owner ? () => true : keep.trait(entity);
       return [
-        ...droppedLine('Unknown trait names.', unknownTraits && at(unknownTraits.filter(keep.trait(entity)))),
+        ...droppedLine('Unknown trait names.', unknownTraits && at(unknownTraits.filter(kept))),
         ...droppedLine('acquired is read-only.', acquiredWrites && at(acquiredWrites)),
       ];
     }),
