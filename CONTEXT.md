@@ -247,6 +247,10 @@ _Avoid_: turn config
 The computed state delta a finished turn applies — history, clock, stats, discoveries.
 _Avoid_: turn state, commit object
 
+**Stat Request**:
+The stat pass's request, which asks the AI how a turn moved each owner's stats. It has three owner kinds, each with its own reply key: the played persona (`Player Character`), the loose world stats no one owns (`Other Stats`), and each present entity that owns stats (its name). A persona with no stats has no block and no key. Owner keys stay unique across all three kinds. The stat pass renames each owned stat to its request key before any chip renders; narration keeps raw names.
+_Avoid_: stat update (the prompt's name), player stats (for loose world stats)
+
 **Request Anatomy**:
 The labeled map of one assembled request — every message split into runs and marked as either the player's own prompt text or context the app assembled. Rendered in the AI Context viewer for real turns, and in Settings → Prompts → Narration → Anatomy for an example one built under the player's live generation settings. A sidecar alongside the messages, never part of them, so it never reaches an endpoint.
 _Avoid_: request breakdown, prompt map
