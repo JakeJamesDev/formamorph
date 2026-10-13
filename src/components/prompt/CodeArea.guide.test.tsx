@@ -94,23 +94,31 @@ describe('Read in the Guide on a code card', () => {
     expect(guideLink(await openCard()).getAttribute('href')).toBe('https://github.com/JakeJamesDev/formamorph/wiki/Tools#args');
   });
 
-  it('shows no link in the completion list’s pane, which takes no clicks', async () => {
-    const user = userEvent.setup();
-    render(<Harness initial="" />);
-    const field = await editor();
-    await user.click(field);
-    for (const [i, key] of [...'return sel'].entries()) {
-      await user.keyboard(key);
-      await waitFor(() => expect(field.textContent).toBe('return sel'.slice(0, i + 1)));
+  it('keeps the link in the completion list’s pane, opens the heading and closes the list', async () => {
+    const opener = vi.fn();
+    const unregister = registerDocsOpener(opener);
+    try {
+      const user = userEvent.setup();
+      render(<Harness initial="" />);
+      const field = await editor();
+      await user.click(field);
+      for (const [i, key] of [...'return sel'].entries()) {
+        await user.keyboard(key);
+        await waitFor(() => expect(field.textContent).toBe('return sel'.slice(0, i + 1)));
+      }
+      await waitFor(() => expect(document.querySelector('.cm-tooltip-autocomplete [aria-selected] .cm-completionLabel')?.textContent).toBe('self'));
+      const shown = await waitFor(() => {
+        const found = document.querySelector<HTMLElement>('.cm-completionInfo [data-code-card]');
+        expect(found).toBeTruthy();
+        return found!;
+      });
+      expect(shown.textContent).toContain('(global) self');
+      await user.click(guideLink(shown));
+      expect(opener).toHaveBeenCalledWith({ page: 'StatCodeGuide', anchor: 'self' });
+      await waitFor(() => expect(document.querySelector('.cm-tooltip-autocomplete')).toBeNull());
+    } finally {
+      unregister();
     }
-    await waitFor(() => expect(document.querySelector('.cm-tooltip-autocomplete [aria-selected] .cm-completionLabel')?.textContent).toBe('self'));
-    const shown = await waitFor(() => {
-      const found = document.querySelector<HTMLElement>('.cm-completionInfo [data-code-card]');
-      expect(found).toBeTruthy();
-      return found!;
-    });
-    expect(shown.textContent).toContain('(global) self');
-    expect(shown.querySelector('a')).toBeNull();
   });
 
   it('shows no link on a member or on console', async () => {

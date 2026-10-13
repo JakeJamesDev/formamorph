@@ -19,14 +19,12 @@ import {
 import { HelpButton } from "@/components/HelpButton";
 import { HintInfo } from "@/components/SettingsRows";
 import { statCodeName, statCodeNamed } from "@/lib/statCodeNames";
-import { entityCodeStats, entityTraitNames, worldTraitPlaces } from "@/lib/statCodeTraits";
-import { codeDictionaries } from "@/lib/statCodePlaceholders";
+import { statCodeWorldNames } from "@/lib/statCodeBoxOptions";
 import { worldPlaceholderPlaces } from "@/lib/statCodePlaceholderPlaces";
 import { useRenameField } from "@/lib/useCodeRename";
 import { StatCodeBox, type StatCodeBoxContext, type StatCodeBoxOwner } from "./StatCodeBox";
 import { blueprintGroupStats } from "@/lib/statLinks";
-import { statCodeOwners, type CodeOwners } from "@/lib/statCodeTargets";
-import { lazyLookup, statBoxLookup, type CodeCardWorld } from "@/lib/codeWorldLookup";
+import { statBoxLookups } from "@/lib/codeWorldLookup";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { PlaceholderNameField } from "@/components/prompt/PlaceholderField";
 import { useBodyMorphSources, useOwnerMorphSources, type MorphOwner } from "@/lib/useBodyMorphNames";
@@ -150,8 +148,9 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
     [store, isBlueprint],
   );
   // `stats` is the world's play stats in every box; `owner.stats` is the entity's own, or a Blueprint group's.
-  const worldStats = useMemo(() => statCodeNamed(world?.playStats ?? [], placeholders), [world?.playStats, placeholders]);
-  const worldStatNames = useMemo(() => namesOf(worldStats), [worldStats]);
+  const names = useMemo(() => statCodeWorldNames({
+    playStats: world?.playStats ?? [], playEntities, traits, traitGroups, entityGroups, placeholders, placeholderOwners, dictionaries,
+  }), [world?.playStats, playEntities, traits, traitGroups, entityGroups, placeholders, placeholderOwners, dictionaries]);
   const ownerStats = useMemo(() => {
     if (store) return codeNamedStats;
     if (!isBlueprint || !world) return [];
@@ -169,47 +168,21 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
   });
   // A link's name stays the Blueprint's, so its field never renames.
   const rename = link ? undefined : nameRename;
-  const codePlaceholders = useMemo(
-    () => ({ list: placeholders, owners: placeholderOwners, dictionaries: codeDictionaries(dictionaries, placeholders) }),
-    [placeholders, placeholderOwners, dictionaries],
-  );
-  const entityNames = useMemo(
-    () => entityTraitNames({ traits, traitGroups, entities: playEntities, entityGroups }, placeholders),
-    [traits, traitGroups, playEntities, entityGroups, placeholders],
-  );
-  const entityStats = useMemo(() => entityCodeStats(playEntities, placeholders), [playEntities, placeholders]);
-  const traitPlaces = useMemo(
-    () => worldTraitPlaces({ traits, traitGroups }, placeholders),
-    [traits, traitGroups, placeholders],
-  );
-  // Code reaches a trait by its code name, so completions, Test Code and the Variable menu share one list.
-  const traitNames = useMemo(() => traitPlaces.map((trait) => trait.name), [traitPlaces]);
   const placeholderPlaces = useMemo(
     () => worldPlaceholderPlaces({ list: placeholders, owners: placeholderOwners, groups: placeholderGroups }),
     [placeholders, placeholderOwners, placeholderGroups],
   );
-  // Cards read the authored world, so the library, which has none, gets no lookup. Built on a card's first question.
+  // Cards read the authored world, so the library, which has none, gets no lookup.
+  const boxLookups = useMemo(() => world && statBoxLookups(world), [world]);
   const lookup = useMemo(() => {
-    if (!world) return undefined;
-    let owners: CodeOwners | undefined;
-    const ownersOf = () => (owners ??= statCodeOwners({
-      stats: world.stats, statGroups: world.statGroups, entities: world.entities, placeholders: world.placeholders,
-    }));
+    if (!boxLookups) return undefined;
     const self: Stat = { ...stat, ...editingStat, id: stat.id, name: selfCodeName };
-    const cardWorld: CodeCardWorld = {
-      traits: world.traits, traitGroups: world.traitGroups, entities: world.entities, locations: world.locations,
-      stats: world.stats, statGroups: world.statGroups, placeholders, placeholderOwners, dictionaries,
-    };
-    return (timing: StatCodeTiming) => lazyLookup(() => statBoxLookup(ownersOf(), { owner, timing, self }, cardWorld));
-  }, [world, stat, editingStat, selfCodeName, owner, placeholders, placeholderOwners, dictionaries]);
+    return (timing: StatCodeTiming) => boxLookups({ owner, timing, self });
+  }, [boxLookups, stat, editingStat, selfCodeName, owner]);
   // One surface for both boxes: what completes in either is what runs in either.
   const codeContext = useMemo<StatCodeBoxContext>(() => ({
-    selfName: selfCodeName, owner, worldStats, worldStatNames, ownerStats, ownerStatNames,
-    placeholders: codePlaceholders, placeholderPlaces, traitNames, traitPlaces, traits, entities: entityNames, entityStats, lookup,
-  }), [
-    selfCodeName, owner, worldStats, worldStatNames, ownerStats, ownerStatNames,
-    codePlaceholders, placeholderPlaces, traitNames, traitPlaces, traits, entityNames, entityStats, lookup,
-  ]);
+    selfName: selfCodeName, owner, names, ownerStats, ownerStatNames, placeholderPlaces, lookup,
+  }), [selfCodeName, owner, names, ownerStats, ownerStatNames, placeholderPlaces, lookup]);
 
   const resetControl = (field: keyof StatLinkFields, label: string) => (link?.overridden.includes(field)
     ? <FieldReset field={label} stale={link.stale.includes(field)} onReset={() => link.reset(field)} />

@@ -10,15 +10,16 @@ import {
   clampToOwnRange, CODE_BOUND_FIELDS, entityTraitsPath, executeStatCode, memberPath, traitWritesPath, SELF_WRITABLE_FIELDS, type CodeBoundField,
   type OwnerStatWrites, type PlaceholderWrite, type SandboxEntity, type SandboxPlaceholderNode, type StatWrite, type TraitWrite,
 } from '@/lib/statCodeExecutor';
-import type { AnalysisOptions, CodeEntityNames, CodeOwnerKind, CodePlaceholders, MissingName } from '@/lib/statCodeAnalysis';
+import type { CodeEntityNames, MissingName } from '@/lib/statCodeAnalysis';
+import { cardWorldNames, type StatCodeNames } from '@/lib/statCodeBoxOptions';
 import { statCodeNamed } from '@/lib/statCodeNames';
-import { codeDictionaries, sandboxDictionaries, sandboxPlaceholders } from '@/lib/statCodePlaceholders';
+import { sandboxDictionaries, sandboxPlaceholders } from '@/lib/statCodePlaceholders';
 import { placeholderPathExpression, placeholderPathLabel } from '@/lib/statCodePaths';
 import type { StatCodeTiming } from '@/lib/statCodeTiming';
-import { entityCodeStats, entityTraitNames, sandboxTraits, unplayedEntities } from '@/lib/statCodeTraits';
+import { sandboxTraits, unplayedEntities } from '@/lib/statCodeTraits';
 import { activeStatEnabled } from '@/lib/traitEffects';
 import { startingGateStatsOf } from '@/lib/gateStats';
-import type { Stat, Trait, World } from '@/types';
+import type { Stat, World } from '@/types';
 
 /** Test Code names each bound a run wrote with its Details field label. */
 const BOUND_LABELS: Record<CodeBoundField, string> = { min: 'Min', max: 'Max', regen: 'Regen' };
@@ -30,51 +31,16 @@ const TEST_CLOCK: Record<StatCodeTiming, { deltaHours: number; elapsedHours: num
   after: { deltaHours: 1, elapsedHours: 1 },
 };
 
-/** The names a run reads and the editor's reader checks, all under their code names. */
-export interface StatCodeNames {
-  /** The world's stats under their code names. */
-  codeNamedStats: Stat[];
-  statNames: string[];
-  placeholders: CodePlaceholders;
-  traitNames: string[];
-  /** The world's traits, for the run's sandbox entries. */
-  traits: readonly Trait[];
-  /** Every authored entity's code name and trait code names. */
-  entities: CodeEntityNames[];
-  /** Each entity's own stats under their code names, by entity id. */
-  entityStats: Readonly<Record<string, readonly Stat[]>>;
-}
-
 /** The parts of an authored world a stat's code reaches. */
 export type StatCodeWorld = Pick<World, 'stats' | 'statGroups' | 'traits' | 'traitGroups' | 'entities' | 'entityGroups' | 'placeholders' | 'placeholderGroups' | 'dictionaries'>;
 
 /** The names of `world` as the stat panel reads them: the player's stats without Blueprints, and each entity's
  *  with its links. */
 export function statCodeNames(world: StatCodeWorld): StatCodeNames {
-  const list = allPlaceholders(world);
-  const play = playStatWorld({ stats: world.stats, statGroups: world.statGroups ?? [], entities: world.entities });
-  const codeNamedStats = statCodeNamed(play.stats, list);
-  return {
-    codeNamedStats,
-    statNames: codeNamedStats.map((stat) => stat.name).filter(Boolean),
-    placeholders: { list, owners: placeholderOwners(world), dictionaries: codeDictionaries(world.dictionaries, list) },
-    traitNames: statCodeNamed(world.traits, list).map((trait) => trait.name),
-    traits: world.traits,
-    entities: entityTraitNames({ ...world, entities: play.entities, traitGroups: world.traitGroups ?? [] }, list),
-    entityStats: entityCodeStats(play.entities, list),
-  };
+  return cardWorldNames({
+    ...world, traitGroups: world.traitGroups ?? [], placeholders: allPlaceholders(world), placeholderOwners: placeholderOwners(world),
+  });
 }
-
-/** The editor reader's options for code of the stat `selfName` names, under `names`, whose `statNames` are the
- *  world's. An owned or Blueprint stat names its `owner`; a world stat's `owner` is empty. */
-export const analysisOptionsOf = (
-  { placeholders, traitNames, entities, statNames }: Pick<StatCodeNames, 'placeholders' | 'traitNames' | 'entities' | 'statNames'>,
-  selfName?: string,
-  owner?: { kind: CodeOwnerKind; statNames: readonly string[] },
-): AnalysisOptions => ({
-  placeholders, traits: traitNames, entities, statNames, ownerStatNames: owner?.statNames ?? [],
-  ...(owner && { owner: owner.kind }), ...(selfName && { selfName }),
-});
 
 /** The owner a non-world stat's code runs under. */
 export interface TestRunOwner {

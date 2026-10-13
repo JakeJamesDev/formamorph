@@ -4,13 +4,11 @@ import { Meta, SectionTitle } from '@/components/ui/typography';
 import { renderCodeCard, renderCodeUses, rowText } from '@/components/prompt/codeCardView';
 import { CARD_BOX } from '@/components/prompt/codeSession';
 import { codeCard, type CodeCard } from '@/lib/codeCards';
-import { statBoxLookup, type CodeCardWorld } from '@/lib/codeWorldLookup';
+import { statBoxLookups, type CodeCardWorld } from '@/lib/codeWorldLookup';
 import type { CodeStatUse } from '@/lib/codeStatUses';
 import type { PlaceholderOwners } from '@/lib/placeholderHomes';
 import type { SurfaceAnalysisOptions } from '@/lib/statCodeAnalysis';
-import { STAT_CODE_SURFACE } from '@/lib/statCodeSurface';
-import { statCodeOwners } from '@/lib/statCodeTargets';
-import { entityTraitNames, worldTraitPlaces } from '@/lib/statCodeTraits';
+import { cardWorldNames, statBoxAnalysisOptions } from '@/lib/statCodeBoxOptions';
 import type { Dictionary, Entity, Placeholder, Stat, Trait } from '@/types';
 
 const stat = (id: string, name: string, extra: Partial<Stat> = {}): Stat =>
@@ -41,15 +39,10 @@ const world: CodeCardWorld = {
 };
 
 /** The options a stat code box passes, bound to the sample world and to Courage's own box. */
-const COURAGE_BOX: SurfaceAnalysisOptions = {
-  surface: STAT_CODE_SURFACE,
+const COURAGE_BOX: SurfaceAnalysisOptions = statBoxAnalysisOptions(cardWorldNames(world), {
   selfName: courage.name,
-  statNames: stats.map((entry) => entry.name),
-  traits: worldTraitPlaces(world, placeholders).map((place) => place.name),
-  entities: entityTraitNames(world, placeholders),
-  placeholders: { list: placeholders, owners: placeholderOwners, dictionaries: [{ id: fauna.id, name: fauna.name }] },
-  lookup: statBoxLookup(statCodeOwners({ stats, entities: world.entities, placeholders }), { owner: null, timing: 'after', self: courage }, world),
-};
+  lookup: statBoxLookups(world)({ owner: null, timing: 'after', self: courage }),
+});
 
 /** One sample: the code, with `|` where the pointer rests. */
 const SAMPLES = [

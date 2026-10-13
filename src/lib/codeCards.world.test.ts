@@ -28,7 +28,7 @@ const mara: Entity = {
   stats: [stat('mara-health', 'Health', { max: 10, starting: 5 })],
   statLinks: [link('mara-rage', { rage: { max: { value: 50, blueprint: 100 } } })],
 };
-const tom: Entity = { id: 'tom', name: 'Tom', persona: true, statLinks: [link('tom-rage')] };
+const tom: Entity = { id: 'tom', name: 'Tom', persona: true, statLinks: [link('tom-rage', { rage: { max: { value: 60, blueprint: 100 } } })] };
 // Kai's Link runs its own After code, so the Blueprint's After box doesn't run for Kai.
 const kai: Entity = { id: 'kai', name: 'Kai', statLinks: [link('kai-rage', { rage: { code: { value: 'return 1;', blueprint: '' } } })] };
 
@@ -142,8 +142,32 @@ describe('stat cards: routes', () => {
       .toEqual({ Type: 'Number', Range: '0 – 100', Owner: 'Blueprint', Bearers: 'Mara, Tom, Kai' });
   });
 
-  it('shows the Blueprint’s values for `persona.stats` when every playable holder links it', () => {
-    expect(rowsOf(cardAt('return persona.stats.Ra|ge.value;', worldBox))).toEqual({ Type: 'Number', Range: '0 – 100', Owner: 'Tom' });
+  it('shows the one playable entity’s Link Overrides for `persona.stats`, with its item (T15-1)', () => {
+    const card = cardAt('return persona.stats.Ra|ge.value;', worldBox);
+    expect(rowsOf(card)).toEqual({ Type: 'Number', Range: '0 – 60', Owner: 'Tom' });
+    expect(card?.item).toEqual({ kind: 'stat', statId: 'rage', entityId: 'tom' });
+  });
+
+  it('finds the uses of the one playable entity’s stat from its `persona.stats` card', () => {
+    const reader = stat('mood', 'Mood', { code: 'return persona.stats.Rage.value;' });
+    const options = box(null, reader, 'after', { ...world, stats: [health, fatigue, rage, calm, reader] });
+    const card = cardAt('return persona.stats.Ra|ge.value;', options);
+    expect(options.lookup!.uses(card!.item!).map((use) => [use.stat, use.line])).toEqual([['Mood', 1]]);
+  });
+
+  it('shows the one playable entity’s own stat for `persona.stats`, with its item', () => {
+    const ivy: Entity = { id: 'ivy', name: 'Ivy', persona: true, stats: [stat('ivy-rage', 'Rage', { max: 7 })] };
+    const options = box(null, health, 'after', { ...world, entities: [mara, kai, ivy] });
+    const card = cardAt('return persona.stats.Ra|ge.value;', options);
+    expect(rowsOf(card)).toEqual({ Type: 'Number', Range: '0 – 7', Owner: 'Ivy' });
+    expect(card?.item).toEqual({ kind: 'stat', statId: 'ivy-rage', entityId: 'ivy' });
+  });
+
+  it('shows the Blueprint’s values for `persona.stats` when every playable holder links it (Q34)', () => {
+    const lia: Entity = { id: 'lia', name: 'Lia', persona: true, statLinks: [link('lia-rage')] };
+    const card = cardAt('return persona.stats.Ra|ge.value;', box(null, health, 'after', { ...world, entities: [mara, tom, kai, lia] }));
+    expect(rowsOf(card)).toEqual({ Type: 'Number', Range: '0 – 100', Owner: 'Tom, Lia' });
+    expect(card?.item).toEqual({ kind: 'stat', statId: 'rage' });
   });
 
   it('shows only the owners for `persona.stats` when the playable holders’ stats differ', () => {
@@ -191,6 +215,13 @@ describe('`self` and `owner` cards', () => {
       { label: 'Stats', value: 'Health, Rage' }, { label: 'Traits', value: 'None' }, { label: 'Placeholders', value: 'None' },
     ]);
     expect(card?.item).toEqual({ kind: 'entity', entityId: 'mara' });
+  });
+
+  it('opens the owning entity’s card with its description, else keeps the `owner` line (T16-1)', () => {
+    const vex: Entity = { id: 'vex', name: 'Vex', playerDescription: 'A smuggler with debts.', stats: [stat('vex-luck', 'Luck')] };
+    const vexBox = box({ kind: 'entity', entityId: 'vex' }, vex.stats![0], 'after', { ...world, entities: [vex] });
+    expect(cardAt('return own|er.name;', vexBox)?.description).toBe('A smuggler with debts.');
+    expect(cardAt('return own|er.name;', maraBox)?.description).toMatch(/^The entity that owns this stat/);
   });
 
   it('says `owner` is empty in a world stat’s box, with nothing to open or search', () => {

@@ -302,7 +302,8 @@ function ownerCard(card: CodeCard, owner: CodeOwnerRecord | null): CodeCard {
     case undefined: return card;
     case 'empty': return { ...card, description: 'Holds nothing in a world stat’s code. Writing through it changes nothing.' };
     case 'blueprint': return { ...card, rows: [bearersRow(owner.bearers)] };
-    case 'entity': return { ...card, rows: entityRows(owner.entity), item: { kind: 'entity', entityId: owner.entity.entity.id } };
+    // The entity is a world name, so its own description replaces the global's line (T16-1).
+    case 'entity': return { ...card, ...entityDetails(owner.entity) };
   }
 }
 

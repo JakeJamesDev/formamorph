@@ -7,11 +7,9 @@ import { codeCard, placeholderHolders, type CodeCardItem } from './codeCards';
 import { boxUses, type CodeStatUse } from './codeStatUses';
 import type { CodeBox, CodeCardWorld, CodeWorldLookup } from './codeWorldLookup';
 import type { SurfaceAnalysisOptions } from './statCodeAnalysis';
-import { codeDictionaries } from './statCodePlaceholders';
+import { cardWorldNames, statBoxAnalysisOptions } from './statCodeBoxOptions';
 import { parseCode, resolveCodeName } from './statCodeResolver';
-import { STAT_CODE_SURFACE } from './statCodeSurface';
 import { statCodeBoxes, type CodeOwners, type StatCodeBox } from './statCodeTargets';
-import { entityTraitNames, worldTraitPlaces } from './statCodeTraits';
 
 /** An item other than a stat. */
 export type OtherUseItem = Exclude<CodeCardItem, { kind: 'stat' }>;
@@ -67,25 +65,16 @@ const boxOwnerOf = (box: StatCodeBox): CodeBox['owner'] => {
 export function itemUses(
   owners: CodeOwners, world: CodeCardWorld, item: OtherUseItem, lookupOf: (box: CodeBox) => CodeWorldLookup,
 ): CodeStatUse[] {
-  const { placeholders } = world;
-  const shared = {
-    surface: STAT_CODE_SURFACE,
-    statNames: owners.world.stats.map((stat) => owners.codeName(stat.name)),
-    placeholders: { list: placeholders, owners: world.placeholderOwners, dictionaries: codeDictionaries(world.dictionaries, placeholders) },
-    traits: worldTraitPlaces(world, placeholders).map((trait) => trait.name),
-    entities: entityTraitNames(world, placeholders),
-  };
+  const names = cardWorldNames(world);
   const matches = matcherOf(item, world);
   return statCodeBoxes(owners).flatMap((box) => {
     const owner = boxOwnerOf(box);
     const selfName = owners.codeName(box.stat.name);
-    const options: SurfaceAnalysisOptions = {
-      ...shared,
-      ...(owner && { owner: owner.kind }),
-      ownerStatNames: box.owner?.stats.map((stat) => owners.codeName(stat.name)) ?? [],
+    const options = statBoxAnalysisOptions(names, {
       selfName,
+      ...(owner && { owner: { kind: owner.kind, statNames: box.owner?.stats.map((stat) => owners.codeName(stat.name)) ?? [] } }),
       lookup: lookupOf({ owner, timing: box.timing, self: { ...box.stat, name: selfName } }),
-    };
+    });
     return boxUses(owners, box, matchingOffsets(box.code, options, matches));
   });
 }

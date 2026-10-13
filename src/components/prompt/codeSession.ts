@@ -372,8 +372,13 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
         // CodeMirror calls this for the selected option only, so a list of fifty builds one card.
         info: () => {
           const card = completionCard(doc, result, option.label, analysis);
-          if (card) return renderCodeCard(card);
-          return info ? renderInfoLine(info) : null;
+          if (!card) return info ? renderInfoLine(info) : null;
+          // The pane keeps the one link it can act on; the Guide opening closes the list.
+          const { view } = context;
+          const pane = renderCodeCard(card, { guide: () => { if (view) closeCompletion(view); } });
+          // A press keeps the editor's focus, so a browser that never focuses a link doesn't close the list first.
+          pane.addEventListener('mousedown', (event) => event.preventDefault());
+          return pane;
         },
       })),
     };

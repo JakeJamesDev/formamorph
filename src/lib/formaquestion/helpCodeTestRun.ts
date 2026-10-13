@@ -4,7 +4,8 @@
  */
 import { statCodeDiagnostics, type AnalysisOptions, type CodeDiagnostic, type EntryNoun, type MissingName } from '@/lib/statCodeAnalysis';
 import { memberStep, placeholderPathExpression } from '@/lib/statCodePaths';
-import { analysisOptionsOf, findStat, missingSegments, runTestCode, statCodeNames, type StatCodeWorld, type TestCodeReport } from '@/lib/statCodeTestRun';
+import { statBoxAnalysisOptions } from '@/lib/statCodeBoxOptions';
+import { findStat, missingSegments, runTestCode, statCodeNames, type StatCodeWorld, type TestCodeReport } from '@/lib/statCodeTestRun';
 import type { StatCodeTiming } from '@/lib/statCodeTiming';
 
 /** The most characters of code one finding quotes. */
@@ -88,7 +89,7 @@ export async function testStatCode(code: string, box: StatCodeTiming, statName: 
   const found = findStat(world, names, statName.trim());
   const selfName = found?.stat.name ?? '';
   const owner = found?.owner && { kind: found.owner.entityId ? 'entity' as const : 'blueprint' as const, statNames: found.owner.stats.map((owned) => owned.name) };
-  const { missing, ...rest } = analysis(code, analysisOptionsOf(names, selfName, owner));
+  const { missing, ...rest } = analysis(code, statBoxAnalysisOptions(names, { selfName, owner }));
   return {
     world: true,
     ...rest,
