@@ -45,7 +45,3 @@ Saving retakes the turn's snapshot. (Time Per Turn, already merged, was the firs
 - **An empty Model** sent an empty checkpoint name, which ComfyUI rejects. It now uses the first checkpoint the server lists, and the placeholder says which.
 - **The Model row** shows the model file a workflow loads itself, greyed out, when the workflow has no `%ckpt%`. Today it shows a checkpoint that changes nothing.
 - **File Name:** a pattern per image preset sets where pictures are saved under ComfyUI's output folder, with `{world}`, `{subject}`, `{turn}` and `{preset}`, through a new `%prefix%` workflow token. Default `formamorph/{world}/{subject}`, instead of every picture landing loose as `ComfyUI_000xx.png`.
-
-## No empty system message
-
-A request whose system prompt is empty sends no system message, rather than an empty one, which some strict endpoints reject.
