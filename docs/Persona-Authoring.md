@@ -172,13 +172,13 @@ An entity's own stats become the player's stats while the player plays as it. Un
 
 | Where | What happens |
 |---|---|
-| Stat panel | The persona's stats show under its name, below your world's player stats. Pick "*name* (You)" in the entity picker, and no entity section shows. |
-| AI stat updates | The AI updates them with the player's stats. A stat with the same name as a world player stat stays a separate stat. |
+| Stat panel | The persona's stats show under its name, below your world's own stats. Pick "*name* (You)" in the entity picker, and no entity section shows. |
+| AI stat updates | The AI updates a persona's own stats under **Player Character**. A Custom Persona's stats read under **Other Stats**, after your world's. A stat with the same name as a world stat stays a separate stat. See [How the AI Tracks Stat Changes](World-Editor-Stats#how-the-ai-tracks-stat-changes). |
 | AI prompts | The narrator, choice writer and storyboard planner read the persona's own stats in its **Persona** block. Under a library persona, the **Custom Persona** entity's stats come after your world's stats under **Other Stats**. A stat with the same name as an earlier stat reads as "*name* (2)". |
 | Persona switch | Each entity keeps its values. Switch back, and they are as you left them. |
 | Library persona edits | A stat you add to a library persona joins the playthrough at its starting value, in a saved game too |
 
-**A persona's stat and a world player stat can share an id.** On a trait the persona owns, pick the stat from the persona's own list to change its own stat. Pick it from the **Player** list to change the world player stat.
+**A persona's stat and a world stat can share an id.** On a trait the persona owns, pick the stat from the persona's own list to change its own stat. Pick it from the **Player** list to change the world stat.
 
 ## The Persona Chip
 <!-- keywords: ai forgets my name, inject player info, prompt variable, missing from custom prompt, shows not available, where to place it, detail level, cache friendly order -->

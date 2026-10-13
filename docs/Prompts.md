@@ -309,6 +309,32 @@ Use **Only With** on the **Entities** chip. The chip then lists only the entitie
 - **Include doesn't change who stays.** An entity with stats stays even when you clear **Include → Stats**.
 - **The Persona chip has the same row.** A persona that fails the pick sends what no persona sends: `N/A`, or nothing when the chip has a **Header**, **Prepend** or **Append**.
 
+## How to Get Entity Stats Into a Custom Stat Prompt
+<!-- keywords: custom stat prompt, saved stat prompt, entity stats missing, stat updates skips entities, add entities chip, in scene chip, stat pass owner blocks, player character chip, other stats chip -->
+<!-- route: chipOptions -->
+
+The default **Stat Updates** prompt reads four blocks. A **Stat Updates** prompt you saved keeps its own chips, so it sends no entity stats until you add the **Entities** chip. The **Stats** chip sends no In Scene entity's stats.
+
+| Chip | Header | Sends |
+|---|---|---|
+| **Persona** | Player Character | The persona's traits and stats |
+| **Entities** | In Scene | Each present entity that owns stats |
+| **Stats** | Other Stats | World stats that no persona or entity owns |
+| **Traits** | Other Traits | World traits that no persona or entity owns |
+
+1. Open the **Prompts** tab in Settings, in **Advanced** mode. Select **Stat Updates** in a preset of your own.
+2. Put the cursor after your **Persona** chip. Select the **Entities** chip in the bar.
+3. Select the placed chip to open Chip Options.
+4. Set **Scope** to **In Scene**.
+5. Under **Only With**, check **Stats**.
+6. Set **Content** to **Summary**. Under **Include**, check **Traits** and **Stats**. Under **Stat Detail**, check all three pieces.
+7. In **Header**, type `In Scene`.
+8. In the format section of the prompt, add a line that lists the reply keys: `Player Character`, `Other Stats` and each In Scene entity's name.
+
+- **An entity's reply key is its name, as the block shows it.** A name that clashes with an earlier owner reads as "*name* (2)".
+- **Set the Persona chip's Only With, Content and Include rows the same way.** Keep its **Header** as `Player Character`. A persona with no stats sends no block.
+- **A world's own Stats prompt follows the same steps.** See [World Prompts and the Diff Viewer](#world-prompts-and-the-diff-viewer).
+
 ## World Prompts and the Diff Viewer
 <!-- keywords: custom prompt notice, compare, green and red, what changed, authors instructions, ignore, use mine instead, overrides my preset, raw, side by side -->
 <!-- route: worldPrompts -->
