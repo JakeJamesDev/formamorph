@@ -4,7 +4,7 @@ import type { ChipScene } from './chipScene';
 import { defaultStatUpdatesPrompt, textStatUpdatesPrompt } from '@/components/game/GamePrompts';
 import { renderPromptTemplate } from '../promptTemplate';
 import { layerValues } from '../promptValues';
-import { createStatRequest, statRequestSchema } from '../statRequest';
+import { createStatRequest, keyedScene, statRequestSchema } from '../statRequest';
 import { PLAYER_OWNER } from '../statOwners';
 import { NONE_PLACEHOLDER } from '../promptFallbacks';
 import { ownerStatParts, statPlacementOf } from '../statContext';
@@ -79,7 +79,7 @@ describe("the persona's own stats in the Persona chip", () => {
 
   it('names a clashing stat by the numbered key the stat request gives it', () => {
     const request = createStatRequest([health], PLAYER_OWNER, {
-      personas: [travelerOwner],
+      persona: travelerOwner,
     });
     expect(request.targets.find((target) => target.id === 'own-health')?.key).toBe('Health (2)');
     expect(values('<PERSONA|markdown>')).toContain('**Health (2):**');
@@ -128,11 +128,11 @@ describe("the persona's own stats in the Persona chip", () => {
 
 describe('the stat request with a played persona that owns stats', () => {
   const request = createStatRequest([health], PLAYER_OWNER, {
-    personas: [travelerOwner],
+    persona: travelerOwner,
   });
-  const ctx = chipValues(scene());
+  const ctx = chipValues(keyedScene(scene(), request));
 
-  it('renders the schema prompt, its keys and the text pass as before the stats fold', () => {
+  it('renders the schema prompt in owner blocks, its keys, and the text pass as before the stats fold', () => {
     expect(renderPromptTemplate(defaultStatUpdatesPrompt, layerValues(ctx, request.context))).toMatchInlineSnapshot(`
       "You are the stat tracker for an interactive roleplay. Each stat is a number that tracks one thing about one character, and it changes only when the story changes it. The narrator reads the stats each turn to decide what the characters can do and how they act. You read what happened this turn and record how it moved the stats of each character listed below. Your entire output is one JSON object - nothing else.
 
@@ -140,13 +140,21 @@ describe('the stat request with a played persona that owns stats', () => {
       A quiet stretch of coast.
 
       ## Stats
-      Each character's stats sit under their name, a ### heading, and belong to that character. When a character's stats sit in groups, a group bullet names what the stats nested under it share. A group holds no reading of its own; you record changes on its stats.
+      Each character's stats sit under their name and belong to that character: the player's character in the Player Character block, each other character present this turn in the In Scene block. When stats sit in groups, a group bullet names what the stats nested under it share. A group holds no reading of its own; you record changes on its stats.
       Current readings (shown as current-value/maximum) with what each stat means, so you know each stat's level, range, and purpose. Output only the CHANGE this turn, never a value and never that value/max format.
-      ### Player Character
+
+      ## Player Character
+      - **Traveler**
+        - **pronouns:** they/them
+        - **summary:** A quiet traveler.
+        - **traits:** Scarred
+        - **stats:**
+          - **Calm:** 30/100 — Composure.
+          - **Body:**
+            - **Health (2):** 10/100 (Winded) — Old wounds.
+
+      ## Other Stats
       - **Health:** 62/100 — Physical stamina.
-      - **Calm:** 30/100 — Composure.
-      - **Body:**
-        - **Health (2):** 10/100 — Old wounds.
 
       ## What to change
       - The RIGHT stat in the RIGHT direction is what matters most. A rough amount on the stat the turn actually moved beats a precise amount on the wrong one.
@@ -157,7 +165,7 @@ describe('the stat request with a played persona that owns stats', () => {
       - Each stat belongs to the character it sits under. A stat moves only for what that character does, goes through, or feels this turn.
 
       ## Format
-      - One key per character, named exactly as its heading shows. Under it, two keys per stat of that character: the stat's name, holding this turn's change to the stat's value, and the stat's name followed by " max", holding this turn's change to the stat's maximum. Each is one signed whole number between -20 and 20.
+      - One key per character: "Player Character" for the player's character, each In Scene character's name exactly as the block shows it, and "Other Stats" for the Other Stats block. Under it, two keys per stat of that character: the stat's name, holding this turn's change to the stat's value, and the stat's name followed by " max", holding this turn's change to the stat's maximum. Each is one signed whole number between -20 and 20.
       - Put the sign on the number: a leading minus lowers the stat.
       - A value or maximum that did not move gets 0.
       - Write the whole object on one line."
@@ -194,6 +202,26 @@ describe('the stat request with a played persona that owns stats', () => {
         "schema": {
           "additionalProperties": false,
           "properties": {
+            "Other Stats": {
+              "additionalProperties": false,
+              "properties": {
+                "Health": {
+                  "maximum": 20,
+                  "minimum": -20,
+                  "type": "integer",
+                },
+                "Health max": {
+                  "maximum": 20,
+                  "minimum": -20,
+                  "type": "integer",
+                },
+              },
+              "required": [
+                "Health",
+                "Health max",
+              ],
+              "type": "object",
+            },
             "Player Character": {
               "additionalProperties": false,
               "properties": {
@@ -203,11 +231,6 @@ describe('the stat request with a played persona that owns stats', () => {
                   "type": "integer",
                 },
                 "Calm max": {
-                  "maximum": 20,
-                  "minimum": -20,
-                  "type": "integer",
-                },
-                "Health": {
                   "maximum": 20,
                   "minimum": -20,
                   "type": "integer",
@@ -222,15 +245,8 @@ describe('the stat request with a played persona that owns stats', () => {
                   "minimum": -20,
                   "type": "integer",
                 },
-                "Health max": {
-                  "maximum": 20,
-                  "minimum": -20,
-                  "type": "integer",
-                },
               },
               "required": [
-                "Health",
-                "Health max",
                 "Health (2)",
                 "Health (2) max",
                 "Calm",
@@ -241,6 +257,7 @@ describe('the stat request with a played persona that owns stats', () => {
           },
           "required": [
             "Player Character",
+            "Other Stats",
           ],
           "type": "object",
         },

@@ -8,18 +8,23 @@ import { personaContextValues } from '@/lib/personaContext';
 import { SAMPLE_PREVIEW_VALUES } from '@/lib/previewValuePool';
 import { layerValues } from '@/lib/promptValues';
 import type { ResolvedPersona } from '@/lib/persona';
+import type { PlayerStat } from '@/types';
 
 // The spec's default coverage table, written out: the expectation must not come from the templates it checks.
 const FULL: PromptTextKey[] = [
   'systemPrompt', 'thinkingPrompt', 'directorPrompt', 'storyboardPrompt', 'characterPrompt', 'sceneTagsPrompt',
 ];
-const SUMMARY: PromptTextKey[] = ['choicesPrompt'];
+const SUMMARY: PromptTextKey[] = ['choicesPrompt', 'statUpdatesPrompt'];
 const NAME: PromptTextKey[] = ['summaryPrompt', 'milestoneSelectPrompt', 'diaryPrompt'];
 const COVERED = new Set<PromptTextKey>([...FULL, ...SUMMARY, ...NAME]);
 // The prompts whose persona block is headed "Player Character"; the scene-tags prompt has its own header.
 const HEADED: PromptTextKey[] = [
-  'characterPrompt', 'choicesPrompt', 'directorPrompt', 'storyboardPrompt', 'systemPrompt', 'thinkingPrompt',
+  'characterPrompt', 'choicesPrompt', 'directorPrompt', 'statUpdatesPrompt', 'storyboardPrompt', 'systemPrompt', 'thinkingPrompt',
 ];
+// The persona owns a stat, so a block that sends only a persona with stats renders it.
+const personaStats: PlayerStat[] = [{
+  id: 'fixture-nerve', name: 'Nerve', type: 'number', description: 'Steadiness.', min: 0, max: 100, value: 40, regen: 0, descriptors: [],
+}];
 
 const persona: ResolvedPersona = {
   source: 'library',
@@ -64,7 +69,7 @@ describe('the persona chip in the default prompts', () => {
   });
 
   it.each(styles)('sends the persona to the covered prompts and nowhere else, in the $name preset', ({ values }) => {
-    const ctx = layerValues(SAMPLE_PREVIEW_VALUES, personaContextValues(persona));
+    const ctx = layerValues(SAMPLE_PREVIEW_VALUES, personaContextValues(persona, undefined, personaStats));
     for (const key of PROMPT_TEXT_KEYS) {
       const out = renderPromptTemplate(values[key], ctx);
       expect(out.includes('Persona Fixture'), key).toBe(COVERED.has(key));
@@ -78,7 +83,7 @@ describe('the persona chip in the default prompts', () => {
     const headed = PROMPT_TEXT_KEYS.filter((key) => parsePromptTemplate(values[key]).some((seg) =>
       seg.type === 'variable' && variableForToken(seg.token) === PERSONA && splitToken(seg.token)?.header === 'Player Character'));
     expect(headed.sort()).toEqual(HEADED);
-    const ctx = layerValues(SAMPLE_PREVIEW_VALUES, personaContextValues(persona), { 'header:{{user}}': 'Persona Fixture' });
+    const ctx = layerValues(SAMPLE_PREVIEW_VALUES, personaContextValues(persona, undefined, personaStats), { 'header:{{user}}': 'Persona Fixture' });
     const heading = { markdown: '## Player Character', labels: 'PLAYER CHARACTER:', xml: '<player_character>' }[style];
     for (const key of HEADED) expect(renderPromptTemplate(values[key], ctx), key).toContain(`\n${heading}\n`);
   });

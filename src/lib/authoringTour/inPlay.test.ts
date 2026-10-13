@@ -69,9 +69,10 @@ describe('computeInPlay readers', () => {
     const byPrompt = Object.fromEntries(readers.map((r) => [r.prompt, r]));
     expect(byPrompt['Narration Prompt'].text).toMatch(/^## Other Stats\n/);
     expect(byPrompt['Narration Prompt'].text).not.toMatch(/\d/);
-    // The shipped Stat Updates prompt places its Stats chip with no Header.
-    expect(byPrompt['Stat Updates Prompt'].text).toBe('- **Sea Change:** 10/100 — How far the sea has claimed you.');
-    expect(byPrompt['Stat Updates Prompt'].marks).toEqual([{ start: 4, end: 14 }]);
+    // The shipped Stat Updates prompt heads its Stats chip Other Stats too, and reads the number.
+    expect(byPrompt['Stat Updates Prompt'].text).toBe('## Other Stats\n- **Sea Change:** 10/100 — How far the sea has claimed you.');
+    const start = '## Other Stats\n- **'.length;
+    expect(byPrompt['Stat Updates Prompt'].marks).toEqual([{ start, end: start + 'Sea Change'.length }]);
 
     const none = computeInPlay(step('stat-name'), world, 'w1', { location: 'well', stat: 'sea' },
       templates({ 'Stat Updates Prompt': 'Track stats with no Stats chip.' })).readers;

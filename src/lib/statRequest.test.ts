@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Placeholder, PlayerStat } from '@/types';
 import {
-  createStatRequest, readStatResponse, applyStatResponse, statResponseChanges, statRequestSchema, PLAYER_STAT_HEADING,
+  createStatRequest, readStatResponse, applyStatResponse, statResponseChanges, statRequestSchema, OTHER_STATS_HEADING,
   type StatRequestSnapshot, type StatResponse, type StatUpdateDiagnostic,
 } from './statRequest';
 import type { ResponseSchemaNode } from './aiRequest/responseSchema';
@@ -35,7 +35,7 @@ describe('stat request names', () => {
       ...material, statRequest: snapshot,
     });
     expect(request.systemPrompt).toContain('- **Health:** 100/100 — Physical condition.');
-    expect(request.statRequest?.targets).toEqual([{ id: 'health', name, plainName: 'Health', ownerId: PLAYER_OWNER, ownerKey: PLAYER_STAT_HEADING, key: 'Health', maxKey: 'Health max' }]);
+    expect(request.statRequest?.targets).toEqual([{ id: 'health', name, plainName: 'Health', ownerId: PLAYER_OWNER, ownerKey: OTHER_STATS_HEADING, key: 'Health', maxKey: 'Health max' }]);
     expect(snapshot.context('<STATS DESCRIPTION>')).not.toContain(name === '`Health`' ? '`' : name);
   });
 
@@ -128,8 +128,8 @@ describe('stat request names', () => {
   });
 
   it('keeps two owners of one stat id apart in the reply', () => {
-    const snapshot: StatRequestSnapshot = { id: 'r', context: () => undefined, textContext: () => undefined, entityKeys: [], targets: [
-      { ownerId: PLAYER_OWNER, id: 'health', name: 'Health', plainName: 'Health', ownerKey: PLAYER_STAT_HEADING, key: 'Health', maxKey: 'Health max' },
+    const snapshot: StatRequestSnapshot = { id: 'r', context: () => undefined, textContext: () => undefined, entityKeys: [], inSceneIds: [], targets: [
+      { ownerId: PLAYER_OWNER, id: 'health', name: 'Health', plainName: 'Health', ownerKey: OTHER_STATS_HEADING, key: 'Health', maxKey: 'Health max' },
       { ownerId: 'bram', id: 'health', name: 'Bram Health', plainName: 'Bram Health', ownerKey: 'Bram', key: 'Health', maxKey: 'Health max' },
     ] };
     expect(readStatResponse('Health: -5\nBram Health: -9', snapshot).updates).toEqual([
@@ -171,15 +171,15 @@ const keywordsIn = (node: ResponseSchemaNode): string[] => [
 
 describe('the schema request', () => {
   const stats = [stat({ name: '**Vigor**' }), stat({ id: 'resolve', name: 'Resolve' }), stat({ id: 'vigor-2', name: 'Vigor' })];
-  const json = (body: unknown) => JSON.stringify({ [PLAYER_STAT_HEADING]: body });
+  const json = (body: unknown) => JSON.stringify({ [OTHER_STATS_HEADING]: body });
 
-  it('requires every stat under the player, each a bounded change beside a bounded max change', () => {
+  it('requires every loose stat under Other Stats, each a bounded change beside a bounded max change', () => {
     const { name, schema } = statRequestSchema(createStatRequest(stats));
     const bounded = { type: 'integer', minimum: -20, maximum: 20 };
     const keys = ['Vigor', 'Vigor max', 'Resolve', 'Resolve max', 'Vigor (2)', 'Vigor (2) max'];
     expect(name).toBe('stat_changes');
-    expect(schema).toEqual({ type: 'object', additionalProperties: false, required: [PLAYER_STAT_HEADING], properties: {
-      [PLAYER_STAT_HEADING]: {
+    expect(schema).toEqual({ type: 'object', additionalProperties: false, required: [OTHER_STATS_HEADING], properties: {
+      [OTHER_STATS_HEADING]: {
         type: 'object', additionalProperties: false, required: keys,
         properties: Object.fromEntries(keys.map((key) => [key, bounded])),
       },
@@ -217,7 +217,7 @@ describe('the schema request', () => {
     expect(fenced.diagnostics).toEqual([{ name: 'Mana', reason: 'unknown' }, { name: 'Vigor', reason: 'invalid' }]);
     expect(readStatResponse(JSON.stringify({ Bram: { Trust: 2 } }), snapshot).diagnostics)
       .toEqual([{ name: 'Bram', reason: 'unknown' }]);
-    expect(readStatResponse('{"Player Character":{"Vigor":-4,', snapshot)).toMatchObject({
+    expect(readStatResponse('{"Other Stats":{"Vigor":-4,', snapshot)).toMatchObject({
       updates: [], diagnostics: [{ reason: 'invalid' }],
     });
   });

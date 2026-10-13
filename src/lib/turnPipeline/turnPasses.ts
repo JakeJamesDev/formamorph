@@ -457,7 +457,7 @@ export function statUpdatesRequest(
   const { systemPrompt, messages, maxTokens, anatomy } = textRequest;
   return {
     ...labeledRequest(
-      { ...shared, maxTokens: statSchemaCap(statRequest.targets.length, 1 + statRequest.entityKeys.length) },
+      { ...shared, maxTokens: statSchemaCap(statRequest.targets.length, new Set(statRequest.targets.map((t) => t.ownerKey)).size) },
       systemTiled(prompts.system, layerValues(values.ctx, statRequest.context)),
       userTiled(prompts.user, user),
     ),

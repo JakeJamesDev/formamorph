@@ -3568,19 +3568,24 @@ const GameViewer = ({
 
   /** A stat request snapshot over the player's live `stats`, the played entities' live stats and the live stats
    *  of the `present` entities in `values`, marked for the text pass when its endpoint has refused the schema. */
-  const statRequestFor = (stats: readonly PlayerStat[], present: readonly Entity[], values: EntityStatValues): StatRequestSnapshot =>
-    createStatRequest(stats, PLAYER_OWNER, {
+  const statRequestFor = (stats: readonly PlayerStat[], present: readonly Entity[], values: EntityStatValues): StatRequestSnapshot => {
+    const playedOwners = personaStatOwners(
+      playedEntities, values, (owned) => resolveStatNames(owned, resolvePH), entityInForceUnder(ownedTraits),
+      (groups) => resolveStatGroupTexts(groups, resolvePH),
+    );
+    return createStatRequest(stats, PLAYER_OWNER, {
       textPass: !schemaAccepted(resolveEndpointForKind("statUpdates").reasoning),
       placement: { groups: resolveStatGroupTexts(authoredStatGroups, resolvePH), authored: authoredStats },
-      personas: personaStatOwners(
-        playedEntities, values, (owned) => resolveStatNames(owned, resolvePH), entityInForceUnder(ownedTraits),
-        (groups) => resolveStatGroupTexts(groups, resolvePH),
-      ),
+      // The played persona's stats are the Player Character's; any other played entity's join the loose ones.
+      persona: playedOwners.find((owner) => owner.id === persona?.entity.id),
+      played: playedOwners.filter((owner) => owner.id !== persona?.entity.id),
       entities: statRequestOwners(
         present, values, personaRef, (owned) => resolveStatNames(owned, resolvePH), entityInForceUnder(ownedTraits),
         (groups) => resolveStatGroupTexts(groups, resolvePH),
       ),
+      inSceneIds: present.map((entity) => entity.id),
     });
+  };
   /** The defined entities among a turn's participants, as the diary fan-out resolves them. */
   const presentEntitiesOf = (participants: readonly TurnPassSubject[]): Entity[] =>
     participants.flatMap((subject) => subject.entity ? [subject.entity] : []);
