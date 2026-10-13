@@ -443,6 +443,20 @@ describe('chip options reference', () => {
   });
 });
 
+describe('code hover card reference', () => {
+  it('shows the card and the Find All Uses list in both themes, writing no storage', async () => {
+    const user = userEvent.setup();
+    renderShowcase();
+    await user.click(screen.getByRole('tab', { name: 'Code Hover Card' }));
+
+    const region = screen.getByRole('region', { name: 'Code Hover Card Reference' });
+    for (const theme of ['Light Theme', 'Dark Theme']) {
+      expect(within(within(region).getByRole('region', { name: theme })).getByRole('region', { name: 'Stat' })).toHaveTextContent('stats.Fatigue');
+    }
+    expect(localStorage).toHaveLength(0);
+  });
+});
+
 describe('surface app bar reference', () => {
   it('draws the bar in order with a sample world name and its controls, touching no storage', async () => {
     const user = userEvent.setup();

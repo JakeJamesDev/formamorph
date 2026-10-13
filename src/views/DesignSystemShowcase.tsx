@@ -10,6 +10,7 @@ import { PresetHeaderReference } from '@/components/design-system/PresetHeaderRe
 import { LandingPulseReference } from '@/components/design-system/LandingPulseReference';
 import { PanelCrashCardReference } from '@/components/design-system/PanelCrashCardReference';
 import { ChipOptionsReference } from '@/components/design-system/ChipOptionsReference';
+import { CodeCardReference } from '@/components/design-system/CodeCardReference';
 import { useDevRoute } from '@/lib/devRouter';
 import { BookOpen, MonitorCog } from 'lucide-react';
 import { OptionSwitcher, Row, Section } from '@/components/SettingsRows';
@@ -431,6 +432,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Chip Options',
     description: 'Chip settings in a centered dialog, with a live sample of what the chip sends',
     Component: ChipOptionsReference,
+  },
+  {
+    id: 'code-card',
+    label: 'Code Hover Card',
+    description: 'The card a code editor shows for a name, and its Find All Uses list',
+    Component: CodeCardReference,
   },
 ];
 

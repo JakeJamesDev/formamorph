@@ -65,8 +65,8 @@ function build(view: EditorView): DecorationSet {
   return builder.finish();
 }
 
-/** A code card's box: the hover card, and the pinned card and its uses list. */
-const CARD_BOX = {
+/** A code card's box: the hover card, and the pinned card and its uses list. The Design System reference draws the same one. */
+export const CARD_BOX = {
   border: '1px solid hsl(var(--border))',
   borderRadius: '0.375rem',
   backgroundColor: 'hsl(var(--popover))',
