@@ -6,6 +6,7 @@
 import type { SyntaxNode } from '@lezer/common';
 import { isMethodEntry, type CodeAccess, type SurfaceEntry } from '@/lib/codeSurface';
 import { canBePlayer } from '@/lib/bearers';
+import type { DocTarget } from '@/lib/docs/docsLinks';
 import type {
   CodeDictionaryRecord, CodeEntityRecord, CodeOwnerRecord, CodePlaceholderRecord, CodeStatRecord, CodeTraitRecord, CodeWorldLookup,
 } from '@/lib/codeWorldLookup';
@@ -64,7 +65,9 @@ export interface CodeCardValues {
 /** An action a card offers. */
 export type CodeCardLink =
   /** Move the caret to the declaration at `at`, on `line` (from 1). */
-  | { id: 'goToLine'; at: number; line: number };
+  | { id: 'goToLine'; at: number; line: number }
+  /** Read the global's section of the Guide. */
+  | { id: 'guide'; target: DocTarget };
 
 export interface CodeCard {
   /** The span of code the card describes. */
@@ -338,7 +341,9 @@ export function codeCard(code: string, pos: number, options: SurfaceAnalysisOpti
   switch (name.kind) {
     case 'global': {
       const entry = [...options.surface.globals, ...options.surface.builtins].find((candidate) => candidate.name === name.key);
-      const card = entry ? fromEntry(entry, 'global', entry.name, span) : null;
+      const base = entry ? fromEntry(entry, 'global', entry.name, span) : null;
+      const target = entry && options.surface.guide?.[entry.name];
+      const card = base && target ? { ...base, links: [{ id: 'guide' as const, target }] } : base;
       return card && options.lookup ? boxGlobal(card, options.lookup) : card;
     }
     case 'member': {

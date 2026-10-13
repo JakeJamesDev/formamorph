@@ -177,6 +177,26 @@ The **Handler** tab sets the Tool Handler: the part that runs when the AI calls 
 
 When you switch the **Handler Type**, the editor keeps the settings of the other types until you close it.
 
+### What a Script Can Read
+
+A script reads four values. Each one is frozen: a script reads it and cannot change it.
+
+#### Args
+
+`args` holds the values the AI sent, one member for each parameter that has a name. An optional parameter is missing when the AI leaves it out. A **One of a List** parameter holds one of its options.
+
+#### World
+
+`world` holds the world's `entities`, `locations` and `dictionary`. `world.entities` includes the entities the game discovered during play. `world.dictionary` lists the enabled dictionary entries only.
+
+#### Scene
+
+`scene` holds the state of the current scene: `location`, `present`, `inScene`, `stats`, `traits`, `persona`, `notes` and `time`. `scene.location` is `null` when the scene has no location. `scene.time` is `null` while the story clock is off.
+
+#### Placeholders
+
+`placeholders` holds the resolved text of each shared placeholder, by name. A name with a space needs brackets: `placeholders["Place Name"]`.
+
 ## Try It
 
 **Try It** shows on the selected Tool and next to the editor. See [How to Try a Tool](#how-to-try-a-tool). In the editor it runs the Tool as it would save, so you can test a change before **Save Tool**.
