@@ -60,6 +60,7 @@ import { buildSharedPreset, type SharedPreset, type ImportedPreset } from '../li
 import { clampMaxOutput, isMaxOutputKind, shippedMaxOutput } from '../lib/promptMaxOutput';
 import { resolvePinnedPreset } from '../lib/worldPromptPreset';
 import { buildStyledValues } from '../lib/sectionStyle';
+import { builtinStatTextPrompts } from '../lib/statTextPrompts';
 import { defaultPromptSampler, type PromptSamplerMap, type PromptSampler } from '../lib/promptSamplers';
 import {
   resolvePromptEndpoint, endpointSignature, routedPresetId, routeMap,
@@ -979,6 +980,11 @@ function useProvideSettings() {
   const activePresetId = effectiveStore.activeId;
   const activePresetIsBuiltIn = isBuiltInActive(effectiveStore);
   const activeSectionStyle = activeStyle(effectiveStore);
+  // The stat pass's text fallback: a built-in preset's styled pair; null on a user preset, whose text goes as written.
+  const statTextPrompts = useMemo(
+    () => (activePresetIsBuiltIn ? builtinStatTextPrompts(activeSectionStyle) : null),
+    [activePresetIsBuiltIn, activeSectionStyle],
+  );
   const builtinPresets = BUILTIN_PRESETS.map(({ id, name }) => ({ id, name }));
   const promptPresets = presetStore.presets.map((p) => ({ id: p.id, name: p.name }));
   // While a world is pinned, choosing a preset re-pins that world rather than moving the global selection —
@@ -1868,6 +1874,7 @@ function useProvideSettings() {
     activePresetId,
     activePresetIsBuiltIn,
     activeSectionStyle,
+    statTextPrompts,
     beginSessionPreset,
     endSessionPreset,
     /** True while the open world is pinned to a preset — Settings uses it to explain the selector's scope. */

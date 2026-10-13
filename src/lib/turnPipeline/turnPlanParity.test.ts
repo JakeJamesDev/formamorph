@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { planTurn } from './planTurn';
-import { TURN_PASSES, milestoneSelectPass, statTextPrompts } from './turnPasses';
+import { TURN_PASSES, milestoneSelectPass } from './turnPasses';
 import type { TurnMaterial, TurnPassId, TurnPassRecord } from './turnPlan';
 import type { ChatMessage } from '@/types';
 import { planDirective } from '@/components/game/GamePrompts';
@@ -87,14 +87,18 @@ const assertRendersTemplate = (systemPrompt: string, template: string): void => 
   }
 };
 
+/** The text prompt from its rules on, less the owner rule the recorded prompt lacks. */
+const sharedStatTail = (template: string): string =>
+  template.slice(template.indexOf('## What to change')).replace(/^- The stats under Player Character.*\n/m, '');
+
 const templateById: Partial<Record<TurnPassId, string>> = {
   locationAuto: PROMPTS.locationChange,
   director: PROMPTS.director,
   character: PROMPTS.character,
   storyboard: PROMPTS.storyboard,
   choices: PROMPTS.choices,
-  // The run predates the schema request: a replay with no stat snapshot sends the text pass it recorded.
-  statUpdates: statTextPrompts(PROMPTS.statUpdates, PROMPTS.statUpdatesUser).system,
+  // The run predates the schema request: a replay with no stat snapshot sends the text pass.
+  statUpdates: PROMPTS.statText.system ?? PROMPTS.statUpdates,
   summary: PROMPTS.summary,
   timePassed: PROMPTS.timePassed,
   openingTime: PROMPTS.openingTime,
@@ -152,7 +156,11 @@ describe('turn plan parity with the recorded run', () => {
       expect([id, built.silent], `${id} silent flag`).toEqual([id, request.silent]);
       expect([id, built.attachTurnId ?? null], `${id} attached turn`).toEqual([id, request.attachTurnId]);
       const template = templateById[id];
-      if (template) assertRendersTemplate(request.systemPrompt, template);
+      if (template) {
+        assertRendersTemplate(built.systemPrompt, template);
+        // The recorded text prompt has no owner blocks; only its shared tail is matched.
+        assertRendersTemplate(request.systemPrompt, id === 'statUpdates' ? sharedStatTail(template) : template);
+      }
       // Messages the fixture holds every input for.
       if (!pass.fanOut && id !== 'storyboard') {
         expect(built.messages, `${id} messages`).toEqual(request.messages);

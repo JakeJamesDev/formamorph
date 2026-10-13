@@ -5,13 +5,15 @@ import { renderPromptTemplate } from '@/lib/promptTemplate';
 import { layerValues } from '@/lib/promptValues';
 import { planTurn } from './planTurn';
 import type { ChatMessage, Entity, PlayerStat } from '@/types';
-import type { TurnMaterial, TurnPassId, TurnPassRecord, TurnPlanInput, TurnSettings } from './turnPlan';
+import type { TurnMaterial, TurnPassId, TurnPassRecord, TurnPlanInput, TurnPrompts, TurnSettings } from './turnPlan';
+import type { SectionStyle } from '@/lib/promptPresets';
 import { runsTile } from '@/lib/requestAnatomy';
 import { TEST_PROMPTS, testInput } from './turnTestInputs';
 import {
   INLINE_THINKING_DIRECTIVE, OPENING_SCENE_CUE, planDirective, defaultChoicesPrompt,
-  defaultStatUpdatesPrompt, defaultStatUpdatesUserPrompt, textStatUpdatesPrompt, textStatUpdatesUserPrompt,
+  defaultStatUpdatesPrompt, defaultStatUpdatesUserPrompt,
 } from '@/components/game/GamePrompts';
+import { builtinStatTextPrompts, statTextFor } from '@/lib/statTextPrompts';
 import { createStatRequest, statRequestSchema } from '@/lib/statRequest';
 import { PLAYER_OWNER } from '@/lib/statOwners';
 
@@ -71,20 +73,44 @@ const playerStat = (id: string, name: string): PlayerStat => ({
 
 describe('the stat request', () => {
   const health = createStatRequest([playerStat('health', 'Health')]);
-  const shipped = (over: Partial<TurnMaterial>, prompts = { statUpdates: defaultStatUpdatesPrompt, statUpdatesUser: defaultStatUpdatesUserPrompt }) =>
-    pass('statUpdates').buildRequest(input({ prompts: { ...TEST_PROMPTS, ...prompts } }, { statCount: 1 }), material(over));
+  const builtin = (style: SectionStyle) => statTextFor(builtinStatTextPrompts(style), false);
+  const shipped = (over: Partial<TurnMaterial>, prompts: Partial<TurnPrompts> = {}) =>
+    pass('statUpdates').buildRequest(
+      input({
+        prompts: {
+          ...TEST_PROMPTS, statUpdates: defaultStatUpdatesPrompt, statUpdatesUser: defaultStatUpdatesUserPrompt,
+          statText: builtin('markdown'), ...prompts,
+        },
+      }, { statCount: 1 }),
+      material(over),
+    );
 
-  it('sends the shipped prompts with the schema, and today’s text pass as the fallback', () => {
+  it('sends the shipped prompts with the schema, and the built-in text pass as the fallback', () => {
     const request = shipped({ statRequest: health });
+    const text = builtinStatTextPrompts('markdown');
     expect(request.responseSchema).toEqual(statRequestSchema(health));
     expect(request.systemPrompt).toContain('Your entire output is one JSON object');
     expect(request.systemPrompt).toContain('## Other Stats\n- **Health:** 80/100');
     expect(request.messages[0].content).toContain('0 for every value and maximum it did not move');
-    expect(request.textFallback?.systemPrompt).toBe(renderPromptTemplate(textStatUpdatesPrompt, layerValues(material().ctx, health.context)));
+    expect(request.textFallback?.systemPrompt).toBe(renderPromptTemplate(text.system, layerValues(material().ctx, health.context)));
     expect(request.textFallback?.messages[0].content)
-      .toBe(renderPromptTemplate(textStatUpdatesUserPrompt, { '<NARRATION>': material().narration }));
+      .toBe(renderPromptTemplate(text.user, { '<NARRATION>': material().narration }));
     expect(request.textFallback?.maxTokens).toBe(32);
     expect(runsTile(request.textFallback!.systemPrompt, request.textFallback!.anatomy!.system)).toBe(true);
+  });
+
+  it.each([
+    ['labels', 'STATS:', '## Stats'],
+    ['xml', '<stats>', '## Stats'],
+  ] as const)('runs the text pair of a %s built-in in that style on a schema refusal', (style, marker, markdown) => {
+    const request = shipped({ statRequest: health }, { statText: builtin(style) });
+    const text = builtinStatTextPrompts(style);
+    expect(request.textFallback?.systemPrompt).toBe(renderPromptTemplate(text.system, layerValues(material().ctx, health.context)));
+    expect(request.textFallback?.systemPrompt).toContain('Your entire output is stat-change lines');
+    expect(request.textFallback?.systemPrompt).toContain(marker);
+    expect(request.textFallback?.systemPrompt).not.toContain(markdown);
+    expect(request.textFallback?.messages[0].content)
+      .toBe(renderPromptTemplate(text.user, { '<NARRATION>': material().narration }));
   });
 
   it('renders every chip from the stat pass context, with the snapshot’s stats over it', () => {
@@ -96,12 +122,24 @@ describe('the stat request', () => {
     expect(shipped({ statRequest: health }, prompts).systemPrompt).toContain('WORLD TURN-LOCATION');
   });
 
-  it('sends a custom prompt as written on both paths, the schema still riding the first', () => {
-    const request = shipped({ statRequest: health }, { statUpdates: 'MY STATS <STATS DESCRIPTION>', statUpdatesUser: 'MY USER <NARRATION>' });
+  it('sends a user preset as written on both paths, the schema still riding the first', () => {
+    const custom = { statUpdates: 'MY STATS <STATS DESCRIPTION>', statUpdatesUser: 'MY USER <NARRATION>', statText: { system: null, user: null } };
+    const request = shipped({ statRequest: health }, custom);
     expect(request.responseSchema).toEqual(statRequestSchema(health));
     expect(request.systemPrompt).toBe(request.textFallback?.systemPrompt);
     expect(request.messages).toEqual(request.textFallback?.messages);
     expect(request.systemPrompt.startsWith('MY STATS')).toBe(true);
+  });
+
+  it('sends a world’s own Stats prompt as written on the fallback, with the built-in preset’s text user message', () => {
+    const text = builtinStatTextPrompts('markdown');
+    const request = shipped({ statRequest: health }, {
+      statUpdates: 'WORLD STATS <STATS DESCRIPTION>', statText: statTextFor(text, true),
+    });
+    expect(request.textFallback?.systemPrompt).toBe(request.systemPrompt);
+    expect(request.textFallback?.systemPrompt.startsWith('WORLD STATS')).toBe(true);
+    expect(request.textFallback?.messages[0].content)
+      .toBe(renderPromptTemplate(text.user, { '<NARRATION>': material().narration }));
   });
 
   it('sends the text pass alone for an endpoint that refused the schema', () => {

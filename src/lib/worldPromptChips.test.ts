@@ -137,7 +137,7 @@ describe('the standalone re-rolls, which render outside a turn', () => {
     expect(choicesSystemPrompt(WORLD.promptOverrides!.choicesPrompt!, 'English', ctx))
       .toBe(passRequest('choices', false, [SLOW]).systemPrompt);
     expect(statUpdatesRequest(
-      { system: WORLD.promptOverrides!.statUpdatesPrompt!, user: TEST_PROMPTS.statUpdatesUser },
+      { system: WORLD.promptOverrides!.statUpdatesPrompt!, user: TEST_PROMPTS.statUpdatesUser, text: TEST_PROMPTS.statText },
       { ctx, action: '', narration: '' },
       { statCount: 1, quiet: false },
     ).systemPrompt).toBe('STATS A salt marsh. Let the scene move slowly.');

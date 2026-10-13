@@ -92,6 +92,7 @@ import { PresetHeader } from '@/components/presetHeader/PresetHeader';
 import { presetHeaderActions } from '@/lib/presetHeaderActions';
 import { OPENING_SCENE_CUE, PROMPT_TEXT_DEFAULTS } from '../game/GamePrompts';
 import { buildStyledValues } from '@/lib/sectionStyle';
+import { statTextFor } from '@/lib/statTextPrompts';
 import { isDesktop } from '@/lib/imageGen/desktop';
 import { fetchComfyMeta, DEFAULT_COMFY_WORKFLOW, type ComfyMeta } from '@/lib/imageGen/comfyui';
 import { fetchInvokeMeta, invokeConnectionMessage, encodersFor, vaesFor, PREFIXED_BASES, type InvokeMeta } from '@/lib/imageGen/invokeai';
@@ -438,6 +439,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     builtinPresets,
     activePresetId,
     activeSectionStyle,
+    statTextPrompts,
     presetPinnedToWorld,
     activePresetIsBuiltIn,
     selectPreset,
@@ -886,6 +888,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
       choicesUser: choicesUserPrompt,
       statUpdates: statUpdatesPrompt,
       statUpdatesUser: statUpdatesUserPrompt,
+      statText: statTextFor(statTextPrompts, false),
       summary: summaryPrompt,
       summaryUser: summaryUserPrompt,
       milestoneSelect: milestoneSelectPrompt,
@@ -902,7 +905,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     systemPrompt, recapUserPrompt, nowLinePrompt, rehydrateUserPrompt,
     locationChangePromptText, locationChangeUserPrompt, thinkingPrompt, directorPrompt, directorUserPrompt,
     characterPrompt, storyboardPrompt, narrationUserPrompt, oocDirectivePrompt,
-    choicesPrompt, choicesUserPrompt, statUpdatesPrompt, statUpdatesUserPrompt,
+    choicesPrompt, choicesUserPrompt, statUpdatesPrompt, statUpdatesUserPrompt, statTextPrompts,
     summaryPrompt, summaryUserPrompt, timePassedPrompt, timePassedUserPrompt,
     openingTimePrompt, openingTimeUserPrompt, diaryPrompt, sceneTagsPrompt, sceneTagsUserPrompt,
     discoverEntityPrompt, discoverEntityUserPrompt, milestoneSelectPrompt, milestoneSelectUserPrompt,

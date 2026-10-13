@@ -1,5 +1,5 @@
 import type { ChatMessage } from '@/types';
-import type { TurnPassRecord, TurnPassRequest, TurnPlanInput, TurnMaterial, TurnPassSubject } from './turnPlan';
+import type { TurnPassRecord, TurnPassRequest, TurnPlanInput, TurnMaterial, TurnPassSubject, TurnPrompts } from './turnPlan';
 import { renderPromptTemplateRuns, promptTemplatePieces } from '@/lib/promptTemplate';
 import { layerValues, type TokenValues } from '@/lib/promptValues';
 import {
@@ -30,10 +30,6 @@ import {
   stripOocDirectives,
   planDirective,
   INLINE_THINKING_DIRECTIVE,
-  defaultStatUpdatesPrompt,
-  defaultStatUpdatesUserPrompt,
-  textStatUpdatesPrompt,
-  textStatUpdatesUserPrompt,
 } from '@/components/game/GamePrompts';
 
 /**
@@ -425,11 +421,17 @@ export const choicesPass: TurnPassRecord<string[]> = {
   parseResponse: (raw) => parseChoices(raw),
 };
 
-/** The text pass's prompts. A prompt still at its shipped default takes the text wording; a custom one is
- *  sent as written. */
-export const statTextPrompts = (system: string, user: string): { system: string; user: string } => ({
-  system: system === defaultStatUpdatesPrompt ? textStatUpdatesPrompt : system,
-  user: user === defaultStatUpdatesUserPrompt ? textStatUpdatesUserPrompt : user,
+/** The stat pass's prompts: the schema request's, and the text pass's where a built-in preset supplies them. */
+export interface StatPrompts {
+  system: string;
+  user: string;
+  text: TurnPrompts['statText'];
+}
+
+/** The text pass's prompts. A side with no built-in text wording is sent as written. */
+const resolveStatText = ({ system, user, text }: StatPrompts): { system: string; user: string } => ({
+  system: text.system ?? system,
+  user: text.user ?? user,
 });
 
 /**
@@ -439,18 +441,18 @@ export const statTextPrompts = (system: string, user: string): { system: string;
  * to translate.
  */
 export function statUpdatesRequest(
-  prompts: { system: string; user: string },
+  prompts: StatPrompts,
   values: { ctx: TokenValues; action: string; narration: string },
   base: { statCount: number; statRequest?: StatRequestSnapshot; quiet: boolean },
 ): TurnPassRequest<ChatMessage> {
   const { statRequest } = base;
   const user = { '<PLAYER ACTION>': values.action, '<NARRATION>': values.narration };
   const shared = { type: 'statUpdates' as const, silent: false, quiet: base.quiet, statRequest };
-  const text = statTextPrompts(prompts.system, prompts.user);
+  const text = resolveStatText(prompts);
   const textStats = statRequest ? playerTargets(statRequest).length : base.statCount;
   const textRequest = labeledRequest(
     { ...shared, maxTokens: statUpdatesCap(textStats) },
-    systemTiled(text.system, layerValues(values.ctx, statRequest?.textContext)),
+    systemTiled(text.system, layerValues(values.ctx, statRequest?.context)),
     userTiled(text.user, user),
   );
   if (!statRequest || statRequest.textPass) return textRequest;
@@ -482,7 +484,7 @@ export const statUpdatesPass: TurnPassRecord<ReturnType<typeof parseStatUpdates>
   // Entities join once the narration names who is present, and the text pass skips them.
   isReady: (material) => statRequestReady(material.statRequest),
   buildRequest: (input, material) => statUpdatesRequest(
-    { system: input.prompts.statUpdates, user: input.prompts.statUpdatesUser },
+    { system: input.prompts.statUpdates, user: input.prompts.statUpdatesUser, text: input.prompts.statText },
     { ctx: material.statCtx ?? material.ctx, action: material.effectiveAction, narration: material.narration },
     { statCount: input.settings.statCount, statRequest: material.statRequest, quiet: quietInBatch(input) },
   ),

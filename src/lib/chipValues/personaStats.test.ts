@@ -132,7 +132,7 @@ describe('the stat request with a played persona that owns stats', () => {
   });
   const ctx = chipValues(keyedScene(scene(), request));
 
-  it('renders the schema prompt in owner blocks, its keys, and the text pass as before the stats fold', () => {
+  it('renders the schema prompt in owner blocks, its keys, and the text pass in the same owner blocks', () => {
     expect(renderPromptTemplate(defaultStatUpdatesPrompt, layerValues(ctx, request.context))).toMatchInlineSnapshot(`
       "You are the stat tracker for an interactive roleplay. Each stat is a number that tracks one thing about one character, and it changes only when the story changes it. The narrator reads the stats each turn to decide what the characters can do and how they act. You read what happened this turn and record how it moved the stats of each character listed below. Your entire output is one JSON object - nothing else.
 
@@ -170,18 +170,28 @@ describe('the stat request with a played persona that owns stats', () => {
       - A value or maximum that did not move gets 0.
       - Write the whole object on one line."
     `);
-    expect(renderPromptTemplate(textStatUpdatesPrompt, layerValues(ctx, request.textContext))).toMatchInlineSnapshot(`
-      "You are the stat tracker for an interactive roleplay. You read what happened this turn and record how it moved the player's stats. Your entire output is stat-change lines - nothing else.
+    expect(renderPromptTemplate(textStatUpdatesPrompt, layerValues(ctx, request.context))).toMatchInlineSnapshot(`
+      "You are the stat tracker for an interactive roleplay. You read what happened this turn and record how it moved the stats of the player's character and of the world. Your entire output is stat-change lines - nothing else.
 
       ## Game World
       A quiet stretch of coast.
 
-      ## Player Stats
+      ## Stats
+      When there is a Player Character block, it holds the player's stats. The Other Stats block holds the rest.
       Current readings (shown as current-value/maximum) with what each stat means, so you know each stat's level, range, and purpose. Output only the CHANGE this turn, never a value and never that value/max format.
+
+      ## Player Character
+      - **Traveler**
+        - **pronouns:** they/them
+        - **summary:** A quiet traveler.
+        - **traits:** Scarred
+        - **stats:**
+          - **Calm:** 30/100 — Composure.
+          - **Body:**
+            - **Health (2):** 10/100 (Winded) — Old wounds.
+
+      ## Other Stats
       - **Health:** 62/100 — Physical stamina.
-      - **Calm:** 30/100 — Composure.
-      - **Body:**
-        - **Health (2):** 10/100 — Old wounds.
 
       ## What to change
       - The RIGHT stat in the RIGHT direction is what matters most. A rough amount on the stat the turn actually moved beats a precise amount on the wrong one.
@@ -189,6 +199,7 @@ describe('the stat request with a played persona that owns stats', () => {
       - List a stat only for a change you can point to in the narration - a real exertion, injury, loss, or gain. A stat being relevant, on the character's mind, or thematically related is NOT a change. When you're unsure whether a stat moved, leave it out.
       - Report each stat that genuinely moved and no others. If two stats plainly shifted, give both; if one did, give one; if none did, give nothing. Don't pad the list with a related-but-unmoved stat, and don't drop one the turn clearly hit.
       - The amount is a rough judgment, not a calculation - no one knows the exact number. Pick a small whole number scaled loosely to the stat's range and how big the moment was, and commit to it. Never report the value because you're unsure of the change.
+      - The stats under Player Character belong to that character. They move only for what that character does, goes through, or feels this turn.
 
       ## Format
       - One line per changed stat: its exact name from the list above (written plainly - never a + or - on the name), a colon, then one signed whole number. Nothing else on the line.
