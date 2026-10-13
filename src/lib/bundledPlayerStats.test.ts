@@ -138,9 +138,12 @@ describe.each([...OWNING, 'emberwatch'])('stat code in the %s world', (id) => {
   const coded = held.flatMap(({ owner, stats }) => stats.filter((s) => s.code?.trim() || s.beforeCode?.trim()).map((s) => ({ owner, stats, stat: s })));
 
   it('runs every stat to a number under its own owner', async () => {
-    for (const { owner, stats, stat } of coded) {
+    const entities = sandboxEntities(world, held);
+    const worldStats = held.find((o) => o.owner === WORLD_OWNER)?.stats ?? [];
+    for (const { owner, stat } of coded) {
+      const own = owner === WORLD_OWNER ? undefined : entities.find((e) => e.name === owner);
       for (const code of [stat.beforeCode, stat.code].filter((c): c is string => !!c?.trim())) {
-        const res = await executeStatCode(code, stats, stat, { entities: sandboxEntities(world, held) });
+        const res = await executeStatCode(code, worldStats, stat, { entities, owner: own });
         expect(res.error, `${owner}: ${stat.name}`).toBeNull();
         expect(typeof res.value, `${owner}: ${stat.name}`).toBe('number');
       }

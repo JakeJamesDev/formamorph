@@ -140,7 +140,7 @@ describe('runStatCodeTurn writes to other stats', () => {
   it('lets an entity stat’s code write its owner’s other stats, and only its owner’s', async () => {
     const calm = stat({ id: 'calm', name: 'Calm', value: 10 });
     const out = await run([stat({ id: 'calm', name: 'Calm', value: 70 })], {
-      owners: [owner('bram', [hub('stats.Calm.value += 5;'), calm]), owner('odette', [calm])],
+      owners: [owner('bram', [hub('owner.stats.Calm.value += 5;'), calm]), owner('odette', [calm])],
     });
     expect(valueOf(out.owners?.bram.stats, 'calm')).toBe(15);
     expect(out.owners?.bram.moved).toEqual(['calm']);
@@ -155,7 +155,7 @@ describe('runStatCodeTurn writes to other stats', () => {
       ...linkedStat(original, { id: `link-${original.id}`, originalId: original.id, kind: 'stat', originalName: original.name, groupId: null }),
       value,
     });
-    const blueprintHub = hub('stats.Trust.value = stats.Trust.value * 2;');
+    const blueprintHub = hub('owner.stats.Trust.value = owner.stats.Trust.value * 2;');
     const trust = stat({ id: 'trust', name: 'Trust' });
     const out = await run([], {
       owners: [owner('bram', [copy(blueprintHub, 0), copy(trust, 10)]), owner('odette', [copy(blueprintHub, 0), copy(trust, 25)])],
