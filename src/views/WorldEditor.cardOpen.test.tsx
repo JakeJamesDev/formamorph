@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { benchEditorWorld, entityFieldsTab, renderWorldEditorBench } from '@/test/worldEditorBench';
 import type { CodeCardItem } from '@/lib/codeCards';
+import type { CodeCardNavigation } from '@/lib/codeCardNavigation';
 import type { World } from '@/types';
 
 /** A code card's Open, from a stat's code box to the item in the World Editor. */
@@ -23,11 +24,11 @@ vi.mock('react-toastify', () => ({
   ToastContainer: () => null,
 }));
 
-// CodeMirror arrives on its own chunk; a plain field stands in for it and hands over the box's Open.
-const opens = vi.hoisted(() => new Map<string, ((item: CodeCardItem) => void) | undefined>());
+// CodeMirror arrives on its own chunk; a plain field stands in for it and hands over the box's navigation.
+const navigations = vi.hoisted(() => new Map<string, CodeCardNavigation | undefined>());
 vi.mock('@/components/prompt/CodeArea', () => ({
-  CodeArea: (props: { value: string; ariaLabel: string; onOpenItem?: (item: CodeCardItem) => void }) => {
-    opens.set(props.ariaLabel, props.onOpenItem);
+  CodeArea: (props: { value: string; ariaLabel: string; navigation?: CodeCardNavigation }) => {
+    navigations.set(props.ariaLabel, props.navigation);
     return <textarea aria-label={props.ariaLabel} value={props.value} readOnly />;
   },
 }));
@@ -54,7 +55,7 @@ let scrolled: Element[];
 const realScroll = Element.prototype.scrollIntoView;
 beforeEach(() => {
   localStorage.clear();
-  opens.clear();
+  navigations.clear();
   scrolled = [];
   Element.prototype.scrollIntoView = function scrollIntoView(this: Element) { scrolled.push(this); };
 });
@@ -67,7 +68,7 @@ function openFromWarmth(item: CodeCardItem) {
   fireEvent.mouseDown(screen.getByRole('tab', { name: /Stats/ }));
   fireEvent.click(screen.getByText('Warmth'));
   fireEvent.mouseDown(within(screen.getByRole('tablist', { name: 'Stat Fields' })).getByRole('tab', { name: 'Code' }));
-  const open = opens.get('Stat Code After the AI');
+  const open = navigations.get('Stat Code After the AI')?.open;
   expect(open, 'the box has an Open').toBeTypeOf('function');
   act(() => open!(item));
 }
@@ -95,7 +96,7 @@ describe('Open from a code card', () => {
   it.each<[string, CodeCardItem, string, string]>([
     ['stat', { kind: 'stat', statId: 'm-nerve', entityId: 'mara' }, 'Stats', 'Nerve'],
     ['trait', { kind: 'trait', traitId: 'm-wary', entityId: 'mara' }, 'Traits', 'Wary'],
-  ])('opens an entity’s own %s on its tab and reveals the row', async (_, item, tab, name) => {
+  ])('navigations an entity’s own %s on its tab and reveals the row', async (_, item, tab, name) => {
     renderWorldEditorBench(WORLD, 'advanced');
     openFromWarmth(item);
 

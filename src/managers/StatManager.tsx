@@ -41,6 +41,7 @@ import { labelPlaceholders } from "@/lib/placementLetters";
 import { CODE_BOX_TARGET, CODE_FIELD, REPLACE_CODE_TITLE, replaceCodeDescription, type StatCodeTiming } from "@/lib/statCodeTiming";
 import { findTargetRow, routeText } from "@/lib/surface/surfaceTargets";
 import { useLanding } from "@/lib/surface/useLanding";
+import { useCodeUseReveal } from "@/lib/codeUseReveal";
 import type { FocusFieldHint, RegenUnit, Stat, StatDescriptor, StatLinkFields, StatType, ThresholdUnit } from "@/types";
 import { REGEN_UNIT_LABELS, REGEN_UNITS, regenPer, regenPerHour, regenUnitOf } from "@/lib/regenUnits";
 import { FieldReset, LabelRow } from '@/components/editor/BlueprintReset';
@@ -282,6 +283,12 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
     const owning = focusField ? statTabForField(focusField.fieldKey) : null;
     if (owning) onTabChange(owning);
   }, [focusField, onTabChange]);
+
+  // A Find All Uses row bound for one of this stat's boxes shows it on the Code tab.
+  const reveal = useCodeUseReveal(stat.id, store?.ownerId ?? null);
+  useEffect(() => {
+    if (reveal) onTabChange('code');
+  }, [reveal, onTabChange]);
 
   // The help window's Insert writes a box the way typing does, then shows that box on the Code tab.
   const landOnBox = useLanding(findBox, { focus: boxEditor });
@@ -618,6 +625,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
         value={editingStat.beforeCode || ""}
         onChange={(beforeCode) => handleChange("beforeCode", beforeCode)}
         context={codeContext}
+        reveal={reveal?.timing === 'before' ? reveal : null}
       />
       <StatCodeBox
         timing="after"
@@ -625,6 +633,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
         value={editingStat.code || ""}
         onChange={(nextCode) => handleChange("code", nextCode)}
         context={codeContext}
+        reveal={reveal?.timing === 'after' ? reveal : null}
       />
     </div>
   );

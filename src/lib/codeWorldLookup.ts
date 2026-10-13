@@ -9,6 +9,7 @@ import { effectiveCopy } from './blueprints';
 import { editorGateInput, resolveBearers, type BearerWorld } from './bearers';
 import { startingGateStats } from './gateStats';
 import { pinsTargeting, type PinEditorWorld } from './placeholderPins';
+import { statUses, type CodeStatUse, type StatUseItem } from './codeStatUses';
 import { blueprintGroupStats } from './statLinks';
 import { placeholderPathMap } from './statCodePaths';
 import { codeDictionaries } from './statCodePlaceholders';
@@ -85,6 +86,8 @@ export interface CodeWorldLookup {
   dictionary(key: string): CodeDictionaryRecord | null;
   /** The entities the player can play. */
   persona(): readonly string[];
+  /** Every box and line whose code reaches the stat. */
+  statUses(item: StatUseItem): CodeStatUse[];
 }
 
 /** Whose code a box holds: an entity's own stat or Link, or a Blueprint stat. */
@@ -126,6 +129,7 @@ export function lazyLookup(make: () => CodeWorldLookup): CodeWorldLookup {
     entity: (key) => at().entity(key),
     dictionary: (key) => at().dictionary(key),
     persona: () => at().persona(),
+    statUses: (item) => at().statUses(item),
   };
 }
 
@@ -321,5 +325,6 @@ export function statBoxLookup(owners: CodeOwners, box: CodeBox, world?: CodeCard
     },
     dictionary: (key) => cards()?.dictionary(key) ?? null,
     persona: () => owners.playable.map(entityName),
+    statUses: (item) => statUses(owners, item),
   };
 }

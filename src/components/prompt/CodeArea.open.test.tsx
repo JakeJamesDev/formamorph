@@ -21,7 +21,7 @@ function Harness({ initial, onOpenItem }: { initial: string; onOpenItem?: (item:
   return (
     <CodeArea
       value={value} onChange={setValue} ariaLabel="Stat code" surface={STAT_CODE_SURFACE} statNames={['Fatigue']}
-      lookup={lookup} onOpenItem={onOpenItem}
+      lookup={lookup} navigation={onOpenItem && { open: onOpenItem, goToUse: vi.fn() }}
     />
   );
 }

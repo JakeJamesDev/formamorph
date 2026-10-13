@@ -2,8 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { ReactNode } from 'react';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { CodeCardOpenContext } from '@/lib/codeCardOpen';
-import type { CodeCardItem } from '@/lib/codeCards';
+import { CodeCardNavigationContext, type CodeCardNavigation } from '@/lib/codeCardNavigation';
 import { StatCodeTemplateDialog } from '@/components/modals/StatCodeTemplateDialog';
 import { ToolEditor } from '@/components/modals/ToolEditor';
 import EntityEditorModal from '@/components/modals/EntityEditorModal';
@@ -12,17 +11,18 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { sampleToolSnapshot } from '@/lib/tools/toolSnapshot';
 import type { Entity, Stat, Tool } from '@/types';
 
-/** The hosts that hide Open: each sits under the World Editor's Open, and its code box must not take it. */
+/** The hosts that hide Open and Find All Uses: each sits under the World Editor's navigation, and its code box
+ *  must not take it. */
 
 vi.mock('@/services/EntityStorageService', () => ({
   default: { getEntityData: vi.fn(), getEntityMetadata: vi.fn().mockResolvedValue([]), storeEntity: vi.fn().mockResolvedValue(undefined) },
 }));
 
-// A plain field stands in for CodeMirror and records the Open each box was handed.
-const opens = vi.hoisted(() => new Map<string, unknown>());
+// A plain field stands in for CodeMirror and records the navigation each box was handed.
+const navigations = vi.hoisted(() => new Map<string, unknown>());
 vi.mock('@/components/prompt/CodeArea', () => ({
-  CodeArea: (props: { value: string; ariaLabel: string; onOpenItem?: (item: CodeCardItem) => void }) => {
-    opens.set(props.ariaLabel, props.onOpenItem);
+  CodeArea: (props: { value: string; ariaLabel: string; navigation?: CodeCardNavigation }) => {
+    navigations.set(props.ariaLabel, props.navigation);
     return <textarea aria-label={props.ariaLabel} value={props.value} readOnly />;
   },
 }));
@@ -35,20 +35,20 @@ if (typeof window.matchMedia !== 'function') {
   })) as unknown as typeof window.matchMedia;
 }
 
-const worldOpen = vi.fn();
+const worldNavigation: CodeCardNavigation = { open: vi.fn(), goToUse: vi.fn() };
 const underWorldEditor = (tree: ReactNode) => render(
   <SettingsProvider>
     <TooltipProvider>
-      <CodeCardOpenContext.Provider value={worldOpen}>{tree}</CodeCardOpenContext.Provider>
+      <CodeCardNavigationContext.Provider value={worldNavigation}>{tree}</CodeCardNavigationContext.Provider>
     </TooltipProvider>
   </SettingsProvider>,
 );
 
 const stat = (id: string, name: string): Stat => ({ id, name, type: 'number', description: '', min: 0, max: 10, value: 3, regen: 0, descriptors: [] });
 
-beforeEach(() => opens.clear());
+beforeEach(() => navigations.clear());
 
-describe('hosts that hide Open', () => {
+describe('hosts that hide Open and Find All Uses', () => {
   it('the template dialog', async () => {
     underWorldEditor(
       <StatCodeTemplateDialog
@@ -58,8 +58,8 @@ describe('hosts that hide Open', () => {
     );
     await userEvent.click(await screen.findByRole('button', { name: /New Template/i }));
     await screen.findByLabelText('Template code');
-    expect(opens.has('Template code')).toBe(true);
-    expect(opens.get('Template code')).toBeUndefined();
+    expect(navigations.has('Template code')).toBe(true);
+    expect(navigations.get('Template code')).toBeUndefined();
   });
 
   it('the Tool editor', () => {
@@ -74,8 +74,8 @@ describe('hosts that hide Open', () => {
         fullscreen={false} fullscreenButton={null} onCancel={vi.fn()} onSave={vi.fn()}
       />,
     );
-    expect(opens.has('Script')).toBe(true);
-    expect(opens.get('Script')).toBeUndefined();
+    expect(navigations.has('Script')).toBe(true);
+    expect(navigations.get('Script')).toBeUndefined();
   });
 
   it('the library editor', async () => {
@@ -84,7 +84,7 @@ describe('hosts that hide Open', () => {
     await userEvent.click(screen.getByRole('tab', { name: 'Stats' }));
     await userEvent.click(screen.getByText('Grit'));
     fireEvent.mouseDown(within(screen.getByRole('tablist', { name: 'Stat Fields' })).getByRole('tab', { name: 'Code' }));
-    await waitFor(() => expect(opens.has('Stat Code After the AI')).toBe(true));
-    expect(opens.get('Stat Code After the AI')).toBeUndefined();
+    await waitFor(() => expect(navigations.has('Stat Code After the AI')).toBe(true));
+    expect(navigations.get('Stat Code After the AI')).toBeUndefined();
   });
 });

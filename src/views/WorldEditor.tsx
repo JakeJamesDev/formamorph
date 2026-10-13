@@ -67,7 +67,9 @@ import { PanelErrorBoundary } from '@/components/PanelErrorBoundary';
 import { BenchPopover } from '@/components/editor/BenchPopover';
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
 import type { FindingSection } from '@/lib/testBench/rules';
-import { CodeCardOpenContext } from '@/lib/codeCardOpen';
+import { CodeCardNavigationContext, type CodeCardNavigation } from '@/lib/codeCardNavigation';
+import type { CodeStatUse } from '@/lib/codeStatUses';
+import { clearCodeUseReveal, requestCodeUseReveal } from '@/lib/codeUseReveal';
 import type { CodeCardItem } from '@/lib/codeCards';
 import { useTestBench } from '@/lib/testBench/useTestBench';
 import { collectSearchTargets, type SearchMatch } from '@/lib/worldSearch';
@@ -523,6 +525,7 @@ const WorldEditorInner = ({
   useEffect(() => () => {
     if (revealTimerRef.current !== null) clearTimeout(revealTimerRef.current);
     cancelEditorReveals();
+    clearCodeUseReveal();
     clearEditorMatch();
   }, []);
   // An unmeasured card (0) has room: the rail never flashes collapsed before the first layout.
@@ -567,6 +570,17 @@ const WorldEditorInner = ({
       case 'dictionary': return navigateToBenchItem('dictionary', item.dictionaryId);
     }
   }, [navigateToBenchItem]);
+  // A Find All Uses row: select the box's stat; its panel opens the Code tab and the box takes the caret.
+  const goToCodeUse = useCallback(({ entityId, rowId, timing, line }: CodeStatUse) => {
+    requestCodeUseReveal({ entityId, rowId, timing, line });
+    if (!entityId) return navigateToBenchItem('stats', rowId);
+    setEntityStatId(rowId);
+    navigateToBenchItem('entities', entityId, 'stats');
+  }, [navigateToBenchItem]);
+  const codeCardNavigation = useMemo<CodeCardNavigation>(
+    () => ({ open: openCodeCardItem, goToUse: goToCodeUse }),
+    [openCodeCardItem, goToCodeUse],
+  );
   const bench = useTestBench({
     // Read at the moment of opening for the lens seed; other tabs' selections are not locations.
     selectedLocationId: activeTab === 'locations' ? selections.locations ?? null : null,
@@ -1341,7 +1355,7 @@ const WorldEditorInner = ({
   );
 
   return (
-    <CodeCardOpenContext.Provider value={openCodeCardItem}>
+    <CodeCardNavigationContext.Provider value={codeCardNavigation}>
     <div className={`${embedded ? "h-full" : "app-viewport"} flex flex-col overflow-hidden`}>
       {!embedded && (
         <ThemedToastContainer
@@ -1600,7 +1614,7 @@ const WorldEditorInner = ({
       )}
       <TourSaveNote tour={tour} />
     </div>
-    </CodeCardOpenContext.Provider>
+    </CodeCardNavigationContext.Provider>
   );
 };
 

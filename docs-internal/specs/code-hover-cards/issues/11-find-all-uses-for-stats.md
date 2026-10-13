@@ -1,6 +1,6 @@
 # 11: Find All Uses For Stats
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 06
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
