@@ -327,7 +327,11 @@ _Avoid_: local value, patch, delta
 
 **Bearer**:
 An entity whose trait tree holds a trait, directly or through a Link. The played persona is the Bearer "You"; so is the entity with the **Custom Persona** mark under None and a library persona. Requirements and pins resolve per Bearer.
-_Avoid_: owner (an owner holds its own traits only), holder
+_Avoid_: owner (an owner holds its own traits only; the `owner` stat-code global is the one exception), holder
+
+**`owner` (stat-code global)**:
+The entity that owns the running stat, with the same fields as an `entities` entry, so code reaches its own stats as `owner.stats`. For a Blueprint stat it is the Bearer the run is for. In a world stat's code it is an empty entry, and a write through it is dropped and reported.
+_Avoid_: self (the running stat's own entry), persona (the played entity)
 
 **Original**:
 The world trait, group or stat a Link points at, at the root or under Blueprints. An Original is a Blueprint trait or stat. An entity's own trait or stat is never an Original.

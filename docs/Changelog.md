@@ -35,6 +35,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Test Code lists a stat code write to any owner's stat and names every write it dropped.** An entity stat's box runs with its entity as `owner`, and a Blueprint stat's with its group's stats. Formaquestion's code test finds both.
     - **The Issues tab checks stat code on every owner: world stats, entity stats and Blueprints.** It warns when two boxes write one field of a stat, whoever owns them, and it checks each stat name against the stats of its owner.
     - **The stat code editor now completes and checks `owner.stats` and the world's `stats`.** A write to value, min, max or regen raises no warning on any stat. The editor underlines a stat name that doesn't exist.
+    - **The Stat Code Guide and Formaquestion now explain `owner`, the world's `stats` and writes to any stat.** The guide gains an Owner section, the owner order and a Blueprint write note. The Code tab help matches.
   - **Formaquestion:**
     - **A card on the first open of Formaquestion offers Semantic Search, with Turn On and No Thanks.** Turn On downloads a small model once and shows its progress. A model already on your device turns Semantic Search on with no card.
     - **The Formaquestion Search tab finds guide sections by meaning while Semantic Search is on.** Word matches show at once, and meaning matches join them when you stop typing. Until the model is on your device, the tab uses words alone.

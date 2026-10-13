@@ -220,3 +220,28 @@ describe('the other-stat write sections of the Stat Code Guide', () => {
       .toEqual(['StatCodeGuide#writing-to-other-stats']);
   });
 });
+
+describe('the owner sections of the Stat Code Guide', () => {
+  // Code hover cards link each global to its own heading.
+  it.each(['self', 'stats', 'owner'])('has one heading for %s', (name) => {
+    const [section] = index.get([`StatCodeGuide#${name}`]);
+    expect(section?.markdown).toMatch(new RegExp(`^### ${name}\\b`, 'i'));
+  });
+
+  // The questions use player wording, not the keyword lines' wording.
+  it.each([
+    'what is owner in stat code?',
+    'in a script on one of my monster\'s stats, how do I get to that monster\'s other stats?',
+    'what does owner mean in a Blueprint stat script?',
+  ])('answers "%s" in its top 3', (question) => {
+    expect(index.search(question, 3).map((s) => s.id)).toContain('StatCodeGuide#owner');
+  });
+
+  it.each([
+    'can the script on a monster\'s stat raise a danger meter that belongs to the whole world?',
+    'I want a village event script to lower a villager\'s energy. How do I write that?',
+    'when two scripts set one number in the same turn, whose result stays?',
+  ])('answers "%s" with the write section in its top 3', (question) => {
+    expect(index.search(question, 3).map((s) => s.id)).toContain('StatCodeGuide#writing-to-other-stats');
+  });
+});

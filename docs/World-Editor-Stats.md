@@ -203,7 +203,7 @@ The turn order is: Before the AI, the AI's stat changes, Regen, After the AI. An
 Code can do five things:
 
 - Set this stat's value, Min, Max or Regen. A returned number sets the value.
-- Write the value, Min, Max or Regen of another stat of the same owner
+- Write the value, Min, Max or Regen of another stat, of the world or of any entity
 - Pin or unpin a placeholder
 - Switch a trait on or off
 - Read every active stat, every trait, every placeholder and the story clock
