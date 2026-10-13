@@ -165,6 +165,246 @@ describe('the card in the completion list', () => {
   });
 });
 
+const viewOf = (field: HTMLElement) => EditorView.findFromDOM(field.closest<HTMLElement>('.cm-editor')!)!;
+const liveRegion = (field: HTMLElement) => field.closest('.cm-editor')!.querySelector('[role="status"]')!;
+
+/** Puts the caret inside the first `text` and focuses the editor, as a reader does before asking for a card. */
+function caretIn(field: HTMLElement, text: string) {
+  const view = viewOf(field);
+  const at = view.state.doc.toString().indexOf(text);
+  expect(at, `"${text}" is in the code`).toBeGreaterThanOrEqual(0);
+  view.focus();
+  view.dispatch({ selection: { anchor: at + 1 } });
+  return view;
+}
+
+// Control stays down through both strokes: user-event sends no keyCode for the modifier, which is how
+// CodeMirror tells a modifier press from a key that cancels a pending chord.
+const chord = '{Control>}ki{/Control}';
+
+describe('cards from the keyboard', () => {
+  it('opens the card for the name at the caret with Ctrl+K Ctrl+I and reads it out', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial="self.regen = 0;" />);
+    const field = await editor('Stat code');
+    expect(card()).toBeNull();
+    caretIn(field, 'regen');
+    await user.keyboard(chord);
+    const shown = await openCard();
+    expect(shown.textContent).toContain('(property) Stat.regen: number');
+    await waitFor(() => expect(liveRegion(field).textContent).toContain('Stat.regen: number'));
+    const heard = liveRegion(field).textContent!;
+    expect(heard).toContain('Writable');
+    expect(heard).toContain('Regen per story hour, with traits applied');
+  });
+
+  it('announces a second press on the same name again', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial="self.regen = 0;" />);
+    const field = await editor('Stat code');
+    caretIn(field, 'regen');
+    await user.keyboard(chord);
+    await waitFor(() => expect(liveRegion(field).textContent).toContain('Stat.regen'));
+    // Text set to what the region already holds is skipped by a screen reader, so the region must empty first.
+    const texts: string[] = [];
+    const watch = new MutationObserver(() => texts.push(liveRegion(field).textContent!));
+    watch.observe(liveRegion(field), { childList: true, characterData: true, subtree: true });
+    try {
+      await user.keyboard(chord);
+      await waitFor(() => expect(texts.at(-1)).toContain('Stat.regen'));
+      expect(texts).toContain('');
+    } finally {
+      watch.disconnect();
+    }
+  });
+
+  it('opens the card for a selected name from where the selection starts', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial="self.regen = 0;" />);
+    const field = await editor('Stat code');
+    const view = viewOf(field);
+    view.focus();
+    view.dispatch({ selection: { anchor: 10, head: 5 } });
+    await user.keyboard(chord);
+    expect((await openCard()).textContent).toContain('Stat.regen');
+  });
+
+  it('closes the card when the editor loses focus, so a later Escape is not swallowed', async () => {
+    const user = userEvent.setup();
+    render(<><Harness initial="self.regen = 0;" /><button type="button">Elsewhere</button></>);
+    const field = await editor('Stat code');
+    caretIn(field, 'regen');
+    await user.keyboard(chord);
+    await openCard();
+    await user.click(screen.getByRole('button', { name: 'Elsewhere' }));
+    await waitFor(() => expect(card()).toBeNull());
+    const escape = new KeyboardEvent('keydown', { key: 'Escape', cancelable: true, bubbles: true });
+    window.dispatchEvent(escape);
+    expect(escape.defaultPrevented).toBe(false);
+  });
+
+  it('leaves Ctrl+I alone to select the enclosing syntax', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial="self.regen = 0;" />);
+    const field = await editor('Stat code');
+    const view = caretIn(field, 'regen');
+    await user.keyboard('{Control>}i{/Control}');
+    expect(view.state.selection.main.empty).toBe(false);
+    expect(card()).toBeNull();
+    expect(liveRegion(field).textContent).toBe('');
+  });
+
+  it('closes the card, and the announcement, when the author types', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial="self.regen = 0;" />);
+    const field = await editor('Stat code');
+    caretIn(field, 'regen');
+    await user.keyboard(chord);
+    await openCard();
+    await user.keyboard('x');
+    await waitFor(() => expect(card()).toBeNull());
+    expect(liveRegion(field).textContent).toBe('');
+  });
+
+  it('closes the card on an edit that leaves the caret where it is', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial="self.regen = 0;" />);
+    const field = await editor('Stat code');
+    const view = caretIn(field, 'regen');
+    await user.keyboard(chord);
+    await openCard();
+    view.dispatch({ changes: { from: view.state.doc.length, insert: ' // note' } });
+    await waitFor(() => expect(card()).toBeNull());
+    expect(liveRegion(field).textContent).toBe('');
+  });
+
+  it('opens nothing where the caret names nothing', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial="const gap = 1;  self.regen = 0;" />);
+    const field = await editor('Stat code');
+    caretIn(field, '  self');
+    await user.keyboard(chord);
+    expect(card()).toBeNull();
+    expect(liveRegion(field).textContent).toBe('');
+  });
+
+  it('closes on Escape without leaving full screen; a second Escape leaves', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial="return self.value;" />);
+    await editor('Stat code');
+    await user.click(screen.getByLabelText('Edit full screen'));
+    const overlay = screen.getByRole('dialog');
+    const field = await waitFor(() => {
+      const inOverlay = screen.getAllByLabelText('Stat code').find((element) => element.closest('.cm-editor') && overlay.contains(element));
+      expect(inOverlay).toBeTruthy();
+      return inOverlay!;
+    });
+
+    caretIn(field, 'value');
+    await user.keyboard(chord);
+    await openCard();
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(card()).toBeNull());
+    expect(screen.getByRole('dialog')).toBe(overlay);
+
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+});
+
+describe('cards from a tap', () => {
+  /** A finger lands on the name and lifts: the caret follows the pointer. */
+  function tap(field: HTMLElement, text: string) {
+    fireEvent.pointerDown(field, { pointerType: 'touch' });
+    fireEvent.pointerUp(field, { pointerType: 'touch' });
+    return caretIn(field, text);
+  }
+
+  it('opens one card after the caret rests on the name, without reading it out', async () => {
+    render(<Harness initial="self.regen = 0;" />);
+    const field = await editor('Stat code');
+    tap(field, 'regen');
+    expect(card()).toBeNull();
+    expect((await openCard()).textContent).toContain('(property) Stat.regen: number');
+    expect(liveRegion(field).textContent).toBe('');
+  });
+
+  it('opens no second card from the hover a tap sends after it', async () => {
+    render(<Harness initial="self.regen = 0;" />);
+    const field = await editor('Stat code');
+    // Every card that ever reaches the page: a hover card replaced by the caret's would still end as one.
+    const seen = new Set<Element>();
+    const watch = new MutationObserver(() => document.querySelectorAll('[data-code-card]').forEach((node) => seen.add(node)));
+    watch.observe(document.body, { childList: true, subtree: true });
+    try {
+      tap(field, 'regen');
+      hover(field, 'regen');
+      await openCard();
+      // Past both the hover delay and the caret pause.
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      expect(document.querySelectorAll('[data-code-card]')).toHaveLength(1);
+      expect(seen.size).toBe(1);
+    } finally {
+      watch.disconnect();
+    }
+  });
+
+  it('lets a mouse hover open a card again after a touch', async () => {
+    render(<Harness initial="self.regen = 0;" />);
+    const field = await editor('Stat code');
+    tap(field, 'regen');
+    fireEvent.pointerMove(field, { pointerType: 'mouse' });
+    hover(field, 'regen');
+    expect((await openCard()).textContent).toContain('Stat.regen');
+  });
+
+  it('closes the card when the author types', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial="self.regen = 0;" />);
+    const field = await editor('Stat code');
+    const view = tap(field, 'regen');
+    await openCard();
+    await user.keyboard('x');
+    await waitFor(() => expect(card()).toBeNull());
+    // The pause never re-opens it for text still being typed.
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    expect(card()).toBeNull();
+    expect(view.state.doc.toString()).toContain('x');
+  });
+
+  it('opens the card again on a second tap where the caret already is', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial="self.regen = 0;" />);
+    const field = await editor('Stat code');
+    tap(field, 'regen');
+    await openCard();
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(card()).toBeNull());
+    // The caret doesn't move, so no selection update follows this tap.
+    fireEvent.pointerDown(field, { pointerType: 'touch' });
+    fireEvent.pointerUp(field, { pointerType: 'touch' });
+    expect((await openCard()).textContent).toContain('Stat.regen');
+  });
+
+  it('opens nothing for a drag that the browser took as a scroll', async () => {
+    render(<Harness initial="self.regen = 0;" />);
+    const field = await editor('Stat code');
+    fireEvent.pointerDown(field, { pointerType: 'touch' });
+    caretIn(field, 'regen');
+    fireEvent.pointerCancel(field, { pointerType: 'touch' });
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    expect(card()).toBeNull();
+  });
+
+  it('opens nothing for a caret move that no tap made', async () => {
+    render(<Harness initial="self.regen = 0;" />);
+    const field = await editor('Stat code');
+    caretIn(field, 'regen');
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    expect(card()).toBeNull();
+  });
+});
+
 describe('hover cards in the template dialog', () => {
   const stats = [{ id: 's1', name: 'Warmth', type: 'number', value: 7, min: 0, max: 10 }] as unknown as Stat[];
 

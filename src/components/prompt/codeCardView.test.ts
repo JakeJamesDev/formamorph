@@ -1,6 +1,20 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
-import { renderCodeCard } from './codeCardView';
+import { cardAnnouncement, renderCodeCard } from './codeCardView';
+
+describe('cardAnnouncement', () => {
+  it('reads the signature, the badge and the description as sentences', () => {
+    const card = {
+      from: 0, to: 5, signature: { kind: 'property', path: 'Stat.value', type: 'number' }, access: 'afterRun', description: 'The current value.',
+    } as const;
+    expect(cardAnnouncement(card)).toBe('property Stat.value: number. Writable After This Run. The current value');
+  });
+
+  it('skips the badge and the description a card lacks', () => {
+    expect(cardAnnouncement({ from: 0, to: 5, signature: { kind: 'stat', path: 'stats.Fatigue', type: 'Stat' } }))
+      .toBe('stat stats.Fatigue: Stat');
+  });
+});
 
 describe('renderCodeCard', () => {
   it('writes a method as a call, with no badge', () => {

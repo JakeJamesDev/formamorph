@@ -35,6 +35,7 @@ import {
 } from '@/lib/statCodeAnalysis';
 import { codeCard, completionCard } from '@/lib/codeCards';
 import { renderCodeCard, renderInfoLine } from '@/components/prompt/codeCardView';
+import { cardTooltipView, createCaretCards } from '@/components/prompt/codeCaretCard';
 import { TOOLTIP_DELAY_MS } from '@/components/ui/tooltip';
 import type { CodeSurface } from '@/lib/codeSurface';
 import type { InsertSelection } from '@/lib/codeSnippets';
@@ -331,28 +332,19 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
       needsRefresh: (update) => update.transactions.some((tr) => tr.effects.some((effect) => effect.is(worldListsChanged))),
     },
   );
-  /** The card for the name under the pointer. Full screen and a dialog take Escape on the document in the
-   *  capture phase, so an open card takes it on the window first and stops it there. */
+  /** The cards the caret opens: the keyboard chord and a tap. */
+  const caretCards = createCaretCards((state, pos) => codeCard(state.doc.toString(), pos, analysisOptions()));
+  /** The card for the name under the pointer. */
   const cards = hoverTooltip((view, pos) => {
+    // A tap's own hover would open a second card beside the one the caret pause opens.
+    if (!caretCards.hoverAllowed()) return null;
     const card = codeCard(view.state.doc.toString(), pos, analysisOptions());
-    if (!card) return null;
+    if (!card || caretCards.closeUnlessOpenAt(view, card.from)) return null;
     return {
       pos: card.from,
       end: card.to,
       above: false,
-      create: () => {
-        const close = (event: KeyboardEvent) => {
-          if (event.key !== 'Escape') return;
-          event.preventDefault();
-          event.stopPropagation();
-          view.dispatch({ effects: closeHoverTooltips });
-        };
-        return {
-          dom: renderCodeCard(card),
-          mount: () => window.addEventListener('keydown', close, true),
-          destroy: () => window.removeEventListener('keydown', close, true),
-        };
-      },
+      create: () => cardTooltipView(card, () => view.dispatch({ effects: closeHoverTooltips })),
     };
   }, { hoverTime: TOOLTIP_DELAY_MS, hideOnChange: true });
 
@@ -414,6 +406,7 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
         }),
         codeLinter,
         cards,
+        caretCards.extension,
         // A completion list or a diagnostic is taller than the field it belongs to, so it is positioned
         // against the window instead — otherwise the box, the panel it scrolls in, or the dialog around
         // it cuts the popup off wherever the caret happens to be low.
