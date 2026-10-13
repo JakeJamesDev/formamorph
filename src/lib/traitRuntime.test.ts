@@ -850,13 +850,13 @@ describe('owned traits in play', () => {
   // (Ash: Tamed). Tamed and Wild share Ash's exclusive Bond group. Gruff is Ash's but not switchable.
   const paladin = trait('paladin', [], { name: 'Paladin', playerToggle: true });
   const tamer = trait('tamer', [{ statId: 'h', value: 10, type: 'starting' }], {
-    name: 'Beast Tamer', playerToggle: true, requires: [{ all: [{ kind: 'trait', id: 'tamed', bearer: { kind: 'entity', id: 'ash' } }] }],
+    name: 'Beast Tamer', playerToggle: true, requires: [{ all: [{ kind: 'trait', id: 'tamed', owner: { kind: 'entity', id: 'ash' } }] }],
   });
   const bond: TraitGroup = { id: 'bond', name: 'Bond', parentId: null, maxPicks: 1 };
   const ashTraits = [
     trait('tamed', [], { name: 'Tamed', playerToggle: true, groupId: 'bond' }),
     trait('wild', [], { name: 'Wild', playerToggle: true, groupId: 'bond' }),
-    trait('loyal', [], { name: 'Loyal', playerToggle: true, requires: [{ all: [{ kind: 'trait', id: 'paladin', bearer: { kind: 'you' } }] }] }),
+    trait('loyal', [], { name: 'Loyal', playerToggle: true, requires: [{ all: [{ kind: 'trait', id: 'paladin', owner: { kind: 'you' } }] }] }),
     trait('gruff', [], { name: 'Gruff' }),
   ];
   const ash = { id: 'ash', name: 'Ash', traits: ashTraits, groups: [bond] };
@@ -998,7 +998,7 @@ describe('linked stat traits follow whoever the player plays', () => {
   it('reverses a root trait the new persona is not offered, because its gate names that persona', () => {
     // Squire (+4 starting on h) requires Albus: Paladin. Playing Albus, the player bearer no longer holds it.
     const squire = trait('squire', [{ statId: 'h', value: 4, type: 'starting' }], {
-      name: 'Squire', requires: [{ all: [{ kind: 'trait', id: 'paladin', bearer: { kind: 'entity', id: 'albus' } }] }],
+      name: 'Squire', requires: [{ all: [{ kind: 'trait', id: 'paladin', owner: { kind: 'entity', id: 'albus' } }] }],
     });
     const withSquire = (persona: PersonaRef, held: Trait[]): TraitWorld => {
       const base = linked(persona);

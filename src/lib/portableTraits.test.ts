@@ -212,9 +212,9 @@ const smiteOverrides = { playerToggle: { value: true, blueprint: false } };
 const mira = (): Entity => ({
   id: 'mira', name: 'Mira', persona: true,
   traits: [trait('t-vow', { name: 'Vow', requires: [
-    { all: [{ kind: 'trait', id: 'w-smite', bearer: { kind: 'entity', id: 'albus' } }] },
-    { all: [{ kind: 'trait', id: 'w-smite', bearer: { kind: 'you' } }] },
-    { all: [{ kind: 'trait', id: 'w-smite', bearer: { kind: 'entity', id: 'mira' } }] },
+    { all: [{ kind: 'trait', id: 'w-smite', owner: { kind: 'entity', id: 'albus' } }] },
+    { all: [{ kind: 'trait', id: 'w-smite', owner: { kind: 'you' } }] },
+    { all: [{ kind: 'trait', id: 'w-smite', owner: { kind: 'entity', id: 'mira' } }] },
   ] })],
   traitLinks: [
     {
@@ -238,7 +238,7 @@ describe('portableOwnedTraits with links', () => {
   });
 
   it('names a named-scope bearer, and the entity itself as SELF_ENTITY', () => {
-    expect(vowOf(portableOwnedTraits(mira(), linkOrigin)).map((r) => r.kind !== 'playingAs' && r.bearer)).toEqual([
+    expect(vowOf(portableOwnedTraits(mira(), linkOrigin)).map((r) => r.kind !== 'playingAs' && r.owner)).toEqual([
       { kind: 'entity', id: 'albus', name: 'Albus' },
       { kind: 'you' },
       { kind: 'entity', id: SELF_ENTITY, name: 'Mira' },
@@ -248,7 +248,7 @@ describe('portableOwnedTraits with links', () => {
   it('keeps stored names without a world', () => {
     const out = portableOwnedTraits(mira());
     expect(linkOf(out, 'l-smite')!.originalName).toBe('Old Smite');
-    expect(vowOf(out)[0]).toEqual({ kind: 'trait', id: 'w-smite', bearer: { kind: 'entity', id: 'albus' } });
+    expect(vowOf(out)[0]).toEqual({ kind: 'trait', id: 'w-smite', owner: { kind: 'entity', id: 'albus' } });
   });
 
   it('carries the links of an entity that owns nothing', () => {
@@ -339,16 +339,16 @@ describe('bindOwnedTraits with links', () => {
   });
 
   it('rebinds a named-scope bearer by id, then unique name, else leaves it unresolved by name', () => {
-    expect(vowOf(bindOwnedTraits(carriedMira(), linkOrigin)).map((r) => r.kind !== 'playingAs' && r.bearer)).toEqual([
+    expect(vowOf(bindOwnedTraits(carriedMira(), linkOrigin)).map((r) => r.kind !== 'playingAs' && r.owner)).toEqual([
       { kind: 'entity', id: 'albus', name: 'Albus' }, { kind: 'you' }, { kind: 'entity', id: 'copy', name: 'Mira' },
     ]);
     expect(vowOf(bindOwnedTraits(carriedMira(), linkTarget()))[0]).toEqual(
-      { kind: 'trait', id: 'n-smite', name: 'Smite', bearer: { kind: 'entity', id: 'n-albus', name: 'Albus' } },
+      { kind: 'trait', id: 'n-smite', name: 'Smite', owner: { kind: 'entity', id: 'n-albus', name: 'Albus' } },
     );
     const twins = linkTarget({ entities: [{ id: 'a1', name: 'Albus' }, { id: 'a2', name: 'Albus' }] });
-    expect(vowOf(bindOwnedTraits(carriedMira(), twins))[0]).toMatchObject({ bearer: { kind: 'entity', id: '', name: 'Albus' } });
+    expect(vowOf(bindOwnedTraits(carriedMira(), twins))[0]).toMatchObject({ owner: { kind: 'entity', id: '', name: 'Albus' } });
     const renamed = { ...linkOrigin, entities: [{ id: 'albus', name: 'Sir Albus' }] };
-    expect(vowOf(bindOwnedTraits(carriedMira(), renamed))[0]).toMatchObject({ bearer: { kind: 'entity', id: 'albus' } });
+    expect(vowOf(bindOwnedTraits(carriedMira(), renamed))[0]).toMatchObject({ owner: { kind: 'entity', id: 'albus' } });
   });
 
   it('binds the links of an entity that owns nothing', () => {
@@ -379,7 +379,7 @@ describe('Not Conditions on owned traits', () => {
   const NOT: TraitRequirement[] = [
     { kind: 'trait', id: 'w-paladin', not: true },
     { kind: 'playingAs', id: 'ash', not: true },
-    { kind: 'trait', id: 't-tamed', bearer: { kind: 'entity', id: 'ash' }, not: true },
+    { kind: 'trait', id: 't-tamed', owner: { kind: 'entity', id: 'ash' }, not: true },
   ];
 
   it('keeps the Not flag through the card form and the bind', () => {

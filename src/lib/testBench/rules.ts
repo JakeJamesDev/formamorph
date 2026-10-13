@@ -1985,8 +1985,8 @@ const personaChoices = (world: RuleWorld): PersonaRef[] => [
 /** The owners a stat Condition on `ownerId`'s trait or image reads: its named bearer, the player set for `you`
  *  (the world's player and every persona, Q28), else `ownerId` itself. */
 const statReadOwners = (world: RuleWorld, ownerId: string, req: StatRequirement): string[] => {
-  if (req.bearer?.kind === 'entity') return [req.bearer.id];
-  if (req.bearer?.kind === 'you') return [WORLD_OWNER, ...(world.entities ?? []).filter(canBePlayer).map((e) => e.id)];
+  if (req.owner?.kind === 'entity') return [req.owner.id];
+  if (req.owner?.kind === 'you') return [WORLD_OWNER, ...(world.entities ?? []).filter(canBePlayer).map((e) => e.id)];
   return [ownerId];
 };
 
@@ -2519,7 +2519,7 @@ const imageReportOf = (world: RuleWorld): ImageRuleReport => {
   // entity is part of it, else the entity alone.
   const player = playerOwnerIds({ source: 'none' }, input.entities);
   const readFrom = (entity: Entity, req: StatRequirement): string[] =>
-    (req.bearer?.kind === 'entity' ? [req.bearer.id] : req.bearer?.kind === 'you' || player.includes(entity.id) ? player : [entity.id]);
+    (req.owner?.kind === 'entity' ? [req.owner.id] : req.owner?.kind === 'you' || player.includes(entity.id) ? player : [entity.id]);
 
   const missing: DeadImageCondition[] = [];
   const hideable: Entity[] = [];

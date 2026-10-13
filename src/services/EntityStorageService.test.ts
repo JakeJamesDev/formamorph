@@ -62,6 +62,24 @@ describe('EntityStorageService', () => {
     expect(read.traitLinks![0].overrides!.smite.requires).toEqual({ value: [{ all: [paladin] }], blueprint: [] });
   });
 
+  it('reads a character stored before the rename with each Condition’s owner under `owner`', async () => {
+    const ash = { kind: 'entity', id: 'w-ash', name: 'Ash' };
+    const old = (bearer: object) => ({ kind: 'trait', id: 'w-paladin', bearer });
+    const stored = {
+      id: 'e1', name: 'Mara',
+      traits: [{ id: 't-oath', name: 'Oath', statChanges: [], requires: [{ all: [old(ash), old({ kind: 'you' })] }] }],
+      traitLinks: [{
+        id: 'l', originalId: 'smite', kind: 'trait', originalName: 'Smite', groupId: null,
+        overrides: { smite: { requires: { value: [{ all: [old(ash)] }], blueprint: [] } } },
+      }],
+    } as unknown as StoredEntityRecord['data'];
+    await EntityStorageService.storeEntity({ id: 'e1', name: 'Mara', data: stored });
+    const read = await EntityStorageService.getEntityData('e1');
+    const owned = (owner: object) => ({ kind: 'trait', id: 'w-paladin', owner });
+    expect(read.traits![0].requires).toEqual([{ all: [owned(ash), owned({ kind: 'you' })] }]);
+    expect(read.traitLinks![0].overrides!.smite.requires).toEqual({ value: [{ all: [owned(ash)] }], blueprint: [] });
+  });
+
   it('reads a character that holds no stats as one with none, and keeps each stat list to the records it can hold', async () => {
     await EntityStorageService.storeEntity(record('e1'));
     expect(await EntityStorageService.getEntityData('e1')).not.toHaveProperty('stats');

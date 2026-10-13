@@ -99,13 +99,13 @@ describe('TraitRequiresField bearer choice', () => {
 
   it('opens a chip on its target whatever its bearer', async () => {
     const onOpen = vi.fn();
-    render(<Harness trait={trait('smite', { name: 'Smite', requires: [{ all: [{ kind: 'trait', id: 'paladin', bearer: { kind: 'you' } }] }] })} onOpen={onOpen} />);
+    render(<Harness trait={trait('smite', { name: 'Smite', requires: [{ all: [{ kind: 'trait', id: 'paladin', owner: { kind: 'you' } }] }] })} onOpen={onOpen} />);
     fireEvent.click(screen.getByRole('button', { name: 'You: Paladin' }));
-    expect(onOpen).toHaveBeenCalledWith({ kind: 'trait', id: 'paladin', bearer: { kind: 'you' } });
+    expect(onOpen).toHaveBeenCalledWith({ kind: 'trait', id: 'paladin', owner: { kind: 'you' } });
   });
 
   it('disables a bearer already listed, and the target only once every bearer is', async () => {
-    const listed: TraitRequirement[] = [{ kind: 'trait', id: 'paladin', bearer: { kind: 'you' } }];
+    const listed: TraitRequirement[] = [{ kind: 'trait', id: 'paladin', owner: { kind: 'you' } }];
     render(<Harness trait={trait('smite', { name: 'Smite', requires: [{ all: listed }] })} />);
     openPicker();
     const paladin = await screen.findByRole('option', { name: /^Paladin/ });
@@ -302,7 +302,7 @@ describe('TraitRequiresField Not flip', () => {
   });
 
   it('keeps the bearer on a flipped chip', () => {
-    render(<Harness trait={smite([{ all: [{ ...paladin, bearer: { kind: 'you' } }] }])} />);
+    render(<Harness trait={smite([{ all: [{ ...paladin, owner: { kind: 'you' } }] }])} />);
     fireEvent.click(screen.getByRole('button', { name: 'Require You: Paladin to be off' }));
     expect(screen.getByRole('button', { name: 'NOT You: Paladin' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Require You: Paladin instead' })).toBeInTheDocument();
@@ -385,7 +385,7 @@ describe.skip('TraitRequiresField summary', () => {
 
   it('tells bearers apart and names them as the chips do', () => {
     render(<Harness trait={smite(
-      [{ kind: 'trait', id: 'paladin', bearer: { kind: 'you' } }, off('brave')],
+      [{ kind: 'trait', id: 'paladin', owner: { kind: 'you' } }, off('brave')],
       [on('paladin'), off('brave')],
     )} />);
     expect(summary()).toEqual(['Needs One Of:', 'You: Paladin', 'Paladin', 'Blocked By: Brave']);

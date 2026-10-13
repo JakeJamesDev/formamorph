@@ -53,7 +53,7 @@ describe('TraitRequiresField with stats', () => {
 
     fireEvent.click(screen.getByRole('option', { name: /^Nerve/ }));
     expect(JSON.parse(screen.getByTestId('rows').textContent!)).toEqual([
-      { all: [{ kind: 'stat', id: 'nerve', bearer: { kind: 'entity', id: 'mira', name: 'Mira' }, operator: '>=', value: 50, unit: 'raw' }] },
+      { all: [{ kind: 'stat', id: 'nerve', owner: { kind: 'entity', id: 'mira', name: 'Mira' }, operator: '>=', value: 50, unit: 'raw' }] },
     ]);
     // The editor's gate input knows the stat, so its chip resolves under the entity's name.
     const chip = screen.getByRole('group', { name: 'Mira: Nerve >= 50' });
@@ -69,7 +69,7 @@ describe('TraitRequiresField with stats', () => {
     fireEvent.click(screen.getByRole('option', { name: /^Nerve/ }));
     fireEvent.click(screen.getByRole('button', { name: 'And' }));
     fireEvent.click(await screen.findByRole('option', { name: /^Rage/ }));
-    expect(JSON.parse(screen.getByTestId('rows').textContent!)[0].all.map((c: { id: string; bearer?: unknown }) => [c.id, c.bearer ?? null]))
+    expect(JSON.parse(screen.getByTestId('rows').textContent!)[0].all.map((c: { id: string; owner?: unknown }) => [c.id, c.owner ?? null]))
       .toEqual([['nerve', null], ['rage', { kind: 'you' }]]);
     expect(screen.getByRole('group', { name: 'Nerve >= 50' })).toBeInTheDocument();
     expect(screen.getByRole('group', { name: 'You: Rage >= 50' })).toBeInTheDocument();

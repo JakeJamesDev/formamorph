@@ -83,7 +83,7 @@ describe('a stat Condition in the rows editor', () => {
     render(<Harness />);
     fireEvent.click(screen.getByRole('button', { name: 'Add Requirement' }));
     fireEvent.click(await screen.findByRole('option', { name: /^Hunger/ }));
-    expect(rows()[0].all[0]).toEqual({ kind: 'stat', id: 'hunger', bearer: { kind: 'entity', id: 'ash', name: 'Ash' }, operator: '>=', value: 50, unit: 'raw' });
+    expect(rows()[0].all[0]).toEqual({ kind: 'stat', id: 'hunger', owner: { kind: 'entity', id: 'ash', name: 'Ash' }, operator: '>=', value: 50, unit: 'raw' });
     expect(chip('Ash: Hunger >= 50')).toBeInTheDocument();
   });
 

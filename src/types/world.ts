@@ -186,7 +186,7 @@ export interface BlueprintOverride<V> {
 export type BlueprintOverrides<T> = { [K in keyof T]?: BlueprintOverride<T[K]> };
 
 /** Whose active set a requirement reads: the played persona's, or a named entity's. `name` is the entity's
- *  name when it was stored, so an unresolved one still reads. Absent on a requirement = the same bearer. */
+ *  name when it was stored, so an unresolved one still reads. Absent on a requirement = the same owner. */
 export type RequirementBearer =
   | { kind: 'you' }
   | { kind: 'entity'; id: string; name?: string };
@@ -200,8 +200,8 @@ export type StatComparison = '>' | '<' | '>=' | '<=' | '=' | '≠';
  *  fails its comparison. A stat Condition's `value` is in the stat's own units under `raw`, or a share of its
  *  min→max span under `percent`. */
 export type TraitRequirement =
-  | { kind: 'trait'; id: string; name?: string; bearer?: RequirementBearer; not?: true }
-  | { kind: 'group'; id: string; name?: string; bearer?: RequirementBearer; not?: true }
+  | { kind: 'trait'; id: string; name?: string; owner?: RequirementBearer; not?: true }
+  | { kind: 'group'; id: string; name?: string; owner?: RequirementBearer; not?: true }
   | { kind: 'playingAs'; id: string; name?: string; not?: true }
   | StatRequirement;
 
@@ -210,7 +210,7 @@ export interface StatRequirement {
   kind: 'stat';
   id: string;
   name?: string;
-  bearer?: RequirementBearer;
+  owner?: RequirementBearer;
   operator: StatComparison;
   value: number;
   unit: ThresholdUnit;

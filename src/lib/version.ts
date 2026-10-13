@@ -399,12 +399,20 @@ function migrateExclusiveGroups(world: Record<string, unknown>): void {
   }
 }
 
-/** Each flat requirement wrapped in its own Requirement Row. A row passes through, and an empty row is
- *  dropped, since a row with no Condition cannot exist (Q6). */
+/** One Condition with its legacy `bearer` key stored as `owner`. An `owner` already there wins. Idempotent. */
+export function conditionWithOwnerKey(raw: unknown): unknown {
+  if (!raw || typeof raw !== 'object' || !('bearer' in raw)) return raw;
+  const { bearer, ...rest } = raw as Record<string, unknown>;
+  return 'owner' in rest || bearer === undefined ? rest : { ...rest, owner: bearer };
+}
+
+/** Each flat requirement wrapped in its own Requirement Row, with every Condition's owner under `owner`. A row
+ *  passes through, and an empty row is dropped, since a row with no Condition cannot exist (Q6). */
 const wrapFlatRequirements = (list: unknown[]): unknown[] => list.flatMap((entry) => {
-  if (entry && typeof entry === 'object' && 'kind' in entry) return [{ all: [entry] }];
+  if (entry && typeof entry === 'object' && 'kind' in entry) return [{ all: [conditionWithOwnerKey(entry)] }];
   const all = entry && typeof entry === 'object' ? (entry as Record<string, unknown>).all : undefined;
-  return Array.isArray(all) && all.length === 0 ? [] : [entry];
+  if (!Array.isArray(all)) return [entry];
+  return all.length === 0 ? [] : [{ ...(entry as object), all: all.map(conditionWithOwnerKey) }];
 });
 
 const traitWithRows = (raw: unknown) => {
@@ -441,7 +449,8 @@ export function migrateEntityRequirementRows<T>(entity: T): T {
 
 /**
  * Turn the shipped flat `requires` list into Requirement Rows, one row per entry, on world traits and every
- * entity. Not version-gated: 3.2.x worlds carry the flat list under the current version. Idempotent.
+ * entity, and store each Condition's `bearer` as `owner`. Not version-gated: 3.2.x worlds carry both under the
+ * current version. Idempotent.
  */
 function migrateRequirementRows(world: Record<string, unknown>): void {
   if (Array.isArray(world.traits)) world.traits = world.traits.map(traitWithRows);

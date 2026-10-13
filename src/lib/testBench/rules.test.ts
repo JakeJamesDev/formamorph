@@ -2176,7 +2176,7 @@ describe('trait gate rules', () => {
 
     it('opens through a named entity that bears the target, and stays stuck behind one that does not', () => {
       const paladin = trait({ id: 'paladin', name: 'Paladin' });
-      const named = (id: string) => gated('sq', [{ kind: 'trait', id: 'paladin', bearer: { kind: 'entity', id } }]);
+      const named = (id: string) => gated('sq', [{ kind: 'trait', id: 'paladin', owner: { kind: 'entity', id } }]);
       expect(runRules(gates([named('ash')], { entities: [resident, { ...ash, traits: [paladin] }] }))).toEqual([]);
       // The world's own Paladin is not Ash's, so "Ash: Paladin" stays stuck.
       expect(ids(only(gates([named('ash'), paladin], { entities: [resident, ash] }), rule))).toEqual([['sq']]);
@@ -2252,8 +2252,8 @@ describe('trait gate rules', () => {
     });
 
     it('flags a loop that crosses bearers', () => {
-      const ward = trait({ id: 'ward', name: 'Ward', requires: [{ all: [{ kind: 'trait', id: 'a', bearer: { kind: 'you' }, not: true }] }] });
-      const w = gates([gated('a', [{ kind: 'trait', id: 'ward', bearer: { kind: 'entity', id: 'bree' } }])], {
+      const ward = trait({ id: 'ward', name: 'Ward', requires: [{ all: [{ kind: 'trait', id: 'a', owner: { kind: 'you' }, not: true }] }] });
+      const w = gates([gated('a', [{ kind: 'trait', id: 'ward', owner: { kind: 'entity', id: 'bree' } }])], {
         entities: [resident, { ...resident, id: 'bree', name: 'Bree', traits: [ward] }],
       });
       const found = only(w, rule);
@@ -2311,13 +2311,13 @@ describe('trait gate rules', () => {
 
     it('flags a pair that names one bearer two ways', () => {
       // On the player's own trait, "You:" reads the same set as no bearer.
-      const youNot = { ...ref('paladin'), bearer: { kind: 'you' as const }, not: true as const };
+      const youNot = { ...ref('paladin'), owner: { kind: 'you' as const }, not: true as const };
       const found = only(gates([rowed('a', [{ all: [ref('paladin'), youNot] }]), paladin], { traitGroups }), rule);
       expect(found.map((f) => f.message)).toEqual(['“A” has a row that can never hold: “Paladin and You: not Paladin”']);
     });
 
     it('passes the same pair under two bearers, or split across two rows', () => {
-      const ashPaladin = { ...ref('paladin'), bearer: { kind: 'entity' as const, id: 'ash' }, not: true as const };
+      const ashPaladin = { ...ref('paladin'), owner: { kind: 'entity' as const, id: 'ash' }, not: true as const };
       const split = gates([rowed('a', [{ all: [ref('paladin')] }, { all: [not(ref('paladin'))] }]), paladin], { traitGroups });
       expect(only(split, rule)).toEqual([]);
       const bearers = gates([rowed('a', [{ all: [ref('paladin'), ashPaladin] }]), paladin], { traitGroups, entities: [resident, ash] });
@@ -2395,11 +2395,11 @@ describe('trait gate rules', () => {
 
       it('reads a stat on another bearer, and flags one that bearer does not own', () => {
         const ashOwns = (stats: Stat[]): Entity => ({ ...resident, id: 'ash', name: 'Ash', stats });
-        const req = atLeast('hunger', 70, { name: 'Hunger', bearer: { kind: 'entity', id: 'ash' } });
+        const req = atLeast('hunger', 70, { name: 'Hunger', owner: { kind: 'entity', id: 'ash' } });
         const hunger = stat({ id: 'hunger', name: 'Hunger', starting: 10 });
         expect(runRules(gates([berserk(req)], { entities: [resident, ashOwns([hunger])] }))).toEqual([]);
         // Rage exists in the world, but Ash does not own it.
-        expect(messages(gates([berserk(atLeast('rage', 80, { name: 'Rage', bearer: { kind: 'entity', id: 'ash' } }))], {
+        expect(messages(gates([berserk(atLeast('rage', 80, { name: 'Rage', owner: { kind: 'entity', id: 'ash' } }))], {
           stats: [rage], entities: [resident, ashOwns([])],
         }), rule)).toEqual(['“BERSERK” requires “Ash: Rage >= 80”, which names a stat its bearer doesn’t have']);
       });
@@ -2452,14 +2452,14 @@ describe('trait gate rules', () => {
         const ash = (req: StatRequirement): Entity => ({ ...resident, id: 'ash', name: 'Ash', stats: [rage], traits: [berserk(req, effect)] });
         const rule = 'trait-gate-reads-own-stat';
         // Ash's trait changes Ash's Rage; the Condition reads Bree's.
-        expect(only(gates([], { entities: [resident, ash(atLeast('rage', 80, { bearer: onBree })), bree({ stats: [rage] })] }), rule)).toEqual([]);
+        expect(only(gates([], { entities: [resident, ash(atLeast('rage', 80, { owner: onBree })), bree({ stats: [rage] })] }), rule)).toEqual([]);
         expect(only(gates([], { entities: [resident, ash(atLeast('rage', 80))] }), rule)).toHaveLength(1);
       });
 
       it('reads the range of the bearer the Condition names', () => {
         const flat = stat({ id: 'rage', name: 'Rage', min: 10, max: 10, starting: 10 });
         const rule = 'requirement-percent-zero-span';
-        const w = (bearer?: StatRequirement['bearer']) => gates([berserk(atLeast('rage', 50, { unit: 'percent', ...(bearer ? { bearer } : {}) }))], {
+        const w = (bearer?: StatRequirement['owner']) => gates([berserk(atLeast('rage', 50, { unit: 'percent', ...(bearer ? { owner: bearer } : {}) }))], {
           stats: [rage], entities: [resident, bree({ stats: [flat] })],
         });
         expect(only(w(onBree), rule)).toHaveLength(1);
@@ -2468,7 +2468,7 @@ describe('trait gate rules', () => {
 
       it('leaves a stat that is switched off on its bearer to the stats rules', () => {
         const off = stat({ id: 'rage', name: 'Rage', enabled: false });
-        const w = gates([berserk(atLeast('rage', 80, { bearer: onBree }))], { stats: [rage], entities: [resident, bree({ stats: [off] })] });
+        const w = gates([berserk(atLeast('rage', 80, { owner: onBree }))], { stats: [rage], entities: [resident, bree({ stats: [off] })] });
         expect(only(w, 'trait-requirement-unresolved')).toEqual([]);
       });
 
@@ -2574,7 +2574,7 @@ describe('trait gate rules', () => {
       });
 
       it('reads a stat on the bearer the Condition names', () => {
-        const onBree = atLeast('rage', 80, { bearer: { kind: 'entity', id: 'bree' } });
+        const onBree = atLeast('rage', 80, { owner: { kind: 'entity', id: 'bree' } });
         const named = (stats: Stat[]) => crowd([holder([image([onBree])]), { ...resident, id: 'bree', name: 'Bree', stats }]);
         expect(only(named([]), rule)).toHaveLength(1);
         expect(only(named([rage]), rule)).toEqual([]);
@@ -2607,7 +2607,7 @@ describe('trait gate rules', () => {
       });
 
       it('reads the player’s stats for a you bearer, and leaves one switched off to the stats rules', () => {
-        const you = atLeast('rage', 80, { bearer: { kind: 'you' } });
+        const you = atLeast('rage', 80, { owner: { kind: 'you' } });
         const w = (stats: Stat[]) => crowd([holder([image([you])], { stats: [] })], { stats });
         expect(only(w([rage]), rule)).toEqual([]);
         expect(ids(only(w([]), rule))).toEqual([['ash']]);
@@ -2678,7 +2678,7 @@ describe('trait gate rules', () => {
         const pair = (second: Partial<StatRequirement>) => ids(only(pictured([image([over]), image([{ ...over, operator: '<=', ...second }])]), rule));
         expect(pair({ value: 50 })).toEqual([['ash']]);
         expect(pair({ unit: 'percent' })).toEqual([['ash']]);
-        expect(pair({ bearer: { kind: 'you' } })).toEqual([['ash']]);
+        expect(pair({ owner: { kind: 'you' } })).toEqual([['ash']]);
         expect(pair({ operator: '<' })).toEqual([['ash']]);
         expect(pair({ operator: '>=' })).toEqual([['ash']]);
       });
@@ -2689,7 +2689,7 @@ describe('trait gate rules', () => {
         expect(near({ value: 50 })).toEqual([['ash']]);
         expect(near({ operator: '>' })).toEqual([['ash']]);
         expect(near({ unit: 'percent' })).toEqual([['ash']]);
-        expect(near({ bearer: { kind: 'you' } })).toEqual([['ash']]);
+        expect(near({ owner: { kind: 'you' } })).toEqual([['ash']]);
         // Two plain Conditions, or a Not that sits in a row with another Condition, cover nothing.
         expect(ids(only(pictured([image([x]), image([x])]), rule))).toEqual([['ash']]);
         expect(ids(only(pictured([image([hasTamed, x]), image([{ ...hasTamed, not: true }])]), rule))).toEqual([['ash']]);
@@ -2730,7 +2730,7 @@ describe('trait gate rules', () => {
       });
 
       it('reads the range of the bearer the Condition names', () => {
-        const onYou = { ...percent, bearer: { kind: 'you' } } as StatRequirement;
+        const onYou = { ...percent, owner: { kind: 'you' } } as StatRequirement;
         // Ash's Rage is flat; the player's Rage has a range.
         expect(only(flatAsh([image([onYou])]), rule)).toEqual([]);
         expect(only(flatAsh([image([percent])]), rule)).toHaveLength(1);
@@ -2926,15 +2926,15 @@ describe('trait link rules', () => {
     });
 
     it('names each bearer when a set spans two', () => {
-      const oath = trait({ id: 'oath', name: 'Oath', requires: [{ all: [{ kind: 'trait', id: 'smite', bearer: { kind: 'entity', id: 'albus' } }] }] });
+      const oath = trait({ id: 'oath', name: 'Oath', requires: [{ all: [{ kind: 'trait', id: 'smite', owner: { kind: 'entity', id: 'albus' } }] }] });
       const found = only(linked([albus({ traitLinks: [link('l-smite', 'smite', 'trait')] }), albus({ id: 'bree', name: 'Bree', traits: [oath] })], {
-        traits: [faithful, ...blueprinted.map((t) => (t.id === 'smite' ? { ...t, requires: [{ all: [{ kind: 'trait' as const, id: 'oath', bearer: { kind: 'entity' as const, id: 'bree' } }] }] } : t))],
+        traits: [faithful, ...blueprinted.map((t) => (t.id === 'smite' ? { ...t, requires: [{ all: [{ kind: 'trait' as const, id: 'oath', owner: { kind: 'entity' as const, id: 'bree' } }] }] } : t))],
       }), rule);
       expect(found.map((f) => f.message)).toEqual(['“Smite” on “Albus” and “Oath” on “Bree” can never unlock — no pick or persona can meet their requirements']);
       expect(opened(found)).toEqual([['l-smite', 'oath']]);
       // Two entities that share a name are still two bearers.
       const twin = only(linked([albus({ traitLinks: [link('l-smite', 'smite', 'trait')] }), albus({ id: 'bree', traits: [oath] })], {
-        traits: [faithful, ...blueprinted.map((t) => (t.id === 'smite' ? { ...t, requires: [{ all: [{ kind: 'trait' as const, id: 'oath', bearer: { kind: 'entity' as const, id: 'bree' } }] }] } : t))],
+        traits: [faithful, ...blueprinted.map((t) => (t.id === 'smite' ? { ...t, requires: [{ all: [{ kind: 'trait' as const, id: 'oath', owner: { kind: 'entity' as const, id: 'bree' } }] }] } : t))],
       }), rule);
       expect(twin.map((f) => f.message)).toEqual(['“Smite” on “Albus” and “Oath” on “Albus” can never unlock — no pick or persona can meet their requirements']);
     });
@@ -3153,7 +3153,7 @@ describe('trait link rules', () => {
         traitGroups: [{ id: 'g', name: 'Vows', parentId: null, minPicks: 2 }],
         traits: [
           trait({ id: 'v1', name: 'Vow 1', groupId: 'g' }),
-          trait({ id: 'v2', name: 'Vow 2', groupId: 'g', requires: [{ all: [{ kind: 'trait', id: 'paladin-own', bearer: { kind: 'entity', id: 'ash' } }] }] }),
+          trait({ id: 'v2', name: 'Vow 2', groupId: 'g', requires: [{ all: [{ kind: 'trait', id: 'paladin-own', owner: { kind: 'entity', id: 'ash' } }] }] }),
         ],
       });
       expect(only(w, 'trait-group-min-unreachable')).toEqual([]);

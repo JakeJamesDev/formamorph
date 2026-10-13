@@ -115,7 +115,7 @@ export const shownRefs = (owners: readonly GateOwner[], refs: readonly GateTrait
 
 /** The bearer a requirement names; absent for the same bearer and for "playing as". */
 export const bearerOf = (req: TraitRequirement): RequirementBearer | undefined =>
-  (req.kind === 'playingAs' ? undefined : req.bearer);
+  (req.kind === 'playingAs' ? undefined : req.owner);
 
 /** One key per bearer choice, so two requirements compare by it. */
 export const bearerKey = (bearer?: RequirementBearer): string =>
@@ -197,8 +197,8 @@ function index(input: GateInput) {
   /** The stat a stat Condition on `from` reads: the first owner in its bearer's set holding the id. Null when
    *  the named bearer is gone or no owner in the set holds it. */
   const statOf = (req: StatRequirement, from: GateOwner): GateStat | null => {
-    if (req.bearer?.kind === 'entity' && !entities.has(req.bearer.id) && !owners.has(req.bearer.id)) return null;
-    for (const ownerId of bearerSet(req.bearer, from)) {
+    if (req.owner?.kind === 'entity' && !entities.has(req.owner.id) && !owners.has(req.owner.id)) return null;
+    for (const ownerId of bearerSet(req.owner, from)) {
       const stat = stats[ownerId]?.[req.id];
       if (stat) return stat;
     }
@@ -225,7 +225,7 @@ const activeSets = (input: GateInput): ActiveIn => {
  *  never count (Q26); another bearer's copy of a sibling does. */
 function targetOn(req: Exclude<TraitRequirement, StatRequirement>, trait: Located<{ id: string }>, activeIn: ActiveIn, idx: Index): boolean {
   if (req.kind === 'playingAs') return idx.persona.source === 'world' && idx.persona.entityId === req.id;
-  const set = idx.bearerSet(req.bearer, trait.owner);
+  const set = idx.bearerSet(req.owner, trait.owner);
   const rivals = idx.owners.get(trait.owner.id)?.rivals.get(trait.item.id);
   const own = (id: string) => id === trait.item.id || !!rivals?.has(id);
   const counts = (id: string) => [...set].some((ownerId) => !(ownerId === trait.owner.id && own(id)) && activeIn(ownerId, id));
@@ -284,7 +284,7 @@ function bearerName(bearer: RequirementBearer, idx: Index): string | null {
 function resolves(req: Exclude<TraitRequirement, StatRequirement>, idx: Index): boolean {
   if (req.kind === 'playingAs') return idx.entities.has(req.id);
   const target = req.kind === 'trait' ? idx.traitNames.has(req.id) : idx.groupNames.has(req.id);
-  return target && (!req.bearer || bearerName(req.bearer, idx) !== null);
+  return target && (!req.owner || bearerName(req.owner, idx) !== null);
 }
 
 /** What follows the stat's name in a stat Condition's text: the operator, then the number, with `%` under percent. */
@@ -312,11 +312,11 @@ function requirementText(req: TraitRequirement, idx: Index): { text: string; unr
         unresolved: !idx.statNames.has(req.id),
       };
   const target = { ...named, text: `${not}${named.text}` };
-  if (!req.bearer) return target;
-  const name = bearerName(req.bearer, idx);
+  if (!req.owner) return target;
+  const name = bearerName(req.owner, idx);
   return name
     ? { text: `${name}: ${target.text}`, unresolved: target.unresolved }
-    : { text: `${req.bearer.kind === 'entity' && req.bearer.name ? req.bearer.name : 'a missing entity'}: ${target.text}`, unresolved: true };
+    : { text: `${req.owner.kind === 'entity' && req.owner.name ? req.owner.name : 'a missing entity'}: ${target.text}`, unresolved: true };
 }
 
 /** A reader for any Condition's text against the input's names, as the gate line reads it. */
@@ -415,7 +415,7 @@ const byRank = <T extends Located<Trait>>(items: readonly T[], rank: ReadonlyMap
 /** The traits a Condition on `from` names, in the owners it reads, either polarity. */
 function targetsOf(req: TraitRequirement, from: GateOwner, idx: Index): Located<Trait>[] {
   if (req.kind === 'playingAs' || req.kind === 'stat') return [];
-  const set = idx.bearerSet(req.bearer, from);
+  const set = idx.bearerSet(req.owner, from);
   const ids = req.kind === 'trait' ? [req.id] : [...new Set(idx.traitsBelow(set, req.id))];
   return [...set].flatMap((ownerId) => ids.flatMap((id) => idx.owners.get(ownerId)?.traits.get(id) ?? []));
 }
@@ -805,8 +805,8 @@ export function deadRows(input: Omit<GateInput, 'active'>): RowRef[] {
   const clash = (owner: GateOwner) => (plain: TraitRequirement, not: TraitRequirement): boolean => {
     if (plain.not || !not.not || plain.kind === 'stat' || not.kind === 'stat') return false;
     if (plain.kind === 'playingAs' || not.kind === 'playingAs') return plain.kind === not.kind && plain.id === not.id;
-    const set = idx.bearerSet(plain.bearer, owner);
-    if (!sameOwners(set, idx.bearerSet(not.bearer, owner))) return false;
+    const set = idx.bearerSet(plain.owner, owner);
+    if (!sameOwners(set, idx.bearerSet(not.owner, owner))) return false;
     if (plain.kind === not.kind && plain.id === not.id) return true;
     return plain.kind === 'trait' && not.kind === 'group' && idx.traitsBelow(set, not.id).includes(plain.id);
   };
@@ -878,7 +878,7 @@ function opensTogether(targets: Located<Trait>[], idx: Index, stuck: ReadonlySet
   const clashes = (t: Located<Trait>) =>
     [...(idx.owners.get(t.owner.id)?.rivals.get(t.item.id) ?? [])].some((id) => picked.has(key(t.owner.id, id)));
   const satisfiers = (req: Exclude<TraitRequirement, { kind: 'playingAs' } | StatRequirement>, t: Located<Trait>): Located<Trait>[] => {
-    const set = idx.bearerSet(req.bearer, t.owner);
+    const set = idx.bearerSet(req.owner, t.owner);
     const rivals = idx.owners.get(t.owner.id)?.rivals.get(t.item.id);
     const ids = req.kind === 'trait' ? [req.id] : [...new Set(idx.traitsBelow(set, req.id))];
     return ids.filter((id) => !rivals?.has(id)).flatMap((id) => [...set].flatMap((ownerId) => {
@@ -937,7 +937,7 @@ export interface RequirementOptions {
 
 /** `requirement` scoped to `bearer`; the same bearer when `bearer` is absent. */
 export const withBearer = (requirement: TraitRequirement, bearer?: RequirementBearer): TraitRequirement =>
-  (requirement.kind === 'playingAs' || !bearer ? requirement : { ...requirement, bearer });
+  (requirement.kind === 'playingAs' || !bearer ? requirement : { ...requirement, owner: bearer });
 
 /**
  * Every requirement an author can give `traitId`, each target once, in tree order per owner. The trait

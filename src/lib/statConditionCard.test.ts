@@ -11,7 +11,7 @@ const S = (id: string, name: string, extra: Partial<Stat> = {}): Stat =>
   ({ id, name, type: 'number', description: '', min: 0, max: 100, regen: 0, descriptors: [], ...extra });
 const T = (id: string, extra: Partial<Trait> = {}): Trait => ({ id, name: id, statChanges: [], ...extra });
 
-const outward: StatRequirement = { kind: 'stat', id: 'w-rage', bearer: { kind: 'you' }, operator: '>=', value: 80, unit: 'raw', not: true };
+const outward: StatRequirement = { kind: 'stat', id: 'w-rage', owner: { kind: 'you' }, operator: '>=', value: 80, unit: 'raw', not: true };
 const inward: StatRequirement = { kind: 'stat', id: 'hp', operator: '<', value: 20, unit: 'percent' };
 
 const wren = (): Entity => ({
@@ -31,6 +31,14 @@ describe('a stat Condition on a character card', () => {
     expect(wounded(throughCard(wren()))).toEqual([inward, { ...outward, name: 'Rage' }]);
   });
 
+  it('writes the owner under `owner` and reads a card from before the rename', () => {
+    const card = JSON.parse(JSON.stringify(buildEntityCardData(wren(), [], {}, undefined, home)));
+    expect(JSON.stringify(card)).toContain('"owner"');
+    expect(JSON.stringify(card)).not.toContain('"bearer"');
+    const old = JSON.parse(JSON.stringify(card).replaceAll('"owner"', '"bearer"'));
+    expect(wounded(parseEntityCardData(old))).toEqual([inward, { ...outward, name: 'Rage' }]);
+  });
+
   it('drops a stat Condition whose comparison is malformed, and the row it empties', () => {
     const bad = { ...wren(), traits: [T('t-wounded', { name: 'Wounded', requires: [{ all: [{ ...inward, operator: '=>' } as unknown as StatRequirement] }] })] };
     expect(throughCard(bad).traits?.[0].requires).toBeUndefined();
@@ -48,8 +56,8 @@ describe('a stat Condition on a character card', () => {
   });
 
   it('matches a stored name only among the bearer’s own stats, so a name every entity shares still binds (Q25)', () => {
-    const health = (bearer?: StatRequirement['bearer']): StatRequirement =>
-      ({ kind: 'stat', id: 'old-hp', name: 'Health', operator: '<', value: 20, unit: 'percent', ...(bearer ? { bearer } : {}) });
+    const health = (bearer?: StatRequirement['owner']): StatRequirement =>
+      ({ kind: 'stat', id: 'old-hp', name: 'Health', operator: '<', value: 20, unit: 'percent', ...(bearer ? { owner: bearer } : {}) });
     const carried: Entity = { id: 'wren', name: 'Wren', traits: [T('t-wounded', { name: 'Wounded', requires: [{ all: [
       health({ kind: 'entity', id: 'old-ash', name: 'Ash' }), health({ kind: 'you' }), health(),
     ] }] })] };

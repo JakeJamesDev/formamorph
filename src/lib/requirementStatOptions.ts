@@ -33,7 +33,7 @@ export function requirementStatSections(
         if (seen.has(id) || stat.inert) continue;
         seen.add(id);
         options.push({
-          requirement: { kind: 'stat', id, ...(bearer ? { bearer } : {}), operator: '>=', value: Math.round((stat.min + stat.max) / 2), unit: 'raw' },
+          requirement: { kind: 'stat', id, ...(bearer ? { owner: bearer } : {}), operator: '>=', value: Math.round((stat.min + stat.max) / 2), unit: 'raw' },
           label: stat.name,
           breadcrumb: [],
           bearers: [],

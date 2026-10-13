@@ -259,16 +259,18 @@ Each requirement has a `kind`:
 
 | `kind` | Other fields | Holds when |
 |---|---|---|
-| `"trait"` | `id`, `name`, `bearer` | The bearer has the trait with this `id` |
-| `"group"` | `id`, `name`, `bearer` | The bearer has any trait in the group with this `id` |
+| `"trait"` | `id`, `name`, `owner` | The owner has the trait with this `id` |
+| `"group"` | `id`, `name`, `owner` | The owner has any trait in the group with this `id` |
 | `"playingAs"` | `id`, `name` | The player plays as the entity with this `id` |
-| `"stat"` | `id`, `name`, `bearer`, `operator`, `value`, `unit` | The bearer's stat with this `id` compares true against `value` |
+| `"stat"` | `id`, `name`, `owner`, `operator`, `value`, `unit` | The owner's stat with this `id` compares true against `value` |
 
 - `name` is optional. It holds the target's name, so a requirement still reads when the target is gone.
 - A `"stat"` requirement's `operator` is one of `">"`, `"<"`, `">="`, `"<="`, `"="` or `"≠"`. Its `unit` is `"raw"` for the stat's own units or `"percent"` for a share of the stat's min→max span. `{ "kind": "stat", "id": "health", "operator": "<", "value": 20, "unit": "percent" }` holds while Health is under 20% of its range.
-- `bearer` is optional. Absent = the trait's own bearer. `{ "kind": "you" }` checks the player. `{ "kind": "entity", "id": "<entity id>", "name": "…" }` checks that entity.
-- `not` is optional. `true` flips the requirement: it holds while its target is off. `{ "kind": "trait", "id": "paladin", "not": true }` holds while the bearer doesn't have Paladin.
+- `owner` is optional. Absent = the trait's own owner. `{ "kind": "you" }` checks the player. `{ "kind": "entity", "id": "<entity id>", "name": "…" }` checks that entity.
+- `not` is optional. `true` flips the requirement: it holds while its target is off. `{ "kind": "trait", "id": "paladin", "not": true }` holds while the owner doesn't have Paladin.
 - A requirement whose target is gone never holds, with or without `not`.
+
+> 🔁 Older files name the owner under `bearer`. The app reads it as `owner`, and new files write `owner` only. Apps from v3.1 and v3.2 don't read `owner`, so they misread these requirements until updated.
 
 ### Trait Groups
 
@@ -463,7 +465,7 @@ A pin sets one placeholder to one value while its source is active. Traits, loca
 
 | Field | Req. | Type | Meaning |
 |---|---|---|---|
-| `placeholderId` | ✓ | String | The placeholder's `id`. On a trait, a blueprint `id` pins each bearer's copy |
+| `placeholderId` | ✓ | String | The placeholder's `id`. On a trait, a blueprint `id` pins each owner's copy |
 | `value` | ✓ | String | The value's text |
 | `valueId` | | String | The value's `id`. When present, it wins over `value`, so a reworded value still matches |
 

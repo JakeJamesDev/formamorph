@@ -179,7 +179,7 @@ function entityBearer(world: BearerWorld, entity: Entity, persona: PersonaRef | 
  */
 export function withoutSelfNamedGates(traits: readonly Trait[], playedId: string | null): Trait[] {
   if (playedId === null) return [...traits];
-  const selfNamed = (req: TraitRequirement) => req.kind !== 'playingAs' && req.bearer?.kind === 'entity' && req.bearer.id === playedId;
+  const selfNamed = (req: TraitRequirement) => req.kind !== 'playingAs' && req.owner?.kind === 'entity' && req.owner.id === playedId;
   return traits.flatMap((trait) => {
     const rows = trait.requires ?? [];
     if (rows.length === 0) return [trait];

@@ -75,8 +75,8 @@ describe('gateLine with Not Conditions', () => {
   it('reads Not on a group, a persona, and a bearer (Q11)', () => {
     const many = T('Drifter', {
       requires: [
-        { all: [not({ kind: 'playingAs', id: 'aldric' }), not(trait('Tamed', { bearer: { kind: 'entity', id: 'wolf' } }))] },
-        { all: [not(trait('Paladin', { bearer: { kind: 'you' } })), not({ kind: 'group', id: 'Class' })] },
+        { all: [not({ kind: 'playingAs', id: 'aldric' }), not(trait('Tamed', { owner: { kind: 'entity', id: 'wolf' } }))] },
+        { all: [not(trait('Paladin', { owner: { kind: 'you' } })), not({ kind: 'group', id: 'Class' })] },
       ],
     });
     expect(lineOf(many)).toBe('Unlocked by not playing as Sir Aldric and Ash: not Tamed, or You: not Paladin and not any Class');

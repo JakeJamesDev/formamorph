@@ -82,7 +82,7 @@ describe('an entity’s own traits change its own stats', () => {
   });
 
   it('reverses its own stats when a gate cascade turns the trait off', () => {
-    const gated = trait('hardy', hardy.statChanges, { name: 'Hardy', requires: [{ all: [{ kind: 'trait', id: 'grim', bearer: { kind: 'entity', id: 'bram' } }] }] });
+    const gated = trait('hardy', hardy.statChanges, { name: 'Hardy', requires: [{ all: [{ kind: 'trait', id: 'grim', owner: { kind: 'entity', id: 'bram' } }] }] });
     const w: TraitWorld = { ...world(), entities, bearers: [world().bearers![0], { ...bram, traits: [gated, boast, grim] }, albus] };
     const both = flip(flip(state(), 'bram', 'grim', true, w), 'bram', 'hardy', true, w);
     expect(own(both, 'bram', 'vigor')).toMatchObject({ max: 110, value: 55 });

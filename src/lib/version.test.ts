@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { APP_VERSION, migrateWorld, migrateSave, isSaveEnvelope, migrateCarriedPlaceholders } from './version';
 import { placeholderWeight } from './placeholders';
+import { WORLD_OWNER, gateOf, gateStates, worldGateInput } from './traitGates';
 import { headingReachesAi } from './groupTree';
 import { entityIdsAt } from './entityPresence';
 import { buildEntityContext, navigableDestinationEntries } from './locationContext';
@@ -894,6 +895,7 @@ describe('migrateWorld — exclusive groups to pick counts', () => {
 describe('migrateWorld — flat requirements to rows', () => {
   const paladin = { kind: 'trait', id: 'paladin', name: 'Paladin' };
   const orders = { kind: 'group', id: 'orders', bearer: { kind: 'you' } };
+  const ownedOrders = { kind: 'group', id: 'orders', owner: { kind: 'you' } };
   const persona = { kind: 'playingAs', id: 'aldric' };
   // A 3.2.x world: flat lists on a world trait, an owned trait and both sides of a link override.
   const raw = () => ({
@@ -916,7 +918,7 @@ describe('migrateWorld — flat requirements to rows', () => {
 
   it('wraps each flat entry in its own row on world traits', () => {
     const world = migrateWorld(raw());
-    expect(world.traits[1].requires).toEqual([{ all: [paladin] }, { all: [orders] }]);
+    expect(world.traits[1].requires).toEqual([{ all: [paladin] }, { all: [ownedOrders] }]);
     expect(world.traits[2].requires).toBeUndefined();
   });
 
@@ -924,7 +926,7 @@ describe('migrateWorld — flat requirements to rows', () => {
     const [mira] = migrateWorld(raw()).entities;
     expect(mira.traits![0].requires).toEqual([{ all: [persona] }]);
     expect(mira.traitLinks![0].overrides!.smite).toEqual({
-      requires: { value: [{ all: [persona] }], blueprint: [{ all: [paladin] }, { all: [orders] }] },
+      requires: { value: [{ all: [persona] }], blueprint: [{ all: [paladin] }, { all: [ownedOrders] }] },
       isDefault: { value: true, blueprint: false },
     });
   });
@@ -934,7 +936,7 @@ describe('migrateWorld — flat requirements to rows', () => {
     const twice = migrateWorld(JSON.parse(JSON.stringify(once)));
     expect(twice.traits).toEqual(once.traits);
     expect(twice.entities).toEqual(once.entities);
-    const rows = [{ all: [paladin, orders] }, { all: [persona] }];
+    const rows = [{ all: [paladin, ownedOrders] }, { all: [persona] }];
     expect(migrateWorld({ version: APP_VERSION, traits: [{ id: 't', name: 'T', statChanges: [], requires: rows }] }).traits[0].requires).toEqual(rows);
   });
 
@@ -942,6 +944,66 @@ describe('migrateWorld — flat requirements to rows', () => {
     const requires = [{ all: [] }, { all: [persona] }];
     expect(migrateWorld({ version: APP_VERSION, traits: [{ id: 't', name: 'T', statChanges: [], requires }] }).traits[0].requires)
       .toEqual([{ all: [persona] }]);
+  });
+});
+
+describe('migrateWorld — requirement bearer key to owner', () => {
+  const mira = { kind: 'entity', id: 'mira', name: 'Mira' };
+  const onMira = { kind: 'trait', id: 'brave', bearer: mira };
+  const onYou = { kind: 'stat', id: 'rage', bearer: { kind: 'you' }, operator: '>=', value: 80, unit: 'raw' };
+  const moved = { kind: 'trait', id: 'brave', owner: mira };
+  const movedYou = { kind: 'stat', id: 'rage', owner: { kind: 'you' }, operator: '>=', value: 80, unit: 'raw' };
+  const persona = { kind: 'playingAs', id: 'mira' };
+  // A world from before the rename: the key on a world trait, an owned trait and both link sides.
+  const raw = () => ({
+    version: APP_VERSION,
+    traits: [
+      { id: 'brave', name: 'Brave', statChanges: [] },
+      { id: 'smite', name: 'Smite', statChanges: [], groupId: 'bp', requires: [{ all: [onMira, persona] }, { all: [onYou] }] },
+      { id: 'flat', name: 'Flat', statChanges: [], requires: [onYou] },
+    ],
+    traitGroups: [{ id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' }],
+    entities: [{
+      id: 'mira', name: 'Mira',
+      traits: [{ id: 'vow', name: 'Vow', statChanges: [], requires: [{ all: [onMira] }] }],
+      traitLinks: [{
+        id: 'l', originalId: 'smite', kind: 'trait', originalName: 'Smite', groupId: null,
+        overrides: { smite: { requires: { value: [{ all: [onYou] }], blueprint: [{ all: [onMira, persona] }] } } },
+      }],
+    }],
+  });
+
+  it('loads `bearer` as `owner` with the same value everywhere a Condition is stored', () => {
+    const world = migrateWorld(raw());
+    expect(world.traits[1].requires).toEqual([{ all: [moved, persona] }, { all: [movedYou] }]);
+    expect(world.traits[2].requires).toEqual([{ all: [movedYou] }]);
+    const [entity] = world.entities;
+    expect(entity.traits![0].requires).toEqual([{ all: [moved] }]);
+    expect(entity.traitLinks![0].overrides!.smite.requires)
+      .toEqual({ value: [{ all: [movedYou] }], blueprint: [{ all: [moved, persona] }] });
+    expect(JSON.stringify(world)).not.toContain('"bearer"');
+  });
+
+  it('changes nothing on a second pass', () => {
+    const once = migrateWorld(raw());
+    expect(migrateWorld(JSON.parse(JSON.stringify(once)))).toEqual(once);
+  });
+
+  it('keeps `owner` where a hand-edited file carries both keys', () => {
+    const both = { kind: 'trait', id: 'brave', owner: { kind: 'you' }, bearer: mira };
+    const world = migrateWorld({ version: APP_VERSION, traits: [{ id: 't', name: 'T', statChanges: [], requires: [{ all: [both] }] }] });
+    expect(world.traits[0].requires).toEqual([{ all: [{ kind: 'trait', id: 'brave', owner: { kind: 'you' } }] }]);
+  });
+
+  it('gates an old world on the owner its file named', () => {
+    // Not Brave on Mira holds while the player has Brave, so a reader that misses the owner reads it as locked.
+    const notOnMira = { ...onMira, not: true };
+    const world = migrateWorld({ version: APP_VERSION, traits: [
+      { id: 'brave', name: 'Brave', statChanges: [] },
+      { id: 'smite', name: 'Smite', statChanges: [], requires: [{ all: [notOnMira] }] },
+    ], entities: [{ id: 'mira', name: 'Mira' }] });
+    const input = worldGateInput({ traits: world.traits, groups: [], entities: world.entities }, { source: 'none' }, ['brave']);
+    expect(gateOf(gateStates(input), WORLD_OWNER, 'smite')?.unlocked).toBe(true);
   });
 });
 

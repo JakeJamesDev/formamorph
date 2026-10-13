@@ -38,13 +38,13 @@ describe('ruleStates', () => {
 
   it('reads a trait Condition from the input’s active sets, and Not flips it', () => {
     const active = { [WORLD_OWNER]: ['knight'] };
-    const rows = [row({ kind: 'trait', id: 'knight', bearer: { kind: 'you' } }), row({ kind: 'trait', id: 'healed', bearer: { kind: 'you' }, not: true })];
+    const rows = [row({ kind: 'trait', id: 'knight', owner: { kind: 'you' } }), row({ kind: 'trait', id: 'healed', owner: { kind: 'you' }, not: true })];
     expect(ruleStates(input({ active }), 'wren', rows).map((r) => r.holds)).toEqual([true, true]);
     expect(ruleStates(input(), 'wren', rows).map((r) => r.holds)).toEqual([false, true]);
   });
 
   it('reads each row on its own, and a row holds only when every Condition does', () => {
-    const rows = [row(lowHealth, { kind: 'trait', id: 'knight', bearer: { kind: 'you' } })];
+    const rows = [row(lowHealth, { kind: 'trait', id: 'knight', owner: { kind: 'you' } })];
     expect(ruleStates(input(), 'wren', rows)[0].holds).toBe(false);
     expect(ruleStates(input({ active: { [WORLD_OWNER]: ['knight'] } }), 'wren', rows)[0].holds).toBe(true);
   });
@@ -56,14 +56,14 @@ describe('shownWhileLine', () => {
   });
 
   it('reads a stat Condition and a Not trait Condition with the "Shown while" lead', () => {
-    const states = ruleStates(input(), 'wren', [row(lowHealth, { kind: 'trait', id: 'healed', bearer: { kind: 'you' }, not: true })]);
+    const states = ruleStates(input(), 'wren', [row(lowHealth, { kind: 'trait', id: 'healed', owner: { kind: 'you' }, not: true })]);
     expect(shownWhileLine(states)).toBe('Shown while Health < 20% and You: not Healed');
   });
 
   it('closes an "and" row with a comma before "or"', () => {
     const states = ruleStates(input(), 'wren', [
-      row(lowHealth, { kind: 'trait', id: 'knight', bearer: { kind: 'you' } }),
-      row({ kind: 'trait', id: 'healed', bearer: { kind: 'you' } }),
+      row(lowHealth, { kind: 'trait', id: 'knight', owner: { kind: 'you' } }),
+      row({ kind: 'trait', id: 'healed', owner: { kind: 'you' } }),
     ]);
     expect(shownWhileLine(states)).toBe('Shown while Health < 20% and You: Knight, or You: Healed');
   });

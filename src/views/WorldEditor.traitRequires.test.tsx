@@ -123,14 +123,14 @@ describe('the Requires field', () => {
     const page = screen.getAllByRole('option').map((o) => o.textContent);
     expect(page).toEqual(['Same BearerWhoever has the trait', 'You', 'Ash']);
     fireEvent.click(screen.getByRole('option', { name: /^Ash/ }));
-    expect(traitRequires(ctx, 't-loose')).toEqual([{ all: [{ kind: 'trait', id: 't-tamed', bearer: { kind: 'entity', id: 'ash', name: 'Ash' } }] }]);
+    expect(traitRequires(ctx, 't-loose')).toEqual([{ all: [{ kind: 'trait', id: 't-tamed', owner: { kind: 'entity', id: 'ash', name: 'Ash' } }] }]);
   });
 
   it('reads a target already listed for You as listed, so a world trait cannot take it twice', async () => {
     const world = benchEditorWorld({
       ...WORLD,
       traits: WORLD.traits.map((t) => (t.id === 't-plate'
-        ? { ...t, requires: [{ all: [{ kind: 'trait', id: 't-paladin', bearer: { kind: 'you' } }] }] }
+        ? { ...t, requires: [{ all: [{ kind: 'trait', id: 't-paladin', owner: { kind: 'you' } }] }] }
         : t)),
     } as Partial<World>);
     renderWorldEditorBench(world, 'advanced');

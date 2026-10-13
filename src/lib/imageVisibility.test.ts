@@ -40,7 +40,7 @@ describe('visibleImages', () => {
   });
 
   it('reads the player’s traits under the you bearer', () => {
-    const gallery = [{ data: 'true form', requires: when({ kind: 'trait', id: 'Night Vision', bearer: { kind: 'you' } }) }];
+    const gallery = [{ data: 'true form', requires: when({ kind: 'trait', id: 'Night Vision', owner: { kind: 'you' } }) }];
     expect(shown(gallery, input(50, ['Night Vision']))).toEqual(['true form']);
     expect(shown(gallery, input(50))).toEqual([]);
   });
