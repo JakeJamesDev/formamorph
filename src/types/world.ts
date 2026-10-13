@@ -187,9 +187,12 @@ export type BlueprintOverrides<T> = { [K in keyof T]?: BlueprintOverride<T[K]> }
 
 /** Whose active set a requirement reads: the played persona's, or a named entity's. `name` is the entity's
  *  name when it was stored, so an unresolved one still reads. Absent on a requirement = the same owner. */
-export type RequirementBearer =
+export type RequirementOwner =
   | { kind: 'you' }
   | { kind: 'entity'; id: string; name?: string };
+
+/** Alias kept while call sites move to {@link RequirementOwner}. */
+export type RequirementBearer = RequirementOwner;
 
 /** How a stat Condition compares the stat to its number. */
 export type StatComparison = '>' | '<' | '>=' | '<=' | '=' | '≠';

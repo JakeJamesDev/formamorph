@@ -8,7 +8,7 @@ import { isMethodEntry, type CodeAccess, type SurfaceEntry } from '@/lib/codeSur
 import { canBePlayer } from '@/lib/bearers';
 import type { DocTarget } from '@/lib/docs/docsLinks';
 import type {
-  CodeDictionaryRecord, CodeEntityRecord, CodeHoldersRecord, CodeOwnerRecord, CodePlaceholderHolder, CodePlaceholderRecord,
+  CodeDictionaryRecord, CodeEntityRecord, CodeOwnersRecord, CodeOwnerRecord, CodePlaceholderOwner, CodePlaceholderRecord,
   CodeStatRecord, CodeTraitRecord, CodeWorldLookup,
 } from '@/lib/codeWorldLookup';
 import { placeholderKindNoun, placeholderWeight } from '@/lib/placeholders';
@@ -188,7 +188,7 @@ function statDetails(record: CodeStatRecord): Pick<CodeCard, 'description' | 'ro
 const TRAIT_MODE_LABEL: Record<TraitMode | 'optional', string> = { optional: 'Optional', alwaysOn: 'Automatic', hidden: 'Hidden' };
 
 /** A trait's World Details: Mode, then Requires and Changes where set, then Bearers. Only Bearers for mixed holders (Q37). */
-export function traitRows(record: CodeTraitRecord | CodeHoldersRecord): CodeCardRow[] {
+export function traitRows(record: CodeTraitRecord | CodeOwnersRecord): CodeCardRow[] {
   if (!record.trait) return [bearersRow(record.bearers)];
   const { trait, requires, changes, bearers } = record;
   return [
@@ -200,7 +200,7 @@ export function traitRows(record: CodeTraitRecord | CodeHoldersRecord): CodeCard
   ];
 }
 
-function traitDetails(record: CodeTraitRecord | CodeHoldersRecord): Pick<CodeCard, 'description' | 'rows' | 'item'> {
+function traitDetails(record: CodeTraitRecord | CodeOwnersRecord): Pick<CodeCard, 'description' | 'rows' | 'item'> {
   if (!record.trait) return { rows: traitRows(record) };
   const { trait, entityId } = record;
   const description = trait.playerDescription || trait.aiDescription;
@@ -217,7 +217,7 @@ export function placeholderValues(placeholder: Placeholder): CodeCardValues {
   return { values: values.slice(0, CARD_LIST_CAP), more: Math.max(0, values.length - CARD_LIST_CAP) };
 }
 
-function placeholderDetails(record: CodePlaceholderRecord | CodeHoldersRecord): Pick<CodeCard, 'rows' | 'item' | 'allowedValues'> {
+function placeholderDetails(record: CodePlaceholderRecord | CodeOwnersRecord): Pick<CodeCard, 'rows' | 'item' | 'allowedValues'> {
   if (!record.placeholder) return { rows: [bearersRow(record.bearers)] };
   const { placeholder, owner, pins, bearers } = record;
   return {
@@ -242,16 +242,19 @@ function reachedEntities(owner: PlaceholderOwner, options: SurfaceAnalysisOption
   return (options.entities ?? []).filter((entity) => entity.persona).map((entity) => [entity.id, { ...options, entities: [entity] }]);
 }
 
-/** Each entity a `persona` or `owner` placeholder route reaches that holds the placeholder, with it. */
-export function placeholderHolders(
+/** Each entity a `persona` or `owner` placeholder route reaches that owns the placeholder, with it. */
+export function reachedPlaceholderOwners(
   owner: PlaceholderOwner, path: readonly string[], options: SurfaceAnalysisOptions,
   reached = reachedEntities(owner, options),
-): CodePlaceholderHolder[] {
+): CodePlaceholderOwner[] {
   return reached.flatMap(([entityId, each]) => {
     const placeholder = placeholderAt(owner, path, each);
     return placeholder ? [{ entityId, placeholder }] : [];
   });
 }
+
+/** Alias kept while call sites move to {@link reachedPlaceholderOwners}. */
+export const placeholderHolders = reachedPlaceholderOwners;
 
 /** An entity's World Details: what it is, then the names its maps hold. */
 export function entityRows({ entity, stats, traits, placeholders }: CodeEntityRecord): CodeCardRow[] {
@@ -399,7 +402,7 @@ export function codeCard(code: string, pos: number, options: SurfaceAnalysisOpti
       const reached = reachedEntities(name.owner, options);
       const placeholder = reached.length < 2 && placeholderAt(name.owner, name.path, options);
       const record = reached.length > 1
-        ? lookup.heldPlaceholder(placeholderHolders(name.owner, name.path, options, reached))
+        ? lookup.heldPlaceholder(reachedPlaceholderOwners(name.owner, name.path, options, reached))
         : placeholder && lookup.placeholder(placeholder);
       return record ? { ...card, ...placeholderDetails(record) } : card;
     }

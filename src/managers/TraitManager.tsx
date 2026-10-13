@@ -74,13 +74,16 @@ const ConflictNote = ({ conflict, placeholders, onOpen }: {
 
 /** The line under a world persona's stat sections when its traits change a player stat, which they do only
  *  while it is played. The Custom Persona entity's traits are the player's, so it gets none. */
-export function BearerStatNote({ bearer, traits }: { bearer: Entity; traits: readonly Trait[] }) {
+export function OwnerStatNote({ bearer, traits }: { bearer: Entity; traits: readonly Trait[] }) {
   const { stats, statGroups } = useTraitStore();
   if (!bearer.persona || bearer.customPersona) return null;
   const sideOf = bearerRowSide({ stats, statGroups: statGroups ?? [] }, bearer);
   const named = traits.flatMap(statRows).some((row) => sideOf(row) === 'player');
   return named ? <Hint>Player stat changes apply only when you play as them</Hint> : null;
 }
+
+/** Alias kept while call sites move to {@link OwnerStatNote}. */
+export const BearerStatNote = OwnerStatNote;
 
 /** Whose stat each of a bearer's trait rows moves, as play routes it. */
 const bearerRowSide = (world: { stats: Stat[]; statGroups: StatGroup[] }, bearer: Entity) => {
@@ -340,7 +343,7 @@ const TraitManager = ({
 
   const statsPanel = (
     <>
-      {owner && !link && <BearerStatNote bearer={owner} traits={[editingTrait]} />}
+      {owner && !link && <OwnerStatNote bearer={owner} traits={[editingTrait]} />}
       <div data-tour-anchor="trait-stat-changes" className="space-y-2">
         <LabelRow reset={resetControl('statChanges', 'Stat Changes')}>
           <Label>Stat Changes</Label>

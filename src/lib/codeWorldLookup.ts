@@ -57,18 +57,22 @@ export interface CodePlaceholderRecord {
   bearers?: readonly string[];
 }
 
-/** A route over several entities whose holders hold different items, so only the holders show (Q37). */
-export interface CodeHoldersRecord {
+/** A route over several entities whose owners have different items, so only the owners show (Q37). */
+export interface CodeOwnersRecord {
   trait?: null;
   placeholder?: null;
   bearers: readonly string[];
 }
 
-/** One entity a placeholder route over several entities reaches, and what it holds there. */
-export interface CodePlaceholderHolder {
+/** One entity a placeholder route over several entities reaches, and what it owns there. */
+export interface CodePlaceholderOwner {
   entityId: string;
   placeholder: Placeholder;
 }
+
+// Old names, kept while call sites move to the owner names.
+export type CodeHoldersRecord = CodeOwnersRecord;
+export type CodePlaceholderHolder = CodePlaceholderOwner;
 
 export interface CodeEntityRecord {
   entity: Entity;
@@ -98,12 +102,12 @@ export interface CodeWorldLookup {
   /** The stat `key` names on `owner`'s map, or null where the map has no such stat. */
   stat(owner: StatOwner, key: string): CodeStatRecord | null;
   /** On a route over several entities, the trait every holder shares, or only the holders (Q37). */
-  trait(owner: TraitOwner, key: string): CodeTraitRecord | CodeHoldersRecord | null;
+  trait(owner: TraitOwner, key: string): CodeTraitRecord | CodeOwnersRecord | null;
   /** Each holder's trait, for a route that reaches several entities. */
   traits(owner: TraitOwner, key: string): CodeTraitRecord[];
   placeholder(placeholder: Placeholder): CodePlaceholderRecord | null;
   /** The placeholder every holder shares, one Copy or the Blueprint of all, or only the holders (Q37). */
-  heldPlaceholder(holders: readonly CodePlaceholderHolder[]): CodePlaceholderRecord | CodeHoldersRecord | null;
+  heldPlaceholder(holders: readonly CodePlaceholderOwner[]): CodePlaceholderRecord | CodeOwnersRecord | null;
   entity(key: string): CodeEntityRecord | null;
   dictionary(key: string): CodeDictionaryRecord | null;
   /** The entities the player can play. */

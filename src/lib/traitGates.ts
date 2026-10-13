@@ -1,14 +1,17 @@
-// Trait gates: what a requirement list unlocks, and what a selection settles to. Every owner is one bearer
-// and gates on its own active set; the player's owners (the world root and the played entity) read as one.
+// Trait gates: what a requirement list unlocks, and what a selection settles to. Every owner
+// gates on its own active set; the player's owners (the world root and the played entity) read as one.
 
-import type { PersonaRef, RequirementBearer, StatComparison, StatRequirement, Trait, TraitGroup, TraitRequirement, TraitRequirementRow } from '@/types';
+import type { PersonaRef, RequirementBearer, RequirementOwner, StatComparison, StatRequirement, Trait, TraitGroup, TraitRequirement, TraitRequirementRow } from '@/types';
 import { defaultPicks, exclusiveSiblings, isAlwaysOn, isHidden, traitOrderIndex } from './traitEffects';
 // The generic tree, not traitTree: that module reads the bearer resolver, which reads this one.
 import { buildTree, flattenTree } from './groupTree';
 import { conditionsOf, rowsHold } from './requirementRows';
 
-/** The owner id of the world's own traits, and the player bearer's key. */
-export const WORLD_OWNER = 'world';
+/** The player's owner id: the key of the world's root traits, shared by None and a library persona. */
+export const PLAYER_OWNER = 'world';
+
+/** Alias kept while call sites move to {@link PLAYER_OWNER}. */
+export const WORLD_OWNER = PLAYER_OWNER;
 
 /** The breadcrumb of a world trait or group with no group above it. */
 export const WORLD_BREADCRUMB: readonly string[] = ['World'];
@@ -113,13 +116,19 @@ export const ownerHolding = (owners: readonly GateOwner[], traitId: string): Gat
 export const shownRefs = (owners: readonly GateOwner[], refs: readonly GateTraitRef[]): GateTraitRef[] =>
   refs.filter((ref) => !owners.some((o) => o.id === ref.ownerId && o.traits.some((t) => t.id === ref.traitId && isHidden(t))));
 
-/** The bearer a requirement names; absent for the same bearer and for "playing as". */
-export const bearerOf = (req: TraitRequirement): RequirementBearer | undefined =>
+/** The owner a requirement names; absent for the same owner and for "playing as". */
+export const requirementOwnerOf = (req: TraitRequirement): RequirementOwner | undefined =>
   (req.kind === 'playingAs' ? undefined : req.owner);
 
-/** One key per bearer choice, so two requirements compare by it. */
-export const bearerKey = (bearer?: RequirementBearer): string =>
-  (bearer === undefined ? 'same' : bearer.kind === 'you' ? 'you' : `entity:${bearer.id}`);
+/** Alias kept while call sites move to {@link requirementOwnerOf}. */
+export const bearerOf = requirementOwnerOf;
+
+/** One key per owner choice, so two requirements compare by it. */
+export const requirementOwnerKey = (owner?: RequirementOwner): string =>
+  (owner === undefined ? 'same' : owner.kind === 'you' ? 'you' : `entity:${owner.id}`);
+
+/** Alias kept while call sites move to {@link requirementOwnerKey}. */
+export const bearerKey = requirementOwnerKey;
 
 /** Whether two requirements add the same gate: the same target under the same bearer, both plain or both Not,
  *  and for a stat the same comparison. */
@@ -913,11 +922,14 @@ function opensTogether(targets: Located<Trait>[], idx: Index, stuck: ReadonlySet
   return targets.reduceRight<() => boolean>((then, t) => () => open(t, then), () => true)();
 }
 
-/** A bearer the picker can name for a target, with the name its row shows. */
-export interface RequirementBearerOption {
-  bearer: RequirementBearer;
+/** An owner the picker can name for a target, with the name its row shows. */
+export interface RequirementOwnerOption {
+  bearer: RequirementOwner;
   name: string;
 }
+
+/** Alias kept while call sites move to {@link RequirementOwnerOption}. */
+export type RequirementBearerOption = RequirementOwnerOption;
 
 /** One row of the requirement picker: what it adds, how the chip reads, and where the target lives. */
 export interface RequirementOption {
@@ -935,9 +947,12 @@ export interface RequirementOptions {
   personas: RequirementOption[];
 }
 
-/** `requirement` scoped to `bearer`; the same bearer when `bearer` is absent. */
-export const withBearer = (requirement: TraitRequirement, bearer?: RequirementBearer): TraitRequirement =>
-  (requirement.kind === 'playingAs' || !bearer ? requirement : { ...requirement, owner: bearer });
+/** `requirement` scoped to `owner`; the same owner when `owner` is absent. */
+export const withRequirementOwner = (requirement: TraitRequirement, owner?: RequirementOwner): TraitRequirement =>
+  (requirement.kind === 'playingAs' || !owner ? requirement : { ...requirement, owner });
+
+/** Alias kept while call sites move to {@link withRequirementOwner}. */
+export const withBearer = withRequirementOwner;
 
 /**
  * Every requirement an author can give `traitId`, each target once, in tree order per owner. The trait
