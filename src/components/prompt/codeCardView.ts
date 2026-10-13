@@ -11,10 +11,12 @@ export function signatureText({ kind, path, type }: CodeCardSignature): string {
 }
 
 /** What a screen reader hears when a card opens: the signature, the badge, the description and World Details. */
-export function cardAnnouncement({ signature, access, description, rows = [] }: CodeCard): string {
+export function cardAnnouncement({ signature, access, description, rows = [], allowedValues }: CodeCard): string {
+  const values = allowedValues?.values.map(({ text, weight }) => (weight === undefined ? text : `${text} weight ${weight}`)) ?? [];
   const parts = [
     `${signature.kind} ${signatureText(signature)}`, access ? ACCESS_LABEL[access] : '', description ?? '',
-    ...rows.map((row) => `${row.label}: ${row.value}`),
+    ...rows.map((row) => `${row.label}: ${row.value.replace(/\n/g, ', ')}`),
+    values.length ? `Allowed Values: ${values.join(', ')}${allowedValues?.more ? ` and ${allowedValues.more} more` : ''}` : '',
   ];
   return parts.filter(Boolean).map((part) => part.replace(/\.+$/, '')).join('. ');
 }
@@ -37,8 +39,8 @@ export function renderInfoLine(text: string): HTMLElement {
   return element('div', 'px-2.5 py-1.5 text-helper text-muted-foreground', text);
 }
 
-/** The card's DOM: the signature with its badge, the description, World Details, a slot's default, then its
- *  links, one rule between sections. */
+/** The card's DOM: the signature with its badge, the description, World Details, Allowed Values, a slot's
+ *  default, then its links, one rule between sections. */
 export function renderCodeCard(card: CodeCard, actions: CodeCardActions = {}): HTMLElement {
   const root = element('div', 'code-card w-[22.5rem] max-w-[calc(100vw-2rem)] divide-y divide-border text-helper');
   root.dataset.codeCard = '';
@@ -66,9 +68,25 @@ export function renderCodeCard(card: CodeCard, actions: CodeCardActions = {}): H
     const rows = element('dl', 'grid grid-cols-[max-content_1fr] gap-x-3 gap-y-0.5 px-2.5 py-1.5');
     rows.setAttribute('aria-label', 'World Details');
     for (const row of card.rows) {
-      rows.append(element('dt', 'text-muted-foreground', row.label), element('dd', 'min-w-0 break-words text-popover-foreground', row.value));
+      // A multi-line value, such as one Requirement Row per line, keeps its lines.
+      rows.append(element('dt', 'text-muted-foreground', row.label), element('dd', 'min-w-0 whitespace-pre-line break-words text-popover-foreground', row.value));
     }
     root.append(rows);
+  }
+
+  if (card.allowedValues) {
+    const section = element('section', 'px-2.5 py-1.5');
+    section.append(element('h3', 'text-muted-foreground', 'Allowed Values'));
+    const list = element('ul', 'space-y-0.5 font-mono text-popover-foreground');
+    for (const { text, weight } of card.allowedValues.values) {
+      // A weight-0 value is benched, so it draws only when every value is (Q13).
+      const item = element('li', weight === 0 ? 'opacity-50' : '', weight === undefined ? text : `${text} ×${weight}`);
+      if (weight === 0) item.dataset.benched = '';
+      list.append(item);
+    }
+    if (card.allowedValues.more) list.append(element('li', 'font-sans text-muted-foreground', `and ${card.allowedValues.more} more`));
+    section.append(list);
+    root.append(section);
   }
 
   if (card.defaultValue !== undefined) {

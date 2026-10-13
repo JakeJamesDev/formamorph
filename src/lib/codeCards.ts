@@ -5,13 +5,17 @@
 
 import type { SyntaxNode } from '@lezer/common';
 import { isMethodEntry, type CodeAccess, type SurfaceEntry } from '@/lib/codeSurface';
-import type { CodeStatRecord, CodeWorldLookup } from '@/lib/codeWorldLookup';
+import { canBePlayer } from '@/lib/bearers';
+import type {
+  CodeDictionaryRecord, CodeEntityRecord, CodeOwnerRecord, CodePlaceholderRecord, CodeStatRecord, CodeTraitRecord, CodeWorldLookup,
+} from '@/lib/codeWorldLookup';
+import { placeholderKindNoun, placeholderWeight } from '@/lib/placeholders';
 import { REGEN_UNIT_LABELS, regenPer, regenUnitOf } from '@/lib/regenUnits';
-import { isUnknownEntry, memberEntries, type SurfaceAnalysisOptions } from '@/lib/statCodeAnalysis';
+import { isUnknownEntry, memberEntries, placeholderAt, type SurfaceAnalysisOptions } from '@/lib/statCodeAnalysis';
 import { isIdentifier } from '@/lib/statCodePaths';
 import { parseCode, resolveCodeName, type CodeMapOwner, type CodeValue } from '@/lib/statCodeResolver';
-import { parseTemplateSlots } from '@/lib/statCodeTemplates';
-import type { Stat } from '@/types';
+import { DAYPART_OPTIONS, parseTemplateSlots } from '@/lib/statCodeTemplates';
+import type { Placeholder, Stat, TraitMode } from '@/types';
 
 /** What a name the code declares is, as the author wrote it. */
 export type DeclarationKind = 'const' | 'let' | 'var' | 'function' | 'class' | 'parameter';
@@ -38,7 +42,24 @@ export interface CodeCardRow {
 /** The world item a card names, for links that open or search it. */
 export type CodeCardItem =
   | { kind: 'stat'; statId: string; entityId?: string }
-  | { kind: 'entity'; entityId: string };
+  | { kind: 'trait'; traitId: string; entityId?: string }
+  | { kind: 'placeholder'; placeholderId: string }
+  | { kind: 'entity'; entityId: string }
+  | { kind: 'dictionary'; dictionaryId: string };
+
+/** One Allowed Values line. A weight of 0 never draws, so the card fades it. */
+export interface CodeCardValue {
+  text: string;
+  /** Absent where values carry no weight, as clock dayparts don't. */
+  weight?: number;
+}
+
+/** What a name can hold, cut to {@link CARD_LIST_CAP} values. */
+export interface CodeCardValues {
+  values: readonly CodeCardValue[];
+  /** How many values the cut left out. */
+  more: number;
+}
 
 /** An action a card offers. */
 export type CodeCardLink =
@@ -53,6 +74,7 @@ export interface CodeCard {
   /** Absent where the name is no field a write could reach. */
   access?: CodeAccess;
   description?: string;
+  allowedValues?: CodeCardValues;
   /** World Details, from the box's lookup. */
   rows?: CodeCardRow[];
   item?: CodeCardItem;
@@ -126,7 +148,17 @@ const STAT_ROWS: readonly {
   { label: 'Off', value: () => 'Until a trait turns it on', atDefault: (stat) => stat.enabled !== false },
 ];
 
-const bearersRow = (bearers: readonly string[]): CodeCardRow => ({ label: 'Bearers', value: bearers.join(', ') || 'No bearers' });
+/** The most names or values a card lists before "and N more". */
+export const CARD_LIST_CAP = 12;
+
+/** `names` as a comma list, cut at the cap. */
+export function listText(names: readonly string[], empty = 'None'): string {
+  if (!names.length) return empty;
+  const shown = names.slice(0, CARD_LIST_CAP).join(', ');
+  return names.length > CARD_LIST_CAP ? `${shown} and ${names.length - CARD_LIST_CAP} more` : shown;
+}
+
+const bearersRow = (bearers: readonly string[]): CodeCardRow => ({ label: 'Bearers', value: listText(bearers, 'No bearers') });
 
 /** A stat's World Details, with a Bearers row where a Blueprint box names who runs it (Q30). Only the Owner row
  *  where the lookup has no single stat to show (Q34). */
@@ -150,25 +182,102 @@ function statDetails(record: CodeStatRecord): Pick<CodeCard, 'description' | 'ro
   };
 }
 
-/** `self` and `owner` as the lookup's box holds them, laid over their surface card. */
+const TRAIT_MODE_LABEL: Record<TraitMode | 'optional', string> = { optional: 'Optional', alwaysOn: 'Automatic', hidden: 'Hidden' };
+
+/** A trait's World Details: Mode always, then Requires and Changes where it has them, then Bearers. */
+export function traitRows({ trait, requires, changes, bearers }: CodeTraitRecord): CodeCardRow[] {
+  return [
+    { label: 'Mode', value: TRAIT_MODE_LABEL[trait.mode ?? 'optional'] },
+    // One line per Requirement Row; a row after the first holds instead of the ones above it.
+    ...(requires.length ? [{ label: 'Requires', value: requires.map((row, i) => `${i ? 'or ' : ''}${row.join(' and ')}`).join('\n') }] : []),
+    ...(changes.length ? [{ label: 'Changes', value: listText(changes) }] : []),
+    bearersRow(bearers),
+  ];
+}
+
+function traitDetails(record: CodeTraitRecord): Pick<CodeCard, 'description' | 'rows' | 'item'> {
+  const { trait, entityId } = record;
+  const description = trait.playerDescription || trait.aiDescription;
+  return {
+    ...(description ? { description } : {}),
+    rows: traitRows(record),
+    item: { kind: 'trait', traitId: trait.id, ...(entityId ? { entityId } : {}) },
+  };
+}
+
+/** Each value with its weight, weights a Copy changes included. */
+export function placeholderValues(placeholder: Placeholder): CodeCardValues {
+  const values = placeholder.values.map((value) => ({ text: value.text, weight: placeholderWeight(placeholder, value) }));
+  return { values: values.slice(0, CARD_LIST_CAP), more: Math.max(0, values.length - CARD_LIST_CAP) };
+}
+
+function placeholderDetails({ placeholder, owner, pins }: CodePlaceholderRecord): Pick<CodeCard, 'rows' | 'item' | 'allowedValues'> {
+  return {
+    rows: [
+      { label: 'Owner', value: owner },
+      { label: 'Kind', value: placeholderKindNoun(placeholder) },
+      ...(pins.length ? [{ label: 'Pinned By', value: pins.join('\n') }] : []),
+    ],
+    item: { kind: 'placeholder', placeholderId: placeholder.id },
+    allowedValues: placeholderValues(placeholder),
+  };
+}
+
+/** An entity's World Details: what it is, then the names its maps hold. */
+export function entityRows({ entity, stats, traits, placeholders }: CodeEntityRecord): CodeCardRow[] {
+  return [
+    ...(entity.type ? [{ label: 'Type', value: entity.type }] : []),
+    ...(canBePlayer(entity) ? [{ label: 'Persona', value: 'Can be played' }] : []),
+    { label: 'Stats', value: listText(stats) },
+    { label: 'Traits', value: listText(traits) },
+    { label: 'Placeholders', value: listText(placeholders) },
+  ];
+}
+
+function entityDetails(record: CodeEntityRecord): Pick<CodeCard, 'description' | 'rows' | 'item'> {
+  const description = record.entity.playerDescription;
+  return { ...(description ? { description } : {}), rows: entityRows(record), item: { kind: 'entity', entityId: record.entity.id } };
+}
+
+function dictionaryDetails({ dictionary, placeholders }: CodeDictionaryRecord): Pick<CodeCard, 'description' | 'rows' | 'item'> {
+  return {
+    ...(dictionary.description ? { description: dictionary.description } : {}),
+    rows: [{ label: 'Placeholders', value: listText(placeholders) }, { label: 'Entries', value: String(dictionary.entries.length) }],
+    item: { kind: 'dictionary', dictionaryId: dictionary.id },
+  };
+}
+
+const LIBRARY_PERSONA_NOTE = 'Under a library persona, reach the Custom Persona through entities[...]';
+
+/** `self`, `owner` and `persona` as the lookup's world holds them, laid over their surface card. */
 function boxGlobal(card: CodeCard, lookup: CodeWorldLookup): CodeCard {
-  if (card.signature.path === 'self') {
-    const record = lookup.self();
-    const { rows = [], item } = statDetails(record);
-    return { ...card, rows: [{ label: 'Stat', value: record.stat.name }, ...rows], ...(item ? { item } : {}) };
-  }
-  if (card.signature.path !== 'owner') return card;
-  const owner = lookup.owner();
-  switch (owner.kind) {
-    case 'empty': return { ...card, description: 'Holds nothing in a world stat’s code. Writing through it changes nothing.' };
-    case 'blueprint': return { ...card, rows: [bearersRow(owner.bearers)] };
-    case 'entity': return {
+  switch (card.signature.path) {
+    case 'self': {
+      const record = lookup.self();
+      const { rows = [], item } = statDetails(record);
+      return { ...card, rows: [{ label: 'Stat', value: record.stat.name }, ...rows], ...(item ? { item } : {}) };
+    }
+    case 'persona': return {
       ...card,
-      rows: [{ label: 'Entity', value: owner.name }, { label: 'Stats', value: owner.stats.join(', ') || 'None' }],
-      item: { kind: 'entity', entityId: owner.entityId },
+      description: [card.description, LIBRARY_PERSONA_NOTE].filter(Boolean).join(' '),
+      rows: [{ label: 'Can Play', value: listText(lookup.persona()) }],
     };
+    case 'owner': return ownerCard(card, lookup.owner());
+    default: return card;
   }
 }
+
+function ownerCard(card: CodeCard, owner: CodeOwnerRecord | null): CodeCard {
+  switch (owner?.kind) {
+    case undefined: return card;
+    case 'empty': return { ...card, description: 'Holds nothing in a world stat’s code. Writing through it changes nothing.' };
+    case 'blueprint': return { ...card, rows: [bearersRow(owner.bearers)] };
+    case 'entity': return { ...card, rows: entityRows(owner.entity), item: { kind: 'entity', entityId: owner.entity.entity.id } };
+  }
+}
+
+/** The six dayparts `clock.daypart` can hold, in the order a day runs. */
+const DAYPARTS: CodeCardValues = { values: DAYPART_OPTIONS.map((text) => ({ text })), more: 0 };
 
 const fromEntry = (
   entry: SurfaceEntry, kind: CodeCardKind, path: string, span: { from: number; to: number },
@@ -235,18 +344,36 @@ export function codeCard(code: string, pos: number, options: SurfaceAnalysisOpti
     case 'member': {
       // A member the value doesn't carry gets no card, though the resolver read the value as a stat.
       const entry = memberEntries(name.of, options)?.find((candidate) => candidate.name === name.key);
-      return entry ? fromEntry(entry, isMethodEntry(entry) ? 'method' : 'property', `${holderName(name.of)}.${entry.name}`, span) : null;
+      if (!entry) return null;
+      const card = fromEntry(entry, isMethodEntry(entry) ? 'method' : 'property', `${holderName(name.of)}.${entry.name}`, span);
+      return name.of.is === 'clock' && entry.name === 'daypart' ? { ...card, allowedValues: DAYPARTS } : card;
     }
     case 'stat': {
       const card = world('stat', keyPath(`${ownerPrefix(name.owner)}stats`, name.key), 'Stat');
       const record = options.lookup?.stat(name.owner, name.key);
       return record ? { ...card, ...statDetails(record) } : card;
     }
-    case 'trait': return world('trait', keyPath(`${ownerPrefix(name.owner)}traits`, name.key), 'Trait');
-    case 'placeholder':
-      return world('placeholder', name.path.reduce(keyPath, `${ownerPrefix(name.owner)}placeholders`), 'Placeholder');
-    case 'entity': return world('entity', keyPath('entities', name.key), 'Entity');
-    case 'dictionary': return world('dictionary', keyPath('dictionaries', name.key), 'Dictionary');
+    case 'trait': {
+      const card = world('trait', keyPath(`${ownerPrefix(name.owner)}traits`, name.key), 'Trait');
+      const record = options.lookup?.trait(name.owner, name.key);
+      return record ? { ...card, ...traitDetails(record) } : card;
+    }
+    case 'placeholder': {
+      const card = world('placeholder', name.path.reduce(keyPath, `${ownerPrefix(name.owner)}placeholders`), 'Placeholder');
+      const placeholder = options.lookup && placeholderAt(name.owner, name.path, options);
+      const record = placeholder && options.lookup?.placeholder(placeholder);
+      return record ? { ...card, ...placeholderDetails(record) } : card;
+    }
+    case 'entity': {
+      const card = world('entity', keyPath('entities', name.key), 'Entity');
+      const record = options.lookup?.entity(name.key);
+      return record ? { ...card, ...entityDetails(record) } : card;
+    }
+    case 'dictionary': {
+      const card = world('dictionary', keyPath('dictionaries', name.key), 'Dictionary');
+      const record = options.lookup?.dictionary(name.key);
+      return record ? { ...card, ...dictionaryDetails(record) } : card;
+    }
     case 'declared': {
       const line = code.slice(0, name.at).split('\n').length;
       return {
