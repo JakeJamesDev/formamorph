@@ -13,7 +13,7 @@ import { useMorphFullscreen } from '@/lib/useMorphFullscreen';
 import { FullscreenShell } from '@/components/FullscreenShell';
 import { cn } from '@/lib/utils';
 import { SLOT_SNIPPETS, snippetSelection, type InsertSelection, type InsertSnippet } from '@/lib/codeSnippets';
-import { buildVariableTree, type VariableNode } from '@/lib/statCodeVariableTree';
+import { buildVariableTree, type VariableNode, type VariableTreeOwner } from '@/lib/statCodeVariableTree';
 import type { CodeSurface } from '@/lib/codeSurface';
 import type { CodeSession } from '@/components/prompt/codeSession';
 import type { CodeEntityNames, CodePlaceholders, CodeTraitPlace } from '@/lib/statCodeAnalysis';
@@ -60,6 +60,11 @@ interface CodeAreaProps {
   surface: CodeSurface;
   /** The world's stat names, completed after `stats` and inside string literals, and checked by name. */
   statNames?: readonly string[];
+  /** The world's stat names, which `stats` keys in every box: what the Variable menu's Stats group lists.
+   *  Absent, it lists `statNames`. */
+  worldStatNames?: readonly string[];
+  /** What `owner` holds: gives the Variable menu an Owner group. Absent in a world stat's box. */
+  owner?: VariableTreeOwner | null;
   /** The name of the stat the code belongs to, so a write to it through `stats` is not flagged. */
   selfName?: string;
   /** The world's placeholders, completed after `placeholders` and checked by name. */
@@ -80,7 +85,7 @@ interface CodeAreaProps {
 function CodeAreaBody({
   value, onChange, ariaLabel, placeholder, label, info, slots, surface, preview, className, rows = 8, fullscreen,
   onToggleFullscreen, session, active, expose, variableTree,
-}: Omit<CodeAreaProps, 'statNames' | 'selfName' | 'placeholders' | 'traits' | 'entities'> & {
+}: Omit<CodeAreaProps, 'statNames' | 'worldStatNames' | 'owner' | 'selfName' | 'placeholders' | 'traits' | 'entities'> & {
   fullscreen: boolean;
   onToggleFullscreen: () => void;
   /** The one editor both copies take turns hosting. Null until its chunk has loaded. */
@@ -268,8 +273,8 @@ export function CodeArea(props: CodeAreaProps) {
 
   // A template has no world, so its tree types over each name.
   const variableTree = useCallback(() => {
-    const { slots: template, statNames, placeholders, traits, entities } = latest.current;
-    return buildVariableTree(template ? undefined : { statNames, placeholders, traits, entities });
+    const { slots: template, statNames, worldStatNames, owner, placeholders, traits, entities } = latest.current;
+    return buildVariableTree(template ? undefined : { statNames: worldStatNames ?? statNames, placeholders, traits, entities }, owner);
   }, []);
 
   const { ariaLabel, placeholder, slots } = props;

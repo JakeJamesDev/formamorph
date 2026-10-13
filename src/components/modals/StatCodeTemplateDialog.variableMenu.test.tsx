@@ -15,7 +15,7 @@ type User = ReturnType<typeof userEvent.setup>;
 const stats = [{ id: 's1', name: 'Warmth', type: 'number', value: 7, min: 0, max: 10 }] as unknown as Stat[];
 
 /** Opens a new template and waits for its code editor, which arrives on its own chunk. */
-async function openEditor(user: User) {
+async function openEditor(user: User, owner?: 'entity' | 'blueprint') {
   render(
     <TooltipProvider>
       <StatCodeTemplateDialog
@@ -29,6 +29,7 @@ async function openEditor(user: User) {
         placeholderPlaces={[]}
         traitPlaces={[]}
         entities={[]}
+        owner={owner}
       />
     </TooltipProvider>,
   );
@@ -133,6 +134,28 @@ describe('the Code Templates editor’s Variable menu', () => {
     await user.keyboard('{Enter}{Escape}');
     expect(level('This Stat')).toBeNull();
     expect(level('Variable')).toBeNull();
+  });
+
+  it('has no Owner group in a world stat’s box', async () => {
+    const user = userEvent.setup();
+    await openEditor(user);
+    await user.click(screen.getByLabelText('Variable'));
+    expect(screen.queryByRole('button', { name: 'Owner' })).toBeNull();
+  });
+
+  it.each(['entity', 'blueprint'] as const)('types over the Owner group’s lists in a box with a %s owner', async (kind) => {
+    const user = userEvent.setup();
+    const field = await openEditor(user, kind);
+
+    await pick(user, 'Owner', 'Stats');
+    expect(rowsOf('Stats')).toEqual(['Name']);
+    await user.click(row('Name'));
+    await user.click(row('value'));
+    expect(code(field)).toBe('owner.stats["Name"].value');
+
+    // `Name` is selected, so typing replaces just it.
+    await user.keyboard('Rage');
+    expect(code(field)).toBe('owner.stats["Rage"].value');
   });
 
   it('leaves the Slot menu as it was', async () => {

@@ -48,7 +48,7 @@ export function entityStatPanels({ entity, world, edit, rows, resolved, placehol
   detach: (linkId: string) => string | null;
 } {
   const morphOwner = { name: labelPlaceholders(entity.name, placeholders), model: entity.model };
-  const store: StatEditorStore = { stats: resolved, updateStat: (stat) => edit((e) => updateOwnedStat(e, stat)), morphOwner };
+  const store: StatEditorStore = { stats: resolved, updateStat: (stat) => edit((e) => updateOwnedStat(e, stat)), ownerId: entity.id, morphOwner };
   const pathOf = (originalId: string) => {
     const item = world.stats.find((s) => s.id === originalId) ?? world.statGroups.find((g) => g.id === originalId);
     return item ? originalPath(world.statGroups, item).join(' › ') : '';
@@ -77,7 +77,7 @@ export function entityStatPanels({ entity, world, edit, rows, resolved, placehol
         stat={rows.stats.find((s) => s.id === id)!}
         tab={tab}
         onTabChange={onTabChange}
-        store={{ stats: resolved, updateStat: (next) => edit((e) => editStatLink(world, e, link.id, originalId, next)), morphOwner }}
+        store={{ stats: resolved, updateStat: (next) => edit((e) => editStatLink(world, e, link.id, originalId, next)), ownerId: entity.id, morphOwner }}
         link={{
           overridden,
           stale,

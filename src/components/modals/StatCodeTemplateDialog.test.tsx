@@ -76,7 +76,9 @@ const placeholders: Placeholder[] = [
 ];
 const placeholderOwners = new Map([['secret', { kind: 'entity' as const, id: 'e1', name: 'Mira' }]]);
 
-const open = (timing: StatCodeTiming = 'after', cast: Entity[] = entities) => render(
+type DialogProps = React.ComponentProps<typeof StatCodeTemplateDialog>;
+
+const open = (timing: StatCodeTiming = 'after', cast: Entity[] = entities, extra: Partial<DialogProps> = {}) => render(
   <StatCodeTemplateDialog
     open
     onOpenChange={vi.fn()}
@@ -88,6 +90,7 @@ const open = (timing: StatCodeTiming = 'after', cast: Entity[] = entities) => re
     placeholderPlaces={worldPlaceholderPlaces({ list: placeholders, owners: placeholderOwners, groups: placeholderGroups })}
     traitPlaces={worldTraitPlaces({ traits, traitGroups }, [])}
     entities={entityTraitNames({ traits, traitGroups, entities: cast, entityGroups }, [])}
+    {...extra}
   />,
 );
 
@@ -105,8 +108,10 @@ const localTemplate: StatCodeTemplate = {
 };
 
 /** Start a new template and replace its code with `code`. */
-async function authoring(user: ReturnType<typeof userEvent.setup>, code: string, timing: StatCodeTiming = 'after', cast?: Entity[]) {
-  open(timing, cast);
+async function authoring(
+  user: ReturnType<typeof userEvent.setup>, code: string, timing: StatCodeTiming = 'after', cast?: Entity[], extra?: Partial<DialogProps>,
+) {
+  open(timing, cast, extra);
   await user.click(await screen.findByRole('button', { name: /New Template/i }));
   const field = await screen.findByLabelText('Template code');
   await user.clear(field);
@@ -192,6 +197,67 @@ describe('the form a template presents', () => {
     await user.click(screen.getByRole('option', { name: 'Damp' }));
     await waitFor(() => expect(generated()).toContain('s.name === "Damp"'));
     expect(screen.getByRole('combobox', { name: 'Source' })).toHaveTextContent('Damp');
+  });
+
+  describe('in an owned or Blueprint stat’s box', () => {
+    // Mira's own Rage and Stock sit beside the world's Warmth and Damp; Warmth is the stat being edited.
+    const rage = { id: 'o1', name: 'Rage', type: 'number', value: 1, min: 0, max: 10 } as unknown as Stat;
+    const stock = { id: 'o2', name: 'Stock', type: 'number', value: 1, min: 0, max: 10 } as unknown as Stat;
+    const owned: Partial<DialogProps> = { owner: 'entity', ownerStats: [rage, stock], currentStatId: 'o1' };
+    const code = 'return stats[{{source:stat}}].value;';
+
+    it('lists the owner’s stats first and the world’s after them, each under its list', async () => {
+      const user = userEvent.setup();
+      await authoring(user, code, 'after', undefined, owned);
+
+      await user.click(await screen.findByRole('combobox', { name: 'Source' }));
+      expect(await rows()).toEqual(['StockOwner', 'WarmthWorld', 'DampWorld']);
+    });
+
+    it('inserts the owner’s route for an owner pick and the world’s for a world pick', async () => {
+      const user = userEvent.setup();
+      await authoring(user, code, 'after', undefined, owned);
+
+      await user.click(await screen.findByRole('combobox', { name: 'Source' }));
+      await user.click(screen.getByRole('option', { name: /^Stock/ }));
+      await waitFor(() => expect(generated()).toContain('owner.stats["Stock"].value'));
+      expect(screen.getByRole('combobox', { name: 'Source' })).toHaveTextContent('Stock');
+
+      await user.click(screen.getByRole('combobox', { name: 'Source' }));
+      await user.click(screen.getByRole('option', { name: /^Damp/ }));
+      await waitFor(() => expect(generated()).toContain('return stats["Damp"].value;'));
+      expect(generated()).not.toContain('owner.stats');
+    });
+
+    it('keeps two stats of one name apart by their list', async () => {
+      const user = userEvent.setup();
+      const twin = { ...stock, id: 'o3', name: 'Damp' } as Stat;
+      await authoring(user, code, 'after', undefined, { ...owned, ownerStats: [rage, twin] });
+
+      await user.click(await screen.findByRole('combobox', { name: 'Source' }));
+      expect(await rows()).toEqual(['DampOwner', 'WarmthWorld', 'DampWorld']);
+      await user.click(screen.getAllByRole('option', { name: /^Damp/ })[0]);
+      await waitFor(() => expect(generated()).toContain('owner.stats["Damp"]'));
+    });
+
+    it('lists a Blueprint stat’s group the same way', async () => {
+      const user = userEvent.setup();
+      await authoring(user, code, 'after', undefined, { ...owned, owner: 'blueprint', ownerStats: [stock] });
+
+      await user.click(await screen.findByRole('combobox', { name: 'Source' }));
+      expect(await rows()).toEqual(['StockOwner', 'WarmthWorld', 'DampWorld']);
+    });
+
+    it('hands a built-in template’s owner pick to Insert as code', async () => {
+      const user = userEvent.setup();
+      const onInsert = vi.fn();
+      open('after', entities, { ...owned, onInsert });
+      await user.click(await screen.findByText('Inverse of Another Stat'));
+      await user.click(await screen.findByRole('combobox', { name: 'Source' }));
+      await user.click(await screen.findByRole('option', { name: /^Stock/ }));
+      await user.click(screen.getByRole('button', { name: 'Insert Code' }));
+      expect(onInsert.mock.calls[0][0]).toContain('const source = owner.stats["Stock"];');
+    });
   });
 
   // The sandbox `traits` map holds world traits only, so an owned trait there would generate a name that never resolves.

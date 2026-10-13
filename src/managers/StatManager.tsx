@@ -23,7 +23,8 @@ import { entityCodeStats, entityTraitNames, worldTraitPlaces } from "@/lib/statC
 import { codeDictionaries } from "@/lib/statCodePlaceholders";
 import { worldPlaceholderPlaces } from "@/lib/statCodePlaceholderPlaces";
 import { useRenameField } from "@/lib/useCodeRename";
-import { StatCodeBox, type StatCodeBoxContext } from "./StatCodeBox";
+import { StatCodeBox, type StatCodeBoxContext, type StatCodeBoxOwner } from "./StatCodeBox";
+import { blueprintGroupStats } from "@/lib/statLinks";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { PlaceholderNameField } from "@/components/prompt/PlaceholderField";
 import { useBodyMorphSources, useOwnerMorphSources, type MorphOwner } from "@/lib/useBodyMorphNames";
@@ -57,6 +58,8 @@ const boxEditor = (row: HTMLElement) => row.querySelector<HTMLElement>('[content
 export interface StatEditorStore {
   stats: Stat[];
   updateStat: (stat: Stat) => void;
+  /** The id of the entity that owns these stats: `owner` in their code. */
+  ownerId: string;
   /** The owner whose model the Body Sliders picker lists. Absent = the world's player models. */
   morphOwner?: MorphOwner;
 }
@@ -69,6 +72,9 @@ export interface StatLinkEdit {
   reset: (field: keyof StatLinkFields) => void;
   header: ReactNode;
 }
+
+/** The named stats' code names, in order. */
+const namesOf = (stats: readonly Stat[]) => stats.map((entry) => entry.name).filter((name): name is string => !!name);
 
 /** The stat being edited — a loose, partial Stat while fields are filled in. */
 type EditingStat = Partial<Stat>;
@@ -134,11 +140,23 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
   // The code names `stats` is keyed by, for the code field's completions and name checks. Test Code runs
   // under the same names, so what completes is what runs.
   const codeNamedStats = useMemo(() => statCodeNamed(stats, placeholders), [stats, placeholders]);
-  const statNames = useMemo(
-    () => codeNamedStats.map(entry => entry.name).filter((name): name is string => !!name),
-    [codeNamedStats],
-  );
+  const statNames = useMemo(() => namesOf(codeNamedStats), [codeNamedStats]);
   const selfCodeName = statCodeName(editingStat.name, placeholders);
+  // Whose code this is: an entity's own stat runs under that entity, a Blueprint stat under each bearer, a world stat under none.
+  const isBlueprint = !store && !!world && !world.playStats.some((s) => s.id === stat.id);
+  const owner = useMemo<StatCodeBoxOwner | null>(
+    () => (store ? { kind: 'entity', entityId: store.ownerId } : isBlueprint ? { kind: 'blueprint' } : null),
+    [store, isBlueprint],
+  );
+  // `stats` is the world's play stats in every box; `owner.stats` is the entity's own, or a Blueprint group's.
+  const worldStats = useMemo(() => statCodeNamed(world?.playStats ?? [], placeholders), [world?.playStats, placeholders]);
+  const worldStatNames = useMemo(() => namesOf(worldStats), [worldStats]);
+  const ownerStats = useMemo(() => {
+    if (store) return codeNamedStats;
+    if (!isBlueprint || !world) return [];
+    return statCodeNamed(blueprintGroupStats({ stats: world.stats, statGroups: world.statGroups }, stat), placeholders);
+  }, [store, isBlueprint, codeNamedStats, world, stat, placeholders]);
+  const ownerStatNames = useMemo(() => namesOf(ownerStats), [ownerStats]);
   // Code reaches a stat by its code name, so the rename offer compares the two names the way code reads them.
   const worldRename = useRenameField({
     root: 'stats',
@@ -170,9 +188,12 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
   );
   // One surface for both boxes: what completes in either is what runs in either.
   const codeContext = useMemo<StatCodeBoxContext>(() => ({
-    codeNamedStats, statNames, selfName: selfCodeName,
+    codeNamedStats, statNames, selfName: selfCodeName, owner, worldStats, worldStatNames, ownerStats, ownerStatNames,
     placeholders: codePlaceholders, placeholderPlaces, traitNames, traitPlaces, traits, entities: entityNames, entityStats,
-  }), [codeNamedStats, statNames, selfCodeName, codePlaceholders, placeholderPlaces, traitNames, traitPlaces, traits, entityNames, entityStats]);
+  }), [
+    codeNamedStats, statNames, selfCodeName, owner, worldStats, worldStatNames, ownerStats, ownerStatNames,
+    codePlaceholders, placeholderPlaces, traitNames, traitPlaces, traits, entityNames, entityStats,
+  ]);
 
   const resetControl = (field: keyof StatLinkFields, label: string) => (link?.overridden.includes(field)
     ? <FieldReset field={label} stale={link.stale.includes(field)} onReset={() => link.reset(field)} />

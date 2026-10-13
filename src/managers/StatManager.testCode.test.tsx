@@ -32,8 +32,13 @@ const entities = [
 ] as Entity[];
 
 const updateStat = vi.fn();
+/** What a case adds to the mocked world, such as Blueprint stats. */
+const worldExtra = vi.hoisted(() => ({ current: {} as Record<string, unknown> }));
 vi.mock('@/contexts/GameDataContext', () => {
-  const world = () => ({ updateStat, stats, playStats: stats, placeholders: [beast], traits, traitGroups: [], entities, playEntities: entities });
+  const world = () => ({
+    updateStat, stats, playStats: stats, placeholders: [beast], traits, traitGroups: [], entities, playEntities: entities,
+    ...worldExtra.current,
+  });
   return { useGameData: world, useGameDataOptional: world };
 });
 vi.mock('@/lib/useBodyMorphNames', () => ({
@@ -157,6 +162,53 @@ describe('what each box completes and checks against', () => {
       const code = 'stats.Damp.';
       const offered = statCodeCompletions(code, code.length, options)?.options.map((o) => o.label);
       expect([box, offered]).toEqual([box, expect.arrayContaining(['value', 'min', 'max', 'regen'])]);
+    }
+  });
+});
+
+describe('whose code a box holds', () => {
+  const ownerOf = (box: 'Before the AI' | 'After the AI') => editorProps.get(`Stat Code ${box}`)!.owner;
+  const worldNamesOf = (box: 'Before the AI' | 'After the AI') => editorProps.get(`Stat Code ${box}`)!.worldStatNames;
+  const hub = { id: 'o1', name: 'Hub', type: 'number', value: 1, min: 0, max: 5, regen: 0, description: '', descriptors: [] } as Stat;
+  const grit = { id: 'o2', name: 'Grit', type: 'number', value: 4, min: 0, max: 8, regen: 0, description: '', descriptors: [] } as Stat;
+
+  beforeEach(() => { worldExtra.current = {}; });
+
+  it('gives a world stat no owner, and its own world’s stats under Stats', () => {
+    renderCodePanel(stats[0]);
+    for (const box of ['Before the AI', 'After the AI'] as const) {
+      expect([box, ownerOf(box)]).toEqual([box, null]);
+      expect([box, worldNamesOf(box)]).toEqual([box, ['Warmth', 'Damp']]);
+    }
+  });
+
+  it('gives an entity stat its entity as owner, with its own stats, and still lists the world’s under Stats', () => {
+    render(<StatManager stat={hub} tab="code" onTabChange={() => {}} store={{ stats: [hub, grit], updateStat, ownerId: 'e2' }} />);
+    for (const box of ['Before the AI', 'After the AI'] as const) {
+      expect([box, ownerOf(box)]).toEqual([box, {
+        kind: 'entity',
+        entity: expect.objectContaining({ id: 'e2', name: 'Ash', stats: ['Hub', 'Grit'], traits: [expect.objectContaining({ name: 'Loyal' })] }),
+      }]);
+      expect([box, worldNamesOf(box)]).toEqual([box, ['Warmth', 'Damp']]);
+    }
+  });
+
+  it('keeps an owned stat’s own list for completion and checking, which the editor ticket moves', () => {
+    render(<StatManager stat={hub} tab="code" onTabChange={() => {}} store={{ stats: [hub, grit], updateStat, ownerId: 'e2' }} />);
+    expect(editorProps.get('Stat Code After the AI')!.statNames).toEqual(['Hub', 'Grit']);
+  });
+
+  it('gives a Blueprint stat its group’s stats as the owner’s, and the world’s play stats under Stats', () => {
+    const blueprints = { id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' };
+    const social = { id: 'bp-social', name: 'Social', parentId: 'bp' };
+    const fear = { ...hub, id: 'f', name: 'Fear', groupId: 'bp-social' } as Stat;
+    const calm = { ...grit, id: 'c', name: 'Calm', groupId: 'bp-social' } as Stat;
+    const lone = { ...grit, id: 'l', name: 'Lone', groupId: 'bp' } as Stat;
+    worldExtra.current = { stats: [...stats, fear, calm, lone], statGroups: [blueprints, social] };
+    renderCodePanel(fear);
+    for (const box of ['Before the AI', 'After the AI'] as const) {
+      expect([box, ownerOf(box)]).toEqual([box, { kind: 'blueprint', statNames: ['Fear', 'Calm'] }]);
+      expect([box, worldNamesOf(box)]).toEqual([box, ['Warmth', 'Damp']]);
     }
   });
 });
@@ -402,7 +454,7 @@ describe('what Test Code reports', () => {
     const hub = { id: 'o1', name: 'Hub', type: 'number', value: 1, min: 0, max: 5, regen: 0, description: '', descriptors: [] } as Stat;
     const grit = { id: 'o2', name: 'Grit', type: 'number', value: 4, min: 0, max: 8, regen: 0, description: '', descriptors: [] } as Stat;
     executeStatCode.mockResolvedValue({ value: null, error: null, statWrites: [{ id: 'o2', name: 'Grit', value: 5 }] });
-    render(<StatManager stat={hub} tab="code" onTabChange={() => {}} store={{ stats: [hub, grit], updateStat }} />);
+    render(<StatManager stat={hub} tab="code" onTabChange={() => {}} store={{ stats: [hub, grit], updateStat, ownerId: 'hubby' }} />);
 
     await testCode(user, 'stats.Grit.value += 1;');
 
