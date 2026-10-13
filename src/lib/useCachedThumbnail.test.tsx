@@ -1,6 +1,6 @@
-import { render, renderHook, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { IDBFactory } from 'fake-indexeddb';
+import { IDBFactory, IDBObjectStore } from 'fake-indexeddb';
 
 /**
  * What the reader feels is when the picture appears, so every case here watches the src the hook
@@ -119,6 +119,41 @@ describe('useCachedThumbnail', () => {
     expect(result.current.src).toBe('');
   });
 
+  it('shows the fetched picture when the blob store refuses to keep it', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    // WebKit's "Error preparing Blob/File data to be stored in object store".
+    vi.spyOn(IDBObjectStore.prototype, 'put').mockImplementation(() => {
+      throw new DOMException('Error preparing Blob/File data', 'UnknownError');
+    });
+
+    const { result } = await mountResolved('a', 10);
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(result.current.src).toMatch(/^blob:/);
+    await waitFor(() => expect(warn).toHaveBeenCalled());
+  });
+
+  it('fetches the picture when the blob store cannot be read', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(IDBObjectStore.prototype, 'get').mockImplementation(() => {
+      throw new DOMException('Connection to Indexed Database server lost', 'UnknownError');
+    });
+
+    const { result } = await mountResolved('a', 10);
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(result.current.src).toMatch(/^blob:/);
+  });
+
+  it('falls back to the live URL when the fetch itself throws', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    fetchSpy.mockRejectedValue(new TypeError('Load failed'));
+
+    const { result } = await mountResolved('a', 10);
+
+    expect(result.current.src).toBe(URL_FOR('a'));
+  });
+
   it('waits for a batch read already covering its file rather than opening its own', async () => {
     await cache.putThumb('a', png(), 10);
     void cache.preloadThumbs([{ file: 'a', updatedAt: 10 }]);
@@ -172,6 +207,20 @@ describe('CachedThumbnail', () => {
 
     await waitFor(() => expect(fetchSpy).toHaveBeenCalled());
     expect(screen.queryByRole('img')).toBeNull();
+  });
+
+  it('swaps a cached picture that will not load for the live URL, then for the placeholder', async () => {
+    await cache.putThumb('a', png(), 10);
+
+    render(<hook.CachedThumbnail file="a" url={URL_FOR('a')} updatedAt={10} alt="Sedge Landing" />);
+    const cached = await screen.findByRole('img');
+    expect(cached.getAttribute('src')).toMatch(/^blob:/);
+
+    fireEvent.error(cached);
+    await waitFor(() => expect(screen.getByRole('img')).toHaveAttribute('src', URL_FOR('a')));
+
+    fireEvent.error(screen.getByRole('img'));
+    await waitFor(() => expect(screen.queryByRole('img')).toBeNull());
   });
 
   it('declares its intrinsic size and asynchronous decoding, so a grid of them does not shift', async () => {
