@@ -62,6 +62,8 @@ Settled with the user on 2026-10-12 and 2026-10-13.
 | T01-1 | Ticket 01: "completion does not change" means no regressions. Where the old regexes were wrong, completion follows the tree toward what the sandbox has: `owner.traits.X.` offers trait fields, `owner.traits["` offers nothing until the editor knows owner trait names, spaced and `?.` chains offer members, a dot in a comment offers nothing. A root the code declares itself keeps the sandbox list in completion; hover treats it as the author's own name. Each fix gets its own test; existing tests stay unchanged |
 | T01-2 | The resolver keeps completion's stat-like heuristic: a variable declared from `stats` or `self` reads as a stat. The card model shows no card for a member the resolved entry doesn't have, so `n.toFixed` on such a variable gets none. Ticket 02 |
 | T01-3 | The resolver resolves `owner.placeholders.X`. Completion and cards get owner trait and placeholder names from the box-bound lookup. Ticket 07 |
+| T02-1 | The access badge reads **Read-Only**, AP title case like every card label, matching the Design System's Read-Only control. Prose keeps "read-only" |
+| T02-2 | A map key the box's name lists lack (`stats.Helth`) gets no card; its diagnostic's error card carries the fix (ticket 09). A host with no name lists still cards the key |
 | O1 | Owner-route lands first. Its `stats` (world stats in every box), `owner`, and writes on every route (its Q1–Q5) are this spec's baseline. Its tickets 01–07 landed on 2026-10-13. Find All Uses waits on its ticket 08 |
 
 ## User Stories
@@ -69,7 +71,7 @@ Settled with the user on 2026-10-12 and 2026-10-13.
 1. As an author, I want to hover `self` in stat code, so that I see which stat the code belongs to and its range.
 2. As an author, I want to hover `stats.Fatigue`, so that I see Fatigue's type, range, starting value, regen, owner and who it is shown to.
 3. As an author, I want to hover `.value` after a stat, so that I see it is a number I can write.
-4. As an author, I want a Read-only badge on `self.previous` and `clock`, so that I don't try to write them.
+4. As an author, I want a Read-Only badge on `self.previous` and `clock`, so that I don't try to write them.
 5. As an author, I want a "Writable After This Run" badge on `traits.Brave.enabled`, so that I know when my write takes effect.
 6. As an author, I want to hover `traits.Brave`, so that I see its mode, requirements, stat effects and its bearers.
 7. As an author, I want to hover `placeholders.Mood`, so that I see its owner, kind, values and weights.
@@ -134,7 +136,7 @@ Settled with the user on 2026-10-12 and 2026-10-13.
 - **Find All Uses.** The scan matches the item, not its name, so two owners' stats with one name stay apart. It covers stats, traits, placeholders, entities and dictionaries, across every stat's Before and After code. Stat uses come from the shared route-to-target module that owner-route ticket 08 extracts: it takes a world and returns each reference with its box, its route and the stat it reaches, across every box in the world. The Test Bench and the rename planner use it too. Each reference carries its key range (from/to in the box's code), confirmed by the owner-route spec session; Find All Uses turns it into a line. A route resolves as owner-route rules it: `owner` to the box's owner, `persona` to every entity that can be played. A row names the stat, the box and the line, one row per box and line, not per bearer. A stat's own `self` lines count as uses. A Blueprint box with no bearers is still listed, marked No Bearers (Q31). A row selects the stat, opens the box and moves the caret to the line; the code session grows a call for that. The same hosts that hide Open hide Find All Uses.
 - **Pinned card.** Clicking Find All Uses pins the card, and the list hangs off it. Escape or a click outside closes both.
 - **Guide links.** Each global's link lives in one table: global to page and heading. Stat code globals target the Stat Code Guide, whose `#self`, `#stats` and `#owner` headings serve those three (Q32); `clock`, `traits`, `placeholders`, `entities`, `persona` and `dictionaries` target their existing sections. Tool globals target the Tools doc, which gains one heading per global. Links go through the existing docs opener, which falls back to the wiki. A test resolves every row through the docs link checks.
-- **Copy case.** Card labels use AP title case: Starts At, Shown To, Find All Uses, Go to Line, Writable After This Run.
+- **Copy case.** Card labels use AP title case: Starts At, Shown To, Find All Uses, Go to Line, Writable, Read-Only, Writable After This Run. Both parts of a hyphenated label are capitalized (T02-1). Prose keeps sentence case ("read-only").
 - **Copy.** Every code surface's info lines move to the Writing Guide voice: verb-first, second person, no period on a single sentence.
 - **Design System.** The card and the Find All Uses popover join the Design System page and the showcase.
 - **No export-shape change.** Nothing here touches world or save files.
@@ -172,6 +174,7 @@ Settled with the user on 2026-10-12 and 2026-10-13.
   7. Find All Uses for traits, placeholders, entities and dictionaries.
   8. Open with the entity row reveal.
   9. Guide-link table and Tools doc headings, and the Design System entry.
+- Escape inside a dialog: a separate fix on main makes Escape close the completion list without closing the dialog, by the same window-capture pattern as the card's Escape. The card and the list each own a listener; merging them into one "close the open popup" handler is optional cleanup, not owed by any ticket.
 - The mock in [mock.html](mock.html) is the visual reference. Its sample world is invented. Its labels are sentence case and its trait row says "Held"; the spec's labels win.
 - An agent reviewed the spec against the code on 2026-10-13. Its findings became Q20–Q29 and the decisions on identity, bracket keys, Escape, the lightbulb gutter and lazy completion cards.
 - CodeMirror's default keymap binds Ctrl+I to select the enclosing syntax node. That is why the shortcut is a chord.
