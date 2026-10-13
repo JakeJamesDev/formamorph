@@ -140,6 +140,7 @@ Renames (ticket 08, added 2026-10-13 at the user's request through the Code Hove
 
 - Renaming a world stat offers to rewrite `stats.X` in every box in the world. Renaming an entity's own stat offers to rewrite `owner.stats.X`, `entities[x].stats.X`, and `persona.stats.X` where each reaches it. A same-name stat on another owner is never rewritten.
 - The Test Bench's route-to-target resolution becomes one shared module. The Test Bench, the rename planner, and later Code Hover Cards' Find All Uses use it. Each reference carries its box, route, target stat, and the key's range in the box's code.
+- Ticket 08 choices: a link box is one whose link overrides that box, not one whose text differs, in the Test Bench too. A Blueprint stat rename never rewrites `stats.X`, because that route never reaches a Blueprint stat.
 
 Bundled worlds:
 
