@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
-import { useState } from 'react';
+import { useState, type ComponentProps } from 'react';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CodeArea } from './CodeArea';
@@ -16,8 +16,9 @@ import type { VariableTreeNames } from '@/lib/statCodeVariableTree';
 
 /** The field is controlled by its parent everywhere it's used, so the harness owns the value too —
  *  testing it uncontrolled would exercise a wiring nothing ships. */
-function Harness({ slots = false, preview = false, initial = '', statNames, names, surface = STAT_CODE_SURFACE }: {
+function Harness({ slots = false, preview = false, initial = '', statNames, names, surface = STAT_CODE_SURFACE, extra }: {
   slots?: boolean; preview?: boolean; initial?: string; statNames?: string[]; names?: VariableTreeNames; surface?: CodeSurface;
+  extra?: Partial<ComponentProps<typeof CodeArea>>;
 }) {
   const [value, setValue] = useState(initial);
   return (
@@ -29,6 +30,7 @@ function Harness({ slots = false, preview = false, initial = '', statNames, name
         surface={surface}
         statNames={statNames}
         {...names}
+        {...extra}
         slots={slots}
         preview={preview ? <p>what this makes</p> : undefined}
       />
@@ -606,6 +608,29 @@ describe('CodeArea', () => {
       await type(user, ';', () => 'return stats.Health.value;');
       await pick(user, 'Stats', 'Max Mana', 'max');
       expect(owned()).toBe('return stats.Health.value;stats["Max Mana"].max');
+    });
+
+    it('lists the world’s stats under Stats and the owner’s under Owner in an owned box', async () => {
+      const user = userEvent.setup();
+      const owner = { kind: 'entity', entity: { id: 'e', name: 'Ash', persona: false, traits: [], stats: ['Trust'] } } as const;
+      render(<Harness statNames={['Trust']} extra={{ worldStatNames: ['Health'], owner }} />);
+      await user.click(await editor());
+      await type(user, 'return ');
+
+      await pick(user, 'Owner', 'Stats', 'Trust', 'value');
+      expect(owned()).toBe('return owner.stats.Trust.value');
+      await type(user, ';', () => 'return owner.stats.Trust.value;');
+      await pick(user, 'Stats', 'Health', 'value');
+      expect(owned()).toBe('return owner.stats.Trust.value;stats.Health.value');
+    });
+
+    it('has no Owner group in a world stat’s box', async () => {
+      const user = userEvent.setup();
+      render(<Harness statNames={['Health']} />);
+      await user.click(await editor());
+      await user.click(screen.getByLabelText('Variable'));
+      expect(screen.queryByRole('button', { name: 'Owner' })).toBeNull();
+      expect(screen.getByRole('button', { name: 'Stats' })).toBeInTheDocument();
     });
 
     it('goes back one level from the Back row', async () => {

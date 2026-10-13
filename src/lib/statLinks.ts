@@ -49,6 +49,14 @@ export function statBlueprint(world: StatLinkWorld, id: string): Stat | undefine
   return statBlueprintIds(world).has(id) ? world.stats.find((s) => s.id === id) : undefined;
 }
 
+/** The stats of the Blueprint group `stat` sits in, itself included: what its code's `owner.stats` holds. A
+ *  Blueprint stat directly under Blueprints belongs to no group of its own, so it holds itself alone. */
+export function blueprintGroupStats(world: StatLinkWorld, stat: Stat): Stat[] {
+  const group = world.statGroups.find((g) => g.id === stat.groupId);
+  if (!group || group.system === 'blueprints') return [stat];
+  return world.stats.filter((s) => s.groupId === group.id);
+}
+
 /** What a link may point at: a stat or a stat group inside Blueprints. Blueprints itself is not an original. */
 export type StatOriginal = { kind: 'stat'; item: Stat } | { kind: 'group'; item: StatGroup };
 

@@ -21,6 +21,12 @@ export type VariableTreeNames = Pick<AnalysisOptions, 'statNames' | 'placeholder
   traits?: readonly CodeTraitPlace[];
 };
 
+/** What an owned or Blueprint stat's `owner` holds, for the menu's Owner group. A null owner or name list is the
+ *  template editor's, which has no world: each list there is one type-over row. */
+export type VariableTreeOwner =
+  | { kind: 'entity'; entity: CodeEntityNames | null }
+  | { kind: 'blueprint'; statNames: readonly string[] | null };
+
 /** Offsets into an insert text: the part left selected after the insert. */
 export interface VariableSelection {
   from: number;
@@ -209,8 +215,14 @@ const traitRows = (path: Path, traits: readonly TraitPlace[]): VariableNameRow[]
     ...trait, children: fields(keyed(path, trait.name), TRAIT_ENTRY_FIELDS),
   }));
 
-/** Builds the Variable menu's top level. Without `names`, every name list is one type-over row. */
-export function buildVariableTree(names?: VariableTreeNames): VariableNode[] {
+/** The Owner group's header. */
+const OWNER_INFO = 'The entity that owns this stat, with its own stats, traits and placeholders. In a Blueprint stat it is the bearer the code runs for. Empty in a world stat.';
+
+/**
+ * Builds the Variable menu's top level. Without `names`, every name list is one type-over row. `stats` lists the
+ * world's stats in every box; an `owner` adds the Owner group, which lists the owner's own.
+ */
+export function buildVariableTree(names?: VariableTreeNames, owner: VariableTreeOwner | null = null): VariableNode[] {
   const pathMap: PlaceholderPathMap | null = names?.placeholders
     ? placeholderPathMap({ list: names.placeholders.list, owners: names.placeholders.owners })
     : null;
@@ -247,6 +259,7 @@ export function buildVariableTree(names?: VariableTreeNames): VariableNode[] {
   } : typeOverLists, 'on a persona entity');
 
   const stats = root('stats');
+  const ownerRoot = root('owner');
   const traits = root('traits');
   const entities = root('entities');
   const placeholders = root('placeholders');
@@ -273,8 +286,21 @@ export function buildVariableTree(names?: VariableTreeNames): VariableNode[] {
     }))
     : templateRows(dictionaries, (at) => dictionaryFields(at, null));
 
+  // A Blueprint group holds stats only, so its Owner has no traits or placeholders.
+  const ownerChildren = (at: VariableTreeOwner): VariableNode[] => {
+    if (at.kind === 'entity') return at.entity && names ? entityFields(ownerRoot, at.entity) : ownerFields(ownerRoot, ENTITY_FIELDS, typeOverLists, 'on this entity');
+    const groupStats = at.statNames;
+    if (!groupStats || !names) return ownerFields(ownerRoot, ENTITY_FIELDS, typeOverLists, 'on this entity');
+    return ownerFields(ownerRoot, ENTITY_FIELDS, {
+      traits: () => [],
+      placeholders: () => [],
+      stats: (path) => statNameRows(path, groupStats.map((name) => ({ name, trail: [] }))),
+    }, 'in this Blueprint group');
+  };
+
   return [
     { kind: 'group', label: 'This Stat', info: globalInfo('self'), children: statFields(root('self')) },
+    ...(owner ? [{ kind: 'group' as const, label: 'Owner', info: OWNER_INFO, children: ownerChildren(owner) }] : []),
     nameList('Stats', statRows, 'No stats in this world', globalInfo('stats')),
     nameList('Traits', traitList, 'No traits in this world', globalInfo('traits')),
     nameList('Entities', entityRows, 'No entities in this world', globalInfo('entities')),

@@ -1,4 +1,5 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import type { VariableTreeOwner } from "@/lib/statCodeVariableTree";
 import { Button } from "@/components/ui/button";
 import { SquareFunction } from "lucide-react";
 import { migrateStatCodeRoutes } from "@/lib/statCodeRoutes";
@@ -11,12 +12,25 @@ import { CODE_BOX_TARGET, TIMING_LABEL, type StatCodeTiming } from "@/lib/statCo
 import { targetAttribute } from "@/lib/surface/surfaceTargets";
 import type { Stat, Trait } from "@/types";
 
+/** Whose code a box holds: an entity's own stat, or a Blueprint stat. A world stat has no owner. */
+export type StatCodeBoxOwner = { kind: 'entity'; entityId: string } | { kind: 'blueprint' };
+
 /** Everything both boxes complete against and run under, derived once by the panel that holds them. */
 export interface StatCodeBoxContext {
-  /** The world's stats under their code names. Completions offer these, and a run reaches them. */
+  /** The stats beside the edited one under their code names: an owned stat's are its entity's. Completions offer
+   *  these, and a run reaches them. */
   codeNamedStats: Stat[];
   /** Those code names alone, for the editor's completions and its reader. */
   statNames: string[];
+  /** Whose code the boxes hold. Null for a world stat. */
+  owner: StatCodeBoxOwner | null;
+  /** The world's play stats under their code names, without Blueprint stats: what `stats` keys in every box. */
+  worldStats: Stat[];
+  worldStatNames: string[];
+  /** What `owner.stats` keys, under their code names: the entity's own stats, or a Blueprint group's. None in a
+   *  world stat's box. */
+  ownerStats: Stat[];
+  ownerStatNames: string[];
   /** The edited stat's own code name. */
   selfName: string;
   /** The placeholder tree and the books the editor completes over and a run reads. */
@@ -65,7 +79,17 @@ export function StatCodeBox({ timing, stat, value, onChange, context }: {
   const label = TIMING_LABEL[timing];
   const {
     codeNamedStats, statNames, selfName, placeholders, placeholderPlaces, traitNames, traitPlaces, traits, entities, entityStats,
+    owner, worldStats, worldStatNames, ownerStats, ownerStatNames,
   } = context;
+
+  // What the Variable menu's Owner group lists. An entity the editor has no names for, as in the library, still lists its stats.
+  const treeOwner = useMemo<VariableTreeOwner | null>(() => {
+    if (!owner) return null;
+    if (owner.kind === 'blueprint') return { kind: 'blueprint', statNames: ownerStatNames };
+    const named = entities.find((entity) => entity.id === owner.entityId)
+      ?? { id: owner.entityId, name: '', traits: [], persona: false };
+    return { kind: 'entity', entity: { ...named, stats: ownerStatNames } };
+  }, [owner, entities, ownerStatNames]);
 
   /** Drop what the last test said. Editing the code makes every part of that report stale together. */
   const clearReport = useCallback(() => {
@@ -125,6 +149,8 @@ export function StatCodeBox({ timing, stat, value, onChange, context }: {
         ariaLabel={`Stat Code ${label}`}
         surface={STAT_CODE_SURFACE}
         statNames={statNames}
+        worldStatNames={worldStatNames}
+        owner={treeOwner}
         selfName={selfName}
         placeholders={placeholders}
         traits={traitPlaces}
@@ -143,7 +169,9 @@ export function StatCodeBox({ timing, stat, value, onChange, context }: {
         open={templatesOpen}
         onOpenChange={setTemplatesOpen}
         timing={timing}
-        stats={codeNamedStats}
+        stats={worldStats}
+        owner={owner?.kind}
+        ownerStats={ownerStats}
         currentStatId={stat.id}
         hasExistingCode={!!value.trim()}
         onInsert={(code) => write(migrateStatCodeRoutes(code, placeholders))}

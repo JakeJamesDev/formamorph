@@ -207,17 +207,46 @@ export function validateSlotValues(slots: TemplateSlot[], values: Record<string,
   return problems;
 }
 
+// A stat slot's answer is a name, or an owner's stat name behind this control-character mark.
+const OWNER_STAT_MARK = '\u0001owner\u0001';
+
+/** The answer a stat slot takes for the owner's stat `name`. */
+export const ownerStatAnswer = (name: string): string => OWNER_STAT_MARK + name;
+
+/** Which list a stat slot's answer came from, and the stat's name. A plain answer is the world's. */
+export function statAnswer(answer: string): { route: 'owner' | 'world'; name: string } {
+  return answer.startsWith(OWNER_STAT_MARK)
+    ? { route: 'owner', name: answer.slice(OWNER_STAT_MARK.length) }
+    : { route: 'world', name: answer };
+}
+
+// `stats` as the word that indexes a slot, by `[` or `?.[`: not a member of something (`foo.stats`) or a longer name.
+const STATS_BEFORE_SLOT = /(^|[^\w$.])stats(\s*(?:\?\.\s*)?\[\s*)$/;
+
 /** Fill a template's slots and return runnable sandbox code. Unfilled slots stand for their declared
- *  default, so a partially completed form still previews. */
+ *  default, so a partially completed form still previews. An owner's stat answer reroutes the `stats` that
+ *  indexes its slot to `owner.stats`. A slot used any other way gets the bare name. */
 export function fillTemplate(code: string, values: Record<string, string>): string {
-  const { slots } = parseTemplateSlots(code);
+  const source = code || '';
+  const { slots } = parseTemplateSlots(source);
   const byName = new Map(slots.map(slot => [slot.name, slot]));
 
-  return (code || '').replace(SLOT_PATTERN, (_match, name: string) => {
-    const slot = byName.get(name);
-    if (!slot) return '';
-    return renderSlot(slot, resolveSlotValue(slot, values));
-  });
+  let out = '';
+  let from = 0;
+  for (const match of source.matchAll(SLOT_PATTERN)) {
+    out += source.slice(from, match.index);
+    from = match.index + match[0].length;
+    const slot = byName.get(match[1]);
+    if (!slot) continue;
+    let answer = resolveSlotValue(slot, values);
+    if (slot.type === 'stat') {
+      const { route, name } = statAnswer(answer);
+      answer = name;
+      if (route === 'owner') out = out.replace(STATS_BEFORE_SLOT, (_all, lead: string, open: string) => `${lead}owner.stats${open}`);
+    }
+    out += renderSlot(slot, answer);
+  }
+  return out + source.slice(from);
 }
 
 /**

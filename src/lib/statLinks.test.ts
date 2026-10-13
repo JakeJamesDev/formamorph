@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Entity, Stat, StatGroup } from '@/types';
 import { heldReasonText } from './heldReasons';
 import {
-  addStatLink, applyEntityStatRows, detachStatLink, dropStatLinksTo, editStatLink, entityStatRows,
+  addStatLink, applyEntityStatRows, blueprintGroupStats, detachStatLink, dropStatLinksTo, editStatLink, entityStatRows,
   holdsStatOriginal, statHeldReason, linkedStat, mergeDuplicateStatLinks, mergeStatBlueprintsGroups, playStatWorld, playerStatsOf,
   removeEntityStatGroup, removeStatBlueprints, removeStatLink, resetStatLinkFieldOn, resetStatLinkOn, resetStatLinkStatOn,
   resolvedEntityStatTree, resolvedEntityStats, statBlueprintChoices, statLinkState, statLinksTo, withEntityStatTree,
@@ -27,6 +27,19 @@ describe('playerStatsOf', () => {
   it('keeps the list itself when it holds no Blueprint', () => {
     const stats = [health];
     expect(playerStatsOf(stats, world.statGroups)).toBe(stats);
+  });
+});
+
+describe('blueprintGroupStats', () => {
+  const calm = stat('calm', { groupId: 'bp-social' });
+  const grouped = { stats: [health, trust, fear, calm], statGroups: [bp, sub] };
+
+  it('holds the stats of the group the Blueprint stat sits in, itself included', () => {
+    expect(blueprintGroupStats(grouped, fear).map((s) => s.id)).toEqual(['fear', 'calm']);
+  });
+
+  it('holds a stat directly under Blueprints alone', () => {
+    expect(blueprintGroupStats(grouped, trust)).toEqual([trust]);
   });
 });
 

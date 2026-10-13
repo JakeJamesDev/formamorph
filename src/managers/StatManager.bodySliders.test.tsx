@@ -43,7 +43,7 @@ vi.mock('@/services/ModelStorageService', () => ({
 }));
 
 const entityStore = (model?: Partial<MediaAsset>): StatEditorStore => ({
-  stats: [wounds], updateStat: () => {}, morphOwner: { name: 'Golem', model },
+  stats: [wounds], updateStat: () => {}, ownerId: 'golem', morphOwner: { name: 'Golem', model },
 });
 
 const renderManager = (store?: StatEditorStore, stat: Stat = wounds) => render(
