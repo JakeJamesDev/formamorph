@@ -112,7 +112,7 @@ describe('planCodeRename', () => {
     const plan = planCodeRename({ root: 'stats', oldName: 'Health', newName: 'Vigor', stats, otherNames: [] });
     expect(plan).not.toBeNull();
     expect(plan?.references).toBe(3);
-    expect(plan?.edits.map((edit) => edit.id)).toEqual(['a', 'b']);
+    expect(plan?.edits.map((edit) => edit.home)).toEqual([{ kind: 'stat', statId: 'a' }, { kind: 'stat', statId: 'b' }]);
     expect(plan?.edits[0].boxes.after).toBe('return stats.Vigor.value * 2;');
     expect(plan?.edits[1].boxes.after).toBe(`return stats['Vigor'].max - stats.Vigor.min;`);
   });
@@ -178,13 +178,13 @@ describe('planCodeRename', () => {
       stats: [stat('a', ''), stat('b', 'return traits.Brave.enabled ? 1 : 0;')],
       otherNames: [],
     });
-    expect(plan?.edits.map((edit) => edit.id)).toEqual(['b']);
+    expect(plan?.edits.map((edit) => edit.home)).toEqual([{ kind: 'stat', statId: 'b' }]);
   });
 });
 
 describe('codeRenameTarget', () => {
   it('maps a find-and-replace on a name field to its map', () => {
-    expect(codeRenameTarget('stat:s1', 'name')).toEqual({ root: 'stats' });
+    expect(codeRenameTarget('stat:s1', 'name')).toEqual({ root: 'stats', stat: { id: 's1' } });
     expect(codeRenameTarget('trait:t1', 'name')).toEqual({ root: 'traits', traitId: 't1' });
     expect(codeRenameTarget('placeholder:p1', 'name'))
       .toEqual({ root: 'placeholders', subject: { kind: 'placeholder', id: 'p1' } });

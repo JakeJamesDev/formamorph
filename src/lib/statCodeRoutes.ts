@@ -11,7 +11,8 @@ import { javascriptLanguage } from '@codemirror/lang-javascript';
 import type { SyntaxNode } from '@lezer/common';
 import type { PlaceholderOwnerRef } from './placeholderHomes';
 import { holderOf } from './placeholderTree';
-import { codeRenameChains, spliced, type CodeRenameKey, type CodeSplice } from './statCodeRename';
+import { codeRenameChains, type CodeRenameKey } from './codeRenameChains';
+import { spliced, type CodeSplice } from './statCodeRename';
 import { statCodeName } from './statCodeNames';
 import {
   memberStep, OWNER_GLOBAL, placeholderPathMap, walkPlaceholderPath,

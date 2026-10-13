@@ -4,9 +4,12 @@ import {
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useGameDataOptional } from '@/contexts/GameDataContext';
+import { updateOwnedStat } from '@/lib/ownedStats';
 import { planCodeRename, type CodeRenamePlan, type RenameRoot } from '@/lib/statCodeRename';
+import { setStatLinkCode, withStatLinks } from '@/lib/statLinks';
 import { traitHolders } from '@/lib/statCodeTraits';
-import { CODE_FIELD, type StatCodeTiming } from '@/lib/statCodeTiming';
+import { boxCode, CODE_FIELD, STAT_CODE_TIMINGS, type StatCodeTiming } from '@/lib/statCodeTiming';
+import type { StatLink } from '@/types';
 import { CodeRenameContext, type CodeRenameRequest, type OfferCodeRename } from '@/lib/useCodeRename';
 
 /**
@@ -42,12 +45,14 @@ export function CodeRenameProvider({ children }: { children: ReactNode }) {
   const entities = useMemo(() => world?.entities ?? [], [world?.entities]);
   const dictionaries = useMemo(() => world?.dictionaries ?? [], [world?.dictionaries]);
   const traitGroups = useMemo(() => world?.traitGroups ?? [], [world?.traitGroups]);
+  const statGroups = useMemo(() => world?.statGroups ?? [], [world?.statGroups]);
   // The tree as code reads it, so a rename of one node follows every path that passes through it.
   const placeholders = useMemo(
     () => ({ list: world?.placeholders ?? [], owners: world?.placeholderOwners }),
     [world?.placeholders, world?.placeholderOwners],
   );
   const updateStat = world?.updateStat;
+  const editEntity = world?.editEntity;
   // A queue, because one Replace All can rename several things at once. Requests are held rather than
   // plans: each answer rewrites code the next request has to read, so a plan is built only once its
   // request reaches the front.
@@ -58,11 +63,13 @@ export function CodeRenameProvider({ children }: { children: ReactNode }) {
       const { traitId, ...request } = queue[i];
       const holders = traitId === undefined ? undefined
         : traitHolders({ traits, traitGroups, entities }, placeholders.list, traitId);
-      const plan = planCodeRename({ ...request, stats, traits, entities, dictionaries, placeholders, traitHolders: holders });
+      const plan = planCodeRename({
+        ...request, stats, statGroups, traits, entities, dictionaries, placeholders, traitHolders: holders,
+      });
       if (plan) return { plan, through: i };
     }
     return null;
-  }, [queue, stats, traits, traitGroups, entities, dictionaries, placeholders]);
+  }, [queue, stats, statGroups, traits, traitGroups, entities, dictionaries, placeholders]);
   const plan: CodeRenamePlan | null = pending?.plan ?? null;
   // What the dialog reads, kept past the answer: the plan goes as soon as the question is settled, and the
   // body would otherwise empty while the dialog is still animating out.
@@ -75,8 +82,8 @@ export function CodeRenameProvider({ children }: { children: ReactNode }) {
   }, [pending, queue.length]);
 
   // Held in a ref so the callback the name fields take never changes identity.
-  const latest = useRef({ stats, updateStat });
-  latest.current = { stats, updateStat };
+  const latest = useRef({ stats, updateStat, editEntity });
+  latest.current = { stats, updateStat, editEntity };
 
   const offer = useCallback<OfferCodeRename>((request) => {
     setQueue((waiting) => [...waiting, request]);
@@ -100,14 +107,35 @@ export function CodeRenameProvider({ children }: { children: ReactNode }) {
 
   const apply = () => {
     if (!plan) return;
-    const write = latest.current.updateStat;
-    const byId = new Map(latest.current.stats.map((stat) => [stat.id, stat]));
-    for (const edit of plan.edits) {
-      const stat = byId.get(edit.id);
-      if (!stat || !write) continue;
+    const { stats: worldStats, updateStat: write, editEntity: edit } = latest.current;
+    const byId = new Map(worldStats.map((stat) => [stat.id, stat]));
+    // The Blueprint boxes this rename rewrites, so a link's snapshot of them moves with them.
+    const blueprintAfter = new Map(plan.edits.flatMap(({ home, boxes }) => (home.kind === 'stat' ? [[home.statId, boxes]] : [])));
+    for (const { home, boxes } of plan.edits) {
       // Only the boxes the plan rewrote, so a box the rename never read keeps whatever it holds.
-      const boxes = Object.entries(edit.boxes).map(([timing, code]) => [CODE_FIELD[timing as StatCodeTiming], code]);
-      write({ ...stat, ...Object.fromEntries(boxes) });
+      const fields = Object.fromEntries(
+        Object.entries(boxes).map(([timing, code]) => [CODE_FIELD[timing as StatCodeTiming], code]),
+      );
+      if (home.kind === 'stat') {
+        const stat = byId.get(home.statId);
+        if (stat && write) write({ ...stat, ...fields });
+      } else if (home.kind === 'entity') {
+        edit?.(home.entityId, (entity) => {
+          const stat = entity.stats?.find((entry) => entry.id === home.statId);
+          return stat ? updateOwnedStat(entity, { ...stat, ...fields }) : entity;
+        });
+      } else {
+        const original = byId.get(home.statId);
+        if (!original) continue;
+        const rewrite = (link: StatLink) => STAT_CODE_TIMINGS.reduce((next, timing) => {
+          const code = boxes[timing];
+          const before = boxCode(original, timing);
+          const after = blueprintAfter.get(home.statId)?.[timing] ?? before;
+          return code === undefined ? next : setStatLinkCode(next, home.statId, CODE_FIELD[timing], code, before, after);
+        }, link);
+        edit?.(home.entityId, (entity) =>
+          withStatLinks(entity, (entity.statLinks ?? []).map((link) => (link.id === home.linkId ? rewrite(link) : link))));
+      }
     }
     settle();
   };

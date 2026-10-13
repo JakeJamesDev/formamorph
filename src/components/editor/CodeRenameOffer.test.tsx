@@ -2,36 +2,48 @@ import { useMemo, useState } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { Placeholder, Stat } from '@/types';
+import type { Entity, Placeholder, Stat, StatGroup } from '@/types';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import { statCodeName } from '@/lib/statCodeNames';
+import type { RenamedStat } from '@/lib/statCodeRename';
+import { statLinkState } from '@/lib/statLinks';
 import { useCodeRenameOffer, useRenameField } from '@/lib/useCodeRename';
 import { CodeRenameProvider } from './CodeRenameOffer';
 
 const stat = (id: string, name: string, code: string): Stat =>
   ({ id, name, type: 'number', description: '', min: 0, max: 100, value: 0, regen: 0, code } as unknown as Stat);
 
-const store: { stats: Stat[]; placeholders: Placeholder[]; rerender: () => void } = {
-  stats: [], placeholders: [], rerender: () => {},
+const store: {
+  stats: Stat[]; statGroups: StatGroup[]; entities: Entity[]; placeholders: Placeholder[]; rerender: () => void;
+} = {
+  stats: [], statGroups: [], entities: [], placeholders: [], rerender: () => {},
 };
 
 vi.mock('@/contexts/GameDataContext', () => ({
   useGameDataOptional: () => ({
     stats: store.stats,
+    statGroups: store.statGroups,
+    entities: store.entities,
     updateStat: (next: Stat) => {
       store.stats = store.stats.map((entry) => (entry.id === next.id ? next : entry));
+      store.rerender();
+    },
+    editEntity: (id: string, edit: (entity: Entity) => Entity) => {
+      store.entities = store.entities.map((entity) => (entity.id === id ? edit(entity) : entity));
       store.rerender();
     },
   }),
 }));
 
 /** A name field reduced to what the offer reads: a value, and the commit handlers the real fields wire. */
-const NameField = ({ root, initial, otherNames, chips }: {
+const NameField = ({ root, initial, otherNames, chips, renamed }: {
   root: 'stats' | 'placeholders' | 'traits';
   initial: string;
   otherNames: string[];
   /** Read the value as a code name, the way the stat and trait panels do. */
   chips?: boolean;
+  /** The stat the field names, as the stat panel passes it. */
+  renamed?: RenamedStat;
 }) => {
   const [value, setValue] = useState(initial);
   // The hook takes the whole sibling list and the id being edited; the cases name the other entries, so
@@ -46,6 +58,7 @@ const NameField = ({ root, initial, otherNames, chips }: {
     siblings,
     ownId: 'self',
     codeNameOf: chips ? (name) => statCodeName(name, store.placeholders) : undefined,
+    stat: renamed,
   });
   return (
     <input
@@ -87,6 +100,8 @@ async function renameTo(next: string) {
 
 beforeEach(() => {
   store.placeholders = [];
+  store.statGroups = [];
+  store.entities = [];
   store.stats = [
     stat('a', 'Health', 'return stats.Health.value * 2;'),
     stat('b', 'Stamina', `return stats['Health'].max - 1;`),
@@ -95,6 +110,54 @@ beforeEach(() => {
 });
 
 describe('the rename offer', () => {
+  it('keeps a link override current when the rename rewrites its Blueprint too, and a stale one stale', async () => {
+    const howl = { ...stat('howl', 'Howl', 'return stats.Ruin.value;'), groupId: 'bp' };
+    const howlLink = (entityId: string, blueprint: string) => ({
+      id: `l-${entityId}`, originalId: 'howl', kind: 'stat' as const, originalName: 'Howl', groupId: null,
+      overrides: { howl: { code: { value: 'return stats.Ruin.value + 1;', blueprint } } },
+    });
+    store.statGroups = [{ id: 'bp', name: 'Blueprints', system: 'blueprints' } as StatGroup];
+    store.stats = [stat('ruin', 'Ruin', ''), howl];
+    store.entities = [
+      { id: 'bram', name: 'Bram', statLinks: [howlLink('bram', 'return stats.Ruin.value;')] },
+      { id: 'ash', name: 'Ash', statLinks: [howlLink('ash', 'return 0;')] },
+    ];
+    render(<Harness root="stats" initial="Ruin" otherNames={[]} renamed={{ id: 'ruin' }} />);
+    const user = await renameTo('Wreck');
+    await user.click(screen.getByRole('button', { name: 'Update Code' }));
+
+    const blueprint = store.stats.find((entry) => entry.id === 'howl')!;
+    expect(blueprint.code).toBe('return stats.Wreck.value;');
+    const [bram, ash] = store.entities.map((entity) => entity.statLinks![0]);
+    expect(bram.overrides?.howl?.code?.value).toBe('return stats.Wreck.value + 1;');
+    expect(statLinkState(blueprint, bram).stale).toEqual([]);
+    expect(ash.overrides?.howl?.code?.value).toBe('return stats.Wreck.value + 1;');
+    expect(statLinkState(blueprint, ash).stale).toEqual(['code']);
+  });
+
+  it('rewrites an entity’s own stat in its own box, its link’s override, and a world box', async () => {
+    const howl = { ...stat('howl', 'Howl', 'return owner.stats.Rage.value;'), groupId: 'bp' };
+    store.statGroups = [{ id: 'bp', name: 'Blueprints', system: 'blueprints' } as StatGroup];
+    store.stats = [stat('reader', 'Reader', 'return entities.Bram.stats.Rage.value + stats.Rage.value;'), stat('rage-w', 'Rage', ''), howl];
+    store.entities = [{
+      id: 'bram', name: 'Bram', stats: [stat('rage', 'Rage', 'return owner.stats.Rage.value;')],
+      statLinks: [{
+        id: 'l-howl', originalId: 'howl', kind: 'stat', originalName: 'Howl', groupId: null,
+        overrides: { howl: { code: { value: 'return owner.stats.Rage.value + 1;', blueprint: 'return owner.stats.Rage.value;' } } },
+      }],
+    }];
+    render(<Harness root="stats" initial="Rage" otherNames={[]} renamed={{ id: 'rage', entityId: 'bram' }} />);
+    const user = await renameTo('Spite');
+
+    expect(screen.getByText(/The code of 3 stats names the stat “Rage” 3 times\./)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Update Code' }));
+    const [bram] = store.entities;
+    expect(bram.stats?.[0].code).toBe('return owner.stats.Spite.value;');
+    expect(bram.statLinks?.[0].overrides?.howl?.code?.value).toBe('return owner.stats.Spite.value + 1;');
+    expect(codeOf('reader')).toBe('return entities.Bram.stats.Spite.value + stats.Rage.value;');
+    expect(codeOf('howl')).toBe('return owner.stats.Rage.value;');
+  });
+
   it('asks with the count, and rewrites every script on Yes', async () => {
     render(<Harness root="stats" initial="Health" otherNames={['Stamina', 'Grit']} />);
     const user = await renameTo('Vigor');

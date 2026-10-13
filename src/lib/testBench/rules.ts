@@ -33,9 +33,10 @@ import {
   describeInThresholdUnits, describeThreshold, descriptorSpans, isThresholdOutOfRange, sortedDescriptors,
   statStartValue, thresholdValue, uncoveredSpan, valueThreshold,
 } from '@/lib/statDescriptorGeometry';
-import { hasEntityKey, statCodeName, statsByCodeName } from '@/lib/statCodeNames';
-import { boxCode, filledCodeBoxes, noBoxes, TIMING_LABEL, type StatCodeTiming } from '@/lib/statCodeTiming';
-import { scanStatLookups, scanStatWrites, type ScannedWrite } from '@/lib/statCodeWriteScan';
+import { statCodeName } from '@/lib/statCodeNames';
+import { boxCode, filledCodeBoxes, noBoxes, TIMING_LABEL } from '@/lib/statCodeTiming';
+import { scanStatLookups, scanStatWrites } from '@/lib/statCodeWriteScan';
+import { isStatOn, routeTargets, statCodeBoxes, statCodeOwners, type CodeOwner, type CodeOwners } from '@/lib/statCodeTargets';
 import { estimateTokens } from '@/lib/memoryUtils';
 import { entityImageData, entityImages } from '@/lib/entityImages';
 import {
@@ -59,7 +60,7 @@ import { ruleText, rowText } from '@/lib/traitGateLine';
 import { conditionsOf } from '@/lib/requirementRows';
 import { isAlwaysOn } from '@/lib/traitEffects';
 import { statRows, statRowSide, type StatRow } from '@/lib/traitTree';
-import { blueprintGroupStats, playerStatsOf, resolvedEntityStats, statBlueprintIds, type StatLinkWorld } from '@/lib/statLinks';
+import { playerStatsOf, resolvedEntityStats } from '@/lib/statLinks';
 import type {
   DictionaryEntry, Entity, GalleryImage, GameLocation, PersonaRef, Placeholder, PlaceholderPin, PlaceholderValue, Stat, StatDescriptor, StatRequirement,
   Trait, TraitGroup, TraitLink, TraitRequirement, TraitRequirementRow, World,
@@ -934,65 +935,10 @@ const statNamesInCode = (code: string): string[] => [
   ...scanStatLookups(code).flatMap((lookup) => (lookup.root === 'stats' ? [lookup.stat] : [])),
 ];
 
-/** One owner whose stat code runs, with its stats as play reads them: the world, or an entity. */
-interface CodeOwner {
-  entity: Entity | null;
-  stats: Stat[];
-  /** Its stats as its stat map keys them by code name. */
-  byCodeName: ReadonlyMap<string, Stat>;
-}
-
-type EntityOwner = CodeOwner & { entity: Entity };
-
-/** Every owner stat code reaches, with no playthrough: every authored entity is in the game. */
-interface CodeOwners {
-  world: CodeOwner;
-  /** The world, then each entity in authored order. */
-  all: CodeOwner[];
-  /** Each entity as `entities` keys it by code name. */
-  byName: ReadonlyMap<string, EntityOwner>;
-  /** What `persona` may be (Q11). */
-  playable: EntityOwner[];
-  statWorld: StatLinkWorld;
-  /** Stats as a stat map keys them by code name. */
-  byCodeName: (stats: readonly Stat[]) => ReadonlyMap<string, Stat>;
-}
-
-/** A stat authored off runs no code and takes no write. */
-const isStatOn = (stat: Stat) => stat.enabled !== false;
-
-function statCodeOwners(world: RuleWorld): CodeOwners {
-  const placeholders = allPlaceholders(world);
-  const codeName = (text: string | undefined) => statCodeName(text, placeholders);
-  const statWorld = { stats: world.stats ?? [], statGroups: world.statGroups ?? [] };
-  const byCodeName = (stats: readonly Stat[]) => statsByCodeName(stats, (stat) => codeName(stat.name), isStatOn);
-  const owner = <E extends Entity | null>(entity: E, stats: Stat[]) => ({ entity, stats, byCodeName: byCodeName(stats) });
-  const worldOwner = owner(null, playerStatsOf(statWorld.stats, statWorld.statGroups));
-  const entities = (world.entities ?? []).map((entity) => owner(entity, resolvedEntityStats(statWorld, entity)));
-  return {
-    world: worldOwner,
-    all: [worldOwner, ...entities],
-    byName: new Map(entities.map((o) => [codeName(o.entity.name), o] as const).filter(([name]) => hasEntityKey(name))),
-    playable: entities.filter((o) => canBePlayer(o.entity)),
-    statWorld,
-    byCodeName,
-  };
-}
-
-/** Each owner's stat a scanned write lands on, from `writer`'s box run for `owner`. */
-function writeTargets(owners: CodeOwners, owner: CodeOwner, writer: Stat, write: ScannedWrite): [CodeOwner, Stat][] {
-  const on = (target: CodeOwner | undefined): [CodeOwner, Stat][] => {
-    const stat = target && write.stat !== null ? target.byCodeName.get(write.stat) : undefined;
-    return target && stat ? [[target, stat]] : [];
-  };
-  switch (write.root) {
-    case 'self': return [[owner, writer]];
-    case 'stats': return on(owners.world);
-    case 'owner': return owner.entity ? on(owner) : [];
-    case 'entities': return on(owners.byName.get(write.entity ?? ''));
-    case 'persona': return owners.playable.flatMap((target) => on(target));
-  }
-}
+/** The owners stat code reaches in this world. */
+const codeOwnersOf = (world: RuleWorld): CodeOwners => statCodeOwners({
+  stats: world.stats, statGroups: world.statGroups, entities: world.entities, placeholders: allPlaceholders(world),
+});
 
 const statCodeUnknownStat: Rule = {
   id: 'stat-code-unknown-stat',
@@ -1002,7 +948,7 @@ const statCodeUnknownStat: Rule = {
   summary: (count) => `${count} stats’ code looks up stat names that don’t exist`,
   // Code reaches a stat by its code name, which is the same in every playthrough.
   check: (world) => {
-    const owners = statCodeOwners(world);
+    const owners = codeOwnersOf(world);
     const inWorld = owners.world.byCodeName;
     return codeBoxesOf(world, owners).flatMap(({ code, label, item, ownerStats }) => {
       const misses = new Set<string>();
@@ -1040,35 +986,14 @@ interface OwnedCodeBox {
   ownerStats: ReadonlyMap<string, Stat> | null;
 }
 
-/**
- * Every box of stat code once: the world's, each Blueprint stat's with its group as `owner.stats` (Q10), and
- * each entity's own. A bearer's linked stat adds only a box whose code its link overrides.
- */
-function codeBoxesOf(world: RuleWorld, owners: CodeOwners): OwnedCodeBox[] {
-  const { statWorld, byCodeName } = owners;
-  const label = (stat: Stat, timing: StatCodeTiming) => `${TIMING_LABEL[timing]} code on ${quote(labelOf(stat.name, world))}`;
-  const blueprints = statBlueprintIds(statWorld);
-  const ofWorld = (stat: Stat, ownerStats: ReadonlyMap<string, Stat> | null): OwnedCodeBox[] => filledCodeBoxes(stat).map((box) => ({
-    code: box.code, label: label(stat, box.timing), item: namedItem(stat.id, stat.name, world), ownerStats,
-  }));
-  return [
-    ...owners.world.stats.flatMap((stat) => ofWorld(stat, null)),
-    ...statWorld.stats.filter((stat) => blueprints.has(stat.id))
-      .flatMap((stat) => ofWorld(stat, byCodeName(blueprintGroupStats(statWorld, stat)))),
-    ...owners.all.flatMap(({ entity, stats, byCodeName: ownerStats }) => {
-      if (!entity) return [];
-      const ownIds = new Set((entity.stats ?? []).map((stat) => stat.id));
-      const item = { ...asItem(entity, world), section: 'entities' as const };
-      const ofEntity = ` of ${quote(labelOf(entity.name, world))}`;
-      return stats.flatMap((stat) => {
-        const original = ownIds.has(stat.id) ? null : statWorld.stats.find((s) => s.id === stat.id);
-        return filledCodeBoxes(stat)
-          .filter((box) => !original || box.code !== boxCode(original, box.timing))
-          .map((box) => ({ code: box.code, label: `${label(stat, box.timing)}${ofEntity}`, item, ownerStats }));
-      });
-    }),
-  ];
-}
+/** Every box of stat code once, as a finding names it. An entity's own box and its link's name the entity. */
+const codeBoxesOf = (world: RuleWorld, owners: CodeOwners): OwnedCodeBox[] => statCodeBoxes(owners).map((box) => {
+  const label = `${TIMING_LABEL[box.timing]} code on ${quote(labelOf(box.stat.name, world))}`;
+  const ownerStats = box.owner?.byCodeName ?? null;
+  if (!box.entity) return { code: box.code, label, item: namedItem(box.stat.id, box.stat.name, world), ownerStats };
+  const item = { ...asItem(box.entity, world), section: 'entities' as const };
+  return { code: box.code, label: `${label} of ${quote(labelOf(box.entity.name, world))}`, item, ownerStats };
+});
 
 // A read of a stat's `delta`, in either lookup form. A bare `delta` is nothing the sandbox injects, so only
 // a member read counts — which also leaves an author's own variable of that name alone.
@@ -1111,13 +1036,14 @@ const statCodeTwoWriters: Rule = {
   // Judged per owner and field across every box in the world. A Blueprint stat runs once per bearer, so each
   // bearer's box is its own writer and each bearer's copy its own target.
   check: (world) => {
-    const owners = statCodeOwners(world);
+    const owners = codeOwnersOf(world);
     const fields = new Map<string, WrittenField>();
     for (const owner of owners.all) {
       for (const writer of owner.stats.filter(isStatOn)) {
         for (const box of filledCodeBoxes(writer)) {
           for (const write of scanStatWrites(box.code)) {
-            for (const [targetOwner, target] of writeTargets(owners, owner, writer, write)) {
+            const run = { self: writer, owner: owner.entity ? owner : null };
+            for (const { owner: targetOwner, stat: target } of routeTargets(owners, run, write)) {
               if (!isStatOn(target)) continue;
               const key = JSON.stringify([targetOwner.entity?.id ?? null, target.id, write.field]);
               const held = fields.get(key) ?? { owner: targetOwner, target, field: write.field, writers: new Map() };
