@@ -3,8 +3,7 @@
 
 import type { Entity, Placeholder, Stat, StatChange, Trait, TraitGroup, TraitStatToggle } from '@/types';
 import { canBePlayer, resolveBearers } from './bearers';
-import { statCodeChains } from './statCodeRename';
-import { statCodeName } from './statCodeNames';
+import { routeTargets, routesIn, statCodeBoxes, statCodeOwners, type StatTarget } from './statCodeTargets';
 import { playerStatsOf, resolvedEntityStats, type StatLinkWorld } from './statLinks';
 import { statRowSide } from './traitTree';
 
@@ -52,43 +51,36 @@ function traitReader(world: StatReaderWorld, from: string | null, moved: Readonl
   return null;
 }
 
-/** The first stat code that reads one of `moved` on owner `from`, or, with `ownCode`, that a moved stat runs and
- *  reads a stat left behind. Only exact map lookups count. */
-function codeReader(
-  world: StatReaderWorld, from: string | null, moved: ReadonlyMap<string, Stat>, ownCode = true,
-): { stat: Stat; reader: StatReader } | null {
-  const placeholders = world.placeholders ?? [];
-  const codeName = (name: string) => statCodeName(name, placeholders);
-  const owner = from === null ? undefined : world.entities.find((e) => e.id === from);
-  // A Blueprint's code runs on each entity that links it, so the world's `stats` are the player's.
-  const ownerStats = owner ? resolvedEntityStats(world, owner) : playerStatsOf([...world.stats], world.statGroups);
-  const staying = ownerStats.filter((s) => !moved.has(s.id));
-  const stayingByName = new Map(staying.map((s) => [codeName(s.name), s]));
-  // A name a staying stat still answers keeps reading something after the move.
-  const movedByName = new Map([...moved.values()].map((s) => [codeName(s.name), s] as const).filter(([name]) => !stayingByName.has(name)));
-
-  for (const stat of staying) {
-    for (const [name] of statCodeChains(stat, 'stats')) {
-      const target = movedByName.get(name);
-      if (target) return { stat: target, reader: { kind: 'readBy', stat: stat.name } };
-    }
-  }
-  for (const stat of ownCode ? moved.values() : []) {
-    for (const [name] of statCodeChains(stat, 'stats')) {
-      const left = movedByName.has(name) ? undefined : stayingByName.get(name);
-      if (left) return { stat, reader: { kind: 'reads', stat: left.name } };
-    }
-  }
-  if (!owner) return null;
-  // An entity's stats are also read by name through `entities` anywhere, and through `persona` while played.
-  const key = codeName(owner.name);
-  const everyStat = [...world.stats, ...world.entities.flatMap((e) => resolvedEntityStats(world, e))];
-  for (const stat of everyStat) {
-    const throughEntities = key ? statCodeChains(stat, 'entities').filter(([k, s]) => k === key && s === 'stats').map((c) => c[2]) : [];
-    const throughPersona = canBePlayer(owner) ? statCodeChains(stat, 'persona').filter(([s]) => s === 'stats').map((c) => c[1]) : [];
-    for (const name of [...throughEntities, ...throughPersona]) {
-      const target = name === undefined ? undefined : movedByName.get(name);
-      if (target) return { stat: target, reader: { kind: 'readBy', stat: stat.name } };
+/**
+ * The first stat code that reads one of `moved` on owner `from` and would read nothing once it leaves, or a
+ * moved stat's own code whose `owner.stats` reads a stat left behind on `from`. Only exact map lookups count.
+ * A Blueprint box counts once per bearer.
+ */
+function codeReader(world: StatReaderWorld, from: string | null, moved: ReadonlyMap<string, Stat>): { stat: Stat; reader: StatReader } | null {
+  const owners = statCodeOwners({
+    stats: world.stats, statGroups: world.statGroups, entities: world.entities, placeholders: world.placeholders ?? [],
+  });
+  const fromOwner = from === null ? owners.world : owners.all.find((owner) => owner.entity?.id === from);
+  if (!fromOwner) return null;
+  const isMoved = (target: StatTarget) => target.owner === fromOwner && moved.has(target.stat.id);
+  // A name one of the moved stats hid answers with the stat that stays.
+  const staying = owners.byCodeName(fromOwner.stats.filter((stat) => !moved.has(stat.id)));
+  for (const box of statCodeBoxes(owners)) {
+    const routes = routesIn(box.code);
+    for (const run of routes.length ? box.runs : []) {
+      // A moved stat's own run goes with it, so its `owner` is someone else's afterwards.
+      const leaves = moved.has(run.self.id) && (run.owner ?? owners.world) === fromOwner;
+      for (const { route } of routes) {
+        const targets = routeTargets(owners, run, route);
+        if (leaves && route.root === 'owner') {
+          const left = targets.find((target) => !isMoved(target));
+          if (left) return { stat: moved.get(run.self.id) ?? run.self, reader: { kind: 'reads', stat: left.stat.name } };
+          continue;
+        }
+        const hit = targets.find(isMoved);
+        if (!hit || targets.some((target) => !isMoved(target)) || staying.has(route.stat)) continue;
+        return { stat: moved.get(hit.stat.id) ?? hit.stat, reader: { kind: 'readBy', stat: box.stat.name } };
+      }
     }
   }
   return null;
@@ -105,10 +97,9 @@ export function brokenStatReader(
 }
 
 /** What reads one of `moved`, world stats outside Blueprints, as a player stat: the first trait row or stat code
- *  that would stop reading it in Blueprints. A moved stat's own code reads its linkers' stats there, so it never
- *  counts. Null when nothing does. */
+ *  that would stop reading it in Blueprints, where `stats` no longer reaches it. Null when nothing does. */
 export function statReaderOutsideBlueprints(world: StatReaderWorld, moved: readonly Stat[]): { stat: Stat; reader: StatReader } | null {
   if (!moved.length) return null;
   const byId = new Map(moved.map((s) => [s.id, s]));
-  return traitReader(world, null, byId) ?? codeReader(world, null, byId, false);
+  return traitReader(world, null, byId) ?? codeReader(world, null, byId);
 }
