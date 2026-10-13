@@ -120,7 +120,7 @@ describe('stat cards: routes', () => {
     const guard = (id: string): Entity => ({ id, name: 'Guard', stats: [stat(`${id}-hp`, 'HP')] });
     const options = box({ kind: 'entity', entityId: 'g1' }, stat('g1-hp', 'HP'), 'after', { ...world, entities: [guard('g1'), guard('g2')] });
     expect(rowsOf(cardAt('return owner.stats.H|P.value;', options)).Owner).toBe('Guard');
-    expect(cardAt('return own|er.name;', options)?.rows?.[0]).toEqual({ label: 'Entity', value: 'Guard' });
+    expect(cardAt('return own|er.name;', options)?.item).toEqual({ kind: 'entity', entityId: 'g1' });
   });
 
   it('shows a Link’s Overrides, then its Blueprint', () => {
@@ -166,6 +166,7 @@ describe('lazyLookup', () => {
     expect(make).not.toHaveBeenCalled();
     expect(lookup.stat({ route: 'world' }, 'Health')?.stat?.id).toBe('health');
     expect(lookup.owner()).toEqual({ kind: 'empty' });
+    expect(lookup.trait({ route: 'world' }, 'Brave')).toBeNull();
     expect(lookup.self().stat.id).toBe('health');
     expect(make).toHaveBeenCalledTimes(1);
   });
@@ -185,7 +186,10 @@ describe('`self` and `owner` cards', () => {
 
   it('shows the owning entity in an owned box', () => {
     const card = cardAt('return own|er.name;', maraBox);
-    expect(card?.rows).toEqual([{ label: 'Entity', value: 'Mara' }, { label: 'Stats', value: 'Health, Rage' }]);
+    // No card world here, so the entity rows hold its stats alone.
+    expect(card?.rows).toEqual([
+      { label: 'Stats', value: 'Health, Rage' }, { label: 'Traits', value: 'None' }, { label: 'Placeholders', value: 'None' },
+    ]);
     expect(card?.item).toEqual({ kind: 'entity', entityId: 'mara' });
   });
 

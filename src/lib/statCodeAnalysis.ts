@@ -237,12 +237,15 @@ function statNamesOf(options: AnalysisOptions, owner: StatOwner): readonly strin
   return keyedEntity(entities, owner.entity)?.stats ?? [];
 }
 
-/** The trait names a trait map keys, or null where they are not given, as for the box owner's. */
+/** The trait names a trait map keys, or null where they are not given. The box owner's come from the card
+ *  lookup, so they never reach lint. */
 function traitNamesOf(options: AnalysisOptions, owner: TraitOwner): readonly string[] | null {
   if (owner.route === 'world') return options.traits ?? null;
   if (owner.route === 'persona') return personaTraitsOf(options.entities);
   if (owner.route === 'entity') return options.entities ? traitsOfEntity(options.entities, owner.entity) : null;
-  return null;
+  const ids = options.lookup?.ownerEntityIds();
+  const held = ids && options.entities?.filter((entity) => ids.includes(entity.id));
+  return held ? [...new Set(held.flatMap((entity) => entity.traits.map((trait) => trait.name)))] : null;
 }
 
 /** The trait names a persona in the world can hold, or null when no entities are given. */
@@ -344,18 +347,45 @@ function indexesStat(text: string, name: string, owned: boolean): boolean {
   return isIdentifier(name) && reaches(`${map}\\s*\\??\\.\\s*${escaped}(?![\\w$])`);
 }
 
+/** Where a `placeholders` value's walk starts and the keys it walks. The box owner's start is every entity
+ *  the card lookup says `owner` holds. Null where the world or the owner is unknown. */
+function placeholderWalk(
+  owner: PlaceholderOwner, path: readonly string[], options: AnalysisOptions, rules: StatRules,
+): { start: PlaceholderPathNode | null; segments: readonly string[] } | null {
+  const { placeholders } = options;
+  if (!placeholders) return null;
+  if (owner.route === 'owner') {
+    const ids = rules.owner ? options.lookup?.ownerEntityIds() : undefined;
+    if (!ids) return null;
+    const map = pathMapOf(placeholders);
+    return { start: { ...emptyOwner('owner'), children: ids.flatMap((id) => map.owners.get(id)?.children ?? []) }, segments: path };
+  }
+  const route = placeholderRouteOf(owner, path);
+  const start = route && routeStart(route, placeholders, options, rules);
+  return route && start !== undefined ? { start, segments: route.segments } : null;
+}
+
 /** The keys a `placeholders` bracket can reach, quoted names included, or null where the world or the owner is unknown. */
 function placeholderKeysInBrackets(
-  route: PlaceholderRoute, options: AnalysisOptions, rules: StatRules,
+  owner: PlaceholderOwner, path: readonly string[], options: AnalysisOptions, rules: StatRules,
 ): SurfaceEntry[] | null {
-  const { placeholders } = options;
-  const start = placeholders && routeStart(route, placeholders, options, rules);
-  if (!placeholders || start === undefined) return null;
-  const map = pathMapOf(placeholders);
+  const walk = placeholderWalk(owner, path, options, rules);
+  if (!walk || !options.placeholders) return null;
+  const map = pathMapOf(options.placeholders);
   // Keys only, never paths: one bracket holds one key, so a path has to be written bracket by bracket.
-  if (!start && route.segments.length === 0) return map.top.map(nodeEntry);
-  const { node, rest } = walkPlaceholderPath(map, route.segments, start);
+  if (!walk.start && walk.segments.length === 0) return map.top.map(nodeEntry);
+  const { node, rest } = walkPlaceholderPath(map, walk.segments, walk.start);
   return rest.length === 0 && node ? node.children.map(nodeEntry) : [];
+}
+
+/** The placeholder a resolved placeholder name reads, or null where the editor can't tell. */
+export function placeholderAt(
+  owner: PlaceholderOwner, path: readonly string[], options: SurfaceAnalysisOptions,
+): Placeholder | null {
+  const walk = placeholderWalk(owner, path, options, statRulesOf(options.surface));
+  if (!walk || !options.placeholders) return null;
+  const { node, rest } = walkPlaceholderPath(pathMapOf(options.placeholders), walk.segments, walk.start);
+  return rest.length === 0 ? node?.placeholder ?? null : null;
 }
 
 /** The names a stat, trait, entity or dictionary map keys, as entries: null where they are not given, undefined
@@ -390,10 +420,7 @@ function bracketObjectAround(node: SyntaxNode): SyntaxNode | null {
 
 /** The keys to offer inside a bracket on `map`, or null where the map is none the sandbox keys by name. */
 function bracketKeys(map: CodeValue, options: AnalysisOptions, rules: StatRules): SurfaceEntry[] | null {
-  if (map.is === 'placeholders') {
-    const route = placeholderRouteOf(map.owner, map.path);
-    return route && placeholderKeysInBrackets(route, options, rules);
-  }
+  if (map.is === 'placeholders') return placeholderKeysInBrackets(map.owner, map.path, options, rules);
   const keys = mapKeyEntries(map, options, false);
   return keys === undefined ? null : keys ?? [];
 }
@@ -433,9 +460,8 @@ function membersOf(value: CodeValue, options: SurfaceAnalysisOptions, rules: Sta
     case 'deltaSource': return DELTA_FIELDS;
     case 'trait': return TRAIT_ENTRY_FIELDS;
     case 'placeholders': {
-      const route = placeholderRouteOf(value.owner, value.path);
-      const start = route && options.placeholders && routeStart(route, options.placeholders, options, rules);
-      return route && options.placeholders && start !== undefined ? placeholderMembersAt(options.placeholders, route.segments, start) : null;
+      const walk = placeholderWalk(value.owner, value.path, options, rules);
+      return walk && options.placeholders ? placeholderMembersAt(options.placeholders, walk.segments, walk.start) : null;
     }
     case 'entity': case 'owner': return ENTITY_FIELDS;
     case 'persona': return PERSONA_FIELDS;
@@ -458,10 +484,7 @@ export function isUnknownEntry(name: ResolvedCodeName, options: SurfaceAnalysisO
       case 'trait': return mapKeyEntries({ is: 'traitMap', owner: name.owner }, options, false);
       case 'entity': return mapKeyEntries({ is: 'entityMap' }, options, false);
       case 'dictionary': return mapKeyEntries({ is: 'dictionaryMap' }, options, false);
-      case 'placeholder': {
-        const route = placeholderRouteOf(name.owner, name.path.slice(0, -1));
-        return route && placeholderKeysInBrackets(route, options, statRulesOf(options.surface));
-      }
+      case 'placeholder': return placeholderKeysInBrackets(name.owner, name.path.slice(0, -1), options, statRulesOf(options.surface));
       default: return null;
     }
   };

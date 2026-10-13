@@ -19,6 +19,17 @@ describe('cardAnnouncement', () => {
     expect(cardAnnouncement({ ...card, rows: [...card.rows] })).toBe('stat stats.Fatigue: Stat. Tired. Range: 0 – 100. Owner: World');
   });
 
+  it('reads Allowed Values with their weights, and a multi-line row as one list', () => {
+    const card = {
+      from: 0, to: 5, signature: { kind: 'placeholder', path: 'placeholders.Mood', type: 'Placeholder' },
+      rows: [{ label: 'Pinned By', value: 'Location: Fen: wary\nTrait: Brave: calm' }],
+      allowedValues: { values: [{ text: 'calm', weight: 2 }, { text: 'giddy', weight: 0 }], more: 1 },
+    } as const;
+    expect(cardAnnouncement({ ...card, rows: [...card.rows], allowedValues: { ...card.allowedValues, values: [...card.allowedValues.values] } }))
+      .toBe('placeholder placeholders.Mood: Placeholder. Pinned By: Location: Fen: wary, Trait: Brave: calm. '
+        + 'Allowed Values: calm weight 2, giddy weight 0 and 1 more');
+  });
+
   it('skips the badge and the description a card lacks', () => {
     expect(cardAnnouncement({ from: 0, to: 5, signature: { kind: 'stat', path: 'stats.Fatigue', type: 'Stat' } }))
       .toBe('stat stats.Fatigue: Stat');
@@ -78,6 +89,27 @@ describe('renderCodeCard', () => {
     expect(button?.textContent).toBe('Go to Line 4');
     button?.click();
     expect(moves).toEqual([6]);
+  });
+
+  it('lists Allowed Values after World Details, each weight shown and a weight-0 value faded', () => {
+    const card = renderCodeCard({
+      from: 0, to: 4, signature: { kind: 'placeholder', path: 'placeholders.Mood', type: 'Placeholder' },
+      rows: [{ label: 'Owner', value: 'World' }],
+      allowedValues: { values: [{ text: 'calm', weight: 2 }, { text: 'giddy', weight: 0 }], more: 4 },
+    });
+    const section = card.lastElementChild!;
+    expect(section.previousElementSibling?.tagName).toBe('DL');
+    expect(section.querySelector('h3')?.textContent).toBe('Allowed Values');
+    expect([...section.querySelectorAll('li')].map((item) => item.textContent)).toEqual(['calm ×2', 'giddy ×0', 'and 4 more']);
+    expect([...section.querySelectorAll('li[data-benched]')].map((item) => item.textContent)).toEqual(['giddy ×0']);
+  });
+
+  it('keeps each line of a multi-line row', () => {
+    const card = renderCodeCard({
+      from: 0, to: 4, signature: { kind: 'trait', path: 'traits.Brave', type: 'Trait' },
+      rows: [{ label: 'Requires', value: 'Courage >= 50\nor playing as Tom' }],
+    });
+    expect(card.querySelector('dd')?.className).toContain('whitespace-pre-line');
   });
 
   it('leaves the description section out when the card has none', () => {

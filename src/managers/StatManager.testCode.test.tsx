@@ -205,8 +205,13 @@ describe('whose code a box holds', () => {
     render(<StatManager stat={hub} tab="code" onTabChange={() => {}} store={{ stats: [hub, grit], updateStat, ownerId: 'e2' }} />);
     for (const box of ['Before the AI', 'After the AI'] as const) {
       expect([box, lookupOf(box).self()]).toEqual([box, expect.objectContaining({ stat: expect.objectContaining({ id: 'o1' }), owner: 'Ash', entityId: 'e2' })]);
-      expect([box, lookupOf(box).owner()]).toEqual([box, expect.objectContaining({ kind: 'entity', entityId: 'e2', name: 'Ash' })]);
+      expect([box, lookupOf(box).owner()]).toEqual([box, {
+        kind: 'entity',
+        entity: expect.objectContaining({ entity: expect.objectContaining({ id: 'e2' }), traits: ['Loyal'] }),
+      }]);
       expect([box, lookupOf(box).stat({ route: 'world' }, 'Damp')?.owner]).toEqual([box, 'World']);
+      // The box hands its lookup the world's traits, so trait cards show their rows.
+      expect([box, lookupOf(box).trait({ route: 'owner' }, 'Loyal')?.bearers]).toEqual([box, ['Ash']]);
     }
   });
 

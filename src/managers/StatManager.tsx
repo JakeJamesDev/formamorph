@@ -26,7 +26,7 @@ import { useRenameField } from "@/lib/useCodeRename";
 import { StatCodeBox, type StatCodeBoxContext, type StatCodeBoxOwner } from "./StatCodeBox";
 import { blueprintGroupStats } from "@/lib/statLinks";
 import { statCodeOwners, type CodeOwners } from "@/lib/statCodeTargets";
-import { lazyLookup, statBoxLookup } from "@/lib/codeWorldLookup";
+import { lazyLookup, statBoxLookup, type CodeCardWorld } from "@/lib/codeWorldLookup";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { PlaceholderNameField } from "@/components/prompt/PlaceholderField";
 import { useBodyMorphSources, useOwnerMorphSources, type MorphOwner } from "@/lib/useBodyMorphNames";
@@ -195,8 +195,12 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
       stats: world.stats, statGroups: world.statGroups, entities: world.entities, placeholders: world.placeholders,
     }));
     const self: Stat = { ...stat, ...editingStat, id: stat.id, name: selfCodeName };
-    return (timing: StatCodeTiming) => lazyLookup(() => statBoxLookup(ownersOf(), { owner, timing, self }));
-  }, [world, stat, editingStat, selfCodeName, owner]);
+    const cardWorld: CodeCardWorld = {
+      traits: world.traits, traitGroups: world.traitGroups, entities: world.entities, locations: world.locations,
+      stats: world.stats, statGroups: world.statGroups, placeholders, placeholderOwners, dictionaries,
+    };
+    return (timing: StatCodeTiming) => lazyLookup(() => statBoxLookup(ownersOf(), { owner, timing, self }, cardWorld));
+  }, [world, stat, editingStat, selfCodeName, owner, placeholders, placeholderOwners, dictionaries]);
   // One surface for both boxes: what completes in either is what runs in either.
   const codeContext = useMemo<StatCodeBoxContext>(() => ({
     selfName: selfCodeName, owner, worldStats, worldStatNames, ownerStats, ownerStatNames,
