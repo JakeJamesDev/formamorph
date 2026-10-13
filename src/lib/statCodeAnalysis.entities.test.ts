@@ -108,12 +108,13 @@ describe('entity stats in stat code', () => {
     expect(labels('return persona.stats.Trust.|', { entities: withStats })).toEqual(STAT_FIELDS.map((f) => f.name));
   });
 
-  it('reads an entity’s stats as clean, and flags any write into them as read-only', () => {
+  it('reads an entity’s stats as clean, takes a write to a writable field, and flags a whole map or any other field', () => {
     expect(messages('return entities.Bram.stats.Stock.value + entities.Mira.stats.Trust.delta.actual.value;', { entities: withStats }))
       .toEqual([]);
-    expect(messages('entities.Bram.stats.Stock.value = 3;', { entities: withStats }))
-      .toEqual(['entities.Bram.stats.Stock.value is read-only.']);
-    expect(messages('persona.stats.Trust.max = 3;', { entities: withStats })).toEqual(['persona.stats.Trust.max is read-only.']);
+    expect(messages('entities.Bram.stats.Stock.value = 3;', { entities: withStats })).toEqual([]);
+    expect(messages('persona.stats.Trust.max = 3;', { entities: withStats })).toEqual([]);
+    expect(messages('entities.Bram.stats.Stock.name = "x";', { entities: withStats })[0])
+      .toMatch(/^entities\.Bram\.stats\.Stock\.name can’t be written/);
     expect(messages('entities.Bram.stats = {};', { entities: withStats })).toEqual(['entities.Bram.stats is read-only.']);
   });
 });

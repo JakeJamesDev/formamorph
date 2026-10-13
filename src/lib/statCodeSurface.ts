@@ -39,7 +39,8 @@ export function clockFieldsAt(path: string): readonly SurfaceEntry[] | null {
 /** Every name the sandbox injects into the program, in the order an author meets them. */
 export const SANDBOX_GLOBALS: readonly SurfaceEntry[] = [
   { name: 'self', detail: 'Stat', info: 'The stat this code belongs to. Write self.value to set its value.' },
-  { name: 'stats', detail: 'object', info: 'The owner’s stats by name. The owner is the player, or the entity whose stat this is. Use stats["Two Words"] for a name with a space.' },
+  { name: 'owner', detail: 'object', info: 'The entity that owns this stat, with the fields of an entities entry. A Blueprint stat’s owner is the bearer. Empty in a world stat’s code. Use owner.stats["Two Words"] for a name with a space.' },
+  { name: 'stats', detail: 'object', info: 'The world’s stats by name, in every stat’s code. An entity’s own are on owner.stats. Use stats["Two Words"] for a name with a space.' },
   { name: 'clock', detail: shapeOf(CLOCK_MEMBERS), info: 'The story clock. Read-only.' },
   { name: 'placeholders', detail: 'object', info: 'The world’s own placeholders by name. An entity’s or a dictionary’s are on its entry. Use placeholders["Two Words"] for a name with a space.' },
   { name: 'traits', detail: 'object', info: 'Every trait in the world by name. Use traits["Two Words"] for a name with a space.' },
@@ -137,7 +138,8 @@ export const TRAIT_ENTRY_FIELDS: readonly SurfaceEntry[] = [
 /** The one field on a trait entry that a write reaches. */
 export const TRAIT_WRITABLE_FIELD = 'enabled';
 
-/** The members of `persona`. None takes a write; a trait switches through its own `enabled`. */
+/** The members of `persona`. None takes a write; a trait switches through its own `enabled`, and a stat takes
+ *  writes to its value, min, max and regen. */
 export const PERSONA_FIELDS: readonly SurfaceEntry[] = [
   { name: 'id', detail: 'string', info: 'The persona entity’s unique id. Empty when the player plays no entity. Read-only.' },
   { name: 'name', detail: 'string', info: 'The persona’s code name. Empty when the player plays no entity. Read-only.' },
@@ -146,10 +148,11 @@ export const PERSONA_FIELDS: readonly SurfaceEntry[] = [
   { name: 'inScene', detail: 'boolean', info: 'True when the persona plays. False when the player plays no entity. Read-only.' },
   { name: 'traits', detail: 'object', info: 'The persona’s own traits by name, owned or linked. Use persona.traits["Two Words"] for a name with a space.' },
   { name: 'placeholders', detail: 'object', info: 'The persona’s own placeholders by name. Empty when the player plays no entity.' },
-  { name: 'stats', detail: 'object', info: 'The persona’s own stats by name, each with the fields of a stats entry. Empty when the player plays no entity. Read-only.' },
+  { name: 'stats', detail: 'object', info: 'The persona’s own stats by name, each with the fields of a stats entry. Empty when the player plays no entity. Entries take writes to value, min, max and regen.' },
 ];
 
-/** The members of one entry in `entities`. None takes a write; a trait switches through its own `enabled`. */
+/** The members of one entry in `entities`, and of `owner`. None takes a write; a trait switches through its own
+ *  `enabled`, and a stat takes writes to its value, min, max and regen. */
 export const ENTITY_FIELDS: readonly SurfaceEntry[] = [
   { name: 'id', detail: 'string', info: 'The entity’s unique id. Read-only.' },
   { name: 'name', detail: 'string', info: 'The entity’s code name. Read-only.' },
@@ -158,7 +161,7 @@ export const ENTITY_FIELDS: readonly SurfaceEntry[] = [
   { name: 'inScene', detail: 'boolean', info: 'True when the entity is in this turn’s scene. Read-only.' },
   { name: 'traits', detail: 'object', info: 'The entity’s own traits by name, owned or linked. Use entities.Mira.traits["Two Words"] for a name with a space.' },
   { name: 'placeholders', detail: 'object', info: 'The entity’s own placeholders by name. Use entities.Mira.placeholders["Two Words"] for a name with a space.' },
-  { name: 'stats', detail: 'object', info: 'The entity’s own stats by name, each with the fields of a stats entry. Read-only. Use entities.Mira.stats["Two Words"] for a name with a space.' },
+  { name: 'stats', detail: 'object', info: 'The entity’s own stats by name, each with the fields of a stats entry. Entries take writes to value, min, max and regen. Use entities.Mira.stats["Two Words"] for a name with a space.' },
 ];
 
 /** The members of one entry in `dictionaries`. None takes a write. */

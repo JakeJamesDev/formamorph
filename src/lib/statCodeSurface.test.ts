@@ -115,6 +115,7 @@ describe('the described surface against the sandbox that provides it', () => {
     ['persona', PERSONA_FIELDS],
     ['persona.traits.Scarred', TRAIT_ENTRY_FIELDS],
     ['entities.Ash', ENTITY_FIELDS],
+    ['owner', ENTITY_FIELDS],
     ['entities.Ash.traits.Loyal', TRAIT_ENTRY_FIELDS],
     ['entities.Ash.placeholders.Hair', placeholderEntryFields('Wildcard')],
     ['dictionaries.Weather', DICTIONARY_FIELDS],
@@ -124,7 +125,7 @@ describe('the described surface against the sandbox that provides it', () => {
     const expected = described.map(entry => entry.name).sort().join(',');
     await expect(executeStatCode(
       `return Object.keys(${path}).sort().join(',') === ${JSON.stringify(expected)} ? 1 : 0;`,
-      stats, stats[0], { persona, entities, dictionaries },
+      stats, stats[0], { persona, entities, dictionaries, owner: entities[0] },
     )).resolves.toEqual({ value: 1, error: null });
   });
 

@@ -10,7 +10,7 @@ import {
   clampToOwnRange, CODE_BOUND_FIELDS, entityTraitsPath, executeStatCode, memberPath, traitWritesPath, SELF_WRITABLE_FIELDS, type CodeBoundField,
   type OwnerStatWrites, type PlaceholderWrite, type SandboxEntity, type SandboxPlaceholderNode, type StatWrite, type TraitWrite,
 } from '@/lib/statCodeExecutor';
-import type { AnalysisOptions, CodeEntityNames, CodePlaceholders, MissingName } from '@/lib/statCodeAnalysis';
+import type { AnalysisOptions, CodeEntityNames, CodeOwnerKind, CodePlaceholders, MissingName } from '@/lib/statCodeAnalysis';
 import { statCodeNamed } from '@/lib/statCodeNames';
 import { codeDictionaries, sandboxDictionaries, sandboxPlaceholders } from '@/lib/statCodePlaceholders';
 import { placeholderPathExpression, placeholderPathLabel } from '@/lib/statCodePaths';
@@ -65,11 +65,16 @@ export function statCodeNames(world: StatCodeWorld): StatCodeNames {
   };
 }
 
-/** The editor reader's options for code of the stat `selfName` names, under `names`. */
+/** The editor reader's options for code of the stat `selfName` names, under `names`, whose `statNames` are the
+ *  world's. An owned or Blueprint stat names its `owner`; a world stat's `owner` is empty. */
 export const analysisOptionsOf = (
-  { placeholders, traitNames, entities, statNames }: Pick<StatCodeNames, 'placeholders' | 'traitNames' | 'entities' | 'statNames'>, selfName?: string,
-): AnalysisOptions =>
-  ({ placeholders, traits: traitNames, entities, statNames, ...(selfName && { selfName }) });
+  { placeholders, traitNames, entities, statNames }: Pick<StatCodeNames, 'placeholders' | 'traitNames' | 'entities' | 'statNames'>,
+  selfName?: string,
+  owner?: { kind: CodeOwnerKind; statNames: readonly string[] },
+): AnalysisOptions => ({
+  placeholders, traits: traitNames, entities, statNames, ownerStatNames: owner?.statNames ?? [],
+  ...(owner && { owner: owner.kind }), ...(selfName && { selfName }),
+});
 
 /** The owner a non-world stat's code runs under. */
 export interface TestRunOwner {
