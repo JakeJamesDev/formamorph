@@ -1,6 +1,7 @@
 /** Draws a code card model as plain DOM, in the app's popover and code tokens. */
 
 import { ACCESS_LABEL } from '@/lib/codeSurface';
+import type { OpenCodeCardItem } from '@/lib/codeCardOpen';
 import type { CodeCard, CodeCardSignature } from '@/lib/codeCards';
 
 /** `path: type`, or `path(params): result` for a method whose type is an arrow. */
@@ -25,6 +26,8 @@ export function cardAnnouncement({ signature, access, description, rows = [], al
 export interface CodeCardActions {
   /** Move the caret to the declaration at this offset. */
   goTo?: (at: number) => void;
+  /** Open the card's world item in the World Editor. */
+  open?: OpenCodeCardItem;
 }
 
 function element<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, text?: string): HTMLElementTagNameMap[K] {
@@ -95,16 +98,17 @@ export function renderCodeCard(card: CodeCard, actions: CodeCardActions = {}): H
     root.append(row);
   }
 
-  const { goTo } = actions;
-  if (goTo && card.links?.length) {
-    const bar = element('section', 'flex flex-wrap gap-x-3 gap-y-1 px-2.5 py-1.5');
-    for (const link of card.links) {
-      const button = element('button', 'text-primary underline-offset-2 hover:underline focus-visible:underline', `Go to Line ${link.line}`);
-      button.type = 'button';
-      button.addEventListener('click', () => goTo(link.at));
-      bar.append(button);
-    }
-    root.append(bar);
-  }
+  const { goTo, open } = actions;
+  const bar = element('section', 'flex flex-wrap gap-x-3 gap-y-1 px-2.5 py-1.5');
+  const link = (text: string, onClick: () => void) => {
+    const button = element('button', 'text-primary underline-offset-2 hover:underline focus-visible:underline', text);
+    button.type = 'button';
+    button.addEventListener('click', onClick);
+    bar.append(button);
+  };
+  const { item } = card;
+  if (open && item) link('Open', () => open(item));
+  if (goTo) for (const { at, line } of card.links ?? []) link(`Go to Line ${line}`, () => goTo(at));
+  if (bar.childElementCount) root.append(bar);
   return root;
 }

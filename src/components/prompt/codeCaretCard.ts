@@ -8,6 +8,7 @@ import {
   EditorView, closeHoverTooltips, keymap, showTooltip, ViewPlugin, type Tooltip, type TooltipView,
 } from '@codemirror/view';
 import type { CodeCard } from '@/lib/codeCards';
+import type { OpenCodeCardItem } from '@/lib/codeCardOpen';
 import { cardAnnouncement, renderCodeCard, type CodeCardActions } from '@/components/prompt/codeCardView';
 
 /** How long a caret rests on a name after a tap before its card opens. */
@@ -36,15 +37,17 @@ export function goToDeclaration(view: EditorView, at: number): void {
 
 /** The tooltip view of a card. A dialog or full screen takes Escape on the document in the capture phase,
  *  so an open card takes it on the window first, closes through `dismiss` and stops it there. */
-export function cardTooltipView(card: CodeCard, dismiss: () => void, actions?: CodeCardActions): TooltipView {
+export function cardTooltipView(card: CodeCard, dismiss: () => void, actions: CodeCardActions = {}): TooltipView {
   const close = (event: KeyboardEvent) => {
     if (event.key !== 'Escape') return;
     event.preventDefault();
     event.stopPropagation();
     dismiss();
   };
+  const { open } = actions;
   return {
-    dom: renderCodeCard(card, actions),
+    // Open leaves the code box, so the card closes first.
+    dom: renderCodeCard(card, { ...actions, open: open && ((item) => { dismiss(); open(item); }) }),
     mount: () => window.addEventListener('keydown', close, true),
     destroy: () => window.removeEventListener('keydown', close, true),
   };
@@ -59,7 +62,10 @@ export interface CaretCards {
 }
 
 /** `cardAt` reads the card for a position against the editor's current world; null where nothing is named. */
-export function createCaretCards(cardAt: (state: EditorState, pos: number) => CodeCard | null): CaretCards {
+export function createCaretCards(
+  cardAt: (state: EditorState, pos: number) => CodeCard | null,
+  openItem: () => OpenCodeCardItem | undefined = () => undefined,
+): CaretCards {
   let touching = false;
   let tapEndedAt = -Infinity;
   let pauseTimer: ReturnType<typeof setTimeout> | undefined;
@@ -82,7 +88,8 @@ export function createCaretCards(cardAt: (state: EditorState, pos: number) => Co
         end: open.card.to,
         above: false,
         create: (view) => cardTooltipView(
-          open.card, () => view.dispatch({ effects: closeCaretCard.of(null) }), { goTo: (at) => goToDeclaration(view, at) },
+          open.card, () => view.dispatch({ effects: closeCaretCard.of(null) }),
+          { goTo: (at) => goToDeclaration(view, at), open: openItem() },
         ),
       };
     }),

@@ -34,6 +34,7 @@ import { PlacementLettersProvider, useStablePlacementLetters } from '@/contexts/
 import { EMPTY_LETTERS, worldPlacementLetters } from '@/lib/placementLetters';
 import { worldAllowedPersonas, worldStartPersona } from '@/lib/personaPick';
 import { CodeRenameContext } from '@/lib/useCodeRename';
+import { CodeCardOpenContext } from '@/lib/codeCardOpen';
 import { useWorldRecorder, WorldHistoryContext } from '@/contexts/worldRecorder';
 import { GestureGroupContext, type GestureGroups } from '@/components/ui/gesture-group';
 import type { SliceName } from '@/lib/editorHistory';
@@ -833,8 +834,8 @@ export const useGameDataActions = (): GameDataActions => {
 };
 
 /** Hides the loaded world from everything under it: optional reads get null, required reads throw, chips
- *  letter from nothing, and a rename asks no offer. A library editor wraps its body in it and provides its
- *  own stores inside. */
+ *  letter from nothing, a rename asks no offer, and a code card has no Open. A library editor wraps its body
+ *  in it and provides its own stores inside. */
 export const NoWorld = ({ children }: { children: ReactNode }) => (
   <GameDataContext.Provider value={null}>
     <GameDataActionsContext.Provider value={null}>
@@ -843,7 +844,9 @@ export const NoWorld = ({ children }: { children: ReactNode }) => (
           <DictionaryStoreProvider value={null}>
             <PlaceholderStoreProvider value={null}>
               <PlacementLettersProvider letters={EMPTY_LETTERS}>
-                <CodeRenameContext.Provider value={null}>{children}</CodeRenameContext.Provider>
+                <CodeRenameContext.Provider value={null}>
+                  <CodeCardOpenContext.Provider value={null}>{children}</CodeCardOpenContext.Provider>
+                </CodeRenameContext.Provider>
               </PlacementLettersProvider>
             </PlaceholderStoreProvider>
           </DictionaryStoreProvider>

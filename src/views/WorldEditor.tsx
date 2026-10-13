@@ -67,6 +67,8 @@ import { PanelErrorBoundary } from '@/components/PanelErrorBoundary';
 import { BenchPopover } from '@/components/editor/BenchPopover';
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
 import type { FindingSection } from '@/lib/testBench/rules';
+import { CodeCardOpenContext } from '@/lib/codeCardOpen';
+import type { CodeCardItem } from '@/lib/codeCards';
 import { useTestBench } from '@/lib/testBench/useTestBench';
 import { collectSearchTargets, type SearchMatch } from '@/lib/worldSearch';
 import {
@@ -549,6 +551,22 @@ const WorldEditorInner = ({
     if (entityTab) setEntityTab(entityTab);
     deferReveal(() => revealSelectedRow(editorRootRef.current));
   }, [deferReveal, clearSearch, select]);
+  // A code card's Open. An entity's own stat or trait opens on the entity's tab with its row selected.
+  const openCodeCardItem = useCallback((item: CodeCardItem) => {
+    switch (item.kind) {
+      case 'stat':
+        if (!item.entityId) return navigateToBenchItem('stats', item.statId);
+        setEntityStatId(item.statId);
+        return navigateToBenchItem('entities', item.entityId, 'stats');
+      case 'trait':
+        if (!item.entityId) return navigateToBenchItem('traits', item.traitId);
+        setEntityTraitId(item.traitId);
+        return navigateToBenchItem('entities', item.entityId, 'traits');
+      case 'placeholder': return navigateToBenchItem('placeholders', item.placeholderId);
+      case 'entity': return navigateToBenchItem('entities', item.entityId);
+      case 'dictionary': return navigateToBenchItem('dictionary', item.dictionaryId);
+    }
+  }, [navigateToBenchItem]);
   const bench = useTestBench({
     // Read at the moment of opening for the lens seed; other tabs' selections are not locations.
     selectedLocationId: activeTab === 'locations' ? selections.locations ?? null : null,
@@ -1323,6 +1341,7 @@ const WorldEditorInner = ({
   );
 
   return (
+    <CodeCardOpenContext.Provider value={openCodeCardItem}>
     <div className={`${embedded ? "h-full" : "app-viewport"} flex flex-col overflow-hidden`}>
       {!embedded && (
         <ThemedToastContainer
@@ -1581,6 +1600,7 @@ const WorldEditorInner = ({
       )}
       <TourSaveNote tour={tour} />
     </div>
+    </CodeCardOpenContext.Provider>
   );
 };
 
