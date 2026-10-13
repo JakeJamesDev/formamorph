@@ -2,7 +2,7 @@
 
 import { ACCESS_LABEL } from '@/lib/codeSurface';
 import type { OpenCodeCardItem } from '@/lib/codeCardNavigation';
-import { canFindUses, type CodeCard, type CodeCardSignature, type CodeCardStatItem } from '@/lib/codeCards';
+import type { CodeCard, CodeCardItem, CodeCardSignature } from '@/lib/codeCards';
 import type { CodeStatUse } from '@/lib/codeStatUses';
 import { docTargetId } from '@/lib/docs/docsLinks';
 import { openDocsFromClick } from '@/lib/formaquestion/docsOpener';
@@ -33,8 +33,8 @@ export interface CodeCardActions {
   goTo?: (at: number) => void;
   /** Open the card's world item in the World Editor. */
   open?: OpenCodeCardItem;
-  /** Pin the card and list every use of its stat. */
-  findUses?: (item: CodeCardStatItem) => void;
+  /** Pin the card and list every use of its item. */
+  findUses?: (item: CodeCardItem) => void;
   /** Called after the Guide link is used, so the host can close the card. The link shows only where this is set. */
   guide?: () => void;
 }
@@ -120,7 +120,7 @@ export function renderCodeCard(card: CodeCard, actions: CodeCardActions = {}): H
   };
   const { item } = card;
   if (open && item) link('Open', () => open(item));
-  if (findUses && item && canFindUses(item)) link('Find All Uses', () => findUses(item));
+  if (findUses && item) link('Find All Uses', () => findUses(item));
   for (const entry of card.links ?? []) {
     if (entry.id === 'goToLine' && goTo) link(`Go to Line ${entry.line}`, () => goTo(entry.at));
     // A real link, so a modified click or a window with no reader still reaches the wiki.

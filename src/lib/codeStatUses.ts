@@ -55,29 +55,29 @@ function rowIdOf(box: StatCodeBox): string {
   return link?.originalId === statId ? linkId : statId;
 }
 
+/** One row per line of `box` that holds one of `offsets`, in line order. */
+export function boxUses(owners: CodeOwners, box: StatCodeBox, offsets: readonly number[]): CodeStatUse[] {
+  const lines = [...new Set(offsets.map((at) => lineAt(box.code, at)))].sort((a, b) => a - b);
+  const entity = box.entity ? owners.codeName(box.entity.name) : undefined;
+  return lines.map((line) => ({
+    entityId: box.entity?.id ?? null,
+    rowId: rowIdOf(box),
+    timing: box.timing,
+    stat: owners.codeName(box.stat.name),
+    ...(entity !== undefined ? { entity } : {}),
+    line,
+    noBearers: box.home.kind === 'stat' && box.owner !== null && !box.runs.length,
+  }));
+}
+
 export function statUses(owners: CodeOwners, item: StatUseItem): CodeStatUse[] {
   const reaches = ({ owner, stat }: StatTarget) =>
     stat.id === item.statId && (item.entityId === undefined || owner.entity?.id === item.entityId);
-  const uses: CodeStatUse[] = [];
-  for (const box of statCodeBoxes(owners)) {
+  return statCodeBoxes(owners).flatMap((box) => {
     const runs: CodeRun[] = [{ self: box.stat, owner: box.owner }, ...box.runs];
-    const offsets = [
+    return boxUses(owners, box, [
       ...(runs.some((run) => routeTargets(owners, run, { root: 'self', stat: null }).some(reaches)) ? selfOffsets(box.code) : []),
       ...boxReferences(owners, box).filter((reference) => reference.targets.some(reaches)).map((reference) => reference.from),
-    ];
-    const lines = [...new Set(offsets.map((at) => lineAt(box.code, at)))].sort((a, b) => a - b);
-    const entity = box.entity ? owners.codeName(box.entity.name) : undefined;
-    for (const line of lines) {
-      uses.push({
-        entityId: box.entity?.id ?? null,
-        rowId: rowIdOf(box),
-        timing: box.timing,
-        stat: owners.codeName(box.stat.name),
-        ...(entity !== undefined ? { entity } : {}),
-        line,
-        noBearers: box.home.kind === 'stat' && box.owner !== null && !box.runs.length,
-      });
-    }
-  }
-  return uses;
+    ]);
+  });
 }

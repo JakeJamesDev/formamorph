@@ -47,13 +47,6 @@ export type CodeCardItem =
   | { kind: 'placeholder'; placeholderId: string }
   | { kind: 'entity'; entityId: string }
   | { kind: 'dictionary'; dictionaryId: string };
-
-/** A stat a card names. */
-export type CodeCardStatItem = Extract<CodeCardItem, { kind: 'stat' }>;
-
-/** Whether Find All Uses searches the item. */
-export const canFindUses = (item: CodeCardItem): item is CodeCardStatItem => item.kind === 'stat';
-
 /** One Allowed Values line. A weight of 0 never draws, so the card fades it. */
 export interface CodeCardValue {
   text: string;

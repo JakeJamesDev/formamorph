@@ -12,7 +12,7 @@ import { statBoxLookup } from '@/lib/codeWorldLookup';
 import { statCodeOwners } from '@/lib/statCodeTargets';
 import type { Entity, Stat } from '@/types';
 
-/** Find All Uses on a stat card: it pins the card, lists each box and line, and a row goes there. */
+/** Find All Uses on a card: it pins the card, lists each box and line, and a row goes there. */
 
 const stat = (id: string, name: string, extra: Partial<Stat> = {}) =>
   ({ id, name, type: 'number', description: '', min: 0, max: 100, regen: 0, descriptors: [], ...extra } as Stat);
@@ -21,14 +21,19 @@ const alert = stat('a', 'Alert', { beforeCode: 'const x = 1;\nreturn stats.Fatig
 const mara: Entity = { id: 'mara', name: 'Mara', stats: [stat('mf', 'Fatigue', { code: 'return owner.stats.Fatigue.value;' })] };
 const owners = statCodeOwners({ stats: [fatigue, alert], entities: [mara], placeholders: [] });
 const lookup = statBoxLookup(owners, { owner: null, timing: 'after', self: alert });
+const worldLookup = statBoxLookup(owners, { owner: null, timing: 'after', self: alert }, {
+  traits: [], traitGroups: [], entities: [mara], stats: [fatigue, alert], placeholders: [],
+});
 
-function Harness({ initial, navigation, revealLine }: { initial: string; navigation?: CodeCardNavigation; revealLine?: number }) {
+function Harness({ initial, navigation, revealLine, withWorld }: {
+  initial: string; navigation?: CodeCardNavigation; revealLine?: number; withWorld?: boolean;
+}) {
   const [value, setValue] = useState(initial);
   return (
     <>
       <CodeArea
         value={value} onChange={setValue} ariaLabel="Stat code" surface={STAT_CODE_SURFACE} statNames={['Fatigue', 'Alert']}
-        lookup={lookup} navigation={navigation} revealLine={revealLine}
+        lookup={withWorld ? worldLookup : lookup} navigation={navigation} revealLine={revealLine}
       />
       <button type="button">Elsewhere</button>
     </>
@@ -118,7 +123,16 @@ describe('Find All Uses on a code card', () => {
     expect(within(await openCard()).queryByRole('button', { name: 'Find All Uses' })).toBeNull();
   });
 
-  it('is missing on a card that names no stat', async () => {
+  it('lists an entity’s uses, its owned boxes’ `owner` among them', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial="return entities.Mara.stats.Fatigue.value;" navigation={navigation()} withWorld />);
+    hover(await editorIn(), 'Mara');
+    await user.click(within(await openCard()).getByRole('button', { name: 'Find All Uses' }));
+    const uses = await openUses();
+    expect(within(uses).getAllByRole('button').map((row) => row.textContent)).toEqual(['Mara › Fatigue · After · Line 1']);
+  });
+
+  it('is missing on a card that names no world item', async () => {
     render(<Harness initial="self.regen = 0;" navigation={navigation()} />);
     hover(await editorIn(), 'regen');
     expect(within(await openCard()).queryByRole('button', { name: 'Find All Uses' })).toBeNull();
