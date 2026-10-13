@@ -16,6 +16,7 @@ import { SLOT_SNIPPETS, snippetSelection, type InsertSelection, type InsertSnipp
 import { buildVariableTree, type VariableNode, type VariableTreeOwner } from '@/lib/statCodeVariableTree';
 import type { CodeSurface } from '@/lib/codeSurface';
 import type { CodeWorldLookup } from '@/lib/codeWorldLookup';
+import type { OpenCodeCardItem } from '@/lib/codeCardOpen';
 import type { CodeSession } from '@/components/prompt/codeSession';
 import type { CodeEntityNames, CodePlaceholders, CodeTraitPlace } from '@/lib/statCodeAnalysis';
 
@@ -86,6 +87,8 @@ interface CodeAreaProps {
   entities?: readonly CodeEntityNames[];
   /** What cards ask the world, bound to this box. Absent, cards show no World Details. */
   lookup?: CodeWorldLookup;
+  /** Where a card's Open goes. Absent, cards show no Open. */
+  onOpenItem?: OpenCodeCardItem;
   /** What the code produces. Given this, the field grows the Edit | Preview pair, which becomes a
    *  side-by-side split once full screen has the width for it. */
   preview?: ReactNode;
@@ -274,6 +277,8 @@ export function CodeArea(props: CodeAreaProps) {
   // call time rather than captured.
   const latest = useRef(props);
   latest.current = props;
+  const latestMorph = useRef(morph);
+  latestMorph.current = morph;
   const [, bump] = useState(0);
   const onUpdate = useCallback(() => bump((n) => n + 1), []);
   // Stable, so the field's ref callback isn't torn down and re-run on every render — which would detach and
@@ -310,6 +315,14 @@ export function CodeArea(props: CodeAreaProps) {
         traits: latest.current.traits?.map((trait) => trait.name),
         entities: latest.current.entities,
         lookup: () => latest.current.lookup,
+        openItem: () => {
+          const open = latest.current.onOpenItem;
+          return open && ((item) => {
+            // The item is in the World Editor behind the overlay.
+            if (latestMorph.current.mounted) latestMorph.current.close();
+            open(item);
+          });
+        },
         onChange: (next) => latest.current.onChange(next),
         onUpdate,
       });

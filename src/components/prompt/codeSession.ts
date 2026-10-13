@@ -36,6 +36,7 @@ import {
 import { codeCard, completionCard } from '@/lib/codeCards';
 import { renderCodeCard, renderInfoLine } from '@/components/prompt/codeCardView';
 import { cardTooltipView, createCaretCards, goToDeclaration } from '@/components/prompt/codeCaretCard';
+import type { OpenCodeCardItem } from '@/lib/codeCardOpen';
 import { TOOLTIP_DELAY_MS } from '@/components/ui/tooltip';
 import type { CodeSurface } from '@/lib/codeSurface';
 import type { CodeWorldLookup } from '@/lib/codeWorldLookup';
@@ -272,6 +273,8 @@ export interface CodeSessionOptions {
   entities?: readonly CodeEntityNames[];
   /** The box's world lookup, read when a card opens. Absent, cards show no World Details. */
   lookup?: () => CodeWorldLookup | undefined;
+  /** Where a card's Open goes, read when a card opens. Absent, cards show no Open. */
+  openItem?: () => OpenCodeCardItem | undefined;
   onChange: (value: string) => void;
   /** Any update at all, so the toolbar can re-read what undo and redo have to offer. */
   onUpdate?: () => void;
@@ -336,7 +339,10 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
     },
   );
   /** The cards the caret opens: the keyboard chord and a tap. */
-  const caretCards = createCaretCards((state, pos) => codeCard(state.doc.toString(), pos, analysisOptions()));
+  const caretCards = createCaretCards(
+    (state, pos) => codeCard(state.doc.toString(), pos, analysisOptions()),
+    () => options.openItem?.(),
+  );
   /** The card for the name under the pointer. */
   const cards = hoverTooltip((view, pos) => {
     // A tap's own hover would open a second card beside the one the caret pause opens.
@@ -347,7 +353,10 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
       pos: card.from,
       end: card.to,
       above: false,
-      create: () => cardTooltipView(card, () => view.dispatch({ effects: closeHoverTooltips }), { goTo: (at) => goToDeclaration(view, at) }),
+      create: () => cardTooltipView(
+        card, () => view.dispatch({ effects: closeHoverTooltips }),
+        { goTo: (at) => goToDeclaration(view, at), open: options.openItem?.() },
+      ),
     };
   }, { hoverTime: TOOLTIP_DELAY_MS, hideOnChange: true });
 

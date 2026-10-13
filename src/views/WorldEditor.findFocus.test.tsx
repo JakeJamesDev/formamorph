@@ -343,7 +343,7 @@ describe('World Editor find reveal on unmount', () => {
     setup();
     await focusWorldName();
     // The row lookup asks for the selected row by this attribute, so the query names it.
-    const lookups = vi.spyOn(HTMLElement.prototype, 'querySelector');
+    const lookups = vi.spyOn(HTMLElement.prototype, 'querySelectorAll');
     const rowLookups = () => lookups.mock.calls.filter(([selector]) => selector === '[data-editor-row-selected]').length;
 
     // A hit on Overview, which has no tree: the row lookup finds nothing and keeps retrying.
