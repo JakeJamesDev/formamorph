@@ -39,7 +39,8 @@ export interface CodeCardActions {
   guide?: () => void;
 }
 
-const LINK_CLASS = 'text-primary underline-offset-2 hover:underline focus-visible:underline';
+// `info`, not `primary`: a light theme's primary is a pale fill color, unreadable as text on the card.
+const LINK_CLASS = 'text-info underline-offset-2 hover:underline focus-visible:underline';
 
 function element<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, text?: string): HTMLElementTagNameMap[K] {
   const node = document.createElement(tag);
