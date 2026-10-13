@@ -84,6 +84,11 @@ Settled with the user on 2026-10-12 and 2026-10-13.
 | T11-2 | A Find All Uses row reads "Stat · Before · Line 3", or "Entity › Stat · After · Line 7" for an entity's own stat or a Link override box. A Blueprint box with no bearers carries a muted No Bearers tag. Rows follow world box order, then line order |
 | T11-3 | The link reads Find All Uses with no count, so a card never scans on open. The popover heading carries the count ("3 Uses") |
 | T11-4 | The link shows on every stat card that has Open. With no uses, the popover says "No uses in stat code" |
+| T12-1 | Find All Uses keeps a name when its card resolves to the searched item. `owner` in an entity's own or Link box is a use of that entity, as `self` is of its stat (Q31); in a Blueprint box it has no item. One row per box and line still holds |
+| T12-2 | A world trait matches on every route that reaches its id; an entity's own trait by its id only. A dictionary matches by id |
+| T12-4 | Where one route reaches several entities (`persona.traits.X` with several playables, `owner.traits.X` or `owner.placeholders.X` in a Blueprint box), Find All Uses matches when any entity it reaches holds the searched item, as the stat scan does. T12-2 wins over T12-1's card-based wording; T12-1 states the single-target case |
+| Q37 | A trait or placeholder card on a route that reaches several entities follows Q34: one shared item shows that item plus a Bearers list; mixed items show only the Bearers list. Ticket 15 |
+| T12-3 | Placeholders follow T11-1: a Blueprint placeholder's card matches the Blueprint and every Copy; a Copy's card matches that Copy only |
 | T08-1 | The completion pane shows the declared-name card too (Q4: the same card). The card's description reads "Declared on line N", so neither surface loses today's "Declared in this code". The pane leaves out the Go to Line link, which it can't act on; hover keeps it. Ticket 04's tests that pinned no card for a declared name change to expect it |
 | O1 | Owner-route lands first. Its `stats` (world stats in every box), `owner`, and writes on every route (its Q1–Q5) are this spec's baseline. Its tickets 01–07 landed on 2026-10-13. Find All Uses waits on its ticket 08 |
 
