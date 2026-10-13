@@ -6,6 +6,7 @@ import { CodeArea } from './CodeArea';
 import type { CodeSurface } from '@/lib/codeSurface';
 import { STAT_CODE_SURFACE, STAT_FIELDS } from '@/lib/statCodeSurface';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { SCRIPT_SURFACE as SCRIPT } from '@/test/scriptSurface';
 import { phValues } from '@/test/placeholderValues';
 import type { Dictionary, Entity, Placeholder, Trait } from '@/types';
@@ -518,6 +519,33 @@ describe('CodeArea', () => {
     await user.keyboard('{Escape}');
     await user.tab();
     expect(owned()).toBe('return cloc  ');
+  });
+
+  // A dialog takes Escape on the document in the capture phase, ahead of the editor's own keymap.
+  it('closes the popup inside a dialog without closing the dialog, and the next Escape closes it', async () => {
+    const user = userEvent.setup();
+    function InDialog() {
+      const [open, setOpen] = useState(true);
+      return (
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogContent>
+            <DialogTitle>Template</DialogTitle>
+            <Harness />
+          </DialogContent>
+        </Dialog>
+      );
+    }
+    render(<InDialog />);
+    await user.click(await editor());
+    await type(user, 'return cloc');
+    await waitFor(() => expect(popup()).toBeTruthy());
+
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(popup()).toBeNull());
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
 
   it('takes the highlighted completion on Tab, the way every editor does', async () => {
