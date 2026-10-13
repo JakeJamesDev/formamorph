@@ -683,6 +683,26 @@
           ],
           "value": "Homemade chocolate carries triple the social weight of store-bought. The giver watched tutorials, ruined a saucepan, and started over twice. Eating it earns genuine gratitude; dodging it wounds the giver — and their friends take it personally, pursuing harder."
         }
+      ],
+      "placeholders": [
+        {
+          "id": "73dc2938-6e23-4688-beee-e2d7e3db8be2",
+          "name": "guard",
+          "values": [
+            {
+              "id": "8e7f8b97-fcc2-4a78-8eec-d312551a12ba",
+              "text": "the front gate"
+            },
+            {
+              "id": "005bcf04-dda1-4e17-9b76-e170e08e115e",
+              "text": "the gym doors"
+            },
+            {
+              "id": "580de1c7-ab87-4f31-9d7c-785fad8383f8",
+              "text": "the shoe lockers"
+            }
+          ]
+        }
       ]
     }
   ],
@@ -705,15 +725,6 @@
         "whoever's chocolate you finish first is your true love",
         "you've never once finished a Valentine's chocolate",
         "you are transferring schools tomorrow"
-      ]
-    },
-    {
-      "id": "73dc2938-6e23-4688-beee-e2d7e3db8be2",
-      "name": "guard",
-      "values": [
-        "the front gate",
-        "the gym doors",
-        "the shoe lockers"
       ]
     }
   ]

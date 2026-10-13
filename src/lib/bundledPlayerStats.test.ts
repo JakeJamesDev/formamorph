@@ -76,10 +76,11 @@ describe.each(OWNING)('the %s world', (id) => {
 });
 
 describe('the drone persona', () => {
-  it('takes its name from twelve distinct robotic designations, rolled once per playthrough', () => {
+  it('takes its name from twelve distinct robotic designations it owns, rolled once per playthrough', () => {
     const world = load('drone');
-    const chip = /^\{\{ph:([^:]+):world:[^:}]+\}\}$/.exec(customPersona(world).name);
-    const designation = world.placeholders?.find((p) => p.id === chip?.[1]);
+    const persona = customPersona(world);
+    const chip = /^\{\{ph:([^:]+):world:[^:}]+\}\}$/.exec(persona.name);
+    const designation = persona.placeholders?.find((p) => p.id === chip?.[1]);
     expect(designation?.values).toHaveLength(12);
     expect(new Set(designation?.values.map((v) => v.text)).size).toBe(12);
   });
