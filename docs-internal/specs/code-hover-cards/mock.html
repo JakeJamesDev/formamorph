@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="en" class="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stat Code Hover Mock</title>
+<style>
+  :root {
+    --background: 0 0% 100%; --foreground: 222.2 84% 4.9%; --card: 210 40% 97%;
+    --popover: 0 0% 100%; --popover-foreground: 222.2 84% 4.9%; --primary: 180 47.4% 75%;
+    --muted: 210 40% 96.1%; --muted-foreground: 215.4 16.3% 46.9%; --accent: 210 40% 96.1%;
+    --destructive: 0 84.2% 60.2%; --warning: 45 93% 50%; --border: 214.3 31.8% 91.4%;
+    --code-keyword: 262 60% 45%; --code-string: 142 55% 32%; --code-number: 25 85% 40%;
+    --code-comment: 215 16% 47%; --code-function: 217 75% 45%; --code-property: 190 70% 30%;
+    --code-variable: 222 45% 25%; --code-punctuation: 215 16% 40%; --link: 190 70% 30%;
+  }
+  .dark {
+    --background: 222.2 84% 4.9%; --foreground: 210 40% 98%; --card: 222 40% 9%;
+    --popover: 222.2 84% 4.9%; --popover-foreground: 210 40% 98%; --primary: 180 40% 85%;
+    --muted: 217.2 32.6% 17.5%; --muted-foreground: 215 20.2% 65.1%; --accent: 217.2 32.6% 17.5%;
+    --destructive: 0 72% 58%; --warning: 45 93% 55%; --border: 217.2 32.6% 17.5%;
+    --code-keyword: 265 75% 78%; --code-string: 142 55% 65%; --code-number: 30 85% 68%;
+    --code-comment: 215 18% 58%; --code-function: 210 85% 72%; --code-property: 187 65% 65%;
+    --code-variable: 210 30% 88%; --code-punctuation: 215 18% 65%; --link: 187 65% 65%;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: hsl(var(--background)); color: hsl(var(--foreground));
+    font: 14px/1.5 ui-sans-serif, system-ui, "Segoe UI", sans-serif; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 24px 16px 320px; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .sub { color: hsl(var(--muted-foreground)); margin: 0 0 16px; font-size: 13px; }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; padding: 10px 12px;
+    border: 1px solid hsl(var(--border)); border-radius: 8px; background: hsl(var(--card)); margin-bottom: 8px; }
+  .bar .lbl { font-size: 12px; font-weight: 600; color: hsl(var(--muted-foreground)); }
+  .seg { display: inline-flex; border: 1px solid hsl(var(--border)); border-radius: 6px; overflow: hidden; }
+  .seg button { background: none; border: 0; color: inherit; padding: 4px 10px; font: inherit; font-size: 13px; cursor: pointer; }
+  .seg button + button { border-left: 1px solid hsl(var(--border)); }
+  .seg button[aria-pressed="true"] { background: hsl(var(--accent)); font-weight: 600; }
+  .layers { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+  .layers label { font-size: 13px; display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+  .editor { border: 1px solid hsl(var(--border)); border-radius: 6px; background: hsl(var(--background));
+    font: 13px/1.6 ui-monospace, "Cascadia Code", Consolas, monospace; padding: 8px 0; overflow-x: auto; }
+  .ln { display: flex; white-space: pre; }
+  .ln .no { width: 3.2em; text-align: right; padding-right: 12px; color: hsl(var(--muted-foreground)); opacity: .6; user-select: none; flex: none; }
+  .tok-keyword { color: hsl(var(--code-keyword)); } .tok-string { color: hsl(var(--code-string)); }
+  .tok-number { color: hsl(var(--code-number)); } .tok-comment { color: hsl(var(--code-comment)); font-style: italic; }
+  .tok-function { color: hsl(var(--code-function)); } .tok-property { color: hsl(var(--code-property)); }
+  .tok-variable { color: hsl(var(--code-variable)); } .tok-punctuation { color: hsl(var(--code-punctuation)); }
+  [data-k] { cursor: help; border-radius: 2px; }
+  [data-k]:hover, [data-k].on { background: hsl(var(--accent)); }
+  .err { text-decoration: underline wavy hsl(var(--destructive)); text-underline-offset: 3px; }
+  .hint { font-size: 12px; color: hsl(var(--muted-foreground)); margin-top: 8px; }
+
+  /* the hover card */
+  .card { position: absolute; z-index: 10; width: 360px; max-width: calc(100vw - 32px);
+    border: 1px solid hsl(var(--border)); border-radius: 6px; background: hsl(var(--popover));
+    color: hsl(var(--popover-foreground)); box-shadow: 0 4px 12px hsl(var(--foreground) / .12); font-size: 13px; }
+  .card.diag { border-left: 3px solid hsl(var(--destructive)); }
+  .card > section { padding: 6px 10px; }
+  .card > section + section { border-top: 1px solid hsl(var(--border)); }
+  .sig { font: 12.5px/1.5 ui-monospace, "Cascadia Code", Consolas, monospace; display: flex; gap: 8px; align-items: baseline; justify-content: space-between; }
+  .kind { color: hsl(var(--muted-foreground)); }
+  .badge { font: 11px/1 ui-sans-serif, system-ui, sans-serif; padding: 3px 6px; border-radius: 999px; white-space: nowrap;
+    border: 1px solid hsl(var(--border)); color: hsl(var(--muted-foreground)); }
+  .badge.w { color: hsl(var(--code-string)); border-color: hsl(var(--code-string) / .4); }
+  .desc { color: hsl(var(--muted-foreground)); }
+  .desc .q { color: hsl(var(--popover-foreground)); }
+  dl { display: grid; grid-template-columns: max-content 1fr; gap: 2px 12px; margin: 0; }
+  dt { color: hsl(var(--muted-foreground)); } dd { margin: 0; }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .chip { font-size: 12px; padding: 1px 6px; border-radius: 4px; background: hsl(var(--muted)); }
+  .live { display: flex; gap: 8px; align-items: baseline; font-size: 12px; color: hsl(var(--muted-foreground)); }
+  .live code { font: 12.5px ui-monospace, Consolas, monospace; color: hsl(var(--code-number)); }
+  pre.ex { margin: 0; font: 12.5px/1.5 ui-monospace, Consolas, monospace; white-space: pre-wrap; }
+  .links { display: flex; gap: 14px; font-size: 12px; }
+  .links a { color: hsl(var(--link)); text-decoration: none; cursor: pointer; }
+  .links a:hover { text-decoration: underline; }
+  .fix { font: inherit; font-size: 12px; padding: 3px 8px; border-radius: 4px; cursor: pointer;
+    background: hsl(var(--accent)); color: inherit; border: 1px solid hsl(var(--border)); }
+  .layer-tag { float: right; font-size: 10px; letter-spacing: .04em; text-transform: uppercase; color: hsl(var(--muted-foreground)); opacity: .7; }
+  body:not(.tags) .layer-tag { display: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Stat Code Hover Mock</h1>
+  <p class="sub">Code for the <b>Stamina</b> stat. Hover any underlined-on-hover name. Click a name to pin its card.</p>
+
+  <div class="bar">
+    <span class="lbl">Preset</span>
+    <div class="seg" id="presets">
+      <button data-p="minimal">Minimal</button>
+      <button data-p="standard">Standard</button>
+      <button data-p="full">Everything</button>
+    </div>
+    <span class="lbl">Theme</span>
+    <div class="seg" id="theme">
+      <button data-t="dark">Dark</button><button data-t="light">Light</button>
+    </div>
+    <label style="font-size:13px;display:inline-flex;gap:6px;align-items:center"><input type="checkbox" id="tags"> Label layers</label>
+  </div>
+  <div class="bar">
+    <span class="lbl">Layers</span>
+    <div class="layers" id="layers"></div>
+  </div>
+
+  <div class="editor" id="editor"></div>
+  <p class="hint">Hover cards stay open while the pointer is on them, as in VS Code. Esc closes a pinned card.</p>
+</div>
+<div class="card" id="card" hidden></div>
+
+<script>
+const LAYERS = [
+  ['sig', 'Signature'],
+  ['desc', 'Description'],
+  ['world', 'World details'],
+  ['values', 'Allowed values'],
+  ['example', 'Example'],
+  ['live', 'Last test run'],
+  ['links', 'Links'],
+  ['fix', 'Quick fix'],
+];
+const PRESETS = {
+  minimal: ['sig', 'desc', 'fix'],
+  standard: ['sig', 'desc', 'world', 'values', 'links', 'fix'],
+  full: LAYERS.map(([k]) => k),
+};
+
+// Each line: array of [text, class, key?]. Key links a span to a card.
+const P = 'tok-punctuation', V = 'tok-variable', PR = 'tok-property', K = 'tok-keyword', N = 'tok-number', S = 'tok-string', F = 'tok-function', C = 'tok-comment';
+const CODE = [
+  [['// Tired heroes recover slower at night', C]],
+  [['const ', K], ['tired', V], [' = ', P], ['stats', V, 'stats'], ['.', P], ['Fatigue', PR, 'fatigue'], ['.', P], ['value', PR, 'value'], [' > ', P], ['70', N], [';', P]],
+  [['if ', K], ['(', P], ['clock', V, 'clock'], ['.', P], ['daypart', PR, 'daypart'], [' === ', P], ['"night"', S], [' && ', P], ['tired', V, 'tired'], [') {', P]],
+  [['  self', V, 'self'], ['.', P], ['regen', PR, 'regen'], [' = ', P], ['self', V, 'self'], ['.', P], ['previous', PR, 'previous'], ['.', P], ['regen', PR, 'prevRegen'], [' * ', P], ['0.5', N], [';', P]],
+  [['}', P]],
+  [['if ', K], ['(', P], ['traits', V, 'traits'], ['.', P], ['Brave', PR, 'brave'], ['.', P], ['enabled', PR, 'enabled'], [') ', P], ['self', V, 'self'], ['.', P], ['max', PR, 'max'], [' += ', P], ['10', N], [';', P]],
+  [['const ', K], ['mood', V], [' = ', P], ['placeholders', V, 'placeholders'], ['.', P], ['Mood', PR, 'mood'], ['.', P], ['roll', F, 'roll'], ['();', P]],
+  [['console', V, 'console'], ['.', P], ['log', F, 'log'], ['(', P], ['mood', V, 'moodVar'], [', ', P], ['stats', V, 'stats'], ['.', P], ['Helth', PR, 'helth', 'err'], ['.', P], ['value', PR], [');', P]],
+  [['return ', K], ['self', V, 'self'], ['.', P], ['value', PR, 'selfValue'], [' + ', P], ['self', V, 'self'], ['.', P], ['delta', PR, 'delta'], ['.', P], ['ai', PR, 'ai'], ['.', P], ['value', PR, 'aiValue'], [';', P]],
+];
+
+const GUIDE = { label: 'Read in the Guide' };
+// Card data. Copy marked `surface` is the live text from statCodeSurface.ts.
+const CARDS = {
+  stats: {
+    sig: ['(global)', 'stats: { [name]: Stat }'], badge: 'Read-only map',
+    desc: 'The owner’s stats by name. The owner is the player, or the entity whose stat this is. Use stats["Two Words"] for a name with a space.',
+    world: [['Owner', 'Player'], ['Stats', '6 — Stamina, Fatigue, Health, Courage, Gold, Hunger']],
+    example: 'stats.Health.value\nstats["Max Carry"].max',
+    links: [GUIDE],
+  },
+  fatigue: {
+    sig: ['(stat)', 'stats.Fatigue: Stat'],
+    desc: { quote: 'How worn out the player is. Rises with travel and fights.' },
+    world: [['Type', 'Number'], ['Range', '0 – 100'], ['Starts at', '20'], ['Regen', '−2 per story hour'], ['Owner', 'Player'], ['Shown to', 'AI and player']],
+    live: [['value', '72'], ['previous', '64']],
+    links: [{ label: 'Open Fatigue' }, { label: 'Find all uses (3)' }],
+  },
+  value: {
+    sig: ['(property)', 'Stat.value: number'], badge: 'Writable', w: true,
+    desc: 'Current value, with this turn’s AI change and regen applied. Writable.',
+    example: 'self.value = Math.min(self.value, stats.Health.value);',
+    live: [['stats.Fatigue.value', '72']],
+    links: [GUIDE],
+  },
+  selfValue: {
+    sig: ['(property)', 'Stat.value: number'], badge: 'Writable', w: true,
+    desc: 'Current value, with this turn’s AI change and regen applied. Writable.',
+    live: [['self.value', '41']],
+    links: [GUIDE],
+  },
+  clock: {
+    sig: ['(global)', 'clock: { day, daypart, deltaHours, elapsedHours, previous }'], badge: 'Read-only',
+    desc: 'The story clock. Read-only.',
+    world: [['Time system', 'On'], ['Hours per turn', '1 – 4']],
+    live: [['day', '3'], ['daypart', '"evening"'], ['deltaHours', '2']],
+    links: [GUIDE],
+  },
+  daypart: {
+    sig: ['(property)', 'clock.daypart: string'], badge: 'Read-only',
+    desc: 'Daypart at the end of this turn — night, dawn, morning, midday, afternoon or evening.',
+    values: ['night', 'dawn', 'morning', 'midday', 'afternoon', 'evening'],
+    example: 'if (clock.daypart !== clock.previous.daypart) { … }',
+    live: [['clock.daypart', '"evening"']],
+    links: [GUIDE],
+  },
+  tired: {
+    sig: ['(const)', 'tired: boolean'],
+    desc: 'Declared in this code.',
+    live: [['tired', 'true']],
+    links: [{ label: 'Go to line 2' }],
+  },
+  self: {
+    sig: ['(global)', 'self: Stat'], badge: 'Stamina',
+    desc: 'The stat this code belongs to. Write self.value to set its value.',
+    world: [['Stat', 'Stamina'], ['Type', 'Number'], ['Range', '0 – 100'], ['Regen', '+3 per story hour'], ['Owner', 'Player']],
+    live: [['self.value', '41']],
+    links: [GUIDE],
+  },
+  regen: {
+    sig: ['(property)', 'Stat.regen: number'], badge: 'Writable', w: true,
+    desc: 'Regen per story hour, with traits applied. Writable.',
+    example: 'self.regen = 0; // stop regen this turn',
+    live: [['self.regen', '3']],
+    links: [GUIDE],
+  },
+  previous: {
+    sig: ['(property)', 'Stat.previous: Stat'], badge: 'Read-only',
+    desc: 'The whole stat as it stood at the start of this turn. Read-only.',
+    live: [['value', '38'], ['regen', '3'], ['max', '100']],
+    links: [GUIDE],
+  },
+  prevRegen: {
+    sig: ['(property)', 'Stat.previous.regen: number'], badge: 'Read-only',
+    desc: 'Regen per story hour at the start of this turn, traits included.',
+    live: [['self.previous.regen', '3']],
+    links: [GUIDE],
+  },
+  traits: {
+    sig: ['(global)', 'traits: { [name]: Trait }'],
+    desc: 'Every trait in the world by name. Use traits["Two Words"] for a name with a space.',
+    world: [['Traits', '9 — 4 held by the persona']],
+    links: [GUIDE],
+  },
+  brave: {
+    sig: ['(trait)', 'traits.Brave: Trait'],
+    desc: { quote: 'Faces danger without flinching.' },
+    world: [['Mode', 'Optional'], ['Held', 'Yes, on'], ['Requires', 'Courage ≥ 50'], ['Changes', 'Stamina max +10, Fatigue regen −1']],
+    live: [['enabled', 'true'], ['available', 'true']],
+    links: [{ label: 'Open Brave' }, { label: 'Find all uses (2)' }],
+  },
+  enabled: {
+    sig: ['(property)', 'Trait.enabled: boolean'], badge: 'Writable after this run', w: true,
+    desc: 'True when the trait is held and on. Write it to switch the trait on or off, after this run.',
+    example: 'traits.Brave.enabled = stats.Courage.value >= 50;',
+    live: [['traits.Brave.enabled', 'true']],
+    links: [GUIDE],
+  },
+  max: {
+    sig: ['(property)', 'Stat.max: number'], badge: 'Writable', w: true,
+    desc: 'Upper bound. Results are clamped to it. Writable.',
+    live: [['self.max', '110']],
+    links: [GUIDE],
+  },
+  placeholders: {
+    sig: ['(global)', 'placeholders: { [name]: Placeholder }'],
+    desc: 'The world’s own placeholders by name. An entity’s or a dictionary’s are on its entry. Use placeholders["Two Words"] for a name with a space.',
+    world: [['Placeholders', '5 world-owned']],
+    links: [GUIDE],
+  },
+  mood: {
+    sig: ['(placeholder)', 'placeholders.Mood: Placeholder'],
+    desc: 'The “Mood” placeholder in this world.',
+    world: [['Owner', 'World'], ['Kind', 'Single value'], ['Pinned', 'No']],
+    values: ['calm ×2', 'wary ×1', 'giddy ×1'],
+    live: [['value', '"wary"']],
+    links: [{ label: 'Open Mood' }, { label: 'Find all uses (1)' }],
+  },
+  roll: {
+    sig: ['(method)', 'Placeholder.roll(): string'],
+    desc: 'Draw one value with the author’s weights. The draw is not kept.',
+    example: 'const pick = placeholders.Mood.roll();\nplaceholders.Mood.pin(pick); // keep it',
+    live: [['returned', '"wary"']],
+    links: [GUIDE],
+  },
+  console: {
+    sig: ['(global)', 'console: { log }'],
+    desc: 'Only console.log — output shows up in the browser console.',
+    links: [GUIDE],
+  },
+  log: {
+    sig: ['(method)', 'console.log(...values: unknown[]): void'],
+    desc: 'Write values to the browser console. The Test Bench shows them too.',
+    links: [GUIDE],
+  },
+  moodVar: {
+    sig: ['(const)', 'mood: string'],
+    desc: 'Declared in this code.',
+    live: [['mood', '"wary"']],
+    links: [{ label: 'Go to line 7' }],
+  },
+  delta: {
+    sig: ['(property)', 'Stat.delta: { ai, regen, total, actual }'], badge: 'Read-only',
+    desc: 'Every change this turn made to the stat, by source. Read-only.',
+    live: [['ai.value', '+5'], ['regen.value', '+6'], ['actual.value', '+3']],
+    links: [GUIDE],
+  },
+  ai: {
+    sig: ['(property)', 'Stat.delta.ai: { value, min, max, regen }'], badge: 'Read-only',
+    desc: 'The change the AI asked for this turn, raw: before flags and the range.',
+    live: [['value', '+5'], ['min', '0'], ['max', '0'], ['regen', '0']],
+    links: [GUIDE],
+  },
+  aiValue: {
+    sig: ['(property)', 'Stat.delta.ai.value: number'], badge: 'Read-only',
+    desc: 'The change to the value.',
+    live: [['self.delta.ai.value', '+5']],
+    links: [GUIDE],
+  },
+  helth: {
+    diag: 'No stat named “Helth” for this owner.',
+    fix: 'Change to Health',
+    sig: ['(unknown)', 'stats.Helth'],
+    desc: 'Closest names: Health, Hunger.',
+  },
+};
+
+const on = new Set(PRESETS.standard);
+let pinned = null;
+const card = document.getElementById('card');
+const editor = document.getElementById('editor');
+const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const tag = (k) => `<span class="layer-tag">${LAYERS.find(([key]) => key === k)[1]}</span>`;
+
+editor.innerHTML = CODE.map((line, i) => `<div class="ln"><span class="no">${i + 1}</span><span>${
+  line.map(([t, c, k, extra]) => `<span class="${c}${extra ? ' ' + extra : ''}"${k ? ` data-k="${k}"` : ''}>${esc(t)}</span>`).join('')
+}</span></div>`).join('');
+
+function render(key) {
+  const d = CARDS[key];
+  const parts = [];
+  if (d.diag) parts.push(`<section>${tag('sig')}<b>${esc(d.diag)}</b></section>`);
+  if (on.has('sig')) parts.push(`<section class="sig">${tag('sig')}<span><span class="kind">${esc(d.sig[0])}</span> ${esc(d.sig[1])}</span>${d.badge ? `<span class="badge${d.w ? ' w' : ''}">${esc(d.badge)}</span>` : ''}</section>`);
+  if (on.has('desc') && d.desc) parts.push(`<section class="desc">${tag('desc')}${typeof d.desc === 'string' ? esc(d.desc) : `<span class="q">${esc(d.desc.quote)}</span>`}</section>`);
+  if (on.has('world') && d.world) parts.push(`<section>${tag('world')}<dl>${d.world.map(([a, b]) => `<dt>${esc(a)}</dt><dd>${esc(b)}</dd>`).join('')}</dl></section>`);
+  if (on.has('values') && d.values) parts.push(`<section>${tag('values')}<div class="chips">${d.values.map((v) => `<span class="chip">${esc(v)}</span>`).join('')}</div></section>`);
+  if (on.has('example') && d.example) parts.push(`<section>${tag('example')}<pre class="ex">${esc(d.example)}</pre></section>`);
+  if (on.has('live') && d.live) parts.push(`<section>${tag('live')}<div class="live">Last test run · ${d.live.map(([a, b]) => `${esc(a)} <code>${esc(b)}</code>`).join(' · ')}</div></section>`);
+  if (on.has('fix') && d.fix) parts.push(`<section>${tag('fix')}<button class="fix">${esc(d.fix)}</button></section>`);
+  if (on.has('links') && d.links) parts.push(`<section class="links">${tag('links')}${d.links.map((l) => `<a>${esc(l.label)}</a>`).join('')}</section>`);
+  card.className = 'card' + (d.diag ? ' diag' : '');
+  card.innerHTML = parts.join('');
+}
+
+function show(span) {
+  editor.querySelectorAll('.on').forEach((n) => n.classList.remove('on'));
+  span.classList.add('on');
+  render(span.dataset.k);
+  card.hidden = false;
+  const r = span.getBoundingClientRect();
+  const left = Math.min(r.left + scrollX, scrollX + document.documentElement.clientWidth - card.offsetWidth - 16);
+  card.style.left = Math.max(16, left) + 'px';
+  card.style.top = (r.bottom + scrollY + 4) + 'px';
+}
+function hide() { if (pinned) return; card.hidden = true; editor.querySelectorAll('.on').forEach((n) => n.classList.remove('on')); }
+
+let hideTimer = 0;
+editor.addEventListener('mouseover', (e) => {
+  const s = e.target.closest('[data-k]'); if (!s || pinned) return;
+  clearTimeout(hideTimer); show(s);
+});
+editor.addEventListener('mouseout', (e) => { if (e.target.closest('[data-k]')) hideTimer = setTimeout(hide, 250); });
+card.addEventListener('mouseenter', () => clearTimeout(hideTimer));
+card.addEventListener('mouseleave', () => { hideTimer = setTimeout(hide, 250); });
+editor.addEventListener('click', (e) => {
+  const s = e.target.closest('[data-k]'); if (!s) return;
+  pinned = pinned === s ? null : s; show(s);
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { pinned = null; hide(); } });
+document.addEventListener('click', (e) => { if (!e.target.closest('[data-k], .card, .bar')) { pinned = null; hide(); } });
+
+const layersEl = document.getElementById('layers');
+layersEl.innerHTML = LAYERS.map(([k, label]) => `<label><input type="checkbox" data-l="${k}"> ${label}</label>`).join('');
+function sync() {
+  layersEl.querySelectorAll('input').forEach((i) => { i.checked = on.has(i.dataset.l); });
+  document.querySelectorAll('#presets button').forEach((b) => {
+    const p = PRESETS[b.dataset.p];
+    b.setAttribute('aria-pressed', String(p.length === on.size && p.every((k) => on.has(k))));
+  });
+  const cur = pinned || editor.querySelector('.on');
+  if (cur && !card.hidden) show(cur);
+}
+layersEl.addEventListener('change', (e) => { const k = e.target.dataset.l; e.target.checked ? on.add(k) : on.delete(k); sync(); });
+document.getElementById('presets').addEventListener('click', (e) => {
+  const p = e.target.dataset.p; if (!p) return; on.clear(); PRESETS[p].forEach((k) => on.add(k)); sync();
+});
+document.getElementById('theme').addEventListener('click', (e) => {
+  const t = e.target.dataset.t; if (!t) return;
+  document.documentElement.classList.toggle('dark', t === 'dark');
+  document.querySelectorAll('#theme button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.t === t)));
+});
+document.querySelector('#theme button[data-t="dark"]').setAttribute('aria-pressed', 'true');
+document.getElementById('tags').addEventListener('change', (e) => document.body.classList.toggle('tags', e.target.checked));
+
+addEventListener('resize', () => { const cur = pinned || editor.querySelector('.on'); if (cur && !card.hidden) show(cur); });
+sync();
+pinned =editor.querySelector('[data-k="fatigue"]');
+show(pinned);
+</script>
+</body>
+</html>
