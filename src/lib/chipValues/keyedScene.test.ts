@@ -1,0 +1,126 @@
+import { describe, it, expect } from 'vitest';
+import { chipValues } from './chipValues';
+import type { ChipScene } from './chipScene';
+import { defaultStatUpdatesPrompt } from '@/components/game/GamePrompts';
+import { renderPromptTemplate } from '../promptTemplate';
+import { createStatRequest, keyedScene } from '../statRequest';
+import { PLAYER_OWNER } from '../statOwners';
+import { ownerStatParts, statPlacementOf } from '../statContext';
+import type { ResolvedPersona } from '../persona';
+import type { Entity, GameLocation, PlayerStat } from '@/types';
+
+const stat = (id: string, name: string, value: number): PlayerStat => ({
+  id, name, type: 'number', description: `${name} meaning.`, min: 0, max: 100, value, regen: 0, descriptors: [],
+});
+
+// The town: the Hall holds the Cellar; the Market sits beside the Hall, under the town.
+const town: GameLocation = { id: 'town', name: 'Town', aiDescription: 'A river town.' };
+const hall: GameLocation = { id: 'hall', name: 'Hall', parentId: 'town', aiDescription: 'A long hall.' };
+const cellar: GameLocation = { id: 'cellar', name: 'Cellar', parentId: 'hall', aiDescription: 'A cold cellar.' };
+const market: GameLocation = { id: 'market', name: 'Market', parentId: 'town', aiDescription: 'Stalls.' };
+
+const health = stat('health', 'Health', 62);
+// The traveler's own Health clashes with the world's, so the request keys it "Health (2)".
+const travelerHealth = stat('traveler-health', 'Health', 10);
+// Each of these owners holds two stats of one name, so the request keys the second "Mood (2)".
+const moods = (owner: string) => [stat(`${owner}-mood-a`, 'Mood', 30), stat(`${owner}-mood-b`, 'Mood', 70)];
+
+const entity = (id: string, name: string, locations: string[]): Entity => ({ id, name, locations, aiDescription: `${name} is here.` });
+const traveler = entity('traveler', 'Traveler', ['hall']);
+const guard = entity('guard', 'Guard', ['hall']);
+const cook = entity('cook', 'Cook', ['cellar']);
+const baker = entity('baker', 'Baker', ['market']);
+const persona: ResolvedPersona = { entity: traveler, source: 'library' };
+
+const ownedStats = {
+  traveler: [travelerHealth],
+  guard: moods('guard'),
+  cook: moods('cook'),
+  baker: moods('baker'),
+};
+
+const scene = (over: Partial<ChipScene> = {}): ChipScene => ({
+  overview: 'A river town.',
+  stats: [health],
+  traits: [],
+  traitGroups: [],
+  ownedStats,
+  playedStats: ownerStatParts([traveler], ownedStats),
+  persona,
+  playerName: 'Traveler',
+  location: hall,
+  locations: [town, hall, cellar, market],
+  connections: [],
+  entities: [traveler, guard, cook, baker],
+  presentIds: ['traveler', 'guard'],
+  inSceneIds: ['traveler', 'guard'],
+  lore: [],
+  notes: '',
+  time: null,
+  resolve: (text) => text,
+  ...over,
+});
+
+const ownerOf = (owner: Entity) => ({ id: owner.id, name: owner.name, stats: ownedStats[owner.id as keyof typeof ownedStats], placement: statPlacementOf(owner) });
+
+const request = createStatRequest([health], PLAYER_OWNER, {
+  personas: [ownerOf(traveler)],
+  entities: [ownerOf(guard), ownerOf(cook), ownerOf(baker)],
+});
+
+describe('the keyed scene for the stat pass', () => {
+  const raw = chipValues(scene());
+  const keyed = chipValues(keyedScene(scene(), request));
+
+  it('names a clashing stat in an In Scene cast entry by its request key, while the narration keeps its raw name', () => {
+    expect(keyed('<ENTITIES|inscene>')).toContain('Health (2): 10/100');
+    expect(raw('<ENTITIES|inscene>')).toContain('Health: 10/100');
+    expect(raw('<ENTITIES|inscene>')).not.toContain('Health (2)');
+  });
+
+  it("names a clashing persona stat by its request key in the Persona chip", () => {
+    expect(keyed('<PERSONA|markdown>')).toContain('**Health (2):** 10/100');
+    expect(keyed('<PERSONA|markdown>')).not.toMatch(/\*\*Health:\*\*/);
+  });
+
+  it('keys a stat that clashes inside one owner, in every Entities scope', () => {
+    for (const token of ['<ENTITIES|inscene>', '<ENTITIES>', '<ENTITIES|sublocations.stats>', '<ENTITIES|reachable.stats>']) {
+      expect(keyed(token), token).toContain('Mood (2): 70/100');
+      expect(raw(token), token).not.toContain('Mood (2)');
+    }
+  });
+
+  it('keys the Stats chip over the world stats and a played entity that is not the persona', () => {
+    const custom = entity('custom', 'The Creature', []);
+    const customHealth = stat('custom-health', 'Health', 40);
+    const both = scene({
+      ownedStats: { ...ownedStats, custom: [customHealth] },
+      playedStats: ownerStatParts([traveler, custom], { ...ownedStats, custom: [customHealth] }),
+    });
+    const withCustom = createStatRequest([health], PLAYER_OWNER, {
+      personas: [ownerOf(traveler), { id: 'custom', name: 'The Creature', stats: [customHealth] }],
+    });
+    expect(chipValues(keyedScene(both, withCustom))('<STATS DESCRIPTION|numbers>')).toBe('Health: 62/100\nHealth (3): 40/100');
+  });
+
+  it('leaves a stat the request does not hold under its raw name, and the narration scene untouched', () => {
+    const input = scene();
+    const out = keyedScene(input, createStatRequest([health], PLAYER_OWNER, { entities: [ownerOf(guard)] }));
+    expect(chipValues(out)('<ENTITIES|reachable.stats>')).toContain('Mood: 70/100');
+    expect(chipValues(out)('<ENTITIES|inscene>')).toContain('Health: 10/100');
+    expect(input.ownedStats?.guard.map((s) => s.name)).toEqual(['Mood', 'Mood']);
+  });
+
+  it('is the scene itself when the request holds no targets', () => {
+    const input = scene();
+    expect(keyedScene(input, createStatRequest([]))).toBe(input);
+  });
+
+  it('reads every chip the default stat prompt holds as the unkeyed scene does', () => {
+    const tokens = [...defaultStatUpdatesPrompt.matchAll(/<[A-Z][^>\n]*>/g)].map(([token]) => token);
+    expect(tokens.length).toBeGreaterThan(2);
+    // Read from the scenes alone: the snapshot's own Stats value would hide a drift in the scene's.
+    const render = (values: ReturnType<typeof chipValues>) => renderPromptTemplate(defaultStatUpdatesPrompt, values);
+    expect(render(keyed)).toBe(render(raw));
+  });
+});

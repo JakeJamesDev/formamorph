@@ -2,6 +2,7 @@ import type { PlayerStat } from '@/types';
 import type { StatPlacement } from './statContext';
 import { stripMarkdown } from './stripMarkdown';
 import { statChipPartValues } from './chipValues/chipValues';
+import type { ChipScene } from './chipValues/chipScene';
 import { maxKeyOf, statKeys } from './statKeys';
 import { mapValues, type ValueLookup } from './promptValues';
 import { applyAiMaxChanges, applyAiStatChanges, parseStatUpdates } from './statChanges';
@@ -137,6 +138,26 @@ export function createStatRequest(
     textContext: player.context,
     entityKeys: keys,
     ...(textPass && { textPass }),
+  };
+}
+
+/** `scene` with each stat the request keys named by its key: the world's, each played entity's and each owned
+ *  by an entity. The stat pass renders its chips from this scene. A stat the request does not hold keeps its
+ *  name, and `scene` itself is left as it was. */
+export function keyedScene(scene: ChipScene, snapshot: StatRequestSnapshot): ChipScene {
+  if (!snapshot.targets.length) return scene;
+  const keys = new Map(snapshot.targets.map((target) => [`${target.ownerId}/${target.id}`, target.key]));
+  const keyed = (ownerId: string, stats: readonly PlayerStat[]): PlayerStat[] => stats.map((stat) => {
+    const key = keys.get(`${ownerId}/${stat.id}`);
+    return key === undefined || key === stat.name ? stat : { ...stat, name: key };
+  });
+  return {
+    ...scene,
+    stats: keyed(PLAYER_OWNER, scene.stats),
+    playedStats: scene.playedStats?.map((part) => ({ ...part, stats: keyed(part.ownerId, part.stats) })),
+    ownedStats: scene.ownedStats && Object.fromEntries(
+      Object.entries(scene.ownedStats).map(([ownerId, stats]) => [ownerId, keyed(ownerId, stats)]),
+    ),
   };
 }
 

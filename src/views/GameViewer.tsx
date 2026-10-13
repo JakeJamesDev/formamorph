@@ -164,7 +164,7 @@ import { MARKDOWN_SAMPLE } from "../lib/markdownSample";
 import { parseSlashCommand } from "../lib/slashCommands";
 import { appliedStatDeltas } from "../lib/statChanges";
 import { PLAYER_OWNER, regenOwners, statsOf } from "../lib/statOwners";
-import { applyStatResponse, createStatRequest, readStatResponse, statResponseChanges, type StatRequestSnapshot, type StatResponse } from "../lib/statRequest";
+import { applyStatResponse, createStatRequest, keyedScene, readStatResponse, statResponseChanges, type StatRequestSnapshot, type StatResponse } from "../lib/statRequest";
 import { resolveEntityTexts, resolveStatGroupTexts, resolveStatNames, resolveStatText } from "../lib/resolveWorldNames";
 import { AiContextRequestCard, type AiContextCardSection, type AiContextTextSlot } from "@/components/aiContext/AiContextRequestCard";
 import { AiContextExportButton } from "@/components/aiContext/AiContextExportButton";
@@ -1545,7 +1545,7 @@ const GameViewer = ({
         // A turn with nothing to ask about replays its regen and code over no asks, as the live turn did.
         const parsed: StatResponse = statRequestReady(snapshot)
           ? readStatResponse(await requestStats(
-            contextValues(null, turnCodeView(written)), snapshot, action, prev.narration ?? "", signal,
+            contextValues(null, turnCodeView(written), snapshot), snapshot, action, prev.narration ?? "", signal,
           ), snapshot)
           : { requestId: snapshot.id, updates: [], diagnostics: [] };
         if (signal.aborted) return;
@@ -1949,8 +1949,11 @@ const GameViewer = ({
     locationOverride?: GameLocation | null,
     /** The world under a before box's writes; absent, every value reads live state. */
     box?: SceneWrites | null,
+    /** The stat pass's request: every owned stat then reads under its request key. Narration passes none. */
+    statRequest?: StatRequestSnapshot,
   ): TokenValues => {
-    const scene = liveScene(locationOverride, box);
+    const base = liveScene(locationOverride, box);
+    const scene = statRequest ? keyedScene(base, statRequest) : base;
     // Lore activates per turn inside the narration prompt builder, so the scene-level lore blocks are
     // dropped here. The lore chip is the one in-game token the Preview tab reads from the pool's samples.
     const values = omitValues(chipValues(scene), (key) => variableForToken(key) === DICTIONARY_VARIABLE);
@@ -2593,11 +2596,13 @@ const GameViewer = ({
             // The scene's cast, whose text resolved with each owner: the diary pass sends it as is.
             const fanOut = splitParticipants(turnParticipants, liveScene(null, codeView).entities, suppressedCharacterNames);
             // The stat request follows the same confirmed participants: those who took part bring their stats.
+            const statRequest = statRequestFor(
+              enabledStats(playerStatsRef.current, statEnabledRef.current), presentEntitiesOf(fanOut.diary), entityStatsRef.current,
+            );
             return {
               subjects: { ...material.subjects, ...fanOut },
-              statRequest: statRequestFor(
-                enabledStats(playerStatsRef.current, statEnabledRef.current), presentEntitiesOf(fanOut.diary), entityStatsRef.current,
-              ),
+              statRequest,
+              statCtx: contextValues(turnLocation, codeView, statRequest),
             };
           }
           return;

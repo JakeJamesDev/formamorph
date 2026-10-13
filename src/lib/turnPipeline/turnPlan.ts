@@ -140,6 +140,9 @@ export interface TurnPassSubject {
  */
 export interface TurnMaterial {
   statRequest?: StatRequestSnapshot;
+  /** The context values the stat pass renders from: `ctx` over a scene whose stats carry their request keys.
+   *  The stat pass reads `ctx` when absent. */
+  statCtx?: TokenValues;
   /** The player's action verbatim — what the location router and the narration are fed. */
   action: string;
   /** The action every other consumer sees ("START GAME" on the opening turn). */

@@ -483,7 +483,7 @@ export const statUpdatesPass: TurnPassRecord<ReturnType<typeof parseStatUpdates>
   isReady: (material) => statRequestReady(material.statRequest),
   buildRequest: (input, material) => statUpdatesRequest(
     { system: input.prompts.statUpdates, user: input.prompts.statUpdatesUser },
-    { ctx: material.ctx, action: material.effectiveAction, narration: material.narration },
+    { ctx: material.statCtx ?? material.ctx, action: material.effectiveAction, narration: material.narration },
     { statCount: input.settings.statCount, statRequest: material.statRequest, quiet: quietInBatch(input) },
   ),
   parseResponse: (raw) => parseStatUpdates(raw),

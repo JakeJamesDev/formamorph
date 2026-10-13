@@ -87,6 +87,15 @@ describe('the stat request', () => {
     expect(runsTile(request.textFallback!.systemPrompt, request.textFallback!.anatomy!.system)).toBe(true);
   });
 
+  it('renders every chip from the stat pass context, with the snapshot’s stats over it', () => {
+    const prompts = { statUpdates: 'WORLD <WORLD DESCRIPTION> ENTITIES <ENTITIES|inscene> STATS <STATS DESCRIPTION>', statUpdatesUser: 'USER' };
+    const statCtx = { '<WORLD DESCRIPTION>': 'KEYED WORLD', '<ENTITIES|inscene>': 'KEYED CAST' };
+    const request = shipped({ statRequest: health, statCtx }, prompts);
+    expect(request.systemPrompt).toBe('WORLD KEYED WORLD ENTITIES KEYED CAST STATS Health');
+    // A turn with no stat context reads the turn's own.
+    expect(shipped({ statRequest: health }, prompts).systemPrompt).toContain('WORLD TURN-LOCATION');
+  });
+
   it('sends a custom prompt as written on both paths, the schema still riding the first', () => {
     const request = shipped({ statRequest: health }, { statUpdates: 'MY STATS <STATS DESCRIPTION>', statUpdatesUser: 'MY USER <NARRATION>' });
     expect(request.responseSchema).toEqual(statRequestSchema(health));
