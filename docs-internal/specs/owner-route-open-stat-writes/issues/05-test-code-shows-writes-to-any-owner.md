@@ -1,6 +1,6 @@
 # 05: Test Code Shows Writes To Any Owner
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 02
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: high

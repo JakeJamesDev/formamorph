@@ -78,7 +78,7 @@ export function StatCodeBox({ timing, stat, value, onChange, context }: {
 
   const label = TIMING_LABEL[timing];
   const {
-    codeNamedStats, statNames, selfName, placeholders, placeholderPlaces, traitNames, traitPlaces, traits, entities, entityStats,
+    statNames, selfName, placeholders, placeholderPlaces, traitNames, traitPlaces, traits, entities, entityStats,
     owner, worldStats, worldStatNames, ownerStats, ownerStatNames,
   } = context;
 
@@ -126,7 +126,10 @@ export function StatCodeBox({ timing, stat, value, onChange, context }: {
 
     try {
       // A switch is reported here and never applied.
-      const report = await runTestCode(value, timing, { ...stat, name: selfName }, { codeNamedStats, placeholders, traits, entities, entityStats });
+      const report = await runTestCode(
+        value, timing, { ...stat, name: selfName }, { codeNamedStats: worldStats, placeholders, traits, entities, entityStats },
+        { ...(owner && { owner: { ...(owner.kind === 'entity' && { entityId: owner.entityId }), stats: ownerStats } }) },
+      );
       if (report.error) {
         setError(report.error);
         return;
