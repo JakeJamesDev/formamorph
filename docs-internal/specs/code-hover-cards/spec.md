@@ -68,6 +68,17 @@ Settled with the user on 2026-10-12 and 2026-10-13.
 | T06-4 | The `self` card adds a Stat row naming the running stat, above the stat rows. Starts At reads the starting value, else the value, else the minimum. Range reads "min – max", with % for a percentage stat. Regen reads in the stat's regen unit ("per story hour") |
 | Q34 | A card on `persona.stats.X`: when every playable entity's X shares one Blueprint, it shows the Blueprint's values plus an Owner list (as Q30). Otherwise it shows only the Owner list of who has X, with no value rows. With no playable entity, no World Details |
 | Q35 | Shown To covers Hidden only: "AI only" for a hidden stat, dropped at the default. A separate Off row, "Off until a trait turns it on", shows only for a stat that starts switched off. Q12's row set gains it |
+| T06-5 | In a Blueprint stat's box, the `self` card carries the Bearers row: `self` and `owner.stats.<self>` reach one stat, so they show one card (Q30) |
+| T06-6 | Ticket 06's `owner` card in an owned box shows interim Entity and Stats rows. Ticket 07 replaces them with the entity card's rows |
+| T07-1 | A placeholder card's pin state is a **Pinned By** row: every authored Pin source that holds it (trait, location, stat band, value), in Pin precedence order, with the value each pins. Dropped when nothing pins it. No live pin state |
+| T07-2 | Placeholder **Owner** reads World, the entity's or dictionary's name, or the owning placeholder's name. **Kind** reads the editor's own kind noun |
+| T07-3 | Allowed Values: one line per value, text then ×weight (×1 shown), weight-0 faded, a Copy's effective values. Chips stay as raw `{{...}}` text. At most 12 values, then "and N more". Every comma list on a card uses the same cap |
+| T07-4 | **Requires**: one line per Requirement Row in the gate rows' wording, Conditions joined by "and"; each row after the first starts with "or". Dropped when the trait has no rows |
+| T07-5 | **Changes**: stat changes as "Stamina max +10" (facet word only for min, max, starting and regen), then stat toggles as "Fatigue on" or "Fatigue off" by direction. Dropped when empty. **Mode** always shows |
+| T07-6 | **Bearers** lists **You** when the world's root holds the trait, then each entity whose tree has it, owned or through a Link. Every route lists the Bearers of the trait it reaches |
+| T07-7 | Entity card: the player description, then Type (when set), Persona ("Can be played"), Stats, Traits, Placeholders as capped comma lists ("None" when empty). Dictionary card: description, Placeholders, Entries count |
+| T07-8 | The `persona` card shows a **Can Play** row of playable entities, and its description carries the library-persona note |
+| T07-9 | `clock.daypart` and `clock.previous.daypart` show the six dayparts as Allowed Values, without weights |
 | T08-1 | The completion pane shows the declared-name card too (Q4: the same card). The card's description reads "Declared on line N", so neither surface loses today's "Declared in this code". The pane leaves out the Go to Line link, which it can't act on; hover keeps it. Ticket 04's tests that pinned no card for a declared name change to expect it |
 | O1 | Owner-route lands first. Its `stats` (world stats in every box), `owner`, and writes on every route (its Q1–Q5) are this spec's baseline. Its tickets 01–07 landed on 2026-10-13. Find All Uses waits on its ticket 08 |
 
