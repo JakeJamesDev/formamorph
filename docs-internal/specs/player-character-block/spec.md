@@ -27,7 +27,7 @@ Rulings from the discussion, numbered as asked.
 - **Q7** The choices prompt sends the Persona chip's Summary content in place of Name, so choices still see the player's traits and stats after they leave the side sections.
 - **Q8** The Persona chip gains a Stats toggle, on by default, matching the Entities chip. The off state drops the stats field from the block.
 - **Q9** A persona stat whose plain name clashes with a world stat keeps the numbered key the stat request gives it, so every prompt names a stat the same way.
-- **Q10** The stat request and the text pass keep their layouts. The schema's `Player Character` section, its heading and its keys are unchanged.
+- **Q10** The stat request and the text pass keep their layouts. The schema's `Player Character` section, its heading and its keys are unchanged. *Reopened 2026-10-13 by the Stat Pass Owner Blocks spec: the stat request and the text pass now read the Persona block and Other Stats.*
 - **Q11** The work ships as three steps, each its own ticket and its own probe: the header, the traits fold, then the stats fold with the choices variant change.
 - **Q12** Emberwatch authors its five stats on the world, not on its personas, so playing Sylvie leaves her block without stats and fills Other Stats. Moving those stats onto the personas is a content change for another effort. *Done by the Stat Pass Owner Blocks spec (its Q5, Q18): Emberwatch's player stats become Blueprints linked on each persona.*
 - **Q13** (ticket 01) With no persona, the chip values map carries the Player Name built-in's reference reading, "the player", so a custom header such as `{{user}} stats` reads "The Player Stats". A header is read by the AI, never spoken to the player, so the opening's "you" form never applies. A played persona with a blank name still substitutes the empty string (Q2). An authored scene with no Custom Persona entity is the same no-persona case.
@@ -78,7 +78,7 @@ Rulings from the discussion, numbered as asked.
 ### The other prompts
 
 21. As a player, I want the choices step to see my persona's traits and stats, so that the options still fit who I am after the fold.
-22. As a player, I want the stat tracker's request unchanged, so that stat changes keep landing on the right owner.
+22. As a player, I want the stat tracker's request unchanged, so that stat changes keep landing on the right owner. *(Superseded by the Stat Pass Owner Blocks spec.)*
 23. As a player, I want the planner's Cast to keep labeling me "Player Character", so that the planner's player rule still fires.
 24. As a player, I want the continuity planner, director, character pass and storyboard prompts to carry the same block and Other Traits, so that every stage reads me the same way.
 25. As a player, I want the character pass to read the character's own stats and none of mine, so that a character acts from its own condition.
