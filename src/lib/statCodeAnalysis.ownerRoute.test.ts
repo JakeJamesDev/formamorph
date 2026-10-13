@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { statCodeCompletions, statCodeDiagnostics, type AnalysisOptions } from './statCodeAnalysis';
-import { DELTA_MEMBERS, ENTITY_FIELDS, PREVIOUS_FIELDS, STAT_FIELDS } from './statCodeSurface';
+import { DELTA_MEMBERS, ENTITY_FIELDS, PREVIOUS_FIELDS, STAT_FIELDS, TRAIT_ENTRY_FIELDS } from './statCodeSurface';
 
 /** Completions for a caret written as `|` in the doc. */
 function labels(doc: string, options?: AnalysisOptions) {
@@ -65,8 +65,18 @@ describe('completion on the owner route', () => {
     expect(labels('return persona.stats[|', owned).slice(0, 1)).toEqual(['"Trust"']);
   });
 
+  it('lists the owner’s stats inside a string anywhere in an owner.stats[…] key', () => {
+    expect(labels('return owner.stats["|" + suffix];', owned)).toEqual(['Rage', 'Hunger']);
+  });
+
   it('offers owner among the globals', () => {
     expect(labels('return |', owned)).toContain('owner');
+  });
+
+  it('lists a trait’s fields after an owner trait, and no world trait names inside owner.traits[""]', () => {
+    const withTraits = { ...owned, traits: ['Brave'] };
+    expect(labels('return owner.traits.Calm.|', withTraits)).toEqual(TRAIT_ENTRY_FIELDS.map((field) => field.name));
+    expect(labels('return owner.traits["|"];', withTraits)).toEqual([]);
   });
 });
 

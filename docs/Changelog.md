@@ -102,6 +102,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Regenerate Memory and a character's Regenerate wait for background passes, with a spinner you can cancel.** Each button waits its turn instead of staying unavailable or racing a pass. Leaving the game or loading a save also stops them.
   - **An image request that can't reach the image server now names the server and what to check.** The toast's Fix Connection link opens that server's setup guide. Before, it showed only "Failed to fetch". A dropped connection while ComfyUI draws no longer stops the image.
   - **The World Editor's Auto Save setting is now Autosave, the name the game's saves use.** The Save menu, Settings, the unsaved-changes prompt and the Guide all say **Autosave** and **Autosave Pause**.
+  - **Code completion now lists members after owner traits and after chains with spaces or `?.`, and nothing in comments.** `owner.traits.Brave.` lists the trait's fields. `stats . Health .` and `scene?.location.` list their members.
 - **⚙️ Backend**
   - **Background Pass Queue:**
     - **Backfilled digests and character descriptions now run oldest turn first.** The oldest turn leaves the context window first. In serial mode, a new character can wait behind older unknown names.
