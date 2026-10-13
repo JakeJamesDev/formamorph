@@ -50,6 +50,8 @@ export interface CodeOwners {
   statWorld: StatLinkWorld;
   /** Stats as a stat map keys them by code name. */
   byCodeName: (stats: readonly Stat[]) => ReadonlyMap<string, Stat>;
+  /** A stat or entity name as code reads it. */
+  codeName: (name: string | undefined) => string;
 }
 
 /** A stat authored off runs no code and takes no write. */
@@ -74,6 +76,7 @@ export function statCodeOwners(world: StatRouteWorld): CodeOwners {
     playable: entities.filter((o) => canBePlayer(o.entity)),
     statWorld,
     byCodeName,
+    codeName,
   };
 }
 
@@ -138,7 +141,7 @@ export interface StatCodeBox {
 }
 
 /** Whether a link overrides one box of the stat it brings. */
-const overridesBox = (link: StatLink, original: Stat, timing: StatCodeTiming) =>
+export const overridesBox = (link: StatLink, original: Stat, timing: StatCodeTiming) =>
   statLinkState(original, link).overridden.includes(CODE_FIELD[timing]);
 
 /**

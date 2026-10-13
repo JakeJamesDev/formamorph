@@ -38,6 +38,7 @@ import { renderCodeCard, renderInfoLine } from '@/components/prompt/codeCardView
 import { cardTooltipView, createCaretCards } from '@/components/prompt/codeCaretCard';
 import { TOOLTIP_DELAY_MS } from '@/components/ui/tooltip';
 import type { CodeSurface } from '@/lib/codeSurface';
+import type { CodeWorldLookup } from '@/lib/codeWorldLookup';
 import type { InsertSelection } from '@/lib/codeSnippets';
 
 /** Marks `{{slot}}` spans in the editor with the same class the read-only previews use. */
@@ -269,6 +270,8 @@ export interface CodeSessionOptions {
   traits?: readonly string[];
   /** The world's entities and their trait names. Absent, entity and persona trait names are neither offered nor checked. */
   entities?: readonly CodeEntityNames[];
+  /** The box's world lookup, read when a card opens. Absent, cards show no World Details. */
+  lookup?: () => CodeWorldLookup | undefined;
   onChange: (value: string) => void;
   /** Any update at all, so the toolbar can re-read what undo and redo have to offer. */
   onUpdate?: () => void;
@@ -296,7 +299,7 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
 
   /** What the analysis reads the code against, as it stands now. */
   const analysisOptions = (): SurfaceAnalysisOptions => ({
-    surface, slots: options.slots, statNames, owner, ownerStatNames, selfName, placeholders, traits, entities,
+    surface, slots: options.slots, statNames, owner, ownerStatNames, selfName, placeholders, traits, entities, lookup: options.lookup?.(),
   });
 
   /** The one completion source. Everything it offers comes from the analysis module; nothing here knows

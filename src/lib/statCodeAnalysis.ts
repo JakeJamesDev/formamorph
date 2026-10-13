@@ -7,6 +7,7 @@
  */
 
 import type { SyntaxNode, Tree } from '@lezer/common';
+import type { CodeWorldLookup } from '@/lib/codeWorldLookup';
 import type { PlaceholderOwners } from '@/lib/placeholderHomes';
 import { placeholderKindNoun } from '@/lib/placeholders';
 import { hasEntityKey } from '@/lib/statCodeNames';
@@ -127,6 +128,8 @@ export interface AnalysisOptions {
   /** The name of the stat the code belongs to, so a write to that name counts as its own: through
    *  `owner.stats` in an owned box, through `stats` in a world stat's. */
   selfName?: string;
+  /** What a card asks the world when it opens. Absent, cards show no World Details. Never a lint input. */
+  lookup?: CodeWorldLookup;
 }
 
 /** The options a reader takes for any surface. */

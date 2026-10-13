@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import type { Entity, Placeholder, Stat, Trait } from '@/types';
 import type { StatCodeTemplate } from '@/lib/statCodeTemplates';
 import type { CodeEntityNames, CodeTraitPlace } from '@/lib/statCodeAnalysis';
+import type { CodeWorldLookup } from '@/lib/codeWorldLookup';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import StatManager from './StatManager';
 
@@ -34,12 +35,14 @@ const entities = [
 const updateStat = vi.fn();
 /** What a case adds to the mocked world, such as Blueprint stats. */
 const worldExtra = vi.hoisted(() => ({ current: {} as Record<string, unknown> }));
+/** True for a case in the library entity editor, which has no world. */
+const noWorld = vi.hoisted(() => ({ current: false }));
 vi.mock('@/contexts/GameDataContext', () => {
   const world = () => ({
     updateStat, stats, playStats: stats, placeholders: [beast], traits, traitGroups: [], entities, playEntities: entities,
     ...worldExtra.current,
   });
-  return { useGameData: world, useGameDataOptional: world };
+  return { useGameData: world, useGameDataOptional: () => (noWorld.current ? null : world()) };
 });
 vi.mock('@/lib/useBodyMorphNames', () => ({
   useBodyMorphSources: () => ({ sources: [], loading: false, load: vi.fn() }),
@@ -190,6 +193,32 @@ describe('whose code a box holds', () => {
         entity: expect.objectContaining({ id: 'e2', name: 'Ash', stats: ['Hub', 'Grit'], traits: [expect.objectContaining({ name: 'Loyal' })] }),
       }]);
       expect([box, worldNamesOf(box)]).toEqual([box, ['Warmth', 'Damp']]);
+    }
+  });
+
+  it('binds each box’s card lookup to the stat and its owner', () => {
+    const lookupOf = (box: 'Before the AI' | 'After the AI') => editorProps.get(`Stat Code ${box}`)!.lookup as CodeWorldLookup;
+    renderCodePanel(stats[0]);
+    expect(lookupOf('After the AI').self()).toMatchObject({ stat: { id: 's1', name: 'Warmth' }, owner: 'World' });
+    expect(lookupOf('After the AI').owner()).toEqual({ kind: 'empty' });
+
+    render(<StatManager stat={hub} tab="code" onTabChange={() => {}} store={{ stats: [hub, grit], updateStat, ownerId: 'e2' }} />);
+    for (const box of ['Before the AI', 'After the AI'] as const) {
+      expect([box, lookupOf(box).self()]).toEqual([box, expect.objectContaining({ stat: expect.objectContaining({ id: 'o1' }), owner: 'Ash', entityId: 'e2' })]);
+      expect([box, lookupOf(box).owner()]).toEqual([box, expect.objectContaining({ kind: 'entity', entityId: 'e2', name: 'Ash' })]);
+      expect([box, lookupOf(box).stat({ route: 'world' }, 'Damp')?.owner]).toEqual([box, 'World']);
+    }
+  });
+
+  it('gives the library’s boxes no lookup', () => {
+    noWorld.current = true;
+    try {
+      render(<StatManager stat={hub} tab="code" onTabChange={() => {}} store={{ stats: [hub, grit], updateStat, ownerId: 'e2' }} />);
+      for (const box of ['Before the AI', 'After the AI'] as const) {
+        expect([box, editorProps.get(`Stat Code ${box}`)!.lookup]).toEqual([box, undefined]);
+      }
+    } finally {
+      noWorld.current = false;
     }
   });
 

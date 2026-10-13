@@ -10,15 +10,15 @@ import { CodeArea } from "@/components/prompt/CodeArea";
 import { STAT_CODE_SURFACE } from "@/lib/statCodeSurface";
 import { CODE_BOX_TARGET, TIMING_LABEL, type StatCodeTiming } from "@/lib/statCodeTiming";
 import { targetAttribute } from "@/lib/surface/surfaceTargets";
+import type { CodeBoxOwner, CodeWorldLookup } from "@/lib/codeWorldLookup";
 import type { Stat, Trait } from "@/types";
 
-/** Whose code a box holds: an entity's own stat, or a Blueprint stat. A world stat has no owner. */
-export type StatCodeBoxOwner = { kind: 'entity'; entityId: string } | { kind: 'blueprint' };
+export type { CodeBoxOwner as StatCodeBoxOwner } from "@/lib/codeWorldLookup";
 
 /** Everything both boxes complete against and run under, derived once by the panel that holds them. */
 export interface StatCodeBoxContext {
   /** Whose code the boxes hold. Null for a world stat. */
-  owner: StatCodeBoxOwner | null;
+  owner: CodeBoxOwner | null;
   /** The world's play stats under their code names, without Blueprint stats: what `stats` keys in every box. */
   worldStats: Stat[];
   worldStatNames: string[];
@@ -43,6 +43,8 @@ export interface StatCodeBoxContext {
   entities: CodeEntityNames[];
   /** Each entity's own stats under their code names, by entity id: what a run's `entities.<Entity>.stats` reads. */
   entityStats: Readonly<Record<string, readonly Stat[]>>;
+  /** Each box's card lookup. Absent in the library, which has no world. */
+  lookup?: (timing: StatCodeTiming) => CodeWorldLookup;
 }
 
 /**
@@ -74,8 +76,9 @@ export function StatCodeBox({ timing, stat, value, onChange, context }: {
   const label = TIMING_LABEL[timing];
   const {
     selfName, placeholders, placeholderPlaces, traitNames, traitPlaces, traits, entities, entityStats,
-    owner, worldStats, worldStatNames, ownerStats, ownerStatNames,
+    owner, worldStats, worldStatNames, ownerStats, ownerStatNames, lookup,
   } = context;
+  const boxLookup = useMemo(() => lookup?.(timing), [lookup, timing]);
 
   // What the Variable menu's Owner group lists. An entity the editor has no names for, as in the library, still lists its stats.
   const treeOwner = useMemo<VariableTreeOwner | null>(() => {
@@ -154,6 +157,7 @@ export function StatCodeBox({ timing, stat, value, onChange, context }: {
         placeholders={placeholders}
         traits={traitPlaces}
         entities={entities}
+        lookup={boxLookup}
         // Its caption is the section heading, which full screen leaves behind — so the field names
         // itself in the toolbar and stays labeled in both states.
         label={label}

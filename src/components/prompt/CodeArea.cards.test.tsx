@@ -11,6 +11,8 @@ import { STAT_CODE_SURFACE } from '@/lib/statCodeSurface';
 import { toolScriptSurface } from '@/lib/tools/toolScriptSurface';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { StatCodeTemplateDialog } from '@/components/modals/StatCodeTemplateDialog';
+import { statBoxLookup, type CodeWorldLookup } from '@/lib/codeWorldLookup';
+import { statCodeOwners } from '@/lib/statCodeTargets';
 import type { Stat } from '@/types';
 
 // A pass-through, so a test can count the cards the completion list builds.
@@ -19,9 +21,11 @@ vi.mock('@/lib/codeCards', async (importOriginal) => {
   return { ...actual, completionCard: vi.fn(actual.completionCard) };
 });
 
-function Harness({ initial, surface = STAT_CODE_SURFACE, statNames }: { initial: string; surface?: CodeSurface; statNames?: readonly string[] }) {
+function Harness({ initial, surface = STAT_CODE_SURFACE, statNames, lookup }: {
+  initial: string; surface?: CodeSurface; statNames?: readonly string[]; lookup?: CodeWorldLookup;
+}) {
   const [value, setValue] = useState(initial);
-  return <CodeArea value={value} onChange={setValue} ariaLabel="Stat code" surface={surface} statNames={statNames} />;
+  return <CodeArea value={value} onChange={setValue} ariaLabel="Stat code" surface={surface} statNames={statNames} lookup={lookup} />;
 }
 
 /** The live editor under `label`, once its chunk has replaced the plain stand-in. */
@@ -76,6 +80,15 @@ describe('hover cards in the code editor', () => {
     const shown = await openCard();
     expect(shown.textContent).toContain('(property) args.size: number');
     expect(shown.textContent).toContain('Read-Only');
+  });
+
+  it('shows a stat’s World Details from the box’s lookup', async () => {
+    const fatigue = { id: 'f', name: 'Fatigue', type: 'number', description: 'How worn out you are.', min: 0, max: 100, regen: 1, descriptors: [] } as Stat;
+    const lookup = statBoxLookup(statCodeOwners({ stats: [fatigue], placeholders: [] }), { owner: null, timing: 'after', self: fatigue });
+    render(<Harness initial="return stats.Fatigue.value;" lookup={lookup} />);
+    hover(await editor('Stat code'), 'Fatigue');
+    const details = (await openCard()).querySelector('dl[aria-label="World Details"]');
+    expect(details?.textContent).toBe('TypeNumberRange0 – 100Regen+1 per story hourOwnerWorld');
   });
 
   it('closes on Escape without leaving full screen; a second Escape leaves', async () => {
@@ -438,6 +451,14 @@ describe('hover cards in the template dialog', () => {
     // The dialog's box would clip it, and its body lock would swallow every pointer event.
     expect(screen.getByRole('dialog').contains(shown)).toBe(false);
     expect(shown.closest<HTMLElement>('[style*="pointer-events"]')?.style.pointerEvents).toBe('auto');
+  });
+
+  it('shows no World Details, since a template has no world', async () => {
+    const user = userEvent.setup();
+    hover(await openTemplate(user), 'self');
+    const shown = await openCard();
+    expect(shown.textContent).toContain('(global) self: Stat');
+    expect(shown.querySelector('dl')).toBeNull();
   });
 
   it('closes the card on Escape and keeps the dialog open; a second Escape closes the dialog', async () => {
