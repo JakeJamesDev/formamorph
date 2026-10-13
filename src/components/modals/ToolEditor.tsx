@@ -252,8 +252,8 @@ function ScriptReference({ globals }: { globals: readonly SurfaceEntry[] }) {
 
 function HandlerTab({ draft, onChange, onKindChange, problems, placeholderNames, chipReads, names }: TabProps & {
   onKindChange: (kind: ToolHandler['kind']) => void; placeholderNames: readonly string[];
-  /** The Try It world's names, which the script's Variable menu lists. */
-  names: ToolVariableNames;
+  /** The open world's names, which the script's Variable menu lists. Null with only the sample world. */
+  names: ToolVariableNames | null;
   /** The scene chips' values on the world Try It runs on, which Chip Options shows. */
   chipReads: ValueLookup;
 }) {
@@ -406,10 +406,10 @@ export function ToolEditor({
     const next = withHandlerKind(draft, kind, keptHandlers);
     onDraftChange(next.draft, next.kept);
   };
-  // Autocomplete and the Variable menu list the names of the world Try It runs on.
-  const { snapshot } = world;
+  // Autocomplete and the Variable menu list the open world's names, never the sample world's.
+  const { snapshot, open } = world;
   const toolSnapshot = useMemo(() => snapshot(), [snapshot]);
-  const placeholderNames = useMemo(() => Object.keys(toolSnapshot.placeholders), [toolSnapshot]);
+  const placeholderNames = useMemo(() => (open ? Object.keys(toolSnapshot.placeholders) : []), [open, toolSnapshot]);
 
   return (
     <div className="flex flex-col flex-1 min-h-0 gap-3">
@@ -434,7 +434,7 @@ export function ToolEditor({
             <div className="pr-3 pb-1">
               <TabsContent value="definition" className="mt-0"><DefinitionTab {...body} /></TabsContent>
               <TabsContent value="parameters" className="mt-0"><ParametersTab {...body} /></TabsContent>
-              <TabsContent value="handler" className="mt-0"><HandlerTab {...body} onKindChange={switchKind} placeholderNames={placeholderNames} chipReads={toolSnapshot.chips} names={toolSnapshot} /></TabsContent>
+              <TabsContent value="handler" className="mt-0"><HandlerTab {...body} onKindChange={switchKind} placeholderNames={placeholderNames} chipReads={toolSnapshot.chips} names={open ? toolSnapshot : null} /></TabsContent>
             </div>
           </ScrollArea>
         </Tabs>
