@@ -106,6 +106,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The World Editor's Auto Save setting is now Autosave, the name the game's saves use.** The Save menu, Settings, the unsaved-changes prompt and the Guide all say **Autosave** and **Autosave Pause**.
   - **Code completion now lists members after owner traits and after chains with spaces or `?.`, and nothing in comments.** `owner.traits.Brave.` lists the trait's fields. `stats . Health .` and `scene?.location.` list their members.
   - **Escape in a code box inside a dialog now closes only the completion list.** The next Escape closes the dialog, as before.
+  - **A prompt routed to an endpoint now uses that endpoint's detected context window in game.** Before, it could fall back to 10,750 tokens while Settings showed the right size. A server you start after Formamorph is now found within two minutes.
 - **⚙️ Backend**
   - **Background Pass Queue:**
     - **Backfilled digests and character descriptions now run oldest turn first.** The oldest turn leaves the context window first. In serial mode, a new character can wait behind older unknown names.

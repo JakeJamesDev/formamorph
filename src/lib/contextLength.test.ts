@@ -1,6 +1,6 @@
 import { afterEach, describe, it, expect, vi } from 'vitest';
 import {
-  deriveModelsUrls, parseContextLength, parsePropsContextLength, fetchContextLength, detectedContextCodec,
+  deriveModelsUrls, parseContextLength, parsePropsContextLength, fetchContextLength,
 } from './contextLength';
 import { resetProbeMemo } from './probeMemo';
 
@@ -132,18 +132,5 @@ describe('fetchContextLength', () => {
     const asked = stubServer({ 'https://example.test/v1/models': { data: [{ id: 'm', max_model_len: 10750 }] } });
     expect(await fetchContextLength('https://example.test/v1/chat/completions', '', 'm')).toBe(10750);
     expect(asked).not.toContain('https://example.test/props');
-  });
-});
-
-describe('detectedContextCodec', () => {
-  it('round-trips an entry and reads an empty string as nothing detected', () => {
-    const entry = { sig: 'http://localhost:8080/v1/chat/completions|local', tokens: 16384 };
-    expect(detectedContextCodec.parse(detectedContextCodec.serialize(entry))).toEqual(entry);
-    expect(detectedContextCodec.parse(detectedContextCodec.serialize(null))).toBeNull();
-  });
-
-  it('rejects a bare number, which carries no endpoint', () => {
-    expect(() => detectedContextCodec.parse('32768')).toThrow();
-    expect(() => detectedContextCodec.parse('{"sig":"a|b","tokens":0}')).toThrow();
   });
 });
