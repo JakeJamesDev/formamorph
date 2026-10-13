@@ -328,7 +328,7 @@ describe('requirements across owners', () => {
     expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Same BearerWhoever has the trait', 'You', 'Ash']);
     fireEvent.click(screen.getByRole('option', { name: /^Ash/ }));
     expect(ctx().traits.find((t) => t.id === 't-tamer')?.requires)
-      .toEqual([{ all: [{ kind: 'trait', id: 't-tamed', bearer: { kind: 'entity', id: 'ash', name: 'Ash' } }] }]);
+      .toEqual([{ all: [{ kind: 'trait', id: 't-tamed', owner: { kind: 'entity', id: 'ash', name: 'Ash' } }] }]);
     expect(screen.getByRole('button', { name: 'Ash: Tamed' })).toBeInTheDocument();
   });
 

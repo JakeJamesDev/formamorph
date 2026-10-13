@@ -1068,7 +1068,7 @@ describe('runStatCodeTurn traits', () => {
 
   it('hands back the owned trait a code switch cascaded off', async () => {
     // Ash's Loyal needs the player's Brave, so switching Brave off in code turns Loyal off too.
-    const loyal: Trait = { id: 'loyal', name: 'Loyal', statChanges: [], requires: [{ all: [{ kind: 'trait', id: 'brave', bearer: { kind: 'you' } }] }] };
+    const loyal: Trait = { id: 'loyal', name: 'Loyal', statChanges: [], requires: [{ all: [{ kind: 'trait', id: 'brave', owner: { kind: 'you' } }] }] };
     const ash = { id: 'ash', name: 'Ash', traits: [loyal], groups: [] };
     const out = await run(['traits.Brave.enabled = false;'], held({
       ownedTraits: { ash: { chosen: ['loyal'] } },

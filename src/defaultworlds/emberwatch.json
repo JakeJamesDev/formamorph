@@ -1064,7 +1064,7 @@
           "kind": "trait",
           "id": "6289a54c-9886-5693-a0e2-0ef61f735109",
           "name": "Paladin",
-          "bearer": {
+          "owner": {
             "kind": "entity",
             "id": "6d14f861-781e-5b30-9996-e271ac3c39d2",
             "name": "Albus"

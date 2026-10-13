@@ -8,8 +8,8 @@ import {
 const T = (id: string, extra: Partial<Trait> = {}): Trait => ({ id, name: id, statChanges: [], ...extra });
 const G = (id: string, extra: Partial<TraitGroup> = {}): TraitGroup => ({ id, name: id, parentId: null, ...extra });
 const trait = (id: string): TraitRequirement => ({ kind: 'trait', id });
-const you = (id: string): TraitRequirement => ({ kind: 'trait', id, bearer: { kind: 'you' } });
-const on = (entity: string, id: string): TraitRequirement => ({ kind: 'trait', id, bearer: { kind: 'entity', id: entity } });
+const you = (id: string): TraitRequirement => ({ kind: 'trait', id, owner: { kind: 'you' } });
+const on = (entity: string, id: string): TraitRequirement => ({ kind: 'trait', id, owner: { kind: 'entity', id: entity } });
 
 const world = (
   traits: Trait[],
@@ -272,7 +272,7 @@ describe('requirements per bearer', () => {
   });
 
   it('names the target from the originals when no present bearer holds it, and a gone bearer by its stored name', () => {
-    const squire = T('Squire', { requires: [{ all: [you('Cleric')] }, { all: [{ kind: 'trait', id: 'Paladin', bearer: { kind: 'entity', id: 'gone', name: 'Old Albus' } }] }] });
+    const squire = T('Squire', { requires: [{ all: [you('Cleric')] }, { all: [{ kind: 'trait', id: 'Paladin', owner: { kind: 'entity', id: 'gone', name: 'Old Albus' } }] }] });
     const owners = [input({}).owners[0], { ...mira, traits: [squire] }];
     const state = gateOf(gateStates({ ...input({}), owners, originals: { traits: [T('Cleric')], groups: [] } }), 'mira', 'Squire')!;
     expect(state.rows).toEqual([
@@ -288,7 +288,7 @@ describe('requirements per bearer', () => {
     const owners: GateOwner[] = [
       { id: WORLD_OWNER, name: '', traits: [], groups: [] },
       { id: 'albus', name: 'Albus', groups: [classes], traits: [knight] },
-      { id: 'mira', name: 'Mira', groups: [], traits: [T('Squire', { requires: [{ all: [{ kind: 'group', id: 'Classes', bearer: { kind: 'entity', id: 'albus' } }] }] })] },
+      { id: 'mira', name: 'Mira', groups: [], traits: [T('Squire', { requires: [{ all: [{ kind: 'group', id: 'Classes', owner: { kind: 'entity', id: 'albus' } }] }] })] },
     ];
     const at = (active: GateInput['active']) => ({ ...input(active), owners });
     expect(unlocked(at({ albus: ['Knight'] }), 'Squire', 'mira')).toBe(true);
@@ -847,7 +847,7 @@ describe('requirement options', () => {
     const options = requirementOptions(input, 'Loose');
     expect(options.traits[0].requirement).toEqual({ kind: 'trait', id: 'Paladin' });
     expect(options.groups[0].requirement).toEqual({ kind: 'group', id: 'Class' });
-    expect(withBearer(options.traits[0].requirement, { kind: 'you' })).toEqual({ kind: 'trait', id: 'Paladin', bearer: { kind: 'you' } });
+    expect(withBearer(options.traits[0].requirement, { kind: 'you' })).toEqual({ kind: 'trait', id: 'Paladin', owner: { kind: 'you' } });
     expect(withBearer(options.traits[0].requirement)).toEqual({ kind: 'trait', id: 'Paladin' });
     expect(withBearer(options.personas[0].requirement, { kind: 'you' })).toEqual({ kind: 'playingAs', id: 'aldric' });
   });

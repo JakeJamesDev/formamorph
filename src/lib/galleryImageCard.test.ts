@@ -17,8 +17,8 @@ const C = 'data:image/webp;base64,CCCC';
 
 const hurt: TraitRequirement = { kind: 'stat', id: 'hp', operator: '<', value: 20, unit: 'percent' };
 const knight: TraitRequirement = { kind: 'trait', id: 't-knight' };
-const paladin: TraitRequirement = { kind: 'trait', id: 'w-paladin', bearer: { kind: 'you' } };
-const rage: TraitRequirement = { kind: 'stat', id: 'w-rage', bearer: { kind: 'you' }, operator: '>=', value: 80, unit: 'raw', not: true };
+const paladin: TraitRequirement = { kind: 'trait', id: 'w-paladin', owner: { kind: 'you' } };
+const rage: TraitRequirement = { kind: 'stat', id: 'w-rage', owner: { kind: 'you' }, operator: '>=', value: 80, unit: 'raw', not: true };
 
 const wren = (images: GalleryImage[]): Entity => ({
   id: 'wren', name: 'Wren',

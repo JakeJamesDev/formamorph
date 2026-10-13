@@ -24,7 +24,7 @@ const read = (host: string, world = input) => requirementStatSections(world, hos
   heading: s.heading,
   own: !!s.own,
   rows: s.options.map((o) => o.label),
-  bearers: [...new Set(s.options.map((o) => JSON.stringify(o.requirement.kind === 'stat' ? o.requirement.bearer ?? null : null)))],
+  bearers: [...new Set(s.options.map((o) => JSON.stringify(o.requirement.kind === 'stat' ? o.requirement.owner ?? null : null)))],
 }));
 
 describe('requirementStatSections', () => {

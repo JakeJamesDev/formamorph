@@ -72,7 +72,7 @@ const isSelfBearer = (b: EntityBearer, entityId: string) => b.id === SELF_ENTITY
 
 /** The requirement with its named bearer rewritten; the same requirement when it names none. */
 const withBearer = (r: TraitRequirement, map: (b: EntityBearer) => RequirementBearer): TraitRequirement =>
-  (r.kind !== 'playingAs' && r.bearer?.kind === 'entity' ? { ...r, bearer: map(r.bearer) } : r);
+  (r.kind !== 'playingAs' && r.owner?.kind === 'entity' ? { ...r, owner: map(r.owner) } : r);
 
 const withRequires = (entity: Entity, map: (r: TraitRequirement) => TraitRequirement): Trait[] | undefined =>
   entity.traits?.map((t) => (t.requires ? { ...t, requires: mapConditions(t.requires, map) } : t));
@@ -224,9 +224,9 @@ export function bindOwnedTraits(entity: Entity, world: TraitWorld): Entity {
   const statWorld = world.stats && { stats: world.stats, statGroups: world.statGroups ?? [] };
   // A stat binds among its bearer's stats, since names like Health repeat across entities (Q25).
   const statsOf = (r: StatRequirement, at: NonNullable<typeof statWorld>): readonly Named[] => {
-    if (!r.bearer) return at.stats;
-    if (r.bearer.kind === 'you') return playerStatsOf([...at.stats], at.statGroups);
-    const id = r.bearer.id;
+    if (!r.owner) return at.stats;
+    if (r.owner.kind === 'you') return playerStatsOf([...at.stats], at.statGroups);
+    const id = r.owner.id;
     const held = id === entity.id ? entity : others.find((e) => e.id === id);
     return held ? resolvedEntityStats(at, held) : [];
   };
@@ -270,7 +270,7 @@ export const comparableOwnedTraits = (entity: Entity): { traits?: Trait[]; trait
     const not = notFlag(req.not);
     if (isSelf(req, entity.id)) return { kind: req.kind, id: SELF_ENTITY, ...not };
     const r = withBearer(req, (b) => comparableBearer(b, entity.id));
-    const bearer = r.kind !== 'playingAs' && r.bearer ? { bearer: r.bearer } : {};
+    const bearer = r.kind !== 'playingAs' && r.owner ? { owner: r.owner } : {};
     const comparison = r.kind === 'stat' ? { operator: r.operator, value: r.value, unit: r.unit } : {};
     if (pointsInside(r, entity, inside) || !r.name) return { kind: r.kind, id: r.id, ...bearer, ...comparison, ...not } as TraitRequirement;
     return { kind: r.kind, id: '', name: r.name, ...bearer, ...comparison, ...not } as TraitRequirement;

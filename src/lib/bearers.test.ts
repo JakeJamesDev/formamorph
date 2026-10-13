@@ -283,7 +283,7 @@ describe('resolveBearers: the player bearer', () => {
 });
 
 describe('resolveBearers: a requirement never names yourself', () => {
-  const albusPaladin = { kind: 'trait' as const, id: 'paladin', bearer: { kind: 'entity' as const, id: 'albus' } };
+  const albusPaladin = { kind: 'trait' as const, id: 'paladin', owner: { kind: 'entity' as const, id: 'albus' } };
   const brave = { kind: 'trait' as const, id: 'brave' };
   const squire = trait('squire', { name: 'Squire to Albus', groupId: null, order: 1, requires: [{ all: [albusPaladin] }] });
   const sworn = trait('sworn', { name: 'Sworn', groupId: null, order: 2, requires: [{ all: [albusPaladin] }, { all: [brave] }] });
@@ -315,7 +315,7 @@ describe('resolveBearers: a requirement never names yourself', () => {
   });
 
   it('applies to the Custom Persona entity’s links under a library persona, and gates the player’s owner the same way', () => {
-    const vow = trait('vow-t', { name: 'Vow', groupId: 'blueprints', order: 2, requires: [{ all: [{ kind: 'trait', id: 'paladin', bearer: { kind: 'entity', id: 'lib' } }] }] });
+    const vow = trait('vow-t', { name: 'Vow', groupId: 'blueprints', order: 2, requires: [{ all: [{ kind: 'trait', id: 'paladin', owner: { kind: 'entity', id: 'lib' } }] }] });
     const lib: Entity = { id: 'lib', name: 'Lib', persona: true };
     const linkedVow = world({
       traits: [...world().traits, vow],
@@ -435,7 +435,7 @@ describe('resolveBearers: the gate input', () => {
 
   it('names a requirement’s target from the originals when no present bearer holds it', () => {
     // Smite sits under Blueprints and no bearer links it under Albus, yet the gate still reads its name.
-    const gated = { ...mira, traits: [trait('vow', { name: 'Vow', requires: [{ all: [{ kind: 'trait', id: 'smite', bearer: { kind: 'you' } }] }] })] };
+    const gated = { ...mira, traits: [trait('vow', { name: 'Vow', requires: [{ all: [{ kind: 'trait', id: 'smite', owner: { kind: 'you' } }] }] })] };
     const r = resolveBearers(world({ entities: [albus, gated] }), AS_ALBUS);
     expect(gateOf(gateStates({ ...r.gate, active: {} }), 'mira', 'vow')?.rows).toEqual([
       { holds: false, conditions: [{ text: 'You: Smite', holds: false, unresolved: false, hidden: false }] },

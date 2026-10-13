@@ -147,7 +147,7 @@ describe('library entities in the cast', () => {
   it("leaves a library default off when the player's trait it requires is not picked", () => {
     const knight: Entity = {
       id: 'knight', name: 'Knight',
-      traits: [trait('crest', { isDefault: true, requires: [{ all: [{ kind: 'trait', id: 'paladin', bearer: { kind: 'you' } }] }] })],
+      traits: [trait('crest', { isDefault: true, requires: [{ all: [{ kind: 'trait', id: 'paladin', owner: { kind: 'you' } }] }] })],
     };
     const w: EntryTraitWorld = { traits: [trait('paladin', { isDefault: true })], traitGroups: [], entities: [], library: [knight] };
     expect(withLibraryDefaults({ ...emptyEntryDraft(), traitIds: ['paladin'] }, w).ownedTraitIds.knight).toEqual(['crest']);

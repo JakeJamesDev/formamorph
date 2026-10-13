@@ -76,7 +76,7 @@ describe('stat Conditions', () => {
       expect(unlocked(req, {})).toBe(false);
       expect(unlocked(req, undefined)).toBe(false);
       expect(unlocked(req, rage(10, { inert: true }))).toBe(false);
-      expect(unlocked({ ...req, bearer: { kind: 'entity', id: 'gone', name: 'Ash' } }, { gone: { rage: S('Rage', 10) } })).toBe(false);
+      expect(unlocked({ ...req, owner: { kind: 'entity', id: 'gone', name: 'Ash' } }, { gone: { rage: S('Rage', 10) } })).toBe(false);
     }
   });
 
@@ -95,14 +95,14 @@ describe('stat Conditions', () => {
     const owners = (traits: Trait[]) => [{ id: WORLD_OWNER, name: '', traits, groups: [] }, ash, hero];
 
     it('reads a named entity bearer’s stat', () => {
-      const req = stat('hunger', '>', 70, { bearer: { kind: 'entity', id: 'ash' } });
+      const req = stat('hunger', '>', 70, { owner: { kind: 'entity', id: 'ash' } });
       const i = input([gated(req)], stats, [], { owners: owners([gated(req)]), entities });
       expect(gate(i)?.unlocked).toBe(true);
       expect(gate(i)?.rows[0].conditions[0].text).toBe('Ash: Hunger > 70');
     });
 
     it('reads the played persona’s own stats through You', () => {
-      const req = stat('grit', '>=', 30, { bearer: { kind: 'you' } });
+      const req = stat('grit', '>=', 30, { owner: { kind: 'you' } });
       const withPersona = (persona: PersonaRef) => input([gated(req)], stats, [], { owners: owners([gated(req)]), entities, persona });
       expect(gate(withPersona({ source: 'world', entityId: 'hero' }))?.unlocked).toBe(true);
       expect(gate(withPersona({ source: 'none' }))?.unlocked).toBe(false);

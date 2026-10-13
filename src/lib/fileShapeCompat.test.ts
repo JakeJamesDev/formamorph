@@ -235,3 +235,12 @@ describe('a component file carries its associations and no world', () => {
     expect(readComponentFileLinks(buildEntityCardData(entity, []))).toEqual({});
   });
 });
+
+describe('a world file names each Condition owner', () => {
+  it('writes `owner` and no `bearer` for a world loaded from before the rename', async () => {
+    const smite = { id: 'smite', name: 'Smite', statChanges: [], requires: [{ all: [{ kind: 'trait', id: 'brave', bearer: { kind: 'you' } }] }] };
+    const text = await worldFileText(migrateWorld(world({ traits: [smite] })));
+    expect(text).not.toContain('"bearer"');
+    expect(migrateWorld(JSON.parse(text)).traits[0].requires).toEqual([{ all: [{ kind: 'trait', id: 'brave', owner: { kind: 'you' } }] }]);
+  });
+});

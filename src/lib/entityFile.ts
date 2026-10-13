@@ -6,7 +6,7 @@ import type {
 } from '@/types';
 import { readLibraryDetails } from './contentAuthor';
 import { remintOpenings } from './openings';
-import { APP_VERSION, WORLD_FILE_KIND, SAVE_FILE_KIND, migrateCarriedPlaceholders, migrateEntityStatFields } from './version';
+import { APP_VERSION, WORLD_FILE_KIND, SAVE_FILE_KIND, conditionWithOwnerKey, migrateCarriedPlaceholders, migrateEntityStatFields } from './version';
 import { DICTIONARY_FILE_KIND } from './dictionaryFile';
 import type { WorldAssociation } from './compatibleWorlds';
 import { readComponentFileLinks, type ComponentFileLinks, type ComponentFileSource } from './componentFileLinks';
@@ -186,27 +186,28 @@ const hasIdAndName = (v: unknown): v is Record<string, unknown> & { id: string; 
 
 const nameOf = (raw: Record<string, unknown>) => (typeof raw.name === 'string' && raw.name ? { name: raw.name } : {});
 
-function cardBearer(raw: unknown): { bearer?: RequirementBearer } {
+function cardOwner(raw: unknown): { owner?: RequirementBearer } {
   if (!isRecord(raw)) return {};
-  if (raw.kind === 'you') return { bearer: { kind: 'you' } };
-  return raw.kind === 'entity' && typeof raw.id === 'string' ? { bearer: { kind: 'entity', id: raw.id, ...nameOf(raw) } } : {};
+  if (raw.kind === 'you') return { owner: { kind: 'you' } };
+  return raw.kind === 'entity' && typeof raw.id === 'string' ? { owner: { kind: 'entity', id: raw.id, ...nameOf(raw) } } : {};
 }
 
 // A record, so a new operator fails the compile here until the card reads it.
 const STAT_COMPARISONS: Record<StatComparison, true> = { '>': true, '<': true, '>=': true, '<=': true, '=': true, '≠': true };
 const isStatComparison = (v: unknown): v is StatComparison => typeof v === 'string' && Object.hasOwn(STAT_COMPARISONS, v);
 
-function cardRequirement(raw: unknown): TraitRequirement[] {
+function cardRequirement(condition: unknown): TraitRequirement[] {
+  const raw = conditionWithOwnerKey(condition);
   if (!isRecord(raw) || typeof raw.id !== 'string') return [];
   const not = notFlag(raw.not);
   if (raw.kind === 'playingAs') return [{ kind: raw.kind, id: raw.id, ...nameOf(raw), ...not }];
   if (raw.kind === 'stat') {
     const { operator, value, unit } = raw;
     if (!isStatComparison(operator) || typeof value !== 'number' || !Number.isFinite(value) || (unit !== 'raw' && unit !== 'percent')) return [];
-    return [{ kind: 'stat', id: raw.id, ...nameOf(raw), ...cardBearer(raw.bearer), operator, value, unit, ...not }];
+    return [{ kind: 'stat', id: raw.id, ...nameOf(raw), ...cardOwner(raw.owner), operator, value, unit, ...not }];
   }
   if (raw.kind !== 'trait' && raw.kind !== 'group') return [];
-  return [{ kind: raw.kind, id: raw.id, ...nameOf(raw), ...cardBearer(raw.bearer), ...not }];
+  return [{ kind: raw.kind, id: raw.id, ...nameOf(raw), ...cardOwner(raw.owner), ...not }];
 }
 
 /** One carried gallery slot: a data-URL string, or an image whose rule reads as the card's rows do. */
