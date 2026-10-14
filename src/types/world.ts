@@ -148,7 +148,7 @@ export interface StatChange {
   type?: 'min' | 'max' | 'starting' | 'regen';
   /** Stat-update cadence, e.g. 'hour'. */
   interval?: string;
-  /** On a trait the player can have, the world player stat, even where the owner owns a stat with this id. */
+  /** On a trait the player can have, the world player stat, even where the trait's owner has its own stat with this id. */
   target?: StatRowTarget;
 }
 
