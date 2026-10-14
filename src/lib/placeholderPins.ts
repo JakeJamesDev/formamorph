@@ -4,8 +4,8 @@
 // overlay computed fresh from the current state.
 //
 // Precedence: Code Pin > descriptor > location > trait > value pin. Traits lay per owner (see
-// `ownerPins`): world-level text reads the player's traits, an entity's own text reads that entity's. Within
-// traits, and within one location or one band, the later row wins.
+// `ownerPins`): world-level text reads the global and persona traits, an entity's own text reads that
+// entity's. Within traits, and within one location or one band, the later row wins.
 
 import type {
   CodePins, Entity, GameLocation, Placeholder, PlaceholderGroup, PlaceholderPin, PlaceholderRolls, PlaceholderValue, Stat, StatDescriptor,
@@ -18,7 +18,6 @@ import { activeDescriptor } from './statContext';
 import { thresholdUnitOf, type BandedStat } from './statDescriptorGeometry';
 import { activeStatEnabled, exclusiveSiblings, inAuthoredOrder, traitOrderIndex } from './traitEffects';
 import { canBePlayer, resolveOwners, type Owner } from './owners';
-import { PLAYER_OWNER } from './traitGates';
 import { effectiveCopy, isCopy, lookupCopy, type BlueprintWorld, type CopyReader } from './blueprints';
 import { blueprintIds, rootPlaceholder } from './placeholderBlueprints';
 import { setLinkField } from './traitLinks';
@@ -474,14 +473,14 @@ function linkEntries(name: ReturnType<typeof labeler>, trait: Trait, link: Trait
   return [{ ...entry, source: { ...entry.source, link: { ownerId: entity.id, linkId: link.id } } }];
 }
 
-/** The text a trait source's pins lay in: the player's for a world trait, else the entity's own. */
-function pinContext(world: PinEditorWorld, source: SourceOf<'trait'>): string {
+/** The text a trait source's pins lay in: the owning entity's, or null for the global slot when no entity owns it. */
+function pinContext(world: PinEditorWorld, source: SourceOf<'trait'>): string | null {
   if (source.link) return source.link.ownerId;
-  return worldFacts(world).owners.get(source.id) ?? PLAYER_OWNER;
+  return worldFacts(world).owners.get(source.id) ?? null;
 }
 
-/** Whether the entity's traits can be the player's. */
-const playable = (world: PinEditorWorld, entityId: string): boolean => worldFacts(world).playable.has(entityId);
+/** Whether the entity's traits can be the player's; false for the global slot (null). */
+const playable = (world: PinEditorWorld, entityId: string | null): boolean => entityId !== null && worldFacts(world).playable.has(entityId);
 
 /** The world with the link's pins list for `traitId` rewritten through `change`. */
 function writeLinkPin<W extends PinEditorWorld>(world: W, traitId: string, ref: LinkPinRef, change: PinListChange): W {
@@ -600,7 +599,7 @@ const PIN_SOURCE_KINDS: { [K in PinSourceKind]: PinSourceSpec<K> } = {
     label: 'Trait',
     empty: 'No traits to pin from.',
     // The world's traits list first and each entity's after them, owned traits and link rows in its own tree
-    // order: in an entity's text its pins lay over the player's, so they win by order.
+    // order: in an entity's text its pins lay over the played text's, so they win by order.
     sources(world) {
       const name = labeler(world);
       const { traits = [], traitGroups = [] } = world;
@@ -611,25 +610,23 @@ const PIN_SOURCE_KINDS: { [K in PinSourceKind]: PinSourceSpec<K> } = {
           const link = owner.linkOf.get(trait.id);
           return link ? linkEntries(name, trait, link, entity) : [traitEntry(name, trait, entity)];
         }));
-      // A Persona's or the Custom Persona entity's traits can be the player's, so they list before the
-      // cast's, which win in their own text.
-      const rank = (row: PinSourceEntry<'trait'>) => {
-        const ctx = pinContext(world, row.source);
-        return ctx === PLAYER_OWNER ? 0 : playable(world, ctx) ? 1 : 2;
-      };
-      return [...worldRows, ...[0, 1, 2].flatMap((r) => ownerRows.filter((row) => rank(row) === r))];
+      // Global traits list first, then a Persona's or the Custom Persona entity's, then the cast's, which win
+      // in their own text.
+      const personaRow = (row: PinSourceEntry<'trait'>) => playable(world, pinContext(world, row.source));
+      return [...worldRows, ...ownerRows.filter(personaRow), ...ownerRows.filter((row) => !personaRow(row))];
     },
     key: (s) => `trait:${s.id}${s.link ? `:link:${s.link.ownerId}:${s.link.linkId}` : ''}`,
     same: (a, b) => a.id === b.id && a.link?.ownerId === b.link?.ownerId && a.link?.linkId === b.link?.linkId,
-    // Two traits meet in one text on one owner, or the player's against a cast entity's in that entity's text.
-    // A Persona's traits are the player's while it is played. Two Personas never both play, so neither is a rival.
+    // Two traits meet in one text on one owner, or the played text's (global and Persona) against a cast entity's
+    // in that entity's text. A Persona's traits are in the played text while it is played. Two Personas never
+    // both play, so neither is a rival.
     neverTogether: (world, a, b) => {
       if (exclusiveOf(world, a.id).has(b.id)) return true;
       const [ca, cb] = [pinContext(world, a), pinContext(world, b)];
       if (ca === cb) return false;
       if (playable(world, ca) && playable(world, cb)) return true;
-      const player = (ctx: string) => ctx === PLAYER_OWNER || playable(world, ctx);
-      return !player(ca) && !player(cb);
+      const played = (ctx: string | null) => ctx === null || playable(world, ctx);
+      return !played(ca) && !played(cb);
     },
     ownerId: (s) => s.id,
     write: (world, source, change) => {

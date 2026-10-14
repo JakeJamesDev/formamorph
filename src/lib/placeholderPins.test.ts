@@ -584,6 +584,19 @@ describe('owned traits as pin sources — the world’s traits, then each cast e
     expect(fromMira.winner?.label).toBe("Trait: Bo's Feral");
   });
 
+  it('lists a global trait before a Persona’s and pits them in the played text, the Persona’s winning by order', () => {
+    const mira = { id: 'mira', name: 'Mira', persona: true, traits: [trait('oath', [pin('town', 'Oath')], { name: 'Oath' })] };
+    const withCast = { ...world, entities: [mira, ash] } as unknown as EditorWorld;
+    expect(pinsTargeting(withCast, 'town').map((r) => r.label)).toEqual(['Trait: Sworn', "Trait: Mira's Oath", "Trait: Ash's Tamed", "Trait: Ash's Wild"]);
+    const played = { ...world, entities: [mira] } as unknown as EditorWorld;
+    const fromSworn = pinConflict(played, 'town', { kind: 'trait', id: 'sworn' })!;
+    expect(fromSworn.rivals.map((r) => r.label)).toEqual(["Trait: Mira's Oath"]);
+    expect(fromSworn.winner?.label).toBe("Trait: Mira's Oath");
+    const fromOath = pinConflict(played, 'town', { kind: 'trait', id: 'oath' })!;
+    expect(fromOath.rivals.map((r) => r.label)).toEqual(['Trait: Sworn']);
+    expect(fromOath.winner).toBeNull();
+  });
+
   it('never pits two Personas’ traits against each other: only one is played, and each wins in its own text', () => {
     const mira = { id: 'mira', name: 'Mira', persona: true, traits: [trait('oath', [pin('town', 'Oath')], { name: 'Oath' })] };
     const nell = { id: 'nell', name: 'Nell', persona: true, traits: [trait('vow', [pin('town', 'Vow')], { name: 'Vow' })] };

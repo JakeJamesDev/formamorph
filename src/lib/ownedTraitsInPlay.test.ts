@@ -8,6 +8,7 @@ import {
   type OwnerPinState,
 } from './ownedTraitsInPlay';
 import { INITIAL_SOURCE_TURN_ID } from './runtimeCharacters';
+import { PLAYER_OWNER } from './traitGates';
 
 const pin = (placeholderId: string, value: string, valueId?: string): PlaceholderPin =>
   ({ placeholderId, value, ...(valueId ? { valueId } : {}) });
@@ -102,6 +103,14 @@ describe('ownerPins — each owner lays its own pins', () => {
     expect(pins.of(null)).toBe(pins.world);
   });
 
+  it('reads the global slot for no owner and for its stand-in id, with one copy lookup between them', () => {
+    const pins = pinsUnder(NONE, [brave]);
+    expect(pins.of(undefined)).toBe(pins.world);
+    expect(pins.of(PLAYER_OWNER)).toBe(pins.world);
+    expect(pins.copies(undefined)).toBe(pins.copies(null));
+    expect(pins.copies(PLAYER_OWNER)).toBe(pins.copies(null));
+  });
+
   it("lays the player's pins in world-level text and in a cast entity's, under the entity's own", () => {
     const pins = pinsUnder(NONE, [brave], { owned: picked });
     expect(pins.world).toEqual({ mood: 'wary', garb: 'Robe' });
@@ -114,6 +123,17 @@ describe('ownerPins — each owner lays its own pins', () => {
     expect(pinsUnder(NONE, [cloak]).world).toEqual({ garb: 'Robe' });
     // Played as Albus, the same root trait lands on his own copy of Class Garb.
     expect(pinsUnder(AS_ALBUS, [cloak], { owned: { albus: ['t-stern'] } }).world).toEqual({ 'albus-garb': 'Robe', mood: 'fierce' });
+  });
+
+  it("lays every global trait before the persona's, so the persona wins even where its node sits among root traits (Q31)", () => {
+    const calm = trait('calm', [pin('mood', 'calm')], { groupId: null, order: 3 });
+    const placed = { ...albus, traitPlacement: { groupId: null, order: 2 } };
+    // No Custom Persona entity: the picked persona then keeps its own place in the tree.
+    const among = { ...world, traits: [...world.traits, calm], entities: [placed, mira, bo] };
+    const pins = pinsUnder(AS_ALBUS, [brave, calm], { world: among, owned: { albus: ['t-stern'] } });
+    expect(pins.world.mood).toBe('fierce');
+    // With no persona node among them, the global traits still lay in tree order, the later winning.
+    expect(pinsUnder(NONE, [brave, calm], { world: among, owned: {} }).world.mood).toBe('calm');
   });
 
   it("reads the played persona's own text with the player's set", () => {
