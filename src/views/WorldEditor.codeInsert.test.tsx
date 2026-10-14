@@ -6,6 +6,7 @@ import { onStatCodeInsert, statCodeInsertTarget } from '@/lib/formaquestion/stat
 import { LANDING_PULSE_CLASS } from '@/lib/landingPulse';
 import { ringOn } from '@/test/landing';
 import type { World } from '@/types';
+import { boxScripts, codeAt } from '@/test/scriptFixtures';
 
 /** The stat panel's side of the help window's Insert: the registration, the draft write, the confirm, and the landing. */
 
@@ -33,7 +34,7 @@ vi.mock('@/components/prompt/CodeArea', () => ({
 
 const WORLD: World = benchEditorWorld({
   stats: [
-    { id: 's1', name: 'Warmth', type: 'number', description: '', min: 0, max: 10, value: 4, regen: 0, code: 'return 4;', descriptors: [] },
+    { id: 's1', name: 'Warmth', type: 'number', description: '', min: 0, max: 10, value: 4, regen: 0, scripts: boxScripts({ after: 'return 4;' }), descriptors: [] },
   ],
 } as Partial<World>);
 
@@ -74,7 +75,7 @@ describe('inserting help code into the open stat', () => {
     selectStat('Warmth');
     insert('before', 'self.value = 2;');
 
-    expect(warmth(ctx).beforeCode).toBe('self.value = 2;');
+    expect(codeAt(warmth(ctx), 'before')).toBe('self.value = 2;');
     expect(panelTab('Code')).toHaveAttribute('aria-selected', 'true');
     await waitFor(() => expect(scrolled).toContain(boxOf(BEFORE_BOX)));
     expect(ringOn(boxOf(BEFORE_BOX), LANDING_PULSE_CLASS)).toBe(true);
@@ -89,10 +90,10 @@ describe('inserting help code into the open stat', () => {
 
     const confirm = await screen.findByRole('alertdialog', { name: 'Replace The Existing Code' });
     expect(confirm).toHaveTextContent('This box already has code. Inserting this code overwrites it.');
-    expect(warmth(ctx).code).toBe('return 4;');
+    expect(codeAt(warmth(ctx))).toBe('return 4;');
     await userEvent.click(within(confirm).getByRole('button', { name: 'Confirm' }));
 
-    expect(warmth(ctx).code).toBe('return 9;');
+    expect(codeAt(warmth(ctx))).toBe('return 9;');
     await waitFor(() => expect(scrolled).toContain(boxOf(AFTER_BOX)));
   });
 
@@ -105,7 +106,7 @@ describe('inserting help code into the open stat', () => {
     await userEvent.click(within(confirm).getByRole('button', { name: 'Cancel' }));
 
     await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
-    expect(warmth(ctx).code).toBe('return 4;');
+    expect(codeAt(warmth(ctx))).toBe('return 4;');
     expect(scrolled).toEqual([]);
   });
 
@@ -140,7 +141,7 @@ describe('inserting help code into the open stat', () => {
 
     act(() => ctx().discardChanges());
 
-    await waitFor(() => expect(warmth(ctx).beforeCode ?? '').toBe(''));
+    await waitFor(() => expect(codeAt(warmth(ctx), 'before') ?? '').toBe(''));
   });
 
   it('unregisters when the stat panel closes', () => {

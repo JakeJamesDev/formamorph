@@ -4,6 +4,7 @@ import { benchEditorWorld, entityFieldsTab, renderWorldEditorBench } from '@/tes
 import type { CodeCardNavigation } from '@/lib/codeCardNavigation';
 import type { CodeUse } from '@/lib/codeUses';
 import type { World } from '@/types';
+import { boxScripts } from '@/test/scriptFixtures';
 
 /** A Find All Uses row, from a stat's code box to another box at the line. */
 
@@ -35,13 +36,13 @@ vi.mock('@/components/prompt/CodeArea', () => ({
   },
 }));
 
-const stat = (id: string, name: string, code = '') => ({ id, name, type: 'number', description: '', min: 0, max: 10, value: 4, regen: 0, descriptors: [], code });
+const stat = (id: string, name: string, code = '') => ({ id, name, type: 'number', description: '', min: 0, max: 10, value: 4, regen: 0, descriptors: [], scripts: boxScripts({ after: code }) });
 
-// Howl is a Blueprint Mara links; her Link overrides its After box.
+// Howl is a Blueprint Mara links; her Link overrides its scripts.
 const howl = { ...stat('howl', 'Howl', 'return owner.stats.Howl.value;'), groupId: 'bp' };
 const howlLink = {
   id: 'l-howl', originalId: 'howl', kind: 'stat', originalName: 'Howl', groupId: null, order: 2,
-  overrides: { howl: { code: { value: 'return self.max;', blueprint: howl.code } } },
+  overrides: { howl: { scripts: { value: boxScripts({ after: 'return self.max;' }), blueprint: howl.scripts } } },
 };
 
 const WORLD: World = benchEditorWorld({

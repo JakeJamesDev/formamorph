@@ -13,7 +13,7 @@ import { migrateEntityImages } from './entityImages';
 import { normalizeLinkedItem } from './contentLink';
 import { migrateStatLookups } from './statLookupMigration';
 import { migrateStatCodeRoutes } from './statCodeRoutes';
-import { CODE_FIELD } from './statCodeTiming';
+import { migrateStatBoxes, migrateStatLinkBoxes, type OriginalOf } from './scripts';
 import { allPlaceholders, placeholderOwners, type PlaceholderHomesWorld } from './placeholderHomes';
 import { blueprintItemIds, offeredWorldTraits } from './traitTree';
 import { mergeDuplicateStatLinks, mergeStatBlueprintsGroups, statBlueprintIds } from './statLinks';
@@ -699,7 +699,7 @@ function coerceLegacyListStats(stats: readonly Stat[]): Stat[] {
   });
 }
 
-/** Rewrite the retired routes in both of every stat's boxes: the `stats.find` lookups to the map form, then
+/** Rewrite the retired routes in every global stat's scripts: the `stats.find` lookups to the map form, then
  *  the rest against the world's placeholder tree (`migrateStatCodeRoutes`). The lookups go first, since they
  *  match `currentStatId`. Idempotent; a stat whose code needs nothing keeps its reference. */
 function migrateStatCode(world: Record<string, unknown>): void {
@@ -707,22 +707,50 @@ function migrateStatCode(world: Record<string, unknown>): void {
   const slices = world as PlaceholderHomesWorld;
   const source = { list: allPlaceholders(slices), owners: placeholderOwners(slices) };
   world.stats = (world.stats as Stat[]).map((stat) => {
-    let next = stat;
-    for (const field of Object.values(CODE_FIELD)) {
-      const code = stat?.[field];
-      if (typeof code !== 'string') continue;
-      const migrated = migrateStatCodeRoutes(migrateStatLookups(code), source);
-      if (migrated !== code) next = { ...next, [field]: migrated };
-    }
-    return next;
+    if (!Array.isArray(stat?.scripts)) return stat;
+    let changed = false;
+    const scripts = stat.scripts.map((script) => {
+      if (typeof script?.code !== 'string') return script;
+      const code = migrateStatCodeRoutes(migrateStatLookups(script.code), source);
+      if (code === script.code) return script;
+      changed = true;
+      return { ...script, code };
+    });
+    return changed ? { ...stat, scripts } : stat;
   });
+}
+
+/** One entity with its own stats' two code boxes rewritten as scripts, and its stat links' box overrides folded
+ *  into one `scripts` override where `originalOf` reaches the original. An entity card and a library entity never
+ *  pass through `migrateWorld`, so their boundaries call this too, with no original in reach. */
+export function migrateEntityStatScripts<T>(entity: T, originalOf: OriginalOf = () => undefined): T {
+  if (!entity || typeof entity !== 'object') return entity;
+  const raw = entity as Record<string, unknown>;
+  const lists = {
+    stats: Array.isArray(raw.stats) ? raw.stats.map(migrateStatBoxes) : undefined,
+    statLinks: Array.isArray(raw.statLinks) ? raw.statLinks.map((link) => migrateStatLinkBoxes(link, originalOf)) : undefined,
+  };
+  const changed = Object.entries(lists).filter(([key, next]) => next?.some((item, i) => item !== (raw[key] as unknown[])[i]));
+  return changed.length ? { ...raw, ...Object.fromEntries(changed) } as T : entity;
+}
+
+/** Rewrite every stat's two code boxes as scripts (Q19): the global and Blueprint stats', their retired routes
+ *  (`migrateStatCode`), then each entity's own stats' and links'. The routes go first, so a link folds the
+ *  rewritten code of the side it left live. Not version-gated, since shipped worlds carry the boxes under the
+ *  current version. */
+function migrateStatScripts(world: Record<string, unknown>): void {
+  if (Array.isArray(world.stats)) world.stats = world.stats.map(migrateStatBoxes);
+  migrateStatCode(world);
+  if (!Array.isArray(world.entities)) return;
+  const originals = new Map((Array.isArray(world.stats) ? world.stats as Stat[] : []).map((stat) => [stat?.id, stat]));
+  world.entities = world.entities.map((entity) => migrateEntityStatScripts(entity, (id) => originals.get(id)));
 }
 
 /**
  * Bring an imported world up to the current format and stamp it with `APP_VERSION`. The dictionary→books
  * fold, the keyword-array migration, the entity-gallery fold, the entity-location flip, the
  * connection-record pair-merge, the Connection-leg conversion, the start-flag rename, the placeholder value-record conversion, the
- * opening-cue move, the player-setting split, the requirement-row wrap, the global-scope rewrite, the entity-stat shape guard, the stat-group shape guard, the content-link guard and the stat-code route rewrite run unconditionally (they aren't version-gated — see `foldDictionaryIntoBooks`); the
+ * opening-cue move, the player-setting split, the requirement-row wrap, the global-scope rewrite, the entity-stat shape guard, the stat-group shape guard, the content-link guard, the code-box-to-scripts rewrite and the stat-code route rewrite run unconditionally (they aren't version-gated — see `foldDictionaryIntoBooks`); the
  * rest is skipped for a world already at `APP_VERSION`. Moves the legacy root `customPlayerVRM` bare
  * data-URL into `worldOverview.customPlayerVRM` as a `MediaAsset`, auto-binds legacy body stats to morphs,
  * and renames v1.2 description keys on entities/locations/traits to the audience-based keys. Remaining field defaults are left to `loadWorldData`. Add further 2.0 → 2.x steps here when the shape changes — a version
@@ -747,7 +775,7 @@ export function migrateWorld(raw: unknown): World {
   migrateStatLists(world);
   migrateGlobalScope(world);
   normalizeContentLinks(world);
-  migrateStatCode(world);
+  migrateStatScripts(world);
   if (world.version === APP_VERSION) return world as unknown as World;
 
   const overview = { ...((world.worldOverview as Record<string, unknown>) ?? {}) };
@@ -787,8 +815,8 @@ export function isSaveEnvelope(raw: unknown): raw is SaveObject {
  * `migrateWorld` steps, applied to the save copies. Also stamps an empty `discoveredEntities` (a v2-only
  * field absent in v1.2) so every persisted snapshot carries it, not just the one `loadGameState` defaults
  * on read. Idempotent — the rename prefers an existing new key, the bind skips a stat that already carries
- * `morphBindings`, and the stamp leaves an existing array untouched. (`game_text` narration is normalized
- * separately on read by parseTurnContent.)
+ * `morphBindings`, and the stamp leaves an existing array untouched. Each saved stat's code boxes become
+ * scripts. (`game_text` narration is normalized separately on read by parseTurnContent.)
  */
 export function migrateLegacySaveState(state: GameState): GameState {
   // The global fields first: the steps below read them under their current names.
@@ -803,7 +831,7 @@ export function migrateLegacySaveState(state: GameState): GameState {
     next.globalStats = autoBindLegacyBodyStats(next.globalStats) as unknown as PlayerStat[];
   }
   if (!Array.isArray(next.discoveredEntities)) next.discoveredEntities = [];
-  return next;
+  return migrateSnapshotScripts(next);
 }
 
 /** Drop a snapshot's own `fullMessageHistory` copy — the canonical history lives once at
@@ -887,16 +915,32 @@ function migrateBodyMorphs(state: GameState): GameState {
  *      `bodyMorphs` map. A character already carrying the map is untouched.
  *   5. Global fields (presence-based, every snapshot): `playerStats` and `playerTraits` become `globalStats` and
  *      `globalTraits`, and the cascade-off and applied-value maps split into global and owners parts.
+ *   6. Scripts (presence-based, every snapshot): each saved stat's two code boxes become scripts.
  * The appended current page stays `=== currentState`, so `gameStates[page - 1]` resolves the current page
  * identically. Pure — callers decide whether to persist the result (import) or just load it (load).
  */
+/** A snapshot with every saved stat's two code boxes rewritten as scripts. The same snapshot when none has one. */
+function migrateSnapshotScripts(state: GameState): GameState {
+  const migrate = (stats: PlayerStat[]) => {
+    const next = stats.map(migrateStatBoxes);
+    return next.some((stat, i) => stat !== stats[i]) ? next : stats;
+  };
+  const globalStats = Array.isArray(state.globalStats) ? migrate(state.globalStats) : state.globalStats;
+  const entityStats = state.entityStats && Object.fromEntries(
+    Object.entries(state.entityStats).map(([id, stats]) => [id, Array.isArray(stats) ? migrate(stats) : stats]),
+  );
+  const entitiesSame = !state.entityStats || Object.entries(state.entityStats).every(([id, stats]) => entityStats?.[id] === stats);
+  if (globalStats === state.globalStats && entitiesSame) return state;
+  return { ...state, globalStats, ...(entityStats ? { entityStats } : {}) };
+}
+
 export function migrateSave(save: SaveObject): SaveObject {
   const isLegacy = typeof save.version === 'number';
   const migratedCurrent = isLegacy ? migrateLegacySaveState(save.currentState) : save.currentState;
   const migratedHistory = isLegacy ? save.stateHistory.map(migrateLegacySaveState) : save.stateHistory;
   // Canonical flat history: an already-hoisted top-level copy, else the current snapshot's own copy.
   const messageHistory = save.messageHistory ?? migratedCurrent.fullMessageHistory ?? [];
-  const normalizeSnapshot = (s: GameState) => migrateBodyMorphs(migrateDefaultAvatarId(migrateGlobalFields(s)));
+  const normalizeSnapshot = (s: GameState) => migrateSnapshotScripts(migrateBodyMorphs(migrateDefaultAvatarId(migrateGlobalFields(s))));
   const currentState = normalizeSnapshot(stripSnapshotHistory(migratedCurrent));
   const history = isLegacy
     ? appendCurrentToHistory(migratedHistory.map(stripSnapshotHistory), currentState)

@@ -54,6 +54,7 @@ import type {
   Dictionary,
   Placeholder,
   PlaceholderGroup,
+  Script,
   World,
 } from '@/types';
 
@@ -81,9 +82,11 @@ function buildWorldData(
   dictionaries: Dictionary[],
   placeholders: Placeholder[],
   placeholderGroups: PlaceholderGroup[],
+  scripts: Script[],
 ): WorldData {
   return {
     worldOverview: overview, stats, statGroups, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, placeholders, placeholderGroups,
+    ...(scripts.length ? { scripts } : {}),
   };
 }
 
@@ -111,6 +114,8 @@ function useProvideGameData() {
   const [traits, setTraits] = useState<Trait[]>([]);
   const [traitGroups, setTraitGroups] = useState<TraitGroup[]>([]);
   const [statUpdates, setStatUpdates] = useState<StatUpdate[]>([]);
+  // Scripts no stat or trait owns, carried through load and save.
+  const [worldScripts, setWorldScripts] = useState<Script[]>([]);
   // The world's own shared placeholders. Entities and books carry lists of their own; `placeholders` below
   // is the combined view every reader takes.
   const [worldPlaceholders, setWorldPlaceholders] = useState<Placeholder[]>([]);
@@ -420,6 +425,7 @@ function useProvideGameData() {
       ? worldData.dictionaries : [makeDefaultBook()];
     const nextPlaceholders = Array.isArray(worldData.placeholders) ? worldData.placeholders : [];
     const nextPlaceholderGroups = Array.isArray(worldData.placeholderGroups) ? worldData.placeholderGroups : [];
+    const nextScripts = Array.isArray(worldData.scripts) ? worldData.scripts : [];
     // Every owner holds the copies its traits need before the baseline is taken, so a world that arrives
     // without them opens clean.
     const nextEntities = syncBlueprintCopies({
@@ -447,10 +453,11 @@ function useProvideGameData() {
     setDictionaries(nextDictionaries);
     setWorldPlaceholders(nextPlaceholders);
     setPlaceholderGroups(nextPlaceholderGroups);
+    setWorldScripts(nextScripts);
 
     // Baseline for dirty detection: a freshly loaded world has no pending changes.
     setSavedWorld(buildWorldData(
-      normalizedOverview, nextStats, nextStatGroups, nextLocations, nextConnections, nextEntities, nextEntityGroups, nextTraits, nextTraitGroups, nextStatUpdates, nextDictionaries, nextPlaceholders, nextPlaceholderGroups,
+      normalizedOverview, nextStats, nextStatGroups, nextLocations, nextConnections, nextEntities, nextEntityGroups, nextTraits, nextTraitGroups, nextStatUpdates, nextDictionaries, nextPlaceholders, nextPlaceholderGroups, nextScripts,
     ));
     setWorldStored(stored);
 
@@ -473,8 +480,8 @@ function useProvideGameData() {
 
   // The current editor state as a canonical world payload; the one source consumers serialize/save/export from.
   const getWorldData = useCallback(
-    () => buildWorldData(worldOverview, stats, statGroups, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, worldPlaceholders, placeholderGroups),
-    [worldOverview, stats, statGroups, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, worldPlaceholders, placeholderGroups],
+    () => buildWorldData(worldOverview, stats, statGroups, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, worldPlaceholders, placeholderGroups, worldScripts),
+    [worldOverview, stats, statGroups, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, worldPlaceholders, placeholderGroups, worldScripts],
   );
 
   // Every reader takes one list: the world's shared placeholders, then each entity's own in tree order,
@@ -761,6 +768,7 @@ function useProvideGameData() {
     traitGroups,
     statUpdates,
     dictionaries,
+    worldScripts,
     // The combined view: shared placeholders, then every entity's and book's own.
     placeholders,
     worldPlaceholders,
@@ -784,7 +792,7 @@ function useProvideGameData() {
     placeholderOwners: placeholderOwnerIndex,
   }), [
     actions, worldMetadata, worldOverview, stats, statGroups, locations, connections, entities, entityGroups, playWorld, traits, traitGroups,
-    statUpdates, dictionaries, placeholders, worldPlaceholders, placeholderGroups, getWorldData, worldId, worldLoaded,
+    statUpdates, dictionaries, worldScripts, placeholders, worldPlaceholders, placeholderGroups, getWorldData, worldId, worldLoaded,
     isWorldDirty, worldStored, worldChangedElsewhere, dictStore, phStore, placementLetters, placeholderOwnerIndex,
   ]);
 

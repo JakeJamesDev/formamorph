@@ -6,6 +6,7 @@ import {
   linkRefusal, entityRootTraitTree, getEntityRootDropProjection, applyEntityRootDrop, type OwnedTraitDropOptions,
 } from './traitTree';
 import type { Entity, StatLink, Trait, TraitGroup, TraitLink } from '@/types';
+import { boxScripts } from '@/test/scriptFixtures';
 
 const group = (id: string, parentId: string | null, order: number): TraitGroup =>
   ({ id, name: id, parentId, order });
@@ -704,7 +705,7 @@ describe('applyOwnedTraitDrop: what reads a trait moving into Blueprints', () =>
   const ash: Entity = { id: 'ash', name: 'Ash', traits: [trait('pack', null, 0), trait('tamed', 'bond', 0)], traitGroups: [group('bond', null, 1)] };
   const withTrait = (id: string, over: Partial<Trait>) => ({ ...lists, traits: lists.traits.map((t) => (t.id === id ? { ...t, ...over } : t)) });
   const stat = (id: string, code: string, groupId: string | null = null) =>
-    ({ id, name: id, type: 'number' as const, description: '', min: 0, max: 100, value: 0, regen: 0, descriptors: [], groupId, code });
+    ({ id, name: id, type: 'number' as const, description: '', min: 0, max: 100, value: 0, regen: 0, descriptors: [], groupId, scripts: boxScripts({ after: code }) });
   const codeWorld = (...stats: ReturnType<typeof stat>[]) => ({ stats, statGroups: [{ id: 'sbp', name: 'sbp', parentId: null, system: 'blueprints' as const }], placeholders: [] });
   // Loner dropped on Wizard joins Classes, inside Blueprints.
   const lonerIn = (w = lists, ents: Entity[] = [ash], opts: OwnedTraitDropOptions = {}) => applyOwnedTraitDrop(w, ents, [], 'loner', 'wizard', 0, 24, opts);
@@ -759,7 +760,7 @@ describe('applyOwnedTraitDrop: what reads a trait moving into Blueprints', () =>
     const bpMood = (code: string) => codeWorld(stat('mood', code, 'sbp'));
     expect(refusal(lonerIn(lists, [linker()], { codeWorld: bpMood('return traits.Loner;') })))
       .toMatchObject({ reader: { kind: 'readBy', stat: 'mood' } });
-    const overridden = linker({ mood: { code: { value: 'return traits.Loner;', blueprint: 'return 0;' } } });
+    const overridden = linker({ mood: { scripts: { value: boxScripts({ after: 'return traits.Loner;' }), blueprint: boxScripts({ after: 'return 0;' }) } } });
     expect(refusal(lonerIn(lists, [overridden], { codeWorld: bpMood('return 0;') }))).toMatchObject({ reader: { kind: 'readBy', stat: 'mood' } });
   });
 

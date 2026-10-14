@@ -14,8 +14,8 @@ const PLAN: CodeRenamePlan = {
   oldName: 'Hunger',
   newName: 'Appetite',
   edits: [
-    { home: { kind: 'stat', statId: 'dev-stamina' }, name: 'Stamina', boxes: {} },
-    { home: { kind: 'stat', statId: 'dev-mood' }, name: 'Mood', boxes: {} },
+    { home: { kind: 'stat', statId: 'dev-stamina' }, name: 'Stamina', scripts: {} },
+    { home: { kind: 'stat', statId: 'dev-mood' }, name: 'Mood', scripts: {} },
   ],
   references: 3,
 };

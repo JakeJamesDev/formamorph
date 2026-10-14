@@ -1070,7 +1070,10 @@ export interface StatCodeRunOptions {
 
 const EMPTY_PERSONA: SandboxEntity = { name: '', traits: [] };
 
-/** Run a stat's untrusted `code` in an isolated QuickJS (WASM) VM over the world `stats`, `self`, the turn
+/** The shape a world script's run marshals in place of a stat, for the blank entries a write may add. */
+const NO_SELF_STAT: Stat = { id: '', name: '', type: 'number', description: '', min: 0, max: 0, value: 0, regen: 0, descriptors: [] };
+
+/** Run a script's untrusted `code` in an isolated QuickJS (WASM) VM over the world `stats`, `self`, the turn
  *  inputs, the clock, `placeholders`, `traits`, `entities`, `persona`, `owner` and `dictionaries`. A number
  *  return or a `self.value` write sets the value; a `self.min`, `self.max` or `self.regen` write sets that
  *  bound; a write to any other stat, through `stats`, `owner.stats`, `entities[x].stats` or `persona.stats`,
@@ -1080,7 +1083,8 @@ const EMPTY_PERSONA: SandboxEntity = { name: '', traits: [] };
 export const executeStatCode = async (
   code: string,
   stats: Stat[],
-  currentStat: Stat,
+  /** Null for a world script: `self` is an empty object, and a return value or a `self` write is ignored. */
+  currentStat: Stat | null,
   { clock, turn, enabled, placeholders = [], traits = [], entities = [], persona = EMPTY_PERSONA, owner, dictionaries = [] }: StatCodeRunOptions = {},
 ): Promise<StatCodeResult> => {
   // If code is empty, return null (use the manually set value)
@@ -1112,14 +1116,17 @@ export const executeStatCode = async (
     };
     // `self` is the current stat's own entry: in `owner.stats` for an entity's stat, else in `stats`. A stat
     // in neither, or one that loses its name, stands alone.
-    const ownIndex = owner?.stats?.stats.findIndex((stat) => stat.id === currentStat.id) ?? -1;
-    const worldIndex = ownIndex >= 0 ? -1 : stats.findIndex((stat) => stat.id === currentStat.id);
+    const self = currentStat ?? NO_SELF_STAT;
+    const ownIndex = currentStat ? owner?.stats?.stats.findIndex((stat) => stat.id === self.id) ?? -1 : -1;
+    const worldIndex = !currentStat || ownIndex >= 0 ? -1 : stats.findIndex((stat) => stat.id === self.id);
     const selfData = ownIndex >= 0 ? ownerStatsData[ownIndex]
       : worldIndex >= 0 ? statsData[worldIndex]
-        : marshalStat(currentStat, turn?.[currentStat.id], enabled?.[currentStat.id] !== false);
+        : marshalStat(self, turn?.[self.id], enabled?.[self.id] !== false);
     // The sandbox variable of the map `self` is an entry of.
     const selfMap = ownIndex >= 0 ? (keyedOwnerStats.includes(selfData) ? OWNER_STATS : null)
       : worldIndex >= 0 && keyedStats.includes(selfData) ? 'stats' : null;
+    // A world script's `self` is an empty object; its slots read as undefined so nothing writes back.
+    const selfRead = (field: string) => (currentStat ? `self.${field}` : 'undefined');
     const selfNameIn = (map: typeof OWNER_STATS | 'stats') => (selfMap === map ? selfData.name : null);
     const blankStat = blankStatEntry(selfData);
 
@@ -1161,8 +1168,8 @@ export const executeStatCode = async (
         }),
         `const ${LOOSE_WRITES} = [];`,
         `const ${LOOSE_NOTE} = (path) => (${ADD_ONCE})(${LOOSE_WRITES}, path);`,
-        `const self = ${selfMap ? `${selfMap}[${JSON.stringify(selfData.name)}]` : JSON.stringify(selfData)};`,
-        ...(selfMap ? [] : [`(${LOCK_STAT})(self, ${SELF_ASSIGNED}, (path) => ${LOOSE_NOTE}('self.' + path));`]),
+        `const self = ${!currentStat ? '{}' : selfMap ? `${selfMap}[${JSON.stringify(selfData.name)}]` : JSON.stringify(selfData)};`,
+        ...(selfMap || !currentStat ? [] : [`(${LOCK_STAT})(self, ${SELF_ASSIGNED}, (path) => ${LOOSE_NOTE}('self.' + path));`]),
         `const clock = ((lock) => {`,
         `  const clock = ${JSON.stringify(clockObject(clock))};`,
         `  Object.freeze(lock(clock.previous, ['day', 'daypart'], 'clock.previous.', ${LOOSE_NOTE}));`,
@@ -1174,7 +1181,7 @@ export const executeStatCode = async (
         dictionariesPrelude(dictionaries, placeholderMap),
         `[(function(${PLACEHOLDER_WRITES}, ${TRAIT_WRITES}, ${ENTITY_WRITES}, ${STAT_WRITES}, ${LOOSE_WRITES}, ${LOOSE_NOTE}, ${DICTIONARY_WRITES}, ${OWNER_VIEW}, ${OWNER_STATS}, ${OWNER_STAT_WRITES}, ${ENTITY_STAT_WRITES}) {`,
         code,
-        `})(), self.value, ${CODE_BOUND_FIELDS.map((field) => `self.${field}`).join(', ')}, ${PLACEHOLDER_WRITES}(), ${TRAIT_WRITES}(), ${ENTITY_WRITES}(),`,
+        `})(), ${selfRead('value')}, ${CODE_BOUND_FIELDS.map(selfRead).join(', ')}, ${PLACEHOLDER_WRITES}(), ${TRAIT_WRITES}(), ${ENTITY_WRITES}(),`,
         `  ${STAT_WRITES}(), ${DICTIONARY_WRITES}(), JSON.stringify(${SELF_ASSIGNED}), ${OWNER_STAT_WRITES}(), JSON.stringify(${LOOSE_WRITES}),`,
         `  ${ENTITY_STAT_WRITES}()];`,
       ].join('\n');
@@ -1233,15 +1240,15 @@ export const executeStatCode = async (
         console.log('Console output:', consoleOutput);
       }
 
-      if (returned.type !== 'number' && returned.type !== 'undefined') {
+      if (currentStat && returned.type !== 'number' && returned.type !== 'undefined') {
         return nonNumberFailure('Code must return a number or nothing');
       }
-      if (returned.type === 'undefined' && written.type !== 'number') {
+      if (currentStat && returned.type === 'undefined' && written.type !== 'number') {
         return nonNumberFailure('self.value must be a number');
       }
       // A bound the code assigned is a write, changed or not; one it left alone keeps the pipeline's result.
       const bounds: CodeBounds = {};
-      for (const [field, slot] of boundSlots) {
+      for (const [field, slot] of currentStat ? boundSlots : []) {
         const assigned = Array.isArray(assignedBounds) && assignedBounds.includes(field);
         if (!assigned && slot.type === 'number' && Object.is(slot.number, selfData[field])) continue;
         if (!Number.isFinite(slot.number)) return nonNumberFailure(`self.${field} must be a finite number`);
@@ -1294,6 +1301,7 @@ export const executeStatCode = async (
         ...(entityWrites.unknown.length ? { unknownEntities: entityWrites.unknown } : {}),
         ...(readOnlyWrites.length ? { readOnlyWrites } : {}),
       });
+      if (!currentStat) return settled(null);
       if (returned.type === 'number') return settled(returned.number);
       return settled(Object.is(written.number, selfData.value) ? null : written.number);
     } finally {

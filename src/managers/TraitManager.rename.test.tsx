@@ -7,6 +7,7 @@ import { phValues } from '@/test/placeholderValues';
 import type { Placeholder, Stat, Trait } from '@/types';
 import { CodeRenameProvider } from '@/components/editor/CodeRenameOffer';
 import TraitManager from './TraitManager';
+import { boxScripts, codeAt } from '@/test/scriptFixtures';
 
 /**
  * The panel's own wiring to the rename offer: a trait's name field has to hand the offer the name *code*
@@ -79,7 +80,7 @@ beforeEach(() => {
   store.trait = { id: 't1', name: `${chip} Fury`, statChanges: [] } as unknown as Trait;
   store.stats = [
     { id: 's1', name: 'Health', type: 'number', description: '', min: 0, max: 100, value: 0, regen: 0,
-      code: `return traits['Beast Fury'].enabled ? 2 : 1;` } as unknown as Stat,
+      scripts: boxScripts({ after: `return traits['Beast Fury'].enabled ? 2 : 1;` }) } as unknown as Stat,
   ];
 });
 
@@ -95,6 +96,6 @@ describe('the trait panel’s rename offer', () => {
 
     expect(screen.getByText(/names the trait “Beast Fury” 1 time\./)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Update Code' }));
-    expect(store.stats[0].code).toBe(`return traits['Beast Rage'].enabled ? 2 : 1;`);
+    expect(codeAt(store.stats[0])).toBe(`return traits['Beast Rage'].enabled ? 2 : 1;`);
   });
 });

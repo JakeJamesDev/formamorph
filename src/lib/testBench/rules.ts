@@ -34,7 +34,8 @@ import {
   statStartValue, thresholdValue, uncoveredSpan, valueThreshold,
 } from '@/lib/statDescriptorGeometry';
 import { statCodeName } from '@/lib/statCodeNames';
-import { boxCode, filledCodeBoxes, noBoxes, TIMING_LABEL } from '@/lib/statCodeTiming';
+import { filledCodeBoxes, noBoxes, TIMING_LABEL } from '@/lib/statCodeTiming';
+import { filledScriptsAt } from '@/lib/scripts';
 import { scanStatLookups, scanStatWrites } from '@/lib/statCodeWriteScan';
 import { isStatOn, routeTargets, statCodeBoxes, statCodeOwners, type CodeOwner, type CodeOwners } from '@/lib/statCodeTargets';
 import { estimateTokens } from '@/lib/memoryUtils';
@@ -1031,7 +1032,7 @@ const statCodeBeforeReadsDelta: Rule = {
   advanced: true,
   summary: (count) => `${count} stats read delta in their ${TIMING_LABEL.before} box, where every source is zero`,
   check: (world) => (world.stats ?? [])
-    .filter((stat) => DELTA_READ.test(boxCode(stat, 'before')))
+    .filter((stat) => filledScriptsAt(stat, 'before').some((script) => DELTA_READ.test(script.code)))
     .map((stat) => {
       const item = namedItem(stat.id, stat.name, world);
       return finding(
@@ -1072,7 +1073,7 @@ const statCodeTwoWriters: Rule = {
               if (!isStatOn(target)) continue;
               const key = JSON.stringify([targetOwner.entity?.id ?? null, target.id, write.field]);
               const held = fields.get(key) ?? { owner: targetOwner, target, field: write.field, writers: new Map() };
-              held.writers.set(JSON.stringify([owner.entity?.id ?? null, writer.id, box.timing]), {
+              held.writers.set(JSON.stringify([owner.entity?.id ?? null, writer.id, box.id]), {
                 owner, label: `${TIMING_LABEL[box.timing]} code on ${quote(labelOf(writer.name, world))}`,
               });
               fields.set(key, held);

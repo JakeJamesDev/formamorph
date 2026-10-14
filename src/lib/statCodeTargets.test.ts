@@ -1,14 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import type { Entity, Stat } from '@/types';
 import { statCodeReferences } from './statCodeTargets';
+import { boxScripts } from '@/test/scriptFixtures';
 
 const stat = (id: string, name: string, extra: Partial<Stat> = {}): Stat =>
   ({ id, name, type: 'number', value: 0, min: 0, max: 100, ...extra } as Stat);
 
 const code = 'self.value = 1; const n = stats.find((s) => s.id); return stats.Destruction.value + entities["The Creature"].stats[\'Rage\'].value;';
-const rage = stat('rage', 'Rage', { beforeCode: 'owner.stats.Rage.max = 50;' });
+const rage = stat('rage', 'Rage', { scripts: boxScripts({ before: 'owner.stats.Rage.max = 50;' }) });
 const creature: Entity = { id: 'creature', name: 'The Creature', stats: [rage] };
-const world = { stats: [stat('destruction', 'Destruction'), stat('alert', 'Alert', { code })], entities: [creature], placeholders: [] };
+const world = { stats: [stat('destruction', 'Destruction'), stat('alert', 'Alert', { scripts: boxScripts({ after: code }) })], entities: [creature], placeholders: [] };
 
 describe('statCodeReferences', () => {
   const references = statCodeReferences(world);

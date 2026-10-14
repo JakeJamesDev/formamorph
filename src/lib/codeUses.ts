@@ -3,7 +3,7 @@
  */
 
 import type { CodeOwners, StatCodeBox } from './statCodeTargets';
-import type { StatCodeTiming } from './statCodeTiming';
+import type { ScriptTiming } from '@/types';
 
 /** One box and line that uses the item. */
 export interface CodeUse {
@@ -11,7 +11,7 @@ export interface CodeUse {
   entityId: string | null;
   /** The row the stat list selects to show the box: a Link's row for a Link's box. */
   rowId: string;
-  timing: StatCodeTiming;
+  timing: ScriptTiming;
   /** The box's stat, by code name. */
   stat: string;
   /** The entity an own or Link box sits on, by code name. */

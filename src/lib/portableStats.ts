@@ -4,6 +4,7 @@
 import type { Entity, Stat, StatGroup, StatLink } from '@/types';
 import { rekeyed, uniqueNamed } from './carriedBinding';
 import { playStatWorld, statBroughtIds, statOriginalOf, withStatLinks } from './statLinks';
+import { migrateStatLinkBoxes } from './scripts';
 
 /** The world's stat lists a stat Link can point into. A record with no `stats` carries none, so its Links stay
  *  as they are stored. */
@@ -50,7 +51,8 @@ export function portableOwnedStats(entity: Entity, world?: StatWorld): OwnedStat
  * The entity's stat Links bound to `world`: each by its original's id when that is a Blueprint stat or group of
  * the Link's kind, else by the one such original carrying its stored name, else dropped. A Link that brings
  * anything an earlier Link already brings is dropped too, as the resolver keeps the first. Each override key
- * follows the same rule inside what the bound original brings. The entity as it is when `world` carries no stats.
+ * follows the same rule inside what the bound original brings, and old code-box overrides fold into scripts. The
+ * entity as it is when `world` carries no stats.
  */
 export function bindOwnedStats(entity: Entity, world: StatWorld): Entity {
   const bound = linkWorld(world);
@@ -82,7 +84,10 @@ function bindStatLink(link: StatLink, bound: LinkWorld): { link: StatLink; ids: 
   };
   const overrides = rekeyed(link.overrides, key);
   const { overrides: _stored, keyNames: _k, ...rest } = link;
-  return { ids, link: { ...rest, originalId: original.id, ...(overrides ? { overrides } : {}) } };
+  // A card's or a library entity's old box overrides fold here, where the original is in reach (Q36).
+  const folded = migrateStatLinkBoxes({ ...rest, originalId: original.id, ...(overrides ? { overrides } : {}) },
+    (id) => stats.find((s) => s.id === id));
+  return { ids, link: folded };
 }
 
 /** A library entity's Links as the world it is opened in reads them: each that binds takes the world's ids, and

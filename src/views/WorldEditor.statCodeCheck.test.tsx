@@ -3,6 +3,7 @@ import { screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { checkStatCode } from '@/lib/testBench/statCodeCheck';
 import { benchEditorWorld, clickOpenBench, renderWorldEditorBench } from '@/test/worldEditorBench';
 import type { Finding } from '@/lib/testBench/rules';
+import { boxScripts } from '@/test/scriptFixtures';
 
 /**
  * Guards the on-demand stat-code check through the real editor.
@@ -44,7 +45,7 @@ const FAILURE: Finding = {
 const WORLD = benchEditorWorld({
   stats: [{
     id: 's1', name: 'Fertility', type: 'number', description: '', min: 0, max: 100, regen: 0,
-    starting: 0, descriptors: [], code: 'return elapsedHours;',
+    starting: 0, descriptors: [], scripts: boxScripts({ after: 'return elapsedHours;' }),
   }],
 });
 
@@ -92,7 +93,7 @@ describe('WorldEditor — the on-demand stat-code check', () => {
     const finish = deferredRun();
     fireEvent.click(button);
     // The author repairs the very stat being checked before the run comes back.
-    act(() => { ctx().setStats([{ ...WORLD.stats[0], code: 'return elapsedHours * 2;' }]); });
+    act(() => { ctx().setStats([{ ...WORLD.stats[0], scripts: boxScripts({ after: 'return elapsedHours * 2;' }) }]); });
     await finish([FAILURE]);
 
     expect(screen.queryByText(FAILURE.message)).toBeNull();
@@ -108,7 +109,7 @@ describe('WorldEditor — the on-demand stat-code check', () => {
     await finish([FAILURE]);
     expect(screen.getByText(FAILURE.message)).toBeInTheDocument();
 
-    act(() => { ctx().setStats([{ ...WORLD.stats[0], code: 'return elapsedHours * 2;' }]); });
+    act(() => { ctx().setStats([{ ...WORLD.stats[0], scripts: boxScripts({ after: 'return elapsedHours * 2;' }) }]); });
     expect(screen.queryByText(FAILURE.message)).toBeNull();
   });
 
