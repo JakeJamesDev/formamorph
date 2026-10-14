@@ -23,6 +23,7 @@ import { readsTurnStart, type RunTiming } from './statCodeTiming';
 import { filledScriptsAt, inRunOrder, SCRIPT_TIMING_LABEL, scriptLabel } from './scripts';
 import { clamp } from './utils';
 import type { OwnerId } from './scope';
+import type { ScriptPromptHost } from './scriptPrompts';
 
 /** The trait state a run's switches left, and the log lines they wrote. */
 export interface StatCodeTraitResult {
@@ -82,6 +83,8 @@ export interface StatCodeTurn {
   /** Stat id → the value a penalty takes from the turn owner's stat after the run, unless code moves that stat:
    *  the starvation penalty. */
   penalties?: Readonly<Record<string, number>>;
+  /** Who answers `player.*`. Absent, the game's prompt store does. */
+  prompts?: ScriptPromptHost;
 }
 
 /** One entity owner's part of a turn, in the same terms as the turn owner's. */
@@ -404,7 +407,7 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
     const selfTrait = trait && selfTraitOf(trait, owner);
     const result = await executeStatCode(script.code, [...globalStats.stats], stat, {
       clock: turn.clock, turn: globalStats.turn, enabled: globalStats.enabled, placeholders, traits, ...inPlay,
-      owner, dictionaries,
+      owner, dictionaries, prompts: turn.prompts,
       ...(sentence === undefined || !turn.narration ? {} : { narration: { ...turn.narration, sentence } }),
       ...(selfTrait && { selfTrait }),
     });

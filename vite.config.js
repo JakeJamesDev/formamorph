@@ -112,7 +112,10 @@ export default defineConfig({
     // Dev-mode pre-bundling rewrites these into .vite/deps, breaking their import.meta.url-relative
     // .wasm lookup (the QuickJS engine file). Serving them unbundled keeps the wasm path resolvable.
     // Pre-bundling also breaks the ONNX runtime's `?url` imports.
-    exclude: ['quickjs-emscripten', '@jitl/quickjs-wasmfile-release-sync', 'wasm-webp', 'onnxruntime-web-dist'],
+    exclude: [
+      'quickjs-emscripten', '@jitl/quickjs-wasmfile-release-sync', '@jitl/quickjs-wasmfile-release-asyncify',
+      'wasm-webp', 'onnxruntime-web-dist',
+    ],
   },
   worker: {
     // The image-encode worker lazily `import()`s wasm-webp; under the default iife worker format that dynamic
