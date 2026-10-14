@@ -1,4 +1,4 @@
-import type { CodePins, Dictionary, Entity, Placeholder, PlaceholderRolls } from '@/types';
+import type { CodePins, Dictionary, Entity, OwnedTraitStates, Placeholder, PlaceholderRolls, PlayerStat, Trait } from '@/types';
 import type { PlaceholderOwnerRef, PlaceholderOwners } from './placeholderHomes';
 import { libraryPlaceholderSet } from './libraryPlaceholders';
 import {
@@ -9,6 +9,16 @@ import { placeholderPathMap, type PlaceholderPathNode } from './statCodePaths';
 import type { SandboxDictionary, SandboxPlaceholder, SandboxPlaceholderNode } from './statCodeExecutor';
 import type { CodeOwnerName } from './statCodeAnalysis';
 import { statCodeName } from './statCodeNames';
+
+/** What the pins in force depend on, besides the authored world. */
+export interface PinState {
+  codePins: CodePins;
+  /** The player's acquired traits, switched-off ones included. */
+  acquired: readonly Trait[];
+  disabledTraitIds: readonly string[];
+  ownedTraits?: OwnedTraitStates;
+  stats: readonly PlayerStat[];
+}
 
 /** The placeholders one stat-code run reads, and what they resolve under. */
 export interface StatCodePlaceholderSet {
@@ -30,6 +40,9 @@ export interface StatCodePlaceholderSet {
   /** The Code Pins as stored, so an Object pinned to a list reads that list back rather than its join.
    *  A Code Pin outranks every authored source, so an id in here is the pin in force. */
   codePins?: CodePins;
+  /** The pins in force once a run's writes land: the playthrough's own pin walk over the Code Pins, traits and
+   *  stats a During AI Output sentence leaves, which the next sentence reads. Absent, `pins` stands. */
+  pinsAfter?: (state: PinState) => Readonly<Record<string, string>>;
   /** Chooser for `roll()` and for any placeholder with no roll yet. Defaults to the weighted draw. */
   pick?: PlaceholderPick;
 }

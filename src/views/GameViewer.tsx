@@ -13,7 +13,8 @@ import { EXIT_TO_MENU_PROMPT } from "@/lib/leavePrompts";
 import { useGameplay } from "@/contexts/GameplayContext";
 import { useAccountDeletion } from "@/contexts/AccountDeletionContext";
 import { type StatClock } from "@/lib/statCodeExecutor";
-import { overlayStatCodeResult, playthroughPlaceholderSet, runStatCodeTurn, withPinWrites, type StatCodeTurn } from "@/lib/statCodeTurn";
+import { overlayStatCodeResult, playthroughPlaceholderSet, runStatCodeTurn, withPinWrites, type StatCodeTurn, type StatCodeTurnResult } from "@/lib/statCodeTurn";
+import { openOutputRun, type OutputRun } from "@/lib/outputRun";
 import {
   applyEntityStatResponse, entityCodeTurns, entityStatOwners, personaEntities, personaStatOwners, seedEntityStats, statOwnerEntities,
   statRequestOwners, withEntityRegen, withOwnerCodeResults,
@@ -102,6 +103,7 @@ import { toastAiRequestFailure } from "../lib/aiRequest/aiRequestFailureToast";
 import { schemaAccepted } from "../lib/reasoningEffort";
 import { completeSentencePrefix, narrationStream, type NarrationListener } from "../lib/aiRequest/narrationStream";
 import { fanOut } from "../lib/aiRequest/fanOut";
+import { rewriteSentences } from "../lib/aiRequest/narrationRewrite";
 import { parseTurnContent, recentParticipants, collectCharacterDiary } from "../lib/turnDigest";
 import { navigableDestinations } from "../lib/locationContext";
 import { chipValues, entityStatsField, sceneEntityChipValues } from "../lib/chipValues/chipValues";
@@ -296,6 +298,12 @@ type PreTurnCodeState = Pick<
 /** What one stat-code run left, in the shapes state holds. The before box hands this to the turn's own
  *  passes, which run before React re-renders with it. */
 type TurnCodeState = Pick<LiveSnapshot, 'globalStats'> & PreTurnCodeState;
+
+/** A stat-code run set up but not yet executed: its turn, and the step that lays the result onto live state. */
+interface PreparedStatCode {
+  turn: StatCodeTurn;
+  finish: (result: StatCodeTurnResult) => { written: TurnCodeState | null; gateStats: GateStats };
+}
 
 /** The traits in force on one slice of saved trait state, and the stats live under them. The live pair is
  *  derived in two steps because `statEnabled` is read on its own; a paged-back turn and a turn's own
@@ -2248,6 +2256,10 @@ const GameViewer = ({
       });
     }
 
+    // What the narration's During AI Output scripts wrote lands now, so the After batch starts from it. Its
+    // bar share joins the before box's.
+    const outputBase = landOutputRun();
+
     // Reset the persistent bar deltas for this turn, then let stat changes + regen below re-fill them. The
     // before box already moved before the narration, so its share is laid straight back over the reset.
     holdStatDeltas(null, beforeBoxDeltasRef.current);
@@ -2258,8 +2270,11 @@ const GameViewer = ({
     // or the opening turn.
     // The starvation check below reads the same pre-turn stats, so the run's stat snapshot holds the penalty.
     const statCode = commit.statResponse
-      ? applyStatChanges(commit.statResponse, commit.clock, null, globalStats)
-      : runStatCode(rawGlobalStatsRef.current, rawGlobalStatsRef.current, [], commit.clock, undefined, 'after', { thresholdStats: globalStats });
+      ? applyStatChanges(commit.statResponse, commit.clock, outputBase, globalStats)
+      : runStatCode(
+        outputBase?.globalStats ?? rawGlobalStatsRef.current, outputBase?.globalStats ?? rawGlobalStatsRef.current, [], commit.clock,
+        outputBase ?? undefined, 'after', { thresholdStats: globalStats },
+      );
 
     // Advance the clock by what this turn actually took (the flat hour when unmeasured).
     handleTimePassed(commit.turnHours);
@@ -2420,6 +2435,9 @@ const GameViewer = ({
         rawGlobalStatsRef.current, { deltaHours: 0, elapsedHours: gameTime, calendar }, undefined, isOpeningTurn && newPlaythroughRef.current,
       );
       beforeBoxUndoRef.current = beforeBox ? preBox : null;
+      turnPreBoxRef.current = preBox;
+      turnBeforeBoxRef.current = beforeBox;
+      outputRunRef.current = null;
       const codeView = turnCodeView(beforeBox);
 
       /**
@@ -2828,19 +2846,25 @@ const GameViewer = ({
   // touches them between it and the box — and undoing the box alone spares a trait the player switched
   // by hand while the AI was thinking. Null between turns and once a turn commits.
   const beforeBoxUndoRef = useRef<TurnCodeState | null>(null);
+  // This turn's state before and after its before box, which the During AI Output run reads and undoes against.
+  const turnPreBoxRef = useRef<TurnCodeState | null>(null);
+  const turnBeforeBoxRef = useRef<TurnCodeState | null>(null);
+  // The turn's During AI Output run, and the run's turn, held until the commit lands its writes.
+  const outputRunRef = useRef<{ run: OutputRun; prepared: PreparedStatCode } | null>(null);
 
   // The world's list and books; the run joins the library entities' and library books' pools itself.
   const statCodePlaceholders = useMemo(() => playthroughPlaceholderSet({
     placeholders: worldPlaceholders, owners: placeholderOwners, dictionaries, libraryDictionaries, runtimeDictionaries, rolls: sessionRolls,
   }), [worldPlaceholders, placeholderOwners, dictionaries, libraryDictionaries, runtimeDictionaries, sessionRolls]);
 
-  // Run one of a stat's two code boxes over this turn, regen included, and fold what it moved into the live
-  // delta feedback. Its own callback because a turn with no stat response runs it directly. A re-roll passes
-  // the pre-turn state, so code reads placeholders and traits as the turn it replaces did. Hands back what
-  // the run left, for the before box's caller: its passes run before React re-renders with these writes, and
-  // the run's stat snapshot, for the per-turn settle. Null when the run failed.
-  const runStatCode = useCallback(
-    async (
+  // Set up one timing's scripts over this turn, regen included: the run's turn, and `finish`, which folds the
+  // result into live state and the delta feedback. A re-roll passes the pre-turn state, so code reads
+  // placeholders and traits as the turn it replaces did. `finish` hands back what the run left, for the before
+  // box's caller (its passes run before React re-renders with these writes), and the run's stat snapshot, for
+  // the per-turn settle. Null when the set-up failed. During AI Output executes apart from its landing, so it
+  // uses the two halves itself.
+  const prepareStatCode = useCallback(
+    (
       before: PlayerStat[], afterAsks: PlayerStat[], asks: StatCodeTurn["asks"], clock: StatClock,
       preTurn?: PreTurnCodeState,
       timing: RunTiming = 'after',
@@ -2850,10 +2874,11 @@ const GameViewer = ({
         /** The pre-turn stats the regen tick's starvation check reads. Absent ⇒ no penalty lands beside the run. */
         thresholdStats?: readonly PlayerStat[];
       } = {},
-    ): Promise<{ written: TurnCodeState | null; gateStats: GateStats } | null> => {
+    ): PreparedStatCode | null => {
       try {
         const enabled = statEnabledRef.current;
-        // The before box and the start scripts run at the turn's start, so there is no regen yet to fold in.
+        // The before box, the start scripts and the output scripts run at the turn's start, so there is no regen
+        // yet to fold in.
         const tick = readsTurnStart(timing) ? null
           : applyRegen(afterAsks, clock.deltaHours ?? FLAT_HOURS_PER_TURN, enabled);
         const regenApplied = tick?.applied ?? {};
@@ -2885,7 +2910,7 @@ const GameViewer = ({
         // The starvation penalty the regen tick lands beside this run, so the run's stat snapshot holds it.
         const healthLoss = tick && thresholdStats ? starvationLoss(thresholdStats, enabled, clock.deltaHours ?? FLAT_HOURS_PER_TURN) : null;
         const health = healthLoss === null ? undefined : stats.find((s) => s.name === "Health");
-        const result = await runStatCodeTurn({
+        const turn: StatCodeTurn = {
           timing,
           stats, enabled, previous: before, asks, regenApplied, clock,
           gateStats: gateStatsOf({
@@ -2901,53 +2926,61 @@ const GameViewer = ({
             pins: preTurn ? pinsFor(basePins).world : live.pins,
             // The stored shape too, so an Object pinned to a list reads that list back rather than its join.
             codePins: basePins,
+            // A During AI Output run reads the pins its earlier sentences left.
+            pinsAfter: (state) => pinsFor(state.codePins, {
+              traits: [...state.acquired], disabledTraitIds: [...state.disabledTraitIds], ownedTraits: state.ownedTraits, stats: [...state.stats],
+            }).world,
           },
           statNameOf: (stat) => resolvePH(stat.name),
           traitNameOf: (trait) => resolveTraitText(trait, trait.name),
           owners,
           worldScripts,
-        });
-        const nextPins = withPinWrites(basePins, result.pinWrites);
-        // Onto the latest values, as the player's stats below: the regen tick can apply while the run awaits.
-        const ownersInForce = entityInForceUnder(result.traits?.ownedTraits ?? held.ownedTraits ?? {});
-        setEntityStats((prev) => withOwnerCodeResults(prev, result.owners, ownersInForce));
-        const nextEntityStats = withOwnerCodeResults(entityBase, result.owners, ownersInForce);
-        setCodePins((prev) => withPinWrites(prev, result.pinWrites));
-        if (result.traits) {
-          setGlobalTraits(result.traits.acquired);
-          setDisabledTraitIds(result.traits.disabledTraitIds);
-          setAppliedTraitValues(result.traits.appliedValues);
-          setCascadeOffTraitIds(result.traits.cascadeOffTraitIds);
-          setOwnedTraits(result.traits.ownedTraits);
-          for (const line of result.traits.log) addLogEntry(line);
-        }
-        /** What this run left, in the shapes state holds. */
-        const stateAfterRun = (): TurnCodeState => ({
-          globalStats: overlayStatCodeResult(afterAsks, result, inForce),
-          codePins: nextPins,
-          globalTraits: [...(result.traits?.acquired ?? held.acquired)],
-          disabledTraitIds: [...(result.traits?.disabledTraitIds ?? held.disabledTraitIds)],
-          appliedTraitValues: result.traits?.appliedValues ?? held.appliedValues,
-          cascadeOffTraitIds: result.traits?.cascadeOffTraitIds ?? held.cascadeOffTraitIds,
-          ownedTraits: result.traits?.ownedTraits ?? held.ownedTraits,
-          entityStats: nextEntityStats,
-        });
-        if (!result.traits && result.moved.length === 0 && result.boundsChanged.length === 0) {
-          const written = nextPins === basePins && nextEntityStats === entityPrevious ? null : stateAfterRun();
-          return { written, gateStats: result.gateStats };
-        }
-        // The bars are keyed by the name the player reads, so the run's stats resolve theirs here.
-        const codeChanges = appliedStatDeltas(stats, resolveStatNames(result.stats, resolvePH));
-        // Onto the LATEST stats, not a blanket `setGlobalStats(result.stats)`: the run read the pre-`await`
-        // baseline, and anything applied in the meantime (starvation, a re-generate) must survive.
-        setGlobalStats((prev) => overlayStatCodeResult(prev, result, inForce));
-        // Fold the code-derived movement into the live delta feedback, so a code stat's bar/text animates
-        // live — matching the history view (pageStatDeltas diffs the final, post-code snapshot).
-        addStatDeltas(null, codeChanges);
-        // The commit resets the bar deltas mid-turn, so the share of the runs before the AI is re-laid over that.
-        // The start scripts and the before box can move one stat, so their shares add.
-        if (readsTurnStart(timing)) beforeBoxDeltasRef.current = sumDeltas(beforeBoxDeltasRef.current, codeChanges);
-        return { written: stateAfterRun(), gateStats: result.gateStats };
+        };
+        /** Lays the run's result onto live state and hands back what it left. */
+        const finish = (result: StatCodeTurnResult) => {
+          const nextPins = withPinWrites(basePins, result.pinWrites);
+          // Onto the latest values, as the player's stats below: the regen tick can apply while the run awaits.
+          const ownersInForce = entityInForceUnder(result.traits?.ownedTraits ?? held.ownedTraits ?? {});
+          setEntityStats((prev) => withOwnerCodeResults(prev, result.owners, ownersInForce));
+          const nextEntityStats = withOwnerCodeResults(entityBase, result.owners, ownersInForce);
+          setCodePins((prev) => withPinWrites(prev, result.pinWrites));
+          if (result.traits) {
+            setGlobalTraits(result.traits.acquired);
+            setDisabledTraitIds(result.traits.disabledTraitIds);
+            setAppliedTraitValues(result.traits.appliedValues);
+            setCascadeOffTraitIds(result.traits.cascadeOffTraitIds);
+            setOwnedTraits(result.traits.ownedTraits);
+            for (const line of result.traits.log) addLogEntry(line);
+          }
+          /** What this run left, in the shapes state holds. */
+          const stateAfterRun = (): TurnCodeState => ({
+            globalStats: overlayStatCodeResult(afterAsks, result, inForce),
+            codePins: nextPins,
+            globalTraits: [...(result.traits?.acquired ?? held.acquired)],
+            disabledTraitIds: [...(result.traits?.disabledTraitIds ?? held.disabledTraitIds)],
+            appliedTraitValues: result.traits?.appliedValues ?? held.appliedValues,
+            cascadeOffTraitIds: result.traits?.cascadeOffTraitIds ?? held.cascadeOffTraitIds,
+            ownedTraits: result.traits?.ownedTraits ?? held.ownedTraits,
+            entityStats: nextEntityStats,
+          });
+          if (!result.traits && result.moved.length === 0 && result.boundsChanged.length === 0) {
+            const written = nextPins === basePins && nextEntityStats === entityPrevious ? null : stateAfterRun();
+            return { written, gateStats: result.gateStats };
+          }
+          // The bars are keyed by the name the player reads, so the run's stats resolve theirs here.
+          const codeChanges = appliedStatDeltas(stats, resolveStatNames(result.stats, resolvePH));
+          // Onto the LATEST stats, not a blanket `setGlobalStats(result.stats)`: the run read the pre-`await`
+          // baseline, and anything applied in the meantime (starvation, a re-generate) must survive.
+          setGlobalStats((prev) => overlayStatCodeResult(prev, result, inForce));
+          // Fold the code-derived movement into the live delta feedback, so a code stat's bar/text animates
+          // live — matching the history view (pageStatDeltas diffs the final, post-code snapshot).
+          addStatDeltas(null, codeChanges);
+          // The commit resets the bar deltas mid-turn, so the share of the runs before the AI is re-laid over that.
+          // The start scripts, the before box and the output scripts can move one stat, so their shares add.
+          if (readsTurnStart(timing)) beforeBoxDeltasRef.current = sumDeltas(beforeBoxDeltasRef.current, codeChanges);
+          return { written: stateAfterRun(), gateStats: result.gateStats };
+        };
+        return { turn, finish };
       } catch (error) {
         console.error("Error processing stat code:", error);
         return null;
@@ -2955,6 +2988,22 @@ const GameViewer = ({
     },
     [setGlobalStats, setEntityStats, entityOwnersOf, entityInForceUnder, addStatDeltas, setCodePins, resolvePH, statCodePlaceholders, pinsFor, traits, authoredStats, worldScripts, resolveTraitText, gatedWorld, codeEntities, statEntities, inForceOn, liveScene,
       setGlobalTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, setOwnedTraits, addLogEntry],
+  );
+
+  // Runs one timing's scripts over this turn and lays the result: a turn with no stat response runs it directly.
+  // Null when the run failed.
+  const runStatCode = useCallback(
+    async (...args: Parameters<typeof prepareStatCode>): Promise<{ written: TurnCodeState | null; gateStats: GateStats } | null> => {
+      const prepared = prepareStatCode(...args);
+      if (!prepared) return null;
+      try {
+        return prepared.finish(await runStatCodeTurn(prepared.turn));
+      } catch (error) {
+        console.error("Error processing stat code:", error);
+        return null;
+      }
+    },
+    [prepareStatCode],
   );
 
   // The runs before the AI, over a turn's starting stats: on an opening that runs the start scripts, the start
@@ -3288,14 +3337,47 @@ const GameViewer = ({
     }
   };
 
-  /** The narration's sink: live reasoning on the transport, the rest on the Narration Stream. */
-  const narrationSink = (): TransportSink => {
+  /** Opens this turn's During AI Output run over the state the before box left; null when no script has one. */
+  const startOutputRun = (): OutputRun | null => {
+    const base = turnBeforeBoxRef.current;
+    const stats = base?.globalStats ?? rawGlobalStatsRef.current;
+    const prepared = prepareStatCode(stats, stats, [], { deltaHours: 0, elapsedHours: gameTime, calendar }, base ?? undefined, 'output');
+    const run = prepared && openOutputRun(prepared.turn);
+    outputRunRef.current = prepared && run ? { run, prepared } : null;
+    return run;
+  };
+
+  /**
+   * Lays the output run's writes onto live state, once, ahead of the After batch. Answers the state it left,
+   * which the After batch then starts from; null when the run wrote nothing or never ran.
+   */
+  const landOutputRun = (): TurnCodeState | null => {
+    const held = outputRunRef.current;
+    outputRunRef.current = null;
+    const result = held?.run.result();
+    if (!held || !result) return null;
+    const { written } = held.prepared.finish(result);
+    // A turn that never commits puts the writes back with the before box's.
+    if (written && !beforeBoxUndoRef.current) beforeBoxUndoRef.current = turnPreBoxRef.current;
+    return written;
+  };
+
+  /**
+   * The narration's sink: live reasoning on the transport, the rest on the Narration Stream. `settled` answers
+   * the narration after its During AI Output scripts, once the last sentence has passed; undefined with none.
+   */
+  const narrationSink = (): { sink: TransportSink; settled: () => Promise<string | undefined> } => {
     const listeners = [revealListener, sceneListListener, historyListener];
     // Opt-in streaming read-aloud needs a loaded model.
     if (streamNarrationAudio && ttsLoaded) listeners.push(readAloudListener);
-    const toScreen = fanOut([liveReasoningSink(), narrationStream(...listeners)]);
-    // Unmount aborts the turn, and its canceled event must not reach the screen.
-    return (event) => { if (mounted.current) toScreen(event); };
+    const output = startOutputRun();
+    const rewriting = output && rewriteSentences(output.rewrite, ...listeners);
+    const toScreen = fanOut([liveReasoningSink(), narrationStream(...(rewriting ? [rewriting.listener] : listeners))]);
+    // Unmount aborts the turn, and its canceled event must not reach the screen. The turn stops waiting on the scripts.
+    return {
+      sink: (event) => { if (mounted.current) toScreen(event); else rewriting?.abandon(); },
+      settled: rewriting ? rewriting.final : () => Promise.resolve(undefined),
+    };
   };
 
   /** Sends one request through the Request Transport, with the sinks its type reports to. */
@@ -3304,10 +3386,13 @@ const GameViewer = ({
     if (!silent && !quiet) setAiRequestType(requestType);
     const lookups = lookupSink();
     const sinks = [captureSink(requestType), failureSink, lookups.sink];
-    if (requestType === "narration") sinks.push(narrationSink());
+    const narration = requestType === "narration" ? narrationSink() : null;
+    if (narration) sinks.push(narration.sink);
     if (requestType === "choices") sinks.push(choicesSink);
     try {
-      return await transportRequest(args, transportContext(), fanOut(sinks));
+      const text = await transportRequest(args, transportContext(), fanOut(sinks));
+      // The turn reads the narration its scripts left, which is what the screen and the save already hold.
+      return (narration && text ? await narration.settled() : undefined) ?? text;
     } finally {
       lookups.end();
     }
