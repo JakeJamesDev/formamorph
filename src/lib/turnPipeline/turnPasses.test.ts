@@ -816,3 +816,51 @@ describe('the milestone selector pass', () => {
     expect(() => milestoneSelectPass.buildRequest(input(), material())).toThrow(/milestone/);
   });
 });
+
+describe('Strip Links And Images at the request', () => {
+  const diary = ['I saw the [gate](https://a.test/g) ![crest](https://a.test/c.png) today.', 'Nothing to report.'];
+  const STRIPPED = '- I saw the gate today.\n- Nothing to report.';
+  const subject = { name: 'Bram', entity: BRAM, diary };
+
+  it("sends a character's diary entries as plain text, and as written with the rule off", () => {
+    expect(build('character', { subject }, {}, { stripLinksAndImages: true }).messages[0].content).toContain(STRIPPED);
+    expect(build('character', { subject }, {}, { stripLinksAndImages: true }).messages[0].content).not.toContain('](');
+    expect(build('character', { subject }, {}, { stripLinksAndImages: false }).messages[0].content)
+      .toContain('- I saw the [gate](https://a.test/g) ![crest](https://a.test/c.png) today.');
+  });
+
+  it('sends the milestone selector plain digests, and the same digests as written with the rule off', () => {
+    const linked = ['Met [Bram](https://a.test/b).'];
+    const fresh = ['Found ![map](https://a.test/m.png) it.'];
+    const sent = (stripLinksAndImages: boolean) => milestoneSelectPass.buildRequest(
+      input({}, { stripLinksAndImages }),
+      material({ milestone: { kept: linked, fresh } }),
+    ).messages[0].content;
+    expect(sent(true)).toContain('1. Met Bram.');
+    expect(sent(true)).toContain('2. Found it.');
+    expect(sent(false)).toContain('1. Met [Bram](https://a.test/b).');
+  });
+
+  it('sends the character note its first passage and later material as plain text, and as written with the rule off', () => {
+    const subject = {
+      name: 'Bram',
+      laterMaterial: ['Bram showed [the gate](https://a.test/g).', 'Bram wrote ![sigil](https://a.test/s.png) it down.'],
+    };
+    const passage = 'Bram stood by the [ferry](https://a.test/f) ![crest](https://a.test/c.png).';
+    const note = (stripLinksAndImages: boolean) =>
+      build('discoverEntity', { subject, narration: passage }, {}, { stripLinksAndImages }).messages[0].content;
+    expect(note(true)).toContain('Bram stood by the ferry.');
+    expect(note(true)).toContain('Bram showed the gate.\n\nBram wrote it down.');
+    expect(note(true)).not.toContain('](');
+    expect(note(false)).toContain('[ferry](https://a.test/f) ![crest](https://a.test/c.png)');
+    expect(note(false)).toContain('[the gate](https://a.test/g)');
+  });
+
+  it('leaves the player action and the authored character text as written', () => {
+    const action = 'I open [the book](https://a.test/book).';
+    const entity = { ...BRAM, aiSummary: 'Sells [maps](https://a.test/maps).' } as Entity;
+    const content = build('character', { subject: { ...subject, entity }, effectiveAction: action }, {}, { stripLinksAndImages: true }).messages[0].content;
+    expect(content).toContain(action);
+    expect(content).toContain('Sells [maps](https://a.test/maps).');
+  });
+});

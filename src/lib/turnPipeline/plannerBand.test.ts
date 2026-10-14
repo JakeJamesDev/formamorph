@@ -68,4 +68,13 @@ describe('buildPlannerBand', () => {
     expect(narrow.recap).toContain('Digest 19:');
     expect(narrow.recap).not.toContain('Digest 1:');
   });
+
+  it('plans from plain text when the world strips links and images', () => {
+    const linked = (i: number): BandTurn => ({ ...turn(i, `Saw [gate ${i}](https://a.test/g) ![x](https://a.test/x.png).`), gameText: `Read [sign ${i}](https://a.test/s).` });
+    const turns = [linked(1), linked(2), linked(3)];
+    const stripped = buildPlannerBand(base({ turns, stripMedia: true }));
+    expect(stripped.lastStory).toBe('Read sign 3.');
+    expect(stripped.recap).toBe('Earlier events:\nSaw gate 1.\nSaw gate 2.');
+    expect(buildPlannerBand(base({ turns })).lastStory).toBe('Read [sign 3](https://a.test/s).');
+  });
 });

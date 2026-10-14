@@ -24,6 +24,7 @@ import { SelectOptions } from "@/components/SelectOptions";
 import type { AllowedPersonas, VrmLicense } from '@/types';
 import { WorldInput } from '@/components/editor/WorldField';
 import { fieldFrame } from '@/lib/historyField';
+import { worldStripsLinksAndImages } from '@/lib/stripLinksAndImages';
 
 /**
  * The world's custom player VRM in the same details view the model library uses. The world stores the model
@@ -303,6 +304,15 @@ const WorldOverviewManager = () => {
         </div>
       )}
       {advanced && <PersonaRulesFields />}
+      <div className="flex items-center gap-2" {...fieldFrame('stripLinksAndImages')}>
+        <Checkbox
+          id="stripLinksAndImages"
+          checked={worldStripsLinksAndImages(worldOverview)}
+          onCheckedChange={(checked) => updateWorldOverview({ stripLinksAndImages: checked === true })}
+        />
+        <Label htmlFor="stripLinksAndImages">Strip Links And Images</Label>
+        <Hint as="span">Sends past narration with links as plain text and images removed</Hint>
+      </div>
       <div className="space-y-2" {...targetAttribute('worldEditor.overview', 'background-music')}>
         <Label htmlFor="sound-upload-world-bgm">Background Music</Label>
         {/* The world stores a bare data URL where a location stores a media record, so the shared widget

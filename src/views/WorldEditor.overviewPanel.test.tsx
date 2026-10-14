@@ -44,7 +44,7 @@ const WORLD: World = benchEditorWorld({
 
 /** Both column labels, so a label that moves between the columns fails rather than passing twice. */
 const FIELD_LABELS = new RegExp(
-  '^(World Name|Author|Tags|Thumbnail|3D Player Avatar|Custom Player Avatar|Allowed Personas|Starts On|Background Music'
+  '^(World Name|Author|Tags|Thumbnail|3D Player Avatar|Custom Player Avatar|Allowed Personas|Starts On|Strip Links And Images|Background Music'
   + '|Player-Facing Description|Readme|AI-Facing Description|Custom Prompts)$',
 );
 
@@ -112,7 +112,7 @@ describe('the World Editor Overview columns', () => {
     await screen.findByLabelText('World Name');
     expect(leftLabels()).toEqual([
       'World Name', 'Author', 'Tags', 'Thumbnail', '3D Player Avatar', 'Custom Player Avatar',
-      'Allowed Personas', 'Starts On', 'Background Music',
+      'Allowed Personas', 'Starts On', 'Strip Links And Images', 'Background Music',
     ]);
   });
 
@@ -128,7 +128,7 @@ describe('the World Editor Overview columns', () => {
     renderWorldEditorBench(WORLD, 'simple');
     await screen.findByLabelText('World Name');
     expect(leftLabels()).toEqual([
-      'World Name', 'Author', 'Tags', 'Thumbnail', '3D Player Avatar', 'Background Music',
+      'World Name', 'Author', 'Tags', 'Thumbnail', '3D Player Avatar', 'Strip Links And Images', 'Background Music',
     ]);
   });
 
@@ -169,6 +169,15 @@ describe('the World Editor Overview columns', () => {
     const box = await screen.findByRole('checkbox', { name: /3D Player Avatar/ });
     const row = box.closest('div');
     expect(within(row as HTMLElement).getByText('The player can customize it')).toBeInTheDocument();
+  });
+
+  it('shows Strip Links And Images off for a world saved without it, explains it, and switches it on', async () => {
+    renderWorldEditorBench(WORLD, 'simple');
+    const box = await screen.findByRole('checkbox', { name: /Strip Links And Images/ });
+    expect(box).not.toBeChecked();
+    expect(within(box.closest('div') as HTMLElement).getByText(/links as plain text and images removed/)).toBeInTheDocument();
+    fireEvent.click(box);
+    await waitFor(() => expect(box).toBeChecked());
   });
 });
 

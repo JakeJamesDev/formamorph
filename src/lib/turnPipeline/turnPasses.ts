@@ -17,6 +17,7 @@ import {
   type ParsedDirector,
 } from '@/lib/stagedPlanning';
 import { languageDirective } from '@/lib/languages';
+import { stripLinksAndImages } from '@/lib/stripLinksAndImages';
 import { matchLocationResponse } from '@/lib/locationMatch';
 import { parseChoices } from '@/lib/choices';
 import { parseStatUpdates } from '@/lib/statChanges';
@@ -177,6 +178,13 @@ const discoverUserTiled = (template: string, subject: TurnPassSubject, firstPass
  */
 const quietInBatch = (input: TurnPlanInput): boolean => input.settings.concurrentTurnRequests;
 
+/** Past narration text as the world's Strip Links And Images rule sends it. */
+const strippedText = (text: string, input: TurnPlanInput): string =>
+  input.settings.stripLinksAndImages ? stripLinksAndImages(text) : text;
+
+const strippedEntries = (entries: string[], input: TurnPlanInput): string[] =>
+  entries.map((entry) => strippedText(entry, input));
+
 const stageValues = (material: TurnMaterial): TokenValues =>
   layerValues(material.ctx, { '<ACTIVE CHARACTER GUIDANCE>': material.activeCharacterGuidance });
 
@@ -307,7 +315,7 @@ const characterPass: TurnPassRecord<string> = {
           stats: subject.stats,
           scene: material.directorScene,
           action: material.effectiveAction,
-          diary: subject.diary,
+          diary: subject.diary && strippedEntries(subject.diary, input),
           recap: material.lastStory,
         }),
         'character-brief',
@@ -588,7 +596,11 @@ export const discoverEntityPass: TurnPassRecord<string> = {
     return labeledRequest(
       { type: 'discoverEntity', maxTokens: TURN_PASS_CAPS.discoverEntity, ...silentOn(material) },
       systemTiled(input.prompts.discoverEntity, material.ctx),
-      discoverUserTiled(input.prompts.discoverEntityUser, subject, material.narration),
+      discoverUserTiled(
+        input.prompts.discoverEntityUser,
+        { ...subject, laterMaterial: subject.laterMaterial && strippedEntries(subject.laterMaterial, input) },
+        strippedText(material.narration, input),
+      ),
     );
   },
   parseResponse: (raw, material) => cleanDiscoveredDescription(raw, subjectOf(material).name),
@@ -646,7 +658,7 @@ export const milestoneSelectPass: TurnPassRecord<IncrementalVerdict | null> = {
     // An empty kept list leaves blank lines behind; they collapse, as the character note's do.
     const template = trimTiled(tilePieces(collapseBlankLines(promptTemplatePieces(
       input.prompts.milestoneSelectUser,
-      milestoneMomentValues(kept, fresh),
+      milestoneMomentValues(strippedEntries(kept, input), strippedEntries(fresh, input)),
       { source: 'user-template', tokens: { '<REMEMBERED MOMENTS>': 'condensed', '<NEW MOMENTS>': 'condensed' } },
     ))));
     const format = milestoneReplyFormat(kept.length > 0);

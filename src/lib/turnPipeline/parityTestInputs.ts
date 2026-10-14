@@ -48,6 +48,7 @@ export const PARITY_SETTINGS: TurnSettings = {
   imageAttachments: false,
   promptAttachments: {},
   language: 'English',
+  stripLinksAndImages: false,
 };
 
 /** Current defaults for request previews and assembly tests. */

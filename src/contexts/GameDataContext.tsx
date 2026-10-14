@@ -396,6 +396,7 @@ function useProvideGameData() {
       ...(Array.isArray(overview.openings) ? { openings: overview.openings } : {}),
       ...(overview.openingWeights ? { openingWeights: overview.openingWeights } : {}),
       ...(typeof overview.openingsEnabled === 'boolean' ? { openingsEnabled: overview.openingsEnabled } : {}),
+      ...(typeof overview.stripLinksAndImages === 'boolean' ? { stripLinksAndImages: overview.stripLinksAndImages } : {}),
       // Any and the player's default are the absent values.
       ...(allowedPersonas !== 'any' ? { allowedPersonas } : {}),
       ...(startPersona ? { startPersona } : {})

@@ -22,6 +22,8 @@ export interface PlannerBandInput {
   notes: MemoryNote[];
   /** Narration's last story, used when the planner's own band has no assistant message. */
   fallbackLastStory: string;
+  /** The world's Strip Links And Images rule, applied to the band's narration and digests. */
+  stripMedia?: boolean;
 }
 
 export interface PlannerBand {
@@ -52,6 +54,7 @@ export function buildPlannerBand(input: PlannerBandInput): PlannerBand {
     bandCap: input.bandCap,
     stickyIds: input.stickyIds,
     notes: input.notes,
+    stripMedia: input.stripMedia,
   });
   return {
     recap: planner.recap,
