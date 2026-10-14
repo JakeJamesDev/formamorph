@@ -149,6 +149,7 @@ function seedImagePresetStore(): ImageEndpointPresetStore {
     invokeEncoder: d.invokeEncoder,
     invokeVae: d.invokeVae,
     invokeBoard: d.invokeBoard,
+    fileName: d.fileName,
   });
 }
 
@@ -1189,7 +1190,7 @@ function useProvideSettings() {
     landscapeWidth: imageLandscapeWidth, landscapeHeight: imageLandscapeHeight,
     steps: imageSteps, cfg: imageCfg, sampler: imageSampler, adetailer: imageAdetailer,
     workflow: imageWorkflow, invokeEncoder: imageInvokeEncoder, invokeVae: imageInvokeVae,
-    invokeBoard: imageInvokeBoard,
+    invokeBoard: imageInvokeBoard, fileName: imageFileName,
   } = imageValues;
   // Switching provider seeds that provider's own defaults the first time, so a NovelAI preset lands
   // inside its free-generation window without hand-tuning.
@@ -1211,6 +1212,7 @@ function useProvideSettings() {
   const setImageInvokeEncoder = patchImage('invokeEncoder');
   const setImageInvokeVae = patchImage('invokeVae');
   const setImageInvokeBoard = patchImage('invokeBoard');
+  const setImageFileName = patchImage('fileName');
   // DEV-only: let preview verification set Image Gen values in one call (`window.__fmDev.setImage({...})`)
   // instead of driving Radix dropdowns by hand. Tree-shaken from prod via the import.meta.env.DEV guard.
   useEffect(() => {
@@ -1966,6 +1968,8 @@ function useProvideSettings() {
     resetImageEndpointPreset,
     imageTagPrompt,
     setImageTagPrompt,
+    imageFileName,
+    setImageFileName,
     vramHelperUrl,
     setVramHelperUrl,
     ttsVolume,

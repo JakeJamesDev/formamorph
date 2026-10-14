@@ -14,9 +14,16 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 ### Minor Changes
 
+#### ➕ Added
+
+- **👤 User-facing**
+  - **ComfyUI's Model row shows the model a workflow loads itself.** A workflow without `%ckpt%` ignores the Model setting, so the row shows its own model file, greyed out.
+  - **ComfyUI's File Name setting saves images under folders by world and subject.** The pattern takes `{world}`, `{subject}`, `{turn}` and `{preset}`, and defaults to `formamorph/{world}/{subject}`. A custom workflow takes it where its save node's prefix is `%prefix%`.
+
 #### 🔧 Fixed
 
 - **👤 User-facing**
+  - **ComfyUI with an empty Model now uses the first checkpoint the server lists.** It used to send an empty checkpoint name, which ComfyUI rejects. The Model placeholder says which one is used.
   - **Drifted Copies:**
     - **Duplicating a location from the filtered list now gives the copy its own Unique chip rolls.** The copy no longer shares the source's values, the same as in the tree.
   - **Deleting an entity, trait, location or placeholder group keeps your item order.** The group's items take its place in the list.
