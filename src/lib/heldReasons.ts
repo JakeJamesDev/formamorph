@@ -9,9 +9,7 @@ export type HeldReason =
   /** The owner links `group`, and the original `name` sits inside it. */
   | { kind: 'group'; name: string; group: string }
   /** The owner links `name`, and the original `group` holds it. */
-  | { kind: 'inside'; name: string; group: string }
-  /** The owner's traits are the player's, and the player already holds the original. */
-  | { kind: 'player'; name: string };
+  | { kind: 'inside'; name: string; group: string };
 
 /** The reason as one line. With `subject` the line names the owner: "Bram already links Trust". */
 export function heldReasonText(reason: HeldReason, subject?: string): string {
@@ -21,6 +19,5 @@ export function heldReasonText(reason: HeldReason, subject?: string): string {
     case 'owns': return `${lead} owns ${reason.name}`;
     case 'group': return `${lead} links ${reason.group}, which holds ${reason.name}`;
     case 'inside': return `${lead} links ${reason.name}, which ${reason.group} holds`;
-    case 'player': return `${lead} holds ${reason.name} as a player trait`;
   }
 }

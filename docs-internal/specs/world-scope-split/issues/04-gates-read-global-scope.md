@@ -1,6 +1,6 @@
 # 04: Gates Read Global Scope
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01, 03
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -23,6 +23,7 @@ Spec: R0, Q1, Q1b, Q6, Q10, Q13, Q14, Q17, stories 3, 5–9, 18.
 - [ ] The Test Bench warns on a crossing Same Owner row and stays quiet on a same-entity pair
 - [ ] Every bundled world's gates hold as authored
 - [ ] Existing gate suites keep their values except where Q6, Q10, Q13 or Q17 changes them; each change names its ruling
+- [ ] `traitForceScope` gives a persona's link to a root pick in the persona's own part, once the dedup is gone (from ticket 01's review)
 - [ ] Four gates green
 
 ## Blocked by

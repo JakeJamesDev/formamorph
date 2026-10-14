@@ -16,9 +16,8 @@ const options = {
 const textOf = (r: TraitRequirement) => `${r.not ? 'not ' : ''}${r.id === 'brave' ? 'Brave' : 'Wise'}`;
 
 /** The field with no trait and no store: rows, an owner and the data the host would derive. */
-function Harness({ initial = [], owner = 'image-1', offWorld = true, choices = options }: {
+function Harness({ initial = [], offWorld = true, choices = options }: {
   initial?: TraitRequirementRow[];
-  owner?: string;
   offWorld?: boolean;
   choices?: RequirementOptions;
 }) {
@@ -30,7 +29,7 @@ function Harness({ initial = [], owner = 'image-1', offWorld = true, choices = o
   return (
     <TooltipProvider>
       <RequirementRowsField
-        rows={rows} owner={owner} states={states} options={choices} textOf={textOf}
+        rows={rows} states={states} options={choices} textOf={textOf}
         placeholders={[]} offWorld={offWorld} onChange={setRows} onOpen={() => {}}
       />
       <output data-testid="rows">{JSON.stringify(rows)}</output>
@@ -70,22 +69,26 @@ describe('RequirementRowsField without a trait or a store', () => {
     expect(screen.getByRole('button', { name: 'Wise' })).toBeInTheDocument();
   });
 
-  describe('with one owner for the target, in a world', () => {
-    const single: RequirementOptions = {
-      ...options,
-      traits: [{ ...options.traits[0], owners: [{ owner: { kind: 'you' }, name: 'You' }] }],
-    };
-
-    it('adds at once when the owner is the world root', async () => {
-      render(<Harness owner="world" offWorld={false} choices={single} />);
+  // Q10: a global target offers no owner, so it adds at once from any host.
+  describe('with a global target, in a world', () => {
+    it('adds at once', async () => {
+      render(<Harness offWorld={false} />);
       fireEvent.click(screen.getByRole('button', { name: 'Add Requirement' }));
       fireEvent.click(await screen.findByRole('option', { name: /^Brave/ }));
       expect(screen.getByRole('button', { name: 'Brave' })).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: 'Back to targets' })).not.toBeInTheDocument();
     });
+  });
 
-    it('asks which owner when the host is another owner, such as an image\'s entity', async () => {
-      render(<Harness owner="image-1" offWorld={false} choices={single} />);
+  // Q6: Same Owner on a global trait never reads You, so a target only You can hold asks which owner.
+  describe('with only You as an owner for the target, in a world', () => {
+    const single: RequirementOptions = {
+      ...options,
+      traits: [{ ...options.traits[0], owners: [{ owner: { kind: 'you' }, name: 'You' }] }],
+    };
+
+    it('asks which owner', async () => {
+      render(<Harness offWorld={false} choices={single} />);
       fireEvent.click(screen.getByRole('button', { name: 'Add Requirement' }));
       fireEvent.click(await screen.findByRole('option', { name: /^Brave/ }));
       expect(screen.getByRole('button', { name: 'Back to targets' })).toBeInTheDocument();

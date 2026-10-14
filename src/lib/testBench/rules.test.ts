@@ -2178,8 +2178,11 @@ describe('trait gate rules', () => {
       const paladin = trait({ id: 'paladin', name: 'Paladin' });
       const named = (id: string) => gated('sq', [{ kind: 'trait', id: 'paladin', owner: { kind: 'entity', id } }]);
       expect(runRules(gates([named('ash')], { entities: [resident, { ...ash, traits: [paladin] }] }))).toEqual([]);
-      // The world's own Paladin is not Ash's, so "Ash: Paladin" stays stuck.
-      expect(ids(only(gates([named('ash'), paladin], { entities: [resident, ash] }), rule))).toEqual([['sq']]);
+      // A Blueprints Paladin is not Ash's until Ash links it, so "Ash: Paladin" stays stuck (Q10 reads global items only).
+      const blueprints = { id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' as const };
+      expect(ids(only(gates([named('ash'), { ...paladin, groupId: 'bp' }], { traitGroups: [blueprints], entities: [resident, ash] }), rule))).toEqual([['sq']]);
+      // Q10: the world's own Paladin is global, so "Ash: Paladin" reads global scope and opens.
+      expect(only(gates([named('ash'), paladin], { entities: [resident, ash] }), rule)).toEqual([]);
     });
 
     it('leaves a trait stuck only behind a deleted target to the unresolved rule, dependents included', () => {
@@ -2266,14 +2269,14 @@ describe('trait gate rules', () => {
       expect(ids(only(w, rule))).toEqual([['a', 'b']]);
     });
 
-    it('reports a loop once when a persona choice grows it', () => {
-      // Played, Albus sits in Class and his Squire joins the loop through "not any Class".
+    // Q6: a world group counts global items only, so Albus placed in Class never joins the loop, played or not.
+    it('reports a loop once and never grows it through an entity placed in the group', () => {
       const squire = trait({ id: 'squire', name: 'Squire', requires: [{ all: [ref('b')] }] });
       const albus: Entity = { ...resident, id: 'albus', name: 'Albus', persona: true, traits: [squire], traitPlacement: { groupId: 'g', order: 0 } };
       const w = gates([gated('a', needs('b'), { groupId: 'g' }), rowed('b', [{ all: [not({ kind: 'group', id: 'g' })] }])], {
         traitGroups: [{ id: 'g', name: 'Class', parentId: null }], entities: [resident, albus],
       });
-      expect(ids(only(w, rule))).toEqual([['a', 'squire', 'b']]);
+      expect(ids(only(w, rule))).toEqual([['a', 'b']]);
     });
 
     it('never reads a trait’s own activity, so "not any Class" on a Class trait is no loop (Q26)', () => {
@@ -2310,7 +2313,7 @@ describe('trait gate rules', () => {
     });
 
     it('flags a pair that names one owner two ways', () => {
-      // On the player's own trait, "You:" reads the same set as no owner.
+      // On a global target, "You:" reads global scope, as no owner does (Q10).
       const youNot = { ...ref('paladin'), owner: { kind: 'you' as const }, not: true as const };
       const found = only(gates([rowed('a', [{ all: [ref('paladin'), youNot] }]), paladin], { traitGroups }), rule);
       expect(found.map((f) => f.message)).toEqual(['“A” has a row that can never hold: “Paladin and You: not Paladin”']);
@@ -2320,8 +2323,10 @@ describe('trait gate rules', () => {
       const ashPaladin = { ...ref('paladin'), owner: { kind: 'entity' as const, id: 'ash' }, not: true as const };
       const split = gates([rowed('a', [{ all: [ref('paladin')] }, { all: [not(ref('paladin'))] }]), paladin], { traitGroups });
       expect(only(split, rule)).toEqual([]);
-      const owners = gates([rowed('a', [{ all: [ref('paladin'), ashPaladin] }]), paladin], { traitGroups, entities: [resident, ash] });
+      const owners = gates([rowed('a', [{ all: [ref('paladin'), ashPaladin] }]), paladin], { traitGroups, entities: [resident, { ...ash, traits: [paladin] }] });
       expect(only(owners, rule)).toEqual([]);
+      // Q10: an Ash that lacks the global Paladin reads global scope, so the pair names one owner.
+      expect(only(gates([rowed('a', [{ all: [ref('paladin'), ashPaladin] }]), paladin], { traitGroups, entities: [resident, ash] }), rule)).toHaveLength(1);
     });
   });
 
@@ -2398,10 +2403,11 @@ describe('trait gate rules', () => {
         const req = atLeast('hunger', 70, { name: 'Hunger', owner: { kind: 'entity', id: 'ash' } });
         const hunger = stat({ id: 'hunger', name: 'Hunger', starting: 10 });
         expect(runRules(gates([berserk(req)], { entities: [resident, ashOwns([hunger])] }))).toEqual([]);
-        // Rage exists in the world, but Ash does not own it.
-        expect(messages(gates([berserk(atLeast('rage', 80, { name: 'Rage', owner: { kind: 'entity', id: 'ash' } }))], {
-          stats: [rage], entities: [resident, ashOwns([])],
-        }), rule)).toEqual(['“BERSERK” requires “Ash: Rage >= 80”, which names a stat its owner doesn’t have']);
+        const onAsh = atLeast('rage', 80, { name: 'Rage', owner: { kind: 'entity', id: 'ash' } });
+        expect(messages(gates([berserk(onAsh)], { entities: [resident, ashOwns([])] }), rule))
+          .toEqual(['“BERSERK” requires “Ash: Rage >= 80”, which names a stat its owner doesn’t have']);
+        // Q10: a global Rage Ash does not own reads global scope.
+        expect(messages(gates([berserk(onAsh)], { stats: [rage], entities: [resident, ashOwns([])] }), rule)).toEqual([]);
       });
 
       it('leaves a switched-off stat to the disabled-stat rule', () => {
@@ -2440,6 +2446,42 @@ describe('trait gate rules', () => {
       it('reads a trait an entity owns', () => {
         const owner: Entity = { ...resident, id: 'ash', name: 'Ash', stats: [rage], traits: [berserk(gate, { statChanges: [{ statId: 'rage', value: 5 }] })] };
         expect(ids(only(gates([], { entities: [resident, owner] }), rule))).toEqual([['berserk']]);
+      });
+    });
+
+    describe('global trait on the same owner (Q6, Q14)', () => {
+      const rule = 'trait-requirement-global-same-owner';
+      const blueprints = { id: 'blueprints', name: 'Blueprints', parentId: null, system: 'blueprints' as const };
+      const paladin = trait({ id: 'paladin', name: 'Paladin', groupId: 'blueprints' });
+      const linksPaladin: Entity = {
+        ...ash, traitLinks: [{ id: 'l-paladin', originalId: 'paladin', kind: 'trait', originalName: 'Paladin', groupId: null }],
+      };
+      const w = (traits: Trait[], over: Partial<RuleWorld> = {}) =>
+        gates([paladin, ...traits], { traitGroups: [blueprints], entities: [resident, linksPaladin], ...over });
+
+      it('fires on a global trait that requires an entity’s trait from the same owner', () => {
+        const found = only(w([gated('squire', [ref('paladin')])]), rule);
+        expect(ids(found)).toEqual([['squire']]);
+        expect(found[0].severity).toBe('warning');
+        expect(found[0].message).toBe('“SQUIRE” is a global trait and requires “Paladin” from the same owner. Only entities have it, so the requirement never holds. Pick You or an entity as the owner');
+      });
+
+      it('fires on a global trait that requires an entity’s stat from the same owner', () => {
+        const owned: Entity = { ...linksPaladin, stats: [rage] };
+        expect(ids(only(w([berserk(atLeast('rage', 80))], { entities: [resident, owned] }), rule))).toEqual([['berserk']]);
+        expect(only(w([berserk(atLeast('rage', 80))], { stats: [rage], entities: [resident, owned] }), rule)).toEqual([]);
+      });
+
+      it('stays quiet on a named owner, a global target, an entity trait on a global target, and a same-entity pair', () => {
+        expect(only(w([gated('squire', [{ kind: 'trait', id: 'paladin', owner: { kind: 'you' } }])]), rule)).toEqual([]);
+        expect(only(w([trait({ id: 'brave', name: 'Brave' }), gated('squire', [ref('brave')])]), rule)).toEqual([]);
+        // Q10 reads an entity trait's global target from global scope, so it pairs nothing.
+        const reverse: Entity = { ...ash, traits: [gated('vow', [ref('brave')])] };
+        expect(only(w([trait({ id: 'brave', name: 'Brave' })], { entities: [resident, reverse] }), rule)).toEqual([]);
+        const own: Entity = { ...ash, traits: [trait({ id: 'oath', name: 'Oath' }), gated('vow', [ref('oath')])] };
+        expect(only(w([], { entities: [resident, own] }), rule)).toEqual([]);
+        // A Blueprints trait is no global trait: its linker is its owner.
+        expect(only(w([gated('smite', [ref('paladin')], { groupId: 'blueprints' })]), rule)).toEqual([]);
       });
     });
 
@@ -2575,23 +2617,28 @@ describe('trait gate rules', () => {
 
       it('reads a stat on the owner the Condition names', () => {
         const onBree = atLeast('rage', 80, { owner: { kind: 'entity', id: 'bree' } });
-        const named = (stats: Stat[]) => crowd([owner([image([onBree])]), { ...resident, id: 'bree', name: 'Bree', stats }]);
+        const named = (stats: Stat[], world: Stat[] = []) =>
+          crowd([owner([image([onBree])]), { ...resident, id: 'bree', name: 'Bree', stats }], { stats: world });
         expect(only(named([]), rule)).toHaveLength(1);
         expect(only(named([rage]), rule)).toEqual([]);
+        // Q10: a global Rage Bree does not own reads global scope.
+        expect(only(named([], [rage]), rule)).toEqual([]);
       });
 
       it('leaves a stat that is switched off to the stats rules', () => {
         const off = stat({ id: 'rage', name: 'Rage', enabled: false });
-        const w = (stats: Stat[]) => crowd([owner([image([atLeast('rage', 80)])], { stats })]);
+        // No global Rage, which Q10 would read in place of the entity's.
+        const w = (stats: Stat[]) => crowd([owner([image([atLeast('rage', 80)])], { stats })], { stats: [] });
         expect(only(w([off]), rule)).toEqual([]);
         // The same Condition on an entity with no such stat at all still reports.
         expect(only(w([]), rule)).toHaveLength(1);
       });
 
-      it('reads the entity’s own stat for a Condition with no owner', () => {
-        const w = (own: Stat[]) => gates([], { stats: [rage], entities: [resident, owner([image([atLeast('rage', 80)])], { stats: own })] });
+      it('reads the entity’s own stat for a Condition with no owner, else a global one (Q10)', () => {
+        const w = (own: Stat[], world: Stat[] = []) => gates([], { stats: world, entities: [resident, owner([image([atLeast('rage', 80)])], { stats: own })] });
         expect(only(w([]), rule)).toHaveLength(1);
         expect(only(w([rage]), rule)).toEqual([]);
+        expect(only(w([], [rage]), rule)).toEqual([]);
       });
 
       it('judges a rule on slot 0 like any other', () => {
@@ -2858,15 +2905,22 @@ describe('trait link rules', () => {
   const linked = (entities: Entity[], over: Partial<RuleWorld> = {}) =>
     base({ traits: [faithful, ...blueprinted], traitGroups, entities: [resident, ...entities], ...over });
   const opened = (found: ReturnType<typeof runRules>) => found.map((f) => f.items.map((i) => i.id));
+  /** Faithful in Blueprints: an entity's item, which only its linker can hold, so Q10's global read can't open it. */
+  const blueprintFaithful = { traits: [{ ...faithful, groupId: 'blueprints' }, ...blueprinted] };
 
   describe('never-unlockable per owner', () => {
     const rule = 'trait-requirement-never-unlockable';
 
     it('names the owner and the requirement it can never meet, and opens the link', () => {
-      const found = only(linked([albus({ traitLinks: [link('l-smite', 'smite', 'trait')] })]), rule);
+      const found = only(linked([albus({ traitLinks: [link('l-smite', 'smite', 'trait')] })], blueprintFaithful), rule);
       expect(found.map((f) => f.message)).toEqual(['“Albus” links “Smite” but can never meet “Faithful”, so it never unlocks']);
       expect(opened(found)).toEqual([['l-smite']]);
       expect(found[0].items[0].section).toBe('traits');
+    });
+
+    // Q10: a requirement naming a global item reads global scope from any trait.
+    it('reads a root requirement from global scope, so an entity that lacks it is not stuck', () => {
+      expect(only(linked([albus({ traitLinks: [link('l-smite', 'smite', 'trait')] })]), rule)).toEqual([]);
     });
 
     it('passes once the owner links what the trait requires', () => {
@@ -2876,7 +2930,7 @@ describe('trait link rules', () => {
 
     it('opens the link that brings a stuck trait inside a linked group', () => {
       const w = linked([albus({ traitLinks: [link('l-classes', 'classes', 'group')] })], {
-        traits: [faithful, ...blueprinted.map((t) => (t.id === 'paladin' ? { ...t, requires: needs('faithful') } : t))],
+        traits: [{ ...faithful, groupId: 'blueprints' }, ...blueprinted.map((t) => (t.id === 'paladin' ? { ...t, requires: needs('faithful') } : t))],
       });
       const found = only(w, rule);
       expect(found.map((f) => f.message)).toEqual(['“Albus” links “Paladin” but can never meet “Faithful”, so it never unlocks']);
@@ -2892,15 +2946,16 @@ describe('trait link rules', () => {
 
     it('names an owned trait with its own row', () => {
       const vow = trait({ id: 'vow', name: 'Vow', requires: needs('faithful') });
-      const found = only(linked([albus({ traits: [vow] })]), rule);
+      const found = only(linked([albus({ traits: [vow] })], blueprintFaithful), rule);
       expect(found.map((f) => f.message)).toEqual(['“Albus” has “Vow” but can never meet “Faithful”, so it never unlocks']);
       expect(opened(found)).toEqual([['vow']]);
     });
 
-    it('checks a Persona as if picked, so the root it joins can meet the requirement', () => {
+    // Q6: a Persona's traits stay its own, so the root never meets its Blueprints requirement.
+    it('checks a Persona as if picked, and the root never meets its Blueprints requirement', () => {
       const smite = { traitLinks: [link('l-smite', 'smite', 'trait')] };
-      expect(only(linked([albus({ ...smite, persona: true })]), rule)).toEqual([]);
-      expect(opened(only(linked([albus(smite)]), rule))).toEqual([['l-smite']]);
+      expect(opened(only(linked([albus({ ...smite, persona: true })], blueprintFaithful), rule))).toEqual([['l-smite']]);
+      expect(only(linked([albus({ ...smite, persona: true, traitLinks: [...smite.traitLinks, link('l-faithful', 'faithful', 'trait')] })], blueprintFaithful), rule)).toEqual([]);
     });
 
     it('checks a persona-only entity, which is only present when picked', () => {
@@ -2913,7 +2968,7 @@ describe('trait link rules', () => {
       expect(opened(found)).toEqual([['l-smite']]);
     });
 
-    it('checks the Custom Persona entity as the None player, so the root it joins can meet the requirement', () => {
+    it('reads a root requirement on the Custom Persona entity from global scope (Q10)', () => {
       expect(only(linked([newcomer({ traitLinks: [link('cp-smite', 'smite', 'trait')] })]), rule)).toEqual([]);
     });
 
@@ -4829,6 +4884,7 @@ const RULE_SCOPE: Record<string, 'simple' | 'advanced'> = {
   'trait-requirement-unresolved': 'simple',
   'trait-requirement-unstable': 'simple',
   'trait-requirement-row-never-holds': 'simple',
+  'trait-requirement-global-same-owner': 'simple',
   'trait-gate-reads-own-stat': 'simple',
   'requirement-percent-zero-span': 'simple',
   // The same rows editor as a trait gate, mounted on the gallery thumbnail.

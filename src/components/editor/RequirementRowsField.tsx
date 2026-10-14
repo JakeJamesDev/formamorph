@@ -26,8 +26,8 @@ type AddTarget = number | 'new';
  * The Requires field over plain data: Requirement Rows, each a bordered line of chips joined by "and", the
  * rows joined by "or". **And** adds a Condition to its row, **Or Another Way** adds a row, and removing a
  * row's last chip removes the row (Q6). Picking a target opens a second page for the owner: the same
- * owner, You, or an entity that owns it. Off-world, or when only one owner can hold the target, it is
- * added at once. A chip opens its target, unless `opens` says the host has nowhere to open it, when it
+ * owner, You, or an entity that owns it. Off-world, or for a global target, it is added at once. A chip
+ * opens its target, unless `opens` says the host has nowhere to open it, when it
  * reads as plain text; a chip whose target is gone reads red under its stored name. Each chip flips between
  * plain and Not; a Not chip shows a NOT mark and a dashed border.
  *
@@ -36,15 +36,13 @@ type AddTarget = number | 'new';
  * would repeat another Condition in the row is held back. The same stat can sit in a row twice, once as a
  * floor and once as a ceiling.
  *
- * The host supplies everything the rows read: `owner` is the owner id the rows default to, `states` the
- * rows' evaluated state in the same order, `options` the targets an author can add, `statSections` the stats
- * by owner, and `textOf` the rule text of one Condition.
+ * The host supplies everything the rows read: `states` the rows' evaluated state in the same order, `options`
+ * the targets an author can add, `statSections` the stats by owner, and `textOf` the rule text of one Condition.
  */
 export function RequirementRowsField({
-  rows, owner, states, options, statSections = [], textOf, placeholders, offWorld = false, onChange, onOpen, opens = () => true, label = 'Requires', labelAside,
+  rows, states, options, statSections = [], textOf, placeholders, offWorld = false, onChange, onOpen, opens = () => true, label = 'Requires', labelAside,
 }: {
   rows: TraitRequirementRow[];
-  owner: string;
   states: readonly RowState[];
   options: RequirementOptions;
   statSections?: readonly RequirementStatSection[];
@@ -91,10 +89,10 @@ export function RequirementRowsField({
   const replaceCondition = (rowIndex: number, index: number, next: TraitRequirement) => onChange(rows.map((row, i) =>
     (i === rowIndex ? { all: row.all.map((req, j) => (j === index ? next : req)) } : row)));
   // A stat row names its owner in the section it sits in, so it needs no owner page. What a playing-as row,
-  // an off-world row and a target with one possible owner add at once; any other target asks which owner first.
+  // an off-world row and a global target add at once; any other target asks which owner first.
   const atOnce = (option: RequirementOption) =>
     (option.requirement.kind === 'playingAs' || option.requirement.kind === 'stat' || offWorld
-      ? option.requirement : soleOwnerRequirement(option, owner));
+      ? option.requirement : soleOwnerRequirement(option));
   const pick = (option: RequirementOption) => {
     const requirement = atOnce(option);
     if (requirement) add(requirement);
@@ -103,7 +101,6 @@ export function RequirementRowsField({
   /** Every way the row could be added is already listed, so the row has nothing left to add. */
   const exhausted = (option: RequirementOption) => {
     const requirement = atOnce(option);
-    // A world trait reads You as its own owner, so the plain and the You forms are one requirement.
     if (requirement) return [requirement, ...option.owners.map((o) => withRequirementOwner(requirement, o.owner))].some(listed);
     return listed(option.requirement) && option.owners.every((o) => listed(withRequirementOwner(option.requirement, o.owner)));
   };

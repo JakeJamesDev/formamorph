@@ -1,10 +1,10 @@
-import { PLAYER_OWNER, type RequirementOption } from '@/lib/traitGates';
+import type { RequirementOption } from '@/lib/traitGates';
 import type { TraitRequirement } from '@/types';
 
 /**
- * The requirement to add with no owner page, or null when the author has a choice to make. Only You can
- * own the target, and a world trait reads You as its own owner, so the plain requirement says it (Q20).
+ * The requirement to add with no owner page, or null when the author has a choice to make. A global target
+ * offers no owner, so the plain requirement says it (Q10).
  */
-export function soleOwnerRequirement(option: RequirementOption, ownerId: string): TraitRequirement | null {
-  return ownerId === PLAYER_OWNER && option.owners.length === 1 ? option.requirement : null;
+export function soleOwnerRequirement(option: RequirementOption): TraitRequirement | null {
+  return option.owners.length === 0 ? option.requirement : null;
 }

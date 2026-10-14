@@ -143,22 +143,12 @@ export function linksInTreeOrder(entity: Entity, links: readonly TraitLink[] = e
   return flattenTree(buildTree(entity.traitGroups ?? [], leaves)).flatMap((row) => byId.get(row.id) ?? []);
 }
 
-/** The ids the player already holds before a played entity's own tree: every root trait and group outside
- *  Blueprints. */
-function playerHeldIds(world: OwnerWorld): Set<string> {
-  const root = offeredWorldTraits(world.traits, world.traitGroups);
-  return new Set([...root.traits, ...root.groups].map((item) => item.id));
-}
-
-/** An entity's owner tree: its own items with its links expanded among them. While the entity's traits
- *  are the player's, a link that brings anything the player already holds is dropped: the player holds it
- *  once, and the player's own row wins. The Custom Persona entity's tree is the player's under a library
- *  persona, so a trait gated only on that persona falls away there as it does at the root (see
+/** An entity's owner tree: its own items with its links expanded among them. A link to a root item the root
+ *  also holds stays: each holds it apart (Q17). The Custom Persona entity's tree is the player's under a
+ *  library persona, so a trait gated only on that persona falls away there as it does at the root (see
  *  {@link withoutSelfNamedGates}); a played entity's own tree keeps its self-named gates. */
 function entityOwner(world: OwnerWorld, entity: Entity, persona: PersonaRef | undefined, isPlayer: boolean, present: boolean): Owner {
-  const held = isPlayer ? playerHeldIds(world) : null;
-  const links = (entity.traitLinks ?? []).filter((l) => !held || !broughtIds(world, l.originalId).some((id) => held.has(id)));
-  const expanded = expandLinks(world, linksInTreeOrder(entity, links));
+  const expanded = expandLinks(world, linksInTreeOrder(entity));
   const traits = [...(entity.traits ?? []), ...expanded.traits];
   return {
     id: entity.id, name: entity.name, entity, isPlayer, present,
@@ -251,11 +241,8 @@ export function editorGateInput(world: OwnerWorld, stats?: GateInput['stats']): 
   };
 }
 
-/**
- * Why the owner's tree already holds `originalId`, or anything a link to it would bring; null when it holds
- * none of it. The player and the Custom Persona entity hold every root item outside Blueprints,
- * whatever the persona the owner was resolved under, so the check reads the same in the editor and in play.
- */
+/** Why the owner's tree already holds `originalId`, or anything a link to it would bring; null when it holds
+ *  none of it. */
 export function heldReason(world: OwnerWorld, owner: Owner, originalId: string): HeldReason | null {
   const name = originalOf(world, originalId)?.item.name ?? '';
   const brought = broughtIds(world, originalId);
@@ -266,10 +253,7 @@ export function heldReason(world: OwnerWorld, owner: Owner, originalId: string):
       : { kind: 'group', name, group: direct.originalName };
   }
   const inside = brought.map((id) => owner.linkOf.get(id)).find((link) => link);
-  if (inside) return { kind: 'inside', name: inside.originalName, group: name };
-  if (owner.entity !== null && !owner.entity.customPersona) return null;
-  const playerHeld = playerHeldIds(world);
-  return brought.some((id) => playerHeld.has(id)) ? { kind: 'player', name } : null;
+  return inside ? { kind: 'inside', name: inside.originalName, group: name } : null;
 }
 
 /** Whether the owner's tree already holds `originalId`, or anything a link to it would bring. */
