@@ -644,6 +644,9 @@ export interface WorldOverview {
   allowedPersonas?: AllowedPersonas;
   /** The persona a new player starts on. Absent = the player's default persona. */
   startPersona?: StartPersona;
+  /** Strip Links And Images: narration history reaches every request as plain text (see
+   *  lib/stripLinksAndImages). Absent = off; a new world sets `true`. */
+  stripLinksAndImages?: boolean;
 }
 
 /** `world` limits the pickers to this world's personas and its Custom Persona. Applied by lib/personaPick. */

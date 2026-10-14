@@ -5,6 +5,7 @@ import { parseTurnContent } from './turnDigest';
 import { getActivatedDictionary, parseKeywords } from './dictionaryUtils';
 import { estimateTokens } from './memoryUtils';
 import { containsWord } from './locationMatch';
+import { stripLinksAndImages } from './stripLinksAndImages';
 
 /**
  * Pure core of Slice 2 memory banding: turns the flat chat history into a budgeted, layered history.
@@ -243,6 +244,16 @@ export function parseTurns(history: ChatMessage[]): BandTurn[] {
   return turns;
 }
 
+/** The turns with the Strip Links And Images rule applied to the narration and digest they send. The
+ *  player's action and notes are not narration history, so they stay as written. */
+function strippedTurns(turns: BandTurn[]): BandTurn[] {
+  return turns.map((t) => ({
+    ...t,
+    gameText: stripLinksAndImages(t.gameText),
+    summary: t.summary === undefined ? undefined : stripLinksAndImages(t.summary),
+  }));
+}
+
 /** Legacy assembly: pack recent turns verbatim newest-first until the budget runs out, dropping the
  *  rest. Returned chronological. Used when banding is off — kept here so the off path is testable too.
  *
@@ -250,13 +261,15 @@ export function parseTurns(history: ChatMessage[]): BandTurn[] {
  *  to mean, so they lead as one standing block ahead of the verbatim history. Their cost comes off the
  *  budget first — a note is player intent and outranks an extra old turn. */
 export function buildVerbatimHistory(
-  turns: BandTurn[],
+  sourceTurns: BandTurn[],
   contextWindow: number,
   promptTokens: number,
   maxTokens: number,
   notes: MemoryNote[] = [],
   recapPrompt = '',
+  stripMedia = false,
 ): { messages: ChatMessage[]; runs: AnatomyRun[][] } {
+  const turns = stripMedia ? strippedTurns(sourceTurns) : sourceTurns;
   const margin = Math.max(256, Math.round(contextWindow * 0.05));
   let budget = Math.max(0, contextWindow - promptTokens - maxTokens - margin);
   const noteBody = notes.map((n) => (n.text || '').trim()).filter(Boolean).join(' ');
@@ -395,10 +408,14 @@ export function buildBandedHistory(args: {
    *  verbatim floor is never stamped — that is the live scene, not a memory. Absent = unstamped, the
    *  exact pre-feature body. */
   stamp?: BandStamp;
+  /** The Strip Links And Images world rule: narration and digests ride as plain text. Relevance scores and
+   *  rehydration picks arrive keyed by turn id, so the rule never changes which turns are chosen. */
+  stripMedia?: boolean;
 }): BandResult {
   // `keywords` and `actionEntities` are intentionally not destructured: lexical rehydration stays
   // disabled (see step 3). Kept in the arg type so callers compile unchanged.
-  const { turns, contextWindow, promptTokens, maxTokens, verbatimFloor, milestoneDrop = null, recapPrompt, nowLine, relevanceScores = null, bandCap = null, stickyIds = null, semanticRehydrate = null, rehydratePrompt = '', rehydrateCap, maxRehydrations = Infinity, notes = [], stamp } = args;
+  const { turns: sourceTurns, stripMedia = false, contextWindow, promptTokens, maxTokens, verbatimFloor, milestoneDrop = null, recapPrompt, nowLine, relevanceScores = null, bandCap = null, stickyIds = null, semanticRehydrate = null, rehydratePrompt = '', rehydrateCap, maxRehydrations = Infinity, notes = [], stamp } = args;
+  const turns = stripMedia ? strippedTurns(sourceTurns) : sourceTurns;
   const margin = Math.max(256, Math.round(contextWindow * 0.05));
   const budget = Math.max(0, contextWindow - promptTokens - maxTokens - margin);
 

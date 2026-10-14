@@ -40,6 +40,7 @@ export const FIELD_LABELS: Partial<Record<SliceName | "*", Record<string, string
     bgm: "Background Music",
     systemPrompt: "System Prompt",
     use3DModel: "3D Player Avatar",
+    stripLinksAndImages: "Strip Links And Images",
     customPlayerVRM: "Custom Player Avatar",
     readme: "Readme",
     introReadme: "Intro Readme",

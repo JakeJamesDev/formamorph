@@ -771,3 +771,49 @@ describe('buildVerbatimHistory anatomy runs', () => {
     ]);
   });
 });
+
+describe('Strip Links And Images in the history', () => {
+  const RECAP = 'Recap the story so far.';
+  const RECALL = 'Recall the earlier scene.';
+  const LINKED = 'The sign said [Welcome](https://a.test/w) ![crest](https://a.test/c.png) over the door.';
+  const PLAIN = 'The sign said Welcome over the door.';
+  const base = {
+    contextWindow: WIDE, promptTokens: 0, maxTokens: 0, verbatimFloor: 1, rehydrateCap: WIDE,
+    actionEntities: [] as string[], keywords: [] as string[], recapPrompt: RECAP, rehydratePrompt: RECALL,
+  };
+  const turns = () =>
+    parseTurns([
+      ...pair('a1', { turnId: 't1', narration: LINKED, summary: 'Saw the [gate](https://a.test/g) ![x](https://a.test/x.png).' }),
+      ...pair('a2', { turnId: 't2', narration: 'two', summary: 's2' }),
+      ...pair('a3', { turnId: 't3', narration: LINKED, summary: 's3' }),
+    ]);
+
+  it('sends the floor turn, the recap digests and a recalled scene as plain text', () => {
+    const recalled = buildBandedHistory({ ...base, turns: turns(), semanticRehydrate: ['t1'], stripMedia: true });
+    expect(recalled.messages.map((m) => m.content)).toEqual([RECAP, 's2', RECALL, PLAIN, 'a3', PLAIN]);
+    const banded = buildBandedHistory({ ...base, turns: turns(), stripMedia: true });
+    expect(banded.messages[1].content).toBe('Saw the gate. s2');
+    expect(banded.recap).toBe('Earlier events:\nSaw the gate.\ns2');
+  });
+
+  it('sends the original text with the rule off', () => {
+    const { messages } = buildBandedHistory({ ...base, turns: turns(), semanticRehydrate: ['t1'] });
+    expect(messages.map((m) => m.content)).toEqual([RECAP, 's2', RECALL, LINKED, 'a3', LINKED]);
+  });
+
+  it('leaves the player action and a player note as written', () => {
+    const noted = parseTurns(pair('Open [this](https://a.test)', { turnId: 't1', narration: LINKED }));
+    const { messages } = buildBandedHistory({
+      ...base, turns: noted, stripMedia: true,
+      notes: [{ id: 'n1', text: 'See [the map](https://a.test/m)', anchorTurn: 1 }],
+    });
+    expect(messages.map((m) => m.content)).toEqual([
+      RECAP, 'See [the map](https://a.test/m)', 'Open [this](https://a.test)', PLAIN,
+    ]);
+  });
+
+  it('strips the verbatim history when digests are off', () => {
+    const { messages } = buildVerbatimHistory(turns(), WIDE, 0, 0, [], '', true);
+    expect(messages.map((m) => m.content)).toEqual(['a1', PLAIN, 'a2', 'two', 'a3', PLAIN]);
+  });
+});

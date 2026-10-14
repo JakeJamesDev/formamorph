@@ -212,6 +212,7 @@ function previewInput(prompts: AnatomyPreviewPrompts, settings: AnatomyPreviewSe
       locationChangeEnabled: true, locationAutoApply: settings.locationAutoApply,
       aiClock: true, memoryDigests: recap, characterDiaries: true, describeCharacters: true,
       imageAttachments: false, promptAttachments: {}, language: settings.language,
+      stripLinksAndImages: false,
     },
   };
 }

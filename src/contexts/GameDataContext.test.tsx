@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { GameDataProvider, useGameData } from './GameDataContext';
+import { worldStripsLinksAndImages } from '@/lib/stripLinksAndImages';
 import type { Stat, World } from '@/types';
 
 import { phValueId, phValues } from '@/test/placeholderValues';
@@ -624,6 +625,23 @@ describe('loadWorldData', () => {
     act(() => { result.current.loadWorldData(world('b', {})); });
     expect(result.current.worldOverview.allowedPersonas).toBeUndefined();
     expect(result.current.worldOverview.startPersona).toBeUndefined();
+  });
+
+  it('loads a world file with no Strip Links And Images field as off, and carries a saved choice through', () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData(JSON.parse(JSON.stringify(world('a', {})))); });
+    expect(worldStripsLinksAndImages(result.current.worldOverview)).toBe(false);
+    act(() => { result.current.loadWorldData(JSON.parse(JSON.stringify(world('b', { stripLinksAndImages: true })))); });
+    expect(result.current.worldOverview.stripLinksAndImages).toBe(true);
+    act(() => { result.current.loadWorldData(JSON.parse(JSON.stringify(world('c', { stripLinksAndImages: false })))); });
+    expect(result.current.worldOverview.stripLinksAndImages).toBe(false);
+  });
+
+  it("does not leak one world's Strip Links And Images choice into the next", () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData(world('a', { stripLinksAndImages: true })); });
+    act(() => { result.current.loadWorldData(world('b', {})); });
+    expect(worldStripsLinksAndImages(result.current.worldOverview)).toBe(false);
   });
 });
 

@@ -96,6 +96,8 @@ export interface ToolMemorySource {
   readonly verbatimFloor: number;
   /** No meaning match means recall matches by words only. */
   readonly meaning?: ToolMeaning | null;
+  /** The world's Strip Links And Images rule: recall returns digests and diary entries as plain text. */
+  readonly stripMedia?: boolean;
 }
 
 /** What every Tool call in one turn reads. Built once, frozen, and never read back from React or storage. */
@@ -112,6 +114,8 @@ export interface ToolSnapshot {
   readonly memories: readonly ToolMemory[];
   /** Recall's meaning match, holding only the memory list's cached vectors. */
   readonly meaning: ToolMeaning | null;
+  /** Whether recall strips links and images from what it returns (see `ToolMemorySource.stripMedia`). */
+  readonly stripMedia: boolean;
 }
 
 function deepFreeze<T>(value: T): T {
@@ -198,6 +202,7 @@ export function buildToolSnapshot(scene: ChipScene, dictionaries: readonly Dicti
     placeholders: Object.freeze(placeholderValues(scene.placeholders, resolve)),
     memories: deepFreeze(memories),
     meaning: memory?.meaning ? toolMeaning(memory.meaning, memories) : null,
+    stripMedia: memory?.stripMedia === true,
   });
 }
 

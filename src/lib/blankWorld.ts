@@ -18,6 +18,8 @@ export function newBlankWorld(): World {
       systemPrompt: '',
       author: '',
       tags: [],
+      // A new world starts with the rule on; absent reads as off.
+      stripLinksAndImages: true,
     },
     stats: [],
     traits: [],

@@ -14,6 +14,12 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 ### Minor Changes
 
+#### ➕ Added
+
+- **👤 User-facing**
+  - **Scripts:**
+    - **A world option, Strip Links And Images, sends past narration without markdown links and images.** A link becomes its text and an image goes. It covers the last story, memory digests, diary entries and recall results, never your authored text. New worlds start with it on; older worlds keep it off.
+
 #### 🔧 Fixed
 
 - **👤 User-facing**

@@ -144,6 +144,18 @@ describe('recall, lexical', () => {
     expect(await recall('anything', null)).toEqual([]);
   });
 
+  it('returns plain text when the world strips links and images, and the written text when it does not', async () => {
+    const turns: TurnSpec[] = [{
+      summary: 'Mira showed [the gate](https://a.test/g) ![crest](https://a.test/c.png) to Wren.',
+      diaries: { Bell: 'I kept the [lantern](https://a.test/l) safe.' },
+    }];
+    expect(await recall('gate lantern', { ...source(turns), stripMedia: true })).toEqual([
+      { turn: 1, kind: 'digest', text: 'Mira showed the gate to Wren.' },
+      { turn: 1, kind: 'diary', character: 'Bell', text: 'I kept the lantern safe.' },
+    ]);
+    expect((await recall('gate', source(turns)))[0].text).toContain('[the gate](https://a.test/g)');
+  });
+
   it('no longer finds a turn the player rolled back', async () => {
     const turns: TurnSpec[] = [{ summary: 'The storm broke.' }, { summary: 'Wren sank the boat.' }];
     const played = history(turns);
