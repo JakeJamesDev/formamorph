@@ -28,6 +28,7 @@ const FAILURE: Record<StatCodeFailure, string> = {
   'non-number': 'doesn’t return a number, so the stat keeps its manual value',
   throw: 'throws when it runs, so the stat keeps its manual value',
   'bad-write': 'writes a placeholder or trait a value of the wrong type, so the run changes nothing',
+  canceled: 'asked the player and the prompt was closed, so the run changes nothing',
 };
 
 /** The stats as turn one hands them to the sandbox: every value seeded at its starting number, so the run

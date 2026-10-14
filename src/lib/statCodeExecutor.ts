@@ -1,6 +1,7 @@
 import type { CodeBounds, Stat } from '@/types';
 import { clamp } from './utils';
-import { runInSandbox } from './scriptSandbox';
+import { runInSandbox, type SandboxEngine, type SandboxHostFunction } from './scriptSandbox';
+import { isPromptCanceled, namesPlayer, scriptPrompts, type ScriptPromptHost, type ScriptPromptRequest } from './scriptPrompts';
 import { VALUE_JOIN } from './placeholders';
 import { hasEntityKey, statsByCodeName } from './statCodeNames';
 import {
@@ -40,8 +41,8 @@ const clockObject = (clock?: StatClock) => {
 };
 
 /** How a run failed, for a caller that sorts failures rather than printing them. `bad-write` is a
- *  placeholder or trait written a value of the wrong type. */
-export type StatCodeFailure = 'timeout' | 'non-number' | 'throw' | 'bad-write';
+ *  placeholder or trait written a value of the wrong type; `canceled` is a prompt the player closed. */
+export type StatCodeFailure = 'timeout' | 'non-number' | 'throw' | 'bad-write' | 'canceled';
 
 /** The bounds a stat's code may set on itself, in the order the host reads them back. */
 export const CODE_BOUND_FIELDS = ['min', 'max', 'regen'] as const satisfies readonly (keyof CodeBounds)[];
@@ -1074,6 +1075,8 @@ export interface StatCodeRunOptions {
   narration?: NarrationInput;
   /** A trait script's own trait: `self` reads its entry, read-only. Only with no `currentStat`. */
   selfTrait?: SandboxTrait;
+  /** Who answers `player.*`. Absent, the game's prompt store does. */
+  prompts?: ScriptPromptHost;
 }
 
 /** The `player` object of a During AI Output run: every call throws, since a sentence cannot wait on a dialog. */
@@ -1082,6 +1085,45 @@ const OUTPUT_PLAYER = [
   `const player = Object.freeze(Object.fromEntries(${JSON.stringify(PLAYER_CALLS)}.map((call) => [call, () => {`,
   `  throw new Error('player.' + call + " can't run in ${SCRIPT_TIMING_LABEL.output}");`,
   `}])));`,
+].join('\n');
+
+// The host function `player.*` calls with a request as JSON; it answers with the answer as JSON, or throws.
+// The prelude takes it and deletes the global before user code runs.
+const PROMPT_HOOK = '__formamorphPrompt';
+
+/** The `player` prelude of a run on the async engine. Each call checks its arguments in the VM, so a bad one
+ *  throws a TypeError there, and sends the host labels only: `ask` answers with option indexes, which map
+ *  back to the values the code passed, so a value never leaves the VM. */
+const PLAYER_PRELUDE = [
+  `const player = ((prompt, stringify, parse, isArray) => {`,
+  `  const call = (request) => parse(prompt(stringify(request)));`,
+  `  const text = (name, what, value) => {`,
+  `    if (typeof value !== 'string') throw new TypeError('player.' + name + ' needs ' + what + ' as text');`,
+  `    return value;`,
+  `  };`,
+  `  const option = (item) => {`,
+  `    if (typeof item === 'string') return { label: item, value: item };`,
+  `    if (item !== null && typeof item === 'object' && typeof item.label === 'string' && 'value' in item) return { label: item.label, value: item.value };`,
+  `    throw new TypeError('player.ask options must be text or { label, value }');`,
+  `  };`,
+  `  return Object.freeze({`,
+  `    tell: (message) => { call({ kind: 'tell', text: text('tell', 'a message', message) }); },`,
+  `    toast: (message) => { call({ kind: 'toast', text: text('toast', 'a message', message) }); },`,
+  `    confirm: (question) => call({ kind: 'confirm', question: text('confirm', 'a question', question) }),`,
+  `    ask: (question, options, settings) => {`,
+  `      const list = isArray(options) ? options.map(option) : [];`,
+  `      if (!list.length) throw new TypeError('player.ask needs at least one option');`,
+  `      const multiple = !!(settings && settings.multiple);`,
+  `      const picked = call({ kind: 'ask', question: text('ask', 'a question', question), options: list.map((o) => o.label), multiple });`,
+  `      return multiple ? picked.map((at) => list[at].value) : list[picked].value;`,
+  `    },`,
+  `    askText: (question, placeholder) => call({`,
+  `      kind: 'askText', question: text('askText', 'a question', question),`,
+  `      ...(placeholder === undefined ? {} : { placeholder: text('askText', 'a placeholder', placeholder) }),`,
+  `    }),`,
+  `  });`,
+  `})(globalThis.${PROMPT_HOOK}, JSON.stringify, JSON.parse, Array.isArray);`,
+  `delete globalThis.${PROMPT_HOOK};`,
 ].join('\n');
 
 const EMPTY_PERSONA: SandboxEntity = { name: '', traits: [] };
@@ -1103,7 +1145,8 @@ export const executeStatCode = async (
    *  write is ignored. */
   currentStat: Stat | null,
   {
-    clock, turn, enabled, placeholders = [], traits = [], entities = [], persona = EMPTY_PERSONA, owner, dictionaries = [], narration, selfTrait,
+    clock, turn, enabled, placeholders = [], traits = [], entities = [], persona = EMPTY_PERSONA, owner, dictionaries = [],
+    narration, selfTrait, prompts = scriptPrompts,
   }: StatCodeRunOptions = {},
 ): Promise<StatCodeResult> => {
   // If code is empty, return null (use the manually set value)
@@ -1149,8 +1192,31 @@ export const executeStatCode = async (
     const selfTraitSource = selfTrait ? JSON.stringify(Object.values(traitData([selfTrait]))[0]) : '{}';
     const blankStat = blankStatEntry(selfData);
 
-    // The stat data rides in as JSON literals (JSON is valid JS expression syntax); console.log and the
-    // roll hook are the only host functions. The user code runs as a function body so `return` works, with
+    // A script that names `player.` waits on the host for its answers, which only the async engine can do
+    // (Q45). During AI Output keeps the sync engine: there `player` is the stub that throws (Q14).
+    const engine: SandboxEngine = !narration && namesPlayer(code) ? 'async' : 'sync';
+    // Set when the player closed a prompt. The call throws in the VM, but a script may catch it, so the run
+    // reads this and fails as canceled whatever the program then did (Q15).
+    let canceled = false;
+    const hostFunctions: Record<string, SandboxHostFunction> = {
+      [ROLL_HOOK]: (vm, indexHandle) => vm.newString(placeholderMap.nodes[vm.getNumber(indexHandle)]?.entry?.roll() ?? ''),
+      ...(engine === 'sync' ? {} : {
+        [PROMPT_HOOK]: async (vm, requestHandle) => {
+          // The prelude built the request from checked arguments, so it is one of the kinds.
+          const request = JSON.parse(vm.getString(requestHandle)) as ScriptPromptRequest;
+          try {
+            const answer: unknown = await prompts.prompt(request);
+            return vm.newString(JSON.stringify(answer ?? null));
+          } catch (error) {
+            if (isPromptCanceled(error)) canceled = true;
+            return { error: vm.newError(error instanceof Error ? error.message : String(error)) };
+          }
+        },
+      }),
+    };
+
+    // The stat data rides in as JSON literals (JSON is valid JS expression syntax); console.log, the roll
+    // hook and the prompt hook are the only host functions. The user code runs as a function body so `return` works, with
     // the readers' names shadowed as its parameters; the program's completion value pairs what it returned
     // with what `self`'s writable fields hold afterwards, then what it did to `placeholders`, `traits` and
     // the entities' traits.
@@ -1175,6 +1241,7 @@ export const executeStatCode = async (
         `  ${JSON.stringify({ sentence: narration.sentence, full: narration.full, index: narration.index })}, ['full', 'index'], 'narration.', ${LOOSE_NOTE}));`,
         OUTPUT_PLAYER,
       ] : []),
+      ...(engine === 'async' ? [PLAYER_PRELUDE] : []),
       placeholdersPrelude(placeholderMap),
       trackedMapPrelude({ ...TRAIT_MAP, root: 'traits', reader: TRAIT_WRITES, data: traitData(traits) }),
       entitiesPrelude(keyed, placeholderMap, blankStat, place, statEntriesOf),
@@ -1186,12 +1253,13 @@ export const executeStatCode = async (
       `  ${ENTITY_STAT_WRITES}(), ${narration ? 'narration.sentence' : 'undefined'}];`,
     ].join('\n');
 
-    return await runInSandbox(program, ({ vm, result, consoleOutput }): StatCodeResult => {
+    return await runInSandbox(program, ({ vm, result, consoleOutput, timedOut }): StatCodeResult => {
+      if (canceled) return { value: null, error: 'The player closed the prompt', kind: 'canceled' };
       if (result.error) {
         const dumped = vm.dump(result.error) as { name?: string; message?: string; stack?: string } | string;
         const err = typeof dumped === 'object' && dumped !== null ? dumped : { message: String(dumped) };
         // The interrupt handler surfaces as an "interrupted" InternalError — report it as the timeout.
-        if (/interrupted/i.test(err.message || '')) {
+        if (timedOut || /interrupted/i.test(err.message || '')) {
           return { value: null, error: 'Execution timed out', kind: 'timeout' };
         }
         return {
@@ -1307,9 +1375,7 @@ export const executeStatCode = async (
       if (!currentStat || returnsSentence) return settled(null);
       if (returned.type === 'number') return settled(returned.number);
       return settled(Object.is(written.number, selfData.value) ? null : written.number);
-    }, {
-      [ROLL_HOOK]: (vm, indexHandle) => vm.newString(placeholderMap.nodes[vm.getNumber(indexHandle)]?.entry?.roll() ?? ''),
-    });
+    }, hostFunctions, engine);
   } catch (error) {
     console.error('Error in executeStatCode:', error);
 
