@@ -22,16 +22,19 @@ import type { StatCodeTiming } from './statCodeTiming';
 import { entityTraitNames, worldTraitPlaces } from './statCodeTraits';
 import { conditionTexts, WORLD_OWNER } from './traitGates';
 
+/** Where an item no single entity owns lives: the world, or under Blueprints. */
+export type CodeItemScope = 'world' | 'blueprint';
+
 /** A stat as a card shows it. */
 export interface CodeStatRecord {
   /** Null where the route reaches several unrelated stats, so only their owners show (Q34). */
   stat: Stat | null;
-  /** The Owner row: the entity's name, World, Blueprint, or each of several playable entities that has the stat. */
-  owner: string;
-  /** The entity that holds the stat. Absent for a world or Blueprint stat. */
+  /** Set for a loose world stat and a Blueprint box's own stats. */
+  scope?: CodeItemScope;
+  /** The entity, each playable entity the route reaches, or the entities that run a Blueprint box. Empty for a world stat. */
+  owners: readonly string[];
+  /** The entity that owns the stat. Absent for a world or Blueprint stat. */
   entityId?: string;
-  /** Who runs the box's code: set for a Blueprint box's own stats. */
-  owners?: readonly string[];
 }
 
 /** A trait as a card shows it: the owner's effective trait and its rows already worded. */
@@ -50,12 +53,15 @@ export interface CodeTraitRecord {
 /** A placeholder as a card shows it: a Copy laid over its Blueprint. */
 export interface CodePlaceholderRecord {
   placeholder: Placeholder;
-  /** World, or the entity, dictionary or placeholder that owns it. */
-  owner: string;
+  /** Set for a world placeholder, which no entity or dictionary owns. */
+  scope?: Extract<CodeItemScope, 'world'>;
+  /** The entity or dictionary that owns it, or on a route over several entities, the ones it reaches that own it.
+   *  Empty for a placeholder in the world's tree. */
+  owners: readonly string[];
+  /** The parent placeholder of a nested placeholder (Q7). */
+  parent?: string;
   /** Each Pin on it in precedence order, as "Trait: Brave: calm". */
   pins: readonly string[];
-  /** On a route over several entities, the ones it reaches that own it. */
-  owners?: readonly string[];
 }
 
 /** A route over several entities whose owners have different items, so only the owners show (Q37). */
@@ -145,8 +151,6 @@ export function statBoxLookups(world: CodeCardWorld): (box: CodeBox) => CodeWorl
   return (box) => lazyLookup(() => statBoxLookup(ownersOf(), box, world));
 }
 
-const WORLD = 'World';
-const BLUEPRINT = 'Blueprint';
 const UNNAMED = 'Unnamed entity';
 const YOU = 'You';
 
@@ -232,15 +236,19 @@ function cardIndex(owners: CodeOwners, world: CodeCardWorld) {
       const owned = owner?.entity?.traits?.some((candidate) => candidate.id === trait.id);
       return traitRecord(trait, owned ? entityId : undefined);
     },
-    placeholder(placeholder: Placeholder): CodePlaceholderRecord {
+    /** `reached` replaces the placeholder's own owner on a route over several entities. */
+    placeholder(placeholder: Placeholder, reached?: readonly string[]): CodePlaceholderRecord {
       const blueprint = placeholder.blueprintId ? placeholders.find((candidate) => candidate.id === placeholder.blueprintId) : undefined;
       const effective = blueprint ? effectiveCopy(placeholder, blueprint) : placeholder;
       const home = world.placeholderOwners?.get(placeholder.id);
       const parent = placeholder.ownerId ? placeholders.find((candidate) => candidate.id === placeholder.ownerId) : undefined;
       const valueText = (valueId: string | undefined, value: string) => effective.values.find((v) => v.id === valueId)?.text ?? value;
+      const owned = reached ?? (home ? [owners.codeName(home.name)] : []);
       return {
         placeholder: effective,
-        owner: home ? owners.codeName(home.name) : parent ? owners.codeName(parent.name) : WORLD,
+        ...(!owned.length ? { scope: 'world' as const } : {}),
+        owners: owned,
+        ...(parent ? { parent: owners.codeName(parent.name) } : {}),
         pins: pinsTargeting(world, placeholder.id).map((row) => `${row.label}: ${valueText(row.pin.valueId, row.pin.value)}`),
       };
     },
@@ -295,7 +303,7 @@ export function statBoxLookup(owners: CodeOwners, box: CodeBox, world?: CodeCard
 
   const onEntity = (owner: CodeOwner, key: string): CodeStatRecord | null => {
     const stat = owner.byCodeName.get(key);
-    return stat && owner.entity ? { stat, owner: entityName(owner), entityId: owner.entity.id } : null;
+    return stat && owner.entity ? { stat, owners: [entityName(owner)], entityId: owner.entity.id } : null;
   };
   const entityRecord = (owner: CodeOwner & { entity: Entity }): CodeEntityRecord => ({
     entity: owner.entity,
@@ -339,9 +347,9 @@ export function statBoxLookup(owners: CodeOwners, box: CodeBox, world?: CodeCard
 
   return {
     self() {
-      if (!box.owner) return { stat: box.self, owner: WORLD };
-      if (box.owner.kind === 'blueprint') return { stat: box.self, owner: BLUEPRINT, owners: runningOwnerNames() };
-      return { stat: box.self, owner: boxOwnerName, entityId: box.owner.entityId };
+      if (!box.owner) return { stat: box.self, scope: 'world', owners: [] };
+      if (box.owner.kind === 'blueprint') return { stat: box.self, scope: 'blueprint', owners: runningOwnerNames() };
+      return { stat: box.self, owners: [boxOwnerName], entityId: box.owner.entityId };
     },
     owner() {
       if (!box.owner) return { kind: 'empty' };
@@ -354,13 +362,13 @@ export function statBoxLookup(owners: CodeOwners, box: CodeBox, world?: CodeCard
       switch (owner.route) {
         case 'world': {
           const stat = owners.world.byCodeName.get(key);
-          return stat ? { stat, owner: WORLD } : null;
+          return stat ? { stat, scope: 'world', owners: [] } : null;
         }
         case 'owner': {
           if (!box.owner) return null;
           if (box.owner.kind === 'blueprint') {
             const stat = blueprintGroup().get(key);
-            return stat ? { stat, owner: BLUEPRINT, owners: runningOwnerNames() } : null;
+            return stat ? { stat, scope: 'blueprint', owners: runningOwnerNames() } : null;
           }
           return entityOwner && onEntity(entityOwner, key);
         }
@@ -377,11 +385,10 @@ export function statBoxLookup(owners: CodeOwners, box: CodeBox, world?: CodeCard
             return stat ? [{ owner: target, stat }] : [];
           });
           if (!withStat.length) return null;
-          const owner = withStat.map((found) => entityName(found.owner)).join(', ');
           // A linked stat keeps its Blueprint's id, which no own stat shares.
           const id = withStat[0].stat.id;
           const shared = withStat.every((found) => found.stat.id === id);
-          return { stat: shared ? owners.statWorld.stats.find((stat) => stat.id === id) ?? null : null, owner };
+          return { stat: shared ? owners.statWorld.stats.find((stat) => stat.id === id) ?? null : null, owners: withStat.map((found) => entityName(found.owner)) };
         }
       }
     },
@@ -401,7 +408,7 @@ export function statBoxLookup(owners: CodeOwners, box: CodeBox, world?: CodeCard
       if (!index || !reached.length) return null;
       const names = reached.map((each) => index.entityName(each.entityId));
       const shared = index.sharedPlaceholder(reached.map((each) => each.placeholder));
-      return shared ? { ...index.placeholder(shared), owners: names } : { placeholder: null, owners: names };
+      return shared ? index.placeholder(shared, names) : { placeholder: null, owners: names };
     },
     entity(key) {
       const target = owners.byName.get(key);

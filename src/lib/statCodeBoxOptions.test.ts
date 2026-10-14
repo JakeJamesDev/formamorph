@@ -50,6 +50,6 @@ describe('a stat code box’s analysis options', () => {
     const lookup = statBoxLookups(cardWorld)({ owner: { kind: 'entity', entityId: 'mara' }, timing: 'after', self: rage });
     const options = statBoxAnalysisOptions(names, { selfName: 'Rage', owner: { kind: 'entity', statNames: ['Rage'] }, lookup });
     expect(options).toMatchObject({ owner: 'entity', ownerStatNames: ['Rage'], lookup });
-    expect(lookup.self().owner).toBe('Mara');
+    expect(lookup.self().owners).toEqual(['Mara']);
   });
 });

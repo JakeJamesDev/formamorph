@@ -13,10 +13,17 @@ describe('cardAnnouncement', () => {
 
   it('reads World Details after the description', () => {
     const card = {
-      from: 0, to: 5, signature: { kind: 'stat', path: 'stats.Fatigue', type: 'Stat' }, description: 'Tired.',
-      rows: [{ label: 'Range', value: '0 – 100' }, { label: 'Owner', value: 'World' }],
+      from: 0, to: 5, signature: { kind: 'stat', path: 'owner.stats.Rage', type: 'Stat' }, description: 'Tired.',
+      rows: [{ label: 'Range', value: '0 – 100' }, { label: 'Owners', value: 'Mara, Tom' }],
     } as const;
-    expect(cardAnnouncement({ ...card, rows: [...card.rows] })).toBe('stat stats.Fatigue: Stat. Tired. Range: 0 – 100. Owner: World');
+    expect(cardAnnouncement({ ...card, rows: [...card.rows] })).toBe('stat owner.stats.Rage: Stat. Tired. Range: 0 – 100. Owners: Mara, Tom');
+  });
+
+  it('names a world or Blueprint item’s scope with its kind', () => {
+    expect(cardAnnouncement({ from: 0, to: 5, signature: { kind: 'stat', scope: 'blueprint', path: 'owner.stats.Rage', type: 'Stat' } }))
+      .toBe('Blueprint stat owner.stats.Rage: Stat');
+    expect(cardAnnouncement({ from: 0, to: 5, signature: { kind: 'placeholder', scope: 'world', path: 'placeholders.Mood', type: 'Placeholder' } }))
+      .toBe('world placeholder placeholders.Mood: Placeholder');
   });
 
   it('reads Allowed Values with their weights, and a multi-line row as one list', () => {
@@ -46,6 +53,14 @@ describe('renderCodeCard', () => {
   });
 
   it.each([
+    ['world', '(world stat) stats.Fatigue: Stat'],
+    ['blueprint', '(Blueprint stat) stats.Fatigue: Stat'],
+  ] as const)('names a %s stat in the signature', (scope, text) => {
+    const card = renderCodeCard({ from: 0, to: 4, signature: { kind: 'stat', scope, path: 'stats.Fatigue', type: 'Stat' } });
+    expect(card.querySelector('section')?.textContent).toBe(text);
+  });
+
+  it.each([
     ['writable', 'Writable'],
     ['afterRun', 'Writable After This Run'],
     ['readOnly', 'Read-Only'],
@@ -63,10 +78,10 @@ describe('renderCodeCard', () => {
   it('lists World Details as label and value pairs after the description', () => {
     const card = renderCodeCard({
       from: 0, to: 4, signature: { kind: 'stat', path: 'stats.Fatigue', type: 'Stat' }, description: 'Tired.',
-      rows: [{ label: 'Range', value: '0 – 100' }, { label: 'Owner', value: 'World' }],
+      rows: [{ label: 'Range', value: '0 – 100' }, { label: 'Owners', value: 'Tom' }],
     });
     const details = card.querySelector('dl[aria-label="World Details"]');
-    expect([...details!.children].map((cell) => `${cell.tagName}:${cell.textContent}`)).toEqual(['DT:Range', 'DD:0 – 100', 'DT:Owner', 'DD:World']);
+    expect([...details!.children].map((cell) => `${cell.tagName}:${cell.textContent}`)).toEqual(['DT:Range', 'DD:0 – 100', 'DT:Owners', 'DD:Tom']);
     expect(card.lastElementChild).toBe(details);
   });
 
@@ -94,7 +109,7 @@ describe('renderCodeCard', () => {
   it('lists Allowed Values after World Details, each weight shown and a weight-0 value faded', () => {
     const card = renderCodeCard({
       from: 0, to: 4, signature: { kind: 'placeholder', path: 'placeholders.Mood', type: 'Placeholder' },
-      rows: [{ label: 'Owner', value: 'World' }],
+      rows: [{ label: 'Kind', value: 'Wildcard' }],
       allowedValues: { values: [{ text: 'calm', weight: 2 }, { text: 'giddy', weight: 0 }], more: 4 },
     });
     const section = card.lastElementChild!;

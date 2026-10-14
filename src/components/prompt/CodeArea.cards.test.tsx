@@ -87,8 +87,9 @@ describe('hover cards in the code editor', () => {
     const lookup = statBoxLookup(statCodeOwners({ stats: [fatigue], placeholders: [] }), { owner: null, timing: 'after', self: fatigue });
     render(<Harness initial="return stats.Fatigue.value;" lookup={lookup} />);
     hover(await editor('Stat code'), 'Fatigue');
-    const details = (await openCard()).querySelector('dl[aria-label="World Details"]');
-    expect(details?.textContent).toBe('TypeNumberRange0 – 100Regen+1 per story hourOwnerWorld');
+    const card = await openCard();
+    expect(card.textContent).toContain('(world stat) stats.Fatigue: Stat');
+    expect(card.querySelector('dl[aria-label="World Details"]')?.textContent).toBe('TypeNumberRange0 – 100Regen+1 per story hour');
   });
 
   describe('a name the code declares', () => {

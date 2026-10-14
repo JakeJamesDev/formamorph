@@ -37,7 +37,7 @@ const world: StatRouteWorld = {
 
 const usesOf = (item: { statId: string; entityId?: string }, at: StatRouteWorld = world) => statUses(statCodeOwners(at), item);
 /** Each row as its box and line read, for a compact comparison. */
-const rows = (uses: CodeUse[]) => uses.map((use) => `${use.entity ? `${use.entity} › ` : ''}${use.stat} ${use.timing} ${use.line}${use.noOwners ? ' no bearers' : ''}`);
+const rows = (uses: CodeUse[]) => uses.map((use) => `${use.entity ? `${use.entity} › ` : ''}${use.stat} ${use.timing} ${use.line}${use.noOwners ? ' no owners' : ''}`);
 
 describe('statUses', () => {
   it('lists one row per box and line, so two spellings on one line join', () => {
@@ -64,8 +64,8 @@ describe('statUses', () => {
     });
   });
 
-  it('lists a Blueprint box no owner runs, marked No Bearers', () => {
-    expect(rows(usesOf({ statId: 'echo' }))).toEqual(['Echo before 1 no bearers']);
+  it('lists a Blueprint box no owner runs, marked No Owners', () => {
+    expect(rows(usesOf({ statId: 'echo' }))).toEqual(['Echo before 1 no owners']);
     expect(usesOf({ statId: 'echo' })[0]).toMatchObject({ entityId: null, rowId: 'echo' });
   });
 

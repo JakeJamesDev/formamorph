@@ -6,6 +6,7 @@ import { STAT_CODE_SURFACE } from './statCodeSurface';
 import { statCodeOwners } from './statCodeTargets';
 import { entityTraitNames, worldTraitPlaces } from './statCodeTraits';
 import type { PlaceholderOwners } from './placeholderHomes';
+import { encodePlaceholderToken } from './placeholders';
 import type { Dictionary, Entity, GameLocation, Placeholder, Stat, Trait } from '@/types';
 
 const stat = (id: string, name: string, extra: Partial<Stat> = {}): Stat =>
@@ -92,25 +93,25 @@ function labels(doc: string, options: SurfaceAnalysisOptions) {
 }
 
 describe('trait cards', () => {
-  it('shows Mode, Requires, Changes and Bearers, with the description and the item', () => {
+  it('shows Mode, Requires, Changes and Owners, with the description and the item', () => {
     const card = cardAt('return traits.Br|ave.enabled;', worldBox);
     expect(card?.rows).toEqual([
       { label: 'Mode', value: 'Optional' },
       { label: 'Requires', value: 'Courage >= 50 and not Shy\nor playing as Tom' },
       { label: 'Changes', value: 'Stamina max +10, Fatigue regen −1%, Fatigue off' },
-      { label: 'Bearers', value: 'You, Tom' },
+      { label: 'Owners', value: 'You, Tom' },
     ]);
     expect(card?.description).toBe('Faces danger without flinching.');
     expect(card?.item).toEqual({ kind: 'trait', traitId: 'brave' });
   });
 
   it('names Automatic by its player-facing name and drops empty Requires and Changes', () => {
-    expect(rowsOf(cardAt('return traits.Sh|y.enabled;', worldBox))).toEqual({ Mode: 'Automatic', Bearers: 'You' });
+    expect(rowsOf(cardAt('return traits.Sh|y.enabled;', worldBox))).toEqual({ Mode: 'Automatic', Owners: 'You' });
   });
 
   it('reaches an entity’s own trait by its route, with the entity on the item', () => {
     const card = cardAt('return entities.Mara.traits.Ca|lm.enabled;', worldBox);
-    expect(rowsOf(card)).toEqual({ Mode: 'Hidden', Bearers: 'Mara' });
+    expect(rowsOf(card)).toEqual({ Mode: 'Hidden', Owners: 'Mara' });
     expect(card?.item).toEqual({ kind: 'trait', traitId: 'calm', entityId: 'mara' });
   });
 
@@ -119,7 +120,7 @@ describe('trait cards', () => {
   });
 
   it('reaches the box owner’s trait through `owner.traits`, and shows its card', () => {
-    expect(rowsOf(cardAt('return owner.traits.Ca|lm.enabled;', maraBox))).toEqual({ Mode: 'Hidden', Bearers: 'Mara' });
+    expect(rowsOf(cardAt('return owner.traits.Ca|lm.enabled;', maraBox))).toEqual({ Mode: 'Hidden', Owners: 'Mara' });
   });
 
   it('shows no World Details where the box has no card world', () => {
@@ -146,10 +147,10 @@ describe('owner names in completion (T01-1, T01-3)', () => {
 });
 
 describe('placeholder cards', () => {
-  it('shows Owner, Kind and Pinned By in Pin precedence, and every value with its weight', () => {
+  it('shows Kind and Pinned By in Pin precedence, and every value with its weight, and says world placeholder', () => {
     const card = cardAt('return placeholders.Mo|od.value;', worldBox);
+    expect(card?.signature).toEqual({ kind: 'placeholder', path: 'placeholders.Mood', type: 'Placeholder', scope: 'world' });
     expect(card?.rows).toEqual([
-      { label: 'Owner', value: 'World' },
       { label: 'Kind', value: 'Wildcard' },
       { label: 'Pinned By', value: 'Location: Fen: wary\nTrait: Brave: calm' },
     ]);
@@ -162,8 +163,44 @@ describe('placeholder cards', () => {
 
   it('shows a Copy’s own weights, under its owner, with no Pinned By row', () => {
     const card = cardAt('return owner.placeholders.Lo|ok.value;', maraBox);
-    expect(rowsOf(card)).toEqual({ Owner: 'Mara', Kind: 'Wildcard' });
+    expect(rowsOf(card)).toEqual({ Owners: 'Mara', Kind: 'Wildcard' });
+    expect(card?.signature.scope).toBeUndefined();
     expect(card?.allowedValues?.values).toEqual([{ text: 'grim', weight: 0 }, { text: 'sly', weight: 3 }]);
+  });
+
+  it('names a dictionary as the owner of its placeholders', () => {
+    expect(rowsOf(cardAt('return dictionaries.Fauna.placeholders.Be|ast.value;', worldBox))).toEqual({ Owners: 'Fauna', Kind: 'Variable' });
+  });
+
+  it('shows a world nested placeholder’s Parent Placeholder, no Owners row, and says world placeholder (Q7)', () => {
+    // Mood holds Tone through a chip in one of its values.
+    const tone: Placeholder = { id: 'tone', name: 'Tone', ownerId: 'mood', values: [{ id: 'low', text: 'low' }] };
+    const holding: Placeholder = { ...mood, values: [...mood.values, { id: 'toned', text: encodePlaceholderToken({ id: 'tone', mode: 'world', placementId: 'p1' }) }] };
+    const nested = [holding, look, maraLook, beast, tone];
+    const options = box(null, courage);
+    const lookup = statBoxLookup(statCodeOwners({ stats: [courage], placeholders: [] }), { owner: null, timing: 'after', self: courage },
+      { ...cardWorld, placeholders: nested });
+    const card = cardAt('return placeholders.Mood.To|ne.value;', { ...options, placeholders: { ...options.placeholders!, list: nested }, lookup });
+    expect(rowsOf(card)).toEqual({ 'Parent Placeholder': 'Mood', Kind: 'Variable' });
+    expect(card?.signature.scope).toBe('world');
+  });
+
+  it('shows the owner and the Parent Placeholder for a placeholder nested in a dictionary’s own (Q12)', () => {
+    // Beast holds Pelt, and the book's tree holds both.
+    const pelt: Placeholder = { id: 'pelt', name: 'Pelt', ownerId: 'beast', values: [{ id: 'grey', text: 'grey' }] };
+    const holding: Placeholder = { ...beast, values: [...beast.values, { id: 'pelted', text: encodePlaceholderToken({ id: 'pelt', mode: 'world', placementId: 'p2' }) }] };
+    const nested = [mood, look, maraLook, holding, pelt];
+    const owners: PlaceholderOwners = new Map([...placeholderOwners, ['pelt', { kind: 'dictionary', id: 'fauna', name: 'Fauna' }]]);
+    const options = box(null, courage);
+    const lookup = statBoxLookup(statCodeOwners({ stats: [courage], placeholders: [] }), { owner: null, timing: 'after', self: courage },
+      { ...cardWorld, placeholders: nested, placeholderOwners: owners });
+    const card = cardAt('return dictionaries.Fauna.placeholders.Beast.Pe|lt.value;', {
+      ...options, placeholders: { ...options.placeholders!, list: nested, owners }, lookup,
+    });
+    expect(card?.rows).toEqual([
+      { label: 'Owners', value: 'Fauna' }, { label: 'Parent Placeholder', value: 'Beast' }, { label: 'Kind', value: 'Variable' },
+    ]);
+    expect(card?.signature.scope).toBeUndefined();
   });
 
   it('reads a negative or broken weight as benched, as the draw does', () => {
