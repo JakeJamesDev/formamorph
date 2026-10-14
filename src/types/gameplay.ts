@@ -211,7 +211,7 @@ export interface GameState {
    *  the authored change as they always did. */
   appliedTraitValues?: Record<string, Record<string, number>>;
   /** Owner id → the traits a gate cascade turned off, which switch back on once their gate holds again. The
-   *  player's world traits sit under `world`. Absent ⇒ none. */
+   *  player's world traits sit under the player key. Absent ⇒ none. */
   cascadeOffTraitIds?: CascadeOffTraitIds;
   /** Each entity's owned traits. Absent ⇒ none. */
   ownedTraits?: OwnedTraitStates;

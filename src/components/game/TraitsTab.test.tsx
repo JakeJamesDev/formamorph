@@ -6,6 +6,7 @@ import { renderRightPanel, statFixture, type PanelHarnessOptions } from '@/test/
 import type { Trait, TraitGroup } from '@/types';
 
 import { phValues } from '@/test/placeholderValues';
+import { PLAYER_OWNER } from '@/lib/traitGates';
 // Same reason the panel harness gives: neither dependency runs in jsdom, and neither is what these cases
 // are about. RightPanel pulls them in through the shared module.
 vi.mock('@/views/VRMViewer', () => import('@/test/stubs/vrmViewer'));
@@ -624,13 +625,13 @@ describe('a max-one trait group reads as a set of alternatives', () => {
     const view = renderTraits(TRAITS, GROUPS, ['t-farm']);
     openDisabled('Background');
     fireEvent.click(screen.getByRole('radio', { name: 'Switch on Scholar' }));
-    expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-book', true, 'world');
+    expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-book', true, PLAYER_OWNER);
   });
 
   it('clears the selected alternative when it is clicked again, so none is a legal answer', () => {
     const view = renderTraits(TRAITS, GROUPS, ['t-farm']);
     fireEvent.click(screen.getByRole('radio', { name: 'Switch off Farmhand' }));
-    expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-farm', false, 'world');
+    expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-farm', false, PLAYER_OWNER);
   });
 
   it('marks the radios by what is actually held', () => {
