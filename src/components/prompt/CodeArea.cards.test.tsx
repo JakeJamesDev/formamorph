@@ -88,7 +88,7 @@ describe('hover cards in the code editor', () => {
     render(<Harness initial="return stats.Fatigue.value;" lookup={lookup} />);
     hover(await editor('Stat code'), 'Fatigue');
     const card = await openCard();
-    expect(card.textContent).toContain('(world stat) stats.Fatigue: Stat');
+    expect(card.textContent).toContain('(global stat) stats.Fatigue: Stat');
     expect(card.querySelector('dl[aria-label="World Details"]')?.textContent).toBe('TypeNumberRange0 – 100Regen+1 per story hour');
   });
 

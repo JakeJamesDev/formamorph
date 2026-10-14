@@ -13,14 +13,16 @@ describe('code hover card reference', () => {
     for (const name of ['Light', 'Dark'] as const) {
       expect(sample(name, 'Global')).toHaveTextContent('(global) self');
       const stat = sample(name, 'Stat');
-      expect(stat).toHaveTextContent('(world stat) stats.Fatigue: Stat');
+      expect(stat).toHaveTextContent('(global stat) stats.Fatigue: Stat');
       for (const label of ['Type', 'Range', 'Starts At', 'Regen', 'Shown To']) {
         expect(within(stat).getByText(label)).toBeInTheDocument();
       }
       const trait = sample(name, 'Trait');
-      for (const label of ['Mode', 'Requires', 'Changes', 'Owners']) {
+      expect(trait).toHaveTextContent('(global trait) traits.Brave: Trait');
+      for (const label of ['Mode', 'Requires', 'Changes']) {
         expect(within(trait).getByText(label)).toBeInTheDocument();
       }
+      expect(within(trait).queryByText('Owners')).not.toBeInTheDocument();
       expect(sample(name, 'Read-Only')).toHaveTextContent('Read-Only');
       expect(sample(name, 'Declared Name')).toHaveTextContent('Declared on line 1');
     }

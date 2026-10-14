@@ -31,15 +31,15 @@ export type CodeCardKind =
 /** The card's first line: what the name is, the path it reads as, and its type. A declared name has no type. */
 export interface CodeCardSignature {
   kind: CodeCardKind;
-  /** Where a world item no entity owns lives, named beside its kind (Q8). */
+  /** Where an item no entity owns lives, named beside its kind (Q8). */
   scope?: CodeItemScope;
   path: string;
   type?: string;
 }
 
-const SCOPE_LABEL: Record<CodeItemScope, string> = { world: 'world', blueprint: 'Blueprint' };
+const SCOPE_LABEL: Record<CodeItemScope, string> = { global: 'global', world: 'world', blueprint: 'Blueprint' };
 
-/** What the name is, as the card's first line says it: "stat", or "world stat" and "Blueprint stat". */
+/** What the name is, as the card's first line says it: "stat", or "global stat" and "Blueprint stat". */
 export const scopedKind = ({ kind, scope }: Pick<CodeCardSignature, 'kind' | 'scope'>) => (scope ? `${SCOPE_LABEL[scope]} ${kind}` : kind);
 
 /** One World Details row. */
@@ -143,7 +143,7 @@ type StatRecord = CodeStatRecord & { stat: Stat };
 
 /**
  * A stat card's value rows, in order, with Owners among them. A row is left out where its `drops` holds: a field
- * at its default (Q27, Q35), or Owners on a world stat (Q8). Type and Range always show.
+ * at its default (Q27, Q35), or Owners on a global stat (Q8). Type and Range always show.
  */
 const STAT_ROWS: readonly {
   label: string;
@@ -161,7 +161,7 @@ const STAT_ROWS: readonly {
     },
     drops: ({ stat }) => !stat.regen,
   },
-  { label: 'Owners', value: ({ owners }) => ownersText(owners), drops: ({ scope }) => scope === 'world' },
+  { label: 'Owners', value: ({ owners }) => ownersText(owners), drops: ({ scope }) => scope === 'global' },
   { label: 'Shown To', value: ({ stat }) => (stat.hidden ? 'AI only' : 'AI and player'), drops: ({ stat }) => !stat.hidden },
   { label: 'Off', value: () => 'Until a trait turns it on', drops: ({ stat }) => stat.enabled !== false },
 ];
@@ -204,13 +204,14 @@ const TRAIT_MODE_LABEL: Record<TraitMode | 'optional', string> = { optional: 'Op
 /** A trait's World Details: Mode, then Requires and Changes where set, then the owners. Only the owners where they differ (Q37). */
 export function traitRows(record: CodeTraitRecord | CodeOwnersRecord): CodeCardRow[] {
   if (!record.trait) return [ownersRow(record.owners)];
-  const { trait, requires, changes, owners } = record;
+  const { trait, requires, changes, owners, scope } = record;
   return [
     { label: 'Mode', value: TRAIT_MODE_LABEL[trait.mode ?? 'optional'] },
     // One line per Requirement Row; a row after the first holds instead of the ones above it.
     ...(requires.length ? [{ label: 'Requires', value: requires.map((row, i) => `${i ? 'or ' : ''}${row.join(' and ')}`).join('\n') }] : []),
     ...(changes.length ? [{ label: 'Changes', value: listText(changes) }] : []),
-    ownersRow(owners),
+    // A global trait has no owner to list (Q8).
+    ...(scope === 'global' ? [] : [ownersRow(owners)]),
   ];
 }
 
@@ -315,7 +316,7 @@ function boxGlobal(card: CodeCard, lookup: CodeWorldLookup): CodeCard {
 function ownerCard(card: CodeCard, owner: CodeOwnerRecord | null): CodeCard {
   switch (owner?.kind) {
     case undefined: return card;
-    case 'empty': return { ...card, description: 'Holds nothing in a world stat’s code. Writing through it changes nothing.' };
+    case 'empty': return { ...card, description: 'Holds nothing in a global stat’s code. Writing through it changes nothing.' };
     case 'blueprint': return { ...card, rows: [ownersRow(owner.owners)] };
     // The entity is a world name, so its own description replaces the global's line (T16-1).
     case 'entity': return { ...card, ...entityDetails(owner.entity) };
@@ -407,7 +408,7 @@ export function codeCard(code: string, pos: number, options: SurfaceAnalysisOpti
     case 'trait': {
       const card = world('trait', keyPath(`${ownerPrefix(name.owner)}traits`, name.key), 'Trait');
       const record = options.lookup?.trait(name.owner, name.key);
-      return record ? { ...card, ...traitDetails(record) } : card;
+      return record ? { ...withScope(card, record.trait ? record.scope : undefined), ...traitDetails(record) } : card;
     }
     case 'placeholder': {
       const card = world('placeholder', name.path.reduce(keyPath, `${ownerPrefix(name.owner)}placeholders`), 'Placeholder');

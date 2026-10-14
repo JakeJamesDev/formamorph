@@ -22,25 +22,27 @@ import type { StatCodeTiming } from './statCodeTiming';
 import { entityTraitNames, worldTraitPlaces } from './statCodeTraits';
 import { conditionTexts, PLAYER_OWNER } from './traitGates';
 
-/** Where an item no single entity owns lives: the world, or under Blueprints. */
-export type CodeItemScope = 'world' | 'blueprint';
+/** Where an item no single entity owns lives: global scope, the world's placeholder tree, or under Blueprints. */
+export type CodeItemScope = 'global' | 'world' | 'blueprint';
 
 /** A stat as a card shows it. */
 export interface CodeStatRecord {
   /** Null where the route reaches several unrelated stats, so only their owners show (Q34). */
   stat: Stat | null;
-  /** Set for a loose world stat and a Blueprint box's own stats. */
-  scope?: CodeItemScope;
-  /** The entity, each playable entity the route reaches, or the entities that run a Blueprint box. Empty for a world stat. */
+  /** Set for a global stat and a Blueprint box's own stats. */
+  scope?: Extract<CodeItemScope, 'global' | 'blueprint'>;
+  /** The entity, each playable entity the route reaches, or the entities that run a Blueprint box. Empty for a global stat. */
   owners: readonly string[];
-  /** The entity that owns the stat. Absent for a world or Blueprint stat. */
+  /** The entity that owns the stat. Absent for a global or Blueprint stat. */
   entityId?: string;
 }
 
 /** A trait as a card shows it: the owner's effective trait and its rows already worded. */
 export interface CodeTraitRecord {
   trait: Trait;
-  /** The entity that owns the trait. Absent for a world trait or one a Link brings. */
+  /** Set for a global trait, which no entity owns. */
+  scope?: Extract<CodeItemScope, 'global'>;
+  /** The entity that owns the trait. Absent for a global trait or one a Link brings. */
   entityId?: string;
   /** Each Requirement Row's Conditions, in the gate rows' wording. */
   requires: readonly (readonly string[])[];
@@ -123,7 +125,7 @@ export interface CodeWorldLookup {
 export type CodeBoxOwner = { kind: 'entity'; entityId: string } | { kind: 'blueprint' };
 
 export interface CodeBox {
-  /** Null for a world stat. */
+  /** Null for a global stat. */
   owner: CodeBoxOwner | null;
   timing: StatCodeTiming;
   /** The box's stat under its code name, as the editor holds it now. */
@@ -221,7 +223,7 @@ function cardIndex(owners: CodeOwners, world: CodeCardWorld) {
     },
     worldTrait(key: string): CodeTraitRecord | null {
       const trait = world.traits.find((candidate) => candidate.id === worldTraits.get(key));
-      return trait ? traitRecord(trait) : null;
+      return trait ? { ...traitRecord(trait), scope: 'global' as const } : null;
     },
     /** The trait `key` names in one entity's set, owned or linked. */
     entityTrait(entityId: string, key: string): CodeTraitRecord | null {
@@ -343,7 +345,7 @@ export function statBoxLookup(owners: CodeOwners, box: CodeBox, world?: CodeCard
 
   return {
     self() {
-      if (!box.owner) return { stat: box.self, scope: 'world', owners: [] };
+      if (!box.owner) return { stat: box.self, scope: 'global', owners: [] };
       if (box.owner.kind === 'blueprint') return { stat: box.self, scope: 'blueprint', owners: runningOwnerNames() };
       return { stat: box.self, owners: [boxOwnerName], entityId: box.owner.entityId };
     },
@@ -358,7 +360,7 @@ export function statBoxLookup(owners: CodeOwners, box: CodeBox, world?: CodeCard
       switch (owner.route) {
         case 'world': {
           const stat = owners.world.byCodeName.get(key);
-          return stat ? { stat, scope: 'world', owners: [] } : null;
+          return stat ? { stat, scope: 'global', owners: [] } : null;
         }
         case 'owner': {
           if (!box.owner) return null;

@@ -16,7 +16,7 @@ import type { Dictionary, Entity, EntityGroup, Placeholder, Stat, Trait, TraitGr
 
 /** The names a run reads and the editor's reader checks, all under their code names. */
 export interface StatCodeNames {
-  /** The world's play stats under their code names: what `stats` keys in every box. */
+  /** The global play stats under their code names: what `stats` keys in every box. */
   codeNamedStats: Stat[];
   statNames: string[];
   placeholders: CodePlaceholders;
@@ -71,7 +71,7 @@ export function cardWorldNames(world: CodeCardWorld): StatCodeNames {
 export interface StatBoxSpec {
   /** The box's stat under its code name. */
   selfName?: string;
-  /** Absent for a world stat, whose `owner` is empty. */
+  /** Absent for a global stat, whose `owner` is empty. */
   owner?: { kind: CodeOwnerKind; statNames: readonly string[] };
   lookup?: CodeWorldLookup;
 }

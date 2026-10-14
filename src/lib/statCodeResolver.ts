@@ -65,7 +65,7 @@ export type ResolvedCodeName = { key: string; from: number; to: number } & (
 export interface ResolverOptions {
   /** What the code can reach. */
   surface: CodeSurface;
-  /** Whose code this is. Absent in a world stat's box. */
+  /** Whose code this is. Absent in a global stat's box. */
   owner?: CodeOwnerKind;
   /** The name of the stat the code belongs to: the key `self` reads. */
   selfName?: string;
