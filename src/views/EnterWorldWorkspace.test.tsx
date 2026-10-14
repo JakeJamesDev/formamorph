@@ -1068,6 +1068,19 @@ describe('EnterWorldWorkspace cast pages', () => {
     expect(within(screen.getByRole('main')).getByRole('listitem')).toHaveTextContent('Howl: +2');
   });
 
+  it("shows an owned trait's change to its owner's own stat on a group page under the owner", async () => {
+    const user = userEvent.setup();
+    const howling: Entity = {
+      ...ash,
+      stats: [{ id: 'howl', name: 'Howl', min: 0, max: 10, value: 1 } as Stat],
+      traitGroups: [{ id: 'pack', name: 'Pack', parentId: null }],
+      traits: [owned('alpha', { groupId: 'pack', statChanges: [{ statId: 'howl', value: 4, type: 'regen' }] })],
+    };
+    render(<CastHarness cast={{ ...castWorld, entities: [howling, bob] }} />);
+    await user.click(within(nav()).getByRole('button', { name: /^Pack/ }));
+    expect(within(screen.getByRole('main')).getByRole('listitem')).toHaveTextContent('Howl: +4 (regen)');
+  });
+
   it("shows slot 0 on an entity's page even when slot 0 carries a Visibility rule that would hide it in play", async () => {
     const user = userEvent.setup();
     const ruled: Entity = {
