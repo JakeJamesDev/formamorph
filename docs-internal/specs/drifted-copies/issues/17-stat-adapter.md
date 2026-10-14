@@ -1,0 +1,25 @@
+# 17: Stat Adapter
+
+Status: ready-for-agent
+Blocked by: 16
+Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
+Reasoning effort: high
+
+Opus at high: real divergences must survive as adapter choices.
+
+## What to build
+
+Owned stats run on the engine through their own adapter. Row id prefixes, cross-owner checks and the refusal with link creation off stay. The three "rows below an id" implementations become one.
+
+Spec: Implementation Decisions: Owner-tree engine merge. Stories 24, 25.
+
+## Acceptance criteria
+
+- [ ] The parity harness passes for stats
+- [ ] Existing owned stat tree tests pass with no assertion edits
+- [ ] One "rows below" implementation remains
+- [ ] Four gates green
+
+## Blocked by
+
+- 16
