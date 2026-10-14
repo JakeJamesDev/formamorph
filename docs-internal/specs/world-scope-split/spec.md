@@ -49,6 +49,8 @@ Settled with the user on 2026-10-13 and reframed on 2026-10-14 around the core r
 | Q29 | A Condition resolves by tree membership: it reads the entity it names (Same Owner = the host's owner, You = the played set, or a named entity) when that entity's tree holds the target; otherwise a global target reads global scope (Q10); otherwise it is unmet. The stat picker lists the host's own section, then **Global Stats** with no owner, then **Persona Stats** with a You owner over every playable entity's stats, then each other entity. The Q14 warning fires on a Same Owner Condition whose host is global and whose target is an entity item only (ticket 04 ruling) |
 | Q30 | A stat row resolves like a Condition (Q29): an untargeted row moves the entity's own stat when it owns that id, else the global stat with that id, on any entity. `target: 'global'` forces the global stat when the entity owns a clashing id. No migration; released untargeted persona rows keep working (ticket 05 ruling) |
 | Q31 | In play, pins lay all global traits first, then the persona's traits, then the cast, matching the editor ranking (Q20). The persona wins over global even where its node sits among root groups. A pin suite whose value changes for that case names this ruling (ticket 06 ruling) |
+| Q32 | The code rename covers names that hold global scope: gameplay state, setters, helpers, local variables, `playerStatsOf`, and the fold (`playerOwnerIds`, `isPlayer` on the global owner). The `PlayerStat` type, which types every stat, and the player-facing world-file fields (`playerToggle`, `playerDescription`, `playerHidden`, `playerNotes`) keep their names (ticket 11 ruling) |
+| Q33 | The Test Bench lens follows R0: a persona trait picked as the lens PC stays the persona's, and the lens and Enter World preview compute starting stats with the global/owners split. Test Bench results that change name this ruling. In memory, applied trait values stay one map keyed by record key; only the save splits it (Q25). Card import binds a You stat Condition among the played entity's stats (Q13, Q29), and a card's Owners row never shows You for the global tree (Q8). Ticket 12 carries the fixes (ticket 11 ruling) |
 | S1 | Tests sit at four seams: import migration, gate resolution, AI request assembly, and hover cards with the Test Bench |
 
 ## User Stories
@@ -132,5 +134,5 @@ Settled with the user on 2026-10-13 and reframed on 2026-10-14 around the core r
 
 ## Backlog
 
-- Starting stats for the Enter World preview and the Test Bench lens pass no entity stats, so an entity stat id that clashes with a global id reads as global there (Q30). From ticket 05's review.
+- The `PlayerStat` type names every stat, entity stats included; a rename to `Stat`-family naming is its own pass (Q32).
 - A loaded save with an unplayed entity's trait already on gains its global effect only at the trait's first switch, because no record exists yet (Q18). From ticket 05's review.
