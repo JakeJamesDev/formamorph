@@ -1,0 +1,27 @@
+# 10: Prompt UI
+
+Status: ready-for-agent
+Blocked by: 09
+Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
+Reasoning effort: high
+
+Opus at high: a new dialog pattern under design-system approval, a choice-row reuse, and a new history card.
+
+## What to build
+
+The pending-prompt store gets its UI. `confirm` and an `ask` with up to four options show as a choice row under the narration (Q17). `askText` and a longer `ask` open one small dialog with the question as its title; get the user's design-system approval for the dialog before it ships. `player.tell` renders a message card in the turn column, saved with history, never in a request (Q16, Q23). `player.toast` shows a toast. A prompt during a turn holds the turn until answered.
+
+Spec: Q16, Q17, Q23, stories 14, 15.
+
+## Acceptance criteria
+
+- [ ] A confirm shows two choice buttons under the narration and the script reads the pick
+- [ ] An ask with five options opens the dialog with a dropdown; askText opens it with a text field
+- [ ] A tell card pages with its turn, survives save and load, and a test proves it is absent from the next request
+- [ ] Escape on the dialog cancels the script as ticket 09 specifies
+- [ ] Dev routes exist for the dialog and the card; both themes checked
+- [ ] Four gates green
+
+## Blocked by
+
+- 09
