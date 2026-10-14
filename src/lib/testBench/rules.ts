@@ -1852,7 +1852,7 @@ const traitGroupAlwaysOnOverMax: Rule = {
   check: (world) => {
     const found = new Map<string, { owner: Owner | undefined; group: TraitGroup; traits: Trait[] }>();
     for (const persona of personaChoices(world)) {
-      const { bearers, gate } = resolveOwners(ownerWorldOf(world), persona);
+      const { owners: bearers, gate } = resolveOwners(ownerWorldOf(world), persona);
       for (const over of alwaysOnOverMax(gate)) {
         const k = pairKey(over.ownerId, over.groupId);
         if ((found.get(k)?.traits.length ?? 0) >= over.traitIds.length) continue;
@@ -2120,7 +2120,7 @@ const gateReportOf = (world: RuleWorld): GateReport => {
   const plain = ownerWorldOf(world);
   const editor = { ...editorGateInput(plain), stats };
   const editorStates = gateStates(editor);
-  const linksOf = new Map(resolveOwners(plain, undefined).bearers.map((b) => [b.id, b.linkOf]));
+  const linksOf = new Map(resolveOwners(plain, undefined).owners.map((b) => [b.id, b.linkOf]));
   const held: HeldGate[] = editor.owners.flatMap((owner) => owner.traits.map((trait) => {
     const link = linksOf.get(owner.id)?.get(trait.id);
     return { owner, trait, ...(link ? { link } : {}), rows: rowsOf(gateOf(editorStates, owner.id, trait.id)) };
@@ -2194,7 +2194,7 @@ const gateReportOf = (world: RuleWorld): GateReport => {
   // A pass over each persona choice: the owners it holds and how a gate finding names their traits.
   const passOver = (source: OwnerWorld, persona: PersonaRef) => {
     const resolved = resolveOwners(source, persona);
-    const { bearers } = resolved;
+    const { owners: bearers } = resolved;
     const gate = { ...resolved.gate, stats };
     const byId = new Map(bearers.map((b) => [b.id, b]));
     let states: GateStates | undefined;
@@ -2663,7 +2663,7 @@ const ownersByWorld = new WeakMap<RuleWorld, Map<string, Owner>>();
 const ownersOf = (world: RuleWorld): Map<string, Owner> => {
   let owners = ownersByWorld.get(world);
   if (!owners) {
-    owners = new Map(resolveOwners(ownerWorldOf(world), undefined).bearers.map((b) => [b.id, b]));
+    owners = new Map(resolveOwners(ownerWorldOf(world), undefined).owners.map((b) => [b.id, b]));
     ownersByWorld.set(world, owners);
   }
   return owners;

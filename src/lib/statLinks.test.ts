@@ -160,9 +160,9 @@ describe('statBlueprintChoices', () => {
     const empty: StatGroup = { id: 'bp-empty', name: 'Empty', parentId: 'bp', order: 2 };
     const ordered = { stats: [health, { ...trust, order: 0 }, fear], statGroups: [bp, { ...sub, order: 1 }, empty] };
     expect(statBlueprintChoices(ordered)).toEqual([
-      { kind: 'bearer', id: 'trust', name: 'trust', parentId: null },
+      { kind: 'owner', id: 'trust', name: 'trust', parentId: null },
       { kind: 'group', id: 'bp-social', name: 'Social', parentId: null },
-      { kind: 'bearer', id: 'fear', name: 'fear', parentId: 'bp-social' },
+      { kind: 'owner', id: 'fear', name: 'fear', parentId: 'bp-social' },
     ]);
     expect(statBlueprintChoices({ stats: [health], statGroups: [] })).toEqual([]);
   });

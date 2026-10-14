@@ -32,7 +32,7 @@ const playerByWorld = new WeakMap<LensWorld, Owner>();
 function lensPlayer(world: LensWorld): Owner {
   let player = playerByWorld.get(world);
   if (!player) {
-    const { bearers } = resolveOwners(ownerWorldOf(world), { source: 'none' });
+    const { owners: bearers } = resolveOwners(ownerWorldOf(world), { source: 'none' });
     const root = bearers.find((b) => b.id === PLAYER_OWNER)!;
     const custom = bearers.find((b) => b.isPlayer && b.entity);
     player = custom ? {

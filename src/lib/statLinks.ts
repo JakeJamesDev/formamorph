@@ -97,7 +97,7 @@ export function statBlueprintChoices(world: StatLinkWorld): BearerChoice[] {
   const holdsStat = new Set<string>();
   for (const s of stats) for (let at = s.groupId; at; at = groups.find((g) => g.id === at)?.parentId ?? null) holdsStat.add(at);
   return flattenTree(buildTree(groups, stats)).flatMap((row): BearerChoice[] => {
-    if (row.leaf) return [{ kind: 'bearer', id: row.leaf.id, name: row.leaf.name, parentId: row.parentId }];
+    if (row.leaf) return [{ kind: 'owner', id: row.leaf.id, name: row.leaf.name, parentId: row.parentId }];
     return row.group && holdsStat.has(row.group.id) ? [{ kind: 'group', id: row.group.id, name: row.group.name, parentId: row.parentId }] : [];
   });
 }

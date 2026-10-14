@@ -198,13 +198,13 @@ export type RequirementBearer = RequirementOwner;
 export type StatComparison = '>' | '<' | '>=' | '<=' | '=' | '≠';
 
 /** One Condition of a gate: a trait is active, any trait below a group is active, the player plays as a
- *  world entity, or a bearer's stat compares to a number. `name` is the target's name when it was stored, so
+ *  world entity, or an owner's stat compares to a number. `name` is the target's name when it was stored, so
  *  an unresolved one still reads. `not` flips it: the Condition holds while its target is off, or while a stat
  *  fails its comparison. A stat Condition's `value` is in the stat's own units under `raw`, or a share of its
  *  min→max span under `percent`. */
 export type TraitRequirement =
-  | { kind: 'trait'; id: string; name?: string; owner?: RequirementBearer; not?: true }
-  | { kind: 'group'; id: string; name?: string; owner?: RequirementBearer; not?: true }
+  | { kind: 'trait'; id: string; name?: string; owner?: RequirementOwner; not?: true }
+  | { kind: 'group'; id: string; name?: string; owner?: RequirementOwner; not?: true }
   | { kind: 'playingAs'; id: string; name?: string; not?: true }
   | StatRequirement;
 
@@ -213,7 +213,7 @@ export interface StatRequirement {
   kind: 'stat';
   id: string;
   name?: string;
-  owner?: RequirementBearer;
+  owner?: RequirementOwner;
   operator: StatComparison;
   value: number;
   unit: ThresholdUnit;

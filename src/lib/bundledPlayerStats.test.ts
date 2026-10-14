@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { migrateWorld } from './version';
-import { canBePlayer, resolveBearers, type BearerWorld } from './bearers';
+import { canBePlayer, resolveOwners, type OwnerWorld } from './owners';
 import { playerStatsOf, resolvedEntityStats, statBlueprintIds } from './statLinks';
 import { seedEntityStats } from './entityStats';
 import { seedNewGameStats } from './traitRuntime';
@@ -29,7 +29,7 @@ const SPLIT: Record<string, { owned: string[]; loose: string[] }> = {
 const OWNING = Object.keys(SPLIT);
 const PLAYER_STATS = ['Health', 'Mana', 'Faith', 'Gold', 'Renown'];
 
-const bearerWorld = (w: World): BearerWorld => ({ traits: w.traits, traitGroups: w.traitGroups ?? [], entities: w.entities });
+const ownerWorld = (w: World): OwnerWorld => ({ traits: w.traits, traitGroups: w.traitGroups ?? [], entities: w.entities });
 const statWorld = (w: World) => ({ stats: w.stats, statGroups: w.statGroups ?? [] });
 const customPersona = (w: World): Entity => {
   const marked = w.entities.filter((e) => e.customPersona);
@@ -55,18 +55,18 @@ describe.each(OWNING)('the %s world', (id) => {
   it('gives the persona the player traits too, so their stat rows reach the stats they name', () => {
     expect(world.traits).toEqual([]);
     expect(customPersona(world).traits?.length).toBeGreaterThan(0);
-    const { bearers } = resolveBearers(bearerWorld(world), { source: 'none' });
+    const { owners } = resolveOwners(ownerWorld(world), { source: 'none' });
     const loose = looseStats(world);
-    /** The stats a bearer's trait rows may name. A player bearer's rows may also name a loose world stat. */
+    /** The stats an owner's trait rows may name. A player owner's rows may also name a loose world stat. */
     const reachable = (entity: Entity | null | undefined): Stat[] => {
       if (!entity) return loose;
       return [...resolvedEntityStats(statWorld(world), entity), ...(canBePlayer(entity) ? loose : [])];
     };
-    for (const bearer of bearers) {
-      const ids = new Set(reachable(bearer.entity).map((s) => s.id));
-      const rows = bearer.traits.flatMap((t) => (t.statChanges ?? []).map((c) => ({ trait: t.name, statId: c.statId })));
+    for (const owner of owners) {
+      const ids = new Set(reachable(owner.entity).map((s) => s.id));
+      const rows = owner.traits.flatMap((t) => (t.statChanges ?? []).map((c) => ({ trait: t.name, statId: c.statId })));
       const dead = rows.filter((row) => !ids.has(row.statId)).map((row) => `${row.trait}: ${row.statId}`);
-      expect(dead, bearer.id).toEqual([]);
+      expect(dead, owner.id).toEqual([]);
     }
   });
 

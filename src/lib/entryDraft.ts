@@ -1,6 +1,6 @@
 import type { DictionarySelectionItem } from './dictionarySelection';
 import { locationForPersonaPick, withoutPersona, type PersonaPickContext } from './personaPick';
-import { resolveBearers } from './bearers';
+import { resolveOwners } from './owners';
 import { startingGateStats } from './gateStats';
 import { WORLD_OWNER, settle, settleDefaults, type GateInput, type GateOwner, type SettleResult } from './traitGates';
 import type { CascadeOffTraitIds, Entity, OwnedTraitPicks, PersonaRef, Stat, StatGroup, Trait, TraitGroup } from '@/types';
@@ -51,17 +51,17 @@ export interface EntryTraitWorld {
   statGroups?: readonly StatGroup[];
 }
 
-/** The gate input over every present bearer under `persona`, without the active sets. */
+/** The gate input over every present owner under `persona`, without the active sets. */
 const entryGateBase = (world: EntryTraitWorld, persona: PersonaRef): Omit<GateInput, 'active'> => ({
-  ...resolveBearers(world, persona, world.library).gate,
+  ...resolveOwners(world, persona, world.library).gate,
   stats: startingGateStats(world, world.library),
 });
 
-/** Every present bearer under `persona`: the player, the world's entities, then the library entities. */
+/** Every present owner under `persona`: the player, the world's entities, then the library entities. */
 export const entryOwners = (world: EntryTraitWorld, persona: PersonaRef): readonly GateOwner[] =>
-  resolveBearers(world, persona, world.library).gate.owners;
+  resolveOwners(world, persona, world.library).gate.owners;
 
-/** The gates of the draft's picks: every present bearer, under the draft's persona. */
+/** The gates of the draft's picks: every present owner, under the draft's persona. */
 export const entryGateInput = (
   world: EntryTraitWorld, draft: Pick<EntryDraft, 'traitIds' | 'ownedTraitIds' | 'persona'>,
 ): GateInput => ({
@@ -110,7 +110,7 @@ export function withLibraryDefaults(draft: EntryDraft, world: EntryTraitWorld): 
 export const rekeyOwnedPicks = (picks: OwnedTraitPicks, copyIds: ReadonlyMap<string, string>): OwnedTraitPicks =>
   Object.fromEntries(Object.entries(picks).map(([id, ids]) => [copyIds.get(id) ?? id, ids]));
 
-/** The owned picks the game starts with: those of the present bearers that picked anything. */
+/** The owned picks the game starts with: those of the present owners that picked anything. */
 export function castOwnedTraits(draft: Pick<EntryDraft, 'ownedTraitIds' | 'persona'>, world: EntryTraitWorld): OwnedTraitPicks {
   const out: OwnedTraitPicks = {};
   for (const owner of entryOwners(world, draft.persona)) {

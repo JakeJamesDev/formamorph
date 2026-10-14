@@ -184,7 +184,7 @@ export const entityCodeStats = (
 export function entityTraitNames(
   world: OwnerWorld & { entityGroups?: readonly EntityGroup[] }, placeholders: readonly Placeholder[],
 ): CodeEntityNames[] {
-  const ownerById = new Map(resolveOwners(world, undefined).bearers.map((owner) => [owner.id, owner]));
+  const ownerById = new Map(resolveOwners(world, undefined).owners.map((owner) => [owner.id, owner]));
   const tab = new Map(inTreeOrder(world.entityGroups ?? [], world.entities, (group) => statCodeName(group.name, placeholders))
     .map(({ leaf, path }, position) => [leaf.id, { folder: path, tabPosition: position }]));
   return world.entities.map((entity) => {
@@ -238,7 +238,7 @@ export interface TraitOwnerMaps {
 export function traitOwnerMaps(world: OwnerWorld, placeholders: readonly Placeholder[], traitId: string): TraitOwnerMaps {
   const codeNameOf = (trait: Trait, entity: Entity) =>
     statCodeName(authoredTraitName(trait, entity, world.traits), withOwnPlaceholders(placeholders, entity));
-  const entityOwners = resolveOwners(world, undefined).bearers.flatMap((owner) => (owner.entity ? [{ entity: owner.entity, traits: owner.traits }] : []));
+  const entityOwners = resolveOwners(world, undefined).owners.flatMap((owner) => (owner.entity ? [{ entity: owner.entity, traits: owner.traits }] : []));
   const owning = entityOwners.flatMap(({ entity, traits }) => {
     const trait = traits.find((t) => t.id === traitId);
     return trait ? [{ entity, trait }] : [];

@@ -2,7 +2,7 @@
 // reads it by name. A drag into Blueprints that would leave one of them reading nothing is refused (Q81, Q82).
 
 import type { Entity, Placeholder, Stat, StatGroup, Trait, TraitGroup, TraitRequirementRow } from '@/types';
-import { canBePlayer } from './bearers';
+import { canBePlayer } from './owners';
 import { statCodeChains } from './statCodeRename';
 import { statCodeName } from './statCodeNames';
 import { resolvedEntityStats, statBlueprintIds } from './statLinks';

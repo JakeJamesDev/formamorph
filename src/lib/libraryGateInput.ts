@@ -1,4 +1,4 @@
-import { editorGateInput } from '@/lib/bearers';
+import { editorGateInput } from '@/lib/owners';
 import { startingGateStats } from '@/lib/gateStats';
 import { bindOwnedTraits, type TraitWorld } from '@/lib/portableTraits';
 import type { GateInput } from '@/lib/traitGates';

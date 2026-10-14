@@ -82,7 +82,7 @@ export function copyNeeds(world: CopyWorld): Map<string, Map<string, CopyNeed>> 
   if (!blueprints.size) return out;
   const byId = new Map(world.placeholders.map((p) => [p.id, p]));
   const copyBlueprint = copyBlueprints(world.entities);
-  const ownerOf = new Map(resolveOwners(world, undefined).bearers.map((o) => [o.id, o]));
+  const ownerOf = new Map(resolveOwners(world, undefined).owners.map((o) => [o.id, o]));
   const root = offeredWorldTraits(world.traits, world.traitGroups);
 
   for (const e of world.entities) {

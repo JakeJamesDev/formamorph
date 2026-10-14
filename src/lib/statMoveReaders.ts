@@ -31,7 +31,7 @@ const reachedOwner = (side: ReturnType<typeof statRowSide>, entityId: string): s
 /** The first trait row that reaches one of `moved` on owner `from` (null = the world). */
 function traitReader(world: StatReaderWorld, from: string | null, moved: ReadonlyMap<string, Stat>): { stat: Stat; reader: StatReader } | null {
   const player = new Set(playerStatsOf([...world.stats], world.statGroups).map((s) => s.id));
-  for (const bearer of resolveBearers(world, undefined).bearers) {
+  for (const bearer of resolveBearers(world, undefined).owners) {
     const entity = bearer.entity;
     const own = entity ? new Set(resolvedEntityStats(world, entity).map((s) => s.id)) : new Set<string>();
     const reaches = (row: StatChange | TraitStatToggle) => (entity

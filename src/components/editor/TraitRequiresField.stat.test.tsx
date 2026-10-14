@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { TraitStoreContext, type TraitStore } from '@/contexts/TraitStoreContext';
-import { editorGateInput } from '@/lib/bearers';
+import { editorGateInput } from '@/lib/owners';
 import { startingGateStats } from '@/lib/gateStats';
 import { TraitRequiresField } from './TraitRequiresField';
 import type { Entity, Stat, Trait, TraitRequirementRow } from '@/types';
@@ -33,7 +33,7 @@ function Harness({ subject, offWorld = false }: { subject: Trait; offWorld?: boo
       <TraitStoreContext.Provider value={store}>
         <TraitRequiresField
           trait={current}
-          bearerId={subject.id === 'squire' ? 'mira' : undefined}
+          ownerId={subject.id === 'squire' ? 'mira' : undefined}
           onChange={(requires: TraitRequirementRow[]) => setCurrent({ ...current, requires: requires.length ? requires : undefined })}
           onOpen={() => {}}
         />
@@ -44,7 +44,7 @@ function Harness({ subject, offWorld = false }: { subject: Trait; offWorld?: boo
 }
 
 describe('TraitRequiresField with stats', () => {
-  it('offers a world trait the player’s stats with no bearer, then each entity’s with its bearer', async () => {
+  it('offers a world trait the player’s stats with no owner, then each entity’s with its owner', async () => {
     render(<Harness subject={berserk} />);
     fireEvent.click(screen.getByRole('button', { name: 'Add Requirement' }));
     expect(await screen.findByPlaceholderText('Search traits, groups, stats, and personas')).toBeInTheDocument();
@@ -60,7 +60,7 @@ describe('TraitRequiresField with stats', () => {
     expect(chip).not.toHaveAttribute('data-unresolved');
   });
 
-  it('offers an entity’s trait its own stats with no bearer, and the player’s as You', async () => {
+  it('offers an entity’s trait its own stats with no owner, and the player’s as You', async () => {
     render(<Harness subject={squire} />);
     fireEvent.click(screen.getByRole('button', { name: 'Add Requirement' }));
     expect(await screen.findByText('Mira Stats')).toBeInTheDocument();

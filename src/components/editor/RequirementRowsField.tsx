@@ -10,10 +10,10 @@ import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { StatConditionControls } from '@/components/editor/StatConditionControls';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import {
-  bearerKey, bearerOf, flipped, sameRequirement, statTail, withBearer,
-  type ConditionState, type RequirementBearerOption, type RequirementOption, type RequirementOptions, type RowState,
+  requirementOwnerKey, requirementOwnerOf, flipped, sameRequirement, statTail, withRequirementOwner,
+  type ConditionState, type RequirementOwnerOption, type RequirementOption, type RequirementOptions, type RowState,
 } from '@/lib/traitGates';
-import { soleBearerRequirement } from '@/lib/requirementBearers';
+import { soleOwnerRequirement } from '@/lib/requirementOwners';
 import { joinAnd } from '@/lib/requirementSummary';
 import type { RequirementStatSection } from '@/lib/requirementStatOptions';
 import { cn } from '@/lib/utils';
@@ -25,8 +25,8 @@ type AddTarget = number | 'new';
 /**
  * The Requires field over plain data: Requirement Rows, each a bordered line of chips joined by "and", the
  * rows joined by "or". **And** adds a Condition to its row, **Or Another Way** adds a row, and removing a
- * row's last chip removes the row (Q6). Picking a target opens a second page for the bearer: the same
- * bearer, You, or an entity that bears it. Off-world, or when only one bearer can hold the target, it is
+ * row's last chip removes the row (Q6). Picking a target opens a second page for the owner: the same
+ * owner, You, or an entity that owns it. Off-world, or when only one owner can hold the target, it is
  * added at once. A chip opens its target, unless `opens` says the host has nowhere to open it, when it
  * reads as plain text; a chip whose target is gone reads red under its stored name. Each chip flips between
  * plain and Not; a Not chip shows a NOT mark and a dashed border.
@@ -36,9 +36,9 @@ type AddTarget = number | 'new';
  * would repeat another Condition in the row is held back. The same stat can sit in a row twice, once as a
  * floor and once as a ceiling.
  *
- * The host supplies everything the rows read: `owner` is the bearer id the rows default to, `states` the
+ * The host supplies everything the rows read: `owner` is the owner id the rows default to, `states` the
  * rows' evaluated state in the same order, `options` the targets an author can add, `statSections` the stats
- * by bearer, and `textOf` the rule text of one Condition.
+ * by owner, and `textOf` the rule text of one Condition.
  */
 export function RequirementRowsField({
   rows, owner, states, options, statSections = [], textOf, placeholders, offWorld = false, onChange, onOpen, opens = () => true, label = 'Requires', labelAside,
@@ -90,11 +90,11 @@ export function RequirementRowsField({
   };
   const replaceCondition = (rowIndex: number, index: number, next: TraitRequirement) => onChange(rows.map((row, i) =>
     (i === rowIndex ? { all: row.all.map((req, j) => (j === index ? next : req)) } : row)));
-  // A stat row names its bearer in the section it sits in, so it needs no bearer page. What a playing-as row,
-  // an off-world row and a target with one possible bearer add at once; any other target asks which bearer first.
+  // A stat row names its owner in the section it sits in, so it needs no owner page. What a playing-as row,
+  // an off-world row and a target with one possible owner add at once; any other target asks which owner first.
   const atOnce = (option: RequirementOption) =>
     (option.requirement.kind === 'playingAs' || option.requirement.kind === 'stat' || offWorld
-      ? option.requirement : soleBearerRequirement(option, owner));
+      ? option.requirement : soleOwnerRequirement(option, owner));
   const pick = (option: RequirementOption) => {
     const requirement = atOnce(option);
     if (requirement) add(requirement);
@@ -103,9 +103,9 @@ export function RequirementRowsField({
   /** Every way the row could be added is already listed, so the row has nothing left to add. */
   const exhausted = (option: RequirementOption) => {
     const requirement = atOnce(option);
-    // A world trait reads You as its own bearer, so the plain and the You forms are one requirement.
-    if (requirement) return [requirement, ...option.bearers.map((b) => withBearer(requirement, b.bearer))].some(listed);
-    return listed(option.requirement) && option.bearers.every((b) => listed(withBearer(option.requirement, b.bearer)));
+    // A world trait reads You as its own owner, so the plain and the You forms are one requirement.
+    if (requirement) return [requirement, ...option.owners.map((o) => withRequirementOwner(requirement, o.owner))].some(listed);
+    return listed(option.requirement) && option.owners.every((o) => listed(withRequirementOwner(option.requirement, o.owner)));
   };
 
   const renderText = (text: string) => <PlaceholderText text={text} placeholders={placeholders} />;
@@ -113,8 +113,8 @@ export function RequirementRowsField({
   const targets = (heading: string, list: RequirementOption[]): BreadcrumbPickerSection<RequirementOption> => ({
     heading,
     rows: list.map((option) => ({
-      // One stat can sit under several bearers.
-      key: `${option.requirement.kind}:${option.requirement.id}${option.requirement.kind === 'stat' ? `:${bearerKey(bearerOf(option.requirement))}` : ''}`,
+      // One stat can sit under several owners.
+      key: `${option.requirement.kind}:${option.requirement.id}${option.requirement.kind === 'stat' ? `:${requirementOwnerKey(requirementOwnerOf(option.requirement))}` : ''}`,
       value: option,
       name: option.label,
       breadcrumb: option.breadcrumb,
@@ -131,18 +131,18 @@ export function RequirementRowsField({
     ...(offWorld ? [] : [targets('Playing As', options.personas)]),
   ];
 
-  const bearerRow = (option: RequirementOption, choice: RequirementBearerOption | null): BreadcrumbPickerRow<TraitRequirement> => {
-    const requirement = withBearer(option.requirement, choice?.bearer);
+  const ownerRow = (option: RequirementOption, choice: RequirementOwnerOption | null): BreadcrumbPickerRow<TraitRequirement> => {
+    const requirement = withRequirementOwner(option.requirement, choice?.owner);
     return {
-      key: bearerKey(choice?.bearer),
+      key: requirementOwnerKey(choice?.owner),
       value: requirement,
       name: choice?.name ?? 'Same Owner',
       hint: choice ? undefined : 'Whoever has the trait',
       disabled: listed(requirement),
     };
   };
-  // Its own list, so the target search never carries over to the bearer page.
-  const bearerPage = picked && (
+  // Its own list, so the target search never carries over to the owner page.
+  const ownerPage = picked && (
     <div>
       <div className="flex items-center gap-1 border-b px-2 py-1.5 text-label">
         <Button type="button" variant="ghost" size="xs" className="h-7 w-7 shrink-0 p-0" aria-label="Back to targets" onClick={() => setPicked(null)}>
@@ -153,7 +153,7 @@ export function RequirementRowsField({
         </span>
       </div>
       <BreadcrumbPickerList
-        sections={[{ rows: [bearerRow(picked, null), ...picked.bearers.map((choice) => bearerRow(picked, choice))] }]}
+        sections={[{ rows: [ownerRow(picked, null), ...picked.owners.map((choice) => ownerRow(picked, choice))] }]}
         onPick={add}
         searchPlaceholder="Search owners"
         renderText={renderText}
@@ -245,7 +245,7 @@ export function RequirementRowsField({
       searchPlaceholder={`Search ${searchable}`}
       renderText={renderText}
       plainText={plainText}
-      page={(target === key && bearerPage) || undefined}
+      page={(target === key && ownerPage) || undefined}
       trigger={trigger}
     />
   );
@@ -263,7 +263,7 @@ export function RequirementRowsField({
                 {i > 0 && <div className="py-1 text-center text-meta text-muted-foreground">or</div>}
                 <div data-requirement-row="" className="flex flex-wrap items-center gap-1.5 rounded-md border bg-background p-1.5">
                   {row.all.map((requirement, j) => (
-                    <span key={`${requirement.kind}:${requirement.id}:${bearerKey(bearerOf(requirement))}:${j}`} className="inline-flex max-w-full items-center gap-1.5">
+                    <span key={`${requirement.kind}:${requirement.id}:${requirementOwnerKey(requirementOwnerOf(requirement))}:${j}`} className="inline-flex max-w-full items-center gap-1.5">
                       {j > 0 && <span className="text-meta text-muted-foreground">and</span>}
                       {chip(requirement, states[i]?.conditions[j], {
                         remove: () => removeCondition(i, j),

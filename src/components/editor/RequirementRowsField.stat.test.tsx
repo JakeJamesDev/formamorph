@@ -55,7 +55,7 @@ const pickOperator = async (name: string) => {
 };
 
 describe('a stat Condition in the rows editor', () => {
-  it('lists each bearer’s stats and places a chip with an operator, a value and a unit', async () => {
+  it('lists each owner’s stats and places a chip with an operator, a value and a unit', async () => {
     render(<Harness />);
     fireEvent.click(screen.getByRole('button', { name: 'Add Requirement' }));
     expect(await screen.findByText('Player Stats')).toBeInTheDocument();
@@ -79,7 +79,7 @@ describe('a stat Condition in the rows editor', () => {
     expect(screen.queryByRole('button', { name: 'Rage >= 50' })).not.toBeInTheDocument();
   });
 
-  it('adds a stat under another bearer with that bearer on the chip', async () => {
+  it('adds a stat under another owner with that owner on the chip', async () => {
     render(<Harness />);
     fireEvent.click(screen.getByRole('button', { name: 'Add Requirement' }));
     fireEvent.click(await screen.findByRole('option', { name: /^Hunger/ }));

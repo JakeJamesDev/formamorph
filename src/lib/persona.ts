@@ -1,5 +1,5 @@
 import { primaryImage } from './entityImages';
-import { inCast } from './bearers';
+import { inCast } from './owners';
 import { customPersonaEntity } from './blueprints';
 import type { Entity, PersonaRef } from '@/types';
 import type { ResolveEntityText } from './resolveWorldNames';

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import type { PersonaRef, Trait, TraitGroup, TraitRequirement } from '@/types';
 import {
   WORLD_OWNER, alwaysOnOverMax, gateOf, gateStates, groupPickStates, neverUnlockable, playerOwnerIds, requirementOptions, sameRequirement, settle, settleDefaults, shownRefs, switchTrait,
-  underfills, withBearer, type GateInput, type GateOwner,
+  underfills, withRequirementOwner, type GateInput, type GateOwner,
 } from './traitGates';
 
 const T = (id: string, extra: Partial<Trait> = {}): Trait => ({ id, name: id, statChanges: [], ...extra });
@@ -205,7 +205,7 @@ describe('requirement kinds', () => {
   });
 });
 
-describe('requirements per bearer', () => {
+describe('requirements per owner', () => {
   // The world's Smite requires Paladin. Albus links Paladin and Smite, so both owners hold both ids.
   const paladin = T('Paladin');
   const smite = T('Smite', { requires: [{ all: [trait('Paladin')] }] });
@@ -231,7 +231,7 @@ describe('requirements per bearer', () => {
     expect(switchTrait(withLucky, 'albus', 'Lucky Step')).toBeNull();
   });
 
-  it('never lets a same-bearer requirement hold through another bearer', () => {
+  it('never lets a same-owner requirement hold through another owner', () => {
     const albusOnly = input({ albus: ['Paladin'] });
     expect(unlocked(albusOnly, 'Smite', 'albus')).toBe(true);
     expect(unlocked(albusOnly, 'Smite', WORLD_OWNER)).toBe(false);
@@ -257,7 +257,7 @@ describe('requirements per bearer', () => {
     expect(reason(input({}), 'Squire', 'mira')).toEqual(['You: Paladin']);
   });
 
-  it('reads a same-bearer requirement on a root trait through the played persona’s set (Q74)', () => {
+  it('reads a same-owner requirement on a root trait through the played persona’s set (Q74)', () => {
     const asAlbus = input({ albus: ['Paladin'] }, { source: 'world', entityId: 'albus' });
     expect(unlocked(asAlbus, 'Smite', WORLD_OWNER)).toBe(true);
     expect(unlocked(input({ albus: ['Paladin'] }, { source: 'world', entityId: 'mira' }), 'Smite', WORLD_OWNER)).toBe(false);
@@ -271,7 +271,7 @@ describe('requirements per bearer', () => {
     expect(playerOwnerIds({ source: 'world', entityId: 'albus' }, entities)).toEqual([WORLD_OWNER, 'albus']);
   });
 
-  it('names the target from the originals when no present bearer holds it, and a gone bearer by its stored name', () => {
+  it('names the target from the originals when no present owner holds it, and a gone owner by its stored name', () => {
     const squire = T('Squire', { requires: [{ all: [you('Cleric')] }, { all: [{ kind: 'trait', id: 'Paladin', owner: { kind: 'entity', id: 'gone', name: 'Old Albus' } }] }] });
     const owners = [input({}).owners[0], { ...mira, traits: [squire] }];
     const state = gateOf(gateStates({ ...input({}), owners, originals: { traits: [T('Cleric')], groups: [] } }), 'mira', 'Squire')!;
@@ -282,7 +282,7 @@ describe('requirements per bearer', () => {
     expect(reason({ ...input({}), owners }, 'Squire', 'mira')?.[0]).toBe('You: a missing trait');
   });
 
-  it('holds a named group requirement through that bearer’s traits below the group', () => {
+  it('holds a named group requirement through that owner’s traits below the group', () => {
     const classes = G('Classes');
     const knight = T('Knight', { groupId: 'Classes' });
     const owners: GateOwner[] = [
@@ -365,7 +365,7 @@ describe('settle', () => {
     expect(own.cascadeOff).toEqual({ [WORLD_OWNER]: ['Loyal'], wolf: [] });
   });
 
-  it('cascades a named requirement off when the named bearer drops the target', () => {
+  it('cascades a named requirement off when the named owner drops the target', () => {
     const wolf: GateOwner = { id: 'wolf', name: 'Ash', groups: [], traits: [T('Tamed')] };
     const tamer = T('Beast Tamer', { requires: [{ all: [on('wolf', 'Tamed')] }] });
     const input = (active: GateInput['active']): GateInput => ({
@@ -383,7 +383,7 @@ describe('settle', () => {
     expect(ids(as({ source: 'none' }).turnedOff)).toEqual(['Royal Plate']);
   });
 
-  it('turns off a You trait when the persona changes away from the bearer that met it', () => {
+  it('turns off a You trait when the persona changes away from the owner that met it', () => {
     const albus: GateOwner = { id: 'albus', name: 'Albus', groups: [], traits: [T('Paladin')] };
     const squire = T('Squire', { requires: [{ all: [you('Paladin')] }] });
     const mira: GateOwner = { id: 'mira', name: 'Mira', groups: [], traits: [squire] };
@@ -604,7 +604,7 @@ describe('a switch-off below the minimum', () => {
     expect(underfills(input(['Paladin']), WORLD_OWNER, 'Paladin')).toBe(true);
   });
 
-  it('applies the minimum to an entity-owned group, against that bearer alone', () => {
+  it('applies the minimum to an entity-owned group, against that owner alone', () => {
     const ash: GateOwner = { id: 'ash', name: 'Ash', groups, traits };
     const two: GateInput = { ...input([]), owners: [input([]).owners[0], ash], active: { [WORLD_OWNER]: ['Archery', 'Stealth', 'Lore'], ash: ['Archery', 'Stealth'] } };
     expect(underfills(two, 'ash', 'Stealth')).toBe(true);
@@ -657,7 +657,7 @@ describe('group pick states', () => {
     expect(states(['Archery', 'Stealth', 'Lore']).get('Skills')).toMatchObject({ count: 3, short: false, full: true });
   });
 
-  it('reports each bearer against its own active set', () => {
+  it('reports each owner against its own active set', () => {
     const ash: GateOwner = { id: 'ash', name: 'Ash', groups, traits };
     const input: GateInput = { ...world(traits, groups), owners: [world(traits, groups).owners[0], ash], active: { [WORLD_OWNER]: [], ash: ['Knight'] } };
     const all = groupPickStates(input);
@@ -756,7 +756,7 @@ describe('never-unlockable sets', () => {
     expect(sets(royal)).toEqual([['Royal Plate']]);
   });
 
-  it('reports a linked trait stuck on the bearer that lacks its requirement, and open on the one that has it', () => {
+  it('reports a linked trait stuck on the owner that lacks its requirement, and open on the one that has it', () => {
     // Smite requires Faithful. The player has Faithful at the root; Albus links Smite alone.
     const smite = T('Smite', { requires: [{ all: [trait('Faithful')] }] });
     const input: Omit<GateInput, 'active'> = {
@@ -767,7 +767,7 @@ describe('never-unlockable sets', () => {
       entities: [], persona: { source: 'none' },
     };
     expect(neverUnlockable(input)).toEqual([[{ ownerId: 'albus', traitId: 'Smite' }]]);
-    // A named requirement opens through the named bearer, and a You requirement through the player.
+    // A named requirement opens through the named owner, and a You requirement through the player.
     const named = { ...input, owners: [input.owners[0], { ...input.owners[1], traits: [T('Smite', { requires: [{ all: [you('Faithful')] }] })] }] };
     expect(neverUnlockable(named)).toEqual([]);
   });
@@ -800,16 +800,16 @@ describe('requirement options', () => {
     ]);
   });
 
-  it('lists a target once, where the first owner holds it, with You and every entity that bears it', () => {
+  it('lists a target once, where the first owner holds it, with You and every entity that owns it', () => {
     const albus: GateOwner = { id: 'albus', name: 'Albus', groups: [G('Class', { maxPicks: 1 })], traits: [T('Paladin', { groupId: 'Class' }), T('Oath')] };
     const options = requirementOptions({ ...input, owners: [...input.owners, albus] }, 'Loose');
     expect(rows(options.traits)).toEqual(['Paladin @ Class', 'Knight @ Class', 'Plate Armor @ Gear › Heavy', 'Tamed @ Ash › Bond', 'Oath @ Albus']);
-    const bearers = (label: string) => options.traits.find((o) => o.label === label)?.bearers.map((b) => b.name);
-    expect(bearers('Paladin')).toEqual(['You', 'Albus']);
-    expect(bearers('Tamed')).toEqual(['You', 'Ash']);
-    expect(bearers('Knight')).toEqual(['You']);
-    expect(options.traits[0].bearers[1].bearer).toEqual({ kind: 'entity', id: 'albus', name: 'Albus' });
-    expect(options.groups.find((o) => o.label === 'any Class')?.bearers.map((b) => b.name)).toEqual(['You', 'Albus']);
+    const owners = (label: string) => options.traits.find((o) => o.label === label)?.owners.map((b) => b.name);
+    expect(owners('Paladin')).toEqual(['You', 'Albus']);
+    expect(owners('Tamed')).toEqual(['You', 'Ash']);
+    expect(owners('Knight')).toEqual(['You']);
+    expect(options.traits[0].owners[1].owner).toEqual({ kind: 'entity', id: 'albus', name: 'Albus' });
+    expect(options.groups.find((o) => o.label === 'any Class')?.owners.map((b) => b.name)).toEqual(['You', 'Albus']);
   });
 
   it('leaves out a group that holds only the trait and its exclusive siblings, and keeps one with another way in', () => {
@@ -839,17 +839,17 @@ describe('requirement options', () => {
 
   it('lists only the world personas under playing as', () => {
     expect(requirementOptions(input, 'Loose').personas).toEqual([
-      { requirement: { kind: 'playingAs', id: 'aldric' }, label: 'playing as Sir Aldric', breadcrumb: ['Persona'], bearers: [] },
+      { requirement: { kind: 'playingAs', id: 'aldric' }, label: 'playing as Sir Aldric', breadcrumb: ['Persona'], owners: [] },
     ]);
   });
 
-  it('carries the requirement each row adds, and scopes it to a picked bearer', () => {
+  it('carries the requirement each row adds, and scopes it to a picked owner', () => {
     const options = requirementOptions(input, 'Loose');
     expect(options.traits[0].requirement).toEqual({ kind: 'trait', id: 'Paladin' });
     expect(options.groups[0].requirement).toEqual({ kind: 'group', id: 'Class' });
-    expect(withBearer(options.traits[0].requirement, { kind: 'you' })).toEqual({ kind: 'trait', id: 'Paladin', owner: { kind: 'you' } });
-    expect(withBearer(options.traits[0].requirement)).toEqual({ kind: 'trait', id: 'Paladin' });
-    expect(withBearer(options.personas[0].requirement, { kind: 'you' })).toEqual({ kind: 'playingAs', id: 'aldric' });
+    expect(withRequirementOwner(options.traits[0].requirement, { kind: 'you' })).toEqual({ kind: 'trait', id: 'Paladin', owner: { kind: 'you' } });
+    expect(withRequirementOwner(options.traits[0].requirement)).toEqual({ kind: 'trait', id: 'Paladin' });
+    expect(withRequirementOwner(options.personas[0].requirement, { kind: 'you' })).toEqual({ kind: 'playingAs', id: 'aldric' });
   });
 });
 
@@ -934,7 +934,7 @@ describe('Always On traits', () => {
     expect(switchTrait(world([T('Secret', { mode: 'hidden' })], [], ['Secret']), WORLD_OWNER, 'Secret')).toBeNull();
   });
 
-  it('behaves the same for an entity-owned trait, against that bearer alone', () => {
+  it('behaves the same for an entity-owned trait, against that owner alone', () => {
     const ash: GateOwner = { id: 'ash', name: 'Ash', groups: gear, traits: curse };
     const input: GateInput = {
       owners: [{ id: WORLD_OWNER, name: '', traits: [], groups: [] }, ash],
@@ -1007,7 +1007,7 @@ describe('Always On traits', () => {
       expect(over(traits, curses)).toEqual([]);
     });
 
-    it('checks an entity-owned group against its own bearer', () => {
+    it('checks an entity-owned group against its own owner', () => {
       const ash: GateOwner = {
         id: 'ash', name: 'Ash', groups: curses, traits: [AO('Weak', { groupId: 'Curses' }), AO('Slow', { groupId: 'Curses' })],
       };
@@ -1080,7 +1080,7 @@ describe('Not Conditions', () => {
       expect(reason(as({ source: 'none' }), 'Commoner')).toEqual(['not playing as Sir Aldric']);
     });
 
-    it('holds a Not Condition with a bearer through that bearer’s set alone', () => {
+    it('holds a Not Condition with an owner through that owner’s set alone', () => {
       const wolf: GateOwner = { id: 'wolf', name: 'Ash', groups: [], traits: [T('Tamed')] };
       const traits = [T('Paladin'), T('Hunt', { requires: only(not(on('wolf', 'Tamed'))) }), T('Rebel', { requires: only(not(you('Paladin'))) })];
       const at = (active: GateInput['active']) => world(traits, [], [], {
@@ -1101,8 +1101,8 @@ describe('Not Conditions', () => {
       expect(switchTrait(world(traits, groups, ['Guard']), WORLD_OWNER, 'Charge')?.active[WORLD_OWNER]).toEqual(['Charge']);
     });
 
-    it('skips exclusive siblings only in the trait’s own tree, never in another bearer’s', () => {
-      // Albus's Smite and Paladin are max-one siblings; the player's Paladin is another bearer's copy.
+    it('skips exclusive siblings only in the trait’s own tree, never in another owner’s', () => {
+      // Albus's Smite and Paladin are max-one siblings; the player's Paladin is another owner's copy.
       const classes = [G('Classes', { maxPicks: 1 })];
       const at = (smite: TraitRequirement) => world([T('Paladin')], [], ['Paladin'], {
         owners: [world([T('Paladin')]).owners[0], {

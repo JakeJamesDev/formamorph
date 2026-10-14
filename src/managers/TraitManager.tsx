@@ -334,7 +334,7 @@ const TraitManager = ({
         onChange={setRequires}
         onOpen={openRequirement}
         opens={requirementOpens}
-        bearerId={link?.ownerId}
+        ownerId={link?.ownerId}
         labelAside={resetControl('requires', 'Requires')}
       />
       {availabilityFooter}

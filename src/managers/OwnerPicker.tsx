@@ -21,7 +21,7 @@ import { DrillSlide, type SlideFrom } from '@/components/DrillSlide';
 
 const NO_PLACEHOLDERS: Placeholder[] = [];
 
-const ownerIcon = (row: Extract<OwnerChoice, { kind: 'bearer' }>) => {
+const ownerIcon = (row: Extract<OwnerChoice, { kind: 'owner' }>) => {
   const Icon = row.customPersona ? PersonaIcon : EntityIcon;
   return <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />;
 };
@@ -40,7 +40,7 @@ export function OwnerList({ choices, label, onPick, refusal, back, leafIcon = ow
   refusal?: (id: string) => string | null;
   back?: { label: string; onBack: () => void };
   /** The icon before a pickable row; an entity's by default. */
-  leafIcon?: (row: Extract<OwnerChoice, { kind: 'bearer' }>) => ReactNode;
+  leafIcon?: (row: Extract<OwnerChoice, { kind: 'owner' }>) => ReactNode;
 }) {
   // Off-world (the showcase) there are no placeholders to draw.
   const placeholders = useGameDataOptional()?.placeholders ?? NO_PLACEHOLDERS;
@@ -117,7 +117,7 @@ function LinkToButton({ held, link }: {
   const choices = useMemo(() => ownerChoices(entityGroups, entities), [entityGroups, entities]);
   const reasons = open
     ? new Map(choices.flatMap((c) => {
-      const reason = c.kind === 'bearer' ? held(c.id) : null;
+      const reason = c.kind === 'owner' ? held(c.id) : null;
       return reason ? [[c.id, heldReasonText(reason)] as const] : [];
     }))
     : new Map<string, string>();

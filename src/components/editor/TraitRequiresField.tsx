@@ -39,29 +39,29 @@ export function RequirementSummaryText({ rows, name }: { rows: TraitRequirementR
 }
 
 /**
- * The trait panel's Requires field: the trait's Requirement Rows over the trait store. `bearerId` names the
- * bearer whose gate the chips read, for a link whose rows differ from its original's; without it, the first
- * bearer holding the trait.
+ * The trait panel's Requires field: the trait's Requirement Rows over the trait store. `ownerId` names the
+ * owner whose gate the chips read, for a link whose rows differ from its original's; without it, the first
+ * owner holding the trait.
  */
-export function TraitRequiresField({ trait, onChange, onOpen, opens, bearerId, labelAside }: {
+export function TraitRequiresField({ trait, onChange, onOpen, opens, ownerId, labelAside }: {
   trait: Trait;
   onChange: (requires: TraitRequirementRow[]) => void;
   onOpen: (requirement: TraitRequirement) => void;
   opens?: (requirement: TraitRequirement) => boolean;
-  bearerId?: string;
+  ownerId?: string;
   labelAside?: ReactNode;
 }) {
   const { gateInput, placeholders, offWorld } = useTraitStore();
   const { states, options, statSections, owner, textOf } = useMemo(() => {
     const gates = gateStates(gateInput);
-    const holder = ownerHolding(gateInput.owners, trait.id)?.id ?? WORLD_OWNER;
-    const gate = (bearerId !== undefined ? gateOf(gates, bearerId, trait.id) : undefined) ?? gateOf(gates, holder, trait.id);
+    const hostOwnerId = ownerHolding(gateInput.owners, trait.id)?.id ?? WORLD_OWNER;
+    const gate = (ownerId !== undefined ? gateOf(gates, ownerId, trait.id) : undefined) ?? gateOf(gates, hostOwnerId, trait.id);
     return {
-      states: gate?.rows ?? [], options: requirementOptions(gateInput, trait.id), owner: bearerId ?? holder,
-      statSections: requirementStatSections(gateInput, bearerId ?? holder),
+      states: gate?.rows ?? [], options: requirementOptions(gateInput, trait.id), owner: ownerId ?? hostOwnerId,
+      statSections: requirementStatSections(gateInput, ownerId ?? hostOwnerId),
       textOf: conditionTexts(gateInput),
     };
-  }, [gateInput, trait.id, bearerId]);
+  }, [gateInput, trait.id, ownerId]);
 
   return (
     <RequirementRowsField
