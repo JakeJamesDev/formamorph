@@ -4,13 +4,13 @@
  * baseline is always the shipped default, never the player's own preset — the question this answers is
  * "what did this author change", which a player's customized preset would muddy.
  */
-import { useMemo, type ReactNode } from 'react';
+import { Fragment, useMemo, type ReactNode } from 'react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { TokenChip } from '@/components/prompt/TokenChip';
 import { placeholderVocabulary, type ChipVocabulary } from '@/lib/chipVocabulary';
 import { decodePlaceholderToken, parsePlaceholderText } from '@/lib/placeholders';
 import type { PlaceholderOwners } from '@/lib/placeholderHomes';
-import { promptWordDiff } from '@/lib/promptDiff';
+import { promptWordDiff, type PromptDiffPart } from '@/lib/promptDiff';
 import { SHIPPED_PROMPT_DEFAULTS, type WorldPromptKind } from '@/lib/worldPrompt';
 import type { Placeholder } from '@/types';
 
@@ -62,6 +62,38 @@ export function PromptDiffModeToggle({
 }
 
 /**
+ * How a diff run is marked. A changed line shows faintly tinted, old above new; the words that actually
+ * differ inside it are solid, in black so they read in either theme. Removals stay struck through.
+ */
+const DIFF_PART_CLASS = {
+  added: 'no-underline bg-emerald-500/15 rounded-[2px]',
+  addedChanged: 'no-underline bg-emerald-400 text-black rounded-[2px]',
+  // A chip is inline-flex, which the strikethrough does not reach, so it takes its own.
+  removed: 'bg-red-500/10 text-red-600 dark:text-red-400 line-through decoration-red-500/70 rounded-[2px] [&_[data-chip]]:line-through',
+  removedChanged: 'bg-red-400 text-black line-through decoration-black/60 rounded-[2px] [&_[data-chip]]:line-through',
+} as const;
+
+/** The runs of a diff, marked as added, removed or unchanged; `render` draws a run's text (its chips, say). */
+export function DiffParts({ parts, render = (value) => value }: {
+  parts: readonly PromptDiffPart[];
+  render?: (value: string) => ReactNode;
+}) {
+  return parts.map((part, i) =>
+    part.added ? (
+      <ins key={i} className={part.changed ? DIFF_PART_CLASS.addedChanged : DIFF_PART_CLASS.added}>{render(part.value)}</ins>
+    ) : part.removed ? (
+      <Fragment key={i}>
+        <del className={part.changed ? DIFF_PART_CLASS.removedChanged : DIFF_PART_CLASS.removed}>{render(part.value)}</del>
+        {/* The new lines start under the old ones. Old lines that end the text carry no break of their own. */}
+        {parts[i + 1]?.added && !part.value.endsWith('\n') ? '\n' : null}
+      </Fragment>
+    ) : (
+      <span key={i}>{render(part.value)}</span>
+    ),
+  );
+}
+
+/**
  * Two prompt texts as one flowing document: `base` is the default, `text` the changed one. `renderChips`
  * draws the chips of a run; the diff keeps each chip whole, so no run holds half of one.
  */
@@ -79,25 +111,7 @@ export function PromptDiffView({
 
   if (!parts) return <pre className={PROMPT_PRE_CLASS}>{renderChips(text)}</pre>;
 
-  return (
-    <pre className={PROMPT_PRE_CLASS}>
-      {parts.map((part, i) =>
-        part.added ? (
-          <ins key={i} className="no-underline bg-emerald-500/25 rounded-[2px]">{renderChips(part.value)}</ins>
-        ) : part.removed ? (
-          <del
-            key={i}
-            // A chip is inline-flex, which the strikethrough does not reach, so it takes its own.
-            className="bg-red-500/10 text-red-600 dark:text-red-400 line-through decoration-red-500/70 rounded-[2px] [&_[data-chip]]:line-through"
-          >
-            {renderChips(part.value)}
-          </del>
-        ) : (
-          <span key={i}>{renderChips(part.value)}</span>
-        ),
-      )}
-    </pre>
-  );
+  return <pre className={PROMPT_PRE_CLASS}><DiffParts parts={parts} render={renderChips} /></pre>;
 }
 
 export function PromptDiff({

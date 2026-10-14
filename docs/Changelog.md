@@ -117,6 +117,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **👤 User-facing**
   - **The placeholder and tag suggestion lists of an editor field no longer cover the help window.** A click where a list and the help window overlap now reaches the help window.
+  - **Compare shows a changed line as the old line over the new one, marking only the words that differ.** Both lines are faintly tinted and the reworded words are solid. A line rewritten from scratch is tinted whole, and its replacement starts on a line of its own.
   - **The in-game Map no longer shows Connection travel hints, only the lines.** Hints often hold clues or spoilers about a route. The World Editor canvas still shows them.
   - **Loading a save in game no longer shows stat changes from the turn before the load.** Your stats and every entity's stats start with no change shown.
   - **A dictionary entry's Whole Words checkbox now works with Regex keywords.** `wands?` no longer matches inside *wander*. Letters with accents now count as part of a word, so *caf* no longer matches inside *café*. Imported SillyTavern regex entries with whole words on now match whole words only.
