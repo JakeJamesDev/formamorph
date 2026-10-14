@@ -1,5 +1,4 @@
-import { randomUUID } from "@/lib/uuid";
-import { remintPlaceholdersDeep } from "@/lib/placeholders";
+import { copyWithFreshRolls, duplicateAfter } from "@/lib/duplicateAfter";
 import { useMemo } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import {
@@ -42,12 +41,9 @@ const LocationTree = ({ selectedId, onSelect }: { selectedId: string | null; onS
       label: <PlaceholderText text={node.location.name} placeholders={placeholders} />,
       remove: () => removeLocation(node.id),
       duplicate: () => {
-        const index = locations.findIndex((l) => l.id === node.id);
-        if (index === -1) return;
-        // Re-mint chip placements: a copied Unique chip must not share the source location's roll.
-        const copy = { ...remintPlaceholdersDeep(structuredClone(locations[index])), id: randomUUID() };
-        copy.name = `${copy.name} (Copy)`;
-        setLocations([...locations.slice(0, index + 1), copy, ...locations.slice(index + 1)]);
+        const { list, copy } = duplicateAfter(locations, node.id, copyWithFreshRolls);
+        if (!copy) return;
+        setLocations(list);
         onSelect(copy.id);
       },
     }),

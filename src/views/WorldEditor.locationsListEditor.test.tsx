@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { screen, fireEvent, within } from '@testing-library/react';
 import { asMobile, benchEditorWorld, openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { decodePlaceholderToken, encodePlaceholderToken } from '@/lib/placeholders';
 import type { World } from '@/types';
 
 /** The top-level Locations tab on the List Editor: the tree, a flat sortable search, and the Canvas view. */
@@ -91,6 +92,21 @@ describe('the Locations tab', () => {
     fireEvent.click(within(searchRow('Harbor')).getByRole('button', { name: 'Duplicate' }));
     expect(ctx().locations.map((l) => l.name)).toEqual(['Harbor', 'Harbor (Copy)', 'Wood', 'Hollow']);
     expect(shownName()).toBe('Harbor (Copy)');
+  });
+
+  it('gives a duplicated search row its own Unique-chip rolls', () => {
+    const roll = encodePlaceholderToken({ id: 'eye', mode: 'unique', placementId: 'p1' });
+    const world = benchEditorWorld({
+      locations: [{ id: 'harbor', name: 'Harbor', description: `Eyes ${roll}` }],
+    } as Partial<World>);
+    const { ctx } = renderWorldEditorBench(world, 'advanced');
+    openEditorTab(/Locations/);
+
+    searchLocations('Harbor');
+    fireEvent.click(within(searchRow('Harbor')).getByRole('button', { name: 'Duplicate' }));
+    const [source, copy] = ctx().locations;
+    expect(source.description).toBe(`Eyes ${roll}`);
+    expect(decodePlaceholderToken(copy.description!.slice('Eyes '.length))!.placementId).not.toBe('p1');
   });
 
   it('deletes a search row and closes its details', () => {
