@@ -13,6 +13,7 @@
 import { linkText as text } from '@/lib/contentLink';
 import { contentMatchesSource, linkToSource, type LibrarySource, type LinkableContent } from '@/lib/linkedContent';
 import type { LibraryKind } from '@/lib/librarySources';
+import { traitWorldOf } from '@/lib/portableTraits';
 import type { LinkedWorldContent } from '@/lib/publishLinks';
 import type { ContentLink, Dictionary, Entity } from '@/types';
 
@@ -129,7 +130,7 @@ export function resolveBundledLinks<T extends LinkedWorldContent>(
     }
     // Without the item's content the copy cannot be shown to match it, and claiming a match it may not
     // have would hide the player's own version behind a silent update.
-    const differs = !held.data || !contentMatchesSource(copy, held.data);
+    const differs = !held.data || !contentMatchesSource(copy, held.data, traitWorldOf(world));
     return { ...copy, link: follow(link, held, differs) };
   });
 }
@@ -205,7 +206,7 @@ export function followBundled<T extends LinkedWorldContent>(
     const source = from ? placed.get(from) : undefined;
     if (!source) return copy;
     // The item was written from this copy unless the player already had one, so a difference is real.
-    const differs = !!source.data && !contentMatchesSource(copy, source.data);
+    const differs = !!source.data && !contentMatchesSource(copy, source.data, traitWorldOf(world));
     // The copy's own record is kept under the new one, so the world references it already connected
     // survive being linked.
     return {

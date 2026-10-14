@@ -264,11 +264,11 @@ describe('an owned trait\'s panel', () => {
 
     await choose(statPickers()[0], 'Health');
     expect(entity(ctx, 'ash').traits!.find((t) => t.id === 't-tamed')!.statChanges)
-      .toEqual([{ statId: 'hp', value: 5, type: 'max', target: 'player' }]);
+      .toEqual([{ statId: 'hp', value: 5, type: 'max', target: 'global' }]);
     expect(screen.getByText('Player stat changes apply only when you play as them')).toBeInTheDocument();
 
     await choose(statPickers()[1], 'Health');
-    expect(entity(ctx, 'ash').traits!.find((t) => t.id === 't-tamed')!.statToggles).toEqual([{ statId: 'hp', enabled: false, target: 'player' }]);
+    expect(entity(ctx, 'ash').traits!.find((t) => t.id === 't-tamed')!.statToggles).toEqual([{ statId: 'hp', enabled: false, target: 'global' }]);
     expect(screen.getByText(/Also set by/)).toBeInTheDocument();
 
     await choose(statPickers()[0], 'Ash Health');

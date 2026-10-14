@@ -148,12 +148,12 @@ export interface StatChange {
   type?: 'min' | 'max' | 'starting' | 'regen';
   /** Stat-update cadence, e.g. 'hour'. */
   interval?: string;
-  /** On a trait the player can have, the world player stat, even where the trait's owner has its own stat with this id. */
+  /** On an owner's trait, the global stat, even where the owner has its own stat with this id. */
   target?: StatRowTarget;
 }
 
 /** Whose stat an owner's trait row names when the id alone could mean two. */
-export type StatRowTarget = 'player';
+export type StatRowTarget = 'global';
 
 /** A stat this trait switches on or off while active; overrides the stat's own `enabled` default. */
 export interface TraitStatToggle {

@@ -1,5 +1,5 @@
 import type { LibraryItemSummary, LibraryKind } from '@/lib/librarySources';
-import type { ContentLink, Dictionary, Entity } from '@/types';
+import type { ContentLink, Dictionary, Entity, Stat, StatGroup, Trait, TraitGroup } from '@/types';
 
 /** Public or hidden from discovery. A world is always public; only a component can be unlisted. */
 export type ListingVisibility = 'public' | 'unlisted';
@@ -41,6 +41,11 @@ export interface LinkedContentRow {
 export interface LinkedWorldContent {
   entities?: Entity[];
   dictionaries?: Dictionary[];
+  /** The slices a copy's trait requirements bind against when the world compares it to a library item. */
+  traits?: Trait[];
+  traitGroups?: TraitGroup[];
+  stats?: Stat[];
+  statGroups?: StatGroup[];
 }
 
 /** The library item a copy follows, or null for an independent copy. The one reading of a link record's

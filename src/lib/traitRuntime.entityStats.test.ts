@@ -134,11 +134,11 @@ describe('a player owner’s traits', () => {
     expect(own(on, 'albus', 'h')).toMatchObject({ max: 110, value: 25 });
   });
 
-  it('reach the world player stat on a shared id through a row that targets the player', () => {
+  it('reach the world player stat on a shared id through a row with the global target', () => {
     const oath = trait('oath', [
-      { statId: 'h', value: 10, type: 'max', target: 'player' }, { statId: 'h', value: 3, type: 'starting', target: 'player' },
+      { statId: 'h', value: 10, type: 'max', target: 'global' }, { statId: 'h', value: 3, type: 'starting', target: 'global' },
       { statId: 'h', value: 4, type: 'starting' },
-    ], { name: 'Oath', statToggles: [{ statId: 'h', enabled: false, target: 'player' }] });
+    ], { name: 'Oath', statToggles: [{ statId: 'h', enabled: false, target: 'global' }] });
     const sworn: TraitWorld = {
       traits: [], groups: [], entities, persona: { source: 'world', entityId: 'albus' },
       owners: [{ id: 'world', name: '', traits: [], groups: [] }, bram, { ...albus, traits: [oath] }],

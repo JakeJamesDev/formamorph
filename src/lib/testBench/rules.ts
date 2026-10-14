@@ -2160,9 +2160,9 @@ const gateReportOf = (world: RuleWorld): GateReport => {
       if (req.kind !== 'stat' || (gate.link && (!overridden || inOriginal(gate, req)))) return;
       const read = statsRead(gate, req);
       const stat = labelOf(read[0]?.name ?? req.name ?? '', world);
-      // An effect lands on the trait's owner, or on the player's stat for a `target: 'player'` row.
+      // An effect lands on the trait's owner, or on the player's stat for a `target: 'global'` row.
       const readers = readOwners(gate, req);
-      const changes = effects.some((row) => row.statId === req.id && readers.includes(row.target === 'player' ? PLAYER_OWNER : gate.owner.id));
+      const changes = effects.some((row) => row.statId === req.id && readers.includes(row.target === 'global' ? PLAYER_OWNER : gate.owner.id));
       if (changes && !reported.has(req.id)) {
         reported.add(req.id);
         ownStatReads.push({ gate, stat });

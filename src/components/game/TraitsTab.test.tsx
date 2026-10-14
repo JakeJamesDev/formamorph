@@ -686,10 +686,10 @@ describe('a trait row reveals what it does', () => {
     expect(screen.getByText(/Vigor:/)).toHaveTextContent('Vigor: +3');
   });
 
-  it("reads a played persona's row that targets the player against the player's stat, past its own with that id", () => {
+  it("reads a played persona's row with the global target against the global stat, past its own with that id", () => {
     // The player's Health is hidden; Hesk's own Health is not. The vow's first row names the player's.
     const vow = T('t-vow', 'Vow', {
-      statChanges: [{ statId: 'health', value: 10, type: 'max', target: 'player' }, { statId: 'health', value: 4, type: 'starting' }],
+      statChanges: [{ statId: 'health', value: 10, type: 'max', target: 'global' }, { statId: 'health', value: 4, type: 'starting' }],
     });
     const hesk = { id: 'e-hesk', name: 'Mother Hesk', persona: true, traits: [vow], stats: [statFixture('Health', 100)] };
     renderTraits([], [], [], {

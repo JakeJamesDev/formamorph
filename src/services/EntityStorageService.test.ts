@@ -80,6 +80,25 @@ describe('EntityStorageService', () => {
     expect(read.traitLinks![0].overrides!.smite.requires).toEqual({ value: [{ all: [owned(ash)] }], blueprint: [] });
   });
 
+  it('reads a character stored with `player` row targets as `global`, and keeps a stored owner (Q5, Q19)', async () => {
+    const owner = { kind: 'entity', id: 'w-ash', name: 'Ash' };
+    const stored = {
+      id: 'e1', name: 'Mara',
+      traits: [{ id: 't-oath', name: 'Oath', requires: [{ all: [{ kind: 'trait', id: 'w-brave', owner }] }],
+        statChanges: [{ statId: 'rage', value: 2, target: 'player' }], statToggles: [{ statId: 'rage', enabled: false, target: 'player' }] }],
+      traitLinks: [{
+        id: 'l', originalId: 'smite', kind: 'trait', originalName: 'Smite', groupId: null,
+        overrides: { smite: { statChanges: { value: [{ statId: 'rage', value: 1, target: 'player' }], blueprint: [] } } },
+      }],
+    } as unknown as StoredEntityRecord['data'];
+    await EntityStorageService.storeEntity({ id: 'e1', name: 'Mara', data: stored });
+    const read = await EntityStorageService.getEntityData('e1');
+    expect(read.traits![0].statChanges).toEqual([{ statId: 'rage', value: 2, target: 'global' }]);
+    expect(read.traits![0].statToggles).toEqual([{ statId: 'rage', enabled: false, target: 'global' }]);
+    expect(read.traitLinks![0].overrides!.smite.statChanges).toEqual({ value: [{ statId: 'rage', value: 1, target: 'global' }], blueprint: [] });
+    expect(read.traits![0].requires).toEqual([{ all: [{ kind: 'trait', id: 'w-brave', owner }] }]);
+  });
+
   it('reads a character that holds no stats as one with none, and keeps each stat list to the records it can hold', async () => {
     await EntityStorageService.storeEntity(record('e1'));
     expect(await EntityStorageService.getEntityData('e1')).not.toHaveProperty('stats');
