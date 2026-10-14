@@ -8,8 +8,18 @@ import { buildImagePrompt, type ImageSubjectKind } from '@/lib/imagePrompt';
 import { TOOLBAR_BTN } from '@/components/prompt/toolbarStyles';
 import { Tip } from '@/components/ui/tooltip';
 import { toastError } from '@/lib/linkToast';
+import { useEndpointTip, withEndpointLine } from '@/lib/useEndpointTip';
+import type { EditorRequestType } from '@/types';
 
 type GenerateMode = 'summary' | 'tags' | 'playerDesc' | 'aiDesc';
+
+/** The request kind each mode sends as, which names its endpoint. */
+const REQUEST: Record<GenerateMode, EditorRequestType> = {
+  summary: 'descriptionSummary',
+  tags: 'imageTags',
+  playerDesc: 'descriptionBridge',
+  aiDesc: 'descriptionBridge',
+};
 
 const NOUN: Record<GenerateMode, string> = {
   summary: 'summary',
@@ -40,6 +50,7 @@ const AiGenerateButton = ({ mode, source, onChange, kind }: {
   const { imageTagPrompt } = useSettings();
   const snapshot = useAiSettingsSnapshot();
   const [loading, setLoading] = useState(false);
+  const endpointTip = useEndpointTip();
   const abortRef = useRef<AbortController | null>(null);
 
   // Cancel any in-flight request if the editor switches items (managers remount per id).
@@ -73,7 +84,7 @@ const AiGenerateButton = ({ mode, source, onChange, kind }: {
   };
 
   return (
-    <Tip tip={loading ? `Generating ${noun}…` : `Generate ${noun} from ${SOURCE_NOUN[mode]}`}>
+    <Tip tip={loading ? `Generating ${noun}…` : withEndpointLine(`Generate ${noun} from ${SOURCE_NOUN[mode]}`, endpointTip(REQUEST[mode]))}>
       <button
         type="button"
         className={TOOLBAR_BTN}
