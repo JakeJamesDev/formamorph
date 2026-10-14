@@ -18,7 +18,8 @@ const C = 'data:image/webp;base64,CCCC';
 const hurt: TraitRequirement = { kind: 'stat', id: 'hp', operator: '<', value: 20, unit: 'percent' };
 const knight: TraitRequirement = { kind: 'trait', id: 't-knight' };
 const paladin: TraitRequirement = { kind: 'trait', id: 'w-paladin', owner: { kind: 'you' } };
-const rage: TraitRequirement = { kind: 'stat', id: 'w-rage', owner: { kind: 'you' }, operator: '>=', value: 80, unit: 'raw', not: true };
+// A global stat Condition names no owner; a You one binds among the played entity's stats (Q33).
+const rage: TraitRequirement = { kind: 'stat', id: 'w-rage', operator: '>=', value: 80, unit: 'raw', not: true };
 
 const wren = (images: GalleryImage[]): Entity => ({
   id: 'wren', name: 'Wren',

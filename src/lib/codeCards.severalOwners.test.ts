@@ -6,7 +6,7 @@ import { STAT_CODE_SURFACE } from './statCodeSurface';
 import { statCodeOwners } from './statCodeTargets';
 import { entityTraitNames, worldTraitPlaces } from './statCodeTraits';
 import type { PlaceholderOwners } from './placeholderHomes';
-import type { Entity, Placeholder, Stat, StatGroup, StatLink, Trait, TraitLink } from '@/types';
+import type { Entity, Placeholder, Stat, StatGroup, StatLink, Trait, TraitGroup, TraitLink } from '@/types';
 
 const stat = (id: string, name: string, extra: Partial<Stat> = {}): Stat =>
   ({ id, name, type: 'number', description: '', min: 0, max: 100, value: 0, regen: 0, descriptors: [], ...extra });
@@ -17,7 +17,8 @@ const howlLink = (id: string): StatLink => ({ id, originalId: 'howl', kind: 'sta
 const blueprints: StatGroup = { id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' };
 const courage = stat('courage', 'Courage');
 const howl = stat('howl', 'Howl', { groupId: 'bp' });
-const brave = trait('brave', 'Brave', { playerDescription: 'Faces danger without flinching.', mode: 'alwaysOn' });
+const traitBlueprints: TraitGroup = { id: 'tbp', name: 'Blueprints', parentId: null, system: 'blueprints' };
+const brave = trait('brave', 'Brave', { playerDescription: 'Faces danger without flinching.', mode: 'alwaysOn', groupId: 'tbp' });
 
 const look: Placeholder = { id: 'look', name: 'Look', values: [{ id: 'grim', text: 'grim' }, { id: 'sly', text: 'sly' }] };
 const copyOfLook = (id: string): Placeholder => ({ id, name: 'Look', blueprintId: 'look', values: [] });
@@ -38,7 +39,7 @@ const placeholderOwners: PlaceholderOwners = new Map([
 
 /** A world whose playable entities, and Howl's owners, are `entities`. */
 const worldOf = (...entities: Entity[]): CodeCardWorld => ({
-  traits: [brave], traitGroups: [], entities, stats: [courage, howl], statGroups: [blueprints],
+  traits: [brave], traitGroups: [traitBlueprints], entities, stats: [courage, howl], statGroups: [blueprints],
   placeholders: allPlaceholders, placeholderOwners,
 });
 
@@ -86,9 +87,10 @@ describe('trait cards on a route that reaches several entities (Q37)', () => {
     expect(rowsOf(cardAt('return persona.traits.Br|ave.enabled;', worldBox(kit, tom)))).toEqual({ Mode: 'Automatic', Owners: 'Tom' });
   });
 
-  it('keeps the plain card with every owner where `persona` reaches one entity (T15-1)', () => {
+  // Q8, Q33: a Blueprint trait sits in the editor's global tree, but global scope is never an owner.
+  it('keeps the plain card with every entity owner where `persona` reaches one entity (T15-1)', () => {
     const card = cardAt('return persona.traits.Br|ave.enabled;', worldBox(tom));
-    expect(rowsOf(card)).toEqual({ Mode: 'Automatic', Owners: 'You, Tom' });
+    expect(rowsOf(card)).toEqual({ Mode: 'Automatic', Owners: 'Tom' });
     expect(card?.item).toEqual({ kind: 'trait', traitId: 'brave' });
   });
 

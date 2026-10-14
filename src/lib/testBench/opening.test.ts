@@ -873,6 +873,17 @@ describe('entity stats at game start', () => {
     expect(atPersona(w, 'e-wren').entityStats.map((e) => e.id)).toEqual(['e-wren']);
   });
 
+  it('applies a persona trait picked as the lens PC to the persona’s own stats (Q33)', () => {
+    const knight: Trait = { id: 't-knight', name: 'Knight', groupId: 'cg', statChanges: [{ statId: 's-trust', value: 5, type: 'starting' }] };
+    const scout: Trait = { id: 't-scout', name: 'Scout', groupId: 'cg', statChanges: [] };
+    const w = staged([maren({
+      id: 'e-custom', name: 'Newcomer', customPersona: true, stats: [trust], traits: [knight, scout],
+      traitGroups: [{ id: 'cg', name: 'Class', parentId: null, maxPicks: 1 }],
+    })]);
+    const trustOf = (pc: string) => openingFor(w, pc).entityStats.find((e) => e.id === 'e-custom')!.stats[0].value;
+    expect([trustOf('t-knight'), trustOf('t-scout')]).toEqual([25, 20]);
+  });
+
   it('names the entity through the active pins, as the rest of the instrument does', () => {
     const w = staged([maren({ name: chip('ph-hair', 'world', 'pl-e1') })]);
     const opening = buildOpening(w, lensAt(w, { pcTraitId: 't-reach' }), primeOpeningRolls(w, {}, pickFirst));

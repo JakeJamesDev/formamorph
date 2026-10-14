@@ -14,11 +14,12 @@ const T = (id: string, extra: Partial<Trait> = {}): Trait => ({ id, name: id, st
 const outward: StatRequirement = { kind: 'stat', id: 'w-rage', owner: { kind: 'you' }, operator: '>=', value: 80, unit: 'raw', not: true };
 const inward: StatRequirement = { kind: 'stat', id: 'hp', operator: '<', value: 20, unit: 'percent' };
 
-const wren = (): Entity => ({
+const wren = (far: StatRequirement = outward): Entity => ({
   id: 'wren', name: 'Wren',
   stats: [S('hp', 'Health')],
-  traits: [T('t-wounded', { name: 'Wounded', requires: [{ all: [inward, outward] }] })],
+  traits: [T('t-wounded', { name: 'Wounded', requires: [{ all: [inward, far] }] })],
 });
+const { owner: _you, ...globalRage } = outward;
 const home: TraitWorld = { traits: [], traitGroups: [], entities: [], stats: [S('w-rage', 'Rage')], statGroups: [] };
 const wounded = (e: Pick<Entity, 'traits'>) => conditionsOf(e.traits?.find((t) => t.name === 'Wounded')?.requires);
 
@@ -45,7 +46,7 @@ describe('a stat Condition on a character card', () => {
   });
 
   it('binds an outward stat by id, else by its one stat of that name, else stays unresolved (Q24)', () => {
-    const carried = throughCard(wren());
+    const carried = throughCard(wren(globalRage));
     const world = (stats: Stat[]): TraitWorld => ({ ...home, stats });
     expect(wounded(bindOwnedTraits(carried, world([S('w-rage', 'Fury')])))[1].id).toBe('w-rage');
     expect(wounded(bindOwnedTraits(carried, world([S('x-rage', 'Rage')])))[1].id).toBe('x-rage');
@@ -58,16 +59,29 @@ describe('a stat Condition on a character card', () => {
   it('matches a stored name only among the owner’s own stats, so a name every entity shares still binds (Q25)', () => {
     const health = (owner?: StatRequirement['owner']): StatRequirement =>
       ({ kind: 'stat', id: 'old-hp', name: 'Health', operator: '<', value: 20, unit: 'percent', ...(owner ? { owner } : {}) });
-    const carried: Entity = { id: 'wren', name: 'Wren', traits: [T('t-wounded', { name: 'Wounded', requires: [{ all: [
-      health({ kind: 'entity', id: 'old-ash', name: 'Ash' }), health({ kind: 'you' }), health(),
-    ] }] })] };
+    const rows = [{ all: [health({ kind: 'entity', id: 'old-ash', name: 'Ash' }), health({ kind: 'you' }), health()] }];
+    const carried: Entity = { id: 'wren', name: 'Wren', persona: true, stats: [S('wren-hp', 'Health')], traits: [T('t-wounded', { name: 'Wounded', requires: rows })] };
     const world: TraitWorld = {
       traits: [], traitGroups: [], statGroups: [{ id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' }],
       stats: [S('p-hp', 'Health'), S('bp-hp', 'Health', { groupId: 'bp' })],
       entities: [{ id: 'ash', name: 'Ash', stats: [S('ash-hp', 'Health')] }, { id: 'bo', name: 'Bo', stats: [S('bo-hp', 'Health')] }],
     };
-    // The global Health for You; with no owner, two world stats share the name, so it stays unresolved.
-    expect(wounded(bindOwnedTraits(carried, world)).map((r) => r.id)).toEqual(['ash-hp', 'p-hp', '']);
+    // Q33: You binds among the played entity's stats, never the global Health; no owner is ambiguous.
+    expect(wounded(bindOwnedTraits(carried, world)).map((r) => r.id)).toEqual(['ash-hp', 'wren-hp', '']);
+    // An entity nobody can play has no You stats to bind, and the global Health stays out of reach.
+    const npc = { ...carried, persona: undefined };
+    expect(wounded(bindOwnedTraits(npc, world)).map((r) => r.id)).toEqual(['ash-hp', '', '']);
+  });
+
+  it('binds You among every playable entity’s stats, and leaves a name two of them share unresolved (Q33)', () => {
+    const grit = (owner?: StatRequirement['owner']): StatRequirement =>
+      ({ kind: 'stat', id: 'old', name: 'Grit', operator: '<', value: 20, unit: 'percent', ...(owner ? { owner } : {}) });
+    const carried: Entity = { id: 'wren', name: 'Wren', traits: [T('t-wounded', { name: 'Wounded', requires: [{ all: [grit({ kind: 'you' })] }] })] };
+    const world = (entities: Entity[]): TraitWorld => ({ traits: [], traitGroups: [], statGroups: [], stats: [S('g-grit', 'Grit')], entities });
+    const ash: Entity = { id: 'ash', name: 'Ash', persona: true, stats: [S('ash-grit', 'Grit')] };
+    expect(wounded(bindOwnedTraits(carried, world([ash]))).map((r) => r.id)).toEqual(['ash-grit']);
+    const bo = { id: 'bo', name: 'Bo', customPersona: true, stats: [S('bo-grit', 'Grit')] };
+    expect(wounded(bindOwnedTraits(carried, world([ash, bo]))).map((r) => r.id)).toEqual(['']);
   });
 
   it('compares two copies by their comparisons, so "Rage > 20 and Rage < 80" differs from a changed bound', () => {

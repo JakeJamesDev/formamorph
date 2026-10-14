@@ -150,7 +150,6 @@ export function statBoxLookups(world: CodeCardWorld): (box: CodeBox) => CodeWorl
 }
 
 const UNNAMED = 'Unnamed entity';
-const YOU = 'You';
 
 /** A lookup that builds on its first question, so a box no card opens on never resolves the world. */
 export function lazyLookup(make: () => CodeWorldLookup): CodeWorldLookup {
@@ -205,9 +204,8 @@ function cardIndex(owners: CodeOwners, world: CodeCardWorld) {
     ...(entityId ? { entityId } : {}),
     requires: (trait.requires ?? []).map((row) => row.all.map(textOf)),
     changes: changesOf(trait),
-    owners: gateTrees(gate)
-      .filter((owner) => owner.traits.some((held) => held.id === trait.id))
-      .map((owner) => (owner.id === null ? YOU : nameOf(owner.id))),
+    // Entity owners only: global scope holds a Blueprint trait too, and is never an owner (Q8).
+    owners: gateTrees(gate).flatMap((owner) => (owner.id !== null && owner.traits.some((held) => held.id === trait.id) ? [nameOf(owner.id)] : [])),
   });
   const placeholderNames = (ownerId: string) => map.owners.get(ownerId)?.children.map((child) => child.name) ?? [];
 

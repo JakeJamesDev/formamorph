@@ -1,6 +1,6 @@
 # 12: Close the Last Folds
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 11
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: high

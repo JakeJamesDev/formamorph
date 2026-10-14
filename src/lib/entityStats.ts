@@ -1,7 +1,8 @@
 // Entity stats in play: each authored entity's stat values, seeded at a new game and backfilled on load, and
 // the owners whose regen and code run each turn.
 
-import type { Entity, EntityStatChanges, EntityStatValues, LegacyCodeBoundsStat, PersonaRef, PlayerStat, StatGroup } from '@/types';
+import type { Entity, EntityStatChanges, EntityStatValues, LegacyCodeBoundsStat, PersonaRef, PlayerStat, Stat, StatGroup } from '@/types';
+import { playStatWorld, type StatLinkWorld } from './statLinks';
 import { inCast, playsAs } from './owners';
 import { backfillPlayerStats } from './statBackfill';
 import { activeStatEnabled, enabledStats } from './traitEffects';
@@ -12,6 +13,10 @@ import { applyStatResponse, type StatRequestOwner, type StatResponse, type StatU
 import { overlayStatCodeResult, type OwnerCodeResult, type OwnerCodeTurn } from './statCodeTurn';
 
 type StatEntity = Pick<Entity, 'id' | 'stats'>;
+
+/** Each entity's own stats as a new game seeds them, its links resolved against the world's stats. */
+export const seedWorldEntityStats = (world: StatLinkWorld & { stats: Stat[]; entities: Entity[] }): EntityStatValues =>
+  seedEntityStats(playStatWorld(world).entities);
 
 /** Every entity that can own stats in a playthrough: the world's, then the library's, which are the library
  *  persona and the characters added at Enter World. */
