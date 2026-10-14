@@ -58,10 +58,12 @@ function ViewGate({ gate, children }: { gate: { hide: () => void }; children: Re
  */
 export function renderGameViewer(
   world: World,
-  { onExitToMenu = () => {}, registry = null, children, inGameplay, initialSaveId }: {
+  { onExitToMenu = () => {}, registry = null, children, inGameplay, initialSaveId, initialTraits }: {
     onExitToMenu?: () => void;
     /** A save record's id to enter on, as the main menu's Load does. */
     initialSaveId?: string;
+    /** The trait ids the player picked at setup. */
+    initialTraits?: string[];
     registry?: SurfaceReporter | null;
     children?: ReactNode;
     /** Rendered beside the game view, inside its Gameplay provider, so a probe can read play state. It stays
@@ -88,7 +90,7 @@ export function renderGameViewer(
                           <SurfaceLayer id="gameViewer">
                             <GameplayProvider>
                               <ViewGate gate={gate}>
-                                <GameViewer initialCharacterData={null} onExitToMenu={onExitToMenu} initialSaveId={initialSaveId} />
+                                <GameViewer initialCharacterData={null} onExitToMenu={onExitToMenu} initialSaveId={initialSaveId} initialTraits={initialTraits} />
                               </ViewGate>
                               {inGameplay}
                             </GameplayProvider>

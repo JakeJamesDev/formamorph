@@ -23,7 +23,7 @@ import {
   gateOf, gateStates, modeRefuses, overfills, settle, underfills, type GateEntity, type GateInput, type GateOwner, type GateStat,
   type GateStates, type GateStats, type GateTraitRef, type GateTree,
 } from './traitGates';
-import { mapScoped, playedEntityIds, scoped, scopedEntries, type OwnerId, type Scoped } from './scope';
+import { mapScoped, partOf, playedEntityIds, scoped, scopedEntries, type OwnerId, type Scoped } from './scope';
 
 /** What a trait's last switch actually moved: record key → stat id → value delta, keyed as `recordKey` and
  *  `ownStatsRecordKey` (lib/ownedTraitState) spell it. */
@@ -629,6 +629,32 @@ export interface CodeTraitSwitch {
   by: string;
   /** The entity owner whose own trait this switches. Absent ⇒ a global trait. */
   ownerId?: string;
+}
+
+/** One trait whose on state changed: what fires When a Trait Switches. Null `ownerId` ⇒ a global trait. */
+export interface TraitSwitchEvent {
+  traitId: string;
+  ownerId: OwnerId;
+  enabled: boolean;
+}
+
+/** The traits whose in-force state differs from `before` under `beforeWorld` to `after` under `world`: offs
+ *  first, then ons, each in owner order, global first. A trait leaving the tree switches off, so a persona
+ *  change can switch one. A trait that switched and switched back in between is no event (Q47). */
+export function traitSwitchEvents(
+  before: TraitForceState, after: TraitForceState, world: TraitWorld, beforeWorld: TraitWorld = world,
+): TraitSwitchEvent[] {
+  const onIds = (state: TraitForceState, at: TraitWorld) => mapScoped(traitForceScope(state, at), (traits) => traits.map((t) => t.id));
+  const was = onIds(before, beforeWorld);
+  const now = onIds(after, world);
+  const owners: OwnerId[] = [null, ...new Set([...Object.keys(now.owners), ...Object.keys(was.owners)])];
+  const moved = (enabled: boolean): TraitSwitchEvent[] => owners.flatMap((ownerId) => {
+    const from = new Set(partOf(enabled ? was : now, ownerId) ?? []);
+    return (partOf(enabled ? now : was, ownerId) ?? [])
+      .filter((traitId) => !from.has(traitId))
+      .map((traitId) => ({ traitId, ownerId, enabled }));
+  });
+  return [...moved(false), ...moved(true)];
 }
 
 /** One owner's stats as a stat Condition reads them; a stat the traits in force switch off is inert. */

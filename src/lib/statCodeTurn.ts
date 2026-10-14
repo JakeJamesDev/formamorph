@@ -3,8 +3,8 @@ import type {
 } from '@/types';
 import {
   CODE_BOUND_FIELDS, executeStatCode, keyedEntities, type EntityTraitWrites, type KeyedEntities, type NarrationInput, type PlaceholderWrite,
-  type SandboxStats, type SandboxTrait, type StatClock, type StatCodeResult, type StatTurnInputs, type StatWrite, type TraitWrite,
-  type ValueAndMax,
+  type SandboxStats, type SandboxTrait, type StatClock, type StatCodeResult, type StatTurnInputs, type StatWrite, type SwitchedTrait,
+  type TraitWrite, type ValueAndMax,
 } from './statCodeExecutor';
 import { statCodeName, statCodeNamed } from './statCodeNames';
 import {
@@ -15,14 +15,14 @@ import {
   codeEntities, sandboxTraits, type CodeEntities, type CodeEntity, type StatCodeOwners,
 } from './statCodeTraits';
 import {
-  applyCodeTraitSwitches, codeDeltaFor, gateStatsOf, ownerStatTraitsInForce, sameCodeDelta, traitForceScope, withCodeDelta, type AppliedTraitValues,
-  type CodeTraitSwitch, type TraitRuntimeState,
+  applyCodeTraitSwitches, codeDeltaFor, gateStatsOf, ownerStatTraitsInForce, sameCodeDelta, traitForceScope, traitSwitchEvents, withCodeDelta,
+  type AppliedTraitValues, type CodeTraitSwitch, type TraitForceState, type TraitRuntimeState, type TraitSwitchEvent, type TraitWorld,
 } from './traitRuntime';
 import type { GateStats } from './traitGates';
 import { readsTurnStart, type RunTiming } from './statCodeTiming';
 import { filledScriptsAt, inRunOrder, SCRIPT_TIMING_LABEL, scriptLabel } from './scripts';
 import { clamp } from './utils';
-import type { OwnerId } from './scope';
+import type { OwnerId, Scoped } from './scope';
 import type { ScriptPromptHost } from './scriptPrompts';
 
 /** The trait state a run's switches left, and the log lines they wrote. */
@@ -47,6 +47,8 @@ export interface StatCodeTurn {
   /** The sentence an `output` run rewrites. The run's scripts chain in run order: each reads the sentence the
    *  one before it left. Their writes to anything else merge over one snapshot, the later one winning. */
   narration?: NarrationInput;
+  /** The switch a `switch` run fires on. The run's state is the one the switch left. */
+  switched?: TraitSwitchEvent;
   /** The world's own scripts, which run with no `self` and no `owner`. Absent ⇒ none. */
   worldScripts?: readonly Script[];
   /** Every stat as the turn's pipeline left it: AI asks and regen applied, code not yet run. Names are the
@@ -313,9 +315,163 @@ function ownerRun<O extends RunOwner>(
   return { owner, named, inputs, units };
 }
 
+/** Nested rounds of switch runs one action fires before a further switch stops firing scripts (Q47). */
+export const SWITCH_DEPTH_CAP = 8;
+
+/** Run one timing's scripts over one turn in the sandbox, then the When a Trait Switches runs its trait
+ *  switches fire. An `output` run's switches fire with the After batch instead, where its writes land (Q42). */
+export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
+  const result = await runScripts(turn);
+  return turn.timing === 'output' ? result : withSwitchRuns(turn, result);
+}
+
+/** `result` with the switch runs fired by the switches it made over `turn`, as one result over `turn`. */
+export async function withSwitchRuns(turn: StatCodeTurn, result: StatCodeTurnResult): Promise<StatCodeTurnResult> {
+  const after = afterRun(turn, result);
+  return (await chainSwitchRuns(turn, [result], after, switchesBetween(turn, after))) ?? result;
+}
+
+/** One switch run per event, over `turn`, the state the switches left (Q12, Q47). */
+export const runSwitchScripts = (turn: StatCodeTurn, events: readonly TraitSwitchEvent[]): Promise<StatCodeTurnResult | null> =>
+  chainSwitchRuns(turn, [], turn, events);
+
+/** `events`' switch runs from `at`, laid after `steps`, as one result over `start`; null with no event. */
+async function chainSwitchRuns(
+  start: StatCodeTurn, steps: StatCodeTurnResult[], at: StatCodeTurn, events: readonly TraitSwitchEvent[],
+): Promise<StatCodeTurnResult | null> {
+  if (!events.length) return null;
+  const now = await switchRuns(at, events, 1, steps);
+  return chainedResult(start, steps, now);
+}
+
+/** The traits that switched from one turn's state to the next's, as the timing fires on them. */
+const switchesBetween = (from: StatCodeTurn, to: StatCodeTurn): TraitSwitchEvent[] =>
+  traitSwitchEvents(forceStateOf(from), forceStateOf(to), to.ownerTraits.world);
+
+/** Runs `events` in order, each over the state the run before left, and each run's own switches nested
+ *  under it. Every run's result joins `steps`. */
+async function switchRuns(
+  turn: StatCodeTurn, events: readonly TraitSwitchEvent[], depth: number, steps: StatCodeTurnResult[],
+): Promise<StatCodeTurn> {
+  if (depth > SWITCH_DEPTH_CAP) {
+    console.warn(`Trait switches nested past ${SWITCH_DEPTH_CAP} rounds; ${events.length} switch(es) fired no script`);
+    return turn;
+  }
+  let now = turn;
+  for (const switched of events) {
+    const step = await runScripts({ ...now, timing: 'switch', switched });
+    steps.push(step);
+    const next = afterRun(now, step);
+    now = await switchRuns(next, switchesBetween(now, next), depth + 1, steps);
+  }
+  return now;
+}
+
+/** The trait slice of a turn, as the switch diff reads it. */
+const forceStateOf = ({ ownerTraits }: StatCodeTurn): TraitForceState => ({
+  traits: ownerTraits.acquired, disabledTraitIds: ownerTraits.disabledTraitIds, ownedTraits: ownerTraits.ownedTraits,
+});
+
+/** `turn` as the next run finds it after `result`: the stats, traits and pins the run left. */
+export function afterRun(turn: StatCodeTurn, result: StatCodeTurnResult): StatCodeTurn {
+  const { traits } = result;
+  const ownerTraits = !traits ? turn.ownerTraits : {
+    ...turn.ownerTraits,
+    acquired: traits.acquired,
+    disabledTraitIds: traits.disabledTraitIds,
+    appliedValues: traits.appliedValues,
+    cascadeOffTraitIds: traits.cascadeOffTraitIds,
+    ownedTraits: traits.ownedTraits,
+  };
+  const set = turn.placeholders;
+  const codePins = withPinWrites(set?.codePins ?? {}, result.pinWrites);
+  const pins = set?.pinsAfter?.({
+    codePins, acquired: ownerTraits.acquired, disabledTraitIds: ownerTraits.disabledTraitIds, ownedTraits: ownerTraits.ownedTraits,
+    stats: result.stats,
+  });
+  return {
+    ...turn,
+    stats: result.stats,
+    gateStats: result.gateStats,
+    owners: turn.owners?.map((owner) => {
+      const ran = result.owners?.[owner.id];
+      return ran ? { ...owner, stats: ran.stats } : owner;
+    }),
+    ownerTraits,
+    placeholders: set && { ...set, codePins, ...(pins ? { pins } : {}) },
+  };
+}
+
+/** The ids of the stats in `now` whose value or code delta differs from `start`, matched by id. */
+function changedStats(start: readonly PlayerStat[], now: readonly PlayerStat[]): { moved: string[]; boundsChanged: string[] } {
+  const was = new Map(start.map((stat) => [stat.id, stat]));
+  const moved: string[] = [];
+  const boundsChanged: string[] = [];
+  for (const stat of now) {
+    const before = was.get(stat.id);
+    if (!before) continue;
+    if (stat.value !== before.value) moved.push(stat.id);
+    if (!sameCodeDelta(before.codeDelta, stat.codeDelta)) boundsChanged.push(stat.id);
+  }
+  return { moved, boundsChanged };
+}
+
+/** Runs chained from `start` to `now`, one after the other, as one run's result over `start`. The later step
+ *  wins a pin. */
+export function chainedResult(start: StatCodeTurn, steps: readonly StatCodeTurnResult[], now: StatCodeTurn): StatCodeTurnResult {
+  const finalStep = steps.at(-1);
+  if (!finalStep) throw new Error('A chained result needs a step');
+  const pinWrites: PinWrites = Object.assign({}, ...steps.map((step) => step.pinWrites));
+  const last = steps.findLast((step) => step.traits)?.traits;
+  const traits: StatCodeTraitResult | undefined = last && { ...last, log: steps.flatMap((step) => step.traits?.log ?? []) };
+  const owners = start.owners && Object.fromEntries(start.owners.map((owner): [string, OwnerCodeResult] => {
+    const after = now.owners?.find((ran) => ran.id === owner.id) ?? owner;
+    const inForce = steps.findLast((step) => step.owners?.[owner.id]?.inForce)?.owners?.[owner.id]?.inForce;
+    return [owner.id, { stats: after.stats, ...changedStats(owner.stats, after.stats), ...(inForce ? { inForce } : {}) }];
+  }));
+  return {
+    stats: now.stats, ...changedStats(start.stats, now.stats), pinWrites, gateStats: finalStep.gateStats,
+    ...(traits ? { traits } : {}), ...(owners ? { owners } : {}),
+  };
+}
+
+/** The scripts a run runs on traits, by scope. A switch run runs the switched trait's own scripts alone,
+ *  whichever way it switched, so a trait's script sees its own switch-off (Q13). */
+function scriptTraits(
+  timing: RunTiming, switched: TraitSwitchEvent | undefined, inForce: Scoped<Trait[]>, world: TraitWorld,
+): Scoped<readonly Trait[]> {
+  if (timing !== 'switch' || !switched) return inForce;
+  const trait = switchedTraitOf(switched, world);
+  const own = (ownerId: OwnerId) => (trait && ownerId === switched.ownerId ? [trait] : []);
+  return { global: own(null), owners: Object.fromEntries(Object.keys(inForce.owners).map((id) => [id, own(id)])) };
+}
+
+/** The authored trait a switch names, in its owner's tree. */
+function switchedTraitOf({ traitId, ownerId }: TraitSwitchEvent, world: TraitWorld): Trait | undefined {
+  const tree = ownerId === null ? world.traits : world.owners?.find((owner) => owner.id === ownerId)?.traits;
+  return tree?.find((trait) => trait.id === traitId);
+}
+
+/** The `trait` a switch run reads: the switched trait's entry in its owner's map after the switch, else one
+ *  built from the authored trait. */
+function switchedTraitEntry(
+  switched: TraitSwitchEvent, traits: readonly SandboxTrait[], inPlay: CodeEntities | null, world: TraitWorld,
+  placeholders: readonly Placeholder[],
+): SwitchedTrait | undefined {
+  const { traitId, ownerId, enabled } = switched;
+  const entity = ownerId === null ? null : inPlay && [...inPlay.entities, inPlay.persona].find((cast) => cast.id === ownerId);
+  const entry = (entity ? entity.traits : ownerId === null ? traits : []).find((trait) => trait.id === traitId);
+  const ownerName = world.owners?.find((owner) => owner.id === ownerId)?.name;
+  const owner = entity?.name ?? (ownerName ? statCodeName(ownerName, placeholders) : '');
+  // A trait that left the tree keeps its stored state, so the switch sets `enabled`.
+  if (entry) return { ...entry, enabled, owner };
+  const authored = switchedTraitOf(switched, world);
+  return authored && { id: traitId, name: statCodeName(authored.name, placeholders), enabled, acquired: true, owner };
+}
+
 /** Run one timing's scripts over one turn in the sandbox: the world's and every owner's enabled stats', in
  *  parallel over one snapshot. A failing script is logged and writes nothing. */
-export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
+async function runScripts(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
   const timing = turn.timing ?? 'after';
   const placeholderDefs = turn.placeholders?.placeholders ?? [];
   const globalTurn: RunOwner = {
@@ -333,10 +489,12 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
     entityStats: Object.fromEntries((turn.owners ?? []).map((owner) => [owner.id, [...owner.stats]])),
   };
   // A trait's scripts run while it is active (Q3). A global pick reads the world's current trait, not its stored copy.
-  const inForce = traitForceScope(before, world);
+  const force = traitForceScope(before, world);
   const authored = new Map(world.traits.map((trait) => [trait.id, trait]));
-  const globalTraits = inForce.global.map((trait) => authored.get(trait.id) ?? trait);
-  const globalRun = ownerRun(globalTurn, timing, placeholderDefs, turn.worldScripts, globalTraits);
+  const inForce = scriptTraits(timing, turn.switched, {
+    global: force.global.map((trait) => authored.get(trait.id) ?? trait), owners: force.owners,
+  }, world);
+  const globalRun = ownerRun(globalTurn, timing, placeholderDefs, turn.worldScripts, inForce.global);
   const entityRuns = (turn.owners ?? []).map((owner) => ownerRun(owner, timing, placeholderDefs, [], inForce.owners[owner.id]));
   // An owner with no stats of its own still runs its traits' scripts, in owner order: ahead of the next owner
   // with stats in the played-first owner list, the owners that hold no trait last.
@@ -397,6 +555,7 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
   /** A trait script's `self`: its trait's entry where its owner's map holds it. */
   const selfTraitOf = (trait: Trait, owner: CodeEntity | undefined): SandboxTrait | undefined =>
     (owner ? owner.traits : traits).find((entry) => entry.id === trait.id);
+  const switchedTrait = timing === 'switch' && turn.switched ? switchedTraitEntry(turn.switched, traits, inPlay, world, placeholderDefs) : undefined;
   // Run order: ordered scripts first, then owner order and stat order, so the later write wins.
   const ordered = inRunOrder(runs.flatMap((run) => run.units.map((unit) => ({ unit, run, script: unit.script }))));
   // The sentence a During AI Output run hands from one script to the next.
@@ -409,7 +568,7 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
       clock: turn.clock, turn: globalStats.turn, enabled: globalStats.enabled, placeholders, traits, ...inPlay,
       owner, dictionaries, prompts: turn.prompts,
       ...(sentence === undefined || !turn.narration ? {} : { narration: { ...turn.narration, sentence } }),
-      ...(selfTrait && { selfTrait }),
+      ...(selfTrait && { selfTrait }), ...(switchedTrait && { switchedTrait }),
     });
     if (result.error) {
       console.error(`Error executing code for ${whoRan(unit)} (${SCRIPT_TIMING_LABEL[script.timing]}):`, result.error);

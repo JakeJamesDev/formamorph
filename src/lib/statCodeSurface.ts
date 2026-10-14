@@ -14,6 +14,7 @@ import {
 import { nearestName, readOnlyEntries, surfaceKnownNames, withAccess, type CodeSurface, type SurfaceEntry } from '@/lib/codeSurface';
 import { STAT_CODE_GUIDE_LINKS } from '@/lib/codeGuideLinks';
 import type { PlaceholderKindNoun } from '@/lib/placeholders';
+import type { ScriptTiming } from '@/types';
 
 /** An object's members as its completion detail: `{ a, b }`. */
 const shapeOf = (entries: readonly SurfaceEntry[]) => `{ ${entries.map((entry) => entry.name).join(', ')} }`;
@@ -304,6 +305,23 @@ export const TRAIT_SCRIPT_SURFACE: CodeSurface = {
   missingReturn: null,
   selfIs: 'trait',
 };
+
+/** The fields of `trait` in a When a Trait Switches script: the trait that switched, after the switch. */
+export const SWITCHED_TRAIT_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
+  ...TRAIT_ENTRY_FIELDS.map((entry) => (entry.name === TRAIT_WRITABLE_FIELD
+    ? { ...entry, info: 'True when the switch turned the trait on. False when it turned it off.' } : entry)),
+  { name: 'owner', detail: 'string', info: 'Code name of the entity that holds the trait, or empty for a global trait' },
+]);
+
+/** `trait`, which only a When a Trait Switches script reads. */
+const SWITCHED_TRAIT_GLOBAL: SurfaceEntry = {
+  name: 'trait', detail: 'Trait', access: 'readOnly',
+  info: 'The trait that switched. Read-only. Its enabled field tells you which way it switched.',
+};
+
+/** A script box's surface: its home's, with `trait` in a When a Trait Switches script only. */
+export const scriptSurface = (surface: CodeSurface, timing: ScriptTiming): CodeSurface =>
+  (timing === 'switch' ? { ...surface, globals: [...surface.globals, SWITCHED_TRAIT_GLOBAL] } : surface);
 
 /**
  * The stat-code name an unknown identifier was most likely meant to be, or null when nothing is close
