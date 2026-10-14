@@ -936,7 +936,7 @@ const WorldEditorInner = ({
     focusField: findField,
   });
   const traitsParts = useListEditor(traitsAdapter, { selectedId: selections.traits ?? null, onSelect: selectTrait, search });
-  // Placeholders tab: selection is a *row*, since one shared placeholder draws a row under every holder and
+  // Placeholders tab: selection is a *row*, since one shared placeholder draws a row under every parent placeholder and
   // each of those weights it differently. An owner node opens a header naming its entity or book.
   const selectPlaceholder = useCallback((id: string | null) => select('placeholders', id), [select]);
   const placeholdersEditor = useWorldPlaceholdersAdapter({

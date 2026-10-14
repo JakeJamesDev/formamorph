@@ -157,7 +157,7 @@ describe('system nodes in Basic', () => {
     expect(marked(ctx).traitLinks?.map((l) => l.id)).toEqual(['l-wizard']);
   });
 
-  it('hides an empty Blueprints group and a Custom Persona entity that bears nothing', () => {
+  it('hides an empty Blueprints group and a Custom Persona entity that has nothing', () => {
     renderWorldEditorBench({ ...BARE, traitGroups: FULL.traitGroups, entities: [{ id: 'e-you', name: 'Wanderer', customPersona: true }] }, 'simple');
     openTab(/Traits/);
     expect(treeRow('Brave')).toBeDefined();

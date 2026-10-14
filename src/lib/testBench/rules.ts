@@ -1852,13 +1852,13 @@ const traitGroupAlwaysOnOverMax: Rule = {
   check: (world) => {
     const found = new Map<string, { owner: Owner | undefined; group: TraitGroup; traits: Trait[] }>();
     for (const persona of personaChoices(world)) {
-      const { owners: bearers, gate } = resolveOwners(ownerWorldOf(world), persona);
+      const { owners, gate } = resolveOwners(ownerWorldOf(world), persona);
       for (const over of alwaysOnOverMax(gate)) {
         const k = pairKey(over.ownerId, over.groupId);
         if ((found.get(k)?.traits.length ?? 0) >= over.traitIds.length) continue;
         const owner = gate.owners.find((o) => o.id === over.ownerId)!;
         found.set(k, {
-          owner: bearers.find((b) => b.id === over.ownerId),
+          owner: owners.find((b) => b.id === over.ownerId),
           group: owner.groups.find((g) => g.id === over.groupId)!,
           traits: over.traitIds.map((id) => owner.traits.find((t) => t.id === id)!),
         });
@@ -1946,9 +1946,6 @@ const traitGroupTooSmall: Rule = {
 /** The slices the owner resolver reads. */
 export type OwnerSource = Partial<Pick<RuleWorld, 'traits' | 'traitGroups' | 'entities'>>;
 
-/** Alias kept while call sites move to {@link OwnerSource}. */
-export type BearerSource = OwnerSource;
-
 const pairKey = (a: string, b: string) => `${a}\u0000${b}`;
 
 /** The gates a report opens: world and owned traits by id, and link requirement overrides by
@@ -1978,9 +1975,6 @@ export function ownerWorldOf(world: OwnerSource, open: OpenGates = NONE_OPEN): O
     })),
   };
 }
-
-/** Alias kept while call sites move to {@link ownerWorldOf}. */
-export const bearerWorldOf = ownerWorldOf;
 
 /** None, then playing as each world persona, persona-only ones included. */
 const personaChoices = (world: RuleWorld): PersonaRef[] => [
@@ -2194,9 +2188,9 @@ const gateReportOf = (world: RuleWorld): GateReport => {
   // A pass over each persona choice: the owners it holds and how a gate finding names their traits.
   const passOver = (source: OwnerWorld, persona: PersonaRef) => {
     const resolved = resolveOwners(source, persona);
-    const { owners: bearers } = resolved;
+    const { owners } = resolved;
     const gate = { ...resolved.gate, stats };
-    const byId = new Map(bearers.map((b) => [b.id, b]));
+    const byId = new Map(owners.map((b) => [b.id, b]));
     let states: GateStates | undefined;
     const named = (r: GateTraitRef): GateTrait => {
       const owner = byId.get(r.ownerId);

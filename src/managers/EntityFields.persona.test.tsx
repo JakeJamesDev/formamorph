@@ -56,11 +56,11 @@ describe('the Persona role', () => {
 describe('the Custom Persona role', () => {
   const linked = { traitLinks: [{ id: 'l1', originalId: 'o', kind: 'trait' as const, originalName: 'Paladin', groupId: null }] };
 
-  function mountHeld(value: Partial<Entity>, holder?: string) {
+  function mountHeld(value: Partial<Entity>, marked?: string) {
     const onChange = vi.fn();
     render(
       <EditorModeContext.Provider value={{ mode: 'advanced', advanced: true, setMode: () => {} }}>
-        <EntityPersonaField value={{ id: 'e1', name: 'Newcomer', ...value } as Entity} onChange={onChange} home="world" customPersonaHolder={holder} />
+        <EntityPersonaField value={{ id: 'e1', name: 'Newcomer', ...value } as Entity} onChange={onChange} home="world" customPersonaEntityName={marked} />
       </EditorModeContext.Provider>,
     );
     return onChange;

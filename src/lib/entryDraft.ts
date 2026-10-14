@@ -2,7 +2,7 @@ import type { DictionarySelectionItem } from './dictionarySelection';
 import { locationForPersonaPick, withoutPersona, type PersonaPickContext } from './personaPick';
 import { resolveOwners } from './owners';
 import { startingGateStats } from './gateStats';
-import { WORLD_OWNER, settle, settleDefaults, type GateInput, type GateOwner, type SettleResult } from './traitGates';
+import { PLAYER_OWNER, settle, settleDefaults, type GateInput, type GateOwner, type SettleResult } from './traitGates';
 import type { CascadeOffTraitIds, Entity, OwnedTraitPicks, PersonaRef, Stat, StatGroup, Trait, TraitGroup } from '@/types';
 
 /** Choices retained for one visit to Enter World. */
@@ -66,12 +66,12 @@ export const entryGateInput = (
   world: EntryTraitWorld, draft: Pick<EntryDraft, 'traitIds' | 'ownedTraitIds' | 'persona'>,
 ): GateInput => ({
   ...entryGateBase(world, draft.persona),
-  active: { ...draft.ownedTraitIds, [WORLD_OWNER]: draft.traitIds },
+  active: { ...draft.ownedTraitIds, [PLAYER_OWNER]: draft.traitIds },
 });
 
 /** The draft with settled picks and cascade-off lists. An owner the settle did not cover keeps both. */
 export function withSettledTraits(draft: EntryDraft, result: Pick<SettleResult, 'active' | 'cascadeOff'>): EntryDraft {
-  const { [WORLD_OWNER]: traitIds = draft.traitIds, ...owned } = result.active;
+  const { [PLAYER_OWNER]: traitIds = draft.traitIds, ...owned } = result.active;
   return {
     ...draft,
     traitIds,
@@ -82,7 +82,7 @@ export function withSettledTraits(draft: EntryDraft, result: Pick<SettleResult, 
 
 /** Every owner's default picks under `persona`. */
 export function entryDefaults(world: EntryTraitWorld, persona: PersonaRef): Pick<EntryDraft, 'traitIds' | 'ownedTraitIds'> {
-  const { [WORLD_OWNER]: traitIds = [], ...ownedTraitIds } =
+  const { [PLAYER_OWNER]: traitIds = [], ...ownedTraitIds } =
     settleDefaults(entryGateBase(world, persona)).active;
   return { traitIds, ownedTraitIds };
 }
@@ -115,7 +115,7 @@ export function castOwnedTraits(draft: Pick<EntryDraft, 'ownedTraitIds' | 'perso
   const out: OwnedTraitPicks = {};
   for (const owner of entryOwners(world, draft.persona)) {
     const picks = draft.ownedTraitIds[owner.id];
-    if (owner.id !== WORLD_OWNER && picks?.length) out[owner.id] = picks;
+    if (owner.id !== PLAYER_OWNER && picks?.length) out[owner.id] = picks;
   }
   return out;
 }

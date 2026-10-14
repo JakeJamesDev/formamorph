@@ -1141,11 +1141,11 @@ describe('runStatCodeTurn placeholder paths', () => {
     expect(pinWrites).toEqual({ 'world-hair': 'shorn' });
   });
 
-  it('resolves a holder through the pin a path laid on its child, so the next prompt reads it', async () => {
+  it('resolves a parent through the pin a path laid on its child, so the next prompt reads it', async () => {
     const { pinWrites } = await run('placeholders.Hair.Shade.pin("silver");');
     const chip = encodePlaceholderToken({ id: 'world-hair', mode: 'world', placementId: 'p-read' });
     const pins = collectPins({ traits: [], placeholders: list, rolls: { world: {} }, codePins: withPinWrites({}, pinWrites) });
-    // The world's Hair is nothing but its Shade, so a pin on the child is what the holder reads as.
+    // The world's Hair is nothing but its Shade, so a pin on the child is what the parent reads as.
     expect(resolvePlaceholders(`Her hair is ${chip}.`, { placeholders: list, rolls: { world: {} }, pins })).toBe('Her hair is silver.');
   });
 

@@ -80,7 +80,7 @@ describe('the canvas commits into the world history', () => {
     expect(position(handle().data, 'shore')).toEqual({ x: 520, y: 180 });
   });
 
-  it('puts a reparent back, holder and all', async () => {
+  it('puts a reparent back, parent and all', async () => {
     const handle = await open();
     const before = handle().data.locations;
     const drops = multiDropIntents(before, [{ id: 'shore', position: { x: 24, y: 8 } }]);

@@ -7,7 +7,7 @@ import { refreshChosenTraits } from './traitEffects';
 import { traitGateInput } from './traitRuntime';
 import type { GateInput } from './traitGates';
 
-/** Every bearer's traits and stats on the turn on screen, live or paged back (Q34), as the gate module reads them. */
+/** Every owner's traits and stats on the turn on screen, live or paged back (Q34), as the gate module reads them. */
 export function useViewedGateInput(): GateInput {
   const { viewTraits, viewDisabledTraitIds, viewOwnedTraits, viewEntityStats, personaRef } = useGameplay();
   const { traits, traitGroups, viewStats, entities: cast, persona, traitEntities, traitLibrary } = useResolvedWorld();

@@ -38,7 +38,7 @@ function played(
   const entities = over.entities ?? [rook, mira, wanderer, shade, brute];
   const library = over.library ?? [pip];
   const entered = [...withPersonaEntry(entities, persona, undefined)];
-  const bearerWorld = { traits: [], traitGroups: [], entities: entered };
+  const ownerWorld = { traits: [], traitGroups: [], entities: entered };
   return {
     acquired: [],
     disabledTraitIds: [],
@@ -48,7 +48,7 @@ function played(
     library,
     world: {
       traits: [], groups: [], entities: entered, persona,
-      owners: inPlayOwners(bearerWorld, persona, library),
+      owners: inPlayOwners(ownerWorld, persona, library),
     },
   };
 }

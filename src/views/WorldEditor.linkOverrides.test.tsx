@@ -33,11 +33,11 @@ const WORLD: World = benchEditorWorld({
   traitGroups: [{ id: 'g-blueprints', name: 'Blueprints', parentId: null, order: 0, system: 'blueprints' }],
 } as Partial<World>);
 
-/** The tree row a link draws under its bearer's node. */
-const linkRow = (bearer: string) => {
+/** The tree row a link draws under its owner's node. */
+const linkRow = (owner: string) => {
   const node = screen.getAllByLabelText('Drag to reorder or nest')
     .map((grip) => grip.parentElement as HTMLElement)
-    .findIndex((row) => within(row).queryByText(bearer, { exact: true }));
+    .findIndex((row) => within(row).queryByText(owner, { exact: true }));
   return screen.getAllByLabelText('Drag to reorder or nest').map((grip) => grip.parentElement as HTMLElement)[node + 1];
 };
 

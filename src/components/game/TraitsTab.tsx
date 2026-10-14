@@ -14,7 +14,7 @@ import { ChevronDown, Lock } from 'lucide-react';
 import { EntityIcon } from '@/lib/elementIcons';
 import { cn } from '@/lib/utils';
 import { buildTraitSections, viewTraitSection, type TraitBlock, type TraitSection } from '@/lib/traitSections';
-import { WORLD_OWNER, gateOf, groupPickState, leavesShort, type GateStates, type GroupPickState } from '@/lib/traitGates';
+import { PLAYER_OWNER, gateOf, groupPickState, leavesShort, type GateStates, type GroupPickState } from '@/lib/traitGates';
 import type { Entity, Stat, StatChange, Trait, TraitGroup, TraitsPanelView } from '@/types';
 import { Tip } from '@/components/ui/tooltip';
 import { gateLine } from '@/lib/traitGateLine';
@@ -27,10 +27,10 @@ export type TraitTabStat = Pick<Stat, 'id' | 'name'> & Pick<Partial<Stat>, 'hidd
 
 export interface TraitsTabProps {
   /** Every trait the panel lists, in authored order: those held plus those still takeable. A trait under two
-   *  bearers is listed once per bearer, under each one's node. */
+   *  owners is listed once per owner, under each one's node. */
   traits: Trait[];
   groups: TraitGroup[];
-  /** Entity node id → the bearer it draws, each holding that bearer's tree. */
+  /** Entity node id → the owner it draws, each holding that owner's tree. */
   entityNodes?: ReadonlyMap<string, Pick<Entity, 'name'>>;
   /** The entity nodes that are the player's, each marked You: the played persona, and the Custom Persona
    *  entity under None and a library persona. */
@@ -39,17 +39,17 @@ export interface TraitsTabProps {
   /** Each entity's own stats, by entity id. A cast entity's trait lists changes to these alone; a player
    *  entity's lists these first, then `stats`. Absent ⇒ none. */
   ownerStats?: Readonly<Record<string, readonly TraitTabStat[]>>;
-  /** Switched off or never taken in the bearer's tree — the panel draws no line between the two. */
-  isOff: (traitId: string, bearerId: string) => boolean;
+  /** Switched off or never taken in the owner's tree — the panel draws no line between the two. */
+  isOff: (traitId: string, ownerId: string) => boolean;
   /** A past turn is a record, not a control surface. */
   readOnly: boolean;
-  onToggleTrait: (traitId: string, enabled: boolean, bearerId: string) => void;
-  /** A trait's own text resolved through its own placeholder pins, bound for its bearer. */
-  resolveTraitText: (trait: Trait, text: string, bearerId: string) => string;
+  onToggleTrait: (traitId: string, enabled: boolean, ownerId: string) => void;
+  /** A trait's own text resolved through its own placeholder pins, bound for its owner. */
+  resolveTraitText: (trait: Trait, text: string, ownerId: string) => string;
   /** The tab's own filter/fold state, owned by Gameplay so it outlives the unmount. */
   view: TraitsPanelView;
   setView: React.Dispatch<React.SetStateAction<TraitsPanelView>>;
-  /** Each bearer's gates; absent shows every trait open. */
+  /** Each owner's gates; absent shows every trait open. */
   gates?: GateStates;
   cascade?: TraitCascade | null;
   onDismissCascade?: () => void;
@@ -65,12 +65,12 @@ const flipKey = (keys: ReadonlySet<string>, key: string): ReadonlySet<string> =>
 const EMPTY: ReadonlySet<string> = new Set();
 const NO_IDS: readonly string[] = [];
 
-/** The bearer a block's traits belong to: the world's when the block sits in no entity node. */
-const bearerOf = (block: TraitBlock): string => block.entityId ?? WORLD_OWNER;
+/** The owner a block's traits belong to: the player's when the block sits in no entity node. */
+const ownerOf = (block: TraitBlock): string => block.entityId ?? PLAYER_OWNER;
 
 /** Which sections a fresh look at this trait list opens: the ones holding something switched on. */
-const seedOpen = (sections: TraitSection[], isOff: (id: string, bearerId: string) => boolean): ReadonlySet<string> =>
-  new Set(sections.filter((s) => s.blocks.some((b) => b.traits.some((t) => !isHidden(t) && !isOff(t.id, bearerOf(b))))).map((s) => s.key));
+const seedOpen = (sections: TraitSection[], isOff: (id: string, ownerId: string) => boolean): ReadonlySet<string> =>
+  new Set(sections.filter((s) => s.blocks.some((b) => b.traits.some((t) => !isHidden(t) && !isOff(t.id, ownerOf(b))))).map((s) => s.key));
 
 export const TraitsTab = ({
   traits, groups, entityNodes, playerEntityIds = NO_IDS, stats, ownerStats, isOff, readOnly, onToggleTrait, resolveTraitText, view, setView,
@@ -109,63 +109,63 @@ export const TraitsTab = ({
   const flipExpanded = (id: string) => setView((v) => ({ ...v, expanded: flipKey(v.expanded, id) }));
 
   const describe = React.useCallback(
-    (trait: Trait, bearerId: string = WORLD_OWNER) => resolveTraitText(trait, trait.playerDescription ?? '', bearerId),
+    (trait: Trait, ownerId: string = PLAYER_OWNER) => resolveTraitText(trait, trait.playerDescription ?? '', ownerId),
     [resolveTraitText],
   );
-  // The stat a bearer's trait change moves: the player's for the player, and an entity's own as its row routes.
+  // The stat an owner's trait change moves: the player's for the player, and an entity's own as its row routes.
   const statOf = React.useMemo(() => {
     const player = new Map(stats.map((s) => [s.id, s]));
     const playerIds = new Set(player.keys());
     const cache = new Map<string, Map<string, TraitTabStat>>();
-    const ownOf = (bearerId: string) => {
-      let found = cache.get(bearerId);
-      if (!found) cache.set(bearerId, found = new Map((ownerStats?.[bearerId] ?? []).map((s) => [s.id, s])));
+    const ownOf = (ownerId: string) => {
+      let found = cache.get(ownerId);
+      if (!found) cache.set(ownerId, found = new Map((ownerStats?.[ownerId] ?? []).map((s) => [s.id, s])));
       return found;
     };
-    return (bearerId: string, change: StatChange): TraitTabStat | undefined => {
-      if (bearerId === WORLD_OWNER) return player.get(change.statId);
-      const own = ownOf(bearerId);
-      const side = statRowSide(change, new Set(own.keys()), playerIds, playerEntityIds.includes(bearerId));
+    return (ownerId: string, change: StatChange): TraitTabStat | undefined => {
+      if (ownerId === PLAYER_OWNER) return player.get(change.statId);
+      const own = ownOf(ownerId);
+      const side = statRowSide(change, new Set(own.keys()), playerIds, playerEntityIds.includes(ownerId));
       return side === 'own' ? own.get(change.statId) : side === 'player' ? player.get(change.statId) : undefined;
     };
   }, [stats, ownerStats, playerEntityIds]);
   const filtering = query.trim() !== '';
 
   const views = sections
-    .map((section) => ({ section, view: viewTraitSection(section, { query, isOff: (id, b) => isOff(id, b ?? WORLD_OWNER), describe }) }))
+    .map((section) => ({ section, view: viewTraitSection(section, { query, isOff: (id, b) => isOff(id, b ?? PLAYER_OWNER), describe }) }))
     .flatMap(({ section, view }) => (view ? [{ section, view }] : []));
-  // A cast entity's trait carries its bearer's name, as the log does; the player's own read bare.
+  // A cast entity's trait carries its owner's name, as the log does; the player's own read bare.
   const active = sections.flatMap((s) => s.blocks.flatMap((b) => b.traits
-    .filter((t) => !isHidden(t) && !isOff(t.id, bearerOf(b)))
+    .filter((t) => !isHidden(t) && !isOff(t.id, ownerOf(b)))
     .map((t) => (b.entityId && !isPlayer(b.entityId) ? `${entityNodes?.get(b.entityId)?.name ?? b.entityId}'s ${t.name}` : t.name))));
 
   // Counted on the whole block: the view splits each block into enabled and disabled halves.
   const picks = new Map<string, GroupPickState>(sections.flatMap((s) => s.blocks.flatMap((b) => (b.group
-    ? [[`${bearerOf(b)}/${b.key}`, groupPickState(b.group, b.traits, b.traits.filter((t) => !isOff(t.id, bearerOf(b))).map((t) => t.id))] as const]
+    ? [[`${ownerOf(b)}/${b.key}`, groupPickState(b.group, b.traits, b.traits.filter((t) => !isOff(t.id, ownerOf(b))).map((t) => t.id))] as const]
     : []))));
   const fixedBlocks = new Set(sections.flatMap((s) => s.blocks
-    .filter((b) => b.traits.some((t) => isAlwaysOn(t) && !isOff(t.id, bearerOf(b))))
-    .map((b) => `${bearerOf(b)}/${b.key}`)));
+    .filter((b) => b.traits.some((t) => isAlwaysOn(t) && !isOff(t.id, ownerOf(b))))
+    .map((b) => `${ownerOf(b)}/${b.key}`)));
 
   const row = (trait: Trait, block: TraitBlock, off: boolean) => {
-    const bearerId = bearerOf(block);
-    const pick = picks.get(`${bearerId}/${block.key}`);
+    const ownerId = ownerOf(block);
+    const pick = picks.get(`${ownerId}/${block.key}`);
     const radio = pick?.max === 1;
-    const rowKey = `${bearerId}/${trait.id}`;
+    const rowKey = `${ownerId}/${trait.id}`;
     // A change is listed only if the player can see the stat it targets: hidden stats stay behind the
     // scenes, and one whose stat the world no longer has would otherwise print a raw id.
     const changes = trait.statChanges
-      .map((change) => ({ change, stat: statOf(bearerId, change) }))
+      .map((change) => ({ change, stat: statOf(ownerId, change) }))
       .filter((c): c is { change: StatChange; stat: TraitTabStat } => c.stat !== undefined && c.stat.hidden !== true);
     const isExpanded = view.expanded.has(rowKey);
-    const description = describe(trait, bearerId).trim();
+    const description = describe(trait, ownerId).trim();
     const toggleLabel = `${off ? 'Switch on' : 'Switch off'} ${trait.name}`;
-    const gate = gates && gateOf(gates, bearerId, trait.id);
+    const gate = gates && gateOf(gates, ownerId, trait.id);
     const locked = gate?.unlocked === false;
     const line = gateLine(gate);
     // A switch-on needs an open gate and a group below its max, and a max-one group's active Automatic trait
     // can't be swapped out. A switch-off must not leave the group below its min.
-    const fixedIn = fixedBlocks.has(`${bearerId}/${block.key}`);
+    const fixedIn = fixedBlocks.has(`${ownerId}/${block.key}`);
     const disabled = readOnly || (off ? locked || (radio ? fixedIn : !!pick?.full) : !!pick && leavesShort(pick));
     const name = (
       <span className="inline-flex items-center gap-1.5 font-medium">
@@ -185,7 +185,7 @@ export const TraitsTab = ({
             aria-checked={!off}
             aria-label={toggleLabel}
             disabled={disabled}
-            onClick={() => onToggleTrait(trait.id, off, bearerId)}
+            onClick={() => onToggleTrait(trait.id, off, ownerId)}
             className="mt-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-50"
           >
             {!off && <span className="h-2 w-2 rounded-full bg-primary" />}
@@ -196,7 +196,7 @@ export const TraitsTab = ({
             checked={!off}
             disabled={disabled}
             aria-label={toggleLabel}
-            onCheckedChange={(checked) => onToggleTrait(trait.id, checked === true, bearerId)}
+            onCheckedChange={(checked) => onToggleTrait(trait.id, checked === true, ownerId)}
           />
         ))}
         {/* A trait's own text self-pins (its name already did, via the resolved collection), so a pinning
@@ -230,7 +230,7 @@ export const TraitsTab = ({
             <ul className="mt-1 list-inside list-disc text-helper text-muted-foreground">
               {changes.map(({ change, stat }, i) => (
                 <li key={i}>
-                  {resolveTraitText(trait, stat.name, bearerId)}:{' '}
+                  {resolveTraitText(trait, stat.name, ownerId)}:{' '}
                   <span className={change.value > 0 ? 'text-success' : 'text-destructive'}>
                     {change.value > 0 ? '+' : ''}{change.value}
                   </span>
@@ -255,7 +255,7 @@ export const TraitsTab = ({
             {block.entityNode && isPlayer(block.entityId) && youMark}
           </p>
         )}
-        {block.traits.map((trait) => row(trait, block, isOff(trait.id, bearerOf(block))))}
+        {block.traits.map((trait) => row(trait, block, isOff(trait.id, ownerOf(block))))}
       </div>
     ));
 

@@ -17,7 +17,6 @@ import {
   activeOwnedTraitIds, ownerTraitTree, inPlayOwners, playerEntityIds, rowOwner, withOwnerNames,
 } from '@/lib/ownedTraitsInPlay';
 import { useGameDataOptional } from '@/contexts/GameDataContext';
-import { WORLD_OWNER } from '@/lib/traitGates';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { ReasoningBlock } from './ReasoningBlock';
 import { ChatNarration, PLAYER_ACTION_BUBBLE, type ChatBubbleTurn, type ChatPlayerTurn } from './ChatNarration';
@@ -1217,8 +1216,8 @@ export const RightPanel = ({
   language, setLanguage,
 }: {
   onLocationClick: () => void;
-  /** Switch a bearer's trait on or off mid-play; owned by GameViewer, which reverses its stat changes. */
-  onToggleTrait: (traitId: string, enabled: boolean, bearerId: string) => void;
+  /** Switch an owner's trait on or off mid-play; owned by GameViewer, which reverses its stat changes. */
+  onToggleTrait: (traitId: string, enabled: boolean, ownerId: string) => void;
   /** Settle the traits after the player picks another persona. `name` is that persona's; null for None. */
   onPersonaChange: (ref: PersonaRef, name: string | null) => void;
   /** What the player's last trait switch or persona change turned off. */
@@ -1272,26 +1271,26 @@ export const RightPanel = ({
   // world — otherwise a trait made switchable after this playthrough began would never get its control.
   const playerTraits = React.useMemo(() => refreshChosenTraits(savedTraits, traits), [savedTraits, traits]);
   const heldTraitIds = React.useMemo(() => new Set(playerTraits.map((t) => t.id)), [playerTraits]);
-  // The one tree from the bearer resolver: the player's rows at the top, then a node per present bearer with
-  // its owned traits and links expanded. A trait under two bearers is two rows, told apart by their node.
+  // The one tree from the owner resolver: the player's rows at the top, then a node per present owner with
+  // its owned traits and links expanded. A trait under two owners is two rows, told apart by their node.
   const gameData = useGameDataOptional();
-  const bearerWorld = React.useMemo(
+  const ownerWorld = React.useMemo(
     () => ({ traits, traitGroups, entities: traitEntities }),
     [traits, traitGroups, traitEntities],
   );
   // A linked row's name reads its entity as the Character Name, from the original's authored text.
   const traitTree = React.useMemo(
     () => withOwnerNames(
-      ownerTraitTree(bearerWorld, personaRef, traitLibrary),
+      ownerTraitTree(ownerWorld, personaRef, traitLibrary),
       { traits: gameData?.traits ?? [], traitGroups: gameData?.traitGroups ?? [] },
-      (text, bearer, trait) => (trait ? resolveTraitText(trait, text, bearer) : resolveEntityText(bearer, text)),
+      (text, owner, trait) => (trait ? resolveTraitText(trait, text, owner) : resolveEntityText(owner, text)),
     ),
-    [bearerWorld, personaRef, traitLibrary, gameData?.traits, gameData?.traitGroups, resolveTraitText, resolveEntityText],
+    [ownerWorld, personaRef, traitLibrary, gameData?.traits, gameData?.traitGroups, resolveTraitText, resolveEntityText],
   );
-  // A bearer's trait card reads that bearer as the Character Name, as the AI does.
+  // An owner's trait card reads that owner as the Character Name, as the AI does.
   const resolveTreeTraitText = React.useCallback(
-    (trait: Trait, text: string, bearerId: string) =>
-      resolveTraitText(trait, text, bearerId === WORLD_OWNER ? null : traitTree.entityNodes.get(bearerId) ?? null),
+    (trait: Trait, text: string, ownerId: string) =>
+      resolveTraitText(trait, text, ownerId === PLAYER_OWNER ? null : traitTree.entityNodes.get(ownerId) ?? null),
     [traitTree, resolveTraitText],
   );
   const activeOwned = React.useMemo(() => activeOwnedTraitIds(viewOwnedTraits), [viewOwnedTraits]);
@@ -1299,10 +1298,10 @@ export const RightPanel = ({
   // could take, together in authored order — owned and unowned differ only by the checkbox. A past turn shows
   // only what was held then: acquirables can't be acted on there. An entity's rows list the same way.
   const listedTraits = React.useMemo(() => {
-    const playerRows = traitTree.traits.filter((t) => rowOwner(traitTree, t) === WORLD_OWNER);
+    const playerRows = traitTree.traits.filter((t) => rowOwner(traitTree, t) === PLAYER_OWNER);
     const entityRows = traitTree.traits.filter((t) => {
-      const bearer = rowOwner(traitTree, t);
-      return bearer !== WORLD_OWNER && (!!viewOwnedTraits[bearer]?.chosen.includes(t.id) || (!isViewingPast && !!t.playerToggle));
+      const owner = rowOwner(traitTree, t);
+      return owner !== PLAYER_OWNER && (!!viewOwnedTraits[owner]?.chosen.includes(t.id) || (!isViewingPast && !!t.playerToggle));
     });
     const playerOrder = traitOrderIndex(playerRows, traitTree.groups);
     // A Custom Persona pick lies dormant under a world persona: it has no row until a return to None.
@@ -1313,8 +1312,8 @@ export const RightPanel = ({
   // The played world entity is out of the cast, and a "playing as" gate has to find it.
   const gateWorld = React.useMemo<TraitWorld>(() => ({
     traits, groups: traitGroups, entities: worldEntitiesOf(cast, persona), persona: personaRef ?? { source: 'none' },
-    owners: inPlayOwners(bearerWorld, personaRef, traitLibrary),
-  }), [traits, traitGroups, cast, persona, personaRef, bearerWorld, traitLibrary]);
+    owners: inPlayOwners(ownerWorld, personaRef, traitLibrary),
+  }), [traits, traitGroups, cast, persona, personaRef, ownerWorld, traitLibrary]);
   const viewTraitState = React.useMemo(
     () => ({ traits: playerTraits, disabledTraitIds: viewDisabledTraitIds, ownedTraits: viewOwnedTraits }),
     [playerTraits, viewDisabledTraitIds, viewOwnedTraits],
@@ -1497,9 +1496,9 @@ export const RightPanel = ({
             playerEntityIds={playerEntityIds(traitTree)}
             stats={playerStats}
             ownerStats={viewEntityStats}
-            isOff={(id, bearerId) => (bearerId === WORLD_OWNER
+            isOff={(id, ownerId) => (ownerId === PLAYER_OWNER
               ? disabledTraits.has(id) || !heldTraitIds.has(id)
-              : !activeOwned[bearerId]?.includes(id))}
+              : !activeOwned[ownerId]?.includes(id))}
             readOnly={isViewingPast}
             onToggleTrait={onToggleTrait}
             resolveTraitText={resolveTreeTraitText}

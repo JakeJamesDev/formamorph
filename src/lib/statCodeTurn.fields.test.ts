@@ -29,7 +29,7 @@ const asMira: PersonaRef = { source: 'world', entityId: 'mira' };
 function played(over: { inSceneIds?: string[] } = {}): StatCodeOwners {
   const entities = [mira, rook, pip];
   const entered = [...withPersonaEntry(entities, asMira, undefined)];
-  const bearerWorld = { traits: [oath, gifted, edge], traitGroups: [mood], entities: entered };
+  const ownerWorld = { traits: [oath, gifted, edge], traitGroups: [mood], entities: entered };
   return {
     acquired: [gifted],
     disabledTraitIds: [],
@@ -40,7 +40,7 @@ function played(over: { inSceneIds?: string[] } = {}): StatCodeOwners {
     ...over,
     world: {
       traits: [oath, gifted, edge], groups: [mood], entities: entered, persona: asMira,
-      owners: inPlayOwners(bearerWorld, asMira, []),
+      owners: inPlayOwners(ownerWorld, asMira, []),
     },
   };
 }

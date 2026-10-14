@@ -13,7 +13,7 @@ import CharacterCustomization, { defaultCharacterData } from './CharacterCustomi
 import EnterWorldWorkspace from './EnterWorldWorkspace';
 import { startingLocations } from '@/lib/startingLocation';
 import {
-  WORLD_OWNER, gateStates, settle, shownRefs, switchTrait, type SettleResult,
+  PLAYER_OWNER, gateStates, settle, shownRefs, switchTrait, type SettleResult,
 } from '@/lib/traitGates';
 import type { TraitCascade } from '@/components/game/SetupTraitList';
 import { buildInitialSelection, finalizeSelection, shouldShowDictionaryChoices } from '@/lib/dictionarySelection';
@@ -188,7 +188,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
 
   // The starting selection's gates, and the banner naming what the last change turned off.
   const [traitCascade, setTraitCascade] = useState<TraitCascade | null>(null);
-  // Every bearer in the cast: the player, the world's entities, and the library entities.
+  // Every owner in the cast: the player, the world's entities, and the library entities.
   const entryWorld = useMemo<EntryTraitWorld>(
     () => ({ traits, traitGroups, entities: resolvedWorldEntities, library: libraryCast, stats: rawStats, statGroups: rawStatGroups }),
     [traits, traitGroups, resolvedWorldEntities, libraryCast, rawStats, rawStatGroups],
@@ -202,15 +202,15 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
   }, [entryWorld]);
   const castOwners = useMemo(() => entryOwners(entryWorld, entryDraft.persona), [entryWorld, entryDraft.persona]);
   const traitGates = useMemo(() => gateStates(entryGateInput(entryWorld, entryDraft)), [entryWorld, entryDraft]);
-  // A cast entity's trait carries its bearer's name; the player's own, and the played persona's, read bare.
+  // A cast entity's trait carries its owner's name; the player's own, and the played persona's, read bare.
   const traitName = (ownerId: string, traitId: string) => {
     const owner = castOwners.find((o) => o.id === ownerId);
     const name = owner?.traits.find((t) => t.id === traitId)?.name ?? traitId;
-    return owner && ownerId !== WORLD_OWNER && ownerId !== playedEntityId(entryDraft.persona) ? `${owner.name}'s ${name}` : name;
+    return owner && ownerId !== PLAYER_OWNER && ownerId !== playedEntityId(entryDraft.persona) ? `${owner.name}'s ${name}` : name;
   };
-  // Every bearer's picks by owner id, the player's under the world's.
+  // Every owner's picks by owner id, the player's under the world's.
   const entrySelectedTraits = useMemo(
-    () => ({ ...entryDraft.ownedTraitIds, [WORLD_OWNER]: entryDraft.traitIds }),
+    () => ({ ...entryDraft.ownedTraitIds, [PLAYER_OWNER]: entryDraft.traitIds }),
     [entryDraft.traitIds, entryDraft.ownedTraitIds],
   );
   const cascadeFrom = (result: SettleResult, because: string): TraitCascade | null => {
@@ -218,7 +218,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
     return names.length ? { off: names, because } : null;
   };
 
-  // Toggle a bearer's trait in the starting selection; a cascade shows in the banner.
+  // Toggle an owner's trait in the starting selection; a cascade shows in the banner.
   const handleTraitSelection = (traitId: string, ownerId: string) => {
     const result = switchTrait(entryGateInput(entryWorld, entryDraft), ownerId, traitId, entryDraft.cascadeOffTraitIds);
     if (!result) return;

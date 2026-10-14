@@ -326,7 +326,7 @@ describe('the form a template presents', () => {
     expect(await rows()).toEqual(['Scarred']);
   });
 
-  // `persona.traits` reads by name, so a name two personas share is one value under either holder.
+  // `persona.traits` reads by name, so a name two personas share is one value under either owner.
   it('lists each persona entity’s traits under its name and groups, a shared name under both', async () => {
     const user = userEvent.setup();
     const vale: Entity = {

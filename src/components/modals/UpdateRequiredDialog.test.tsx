@@ -7,8 +7,8 @@ import { CLIENT_HEADER } from '@/lib/clientIdentity';
 import AuthService from '@/services/AuthService';
 
 /** The bridge the dialog reaches for; absent unless a test hands one over. */
-const bridgeHolder = vi.hoisted(() => ({ current: null as unknown }));
-vi.mock('@/lib/updates/updateBridge', () => ({ updateBridge: () => bridgeHolder.current }));
+const bridgeRef = vi.hoisted(() => ({ current: null as unknown }));
+vi.mock('@/lib/updates/updateBridge', () => ({ updateBridge: () => bridgeRef.current }));
 
 /** The update channel the player picked. The dialog reads it to choose which release to ask for. */
 vi.mock('@/contexts/SettingsContext', () => ({ useSettings: () => ({ updateChannel: 'stable' }) }));
@@ -35,7 +35,7 @@ const reload = vi.fn();
 beforeEach(() => {
   apiUrl = AuthService.API_URL;
   AuthService.API_URL = API;
-  bridgeHolder.current = null;
+  bridgeRef.current = null;
   reload.mockClear();
   checkForUpdate.mockReset();
   checkForUpdate.mockResolvedValue({ success: true, result: { available: true, latestVersion: '2.20.0' } });
@@ -105,7 +105,7 @@ describe('the update dialog', () => {
 
   it('starts the platform download on the channel the player picked', async () => {
     const bridge = fakeBridge();
-    bridgeHolder.current = bridge;
+    bridgeRef.current = bridge;
     mount(refusal('Contests'));
 
     await refusedCall();
@@ -121,7 +121,7 @@ describe('the update dialog', () => {
   });
 
   it('says so when there is no release to take yet, and offers the button again', async () => {
-    bridgeHolder.current = fakeBridge();
+    bridgeRef.current = fakeBridge();
     checkForUpdate.mockResolvedValue({ success: true, result: { available: false } });
     mount(refusal('Contests'));
 
@@ -135,7 +135,7 @@ describe('the update dialog', () => {
   it('says so when the download fails, and offers the button again', async () => {
     const bridge = fakeBridge();
     bridge.download.mockRejectedValueOnce(new Error('no route to host'));
-    bridgeHolder.current = bridge;
+    bridgeRef.current = bridge;
     mount(refusal('Contests'));
 
     await refusedCall();
@@ -151,7 +151,7 @@ describe('a second refusal', () => {
   // dialog it already raised, least of all an update the player has already started.
   it('for the same feature leaves a started update alone', async () => {
     const bridge = fakeBridge();
-    bridgeHolder.current = bridge;
+    bridgeRef.current = bridge;
     mount(refusal('Contests'));
 
     await refusedCall();

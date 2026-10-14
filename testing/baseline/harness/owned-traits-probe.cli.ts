@@ -12,8 +12,8 @@
 //   label-leak           — the output repeats a trait block label or bolded trait name (guard, down)
 // Also reported per arm: mean words and the share of outputs with quoted dialogue (regression check).
 //
-// `--linked` builds the same traits as Templates originals that each bearer links, with `{{char}}` in place of
-// the owner's name, through the bearer resolver. It prints whether its chips match the owned build byte for byte.
+// `--linked` builds the same traits as Templates originals that each owner links, with `{{char}}` in place of
+// the owner's name, through the owner resolver. It prints whether its chips match the owned build byte for byte.
 //
 // `--placement` keeps every owned trait in force in both arms and moves only the played persona's: `before`
 // lists them after the world traits in the Traits chip, `after` nests them in the Persona chip.
@@ -24,10 +24,10 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { defaultSystemPrompt, defaultThinkingPrompt } from '@/components/game/GamePrompts';
-import { resolveBearers } from '@/lib/bearers';
+import { resolveOwners } from '@/lib/owners';
 import { authoredChipScene } from '@/lib/chipValues/authoredScene';
 import { chipValues } from '@/lib/chipValues/chipValues';
-import { withBearerTrees } from '@/lib/ownedTraitsInPlay';
+import { withOwnerTrees } from '@/lib/ownedTraitsInPlay';
 import { personaContextValues } from '@/lib/personaContext';
 import type { ValueLookup } from '@/lib/promptValues';
 import { allSpelledTokens } from '@/test/chipTokens';
@@ -84,7 +84,7 @@ const resolveOwn = (entity: Entity, text: string) => resolveEntityText(entity, t
 function buildCtx(linked: boolean) {
   const templates: TraitGroup = { id: 'probe-templates', name: 'Templates', parentId: null, system: 'templates' };
   const originals: Trait[] = [];
-  // A linked bearer's trait moves to Templates, its owner's name written as the Character Name.
+  // A linked owner's trait moves to Templates, its owner's name written as the Character Name.
   const asLinks = (owner: Entity, traits: Trait[]): Entity => {
     const traitLinks = traits.map((t, i): TraitLink => {
       originals.push({ ...t, groupId: templates.id, aiDescription: t.aiDescription?.replace(new RegExp(`^${owner.name}\\b`), '{{char}}') });
@@ -108,9 +108,9 @@ function buildCtx(linked: boolean) {
     resolveEntity: resolveOwn,
   });
   // The played persona's tree, resolved as play resolves it: its links expanded, itself as the Character Name.
-  const { bearers } = resolveBearers({ ...world, entities: [...entities, persona] }, { source: 'world', entityId: persona.id });
+  const { owners } = resolveOwners({ ...world, entities: [...entities, persona] }, { source: 'world', entityId: persona.id });
   const played = resolveOwnedTraitTexts(
-    resolveEntityTexts(withBearerTrees([persona], bearers), resolveOwn), (_t, text, owner) => resolveOwn(owner, text), resolveOwn,
+    resolveEntityTexts(withOwnerTrees([persona], owners), resolveOwn), (_t, text, owner) => resolveOwn(owner, text), resolveOwn,
   )[0];
   const ctxFor = (arm: typeof ARMS[number]) => chipValues({
     ...sceneBase,

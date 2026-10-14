@@ -702,21 +702,21 @@ describe('a tip with no text', () => {
 
 describe('a tip on a control another component already holds by ref', () => {
   /** The shape `TutorialPopover` uses: it anchors its explanation to whatever element it is handed. */
-  const AnchorHolder = ({ onAnchor, children }: {
+  const AnchorBox = ({ onAnchor, children }: {
     onAnchor: (el: HTMLElement | null) => void;
     children: React.ReactNode;
   }) => <Slot ref={onAnchor}>{children}</Slot>;
 
   it('leaves that component the real element, and still opens on focus', async () => {
-    // `Tip` is a plain function, so it cannot be the child here — the holder's ref would land on nothing
+    // `Tip` is a plain function, so it cannot be the child here — the box's ref would land on nothing
     // and the explanation would point at the page instead of the control. The parts compose instead.
     const anchors: (HTMLElement | null)[] = [];
     render(
       <TooltipProvider>
         <Tooltip>
-          <AnchorHolder onAnchor={(el) => anchors.push(el)}>
+          <AnchorBox onAnchor={(el) => anchors.push(el)}>
             <TooltipTrigger aria-label="Feedback" render={<button type="button" id="feedback" />} />
-          </AnchorHolder>
+          </AnchorBox>
           <TooltipPortal>
             <TooltipPositioner>
               <TooltipPopup>Feedback</TooltipPopup>

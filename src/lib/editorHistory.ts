@@ -184,9 +184,9 @@ function findById(records: IdRecord[], id: string): object | undefined {
 }
 
 /** A writer's key with the field its record's commit changed, or none when it changed several. */
-export function settleKey(key: StepKey, edits: SliceEdit[], holders: readonly SliceName[]): StepKey {
+export function settleKey(key: StepKey, edits: SliceEdit[], slices: readonly SliceName[]): StepKey {
   for (const edit of edits) {
-    if (!holders.includes(edit.slice)) continue;
+    if (!slices.includes(edit.slice)) continue;
     const [was, now] = edit.slice === "worldOverview" ? [edit.before, edit.after]
       : key.id === undefined ? [] : [findById(edit.before, key.id), findById(edit.after, key.id)];
     if (!was || !now || was === now) continue;

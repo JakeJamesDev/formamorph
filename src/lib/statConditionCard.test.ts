@@ -4,7 +4,7 @@ import { buildEntityCardData, parseEntityCardData } from './entityFile';
 import { bindOwnedTraits, comparableOwnedTraits, portableOwnedTraits, type TraitWorld } from './portableTraits';
 import { conditionsOf } from './requirementRows';
 import { entryDefaults, entryGateInput, emptyEntryDraft } from './entryDraft';
-import { gateOf, gateStates, WORLD_OWNER } from './traitGates';
+import { gateOf, gateStates, PLAYER_OWNER } from './traitGates';
 import { gateLine } from './traitGateLine';
 
 const S = (id: string, name: string, extra: Partial<Stat> = {}): Stat =>
@@ -27,7 +27,7 @@ const throughCard = (entity: Entity): Entity =>
   parseEntityCardData(JSON.parse(JSON.stringify(buildEntityCardData(entity, [], {}, undefined, home))));
 
 describe('a stat Condition on a character card', () => {
-  it('round-trips with its operator, value, unit, bearer and Not', () => {
+  it('round-trips with its operator, value, unit, owner and Not', () => {
     expect(wounded(throughCard(wren()))).toEqual([inward, { ...outward, name: 'Rage' }]);
   });
 
@@ -55,9 +55,9 @@ describe('a stat Condition on a character card', () => {
     expect(wounded(bindOwnedTraits(carried, { traits: [], traitGroups: [], entities: [] }))[1].id).toBe('w-rage');
   });
 
-  it('matches a stored name only among the bearer’s own stats, so a name every entity shares still binds (Q25)', () => {
-    const health = (bearer?: StatRequirement['owner']): StatRequirement =>
-      ({ kind: 'stat', id: 'old-hp', name: 'Health', operator: '<', value: 20, unit: 'percent', ...(bearer ? { owner: bearer } : {}) });
+  it('matches a stored name only among the owner’s own stats, so a name every entity shares still binds (Q25)', () => {
+    const health = (owner?: StatRequirement['owner']): StatRequirement =>
+      ({ kind: 'stat', id: 'old-hp', name: 'Health', operator: '<', value: 20, unit: 'percent', ...(owner ? { owner } : {}) });
     const carried: Entity = { id: 'wren', name: 'Wren', traits: [T('t-wounded', { name: 'Wounded', requires: [{ all: [
       health({ kind: 'entity', id: 'old-ash', name: 'Ash' }), health({ kind: 'you' }), health(),
     ] }] })] };
@@ -66,7 +66,7 @@ describe('a stat Condition on a character card', () => {
       stats: [S('p-hp', 'Health'), S('bp-hp', 'Health', { groupId: 'bp' })],
       entities: [{ id: 'ash', name: 'Ash', stats: [S('ash-hp', 'Health')] }, { id: 'bo', name: 'Bo', stats: [S('bo-hp', 'Health')] }],
     };
-    // The player's Health for You; with no bearer, two world stats share the name, so it stays unresolved.
+    // The player's Health for You; with no owner, two world stats share the name, so it stays unresolved.
     expect(wounded(bindOwnedTraits(carried, world)).map((r) => r.id)).toEqual(['ash-hp', 'p-hp', '']);
   });
 
@@ -92,7 +92,7 @@ describe('a stat Condition at setup (Q23)', () => {
   });
 
   it('reads the requirement line off the stat, and leaves out a hidden stat', () => {
-    const line = (rage: Partial<Stat>) => gateLine(gateOf(gateStates(entryGateInput(world(rage), emptyEntryDraft())), WORLD_OWNER, 'Berserk'));
+    const line = (rage: Partial<Stat>) => gateLine(gateOf(gateStates(entryGateInput(world(rage), emptyEntryDraft())), PLAYER_OWNER, 'Berserk'));
     expect(line({ starting: 40 })).toBe('Requires Rage >= 80');
     expect(line({ starting: 40, hidden: true })).toBe('Locked');
     expect(line({ starting: 40, enabled: false })).toBe('Locked');

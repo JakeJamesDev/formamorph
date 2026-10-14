@@ -33,7 +33,7 @@ describe('the Persona role', () => {
 describe('one Custom Persona per world', () => {
   const entities: Entity[] = [{ id: 'a', name: 'Ash' }, { id: 'cp', name: 'Newcomer', customPersona: true }];
 
-  it('names the holder to every other entity, and nobody to the holder', () => {
+  it('names the marked entity to every other entity, and nobody to the marked entity', () => {
     expect(customPersonaHeldElsewhere(entities, 'a')?.name).toBe('Newcomer');
     expect(customPersonaHeldElsewhere(entities, 'cp')).toBeUndefined();
     expect(customPersonaHeldElsewhere([entities[0]], 'a')).toBeUndefined();

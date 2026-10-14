@@ -158,7 +158,7 @@ describe('placeholders', () => {
     expect(leaf(tree, 'Placeholders', 'Mood', 'value').detail).toBe('string');
   });
 
-  it('lists a held placeholder under its holder’s trail, at its whole path', () => {
+  it('lists a held placeholder under its parent’s trail, at its whole path', () => {
     const level = pick(tree, 'Placeholders');
     expect(level.kind === 'names' && level.rows.map(({ name, trail }) => ({ name, trail }))).toEqual([
       { name: 'Mood', trail: [] }, { name: 'Gear', trail: [] }, { name: 'Hair', trail: [] }, { name: 'Shade', trail: ['Hair'] },

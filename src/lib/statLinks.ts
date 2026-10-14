@@ -7,7 +7,7 @@ import { effectiveRecord, sameValue, withOverride, withoutOverride, type Effecti
 import { groupsBelow } from './traitTree';
 import { removeStatGroup, statRootCount, statsInTreeOrder } from './statGroupTree';
 import { buildTree, flattenTree, type TreeLeaf } from './groupTree';
-import type { BearerChoice } from './bearerChoices';
+import type { OwnerChoice } from './ownerChoices';
 import type { HeldReason } from './heldReasons';
 import { randomUUID } from './uuid';
 import { newStat } from './blankWorld';
@@ -87,7 +87,7 @@ export function statBroughtIds(world: StatLinkWorld, originalId: string): string
 
 /** The Blueprint stats and the groups that hold one, as a drill-down flyout's rows in tree order. A row in the
  *  Blueprints group itself sits at the top level. */
-export function statBlueprintChoices(world: StatLinkWorld): BearerChoice[] {
+export function statBlueprintChoices(world: StatLinkWorld): OwnerChoice[] {
   const bp = statBlueprintsGroup(world.statGroups);
   if (!bp) return [];
   const inside = statBlueprintsSubtreeIds(world.statGroups);
@@ -96,7 +96,7 @@ export function statBlueprintChoices(world: StatLinkWorld): BearerChoice[] {
   const stats = world.stats.filter((s) => s.groupId != null && inside.has(s.groupId)).map((s) => ({ ...s, groupId: up(s.groupId) }));
   const holdsStat = new Set<string>();
   for (const s of stats) for (let at = s.groupId; at; at = groups.find((g) => g.id === at)?.parentId ?? null) holdsStat.add(at);
-  return flattenTree(buildTree(groups, stats)).flatMap((row): BearerChoice[] => {
+  return flattenTree(buildTree(groups, stats)).flatMap((row): OwnerChoice[] => {
     if (row.leaf) return [{ kind: 'owner', id: row.leaf.id, name: row.leaf.name, parentId: row.parentId }];
     return row.group && holdsStat.has(row.group.id) ? [{ kind: 'group', id: row.group.id, name: row.group.name, parentId: row.parentId }] : [];
   });
@@ -139,7 +139,7 @@ export const statLinkState = (original: Stat, link: StatLink): EffectiveRecord<S
   effectiveRecord(statLinkFieldsOf(original), link.overrides?.[original.id]);
 
 /** The original stat as `link` reads it, at `at`: the link's own place by default. The id and name stay the
- *  original's, so in play each bearer holds its own value under the original's id. */
+ *  original's, so in play each owner holds its own value under the original's id. */
 export function linkedStat(original: Stat, link: StatLink, at: { groupId: string | null; order?: number } = placeOf(link)): Stat {
   const { groupId: _g, order: _o, ...base } = original;
   const { record, overridden } = statLinkState(original, link);

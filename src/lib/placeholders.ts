@@ -1601,9 +1601,6 @@ export function resolveOwnerText(owner: { name: string } | null, text: string, o
   return resolveEntityText(owner, owner ? text : characterAsPlayer(text), opts);
 }
 
-/** Alias kept while call sites move to {@link resolveOwnerText}. */
-export const resolveBearerText = resolveOwnerText;
-
 /** One placeholder as play reads it right now: what it resolves to, and each authored value resolved. */
 export interface PlaceholderReading {
   id: string;

@@ -159,14 +159,14 @@ describe('the Character Name chip in play', () => {
 describe('the Character Name chip in a trait card', () => {
   const oath = { id: 't-oath', name: 'Paladin', aiDescription: '{{char}} keeps the oath.', statChanges: [] };
 
-  it('names a cast bearer', async () => {
+  it('names a cast owner', async () => {
     const live = mount();
     await loadWorld(live);
     const cast = live().world.entities.find((e) => e.id === vos.id)!;
     expect(live().world.resolveTraitText(oath, oath.aiDescription, cast)).toBe('Captain Vos keeps the oath.');
   });
 
-  it('names the player on the player bearer: the persona, or "the player" with none', async () => {
+  it('names the player on the player owner: the persona, or "the player" with none', async () => {
     const live = mount();
     await loadWorld(live);
     await act(async () => { live().gameplay.setPersonaRef({ source: 'none' }); });

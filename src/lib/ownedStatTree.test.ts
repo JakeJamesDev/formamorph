@@ -180,7 +180,7 @@ describe('applyOwnedStatDrop', () => {
 
   it('refuses a linked Blueprint leaving Blueprints, naming every entity that links it', () => {
     const cy: Entity = { id: 'cy', name: 'Cy', statLinks: [link('l1', 'trust', 'stat', null, 0)] };
-    expect(refusal(drop(world([cy]), 'trust', 'luck', -24))).toEqual({ reason: 'blueprint-linked', name: 'trust', bearers: ['Cy'] });
+    expect(refusal(drop(world([cy]), 'trust', 'luck', -24))).toEqual({ reason: 'blueprint-linked', name: 'trust', owners: ['Cy'] });
     expect(drop(world([]), 'trust', 'luck', -24)?.kind).toBe('moved');
   });
 
@@ -189,7 +189,7 @@ describe('applyOwnedStatDrop', () => {
     const w = { ...world([]), stats: [...lists.stats.filter((s) => s.id !== 'trust'), stat('fear', 'social', 0)], statGroups: [...lists.statGroups, group('social', 'bp', 0)] };
     const cy: Entity = { id: 'cy', name: 'Cy', statLinks: [link('l1', 'social', 'group', null, 0)] };
     expect(refusal(drop({ ...w, entities: [cy] }, 'social', 'luck', -24, ['social'])))
-      .toEqual({ reason: 'blueprint-linked', name: 'social', bearers: ['Cy'] });
+      .toEqual({ reason: 'blueprint-linked', name: 'social', owners: ['Cy'] });
     expect(drop(w, 'social', 'luck', -24, ['social'])?.kind).toBe('moved');
   });
 
@@ -294,13 +294,13 @@ describe('applyOwnedStatDrop: what reads a stat', () => {
     expect(read(drop(world([tameReads, bob]), a('grit'), b('nerve'), 0))?.reader).toEqual({ kind: 'readBy', stat: 'tame' });
   });
 
-  it('refuses an entity stat that a Blueprint reads through owner.stats for that bearer, or a link override reads', () => {
+  it('refuses an entity stat that a Blueprint reads through owner.stats for that owner, or a link override reads', () => {
     const bpReads = { ...lists, stats: lists.stats.map((s) => (s.id === 'trust' ? { ...s, code: 'return owner.stats.grit;' } : s)) };
-    const bearer = { ...ash, statLinks: [link('l1', 'trust', 'stat', null, 2)] };
-    expect(read(drop(world([bearer, bob], bpReads), a('grit'), b('nerve'), 0))?.reader).toEqual({ kind: 'readBy', stat: 'trust' });
-    // Bob bears it too but holds no Grit, so moving his Nerve reads nothing.
-    expect(drop(world([bearer, { ...bob, statLinks: [link('l2', 'trust', 'stat', null, 1)] }], bpReads), b('nerve'), a('grit'), 0)?.kind).toBe('moved');
-    const overriding = { ...bearer, statLinks: [{ ...link('l1', 'trust', 'stat', null, 2), overrides: { trust: { code: { value: 'return owner.stats.grit;', blueprint: '' } } } }] };
+    const owner = { ...ash, statLinks: [link('l1', 'trust', 'stat', null, 2)] };
+    expect(read(drop(world([owner, bob], bpReads), a('grit'), b('nerve'), 0))?.reader).toEqual({ kind: 'readBy', stat: 'trust' });
+    // Bob has it too but holds no Grit, so moving his Nerve reads nothing.
+    expect(drop(world([owner, { ...bob, statLinks: [link('l2', 'trust', 'stat', null, 1)] }], bpReads), b('nerve'), a('grit'), 0)?.kind).toBe('moved');
+    const overriding = { ...owner, statLinks: [{ ...link('l1', 'trust', 'stat', null, 2), overrides: { trust: { code: { value: 'return owner.stats.grit;', blueprint: '' } } } }] };
     expect(read(drop(world([overriding, bob]), a('grit'), b('nerve'), 0))?.reader).toEqual({ kind: 'readBy', stat: 'trust' });
   });
 
@@ -314,8 +314,8 @@ describe('applyOwnedStatDrop: what reads a stat', () => {
 
   it('reads a Blueprint\'s stats as the world\'s, and never reaches a Blueprint through stats', () => {
     const bpReads = { ...lists, stats: lists.stats.map((s) => (s.id === 'trust' ? { ...s, code: 'return stats.health + 1;' } : s)) };
-    const bearer = { ...ash, statLinks: [link('l1', 'trust', 'stat', null, 2)] };
-    expect(read(drop(world([bearer, bob], bpReads), 'health', b('nerve'), 0))?.reader).toEqual({ kind: 'readBy', stat: 'trust' });
+    const owner = { ...ash, statLinks: [link('l1', 'trust', 'stat', null, 2)] };
+    expect(read(drop(world([owner, bob], bpReads), 'health', b('nerve'), 0))?.reader).toEqual({ kind: 'readBy', stat: 'trust' });
     const healthReads = { ...lists, stats: lists.stats.map((s) => (s.id === 'health' ? { ...s, code: 'return stats.trust;' } : s)) };
     expect(drop(world([ash], healthReads), 'health', a('grit'), 0)?.kind).toBe('moved');
   });

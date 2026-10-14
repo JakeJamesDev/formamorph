@@ -3,7 +3,7 @@
 import type { Entity, Trait, TraitGroup, TraitRequirement } from '@/types';
 import { randomUUID } from './uuid';
 import { newTrait } from './blankWorld';
-import { WORLD_OWNER, type GateOwner } from './traitGates';
+import { PLAYER_OWNER, type GateOwner } from './traitGates';
 import { mapConditions } from './requirementRows';
 import { hasImageRules, withImageRules } from './entityImages';
 import { effectivePlacement, offeredWorldTraits, ownsTraits, placeableGroupIds } from './traitTree';
@@ -116,7 +116,7 @@ export function traitOwners(
     ({ id: e.id, name: e.name, traits: traitsOf(e), groups: groupsOf(e), parentGroupId });
   const offered = keepBlueprints ? { traits: world.traits, groups: world.traitGroups } : offeredWorldTraits(world.traits, world.traitGroups);
   return [
-    { id: WORLD_OWNER, name: '', ...offered },
+    { id: PLAYER_OWNER, name: '', ...offered },
     ...world.entities.filter(ownsTraits).map((e) => owner(e, effectivePlacement(e, placeable)?.groupId ?? null)),
     ...library.filter(ownsTraits).map((e) => owner(e, null)),
   ];

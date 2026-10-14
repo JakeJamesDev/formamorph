@@ -148,7 +148,7 @@ export function labelBuiltins(text: string): string {
 
 const CHARACTER_RE = new RegExp(CHARACTER_NAME.source, 'g');
 
-/** Write every Character Name as the Player Name, for text the player bears. */
+/** Write every Character Name as the Player Name, for text the player has. */
 export const characterAsPlayer = (text: string): string => text.replace(CHARACTER_RE, PLAYER_NAME.token);
 
 const PLAYER_NAME_RE = new RegExp(PLAYER_NAME.source, 'g');

@@ -214,7 +214,7 @@ describe('a group link', () => {
     expect(tree.linkOf.get('love')?.id).toBe('l1');
   });
 
-  it('overrides each stat on its own, and each bearer keeps its own', () => {
+  it('overrides each stat on its own, and each owner keeps its own', () => {
     const a = editStatLink(groupWorld, linked, 'l1', 'love', { ...love, value: 90 });
     const b = addStatLink(groupWorld, { id: 'odette', name: 'Odette' }, 'bp-social', 'l2')!;
     expect(Object.keys(a.statLinks![0].overrides!)).toEqual(['love']);

@@ -169,7 +169,7 @@ describe('the refused-drop note', () => {
     expect(noteFor({ reason: 'duplicate', name: 'Trust', owner: 'Odette' })).toBe('Odette already has Trust.Dismiss');
     expect(noteFor({ reason: 'held', owner: 'Ash', held: { kind: 'inside', name: 'Social', group: 'Fear' } }))
       .toBe('Ash already links Social, which Fear holds.Dismiss');
-    expect(noteFor({ reason: 'blueprint-linked', name: 'Trust', bearers: ['Bram', 'Odette'] }))
+    expect(noteFor({ reason: 'blueprint-linked', name: 'Trust', owners: ['Bram', 'Odette'] }))
       .toBe('Trust stays in Blueprints, because Bram and Odette link to it or to something in it. Remove those links first.Dismiss');
   });
 });

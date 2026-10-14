@@ -582,10 +582,10 @@ describe('the Mascot below', () => {
     Object.defineProperty(base, 'naturalHeight', { configurable: true, value: 1184 });
     fireEvent.load(base);
     const frame = helpWindow().style;
-    const holder = piece.parentElement!.style;
-    expect(px(holder.top)).toBe(px(frame.top) + px(frame.height));
-    expect(px(holder.top) + px(holder.height)).toBe(window.innerHeight - MARGIN);
-    expect(px(holder.left) + px(piece.style.width) / 2).toBeCloseTo(px(frame.left) + px(frame.width) / 2);
+    const box = piece.parentElement!.style;
+    expect(px(box.top)).toBe(px(frame.top) + px(frame.height));
+    expect(px(box.top) + px(box.height)).toBe(window.innerHeight - MARGIN);
+    expect(px(box.left) + px(piece.style.width) / 2).toBeCloseTo(px(frame.left) + px(frame.width) / 2);
   });
 });
 

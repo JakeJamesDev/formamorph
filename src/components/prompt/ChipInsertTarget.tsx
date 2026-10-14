@@ -112,19 +112,19 @@ export const CHIP_PALETTE_ATTR = 'data-chip-palette';
 /** Wraps a panel so every chip field inside it shares one insert target. */
 export function ChipInsertTargetProvider({ children }: { children: ReactNode }) {
   const [target, setTarget] = useState<{ key: symbol; field: ClaimedField } | null>(null);
-  const holder = useRef<symbol | null>(null);
-  const holderRoot = useRef<HTMLElement | null>(null);
+  const claimedKey = useRef<symbol | null>(null);
+  const claimedRoot = useRef<HTMLElement | null>(null);
 
   const claim = useCallback((key: symbol, field: ClaimedField, root: HTMLElement | null) => {
-    holder.current = key;
-    holderRoot.current = root;
+    claimedKey.current = key;
+    claimedRoot.current = root;
     setTarget({ key, field });
   }, []);
 
   const release = useCallback((key: symbol) => {
-    if (holder.current !== key) return;
-    holder.current = null;
-    holderRoot.current = null;
+    if (claimedKey.current !== key) return;
+    claimedKey.current = null;
+    claimedRoot.current = null;
     setTarget(null);
   }, []);
 
@@ -137,17 +137,17 @@ export function ChipInsertTargetProvider({ children }: { children: ReactNode }) 
   useEffect(() => {
     let palettePress = false;
     const settle = () => {
-      if (!holder.current || palettePress) return;
-      if (holderRoot.current?.contains(document.activeElement)) return;
-      holder.current = null;
-      holderRoot.current = null;
+      if (!claimedKey.current || palettePress) return;
+      if (claimedRoot.current?.contains(document.activeElement)) return;
+      claimedKey.current = null;
+      claimedRoot.current = null;
       setTarget(null);
     };
     // Settled on the next tick rather than read from `relatedTarget`: a chip editor hands focus around
     // inside itself while restoring its selection, and each of those blurs reports going nowhere. Asking
     // where focus actually landed, once it has landed, tells a real departure from that shuffle — and
     // covers focus falling to nothing at all, which reports no incoming element either way.
-    const onFocusOut = () => { if (holder.current) setTimeout(settle, 0); };
+    const onFocusOut = () => { if (claimedKey.current) setTimeout(settle, 0); };
     const onPointerDown = (event: PointerEvent) => {
       palettePress = event.target instanceof Element && event.target.closest(`[${CHIP_PALETTE_ATTR}]`) !== null;
     };

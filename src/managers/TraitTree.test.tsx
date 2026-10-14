@@ -4,19 +4,19 @@ import { TraitDropRefusalNotice } from './TraitTree';
 
 describe('TraitDropRefusalNotice', () => {
   it('names the entity that already has a trait a refused link points at', () => {
-    render(<TraitDropRefusalNotice refusal={{ reason: 'duplicate', name: 'Paladin', bearer: 'Albus' }} placeholders={[]} onDismiss={() => {}} />);
+    render(<TraitDropRefusalNotice refusal={{ reason: 'duplicate', name: 'Paladin', owner: 'Albus' }} placeholders={[]} onDismiss={() => {}} />);
     expect(screen.getByRole('status')).toHaveTextContent('Albus already has Paladin.');
   });
 
   it('names the one entity that keeps a linked Blueprint in Blueprints', () => {
-    render(<TraitDropRefusalNotice refusal={{ reason: 'blueprint-linked', name: 'Paladin', bearers: ['Albus'] }} placeholders={[]} onDismiss={() => {}} />);
+    render(<TraitDropRefusalNotice refusal={{ reason: 'blueprint-linked', name: 'Paladin', owners: ['Albus'] }} placeholders={[]} onDismiss={() => {}} />);
     expect(screen.getByRole('status')).toHaveTextContent(
       'Paladin stays in Blueprints, because Albus links to it or to something in it. Remove those links first.',
     );
   });
 
   it('lists every entity that keeps a linked Blueprint in Blueprints', () => {
-    render(<TraitDropRefusalNotice refusal={{ reason: 'blueprint-linked', name: 'Classes', bearers: ['Albus', 'Bo', 'Cy'] }} placeholders={[]} onDismiss={() => {}} />);
+    render(<TraitDropRefusalNotice refusal={{ reason: 'blueprint-linked', name: 'Classes', owners: ['Albus', 'Bo', 'Cy'] }} placeholders={[]} onDismiss={() => {}} />);
     expect(screen.getByRole('status')).toHaveTextContent(
       'Classes stays in Blueprints, because Albus, Bo and Cy link to it or to something in it. Remove those links first.',
     );

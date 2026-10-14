@@ -56,7 +56,7 @@ export interface VariableGroup {
 /** One name in a name list, by its code name. */
 export interface VariableNameRow {
   name: string;
-  /** Folder, group, holder or owner names, outermost first. */
+  /** Folder, group, parent or owner names, outermost first. */
   trail: readonly string[];
   children: readonly VariableNode[];
   /** Set on a name that is itself a value: picking it inserts this instead of opening `children`. */
@@ -190,17 +190,17 @@ function keyedLastWins<T extends { name: string }>(items: readonly T[]): T[] {
   return [...byName.values()];
 }
 
-/** Every placeholder under `nodes`, depth first, its holders as its trail. A child named like a member of its
- *  holder is skipped: the member is what that path reads. */
+/** Every placeholder under `nodes`, depth first, its parents as its trail. A child named like a member of its
+ *  parent is skipped: the member is what that path reads. */
 function placeholderRows(nodes: readonly PlaceholderPathNode[], path: Path, trail: readonly string[]): VariableNameRow[] {
   const rows: VariableNameRow[] = [];
-  const visit = (list: readonly PlaceholderPathNode[], at: Path, holders: readonly string[], seen: ReadonlySet<PlaceholderPathNode>) => {
+  const visit = (list: readonly PlaceholderPathNode[], at: Path, parents: readonly string[], seen: ReadonlySet<PlaceholderPathNode>) => {
     for (const node of keyedLastWins(list)) {
       if (!node.placeholder || seen.has(node)) continue;
       const nodePath = keyed(at, node.name);
-      rows.push({ name: node.name, trail: holders, children: placeholderFields(nodePath, placeholderKindNoun(node.placeholder)) });
+      rows.push({ name: node.name, trail: parents, children: placeholderFields(nodePath, placeholderKindNoun(node.placeholder)) });
       const children = node.children.filter((child) => !isPlaceholderEntryMember(child.name));
-      visit(children, nodePath, [...holders, node.name], new Set([...seen, node]));
+      visit(children, nodePath, [...parents, node.name], new Set([...seen, node]));
     }
   };
   visit(nodes, path, trail, new Set());

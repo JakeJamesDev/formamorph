@@ -1,6 +1,6 @@
 import { randomUUID } from "@/lib/uuid";
 import type {
-  Base64Data, BlueprintOverride, Entity, GalleryImage, Opening, Placeholder, PlaceholderPin, LibraryDetails, RequirementBearer, Stat, StatChange, StatComparison, StatGroup,
+  Base64Data, BlueprintOverride, Entity, GalleryImage, Opening, Placeholder, PlaceholderPin, LibraryDetails, RequirementOwner, Stat, StatChange, StatComparison, StatGroup,
   StatLink, Trait, TraitGroup,
   TraitLink, TraitLinkOverrides, TraitRequirement, TraitRequirementRow, TraitStatToggle,
 } from '@/types';
@@ -186,7 +186,7 @@ const hasIdAndName = (v: unknown): v is Record<string, unknown> & { id: string; 
 
 const nameOf = (raw: Record<string, unknown>) => (typeof raw.name === 'string' && raw.name ? { name: raw.name } : {});
 
-function cardOwner(raw: unknown): { owner?: RequirementBearer } {
+function cardOwner(raw: unknown): { owner?: RequirementOwner } {
   if (!isRecord(raw)) return {};
   if (raw.kind === 'you') return { owner: { kind: 'you' } };
   return raw.kind === 'entity' && typeof raw.id === 'string' ? { owner: { kind: 'entity', id: raw.id, ...nameOf(raw) } } : {};

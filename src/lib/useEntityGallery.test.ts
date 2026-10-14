@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useEntityGallery } from './useEntityGallery';
-import { WORLD_OWNER, type GateInput } from './traitGates';
+import { PLAYER_OWNER, type GateInput } from './traitGates';
 import type { GalleryImage, StatRequirement } from '@/types';
 
 type IndexMap = Record<string, number>;
@@ -20,7 +20,7 @@ vi.mock('@/contexts/GameplayContext', () => ({
 // The turn on screen: Sedge's Health is the one stat the rules below read.
 vi.mock('./useViewedGateInput', () => ({
   useViewedGateInput: (): GateInput => ({
-    owners: [{ id: WORLD_OWNER, name: '', traits: [], groups: [] }],
+    owners: [{ id: PLAYER_OWNER, name: '', traits: [], groups: [] }],
     active: {},
     stats: { sedge: { health: { name: 'Health', value: state.health, min: 0, max: 100 } } },
     entities: [{ id: 'sedge', name: 'Sedge' }],

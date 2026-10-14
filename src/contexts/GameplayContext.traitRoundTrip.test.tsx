@@ -251,7 +251,7 @@ describe('owned trait state across a save/load round trip', () => {
     expect(live().cascadeOffTraitIds).toEqual({ world: ['t'], wren: ['calm'] });
   });
 
-  it("keeps a played persona's linked stat records under its own key, and drops a gone bearer's", async () => {
+  it("keeps a played persona's linked stat records under its own key, and drops a gone owner's", async () => {
     const live = mount();
     await act(async () => {
       live().setOwnedTraits({ ...owned, wren: { chosen: ['paladin'] } });

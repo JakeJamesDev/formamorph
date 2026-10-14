@@ -20,7 +20,7 @@ import type { StatOwner, TraitOwner } from './statCodeResolver';
 import { overridesBox, statCodeOwners, type CodeOwner, type CodeOwners } from './statCodeTargets';
 import type { StatCodeTiming } from './statCodeTiming';
 import { entityTraitNames, worldTraitPlaces } from './statCodeTraits';
-import { conditionTexts, WORLD_OWNER } from './traitGates';
+import { conditionTexts, PLAYER_OWNER } from './traitGates';
 
 /** Where an item no single entity owns lives: the world, or under Blueprints. */
 export type CodeItemScope = 'world' | 'blueprint';
@@ -76,10 +76,6 @@ export interface CodePlaceholderOwner {
   entityId: string;
   placeholder: Placeholder;
 }
-
-// Old names, kept while call sites move to the owner names.
-export type CodeHoldersRecord = CodeOwnersRecord;
-export type CodePlaceholderHolder = CodePlaceholderOwner;
 
 export interface CodeEntityRecord {
   entity: Entity;
@@ -209,7 +205,7 @@ function cardIndex(owners: CodeOwners, world: CodeCardWorld) {
     changes: changesOf(trait),
     owners: gate.owners
       .filter((owner) => owner.traits.some((held) => held.id === trait.id))
-      .map((owner) => (owner.id === WORLD_OWNER ? YOU : nameOf(owner.id))),
+      .map((owner) => (owner.id === PLAYER_OWNER ? YOU : nameOf(owner.id))),
   });
   const placeholderNames = (ownerId: string) => map.owners.get(ownerId)?.children.map((child) => child.name) ?? [];
 

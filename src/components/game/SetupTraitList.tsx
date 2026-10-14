@@ -7,7 +7,7 @@ import { Hint } from '@/components/ui/typography';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { choiceRowClass } from './setupChoiceRow';
 import { cn } from '@/lib/utils';
-import { WORLD_OWNER, gateOf, type GateStates, type GroupPickState } from '@/lib/traitGates';
+import { PLAYER_OWNER, gateOf, type GateStates, type GroupPickState } from '@/lib/traitGates';
 import { gateLine } from '@/lib/traitGateLine';
 import { isAlwaysOn, isDormant, isShown } from '@/lib/traitEffects';
 import type { Stat, StatChange, Trait, TraitGroup } from '@/types';
@@ -43,7 +43,7 @@ export function TraitCascadeNotice({ cascade, onDismiss }: { cascade: TraitCasca
  */
 export function SetupTraitList({
   name, groups, traits, picks, stats, selectedTraits, resolveText, resolveTraitText, onTraitSelect,
-  ownerId = WORLD_OWNER, gates, cascade, onDismissCascade, heading,
+  ownerId = PLAYER_OWNER, gates, cascade, onDismissCascade, heading,
 }: {
   name: string;
   /** Replaces the eyebrow and the name heading. */
@@ -52,18 +52,18 @@ export function SetupTraitList({
   groups: TraitGroup[];
   /** This category's traits, in authored order. */
   traits: Trait[];
-  /** The category's own group's pick state for this bearer; absent for traits outside any group. */
+  /** The category's own group's pick state for this owner; absent for traits outside any group. */
   picks?: GroupPickState | null;
   stats: Stat[];
-  /** The bearer's picks. */
+  /** The owner's picks. */
   selectedTraits: readonly string[];
   resolveText: (text: string) => string;
   resolveTraitText: (trait: Trait, text: string) => string;
-  /** The player's pick of one of this bearer's traits. */
+  /** The player's pick of one of this owner's traits. */
   onTraitSelect: (traitId: string, ownerId: string) => void;
-  /** The bearer whose traits these are; the world's by default. */
+  /** The owner whose traits these are; the world's by default. */
   ownerId?: string;
-  /** Each bearer's gates; absent shows every trait open. */
+  /** Each owner's gates; absent shows every trait open. */
   gates?: GateStates;
   cascade?: TraitCascade | null;
   onDismissCascade?: () => void;

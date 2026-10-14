@@ -10,9 +10,6 @@ import { conditionsOf, rowsHold } from './requirementRows';
 /** The player's owner id: the key of the world's root traits, shared by None and a library persona. */
 export const PLAYER_OWNER = 'world';
 
-/** Alias kept while call sites move to {@link PLAYER_OWNER}. */
-export const WORLD_OWNER = PLAYER_OWNER;
-
 /** The breadcrumb of a world trait or group with no group above it. */
 export const WORLD_BREADCRUMB: readonly string[] = ['World'];
 
@@ -105,7 +102,7 @@ export interface GateTraitRef {
  *  Persona entity under None and a library persona. */
 export function playerOwnerIds(persona: PersonaRef, entities: readonly GateEntity[] = []): string[] {
   const custom = persona.source === 'world' ? [] : entities.filter((e) => e.customPersona).map((e) => e.id);
-  return persona.source === 'none' ? [WORLD_OWNER, ...custom] : [WORLD_OWNER, persona.entityId, ...custom];
+  return persona.source === 'none' ? [PLAYER_OWNER, ...custom] : [PLAYER_OWNER, persona.entityId, ...custom];
 }
 
 /** The first owner whose tree holds `traitId`: the world's copy of an original, else the entity that owns it. */
@@ -120,15 +117,9 @@ export const shownRefs = (owners: readonly GateOwner[], refs: readonly GateTrait
 export const requirementOwnerOf = (req: TraitRequirement): RequirementOwner | undefined =>
   (req.kind === 'playingAs' ? undefined : req.owner);
 
-/** Alias kept while call sites move to {@link requirementOwnerOf}. */
-export const bearerOf = requirementOwnerOf;
-
 /** One key per owner choice, so two requirements compare by it. */
 export const requirementOwnerKey = (owner?: RequirementOwner): string =>
   (owner === undefined ? 'same' : owner.kind === 'you' ? 'you' : `entity:${owner.id}`);
-
-/** Alias kept while call sites move to {@link requirementOwnerKey}. */
-export const bearerKey = requirementOwnerKey;
 
 /** Whether two requirements add the same gate: the same target under the same owner, both plain or both Not,
  *  and for a stat the same comparison. */
@@ -181,8 +172,8 @@ function index(input: GateInput) {
       const ids = [
         ...owner.traits.filter((t) => (t.groupId ?? null) === groupId).map((t) => t.id),
         ...owner.groups.filter((g) => g.parentId === groupId).flatMap((g) => collect(g.id)),
-        ...(owner.id === WORLD_OWNER
-          ? input.owners.filter((o) => o.id !== WORLD_OWNER && o.parentGroupId === groupId).flatMap((o) => o.traits.map((t) => t.id))
+        ...(owner.id === PLAYER_OWNER
+          ? input.owners.filter((o) => o.id !== PLAYER_OWNER && o.parentGroupId === groupId).flatMap((o) => o.traits.map((t) => t.id))
           : []),
       ];
       below.set(groupId, ids);
@@ -928,9 +919,6 @@ export interface RequirementOwnerOption {
   name: string;
 }
 
-/** Alias kept while call sites move to {@link RequirementOwnerOption}. */
-export type RequirementBearerOption = RequirementOwnerOption;
-
 /** One row of the requirement picker: what it adds, how the chip reads, and where the target lives. */
 export interface RequirementOption {
   requirement: TraitRequirement;
@@ -950,9 +938,6 @@ export interface RequirementOptions {
 /** `requirement` scoped to `owner`; the same owner when `owner` is absent. */
 export const withRequirementOwner = (requirement: TraitRequirement, owner?: RequirementOwner): TraitRequirement =>
   (requirement.kind === 'playingAs' || !owner ? requirement : { ...requirement, owner });
-
-/** Alias kept while call sites move to {@link withRequirementOwner}. */
-export const withBearer = withRequirementOwner;
 
 /**
  * Every requirement an author can give `traitId`, each target once, in tree order per owner. The trait
@@ -977,13 +962,13 @@ export function requirementOptions(input: Omit<GateInput, 'active' | 'persona'>,
       path.unshift(group.name);
       id = group.parentId;
     }
-    if (owner.id !== WORLD_OWNER) path.unshift(owner.name);
+    if (owner.id !== PLAYER_OWNER) path.unshift(owner.name);
     return path.length > 0 ? path : [...WORLD_BREADCRUMB];
   };
   const ownersOf = (id: string, kind: 'trait' | 'group'): RequirementOwnerOption[] => [
     { owner: { kind: 'you' }, name: 'You' },
     ...input.owners
-      .filter((o) => o.id !== WORLD_OWNER && (kind === 'trait' ? o.traits : o.groups).some((item) => item.id === id))
+      .filter((o) => o.id !== PLAYER_OWNER && (kind === 'trait' ? o.traits : o.groups).some((item) => item.id === id))
       .map((o): RequirementOwnerOption => ({ owner: { kind: 'entity', id: o.id, name: o.name }, name: o.name })),
   ];
   const option = (requirement: TraitRequirement, breadcrumb: string[], owners: RequirementOwnerOption[] = []): RequirementOption =>
@@ -1011,8 +996,8 @@ export const worldGateInput = (
   persona: PersonaRef,
   active: readonly string[] = [],
 ): GateInput => ({
-  owners: [{ id: WORLD_OWNER, name: '', traits: world.traits, groups: world.groups }],
-  active: { [WORLD_OWNER]: active },
+  owners: [{ id: PLAYER_OWNER, name: '', traits: world.traits, groups: world.groups }],
+  active: { [PLAYER_OWNER]: active },
   entities: world.entities,
   persona,
   originals: { traits: world.traits, groups: world.groups },

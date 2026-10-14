@@ -77,7 +77,7 @@ describe('the top level', () => {
     expect(ownedAt(map, 'e-molly', ['Hair'])?.placeholder?.id).toBe('scoped');
   });
 
-  it('reaches a held row only through its holder', () => {
+  it('reaches a held row only through its parent', () => {
     const list = [ph('hair', 'Hair', [chip('shade')]), ph('shade', 'Shade', ['ash'], { ownerId: 'hair' })];
     const map = placeholderPathMap({ list });
     expect(placeholderPathAt(map, ['Shade'])).toBeNull();
@@ -102,7 +102,7 @@ describe('the tree', () => {
     expect(molly?.children.map((child) => child.name)).toEqual(['Eyes', 'Hair']);
   });
 
-  it('carries a holder placeholder as an entry that also holds its owned children', () => {
+  it('carries a parent placeholder as an entry that also holds its owned children', () => {
     const list = [ph('hair', 'Hair', [chip('shade')]), ph('shade', 'Shade', ['ash'], { ownerId: 'hair' })];
     const map = placeholderPathMap({ list });
     const hair = placeholderPathAt(map, ['Hair']);

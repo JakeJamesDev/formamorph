@@ -11,7 +11,7 @@ const stat = (id: string, name: string, extra: Partial<Stat> = {}): Stat =>
 const trait = (id: string, name: string, extra: Partial<Trait> = {}): Trait => ({ id, name, statChanges: [], ...extra });
 
 // Ann and Tom can be played: Ann owns a Brave of her own, Tom links the world's. Bram owns a third Brave.
-// Mara and Bram each own a Copy of Look and bear Howl. Bram's Link of Echo overrides its code.
+// Mara and Bram each own a Copy of Look and have Howl. Bram's Link of Echo overrides its code.
 const brave = trait('brave', 'Brave');
 const mood: Placeholder = { id: 'mood', name: 'Mood', values: [{ id: 'calm', text: 'calm' }] };
 const look: Placeholder = { id: 'look', name: 'Look', values: [{ id: 'grim', text: 'grim' }] };

@@ -14,7 +14,7 @@ const worlds = Object.entries(import.meta.glob<string>('@/defaultworlds/*.json',
   .map(([file, raw]): [string, World] => [file.split('/').at(-1)!, migrateWorld(JSON.parse(raw))]);
 const NONE: PersonaRef = { source: 'none' };
 
-/** The world as Enter World leaves it under no persona: every bearer on its default picks, stats seeded. */
+/** The world as Enter World leaves it under no persona: every owner on its default picks, stats seeded. */
 function started(world: World): { state: TraitRuntimeState; tw: TraitWorld } {
   const traitGroups = world.traitGroups ?? [];
   const defaults = entryDefaults({ traits: world.traits, traitGroups, entities: world.entities, library: [], stats: world.stats, statGroups: world.statGroups }, NONE);

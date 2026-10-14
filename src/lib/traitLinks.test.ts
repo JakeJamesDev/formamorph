@@ -34,14 +34,14 @@ describe('addLink', () => {
     ],
   };
 
-  it('links an original at the end of the bearer\'s top level, after its owned items and links', () => {
-    const bearer: Entity = {
+  it('links an original at the end of the owner\'s top level, after its owned items and links', () => {
+    const owner: Entity = {
       id: 'ash', name: 'Ash',
       traits: [trait('oath', { groupId: null, order: 0 }), trait('vow', { groupId: 'g-own' })],
       traitGroups: [group('g-own', null, { order: 1 })],
       traitLinks: [link('l1', 'wizard', 'trait', { order: 2 })],
     };
-    expect(addLink(blueprinted, bearer, 'classes', 'new')?.traitLinks).toEqual([
+    expect(addLink(blueprinted, owner, 'classes', 'new')?.traitLinks).toEqual([
       link('l1', 'wizard', 'trait', { order: 2 }),
       { id: 'new', originalId: 'classes', kind: 'group', originalName: 'Classes', groupId: null, order: 3 },
     ]);
@@ -239,8 +239,8 @@ describe('blueprint pins on links', () => {
   });
 
   it("overrides the pin list against the original's, and clears it back to live", () => {
-    const bearer: Entity = { id: 'mira', name: 'Mira', traitLinks: [link('l1', 'paladin', 'trait')] };
-    const set = setLinkField(pinned, bearer, 'l1', 'paladin', 'placeholderPins', [plate]);
+    const owner: Entity = { id: 'mira', name: 'Mira', traitLinks: [link('l1', 'paladin', 'trait')] };
+    const set = setLinkField(pinned, owner, 'l1', 'paladin', 'placeholderPins', [plate]);
     expect(set.traitLinks![0].overrides).toEqual({ paladin: { placeholderPins: { value: [plate], blueprint: [tabard] } } });
     expect(linkedTraits(pinned, set.traitLinks![0], 'paladin')[0].placeholderPins).toEqual([plate]);
     expect(resetLinkField(set, 'l1', 'paladin', 'placeholderPins').traitLinks![0]).toEqual(link('l1', 'paladin', 'trait'));

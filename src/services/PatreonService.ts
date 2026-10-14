@@ -61,7 +61,7 @@ export const PatreonService = {
 
   getStatus: () => request<PatreonStatus>('', 'GET', 'Could not read your Patreon status.'),
 
-  /** Finish a link. The token comes from the callback's redirect, and the bearer must own the pending link. */
+  /** Finish a link. The token comes from the callback's redirect, and the signed-in user must own the pending link. */
   confirm: (token: string) =>
     request<PatreonStatus>('/confirm', 'POST', 'Could not finish the link. Try again in a moment.', { token }),
 

@@ -18,7 +18,7 @@ function libraryTraitStore(
   const edit = (change: (e: Entity) => Entity) => setEntity((prev) => (prev ? change(prev) : prev));
   const traits = entity.traits ?? [];
   const traitGroups = entity.traitGroups ?? [];
-  const entityRoot: EntityRoot = { bearer: world ? linksBoundTo(entity, world) : entity, world };
+  const entityRoot: EntityRoot = { owner: world ? linksBoundTo(entity, world) : entity, world };
   const store: TraitStore = {
     traits,
     traitGroups,

@@ -78,7 +78,7 @@ describe('the Requires field', () => {
     expect(within(list).getByRole('option', { name: /^playing as Sir Aldric/ })).toBeInTheDocument();
     expect(within(list).queryByRole('option', { name: /Odd Wick/ })).toBeNull();
 
-    // Only You can hold a world trait, so the plain requirement is added with no bearer page.
+    // Only You can hold a world trait, so the plain requirement is added with no owner page.
     fireEvent.click(paladin);
     expect(screen.queryByRole('option', { name: /^Same Owner/ })).toBeNull();
     expect(traitRequires(ctx, 't-loose')).toEqual([{ all: [{ kind: 'trait', id: 't-paladin' }] }]);
@@ -104,7 +104,7 @@ describe('the Requires field', () => {
     expect(within(requiresField()).getByText('or')).toBeInTheDocument();
   });
 
-  it('asks which bearer when an entity also bears the target, and adds for the one picked', async () => {
+  it('asks which owner when an entity also has the target, and adds for the one picked', async () => {
     const world = benchEditorWorld({
       ...WORLD,
       entities: [

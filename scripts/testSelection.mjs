@@ -35,6 +35,7 @@ export const ALWAYS_RUN = {
   'src/lib/elementIcons.test.ts': 'scans every src file for direct lucide-react imports',
   'src/lib/formaquestion/helpSettings.test.ts': 'reads helpSession.ts, which it does not import',
   'src/lib/helpTopics.test.ts': 'checks that each help topic page exists in docs/',
+  'src/lib/ownerTermGuard.test.ts': 'scans the docs, every src file and the e2e specs for bearer and holder',
   'src/lib/personaReaders.test.ts': 'scans src/components/game sources',
   'src/lib/scrollGuard.test.ts': 'scans every src file for native overflow scrollers',
   'src/lib/supporterTokens.test.ts': 'reads src/index.css',

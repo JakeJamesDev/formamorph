@@ -43,7 +43,7 @@ describe('a trait rename in entity trait maps', () => {
       .toBe(`traits['Bold Heart'].enabled + entities.Rook.traits['Bold Heart'].enabled + entities.Ash.traits.Brave.enabled`);
   });
 
-  it('keeps today’s rewrite of traits alone without holders', () => {
+  it('keeps today’s rewrite of traits alone without parent placeholders', () => {
     const plan = planCodeRename({
       root: 'traits', oldName: 'Scarred', newName: 'Marked', stats: [stat('a', 'traits.Scarred.enabled + persona.traits.Scarred.enabled')], otherNames: [],
     });

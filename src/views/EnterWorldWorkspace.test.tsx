@@ -1018,8 +1018,8 @@ describe('EnterWorldWorkspace cast pages', () => {
         traitGroups={[...cast.traitGroups]}
         traitEntities={cast.entities}
         resolveEntityText={(_entity, text) => text}
-        // The bearer the workspace hands over is the Character Name in a trait's own text.
-        resolveTraitText={(_trait, text, bearer) => text.replace('{{char}}', bearer?.name ?? 'you')}
+        // The owner the workspace hands over is the Character Name in a trait's own text.
+        resolveTraitText={(_trait, text, owner) => text.replace('{{char}}', owner?.name ?? 'you')}
         selectedTraits={{ ...draft.ownedTraitIds, world: draft.traitIds }}
         onTraitSelect={(id, ownerId) => {
           const result = switchTrait(input, ownerId, id, draft.cascadeOffTraitIds);
@@ -1096,7 +1096,7 @@ describe('EnterWorldWorkspace cast pages', () => {
     expect(within(screen.getByRole('main')).getByRole('heading', { name: /^Bob/ })).toHaveTextContent('You');
   });
 
-  it("disables Begin while an entity bearer's group is short, and enables it once that bearer picks enough", async () => {
+  it("disables Begin while an entity owner's group is short, and enables it once that owner picks enough", async () => {
     const bonded = {
       ...ash, traitGroups: [{ id: 'bond', name: 'Bond', parentId: null, minPicks: 1 }],
       traits: [...ash.traits!, owned('wild', { groupId: 'bond' })],
@@ -1154,7 +1154,7 @@ describe('EnterWorldWorkspace cast pages', () => {
     };
     const NONE: PersonaRef = { source: 'none' };
 
-    it("shows a bearer's linked group as its own page under the bearer, defaults picked, and never at the top level", async () => {
+    it("shows an owner's linked group as its own page under the owner, defaults picked, and never at the top level", async () => {
       const user = userEvent.setup();
       render(<CastHarness cast={linked} persona={NONE} />);
       const names = within(nav()).getAllByRole('button').map((b) => b.textContent ?? '');
@@ -1172,7 +1172,7 @@ describe('EnterWorldWorkspace cast pages', () => {
       expect(within(screen.getByRole('main')).getByText('Bob keeps an oath.')).toBeInTheDocument();
     });
 
-    it("changes one bearer's pick without touching another bearer's row of the same original", async () => {
+    it("changes one owner's pick without touching another owner's row of the same original", async () => {
       const user = userEvent.setup();
       render(<CastHarness cast={linked} persona={NONE} />);
       await user.click(within(nav()).getByRole('button', { name: /^Classes/ }));

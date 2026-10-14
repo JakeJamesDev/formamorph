@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { APP_VERSION, migrateWorld, migrateSave, isSaveEnvelope, migrateCarriedPlaceholders } from './version';
 import { placeholderWeight } from './placeholders';
-import { WORLD_OWNER, gateOf, gateStates, worldGateInput } from './traitGates';
+import { PLAYER_OWNER, gateOf, gateStates, worldGateInput } from './traitGates';
 import { headingReachesAi } from './groupTree';
 import { entityIdsAt } from './entityPresence';
 import { buildEntityContext, navigableDestinationEntries } from './locationContext';
@@ -1003,7 +1003,7 @@ describe('migrateWorld — requirement bearer key to owner', () => {
       { id: 'smite', name: 'Smite', statChanges: [], requires: [{ all: [notOnMira] }] },
     ], entities: [{ id: 'mira', name: 'Mira' }] });
     const input = worldGateInput({ traits: world.traits, groups: [], entities: world.entities }, { source: 'none' }, ['brave']);
-    expect(gateOf(gateStates(input), WORLD_OWNER, 'smite')?.unlocked).toBe(true);
+    expect(gateOf(gateStates(input), PLAYER_OWNER, 'smite')?.unlocked).toBe(true);
   });
 });
 

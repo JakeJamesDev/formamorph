@@ -133,10 +133,10 @@ describe("drag judgment on a nested map", () => {
       ...nested,
       { id: "lost", name: "Lost", parentId: "gone", canvasPosition: { x: 1400, y: 0 } },
     ];
-    // Resting clear of every box: it never had a holder, so this is a plain move.
+    // Resting clear of every box: it never had a parent, so this is a plain move.
     expect(dropIntent(orphaned, "lost", { x: 2000, y: 2000 }))
       .toEqual({ kind: "move", id: "lost", parentId: null, position: { x: 2000, y: 2000 } });
-    // Resting inside Town: a different holder, so it is handed over.
+    // Resting inside Town: a different parent, so it is handed over.
     expect(dropIntent(orphaned, "lost", { x: 40, y: 60 }))
       .toMatchObject({ kind: "reparent", id: "lost", parentId: "town" });
   });

@@ -23,8 +23,8 @@ export function personaRolePatch(role: PersonaRole): Partial<Entity> {
 
 /** The other entity that holds the mark, which keeps it off `id`. */
 export function customPersonaHeldElsewhere(entities: readonly Entity[], id: string): Entity | undefined {
-  const holder = customPersonaEntity(entities);
-  return holder && holder.id !== id ? holder : undefined;
+  const marked = customPersonaEntity(entities);
+  return marked && marked.id !== id ? marked : undefined;
 }
 
 /** What the confirmations count on the entity: its links, its own traits, its copies, and every placeholder

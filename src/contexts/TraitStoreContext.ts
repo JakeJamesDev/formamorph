@@ -43,7 +43,7 @@ export interface TraitStore {
 /** The entity at a one-entity tree's root, and the world its links read their originals from. */
 export interface EntityRoot {
   /** The entity, its links bound to `world` where they can be. */
-  bearer: Entity;
+  owner: Entity;
   /** The world the editor was opened from, which the links read their originals from; null standalone. */
   world: LinkOriginals & { placeholders: readonly Placeholder[] } | null;
 }
