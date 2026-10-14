@@ -73,6 +73,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Hover cards on `persona` and Blueprint `owner` names now show the item each reached entity holds.** Where those entities hold different items, the card lists only the entities. With one playable entity, a `persona.stats` card shows that entity's own values.
   - **Owners:**
     - **World files now name a requirement's owner under `owner`, and older files with `bearer` still load.** Character cards and library entities read both keys too. Apps from v3.1 and v3.2 misread requirement targets in worlds saved after this change until they update.
+    - **The requirement picker now says Same Owner, and its search field says Search owners.** The `owner` name in stat code now says a Blueprint stat's code runs once for each owner.
   - **Selecting a placed chip now opens Chip Options, a dialog that shows what the AI reads as you pick.** Entities and Persona chips gain **Only With**, **Include** and **Stat Detail** rows, and a filter icon when Only With is on. Those picks show as raw text in older versions.
   - **The AI now updates your stats with fewer wrong-direction and made-up changes.** It answers with a change for every stat, 0 included. An endpoint that can't take that format gets the old reply style, and the AI context viewer notes it.
   - **The World Editor's Content group now lists Entities first and Stats last.** The order is Entities, Locations, Traits, Stats on the side rail and the mobile Sections list.

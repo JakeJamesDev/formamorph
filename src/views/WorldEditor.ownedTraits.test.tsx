@@ -325,7 +325,7 @@ describe('requirements across owners', () => {
     const tamed = within(list).getByRole('option', { name: /^Tamed/ });
     expect(tamed).toHaveTextContent('TamedAsh › Bond');
     fireEvent.click(tamed);
-    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Same BearerWhoever has the trait', 'You', 'Ash']);
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Same OwnerWhoever has the trait', 'You', 'Ash']);
     fireEvent.click(screen.getByRole('option', { name: /^Ash/ }));
     expect(ctx().traits.find((t) => t.id === 't-tamer')?.requires)
       .toEqual([{ all: [{ kind: 'trait', id: 't-tamed', owner: { kind: 'entity', id: 'ash', name: 'Ash' } }] }]);

@@ -42,7 +42,7 @@ export function clockFieldsAt(path: string): readonly SurfaceEntry[] | null {
 /** Every name the sandbox injects into the program, in the order an author meets them. */
 export const SANDBOX_GLOBALS: readonly SurfaceEntry[] = [
   { name: 'self', detail: 'Stat', info: 'The stat this code belongs to. Assign to self.value to set its value.' },
-  { name: 'owner', detail: 'object', info: 'The entity that owns this stat, with the fields of an entities entry. It’s the bearer in a Blueprint stat, and empty in a world stat. Use owner.stats["Two Words"] for a name with a space.' },
+  { name: 'owner', detail: 'object', info: 'The entity that owns this stat, with the fields of an entities entry. A Blueprint stat’s code runs once for each owner. It’s empty in a world stat. Use owner.stats["Two Words"] for a name with a space.' },
   { name: 'stats', detail: 'object', info: 'The world’s stats by name, in every stat’s code. An entity’s own are on owner.stats. Use stats["Two Words"] for a name with a space.' },
   { name: 'clock', detail: shapeOf(CLOCK_MEMBERS), info: 'The story clock', access: 'readOnly' },
   { name: 'placeholders', detail: 'object', info: 'The world’s own placeholders by name. An entity’s or a dictionary’s are on its entry. Use placeholders["Two Words"] for a name with a space.' },

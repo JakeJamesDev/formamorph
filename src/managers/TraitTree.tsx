@@ -20,8 +20,7 @@ import { useEditorMode } from '@/lib/editorMode';
 import { EmptyListHint } from '@/components/EmptyListHint';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { labelPlaceholders } from '@/lib/placementLetters';
-import { PLAYER_BEARER } from '@/lib/bearers';
-import { gateConditions, gateOf, gateStates, type GateState } from '@/lib/traitGates';
+import { gateConditions, gateOf, gateStates, PLAYER_OWNER, type GateState } from '@/lib/traitGates';
 import { gateLine } from '@/lib/traitGateLine';
 import { cn } from '@/lib/utils';
 import type { Placeholder } from '@/types';
@@ -116,12 +115,12 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
     onSelect(res.newId);
   };
 
-  // The gate a row shows. A link row reads its bearer's gate on the original. A one-entity tree's own rows
+  // The gate a row shows. A link row reads its owner's gate on the original. A one-entity tree's own rows
   // have no owner entry, since the editor edits them as the root; their gates are still the entity's.
   const gateOfRow = (node: FlatTraitNode, linkRow: LinkRow | undefined): GateState | undefined => (
     linkRow
       ? gateOf(gates, linkRow.entityId, linkRow.originalId)
-      : gateOf(gates, tree.ownerOf.get(node.id) ?? entityRoot?.bearer.id ?? PLAYER_BEARER, node.id)
+      : gateOf(gates, tree.ownerOf.get(node.id) ?? entityRoot?.bearer.id ?? PLAYER_OWNER, node.id)
   );
 
   const linkRowSpec = (node: FlatTraitNode, linkRow: LinkRow, select: (id: string) => void): TreeRowSpec => {
@@ -145,7 +144,7 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
         } : {}),
       };
     }
-    // A link row reads its bearer's gate on the original.
+    // A link row reads its owner's gate on the original.
     const { unresolved, meta, metaTitle } = isGroup ? {} : gateMeta(gateOfRow(node, linkRow), placeholders);
     const overrides = linkRow.link.overrides?.[linkRow.originalId];
     const modified = overrides && Object.keys(overrides).length ? 'Modified for this link' : undefined;

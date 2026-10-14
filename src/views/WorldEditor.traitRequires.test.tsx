@@ -80,7 +80,7 @@ describe('the Requires field', () => {
 
     // Only You can hold a world trait, so the plain requirement is added with no bearer page.
     fireEvent.click(paladin);
-    expect(screen.queryByRole('option', { name: /^Same Bearer/ })).toBeNull();
+    expect(screen.queryByRole('option', { name: /^Same Owner/ })).toBeNull();
     expect(traitRequires(ctx, 't-loose')).toEqual([{ all: [{ kind: 'trait', id: 't-paladin' }] }]);
     expect(within(requiresField()).getByRole('button', { name: 'Paladin' })).toBeInTheDocument();
   });
@@ -121,7 +121,7 @@ describe('the Requires field', () => {
     fireEvent.click(within(await screen.findByRole('listbox')).getByRole('option', { name: /^Tamed/ }));
 
     const page = screen.getAllByRole('option').map((o) => o.textContent);
-    expect(page).toEqual(['Same BearerWhoever has the trait', 'You', 'Ash']);
+    expect(page).toEqual(['Same OwnerWhoever has the trait', 'You', 'Ash']);
     fireEvent.click(screen.getByRole('option', { name: /^Ash/ }));
     expect(traitRequires(ctx, 't-loose')).toEqual([{ all: [{ kind: 'trait', id: 't-tamed', owner: { kind: 'entity', id: 'ash', name: 'Ash' } }] }]);
   });

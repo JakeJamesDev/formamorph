@@ -1,6 +1,6 @@
 import { useEffect, useState, type ComponentType } from 'react';
 import { PromptNavigationReference } from '@/components/design-system/PromptNavigationReference';
-import { BearerFlyoutReference } from '@/components/design-system/BearerFlyoutReference';
+import { OwnerFlyoutReference } from '@/components/design-system/OwnerFlyoutReference';
 import { BreadcrumbPickerReference } from '@/components/design-system/BreadcrumbPickerReference';
 import { TravelHintPairReference } from '@/components/design-system/TravelHintPairReference';
 import { FormaquestionReference } from '@/components/design-system/FormaquestionReference';
@@ -374,10 +374,10 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     Component: NarrationTurnReference,
   },
   {
-    id: 'bearer-flyouts',
-    label: 'Bearer Flyouts',
+    id: 'owner-flyouts',
+    label: 'Owner Flyouts',
     description: 'Drill-down entity pickers in a menu and on a button',
-    Component: BearerFlyoutReference,
+    Component: OwnerFlyoutReference,
   },
   {
     id: 'breadcrumb-picker',

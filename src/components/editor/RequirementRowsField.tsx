@@ -136,7 +136,7 @@ export function RequirementRowsField({
     return {
       key: bearerKey(choice?.bearer),
       value: requirement,
-      name: choice?.name ?? 'Same Bearer',
+      name: choice?.name ?? 'Same Owner',
       hint: choice ? undefined : 'Whoever has the trait',
       disabled: listed(requirement),
     };
@@ -155,7 +155,7 @@ export function RequirementRowsField({
       <BreadcrumbPickerList
         sections={[{ rows: [bearerRow(picked, null), ...picked.bearers.map((choice) => bearerRow(picked, choice))] }]}
         onPick={add}
-        searchPlaceholder="Search bearers"
+        searchPlaceholder="Search owners"
         renderText={renderText}
         plainText={plainText}
       />
