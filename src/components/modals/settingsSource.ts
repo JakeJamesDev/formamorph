@@ -45,7 +45,7 @@ export type OutputSettingsSource = Pick<SettingsValue,
 export type TextEndpointSource = Pick<SettingsValue,
   | 'endpointUrl' | 'setEndpointUrl' | 'apiToken' | 'setApiToken' | 'modelName' | 'setModelName'
   | 'maxTokens' | 'setMaxTokens' | 'maxOutputOverrideEnabled' | 'setMaxOutputOverrideEnabled'
-  | 'endpointSamplerOverrides' | 'setEndpointSamplerEnabled' | 'setEndpointSamplerValue'
+  | 'endpointSamplerOverrides' | 'setEndpointSamplerEnabled' | 'setEndpointSamplerValue' | 'extraParams' | 'setExtraParams'
   | 'contextWindow' | 'contextWindowOverride' | 'setContextWindowOverride'
   | 'detectedContextWindow' | 'detectStatus' | 'detectContextWindow'
   | 'localModelActive' | 'builtinTextEndpointPresets' | 'textEndpointPresets'

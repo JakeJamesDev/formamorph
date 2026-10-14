@@ -244,6 +244,7 @@ The **Preset** list holds your saved endpoints. **Demo AI** is the shared cloud 
 | **Context Window (tokens)** | **Advanced.** How much the model keeps in context. **Detect** asks the server. |
 | **Max Output Tokens** | **Advanced.** Caps how long each answer can be. It does not cap reasoning. Select **Override Endpoint Limit** to set it; without it, there is **No Limit**. |
 | **Sampling** | **Advanced.** A section of five rows: **Temperature**, **Repetition Penalty**, **Top-p**, **Top-k** and **Min-p**. Each has a checkbox. An unchecked row sends nothing. Per-prompt values and built-in prompt values come before **Temperature** and **Repetition Penalty**. |
+| **Extra Parameters** | **Advanced.** A JSON object added to every request to this endpoint, after the app's own fields, so it wins: a vendor's reasoning switch, `top_a`, `chat_template_kwargs`, a routing block. It can't replace `model`, `messages` or `stream`. Text that isn't one JSON object shows why in red and sends nothing. The **Native Reasoning** row (Output) and each prompt's own already set reasoning on and off and its effort. |
 
 **Reset AI Endpoint**, at the bottom of the tab, sets the URL, model name, token and limits back to their defaults.
 

@@ -6,6 +6,7 @@ import {
   MAX_REASONING_BUDGET_PCT, nativeReasoningSuppressed, schemaAccepted, reasoningBudget, reasoningEffortValue, reasoningRuledOut, resolveRequestReasoning, toolsSupported,
   type KeptReasoningSettings, type PromptReasoning, type ReasoningCapability, type ReasoningEffortField,
 } from '@/lib/reasoningEffort';
+import { extraParamsOf } from '@/lib/extraParams';
 import { reasoningDialectBody, reasoningDialectBudgetFloor, type ReasoningBodyFields } from '@/lib/reasoningDialect';
 import { resolvePromptSampler, type PromptSampler, type PromptSamplerMap } from '@/lib/promptSamplers';
 import type { EndpointSampler, EndpointSamplerOverrides } from '@/lib/endpointSamplers';
@@ -28,6 +29,8 @@ export interface AiEndpointTarget {
   localEngine: boolean;
   /** Per-endpoint sampler switches and remembered values. The engine ignores these. */
   samplerOverrides: EndpointSamplerOverrides;
+  /** The endpoint's Extra Parameters, as written; merged last into the body (lib/extraParams). */
+  extraParams?: string;
   /** What is known about this target's native reasoning: whether the model reasons, which effort literals the
    *  endpoint accepts, and whether it takes a token budget. An unanswered question sends no field. */
   reasoning: ReasoningCapability;
@@ -285,6 +288,8 @@ function bodyForTarget(snapshot: AiSettingsSnapshot, call: AiCall, target: AiEnd
     ...(requestType === 'narration' && snapshot.paragraphLimit === 'single' && snapshot.thinkingMode !== 'inline' && { stop: ['\n'] }),
     ...(tools && { tools: tools.map(toolSchema), tool_choice: 'auto' }),
     ...(call.responseSchema && schemaAccepted(target.reasoning) && { response_format: responseFormat(call.responseSchema) }),
+    // The player's own fields go last, so they win over anything the app set above.
+    ...extraParamsOf(target.extraParams),
   };
 }
 
