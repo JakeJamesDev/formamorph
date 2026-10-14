@@ -7,6 +7,8 @@ import { LocalModelPanel } from '@/components/modals/LocalModelPanel';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { readExtraParams } from '@/lib/extraParams';
+import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, SelectSeparator } from '@/components/ui/select';
@@ -65,12 +67,12 @@ export function TextEndpointEditor({ model, advanced, onOpenConnectionGuide, pre
 }) {
   const { presets, edited, fields, edit, onSelect, onAdd, onRename, onDelete, onReset } = model;
   const {
-    endpointUrl, apiToken, modelName, maxTokens, maxOutputOverrideEnabled, samplerOverrides,
+    endpointUrl, apiToken, modelName, maxTokens, maxOutputOverrideEnabled, samplerOverrides, extraParams,
     contextWindow, contextWindowOverride, detectedContextWindow, detectStatus,
   } = fields;
   const {
     setEndpointUrl, setApiToken, setModelName, setMaxTokens, setMaxOutputOverrideEnabled,
-    setContextWindowOverride, detectContextWindow, setSamplerEnabled, setSamplerValue,
+    setContextWindowOverride, detectContextWindow, setSamplerEnabled, setSamplerValue, setExtraParams,
   } = edit;
   const builtIn = edited.builtIn;
   const sharedEndpointActive = builtIn && !edited.engine;
@@ -289,6 +291,24 @@ export function TextEndpointEditor({ model, advanced, onOpenConnectionGuide, pre
                 <div className="grid gap-4 pt-3">
                   {samplerControls.map((control) => <SamplerControl key={control.id} {...control} />)}
                 </div>
+              </Section>
+              <Section title="Extra Parameters">
+                <Hint>
+                  A JSON object added to every request to this endpoint, after the app&apos;s own fields, so it wins:
+                  a vendor&apos;s reasoning switch, <code>top_a</code>, <code>chat_template_kwargs</code>, a routing block.
+                </Hint>
+                <Textarea
+                  aria-label="Extra Parameters"
+                  className="mt-2 min-h-24 font-mono text-meta"
+                  value={extraParams ?? ''}
+                  disabled={sharedEndpointActive}
+                  placeholder={'{"chat_template_kwargs": {"enable_thinking": true}}'}
+                  spellCheck={false}
+                  onChange={(e) => setExtraParams(e.target.value)}
+                />
+                {'error' in readExtraParams(extraParams) && (
+                  <p role="status" className="text-helper text-destructive">{(readExtraParams(extraParams) as { error: string }).error} Nothing from it is sent.</p>
+                )}
               </Section>
             </>)}
           </div>
