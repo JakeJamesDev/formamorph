@@ -23,3 +23,7 @@ Spec: Q20, Q21.
 ## Blocked by
 
 - 06
+
+## Comments
+
+Handoff from ticket 06 (landed as b3b85d9858): the narration stream's `sentence` event carries `full`; the rewrite queue in `src/lib/aiRequest/narrationRewrite.ts` passes `SentenceAt { index, full }`. `narration.sent` and `narration.buffered` are not set yet: add them to `NarrationInput` and the `narration` prelude in `src/lib/statCodeExecutor.ts`. The output-timing `player` stub is `OUTPUT_PLAYER` there; ticket 09 keeps its throw text.
