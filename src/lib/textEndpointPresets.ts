@@ -22,6 +22,8 @@ export interface TextEndpointValues {
   contextWindowOverride: number | null;
   maxOutputOverride: EndpointMaxOutputOverride;
   samplerOverrides: EndpointSamplerOverrides;
+  /** Extra Parameters: a JSON object merged into every request body to this endpoint (lib/extraParams). */
+  extraParams?: string;
 }
 
 export type TextEndpointValueKey = keyof TextEndpointValues;
@@ -133,6 +135,7 @@ function coerceValues(rec: Record<string, unknown>): TextEndpointValues {
         : null,
     maxOutputOverride: coerceEndpointMaxOutputOverride(rec.maxOutputOverride, num('maxTokens', d.maxOutputOverride.value)),
     samplerOverrides: coerceEndpointSamplerOverrides(rec.samplerOverrides),
+    ...(typeof rec.extraParams === 'string' && rec.extraParams.trim() && { extraParams: rec.extraParams }),
   };
 }
 
