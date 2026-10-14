@@ -1,3 +1,4 @@
+import { ancestors } from "@/lib/ancestors";
 import type { Connection, GameLocation, LegKey } from "@/types";
 import {
   createConnection, directionFrom, withDirection, type ConnectionDirection,
@@ -392,19 +393,20 @@ export function beginCanvasDrag(locations: GameLocation[]): CanvasDragSession {
   const depths = new Map<string, number>();
   const descendants = new Map<string, Set<string>>();
   const parents = new Set<string>();
+  const heldBy = (id: string) => {
+    const parentId = byId.get(id)?.parentId;
+    return parentId && byId.has(parentId) ? parentId : null;
+  };
   for (const loc of locations) {
     if (loc.parentId) parents.add(loc.parentId);
-    // Walk up once per location; the seen guard keeps a malformed cycle from spinning.
-    const seen = new Set([loc.id]);
-    let depth = 0;
-    for (let at = byId.get(loc.parentId ?? ""); at && !seen.has(at.id); at = byId.get(at.parentId ?? "")) {
-      seen.add(at.id);
-      depth += 1;
-      const held = descendants.get(at.id);
+    // Walk up once per location, through parents that exist.
+    const above = ancestors(loc.id, heldBy);
+    for (const id of above) {
+      const held = descendants.get(id);
       if (held) held.add(loc.id);
-      else descendants.set(at.id, new Set([loc.id]));
+      else descendants.set(id, new Set([loc.id]));
     }
-    depths.set(loc.id, depth);
+    depths.set(loc.id, above.length);
   }
   return {
     locations,

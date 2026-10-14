@@ -5,6 +5,7 @@
 // horizontal pointer offset during a drag decides drop depth (and thus parent); leaves can't be parents.
 
 import { arrayMove } from '@dnd-kit/sortable';
+import { ancestors, parentLookup } from "@/lib/ancestors";
 import { randomUUID } from "@/lib/uuid";
 import { clamp } from "@/lib/utils";
 import { remintPlaceholdersDeep } from "@/lib/placeholders";
@@ -80,13 +81,8 @@ export function aiVisibleTree<G extends TreeGroup & { aiVisible?: boolean }, L e
 
 /** True if `candidateId` is `ancestorId` itself or nested anywhere beneath it — guards illegal moves. */
 export function isDescendantGroup<G extends TreeGroup>(groups: G[], ancestorId: string, candidateId: string): boolean {
-  const byId = new Map(groups.map((g) => [g.id, g]));
-  let cur: string | null | undefined = candidateId;
-  while (cur) {
-    if (cur === ancestorId) return true;
-    cur = byId.get(cur)?.parentId ?? null;
-  }
-  return false;
+  return candidateId === ancestorId
+    || ancestors(candidateId, parentLookup(groups, (g) => g.parentId)).includes(ancestorId);
 }
 
 const findGroupNode = <G extends TreeGroup, L extends TreeLeaf>(

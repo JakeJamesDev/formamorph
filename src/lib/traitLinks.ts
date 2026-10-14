@@ -10,6 +10,7 @@ import {
 import { blueprintItemIds, blueprintsGroup, buildTraitTree, flattenTraitTree, groupsBelow, isBlueprintItem, isDescendantGroup } from './traitTree';
 import { rootCount, withOwnedTraits } from './ownedTraits';
 import { mapConditions } from './requirementRows';
+import { ancestors, parentLookup } from './ancestors';
 
 type WorldTraitLists = Pick<OwnerWorld, 'traits' | 'traitGroups'>;
 
@@ -28,10 +29,9 @@ export function originalPath(world: WorldTraitLists, originalId: string): string
   const original = originalOf(world, originalId);
   if (!original) return [];
   const byId = new Map(world.traitGroups.map((g) => [g.id, g]));
-  const path = [original.item.name];
-  let at = original.kind === 'trait' ? original.item.groupId : original.item.parentId;
-  for (let g = at ? byId.get(at) : undefined; g; at = g.parentId, g = at ? byId.get(at) : undefined) path.unshift(g.name);
-  return path;
+  const start = original.kind === 'trait' ? original.item.groupId : original.item.parentId;
+  const above = start ? [start, ...ancestors(start, parentLookup(world.traitGroups, (g) => g.parentId))] : [];
+  return [...above.reverse().flatMap((id) => byId.get(id)?.name ?? []), original.item.name];
 }
 
 /** The traits a link's row at `originalId` brings, in tree order, each as the link reads it. */

@@ -7,6 +7,7 @@ import {
   detachStatLink, editStatLink, resetStatLinkFieldOn, resetStatLinkOn, resetStatLinkStatOn, statLinkState,
   type EntityStatRows, type StatLinkWorld,
 } from '@/lib/statLinks';
+import { ancestors, parentLookup } from '@/lib/ancestors';
 import type { Entity, Placeholder, Stat, StatGroup } from '@/types';
 import type { StatPanelTab } from '@/views/statPanelTabs';
 import StatManager, { type StatEditorStore } from './StatManager';
@@ -15,10 +16,9 @@ import { LinkNotice } from './TraitLinkPanel';
 /** The world groups from the top down to the stat or group, the item last. */
 function originalPath(groups: readonly StatGroup[], item: { name: string; parentId?: string | null; groupId?: string | null }): string[] {
   const byId = new Map(groups.map((g) => [g.id, g]));
-  const path = [item.name];
   const start = item.groupId ?? item.parentId;
-  for (let g = start ? byId.get(start) : undefined; g; g = g.parentId ? byId.get(g.parentId) : undefined) path.unshift(g.name);
-  return path;
+  const above = start ? [start, ...ancestors(start, parentLookup(groups, (g) => g.parentId))] : [];
+  return [...above.reverse().flatMap((id) => byId.get(id)?.name ?? []), item.name];
 }
 
 /** What one entity's stat panels read and write. */

@@ -1,5 +1,6 @@
 // The rows of the flyouts that pick an owner: the world's entities under their entity groups.
 
+import { ancestors, parentLookup } from './ancestors';
 import { buildEntityTree, flattenEntityTree } from './entityGroupTree';
 import type { Entity, EntityGroup } from '@/types';
 
@@ -12,10 +13,14 @@ export type OwnerChoice =
 /** Every entity and entity group in Entities tab order. A group with no entity anywhere below it has no row. */
 export function ownerChoices(groups: EntityGroup[], entities: Entity[]): OwnerChoice[] {
   const rows = flattenEntityTree(buildEntityTree(groups, entities));
+  const parentOfGroup = parentLookup(groups, (g) => g.parentId);
   const holdsEntity = new Set<string>();
   for (const row of rows) {
     if (!row.leaf) continue;
-    for (let at = row.leaf.groupId ?? null; at; at = groups.find((g) => g.id === at)?.parentId ?? null) holdsEntity.add(at);
+    const start = row.leaf.groupId;
+    if (!start) continue;
+    holdsEntity.add(start);
+    for (const above of ancestors(start, parentOfGroup)) holdsEntity.add(above);
   }
   const choices: OwnerChoice[] = [];
   for (const row of rows) {
