@@ -29,7 +29,7 @@ export interface PinsWorld extends PinEditorWorld {
  * Every pin aimed at one placeholder, from any source, as one list: strongest kind first, each row naming
  * its source. The pins live on their sources — this section only gathers them — so a value edit, a re-aim
  * or a removal here is written to the trait, location, stat or placeholder that holds the pin. A link's
- * overridden pins list lists too, under its bearer: its source is fixed, and an edit rewrites the override.
+ * overridden pins list lists too, under its owner: its source is fixed, and an edit rewrites the override.
  * Add picks the kind of source, then the source, and writes an empty pin there for the row's
  * value field to fill.
  */

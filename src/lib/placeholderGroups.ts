@@ -1,6 +1,6 @@
 // Editor folders for the world's shared placeholders. A group is a name with a parent, a placeholder names
 // its group by `groupId`, and the Placeholders tab draws the folders above the loose rows. Only a shared
-// placeholder is grouped: a scoped one sits under its entity or book, an owned one under its holder. Pure,
+// placeholder is grouped: a scoped one sits under its entity or book, an owned one under its parent placeholder. Pure,
 // like the entity folder tree it mirrors: the world tab and the chip menus read these, nothing writes them
 // but a drop or a delete.
 

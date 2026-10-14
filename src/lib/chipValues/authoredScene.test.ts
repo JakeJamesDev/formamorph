@@ -94,7 +94,7 @@ describe('authoredChipScene and entity stats', () => {
     expect(values('<PERSONA|nostats>')).toBe('You\n');
   });
 
-  it('reads a linked Blueprint per bearer, and never as a player stat', () => {
+  it('reads a linked Blueprint per owner, and never as a player stat', () => {
     const blueprint: Stat = { ...trust, groupId: 'bp' };
     const link = (id: string) => ({ id, originalId: 'trust', kind: 'stat' as const, originalName: 'Trust', groupId: null });
     const scene = authoredChipScene(world({

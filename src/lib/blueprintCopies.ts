@@ -1,9 +1,9 @@
 // Automatic placeholder copies: one reconcile over the world, run at load and after every editor write, so
 // every trigger (a trait added, linked or moved; a chip or pin joining an original; a Persona mark) lands
-// here and no bearer is left without a copy. The same pass is the Detach and drag-to-entity rewrite.
+// here and no owner is left without a copy. The same pass is the Detach and drag-to-entity rewrite.
 
 import type { Entity, Placeholder, PlaceholderGroup, PlaceholderPin, Trait, TraitGroup } from '@/types';
-import { canBePlayer, resolveBearers, type Bearer, type BearerWorld } from './bearers';
+import { canBePlayer, resolveOwners, type Owner, type OwnerWorld } from './owners';
 import { copyOf, effectiveCopy } from './blueprints';
 import { entityTexts } from './entityTexts';
 import { blueprintIds } from './placeholderBlueprints';
@@ -12,8 +12,8 @@ import { directChipTargets, remapPlaceholderIds } from './placeholders';
 import { offeredWorldTraits } from './traitTree';
 import { randomUUID } from './uuid';
 
-/** What the reconcile reads: the bearer world plus the world's own placeholder list with its folders. */
-export interface CopyWorld extends BearerWorld {
+/** What the reconcile reads: the owner world plus the world's own placeholder list with its folders. */
+export interface CopyWorld extends OwnerWorld {
   placeholders: readonly Placeholder[];
   placeholderGroups: readonly PlaceholderGroup[];
 }
@@ -57,7 +57,7 @@ function copyBlueprints(entities: readonly Entity[]): Map<string, string> {
   return out;
 }
 
-/** Why a bearer needs a copy: a trait or group on it (or a root one it can play) pins or places the
+/** Why an owner needs a copy: a trait or group on it (or a root one it can play) pins or places the
  *  blueprint; a placeholder it reads reaches it through its values; or a chip in its own text names the copy. */
 export type CopyNeed =
   | { kind: 'trait'; item: Trait | TraitGroup }
@@ -70,9 +70,9 @@ export function neededCopies(world: CopyWorld): Map<string, Set<string>> {
 }
 
 /**
- * Entity id → each blueprint it needs a copy of, with the first reason found. A bearer needs every
+ * Entity id → each blueprint it needs a copy of, with the first reason found. An owner needs every
  * blueprint a trait on it pins or places, its links expanded, and the root traits' when it can be the
- * player; then every blueprint those placeholders reach through their values, read as the bearer's own copy
+ * player; then every blueprint those placeholders reach through their values, read as the owner's own copy
  * where it has one. A chip in the owner's own text, or a pin on its own trait, that names one of its copies
  * keeps that copy needed. Entities that need nothing have no entry.
  */
@@ -82,7 +82,7 @@ export function copyNeeds(world: CopyWorld): Map<string, Map<string, CopyNeed>> 
   if (!blueprints.size) return out;
   const byId = new Map(world.placeholders.map((p) => [p.id, p]));
   const copyBlueprint = copyBlueprints(world.entities);
-  const bearers = new Map(resolveBearers(world, undefined).bearers.map((b) => [b.id, b]));
+  const ownerOf = new Map(resolveOwners(world, undefined).bearers.map((o) => [o.id, o]));
   const root = offeredWorldTraits(world.traits, world.traitGroups);
 
   for (const e of world.entities) {
@@ -92,15 +92,15 @@ export function copyNeeds(world: CopyWorld): Map<string, Map<string, CopyNeed>> 
     const asBlueprint = (id: string): string | undefined => (blueprints.has(id) ? id : copyBlueprint.get(id));
     const needed = new Map<string, CopyNeed>();
     const need = (blueprintId: string, why: CopyNeed) => { if (!needed.has(blueprintId)) needed.set(blueprintId, why); };
-    const bearer: Bearer | undefined = bearers.get(e.id);
+    const owner: Owner | undefined = ownerOf.get(e.id);
     const items: (Trait | TraitGroup)[] = [
-      ...(bearer ? [...bearer.traits, ...bearer.groups] : []),
+      ...(owner ? [...owner.traits, ...owner.groups] : []),
       ...(canBePlayer(e) ? [...root.traits, ...root.groups] : []),
     ];
     for (const item of items) for (const id of traitTargets(item)) { const b = asBlueprint(id); if (b) need(b, { kind: 'trait', item }); }
     // The owner's own text and its placeholders' values keep a copy of its own in use.
     for (const id of ownTargets(e)) if (ownCopyIds.has(id)) need(copyBlueprint.get(id)!, { kind: 'own' });
-    // What each needed placeholder reaches through its values, as this bearer reads it.
+    // What each needed placeholder reaches through its values, as this owner reads it.
     const queue = [...needed.keys()];
     while (queue.length) {
       const id = queue.pop()!;

@@ -530,7 +530,7 @@ export function placeholderVocabulary(
       ),
     ],
     // The same sections, plus what one placeholder owns — a picker looking a name up needs the owned rows
-    // too, and each keeps the holder chain that tells it from a root of the same name.
+    // too, and each keeps the parent placeholder chain that tells it from a root of the same name.
     allRows: () => sectionedRows(
       refused.size ? placeholders.filter((p) => !refused.has(p.id)) : placeholders,
       (p, underOwner) => {
@@ -602,9 +602,9 @@ export function placeholderVocabulary(
     // is exactly that chip, which is what committing the value makes it. Created inside an entity's or
     // book's fields, it lands in that owner's list.
     create: onCreate && ((name) => {
-      const holder = ownerId && byId.has(ownerId) ? ownerId : undefined;
-      const made = { ...newPlaceholder(name), ...(holder ? { ownerId: holder } : {}) };
-      const home: PlaceholderHome | undefined = !holder && scope ? { kind: scope.kind, ownerId: scope.id } : undefined;
+      const parentId = ownerId && byId.has(ownerId) ? ownerId : undefined;
+      const made = { ...newPlaceholder(name), ...(parentId ? { ownerId: parentId } : {}) };
+      const home: PlaceholderHome | undefined = !parentId && scope ? { kind: scope.kind, ownerId: scope.id } : undefined;
       onCreate(made, home);
       return paletteToken(made);
     }),

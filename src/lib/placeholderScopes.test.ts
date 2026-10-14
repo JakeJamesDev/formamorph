@@ -132,7 +132,7 @@ describe('applyScopedPlaceholderDrop', () => {
     expect(next!.entities[1].placeholders?.map((p) => p.id)).toEqual(['eyes', 'hair']);
   });
 
-  it('moves the record, not the row: a shared row drawn under a scoped holder still lives in the world list', () => {
+  it('moves the record, not the row: a shared row drawn under a scoped parent placeholder still lives in the world list', () => {
     // Molly's Eyes holds the shared Town, so Town draws as a shared row inside Molly's section. Dragging that
     // row up beside Eyes, at the section's top level, scopes the record itself.
     const w = { ...world(), entities: [molly([P('eyes', 'Eyes', [chip('town')])]), tam()] };
@@ -230,7 +230,7 @@ describe('placeholderTreeNodes with groups', () => {
       expect(moved).not.toHaveProperty('groupId');
     });
 
-    it('nests a grouped row under a holder and takes it privately, folder reference gone', () => {
+    it('nests a grouped row under a parent placeholder and takes it privately, folder reference gone', () => {
       const w = { ...grouped(), placeholders: [TOWN, HAIR, SKIN, P('look', 'Look', ['plain'])] };
       // Hair dragged under Look, one level in.
       const next = drop(w, 'hair', 'look', INDENT);

@@ -28,7 +28,7 @@ import { $createVariableNode } from './VariableNode';
  * A vocabulary whose tokens nest (the placeholders) turns the menu into a drill: a row holding others
  * offers `›`, and walking into one filters that level instead of the root. Enter anywhere down there
  * inserts the path it took to get there, so `Molly › Hair` is one keyboard run rather than a trip to the
- * placeholder list. Owned placeholders are private to their holder, so the root offers only what an author
+ * placeholder list. Owned placeholders are private to their parent placeholder, so the root offers only what an author
  * places directly; a vocabulary that can mint a token offers to make what the filter names, and inside a
  * placeholder's own value field it says whose the new one will be.
  */

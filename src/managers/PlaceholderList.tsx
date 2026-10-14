@@ -25,7 +25,7 @@ import { chipInput } from './chipInput';
 
 /**
  * The Placeholders tab's tree. A value that is exactly one chip nests what it names, so the list already
- * knew the structure; what this draws is who each nested row *belongs* to. An owned row is the holder's own
+ * knew the structure; what this draws is who each nested row *belongs* to. An owned row is the parent placeholder's own
  * and appears nowhere else; a shared row points at an original that stays at the top level, and carries the
  * link icon that opens it.
  *
@@ -62,7 +62,7 @@ const PlaceholderList = ({ selectedId, onSelect, openDuplicate }: {
   // The tree, the rows that hold at least one other (which drives the chevron), and who holds whom — each
   // derived once per change. `getVisible` runs on every drag frame, so re-walking there is a per-frame cost.
   // Over a world the tree spans every list; bound to one owner's section it draws that list, still looking
-  // chip targets and holders up across the world; bound to a lone list (the library) it is that list.
+  // chip targets and parent placeholders up across the world; bound to a lone list (the library) it is that list.
   const nodes = useMemo((): PlaceholderTreeNode[] => {
     if (lists) return scope ? ownerPlaceholderNodes(lists, scope) : placeholderTreeNodes(lists);
     return placeholderRows(placeholders, placeholders).map((row) => ({ ...row, kind: 'placeholder', home: scope ?? { kind: 'world' } }));

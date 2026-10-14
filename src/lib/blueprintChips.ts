@@ -1,4 +1,4 @@
-// Blueprint chips read per bearer, so only text that always has a bearer takes one (acceptsBlueprintChips).
+// Blueprint chips read per owner, so only text that always has an owner takes one (acceptsBlueprintChips).
 
 import { blueprintIds } from './placeholderBlueprints';
 import type { PlaceholderHomesWorld } from './placeholderHomes';

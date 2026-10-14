@@ -86,8 +86,8 @@ export function usePlaceholderDetail({
   if (!selection) return { detail: null, footer: null, fills: false };
   const { row, share } = selection;
   const placeholder = row.placeholder;
-  const holder = owners?.get(placeholder.id);
-  const ownerId = holder?.id;
+  const placeholderOwner = owners?.get(placeholder.id);
+  const ownerId = placeholderOwner?.id;
   const { blueprintId } = placeholder;
   const blueprint = blueprintId
     ? (carriedBlueprints ?? placeholders).find((p) => p.id === blueprintId)
@@ -102,7 +102,7 @@ export function usePlaceholderDetail({
           key={row.id}
           copy={placeholder}
           blueprint={blueprint}
-          ownerName={holder?.name ?? ownerName ?? ''}
+          ownerName={placeholderOwner?.name ?? ownerName ?? ''}
         />
       ),
       footer: <PlaceholderCopyFooter copy={placeholder} onEditBlueprint={carriedBlueprints ? undefined : () => onSelect(blueprint.id)} />,

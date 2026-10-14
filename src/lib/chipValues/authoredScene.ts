@@ -2,12 +2,13 @@ import { flattenEnabledBookEntries } from '../dictionaryUtils';
 import { ownerStatParts, statPlacementOf } from '../statContext';
 import { entityIdsAt } from '../entityPresence';
 import { allPlaceholders } from '../placeholderHomes';
-import { PLAYER_BEARER, playsAs, resolveBearers, type Bearer } from '../bearers';
+import { playsAs, resolveOwners, type Owner } from '../owners';
+import { PLAYER_OWNER } from '../traitGates';
 import { characterAsPlayer } from '../builtinPlaceholders';
 import { resolvePersona } from '../persona';
 import { copyLookup, readerFor, type CopyLookup } from '../blueprints';
-import { borneByPlayer, withBearerTrees } from '../ownedTraitsInPlay';
-import { resolveBearerText, resolveEntityText, resolvePlaceholders } from '../placeholders';
+import { borneByPlayer, withOwnerTrees } from '../ownedTraitsInPlay';
+import { resolveOwnerText, resolveEntityText, resolvePlaceholders } from '../placeholders';
 import { bindBlueprintPins, traitScopedPins } from '../placeholderPins';
 import { defaultPicks } from '../traitEffects';
 import {
@@ -81,42 +82,42 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
   const resolveEntity = options.resolveEntity ?? (options.resolve
     ? undefined
     : (entity: Entity, text: string) => resolveEntityText(entity, text, { placeholders, rolls: {} }));
-  // Every bearer's tree with no persona picked: the player's, and each entity's with its links expanded.
-  const { bearers } = resolveBearers({ traits, traitGroups, entities }, undefined);
-  const player = bearers.find((b) => b.id === PLAYER_BEARER)!;
-  const bearerOf = new Map(bearers.map((b) => [b.id, b]));
+  // Every owner's tree with no persona picked: the player's, and each entity's with its links expanded.
+  const { bearers: trees } = resolveOwners({ traits, traitGroups, entities }, undefined);
+  const player = trees.find((b) => b.id === PLAYER_OWNER)!;
+  const treeOf = new Map(trees.map((b) => [b.id, b]));
   const blueprints = { placeholders: world.placeholders ?? [], entities };
-  const readerOf = (bearer: Bearer) => readerFor(undefined, bearer.entity, bearer.isPlayer);
-  const ownPins = (trait: Trait, bearer: Bearer | undefined) => traitScopedPins(
-    bearer ? bindBlueprintPins(trait, blueprints, readerOf(bearer)) : trait, {}, placeholders,
+  const readerOf = (tree: Owner) => readerFor(undefined, tree.entity, tree.isPlayer);
+  const ownPins = (trait: Trait, tree: Owner | undefined) => traitScopedPins(
+    tree ? bindBlueprintPins(trait, blueprints, readerOf(tree)) : trait, {}, placeholders,
   );
-  const copiesOf = (bearer: Bearer | undefined) => (bearer ? copyLookup(blueprints, readerOf(bearer)) : undefined);
+  const copiesOf = (tree: Owner | undefined) => (tree ? copyLookup(blueprints, readerOf(tree)) : undefined);
   // An entity's trait reads its own pins and copies, bound for that entity, with the entity as the Character Name.
   const resolveOwned: ResolveOwnedTraitText = options.resolveEntity
     ? (_trait, text, owner) => options.resolveEntity!(owner, text)
     : (trait, text, owner) => {
-      const bearer = bearerOf.get(owner.id);
-      return resolveEntityText(owner, text, { placeholders, rolls: {}, pins: ownPins(trait, bearer), copies: copiesOf(bearer) });
+      const tree = treeOf.get(owner.id);
+      return resolveEntityText(owner, text, { placeholders, rolls: {}, pins: ownPins(trait, tree), copies: copiesOf(tree) });
     };
-  const withLinks = withBearerTrees(entities, bearers);
+  const withLinks = withOwnerTrees(entities, trees);
   const cast = resolveEntity
     ? resolveOwnedTraitTexts(resolveEntityTexts(withLinks, resolveEntity), resolveOwned, resolveEntity)
     : withLinks;
   const presentIds = entityIdsAt(location?.id, entities);
-  const defaultsOf = (bearer: Pick<Bearer, 'traits' | 'groups'>) =>
-    defaultPicks(bearer.traits, bearer.groups);
+  const defaultsOf = (tree: Pick<Owner, 'traits' | 'groups'>) =>
+    defaultPicks(tree.traits, tree.groups);
   const activeIds = new Set(options.activeTraitIds ?? defaultsOf(player));
   const playerCopies = copiesOf(player);
-  // The player bears its traits: the Character Name reads as the Player Name, under a caller's resolve or own pins.
+  // The player owns its traits: the Character Name reads as the Player Name, under a caller's resolve or own pins.
   const playerText = (trait: Trait, text: string) => (options.resolve
     ? options.resolve(characterAsPlayer(text), playerCopies)
-    : resolveBearerText(null, text, { placeholders, rolls: {}, pins: ownPins(trait, player), copies: playerCopies }));
+    : resolveOwnerText(null, text, { placeholders, rolls: {}, pins: ownPins(trait, player), copies: playerCopies }));
 
   const played = entities.filter((entity) => playsAs(entity, undefined));
   // Each entity's default traits switch its stats on and off.
   const ownedStats = enabledOwnerStats(withTraitToggles(
     Object.fromEntries(entities.filter((e) => e.stats?.length).map((e) => [e.id, (e.stats ?? []).map(atStartingValue)])),
-    treeStatTraits(bearers, Object.fromEntries(bearers.map((b) => [b.id, defaultsOf(b)]))),
+    treeStatTraits(trees, Object.fromEntries(trees.map((b) => [b.id, defaultsOf(b)]))),
   ));
 
   return {
@@ -126,14 +127,14 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
     statPlacement: statPlacementOf(world),
     // With no persona picked, the Custom Persona entity's stats are the player's, as its traits are.
     playedStats: ownerStatParts(played, ownedStats),
-    // The player bearer's traits, where its tree places them: never Blueprints, and Custom Persona's at the root.
+    // The player owner's traits, where its tree places them: never Blueprints, and Custom Persona's at the root.
     traits: borneByPlayer(player.traits.filter((trait) => activeIds.has(trait.id))
       .map((trait) => (trait.aiDescription ? { ...trait, aiDescription: playerText(trait, trait.aiDescription) } : trait))),
     traitGroups: borneByPlayer(player.groups),
     // Each entity holds its default traits, owned and linked, as the entry step preselects them.
-    ownedTraits: Object.fromEntries(bearers.flatMap((bearer) => {
-      const defaults = defaultsOf(bearer);
-      return bearer.entity && defaults.length ? [[bearer.id, defaults]] : [];
+    ownedTraits: Object.fromEntries(trees.flatMap((tree) => {
+      const defaults = defaultsOf(tree);
+      return tree.entity && defaults.length ? [[tree.id, defaults]] : [];
     })),
     ownedStats,
     // Under None the Custom Persona entity is the persona, as play resolves it.

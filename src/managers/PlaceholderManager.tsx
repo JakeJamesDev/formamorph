@@ -94,7 +94,7 @@ const sameValues = (a: string[], b: string[]) => a.length === b.length && a.ever
  *
  * The same panel serves a **shared row** — a placeholder held by something that does not own it. There the
  * name, the kind and the values belong to the original and are locked; only the draw weights are the row's
- * own, and they are written as an override on the holder rather than onto the original.
+ * own, and they are written as an override on the parent placeholder rather than onto the original.
  */
 const PlaceholderManager = ({ placeholder, rowId, share, tab, onTabChange }: {
   placeholder: Placeholder;
@@ -139,7 +139,7 @@ const PlaceholderManager = ({ placeholder, rowId, share, tab, onTabChange }: {
   const anchor = useRef<HTMLElement | null>(null);
 
   const count = editing.values.length;
-  // A shared row whose holder went missing is no row at all, so the panel falls back to the plain editor
+  // A shared row whose parent placeholder went missing is no row at all, so the panel falls back to the plain editor
   // rather than writing an override into nothing.
   const owner = share ? placeholders.find((p) => p.id === share.ownerId) : undefined;
   const locked = !!share && !!owner;
@@ -173,7 +173,7 @@ const PlaceholderManager = ({ placeholder, rowId, share, tab, onTabChange }: {
     ownId: editing.id,
     subject: { kind: 'placeholder', id: editing.id },
   });
-  // Stat code reaches a part as a member of its holder, and every placeholder already has six members of
+  // Stat code reaches a part as a member of its parent placeholder, and every placeholder already has six members of
   // its own. A part named like one of those loses the name, so the author is told here rather than in a
   // squiggle on the code that tried it.
   const shadowsMember = isPlaceholderEntryMember(editing.name)
@@ -237,7 +237,7 @@ const PlaceholderManager = ({ placeholder, rowId, share, tab, onTabChange }: {
     });
   };
 
-  /** Write the row's own weight for a value, as an override on the holder. A weight matching what the
+  /** Write the row's own weight for a value, as an override on the parent placeholder. A weight matching what the
    *  original already draws by is written as nothing, so the row goes back to following it. */
   const setSharedWeight = (value: PlaceholderValue, weight: number) => {
     if (!locked) return;

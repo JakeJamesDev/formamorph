@@ -1,5 +1,5 @@
 // The Placeholders tab's Blueprints group: a system folder at the root whose shared placeholders are
-// blueprints, read per bearer through copies (see lib/blueprints) and never as World placeholders. A chip or
+// blueprints, read per owner through copies (see lib/blueprints) and never as World placeholders. A chip or
 // pin naming a blueprint belongs in blueprint-side text only: a world trait or group, a blueprint's values,
 // a copy's values. A move across the group's edge that would strand one on the wrong side is refused.
 
@@ -110,7 +110,7 @@ function sourcesOfUse(world: BlueprintUseWorld, blueprints: ReadonlySet<string>)
     const own = (name: string) => `${e.name}'s ${name}`;
     for (const t of e.traits ?? []) add('trait', own(t.name), false, named(traitTexts(t), t.placeholderPins));
     for (const g of e.traitGroups ?? []) add('trait', own(g.name), false, named(traitTexts(g)));
-    // A link's pins are the original's, overridden for one bearer.
+    // A link's pins are the original's, overridden for one owner.
     for (const link of e.traitLinks ?? []) {
       for (const [traitId, fields] of Object.entries(link.overrides ?? {})) {
         const pins = fields.placeholderPins?.value;
