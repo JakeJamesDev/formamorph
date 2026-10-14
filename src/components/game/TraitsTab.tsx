@@ -13,7 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { ChevronDown, Lock } from 'lucide-react';
 import { EntityIcon } from '@/lib/elementIcons';
 import { cn } from '@/lib/utils';
-import { buildTraitSections, viewTraitSection, type TraitBlock, type TraitSection } from '@/lib/traitSections';
+import { buildTraitSections, groupGlobalSections, viewTraitSection, type TraitBlock, type TraitSection } from '@/lib/traitSections';
 import { PLAYER_OWNER, gateOf, groupPickState, leavesShort, type GateStates, type GroupPickState } from '@/lib/traitGates';
 import type { Entity, Stat, StatChange, Trait, TraitGroup, TraitsPanelView } from '@/types';
 import { Tip } from '@/components/ui/tooltip';
@@ -78,7 +78,10 @@ export const TraitsTab = ({
 }: TraitsTabProps) => {
   const entityNodeIds = React.useMemo(() => new Set(entityNodes?.keys() ?? []), [entityNodes]);
   const isPlayer = (entityId: string | null | undefined) => !!entityId && playerEntityIds.includes(entityId);
-  const sections = React.useMemo(() => buildTraitSections(traits, groups, entityNodeIds), [traits, groups, entityNodeIds]);
+  const sections = React.useMemo(
+    () => groupGlobalSections(buildTraitSections(traits, groups, entityNodeIds)),
+    [traits, groups, entityNodeIds],
+  );
   // An entity node wears the user glyph, and the played one a You mark, as at Enter World.
   const entityIcon = <EntityIcon aria-hidden className="h-3.5 w-3.5 shrink-0" />;
   const youMark = <span className="ml-1 text-meta font-normal text-primary">You</span>;

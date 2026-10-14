@@ -638,7 +638,7 @@ describe('RightPanel — the traits tab against an edited world', () => {
     renderTraits(false);
     expect(screen.queryByRole('checkbox')).toBeNull();
     // Scoped to the list itself, since the active-traits summary line names it too.
-    expect(within(screen.getByRole('group', { name: 'Traits' })).getByText(/Brave/)).toBeInTheDocument();
+    expect(within(screen.getByRole('group', { name: 'Global' })).getByText(/Brave/)).toBeInTheDocument();
   });
 });
 
@@ -893,7 +893,7 @@ describe('placeholder names reach the panels resolved', () => {
       },
     });
 
-    expect(within(screen.getByRole('group', { name: 'Traits' })).getByText(/Sedge Native/)).toBeInTheDocument();
+    expect(within(screen.getByRole('group', { name: 'Global' })).getByText(/Sedge Native/)).toBeInTheDocument();
     expect(container.textContent).not.toContain('{{ph:');
   });
 
@@ -949,7 +949,7 @@ describe('placeholder names reach the panels resolved', () => {
     expect(screen.getByText('Marrow Standing')).toBeInTheDocument();
     // …but on the Traits tab each card still names its own pin, name and description alike.
     act(() => { view.gameplay().setActiveTab('traits'); });
-    const list = within(screen.getByRole('group', { name: 'Traits' }));
+    const list = within(screen.getByRole('group', { name: 'Global' }));
     expect(list.getByText(/Native of Sedge/)).toBeInTheDocument();
     expect(list.getByText(/Home is Sedge\./)).toBeInTheDocument();
     expect(list.getByText(/Sworn to Marrow/)).toBeInTheDocument();

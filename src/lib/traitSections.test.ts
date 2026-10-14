@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { Trait, TraitGroup } from '@/types';
-import { buildTraitSections, viewTraitSection } from './traitSections';
+import { buildTraitSections, groupGlobalSections, viewTraitSection } from './traitSections';
 
 const T = (id: string, extra: Partial<Trait> = {}): Trait => ({
   id, name: id, statChanges: [], ...extra,
@@ -129,6 +129,36 @@ describe('entity nodes in the traits panel', () => {
     expect(sections[0].blocks.map((b) => [b.subheader, b.entityId ?? null, b.entityNode ?? false])).toEqual([['bo', 'bo', true], ['bo › bond', 'bo', false]]);
     const ashSub = buildTraitSections([...traits, T('bold', { groupId: 'pack' })], [...groups, G('pack', { parentId: 'ash' })], new Set(['ash', 'bo']));
     expect(ashSub[1].blocks.map((b) => [b.subheader, b.entityId ?? null])).toEqual([[null, 'ash'], ['pack', 'ash']]);
+  });
+});
+
+describe('the Global section of the traits panel', () => {
+  const groups = [G('companions', { order: 0 }), G('bo', { parentId: 'companions' }), G('mind', { order: 1 }), G('deep', { parentId: 'mind' }), G('ash', { order: 2 })];
+  const traits = [
+    T('loose'), T('calm', { groupId: 'bo' }), T('own', { groupId: 'companions' }),
+    T('sharp', { groupId: 'mind' }), T('keen', { groupId: 'deep' }), T('tamed', { groupId: 'ash' }),
+  ];
+  const sections = groupGlobalSections(buildTraitSections(traits, groups, new Set(['ash', 'bo'])));
+
+  it('leads with one Global section holding every block no entity owns, root groups as subheaders', () => {
+    expect(sections.map((s) => s.name)).toEqual(['Global', 'companions', 'ash']);
+    expect(sections[0].blocks.map((b) => [b.subheader, b.traits.map((t) => t.id)])).toEqual([
+      [null, ['loose']], ['companions', ['own']], ['mind', ['sharp']], ['mind › deep', ['keen']],
+    ]);
+    expect(sections[0].entityId).toBeUndefined();
+  });
+
+  it('leaves an entity node’s blocks outside Global, in a section of their own', () => {
+    expect(sections[1].blocks.map((b) => [b.entityId, b.traits.map((t) => t.id)])).toEqual([['bo', ['calm']]]);
+    expect(sections[2].entityId).toBe('ash');
+  });
+
+  it('puts the flat no-groups list under Global', () => {
+    expect(groupGlobalSections(buildTraitSections([T('a')], [])).map((s) => [s.name, s.blocks[0].subheader])).toEqual([['Global', null]]);
+  });
+
+  it('adds no Global section when entities hold every trait', () => {
+    expect(groupGlobalSections(buildTraitSections([T('t', { groupId: 'ash' })], [G('ash')], new Set(['ash']))).map((s) => s.name)).toEqual(['ash']);
   });
 });
 
