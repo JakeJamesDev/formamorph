@@ -3,7 +3,6 @@ import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { SetupTraitList } from './SetupTraitList';
 import { groupPickState } from '@/lib/traitGates';
 import type { Stat, Trait, TraitGroup } from '@/types';
-import { PLAYER_OWNER } from '@/lib/traitGates';
 
 /**
  * The setup screen's trait list renders from the world's traits alone. In Game shows it inside the World
@@ -68,14 +67,14 @@ describe('SetupTraitList outside the setup dialog', () => {
     expect(screen.getByRole('radio', { name: 'Dockhand' })).toBeChecked();
     // Clicking the chosen one clears it, so "none of these" stays reachable.
     fireEvent.click(screen.getByRole('radio', { name: 'Dockhand' }));
-    expect(onTraitSelect).toHaveBeenCalledWith('dockhand', PLAYER_OWNER);
+    expect(onTraitSelect).toHaveBeenCalledWith('dockhand', 'world');
   });
 
   it('offers a group with no max as checkboxes', () => {
     const onTraitSelect = view({ picks: null });
     expect(screen.queryByRole('radio')).toBeNull();
     fireEvent.click(screen.getByRole('checkbox', { name: 'Scholar' }));
-    expect(onTraitSelect).toHaveBeenCalledWith('scholar', PLAYER_OWNER);
+    expect(onTraitSelect).toHaveBeenCalledWith('scholar', 'world');
   });
 
   it('disables the unchecked rows of a full group with a larger max, and keeps the checked ones switchable', () => {
@@ -122,7 +121,7 @@ describe('SetupTraitList gates', () => {
   const req = (text: string, holds: boolean, hidden = false) => ({ text, holds, unresolved: false, hidden });
   /** Each Condition as a row of its own. */
   const oneEach = (...conditions: ReturnType<typeof req>[]) => conditions.map((c) => ({ holds: c.holds, conditions: [c] }));
-  const gates = new Map([[PLAYER_OWNER, new Map([
+  const gates = new Map([['world', new Map([
     ['dockhand', { unlocked: false, rows: oneEach(req('Paladin', false), req('Knight', false)) }],
     ['scholar', { unlocked: true, rows: oneEach(req('Mage', true), req('any Class', false)) }],
   ])]]);
@@ -196,7 +195,7 @@ describe('SetupTraitList gates', () => {
     });
 
     it('leaves a Hidden requirement out of the gate line', () => {
-      const hiddenGates = new Map([[PLAYER_OWNER, new Map([
+      const hiddenGates = new Map([['world', new Map([
         ['dockhand', { unlocked: false, rows: oneEach(req('Secret Bond', false, true), req('Knight', false)) }],
         ['scholar', { unlocked: true, rows: oneEach(req('Secret Bond', true, true), req('Mage', true)) }],
       ])]]);
@@ -207,7 +206,7 @@ describe('SetupTraitList gates', () => {
     });
 
     it('reads a bare "Locked" when every requirement is Hidden', () => {
-      const hiddenGates = new Map([[PLAYER_OWNER, new Map([
+      const hiddenGates = new Map([['world', new Map([
         ['dockhand', { unlocked: false, rows: oneEach(req('Secret Bond', false, true)) }],
       ])]]);
       view({ gates: hiddenGates, picks: null });

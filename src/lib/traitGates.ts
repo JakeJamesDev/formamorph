@@ -8,7 +8,7 @@ import { buildTree, flattenTree } from './groupTree';
 import { conditionsOf, rowsHold } from './requirementRows';
 
 /** The player's owner id: the key of the world's root traits, shared by None and a library persona. */
-export const PLAYER_OWNER = 'player';
+export const PLAYER_OWNER = 'world';
 
 /** The breadcrumb of a world trait or group with no group above it. */
 export const WORLD_BREADCRUMB: readonly string[] = ['World'];

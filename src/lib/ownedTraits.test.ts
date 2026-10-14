@@ -5,7 +5,6 @@ import {
 } from './ownedTraits';
 import { gateOf, gateStates } from './traitGates';
 import type { Entity, Trait, TraitGroup } from '@/types';
-import { PLAYER_OWNER } from './traitGates';
 
 const trait = (id: string, extra: Partial<Trait> = {}): Trait => ({ id, name: id, statChanges: [], ...extra });
 
@@ -108,7 +107,7 @@ describe('traitOwners', () => {
   const unlocked = (entity: Entity) => gateOf(gateStates({
     owners: traitOwners({ traits: [keeper], traitGroups: companions, entities: [entity] }),
     active: { ash: ['t-tamed'] }, entities: [], persona: { source: 'world', entityId: 'ash' },
-  }), PLAYER_OWNER, 't-keeper')?.unlocked;
+  }), 'world', 't-keeper')?.unlocked;
 
   it('counts the traits of an entity node placed inside a group, at any depth, toward that group', () => {
     expect(unlocked(ash({ traitPlacement: { groupId: 'g-companions', order: 0 } }))).toBe(true);

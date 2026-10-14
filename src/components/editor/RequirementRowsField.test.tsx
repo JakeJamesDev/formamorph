@@ -5,7 +5,6 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { RequirementRowsField } from './RequirementRowsField';
 import type { RequirementOption, RequirementOptions, RowState } from '@/lib/traitGates';
 import type { TraitRequirement, TraitRequirementRow } from '@/types';
-import { PLAYER_OWNER } from '@/lib/traitGates';
 
 const brave: TraitRequirement = { kind: 'trait', id: 'brave' };
 const option = (requirement: TraitRequirement, label: string): RequirementOption =>
@@ -78,7 +77,7 @@ describe('RequirementRowsField without a trait or a store', () => {
     };
 
     it('adds at once when the owner is the world root', async () => {
-      render(<Harness owner={PLAYER_OWNER} offWorld={false} choices={single} />);
+      render(<Harness owner="world" offWorld={false} choices={single} />);
       fireEvent.click(screen.getByRole('button', { name: 'Add Requirement' }));
       fireEvent.click(await screen.findByRole('option', { name: /^Brave/ }));
       expect(screen.getByRole('button', { name: 'Brave' })).toBeInTheDocument();

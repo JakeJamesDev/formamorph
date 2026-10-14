@@ -11,7 +11,6 @@ import { resetTtsPlayback, setTtsPlayback } from '@/test/stubs/ttsPlayback';
 import { lastVrmViewerProps, resetVrmViewerStub } from '@/test/stubs/vrmViewer';
 
 import { phValues } from '@/test/placeholderValues';
-import { PLAYER_OWNER } from '@/lib/traitGates';
 // three.js needs a WebGL context and the TTS engine a Web Audio graph; jsdom has neither.
 vi.mock('@/views/VRMViewer', () => import('@/test/stubs/vrmViewer'));
 vi.mock('@/lib/useTtsPlayback', () => import('@/test/stubs/ttsPlayback'));
@@ -631,7 +630,7 @@ describe('RightPanel — the traits tab against an edited world', () => {
     expect(box).toBeEnabled();
 
     fireEvent.click(box);
-    expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-brave', false, PLAYER_OWNER);
+    expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-brave', false, 'world');
   });
 
   it('offers no switch when the author has not marked it switchable', () => {
@@ -686,7 +685,7 @@ describe('RightPanel — acquirable traits in the traits tab', () => {
     const view = renderPanel();
     openDisabled();
     fireEvent.click(screen.getByRole('checkbox', { name: 'Switch on Feral' }));
-    expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-first', true, PLAYER_OWNER);
+    expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-first', true, 'world');
   });
 
   it('leaves a trait the author never marked switchable out of the panel entirely', () => {

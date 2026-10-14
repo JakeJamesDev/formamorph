@@ -11,7 +11,6 @@ import { DEFAULT_AVATAR_ID, LEGACY_DEFAULT_AVATAR_ID, LEGACY_DEFAULT_AVATAR_SENT
 import { migrateEntityImages } from './entityImages';
 import { normalizeLinkedItem } from './contentLink';
 import { migrateStatLookups } from './statLookupMigration';
-import { PLAYER_OWNER } from './traitGates';
 import { migrateStatCodeRoutes } from './statCodeRoutes';
 import { CODE_FIELD } from './statCodeTiming';
 import { allPlaceholders, placeholderOwners, type PlaceholderHomesWorld } from './placeholderHomes';
@@ -728,18 +727,6 @@ function migrateBodyMorphs(state: GameState): GameState {
   return { ...state, characterData: { ...rest, bodyMorphs } };
 }
 
-/** The player's owner key in saves written before it became {@link PLAYER_OWNER}. */
-const LEGACY_PLAYER_OWNER = 'world';
-
-/** Move the player's cascade-off traits from the legacy key to {@link PLAYER_OWNER}, merging any both hold. */
-function migratePlayerOwnerKey(state: GameState): GameState {
-  const cascade = state?.cascadeOffTraitIds;
-  if (!cascade || !(LEGACY_PLAYER_OWNER in cascade)) return state;
-  const { [LEGACY_PLAYER_OWNER]: legacy = [], ...rest } = cascade;
-  const merged = [...new Set([...(rest[PLAYER_OWNER] ?? []), ...legacy])];
-  return { ...state, cascadeOffTraitIds: { ...rest, [PLAYER_OWNER]: merged } };
-}
-
 /**
  * Migrate a save envelope to the current shape — the single path both the file-import boundary and the load
  * path run, so they can't drift. Three concerns, each idempotent:
@@ -753,8 +740,6 @@ function migratePlayerOwnerKey(state: GameState): GameState {
  *      library id. A save that never used it is untouched, and a rewritten one no longer matches.
  *   4. Body morphs (presence-based, every snapshot): fold the legacy fixed body fields into the generic
  *      `bodyMorphs` map. A character already carrying the map is untouched.
- *   5. Player owner key (presence-based, every snapshot): move cascade-off traits from `world` to the
- *      player key.
  * The appended current page stays `=== currentState`, so `gameStates[page - 1]` resolves the current page
  * identically. Pure — callers decide whether to persist the result (import) or just load it (load).
  */
@@ -764,7 +749,7 @@ export function migrateSave(save: SaveObject): SaveObject {
   const migratedHistory = isLegacy ? save.stateHistory.map(migrateLegacySaveState) : save.stateHistory;
   // Canonical flat history: an already-hoisted top-level copy, else the current snapshot's own copy.
   const messageHistory = save.messageHistory ?? migratedCurrent.fullMessageHistory ?? [];
-  const normalizeSnapshot = (s: GameState) => migratePlayerOwnerKey(migrateBodyMorphs(migrateDefaultAvatarId(s)));
+  const normalizeSnapshot = (s: GameState) => migrateBodyMorphs(migrateDefaultAvatarId(s));
   const currentState = normalizeSnapshot(stripSnapshotHistory(migratedCurrent));
   const history = isLegacy
     ? appendCurrentToHistory(migratedHistory.map(stripSnapshotHistory), currentState)
