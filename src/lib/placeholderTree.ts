@@ -8,6 +8,7 @@
 // release rule are testable directly.
 
 import { arrayMove } from '@dnd-kit/sortable';
+import { ancestors } from '@/lib/ancestors';
 import { randomUUID } from '@/lib/uuid';
 import { clamp } from '@/lib/utils';
 import {
@@ -167,19 +168,11 @@ export function topLevelPlaceholders(placeholders: readonly Placeholder[], all: 
 /** The parent placeholders above a placeholder, outermost first. Empty at the top level. */
 export function placeholderOwnerPath(placeholders: readonly Placeholder[], id: string): Placeholder[] {
   const byId = new Map(placeholders.map((p) => [p.id, p]));
-  const chain: Placeholder[] = [];
-  const seen = new Set<string>([id]);
-  let at = byId.get(id);
-  while (at) {
-    const parentId = holderOf(placeholders, at);
-    if (!parentId || seen.has(parentId)) break;
-    seen.add(parentId);
-    const parent = byId.get(parentId);
-    if (!parent) break;
-    chain.unshift(parent);
-    at = parent;
-  }
-  return chain;
+  const parentIdOf = (at: string) => {
+    const placeholder = byId.get(at);
+    return placeholder ? holderOf(placeholders, placeholder) : null;
+  };
+  return ancestors(id, parentIdOf).reverse().flatMap((at) => byId.get(at) ?? []);
 }
 
 /**

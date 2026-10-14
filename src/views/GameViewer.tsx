@@ -50,6 +50,7 @@ const TTSModal = lazy(() => import("../components/game/TTSModal"));
 import ReadmeModal from "../components/game/ReadmeModal";
 import { useReadmeVisibility } from "@/lib/useReadmeVisibility";
 import { drawPoolEntry, drawUnseenOpening, openingOwner, openingPool, type DrawnOpening } from "@/lib/openings";
+import { worldStripsLinksAndImages } from "@/lib/stripLinksAndImages";
 import { drawNewGameOpening } from "@/lib/newGameOpening";
 import { customPersonaEntity } from "@/lib/blueprints";
 import { worldEntitiesOf, type PersonaPick } from "@/lib/persona";
@@ -371,6 +372,7 @@ const GameViewer = ({
     dictionaries,
     placeholders: worldPlaceholders,
     placeholderOwners,
+    worldScripts,
     worldOverview,
     worldId,
     worldLoaded,
@@ -515,6 +517,8 @@ const GameViewer = ({
   const resolvedStatUpdatesPrompt =
     resolveWorldPrompt(worldOverview, 'statUpdates', statUpdatesPrompt, declinedWorldPrompts);
   const worldStatPromptApplies = appliedWorldPrompt(worldOverview, 'statUpdates', declinedWorldPrompts) !== null;
+  // The world's Strip Links And Images rule, applied at every seam that sends narration history.
+  const stripMedia = worldStripsLinksAndImages(worldOverview);
 
   const {
     setCharacterData,
@@ -1701,6 +1705,7 @@ const GameViewer = ({
         rehydratePrompt: rehydrateUserPrompt,
         notes: effectiveNotes,
         stamp,
+        stripMedia,
       });
       lastBandCountsRef.current = counts;
       // `liveRecall` is the real turn's call — the AI-context preview builds the same band with it off, so
@@ -1714,8 +1719,8 @@ const GameViewer = ({
     }
     lastBandCountsRef.current = null;
     // Digests off: no band to anchor into, so the player's own memories lead as a standing block.
-    return buildVerbatimHistory(turns, contextWindow, promptTokens, reserveTokens, effectiveNotes, recapUserPrompt);
-  }, [fullMessageHistory, contextWindow, reserveTokens, memoryDigests, semanticMemory, semanticRehydration, semanticBandCap, dictionary, allEntities, narrationVerbatimTurns, getMilestoneDrop, recapUserPrompt, rehydrateUserPrompt, currentLocation, parseEffectiveTurns, effectiveNotes, timeContext, gameTime, calendar, nowLinePrompt, setContextMemoryIds, setRehydratedMemoryIds]);
+    return buildVerbatimHistory(turns, contextWindow, promptTokens, reserveTokens, effectiveNotes, recapUserPrompt, stripMedia);
+  }, [stripMedia, fullMessageHistory, contextWindow, reserveTokens, memoryDigests, semanticMemory, semanticRehydration, semanticBandCap, dictionary, allEntities, narrationVerbatimTurns, getMilestoneDrop, recapUserPrompt, rehydrateUserPrompt, currentLocation, parseEffectiveTurns, effectiveNotes, timeContext, gameTime, calendar, nowLinePrompt, setContextMemoryIds, setRehydratedMemoryIds]);
 
   // The action's embedding, shared by every semantic consumer this turn (band relevance + lore
   // activation) so the action is embedded once. Null when no semantic feature is on, the model is
@@ -1990,12 +1995,12 @@ const GameViewer = ({
   // Its meaning match reads the drainer's vectors under the drainer's own gates.
   const toolMemorySource = useCallback(
     (): ToolMemorySource | null => (memoryDigests ? {
-      history: fullMessageHistory, overrides: memoryOverrides, verbatimFloor: narrationVerbatimTurns,
+      history: fullMessageHistory, overrides: memoryOverrides, verbatimFloor: narrationVerbatimTurns, stripMedia,
       meaning: semanticMemory
         ? { embed: embedActionVec, vectors: embedVectorsRef.current, diaries: semanticDiaries && characterDiaries }
         : null,
     } : null),
-    [memoryDigests, fullMessageHistory, memoryOverrides, narrationVerbatimTurns, semanticMemory, embedActionVec, semanticDiaries, characterDiaries],
+    [memoryDigests, fullMessageHistory, memoryOverrides, narrationVerbatimTurns, stripMedia, semanticMemory, embedActionVec, semanticDiaries, characterDiaries],
   );
   // Settings → Tools runs Try It on the playthrough, read as a Tool call in play reads it.
   const toolWorld = useCallback(
@@ -2126,6 +2131,7 @@ const GameViewer = ({
     imageAttachments,
     promptAttachments,
     language,
+    stripLinksAndImages: stripMedia,
   });
 
   /**
@@ -2480,6 +2486,7 @@ const GameViewer = ({
               stickyIds: lastBandIdsRef.current,
               notes: effectiveNotes,
               fallbackLastStory: lastStory,
+              stripMedia,
             })
           : null;
 
@@ -2890,6 +2897,7 @@ const GameViewer = ({
           statNameOf: (stat) => resolvePH(stat.name),
           traitNameOf: (trait) => resolveTraitText(trait, trait.name),
           owners,
+          worldScripts,
         });
         const nextPins = withPinWrites(basePins, result.pinWrites);
         // Onto the latest values, as the player's stats below: the regen tick can apply while the run awaits.
@@ -2936,7 +2944,7 @@ const GameViewer = ({
         return null;
       }
     },
-    [setGlobalStats, setEntityStats, entityOwnersOf, entityInForceUnder, addStatDeltas, setCodePins, resolvePH, statCodePlaceholders, pinsFor, traits, authoredStats, resolveTraitText, gatedWorld, codeEntities, statEntities, inForceOn, liveScene,
+    [setGlobalStats, setEntityStats, entityOwnersOf, entityInForceUnder, addStatDeltas, setCodePins, resolvePH, statCodePlaceholders, pinsFor, traits, authoredStats, worldScripts, resolveTraitText, gatedWorld, codeEntities, statEntities, inForceOn, liveScene,
       setGlobalTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, setOwnedTraits, addLogEntry],
   );
 
@@ -3441,10 +3449,15 @@ const GameViewer = ({
       setSceneImageJob("image");
       // A scene is landscape by definition; everything else about the request is the user's image preset,
       // shared with the editor's Generate dialog.
+      // The turn's number as the player counts them, for the file name.
+      const turn = fullMessageHistory
+        .filter((m) => m.role === "assistant")
+        .findIndex((m) => parseTurnContent(m.content)?.turnId === turnId) + 1 || undefined;
       const { provider, params, opts } = buildImageRequest(settings, {
         prompt: line,
         width: imageLandscapeWidth,
         height: imageLandscapeHeight,
+        file: { world: worldOverview.name, subject: turn ? `turn-${turn}-scene` : "scene", turn },
       });
       const dataUrl = await generateImage(provider, params, {
         ...opts,

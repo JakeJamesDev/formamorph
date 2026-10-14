@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import LocationMap from "@/components/game/LocationMap";
 import { UNNAMED_LOCATION } from "@/lib/locationCanvas";
 import { defaultCollapsedLocations, locationRows, removeCollapsedChildren } from "@/lib/locationTree";
+import { ancestors, parentLookup } from "@/lib/ancestors";
 import { useTravelView, type TravelView } from "@/lib/travelPrefs";
 import { cn } from "@/lib/utils";
 import type { Connection, GameLocation } from "@/types";
@@ -50,11 +51,9 @@ export const LocationModal = ({
   // How many places each branch holds all the way down, so a folded row can say what it hides.
   const descendantCount = useMemo(() => {
     const counts = new Map<string, number>();
-    const parentOf = new Map(allRows.map((r) => [r.id, r.parentId]));
+    const parentOf = parentLookup(allRows, (r) => r.parentId);
     for (const row of allRows) {
-      for (let cur = row.parentId; cur; cur = parentOf.get(cur) ?? null) {
-        counts.set(cur, (counts.get(cur) ?? 0) + 1);
-      }
+      for (const above of ancestors(row.id, parentOf)) counts.set(above, (counts.get(above) ?? 0) + 1);
     }
     return counts;
   }, [allRows]);

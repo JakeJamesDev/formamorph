@@ -3,6 +3,7 @@ import type { Entity, Stat, StatGroup } from '@/types';
 import { statUses } from './codeStatUses';
 import type { CodeUse } from './codeUses';
 import { statCodeOwners, type StatRouteWorld } from './statCodeTargets';
+import { boxScripts } from '@/test/scriptFixtures';
 
 const stat = (id: string, name: string, extra: Partial<Stat> = {}): Stat =>
   ({ id, name, type: 'number', value: 0, min: 0, max: 100, ...extra } as Stat);
@@ -11,23 +12,23 @@ const stat = (id: string, name: string, extra: Partial<Stat> = {}): Stat =>
 // links; Bram's link overrides its After box. Echo is a Blueprint nobody links.
 const blueprints = { id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' } as StatGroup;
 const worldHealth = stat('world-health', 'Health', {
-  code: [
+  scripts: boxScripts({ after: [
     'stats.Health.value += 1;',
     'return stats["Health"].value + stats.Health.max;',
     'const m = entities.Mara.stats.Health.value + persona.stats.Health.value;',
-  ].join('\n'),
+  ].join('\n') }),
 });
-const alert = stat('alert', 'Alert', { beforeCode: '// nothing here\nreturn entities["Mara"].stats[\'Health\'].value;' });
+const alert = stat('alert', 'Alert', { scripts: boxScripts({ before: '// nothing here\nreturn entities["Mara"].stats[\'Health\'].value;' }) });
 const maraHealth = stat('mara-health', 'Health', {
-  beforeCode: 'self.value = 1;\nowner.stats.Health.max = 50;\nstats.Health.value -= 1;',
+  scripts: boxScripts({ before: 'self.value = 1;\nowner.stats.Health.max = 50;\nstats.Health.value -= 1;' }),
 });
-const bramHealth = stat('bram-health', 'Health', { code: 'return owner.stats.Health.value;' });
-const howl = stat('howl', 'Howl', { groupId: 'bp', code: 'return self.value;\nreturn owner.stats.Howl.value;' });
-const echo = stat('echo', 'Echo', { groupId: 'bp', beforeCode: 'self.value = 0;' });
-const tide = stat('tide', 'Tide', { code: 'return entities.Mara.stats.Howl.value + entities.Bram.stats.Howl.value;' });
+const bramHealth = stat('bram-health', 'Health', { scripts: boxScripts({ after: 'return owner.stats.Health.value;' }) });
+const howl = stat('howl', 'Howl', { groupId: 'bp', scripts: boxScripts({ after: 'return self.value;\nreturn owner.stats.Howl.value;' }) });
+const echo = stat('echo', 'Echo', { groupId: 'bp', scripts: boxScripts({ before: 'self.value = 0;' }) });
+const tide = stat('tide', 'Tide', { scripts: boxScripts({ after: 'return entities.Mara.stats.Howl.value + entities.Bram.stats.Howl.value;' }) });
 const link = (id: string, code?: string) => ({
   id, originalId: 'howl', kind: 'stat' as const, originalName: 'Howl', groupId: null, order: 1,
-  ...(code === undefined ? {} : { overrides: { howl: { code: { value: code, blueprint: howl.code ?? '' } } } }),
+  ...(code === undefined ? {} : { overrides: { howl: { scripts: { value: boxScripts({ after: code }), blueprint: howl.scripts ?? [] } } } }),
 });
 const mara: Entity = { id: 'mara', name: 'Mara', persona: true, stats: [maraHealth], statLinks: [link('l-mara')] };
 const bram: Entity = { id: 'bram', name: 'Bram', stats: [bramHealth], statLinks: [link('l-bram', 'return self.max;')] };

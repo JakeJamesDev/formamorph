@@ -36,7 +36,8 @@ import { statPanelTabsFor, statTabForField, type StatPanelTab } from '@/views/st
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { registerStatCodeInsert, reportStatCodeInsert } from "@/lib/formaquestion/statCodeInsert";
 import { labelPlaceholders } from "@/lib/placementLetters";
-import { CODE_BOX_TARGET, CODE_FIELD, REPLACE_CODE_TITLE, replaceCodeDescription, type StatCodeTiming } from "@/lib/statCodeTiming";
+import { boxCode, CODE_BOX_TARGET, REPLACE_CODE_TITLE, replaceCodeDescription, type StatCodeTiming } from "@/lib/statCodeTiming";
+import { withFirstCodeAt } from "@/lib/scripts";
 import { findTargetRow, routeText } from "@/lib/surface/surfaceTargets";
 import { useLanding } from "@/lib/surface/useLanding";
 import { useCodeUseReveal } from "@/lib/codeUseReveal";
@@ -80,11 +81,10 @@ const namesOf = (stats: readonly Stat[]) => stats.map((entry) => entry.name).fil
 /** The stat being edited — a loose, partial Stat while fields are filled in. */
 type EditingStat = Partial<Stat>;
 
-/** Draft shape for an incoming stat: default a blank type/code so the editor controls stay bound. */
+/** Draft shape for an incoming stat: default a blank type so the editor controls stay bound. */
 const normalizeStat = (stat: EditingStat): EditingStat => ({
   ...(stat ?? {}),
   type: stat?.type || "number",
-  code: stat?.code || "",
 });
 
 /**
@@ -266,14 +266,18 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
   // The help window's Insert writes a box the way typing does, then shows that box on the Code tab.
   const landOnBox = useLanding(findBox, { focus: boxEditor });
   const [pendingInsert, setPendingInsert] = useState<{ timing: StatCodeTiming; code: string } | null>(null);
-  const writeInsert = useCallback((timing: StatCodeTiming, code: string) => {
-    apply({ [CODE_FIELD[timing]]: code });
-    onTabChange('code');
-    landOnBox(timing);
-  }, [apply, onTabChange, landOnBox]);
-  // Read at insert time, so the registration does not change with each keystroke.
+  // Read at write and insert time, so the registration does not change with each keystroke.
   const latestStat = useRef(editingStat);
   latestStat.current = editingStat;
+  // Each box edits the stat's first script of its timing: typing into an empty box adds one, clearing it removes it.
+  const setBoxCode = useCallback((timing: StatCodeTiming, code: string) => {
+    apply({ scripts: withFirstCodeAt(latestStat.current.scripts, timing, code) });
+  }, [apply]);
+  const writeInsert = useCallback((timing: StatCodeTiming, code: string) => {
+    setBoxCode(timing, code);
+    onTabChange('code');
+    landOnBox(timing);
+  }, [setBoxCode, onTabChange, landOnBox]);
   const statName = labelPlaceholders(editingStat.name ?? '', placeholders, { letters: placementLetters, owners: placeholderOwners });
   // Simple mode has no Code tab to show the box on.
   useEffect(() => {
@@ -281,7 +285,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
     return registerStatCodeInsert({
       statName,
       insert: (timing, code) => {
-        if (latestStat.current[CODE_FIELD[timing]]?.trim()) {
+        if (boxCode(latestStat.current, timing).trim()) {
           setPendingInsert({ timing, code });
           return;
         }
@@ -591,21 +595,21 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
 
       <Hint>Code can set this stat&apos;s value, Min, Max, or Regen, pin a placeholder, or switch a trait</Hint>
       <Hint>Turn order: Before the AI, AI stat changes, Regen, After the AI. An empty box is skipped.</Hint>
-      {tabResets([['beforeCode', 'Before the AI'], ['code', 'After the AI']])}
+      {tabResets([['scripts', 'Scripts']])}
 
       <StatCodeBox
         timing="before"
         stat={{ ...editingStat, id: stat.id }}
-        value={editingStat.beforeCode || ""}
-        onChange={(beforeCode) => handleChange("beforeCode", beforeCode)}
+        value={boxCode(editingStat, 'before')}
+        onChange={(next) => setBoxCode('before', next)}
         context={codeContext}
         reveal={reveal?.timing === 'before' ? reveal : null}
       />
       <StatCodeBox
         timing="after"
         stat={{ ...editingStat, id: stat.id }}
-        value={editingStat.code || ""}
-        onChange={(nextCode) => handleChange("code", nextCode)}
+        value={boxCode(editingStat, 'after')}
+        onChange={(next) => setBoxCode('after', next)}
         context={codeContext}
         reveal={reveal?.timing === 'after' ? reveal : null}
       />

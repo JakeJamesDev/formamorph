@@ -7,12 +7,13 @@ import type { CodeEntityNames, CodeTraitPlace } from '@/lib/statCodeAnalysis';
 import type { CodeWorldLookup } from '@/lib/codeWorldLookup';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import StatManager from './StatManager';
+import { boxScripts } from '@/test/scriptFixtures';
 
 /** Running the code and reading it are two different answers about the same text, and the panel has to
  *  show both. The editor itself is stubbed — what's under test is the row beneath it. */
 
 const stats = [
-  { id: 's1', name: 'Warmth', type: 'number', value: 7, min: 0, max: 10, code: '' },
+  { id: 's1', name: 'Warmth', type: 'number', value: 7, min: 0, max: 10 },
   { id: 's2', name: 'Damp', type: 'number', value: 3, min: 0, max: 10 },
 ] as unknown as Stat[];
 
@@ -592,7 +593,7 @@ describe('a box tests itself', () => {
     const user = userEvent.setup();
     // Inside Warmth's 0–10, so each Result shows the number its box returned.
     executeStatCode.mockResolvedValue({ value: 4, error: null });
-    renderCodePanel({ ...stats[0], beforeCode: 'return 4;', code: 'return 6;' } as Stat);
+    renderCodePanel({ ...stats[0], scripts: boxScripts({ before: 'return 4;', after: 'return 6;' }) });
 
     await user.click(screen.getByRole('button', { name: 'Test Code Before the AI' }));
 
@@ -607,7 +608,7 @@ describe('a box tests itself', () => {
   it('runs the before box with no turn behind it, so every delta reads zero', async () => {
     const user = userEvent.setup();
     executeStatCode.mockResolvedValue({ value: 3, error: null });
-    renderCodePanel({ ...stats[0], beforeCode: 'return self.delta.ai.value + 3;' } as Stat);
+    renderCodePanel({ ...stats[0], scripts: boxScripts({ before: 'return self.delta.ai.value + 3;' }) });
 
     await user.click(screen.getByRole('button', { name: 'Test Code Before the AI' }));
 
@@ -620,7 +621,7 @@ describe('a box tests itself', () => {
   it('runs each box on the clock that box gets', async () => {
     const user = userEvent.setup();
     executeStatCode.mockResolvedValue({ value: 1, error: null });
-    renderCodePanel({ ...stats[0], beforeCode: 'return 1;', code: 'return 1;' } as Stat);
+    renderCodePanel({ ...stats[0], scripts: boxScripts({ before: 'return 1;', after: 'return 1;' }) });
 
     await user.click(screen.getByRole('button', { name: 'Test Code Before the AI' }));
     await waitFor(() => expect(executeStatCode).toHaveBeenCalled());
@@ -635,7 +636,7 @@ describe('a box tests itself', () => {
     const user = userEvent.setup();
     // Inside Warmth's 0–10, so each Result shows the number its box returned.
     executeStatCode.mockResolvedValue({ value: 4, error: null });
-    renderCodePanel({ ...stats[0], beforeCode: 'return 4;' } as Stat);
+    renderCodePanel({ ...stats[0], scripts: boxScripts({ before: 'return 4;' }) });
 
     await user.click(screen.getByRole('button', { name: 'Test Code Before the AI' }));
     await waitFor(() => expect(row('Before the AI')).toHaveTextContent('Result: 4'));
@@ -692,7 +693,7 @@ describe('a box tests itself', () => {
   });
 
   it('offers no run on an empty box', async () => {
-    renderCodePanel({ ...stats[0], beforeCode: '   ', code: 'return 1;' } as Stat);
+    renderCodePanel({ ...stats[0], scripts: boxScripts({ before: '   ', after: 'return 1;' }) });
 
     expect(screen.getByRole('button', { name: 'Test Code Before the AI' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Test Code After the AI' })).toBeEnabled();

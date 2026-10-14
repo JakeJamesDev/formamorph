@@ -7,11 +7,11 @@
  * Every authored entity counts as in the game, and `persona` may be any entity that can be played (Q11).
  */
 
-import type { Entity, Placeholder, Stat, StatGroup, StatLink } from '@/types';
+import type { Entity, Placeholder, Script, Stat, StatGroup, StatLink } from '@/types';
 import { canBePlayer } from './owners';
 import { codeRenameChains, type CodeRenameKey } from './codeRenameChains';
 import { hasEntityKey, statCodeName, statsByCodeName } from './statCodeNames';
-import { CODE_FIELD, filledCodeBoxes, type StatCodeTiming } from './statCodeTiming';
+import { filledCodeBoxes } from './statCodeTiming';
 import {
   blueprintGroupStats, globalStatsOf, resolvedEntityStatTree, statBlueprintIds, statLinkState, type StatLinkWorld,
 } from './statLinks';
@@ -124,11 +124,9 @@ export type CodeHome =
   /** An owner's link that overrides this box of the Blueprint stat it brings. */
   | { kind: 'link'; entityId: string; linkId: string; statId: string };
 
-/** One filled box of stat code. */
-export interface StatCodeBox {
+/** One script of a stat that holds code. */
+export interface StatCodeBox extends Script {
   home: CodeHome;
-  timing: StatCodeTiming;
-  code: string;
   /** The stat as its runs read it: an owner's linked copy for a link's box. */
   stat: Stat;
   /** The entity an own or link box sits on. */
@@ -140,9 +138,9 @@ export interface StatCodeBox {
   runs: CodeRun[];
 }
 
-/** Whether a link overrides one box of the stat it brings. */
-export const overridesBox = (link: StatLink, original: Stat, timing: StatCodeTiming) =>
-  statLinkState(original, link).overridden.includes(CODE_FIELD[timing]);
+/** Whether a link overrides the scripts of the stat it brings. */
+export const overridesScripts = (link: StatLink, original: Stat) =>
+  statLinkState(original, link).overridden.includes('scripts');
 
 /**
  * Every filled box in the world once, in this order: the global stats', each Blueprint stat's, then each
@@ -161,7 +159,7 @@ export function statCodeBoxes(owners: CodeOwners): StatCodeBox[] {
       home: { kind: 'stat', statId: stat.id }, ...box, stat, entity: null, owner, runs: [],
     }));
   });
-  const blueprintBox = new Map(blueprintBoxes.map((box) => [`${box.stat.id}:${box.timing}`, box]));
+  const blueprintBox = new Map(blueprintBoxes.map((box) => [`${box.stat.id}:${box.id}`, box]));
   const entityBoxes = owners.all.flatMap((owner) => {
     const { entity } = owner;
     if (!entity) return [];
@@ -172,12 +170,12 @@ export function statCodeBoxes(owners: CodeOwners): StatCodeBox[] {
       if (!link) {
         return [{ home: { kind: 'entity', entityId: entity.id, statId: stat.id }, ...box, stat, entity, owner, runs: [run] }];
       }
-      if (original && overridesBox(link, original, box.timing)) {
+      if (original && overridesScripts(link, original)) {
         const home: CodeHome = { kind: 'link', entityId: entity.id, linkId: link.id, statId: stat.id };
         return [{ home, ...box, stat, entity, owner, runs: [run] }];
       }
-      // A box the link leaves alone runs the Blueprint's code for this owner.
-      blueprintBox.get(`${stat.id}:${box.timing}`)?.runs.push(run);
+      // Scripts the link leaves alone run the Blueprint's code for this owner.
+      blueprintBox.get(`${stat.id}:${box.id}`)?.runs.push(run);
       return [];
     }));
   });

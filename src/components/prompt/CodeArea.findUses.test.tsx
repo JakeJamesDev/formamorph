@@ -11,14 +11,15 @@ import { TOOLTIP_DELAY_MS } from '@/components/ui/tooltip';
 import { statBoxLookup } from '@/lib/codeWorldLookup';
 import { statCodeOwners } from '@/lib/statCodeTargets';
 import type { Entity, Stat } from '@/types';
+import { boxScripts } from '@/test/scriptFixtures';
 
 /** Find All Uses on a card: it pins the card, lists each box and line, and a row goes there. */
 
 const stat = (id: string, name: string, extra: Partial<Stat> = {}) =>
   ({ id, name, type: 'number', description: '', min: 0, max: 100, regen: 0, descriptors: [], ...extra } as Stat);
-const fatigue = stat('f', 'Fatigue', { code: 'self.value -= 1;' });
-const alert = stat('a', 'Alert', { beforeCode: 'const x = 1;\nreturn stats.Fatigue.value;' });
-const mara: Entity = { id: 'mara', name: 'Mara', stats: [stat('mf', 'Fatigue', { code: 'return owner.stats.Fatigue.value;' })] };
+const fatigue = stat('f', 'Fatigue', { scripts: boxScripts({ after: 'self.value -= 1;' }) });
+const alert = stat('a', 'Alert', { scripts: boxScripts({ before: 'const x = 1;\nreturn stats.Fatigue.value;' }) });
+const mara: Entity = { id: 'mara', name: 'Mara', stats: [stat('mf', 'Fatigue', { scripts: boxScripts({ after: 'return owner.stats.Fatigue.value;' }) })] };
 const owners = statCodeOwners({ stats: [fatigue, alert], entities: [mara], placeholders: [] });
 const lookup = statBoxLookup(owners, { owner: null, timing: 'after', self: alert });
 const worldLookup = statBoxLookup(owners, { owner: null, timing: 'after', self: alert }, {

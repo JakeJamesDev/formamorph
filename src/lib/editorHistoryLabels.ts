@@ -40,6 +40,7 @@ export const FIELD_LABELS: Partial<Record<SliceName | "*", Record<string, string
     bgm: "Background Music",
     systemPrompt: "System Prompt",
     use3DModel: "3D Player Avatar",
+    stripLinksAndImages: "Strip Links And Images",
     customPlayerVRM: "Custom Player Avatar",
     readme: "Readme",
     introReadme: "Intro Readme",
@@ -59,8 +60,7 @@ export const FIELD_LABELS: Partial<Record<SliceName | "*", Record<string, string
     regenUnit: "Regen",
     descriptors: "Stat Descriptors",
     morphBindings: "Body Sliders",
-    beforeCode: "Dynamic Value Calculation",
-    code: "Dynamic Value Calculation",
+    scripts: "Scripts",
   },
   locations: {
     backgroundImage: "Background Image",

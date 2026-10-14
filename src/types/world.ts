@@ -30,6 +30,21 @@ export type ThresholdUnit = 'raw' | 'percent';
 /** The span the editor shows Regen per. `regen` itself is always per hour. */
 export type RegenUnit = 'minutes' | 'hours' | 'days' | 'weeks';
 
+/** When a script runs: before the turn's AI calls, after the AI's asks and regen land, on each completed
+ *  narration sentence, once at a new playthrough's start, or when a trait switches in play. */
+export type ScriptTiming = 'before' | 'after' | 'output' | 'start' | 'switch';
+
+/** One box of code with a timing, on a stat, a trait or the world. */
+export interface Script {
+  id: string;
+  /** Absent or blank = the owner and timing name it. */
+  name?: string;
+  timing: ScriptTiming;
+  code: string;
+  /** Run position within the timing; absent = after every ordered script, in owner then stat order. */
+  order?: number;
+}
+
 /** A world-defined stat: its schema (type, range, descriptors) plus its live/starting value. */
 export interface Stat {
   id: string;
@@ -50,11 +65,8 @@ export interface Stat {
   /** How this stat's descriptor thresholds read: `raw` in the stat's own units (bands stay put when the
    *  range changes), `percent` as a share of min→max (bands rescale). Absent = raw. */
   thresholdUnit?: ThresholdUnit;
-  /** Optional JS run before the turn's AI calls, on the turn's starting state. Its writes reach that
-   *  turn's prompt. */
-  beforeCode?: string;
-  /** Optional JS run after the AI's asks and regen land. */
-  code?: string;
+  /** Scripts with this stat as `self`, run while the stat is enabled. Absent = none. */
+  scripts?: Script[];
   /** Body-mesh morph target names this stat drives; the value maps linearly across [min, authored max],
    *  so a max raised during the game pushes the influence past 1. */
   morphBindings?: string[];
@@ -127,8 +139,7 @@ export interface StatLinkFields {
   regenUnit: RegenUnit;
   descriptors: StatDescriptor[];
   thresholdUnit: ThresholdUnit;
-  beforeCode: string;
-  code: string;
+  scripts: Script[];
   morphBindings: string[];
   enabled: boolean;
   hidden: boolean;
@@ -314,6 +325,8 @@ export interface Trait {
   /** Absent = Optional. Automatic (stored `alwaysOn`) is active exactly while its gate holds, and the player never
    *  switches it. Hidden acts as Automatic. Both ignore `isDefault` and `playerToggle`. */
   mode?: TraitMode;
+  /** Scripts with this trait as `self`. Absent = none. */
+  scripts?: Script[];
 }
 
 /** A trait's non-Optional mode. */
@@ -644,6 +657,9 @@ export interface WorldOverview {
   allowedPersonas?: AllowedPersonas;
   /** The persona a new player starts on. Absent = the player's default persona. */
   startPersona?: StartPersona;
+  /** Strip Links And Images: narration history reaches every request as plain text (see
+   *  lib/stripLinksAndImages). Absent = off; a new world sets `true`. */
+  stripLinksAndImages?: boolean;
 }
 
 /** `world` limits the pickers to this world's personas and its Custom Persona. Applied by lib/personaPick. */
@@ -695,6 +711,8 @@ export interface World {
    *  (chips pick World or Unique); an Object shows all of them; one value is a Variable either way. Resolved
    *  at gameplay boundaries (see lib/placeholders); the name/token never reaches runtime. */
   placeholders?: Placeholder[];
+  /** Scripts no stat or trait owns; they run with no `self`. Absent = none. */
+  scripts?: Script[];
 }
 
 /** One authored value: a stable id and the author's text. The id is minted once and never changes, so a

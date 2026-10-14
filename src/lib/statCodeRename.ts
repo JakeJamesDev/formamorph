@@ -23,7 +23,7 @@ import {
 } from './statCodePaths';
 import { statCodeName } from './statCodeNames';
 import type { TraitOwnerMaps } from './statCodeTraits';
-import { boxCode, STAT_CODE_TIMINGS, type StatCodeTiming } from './statCodeTiming';
+import { filledScripts } from './scripts';
 import {
   boxReferences, nameHomeOf, statCodeBoxes, statCodeOwners, type CodeHome, type StatNameHome,
 } from './statCodeTargets';
@@ -33,9 +33,9 @@ export type RenameRoot = 'stats' | 'placeholders' | 'traits';
 
 const IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
 
-/** The key names of each chain off `root` in either of the stat's code boxes. */
+/** The key names of each chain off `root` in any of the stat's scripts. */
 export const statCodeChains = (stat: Stat, root: ChainRoot): string[][] =>
-  STAT_CODE_TIMINGS.flatMap((timing) => codeRenameChains(boxCode(stat, timing), root)).map((chain) => chain.map((key) => key.name));
+  filledScripts(stat).flatMap((script) => codeRenameChains(script.code, root)).map((chain) => chain.map((key) => key.name));
 
 /** Every exact map-lookup of `name` under `root`: the first key of each chain that reads as it. */
 export const codeRenameReferences = (code: string, root: RenameRoot, name: string): CodeRenameKey[] =>
@@ -230,14 +230,14 @@ export const codeNameReader = (
     ? (name) => name
     : (name) => statCodeName(name, placeholders));
 
-/** One stat's code, rewritten. A box the rename does not touch is absent rather than rewritten to itself. */
+/** One stat's code, rewritten. A script the rename does not touch is absent rather than rewritten to itself. */
 export interface CodeRenameEdit {
   /** Where the code is authored: a global stat, an entity's own stat, or a link's override. */
   home: CodeHome;
   /** The stat's own name, so the offer can say whose code it is about. */
   name: string;
-  /** The new text of each box the rename moved something in. */
-  boxes: Partial<Record<StatCodeTiming, string>>;
+  /** The new code of each script the rename moved something in, by script id. */
+  scripts: Record<string, string>;
 }
 
 /** What a rename would do to the world's stat code. */
@@ -419,8 +419,8 @@ function statRenameEdits(
     if (!splices.length) continue;
     references += splices.length;
     const at = JSON.stringify(box.home);
-    const edit = edits.get(at) ?? { home: box.home, name: box.stat.name, boxes: {} };
-    edit.boxes[box.timing] = spliced(box.code, splices);
+    const edit = edits.get(at) ?? { home: box.home, name: box.stat.name, scripts: {} };
+    edit.scripts[box.id] = spliced(box.code, splices);
     edits.set(at, edit);
   }
   return { edits: [...edits.values()], references };
@@ -452,19 +452,19 @@ export function planCodeRename(input: CodeRenameInput): CodeRenamePlan | null {
     };
   const edits: CodeRenameEdit[] = [];
   let references = 0;
-  // Both boxes, because a rename that moved one and left the other would strand the lookups it skipped.
+  // Every script, because a rename that moved one and left another would strand the lookups it skipped.
   for (const stat of stats) {
-    const boxes: Partial<Record<StatCodeTiming, string>> = {};
+    const scripts: Record<string, string> = {};
     let moved = 0;
-    for (const timing of STAT_CODE_TIMINGS) {
-      const rewritten = rewriteCode(boxCode(stat, timing), rewrite);
+    for (const script of filledScripts(stat)) {
+      const rewritten = rewriteCode(script.code, rewrite);
       if (!rewritten.references) continue;
       moved += rewritten.references;
-      boxes[timing] = rewritten.code;
+      scripts[script.id] = rewritten.code;
     }
     if (!moved) continue;
     references += moved;
-    edits.push({ home: { kind: 'stat', statId: stat.id }, name: stat.name, boxes });
+    edits.push({ home: { kind: 'stat', statId: stat.id }, name: stat.name, scripts });
   }
   return references ? { root, subject, oldName: from, newName: to, edits, references } : null;
 }

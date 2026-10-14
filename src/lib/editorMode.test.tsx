@@ -7,6 +7,7 @@ import { worldUsesAdvancedFeatures } from './editorAdvancedData';
 import type { Dictionary, Entity, GameLocation, Placeholder, Stat, Trait, WorldOverview } from '@/types';
 
 import { phValues } from '@/test/placeholderValues';
+import { boxScripts } from '@/test/scriptFixtures';
 /** Stands in for an Advanced-only field — the same gate every one of them uses. */
 const Gated = () => (useEditorMode().advanced ? <p>Aliases</p> : null);
 
@@ -66,7 +67,7 @@ describe('worldUsesAdvancedFeatures', () => {
     ['secondary keywords', { dictionaries: [{ id: 'b1', name: 'Lore', enabled: true, entries: [{ id: 'd1', key: ['bridge'], value: 'A toll.', secondaryKeys: ['toll'] }] }] as unknown as Dictionary[] }],
     ['a muted book', { dictionaries: [{ id: 'b1', name: 'Lore', enabled: false, entries: [] }] as Dictionary[] }],
     ['a muted entry', { dictionaries: [{ id: 'b1', name: 'Lore', enabled: true, entries: [{ id: 'd1', key: ['tide'], value: 'It takes.', enabled: false }] }] as unknown as Dictionary[] }],
-    ['stat code', { stats: [{ ...emptyWorld.stats[0], code: 'return 1;' }] }],
+    ['a stat script', { stats: [{ ...emptyWorld.stats[0], scripts: boxScripts({ after: 'return 1;' }) }] }],
     ['a stat descriptor', { stats: [{ ...emptyWorld.stats[0], descriptors: [{ id: 1, threshold: 50, description: 'cold' }] }] }],
     ['an AI lock', { stats: [{ ...emptyWorld.stats[0], noDecrease: true }] }],
     ['an alias', { entities: [{ ...emptyWorld.entities[0], aliases: ['Roz'] }] }],

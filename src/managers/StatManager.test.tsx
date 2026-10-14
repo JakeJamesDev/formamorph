@@ -8,6 +8,7 @@ import { encodePlaceholderToken } from '@/lib/placeholders';
 import { phValueId, phValues } from '@/test/placeholderValues';
 import type { StatPanelTab } from '@/views/statPanelTabs';
 import StatManager from './StatManager';
+import { boxScripts, codeAt } from '@/test/scriptFixtures';
 
 // Ten rockets banded in the stat's own units — the case the unit toggle exists for.
 const rockets = {
@@ -195,14 +196,14 @@ describe('the two code boxes', () => {
   });
 
   it('shows each box the code its own field holds', async () => {
-    store.stat = { ...store.stat, beforeCode: 'return 1;', code: 'return 2;' };
+    store.stat = { ...store.stat, scripts: boxScripts({ before: 'return 1;', after: 'return 2;' }) };
     renderManager('code');
     expect(await box('Stat Code Before the AI')).toHaveTextContent('return 1;');
     expect(await box('Stat Code After the AI')).toHaveTextContent('return 2;');
   });
 
   it('writes what the player types in the before box to beforeCode, leaving the after box alone', async () => {
-    store.stat = { ...store.stat, code: 'return 2;' };
+    store.stat = { ...store.stat, scripts: boxScripts({ after: 'return 2;' }) };
     const user = userEvent.setup();
     renderManager('code');
     await user.click(await box('Stat Code Before the AI'));
@@ -210,9 +211,9 @@ describe('the two code boxes', () => {
     const typed = '7;';
     for (let i = 0; i < typed.length; i++) {
       await user.keyboard(typed[i]);
-      await waitFor(() => expect(store.stat.beforeCode).toBe(typed.slice(0, i + 1)));
+      await waitFor(() => expect(codeAt(store.stat, 'before')).toBe(typed.slice(0, i + 1)));
     }
-    expect(store.stat.code).toBe('return 2;');
+    expect(codeAt(store.stat)).toBe('return 2;');
   });
 });
 
@@ -237,7 +238,7 @@ describe('the code field’s stat names', () => {
     const typed = 'return "';
     for (let i = 0; i < typed.length; i++) {
       await user.keyboard(typed[i]);
-      await waitFor(() => expect(store.stat.code).toBe(typed.slice(0, i + 1)));
+      await waitFor(() => expect(codeAt(store.stat)).toBe(typed.slice(0, i + 1)));
     }
 
     // The popup opened for an earlier key stays up until the re-query lands, so wait for the list of names.

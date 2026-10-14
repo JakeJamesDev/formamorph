@@ -54,6 +54,7 @@ export const TEST_SETTINGS: TurnSettings = {
   imageAttachments: false,
   promptAttachments: {},
   language: 'English',
+  stripLinksAndImages: false,
 };
 
 /** A mid-story turn with somewhere to go, overridable field by field. */

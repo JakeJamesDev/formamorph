@@ -17,14 +17,20 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### ➕ Added
 
 - **👤 User-facing**
-  - **Buttons that send an AI request now say in their tooltip where it goes.** **Send**, **Re-generate** and the turn's More items, **Re-generate Choices** and the World Editor's generate buttons add a line such as *Sends to GLM 5.3 · glm-5.3*, read from the same routing the request uses, so a prompt set to another endpoint names that one.
+  - **Scripts:**
+    - **A world option, Strip Links And Images, sends past narration without markdown links and images.** A link becomes its text and an image goes. It covers the last story, memory digests, diary entries and recall results, never your authored text. New worlds start with it on; older worlds keep it off.
+  - **ComfyUI's Model row shows the model a workflow loads itself.** A workflow without `%ckpt%` ignores the Model setting, so the row shows its own model file, grayed out.
+  - **ComfyUI's File Name setting saves images under folders by world and subject.** The pattern takes `{world}`, `{subject}`, `{turn}` and `{preset}`, and defaults to `formamorph/{world}/{subject}`. A custom workflow takes it where its save node's prefix is `%prefix%`.
+  - **Buttons that send an AI request now say in their tooltip where it goes.** **Send**, **Re-generate**, the turn's More items, **Re-generate Choices** and the World Editor's generate buttons add a line such as *Sends to GLM 5.3 · glm-5.3*. A prompt set to another endpoint names that one.
 
 #### 🔧 Fixed
 
 - **👤 User-facing**
+  - **ComfyUI with an empty Model now uses the first checkpoint the server lists.** It used to send an empty checkpoint name, which ComfyUI rejects. The Model placeholder says which one is used.
   - **Drifted Copies:**
     - **Duplicating a location from the filtered list now gives the copy its own Unique chip rolls.** The copy no longer shares the source's values, the same as in the tree.
   - **Deleting an entity, trait, location or placeholder group keeps your item order.** The group's items take its place in the list.
+  - **Arrange on the location canvas no longer freezes on a world whose locations hold each other in a loop.** Every walk up the location, group and placeholder trees now stops at a loop.
 
 ---
 

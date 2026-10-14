@@ -1,4 +1,5 @@
 import { randomUUID } from '@/lib/uuid';
+import { ancestors } from './ancestors';
 import { buildTree, flattenTree } from './groupTree';
 import {
   absorbPlaceholders, collectUsedPlaceholders, relinkedPin, remapPlaceholderIds, remapValuePins, remintPlaceholderDef,
@@ -250,10 +251,9 @@ export function scatterPlaceholders(world: PlaceholderHomesWorld, combined: read
   for (const e of world.entities ?? []) for (const p of e.placeholders ?? []) homeOf.set(p.id, { kind: 'entity', ownerId: e.id });
   for (const b of world.dictionaries ?? []) for (const p of b.placeholders ?? []) homeOf.set(p.id, { kind: 'dictionary', ownerId: b.id });
   const byId = new Map(combined.map((p) => [p.id, p]));
-  const resolve = (p: Placeholder, seen: Set<string>, fallback: PlaceholderHome): PlaceholderHome => {
-    const parentId = holderOf(combined, p);
-    const parent = parentId && !seen.has(parentId) ? byId.get(parentId) : undefined;
-    return parent ? resolve(parent, seen.add(p.id), fallback) : homeOf.get(p.id) ?? fallback;
+  const resolve = (p: Placeholder, fallback: PlaceholderHome): PlaceholderHome => {
+    const top = ancestors(p.id, (id) => holderOf(combined, byId.get(id)!)).pop() ?? p.id;
+    return homeOf.get(top) ?? fallback;
   };
 
   const worldList: Placeholder[] = [];
@@ -265,7 +265,7 @@ export function scatterPlaceholders(world: PlaceholderHomesWorld, combined: read
   };
   let previous: PlaceholderHome = WORLD;
   for (const p of combined) {
-    const home = resolve(p, new Set(), previous);
+    const home = resolve(p, previous);
     previous = home;
     if (home.kind === 'world') worldList.push(p);
     else if (home.kind === 'entity') push(entityLists, home.ownerId, p);

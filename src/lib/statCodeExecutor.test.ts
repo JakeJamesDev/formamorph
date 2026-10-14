@@ -7,6 +7,8 @@ import { clampToOwnRange, executeStatCode, type SandboxPlaceholderNode, type San
 import { phMap, phNode, phUnpin, phWrite } from '@/test/sandboxPlaceholders';
 import { PLACEHOLDER_ENTRY_MEMBERS } from './statCodePaths';
 import type { Stat } from '@/types';
+import { codeAt } from '@/test/scriptFixtures';
+import { migrateWorld } from './version';
 
 const makeStat = (over: Partial<Stat>): Stat => ({
   id: '1',
@@ -304,15 +306,17 @@ describe('executeStatCode bound writes', () => {
 
 describe('executeStatCode on the bundled worlds', () => {
   const worlds = import.meta.glob<{ default: { stats?: Stat[] } }>('../defaultworlds/*.json', { eager: true });
-  const coded = Object.entries(worlds).flatMap(([path, world]) =>
-    (world.default.stats ?? []).filter(s => s.code?.trim()).map(s => [path, s.name, s, world.default.stats ?? []] as const));
+  const coded = Object.entries(worlds).flatMap(([path, world]) => {
+    const stats = migrateWorld(world.default).stats ?? [];
+    return stats.filter(s => codeAt(s)?.trim()).map(s => [path, s.name, s, stats] as const);
+  });
 
   it('finds stat code to run, so the guard below is not vacuous', () => {
     expect(coded.length).toBeGreaterThan(0);
   });
 
   it.each(coded)('%s: %s still returns a number', async (_path, _name, stat, stats) => {
-    const res = await executeStatCode(stat.code ?? '', stats, stat);
+    const res = await executeStatCode(codeAt(stat) ?? '', stats, stat);
     expect(res.error).toBeNull();
     expect(typeof res.value).toBe('number');
   });

@@ -297,3 +297,17 @@ describe("autoArrangeAll", () => {
     expect(autoArrangeAll(nested, [])).toEqual(autoArrangeAll(nested, []));
   });
 });
+
+describe("autoArrangeAll on a malformed world", () => {
+  it("returns when locations hold each other in a loop", () => {
+    const loop: GameLocation[] = [
+      { id: "a", name: "A", parentId: "b" },
+      { id: "b", name: "B", parentId: "a" },
+      { id: "c", name: "C", parentId: "a" },
+      { id: "d", name: "D" },
+    ];
+    const arranged = autoArrangeAll(loop, []);
+    expect(arranged.map((l) => l.id)).toEqual(["a", "b", "c", "d"]);
+    expect(arranged.find((l) => l.id === "d")!.canvasPosition).toBeDefined();
+  });
+});

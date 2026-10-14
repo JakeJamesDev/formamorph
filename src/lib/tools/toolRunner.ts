@@ -10,6 +10,7 @@ import { argChipName, parseToolTemplate } from './argChips';
 import { isRecord } from './toolValidation';
 import { runToolScript } from './toolScript';
 import { recallMatches } from './toolRecall';
+import { stripLinksAndImages } from '@/lib/stripLinksAndImages';
 import type { ToolSnapshot } from './toolSnapshot';
 
 /** Why a call returned an error result. `arguments` is the model's mistake; the others are the Tool's. */
@@ -81,9 +82,11 @@ export function parseToolArgs(params: readonly ToolParam[], argsText: string): {
 type Lookup = Extract<ToolHandler, { kind: 'lookup' }>;
 
 /** Recall over the snapshot's memories: by meaning and words when the query embeds, else by words. */
-async function runRecall(tool: Tool, query: string, { memories, meaning }: ToolSnapshot): Promise<ToolCallResult> {
+async function runRecall(tool: Tool, query: string, { memories, meaning, stripMedia }: ToolSnapshot): Promise<ToolCallResult> {
   const queryVec = meaning && memories.length ? await meaning.embed(query).catch(() => null) : null;
-  const found = recallMatches(query, memories, meaning && queryVec ? { ...meaning, queryVec } : null);
+  // Matched on the stored text, since the cached vectors are keyed by it; stripped only on the way out.
+  const found = recallMatches(query, memories, meaning && queryVec ? { ...meaning, queryVec } : null)
+    .map((match) => (stripMedia ? { ...match, text: stripLinksAndImages(match.text) } : match));
   return { text: found.length ? JSON.stringify({ matches: found }) : tool.emptyResult };
 }
 

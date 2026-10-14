@@ -14,6 +14,7 @@ import { runStatCodeTurn } from './statCodeTurn';
 import { entityTraitNames } from './statCodeTraits';
 import { STAT_CODE_TIMINGS, type StatCodeTiming } from './statCodeTiming';
 import { runRules, type RuleWorld } from './testBench/rules';
+import { boxScripts } from '@/test/scriptFixtures';
 
 /**
  * The three surfaces that name a stat to code have to agree, or an author completes one name and runs
@@ -28,13 +29,13 @@ const stat = (over: Partial<PlayerStat> & { id: string; name: string }): PlayerS
   type: 'number', description: '', min: 0, max: 100, value: 50, regen: 0, descriptors: [], ...over,
 });
 
-const power = stat({ id: 's1', name: CHIPPED, code: 'placeholders.Probe.pin(self.name);' });
+const power = stat({ id: 's1', name: CHIPPED, scripts: boxScripts({ after: 'placeholders.Probe.pin(self.name);' }) });
 
 /** One piece of code in one of the stat's two boxes. Both boxes read the same surface and the same names,
  *  so each case that runs code runs in both: a guard that only ever watched the after box would let the
  *  other drift. */
 const inBox = (timing: StatCodeTiming, code: string): Partial<PlayerStat> =>
-  (timing === 'before' ? { beforeCode: code } : { code });
+  (timing === 'before' ? { scripts: boxScripts({ before: code }) } : { scripts: boxScripts({ after: code }) });
 
 /** The name the sandbox itself hands `self.name`, read back through a pin, under one playthrough's roll. */
 async function nameInSandbox(rolled: string, timing: StatCodeTiming): Promise<string | null> {
@@ -383,8 +384,7 @@ describe('a stat with code in both boxes', () => {
     stats: [stat({ id: 's1', name: CHIPPED }), stat({
       id: 's2',
       name: 'Mana',
-      beforeCode: 'return stats["Wolf Power"].value;',
-      code: 'return stats["Bear Power"].value;',
+      scripts: boxScripts({ before: 'return stats["Wolf Power"].value;', after: 'return stats["Bear Power"].value;' }),
     })],
     locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true }],
     entities: [], traits: [], statUpdates: [], dictionaries: [], placeholders: [beast],
@@ -402,8 +402,7 @@ describe('a stat with code in both boxes', () => {
     const both = stat({
       id: 's1',
       name: 'Reader',
-      beforeCode: 'placeholders.Probe.pin("before");',
-      code: 'placeholders.Probe.pin("after");',
+      scripts: boxScripts({ before: 'placeholders.Probe.pin("before");', after: 'placeholders.Probe.pin("after");' }),
     });
     const pinFrom = async (timing: StatCodeTiming) => {
       const out = await runStatCodeTurn({
