@@ -1,4 +1,5 @@
-import type { CascadeOffTraitIds, Entity, EntityGroup, GameState, OwnedTraitStates, Placeholder, Stat, Trait, TraitGroup } from '@/types';
+import type { CascadeOffTraitIds, Entity, EntityGroup, OwnedTraitStates, Placeholder, Stat, Trait, TraitGroup } from '@/types';
+import type { LiveSnapshot } from './globalSaveFields';
 import { buildTree, flattenTree, type TreeGroup, type TreeLeaf } from './groupTree';
 import { canBePlayer, inCast, playsAs, resolveOwners, type Owner, type OwnerWorld } from './owners';
 import type { SandboxEntity, SandboxPlaceholderNode, SandboxTrait } from './statCodeExecutor';
@@ -29,9 +30,9 @@ export interface StatCodeOwners {
   inSceneIds?: readonly string[];
 }
 
-/** The player's traits as a saved state holds them, each re-read from the world as play reads them. */
+/** The player's traits as a snapshot holds them in live shapes, each re-read from the world as play reads them. */
 export function savedTraits(
-  saved: Pick<GameState, 'playerTraits' | 'disabledTraitIds' | 'appliedTraitValues' | 'cascadeOffTraitIds' | 'ownedTraits'>,
+  saved: Pick<LiveSnapshot, 'playerTraits' | 'disabledTraitIds' | 'appliedTraitValues' | 'cascadeOffTraitIds' | 'ownedTraits'>,
   authored: Trait[],
 ): Pick<StatCodeOwners, 'acquired' | 'disabledTraitIds' | 'appliedValues' | 'cascadeOffTraitIds' | 'ownedTraits'> {
   return {

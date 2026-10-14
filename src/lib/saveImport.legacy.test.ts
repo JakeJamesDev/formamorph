@@ -36,7 +36,7 @@ describe('legacy v1.2.1 save import', () => {
     expect(migrated.stateHistory.every((s) => Array.isArray(s.discoveredEntities))).toBe(true);
 
     // Legacy trait `description` is renamed to `aiDescription` (the trait context builder reads that).
-    const trait = migrated.currentState.playerTraits[0] as unknown as Record<string, unknown>;
+    const trait = migrated.currentState.globalTraits[0] as unknown as Record<string, unknown>;
     expect(trait.aiDescription).toBe('You are The User');
     expect('description' in trait).toBe(false);
 

@@ -23,22 +23,35 @@ const keep = <T>(map: Readonly<Record<string, T>> | undefined, held: (id: string
 export const recordKey = (ownerId: string, traitId: string): string =>
   (ownerId === PLAYER_OWNER ? traitId : `${ownerId}/${traitId}`);
 
+/** A record key read back as its owner and the rest; a bare trait id has no owner. */
+export const splitRecordKey = (key: string): [owner: string | null, rest: string] => {
+  const slash = key.indexOf('/');
+  return slash < 0 ? [null, key] : [key.slice(0, slash), key.slice(slash + 1)];
+};
+
 /** The key an entity's trait keeps the record of what it moved on that entity's own stats. */
 export const ownStatsRecordKey = (ownerId: string, traitId: string): string => `${ownerId}/${traitId}/stats`;
 
-/** The owner a stat record belongs to, read back from its key. */
-const recordOwner = (key: string): string => (key.includes('/') ? key.slice(0, key.indexOf('/')) : PLAYER_OWNER);
-
 /** The state without the owned trait state, cascade-off lists, stat records and stat values of entities it no
- *  longer holds. */
+ *  longer holds. The global parts stay. */
 export function withHeldOwners(state: GameState, held: ReadonlySet<string>): GameState {
-  if (!state.ownedTraits && !state.cascadeOffTraitIds && !state.appliedTraitValues && !state.entityStats) return state;
-  const isHeld = (id: string) => id === PLAYER_OWNER || held.has(id);
+  const { cascadeOffTraitIds: cascade, appliedTraitValues: applied } = state;
+  if (!state.ownedTraits && !cascade && !applied && !state.entityStats) return state;
+  const isHeld = (id: string) => held.has(id);
+  /** The saved map with only the held owners, and no owners part once none is left. */
+  const heldOnly = <M extends { owners?: Record<string, unknown> }>(map: M | undefined): M | undefined => {
+    if (!map?.owners) return map;
+    const { owners, ...rest } = map;
+    const kept = keep(owners, isHeld);
+    const next = kept && Object.keys(kept).length ? { ...rest, owners: kept } : rest;
+    // `next` is `map` minus or with a pruned `owners`, so it still fits M.
+    return Object.keys(next).length ? next as M : undefined;
+  };
   return {
     ...state,
-    ownedTraits: keep(state.ownedTraits, (id) => held.has(id)),
-    entityStats: keep(state.entityStats, (id) => held.has(id)),
-    cascadeOffTraitIds: keep(state.cascadeOffTraitIds, isHeld),
-    appliedTraitValues: keep(state.appliedTraitValues, (key) => isHeld(recordOwner(key))),
+    ownedTraits: keep(state.ownedTraits, isHeld),
+    entityStats: keep(state.entityStats, isHeld),
+    cascadeOffTraitIds: heldOnly(cascade),
+    appliedTraitValues: heldOnly(applied),
   };
 }

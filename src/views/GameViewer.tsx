@@ -72,7 +72,7 @@ import WorldStorageService from "../services/WorldStorageService";
 import { MenuModal } from "../components/modals/MenuModal";
 import LlmSetupGuide from "../components/modals/LlmSetupGuide";
 import WorldEditor, { type EditorExit } from "./WorldEditor";
-import type { CharacterData, ChatMessage, ChatRole, ImageAttachment, AIRequestType, AITurnResult, GameLocation, GameState, MediaAsset, Dictionary, Entity, EntityStatValues, SaveRecord, World, PlayerStat, Trait, PersonaRef, OwnedTraitPicks, OwnedTraitStates } from "@/types";
+import type { CharacterData, ChatMessage, ChatRole, ImageAttachment, AIRequestType, AITurnResult, GameLocation, MediaAsset, Dictionary, Entity, EntityStatValues, SaveRecord, World, PlayerStat, Trait, PersonaRef, OwnedTraitPicks, OwnedTraitStates } from "@/types";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars, estimateTokens } from "../lib/memoryUtils";
 import { parseNarration, stripReasoning, stripReasoningLive, extractReasoning, extractReasoningLive } from "../lib/aiResponse";
@@ -198,6 +198,7 @@ import { useSettleOnSaveLoad } from "../lib/useSettleOnSaveLoad";
 import { useTurnSettle } from "../lib/useTurnSettle";
 import type { TraitCascade } from "../components/game/SetupTraitList";
 import { savedTraits } from "../lib/statCodeTraits";
+import { liveSnapshotOf, type LiveSnapshot } from "../lib/globalSaveFields";
 import { parseKeywords, locateMatches, type EntryActivation, type MatchHit, type MatchRule } from "../lib/dictionaryUtils";
 import { highlightSegments, HIGHLIGHT_PALETTE, type HighlightRule, type HighlightSegment } from "../lib/highlightUtils";
 import { useIsMobile } from "../lib/useIsMobile";
@@ -287,12 +288,12 @@ const pageOneNarration = (history: readonly ChatMessage[]) => pageOneTurn(histor
 
 /** The pre-turn state a stat re-roll hands stat code, so code reads and switches as the turn it replaces did. */
 type PreTurnCodeState = Pick<
-  GameState, 'codePins' | 'playerTraits' | 'disabledTraitIds' | 'appliedTraitValues' | 'cascadeOffTraitIds' | 'ownedTraits' | 'entityStats'
+  LiveSnapshot, 'codePins' | 'playerTraits' | 'disabledTraitIds' | 'appliedTraitValues' | 'cascadeOffTraitIds' | 'ownedTraits' | 'entityStats'
 >;
 
 /** What one stat-code run left, in the shapes state holds. The before box hands this to the turn's own
  *  passes, which run before React re-renders with it. */
-type TurnCodeState = Pick<GameState, 'playerStats'> & PreTurnCodeState;
+type TurnCodeState = Pick<LiveSnapshot, 'playerStats'> & PreTurnCodeState;
 
 /** The traits in force on one slice of saved trait state, and the stats live under them. The live pair is
  *  derived in two steps because `statEnabled` is read on its own; a paged-back turn and a turn's own
@@ -1502,8 +1503,9 @@ const GameViewer = ({
   const handleRegenerateStats = (page = currentPage) => {
     const target = partialRegenTarget(page);
     if (!target || !statUpdatesEnabled || requestStatCount === 0) return;
-    const preTurn = regenerateState(gameStates, initialStateRef.current, page);
-    if (!preTurn?.playerStats) return;
+    const preTurnState = regenerateState(gameStates, initialStateRef.current, page);
+    if (!preTurnState?.globalStats) return;
+    const preTurn = liveSnapshotOf(preTurnState);
     const { prev, action } = target;
     void runPartialRegen(async (signal) => {
       // Mirror the live turn's stat commit: reset the per-turn bar deltas, apply max-cap + value deltas onto
@@ -2940,7 +2942,7 @@ const GameViewer = ({
     async (
       response: StatResponse,
       clock: StatClock = {},
-      base: (Pick<GameState, 'playerStats'> & PreTurnCodeState) | null = null,
+      base: TurnCodeState | null = null,
       // The pre-turn stats the regen tick's starvation check reads.
       thresholdStats?: readonly PlayerStat[],
     ) => {

@@ -109,8 +109,8 @@ describe('settling traits on save load', () => {
     const ownedTraits = { albus: { chosen: ['paladin'] } };
     /** Health as the save stored it: the code held the max at 60 over base 100 and Paladin's 10. */
     const legacy = (): LegacyCodeBoundsStat => ({ ...stat, max: 60, codeBounds: { max: 60 } });
-    const snapshot = (playerStats: PlayerStat[]): GameState => ({
-      playerStats, playerTraits: [], ownedTraits, visibleEntities: [], logEntries: [], gameplayText: '', gameTime: 0,
+    const snapshot = (globalStats: PlayerStat[]): GameState => ({
+      globalStats, globalTraits: [], ownedTraits, visibleEntities: [], logEntries: [], gameplayText: '', gameTime: 0,
       characterData: null, choices: [], isGameStarted: true, timestamp: '', worldName: null, playerNotes: '',
       previousStateIndex: null, stateVersion: 2,
     });
@@ -146,8 +146,8 @@ describe('settling traits on save load', () => {
       const { commit, commitHistory } = load(state, [snapshot([legacy()]), plain]);
       expect(commit).not.toHaveBeenCalled();
       const [older, kept] = commitHistory.mock.calls[0][0];
-      expect(older.playerStats[0].codeDelta).toEqual({ max: -50 });
-      expect('codeBounds' in older.playerStats[0]).toBe(false);
+      expect(older.globalStats[0].codeDelta).toEqual({ max: -50 });
+      expect('codeBounds' in older.globalStats[0]).toBe(false);
       expect(kept).toBe(plain);
     });
 

@@ -37,7 +37,7 @@ function Probe() {
   const { playerTraits, disabledTraitIds, playerStats, logEntries, gameStates } = useGameplay();
   Object.assign(seen, held(playerTraits, disabledTraitIds, playerStats));
   const last = gameStates.at(-1);
-  seen.saved = last ? held(last.playerTraits, last.disabledTraitIds ?? [], last.playerStats) : null;
+  seen.saved = last ? held(last.globalTraits, last.disabledTraitIds ?? [], last.globalStats) : null;
   log = logEntries.map(({ text, repeat }) => ({ text, repeat }));
   return null;
 }

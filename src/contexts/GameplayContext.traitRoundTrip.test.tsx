@@ -12,7 +12,9 @@ import {
   acquireTrait, applyCodeTraitSwitches, heldPlayerTraits, seedStatBases, setTraitEnabled, switchPlayerTrait, type TraitRuntimeState,
 } from '@/lib/traitRuntime';
 import { inPlayOwners } from '@/lib/ownedTraitsInPlay';
-import type { LegacyCodeBoundsStat, PlayerStat, Stat, Trait } from '@/types';
+import { getSaveRecord, putSaveRecord } from '@/components/modals/dbUtils';
+import { APP_VERSION } from '@/lib/version';
+import type { LegacyCodeBoundsStat, PlayerStat, SaveObject, SaveRecord, Stat, Trait } from '@/types';
 
 vi.mock('@/lib/useTtsPlayback', () => import('@/test/stubs/ttsPlayback'));
 
@@ -155,7 +157,7 @@ describe('the cascade-off list across a save/load round trip', () => {
       commit(live(), switchPlayerTrait(s, 's', false, world)!.state);
     });
     expect(live().cascadeOffTraitIds).toEqual({ world: ['t'] });
-    expect(live().saveCurrentGameState().cascadeOffTraitIds).toEqual({ world: ['t'] });
+    expect(live().saveCurrentGameState().cascadeOffTraitIds).toEqual({ global: ['t'] });
 
     await act(async () => {
       await live().saveGame('slot', 'World', 'w1', 'save-5');
@@ -186,6 +188,46 @@ describe('the cascade-off list across a save/load round trip', () => {
       live().loadGameState({ ...live().saveCurrentGameState(), cascadeOffTraitIds: undefined }, []);
     });
     expect(live().cascadeOffTraitIds).toEqual({});
+  });
+});
+
+describe('global fields across a save/load round trip', () => {
+  const sworn: Trait = { id: 's', name: 'Sworn', statChanges: [], playerToggle: true };
+  const rampage: PlayerStat = { ...startStat, id: 'rampage', name: 'Rampage', value: 40 };
+
+  it('writes the global fields only, never the player-named ones', async () => {
+    const live = mount();
+    await act(async () => { commit(live(), { stats: [rampage], traits: [sworn], disabledTraitIds: [], appliedValues: { s: {} } }); });
+    const saved = live().saveCurrentGameState();
+    expect(saved.globalStats).toEqual([rampage]);
+    expect(saved.globalTraits).toEqual([sworn]);
+    expect('playerStats' in saved).toBe(false);
+    expect('playerTraits' in saved).toBe(false);
+    await act(async () => { await live().saveGame('slot', 'World', 'w1', 'save-global-1'); });
+    const stored = (await getSaveRecord('save-global-1')) as SaveObject;
+    expect(stored.currentState.globalStats).toEqual([rampage]);
+    expect('playerStats' in stored.currentState).toBe(false);
+  });
+
+  it('loads a save stored under the old field names with the same values, in every snapshot', async () => {
+    const live = mount();
+    const old = (value: number) => ({
+      playerStats: [{ ...rampage, value }], playerTraits: [sworn], disabledTraitIds: ['s'],
+      appliedTraitValues: { s: { rampage: 5 }, 'ash/paladin': { rampage: 2 } }, cascadeOffTraitIds: { world: ['hale'], ash: ['loyal'] },
+      visibleEntities: [], logEntries: [], gameplayText: '', gameTime: 0, characterData: null, choices: [], isGameStarted: true,
+      timestamp: '', worldName: null, playerNotes: '', previousStateIndex: null, stateVersion: 2,
+    });
+    await putSaveRecord({
+      id: 'save-global-2', name: 'Old', version: APP_VERSION, currentState: old(40), stateHistory: [old(10), old(40)],
+    } as unknown as SaveRecord);
+    await act(async () => { await live().loadGame('save-global-2', []); });
+    // The load derives each stat's bounds bookkeeping on top of what the save held.
+    expect(live().playerStats).toMatchObject([rampage]);
+    expect(live().playerTraits).toEqual([sworn]);
+    expect(live().disabledTraitIds).toEqual(['s']);
+    expect(live().appliedTraitValues).toEqual({ s: { rampage: 5 }, 'ash/paladin': { rampage: 2 } });
+    expect(live().cascadeOffTraitIds).toEqual({ world: ['hale'], ash: ['loyal'] });
+    expect(live().gameStates.map((state) => state.globalStats[0].value)).toEqual([10, 40]);
   });
 });
 
@@ -258,7 +300,9 @@ describe('owned trait state across a save/load round trip', () => {
       live().setAppliedTraitValues({ t: { vigor: 5 }, 'ash/paladin': { vigor: 5 }, 'wren/paladin': { vigor: 5 } });
       live().setPersonaRef({ source: 'world', entityId: 'ash' });
     });
-    expect(live().saveCurrentGameState().appliedTraitValues).toEqual({ t: { vigor: 5 }, 'ash/paladin': { vigor: 5 }, 'wren/paladin': { vigor: 5 } });
+    expect(live().saveCurrentGameState().appliedTraitValues).toEqual({
+      global: { t: { vigor: 5 } }, owners: { ash: { paladin: { vigor: 5 } }, wren: { paladin: { vigor: 5 } } },
+    });
     await act(async () => {
       await live().saveGame('slot', 'World', 'w1', 'save-owned-5');
     });
