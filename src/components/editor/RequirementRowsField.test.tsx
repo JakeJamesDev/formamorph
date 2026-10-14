@@ -8,7 +8,7 @@ import type { TraitRequirement, TraitRequirementRow } from '@/types';
 
 const brave: TraitRequirement = { kind: 'trait', id: 'brave' };
 const option = (requirement: TraitRequirement, label: string): RequirementOption =>
-  ({ requirement, label, breadcrumb: ['Traits'], bearers: [] });
+  ({ requirement, label, breadcrumb: ['Traits'], owners: [] });
 const options = {
   traits: [option(brave, 'Brave'), option({ kind: 'trait', id: 'wise' }, 'Wise')],
   groups: [], personas: [],
@@ -70,10 +70,10 @@ describe('RequirementRowsField without a trait or a store', () => {
     expect(screen.getByRole('button', { name: 'Wise' })).toBeInTheDocument();
   });
 
-  describe('with one bearer for the target, in a world', () => {
+  describe('with one owner for the target, in a world', () => {
     const single: RequirementOptions = {
       ...options,
-      traits: [{ ...options.traits[0], bearers: [{ bearer: { kind: 'you' }, name: 'You' }] }],
+      traits: [{ ...options.traits[0], owners: [{ owner: { kind: 'you' }, name: 'You' }] }],
     };
 
     it('adds at once when the owner is the world root', async () => {
@@ -84,7 +84,7 @@ describe('RequirementRowsField without a trait or a store', () => {
       expect(screen.queryByRole('button', { name: 'Back to targets' })).not.toBeInTheDocument();
     });
 
-    it('asks which bearer when the owner is another bearer, such as an image\'s entity', async () => {
+    it('asks which owner when the host is another owner, such as an image\'s entity', async () => {
       render(<Harness owner="image-1" offWorld={false} choices={single} />);
       fireEvent.click(screen.getByRole('button', { name: 'Add Requirement' }));
       fireEvent.click(await screen.findByRole('option', { name: /^Brave/ }));

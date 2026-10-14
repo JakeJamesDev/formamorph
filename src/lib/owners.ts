@@ -36,9 +36,9 @@ export interface Owner {
 
 export interface OwnerResolution {
   /** Every owner, the player first, then the world's entities in order, then the library's. */
-  bearers: Owner[];
+  owners: Owner[];
   /** The owners whose active traits are "You". */
-  playerBearerIds: string[];
+  playerOwnerIds: string[];
   /** The world's entities without the played one and without unpicked persona-only entities. */
   cast: Entity[];
   /** The gate module's input over the present owners, without the active sets. */
@@ -217,14 +217,14 @@ export function resolveOwners(
     return entityOwner(world, e, persona, isPlayer, isPlayer || inCast(e, persona));
   });
   const libraryOwners = library.filter(ownsOrLinksTraits).map((e) => entityOwner(world, e, persona, e.id === played, true));
-  const bearers = [playerOwner(world, persona), ...worldOwners, ...libraryOwners];
+  const owners = [playerOwner(world, persona), ...worldOwners, ...libraryOwners];
   const placementOf = new Map(world.entities.map((e) => [e.id, effectivePlacement(e, placeable)?.groupId ?? null]));
   return {
-    bearers,
-    playerBearerIds: bearers.filter((b) => b.isPlayer).map((b) => b.id),
+    owners,
+    playerOwnerIds: owners.filter((o) => o.isPlayer).map((o) => o.id),
     cast: world.entities.filter((e) => inCast(e, persona)),
     gate: {
-      owners: bearers.filter((b) => b.present).map((b) => gateOwner(b, placementOf.get(b.id) ?? null)),
+      owners: owners.filter((o) => o.present).map((o) => gateOwner(o, placementOf.get(o.id) ?? null)),
       entities: world.entities,
       persona: persona ?? { source: 'none' },
       originals: { traits: world.traits, groups: world.traitGroups },
@@ -238,13 +238,13 @@ export function resolveOwners(
  * author sees every tree. Nothing is active and there is no persona. `stats` are what a stat Condition reads.
  */
 export function editorGateInput(world: OwnerWorld, stats?: GateInput['stats']): GateInput {
-  const { bearers, gate } = resolveOwners(world, undefined);
+  const { owners, gate } = resolveOwners(world, undefined);
   const placeable = placeableGroupIds(world.traitGroups);
   return {
     ...gate,
     owners: [
       { id: PLAYER_OWNER, name: '', traits: world.traits, groups: world.traitGroups },
-      ...bearers.filter((b) => b.entity).map((b) => gateOwner(b, effectivePlacement(b.entity!, placeable)?.groupId ?? null)),
+      ...owners.filter((o) => o.entity).map((o) => gateOwner(o, effectivePlacement(o.entity!, placeable)?.groupId ?? null)),
     ],
     active: {},
     ...(stats ? { stats } : {}),
@@ -256,22 +256,22 @@ export function editorGateInput(world: OwnerWorld, stats?: GateInput['stats']): 
  * none of it. The player and the Custom Persona entity hold every root item outside Blueprints,
  * whatever the persona the owner was resolved under, so the check reads the same in the editor and in play.
  */
-export function heldReason(world: OwnerWorld, bearer: Owner, originalId: string): HeldReason | null {
+export function heldReason(world: OwnerWorld, owner: Owner, originalId: string): HeldReason | null {
   const name = originalOf(world, originalId)?.item.name ?? '';
   const brought = broughtIds(world, originalId);
-  const direct = bearer.linkOf.get(originalId);
+  const direct = owner.linkOf.get(originalId);
   if (direct) {
     return direct.originalId === originalId
       ? { kind: 'links', name: name || direct.originalName }
       : { kind: 'group', name, group: direct.originalName };
   }
-  const inside = brought.map((id) => bearer.linkOf.get(id)).find((link) => link);
+  const inside = brought.map((id) => owner.linkOf.get(id)).find((link) => link);
   if (inside) return { kind: 'inside', name: inside.originalName, group: name };
-  if (bearer.entity !== null && !bearer.entity.customPersona) return null;
+  if (owner.entity !== null && !owner.entity.customPersona) return null;
   const playerHeld = playerHeldIds(world);
   return brought.some((id) => playerHeld.has(id)) ? { kind: 'player', name } : null;
 }
 
 /** Whether the owner's tree already holds `originalId`, or anything a link to it would bring. */
-export const holdsOriginal = (world: OwnerWorld, bearer: Owner, originalId: string): boolean =>
-  heldReason(world, bearer, originalId) !== null;
+export const holdsOriginal = (world: OwnerWorld, owner: Owner, originalId: string): boolean =>
+  heldReason(world, owner, originalId) !== null;

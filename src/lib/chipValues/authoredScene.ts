@@ -83,7 +83,7 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
     ? undefined
     : (entity: Entity, text: string) => resolveEntityText(entity, text, { placeholders, rolls: {} }));
   // Every owner's tree with no persona picked: the player's, and each entity's with its links expanded.
-  const { bearers: trees } = resolveOwners({ traits, traitGroups, entities }, undefined);
+  const { owners: trees } = resolveOwners({ traits, traitGroups, entities }, undefined);
   const player = trees.find((b) => b.id === PLAYER_OWNER)!;
   const treeOf = new Map(trees.map((b) => [b.id, b]));
   const blueprints = { placeholders: world.placeholders ?? [], entities };

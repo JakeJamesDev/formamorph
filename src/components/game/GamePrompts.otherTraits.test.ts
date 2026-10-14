@@ -10,7 +10,8 @@ import { splitToken, variableForToken, type PromptVariable } from '@/lib/promptV
 import { authoredChipScene } from '@/lib/chipValues/authoredScene';
 import { chipValues } from '@/lib/chipValues/chipValues';
 import { migrateWorld } from '@/lib/version';
-import { PLAYER_BEARER, resolveBearers } from '@/lib/bearers';
+import { resolveOwners } from '@/lib/owners';
+import { PLAYER_OWNER } from '@/lib/traitGates';
 import { borneByPlayer } from '@/lib/ownedTraitsInPlay';
 import { defaultPicks } from '@/lib/traitEffects';
 import type { Entity, PlayerStat, Trait, TraitGroup, World } from '@/types';
@@ -33,13 +34,13 @@ function chipsOf(template: string, variable: PromptVariable): Array<{ index: num
       : []);
 }
 
-/** The world's player traits when a world entity is played: the player bearer's default traits, as a playthrough reads them. */
+/** The world's player traits when a world entity is played: the player owner's default traits, as a playthrough reads them. */
 function traitsUnderWorldPersona(world: World, entity: Entity): { traits: Trait[]; traitGroups: TraitGroup[] } {
-  const { bearers } = resolveBearers(
+  const { owners } = resolveOwners(
     { traits: world.traits, traitGroups: world.traitGroups ?? [], entities: world.entities },
     { source: 'world', entityId: entity.id },
   );
-  const player = bearers.find((bearer) => bearer.id === PLAYER_BEARER)!;
+  const player = owners.find((owner) => owner.id === PLAYER_OWNER)!;
   const active = new Set(defaultPicks(player.traits, player.groups));
   return { traits: borneByPlayer(player.traits.filter((trait) => active.has(trait.id))), traitGroups: borneByPlayer(player.groups) };
 }

@@ -63,7 +63,7 @@ export const ownerGroupId = (bearerId: string, groupId: string): string => `${be
  *  order, and the library's nodes come last. The picked persona takes the Custom Persona entity's slot,
  *  leaving its own placement; the marked entity's node, when present, follows it directly. */
 export function ownerTraitTree(world: OwnerWorld, persona: PersonaRef | undefined, library: readonly Entity[] = []): OwnerTraitTree {
-  const { bearers } = resolveOwners(world, persona, library);
+  const { owners: bearers } = resolveOwners(world, persona, library);
   const player = bearers.find((b) => b.id === PLAYER_OWNER)!;
   const played = playedEntityId(persona);
   const marked = customPersonaEntity(world.entities);
@@ -160,7 +160,7 @@ export interface PinSet {
  */
 export function ownerPins(state: OwnerPinState, sources: Omit<PinSources, 'traits' | 'disabledTraitIds' | 'statTraits'>): PinSet {
   const { world, persona, library = [], owned, sharedPlaceholders } = state;
-  const { bearers } = resolveOwners(world, persona, library);
+  const { owners: bearers } = resolveOwners(world, persona, library);
   const played = playedEntityId(persona);
   const playerBearer = bearers.find((b) => b.id === PLAYER_OWNER);
   const playedBearers = bearers.filter((b) => b.isPlayer && b.entity);
@@ -224,7 +224,7 @@ export interface OwnerPreview {
 export function ownerPreview(
   world: OwnerWorld, sharedPlaceholders: readonly Placeholder[], placeholders: readonly Placeholder[], bearerId: string, traitId: string,
 ): OwnerPreview | null {
-  const bearer = resolveOwners(world, undefined).bearers.find((b) => b.id === bearerId);
+  const bearer = resolveOwners(world, undefined).owners.find((b) => b.id === bearerId);
   const trait = bearer?.traits.find((t) => t.id === traitId);
   if (!bearer?.entity || !trait) return null;
   const retired = new Set(exclusiveSiblings(trait, bearer.traits, bearer.groups));
@@ -318,7 +318,7 @@ export interface OwnerPriming {
 }
 
 export function ownerPriming(world: OwnerWorld, library: readonly Entity[], shared: readonly Placeholder[]): OwnerPriming {
-  const { bearers } = resolveOwners(world, undefined, library);
+  const { owners: bearers } = resolveOwners(world, undefined, library);
   const texts = bearers.flatMap((bearer) => (bearer.entity ? [...bearer.traits, ...bearer.groups] : [])
     .filter((item) => !bearer.linkOf.has(item.id))
     .flatMap((item) => [item.name, item.playerDescription, item.aiDescription])

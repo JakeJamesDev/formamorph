@@ -177,7 +177,7 @@ function cardIndex(owners: CodeOwners, world: CodeCardWorld) {
   const { placeholders } = world;
   const ownerWorld: OwnerWorld = { traits: world.traits, traitGroups: world.traitGroups, entities: world.entities };
   const named = new Map(entityTraitNames(ownerWorld, placeholders).map((entity) => [entity.id, entity]));
-  const ownerById = new Map(resolveOwners(ownerWorld, undefined).bearers.map((owner) => [owner.id, owner]));
+  const ownerById = new Map(resolveOwners(ownerWorld, undefined).owners.map((owner) => [owner.id, owner]));
   const gate = editorGateInput(ownerWorld, startingGateStats({ stats: world.stats, statGroups: world.statGroups, entities: world.entities }));
   const textOf = conditionTexts(gate);
   // Later names win, as the sandbox's map keys them.

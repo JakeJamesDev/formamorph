@@ -1,18 +1,18 @@
-// The stats the requirement picker offers: one section per bearer, each stat ready to add as a Condition.
+// The stats the requirement picker offers: one section per owner, each stat ready to add as a Condition.
 
 import { playerOwnerIds, type GateInput, type RequirementOption } from './traitGates';
-import type { RequirementBearer } from '@/types';
+import type { RequirementOwner } from '@/types';
 
-/** One bearer's stats in the picker. */
+/** One owner's stats in the picker. */
 export interface RequirementStatSection {
   heading: string;
-  /** The host's own bearer, whose Conditions name no bearer. Offered off-world, where nothing else is. */
+  /** The host's own owner, whose Conditions name no owner. Offered off-world, where nothing else is. */
   own?: true;
   options: RequirementOption[];
 }
 
 /**
- * The stats a Condition can read from `hostId`: its own bearer first (the player set for a world trait),
+ * The stats a Condition can read from `hostId`: its own owner first (the player set for a world trait),
  * then You, then each other entity that has stats. The editor has no played persona, so You is the world's
  * player stats plus the Custom Persona's own, and a world persona's stats stay under its own entity (Q28).
  * A new Condition starts at the middle of the stat's span, so its text reads at once. An inert stat is left
@@ -25,7 +25,7 @@ export function requirementStatSections(
   const player = playerOwnerIds({ source: 'none' }, input.entities);
   const name = (id: string) => input.entities.find((e) => e.id === id)?.name ?? input.owners.find((o) => o.id === id)?.name ?? '';
 
-  const section = (heading: string, ids: readonly string[], bearer?: RequirementBearer): RequirementStatSection => {
+  const section = (heading: string, ids: readonly string[], named?: RequirementOwner): RequirementStatSection => {
     const seen = new Set<string>();
     const options: RequirementOption[] = [];
     for (const ownerId of ids) {
@@ -33,10 +33,10 @@ export function requirementStatSections(
         if (seen.has(id) || stat.inert) continue;
         seen.add(id);
         options.push({
-          requirement: { kind: 'stat', id, ...(bearer ? { owner: bearer } : {}), operator: '>=', value: Math.round((stat.min + stat.max) / 2), unit: 'raw' },
+          requirement: { kind: 'stat', id, ...(named ? { owner: named } : {}), operator: '>=', value: Math.round((stat.min + stat.max) / 2), unit: 'raw' },
           label: stat.name,
           breadcrumb: [],
-          bearers: [],
+          owners: [],
         });
       }
     }

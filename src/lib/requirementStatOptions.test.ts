@@ -19,32 +19,32 @@ const stats: NonNullable<GateInput['stats']> = {
 };
 const input = { owners: [], entities, stats } as Pick<GateInput, 'owners' | 'entities' | 'stats'>;
 
-/** Each section as "heading: names", with the bearer its rows add under. */
+/** Each section as "heading: names", with the owner its rows add under. */
 const read = (host: string, world = input) => requirementStatSections(world, host).map((s) => ({
   heading: s.heading,
   own: !!s.own,
   rows: s.options.map((o) => o.label),
-  bearers: [...new Set(s.options.map((o) => JSON.stringify(o.requirement.kind === 'stat' ? o.requirement.owner ?? null : null)))],
+  owners: [...new Set(s.options.map((o) => JSON.stringify(o.requirement.kind === 'stat' ? o.requirement.owner ?? null : null)))],
 }));
 
 describe('requirementStatSections', () => {
-  it('lists, for a world trait, the player set first with no bearer, then each entity that has stats', () => {
+  it('lists, for a world trait, the player set first with no owner, then each entity that has stats', () => {
     expect(read(WORLD_OWNER)).toEqual([
-      { heading: 'Player Stats', own: true, rows: ['Rage', 'Gold', 'Luck'], bearers: ['null'] },
-      { heading: 'Ash Stats', own: false, rows: ['Hunger'], bearers: ['{"kind":"entity","id":"ash","name":"Ash"}'] },
-      { heading: 'Hero Stats', own: false, rows: ['Grit'], bearers: ['{"kind":"entity","id":"hero","name":"Hero"}'] },
+      { heading: 'Player Stats', own: true, rows: ['Rage', 'Gold', 'Luck'], owners: ['null'] },
+      { heading: 'Ash Stats', own: false, rows: ['Hunger'], owners: ['{"kind":"entity","id":"ash","name":"Ash"}'] },
+      { heading: 'Hero Stats', own: false, rows: ['Grit'], owners: ['{"kind":"entity","id":"hero","name":"Hero"}'] },
     ]);
   });
 
-  it('lists, for an entity, its own stats with no bearer, then You, then the others', () => {
+  it('lists, for an entity, its own stats with no owner, then You, then the others', () => {
     expect(read('ash')).toEqual([
-      { heading: 'Ash Stats', own: true, rows: ['Hunger'], bearers: ['null'] },
-      { heading: 'Player Stats', own: false, rows: ['Rage', 'Gold', 'Luck'], bearers: ['{"kind":"you"}'] },
-      { heading: 'Hero Stats', own: false, rows: ['Grit'], bearers: ['{"kind":"entity","id":"hero","name":"Hero"}'] },
+      { heading: 'Ash Stats', own: true, rows: ['Hunger'], owners: ['null'] },
+      { heading: 'Player Stats', own: false, rows: ['Rage', 'Gold', 'Luck'], owners: ['{"kind":"you"}'] },
+      { heading: 'Hero Stats', own: false, rows: ['Grit'], owners: ['{"kind":"entity","id":"hero","name":"Hero"}'] },
     ]);
   });
 
-  it('keeps a world persona’s own stats under its own bearer, not under You (Q28)', () => {
+  it('keeps a world persona’s own stats under its own owner, not under You (Q28)', () => {
     const you = read('ash').find((s) => s.heading === 'Player Stats');
     expect(you?.rows).not.toContain('Grit');
   });

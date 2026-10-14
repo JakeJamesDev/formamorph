@@ -3,7 +3,7 @@
 
 import type { Entity, Trait, TraitGroup, TraitLink, TraitLinkFields } from '@/types';
 import { randomUUID } from './uuid';
-import { broughtIds, makeLink, originalOf, type BearerWorld } from './bearers';
+import { broughtIds, makeLink, originalOf, type OwnerWorld } from './owners';
 import {
   effectiveLinkTrait, resetLinkOverride, resetLinkOverrides, resetLinkTraitOverrides, setLinkEdits, setLinkOverride,
 } from './blueprints';
@@ -11,7 +11,7 @@ import { blueprintItemIds, blueprintsGroup, buildTraitTree, flattenTraitTree, gr
 import { rootCount, withOwnedTraits } from './ownedTraits';
 import { mapConditions } from './requirementRows';
 
-type WorldTraitLists = Pick<BearerWorld, 'traits' | 'traitGroups'>;
+type WorldTraitLists = Pick<OwnerWorld, 'traits' | 'traitGroups'>;
 
 /** The entity with its links replaced. No links are stored as absent. */
 function withLinks(entity: Entity, links: TraitLink[]): Entity {
@@ -56,11 +56,11 @@ export function dropLinksTo(entities: Entity[], originalIds: string | ReadonlySe
   return entities.map((e) => (linksGone(e) ? withLinks(e, e.traitLinks!.filter((l) => !gone.has(l.originalId))) : e));
 }
 
-/** Link the original at the end of the bearer's top level. Null when the id is not a Blueprints item. */
-export function addLink(world: WorldTraitLists, bearer: Entity, originalId: string, id: string): Entity | null {
+/** Link the original at the end of the owner's top level. Null when the id is not a Blueprints item. */
+export function addLink(world: WorldTraitLists, owner: Entity, originalId: string, id: string): Entity | null {
   if (!isBlueprintItem(world, originalId)) return null;
-  const link = makeLink(world, originalId, id, { groupId: null, order: rootCount(bearer) });
-  return link && withLinks(bearer, [...(bearer.traitLinks ?? []), link]);
+  const link = makeLink(world, originalId, id, { groupId: null, order: rootCount(owner) });
+  return link && withLinks(owner, [...(owner.traitLinks ?? []), link]);
 }
 
 /** Remove one link. The original is untouched. */

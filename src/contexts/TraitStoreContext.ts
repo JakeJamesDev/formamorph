@@ -1,6 +1,6 @@
 import { createContext, useContext, useMemo } from 'react';
 import { useGameDataOptional } from '@/contexts/GameDataContext';
-import { editorGateInput } from '@/lib/bearers';
+import { editorGateInput } from '@/lib/owners';
 import { startingGateStats } from '@/lib/gateStats';
 import type { GateInput } from '@/lib/traitGates';
 import type { PinEditorWorld } from '@/lib/placeholderPins';
@@ -19,7 +19,7 @@ export interface TraitStore {
   entities: Entity[];
   placeholders: Placeholder[];
   stats: Stat[];
-  /** The world's stat groups, so a bearer's links and the Blueprints read off them. Absent off-world. */
+  /** The world's stat groups, so an owner's links and the Blueprints read off them. Absent off-world. */
   statGroups?: StatGroup[];
   placementLetters?: PlacementLetters;
   placeholderOwners?: PlaceholderOwners;

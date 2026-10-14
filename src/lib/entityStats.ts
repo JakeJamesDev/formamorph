@@ -2,7 +2,7 @@
 // the owners whose regen and code run each turn.
 
 import type { Entity, EntityStatChanges, EntityStatValues, LegacyCodeBoundsStat, PersonaRef, PlayerStat, StatGroup } from '@/types';
-import { inCast, playsAs } from './bearers';
+import { inCast, playsAs } from './owners';
 import { backfillPlayerStats } from './statBackfill';
 import { activeStatEnabled, enabledStats } from './traitEffects';
 import { seedNewGameStats } from './traitRuntime';

@@ -7,7 +7,7 @@ import type { Entity, EntityGroup } from '@/types';
  *  owner row carries `customPersona` when the entity holds that mark. */
 export type OwnerChoice =
   | { kind: 'group'; id: string; name: string; parentId: string | null }
-  | { kind: 'bearer'; id: string; name: string; parentId: string | null; customPersona?: true };
+  | { kind: 'owner'; id: string; name: string; parentId: string | null; customPersona?: true };
 
 /** Every entity and entity group in Entities tab order. A group with no entity anywhere below it has no row. */
 export function ownerChoices(groups: EntityGroup[], entities: Entity[]): OwnerChoice[] {
@@ -20,7 +20,7 @@ export function ownerChoices(groups: EntityGroup[], entities: Entity[]): OwnerCh
   const choices: OwnerChoice[] = [];
   for (const row of rows) {
     if (row.leaf) {
-      choices.push({ kind: 'bearer', id: row.leaf.id, name: row.leaf.name, parentId: row.parentId, ...(row.leaf.customPersona ? { customPersona: true } : {}) });
+      choices.push({ kind: 'owner', id: row.leaf.id, name: row.leaf.name, parentId: row.parentId, ...(row.leaf.customPersona ? { customPersona: true } : {}) });
     } else if (row.group && holdsEntity.has(row.group.id)) {
       choices.push({ kind: 'group', id: row.group.id, name: row.group.name, parentId: row.parentId });
     }

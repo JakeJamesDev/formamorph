@@ -434,7 +434,7 @@ export function linkHeldReason(
   world: WorldTraitLists, entities: readonly Entity[], nodeId: string, originalId: string,
 ): HeldReason | null {
   const bearerWorld = { ...world, entities };
-  const resolved = resolveBearers(bearerWorld, undefined).bearers.find((b) => b.id === nodeId);
+  const resolved = resolveBearers(bearerWorld, undefined).owners.find((b) => b.id === nodeId);
   return resolved ? heldReason(bearerWorld, resolved, originalId) : null;
 }
 

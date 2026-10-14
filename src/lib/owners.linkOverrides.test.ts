@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { resolveBearers, type BearerWorld } from './bearers';
-import { inPlayBearers } from './ownedTraitsInPlay';
+import { resolveOwners, type OwnerWorld } from './owners';
+import { inPlayOwners } from './ownedTraitsInPlay';
 import { setLinkOverride } from './blueprints';
 import { applyPlayedStatTraits, switchPersonaStats, switchPlayerTrait, type TraitRuntimeState, type TraitWorld } from './traitRuntime';
 import type { Entity, PersonaRef, PlayerStat, Trait, TraitGroup, TraitLink } from '@/types';
@@ -17,11 +17,11 @@ const albusLink = setLinkOverride(
 );
 const albus: Entity = { id: 'albus', name: 'Albus', persona: true, traitLinks: [albusLink] };
 const mira: Entity = { id: 'mira', name: 'Mira', persona: true, traitLinks: [linkTo('l-mira')] };
-const world: BearerWorld = { traits: [paladin], traitGroups: groups, entities: [albus, mira] };
+const world: OwnerWorld = { traits: [paladin], traitGroups: groups, entities: [albus, mira] };
 
 /** The trait world play reads under `persona`, built the way the Traits panel builds it. */
 const played = (persona: PersonaRef): TraitWorld => ({
-  traits: [paladin], groups, entities: world.entities, persona, bearers: inPlayBearers(world, persona),
+  traits: [paladin], groups, entities: world.entities, persona, bearers: inPlayOwners(world, persona),
 });
 const AS_ALBUS = played({ source: 'world', entityId: 'albus' });
 const AS_MIRA = played({ source: 'world', entityId: 'mira' });
@@ -36,9 +36,9 @@ const valueOf = (s: TraitRuntimeState) => s.stats[0].value;
 const name = (t: Trait) => t.name;
 
 describe('link overrides in play', () => {
-  it("gives each bearer the original as its own link reads it", () => {
-    const { bearers } = resolveBearers(world, undefined);
-    const of = (id: string) => bearers.find((b) => b.id === id)!.traits.find((t) => t.id === 'paladin')!;
+  it("gives each owner the original as its own link reads it", () => {
+    const { owners } = resolveOwners(world, undefined);
+    const of = (id: string) => owners.find((b) => b.id === id)!.traits.find((t) => t.id === 'paladin')!;
     expect(of('albus')).toMatchObject({ playerToggle: true, statChanges: [{ statId: 'h', value: 12, type: 'starting' }] });
     expect(of('mira').playerToggle).toBeFalsy();
     expect(of('mira').statChanges).toEqual(paladin.statChanges);
@@ -68,10 +68,10 @@ describe("a persona's own stat traits in play (Q3)", () => {
   // Vow (+7 starting health) is Sylvie's own trait; Mira links Paladin. Neither sits at the top level.
   const vow: Trait = { id: 'vow', name: 'Vow', groupId: null, order: 0, statChanges: [{ statId: 'h', value: 7, type: 'starting' }] };
   const sylvie: Entity = { id: 'sylvie', name: 'Sylvie', persona: true, traits: [vow] };
-  const owning: BearerWorld = { ...world, entities: [...world.entities, sylvie] };
+  const owning: OwnerWorld = { ...world, entities: [...world.entities, sylvie] };
   const as = (entityId: string): TraitWorld => {
     const persona: PersonaRef = { source: 'world', entityId };
-    return { traits: [paladin], groups, entities: owning.entities, persona, bearers: inPlayBearers(owning, persona) };
+    return { traits: [paladin], groups, entities: owning.entities, persona, bearers: inPlayOwners(owning, persona) };
   };
   const picked = state({ ownedTraits: { sylvie: { chosen: ['vow'] }, mira: { chosen: ['paladin'] } } });
 
