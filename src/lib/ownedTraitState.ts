@@ -1,6 +1,6 @@
 // Each entity's owned traits in play, as the save stores them.
 
-import { WORLD_OWNER } from './traitGates';
+import { PLAYER_OWNER } from './traitGates';
 import type { GameState, OwnedTraitStates, PersonaRef } from '@/types';
 
 /** The state a new game starts with: each entity's picks chosen, none switched off. */
@@ -18,22 +18,22 @@ export function heldEntityIds(worldEntityIds: Iterable<string>, state: GameState
 const keep = <T>(map: Readonly<Record<string, T>> | undefined, held: (id: string) => boolean) =>
   map && Object.fromEntries(Object.entries(map).filter(([id]) => held(id)));
 
-/** The key a bearer's trait keeps its stat record under. The player's world traits keep the bare trait id,
+/** The key an owner's trait keeps its stat record under. The player's world traits keep the bare trait id,
  *  as saves have always held it; a played persona's linked trait keys by `<entity id>/<trait id>`. */
 export const recordKey = (ownerId: string, traitId: string): string =>
-  (ownerId === WORLD_OWNER ? traitId : `${ownerId}/${traitId}`);
+  (ownerId === PLAYER_OWNER ? traitId : `${ownerId}/${traitId}`);
 
 /** The key an entity's trait keeps the record of what it moved on that entity's own stats. */
 export const ownStatsRecordKey = (ownerId: string, traitId: string): string => `${ownerId}/${traitId}/stats`;
 
-/** The bearer a stat record belongs to, read back from its key. */
-const recordOwner = (key: string): string => (key.includes('/') ? key.slice(0, key.indexOf('/')) : WORLD_OWNER);
+/** The owner a stat record belongs to, read back from its key. */
+const recordOwner = (key: string): string => (key.includes('/') ? key.slice(0, key.indexOf('/')) : PLAYER_OWNER);
 
 /** The state without the owned trait state, cascade-off lists, stat records and stat values of entities it no
  *  longer holds. */
 export function withHeldOwners(state: GameState, held: ReadonlySet<string>): GameState {
   if (!state.ownedTraits && !state.cascadeOffTraitIds && !state.appliedTraitValues && !state.entityStats) return state;
-  const isHeld = (id: string) => id === WORLD_OWNER || held.has(id);
+  const isHeld = (id: string) => id === PLAYER_OWNER || held.has(id);
   return {
     ...state,
     ownedTraits: keep(state.ownedTraits, (id) => held.has(id)),

@@ -208,7 +208,7 @@ const paladinOverrides = {
 };
 const smiteOverrides = { playerToggle: { value: true, blueprint: false } };
 
-/** A persona that links Class with Paladin on and a pinned garb, links Smite as a toggle, and owns a vow gated on bearers. */
+/** A persona that links Class with Paladin on and a pinned garb, links Smite as a toggle, and owns a vow gated on owners. */
 const mira = (): Entity => ({
   id: 'mira', name: 'Mira', persona: true,
   traits: [trait('t-vow', { name: 'Vow', requires: [
@@ -237,7 +237,7 @@ describe('portableOwnedTraits with links', () => {
     ]);
   });
 
-  it('names a named-scope bearer, and the entity itself as SELF_ENTITY', () => {
+  it('names a named-scope owner, and the entity itself as SELF_ENTITY', () => {
     expect(vowOf(portableOwnedTraits(mira(), linkOrigin)).map((r) => r.kind !== 'playingAs' && r.owner)).toEqual([
       { kind: 'entity', id: 'albus', name: 'Albus' },
       { kind: 'you' },
@@ -338,7 +338,7 @@ describe('bindOwnedTraits with links', () => {
     expect(bindOwnedTraits(carried, linkTarget()).traitLinks!.map((l) => l.id)).toEqual(['l-smite', 'l-paladin']);
   });
 
-  it('rebinds a named-scope bearer by id, then unique name, else leaves it unresolved by name', () => {
+  it('rebinds a named-scope owner by id, then unique name, else leaves it unresolved by name', () => {
     expect(vowOf(bindOwnedTraits(carriedMira(), linkOrigin)).map((r) => r.kind !== 'playingAs' && r.owner)).toEqual([
       { kind: 'entity', id: 'albus', name: 'Albus' }, { kind: 'you' }, { kind: 'entity', id: 'copy', name: 'Mira' },
     ]);

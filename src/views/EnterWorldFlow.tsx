@@ -6,7 +6,7 @@ import { useLingeringMount } from '@/lib/useLingeringMount';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { useResolvedAuthoredWorld } from '@/lib/useResolvedWorld';
 import { inAuthoredOrder, traitOrderIndex } from '@/lib/traitEffects';
-import { bearerPins, inPlayBearers, playedEntityId } from '@/lib/ownedTraitsInPlay';
+import { ownerPins, inPlayOwners, playedEntityId } from '@/lib/ownedTraitsInPlay';
 import { startingStatsWith } from '@/lib/traitRuntime';
 import { toastError } from '@/lib/linkToast';
 import CharacterCustomization, { defaultCharacterData } from './CharacterCustomization';
@@ -163,9 +163,9 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
     // The persona's linked stat traits apply after the world picks, as the game's seed does.
     const starting = startingStatsWith(rawStats, chosen, {
       traits: rawTraits, groups: rawTraitGroups, entities: worldEntities, persona: draftPersona,
-      bearers: inPlayBearers(world, draftPersona, libraryCast),
+      owners: inPlayOwners(world, draftPersona, libraryCast),
     }, ownedTraitPicks);
-    return bearerPins({
+    return ownerPins({
       world,
       persona: draftPersona,
       library: libraryCast,

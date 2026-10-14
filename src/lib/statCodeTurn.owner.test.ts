@@ -5,7 +5,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { runStatCodeTurn, type OwnerCodeTurn, type StatCodeTurn } from './statCodeTurn';
 import type { StatCodeOwners } from './statCodeTraits';
-import { inPlayBearers } from './ownedTraitsInPlay';
+import { inPlayOwners } from './ownedTraitsInPlay';
 import { playStatWorld } from './statLinks';
 import type { Entity, PersonaRef, PlayerStat, Stat, StatGroup, Trait } from '@/types';
 
@@ -21,7 +21,7 @@ const ownerTraits = (entities: Entity[], persona: PersonaRef = { source: 'none' 
   acquired: [], disabledTraitIds: [], appliedValues: {}, ownedTraits: {}, entities,
   world: {
     traits: [], groups: [], entities, persona,
-    bearers: inPlayBearers({ traits: [], traitGroups: [], entities }, persona, []),
+    owners: inPlayOwners({ traits: [], traitGroups: [], entities }, persona, []),
   },
 });
 

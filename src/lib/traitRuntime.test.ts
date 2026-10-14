@@ -788,7 +788,7 @@ describe('Always On traits in play', () => {
     const ashTraits = [trait('ring', [], { playerToggle: true }), trait('curse', [], { mode: 'alwaysOn', requires: [{ all: [{ kind: 'trait', id: 'ring' }] }] })];
     const owned: TraitWorld = {
       traits: [], groups: [], entities: [{ id: 'ash', name: 'Ash' }],
-      bearers: [{ id: 'world', name: '', traits: [], groups: [] }, { id: 'ash', name: 'Ash', traits: ashTraits, groups: [] }],
+      owners: [{ id: 'world', name: '', traits: [], groups: [] }, { id: 'ash', name: 'Ash', traits: ashTraits, groups: [] }],
     };
     const cursed = switchPlayerTrait(state(), 'ring', true, owned, name, 'ash')!;
     expect(cursed.state.ownedTraits).toEqual({ ash: { chosen: ['ring', 'curse'] } });
@@ -832,7 +832,7 @@ describe('Hidden traits in play', () => {
     const mark = trait('mark', [{ statId: 'h', value: 5, type: 'starting' }], { mode: 'hidden' });
     const linked = (persona: PersonaRef): TraitWorld => ({
       traits: [], groups: [], entities: [{ id: 'albus', name: 'Albus', persona: true }], persona,
-      bearers: [{ id: 'world', name: '', traits: [], groups: [] }, { id: 'albus', name: 'Albus', traits: [mark], groups: [] }],
+      owners: [{ id: 'world', name: '', traits: [], groups: [] }, { id: 'albus', name: 'Albus', traits: [mark], groups: [] }],
     });
     const asAlbus = linked({ source: 'world', entityId: 'albus' });
     const seeded = applyPlayedStatTraits(state({ ownedTraits: { albus: { chosen: ['mark'] } } }), asAlbus).state;
@@ -862,7 +862,7 @@ describe('owned traits in play', () => {
   const ash = { id: 'ash', name: 'Ash', traits: ashTraits, groups: [bond] };
   const owned = (persona: PersonaRef = { source: 'none' }): TraitWorld => ({
     traits: [paladin, tamer], groups: [], entities: [{ id: 'ash', name: 'Ash', persona: true }], persona,
-    bearers: [{ id: 'world', name: '', traits: [paladin, tamer], groups: [] }, ash],
+    owners: [{ id: 'world', name: '', traits: [paladin, tamer], groups: [] }, ash],
   });
   const name = (t: Trait) => t.name;
   const flip = (s: TraitRuntimeState, id: string, enabled: boolean, w = owned()) => {
@@ -900,14 +900,14 @@ describe('owned traits in play', () => {
   it('refuses an owned switch-on in a full entity group with a max above one', () => {
     const calm = trait('calm', [], { name: 'Calm', playerToggle: true, groupId: 'bond' });
     const wide = { ...ash, traits: [...ashTraits, calm], groups: [{ ...bond, maxPicks: 2 }] };
-    const w: TraitWorld = { ...owned(), entities: owned().entities ?? [], bearers: [owned().bearers![0], wide] };
+    const w: TraitWorld = { ...owned(), entities: owned().entities ?? [], owners: [owned().owners![0], wide] };
     const full = flip(flip(state(), 'tamed', true, w).state, 'wild', true, w).state;
     expect(onOf(full)).toEqual(['tamed', 'wild']);
     expect(switchPlayerTrait(full, 'calm', true, w, name)).toBeNull();
   });
 
   it('refuses an owned switch-off that drops an entity group below its minimum', () => {
-    const w: TraitWorld = { ...owned(), entities: owned().entities ?? [], bearers: [owned().bearers![0], { ...ash, groups: [{ ...bond, minPicks: 1 }] }] };
+    const w: TraitWorld = { ...owned(), entities: owned().entities ?? [], owners: [owned().owners![0], { ...ash, groups: [{ ...bond, minPicks: 1 }] }] };
     const s = flip(state(), 'tamed', true, w).state;
     expect(switchPlayerTrait(s, 'tamed', false, w, name)).toBeNull();
     expect(onOf(flip(s, 'wild', true, w).state)).toEqual(['wild']);
@@ -963,7 +963,7 @@ describe('linked stat traits follow whoever the player plays', () => {
   const mira = { id: 'mira', name: 'Mira', traits: [paladin], groups: [] };
   const linked = (persona: PersonaRef = { source: 'none' }): TraitWorld => ({
     traits: [vigil], groups: [], entities: [{ id: 'albus', name: 'Albus', persona: true }, { id: 'mira', name: 'Mira', persona: true }], persona,
-    bearers: [{ id: 'world', name: '', traits: [vigil], groups: [] }, albus, mira],
+    owners: [{ id: 'world', name: '', traits: [vigil], groups: [] }, albus, mira],
   });
   const asAlbus = linked({ source: 'world', entityId: 'albus' });
   const asMira = linked({ source: 'world', entityId: 'mira' });
@@ -996,13 +996,13 @@ describe('linked stat traits follow whoever the player plays', () => {
   });
 
   it('reverses a root trait the new persona is not offered, because its gate names that persona', () => {
-    // Squire (+4 starting on h) requires Albus: Paladin. Playing Albus, the player bearer no longer holds it.
+    // Squire (+4 starting on h) requires Albus: Paladin. Playing Albus, the player owner no longer holds it.
     const squire = trait('squire', [{ statId: 'h', value: 4, type: 'starting' }], {
       name: 'Squire', requires: [{ all: [{ kind: 'trait', id: 'paladin', owner: { kind: 'entity', id: 'albus' } }] }],
     });
     const withSquire = (persona: PersonaRef, held: Trait[]): TraitWorld => {
       const base = linked(persona);
-      return { ...base, traits: [vigil, squire], entities: base.entities ?? [], bearers: [{ id: 'world', name: '', traits: held, groups: [] }, albus, mira] };
+      return { ...base, traits: [vigil, squire], entities: base.entities ?? [], owners: [{ id: 'world', name: '', traits: held, groups: [] }, albus, mira] };
     };
     const asMiraSquire = withSquire({ source: 'world', entityId: 'mira' }, [vigil, squire]);
     const asAlbusNoSquire = withSquire({ source: 'world', entityId: 'albus' }, [vigil]);
@@ -1041,7 +1041,7 @@ describe('linked stat traits follow whoever the player plays', () => {
     expect(boundsOf(off.state).max).toBe(100);
   });
 
-  it('routes a switch to the bearer whose row it came from when two bearers hold one original', () => {
+  it('routes a switch to the owner whose row it came from when two owners hold one original', () => {
     const w = linked();
     const onMira = switchPlayerTrait(state(), 'paladin', true, w, name, 'mira')!.state;
     expect(onMira.ownedTraits).toEqual({ mira: { chosen: ['paladin'] } });
@@ -1065,7 +1065,7 @@ describe('linked stat traits follow whoever the player plays', () => {
     const wizard = trait('wizard', [{ statId: 'h', value: 3, type: 'starting' }], { name: 'Wizard', playerToggle: true, groupId: 'classes' });
     const classes: TraitGroup = { id: 'classes', name: 'Classes', parentId: null, maxPicks: 1 };
     const albusClasses = { id: 'albus', name: 'Albus', traits: [{ ...paladin, groupId: 'classes' }, wizard], groups: [classes] };
-    const w: TraitWorld = { ...asAlbus, entities: asAlbus.entities ?? [], bearers: [{ id: 'world', name: '', traits: [vigil], groups: [] }, albusClasses] };
+    const w: TraitWorld = { ...asAlbus, entities: asAlbus.entities ?? [], owners: [{ id: 'world', name: '', traits: [vigil], groups: [] }, albusClasses] };
     const seeded = applyPlayedStatTraits(state({ ownedTraits: { albus: { chosen: ['paladin'] } } }), w).state;
     expect(valueOf(seeded)).toBe(55);
     const swapped = switchPlayerTrait(seeded, 'wizard', true, w, name, 'albus')!;
@@ -1092,7 +1092,7 @@ describe('a Custom Persona pick under a world persona', () => {
   const albus = { id: 'albus', name: 'Albus', traits: [paladin], groups: [] };
   const under = (persona: PersonaRef): TraitWorld => ({
     traits: [wizard], groups: [], entities: [{ id: 'albus', name: 'Albus', persona: true }], persona,
-    bearers: [{ id: 'world', name: '', traits: persona.source === 'world' ? [] : [wizard], groups: [] }, albus],
+    owners: [{ id: 'world', name: '', traits: persona.source === 'world' ? [] : [wizard], groups: [] }, albus],
   });
   const none = under({ source: 'none' });
   const asAlbus = under({ source: 'world', entityId: 'albus' });
@@ -1137,11 +1137,11 @@ describe('the Custom Persona entity’s stat traits', () => {
   const cp = { id: 'cp', name: 'Newcomer', traits: [paladin], groups: [] };
   const lib = { id: 'lib', name: 'Wren', traits: [oath], groups: [] };
   const entities = [{ id: 'cp', name: 'Newcomer', customPersona: true }, { id: 'albus', name: 'Albus', persona: true }];
-  const none: TraitWorld = { traits: [], groups: [], entities, persona: { source: 'none' }, bearers: [{ id: 'world', name: '', traits: [], groups: [] }, cp] };
-  const asLib: TraitWorld = { ...none, persona: { source: 'library', entityId: 'lib' }, bearers: [...none.bearers!, lib] };
+  const none: TraitWorld = { traits: [], groups: [], entities, persona: { source: 'none' }, owners: [{ id: 'world', name: '', traits: [], groups: [] }, cp] };
+  const asLib: TraitWorld = { ...none, persona: { source: 'library', entityId: 'lib' }, owners: [...none.owners!, lib] };
   const asAlbus: TraitWorld = {
     ...none, persona: { source: 'world', entityId: 'albus' },
-    bearers: [{ id: 'world', name: '', traits: [], groups: [] }, { id: 'albus', name: 'Albus', traits: [], groups: [] }],
+    owners: [{ id: 'world', name: '', traits: [], groups: [] }, { id: 'albus', name: 'Albus', traits: [], groups: [] }],
   };
   const picked = state({ ownedTraits: { cp: { chosen: ['paladin'] }, lib: { chosen: ['oath'] } } });
 

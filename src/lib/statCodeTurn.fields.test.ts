@@ -5,7 +5,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { runStatCodeTurn, type StatCodeTurn } from './statCodeTurn';
 import type { StatCodeOwners } from './statCodeTraits';
-import { inPlayBearers } from './ownedTraitsInPlay';
+import { inPlayOwners } from './ownedTraitsInPlay';
 import { withPersonaEntry } from './persona';
 import type { Entity, PersonaRef, Placeholder, PlayerStat, Trait, TraitGroup } from '@/types';
 
@@ -40,7 +40,7 @@ function played(over: { inSceneIds?: string[] } = {}): StatCodeOwners {
     ...over,
     world: {
       traits: [oath, gifted, edge], groups: [mood], entities: entered, persona: asMira,
-      bearers: inPlayBearers(bearerWorld, asMira, []),
+      owners: inPlayOwners(bearerWorld, asMira, []),
     },
   };
 }
@@ -230,7 +230,7 @@ describe('runStatCodeTurn entry fields', () => {
       entities: [nameless], library: [],
       world: {
         traits: [], groups: [], entities: entered, persona: asMira,
-        bearers: inPlayBearers({ traits: [], traitGroups: [], entities: entered }, asMira, []),
+        owners: inPlayOwners({ traits: [], traitGroups: [], entities: entered }, asMira, []),
       },
     };
     const out = await run(['persona.traits.Calm.enabled = false;', 'return 0;'], traits);

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { migrateWorld } from './version';
 import { entryDefaults } from './entryDraft';
-import { inPlayBearers } from './ownedTraitsInPlay';
+import { inPlayOwners } from './ownedTraitsInPlay';
 import { ownedTraitStatesFrom } from './ownedTraitState';
 import { seedEntityStats } from './entityStats';
 import {
@@ -20,7 +20,7 @@ function started(world: World): { state: TraitRuntimeState; tw: TraitWorld } {
   const defaults = entryDefaults({ traits: world.traits, traitGroups, entities: world.entities, library: [], stats: world.stats, statGroups: world.statGroups }, NONE);
   const tw: TraitWorld = {
     traits: world.traits, groups: traitGroups, entities: world.entities, persona: NONE,
-    bearers: inPlayBearers({ traits: world.traits, traitGroups, entities: world.entities }, NONE),
+    owners: inPlayOwners({ traits: world.traits, traitGroups, entities: world.entities }, NONE),
   };
   let state: TraitRuntimeState = { stats: seedNewGameStats(world.stats), traits: [], disabledTraitIds: [], appliedValues: {} };
   for (const trait of world.traits.filter((t) => defaults.traitIds.includes(t.id))) state = acquireTrait(state, trait, tw).state;

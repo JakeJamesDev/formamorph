@@ -9,7 +9,7 @@ import { gateOf, gateStates, settleDefaults, switchTrait } from './traitGates';
 import { syncBlueprintCopies } from './blueprintCopies';
 import { copyLookup, effectiveCopy, readerFor } from './blueprints';
 import { buildPlaceholderPreview, resolvePlaceholders } from './placeholders';
-import { bearerPreview, inPlayBearers } from './ownedTraitsInPlay';
+import { ownerPreview, inPlayOwners } from './ownedTraitsInPlay';
 import { applyOwnedStatTraits, seedNewGameStats, type TraitRuntimeState, type TraitWorld } from './traitRuntime';
 import { ownedTraitStatesFrom } from './ownedTraitState';
 import { seedEntityStats } from './entityStats';
@@ -95,7 +95,7 @@ describe('the Emberwatch default world', () => {
     const previewAs = (owner: string, trait: string) => {
       const entity = entityNamed(world, owner);
       const text = world.traits.find((t) => t.name === trait)!.aiDescription!;
-      const as = bearerPreview(ownerWorld(world), shared, all, entity.id, traitId(world, trait))!;
+      const as = ownerPreview(ownerWorld(world), shared, all, entity.id, traitId(world, trait))!;
       const values = buildPlaceholderPreview(text, all, (vs) => vs[vs.length - 1].text, undefined, entity.name, as);
       return Object.entries(values).reduce((out, [token, value]) => out.split(token).join(value), text);
     };
@@ -142,7 +142,7 @@ describe('owners on Emberwatch', () => {
     const corvin = entityNamed(world, 'Corvin Vale').id;
     const picks = { [hesk]: settledDefaults(world, hesk, NONE), [corvin]: settledDefaults(world, corvin, NONE) };
     const tw: TraitWorld = {
-      traits: world.traits, groups: world.traitGroups ?? [], entities: world.entities, persona: NONE, bearers: inPlayBearers(ownerWorld(world), NONE),
+      traits: world.traits, groups: world.traitGroups ?? [], entities: world.entities, persona: NONE, owners: inPlayOwners(ownerWorld(world), NONE),
     };
     const seeded: TraitRuntimeState = {
       stats: seedNewGameStats(world.stats), traits: [], disabledTraitIds: [], appliedValues: {},

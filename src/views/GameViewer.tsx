@@ -1,6 +1,6 @@
 import { randomUUID } from "@/lib/uuid";
 import { ownedTraitStatesFrom } from '@/lib/ownedTraitState';
-import { bearerPins, inPlayBearers, inPlayLibrary } from '@/lib/ownedTraitsInPlay';
+import { ownerPins, inPlayOwners, inPlayLibrary } from '@/lib/ownedTraitsInPlay';
 import { libraryBooksInPlay } from '@/lib/dictionarySelection';
 import React, { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo, useSyncExternalStore, lazy, Suspense } from "react";
 import { useGameData } from "../contexts/GameDataContext";
@@ -188,7 +188,7 @@ import {
 } from "../lib/traitEffects";
 import { usePlaceholderSession } from "../contexts/PlaceholderSessionContext";
 import {
-  acquireTrait, activeTraits as traitsInForce, applyOwnedStatTraits, applyPlayedStatTraits, bearerStatTraitsInForce, heldPlayerTraits, playedStatTraits, seedNewGameStats, startingTraitLog,
+  acquireTrait, activeTraits as traitsInForce, applyOwnedStatTraits, applyPlayedStatTraits, entityStatTraitsInForce, heldPlayerTraits, playedStatTraits, seedNewGameStats, startingTraitLog,
   gateStatsOf, settleTraits, statTraitsInForce, switchPersonaStats, switchPlayerTrait, traitNameIn,
   type GatedTraitResult, type TraitRuntimeState, type TraitWorld,
 } from "../lib/traitRuntime";
@@ -646,7 +646,7 @@ const GameViewer = ({
   const gatedWorld = useCallback(
     (ref: PersonaRef | undefined = personaRef): TraitWorld => ({
       traits: authoredTraits, groups: traitGroups, entities: worldEntitiesOf(entities, persona), persona: ref ?? { source: 'none' },
-      bearers: inPlayBearers(bearerWorld, ref, traitLibrary),
+      owners: inPlayOwners(bearerWorld, ref, traitLibrary),
     }),
     [authoredTraits, traitGroups, entities, persona, personaRef, bearerWorld, traitLibrary],
   );
@@ -1761,7 +1761,7 @@ const GameViewer = ({
 
   /** Each entity's stat traits in force under `owned`, the owned trait state they read. */
   const entityInForceUnder = useCallback(
-    (owned: OwnedTraitStates) => (ownerId: string) => bearerStatTraitsInForce(owned, gatedWorld(), ownerId),
+    (owned: OwnedTraitStates) => (ownerId: string) => entityStatTraitsInForce(owned, gatedWorld(), ownerId),
     [gatedWorld],
   );
   const statEntities = useMemo(() => statOwnerEntities(codeEntities), [codeEntities]);
@@ -1920,7 +1920,7 @@ const GameViewer = ({
     [authoredStatGroups, authoredStats],
   );
   // Each present owner's tree, so a cast entity's links reach the AI like its owned traits.
-  const sceneOwners = useMemo(() => gatedWorld().bearers, [gatedWorld]);
+  const sceneOwners = useMemo(() => gatedWorld().owners, [gatedWorld]);
   // The playthrough as a Chip Scene: the live adapter. A turn's location and a before box in flight each
   // yield their own scene.
   const liveScene = useLiveChipScene({
@@ -3975,7 +3975,7 @@ const GameViewer = ({
       const seedLibrary = inPlayLibrary({ traits: authoredTraits, traitGroups, entities: traitEntities }, initialPersona?.libraryEntity, initialCharacters ?? []);
       const seedWorld: TraitWorld = {
         traits: authoredTraits, groups: traitGroups, entities: traitEntities, persona: initialPersona?.ref ?? { source: 'none' },
-        bearers: inPlayBearers(bearerWorld, initialPersona?.ref, seedLibrary),
+        owners: inPlayOwners(bearerWorld, initialPersona?.ref, seedLibrary),
       };
       // Only the held picks: a Custom Persona pick made before the entry step moved to a world persona is not
       // the player's under it.
@@ -4007,7 +4007,7 @@ const GameViewer = ({
       // The pins the game opens under, from every source: the traits just applied, the starting location
       // and the bands the post-trait stats fall in. None of it is in state yet, so anything written in this
       // pass resolves against these rather than the (empty) pins still in force.
-      const openingPins = bearerPins({
+      const openingPins = ownerPins({
         world: bearerWorld,
         persona: initialPersona?.ref,
         library: seedLibrary,

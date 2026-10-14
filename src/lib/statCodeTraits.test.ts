@@ -55,7 +55,7 @@ describe('applyCodeTraitSwitches on an owner’s own trait', () => {
   const mira = { id: 'mira', name: 'Mira', traits: [calm, angry, sworn, fury], groups: [group] };
   const world: TraitWorld = {
     traits: [], groups: [], entities: [{ id: 'mira', name: 'Mira', persona: true }], persona: { source: 'world', entityId: 'mira' },
-    bearers: [{ id: 'world', name: '', traits: [], groups: [] }, mira],
+    owners: [{ id: 'world', name: '', traits: [], groups: [] }, mira],
   };
   // Always On Sworn is on from the start, as play seeds it.
   const start = (chosen: string[]) => ({

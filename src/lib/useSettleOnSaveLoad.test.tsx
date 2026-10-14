@@ -104,7 +104,7 @@ describe('settling traits on save load', () => {
     const paladin: Trait = { id: 'paladin', name: 'Paladin', playerToggle: true, statChanges: [{ statId: 'h', value: 10, type: 'max' }] };
     const asAlbus: TraitWorld = {
       traits: [], groups: [], entities: [{ id: 'albus', name: 'Albus', persona: true }], persona: { source: 'world', entityId: 'albus' },
-      bearers: [{ id: 'world', name: '', traits: [], groups: [] }, { id: 'albus', name: 'Albus', traits: [paladin], groups: [] }],
+      owners: [{ id: 'world', name: '', traits: [], groups: [] }, { id: 'albus', name: 'Albus', traits: [paladin], groups: [] }],
     };
     const ownedTraits = { albus: { chosen: ['paladin'] } };
     /** Health as the save stored it: the code held the max at 60 over base 100 and Paladin's 10. */

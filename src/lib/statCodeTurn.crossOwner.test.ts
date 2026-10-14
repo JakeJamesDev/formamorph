@@ -5,7 +5,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { runStatCodeTurn, type OwnerCodeTurn, type StatCodeTurn } from './statCodeTurn';
 import type { StatCodeOwners } from './statCodeTraits';
-import { inPlayBearers } from './ownedTraitsInPlay';
+import { inPlayOwners } from './ownedTraitsInPlay';
 import { withPersonaEntry } from './persona';
 import { WORLD_OWNER } from './traitGates';
 import type { Entity, PersonaRef, PlayerStat } from '@/types';
@@ -32,7 +32,7 @@ function cast(persona: PersonaRef = asMira, library: Entity[] = []): StatCodeOwn
     acquired: [], disabledTraitIds: [], appliedValues: {}, ownedTraits: {}, entities, library,
     world: {
       traits: [], groups: [], entities: entered, persona,
-      bearers: inPlayBearers({ traits: [], traitGroups: [], entities: entered }, persona, library),
+      owners: inPlayOwners({ traits: [], traitGroups: [], entities: entered }, persona, library),
     },
   };
 }
