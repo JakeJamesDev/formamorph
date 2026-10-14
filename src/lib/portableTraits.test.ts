@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   SELF_ENTITY, adoptOwnedTraits, bindOwnedTraits, comparableOwnedTraits, portableOwnedTraits, type TraitWorld,
 } from './portableTraits';
-import { gateStates } from './traitGates';
+import { NO_ACTIVE, gateStates } from './traitGates';
 import { conditionsOf } from './requirementRows';
 import { traitOwners } from './ownedTraits';
 import type { Entity, Trait, TraitGroup, TraitRequirement } from '@/types';
@@ -122,8 +122,8 @@ describe('bindOwnedTraits', () => {
       { kind: 'playingAs', id: '', name: 'Sir Aldric' },
     ]);
     const gate = gateStates({
-      owners: traitOwners({ traits: [], traitGroups: [], entities: [bound] }), active: {}, entities: [], persona: { source: 'none' },
-    }).get(bound.id)!.get('t-oath')!;
+      ...traitOwners({ traits: [], traitGroups: [], entities: [bound] }), active: NO_ACTIVE, entities: [], persona: { source: 'none' },
+    }).owners[bound.id]!.get('t-oath')!;
     expect(gate.unlocked).toBe(false);
     expect(gate.rows.flatMap((row) => row.conditions).map((c) => c.text).slice(0, 3)).toEqual(['Paladin', 'any Class', 'playing as Sir Aldric']);
   });

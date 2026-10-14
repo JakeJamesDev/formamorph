@@ -99,9 +99,9 @@ describe.each(carriers)('links through %s', (_name, carry) => {
   it('bind at enter-world for a library persona, and resolve as the player', async () => {
     const persona = { ...await carry(mira), id: 'lib-mira' };
     const library = inPlayLibrary(elsewhere, persona);
-    const { owners, playerOwnerIds } = resolveOwners(elsewhere, { source: 'library', entityId: 'lib-mira' }, library);
+    const { owners, playedIds } = resolveOwners(elsewhere, { source: 'library', entityId: 'lib-mira' }, library);
     const owner = owners.find((b) => b.id === 'lib-mira')!;
-    expect(playerOwnerIds).toContain('lib-mira');
+    expect(playedIds).toContain('lib-mira');
     expect(owner.traits.map((t) => [t.id, !!t.isDefault])).toEqual([['t-vow', false], ['n-paladin', true], ['n-smite', false]]);
     expect(owner.traits[1].placeholderPins).toEqual([{ placeholderId: 'garb', value: 'plate' }]);
     expect(owner.traits.map((t) => t.mode)).toEqual([undefined, 'hidden', undefined]);

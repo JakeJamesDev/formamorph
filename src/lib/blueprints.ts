@@ -250,7 +250,7 @@ export const customPersonaEntity = (entities: readonly Entity[]): Entity | undef
 export const copyOf = (owner: Pick<Entity, 'placeholders'> | null | undefined, blueprintId: string): Placeholder | undefined =>
   owner?.placeholders?.find((p) => p.blueprintId === blueprintId);
 
-/** Who reads a blueprint: the owner's entity, null for the root player owner, and whether the Custom
+/** Who reads a blueprint: the owner's entity, null for global scope's tree, and whether the Custom
  *  Persona entity's copies fill in where the owner has none. */
 export interface CopyReader {
   entity: Pick<Entity, 'placeholders'> | null;

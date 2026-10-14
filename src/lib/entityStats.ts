@@ -6,7 +6,7 @@ import { inCast, playsAs } from './owners';
 import { backfillPlayerStats } from './statBackfill';
 import { activeStatEnabled, enabledStats } from './traitEffects';
 import { seedNewGameStats } from './traitRuntime';
-import { PLAYER_OWNER, regenOwners, statsOf, type OwnerStats, type OwnerStatTraits, type StatOwner } from './statOwners';
+import { regenOwners, statsOf, type OwnerStats, type OwnerStatTraits, type StatOwner } from './statOwners';
 import { statPlacementOf } from './statContext';
 import { applyStatResponse, type StatRequestOwner, type StatResponse, type StatUpdateDiagnostic } from './statRequest';
 import { overlayStatCodeResult, type OwnerCodeResult, type OwnerCodeTurn } from './statCodeTurn';
@@ -112,9 +112,9 @@ function requestOwners(
 export function applyEntityStatResponse(
   values: EntityStatValues, response: StatResponse, inForce: OwnerStatTraits,
 ): { values: EntityStatValues; diagnostics: StatUpdateDiagnostic[] } {
-  const ownerIds = [...new Set(response.updates.map((u) => u.ownerId).filter((id) => id !== PLAYER_OWNER))];
+  const ownerIds = [...new Set(response.updates.flatMap((u) => (u.ownerId === null ? [] : [u.ownerId])))];
   if (!ownerIds.length) return { values, diagnostics: [] };
-  // The response's own diagnostics go out with the player's apply, once.
+  // The response's own diagnostics go out with the global apply, once.
   const updatesOnly = { ...response, diagnostics: [] };
   const next = { ...values };
   const diagnostics: StatUpdateDiagnostic[] = [];

@@ -22,7 +22,7 @@ export function useViewedGateInput(): GateInput {
     },
     {
       traits, groups: traitGroups, entities: worldEntitiesOf(cast, persona), persona: personaRef ?? { source: 'none' },
-      owners: inPlayOwners({ traits, traitGroups, entities: traitEntities }, personaRef, traitLibrary),
+      ...inPlayOwners({ traits, traitGroups, entities: traitEntities }, personaRef, traitLibrary),
     },
   ), [viewTraits, viewDisabledTraitIds, viewOwnedTraits, viewStats, viewEntityStats, traits, traitGroups, cast, persona, personaRef, traitEntities, traitLibrary]);
 }

@@ -12,7 +12,7 @@ import { allPlaceholders, placeholderOwners } from '@/lib/placeholderHomes';
 import { statCodeNamed } from '@/lib/statCodeNames';
 import { noBoxes, TIMING_LABEL, type CodeBox } from '@/lib/statCodeTiming';
 import { statCodeBoxes, statCodeOwners } from '@/lib/statCodeTargets';
-import { playerStatsOf, resolvedEntityStats } from '@/lib/statLinks';
+import { globalStatsOf, resolvedEntityStats } from '@/lib/statLinks';
 import { codeDictionaries, sandboxDictionaries, sandboxPlaceholders } from '@/lib/statCodePlaceholders';
 import { entityTraitNames, sandboxTraits, unplayedEntities } from '@/lib/statCodeTraits';
 import { labelPlaceholders, worldPlacementLetters } from '@/lib/placementLetters';
@@ -77,7 +77,7 @@ export async function checkStatCode(world: RuleWorld): Promise<Finding[]> {
   const seeded = (stats: readonly Stat[]) => statCodeNamed(atStartingValues([...stats]), placeholderDefs);
   // The row names a stat or entity as the author sees it in the list, not as code reaches it.
   const label = (text: string | undefined) => labelPlaceholders(text ?? '', placeholderDefs, { letters }).trim() || 'Untitled';
-  const stats = seeded(playerStatsOf(statWorld.stats, statWorld.statGroups));
+  const stats = seeded(globalStatsOf(statWorld.stats, statWorld.statGroups));
   // Turn one has no rolls yet, so an unrolled placeholder reads as a fresh draw; the player holds no traits.
   const placeholders = sandboxPlaceholders({ placeholders: placeholderDefs, owners: placeholderOwners(world), rolls: {} });
   // Stat Conditions read the authored start, as Enter World's do (Q23, Q33).

@@ -3,7 +3,7 @@ import type { Entity, Stat, StatGroup } from '@/types';
 import { heldReasonText } from './heldReasons';
 import {
   addStatLink, applyEntityStatRows, blueprintGroupStats, detachStatLink, dropStatLinksTo, editStatLink, entityStatRows,
-  holdsStatOriginal, statHeldReason, linkedStat, mergeDuplicateStatLinks, mergeStatBlueprintsGroups, playStatWorld, playerStatsOf,
+  holdsStatOriginal, statHeldReason, linkedStat, mergeDuplicateStatLinks, mergeStatBlueprintsGroups, playStatWorld, globalStatsOf,
   removeEntityStatGroup, removeStatBlueprints, removeStatLink, resetStatLinkFieldOn, resetStatLinkOn, resetStatLinkStatOn,
   resolvedEntityStatTree, resolvedEntityStats, statBlueprintChoices, statLinkState, statLinksTo, withEntityStatTree,
 } from './statLinks';
@@ -19,14 +19,14 @@ const health = stat('health');
 const world = { stats: [health, trust, fear], statGroups: [bp, sub] };
 const bram = (over: Partial<Entity> = {}): Entity => ({ id: 'bram', name: 'Bram', ...over });
 
-describe('playerStatsOf', () => {
+describe('globalStatsOf', () => {
   it('leaves every stat inside Blueprints out, nested ones included', () => {
-    expect(playerStatsOf(world.stats, world.statGroups).map((s) => s.id)).toEqual(['health']);
+    expect(globalStatsOf(world.stats, world.statGroups).map((s) => s.id)).toEqual(['health']);
   });
 
   it('keeps the list itself when it holds no Blueprint', () => {
     const stats = [health];
-    expect(playerStatsOf(stats, world.statGroups)).toBe(stats);
+    expect(globalStatsOf(stats, world.statGroups)).toBe(stats);
   });
 });
 

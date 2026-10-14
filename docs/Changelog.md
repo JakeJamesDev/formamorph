@@ -105,6 +105,12 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Global Scope:**
     - **Saves now write global stats and global traits under their own names.** Older saves load with the same values. Apps on v3.1 to v3.2 load a new save without them.
 
+#### ➖ Removed
+
+- **🛠️ Developer tooling**
+  - **Global Scope Split:**
+    - **Code now holds global stats and traits in their own `global` slot, with no player owner key standing in.** Gates, the trait runtime, stat requests and stat change chips read the slot beside the entity owners. Code names say global where they said player.
+
 #### 🔧 Fixed
 
 - **👤 User-facing**

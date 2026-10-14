@@ -9,7 +9,8 @@ import { bindBlueprintPins, collectPins, type PinSources } from './placeholderPi
 import { bindOwnedTraits, type TraitWorld } from './portableTraits';
 import { INITIAL_SOURCE_TURN_ID } from './runtimeCharacters';
 import { defaultPicks, exclusiveSiblings, inAuthoredOrder, traitOrderIndex } from './traitEffects';
-import { PLAYER_OWNER, type GateOwner } from './traitGates';
+import type { GateInput, GateOwner } from './traitGates';
+import type { OwnerId } from './scope';
 import { effectivePlacement, placeableGroupIds } from './traitTree';
 import { mapPreservingIdentity } from './utils';
 
@@ -36,12 +37,16 @@ export const inPlayLibrary = (
   world: TraitWorld, libraryPersona: Entity | null | undefined, added: readonly Entity[] = [],
 ): Entity[] => [...(libraryPersona ? [libraryPersona] : []), ...added].map((e) => bindOwnedTraits(e, world));
 
-/** Every present owner as the gate module reads it in play: the player, the world's entities, then the
- *  library's. */
-export const inPlayOwners = (world: OwnerWorld, persona: PersonaRef | undefined, library: readonly Entity[] = []): readonly GateOwner[] =>
-  resolveOwners(world, persona, library).gate.owners;
+/** Global scope's tree and every present entity owner as the gate module reads them in play: the world's
+ *  entities, then the library's. */
+export const inPlayOwners = (
+  world: OwnerWorld, persona: PersonaRef | undefined, library: readonly Entity[] = [],
+): Pick<GateInput, 'global' | 'owners'> => {
+  const { global, owners } = resolveOwners(world, persona, library).gate;
+  return { global, owners };
+};
 
-/** The player-facing Traits tree: the player owner's rows at the top level, and a node for each present
+/** The player-facing Traits tree: global scope's rows at the top level, and a node for each present
  *  entity owner with its tree below it. Trait ids are the originals', so active state reads them as they
  *  are; a trait under two owners is two rows with one id, told apart by the owner whose node holds it. */
 export interface OwnerTraitTree {
@@ -49,8 +54,8 @@ export interface OwnerTraitTree {
   traits: Trait[];
   /** Entity node id → the entity it draws. */
   entityNodes: Map<string, Entity>;
-  /** Group row id → the entity owner whose tree holds it: the node itself and every group below it. The
-   *  player owner's groups are absent, so a trait row's owner is its group's, else the player. */
+  /** Group row id → the entity owner whose tree holds it: the node itself and every group below it. Global
+   *  groups are absent, so a trait row's owner is its group's, else global scope. */
   ownerOfGroup: Map<string, string>;
   owners: Owner[];
 }
@@ -63,16 +68,15 @@ export const ownerGroupId = (ownerId: string, groupId: string): string => `${own
  *  order, and the library's nodes come last. The picked persona takes the Custom Persona entity's slot,
  *  leaving its own placement; the marked entity's node, when present, follows it directly. */
 export function ownerTraitTree(world: OwnerWorld, persona: PersonaRef | undefined, library: readonly Entity[] = []): OwnerTraitTree {
-  const { owners } = resolveOwners(world, persona, library);
-  const player = owners.find((b) => b.id === PLAYER_OWNER)!;
+  const { global, owners } = resolveOwners(world, persona, library);
   const played = playedEntityId(persona);
   const marked = customPersonaEntity(world.entities);
   // The entity whose place a node takes: the marked entity for the picked persona, else its own.
-  const slotOf = (b: Owner) => (marked && b.id === played ? marked : b.entity!);
+  const slotOf = (b: Owner) => (marked && b.id === played ? marked : b.entity);
   const rank = new Map(owners.map((b, i) => [b.id, i]));
   // Two nodes in one slot: the picked persona comes first, the marked entity right after.
   const playedFirst = (a: Owner, b: Owner) => (a.id === played ? -1 : b.id === played ? 1 : 0);
-  const nodes = owners.filter((b) => b.entity && b.present)
+  const nodes = owners.filter((b) => b.present)
     .sort((a, b) => (rank.get(slotOf(a).id)! - rank.get(slotOf(b).id)!) || playedFirst(a, b));
   const placeable = placeableGroupIds(world.traitGroups);
   const libraryIds = new Set(library.map((e) => e.id));
@@ -80,22 +84,22 @@ export function ownerTraitTree(world: OwnerWorld, persona: PersonaRef | undefine
     const slot = slotOf(b);
     return libraryIds.has(slot.id) ? null : effectivePlacement(slot, placeable);
   };
-  const rootGroupIds = new Set(player.groups.map((g) => g.id));
+  const rootGroupIds = new Set(global.groups.map((g) => g.id));
   const atRoot = (ref: string | null | undefined) => ref == null || !rootGroupIds.has(ref);
   const rootSorts = [
-    ...player.groups.map((g, i) => (atRoot(g.parentId) ? g.order ?? i : -1)),
-    ...player.traits.map((t, i) => (atRoot(t.groupId) ? t.order ?? i : -1)),
+    ...global.groups.map((g, i) => (atRoot(g.parentId) ? g.order ?? i : -1)),
+    ...global.traits.map((t, i) => (atRoot(t.groupId) ? t.order ?? i : -1)),
     ...nodes.map(placementOf).map((p) => (p?.groupId === null ? p.order : -1)),
   ];
   const firstNodeOrder = Math.max(-1, ...rootSorts) + 1;
 
-  const groups = [...player.groups];
-  const traits = [...player.traits];
+  const groups = [...global.groups];
+  const traits = [...global.traits];
   const entityNodes = new Map<string, Entity>();
   const ownerOfGroup = new Map<string, string>();
   let unplaced = 0;
   for (const owner of nodes) {
-    entityNodes.set(owner.id, owner.entity!);
+    entityNodes.set(owner.id, owner.entity);
     ownerOfGroup.set(owner.id, owner.id);
     const placement = placementOf(owner);
     groups.push({
@@ -116,11 +120,11 @@ export function ownerTraitTree(world: OwnerWorld, persona: PersonaRef | undefine
 /** The entity nodes that are the player's, in node order: the played persona, and the Custom Persona
  *  entity under None and a library persona. Each wears the You mark. */
 export const playerEntityIds = (tree: Pick<OwnerTraitTree, 'owners'>): string[] =>
-  tree.owners.filter((b) => b.entity && b.isPlayer && b.present).map((b) => b.id);
+  tree.owners.filter((b) => b.isPlayer && b.present).map((b) => b.id);
 
-/** The owner a tree row belongs to: its group's entity owner, else the player. */
-export const rowOwner = (tree: Pick<OwnerTraitTree, 'ownerOfGroup'>, row: Pick<Trait, 'groupId'>): string =>
-  (row.groupId != null ? tree.ownerOfGroup.get(row.groupId) : undefined) ?? PLAYER_OWNER;
+/** The owner a tree row belongs to: its group's entity owner, else null for global scope. */
+export const rowOwner = (tree: Pick<OwnerTraitTree, 'ownerOfGroup'>, row: Pick<Trait, 'groupId'>): OwnerId =>
+  (row.groupId != null ? tree.ownerOfGroup.get(row.groupId) : undefined) ?? null;
 
 /** What every owner's pins are read from in play. */
 export interface OwnerPinState {
@@ -128,9 +132,9 @@ export interface OwnerPinState {
   persona: PersonaRef | undefined;
   /** The library entities the playthrough holds, the library persona among them. */
   library?: readonly Entity[];
-  /** The player's chosen world traits as the save holds them: the root's originals. */
-  playerTraits: readonly Trait[];
-  /** The player's traits switched off. */
+  /** The chosen global traits as the save holds them: the root's originals. */
+  globalTraits: readonly Trait[];
+  /** The global traits switched off. */
   disabledTraitIds?: readonly string[];
   /** Entity id → its active trait ids: owned ones, and originals it links. */
   owned: Readonly<Record<string, readonly string[]>>;
@@ -140,10 +144,10 @@ export interface OwnerPinState {
 
 /** The pins in force per owner. */
 export interface PinSet {
-  /** World-level text, and the played persona's own: the world pins plus the player's traits. */
+  /** World-level text, and the played persona's own: the world pins plus the global and played traits. */
   world: Record<string, string>;
-  /** One owner's own text. A cast entity's lays its traits over `world`; the played persona, null and the
-   *  player owner read `world`. */
+  /** One owner's own text. A cast entity's lays its traits over `world`; the played persona and null (global
+   *  scope) read `world`. */
   of: (ownerId: string | null | undefined) => Record<string, string>;
   /** The trait with its blueprint pins traced to that owner's copies, for its own card. */
   bind: (trait: Trait, ownerId: string | null | undefined) => Trait;
@@ -160,22 +164,21 @@ export interface PinSet {
  */
 export function ownerPins(state: OwnerPinState, sources: Omit<PinSources, 'traits' | 'disabledTraitIds' | 'statTraits'>): PinSet {
   const { world, persona, library = [], owned, sharedPlaceholders } = state;
-  const { owners } = resolveOwners(world, persona, library);
+  const { global, owners } = resolveOwners(world, persona, library);
   const played = playedEntityId(persona);
-  const playerOwner = owners.find((b) => b.id === PLAYER_OWNER);
-  const playedOwners = owners.filter((b) => b.isPlayer && b.entity);
+  const playedOwners = owners.filter((b) => b.isPlayer);
   const personaEntity = played ? [...world.entities, ...library].find((e) => e.id === played) ?? null : null;
-  // No owner, or the global slot's id, reads the played text.
-  const isPlayer = (id: string | null | undefined) => !id || id === PLAYER_OWNER || playedOwners.some((b) => b.id === id);
+  // No owner, which is global scope, reads the played text.
+  const readsPlayed = (id: string | null | undefined) => !id || playedOwners.some((b) => b.id === id);
 
   const blueprints = { placeholders: sharedPlaceholders, entities: world.entities };
-  const readerOf = (id: string | null | undefined): CopyReader => (isPlayer(id)
+  const readerOf = (id: string | null | undefined): CopyReader => (readsPlayed(id)
     ? readerFor(persona, personaEntity, true)
     : readerFor(persona, owners.find((b) => b.id === id)?.entity ?? null, false));
   const bind = (trait: Trait, id: string | null | undefined) => bindBlueprintPins(trait, blueprints, readerOf(id));
   const lookups = new Map<string | null, CopyLookup>();
   const copies = (id: string | null | undefined) => {
-    const key = isPlayer(id) ? null : id!;
+    const key = readsPlayed(id) ? null : id!;
     let lookup = lookups.get(key);
     if (!lookup) lookups.set(key, (lookup = copyLookup(blueprints, readerOf(id))));
     return lookup;
@@ -187,26 +190,26 @@ export function ownerPins(state: OwnerPinState, sources: Omit<PinSources, 'trait
 
   const off = new Set(state.disabledTraitIds ?? []);
   const tree = ownerTraitTree(world, persona, library);
-  const heldIds = new Set(playerOwner?.traits.map((t) => t.id));
+  const heldIds = new Set(global.traits.map((t) => t.id));
   const playedOwn = playedOwners.flatMap((b) => activeIn(b).filter((t) => !b.linkOf.has(t.id)));
   const treeOrder = traitOrderIndex(tree.traits, tree.groups);
-  const playerTraits = [
-    ...inAuthoredOrder(state.playerTraits.filter((t) => heldIds.has(t.id)), treeOrder),
+  const playedTraits = [
+    ...inAuthoredOrder(state.globalTraits.filter((t) => heldIds.has(t.id)), treeOrder),
     ...inAuthoredOrder(playedOwn, treeOrder),
     ...playedOwners.flatMap((b) => inOwnerOrder(activeIn(b).filter((t) => b.linkOf.has(t.id)), b)),
   ].filter((t) => !off.has(t.id));
-  const playerLaid = playerTraits.map((t) => bind(t, null));
-  const collect = (traits: readonly Trait[]) => collectPins({ ...sources, traits, statTraits: playerTraits });
+  const playedLaid = playedTraits.map((t) => bind(t, null));
+  const collect = (traits: readonly Trait[]) => collectPins({ ...sources, traits, statTraits: playedTraits });
 
-  const worldPins = collect(playerLaid);
+  const worldPins = collect(playedLaid);
   const cache = new Map<string, Record<string, string>>();
   const of = (id: string | null | undefined) => {
-    if (isPlayer(id)) return worldPins;
+    if (readsPlayed(id)) return worldPins;
     let pins = cache.get(id!);
     if (!pins) {
       const owner = owners.find((b) => b.id === id);
       const own = owner ? inOwnerOrder(activeIn(owner), owner).map((t) => bind(t, id)).filter((t) => t.placeholderPins?.length) : [];
-      cache.set(id!, (pins = own.length ? collect([...playerLaid, ...own]) : worldPins));
+      cache.set(id!, (pins = own.length ? collect([...playedLaid, ...own]) : worldPins));
     }
     return pins;
   };
@@ -229,12 +232,12 @@ export function ownerPreview(
 ): OwnerPreview | null {
   const owner = resolveOwners(world, undefined).owners.find((b) => b.id === ownerId);
   const trait = owner?.traits.find((t) => t.id === traitId);
-  if (!owner?.entity || !trait) return null;
+  if (!owner || !trait) return null;
   const retired = new Set(exclusiveSiblings(trait, owner.traits, owner.groups));
   const defaults = defaultPicks(owner.traits, owner.groups);
   const on = [...defaults.filter((id) => !retired.has(id)), traitId];
   const set = ownerPins(
-    { world, persona: undefined, playerTraits: [], owned: { [ownerId]: [...new Set(on)] }, sharedPlaceholders },
+    { world, persona: undefined, globalTraits: [], owned: { [ownerId]: [...new Set(on)] }, sharedPlaceholders },
     { placeholders },
   );
   return { copies: set.copies(ownerId), pins: set.of(ownerId) };
@@ -261,7 +264,7 @@ export function withOwnerTrees(entities: readonly Entity[], trees: readonly Owne
 
 /** The traits where the owner's tree places them, so a linked original sits at its link and never under
  *  Blueprints. A trait the tree lacks keeps its own place. */
-export function inOwnerPlaces(traits: readonly Trait[], tree: OwnerTree | undefined): Trait[] {
+export function inOwnerPlaces(traits: readonly Trait[], tree: Pick<OwnerTree, 'traits'> | undefined): Trait[] {
   const placed = new Map((tree?.traits ?? []).map((t) => [t.id, t]));
   return mapPreservingIdentity(traits, (trait) => {
     const at = placed.get(trait.id);
@@ -290,6 +293,7 @@ export function withOwnerNames(
   const linkedTo = (ownerId: string, id: string) => tree.owners.find((b) => b.id === ownerId)?.linkOf.has(id) ?? false;
   const traits = mapPreservingIdentity(tree.traits, (row) => {
     const ownerId = rowOwner(tree, row);
+    if (ownerId === null) return row;
     const entity = tree.entityNodes.get(ownerId);
     const original = traitsById.get(row.id);
     if (!entity || !original || !linkedTo(ownerId, row.id)) return row;
@@ -308,6 +312,9 @@ export function withOwnerNames(
   return traits === tree.traits && groups === tree.groups ? tree : { ...tree, traits, groups };
 }
 
+/** A tree whose trait text primes: global scope's, with no entity, or an entity owner's. */
+type PrimingTree = Pick<Owner, 'traits' | 'groups'> & ({ entity: null } | Pick<Owner, 'id' | 'entity' | 'isPlayer'>);
+
 /** What roll priming walks per owner, whoever ends up played. */
 export interface OwnerPriming {
   /** Each entity's own trait and group names and descriptions; linked originals are world text. */
@@ -321,8 +328,10 @@ export interface OwnerPriming {
 }
 
 export function ownerPriming(world: OwnerWorld, library: readonly Entity[], shared: readonly Placeholder[]): OwnerPriming {
-  const { owners } = resolveOwners(world, undefined, library);
-  const texts = owners.flatMap((owner) => (owner.entity ? [...owner.traits, ...owner.groups] : [])
+  const resolved = resolveOwners(world, undefined, library);
+  // Global scope's tree first, with no entity, then each entity owner's.
+  const owners: PrimingTree[] = [{ ...resolved.global, entity: null }, ...resolved.owners];
+  const texts = resolved.owners.flatMap((owner) => [...owner.traits, ...owner.groups]
     .filter((item) => !owner.linkOf.has(item.id))
     .flatMap((item) => [item.name, item.playerDescription, item.aiDescription])
     .filter((text): text is string => !!text));
@@ -333,7 +342,7 @@ export function ownerPriming(world: OwnerWorld, library: readonly Entity[], shar
     ...world.entities.filter((e) => e.persona).map((e) => readerFor({ source: 'world', entityId: e.id }, e, true)),
     ...library.map((e) => readerFor({ source: 'library', entityId: e.id }, e, true)),
   ];
-  const readersOf = (owner: Owner) => (owner.entity
+  const readersOf = (owner: PrimingTree) => (owner.entity
     ? [readerFor(libraryIds.has(owner.id) ? { source: 'library', entityId: owner.id } : undefined, owner.entity, owner.isPlayer)]
     : playerReaders);
   const pinTraits = owners.flatMap((owner) => readersOf(owner).flatMap((reader) => owner.traits

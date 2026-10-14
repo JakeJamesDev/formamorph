@@ -8,22 +8,22 @@ describe('savedTraits', () => {
   const authored: Trait = { id: 'brave', name: 'Bold', playerToggle: true, statChanges: [{ statId: 'h', value: 99, type: 'starting' }] };
 
   it('re-reads each trait from the world but keeps the stat changes the save settled against', () => {
-    const { acquired } = savedTraits({ playerTraits: [saved] }, [authored]);
+    const { acquired } = savedTraits({ globalTraits: [saved] }, [authored]);
     expect(acquired).toEqual([{ ...authored, statChanges: saved.statChanges }]);
   });
 
   it('reads a save with no switched-off traits, no records and no cascade-off list as empty', () => {
-    expect(savedTraits({ playerTraits: [] }, []))
+    expect(savedTraits({ globalTraits: [] }, []))
       .toEqual({ acquired: [], disabledTraitIds: [], appliedValues: {}, cascadeOffTraitIds: {}, ownedTraits: {} });
   });
 
   it('carries the switched-off ids, the movement records, the cascade-off list and owned state through', () => {
     const out = savedTraits({
-      playerTraits: [saved], disabledTraitIds: ['brave'], appliedTraitValues: { brave: { h: 10 } },
-      cascadeOffTraitIds: { world: ['brave'] }, ownedTraits: { ash: { chosen: ['tamed'] } },
+      globalTraits: [saved], disabledTraitIds: ['brave'], appliedTraitValues: { brave: { h: 10 } },
+      cascadeOffTraitIds: { global: ['brave'] }, ownedTraits: { ash: { chosen: ['tamed'] } },
     }, [authored]);
     expect(out).toMatchObject({
-      disabledTraitIds: ['brave'], appliedValues: { brave: { h: 10 } }, cascadeOffTraitIds: { world: ['brave'] },
+      disabledTraitIds: ['brave'], appliedValues: { brave: { h: 10 } }, cascadeOffTraitIds: { global: ['brave'] },
       ownedTraits: { ash: { chosen: ['tamed'] } },
     });
   });
@@ -55,7 +55,7 @@ describe('applyCodeTraitSwitches on an owner’s own trait', () => {
   const mira = { id: 'mira', name: 'Mira', traits: [calm, angry, sworn, fury], groups: [group] };
   const world: TraitWorld = {
     traits: [], groups: [], entities: [{ id: 'mira', name: 'Mira', persona: true }], persona: { source: 'world', entityId: 'mira' },
-    owners: [{ id: 'world', name: '', traits: [], groups: [] }, mira],
+    global: { traits: [], groups: [] }, owners: [mira],
   };
   // Always On Sworn is on from the start, as play seeds it.
   const start = (chosen: string[]) => ({

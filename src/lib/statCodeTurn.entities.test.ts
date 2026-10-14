@@ -48,7 +48,7 @@ function played(
     library,
     world: {
       traits: [], groups: [], entities: entered, persona,
-      owners: inPlayOwners(ownerWorld, persona, library),
+      ...inPlayOwners(ownerWorld, persona, library),
     },
   };
 }

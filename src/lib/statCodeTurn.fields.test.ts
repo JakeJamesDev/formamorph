@@ -40,7 +40,7 @@ function played(over: { inSceneIds?: string[] } = {}): StatCodeOwners {
     ...over,
     world: {
       traits: [oath, gifted, edge], groups: [mood], entities: entered, persona: asMira,
-      owners: inPlayOwners(ownerWorld, asMira, []),
+      ...inPlayOwners(ownerWorld, asMira, []),
     },
   };
 }
@@ -230,7 +230,7 @@ describe('runStatCodeTurn entry fields', () => {
       entities: [nameless], library: [],
       world: {
         traits: [], groups: [], entities: entered, persona: asMira,
-        owners: inPlayOwners({ traits: [], traitGroups: [], entities: entered }, asMira, []),
+        ...inPlayOwners({ traits: [], traitGroups: [], entities: entered }, asMira, []),
       },
     };
     const out = await run(['persona.traits.Calm.enabled = false;', 'return 0;'], traits);

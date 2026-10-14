@@ -7,7 +7,8 @@ import { Hint } from '@/components/ui/typography';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { choiceRowClass } from './setupChoiceRow';
 import { cn } from '@/lib/utils';
-import { PLAYER_OWNER, gateOf, type GateStates, type GroupPickState } from '@/lib/traitGates';
+import { gateOf, type GateStates, type GroupPickState } from '@/lib/traitGates';
+import type { OwnerId } from '@/lib/scope';
 import { gateLine } from '@/lib/traitGateLine';
 import { isAlwaysOn, isDormant, isShown } from '@/lib/traitEffects';
 import { statRowSide } from '@/lib/traitTree';
@@ -44,7 +45,7 @@ export function TraitCascadeNotice({ cascade, onDismiss }: { cascade: TraitCasca
  */
 export function SetupTraitList({
   name, groups, traits, picks, stats, selectedTraits, resolveText, resolveTraitText, onTraitSelect,
-  ownerId = PLAYER_OWNER, ownStats, gates, cascade, onDismissCascade, heading,
+  ownerId = null, ownStats, gates, cascade, onDismissCascade, heading,
 }: {
   name: string;
   /** Replaces the eyebrow and the name heading. */
@@ -61,9 +62,9 @@ export function SetupTraitList({
   resolveText: (text: string) => string;
   resolveTraitText: (trait: Trait, text: string) => string;
   /** The player's pick of one of this owner's traits. */
-  onTraitSelect: (traitId: string, ownerId: string) => void;
-  /** The owner whose traits these are; the world's by default. */
-  ownerId?: string;
+  onTraitSelect: (traitId: string, ownerId: OwnerId) => void;
+  /** The owner whose traits these are; global scope by default. */
+  ownerId?: OwnerId;
   /** An entity owner's own stats, which its trait rows move by id. */
   ownStats?: readonly Stat[];
   /** Each owner's gates; absent shows every trait open. */
@@ -71,16 +72,16 @@ export function SetupTraitList({
   cascade?: TraitCascade | null;
   onDismissCascade?: () => void;
 }) {
-  // The stat a change moves: the player's for the world, and an entity's own or the player's as its row routes.
+  // The stat a change moves: a global trait's moves a global stat, and an entity's as its row routes.
   const statOf = useMemo(() => {
-    const player = new Map(stats.map((stat) => [stat.id, stat]));
-    if (ownerId === PLAYER_OWNER) return (change: StatChange) => player.get(change.statId);
+    const global = new Map(stats.map((stat) => [stat.id, stat]));
+    if (ownerId === null) return (change: StatChange) => global.get(change.statId);
     const own = new Map((ownStats ?? []).map((stat) => [stat.id, stat]));
     const ownIds = new Set(own.keys());
-    const playerIds = new Set(player.keys());
+    const globalIds = new Set(global.keys());
     return (change: StatChange) => {
-      const side = statRowSide(change, ownIds, playerIds);
-      return side === 'own' ? own.get(change.statId) : side === 'player' ? player.get(change.statId) : undefined;
+      const side = statRowSide(change, ownIds, globalIds);
+      return side === 'own' ? own.get(change.statId) : side === 'global' ? global.get(change.statId) : undefined;
     };
   }, [stats, ownerId, ownStats]);
   const radio = picks?.max === 1;

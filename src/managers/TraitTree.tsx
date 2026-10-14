@@ -20,7 +20,7 @@ import { useEditorMode } from '@/lib/editorMode';
 import { EmptyListHint } from '@/components/EmptyListHint';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { labelPlaceholders } from '@/lib/placementLetters';
-import { gateConditions, gateOf, gateStates, PLAYER_OWNER, type GateState } from '@/lib/traitGates';
+import { gateConditions, gateOf, gateStates, type GateState } from '@/lib/traitGates';
 import { gateLine } from '@/lib/traitGateLine';
 import { cn } from '@/lib/utils';
 import type { Placeholder } from '@/types';
@@ -120,7 +120,7 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
   const gateOfRow = (node: FlatTraitNode, linkRow: LinkRow | undefined): GateState | undefined => (
     linkRow
       ? gateOf(gates, linkRow.entityId, linkRow.originalId)
-      : gateOf(gates, tree.ownerOf.get(node.id) ?? entityRoot?.owner.id ?? PLAYER_OWNER, node.id)
+      : gateOf(gates, tree.ownerOf.get(node.id) ?? entityRoot?.owner.id ?? null, node.id)
   );
 
   const linkRowSpec = (node: FlatTraitNode, linkRow: LinkRow, select: (id: string) => void): TreeRowSpec => {

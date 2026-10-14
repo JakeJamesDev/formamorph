@@ -66,7 +66,7 @@ function playTurn(world: World) {
     acquired: [], disabledTraitIds: [], appliedValues: {}, ownedTraits: {}, entities: world.entities, library: [],
     world: {
       traits: [], groups: [], entities: world.entities, persona: NO_PERSONA,
-      owners: inPlayOwners({ traits: [], traitGroups: [], entities: world.entities }, NO_PERSONA, []),
+      ...inPlayOwners({ traits: [], traitGroups: [], entities: world.entities }, NO_PERSONA, []),
     },
   };
   return runStatCodeTurn({

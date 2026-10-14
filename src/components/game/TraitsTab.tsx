@@ -14,7 +14,8 @@ import { ChevronDown, Lock } from 'lucide-react';
 import { EntityIcon } from '@/lib/elementIcons';
 import { cn } from '@/lib/utils';
 import { buildTraitSections, groupGlobalSections, viewTraitSection, type TraitBlock, type TraitSection } from '@/lib/traitSections';
-import { PLAYER_OWNER, gateOf, groupPickState, leavesShort, type GateStates, type GroupPickState } from '@/lib/traitGates';
+import { gateOf, groupPickState, leavesShort, type GateStates, type GroupPickState } from '@/lib/traitGates';
+import { scopeKey, type OwnerId } from '@/lib/scope';
 import type { Entity, Stat, StatChange, Trait, TraitGroup, TraitsPanelView } from '@/types';
 import { Tip } from '@/components/ui/tooltip';
 import { gateLine } from '@/lib/traitGateLine';
@@ -40,12 +41,12 @@ export interface TraitsTabProps {
    *  entity's lists these first, then `stats`. Absent ⇒ none. */
   ownerStats?: Readonly<Record<string, readonly TraitTabStat[]>>;
   /** Switched off or never taken in the owner's tree — the panel draws no line between the two. */
-  isOff: (traitId: string, ownerId: string) => boolean;
+  isOff: (traitId: string, ownerId: OwnerId) => boolean;
   /** A past turn is a record, not a control surface. */
   readOnly: boolean;
-  onToggleTrait: (traitId: string, enabled: boolean, ownerId: string) => void;
+  onToggleTrait: (traitId: string, enabled: boolean, ownerId: OwnerId) => void;
   /** A trait's own text resolved through its own placeholder pins, bound for its owner. */
-  resolveTraitText: (trait: Trait, text: string, ownerId: string) => string;
+  resolveTraitText: (trait: Trait, text: string, ownerId: OwnerId) => string;
   /** The tab's own filter/fold state, owned by Gameplay so it outlives the unmount. */
   view: TraitsPanelView;
   setView: React.Dispatch<React.SetStateAction<TraitsPanelView>>;
@@ -65,11 +66,11 @@ const flipKey = (keys: ReadonlySet<string>, key: string): ReadonlySet<string> =>
 const EMPTY: ReadonlySet<string> = new Set();
 const NO_IDS: readonly string[] = [];
 
-/** The owner a block's traits belong to: the player's when the block sits in no entity node. */
-const ownerOf = (block: TraitBlock): string => block.entityId ?? PLAYER_OWNER;
+/** The owner a block's traits belong to: null for global scope when the block sits in no entity node. */
+const ownerOf = (block: TraitBlock): OwnerId => block.entityId ?? null;
 
 /** Which sections a fresh look at this trait list opens: the ones holding something switched on. */
-const seedOpen = (sections: TraitSection[], isOff: (id: string, ownerId: string) => boolean): ReadonlySet<string> =>
+const seedOpen = (sections: TraitSection[], isOff: (id: string, ownerId: OwnerId) => boolean): ReadonlySet<string> =>
   new Set(sections.filter((s) => s.blocks.some((b) => b.traits.some((t) => !isHidden(t) && !isOff(t.id, ownerOf(b))))).map((s) => s.key));
 
 export const TraitsTab = ({
@@ -112,49 +113,49 @@ export const TraitsTab = ({
   const flipExpanded = (id: string) => setView((v) => ({ ...v, expanded: flipKey(v.expanded, id) }));
 
   const describe = React.useCallback(
-    (trait: Trait, ownerId: string = PLAYER_OWNER) => resolveTraitText(trait, trait.playerDescription ?? '', ownerId),
+    (trait: Trait, ownerId: OwnerId = null) => resolveTraitText(trait, trait.playerDescription ?? '', ownerId),
     [resolveTraitText],
   );
-  // The stat an owner's trait change moves: the player's for the player, and an entity's own as its row routes.
+  // The stat a trait change moves: a global trait's moves a global stat, and an entity's as its row routes.
   const statOf = React.useMemo(() => {
-    const player = new Map(stats.map((s) => [s.id, s]));
-    const playerIds = new Set(player.keys());
+    const global = new Map(stats.map((s) => [s.id, s]));
+    const globalIds = new Set(global.keys());
     const cache = new Map<string, Map<string, TraitTabStat>>();
     const ownOf = (ownerId: string) => {
       let found = cache.get(ownerId);
       if (!found) cache.set(ownerId, found = new Map((ownerStats?.[ownerId] ?? []).map((s) => [s.id, s])));
       return found;
     };
-    return (ownerId: string, change: StatChange): TraitTabStat | undefined => {
-      if (ownerId === PLAYER_OWNER) return player.get(change.statId);
+    return (ownerId: OwnerId, change: StatChange): TraitTabStat | undefined => {
+      if (ownerId === null) return global.get(change.statId);
       const own = ownOf(ownerId);
-      const side = statRowSide(change, new Set(own.keys()), playerIds);
-      return side === 'own' ? own.get(change.statId) : side === 'player' ? player.get(change.statId) : undefined;
+      const side = statRowSide(change, new Set(own.keys()), globalIds);
+      return side === 'own' ? own.get(change.statId) : side === 'global' ? global.get(change.statId) : undefined;
     };
   }, [stats, ownerStats]);
   const filtering = query.trim() !== '';
 
   const views = sections
-    .map((section) => ({ section, view: viewTraitSection(section, { query, isOff: (id, b) => isOff(id, b ?? PLAYER_OWNER), describe }) }))
+    .map((section) => ({ section, view: viewTraitSection(section, { query, isOff: (id, b) => isOff(id, b ?? null), describe }) }))
     .flatMap(({ section, view }) => (view ? [{ section, view }] : []));
-  // A cast entity's trait carries its owner's name, as the log does; the player's own read bare.
+  // A cast entity's trait carries its owner's name, as the log does; global and played traits read bare.
   const active = sections.flatMap((s) => s.blocks.flatMap((b) => b.traits
     .filter((t) => !isHidden(t) && !isOff(t.id, ownerOf(b)))
     .map((t) => (b.entityId && !isPlayer(b.entityId) ? `${entityNodes?.get(b.entityId)?.name ?? b.entityId}'s ${t.name}` : t.name))));
 
   // Counted on the whole block: the view splits each block into enabled and disabled halves.
   const picks = new Map<string, GroupPickState>(sections.flatMap((s) => s.blocks.flatMap((b) => (b.group
-    ? [[`${ownerOf(b)}/${b.key}`, groupPickState(b.group, b.traits, b.traits.filter((t) => !isOff(t.id, ownerOf(b))).map((t) => t.id))] as const]
+    ? [[`${scopeKey(ownerOf(b))}/${b.key}`, groupPickState(b.group, b.traits, b.traits.filter((t) => !isOff(t.id, ownerOf(b))).map((t) => t.id))] as const]
     : []))));
   const fixedBlocks = new Set(sections.flatMap((s) => s.blocks
     .filter((b) => b.traits.some((t) => isAlwaysOn(t) && !isOff(t.id, ownerOf(b))))
-    .map((b) => `${ownerOf(b)}/${b.key}`)));
+    .map((b) => `${scopeKey(ownerOf(b))}/${b.key}`)));
 
   const row = (trait: Trait, block: TraitBlock, off: boolean) => {
     const ownerId = ownerOf(block);
-    const pick = picks.get(`${ownerId}/${block.key}`);
+    const pick = picks.get(`${scopeKey(ownerId)}/${block.key}`);
     const radio = pick?.max === 1;
-    const rowKey = `${ownerId}/${trait.id}`;
+    const rowKey = `${scopeKey(ownerId)}/${trait.id}`;
     // A change is listed only if the player can see the stat it targets: hidden stats stay behind the
     // scenes, and one whose stat the world no longer has would otherwise print a raw id.
     const changes = trait.statChanges
@@ -168,7 +169,7 @@ export const TraitsTab = ({
     const line = gateLine(gate);
     // A switch-on needs an open gate and a group below its max, and a max-one group's active Automatic trait
     // can't be swapped out. A switch-off must not leave the group below its min.
-    const fixedIn = fixedBlocks.has(`${ownerId}/${block.key}`);
+    const fixedIn = fixedBlocks.has(`${scopeKey(ownerId)}/${block.key}`);
     const disabled = readOnly || (off ? locked || (radio ? fixedIn : !!pick?.full) : !!pick && leavesShort(pick));
     const name = (
       <span className="inline-flex items-center gap-1.5 font-medium">

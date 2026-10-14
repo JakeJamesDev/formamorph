@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { APP_VERSION, migrateSave } from './version';
-import { liveAppliedValues, liveCascadeOff, savedAppliedValues, savedCascadeOff } from './globalSaveFields';
-import type { SaveObject } from '@/types';
+import { liveAppliedValues, liveSnapshotOf, savedAppliedValues, savedCascadeOff } from './globalSaveFields';
+import type { GameState, SaveObject } from '@/types';
 
 const stat = { id: 'rampage', name: 'Rampage', type: 'number', description: '', min: 0, max: 100, value: 40, regen: 0, descriptors: [] };
 const trait = { id: 'sworn', name: 'Sworn', statChanges: [] };
@@ -76,17 +76,17 @@ describe('a save written before global scope had its own fields', () => {
 
 describe('the saved and live map shapes', () => {
   it('round-trip cascade-off traits and applied values', () => {
-    const cascade = { world: ['hale'], ash: ['loyal'] };
+    const cascade = { global: ['hale'], owners: { ash: ['loyal'] } };
     const applied = { sworn: { rampage: 5 }, 'ash/paladin': { vigor: 2 }, 'ash/paladin/stats': { trust: 1 } };
-    expect(liveCascadeOff(savedCascadeOff(cascade))).toEqual(cascade);
+    expect(savedCascadeOff(cascade)).toEqual(cascade);
     expect(liveAppliedValues(savedAppliedValues(applied))).toEqual(applied);
   });
 
   it('write nothing for an empty or emptied map', () => {
     expect(savedCascadeOff({})).toBeUndefined();
-    expect(savedCascadeOff({ world: [], ash: [] })).toBeUndefined();
+    expect(savedCascadeOff({ global: [], owners: { ash: [] } })).toBeUndefined();
     expect(savedAppliedValues({})).toBeUndefined();
-    expect(liveCascadeOff(undefined)).toEqual({});
+    expect(liveSnapshotOf({ globalStats: [], globalTraits: [] } as unknown as GameState).cascadeOffTraitIds).toEqual({});
     expect(liveAppliedValues(undefined)).toEqual({});
   });
 

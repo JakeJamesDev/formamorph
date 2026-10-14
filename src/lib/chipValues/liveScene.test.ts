@@ -7,7 +7,7 @@ import { buildCharacterUserMessage, buildDiaryUserMessage } from '../stagedPlann
 import { buildToolSnapshot } from '../tools/toolSnapshot';
 import { renderPromptTemplate } from '../promptTemplate';
 import { layerValues } from '../promptValues';
-import type { Entity, GameLocation, PlayerStat, StatGroup, Trait, TraitGroup, TraitLink } from '@/types';
+import type { Entity, GameLocation, PersonaRef, PlayerStat, StatGroup, Trait, TraitGroup, TraitLink } from '@/types';
 
 // The harbor: the Quay contains the Warehouse.
 const quay: GameLocation = { id: 'quay', name: 'Quay', aiDescription: 'Wet stone and rope.' };
@@ -341,9 +341,14 @@ describe('the live adapter', () => {
     const wren: Entity = { id: 'wren', name: 'Wren', persona: true, aiDescription: 'Rows the ferry.', traitLinks: [link('l2')] };
     const newcomer: Entity = { id: 'cp', name: 'Newcomer', customPersona: true, traitLinks: [link('l3')] };
     const world: OwnerWorld = { traits: [paladin], traitGroups: [blueprints], entities: [albus, wren, newcomer] };
+    // Global scope's tree and each entity owner's, as play hands them to the scene.
+    const trees = (w: OwnerWorld, ref: PersonaRef | undefined) => {
+      const { global, owners } = resolveOwners(w, ref);
+      return { global, owners };
+    };
     const real = (persona: LiveSceneSources['persona'], over: Partial<LiveSceneSources> = {}) => sources({
       entities: [albus], allEntities: [albus], persona, traits: [], traitGroups: [blueprints],
-      owners: resolveOwners(world, persona ? { source: 'world', entityId: persona.entity.id } : undefined).owners,
+      ...trees(world, persona ? { source: 'world', entityId: persona.entity.id } : undefined),
       resolveTrait: (_trait, text, owner) => resolveOwnerText(owner ?? null, text, {
         placeholders: [], rolls: {}, player: { name: persona?.entity.name },
       }),
@@ -370,7 +375,7 @@ describe('the live adapter', () => {
       const sworn: Trait = { id: 'sworn', name: 'Sworn', groupId: 'oaths', statChanges: [] };
       const grouped = { ...world, traits: [sworn], traitGroups: [oaths] };
       const values = chipValues(liveChipScene(real(null, {
-        traits: [sworn], traitGroups: [oaths], owners: resolveOwners(grouped, undefined).owners, resolve: (text) =>
+        traits: [sworn], traitGroups: [oaths], ...trees(grouped, undefined), resolve: (text) =>
           resolveEntityText(null, text, { placeholders: [], rolls: {} }),
       })));
       expect(values('<TRAITS DESCRIPTION>')).toBe('Oaths:\n  The player is sworn.\n  Sworn');

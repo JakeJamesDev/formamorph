@@ -2,6 +2,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { SetupTraitList } from './SetupTraitList';
 import { groupPickState } from '@/lib/traitGates';
+import { scoped } from '@/lib/scope';
 import type { Stat, Trait, TraitGroup } from '@/types';
 
 /**
@@ -80,14 +81,14 @@ describe('SetupTraitList outside the setup dialog', () => {
     expect(screen.getByRole('radio', { name: 'Dockhand' })).toBeChecked();
     // Clicking the chosen one clears it, so "none of these" stays reachable.
     fireEvent.click(screen.getByRole('radio', { name: 'Dockhand' }));
-    expect(onTraitSelect).toHaveBeenCalledWith('dockhand', 'world');
+    expect(onTraitSelect).toHaveBeenCalledWith('dockhand', null);
   });
 
   it('offers a group with no max as checkboxes', () => {
     const onTraitSelect = view({ picks: null });
     expect(screen.queryByRole('radio')).toBeNull();
     fireEvent.click(screen.getByRole('checkbox', { name: 'Scholar' }));
-    expect(onTraitSelect).toHaveBeenCalledWith('scholar', 'world');
+    expect(onTraitSelect).toHaveBeenCalledWith('scholar', null);
   });
 
   it('disables the unchecked rows of a full group with a larger max, and keeps the checked ones switchable', () => {
@@ -134,10 +135,10 @@ describe('SetupTraitList gates', () => {
   const req = (text: string, holds: boolean, hidden = false) => ({ text, holds, unresolved: false, hidden });
   /** Each Condition as a row of its own. */
   const oneEach = (...conditions: ReturnType<typeof req>[]) => conditions.map((c) => ({ holds: c.holds, conditions: [c] }));
-  const gates = new Map([['world', new Map([
+  const gates = scoped(new Map([
     ['dockhand', { unlocked: false, rows: oneEach(req('Paladin', false), req('Knight', false)) }],
     ['scholar', { unlocked: true, rows: oneEach(req('Mage', true), req('any Class', false)) }],
-  ])]]);
+  ]));
 
   it('keeps a locked trait in place, disabled, and says what it requires', () => {
     view({ gates, picks: null });
@@ -208,10 +209,10 @@ describe('SetupTraitList gates', () => {
     });
 
     it('leaves a Hidden requirement out of the gate line', () => {
-      const hiddenGates = new Map([['world', new Map([
+      const hiddenGates = scoped(new Map([
         ['dockhand', { unlocked: false, rows: oneEach(req('Secret Bond', false, true), req('Knight', false)) }],
         ['scholar', { unlocked: true, rows: oneEach(req('Secret Bond', true, true), req('Mage', true)) }],
-      ])]]);
+      ]));
       view({ gates: hiddenGates, picks: null });
       expect(screen.getByText('Requires Knight')).toBeInTheDocument();
       expect(screen.getByText('Unlocked by Mage')).toBeInTheDocument();
@@ -219,9 +220,9 @@ describe('SetupTraitList gates', () => {
     });
 
     it('reads a bare "Locked" when every requirement is Hidden', () => {
-      const hiddenGates = new Map([['world', new Map([
+      const hiddenGates = scoped(new Map([
         ['dockhand', { unlocked: false, rows: oneEach(req('Secret Bond', false, true)) }],
-      ])]]);
+      ]));
       view({ gates: hiddenGates, picks: null });
       expect(screen.getByText('Locked')).toBeInTheDocument();
       expect(screen.queryByText(/Secret Bond/)).toBeNull();

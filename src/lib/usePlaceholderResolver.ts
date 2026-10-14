@@ -45,7 +45,7 @@ function useViewPins(): { opts: ResolveOptions; pinSet: PinSet } {
     world: { traits, traitGroups, entities },
     persona: personaRef,
     library: inPlayLibrary({ traits, traitGroups, entities }, libraryPersona, addedCharacters(discoveredEntities)),
-    playerTraits: inAuthoredOrder(viewTraits, traitOrderIndex(traits, traitGroups)),
+    globalTraits: inAuthoredOrder(viewTraits, traitOrderIndex(traits, traitGroups)),
     disabledTraitIds: viewDisabledTraitIds,
     owned: activeOwnedTraitIds(viewOwnedTraits),
     sharedPlaceholders: worldPlaceholders,

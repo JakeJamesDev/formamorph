@@ -24,14 +24,13 @@ export type CodeBounds = { min?: number; max?: number; regen?: number };
 /** How far stat code has moved each bound over the playthrough. A field code never moved is absent. */
 export type CodeBoundDeltas = CodeBounds;
 
-/** Owner id → the traits a gate cascade turned off, which switch back on once their gate holds again. */
-export type CascadeOffTraitIds = Record<string, string[]>;
-
-/** A save's cascade-off traits: the global traits' list, and each entity's by entity id. */
-export interface SavedCascadeOff {
+/** The traits a gate cascade turned off, which switch back on once their gate holds again: the global traits'
+ *  list, and each entity's by entity id. */
+export interface CascadeOffTraitIds {
   global?: string[];
   owners?: Record<string, string[]>;
 }
+
 
 /** A save's trait stat records: trait id → stat id → delta for global traits; for an entity, entity id → trait
  *  id (or `<trait id>/stats` for what the trait moved on the entity's own stats) → stat id → delta. */
@@ -224,7 +223,7 @@ export interface GameState {
    *  always did. */
   appliedTraitValues?: SavedAppliedValues;
   /** The traits a gate cascade turned off, which switch back on once their gate holds again. Absent ⇒ none. */
-  cascadeOffTraitIds?: SavedCascadeOff;
+  cascadeOffTraitIds?: CascadeOffTraitIds;
   /** Each entity's owned traits. Absent ⇒ none. */
   ownedTraits?: OwnedTraitStates;
   /** Each entity's stat values, by entity id. Absent ⇒ none. */

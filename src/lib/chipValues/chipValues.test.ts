@@ -8,7 +8,6 @@ import { renderPromptTemplate } from '../promptTemplate';
 import { foreignTokens, spelledTokens } from '@/test/chipTokens';
 import type { Connection, DictionaryEntry, Entity, GameLocation, PlayerStat, StatGroup, Trait, TraitGroup } from '@/types';
 import { createStatRequest } from '../statRequest';
-import { PLAYER_OWNER } from '../statOwners';
 import type { ResolvedPersona } from '../persona';
 
 // The town: Old Town contains North Gate and the Market; North Gate contains the Gatehouse.
@@ -361,7 +360,7 @@ describe("the stats of played entities that are not the persona, in the Stats ch
     const healthMax = { ...calm, id: 'health-max', name: 'Health max' };
     const values = statsOf({ playedStats: [played(own, healthMax)] });
     expect(values('<STATS DESCRIPTION|numbers>')).toBe('Health: 62/100\nHealth (2): 10/100\nHealth max (2): 30/100');
-    const request = createStatRequest([health], PLAYER_OWNER, {
+    const request = createStatRequest([health], {
       persona: { id: 'persona', name: 'Traveler', stats: [own, healthMax] },
     });
     // The persona's targets come first in the request; its keys number after the loose stat's.

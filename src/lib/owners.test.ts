@@ -2,10 +2,10 @@ import { describe, it, expect } from 'vitest';
 import {
   ownsOrLinksTraits, editorGateInput, heldReason, holdsOriginal, inCast, makeLink, originalOf, playsAs, resolveOwners, type OwnerWorld,
 } from './owners';
-import { PLAYER_OWNER } from './traitGates';
 import type { HeldReason } from './heldReasons';
 import { remintOwnedTraits } from './ownedTraits';
-import { gateOf, gateStates } from './traitGates';
+import { NO_ACTIVE, gateOf, gateStates, type GateActive } from './traitGates';
+import { scoped } from './scope';
 import { isShown } from './traitEffects';
 import type { Entity, PersonaRef, Trait, TraitGroup, TraitLink } from '@/types';
 
@@ -63,7 +63,8 @@ const owner = (w: OwnerWorld, id: string, persona: PersonaRef = NONE, library: E
   if (!found) throw new Error(`no owner ${id}`);
   return found;
 };
-const ids = (items: readonly { id: string }[]) => items.map((i) => i.id);
+const globalOf = (w: OwnerWorld, persona: PersonaRef = NONE, library: Entity[] = []) => resolveOwners(w, persona, library).global;
+const ids =(items: readonly { id: string }[]) => items.map((i) => i.id);
 
 describe('resolveOwners: links', () => {
   it('expands a link to a trait at the link’s place and reads the original live', () => {
@@ -217,14 +218,13 @@ describe('resolveOwners: links', () => {
   });
 });
 
-describe('resolveOwners: the player owner', () => {
+describe('resolveOwners: global scope', () => {
   it('keeps root traits outside Blueprints and hides Blueprints, whatever the persona', () => {
     for (const persona of [NONE, AS_ALBUS]) {
-      const b = owner(world(), PLAYER_OWNER, persona);
-      expect(ids(b.traits)).toEqual(['brave']);
-      expect(ids(b.groups)).toEqual(['oaths']);
-      expect(b.isPlayer).toBe(true);
-      expect(b.present).toBe(true);
+      const r = resolveOwners(world(), persona);
+      expect(ids(r.global.traits)).toEqual(['brave']);
+      expect(ids(r.global.groups)).toEqual(['oaths']);
+      expect(r.gate.global).toEqual(r.global);
     }
   });
 
@@ -232,10 +232,9 @@ describe('resolveOwners: the player owner', () => {
     const w = world({ entities: [albus, mira, custom, newcomer] });
     const lib: Entity = { id: 'lib', name: 'Lib', persona: true };
     for (const [persona, library] of [[NONE, []], [AS_LIBRARY, [lib]]] as const) {
-      const root = owner(w, PLAYER_OWNER, persona, [...library]);
+      const root = globalOf(w, persona, [...library]);
       expect(ids(root.traits)).toEqual(['brave']);
       expect(ids(root.groups)).toEqual(['oaths']);
-      expect(root.linkOf.size).toBe(0);
       const cp = owner(w, 'cp', persona, [...library]);
       expect(cp).toMatchObject({ isPlayer: true, present: true, entity: newcomer, name: 'Newcomer' });
       expect(ids(cp.groups)).toEqual(['classes']);
@@ -244,14 +243,14 @@ describe('resolveOwners: the player owner', () => {
       expect(cp.linkOf.get('paladin')?.id).toBe('cp-classes');
     }
     expect(owner(w, 'cp', AS_ALBUS)).toMatchObject({ isPlayer: false, present: false });
-    expect(ids(owner(w, PLAYER_OWNER, AS_ALBUS).traits)).toEqual(['brave']);
+    expect(ids(globalOf(w, AS_ALBUS).traits)).toEqual(['brave']);
   });
 
   // Q17: the root's pick and the Custom Persona entity's link are held apart; the link expands once.
   it('holds a root trait in the root and once in the Custom Persona entity that also links it', () => {
     const doubled: Entity = { ...newcomer, traitLinks: [link('cp-brave', 'brave', 'trait'), link('cp-brave-2', 'brave', 'trait')] };
     const w = world({ entities: [albus, mira, custom, doubled] });
-    const root = owner(w, PLAYER_OWNER);
+    const root = globalOf(w);
     expect(ids(root.traits)).toEqual(['brave']);
     expect(root.traits[0]).toMatchObject({ groupId: null, order: 0 });
     const cp = owner(w, 'cp');
@@ -259,18 +258,18 @@ describe('resolveOwners: the player owner', () => {
     expect(cp.linkOf.get('brave')?.id).toBe('cp-brave');
   });
 
-  it('is the only player owner under None; a persona’s owner joins it when picked, and the Custom Persona entity’s when the world has one', () => {
+  it('plays no entity under None; a persona’s owner is played when picked, and the Custom Persona entity’s when the world has one', () => {
     const w = world();
-    expect(resolveOwners(w, NONE).playerOwnerIds).toEqual([PLAYER_OWNER]);
-    expect(resolveOwners(w, AS_ALBUS).playerOwnerIds).toEqual([PLAYER_OWNER, 'albus']);
+    expect(resolveOwners(w, NONE).playedIds).toEqual([]);
+    expect(resolveOwners(w, AS_ALBUS).playedIds).toEqual(['albus']);
     const lib: Entity = { id: 'lib', name: 'Lib', persona: true, traits: [trait('calm')] };
     const r = resolveOwners(w, AS_LIBRARY, [lib]);
-    expect(r.playerOwnerIds).toEqual([PLAYER_OWNER, 'lib']);
+    expect(r.playedIds).toEqual(['lib']);
     expect(r.owners.find((o) => o.id === 'lib')).toMatchObject({ isPlayer: true, present: true, entity: lib });
     const marked = world({ entities: [albus, mira, custom, newcomer] });
-    expect(resolveOwners(marked, NONE).playerOwnerIds).toEqual([PLAYER_OWNER, 'cp']);
-    expect(resolveOwners(marked, AS_LIBRARY, [lib]).playerOwnerIds).toEqual([PLAYER_OWNER, 'cp', 'lib']);
-    expect(resolveOwners(marked, AS_ALBUS).playerOwnerIds).toEqual([PLAYER_OWNER, 'albus']);
+    expect(resolveOwners(marked, NONE).playedIds).toEqual(['cp']);
+    expect(resolveOwners(marked, AS_LIBRARY, [lib]).playedIds).toEqual(['cp', 'lib']);
+    expect(resolveOwners(marked, AS_ALBUS).playedIds).toEqual(['albus']);
   });
 
   it('keeps the Custom Persona entity out of the cast under every persona, and out of the gate owners under a world persona', () => {
@@ -279,8 +278,8 @@ describe('resolveOwners: the player owner', () => {
     expect(ids(resolveOwners(marked, NONE).cast)).toEqual(['albus', 'mira']);
     expect(ids(resolveOwners(marked, AS_LIBRARY, [lib]).cast)).toEqual(['albus', 'mira']);
     expect(ids(resolveOwners(marked, AS_ALBUS).cast)).toEqual(['mira']);
-    expect(resolveOwners(marked, NONE).gate.owners.map((o) => o.id)).toEqual([PLAYER_OWNER, 'albus', 'mira', 'cp']);
-    expect(resolveOwners(marked, AS_ALBUS).gate.owners.map((o) => o.id)).toEqual([PLAYER_OWNER, 'albus', 'mira']);
+    expect(resolveOwners(marked, NONE).gate.owners.map((o) => o.id)).toEqual(['albus', 'mira', 'cp']);
+    expect(resolveOwners(marked, AS_ALBUS).gate.owners.map((o) => o.id)).toEqual(['albus', 'mira']);
   });
 });
 
@@ -294,20 +293,20 @@ describe('resolveOwners: a requirement never names yourself', () => {
   const w = world({ traits: [...world().traits, squire, sworn, pledged] });
 
   it('offers a root trait gated on Albus to everyone but Albus', () => {
-    expect(ids(owner(w, PLAYER_OWNER).traits)).toContain('squire');
-    expect(ids(owner(w, PLAYER_OWNER, AS_LIBRARY, [{ id: 'lib', name: 'Lib', persona: true }]).traits)).toContain('squire');
-    expect(ids(owner(w, PLAYER_OWNER, AS_ALBUS).traits)).not.toContain('squire');
+    expect(ids(globalOf(w).traits)).toContain('squire');
+    expect(ids(globalOf(w, AS_LIBRARY, [{ id: 'lib', name: 'Lib', persona: true }]).traits)).toContain('squire');
+    expect(ids(globalOf(w, AS_ALBUS).traits)).not.toContain('squire');
   });
 
   it('keeps a trait with another way in, minus the row that names you', () => {
-    const asAlbus = owner(w, PLAYER_OWNER, AS_ALBUS).traits.find((t) => t.id === 'sworn');
+    const asAlbus = globalOf(w, AS_ALBUS).traits.find((t) => t.id === 'sworn');
     expect(asAlbus?.requires).toEqual([{ all: [brave] }]);
-    expect(owner(w, PLAYER_OWNER).traits.find((t) => t.id === 'sworn')?.requires).toHaveLength(2);
+    expect(globalOf(w).traits.find((t) => t.id === 'sworn')?.requires).toHaveLength(2);
   });
 
   it('drops a whole row that names you, so a trait with no other row is not offered', () => {
-    expect(ids(owner(w, PLAYER_OWNER, AS_ALBUS).traits)).not.toContain('pledged');
-    expect(owner(w, PLAYER_OWNER).traits.find((t) => t.id === 'pledged')?.requires).toEqual([{ all: [brave, albusPaladin] }]);
+    expect(ids(globalOf(w, AS_ALBUS).traits)).not.toContain('pledged');
+    expect(globalOf(w).traits.find((t) => t.id === 'pledged')?.requires).toEqual([{ all: [brave, albusPaladin] }]);
   });
 
   it('leaves the played entity’s own tree alone, so Albus can gate on himself there', () => {
@@ -316,7 +315,7 @@ describe('resolveOwners: a requirement never names yourself', () => {
     expect(owner(own, 'albus', AS_ALBUS).traits.find((t) => t.id === 'oath')?.requires).toEqual([{ all: [albusPaladin] }]);
   });
 
-  it('applies to the Custom Persona entity’s links under a library persona, and gates the player’s owner the same way', () => {
+  it('applies to the Custom Persona entity’s links under a library persona, and gates global scope the same way', () => {
     const vow = trait('vow-t', { name: 'Vow', groupId: 'blueprints', order: 2, requires: [{ all: [{ kind: 'trait', id: 'paladin', owner: { kind: 'entity', id: 'lib' } }] }] });
     const lib: Entity = { id: 'lib', name: 'Lib', persona: true };
     const linkedVow = world({
@@ -327,7 +326,7 @@ describe('resolveOwners: a requirement never names yourself', () => {
     expect(ids(owner(linkedVow, 'cp').traits)).toContain('vow-t');
     expect(ids(owner(linkedVow, 'cp', AS_LIBRARY, [lib]).traits)).not.toContain('vow-t');
     const { gate } = resolveOwners(w, AS_ALBUS);
-    expect(gate.owners[0].traits.map((t) => t.id)).not.toContain('squire');
+    expect(gate.global.traits.map((t) => t.id)).not.toContain('squire');
   });
 });
 
@@ -370,7 +369,7 @@ describe('resolveOwners: a world persona’s tree', () => {
     expect(ids(played.traits)).toEqual(['brave', 'wizard', 'smite']);
     expect(played.linkOf.get('brave')?.id).toBe('l-brave');
     expect(ids(owner(w, 'cp', AS_LIBRARY, [lib]).traits)).toEqual(['wizard']);
-    expect(ids(owner(w, PLAYER_OWNER, AS_LIBRARY, [lib]).traits)).toEqual(['brave']);
+    expect(ids(globalOf(w, AS_LIBRARY, [lib]).traits)).toEqual(['brave']);
   });
 });
 
@@ -379,7 +378,7 @@ describe('resolveOwners: the cast and persona-only entities', () => {
     const r = resolveOwners(world(), NONE);
     expect(ids(r.cast)).toEqual(['albus', 'mira']);
     expect(r.owners.find((o) => o.id === 'custom')).toMatchObject({ present: false, isPlayer: false });
-    expect(r.gate.owners.map((o) => o.id)).toEqual([PLAYER_OWNER, 'albus', 'mira']);
+    expect(r.gate.owners.map((o) => o.id)).toEqual(['albus', 'mira']);
   });
 
   it('keeps a picked persona-only entity present and out of the cast like any played persona', () => {
@@ -387,7 +386,7 @@ describe('resolveOwners: the cast and persona-only entities', () => {
     expect(ids(r.cast)).toEqual(['albus', 'mira']);
     expect(r.owners.find((o) => o.id === 'custom')).toMatchObject({ present: true, isPlayer: true });
     expect(ids(r.owners.find((o) => o.id === 'custom')!.traits)).toEqual(['smite']);
-    expect(r.gate.owners.map((o) => o.id)).toEqual([PLAYER_OWNER, 'albus', 'mira', 'custom']);
+    expect(r.gate.owners.map((o) => o.id)).toEqual(['albus', 'mira', 'custom']);
   });
 
   it('reads the persona-only flag only with the Persona mark', () => {
@@ -407,11 +406,11 @@ describe('resolveOwners: the cast and persona-only entities', () => {
     const none = resolveOwners(w, NONE);
     expect(ids(none.cast)).toEqual(['albus', 'mira']);
     expect(none.owners.find((o) => o.id === 'cp')).toMatchObject({ present: true, isPlayer: true });
-    expect(none.gate.owners.map((o) => o.id)).toEqual([PLAYER_OWNER, 'albus', 'mira', 'cp']);
+    expect(none.gate.owners.map((o) => o.id)).toEqual(['albus', 'mira', 'cp']);
     const asAlbus = resolveOwners(w, AS_ALBUS);
     expect(ids(asAlbus.cast)).toEqual(['mira']);
     expect(asAlbus.owners.find((o) => o.id === 'cp')).toMatchObject({ present: false, isPlayer: false });
-    expect(asAlbus.gate.owners.map((o) => o.id)).toEqual([PLAYER_OWNER, 'albus', 'mira']);
+    expect(asAlbus.gate.owners.map((o) => o.id)).toEqual(['albus', 'mira']);
   });
 
   it('plays as the picked world persona, or as the Custom Persona entity under None and a library persona', () => {
@@ -426,12 +425,13 @@ describe('resolveOwners: the cast and persona-only entities', () => {
 });
 
 describe('resolveOwners: the gate input', () => {
-  it('has one gate owner per present owner, the player first, with each owner’s expanded lists', () => {
+  it('has global scope’s tree, then one gate owner per present entity owner, with each owner’s expanded lists', () => {
     const r = resolveOwners(world(), AS_ALBUS);
-    expect(r.gate.owners.map((o) => o.id)).toEqual([PLAYER_OWNER, 'albus', 'mira']);
-    expect(ids(r.gate.owners[1].traits)).toEqual(['oath', 'paladin', 'wizard']);
-    expect(r.gate.owners[1].name).toBe('Albus');
-    expect(r.gate.owners[2].parentGroupId).toBe('oaths');
+    expect(r.gate.global).toEqual(r.global);
+    expect(r.gate.owners.map((o) => o.id)).toEqual(['albus', 'mira']);
+    expect(ids(r.gate.owners[0].traits)).toEqual(['oath', 'paladin', 'wizard']);
+    expect(r.gate.owners[0].name).toBe('Albus');
+    expect(r.gate.owners[1].parentGroupId).toBe('oaths');
     expect(r.gate.entities.map((e) => e.id)).toEqual(['albus', 'mira', 'custom']);
     expect(r.gate.persona).toEqual(AS_ALBUS);
     expect(r.gate.originals).toEqual({ traits: world().traits, groups: world().traitGroups });
@@ -441,31 +441,31 @@ describe('resolveOwners: the gate input', () => {
     // Smite sits under Blueprints and no owner links it under Albus, yet the gate still reads its name.
     const gated = { ...mira, traits: [trait('vow', { name: 'Vow', requires: [{ all: [{ kind: 'trait', id: 'smite', owner: { kind: 'you' } }] }] })] };
     const r = resolveOwners(world({ entities: [albus, gated] }), AS_ALBUS);
-    expect(gateOf(gateStates({ ...r.gate, active: {} }), 'mira', 'vow')?.rows).toEqual([
+    expect(gateOf(gateStates({ ...r.gate, active: NO_ACTIVE }), 'mira', 'vow')?.rows).toEqual([
       { holds: false, conditions: [{ text: 'You: Smite', holds: false, unresolved: false, hidden: false }] },
     ]);
   });
 
   it('gates each owner on its own set, so a link never unlocks through another owner', () => {
-    // Albus links Smite next to Classes; the player's Paladin is not his.
+    // Albus links Smite next to Classes; the global Paladin is not his.
     const w = world({ entities: [{ ...albus, traitLinks: [...albus.traitLinks!, link('l-smite', 'smite', 'trait', { order: 2 })] }, mira] });
-    const gate = (active: Record<string, string[]>) => gateOf(gateStates({ ...resolveOwners(w, NONE).gate, active }), 'albus', 'smite')?.unlocked;
-    expect(gate({ [PLAYER_OWNER]: ['paladin'] })).toBe(false);
-    expect(gate({ albus: ['paladin'] })).toBe(true);
+    const gate = (active: GateActive) => gateOf(gateStates({ ...resolveOwners(w, NONE).gate, active }), 'albus', 'smite')?.unlocked;
+    expect(gate(scoped(['paladin']))).toBe(false);
+    expect(gate(scoped([], { albus: ['paladin'] }))).toBe(true);
   });
 });
 
 describe('editorGateInput', () => {
-  it('reads the whole world as the player, Blueprints included, then each owner with its links expanded', () => {
+  it('reads the whole world as global scope, Blueprints included, then each owner with its links expanded', () => {
     const input = editorGateInput(world({ entities: [albus, mira, custom, { ...newcomer, traitLinks: [link('cp-smite', 'smite', 'trait')] }] }));
-    expect(input.owners.map((o) => o.id)).toEqual([PLAYER_OWNER, 'albus', 'mira', 'custom', 'cp']);
-    expect(ids(input.owners[0].traits)).toEqual(['brave', 'paladin', 'wizard', 'smite']);
-    expect(ids(input.owners[0].groups)).toEqual(['oaths', 'blueprints', 'classes']);
-    expect(ids(input.owners[1].traits)).toEqual(['oath', 'paladin', 'wizard']);
-    expect(ids(input.owners[4].traits)).toEqual(['smite']);
-    expect(input.active).toEqual({});
+    expect(input.owners.map((o) => o.id)).toEqual(['albus', 'mira', 'custom', 'cp']);
+    expect(ids(input.global.traits)).toEqual(['brave', 'paladin', 'wizard', 'smite']);
+    expect(ids(input.global.groups)).toEqual(['oaths', 'blueprints', 'classes']);
+    expect(ids(input.owners[0].traits)).toEqual(['oath', 'paladin', 'wizard']);
+    expect(ids(input.owners[3].traits)).toEqual(['smite']);
+    expect(input.active).toEqual(NO_ACTIVE);
     expect(input.persona).toEqual(NONE);
-    expect(gateOf(gateStates(input), PLAYER_OWNER, 'smite')?.rows).toEqual([
+    expect(gateOf(gateStates(input), null, 'smite')?.rows).toEqual([
       { holds: false, conditions: [{ text: 'Paladin', holds: false, unresolved: false, hidden: false }] },
     ]);
   });
@@ -490,10 +490,6 @@ describe('holdsOriginal', () => {
     ['mira', 'classes', true, 'the group holding a directly linked trait'],
     ['mira', 'wizard', false, 'a sibling of a directly linked trait'],
     // Q17: the root's own items never block a link.
-    [PLAYER_OWNER, 'brave', false, 'a root trait the root offers'],
-    [PLAYER_OWNER, 'oaths', false, 'a root group the root offers'],
-    [PLAYER_OWNER, 'smite', false, 'a Blueprints trait the Custom Persona entity links, which the root does not expand'],
-    [PLAYER_OWNER, 'paladin', false, 'a Blueprints trait nobody offers the player'],
     ['cp', 'smite', true, 'a Blueprints trait the Custom Persona entity links'],
     ['cp', 'brave', false, 'a root trait the Custom Persona entity does not link'],
     ['cp', 'oaths', false, 'a root group the Custom Persona entity does not link'],
@@ -508,7 +504,6 @@ describe('holdsOriginal', () => {
     expect(cp.present).toBe(false);
     expect(holdsOriginal(w, cp, 'brave')).toBe(false);
     expect(holdsOriginal(w, cp, 'smite')).toBe(true);
-    expect(holdsOriginal(w, owner(w, PLAYER_OWNER, AS_ALBUS), 'smite')).toBe(false);
   });
 });
 

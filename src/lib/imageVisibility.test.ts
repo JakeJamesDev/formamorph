@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { visibleImages } from './imageVisibility';
-import { PLAYER_OWNER, type GateInput, type GateStat } from './traitGates';
+import type { GateInput, GateStat, GateStatSet } from './traitGates';
+import { scoped } from './scope';
 import type { GalleryImage, StatRequirement, Trait, TraitRequirement } from '@/types';
 
 const T = (id: string): Trait => ({ id, name: id, statChanges: [] });
@@ -9,9 +10,10 @@ const hurt: StatRequirement = { kind: 'stat', id: 'health', operator: '<', value
 const when = (...all: TraitRequirement[]): GalleryImage['requires'] => [{ all }];
 
 const input = (hp: number, active: string[] = []): GateInput => ({
-  owners: [{ id: PLAYER_OWNER, name: '', traits: [T('Night Vision')], groups: [] }],
-  active: { [PLAYER_OWNER]: active },
-  stats: { ash: { health: health(hp) } },
+  global: { traits: [T('Night Vision')], groups: [] },
+  owners: [],
+  active: scoped(active),
+  stats: scoped<GateStatSet>({},{ ash: { health: health(hp) } }),
   entities: [{ id: 'ash', name: 'Ash' }],
   persona: { source: 'none' },
 });
@@ -39,7 +41,7 @@ describe('visibleImages', () => {
     expect(shown([{ data: 'wounded', requires: when(hurt) }], input(10))).toEqual(['wounded']);
   });
 
-  it('reads the player’s traits under the you owner', () => {
+  it('reads global traits under the you owner', () => {
     const gallery = [{ data: 'true form', requires: when({ kind: 'trait', id: 'Night Vision', owner: { kind: 'you' } }) }];
     expect(shown(gallery, input(50, ['Night Vision']))).toEqual(['true form']);
     expect(shown(gallery, input(50))).toEqual([]);

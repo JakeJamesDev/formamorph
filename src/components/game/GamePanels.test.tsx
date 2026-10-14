@@ -531,7 +531,7 @@ describe('RightPanel — typing a stat value', () => {
     return view;
   };
   const field = () => screen.getByRole('spinbutton', { name: 'Vigor' });
-  const value = (view: PanelHarness<unknown>) => view.gameplay().playerStats[0].value;
+  const value = (view: PanelHarness<unknown>) => view.gameplay().globalStats[0].value;
 
   it('leaves the readout as plain text until edit mode is on', () => {
     renderRightPanel({}, { turns: TURNS, stats: [banded(20)] });
@@ -583,7 +583,7 @@ describe('RightPanel — typing a stat value', () => {
     const view = renderEditing();
     expect(screen.getByRole('slider')).toBeInTheDocument();
 
-    act(() => { view.gameplay().setPlayerStats([banded(80)]); });
+    act(() => { view.gameplay().setGlobalStats([banded(80)]); });
     expect(field()).toHaveValue(80);
   });
 
@@ -616,7 +616,7 @@ describe('RightPanel — the traits tab against an edited world', () => {
       turns: TURNS,
       world: { traits: [{ id: 't-brave', name: 'Brave', statChanges: [], playerToggle: authoredToggle }] },
       seed: (gameplay) => {
-        gameplay.setPlayerTraits([{ id: 't-brave', name: 'Brave', statChanges: [] }]);
+        gameplay.setGlobalTraits([{ id: 't-brave', name: 'Brave', statChanges: [] }]);
         gameplay.setActiveTab('traits');
       },
     });
@@ -630,7 +630,7 @@ describe('RightPanel — the traits tab against an edited world', () => {
     expect(box).toBeEnabled();
 
     fireEvent.click(box);
-    expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-brave', false, 'world');
+    expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-brave', false, null);
   });
 
   it('offers no switch when the author has not marked it switchable', () => {
@@ -663,7 +663,7 @@ describe('RightPanel — acquirable traits in the traits tab', () => {
       turns,
       world: { traits: AUTHORED },
       seed: (gameplay) => {
-        gameplay.setPlayerTraits([{ id: 't-last', name: 'Brave', statChanges: [], playerToggle: true }]);
+        gameplay.setGlobalTraits([{ id: 't-last', name: 'Brave', statChanges: [], playerToggle: true }]);
         gameplay.setActiveTab('traits');
       },
     });
@@ -685,7 +685,7 @@ describe('RightPanel — acquirable traits in the traits tab', () => {
     const view = renderPanel();
     openDisabled();
     fireEvent.click(screen.getByRole('checkbox', { name: 'Switch on Feral' }));
-    expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-first', true, 'world');
+    expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-first', true, null);
   });
 
   it('leaves a trait the author never marked switchable out of the panel entirely', () => {
@@ -888,7 +888,7 @@ describe('placeholder names reach the panels resolved', () => {
         traits: [{ id: 't-native', name: `${CHIP} Native`, statChanges: [] }],
       },
       seed: (gameplay) => {
-        gameplay.setPlayerTraits([{ id: 't-native', name: `${CHIP} Native`, statChanges: [] }]);
+        gameplay.setGlobalTraits([{ id: 't-native', name: `${CHIP} Native`, statChanges: [] }]);
         gameplay.setActiveTab('traits'); // traits live behind their own tab, as in the app
       },
     });
@@ -911,7 +911,7 @@ describe('placeholder names reach the panels resolved', () => {
       world: { placeholders: [WILD], traits: [PINNER] },
       seed: (gameplay) => {
         gameplay.setPlaceholderRolls({ world: { 'ph-town': 'Sedge' }, unique: {} });
-        gameplay.setPlayerTraits([PINNER]);
+        gameplay.setGlobalTraits([PINNER]);
       },
     });
 
@@ -941,7 +941,7 @@ describe('placeholder names reach the panels resolved', () => {
       seed: (gameplay) => {
         // Freeze the roll, as a real session would have: the toggle-off step below reads it.
         gameplay.setPlaceholderRolls({ world: { 'ph-town': 'Sedge' }, unique: {} });
-        gameplay.setPlayerTraits([NATIVE, SWORN]);
+        gameplay.setGlobalTraits([NATIVE, SWORN]);
       },
     });
 
@@ -982,7 +982,7 @@ describe('placeholder names reach the panels resolved', () => {
         gameplay.setPlaceholderRolls({ world: { 'ph-town': 'Sedge' }, unique: {} });
         // Arrived before the trait was on — this is the stale copy the panel used to render.
         gameplay.setCurrentLocation({ ...HERE, name: 'Sedge Square' });
-        gameplay.setPlayerTraits([SWORN]);
+        gameplay.setGlobalTraits([SWORN]);
         gameplay.setActiveTab('location');
       },
     });
@@ -1035,11 +1035,11 @@ describe('pins from the location and the stat bands reach the panels', () => {
 
     expect(screen.getByText('Marrow Standing')).toBeInTheDocument();
 
-    act(() => { view.gameplay().setPlayerStats([STANDING, vigor(80)]); });
+    act(() => { view.gameplay().setGlobalStats([STANDING, vigor(80)]); });
     expect(screen.getByText('Sedge Standing')).toBeInTheDocument();
     expect(view.gameplay().placeholderRolls.world?.['ph-town']).toBe('Sedge');
 
-    act(() => { view.gameplay().setPlayerStats([STANDING, vigor(10)]); });
+    act(() => { view.gameplay().setGlobalStats([STANDING, vigor(10)]); });
     expect(screen.getByText('Marrow Standing')).toBeInTheDocument();
   });
 });

@@ -453,7 +453,7 @@ function editorOwners(world: PinEditorWorld): { owner: Owner; entity: Entity }[]
   if (hit) return hit;
   const { traits = [], traitGroups = [], entities = [] } = world;
   const { owners: trees } = resolveOwners({ traits, traitGroups, entities }, undefined);
-  const result = trees.flatMap((tree) => (tree.entity ? [{ owner: tree, entity: tree.entity }] : []));
+  const result = trees.map((tree) => ({ owner: tree, entity: tree.entity }));
   ownersCache.set(world, result);
   return result;
 }

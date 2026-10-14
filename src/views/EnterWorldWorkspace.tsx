@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { NavDisclosure } from '@/components/NavDisclosure';
 import { SetupTraitList, TraitCascadeNotice, type TraitCascade } from '@/components/game/SetupTraitList';
 import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
-import { PLAYER_OWNER, groupPickState, type GateStates } from '@/lib/traitGates';
+import { groupPickState, type GateStates } from '@/lib/traitGates';
+import type { OwnerId, Scoped } from '@/lib/scope';
 import { choiceRowClass } from '@/components/game/setupChoiceRow';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle, dialogCenteredAnimation } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -48,8 +49,8 @@ export interface EnterWorldWorkspaceProps {
   resolveText: (text: string) => string;
   /** A trait's own text, bound for its owner, which is the Character Name in it. */
   resolveTraitText: (trait: Trait, text: string, owner?: Entity | null) => string;
-  /** Each owner's picks by owner id, the player's under the world's. */
-  selectedTraits: Readonly<Record<string, readonly string[]>>;
+  /** The global picks, and each entity's by its id. */
+  selectedTraits: Scoped<readonly string[]>;
   selectedLocationId: string | null;
   libraryEntities: EntityAddition[];
   selectedEntityIds: Set<string>;
@@ -66,7 +67,7 @@ export interface EnterWorldWorkspaceProps {
   onPersonaChange?: (ref: PersonaRef) => void;
   categoryIndex: number;
   onCategoryChange: (index: number) => void;
-  onTraitSelect: (traitId: string, ownerId: string) => void;
+  onTraitSelect: (traitId: string, ownerId: OwnerId) => void;
   traitGates?: GateStates;
   /** What the last selection change turned off; shown until dismissed or the next change. */
   traitCascade?: TraitCascade | null;
@@ -105,7 +106,8 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
     ),
     [props.traits, props.traitGroups, props.traitEntities, props.persona, props.traitLibrary],
   );
-  const picksOf = (ownerId: string | undefined) => props.selectedTraits[ownerId ?? PLAYER_OWNER] ?? [];
+  const picksOf = (ownerId: string | undefined) =>
+    (ownerId === undefined ? props.selectedTraits.global : props.selectedTraits.owners[ownerId] ?? []);
   // Every category, seen or not, for the Begin check.
   const allCategories = useMemo(
     () => buildTraitWorkspace(traitTree.traits, traitTree.groups, new Set(traitTree.entityNodes.keys())).categories,
@@ -115,7 +117,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
   const traitWorkspace = useMemo(
     () => buildTraitWorkspace(
       traitTree.traits, traitTree.groups, new Set(traitTree.entityNodes.keys()),
-      (trait, entityId) => isShown(trait, props.selectedTraits[entityId ?? PLAYER_OWNER] ?? []),
+      (trait, entityId) => isShown(trait, picksOf(entityId ?? undefined)),
     ),
     [traitTree, props.selectedTraits],
   );
@@ -353,7 +355,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
               resolveTraitText={(trait, text) =>
                 props.resolveTraitText(trait, text, current.entityId ? traitTree.entityNodes.get(current.entityId) ?? null : null)}
               onTraitSelect={props.onTraitSelect}
-              ownerId={current.entityId ?? PLAYER_OWNER}
+              ownerId={current.entityId ?? null}
               ownStats={current.entityNode ? ownStatsOf(current.entityId!) : undefined}
               gates={props.traitGates}
               cascade={props.traitCascade}

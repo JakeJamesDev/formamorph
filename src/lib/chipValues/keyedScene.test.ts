@@ -4,7 +4,6 @@ import type { ChipScene } from './chipScene';
 import { defaultStatUpdatesPrompt } from '@/components/game/GamePrompts';
 import { renderPromptTemplate } from '../promptTemplate';
 import { createStatRequest, keyedScene } from '../statRequest';
-import { PLAYER_OWNER } from '../statOwners';
 import { ownerStatParts, statPlacementOf } from '../statContext';
 import type { ResolvedPersona } from '../persona';
 import type { Entity, GameLocation, PlayerStat } from '@/types';
@@ -66,7 +65,7 @@ const scene = (over: Partial<ChipScene> = {}): ChipScene => ({
 
 const ownerOf = (owner: Entity) => ({ id: owner.id, name: owner.name, stats: ownedStats[owner.id as keyof typeof ownedStats], placement: statPlacementOf(owner) });
 
-const request = createStatRequest([health], PLAYER_OWNER, {
+const request = createStatRequest([health], {
   persona: ownerOf(traveler),
   entities: [ownerOf(guard), ownerOf(cook), ownerOf(baker)],
   inSceneIds: ['traveler', 'guard'],
@@ -101,7 +100,7 @@ describe('the keyed scene for the stat pass', () => {
       ownedStats: { ...ownedStats, custom: [customHealth] },
       playedStats: ownerStatParts([traveler, custom], { ...ownedStats, custom: [customHealth] }),
     });
-    const withCustom = createStatRequest([health], PLAYER_OWNER, {
+    const withCustom = createStatRequest([health], {
       persona: ownerOf(traveler), played: [{ id: 'custom', name: 'The Creature', stats: [customHealth] }],
     });
     const keyed = chipValues(keyedScene(both, withCustom));
@@ -111,7 +110,7 @@ describe('the keyed scene for the stat pass', () => {
 
   it('leaves a stat the request does not hold under its raw name, and the narration scene untouched', () => {
     const input = scene();
-    const out = keyedScene(input, createStatRequest([health], PLAYER_OWNER, { entities: [ownerOf(guard)], inSceneIds: input.inSceneIds }));
+    const out = keyedScene(input, createStatRequest([health], { entities: [ownerOf(guard)], inSceneIds: input.inSceneIds }));
     expect(chipValues(out)('<ENTITIES|reachable.stats>')).toContain('Mood: 70/100');
     expect(chipValues(out)('<ENTITIES|inscene>')).toContain('Health: 10/100');
     expect(input.ownedStats?.guard.map((s) => s.name)).toEqual(['Mood', 'Mood']);
@@ -125,7 +124,7 @@ describe('the keyed scene for the stat pass', () => {
   it('holds In Scene to the request\'s present entities, the stat-less ones included, whoever the scene had', () => {
     const rook = entity('rook', 'Rook', ['hall']);
     const input = scene({ entities: [traveler, guard, cook, baker, rook], inSceneIds: ['cook'], inSceneNames: ['a stranger'] });
-    const out = chipValues(keyedScene(input, createStatRequest([health], PLAYER_OWNER, {
+    const out = chipValues(keyedScene(input, createStatRequest([health], {
       entities: [ownerOf(guard)], inSceneIds: ['guard', 'rook'],
     })));
     expect(out('<ENTITIES|inscene.name>')).toBe('Guard, Rook');

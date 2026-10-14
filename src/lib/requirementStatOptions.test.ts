@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { requirementStatSections } from './requirementStatOptions';
-import { PLAYER_OWNER, type GateEntity, type GateInput, type GateStat } from './traitGates';
+import type { GateEntity, GateInput, GateStat, GateStatSet } from './traitGates';
+import { scoped, type OwnerId } from './scope';
 
 const S = (name: string, extra: Partial<GateStat> = {}): GateStat => ({ name, value: 10, min: 0, max: 100, ...extra });
 
@@ -10,17 +11,16 @@ const entities: GateEntity[] = [
   { id: 'cp', name: 'Custom', persona: true, customPersona: true },
   { id: 'bare', name: 'Bare' },
 ];
-const stats: NonNullable<GateInput['stats']> = {
-  [PLAYER_OWNER]: { rage: S('Rage'), gold: S('Gold', { min: 0, max: 1000 }) },
+const stats: NonNullable<GateInput['stats']> = scoped<GateStatSet>({ rage: S('Rage'), gold: S('Gold', { min: 0, max: 1000 }) }, {
   ash: { hunger: S('Hunger') },
   hero: { grit: S('Grit') },
   cp: { luck: S('Luck') },
   bare: {},
-};
+});
 const input = { owners: [], entities, stats } as Pick<GateInput, 'owners' | 'entities' | 'stats'>;
 
 /** Each section as "heading: names", with the owner its rows add under. */
-const read = (host: string, world = input) => requirementStatSections(world, host).map((s) => ({
+const read = (host: OwnerId, world = input) => requirementStatSections(world, host).map((s) => ({
   heading: s.heading,
   own: !!s.own,
   rows: s.options.map((o) => o.label),
@@ -34,7 +34,7 @@ describe('requirementStatSections', () => {
 
   // Q29: the global stats alone, then Persona Stats under You, then every other entity by name.
   it('lists, for a world trait, the global stats first with no owner, then Persona Stats, then each entity that has stats', () => {
-    expect(read(PLAYER_OWNER)).toEqual([
+    expect(read(null)).toEqual([
       { heading: 'Global Stats', own: true, rows: ['Rage', 'Gold'], owners: ['null'] },
       persona,
       { heading: 'Ash Stats', own: false, rows: ['Hunger'], owners: ['{"kind":"entity","id":"ash","name":"Ash"}'] },
@@ -61,19 +61,19 @@ describe('requirementStatSections', () => {
   });
 
   it('leaves out an inert stat and an entity with no stats', () => {
-    const world = { ...input, stats: { ...stats, ash: { hunger: S('Hunger', { inert: true }), thirst: S('Thirst') } } };
+    const world = { ...input, stats: { ...stats, owners: { ...stats.owners, ash: { hunger: S('Hunger', { inert: true }), thirst: S('Thirst') } } } };
     expect(read('ash', world)[0].rows).toEqual(['Thirst']);
-    expect(read(PLAYER_OWNER).map((s) => s.heading)).not.toContain('Bare Stats');
+    expect(read(null).map((s) => s.heading)).not.toContain('Bare Stats');
   });
 
   // Q29: the global section holds the global stats alone, so Luck sits under Persona Stats.
   it('keeps hidden stats, which an author may gate on', () => {
-    const world = { ...input, stats: { ...stats, [PLAYER_OWNER]: { rage: S('Rage', { hidden: true }) } } };
-    expect(read(PLAYER_OWNER, world)[0].rows).toEqual(['Rage']);
+    const world = { ...input, stats: { ...stats, global: { rage: S('Rage', { hidden: true }) } } };
+    expect(read(null, world)[0].rows).toEqual(['Rage']);
   });
 
   it('adds each stat as ">= the middle of its span, in raw units"', () => {
-    const [global] = requirementStatSections(input, PLAYER_OWNER);
+    const [global] = requirementStatSections(input, null);
     expect(global.options.map((o) => o.requirement)).toEqual([
       { kind: 'stat', id: 'rage', operator: '>=', value: 50, unit: 'raw' },
       { kind: 'stat', id: 'gold', operator: '>=', value: 500, unit: 'raw' },
@@ -81,6 +81,6 @@ describe('requirementStatSections', () => {
   });
 
   it('lists nothing without stats', () => {
-    expect(requirementStatSections({ ...input, stats: undefined }, PLAYER_OWNER)).toEqual([]);
+    expect(requirementStatSections({ ...input, stats: undefined }, null)).toEqual([]);
   });
 });

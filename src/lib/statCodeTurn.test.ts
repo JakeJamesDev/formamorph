@@ -1072,11 +1072,11 @@ describe('runStatCodeTurn traits', () => {
     const ash = { id: 'ash', name: 'Ash', traits: [loyal], groups: [] };
     const out = await run(['traits.Brave.enabled = false;'], held({
       ownedTraits: { ash: { chosen: ['loyal'] } },
-      world: { ...world, entities: [], owners: [{ id: 'world', name: '', traits: world.traits, groups: world.groups }, ash] },
+      world: { ...world, entities: [], global: { traits: world.traits, groups: world.groups }, owners: [ash] },
     }));
     expect(out.traits?.log).toEqual(['Trait switched off: Brave (by S0)', "Trait switched off: Ash's Loyal (by S0)"]);
     expect(out.traits?.ownedTraits).toEqual({ ash: { chosen: ['loyal'], disabled: ['loyal'] } });
-    expect(out.traits?.cascadeOffTraitIds).toEqual({ ash: ['loyal'] });
+    expect(out.traits?.cascadeOffTraitIds).toEqual({ owners: { ash: ['loyal'] } });
   });
 
   it('carries a switch onto the latest stats, re-derived under the traits now in force', async () => {

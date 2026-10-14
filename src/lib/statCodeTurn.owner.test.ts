@@ -21,7 +21,7 @@ const ownerTraits = (entities: Entity[], persona: PersonaRef = { source: 'none' 
   acquired: [], disabledTraitIds: [], appliedValues: {}, ownedTraits: {}, entities,
   world: {
     traits: [], groups: [], entities, persona,
-    owners: inPlayOwners({ traits: [], traitGroups: [], entities }, persona, []),
+    ...inPlayOwners({ traits: [], traitGroups: [], entities }, persona, []),
   },
 });
 

@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import { phValues } from '@/test/placeholderValues';
 import type { Entity, EntityGroup, GameLocation, Placeholder, Trait } from '@/types';
+import { NO_ACTIVE } from '@/lib/traitGates';
 import { TraitStoreContext, type TraitStore } from '@/contexts/TraitStoreContext';
 import EntityTree from './EntityTree';
 import LocationTree from './LocationTree';
@@ -80,7 +81,7 @@ function LocationTreeHost() {
 }
 
 const NO_STATS: never[] = [];
-const NO_GATES = { owners: [], active: {}, entities: [], persona: { source: 'none' } };
+const NO_GATES = { global: { traits: [], groups: [] }, owners: [], active: NO_ACTIVE, entities: [], persona: { source: 'none' } };
 const NO_TRAIT_GROUPS: never[] = [];
 
 function TraitTreeHost() {

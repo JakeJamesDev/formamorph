@@ -1,17 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { shownWhileLine } from './traitGateLine';
-import { PLAYER_OWNER, ruleStates, type GateInput, type GateStat } from './traitGates';
+import { NO_ACTIVE, ruleStates, type GateInput, type GateStat, type GateStatSet } from './traitGates';
+import { scoped } from './scope';
 import type { Trait, TraitRequirementRow } from '@/types';
 
 const S = (name: string, value: number, extra: Partial<GateStat> = {}): GateStat => ({ name, value, min: 0, max: 100, ...extra });
 const trait = (id: string, name: string): Trait => ({ id, name, statChanges: [] });
 
 const input = (extra: Partial<GateInput> = {}): GateInput => ({
-  owners: [{ id: PLAYER_OWNER, name: '', traits: [trait('knight', 'Knight'), trait('healed', 'Healed')], groups: [] }],
-  active: {},
+  global: { traits: [trait('knight', 'Knight'), trait('healed', 'Healed')], groups: [] },
+  owners: [],
+  active: NO_ACTIVE,
   entities: [{ id: 'wren', name: 'Wren' }],
   persona: { source: 'none' },
-  stats: { wren: { health: S('Health', 10) } },
+  stats: scoped<GateStatSet>({}, { wren: { health: S('Health', 10) } }),
   ...extra,
 });
 
@@ -26,18 +28,18 @@ describe('ruleStates', () => {
   });
 
   it('does not hold while the stat is above the threshold', () => {
-    const [state] = ruleStates(input({ stats: { wren: { health: S('Health', 80) } } }), 'wren', [row(lowHealth)]);
+    const [state] = ruleStates(input({ stats: scoped<GateStatSet>({}, { wren: { health: S('Health', 80) } }) }), 'wren', [row(lowHealth)]);
     expect(state.holds).toBe(false);
   });
 
   it('leaves a stat the owner does not have unresolved', () => {
-    const [state] = ruleStates(input({ stats: {} }), 'wren', [row(lowHealth)]);
+    const [state] = ruleStates(input({ stats: scoped<GateStatSet>({}) }), 'wren', [row(lowHealth)]);
     expect(state.conditions[0].unresolved).toBe(true);
     expect(state.holds).toBe(false);
   });
 
   it('reads a trait Condition from the input’s active sets, and Not flips it', () => {
-    const active = { [PLAYER_OWNER]: ['knight'] };
+    const active = scoped(['knight']);
     const rows = [row({ kind: 'trait', id: 'knight', owner: { kind: 'you' } }), row({ kind: 'trait', id: 'healed', owner: { kind: 'you' }, not: true })];
     expect(ruleStates(input({ active }), 'wren', rows).map((r) => r.holds)).toEqual([true, true]);
     expect(ruleStates(input(), 'wren', rows).map((r) => r.holds)).toEqual([false, true]);
@@ -46,7 +48,7 @@ describe('ruleStates', () => {
   it('reads each row on its own, and a row holds only when every Condition does', () => {
     const rows = [row(lowHealth, { kind: 'trait', id: 'knight', owner: { kind: 'you' } })];
     expect(ruleStates(input(), 'wren', rows)[0].holds).toBe(false);
-    expect(ruleStates(input({ active: { [PLAYER_OWNER]: ['knight'] } }), 'wren', rows)[0].holds).toBe(true);
+    expect(ruleStates(input({ active: scoped(['knight']) }), 'wren', rows)[0].holds).toBe(true);
   });
 });
 

@@ -1,8 +1,8 @@
-// Owners: who has which traits. An owner is the player or an entity whose tree holds a trait, directly or
-// through a link. This module is the one place that expands a link to its original's live subtree.
+// Owners: who has which traits. Global scope holds the root traits no one owns; an owner is an entity whose
+// tree holds a trait, directly or through a link. This module is the one place that expands a link to its original's live subtree.
 
 import type { Entity, PersonaRef, Trait, TraitGroup, TraitLink, TreePlacement, TraitRequirement } from '@/types';
-import { PLAYER_OWNER, type GateInput, type GateOwner } from './traitGates';
+import { NO_ACTIVE, type GateInput, type GateOwner, type GateTree } from './traitGates';
 import { effectivePlacement, groupsBelow, offeredWorldTraits, ownsTraits, placeableGroupIds } from './traitTree';
 import { buildTree, flattenTree } from './groupTree';
 import { effectiveLinkTrait } from './blueprints';
@@ -18,27 +18,28 @@ export interface OwnerWorld {
 /** One owner's effective tree: its own items plus each link's original and live subtree, in the places the
  *  owner's tree gives them. Ids are the originals' own, so active state can hold them. */
 export interface Owner {
-  /** {@link PLAYER_OWNER}, or the entity's id. */
+  /** The entity's id. */
   id: string;
-  /** The entity's name; empty for the player. */
   name: string;
-  /** Null for the player. */
-  entity: Entity | null;
+  entity: Entity;
   traits: Trait[];
   groups: TraitGroup[];
   /** Effective trait or group id → the link that brought it. Own items are absent. */
   linkOf: ReadonlyMap<string, TraitLink>;
-  /** Whether this owner's traits are the player's: the player and the picked persona. */
+  /** Whether the owner is played: the picked persona, or the Custom Persona entity under None and a library
+   *  persona. */
   isPlayer: boolean;
   /** Whether the owner is in this playthrough. False only for an unpicked persona-only entity. */
   present: boolean;
 }
 
 export interface OwnerResolution {
-  /** Every owner, the player first, then the world's entities in order, then the library's. */
+  /** Global scope's tree: the root outside Blueprints. */
+  global: GlobalTree;
+  /** Every entity owner, the world's entities in order, then the library's. */
   owners: Owner[];
-  /** The owners whose active traits are "You". */
-  playerOwnerIds: string[];
+  /** The played owners' ids, whose active traits are "You". */
+  playedIds: string[];
   /** The world's entities without the played one and without unpicked persona-only entities. */
   cast: Entity[];
   /** The gate module's input over the present owners, without the active sets. */
@@ -175,25 +176,26 @@ export function withoutSelfNamedGates(traits: readonly Trait[], playedId: string
   });
 }
 
-/** The player owner: the root outside Blueprints. A trait gated only on the played persona itself is left
+/** Global scope's tree as play reads it. */
+export interface GlobalTree {
+  traits: Trait[];
+  groups: TraitGroup[];
+}
+
+/** Global scope's tree: the root outside Blueprints. A trait gated only on the played persona itself is left
  *  out (see {@link withoutSelfNamedGates}). The Custom Persona entity's tree is its own owner. */
-function playerOwner(world: OwnerWorld, persona: PersonaRef | undefined): Owner {
+function globalTree(world: OwnerWorld, persona: PersonaRef | undefined): GlobalTree {
   const root = offeredWorldTraits(world.traits, world.traitGroups);
-  return {
-    id: PLAYER_OWNER, name: '', entity: null, isPlayer: true, present: true,
-    traits: withoutSelfNamedGates(root.traits, playedId(persona)),
-    groups: [...root.groups],
-    linkOf: new Map(),
-  };
+  return { traits: withoutSelfNamedGates(root.traits, playedId(persona)), groups: [...root.groups] };
 }
 
 const gateOwner = (b: Owner, parentGroupId: string | null): GateOwner =>
-  ({ id: b.id, name: b.name, traits: b.traits, groups: b.groups, ...(b.entity ? { parentGroupId } : {}) });
+  ({ id: b.id, name: b.name, traits: b.traits, groups: b.groups, parentGroupId });
 
 /**
  * Every owner's effective tree for one persona, the cast, and the gate input over the present owners.
  * `library` holds the library entities the playthrough carries, the persona among them, with their
- * requirements already bound to the world. The Custom Persona entity is a player owner under None and a
+ * requirements already bound to the world. The Custom Persona entity is a played owner under None and a
  * library persona, and absent under a world persona.
  */
 export function resolveOwners(
@@ -207,13 +209,16 @@ export function resolveOwners(
     return entityOwner(world, e, persona, isPlayer, isPlayer || inCast(e, persona));
   });
   const libraryOwners = library.filter(ownsOrLinksTraits).map((e) => entityOwner(world, e, persona, e.id === played, true));
-  const owners = [playerOwner(world, persona), ...worldOwners, ...libraryOwners];
+  const owners = [...worldOwners, ...libraryOwners];
+  const global = globalTree(world, persona);
   const placementOf = new Map(world.entities.map((e) => [e.id, effectivePlacement(e, placeable)?.groupId ?? null]));
   return {
+    global,
     owners,
-    playerOwnerIds: owners.filter((o) => o.isPlayer).map((o) => o.id),
+    playedIds: owners.filter((o) => o.isPlayer).map((o) => o.id),
     cast: world.entities.filter((e) => inCast(e, persona)),
     gate: {
+      global,
       owners: owners.filter((o) => o.present).map((o) => gateOwner(o, placementOf.get(o.id) ?? null)),
       entities: world.entities,
       persona: persona ?? { source: 'none' },
@@ -223,20 +228,19 @@ export function resolveOwners(
 }
 
 /**
- * The gate input the editor reads: the whole world as the player's owner, Blueprints included so every row
+ * The gate input the editor reads: the whole world as global scope's tree, Blueprints included so every row
  * reads its gate, then each entity owner with its links expanded, a persona-only one included since the
  * author sees every tree. Nothing is active and there is no persona. `stats` are what a stat Condition reads.
  */
 export function editorGateInput(world: OwnerWorld, stats?: GateInput['stats']): GateInput {
   const { owners, gate } = resolveOwners(world, undefined);
   const placeable = placeableGroupIds(world.traitGroups);
+  const whole: GateTree = { traits: world.traits, groups: world.traitGroups };
   return {
     ...gate,
-    owners: [
-      { id: PLAYER_OWNER, name: '', traits: world.traits, groups: world.traitGroups },
-      ...owners.filter((o) => o.entity).map((o) => gateOwner(o, effectivePlacement(o.entity!, placeable)?.groupId ?? null)),
-    ],
-    active: {},
+    global: whole,
+    owners: owners.map((o) => gateOwner(o, effectivePlacement(o.entity, placeable)?.groupId ?? null)),
+    active: NO_ACTIVE,
     ...(stats ? { stats } : {}),
   };
 }

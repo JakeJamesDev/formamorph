@@ -104,7 +104,7 @@ export function blueprintItemIds(lists: WorldTraitLists): Set<string> {
 export const isBlueprintItem = (lists: WorldTraitLists, id: string): boolean => blueprintItemIds(lists).has(id);
 
 /** The world's traits and groups without Blueprints and everything below it: what the root offers the player.
- *  The owner resolver builds the player owner from it; the trait runtime falls back to it only for a world
+ *  The owner resolver builds global scope's tree from it; the trait runtime falls back to it only for a world
  *  given without owners. */
 export function offeredWorldTraits<T extends Trait, G extends TraitGroup>(
   traits: readonly T[], groups: readonly G[],
@@ -296,14 +296,14 @@ export const statRows = (t: Trait): readonly StatRow[] => [...t.statChanges, ...
 export type StatRow = Pick<StatChange, 'statId' | 'target'>;
 
 /** Whose stat an owner's trait row moves; null when it names neither. */
-export type StatRowSide = 'own' | 'player' | null;
+export type StatRowSide = 'own' | 'global' | null;
 
 /** Whose stat an entity's trait row moves, played or not (Q18, Q30): its own stat by id, else the global stat
- *  with that id; with `target`, only the global stat. The `player` side is the global stat. */
+ *  with that id; with `target`, only the global stat. */
 export function statRowSide(row: StatRow, own: ReadonlySet<string>, global: ReadonlySet<string>): StatRowSide {
   const reachesGlobal = global.has(row.statId);
-  if (row.target === 'global') return reachesGlobal ? 'player' : null;
-  return own.has(row.statId) ? 'own' : reachesGlobal ? 'player' : null;
+  if (row.target === 'global') return reachesGlobal ? 'global' : null;
+  return own.has(row.statId) ? 'own' : reachesGlobal ? 'global' : null;
 }
 
 /** The one tree's visible rows, with collapsed groups' children hidden. */

@@ -34,8 +34,8 @@ const held = (traits: readonly Trait[], disabled: readonly string[], stats: read
   focus: stats.find((s) => s.id === 'focus')?.value ?? 0,
 });
 function Probe() {
-  const { playerTraits, disabledTraitIds, playerStats, logEntries, gameStates } = useGameplay();
-  Object.assign(seen, held(playerTraits, disabledTraitIds, playerStats));
+  const { globalTraits, disabledTraitIds, globalStats, logEntries, gameStates } = useGameplay();
+  Object.assign(seen, held(globalTraits, disabledTraitIds, globalStats));
   const last = gameStates.at(-1);
   seen.saved = last ? held(last.globalTraits, last.disabledTraitIds ?? [], last.globalStats) : null;
   log = logEntries.map(({ text, repeat }) => ({ text, repeat }));

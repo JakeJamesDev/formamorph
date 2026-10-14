@@ -102,8 +102,8 @@ export function statBlueprintChoices(world: StatLinkWorld): OwnerChoice[] {
   });
 }
 
-/** The world's stats without Blueprints: the player's stats. The same list when it holds no Blueprint. */
-export function playerStatsOf<T extends Stat>(stats: T[], groups: readonly StatGroup[]): T[] {
+/** The world's stats without Blueprints: the global stats. The same list when it holds no Blueprint. */
+export function globalStatsOf<T extends Stat>(stats: T[], groups: readonly StatGroup[]): T[] {
   const inBlueprints = statBlueprintsSubtreeIds(groups);
   if (!inBlueprints.size || !stats.some((s) => s.groupId != null && inBlueprints.has(s.groupId))) return stats;
   return stats.filter((s) => s.groupId == null || !inBlueprints.has(s.groupId));
@@ -455,10 +455,10 @@ export function removeStatBlueprints(world: StatLinkWorld, entities: readonly En
   return { stats, statGroups, entities: entitiesOut, detached, movedUp };
 }
 
-/** The world as play reads it: the player's stats without Blueprints, and each entity with its stats and stat
+/** The world as play reads it: the global stats without Blueprints, and each entity with its stats and stat
  *  groups resolved through its links. Each list comes back as given when nothing changes it. */
 export function playStatWorld(world: StatLinkWorld & { stats: Stat[]; entities: Entity[] }): { stats: Stat[]; entities: Entity[] } {
-  const stats = playerStatsOf(world.stats, world.statGroups);
+  const stats = globalStatsOf(world.stats, world.statGroups);
   if (!world.entities.some((e) => e.statLinks?.length)) return { stats, entities: world.entities };
   const entities = world.entities.map((e) => {
     if (!e.statLinks?.length) return e;

@@ -14,7 +14,6 @@ import { liveChipScene, type LiveSceneSources } from '@/lib/chipValues/liveScene
 import { resolveEntityText } from '@/lib/placeholders';
 import { migrateWorld } from '@/lib/version';
 import { resolveOwners } from '@/lib/owners';
-import { PLAYER_OWNER } from '@/lib/traitGates';
 import { borneByPlayer } from '@/lib/ownedTraitsInPlay';
 import { defaultPicks } from '@/lib/traitEffects';
 import type { Entity, PlayerStat, Trait, TraitGroup, World } from '@/types';
@@ -79,15 +78,14 @@ describe('the global blocks in every shipped prompt', () => {
   });
 });
 
-/** The world's player traits when a world entity is played: the player owner's default traits, as a playthrough reads them. */
+/** The world's global traits when a world entity is played: global scope's default traits, as a playthrough reads them. */
 function traitsUnderWorldPersona(world: World, entity: Entity): { traits: Trait[]; traitGroups: TraitGroup[] } {
-  const { owners } = resolveOwners(
+  const { global } = resolveOwners(
     { traits: world.traits, traitGroups: world.traitGroups ?? [], entities: world.entities },
     { source: 'world', entityId: entity.id },
   );
-  const player = owners.find((owner) => owner.id === PLAYER_OWNER)!;
-  const active = new Set(defaultPicks(player.traits, player.groups));
-  return { traits: borneByPlayer(player.traits.filter((trait) => active.has(trait.id))), traitGroups: borneByPlayer(player.groups) };
+  const active = new Set(defaultPicks(global.traits, global.groups));
+  return { traits: borneByPlayer(global.traits.filter((trait) => active.has(trait.id))), traitGroups: borneByPlayer(global.groups) };
 }
 
 /** The narration prompt rendered for a bundled world's opening scene, or with a world entity played when one is given. */
@@ -146,7 +144,7 @@ describe("the persona's stats beside the global blocks", () => {
   });
 
   it('drops the section, heading included, when the played world persona leaves no global traits', () => {
-    // The premise comes from Emberwatch's own data, not from the scene: its traits belong to entities, none to the player root.
+    // The premise comes from Emberwatch's own data, not from the scene: its traits belong to entities, none to global scope.
     const world = migrateWorld(JSON.parse(emberwatchRaw));
     const sylvie = world.entities.find((entity) => entity.name === 'Sylvie Thornwhistle')!;
     expect(traitsUnderWorldPersona(world, sylvie).traits).toEqual([]);

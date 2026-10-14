@@ -163,8 +163,9 @@ import { revealActive } from "../lib/narrationRevealConfig";
 import { CHOICES_TEST_ACTION, CHOICES_TEST_CHOICES, CHOICES_TEST_NARRATION, REVEAL_TEST_NARRATION, REVEAL_TEST_PROFILES, type RevealArrivalEvent } from "../lib/revealTestScripts";
 import { MARKDOWN_SAMPLE } from "../lib/markdownSample";
 import { parseSlashCommand } from "../lib/slashCommands";
-import { appliedStatDeltas } from "../lib/statChanges";
-import { PLAYER_OWNER, regenOwners, statsOf } from "../lib/statOwners";
+import { appliedStatDeltas, applyRegen } from "../lib/statChanges";
+import type { OwnerId } from "../lib/scope";
+
 import { applyStatResponse, createStatRequest, keyedScene, readStatResponse, statResponseChanges, type StatRequestSnapshot, type StatResponse } from "../lib/statRequest";
 import { resolveEntityTexts, resolveStatGroupTexts, resolveStatNames, resolveStatText } from "../lib/resolveWorldNames";
 import { AiContextRequestCard, type AiContextCardSection, type AiContextTextSlot } from "@/components/aiContext/AiContextRequestCard";
@@ -188,7 +189,7 @@ import {
 } from "../lib/traitEffects";
 import { usePlaceholderSession } from "../contexts/PlaceholderSessionContext";
 import {
-  acquireTrait, activeTraits as traitsInForce, applyOwnedStatTraits, applyGlobalRowTraits, entityStatTraitsInForce, heldPlayerTraits, globalRowTraits, seedNewGameStats, startingTraitLog,
+  acquireTrait, activeTraits as traitsInForce, applyOwnedStatTraits, applyGlobalRowTraits, entityStatTraitsInForce, heldGlobalTraits, globalRowTraits, seedNewGameStats, startingTraitLog,
   gateStatsOf, settleTraits, statTraitsInForce, switchPersonaStats, switchPlayerTrait, traitNameIn,
   type GatedTraitResult, type TraitRuntimeState, type TraitWorld,
 } from "../lib/traitRuntime";
@@ -288,12 +289,12 @@ const pageOneNarration = (history: readonly ChatMessage[]) => pageOneTurn(histor
 
 /** The pre-turn state a stat re-roll hands stat code, so code reads and switches as the turn it replaces did. */
 type PreTurnCodeState = Pick<
-  LiveSnapshot, 'codePins' | 'playerTraits' | 'disabledTraitIds' | 'appliedTraitValues' | 'cascadeOffTraitIds' | 'ownedTraits' | 'entityStats'
+  LiveSnapshot, 'codePins' | 'globalTraits' | 'disabledTraitIds' | 'appliedTraitValues' | 'cascadeOffTraitIds' | 'ownedTraits' | 'entityStats'
 >;
 
 /** What one stat-code run left, in the shapes state holds. The before box hands this to the turn's own
  *  passes, which run before React re-renders with it. */
-type TurnCodeState = Pick<LiveSnapshot, 'playerStats'> & PreTurnCodeState;
+type TurnCodeState = Pick<LiveSnapshot, 'globalStats'> & PreTurnCodeState;
 
 /** The traits in force on one slice of saved trait state, and the stats live under them. The live pair is
  *  derived in two steps because `statEnabled` is read on its own; a paged-back turn and a turn's own
@@ -519,10 +520,10 @@ const GameViewer = ({
     setCharacterData,
     setVisibleEntities,
     setCurrentLocation,
-    setPlayerStats,
-    playerStats: rawPlayerStats,
-    playerTraits,
-    setPlayerTraits,
+    setGlobalStats,
+    globalStats: rawGlobalStats,
+    globalTraits,
+    setGlobalTraits,
     disabledTraitIds,
     setDisabledTraitIds,
     appliedTraitValues,
@@ -620,7 +621,7 @@ const GameViewer = ({
   // an entity/location/stat/trait/dictionary name is a plain string with no chips left in it. The `raw*`
   // values above stay untouched for roll priming, which has to see the chips it is rolling for.
   const {
-    entities, locations, stats, traits, traitGroups, dictionary, playerStats, viewStats,
+    entities, locations, stats, traits, traitGroups, dictionary, globalStats, viewStats,
     currentLocation, traitOrder, pins, pinsFor, resolvePH, resolveFor, resolveWith, resolveOpening, resolveTraitText,
     resolveTraitFor, resolveEntityText, resolveEntityFor, playerNames, persona, traitEntities, traitLibrary, codeEntities,
   } = useResolvedWorld();
@@ -636,7 +637,7 @@ const GameViewer = ({
   // recomputed here. Authored order decides precedence when two active traits target the same thing.
   // The save froze each chosen trait as the world stood on turn 1; the world owns its authoring, so read it
   // back before anything derives from it.
-  const chosenTraits = useMemo(() => refreshChosenTraits(playerTraits, traits), [playerTraits, traits]);
+  const chosenTraits = useMemo(() => refreshChosenTraits(globalTraits, traits), [globalTraits, traits]);
   /** What the owner resolver reads: the authored world. */
   const ownerWorld = useMemo(
     () => ({ traits: authoredTraits, traitGroups, entities: traitEntities }),
@@ -647,14 +648,14 @@ const GameViewer = ({
   const gatedWorld = useCallback(
     (ref: PersonaRef | undefined = personaRef): TraitWorld => ({
       traits: authoredTraits, groups: traitGroups, entities: worldEntitiesOf(entities, persona), persona: ref ?? { source: 'none' },
-      owners: inPlayOwners(ownerWorld, ref, traitLibrary),
+      ...inPlayOwners(ownerWorld, ref, traitLibrary),
     }),
     [authoredTraits, traitGroups, entities, persona, personaRef, ownerWorld, traitLibrary],
   );
   // A Custom Persona pick lies dormant under a world persona, so only the held picks are active.
   const activeTraits = useMemo(() => {
     const off = new Set(disabledTraitIds);
-    return inAuthoredOrder(heldPlayerTraits(chosenTraits, gatedWorld()).filter((t) => !off.has(t.id)), traitOrder);
+    return inAuthoredOrder(heldGlobalTraits(chosenTraits, gatedWorld()).filter((t) => !off.has(t.id)), traitOrder);
   }, [chosenTraits, disabledTraitIds, traitOrder, gatedWorld]);
   // The traits whose stat effects are in force: the active world traits, then every entity's global
   // rows. Bounds, stat toggles and stat code all read this set; the AI text reads `activeTraits`.
@@ -1165,14 +1166,14 @@ const GameViewer = ({
    * instead of overwriting it with a value read before they applied.
    */
   const adjustStatByName = useCallback((name: string, delta: number) => {
-    setPlayerStats((prevStats) =>
+    setGlobalStats((prevStats) =>
       prevStats.map((stat) =>
         stat.name === name
           ? { ...stat, value: Math.max(stat.min, Math.min(stat.max, stat.value + delta)) }
           : stat,
       ),
     );
-  }, [setPlayerStats]);
+  }, [setGlobalStats]);
   const messagesPerPage = 2; // One AI message + one user message
 
   // Shared rewind sweep: cut the flat history at `page` and prune everything keyed by turn id to the
@@ -1512,7 +1513,7 @@ const GameViewer = ({
       // the pre-turn baseline, then re-run the regen/starvation tick (thresholded on that baseline) WITHOUT
       // re-advancing game time. Not awaited, so regen stacks before stat code — the same order the live turn
       // uses. Without this the re-roll dropped the turn's regen and left stale held deltas on the bar.
-      holdStatDeltas(PLAYER_OWNER, {});
+      holdStatDeltas(null, {});
       // The turn's own measured duration, so a re-roll reproduces the regen and stat code the turn actually
       // charged rather than a flat hour (unmeasured turns store nothing and fall back to that hour anyway).
       // `gameTime` already includes this turn — only the latest turn is ever re-rolled — so it is the
@@ -1523,7 +1524,7 @@ const GameViewer = ({
       const toPreTurn = () => {
         resetEntityStats(preTurn.entityStats ?? {});
         setCodePins(preTurn.codePins ?? {});
-        setPlayerTraits(preTurn.playerTraits);
+        setGlobalTraits(preTurn.globalTraits);
         setDisabledTraitIds(preTurn.disabledTraitIds ?? []);
         setAppliedTraitValues(preTurn.appliedTraitValues ?? {});
         setCascadeOffTraitIds(preTurn.cascadeOffTraitIds ?? {});
@@ -1534,7 +1535,7 @@ const GameViewer = ({
       // turn start. Its writes are the baseline the asks then land on, and the request reads them.
       beforeBoxDeltasRef.current = {};
       const written = (await runStatCode(
-        preTurn.playerStats ?? [], preTurn.playerStats ?? [], [],
+        preTurn.globalStats ?? [], preTurn.globalStats ?? [], [],
         { deltaHours: 0, elapsedHours: gameTime - turnHours, calendar }, preTurn, 'before',
       ))?.written ?? null;
       // The box has written by the time the request can be stopped, so every exit that abandons the
@@ -1544,7 +1545,7 @@ const GameViewer = ({
         if (signal.aborted) return;
         const base = written ?? preTurn;
         const snapshot = statRequestFor(enabledStats(
-          written ? resolveStatNames(written.playerStats ?? [], resolvePH) : playerStatsRef.current,
+          written ? resolveStatNames(written.globalStats ?? [], resolvePH) : globalStatsRef.current,
           statEnabledRef.current,
         ), presentEntitiesOf(splitParticipants(prev.entities ?? [], liveScene(null, turnCodeView(written)).entities, []).diary), base.entityStats ?? {});
         // A turn with nothing to ask about replays its regen and code over no asks, as the live turn did.
@@ -1559,8 +1560,8 @@ const GameViewer = ({
           deltaHours: turnHours,
           elapsedHours: gameTime,
           calendar,
-        }, base, base.playerStats);
-        applyRegenTick(turnHours, base.playerStats);
+        }, base, base.globalStats);
+        applyRegenTick(turnHours, base.globalStats);
         patchLatestTurn({ stat_changes: statChanges });
         committed = true;
         // Code writes land after the sandbox settles; the settle and the snapshot wait for them.
@@ -1570,7 +1571,7 @@ const GameViewer = ({
       } finally {
         if (!committed && written) {
           beforeBoxDeltasRef.current = {};
-          setPlayerStats(preTurn.playerStats ?? []);
+          setGlobalStats(preTurn.globalStats ?? []);
           toPreTurn();
         }
       }
@@ -1755,10 +1756,10 @@ const GameViewer = ({
   const statEnabledRef = useRef<Record<string, boolean>>({});
 
   // A stat is live unless its author started it off or an active trait switched it off. Disabled stats keep
-  // their value in `playerStats` — they are filtered out of everything that reads or moves them instead, so
+  // their value in `globalStats` — they are filtered out of everything that reads or moves them instead, so
   // switching the trait back on resumes exactly where the stat left off.
-  const statEnabled = useMemo(() => activeStatEnabled(playerStats, statTraits), [playerStats, statTraits]);
-  const activeStats = useMemo(() => enabledStats(playerStats, statEnabled), [playerStats, statEnabled]);
+  const statEnabled = useMemo(() => activeStatEnabled(globalStats, statTraits), [globalStats, statTraits]);
+  const activeStats = useMemo(() => enabledStats(globalStats, statEnabled), [globalStats, statEnabled]);
   statEnabledRef.current = statEnabled;
 
   /** Each entity's stat traits in force under `owned`, the owned trait state they read. */
@@ -1774,7 +1775,7 @@ const GameViewer = ({
       entityStatOwners(values, statEntities, personaRef, entityInForceUnder(owned)),
     [statEntities, personaRef, entityInForceUnder, ownedTraits],
   );
-  // The latest committed entity stats, which the turn callbacks read as they read `rawPlayerStatsRef`.
+  // The latest committed entity stats, which the turn callbacks read as they read `rawGlobalStatsRef`.
   const entityStatsRef = useRef(entityStats);
   entityStatsRef.current = entityStats;
   // The entities whose stats are the player's: the played one, and the Custom Persona entity whose traits are.
@@ -1828,10 +1829,10 @@ const GameViewer = ({
       const regenChanges: Record<string, number> = {};
 
       // The same tick runStatCode folds into the pipeline it hands stat code, so both read one regen.
-      setPlayerStats((prevStats) => {
-        const tick = regenOwners([{ id: PLAYER_OWNER, stats: prevStats, enabled: statEnabledRef.current }], hours);
-        const stats = [...statsOf(tick.stats, PLAYER_OWNER)];
-        const applied = tick.applied[PLAYER_OWNER];
+      setGlobalStats((prevStats) => {
+        const tick = applyRegen(prevStats, hours, statEnabledRef.current);
+        const stats = [...tick.stats];
+        const { applied } = tick;
         for (const stat of stats) {
           if (applied[stat.id] !== undefined) regenChanges[stat.name.toLowerCase()] = applied[stat.id];
         }
@@ -1840,7 +1841,7 @@ const GameViewer = ({
       setEntityStats((prev) => withEntityRegen(prev, entityOwnersOf(prev), hours));
 
       // Add the regen to the chips and bands. Read when the update applies, after the stats updater filled it.
-      addStatDeltas(PLAYER_OWNER, regenChanges);
+      addStatDeltas(null, regenChanges);
 
       // This turn's AI changes and the regen above are both still queued, so the penalty subtracts via an
       // updater, which lands on the regenerated Health rather than overwriting it. The threshold reads the
@@ -1851,19 +1852,19 @@ const GameViewer = ({
         // The loss scales by the turn's measured hours, so it's usually fractional — the log reads to a
         // tenth rather than printing the raw float. The stat still takes the exact amount.
         addLogEntry(`You're starving! Lost ${Math.round(healthLoss * 10) / 10} health.`);
-        addStatDeltas(PLAYER_OWNER, { health: -healthLoss });
+        addStatDeltas(null, { health: -healthLoss });
       }
     },
-    [adjustStatByName, addLogEntry, setPlayerStats, setEntityStats, entityOwnersOf, addStatDeltas, settleStatDeltas],
+    [adjustStatByName, addLogEntry, setGlobalStats, setEntityStats, entityOwnersOf, addStatDeltas, settleStatDeltas],
   );
 
   const handleTimePassed = useCallback(
     (hours: number) => {
       setGameTime((prevTime) => prevTime + hours);
-      // Threshold on the pre-turn stats (playerStats here is still this render's pre-commit snapshot).
-      applyRegenTick(hours, playerStats);
+      // Threshold on the pre-turn stats (globalStats here is still this render's pre-commit snapshot).
+      applyRegenTick(hours, globalStats);
     },
-    [applyRegenTick, setGameTime, playerStats],
+    [applyRegenTick, setGameTime, globalStats],
   );
 
   const getEndpointUrl = () => endpointUrl;
@@ -1873,13 +1874,13 @@ const GameViewer = ({
   const turnCodeView = useCallback((over: TurnCodeState | null): SceneWrites | null => {
     if (!over) return null;
     const overPins = pinsFor(over.codePins ?? {}, {
-      traits: over.playerTraits, disabledTraitIds: over.disabledTraitIds, ownedTraits: over.ownedTraits, stats: over.playerStats,
+      traits: over.globalTraits, disabledTraitIds: over.disabledTraitIds, ownedTraits: over.ownedTraits, stats: over.globalStats,
     });
     const resolve = (text: string) => resolveFor(overPins.world, text);
     const held = savedTraits(over, traits);
     return {
       ...activeUnderTraits(
-        resolveStatNames(over.playerStats, resolve), held.acquired, held.disabledTraitIds, traitOrder,
+        resolveStatNames(over.globalStats, resolve), held.acquired, held.disabledTraitIds, traitOrder,
         globalRowTraits({ ...held, entityStats: over.entityStats }, gatedWorld()),
       ),
       ownedTraits: over.ownedTraits ?? {},
@@ -1916,23 +1917,27 @@ const GameViewer = ({
     () => worldPlaceholders.filter((p) => !placeholderOwners.has(p.id)),
     [worldPlaceholders, placeholderOwners],
   );
-  // The author's groups place the player's stats, so a save made before a regrouping follows it.
-  const playerStatPlacement = useMemo(
+  // The author's groups place the global stats, so a save made before a regrouping follows it.
+  const globalStatPlacement = useMemo(
     () => ({ groups: authoredStatGroups, authored: authoredStats }),
     [authoredStatGroups, authoredStats],
   );
   // Each present owner's tree, so a cast entity's links reach the AI like its owned traits.
-  const sceneOwners = useMemo(() => gatedWorld().owners, [gatedWorld]);
+  const sceneTrees = useMemo(() => {
+    const { global, owners } = gatedWorld();
+    return { global, owners };
+  }, [gatedWorld]);
   // The playthrough as a Chip Scene: the live adapter. A turn's location and a before box in flight each
   // yield their own scene.
   const liveScene = useLiveChipScene({
     overview: worldOverview.systemPrompt || "",
     stats: activeStats,
-    statPlacement: playerStatPlacement,
+    statPlacement: globalStatPlacement,
     traits: activeTraits,
     traitGroups,
     ownedTraits,
-    owners: sceneOwners,
+    global: sceneTrees.global,
+    owners: sceneTrees.owners,
     entityStats,
     playedEntities,
     resolve: resolvePH,
@@ -2231,7 +2236,7 @@ const GameViewer = ({
 
     // Reset the persistent bar deltas for this turn, then let stat changes + regen below re-fill them. The
     // before box already moved before the narration, so its share is laid straight back over the reset.
-    holdStatDeltas(PLAYER_OWNER, beforeBoxDeltasRef.current);
+    holdStatDeltas(null, beforeBoxDeltasRef.current);
 
     // Apply stat changes. Stat code runs inside; it is awaited below, before the snapshot arms, so the
     // snapshot holds its writes even when the sandbox first loads on this turn.
@@ -2239,8 +2244,8 @@ const GameViewer = ({
     // or the opening turn.
     // The starvation check below reads the same pre-turn stats, so the run's stat snapshot holds the penalty.
     const statCode = commit.statResponse
-      ? applyStatChanges(commit.statResponse, commit.clock, null, playerStats)
-      : runStatCode(rawPlayerStatsRef.current, rawPlayerStatsRef.current, [], commit.clock, undefined, 'after', { thresholdStats: playerStats });
+      ? applyStatChanges(commit.statResponse, commit.clock, null, globalStats)
+      : runStatCode(rawGlobalStatsRef.current, rawGlobalStatsRef.current, [], commit.clock, undefined, 'after', { thresholdStats: globalStats });
 
     // Advance the clock by what this turn actually took (the flat hour when unmeasured).
     handleTimePassed(commit.turnHours);
@@ -2393,11 +2398,11 @@ const GameViewer = ({
       // `codeView`, which React has not re-rendered for.
       beforeBoxDeltasRef.current = {};
       const preBox: TurnCodeState = {
-        playerStats: rawPlayerStatsRef.current, codePins, playerTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds,
+        globalStats: rawGlobalStatsRef.current, codePins, globalTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds,
         ownedTraits, entityStats: entityStatsRef.current,
       };
       const beforeBox = (await runStatCode(
-        rawPlayerStatsRef.current, rawPlayerStatsRef.current, [],
+        rawGlobalStatsRef.current, rawGlobalStatsRef.current, [],
         { deltaHours: 0, elapsedHours: gameTime, calendar }, undefined, 'before',
       ))?.written ?? null;
       beforeBoxUndoRef.current = beforeBox ? preBox : null;
@@ -2603,7 +2608,7 @@ const GameViewer = ({
             const fanOut = splitParticipants(turnParticipants, liveScene(null, codeView).entities, suppressedCharacterNames);
             // The stat request follows the same confirmed participants: those who took part bring their stats.
             const statRequest = statRequestFor(
-              enabledStats(playerStatsRef.current, statEnabledRef.current), presentEntitiesOf(fanOut.diary), entityStatsRef.current,
+              enabledStats(globalStatsRef.current, statEnabledRef.current), presentEntitiesOf(fanOut.diary), entityStatsRef.current,
             );
             return {
               subjects: { ...material.subjects, ...fanOut },
@@ -2788,10 +2793,10 @@ const GameViewer = ({
   };
 
   // Latest committed stats, so off-render derivations (below) don't rely on a stale closure.
-  const playerStatsRef = useRef(playerStats);
-  playerStatsRef.current = playerStats;
-  const rawPlayerStatsRef = useRef(rawPlayerStats);
-  rawPlayerStatsRef.current = rawPlayerStats;
+  const globalStatsRef = useRef(globalStats);
+  globalStatsRef.current = globalStats;
+  const rawGlobalStatsRef = useRef(rawGlobalStats);
+  rawGlobalStatsRef.current = rawGlobalStats;
   // What this turn's before box moved, kept because the commit clears the bar deltas before the AI's own
   // land. Without it a value the box showed on the bar loses its color halfway through the turn.
   const beforeBoxDeltasRef = useRef<Record<string, number>>({});
@@ -2835,12 +2840,12 @@ const GameViewer = ({
         const enabled = statEnabledRef.current;
         // The before box runs at the turn's start, so there is no regen yet for it to fold in.
         const tick = timing === 'before' ? null
-          : regenOwners([{ id: PLAYER_OWNER, stats: afterAsks, enabled }], clock.deltaHours ?? FLAT_HOURS_PER_TURN);
-        const regenApplied = tick?.applied[PLAYER_OWNER] ?? {};
+          : applyRegen(afterAsks, clock.deltaHours ?? FLAT_HOURS_PER_TURN, enabled);
+        const regenApplied = tick?.applied ?? {};
         // A save runs the world's current stat code, not the copy frozen in the save. Descriptions resolve
         // for the run; names do not — code reaches a stat by its code name, which the turn derives from the
         // authored name, so a chip in a name reads the same in every playthrough.
-        const regenStats = tick ? [...statsOf(tick.stats, PLAYER_OWNER)] : afterAsks;
+        const regenStats = tick ? [...tick.stats] : afterAsks;
         const stats = resolveStatText(refreshSavedStats(regenStats, authoredStats), resolvePH);
         // Every entity in the playthrough runs beside the player, over the same tick, each over its own asks.
         const entityPrevious = preTurn ? preTurn.entityStats ?? {} : entityStatsRef.current;
@@ -2893,7 +2898,7 @@ const GameViewer = ({
         const nextEntityStats = withOwnerCodeResults(entityBase, result.owners, ownersInForce);
         setCodePins((prev) => withPinWrites(prev, result.pinWrites));
         if (result.traits) {
-          setPlayerTraits(result.traits.acquired);
+          setGlobalTraits(result.traits.acquired);
           setDisabledTraitIds(result.traits.disabledTraitIds);
           setAppliedTraitValues(result.traits.appliedValues);
           setCascadeOffTraitIds(result.traits.cascadeOffTraitIds);
@@ -2902,9 +2907,9 @@ const GameViewer = ({
         }
         /** What this run left, in the shapes state holds. */
         const stateAfterRun = (): TurnCodeState => ({
-          playerStats: overlayStatCodeResult(afterAsks, result, inForce),
+          globalStats: overlayStatCodeResult(afterAsks, result, inForce),
           codePins: nextPins,
-          playerTraits: [...(result.traits?.acquired ?? held.acquired)],
+          globalTraits: [...(result.traits?.acquired ?? held.acquired)],
           disabledTraitIds: [...(result.traits?.disabledTraitIds ?? held.disabledTraitIds)],
           appliedTraitValues: result.traits?.appliedValues ?? held.appliedValues,
           cascadeOffTraitIds: result.traits?.cascadeOffTraitIds ?? held.cascadeOffTraitIds,
@@ -2917,12 +2922,12 @@ const GameViewer = ({
         }
         // The bars are keyed by the name the player reads, so the run's stats resolve theirs here.
         const codeChanges = appliedStatDeltas(stats, resolveStatNames(result.stats, resolvePH));
-        // Onto the LATEST stats, not a blanket `setPlayerStats(result.stats)`: the run read the pre-`await`
+        // Onto the LATEST stats, not a blanket `setGlobalStats(result.stats)`: the run read the pre-`await`
         // baseline, and anything applied in the meantime (starvation, a re-generate) must survive.
-        setPlayerStats((prev) => overlayStatCodeResult(prev, result, inForce));
+        setGlobalStats((prev) => overlayStatCodeResult(prev, result, inForce));
         // Fold the code-derived movement into the live delta feedback, so a code stat's bar/text animates
         // live — matching the history view (pageStatDeltas diffs the final, post-code snapshot).
-        addStatDeltas(PLAYER_OWNER, codeChanges);
+        addStatDeltas(null, codeChanges);
         // The commit resets the bar deltas mid-turn, so the before box's own share is re-laid over that.
         if (timing === 'before') beforeBoxDeltasRef.current = codeChanges;
         return { written: stateAfterRun(), gateStats: result.gateStats };
@@ -2931,8 +2936,8 @@ const GameViewer = ({
         return null;
       }
     },
-    [setPlayerStats, setEntityStats, entityOwnersOf, entityInForceUnder, addStatDeltas, setCodePins, resolvePH, statCodePlaceholders, pinsFor, traits, authoredStats, resolveTraitText, gatedWorld, codeEntities, statEntities, inForceOn, liveScene,
-      setPlayerTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, setOwnedTraits, addLogEntry],
+    [setGlobalStats, setEntityStats, entityOwnersOf, entityInForceUnder, addStatDeltas, setCodePins, resolvePH, statCodePlaceholders, pinsFor, traits, authoredStats, resolveTraitText, gatedWorld, codeEntities, statEntities, inForceOn, liveScene,
+      setGlobalTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, setOwnedTraits, addLogEntry],
   );
 
   // Apply request identities to authored state; resolved names are only for code and display feedback.
@@ -2946,9 +2951,9 @@ const GameViewer = ({
       // The pre-turn stats the regen tick's starvation check reads.
       thresholdStats?: readonly PlayerStat[],
     ) => {
-      const baseStats = base?.playerStats ?? rawPlayerStatsRef.current;
-      const live = new Set(enabledStats(rawPlayerStatsRef.current, statEnabledRef.current).map((s) => s.id));
-      const applied = applyStatResponse(baseStats, response, live, PLAYER_OWNER);
+      const baseStats = base?.globalStats ?? rawGlobalStatsRef.current;
+      const live = new Set(enabledStats(rawGlobalStatsRef.current, statEnabledRef.current).map((s) => s.id));
+      const applied = applyStatResponse(baseStats, response, live, null);
       const directApplied = applied.stats;
       const entityBase = base ? base.entityStats ?? {} : entityStatsRef.current;
       const entityApplied = applyEntityStatResponse(entityBase, response, entityInForceUnder(base ? base.ownedTraits ?? {} : ownedTraits));
@@ -2971,11 +2976,11 @@ const GameViewer = ({
 
       // The chips show the changes for 10 s; the bands take them over the caller's per-turn reset, so AI
       // changes and regen combine into one turn delta.
-      showStatDeltas(PLAYER_OWNER, actualChanges);
+      showStatDeltas(null, actualChanges);
 
-      setPlayerStats(directApplied);
-      const asksOf = (ownerId: string) => response.updates.filter((update) => update.ownerId === ownerId);
-      return runStatCode(baseStats, directApplied, asksOf(PLAYER_OWNER), clock, base ?? undefined, 'after', {
+      setGlobalStats(directApplied);
+      const asksOf = (ownerId: OwnerId) => response.updates.filter((update) => update.ownerId === ownerId);
+      return runStatCode(baseStats, directApplied, asksOf(null), clock, base ?? undefined, 'after', {
         entityTurn: {
           values: entityApplied.values,
           asks: Object.fromEntries(Object.keys(entityApplied.values).map((id) => [id, asksOf(id)])),
@@ -2983,7 +2988,7 @@ const GameViewer = ({
         thresholdStats,
       });
     },
-    [runStatCode, setPlayerStats, setEntityStats, showStatDeltas, resolvePH, entityInForceUnder, ownedTraits],
+    [runStatCode, setGlobalStats, setEntityStats, showStatDeltas, resolvePH, entityInForceUnder, ownedTraits],
   );
 
   // Discard a turn's dangling, unpaired user message. The failure exits (empty narration, request error)
@@ -2998,9 +3003,9 @@ const GameViewer = ({
     if (undo) {
       beforeBoxUndoRef.current = null;
       beforeBoxDeltasRef.current = {};
-      setPlayerStats(undo.playerStats ?? []);
+      setGlobalStats(undo.globalStats ?? []);
       setCodePins(undo.codePins ?? {});
-      setPlayerTraits(undo.playerTraits ?? []);
+      setGlobalTraits(undo.globalTraits ?? []);
       setDisabledTraitIds(undo.disabledTraitIds ?? []);
       setAppliedTraitValues(undo.appliedTraitValues ?? {});
       setCascadeOffTraitIds(undo.cascadeOffTraitIds ?? {});
@@ -3579,7 +3584,7 @@ const GameViewer = ({
       playedEntities, values, (owned) => resolveStatNames(owned, resolvePH), entityInForceUnder(ownedTraits),
       (groups) => resolveStatGroupTexts(groups, resolvePH),
     );
-    return createStatRequest(stats, PLAYER_OWNER, {
+    return createStatRequest(stats, {
       textPass: !schemaAccepted(resolveEndpointForKind("statUpdates").reasoning),
       placement: { groups: resolveStatGroupTexts(authoredStatGroups, resolvePH), authored: authoredStats },
       // Every played entity's stats are the Player Character's.
@@ -3856,23 +3861,23 @@ const GameViewer = ({
   /** The gameplay slice the trait runtime reads and rewrites, and the setters that put a result back. */
   const traitState = useMemo<TraitRuntimeState>(
     () => ({
-      stats: playerStats, traits: chosenTraits, disabledTraitIds, appliedValues: appliedTraitValues, cascadeOffTraitIds, ownedTraits,
+      stats: globalStats, traits: chosenTraits, disabledTraitIds, appliedValues: appliedTraitValues, cascadeOffTraitIds, ownedTraits,
       entityStats,
     }),
-    [playerStats, chosenTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, entityStats],
+    [globalStats, chosenTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, entityStats],
   );
   const commitTraitState = useCallback(
     (next: TraitRuntimeState) => {
       // Runtime-only: the authored world (GameData.stats) is never mutated by play.
-      setPlayerStats(next.stats);
-      setPlayerTraits(next.traits);
+      setGlobalStats(next.stats);
+      setGlobalTraits(next.traits);
       setDisabledTraitIds(next.disabledTraitIds);
       setAppliedTraitValues(next.appliedValues);
       setCascadeOffTraitIds(next.cascadeOffTraitIds ?? {});
       setOwnedTraits(next.ownedTraits ?? {});
       setEntityStats(next.entityStats ?? {});
     },
-    [setPlayerStats, setPlayerTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, setOwnedTraits, setEntityStats],
+    [setGlobalStats, setGlobalTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, setOwnedTraits, setEntityStats],
   );
 
   // The banner naming what the player's last switch or persona change turned off. Session-only.
@@ -3909,7 +3914,7 @@ const GameViewer = ({
    * trait freezes the world's stat changes as they stand right now, authored and chips intact, as seeding does.
    */
   const toggleTrait = useCallback(
-    (traitId: string, enabled: boolean, ownerId: string) => {
+    (traitId: string, enabled: boolean, ownerId: OwnerId) => {
       const world = gatedWorld();
       const result = switchPlayerTrait(traitState, traitId, enabled, world, traitName, ownerId);
       if (!result) return;
@@ -3977,11 +3982,11 @@ const GameViewer = ({
       const seedLibrary = inPlayLibrary({ traits: authoredTraits, traitGroups, entities: traitEntities }, initialPersona?.libraryEntity, initialCharacters ?? []);
       const seedWorld: TraitWorld = {
         traits: authoredTraits, groups: traitGroups, entities: traitEntities, persona: initialPersona?.ref ?? { source: 'none' },
-        owners: inPlayOwners(ownerWorld, initialPersona?.ref, seedLibrary),
+        ...inPlayOwners(ownerWorld, initialPersona?.ref, seedLibrary),
       };
       // Only the held picks: a Custom Persona pick made before the entry step moved to a world persona is not
       // the player's under it.
-      const chosenList = inAuthoredOrder(heldPlayerTraits(authoredTraits.filter((t) => chosen.has(t.id)), seedWorld), traitOrder);
+      const chosenList = inAuthoredOrder(heldGlobalTraits(authoredTraits.filter((t) => chosen.has(t.id)), seedWorld), traitOrder);
       // Folded rather than set one trait at a time: each acquisition reads the whole slice, so the batch has
       // to thread through in one pass instead of racing several queued state updates.
       let seedState: TraitRuntimeState = { stats: seeded, traits: [], disabledTraitIds: [], appliedValues: {} };
@@ -4013,7 +4018,7 @@ const GameViewer = ({
         world: ownerWorld,
         persona: initialPersona?.ref,
         library: seedLibrary,
-        playerTraits: chosenList,
+        globalTraits: chosenList,
         owned: initialOwnedTraits,
         sharedPlaceholders: worldPlaceholders,
       }, { location: authoredLocation, stats: seedState.stats, placeholders, rolls: sessionRolls }).world;

@@ -4,7 +4,7 @@
 import type { Entity, Placeholder, Stat, StatChange, Trait, TraitGroup, TraitStatToggle } from '@/types';
 import { resolveOwners } from './owners';
 import { routeTargets, routesIn, statCodeBoxes, statCodeOwners, type StatTarget } from './statCodeTargets';
-import { playerStatsOf, resolvedEntityStats, type StatLinkWorld } from './statLinks';
+import { globalStatsOf, resolvedEntityStats, type StatLinkWorld } from './statLinks';
 import { statRowSide } from './traitTree';
 
 /** What a stat reader reads from a world. */
@@ -26,17 +26,19 @@ export type StatReader =
 
 /** Whose stat an owner's row reaches: an entity's id, null for the world, undefined for none. */
 const reachedOwner = (side: ReturnType<typeof statRowSide>, entityId: string): string | null | undefined =>
-  (side === 'own' ? entityId : side === 'player' ? null : undefined);
+  (side === 'own' ? entityId : side === 'global' ? null : undefined);
 
 /** The first trait row that reaches one of `moved` on owner `from` (null = the world). */
 function traitReader(world: StatReaderWorld, from: string | null, moved: ReadonlyMap<string, Stat>): { stat: Stat; reader: StatReader } | null {
-  const player = new Set(playerStatsOf([...world.stats], world.statGroups).map((s) => s.id));
-  for (const owner of resolveOwners(world, undefined).owners) {
+  const global = new Set(globalStatsOf([...world.stats], world.statGroups).map((s) => s.id));
+  const resolved = resolveOwners(world, undefined);
+  // Global scope's tree first, with no entity, then each entity owner's.
+  for (const owner of [{ entity: null, traits: resolved.global.traits }, ...resolved.owners]) {
     const entity = owner.entity;
     const own = entity ? new Set(resolvedEntityStats(world, entity).map((s) => s.id)) : new Set<string>();
     const reaches = (row: StatChange | TraitStatToggle) => (entity
-      ? reachedOwner(statRowSide(row, own, player), entity.id)
-      : player.has(row.statId) ? null : undefined);
+      ? reachedOwner(statRowSide(row, own, global), entity.id)
+      : global.has(row.statId) ? null : undefined);
     for (const trait of owner.traits) {
       const rows = [
         ...trait.statChanges.map((row) => ['change', row] as const),

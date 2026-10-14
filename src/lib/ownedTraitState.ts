@@ -1,7 +1,7 @@
 // Each entity's owned traits in play, as the save stores them.
 
-import { PLAYER_OWNER } from './traitGates';
 import type { GameState, OwnedTraitStates, PersonaRef } from '@/types';
+import type { OwnerId } from './scope';
 
 /** The state a new game starts with: each entity's picks chosen, none switched off. */
 export const ownedTraitStatesFrom = (picks: Readonly<Record<string, readonly string[]>>): OwnedTraitStates =>
@@ -18,10 +18,10 @@ export function heldEntityIds(worldEntityIds: Iterable<string>, state: GameState
 const keep = <T>(map: Readonly<Record<string, T>> | undefined, held: (id: string) => boolean) =>
   map && Object.fromEntries(Object.entries(map).filter(([id]) => held(id)));
 
-/** The key an owner's trait keeps its stat record under. The player's world traits keep the bare trait id,
- *  as saves have always held it; a played persona's linked trait keys by `<entity id>/<trait id>`. */
-export const recordKey = (ownerId: string, traitId: string): string =>
-  (ownerId === PLAYER_OWNER ? traitId : `${ownerId}/${traitId}`);
+/** The key a scope's trait keeps its stat record under. A global trait keeps the bare trait id, as saves
+ *  have always held it; an entity's trait keys by `<entity id>/<trait id>`. */
+export const recordKey = (ownerId: OwnerId, traitId: string): string =>
+  (ownerId === null ? traitId : `${ownerId}/${traitId}`);
 
 /** A record key read back as its owner and the rest; a bare trait id has no owner. */
 export const splitRecordKey = (key: string): [owner: string | null, rest: string] => {

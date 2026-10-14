@@ -3,7 +3,7 @@
 import type { Entity, Trait, TraitGroup, TraitRequirement } from '@/types';
 import { randomUUID } from './uuid';
 import { newTrait } from './blankWorld';
-import { PLAYER_OWNER, type GateOwner } from './traitGates';
+import type { GateInput, GateOwner } from './traitGates';
 import { mapConditions } from './requirementRows';
 import { hasImageRules, withImageRules } from './entityImages';
 import { effectivePlacement, offeredWorldTraits, ownsTraits, placeableGroupIds } from './traitTree';
@@ -103,22 +103,23 @@ export function remintOwnedTraits(entity: Entity, entityIds: ReadonlyMap<string,
     : reminted;
 }
 
-/** Every owner's traits for the gate module: the world first, then each entity that owns a trait or a group,
- *  then the library entities, whose nodes sit at the top level. The world owner leaves out Blueprints unless
- *  `keepBlueprints`, which the editor sets so its rows still read their gates. */
+/** Every scope's traits for the gate module: global scope's tree, then each entity that owns a trait or a
+ *  group, then the library entities, whose nodes sit at the top level. The global tree leaves out Blueprints
+ *  unless `keepBlueprints`, which the editor sets so its rows still read their gates. */
 export function traitOwners(
   world: { traits: readonly Trait[]; traitGroups: readonly TraitGroup[]; entities: readonly Entity[] },
   library: readonly Entity[] = [],
   { keepBlueprints = false } = {},
-): GateOwner[] {
+): Pick<GateInput, 'global' | 'owners'> {
   const placeable = placeableGroupIds(world.traitGroups);
   const owner = (e: Entity, parentGroupId: string | null): GateOwner =>
     ({ id: e.id, name: e.name, traits: traitsOf(e), groups: groupsOf(e), parentGroupId });
-  const offered = keepBlueprints ? { traits: world.traits, groups: world.traitGroups } : offeredWorldTraits(world.traits, world.traitGroups);
-  return [
-    { id: PLAYER_OWNER, name: '', ...offered },
-    ...world.entities.filter(ownsTraits).map((e) => owner(e, effectivePlacement(e, placeable)?.groupId ?? null)),
-    ...library.filter(ownsTraits).map((e) => owner(e, null)),
-  ];
+  return {
+    global: keepBlueprints ? { traits: world.traits, groups: world.traitGroups } : offeredWorldTraits(world.traits, world.traitGroups),
+    owners: [
+      ...world.entities.filter(ownsTraits).map((e) => owner(e, effectivePlacement(e, placeable)?.groupId ?? null)),
+      ...library.filter(ownsTraits).map((e) => owner(e, null)),
+    ],
+  };
 }
 

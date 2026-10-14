@@ -1,10 +1,9 @@
-// Global scope: the stats and traits no one owns, in their own slot beside an owners map keyed by entity
-// id. Owner-keyed maps still hold global scope under the stand-in key; these converters bridge the two.
+// Global scope: the stats and traits no one owns, in their own slot beside an owners map keyed by entity id.
 
 import type { PersonaRef } from '@/types';
 
-/** The stand-in owner key that holds global scope in an owner-keyed map. */
-export const PLAYER_OWNER = 'world';
+/** Who holds an item: an entity owner's id, or null for global scope, which no one owns. */
+export type OwnerId = string | null;
 
 /** Owner-keyed state in two parts: the global part no one owns, and each entity owner's part by entity id. */
 export interface Scoped<T> {
@@ -12,14 +11,28 @@ export interface Scoped<T> {
   owners: Readonly<Record<string, T>>;
 }
 
-/** The scoped form of an owner-keyed map: its stand-in key's value is the global part, or `empty` without one. */
-export function scopedOf<T>(keyed: Readonly<Record<string, T>>, empty: T): Scoped<T> {
-  const { [PLAYER_OWNER]: global = empty, ...owners } = keyed;
-  return { global, owners };
-}
+/** A key part per owner. Entity ids are never empty, so global scope keys by the empty string. */
+export const scopeKey = (ownerId: OwnerId): string => ownerId ?? '';
 
-/** The owner-keyed map a scoped value stands for, the global part under the stand-in key. */
-export const keyedOf = <T>(scoped: Scoped<T>): Record<string, T> => ({ [PLAYER_OWNER]: scoped.global, ...scoped.owners });
+/** A scoped value with `global` and, by default, no owners. */
+export const scoped = <T>(global: T, owners: Readonly<Record<string, T>> = {}): Scoped<T> => ({ global, owners });
+
+/** The part `ownerId` holds: the global part for null, else that owner's part, if any. */
+export const partOf = <T>(value: Scoped<T>, ownerId: OwnerId): T | undefined =>
+  (ownerId === null ? value.global : value.owners[ownerId]);
+
+/** `value` with `ownerId`'s part set to `part`. */
+export const withPart = <T>(value: Scoped<T>, ownerId: OwnerId, part: T): Scoped<T> =>
+  (ownerId === null ? { ...value, global: part } : { ...value, owners: { ...value.owners, [ownerId]: part } });
+
+/** Every part with its owner id, global first. */
+export const scopedEntries = <T>(value: Scoped<T>): [OwnerId, T][] => [[null, value.global], ...Object.entries(value.owners)];
+
+/** `value` with `fn` applied to each part. */
+export const mapScoped = <T, U>(value: Scoped<T>, fn: (part: T, ownerId: OwnerId) => U): Scoped<U> => ({
+  global: fn(value.global, null),
+  owners: Object.fromEntries(Object.entries(value.owners).map(([id, part]) => [id, fn(part, id)])),
+});
 
 /** The entities played under `persona`, by id: a world persona's entity; a library persona's entity, then the
  *  Custom Persona entity; under None, the Custom Persona entity alone (Q26). */

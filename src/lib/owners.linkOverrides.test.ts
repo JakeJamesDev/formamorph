@@ -21,7 +21,7 @@ const world: OwnerWorld = { traits: [paladin], traitGroups: groups, entities: [a
 
 /** The trait world play reads under `persona`, built the way the Traits panel builds it. */
 const played = (persona: PersonaRef): TraitWorld => ({
-  traits: [paladin], groups, entities: world.entities, persona, owners: inPlayOwners(world, persona),
+  traits: [paladin], groups, entities: world.entities, persona, ...inPlayOwners(world, persona),
 });
 const AS_ALBUS = played({ source: 'world', entityId: 'albus' });
 const AS_MIRA = played({ source: 'world', entityId: 'mira' });
@@ -70,7 +70,7 @@ describe("a persona's own stat traits in play (Q3)", () => {
   const owning: OwnerWorld = { ...world, entities: [...world.entities, sylvie] };
   const as = (entityId: string): TraitWorld => {
     const persona: PersonaRef = { source: 'world', entityId };
-    return { traits: [paladin], groups, entities: owning.entities, persona, owners: inPlayOwners(owning, persona) };
+    return { traits: [paladin], groups, entities: owning.entities, persona, ...inPlayOwners(owning, persona) };
   };
   const picked = state({ ownedTraits: { sylvie: { chosen: ['vow'] }, mira: { chosen: ['paladin'] } } });
 

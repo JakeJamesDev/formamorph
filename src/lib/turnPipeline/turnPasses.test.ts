@@ -15,7 +15,6 @@ import {
 } from '@/components/game/GamePrompts';
 import { builtinStatTextPrompts, statTextFor } from '@/lib/statTextPrompts';
 import { createStatRequest, statRequestSchema } from '@/lib/statRequest';
-import { PLAYER_OWNER } from '@/lib/statOwners';
 
 // Each pass assembles its own request. These tests call the records directly, with templates whose tokens
 // are recognizable, so a token rendered from the wrong context (or a cap that drifts) is visible.
@@ -143,7 +142,7 @@ describe('the stat request', () => {
   });
 
   it('sends the text pass alone for an endpoint that refused the schema', () => {
-    const refused = createStatRequest([playerStat('health', 'Health')], PLAYER_OWNER, { textPass: true });
+    const refused = createStatRequest([playerStat('health', 'Health')], { textPass: true });
     const request = shipped({ statRequest: refused });
     expect(request).not.toHaveProperty('responseSchema');
     expect(request).not.toHaveProperty('textFallback');
