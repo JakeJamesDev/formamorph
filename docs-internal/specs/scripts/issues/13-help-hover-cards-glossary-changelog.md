@@ -24,3 +24,7 @@ Spec: R1, R5, Q6, Q20.
 ## Blocked by
 
 - 03, 05, 07, 10
+
+## Comments
+
+From ticket 05: the Variable menu does not list `trait`; add it for the When a Trait Switches timing only.
