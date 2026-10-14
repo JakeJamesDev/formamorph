@@ -201,12 +201,12 @@ describe('pins from owned traits', () => {
       id: 'cp-hair', name: 'Hair Color', values: [], blueprintId: 'ph-hair',
       valueOverrides: { [phValueId('copper')]: { text: { value: 'rust', blueprint: 'copper' } } },
     };
-    const holder = (over: Partial<Entity>): Entity => ({ id: 'cp', name: 'Newcomer', placeholders: [copy], ...over });
+    const owner = (over: Partial<Entity>): Entity => ({ id: 'cp', name: 'Newcomer', placeholders: [copy], ...over });
     const w = (entities: Entity[]) => world({ traits: [{ ...traits[0], placeholderPins: [byId] }, ...traits.slice(1)], entities });
     const lens = (entities: Entity[]) => buildLens(w(entities), { pcTraitId: 't-sedge', locationId: null });
 
     it('traces to the Custom Persona entity’s copy under None, valued as the copy rewords it, labeled with the trait', () => {
-      const traced = lens([holder({ customPersona: true })]);
+      const traced = lens([owner({ customPersona: true })]);
       expect(traced.pins).toEqual({ 'cp-hair': 'rust' });
       expect(traced.pinLayers.map((l) => [l.label, l.wins])).toEqual([['Trait: Sedge-Born', true]]);
       expect(traced.brokenPins).toEqual([]);
@@ -214,17 +214,17 @@ describe('pins from owned traits', () => {
 
     it('reads the blueprint itself with no marked entity, whoever else holds a copy', () => {
       expect(lens([]).pins).toEqual({ 'ph-hair': 'copper' });
-      expect(lens([holder({ persona: true })]).pins).toEqual({ 'ph-hair': 'copper' });
+      expect(lens([owner({ persona: true })]).pins).toEqual({ 'ph-hair': 'copper' });
     });
 
     it('lays nothing for a value the Custom Persona entity’s copy removed', () => {
       const removed = { ...copy, valueOverrides: { [phValueId('copper')]: { removed: true as const } } };
-      expect(lens([holder({ customPersona: true, placeholders: [removed] })]).pins).toEqual({});
+      expect(lens([owner({ customPersona: true, placeholders: [removed] })]).pins).toEqual({});
     });
   });
 });
 
-describe('the player bearer', () => {
+describe('the player owner', () => {
   // Blueprints: Classes (Paladin pins Hair Color by value id, Wizard) and a default Warded pinning Homeland.
   const blueprints: TraitGroup[] = [
     { id: 'g-blueprints', name: 'Blueprints', parentId: null, system: 'blueprints' },

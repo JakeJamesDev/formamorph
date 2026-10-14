@@ -16,14 +16,14 @@
  */
 import { defaultNarrationUserPrompt, defaultSystemPrompt } from '@/components/game/GamePrompts';
 import { copyLookup, readerFor, type CopyLookup } from '@/lib/blueprints';
-import { bearerPriming } from '@/lib/ownedTraitsInPlay';
-import { resolveBearers } from '@/lib/bearers';
+import { ownerPriming } from '@/lib/ownedTraitsInPlay';
+import { resolveOwners } from '@/lib/owners';
 import { startingGateStats } from '@/lib/gateStats';
 import { entityStatOwners, seedEntityStats } from '@/lib/entityStats';
 import { ownedTraitStatesFrom } from '@/lib/ownedTraitState';
 import { allPlaceholders } from '@/lib/placeholderHomes';
 import { playStatWorld, playerStatsOf } from '@/lib/statLinks';
-import { WORLD_OWNER, settle, settleDefaults } from '@/lib/traitGates';
+import { PLAYER_OWNER, settle, settleDefaults } from '@/lib/traitGates';
 import { DEFAULT_MAX_TOKENS } from '@/contexts/settingsDefaults';
 import { authoredChipScene } from '@/lib/chipValues/authoredScene';
 import { chipValues } from '@/lib/chipValues/chipValues';
@@ -41,7 +41,7 @@ import type { StatOwner } from '@/lib/statOwners';
 import { allPinTexts, collectPins, valuePinRollChips } from '@/lib/placeholderPins';
 import { activeStatEnabled, enabledStats } from '@/lib/traitEffects';
 import {
-  acquireTrait, applyOwnedStatTraits, bearerStatTraitsInForce, seedStatBases, type TraitRuntimeState, type TraitWorld,
+  acquireTrait, applyOwnedStatTraits, entityStatTraitsInForce, seedStatBases, type TraitRuntimeState, type TraitWorld,
 } from '@/lib/traitRuntime';
 import { buildNarrationPrompt } from '@/lib/turnPipeline/narrationPrompt';
 import { startingLocations } from '@/lib/startingLocation';
@@ -49,7 +49,7 @@ import type {
   Entity, EntityStatValues, GameLocation, Opening, PersonaRef, PlaceholderRolls, PlayerStat, Stat, StatDescriptor, ThresholdUnit, Trait,
 } from '@/types';
 import { lensActiveTraits, lensPinTraits, resolveLensText, type BenchLens } from './lens';
-import { bearerWorldOf, chipBearingTexts, type RuleWorld } from './rules';
+import { ownerWorldOf, chipBearingTexts, type RuleWorld } from './rules';
 import { scannedEntries } from './triggers';
 
 /** The instrument reads the whole authored world — the first prompt pulls from every slice. */
@@ -235,8 +235,8 @@ export function primeOpeningRolls(
   const placeholders = allPlaceholders(world);
   const pinTexts = openingPinTexts(world);
   const rolled = primeRolls(placeholders, [...chipBearingTexts(world), ...valuePinRollChips(placeholders)], existing, pick, pinTexts);
-  // Each bearer's trait text again through its copies, as Enter World primes it.
-  return bearerPriming(bearerWorldOf(world), [], world.placeholders ?? []).copyTexts
+  // Each owner's trait text again through its copies, as Enter World primes it.
+  return ownerPriming(ownerWorldOf(world), [], world.placeholders ?? []).copyTexts
     .reduce((rolls, { texts, copies }) => primeRolls(placeholders, texts, rolls, pick, pinTexts, copies), rolled);
 }
 
@@ -313,24 +313,24 @@ function settleEntityStats(world: OpeningWorld, active: readonly Trait[], person
   seeded: EntityStatValues;
 } {
   const { entities } = playStatWorld({ stats: world.stats ?? [], statGroups: world.statGroups ?? [], entities: world.entities ?? [] });
-  const bearerWorld = bearerWorldOf(world);
-  const { gate: bearerGate } = resolveBearers(bearerWorld, persona);
+  const ownerWorld = ownerWorldOf(world);
+  const { gate: ownerGate } = resolveOwners(ownerWorld, persona);
   // Stat Conditions read the authored start, as Enter World's do (Q23).
-  const gate = { ...bearerGate, stats: startingGateStats({ ...world, entities: world.entities ?? [] }) };
-  // Each bearer's default picks, gated against the world traits the lens PC leaves active.
+  const gate = { ...ownerGate, stats: startingGateStats({ ...world, entities: world.entities ?? [] }) };
+  // Each owner's default picks, gated against the world traits the lens PC leaves active.
   const picks = settle({
-    ...gate, active: { ...settleDefaults(gate).active, [WORLD_OWNER]: active.map((t) => t.id) },
+    ...gate, active: { ...settleDefaults(gate).active, [PLAYER_OWNER]: active.map((t) => t.id) },
   }).active;
-  const ownedTraits = ownedTraitStatesFrom(Object.fromEntries(Object.entries(picks).filter(([id]) => id !== WORLD_OWNER)));
+  const ownedTraits = ownedTraitStatesFrom(Object.fromEntries(Object.entries(picks).filter(([id]) => id !== PLAYER_OWNER)));
   const traitWorld: TraitWorld = {
-    traits: [...bearerWorld.traits], groups: [...bearerWorld.traitGroups], entities: bearerWorld.entities,
+    traits: [...ownerWorld.traits], groups: [...ownerWorld.traitGroups], entities: ownerWorld.entities,
     persona, bearers: gate.owners,
   };
   const seeded = seedEntityStats(entities);
   const { entityStats = seeded } = applyOwnedStatTraits(
     { stats: [], traits: [], disabledTraitIds: [], appliedValues: {}, ownedTraits, entityStats: seeded }, traitWorld,
   );
-  const owners = entityStatOwners(entityStats, entities, persona, (id) => bearerStatTraitsInForce(ownedTraits, traitWorld, id));
+  const owners = entityStatOwners(entityStats, entities, persona, (id) => entityStatTraitsInForce(ownedTraits, traitWorld, id));
   return { owners, seeded };
 }
 

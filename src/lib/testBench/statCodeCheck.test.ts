@@ -249,7 +249,7 @@ describe('the on-demand stat-code check', () => {
       expect(await checkStatCode(world)).toEqual([]);
     });
 
-    it('runs a Blueprint box once, with its group’s stats alone as owner, however many bearers it has', async () => {
+    it('runs a Blueprint box once, with its group’s stats alone as owner, however many owners it has', async () => {
       const guards = { id: 'guards', name: 'Guards', parentId: 'bp' };
       const blueprint = (code: string): RuleWorld => {
         const link = (id: string) => ({ id, originalId: 'guards', kind: 'group' as const, originalName: 'Guards', groupId: null });
@@ -275,15 +275,15 @@ describe('the on-demand stat-code check', () => {
       ]]);
     });
 
-    it('runs a bearer’s overridden code on a linked stat once, with the bearer as owner', async () => {
+    it('runs an owner’s overridden code on a linked stat once, with its entity as owner', async () => {
       const guard = stat({ id: 'guard', name: 'Guard', groupId: 'bp', code: 'return 1;' });
-      const bearer = (code: string) => creature([stat({ id: 'rage', name: 'Rage', starting: 7 })], {
+      const owner = (code: string) => creature([stat({ id: 'rage', name: 'Rage', starting: 7 })], {
         statLinks: [{
           id: 'link', originalId: 'guard', kind: 'stat', originalName: 'Guard', groupId: null,
           overrides: { guard: { code: { value: code, blueprint: 'return 1;' } } },
         }],
       });
-      const linked = (code: string) => checkStatCode({ ...base([guard]), statGroups: [blueprints], entities: [bearer(code)] });
+      const linked = (code: string) => checkStatCode({ ...base([guard]), statGroups: [blueprints], entities: [owner(code)] });
       expect(await linked('if (owner.stats.Rage.value !== 7) throw new Error("owner"); return 2;')).toEqual([]);
       const found = await linked('throw new Error("nope");');
       expect(found.map((f) => [f.message, f.items])).toEqual([[

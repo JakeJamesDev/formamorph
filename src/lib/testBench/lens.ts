@@ -15,9 +15,10 @@ import { allPinRows, bindBlueprintPins, collectPinLayers, samePin, sameSource, t
 import { copyLookup, readerFor, type CopyLookup } from '@/lib/blueprints';
 import { activeStatEnabled, defaultPicks, exclusiveSiblings, inAuthoredOrder, traitOrderIndex } from '@/lib/traitEffects';
 import { startingStatsWith } from '@/lib/traitRuntime';
-import { PLAYER_BEARER, resolveBearers, type Bearer } from '@/lib/bearers';
+import { resolveOwners, type Owner } from '@/lib/owners';
+import { PLAYER_OWNER } from '@/lib/traitGates';
 import type { GameLocation, Placeholder, Trait } from '@/types';
-import { bearerWorldOf, type RuleWorld } from './rules';
+import { ownerWorldOf, type RuleWorld } from './rules';
 
 /** The slices of the authored world the lens reads. The rest of the document is optional and read only to
  *  letter the pickers' chips the way the editor letters them — entities come first in that walk. */
@@ -27,12 +28,12 @@ export type LensWorld =
 
 /** The lens tests as the None player: the root outside Blueprints, and the Custom Persona entity's tree after
  *  it, as one list. Cached per world object, since every instrument reads it. */
-const playerByWorld = new WeakMap<LensWorld, Bearer>();
-function lensPlayer(world: LensWorld): Bearer {
+const playerByWorld = new WeakMap<LensWorld, Owner>();
+function lensPlayer(world: LensWorld): Owner {
   let player = playerByWorld.get(world);
   if (!player) {
-    const { bearers } = resolveBearers(bearerWorldOf(world), { source: 'none' });
-    const root = bearers.find((b) => b.id === PLAYER_BEARER)!;
+    const { bearers } = resolveOwners(ownerWorldOf(world), { source: 'none' });
+    const root = bearers.find((b) => b.id === PLAYER_OWNER)!;
     const custom = bearers.find((b) => b.isPlayer && b.entity);
     player = custom ? {
       ...root,
@@ -285,6 +286,6 @@ export const resolveLensText = (
   text: string,
   placeholders: Placeholder[] | undefined,
   pins: Record<string, string>,
-  /** The bearer's copy lookup, for its trait text. */
+  /** The owner's copy lookup, for its trait text. */
   copies?: CopyLookup,
 ): string => describePlaceholders(text, placeholders ?? [], pins, copies);
