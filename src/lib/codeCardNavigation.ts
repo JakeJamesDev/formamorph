@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react';
 import type { CodeCardItem } from '@/lib/codeCards';
-import type { CodeStatUse } from '@/lib/codeStatUses';
+import type { CodeUse } from '@/lib/codeUses';
 
 /** Opens a card's item in the World Editor. */
 export type OpenCodeCardItem = (item: CodeCardItem) => void;
@@ -9,7 +9,7 @@ export type OpenCodeCardItem = (item: CodeCardItem) => void;
 export interface CodeCardNavigation {
   open: OpenCodeCardItem;
   /** Shows a use's box with the caret on its line. */
-  goToUse: (use: CodeStatUse) => void;
+  goToUse: (use: CodeUse) => void;
 }
 
 /** Provided by the World Editor. A host that must not navigate away provides null, which hides Open and Find

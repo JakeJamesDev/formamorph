@@ -4,7 +4,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { runStatCodeTurn, type OwnerCodeTurn, type StatCodeTurn } from './statCodeTurn';
-import type { StatCodeBearers } from './statCodeTraits';
+import type { StatCodeOwners } from './statCodeTraits';
 import { inPlayBearers } from './ownedTraitsInPlay';
 import { withOwnerCodeResults } from './entityStats';
 import type { Entity, Placeholder, PlayerStat, Trait } from '@/types';
@@ -21,7 +21,7 @@ const odette: Entity = { id: 'odette', name: 'Odette' };
 const probe: Placeholder = { id: 'probe', name: 'Probe', values: phValues(['unset']) };
 
 /** A playthrough with Bram and Odette in the cast and the world trait Brave not yet acquired. */
-const bearers = (): StatCodeBearers => {
+const ownerTraits = (): StatCodeOwners => {
   const entities = [bram, odette];
   return {
     acquired: [], disabledTraitIds: [], appliedValues: {}, ownedTraits: {}, entities,
@@ -38,7 +38,7 @@ const owner = (id: string, stats: PlayerStat[], over: Partial<OwnerCodeTurn> = {
 });
 
 const run = (player: PlayerStat[], owners: OwnerCodeTurn[], over: Partial<StatCodeTurn> = {}) => runStatCodeTurn({
-  stats: player, enabled: {}, previous: player, asks: [], regenApplied: {}, clock: {}, bearers: bearers(), owners,
+  stats: player, enabled: {}, previous: player, asks: [], regenApplied: {}, clock: {}, ownerTraits: ownerTraits(), owners,
   placeholders: { placeholders: [probe], rolls: {} },
   statNameOf: (s) => s.name, traitNameOf: (t) => t.name, ...over,
 });
@@ -161,9 +161,9 @@ describe('runStatCodeTurn entity owners', () => {
       [stat({ id: 'gold', name: 'Gold', code: 'entities.Bram.traits.Hardy.enabled = true;' })],
       [owner('bram', [vigor])],
       {
-        bearers: {
-          ...bearers(), entities,
-          world: { ...bearers().world, entities, bearers: inPlayBearers({ traits: [brave], traitGroups: [], entities }, { source: 'none' }, []) },
+        ownerTraits: {
+          ...ownerTraits(), entities,
+          world: { ...ownerTraits().world, entities, bearers: inPlayBearers({ traits: [brave], traitGroups: [], entities }, { source: 'none' }, []) },
         },
       },
     );

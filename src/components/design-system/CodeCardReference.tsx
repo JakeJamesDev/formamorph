@@ -5,7 +5,7 @@ import { renderCodeCard, renderCodeUses, rowText } from '@/components/prompt/cod
 import { CARD_BOX } from '@/components/prompt/codeSession';
 import { codeCard, type CodeCard } from '@/lib/codeCards';
 import { statBoxLookups, type CodeCardWorld } from '@/lib/codeWorldLookup';
-import type { CodeStatUse } from '@/lib/codeStatUses';
+import type { CodeUse } from '@/lib/codeUses';
 import type { PlaceholderOwners } from '@/lib/placeholderHomes';
 import type { SurfaceAnalysisOptions } from '@/lib/statCodeAnalysis';
 import { cardWorldNames, statBoxAnalysisOptions } from '@/lib/statCodeBoxOptions';
@@ -55,10 +55,10 @@ const SAMPLES = [
 ] as const;
 
 /** The uses a Fatigue search finds: a world stat's box, an entity's own box, and a Blueprint no one bears. */
-const USES: readonly CodeStatUse[] = [
-  { entityId: null, rowId: 'courage', timing: 'after', stat: 'Courage', line: 3, noBearers: false },
-  { entityId: 'tom', rowId: 'tom-health', timing: 'before', stat: 'Health', entity: 'Tom', line: 1, noBearers: false },
-  { entityId: null, rowId: 'dread', timing: 'after', stat: 'Dread', line: 7, noBearers: true },
+const USES: readonly CodeUse[] = [
+  { entityId: null, rowId: 'courage', timing: 'after', stat: 'Courage', line: 3, noOwners: false },
+  { entityId: 'tom', rowId: 'tom-health', timing: 'before', stat: 'Health', entity: 'Tom', line: 1, noOwners: false },
+  { entityId: null, rowId: 'dread', timing: 'after', stat: 'Dread', line: 7, noOwners: true },
 ];
 
 function cardFor(code: string): CodeCard {
@@ -91,7 +91,7 @@ const cardBuild = (card: CodeCard): Build => (report) => {
 };
 
 /** The Find All Uses list, in the same box as the card. */
-const usesBuild = (uses: readonly CodeStatUse[]): Build => (report) => {
+const usesBuild = (uses: readonly CodeUse[]): Build => (report) => {
   const list = renderCodeUses(uses, (use) => report(`${rowText(use)} moves the caret to that line.`));
   Object.assign(list.style, CARD_BOX);
   return list;

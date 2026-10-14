@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Entity, Stat, StatGroup } from '@/types';
-import { statUses, type CodeStatUse } from './codeStatUses';
+import { statUses } from './codeStatUses';
+import type { CodeUse } from './codeUses';
 import { statCodeOwners, type StatRouteWorld } from './statCodeTargets';
 
 const stat = (id: string, name: string, extra: Partial<Stat> = {}): Stat =>
@@ -36,7 +37,7 @@ const world: StatRouteWorld = {
 
 const usesOf = (item: { statId: string; entityId?: string }, at: StatRouteWorld = world) => statUses(statCodeOwners(at), item);
 /** Each row as its box and line read, for a compact comparison. */
-const rows = (uses: CodeStatUse[]) => uses.map((use) => `${use.entity ? `${use.entity} › ` : ''}${use.stat} ${use.timing} ${use.line}${use.noBearers ? ' no bearers' : ''}`);
+const rows = (uses: CodeUse[]) => uses.map((use) => `${use.entity ? `${use.entity} › ` : ''}${use.stat} ${use.timing} ${use.line}${use.noOwners ? ' no bearers' : ''}`);
 
 describe('statUses', () => {
   it('lists one row per box and line, so two spellings on one line join', () => {
@@ -63,12 +64,12 @@ describe('statUses', () => {
     });
   });
 
-  it('lists a Blueprint box no bearer runs, marked No Bearers', () => {
+  it('lists a Blueprint box no owner runs, marked No Bearers', () => {
     expect(rows(usesOf({ statId: 'echo' }))).toEqual(['Echo before 1 no bearers']);
     expect(usesOf({ statId: 'echo' })[0]).toMatchObject({ entityId: null, rowId: 'echo' });
   });
 
-  it('reads a Blueprint stat as every bearer’s copy, and one bearer’s copy as that bearer’s alone', () => {
+  it('reads a Blueprint stat as every owner’s copy, and one owner’s copy as that owner’s alone', () => {
     expect(rows(usesOf({ statId: 'howl' }))).toEqual([
       'Tide after 1',
       'Howl after 1',

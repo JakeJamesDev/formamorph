@@ -93,7 +93,7 @@ describe('renaming an entity’s own stat', () => {
     expect(boxAt(plan, ofEntity('bram', 'bram-rage'))).toBe('return owner.stats.Rage.value + entities["The Creature"].stats.Fury.value;');
   });
 
-  it('rewrites a Blueprint box its bearer runs, where no other bearer reaches a Rage there', () => {
+  it('rewrites a Blueprint box its owner runs, where no other owner reaches a Rage there', () => {
     const plan = rename({ id: 'creature-rage', entityId: 'creature' }, 'Rage', 'Fury');
     expect(boxAt(plan, ofWorld('howl'))).toBe('return owner.stats.Fury.value + stats.Destruction.value;');
     expect(boxAt(plan, bramLink)).toBeUndefined();
@@ -138,7 +138,7 @@ describe('renaming an entity’s own stat', () => {
 });
 
 describe('renaming a Blueprint stat', () => {
-  it('follows its bearers’ copies and leaves stats, which never reaches a Blueprint', () => {
+  it('follows its owners’ copies and leaves stats, which never reaches a Blueprint', () => {
     const reader = stat('reader', 'Reader', { code: 'return stats.Howl.value + entities.Bram.stats.Howl.value;' });
     const plan = rename({ id: 'howl' }, 'Howl', 'Roar', { stats: [...world.stats, reader] });
     expect(boxAt(plan, ofWorld('reader'))).toBe('return stats.Howl.value + entities.Bram.stats.Roar.value;');

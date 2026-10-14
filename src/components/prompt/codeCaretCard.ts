@@ -9,7 +9,7 @@ import {
 } from '@codemirror/view';
 import type { CodeCard, CodeCardItem } from '@/lib/codeCards';
 import type { CodeCardNavigation } from '@/lib/codeCardNavigation';
-import type { CodeStatUse } from '@/lib/codeStatUses';
+import type { CodeUse } from '@/lib/codeUses';
 import { cardAnnouncement, renderCodeCard, renderCodeUses, type CodeCardActions } from '@/components/prompt/codeCardView';
 
 /** How long a caret rests on a name after a tap before its card opens. */
@@ -26,7 +26,7 @@ interface CaretCard {
   /** True when the author asked from the keyboard, who needs the card read out. */
   announce: boolean;
   /** Set once Find All Uses pins the card: the list that hangs off it. */
-  uses?: readonly CodeStatUse[];
+  uses?: readonly CodeUse[];
 }
 
 const openCaretCard = StateEffect.define<CaretCard>();
@@ -40,8 +40,8 @@ export function goToDeclaration(view: EditorView, at: number): void {
 
 /** A pinned card's list and where its rows go. */
 interface PinnedUses {
-  uses: readonly CodeStatUse[];
-  goToUse: (use: CodeStatUse) => void;
+  uses: readonly CodeUse[];
+  goToUse: (use: CodeUse) => void;
 }
 
 /** The tooltip view of a card. A dialog or full screen takes Escape on the document in the capture phase,
@@ -96,7 +96,7 @@ export interface CardLinks {
   /** Absent where the host hides Open and Find All Uses. */
   navigation?: CodeCardNavigation;
   /** Every use of an item. Absent where the box has no world. */
-  uses?: (item: CodeCardItem) => readonly CodeStatUse[];
+  uses?: (item: CodeCardItem) => readonly CodeUse[];
 }
 
 export interface CaretCards {

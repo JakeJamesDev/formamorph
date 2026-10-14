@@ -3,7 +3,7 @@
 import { ACCESS_LABEL } from '@/lib/codeSurface';
 import type { OpenCodeCardItem } from '@/lib/codeCardNavigation';
 import type { CodeCard, CodeCardItem, CodeCardSignature } from '@/lib/codeCards';
-import type { CodeStatUse } from '@/lib/codeStatUses';
+import type { CodeUse } from '@/lib/codeUses';
 import { docTargetId } from '@/lib/docs/docsLinks';
 import { openDocsFromClick } from '@/lib/formaquestion/docsOpener';
 import { wikiPageUrl } from '@/lib/helpTopics';
@@ -139,12 +139,12 @@ export function renderCodeCard(card: CodeCard, actions: CodeCardActions = {}): H
 }
 
 /** A use as its row reads: the stat, its box and its line. */
-export function rowText({ entity, stat, timing, line }: CodeStatUse): string {
+export function rowText({ entity, stat, timing, line }: CodeUse): string {
   return `${entity ? `${entity} › ` : ''}${stat} · ${TIMING_SHORT[timing]} · Line ${line}`;
 }
 
 /** The Find All Uses popover: a count, then one button per box and line. */
-export function renderCodeUses(uses: readonly CodeStatUse[], onPick: (use: CodeStatUse) => void): HTMLElement {
+export function renderCodeUses(uses: readonly CodeUse[], onPick: (use: CodeUse) => void): HTMLElement {
   const root = element('section', 'code-uses w-[22.5rem] max-w-[calc(100vw-2rem)] py-1 text-helper');
   root.dataset.codeUses = '';
   root.setAttribute('aria-label', 'Uses');
@@ -158,7 +158,7 @@ export function renderCodeUses(uses: readonly CodeStatUse[], onPick: (use: CodeS
     const button = element('button', 'flex w-full items-baseline justify-between gap-2 px-2.5 py-1 text-left text-popover-foreground hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground focus-visible:outline-none');
     button.type = 'button';
     button.append(element('span', 'min-w-0 break-words', rowText(use)));
-    if (use.noBearers) button.append(element('span', 'shrink-0 text-meta text-muted-foreground', 'No Bearers'));
+    if (use.noOwners) button.append(element('span', 'shrink-0 text-meta text-muted-foreground', 'No Bearers'));
     button.addEventListener('click', () => onPick(use));
     const item = element('li', '');
     item.append(button);

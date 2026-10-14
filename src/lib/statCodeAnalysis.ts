@@ -96,13 +96,13 @@ export interface CodePlaceholders {
   dictionaries?: readonly CodeOwnerName[];
 }
 
-/** One trait as a template slot lists it, placed in its holder's tree. */
+/** One trait as a template slot lists it, placed in its owner's tree. */
 export interface CodeTraitPlace {
   id: string;
   name: string;
   /** Group names under their code names, outermost first. Empty at the top level. */
   path: readonly string[];
-  /** Its place in its holder's Traits tab. Absent ⇒ list order. */
+  /** Its place in its owner's Traits tab. Absent ⇒ list order. */
   tabPosition?: number;
 }
 
@@ -987,7 +987,7 @@ function ownerStatRef(node: SyntaxNode, code: string): { match: RegExpExecArray;
 }
 
 /** What is wrong with a stat name off an owner's `stats`. The owner's own list is exact: an unknown name is an
- *  error, but a warning in a Blueprint box, where a bearer can hold more than its group. Another entity's or the
+ *  error, but a warning in a Blueprint box, where an owner can hold more than its group. Another entity's or the
  *  persona's can be a library entity's, so it is only a warning. */
 function checkOwnerStatName(
   { match, ref }: { match: RegExpExecArray; ref: EntryRef }, options: AnalysisOptions,
@@ -998,9 +998,9 @@ function checkOwnerStatName(
     return problem && options.owner === 'blueprint' ? { ...problem, severity: 'warning' } : problem;
   }
   const entity = root === 'entities' && options.entities ? keyedEntity(options.entities, entityNamed(match)) : undefined;
-  const holders = root === 'persona' ? (options.entities ?? []).filter((held) => held.persona && held.stats) : entity?.stats ? [entity] : [];
-  if (holders.length === 0) return null;
-  const names = [...new Set(holders.flatMap((held) => held.stats ?? []))];
+  const withStats = root === 'persona' ? (options.entities ?? []).filter((each) => each.persona && each.stats) : entity?.stats ? [entity] : [];
+  if (withStats.length === 0) return null;
+  const names = [...new Set(withStats.flatMap((each) => each.stats ?? []))];
   if (names.includes(ref.name)) return null;
   const lead = entity ? `“${entity.name}” has no stat named “${ref.name}”.` : `Unknown persona stat name “${ref.name}”. A library persona can have it.`;
   const suggestion = nearestName(ref.name, names);

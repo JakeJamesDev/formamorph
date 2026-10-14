@@ -152,7 +152,7 @@ export interface SandboxTrait {
   acquired: boolean;
   id?: string;
   mode?: 'optional' | 'alwaysOn' | 'hidden';
-  /** Whether the trait's requirements hold for its Bearer now. */
+  /** Whether the trait's requirements hold for its owner now. */
   available?: boolean;
   /** The group's code name; empty when ungrouped. */
   group?: string;

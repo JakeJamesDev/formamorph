@@ -14,7 +14,7 @@
  */
 
 import type { Entity, Placeholder, Stat, StatGroup } from '@/types';
-import { canBePlayer } from './bearers';
+import { canBePlayer } from './owners';
 import { codeRenameChains, type ChainRoot, type CodeRenameKey } from './codeRenameChains';
 import type { PlaceholderOwnerRef, PlaceholderOwners } from './placeholderHomes';
 import {
@@ -22,7 +22,7 @@ import {
   type PlaceholderPathMap, type PlaceholderPathNode, type PlaceholderPathSource,
 } from './statCodePaths';
 import { statCodeName } from './statCodeNames';
-import type { TraitHolders } from './statCodeTraits';
+import type { TraitOwnerMaps } from './statCodeTraits';
 import { boxCode, STAT_CODE_TIMINGS, type StatCodeTiming } from './statCodeTiming';
 import {
   boxReferences, nameHomeOf, statCodeBoxes, statCodeOwners, type CodeHome, type StatNameHome,
@@ -118,7 +118,7 @@ interface CodeRewrite {
   /** The bare-name lookups that move, per root. */
   names: ReadonlyMap<ChainRoot, NameRenames>;
   /** The trait names that move inside entity trait maps, and whose maps they move in. Absent where none do. */
-  entityTraits?: { moved: NameRenames; holders: TraitHolders };
+  entityTraits?: { moved: NameRenames; owners: TraitOwnerMaps };
 }
 
 /** The splices for one entity trait map's key: `traits` at `at`, the trait name after it. */
@@ -167,11 +167,11 @@ function rewriteCode(code: string, rewrite: CodeRewrite): { code: string; refere
     }
   }
   if (rewrite.entityTraits) {
-    const { moved, holders } = rewrite.entityTraits;
+    const { moved, owners } = rewrite.entityTraits;
     const splices = [
-      ...(holders.persona ? codeRenameChains(code, 'persona').map((chain) => entityTraitSplice(chain, 0, moved)) : []),
+      ...(owners.persona ? codeRenameChains(code, 'persona').map((chain) => entityTraitSplice(chain, 0, moved)) : []),
       ...codeRenameChains(code, 'entities')
-        .filter((chain) => holders.entities.includes(chain[0].name))
+        .filter((chain) => owners.entities.includes(chain[0].name))
         .map((chain) => entityTraitSplice(chain, 1, moved)),
     ];
     edits.push(...splices.filter((splice): splice is CodeSplice => splice !== null));
@@ -283,7 +283,7 @@ export interface CodeRenameInput {
   /** Every dictionary in the world. A rename moves the code name of a book whose name carries it. */
   dictionaries?: readonly { name: string }[];
   /** Whose trait maps hold a renamed trait. Absent, only `traits` follows the rename. */
-  traitHolders?: TraitHolders;
+  traitOwnerMaps?: TraitOwnerMaps;
   /** The names the other entries of this kind carry. A rename onto one of them is a duplicate, which the
    *  duplicate-name warning already covers, so it gets no offer. */
   otherNames: readonly string[];
@@ -431,7 +431,7 @@ function statRenameEdits(
  * blank name, a name another entry of the same kind already carries, or a name no stat's code references.
  */
 export function planCodeRename(input: CodeRenameInput): CodeRenamePlan | null {
-  const { root, stats, traits = [], entities = [], dictionaries = [], otherNames, placeholders, subject, traitHolders } = input;
+  const { root, stats, traits = [], entities = [], dictionaries = [], otherNames, placeholders, subject, traitOwnerMaps } = input;
   const from = input.oldName.trim();
   const to = input.newName.trim();
   // Trimmed on both sides of the comparison: the field's text is what an author typed, and a name that
@@ -447,8 +447,8 @@ export function planCodeRename(input: CodeRenameInput): CodeRenamePlan | null {
   const rewrite: CodeRewrite = placeholders && subject
     ? treeRewrite(placeholders, subject, from, to, stats, traits, entities, dictionaries)
     : {
-      names: new Map(root === 'traits' && traitHolders?.world === false ? [] : [[root, moved]]),
-      ...(root === 'traits' && traitHolders ? { entityTraits: { moved, holders: traitHolders } } : {}),
+      names: new Map(root === 'traits' && traitOwnerMaps?.world === false ? [] : [[root, moved]]),
+      ...(root === 'traits' && traitOwnerMaps ? { entityTraits: { moved, owners: traitOwnerMaps } } : {}),
     };
   const edits: CodeRenameEdit[] = [];
   let references = 0;

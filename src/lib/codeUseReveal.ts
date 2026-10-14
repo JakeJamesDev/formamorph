@@ -1,9 +1,9 @@
 /** A Find All Uses row on its way from the World Editor's selection to the box that shows its line. */
 
 import { useSyncExternalStore } from 'react';
-import type { CodeStatUse } from './codeStatUses';
+import type { CodeUse } from './codeUses';
 
-export type CodeUseReveal = Pick<CodeStatUse, 'entityId' | 'rowId' | 'timing' | 'line'>;
+export type CodeUseReveal = Pick<CodeUse, 'entityId' | 'rowId' | 'timing' | 'line'>;
 
 let pending: CodeUseReveal | null = null;
 const listeners = new Set<() => void>();

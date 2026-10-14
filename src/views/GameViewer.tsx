@@ -2870,7 +2870,7 @@ const GameViewer = ({
             traits: held.acquired, disabledTraitIds: held.disabledTraitIds, ownedTraits: held.ownedTraits, stats, entityStats: entityBase,
           }, world),
           ...(health && healthLoss !== null ? { penalties: { [health.id]: healthLoss } } : {}),
-          bearers: {
+          ownerTraits: {
             ...held, world, entities: codeEntities.world, library: codeEntities.library,
             inSceneIds: liveScene().inSceneIds,
           },

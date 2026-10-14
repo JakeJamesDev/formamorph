@@ -124,7 +124,7 @@ describe('entityStatOwners', () => {
     const turns = entityCodeTurns(owners, 2, (_, stats) => stats);
     const out = await runStatCodeTurn({
       stats: [], enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {}, owners: turns,
-      bearers: { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [], groups: [] } },
+      ownerTraits: { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [], groups: [] } },
       statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
     });
     expect(out.owners?.cp.stats[0].value).toBe(32);

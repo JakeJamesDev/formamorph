@@ -4,7 +4,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { runStatCodeTurn, type OwnerCodeTurn, type StatCodeTurn } from './statCodeTurn';
-import type { StatCodeBearers } from './statCodeTraits';
+import type { StatCodeOwners } from './statCodeTraits';
 import { inPlayBearers } from './ownedTraitsInPlay';
 import { setTraitEnabled } from './traitRuntime';
 import { linkedStat } from './statLinks';
@@ -20,7 +20,7 @@ const bram: Entity = { id: 'bram', name: 'Bram' };
 const odette: Entity = { id: 'odette', name: 'Odette' };
 
 /** A playthrough with Bram and Odette in the cast, holding `acquired` with `off` switched off. */
-const bearers = (acquired: Trait[] = [], off: string[] = []): StatCodeBearers => {
+const ownerTraits = (acquired: Trait[] = [], off: string[] = []): StatCodeOwners => {
   const entities = [bram, odette];
   return {
     acquired, disabledTraitIds: off, appliedValues: {}, ownedTraits: {}, entities,
@@ -34,7 +34,7 @@ const bearers = (acquired: Trait[] = [], off: string[] = []): StatCodeBearers =>
 const owner = (id: string, stats: PlayerStat[]): OwnerCodeTurn => ({ id, stats, enabled: {}, previous: stats, regenApplied: {} });
 
 const run = (stats: PlayerStat[], over: Partial<StatCodeTurn> = {}) => runStatCodeTurn({
-  stats, enabled: {}, previous: stats, asks: [], regenApplied: {}, clock: {}, bearers: bearers(),
+  stats, enabled: {}, previous: stats, asks: [], regenApplied: {}, clock: {}, ownerTraits: ownerTraits(),
   statNameOf: (s) => s.name, traitNameOf: (t) => t.name, ...over,
 });
 
@@ -61,7 +61,7 @@ describe('runStatCodeTurn writes to other stats', () => {
 
   it('books a hub’s bound write in the target’s code delta, which a later trait switch moves from', async () => {
     const boost: Trait = { id: 'b', name: 'Boost', statChanges: [{ statId: 'h', value: 20, type: 'max' }] };
-    const out = await run([hub('stats.Health.max = 20;'), health({ value: 10 })], { bearers: bearers([boost], ['b']) });
+    const out = await run([hub('stats.Health.max = 20;'), health({ value: 10 })], { ownerTraits: ownerTraits([boost], ['b']) });
     expect(find(out.stats, 'h')).toMatchObject({ max: 20, codeDelta: { max: -80 } });
     expect(out.boundsChanged).toEqual(['h']);
     const held = { stats: [...out.stats], traits: [boost], disabledTraitIds: ['b'], appliedValues: {} };
@@ -70,7 +70,7 @@ describe('runStatCodeTurn writes to other stats', () => {
 
   it('measures a hub’s bound write after the run’s trait switches', async () => {
     const boost: Trait = { id: 'b', name: 'Boost', statChanges: [{ statId: 'h', value: 20, type: 'max' }] };
-    const out = await run([hub('traits.Boost.enabled = true; stats.Health.max = 70;'), health({ value: 10 })], { bearers: bearers([boost], ['b']) });
+    const out = await run([hub('traits.Boost.enabled = true; stats.Health.max = 70;'), health({ value: 10 })], { ownerTraits: ownerTraits([boost], ['b']) });
     expect(find(out.stats, 'h')).toMatchObject({ max: 70, codeDelta: { max: -50 } });
   });
 
@@ -95,7 +95,7 @@ describe('runStatCodeTurn writes to other stats', () => {
 
   it('lands a stat’s own value write inside the max its own trait switch raised', async () => {
     const boost: Trait = { id: 'b', name: 'Boost', statChanges: [{ statId: 'h', value: 100, type: 'max' }] };
-    const out = await run([health({ code: 'traits.Boost.enabled = true; self.value = 150;' })], { bearers: bearers([boost], ['b']) });
+    const out = await run([health({ code: 'traits.Boost.enabled = true; self.value = 150;' })], { ownerTraits: ownerTraits([boost], ['b']) });
     expect(find(out.stats, 'h')).toMatchObject({ value: 150, max: 200 });
   });
 

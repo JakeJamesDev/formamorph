@@ -13,7 +13,7 @@ import { findSlotRanges } from '@/lib/statCodeTemplates';
 /** Whose code a stat box holds: an entity's own stat, or a Blueprint stat. */
 export type CodeOwnerKind = 'entity' | 'blueprint';
 
-/** Whose map an entry sits in. `owner` is the box's owner: the entity, or each bearer in a Blueprint box. */
+/** Whose map an entry sits in. `owner` is the box's owner: the entity, or each owner in a Blueprint box. */
 export type CodeMapOwner =
   | { route: 'world' }
   | { route: 'owner' }
