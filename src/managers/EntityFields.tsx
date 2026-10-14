@@ -309,6 +309,7 @@ export const EntityImageWidget = ({ value, onChange, placeholders = [], ownerId,
     cap={IMAGE_CAPS.entity}
     description={value.aiDescription || value.playerDescription}
     kind="character"
+    fileSubject={labelPlaceholders(value.name, placeholders)}
     tags={value.imageTags}
     onTagsChange={(t) => onChange('imageTags', t)}
     placeholders={placeholders}

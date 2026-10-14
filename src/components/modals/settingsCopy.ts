@@ -405,6 +405,10 @@ You can still generate a single scene yourself from the button above the story.`
     label: 'Face Fix',
     description: 'Re-renders faces in a second pass',
   },
+  imageFileName: {
+    label: 'File Name',
+    description: 'Where ComfyUI saves each image, by world and subject',
+  },
   imageWorkflow: {
     label: 'Workflow (API Format)',
     description: 'Replaces the default ComfyUI graph',

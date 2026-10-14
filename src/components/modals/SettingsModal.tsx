@@ -88,6 +88,8 @@ import { cachedImageBytes, clearCachedImages } from '@/lib/remoteImageCache';
 import { formatBytes } from '@/lib/imageOptim';
 import { DEFAULT_WORLDS, readDeletedDefaultWorlds, clearDeletedDefaultWorlds } from '@/lib/defaultWorlds';
 import { PresetNameDialog } from './PresetNameDialog';
+import { workflowOwnModels } from '@/lib/imageGen/comfyui';
+import { DEFAULT_IMAGE_FILE_NAME } from '@/lib/imageGen/fileName';
 import { PresetHeader } from '@/components/presetHeader/PresetHeader';
 import { presetHeaderActions } from '@/lib/presetHeaderActions';
 import { OPENING_SCENE_CUE, PROMPT_TEXT_DEFAULTS } from '../game/GamePrompts';
@@ -513,6 +515,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     setImageAdetailer,
     imageWorkflow,
     setImageWorkflow,
+    imageFileName,
+    setImageFileName,
     imageInvokeEncoder,
     imageInvokeBoard,
     setImageInvokeBoard,
@@ -955,6 +959,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   // controls even while the engine is running, and vice versa.
   const promptTarget = resolveEndpointForKind(activeKind);
   const promptLocalEngine = promptTarget.localEngine;
+  // The model a ComfyUI workflow loads itself, when it ignores the Model setting.
+  const workflowModels = imageProvider === 'comfyui' ? workflowOwnModels(imageWorkflow) : [];
   const pinnedEndpoint = routableEndpoints.find((p) => p.id === pinnedEndpointId);
   const endpointControl = {
     label: SETTINGS_COPY.promptEndpoint.label,
@@ -1202,14 +1208,20 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                 <Input id="imageApiToken" type="password" value={imageApiToken} onChange={(e) => setImageApiToken(e.target.value)} />
               </Row>
               <Row htmlFor="imageModel" {...rowCopy('imageModel')}>
-                {imageProvider === 'comfyui' ? (
+                {imageProvider === 'comfyui' && workflowModels.length > 0 ? (
+                  // A workflow without %ckpt% loads its own model; the Model setting would change nothing.
+                  <div className="grid gap-1">
+                    <Input id="imageModel" value={workflowModels.join(', ')} disabled readOnly />
+                    <p className="text-helper text-muted-foreground">Set by the workflow, which has no <code>%ckpt%</code>. Change it in the workflow box.</p>
+                  </div>
+                ) : imageProvider === 'comfyui' ? (
                   <TokenAutocomplete
                     single
                     openOnFocus
                     values={imageModel ? [imageModel] : []}
                     onChange={(v) => setImageModel(v[0] ?? '')}
                     options={comfyMeta?.checkpoints ?? []}
-                    placeholder="(server default)"
+                    placeholder={comfyMeta?.checkpoints[0] ? `(first on the server: ${comfyMeta.checkpoints[0]})` : '(first checkpoint on the server)'}
                   />
                 ) : imageProvider === 'novelai' ? (
                   <Select value={imageModel} onValueChange={setImageModel}>
@@ -1319,7 +1331,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                   {...rowCopy('imageWorkflow')}
                   info={<HintInfo>{`Tokens filled in for you:
 
-\`%prompt%\` \`%negative%\` \`%ckpt%\` \`%width%\` \`%height%\` \`%steps%\` \`%cfg%\` \`%seed%\` \`%sampler%\``}</HintInfo>}
+\`%prompt%\` \`%negative%\` \`%ckpt%\` \`%width%\` \`%height%\` \`%steps%\` \`%cfg%\` \`%seed%\` \`%sampler%\` \`%prefix%\``}</HintInfo>}
                 >
                   <div className="grid gap-1.5">
                     <Textarea
@@ -1341,6 +1353,19 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                       <Button variant="outline" size="sm" onClick={() => setShowComfyWorkflow(true)}>{SETTINGS_BUTTONS.howToGetThis}</Button>
                     </div>
                   </div>
+                </Row>
+              )}
+              {advanced && imageProvider === 'comfyui' && (
+                <Row
+                  htmlFor="imageFileName"
+                  {...rowCopy('imageFileName')}
+                  info={<HintInfo>{`Folders and a name under ComfyUI's output folder. ComfyUI adds a counter and \`.png\`.
+
+\`{world}\` \`{subject}\` (an entity's name, or \`turn-12-scene\`) \`{turn}\` \`{preset}\`
+
+A custom workflow takes it where its save node's prefix is \`%prefix%\`.`}</HintInfo>}
+                >
+                  <Input id="imageFileName" value={imageFileName} onChange={(e) => setImageFileName(e.target.value)} placeholder={DEFAULT_IMAGE_FILE_NAME} />
                 </Row>
               )}
               {advanced && imageProvider === 'invokeai' && (
