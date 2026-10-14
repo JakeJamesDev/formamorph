@@ -44,7 +44,7 @@ export function TraitCascadeNotice({ cascade, onDismiss }: { cascade: TraitCasca
  */
 export function SetupTraitList({
   name, groups, traits, picks, stats, selectedTraits, resolveText, resolveTraitText, onTraitSelect,
-  ownerId = PLAYER_OWNER, ownStats, played = false, gates, cascade, onDismissCascade, heading,
+  ownerId = PLAYER_OWNER, ownStats, gates, cascade, onDismissCascade, heading,
 }: {
   name: string;
   /** Replaces the eyebrow and the name heading. */
@@ -66,8 +66,6 @@ export function SetupTraitList({
   ownerId?: string;
   /** An entity owner's own stats, which its trait rows move by id. */
   ownStats?: readonly Stat[];
-  /** Whether the player plays this entity owner, so its rows on player stats show. */
-  played?: boolean;
   /** Each owner's gates; absent shows every trait open. */
   gates?: GateStates;
   cascade?: TraitCascade | null;
@@ -81,10 +79,10 @@ export function SetupTraitList({
     const ownIds = new Set(own.keys());
     const playerIds = new Set(player.keys());
     return (change: StatChange) => {
-      const side = statRowSide(change, ownIds, playerIds, played);
+      const side = statRowSide(change, ownIds, playerIds);
       return side === 'own' ? own.get(change.statId) : side === 'player' ? player.get(change.statId) : undefined;
     };
-  }, [stats, ownerId, ownStats, played]);
+  }, [stats, ownerId, ownStats]);
   const radio = picks?.max === 1;
   const needed = picks ? picks.min - picks.count : 0;
   const shown = traits.filter((trait) => isShown(trait, selectedTraits));

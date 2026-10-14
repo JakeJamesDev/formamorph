@@ -355,7 +355,6 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
               onTraitSelect={props.onTraitSelect}
               ownerId={current.entityId ?? PLAYER_OWNER}
               ownStats={current.entityNode ? ownStatsOf(current.entityId!) : undefined}
-              played={!!current.entityId && playerIds.includes(current.entityId)}
               gates={props.traitGates}
               cascade={props.traitCascade}
               onDismissCascade={props.onDismissTraitCascade}

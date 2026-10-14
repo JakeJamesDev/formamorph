@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
-  applyCodeTraitSwitches, applyOwnedStatTraits, applyPlayedStatTraits, ownerStatTraitsInForce, settleTraits, switchPersonaStats,
+  applyCodeTraitSwitches, applyOwnedStatTraits, applyGlobalRowTraits, gateStatsOf, ownerStatTraitsInForce, settleTraits, switchPersonaStats,
   switchPlayerTrait, type TraitRuntimeState, type TraitWorld,
 } from './traitRuntime';
+import { PLAYER_OWNER } from './scope';
 import { entityStatOwners } from './entityStats';
 import type { Entity, PersonaRef, PlayerStat, StatChange, Trait } from '@/types';
 
@@ -62,11 +63,20 @@ describe('an entity’s own traits change its own stats', () => {
     expect(flip(off, 'bram', 'hardy', true).entityStats).toEqual(on.entityStats);
   });
 
-  it('drops a change on a stat the cast entity doesn’t own, so an NPC’s trait never moves the player', () => {
+  it('moves the global stat for a change on a stat the cast entity doesn’t own, as its row reads it (Q30)', () => {
     const on = flip(state(), 'bram', 'boast', true);
+    expect(on.stats[0]).toMatchObject({ value: 57 });
+    expect(on.entityStats).toEqual(state().entityStats);
+    expect(on.appliedValues).toEqual({ 'bram/boast': { h: 7 } });
+    expect(flip(on, 'bram', 'boast', false).stats).toEqual(state().stats);
+  });
+
+  it('drops a change on a stat that neither the entity nor the world has', () => {
+    const phantom = trait('phantom', [{ statId: 'ghost', value: 7, type: 'starting' }], { name: 'Phantom' });
+    const w: TraitWorld = { ...world(), entities, owners: [world().owners![0], { ...bram, traits: [phantom] }, albus] };
+    const on = flip(state(), 'bram', 'phantom', true, w);
     expect(on.stats).toEqual(state().stats);
     expect(on.entityStats).toEqual(state().entityStats);
-    expect(on.appliedValues).toEqual({});
   });
 
   it('reads the cast entity’s traits in force for its stats, and none for an entity that isn’t an owner', () => {
@@ -107,11 +117,31 @@ describe('an entity’s own traits change its own stats', () => {
   });
 });
 
+describe('the global stats as gates read them', () => {
+  it('derive their bounds from global traits and Global rows alone, whoever is played', () => {
+    const picked = state({ ownedTraits: { albus: { chosen: ['paladin'] }, bram: { chosen: ['hardy'] } } });
+    const gates = (w: TraitWorld) => gateStatsOf(applyOwnedStatTraits(applyGlobalRowTraits(picked, w).state, w), w);
+    // Paladin's h rows reach the global stat even with no one playing Albus; Hardy's Vigor row stays on Bram.
+    expect(gates(world())[PLAYER_OWNER].h).toMatchObject({ max: 110 });
+    expect(gates(asAlbus)[PLAYER_OWNER].h).toMatchObject({ max: 110 });
+    expect(Object.keys(gates(world())[PLAYER_OWNER])).toEqual(['h']);
+    expect(gates(world()).bram.vigor).toMatchObject({ max: 110 });
+  });
+
+  it('switch a global stat off through an unplayed entity’s Global toggle', () => {
+    const quiet = trait('quiet', [], { name: 'Quiet', statToggles: [{ statId: 'h', enabled: false, target: 'global' }] });
+    const w: TraitWorld = { ...world(), entities, owners: [world().owners![0], { ...bram, traits: [quiet] }, albus] };
+    const on = flip(state(), 'bram', 'quiet', true, w);
+    expect(gateStatsOf(on, w)[PLAYER_OWNER].h).toMatchObject({ inert: true });
+    expect(gateStatsOf(flip(on, 'bram', 'quiet', false, w), w)[PLAYER_OWNER].h.inert).toBeUndefined();
+  });
+});
+
 describe('a player owner’s traits', () => {
   const picked = state({ ownedTraits: { albus: { chosen: ['paladin'] } } });
 
-  it('move the world player stat while played, as shipped, and its own stat always', () => {
-    const played = applyOwnedStatTraits(applyPlayedStatTraits(picked, asAlbus).state, asAlbus);
+  it('move the global stat and its own stat while played', () => {
+    const played = applyOwnedStatTraits(applyGlobalRowTraits(picked, asAlbus).state, asAlbus);
     expect(played.stats[0]).toMatchObject({ max: 110, value: 55 });
     expect(own(played, 'albus', 'stock').value).toBe(53);
     expect(played.appliedValues).toEqual({ 'albus/paladin': { h: 5 }, 'albus/paladin/stats': { stock: 3 } });
@@ -121,9 +151,9 @@ describe('a player owner’s traits', () => {
     expect(own(off, 'albus', 'stock').value).toBe(50);
   });
 
-  it('move only its own stat while it isn’t played', () => {
+  it('move the global stat and its own stat while it isn’t played (Q18, Q30)', () => {
     const cast = flip(state(), 'albus', 'paladin', true);
-    expect(cast.stats).toEqual(state().stats);
+    expect(cast.stats[0]).toMatchObject({ max: 110, value: 55 });
     expect(own(cast, 'albus', 'stock').value).toBe(53);
   });
 
@@ -155,8 +185,21 @@ describe('a player owner’s traits', () => {
     expect(own(off, 'albus', 'h')).toMatchObject({ max: 100, value: 20 });
   });
 
+  it('reach the global stat on a shared id through a Global row while the entity isn’t played (Q18)', () => {
+    const oath = trait('oath', [{ statId: 'h', value: 10, type: 'max', target: 'global' }, { statId: 'h', value: 3, type: 'starting', target: 'global' }], { name: 'Oath' });
+    const cast: TraitWorld = {
+      traits: [], groups: [], entities, persona: { source: 'none' },
+      owners: [{ id: 'world', name: '', traits: [], groups: [] }, bram, { ...albus, traits: [oath] }],
+    };
+    const twin = state({ entityStats: { albus: [stat('h', { value: 20 })] } });
+    const on = flip(twin, 'albus', 'oath', true, cast);
+    expect(on.stats[0]).toMatchObject({ max: 110, value: 53 });
+    expect(own(on, 'albus', 'h')).toEqual(own(twin, 'albus', 'h'));
+    expect(flip(on, 'albus', 'oath', false, cast).stats).toEqual(twin.stats);
+  });
+
   it("leave every entity's stat values where they were through a persona switch and back", () => {
-    const played = applyOwnedStatTraits(applyPlayedStatTraits(picked, asAlbus).state, asAlbus);
+    const played = applyOwnedStatTraits(applyGlobalRowTraits(picked, asAlbus).state, asAlbus);
     const moved = { ...played, entityStats: { bram: [stat('vigor', { value: 12 }), stat('trust', { value: 81 })], albus: [stat('stock', { value: 7 })] } };
     const away = switchPersonaStats(moved, asAlbus, world(), name).state;
     const back = switchPersonaStats(away, world(), asAlbus, name).state;
@@ -164,10 +207,10 @@ describe('a player owner’s traits', () => {
     expect(back.stats).toEqual(moved.stats);
   });
 
-  it('keep their own stats where they are on a persona switch', () => {
-    const played = applyOwnedStatTraits(applyPlayedStatTraits(picked, asAlbus).state, asAlbus);
+  it('keep every stat where it is on a persona switch', () => {
+    const played = applyOwnedStatTraits(applyGlobalRowTraits(picked, asAlbus).state, asAlbus);
     const away = switchPersonaStats(played, asAlbus, world(), name).state;
-    expect(away.stats[0]).toMatchObject({ max: 100, value: 50 });
+    expect(away.stats[0]).toMatchObject({ max: 110, value: 55 });
     expect(away.entityStats).toEqual(played.entityStats);
   });
 });

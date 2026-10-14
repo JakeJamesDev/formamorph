@@ -661,7 +661,7 @@ describe('a trait row reveals what it does', () => {
     expect(screen.getByText(/Vigor/)).toHaveTextContent('Vigor: +10');
   });
 
-  it("reads a cast entity's trait changes against its own stats, never the player's", () => {
+  it("reads an entity's trait changes against its own stats first, then the global stats, played or not (Q30)", () => {
     // The player's Health is hidden; Hesk's own Health is not. Dwarf also names Vigor, which Hesk doesn't own.
     const dwarf = T('t-dwarf', 'Dwarf', {
       statChanges: [{ statId: 'health', value: 10, type: 'max' }, { statId: 'vigor', value: 3, type: 'starting' }],
@@ -678,11 +678,11 @@ describe('a trait row reveals what it does', () => {
     });
     const { unmount } = owned(false);
     fireEvent.click(screen.getByRole('button', { name: /Dwarf/ }));
-    expect(screen.getByText(/Health/)).toHaveTextContent('Health: +10 (max)');
-    expect(screen.queryByText(/Vigor:/)).toBeNull();
+    // Unplayed, the row Hesk doesn't own still reaches the global Vigor, and her own Health keeps its id.
+    expect(screen.getByText(/Health:/)).toHaveTextContent('Health: +10 (max)');
+    expect(screen.getByText(/Vigor:/)).toHaveTextContent('Vigor: +3');
     unmount();
 
-    // Played, Hesk's traits also reach the player's stats: her own Health first, then the player's Vigor.
     owned(true);
     fireEvent.click(screen.getByRole('button', { name: /Dwarf/ }));
     expect(screen.getByText(/Health:/)).toHaveTextContent('Health: +10 (max)');

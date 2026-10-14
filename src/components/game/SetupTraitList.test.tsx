@@ -61,7 +61,7 @@ describe('SetupTraitList outside the setup dialog', () => {
     expect(screen.getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Grit: +2', 'Grit: -1 (max)']);
   });
 
-  it('shows an entity owner its own stat changes, and the player stat ones only while played', () => {
+  it('shows an entity owner its own stat changes and the global ones, played or not (Q18, Q30)', () => {
     const resolve = { id: 'resolve', name: 'Resolve', min: 0, max: 10, value: 5 } as Stat;
     const sworn: Trait = {
       id: 'sworn', name: 'Sworn', statChanges: [
@@ -71,9 +71,6 @@ describe('SetupTraitList outside the setup dialog', () => {
     } as Trait;
     const owned = { traits: [sworn], groups: [], picks: null, ownerId: 'ent-1', ownStats: [resolve] };
     view(owned);
-    expect(screen.getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Resolve: +3']);
-    cleanup();
-    view({ ...owned, played: true });
     expect(screen.getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Resolve: +3', 'Grit: +1']);
   });
 

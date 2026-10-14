@@ -20,8 +20,7 @@ import { statCodeName } from '@/lib/statCodeNames';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { traitConflicts, type TraitConflict } from '@/lib/traitEffects';
 import { updateOwnedTrait } from '@/lib/ownedTraits';
-import { canBePlayer } from '@/lib/owners';
-import { statRows, statRowSide, type StatRow, type StatRowSide } from '@/lib/traitTree';
+import { statRowSide, type StatRow, type StatRowSide } from '@/lib/traitTree';
 import { useEditorMode } from '@/lib/editorMode';
 import { HelpButton } from '@/components/HelpButton';
 import { Hint, Meta } from '@/components/ui/typography';
@@ -72,21 +71,11 @@ const ConflictNote = ({ conflict, placeholders, onOpen }: {
   );
 };
 
-/** The line under a world persona's stat sections when its traits change a player stat, which they do only
- *  while it is played. The Custom Persona entity's traits are the player's, so it gets none. */
-export function OwnerStatNote({ owner, traits }: { owner: Entity; traits: readonly Trait[] }) {
-  const { stats, statGroups } = useTraitStore();
-  if (!owner.persona || owner.customPersona) return null;
-  const sideOf = ownerRowSide({ stats, statGroups: statGroups ?? [] }, owner);
-  const named = traits.flatMap(statRows).some((row) => sideOf(row) === 'player');
-  return named ? <Hint>Player stat changes apply only when you play as them</Hint> : null;
-}
-
 /** Whose stat each of an owner's trait rows moves, as play routes it. */
 const ownerRowSide = (world: { stats: Stat[]; statGroups: StatGroup[] }, owner: Entity) => {
   const own = new Set(resolvedEntityStats(world, owner).map((s) => s.id));
-  const player = new Set(playerStatsOf(world.stats, world.statGroups).map((s) => s.id));
-  return (row: StatRow) => statRowSide(row, own, player, canBePlayer(owner));
+  const global = new Set(playerStatsOf(world.stats, world.statGroups).map((s) => s.id));
+  return (row: StatRow) => statRowSide(row, own, global);
 };
 
 /** The picker value of a player stat on an owner's trait, kept apart from an own stat with the same id. */
@@ -252,12 +241,13 @@ const TraitManager = ({
   if (!editingTrait) return null;
 
   const tabs = traitPanelTabsFor(advanced);
-  // An owner's trait changes the owner's own stats; one the player can play also changes the player's.
+  // An owner's trait changes the owner's own stats, and the global stats whoever is played (Q18).
   const statLabel = (name: string) => labelPlaceholders(name, placeholders, { letters: placementLetters, owners: placeholderOwners });
-  // An owner's own stats include its links; the player's leave the Blueprints out.
+  // An owner's own stats include its links; the global stats leave the Blueprints out.
+  const globalStats = traitOwner ? playerStatsOf(stats, statWorld.statGroups) : [];
   const statChoices: StatChoices[] = !traitOwner ? [{ stats }] : [
     { label: statLabel(traitOwner.name), stats: resolvedEntityStats(statWorld, traitOwner) },
-    ...(canBePlayer(traitOwner) ? [{ label: 'Player', stats: playerStatsOf(stats, statWorld.statGroups), player: true }] : []),
+    ...(globalStats.length ? [{ label: 'Global', stats: globalStats, player: true }] : []),
   ];
   const shownTab = tabs.some((t) => t.value === tab) ? tab : 'details';
 
@@ -340,7 +330,6 @@ const TraitManager = ({
 
   const statsPanel = (
     <>
-      {owner && !link && <OwnerStatNote owner={owner} traits={[editingTrait]} />}
       <div data-tour-anchor="trait-stat-changes" className="space-y-2">
         <LabelRow reset={resetControl('statChanges', 'Stat Changes')}>
           <Label>Stat Changes</Label>

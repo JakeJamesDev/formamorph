@@ -346,14 +346,13 @@ To give a world trait or group to one entity, drag it onto the entity's node. It
 
 ### Entity Traits and Stats
 
-An entity's traits change the entity's own stats: Min, Max, Starting Value, Regen and Stat Availability. Its links do the same. A *Hardy* trait on Bram raises Bram's Vigor, never the player's.
+An entity's traits change the entity's own stats: Min, Max, Starting Value, Regen and Stat Availability. Its links do the same. A *Hardy* trait on Bram raises Bram's Vigor.
 
-| Entity | What its trait's stat rows can name |
-|---|---|
-| Cast entity | Its own stats |
-| **Playable**, **Persona-Only** or [Custom Persona](#custom-persona) | Its own stats, and the player's stats. A player stat changes only while the player plays as it. |
+A row can also name a global stat. The picker lists the entity's own stats first, then a **Global** group. Every entity gets that group, played or not. A row on a global stat changes it whoever you play. A *Rampage* trait on a monster can raise the city's Destruction.
 
-> ⚠️ **A row that names a stat the entity doesn't own does nothing.** The **Issues** tab warns about it.
+> 💡 **Pick from the Global group when an entity's stat has the same id as a global stat.** A row with no pick from that group names the entity's own stat first.
+
+> ⚠️ **A row that names a stat neither the entity nor the world has does nothing.** The **Issues** tab warns about it.
 
 ## Links
 <!-- keywords: sync across npcs, live reference, unlink, make independent, break connection, stale warning, inherit, instance, detach, carry to another world -->
@@ -390,7 +389,7 @@ Link rules:
 - **The player chooses at Enter World.** A player can change which linked traits an entity starts with, under the same rules as the entity's own traits.
 - **The AI reads a linked trait like the entity's own**, with that link's overrides.
 
-> ⚠️ **A link's Stat Changes apply only to the player.** On a **Playable** or **Persona-Only** entity, they apply when the player plays as it. On any other entity, they do nothing. When the player switches persona, the stat changes of the link apply and reverse, not the original's.
+> ⚠️ **A link's Stat Changes apply on any entity.** A row changes the entity's own stat with that id, or else the global stat with that id. It acts whoever the player plays, and the link's rows apply, not the original's. A persona switch moves none of them.
 
 ### Overrides
 

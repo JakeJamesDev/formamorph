@@ -2737,7 +2737,7 @@ const traitStatNoTarget: Rule = {
   severity: 'warning',
   section: 'traits',
   summary: (count) => `${count} entity traits change stats that their entity doesn’t own`,
-  // A blank row is an edit in progress. A trait on an entity the player can play may also name a player stat.
+  // A blank row is an edit in progress. A trait on any entity may also name a global stat.
   check: (world) => {
     const statWorld = { stats: world.stats ?? [], statGroups: world.statGroups ?? [] };
     const playerStats = new Set(playerStatsOf(statWorld.stats, statWorld.statGroups).map((s) => s.id));
@@ -2746,7 +2746,7 @@ const traitStatNoTarget: Rule = {
       const owner = owners.get(entity.id);
       if (!owner) return [];
       const own = new Set(resolvedEntityStats(statWorld, entity).map((s) => s.id));
-      const namesOwnedStat = (row: StatRow) => !row.statId || statRowSide(row, own, playerStats, canBePlayer(entity)) !== null;
+      const namesOwnedStat = (row: StatRow) => !row.statId || statRowSide(row, own, playerStats) !== null;
       const name = quote(labelOf(entity.name, world));
       return owner.traits
         .filter((trait) => statRows(trait).some((row) => !namesOwnedStat(row)))

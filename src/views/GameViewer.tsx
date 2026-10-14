@@ -188,7 +188,7 @@ import {
 } from "../lib/traitEffects";
 import { usePlaceholderSession } from "../contexts/PlaceholderSessionContext";
 import {
-  acquireTrait, activeTraits as traitsInForce, applyOwnedStatTraits, applyPlayedStatTraits, entityStatTraitsInForce, heldPlayerTraits, playedStatTraits, seedNewGameStats, startingTraitLog,
+  acquireTrait, activeTraits as traitsInForce, applyOwnedStatTraits, applyGlobalRowTraits, entityStatTraitsInForce, heldPlayerTraits, globalRowTraits, seedNewGameStats, startingTraitLog,
   gateStatsOf, settleTraits, statTraitsInForce, switchPersonaStats, switchPlayerTrait, traitNameIn,
   type GatedTraitResult, type TraitRuntimeState, type TraitWorld,
 } from "../lib/traitRuntime";
@@ -303,11 +303,11 @@ const activeUnderTraits = (
   acquired: readonly Trait[],
   disabledTraitIds: readonly string[],
   traitOrder: Parameters<typeof inAuthoredOrder>[1],
-  /** The played persona's linked stat traits in force on that slice, which switch stats with the rest. */
-  played: readonly Trait[] = [],
+  /** The entities' global-row traits in force on that slice, which switch stats with the rest. */
+  globalRows: readonly Trait[] = [],
 ): Pick<SceneWrites, 'activeStats' | 'activeTraits'> => {
   const inForce = inAuthoredOrder(traitsInForce(acquired, disabledTraitIds), traitOrder);
-  return { activeTraits: inForce, activeStats: enabledStats(stats, activeStatEnabled(stats, [...inForce, ...played])) };
+  return { activeTraits: inForce, activeStats: enabledStats(stats, activeStatEnabled(stats, [...inForce, ...globalRows])) };
 };
 
 // The lore chip, whose blocks play fills per turn instead of from the scene.
@@ -656,8 +656,8 @@ const GameViewer = ({
     const off = new Set(disabledTraitIds);
     return inAuthoredOrder(heldPlayerTraits(chosenTraits, gatedWorld()).filter((t) => !off.has(t.id)), traitOrder);
   }, [chosenTraits, disabledTraitIds, traitOrder, gatedWorld]);
-  // The traits whose stat effects are in force: the active world traits, then the played persona's linked
-  // stat traits. Bounds, stat toggles and stat code all read this set; the AI text reads `activeTraits`.
+  // The traits whose stat effects are in force: the active world traits, then every entity's global
+  // rows. Bounds, stat toggles and stat code all read this set; the AI text reads `activeTraits`.
   const statTraits = useMemo(
     () => statTraitsInForce({ traits: chosenTraits, disabledTraitIds, ownedTraits, entityStats }, gatedWorld()),
     [chosenTraits, disabledTraitIds, ownedTraits, entityStats, gatedWorld],
@@ -1795,7 +1795,7 @@ const GameViewer = ({
   const viewActiveStats = useMemo(
     () => activeUnderTraits(
       viewStats, refreshChosenTraits(viewTraits, traits), viewDisabledTraitIds, traitOrder,
-      playedStatTraits({ ownedTraits: viewOwnedTraits, entityStats: viewEntityStats }, gatedWorld()),
+      globalRowTraits({ ownedTraits: viewOwnedTraits, entityStats: viewEntityStats }, gatedWorld()),
     ).activeStats,
     [viewStats, viewTraits, viewDisabledTraitIds, viewOwnedTraits, viewEntityStats, traitOrder, traits, gatedWorld],
   );
@@ -1880,7 +1880,7 @@ const GameViewer = ({
     return {
       ...activeUnderTraits(
         resolveStatNames(over.playerStats, resolve), held.acquired, held.disabledTraitIds, traitOrder,
-        playedStatTraits({ ...held, entityStats: over.entityStats }, gatedWorld()),
+        globalRowTraits({ ...held, entityStats: over.entityStats }, gatedWorld()),
       ),
       ownedTraits: over.ownedTraits ?? {},
       entityStats: over.entityStats,
@@ -3988,15 +3988,15 @@ const GameViewer = ({
       for (const trait of chosenList) {
         seedState = acquireTrait(seedState, trait, { traits: authoredTraits, groups: traitGroups }).state;
       }
-      // The persona's linked stat traits apply after the world picks; then each entity's own traits apply to its stats.
-      const played = applyPlayedStatTraits({
+      // Every entity's global rows apply after the world picks; then each entity's own traits apply to its stats.
+      const globalRows = applyGlobalRowTraits({
         ...seedState, ownedTraits: ownedTraitStatesFrom(initialOwnedTraits), entityStats: seedEntityStats(statOwnerEntities({ world: codeEntities.world, library: seedLibrary })),
       }, seedWorld);
-      seedState = applyOwnedStatTraits(played.state, seedWorld);
+      seedState = applyOwnedStatTraits(globalRows.state, seedWorld);
       // Logs are write-time strings shown raw, and each trait here is authored (chips intact), so each resolves
       // now with its own pins.
       const traitLabel = (trait: Trait) => resolveTraitText(trait, trait.name);
-      for (const line of startingTraitLog([...chosenList, ...played.applied], traitLabel)) addLogEntry(line);
+      for (const line of startingTraitLog([...chosenList, ...globalRows.applied], traitLabel)) addLogEntry(line);
       commitTraitState(seedState);
       // The seeded entity stats are also the baseline their first changes read from.
       resetEntityStats(seedState.entityStats ?? {});
