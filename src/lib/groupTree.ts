@@ -89,6 +89,53 @@ export function isDescendantGroup<G extends TreeGroup>(groups: G[], ancestorId: 
   return false;
 }
 
+const findGroupNode = <G extends TreeGroup, L extends TreeLeaf>(
+  nodes: GroupTreeNode<G, L>[], id: string,
+): Extract<GroupTreeNode<G, L>, { kind: 'group' }> | undefined => {
+  for (const node of nodes) {
+    if (node.kind !== 'group') continue;
+    if (node.id === id) return node;
+    const inner = findGroupNode(node.children, id);
+    if (inner) return inner;
+  }
+  return undefined;
+};
+
+/** How a tree's leaves take a new group. `orderLeaves: false` is for a tree whose leaves have no `order` (their
+ *  array order is the sibling order): only the groups are renumbered. `placeLeaf` writes a leaf's new group
+ *  where absence, not null, means ungrouped. */
+export interface PromoteOptions<L extends TreeLeaf> {
+  orderLeaves?: boolean;
+  placeLeaf?: (leaf: L, groupId: string | null) => L;
+}
+
+/**
+ * Delete a group. Its subgroups and leaves move up to its parent, into the slot the group held, and the
+ * parent's items are renumbered from there. Leaves come back in the order they went in. Unchanged inputs keep
+ * identity: a missing id returns both arrays as given.
+ */
+export function removeGroupPromotingChildren<G extends TreeGroup, L extends TreeLeaf>(
+  groups: G[], leaves: L[], id: string, { orderLeaves = true, placeLeaf }: PromoteOptions<L> = {},
+): { groups: G[]; leaves: L[] } {
+  const doomed = groups.find((g) => g.id === id);
+  if (!doomed) return { groups, leaves };
+  const tree = buildTree(groups, leaves);
+  const above = doomed.parentId === null ? undefined : findGroupNode(tree, doomed.parentId);
+  const siblings = above ? above.children : tree;
+  const parentId = above ? above.id : null;
+  const slots = siblings
+    .flatMap((node) => (node.id === id && node.kind === 'group' ? node.children : [node]))
+    .filter((node) => orderLeaves || node.kind === 'group');
+  const orderOf = new Map(slots.map((node, i) => [node.id, i]));
+  const nextGroups = groups.filter((g) => g.id !== id).map((g) => (orderOf.has(g.id) ? { ...g, parentId, order: orderOf.get(g.id) } : g));
+  const nextLeaves = leaves.map((leaf) => {
+    if (orderLeaves) return orderOf.has(leaf.id) ? { ...leaf, groupId: parentId, order: orderOf.get(leaf.id) } : leaf;
+    if (leaf.groupId !== id) return leaf;
+    return placeLeaf ? placeLeaf(leaf, parentId) : { ...leaf, groupId: parentId };
+  });
+  return { groups: nextGroups, leaves: nextLeaves };
+}
+
 /**
  * Deep-duplicate a leaf or a whole group subtree, inserting the copy immediately after the original within
  * the same parent/group. Groups bring all nested subgroups + leaves, each with a fresh id and remapped parent

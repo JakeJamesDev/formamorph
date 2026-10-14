@@ -67,6 +67,13 @@ describe('removeLocationPromotingChildren', () => {
     expect(out.find((l) => l.id === 'E')?.parentId).toBe('A'); // E promoted from B up to A
   });
 
+  it('puts the children where the removed node stood among its siblings', () => {
+    const flat = [L('P'), L('A'), L('Q'), L('B', 'A'), L('C', 'A'), L('R')];
+    const out = removeLocationPromotingChildren(flat, 'A');
+    expect(out.map((l) => l.id)).toEqual(['P', 'B', 'C', 'Q', 'R']);
+    expect(buildLocationTree(out).map((n) => n.id)).toEqual(['P', 'B', 'C', 'Q', 'R']);
+  });
+
   it('is a no-op for an unknown id', () => {
     expect(removeLocationPromotingChildren(nested, 'nope')).toBe(nested);
   });

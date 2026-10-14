@@ -4,7 +4,7 @@
 
 import {
   buildTree, flattenTree, getDropProjection, applyDrop, duplicateNode,
-  removeChildrenOf as removeChildrenOfGeneric,
+  removeChildrenOf as removeChildrenOfGeneric, removeGroupPromotingChildren,
   type GroupTreeNode, type FlatTreeNode, type TreeLeaf,
 } from './groupTree';
 import type { Stat, StatGroup } from '@/types';
@@ -65,29 +65,10 @@ export function duplicateStatNode(
 export function removeStatGroup<L extends TreeLeaf = Stat>(
   groups: StatGroup[], stats: L[], id: string,
 ): { groups: StatGroup[]; stats: L[] } {
-  const doomed = groups.find((g) => g.id === id);
-  if (!doomed) return { groups, stats };
-  const tree = buildTree(groups, stats);
-  const above = doomed.parentId === null ? undefined : findGroupNode(tree, doomed.parentId);
-  const siblings = above?.kind === 'group' ? above.children : tree;
-  const parentId = above?.kind === 'group' ? above.id : null;
-  // The children take the group's place among its siblings, and the parent's items are renumbered from there.
-  const slots = siblings.flatMap((node) => (node.id === id && node.kind === 'group' ? node.children : [node]));
-  const orderOf = new Map(slots.map((node, i) => [node.id, i]));
-  const nextGroups = groups.filter((g) => g.id !== id).map((g) => (orderOf.has(g.id) ? { ...g, parentId, order: orderOf.get(g.id) } : g));
-  const nextStats = stats.map((s) => (orderOf.has(s.id) ? { ...s, groupId: parentId, order: orderOf.get(s.id) } : s));
-  return { groups: nextGroups, stats: statsInTreeOrder(nextGroups, nextStats) };
+  const next = removeGroupPromotingChildren(groups, stats, id);
+  if (next.groups === groups) return { groups, stats };
+  return { groups: next.groups, stats: statsInTreeOrder(next.groups, next.leaves) };
 }
-
-const findGroupNode = <L extends TreeLeaf>(nodes: GroupTreeNode<StatGroup, L>[], id: string): GroupTreeNode<StatGroup, L> | undefined => {
-  for (const node of nodes) {
-    if (node.kind !== 'group') continue;
-    if (node.id === id) return node;
-    const inner = findGroupNode(node.children, id);
-    if (inner) return inner;
-  }
-  return undefined;
-};
 
 /** One node of the in-game panel's stat layout: a collapsible group with what it holds, or one stat. */
 export type StatLayoutNode<T> =
