@@ -61,6 +61,22 @@ describe('SetupTraitList outside the setup dialog', () => {
     expect(screen.getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Grit: +2', 'Grit: -1 (max)']);
   });
 
+  it('shows an entity owner its own stat changes, and the player stat ones only while played', () => {
+    const resolve = { id: 'resolve', name: 'Resolve', min: 0, max: 10, value: 5 } as Stat;
+    const sworn: Trait = {
+      id: 'sworn', name: 'Sworn', statChanges: [
+        { statId: 'resolve', value: 3, type: 'starting' },
+        { statId: 'grit', value: 1, type: 'starting' },
+      ],
+    } as Trait;
+    const owned = { traits: [sworn], groups: [], picks: null, ownerId: 'ent-1', ownStats: [resolve] };
+    view(owned);
+    expect(screen.getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Resolve: +3']);
+    cleanup();
+    view({ ...owned, played: true });
+    expect(screen.getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Resolve: +3', 'Grit: +1']);
+  });
+
   it('offers a max-one group as one choice at most', () => {
     const onTraitSelect = view({ selectedTraits: ['dockhand'] });
     expect(screen.getAllByRole('radio')).toHaveLength(2);

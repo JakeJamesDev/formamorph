@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { PLAYER_OWNER, gateOf, type GateStates, type GroupPickState } from '@/lib/traitGates';
 import { gateLine } from '@/lib/traitGateLine';
 import { isAlwaysOn, isDormant, isShown } from '@/lib/traitEffects';
+import { statRowSide } from '@/lib/traitTree';
 import type { Stat, StatChange, Trait, TraitGroup } from '@/types';
 
 /** What the last selection change turned off, by name, and the pick that caused it. */
@@ -43,7 +44,7 @@ export function TraitCascadeNotice({ cascade, onDismiss }: { cascade: TraitCasca
  */
 export function SetupTraitList({
   name, groups, traits, picks, stats, selectedTraits, resolveText, resolveTraitText, onTraitSelect,
-  ownerId = PLAYER_OWNER, gates, cascade, onDismissCascade, heading,
+  ownerId = PLAYER_OWNER, ownStats, played = false, gates, cascade, onDismissCascade, heading,
 }: {
   name: string;
   /** Replaces the eyebrow and the name heading. */
@@ -63,12 +64,27 @@ export function SetupTraitList({
   onTraitSelect: (traitId: string, ownerId: string) => void;
   /** The owner whose traits these are; the world's by default. */
   ownerId?: string;
+  /** An entity owner's own stats, which its trait rows move by id. */
+  ownStats?: readonly Stat[];
+  /** Whether the player plays this entity owner, so its rows on player stats show. */
+  played?: boolean;
   /** Each owner's gates; absent shows every trait open. */
   gates?: GateStates;
   cascade?: TraitCascade | null;
   onDismissCascade?: () => void;
 }) {
-  const statById = useMemo(() => new Map(stats.map((stat) => [stat.id, stat])), [stats]);
+  // The stat a change moves: the player's for the world, and an entity's own or the player's as its row routes.
+  const statOf = useMemo(() => {
+    const player = new Map(stats.map((stat) => [stat.id, stat]));
+    if (ownerId === PLAYER_OWNER) return (change: StatChange) => player.get(change.statId);
+    const own = new Map((ownStats ?? []).map((stat) => [stat.id, stat]));
+    const ownIds = new Set(own.keys());
+    const playerIds = new Set(player.keys());
+    return (change: StatChange) => {
+      const side = statRowSide(change, ownIds, playerIds, played);
+      return side === 'own' ? own.get(change.statId) : side === 'player' ? player.get(change.statId) : undefined;
+    };
+  }, [stats, ownerId, ownStats, played]);
   const radio = picks?.max === 1;
   const needed = picks ? picks.min - picks.count : 0;
   const shown = traits.filter((trait) => isShown(trait, selectedTraits));
@@ -84,7 +100,7 @@ export function SetupTraitList({
     const line = gateLine(gate);
     const description = resolveTraitText(trait, trait.playerDescription ?? '').trim();
     const changes = trait.statChanges
-      .map((change) => ({ change, stat: statById.get(change.statId) }))
+      .map((change) => ({ change, stat: statOf(change) }))
       .filter((row): row is { change: StatChange; stat: Stat } => row.stat !== undefined && row.stat.hidden !== true);
     return (
       <div

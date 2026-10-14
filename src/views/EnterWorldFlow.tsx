@@ -540,6 +540,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
           traitLibrary={entryWorld.library}
           resolveEntityText={resolveEntityText}
           stats={rawStats}
+          statGroups={rawStatGroups}
           locations={offeredStartLocations(entryDraft.persona, personaPickContext)}
           resolveText={resolvePH}
           resolveTraitText={resolveTraitText}
