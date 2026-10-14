@@ -141,15 +141,15 @@ export function placeholderCycleExclusions(placeholders: readonly Placeholder[],
 }
 
 /**
- * The box a placeholder actually sits in. An owner reference naming a placeholder that isn't here, or one
+ * The box a placeholder actually sits in. An `ownerId` naming a placeholder that isn't here, or one
  * that no longer holds it as a value, holds nothing — so the placeholder reads as top level rather than
  * disappearing into a box nothing draws.
  */
 export function holderOf(placeholders: readonly Placeholder[], placeholder: Placeholder): string | null {
-  const ownerId = placeholder.ownerId ?? null;
-  if (!ownerId) return null;
-  const owner = placeholders.find((p) => p.id === ownerId);
-  return owner && holdsAsChip(owner, placeholder.id) ? ownerId : null;
+  const parentId = placeholder.ownerId ?? null;
+  if (!parentId) return null;
+  const parent = placeholders.find((p) => p.id === parentId);
+  return parent && holdsAsChip(parent, placeholder.id) ? parentId : null;
 }
 
 /** True when `id` belongs to another placeholder — what the palette and an insert menu's root leave out. */
@@ -164,26 +164,26 @@ export function topLevelPlaceholders(placeholders: readonly Placeholder[], all: 
   return placeholders.filter((p) => holderOf(all, p) === null);
 }
 
-/** The owner chain above a placeholder, outermost first. Empty at the top level. */
+/** The parent placeholders above a placeholder, outermost first. Empty at the top level. */
 export function placeholderOwnerPath(placeholders: readonly Placeholder[], id: string): Placeholder[] {
   const byId = new Map(placeholders.map((p) => [p.id, p]));
   const chain: Placeholder[] = [];
   const seen = new Set<string>([id]);
   let at = byId.get(id);
   while (at) {
-    const ownerId = holderOf(placeholders, at);
-    if (!ownerId || seen.has(ownerId)) break;
-    seen.add(ownerId);
-    const owner = byId.get(ownerId);
-    if (!owner) break;
-    chain.unshift(owner);
-    at = owner;
+    const parentId = holderOf(placeholders, at);
+    if (!parentId || seen.has(parentId)) break;
+    seen.add(parentId);
+    const parent = byId.get(parentId);
+    if (!parent) break;
+    chain.unshift(parent);
+    at = parent;
   }
   return chain;
 }
 
 /**
- * A placeholder's name as it reads away from its owner — `Molly › Northern`, so a chip in a location
+ * A placeholder's name as it reads away from its parent placeholder — `Molly › Northern`, so a chip in a location
  * description says which Northern it means. Bare at the top level, and bare inside the tree, where the
  * indent already supplies the context.
  */
@@ -227,8 +227,8 @@ export function placeholderRows(placeholders: readonly Placeholder[], all: reado
   const out: PlaceholderTreeRow[] = [];
   const walk = (placeholder: Placeholder, parentId: string | null, holderId: string | null, depth: number, seen: ReadonlySet<string>) => {
     const id = parentId === null ? placeholder.id : `${parentId}${ROW_SEP}${placeholder.id}`;
-    const owner = holderOf(all, placeholder);
-    out.push({ id, parentId, depth, placeholder, holderId, shared: holderId !== null && owner !== holderId });
+    const parent = holderOf(all, placeholder);
+    out.push({ id, parentId, depth, placeholder, holderId, shared: holderId !== null && parent !== holderId });
     if (seen.has(placeholder.id)) return;
     const next = new Set([...seen, placeholder.id]);
     for (const targetId of chipTargetsOf(placeholder)) {
@@ -380,7 +380,7 @@ function withoutSharedWeightsFor(parent: Placeholder, targetId: string): Placeho
   return kept.length ? { ...rest, sharedWeights: Object.fromEntries(kept) } : rest;
 }
 
-/** Drop the owner reference, leaving the rest of the placeholder alone. */
+/** Drop the `ownerId`, leaving the rest of the placeholder alone. */
 function released(placeholder: Placeholder): Placeholder {
   if (placeholder.ownerId === undefined) return placeholder;
   const { ownerId: _ownerId, ...rest } = placeholder;
@@ -395,7 +395,7 @@ export function promotePlaceholder(placeholders: Placeholder[], id: string): Pla
 }
 
 /**
- * Clear the owner reference wherever the owner no longer holds it as a value. Removing a chip from a value
+ * Clear `ownerId` wherever the parent placeholder no longer holds it as a value. Removing a chip from a value
  * list is what releases what it pointed at, so where a placeholder sits and what it belongs to can never
  * disagree. Idempotent, and returns its input untouched when nothing needs releasing.
  */
@@ -410,9 +410,9 @@ export function releasePlaceholderOwners(placeholders: Placeholder[]): Placehold
 export function ownedDescendants(placeholders: readonly Placeholder[], id: string): Placeholder[] {
   const out: Placeholder[] = [];
   const seen = new Set<string>([id]);
-  const walk = (ownerId: string) => {
+  const walk = (parentId: string) => {
     for (const p of placeholders) {
-      if (seen.has(p.id) || holderOf(placeholders, p) !== ownerId) continue;
+      if (seen.has(p.id) || holderOf(placeholders, p) !== parentId) continue;
       seen.add(p.id);
       out.push(p);
       walk(p.id);
@@ -469,7 +469,7 @@ function orderChipValues(parent: Placeholder, order: readonly string[]): Placeho
   return { ...parent, values };
 }
 
-/** Rebuild the array so top-level placeholders read in `order`, leaving owned ones beside their owners. */
+/** Rebuild the array so top-level placeholders read in `order`, leaving owned ones beside their parent placeholders. */
 function orderTopLevel(placeholders: Placeholder[], order: readonly string[]): Placeholder[] {
   const rank = new Map(order.map((id, i) => [id, i]));
   const top = placeholders.filter((p) => rank.has(p.id));

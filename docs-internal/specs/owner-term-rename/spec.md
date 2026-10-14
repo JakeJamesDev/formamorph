@@ -43,6 +43,7 @@ Settled with the user on 2026-10-14.
 | T07-5 | The `self` card keeps `(global)` in its signature; its Stat row names the scope, as `(world stat)` or `(Blueprint stat)`. An entity box shows the stat plus Owners |
 | T08-1 | Q3 applies only where wording names the own-vs-Link split in another term. The Link panel, Detach and Overrides strings already say Link or Linked, so they stay |
 | T09-1 | S1's unchanged assertions cover behavior (which warnings fire, counts, targets). A ticket that owns user-visible copy updates the expected strings for that copy. Ticket 09 owns the Test Bench warning strings |
+| T11-1 | Bundled world prose (the Emberwatch readme) moves to owner wording, and the term guard scans bundled worlds. Prose only; no key or shape change |
 
 ## User Stories
 

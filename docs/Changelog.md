@@ -51,7 +51,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Under Staged thinking, each character now plans its turn with its own stats in view.** Its planning request lists its stats after its background, as the narration sees them. It still never sees your stats.
     - **The Test Bench's AI Context tab now lists a Persona block, before Stats and Traits.** It shows your Custom Persona entity's traits and stats as the AI reads them. A world with no Custom Persona entity shows it empty.
   - **Stat Conditions:**
-    - **Test Bench warns when a trait requires a stat it changes, or a percent of a stat with no range.** A Condition on a stat its bearer lacks shows as an unresolved requirement.
+    - **Test Bench warns when a trait requires a stat it changes, or a percent of a stat with no range.** A Condition on a stat its owner lacks shows as an unresolved requirement.
     - **The Availability tab can gate a trait on a stat, such as Rage >= 80.** Pick a stat from the **Requires** picker, then pick the operator from a list and set the number and Raw or %. **Not** flips it.
     - **Stat-gated traits turn off and return in play as their stat crosses the threshold.** Each turn reads the stats once, after AI changes, regen and stat code land. A trait's own effects never flip it back that turn. Hand switch-offs stay off.
   - **Visibility Rules:**
@@ -71,10 +71,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **A hover card on `self`, `stats`, `clock` and the other code globals now has Read in the Guide.** It opens the global's section. Tool script globals link to new headings in the Tools doc.
     - **Hover cards in stat code now have Find All Uses, listing every line that uses that exact item.** It works for stats, traits, placeholders, entities and dictionaries. Each row names the box and line, and a click opens that box at the line. Same-named items on other owners stay out.
     - **Hover cards on `persona` and Blueprint `owner` names now show the item each reached entity holds.** Where those entities hold different items, the card lists only the entities. With one playable entity, a `persona.stats` card shows that entity's own values.
-  - **Owners:**
-    - **World files now name a requirement's owner under `owner`, and older files with `bearer` still load.** Character cards and library entities read both keys too. Apps from v3.1 and v3.2 misread requirement targets in worlds saved after this change until they update.
-    - **The requirement picker now says Same Owner, and its search field says Search owners.** The `owner` name in stat code now says a Blueprint stat's code runs once for each owner.
-    - **Hover cards in stat code now show one Owners row on trait, stat and placeholder cards.** A world stat or placeholder names its scope in the signature and has no Owners row. A Blueprint stat names its scope too. A nested placeholder shows its Parent Placeholder.
+  - **The World Editor now says Owner, not Bearer, for the entity or dictionary that holds a trait, stat or placeholder.** The picker says **Same Owner**, and hover cards show one Owners row. World files save a requirement's owner under `owner`; files with `bearer` still load. Apps from v3.1 and v3.2 misread these requirements until they update.
   - **Selecting a placed chip now opens Chip Options, a dialog that shows what the AI reads as you pick.** Entities and Persona chips gain **Only With**, **Include** and **Stat Detail** rows, and a filter icon when Only With is on. Those picks show as raw text in older versions.
   - **The AI now updates your stats with fewer wrong-direction and made-up changes.** It answers with a change for every stat, 0 included. An endpoint that can't take that format gets the old reply style, and the AI context viewer notes it.
   - **The World Editor's Content group now lists Entities first and Stats last.** The order is Entities, Locations, Traits, Stats on the side rail and the mobile Sections list.
@@ -89,7 +86,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **`entity-stats-probe.cli.ts` names each missed and invented change, and tests stat prompts from any git ref.** The `S0` arm sends the stat prompts as committed at `--s0-ref`. A cell table lists each case's missed and invented changes per arm.
     - **`persona-stats-chip-probe.cli.ts` compares the Stats chip with and without the played persona's stats.** It runs narration, storyboard and choices cases on Sedge Landing, with a name clash, and reports uptake, leaks and numbered names.
   - **The Design System page and showcase now document the code hover card and the Find All Uses list.** The showcase shows the card for each kind of name, and the list, in the light and dark themes.
-  - **Trait Availability rules can compare a stat to a number in world and card JSON.** Six operators, raw or percent of the span, any bearer. Setup reads each stat's authored start.
+  - **Trait Availability rules can compare a stat to a number in world and card JSON.** Six operators, raw or percent of the span, any owner. Setup reads each stat's authored start.
   - **Gallery images in world and card JSON are now objects that can carry a Visibility rule.** Each `images` element is `{ data, requires? }`, and string galleries migrate on load. A card's `extraImages` follow, and `primaryImageRequires` holds slot 0's rule.
   - **`entity-stats-probe.cli.ts` compares three request shapes for entity stats against today's stat pass.** One call with text lines, one call per entity, and one call with a JSON schema run on Sedge Landing cases with shared stat names. It reports exact replies, misses, invented and misattributed changes, latency and tokens.
   - **The player name header probe compares the narration prompt with and without the player's name in its persona heading.** It scores name leaks and stat tabulation on the default endpoint.
@@ -105,8 +102,6 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Formaquestion:**
     - **With Semantic Search on, Formaquestion's Ask now leaves out weak meaning matches, so answers stay on topic.** A weak match took the place of a better section and could send Take Me There to the wrong screen.
     - **The placeholder and tag suggestion lists of an editor field no longer cover the help window.** A click where a list and the help window overlap now reaches the help window.
-  - **Owners:**
-    - **The Emberwatch readme now says owner where it said bearer.** Its Same-owner gates entry matches the requirement picker's **Same Owner** label.
   - **The in-game Map no longer shows Connection travel hints, only the lines.** Hints often hold clues or spoilers about a route. The World Editor canvas still shows them.
   - **Loading a save in game no longer shows stat changes from the turn before the load.** Your stats and every entity's stats start with no change shown.
   - **A dictionary entry's Whole Words checkbox now works with Regex keywords.** `wands?` no longer matches inside *wander*. Letters with accents now count as part of a word, so *caf* no longer matches inside *café*. Imported SillyTavern regex entries with whole words on now match whole words only.

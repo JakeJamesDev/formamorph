@@ -242,7 +242,7 @@ function cardIndex(owners: CodeOwners, world: CodeCardWorld) {
       const owned = reached ?? (home ? [owners.codeName(home.name)] : []);
       return {
         placeholder: effective,
-        ...(!owned.length ? { scope: 'world' as const } : {}),
+        ...(!reached && !home ? { scope: 'world' as const } : {}),
         owners: owned,
         ...(parent ? { parent: owners.codeName(parent.name) } : {}),
         pins: pinsTargeting(world, placeholder.id).map((row) => `${row.label}: ${valueText(row.pin.valueId, row.pin.value)}`),
