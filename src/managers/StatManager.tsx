@@ -335,8 +335,9 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
           onValueChange={(unit: RegenUnit) => apply({ regenUnit: unit, regen: regenPerHour(regenShown, unit) })}
         >
           <SelectTrigger className="w-auto shrink-0 gap-1 px-2" aria-label="Regen Unit">
-            {/* Every label stacks invisibly under the value, so the trigger holds the widest one's width. */}
-            <span className="grid text-left">
+            {/* Every label stacks invisibly under the value, so the trigger holds the widest one's width.
+                `!grid` beats the trigger's `[&>span]:line-clamp-1`, which would lay the labels side by side. */}
+            <span className="!grid text-left">
               {REGEN_UNITS.map((unit) => (
                 <span key={unit} aria-hidden className="invisible col-start-1 row-start-1">{REGEN_UNIT_LABELS[unit]}</span>
               ))}
