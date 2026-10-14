@@ -4,12 +4,17 @@
 import type { PlayerStat, Trait } from '@/types';
 import { applyRegen } from './statChanges';
 import { activeStatEnabled } from './traitEffects';
+import type { Scoped } from './scope';
 
-export { PLAYER_OWNER } from './traitGates';
+export { PLAYER_OWNER } from './scope';
 
 /** Runtime stat values by owner id, each owner's stats in their own order. A stat id is unique only
  *  within its owner. */
 export type OwnerStats = Readonly<Record<string, readonly PlayerStat[]>>;
+
+/** Every stat value in play in two parts: the global stats, and each entity's by its id. */
+export const statScope = (state: { stats: readonly PlayerStat[]; entityStats?: OwnerStats }): Scoped<readonly PlayerStat[]> =>
+  ({ global: state.stats, owners: state.entityStats ?? {} });
 
 /** One owner as the stat runtime reads it. */
 export interface StatOwner {
