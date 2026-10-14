@@ -10,8 +10,9 @@ import { filledScripts, firstCodeAt, SCRIPT_TIMING_LABEL, type ScriptHome } from
 /** The two timings a stat's Code tab shows a box for. */
 export type StatCodeTiming = 'before' | 'after';
 
-/** The timings the runner runs over a turn's stats: the two boxes, and At Game Start before the opening. */
-export type RunTiming = StatCodeTiming | 'start';
+/** The timings the runner runs over a turn's stats: the two boxes, At Game Start before the opening, and During
+ *  AI Output, which runs one narration sentence at a time. */
+export type RunTiming = StatCodeTiming | 'start' | 'output';
 
 /** Whether a run reads the turn's starting state: no ask, no regen and every delta zero. */
 export const readsTurnStart = (timing: RunTiming): boolean => timing !== 'after';

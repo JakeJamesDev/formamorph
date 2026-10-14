@@ -12,8 +12,9 @@ import type { TransportSink } from './requestTransport';
 export type NarrationEvent =
   /** The endpoint accepted the request: this turn's narration replaces the last one from here. */
   | { type: 'opened' }
-  /** A completed sentence, once and in order. `index` restarts at 0 after a retract. */
-  | { type: 'sentence'; index: number; text: string }
+  /** A completed sentence, once and in order. `index` restarts at 0 after a retract. `full` is the running
+   *  text when it completed, the in-progress tail included. */
+  | { type: 'sentence'; index: number; text: string; full: string }
   /** The running narration: `text` in full, `revealed` up to its last complete sentence. `boundary` marks
    *  a delta that completed at least one sentence. */
   | { type: 'display'; text: string; revealed: string; boundary: boolean }
@@ -47,8 +48,8 @@ export function narrationStream(...listeners: NarrationListener[]): TransportSin
   let persisted = false;
   let closed = false;
 
-  const emitSentencesUpTo = (segments: string[], end: number) => {
-    for (; emittedCount < end; emittedCount++) emit({ type: 'sentence', index: emittedCount, text: segments[emittedCount] });
+  const emitSentencesUpTo = (segments: string[], end: number, full: string) => {
+    for (; emittedCount < end; emittedCount++) emit({ type: 'sentence', index: emittedCount, text: segments[emittedCount], full });
   };
 
   return (event) => {
@@ -67,7 +68,7 @@ export function narrationStream(...listeners: NarrationListener[]): TransportSin
         // The last segment is the sentence still in progress.
         const complete = segments.length - 1;
         const boundary = complete > emittedCount;
-        emitSentencesUpTo(segments, complete);
+        emitSentencesUpTo(segments, complete, text);
         emit({ type: 'display', text, revealed: prefixBeforeLast(text, segments), boundary });
         // Added once, so a stop before any text leaves no partial; refreshed per sentence, not per token.
         if (persisted ? boundary : text.length > 0) {
@@ -86,7 +87,7 @@ export function narrationStream(...listeners: NarrationListener[]): TransportSin
       case 'done': {
         closed = true;
         const segments = splitSentenceSegments(event.text);
-        emitSentencesUpTo(segments, segments.length);
+        emitSentencesUpTo(segments, segments.length, event.text);
         emit({ type: 'finished', text: event.text });
         return;
       }

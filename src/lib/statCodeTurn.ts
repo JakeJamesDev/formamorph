@@ -2,7 +2,7 @@ import type {
   CascadeOffTraitIds, CodeBounds, CodePins, Dictionary, EntityStatValues, OwnedTraitStates, Placeholder, PlayerStat, Script, Trait,
 } from '@/types';
 import {
-  CODE_BOUND_FIELDS, executeStatCode, keyedEntities, type EntityTraitWrites, type KeyedEntities, type PlaceholderWrite,
+  CODE_BOUND_FIELDS, executeStatCode, keyedEntities, type EntityTraitWrites, type KeyedEntities, type NarrationInput, type PlaceholderWrite,
   type SandboxStats, type StatClock, type StatCodeResult, type StatTurnInputs, type StatWrite, type TraitWrite, type ValueAndMax,
 } from './statCodeExecutor';
 import { statCodeName, statCodeNamed } from './statCodeNames';
@@ -19,7 +19,7 @@ import {
 } from './traitRuntime';
 import type { GateStats } from './traitGates';
 import { readsTurnStart, type RunTiming } from './statCodeTiming';
-import { filledScriptsAt, inRunOrder, scriptLabel } from './scripts';
+import { filledScriptsAt, inRunOrder, SCRIPT_TIMING_LABEL, scriptLabel } from './scripts';
 import { clamp } from './utils';
 import type { OwnerId } from './scope';
 
@@ -38,9 +38,13 @@ export interface StatCodeTraitResult {
 /** Everything one turn hands to stat code. The forward turn and the re-roll both build one of these; a turn
  *  with no stat response builds one with no asks. */
 export interface StatCodeTurn {
-  /** Which timing's scripts run. `before` and `start` run over the turn's starting state, reading every `delta`
-   *  as zero and `previous` as `self` whatever the turn carries. `after`, the default, runs over the asks and the regen. */
+  /** Which timing's scripts run. `before`, `start` and `output` run over the turn's starting state, reading every
+   *  `delta` as zero and `previous` as `self` whatever the turn carries. `after`, the default, runs over the asks
+   *  and the regen. `output` runs one sentence: see `narration`. */
   timing?: RunTiming;
+  /** The sentence an `output` run rewrites. The run's scripts chain in run order: each reads the sentence the
+   *  one before it left. Their writes to anything else merge over one snapshot, the later one winning. */
+  narration?: NarrationInput;
   /** The world's own scripts, which run with no `self` and no `owner`. Absent ⇒ none. */
   worldScripts?: readonly Script[];
   /** Every stat as the turn's pipeline left it: AI asks and regen applied, code not yet run. Names are the
@@ -109,6 +113,8 @@ export interface StatCodeTurnResult {
   /** The one stat snapshot every settle in the run read (Q19): asks, regen, `penalties` and code writes landed,
    *  before any trait switch moved a stat. */
   gateStats: GateStats;
+  /** The sentence an `output` run left: as it came when no script changed it. Absent on any other run. */
+  sentence?: string;
 }
 
 /** Placeholder id → what code pinned it to, or null where code unpinned it. An Object's pin is a list. */
@@ -279,9 +285,9 @@ function ownerRun<O extends RunOwner>(
   const named = statCodeNamed(owner.stats, placeholderDefs);
   const previous = new Map(statCodeNamed(owner.previous, placeholderDefs).map((stat) => [stat.id, stat]));
   const asks = new Map((owner.asks ?? []).map((ask) => [ask.id, ask]));
-  // Only what this turn knows; the executor reads a missing part as untouched. The before box and the start
-  // scripts run at the turn's start, so they hand over nothing at all: the executor then reads `previous` as
-  // `self` and every delta source as zero, whatever the turn it rides in already holds.
+  // Only what this turn knows; the executor reads a missing part as untouched. The before box, the start
+  // scripts and the output scripts run at the turn's start, so they hand over nothing at all: the executor then
+  // reads `previous` as `self` and every delta source as zero, whatever the turn it rides in already holds.
   const inputs: Record<string, StatTurnInputs> = readsTurnStart(timing) ? {} : Object.fromEntries(named.map((stat) => {
     const before = previous.get(stat.id);
     const ask = asks.get(stat.id);
@@ -358,27 +364,33 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
   const dictionaries = sandboxDictionaries(codeDictionaries(placeholderSet?.dictionaries, placeholderDefs), sandbox?.owners);
   /** A script's name in the logs: its stat's, else its own name or the world-and-timing fallback. */
   const whoRan = ({ stat, script }: ScriptUnit) => (stat ? `Stat ${stat.name}` : `Script ${scriptLabel(script, WORLD_OWNER)}`);
-  await Promise.all(runs.map(async (run) => {
-    const ownerEntry = ownerEntries.get(run);
-    await Promise.all(run.units.map(async (unit) => {
-      const { stat, script } = unit;
-      const result = await executeStatCode(script.code, [...globalStats.stats], stat, {
-        clock: turn.clock, turn: globalStats.turn, enabled: globalStats.enabled, placeholders, traits, ...inPlay, owner: ownerEntry, dictionaries,
-      });
-      if (result.error) {
-        console.error(`Error executing code for ${whoRan(unit)}:`, result.error);
-        return;
-      }
-      unit.writes = {
-        stats: targetWrites(stat, result, run.owner.id),
-        placeholders: result.placeholders ?? [],
-        ...(result.traits || result.entities ? { traits: { world: result.traits ?? [], entities: result.entities ?? [] } } : {}),
-      };
-      warnDroppedWrites(whoRan(unit), result);
-    }));
-  }));
   // Run order: ordered scripts first, then owner order and stat order, so the later write wins.
-  const inOrder = inRunOrder(runs.flatMap((run) => run.units.map((unit) => ({ ...unit, owner: ownerEntries.get(run) }))));
+  const ordered = inRunOrder(runs.flatMap((run) => run.units.map((unit) => ({ unit, run, script: unit.script }))));
+  // The sentence a During AI Output run hands from one script to the next.
+  let sentence = timing === 'output' ? turn.narration?.sentence : undefined;
+  const runUnit = async ({ unit, run }: (typeof ordered)[number]) => {
+    const { stat, script } = unit;
+    const result = await executeStatCode(script.code, [...globalStats.stats], stat, {
+      clock: turn.clock, turn: globalStats.turn, enabled: globalStats.enabled, placeholders, traits, ...inPlay,
+      owner: ownerEntries.get(run), dictionaries,
+      ...(sentence === undefined || !turn.narration ? {} : { narration: { ...turn.narration, sentence } }),
+    });
+    if (result.error) {
+      console.error(`Error executing code for ${whoRan(unit)} (${SCRIPT_TIMING_LABEL[script.timing]}):`, result.error);
+      return;
+    }
+    if (result.sentence !== undefined) sentence = result.sentence;
+    unit.writes = {
+      stats: targetWrites(stat, result, run.owner.id),
+      placeholders: result.placeholders ?? [],
+      ...(result.traits || result.entities ? { traits: { world: result.traits ?? [], entities: result.entities ?? [] } } : {}),
+    };
+    warnDroppedWrites(whoRan(unit), result);
+  };
+  // A sentence chains through its scripts, so they run one after the other; every other timing runs them together.
+  if (timing === 'output') for (const entry of ordered) await runUnit(entry);
+  else await Promise.all(ordered.map(runUnit));
+  const inOrder = ordered.map(({ unit, run }) => ({ ...unit, owner: ownerEntries.get(run) }));
   const pinWrites = pinWritesInRunOrder(inOrder.map(({ writes }) => writes?.placeholders ?? []));
 
   // Merged per target before the first settle, so the gate snapshot and the penalties see every owner's writes.
@@ -425,11 +437,14 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
     return [owner.id, traitResult ? { ...settled, inForce } : settled];
   }));
   const withOwners = owners ? { owners } : {};
+  const withSentence = sentence === undefined ? {} : { sentence };
   const { stats, moved, boundsChanged } = settleWrites(turn.stats, switched.state.stats, mainWrites, active);
   if (!traitResult && moved.length === 0 && boundsChanged.length === 0) {
-    return { stats: turn.stats, moved, boundsChanged, pinWrites, gateStats, ...withOwners };
+    return { stats: turn.stats, moved, boundsChanged, pinWrites, gateStats, ...withOwners, ...withSentence };
   }
-  return { stats, moved, boundsChanged, pinWrites, gateStats, ...(traitResult ? { traits: traitResult } : {}), ...withOwners };
+  return {
+    stats, moved, boundsChanged, pinWrites, gateStats, ...(traitResult ? { traits: traitResult } : {}), ...withOwners, ...withSentence,
+  };
 }
 
 /** The landed stats with each penalty taken from a stat the run left unmoved, clamped into its bounds. A stat

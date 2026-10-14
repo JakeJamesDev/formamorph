@@ -1,6 +1,6 @@
 # 06: During AI Output Sentence Hook
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01
 Recommended model: Claude Fable 5.1 (`claude-fable-5-1`)
 Reasoning effort: high

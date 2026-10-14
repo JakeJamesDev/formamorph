@@ -7,6 +7,7 @@ import {
   PLACEHOLDER_ENTRY_MEMBERS, placeholderPathExpression, placeholderPathLabel, type PlaceholderPathRoot,
 } from './statCodePaths';
 import { dayAndHour, daypart, FLAT_HOURS_PER_TURN, type WorldCalendar } from './gameClock';
+import { SCRIPT_TIMING_LABEL } from './scripts';
 
 // Stat `code` ships inside world definitions, and worlds are downloaded from the community server — treat it as
 // untrusted. It runs in an isolated QuickJS (WASM) VM: no page globals (window/fetch/localStorage),
@@ -107,6 +108,19 @@ export interface StatCodeResult {
   unknownEntities?: string[];
   /** Read-only fields the code wrote, as code spelled them, such as `traits.Brave.mode`; each write was dropped. */
   readOnlyWrites?: string[];
+  /** The sentence the code left, by return or by `narration.sentence`. Present on a During AI Output run that
+   *  succeeded, the sentence as it came when the code did not touch it. */
+  sentence?: string;
+}
+
+/** The `narration` a During AI Output run reads. Its presence marks the run's timing. */
+export interface NarrationInput {
+  /** The sentence that just completed; the one field code writes. */
+  sentence: string;
+  /** The narration as it stands, the sentence and the partial tail included. */
+  full: string;
+  /** The sentence's position in the reply, from 0. */
+  index: number;
 }
 
 /** What one run wrote to one entity's stats. */
@@ -1066,7 +1080,17 @@ export interface StatCodeRunOptions {
   owner?: SandboxEntity;
   /** Every dictionary, in authored order. */
   dictionaries?: readonly SandboxDictionary[];
+  /** Absent outside During AI Output, where `narration` and `player` do not exist. */
+  narration?: NarrationInput;
 }
+
+/** The `player` object of a During AI Output run: every call throws, since a sentence cannot wait on a dialog. */
+const PLAYER_CALLS = ['tell', 'toast', 'confirm', 'ask', 'askText'] as const;
+const OUTPUT_PLAYER = [
+  `const player = Object.freeze(Object.fromEntries(${JSON.stringify(PLAYER_CALLS)}.map((call) => [call, () => {`,
+  `  throw new Error('player.' + call + " can't run in ${SCRIPT_TIMING_LABEL.output}");`,
+  `}])));`,
+].join('\n');
 
 const EMPTY_PERSONA: SandboxEntity = { name: '', traits: [] };
 
@@ -1085,7 +1109,7 @@ export const executeStatCode = async (
   stats: Stat[],
   /** Null for a world script: `self` is an empty object, and a return value or a `self` write is ignored. */
   currentStat: Stat | null,
-  { clock, turn, enabled, placeholders = [], traits = [], entities = [], persona = EMPTY_PERSONA, owner, dictionaries = [] }: StatCodeRunOptions = {},
+  { clock, turn, enabled, placeholders = [], traits = [], entities = [], persona = EMPTY_PERSONA, owner, dictionaries = [], narration }: StatCodeRunOptions = {},
 ): Promise<StatCodeResult> => {
   // If code is empty, return null (use the manually set value)
   if (!code || code.trim() === '') {
@@ -1175,6 +1199,11 @@ export const executeStatCode = async (
         `  Object.freeze(lock(clock.previous, ['day', 'daypart'], 'clock.previous.', ${LOOSE_NOTE}));`,
         `  return Object.freeze(lock(clock, Object.keys(clock), 'clock.', ${LOOSE_NOTE}));`,
         `})(${LOCK_FIELDS});`,
+        ...(narration ? [
+          `const narration = Object.seal((${LOCK_FIELDS})(`,
+          `  ${JSON.stringify({ sentence: narration.sentence, full: narration.full, index: narration.index })}, ['full', 'index'], 'narration.', ${LOOSE_NOTE}));`,
+          OUTPUT_PLAYER,
+        ] : []),
         placeholdersPrelude(placeholderMap),
         trackedMapPrelude({ ...TRAIT_MAP, root: 'traits', reader: TRAIT_WRITES, data: traitData(traits) }),
         entitiesPrelude(keyed, placeholderMap, blankStat, place, statEntriesOf),
@@ -1183,7 +1212,7 @@ export const executeStatCode = async (
         code,
         `})(), ${selfRead('value')}, ${CODE_BOUND_FIELDS.map(selfRead).join(', ')}, ${PLACEHOLDER_WRITES}(), ${TRAIT_WRITES}(), ${ENTITY_WRITES}(),`,
         `  ${STAT_WRITES}(), ${DICTIONARY_WRITES}(), JSON.stringify(${SELF_ASSIGNED}), ${OWNER_STAT_WRITES}(), JSON.stringify(${LOOSE_WRITES}),`,
-        `  ${ENTITY_STAT_WRITES}()];`,
+        `  ${ENTITY_STAT_WRITES}(), ${narration ? 'narration.sentence' : 'undefined'}];`,
       ].join('\n');
 
       const result = vm.evalCode(program);
@@ -1205,11 +1234,11 @@ export const executeStatCode = async (
 
       // Each half is read by its own handle and typeof, never through a JSON dump: a dump turns
       // `undefined` and `NaN` into `null`, which would erase the difference between them.
-      const readSlot = (index: number): { type: string; number: number } => {
+      const readSlot = (index: number): { type: string; number: number; text: string } => {
         const handle = vm.getProp(result.value, index);
         try {
           const type = vm.typeof(handle);
-          return { type, number: type === 'number' ? vm.getNumber(handle) : NaN };
+          return { type, number: type === 'number' ? vm.getNumber(handle) : NaN, text: type === 'string' ? vm.getString(handle) : '' };
         } finally {
           handle.dispose();
         }
@@ -1234,16 +1263,21 @@ export const executeStatCode = async (
       const ownerStatsDump = readDump(8 + CODE_BOUND_FIELDS.length);
       const loose: unknown = JSON.parse(readDump(9 + CODE_BOUND_FIELDS.length));
       const entityStatsDump = readDump(10 + CODE_BOUND_FIELDS.length);
+      const assignedSentence = readSlot(11 + CODE_BOUND_FIELDS.length);
       result.value.dispose();
 
       if (consoleOutput.trim()) {
         console.log('Console output:', consoleOutput);
       }
 
-      if (currentStat && returned.type !== 'number' && returned.type !== 'undefined') {
+      // During AI Output, a returned string is the sentence.
+      const returnsSentence = !!narration && returned.type === 'string';
+      if (narration && assignedSentence.type !== 'string') return failure('narration.sentence must be a string', 'bad-write');
+      const sentence = narration && (returnsSentence ? returned.text : assignedSentence.text);
+      if (currentStat && !returnsSentence && returned.type !== 'number' && returned.type !== 'undefined') {
         return nonNumberFailure('Code must return a number or nothing');
       }
-      if (currentStat && returned.type === 'undefined' && written.type !== 'number') {
+      if (currentStat && !returnsSentence && returned.type === 'undefined' && written.type !== 'number') {
         return nonNumberFailure('self.value must be a number');
       }
       // A bound the code assigned is a write, changed or not; one it left alone keeps the pipeline's result.
@@ -1300,8 +1334,9 @@ export const executeStatCode = async (
         ...(entityWrites.writes.length ? { entities: entityWrites.writes } : {}),
         ...(entityWrites.unknown.length ? { unknownEntities: entityWrites.unknown } : {}),
         ...(readOnlyWrites.length ? { readOnlyWrites } : {}),
+        ...(sentence === undefined ? {} : { sentence }),
       });
-      if (!currentStat) return settled(null);
+      if (!currentStat || returnsSentence) return settled(null);
       if (returned.type === 'number') return settled(returned.number);
       return settled(Object.is(written.number, selfData.value) ? null : written.number);
     } finally {
