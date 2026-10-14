@@ -1,6 +1,6 @@
 import type { CodeBounds, Stat } from '@/types';
-import { getQuickJS, shouldInterruptAfterDeadline, type QuickJSWASMModule } from 'quickjs-emscripten';
 import { clamp } from './utils';
+import { runInSandbox } from './scriptSandbox';
 import { VALUE_JOIN } from './placeholders';
 import { hasEntityKey, statsByCodeName } from './statCodeNames';
 import {
@@ -9,17 +9,7 @@ import {
 import { dayAndHour, daypart, FLAT_HOURS_PER_TURN, type WorldCalendar } from './gameClock';
 import { SCRIPT_TIMING_LABEL } from './scripts';
 
-// Stat `code` ships inside world definitions, and worlds are downloaded from the community server — treat it as
-// untrusted. It runs in an isolated QuickJS (WASM) VM: no page globals (window/fetch/localStorage),
-// only the marshalled stat data below. A runtime interrupt enforces the timeout (kills `while(true)`),
-// and memory/stack caps bound allocation.
-const EXECUTION_TIMEOUT_MS = 1000;
-const MEMORY_LIMIT_BYTES = 16 * 1024 * 1024;
-const MAX_STACK_BYTES = 512 * 1024;
-
-// The WASM engine loads once and is shared; each execution gets a fresh disposable runtime/context.
-let quickJSPromise: Promise<QuickJSWASMModule> | null = null;
-const loadQuickJS = () => (quickJSPromise ??= getQuickJS());
+// Stat code sees only the marshalled stat data below.
 
 /** Where the story's clock stands for one stat-code run. `elapsedHours` is the total as of the END of the
  *  turn, so the turn's own duration is already included; the start-of-turn readings derive from it. */
@@ -1117,8 +1107,6 @@ export const executeStatCode = async (
   }
 
   try {
-    const QuickJS = await loadQuickJS();
-
     const placeholderMap = flattenPlaceholderMap(placeholders, [
       ...entities.map((entity) => entity.placeholders), persona.placeholders, owner?.placeholders,
       ...dictionaries.map((book) => book.placeholders),
@@ -1154,72 +1142,45 @@ export const executeStatCode = async (
     const selfNameIn = (map: typeof OWNER_STATS | 'stats') => (selfMap === map ? selfData.name : null);
     const blankStat = blankStatEntry(selfData);
 
-    const runtime = QuickJS.newRuntime();
-    runtime.setInterruptHandler(shouldInterruptAfterDeadline(Date.now() + EXECUTION_TIMEOUT_MS));
-    runtime.setMemoryLimit(MEMORY_LIMIT_BYTES);
-    runtime.setMaxStackSize(MAX_STACK_BYTES);
-    const vm = runtime.newContext();
+    // The stat data rides in as JSON literals (JSON is valid JS expression syntax); console.log and the
+    // roll hook are the only host functions. The user code runs as a function body so `return` works, with
+    // the readers' names shadowed as its parameters; the program's completion value pairs what it returned
+    // with what `self`'s writable fields hold afterwards, then what it did to `placeholders`, `traits` and
+    // the entities' traits.
+    const program = [
+      `const ${SELF_ASSIGNED} = [];`,
+      statsPrelude({ root: 'stats', reader: STAT_WRITES, entries: keyedStats, blank: blankStat, selfName: selfNameIn('stats') }),
+      statsPrelude({
+        root: OWNER_STATS, reader: OWNER_STAT_WRITES, entries: keyedOwnerStats, blank: blankStat, selfName: selfNameIn(OWNER_STATS),
+      }),
+      `const ${LOOSE_WRITES} = [];`,
+      `const ${LOOSE_NOTE} = (path) => (${ADD_ONCE})(${LOOSE_WRITES}, path);`,
+      `const self = ${!currentStat ? '{}' : selfMap ? `${selfMap}[${JSON.stringify(selfData.name)}]` : JSON.stringify(selfData)};`,
+      ...(selfMap || !currentStat ? [] : [`(${LOCK_STAT})(self, ${SELF_ASSIGNED}, (path) => ${LOOSE_NOTE}('self.' + path));`]),
+      `const clock = ((lock) => {`,
+      `  const clock = ${JSON.stringify(clockObject(clock))};`,
+      `  Object.freeze(lock(clock.previous, ['day', 'daypart'], 'clock.previous.', ${LOOSE_NOTE}));`,
+      `  return Object.freeze(lock(clock, Object.keys(clock), 'clock.', ${LOOSE_NOTE}));`,
+      `})(${LOCK_FIELDS});`,
+      ...(narration ? [
+        `const narration = Object.seal((${LOCK_FIELDS})(`,
+        `  ${JSON.stringify({ sentence: narration.sentence, full: narration.full, index: narration.index })}, ['full', 'index'], 'narration.', ${LOOSE_NOTE}));`,
+        OUTPUT_PLAYER,
+      ] : []),
+      placeholdersPrelude(placeholderMap),
+      trackedMapPrelude({ ...TRAIT_MAP, root: 'traits', reader: TRAIT_WRITES, data: traitData(traits) }),
+      entitiesPrelude(keyed, placeholderMap, blankStat, place, statEntriesOf),
+      dictionariesPrelude(dictionaries, placeholderMap),
+      `[(function(${PLACEHOLDER_WRITES}, ${TRAIT_WRITES}, ${ENTITY_WRITES}, ${STAT_WRITES}, ${LOOSE_WRITES}, ${LOOSE_NOTE}, ${DICTIONARY_WRITES}, ${OWNER_VIEW}, ${OWNER_STATS}, ${OWNER_STAT_WRITES}, ${ENTITY_STAT_WRITES}) {`,
+      code,
+      `})(), ${selfRead('value')}, ${CODE_BOUND_FIELDS.map(selfRead).join(', ')}, ${PLACEHOLDER_WRITES}(), ${TRAIT_WRITES}(), ${ENTITY_WRITES}(),`,
+      `  ${STAT_WRITES}(), ${DICTIONARY_WRITES}(), JSON.stringify(${SELF_ASSIGNED}), ${OWNER_STAT_WRITES}(), JSON.stringify(${LOOSE_WRITES}),`,
+      `  ${ENTITY_STAT_WRITES}(), ${narration ? 'narration.sentence' : 'undefined'}];`,
+    ].join('\n');
 
-    try {
-      // console.log shim: QuickJS has no console; collect output and forward it to the host console.
-      let consoleOutput = '';
-      const logFn = vm.newFunction('log', (...args) => {
-        const parts = args.map((a) => vm.dump(a));
-        consoleOutput += parts.map(String).join(' ') + '\n';
-        console.log(...parts);
-      });
-      const consoleObj = vm.newObject();
-      vm.setProp(consoleObj, 'log', logFn);
-      vm.setProp(vm.global, 'console', consoleObj);
-      logFn.dispose();
-      consoleObj.dispose();
-
-      const rollFn = vm.newFunction('roll', (indexHandle) =>
-        vm.newString(placeholderMap.nodes[vm.getNumber(indexHandle)]?.entry?.roll() ?? ''));
-      vm.setProp(vm.global, ROLL_HOOK, rollFn);
-      rollFn.dispose();
-
-      // The stat data rides in as JSON literals (JSON is valid JS expression syntax); console.log and the
-      // roll hook are the only host functions. The user code runs as a function body so `return` works, with
-      // the readers' names shadowed as its parameters; the program's completion value pairs what it returned
-      // with what `self`'s writable fields hold afterwards, then what it did to `placeholders`, `traits` and
-      // the entities' traits.
-      const program = [
-        `const ${SELF_ASSIGNED} = [];`,
-        statsPrelude({ root: 'stats', reader: STAT_WRITES, entries: keyedStats, blank: blankStat, selfName: selfNameIn('stats') }),
-        statsPrelude({
-          root: OWNER_STATS, reader: OWNER_STAT_WRITES, entries: keyedOwnerStats, blank: blankStat, selfName: selfNameIn(OWNER_STATS),
-        }),
-        `const ${LOOSE_WRITES} = [];`,
-        `const ${LOOSE_NOTE} = (path) => (${ADD_ONCE})(${LOOSE_WRITES}, path);`,
-        `const self = ${!currentStat ? '{}' : selfMap ? `${selfMap}[${JSON.stringify(selfData.name)}]` : JSON.stringify(selfData)};`,
-        ...(selfMap || !currentStat ? [] : [`(${LOCK_STAT})(self, ${SELF_ASSIGNED}, (path) => ${LOOSE_NOTE}('self.' + path));`]),
-        `const clock = ((lock) => {`,
-        `  const clock = ${JSON.stringify(clockObject(clock))};`,
-        `  Object.freeze(lock(clock.previous, ['day', 'daypart'], 'clock.previous.', ${LOOSE_NOTE}));`,
-        `  return Object.freeze(lock(clock, Object.keys(clock), 'clock.', ${LOOSE_NOTE}));`,
-        `})(${LOCK_FIELDS});`,
-        ...(narration ? [
-          `const narration = Object.seal((${LOCK_FIELDS})(`,
-          `  ${JSON.stringify({ sentence: narration.sentence, full: narration.full, index: narration.index })}, ['full', 'index'], 'narration.', ${LOOSE_NOTE}));`,
-          OUTPUT_PLAYER,
-        ] : []),
-        placeholdersPrelude(placeholderMap),
-        trackedMapPrelude({ ...TRAIT_MAP, root: 'traits', reader: TRAIT_WRITES, data: traitData(traits) }),
-        entitiesPrelude(keyed, placeholderMap, blankStat, place, statEntriesOf),
-        dictionariesPrelude(dictionaries, placeholderMap),
-        `[(function(${PLACEHOLDER_WRITES}, ${TRAIT_WRITES}, ${ENTITY_WRITES}, ${STAT_WRITES}, ${LOOSE_WRITES}, ${LOOSE_NOTE}, ${DICTIONARY_WRITES}, ${OWNER_VIEW}, ${OWNER_STATS}, ${OWNER_STAT_WRITES}, ${ENTITY_STAT_WRITES}) {`,
-        code,
-        `})(), ${selfRead('value')}, ${CODE_BOUND_FIELDS.map(selfRead).join(', ')}, ${PLACEHOLDER_WRITES}(), ${TRAIT_WRITES}(), ${ENTITY_WRITES}(),`,
-        `  ${STAT_WRITES}(), ${DICTIONARY_WRITES}(), JSON.stringify(${SELF_ASSIGNED}), ${OWNER_STAT_WRITES}(), JSON.stringify(${LOOSE_WRITES}),`,
-        `  ${ENTITY_STAT_WRITES}(), ${narration ? 'narration.sentence' : 'undefined'}];`,
-      ].join('\n');
-
-      const result = vm.evalCode(program);
-
+    return await runInSandbox(program, ({ vm, result, consoleOutput }): StatCodeResult => {
       if (result.error) {
         const dumped = vm.dump(result.error) as { name?: string; message?: string; stack?: string } | string;
-        result.error.dispose();
         const err = typeof dumped === 'object' && dumped !== null ? dumped : { message: String(dumped) };
         // The interrupt handler surfaces as an "interrupted" InternalError — report it as the timeout.
         if (/interrupted/i.test(err.message || '')) {
@@ -1264,7 +1225,6 @@ export const executeStatCode = async (
       const loose: unknown = JSON.parse(readDump(9 + CODE_BOUND_FIELDS.length));
       const entityStatsDump = readDump(10 + CODE_BOUND_FIELDS.length);
       const assignedSentence = readSlot(11 + CODE_BOUND_FIELDS.length);
-      result.value.dispose();
 
       if (consoleOutput.trim()) {
         console.log('Console output:', consoleOutput);
@@ -1339,10 +1299,9 @@ export const executeStatCode = async (
       if (!currentStat || returnsSentence) return settled(null);
       if (returned.type === 'number') return settled(returned.number);
       return settled(Object.is(written.number, selfData.value) ? null : written.number);
-    } finally {
-      vm.dispose();
-      runtime.dispose();
-    }
+    }, {
+      [ROLL_HOOK]: (vm, indexHandle) => vm.newString(placeholderMap.nodes[vm.getNumber(indexHandle)]?.entry?.roll() ?? ''),
+    });
   } catch (error) {
     console.error('Error in executeStatCode:', error);
 

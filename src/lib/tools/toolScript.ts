@@ -1,11 +1,8 @@
-import { getQuickJS, shouldInterruptAfterDeadline } from 'quickjs-emscripten';
+import { runInSandbox } from '@/lib/scriptSandbox';
 import type { ToolSnapshot } from './toolSnapshot';
 
-// Tool scripts ship in shared presets, so they are untrusted. They run in their own QuickJS runtime with the
-// stat-code limits and see only `args`, `world`, `scene`, `placeholders` and `console.log`.
-const EXECUTION_TIMEOUT_MS = 1000;
-const MEMORY_LIMIT_BYTES = 16 * 1024 * 1024;
-const MAX_STACK_BYTES = 512 * 1024;
+// Tool scripts run on the shared script sandbox and see only `args`, `world`, `scene`, `placeholders` and
+// `console.log`.
 
 /** A script's outcome: its text, nothing (null), or why it failed. */
 export type ToolScriptResult =
@@ -28,58 +25,37 @@ export async function runToolScript(
   args: Readonly<Record<string, unknown>>,
   snapshot: ToolSnapshot,
 ): Promise<ToolScriptResult> {
-  const QuickJS = await getQuickJS();
-  const runtime = QuickJS.newRuntime();
-  const pastDeadline = shouldInterruptAfterDeadline(Date.now() + EXECUTION_TIMEOUT_MS);
-  let timedOut = false;
-  runtime.setInterruptHandler((rt) => (timedOut ||= !!pastDeadline(rt)));
-  runtime.setMemoryLimit(MEMORY_LIMIT_BYTES);
-  runtime.setMaxStackSize(MAX_STACK_BYTES);
-  const vm = runtime.newContext();
-  try {
-    const logFn = vm.newFunction('log', (...handles) => console.log(...handles.map((h) => vm.dump(h))));
-    const consoleObj = vm.newObject();
-    vm.setProp(consoleObj, 'log', logFn);
-    vm.setProp(vm.global, 'console', consoleObj);
-    logFn.dispose();
-    consoleObj.dispose();
+  // QuickJS seeds Math.random from the clock, so runs in one millisecond repeat it; sfc32 takes a crypto seed per run.
+  const seed = [...crypto.getRandomValues(new Uint32Array(4))].join(', ');
+  const inputs: Record<(typeof TOOL_SCRIPT_INPUTS)[number], unknown> = {
+    args, world: snapshot.world, scene: snapshot.scene, placeholders: snapshot.placeholders,
+  };
+  // The helpers live in a closure, `JSON.stringify` taken before the script can replace it. The script runs
+  // as a function body whose parameter shadows the one global it could otherwise reach.
+  const program = [
+    `((m, a, b, c, d) => { m.random = () => { const t = (a + b + d) | 0; d = (d + 1) | 0; a = b ^ (b >>> 9);`,
+    '  b = (c + (c << 3)) | 0; c = (c << 21) | (c >>> 11); c = (c + t) | 0; return (t >>> 0) / 2 ** 32; };',
+    `  for (let i = 0; i < 15; i++) m.random(); })(Math, ${seed});`,
+    `const [${TOOL_SCRIPT_INPUTS.join(', ')}, ${FINISH}] = ((parse, stringify, freezeOne, isFrozen, values) => {`,
+    '  const freeze = (o) => { if (o && typeof o === "object" && !isFrozen(o)) { freezeOne(o); values(o).forEach(freeze); } return o; };',
+    '  const finish = (v) => (v == null ? [0] : typeof v === "string" ? [1, v] : [2, stringify(v)]);',
+    `  return [${TOOL_SCRIPT_INPUTS.map((name) => `freeze(parse(${jsonSource(inputs[name])}))`).join(', ')}, finish];`,
+    '})(JSON.parse, JSON.stringify, Object.freeze, Object.isFrozen, Object.values);',
+    `${FINISH}((function (${FINISH}) {`,
+    code,
+    '})());',
+  ].join('\n');
 
-    // QuickJS seeds Math.random from the clock, so runs in one millisecond repeat it; sfc32 takes a crypto seed per run.
-    const seed = [...crypto.getRandomValues(new Uint32Array(4))].join(', ');
-    const inputs: Record<(typeof TOOL_SCRIPT_INPUTS)[number], unknown> = {
-      args, world: snapshot.world, scene: snapshot.scene, placeholders: snapshot.placeholders,
-    };
-    // The helpers live in a closure, `JSON.stringify` taken before the script can replace it. The script runs
-    // as a function body whose parameter shadows the one global it could otherwise reach.
-    const program = [
-      `((m, a, b, c, d) => { m.random = () => { const t = (a + b + d) | 0; d = (d + 1) | 0; a = b ^ (b >>> 9);`,
-      '  b = (c + (c << 3)) | 0; c = (c << 21) | (c >>> 11); c = (c + t) | 0; return (t >>> 0) / 2 ** 32; };',
-      `  for (let i = 0; i < 15; i++) m.random(); })(Math, ${seed});`,
-      `const [${TOOL_SCRIPT_INPUTS.join(', ')}, ${FINISH}] = ((parse, stringify, freezeOne, isFrozen, values) => {`,
-      '  const freeze = (o) => { if (o && typeof o === "object" && !isFrozen(o)) { freezeOne(o); values(o).forEach(freeze); } return o; };',
-      '  const finish = (v) => (v == null ? [0] : typeof v === "string" ? [1, v] : [2, stringify(v)]);',
-      `  return [${TOOL_SCRIPT_INPUTS.map((name) => `freeze(parse(${jsonSource(inputs[name])}))`).join(', ')}, finish];`,
-      '})(JSON.parse, JSON.stringify, Object.freeze, Object.isFrozen, Object.values);',
-      `${FINISH}((function (${FINISH}) {`,
-      code,
-      '})());',
-    ].join('\n');
-
-    const result = vm.evalCode(program);
+  return runInSandbox(program, ({ vm, result, timedOut }): ToolScriptResult => {
     if (result.error) {
-      const dumped: unknown = vm.dump(result.error);
-      result.error.dispose();
       if (timedOut) return { error: 'The script ran too long and was stopped.', kind: 'timeout' };
+      const dumped: unknown = vm.dump(result.error);
       const message = dumped && typeof dumped === 'object' && 'message' in dumped ? String(dumped.message) : String(dumped);
       return { error: `The script failed: ${message}`, kind: 'script' };
     }
     const [tag, text] = vm.dump(result.value) as [number, string | null | undefined];
-    result.value.dispose();
     if (tag === 0) return { text: null };
     if (typeof text !== 'string') return { error: 'The script returned a value with no JSON form.', kind: 'script' };
     return { text };
-  } finally {
-    vm.dispose();
-    runtime.dispose();
-  }
+  });
 }

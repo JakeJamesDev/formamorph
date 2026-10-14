@@ -7,7 +7,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { executeStatCode, type SandboxEntity, type StatCodeResult } from './statCodeExecutor';
-import { STAT_FIELDS, TRAIT_ENTRY_FIELDS, placeholderEntryFields } from './statCodeSurface';
+import { SANDBOX_GLOBALS, STAT_FIELDS, TRAIT_ENTRY_FIELDS, placeholderEntryFields } from './statCodeSurface';
 import type { SurfaceEntry } from './codeSurface';
 import { runToolScript } from './tools/toolScript';
 import { toolScriptSurface } from './tools/toolScriptSurface';
@@ -89,5 +89,13 @@ describe('Tool script access matches the sandbox', () => {
     const code = `${name}.probe = 1; return ${name}.probe === 1 ? "landed" : "dropped";`;
     const out = await runToolScript(code, { size: 2 }, sampleToolSnapshot());
     expect(out).toEqual({ text: entry.access === 'readOnly' ? 'dropped' : 'landed' });
+  });
+
+  // Both run on one sandbox, so a stat-script global must not reach a Tool script.
+  const toolNames = new Set(surface.globals.map((entry) => entry.name));
+  const statOnly = SANDBOX_GLOBALS.map((entry) => entry.name).filter((name) => !toolNames.has(name));
+  it('has stat-script globals to hold out', () => expect(statOnly).toContain('stats'));
+  it.each(statOnly)('%s is undefined in a Tool script', async (name) => {
+    expect(await runToolScript(`return typeof ${name};`, { size: 2 }, sampleToolSnapshot())).toEqual({ text: 'undefined' });
   });
 });
