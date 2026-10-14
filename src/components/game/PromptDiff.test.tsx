@@ -1,7 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { PromptDiff, PromptDiffModeToggle } from './PromptDiff';
+import { DiffParts, PromptDiff, PromptDiffModeToggle } from './PromptDiff';
+import { promptWordDiff } from '@/lib/promptDiff';
 import { SHIPPED_PROMPT_DEFAULTS } from '@/lib/worldPrompt';
 import { encodePlaceholderToken, newPlaceholder } from '@/lib/placeholders';
 
@@ -24,6 +25,13 @@ const readingPast = (container: HTMLElement, skip: 'ins' | 'del') =>
     .filter((node) => (node as HTMLElement).tagName?.toLowerCase() !== skip)
     .map((node) => node.textContent)
     .join('');
+
+describe('DiffParts', () => {
+  it('starts a rewritten last line under the old one, not at its end', () => {
+    const { container } = render(<pre><DiffParts parts={promptWordDiff('Keep it short.', 'Say a great deal more.')} /></pre>);
+    expect(container.textContent).toBe('Keep it short.\nSay a great deal more.');
+  });
+});
 
 describe('PromptDiff', () => {
   it('marks up what the world added and what it dropped from the shipped default', () => {

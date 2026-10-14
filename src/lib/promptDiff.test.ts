@@ -9,6 +9,12 @@ const added = (parts: ReturnType<typeof promptWordDiff>) =>
   parts.filter((p) => p.added).map((p) => p.value);
 const removed = (parts: ReturnType<typeof promptWordDiff>) =>
   parts.filter((p) => p.removed).map((p) => p.value);
+/** One side of the changed lines as the reader sees it: the old lines, or the new ones under them. */
+const lines = (parts: ReturnType<typeof promptWordDiff>, side: 'added' | 'removed') =>
+  parts.filter((p) => p[side]).map((p) => p.value).join('');
+/** The words marked as differing inside a changed line, on one side. */
+const changedWords = (parts: ReturnType<typeof promptWordDiff>, side: 'added' | 'removed') =>
+  parts.filter((p) => p[side] && p.changed).map((p) => p.value);
 
 describe('promptWordDiff: both sides survive the round trip', () => {
   it('reports identical text as one unchanged part', () => {
@@ -24,24 +30,70 @@ describe('promptWordDiff: both sides survive the round trip', () => {
     expect(sideText(parts, 'world')).toBe(world);
   });
 
-  it('marks an insertion added and nothing removed', () => {
+  it.each([
+    ['text added after the last line', 'Keep it short.\nEnd here.', 'Keep it short.\nEnd here.\nAdd a mindstate.'],
+    ['text removed after the last line', 'Keep it short.\nEnd here.\nAdd a mindstate.', 'Keep it short.\nEnd here.'],
+    ['the last line rewritten', 'Keep it short.\nEnd here.', 'Keep it short.\nSomething else entirely now.'],
+    ['everything rewritten', 'Alpha beta.', 'Gamma delta epsilon.'],
+    ['a trailing newline on one side only', 'Keep it short.\n', 'Keep it short.'],
+  ])('reassembles both sides exactly with %s', (_name, base, world) => {
+    const parts = promptWordDiff(base, world);
+    expect(sideText(parts, 'base')).toBe(base);
+    expect(sideText(parts, 'world')).toBe(world);
+  });
+
+  it('shows an unrelated rewrite as whole lines, with no words marked inside them', () => {
+    const base = 'Output the story prose - the events themselves, and nothing after the scene ends.';
+    const world = 'First output a mindstate for each character in the scene, in brackets.';
+    const parts = promptWordDiff(`Intro.\n${base}\nOutro.`, `Intro.\n${world}\nOutro.`);
+    expect(lines(parts, 'removed')).toBe(`${base}\n`);
+    expect(lines(parts, 'added')).toBe(`${world}\n`);
+    expect(changedWords(parts, 'removed')).toEqual([]);
+    expect(changedWords(parts, 'added')).toEqual([]);
+  });
+
+  it('starts the new line under the old one, not at its end', () => {
+    const parts = promptWordDiff('Keep it short.\nSay less.\nEnd here.', 'Keep it short.\nSay a little less.\nEnd here.');
+    const firstAdded = parts.findIndex((p) => p.added);
+    expect(parts[firstAdded - 1].removed).toBe(true);
+    expect(parts[firstAdded - 1].value.endsWith('\n')).toBe(true);
+  });
+
+  it('marks an insertion on the new line only, and shows the old line whole', () => {
     const parts = promptWordDiff('one two', 'one blue two');
-    expect(removed(parts)).toEqual([]);
-    expect(added(parts).join('')).toContain('blue');
+    expect(lines(parts, 'removed')).toBe('one two');
+    expect(changedWords(parts, 'removed')).toEqual([]);
+    expect(changedWords(parts, 'added').join('').trim()).toBe('blue');
   });
 
-  it('marks a deletion removed and nothing added', () => {
+  it('marks a deletion on the old line only, and shows the new line whole', () => {
     const parts = promptWordDiff('one blue two', 'one two');
-    expect(added(parts)).toEqual([]);
-    expect(removed(parts).join('')).toContain('blue');
+    expect(lines(parts, 'added')).toBe('one two');
+    expect(changedWords(parts, 'added')).toEqual([]);
+    expect(changedWords(parts, 'removed').join('').trim()).toBe('blue');
   });
 
-  it('diffs at word level, leaving the rest of the line unchanged', () => {
+  it('marks only the differing words inside a reworded line, old line over new', () => {
     const parts = promptWordDiff('vivid second person prose', 'grim second person prose');
-    expect(removed(parts)).toEqual(['vivid']);
-    expect(added(parts)).toEqual(['grim']);
-    // The shared tail stays one unchanged run rather than being re-emitted word by word.
-    expect(parts.filter((p) => !p.added && !p.removed).map((p) => p.value)).toEqual([' second person prose']);
+    expect(parts).toEqual([
+      { value: 'vivid', removed: true, changed: true },
+      { value: ' second person prose', removed: true },
+      { value: 'grim', added: true, changed: true },
+      { value: ' second person prose', added: true },
+    ]);
+  });
+
+  it('marks a lone filler word between two changes with them, rather than splitting the change around it', () => {
+    const base = "- Bracketed text is the author directing the scene, not something the character says: keep the prose free of it.";
+    const world = "- Bracketed text is author direction: keep the prose free of it (the mindstate block before the prose is the one exception).";
+    const parts = promptWordDiff(base, world);
+    for (const side of ['added', 'removed'] as const) {
+      const sideParts = parts.filter((p) => p[side]);
+      sideParts.forEach((p, i) => {
+        const between = i > 0 && i < sideParts.length - 1 && sideParts[i - 1].changed && sideParts[i + 1].changed;
+        if (between && !p.changed) expect(p.value.trim()).not.toMatch(/^(the|a|an|and|to|of|is)$/i);
+      });
+    }
   });
 
   it('keeps blank lines, so a dropped section reads as the paragraph it was', () => {
@@ -59,19 +111,19 @@ describe('promptWordDiff: chips stay atomic', () => {
     // Unprotected, the word diff shares the `<DICTIONARY|` head and the `>` tail and highlights only
     // `before`/`after`, cutting the chip into three pieces the reader has to reassemble.
     const parts = promptWordDiff('Lore:\n<DICTIONARY|before>\nEnd', 'Lore:\n<DICTIONARY|after>\nEnd');
-    expect(removed(parts).join('')).toBe('<DICTIONARY|before>');
-    expect(added(parts).join('')).toBe('<DICTIONARY|after>');
+    expect(lines(parts, 'removed').trim()).toBe('<DICTIONARY|before>');
+    expect(lines(parts, 'added').trim()).toBe('<DICTIONARY|after>');
+    expect(parts.every((p) => !p.value.includes('<DICTIONARY') || /<DICTIONARY\|(before|after)>/.test(p.value))).toBe(true);
   });
 
-  it('leaves an untouched chip whole and unchanged when its neighbors change', () => {
+  it('leaves an untouched chip whole and unmarked on both lines when its neighbors change', () => {
     const parts = promptWordDiff(
       'Be concise. <LENGTH GUIDANCE> Then stop.',
       'Be unhurried. <LENGTH GUIDANCE> Then stop.',
     );
-    const chipPart = parts.find((p) => p.value.includes('<LENGTH GUIDANCE>'));
-    expect(chipPart).toBeDefined();
-    expect(chipPart!.added).toBeUndefined();
-    expect(chipPart!.removed).toBeUndefined();
+    const chipParts = parts.filter((p) => p.value.includes('<LENGTH GUIDANCE>'));
+    expect(chipParts).toHaveLength(2);
+    expect(chipParts.every((p) => !p.changed)).toBe(true);
   });
 
   it('numbers chips from one shared store, so dropping an earlier chip does not misname a later one', () => {
@@ -114,8 +166,8 @@ describe('promptWordDiff: chips stay atomic', () => {
     const before = `{{ph:${id}:world:a1b2}}`;
     const after = `{{ph:${id}:unique:a1b2}}`;
     const parts = promptWordDiff(`Wear ${before} today.`, `Wear ${after} today.`);
-    expect(removed(parts)).toEqual([before]);
-    expect(added(parts)).toEqual([after]);
+    expect(changedWords(parts, 'removed')).toEqual([before]);
+    expect(changedWords(parts, 'added')).toEqual([after]);
   });
 
   it('leaves lowercase angle text alone — only chips are protected', () => {
