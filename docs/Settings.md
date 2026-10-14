@@ -232,6 +232,7 @@ See [When Each Memory Happened](Memory#when-each-memory-happened).
 Which AI the app connects to. The tab has its own tabs: **Text**, **Image** and, in Advanced mode, **Tag Prompt**. To set up a text endpoint, follow [Connect Your Own AI](Connect-Your-Own-AI).
 
 ### Text
+<!-- route: settingsEndpoints.text -->
 
 The **Preset** list holds your saved endpoints. **Demo AI** is the shared cloud endpoint, and you cannot edit it. On the desktop app, **Built-In Engine** runs a model on your PC. **Add New Preset…** makes a new one. **Rename**, **Reset** and **Delete** act on the preset you made.
 
@@ -266,6 +267,7 @@ On the desktop app, the **Built-In Engine** preset shows the engine's own panel 
 Sampling changes apply on the next turn. The other changes need **Save & Reload Model**. **Reset to Defaults** sets the panel back.
 
 ### Image
+<!-- route: settingsEndpoints.image -->
 
 | Setting | What it does |
 |---|---|
@@ -278,7 +280,7 @@ The **Connection** section sets which server makes the images. The setup steps f
 |---|---|
 | **Provider** | ComfyUI, InvokeAI, Automatic1111 / Forge, NovelAI, or an OpenAI-compatible service on the desktop app. **How to Set Up** shows the steps for the picked provider. |
 | **Endpoint URL**, **API Token** | The image server address and its token |
-| **Model** | The checkpoint that makes the image. On ComfyUI it fills the workflow's `%ckpt%`; a workflow without one (the **Z-Image Turbo**, **Flux 2 Klein** and **Chroma** setups) loads its own model, which the row then shows, greyed out. |
+| **Model** | The checkpoint that makes the image. On ComfyUI it fills the workflow's `%ckpt%`. A workflow without `%ckpt%` loads its own model, and the row shows that model, grayed out. |
 
 The **Image** section sets how each image is made.
 
@@ -290,13 +292,13 @@ The **Image** section sets how each image is made.
 | **Steps / CFG** | Sampling steps and how closely the image follows the prompt |
 | **Sampler** | The sampling method |
 | **Face Fix** | Automatic1111 / Forge and InvokeAI only. Draws faces again in a second pass. On Automatic1111 / Forge it needs the **ADetailer** extension on your server. On InvokeAI it about doubles the time. |
-| **Image Prompts** | Which [Image Prompts](#image-prompts) preset writes this endpoint's prompts: booru tags or plain sentences. |
-| **Workflow (API Format)** | **Advanced**, ComfyUI only. Replaces the default ComfyUI graph. **How to Get This** shows how to export one. The **Z-Image Turbo** and **Flux 2 Klein** buttons set up a natural-language preset in one step. |
+| **Workflow (API Format)** | **Advanced**, ComfyUI only. Replaces the default ComfyUI graph. **How to Get This** shows how to export one. |
 | **File Name** | **Advanced**, ComfyUI only. Where each image is saved under ComfyUI's `output` folder: `{world}`, `{subject}` (an entity's name, or `turn-12-scene`), `{turn}` and `{preset}`. The default is `formamorph/{world}/{subject}`. A custom workflow uses it where its save node's prefix is `%prefix%`. |
 | **Board** | **Advanced**, InvokeAI only. The InvokeAI board that gets the images |
 | **Qwen3 Encoder**, **Z-Image VAE**, **Anima VAE** | **Advanced**, InvokeAI only. Shows for a Z-Image or Anima model. Leave them empty to pick one automatically. |
 
 ### Tag Prompt
+<!-- route: settingsEndpoints.tagPrompt -->
 
 **Advanced.** Shows when **Enable Image Generation** is on. It is the prompt that your text model gets to turn a description into image tags. **Reset to Defaults** brings back the original text.
 
