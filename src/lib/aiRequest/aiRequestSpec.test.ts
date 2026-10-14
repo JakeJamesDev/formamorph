@@ -205,6 +205,14 @@ describe('temperature and penalty — pinned, global, custom, omitted', () => {
     expect(buildRequestBody(snapshot(target), call({ requestType: 'summary' })).temperature).toBe(0);
   });
 
+  it('merges the endpoint\'s Extra Parameters last, so they win, and never over the request itself', () => {
+    const target = external({ extraParams: '{"temperature": 0.42, "chat_template_kwargs": {"enable_thinking": true}}' });
+    const body = buildRequestBody(snapshot(target), call());
+    expect(body).toMatchObject({ temperature: 0.42, chat_template_kwargs: { enable_thinking: true }, stream: true });
+    // Text that can't be used sends nothing from it, rather than half of it.
+    expect(buildRequestBody(snapshot(external({ extraParams: '{"model": "other", "top_a": 1}' })), call())).not.toHaveProperty('top_a');
+  });
+
   it('keeps a custom prompt sampler ahead of an enabled endpoint override', () => {
     const target = external({ samplerOverrides: {
       ...defaultEndpointSamplerOverrides(),
