@@ -13,12 +13,12 @@ describe('code hover card reference', () => {
     for (const name of ['Light', 'Dark'] as const) {
       expect(sample(name, 'Global')).toHaveTextContent('(global) self');
       const stat = sample(name, 'Stat');
-      expect(stat).toHaveTextContent('(stat) stats.Fatigue: Stat');
-      for (const label of ['Type', 'Range', 'Starts At', 'Regen', 'Owner', 'Shown To']) {
+      expect(stat).toHaveTextContent('(world stat) stats.Fatigue: Stat');
+      for (const label of ['Type', 'Range', 'Starts At', 'Regen', 'Shown To']) {
         expect(within(stat).getByText(label)).toBeInTheDocument();
       }
       const trait = sample(name, 'Trait');
-      for (const label of ['Mode', 'Requires', 'Changes', 'Bearers']) {
+      for (const label of ['Mode', 'Requires', 'Changes', 'Owners']) {
         expect(within(trait).getByText(label)).toBeInTheDocument();
       }
       expect(sample(name, 'Read-Only')).toHaveTextContent('Read-Only');
@@ -43,7 +43,7 @@ describe('code hover card reference', () => {
       'Open', 'Find All Uses',
       'Courage · After · Line 3',
       'Tom › Health · Before · Line 1',
-      'Dread · After · Line 7No Bearers',
+      'Dread · After · Line 7No Owners',
     ]);
     expect(within(within(theme('Dark')).getByRole('region', { name: 'No Uses' })).getByText('No uses in stat code')).toBeInTheDocument();
   });

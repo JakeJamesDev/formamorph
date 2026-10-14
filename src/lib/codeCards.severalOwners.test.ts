@@ -68,27 +68,27 @@ function cardAt(doc: string, options: SurfaceAnalysisOptions): CodeCard | null {
 const rowsOf = (card: CodeCard | null) => Object.fromEntries((card?.rows ?? []).map((row) => [row.label, row.value]));
 
 describe('trait cards on a route that reaches several entities (Q37)', () => {
-  it('shows the shared trait with the reached entities as Bearers through `persona.traits`', () => {
+  it('shows the shared trait with the reached entities as Owners through `persona.traits`', () => {
     const card = cardAt('return persona.traits.Br|ave.enabled;', worldBox(tom, sam));
-    expect(rowsOf(card)).toEqual({ Mode: 'Automatic', Bearers: 'Tom, Sam' });
+    expect(rowsOf(card)).toEqual({ Mode: 'Automatic', Owners: 'Tom, Sam' });
     expect(card?.description).toBe('Faces danger without flinching.');
     expect(card?.item).toEqual({ kind: 'trait', traitId: 'brave' });
   });
 
   it('shows only who owns one where the owners’ traits differ', () => {
     const card = cardAt('return persona.traits.Br|ave.enabled;', worldBox(tom, ann));
-    expect(card?.rows).toEqual([{ label: 'Bearers', value: 'Tom, Ann' }]);
+    expect(card?.rows).toEqual([{ label: 'Owners', value: 'Tom, Ann' }]);
     expect(card?.description).toBeUndefined();
     expect(card?.item).toBeUndefined();
   });
 
   it('leaves out a reached entity that holds no such trait', () => {
-    expect(rowsOf(cardAt('return persona.traits.Br|ave.enabled;', worldBox(kit, tom)))).toEqual({ Mode: 'Automatic', Bearers: 'Tom' });
+    expect(rowsOf(cardAt('return persona.traits.Br|ave.enabled;', worldBox(kit, tom)))).toEqual({ Mode: 'Automatic', Owners: 'Tom' });
   });
 
   it('keeps the plain card with every owner where `persona` reaches one entity (T15-1)', () => {
     const card = cardAt('return persona.traits.Br|ave.enabled;', worldBox(tom));
-    expect(rowsOf(card)).toEqual({ Mode: 'Automatic', Bearers: 'You, Tom' });
+    expect(rowsOf(card)).toEqual({ Mode: 'Automatic', Owners: 'You, Tom' });
     expect(card?.item).toEqual({ kind: 'trait', traitId: 'brave' });
   });
 
@@ -97,41 +97,42 @@ describe('trait cards on a route that reaches several entities (Q37)', () => {
   });
 
   it('follows the same rule through `owner.traits` in a Blueprint box', () => {
-    expect(rowsOf(cardAt('return owner.traits.Br|ave.enabled;', howlBox(tom, sam)))).toEqual({ Mode: 'Automatic', Bearers: 'Tom, Sam' });
+    expect(rowsOf(cardAt('return owner.traits.Br|ave.enabled;', howlBox(tom, sam)))).toEqual({ Mode: 'Automatic', Owners: 'Tom, Sam' });
     const mixed = cardAt('return owner.traits.Br|ave.enabled;', howlBox(tom, ann));
-    expect(mixed?.rows).toEqual([{ label: 'Bearers', value: 'Tom, Ann' }]);
+    expect(mixed?.rows).toEqual([{ label: 'Owners', value: 'Tom, Ann' }]);
     expect(mixed?.item).toBeUndefined();
   });
 });
 
 describe('placeholder cards on a route that reaches several entities (Q37)', () => {
-  it('shows the Blueprint every owner’s Copy shares, with the reached entities as Bearers', () => {
+  it('shows the Blueprint every owner’s Copy shares, with the reached entities as Owners', () => {
     const card = cardAt('return owner.placeholders.Lo|ok.value;', howlBox(tom, sam));
-    expect(rowsOf(card)).toEqual({ Owner: 'World', Kind: 'Wildcard', Bearers: 'Tom, Sam' });
+    expect(rowsOf(card)).toEqual({ Owners: 'Tom, Sam', Kind: 'Wildcard' });
+    expect(card?.signature.scope).toBeUndefined();
     expect(card?.allowedValues?.values.map((value) => value.text)).toEqual(['grim', 'sly']);
     expect(card?.item).toEqual({ kind: 'placeholder', placeholderId: 'look' });
   });
 
   it('shows the one owner’s Copy where a single entity owns it', () => {
     const card = cardAt('return owner.placeholders.Lo|ok.value;', howlBox(kit, tom));
-    expect(rowsOf(card)).toEqual({ Owner: 'Tom', Kind: 'Wildcard', Bearers: 'Tom' });
+    expect(rowsOf(card)).toEqual({ Owners: 'Tom', Kind: 'Wildcard' });
     expect(card?.item).toEqual({ kind: 'placeholder', placeholderId: 'tom-look' });
   });
 
   it('shows only who owns one where the owners’ placeholders differ', () => {
     const card = cardAt('return owner.placeholders.Lo|ok.value;', howlBox(tom, ann));
-    expect(card?.rows).toEqual([{ label: 'Bearers', value: 'Tom, Ann' }]);
+    expect(card?.rows).toEqual([{ label: 'Owners', value: 'Tom, Ann' }]);
     expect(card?.allowedValues).toBeUndefined();
     expect(card?.item).toBeUndefined();
   });
 
   it('follows the same rule through `persona.placeholders`', () => {
-    expect(rowsOf(cardAt('return persona.placeholders.Lo|ok.value;', worldBox(tom, sam))).Bearers).toBe('Tom, Sam');
-    expect(cardAt('return persona.placeholders.Lo|ok.value;', worldBox(tom, ann))?.rows).toEqual([{ label: 'Bearers', value: 'Tom, Ann' }]);
+    expect(rowsOf(cardAt('return persona.placeholders.Lo|ok.value;', worldBox(tom, sam))).Owners).toBe('Tom, Sam');
+    expect(cardAt('return persona.placeholders.Lo|ok.value;', worldBox(tom, ann))?.rows).toEqual([{ label: 'Owners', value: 'Tom, Ann' }]);
   });
 
-  it('keeps the plain card with no Bearers where a Blueprint box has one owner (T15-1)', () => {
-    expect(rowsOf(cardAt('return owner.placeholders.Lo|ok.value;', howlBox(tom)))).toEqual({ Owner: 'Tom', Kind: 'Wildcard' });
+  it('keeps the plain card with one Owners row where a Blueprint box has one owner (T15-1)', () => {
+    expect(rowsOf(cardAt('return owner.placeholders.Lo|ok.value;', howlBox(tom)))).toEqual({ Owners: 'Tom', Kind: 'Wildcard' });
   });
 
   it('shows no World Details where no reached entity holds the placeholder', () => {

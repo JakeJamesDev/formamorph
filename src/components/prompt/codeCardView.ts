@@ -2,7 +2,7 @@
 
 import { ACCESS_LABEL } from '@/lib/codeSurface';
 import type { OpenCodeCardItem } from '@/lib/codeCardNavigation';
-import type { CodeCard, CodeCardItem, CodeCardSignature } from '@/lib/codeCards';
+import { NO_OWNERS_LABEL, scopedKind, type CodeCard, type CodeCardItem, type CodeCardSignature } from '@/lib/codeCards';
 import type { CodeUse } from '@/lib/codeUses';
 import { docTargetId } from '@/lib/docs/docsLinks';
 import { openDocsFromClick } from '@/lib/formaquestion/docsOpener';
@@ -20,7 +20,7 @@ export function signatureText({ kind, path, type }: CodeCardSignature): string {
 export function cardAnnouncement({ signature, access, description, rows = [], allowedValues }: CodeCard): string {
   const values = allowedValues?.values.map(({ text, weight }) => (weight === undefined ? text : `${text} weight ${weight}`)) ?? [];
   const parts = [
-    `${signature.kind} ${signatureText(signature)}`, access ? ACCESS_LABEL[access] : '', description ?? '',
+    `${scopedKind(signature)} ${signatureText(signature)}`, access ? ACCESS_LABEL[access] : '', description ?? '',
     ...rows.map((row) => `${row.label}: ${row.value.replace(/\n/g, ', ')}`),
     values.length ? `Allowed Values: ${values.join(', ')}${allowedValues?.more ? ` and ${allowedValues.more} more` : ''}` : '',
   ];
@@ -62,7 +62,7 @@ export function renderCodeCard(card: CodeCard, actions: CodeCardActions = {}): H
 
   const signature = element('section', 'flex items-baseline justify-between gap-2 px-2.5 py-1.5');
   const text = element('span', 'min-w-0 break-words font-mono text-label text-popover-foreground');
-  text.append(element('span', 'text-muted-foreground', `(${card.signature.kind})`), ` ${signatureText(card.signature)}`);
+  text.append(element('span', 'text-muted-foreground', `(${scopedKind(card.signature)})`), ` ${signatureText(card.signature)}`);
   signature.append(text);
   if (card.access) {
     const tone = card.access === 'readOnly'
@@ -158,7 +158,7 @@ export function renderCodeUses(uses: readonly CodeUse[], onPick: (use: CodeUse) 
     const button = element('button', 'flex w-full items-baseline justify-between gap-2 px-2.5 py-1 text-left text-popover-foreground hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground focus-visible:outline-none');
     button.type = 'button';
     button.append(element('span', 'min-w-0 break-words', rowText(use)));
-    if (use.noOwners) button.append(element('span', 'shrink-0 text-meta text-muted-foreground', 'No Bearers'));
+    if (use.noOwners) button.append(element('span', 'shrink-0 text-meta text-muted-foreground', NO_OWNERS_LABEL));
     button.addEventListener('click', () => onPick(use));
     const item = element('li', '');
     item.append(button);

@@ -13,7 +13,7 @@ const stat = (id: string, name: string, extra: Partial<Stat> = {}): Stat =>
 const blueprints: StatGroup = { id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' };
 // A Blueprint group, so `owner.stats` in Rage's box holds Calm too.
 const beast: StatGroup = { id: 'beast', name: 'Beast', parentId: 'bp' };
-const rage = stat('rage', 'Rage', { groupId: 'beast', description: 'How angry the bearer is.' });
+const rage = stat('rage', 'Rage', { groupId: 'beast', description: 'How angry the owner is.' });
 const calm = stat('calm', 'Calm', { groupId: 'beast' });
 const health = stat('health', 'Health');
 const fatigue = stat('fatigue', 'Fatigue', {
@@ -60,12 +60,13 @@ function cardAt(doc: string, options: SurfaceAnalysisOptions): CodeCard | null {
 const rowsOf = (card: CodeCard | null) => Object.fromEntries((card?.rows ?? []).map((row) => [row.label, row.value]));
 
 describe('stat cards: World Details', () => {
-  it('shows Type, Range and Owner, and drops every row at its default', () => {
-    expect(cardAt('return stats.Hea|lth.value;', worldBox)?.rows).toEqual([
+  it('shows Type and Range, and drops every row at its default and the Owners row of a world stat', () => {
+    const card = cardAt('return stats.Hea|lth.value;', worldBox);
+    expect(card?.rows).toEqual([
       { label: 'Type', value: 'Number' },
       { label: 'Range', value: '0 – 100' },
-      { label: 'Owner', value: 'World' },
     ]);
+    expect(card?.signature).toEqual({ kind: 'stat', path: 'stats.Health', type: 'Stat', scope: 'world' });
   });
 
   it('shows each row off its default, in order, and the authored description', () => {
@@ -75,7 +76,6 @@ describe('stat cards: World Details', () => {
       { label: 'Range', value: '0 – 100' },
       { label: 'Starts At', value: '20' },
       { label: 'Regen', value: '−2 per story day' },
-      { label: 'Owner', value: 'World' },
       { label: 'Shown To', value: 'AI only' },
       { label: 'Off', value: 'Until a trait turns it on' },
     ]);
@@ -84,8 +84,8 @@ describe('stat cards: World Details', () => {
   });
 
   it('reads a percentage stat’s amounts with a percent sign', () => {
-    const rows = statRows({ stat: stat('p', 'P', { type: 'percentage', starting: 40, regen: 1 }), owner: 'World' });
-    expect(rows.map((row) => row.value)).toEqual(['Percentage', '0 – 100%', '40%', '+1% per story hour', 'World']);
+    const rows = statRows({ stat: stat('p', 'P', { type: 'percentage', starting: 40, regen: 1 }), owners: ['Tom'] });
+    expect(rows.map((row) => row.value)).toEqual(['Percentage', '0 – 100%', '40%', '+1% per story hour', 'Tom']);
   });
 
   // The default-row table: a stat at each default keeps only the rows that always show.
@@ -97,8 +97,8 @@ describe('stat cards: World Details', () => {
     ['Shown To', { hidden: false }, { hidden: true }],
     ['Off', { enabled: true }, { enabled: false }],
   ] as const)('%s drops at its default and shows off it', (label, atDefault, offDefault) => {
-    const labels = (extra: Partial<Stat>) => statRows({ stat: stat('s', 'S', extra), owner: 'World' }).map((row) => row.label);
-    expect(labels(atDefault)).toEqual(['Type', 'Range', 'Owner']);
+    const labels = (extra: Partial<Stat>) => statRows({ stat: stat('s', 'S', extra), owners: ['Tom'] }).map((row) => row.label);
+    expect(labels(atDefault)).toEqual(['Type', 'Range', 'Owners']);
     expect(labels(offDefault)).toContain(label);
   });
 
@@ -110,24 +110,25 @@ describe('stat cards: World Details', () => {
 
 describe('stat cards: routes', () => {
   it('reaches the world stat through `stats` in an entity’s box, and the entity’s own through `owner.stats`', () => {
-    expect(rowsOf(cardAt('return stats.Hea|lth.value;', maraBox))).toEqual({ Type: 'Number', Range: '0 – 100', Owner: 'World' });
-    expect(rowsOf(cardAt('return owner.stats.Hea|lth.value;', maraBox)))
-      .toEqual({ Type: 'Number', Range: '0 – 10', 'Starts At': '5', Owner: 'Mara' });
+    expect(rowsOf(cardAt('return stats.Hea|lth.value;', maraBox))).toEqual({ Type: 'Number', Range: '0 – 100' });
+    const own = cardAt('return owner.stats.Hea|lth.value;', maraBox);
+    expect(rowsOf(own)).toEqual({ Type: 'Number', Range: '0 – 10', 'Starts At': '5', Owners: 'Mara' });
+    expect(own?.signature).toEqual({ kind: 'stat', path: 'owner.stats.Health', type: 'Stat' });
     expect(cardAt('return owner.stats.Hea|lth.value;', maraBox)?.item).toEqual({ kind: 'stat', statId: 'mara-health', entityId: 'mara' });
   });
 
-  it('names each entity in the Owner row, though `entities` keys only the last of two that share a name', () => {
+  it('names each entity in the Owners row, though `entities` keys only the last of two that share a name', () => {
     const guard = (id: string): Entity => ({ id, name: 'Guard', stats: [stat(`${id}-hp`, 'HP')] });
     const options = box({ kind: 'entity', entityId: 'g1' }, stat('g1-hp', 'HP'), 'after', { ...world, entities: [guard('g1'), guard('g2')] });
-    expect(rowsOf(cardAt('return owner.stats.H|P.value;', options)).Owner).toBe('Guard');
+    expect(rowsOf(cardAt('return owner.stats.H|P.value;', options)).Owners).toBe('Guard');
     expect(cardAt('return own|er.name;', options)?.item).toEqual({ kind: 'entity', entityId: 'g1' });
   });
 
   it('shows a Link’s Overrides, then its Blueprint', () => {
     for (const doc of ['return owner.stats.Ra|ge.value;', 'return entities.Mara.stats.Ra|ge.value;']) {
       const card = cardAt(doc, maraBox);
-      expect(rowsOf(card)).toEqual({ Type: 'Number', Range: '0 – 50', Owner: 'Mara' });
-      expect(card?.description).toBe('How angry the bearer is.');
+      expect(rowsOf(card)).toEqual({ Type: 'Number', Range: '0 – 50', Owners: 'Mara' });
+      expect(card?.description).toBe('How angry the owner is.');
     }
   });
 
@@ -136,15 +137,20 @@ describe('stat cards: routes', () => {
   });
 
   it('shows the Blueprint’s own values and who runs the code through `owner.stats` in a Blueprint box', () => {
-    expect(rowsOf(cardAt('return owner.stats.Ra|ge.value;', rageBox())))
-      .toEqual({ Type: 'Number', Range: '0 – 100', Owner: 'Blueprint', Bearers: 'Mara, Tom' });
+    const card = cardAt('return owner.stats.Ra|ge.value;', rageBox());
+    expect(rowsOf(card)).toEqual({ Type: 'Number', Range: '0 – 100', Owners: 'Mara, Tom' });
+    expect(card?.signature).toEqual({ kind: 'stat', path: 'owner.stats.Rage', type: 'Stat', scope: 'blueprint' });
     expect(rowsOf(cardAt('return owner.stats.Ca|lm.value;', rageBox('before'))))
-      .toEqual({ Type: 'Number', Range: '0 – 100', Owner: 'Blueprint', Bearers: 'Mara, Tom, Kai' });
+      .toEqual({ Type: 'Number', Range: '0 – 100', Owners: 'Mara, Tom, Kai' });
+  });
+
+  it('says No Owners on a Blueprint stat no one runs', () => {
+    expect(rowsOf(cardAt('return owner.stats.Ca|lm.value;', box({ kind: 'blueprint' }, calm))).Owners).toBe('No Owners');
   });
 
   it('shows the one playable entity’s Link Overrides for `persona.stats`, with its item (T15-1)', () => {
     const card = cardAt('return persona.stats.Ra|ge.value;', worldBox);
-    expect(rowsOf(card)).toEqual({ Type: 'Number', Range: '0 – 60', Owner: 'Tom' });
+    expect(rowsOf(card)).toEqual({ Type: 'Number', Range: '0 – 60', Owners: 'Tom' });
     expect(card?.item).toEqual({ kind: 'stat', statId: 'rage', entityId: 'tom' });
   });
 
@@ -159,14 +165,14 @@ describe('stat cards: routes', () => {
     const ivy: Entity = { id: 'ivy', name: 'Ivy', persona: true, stats: [stat('ivy-rage', 'Rage', { max: 7 })] };
     const options = box(null, health, 'after', { ...world, entities: [mara, kai, ivy] });
     const card = cardAt('return persona.stats.Ra|ge.value;', options);
-    expect(rowsOf(card)).toEqual({ Type: 'Number', Range: '0 – 7', Owner: 'Ivy' });
+    expect(rowsOf(card)).toEqual({ Type: 'Number', Range: '0 – 7', Owners: 'Ivy' });
     expect(card?.item).toEqual({ kind: 'stat', statId: 'ivy-rage', entityId: 'ivy' });
   });
 
   it('shows the Blueprint’s values for `persona.stats` when every playable owner links it (Q34)', () => {
     const lia: Entity = { id: 'lia', name: 'Lia', persona: true, statLinks: [link('lia-rage')] };
     const card = cardAt('return persona.stats.Ra|ge.value;', box(null, health, 'after', { ...world, entities: [mara, tom, kai, lia] }));
-    expect(rowsOf(card)).toEqual({ Type: 'Number', Range: '0 – 100', Owner: 'Tom, Lia' });
+    expect(rowsOf(card)).toEqual({ Type: 'Number', Range: '0 – 100', Owners: 'Tom, Lia' });
     expect(card?.item).toEqual({ kind: 'stat', statId: 'rage' });
   });
 
@@ -174,7 +180,7 @@ describe('stat cards: routes', () => {
     const ivy: Entity = { id: 'ivy', name: 'Ivy', persona: true, stats: [stat('ivy-rage', 'Rage', { max: 7 })] };
     const options = box(null, health, 'after', { ...world, entities: [mara, tom, kai, ivy] });
     const card = cardAt('return persona.stats.Ra|ge.value;', options);
-    expect(card?.rows).toEqual([{ label: 'Owner', value: 'Tom, Ivy' }]);
+    expect(card?.rows).toEqual([{ label: 'Owners', value: 'Tom, Ivy' }]);
     expect(card?.item).toBeUndefined();
   });
 
@@ -204,8 +210,17 @@ describe('`self` and `owner` cards', () => {
       { label: 'Type', value: 'Number' },
       { label: 'Range', value: '0 – 10' },
       { label: 'Starts At', value: '5' },
-      { label: 'Owner', value: 'Mara' },
+      { label: 'Owners', value: 'Mara' },
     ]);
+  });
+
+  it('names a world or Blueprint stat’s scope in the `self` Stat row, under the global’s signature', () => {
+    const world = cardAt('return se|lf.value;', worldBox);
+    expect(world?.signature.kind).toBe('global');
+    expect(world?.signature.scope).toBeUndefined();
+    expect(rowsOf(world)).toEqual({ Stat: 'Health (world stat)', Type: 'Number', Range: '0 – 100' });
+    expect(rowsOf(cardAt('return se|lf.value;', rageBox())))
+      .toEqual({ Stat: 'Rage (Blueprint stat)', Type: 'Number', Range: '0 – 100', Owners: 'Mara, Tom' });
   });
 
   it('shows the owning entity in an owned box', () => {
@@ -232,11 +247,11 @@ describe('`self` and `owner` cards', () => {
   });
 
   it('lists the owners that run a Blueprint box', () => {
-    expect(cardAt('return own|er.name;', rageBox())?.rows).toEqual([{ label: 'Bearers', value: 'Mara, Tom' }]);
-    expect(cardAt('return own|er.name;', rageBox('before'))?.rows).toEqual([{ label: 'Bearers', value: 'Mara, Tom, Kai' }]);
+    expect(cardAt('return own|er.name;', rageBox())?.rows).toEqual([{ label: 'Owners', value: 'Mara, Tom' }]);
+    expect(cardAt('return own|er.name;', rageBox('before'))?.rows).toEqual([{ label: 'Owners', value: 'Mara, Tom, Kai' }]);
   });
 
   it('marks a Blueprint box no one runs', () => {
-    expect(cardAt('return own|er.name;', box({ kind: 'blueprint' }, calm))?.rows).toEqual([{ label: 'Bearers', value: 'No bearers' }]);
+    expect(cardAt('return own|er.name;', box({ kind: 'blueprint' }, calm))?.rows).toEqual([{ label: 'Owners', value: 'No Owners' }]);
   });
 });

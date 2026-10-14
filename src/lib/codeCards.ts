@@ -8,8 +8,8 @@ import { isMethodEntry, type CodeAccess, type SurfaceEntry } from '@/lib/codeSur
 import { canBePlayer } from '@/lib/owners';
 import type { DocTarget } from '@/lib/docs/docsLinks';
 import type {
-  CodeDictionaryRecord, CodeEntityRecord, CodeOwnersRecord, CodeOwnerRecord, CodePlaceholderOwner, CodePlaceholderRecord,
-  CodeStatRecord, CodeTraitRecord, CodeWorldLookup,
+  CodeDictionaryRecord, CodeEntityRecord, CodeItemScope, CodeOwnersRecord, CodeOwnerRecord, CodePlaceholderOwner,
+  CodePlaceholderRecord, CodeStatRecord, CodeTraitRecord, CodeWorldLookup,
 } from '@/lib/codeWorldLookup';
 import { placeholderKindNoun, placeholderWeight } from '@/lib/placeholders';
 import { REGEN_UNIT_LABELS, regenPer, regenUnitOf } from '@/lib/regenUnits';
@@ -31,9 +31,16 @@ export type CodeCardKind =
 /** The card's first line: what the name is, the path it reads as, and its type. A declared name has no type. */
 export interface CodeCardSignature {
   kind: CodeCardKind;
+  /** Where a world item no entity owns lives, named beside its kind (Q8). */
+  scope?: CodeItemScope;
   path: string;
   type?: string;
 }
+
+const SCOPE_LABEL: Record<CodeItemScope, string> = { world: 'world', blueprint: 'Blueprint' };
+
+/** What the name is, as the card's first line says it: "stat", or "world stat" and "Blueprint stat". */
+export const scopedKind = ({ kind, scope }: Pick<CodeCardSignature, 'kind' | 'scope'>) => (scope ? `${SCOPE_LABEL[scope]} ${kind}` : kind);
 
 /** One World Details row. */
 export interface CodeCardRow {
@@ -126,29 +133,37 @@ const signed = (stat: Stat, n: number) => (n < 0 ? `−${amount(stat, -n)}` : `+
 /** The value a stat seeds with. */
 const startsAt = (stat: Stat) => stat.starting ?? stat.value ?? stat.min;
 
+/** The tag and the Owners value where no one owns an item. */
+export const NO_OWNERS_LABEL = 'No Owners';
+
+/** An owner list as one value, cut at the cap. */
+const ownersText = (owners: readonly string[]) => listText(owners, NO_OWNERS_LABEL);
+
+type StatRecord = CodeStatRecord & { stat: Stat };
+
 /**
- * A stat card's value rows, in order, with Owner among them. A row with `atDefault` drops while the stat sits
- * at that default (Q27, Q35); Type, Range and Owner always show.
+ * A stat card's value rows, in order, with Owners among them. A row is left out where its `drops` holds: a field
+ * at its default (Q27, Q35), or Owners on a world stat (Q8). Type and Range always show.
  */
 const STAT_ROWS: readonly {
   label: string;
-  value: (record: CodeStatRecord & { stat: Stat }) => string;
-  atDefault?: (stat: Stat) => boolean;
+  value: (record: StatRecord) => string;
+  drops?: (record: StatRecord) => boolean;
 }[] = [
   { label: 'Type', value: ({ stat }) => STAT_TYPE_LABEL[stat.type] ?? stat.type },
   { label: 'Range', value: ({ stat }) => `${stat.min} – ${amount(stat, stat.max)}` },
-  { label: 'Starts At', value: ({ stat }) => amount(stat, startsAt(stat)), atDefault: (stat) => startsAt(stat) === stat.min },
+  { label: 'Starts At', value: ({ stat }) => amount(stat, startsAt(stat)), drops: ({ stat }) => startsAt(stat) === stat.min },
   {
     label: 'Regen',
     value: ({ stat }) => {
       const unit = regenUnitOf(stat);
       return `${signed(stat, regenPer(stat.regen, unit))} per story ${REGEN_UNIT_LABELS[unit].toLowerCase()}`;
     },
-    atDefault: (stat) => !stat.regen,
+    drops: ({ stat }) => !stat.regen,
   },
-  { label: 'Owner', value: ({ owner }) => owner },
-  { label: 'Shown To', value: ({ stat }) => (stat.hidden ? 'AI only' : 'AI and player'), atDefault: (stat) => !stat.hidden },
-  { label: 'Off', value: () => 'Until a trait turns it on', atDefault: (stat) => stat.enabled !== false },
+  { label: 'Owners', value: ({ owners }) => ownersText(owners), drops: ({ scope }) => scope === 'world' },
+  { label: 'Shown To', value: ({ stat }) => (stat.hidden ? 'AI only' : 'AI and player'), drops: ({ stat }) => !stat.hidden },
+  { label: 'Off', value: () => 'Until a trait turns it on', drops: ({ stat }) => stat.enabled !== false },
 ];
 
 /** The most names or values a card lists before "and N more". */
@@ -161,15 +176,14 @@ export function listText(names: readonly string[], empty = 'None'): string {
   return names.length > CARD_LIST_CAP ? `${shown} and ${names.length - CARD_LIST_CAP} more` : shown;
 }
 
-const ownersRow = (owners: readonly string[]): CodeCardRow => ({ label: 'Bearers', value: listText(owners, 'No bearers') });
+const ownersRow = (owners: readonly string[]): CodeCardRow => ({ label: 'Owners', value: ownersText(owners) });
 
-/** A stat's World Details, with an owners row where a Blueprint box names who runs it (Q30). Only the Owner row
- *  where the lookup has no single stat to show (Q34). */
+/** A stat's World Details. Only the Owners row where the lookup has no single stat to show (Q34). */
 export function statRows(record: CodeStatRecord): CodeCardRow[] {
   const { stat } = record;
-  if (!stat) return [{ label: 'Owner', value: record.owner }];
-  const rows = STAT_ROWS.filter((row) => !row.atDefault?.(stat)).map((row) => ({ label: row.label, value: row.value({ ...record, stat }) }));
-  return record.owners ? [...rows, ownersRow(record.owners)] : rows;
+  if (!stat) return [ownersRow(record.owners)];
+  const full = { ...record, stat };
+  return STAT_ROWS.filter((row) => !row.drops?.(full)).map((row) => ({ label: row.label, value: row.value(full) }));
 }
 
 const statItem = ({ stat, entityId }: CodeStatRecord): CodeCardItem | undefined =>
@@ -219,13 +233,13 @@ export function placeholderValues(placeholder: Placeholder): CodeCardValues {
 
 function placeholderDetails(record: CodePlaceholderRecord | CodeOwnersRecord): Pick<CodeCard, 'rows' | 'item' | 'allowedValues'> {
   if (!record.placeholder) return { rows: [ownersRow(record.owners)] };
-  const { placeholder, owner, pins, owners } = record;
+  const { placeholder, parent, pins, owners } = record;
   return {
     rows: [
-      { label: 'Owner', value: owner },
+      ...(owners.length ? [ownersRow(owners)] : []),
+      ...(parent ? [{ label: 'Parent Placeholder', value: parent }] : []),
       { label: 'Kind', value: placeholderKindNoun(placeholder) },
       ...(pins.length ? [{ label: 'Pinned By', value: pins.join('\n') }] : []),
-      ...(owners ? [ownersRow(owners)] : []),
     ],
     item: { kind: 'placeholder', placeholderId: placeholder.id },
     allowedValues: placeholderValues(placeholder),
@@ -288,7 +302,8 @@ function boxGlobal(card: CodeCard, lookup: CodeWorldLookup): CodeCard {
     case 'self': {
       const record = lookup.self();
       const { rows = [], item } = statDetails(record);
-      return { ...card, rows: [{ label: 'Stat', value: record.stat.name }, ...rows], ...(item ? { item } : {}) };
+      const scope = record.scope ? ` (${scopedKind({ kind: 'stat', scope: record.scope })})` : '';
+      return { ...card, rows: [{ label: 'Stat', value: `${record.stat.name}${scope}` }, ...rows], ...(item ? { item } : {}) };
     }
     case 'persona': return {
       ...card,
@@ -362,6 +377,9 @@ function declarationKind(code: string, at: number): DeclarationKind {
   return 'var';
 }
 
+const withScope = (card: CodeCard, scope: CodeItemScope | undefined): CodeCard =>
+  (scope ? { ...card, signature: { ...card.signature, scope } } : card);
+
 /** The card for the name at `pos`, or null where the code names nothing a card can describe. */
 export function codeCard(code: string, pos: number, options: SurfaceAnalysisOptions): CodeCard | null {
   const name = resolveCodeName(code, pos, options);
@@ -387,7 +405,7 @@ export function codeCard(code: string, pos: number, options: SurfaceAnalysisOpti
     case 'stat': {
       const card = world('stat', keyPath(`${ownerPrefix(name.owner)}stats`, name.key), 'Stat');
       const record = options.lookup?.stat(name.owner, name.key);
-      return record ? { ...card, ...statDetails(record) } : card;
+      return record ? { ...withScope(card, record.scope), ...statDetails(record) } : card;
     }
     case 'trait': {
       const card = world('trait', keyPath(`${ownerPrefix(name.owner)}traits`, name.key), 'Trait');
@@ -404,7 +422,7 @@ export function codeCard(code: string, pos: number, options: SurfaceAnalysisOpti
       const record = reached.length > 1
         ? lookup.ownedPlaceholder(reachedPlaceholderOwners(name.owner, name.path, options, reached))
         : placeholder && lookup.placeholder(placeholder);
-      return record ? { ...card, ...placeholderDetails(record) } : card;
+      return record ? { ...withScope(card, record.placeholder ? record.scope : undefined), ...placeholderDetails(record) } : card;
     }
     case 'entity': {
       const card = world('entity', keyPath('entities', name.key), 'Entity');
