@@ -8,7 +8,6 @@ import {
   type OwnerPinState,
 } from './ownedTraitsInPlay';
 import { INITIAL_SOURCE_TURN_ID } from './runtimeCharacters';
-import { PLAYER_OWNER } from './traitGates';
 
 const pin = (placeholderId: string, value: string, valueId?: string): PlaceholderPin =>
   ({ placeholderId, value, ...(valueId ? { valueId } : {}) });
@@ -246,7 +245,7 @@ describe('ownerTraitTree — the player-facing tree', () => {
     ]);
     expect([...tree.entityNodes.keys()]).toEqual(['albus', 'mira', 'cp']);
     expect(tree.groups.find((g) => g.id === ownerGroupId('albus', 'classes'))?.maxPicks).toBe(1);
-    expect(tree.traits.map((t) => rowOwner(tree, t))).toEqual([PLAYER_OWNER, PLAYER_OWNER, 'albus', 'albus', 'albus', 'mira', 'mira', 'cp']);
+    expect(tree.traits.map((t) => rowOwner(tree, t))).toEqual(['world', 'world', 'albus', 'albus', 'albus', 'mira', 'mira', 'cp']);
   });
 
   it("gives the Custom Persona entity a node beside the player's top level under None, and none under a world persona", () => {

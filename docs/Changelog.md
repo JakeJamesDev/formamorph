@@ -95,7 +95,6 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Request Anatomy:**
     - **Digests and diaries now show their Request Anatomy in the AI-context viewer.** The Background Pass Queue builds them from the same pass records as a live turn, so each request is labeled.
     - **Re-rolled choices and stats now show their Request Anatomy in the AI-context viewer.** A re-roll builds its request from the same pass record as a live turn, so it sends the same prompt and cap.
-  - **Saves now keep the player's cascade-off traits under a `player` key, and older saves load unchanged.** A v3.2 app that opens a newer save can leave those traits off after their gate holds again.
 
 #### 🔧 Fixed
 

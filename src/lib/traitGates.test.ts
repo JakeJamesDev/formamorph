@@ -28,6 +28,13 @@ const unlocked = (input: GateInput, id: string, owner = PLAYER_OWNER) => gateOf(
 const reason = (input: GateInput, id: string, owner = PLAYER_OWNER) =>
   gateOf(gateStates(input), owner, id)?.rows.flatMap((row) => row.conditions).map((c) => c.text);
 
+describe('the player owner key', () => {
+  // Saves key the player's active traits under this string.
+  it('stays the string saves already hold', () => {
+    expect(PLAYER_OWNER).toBe('world');
+  });
+});
+
 describe('gate states', () => {
   const classes = [T('Paladin'), T('Knight'), T('Plate Armor', { requires: [{ all: [trait('Paladin')] }, { all: [trait('Knight')] }] })];
 

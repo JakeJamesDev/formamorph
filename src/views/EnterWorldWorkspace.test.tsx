@@ -12,7 +12,6 @@ import { gateStates, settle, switchTrait, type SettleResult } from '@/lib/traitG
 import type { TraitCascade } from '@/components/game/SetupTraitList';
 import { namedStartLocation, offeredStartLocations, withoutPersona } from '@/lib/personaPick';
 import type { Entity, EntityMetadata, GameLocation, PersonaRef, Trait } from '@/types';
-import { PLAYER_OWNER } from '@/lib/traitGates';
 
 const identity = (text: string) => text;
 const traitIdentity = (_trait: Trait, text: string) => text;
@@ -133,7 +132,7 @@ function Harness({ initialDictionaryItems = dictionaryItems, ...props }: Partial
       locations={[]}
       resolveText={identity}
       resolveTraitText={traitIdentity}
-      selectedTraits={{ [PLAYER_OWNER]: selectedTraits }}
+      selectedTraits={{ world: selectedTraits }}
       selectedLocationId={selectedLocationId}
       libraryEntities={libraryEntities}
       selectedEntityIds={selectedEntityIds}
@@ -264,29 +263,29 @@ describe('EnterWorldWorkspace', () => {
     render(<Harness onTraitSelect={onTraitSelect} />);
 
     expect(fireEvent.click(screen.getByText('Local'))).toBe(true);
-    expect(onTraitSelect).toHaveBeenLastCalledWith('local', PLAYER_OWNER);
+    expect(onTraitSelect).toHaveBeenLastCalledWith('local', 'world');
     expect(onTraitSelect).toHaveBeenCalledTimes(1);
 
     onTraitSelect.mockClear();
     fireEvent.click(screen.getByRole('radio', { name: 'Local' }));
-    expect(onTraitSelect).toHaveBeenLastCalledWith('local', PLAYER_OWNER);
+    expect(onTraitSelect).toHaveBeenLastCalledWith('local', 'world');
     expect(onTraitSelect).toHaveBeenCalledTimes(1);
 
     onTraitSelect.mockClear();
     await user.click(screen.getByRole('radio', { name: 'Outsider' }));
-    expect(onTraitSelect).toHaveBeenLastCalledWith('outsider', PLAYER_OWNER);
+    expect(onTraitSelect).toHaveBeenLastCalledWith('outsider', 'world');
     expect(onTraitSelect).toHaveBeenCalledTimes(1);
 
     fireEvent.click(screen.getByRole('button', { name: /Practice/ }));
     expect(screen.getByRole('checkbox', { name: 'Artisan' })).not.toBeChecked();
     onTraitSelect.mockClear();
     await user.click(screen.getByText('Artisan'));
-    expect(onTraitSelect).toHaveBeenLastCalledWith('artisan', PLAYER_OWNER);
+    expect(onTraitSelect).toHaveBeenLastCalledWith('artisan', 'world');
     expect(onTraitSelect).toHaveBeenCalledTimes(1);
 
     onTraitSelect.mockClear();
     await user.click(screen.getByRole('checkbox', { name: 'Artisan' }));
-    expect(onTraitSelect).toHaveBeenLastCalledWith('artisan', PLAYER_OWNER);
+    expect(onTraitSelect).toHaveBeenLastCalledWith('artisan', 'world');
     expect(onTraitSelect).toHaveBeenCalledTimes(1);
   });
 

@@ -13,7 +13,6 @@ import {
 } from '@/lib/traitRuntime';
 import { inPlayOwners } from '@/lib/ownedTraitsInPlay';
 import type { LegacyCodeBoundsStat, PlayerStat, Stat, Trait } from '@/types';
-import { PLAYER_OWNER } from '@/lib/traitGates';
 
 vi.mock('@/lib/useTtsPlayback', () => import('@/test/stubs/ttsPlayback'));
 
@@ -155,8 +154,8 @@ describe('the cascade-off list across a save/load round trip', () => {
       s = switchPlayerTrait(s, 't', true, world)!.state;
       commit(live(), switchPlayerTrait(s, 's', false, world)!.state);
     });
-    expect(live().cascadeOffTraitIds).toEqual({ [PLAYER_OWNER]: ['t'] });
-    expect(live().saveCurrentGameState().cascadeOffTraitIds).toEqual({ [PLAYER_OWNER]: ['t'] });
+    expect(live().cascadeOffTraitIds).toEqual({ world: ['t'] });
+    expect(live().saveCurrentGameState().cascadeOffTraitIds).toEqual({ world: ['t'] });
 
     await act(async () => {
       await live().saveGame('slot', 'World', 'w1', 'save-5');
@@ -167,7 +166,7 @@ describe('the cascade-off list across a save/load round trip', () => {
     await act(async () => {
       await live().loadGame('save-5', [], [authored]);
     });
-    expect(live().cascadeOffTraitIds).toEqual({ [PLAYER_OWNER]: ['t'] });
+    expect(live().cascadeOffTraitIds).toEqual({ world: ['t'] });
 
     // Sworn back on: Hale returns on its own, and its +25 comes back with it.
     await act(async () => {
@@ -181,7 +180,7 @@ describe('the cascade-off list across a save/load round trip', () => {
   it('reads a save without the list as empty', async () => {
     const live = mount();
     await act(async () => {
-      commit(live(), { ...fresh, cascadeOffTraitIds: { [PLAYER_OWNER]: ['t'] } });
+      commit(live(), { ...fresh, cascadeOffTraitIds: { world: ['t'] } });
     });
     await act(async () => {
       live().loadGameState({ ...live().saveCurrentGameState(), cascadeOffTraitIds: undefined }, []);
@@ -198,7 +197,7 @@ describe('owned trait state across a save/load round trip', () => {
     const live = mount();
     await act(async () => {
       live().setOwnedTraits(owned);
-      live().setCascadeOffTraitIds({ [PLAYER_OWNER]: ['t'], bob: ['loyal'] });
+      live().setCascadeOffTraitIds({ world: ['t'], bob: ['loyal'] });
     });
     expect(live().saveCurrentGameState().ownedTraits).toEqual(owned);
     await act(async () => {
@@ -212,7 +211,7 @@ describe('owned trait state across a save/load round trip', () => {
       await live().loadGame('save-owned-1', [], [authored], held);
     });
     expect(live().ownedTraits).toEqual(owned);
-    expect(live().cascadeOffTraitIds).toEqual({ [PLAYER_OWNER]: ['t'], bob: ['loyal'] });
+    expect(live().cascadeOffTraitIds).toEqual({ world: ['t'], bob: ['loyal'] });
   });
 
   it("keeps every entity's picks when the persona switches and back", async () => {
@@ -239,7 +238,7 @@ describe('owned trait state across a save/load round trip', () => {
     const wren = { id: 'wren', name: 'Wren' };
     await act(async () => {
       live().setOwnedTraits({ ...owned, wren: { chosen: ['brave'] } });
-      live().setCascadeOffTraitIds({ [PLAYER_OWNER]: ['t'], bob: ['loyal'], wren: ['calm'] });
+      live().setCascadeOffTraitIds({ world: ['t'], bob: ['loyal'], wren: ['calm'] });
       live().setDiscoveredEntities([{ entity: wren, sourceTurnId: 'start' }]);
     });
     await act(async () => {
@@ -249,7 +248,7 @@ describe('owned trait state across a save/load round trip', () => {
       await live().loadGame('save-owned-3', [], [authored], [{ id: 'ash' }]);
     });
     expect(live().ownedTraits).toEqual({ ash: owned.ash, wren: { chosen: ['brave'] } });
-    expect(live().cascadeOffTraitIds).toEqual({ [PLAYER_OWNER]: ['t'], wren: ['calm'] });
+    expect(live().cascadeOffTraitIds).toEqual({ world: ['t'], wren: ['calm'] });
   });
 
   it("keeps a played persona's linked stat records under its own key, and drops a gone owner's", async () => {
