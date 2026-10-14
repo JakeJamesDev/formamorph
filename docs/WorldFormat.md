@@ -235,7 +235,7 @@ A trait describes the player or an entity. The player picks traits before play. 
 | `name` | ✓ | String | The name |
 | `playerDescription` | | String | What the player reads on the setup screen |
 | `aiDescription` | | String | What the AI reads while the trait is active |
-| `statChanges` | ✓ | [StatChange](#stat-changes)[] | Changes to the player's stats while the trait is active |
+| `statChanges` | ✓ | [StatChange](#stat-changes)[] | Changes to stats while the trait is active. A global trait changes global stats. An entity's trait changes the entity's own stats, and global stats through a `"global"` row |
 | `groupId` | | String \| `null` | The [group's](#trait-groups) `id`. Absent or `null` = the top level |
 | `order` | | Number | The order among items in the same group |
 | `isDefault` | | Boolean | The trait starts selected |
@@ -271,7 +271,7 @@ Each requirement has a `kind`:
 
 - `name` is optional. It holds the target's name, so a requirement still reads when the target is gone.
 - A `"stat"` requirement's `operator` is one of `">"`, `"<"`, `">="`, `"<="`, `"="` or `"≠"`. Its `unit` is `"raw"` for the stat's own units or `"percent"` for a share of the stat's min→max span. `{ "kind": "stat", "id": "health", "operator": "<", "value": 20, "unit": "percent" }` holds while Health is under 20% of its range.
-- `owner` is optional, and it applies only to a trait, group or stat an entity owns. A requirement that names a global item (a root trait, a root group or a global stat) reads the global scope, and the app drops any `owner` stored with it. Absent = the trait's own owner. `{ "kind": "you" }` checks the player. `{ "kind": "entity", "id": "<entity id>", "name": "…" }` checks that entity.
+- `owner` is optional, and it applies only to a trait, group or stat an entity owns. A requirement that names a global item (a root trait, a root group or a global stat) reads the global scope, and the app drops any `owner` stored with it. Absent = the trait's own owner. `{ "kind": "you" }` checks the entity the player plays, and never holds when the player plays none. `{ "kind": "entity", "id": "<entity id>", "name": "…" }` checks that entity.
 - `not` is optional. `true` flips the requirement: it holds while its target is off. `{ "kind": "trait", "id": "paladin", "not": true }` holds while the owner doesn't have Paladin.
 - A requirement whose target is gone never holds, with or without `not`.
 

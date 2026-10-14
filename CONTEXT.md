@@ -248,8 +248,8 @@ The computed state delta a finished turn applies — history, clock, stats, disc
 _Avoid_: turn state, commit object
 
 **Stat Request**:
-The stat pass's request, which asks the AI how a turn moved each owner's stats. It has three owner kinds, each with its own reply key: the played persona (`Player Character`), the loose world stats no one owns (`Other Stats`), and each present entity that owns stats (its name). A persona with no stats has no block and no key. Owner keys stay unique across all three kinds. The stat pass renames each owned stat to its request key before any chip renders; narration keeps raw names.
-_Avoid_: stat update (the prompt's name), player stats (for loose world stats)
+The stat pass's request, which asks the AI how a turn moved each owner's stats. It has three owner kinds, each with its own reply key: the played entities (`Player Character`), the Global Stats no one owns (`Global Stats`), and each present entity that owns stats (its name). A persona with no stats has no block and no key. Owner keys stay unique across all three kinds. The stat pass renames each owned stat to its request key before any chip renders; narration keeps raw names.
+_Avoid_: stat update (the prompt's name), player stats (for global stats), other stats
 
 **Request Anatomy**:
 The labeled map of one assembled request — every message split into runs and marked as either the player's own prompt text or context the app assembled. Rendered in the AI Context viewer for real turns, and in Settings → Prompts → Narration → Anatomy for an example one built under the player's live generation settings. A sidecar alongside the messages, never part of them, so it never reaches an endpoint.
@@ -314,7 +314,7 @@ A node in an entity's trait tree that points at an Original and reads it live un
 _Avoid_: shared trait, reference, copy; linked copy (that is a library item's world copy)
 
 **Blueprint**:
-A world trait, stat or placeholder that exists to be linked or copied. A Link or a Copy reads its Blueprint live until edited. An Original is a Blueprint trait or stat. A Blueprint stat is never a player stat.
+A world trait, stat or placeholder that exists to be linked or copied. A Link or a Copy reads its Blueprint live until edited. An Original is a Blueprint trait or stat. A Blueprint stat is never a Global Stat or a Persona Stat.
 _Avoid_: template, master, source
 
 **Copy**:
@@ -326,11 +326,23 @@ One field a Link or a Copy sets for itself, stored with the Blueprint's value it
 _Avoid_: local value, patch, delta
 
 **Owner**:
-The entity or dictionary whose tree holds a trait, stat or placeholder, as its own item or through a Link or Copy. The played persona is the owner **You**; so is the entity with the **Custom Persona** mark under None and a library persona. The world is never an owner. Requirements and pins resolve per owner. Where it matters, the editor says **Own** or **Linked**.
+The entity or dictionary whose tree holds a trait, stat or placeholder, as its own item or through a Link or Copy. The played persona is the owner **You**; so is the entity with the **Custom Persona** mark under None and a library persona. Global scope is never an owner: an item with no owner is global. Requirements and pins resolve per owner. Where it matters, the editor says **Own** or **Linked**.
 _Avoid_: bearer, holder
 
+**Global Stat**:
+A stat in the world's own list, not under an entity or a Blueprint. It has no owner and belongs to no one. The AI reads it under **Global Stats**, and stat code reaches it as `stats`.
+_Avoid_: player stat, world stat, other stat
+
+**Global Trait**:
+A trait outside every entity's tree and outside Blueprints, including the root traits a player picks. It has no owner. A Global Trait never counts as the persona's for a gate, and **Same Owner** never pairs it with an entity's trait. The AI reads picked ones under **Global Traits**.
+_Avoid_: player trait, world trait, other trait
+
+**Persona Stat**:
+A stat of the played entity, kept under its entity id. The AI reads it in the Persona block, under the `Player Character` key. The Custom Persona entity's stats are Persona Stats too, under a library persona and under None.
+_Avoid_: player stat (as the word for a Global Stat)
+
 **`owner` (stat-code global)**:
-The entity that owns the running stat, with the same fields as an `entities` entry, so code reaches its own stats as `owner.stats`. For a Blueprint stat it is the entity the run is for. In a world stat's code it is an empty entry, and a write through it is dropped and reported.
+The entity that owns the running stat, with the same fields as an `entities` entry, so code reaches its own stats as `owner.stats`. For a Blueprint stat it is the entity the run is for. In a Global Stat's code it is an empty entry, and a write through it is dropped and reported.
 _Avoid_: self (the running stat's own entry), persona (the played entity)
 
 **Original**:

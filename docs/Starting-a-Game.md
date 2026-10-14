@@ -106,7 +106,7 @@ The dialog opens on the first category. **Cancel** leaves without starting. **Es
 ## Starting Traits
 <!-- keywords: padlock, locked option, unable to unselect, radio button, stat bonus, companion, prerequisite, turned off automatically, default picks -->
 
-**General** holds the world's own traits for you. Each trait group with traits to pick gets its own category.
+**General** holds the global traits for you. No one owns a global trait, so none of them is your persona's. Each trait group with traits to pick gets its own category.
 
 An entity whose traits you set gets a category with its portrait and name. Your own entity is marked **You**. This is how a world lets you pick a companion's traits, or the race and class of a [Custom Persona](Personas#create-your-own).
 

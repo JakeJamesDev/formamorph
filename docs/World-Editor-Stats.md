@@ -4,7 +4,7 @@
 
 > 🛠️ Part of the [World Editor](WorldEditor) guide.
 
-Stats are the numbers your world tracks: health, coin, reputation, or anything your world needs. Each stat has a value between a **Min** and a **Max**. The AI reads your stats on every turn. A stat on the **Stats** tab belongs to the world. A persona or an entity can own stats of its own.
+Stats are the numbers your world tracks: health, coin, reputation, or anything your world needs. Each stat has a value between a **Min** and a **Max**. The AI reads your stats on every turn. A stat on the **Stats** tab is a *global stat*: no one owns it. A persona or an entity can own stats of its own.
 
 ## Why it exists
 <!-- keywords: point of meters, do numbers affect story, narrator ignores values, consequences, low energy effects, narrator lists numbers -->
@@ -14,25 +14,25 @@ Prose alone changes from turn to turn. A stat is a fact the AI must write around
 The narrator's prompt tells it to let stats change how an action turns out. A low stat shows as effort and cost. A high stat shows as ease. The prompt also tells the narrator not to list the stats or report their changes. A separate step changes the numbers.
 
 ## How the AI Tracks Stat Changes
-<!-- keywords: stat updates, stat tracker, who owns a stat, owner blocks, player character block, in scene block, other stats, reply keys, json reply, loose stat, city stat, faction meter, wrong character stat moved, text fallback -->
+<!-- keywords: stat updates, stat tracker, who owns a stat, owner blocks, player character block, in scene block, global stats, persona stats, reply keys, json reply, global stat, city stat, faction meter, wrong character stat moved, text fallback -->
 
-After each narration, a separate request reads the turn and records which stats changed. The request shows the stats in blocks, one block for each owner.
+After each narration, a separate request reads the turn and records which stats changed. The request shows the stats in blocks, one block for each owner. The global stats come first, so the persona's block is the most recent.
 
 | Block | Holds | Reply key |
 |---|---|---|
-| **Player Character** | The persona's traits and stats | `Player Character` |
+| **Global Stats** | The global stats: stats that no entity owns. **Global Traits** lists the picked traits with no owner. | `Global Stats` |
+| **Player Character** | The persona's traits and stats, and the stats of every entity you play as | `Player Character` |
 | **In Scene** | Each present entity that owns stats, with its traits and stats | The entity's name |
-| **Other Stats** | Stats that no persona or In Scene entity owns, and the stats of any other entity you play as. **Other Traits** lists the traits with no owner. | `Other Stats` |
 
 - **Each owner's stats change for that owner only.** A stat under **Player Character** or an entity changes for what that owner does, goes through or feels this turn.
-- **Other Stats has no owner rule.** Its world stats change for what happens in the world, such as a city's Destruction or a faction's Suspicion.
-- **Put a stat on its owner to make it theirs.** Add it on the persona or entity. Leave it on the **Stats** tab to keep it for the world.
-- **A persona with no stats has no block and no key.** Other Stats still holds whatever is loose.
+- **Global Stats has no owner rule.** Its stats change for what happens in the world, such as a city's Destruction or a faction's Suspicion.
+- **Put a stat on its owner to make it theirs.** Add it on the persona or entity. Leave it on the **Stats** tab to make it global.
+- **A persona with no stats has no block and no key.** Global Stats still holds the global stats.
 - **An entity gets a block only when it is in the scene and owns stats.**
 - **The reply is one object with one key for each block.** Under each key, a stat has two entries: its name for the change in value, and its name plus ` max` for the change in maximum.
-- **A stat that shares a name with an earlier stat reads as "*name* (2)".** The world's stats come first, then the persona's.
+- **A stat that shares a name with an earlier stat reads as "*name* (2)".** The global stats come first, then the persona's.
 
-On an endpoint that can't take that format, the request falls back to stat-change lines. The fallback covers the persona's stats and the world's stats. Entity stats don't update there. A custom preset is sent as written. A world's own **Stats** prompt is sent as written too, with your preset's user message.
+On an endpoint that can't take that format, the request falls back to stat-change lines. The fallback covers the persona's stats and the global stats. Stats of other entities don't update there. A custom preset is sent as written. A world's own **Stats** prompt is sent as written too, with your preset's user message.
 
 > 💡 A saved world prompt for **Stats** or your own **Stat Updates** preset keeps its own layout. To get entity stats back in it, see [How to Get Entity Stats Into a Custom Stat Prompt](Prompts#how-to-get-entity-stats-into-a-custom-stat-prompt).
 
@@ -203,7 +203,7 @@ The turn order is: Before the AI, the AI's stat changes, Regen, After the AI. An
 Code can do five things:
 
 - Set this stat's value, Min, Max or Regen. A returned number sets the value.
-- Write the value, Min, Max or Regen of another stat, of the world or of any entity
+- Write the value, Min, Max or Regen of another stat, global or owned by any entity
 - Pin or unpin a placeholder
 - Switch a trait on or off
 - Read every active stat, every trait, every placeholder and the story clock

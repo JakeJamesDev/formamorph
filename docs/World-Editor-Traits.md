@@ -168,7 +168,7 @@ Each row changes one stat while the trait is active. A row has a stat, a number,
 
 Min and Max follow different rules on purpose. A trait can put the Max anywhere. A trait can never put a stat below the range you designed.
 
-On an entity's trait, the rows change that entity's own stats. The stat list shows its stats, and the player's stats on an entity the player can play. See [Entity Traits and Stats](#entity-traits-and-stats).
+On an entity's trait, the rows change that entity's own stats. The stat list shows its stats, then a **Global** group with the global stats. See [Entity Traits and Stats](#entity-traits-and-stats).
 
 ## Stat Availability
 <!-- keywords: unlock a meter, mana for mages, class specific bar, show bar only if, turn on gauge, conditional meter -->
@@ -311,19 +311,23 @@ A locked trait shows its requirements as one line: *Requires Knight and not Pala
 
 ### Whose trait counts
 
-The entity that has a trait, as its own or through a link, is its **owner**. The player is one owner, marked **You**. Each entity in the cast is another.
+The entity that has a trait, as its own or through a link, is its *owner*. The entity the player plays is one owner, marked **You**. Each entity in the cast is another.
 
-A condition checks the same owner by default. *Smite* requires *Paladin* means Paladin on the entity that has Smite. The player's *Wizard* never unlocks Smite for anyone else.
+A trait outside every entity, such as one the player picks at the start, is a *global trait*. A global trait has no owner. It never counts as the persona's trait, so no persona trait can use it as its same-owner target.
 
-To check another owner, pick one after you pick the target. When only one owner can have the target, the search skips this step and adds the condition at once.
+A condition checks the same owner by default. *Smite* requires *Paladin* means Paladin on the entity that has Smite. A global *Wizard* never unlocks Smite for anyone else.
+
+To check another owner, pick one after you pick the target. When only one owner can have the target, the search skips this step and adds the condition at once. For a global target, the search skips this step: the condition reads the global scope.
 
 | Owner | The condition holds when |
 |---|---|
-| **Same Owner** | Whoever has the trait also has the target. This is the default. |
-| **You** | The player has the target |
+| **Same Owner** | Whoever has the trait also has the target. This is the default. It never pairs a global trait with an entity's trait. |
+| **You** | The entity the player plays has the target. With no entity played, it never holds. |
 | An entity | That entity has the target. The list shows only entities that can have it. |
 
-For example, *Squire* requires **You**: *Paladin*. A squire entity gets its Squire trait only when the player is a Paladin.
+For example, *Squire* requires **You**: *Paladin*. A squire entity gets its Squire trait only when the player plays a Paladin.
+
+> ⚠️ **A global trait can't use Same Owner with an entity's trait.** A global *Duelist* that requires an entity's *Paladin* from the same owner never opens. The [Test Bench](Test-Bench) warns about it. Pick **You** or the entity.
 
 A condition that names an entity describes a relationship to someone else. When the player plays that entity, the relationship can't apply to themself, so the row with that condition can never hold. The game drops that row. *Squire to Albus* requires *Albus: Paladin*, so it is offered to every player except Albus. A trait with a second row, such as *Paladin* on the same owner, stays and opens by that row. A trait with no row left is not offered. An entity's own traits keep every row, so Albus can still gate his own trait on *Albus: Paladin*.
 
@@ -331,20 +335,21 @@ A condition that names an entity describes a relationship to someone else. When 
 <!-- keywords: npc perks, npc abilities, give character a class, companion skills, name the owner, can npcs have stats, move to character -->
 <!-- route: worldEditorEntity.traits -->
 
-An entity can have traits of its own. Each entity with traits shows as a node in the **Traits** tab, below the world's traits.
+An entity can have traits of its own. Each entity with traits shows as a node in the **Traits** tab, below the global traits.
 
 - **Add one from the Traits tab.** In Advanced mode, select **+**, then **Add Trait to Entity**, and pick the entity. **Add Group to Entity** adds a group the same way.
 - **Or add one in the entity's editor**, in its **Traits** tab, in Advanced mode. Type a name in the **Filter Traits** box, select **+**, then **Add Trait to <entity>** or **Add Group to <entity>**.
 
 The entity's **Traits** tab is the **Traits** tab for that entity alone. It shows the entity's traits, groups and links in the same tree, with the same row buttons. Select a row to edit it in place; the **Traits** back row returns to the list. Drag rows, links included, to reorder and nest them inside the entity. A **Requires** chip opens its target when the entity holds it; a world trait or a persona reads as plain text there. To link a trait or move one to another entity, use the **Traits** tab.
 
-An entity's active traits describe it to the AI, the same way the player's do. When the player plays the entity as a [persona](Persona-Authoring), its traits are the player's.
+An entity's active traits describe it to the AI, the same way the player's do. When the player plays the entity as a [persona](Persona-Authoring), its traits are the persona's.
 
 > 💡 **Type `{{char}}` in a trait's text to name its owner.** It shows as the **Character Name** chip. On an entity, it reads as that entity's name. On the player's traits, it reads as the persona's name, or "the player" with no persona. One *Paladin* text then names each Paladin.
 
-To give a world trait or group to one entity, drag it onto the entity's node. It moves to that entity. A [Blueprints](#blueprints) item links instead, in Advanced mode.
+To give a global trait or group to one entity, drag it onto the entity's node. It moves to that entity. A [Blueprints](#blueprints) item links instead, in Advanced mode.
 
 ### Entity Traits and Stats
+<!-- keywords: monster trait raises city stat, trait changes global stat, unplayed entity changes a world stat, global row, rampage, stat row on npc trait, same id as global stat -->
 
 An entity's traits change the entity's own stats: Min, Max, Starting Value, Regen and Stat Availability. Its links do the same. A *Hardy* trait on Bram raises Bram's Vigor.
 
@@ -436,7 +441,7 @@ Placeholders have a [Blueprints group](World-Editor-Placeholders#blueprints) of 
 ## Custom Persona
 <!-- keywords: own character, self insert, blank slate hero, oc, no premade hero, library character perks, fourth choice, generic player -->
 
-**Advanced mode only.** Custom Persona is a mark on one entity. The marked entity is a normal entity: it owns traits, links and [copies](World-Editor-Placeholders#copies). Its traits are the player's when the player has no world persona: **None**, or a persona from their own library. Use it to give a race and a class to a player who brings their own persona.
+**Advanced mode only.** Custom Persona is a mark on one entity. The marked entity is a normal entity: it owns traits, links and [copies](World-Editor-Placeholders#copies). Its traits are the persona's traits when the player has no world persona: **None**, or a persona from their own library. Use it to give a race and a class to a player who brings their own persona.
 
 Set the mark on the entity's **Profile** tab. **Custom Persona** is the fourth choice of the **Persona** control, beside **Cast**, **Playable** and **Persona-Only**. See [How to Make a Custom Persona](Persona-Authoring#how-to-make-a-custom-persona) for the steps and [Custom Persona](Persona-Authoring#custom-persona) for the full rules.
 
@@ -464,9 +469,9 @@ A pin that names a value the copy removed pins nothing.
 
 | Text | Pins that apply |
 |---|---|
-| World text: locations, the world prompt, narration | The world's pins, then the player's trait pins |
+| World text: locations, the world prompt, narration | The world's pins, then the global and persona trait pins |
 | The player's persona | The same as world text |
-| An entity's own text | The world's pins, then the player's trait pins, then the entity's own trait pins on top |
+| An entity's own text | The world's pins, then the global and persona trait pins, then the entity's own trait pins on top |
 
 An entity's own trait pins never reach anyone else's text. Albus's class never changes the player's description.
 
@@ -491,6 +496,7 @@ It shows a warning when:
 - More **Automatic** traits can be active together than a group's maximum allows. The check can report a group that never fills, because it ignores the maximums of other groups.
 - A group marks more traits as default than its maximum allows. Some defaults won't apply.
 - A row can never hold, such as *Paladin and not Paladin*. Remove the row or change a condition.
+- A global trait requires an entity's trait, group or stat from the same owner. Only entities have the target, so the row never holds. Pick **You** or the entity.
 - A trait requires a stat that the trait changes itself, including the stat's min, max or on/off state. Its own effect can flip the requirement.
 - A **%** condition, in a trait's rule or an image's Visibility rule, reads a stat whose min and max are equal. It always reads 0%.
 - Every image of an entity has a Visibility rule, and no two images have opposite conditions. The entity can end up with no image.

@@ -82,7 +82,7 @@ A **Playable** entity shows under **From This World** when a player enters your 
 | What | Effect |
 |---|---|
 | The cast | The entity leaves it for that game. It returns when the player changes persona, unless it's [Persona-Only](#persona-only-entities). |
-| Its traits | They're the player's traits, marked **You**. See [Entity Traits](World-Editor-Traits#entity-traits). |
+| Its traits | They're the persona's traits, marked **You**. See [Entity Traits](World-Editor-Traits#entity-traits). |
 | The AI | Reads that everyone in the world already knows this person, and that your text about the entity means the player |
 | Starting location | The entity's **Starting Location** is preselected. With **Automatic**, its first location that is a starting location is. The player can change it. |
 | [Entity Openings](World-Editor-Openings#entity-openings) | The entity's Others openings leave the draw, so page one never greets the player as themselves. Its [Self Openings](World-Editor-Openings#self-openings), if any, replace the whole draw. |
@@ -125,7 +125,7 @@ Open the entity's **Profile** tab and set **Persona** to **Custom Persona**. The
 | Always an owner | The **Traits** and **Placeholders** tabs list it, so you can drag and link to it while it is empty. |
 | Duplicate | A duplicate drops the mark. |
 
-Its traits are the player's when the player picks **None** or a library persona. A world persona keeps its own traits. The picks carry over between **None** and library personas.
+Its traits are the persona's traits when the player picks **None** or a library persona. A world persona keeps its own traits. The root traits the player picks stay global traits under every persona and under **None**. The picks carry over between **None** and library personas.
 
 Copies work in the same order. A library persona's own copy wins. The Custom Persona entity's copy fills in where the persona has none. The [blueprint](World-Editor-Placeholders#blueprints) itself reads last.
 
@@ -166,19 +166,19 @@ Use **Starts On: None** when your world already defines the player. Use **World 
 - **Worlds saved with the older Persona Choice control load as the same rules.** Fixed becomes **Starts On: None**. Cast becomes **World Only**, and also **Starts On: None** when no entity was playable.
 
 ## Persona Stats
-<!-- keywords: persona owns stats, my persona's stats, same name twice, two health bars, stats reset on switch, trait changes wrong stat -->
+<!-- keywords: persona owns stats, persona stats, global stats, where the ai reads my character's stats, player character block, my persona's stats, same name twice, two health bars, stats reset on switch, trait changes wrong stat -->
 
-An entity's own stats become the player's stats while the player plays as it. Under **None** and a library persona, the **Custom Persona** entity's stats do the same.
+An entity's own stats become *persona stats* while the player plays as it. Under **None** and a library persona, the **Custom Persona** entity's stats do the same. A persona stat is never a global stat: a global stat has no owner.
 
 | Where | What happens |
 |---|---|
-| Stat panel | The persona's stats show under its name, below your world's own stats. Pick "*name* (You)" in the entity picker, and no entity section shows. |
-| AI stat updates | The AI updates a persona's own stats under **Player Character**. Under a library persona, the Custom Persona's stats read under **Other Stats**, after your world's. A stat with the same name as a world stat stays a separate stat. See [How the AI Tracks Stat Changes](World-Editor-Stats#how-the-ai-tracks-stat-changes). |
-| AI prompts | The narrator, choice writer and storyboard planner read the persona's own stats in its **Persona** block. Under a library persona, the **Custom Persona** entity's stats come after your world's stats under **Other Stats**. A stat with the same name as an earlier stat reads as "*name* (2)". |
+| Stat panel | The global stats show under **Global**. The persona's stats show under its name, below them. Pick "*name* (You)" in the entity picker, and no entity section shows. |
+| AI stat updates | The AI updates every persona stat under **Player Character**, and the global stats under **Global Stats**. A stat with the same name as a global stat stays a separate stat. See [How the AI Tracks Stat Changes](World-Editor-Stats#how-the-ai-tracks-stat-changes). |
+| AI prompts | The narrator, choice writer and storyboard planner read the global stats and traits first. The persona's own stats follow in its **Persona** block. Under a library persona and under **None**, the **Custom Persona** entity's stats sit in that block. A stat with the same name as an earlier stat reads as "*name* (2)". |
 | Persona switch | Each entity keeps its values. Switch back, and they are as you left them. |
 | Library persona edits | A stat you add to a library persona joins the playthrough at its starting value, in a saved game too |
 
-**A persona's stat and a world stat can share an id.** On a trait the persona owns, pick the stat from the persona's own list to change its own stat. Pick it from the **Player** list to change the world stat.
+**A persona's stat and a global stat can share an id.** On a trait the persona owns, a stat row changes the persona's own stat first. It changes the global stat only when the persona has no stat with that id. Pick the stat from the **Global** list to change the global stat.
 
 ## The Persona Chip
 <!-- keywords: ai forgets my name, inject player info, prompt variable, missing from custom prompt, shows not available, where to place it, detail level, cache friendly order -->
@@ -209,7 +209,7 @@ These rows work with **Content**:
 | Detail | What to do |
 |---|---|
 | The heading | Write it in the chip's **Header** field. With no persona, the chip and its heading both send nothing, so no empty section is left. **Prepend** and **Append** text goes with the value the same way. A chip with no **Header**, **Prepend** or **Append** text sends `N/A`. |
-| Placement | Put the chip beside the **Traits** chip, above **Location**. The persona rarely changes mid-game, and a stable top helps the AI server reuse its work. |
+| Placement | Put the chip after the **Stats** and **Traits** chips, above **Location**. The global blocks then come first, and the persona block is the last one the AI reads. The persona rarely changes mid-game, and a stable top helps the AI server reuse its work. |
 | A world persona | **Full** and **Summary** add the line that says the world knows this person. **Name** stays bare. |
 
 Narration stays in second person, and entities say the player's name only after they learn it. Your prompt can state otherwise, for example that one entity already knows the player.

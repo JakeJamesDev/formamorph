@@ -76,7 +76,7 @@ Stat code runs in a sandbox on every turn (see [When Your Code Runs](#when-your-
 - **React to thresholds** (e.g., speed penalties when health is below 30%)
 - **Follow time**: how long a turn took, or what time of day it is (see [The Story Clock](#the-story-clock))
 - **Set its own Min, Max, or Regen** (see [Writing to `self`](#writing-to-self))
-- **Write another stat**, of the world or of any entity, so one event can move several stats (see [Writing to Other Stats](#writing-to-other-stats))
+- **Write another stat**, global or owned by any entity, so one event can move several stats (see [Writing to Other Stats](#writing-to-other-stats))
 - **Shape what the AI asked for** before it lands (see [Reading This Turn](#reading-this-turn))
 - **Pin a placeholder** to any text (see [Placeholders](#placeholders))
 - **Switch a trait** on or off (see [Traits](#traits))
@@ -141,7 +141,7 @@ Follow these rules:
 
 - **A stat compares through `.value`.** Write `stats.<Stat>.value > <n>`. `stats.<Stat>` and `self` alone are whole entries, not numbers.
 - **A trait switches through `.enabled`.** Write `traits.<Trait>.enabled = true`. The editor underlines `traits.<Trait> = true`.
-- **A trait sits under its owner.** `traits` holds the world's own traits only. A trait on the entity that owns the stat is under `owner.traits`. A trait on the played persona is under `persona.traits`. A trait on another entity is under `entities.<Entity>.traits`, the Custom Persona under a library persona included.
+- **A trait sits under its owner.** `traits` holds the global traits only. A trait on the entity that owns the stat is under `owner.traits`. A trait on the played persona is under `persona.traits`. A trait on another entity is under `entities.<Entity>.traits`, the Custom Persona under a library persona included.
 - **`stats` is the global stats in every box.** It means the same in an entity's stat code as in a global stat's code, as `traits` does. It never holds the entity's own stats.
 - **An entity's stat code reads its own entity's stats through `owner.stats`.** `owner` is the entity that owns the running stat, so `owner.stats.<Stat>.value` is the entity's own stat. In a Blueprint stat's code, `owner` is the entity the run is for. In a global stat's code, it's an empty entry: reads are blank, and a write is ignored and reported.
 - **Another entity's stats are under `entities.<Entity>.stats`.** The played persona's are under `persona.stats`.
@@ -502,7 +502,7 @@ if (persona.traits.Scarred.enabled) self.value -= 1;
 if (persona.placeholders.Hair.text.includes('gray')) self.value -= 1;
 ```
 
-`persona.traits` and `traits` are separate. A world trait and a persona trait can share a name, and each map reads its own.
+`persona.traits` and `traits` are separate. A global trait and a persona trait can share a name, and each map reads its own.
 
 Writing `value`, `min`, `max` or `regen` on an entry in `persona.stats` moves the persona's stat, by the rules in [Writing to Other Stats](#writing-to-other-stats).
 

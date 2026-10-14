@@ -151,7 +151,7 @@ The default prompt sends entities from three places, as separate blocks: the pla
 <!-- keywords: npc stat, ally health, trust stat, give an entity a stat, entity owns stats, stats tab on entity -->
 <!-- route: worldEditorEntity.stats -->
 
-**Advanced mode only.** The **Stats** tab holds the stats this entity owns. It works like the world's [Stats](World-Editor-Stats) tab: the same search box, the same **+** menu, and every field a world stat has.
+**Advanced mode only.** The **Stats** tab holds the stats this entity owns. It works like the world's [Stats](World-Editor-Stats) tab: the same search box, the same **+** menu, and every field a global stat has.
 
 1. Select the entity and open its **Stats** tab.
 2. Click **+**, then **Add Stat**. Text in the search box names the new stat.
@@ -162,10 +162,10 @@ The stats stay on the entity, in the order you set. Dragging a stat reorders it 
 ### Entity nodes on the Stats tab
 <!-- keywords: move stat to npc, move stat between entities, entity in stat group, drag stat to character, why can't i move this stat -->
 
-Each entity with stats shows as a node in the world's **Stats** tab, below the world's stats.
+Each entity with stats shows as a node in the world's **Stats** tab, below the global stats.
 
 - **Drag the node** into one of your stat groups to place it there. It can't go in **Blueprints**.
-- **Drag a stat or a group** onto another entity's node, or out to the world's stats, to move it. It keeps its id.
+- **Drag a stat or a group** onto another entity's node, or out to the global stats, to move it. It keeps its id.
 - **Drag a Blueprint stat** onto a node to link it, in Advanced mode. The Blueprint stays where it is.
 
 > ⚠️ **A move is refused when something reads the stat where it is now.** That is a trait that changes it, or stat code that reads it by name. A note names it. A move is also refused when the other side already has the stat. The same check stops a stat from moving into **Blueprints**.
@@ -221,7 +221,7 @@ An image shows while **any one row** holds. A row holds when **all** its conditi
 
 A thumbnail with a rule carries an eye badge. The line under the selected thumbnail reads the rule: *Shown while Health < 20% and not Healed*.
 
-A condition checks the entity that owns the image, unless you pick another owner. To read the player's traits or stats, pick **You**. *Shown while You: Night Vision* shows the true form to a player who has Night Vision.
+A condition checks the entity that owns the image, unless you pick another owner. To read the traits or stats of the entity the player plays, pick **You**. A global trait or stat needs no owner. *Shown while You: Night Vision* shows the true form to a player who has Night Vision.
 
 ### Order sets priority
 
