@@ -2,7 +2,7 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **3.0.0 – 3.2.3 are released** (collapsed below). Releases 2.0.0 – 2.19.x are in [Changelog-v2](Changelog-v2). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **3.2.3** — the latest released version.
+> ✅ **3.0.0 – 3.3.0 are released** (collapsed below). Releases 2.0.0 – 2.19.x are in [Changelog-v2](Changelog-v2). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **3.3.0** — the latest released version.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend. Where two or more changes touch the same feature, they sit together under that feature's name.
 
@@ -10,7 +10,12 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 ## 🚧 In Progress
 
-_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.2.3** (just released below)._
+_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.3.0** (just released below)._
+
+---
+
+<details>
+<summary><strong>✅ 3.3.0 — Released 2026-10-14</strong> — Entities own stats — stat code reads and writes any stat through `owner` — hover cards in every code editor — global stats and traits — Visibility rules and stat Conditions — Formaquestion Semantic Search and a full-screen Guide — a long tail of fixes (click to expand)</summary>
 
 ### Minor Changes
 
@@ -20,45 +25,18 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Entity Stats:**
     - **Entities can own stats, set on a Stats tab in the entity panel in Advanced mode.** The tab works like the Stats tab, with the same search, **+** menu and stat fields. Stats save and export with the world.
     - **Stats now go in groups on the Stats tab and on each entity's Stats tab.** Groups nest, reorder and take a description. The stat panel shows each group as a collapsible heading. Clear **Show Heading to AI** on a trait or stat group to group only for yourself.
-    - **Entity stats change during play: regen and both code boxes run each turn for every entity, present or not.** A save keeps the values.
-    - **The AI now updates every entity's stats with yours, in blocks for your persona, each entity and global stats.** Bundled worlds give their persona stats and traits to a Custom Persona. An older save of a bundled world shows both stat sets and loses its trait picks until a new game.
-    - **The Stats tab shows the selected entity's stats under yours, with a picker at the top.** Pick an entity, or **(None)** to hide the section. Each entity stat shows its change this turn with the same timing as yours. Hidden stats stay hidden.
-    - **The Entities chip sends each present entity's stats, in their groups, to the AI.** The **Include** row in the chip's Chip Options turns it off. Stats are on for the Here and In Scene scopes and off for Sub-Locations and Reachable until you turn them on, with Full or Summary content.
+    - **The Stats tab shows a node for each entity that owns stats, and Blueprints give one stat to many entities.** Drag stats and groups between owners, or drop a Blueprint on an entity to link it. **Link Stat** and **Link To…** follow the Blueprint live; **Detach** makes it the entity's own. A note explains a refused move.
     - **An entity's own traits and trait links now change its own stats, in the World Editor and in play.** They never change the player's stats. The Issues tab warns about a change to a stat the entity doesn't own. The Test Bench lists each entity's starting stats, and world setup lists each trait's stat changes.
     - **An entity stat's Body Sliders now shape that entity's own 3D model in play.** The picker lists the entity model's sliders. The entity view, its model window and the entity card show the stats of the turn on screen.
-    - **The Stats tab shows a node for each entity that owns stats, and Blueprints give one stat to many entities.** Drag stats and groups between owners, or drop a Blueprint on an entity to link it. **Link Stat** and **Link To…** follow the Blueprint live; **Detach** makes it the entity's own. A note explains a refused move.
-    - **Your played entity's stats now join yours in the stat panel, the AI's stat updates and the Stats chip.** A stat that shares an earlier stat's name stays separate and reads with a number, such as "Trust (2)". Each entity keeps its values when you switch persona.
     - **Library characters keep their stats on a character card, and the library editor has a Stats tab.** The card carries stats, stat groups and stat links, and a library character then acts like an authored entity. A link stays dormant until a world has its Blueprint.
-    - **A refused stat request falls back to stat-change lines in your preset's style, updating your persona's and loose stats only.** Simple and XML presets used to send the JSON prompt there. Custom prompts and a world's own Stats prompt go as written.
     - **Stat code now reads and writes any stat, and `owner` holds the entity that owns the stat.** `stats` is the world's stats in every box. Reach the others through `owner.stats`, `entities.Bram.stats` or `persona.stats`. Writes apply in owner order, and the last one wins. A dropped write is reported.
     - **Stat code tools now follow `owner` and writes to any stat: the editor, Test Code, Issues, renames and the guide.** The Variable menu and templates pick owner or world stats. Test Code lists every write and drop. Renaming a stat updates the code in every box. The Stat Code Guide has an Owner section.
-  - **Formaquestion:**
-    - **A card on the first open of Formaquestion offers Semantic Search, with Turn On and No Thanks.** Turn On downloads a small model once and shows its progress. A model already on your device turns Semantic Search on with no card.
-    - **The Formaquestion Search tab finds guide sections by meaning while Semantic Search is on.** Word matches show at once, and meaning matches join them when you stop typing. Until the model is on your device, the tab uses words alone.
-    - **Formaquestion's search now finds partial words and words with typos, on the Search tab and in Ask.** Type the first letters of a word, or the word with one letter wrong, to find its sections. A word spelled as you typed it still ranks first.
-    - **You can now read the Guide full screen from the help window.** Select **Open Guide** in the **⋮** menu, or the button beside it in the title bar. The window and the full screen show the same section, and Esc closes it.
-    - **You can now open the wiki from the help window, on the page and heading you're reading.** Select **Open Wiki** in the **⋮** menu or the full-screen Guide. Check **Don't Ask Again** to skip the confirm, and turn it back on in General settings.
-    - **The Guide reader has Back and Forward buttons in Wide View and the full-screen Guide.** They step through the sections you opened, and restore your scroll place. Alt+Left, Alt+Right and the mouse side buttons do the same.
-    - **The Formaquestion wiki page now covers Open Guide, Open Wiki, Back and Forward, and the Semantic Search card.** It adds steps for each, a title-bar row, a **General** settings row and a section on the card.
-  - **Stat Code:**
-    - **A stat code bound write sets the number, and traits and the AI move it from there.** A code bound no longer hides trait changes. Deleting the code keeps the bounds. Saves keep the bounds they show.
-    - **A new Dice Roll With Consequences template rolls a d20, pins a placeholder, and changes two other stats.** Find it in the **Templates** menu of the **After the AI** box. A 1 halves one stat and a 20 adds 1 to another.
-    - **A stat's code now keeps a value above its old max when other code or a trait raises that max.** A code min no longer drops below the authored min. The Test Bench warning skips writes inside strings and stats switched off, and reads a duplicate stat name as stat code does.
-  - **Persona:**
-    - **A chip's Header can now hold the Player Name built-in, in every format.** It reads your persona's name, or "the player" with no persona. The default prompts keep the plain "Player Character" heading, since the block opens with the name.
-    - **The AI's notes now list your world's player traits under Other Traits, after your persona.** A world with no player traits drops the section. Saved custom prompts keep their own headers and order.
-    - **The AI's notes now list your persona's own stats inside its block, and your world's global stats under Global Stats.** The **Persona** chip gains a **Stats** toggle. The choices prompt now reads your persona's summary, with its traits and stats.
-    - **Under Staged thinking, each character now plans its turn with its own stats in view.** Its planning request lists its stats after its background, as the narration sees them. It still never sees your stats.
-    - **The Test Bench's AI Context tab now lists a Persona block, before Stats and Traits.** It shows your Custom Persona entity's traits and stats as the AI reads them. A world with no Custom Persona entity shows it empty.
-  - **Stat Conditions:**
-    - **Test Bench warns when a trait requires a stat it changes, or a percent of a stat with no range.** A Condition on a stat its owner lacks shows as an unresolved requirement.
-    - **The Availability tab can gate a trait on a stat, such as Rage >= 80.** Pick a stat from the **Requires** picker, then pick the operator from a list and set the number and Raw or %. **Not** flips it.
-    - **Stat-gated traits turn off and return in play as their stat crosses the threshold.** Each turn reads the stats once, after AI changes, regen and stat code land. A trait's own effects never flip it back that turn. Hand switch-offs stay off.
-  - **Visibility Rules:**
-    - **Test Bench warns when a Visibility rule names something missing or every image of an entity can hide.** It also warns on a percent of a stat with no range. Two images with opposite conditions, such as Health < 20% and Health >= 20%, never both hide.
-    - **Each gallery image now has a cog that sets its Visibility rule.** A badge marks an image with a rule, and a "Shown while" line reads it under the framed image. The primary image warns that it ignores its rule outside play.
-    - **An entity's image in play now follows its Visibility rules as the story changes.** The panel, zoom viewer and persona row show the first visible image and page through visible images only. A past turn shows that turn's images.
-    - **The wiki and help window now explain Visibility rules and stat Conditions.** Ask how to show a portrait only when hurt. Take Me There opens the entity's Profile tab and a trait's Availability tab.
+    - **Entity stats change during play: regen and both code boxes run each turn for every entity, present or not.** A save keeps the values.
+    - **The Stats tab shows the selected entity's stats under yours, with a picker at the top.** Pick an entity, or **(None)** to hide the section. Each entity stat shows its change this turn with the same timing as yours. Hidden stats stay hidden.
+    - **Your played entity's stats now join yours in the stat panel, the AI's stat updates and the Stats chip.** A stat that shares an earlier stat's name stays separate and reads with a number, such as "Trust (2)". Each entity keeps its values when you switch persona.
+    - **The AI now updates every entity's stats with yours, in blocks for your persona, each entity and global stats.** Bundled worlds give their persona stats and traits to a Custom Persona. An older save of a bundled world shows both stat sets and loses its trait picks until a new game.
+    - **A refused stat request falls back to stat-change lines in your preset's style, updating your persona's and loose stats only.** Custom prompts and a world's own Stats prompt go as written.
+    - **The Entities chip sends each present entity's stats, in their groups, to the AI.** The **Include** row in the chip's Chip Options turns it off. Stats are on for the Here and In Scene scopes and off for Sub-Locations and Reachable until you turn them on, with Full or Summary content.
   - **Code Hover Cards:**
     - **Hovering a name in stat code, a Tool script or the template editor now shows a card that explains it.** It shows the name's kind, type, a Writable or Read-Only badge and a description. The completion list shows it beside the selected option. The first Escape closes the card.
     - **The Variable menu and the Tool script reference now state whether each field is writable or read-only.** Help lines for stat code, Tool script and completion names also follow one writing style.
@@ -71,13 +49,39 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **A hover card on `self`, `stats`, `clock` and the other code globals now has Read in the Guide.** It opens the global's section. Tool script globals link to new headings in the Tools doc.
     - **Hover cards in stat code now have Find All Uses, listing every line that uses that exact item.** It works for stats, traits, placeholders, entities and dictionaries. Each row names the box and line, and a click opens that box at the line. Same-named items on other owners stay out.
     - **Hover cards on `persona` and Blueprint `owner` names now show the item each reached entity holds.** Where those entities hold different items, the card lists only the entities. With one playable entity, a `persona.stats` card shows that entity's own values.
+  - **Formaquestion:**
+    - **The Formaquestion Search tab finds guide sections by meaning while Semantic Search is on.** Word matches show at once, and meaning matches join them when you stop typing. Until the model is on your device, the tab uses words alone. In Ask, weak meaning matches stay out.
+    - **A card on the first open of Formaquestion offers Semantic Search, with Turn On and No Thanks.** Turn On downloads a small model once and shows its progress. A model already on your device turns Semantic Search on with no card.
+    - **Formaquestion's search now finds partial words and words with typos, on the Search tab and in Ask.** Type the first letters of a word, or the word with one letter wrong, to find its sections. A word spelled as you typed it still ranks first.
+    - **You can now read the Guide full screen from the help window.** Select **Open Guide** in the **⋮** menu, or the button beside it in the title bar. The window and the full screen show the same section, and Esc closes it.
+    - **You can now open the wiki from the help window, on the page and heading you're reading.** Select **Open Wiki** in the **⋮** menu or the full-screen Guide. Check **Don't Ask Again** to skip the confirm, and turn it back on in General settings.
+    - **The Guide reader has Back and Forward buttons in Wide View and the full-screen Guide.** They step through the sections you opened, and restore your scroll place. Alt+Left, Alt+Right and the mouse side buttons do the same.
+    - **The Formaquestion wiki page now covers Open Guide, Open Wiki, Back and Forward, and the Semantic Search card.** It adds steps for each, a title-bar row, a **General** settings row and a section on the card.
   - **Global Scope Split:**
-    - **World, character and library files now store a trait stat row's target as `global`.** Files with `player` load as `global`. A requirement that names a global item drops its stored owner. New exports write `global`, so apps older than this change misread those rows.
-    - **The Traits and Stats tabs now list global traits and stats under a Global heading.** Your persona's stats stay under its own name.
-    - **A trait requirement that names a global trait, group or stat now checks global scope from any owner's trait.** **You** reads the played entity and is unmet with none. **Same Owner** on a global trait never reads the persona's traits, and the Test Bench warns on that row. The picker lists **Global Stats** with no owner.
-    - **The AI now reads global traits and stats under Global headings, before your persona's block.** Your persona's block holds the stats and traits of every entity you play. Under a library persona, that includes the Custom Persona entity. Saved custom prompts keep their own headers and order.
+    - **The Traits and Stats tabs now list global traits and stats under a Global heading.** Your persona's stats stay under its own name. A global trait's hover card reads `(global trait)`.
     - **The trait editor now lets any entity's trait change a global stat, played or not.** Stat rows have a **Global** group on every entity. A row acts once for each entity that holds the trait.
+    - **A trait requirement that names a global trait, group or stat now checks global scope from any owner's trait.** **You** reads the played entity and is unmet with none. **Same Owner** on a global trait never reads the persona's traits, and the Test Bench warns on that row. The picker lists **Global Stats** with no owner.
+    - **The AI now reads global traits and stats under Global headings, before your persona's block.** Your persona's block holds the stats and traits of every entity you play. Under a library persona, that includes the Custom Persona entity. Saved custom prompts keep their own headers and order. A world with none drops the heading.
+    - **World, character and library files now store a trait stat row's target as `global`.** Files with `player` load as `global`. A requirement that names a global item drops its stored owner. New exports write `global`, so apps older than this change misread those rows.
     - **The wiki and help window now say global stats, global traits and persona stats.** The Glossary and the Traits, Stats, Persona, World Format and Stat Code pages explain the split and its gate change. Ask the help window about a city stat.
+  - **Persona:**
+    - **A chip's Header can now hold the Player Name built-in, in every format.** It reads your persona's name, or "the player" with no persona. The default prompts keep the plain "Player Character" heading, since the block opens with the name.
+    - **The AI's notes now list your persona's own stats inside its block, and your world's global stats under Global Stats.** The **Persona** chip gains a **Stats** toggle. The choices prompt now reads your persona's summary, with its traits and stats.
+    - **Under Staged thinking, each character now plans its turn with its own stats in view.** Its planning request lists its stats after its background, as the narration sees them. It still never sees your stats.
+    - **The Test Bench's AI Context tab now lists a Persona block, before Stats and Traits.** It shows your Custom Persona entity's traits and stats as the AI reads them. A world with no Custom Persona entity shows it empty.
+  - **Stat Code:**
+    - **A stat code bound write sets the number, and traits and the AI move it from there.** A code bound no longer hides trait changes. Deleting the code keeps the bounds. Saves keep the bounds they show.
+    - **A new Dice Roll With Consequences template rolls a d20, pins a placeholder, and changes two other stats.** Find it in the **Templates** menu of the **After the AI** box. A 1 halves one stat and a 20 adds 1 to another.
+    - **A stat's code now keeps a value above its old max when other code or a trait raises that max.** A code min no longer drops below the authored min. The Test Bench warning skips writes inside strings and stats switched off, and reads a duplicate stat name as stat code does.
+  - **Stat Conditions:**
+    - **The Availability tab can gate a trait on a stat, such as Rage >= 80.** Pick a stat from the **Requires** picker, then pick the operator from a list and set the number and Raw or %. **Not** flips it.
+    - **Stat-gated traits turn off and return in play as their stat crosses the threshold.** Each turn reads the stats once, after AI changes, regen and stat code land. A trait's own effects never flip it back that turn. Hand switch-offs stay off.
+    - **Test Bench warns when a trait requires a stat it changes, or a percent of a stat with no range.** A Condition on a stat its owner lacks shows as an unresolved requirement.
+  - **Visibility Rules:**
+    - **Each gallery image now has a cog that sets its Visibility rule.** A badge marks an image with a rule, and a "Shown while" line reads it under the framed image. The primary image warns that it ignores its rule outside play.
+    - **An entity's image in play now follows its Visibility rules as the story changes.** The panel, zoom viewer and persona row show the first visible image and page through visible images only. A past turn shows that turn's images.
+    - **Test Bench warns when a Visibility rule names something missing or every image of an entity can hide.** It also warns on a percent of a stat with no range. Two images with opposite conditions, such as Health < 20% and Health >= 20%, never both hide.
+    - **The wiki and help window now explain Visibility rules and stat Conditions.** Ask how to show a portrait only when hurt. Take Me There opens the entity's Profile tab and a trait's Availability tab.
   - **The World Editor now says Owner, not Bearer, for the entity or dictionary that holds a trait, stat or placeholder.** The picker says **Same Owner**, and hover cards show one Owners row. World files save a requirement's owner under `owner`; files with `bearer` still load. Apps from v3.1 and v3.2 misread these requirements until they update.
   - **Selecting a placed chip now opens Chip Options, a dialog that shows what the AI reads as you pick.** Entities and Persona chips gain **Only With**, **Include** and **Stat Detail** rows, and a filter icon when Only With is on. Those picks show as raw text in older versions.
   - **The AI now updates your stats with fewer wrong-direction and made-up changes.** It answers with a change for every stat, 0 included. An endpoint that can't take that format gets the old reply style, and the AI context viewer notes it.
@@ -89,37 +93,30 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The Tool script's Variable menu now works like stat code's, one level at a time down to a field.** It lists the arguments, the scene, and the world's entities, locations, dictionary entries and placeholders by name. Pick a field to insert its full path.
 - **🛠️ Developer tooling**
   - **Entity Stats:**
+    - **`entity-stats-probe.cli.ts` compares three request shapes for entity stats against today's stat pass.** One call with text lines, one call per entity, and one call with a JSON schema run on Sedge Landing cases with shared stat names. It reports exact replies, misses, invented and misattributed changes, latency and tokens.
     - **`entity-stats-chip-probe.cli.ts` compares the Entities chip with its stats piece on and off.** It runs narration, planner and choices cases on Sedge Landing and reports uptake, leaks, choice contract and dialogue share.
     - **`entity-stats-probe.cli.ts` names each missed and invented change, and tests stat prompts from any git ref.** The `S0` arm sends the stat prompts as committed at `--s0-ref`. A cell table lists each case's missed and invented changes per arm.
     - **`persona-stats-chip-probe.cli.ts` compares the Stats chip with and without the played persona's stats.** It runs narration, storyboard and choices cases on Sedge Landing, with a name clash, and reports uptake, leaks and numbered names.
   - **The Design System page and showcase now document the code hover card and the Find All Uses list.** The showcase shows the card for each kind of name, and the list, in the light and dark themes.
   - **Trait Availability rules can compare a stat to a number in world and card JSON.** Six operators, raw or percent of the span, any owner. Setup reads each stat's authored start.
   - **Gallery images in world and card JSON are now objects that can carry a Visibility rule.** Each `images` element is `{ data, requires? }`, and string galleries migrate on load. A card's `extraImages` follow, and `primaryImageRequires` holds slot 0's rule.
-  - **`entity-stats-probe.cli.ts` compares three request shapes for entity stats against today's stat pass.** One call with text lines, one call per entity, and one call with a JSON schema run on Sedge Landing cases with shared stat names. It reports exact replies, misses, invented and misattributed changes, latency and tokens.
   - **The player name header probe compares the narration prompt with and without the player's name in its persona heading.** It scores name leaks and stat tabulation on the default endpoint.
   - **The Likers dialog now removes Anonymous Likes with the same icon button as account likes.** An address with one like shows the button on its row. An address with more shows it on a frame around its rows. A like too old for an address shows the button dimmed, and its tip says why.
 - **⚙️ Backend**
   - **Request Anatomy:**
     - **Digests and diaries now show their Request Anatomy in the AI-context viewer.** The Background Pass Queue builds them from the same pass records as a live turn, so each request is labeled.
     - **Re-rolled choices and stats now show their Request Anatomy in the AI-context viewer.** A re-roll builds its request from the same pass record as a live turn, so it sends the same prompt and cap.
-  - **Global Scope:**
-    - **Saves now write global stats and global traits under their own names.** Older saves load with the same values. Apps on v3.1 to v3.2 load a new save without them.
+  - **Saves now write global stats and global traits under their own names.** Older saves load with the same values. Apps on v3.1 to v3.2 load a new save without them.
 
 #### ➖ Removed
 
 - **🛠️ Developer tooling**
-  - **Global Scope Split:**
-    - **Code now holds global stats and traits in their own `global` slot, with no player owner key standing in.** Gates, the trait runtime, stat requests and stat change chips read the slot beside the entity owners. Code names say global where they said player.
+  - **Code now holds global stats and traits in their own `global` slot, with no player owner key standing in.** Gates, the trait runtime, stat requests and stat change chips read the slot beside the entity owners. Code names say global where they said player.
 
 #### 🔧 Fixed
 
 - **👤 User-facing**
-  - **Formaquestion:**
-    - **With Semantic Search on, Formaquestion's Ask now leaves out weak meaning matches, so answers stay on topic.** A weak match took the place of a better section and could send Take Me There to the wrong screen.
-    - **The placeholder and tag suggestion lists of an editor field no longer cover the help window.** A click where a list and the help window overlap now reaches the help window.
-  - **Global Scope Split:**
-    - **Stat code hover cards and the Stat Code Guide now say global stats.** A global trait's card reads `(global trait)` and drops its Owners row.
-    - **The Test Bench, Enter World preview, card import and hover cards no longer treat global scope as your persona's.** A persona trait picked as the Test Bench PC moves the persona's stats. Entity stats that share an id with a global stat keep their own rows. A card's **You** Condition binds to the played entity's stats.
+  - **The placeholder and tag suggestion lists of an editor field no longer cover the help window.** A click where a list and the help window overlap now reaches the help window.
   - **The in-game Map no longer shows Connection travel hints, only the lines.** Hints often hold clues or spoilers about a route. The World Editor canvas still shows them.
   - **Loading a save in game no longer shows stat changes from the turn before the load.** Your stats and every entity's stats start with no change shown.
   - **A dictionary entry's Whole Words checkbox now works with Regex keywords.** `wands?` no longer matches inside *wander*. Letters with accents now count as part of a word, so *caf* no longer matches inside *café*. Imported SillyTavern regex entries with whole words on now match whole words only.
@@ -128,7 +125,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Regenerate Memory and a character's Regenerate wait for background passes, with a spinner you can cancel.** Each button waits its turn instead of staying unavailable or racing a pass. Leaving the game or loading a save also stops them.
   - **An image request that can't reach the image server now names the server and what to check.** The toast's Fix Connection link opens that server's setup guide. Before, it showed only "Failed to fetch". A dropped connection while ComfyUI draws no longer stops the image.
   - **The World Editor's Auto Save setting is now Autosave, the name the game's saves use.** The Save menu, Settings, the unsaved-changes prompt and the Guide all say **Autosave** and **Autosave Pause**.
-  - **Code completion now lists members after owner traits and after chains with spaces or `?.`, and nothing in comments.** `owner.traits.Brave.` lists the trait's fields. `stats . Health .` and `scene?.location.` list their members.
+  - **Code completion now lists members after chains with spaces or `?.`, and nothing in comments.** `stats . Health .` and `scene?.location.` list their members.
   - **Escape in a code box inside a dialog now closes only the completion list.** The next Escape closes the dialog, as before.
   - **A prompt routed to an endpoint now uses that endpoint's detected context window in game.** Before, it could fall back to 10,750 tokens while Settings showed the right size. A server you start after Formamorph is now found within two minutes.
   - **Community Creations thumbnails now show in browsers that can't cache them, such as Safari.** When the thumbnail cache fails, the image loads straight from the server. Before, the card showed its placeholder.
@@ -138,6 +135,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Background passes now wait while a scene render runs.** A pass no longer competes with the image server for one graphics card. It starts again when the render ends.
     - **Background passes between turns follow Concurrent Requests, and a failing pass no longer stalls the ones behind it.** With the setting off they run one at a time, and with it on they run together. Leaving the game or loading a save stops a running pass.
     - **A new character's diary now carries its description, and a name that never becomes a character gets no diary.** Descriptions and diaries run in the background queue, and the status bar shows "Describing character…". A short name like "Aldric" now finds "Sergeant Aldric" for its diary.
+
+</details>
 
 ---
 
