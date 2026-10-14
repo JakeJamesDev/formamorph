@@ -36,12 +36,12 @@ function modelOn(id: string): TextEndpointEditorModel {
     fields: {
       endpointUrl: `http://${id}.test/v1`, apiToken: '', modelName: 'local', maxTokens: 512, maxOutputOverrideEnabled: false,
       contextWindow: 8192, contextWindowOverride: null, detectedContextWindow: null, detectStatus: 'idle',
-      samplerOverrides: DEFAULT_TEXT_ENDPOINT_VALUES.samplerOverrides,
+      samplerOverrides: DEFAULT_TEXT_ENDPOINT_VALUES.samplerOverrides, extraParams: '',
     },
     edit: {
       setEndpointUrl: vi.fn(), setApiToken: vi.fn(), setModelName: vi.fn(), setMaxTokens: vi.fn(),
       setMaxOutputOverrideEnabled: vi.fn(), setContextWindowOverride: vi.fn(), detectContextWindow: vi.fn(),
-      setSamplerEnabled: vi.fn(), setSamplerValue: vi.fn(),
+      setSamplerEnabled: vi.fn(), setSamplerValue: vi.fn(), setExtraParams: vi.fn(),
     },
     onSelect: vi.fn(), onAdd: vi.fn(), onRename: vi.fn(), onDelete: vi.fn(), onReset: vi.fn(),
   };

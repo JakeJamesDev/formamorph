@@ -14,6 +14,11 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 ### Minor Changes
 
+#### ➕ Added
+
+- **👤 User-facing**
+  - **Each text endpoint has Extra Parameters: a JSON object added to every request sent to it.** It sits under **Advanced** in the endpoint editor and wins over the app's own fields, so a vendor's reasoning switch, `top_a` or `chat_template_kwargs` can be sent. It can't replace `model`, `messages` or `stream`, and text that isn't one JSON object shows why in red and sends nothing.
+
 #### 🔧 Fixed
 
 - **👤 User-facing**
