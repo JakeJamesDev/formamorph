@@ -123,12 +123,12 @@ function withStatRows(trait: Trait, keep: (row: StatRow) => boolean): Trait {
 }
 
 /** A player owner's trait as it acts on the player's stats: its rows on the owner's own stats left out, a
- *  row that targets the player kept. */
+ *  row with the global target kept. */
 const withoutOwnStatRows = (trait: Trait, own: ReadonlySet<string>): Trait =>
-  withStatRows(trait, (row) => row.target === 'player' || !own.has(row.statId));
+  withStatRows(trait, (row) => row.target === 'global' || !own.has(row.statId));
 
-/** An owner's trait as it acts on the owner's own stats: its rows that target the player left out. */
-const withoutPlayerRows = (trait: Trait): Trait => withStatRows(trait, (row) => row.target !== 'player');
+/** An owner's trait as it acts on the owner's own stats: its rows with the global target left out. */
+const withoutPlayerRows = (trait: Trait): Trait => withStatRows(trait, (row) => row.target !== 'global');
 
 /** Each player entity owner's active traits that change the player's stats, owned or linked, with the owner
  *  that holds them: the played persona's, and the Custom Persona entity's. */

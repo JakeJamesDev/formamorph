@@ -2,7 +2,8 @@ import { toast } from 'react-toastify';
 import { toastError } from '@/lib/linkToast';
 import { planWriteBack, type LibrarySource, type LinkStamp, type WorldContent } from '@/lib/linkedContent';
 import { kindOf, loadLinkedSources, replaceLibraryItemContent, toLibraryItem } from '@/lib/librarySources';
-import type { GameLocation, Placeholder, Trait, TraitGroup } from '@/types';
+import { traitWorldOf } from '@/lib/portableTraits';
+import type { GameLocation, Placeholder, Stat, StatGroup, Trait, TraitGroup } from '@/types';
 
 /** What a world save hands over: its content, the combined placeholder pool its chips point at, its
  *  locations, which an entity's membership is named against, and its traits, which owned trait requirements
@@ -12,6 +13,9 @@ export interface WorldToWriteBack extends WorldContent {
   locations: GameLocation[];
   traits: Trait[];
   traitGroups: TraitGroup[];
+  /** The world's stats, which a stat Condition's global item is read against. */
+  stats?: Stat[];
+  statGroups?: StatGroup[];
 }
 
 /** Writes each planned copy to its item, and returns the link records of the writes that landed. */
@@ -37,7 +41,7 @@ export async function planOwnedWriteBack(world: WorldToWriteBack): Promise<Owned
     toastError(error, { headline: 'Could not read your library, so nothing was written to it.' });
     return NOTHING_TO_WRITE;
   }
-  const plan = planWriteBack(world, sources, (copy) => toLibraryItem(copy, world.placeholders, world.locations, world));
+  const plan = planWriteBack(world, sources, (copy) => toLibraryItem(copy, world.placeholders, world.locations, world), traitWorldOf(world));
   if (!plan.length) return NOTHING_TO_WRITE;
   const revision = new Date().toISOString();
   const planned = plan.map((step) => ({

@@ -88,6 +88,20 @@ describe('bindOwnedTraits', () => {
     ]);
   });
 
+  it('drops a stored owner from a Condition that names a global item, and keeps one that names an entity item (Q19)', () => {
+    const wolf = { id: 'n-wolf', name: 'Wolf', traits: [trait('n-loyal', { name: 'Loyal' })] };
+    const ownerOf = (req: TraitRequirement) => req.kind === 'playingAs' ? undefined : req.owner;
+    const hold = { kind: 'entity' as const, id: 'n-wolf', name: 'Wolf' };
+    const entity = ash([
+      { kind: 'trait', id: 'w-paladin', name: 'Paladin', owner: { kind: 'you' } },
+      { kind: 'group', id: 'w-class', name: 'Class', owner: hold },
+      { kind: 'trait', id: 'n-loyal', name: 'Loyal', owner: hold },
+    ]);
+    const bound = bindOwnedTraits({ ...entity, id: 'copy' }, target({ entities: [wolf] }));
+    expect(oathOf(bound).map(ownerOf)).toEqual([undefined, undefined, hold]);
+    expect(oathOf(bound).map((r) => r.id)).toEqual(['n-paladin', 'n-class', 'n-loyal']);
+  });
+
   it('keeps inward requirements on the entity itself', () => {
     const bound = bindOwnedTraits(carried(), target());
     expect(bound.traits!.find((t) => t.id === 't-pack')!.requires).toEqual([

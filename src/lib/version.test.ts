@@ -958,14 +958,13 @@ describe('migrateWorld — requirement bearer key to owner', () => {
   const raw = () => ({
     version: APP_VERSION,
     traits: [
-      { id: 'brave', name: 'Brave', statChanges: [] },
       { id: 'smite', name: 'Smite', statChanges: [], groupId: 'bp', requires: [{ all: [onMira, persona] }, { all: [onYou] }] },
       { id: 'flat', name: 'Flat', statChanges: [], requires: [onYou] },
     ],
     traitGroups: [{ id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' }],
     entities: [{
       id: 'mira', name: 'Mira',
-      traits: [{ id: 'vow', name: 'Vow', statChanges: [], requires: [{ all: [onMira] }] }],
+      traits: [{ id: 'vow', name: 'Vow', statChanges: [], requires: [{ all: [onMira] }] }, { id: 'brave', name: 'Brave', statChanges: [] }],
       traitLinks: [{
         id: 'l', originalId: 'smite', kind: 'trait', originalName: 'Smite', groupId: null,
         overrides: { smite: { requires: { value: [{ all: [onYou] }], blueprint: [{ all: [onMira, persona] }] } } },
@@ -975,8 +974,8 @@ describe('migrateWorld — requirement bearer key to owner', () => {
 
   it('loads `bearer` as `owner` with the same value everywhere a Condition is stored', () => {
     const world = migrateWorld(raw());
-    expect(world.traits[1].requires).toEqual([{ all: [moved, persona] }, { all: [movedYou] }]);
-    expect(world.traits[2].requires).toEqual([{ all: [movedYou] }]);
+    expect(world.traits[0].requires).toEqual([{ all: [moved, persona] }, { all: [movedYou] }]);
+    expect(world.traits[1].requires).toEqual([{ all: [movedYou] }]);
     const [entity] = world.entities;
     expect(entity.traits![0].requires).toEqual([{ all: [moved] }]);
     expect(entity.traitLinks![0].overrides!.smite.requires)
@@ -995,15 +994,99 @@ describe('migrateWorld — requirement bearer key to owner', () => {
     expect(world.traits[0].requires).toEqual([{ all: [{ kind: 'trait', id: 'brave', owner: { kind: 'you' } }] }]);
   });
 
-  it('gates an old world on the owner its file named', () => {
-    // Not Brave on Mira holds while the player has Brave, so a reader that misses the owner reads it as locked.
+  it('gates an old world on the global scope where its file named an owner for a global item (Q10, Q19)', () => {
+    // Brave is a root trait, so no one owns it: the stored owner goes and Not Brave reads the player's pick.
     const notOnMira = { ...onMira, not: true };
     const world = migrateWorld({ version: APP_VERSION, traits: [
       { id: 'brave', name: 'Brave', statChanges: [] },
       { id: 'smite', name: 'Smite', statChanges: [], requires: [{ all: [notOnMira] }] },
     ], entities: [{ id: 'mira', name: 'Mira' }] });
+    expect(world.traits[1].requires).toEqual([{ all: [{ kind: 'trait', id: 'brave', not: true }] }]);
     const input = worldGateInput({ traits: world.traits, groups: [], entities: world.entities }, { source: 'none' }, ['brave']);
-    expect(gateOf(gateStates(input), PLAYER_OWNER, 'smite')?.unlocked).toBe(true);
+    expect(gateOf(gateStates(input), PLAYER_OWNER, 'smite')?.unlocked).toBe(false);
+  });
+});
+
+describe('migrateWorld — global scope (Q5, Q19)', () => {
+  const mira = { kind: 'entity', id: 'mira', name: 'Mira' };
+  const onMira = (item: object) => ({ ...item, owner: mira });
+  const onYou = (item: object) => ({ ...item, owner: { kind: 'you' } });
+  const brave = { kind: 'trait', id: 'brave' };
+  const cave = { kind: 'group', id: 'cave' };
+  const rage = { kind: 'stat', id: 'rage', operator: '>=', value: 5, unit: 'raw' };
+  const grit = { kind: 'stat', id: 'grit', operator: '>=', value: 5, unit: 'raw' };
+  const vow = { kind: 'trait', id: 'vow' };
+  const row = (...all: object[]) => [{ all }];
+  const rows = (id: string) => ({ id, name: id, statChanges: [] });
+  // Brave, Cave and Rage are global; Mira owns Vow and her own Grit; Grit is also a world stat.
+  const raw = () => ({
+    version: APP_VERSION,
+    stats: [{ id: 'rage', name: 'Rage' }, { id: 'grit', name: 'Grit' }, { id: 'bp-stat', name: 'Blueprint Stat', groupId: 'sbp' }],
+    statGroups: [{ id: 'sbp', name: 'Blueprints', parentId: null, system: 'blueprints' }],
+    traitGroups: [{ id: 'cave', name: 'Cave', parentId: null }, { id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' }],
+    traits: [
+      { ...rows('brave'), groupId: 'cave', statChanges: [{ statId: 'rage', value: 1, target: 'player' }, { statId: 'rage', value: 2 }],
+        statToggles: [{ statId: 'rage', enabled: true, target: 'player' }] },
+      { ...rows('smite'), groupId: 'bp' },
+      { ...rows('gate'), requires: row(onMira(brave), onYou(cave), onMira(rage), onYou(rage), onMira(grit), onYou(vow)) },
+    ],
+    entities: [{
+      id: 'mira', name: 'Mira', persona: true,
+      stats: [{ id: 'grit', name: 'Grit' }],
+      images: [{ data: 'a', requires: row(onMira(brave)) }],
+      traits: [
+        { ...rows('vow'), statChanges: [{ statId: 'grit', value: 1, target: 'player' }], requires: row(onMira(brave), onMira(vow)) },
+      ],
+      traitLinks: [{
+        id: 'l', originalId: 'smite', kind: 'trait', originalName: 'Smite', groupId: null,
+        overrides: { smite: {
+          requires: { value: row(onMira(brave), onMira({ kind: 'trait', id: 'smite' })), blueprint: row(onMira(brave)) },
+          statChanges: { value: [{ statId: 'rage', value: 3, target: 'player' }], blueprint: [{ statId: 'rage', value: 3, target: 'player' }] },
+        } },
+      }],
+    }],
+  });
+
+  it('loads a `player` row target as `global` on world traits, owned traits and link overrides', () => {
+    const world = migrateWorld(raw());
+    expect(world.traits[0].statChanges).toEqual([{ statId: 'rage', value: 1, target: 'global' }, { statId: 'rage', value: 2 }]);
+    expect(world.traits[0].statToggles).toEqual([{ statId: 'rage', enabled: true, target: 'global' }]);
+    const [mira2] = world.entities;
+    expect(mira2.traits![0].statChanges[0].target).toBe('global');
+    expect(mira2.traitLinks![0].overrides!.smite.statChanges)
+      .toEqual({ value: [{ statId: 'rage', value: 3, target: 'global' }], blueprint: [{ statId: 'rage', value: 3, target: 'global' }] });
+    expect(JSON.stringify(world)).not.toContain('"player"');
+  });
+
+  it('removes the stored owner from a Condition that names a global item, on traits, links and gallery rules', () => {
+    const world = migrateWorld(raw());
+    expect(world.traits[2].requires).toEqual(row(brave, cave, rage, rage, onMira(grit), onYou(vow)));
+    const [entity] = world.entities;
+    expect(entity.traits![0].requires).toEqual(row(brave, onMira(vow)));
+    expect(entity.images![0].requires).toEqual(row(brave));
+    expect(entity.traitLinks![0].overrides!.smite.requires)
+      .toEqual({ value: row(brave, onMira({ kind: 'trait', id: 'smite' })), blueprint: row(brave) });
+  });
+
+  it('changes nothing on a second pass', () => {
+    const once = migrateWorld(raw());
+    expect(migrateWorld(JSON.parse(JSON.stringify(once)))).toEqual(once);
+  });
+
+  it('keeps a `you` owner on a stat that the Custom Persona entity holds itself', () => {
+    const poise = { kind: 'stat', id: 'poise', operator: '>=', value: 5, unit: 'raw' };
+    const world = migrateWorld({
+      version: APP_VERSION,
+      stats: [{ id: 'poise', name: 'Poise' }],
+      traits: [{ ...rows('gate'), requires: row(onYou(poise)) }],
+      entities: [{ id: 'blank', name: 'You', customPersona: true, stats: [{ id: 'poise', name: 'Poise' }] }],
+    });
+    expect(world.traits[0].requires).toEqual(row(onYou(poise)));
+  });
+
+  it('reads a world that already says `global` as it is', () => {
+    const world = migrateWorld({ version: APP_VERSION, traits: [{ ...rows('t'), statChanges: [{ statId: 'rage', value: 1, target: 'global' }] }] });
+    expect(world.traits[0].statChanges).toEqual([{ statId: 'rage', value: 1, target: 'global' }]);
   });
 });
 

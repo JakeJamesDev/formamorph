@@ -12,6 +12,7 @@ import { worldBlueprints } from './placeholderBlueprints';
 import { blueprintItemIds, groupsBelow } from './traitTree';
 import { mapConditions, notFlag } from './requirementRows';
 import { hasImageRules, mapImageRules, withImageRules } from './entityImages';
+import { withoutGlobalOwner } from './version';
 
 /** Off-world, a "playing as" or a named owner on the entity itself names it by this id, since each copy has
  *  its own id. */
@@ -205,14 +206,8 @@ export function portableOwnedTraits(entity: Entity, world?: TraitWorld): Portabl
   };
 }
 
-/**
- * The entity's owned traits, links and image Visibility rules bound to `world`. A requirement into the entity
- * stays; "playing as" itself names the entity. An outward one keeps an id the world holds, else takes the one
- * target carrying its stored name. No match, or two, clears the id: the requirement stays unresolved and reads
- * by its name. A named owner binds the same way among the world's entities. Links bind as {@link bindLinks} does.
- */
-export function bindOwnedTraits(entity: Entity, world: TraitWorld): Entity {
-  if (!entity.traits?.length && !entity.traitLinks?.length && !hasImageRules(entity)) return entity;
+/** One of the entity's Conditions bound to `world`: see {@link bindOwnedTraits}. */
+function ruleBinder(entity: Entity, world: TraitWorld): (req: TraitRequirement) => TraitRequirement {
   const inside = ownIds(entity);
   const pool = targets(world, entity.id);
   const others = world.entities.filter((e) => e.id !== entity.id);
@@ -230,7 +225,9 @@ export function bindOwnedTraits(entity: Entity, world: TraitWorld): Entity {
     const held = id === entity.id ? entity : others.find((e) => e.id === id);
     return held ? resolvedEntityStats(at, held) : [];
   };
-  const bind = (req: TraitRequirement): TraitRequirement => {
+  // A Condition that names a global item reads global scope, so the owner it stored goes (Q19).
+  const withoutGlobalOwners = withoutGlobalOwner<TraitRequirement>({ ...world, entities: [...others, entity] });
+  const bindId = (req: TraitRequirement): TraitRequirement => {
     if (isSelf(req, entity.id)) return { ...req, id: entity.id };
     const r = withOwner(req, owner);
     // A world record that carries no stats has none to bind a stat Condition to.
@@ -239,9 +236,44 @@ export function bindOwnedTraits(entity: Entity, world: TraitWorld): Entity {
     if (list.some((item) => item.id === r.id)) return r;
     return { ...r, id: uniqueNamed(list, r.name)?.id ?? '' };
   };
+  return (req) => withoutGlobalOwners(bindId(req));
+}
+
+/** The entity with each Condition of its owned traits, image Visibility rules and link overrides bound to
+ *  `world`, and its links left as they are. A copy and its library source compare through this, so both read
+ *  the owners a world drops (Q19). */
+export function bindOwnedRules(entity: Entity, world: TraitWorld): Entity {
+  if (!entity.traits?.length && !entity.traitLinks?.length && !hasImageRules(entity)) return entity;
+  const bind = ruleBinder(entity, world);
   const traits = withRequires(entity, bind);
   const bound = withImageRules(traits ? { ...entity, traits } : entity, bind);
-  return entity.traitLinks ? withLinks(bound, bindLinks(entity, entity.traitLinks, world)) : bound;
+  return entity.traitLinks ? { ...bound, traitLinks: entity.traitLinks.map((l) => linkWithRules(l, bind)) } : bound;
+}
+
+/**
+ * The entity's owned traits, links and image Visibility rules bound to `world`. A requirement into the entity
+ * stays; "playing as" itself names the entity. An outward one keeps an id the world holds, else takes the one
+ * target carrying its stored name. No match, or two, clears the id: the requirement stays unresolved and reads
+ * by its name. A named owner binds the same way among the world's entities. Links bind as {@link bindLinks} does.
+ */
+export function bindOwnedTraits(entity: Entity, world: TraitWorld): Entity {
+  if (!entity.traits?.length && !entity.traitLinks?.length && !hasImageRules(entity)) return entity;
+  const bind = ruleBinder(entity, world);
+  const traits = withRequires(entity, bind);
+  const bound = withImageRules(traits ? { ...entity, traits } : entity, bind);
+  const links = entity.traitLinks && bindLinks(entity, entity.traitLinks, world).map((l) => linkWithRules(l, bind));
+  return entity.traitLinks ? withLinks(bound, links) : bound;
+}
+
+/** The link with `map` over the Conditions of both sides of each `requires` override. */
+function linkWithRules(link: TraitLink, map: (r: TraitRequirement) => TraitRequirement): TraitLink {
+  if (!link.overrides) return link;
+  const overrides = Object.fromEntries(Object.entries(link.overrides).map(([id, fields]) => {
+    const req = fields?.requires;
+    const requires = req && { value: mapConditions(req.value, map), blueprint: mapConditions(req.blueprint, map) };
+    return [id, requires ? { ...fields, requires } : fields];
+  }));
+  return { ...link, overrides };
 }
 
 /** A named owner as two copies compare it: the entity itself as {@link SELF_ENTITY}, another by its name. */

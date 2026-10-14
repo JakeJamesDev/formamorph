@@ -321,7 +321,7 @@ export function statRowSide(
   row: StatRow, own: ReadonlySet<string>, player: ReadonlySet<string>, canPlay: boolean,
 ): StatRowSide {
   const reachesPlayer = canPlay && player.has(row.statId);
-  if (row.target === 'player') return reachesPlayer ? 'player' : null;
+  if (row.target === 'global') return reachesPlayer ? 'player' : null;
   return own.has(row.statId) ? 'own' : reachesPlayer ? 'player' : null;
 }
 

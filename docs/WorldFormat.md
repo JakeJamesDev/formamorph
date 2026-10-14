@@ -218,6 +218,11 @@ A trait changes a stat with a list of these.
 | `value` | ✓ | Number | The amount to add. Negative subtracts |
 | `type` | | `"min"` \| `"max"` \| `"starting"` \| `"regen"` | What the change adds to. `"starting"` adds to the value. Absent = no change |
 | `interval` | | String | An older field. Nothing reads it |
+| `target` | | `"global"` | On an entity's trait, `"global"` moves the global stat with this `id`, even when the entity has its own stat with the same `id`. Absent = the entity's own stat first, else the global stat |
+
+A `statToggles` entry takes the same `target`.
+
+> 🔁 Older files write `"target": "player"`. The app reads it as `"global"`, and new files write `"global"` only. Apps older than this change don't read `"global"`, so they apply these rows to the entity's own stat until updated.
 
 ## Traits
 <!-- keywords: perk properties, prerequisite object, pick limits keys, mode values, default flag, category object, template folder flag, toggle flag -->
@@ -266,7 +271,7 @@ Each requirement has a `kind`:
 
 - `name` is optional. It holds the target's name, so a requirement still reads when the target is gone.
 - A `"stat"` requirement's `operator` is one of `">"`, `"<"`, `">="`, `"<="`, `"="` or `"≠"`. Its `unit` is `"raw"` for the stat's own units or `"percent"` for a share of the stat's min→max span. `{ "kind": "stat", "id": "health", "operator": "<", "value": 20, "unit": "percent" }` holds while Health is under 20% of its range.
-- `owner` is optional. Absent = the trait's own owner. `{ "kind": "you" }` checks the player. `{ "kind": "entity", "id": "<entity id>", "name": "…" }` checks that entity.
+- `owner` is optional, and it applies only to a trait, group or stat an entity owns. A requirement that names a global item (a root trait, a root group or a global stat) reads the global scope, and the app drops any `owner` stored with it. Absent = the trait's own owner. `{ "kind": "you" }` checks the player. `{ "kind": "entity", "id": "<entity id>", "name": "…" }` checks that entity.
 - `not` is optional. `true` flips the requirement: it holds while its target is off. `{ "kind": "trait", "id": "paladin", "not": true }` holds while the owner doesn't have Paladin.
 - A requirement whose target is gone never holds, with or without `not`.
 

@@ -322,8 +322,8 @@ describe('reference-integrity rules', () => {
       }
     });
 
-    it('reads a row that targets the player as the player stat alone, even past an own stat with its id', () => {
-      const playerRow = (statId: string) => [{ statId, value: 5, type: 'max' as const, target: 'player' as const }];
+    it('reads a row with the global target as the global stat alone, even past an own stat with its id', () => {
+      const playerRow = (statId: string) => [{ statId, value: 5, type: 'max' as const, target: 'global' as const }];
       const persona = (statId: string) => base({ stats: [hp], entities: [bram([trait({ id: 'oath', name: 'Oath', statChanges: playerRow(statId) })], { persona: true })] });
       expect(only(persona('hp'), rule)).toEqual([]);
       expect(only(persona('vigor'), rule).map((f) => f.items[0].id)).toEqual(['oath']);

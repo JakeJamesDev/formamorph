@@ -3,7 +3,7 @@ import type { Entity, GalleryImage, Stat, TraitRequirement, TraitRequirementRow 
 import { buildEntityCardData, importCharacterFile, parseEntityCardData } from './entityFile';
 import { embedEntityCard } from './entityCard';
 import { bytesToDataUrl } from './imageOptim';
-import { adoptOwnedTraits, bindOwnedTraits, comparableOwnedTraits, SELF_ENTITY, type TraitWorld } from './portableTraits';
+import { adoptOwnedTraits, bindOwnedRules, bindOwnedTraits, comparableOwnedTraits, SELF_ENTITY, type TraitWorld } from './portableTraits';
 import { remintOwnedTraits } from './ownedTraits';
 import { conditionsOf } from './requirementRows';
 import { contentMatchesSource } from './linkedContent';
@@ -126,10 +126,10 @@ describe('a character card’s gallery', () => {
   });
 
   it('compares two copies’ rules by the names they store, and tells a changed rule apart', () => {
-    const copy = (images: GalleryImage[]) => comparableOwnedTraits(throughText(wren(images), A));
-    const local = comparableOwnedTraits(bindOwnedTraits(throughText(wren([{ data: A, requires: row(paladin) }]), A), {
-      ...home, traits: [{ id: 'n-paladin', name: 'Paladin', statChanges: [] }],
-    }));
+    const away: TraitWorld = { ...home, traits: [{ id: 'n-paladin', name: 'Paladin', statChanges: [] }] };
+    // Both sides bind to the copy's world first, so an owner that world drops (Q19) cannot tell them apart.
+    const copy = (images: GalleryImage[]) => comparableOwnedTraits(bindOwnedRules(throughText(wren(images), A), away));
+    const local = comparableOwnedTraits(bindOwnedTraits(throughText(wren([{ data: A, requires: row(paladin) }]), A), away));
     expect(local).toEqual(copy([{ data: A, requires: row(paladin) }]));
     expect(local).not.toEqual(copy([{ data: A, requires: row({ ...paladin, not: true }) }]));
     expect(comparableOwnedTraits(wren([{ data: A }]))).not.toHaveProperty('images');
@@ -138,9 +138,13 @@ describe('a character card’s gallery', () => {
   it('reads a world copy of a trait-less entity as matching its library source when only the rule’s ids differ', () => {
     const plain: Entity = { id: 'bo', name: 'Bo', images: [{ data: A, requires: row(paladin) }] };
     const source = throughText(plain, A);
-    const copy = bindOwnedTraits(source, { ...home, traits: [{ id: 'n-paladin', name: 'Paladin', statChanges: [] }] });
+    const away: TraitWorld = { ...home, traits: [{ id: 'n-paladin', name: 'Paladin', statChanges: [] }] };
+    const copy = bindOwnedTraits(source, away);
     expect(conditionsOf(copy.images?.[0].requires)[0].id).toBe('n-paladin');
-    expect(contentMatchesSource(copy, source)).toBe(true);
+    // The world drops the source's `you` owner on the global Paladin; the comparison binds the source the same way.
+    expect(conditionsOf(copy.images?.[0].requires)[0]).not.toHaveProperty('owner');
+    expect(contentMatchesSource(copy, source, away)).toBe(true);
+    expect(contentMatchesSource(copy, source)).toBe(false);
   });
 
   it('reads an unmigrated world-file copy with data-string pictures as matching its library source', () => {

@@ -95,12 +95,12 @@ const PLAYER_ITEM = 'player:';
 /** A stat row's picker value: its Player item when it moves a player stat on an owner. */
 const pickerValue = (row: StatRow, side: StatRowSide) => (side === 'player' ? PLAYER_ITEM + row.statId : row.statId);
 
-/** `row` pointed at the stat a picker value names; a Player item targets the player. */
+/** `row` pointed at the stat a picker value names; a Player item takes the global target. */
 function pickedRow<R extends StatRow>(row: R, value: string): R {
   const rest = { ...row };
   delete rest.target;
   return value.startsWith(PLAYER_ITEM)
-    ? { ...rest, statId: value.slice(PLAYER_ITEM.length), target: 'player' }
+    ? { ...rest, statId: value.slice(PLAYER_ITEM.length), target: 'global' }
     : { ...rest, statId: value };
 }
 
