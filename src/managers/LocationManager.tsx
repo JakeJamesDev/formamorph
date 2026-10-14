@@ -180,6 +180,7 @@ const LocationManager = ({ location, tab, onTabChange, focusField }: {
           cap={IMAGE_CAPS.background}
           description={editingLocation.aiDescription || editingLocation.playerDescription}
           kind="location"
+          fileSubject={labelPlaceholders(editingLocation.name, placeholders)}
           tags={editingLocation.imageTags}
           onTagsChange={(t) => handleChange('imageTags', t)}
           placeholders={placeholders}
