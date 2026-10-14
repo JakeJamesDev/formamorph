@@ -52,7 +52,7 @@ interface ImageWidgetProps {
    *  comes back as a tag no image model knows; an author who wants one types it into the tags. */
   description?: string;
   kind: ImageSubjectKind;
-  /** The subject's name for a generated picture's file name on the image server; never sent to the model. */
+  /** The subject's name for a generated image's file name on the image server; never sent to the model. */
   fileSubject?: string;
   tags?: string;
   onTagsChange: (value: string) => void;

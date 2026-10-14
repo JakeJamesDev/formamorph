@@ -67,6 +67,21 @@ describe('rejectedEndpointOverride', () => {
     expect(rejectedEndpointOverride(await errorFrom('max_tokens'), specFor('max_tokens', 'prompt'))).toBeNull();
   });
 
+  it('leaves Max Output alone when the rejected max_completion_tokens came from the Extra Parameters', async () => {
+    const error = await errorFrom('max_completion_tokens');
+    const spec = specFor('max_tokens');
+    expect(rejectedEndpointOverride(error, spec)).toBe('maxOutput');
+    spec.target.extraParams = '{"max_completion_tokens": 300}';
+    expect(rejectedEndpointOverride(error, spec)).toBeNull();
+  });
+
+  it('keeps blaming an endpoint sampler the app sent when the Extra Parameters name the same key', async () => {
+    // The app's own field wins the merge, so the rejected value is the override's.
+    const spec = specFor('temperature');
+    spec.target.extraParams = '{"temperature": 0.2}';
+    expect(rejectedEndpointOverride(await errorFrom('temperature'), spec)).toBe('temperature');
+  });
+
   it('does not infer a rejection from a parameter name in unstructured error text', () => {
     const error = new Error('top_p failed unexpectedly');
     expect(rejectedEndpointOverride(error, specFor('top_p'))).toBeNull();

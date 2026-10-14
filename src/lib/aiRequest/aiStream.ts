@@ -2,6 +2,7 @@ import type { WireMessage } from '@/types';
 import { redactUrl } from '@/lib/redactUrl';
 import type { AiRequestBody, AiRequestSpec } from './aiRequestSpec';
 import { noteImagesDropped } from './localEngineImageDrop';
+import { noteUnusableExtraParams } from './extraParamsWarning';
 
 /** Why a stream failed. `parse` is reported per bad line as a debug event, never thrown — a malformed
  *  frame is skipped so the rest of the stream still arrives. `cut-thought`: the server stopped the reply
@@ -264,6 +265,7 @@ export async function* streamAiRequest(spec: AiStreamSpec, options: AiStreamOpti
   });
 
   yield { type: 'debug', debug: { kind: 'request', url: spec.url, body: spec.body, startedAt } };
+  noteUnusableExtraParams(spec.target?.extraParams);
 
   let response: Response;
   try {

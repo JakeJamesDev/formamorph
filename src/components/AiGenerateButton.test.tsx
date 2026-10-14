@@ -8,7 +8,10 @@ vi.mock('react-toastify', () => ({
   toast: { error: vi.fn(), success: vi.fn(), info: vi.fn(), warning: vi.fn() },
 }));
 vi.mock('@/contexts/SettingsContext', () => ({
-  useSettings: () => ({ activeEndpointUrl: 'http://x', activeApiToken: '', activeModelName: 'm', imageTagPrompt: 'p' }),
+  useSettings: () => ({
+    activeEndpointUrl: 'http://x', activeApiToken: '', activeModelName: 'm', imageTagPrompt: 'p',
+    describeEndpointForKind: () => ({ presetName: 'Test Endpoint', model: 'm' }),
+  }),
 }));
 
 const summarizeDescription = vi.hoisted(() => vi.fn());

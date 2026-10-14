@@ -8,6 +8,7 @@ import AiGenerateButton from '@/components/AiGenerateButton';
 vi.mock('@/contexts/SettingsContext', () => ({
   useSettings: () => ({
     activeEndpointUrl: 'http://x', activeApiToken: '', activeModelName: 'm', imageTagPrompt: 'p',
+    describeEndpointForKind: () => ({ presetName: 'Test Endpoint', model: 'm' }),
   }),
 }));
 // Exercise the generate path without a network call.

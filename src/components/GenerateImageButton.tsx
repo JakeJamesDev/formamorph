@@ -103,7 +103,7 @@ const PreviewPane = ({ shape, generating, progress, frame, preview, onZoom }: {
  * through the configured image provider, fits it to the field's cap, and hands it back via `onChange`.
  */
 export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange, className }: {
-  /** `name`: what the picture shows, for its file name on the image server only. */
+  /** `name`: what the image shows, for its file name on the image server only. */
   subject: { description: string; kind: ImageSubjectKind; name?: string };
   cap: ImageCap;
   /** Extra classes on the trigger, for a caller that sizes it to the picture above it. */
@@ -174,7 +174,7 @@ export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange
       const { provider, params, opts } = buildImageRequest(settings, {
         prompt, negative, width: genWidth, height: genHeight,
         // Saved under the world, named for who or what it shows.
-        file: { world: gameData?.worldOverview?.name || 'library', subject: subject.name || subject.kind },
+        file: { world: gameData?.worldOverview?.name || 'library', subject: subject.name || (subject.kind === 'character' ? 'entity' : subject.kind) },
       });
       const dataUrl = await generateImage(provider, params, {
         ...opts,

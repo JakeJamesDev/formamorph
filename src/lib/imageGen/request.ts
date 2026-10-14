@@ -40,7 +40,7 @@ export interface ImageRequest {
   height: number;
   /** -1 (the default) asks the provider for a random one. */
   seed?: number;
-  /** What the picture is of, for its file name. */
+  /** What the image shows, for its file name. */
   file?: Omit<ImageFileParts, 'preset'>;
 }
 

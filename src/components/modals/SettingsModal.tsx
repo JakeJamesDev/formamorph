@@ -17,7 +17,7 @@ import { readSettingsMode, writeSettingsMode, SETTINGS_MODE_DESCRIPTIONS, SETTIN
 import { settingsUseAdvancedValues, sectionHiddenFields } from '@/lib/settingsAdvancedData';
 import { TutorialPopover } from '@/components/TutorialPopover';
 import { useDevRoute } from '@/lib/devRouter';
-import { Row, CheckRow, Section, HintInfo, ValueSlider } from '@/components/SettingsRows';
+import { Row, CheckRow, Section, HintInfo, ValueSlider, SettingsNote } from '@/components/SettingsRows';
 import { MIN_EDITOR_AUTO_SAVE_IDLE_S, MAX_EDITOR_AUTO_SAVE_IDLE_S, EDITOR_AUTO_SAVE_IDLE_STEP_S } from '@/contexts/settingsDefaults';
 import { formatPause } from '@/lib/formatPause';
 import { SETTINGS_COPY, SETTINGS_BUTTONS, SETTINGS_CONFIRMS, SETTINGS_NOTES } from '@/components/modals/settingsCopy';
@@ -597,13 +597,16 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   const [showComfyWorkflow, setShowComfyWorkflow] = useState(false);
   useEffect(() => {
     if (!isOpen || imageProvider !== 'comfyui') return;
+    // The lists belong to one server; a changed endpoint must not name the old server's checkpoint.
+    setComfyMeta(null);
     let cancelled = false;
     const t = setTimeout(async () => {
       try {
         const meta = await fetchComfyMeta(resolveImageEndpoint(imageProvider, imageEndpoint), imageApiToken);
         if (!cancelled) setComfyMeta(meta);
       } catch {
-        // silent: ComfyUI not running / unreachable — the fields fall back to free text
+        // Silent: the fields fall back to free text.
+        if (!cancelled) setComfyMeta(null);
       }
     }, 300);
     return () => { cancelled = true; clearTimeout(t); };
@@ -960,7 +963,12 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   const promptTarget = resolveEndpointForKind(activeKind);
   const promptLocalEngine = promptTarget.localEngine;
   // The model a ComfyUI workflow loads itself, when it ignores the Model setting.
-  const workflowModels = imageProvider === 'comfyui' ? workflowOwnModels(imageWorkflow) : [];
+  const workflowModels = useMemo(
+    () => (imageProvider === 'comfyui' ? workflowOwnModels(imageWorkflow) : []),
+    [imageProvider, imageWorkflow],
+  );
+  // A custom workflow without %prefix% ignores the File Name setting.
+  const workflowIgnoresFileName = imageWorkflow.trim() !== '' && !imageWorkflow.includes('%prefix%');
   const pinnedEndpoint = routableEndpoints.find((p) => p.id === pinnedEndpointId);
   const endpointControl = {
     label: SETTINGS_COPY.promptEndpoint.label,
@@ -1212,7 +1220,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                   // A workflow without %ckpt% loads its own model; the Model setting would change nothing.
                   <div className="grid gap-1">
                     <Input id="imageModel" value={workflowModels.join(', ')} disabled readOnly />
-                    <p className="text-helper text-muted-foreground">Set by the workflow, which has no <code>%ckpt%</code>. Change it in the workflow box.</p>
+                    <SettingsNote text={SETTINGS_NOTES.imageModelFromWorkflow} />
                   </div>
                 ) : imageProvider === 'comfyui' ? (
                   <TokenAutocomplete
@@ -1356,16 +1364,15 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                 </Row>
               )}
               {advanced && imageProvider === 'comfyui' && (
-                <Row
-                  htmlFor="imageFileName"
-                  {...rowCopy('imageFileName')}
-                  info={<HintInfo>{`Folders and a name under ComfyUI's output folder. ComfyUI adds a counter and \`.png\`.
-
-\`{world}\` \`{subject}\` (an entity's name, or \`turn-12-scene\`) \`{turn}\` \`{preset}\`
-
-A custom workflow takes it where its save node's prefix is \`%prefix%\`.`}</HintInfo>}
-                >
-                  <Input id="imageFileName" value={imageFileName} onChange={(e) => setImageFileName(e.target.value)} placeholder={DEFAULT_IMAGE_FILE_NAME} />
+                <Row htmlFor="imageFileName" {...rowCopy('imageFileName')}>
+                  {workflowIgnoresFileName ? (
+                    <div className="grid gap-1">
+                      <Input id="imageFileName" value={imageFileName} placeholder={DEFAULT_IMAGE_FILE_NAME} disabled readOnly />
+                      <SettingsNote text={SETTINGS_NOTES.imageFileNameNoPrefix} />
+                    </div>
+                  ) : (
+                    <Input id="imageFileName" value={imageFileName} onChange={(e) => setImageFileName(e.target.value)} placeholder={DEFAULT_IMAGE_FILE_NAME} />
+                  )}
                 </Row>
               )}
               {advanced && imageProvider === 'invokeai' && (

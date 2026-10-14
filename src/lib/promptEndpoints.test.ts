@@ -97,6 +97,16 @@ describe('resolvePromptEndpoint', () => {
     expect(r.isBuiltIn).toBe(false);
   });
 
+  it('carries Extra Parameters from a routed preset and from the active one', () => {
+    const routedStore: TextEndpointPresetStore = {
+      activeId: 'p1',
+      presets: [userPreset, { id: 'p2', name: 'Router', values: { ...userPreset.values, extraParams: '{"top_a": 0.2}' } }],
+    };
+    expect(resolvePromptEndpoint('summary', { summary: 'p2' }, routedStore, active).extraParams).toBe('{"top_a": 0.2}');
+    const withExtras: ActiveEndpointState = { ...active, values: { ...active.values, extraParams: '{"top_a": 0.1}' } };
+    expect(resolvePromptEndpoint('narration', {}, routedStore, withExtras).extraParams).toBe('{"top_a": 0.1}');
+  });
+
   it('layers a preset stored without a newer field over the shipped defaults', () => {
     const sparse: TextEndpointPresetStore = {
       activeId: DEFAULT_TEXT_PRESET_ID,

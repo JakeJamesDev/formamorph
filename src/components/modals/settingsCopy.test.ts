@@ -77,6 +77,13 @@ describe('settings copy', () => {
     expect(SETTINGS_NOTES.imageGenerationOff).toContain(`“${SETTINGS_COPY.enableImageGeneration.label}”`);
   });
 
+  it('names the Workflow (API Format) control in bold where a note sends the reader to it', () => {
+    const bold = `**${SETTINGS_COPY.imageWorkflow.label}**`;
+    expect(SETTINGS_NOTES.imageModelFromWorkflow).toContain(bold);
+    expect(SETTINGS_NOTES.imageModelFromWorkflow).toContain('**Advanced**');
+    expect(SETTINGS_NOTES.imageFileNameNoPrefix).toContain(bold);
+  });
+
   it('keeps every description within one line of the description column', () => {
     // R2 — the ceiling that stops rows growing unequal heights.
     const bad = entries.filter(([, c]) => c.description.trim().split(/\s+/).length > MAX_DESCRIPTION_WORDS);

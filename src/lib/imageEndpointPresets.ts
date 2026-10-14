@@ -34,7 +34,7 @@ export interface ImageEndpointValues {
   invokeVae: string;
   /** InvokeAI only: gallery board to file generated images under (board id); blank = Uncategorized. */
   invokeBoard: string;
-  /** ComfyUI: where pictures are saved under its output folder (lib/imageGen/fileName). */
+  /** ComfyUI: where images are saved under its output folder (lib/imageGen/fileName). */
   fileName: string;
 }
 

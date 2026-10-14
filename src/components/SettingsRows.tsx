@@ -18,6 +18,19 @@ import { useWheelScroll } from '@/lib/useWheelScroll';
 import { cn } from '@/lib/utils';
 import 'streamdown/styles.css';
 
+/** A note under a control. Bold and code spans in its Markdown render; nothing else does. */
+export function SettingsNote({ text }: { text: string }) {
+  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/);
+  return (
+    <p className="text-helper text-muted-foreground [&_strong]:font-medium [&_strong]:text-foreground">
+      {parts.map((part, i) => {
+        if (i % 2 === 0) return part;
+        return part.startsWith('**') ? <strong key={i}>{part.slice(2, -2)}</strong> : <code key={i}>{part.slice(1, -1)}</code>;
+      })}
+    </p>
+  );
+}
+
 /** An `ⓘ` button that reveals its full explanation in a popover, so a setting row can show a terse lead
  *  inline and keep the long detail on demand. `children` is a **Markdown string** — write hints with a
  *  lead sentence and a short bullet list so the popover reads as structure, not a blob. Portaled (the
