@@ -5,7 +5,6 @@
  */
 
 import type { Script, ScriptTiming } from '@/types';
-import { randomUUID } from './uuid';
 
 /** Every timing, in the order a playthrough first reaches them. */
 export const SCRIPT_TIMINGS = ['before', 'after', 'output', 'start', 'switch'] as const satisfies readonly ScriptTiming[];
@@ -44,22 +43,6 @@ export const filledScriptsAt = (home: ScriptHome, timing: ScriptTiming): Script[
 /** The first script of `timing` on a home: the one a single box for that timing edits. */
 export const firstScriptAt = (home: ScriptHome, timing: ScriptTiming): Script | undefined =>
   scriptsOf(home).find((script) => script.timing === timing);
-
-/** The code of the first script of `timing`; empty when the home has none. */
-export const firstCodeAt = (home: ScriptHome, timing: ScriptTiming): string => firstScriptAt(home, timing)?.code ?? '';
-
-/** `scripts` with the first script of `timing` holding `code`: a new script at the end when there is none, and
- *  that script removed when `code` is empty. Absent once the list is empty; the same list when nothing changes. */
-export function withFirstCodeAt(
-  scripts: readonly Script[] | undefined, timing: ScriptTiming, code: string, mintId: () => string = randomUUID,
-): Script[] | undefined {
-  const list = scripts ?? [];
-  const at = list.findIndex((script) => script.timing === timing);
-  if (at < 0) return code === '' ? scripts as Script[] | undefined : [...list, { id: mintId(), timing, code }];
-  if (list[at].code === code) return scripts as Script[];
-  const next = code === '' ? list.filter((_, i) => i !== at) : list.map((script, i) => (i === at ? { ...script, code } : script));
-  return next.length ? next : undefined;
-}
 
 /** `scripts` with each script `codeById` names holding its new code; the rest as they are. */
 export const withScriptCode = (scripts: readonly Script[], codeById: Readonly<Record<string, string>>): Script[] =>

@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Hint } from "@/components/ui/typography";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Code } from "lucide-react";
 import { PanelTabContent, PanelTabs } from "@/components/ui/panel-tabs";
 import {
   Select,
@@ -19,10 +18,11 @@ import {
 import { HelpButton } from "@/components/HelpButton";
 import { HintInfo } from "@/components/SettingsRows";
 import { statCodeName, statCodeNamed } from "@/lib/statCodeNames";
-import { statCodeWorldNames } from "@/lib/statCodeBoxOptions";
-import { worldPlaceholderPlaces } from "@/lib/statCodePlaceholderPlaces";
+import { useScriptWorldNames } from "@/lib/useScriptWorldNames";
 import { useRenameField } from "@/lib/useCodeRename";
-import { StatCodeBox, type StatCodeBoxContext, type StatCodeBoxOwner } from "./StatCodeBox";
+import type { ScriptBoxContext, ScriptBoxOwner } from "./ScriptBox";
+import { ScriptsSection } from "./ScriptsSection";
+import { newScript, noFocus, scriptRow } from "@/lib/scriptRows";
 import { blueprintGroupStats } from "@/lib/statLinks";
 import { statBoxLookups } from "@/lib/codeWorldLookup";
 import { MultiSelect } from "@/components/ui/multi-select";
@@ -33,15 +33,13 @@ import { clamp } from "@/lib/utils";
 import { useEditorMode } from '@/lib/editorMode';
 import { StatDescriptorsSection, type DescriptorFieldValue } from './StatDescriptorsSection';
 import { statPanelTabsFor, statTabForField, type StatPanelTab } from '@/views/statPanelTabs';
-import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { registerStatCodeInsert, reportStatCodeInsert } from "@/lib/formaquestion/statCodeInsert";
 import { labelPlaceholders } from "@/lib/placementLetters";
-import { boxCode, CODE_BOX_TARGET, REPLACE_CODE_TITLE, replaceCodeDescription, type StatCodeTiming } from "@/lib/statCodeTiming";
-import { withFirstCodeAt } from "@/lib/scripts";
-import { findTargetRow, routeText } from "@/lib/surface/surfaceTargets";
+import type { StatCodeTiming } from "@/lib/statCodeTiming";
+import { targetAttribute } from "@/lib/surface/surfaceTargets";
 import { useLanding } from "@/lib/surface/useLanding";
 import { useCodeUseReveal } from "@/lib/codeUseReveal";
-import type { FocusFieldHint, RegenUnit, Stat, StatDescriptor, StatLinkFields, StatType, ThresholdUnit } from "@/types";
+import type { FocusFieldHint, RegenUnit, ScriptTiming, Stat, StatDescriptor, StatLinkFields, StatType, ThresholdUnit } from "@/types";
 import { REGEN_UNIT_LABELS, REGEN_UNITS, regenPer, regenPerHour, regenUnitOf } from "@/lib/regenUnits";
 import { FieldReset, LabelRow } from '@/components/editor/BlueprintReset';
 import { WorldInput } from '@/components/editor/WorldField';
@@ -50,11 +48,6 @@ import { fieldFrame } from '@/lib/historyField';
 export const AVAILABILITY_INFO = `**Enabled** keeps the stat active. Uncheck it and the stat stays inactive until a trait enables it. An inactive stat isn't shown to the player or sent to the AI, and its Regen and Code don't run.
 
 **Hidden** hides the stat from the player. It's still sent to the AI, and its Regen and Code run. Use it for dice rolls, cooldowns, and other bookkeeping.`;
-
-const findBox = (timing: StatCodeTiming) =>
-  findTargetRow(document, routeText('worldEditorStat.code', CODE_BOX_TARGET[timing]));
-// The editor is a contenteditable, which the landing's own control list leaves out.
-const boxEditor = (row: HTMLElement) => row.querySelector<HTMLElement>('[contenteditable="true"], textarea');
 
 /** What the stat editor reads and writes besides the world: the stats beside the open one, and its write. */
 export interface StatEditorStore {
@@ -106,7 +99,8 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
   /** Edits the stat as an entity's link reads it: writes go to the link's overrides. */
   link?: StatLinkEdit;
 }) => {
-  const { placeholders, placeholderGroups, placeholderOwners, placementLetters, traits, traitGroups, playEntities, entityGroups, dictionaries } = useStatEditorWorld();
+  const { placeholders, placeholderOwners, placementLetters } = useStatEditorWorld();
+  const { names, placeholderPlaces } = useScriptWorldNames();
   // A store carries an owner's own stats; only a world stat reads the world, which an owned stat's editor may not have.
   const world = useGameDataOptional();
   if (!store && !world) throw new Error('StatManager needs a store or a world');
@@ -143,14 +137,11 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
   const selfCodeName = statCodeName(editingStat.name, placeholders);
   // Whose code this is: an entity's own stat runs under that entity, a Blueprint stat under each owner, a world stat under none.
   const isBlueprint = !store && !!world && !world.playStats.some((s) => s.id === stat.id);
-  const owner = useMemo<StatCodeBoxOwner | null>(
+  const owner = useMemo<ScriptBoxOwner | null>(
     () => (store ? { kind: 'entity', entityId: store.ownerId } : isBlueprint ? { kind: 'blueprint' } : null),
     [store, isBlueprint],
   );
-  // `stats` is the world's play stats in every box; `owner.stats` is the entity's own, or a Blueprint group's.
-  const names = useMemo(() => statCodeWorldNames({
-    playStats: world?.playStats ?? [], playEntities, traits, traitGroups, entityGroups, placeholders, placeholderOwners, dictionaries,
-  }), [world?.playStats, playEntities, traits, traitGroups, entityGroups, placeholders, placeholderOwners, dictionaries]);
+  // `owner.stats` is the entity's own, or a Blueprint group's.
   const ownerStats = useMemo(() => {
     if (store) return codeNamedStats;
     if (!isBlueprint || !world) return [];
@@ -168,19 +159,15 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
   });
   // A link's name stays the Blueprint's, so its field never renames.
   const rename = link ? undefined : nameRename;
-  const placeholderPlaces = useMemo(
-    () => worldPlaceholderPlaces({ list: placeholders, owners: placeholderOwners, groups: placeholderGroups }),
-    [placeholders, placeholderOwners, placeholderGroups],
-  );
   // Cards read the authored world, so the library, which has none, gets no lookup.
   const boxLookups = useMemo(() => world && statBoxLookups(world), [world]);
   const lookup = useMemo(() => {
     if (!boxLookups) return undefined;
     const self: Stat = { ...stat, ...editingStat, id: stat.id, name: selfCodeName };
-    return (timing: StatCodeTiming) => boxLookups({ owner, timing, self });
+    return (timing: ScriptTiming) => boxLookups({ owner, timing, self });
   }, [boxLookups, stat, editingStat, selfCodeName, owner]);
-  // One surface for both boxes: what completes in either is what runs in either.
-  const codeContext = useMemo<StatCodeBoxContext>(() => ({
+  // One surface for every box: what completes in one is what runs in each.
+  const codeContext = useMemo<ScriptBoxContext>(() => ({
     selfName: selfCodeName, owner, names, ownerStats, ownerStatNames, placeholderPlaces, lookup,
   }), [selfCodeName, owner, names, ownerStats, ownerStatNames, placeholderPlaces, lookup]);
 
@@ -257,50 +244,37 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
     if (owning) onTabChange(owning);
   }, [focusField, onTabChange]);
 
-  // A Find All Uses row bound for one of this stat's boxes shows it on the Code tab.
+  // A Find All Uses row bound for one of this stat's scripts shows it on the Scripts tab.
   const reveal = useCodeUseReveal(stat.id, store?.ownerId ?? null);
   useEffect(() => {
     if (reveal) onTabChange('code');
   }, [reveal, onTabChange]);
 
-  // The help window's Insert writes a box the way typing does, then shows that box on the Code tab.
-  const landOnBox = useLanding(findBox, { focus: boxEditor });
-  const [pendingInsert, setPendingInsert] = useState<{ timing: StatCodeTiming; code: string } | null>(null);
-  // Read at write and insert time, so the registration does not change with each keystroke.
+  // The help window's Insert adds a script of its timing, then shows it on the Scripts tab. It overwrites nothing.
+  const landOnScript = useLanding(scriptRow, { focus: noFocus });
+  const [inserted, setInserted] = useState<string | null>(null);
+  // Read at insert time, so the registration does not change with each keystroke.
   const latestStat = useRef(editingStat);
   latestStat.current = editingStat;
-  // Each box edits the stat's first script of its timing: typing into an empty box adds one, clearing it removes it.
-  const setBoxCode = useCallback((timing: StatCodeTiming, code: string) => {
-    apply({ scripts: withFirstCodeAt(latestStat.current.scripts, timing, code) });
-  }, [apply]);
   const writeInsert = useCallback((timing: StatCodeTiming, code: string) => {
-    setBoxCode(timing, code);
+    const script = newScript(timing, code);
+    apply({ scripts: [...latestStat.current.scripts ?? [], script] });
     onTabChange('code');
-    landOnBox(timing);
-  }, [setBoxCode, onTabChange, landOnBox]);
+    setInserted(script.id);
+    landOnScript(script.id);
+  }, [apply, onTabChange, landOnScript]);
   const statName = labelPlaceholders(editingStat.name ?? '', placeholders, { letters: placementLetters, owners: placeholderOwners });
-  // Simple mode has no Code tab to show the box on.
+  // Simple mode has no Scripts tab to show the script on.
   useEffect(() => {
     if (!advanced) return;
     return registerStatCodeInsert({
       statName,
       insert: (timing, code) => {
-        if (boxCode(latestStat.current, timing).trim()) {
-          setPendingInsert({ timing, code });
-          return;
-        }
         writeInsert(timing, code);
         reportStatCodeInsert('written');
       },
     });
   }, [advanced, statName, writeInsert]);
-  // Closing the panel settles the confirm too, so the help window never waits on one that is gone.
-  const confirming = pendingInsert !== null;
-  useEffect(() => {
-    if (!confirming) return;
-    reportStatCodeInsert('confirming');
-    return () => reportStatCodeInsert('settled');
-  }, [confirming]);
 
   if (!editingStat) return null;
 
@@ -587,31 +561,25 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
 
   const code = (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Code className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-        <Label>Dynamic Value Calculation</Label>
-        <HelpButton topicId="worldEditor.statCode" className="h-6 w-6" />
+      <div className="space-y-2">
+        <LabelRow reset={resetControl('scripts', 'Scripts')}>
+          <div className="flex items-center gap-2">
+            <Label>Scripts</Label>
+            <HelpButton topicId="worldEditor.statCode" className="h-6 w-6" />
+          </div>
+        </LabelRow>
+        <Hint>Runs code at the timing you select. Code can set this stat&apos;s value, Min, Max, or Regen, pin a placeholder, or switch a trait.</Hint>
+        <Hint>Turn order: Before the AI, AI stat changes, Regen, After the AI. An empty script is skipped.</Hint>
       </div>
-
-      <Hint>Code can set this stat&apos;s value, Min, Max, or Regen, pin a placeholder, or switch a trait</Hint>
-      <Hint>Turn order: Before the AI, AI stat changes, Regen, After the AI. An empty box is skipped.</Hint>
-      {tabResets([['scripts', 'Scripts']])}
-
-      <StatCodeBox
-        timing="before"
-        stat={{ ...editingStat, id: stat.id }}
-        value={boxCode(editingStat, 'before')}
-        onChange={(next) => setBoxCode('before', next)}
+      <ScriptsSection
+        scripts={editingStat.scripts ?? []}
+        onChange={(scripts) => apply({ scripts })}
+        ownerName={statName}
+        self={{ kind: 'stat', stat: { ...editingStat, id: stat.id } }}
         context={codeContext}
-        reveal={reveal?.timing === 'before' ? reveal : null}
-      />
-      <StatCodeBox
-        timing="after"
-        stat={{ ...editingStat, id: stat.id }}
-        value={boxCode(editingStat, 'after')}
-        onChange={(next) => setBoxCode('after', next)}
-        context={codeContext}
-        reveal={reveal?.timing === 'after' ? reveal : null}
+        reveal={reveal}
+        addTarget={targetAttribute('worldEditorStat.code', 'add-script')}
+        focusId={inserted}
       />
     </div>
   );
@@ -628,15 +596,6 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
           <PanelTabContent key={t.value} value={t.value}>{panels[t.value]}</PanelTabContent>
         ))}
       </PanelTabs>
-      <ConfirmDialog
-        open={confirming}
-        onOpenChange={(open) => { if (!open) setPendingInsert(null); }}
-        title={REPLACE_CODE_TITLE}
-        description={replaceCodeDescription('code')}
-        onConfirm={() => pendingInsert && writeInsert(pendingInsert.timing, pendingInsert.code)}
-        // The landing focuses the box; the help window's menu that had focus is gone.
-        onCloseAutoFocus={(event) => event.preventDefault()}
-      />
     </>
   );
 };

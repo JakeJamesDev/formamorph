@@ -73,7 +73,7 @@ const usesOf = (item: CodeCardItem) => {
   const owners = statCodeOwners({ ...world, placeholders });
   return statBoxLookup(owners, { owner: null, timing: 'after', self: courage }, world).uses(item);
 };
-const rows = (uses: CodeUse[]) => uses.map((use) => `${use.entity ? `${use.entity} › ` : ''}${use.stat} ${use.timing} ${use.line}`);
+const rows = (uses: CodeUse[]) => uses.map((use) => `${use.entity ? `${use.entity} › ` : ''}${use.name} ${use.timing} ${use.line}`);
 
 describe('Find All Uses for other kinds', () => {
   it('keeps a world trait apart from an entity’s namesake and joins every route to it', () => {

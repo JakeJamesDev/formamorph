@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBench';
 import { onStatCodeInsert, statCodeInsertTarget } from '@/lib/formaquestion/statCodeInsert';
 import { LANDING_PULSE_CLASS } from '@/lib/landingPulse';
@@ -29,7 +28,10 @@ vi.mock('react-toastify', () => ({
 
 // CodeMirror arrives on its own chunk; a plain field on the same value stands in for it.
 vi.mock('@/components/prompt/CodeArea', () => ({
-  CodeArea: (props: { value: string; ariaLabel: string }) => <textarea aria-label={props.ariaLabel} value={props.value} readOnly />,
+  CodeArea: (props: { value: string; ariaLabel: string; autoFocus?: boolean }) => (
+    // Stands in for the editor's own focus once it loads.
+    <textarea aria-label={props.ariaLabel} value={props.value} readOnly autoFocus={props.autoFocus} />
+  ),
 }));
 
 const WORLD: World = benchEditorWorld({
@@ -38,16 +40,18 @@ const WORLD: World = benchEditorWorld({
   ],
 } as Partial<World>);
 
-const BEFORE_BOX = 'worldEditorStat.code#before-code';
-const AFTER_BOX = 'worldEditorStat.code#after-code';
-const boxOf = (route: string) => document.querySelector<HTMLElement>(`[data-surface-target="${route}"]`);
+/** The row of the script the last insert added. */
+const addedRow = (ctx: () => { stats: World['stats'] }) =>
+  document.querySelector<HTMLElement>(`[data-script-id="${warmth(ctx).scripts!.at(-1)!.id}"]`);
 
 const selectStat = (name: string) => {
   fireEvent.mouseDown(screen.getByRole('tab', { name: /Stats/ }));
   fireEvent.click(screen.getByText(name));
 };
 const panelTab = (name: string) => within(screen.getByRole('tablist', { name: 'Stat Fields' })).getByRole('tab', { name });
-const warmth = (ctx: () => { stats: World['stats'] }) => ctx().stats.find((stat) => stat.id === 's1')!;
+function warmth(ctx: () => { stats: World['stats'] }) {
+  return ctx().stats.find((stat) => stat.id === 's1')!;
+}
 const insert = (timing: 'before' | 'after', code: string) => act(() => statCodeInsertTarget()!.insert(timing, code));
 
 let scrolled: Element[];
@@ -70,66 +74,38 @@ describe('inserting help code into the open stat', () => {
     expect(statCodeInsertTarget()?.statName).toBe('Warmth');
   });
 
-  it('writes an empty box at once, opens the Code tab, and lands on the box with the pulse', async () => {
+  it('writes a new script of its timing at once, opens the Scripts tab, and lands on it with the pulse', async () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     selectStat('Warmth');
     insert('before', 'self.value = 2;');
 
     expect(codeAt(warmth(ctx), 'before')).toBe('self.value = 2;');
-    expect(panelTab('Code')).toHaveAttribute('aria-selected', 'true');
-    await waitFor(() => expect(scrolled).toContain(boxOf(BEFORE_BOX)));
-    expect(ringOn(boxOf(BEFORE_BOX), LANDING_PULSE_CLASS)).toBe(true);
-    expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Stat Code Before the AI' }));
+    expect(panelTab('Scripts')).toHaveAttribute('aria-selected', 'true');
+    await waitFor(() => expect(scrolled).toContain(addedRow(ctx)));
+    expect(ringOn(addedRow(ctx), LANDING_PULSE_CLASS)).toBe(true);
+    expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Code Warmth · Before the AI' }));
     expect(screen.queryByRole('alertdialog')).toBeNull();
   });
 
-  it('asks before it replaces a box that has code, and writes on Confirm', async () => {
+  it('adds a script beside one that holds code, overwriting nothing and asking nothing', async () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     selectStat('Warmth');
     insert('after', 'return 9;');
 
-    const confirm = await screen.findByRole('alertdialog', { name: 'Replace The Existing Code' });
-    expect(confirm).toHaveTextContent('This box already has code. Inserting this code overwrites it.');
-    expect(codeAt(warmth(ctx))).toBe('return 4;');
-    await userEvent.click(within(confirm).getByRole('button', { name: 'Confirm' }));
-
-    expect(codeAt(warmth(ctx))).toBe('return 9;');
-    await waitFor(() => expect(scrolled).toContain(boxOf(AFTER_BOX)));
+    expect(warmth(ctx).scripts?.map((script) => [script.timing, script.code])).toEqual([['after', 'return 4;'], ['after', 'return 9;']]);
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    await waitFor(() => expect(scrolled).toContain(addedRow(ctx)));
   });
 
-  it('leaves the box as it was on Cancel', async () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
-    selectStat('Warmth');
-    insert('after', 'return 9;');
-
-    const confirm = await screen.findByRole('alertdialog', { name: 'Replace The Existing Code' });
-    await userEvent.click(within(confirm).getByRole('button', { name: 'Cancel' }));
-
-    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
-    expect(codeAt(warmth(ctx))).toBe('return 4;');
-    expect(scrolled).toEqual([]);
-  });
-
-  it('reports each step, so the help window can step aside', async () => {
+  it('reports each insert as written, so the help window steps aside for none', () => {
     const events: string[] = [];
     const stop = onStatCodeInsert((event) => events.push(event));
-    const { unmount } = renderWorldEditorBench(WORLD, 'advanced');
+    renderWorldEditorBench(WORLD, 'advanced');
     selectStat('Warmth');
 
     insert('before', 'self.value = 2;');
-    expect(events).toEqual(['written']);
-
     insert('after', 'return 9;');
-    await screen.findByRole('alertdialog', { name: 'Replace The Existing Code' });
-    expect(events).toEqual(['written', 'confirming']);
-    await userEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Cancel' }));
-    expect(events).toEqual(['written', 'confirming', 'settled']);
-
-    // A panel that closes under its open confirm settles it too.
-    insert('after', 'return 9;');
-    await screen.findByRole('alertdialog', { name: 'Replace The Existing Code' });
-    unmount();
-    expect(events).toEqual(['written', 'confirming', 'settled', 'confirming', 'settled']);
+    expect(events).toEqual(['written', 'written']);
     stop();
   });
 
@@ -152,7 +128,7 @@ describe('inserting help code into the open stat', () => {
     expect(statCodeInsertTarget()).toBeNull();
   });
 
-  it('registers nothing in Simple mode, which has no Code tab', () => {
+  it('registers nothing in Simple mode, which has no Scripts tab', () => {
     renderWorldEditorBench(WORLD, 'simple');
     selectStat('Warmth');
     expect(statCodeInsertTarget()).toBeNull();

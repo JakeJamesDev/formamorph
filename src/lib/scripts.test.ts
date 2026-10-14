@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Script } from '@/types';
-import { inRunOrder, migrateStatBoxes, migrateStatLinkBoxes, withFirstCodeAt } from './scripts';
+import { inRunOrder, migrateStatBoxes, migrateStatLinkBoxes } from './scripts';
 
 const script = (over: Partial<Script> & Pick<Script, 'id'>): Script => ({ timing: 'after', code: 'return 1;', ...over });
 
@@ -73,25 +73,3 @@ describe('inRunOrder', () => {
   });
 });
 
-describe('withFirstCodeAt', () => {
-  const mint = () => 'new';
-
-  it('adds a script when the timing has none, and stores nothing for empty code', () => {
-    expect(withFirstCodeAt(undefined, 'before', 'return 1;', mint)).toEqual([{ id: 'new', timing: 'before', code: 'return 1;' }]);
-    expect(withFirstCodeAt(undefined, 'before', '', mint)).toBeUndefined();
-  });
-
-  it('edits only the first script of the timing and removes it when cleared', () => {
-    const list = [script({ id: 'x', timing: 'before' }), script({ id: 'y' }), script({ id: 'z' })];
-    expect(withFirstCodeAt(list, 'after', 'return 5;', mint)?.map((s) => [s.id, s.code])).toEqual([
-      ['x', 'return 1;'], ['y', 'return 5;'], ['z', 'return 1;'],
-    ]);
-    expect(withFirstCodeAt(list, 'after', '', mint)?.map((s) => s.id)).toEqual(['x', 'z']);
-    expect(withFirstCodeAt([script({ id: 'x' })], 'after', '', mint)).toBeUndefined();
-  });
-
-  it('returns the same list when the code is unchanged', () => {
-    const list = [script({ id: 'y' })];
-    expect(withFirstCodeAt(list, 'after', 'return 1;', mint)).toBe(list);
-  });
-});

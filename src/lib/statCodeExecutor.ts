@@ -1072,6 +1072,8 @@ export interface StatCodeRunOptions {
   dictionaries?: readonly SandboxDictionary[];
   /** Absent outside During AI Output, where `narration` and `player` do not exist. */
   narration?: NarrationInput;
+  /** A trait script's own trait: `self` reads its entry, read-only. Only with no `currentStat`. */
+  selfTrait?: SandboxTrait;
 }
 
 /** The `player` object of a During AI Output run: every call throws, since a sentence cannot wait on a dialog. */
@@ -1097,9 +1099,12 @@ const NO_SELF_STAT: Stat = { id: '', name: '', type: 'number', description: '', 
 export const executeStatCode = async (
   code: string,
   stats: Stat[],
-  /** Null for a world script: `self` is an empty object, and a return value or a `self` write is ignored. */
+  /** Null for a world or trait script: `self` is empty or the trait's entry, and a return value or a `self`
+   *  write is ignored. */
   currentStat: Stat | null,
-  { clock, turn, enabled, placeholders = [], traits = [], entities = [], persona = EMPTY_PERSONA, owner, dictionaries = [], narration }: StatCodeRunOptions = {},
+  {
+    clock, turn, enabled, placeholders = [], traits = [], entities = [], persona = EMPTY_PERSONA, owner, dictionaries = [], narration, selfTrait,
+  }: StatCodeRunOptions = {},
 ): Promise<StatCodeResult> => {
   // If code is empty, return null (use the manually set value)
   if (!code || code.trim() === '') {
@@ -1140,6 +1145,8 @@ export const executeStatCode = async (
     // A world script's `self` is an empty object; its slots read as undefined so nothing writes back.
     const selfRead = (field: string) => (currentStat ? `self.${field}` : 'undefined');
     const selfNameIn = (map: typeof OWNER_STATS | 'stats') => (selfMap === map ? selfData.name : null);
+    // A trait script's `self` is its trait's entry; a world script's is an empty object.
+    const selfTraitSource = selfTrait ? JSON.stringify(Object.values(traitData([selfTrait]))[0]) : '{}';
     const blankStat = blankStatEntry(selfData);
 
     // The stat data rides in as JSON literals (JSON is valid JS expression syntax); console.log and the
@@ -1155,8 +1162,9 @@ export const executeStatCode = async (
       }),
       `const ${LOOSE_WRITES} = [];`,
       `const ${LOOSE_NOTE} = (path) => (${ADD_ONCE})(${LOOSE_WRITES}, path);`,
-      `const self = ${!currentStat ? '{}' : selfMap ? `${selfMap}[${JSON.stringify(selfData.name)}]` : JSON.stringify(selfData)};`,
+      `const self = ${!currentStat ? selfTraitSource : selfMap ? `${selfMap}[${JSON.stringify(selfData.name)}]` : JSON.stringify(selfData)};`,
       ...(selfMap || !currentStat ? [] : [`(${LOCK_STAT})(self, ${SELF_ASSIGNED}, (path) => ${LOOSE_NOTE}('self.' + path));`]),
+      ...(!currentStat && selfTrait ? [`Object.freeze((${LOCK_FIELDS})(self, Object.keys(self), 'self.', ${LOOSE_NOTE}));`] : []),
       `const clock = ((lock) => {`,
       `  const clock = ${JSON.stringify(clockObject(clock))};`,
       `  Object.freeze(lock(clock.previous, ['day', 'daypart'], 'clock.previous.', ${LOOSE_NOTE}));`,

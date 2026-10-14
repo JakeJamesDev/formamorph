@@ -13,7 +13,7 @@
  * alone, because rewriting them would need judgment the Test Bench is the net for.
  */
 
-import type { Entity, Placeholder, Stat, StatGroup } from '@/types';
+import type { Entity, Placeholder, Script, Stat, StatGroup, TraitGroup } from '@/types';
 import { canBePlayer } from './owners';
 import { codeRenameChains, type ChainRoot, type CodeRenameKey } from './codeRenameChains';
 import type { PlaceholderOwnerRef, PlaceholderOwners } from './placeholderHomes';
@@ -25,7 +25,7 @@ import { statCodeName } from './statCodeNames';
 import type { TraitOwnerMaps } from './statCodeTraits';
 import { filledScripts } from './scripts';
 import {
-  boxReferences, nameHomeOf, statCodeBoxes, statCodeOwners, type CodeHome, type StatNameHome,
+  boxReferences, nameHomeOf, statCodeBoxes, statCodeOwners, traitCodeBoxes, type CodeHome, type StatNameHome, type TraitCodeHome,
 } from './statCodeTargets';
 
 /** The name-keyed maps a rename can reach. */
@@ -230,11 +230,11 @@ export const codeNameReader = (
     ? (name) => name
     : (name) => statCodeName(name, placeholders));
 
-/** One stat's code, rewritten. A script the rename does not touch is absent rather than rewritten to itself. */
+/** One stat's or trait's code, rewritten. A script the rename does not touch is absent rather than rewritten to itself. */
 export interface CodeRenameEdit {
-  /** Where the code is authored: a global stat, an entity's own stat, or a link's override. */
-  home: CodeHome;
-  /** The stat's own name, so the offer can say whose code it is about. */
+  /** Where the code is authored: a stat or a trait, an entity's own, or a link's override. */
+  home: CodeHome | TraitCodeHome;
+  /** The stat's or trait's own name, so the offer can say whose code it is about. */
   name: string;
   /** The new code of each script the rename moved something in, by script id. */
   scripts: Record<string, string>;
@@ -273,8 +273,11 @@ export interface CodeRenameInput {
   newName: string;
   /** Every stat in the world, for the code they hold. */
   stats: readonly Stat[];
-  /** Every trait in the world. A placeholder rename moves the code name of a trait whose name carries it. */
-  traits?: readonly { name: string }[];
+  /** Every trait in the world, for the scripts they hold. A placeholder rename moves the code name of a trait
+   *  whose name carries it. */
+  traits?: readonly { id?: string; name: string; groupId?: string | null; scripts?: Script[] }[];
+  /** The world's trait groups, for the Blueprint traits a stat rename follows. */
+  traitGroups?: readonly TraitGroup[];
   /** Every entity in the world. A placeholder rename moves the code name of an entity whose name carries it,
    *  and follows a playable one's own placeholders into `persona`. */
   entities?: readonly Entity[];
@@ -412,14 +415,20 @@ function statRenameEdits(
   const isRenamed = (home: StatNameHome) => home.statId === renamed.id && home.entityId === ownerId;
   const edits = new Map<string, CodeRenameEdit>();
   let references = 0;
-  for (const box of statCodeBoxes(owners)) {
+  // Only traits with ids hold scripts a home can name.
+  const traits = (input.traits ?? []).flatMap((trait) => (trait.id === undefined ? [] : [{ statChanges: [], ...trait, id: trait.id }]));
+  const boxes = [
+    ...statCodeBoxes(owners).map((box) => ({ box, name: box.stat.name })),
+    ...traitCodeBoxes(owners, { traits, traitGroups: input.traitGroups ?? [] }).map((box) => ({ box, name: box.trait.name })),
+  ];
+  for (const { box, name } of boxes) {
     const splices = boxReferences(owners, box)
       .filter(({ targets }) => targets.every((target) => isRenamed(nameHomeOf(target))))
       .map(({ key }) => rewrittenKey(key, to));
     if (!splices.length) continue;
     references += splices.length;
     const at = JSON.stringify(box.home);
-    const edit = edits.get(at) ?? { home: box.home, name: box.stat.name, scripts: {} };
+    const edit = edits.get(at) ?? { home: box.home, name, scripts: {} };
     edit.scripts[box.id] = spliced(box.code, splices);
     edits.set(at, edit);
   }
@@ -452,11 +461,16 @@ export function planCodeRename(input: CodeRenameInput): CodeRenamePlan | null {
     };
   const edits: CodeRenameEdit[] = [];
   let references = 0;
+  const homes: { home: CodeHome | TraitCodeHome; name: string; scripts: readonly Script[] }[] = [
+    ...stats.map((stat) => ({ home: { kind: 'stat' as const, statId: stat.id }, name: stat.name, scripts: filledScripts(stat) })),
+    ...traits.flatMap((trait) => (trait.id === undefined ? []
+      : [{ home: { kind: 'trait' as const, traitId: trait.id }, name: trait.name, scripts: filledScripts(trait) }])),
+  ];
   // Every script, because a rename that moved one and left another would strand the lookups it skipped.
-  for (const stat of stats) {
+  for (const { home, name, scripts: held } of homes) {
     const scripts: Record<string, string> = {};
     let moved = 0;
-    for (const script of filledScripts(stat)) {
+    for (const script of held) {
       const rewritten = rewriteCode(script.code, rewrite);
       if (!rewritten.references) continue;
       moved += rewritten.references;
@@ -464,7 +478,7 @@ export function planCodeRename(input: CodeRenameInput): CodeRenamePlan | null {
     }
     if (!moved) continue;
     references += moved;
-    edits.push({ home: { kind: 'stat', statId: stat.id }, name: stat.name, scripts });
+    edits.push({ home, name, scripts });
   }
   return references ? { root, subject, oldName: from, newName: to, edits, references } : null;
 }

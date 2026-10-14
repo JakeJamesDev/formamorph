@@ -15,11 +15,11 @@ import { cardWorldNames, type StatCodeNames } from '@/lib/statCodeBoxOptions';
 import { statCodeNamed } from '@/lib/statCodeNames';
 import { sandboxDictionaries, sandboxPlaceholders } from '@/lib/statCodePlaceholders';
 import { placeholderPathExpression, placeholderPathLabel } from '@/lib/statCodePaths';
-import type { StatCodeTiming } from '@/lib/statCodeTiming';
+import { statCodeTimingOf, type StatCodeTiming } from '@/lib/statCodeTiming';
 import { sandboxTraits, unplayedEntities } from '@/lib/statCodeTraits';
 import { activeStatEnabled } from '@/lib/traitEffects';
 import { startingGateStatsOf } from '@/lib/gateStats';
-import type { Stat, World } from '@/types';
+import type { ScriptTiming, Stat, World } from '@/types';
 
 /** Test Code names each bound a run wrote with its Details field label. */
 const BOUND_LABELS: Record<CodeBoundField, string> = { min: 'Min', max: 'Max', regen: 'Regen' };
@@ -115,6 +115,8 @@ export interface TestRunOptions {
   /** Whose code it is, for an owned or Blueprint stat. Absent for a global stat, whose `owner` is empty. In
    *  every run `stats` is the global stats. */
   owner?: TestRunOwner;
+  /** A trait script's own trait, which `self` reads in place of a stat. */
+  selfTrait?: { id: string; name: string };
 }
 
 /** The range and value an assumed stat runs with. */
@@ -219,15 +221,15 @@ const droppedLine = (lead: string, names: readonly string[] | undefined) =>
   (names?.length ? [`${lead} Writes ignored: ${names.join(', ')}.`] : []);
 
 /**
- * Runs `code` from the `timing` box of `stat`, whose name is its code name. Applies nothing. With
+ * Runs `code` from the `timing` box of `stat`, whose name is its code name, or of `selfTrait` with no stat. Applies nothing. With
  * `pendingPersona`, a `persona` write to a trait or placeholder a persona-capable entity holds is reported
  * as pending.
  */
 export async function runTestCode(
-  code: string, timing: StatCodeTiming, stat: Partial<Stat> & Pick<Stat, 'id' | 'name'>,
+  code: string, timing: ScriptTiming, stat: (Partial<Stat> & Pick<Stat, 'id' | 'name'>) | null,
   { codeNamedStats, placeholders, traits, entities, entityStats }:
     Pick<StatCodeNames, 'codeNamedStats' | 'placeholders' | 'traits' | 'entities' | 'entityStats'>,
-  { pendingPersona: pending = false, missing, owner }: TestRunOptions = {},
+  { pendingPersona: pending = false, missing, owner, selfTrait }: TestRunOptions = {},
 ): Promise<TestCodeReport> {
   // No playthrough: an unrolled placeholder reads as a fresh draw, no one holds a trait, and no persona plays.
   // A pending run's empty persona holds the playable entities' traits and placeholders, so a write to one is kept.
@@ -258,12 +260,18 @@ export async function runTestCode(
     ...(entityEntries.find((entity) => owner.entityId && entity.id === owner.entityId) ?? { name: '', traits: [], ...(owner.entityId && { id: owner.entityId }) }),
     stats: { stats: owner.stats, enabled: activeStatEnabled(owner.stats, []) },
   };
+  // A trait's entry as its owner's map holds it; one no map holds reads as not held.
+  const traitSelf = selfTrait && (
+    (ownerEntry ? ownerEntry.traits : traitEntries).find((entry) => entry.id === selfTrait.id)
+    ?? { ...selfTrait, enabled: false, acquired: false }
+  );
   const outcome = await executeStatCode(
     // A half-filled stat still runs: the executor defaults every number it marshals, so only the id and the
     // code name have to be real.
-    code, stats, stat as Stat,
+    code, stats, stat as Stat | null,
     {
-      clock: TEST_CLOCK[timing], placeholders: placeholderEntries.top, traits: traitEntries,
+      clock: TEST_CLOCK[statCodeTimingOf(timing)],
+      ...(traitSelf && { selfTrait: traitSelf }), placeholders: placeholderEntries.top, traits: traitEntries,
       // No trait is on, so a stat is off only as authored; a write to it is dropped as it is in a turn.
       enabled: activeStatEnabled(stats, []),
       entities: entityEntries,
@@ -321,7 +329,7 @@ export async function runTestCode(
   ];
   return {
     // Applies nothing, so the value lands in the range the run left on itself.
-    error: null, value: outcome.value === null ? null : clampToOwnRange(outcome.value, stat as Stat, outcome.bounds), writes,
+    error: null, value: outcome.value === null || !stat ? null : clampToOwnRange(outcome.value, stat as Stat, outcome.bounds), writes,
     ...(pending && {
       pending: [
         ...(personaWrites?.traits ?? []).map((entry) => switchLine(`${entityTraitsPath('')}.`, entry)),

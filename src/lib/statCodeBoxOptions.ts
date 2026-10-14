@@ -4,6 +4,7 @@
  * reads a box another way.
  */
 
+import type { CodeSurface } from './codeSurface';
 import type { CodeCardWorld, CodeWorldLookup } from './codeWorldLookup';
 import type { PlaceholderOwners } from './placeholderHomes';
 import type { CodeEntityNames, CodeOwnerKind, CodePlaceholders, CodeTraitPlace, SurfaceAnalysisOptions } from './statCodeAnalysis';
@@ -71,17 +72,21 @@ export function cardWorldNames(world: CodeCardWorld): StatCodeNames {
 export interface StatBoxSpec {
   /** The box's stat under its code name. */
   selfName?: string;
-  /** Absent for a global stat, whose `owner` is empty. */
-  owner?: { kind: CodeOwnerKind; statNames: readonly string[] };
+  /** Absent for a global stat, whose `owner` is empty. Absent `statNames` go unchecked. */
+  owner?: { kind: CodeOwnerKind; statNames?: readonly string[] };
   lookup?: CodeWorldLookup;
+  /** Absent = stat code's. */
+  surface?: CodeSurface;
 }
 
 /** The reader's options for one stat code box under the world's `names`. */
 export const statBoxAnalysisOptions = (
   { placeholders, traitNames, entities, statNames }: Pick<StatCodeNames, 'placeholders' | 'traitNames' | 'entities' | 'statNames'>,
-  { selfName, owner, lookup }: StatBoxSpec = {},
+  { selfName, owner, lookup, surface = STAT_CODE_SURFACE }: StatBoxSpec = {},
 ): SurfaceAnalysisOptions => ({
-  surface: STAT_CODE_SURFACE,
-  placeholders, traits: traitNames, entities, statNames, ownerStatNames: owner?.statNames ?? [],
+  surface,
+  placeholders, traits: traitNames, entities, statNames,
+  // A global box's `owner.stats` is empty; an owner given no names leaves them unchecked.
+  ...(!owner ? { ownerStatNames: [] } : owner.statNames ? { ownerStatNames: owner.statNames } : {}),
   ...(owner && { owner: owner.kind }), ...(selfName && { selfName }), ...(lookup && { lookup }),
 });

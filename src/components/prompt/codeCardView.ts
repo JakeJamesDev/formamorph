@@ -138,9 +138,9 @@ export function renderCodeCard(card: CodeCard, actions: CodeCardActions = {}): H
   return root;
 }
 
-/** A use as its row reads: the stat, its box and its line. */
-export function rowText({ entity, stat, timing, line }: CodeUse): string {
-  return `${entity ? `${entity} › ` : ''}${stat} · ${TIMING_SHORT[timing]} · Line ${line}`;
+/** A use as its row reads: the stat or trait, its box and its line. */
+export function rowText({ entity, name, timing, line }: CodeUse): string {
+  return `${entity ? `${entity} › ` : ''}${name} · ${TIMING_SHORT[timing]} · Line ${line}`;
 }
 
 /** The Find All Uses popover: a count, then one button per box and line. */

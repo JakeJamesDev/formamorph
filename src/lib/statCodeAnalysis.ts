@@ -20,7 +20,7 @@ import {
 } from '@/lib/codeSurface';
 import {
   clockFieldsAt, DELTA_FIELDS, DELTA_MEMBERS, PREVIOUS_FIELDS, SELF_WRITABLE_FIELDS, STAT_CODE_SURFACE, STAT_FIELDS,
-  DICTIONARY_FIELDS, ENTITY_FIELDS, PERSONA_FIELDS, TRAIT_ENTRY_FIELDS, TRAIT_WRITABLE_FIELD, placeholderEntryFields,
+  DICTIONARY_FIELDS, ENTITY_FIELDS, PERSONA_FIELDS, SELF_TRAIT_FIELDS, TRAIT_ENTRY_FIELDS, TRAIT_WRITABLE_FIELD, placeholderEntryFields,
 } from '@/lib/statCodeSurface';
 import {
   isIdentifier, isPlaceholderEntryMember, placeholderKeyWinner, placeholderPathLabel, placeholderPathMap,
@@ -471,6 +471,7 @@ function membersOf(value: CodeValue, options: SurfaceAnalysisOptions, rules: Sta
     case 'statDelta': return DELTA_MEMBERS;
     case 'deltaSource': return DELTA_FIELDS;
     case 'trait': return TRAIT_ENTRY_FIELDS;
+    case 'selfTrait': return SELF_TRAIT_FIELDS;
     case 'placeholders': {
       const walk = placeholderWalk(value.owner, value.path, options, rules);
       return walk && options.placeholders ? placeholderMembersAt(options.placeholders, walk.segments, walk.start) : null;
@@ -839,6 +840,9 @@ function checkPlaceholderEntryWrite(
   return rest.length === 0 && node ? warn(`Write to ${written}.value instead.`) : null;
 }
 
+/** The error on a write to a trait script's own `self`. */
+const SELF_TRAIT_READ_ONLY = 'self is read-only in a trait’s script. Switch a trait through traits or owner.traits.';
+
 /** What is wrong with a write into a trait map: to the entry itself, or to a field other than `enabled`. */
 function checkTraitWrite(
   target: SyntaxNode, code: string, assignment: boolean, entryOf: TraitEntryOf = worldTraitRef,
@@ -902,6 +906,18 @@ function checkClockField(member: SyntaxNode, code: string): CodeDiagnostic | nul
   if (!fields || fields.some((entry) => entry.name === name)) return null;
   const suggestion = nearestName(name, fields.map((entry) => entry.name));
   const lead = `${path} has no field “${name}”.`;
+  return suggested({ from: field.from, to: field.to, severity: 'error', message: suggestion ? `${lead} Did you mean “${suggestion}”?` : lead }, suggestion);
+}
+
+/** What is wrong with a read of `self.<field>` in a trait's script: its trait carries no such field. */
+function checkSelfTraitField(member: SyntaxNode, code: string): CodeDiagnostic | null {
+  const object = member.firstChild;
+  const field = member.getChild('PropertyName');
+  if (!object || !field || code.slice(object.from, object.to) !== 'self') return null;
+  const name = code.slice(field.from, field.to);
+  if (SELF_TRAIT_FIELDS.some((entry) => entry.name === name)) return null;
+  const suggestion = nearestName(name, SELF_TRAIT_FIELDS.map((entry) => entry.name));
+  const lead = `A trait has no field “${name}”.`;
   return suggested({ from: field.from, to: field.to, severity: 'error', message: suggestion ? `${lead} Did you mean “${suggestion}”?` : lead }, suggestion);
 }
 
@@ -1221,7 +1237,9 @@ export function codeDiagnostics(code: string, options: SurfaceAnalysisOptions): 
     if (cursor.type.name === 'ReturnStatement') { sawReturn = true; continue; }
     const target = writeTarget(cursor.node, code);
     if (target && !overlapsAny(target.from, target.to, ranges)) {
-      if (statWrites) {
+      if (surface.selfIs === 'trait' && !declared.has('self') && memberRoot(target, code) === 'self') {
+        diagnostics.push({ from: target.from, to: target.to, severity: 'error', message: SELF_TRAIT_READ_ONLY });
+      } else if (statWrites) {
         const { writes, problem } = checkWrite(target, code, tree, declared, options.selfName, options.owner !== undefined);
         if (writes) sawStatWrite = true;
         if (problem) diagnostics.push(problem);
@@ -1311,6 +1329,10 @@ export function codeDiagnostics(code: string, options: SurfaceAnalysisOptions): 
     }
     if (cursor.type.name === 'MemberExpression' && clockInScope) {
       const problem = checkClockField(cursor.node, code);
+      if (problem && !overlapsAny(problem.from, problem.to, ranges)) diagnostics.push(problem);
+    }
+    if (cursor.type.name === 'MemberExpression' && surface.selfIs === 'trait' && !declared.has('self')) {
+      const problem = checkSelfTraitField(cursor.node, code);
       if (problem && !overlapsAny(problem.from, problem.to, ranges)) diagnostics.push(problem);
     }
     if (cursor.type.name === 'BinaryExpression' || cursor.type.name === 'UnaryExpression') {

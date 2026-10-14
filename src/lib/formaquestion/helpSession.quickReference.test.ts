@@ -67,7 +67,7 @@ describe('the Quick Reference on the Code tab', () => {
     const { ids, lead, user } = await ask('How do I switch a trait?', { surface: CODE_TAB });
     expect(ids.slice(0, 3)).toEqual([LEAD, QUICK_REFERENCE_SECTION, GUIDE_TRAITS]);
     expect(lead).toBe(LEAD);
-    expect(user).toContain(screenLine('World Editor screen, Code tab'));
+    expect(user).toContain(screenLine('World Editor screen, Scripts tab'));
   });
 
   it('goes once when the search also finds it', async () => {

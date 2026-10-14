@@ -39,7 +39,7 @@ import {
   type StatCodeTemplate,
   type TemplateSlot,
 } from '@/lib/statCodeTemplates';
-import { REPLACE_CODE_TITLE, replaceCodeDescription, STAT_CODE_TIMINGS, TIMING_LABEL, type StatCodeTiming } from '@/lib/statCodeTiming';
+import { REPLACE_CODE_DESCRIPTION, REPLACE_CODE_TITLE, STAT_CODE_TIMINGS, TIMING_LABEL, type StatCodeTiming } from '@/lib/statCodeTiming';
 import { STAT_CODE_SURFACE } from '@/lib/statCodeSurface';
 import type { VariableTreeOwner } from '@/lib/statCodeVariableTree';
 import { keyedEntity, type CodeEntityNames, type CodeTraitPlace } from '@/lib/statCodeAnalysis';
@@ -664,7 +664,7 @@ export function StatCodeTemplateDialog({
           open={confirmReplace}
           onOpenChange={setConfirmReplace}
           title={REPLACE_CODE_TITLE}
-          description={replaceCodeDescription('template')}
+          description={REPLACE_CODE_DESCRIPTION}
           onConfirm={doInsert}
         />
       </DialogContent>

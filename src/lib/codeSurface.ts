@@ -78,6 +78,8 @@ export interface CodeSurface {
   missingReturn: string | null;
   /** True when `stats`, `self`, `placeholders` and `traits` are stat code's maps, with their rules. */
   statMaps: boolean;
+  /** What `self` holds with `statMaps`: a trait's script reads its trait's entry, read-only. Absent = a stat. */
+  selfIs?: 'trait';
   /** The Guide heading of each global that has one, for its card's Read in the Guide link. */
   guide?: Readonly<Record<string, DocTarget>>;
 }

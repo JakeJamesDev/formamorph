@@ -40,15 +40,15 @@ export function useStatCodeInsertTarget(): StatCodeInsertTarget | null {
   return useSyncExternalStore(subscribeStatCodeInsert, statCodeInsertTarget, statCodeInsertTarget);
 }
 
-/** What the panel did with an insert: wrote it, raised the replace confirm, or closed that confirm. */
-export type StatCodeInsertEvent = 'written' | 'confirming' | 'settled';
+/** What the panel did with an insert: it writes every one as a new script. */
+export type StatCodeInsertEvent = 'written';
 
-/** The panel reports each step of an insert, so the help window can step aside for it. */
+/** The panel reports each insert, so the help window's sheet can close for it. */
 export function reportStatCodeInsert(event: StatCodeInsertEvent): void {
   eventListeners.forEach((listener) => listener(event));
 }
 
-/** Calls `listener` with each step the panel reports. Returns the unsubscribe function. */
+/** Calls `listener` with each insert the panel reports. Returns the unsubscribe function. */
 export function onStatCodeInsert(listener: (event: StatCodeInsertEvent) => void): () => void {
   eventListeners.add(listener);
   return () => eventListeners.delete(listener);

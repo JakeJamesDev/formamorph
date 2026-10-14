@@ -35,6 +35,8 @@ export type CodeValue =
   | { is: 'deltaSource'; stat: CodeStatValue; source: string }
   | { is: 'traitMap'; owner: TraitOwner }
   | { is: 'trait'; owner: TraitOwner; key: string }
+  /** A trait script's own trait, read-only. `key` is its code name where the editor knows it. */
+  | { is: 'selfTrait'; key: string | null }
   /** A `placeholders` map or a node below it. `path` holds every key after the map, members included. */
   | { is: 'placeholders'; owner: PlaceholderOwner; path: readonly string[] }
   | { is: 'entityMap' }
@@ -175,7 +177,9 @@ export function codeResolver(
     if (has(name)) {
       switch (name) {
         case 'stats': return { is: 'statMap', owner: { route: 'world' } };
-        case 'self': return { is: 'stat', owner: selfOwner, key: options.selfName ?? null };
+        case 'self': return surface.selfIs === 'trait'
+          ? { is: 'selfTrait', key: options.selfName ?? null }
+          : { is: 'stat', owner: selfOwner, key: options.selfName ?? null };
         case 'placeholders': return { is: 'placeholders', owner: { route: 'world' }, path: [] };
         case 'traits': return { is: 'traitMap', owner: { route: 'world' } };
         case 'entities': return { is: 'entityMap' };

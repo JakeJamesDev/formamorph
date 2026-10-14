@@ -570,12 +570,14 @@ const WorldEditorInner = ({
       case 'dictionary': return navigateToBenchItem('dictionary', item.dictionaryId);
     }
   }, [navigateToBenchItem]);
-  // A Find All Uses row: select the box's stat; its panel opens the Code tab and the box takes the caret.
-  const goToCodeUse = useCallback(({ entityId, rowId, timing, line }: CodeUse) => {
-    requestCodeUseReveal({ entityId, rowId, timing, line });
-    if (!entityId) return navigateToBenchItem('stats', rowId);
-    setEntityStatId(rowId);
-    navigateToBenchItem('entities', entityId, 'stats');
+  // A Find All Uses row: select the box's stat or trait; its panel opens the Scripts tab and the box takes the caret.
+  const goToCodeUse = useCallback(({ entityId, rowId, trait, timing, scriptId, line }: CodeUse) => {
+    requestCodeUseReveal({ entityId, rowId, ...(trait && { trait }), timing, scriptId, line });
+    const tab = trait ? 'traits' : 'stats';
+    if (!entityId) return navigateToBenchItem(tab, rowId);
+    if (trait) setEntityTraitId(rowId);
+    else setEntityStatId(rowId);
+    navigateToBenchItem('entities', entityId, tab);
   }, [navigateToBenchItem]);
   const codeCardNavigation = useMemo<CodeCardNavigation>(
     () => ({ open: openCodeCardItem, goToUse: goToCodeUse }),

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { Entity, Placeholder, Stat, StatGroup } from '@/types';
+import type { Entity, Placeholder, Stat, StatGroup, Trait, TraitGroup } from '@/types';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import { statCodeName } from '@/lib/statCodeNames';
 import type { RenamedStat } from '@/lib/statCodeRename';
@@ -15,18 +15,25 @@ const stat = (id: string, name: string, code: string): Stat =>
   ({ id, name, type: 'number', description: '', min: 0, max: 100, value: 0, regen: 0, scripts: boxScripts({ after: code }) } as unknown as Stat);
 
 const store: {
-  stats: Stat[]; statGroups: StatGroup[]; entities: Entity[]; placeholders: Placeholder[]; rerender: () => void;
+  stats: Stat[]; statGroups: StatGroup[]; traits: Trait[]; traitGroups: TraitGroup[]; entities: Entity[]; placeholders: Placeholder[];
+  rerender: () => void;
 } = {
-  stats: [], statGroups: [], entities: [], placeholders: [], rerender: () => {},
+  stats: [], statGroups: [], traits: [], traitGroups: [], entities: [], placeholders: [], rerender: () => {},
 };
 
 vi.mock('@/contexts/GameDataContext', () => ({
   useGameDataOptional: () => ({
     stats: store.stats,
     statGroups: store.statGroups,
+    traits: store.traits,
+    traitGroups: store.traitGroups,
     entities: store.entities,
     updateStat: (next: Stat) => {
       store.stats = store.stats.map((entry) => (entry.id === next.id ? next : entry));
+      store.rerender();
+    },
+    updateTrait: (next: Trait) => {
+      store.traits = store.traits.map((entry) => (entry.id === next.id ? next : entry));
       store.rerender();
     },
     editEntity: (id: string, edit: (entity: Entity) => Entity) => {
@@ -102,6 +109,8 @@ async function renameTo(next: string) {
 beforeEach(() => {
   store.placeholders = [];
   store.statGroups = [];
+  store.traits = [];
+  store.traitGroups = [];
   store.entities = [];
   store.stats = [
     stat('a', 'Health', 'return stats.Health.value * 2;'),
@@ -157,6 +166,33 @@ describe('the rename offer', () => {
     expect(overriddenCodeAt(bram.statLinks?.[0].overrides?.howl?.scripts)).toBe('return owner.stats.Spite.value + 1;');
     expect(codeOf('reader')).toBe('return entities.Bram.stats.Spite.value + stats.Rage.value;');
     expect(codeOf('howl')).toBe('return owner.stats.Rage.value;');
+  });
+
+  it('rewrites a world trait’s script, an entity’s own trait’s and a trait link’s override, counting traits apart', async () => {
+    const after = (code: string) => [{ id: 'x', timing: 'after' as const, code }];
+    const howl: Trait = { id: 'howl', name: 'Howl', statChanges: [], groupId: 'bp', scripts: after('stats.Health.value = 1;') };
+    store.traitGroups = [{ id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' }];
+    store.traits = [{ id: 'brave', name: 'Brave', statChanges: [], scripts: after('stats.Health.value += 1;') }, howl];
+    store.entities = [{
+      id: 'bram', name: 'Bram', traits: [{ id: 'grim', name: 'Grim', statChanges: [], scripts: after('stats.Health.max = 5;') }],
+      traitLinks: [{
+        id: 'l-howl', originalId: 'howl', kind: 'trait', originalName: 'Howl', groupId: null,
+        overrides: { howl: { scripts: { value: after('stats.Health.value = 2;'), blueprint: howl.scripts! } } },
+      }],
+    }];
+    render(<Harness root="stats" initial="Health" otherNames={['Stamina', 'Grit']} renamed={{ id: 'a' }} />);
+    const user = await renameTo('Vigor');
+
+    expect(screen.getByText(/The code of 2 stats and 4 traits names the stat “Health” 6 times\./)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Update Code' }));
+    expect(codeAt(store.traits[0])).toBe('stats.Vigor.value += 1;');
+    expect(codeAt(store.traits[1])).toBe('stats.Vigor.value = 1;');
+    const [bram] = store.entities;
+    expect(codeAt(bram.traits?.[0])).toBe('stats.Vigor.max = 5;');
+    const link = bram.traitLinks![0].overrides?.howl?.scripts;
+    expect(overriddenCodeAt(link)).toBe('stats.Vigor.value = 2;');
+    // The rename rewrote the Blueprint too, so the override's snapshot moved with it and stays current.
+    expect(link?.blueprint).toEqual(after('stats.Vigor.value = 1;'));
   });
 
   it('asks with the count, and rewrites every script on Yes', async () => {

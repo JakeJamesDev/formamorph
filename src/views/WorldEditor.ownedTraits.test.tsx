@@ -190,7 +190,7 @@ describe('an owned trait\'s panel', () => {
     expect(screen.getByText(/^Owned by/)).toHaveTextContent('Owned by Ash');
     expect(screen.getByText('Describes them to the AI, and joins your traits when you play as them')).toBeInTheDocument();
     const strip = screen.getByRole('tablist', { name: 'Trait Fields' });
-    expect(within(strip).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Details', 'Availability', 'Stats', 'Pins']);
+    expect(within(strip).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Details', 'Availability', 'Stats', 'Pins', 'Scripts']);
     // Tamed names no player stat, so the persona note stays away.
     fireEvent.mouseDown(within(strip).getByRole('tab', { name: 'Stats' }));
     expect(screen.queryByText(/stat changes apply/i)).toBeNull();
@@ -215,7 +215,7 @@ describe('an owned trait\'s panel', () => {
       openTab(/Traits/);
       fireEvent.click(treeRow('Tamed')!);
       const strip = screen.getByRole('tablist', { name: 'Trait Fields' });
-      expect(within(strip).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Details', 'Availability', 'Stats', 'Pins']);
+      expect(within(strip).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Details', 'Availability', 'Stats', 'Pins', 'Scripts']);
       fireEvent.mouseDown(within(strip).getByRole('tab', { name: 'Stats' }));
     };
     const { unmount } = renderWorldEditorBench(withStats(false, 'vigor'), 'advanced');
@@ -303,7 +303,7 @@ describe('an owned trait\'s panel', () => {
     fireEvent.click(treeRow('Paladin')!);
     expect(screen.queryByText(/^Owned by/)).toBeNull();
     const strip = screen.getByRole('tablist', { name: 'Trait Fields' });
-    expect(within(strip).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Details', 'Availability', 'Stats', 'Pins']);
+    expect(within(strip).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Details', 'Availability', 'Stats', 'Pins', 'Scripts']);
   });
 
   it('writes an edit to its entity, never to the world\'s traits', () => {

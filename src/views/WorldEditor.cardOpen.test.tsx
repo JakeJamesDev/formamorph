@@ -37,7 +37,7 @@ const values = (texts: string[]) => texts.map((text, index) => ({ id: `v${index}
 const stat = (id: string, name: string) => ({ id, name, type: 'number', description: '', min: 0, max: 10, value: 4, regen: 0, descriptors: [] });
 
 const WORLD: World = benchEditorWorld({
-  stats: [stat('s1', 'Warmth'), stat('s2', 'Chill')],
+  stats: [{ ...stat('s1', 'Warmth'), scripts: [{ id: 'after', timing: 'after', code: '' }] }, stat('s2', 'Chill')],
   traits: [{ id: 't1', name: 'Brave', statChanges: [] }],
   placeholders: [{ id: 'p1', name: 'Capital', values: values(['Sedge']) }],
   dictionaries: [{ id: 'b1', name: 'Fen Lore', enabled: true, entries: [] }],
@@ -67,8 +67,8 @@ afterEach(() => {
 function openFromWarmth(item: CodeCardItem) {
   fireEvent.mouseDown(screen.getByRole('tab', { name: /Stats/ }));
   fireEvent.click(screen.getByText('Warmth'));
-  fireEvent.mouseDown(within(screen.getByRole('tablist', { name: 'Stat Fields' })).getByRole('tab', { name: 'Code' }));
-  const open = navigations.get('Stat Code After the AI')?.open;
+  fireEvent.mouseDown(within(screen.getByRole('tablist', { name: 'Stat Fields' })).getByRole('tab', { name: 'Scripts' }));
+  const open = navigations.get('Code Warmth · After the AI')?.open;
   expect(open, 'the box has an Open').toBeTypeOf('function');
   act(() => open!(item));
 }

@@ -155,7 +155,7 @@ describe('the entity Stats tab', () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openMirror('Ash');
     selectRow('Trust');
-    expect(['Details', 'Descriptors', 'Code'].map((name) => statTab(name))).toHaveLength(3);
+    expect(['Details', 'Descriptors', 'Scripts'].map((name) => statTab(name))).toHaveLength(3);
 
     fireEvent.change(numberField('Regen'), { target: { value: '2' } });
     fireEvent.change(numberField('Max'), { target: { value: '20' } });
