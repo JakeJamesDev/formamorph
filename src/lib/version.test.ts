@@ -808,6 +808,30 @@ describe('migrateSave — dictionary keyword arrays', () => {
   });
 });
 
+describe('migrateSave — the player owner key', () => {
+  const snap = (cascadeOffTraitIds?: Record<string, string[]>) => ({ ...(cascadeOffTraitIds ? { cascadeOffTraitIds } : {}) });
+  const saveOf = (current: object, history: object[] = []) =>
+    ({ version: APP_VERSION, currentState: current, stateHistory: history, messageHistory: [] }) as unknown as SaveObject;
+
+  it("moves the player's cascade-off traits from a v3.2 save to the player key, on every snapshot", () => {
+    const out = migrateSave(saveOf(snap({ world: ['aura'], bob: ['loyal'] }), [snap({ world: ['plate'] })]));
+    expect(out.currentState.cascadeOffTraitIds).toEqual({ bob: ['loyal'], [PLAYER_OWNER]: ['aura'] });
+    expect(out.stateHistory[0].cascadeOffTraitIds).toEqual({ [PLAYER_OWNER]: ['plate'] });
+  });
+
+  it('merges a snapshot that holds both keys, once each', () => {
+    const out = migrateSave(saveOf(snap({ world: ['aura', 'plate'], [PLAYER_OWNER]: ['plate'] })));
+    expect(out.currentState.cascadeOffTraitIds).toEqual({ [PLAYER_OWNER]: ['plate', 'aura'] });
+  });
+
+  it('changes nothing on a second run, or on a save with no cascade-off traits', () => {
+    const once = migrateSave(saveOf(snap({ world: ['aura'] })));
+    expect(migrateSave(once).currentState).toBe(once.currentState);
+    const none = saveOf(snap());
+    expect(migrateSave(none).currentState.cascadeOffTraitIds).toBeUndefined();
+  });
+});
+
 describe('isSaveEnvelope', () => {
   it('recognizes the flat envelope (legacy v2 or current)', () => {
     expect(isSaveEnvelope({ currentState: {}, stateHistory: [], version: 2 })).toBe(true);
