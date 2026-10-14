@@ -4,6 +4,7 @@ import type { AdvancedDataInput } from './editorAdvancedData';
 import type { Dictionary, Entity, GameLocation, Stat, Trait, WorldOverview } from '@/types';
 
 import { phValues } from '@/test/placeholderValues';
+import { boxScripts } from '@/test/scriptFixtures';
 const overview = (over: Partial<WorldOverview> = {}): WorldOverview => ({
   name: 'Sedge Landing', description: '', author: '', thumbnail: null, bgm: null, systemPrompt: '',
   use3DModel: false, tags: [], ...over,
@@ -50,8 +51,8 @@ describe('worldUsesAdvancedFeatures', () => {
     const base = plain().stats[0];
     for (const hidden of [
       { descriptors: [{ id: 'd', threshold: 50, description: 'Winded' }] },
-      { code: 'return 1;' },
-      { beforeCode: 'return 1;' },
+      { scripts: boxScripts({ after: 'return 1;' }) },
+      { scripts: boxScripts({ before: 'return 1;' }) },
       { noDecrease: true },
     ]) {
       expect(worldUsesAdvancedFeatures(plain({ stats: [{ ...base, ...hidden } as Stat] }))).toBe(true);

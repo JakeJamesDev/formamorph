@@ -8,6 +8,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { Entity, Stat, WorldOverview } from '@/types';
 import { checkStatCode, STAT_CODE_EXECUTION, STAT_CODE_UNKNOWN_NAME } from './statCodeCheck';
 import { groupFindings, type RuleWorld } from './rules';
+import { boxScripts } from '@/test/scriptFixtures';
 
 const base = (stats: Stat[]): RuleWorld => ({
   worldOverview: { name: 'Sedge Landing', description: '', systemPrompt: 'Narrate the fen.' } as WorldOverview,
@@ -27,14 +28,14 @@ describe('the on-demand stat-code check', () => {
 
   it('says nothing about code that runs and returns a number', async () => {
     expect(await checkStatCode(base([
-      stat({ id: 's1', name: 'Fertility', code: 'return 25;' }),
+      stat({ id: 's1', name: 'Fertility', scripts: boxScripts({ after: 'return 25;' }) }),
       stat({ id: 's2', name: 'Vigor' }),
     ]))).toEqual([]);
   });
 
   it("reads a stat gate against each stat's authored start", async () => {
     const at = (start: number) => {
-      const world = base([stat({ id: 'rage', name: 'Rage', value: start, code: 'if (!traits.Berserk.available) throw new Error("locked"); return 1;' })]);
+      const world = base([stat({ id: 'rage', name: 'Rage', value: start, scripts: boxScripts({ after: 'if (!traits.Berserk.available) throw new Error("locked"); return 1;' }) })]);
       world.traits = [{
         id: 'berserk', name: 'Berserk', statChanges: [],
         requires: [{ all: [{ kind: 'stat', id: 'rage', operator: '>=', value: 80, unit: 'raw' }] }],
@@ -46,22 +47,22 @@ describe('the on-demand stat-code check', () => {
   });
 
   it('runs code that reads a placeholder the world has, and reports none', async () => {
-    const world = base([stat({ id: 's1', name: 'Fertility', code: 'return placeholders.Mood.value === "calm" ? 1 : 2;' })]);
+    const world = base([stat({ id: 's1', name: 'Fertility', scripts: boxScripts({ after: 'return placeholders.Mood.value === "calm" ? 1 : 2;' }) })]);
     world.placeholders = [{ id: 'mood', name: 'Mood', values: [{ id: 'v:calm', text: 'calm' }] }];
     expect(await checkStatCode(world)).toEqual([]);
   });
 
   it('runs code that reads and switches a trait the world has, and reports none', async () => {
-    const world = base([stat({ id: 's1', name: 'Fertility', code: 'traits.Cursed.enabled = !traits.Cursed.acquired;' })]);
+    const world = base([stat({ id: 's1', name: 'Fertility', scripts: boxScripts({ after: 'traits.Cursed.enabled = !traits.Cursed.acquired;' }) })]);
     world.traits = [{ id: 't1', name: 'Cursed', playerDescription: '', aiDescription: '', statChanges: [] }];
     expect(await checkStatCode(world)).toEqual([]);
   });
 
   it('runs code that pins an owner’s placeholder through its entry, and reports only a name the owner lacks', async () => {
     const world = base([
-      stat({ id: 's1', name: 'Fertility', code: 'entities.Mira.placeholders.Hair.pin("red"); dictionaries.Lore.placeholders.Sky.pin("gray");' }),
+      stat({ id: 's1', name: 'Fertility', scripts: boxScripts({ after: 'entities.Mira.placeholders.Hair.pin("red"); dictionaries.Lore.placeholders.Sky.pin("gray");' }) }),
       // No persona plays in the check, so a pin through it names nothing the check can judge.
-      stat({ id: 's2', name: 'Vigor', code: 'persona.placeholders.Hair.pin("red"); entities.Mira.placeholders.Hiar.pin("x");' }),
+      stat({ id: 's2', name: 'Vigor', scripts: boxScripts({ after: 'persona.placeholders.Hair.pin("red"); entities.Mira.placeholders.Hiar.pin("x");' }) }),
     ]);
     world.entities = [{ id: 'mira', name: 'Mira', persona: true, placeholders: [{ id: 'hair', name: 'Hair', values: [] }] }];
     world.dictionaries = [{ id: 'lore', name: 'Lore', entries: [], placeholders: [{ id: 'sky', name: 'Sky', values: [] }] }];
@@ -71,15 +72,15 @@ describe('the on-demand stat-code check', () => {
 
   it('runs code that sets its own bounds, and reports none', async () => {
     expect(await checkStatCode(base([
-      stat({ id: 's1', name: 'Fertility', code: 'self.max = 200; self.regen = 2;' }),
+      stat({ id: 's1', name: 'Fertility', scripts: boxScripts({ after: 'self.max = 200; self.regen = 2;' }) }),
     ]))).toEqual([]);
   });
 
   // A write to a name the world lacks is dropped at run time, so the author only learns of the typo here.
   it('reports a write to a placeholder or trait the world does not have, as a warning naming the stat', async () => {
     const world = base([
-      stat({ id: 's1', name: 'Fertility', code: 'placeholders.Mood.value = "calm"; placeholders.Moood = "x";' }),
-      stat({ id: 's2', name: 'Weave', code: 'traits.Cursd.enabled = true; traits.Blessed.enabled = true;' }),
+      stat({ id: 's1', name: 'Fertility', scripts: boxScripts({ after: 'placeholders.Mood.value = "calm"; placeholders.Moood = "x";' }) }),
+      stat({ id: 's2', name: 'Weave', scripts: boxScripts({ after: 'traits.Cursd.enabled = true; traits.Blessed.enabled = true;' }) }),
     ]);
     world.placeholders = [{ id: 'mood', name: 'Mood', values: [{ id: 'v:calm', text: 'calm' }] }];
     world.traits = [{ id: 't1', name: 'Cursed', playerDescription: '', aiDescription: '', statChanges: [] }];
@@ -97,7 +98,7 @@ describe('the on-demand stat-code check', () => {
 
   it('reports code that throws, naming the stat and the failure', async () => {
     const [found] = await checkStatCode(base([
-      stat({ id: 's1', name: 'Fertility', code: 'return stats.find(s => s.name === "Missing").value;' }),
+      stat({ id: 's1', name: 'Fertility', scripts: boxScripts({ after: 'return stats.find(s => s.name === "Missing").value;' }) }),
     ]));
     expect(found.ruleId).toBe(STAT_CODE_EXECUTION.id);
     expect(found.severity).toBe('error');
@@ -109,7 +110,7 @@ describe('the on-demand stat-code check', () => {
 
   it('reports code that returns something other than a number as its own failure, not as a throw', async () => {
     const [found] = await checkStatCode(base([
-      stat({ id: 's1', name: 'Fertility', code: 'return "25";' }),
+      stat({ id: 's1', name: 'Fertility', scripts: boxScripts({ after: 'return "25";' }) }),
     ]));
     expect(found.message).toContain('doesn’t return a number');
     expect(found.message).not.toContain('throws');
@@ -117,7 +118,7 @@ describe('the on-demand stat-code check', () => {
 
   it('reports a placeholder written something other than text as a wrong-type write, not as a throw', async () => {
     const [found] = await checkStatCode({ ...base([
-      stat({ id: 's1', name: 'Fertility', code: 'placeholders.Mood.value = {};' }),
+      stat({ id: 's1', name: 'Fertility', scripts: boxScripts({ after: 'placeholders.Mood.value = {};' }) }),
     ]), placeholders: [{ id: 'p1', name: 'Mood', values: [{ id: 'v1', text: 'calm' }] }] });
     expect(found.ruleId).toBe(STAT_CODE_EXECUTION.id);
     expect(found.message).toContain('wrong type');
@@ -126,13 +127,13 @@ describe('the on-demand stat-code check', () => {
 
   it('accepts code that sets its value through self and returns nothing', async () => {
     expect(await checkStatCode(base([
-      stat({ id: 's1', name: 'Fertility', code: 'self.value = 25;' }),
+      stat({ id: 's1', name: 'Fertility', scripts: boxScripts({ after: 'self.value = 25;' }) }),
     ]))).toEqual([]);
   });
 
   it('reports code that never finishes as a timeout', async () => {
     const [found] = await checkStatCode(base([
-      stat({ id: 's1', name: 'Fertility', code: 'while (true) {}' }),
+      stat({ id: 's1', name: 'Fertility', scripts: boxScripts({ after: 'while (true) {}' }) }),
     ]));
     expect(found.message).toContain('times out');
   }, 15000);
@@ -144,7 +145,7 @@ describe('the on-demand stat-code check', () => {
       stat({
         id: 's2',
         name: 'Fertility',
-        code: 'const v = stats.Vigor.value; if (v !== 80) throw new Error("saw " + v); return v;',
+        scripts: boxScripts({ after: 'const v = stats.Vigor.value; if (v !== 80) throw new Error("saw " + v); return v;' }),
       }),
     ]));
     expect(found).toEqual([]);
@@ -152,9 +153,9 @@ describe('the on-demand stat-code check', () => {
 
   it('checks every coded stat rather than stopping at the first failure', async () => {
     const found = await checkStatCode(base([
-      stat({ id: 's1', name: 'Fertility', code: 'throw new Error("nope");' }),
-      stat({ id: 's2', name: 'Weave', code: 'return "not a number";' }),
-      stat({ id: 's3', name: 'Vigor', code: 'return 10;' }),
+      stat({ id: 's1', name: 'Fertility', scripts: boxScripts({ after: 'throw new Error("nope");' }) }),
+      stat({ id: 's2', name: 'Weave', scripts: boxScripts({ after: 'return "not a number";' }) }),
+      stat({ id: 's3', name: 'Vigor', scripts: boxScripts({ after: 'return 10;' }) }),
     ]));
     expect(found.map((f) => f.items[0].id)).toEqual(['s1', 's2']);
   });
@@ -162,13 +163,13 @@ describe('the on-demand stat-code check', () => {
   it('says nothing about stats with no code, or blank code', async () => {
     expect(await checkStatCode(base([
       stat({ id: 's1', name: 'Vigor' }),
-      stat({ id: 's2', name: 'Weave', code: '   ', beforeCode: '\n' }),
+      stat({ id: 's2', name: 'Weave', scripts: boxScripts({ before: '\n', after: '   ' }) }),
     ]))).toEqual([]);
   });
 
   it('runs both of a stat’s boxes and names the box each row is about', async () => {
     const found = await checkStatCode(base([
-      stat({ id: 's1', name: 'Fertility', beforeCode: 'throw new Error("nope");', code: 'return "not a number";' }),
+      stat({ id: 's1', name: 'Fertility', scripts: boxScripts({ before: 'throw new Error("nope");', after: 'return "not a number";' }) }),
     ]));
     expect(found.map((f) => f.message)).toEqual([
       'Before the AI code on “Fertility” throws when it runs, so the stat keeps its manual value',
@@ -178,7 +179,7 @@ describe('the on-demand stat-code check', () => {
 
   it('leaves a stat alone when only its before box holds code and that box runs clean', async () => {
     expect(await checkStatCode(base([
-      stat({ id: 's1', name: 'Fertility', beforeCode: 'return 25;' }),
+      stat({ id: 's1', name: 'Fertility', scripts: boxScripts({ before: 'return 25;' }) }),
     ]))).toEqual([]);
   });
 
@@ -200,7 +201,7 @@ describe('the on-demand stat-code check', () => {
     const chipped = (code: string) => ({
       ...base([
         stat({ id: 's1', name: '{{ph:ph-beast:world:p1}} Power', max: 50 }),
-        stat({ id: 's2', name: 'Mana', code }),
+        stat({ id: 's2', name: 'Mana', scripts: boxScripts({ after: code }) }),
       ]),
       placeholders: [{ id: 'ph-beast', name: 'Beast', values: [{ id: 'v-wolf', text: 'Wolf' }] }],
     });
@@ -212,7 +213,7 @@ describe('the on-demand stat-code check', () => {
 
   it('names its row by the stat the author sees in the list, chips and all', async () => {
     const found = await checkStatCode({
-      ...base([stat({ id: 's1', name: '{{ph:ph-beast:world:p1}} Power', code: 'throw new Error("nope");' })]),
+      ...base([stat({ id: 's1', name: '{{ph:ph-beast:world:p1}} Power', scripts: boxScripts({ after: 'throw new Error("nope");' }) })]),
       placeholders: [{ id: 'ph-beast', name: 'Beast', values: [{ id: 'v-wolf', text: 'Wolf' }] }],
     });
     expect(found).toHaveLength(1);
@@ -225,7 +226,7 @@ describe('the on-demand stat-code check', () => {
     const owned = (stats: Stat[], world: Stat[] = []): RuleWorld => ({ ...base(world), entities: [creature(stats)] });
 
     it('reports a failing owned box on its entity, naming the stat and the entity', async () => {
-      const found = await checkStatCode(owned([stat({ id: 'rage', name: 'Rage', code: 'throw new Error("nope");' })]));
+      const found = await checkStatCode(owned([stat({ id: 'rage', name: 'Rage', scripts: boxScripts({ after: 'throw new Error("nope");' }) })]));
       expect(found.map((f) => [f.ruleId, f.message])).toEqual([[
         STAT_CODE_EXECUTION.id, 'After the AI code on “Rage” of “The Creature” throws when it runs, so the stat keeps its manual value',
       ]]);
@@ -237,14 +238,14 @@ describe('the on-demand stat-code check', () => {
         + 'if (stats.Destruction.value !== 3) throw new Error("world");\n'
         + 'if (entities["The Creature"].stats.Rage.value !== 7) throw new Error("entry");\nreturn 1;';
       const world = owned(
-        [stat({ id: 'rage', name: 'Rage', starting: 7 }), stat({ id: 'fury', name: 'Fury', code: check })],
+        [stat({ id: 'rage', name: 'Rage', starting: 7 }), stat({ id: 'fury', name: 'Fury', scripts: boxScripts({ after: check }) })],
         [stat({ id: 'dest', name: 'Destruction', starting: 3 })],
       );
       expect(await checkStatCode(world)).toEqual([]);
       // A world box reads the same entity through `entities`, and its own owner is empty.
       world.stats = [...world.stats, stat({
         id: 'alarm', name: 'Alarm',
-        code: 'if (entities["The Creature"].stats.Rage.value !== 7 || owner.stats.Rage.name) throw new Error("x"); return 1;',
+        scripts: boxScripts({ after: 'if (entities["The Creature"].stats.Rage.value !== 7 || owner.stats.Rage.name) throw new Error("x"); return 1;' }),
       })];
       expect(await checkStatCode(world)).toEqual([]);
     });
@@ -256,7 +257,7 @@ describe('the on-demand stat-code check', () => {
         return {
           ...base([
             stat({ id: 'dest', name: 'Destruction', starting: 3 }),
-            stat({ id: 'guard', name: 'Guard', groupId: 'guards', code }),
+            stat({ id: 'guard', name: 'Guard', groupId: 'guards', scripts: boxScripts({ after: code }) }),
             stat({ id: 'watch', name: 'Watch', groupId: 'guards', starting: 4 }),
           ]),
           statGroups: [blueprints, guards],
@@ -276,11 +277,11 @@ describe('the on-demand stat-code check', () => {
     });
 
     it('runs an owner’s overridden code on a linked stat once, with its entity as owner', async () => {
-      const guard = stat({ id: 'guard', name: 'Guard', groupId: 'bp', code: 'return 1;' });
+      const guard = stat({ id: 'guard', name: 'Guard', groupId: 'bp', scripts: boxScripts({ after: 'return 1;' }) });
       const owner = (code: string) => creature([stat({ id: 'rage', name: 'Rage', starting: 7 })], {
         statLinks: [{
           id: 'link', originalId: 'guard', kind: 'stat', originalName: 'Guard', groupId: null,
-          overrides: { guard: { code: { value: code, blueprint: 'return 1;' } } },
+          overrides: { guard: { scripts: { value: boxScripts({ after: code }), blueprint: boxScripts({ after: 'return 1;' }) } } },
         }],
       });
       const linked = (code: string) => checkStatCode({ ...base([guard]), statGroups: [blueprints], entities: [owner(code)] });
@@ -295,8 +296,8 @@ describe('the on-demand stat-code check', () => {
 
   it('collapses its findings into one counted row like any other rule', async () => {
     const found = await checkStatCode(base([
-      stat({ id: 's1', name: 'Fertility', code: 'throw new Error("nope");' }),
-      stat({ id: 's2', name: 'Weave', code: 'return "not a number";' }),
+      stat({ id: 's1', name: 'Fertility', scripts: boxScripts({ after: 'throw new Error("nope");' }) }),
+      stat({ id: 's2', name: 'Weave', scripts: boxScripts({ after: 'return "not a number";' }) }),
     ]));
     const [group] = groupFindings(found);
     expect(group.headline).toContain('2');

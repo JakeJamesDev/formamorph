@@ -9,6 +9,7 @@ import { executeStatCode, type SandboxEntity } from './statCodeExecutor';
 import { statCodeNamed } from './statCodeNames';
 import { runRules } from './testBench/rules';
 import type { Entity, Stat, World } from '@/types';
+import { codeAt } from '@/test/scriptFixtures';
 
 const raws = import.meta.glob<string>('@/defaultworlds/*.json', { query: '?raw', import: 'default', eager: true });
 // Loaded the way the seeder loads it: raw text through the world migration.
@@ -136,14 +137,14 @@ const sandboxEntities = (w: World, held: ReturnType<typeof owners>): SandboxEnti
 describe.each([...OWNING, 'emberwatch'])('stat code in the %s world', (id) => {
   const world = load(id);
   const held = owners(world);
-  const coded = held.flatMap(({ owner, stats }) => stats.filter((s) => s.code?.trim() || s.beforeCode?.trim()).map((s) => ({ owner, stats, stat: s })));
+  const coded = held.flatMap(({ owner, stats }) => stats.filter((s) => codeAt(s)?.trim() || codeAt(s, 'before')?.trim()).map((s) => ({ owner, stats, stat: s })));
 
   it('runs every stat to a number under its own owner', async () => {
     const entities = sandboxEntities(world, held);
     const worldStats = held.find((o) => o.owner === null)?.stats ?? [];
     for (const { owner, stat } of coded) {
       const own = owner === null ? undefined : entities.find((e) => e.name === owner);
-      for (const code of [stat.beforeCode, stat.code].filter((c): c is string => !!c?.trim())) {
+      for (const code of [codeAt(stat, 'before'), codeAt(stat)].filter((c): c is string => !!c?.trim())) {
         const res = await executeStatCode(code, worldStats, stat, { entities, owner: own });
         expect(res.error, `${owner ?? 'Global'}: ${stat.name}`).toBeNull();
         expect(typeof res.value, `${owner ?? 'Global'}: ${stat.name}`).toBe('number');
@@ -164,7 +165,7 @@ describe('Alert Level in the rampage world', () => {
       const moved = held.map((o) => (o.owner === creature.name
         ? { ...o, stats: o.stats.map((s) => (s.name === 'Rampage' ? { ...s, value: rampage } : s)) }
         : o));
-      return executeStatCode(alert.code ?? '', worldStats, alert, { entities: sandboxEntities(world, moved) });
+      return executeStatCode(codeAt(alert) ?? '', worldStats, alert, { entities: sandboxEntities(world, moved) });
     };
     const calm = await run(0);
     const raging = await run(100);

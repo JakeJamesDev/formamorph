@@ -7,6 +7,7 @@ import { runStatCodeTurn, type StatCodeTurn } from './statCodeTurn';
 import type { StatCodeOwners } from './statCodeTraits';
 import { activeTraits, settleTraits, type TraitRuntimeState, type TraitWorld } from './traitRuntime';
 import type { PlayerStat, Trait } from '@/types';
+import { boxScripts } from '@/test/scriptFixtures';
 
 const stat = (over: Partial<PlayerStat>): PlayerStat => ({
   id: 'x', name: 'Stat', type: 'number', description: '', min: 0, max: 100, value: 50, regen: 0, descriptors: [],
@@ -36,7 +37,7 @@ const ownerTraits: StatCodeOwners = {
 describe('the stat snapshot a run settles against', () => {
   // The asks left Rage at 70; Rage's code raises it to 85 and switches Spark on.
   const stats = [
-    stat({ id: 'rage', name: 'Rage', value: 70, code: 'self.value = 85; traits.Spark.enabled = true;' }),
+    stat({ id: 'rage', name: 'Rage', value: 70, scripts: boxScripts({ after: 'self.value = 85; traits.Spark.enabled = true;' }) }),
     stat({ id: 'focus', name: 'Focus', value: 50 }),
   ];
 
@@ -67,7 +68,7 @@ describe('the stat snapshot a run settles against', () => {
 
   it('lands the starvation penalty on a stat code leaves alone, and not on one it moves', async () => {
     const out = await runStatCodeTurn(turn({
-      stats: [stat({ id: 'health', name: 'Health', value: 52 }), stat({ id: 'b', name: 'B', value: 40, code: 'return 30;' }), stat({ id: 'low', value: 2 })],
+      stats: [stat({ id: 'health', name: 'Health', value: 52 }), stat({ id: 'b', name: 'B', value: 40, scripts: boxScripts({ after: 'return 30;' }) }), stat({ id: 'low', value: 2 })],
       ownerTraits: { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [], groups: [] } },
       penalties: { health: 5, b: 5, low: 5 },
     }));
@@ -83,7 +84,7 @@ describe('the stat snapshot a run settles against', () => {
     const out = await runStatCodeTurn(turn({
       stats: [stat({ id: 'rage', name: 'Rage', value: 70 })],
       ownerTraits: { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [], groups: [] } },
-      owners: [{ id: 'ash', stats: [stat({ id: 'hunger', name: 'Hunger', value: 10, code: 'return 75;' })], enabled: {}, previous: [], regenApplied: {} }],
+      owners: [{ id: 'ash', stats: [stat({ id: 'hunger', name: 'Hunger', value: 10, scripts: boxScripts({ after: 'return 75;' }) })], enabled: {}, previous: [], regenApplied: {} }],
       gateStats: { global: {}, owners: { bram: { grit: { name: 'Grit', value: 33, min: 0, max: 100 } } } },
     }));
     expect(out.gateStats.owners.bram.grit.value).toBe(33);
@@ -93,7 +94,7 @@ describe('the stat snapshot a run settles against', () => {
 
   it("lets code read a stat gate's state through available", async () => {
     const read = (rage: number) => runStatCodeTurn(turn({
-      stats: [stat({ id: 'rage', name: 'Rage', value: rage }), stat({ id: 'probe', name: 'Probe', value: 5, code: 'return traits.Berserk.available ? 1 : 0;' })],
+      stats: [stat({ id: 'rage', name: 'Rage', value: rage }), stat({ id: 'probe', name: 'Probe', value: 5, scripts: boxScripts({ after: 'return traits.Berserk.available ? 1 : 0;' }) })],
       ownerTraits,
     }));
     expect(valueOf((await read(85)).stats, 'probe')).toBe(1);

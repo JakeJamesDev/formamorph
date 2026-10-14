@@ -8,6 +8,7 @@ import {
 import { runStatCodeTurn } from './statCodeTurn';
 import { STAT_CODE_TIMINGS, type StatCodeTiming } from './statCodeTiming';
 import type { PlayerStat, Stat } from '@/types';
+import { boxScripts } from '@/test/scriptFixtures';
 
 const stat = (over: Partial<Stat>): Stat => ({
   id: 'a', name: 'Health', type: 'number', description: '', min: 0, max: 100, value: 50, regen: 0, ...over,
@@ -189,7 +190,7 @@ describe('the described surface against the sandbox that provides it', () => {
  * before box that lost a global — or an after box that started reading zeros — would show up.
  */
 const turnProbe = async (timing: StatCodeTiming, code: string): Promise<number | undefined> => {
-  const probe: PlayerStat = { ...stats[0], value: 50, descriptors: [], ...(timing === 'before' ? { beforeCode: code } : { code }) };
+  const probe: PlayerStat = { ...stats[0], value: 50, descriptors: [], scripts: boxScripts({ [timing]: code }) };
   const out = await runStatCodeTurn({
     timing,
     stats: [probe],
@@ -234,7 +235,7 @@ describe('the described surface in each of the two boxes', () => {
   // and not the other's, which is the one way the two surfaces could be right and still be swapped.
   it('runs the box the turn asked for on a stat that fills both', async () => {
     const both: PlayerStat = {
-      ...stats[0], value: 50, descriptors: [], beforeCode: 'return 11;', code: 'return 22;',
+      ...stats[0], value: 50, descriptors: [], scripts: boxScripts({ before: 'return 11;', after: 'return 22;' }),
     };
     const valueFrom = async (timing: StatCodeTiming) => {
       const out = await runStatCodeTurn({

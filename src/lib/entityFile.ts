@@ -6,7 +6,7 @@ import type {
 } from '@/types';
 import { readLibraryDetails } from './contentAuthor';
 import { remintOpenings } from './openings';
-import { APP_VERSION, WORLD_FILE_KIND, SAVE_FILE_KIND, conditionWithOwnerKey, globalRowTarget, migrateCarriedPlaceholders, migrateEntityStatFields } from './version';
+import { APP_VERSION, WORLD_FILE_KIND, SAVE_FILE_KIND, conditionWithOwnerKey, globalRowTarget, migrateCarriedPlaceholders, migrateEntityStatFields, migrateEntityStatScripts } from './version';
 import { DICTIONARY_FILE_KIND } from './dictionaryFile';
 import type { WorldAssociation } from './compatibleWorlds';
 import { readComponentFileLinks, type ComponentFileLinks, type ComponentFileSource } from './componentFileLinks';
@@ -353,7 +353,7 @@ function cardOwnedTraits(obj: Record<string, unknown>): Pick<Entity, 'traits' | 
  *  as an entity with none. */
 function cardOwnedStats(obj: Record<string, unknown>): OwnedStatFields {
   const { stats, statGroups, statLinks } = obj;
-  const { stats: s, statGroups: g, statLinks: l } = migrateEntityStatFields({ stats, statGroups, statLinks }) as OwnedStatFields;
+  const { stats: s, statGroups: g, statLinks: l } = migrateEntityStatScripts(migrateEntityStatFields({ stats, statGroups, statLinks })) as OwnedStatFields;
   return { ...(s ? { stats: s } : {}), ...(g ? { statGroups: g } : {}), ...(l ? { statLinks: l } : {}) };
 }
 

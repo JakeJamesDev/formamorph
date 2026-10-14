@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type {
   Dictionary, DictionaryEntry, Entity, GameLocation, Placeholder, PlaceholderPin, Stat, Trait, TraitGroup, TraitLink,
-  GalleryImage, StatRequirement, TraitRequirement, TraitRequirementRow, WorldOverview,
+  GalleryImage, Script, StatRequirement, TraitRequirement, TraitRequirementRow, WorldOverview,
 } from '@/types';
 import { estimateTokens } from '@/lib/memoryUtils';
 import { IMAGE_CAPS } from '@/lib/imageOptim';
@@ -13,6 +13,7 @@ import {
 import { syncBlueprintCopies } from '@/lib/blueprintCopies';
 import { allPlaceholders } from '@/lib/placeholderHomes';
 import { placeholderSelection } from '@/lib/placeholderTree';
+import { boxScripts } from '@/test/scriptFixtures';
 
 /** A described entity at the starting location — what keeps the completeness rules quiet about a fixture
  *  that is about something else entirely. */
@@ -472,7 +473,7 @@ describe('reference-integrity rules', () => {
   it('flags stat code looking up a stat name that doesn’t exist, in either comparison direction', () => {
     const coded = (code: string) => base({
       stats: [
-        stat({ id: 's1', name: 'Mana', code }),
+        stat({ id: 's1', name: 'Mana', scripts: boxScripts({ after: code }) }),
         stat({ id: 's2', name: 'Vigor' }),
       ],
     });
@@ -496,7 +497,7 @@ describe('reference-integrity rules', () => {
 
   it('leaves dynamic name lookups alone — there is no literal to check', () => {
     const w = base({
-      stats: [stat({ id: 's1', name: 'Mana', code: 'const n = "Ma";\nconst a = stats.find(s => s.name === `${n}na`);\nreturn a?.value ?? 0;' })],
+      stats: [stat({ id: 's1', name: 'Mana', scripts: boxScripts({ after: 'const n = "Ma";\nconst a = stats.find(s => s.name === `${n}na`);\nreturn a?.value ?? 0;' }) })],
     });
     expect(only(w, 'stat-code-unknown-stat')).toEqual([]);
   });
@@ -504,7 +505,7 @@ describe('reference-integrity rules', () => {
   it('flags a stat name that doesn’t exist in the map form too, dot and bracket alike', () => {
     const coded = (code: string) => base({
       stats: [
-        stat({ id: 's1', name: 'Mana', code }),
+        stat({ id: 's1', name: 'Mana', scripts: boxScripts({ after: code }) }),
         stat({ id: 's2', name: 'Vigor' }),
       ],
     });
@@ -523,7 +524,7 @@ describe('reference-integrity rules', () => {
   it('checks a read through another owner’s stats against that owner, not the world', () => {
     const bram: Entity = { ...resident, id: 'bram', name: 'Bram', persona: true, stats: [stat({ id: 'trust', name: 'Trust' })] };
     const coded = (code: string) => base({
-      stats: [stat({ id: 's1', name: 'Mana', code }), stat({ id: 's2', name: 'Vigor' })], entities: [resident, bram],
+      stats: [stat({ id: 's1', name: 'Mana', scripts: boxScripts({ after: code }) }), stat({ id: 's2', name: 'Vigor' })], entities: [resident, bram],
     });
     expect(only(coded('return entities.Bram?.stats["Trust"].value + persona.stats.Trust.value;'), 'stat-code-unknown-stat')).toEqual([]);
     // A world stat's name is no entity's.
@@ -543,10 +544,10 @@ describe('reference-integrity rules', () => {
     });
     const messages = (w: RuleWorld) => only(w, RULE).map((f) => f.message);
     const worldBox = (code: string, entities: Entity[] = [creature()]) =>
-      base({ stats: [stat({ id: 'alarm', name: 'Alarm', code }), stat({ id: 'dest', name: 'Destruction' })], entities });
+      base({ stats: [stat({ id: 'alarm', name: 'Alarm', scripts: boxScripts({ after: code }) }), stat({ id: 'dest', name: 'Destruction' })], entities });
     const ownedBox = (code: string) => base({
       stats: [stat({ id: 'dest', name: 'Destruction' })],
-      entities: [creature({ stats: [stat({ id: 'rage', name: 'Rage' }), stat({ id: 'fury', name: 'Fury', code })] })],
+      entities: [creature({ stats: [stat({ id: 'rage', name: 'Rage' }), stat({ id: 'fury', name: 'Fury', scripts: boxScripts({ after: code }) })] })],
     });
 
     it('checks an owned box’s stats against the world and owner.stats against its owner', () => {
@@ -599,7 +600,7 @@ describe('reference-integrity rules', () => {
         statGroups: [blueprints, guards],
         stats: [
           stat({ id: 'dest', name: 'Destruction' }),
-          stat({ id: 'guard', name: 'Guard', groupId: 'guards', code }),
+          stat({ id: 'guard', name: 'Guard', groupId: 'guards', scripts: boxScripts({ after: code }) }),
           stat({ id: 'watch', name: 'Watch', groupId: 'guards' }),
         ],
         entities: [creature()],
@@ -622,11 +623,11 @@ describe('reference-integrity rules', () => {
     });
 
     it('scans an owner’s own code on a linked stat once, with its entity as owner', () => {
-      const guard = stat({ id: 'guard', name: 'Guard', groupId: 'bp', code: 'return owner.stats.Guard.value + stats.Vigro.value;' });
+      const guard = stat({ id: 'guard', name: 'Guard', groupId: 'bp', scripts: boxScripts({ after: 'return owner.stats.Guard.value + stats.Vigro.value;' }) });
       const owner = (code?: string) => creature({
         statLinks: [{
           id: 'link', originalId: 'guard', kind: 'stat', originalName: 'Guard', groupId: null,
-          ...(code ? { overrides: { guard: { code: { value: code, blueprint: guard.code ?? '' } } } } : {}),
+          ...(code ? { overrides: { guard: { scripts: { value: boxScripts({ after: code }), blueprint: guard.scripts ?? [] } } } } : {}),
         }],
       });
       const linked = (code?: string) => messages(base({ statGroups: [blueprints], stats: [guard], entities: [owner(code)] }));
@@ -641,7 +642,7 @@ describe('reference-integrity rules', () => {
 
   it('leaves a computed map key alone — there is no literal to check', () => {
     const w = base({
-      stats: [stat({ id: 's1', name: 'Mana', code: 'const key = "Vigor";\nreturn stats[key].value;' })],
+      stats: [stat({ id: 's1', name: 'Mana', scripts: boxScripts({ after: 'const key = "Vigor";\nreturn stats[key].value;' }) })],
     });
     expect(only(w, 'stat-code-unknown-stat')).toEqual([]);
   });
@@ -650,7 +651,7 @@ describe('reference-integrity rules', () => {
     const coded = (code: string) => base({
       placeholders: [{ id: 'ph-beast', name: 'Beast', values: phValues(['Wolf', 'Bear']) }],
       stats: [
-        stat({ id: 's1', name: 'Mana', code }),
+        stat({ id: 's1', name: 'Mana', scripts: boxScripts({ after: code }) }),
         stat({ id: 's2', name: '{{ph:ph-beast:world:p1}} Power' }),
       ],
     });
@@ -667,20 +668,20 @@ describe('reference-integrity rules', () => {
     const miss = 'return stats["Vigour"].value;';
     const hit = 'return stats["Vigor"].value;';
 
-    const beforeOnly = only(boxed({ beforeCode: miss, code: hit }), 'stat-code-unknown-stat');
+    const beforeOnly = only(boxed({ scripts: boxScripts({ before: miss, after: hit }) }), 'stat-code-unknown-stat');
     expect(beforeOnly).toHaveLength(1);
     expect(beforeOnly[0].message).toBe(
       'Before the AI code on “Mana” looks up a stat named “Vigour”, which does not exist',
     );
 
-    const afterOnly = only(boxed({ beforeCode: hit, code: miss }), 'stat-code-unknown-stat');
+    const afterOnly = only(boxed({ scripts: boxScripts({ before: hit, after: miss }) }), 'stat-code-unknown-stat');
     expect(afterOnly).toHaveLength(1);
     expect(afterOnly[0].message).toBe(
       'After the AI code on “Mana” looks up a stat named “Vigour”, which does not exist',
     );
 
     // One miss per box, so an author who typed it twice is told twice rather than once.
-    expect(only(boxed({ beforeCode: miss, code: miss }), 'stat-code-unknown-stat').map((f) => f.message)).toEqual([
+    expect(only(boxed({ scripts: boxScripts({ before: miss, after: miss }) }), 'stat-code-unknown-stat').map((f) => f.message)).toEqual([
       'Before the AI code on “Mana” looks up a stat named “Vigour”, which does not exist',
       'After the AI code on “Mana” looks up a stat named “Vigour”, which does not exist',
     ]);
@@ -690,7 +691,7 @@ describe('reference-integrity rules', () => {
     const boxed = (over: Partial<Stat>) => base({ stats: [stat({ id: 's1', name: 'Mana', ...over })] });
     const reads = 'return self.value + self.delta.ai.value;';
 
-    const found = only(boxed({ beforeCode: reads }), 'stat-code-before-reads-delta');
+    const found = only(boxed({ scripts: boxScripts({ before: reads }) }), 'stat-code-before-reads-delta');
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe('warning');
     expect(found[0].message).toBe(
@@ -700,18 +701,26 @@ describe('reference-integrity rules', () => {
     expect(found[0].items.map((i) => i.id)).toEqual(['s1']);
 
     // The after box is where delta means something, so the same text there raises nothing.
-    expect(only(boxed({ code: reads }), 'stat-code-before-reads-delta')).toEqual([]);
+    expect(only(boxed({ scripts: boxScripts({ after: reads }) }), 'stat-code-before-reads-delta')).toEqual([]);
   });
 
   it('reads delta through the bracket form too, and leaves a variable of that name alone', () => {
     const before = (beforeCode: string) => only(
-      base({ stats: [stat({ id: 's1', name: 'Mana', beforeCode })] }),
+      base({ stats: [stat({ id: 's1', name: 'Mana', scripts: boxScripts({ before: beforeCode }) })] }),
       'stat-code-before-reads-delta',
     );
     expect(before('return stats.Mana["delta"].total.value;')).toHaveLength(1);
     expect(before('return self?.delta.regen.value;')).toHaveLength(1);
     // An author's own `delta` is not the sandbox's: nothing injects a bare one, so nothing is stranded.
     expect(before('const delta = 3;\nreturn self.value + delta;')).toEqual([]);
+  });
+
+  it('reads every before script on a stat, not only the first', () => {
+    const scripts: Script[] = [
+      { id: 'b1', timing: 'before', code: 'return 1;' },
+      { id: 'b2', timing: 'before', code: 'return self.value + self.delta.ai.value;' },
+    ];
+    expect(only(base({ stats: [stat({ id: 's1', name: 'Mana', scripts })] }), 'stat-code-before-reads-delta')).toHaveLength(1);
   });
 });
 
@@ -721,8 +730,8 @@ describe('stat code two writers rule', () => {
 
   it('warns once, naming both boxes, when a hub and the target’s own box write one field', () => {
     const found = coded([
-      stat({ id: 'h', name: 'Health', code: 'self.value = 10;' }),
-      stat({ id: 'd', name: 'Fate', code: 'stats.Health.value = 1;' }),
+      stat({ id: 'h', name: 'Health', scripts: boxScripts({ after: 'self.value = 10;' }) }),
+      stat({ id: 'd', name: 'Fate', scripts: boxScripts({ after: 'stats.Health.value = 1;' }) }),
     ]);
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe('warning');
@@ -735,8 +744,8 @@ describe('stat code two writers rule', () => {
   it('warns once when two hubs write one field, and names each box a hub writes from', () => {
     const found = coded([
       stat({ id: 'h', name: 'Health' }),
-      stat({ id: 'a', name: 'Fate', beforeCode: 'stats.Health.max = 5;' }),
-      stat({ id: 'b', name: 'Luck', code: 'stats.Health.max = 6;' }),
+      stat({ id: 'a', name: 'Fate', scripts: boxScripts({ before: 'stats.Health.max = 5;' }) }),
+      stat({ id: 'b', name: 'Luck', scripts: boxScripts({ after: 'stats.Health.max = 6;' }) }),
     ]);
     expect(found).toHaveLength(1);
     expect(found[0].message).toBe(
@@ -744,10 +753,18 @@ describe('stat code two writers rule', () => {
     );
   });
 
+  it('counts two scripts of one timing on one stat as two writers', () => {
+    const scripts: Script[] = [
+      { id: 'a1', timing: 'after', code: 'stats.Health.value = 1;' },
+      { id: 'a2', timing: 'after', code: 'stats.Health.value = 2;' },
+    ];
+    expect(coded([stat({ id: 'h', name: 'Health' }), stat({ id: 'a', name: 'Fate', scripts })])).toHaveLength(1);
+  });
+
   it('counts the dot and the bracket literal, and says nothing of a computed name', () => {
     const health = stat({ id: 'h', name: 'Health' });
     const pair = (a: string, b: string) => coded([
-      health, stat({ id: 'a', name: 'Fate', code: a }), stat({ id: 'b', name: 'Luck', code: b }),
+      health, stat({ id: 'a', name: 'Fate', scripts: boxScripts({ after: a }) }), stat({ id: 'b', name: 'Luck', scripts: boxScripts({ after: b }) }),
     ]);
     expect(pair('stats.Health.value = 1;', 'stats["Health"]["value"] += 1;')).toHaveLength(1);
     expect(pair('stats.Health.value = 1;', 'const n = "Health"; stats[n].value = 2;')).toEqual([]);
@@ -757,22 +774,22 @@ describe('stat code two writers rule', () => {
   it('warns per field, so two writers on different fields stay quiet', () => {
     expect(coded([
       stat({ id: 'h', name: 'Health' }),
-      stat({ id: 'a', name: 'Fate', code: 'stats.Health.value = 1;' }),
-      stat({ id: 'b', name: 'Luck', code: 'stats.Health.max = 9;' }),
+      stat({ id: 'a', name: 'Fate', scripts: boxScripts({ after: 'stats.Health.value = 1;' }) }),
+      stat({ id: 'b', name: 'Luck', scripts: boxScripts({ after: 'stats.Health.max = 9;' }) }),
     ])).toEqual([]);
   });
 
   it('stays quiet for one writer, a read, and one box writing a field twice', () => {
-    expect(coded([stat({ id: 'h', name: 'Health', code: 'self.value = 1;' })])).toEqual([]);
+    expect(coded([stat({ id: 'h', name: 'Health', scripts: boxScripts({ after: 'self.value = 1;' }) })])).toEqual([]);
     expect(coded([
       stat({ id: 'h', name: 'Health' }),
-      stat({ id: 'a', name: 'Fate', code: 'return stats.Health.value + 1;' }),
-      stat({ id: 'b', name: 'Luck', code: 'stats.Health.value = 1;\nstats.Health.value += 2;' }),
+      stat({ id: 'a', name: 'Fate', scripts: boxScripts({ after: 'return stats.Health.value + 1;' }) }),
+      stat({ id: 'b', name: 'Luck', scripts: boxScripts({ after: 'stats.Health.value = 1;\nstats.Health.value += 2;' }) }),
     ])).toEqual([]);
   });
 
   it('counts the before and the after box of one stat as two writers', () => {
-    const found = coded([stat({ id: 'h', name: 'Health', beforeCode: 'self.value = 1;', code: 'self.value += 2;' })]);
+    const found = coded([stat({ id: 'h', name: 'Health', scripts: boxScripts({ before: 'self.value = 1;', after: 'self.value += 2;' }) })]);
     expect(found).toHaveLength(1);
     expect(found[0].message).toBe(
       'Two boxes write the value of “Health”: Before the AI code on “Health” and After the AI code on “Health”',
@@ -781,9 +798,9 @@ describe('stat code two writers rule', () => {
 
   it('counts the boxes when more than two write one field, and names each', () => {
     const [found] = coded([
-      stat({ id: 'h', name: 'Health', code: 'self.max = 1;' }),
-      stat({ id: 'a', name: 'Fate', beforeCode: 'stats.Health.max = 2;' }),
-      stat({ id: 'b', name: 'Luck', code: 'stats.Health.max = 3;' }),
+      stat({ id: 'h', name: 'Health', scripts: boxScripts({ after: 'self.max = 1;' }) }),
+      stat({ id: 'a', name: 'Fate', scripts: boxScripts({ before: 'stats.Health.max = 2;' }) }),
+      stat({ id: 'b', name: 'Luck', scripts: boxScripts({ after: 'stats.Health.max = 3;' }) }),
     ]);
     expect(found.message).toBe(
       '3 boxes write the max of “Health”: After the AI code on “Health”, Before the AI code on “Fate” and After the AI code on “Luck”',
@@ -792,15 +809,15 @@ describe('stat code two writers rule', () => {
 
   it('ignores a write to a stat the owner lacks', () => {
     expect(coded([
-      stat({ id: 'a', name: 'Fate', code: 'stats.Missing.value = 1;' }),
-      stat({ id: 'b', name: 'Luck', code: 'stats.Missing.value = 2;' }),
+      stat({ id: 'a', name: 'Fate', scripts: boxScripts({ after: 'stats.Missing.value = 1;' }) }),
+      stat({ id: 'b', name: 'Luck', scripts: boxScripts({ after: 'stats.Missing.value = 2;' }) }),
     ])).toEqual([]);
   });
 
   it('resolves a shared name as the sandbox does: the later stat wins, a live one over one authored off', () => {
     const writers = [
-      stat({ id: 'a', name: 'Fate', code: 'stats.Health.value = 1;' }),
-      stat({ id: 'b', name: 'Luck', code: 'stats.Health.value = 2;' }),
+      stat({ id: 'a', name: 'Fate', scripts: boxScripts({ after: 'stats.Health.value = 1;' }) }),
+      stat({ id: 'b', name: 'Luck', scripts: boxScripts({ after: 'stats.Health.value = 2;' }) }),
     ];
     const later = coded([stat({ id: 'h1', name: 'Health' }), stat({ id: 'h2', name: 'Health' }), ...writers]);
     expect(later.map((f) => f.items[0].id)).toEqual(['h2']);
@@ -810,13 +827,13 @@ describe('stat code two writers rule', () => {
 
   it('counts no box of a stat authored off as a writer, and no stat authored off as a target', () => {
     expect(coded([
-      stat({ id: 'h', name: 'Health', code: 'self.value = 1;' }),
-      stat({ id: 'a', name: 'Fate', enabled: false, code: 'stats.Health.value = 2;' }),
+      stat({ id: 'h', name: 'Health', scripts: boxScripts({ after: 'self.value = 1;' }) }),
+      stat({ id: 'a', name: 'Fate', enabled: false, scripts: boxScripts({ after: 'stats.Health.value = 2;' }) }),
     ])).toEqual([]);
     expect(coded([
       stat({ id: 'h', name: 'Health', enabled: false }),
-      stat({ id: 'a', name: 'Fate', code: 'stats.Health.value = 1;' }),
-      stat({ id: 'b', name: 'Luck', code: 'stats.Health.value = 2;' }),
+      stat({ id: 'a', name: 'Fate', scripts: boxScripts({ after: 'stats.Health.value = 1;' }) }),
+      stat({ id: 'b', name: 'Luck', scripts: boxScripts({ after: 'stats.Health.value = 2;' }) }),
     ])).toEqual([]);
   });
 
@@ -825,8 +842,8 @@ describe('stat code two writers rule', () => {
       placeholders: [{ id: 'ph-beast', name: 'Beast', values: phValues(['Wolf', 'Bear']) }],
       stats: [
         stat({ id: 'h', name: '{{ph:ph-beast:world:p1}} Power' }),
-        stat({ id: 'a', name: 'Fate', code: 'stats["Beast Power"].value = 1;' }),
-        stat({ id: 'b', name: 'Luck', code: 'stats["Beast Power"].value = 2;' }),
+        stat({ id: 'a', name: 'Fate', scripts: boxScripts({ after: 'stats["Beast Power"].value = 1;' }) }),
+        stat({ id: 'b', name: 'Luck', scripts: boxScripts({ after: 'stats["Beast Power"].value = 2;' }) }),
       ],
     }), RULE);
     expect(found).toHaveLength(1);
@@ -834,12 +851,12 @@ describe('stat code two writers rule', () => {
 
   describe('per owner', () => {
     const blueprints = { id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' as const };
-    const guard = stat({ id: 'guard', name: 'Guard', groupId: 'bp', code: 'self.value = 2;' });
+    const guard = stat({ id: 'guard', name: 'Guard', groupId: 'bp', scripts: boxScripts({ after: 'self.value = 2;' }) });
     const link = (id: string) => ({ id, originalId: 'guard', kind: 'stat' as const, originalName: 'Guard', groupId: null });
     const owner = (id: string, over: Partial<Entity> = {}): Entity => ({
       id, name: id, locations: ['harbor'], playerDescription: 'Seen.', aiDescription: 'A regular.', statLinks: [link(`${id}-link`)], ...over,
     });
-    const hub = stat({ id: 'hub', name: 'Hub', code: 'owner.stats.Guard.value = 1;' });
+    const hub = stat({ id: 'hub', name: 'Hub', scripts: boxScripts({ after: 'owner.stats.Guard.value = 1;' }) });
 
     it('warns for the owner whose copy two boxes write, and for no one else', () => {
       const found = only(base({
@@ -869,10 +886,10 @@ describe('stat code two writers rule', () => {
 
     it('keeps the world’s stats and an entity’s apart, though their names match', () => {
       const maren = (code: string) => only(base({
-        stats: [stat({ id: 'ph', name: 'Health', code: 'self.value = 1;' })],
+        stats: [stat({ id: 'ph', name: 'Health', scripts: boxScripts({ after: 'self.value = 1;' }) })],
         entities: [owner('Maren', {
           statLinks: [],
-          stats: [stat({ id: 'eh', name: 'Health' }), stat({ id: 'ef', name: 'Fate', code })],
+          stats: [stat({ id: 'eh', name: 'Health' }), stat({ id: 'ef', name: 'Fate', scripts: boxScripts({ after: code }) })],
         })],
       }), RULE);
       expect(maren('owner.stats.Health.value = 2;')).toEqual([]);
@@ -882,21 +899,21 @@ describe('stat code two writers rule', () => {
 
     it('leaves a Blueprint stat out of the player’s owner', () => {
       // Were Guard the player's, its box and Fate's own box would both write Fate's value.
-      const reaching = stat({ id: 'guard', name: 'Guard', groupId: 'bp', code: 'stats.Fate.value = 3;' });
+      const reaching = stat({ id: 'guard', name: 'Guard', groupId: 'bp', scripts: boxScripts({ after: 'stats.Fate.value = 3;' }) });
       expect(only(base({
         statGroups: [blueprints],
-        stats: [reaching, stat({ id: 'p', name: 'Fate', code: 'self.value = 1;' })],
+        stats: [reaching, stat({ id: 'p', name: 'Fate', scripts: boxScripts({ after: 'self.value = 1;' }) })],
       }), RULE)).toEqual([]);
     });
   });
 
   describe('across owners', () => {
     const blueprints = { id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' as const };
-    const destruction = (code?: string) => stat({ id: 'dest', name: 'Destruction', ...(code ? { code } : {}) });
+    const destruction = (code?: string) => stat({ id: 'dest', name: 'Destruction', ...(code ? { scripts: boxScripts({ after: code }) } : {}) });
     const creature = (stats: Stat[], over: Partial<Entity> = {}): Entity => ({
       id: 'creature', name: 'The Creature', locations: ['harbor'], playerDescription: 'Huge.', aiDescription: 'A beast.', stats, ...over,
     });
-    const rage = (code?: string) => stat({ id: 'rage', name: 'Rage', ...(code ? { code } : {}) });
+    const rage = (code?: string) => stat({ id: 'rage', name: 'Rage', ...(code ? { scripts: boxScripts({ after: code }) } : {}) });
 
     it('warns once, naming both writers, when a Creature box and a world box write one world field', () => {
       const found = only(base({
@@ -913,10 +930,10 @@ describe('stat code two writers rule', () => {
     it('counts owner.stats, entities["Name"].stats, persona.stats and self as one target when they reach one stat', () => {
       const found = only(base({
         stats: [
-          stat({ id: 'w1', name: 'Alarm', code: 'entities["The Creature"].stats.Rage.max = 5;' }),
-          stat({ id: 'w2', name: 'Dread', beforeCode: 'persona.stats["Rage"].max = 6;' }),
+          stat({ id: 'w1', name: 'Alarm', scripts: boxScripts({ after: 'entities["The Creature"].stats.Rage.max = 5;' }) }),
+          stat({ id: 'w2', name: 'Dread', scripts: boxScripts({ before: 'persona.stats["Rage"].max = 6;' }) }),
         ],
-        entities: [creature([rage('self.max = 7;'), stat({ id: 'fury', name: 'Fury', code: 'owner.stats.Rage.max = 8;' })], { persona: true })],
+        entities: [creature([rage('self.max = 7;'), stat({ id: 'fury', name: 'Fury', scripts: boxScripts({ after: 'owner.stats.Rage.max = 8;' }) })], { persona: true })],
       }), RULE);
       expect(found).toHaveLength(1);
       expect(found[0].message).toBe(
@@ -928,13 +945,13 @@ describe('stat code two writers rule', () => {
 
     it('reads entities.Name by dot as well, and leaves a computed entity name out of reach', () => {
       const pair = (code: string) => only(base({
-        stats: [stat({ id: 'w1', name: 'Alarm', code })],
+        stats: [stat({ id: 'w1', name: 'Alarm', scripts: boxScripts({ after: code }) })],
         entities: [creature([rage('self.value = 1;')])],
       }), RULE);
       expect(pair('entities.Bram.stats.Rage.value = 2;')).toEqual([]);
       expect(pair('const who = "The Creature"; entities[who].stats.Rage.value = 2;')).toEqual([]);
       const dotted = only(base({
-        stats: [stat({ id: 'w1', name: 'Alarm', code: 'entities.Bram.stats.Rage.value = 2;' })],
+        stats: [stat({ id: 'w1', name: 'Alarm', scripts: boxScripts({ after: 'entities.Bram.stats.Rage.value = 2;' }) })],
         entities: [creature([rage('self.value = 1;')], { id: 'bram', name: 'Bram' })],
       }), RULE);
       expect(dotted.map((f) => f.items[0].id)).toEqual(['bram']);
@@ -945,7 +962,7 @@ describe('stat code two writers rule', () => {
       const maren: Entity = creature([rage('self.value = 1;')], { id: 'maren', name: 'Maren', customPersona: true });
       const bram: Entity = creature([rage('self.value = 1;')], { id: 'bram', name: 'Bram' });
       const found = only(base({
-        stats: [stat({ id: 'w1', name: 'Alarm', code: 'persona.stats.Rage.value = 2;' })],
+        stats: [stat({ id: 'w1', name: 'Alarm', scripts: boxScripts({ after: 'persona.stats.Rage.value = 2;' }) })],
         entities: [tobb, maren, bram],
       }), RULE);
       expect(found.map((f) => f.items[0].id)).toEqual(['tobb', 'maren']);
@@ -953,12 +970,12 @@ describe('stat code two writers rule', () => {
 
     it('reaches no stat through owner in a world box, since a world stat has no owner', () => {
       expect(only(base({
-        stats: [destruction('self.value = 1;'), stat({ id: 'w1', name: 'Alarm', code: 'owner.stats.Destruction.value = 2;' })],
+        stats: [destruction('self.value = 1;'), stat({ id: 'w1', name: 'Alarm', scripts: boxScripts({ after: 'owner.stats.Destruction.value = 2;' }) })],
       }), RULE)).toEqual([]);
     });
 
     it('counts each owner of a Blueprint box as a writer of a world field', () => {
-      const guard = stat({ id: 'guard', name: 'Guard', groupId: 'bp', code: 'stats.Destruction.value += 1;' });
+      const guard = stat({ id: 'guard', name: 'Guard', groupId: 'bp', scripts: boxScripts({ after: 'stats.Destruction.value += 1;' }) });
       const owner = (id: string): Entity => ({
         id, name: id, locations: ['harbor'], playerDescription: 'Seen.', aiDescription: 'A regular.',
         statLinks: [{ id: `${id}-link`, originalId: 'guard', kind: 'stat', originalName: 'Guard', groupId: null }],
@@ -1071,7 +1088,7 @@ describe('reachability rules', () => {
   it('flags an entity with no code name once the world has stat code, and quiets once it is named', () => {
     const coded = (name: string, code = 'return 1;') => base({
       entities: [{ id: 'e1', name, locations: ['l1'] }],
-      stats: [stat({ id: 's1', name: 'Vigor', code })],
+      stats: [stat({ id: 's1', name: 'Vigor', scripts: boxScripts({ after: code }) })],
     });
     const found = only(coded(''), 'entity-no-code-name');
     expect(found).toHaveLength(1);
@@ -1358,7 +1375,7 @@ describe('stat sanity rules', () => {
   it('flags a trait’s starting delta on a stat whose code recomputes it from scratch', () => {
     // Fertility's code recovers toward a fixed number, healing every race's penalty away within two turns.
     const ashen = trait({ id: 't1', name: 'Ashen', statChanges: [{ statId: 's1', type: 'starting', value: -10 }] });
-    const found = only(oneStat({ starting: 40, code: 'return Math.round((stats.find(s => s.name === "Vigor")?.value ?? 0) / 2);' }, [ashen]), 'stat-code-overrides-trait');
+    const found = only(oneStat({ starting: 40, scripts: boxScripts({ after: 'return Math.round((stats.find(s => s.name === "Vigor")?.value ?? 0) / 2);' }) }, [ashen]), 'stat-code-overrides-trait');
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe('warning');
     expect(found[0].items.map((i) => i.id)).toEqual(['s1', 't1']);
@@ -1370,19 +1387,19 @@ describe('stat sanity rules', () => {
     const reads = 'return self.value + 1;';
     const recomputes = 'return 25;';
     // The after box reads the stat, so only the before box erases what the trait set.
-    const beforeOnly = only(oneStat({ starting: 40, beforeCode: recomputes, code: reads }, [ashen]), 'stat-code-overrides-trait');
+    const beforeOnly = only(oneStat({ starting: 40, scripts: boxScripts({ before: recomputes, after: reads }) }, [ashen]), 'stat-code-overrides-trait');
     expect(beforeOnly.map((f) => f.message)).toEqual([
       '“Ashen” lowers “Fertility” by 10, but that stat’s Before the AI code recomputes its value without '
       + 'reading it — the change is gone by the next run',
     ]);
-    const afterOnly = only(oneStat({ starting: 40, beforeCode: reads, code: recomputes }, [ashen]), 'stat-code-overrides-trait');
+    const afterOnly = only(oneStat({ starting: 40, scripts: boxScripts({ before: reads, after: recomputes }) }, [ashen]), 'stat-code-overrides-trait');
     expect(afterOnly.map((f) => f.message)).toEqual([
       '“Ashen” lowers “Fertility” by 10, but that stat’s After the AI code recomputes its value without '
       + 'reading it — the change is gone by the next run',
     ]);
     // Both boxes recompute. One trait change is still one finding, so the collapsed row's count stays a
     // count of trait changes; the message names both boxes instead.
-    const both = only(oneStat({ starting: 40, beforeCode: recomputes, code: recomputes }, [ashen]), 'stat-code-overrides-trait');
+    const both = only(oneStat({ starting: 40, scripts: boxScripts({ before: recomputes, after: recomputes }) }, [ashen]), 'stat-code-overrides-trait');
     expect(both.map((f) => f.message)).toEqual([
       '“Ashen” lowers “Fertility” by 10, but that stat’s Before the AI and After the AI code recompute its '
       + 'value without reading it — the change is gone by the next run',
@@ -1394,8 +1411,8 @@ describe('stat sanity rules', () => {
     // Both ways code can find itself by a literal: its own id, and its own name.
     const byId = 'const me = Object.values(stats).find(s => s.id === "s1"); return Math.min(me.value + 1, me.max);';
     const byName = 'const me = stats.find(s => s.name === "Fertility"); return me.value + 1;';
-    expect(only(oneStat({ starting: 40, code: byId }, [ashen]), 'stat-code-overrides-trait')).toEqual([]);
-    expect(only(oneStat({ starting: 40, code: byName }, [ashen]), 'stat-code-overrides-trait')).toEqual([]);
+    expect(only(oneStat({ starting: 40, scripts: boxScripts({ after: byId }) }, [ashen]), 'stat-code-overrides-trait')).toEqual([]);
+    expect(only(oneStat({ starting: 40, scripts: boxScripts({ after: byName }) }, [ashen]), 'stat-code-overrides-trait')).toEqual([]);
   });
 
   it('says nothing when the code reads the self map entry, by bare self or by its own name', () => {
@@ -1403,16 +1420,16 @@ describe('stat sanity rules', () => {
     const bareSelf = 'return Math.min(self.value + 1, self.max);';
     const dotName = 'return stats.Fertility.value + 1;';
     const bracketName = 'return stats["Fertility"].value + 1;';
-    expect(only(oneStat({ starting: 40, code: bareSelf }, [ashen]), 'stat-code-overrides-trait')).toEqual([]);
-    expect(only(oneStat({ starting: 40, code: dotName }, [ashen]), 'stat-code-overrides-trait')).toEqual([]);
-    expect(only(oneStat({ starting: 40, code: bracketName }, [ashen]), 'stat-code-overrides-trait')).toEqual([]);
+    expect(only(oneStat({ starting: 40, scripts: boxScripts({ after: bareSelf }) }, [ashen]), 'stat-code-overrides-trait')).toEqual([]);
+    expect(only(oneStat({ starting: 40, scripts: boxScripts({ after: dotName }) }, [ashen]), 'stat-code-overrides-trait')).toEqual([]);
+    expect(only(oneStat({ starting: 40, scripts: boxScripts({ after: bracketName }) }, [ashen]), 'stat-code-overrides-trait')).toEqual([]);
   });
 
   it('reads a chip-bearing stat’s own name as its code name, not as what the chip rolled', () => {
     const ashen = trait({ id: 't1', name: 'Ashen', statChanges: [{ statId: 's1', type: 'starting', value: -10 }] });
     const chipped = (code: string) => base({
       placeholders: [{ id: 'ph-beast', name: 'Beast', values: phValues(['Wolf', 'Bear']) }],
-      stats: [stat({ id: 's1', name: '{{ph:ph-beast:world:p1}} Power', starting: 40, code })],
+      stats: [stat({ id: 's1', name: '{{ph:ph-beast:world:p1}} Power', starting: 40, scripts: boxScripts({ after: code }) })],
       traits: [ashen],
     });
     expect(only(chipped('return stats["Beast Power"].value + 1;'), 'stat-code-overrides-trait')).toEqual([]);
@@ -1423,7 +1440,7 @@ describe('stat sanity rules', () => {
     const ashen = trait({ id: 't1', name: 'Ashen', statChanges: [{ statId: 's1', type: 'starting', value: -10 }] });
     const other = base({
       stats: [
-        stat({ id: 's1', name: 'Fertility', starting: 40, code: 'return stats.Vigor.value;' }),
+        stat({ id: 's1', name: 'Fertility', starting: 40, scripts: boxScripts({ after: 'return stats.Vigor.value;' }) }),
         stat({ id: 's2', name: 'Vigor' }),
       ],
       traits: [ashen],
@@ -1435,7 +1452,7 @@ describe('stat sanity rules', () => {
     // A short legacy id inside an ordinary number would otherwise read as a self-lookup and quiet the rule.
     const ashen = trait({ id: 't1', name: 'Ashen', statChanges: [{ statId: '1', type: 'starting', value: -10 }] });
     const shortId = (code: string) => base({
-      stats: [stat({ id: '1', name: 'Fertility', min: 0, max: 100, starting: 40, code })],
+      stats: [stat({ id: '1', name: 'Fertility', min: 0, max: 100, starting: 40, scripts: boxScripts({ after: code }) })],
       traits: [ashen],
     });
     expect(only(shortId('return 100;'), 'stat-code-overrides-trait')).toHaveLength(1);
@@ -1444,7 +1461,7 @@ describe('stat sanity rules', () => {
 
   it('says nothing when a trait moves a bound rather than the value', () => {
     const wider = trait({ id: 't1', name: 'Ashen', statChanges: [{ statId: 's1', type: 'max', value: -10 }] });
-    expect(only(oneStat({ starting: 40, code: 'return 25;' }, [wider]), 'stat-code-overrides-trait')).toEqual([]);
+    expect(only(oneStat({ starting: 40, scripts: boxScripts({ after: 'return 25;' }) }, [wider]), 'stat-code-overrides-trait')).toEqual([]);
   });
 
   it('flags a codeless stat locked in both directions with nothing else able to move it', () => {
@@ -1458,9 +1475,9 @@ describe('stat sanity rules', () => {
     const locks = { noIncrease: true, noDecrease: true } as const;
     // Each of the three movers on its own is enough.
     expect(runRules(oneStat({ ...locks, regen: 2 }))).toEqual([]);
-    expect(only(oneStat({ ...locks, code: 'return 25;', starting: 25 }), 'stat-ai-lock-frozen')).toEqual([]);
+    expect(only(oneStat({ ...locks, scripts: boxScripts({ after: 'return 25;' }), starting: 25 }), 'stat-ai-lock-frozen')).toEqual([]);
     // Either box counts as code: a stat moved only before the AI is not frozen.
-    expect(only(oneStat({ ...locks, beforeCode: 'return 25;', starting: 25 }), 'stat-ai-lock-frozen')).toEqual([]);
+    expect(only(oneStat({ ...locks, scripts: boxScripts({ before: 'return 25;' }), starting: 25 }), 'stat-ai-lock-frozen')).toEqual([]);
     expect(runRules(oneStat(
       { ...locks, starting: 40 },
       [trait({ id: 't1', name: 'Ashen', statChanges: [{ statId: 's1', type: 'starting', value: -10 }] })],
@@ -4483,7 +4500,7 @@ describe('a world whose “required” arrays are absent', () => {
   it('diagnoses a stat that lost its id instead of tripping over the missing lookup', () => {
     const idless = {
       ...base(),
-      stats: [{ name: 'Vigor', type: 'number', min: 0, max: 100, regen: 0, descriptors: [], code: 'return 50;' }],
+      stats: [{ name: 'Vigor', type: 'number', min: 0, max: 100, regen: 0, descriptors: [], scripts: boxScripts({ after: 'return 50;' }) }],
       traits: [{ name: 'Hardy', statChanges: [{ value: 5, type: 'starting' }] }],
     } as unknown as RuleWorld;
     expect(only(idless, 'stat-code-overrides-trait')).toHaveLength(1);

@@ -95,6 +95,7 @@ The import adds a new world. It never replaces the world you exported. Import sk
 | `placeholderGroups` | | [Group](#placeholder-groups)[] | Editor-only groups for shared placeholders |
 | `dictionaries` | ✓ | [Dictionary](#dictionaries)[] | Lore books. Import makes one empty book when the list is absent or empty |
 | `statUpdates` | ✓ | [StatUpdate](#stat-updates)[] | An older field. Write `[]` |
+| `scripts` | | [Script](#scripts)[] | Scripts no stat owns. They run with no `self` |
 
 A stored world also has an `id`. Export leaves it out, and import gives the world a new one.
 
@@ -121,6 +122,7 @@ Import runs every world through a migration. The migration changes an older shap
 | `worldOverview.playerSetting` | `allowedPersonas` and `startPersona` |
 | A trait group `exclusive: true` | `maxPicks: 1` |
 | An entity link to a trait outside Blueprints | Removed, with its overrides |
+| A stat's `beforeCode` and `code` | Scripts with the timings `"before"` and `"after"` |
 | A stat with `type: "list"` | A `number` stat at its `min`. The items are dropped |
 | Stat code that uses `stats.find(…)` | The same code with the stat map |
 | A Stomach, Fatness or Breastsize stat with no `morphBindings` | The matching body morphs |
@@ -130,7 +132,7 @@ Import runs every world through a migration. The migration changes an older shap
 
 > ⚠️ **The last six rows run only when `version` is not the app's version.** A file stamped with the current version keeps those older forms as written.
 
-Write new files in the current shape.
+Write new files in the current shape. A file with `scripts` loads in an older version of the app, but its scripts don't run there.
 
 ## worldOverview
 <!-- keywords: metadata block, title key, system prompt key, music key, welcome markdown, replace narration prompt, creator, tag array, persona restriction keys -->
@@ -187,13 +189,27 @@ Each stat is a number the player has. The AI reads it, and [stat code](StatCodeG
 | `regenUnit` | | `"minutes"` \| `"hours"` \| `"days"` \| `"weeks"` | The span the editor shows **Regen** per. `regen` stays per hour. Absent = `"hours"` |
 | `descriptors` | ✓ | [Descriptor](#stat-descriptors)[] | Text for each band of values |
 | `thresholdUnit` | | `"raw"` \| `"percent"` | What a descriptor's `threshold` measures. `"raw"` = the stat's own units. `"percent"` = a percent of `min` to `max`. Absent = `"raw"`. A `percentage` stat is always percent |
-| `beforeCode` | | String | Stat code that runs before the AI's turn. Its changes reach that turn's prompt. See the [Stat Code Guide](StatCodeGuide) |
-| `code` | | String | Stat code that runs after the AI's changes and regen |
+| `scripts` | | [Script](#scripts)[] | Code with this stat as `self`. See the [Stat Code Guide](StatCodeGuide) |
 | `morphBindings` | | String[] | Body morph names this stat drives. `min` to `max` maps to 0 to 1 |
 | `enabled` | | Boolean | `false` starts the stat off. The player and the AI don't see it, and regen and code stop. A trait's `statToggles` switches it on. Absent = on |
 | `hidden` | | Boolean | `true` hides the stat from the player. The AI still reads it, and regen and code still run |
 | `noIncrease` / `noDecrease` | | Boolean | The AI can't raise or lower the value |
 | `noIncreaseMax` / `noDecreaseMax` | | Boolean | The AI can't raise or lower the max |
+
+### Scripts
+<!-- keywords: stat code, beforeCode, code field, before the ai, after the ai, run order, timing -->
+
+A script is one box of code. A stat and the world each hold a `scripts` list.
+
+| Field | Req. | Type | Meaning |
+|---|---|---|---|
+| `id` | ✓ | String | Unique id |
+| `name` | | String | The script's name. Absent = the owner and timing name it |
+| `timing` | ✓ | `"before"` \| `"after"` | When it runs. `"before"` runs before the AI's turn, and its changes reach that turn's prompt. `"after"` runs after the AI's changes and regen |
+| `code` | ✓ | String | The JavaScript |
+| `order` | | Number | Run position within the timing. Scripts with an `order` run first, lowest first. The rest run after them, world scripts first, then each stat's in stat order |
+
+When two scripts write the same field, the later one wins. A world script has no `self`.
 
 ### Stat Descriptors
 
@@ -707,6 +723,6 @@ A short world. `...` replaces the media data.
 ## Related
 
 - [🛠️ World Editor](WorldEditor): the editor that writes this format
-- [🧮 Stat Code Guide](StatCodeGuide): the `beforeCode` and `code` fields
+- [🧮 Stat Code Guide](StatCodeGuide): what a script's `code` can do
 - [🪪 Personas for Authors](Persona-Authoring): persona marks and rules
 - [🔗 Linked Content](LinkedContent): linked copies and world files

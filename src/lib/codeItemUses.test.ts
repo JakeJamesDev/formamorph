@@ -5,6 +5,7 @@ import { statBoxLookup, type CodeCardWorld } from './codeWorldLookup';
 import type { PlaceholderOwners } from './placeholderHomes';
 import { statCodeOwners } from './statCodeTargets';
 import type { Dictionary, Entity, Placeholder, Stat, StatGroup, Trait } from '@/types';
+import { boxScripts } from '@/test/scriptFixtures';
 
 const stat = (id: string, name: string, extra: Partial<Stat> = {}): Stat =>
   ({ id, name, type: 'number', description: '', min: 0, max: 100, value: 0, regen: 0, descriptors: [], ...extra });
@@ -22,27 +23,27 @@ const fauna: Dictionary = { id: 'fauna', name: 'Fauna', entries: [] };
 const blueprints = { id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' } as StatGroup;
 
 const courage = stat('courage', 'Courage', {
-  code: [
+  scripts: boxScripts({ after: [
     'const b = traits.Brave;',
     'const m = placeholders.Mood;',
     'const e = entities.Mara.placeholders.Look;',
     'const d = dictionaries.Fauna.placeholders.Beast;',
     'const w = placeholders.Look;',
     "const s = entities['Mara'];",
-  ].join('\n'),
+  ].join('\n') }),
 });
 const howl = stat('howl', 'Howl', {
-  groupId: 'bp', code: 'const o = owner;\nconst p = owner.placeholders.Look;\nconst t = owner.traits.Brave;',
+  groupId: 'bp', scripts: boxScripts({ after: 'const o = owner;\nconst p = owner.placeholders.Look;\nconst t = owner.traits.Brave;' }),
 });
-const echo = stat('echo', 'Echo', { groupId: 'bp', code: 'return 0;' });
+const echo = stat('echo', 'Echo', { groupId: 'bp', scripts: boxScripts({ after: 'return 0;' }) });
 const statLink = (id: string, original: Stat, code?: string) => ({
   id, originalId: original.id, kind: 'stat' as const, originalName: original.name, groupId: null, order: 1,
-  ...(code === undefined ? {} : { overrides: { [original.id]: { code: { value: code, blueprint: original.code ?? '' } } } }),
+  ...(code === undefined ? {} : { overrides: { [original.id]: { scripts: { value: boxScripts({ after: code }), blueprint: original.scripts ?? [] } } } }),
 });
 const mara: Entity = {
   id: 'mara', name: 'Mara',
   stats: [stat('mara-health', 'Health', {
-    beforeCode: 'owner.stats.Health.value = 1;\nconst t = owner.traits.Calm; const u = owner;\nconst n = persona.traits.Brave;',
+    scripts: boxScripts({ before: 'owner.stats.Health.value = 1;\nconst t = owner.traits.Calm; const u = owner;\nconst n = persona.traits.Brave;' }),
   })],
   traits: [trait('calm', 'Calm')],
   statLinks: [statLink('l-mara', howl)],
@@ -51,7 +52,7 @@ const ann: Entity = { id: 'ann', name: 'Ann', persona: true, traits: [trait('ann
 const tom: Entity = { id: 'tom', name: 'Tom', persona: true, traitLinks: [{ id: 'tom-brave', originalId: 'brave', kind: 'trait', originalName: 'Brave', groupId: null }] };
 const bram: Entity = {
   id: 'bram', name: 'Bram',
-  stats: [stat('bram-grit', 'Grit', { beforeCode: 'const x = owner.traits.Brave;\nconst y = traits.Brave;' })],
+  stats: [stat('bram-grit', 'Grit', { scripts: boxScripts({ before: 'const x = owner.traits.Brave;\nconst y = traits.Brave;' }) })],
   traits: [trait('bram-brave', 'Brave')],
   statLinks: [statLink('l-bram', howl), statLink('l-bram-echo', echo, 'const o = owner;')],
 };

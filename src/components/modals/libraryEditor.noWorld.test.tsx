@@ -16,6 +16,7 @@ import DictionaryStorageService from '@/services/DictionaryStorageService';
 import { phValueId, phValues } from '@/test/placeholderValues';
 import { worldFixture } from '@/test/gamePanels';
 import type { Dictionary, Entity, Placeholder, Stat, World } from '@/types';
+import { codeAt } from '@/test/scriptFixtures';
 
 /**
  * A library editor has no world behind it, even where the app has one loaded around it. Each modal renders
@@ -75,7 +76,7 @@ function WorldProbe({ load }: { load: World }) {
   useEffect(() => { loadWorldData(load); }, [loadWorldData, load]);
   const pins = JSON.stringify([
     traits.map((t) => t.placeholderPins), locations.map((l) => l.placeholderPins),
-    stats.map((s) => [s.code, s.descriptors?.map((d) => d.placeholderPins)]),
+    stats.map((s) => [codeAt(s), s.descriptors?.map((d) => d.placeholderPins)]),
   ]);
   return <div data-testid="world-probe" data-names={traits.map((t) => t.name).join(',')}>{pins}</div>;
 }

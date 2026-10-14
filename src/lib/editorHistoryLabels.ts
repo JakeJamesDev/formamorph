@@ -60,8 +60,7 @@ export const FIELD_LABELS: Partial<Record<SliceName | "*", Record<string, string
     regenUnit: "Regen",
     descriptors: "Stat Descriptors",
     morphBindings: "Body Sliders",
-    beforeCode: "Dynamic Value Calculation",
-    code: "Dynamic Value Calculation",
+    scripts: "Scripts",
   },
   locations: {
     backgroundImage: "Background Image",

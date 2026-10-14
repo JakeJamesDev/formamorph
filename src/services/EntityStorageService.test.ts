@@ -99,6 +99,22 @@ describe('EntityStorageService', () => {
     expect(read.traits![0].requires).toEqual([{ all: [{ kind: 'trait', id: 'w-brave', owner }] }]);
   });
 
+  it('reads a stat’s two code boxes as scripts, and keeps a link’s box override for the world that binds it', async () => {
+    const stored = {
+      id: 'e1', name: 'Mara',
+      stats: [{ id: 'grit', name: 'Grit', beforeCode: 'return 1;', code: 'return 2;' }],
+      statLinks: [{ id: 'l', originalId: 'trust', overrides: { trust: { code: { value: 'return 3;', blueprint: 'return 4;' } } } }],
+    } as unknown as StoredEntityRecord['data'];
+    await EntityStorageService.storeEntity({ id: 'e1', name: 'Mara', data: stored });
+    const read = await EntityStorageService.getEntityData('e1');
+    expect(read.stats![0]).toEqual({
+      id: 'grit', name: 'Grit',
+      scripts: [{ id: 'grit:before', timing: 'before', code: 'return 1;' }, { id: 'grit:after', timing: 'after', code: 'return 2;' }],
+    });
+    // Off-world the original is out of reach, so the override waits unfolded for a world to bind it (Q36).
+    expect(read.statLinks![0].overrides).toEqual({ trust: { code: { value: 'return 3;', blueprint: 'return 4;' } } });
+  });
+
   it('reads a character that holds no stats as one with none, and keeps each stat list to the records it can hold', async () => {
     await EntityStorageService.storeEntity(record('e1'));
     expect(await EntityStorageService.getEntityData('e1')).not.toHaveProperty('stats');

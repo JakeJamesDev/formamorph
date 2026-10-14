@@ -9,6 +9,7 @@ import { inPlayOwners } from './ownedTraitsInPlay';
 import { withOwnerCodeResults } from './entityStats';
 import type { Entity, Placeholder, PlayerStat, Trait } from '@/types';
 import { phValues } from '@/test/placeholderValues';
+import { boxScripts } from '@/test/scriptFixtures';
 
 const stat = (over: Partial<PlayerStat>): PlayerStat => ({
   id: 'x', name: 'Stat', type: 'number', description: '', min: 0, max: 100, value: 50, regen: 0, descriptors: [],
@@ -55,7 +56,7 @@ describe('runStatCodeTurn entity owners', () => {
   it('runs an entity stat’s code over the world stats as `stats` and its owner’s as `owner.stats`', async () => {
     const trust = stat({
       id: 'trust', name: 'Trust', value: 30,
-      code: 'return owner.stats.Stock.value + stats.Gold.value * 2 + (stats.Stock.name === "" ? 20 : 0) + (owner.stats.Gold.name === "" ? 40 : 0);',
+      scripts: boxScripts({ after: 'return owner.stats.Stock.value + stats.Gold.value * 2 + (stats.Stock.name === "" ? 20 : 0) + (owner.stats.Gold.name === "" ? 40 : 0);' }),
     });
     const stock = stat({ id: 'stock', name: 'Stock', value: 12 });
     const out = await run([stat({ id: 'gold', name: 'Gold', value: 5 })], [owner('bram', [trust, stock])]);
@@ -66,7 +67,7 @@ describe('runStatCodeTurn entity owners', () => {
 
   it('hands world-stat code an empty `owner`, whose writes are dropped and reported', async () => {
     const out = await run(
-      [stat({ id: 'gold', name: 'Gold', value: 5, code: 'const read = owner.stats.Trust.value; owner.stats.Trust.value = 99; return read + (owner.name === "" ? 7 : 0);' })],
+      [stat({ id: 'gold', name: 'Gold', value: 5, scripts: boxScripts({ after: 'const read = owner.stats.Trust.value; owner.stats.Trust.value = 99; return read + (owner.name === "" ? 7 : 0);' }) })],
       [owner('bram', [stat({ id: 'trust', name: 'Trust', value: 30 })])],
     );
     expect(valueOf(out.stats, 'gold')).toBe(7);
@@ -78,7 +79,7 @@ describe('runStatCodeTurn entity owners', () => {
   it('lands a world-stat write from an entity stat’s code, with no warning', async () => {
     const out = await run(
       [stat({ id: 'gold', name: 'Gold', value: 5 })],
-      [owner('bram', [stat({ id: 'trust', name: 'Trust', value: 30, code: 'stats.Gold.value = 99; return 1;' })])],
+      [owner('bram', [stat({ id: 'trust', name: 'Trust', value: 30, scripts: boxScripts({ after: 'stats.Gold.value = 99; return 1;' }) })])],
     );
     expect(valueOf(out.stats, 'gold')).toBe(99);
     expect(out.moved).toEqual(['gold']);
@@ -88,7 +89,7 @@ describe('runStatCodeTurn entity owners', () => {
 
   it('keeps the player’s code reading the player’s stats as `stats`', async () => {
     const out = await run(
-      [stat({ id: 'gold', name: 'Gold', value: 5, code: 'return stats.Gold.value + (stats.Trust.name === "" ? 1 : 0);' })],
+      [stat({ id: 'gold', name: 'Gold', value: 5, scripts: boxScripts({ after: 'return stats.Gold.value + (stats.Trust.name === "" ? 1 : 0);' }) })],
       [owner('bram', [stat({ id: 'trust', name: 'Trust', value: 30 })])],
     );
     expect(valueOf(out.stats, 'gold')).toBe(6);
@@ -97,7 +98,7 @@ describe('runStatCodeTurn entity owners', () => {
   it('reads every entity’s stats through entities[x].stats, regen included', async () => {
     const trust = stat({ id: 'trust', name: 'Trust', value: 34 });
     const out = await run(
-      [stat({ id: 'gold', name: 'Gold', value: 0, code: 'return entities.Bram.stats.Trust.value + entities.Bram.stats.Trust.delta.regen.value * 10;' })],
+      [stat({ id: 'gold', name: 'Gold', value: 0, scripts: boxScripts({ after: 'return entities.Bram.stats.Trust.value + entities.Bram.stats.Trust.delta.regen.value * 10;' }) })],
       [owner('bram', [trust], { previous: [{ ...trust, value: 30 }], regenApplied: { trust: 4 } })],
     );
     expect(valueOf(out.stats, 'gold')).toBe(74);
@@ -105,8 +106,8 @@ describe('runStatCodeTurn entity owners', () => {
 
   it('runs every owner’s code over one snapshot, before any code wrote', async () => {
     const out = await run(
-      [stat({ id: 'gold', name: 'Gold', value: 0, code: 'return entities.Bram.stats.Trust.value;' })],
-      [owner('bram', [stat({ id: 'trust', name: 'Trust', value: 30, code: 'return 90;' })])],
+      [stat({ id: 'gold', name: 'Gold', value: 0, scripts: boxScripts({ after: 'return entities.Bram.stats.Trust.value;' }) })],
+      [owner('bram', [stat({ id: 'trust', name: 'Trust', value: 30, scripts: boxScripts({ after: 'return 90;' }) })])],
     );
     expect(valueOf(out.stats, 'gold')).toBe(30);
     expect(valueOf(out.owners?.bram.stats, 'trust')).toBe(90);
@@ -114,8 +115,8 @@ describe('runStatCodeTurn entity owners', () => {
 
   it('runs no code for a switched-off entity stat, and lists it with enabled false', async () => {
     const out = await run(
-      [stat({ id: 'gold', name: 'Gold', value: 0, code: 'return entities.Bram.stats.Trust.enabled ? 1 : 2;' })],
-      [owner('bram', [stat({ id: 'trust', name: 'Trust', value: 30, code: 'return 90;' })], { enabled: { trust: false } })],
+      [stat({ id: 'gold', name: 'Gold', value: 0, scripts: boxScripts({ after: 'return entities.Bram.stats.Trust.enabled ? 1 : 2;' }) })],
+      [owner('bram', [stat({ id: 'trust', name: 'Trust', value: 30, scripts: boxScripts({ after: 'return 90;' }) })], { enabled: { trust: false } })],
     );
     expect(valueOf(out.stats, 'gold')).toBe(2);
     expect(valueOf(out.owners?.bram.stats, 'trust')).toBe(30);
@@ -124,10 +125,10 @@ describe('runStatCodeTurn entity owners', () => {
 
   it('applies pin writes player first, then entities in order, the later winning', async () => {
     const out = await run(
-      [stat({ id: 'gold', name: 'Gold', code: 'placeholders.Probe.pin("player");' })],
+      [stat({ id: 'gold', name: 'Gold', scripts: boxScripts({ after: 'placeholders.Probe.pin("player");' }) })],
       [
-        owner('bram', [stat({ id: 'trust', name: 'Trust', code: 'placeholders.Probe.pin("bram");' })]),
-        owner('odette', [stat({ id: 'trust', name: 'Trust', code: 'placeholders.Probe.pin("odette");' })]),
+        owner('bram', [stat({ id: 'trust', name: 'Trust', scripts: boxScripts({ after: 'placeholders.Probe.pin("bram");' }) })]),
+        owner('odette', [stat({ id: 'trust', name: 'Trust', scripts: boxScripts({ after: 'placeholders.Probe.pin("odette");' }) })]),
       ],
     );
     expect(out.pinWrites).toEqual({ probe: 'odette' });
@@ -135,8 +136,8 @@ describe('runStatCodeTurn entity owners', () => {
 
   it('applies trait switches in owner order, an entity stat’s `traits` being the player’s world traits', async () => {
     const out = await run(
-      [stat({ id: 'gold', name: 'Gold', code: 'traits.Brave.enabled = false;' })],
-      [owner('bram', [stat({ id: 'trust', name: 'Trust', code: 'traits.Brave.enabled = true;' })])],
+      [stat({ id: 'gold', name: 'Gold', scripts: boxScripts({ after: 'traits.Brave.enabled = false;' }) })],
+      [owner('bram', [stat({ id: 'trust', name: 'Trust', scripts: boxScripts({ after: 'traits.Brave.enabled = true;' }) })])],
     );
     expect(out.traits?.acquired.map((t) => t.id)).toEqual(['brave']);
     expect(out.traits?.log).toEqual(['Acquired trait: Brave (by Trust)']);
@@ -145,7 +146,7 @@ describe('runStatCodeTurn entity owners', () => {
   it('sets an entity stat’s code delta on that owner alone', async () => {
     const out = await run(
       [stat({ id: 'trust', name: 'Trust', value: 50 })],
-      [owner('bram', [stat({ id: 'trust', name: 'Trust', value: 50, code: 'self.max = 40;' })])],
+      [owner('bram', [stat({ id: 'trust', name: 'Trust', value: 50, scripts: boxScripts({ after: 'self.max = 40;' }) })])],
     );
     expect(out.owners?.bram.stats[0]).toMatchObject({ max: 40, value: 40, codeDelta: { max: -60 } });
     expect(out.owners?.bram.boundsChanged).toEqual(['trust']);
@@ -158,7 +159,7 @@ describe('runStatCodeTurn entity owners', () => {
     const entities = [strong, odette];
     const vigor = stat({ id: 'vigor', name: 'Vigor' });
     const out = await run(
-      [stat({ id: 'gold', name: 'Gold', code: 'entities.Bram.traits.Hardy.enabled = true;' })],
+      [stat({ id: 'gold', name: 'Gold', scripts: boxScripts({ after: 'entities.Bram.traits.Hardy.enabled = true;' }) })],
       [owner('bram', [vigor])],
       {
         ownerTraits: {

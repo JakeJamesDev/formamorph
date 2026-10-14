@@ -36,8 +36,8 @@ const released = {
   entities: [{ id: 'molly', name: 'Molly', placeholders: [ph('eyes', 'Eyes', ['hazel'])] }],
   dictionaries: [{ id: 'weather', name: 'Weather', enabled: true, entries: [], placeholders: [ph('sky', 'Sky', ['grey'])] }],
   stats: [
-    stat({
-      id: 'legacy', name: 'Legacy',
+    {
+      ...stat({ id: 'legacy', name: 'Legacy' }),
       code: [
         'const me = stats.find(s => s.id === currentStatId);',
         "placeholders.LegacyProbe.pin([day, daypart, startDay, startDaypart,",
@@ -45,16 +45,16 @@ const released = {
         "placeholders.Molly.Eyes.pin('green');",
         "return deltaHours * 100 + elapsedHours + me.value + (currentStatId === 'legacy' ? 1 : 0);",
       ].join('\n'),
-    }),
-    stat({
-      id: 'current', name: 'Current',
+    },
+    {
+      ...stat({ id: 'current', name: 'Current' }),
       code: [
         'placeholders.CurrentProbe.pin([clock.day, clock.daypart, clock.previous.day, clock.previous.daypart,',
         '  entities.Molly.placeholders.Eyes.value, entities.Molly.placeholders.Eyes.value,',
         '  placeholders.Hair.Shade.value, dictionaries.Weather.placeholders.Sky.value].join("/"));',
         "return clock.deltaHours * 100 + clock.elapsedHours + self.value + (self.id === 'current' ? 1 : 0);",
       ].join('\n'),
-    }),
+    },
   ],
 };
 

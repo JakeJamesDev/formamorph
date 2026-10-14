@@ -372,6 +372,7 @@ const GameViewer = ({
     dictionaries,
     placeholders: worldPlaceholders,
     placeholderOwners,
+    worldScripts,
     worldOverview,
     worldId,
     worldLoaded,
@@ -2896,6 +2897,7 @@ const GameViewer = ({
           statNameOf: (stat) => resolvePH(stat.name),
           traitNameOf: (trait) => resolveTraitText(trait, trait.name),
           owners,
+          worldScripts,
         });
         const nextPins = withPinWrites(basePins, result.pinWrites);
         // Onto the latest values, as the player's stats below: the regen tick can apply while the run awaits.
@@ -2942,7 +2944,7 @@ const GameViewer = ({
         return null;
       }
     },
-    [setGlobalStats, setEntityStats, entityOwnersOf, entityInForceUnder, addStatDeltas, setCodePins, resolvePH, statCodePlaceholders, pinsFor, traits, authoredStats, resolveTraitText, gatedWorld, codeEntities, statEntities, inForceOn, liveScene,
+    [setGlobalStats, setEntityStats, entityOwnersOf, entityInForceUnder, addStatDeltas, setCodePins, resolvePH, statCodePlaceholders, pinsFor, traits, authoredStats, worldScripts, resolveTraitText, gatedWorld, codeEntities, statEntities, inForceOn, liveScene,
       setGlobalTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, setOwnedTraits, addLogEntry],
   );
 

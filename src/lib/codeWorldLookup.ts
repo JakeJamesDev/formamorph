@@ -4,7 +4,7 @@
  * then its Blueprint.
  */
 
-import type { Dictionary, Entity, EntityGroup, Placeholder, Stat, StatGroup, Trait, TraitGroup } from '@/types';
+import type { Dictionary, Entity, EntityGroup, Placeholder, ScriptTiming, Stat, StatGroup, Trait, TraitGroup } from '@/types';
 import { effectiveCopy } from './blueprints';
 import { editorGateInput, resolveOwners, type OwnerWorld } from './owners';
 import { startingGateStats } from './gateStats';
@@ -17,8 +17,7 @@ import { blueprintGroupStats } from './statLinks';
 import { placeholderPathMap } from './statCodePaths';
 import { codeDictionaries } from './statCodePlaceholders';
 import type { StatOwner, TraitOwner } from './statCodeResolver';
-import { overridesBox, statCodeOwners, type CodeOwner, type CodeOwners } from './statCodeTargets';
-import type { StatCodeTiming } from './statCodeTiming';
+import { overridesScripts, statCodeOwners, type CodeOwner, type CodeOwners } from './statCodeTargets';
 import { entityTraitNames, worldTraitPlaces } from './statCodeTraits';
 import { conditionTexts, gateTrees } from './traitGates';
 
@@ -127,7 +126,7 @@ export type CodeBoxOwner = { kind: 'entity'; entityId: string } | { kind: 'bluep
 export interface CodeBox {
   /** Null for a global stat. */
   owner: CodeBoxOwner | null;
-  timing: StatCodeTiming;
+  timing: ScriptTiming;
   /** The box's stat under its code name, as the editor holds it now. */
   self: Stat;
 }
@@ -287,7 +286,7 @@ export function statBoxLookup(owners: CodeOwners, box: CodeBox, world?: CodeCard
     if (!original) return [];
     return owners.all.flatMap((owner) => {
       const link = owner.linkOf.get(original.id);
-      return owner.entity && link && !overridesBox(link, original, box.timing) ? [{ ...owner, entity: owner.entity }] : [];
+      return owner.entity && link && !overridesScripts(link, original) ? [{ ...owner, entity: owner.entity }] : [];
     });
   })());
   const runningOwnerNames = () => runningOwners().map(entityName);

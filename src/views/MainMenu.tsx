@@ -1,5 +1,6 @@
 import { randomUUID } from "@/lib/uuid";
 import { newBlankWorld } from "@/lib/blankWorld";
+import { filledScripts, SCRIPT_TIMING_LABEL, type ScriptHome } from "@/lib/scripts";
 import { DEFAULT_WORLDS, isDefaultWorldId } from "@/lib/defaultWorlds";
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useGameData } from '../contexts/GameDataContext';
@@ -267,7 +268,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     return () => { isMountedRef.current = false; };
   }, []);
   const {
-    placeholders, loadWorldData, getWorldData,
+    placeholders, worldScripts, loadWorldData, getWorldData,
   } = useGameData();
   const { showReadme, setShowReadme } = useReadmeVisibility();
   const { applyWorldPrompt, setApplyWorldPrompt } = useWorldPromptOptOut();
@@ -967,23 +968,20 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     });
   }, [devRoute?.modal, reviewComponentFile]);
 
-  // A stat's two boxes, each named by its timing, in the order the turn runs them.
-  const statCodeBoxes = (stat: Stat) => ([
-    ['Before the AI', stat.beforeCode] as const,
-    ['After the AI', stat.code] as const,
-  ].filter(([, code]) => code && code.trim() !== ''));
+  // A home's scripts that hold code, each named by its timing.
+  const statCodeBoxes = (home: ScriptHome) => filledScripts(home).map((script) => [SCRIPT_TIMING_LABEL[script.timing], script.code] as const);
 
-  // Check if any stat has code
-  const hasStatWithCode = (statsArray: Stat[]) => {
-    return statsArray.some(stat => statCodeBoxes(stat).length > 0);
-  };
+  // Whether the world's own scripts or any stat's hold code.
+  const hasStatWithCode = (statsArray: Stat[]) =>
+    statCodeBoxes({ scripts: worldScripts }).length > 0 || statsArray.some(stat => statCodeBoxes(stat).length > 0);
 
-  // Generate concatenated code from all stats with code
-  const generateConcatenatedCode = (statsArray: Stat[]) => {
-    return statsArray.flatMap(stat => statCodeBoxes(stat).map(([timing, code]) => (
+  // Every script with code, the world's first, then each stat's.
+  const generateConcatenatedCode = (statsArray: Stat[]) => [
+    ...statCodeBoxes({ scripts: worldScripts }).map(([timing, code]) => `# World — ${timing}\n${code}`),
+    ...statsArray.flatMap(stat => statCodeBoxes(stat).map(([timing, code]) => (
       `# ${describePlaceholders(stat.name, placeholders) || 'Unnamed Stat'} — ${timing}\n${code}`
-    ))).join('\n\n----\n\n');
-  };
+    ))),
+  ].join('\n\n----\n\n');
 
   const handleWorldSelection = async (worldId: string) => {
     try {

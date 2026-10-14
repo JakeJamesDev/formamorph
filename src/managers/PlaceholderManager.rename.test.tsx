@@ -7,6 +7,7 @@ import type { Placeholder, Stat } from '@/types';
 import type { PlaceholderOwnerRef } from '@/lib/placeholderHomes';
 import { CodeRenameProvider } from '@/components/editor/CodeRenameOffer';
 import PlaceholderManager from './PlaceholderManager';
+import { boxScripts, codeAt } from '@/test/scriptFixtures';
 
 /**
  * The placeholder panel's own wiring to the rename offer. Code reaches a placeholder by its path, so the
@@ -70,7 +71,7 @@ beforeEach(() => {
   ];
   store.stats = [
     { id: 's1', name: 'Health', type: 'number', description: '', min: 0, max: 100, value: 0, regen: 0,
-      code: 'return entities.Molly.placeholders.Hair.text.length + placeholders.Hair.text.length;' } as unknown as Stat,
+      scripts: boxScripts({ after: 'return entities.Molly.placeholders.Hair.text.length + placeholders.Hair.text.length;' }) } as unknown as Stat,
   ];
 });
 
@@ -87,7 +88,7 @@ describe('the placeholder panel’s rename offer', () => {
 
     expect(screen.getByText(/names the placeholder “Hair” 1 time\./)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Update Code' }));
-    expect(store.stats[0].code)
+    expect(codeAt(store.stats[0]))
       .toBe('return entities.Molly.placeholders.Mane.text.length + placeholders.Hair.text.length;');
   });
 });

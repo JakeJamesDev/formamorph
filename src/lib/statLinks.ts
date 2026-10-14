@@ -2,7 +2,7 @@
 // and the stats each entity owns once its links are read through their originals. This module is the one place
 // that expands a stat link, for the editor and for play.
 
-import type { Entity, Stat, StatGroup, StatLink, StatLinkFields, StatLinkOverrides } from '@/types';
+import type { Entity, Script, Stat, StatGroup, StatLink, StatLinkFields, StatLinkOverrides } from '@/types';
 import { effectiveRecord, sameValue, withOverride, withoutOverride, type EffectiveRecord } from './blueprints';
 import { groupsBelow } from './traitTree';
 import { removeStatGroup, statRootCount, statsInTreeOrder } from './statGroupTree';
@@ -129,8 +129,7 @@ export const statLinkFieldsOf = (stat: Stat): StatLinkFields => ({
   regenUnit: regenUnitOf(stat),
   descriptors: stat.descriptors ?? [],
   thresholdUnit: stat.thresholdUnit ?? 'raw',
-  beforeCode: stat.beforeCode ?? '',
-  code: stat.code ?? '',
+  scripts: stat.scripts ?? [],
   morphBindings: stat.morphBindings ?? [],
   enabled: stat.enabled !== false,
   hidden: stat.hidden === true,
@@ -180,16 +179,16 @@ export function setStatLinkEdits(link: StatLink, original: Stat, edited: Stat): 
 }
 
 /**
- * The link with its override of one code box set to `code`, as a rename rewrites both sides. The snapshot of
- * the Blueprint's code moves from `before` to `after` only where it read `before`, so a stale override stays stale.
+ * The link with its scripts override set to `scripts`, as a rename rewrites both sides. The snapshot of the
+ * Blueprint's scripts moves from `before` to `after` only where it read `before`, so a stale override stays stale.
  */
-export function setStatLinkCode(
-  link: StatLink, statId: string, field: 'code' | 'beforeCode', code: string, before: string, after: string,
+export function setStatLinkScripts(
+  link: StatLink, statId: string, scripts: Script[], before: readonly Script[], after: Script[],
 ): StatLink {
-  const current = link.overrides?.[statId]?.[field];
+  const current = link.overrides?.[statId]?.scripts;
   if (!current) return link;
-  const blueprint = current.blueprint === before ? after : current.blueprint;
-  return withStatOverrides(link, statId, withOverride(link.overrides?.[statId], field, code, blueprint));
+  const blueprint = sameValue(current.blueprint, before) ? after : current.blueprint;
+  return withStatOverrides(link, statId, withOverride(link.overrides?.[statId], 'scripts', scripts, blueprint));
 }
 
 /** Fields one Reset clears together: Regen's number and the unit it shows in are one field on screen. */

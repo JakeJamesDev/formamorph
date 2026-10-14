@@ -31,7 +31,7 @@ const overviewIsAdvanced = memoByRecord((ov: WorldOverview) =>
   openingTexts(ov).length > 0 ||
   worldAllowedPersonas(ov) !== 'any' || !!worldStartPersona(ov));
 const statIsAdvanced = memoByRecord((s: Stat) =>
-  hasValue(s.beforeCode) || hasValue(s.code) || hasValue(s.descriptors) ||
+  hasValue(s.scripts) || hasValue(s.descriptors) ||
   !!(s.noIncrease || s.noIncreaseMax || s.noDecrease || s.noDecreaseMax));
 const entityIsAdvanced = memoByRecord((e: Entity) =>
   !!e.persona || hasValue(e.aliases) || hasValue(e.aiSummary) || hasValue(e.type) || hasValue(e.model) ||
