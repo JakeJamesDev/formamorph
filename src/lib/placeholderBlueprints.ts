@@ -6,6 +6,7 @@
 import { entityTexts } from './entityTexts';
 import { openingTexts } from './openings';
 import { overviewTexts } from './overviewTexts';
+import { ancestors } from './ancestors';
 import { isDescendantPlaceholderGroup, placeholderGroupOf } from './placeholderGroups';
 import { allPlaceholders, placeholderHomeIndex, type PlaceholderHomesWorld } from './placeholderHomes';
 import { directChipTargets } from './placeholders';
@@ -48,15 +49,12 @@ export function worldBlueprints(world: PlaceholderHomesWorld): Placeholder[] {
 
 /** The top-level placeholder `p` sits under, walking its owners through `byId`. */
 export function rootPlaceholder(p: Placeholder, byId: ReadonlyMap<string, Placeholder>): Placeholder {
-  const seen = new Set<string>();
-  let at = p;
-  while (at.ownerId && !seen.has(at.id)) {
-    seen.add(at.id);
-    const up = byId.get(at.ownerId);
-    if (!up) break;
-    at = up;
-  }
-  return at;
+  const ownerOf = (id: string) => {
+    const owner = byId.get(id)?.ownerId;
+    return owner && byId.has(owner) ? owner : null;
+  };
+  const top = ancestors(p.id, ownerOf).pop();
+  return (top && byId.get(top)) || p;
 }
 
 /** How the tree and the notices name a copy. */

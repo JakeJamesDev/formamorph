@@ -9,9 +9,10 @@ import type { RenamedStat } from '@/lib/statCodeRename';
 import { statLinkState } from '@/lib/statLinks';
 import { useCodeRenameOffer, useRenameField } from '@/lib/useCodeRename';
 import { CodeRenameProvider } from './CodeRenameOffer';
+import { boxScripts, codeAt, overriddenCodeAt } from '@/test/scriptFixtures';
 
 const stat = (id: string, name: string, code: string): Stat =>
-  ({ id, name, type: 'number', description: '', min: 0, max: 100, value: 0, regen: 0, code } as unknown as Stat);
+  ({ id, name, type: 'number', description: '', min: 0, max: 100, value: 0, regen: 0, scripts: boxScripts({ after: code }) } as unknown as Stat);
 
 const store: {
   stats: Stat[]; statGroups: StatGroup[]; entities: Entity[]; placeholders: Placeholder[]; rerender: () => void;
@@ -83,8 +84,8 @@ const Harness = (props: Parameters<typeof NameField>[0]) => {
   );
 };
 
-const codeOf = (id: string) => store.stats.find((entry) => entry.id === id)?.code;
-const beforeCodeOf = (id: string) => store.stats.find((entry) => entry.id === id)?.beforeCode;
+const codeOf = (id: string) => codeAt(store.stats.find((entry) => entry.id === id));
+const beforeCodeOf = (id: string) => codeAt(store.stats.find((entry) => entry.id === id), 'before');
 
 /** Put a new name in the field and commit it by moving focus off, as blurring the real field does. Pasted
  *  rather than typed, so a chip token's braces reach the field instead of being read as typing syntax. */
@@ -114,7 +115,7 @@ describe('the rename offer', () => {
     const howl = { ...stat('howl', 'Howl', 'return stats.Ruin.value;'), groupId: 'bp' };
     const howlLink = (entityId: string, blueprint: string) => ({
       id: `l-${entityId}`, originalId: 'howl', kind: 'stat' as const, originalName: 'Howl', groupId: null,
-      overrides: { howl: { code: { value: 'return stats.Ruin.value + 1;', blueprint } } },
+      overrides: { howl: { scripts: { value: boxScripts({ after: 'return stats.Ruin.value + 1;' }), blueprint: boxScripts({ after: blueprint }) } } },
     });
     store.statGroups = [{ id: 'bp', name: 'Blueprints', system: 'blueprints' } as StatGroup];
     store.stats = [stat('ruin', 'Ruin', ''), howl];
@@ -127,12 +128,12 @@ describe('the rename offer', () => {
     await user.click(screen.getByRole('button', { name: 'Update Code' }));
 
     const blueprint = store.stats.find((entry) => entry.id === 'howl')!;
-    expect(blueprint.code).toBe('return stats.Wreck.value;');
+    expect(codeAt(blueprint)).toBe('return stats.Wreck.value;');
     const [bram, ash] = store.entities.map((entity) => entity.statLinks![0]);
-    expect(bram.overrides?.howl?.code?.value).toBe('return stats.Wreck.value + 1;');
+    expect(overriddenCodeAt(bram.overrides?.howl?.scripts)).toBe('return stats.Wreck.value + 1;');
     expect(statLinkState(blueprint, bram).stale).toEqual([]);
-    expect(ash.overrides?.howl?.code?.value).toBe('return stats.Wreck.value + 1;');
-    expect(statLinkState(blueprint, ash).stale).toEqual(['code']);
+    expect(overriddenCodeAt(ash.overrides?.howl?.scripts)).toBe('return stats.Wreck.value + 1;');
+    expect(statLinkState(blueprint, ash).stale).toEqual(['scripts']);
   });
 
   it('rewrites an entity’s own stat in its own box, its link’s override, and a world box', async () => {
@@ -143,7 +144,7 @@ describe('the rename offer', () => {
       id: 'bram', name: 'Bram', stats: [stat('rage', 'Rage', 'return owner.stats.Rage.value;')],
       statLinks: [{
         id: 'l-howl', originalId: 'howl', kind: 'stat', originalName: 'Howl', groupId: null,
-        overrides: { howl: { code: { value: 'return owner.stats.Rage.value + 1;', blueprint: 'return owner.stats.Rage.value;' } } },
+        overrides: { howl: { scripts: { value: boxScripts({ after: 'return owner.stats.Rage.value + 1;' }), blueprint: boxScripts({ after: 'return owner.stats.Rage.value;' }) } } },
       }],
     }];
     render(<Harness root="stats" initial="Rage" otherNames={[]} renamed={{ id: 'rage', entityId: 'bram' }} />);
@@ -152,8 +153,8 @@ describe('the rename offer', () => {
     expect(screen.getByText(/The code of 3 stats names the stat “Rage” 3 times\./)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Update Code' }));
     const [bram] = store.entities;
-    expect(bram.stats?.[0].code).toBe('return owner.stats.Spite.value;');
-    expect(bram.statLinks?.[0].overrides?.howl?.code?.value).toBe('return owner.stats.Spite.value + 1;');
+    expect(codeAt(bram.stats?.[0])).toBe('return owner.stats.Spite.value;');
+    expect(overriddenCodeAt(bram.statLinks?.[0].overrides?.howl?.scripts)).toBe('return owner.stats.Spite.value + 1;');
     expect(codeOf('reader')).toBe('return entities.Bram.stats.Spite.value + stats.Rage.value;');
     expect(codeOf('howl')).toBe('return owner.stats.Rage.value;');
   });
@@ -172,7 +173,7 @@ describe('the rename offer', () => {
 
   it('counts both boxes, rewrites both on Yes, and leaves a blank box blank', async () => {
     store.stats = [
-      { ...stat('a', 'Health', 'return stats.Health.value * 2;'), beforeCode: `stats['Health'].min = 1;` },
+      { ...stat('a', 'Health', ''), scripts: boxScripts({ before: `stats['Health'].min = 1;`, after: 'return stats.Health.value * 2;' }) },
       stat('b', 'Stamina', 'return stats.Health.max - 1;'),
     ];
     render(<Harness root="stats" initial="Health" otherNames={['Stamina']} />);
@@ -189,7 +190,7 @@ describe('the rename offer', () => {
 
   it('rewrites nothing on No, in either box', async () => {
     store.stats = [
-      { ...stat('a', 'Health', 'return stats.Health.value * 2;'), beforeCode: `stats['Health'].min = 1;` },
+      { ...stat('a', 'Health', ''), scripts: boxScripts({ before: `stats['Health'].min = 1;`, after: 'return stats.Health.value * 2;' }) },
     ];
     render(<Harness root="stats" initial="Health" otherNames={['Stamina']} />);
     const user = await renameTo('Vigor');

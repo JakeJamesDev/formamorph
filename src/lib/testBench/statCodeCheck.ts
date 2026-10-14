@@ -97,11 +97,11 @@ export async function checkStatCode(world: RuleWorld): Promise<Finding[]> {
   const entryOf = new Map(entities.map((entity) => [entity.id, entity]));
   const dictionaries = sandboxDictionaries(codeDictionaries(world.dictionaries, placeholderDefs), placeholders.owners);
 
-  // One run per filled box: the two hold different code, so each gets its own row naming which it is. A
-  // linked stat runs only a box its link overrides; the Blueprint's own run covers the rest.
+  // One run per filled script, each with its own row naming which it is. A linked stat runs only scripts its
+  // link overrides; the Blueprint's own run covers the rest.
   const owners = statCodeOwners({ ...statWorld, entities: authoredEntities, placeholders: placeholderDefs });
-  const coded = statCodeBoxes(owners).map(({ timing, code, stat: authored, entity, owner: reads }): CodedBox => {
-    const box = { timing, code };
+  const coded = statCodeBoxes(owners).map((box): CodedBox => {
+    const { stat: authored, entity, owner: reads } = box;
     if (entity) {
       const owner = entryOf.get(entity.id);
       const stat = owner?.stats?.stats.find((entry) => entry.id === authored.id) ?? authored;

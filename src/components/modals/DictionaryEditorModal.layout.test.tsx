@@ -8,6 +8,7 @@ import { GameDataProvider, useGameData } from '@/contexts/GameDataContext';
 import { worldFixture } from '@/test/gamePanels';
 import { EditorModeContext } from '@/lib/editorMode';
 import type { Dictionary } from '@/types';
+import { boxScripts, codeAt } from '@/test/scriptFixtures';
 
 /** Where the library dictionary editor puts the book and its entries: the book on Overview, entries alone
  *  in the Dictionary tab's tree. */
@@ -53,13 +54,13 @@ const emptyBook: Dictionary = { ...book, entries: [] };
 /** A loaded world whose stat code names the book, so a rename that reached the world would show. */
 const statCode = 'placeholders["Fen Lore"].Mood.text';
 const world = worldFixture({
-  stats: [{ id: 's1', name: 'Calm', type: 'number', description: '', min: 0, max: 10, value: 1, regen: 0, descriptors: [], code: statCode }],
+  stats: [{ id: 's1', name: 'Calm', type: 'number', description: '', min: 0, max: 10, value: 1, regen: 0, descriptors: [], scripts: boxScripts({ after: statCode }) }],
 });
 
 function WorldProbe() {
   const { loadWorldData, stats } = useGameData();
   useEffect(() => { loadWorldData(world); }, [loadWorldData]);
-  return <div data-testid="world-stat-code">{stats.map((s) => s.code).join('|')}</div>;
+  return <div data-testid="world-stat-code">{stats.map((s) => codeAt(s)).join('|')}</div>;
 }
 
 // The real host, MainMenu, mounts the modal inside the GameData provider.

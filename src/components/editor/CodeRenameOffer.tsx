@@ -6,10 +6,10 @@ import {
 import { useGameDataOptional } from '@/contexts/GameDataContext';
 import { updateOwnedStat } from '@/lib/ownedStats';
 import { planCodeRename, type CodeRenamePlan, type RenameRoot } from '@/lib/statCodeRename';
-import { setStatLinkCode, withStatLinks } from '@/lib/statLinks';
+import { setStatLinkScripts, withStatLinks } from '@/lib/statLinks';
 import { traitOwnerMaps } from '@/lib/statCodeTraits';
-import { boxCode, CODE_FIELD, STAT_CODE_TIMINGS, type StatCodeTiming } from '@/lib/statCodeTiming';
-import type { StatLink } from '@/types';
+import { scriptsOf, withScriptCode } from '@/lib/scripts';
+import type { Stat, StatLink } from '@/types';
 import { CodeRenameContext, type CodeRenameRequest, type OfferCodeRename } from '@/lib/useCodeRename';
 
 /**
@@ -109,30 +109,28 @@ export function CodeRenameProvider({ children }: { children: ReactNode }) {
     if (!plan) return;
     const { stats: worldStats, updateStat: write, editEntity: edit } = latest.current;
     const byId = new Map(worldStats.map((stat) => [stat.id, stat]));
-    // The Blueprint boxes this rename rewrites, so a link's snapshot of them moves with them.
-    const blueprintAfter = new Map(plan.edits.flatMap(({ home, boxes }) => (home.kind === 'stat' ? [[home.statId, boxes]] : [])));
-    for (const { home, boxes } of plan.edits) {
-      // Only the boxes the plan rewrote, so a box the rename never read keeps whatever it holds.
-      const fields = Object.fromEntries(
-        Object.entries(boxes).map(([timing, code]) => [CODE_FIELD[timing as StatCodeTiming], code]),
-      );
+    // The Blueprint scripts this rename rewrites, so a link's snapshot of them moves with them.
+    const blueprintAfter = new Map(plan.edits.flatMap(({ home, scripts }) => (home.kind === 'stat' ? [[home.statId, scripts]] : [])));
+    // Only the scripts the plan rewrote, so a script the rename never read keeps whatever it holds.
+    const rewritten = (stat: Stat, scripts: Record<string, string>): Stat => ({ ...stat, scripts: withScriptCode(scriptsOf(stat), scripts) });
+    for (const { home, scripts } of plan.edits) {
       if (home.kind === 'stat') {
         const stat = byId.get(home.statId);
-        if (stat && write) write({ ...stat, ...fields });
+        if (stat && write) write(rewritten(stat, scripts));
       } else if (home.kind === 'entity') {
         edit?.(home.entityId, (entity) => {
           const stat = entity.stats?.find((entry) => entry.id === home.statId);
-          return stat ? updateOwnedStat(entity, { ...stat, ...fields }) : entity;
+          return stat ? updateOwnedStat(entity, rewritten(stat, scripts)) : entity;
         });
       } else {
         const original = byId.get(home.statId);
         if (!original) continue;
-        const rewrite = (link: StatLink) => STAT_CODE_TIMINGS.reduce((next, timing) => {
-          const code = boxes[timing];
-          const before = boxCode(original, timing);
-          const after = blueprintAfter.get(home.statId)?.[timing] ?? before;
-          return code === undefined ? next : setStatLinkCode(next, home.statId, CODE_FIELD[timing], code, before, after);
-        }, link);
+        const rewrite = (link: StatLink) => {
+          const overridden = link.overrides?.[home.statId]?.scripts?.value ?? [];
+          const before = scriptsOf(original);
+          const after = withScriptCode(before, blueprintAfter.get(home.statId) ?? {});
+          return setStatLinkScripts(link, home.statId, withScriptCode(overridden, scripts), before, after);
+        };
         edit?.(home.entityId, (entity) =>
           withStatLinks(entity, (entity.statLinks ?? []).map((link) => (link.id === home.linkId ? rewrite(link) : link))));
       }

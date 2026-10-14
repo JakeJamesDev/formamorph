@@ -50,6 +50,13 @@ Settled with the user on 2026-10-14. R rulings came from the design discussion; 
 | Q27 | A During AI Output result is one sentence whatever it holds. The reveal and TTS release it as one unit; `index` never shifts |
 | Q28 | Strip Links And Images is on for a new world and off for an existing one, so an update changes no request |
 | Q29 | A Blueprint stat's script runs once per owner in every timing, owner order, During AI Output included |
+| Q30 | Later writes win a field, as today; `order` decides who runs later. A world script ordered before a stat script loses the field to it; flip the orders and the world script wins (ticket 01 ruling) |
+| Q31 | A world script runs with `self` and `owner` as empty objects, matching the Surface table. A return value and a `self` write are ignored, never a non-number failure. Ticket 01 runs stat and world scripts; trait scripts arrive with ticket 02 and the Q3 gate (ticket 01 ruling) |
+| Q32 | A Blueprint link overrides `scripts` as one whole list, not per script. Migration folds the two old field overrides into it and keeps each one's `blueprint` value for staleness (ticket 01 ruling) |
+| Q33 | Migrated scripts take deterministic ids, `<statId>:before` and `<statId>:after`, so a shipped world gets the same ids on every load. New scripts mint `crypto.randomUUID()`. Bundled world files stay in the old form; the load path migrates them (ticket 01 ruling) |
+| Q36 | Off-world, a link override of one old box stays on its old key until the entity enters a world, where the original is in reach and the fold into the whole-list `scripts` override is exact. A fold that blanks the other box is a silent break of a shipped card, which the stat-code-entities Q19 precedent rules out (ticket 01 ruling, option B) |
+| Q35 | The strip rule follows the text, not the request: any past passage, diary entry or digest in any request is stripped, the discovered-entity note request included. Q9 says "before any request" (ticket 08 ruling) |
+| Q34 | Until ticket 02 lands, the stat Code tab keeps its two boxes: each edits the stat's first script of its timing, typing into an empty box adds a script, clearing a box removes it. Templates and help Insert write the same way (ticket 01 ruling) |
 
 Q26 was not used.
 

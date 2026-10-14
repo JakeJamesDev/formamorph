@@ -17,14 +17,16 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### ➕ Added
 
 - **👤 User-facing**
-  - **Each text endpoint has Extra Parameters: a JSON object added to every request sent to it.** It sits under **Advanced** in the endpoint editor and wins over the app's own fields, so a vendor's reasoning switch, `top_a` or `chat_template_kwargs` can be sent. It can't replace `model`, `messages` or `stream`, and text that isn't one JSON object shows why in red and sends nothing.
+  - **Each text endpoint has Extra Parameters: a JSON object added to every request sent to it.** It sits under **Advanced** in the endpoint editor and wins over the app's own fields, so you can send a vendor's reasoning switch, `top_a` or `chat_template_kwargs`. It can't replace `model`, `messages` or `stream`.
 
 #### 🔧 Fixed
 
 - **👤 User-facing**
+  - **ComfyUI with an empty Model now uses the first checkpoint the server lists.** It used to send an empty checkpoint name, which ComfyUI rejects. The Model placeholder says which one is used.
   - **Drifted Copies:**
     - **Duplicating a location from the filtered list now gives the copy its own Unique chip rolls.** The copy no longer shares the source's values, the same as in the tree.
   - **Deleting an entity, trait, location or placeholder group keeps your item order.** The group's items take its place in the list.
+  - **Arrange on the location canvas no longer freezes on a world whose locations hold each other in a loop.** Every walk up the location, group and placeholder trees now stops at a loop.
 
 ---
 

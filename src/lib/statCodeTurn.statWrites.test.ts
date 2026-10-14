@@ -9,6 +9,7 @@ import { inPlayOwners } from './ownedTraitsInPlay';
 import { setTraitEnabled } from './traitRuntime';
 import { linkedStat } from './statLinks';
 import type { Entity, PlayerStat, Trait } from '@/types';
+import { boxScripts } from '@/test/scriptFixtures';
 
 /** A stat as a playthrough carries it: bases seeded, no AI or code delta booked. */
 const stat = (over: Partial<PlayerStat>): PlayerStat => ({
@@ -43,7 +44,7 @@ const valueOf = (stats: readonly PlayerStat[] | undefined, id: string) => find(s
 const warned = () => vi.mocked(console.warn).mock.calls.map(([line]) => String(line)).join('\n');
 
 const health = (over: Partial<PlayerStat> = {}) => stat({ id: 'h', name: 'Health', value: 60, ...over });
-const hub = (code: string, over: Partial<PlayerStat> = {}) => stat({ id: 'hub', name: 'Hub', value: 0, code, ...over });
+const hub = (code: string, over: Partial<PlayerStat> = {}) => stat({ id: 'hub', name: 'Hub', value: 0, scripts: boxScripts({ after: code }), ...over });
 
 describe('runStatCodeTurn writes to other stats', () => {
   beforeEach(() => {
@@ -89,30 +90,30 @@ describe('runStatCodeTurn writes to other stats', () => {
 
   it('lands a stat’s own return inside the max a hub raised in the same run', async () => {
     const raise = hub('stats.Health.max = 200;');
-    const out = await run([raise, health({ code: 'return 150;' })]);
+    const out = await run([raise, health({ scripts: boxScripts({ after: 'return 150;' }) })]);
     expect(find(out.stats, 'h')).toMatchObject({ value: 150, max: 200 });
   });
 
   it('lands a stat’s own value write inside the max its own trait switch raised', async () => {
     const boost: Trait = { id: 'b', name: 'Boost', statChanges: [{ statId: 'h', value: 100, type: 'max' }] };
-    const out = await run([health({ code: 'traits.Boost.enabled = true; self.value = 150;' })], { ownerTraits: ownerTraits([boost], ['b']) });
+    const out = await run([health({ scripts: boxScripts({ after: 'traits.Boost.enabled = true; self.value = 150;' }) })], { ownerTraits: ownerTraits([boost], ['b']) });
     expect(find(out.stats, 'h')).toMatchObject({ value: 150, max: 200 });
   });
 
   it('orders a target’s self write and a hub’s write on one field by stat order', async () => {
-    const own = health({ code: 'return 5;' });
+    const own = health({ scripts: boxScripts({ after: 'return 5;' }) });
     const writer = hub('stats.Health.value = 30;');
     expect(valueOf((await run([own, writer])).stats, 'h')).toBe(30);
     expect(valueOf((await run([writer, own])).stats, 'h')).toBe(5);
   });
 
   it('merges writes field by field, so a hub’s bound and the target’s own value both land', async () => {
-    const out = await run([hub('stats.Health.max = 80;'), health({ code: 'return 75;' })]);
+    const out = await run([hub('stats.Health.max = 80;'), health({ scripts: boxScripts({ after: 'return 75;' }) })]);
     expect(find(out.stats, 'h')).toMatchObject({ value: 75, max: 80 });
   });
 
   it('hides a hub’s write from the target’s own box on the same run', async () => {
-    const own = health({ code: 'self.regen = self.value; self.min = self.delta.actual.value;' });
+    const own = health({ scripts: boxScripts({ after: 'self.regen = self.value; self.min = self.delta.actual.value;' }) });
     const out = await run([hub('stats.Health.value = 90;'), own]);
     expect(find(out.stats, 'h')).toMatchObject({ value: 90, regen: 60, min: 0 });
   });
@@ -180,7 +181,7 @@ describe('runStatCodeTurn writes to other stats', () => {
   });
 
   it('runs hub writes in the before box too', async () => {
-    const out = await run([hub('', { beforeCode: 'stats.Health.value = 12;' }), health()], { timing: 'before' });
+    const out = await run([hub('', { scripts: boxScripts({ before: 'stats.Health.value = 12;' }) }), health()], { timing: 'before' });
     expect(valueOf(out.stats, 'h')).toBe(12);
   });
 });

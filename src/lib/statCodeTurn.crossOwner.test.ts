@@ -8,6 +8,7 @@ import type { StatCodeOwners } from './statCodeTraits';
 import { inPlayOwners } from './ownedTraitsInPlay';
 import { withPersonaEntry } from './persona';
 import type { Entity, PersonaRef, PlayerStat } from '@/types';
+import { boxScripts } from '@/test/scriptFixtures';
 
 const stat = (over: Partial<PlayerStat>): PlayerStat => ({
   id: 'x', name: 'Stat', type: 'number', description: '', min: 0, max: 100, value: 50, regen: 0, descriptors: [],
@@ -59,7 +60,7 @@ describe('runStatCodeTurn writes across owners', () => {
   it('lands a world-stat write from an entity stat’s code, its bound booked into the code delta', async () => {
     const out = await run(
       [stat({ id: 'alert', name: 'Alert', value: 10 })],
-      [owner('bram', [stat({ id: 'fury', name: 'Fury', code: 'stats.Alert.value = 70; stats.Alert.max = 80;' })])],
+      [owner('bram', [stat({ id: 'fury', name: 'Fury', scripts: boxScripts({ after: 'stats.Alert.value = 70; stats.Alert.max = 80;' }) })])],
     );
     expect(find(out.stats, 'alert')).toMatchObject({ value: 70, max: 80, codeDelta: { max: -20 } });
     expect(out.moved).toEqual(['alert']);
@@ -69,7 +70,7 @@ describe('runStatCodeTurn writes across owners', () => {
 
   it('lands world code’s writes on an entity through entities[x].stats and on the persona through persona.stats', async () => {
     const out = await run(
-      [stat({ id: 'gold', name: 'Gold', code: 'entities.Bram.stats.Stamina.value -= 15; persona.stats.Grit.regen = 3;' })],
+      [stat({ id: 'gold', name: 'Gold', scripts: boxScripts({ after: 'entities.Bram.stats.Stamina.value -= 15; persona.stats.Grit.regen = 3;' }) })],
       [owner('bram', [stat({ id: 'stamina', name: 'Stamina', value: 40 })]), owner('mira', [stat({ id: 'grit', name: 'Grit' })])],
     );
     expect(valueOf(out.owners?.bram.stats, 'stamina')).toBe(25);
@@ -80,9 +81,9 @@ describe('runStatCodeTurn writes across owners', () => {
 
   it('resolves two owners writing one field in owner order, a library persona landing last', async () => {
     const trust = stat({ id: 'trust', name: 'Trust', value: 30 });
-    const writer = (code: string) => stat({ id: 'w', name: 'W', code });
+    const writer = (code: string) => stat({ id: 'w', name: 'W', scripts: boxScripts({ after: code }) });
     const out = await run(
-      [writer('entities.Bram.stats.Trust.value = 1; stats.Alert.value = 1;'), stat({ id: 'alert', name: 'Alert', value: 0, code: 'return 2;' })],
+      [writer('entities.Bram.stats.Trust.value = 1; stats.Alert.value = 1;'), stat({ id: 'alert', name: 'Alert', value: 0, scripts: boxScripts({ after: 'return 2;' }) })],
       [
         owner('bram', [writer('owner.stats.Trust.value = 2; owner.stats.Trust.regen = 2;'), trust]),
         owner('odette', [writer('entities.Bram.stats.Trust.value = 3; stats.Alert.value = 3;')]),
@@ -97,14 +98,14 @@ describe('runStatCodeTurn writes across owners', () => {
 
   it('keeps stat order within the writer’s owner, the later stat winning', async () => {
     const out = await run([], [
-      owner('bram', [stat({ id: 'a', name: 'A', code: 'entities.Odette.stats.Calm.value = 1;' }), stat({ id: 'b', name: 'B', code: 'entities.Odette.stats.Calm.value = 2;' })]),
+      owner('bram', [stat({ id: 'a', name: 'A', scripts: boxScripts({ after: 'entities.Odette.stats.Calm.value = 1;' }) }), stat({ id: 'b', name: 'B', scripts: boxScripts({ after: 'entities.Odette.stats.Calm.value = 2;' }) })]),
       owner('odette', [stat({ id: 'calm', name: 'Calm', value: 0 })]),
     ]);
     expect(valueOf(out.owners?.odette.stats, 'calm')).toBe(2);
   });
 
   it('moves a world stat once when a Blueprint stat on two owners writes it', async () => {
-    const hub = stat({ id: 'hub', name: 'Hub', code: 'stats.Gold.value = stats.Gold.value + 1;' });
+    const hub = stat({ id: 'hub', name: 'Hub', scripts: boxScripts({ after: 'stats.Gold.value = stats.Gold.value + 1;' }) });
     const out = await run([stat({ id: 'gold', name: 'Gold', value: 5 })], [owner('bram', [hub]), owner('odette', [hub])]);
     // Each owner reads Gold at 5, so both write 6.
     expect(valueOf(out.stats, 'gold')).toBe(6);
@@ -114,11 +115,11 @@ describe('runStatCodeTurn writes across owners', () => {
     const out = await run(
       [
         stat({ id: 'alert', name: 'Alert', value: 10 }),
-        stat({ id: 'echo', name: 'Echo', value: 0, code: 'entities.Bram.stats.Trust.value = 99; return stats.Alert.value;' }),
+        stat({ id: 'echo', name: 'Echo', value: 0, scripts: boxScripts({ after: 'entities.Bram.stats.Trust.value = 99; return stats.Alert.value;' }) }),
       ],
       [
-        owner('bram', [stat({ id: 'trust', name: 'Trust', value: 30 }), stat({ id: 'fury', name: 'Fury', code: 'stats.Alert.value = 90;' })]),
-        owner('odette', [stat({ id: 'calm', name: 'Calm', value: 0, code: 'return entities.Bram.stats.Trust.value;' })]),
+        owner('bram', [stat({ id: 'trust', name: 'Trust', value: 30 }), stat({ id: 'fury', name: 'Fury', scripts: boxScripts({ after: 'stats.Alert.value = 90;' }) })]),
+        owner('odette', [stat({ id: 'calm', name: 'Calm', value: 0, scripts: boxScripts({ after: 'return entities.Bram.stats.Trust.value;' }) })]),
       ],
     );
     expect(valueOf(out.stats, 'echo')).toBe(10);
@@ -130,7 +131,7 @@ describe('runStatCodeTurn writes across owners', () => {
   it('spares a world stat an entity writes the starvation penalty, and the gate snapshot sees the write', async () => {
     const out = await run(
       [stat({ id: 'health', name: 'Health', value: 50 }), stat({ id: 'stamina', name: 'Stamina', value: 50 })],
-      [owner('bram', [stat({ id: 'fury', name: 'Fury', code: 'stats.Health.value = 60;' })])],
+      [owner('bram', [stat({ id: 'fury', name: 'Fury', scripts: boxScripts({ after: 'stats.Health.value = 60;' }) })])],
       { penalties: { health: 10, stamina: 10 } },
     );
     expect(out.gateStats.global.health.value).toBe(60);
@@ -141,7 +142,7 @@ describe('runStatCodeTurn writes across owners', () => {
 
   it('shows an entity stat’s cross-owner write in that entity’s slot of the gate snapshot', async () => {
     const out = await run(
-      [stat({ id: 'gold', name: 'Gold', code: 'entities.Odette.stats.Calm.value = 75;' })],
+      [stat({ id: 'gold', name: 'Gold', scripts: boxScripts({ after: 'entities.Odette.stats.Calm.value = 75;' }) })],
       [owner('odette', [stat({ id: 'calm', name: 'Calm', value: 10 })])],
     );
     expect(out.gateStats.owners.odette.calm.value).toBe(75);
@@ -151,7 +152,7 @@ describe('runStatCodeTurn writes across owners', () => {
     const out = await run(
       [stat({
         id: 'gold', name: 'Gold',
-        code: 'entities.Bram.stats.Off.value = 1; entities.Bram.stats.Nope.value = 2; entities.Ghost.stats.Trust.value = 3; entities.Rook.stats.Trust.max = 4;',
+        scripts: boxScripts({ after: 'entities.Bram.stats.Off.value = 1; entities.Bram.stats.Nope.value = 2; entities.Ghost.stats.Trust.value = 3; entities.Rook.stats.Trust.max = 4;' }),
       })],
       [owner('bram', [stat({ id: 'off', name: 'Off', value: 30 })], { enabled: { off: false } })],
     );

@@ -1,7 +1,7 @@
 # 🧮 Stat Code Guide
 <!-- keywords: scripting, automation, custom logic, game mechanics, coding, rules engine -->
 
-This guide explains Formamorph's **stat code**: a small JavaScript script attached to a stat. It can set the stat's value from other stats, set the stat's own bounds, write another stat, pin a placeholder, or switch a trait. Each stat has two script boxes, one on each side of the AI's turn. In a world file they are the `beforeCode` and `code` fields of an entry in the world's `stats` list. The [World Format](WorldFormat#stats) page describes the rest of a stat.
+This guide explains Formamorph's **stat code**: a small JavaScript script attached to a stat. It can set the stat's value from other stats, set the stat's own bounds, write another stat, pin a placeholder, or switch a trait. Each stat has two script boxes, one on each side of the AI's turn. In a world file they are scripts with the timings `"before"` and `"after"` in the stat's `scripts` list ([Scripts](WorldFormat#scripts)). The [World Format](WorldFormat#stats) page describes the rest of a stat.
 
 ## How to Add Stat Code to a Stat
 <!-- keywords: script, javascript, js, formula, calculate, dynamic, programming, tab, computed value, derived, equation, math, tab is missing, where to write it, depends on another stat, auto update each turn -->

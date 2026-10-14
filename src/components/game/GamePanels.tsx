@@ -25,7 +25,8 @@ import { ChoiceRows } from './ChoiceRows';
 import { TurnCard } from './TurnCard';
 import { ActionLine } from './ActionLine';
 import { StatsActions } from './StatsActions';
-import { bubbleActions, choicesActions, playerBubbleActions } from '@/lib/bubbleActions';
+import { bubbleActions, choicesActions, playerBubbleActions, withEndpoints } from '@/lib/bubbleActions';
+import { useEndpointTip, withEndpointLine } from '@/lib/useEndpointTip';
 import { rewriteTurnAction } from '@/lib/turnHistory';
 import { copyWithToast } from '@/lib/clipboard';
 import { useLiveReasoning } from '@/lib/reasoningStreamStore';
@@ -708,11 +709,13 @@ export const MiddlePanel = ({
   }
 
   // A turn's Edit and Rewind to Here target that turn's own page, never the viewed one.
+  // Each request-sending action names where it goes.
+  const endpointTip = useEndpointTip();
   const [editTarget, setEditTarget] = useState<{ kind: 'narration' | 'action'; page: number; text: string; turnId?: string } | null>(null);
   const [rewindPage, setRewindPage] = useState<number | null>(null);
   const actionsFor = (turn: ChatBubbleTurn) => {
     const page = turn.index + 1;
-    return bubbleActions(
+    return withEndpoints(bubbleActions(
       {
         isLatest: turn.isLatest,
         live: turn.live,
@@ -735,7 +738,7 @@ export const MiddlePanel = ({
         copy: () => copyWithToast(turn.text),
         rewind: () => setRewindPage(page),
       },
-    );
+    ), endpointTip);
   };
   const editAction = (page: number, text: string) => {
     setEditTarget({ kind: 'action', page, text, turnId: pageTurnId(fullMessageHistory, page) });
@@ -772,10 +775,10 @@ export const MiddlePanel = ({
     index: currentPage - 1, live: !isViewingPast && (pageLive || (isWaitingForAI && !currentAssistantMessage)), text: actionLine,
   });
   /** The choices block's actions, for a block that shows `hasChoices`. */
-  const regenChoicesActions = (hasChoices: boolean) => choicesActions(
+  const regenChoicesActions = (hasChoices: boolean) => withEndpoints(choicesActions(
     { canRegenerate: canRegenChoices, hasChoices, busy: disabled || isWaitingForAI || isRevealingNarration, regenerating: choicesRegenerating && isWaitingForAI },
     () => { setChoicesRegenerating(true); handleRegenerateChoices(); },
-  );
+  ), endpointTip);
   const pageChoicesActions = isViewingPast ? [] : regenChoicesActions((choices?.length ?? 0) > 0 || showContinue);
 
   const narrationFrame = `narration-text flex-grow border border-border p-2 bg-muted/80 min-h-0 ${isFlashing ? 'flash-animation' : ''} relative`;
@@ -1185,14 +1188,17 @@ export const MiddlePanel = ({
                   <Square className="h-4 w-4" />
                 </Button>
               ) : (
-                <Button
-                  onClick={handleSendAction}
-                  disabled={disabled}
-                  aria-label="Send"
-                  className="border-dashed border-2 w-12 sm:w-32"
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
+                // The narration's endpoint: the turn's other passes may route elsewhere, and their buttons name theirs.
+                <Tip tip={withEndpointLine('Send', endpointTip('narration'))} labelsChild={false}>
+                  <Button
+                    onClick={handleSendAction}
+                    disabled={disabled}
+                    aria-label="Send"
+                    className="border-dashed border-2 w-12 sm:w-32"
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </Tip>
               )}
             </div>
           </div>

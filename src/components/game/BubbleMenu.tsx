@@ -22,7 +22,7 @@ export function BubbleActionIcon({ action }: { action: BubbleAction }) {
 /** One action as a row icon button, with its label as tooltip and accessible name. */
 export function BubbleActionButton({ action, className }: { action: BubbleAction; className?: string }) {
   return (
-    <Tip tip={action.label}>
+    <Tip tip={action.endpoint ? `${action.label}\n${action.endpoint}` : action.label}>
       <Button
         variant="ghost"
         size="icon"
@@ -79,10 +79,18 @@ export function BubbleMenu({ actions, disabled, children }: {
                 key={action.key}
                 disabled={action.disabled}
                 onSelect={action.run}
+                // Named by its label alone; where it sends is said, not part of its name.
+                aria-label={action.endpoint ? action.label : undefined}
+                aria-description={action.endpoint}
                 className={cn(action.section === 'destructive' && 'text-destructive focus:text-destructive')}
               >
                 <BubbleActionIcon action={action} />
-                {action.label}
+                {action.endpoint ? (
+                  <span className="flex min-w-0 flex-col">
+                    {action.label}
+                    <span className="truncate text-meta text-muted-foreground">{action.endpoint}</span>
+                  </span>
+                ) : action.label}
               </ContextMenuItem>
             ))}
           </React.Fragment>

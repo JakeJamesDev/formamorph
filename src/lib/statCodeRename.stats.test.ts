@@ -3,6 +3,7 @@ import type { Entity, Stat, StatGroup } from '@/types';
 import { planCodeRename, type CodeRenamePlan, type RenamedStat } from './statCodeRename';
 import type { CodeHome } from './statCodeTargets';
 import type { StatCodeTiming } from './statCodeTiming';
+import { boxScripts, codeAt } from '@/test/scriptFixtures';
 
 const stat = (id: string, name: string, extra: Partial<Stat> = {}): Stat =>
   ({ id, name, type: 'number', value: 0, min: 0, max: 100, ...extra } as Stat);
@@ -12,19 +13,18 @@ const stat = (id: string, name: string, extra: Partial<Stat> = {}): Stat =>
 const blueprints: StatGroup = { id: 'bp', name: 'Blueprints', system: 'blueprints' } as StatGroup;
 const destruction = stat('destruction', 'Destruction');
 const alert = stat('alert', 'Alert', {
-  code: 'return stats.Destruction.value + stats.Rage.value + entities["The Creature"].stats.Rage.value'
-    + ' + entities.Bram.stats.Rage.value + entities[\'Bram\'].stats[\'Rage\'].value + persona.stats.Rage.value;',
+  scripts: boxScripts({ after: 'return stats.Destruction.value + stats.Rage.value + entities["The Creature"].stats.Rage.value'
+    + ' + entities.Bram.stats.Rage.value + entities[\'Bram\'].stats[\'Rage\'].value + persona.stats.Rage.value;' }),
 });
 const worldRage = stat('world-rage', 'Rage');
-const howl = stat('howl', 'Howl', { groupId: 'bp', code: 'return owner.stats.Rage.value + stats.Destruction.value;' });
+const howl = stat('howl', 'Howl', { groupId: 'bp', scripts: boxScripts({ after: 'return owner.stats.Rage.value + stats.Destruction.value;' }) });
 const creatureRage = stat('creature-rage', 'Rage', {
-  beforeCode: 'owner.stats.Rage.max = 50; stats.Rage.value += 1;',
-  code: 'return stats.Destruction.value + owner.stats.Rage.value + entities.Bram.stats.Rage.value;',
+  scripts: boxScripts({ before: 'owner.stats.Rage.max = 50; stats.Rage.value += 1;', after: 'return stats.Destruction.value + owner.stats.Rage.value + entities.Bram.stats.Rage.value;' }),
 });
-const bramRage = stat('bram-rage', 'Rage', { code: 'return owner.stats.Rage.value + entities["The Creature"].stats.Rage.value;' });
+const bramRage = stat('bram-rage', 'Rage', { scripts: boxScripts({ after: 'return owner.stats.Rage.value + entities["The Creature"].stats.Rage.value;' }) });
 const howlLink = (id: string, code?: string) => ({
   id, originalId: 'howl', kind: 'stat' as const, originalName: 'Howl', groupId: null, order: 1,
-  ...(code === undefined ? {} : { overrides: { howl: { code: { value: code, blueprint: howl.code ?? '' } } } }),
+  ...(code === undefined ? {} : { overrides: { howl: { scripts: { value: boxScripts({ after: code }), blueprint: howl.scripts ?? [] } } } }),
 });
 const creature: Entity = { id: 'creature', name: 'The Creature', persona: true, stats: [creatureRage], statLinks: [howlLink('l-creature')] };
 const bram: Entity = {
@@ -44,7 +44,7 @@ const rename = (renamed: RenamedStat, oldName: string, newName: string, over: Pa
 
 /** The rewritten text of one box, or undefined where the rename leaves it alone. */
 const boxAt = (plan: CodeRenamePlan | null, home: CodeHome, timing: StatCodeTiming = 'after') =>
-  plan?.edits.find((edit) => JSON.stringify(edit.home) === JSON.stringify(home))?.boxes[timing];
+  plan?.edits.find((edit) => JSON.stringify(edit.home) === JSON.stringify(home))?.scripts[timing];
 
 const ofWorld = (statId: string): CodeHome => ({ kind: 'stat', statId });
 const ofEntity = (entityId: string, statId: string): CodeHome => ({ kind: 'entity', entityId, statId });
@@ -72,7 +72,7 @@ describe('renaming a world stat', () => {
 describe('renaming a world stat that shares its name with entity stats', () => {
   it('rewrites only stats.Rage, and leaves every owned Rage alone', () => {
     const plan = rename({ id: 'world-rage' }, 'Rage', 'Wrath');
-    expect(boxAt(plan, ofWorld('alert'))).toBe(alert.code!.replace('stats.Rage.value + entities', 'stats.Wrath.value + entities'));
+    expect(boxAt(plan, ofWorld('alert'))).toBe(codeAt(alert)!.replace('stats.Rage.value + entities', 'stats.Wrath.value + entities'));
     expect(boxAt(plan, ofEntity('creature', 'creature-rage'), 'before')).toBe('owner.stats.Rage.max = 50; stats.Wrath.value += 1;');
     expect(boxAt(plan, ofEntity('creature', 'creature-rage'))).toBeUndefined();
     expect(boxAt(plan, ofEntity('bram', 'bram-rage'))).toBeUndefined();
@@ -119,7 +119,7 @@ describe('renaming an entity’s own stat', () => {
 
   it('leaves a duplicated entity’s copy alone, though its stat keeps the same id', () => {
     const copy: Entity = { ...creature, id: 'creature-copy', name: 'Twin', persona: false, statLinks: [] };
-    const reader = stat('reader', 'Reader', { code: 'return entities.Twin.stats.Rage.value;' });
+    const reader = stat('reader', 'Reader', { scripts: boxScripts({ after: 'return entities.Twin.stats.Rage.value;' }) });
     const plan = rename({ id: 'creature-rage', entityId: 'creature' }, 'Rage', 'Fury', {
       stats: [...world.stats, reader], entities: [creature, bram, copy],
     });
@@ -139,7 +139,7 @@ describe('renaming an entity’s own stat', () => {
 
 describe('renaming a Blueprint stat', () => {
   it('follows its owners’ copies and leaves stats, which never reaches a Blueprint', () => {
-    const reader = stat('reader', 'Reader', { code: 'return stats.Howl.value + entities.Bram.stats.Howl.value;' });
+    const reader = stat('reader', 'Reader', { scripts: boxScripts({ after: 'return stats.Howl.value + entities.Bram.stats.Howl.value;' }) });
     const plan = rename({ id: 'howl' }, 'Howl', 'Roar', { stats: [...world.stats, reader] });
     expect(boxAt(plan, ofWorld('reader'))).toBe('return stats.Howl.value + entities.Bram.stats.Roar.value;');
   });

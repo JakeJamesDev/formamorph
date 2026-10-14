@@ -6,6 +6,7 @@ import { STAT_CODE_SURFACE } from './statCodeSurface';
 import { statCodeOwners, type StatRouteWorld } from './statCodeTargets';
 import type { StatCodeTiming } from './statCodeTiming';
 import type { Entity, Stat, StatGroup, StatLink } from '@/types';
+import { boxScripts } from '@/test/scriptFixtures';
 
 const stat = (id: string, name: string, extra: Partial<Stat> = {}): Stat =>
   ({ id, name, type: 'number', description: '', min: 0, max: 100, value: 0, regen: 0, descriptors: [], ...extra });
@@ -29,8 +30,8 @@ const mara: Entity = {
   statLinks: [link('mara-rage', { rage: { max: { value: 50, blueprint: 100 } } })],
 };
 const tom: Entity = { id: 'tom', name: 'Tom', persona: true, statLinks: [link('tom-rage', { rage: { max: { value: 60, blueprint: 100 } } })] };
-// Kai's Link runs its own After code, so the Blueprint's After box doesn't run for Kai.
-const kai: Entity = { id: 'kai', name: 'Kai', statLinks: [link('kai-rage', { rage: { code: { value: 'return 1;', blueprint: '' } } })] };
+// Kai's Link overrides the scripts, so none of the Blueprint's scripts run for Kai (Q32).
+const kai: Entity = { id: 'kai', name: 'Kai', statLinks: [link('kai-rage', { rage: { scripts: { value: boxScripts({ after: 'return 1;' }), blueprint: boxScripts({ after: '' }) } } })] };
 
 const world: StatRouteWorld = {
   stats: [health, fatigue, rage, calm], statGroups: [blueprints, beast], entities: [mara, tom, kai], placeholders: [],
@@ -141,7 +142,7 @@ describe('stat cards: routes', () => {
     expect(rowsOf(card)).toEqual({ Type: 'Number', Range: '0 – 100', Owners: 'Mara, Tom' });
     expect(card?.signature).toEqual({ kind: 'stat', path: 'owner.stats.Rage', type: 'Stat', scope: 'blueprint' });
     expect(rowsOf(cardAt('return owner.stats.Ca|lm.value;', rageBox('before'))))
-      .toEqual({ Type: 'Number', Range: '0 – 100', Owners: 'Mara, Tom, Kai' });
+      .toEqual({ Type: 'Number', Range: '0 – 100', Owners: 'Mara, Tom' });
   });
 
   it('says No Owners on a Blueprint stat no one runs', () => {
@@ -155,7 +156,7 @@ describe('stat cards: routes', () => {
   });
 
   it('finds the uses of the one playable entity’s stat from its `persona.stats` card', () => {
-    const reader = stat('mood', 'Mood', { code: 'return persona.stats.Rage.value;' });
+    const reader = stat('mood', 'Mood', { scripts: boxScripts({ after: 'return persona.stats.Rage.value;' }) });
     const options = box(null, reader, 'after', { ...world, stats: [health, fatigue, rage, calm, reader] });
     const card = cardAt('return persona.stats.Ra|ge.value;', options);
     expect(options.lookup!.uses(card!.item!).map((use) => [use.stat, use.line])).toEqual([['Mood', 1]]);
@@ -248,7 +249,7 @@ describe('`self` and `owner` cards', () => {
 
   it('lists the owners that run a Blueprint box', () => {
     expect(cardAt('return own|er.name;', rageBox())?.rows).toEqual([{ label: 'Owners', value: 'Mara, Tom' }]);
-    expect(cardAt('return own|er.name;', rageBox('before'))?.rows).toEqual([{ label: 'Owners', value: 'Mara, Tom, Kai' }]);
+    expect(cardAt('return own|er.name;', rageBox('before'))?.rows).toEqual([{ label: 'Owners', value: 'Mara, Tom' }]);
   });
 
   it('marks a Blueprint box no one runs', () => {

@@ -7,6 +7,7 @@ import { entityIdsAt } from './entityPresence';
 import { buildEntityContext, navigableDestinationEntries } from './locationContext';
 import { effectiveDestinations } from './locationGraph';
 import type { Connection, Entity, GameLocation, Placeholder, SaveObject, World } from '@/types';
+import { codeAt } from '@/test/scriptFixtures';
 
 // Loose view of a migrated world for assertions (avoids `any`).
 type DescItem = {
@@ -386,7 +387,7 @@ describe('migrateWorld', () => {
       { id: 's2', name: 'Power', code: 'const me = stats.find(s => s.id === currentStatId);\nreturn me.value;' },
       { id: 's3', name: 'Plain' },
     ];
-    const codeOf = (world: unknown) => (world as { stats: { code?: string }[] }).stats.map((s) => s.code);
+    const codeOf = (world: unknown) => (world as World).stats.map((s) => codeAt(s));
 
     it('rewrites every stat’s code in a world from an earlier version', () => {
       expect(codeOf(migrateWorld({ version: '2.14.0', worldOverview: { name: 'W' }, stats }))).toEqual([
@@ -435,14 +436,17 @@ describe('migrateWorld', () => {
           + " + (placeholders.Eyes.value === 'green' ? 1 : 0);",
       }],
     };
-    const boxesOf = (out: unknown) => (out as { stats: { beforeCode?: string; code?: string }[] }).stats[0];
+    const scriptsOf = (out: unknown) => (out as World).stats[0].scripts;
 
     it('rewrites every retired route in both boxes', () => {
-      expect(boxesOf(migrateWorld(world))).toMatchObject({
-        beforeCode: "entities.Molly.placeholders.Eyes.pin('green'); placeholders.Hair.Shade.pin('ash');",
-        code: 'return dictionaries.Weather.placeholders.Sky.text.length + clock.deltaHours + clock.previous.day'
-          + " + (self.id ? 1 : 0) + (entities.Molly.placeholders.Eyes.value === 'green' ? 1 : 0);",
-      });
+      expect(scriptsOf(migrateWorld(world))).toEqual([
+        { id: 's1:before', timing: 'before', code: "entities.Molly.placeholders.Eyes.pin('green'); placeholders.Hair.Shade.pin('ash');" },
+        {
+          id: 's1:after', timing: 'after',
+          code: 'return dictionaries.Weather.placeholders.Sky.text.length + clock.deltaHours + clock.previous.day'
+            + " + (self.id ? 1 : 0) + (entities.Molly.placeholders.Eyes.value === 'green' ? 1 : 0);",
+        },
+      ]);
     });
 
     it('is idempotent', () => {
@@ -451,7 +455,7 @@ describe('migrateWorld', () => {
     });
 
     it('keeps a stat whose code needs nothing as the same object', () => {
-      const plain = { id: 's2', name: 'Plain', code: 'return clock.day;' };
+      const plain = { id: 's2', name: 'Plain', scripts: [{ id: 's2:after', timing: 'after', code: 'return clock.day;' }] };
       const out = migrateWorld({ ...world, stats: [plain] }) as unknown as { stats: unknown[] };
       expect(out.stats[0]).toBe(plain);
     });

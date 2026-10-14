@@ -17,6 +17,7 @@ import {
   repinRenamedValues,
 } from './traitEffects';
 import { activePlaceholderPins, withPinnedValue } from './placeholderPins';
+import { boxScripts, codeAt } from '@/test/scriptFixtures';
 
 const T = (id: string, extra: Partial<Trait> = {}): Trait => ({
   id, name: id, statChanges: [], ...extra,
@@ -92,21 +93,21 @@ describe('re-reading chosen traits from the world', () => {
 
 describe('re-reading saved stats from the world', () => {
   it('runs the code the author wrote since the save was made', () => {
-    const saved = [PS('vigor', { code: 'self.value = 1;' })];
-    const authored = [S('vigor', { code: 'self.value = 2;' })];
-    expect(refreshSavedStats(saved, authored)[0].code).toBe('self.value = 2;');
+    const saved = [PS('vigor', { scripts: boxScripts({ after: 'self.value = 1;' }) })];
+    const authored = [S('vigor', { scripts: boxScripts({ after: 'self.value = 2;' }) })];
+    expect(codeAt(refreshSavedStats(saved, authored)[0])).toBe('self.value = 2;');
   });
 
   it('runs a before box the author filled in since the save was made', () => {
     const saved = [PS('vigor')];
-    const authored = [S('vigor', { beforeCode: 'self.value = 3;' })];
-    expect(refreshSavedStats(saved, authored)[0].beforeCode).toBe('self.value = 3;');
+    const authored = [S('vigor', { scripts: boxScripts({ before: 'self.value = 3;' }) })];
+    expect(codeAt(refreshSavedStats(saved, authored)[0], 'before')).toBe('self.value = 3;');
   });
 
   it('drops a before box the author emptied since the save was made', () => {
-    const saved = [PS('vigor', { beforeCode: 'self.value = 3;' })];
+    const saved = [PS('vigor', { scripts: boxScripts({ before: 'self.value = 3;' }) })];
     const authored = [S('vigor')];
-    expect(refreshSavedStats(saved, authored)[0].beforeCode).toBeUndefined();
+    expect(codeAt(refreshSavedStats(saved, authored)[0], 'before')).toBeUndefined();
   });
 
   it('picks up a rename, a redescription, and a retype since the save was made', () => {
@@ -133,7 +134,7 @@ describe('re-reading saved stats from the world', () => {
 
   it('leaves a stat the world no longer has exactly as the save had it', () => {
     // Deleting and re-creating a stat mints a new id, the same fallback an unmatched trait gets.
-    const saved = [PS('gone', { name: 'Gone', code: 'self.value = 1;' })];
+    const saved = [PS('gone', { name: 'Gone', scripts: boxScripts({ after: 'self.value = 1;' }) })];
     expect(refreshSavedStats(saved, [])).toEqual(saved);
   });
 });
