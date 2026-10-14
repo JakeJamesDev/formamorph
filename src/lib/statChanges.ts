@@ -159,3 +159,14 @@ export function appliedStatDeltas(
   });
   return map;
 }
+
+/** Two per-stat change maps laid end to end: a stat that moved in both shows the sum, and one that nets zero drops out. */
+export function sumDeltas(first: Readonly<Record<string, number>>, second: Readonly<Record<string, number>>): Record<string, number> {
+  const map: Record<string, number> = { ...first };
+  for (const [name, delta] of Object.entries(second)) {
+    const total = (map[name] ?? 0) + delta;
+    if (total === 0) delete map[name];
+    else map[name] = total;
+  }
+  return map;
+}

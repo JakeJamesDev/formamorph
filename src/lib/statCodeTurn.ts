@@ -18,7 +18,7 @@ import {
   type CodeTraitSwitch, type TraitRuntimeState,
 } from './traitRuntime';
 import type { GateStats } from './traitGates';
-import type { StatCodeTiming } from './statCodeTiming';
+import { readsTurnStart, type RunTiming } from './statCodeTiming';
 import { filledScriptsAt, inRunOrder, scriptLabel } from './scripts';
 import { clamp } from './utils';
 import type { OwnerId } from './scope';
@@ -38,9 +38,9 @@ export interface StatCodeTraitResult {
 /** Everything one turn hands to stat code. The forward turn and the re-roll both build one of these; a turn
  *  with no stat response builds one with no asks. */
 export interface StatCodeTurn {
-  /** Which timing's scripts run. `before` runs over the turn's starting state, reading every `delta` as zero
-   *  and `previous` as `self` whatever the turn carries. `after`, the default, runs over the asks and the regen. */
-  timing?: StatCodeTiming;
+  /** Which timing's scripts run. `before` and `start` run over the turn's starting state, reading every `delta`
+   *  as zero and `previous` as `self` whatever the turn carries. `after`, the default, runs over the asks and the regen. */
+  timing?: RunTiming;
   /** The world's own scripts, which run with no `self` and no `owner`. Absent ⇒ none. */
   worldScripts?: readonly Script[];
   /** Every stat as the turn's pipeline left it: AI asks and regen applied, code not yet run. Names are the
@@ -273,16 +273,16 @@ function statWritesByOwner(writers: readonly (ScriptWrites | undefined)[]): Map<
 }
 
 function ownerRun<O extends RunOwner>(
-  owner: O, timing: StatCodeTiming, placeholderDefs: readonly Placeholder[], worldScripts: readonly Script[] = [],
+  owner: O, timing: RunTiming, placeholderDefs: readonly Placeholder[], worldScripts: readonly Script[] = [],
 ): OwnerRun<O> {
   // Code reaches a stat by its code name, which no roll moves. The log and the panel keep the rolled text.
   const named = statCodeNamed(owner.stats, placeholderDefs);
   const previous = new Map(statCodeNamed(owner.previous, placeholderDefs).map((stat) => [stat.id, stat]));
   const asks = new Map((owner.asks ?? []).map((ask) => [ask.id, ask]));
-  // Only what this turn knows; the executor reads a missing part as untouched. The before box runs at the
-  // turn's start, so it hands over nothing at all: the executor then reads `previous` as `self` and every
-  // delta source as zero, whatever the turn it rides in already holds.
-  const inputs: Record<string, StatTurnInputs> = timing === 'before' ? {} : Object.fromEntries(named.map((stat) => {
+  // Only what this turn knows; the executor reads a missing part as untouched. The before box and the start
+  // scripts run at the turn's start, so they hand over nothing at all: the executor then reads `previous` as
+  // `self` and every delta source as zero, whatever the turn it rides in already holds.
+  const inputs: Record<string, StatTurnInputs> = readsTurnStart(timing) ? {} : Object.fromEntries(named.map((stat) => {
     const before = previous.get(stat.id);
     const ask = asks.get(stat.id);
     return [stat.id, {

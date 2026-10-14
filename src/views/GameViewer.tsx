@@ -18,7 +18,7 @@ import {
   applyEntityStatResponse, entityCodeTurns, entityStatOwners, personaEntities, personaStatOwners, seedEntityStats, statOwnerEntities,
   statRequestOwners, withEntityRegen, withOwnerCodeResults,
 } from "@/lib/entityStats";
-import type { StatCodeTiming } from "@/lib/statCodeTiming";
+import { readsTurnStart, type RunTiming } from "@/lib/statCodeTiming";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -164,7 +164,7 @@ import { revealActive } from "../lib/narrationRevealConfig";
 import { CHOICES_TEST_ACTION, CHOICES_TEST_CHOICES, CHOICES_TEST_NARRATION, REVEAL_TEST_NARRATION, REVEAL_TEST_PROFILES, type RevealArrivalEvent } from "../lib/revealTestScripts";
 import { MARKDOWN_SAMPLE } from "../lib/markdownSample";
 import { parseSlashCommand } from "../lib/slashCommands";
-import { appliedStatDeltas, applyRegen } from "../lib/statChanges";
+import { appliedStatDeltas, applyRegen, sumDeltas } from "../lib/statChanges";
 import type { OwnerId } from "../lib/scope";
 
 import { applyStatResponse, createStatRequest, keyedScene, readStatResponse, statResponseChanges, type StatRequestSnapshot, type StatResponse } from "../lib/statRequest";
@@ -1349,6 +1349,13 @@ const GameViewer = ({
   // gameStates only holds post-turn snapshots, so the first turn has no predecessor there. Captured in
   // sendGameAction on the first turn.
   const initialStateRef = useRef<ReturnType<typeof saveCurrentGameState> | null>(null);
+  // Whether the opening turn still runs the At Game Start scripts: this view seeded a new game and no save has
+  // loaded since. A regenerated page one on a loaded save rebuilds its baseline from state that already holds
+  // the start writes, so it must not run them again.
+  const newPlaythroughRef = useRef(false);
+  useEffect(() => {
+    if (saveLoads > 0) newPlaythroughRef.current = false;
+  }, [saveLoads]);
   // A completed turn dispatches several state updates together (finalized message, applied stat changes,
   // advanced time). Saving the snapshot synchronously alongside them captures a stale, half-applied state
   // — and inside the async turn flow the closure's length is stale too, which misaligns gameStates. So we
@@ -1538,10 +1545,11 @@ const GameViewer = ({
       // A re-roll replays the whole turn, so the before box runs again first, on the clock as it read at
       // turn start. Its writes are the baseline the asks then land on, and the request reads them.
       beforeBoxDeltasRef.current = {};
-      const written = (await runStatCode(
-        preTurn.globalStats ?? [], preTurn.globalStats ?? [], [],
-        { deltaHours: 0, elapsedHours: gameTime - turnHours, calendar }, preTurn, 'before',
-      ))?.written ?? null;
+      // Page one of a fresh game restores the pre-start state, so the start scripts run again first.
+      const written = await runBeforeAI(
+        preTurn.globalStats ?? [], { deltaHours: 0, elapsedHours: gameTime - turnHours, calendar }, preTurn,
+        page === 1 && newPlaythroughRef.current,
+      );
       // The box has written by the time the request can be stopped, so every exit that abandons the
       // re-roll puts the pre-turn state back rather than leaving those writes over a turn with no asks.
       let committed = false;
@@ -2407,10 +2415,10 @@ const GameViewer = ({
         globalStats: rawGlobalStatsRef.current, codePins, globalTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds,
         ownedTraits, entityStats: entityStatsRef.current,
       };
-      const beforeBox = (await runStatCode(
-        rawGlobalStatsRef.current, rawGlobalStatsRef.current, [],
-        { deltaHours: 0, elapsedHours: gameTime, calendar }, undefined, 'before',
-      ))?.written ?? null;
+      // The At Game Start scripts shape the opening: once per new playthrough, ahead of the before box.
+      const beforeBox = await runBeforeAI(
+        rawGlobalStatsRef.current, { deltaHours: 0, elapsedHours: gameTime, calendar }, undefined, isOpeningTurn && newPlaythroughRef.current,
+      );
       beforeBoxUndoRef.current = beforeBox ? preBox : null;
       const codeView = turnCodeView(beforeBox);
 
@@ -2835,7 +2843,7 @@ const GameViewer = ({
     async (
       before: PlayerStat[], afterAsks: PlayerStat[], asks: StatCodeTurn["asks"], clock: StatClock,
       preTurn?: PreTurnCodeState,
-      timing: StatCodeTiming = 'after',
+      timing: RunTiming = 'after',
       { entityTurn, thresholdStats }: {
         /** The entities' values after this turn's AI asks, and the asks, by owner. */
         entityTurn?: { values: EntityStatValues; asks: Record<string, StatCodeTurn["asks"]> };
@@ -2845,8 +2853,8 @@ const GameViewer = ({
     ): Promise<{ written: TurnCodeState | null; gateStats: GateStats } | null> => {
       try {
         const enabled = statEnabledRef.current;
-        // The before box runs at the turn's start, so there is no regen yet for it to fold in.
-        const tick = timing === 'before' ? null
+        // The before box and the start scripts run at the turn's start, so there is no regen yet to fold in.
+        const tick = readsTurnStart(timing) ? null
           : applyRegen(afterAsks, clock.deltaHours ?? FLAT_HOURS_PER_TURN, enabled);
         const regenApplied = tick?.applied ?? {};
         // A save runs the world's current stat code, not the copy frozen in the save. Descriptions resolve
@@ -2858,7 +2866,7 @@ const GameViewer = ({
         const entityPrevious = preTurn ? preTurn.entityStats ?? {} : entityStatsRef.current;
         const entityBase = entityTurn?.values ?? entityPrevious;
         const owners = entityCodeTurns(
-          entityOwnersOf(entityBase, preTurn ? preTurn.ownedTraits ?? {} : undefined), timing === 'before' ? null : clock.deltaHours ?? FLAT_HOURS_PER_TURN,
+          entityOwnersOf(entityBase, preTurn ? preTurn.ownedTraits ?? {} : undefined), readsTurnStart(timing) ? null : clock.deltaHours ?? FLAT_HOURS_PER_TURN,
           (ownerId, ticked) => resolveStatText(
             refreshSavedStats(ticked, statEntities.find((e) => e.id === ownerId)?.stats ?? []), resolvePH,
           ),
@@ -2936,8 +2944,9 @@ const GameViewer = ({
         // Fold the code-derived movement into the live delta feedback, so a code stat's bar/text animates
         // live — matching the history view (pageStatDeltas diffs the final, post-code snapshot).
         addStatDeltas(null, codeChanges);
-        // The commit resets the bar deltas mid-turn, so the before box's own share is re-laid over that.
-        if (timing === 'before') beforeBoxDeltasRef.current = codeChanges;
+        // The commit resets the bar deltas mid-turn, so the share of the runs before the AI is re-laid over that.
+        // The start scripts and the before box can move one stat, so their shares add.
+        if (readsTurnStart(timing)) beforeBoxDeltasRef.current = sumDeltas(beforeBoxDeltasRef.current, codeChanges);
         return { written: stateAfterRun(), gateStats: result.gateStats };
       } catch (error) {
         console.error("Error processing stat code:", error);
@@ -2947,6 +2956,19 @@ const GameViewer = ({
     [setGlobalStats, setEntityStats, entityOwnersOf, entityInForceUnder, addStatDeltas, setCodePins, resolvePH, statCodePlaceholders, pinsFor, traits, authoredStats, worldScripts, resolveTraitText, gatedWorld, codeEntities, statEntities, inForceOn, liveScene,
       setGlobalTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, setOwnedTraits, addLogEntry],
   );
+
+  // The runs before the AI, over a turn's starting stats: on an opening that runs the start scripts, the start
+  // scripts first, then the before box over the state they left. Hands back what the runs left, or null when
+  // neither wrote. The opening of a fresh game restarts from its pre-start state on every redo, so each redo
+  // passes `opening`.
+  const runBeforeAI = async (
+    stats: PlayerStat[], clock: StatClock, preTurn: PreTurnCodeState | undefined, opening: boolean,
+  ): Promise<TurnCodeState | null> => {
+    const started = opening ? (await runStatCode(stats, stats, [], clock, preTurn, 'start'))?.written ?? null : null;
+    const base = started?.globalStats ?? stats;
+    const ran = (await runStatCode(base, base, [], clock, started ?? preTurn, 'before'))?.written ?? null;
+    return ran ?? started;
+  };
 
   // Apply request identities to authored state; resolved names are only for code and display feedback.
   const applyStatChanges = useCallback(
@@ -3987,6 +4009,7 @@ const GameViewer = ({
       // a resolved name written in here would freeze whatever pins happened to be active at game start and
       // no later pin could ever move it.
       const seeded = seedNewGameStats(authoredStats);
+      newPlaythroughRef.current = true;
 
       // Authored order, not click order: stat changes apply in sequence, so a deterministic order is what
       // makes two players who picked the same traits end up with the same stats. Authored traits for the
