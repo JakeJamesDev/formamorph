@@ -121,7 +121,7 @@ function codeEntity(
   gates: GateStates,
   played: string | null,
 ): CodeEntity {
-  const owner = ownerTraits.world.bearers?.find((o) => o.id === authored.id);
+  const owner = ownerTraits.world.owners?.find((o) => o.id === authored.id);
   const state = ownerTraits.ownedTraits?.[authored.id];
   const chosen = new Set(state?.chosen ?? []);
   const off = new Set(state?.disabled ?? []);

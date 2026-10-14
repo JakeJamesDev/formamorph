@@ -5,7 +5,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { runStatCodeTurn, type OwnerCodeTurn, type StatCodeTurn } from './statCodeTurn';
 import type { StatCodeOwners } from './statCodeTraits';
-import { inPlayBearers } from './ownedTraitsInPlay';
+import { inPlayOwners } from './ownedTraitsInPlay';
 import { withOwnerCodeResults } from './entityStats';
 import type { Entity, Placeholder, PlayerStat, Trait } from '@/types';
 import { phValues } from '@/test/placeholderValues';
@@ -27,7 +27,7 @@ const ownerTraits = (): StatCodeOwners => {
     acquired: [], disabledTraitIds: [], appliedValues: {}, ownedTraits: {}, entities,
     world: {
       traits: [brave], groups: [], entities, persona: { source: 'none' },
-      bearers: inPlayBearers({ traits: [brave], traitGroups: [], entities }, { source: 'none' }, []),
+      owners: inPlayOwners({ traits: [brave], traitGroups: [], entities }, { source: 'none' }, []),
     },
   };
 };
@@ -163,7 +163,7 @@ describe('runStatCodeTurn entity owners', () => {
       {
         ownerTraits: {
           ...ownerTraits(), entities,
-          world: { ...ownerTraits().world, entities, bearers: inPlayBearers({ traits: [brave], traitGroups: [], entities }, { source: 'none' }, []) },
+          world: { ...ownerTraits().world, entities, owners: inPlayOwners({ traits: [brave], traitGroups: [], entities }, { source: 'none' }, []) },
         },
       },
     );

@@ -12,9 +12,9 @@ import { usePlayerModelUrl } from '@/lib/usePlayerModelUrl';
 import { mergeBodyMorphs } from '@/lib/bodyMorphs';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { traitOrderIndex, activeStatEnabled, refreshChosenTraits } from '@/lib/traitEffects';
-import { bearerStatTraitsInForce, listablePlayerTraits, statTraitsInForce, traitGateInput, type TraitWorld } from '@/lib/traitRuntime';
+import { entityStatTraitsInForce, listablePlayerTraits, statTraitsInForce, traitGateInput, type TraitWorld } from '@/lib/traitRuntime';
 import {
-  activeOwnedTraitIds, bearerTraitTree, inPlayBearers, playerEntityIds, rowBearer, withBearerNames,
+  activeOwnedTraitIds, ownerTraitTree, inPlayOwners, playerEntityIds, rowOwner, withOwnerNames,
 } from '@/lib/ownedTraitsInPlay';
 import { useGameDataOptional } from '@/contexts/GameDataContext';
 import { WORLD_OWNER } from '@/lib/traitGates';
@@ -1281,8 +1281,8 @@ export const RightPanel = ({
   );
   // A linked row's name reads its entity as the Character Name, from the original's authored text.
   const traitTree = React.useMemo(
-    () => withBearerNames(
-      bearerTraitTree(bearerWorld, personaRef, traitLibrary),
+    () => withOwnerNames(
+      ownerTraitTree(bearerWorld, personaRef, traitLibrary),
       { traits: gameData?.traits ?? [], traitGroups: gameData?.traitGroups ?? [] },
       (text, bearer, trait) => (trait ? resolveTraitText(trait, text, bearer) : resolveEntityText(bearer, text)),
     ),
@@ -1299,9 +1299,9 @@ export const RightPanel = ({
   // could take, together in authored order — owned and unowned differ only by the checkbox. A past turn shows
   // only what was held then: acquirables can't be acted on there. An entity's rows list the same way.
   const listedTraits = React.useMemo(() => {
-    const playerRows = traitTree.traits.filter((t) => rowBearer(traitTree, t) === WORLD_OWNER);
+    const playerRows = traitTree.traits.filter((t) => rowOwner(traitTree, t) === WORLD_OWNER);
     const entityRows = traitTree.traits.filter((t) => {
-      const bearer = rowBearer(traitTree, t);
+      const bearer = rowOwner(traitTree, t);
       return bearer !== WORLD_OWNER && (!!viewOwnedTraits[bearer]?.chosen.includes(t.id) || (!isViewingPast && !!t.playerToggle));
     });
     const playerOrder = traitOrderIndex(playerRows, traitTree.groups);
@@ -1313,7 +1313,7 @@ export const RightPanel = ({
   // The played world entity is out of the cast, and a "playing as" gate has to find it.
   const gateWorld = React.useMemo<TraitWorld>(() => ({
     traits, groups: traitGroups, entities: worldEntitiesOf(cast, persona), persona: personaRef ?? { source: 'none' },
-    bearers: inPlayBearers(bearerWorld, personaRef, traitLibrary),
+    owners: inPlayOwners(bearerWorld, personaRef, traitLibrary),
   }), [traits, traitGroups, cast, persona, personaRef, bearerWorld, traitLibrary]);
   const viewTraitState = React.useMemo(
     () => ({ traits: playerTraits, disabledTraitIds: viewDisabledTraitIds, ownedTraits: viewOwnedTraits }),
@@ -1331,7 +1331,7 @@ export const RightPanel = ({
   );
   // Each entity's own traits switch its stats on and off, on the viewed turn.
   const entityInForce = React.useCallback(
-    (ownerId: string) => bearerStatTraitsInForce(viewOwnedTraits, gateWorld, ownerId),
+    (ownerId: string) => entityStatTraitsInForce(viewOwnedTraits, gateWorld, ownerId),
     [viewOwnedTraits, gateWorld],
   );
   const {

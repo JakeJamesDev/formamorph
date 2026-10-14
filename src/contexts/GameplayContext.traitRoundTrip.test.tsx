@@ -11,7 +11,7 @@ import { PlaceholderSessionProvider } from './PlaceholderSessionContext';
 import {
   acquireTrait, applyCodeTraitSwitches, heldPlayerTraits, seedStatBases, setTraitEnabled, switchPlayerTrait, type TraitRuntimeState,
 } from '@/lib/traitRuntime';
-import { inPlayBearers } from '@/lib/ownedTraitsInPlay';
+import { inPlayOwners } from '@/lib/ownedTraitsInPlay';
 import type { LegacyCodeBoundsStat, PlayerStat, Stat, Trait } from '@/types';
 
 vi.mock('@/lib/useTtsPlayback', () => import('@/test/stubs/ttsPlayback'));
@@ -398,8 +398,8 @@ describe('owned trait state across a save/load round trip', () => {
     await act(async () => { await live().loadGame('save-node-era', [], [authored], [{ id: 'cp' }]); });
     expect(live().playerTraits).toEqual([wizard]);
     expect(live().ownedTraits).toEqual({});
-    const bearers = inPlayBearers(world, live().personaRef);
-    expect(heldPlayerTraits(live().playerTraits, { traits: world.traits, groups: world.traitGroups, entities: world.entities, bearers })).toEqual([]);
+    const owners = inPlayOwners(world, live().personaRef);
+    expect(heldPlayerTraits(live().playerTraits, { traits: world.traits, groups: world.traitGroups, entities: world.entities, owners })).toEqual([]);
   });
 
   it('omits the field from a save with no owned state, and reads its absence as none', async () => {

@@ -324,7 +324,7 @@ function settleEntityStats(world: OpeningWorld, active: readonly Trait[], person
   const ownedTraits = ownedTraitStatesFrom(Object.fromEntries(Object.entries(picks).filter(([id]) => id !== PLAYER_OWNER)));
   const traitWorld: TraitWorld = {
     traits: [...ownerWorld.traits], groups: [...ownerWorld.traitGroups], entities: ownerWorld.entities,
-    persona, bearers: gate.owners,
+    persona, owners: gate.owners,
   };
   const seeded = seedEntityStats(entities);
   const { entityStats = seeded } = applyOwnedStatTraits(

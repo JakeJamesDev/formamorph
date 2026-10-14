@@ -29,7 +29,7 @@ const bram = { id: 'bram', name: 'Bram', traits: [hardy, boast, grim], groups: [
 const albus = { id: 'albus', name: 'Albus', traits: [paladin], groups: [] };
 const entities = [{ id: 'bram', name: 'Bram' }, { id: 'albus', name: 'Albus', persona: true }];
 const world = (persona: PersonaRef = { source: 'none' }): TraitWorld => ({
-  traits: [], groups: [], entities, persona, bearers: [{ id: 'world', name: '', traits: [], groups: [] }, bram, albus],
+  traits: [], groups: [], entities, persona, owners: [{ id: 'world', name: '', traits: [], groups: [] }, bram, albus],
 });
 const asAlbus = world({ source: 'world', entityId: 'albus' });
 
@@ -69,7 +69,7 @@ describe('an entity’s own traits change its own stats', () => {
     expect(on.appliedValues).toEqual({});
   });
 
-  it('reads the cast entity’s traits in force for its stats, and none for an entity that isn’t a bearer', () => {
+  it('reads the cast entity’s traits in force for its stats, and none for an entity that isn’t an owner', () => {
     const on = flip(state(), 'bram', 'hardy', true);
     expect(ownerStatTraitsInForce(on, world(), 'bram').map((t) => t.id)).toEqual(['hardy']);
     expect(ownerStatTraitsInForce(on, world(), 'nobody')).toEqual([]);
@@ -83,7 +83,7 @@ describe('an entity’s own traits change its own stats', () => {
 
   it('reverses its own stats when a gate cascade turns the trait off', () => {
     const gated = trait('hardy', hardy.statChanges, { name: 'Hardy', requires: [{ all: [{ kind: 'trait', id: 'grim', owner: { kind: 'entity', id: 'bram' } }] }] });
-    const w: TraitWorld = { ...world(), entities, bearers: [world().bearers![0], { ...bram, traits: [gated, boast, grim] }, albus] };
+    const w: TraitWorld = { ...world(), entities, owners: [world().owners![0], { ...bram, traits: [gated, boast, grim] }, albus] };
     const both = flip(flip(state(), 'bram', 'grim', true, w), 'bram', 'hardy', true, w);
     expect(own(both, 'bram', 'vigor')).toMatchObject({ max: 110, value: 55 });
     const cascade = flip(both, 'bram', 'grim', false, w);
@@ -107,7 +107,7 @@ describe('an entity’s own traits change its own stats', () => {
   });
 });
 
-describe('a player bearer’s traits', () => {
+describe('a player owner’s traits', () => {
   const picked = state({ ownedTraits: { albus: { chosen: ['paladin'] } } });
 
   it('move the world player stat while played, as shipped, and its own stat always', () => {
@@ -141,7 +141,7 @@ describe('a player bearer’s traits', () => {
     ], { name: 'Oath', statToggles: [{ statId: 'h', enabled: false, target: 'player' }] });
     const sworn: TraitWorld = {
       traits: [], groups: [], entities, persona: { source: 'world', entityId: 'albus' },
-      bearers: [{ id: 'world', name: '', traits: [], groups: [] }, bram, { ...albus, traits: [oath] }],
+      owners: [{ id: 'world', name: '', traits: [], groups: [] }, bram, { ...albus, traits: [oath] }],
     };
     const twin = state({ entityStats: { albus: [stat('h', { value: 20 })] } });
     const on = flip(twin, 'albus', 'oath', true, sworn);

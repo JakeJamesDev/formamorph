@@ -5,7 +5,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { runStatCodeTurn, type StatCodeTurn } from './statCodeTurn';
 import type { StatCodeOwners } from './statCodeTraits';
-import { inPlayBearers } from './ownedTraitsInPlay';
+import { inPlayOwners } from './ownedTraitsInPlay';
 import { recordKey } from './ownedTraitState';
 import { withPersonaEntry } from './persona';
 import { encodePlaceholderToken } from './placeholders';
@@ -45,7 +45,7 @@ function played(
     library,
     world: {
       traits: [worldBrave], groups: [], entities: entered, persona,
-      bearers: inPlayBearers(bearerWorld, persona, library),
+      owners: inPlayOwners(bearerWorld, persona, library),
     },
   };
 }

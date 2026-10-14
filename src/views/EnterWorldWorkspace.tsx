@@ -16,7 +16,7 @@ import type { Entity, GameLocation, PersonaRef, Stat, Trait, TraitGroup } from '
 import { PersonaPicker, PersonaPortrait, type PersonaOption } from '@/components/game/PersonaPicker';
 import { primaryImage } from '@/lib/entityImages';
 import type { ResolveEntityText } from '@/lib/resolveWorldNames';
-import { bearerTraitTree, playerEntityIds } from '@/lib/ownedTraitsInPlay';
+import { ownerTraitTree, playerEntityIds } from '@/lib/ownedTraitsInPlay';
 import { hasPersonaChoice } from '@/lib/personaPick';
 import { stripMarkdown } from '@/lib/stripMarkdown';
 import { navItemStates } from '@/lib/navSelection';
@@ -96,7 +96,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
   }, [additionsRemembered]);
   const categoryNavigationButton = useRef<HTMLButtonElement>(null);
   const traitTree = useMemo(
-    () => bearerTraitTree(
+    () => ownerTraitTree(
       { traits: props.traits, traitGroups: props.traitGroups, entities: props.traitEntities ?? [] },
       props.persona, props.traitLibrary ?? [],
     ),

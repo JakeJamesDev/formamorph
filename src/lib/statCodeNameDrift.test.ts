@@ -200,7 +200,7 @@ async function entityKeysInSandbox(rolled: string, timing: StatCodeTiming): Prom
       acquired: [], disabledTraitIds: [], appliedValues: {}, entities,
       world: {
         traits: [], groups: [], entities, persona: { source: 'none' },
-        bearers: entities.map((e) => ({ id: e.id, name: e.name, traits: e.traits ?? [], groups: [] })),
+        owners: entities.map((e) => ({ id: e.id, name: e.name, traits: e.traits ?? [], groups: [] })),
       },
     },
     statNameOf: (stat) => stat.name,
@@ -249,7 +249,7 @@ async function entityStatKeysInSandbox(rolled: string, timing: StatCodeTiming): 
       acquired: [], disabledTraitIds: [], appliedValues: {}, entities: [keeper],
       world: {
         traits: [], groups: [], entities: [keeper], persona: { source: 'none' },
-        bearers: [{ id: keeper.id, name: keeper.name, traits: [], groups: [] }],
+        owners: [{ id: keeper.id, name: keeper.name, traits: [], groups: [] }],
       },
     },
     owners: [{ id: keeper.id, stats: owned, enabled: {}, previous: owned, regenApplied: {} }],

@@ -30,7 +30,7 @@ describe('withHeldOwners', () => {
     expect(pruned.appliedTraitValues).toEqual({ t: { h: 1 }, 'ash/paladin': { h: 5 } });
   });
 
-  it('keeps a bearer’s state keyed by its own id, so None and a library persona share the player’s picks', () => {
+  it('keeps an owner’s state keyed by its own id, so None and a library persona share the player’s picks', () => {
     // The player's cascade-off list and records sit under the world key, whichever of the two the save names.
     const shared = state({ ownedTraits: { lib: { chosen: ['calm'] } }, cascadeOffTraitIds: { world: ['paladin'] }, appliedTraitValues: { paladin: { h: 5 } } });
     for (const persona of [undefined, { source: 'library' as const, entityId: 'lib' }]) {

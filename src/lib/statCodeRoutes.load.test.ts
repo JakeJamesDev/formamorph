@@ -6,7 +6,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { migrateWorld } from './version';
 import { runStatCodeTurn, type StatCodeTurn } from './statCodeTurn';
 import type { StatCodeOwners } from './statCodeTraits';
-import { inPlayBearers } from './ownedTraitsInPlay';
+import { inPlayOwners } from './ownedTraitsInPlay';
 import { allPlaceholders, placeholderOwners } from './placeholderHomes';
 import { phValues } from '@/test/placeholderValues';
 import type { PersonaRef, Placeholder, PlayerStat, World } from '@/types';
@@ -66,7 +66,7 @@ function playTurn(world: World) {
     acquired: [], disabledTraitIds: [], appliedValues: {}, ownedTraits: {}, entities: world.entities, library: [],
     world: {
       traits: [], groups: [], entities: world.entities, persona: NO_PERSONA,
-      bearers: inPlayBearers({ traits: [], traitGroups: [], entities: world.entities }, NO_PERSONA, []),
+      owners: inPlayOwners({ traits: [], traitGroups: [], entities: world.entities }, NO_PERSONA, []),
     },
   };
   return runStatCodeTurn({

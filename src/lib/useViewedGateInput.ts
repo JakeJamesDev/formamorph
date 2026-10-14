@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useResolvedWorld } from './useResolvedWorld';
-import { inPlayBearers } from './ownedTraitsInPlay';
+import { inPlayOwners } from './ownedTraitsInPlay';
 import { worldEntitiesOf } from './persona';
 import { refreshChosenTraits } from './traitEffects';
 import { traitGateInput } from './traitRuntime';
@@ -22,7 +22,7 @@ export function useViewedGateInput(): GateInput {
     },
     {
       traits, groups: traitGroups, entities: worldEntitiesOf(cast, persona), persona: personaRef ?? { source: 'none' },
-      bearers: inPlayBearers({ traits, traitGroups, entities: traitEntities }, personaRef, traitLibrary),
+      owners: inPlayOwners({ traits, traitGroups, entities: traitEntities }, personaRef, traitLibrary),
     },
   ), [viewTraits, viewDisabledTraitIds, viewOwnedTraits, viewStats, viewEntityStats, traits, traitGroups, cast, persona, personaRef, traitEntities, traitLibrary]);
 }
