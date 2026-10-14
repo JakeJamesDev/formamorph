@@ -119,7 +119,7 @@ function buildCtx(linked: boolean) {
   });
   const after = ctxFor('after');
   if (!placement) return { before: ctxFor('before'), after };
-  // The played persona's traits after the world's in the Traits chip, and a Persona chip with none.
+  // The played persona's traits after the global ones in the Traits chip, and a Persona chip with none.
   const personaBlock = (token: string) => buildTraitContext(inForce[persona.id] ?? [], played.traits ?? [], played.traitGroups ?? [],
     token.includes('xml') ? 'xml' : token.includes('markdown') ? 'markdown' : 'simple');
   const bare = personaContextValues({ source: 'world', entity: played });

@@ -127,6 +127,7 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
     statPlacement: statPlacementOf(world),
     // With no persona picked, the Custom Persona entity's stats are the player's, as its traits are.
     playedStats: ownerStatParts(played, ownedStats),
+    playedEntities: cast.filter((entity) => played.some((e) => e.id === entity.id)),
     // The player owner's traits, where its tree places them: never Blueprints, and Custom Persona's at the root.
     traits: borneByPlayer(player.traits.filter((trait) => activeIds.has(trait.id))
       .map((trait) => (trait.aiDescription ? { ...trait, aiDescription: playerText(trait, trait.aiDescription) } : trait))),

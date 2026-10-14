@@ -103,7 +103,7 @@ describe('built-in Header adoption', () => {
         expect(xml.querySelector('parsererror')).toBeNull();
         expect(xml.querySelector('root > guidelines')).not.toBeNull();
         expect(xml.querySelector('root > game_world')).not.toBeNull();
-        expect(xml.querySelector('root > other_traits')).not.toBeNull();
+        expect(xml.querySelector('root > global_traits')).not.toBeNull();
         expect(xml.querySelector('root > player_character')).not.toBeNull();
         expect(xml.querySelector('root > output')).not.toBeNull();
       }

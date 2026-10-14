@@ -91,6 +91,10 @@ const assertRendersTemplate = (systemPrompt: string, template: string): void => 
 const sharedStatTail = (template: string): string =>
   template.slice(template.indexOf('## What to change')).replace(/^- The stats under Player Character.*\n/m, '');
 
+/** The storyboard as the run sent it, before its closing rule named the player character. */
+const recordedStoryboard = (template: string): string =>
+  template.replace("- Let the player character's stats", "- Let the player's stats");
+
 const templateById: Partial<Record<TurnPassId, string>> = {
   locationAuto: PROMPTS.locationChange,
   director: PROMPTS.director,
@@ -159,7 +163,8 @@ describe('turn plan parity with the recorded run', () => {
       if (template) {
         assertRendersTemplate(built.systemPrompt, template);
         // The recorded text prompt has no owner blocks; only its shared tail is matched.
-        assertRendersTemplate(request.systemPrompt, id === 'statUpdates' ? sharedStatTail(template) : template);
+        const recorded = id === 'statUpdates' ? sharedStatTail(template) : id === 'storyboard' ? recordedStoryboard(template) : template;
+        assertRendersTemplate(request.systemPrompt, recorded);
       }
       // Messages the fixture holds every input for.
       if (!pass.fanOut && id !== 'storyboard') {

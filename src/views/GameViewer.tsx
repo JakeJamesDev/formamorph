@@ -3582,7 +3582,7 @@ const GameViewer = ({
     return createStatRequest(stats, PLAYER_OWNER, {
       textPass: !schemaAccepted(resolveEndpointForKind("statUpdates").reasoning),
       placement: { groups: resolveStatGroupTexts(authoredStatGroups, resolvePH), authored: authoredStats },
-      // The played persona's stats are the Player Character's; any other played entity's join the loose ones.
+      // Every played entity's stats are the Player Character's.
       persona: playedOwners.find((owner) => owner.id === persona?.entity.id),
       played: playedOwners.filter((owner) => owner.id !== persona?.entity.id),
       entities: statRequestOwners(

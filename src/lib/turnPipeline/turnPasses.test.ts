@@ -90,7 +90,7 @@ describe('the stat request', () => {
     const text = builtinStatTextPrompts('markdown');
     expect(request.responseSchema).toEqual(statRequestSchema(health));
     expect(request.systemPrompt).toContain('Your entire output is one JSON object');
-    expect(request.systemPrompt).toContain('## Other Stats\n- **Health:** 80/100');
+    expect(request.systemPrompt).toContain('## Global Stats\n- **Health:** 80/100');
     expect(request.messages[0].content).toContain('0 for every value and maximum it did not move');
     expect(request.textFallback?.systemPrompt).toBe(renderPromptTemplate(text.system, layerValues(material().ctx, health.context)));
     expect(request.textFallback?.messages[0].content)

@@ -26,8 +26,12 @@ export interface ChipScene {
   /** Where the stats sit. A flat list when absent. */
   statPlacement?: StatPlacement;
   /** The switched-on stats of each entity the player plays as, at their current values, each placed by its
-   *  owner. The persona's own render in its block; any other's follow `stats` in the Stats chip. None when absent. */
+   *  owner. Every part renders in the persona's block; with no persona, they follow `stats` in the Stats chip.
+   *  None when absent. */
   playedStats?: readonly OwnerStatPart[];
+  /** Each entity the player plays as, its text resolved and its links expanded. One besides the persona joins
+   *  the persona's block with its owned traits. None when absent. */
+  playedEntities?: readonly Entity[];
   /** The traits in force. An adapter that holds per-trait pins resolves those before it builds the scene. */
   traits: Trait[];
   traitGroups: TraitGroup[];

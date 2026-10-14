@@ -19,6 +19,7 @@
 //   SB       the request as built at BASE_REF (stat-pass-owner-blocks ticket 02's Base): every player stat under
 //            `### Player Character`, each owner's section appended to the Stats chip
 //   S0       S, with the stat prompts as committed at --s0-ref (default HEAD, the before arm for an uncommitted edit)
+//   OB0      OB, with the stat prompts as committed at --s0-ref
 // The arms below are the request at BASE_REF with one change each, built as SB is:
 //   SU       SB, with C3's user line
 //   SN       SB, with no max keys in the schema, the format or the user line
@@ -96,7 +97,7 @@ const model = argVal('--model', 'default');
 const runs = Number(argVal('--runs', '6'));
 const pool = Number(argVal('--pool', '3'));
 const only = argVal('--only', '');
-const ALL_ARMS = ['control', 'A', 'A2', 'A3', 'B', 'C', 'C2', 'C3', 'D', 'E', 'S', 'OB', 'SB', 'SU', 'SN', 'SG', 'SGB', 'SGO', 'SH', 'SP', 'C3P', 'S0', 'WA', 'WB', 'WC', 'WD', 'WE', 'WF', 'WH', 'WJ', 'WK', 'WL', 'WP', 'WQ', 'WR', 'FA', 'FAG', 'FB', 'FBG', 'FR', 'FRG', 'FC', 'FCG', 'FD', 'FDG',
+const ALL_ARMS = ['control', 'A', 'A2', 'A3', 'B', 'C', 'C2', 'C3', 'D', 'E', 'S', 'OB', 'SB', 'SU', 'SN', 'SG', 'SGB', 'SGO', 'SH', 'SP', 'C3P', 'S0', 'OB0', 'WA', 'WB', 'WC', 'WD', 'WE', 'WF', 'WH', 'WJ', 'WK', 'WL', 'WP', 'WQ', 'WR', 'FA', 'FAG', 'FB', 'FBG', 'FR', 'FRG', 'FC', 'FCG', 'FD', 'FDG',
   'XR', 'XRG', 'XL', 'XLG', 'XC', 'XCG', 'XW', 'XWG', 'XT', 'XTG', 'XA', 'XAG', 'XF', 'XFG', 'XU', 'XUG', 'XUA', 'XUAG', 'XA1', 'XA1G', 'XA2', 'XA2G', 'XA3', 'XA3G', 'XA4', 'XA4G', 'XA5', 'XA5G', 'XA6', 'XA6G', 'XF1', 'XF1G', 'XF2', 'XF2G', 'XF3', 'XF3G', 'XF4', 'XF4G', 'XN', 'XNG', 'SV', 'SVG', 'L', 'LR', 'LT', 'LV', 'LD'] as const;
 type Arm = typeof ALL_ARMS[number];
 const arms = argVal('--arms', ALL_ARMS.join(',')).split(',') as Arm[];
@@ -350,7 +351,7 @@ async function promptsAt(ref: string): Promise<{ system: string; user: string; t
 }
 // Arms A to E derive from the text pass's prompts as they stood before the owner blocks, under the names they were written against.
 const { text: { system: defaultStatUpdatesPrompt, user: defaultStatUpdatesUserPrompt } } = await promptsAt('62e87af3c');
-const s0Prompts = arms.includes('S0') ? await promptsAt(argVal('--s0-ref', 'HEAD')) : undefined;
+const s0Prompts = arms.includes('S0') || arms.includes('OB0') ? await promptsAt(argVal('--s0-ref', 'HEAD')) : undefined;
 const BASE_LAYOUT_ARMS: readonly Arm[] = ['SB', 'SU', 'SN', 'SG', 'SGB', 'SGO', 'SH', 'SP'];
 const basePrompts = arms.some((arm) => BASE_LAYOUT_ARMS.includes(arm)) ? await promptsAt(BASE_REF) : undefined;
 
@@ -546,6 +547,7 @@ function callsFor(arm: Arm, owners: Owner[], narration: string): Call[] {
   if (arm === 'OB') return [shippedCall(owners, narration, SHIPPED_PROMPTS, { persona: true })];
   if (arm === 'SB') return [baseLayoutCall(owners, narration, undefined, basePrompts!)];
   if (arm === 'S0') return [shippedCall(owners, narration, s0Prompts)];
+  if (arm === 'OB0') return [shippedCall(owners, narration, s0Prompts, { persona: true })];
   if (isWording(arm)) return [worded(arm, owners, narration)];
   if (isFraming(arm)) return [framed(arm, owners, narration)];
   if (isAblation(arm)) return [ablated(arm, owners, narration)];
@@ -710,7 +712,7 @@ function parse(arm: Arm, owners: Owner[], calls: Call[], replies: Reply[]): Pars
   if (arm === 'LV') return parseJsonReply(readingsToChanges(replies[0].raw, owners), owners);
   if (arm === 'C' || arm === 'C2' || arm === 'C3' || arm === 'D' || isLean(arm)) return parseJsonReply(replies[0].raw, owners);
   if (arm === 'C3P') return parseJsonReply(replies[0].raw, [playerOwner]);
-  if (arm === 'S' || arm === 'OB' || arm === 'SB' || arm === 'S0' || arm === 'SU' || arm === 'SN' || arm === 'SG' || arm === 'SGB' || arm === 'SGO' || arm === 'SH' || arm === 'SP' || isWording(arm) || isFraming(arm) || isAblation(arm)) return parsePlainLines(replies[0].raw, playerOwner, calls[0].snapshot, (id) => (id === PLAYER_OWNER || id === PERSONA_ID ? playerOwner.key : id));
+  if (arm === 'S' || arm === 'OB' || arm === 'SB' || arm === 'S0' || arm === 'OB0' || arm === 'SU' || arm === 'SN' || arm === 'SG' || arm === 'SGB' || arm === 'SGO' || arm === 'SH' || arm === 'SP' || isWording(arm) || isFraming(arm) || isAblation(arm)) return parsePlainLines(replies[0].raw, playerOwner, calls[0].snapshot, (id) => (id === PLAYER_OWNER || id === PERSONA_ID ? playerOwner.key : id));
   const parts = calls.flatMap((call, i) => (call.owner ? [parsePlainLines(replies[i].raw, call.owner, call.snapshot)] : []));
   return {
     changes: parts.flatMap((p) => p.changes), invalid: parts.reduce((n, p) => n + p.invalid, 0), unreadable: false,

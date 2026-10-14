@@ -112,17 +112,33 @@ describe("the persona's own stats in the Persona chip", () => {
     expect(none('<STATS DESCRIPTION|numbers>')).toBe('Health: 62/100\nCalm: 30/100\nBody:\n  Health (2): 10/100');
   });
 
-  it("keeps another played entity's stats in the Stats chip, numbered after the world's", () => {
-    // Under a library persona the Custom Persona entity plays too; its stats stay with the world's (Q17).
-    const marked: PlayerStat = { ...health, id: 'marked-health', value: 40 };
+  it("puts another played entity's stats and owned traits in the Persona chip, under its own groups (Q11, Q28)", () => {
+    // Under a library persona the Custom Persona entity plays too. It shares a stat id, a group id and a trait
+    // id with the traveler, so only owner-scoped ids keep each in its place.
+    const marked: PlayerStat = { ...health, id: 'own-health', value: 40, description: 'Brand marks.', groupId: 'body' };
+    const markBody: StatGroup = { id: 'body', name: 'Marks', parentId: null };
+    const branded: Trait = { id: 'scarred', name: 'Branded', aiDescription: 'A brand on one wrist.', statChanges: [] };
+    const custom: Entity = { id: 'custom', name: 'You', customPersona: true, stats: [marked], statGroups: [markBody], traits: [branded] };
     const both = chipValues(scene({
-      playedStats: [
-        travelerPart,
-        { ownerId: 'custom', stats: [marked] },
-      ],
+      playedStats: [travelerPart, ...ownerStatParts([custom], { custom: [marked] })],
+      playedEntities: [traveler, custom],
+      ownedTraits: { traveler: ['scarred'], custom: ['scarred'] },
     }));
-    expect(both('<STATS DESCRIPTION|numbers>')).toBe('Health: 62/100\nHealth (3): 40/100');
-    expect(both('<PERSONA|markdown>')).toContain('**Health (2):** 10/100');
+    expect(both('<STATS DESCRIPTION|numbers>')).toBe('Health: 62/100');
+    const block = both('<PERSONA|markdown>')!;
+    expect(block).toContain([
+      '  - **stats:**',
+      '    - **Calm:** 30/100 — Composure.',
+      '    - **Body:**',
+      '      - **Health (2):** 10/100 (Winded) — Old wounds.',
+      '    - **Marks:**',
+      '      - **Health (3):** 40/100 (Winded) — Brand marks.',
+    ].join('\n'));
+    expect(block).toContain('**Scarred:** A pale line across one cheek.');
+    expect(block).toContain('**Branded:** A brand on one wrist.');
+    // One entity block, headed by the persona.
+    expect(block.match(/^- \*\*/gm)).toHaveLength(1);
+    expect(block).not.toContain('You');
   });
 });
 
@@ -140,8 +156,11 @@ describe('the stat request with a played persona that owns stats', () => {
       A quiet stretch of coast.
 
       ## Stats
-      Each character's stats sit under their name and belong to that character: the player's character in the Player Character block, each other character present this turn in the In Scene block. When stats sit in groups, a group bullet names what the stats nested under it share. A group holds no reading of its own; you record changes on its stats.
+      Each character's stats sit under their name and belong to that character: the player's character in the Player Character block, each other character present this turn in the In Scene block. The Global Stats block holds the stats that belong to no character. When stats sit in groups, a group bullet names what the stats nested under it share. A group holds no reading of its own; you record changes on its stats.
       Current readings (shown as current-value/maximum) with what each stat means, so you know each stat's level, range, and purpose. Output only the CHANGE this turn, never a value and never that value/max format.
+
+      ## Global Stats
+      - **Health:** 62/100 — Physical stamina.
 
       ## Player Character
       - **Traveler**
@@ -153,9 +172,6 @@ describe('the stat request with a played persona that owns stats', () => {
           - **Body:**
             - **Health (2):** 10/100 (Winded) — Old wounds.
 
-      ## Other Stats
-      - **Health:** 62/100 — Physical stamina.
-
       ## What to change
       - The RIGHT stat in the RIGHT direction is what matters most. A rough amount on the stat the turn actually moved beats a precise amount on the wrong one.
       - Many turns move no stat at all. Outputting nothing is a correct and common answer: a calm, idle, or purely conversational turn usually changes nothing. Never invent a change just to have something to write.
@@ -165,7 +181,7 @@ describe('the stat request with a played persona that owns stats', () => {
       - Each stat belongs to the character it sits under. A stat moves only for what that character does, goes through, or feels this turn.
 
       ## Format
-      - One key per character: "Player Character" for the player's character, each In Scene character's name exactly as the block shows it, and "Other Stats" for the Other Stats block. Under it, two keys per stat of that character: the stat's name, holding this turn's change to the stat's value, and the stat's name followed by " max", holding this turn's change to the stat's maximum. Each is one signed whole number between -20 and 20.
+      - One key per character: "Player Character" for the player's character, each In Scene character's name exactly as the block shows it, and "Global Stats" for the Global Stats block. Under it, two keys per stat of that character: the stat's name, holding this turn's change to the stat's value, and the stat's name followed by " max", holding this turn's change to the stat's maximum. Each is one signed whole number between -20 and 20.
       - Put the sign on the number: a leading minus lowers the stat.
       - A value or maximum that did not move gets 0.
       - Write the whole object on one line."
@@ -177,8 +193,11 @@ describe('the stat request with a played persona that owns stats', () => {
       A quiet stretch of coast.
 
       ## Stats
-      When there is a Player Character block, it holds the player's stats. The Other Stats block holds the rest.
+      The Global Stats block holds the stats that belong to no character. When there is a Player Character block, it holds the player character's stats.
       Current readings (shown as current-value/maximum) with what each stat means, so you know each stat's level, range, and purpose. Output only the CHANGE this turn, never a value and never that value/max format.
+
+      ## Global Stats
+      - **Health:** 62/100 — Physical stamina.
 
       ## Player Character
       - **Traveler**
@@ -189,9 +208,6 @@ describe('the stat request with a played persona that owns stats', () => {
           - **Calm:** 30/100 — Composure.
           - **Body:**
             - **Health (2):** 10/100 (Winded) — Old wounds.
-
-      ## Other Stats
-      - **Health:** 62/100 — Physical stamina.
 
       ## What to change
       - The RIGHT stat in the RIGHT direction is what matters most. A rough amount on the stat the turn actually moved beats a precise amount on the wrong one.
@@ -213,7 +229,7 @@ describe('the stat request with a played persona that owns stats', () => {
         "schema": {
           "additionalProperties": false,
           "properties": {
-            "Other Stats": {
+            "Global Stats": {
               "additionalProperties": false,
               "properties": {
                 "Health": {
@@ -268,7 +284,7 @@ describe('the stat request with a played persona that owns stats', () => {
           },
           "required": [
             "Player Character",
-            "Other Stats",
+            "Global Stats",
           ],
           "type": "object",
         },
