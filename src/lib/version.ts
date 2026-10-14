@@ -7,6 +7,7 @@ import { isImplicitPair, parentIndex } from './locationGraph';
 import { normalizeCustomVRM } from './worldImport';
 import { autoBindLegacyBodyStats } from './bodyMorphs';
 import { appendCurrentToHistory } from './turnHistory';
+import { migrateGlobalFields } from './globalSaveFields';
 import { DEFAULT_AVATAR_ID, LEGACY_DEFAULT_AVATAR_ID, LEGACY_DEFAULT_AVATAR_SENTINEL } from './defaultAvatar';
 import { migrateEntityImages } from './entityImages';
 import { normalizeLinkedItem } from './contentLink';
@@ -790,15 +791,16 @@ export function isSaveEnvelope(raw: unknown): raw is SaveObject {
  * separately on read by parseTurnContent.)
  */
 export function migrateLegacySaveState(state: GameState): GameState {
-  const next = { ...state };
-  if (Array.isArray(next.playerTraits)) {
+  // The global fields first: the steps below read them under their current names.
+  const next = { ...migrateGlobalFields(state) };
+  if (Array.isArray(next.globalTraits)) {
     // renameTraitDescriptions returns loosened records; the shape matches Trait (new keys added, legacy
     // `description` dropped), so cast back.
-    next.playerTraits = renameTraitDescriptions(next.playerTraits) as unknown as Trait[];
+    next.globalTraits = renameTraitDescriptions(next.globalTraits) as unknown as Trait[];
   }
-  if (Array.isArray(next.playerStats)) {
+  if (Array.isArray(next.globalStats)) {
     // autoBindLegacyBodyStats preserves each stat's value, so the (narrower) PlayerStat shape is intact.
-    next.playerStats = autoBindLegacyBodyStats(next.playerStats) as unknown as PlayerStat[];
+    next.globalStats = autoBindLegacyBodyStats(next.globalStats) as unknown as PlayerStat[];
   }
   if (!Array.isArray(next.discoveredEntities)) next.discoveredEntities = [];
   return next;
@@ -883,6 +885,8 @@ function migrateBodyMorphs(state: GameState): GameState {
  *      library id. A save that never used it is untouched, and a rewritten one no longer matches.
  *   4. Body morphs (presence-based, every snapshot): fold the legacy fixed body fields into the generic
  *      `bodyMorphs` map. A character already carrying the map is untouched.
+ *   5. Global fields (presence-based, every snapshot): `playerStats` and `playerTraits` become `globalStats` and
+ *      `globalTraits`, and the cascade-off and applied-value maps split into global and owners parts.
  * The appended current page stays `=== currentState`, so `gameStates[page - 1]` resolves the current page
  * identically. Pure — callers decide whether to persist the result (import) or just load it (load).
  */
@@ -892,7 +896,7 @@ export function migrateSave(save: SaveObject): SaveObject {
   const migratedHistory = isLegacy ? save.stateHistory.map(migrateLegacySaveState) : save.stateHistory;
   // Canonical flat history: an already-hoisted top-level copy, else the current snapshot's own copy.
   const messageHistory = save.messageHistory ?? migratedCurrent.fullMessageHistory ?? [];
-  const normalizeSnapshot = (s: GameState) => migrateBodyMorphs(migrateDefaultAvatarId(s));
+  const normalizeSnapshot = (s: GameState) => migrateBodyMorphs(migrateDefaultAvatarId(migrateGlobalFields(s)));
   const currentState = normalizeSnapshot(stripSnapshotHistory(migratedCurrent));
   const history = isLegacy
     ? appendCurrentToHistory(migratedHistory.map(stripSnapshotHistory), currentState)

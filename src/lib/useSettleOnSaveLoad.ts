@@ -19,9 +19,9 @@ function statsWithCodeDeltas(stats: PlayerStat[], state: TraitForceState, world:
 }
 
 function snapshotWithCodeDeltas(snapshot: GameState, world: TraitWorld): GameState {
-  const { playerStats, playerTraits, disabledTraitIds = [], ownedTraits, entityStats } = snapshot;
-  const stats = statsWithCodeDeltas(playerStats, { traits: playerTraits, disabledTraitIds, ownedTraits, entityStats }, world);
-  return stats === playerStats ? snapshot : { ...snapshot, playerStats: stats };
+  const { globalStats, globalTraits, disabledTraitIds = [], ownedTraits, entityStats } = snapshot;
+  const stats = statsWithCodeDeltas(globalStats, { traits: globalTraits, disabledTraitIds, ownedTraits, entityStats }, world);
+  return stats === globalStats ? snapshot : { ...snapshot, globalStats: stats };
 }
 
 /**

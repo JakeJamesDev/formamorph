@@ -97,6 +97,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Request Anatomy:**
     - **Digests and diaries now show their Request Anatomy in the AI-context viewer.** The Background Pass Queue builds them from the same pass records as a live turn, so each request is labeled.
     - **Re-rolled choices and stats now show their Request Anatomy in the AI-context viewer.** A re-roll builds its request from the same pass record as a live turn, so it sends the same prompt and cap.
+  - **Global Scope:**
+    - **Saves now write global stats and global traits under their own names.** Older saves load with the same values. Apps on v3.1 to v3.2 load a new save without them.
 
 #### 🔧 Fixed
 

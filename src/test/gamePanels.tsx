@@ -151,8 +151,8 @@ export function turnHistory(turns: TurnFixture[]): ChatMessage[] {
 /** The per-turn mechanical snapshot paging back reads; only the fields the panels display are filled. */
 function snapshotFixture(turn: TurnFixture, stats: PlayerStat[]): GameState {
   return {
-    playerStats: turn.stats ?? stats,
-    playerTraits: turn.traits ?? [],
+    globalStats: turn.stats ?? stats,
+    globalTraits: turn.traits ?? [],
     ...(turn.entityStats ? { entityStats: turn.entityStats } : {}),
     ...(turn.entityStatChanges ? { entityStatChanges: turn.entityStatChanges } : {}),
     visibleEntities: turn.scene ?? [],

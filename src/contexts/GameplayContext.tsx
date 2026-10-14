@@ -20,6 +20,7 @@ import { activeTraits, recoverStatBases, type AppliedTraitValues } from '../lib/
 import { heldEntityIds, withHeldOwners } from '../lib/ownedTraitState';
 import { pageAssistantIndex, pageNextActionIndex, placeSnapshot } from '../lib/turnHistory';
 import { backfillGameStateStats } from '../lib/statBackfill';
+import { liveAppliedValues, liveCascadeOff, migrateGlobalFields, savedAppliedValues, savedCascadeOff } from '../lib/globalSaveFields';
 import { backfillEntityStats, backfillGameStateEntityStats, entityStatDeltas, withoutEntityCodeBounds } from '../lib/entityStats';
 import { deltasOf, useStatDeltas } from '../lib/useStatDeltas';
 import { PLAYER_OWNER } from '../lib/statOwners';
@@ -265,13 +266,15 @@ function useProvideGameplay() {
    *  omitting the `gameStates` history array and instead recording `previousStateIndex`; `worldName` is left
    *  null for the caller (GameViewer) to fill at save time. */
   const saveCurrentGameState = useCallback((): GameState => {
+    const savedApplied = savedAppliedValues(appliedTraitValues);
+    const savedCascade = savedCascadeOff(cascadeOffTraitIds);
     // Create a state object without the gameStates array
     return {
-      playerStats,
-      playerTraits,
+      globalStats: playerStats,
+      globalTraits: playerTraits,
       ...(disabledTraitIds.length ? { disabledTraitIds } : {}),
-      ...(Object.keys(appliedTraitValues).length ? { appliedTraitValues } : {}),
-      ...(Object.keys(cascadeOffTraitIds).length ? { cascadeOffTraitIds } : {}),
+      ...(savedApplied ? { appliedTraitValues: savedApplied } : {}),
+      ...(savedCascade ? { cascadeOffTraitIds: savedCascade } : {}),
       ...(Object.keys(ownedTraits).length ? { ownedTraits } : {}),
       ...(Object.keys(entityStats).length ? { entityStats } : {}),
       ...(Object.keys(entityStatChanges).length ? { entityStatChanges } : {}),
@@ -310,15 +313,15 @@ function useProvideGameplay() {
       // rather than rebalancing them.
       setPlayerStats(
         recoverStatBases(
-          gameState.playerStats,
-          activeTraits(gameState.playerTraits, gameState.disabledTraitIds ?? []),
+          gameState.globalStats,
+          activeTraits(gameState.globalTraits, gameState.disabledTraitIds ?? []),
           opts?.worldStats,
         ),
       );
-      setPlayerTraits(gameState.playerTraits);
+      setPlayerTraits(gameState.globalTraits);
       setDisabledTraitIds(gameState.disabledTraitIds ?? []);
-      setAppliedTraitValues(gameState.appliedTraitValues ?? {});
-      setCascadeOffTraitIds(gameState.cascadeOffTraitIds ?? {});
+      setAppliedTraitValues(liveAppliedValues(gameState.appliedTraitValues));
+      setCascadeOffTraitIds(liveCascadeOff(gameState.cascadeOffTraitIds));
       setOwnedTraits(gameState.ownedTraits ?? {});
       resetEntityStats(gameState.entityStats ?? {});
       setCodePins(gameState.codePins ?? EMPTY_PINS);
@@ -591,7 +594,7 @@ function useProvideGameplay() {
 
           // Try to load the save anyway (legacy shape, best-effort)
           try {
-            const success = loadGameState(savedData as unknown as GameState, locations, { worldStats });
+            const success = loadGameState(migrateGlobalFields(savedData as unknown as GameState), locations, { worldStats });
             if (success) {
               addSystemLogEntry(`Game loaded from "${saveName}" (with conversion errors)`);
               setSaveLoads((n) => n + 1);
@@ -631,8 +634,8 @@ function useProvideGameplay() {
   // controls contradicting live stats/location. No snapshot ⇒ not viewing past (panels stay live).
   const viewedSnapshot = currentPage < totalPages ? (gameStates[currentPage - 1] ?? null) : null;
   const isViewingPast = viewedSnapshot !== null;
-  const viewStats = viewedSnapshot?.playerStats ?? playerStats;
-  const viewTraits = viewedSnapshot?.playerTraits ?? playerTraits;
+  const viewStats = viewedSnapshot?.globalStats ?? playerStats;
+  const viewTraits = viewedSnapshot?.globalTraits ?? playerTraits;
   // Every `view*` below must keep a STABLE identity across renders while the viewed page doesn't change.
   // A fresh `[]` (or a fresh derived array) on each render propagates into consumers' useMemo/useEffect
   // deps — `viewDisabledTraitIds` feeds GameViewer's `viewActiveStats`, whose effect writes state, which
@@ -680,7 +683,7 @@ function useProvideGameplay() {
   const livePlayerChips = deltasOf(statDeltas.recent, PLAYER_OWNER);
   const viewStatChanges: Record<string, number> = useMemo(
     () => (viewedSnapshot
-      ? pageStatDeltas(viewStats, gameStates[currentPage - 2]?.playerStats)
+      ? pageStatDeltas(viewStats, gameStates[currentPage - 2]?.globalStats)
       : livePlayerChips),
     [viewedSnapshot, viewStats, gameStates, currentPage, livePlayerChips],
   );
@@ -715,7 +718,7 @@ function useProvideGameplay() {
     setPlayerStats(newStats);
     const idx = currentPage - 1;
     setGameStates((prev) => (idx >= 0 && idx < prev.length
-      ? placeSnapshot(prev, idx, { ...prev[idx], playerStats: newStats })
+      ? placeSnapshot(prev, idx, { ...prev[idx], globalStats: newStats })
       : prev));
   }, [currentPage]);
 

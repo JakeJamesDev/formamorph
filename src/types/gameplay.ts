@@ -27,6 +27,19 @@ export type CodeBoundDeltas = CodeBounds;
 /** Owner id → the traits a gate cascade turned off, which switch back on once their gate holds again. */
 export type CascadeOffTraitIds = Record<string, string[]>;
 
+/** A save's cascade-off traits: the global traits' list, and each entity's by entity id. */
+export interface SavedCascadeOff {
+  global?: string[];
+  owners?: Record<string, string[]>;
+}
+
+/** A save's trait stat records: trait id → stat id → delta for global traits; for an entity, entity id → trait
+ *  id (or `<trait id>/stats` for what the trait moved on the entity's own stats) → stat id → delta. */
+export interface SavedAppliedValues {
+  global?: Record<string, Record<string, number>>;
+  owners?: Record<string, Record<string, Record<string, number>>>;
+}
+
 /** One entity's owned traits during the game: the ids chosen, and the chosen ones switched off. */
 export interface OwnedTraitState {
   chosen: string[];
@@ -200,19 +213,18 @@ export interface AvatarListingContent {
 
 /** One saved snapshot of a play session (see GameplayContext.saveCurrentGameState). */
 export interface GameState {
-  playerStats: PlayerStat[];
-  playerTraits: Trait[];
-  /** Ids of chosen traits the player has switched off during the game. They stay in `playerTraits` so the
-   *  switch can go back on; everything trait-driven reads the difference. Absent ⇒ all active. */
+  globalStats: PlayerStat[];
+  globalTraits: Trait[];
+  /** Ids of chosen global traits the player has switched off during the game. They stay in `globalTraits` so
+   *  the switch can go back on; everything trait-driven reads the difference. Absent ⇒ all active. */
   disabledTraitIds?: string[];
-  /** What each trait's last switch actually moved, trait id → stat id → delta. The next switch of that trait
-   *  reverses this rather than the authored change, so a change a bound refused gives nothing back and a
-   *  clamp is undone as fully as it was applied. Absent on saves written before it, which reverse by negating
-   *  the authored change as they always did. */
-  appliedTraitValues?: Record<string, Record<string, number>>;
-  /** Owner id → the traits a gate cascade turned off, which switch back on once their gate holds again. The
-   *  player's world traits sit under `world`. Absent ⇒ none. */
-  cascadeOffTraitIds?: CascadeOffTraitIds;
+  /** What each trait's last switch actually moved. The next switch of that trait reverses this rather than
+   *  the authored change, so a change a bound refused gives nothing back and a clamp is undone as fully as it
+   *  was applied. Absent on saves written before it, which reverse by negating the authored change as they
+   *  always did. */
+  appliedTraitValues?: SavedAppliedValues;
+  /** The traits a gate cascade turned off, which switch back on once their gate holds again. Absent ⇒ none. */
+  cascadeOffTraitIds?: SavedCascadeOff;
   /** Each entity's owned traits. Absent ⇒ none. */
   ownedTraits?: OwnedTraitStates;
   /** Each entity's stat values, by entity id. Absent ⇒ none. */

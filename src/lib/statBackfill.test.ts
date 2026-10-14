@@ -47,15 +47,15 @@ describe('backfillPlayerStats', () => {
 describe('backfillGameStateStats', () => {
   it('backfills a state snapshot and returns a new object only when changed', () => {
     const world = [stat({ id: 'a' }), stat({ id: 'new' })];
-    const changed = backfillGameStateStats({ playerStats: [pstat({ id: 'a' })], other: 1 }, world);
-    expect(changed.playerStats).toHaveLength(2);
+    const changed = backfillGameStateStats({ globalStats: [pstat({ id: 'a' })], other: 1 }, world);
+    expect(changed.globalStats).toHaveLength(2);
     expect(changed.other).toBe(1);
-    const unchanged = { playerStats: [pstat({ id: 'a' }), pstat({ id: 'new' })] };
+    const unchanged = { globalStats: [pstat({ id: 'a' }), pstat({ id: 'new' })] };
     expect(backfillGameStateStats(unchanged, world)).toBe(unchanged);
   });
 
-  it('leaves a state without playerStats untouched', () => {
-    const s = { foo: 1, playerStats: undefined };
+  it('leaves a state without globalStats untouched', () => {
+    const s = { foo: 1, globalStats: undefined };
     expect(backfillGameStateStats(s, [stat({ id: 'a' })])).toBe(s);
   });
 });
