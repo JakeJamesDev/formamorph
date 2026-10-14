@@ -100,7 +100,7 @@ export function brokenStatReader(
   return traitReader(world, from, byId) ?? codeReader(world, from, byId, to === null);
 }
 
-/** What reads one of `moved`, world stats outside Blueprints, as a player stat: the first trait row or stat code
+/** What reads one of `moved`, global stats outside Blueprints, as a global stat: the first trait row or stat code
  *  that would stop reading it in Blueprints, where `stats` no longer reaches it. Null when nothing does. */
 export function statReaderOutsideBlueprints(world: StatReaderWorld, moved: readonly Stat[]): { stat: Stat; reader: StatReader } | null {
   if (!moved.length) return null;

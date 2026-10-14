@@ -276,7 +276,7 @@ export function applyOwnedStatDrop(
     const owners = leaves ? entities.filter((e) => e.statLinks?.some((l) => subtree.has(l.originalId))).map((e) => e.name) : [];
     if (owners.length) return refused({ reason: 'blueprint-linked', name: original.item.name, owners });
   }
-  // A world stat that joins Blueprints stops being a player stat, so nothing outside may read it.
+  // A world stat that joins Blueprints stops being a global stat, so nothing outside may read it.
   if (!isNode && from === null && !original && parentAfter != null && statBlueprintsSubtreeIds(dropped.groups).has(parentAfter)) {
     const read = statReaderOutsideBlueprints(world, world.stats.filter((s) => subtree.has(s.id)));
     if (read) return refused({ reason: 'into-blueprints', name: read.stat.name, reader: read.reader });

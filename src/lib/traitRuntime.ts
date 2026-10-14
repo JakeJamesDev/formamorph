@@ -265,7 +265,7 @@ export function withCodeDelta(
 }
 
 /**
- * Turn the code bounds an older save stored on its player stats into code deltas, under the player's stat
+ * Turn the code bounds an older save stored on its global stats into code deltas, under the global stat
  * traits in force: each delta is the stored bound minus the bound every other layer derives. The effective
  * bounds stay as they were, except a stored min below the authored min, which rises to it. A stat without
  * stored bounds is the same object, so a second pass changes nothing.

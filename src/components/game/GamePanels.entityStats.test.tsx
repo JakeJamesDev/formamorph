@@ -46,7 +46,7 @@ const optionLabels = async () => {
 const section = () => screen.queryByTestId('entity-stats');
 
 describe('RightPanel — entity stats', () => {
-  it('shows the player stats first and the selected entity stats below, with the same rows', () => {
+  it('shows the global stats first and the selected entity stats below, with the same rows', () => {
     renderRightPanel({}, { ...stage, seed: (g) => { stage.seed(g); g.setSelectedEntityId('bram'); } });
     const rows = screen.getAllByText(/^(Vigor|Trust)$/);
     expect(rows.map((r) => r.textContent)).toEqual(['Vigor', 'Trust']);

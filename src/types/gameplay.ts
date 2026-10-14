@@ -77,7 +77,7 @@ export type PlayerStat = Omit<Stat, 'value'> & {
   codeDelta?: CodeBoundDeltas;
 };
 
-/** A player stat as an older save stores it, with each code-set bound as an absolute number in `codeBounds`. */
+/** A global stat as an older save stores it, with each code-set bound as an absolute number in `codeBounds`. */
 export type LegacyCodeBoundsStat = PlayerStat & { codeBounds?: CodeBounds };
 
 /** One row of the live scene list (the Entities tab): who is physically present this turn. `name` is the
