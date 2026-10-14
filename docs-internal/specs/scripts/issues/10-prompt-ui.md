@@ -1,15 +1,15 @@
 # 10: Prompt UI
 
 Status: ready-for-agent
-Blocked by: 09
+Blocked by: 14
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
 
-Opus at high: a new dialog pattern under design-system approval, a choice-row reuse, and a new history card.
+Opus at high: builds the pattern ticket 14's prototype got approved, a choice-row reuse, and a new history card.
 
 ## What to build
 
-The pending-prompt store gets its UI. `confirm` and an `ask` with up to four options show as a choice row under the narration (Q17). `askText` and a longer `ask` open one small dialog with the question as its title; get the user's design-system approval for the dialog before it ships. `player.tell` renders a message card in the turn column, saved with history, never in a request (Q16, Q23). `player.toast` shows a toast. A prompt during a turn holds the turn until answered.
+The pending-prompt store gets its UI, built to the pattern the user approved on ticket 14's prototype (see the spec's Prototype heading). `confirm` and an `ask` with up to four options show as a choice row under the narration (Q17). `askText` and a longer `ask` open one small dialog with the question as its title, as approved. `player.tell` renders a message card in the turn column, saved with history, never in a request (Q16, Q23). `player.toast` shows a toast. A prompt during a turn holds the turn until answered.
 
 Spec: Q16, Q17, Q23, stories 14, 15.
 
@@ -24,7 +24,7 @@ Spec: Q16, Q17, Q23, stories 14, 15.
 
 ## Blocked by
 
-- 09
+- 14 — Prompt UI Prototype
 
 ## Comments
 
