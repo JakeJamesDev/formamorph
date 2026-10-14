@@ -42,7 +42,7 @@ import { FindBarReference } from '@/components/design-system/FindBarReference';
 import { SearchFieldReference } from '@/components/design-system/SearchFieldReference';
 import { CodeTemplatesReference } from '@/components/design-system/CodeTemplatesReference';
 import { LocationsCanvasReference } from '@/components/design-system/LocationsCanvasReference';
-import { MainMenuContextMenuReference } from '@/components/design-system/MainMenuContextMenuReference';
+import { ContextMenuReferences } from '@/components/design-system/ContextMenuReferences';
 import { FooterActionOrderReference } from '@/components/design-system/FooterActionOrderReference';
 import { NarrationTurnReference } from '@/components/design-system/NarrationTurnReference';
 import { PanelTabStripReference } from '@/components/design-system/PanelTabStripReference';
@@ -316,8 +316,8 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
   {
     id: 'context-menu',
     label: 'Context Menu',
-    description: 'Grouped library tile actions',
-    Component: MainMenuContextMenuReference,
+    description: 'Grouped library tile actions and item detail lines',
+    Component: ContextMenuReferences,
   },
   {
     id: 'rich-lists',
