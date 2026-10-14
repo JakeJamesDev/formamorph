@@ -6,9 +6,9 @@ import { defaultPicks, exclusiveSiblings, isAlwaysOn, isHidden, traitOrderIndex 
 // The generic tree, not traitTree: that module reads the owner resolver, which reads this one.
 import { buildTree, flattenTree } from './groupTree';
 import { conditionsOf, rowsHold } from './requirementRows';
+import { playedEntityIds, scopedOf, PLAYER_OWNER, type Scoped } from './scope';
 
-/** The player's owner id: the key of the world's root traits, shared by None and a library persona. */
-export const PLAYER_OWNER = 'world';
+export { PLAYER_OWNER };
 
 /** The breadcrumb of a world trait or group with no group above it. */
 export const WORLD_BREADCRUMB: readonly string[] = ['World'];
@@ -100,9 +100,31 @@ export interface GateTraitRef {
 
 /** The owner ids whose active sets are the player's: the world root, the played entity, and the Custom
  *  Persona entity under None and a library persona. */
-export function playerOwnerIds(persona: PersonaRef, entities: readonly GateEntity[] = []): string[] {
-  const custom = persona.source === 'world' ? [] : entities.filter((e) => e.customPersona).map((e) => e.id);
-  return persona.source === 'none' ? [PLAYER_OWNER, ...custom] : [PLAYER_OWNER, persona.entityId, ...custom];
+export const playerOwnerIds = (persona: PersonaRef, entities: readonly GateEntity[] = []): string[] =>
+  [PLAYER_OWNER, ...playedEntityIds(persona, entities)];
+
+/** One owner's part of the gate input. `tree` is absent while the input holds none for the owner. */
+export interface GateScopePart {
+  tree?: GateOwner;
+  active: readonly string[];
+  stats: Readonly<Record<string, GateStat>>;
+}
+
+/** The gate input in global and owner parts, with the played entities' ids. Every played id has a part. */
+export interface GateScope extends Scoped<GateScopePart> {
+  played: readonly string[];
+}
+
+/** The gate input split into global scope and each entity owner's part by its id. */
+export function gateScope(input: GateInput): GateScope {
+  const trees = new Map(input.owners.map((o) => [o.id, o]));
+  const played = playedEntityIds(input.persona, input.entities);
+  const ids = new Set([...trees.keys(), ...Object.keys(input.active), ...Object.keys(input.stats ?? {}), ...played]);
+  const parts = Object.fromEntries([...ids].map((id): [string, GateScopePart] => {
+    const tree = trees.get(id);
+    return [id, { ...(tree ? { tree } : {}), active: input.active[id] ?? [], stats: input.stats?.[id] ?? {} }];
+  }));
+  return { ...scopedOf(parts, { active: [], stats: {} }), played };
 }
 
 /** The first owner whose tree holds `traitId`: the world's copy of an original, else the entity that owns it. */

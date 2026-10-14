@@ -23,6 +23,7 @@ import {
   gateOf, gateStates, modeRefuses, overfills, playerOwnerIds, settle, underfills, PLAYER_OWNER, type GateEntity, type GateInput, type GateOwner, type GateStat,
   type GateStates, type GateStats, type GateTraitRef,
 } from './traitGates';
+import { playedEntityIds, type Scoped } from './scope';
 
 /** What a trait's last switch actually moved: record key → stat id → value delta, keyed as `recordKey` and
  *  `ownStatsRecordKey` (lib/ownedTraitState) spell it. */
@@ -82,6 +83,20 @@ export function heldPlayerTraits(traits: readonly Trait[], world: TraitWorld): T
   if (!player) return [...traits];
   const held = new Set(player.traits.map((t) => t.id));
   return traits.filter((t) => held.has(t.id));
+}
+
+/** The traits in force in two parts: the global part holds the player's active held world traits; each entity
+ *  owner's part holds its active traits, owned or linked, in its tree order. A played entity's traits sit only
+ *  under its own id, and every played id has a part. */
+export function traitForceScope(state: TraitForceState, world: TraitWorld): Scoped<Trait[]> & { played: readonly string[] } {
+  const active = activeOwnedTraitIds(state.ownedTraits ?? {});
+  const played = world.persona ? playedEntityIds(world.persona, world.entities) : [];
+  const owners: Record<string, Trait[]> = Object.fromEntries(played.map((id) => [id, []]));
+  for (const owner of entityOwners(world)) {
+    const on = new Set(active[owner.id] ?? []);
+    owners[owner.id] = owner.traits.filter((t) => on.has(t.id));
+  }
+  return { global: heldPlayerTraits(activeTraits(state.traits, state.disabledTraitIds), world), owners, played };
 }
 
 /** The entity owners whose active traits are the player's, in owner order: the Custom Persona entity under
