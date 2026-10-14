@@ -4,7 +4,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { overlayStatCodeResult, runStatCodeTurn, withPinWrites, type StatCodeTurn } from './statCodeTurn';
-import type { StatCodeBearers } from './statCodeTraits';
+import type { StatCodeOwners } from './statCodeTraits';
 import type { CodePins, Placeholder, PlaceholderRolls, PlayerStat, Trait, TraitGroup } from '@/types';
 import { encodePlaceholderToken, resolvePlaceholders, type PlaceholderPick } from './placeholders';
 import { collectPins } from './placeholderPins';
@@ -20,13 +20,13 @@ const stat = (over: Partial<PlayerStat>): PlayerStat => ({
 });
 
 /** `active` acquired and on, as the only traits the world authors. */
-const inForce = (active: Trait[]): StatCodeBearers => ({
+const inForce = (active: Trait[]): StatCodeOwners => ({
   acquired: active, disabledTraitIds: [], appliedValues: {}, world: { traits: active, groups: [] },
 });
 
 /** A turn where nothing happened unless a case says so: no asks, no regen, previous equal to now, no traits. */
 const turn = (over: Partial<StatCodeTurn> & Pick<StatCodeTurn, 'stats'>): StatCodeTurn => ({
-  enabled: {}, previous: over.stats, asks: [], regenApplied: {}, clock: {}, bearers: inForce([]),
+  enabled: {}, previous: over.stats, asks: [], regenApplied: {}, clock: {}, ownerTraits: inForce([]),
   statNameOf: (stat) => stat.name, traitNameOf: (trait) => trait.name, ...over,
 });
 
@@ -430,7 +430,7 @@ describe('runStatCodeTurn trait code names', () => {
   const run = (code: string, roll: string) =>
     runStatCodeTurn(turn({
       stats: [stat({ id: 'a', name: 'Anchor', value: 40, code })],
-      bearers: { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [fury, calm], groups: [] } },
+      ownerTraits: { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [fury, calm], groups: [] } },
       traitNameOf: (trait) => resolvePlaceholders(trait.name, rolled(roll)),
       placeholders: rolled(roll),
     }));
@@ -784,7 +784,7 @@ describe('runStatCodeTurn bound writes', () => {
   };
   const boostWorld = { traits: [boost], groups: [] };
   /** The player holds `boost`, switched off. */
-  const boostHeld: StatCodeBearers = { acquired: [boost], disabledTraitIds: [boost.id], appliedValues: {}, world: boostWorld };
+  const boostHeld: StatCodeOwners = { acquired: [boost], disabledTraitIds: [boost.id], appliedValues: {}, world: boostWorld };
   const boundsOf = (s: PlayerStat) => ({ min: s.min, max: s.max, regen: s.regen });
 
   it.each([
@@ -804,14 +804,14 @@ describe('runStatCodeTurn bound writes', () => {
     ['max', 'self.max = 20; traits.Boost.enabled = true;', { min: 5, max: 20, regen: 2 }],
     ['regen', 'self.regen = 7; traits.Boost.enabled = true;', { min: 5, max: 120, regen: 7 }],
   ] as const)('derives the written %s after the run, whatever its own trait switch moved', async (_field, code, bounds) => {
-    const out = await runStatCodeTurn(turn({ stats: [seeded({ code })], bearers: boostHeld }));
+    const out = await runStatCodeTurn(turn({ stats: [seeded({ code })], ownerTraits: boostHeld }));
     expect(out.traits?.disabledTraitIds).toEqual([]);
     expect(boundsOf(only(out))).toEqual(bounds);
   });
 
   it('lands a bound write equal to the run’s starting number over its own trait switch', async () => {
     const out = await runStatCodeTurn(turn({
-      stats: [seeded({ code: 'self.max = 100; traits.Boost.enabled = true;' })], bearers: boostHeld,
+      stats: [seeded({ code: 'self.max = 100; traits.Boost.enabled = true;' })], ownerTraits: boostHeld,
     }));
     expect(boundsOf(only(out))).toEqual({ min: 5, max: 100, regen: 2 });
     expect(only(out).codeDelta).toEqual({ max: -20 });
@@ -839,7 +839,7 @@ describe('runStatCodeTurn bound writes', () => {
 
   it('books a later code write as a new difference from the layers under it', async () => {
     const first = await runStatCodeTurn(turn({ stats: [seeded({ code: 'self.max = 20;' })] }));
-    const second = await runStatCodeTurn(turn({ stats: [{ ...only(first), code: 'self.max = 90;' }], bearers: inForce([raiseCap]) }));
+    const second = await runStatCodeTurn(turn({ stats: [{ ...only(first), code: 'self.max = 90;' }], ownerTraits: inForce([raiseCap]) }));
     expect(only(second).max).toBe(90);
     expect(only(second).codeDelta).toEqual({ max: -30 });
   });
@@ -875,7 +875,7 @@ describe('runStatCodeTurn bound writes', () => {
   it('keeps the active traits under a bound the code did not write', async () => {
     const out = await runStatCodeTurn(turn({
       stats: [seeded({ max: 120, code: 'self.min = 10;' })],
-      bearers: inForce([raiseCap]),
+      ownerTraits: inForce([raiseCap]),
     }));
     expect(only(out)).toMatchObject({ min: 10, max: 120 });
   });
@@ -883,7 +883,7 @@ describe('runStatCodeTurn bound writes', () => {
   it("derives an entity owner's bounds without the player's traits in force", async () => {
     const stats = [seeded({ code: 'self.min = 10;' })];
     const out = await runStatCodeTurn(turn({
-      stats, bearers: inForce([raiseCap]),
+      stats, ownerTraits: inForce([raiseCap]),
       owners: [{ id: 'bram', stats, enabled: {}, previous: stats, regenApplied: {} }],
     }));
     expect(only(out)).toMatchObject({ min: 10, max: 120 });
@@ -932,20 +932,20 @@ describe('runStatCodeTurn traits', () => {
   const timid: Trait = { id: 'timid', name: 'Timid', statChanges: [{ statId: 'h', value: -20, type: 'starting' }] };
   const cursed: Trait = { id: 'cursed', name: 'Cursed', groupId: 'g', statChanges: [{ statId: 'h', value: 50, type: 'max' }] };
   const world = { traits: [brave, timid, cursed], groups: [group] };
-  const held = (over: Partial<StatCodeBearers> = {}): StatCodeBearers => ({
+  const held = (over: Partial<StatCodeOwners> = {}): StatCodeOwners => ({
     acquired: [brave, timid], disabledTraitIds: ['timid'], appliedValues: { brave: { h: 10 }, timid: { h: 20 } }, world, ...over,
   });
   /** Health at 60 under Brave, plus one stat per piece of code, in order. */
-  const run = (codes: string[], traits: StatCodeBearers = held()) =>
+  const run = (codes: string[], traits: StatCodeOwners = held()) =>
     runStatCodeTurn(turn({
       stats: [seeded({ id: 'h', name: 'Health', value: 60 }), ...codes.map((code, i) => seeded({ id: `s${i}`, name: `S${i}`, code }))],
-      bearers: traits,
+      ownerTraits: traits,
     }));
   const health = (out: { stats: readonly PlayerStat[] }) => out.stats.find((s) => s.id === 'h')!;
 
   it('reads enabled and acquired for an enabled, a switched-off, and an unacquired trait', async () => {
     const code = 'return [traits.Brave, traits.Timid, traits.Cursed].map(e => (e.enabled ? 2 : 0) + (e.acquired ? 1 : 0)).join("") * 1;';
-    const out = await runStatCodeTurn(turn({ stats: [seeded({ id: 'a', max: 1000, code })], bearers: held() }));
+    const out = await runStatCodeTurn(turn({ stats: [seeded({ id: 'a', max: 1000, code })], ownerTraits: held() }));
     expect(valueOf(out.stats, 'a')).toBe(310);
   });
 
@@ -994,7 +994,7 @@ describe('runStatCodeTurn traits', () => {
   it('lands a bound the code wrote this run over the bound its trait switch moved', async () => {
     const out = await runStatCodeTurn(turn({
       stats: [seeded({ id: 'h', name: 'Health', value: 60, code: 'traits.Cursed.enabled = true; self.max = 80;' })],
-      bearers: held(),
+      ownerTraits: held(),
     }));
     // Cursed lifts the layers under code to 150, so the delta holds the rest.
     expect(health(out)).toMatchObject({ max: 80, codeDelta: { max: -70 } });
@@ -1034,7 +1034,7 @@ describe('runStatCodeTurn traits', () => {
     const frail: Trait = { id: 'frail', name: 'Frail', statChanges: [{ statId: 'h', value: -50, type: 'max' }] };
     const out = await runStatCodeTurn(turn({
       stats: [seeded({ id: 'h', name: 'Health', value: 60, code: 'traits.Frail.enabled = true; self.value = 90;' })],
-      bearers: held({ world: { ...world, traits: [brave, timid, cursed, frail] } }),
+      ownerTraits: held({ world: { ...world, traits: [brave, timid, cursed, frail] } }),
     }));
     expect(health(out)).toMatchObject({ max: 50, value: 50 });
   });
@@ -1052,7 +1052,7 @@ describe('runStatCodeTurn traits', () => {
     const out = await runStatCodeTurn(turn({
       stats: [seeded({ id: 'h', value: 60 }), seeded({ id: 'off', code: 'traits.Timid.enabled = true;' })],
       enabled: { off: false },
-      bearers: held(),
+      ownerTraits: held(),
     }));
     expect(out.traits).toBeUndefined();
   });
@@ -1060,7 +1060,7 @@ describe('runStatCodeTurn traits', () => {
   it('logs a switch under the name the player reads, and still reaches the trait by its code name', async () => {
     const out = await runStatCodeTurn(turn({
       stats: [seeded({ id: 'h', name: 'Health', value: 60 }), seeded({ id: 's0', name: 'S0', code: 'traits.Brave.enabled = false;' })],
-      bearers: held(),
+      ownerTraits: held(),
       traitNameOf: (t) => t.name.toUpperCase(),
     }));
     expect(out.traits?.log).toEqual(['Trait switched off: BRAVE (by S0)']);

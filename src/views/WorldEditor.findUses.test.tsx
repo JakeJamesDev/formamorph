@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { benchEditorWorld, entityFieldsTab, renderWorldEditorBench } from '@/test/worldEditorBench';
 import type { CodeCardNavigation } from '@/lib/codeCardNavigation';
-import type { CodeStatUse } from '@/lib/codeStatUses';
+import type { CodeUse } from '@/lib/codeUses';
 import type { World } from '@/types';
 
 /** A Find All Uses row, from a stat's code box to another box at the line. */
@@ -71,7 +71,7 @@ afterEach(() => {
 });
 
 /** Takes Find All Uses from Warmth's After box, returns Warmth to Details, then follows `use`. */
-function goFromWarmth(use: CodeStatUse) {
+function goFromWarmth(use: CodeUse) {
   fireEvent.mouseDown(screen.getByRole('tab', { name: /Stats/ }));
   fireEvent.click(screen.getByText('Warmth'));
   const fields = () => within(screen.getByRole('tablist', { name: 'Stat Fields' }));
@@ -90,7 +90,7 @@ const statFieldsTab = (name: string) => within(screen.getAllByRole('tablist', { 
 describe('a Find All Uses row', () => {
   it('opens a world stat’s Code tab and hands its box the line, once', async () => {
     renderWorldEditorBench(WORLD, 'advanced');
-    goFromWarmth({ entityId: null, rowId: 's2', timing: 'before', stat: 'Chill', line: 3, noBearers: false });
+    goFromWarmth({ entityId: null, rowId: 's2', timing: 'before', stat: 'Chill', line: 3, noOwners: false });
 
     expect(sectionTab(/Stats/)).toHaveAttribute('aria-selected', 'true');
     await waitFor(() => expect(statFieldsTab('Code')).toHaveAttribute('aria-selected', 'true'));
@@ -103,7 +103,7 @@ describe('a Find All Uses row', () => {
 
   it('opens an entity’s own stat on its Stats tab at the box', async () => {
     renderWorldEditorBench(WORLD, 'advanced');
-    goFromWarmth({ entityId: 'mara', rowId: 'm-nerve', timing: 'after', stat: 'Nerve', entity: 'Mara', line: 2, noBearers: false });
+    goFromWarmth({ entityId: 'mara', rowId: 'm-nerve', timing: 'after', stat: 'Nerve', entity: 'Mara', line: 2, noOwners: false });
 
     expect(sectionTab(/Entities/)).toHaveAttribute('aria-selected', 'true');
     expect(entityFieldsTab('Stats')).toHaveAttribute('aria-selected', 'true');
@@ -114,7 +114,7 @@ describe('a Find All Uses row', () => {
 
   it('opens a Blueprint stat’s own box', async () => {
     renderWorldEditorBench(WORLD, 'advanced');
-    goFromWarmth({ entityId: null, rowId: 'howl', timing: 'after', stat: 'Howl', line: 1, noBearers: false });
+    goFromWarmth({ entityId: null, rowId: 'howl', timing: 'after', stat: 'Howl', line: 1, noOwners: false });
 
     await waitFor(() => expect(boxes.get(AFTER)?.revealLine).toBe(1));
     expect(boxes.get(AFTER)?.value).toBe('return owner.stats.Howl.value;');
@@ -122,7 +122,7 @@ describe('a Find All Uses row', () => {
 
   it('opens a Link’s override box on the Link’s row', async () => {
     renderWorldEditorBench(WORLD, 'advanced');
-    goFromWarmth({ entityId: 'mara', rowId: 'l-howl', timing: 'after', stat: 'Howl', entity: 'Mara', line: 1, noBearers: false });
+    goFromWarmth({ entityId: 'mara', rowId: 'l-howl', timing: 'after', stat: 'Howl', entity: 'Mara', line: 1, noOwners: false });
 
     expect(entityFieldsTab('Stats')).toHaveAttribute('aria-selected', 'true');
     await waitFor(() => expect(boxes.get(AFTER)?.revealLine).toBe(1));

@@ -68,7 +68,7 @@ import { BenchPopover } from '@/components/editor/BenchPopover';
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
 import type { FindingSection } from '@/lib/testBench/rules';
 import { CodeCardNavigationContext, type CodeCardNavigation } from '@/lib/codeCardNavigation';
-import type { CodeStatUse } from '@/lib/codeStatUses';
+import type { CodeUse } from '@/lib/codeUses';
 import { clearCodeUseReveal, requestCodeUseReveal } from '@/lib/codeUseReveal';
 import type { CodeCardItem } from '@/lib/codeCards';
 import { useTestBench } from '@/lib/testBench/useTestBench';
@@ -571,7 +571,7 @@ const WorldEditorInner = ({
     }
   }, [navigateToBenchItem]);
   // A Find All Uses row: select the box's stat; its panel opens the Code tab and the box takes the caret.
-  const goToCodeUse = useCallback(({ entityId, rowId, timing, line }: CodeStatUse) => {
+  const goToCodeUse = useCallback(({ entityId, rowId, timing, line }: CodeUse) => {
     requestCodeUseReveal({ entityId, rowId, timing, line });
     if (!entityId) return navigateToBenchItem('stats', rowId);
     setEntityStatId(rowId);

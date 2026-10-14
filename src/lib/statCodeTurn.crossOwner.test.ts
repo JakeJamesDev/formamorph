@@ -4,7 +4,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { runStatCodeTurn, type OwnerCodeTurn, type StatCodeTurn } from './statCodeTurn';
-import type { StatCodeBearers } from './statCodeTraits';
+import type { StatCodeOwners } from './statCodeTraits';
 import { inPlayBearers } from './ownedTraitsInPlay';
 import { withPersonaEntry } from './persona';
 import { WORLD_OWNER } from './traitGates';
@@ -25,7 +25,7 @@ const asMira: PersonaRef = { source: 'world', entityId: 'mira' };
 const asLyra: PersonaRef = { source: 'library', entityId: 'lyra' };
 
 /** A playthrough with Bram, Odette, Rook and Mira in the world under `persona`, with `library` entered. */
-function cast(persona: PersonaRef = asMira, library: Entity[] = []): StatCodeBearers {
+function cast(persona: PersonaRef = asMira, library: Entity[] = []): StatCodeOwners {
   const entities = [bram, odette, rook, mira];
   const entered = [...withPersonaEntry(entities, persona, library[0]?.name)];
   return {
@@ -42,7 +42,7 @@ const owner = (id: string, stats: PlayerStat[], over: Partial<OwnerCodeTurn> = {
 });
 
 const run = (world: PlayerStat[], owners: OwnerCodeTurn[], over: Partial<StatCodeTurn> = {}) => runStatCodeTurn({
-  stats: world, enabled: {}, previous: world, asks: [], regenApplied: {}, clock: {}, bearers: cast(), owners,
+  stats: world, enabled: {}, previous: world, asks: [], regenApplied: {}, clock: {}, ownerTraits: cast(), owners,
   statNameOf: (s) => s.name, traitNameOf: (t) => t.name, ...over,
 });
 
@@ -89,7 +89,7 @@ describe('runStatCodeTurn writes across owners', () => {
         owner('odette', [writer('entities.Bram.stats.Trust.value = 3; stats.Alert.value = 3;')]),
         owner('lyra', [writer('entities.Bram.stats.Trust.value = 4; stats.Alert.value = 4;')]),
       ],
-      { bearers: cast(asLyra, [lyra]) },
+      { ownerTraits: cast(asLyra, [lyra]) },
     );
     expect(find(out.owners?.bram.stats, 'trust')).toMatchObject({ value: 4, regen: 2 });
     // Alert's own code is a world writer, so it loses to every entity's write.
@@ -104,10 +104,10 @@ describe('runStatCodeTurn writes across owners', () => {
     expect(valueOf(out.owners?.odette.stats, 'calm')).toBe(2);
   });
 
-  it('moves a world stat once when a Blueprint stat on two bearers writes it', async () => {
+  it('moves a world stat once when a Blueprint stat on two owners writes it', async () => {
     const hub = stat({ id: 'hub', name: 'Hub', code: 'stats.Gold.value = stats.Gold.value + 1;' });
     const out = await run([stat({ id: 'gold', name: 'Gold', value: 5 })], [owner('bram', [hub]), owner('odette', [hub])]);
-    // Each bearer reads Gold at 5, so both write 6.
+    // Each owner reads Gold at 5, so both write 6.
     expect(valueOf(out.stats, 'gold')).toBe(6);
   });
 

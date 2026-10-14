@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { CodeCardItem } from './codeCards';
-import type { CodeStatUse } from './codeStatUses';
+import type { CodeUse } from './codeUses';
 import { statBoxLookup, type CodeCardWorld } from './codeWorldLookup';
 import type { PlaceholderOwners } from './placeholderHomes';
 import { statCodeOwners } from './statCodeTargets';
@@ -72,7 +72,7 @@ const usesOf = (item: CodeCardItem) => {
   const owners = statCodeOwners({ ...world, placeholders });
   return statBoxLookup(owners, { owner: null, timing: 'after', self: courage }, world).uses(item);
 };
-const rows = (uses: CodeStatUse[]) => uses.map((use) => `${use.entity ? `${use.entity} › ` : ''}${use.stat} ${use.timing} ${use.line}`);
+const rows = (uses: CodeUse[]) => uses.map((use) => `${use.entity ? `${use.entity} › ` : ''}${use.stat} ${use.timing} ${use.line}`);
 
 describe('Find All Uses for other kinds', () => {
   it('keeps a world trait apart from an entity’s namesake and joins every route to it', () => {
@@ -93,7 +93,7 @@ describe('Find All Uses for other kinds', () => {
     expect(rows(usesOf({ kind: 'placeholder', placeholderId: 'beast' }))).toEqual(['Courage after 4']);
   });
 
-  it('matches owner.placeholders in a Blueprint box through every bearer, not only the first (T12-4)', () => {
+  it('matches owner.placeholders in a Blueprint box through every owner, not only the first (T12-4)', () => {
     expect(rows(usesOf({ kind: 'placeholder', placeholderId: 'bram-look' }))).toEqual(['Howl after 2']);
   });
 

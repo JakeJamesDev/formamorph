@@ -6,12 +6,13 @@
 
 import type { Dictionary, Entity, EntityGroup, Placeholder, Stat, StatGroup, Trait, TraitGroup } from '@/types';
 import { effectiveCopy } from './blueprints';
-import { editorGateInput, resolveBearers, type BearerWorld } from './bearers';
+import { editorGateInput, resolveOwners, type OwnerWorld } from './owners';
 import { startingGateStats } from './gateStats';
 import { pinsTargeting, type PinEditorWorld } from './placeholderPins';
 import type { CodeCardItem } from './codeCards';
 import { itemUses } from './codeItemUses';
-import { statUses, type CodeStatUse } from './codeStatUses';
+import { statUses } from './codeStatUses';
+import type { CodeUse } from './codeUses';
 import { blueprintGroupStats } from './statLinks';
 import { placeholderPathMap } from './statCodePaths';
 import { codeDictionaries } from './statCodePlaceholders';
@@ -30,10 +31,10 @@ export interface CodeStatRecord {
   /** The entity that holds the stat. Absent for a world or Blueprint stat. */
   entityId?: string;
   /** Who runs the box's code: set for a Blueprint box's own stats. */
-  bearers?: readonly string[];
+  owners?: readonly string[];
 }
 
-/** A trait as a card shows it: the bearer's effective trait and its rows already worded. */
+/** A trait as a card shows it: the owner's effective trait and its rows already worded. */
 export interface CodeTraitRecord {
   trait: Trait;
   /** The entity that owns the trait. Absent for a world trait or one a Link brings. */
@@ -42,8 +43,8 @@ export interface CodeTraitRecord {
   requires: readonly (readonly string[])[];
   /** Each stat change and stat switch, as "Stamina max +10" or "Fatigue off". */
   changes: readonly string[];
-  /** **You**, then each entity whose tree has the trait; on a route over several entities, the reached holders. */
-  bearers: readonly string[];
+  /** **You**, then each entity whose tree has the trait; on a route over several entities, the reached owners. */
+  owners: readonly string[];
 }
 
 /** A placeholder as a card shows it: a Copy laid over its Blueprint. */
@@ -53,15 +54,15 @@ export interface CodePlaceholderRecord {
   owner: string;
   /** Each Pin on it in precedence order, as "Trait: Brave: calm". */
   pins: readonly string[];
-  /** On a route over several entities, the ones it reaches that hold it. */
-  bearers?: readonly string[];
+  /** On a route over several entities, the ones it reaches that own it. */
+  owners?: readonly string[];
 }
 
 /** A route over several entities whose owners have different items, so only the owners show (Q37). */
 export interface CodeOwnersRecord {
   trait?: null;
   placeholder?: null;
-  bearers: readonly string[];
+  owners: readonly string[];
 }
 
 /** One entity a placeholder route over several entities reaches, and what it owns there. */
@@ -90,30 +91,30 @@ export interface CodeDictionaryRecord {
 export type CodeOwnerRecord =
   | { kind: 'empty' }
   | { kind: 'entity'; entity: CodeEntityRecord }
-  | { kind: 'blueprint'; bearers: readonly string[] };
+  | { kind: 'blueprint'; owners: readonly string[] };
 
 export interface CodeWorldLookup {
   /** The stat the box belongs to. */
   self(): CodeStatRecord & { stat: Stat };
   /** Null in an owned box whose entity the world no longer has. */
   owner(): CodeOwnerRecord | null;
-  /** The ids of the entities `owner` holds across the box's runs: the entity, or each bearer. */
+  /** The ids of the entities `owner` holds across the box's runs: the entity, or each owner. */
   ownerEntityIds(): readonly string[];
   /** The stat `key` names on `owner`'s map, or null where the map has no such stat. */
   stat(owner: StatOwner, key: string): CodeStatRecord | null;
-  /** On a route over several entities, the trait every holder shares, or only the holders (Q37). */
+  /** On a route over several entities, the trait every owner shares, or only the owners (Q37). */
   trait(owner: TraitOwner, key: string): CodeTraitRecord | CodeOwnersRecord | null;
-  /** Each holder's trait, for a route that reaches several entities. */
+  /** Each owner's trait, for a route that reaches several entities. */
   traits(owner: TraitOwner, key: string): CodeTraitRecord[];
   placeholder(placeholder: Placeholder): CodePlaceholderRecord | null;
-  /** The placeholder every holder shares, one Copy or the Blueprint of all, or only the holders (Q37). */
-  heldPlaceholder(holders: readonly CodePlaceholderOwner[]): CodePlaceholderRecord | CodeOwnersRecord | null;
+  /** The placeholder every owner shares, one Copy or the Blueprint of all, or only the owners (Q37). */
+  ownedPlaceholder(reached: readonly CodePlaceholderOwner[]): CodePlaceholderRecord | CodeOwnersRecord | null;
   entity(key: string): CodeEntityRecord | null;
   dictionary(key: string): CodeDictionaryRecord | null;
   /** The entities the player can play. */
   persona(): readonly string[];
   /** Every box and line whose code reaches the item. */
-  uses(item: CodeCardItem): CodeStatUse[];
+  uses(item: CodeCardItem): CodeUse[];
 }
 
 /** Whose code a box holds: an entity's own stat or Link, or a Blueprint stat. */
@@ -161,7 +162,7 @@ export function lazyLookup(make: () => CodeWorldLookup): CodeWorldLookup {
     trait: (owner, key) => at().trait(owner, key),
     traits: (owner, key) => at().traits(owner, key),
     placeholder: (placeholder) => at().placeholder(placeholder),
-    heldPlaceholder: (holders) => at().heldPlaceholder(holders),
+    ownedPlaceholder: (reached) => at().ownedPlaceholder(reached),
     entity: (key) => at().entity(key),
     dictionary: (key) => at().dictionary(key),
     persona: () => at().persona(),
@@ -174,13 +175,13 @@ const signedAmount = (n: number, unit: string) => (n < 0 ? `−${-n}${unit}` : `
 /** Everything trait, placeholder, entity and dictionary cards read, built once per lookup. */
 function cardIndex(owners: CodeOwners, world: CodeCardWorld) {
   const { placeholders } = world;
-  const bearerWorld: BearerWorld = { traits: world.traits, traitGroups: world.traitGroups, entities: world.entities };
-  const named = new Map(entityTraitNames(bearerWorld, placeholders).map((entity) => [entity.id, entity]));
-  const bearers = new Map(resolveBearers(bearerWorld, undefined).bearers.map((bearer) => [bearer.id, bearer]));
-  const gate = editorGateInput(bearerWorld, startingGateStats({ stats: world.stats, statGroups: world.statGroups, entities: world.entities }));
+  const ownerWorld: OwnerWorld = { traits: world.traits, traitGroups: world.traitGroups, entities: world.entities };
+  const named = new Map(entityTraitNames(ownerWorld, placeholders).map((entity) => [entity.id, entity]));
+  const ownerById = new Map(resolveOwners(ownerWorld, undefined).bearers.map((owner) => [owner.id, owner]));
+  const gate = editorGateInput(ownerWorld, startingGateStats({ stats: world.stats, statGroups: world.statGroups, entities: world.entities }));
   const textOf = conditionTexts(gate);
   // Later names win, as the sandbox's map keys them.
-  const worldTraits = new Map(worldTraitPlaces(bearerWorld, placeholders).map((place) => [place.name, place.id]));
+  const worldTraits = new Map(worldTraitPlaces(ownerWorld, placeholders).map((place) => [place.name, place.id]));
   const map = placeholderPathMap({ list: placeholders, owners: world.placeholderOwners });
   const books = codeDictionaries(world.dictionaries, placeholders);
   const stats = new Map([...owners.statWorld.stats, ...world.entities.flatMap((entity) => entity.stats ?? [])].map((stat) => [stat.id, stat]));
@@ -202,7 +203,7 @@ function cardIndex(owners: CodeOwners, world: CodeCardWorld) {
     ...(entityId ? { entityId } : {}),
     requires: (trait.requires ?? []).map((row) => row.all.map(textOf)),
     changes: changesOf(trait),
-    bearers: gate.owners
+    owners: gate.owners
       .filter((owner) => owner.traits.some((held) => held.id === trait.id))
       .map((owner) => (owner.id === WORLD_OWNER ? YOU : nameOf(owner.id))),
   });
@@ -225,21 +226,21 @@ function cardIndex(owners: CodeOwners, world: CodeCardWorld) {
     /** The trait `key` names in one entity's set, owned or linked. */
     entityTrait(entityId: string, key: string): CodeTraitRecord | null {
       const place = named.get(entityId)?.traits.findLast((candidate) => candidate.name === key);
-      const bearer = bearers.get(entityId);
-      const trait = place && bearer?.traits.find((candidate) => candidate.id === place.id);
+      const owner = ownerById.get(entityId);
+      const trait = place && owner?.traits.find((candidate) => candidate.id === place.id);
       if (!trait) return null;
-      const owned = bearer?.entity?.traits?.some((candidate) => candidate.id === trait.id);
+      const owned = owner?.entity?.traits?.some((candidate) => candidate.id === trait.id);
       return traitRecord(trait, owned ? entityId : undefined);
     },
     placeholder(placeholder: Placeholder): CodePlaceholderRecord {
       const blueprint = placeholder.blueprintId ? placeholders.find((candidate) => candidate.id === placeholder.blueprintId) : undefined;
       const effective = blueprint ? effectiveCopy(placeholder, blueprint) : placeholder;
       const home = world.placeholderOwners?.get(placeholder.id);
-      const holder = placeholder.ownerId ? placeholders.find((candidate) => candidate.id === placeholder.ownerId) : undefined;
+      const parent = placeholder.ownerId ? placeholders.find((candidate) => candidate.id === placeholder.ownerId) : undefined;
       const valueText = (valueId: string | undefined, value: string) => effective.values.find((v) => v.id === valueId)?.text ?? value;
       return {
         placeholder: effective,
-        owner: home ? owners.codeName(home.name) : holder ? owners.codeName(holder.name) : WORLD,
+        owner: home ? owners.codeName(home.name) : parent ? owners.codeName(parent.name) : WORLD,
         pins: pinsTargeting(world, placeholder.id).map((row) => `${row.label}: ${valueText(row.pin.valueId, row.pin.value)}`),
       };
     },
@@ -275,9 +276,9 @@ export function statBoxLookup(owners: CodeOwners, box: CodeBox, world?: CodeCard
   const entityOwner = boxEntityId === null ? null : owners.all.find((owner) => owner.entity?.id === boxEntityId) ?? null;
   const boxOwnerName = entityName(entityOwner);
 
-  // A bearer runs a Blueprint box unless its Link overrides that box.
-  let bearers: readonly (CodeOwner & { entity: Entity })[] | undefined;
-  const bearerOwners = () => (bearers ??= (() => {
+  // An owner runs a Blueprint box unless its Link overrides that box.
+  let running: readonly (CodeOwner & { entity: Entity })[] | undefined;
+  const runningOwners = () => (running ??= (() => {
     const original = owners.statWorld.stats.find((stat) => stat.id === box.self.id);
     if (!original) return [];
     return owners.all.flatMap((owner) => {
@@ -285,7 +286,7 @@ export function statBoxLookup(owners: CodeOwners, box: CodeBox, world?: CodeCard
       return owner.entity && link && !overridesBox(link, original, box.timing) ? [{ ...owner, entity: owner.entity }] : [];
     });
   })());
-  const bearersOf = () => bearerOwners().map(entityName);
+  const runningOwnerNames = () => runningOwners().map(entityName);
 
   let groupMap: ReadonlyMap<string, Stat> | undefined;
   const blueprintGroup = () => (groupMap ??= owners.byCodeName(blueprintGroupStats(owners.statWorld, box.self)));
@@ -304,18 +305,18 @@ export function statBoxLookup(owners: CodeOwners, box: CodeBox, world?: CodeCard
 
   const ownerEntityIds = (): readonly string[] => {
     if (!box.owner) return [];
-    if (box.owner.kind === 'blueprint') return bearerOwners().map((owner) => owner.entity.id);
+    if (box.owner.kind === 'blueprint') return runningOwners().map((owner) => owner.entity.id);
     return [box.owner.entityId];
   };
   /** Each of `entityIds` whose set has a trait `key` names, in that order, with that trait. */
-  const holdersOf = (entityIds: readonly string[], key: string): { name: string; record: CodeTraitRecord }[] => {
+  const ownersWithTrait = (entityIds: readonly string[], key: string): { name: string; record: CodeTraitRecord }[] => {
     const index = cards();
     return index ? entityIds.flatMap((id) => {
       const record = index.entityTrait(id, key);
       return record ? [{ name: index.entityName(id), record }] : [];
     }) : [];
   };
-  const traitsOn = (entityIds: readonly string[], key: string) => holdersOf(entityIds, key).map((holder) => holder.record);
+  const traitsOn = (entityIds: readonly string[], key: string) => ownersWithTrait(entityIds, key).map((found) => found.record);
   /** The entities `persona` or `owner` reaches, where there are two or more (T15-1). */
   const severalReached = (route: TraitOwner['route']): readonly string[] | null => {
     const reached = route === 'persona' ? owners.playable.map((target) => target.entity.id) : route === 'owner' ? ownerEntityIds() : [];
@@ -339,12 +340,12 @@ export function statBoxLookup(owners: CodeOwners, box: CodeBox, world?: CodeCard
   return {
     self() {
       if (!box.owner) return { stat: box.self, owner: WORLD };
-      if (box.owner.kind === 'blueprint') return { stat: box.self, owner: BLUEPRINT, bearers: bearersOf() };
+      if (box.owner.kind === 'blueprint') return { stat: box.self, owner: BLUEPRINT, owners: runningOwnerNames() };
       return { stat: box.self, owner: boxOwnerName, entityId: box.owner.entityId };
     },
     owner() {
       if (!box.owner) return { kind: 'empty' };
-      if (box.owner.kind === 'blueprint') return { kind: 'blueprint', bearers: bearersOf() };
+      if (box.owner.kind === 'blueprint') return { kind: 'blueprint', owners: runningOwnerNames() };
       if (!entityOwner?.entity) return null;
       return { kind: 'entity', entity: entityRecord({ ...entityOwner, entity: entityOwner.entity }) };
     },
@@ -359,7 +360,7 @@ export function statBoxLookup(owners: CodeOwners, box: CodeBox, world?: CodeCard
           if (!box.owner) return null;
           if (box.owner.kind === 'blueprint') {
             const stat = blueprintGroup().get(key);
-            return stat ? { stat, owner: BLUEPRINT, bearers: bearersOf() } : null;
+            return stat ? { stat, owner: BLUEPRINT, owners: runningOwnerNames() } : null;
           }
           return entityOwner && onEntity(entityOwner, key);
         }
@@ -370,16 +371,16 @@ export function statBoxLookup(owners: CodeOwners, box: CodeBox, world?: CodeCard
         case 'persona': {
           // One playable entity is no route over several: its stat reads as `entities[...]` reads it (T15-1).
           if (owners.playable.length === 1) return onEntity(owners.playable[0], key);
-          // Values show only where every holder links one Blueprint stat, which then supplies them (Q34).
-          const holders = owners.playable.flatMap((target) => {
+          // Values show only where every owner links one Blueprint stat, which then supplies them (Q34).
+          const withStat = owners.playable.flatMap((target) => {
             const stat = target.byCodeName.get(key);
             return stat ? [{ owner: target, stat }] : [];
           });
-          if (!holders.length) return null;
-          const owner = holders.map((holder) => entityName(holder.owner)).join(', ');
+          if (!withStat.length) return null;
+          const owner = withStat.map((found) => entityName(found.owner)).join(', ');
           // A linked stat keeps its Blueprint's id, which no own stat shares.
-          const id = holders[0].stat.id;
-          const shared = holders.every((holder) => holder.stat.id === id);
+          const id = withStat[0].stat.id;
+          const shared = withStat.every((found) => found.stat.id === id);
           return { stat: shared ? owners.statWorld.stats.find((stat) => stat.id === id) ?? null : null, owner };
         }
       }
@@ -387,20 +388,20 @@ export function statBoxLookup(owners: CodeOwners, box: CodeBox, world?: CodeCard
     trait(owner, key) {
       const reached = severalReached(owner.route);
       if (!reached) return traits(owner, key)[0] ?? null;
-      const holders = holdersOf(reached, key);
-      if (!holders.length) return null;
-      const bearers = holders.map((holder) => holder.name);
-      const [{ record }] = holders;
-      return holders.every((holder) => holder.record.trait.id === record.trait.id) ? { ...record, bearers } : { trait: null, bearers };
+      const found = ownersWithTrait(reached, key);
+      if (!found.length) return null;
+      const names = found.map((each) => each.name);
+      const [{ record }] = found;
+      return found.every((each) => each.record.trait.id === record.trait.id) ? { ...record, owners: names } : { trait: null, owners: names };
     },
     traits,
     placeholder: (placeholder) => cards()?.placeholder(placeholder) ?? null,
-    heldPlaceholder(holders) {
+    ownedPlaceholder(reached) {
       const index = cards();
-      if (!index || !holders.length) return null;
-      const bearers = holders.map((holder) => index.entityName(holder.entityId));
-      const shared = index.sharedPlaceholder(holders.map((holder) => holder.placeholder));
-      return shared ? { ...index.placeholder(shared), bearers } : { placeholder: null, bearers };
+      if (!index || !reached.length) return null;
+      const names = reached.map((each) => index.entityName(each.entityId));
+      const shared = index.sharedPlaceholder(reached.map((each) => each.placeholder));
+      return shared ? { ...index.placeholder(shared), owners: names } : { placeholder: null, owners: names };
     },
     entity(key) {
       const target = owners.byName.get(key);

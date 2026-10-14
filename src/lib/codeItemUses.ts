@@ -1,10 +1,10 @@
 /**
  * Find All Uses for a trait, placeholder, entity or dictionary: every box and line whose name reaches that
- * item. Each name is read through its card, and a route over several holders through each holder too.
+ * item. Each name is read through its card, and a route over several owners through each owner too.
  */
 
-import { codeCard, placeholderHolders, type CodeCardItem } from './codeCards';
-import { boxUses, type CodeStatUse } from './codeStatUses';
+import { codeCard, reachedPlaceholderOwners, type CodeCardItem } from './codeCards';
+import { boxUses, type CodeUse } from './codeUses';
 import type { CodeBox, CodeCardWorld, CodeWorldLookup } from './codeWorldLookup';
 import type { SurfaceAnalysisOptions } from './statCodeAnalysis';
 import { cardWorldNames, statBoxAnalysisOptions } from './statCodeBoxOptions';
@@ -30,7 +30,7 @@ function matcherOf(item: OtherUseItem, world: CodeCardWorld): (found: CodeCardIt
   }
 }
 
-/** What the name at `pos` reaches: its card's item, and each holder's where its route reaches several (T12-4). */
+/** What the name at `pos` reaches: its card's item, and each owner's where its route reaches several (T12-4). */
 function itemsAt(code: string, pos: number, options: SurfaceAnalysisOptions): CodeCardItem[] {
   const item = codeCard(code, pos, options)?.item;
   const items = item ? [item] : [];
@@ -40,7 +40,7 @@ function itemsAt(code: string, pos: number, options: SurfaceAnalysisOptions): Co
     items.push(...(options.lookup?.traits(name.owner, name.key) ?? []).map(({ trait }): CodeCardItem => ({ kind: 'trait', traitId: trait.id })));
   }
   if (name.kind === 'placeholder') {
-    items.push(...placeholderHolders(name.owner, name.path, options).map(({ placeholder }): CodeCardItem => ({ kind: 'placeholder', placeholderId: placeholder.id })));
+    items.push(...reachedPlaceholderOwners(name.owner, name.path, options).map(({ placeholder }): CodeCardItem => ({ kind: 'placeholder', placeholderId: placeholder.id })));
   }
   return items;
 }
@@ -64,7 +64,7 @@ const boxOwnerOf = (box: StatCodeBox): CodeBox['owner'] => {
 /** Every box and line whose code names the item, with each box read under the options its editor gives it. */
 export function itemUses(
   owners: CodeOwners, world: CodeCardWorld, item: OtherUseItem, lookupOf: (box: CodeBox) => CodeWorldLookup,
-): CodeStatUse[] {
+): CodeUse[] {
   const names = cardWorldNames(world);
   const matches = matcherOf(item, world);
   return statCodeBoxes(owners).flatMap((box) => {

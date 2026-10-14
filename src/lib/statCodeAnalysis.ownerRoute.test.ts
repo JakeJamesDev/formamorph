@@ -23,7 +23,7 @@ const entities = [
 const owned: AnalysisOptions = { statNames: WORLD, owner: 'entity', ownerStatNames: ['Rage', 'Hunger'], selfName: 'Rage', entities };
 /** Alert Level, a world stat: `owner` is the empty entry. */
 const world: AnalysisOptions = { statNames: WORLD, ownerStatNames: [], selfName: 'Alert Level', entities };
-/** A Blueprint stat: `owner` is a bearer, and the group lists only its own stats. */
+/** A Blueprint stat: `owner` is an owner of the Blueprint, and the group lists only its own stats. */
 const blueprint: AnalysisOptions = { statNames: WORLD, owner: 'blueprint', ownerStatNames: ['Hunger'], selfName: 'Hunger', entities };
 
 const FIELDS = STAT_FIELDS.map((field) => field.name);
@@ -151,7 +151,7 @@ describe('an unknown stat name', () => {
     expect(messages('return owner.stats.Rage.value;', world)).toEqual(['No stat is named “Rage”.']);
   });
 
-  it('is a warning after owner.stats in a Blueprint box, which a bearer can hold more stats than', () => {
+  it('is a warning after owner.stats in a Blueprint box, which an owner can hold more stats than', () => {
     const [problem] = statCodeDiagnostics('return owner.stats.Fury.value;', blueprint);
     expect(problem).toMatchObject({ severity: 'warning', message: 'No stat is named “Fury”.' });
     expect(statCodeDiagnostics('return owner.stats.Hunger.value;', blueprint)).toEqual([]);

@@ -4,7 +4,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { runStatCodeTurn, type OwnerCodeTurn, type StatCodeTurn } from './statCodeTurn';
-import type { StatCodeBearers } from './statCodeTraits';
+import type { StatCodeOwners } from './statCodeTraits';
 import { inPlayBearers } from './ownedTraitsInPlay';
 import { playStatWorld } from './statLinks';
 import type { Entity, PersonaRef, PlayerStat, Stat, StatGroup, Trait } from '@/types';
@@ -17,7 +17,7 @@ const stat = (over: Partial<PlayerStat>): PlayerStat => ({
 const hardy: Trait = { id: 'hardy', name: 'Hardy', statChanges: [] };
 
 /** A playthrough with `entities` in the cast under `persona`. */
-const bearers = (entities: Entity[], persona: PersonaRef = { source: 'none' }): StatCodeBearers => ({
+const ownerTraits = (entities: Entity[], persona: PersonaRef = { source: 'none' }): StatCodeOwners => ({
   acquired: [], disabledTraitIds: [], appliedValues: {}, ownedTraits: {}, entities,
   world: {
     traits: [], groups: [], entities, persona,
@@ -28,7 +28,7 @@ const bearers = (entities: Entity[], persona: PersonaRef = { source: 'none' }): 
 const owner = (id: string, stats: PlayerStat[]): OwnerCodeTurn => ({ id, stats, enabled: {}, previous: stats, regenApplied: {} });
 
 const run = (world: PlayerStat[], owners: OwnerCodeTurn[], entities: Entity[], over: Partial<StatCodeTurn> = {}) => runStatCodeTurn({
-  stats: world, enabled: {}, previous: world, asks: [], regenApplied: {}, clock: {}, bearers: bearers(entities), owners,
+  stats: world, enabled: {}, previous: world, asks: [], regenApplied: {}, clock: {}, ownerTraits: ownerTraits(entities), owners,
   statNameOf: (s) => s.name, traitNameOf: (t) => t.name, ...over,
 });
 
@@ -86,11 +86,11 @@ describe('runStatCodeTurn owner', () => {
     const mira: Entity = { id: 'mira', name: 'Mira', persona: true };
     const persona: PersonaRef = { source: 'world', entityId: 'mira' };
     const out = await run([], [owner('mira', [stat({ id: 'grit', name: 'Grit', value: 0, code: 'return owner === persona && owner === entities.Mira ? 1 : 2;' })])],
-      [mira], { bearers: bearers([mira], persona) });
+      [mira], { ownerTraits: ownerTraits([mira], persona) });
     expect(valueOf(out.owners?.mira.stats, 'grit')).toBe(1);
   });
 
-  it('runs a Blueprint stat’s code for each bearer as `owner`, the world `stats` leaving the Blueprint out', async () => {
+  it('runs a Blueprint stat’s code for each owner as `owner`, the world `stats` leaving the Blueprint out', async () => {
     const blueprints: StatGroup = { id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' };
     const grit: Stat = {
       id: 'grit', name: 'Grit', type: 'number', description: '', min: 0, max: 100, value: 10, regen: 0, descriptors: [], groupId: 'bp',
@@ -114,7 +114,7 @@ describe('runStatCodeTurn owner', () => {
     expect(valueOf(out.owners?.odette.stats, 'grit')).toBe(15);
   });
 
-  it('lands a Blueprint stat’s `owner.stats` write on each bearer’s own copy', async () => {
+  it('lands a Blueprint stat’s `owner.stats` write on each owner’s own copy', async () => {
     const trust = (value: number) => stat({ id: 'trust', name: 'Trust', value });
     const hub = stat({ id: 'hub', name: 'Hub', value: 0, code: 'owner.stats.Trust.value = owner.stats.Trust.value + owner.name.length;' });
     const out = await run([], [owner('bram', [hub, trust(10)]), owner('odette', [hub, trust(20)])],

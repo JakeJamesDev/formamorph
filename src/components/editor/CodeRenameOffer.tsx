@@ -7,7 +7,7 @@ import { useGameDataOptional } from '@/contexts/GameDataContext';
 import { updateOwnedStat } from '@/lib/ownedStats';
 import { planCodeRename, type CodeRenamePlan, type RenameRoot } from '@/lib/statCodeRename';
 import { setStatLinkCode, withStatLinks } from '@/lib/statLinks';
-import { traitHolders } from '@/lib/statCodeTraits';
+import { traitOwnerMaps } from '@/lib/statCodeTraits';
 import { boxCode, CODE_FIELD, STAT_CODE_TIMINGS, type StatCodeTiming } from '@/lib/statCodeTiming';
 import type { StatLink } from '@/types';
 import { CodeRenameContext, type CodeRenameRequest, type OfferCodeRename } from '@/lib/useCodeRename';
@@ -61,10 +61,10 @@ export function CodeRenameProvider({ children }: { children: ReactNode }) {
   const pending = useMemo(() => {
     for (let i = 0; i < queue.length; i += 1) {
       const { traitId, ...request } = queue[i];
-      const holders = traitId === undefined ? undefined
-        : traitHolders({ traits, traitGroups, entities }, placeholders.list, traitId);
+      const maps = traitId === undefined ? undefined
+        : traitOwnerMaps({ traits, traitGroups, entities }, placeholders.list, traitId);
       const plan = planCodeRename({
-        ...request, stats, statGroups, traits, entities, dictionaries, placeholders, traitHolders: holders,
+        ...request, stats, statGroups, traits, entities, dictionaries, placeholders, traitOwnerMaps: maps,
       });
       if (plan) return { plan, through: i };
     }

@@ -36,7 +36,7 @@ const placeholderOwners: PlaceholderOwners = new Map([
   ['ann-look', { kind: 'entity', id: 'ann', name: 'Ann' }],
 ]);
 
-/** A world whose playable entities, and Howl's bearers, are `entities`. */
+/** A world whose playable entities, and Howl's owners, are `entities`. */
 const worldOf = (...entities: Entity[]): CodeCardWorld => ({
   traits: [brave], traitGroups: [], entities, stats: [courage, howl], statGroups: [blueprints],
   placeholders: allPlaceholders, placeholderOwners,
@@ -75,7 +75,7 @@ describe('trait cards on a route that reaches several entities (Q37)', () => {
     expect(card?.item).toEqual({ kind: 'trait', traitId: 'brave' });
   });
 
-  it('shows only who holds one where the holders’ traits differ', () => {
+  it('shows only who owns one where the owners’ traits differ', () => {
     const card = cardAt('return persona.traits.Br|ave.enabled;', worldBox(tom, ann));
     expect(card?.rows).toEqual([{ label: 'Bearers', value: 'Tom, Ann' }]);
     expect(card?.description).toBeUndefined();
@@ -86,7 +86,7 @@ describe('trait cards on a route that reaches several entities (Q37)', () => {
     expect(rowsOf(cardAt('return persona.traits.Br|ave.enabled;', worldBox(kit, tom)))).toEqual({ Mode: 'Automatic', Bearers: 'Tom' });
   });
 
-  it('keeps the plain card with every bearer where `persona` reaches one entity (T15-1)', () => {
+  it('keeps the plain card with every owner where `persona` reaches one entity (T15-1)', () => {
     const card = cardAt('return persona.traits.Br|ave.enabled;', worldBox(tom));
     expect(rowsOf(card)).toEqual({ Mode: 'Automatic', Bearers: 'You, Tom' });
     expect(card?.item).toEqual({ kind: 'trait', traitId: 'brave' });
@@ -105,20 +105,20 @@ describe('trait cards on a route that reaches several entities (Q37)', () => {
 });
 
 describe('placeholder cards on a route that reaches several entities (Q37)', () => {
-  it('shows the Blueprint every holder’s Copy shares, with the reached entities as Bearers', () => {
+  it('shows the Blueprint every owner’s Copy shares, with the reached entities as Bearers', () => {
     const card = cardAt('return owner.placeholders.Lo|ok.value;', howlBox(tom, sam));
     expect(rowsOf(card)).toEqual({ Owner: 'World', Kind: 'Wildcard', Bearers: 'Tom, Sam' });
     expect(card?.allowedValues?.values.map((value) => value.text)).toEqual(['grim', 'sly']);
     expect(card?.item).toEqual({ kind: 'placeholder', placeholderId: 'look' });
   });
 
-  it('shows the one holder’s Copy where a single entity holds it', () => {
+  it('shows the one owner’s Copy where a single entity owns it', () => {
     const card = cardAt('return owner.placeholders.Lo|ok.value;', howlBox(kit, tom));
     expect(rowsOf(card)).toEqual({ Owner: 'Tom', Kind: 'Wildcard', Bearers: 'Tom' });
     expect(card?.item).toEqual({ kind: 'placeholder', placeholderId: 'tom-look' });
   });
 
-  it('shows only who holds one where the holders’ placeholders differ', () => {
+  it('shows only who owns one where the owners’ placeholders differ', () => {
     const card = cardAt('return owner.placeholders.Lo|ok.value;', howlBox(tom, ann));
     expect(card?.rows).toEqual([{ label: 'Bearers', value: 'Tom, Ann' }]);
     expect(card?.allowedValues).toBeUndefined();
@@ -130,7 +130,7 @@ describe('placeholder cards on a route that reaches several entities (Q37)', () 
     expect(cardAt('return persona.placeholders.Lo|ok.value;', worldBox(tom, ann))?.rows).toEqual([{ label: 'Bearers', value: 'Tom, Ann' }]);
   });
 
-  it('keeps the plain card with no Bearers where a Blueprint box has one bearer (T15-1)', () => {
+  it('keeps the plain card with no Bearers where a Blueprint box has one owner (T15-1)', () => {
     expect(rowsOf(cardAt('return owner.placeholders.Lo|ok.value;', howlBox(tom)))).toEqual({ Owner: 'Tom', Kind: 'Wildcard' });
   });
 

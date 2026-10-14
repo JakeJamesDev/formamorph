@@ -101,7 +101,7 @@ describe('Find All Uses on a code card', () => {
     const nav = navigation();
     const { user, uses } = await findFatigueUses(nav);
     await user.click(within(uses).getByRole('button', { name: 'Alert · Before · Line 2' }));
-    expect(nav.goToUse).toHaveBeenCalledWith({ entityId: null, rowId: 'a', timing: 'before', stat: 'Alert', line: 2, noBearers: false });
+    expect(nav.goToUse).toHaveBeenCalledWith({ entityId: null, rowId: 'a', timing: 'before', stat: 'Alert', line: 2, noOwners: false });
     await waitFor(() => expect(card()).toBeNull());
   });
 

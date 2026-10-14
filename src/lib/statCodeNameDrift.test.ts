@@ -47,7 +47,7 @@ async function nameInSandbox(rolled: string, timing: StatCodeTiming): Promise<st
     asks: [],
     regenApplied: {},
     clock: {},
-    bearers: { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [], groups: [] } },
+    ownerTraits: { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [], groups: [] } },
     statNameOf: (stat) => stat.name,
     traitNameOf: (trait) => trait.name,
     placeholders: { placeholders: [beast, probe], rolls: { world: { 'ph-beast': rolled } } },
@@ -119,7 +119,7 @@ async function traitNamesInSandbox(rolled: string, timing: StatCodeTiming): Prom
     asks: [],
     regenApplied: {},
     clock: {},
-    bearers: { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [fury], groups: [] } },
+    ownerTraits: { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [fury], groups: [] } },
     statNameOf: (stat) => stat.name,
     traitNameOf: (trait) => trait.name,
     placeholders: { placeholders: [beast, probe], rolls: { world: { 'ph-beast': rolled } } },
@@ -196,7 +196,7 @@ async function entityKeysInSandbox(rolled: string, timing: StatCodeTiming): Prom
     asks: [],
     regenApplied: {},
     clock: {},
-    bearers: {
+    ownerTraits: {
       acquired: [], disabledTraitIds: [], appliedValues: {}, entities,
       world: {
         traits: [], groups: [], entities, persona: { source: 'none' },
@@ -245,7 +245,7 @@ async function entityStatKeysInSandbox(rolled: string, timing: StatCodeTiming): 
   const owned = keeper.stats!.map((s) => ({ ...s, value: s.value ?? 0 }));
   const out = await runStatCodeTurn({
     timing, stats: [reader], enabled: {}, previous: [reader], asks: [], regenApplied: {}, clock: {},
-    bearers: {
+    ownerTraits: {
       acquired: [], disabledTraitIds: [], appliedValues: {}, entities: [keeper],
       world: {
         traits: [], groups: [], entities: [keeper], persona: { source: 'none' },
@@ -301,7 +301,7 @@ async function runScoped(code: string, timing: StatCodeTiming): Promise<Record<s
     asks: [],
     regenApplied: {},
     clock: {},
-    bearers: { acquired: [], disabledTraitIds: [], appliedValues: {}, entities: [molly], world: { traits: [], groups: [] } },
+    ownerTraits: { acquired: [], disabledTraitIds: [], appliedValues: {}, entities: [molly], world: { traits: [], groups: [] } },
     statNameOf: (stat) => stat.name,
     traitNameOf: (trait) => trait.name,
     placeholders: { placeholders: scoped, owners, rolls: { world: {} } },
@@ -414,7 +414,7 @@ describe('a stat with code in both boxes', () => {
         asks: [],
         regenApplied: {},
         clock: {},
-        bearers: { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [], groups: [] } },
+        ownerTraits: { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [], groups: [] } },
         statNameOf: (entry) => entry.name,
         traitNameOf: (entry) => entry.name,
         placeholders: { placeholders: [probe], rolls: { world: {} } },
@@ -460,7 +460,7 @@ describe.each(STAT_CODE_TIMINGS)('one dictionary code name across the sandbox, t
     const reader = stat({ id: 's1', name: 'Reader', ...inBox(timing, 'placeholders.Probe.pin(Object.keys(dictionaries).join("|"));') });
     const out = await runStatCodeTurn({
       timing, stats: [reader], enabled: {}, previous: [reader], asks: [], regenApplied: {}, clock: {},
-      bearers: { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [], groups: [] } },
+      ownerTraits: { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [], groups: [] } },
       statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
       placeholders: { placeholders: [beast, probe], dictionaries: books, rolls: { world: { 'ph-beast': rolled } } },
     });

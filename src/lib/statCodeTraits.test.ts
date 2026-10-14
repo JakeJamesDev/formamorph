@@ -46,7 +46,7 @@ describe('sandboxTraits under gates', () => {
   });
 });
 
-describe('applyCodeTraitSwitches on a bearer’s own trait', () => {
+describe('applyCodeTraitSwitches on an owner’s own trait', () => {
   const group: TraitGroup = { id: 'g', name: 'Mood', parentId: null, maxPicks: 1 };
   const calm: Trait = { id: 'calm', name: 'Calm', groupId: 'g', statChanges: [] };
   const angry: Trait = { id: 'angry', name: 'Angry', groupId: 'g', statChanges: [] };
@@ -64,7 +64,7 @@ describe('applyCodeTraitSwitches on a bearer’s own trait', () => {
   const flip = (chosen: string[], traitId: string, enabled: boolean) =>
     applyCodeTraitSwitches(start(chosen), [{ traitId, enabled, by: 'Vigor', ownerId: 'mira' }], world);
 
-  it('retires the active sibling in the bearer’s own Up to One group', () => {
+  it('retires the active sibling in the owner’s own Up to One group', () => {
     const { state, log } = flip(['calm'], 'angry', true);
     expect(state.ownedTraits?.mira).toEqual({ chosen: ['sworn', 'calm', 'angry'], disabled: ['calm'] });
     expect(log).toEqual(['Trait switched off: Calm (by Vigor)', 'Acquired trait: Angry (by Vigor)']);

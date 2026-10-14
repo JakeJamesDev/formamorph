@@ -11,7 +11,7 @@ import {
 } from './statCodePlaceholders';
 import { recordKey } from './ownedTraitState';
 import {
-  codeEntities, sandboxTraits, type CodeEntities, type CodeEntity, type StatCodeBearers,
+  codeEntities, sandboxTraits, type CodeEntities, type CodeEntity, type StatCodeOwners,
 } from './statCodeTraits';
 import { enabledStats } from './traitEffects';
 import {
@@ -56,7 +56,7 @@ export interface StatCodeTurn {
   regenApplied: Readonly<Record<string, number>>;
   clock: StatClock;
   /** What `traits`, `entities` and `persona` read and switch. Bounds re-derive under the ones in force. */
-  bearers: StatCodeBearers;
+  ownerTraits: StatCodeOwners;
   /** What `placeholders`, each owner entry's `placeholders` and `dictionaries` read. Absent, all are empty. */
   placeholders?: StatCodePlaceholderSet;
   /** A stat's name as the player reads it, for the turn log. Required, not defaulted: a caller that left
@@ -292,26 +292,26 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
   const [worldRun, ...entityRuns] = [main, ...turn.owners ?? []].map((owner) => ownerRun(owner, timing, placeholderDefs));
   const runs = [worldRun, ...entityRuns];
   const anyCoded = runs.some((run) => run.coded.length);
-  const world = turn.bearers.world;
+  const world = turn.ownerTraits.world;
   const before: TraitRuntimeState = {
     stats: [...turn.stats],
-    traits: [...turn.bearers.acquired],
-    disabledTraitIds: [...turn.bearers.disabledTraitIds],
-    appliedValues: turn.bearers.appliedValues,
-    cascadeOffTraitIds: turn.bearers.cascadeOffTraitIds,
-    ownedTraits: turn.bearers.ownedTraits,
+    traits: [...turn.ownerTraits.acquired],
+    disabledTraitIds: [...turn.ownerTraits.disabledTraitIds],
+    appliedValues: turn.ownerTraits.appliedValues,
+    cascadeOffTraitIds: turn.ownerTraits.cascadeOffTraitIds,
+    ownedTraits: turn.ownerTraits.ownedTraits,
     entityStats: Object.fromEntries((turn.owners ?? []).map((owner) => [owner.id, [...owner.stats]])),
   };
   const gateStatsAt = (mainStats: PlayerStat[], ownerStats: EntityStatValues): GateStats =>
     ({ ...turn.gateStats, ...gateStatsOf({ ...before, stats: mainStats, entityStats: ownerStats }, world) });
   // Resolved once, so every stat's code reads the same placeholders and the same traits.
-  const readBearers = anyCoded
-    ? { ...turn.bearers, world: { ...world, gateStats: gateStatsAt([...turn.stats], before.entityStats ?? {}) } }
-    : turn.bearers;
-  const traits = anyCoded ? sandboxTraits(readBearers, placeholderDefs) : [];
-  const cast = anyCoded ? codeEntities(readBearers, placeholderDefs) : null;
+  const readOwnerTraits = anyCoded
+    ? { ...turn.ownerTraits, world: { ...world, gateStats: gateStatsAt([...turn.stats], before.entityStats ?? {}) } }
+    : turn.ownerTraits;
+  const traits = anyCoded ? sandboxTraits(readOwnerTraits, placeholderDefs) : [];
+  const cast = anyCoded ? codeEntities(readOwnerTraits, placeholderDefs) : null;
   // The library's pools join the run as the session's Placeholder Set joins them.
-  const placeholderSet = turn.placeholders && withLibraryPlaceholders(withBooksInPlay(turn.placeholders), turn.bearers.library ?? []);
+  const placeholderSet = turn.placeholders && withLibraryPlaceholders(withBooksInPlay(turn.placeholders), turn.ownerTraits.library ?? []);
   const sandbox = anyCoded && placeholderSet ? sandboxPlaceholders(placeholderSet) : null;
   const placeholders = sandbox?.top ?? [];
   // The first run is the world's; every other run is an entity's, which reads the world's stats as `stats`.
@@ -374,7 +374,7 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
   const switches = inOrder.map(({ stat, writes, owner }) => ({ stat, written: writes.traits.get(stat.id), owner }));
   const switched = applyCodeTraitSwitches(
     before,
-    traitSwitchesInStatOrder(switches, turn.bearers, keyed, placeholderDefs, turn.statNameOf),
+    traitSwitchesInStatOrder(switches, turn.ownerTraits, keyed, placeholderDefs, turn.statNameOf),
     { ...world, gateStats }, turn.traitNameOf,
   );
   const active = ownerStatTraitsInForce(switched.state, world, main.id);
@@ -457,18 +457,18 @@ interface StatTraitWrites {
   entities: readonly EntityTraitWrites[];
 }
 
-/** Each stat's trait switches keyed by bearer and trait, in stat order: the later stat wins, and its switch
+/** Each stat's trait switches keyed by owner and trait, in stat order: the later stat wins, and its switch
  *  applies at that stat's position. A name resolves to the last trait with it, as the sandbox map does. */
 function traitSwitchesInStatOrder(
   /** `owner` is the writing stat's owner, which a row through `owner` alone switches. */
   inOrder: readonly { stat: PlayerStat; written: StatTraitWrites | undefined; owner: CodeEntity | undefined }[],
-  bearers: StatCodeBearers,
+  ownerTraits: StatCodeOwners,
   inPlay: KeyedEntities<CodeEntity> | null,
   placeholders: readonly Placeholder[],
   /** The switching stat's name as the player reads it — the log line names it. */
   statNameOf: (stat: PlayerStat) => string,
 ): CodeTraitSwitch[] {
-  const idByName = new Map(bearers.world.traits.map((trait) => [statCodeName(trait.name, placeholders), trait.id]));
+  const idByName = new Map(ownerTraits.world.traits.map((trait) => [statCodeName(trait.name, placeholders), trait.id]));
   const out = new Map<string, CodeTraitSwitch>();
   const setLast = (key: string, at: CodeTraitSwitch) => {
     out.delete(key);

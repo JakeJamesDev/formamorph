@@ -163,14 +163,14 @@ describe('stat cards: routes', () => {
     expect(card?.item).toEqual({ kind: 'stat', statId: 'ivy-rage', entityId: 'ivy' });
   });
 
-  it('shows the Blueprint’s values for `persona.stats` when every playable holder links it (Q34)', () => {
+  it('shows the Blueprint’s values for `persona.stats` when every playable owner links it (Q34)', () => {
     const lia: Entity = { id: 'lia', name: 'Lia', persona: true, statLinks: [link('lia-rage')] };
     const card = cardAt('return persona.stats.Ra|ge.value;', box(null, health, 'after', { ...world, entities: [mara, tom, kai, lia] }));
     expect(rowsOf(card)).toEqual({ Type: 'Number', Range: '0 – 100', Owner: 'Tom, Lia' });
     expect(card?.item).toEqual({ kind: 'stat', statId: 'rage' });
   });
 
-  it('shows only the owners for `persona.stats` when the playable holders’ stats differ', () => {
+  it('shows only the owners for `persona.stats` when the playable owners’ stats differ', () => {
     const ivy: Entity = { id: 'ivy', name: 'Ivy', persona: true, stats: [stat('ivy-rage', 'Rage', { max: 7 })] };
     const options = box(null, health, 'after', { ...world, entities: [mara, tom, kai, ivy] });
     const card = cardAt('return persona.stats.Ra|ge.value;', options);
@@ -231,7 +231,7 @@ describe('`self` and `owner` cards', () => {
     expect(card?.item).toBeUndefined();
   });
 
-  it('lists the bearers that run a Blueprint box', () => {
+  it('lists the owners that run a Blueprint box', () => {
     expect(cardAt('return own|er.name;', rageBox())?.rows).toEqual([{ label: 'Bearers', value: 'Mara, Tom' }]);
     expect(cardAt('return own|er.name;', rageBox('before'))?.rows).toEqual([{ label: 'Bearers', value: 'Mara, Tom, Kai' }]);
   });

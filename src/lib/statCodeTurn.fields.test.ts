@@ -4,7 +4,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { runStatCodeTurn, type StatCodeTurn } from './statCodeTurn';
-import type { StatCodeBearers } from './statCodeTraits';
+import type { StatCodeOwners } from './statCodeTraits';
 import { inPlayBearers } from './ownedTraitsInPlay';
 import { withPersonaEntry } from './persona';
 import type { Entity, PersonaRef, Placeholder, PlayerStat, Trait, TraitGroup } from '@/types';
@@ -26,7 +26,7 @@ const rook: Entity = { id: 'rook', name: 'Rook', traits: [calm, sworn].map((t) =
 const pip: Entity = { id: 'pip', name: 'Pip' };
 const asMira: PersonaRef = { source: 'world', entityId: 'mira' };
 
-function played(over: { inSceneIds?: string[] } = {}): StatCodeBearers {
+function played(over: { inSceneIds?: string[] } = {}): StatCodeOwners {
   const entities = [mira, rook, pip];
   const entered = [...withPersonaEntry(entities, asMira, undefined)];
   const bearerWorld = { traits: [oath, gifted, edge], traitGroups: [mood], entities: entered };
@@ -48,9 +48,9 @@ function played(over: { inSceneIds?: string[] } = {}): StatCodeBearers {
 const sky: Placeholder = { id: 'p-sky', name: 'Sky', values: [] };
 
 /** One stat per piece of code; `S1` is switched off when `off` is set. */
-const run = (codes: string[], traits: StatCodeBearers = played(), off = false) => runStatCodeTurn({
+const run = (codes: string[], traits: StatCodeOwners = played(), off = false) => runStatCodeTurn({
   stats: codes.map((code, i) => stat({ id: `s${i}`, name: `S${i}`, value: 0, code })),
-  enabled: off ? { s1: false } : {}, previous: [], asks: [], regenApplied: {}, clock: {}, bearers: traits,
+  enabled: off ? { s1: false } : {}, previous: [], asks: [], regenApplied: {}, clock: {}, ownerTraits: traits,
   placeholders: { placeholders: [sky], rolls: {} },
   statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
 } satisfies StatCodeTurn);
@@ -58,7 +58,7 @@ const run = (codes: string[], traits: StatCodeBearers = played(), off = false) =
 const valueOf = (out: { stats: readonly PlayerStat[] }, id: string) => out.stats.find((s) => s.id === id)?.value;
 
 /** Whether an expression holds, read through the stat's value. */
-const holds = async (expression: string, traits: StatCodeBearers = played(), off = false) =>
+const holds = async (expression: string, traits: StatCodeOwners = played(), off = false) =>
   valueOf(await run([`return (${expression}) ? 1 : 0;`, 'return 0;'], traits, off), 's0') === 1;
 
 describe('runStatCodeTurn entry fields', () => {
@@ -106,7 +106,7 @@ describe('runStatCodeTurn entry fields', () => {
     expect(await holds('traits.Oath.available', { ...played(), acquired: [gifted, edge] })).toBe(true);
   });
 
-  it('reads an entity trait’s fields, its gate checked for its own Bearer', async () => {
+  it('reads an entity trait’s fields, its gate checked for its own owner', async () => {
     expect(await holds("entities.Rook.traits.Calm.id === 'rook-calm' && entities.Rook.traits.Calm.mode === 'optional'")).toBe(true);
     expect(await holds('!entities.Rook.traits.Sworn.available && entities.Rook.traits.Calm.available')).toBe(true);
     const chosen = { ...played(), ownedTraits: { rook: { chosen: ['rook-calm'] } } };
@@ -153,7 +153,7 @@ describe('runStatCodeTurn entry fields', () => {
         stat({ id: 'a', name: 'A', value: 0, code: 'const real = !stats.B.enabled && stats.B.value === 7 && stats.B.max === 40 && stats.B.previous.value === 7; stats.B.value = 9; return real ? 1 : 0;' }),
         stat({ id: 'b', name: 'B', value: 7, max: 40, code: 'return 99;' }),
       ],
-      enabled: { b: false }, previous: [], asks: [], regenApplied: {}, clock: {}, bearers: played(),
+      enabled: { b: false }, previous: [], asks: [], regenApplied: {}, clock: {}, ownerTraits: played(),
       statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
     });
     expect(valueOf(out, 'a')).toBe(1);
@@ -166,7 +166,7 @@ describe('runStatCodeTurn entry fields', () => {
     const reads = async (enabled: Record<string, boolean>) => {
       const out = await runStatCodeTurn({
         stats: [twin('a', 1, 'return self === stats.Twin ? stats.Twin.value * 10 : 99;'), twin('b', 2), twin('c', 3)],
-        enabled, previous: [], asks: [], regenApplied: {}, clock: {}, bearers: played(),
+        enabled, previous: [], asks: [], regenApplied: {}, clock: {}, ownerTraits: played(),
         statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
       });
       return valueOf(out, 'a');
@@ -206,7 +206,7 @@ describe('runStatCodeTurn entry fields', () => {
         stat({ id: 'b', name: 'B', value: 7 }),
       ],
       enabled: { b: false }, previous: [stat({ id: 'b', name: 'B', value: 3 })], asks: [{ id: 'b', value: 4, max: 0 }],
-      regenApplied: {}, clock: {}, bearers: played(),
+      regenApplied: {}, clock: {}, ownerTraits: played(),
       statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
     });
     expect(valueOf(out, 'a')).toBe(304);
@@ -225,7 +225,7 @@ describe('runStatCodeTurn entry fields', () => {
   it('still switches an unnamed persona’s trait through persona', async () => {
     const nameless: Entity = { ...mira, name: '' };
     const entered = [...withPersonaEntry([nameless], asMira, undefined)];
-    const traits: StatCodeBearers = {
+    const traits: StatCodeOwners = {
       acquired: [], disabledTraitIds: [], appliedValues: {}, ownedTraits: { mira: { chosen: ['calm'] } },
       entities: [nameless], library: [],
       world: {

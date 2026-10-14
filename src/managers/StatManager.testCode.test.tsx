@@ -211,7 +211,7 @@ describe('whose code a box holds', () => {
       }]);
       expect([box, lookupOf(box).stat({ route: 'world' }, 'Damp')?.owner]).toEqual([box, 'World']);
       // The box hands its lookup the world's traits, so trait cards show their rows.
-      expect([box, lookupOf(box).trait({ route: 'owner' }, 'Loyal')?.bearers]).toEqual([box, ['Ash']]);
+      expect([box, lookupOf(box).trait({ route: 'owner' }, 'Loyal')?.owners]).toEqual([box, ['Ash']]);
     }
   });
 

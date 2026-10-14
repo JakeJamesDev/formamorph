@@ -8,7 +8,7 @@
  */
 
 import type { Entity, Placeholder, Stat, StatGroup, StatLink } from '@/types';
-import { canBePlayer } from './bearers';
+import { canBePlayer } from './owners';
 import { codeRenameChains, type CodeRenameKey } from './codeRenameChains';
 import { hasEntityKey, statCodeName, statsByCodeName } from './statCodeNames';
 import { CODE_FIELD, filledCodeBoxes, type StatCodeTiming } from './statCodeTiming';
@@ -121,7 +121,7 @@ export type CodeHome =
   | { kind: 'stat'; statId: string }
   /** An entity's own stat. */
   | { kind: 'entity'; entityId: string; statId: string }
-  /** A bearer's link that overrides this box of the Blueprint stat it brings. */
+  /** An owner's link that overrides this box of the Blueprint stat it brings. */
   | { kind: 'link'; entityId: string; linkId: string; statId: string };
 
 /** One filled box of stat code. */
@@ -129,14 +129,14 @@ export interface StatCodeBox {
   home: CodeHome;
   timing: StatCodeTiming;
   code: string;
-  /** The stat as its runs read it: a bearer's linked copy for a link's box. */
+  /** The stat as its runs read it: an owner's linked copy for a link's box. */
   stat: Stat;
   /** The entity an own or link box sits on. */
   entity: Entity | null;
   /** What `owner` holds where the editor reads the box: the empty entry for a world stat, the group alone for
    *  a Blueprint stat (Q10), the entity otherwise. */
   owner: CodeOwner | null;
-  /** Each run the box gets in play: one per bearer for a Blueprint stat whose link leaves the box alone. */
+  /** Each run the box gets in play: one per owner for a Blueprint stat whose link leaves the box alone. */
   runs: CodeRun[];
 }
 
@@ -176,7 +176,7 @@ export function statCodeBoxes(owners: CodeOwners): StatCodeBox[] {
         const home: CodeHome = { kind: 'link', entityId: entity.id, linkId: link.id, statId: stat.id };
         return [{ home, ...box, stat, entity, owner, runs: [run] }];
       }
-      // A box the link leaves alone runs the Blueprint's code for this bearer.
+      // A box the link leaves alone runs the Blueprint's code for this owner.
       blueprintBox.get(`${stat.id}:${box.timing}`)?.runs.push(run);
       return [];
     }));
