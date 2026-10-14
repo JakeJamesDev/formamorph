@@ -16,7 +16,11 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 #### ➕ Added
 
-- **👤 User-facing**
+  - **Scripts:**
+    - **A world option, Strip Links And Images, sends past narration without markdown links and images.** A link becomes its text and an image goes. It covers the last story, memory digests, diary entries and recall results, never your authored text. New worlds start with it on; older worlds keep it off.
+  - **ComfyUI's Model row shows the model a workflow loads itself.** A workflow without `%ckpt%` ignores the Model setting, so the row shows its own model file, grayed out.
+  - **ComfyUI's File Name setting saves images under folders by world and subject.** The pattern takes `{world}`, `{subject}`, `{turn}` and `{preset}`, and defaults to `formamorph/{world}/{subject}`. A custom workflow takes it where its save node's prefix is `%prefix%`.
+  - **Buttons that send an AI request now say in their tooltip where it goes.** **Send**, **Re-generate**, the turn's More items, **Re-generate Choices** and the World Editor's generate buttons add a line such as *Sends to GLM 5.3 · glm-5.3*. A prompt set to another endpoint names that one.
   - **Each text endpoint has Extra Parameters: a JSON object added to every request sent to it.** It sits under **Advanced** in the endpoint editor and wins over the app's own fields, so you can send a vendor's reasoning switch, `top_a` or `chat_template_kwargs`. It can't replace `model`, `messages` or `stream`.
 
 #### 🔧 Fixed
