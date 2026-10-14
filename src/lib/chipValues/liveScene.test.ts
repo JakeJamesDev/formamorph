@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { liveChipScene, type LiveSceneSources } from './liveScene';
 import { chipValues, entityStatsField } from './chipValues';
-import { resolveBearers, type BearerWorld } from '../bearers';
-import { resolveBearerText, resolveEntityText } from '../placeholders';
+import { resolveOwners, type OwnerWorld } from '../owners';
+import { resolveOwnerText, resolveEntityText } from '../placeholders';
 import { buildCharacterUserMessage, buildDiaryUserMessage } from '../stagedPlanning';
 import { buildToolSnapshot } from '../tools/toolSnapshot';
 import { renderPromptTemplate } from '../promptTemplate';
@@ -193,7 +193,7 @@ describe('the live adapter', () => {
       const grim: Trait = { id: 'grim', name: 'Grim', statChanges: [], statToggles: [{ statId: 'trust', enabled: false }, { statId: 'dread', enabled: true }] };
       const holding = (disabled: string[]) => liveChipScene(sources({
         entityStats: { harbormaster: [trust, off] },
-        bearers: [{ id: 'harbormaster', traits: [grim], groups: [] }],
+        owners: [{ id: 'harbormaster', traits: [grim], groups: [] }],
         ownedTraits: { harbormaster: { chosen: ['grim'], disabled } },
       }));
       expect(holding([]).ownedStats?.harbormaster.map((s) => s.name)).toEqual(['Dread']);
@@ -260,7 +260,7 @@ describe('the live adapter', () => {
 
       it('switches their stats with their own traits in force', () => {
         const stirred: Trait = { id: 'stirred', name: 'Stirred', statChanges: [], statToggles: [{ statId: 'dread', enabled: true }] };
-        const scene = playing({ bearers: [{ id: 'wren', traits: [stirred], groups: [] }], ownedTraits: { wren: { chosen: ['stirred'] } } });
+        const scene = playing({ owners: [{ id: 'wren', traits: [stirred], groups: [] }], ownedTraits: { wren: { chosen: ['stirred'] } } });
         expect(chipValues(scene)('<STATS DESCRIPTION|numbers>')).toContain('Dread: 4/10');
       });
 
@@ -340,11 +340,11 @@ describe('the live adapter', () => {
     const albus: Entity = { id: 'albus', name: 'Albus', locations: ['quay'], aiDescription: 'A knight.', traitLinks: [link('l1')] };
     const wren: Entity = { id: 'wren', name: 'Wren', persona: true, aiDescription: 'Rows the ferry.', traitLinks: [link('l2')] };
     const newcomer: Entity = { id: 'cp', name: 'Newcomer', customPersona: true, traitLinks: [link('l3')] };
-    const world: BearerWorld = { traits: [paladin], traitGroups: [blueprints], entities: [albus, wren, newcomer] };
+    const world: OwnerWorld = { traits: [paladin], traitGroups: [blueprints], entities: [albus, wren, newcomer] };
     const real = (persona: LiveSceneSources['persona'], over: Partial<LiveSceneSources> = {}) => sources({
       entities: [albus], allEntities: [albus], persona, traits: [], traitGroups: [blueprints],
-      bearers: resolveBearers(world, persona ? { source: 'world', entityId: persona.entity.id } : undefined).bearers,
-      resolveTrait: (_trait, text, owner) => resolveBearerText(owner ?? null, text, {
+      owners: resolveOwners(world, persona ? { source: 'world', entityId: persona.entity.id } : undefined).bearers,
+      resolveTrait: (_trait, text, owner) => resolveOwnerText(owner ?? null, text, {
         placeholders: [], rolls: {}, player: { name: persona?.entity.name },
       }),
       ...over,
@@ -370,7 +370,7 @@ describe('the live adapter', () => {
       const sworn: Trait = { id: 'sworn', name: 'Sworn', groupId: 'oaths', statChanges: [] };
       const grouped = { ...world, traits: [sworn], traitGroups: [oaths] };
       const values = chipValues(liveChipScene(real(null, {
-        traits: [sworn], traitGroups: [oaths], bearers: resolveBearers(grouped, undefined).bearers, resolve: (text) =>
+        traits: [sworn], traitGroups: [oaths], owners: resolveOwners(grouped, undefined).bearers, resolve: (text) =>
           resolveEntityText(null, text, { placeholders: [], rolls: {} }),
       })));
       expect(values('<TRAITS DESCRIPTION>')).toBe('Oaths:\n  The player is sworn.\n  Sworn');

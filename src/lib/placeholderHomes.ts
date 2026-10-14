@@ -225,7 +225,7 @@ function mapOwnerLists<T extends PlaceholderOwner>(
 
 /**
  * Where a create lands: the home the caller names; else, for a placeholder born owned (a part typed into a
- * holder's value), the list its holder lives in; else the world list. A named owner the world no longer
+ * parent placeholder's value), the list its parent placeholder lives in; else the world list. A named owner the world no longer
  * has falls back to the world list rather than dropping the placeholder.
  */
 export function placeholderHomeFor(
@@ -240,9 +240,9 @@ export function placeholderHomeFor(
 /**
  * Route a whole combined list back to the lists that hold each id, keeping the combined order within each.
  * An id no list holds yet lands beside the record before it (a duplicate is inserted right after its
- * source), or on the world list when nothing precedes it. An owned placeholder follows its holder: where a
+ * source), or on the world list when nothing precedes it. An owned placeholder follows its parent placeholder: where a
  * row sits and what it belongs to live in one list, so a drop that makes one placeholder a part of another
- * moves it beside the holder. Every unchanged slice keeps its identity.
+ * moves it beside the parent placeholder. Every unchanged slice keeps its identity.
  */
 export function scatterPlaceholders(world: PlaceholderHomesWorld, combined: readonly Placeholder[]): PlaceholderSlices {
   const homeOf = new Map<string, PlaceholderHome>();
@@ -251,9 +251,9 @@ export function scatterPlaceholders(world: PlaceholderHomesWorld, combined: read
   for (const b of world.dictionaries ?? []) for (const p of b.placeholders ?? []) homeOf.set(p.id, { kind: 'dictionary', ownerId: b.id });
   const byId = new Map(combined.map((p) => [p.id, p]));
   const resolve = (p: Placeholder, seen: Set<string>, fallback: PlaceholderHome): PlaceholderHome => {
-    const holderId = holderOf(combined, p);
-    const holder = holderId && !seen.has(holderId) ? byId.get(holderId) : undefined;
-    return holder ? resolve(holder, seen.add(p.id), fallback) : homeOf.get(p.id) ?? fallback;
+    const parentId = holderOf(combined, p);
+    const parent = parentId && !seen.has(parentId) ? byId.get(parentId) : undefined;
+    return parent ? resolve(parent, seen.add(p.id), fallback) : homeOf.get(p.id) ?? fallback;
   };
 
   const worldList: Placeholder[] = [];
@@ -320,8 +320,8 @@ export function withoutPlaceholders(world: PlaceholderHomesWorld, ids: ReadonlyS
 
 /**
  * Move one placeholder into the list `home` names, id kept, so no chip re-aims. What it owns goes with it
- * (an owned row lives beside its holder), and the moved one is released from any holder of its own: its
- * holder keeps the value, which now draws it as a shared row. A move to the list it already lives in, of an
+ * (an owned row lives beside its parent placeholder), and the moved one is released from any parent placeholder of its own: its
+ * parent keeps the value, which now draws it as a shared row. A move to the list it already lives in, of an
  * id no list holds, or to an owner the world lacks changes nothing; unchanged slices keep identity.
  */
 export function movePlaceholderHome(world: PlaceholderHomesWorld, id: string, home: PlaceholderHome): PlaceholderSlices {

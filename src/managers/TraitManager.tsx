@@ -306,7 +306,7 @@ const TraitManager = ({
         onChange={(v) => handleChange('playerDescription', v)}
         placeholders={placeholders}
         ownerName={bearer?.name}
-        bearer={preview}
+        ownerPreview={preview}
         readOnly={readOnly}
         resizable
       />
@@ -318,7 +318,7 @@ const TraitManager = ({
         onChange={(v) => handleChange('aiDescription', v)}
         placeholders={placeholders}
         ownerName={bearer?.name}
-        bearer={preview}
+        ownerPreview={preview}
         readOnly={readOnly}
         resizable
         tourAnchor="trait-ai-description"

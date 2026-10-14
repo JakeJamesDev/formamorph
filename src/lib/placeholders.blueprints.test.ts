@@ -21,51 +21,51 @@ const albus = entity('albus', [copyOfGarb('albus-garb', 'plate'), { id: 'albus-o
 const mira = entity('mira', [copyOfGarb('mira-garb', 'leathers')]);
 const all = (entities: Entity[]) => [...shared, ...entities.flatMap((e) => e.placeholders ?? [])];
 
-/** Resolve `text` as `bearer`'s trait text: its copies stand in for the blueprints its chips name. */
-const asBearer = (text: string, entities: Entity[], bearer: Entity | null, persona?: Parameters<typeof readerFor>[0]) =>
+/** Resolve `text` as `owner`'s trait text: its copies stand in for the blueprints its chips name. */
+const asOwner = (text: string, entities: Entity[], owner: Entity | null, persona?: Parameters<typeof readerFor>[0]) =>
   resolvePlaceholders(text, {
     placeholders: all(entities), rolls: {}, pick: first,
-    copies: copyLookup({ placeholders: shared, entities }, readerFor(persona, bearer, !bearer)),
+    copies: copyLookup({ placeholders: shared, entities }, readerFor(persona, owner, !owner)),
   });
 
 describe('a blueprint chip in trait text', () => {
   const text = `Wears ${chip('garb')}.`;
 
-  it('reads each bearer’s own copy', () => {
-    expect(asBearer(text, [albus, mira], albus)).toBe('Wears plate.');
-    expect(asBearer(text, [albus, mira], mira)).toBe('Wears leathers.');
+  it('reads each owner’s own copy', () => {
+    expect(asOwner(text, [albus, mira], albus)).toBe('Wears plate.');
+    expect(asOwner(text, [albus, mira], mira)).toBe('Wears leathers.');
   });
 
   it('reads the blueprint with no copy lookup', () => {
     expect(resolvePlaceholders(text, { placeholders: all([albus]), rolls: {}, pick: first })).toBe('Wears tabard.');
   });
 
-  it('reads the blueprint for a bearer that holds no copy', () => {
-    expect(asBearer(text, [albus, entity('oren', [])], entity('oren', []))).toBe('Wears tabard.');
+  it('reads the blueprint for an owner that holds no copy', () => {
+    expect(asOwner(text, [albus, entity('oren', [])], entity('oren', []))).toBe('Wears tabard.');
   });
 
-  it('resolves nested blueprint chips on the same bearer', () => {
-    expect(asBearer(`In ${chip('outfit')}.`, [albus, mira], albus)).toBe('In a plate and boots.');
-    expect(asBearer(`In ${chip('outfit')}.`, [albus, mira], mira)).toBe('In a leathers and boots.');
+  it('resolves nested blueprint chips on the same owner', () => {
+    expect(asOwner(`In ${chip('outfit')}.`, [albus, mira], albus)).toBe('In a plate and boots.');
+    expect(asOwner(`In ${chip('outfit')}.`, [albus, mira], mira)).toBe('In a leathers and boots.');
   });
 
   it('reads the blueprint itself under None with no Custom Persona entity', () => {
-    expect(asBearer(text, [albus, mira], null, { source: 'none' })).toBe('Wears tabard.');
+    expect(asOwner(text, [albus, mira], null, { source: 'none' })).toBe('Wears tabard.');
   });
 
   it('reads the Custom Persona entity’s copy for the player under None', () => {
     const marked = entity('you', [copyOfGarb('you-garb', 'rags')], { customPersona: true });
-    expect(asBearer(text, [albus, marked], null, { source: 'none' })).toBe('Wears rags.');
+    expect(asOwner(text, [albus, marked], null, { source: 'none' })).toBe('Wears rags.');
   });
 
-  it('rolls each bearer’s copy under its own key', () => {
+  it('rolls each owner’s copy under its own key', () => {
     const rolls = { world: { garb: 'robe', 'albus-garb': 'plate' } };
     const copies = copyLookup({ placeholders: shared, entities: [albus] }, readerFor(undefined, albus, false));
     expect(resolvePlaceholders(text, { placeholders: all([albus]), rolls })).toBe('Wears robe.');
     expect(resolvePlaceholders(text, { placeholders: all([albus]), rolls, copies })).toBe('Wears plate.');
   });
 
-  it('reads a pin bound to the bearer’s copy', () => {
+  it('reads a pin bound to the owner’s copy', () => {
     const copies = copyLookup({ placeholders: shared, entities: [albus] }, readerFor(undefined, albus, false));
     const pins = { 'albus-garb': 'robe' };
     expect(resolvePlaceholders(text, { placeholders: all([albus]), rolls: {}, pick: first, pins, copies })).toBe('Wears robe.');
@@ -81,7 +81,7 @@ describe('a chip aimed at a copy', () => {
 });
 
 describe('describePlaceholders with a copy lookup', () => {
-  it('describes the bearer’s copy', () => {
+  it('describes the owner’s copy', () => {
     const copies = copyLookup({ placeholders: shared, entities: [albus] }, readerFor(undefined, albus, false));
     expect(describePlaceholders(chip('garb'), all([albus]))).toBe('{tabard|robe}');
     expect(describePlaceholders(chip('garb'), all([albus]), undefined, copies)).toBe('{plate|robe}');
@@ -90,7 +90,7 @@ describe('describePlaceholders with a copy lookup', () => {
 });
 
 describe('primeRolls with a copy lookup', () => {
-  it('mints the bearer’s copy roll, not the blueprint’s', () => {
+  it('mints the owner’s copy roll, not the blueprint’s', () => {
     const copies = copyLookup({ placeholders: shared, entities: [albus] }, readerFor(undefined, albus, false));
     const rolls = primeRolls(all([albus]), [chip('outfit')], {}, first, undefined, copies);
     expect(rolls.world).toEqual({ 'albus-garb': 'plate' });

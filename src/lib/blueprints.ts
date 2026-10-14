@@ -2,7 +2,7 @@
 // placeholder copy, later a stat): a blueprint id and a sparse override map, each override keeping the
 // blueprint's value it was made against. This module is the one reader of that map: it gives the effective
 // record with its overridden and stale fields, and the copy lookup that traces a blueprint placeholder to
-// the placeholder one bearer reads.
+// the placeholder one owner reads.
 
 import type {
   BlueprintOverride, BlueprintOverrides, CopyValueFields, CopyValueOverrides, Entity, PersonaRef, Placeholder, PlaceholderValue, Trait,
@@ -92,13 +92,13 @@ export function effectiveLinkTrait(trait: Trait, link: TraitLink | undefined): T
 }
 
 /**
- * `holder` with the map under `prop` holding `next` at `key`: an empty `next` drops the key, and an emptied
+ * `record` with the map under `prop` holding `next` at `key`: an empty `next` drops the key, and an emptied
  * map drops `prop`, so an untouched record stores no map.
  */
-function withKeyed<T extends object, P extends keyof T, V extends object>(holder: T, prop: P, key: string, next: V | undefined): T {
-  const { [key]: _old, ...others } = (holder[prop] ?? {}) as Record<string, V>;
+function withKeyed<T extends object, P extends keyof T, V extends object>(record: T, prop: P, key: string, next: V | undefined): T {
+  const { [key]: _old, ...others } = (record[prop] ?? {}) as Record<string, V>;
   const map = next && Object.keys(next).length ? { ...others, [key]: next } : others;
-  const { [prop]: _prev, ...rest } = holder;
+  const { [prop]: _prev, ...rest } = record;
   return (Object.keys(map).length ? { ...rest, [prop]: map } : rest) as T;
 }
 
@@ -250,14 +250,14 @@ export const customPersonaEntity = (entities: readonly Entity[]): Entity | undef
 export const copyOf = (owner: Pick<Entity, 'placeholders'> | null | undefined, blueprintId: string): Placeholder | undefined =>
   owner?.placeholders?.find((p) => p.blueprintId === blueprintId);
 
-/** Who reads a blueprint: the bearer's entity, null for the root player bearer, and whether the Custom
- *  Persona entity's copies fill in where the bearer has none. */
+/** Who reads a blueprint: the owner's entity, null for the root player owner, and whether the Custom
+ *  Persona entity's copies fill in where the owner has none. */
 export interface CopyReader {
   entity: Pick<Entity, 'placeholders'> | null;
   viaCustomPersona: boolean;
 }
 
-/** The reader for a bearer: the Custom Persona's copies fill in for the player under None and under a
+/** The reader for an owner: the Custom Persona's copies fill in for the player under None and under a
  *  library persona, never for a world persona or a cast entity. */
 export const readerFor = (persona: PersonaRef | undefined, entity: Pick<Entity, 'placeholders'> | null, isPlayer: boolean): CopyReader =>
   ({ entity, viaCustomPersona: isPlayer && persona?.source !== 'world' });
@@ -275,7 +275,7 @@ export function lookupCopy(world: BlueprintWorld, blueprintId: string, reader: C
   return copy ? effectiveCopy(copy, blueprint) : blueprint;
 }
 
-/** Blueprint id → the effective copy one bearer reads in its place; undefined where it reads the blueprint. */
+/** Blueprint id → the effective copy one owner reads in its place; undefined where it reads the blueprint. */
 export type CopyLookup = (blueprintId: string) => Placeholder | undefined;
 
 /** {@link lookupCopy} for one reader, remembered per id, answering only where a copy stands in. */

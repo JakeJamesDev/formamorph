@@ -49,12 +49,12 @@ export function usePlaceholderRowActions({ selectedId, onSelect, openDuplicate }
     [placeholders, pendingDelete],
   );
 
-  /** Delete a placeholder, plus the value its holder held it through — a value pointing at something just
-   *  deleted on purpose is a red `?` nobody asked for. A top-level row has no holder and only goes itself. */
-  const remove = (id: string, holderId: string | null) => {
-    if (holderId === null) removePlaceholder(id);
+  /** Delete a placeholder, plus the value its parent placeholder held it through — a value pointing at something just
+   *  deleted on purpose is a red `?` nobody asked for. A top-level row has no parent placeholder and only goes itself. */
+  const remove = (id: string, parentId: string | null) => {
+    if (parentId === null) removePlaceholder(id);
     else setPlaceholders((prev) =>
-      releasePlaceholderOwners(removeChipValueFrom(removePlaceholderCascade(prev, id), holderId, id)));
+      releasePlaceholderOwners(removeChipValueFrom(removePlaceholderCascade(prev, id), parentId, id)));
     // Selection speaks in row ids, and every row this placeholder reached goes with it.
     if (selectedId?.split('/').includes(id)) onSelect(null);
   };

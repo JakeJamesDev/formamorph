@@ -85,7 +85,7 @@ describe('PlaceholderList — the tree', () => {
     expect(rowNames()).toEqual(['Greeting']);
   });
 
-  it('draws every nested row under its holder, indented', () => {
+  it('draws every nested row under its parent placeholder, indented', () => {
     render(<Harness initial={WORLD} />);
     expect(rowNames()).toEqual(['Molly', 'Northern', 'Hair', 'Southern', 'Hair', 'Hair', 'Town']);
     expect(indent(row('Molly'))).toBe('');
@@ -120,7 +120,7 @@ describe('PlaceholderList — the tree', () => {
     expect(selectedRow()?.placeholder.name).toBe('Hair (Copy)');
   });
 
-  it('counts holders on the original only', () => {
+  it('counts parent placeholders on the original only', () => {
     render(<Harness initial={WORLD} />);
     // Hair's top-level row is the last one; the two nested rows are the same placeholder elsewhere.
     expect(within(rows()[5]).getByText('Used by 2')).toBeInTheDocument();

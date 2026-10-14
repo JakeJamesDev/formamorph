@@ -2,8 +2,8 @@ import { useCallback, useMemo } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { usePlaceholderSession } from '@/contexts/PlaceholderSessionContext';
-import { resolveBearerText, resolveEntityText as resolveEntityCore, resolvePlaceholders } from '@/lib/placeholders';
-import { activeOwnedTraitIds, addedCharacters, bearerPins, inPlayLibrary, type PinSet } from '@/lib/ownedTraitsInPlay';
+import { resolveOwnerText, resolveEntityText as resolveEntityCore, resolvePlaceholders } from '@/lib/placeholders';
+import { activeOwnedTraitIds, addedCharacters, inPlayLibrary, ownerPins, type PinSet } from '@/lib/ownedTraitsInPlay';
 import { traitScopedPins } from '@/lib/placeholderPins';
 import { resolvePersona, withPersonaEntry, type ResolvedPersona } from '@/lib/persona';
 import { customPersonaEntity } from '@/lib/blueprints';
@@ -73,7 +73,7 @@ export interface ResolvedWorld {
   /** Every pin in force in world-level text: the player's active traits', the current location's, each live
    *  stat's band's, and the Code Pins, with value pins settled underneath. `pinSet.world`. */
   pins: Record<string, string>;
-  /** The pins in force per bearer: `pins`, and each cast entity's own. */
+  /** The pins in force per owner: `pins`, and each cast entity's own. */
   pinSet: PinSet;
   /** `pinSet` as it would stand under other Code Pins, traits or stats — what a re-roll reads from the
    *  pre-turn ones, and what a turn's own pass reads from writes React has not rendered yet. */
@@ -186,7 +186,7 @@ export function useResolvedAuthoredWorld(
   const resolveTraitFor = useCallback(
     (withPins: PinSet, trait: Trait, text: string, owner: Entity | null = null) => {
       const scoped = traitScopedPins(withPins.bind(trait, owner?.id), withPins.of(owner?.id), placeholders);
-      return resolveBearerText(owner, text, { placeholders, rolls, pins: scoped, player, copies: withPins.copies(owner?.id) });
+      return resolveOwnerText(owner, text, { placeholders, rolls, pins: scoped, player, copies: withPins.copies(owner?.id) });
     },
     [placeholders, rolls, player],
   );
@@ -255,7 +255,7 @@ export function useResolvedWorld(): ResolvedWorld {
     ),
     [rawTraits, rawTraitGroups, rawEntities, libraryPersona, discoveredEntities],
   );
-  const pinsFor = useCallback((withCodePins: CodePins, over: PinSources = {}) => bearerPins({
+  const pinsFor = useCallback((withCodePins: CodePins, over: PinSources = {}) => ownerPins({
     world: { traits: rawTraits, traitGroups: rawTraitGroups, entities: rawEntities },
     persona: personaRef,
     library: rawLibrary,

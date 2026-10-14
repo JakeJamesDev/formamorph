@@ -585,12 +585,12 @@ describe('PlaceholderManager — an Object', () => {
 
 /**
  * A shared row opens this same panel with the name, the kind and the values locked — they belong to the
- * original — and the draw weights live. Those weights are written as an override on the holder, so benching
- * a value for one character leaves the original, and every other holder, exactly as they were.
+ * original — and the draw weights live. Those weights are written as an override on the parent placeholder, so benching
+ * a value for one character leaves the original, and every other parent placeholder, exactly as they were.
  */
 describe('PlaceholderManager — a shared row', () => {
   /** Molly holds the placeholder under test without owning it, which is what makes the row a shared one. */
-  const holder = (over: Partial<Placeholder> = {}): Placeholder => ({
+  const parent = (over: Partial<Placeholder> = {}): Placeholder => ({
     id: 'h1', name: 'Molly', roll: false, values: phValues([chip('p1')]), ...over,
   });
   const site = { ownerId: 'h1', key: phValueId(chip('p1')) };
@@ -599,7 +599,7 @@ describe('PlaceholderManager — a shared row', () => {
   const weightChip = (label: string) => screen.getByRole('button', { name: `Draw weight for ${label}` });
   const setWeight = (n: number) => fireEvent.change(screen.getByLabelText('Draw weight'), { target: { value: String(n) } });
 
-  beforeEach(() => { siblings = [holder(), ph()]; });
+  beforeEach(() => { siblings = [parent(), ph()]; });
 
   it('locks the name, the kind and the value list', () => {
     shared();
@@ -610,17 +610,17 @@ describe('PlaceholderManager — a shared row', () => {
     expect(screen.getByText(/values come from the original/i)).toBeInTheDocument();
   });
 
-  it('writes the weight onto the holder, and never onto the original', () => {
+  it('writes the weight onto the parent placeholder, and never onto the original', () => {
     shared();
     fireEvent.click(weightChip('Red'));
     setWeight(0);
     expect(stored().id).toBe('h1');
     expect(stored().sharedWeights).toEqual({ [site.key]: { [phValueId('Red')]: 0 } });
-    expect(stored().values.map((v) => v.text)).toEqual([chip('p1')]); // the holder is otherwise untouched
+    expect(stored().values.map((v) => v.text)).toEqual([chip('p1')]); // the parent placeholder is otherwise untouched
   });
 
   it('drops the override when the weight goes back to what the original draws by', () => {
-    siblings = [holder({ sharedWeights: { [site.key]: { [phValueId('Red')]: 0 } } }), ph()];
+    siblings = [parent({ sharedWeights: { [site.key]: { [phValueId('Red')]: 0 } } }), ph()];
     shared();
     fireEvent.click(weightChip('Red'));
     setWeight(1);
@@ -628,7 +628,7 @@ describe('PlaceholderManager — a shared row', () => {
   });
 
   it('reads the merged weights, so the revealed chance belongs to this row', () => {
-    siblings = [holder({ sharedWeights: { [site.key]: { [phValueId('Red')]: 0 } } }), ph()];
+    siblings = [parent({ sharedWeights: { [site.key]: { [phValueId('Red')]: 0 } } }), ph()];
     shared();
     fireEvent.click(screen.getByRole('button', { name: /Show roll chances/i }));
     expect(weightChip('Red')).toHaveTextContent('(0%)');
@@ -636,7 +636,7 @@ describe('PlaceholderManager — a shared row', () => {
   });
 
   it('keeps a benched value in the list, which is the only way back off the bench', () => {
-    siblings = [holder({ sharedWeights: { [site.key]: { [phValueId('Red')]: 0 } } }), ph()];
+    siblings = [parent({ sharedWeights: { [site.key]: { [phValueId('Red')]: 0 } } }), ph()];
     shared();
     expect(weightChip('Red')).toBeInTheDocument();
   });
@@ -647,7 +647,7 @@ describe('PlaceholderManager — a shared row', () => {
     expect(screen.getByText(/never draws/i)).toBeInTheDocument();
   });
 
-  it('falls back to the plain editor when the holder is gone', () => {
+  it('falls back to the plain editor when the parent placeholder is gone', () => {
     siblings = [ph()];
     shared();
     expect(screen.getByDisplayValue('Scene')).toBeEnabled();
@@ -1088,22 +1088,22 @@ describe('PlaceholderManager — the Pins section', () => {
   });
 });
 
-// Stat code reaches a part as a member of its holder, and every placeholder already carries six members of
+// Stat code reaches a part as a member of its parent placeholder, and every placeholder already carries six members of
 // its own. A part named like one of those loses the name, which the author has to be told here.
 describe('PlaceholderManager — a part named like a code member', () => {
-  const holder = ph({ id: 'holder', name: 'Hair', values: phValues([chip('part')]) });
+  const parent = ph({ id: 'parent', name: 'Hair', values: phValues([chip('part')]) });
   const warning = () => screen.queryByText(/stat code can’t reach this part by name/);
 
   it('warns on a part whose name is one of an entry’s own members', () => {
-    const part = ph({ id: 'part', name: 'value', values: phValues(['ash']), ownerId: 'holder' });
-    siblings = [holder, part];
+    const part = ph({ id: 'part', name: 'value', values: phValues(['ash']), ownerId: 'parent' });
+    siblings = [parent, part];
     render(<PlaceholderManager tab="details" onTabChange={() => {}} placeholder={part} />);
     expect(warning()).toBeInTheDocument();
   });
 
   it('says nothing about a part named anything else', () => {
-    const part = ph({ id: 'part', name: 'Shade', values: phValues(['ash']), ownerId: 'holder' });
-    siblings = [holder, part];
+    const part = ph({ id: 'part', name: 'Shade', values: phValues(['ash']), ownerId: 'parent' });
+    siblings = [parent, part];
     render(<PlaceholderManager tab="details" onTabChange={() => {}} placeholder={part} />);
     expect(warning()).not.toBeInTheDocument();
   });
