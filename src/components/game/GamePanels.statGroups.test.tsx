@@ -29,7 +29,7 @@ const headings = () => screen.queryAllByRole('button', { expanded: true }).conca
 const statNames = () => screen.getAllByText(/^(Vigor|Grit|Calm|Luck)$/).map((el) => el.textContent);
 
 describe('RightPanel — stat groups', () => {
-  it('shows the player stats under collapsible group headings, nested as authored', () => {
+  it('shows the global stats under collapsible group headings, nested as authored', () => {
     renderRightPanel({}, { world: { statGroups }, stats });
     expect(headings()).toEqual(['Body', 'Reflexes']);
     expect(statNames()).toEqual(['Grit', 'Vigor', 'Luck']);

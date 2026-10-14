@@ -35,7 +35,7 @@ const world = {
 const wrapper = ({ children }: { children: ReactNode }) => <GameDataProvider>{children}</GameDataProvider>;
 
 describe('the world as play reads it', () => {
-  it('leaves the Blueprints out of the player stats and resolves each entity\'s links', () => {
+  it('leaves the Blueprints out of the global stats and resolves each entity\'s links', () => {
     const { result } = renderHook(() => useGameData(), { wrapper });
     act(() => { result.current.loadWorldData(world); });
     expect(result.current.playStats.map((s) => s.id)).toEqual(['health']);

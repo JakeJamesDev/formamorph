@@ -36,7 +36,7 @@ import WorldStatTree from './WorldStatTree';
 function blueprintsLine({ detached, movedUp }: StatBlueprintsRemoval): string {
   return [
     detached ? `${detached === 1 ? "Its link becomes that entity's own stat" : `Its ${detached} links become each entity's own stat`}, and Remove deletes the linked originals.` : '',
-    movedUp ? `${detached ? 'The other stats move' : 'Its stats move'} to the top level, where they become player stats.` : '',
+    movedUp ? `${detached ? 'The other stats move' : 'Its stats move'} to the top level, where they become global stats.` : '',
   ].filter(Boolean).join(' ');
 }
 

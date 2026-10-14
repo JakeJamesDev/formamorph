@@ -423,7 +423,7 @@ export interface StatBlueprintsRemoval {
   entities: Entity[];
   /** Links turned into their entity's own stats. */
   detached: number;
-  /** Whether any unlinked Blueprint stat or group moves to the top level, where its stats become player stats. */
+  /** Whether any unlinked Blueprint stat or group moves to the top level, where its stats become global stats. */
   movedUp: boolean;
 }
 
