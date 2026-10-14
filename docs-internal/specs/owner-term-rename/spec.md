@@ -30,6 +30,19 @@ Settled with the user on 2026-10-14.
 | Q11 | The hover-card spec review's behavior fixes live in code-hover-cards ticket 16. Its naming findings ride here |
 | Q12 | A dictionary owns the placeholders it holds. Owner = the entity or dictionary whose tree holds the item |
 | S1 | Tests sit at three seams: the import migration, the existing behavior suites under new names, and a term guard |
+| T03-1 | Shared interface members (owner resolution, requirement options, owner choices, the requirement owner type) are renamed at their definition in ticket 03. Consumers in other areas change only the member access; their other names stay with their own ticket. Members can't carry aliases, so the expand step covers types and functions only |
+| T03-2 | The requirement editor fields belong to ticket 03 for identifiers and comments. Their user-visible copy belongs to ticket 08 |
+| T03-3 | Ticket 03 migrates owner-resolver consumers that no other ticket's area covers. Files in another ticket's area stay with it; ticket 11 catches leftovers |
+| T04-1 | The owner trait tree's own members (its owner list and per-group owner) belong to ticket 04. Tickets 03 and 04 land in either order; the second rebases |
+| T05-1 | In the placeholder tree, "holder" meaning the parent placeholder becomes "parent placeholder" in comments and test titles and `parent` in locals. The tree identifiers `holderOf`, `holderId` and `activeHolderId` keep their names, and the term guard allows them. "holder" becomes owner only where it means the entity or dictionary that owns a placeholder or pin |
+| T06-1 | Ticket 06 renames the hover-card and stat-code members it defines and leaves owners.ts, trait gates and owned traits in play to their tickets (T03-1). The visible "Bearers" and "No bearers" copy belongs to ticket 07 |
+| T07-1 | The stat card signature's kind label says `(Blueprint stat)` or `(world stat)`; entity stats stay `(stat)` |
+| T07-2 | "You first" is an ordering rule: when You is among a card's owners, it leads. No playable entity is relabeled You |
+| T07-3 | Placeholder cards split like stats (user ruling): an entity- or dictionary-owned placeholder shows **Owners**; a world placeholder says so in its signature and has no Owners row; a nested placeholder also shows **Parent Placeholder**, beside Owners when an entity or dictionary tree holds it (Q12). The Bearers row on a route over several becomes Owners |
+| T07-4 | "No Owners" is the one form for the row value and the Find All Uses tag |
+| T07-5 | The `self` card keeps `(global)` in its signature; its Stat row names the scope, as `(world stat)` or `(Blueprint stat)`. An entity box shows the stat plus Owners |
+| T08-1 | Q3 applies only where wording names the own-vs-Link split in another term. The Link panel, Detach and Overrides strings already say Link or Linked, so they stay |
+| T09-1 | S1's unchanged assertions cover behavior (which warnings fire, counts, targets). A ticket that owns user-visible copy updates the expected strings for that copy. Ticket 09 owns the Test Bench warning strings |
 
 ## User Stories
 
