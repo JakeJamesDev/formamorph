@@ -19,6 +19,7 @@ vi.mock('@/contexts/SettingsContext', () => ({
     imageEndpointPresets: [{ id: 'p1', name: 'Local' }], activeImageEndpointPresetId: 'p1',
     selectImageEndpointPreset: vi.fn(), imageGenDisabled: false, requestSettings: vi.fn(),
     activeEndpointUrl: 'http://x', activeApiToken: '', activeModelName: 'm', imageTagPrompt: 'p',
+    describeEndpointForKind: () => ({ presetName: 'Test Endpoint', model: 'm' }),
   }),
 }));
 vi.mock('@/lib/useDownscalePrompt', () => ({

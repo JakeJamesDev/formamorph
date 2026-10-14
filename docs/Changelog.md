@@ -22,10 +22,11 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **A script with the At Game Start timing runs once before a new game's opening.** Its writes shape the opening prompt. Loading a save never runs it, and a regenerated page one on a save skips it.
     - **A During AI Output script rewrites each narration sentence as it completes.** Assign `narration.sentence` or return a string. The reveal, read-aloud, save and next request all carry the rewrite. Stat writes sum across sentences and land with the After batch.
     - **A script can now ask the player a question with `player.ask`, `player.confirm` or `player.askText`.** The script waits for the answer with no `await`. Closing the prompt fails that script and drops its writes. `player.tell` and `player.toast` show the player a message. During AI Output refuses every `player` call.
-  - **ComfyUI's Model row shows the model a workflow loads itself.** A workflow without `%ckpt%` ignores the Model setting, so the row shows its own model file, grayed out.
-  - **ComfyUI's File Name setting saves images under folders by world and subject.** The pattern takes `{world}`, `{subject}`, `{turn}` and `{preset}`, and defaults to `formamorph/{world}/{subject}`. A custom workflow takes it where its save node's prefix is `%prefix%`.
-  - **Buttons that send an AI request now say in their tooltip where it goes.** **Send**, **Re-generate**, the turn's More items, **Re-generate Choices** and the World Editor's generate buttons add a line such as *Sends to GLM 5.3 · glm-5.3*. A prompt set to another endpoint names that one.
-  - **Each text endpoint has Extra Parameters: a JSON object added to every request sent to it.** It sits under **Advanced** in the endpoint editor and wins over the app's own fields, so you can send a vendor's reasoning switch, `top_a` or `chat_template_kwargs`. It can't replace `model`, `messages` or `stream`.
+  - **Image Generation:**
+    - **ComfyUI's Model row shows the model a workflow loads itself.** A workflow without `%ckpt%` ignores the Model setting, so the row shows its own model file, grayed out.
+    - **ComfyUI's File Name setting sets the folders and name for each saved image.** By default, images go in `formamorph/<world>/`, named for their entity, location or turn. A `/` in the pattern makes a folder. A custom workflow needs `%prefix%` in its save node.
+  - **Buttons and menu items that send an AI request now show which endpoint gets it.** **Send** and the World Editor's generate buttons show it in their tooltip. **Re-generate Narration**, **Re-generate Stats**, **Re-generate Choices** and **Write Scene Tags** show it as a second line in the More and right-click menus.
+  - **Each text endpoint has Extra Parameters: a JSON object added to every request sent to it.** A field the app sets for a request wins. You can't set `model`, `messages`, `stream`, `tools`, `tool_choice`, `response_format`, `n` or `stop`. If the text has an error, requests go out without it.
 
 #### 🔧 Fixed
 

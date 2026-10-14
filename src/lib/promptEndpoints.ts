@@ -110,7 +110,6 @@ export function resolvePromptEndpoint(
       // The engine's own cap, whether it was pinned to or merely selected.
       maxTokens: active.engineMaxTokens,
       samplerOverrides: e.samplerOverrides,
-      extraParams: e.extraParams,
       contextWindowOverride: e.contextWindowOverride,
       isBuiltIn: true,
       localEngine: true,

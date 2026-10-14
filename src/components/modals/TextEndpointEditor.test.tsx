@@ -181,6 +181,31 @@ describe('TextEndpointEditor', () => {
     expect(model.onSelect).toHaveBeenCalledWith('llama');
   });
 
+  it('edits Extra Parameters through its setter and ties an error to the box', async () => {
+    const model = modelOn('vllm');
+    const { rerender } = render(<TextEndpointEditor model={model} advanced onOpenConnectionGuide={() => {}} />);
+    const box = screen.getByLabelText('Extra Parameters');
+    expect(box).toHaveAttribute('aria-invalid', 'false');
+    expect(box).not.toHaveAttribute('aria-describedby');
+
+    await userEvent.setup().type(box, '1');
+    expect(model.edit.setExtraParams).toHaveBeenLastCalledWith('1');
+
+    model.fields = { ...model.fields, extraParams: '{"top_a": ' };
+    rerender(<TextEndpointEditor model={model} advanced onOpenConnectionGuide={() => {}} />);
+    expect(box).toHaveAttribute('aria-invalid', 'true');
+    expect(box).toHaveAccessibleDescription(/^Not valid JSON.*Requests go out without these fields\./);
+  });
+
+  it('clears Extra Parameters with Reset AI Endpoint', async () => {
+    const model = modelOn('vllm');
+    render(<TextEndpointEditor model={model} advanced onOpenConnectionGuide={() => {}} />);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Reset AI Endpoint' }));
+    await user.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Confirm' }));
+    expect(model.edit.setExtraParams).toHaveBeenCalledWith('');
+  });
+
   it('duplicates the preset without a name dialog and selects the copy', async () => {
     renderEditor();
     await userEvent.setup().click(screen.getByRole('button', { name: 'Duplicate' }));

@@ -231,6 +231,16 @@ export async function fetchComfyMeta(endpointUrl: string, apiToken?: string): Pr
   };
 }
 
+/** The first checkpoint the server lists, or `''` when it lists none. */
+async function firstComfyCheckpoint(base: string, opts: ImageGenOpts): Promise<string> {
+  const res = await reachFetch('comfyui', opts.endpointUrl, `${base}/object_info/CheckpointLoaderSimple`, {
+    headers: authHeaders(opts.apiToken, 'Bearer'),
+    signal: opts.signal,
+  });
+  if (!res.ok) throw new Error(`ComfyUI could not list its checkpoints: HTTP ${res.status}`);
+  return extractEnum(await res.json(), 'CheckpointLoaderSimple', 'ckpt_name')[0] ?? '';
+}
+
 const WS_SETTLE_MS = 3000; // if the WS never opens/signals, fall back to /history polling after this
 
 /** Live progress + preview over the ComfyUI WebSocket. Resolves when generation for `promptId` finishes
@@ -321,7 +331,7 @@ export const comfyuiProvider: ImageProvider = async (params: ImageGenParams, opt
   // checkpoint the server lists, as the Model field's placeholder says.
   let model = params.model.trim();
   if (!model && template.includes('%ckpt%')) {
-    model = (await fetchComfyMeta(opts.endpointUrl, opts.apiToken)).checkpoints[0] ?? '';
+    model = await firstComfyCheckpoint(base, opts);
     if (!model) throw new Error('ComfyUI has no checkpoints installed. Put one in its models/checkpoints folder.');
   }
   const graph = buildComfyGraph(template, { ...params, model });
@@ -371,8 +381,15 @@ export const comfyuiProvider: ImageProvider = async (params: ImageGenParams, opt
   }
 };
 
-/** The model inputs a workflow can name its files in, across the loaders the shipped graphs and common ones use. */
-const MODEL_INPUTS = ['ckpt_name', 'unet_name', 'model_name'];
+/** The checkpoint and diffusion-model loaders, by class, with the input that names their file. */
+const MODEL_LOADERS: Record<string, string> = {
+  CheckpointLoaderSimple: 'ckpt_name',
+  CheckpointLoader: 'ckpt_name',
+  ImageOnlyCheckpointLoader: 'ckpt_name',
+  unCLIPCheckpointLoader: 'ckpt_name',
+  UNETLoader: 'unet_name',
+  UnetLoaderGGUF: 'unet_name',
+};
 
 /**
  * The model files a workflow loads itself, when it does: a workflow without `%ckpt%` ignores the Model setting,
@@ -383,11 +400,13 @@ export function workflowOwnModels(workflow: string): string[] {
   // Placeholders for numbers sit bare in the template; any number makes it parse.
   const parsable = workflow.replace(/%\w+%/g, (token) => (workflow.includes(`"${token}"`) ? token : '0'));
   try {
-    const graph = JSON.parse(parsable) as Record<string, { inputs?: Record<string, unknown> }>;
-    return Object.values(graph).flatMap((node) => MODEL_INPUTS.flatMap((key) => {
-      const value = node?.inputs?.[key];
+    const graph = JSON.parse(parsable) as Record<string, { class_type?: unknown; inputs?: Record<string, unknown> }>;
+    return Object.values(graph).flatMap((node) => {
+      const cls = node?.class_type;
+      const key = typeof cls === 'string' && Object.hasOwn(MODEL_LOADERS, cls) ? MODEL_LOADERS[cls] : undefined;
+      const value = key ? node.inputs?.[key] : undefined;
       return typeof value === 'string' && value ? [value] : [];
-    }));
+    });
   } catch {
     return [];
   }

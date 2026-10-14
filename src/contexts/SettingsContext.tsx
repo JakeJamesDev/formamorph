@@ -1308,6 +1308,22 @@ function useProvideSettings() {
     maxTokens: activeMaxTokens, engineMaxTokens: localMaxTokens, engineModelId: engineState.modelId ?? '',
   }), [textPresetStore.activeId, textValues, textIsBuiltInActive, localModelActive, activeMaxTokens, localMaxTokens, engineState.modelId]);
 
+  /** The routing step alone: which preset a kind resolves to and its display name. No probes. */
+  const routeForKind = useCallback((kind: AIRequestType, routes?: readonly string[]) => {
+    const map = routes ? routeMap(kind, routes, textPresetStore) : promptEndpoints;
+    const resolved = resolvePromptEndpoint(kind, map, textPresetStore, activeEndpointState);
+    const presetName = resolved.presetId === null
+      ? activeTextEndpointPresetName
+      : textPresetName(textPresetStore, resolved.presetId);
+    return { resolved, presetName };
+  }, [promptEndpoints, textPresetStore, activeEndpointState, activeTextEndpointPresetName]);
+
+  /** The preset name and model a kind sends to, safe to read during render. */
+  const describeEndpointForKind = useCallback((kind: AIRequestType, routes?: readonly string[]) => {
+    const { resolved, presetName } = routeForKind(kind, routes);
+    return { presetName, model: resolved.model };
+  }, [routeForKind]);
+
   const resolveEndpointForKind = useCallback((kind: AIRequestType, routes?: readonly string[]): ResolvedPromptEndpoint & {
     /** Chat-completions URL, normalized the same way the active endpoint is. */
     url: string;
@@ -1316,12 +1332,8 @@ function useProvideSettings() {
     contextWindow: number;
     reasoning: ReasoningCapability;
   } => {
-    const map = routes ? routeMap(kind, routes, textPresetStore) : promptEndpoints;
-    const resolved = resolvePromptEndpoint(kind, map, textPresetStore, activeEndpointState);
+    const { resolved, presetName } = routeForKind(kind, routes);
     const url = normalizeEndpointUrl(resolved.endpoint);
-    const presetName = resolved.presetId === null
-      ? activeTextEndpointPresetName
-      : textPresetName(textPresetStore, resolved.presetId);
     // The bundled engine always takes a token budget and always spells it its own way, whatever detection
     // says about the rest of the record it shares with the active endpoint.
     const withEngineBudget = (record: ReasoningCapability | null): ReasoningCapability => {
@@ -1383,9 +1395,9 @@ function useProvideSettings() {
       reasoning: withEngineBudget(reasoningCapabilityCache[sig] ?? null),
     };
   }, [
-    promptEndpoints, textPresetStore, activeEndpointState, activeContextSig,
+    routeForKind, activeContextSig,
     contextWindow, reasoningCapability, contextCache, reasoningCapabilityCache, localContextSize,
-    activeTextEndpointPresetName, rememberContext, cacheReasoningCapability,
+    rememberContext, cacheReasoningCapability,
   ]);
 
   /** The routed-cache signature of the preset `id` names. */
@@ -1784,6 +1796,7 @@ function useProvideSettings() {
     promptEndpoints,
     setPromptEndpoint,
     resolveEndpointForKind,
+    describeEndpointForKind,
     systemPrompt,
     setSystemPrompt,
     narrationUserPrompt,

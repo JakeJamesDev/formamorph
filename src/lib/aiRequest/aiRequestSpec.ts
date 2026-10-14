@@ -29,7 +29,7 @@ export interface AiEndpointTarget {
   localEngine: boolean;
   /** Per-endpoint sampler switches and remembered values. The engine ignores these. */
   samplerOverrides: EndpointSamplerOverrides;
-  /** The endpoint's Extra Parameters, as written; merged last into the body (lib/extraParams). */
+  /** The endpoint's Extra Parameters, as written; merged first into the body, under the app's fields (lib/extraParams). */
   extraParams?: string;
   /** What is known about this target's native reasoning: whether the model reasons, which effort literals the
    *  endpoint accepts, and whether it takes a token budget. An unanswered question sends no field. */
@@ -268,6 +268,8 @@ function bodyForTarget(snapshot: AiSettingsSnapshot, call: AiCall, target: AiEnd
   const tools = offeredTools(call, target);
 
   return {
+    // The player's Extra Parameters go first, so every field the app sets for this call wins over them.
+    ...extraParamsOf(target.extraParams),
     model: target.model,
     messages: buildMessages(snapshot, call),
     ...(maxTokens !== undefined && { max_tokens: maxTokens }),
@@ -288,8 +290,6 @@ function bodyForTarget(snapshot: AiSettingsSnapshot, call: AiCall, target: AiEnd
     ...(requestType === 'narration' && snapshot.paragraphLimit === 'single' && snapshot.thinkingMode !== 'inline' && { stop: ['\n'] }),
     ...(tools && { tools: tools.map(toolSchema), tool_choice: 'auto' }),
     ...(call.responseSchema && schemaAccepted(target.reasoning) && { response_format: responseFormat(call.responseSchema) }),
-    // The player's own fields go last, so they win over anything the app set above.
-    ...extraParamsOf(target.extraParams),
   };
 }
 

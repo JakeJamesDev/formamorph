@@ -205,12 +205,29 @@ describe('temperature and penalty — pinned, global, custom, omitted', () => {
     expect(buildRequestBody(snapshot(target), call({ requestType: 'summary' })).temperature).toBe(0);
   });
 
-  it('merges the endpoint\'s Extra Parameters last, so they win, and never over the request itself', () => {
-    const target = external({ extraParams: '{"temperature": 0.42, "chat_template_kwargs": {"enable_thinking": true}}' });
-    const body = buildRequestBody(snapshot(target), call());
-    expect(body).toMatchObject({ temperature: 0.42, chat_template_kwargs: { enable_thinking: true }, stream: true });
+  it('keeps the app\'s own fields over the endpoint\'s Extra Parameters and adds the keys it does not set', () => {
+    const target = external({ extraParams: '{"temperature": 0.42, "top_a": 0.1, "chat_template_kwargs": {"enable_thinking": true}}' });
+    const body = buildRequestBody(snapshot(target), call({ requestType: 'summary' }));
+    expect(body).toMatchObject({ temperature: 0, top_a: 0.1, chat_template_kwargs: { enable_thinking: true }, stream: true });
     // Text that can't be used sends nothing from it, rather than half of it.
     expect(buildRequestBody(snapshot(external({ extraParams: '{"model": "other", "top_a": 1}' })), call())).not.toHaveProperty('top_a');
+  });
+
+  it('sends an Extra Parameters sampler where the app sends none for the call', () => {
+    const body = buildRequestBody(snapshot(external({ extraParams: '{"top_p": 0.5}' })), call());
+    expect(body.top_p).toBe(0.5);
+    // An enabled endpoint override is the app's own field, so it wins.
+    const overridden = external({
+      extraParams: '{"top_p": 0.5}',
+      samplerOverrides: { ...defaultEndpointSamplerOverrides(), topP: { enabled: true, value: 0.8 } },
+    });
+    expect(buildRequestBody(snapshot(overridden), call()).top_p).toBe(0.8);
+  });
+
+  it('keeps Inline narration\'s native off switch over an Extra Parameters reasoning field', () => {
+    const target = external({ extraParams: '{"reasoning_effort": "high", "chat_template_kwargs": {"enable_thinking": true}}' });
+    const snap = snapshot(target, { thinkingMode: 'inline', reasoningEngaged: true, reasoningEffort: 'high' });
+    expect(buildRequestBody(snap, call())).toMatchObject({ reasoning_effort: 'none', chat_template_kwargs: { enable_thinking: true } });
   });
 
   it('keeps a custom prompt sampler ahead of an enabled endpoint override', () => {

@@ -193,7 +193,10 @@ describe('withEndpoints', () => {
     expect(named.find((a) => a.key === 'regenerate')?.endpoint).toBe('Sends to GLM 5.3 · glm-5.3');
     expect(named.find((a) => a.key === 'stats')?.endpoint).toBe('Sends to Kimi 3');
     expect(named.find((a) => a.key === 'copy')?.endpoint).toBeUndefined();
-    // No settings to read (a test, a dev pane): nothing is named.
+    // Writing tags is a text request; the image itself goes to the image provider, not a text endpoint.
+    expect(named.find((a) => a.key === 'tags')?.endpoint).toBe('Sends to Kimi 3');
+    expect(named.find((a) => a.key === 'image')?.endpoint).toBeUndefined();
+    // An empty line names nothing.
     expect(withEndpoints(bubbleActions(idle, handlers()), () => '').every((a) => a.endpoint === undefined)).toBe(true);
   });
 });

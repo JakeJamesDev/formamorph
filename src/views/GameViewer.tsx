@@ -3555,12 +3555,12 @@ const GameViewer = ({
       if (args.tags) setFullMessageHistory((prev) => patchSceneTags(prev, turnId, line) ?? prev);
 
       setSceneImageJob("image");
-      // A scene is landscape by definition; everything else about the request is the user's image preset,
-      // shared with the editor's Generate dialog.
       // The turn's number as the player counts them, for the file name.
       const turn = fullMessageHistory
         .filter((m) => m.role === "assistant")
         .findIndex((m) => parseTurnContent(m.content)?.turnId === turnId) + 1 || undefined;
+      // A scene is landscape by definition; everything else about the request is the user's image preset,
+      // shared with the editor's Generate dialog.
       const { provider, params, opts } = buildImageRequest(settings, {
         prompt: line,
         width: imageLandscapeWidth,

@@ -348,6 +348,17 @@ Runs one extra request per participant. Edit its prompt under **Prompts → Diar
   endpointTopP: { label: 'Top-p', description: 'Overrides this endpoint’s Top-p setting' },
   endpointTopK: { label: 'Top-k', description: 'Overrides this endpoint’s Top-k setting' },
   endpointMinP: { label: 'Min-p', description: 'Overrides this endpoint’s Min-p setting' },
+  extraParams: {
+    label: 'Extra Parameters',
+    description: 'Adds JSON fields to every request to this endpoint',
+    info: `Write one JSON object, for example a vendor's reasoning switch, \`top_a\`, \`chat_template_kwargs\` or a routing block.
+
+A field the app sets for a request wins over the same field here. These fields only add what the app does not set.
+
+You can't set \`model\`, \`messages\`, \`stream\`, \`tools\`, \`tool_choice\`, \`response_format\`, \`n\` or \`stop\`.
+
+If the text has an error, requests go out without these fields.`,
+  },
 
   // ── Endpoints · Image ───────────────────────────────────────────────────────
   enableImageGeneration: {
@@ -407,7 +418,12 @@ You can still generate a single scene yourself from the button above the story.`
   },
   imageFileName: {
     label: 'File Name',
-    description: 'Where ComfyUI saves each image, by world and subject',
+    description: 'Sets where ComfyUI saves each image in its output folder',
+    info: `A \`/\` makes a folder. ComfyUI adds a counter and \`.png\`.
+
+\`{world}\` \`{subject}\` (an entity's or location's name, or \`turn-12-scene\`) \`{turn}\` \`{preset}\`
+
+A custom workflow takes it where its save node's prefix is \`%prefix%\`.`,
   },
   imageWorkflow: {
     label: 'Workflow (API Format)',
@@ -669,6 +685,8 @@ export const SETTINGS_BUTTONS = {
 /** Status text the modal draws where a group of controls would be. */
 export const SETTINGS_NOTES = {
   imageGenerationOff: 'Image generation is off. Select “Enable Image Generation” to turn it on.',
+  imageModelFromWorkflow: `Shows the model the workflow loads. Change it in **${SETTINGS_COPY.imageWorkflow.label}** under **Advanced**.`,
+  imageFileNameNoPrefix: `Add \`%prefix%\` to the save node in **${SETTINGS_COPY.imageWorkflow.label}** to use this setting`,
 } as const;
 
 /** Every confirmation the modal raises. Bodies are sentences and carry their own punctuation. */
@@ -691,7 +709,7 @@ export const SETTINGS_CONFIRMS = {
   },
   resetAiEndpoint: {
     title: 'Reset AI Endpoint',
-    description: 'Are you sure you want to reset the endpoint URL, model name, API token, and limits to their default values?',
+    description: 'Are you sure you want to reset the endpoint URL, model name, API token, limits, and Extra Parameters to their default values?',
   },
   resetWorkflow: {
     title: 'Reset Workflow',

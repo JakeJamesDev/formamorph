@@ -15,4 +15,8 @@ describe('extra parameters', () => {
     expect(readExtraParams('{"model": "x", "stream": false}')).toMatchObject({ error: expect.stringMatching(/model, stream/) });
     expect(extraParamsOf('{"model": "x"}')).toEqual({});
   });
+
+  it.each(['tools', 'tool_choice', 'response_format', 'n', 'stop'])('refuses %s, which shapes the reply', (key) => {
+    expect(readExtraParams(`{"${key}": null}`)).toMatchObject({ error: expect.stringContaining(key) });
+  });
 });
