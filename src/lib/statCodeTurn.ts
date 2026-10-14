@@ -22,6 +22,7 @@ import type { GateStats } from './traitGates';
 import { boxCode, type StatCodeTiming } from './statCodeTiming';
 import { clamp } from './utils';
 import { PLAYER_OWNER } from './statOwners';
+import { scopedOf } from './scope';
 
 /** The trait state a run's switches left, and the log lines they wrote. */
 export interface StatCodeTraitResult {
@@ -66,7 +67,7 @@ export interface StatCodeTurn {
    *  `statNameOf` is; code reaches the trait by its code name, which the turn derives itself. */
   traitNameOf: (trait: Trait) => string;
   /** The entities whose stats also run this turn, in owner order: world entities in authored order, then
-   *  library entities in pick order. Every owner's code reads one snapshot: the player's stats as `stats`,
+   *  library entities in pick order. Every owner's code reads one snapshot: the global stats as `stats`,
    *  its own as `owner.stats`, and each one's as `entities[x].stats`. Every write lands in owner order, the
    *  turn owner first, then stat order within each writer's owner; the later write wins a field. */
   owners?: readonly OwnerCodeTurn[];
@@ -314,7 +315,7 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
   const placeholderSet = turn.placeholders && withLibraryPlaceholders(withBooksInPlay(turn.placeholders), turn.ownerTraits.library ?? []);
   const sandbox = anyCoded && placeholderSet ? sandboxPlaceholders(placeholderSet) : null;
   const placeholders = sandbox?.top ?? [];
-  // The first run is the world's; every other run is an entity's, which reads the world's stats as `stats`.
+  // The first run is the global one; every other run is an entity's, which reads the global stats as `stats`.
   const ownerStats = ({ named, inputs, owner }: OwnerRun): SandboxStats => ({ stats: named, turn: inputs, enabled: owner.enabled });
   const worldStats = ownerStats(worldRun);
   const runOf = new Map(runs.filter((run) => run !== worldRun).map((run) => [run.owner.id, run]));
@@ -357,9 +358,9 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
   const pinWrites = pinWritesInStatOrder(inOrder.map(({ stat, writes }) => writes.placeholders.get(stat.id) ?? []));
 
   // Merged per target before the first settle, so the gate snapshot and the penalties see every owner's writes.
-  const writesByOwner = statWritesByOwner(inOrder);
-  const mainWrites = writesByOwner.get(main.id) ?? new Map<string, SettledWrite>();
-  const ownerWrites = new Map(entityRuns.map(({ owner }) => [owner.id, writesByOwner.get(owner.id) ?? new Map<string, SettledWrite>()]));
+  const writeScope = scopedOf(Object.fromEntries(statWritesByOwner(inOrder)), new Map<string, SettledWrite>());
+  const mainWrites = writeScope.global;
+  const ownerWrites = new Map(entityRuns.map(({ owner }) => [owner.id, writeScope.owners[owner.id] ?? new Map<string, SettledWrite>()]));
   // The snapshot every settle below reads: the code writes landed with no switch yet, then the penalties.
   const landedMain = withPenalties(
     settleWrites(turn.stats, turn.stats, mainWrites, ownerStatTraitsInForce(before, world, main.id)), turn.penalties,

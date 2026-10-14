@@ -78,7 +78,7 @@ export interface StatCodeResult {
   kind?: StatCodeFailure;
   /** The bounds the code assigned on `self`, changed or not. Absent when it assigned none. */
   bounds?: CodeBounds;
-  /** The world stats other than `self` the code wrote through `stats`, in map order. Absent when it wrote none. */
+  /** The global stats other than `self` the code wrote through `stats`, in map order. Absent when it wrote none. */
   statWrites?: StatWrite[];
   /** The entity stats other than `self` the code wrote, by owner: the run's own owner first, then each other
    *  entity in map order. Absent when it wrote none. */
@@ -1062,7 +1062,7 @@ export interface StatCodeRunOptions {
   /** Absent, `persona` is the empty entry. */
   persona?: SandboxEntity;
   /** The entity that owns the running stat, its stats with their own turn inputs. Absent, `owner` is the empty
-   *  entry and the stat is a world stat. */
+   *  entry and the stat is a global stat. */
   owner?: SandboxEntity;
   /** Every dictionary, in authored order. */
   dictionaries?: readonly SandboxDictionary[];

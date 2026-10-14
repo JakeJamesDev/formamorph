@@ -53,7 +53,7 @@ describe('renderCodeCard', () => {
   });
 
   it.each([
-    ['world', '(world stat) stats.Fatigue: Stat'],
+    ['global', '(global stat) stats.Fatigue: Stat'],
     ['blueprint', '(Blueprint stat) stats.Fatigue: Stat'],
   ] as const)('names a %s stat in the signature', (scope, text) => {
     const card = renderCodeCard({ from: 0, to: 4, signature: { kind: 'stat', scope, path: 'stats.Fatigue', type: 'Stat' } });

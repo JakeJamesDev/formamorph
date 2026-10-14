@@ -66,7 +66,7 @@ describe('stat cards: World Details', () => {
       { label: 'Type', value: 'Number' },
       { label: 'Range', value: '0 – 100' },
     ]);
-    expect(card?.signature).toEqual({ kind: 'stat', path: 'stats.Health', type: 'Stat', scope: 'world' });
+    expect(card?.signature).toEqual({ kind: 'stat', path: 'stats.Health', type: 'Stat', scope: 'global' });
   });
 
   it('shows each row off its default, in order, and the authored description', () => {
@@ -218,7 +218,7 @@ describe('`self` and `owner` cards', () => {
     const world = cardAt('return se|lf.value;', worldBox);
     expect(world?.signature.kind).toBe('global');
     expect(world?.signature.scope).toBeUndefined();
-    expect(rowsOf(world)).toEqual({ Stat: 'Health (world stat)', Type: 'Number', Range: '0 – 100' });
+    expect(rowsOf(world)).toEqual({ Stat: 'Health (global stat)', Type: 'Number', Range: '0 – 100' });
     expect(rowsOf(cardAt('return se|lf.value;', rageBox())))
       .toEqual({ Stat: 'Rage (Blueprint stat)', Type: 'Number', Range: '0 – 100', Owners: 'Mara, Tom' });
   });
@@ -241,7 +241,7 @@ describe('`self` and `owner` cards', () => {
 
   it('says `owner` is empty in a world stat’s box, with nothing to open or search', () => {
     const card = cardAt('return own|er.name;', worldBox);
-    expect(card?.description).toBe('Holds nothing in a world stat’s code. Writing through it changes nothing.');
+    expect(card?.description).toBe('Holds nothing in a global stat’s code. Writing through it changes nothing.');
     expect(card?.rows).toBeUndefined();
     expect(card?.item).toBeUndefined();
   });

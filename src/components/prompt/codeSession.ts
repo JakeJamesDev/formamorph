@@ -288,7 +288,7 @@ export interface CodeSessionOptions {
   surface: CodeSurface;
   /** The world's stat names, which `stats` keys. Absent, stat names are neither offered nor checked. */
   statNames?: readonly string[];
-  /** Whose code this is: an entity's own stat, or a Blueprint stat. Absent in a world stat's box. */
+  /** Whose code this is: an entity's own stat, or a Blueprint stat. Absent in a global stat's box. */
   owner?: CodeOwnerKind;
   /** The stat names `owner.stats` keys. Absent, they are neither offered nor checked. */
   ownerStatNames?: readonly string[];

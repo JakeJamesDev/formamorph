@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { codeCard, CARD_LIST_CAP, listText, placeholderValues, type CodeCard } from './codeCards';
+import { codeCard, CARD_LIST_CAP, listText, placeholderValues, scopedKind, type CodeCard } from './codeCards';
 import { statBoxLookup, type CodeBoxOwner, type CodeCardWorld } from './codeWorldLookup';
 import { statCodeCompletions, type SurfaceAnalysisOptions } from './statCodeAnalysis';
 import { STAT_CODE_SURFACE } from './statCodeSurface';
@@ -93,20 +93,23 @@ function labels(doc: string, options: SurfaceAnalysisOptions) {
 }
 
 describe('trait cards', () => {
-  it('shows Mode, Requires, Changes and Owners, with the description and the item', () => {
+  it('shows Mode, Requires and Changes and no Owners row on a global trait, with the description and the item', () => {
     const card = cardAt('return traits.Br|ave.enabled;', worldBox);
     expect(card?.rows).toEqual([
       { label: 'Mode', value: 'Optional' },
       { label: 'Requires', value: 'Courage >= 50 and not Shy\nor playing as Tom' },
       { label: 'Changes', value: 'Stamina max +10, Fatigue regen −1%, Fatigue off' },
-      { label: 'Owners', value: 'You, Tom' },
     ]);
+    expect(card?.signature.scope).toBe('global');
     expect(card?.description).toBe('Faces danger without flinching.');
     expect(card?.item).toEqual({ kind: 'trait', traitId: 'brave' });
   });
 
   it('names Automatic by its player-facing name and drops empty Requires and Changes', () => {
-    expect(rowsOf(cardAt('return traits.Sh|y.enabled;', worldBox))).toEqual({ Mode: 'Automatic', Owners: 'You' });
+    const card = cardAt('return traits.Sh|y.enabled;', worldBox);
+    expect(rowsOf(card)).toEqual({ Mode: 'Automatic' });
+    expect(card?.signature).toEqual({ kind: 'trait', path: 'traits.Shy', type: 'Trait', scope: 'global' });
+    expect(scopedKind(card!.signature)).toBe('global trait');
   });
 
   it('reaches an entity’s own trait by its route, with the entity on the item', () => {

@@ -117,7 +117,7 @@ export function routeTargets(owners: CodeOwners, run: CodeRun, route: StatRoute)
 
 /** Where a box's code is authored. */
 export type CodeHome =
-  /** A world stat's own box, a Blueprint stat's included. */
+  /** A global stat's own box, a Blueprint stat's included. */
   | { kind: 'stat'; statId: string }
   /** An entity's own stat. */
   | { kind: 'entity'; entityId: string; statId: string }
@@ -133,7 +133,7 @@ export interface StatCodeBox {
   stat: Stat;
   /** The entity an own or link box sits on. */
   entity: Entity | null;
-  /** What `owner` holds where the editor reads the box: the empty entry for a world stat, the group alone for
+  /** What `owner` holds where the editor reads the box: the empty entry for a global stat, the group alone for
    *  a Blueprint stat (Q10), the entity otherwise. */
   owner: CodeOwner | null;
   /** Each run the box gets in play: one per owner for a Blueprint stat whose link leaves the box alone. */
@@ -145,7 +145,7 @@ export const overridesBox = (link: StatLink, original: Stat, timing: StatCodeTim
   statLinkState(original, link).overridden.includes(CODE_FIELD[timing]);
 
 /**
- * Every filled box in the world once, in this order: the world stats', each Blueprint stat's, then each
+ * Every filled box in the world once, in this order: the global stats', each Blueprint stat's, then each
  * entity's own stats' and the boxes its links override, in the entity's tree order.
  */
 export function statCodeBoxes(owners: CodeOwners): StatCodeBox[] {

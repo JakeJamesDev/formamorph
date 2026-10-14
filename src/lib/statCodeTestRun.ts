@@ -34,7 +34,7 @@ const TEST_CLOCK: Record<StatCodeTiming, { deltaHours: number; elapsedHours: num
 /** The parts of an authored world a stat's code reaches. */
 export type StatCodeWorld = Pick<World, 'stats' | 'statGroups' | 'traits' | 'traitGroups' | 'entities' | 'entityGroups' | 'placeholders' | 'placeholderGroups' | 'dictionaries'>;
 
-/** The names of `world` as the stat panel reads them: the player's stats without Blueprints, and each entity's
+/** The names of `world` as the stat panel reads them: the global stats without Blueprints, and each entity's
  *  with its links. */
 export function statCodeNames(world: StatCodeWorld): StatCodeNames {
   return cardWorldNames({
@@ -42,7 +42,7 @@ export function statCodeNames(world: StatCodeWorld): StatCodeNames {
   });
 }
 
-/** The owner a non-world stat's code runs under. */
+/** The owner a non-global stat's code runs under. */
 export interface TestRunOwner {
   /** The entity that owns the stat. Absent for a Blueprint stat, whose `owner` is no entity of the world. */
   entityId?: string;
@@ -54,11 +54,11 @@ export interface TestRunOwner {
 /** A stat found by name, under its code name, with the owner its box runs under. */
 export interface StatCodeTarget {
   stat: Stat;
-  /** Absent for a world stat. */
+  /** Absent for a global stat. */
   owner?: TestRunOwner;
 }
 
-/** The stat code names `name`, by code name first, then by authored name: a world stat, then a Blueprint
+/** The stat code names `name`, by code name first, then by authored name: a global stat, then a Blueprint
  *  stat, then an entity's own stat in authored order. */
 export function findStat(world: StatCodeWorld, names: StatCodeNames, name: string): StatCodeTarget | undefined {
   const list = allPlaceholders(world);
@@ -112,8 +112,8 @@ export interface TestRunOptions {
   /** Names the world does not have yet. Each stat among them runs as a number at 0 in 0–100, and a write
    *  to any of them is left out of `dropped`. */
   missing?: readonly MissingName[];
-  /** Whose code it is, for an owned or Blueprint stat. Absent for a world stat, whose `owner` is empty. In
-   *  every run `stats` is the world's stats. */
+  /** Whose code it is, for an owned or Blueprint stat. Absent for a global stat, whose `owner` is empty. In
+   *  every run `stats` is the global stats. */
   owner?: TestRunOwner;
 }
 

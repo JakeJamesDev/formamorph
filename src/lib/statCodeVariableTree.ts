@@ -221,11 +221,11 @@ const traitRows = (path: Path, traits: readonly TraitPlace[]): VariableNameRow[]
   }));
 
 /** The Owner group's header. */
-const OWNER_INFO = 'The entity that owns this stat, with its own stats, traits and placeholders. A Blueprint stat’s code runs once for each owner. It’s empty in a world stat.';
+const OWNER_INFO = 'The entity that owns this stat, with its own stats, traits and placeholders. A Blueprint stat’s code runs once for each owner. It’s empty in a global stat.';
 
 /**
  * Builds the Variable menu's top level. Without `names`, every name list is one type-over row. `stats` lists the
- * world's stats in every box; an `owner` adds the Owner group, which lists the owner's own.
+ * global stats in every box; an `owner` adds the Owner group, which lists the owner's own.
  */
 export function buildVariableTree(names?: VariableTreeNames, owner: VariableTreeOwner | null = null): VariableNode[] {
   const pathMap: PlaceholderPathMap | null = names?.placeholders

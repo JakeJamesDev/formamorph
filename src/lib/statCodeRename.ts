@@ -232,7 +232,7 @@ export const codeNameReader = (
 
 /** One stat's code, rewritten. A box the rename does not touch is absent rather than rewritten to itself. */
 export interface CodeRenameEdit {
-  /** Where the code is authored: a world stat, an entity's own stat, or a link's override. */
+  /** Where the code is authored: a global stat, an entity's own stat, or a link's override. */
   home: CodeHome;
   /** The stat's own name, so the offer can say whose code it is about. */
   name: string;
@@ -262,7 +262,7 @@ export interface CodeRenameSubject {
 /** The stat a stat rename moved: a world or Blueprint stat, or one of an entity's own. */
 export interface RenamedStat {
   id: string;
-  /** The entity that owns the stat. Absent for a world stat. */
+  /** The entity that owns the stat. Absent for a global stat. */
   entityId?: string;
 }
 

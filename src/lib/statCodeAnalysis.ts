@@ -129,16 +129,16 @@ export interface AnalysisOptions {
   /** The world's entities, in authored order. Absent, entity and persona trait names are neither offered nor
    *  checked. A library entity can carry another name, so an unknown one is only a warning. */
   entities?: readonly CodeEntityNames[];
-  /** The world's stat names, in authored order: what `stats` keys in every box. Absent, stat names are neither
+  /** The global stat names, in authored order: what `stats` keys in every box. Absent, stat names are neither
    *  offered nor checked. */
   statNames?: readonly string[];
-  /** Whose code this is. Absent in a world stat's box. */
+  /** Whose code this is. Absent in a global stat's box. */
   owner?: CodeOwnerKind;
-  /** The stat names `owner.stats` keys: the entity's own, or a Blueprint group's. None in a world stat's box,
+  /** The stat names `owner.stats` keys: the entity's own, or a Blueprint group's. None in a global stat's box,
    *  where `owner` is empty. Absent, `owner.stats` names are neither offered nor checked. */
   ownerStatNames?: readonly string[];
   /** The name of the stat the code belongs to, so a write to that name counts as its own: through
-   *  `owner.stats` in an owned box, through `stats` in a world stat's. */
+   *  `owner.stats` in an owned box, through `stats` in a global stat's. */
   selfName?: string;
   /** What a card asks the world when it opens. Absent, cards show no World Details. Never a lint input. */
   lookup?: CodeWorldLookup;
@@ -178,7 +178,7 @@ const overlapsAny = (from: number, to: number, ranges: { from: number; to: numbe
   ranges.some((range) => from <= range.to && to >= range.from);
 
 /** Whether stat-like source reaches the current stat's own entry: `self`, or the map that holds it indexed by
- *  its own name. That map is `owner.stats` in an owned box and `stats` in a world stat's.
+ *  its own name. That map is `owner.stats` in an owned box and `stats` in a global stat's.
  *  A `!==` against `self.id` finds some other stat, so it doesn't count. */
 const reachesOwnStat = (text: string, selfName: string | undefined, owned: boolean) =>
   /\bself\b/.test(text.replace(/!==?\s*self\.id\b|\bself\.id\s*!==?/g, ''))
@@ -349,10 +349,10 @@ function looksLikeStat(code: string, tree: Tree, expression: string): boolean {
 }
 
 /** Whether `text` indexes the map that holds the running stat by the literal `name`, by dot or by bracket:
- *  `owner.stats` when `owned`, else the world's `stats`, which no member of another owner's `stats` is. */
+ *  `owner.stats` when `owned`, else the global `stats`, which no member of another owner's `stats` is. */
 function indexesStat(text: string, name: string, owned: boolean): boolean {
   const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  // The world's `stats` has no dot in front of it: a dotted one is a member of another object, caught in group 1.
+  // The global `stats` has no dot in front of it: a dotted one is a member of another object, caught in group 1.
   const map = owned ? String.raw`()\bowner\s*\??\.\s*stats` : String.raw`(\??\.\s*)?\bstats`;
   const reaches = (pattern: string) => [...text.matchAll(new RegExp(pattern, 'g'))].some((match) => !match[1]);
   if (reaches(`${map}\\s*(?:\\?\\.)?\\[\\s*(["'\`])${escaped}\\2\\s*\\]`)) return true;
@@ -1113,7 +1113,7 @@ export function codeCompletions(
   // The word being typed is itself a definition while it's being typed; offering it back is noise.
   const typed = code.slice(from, pos);
   // Right after a stat map's `[` a quoted name leads the list; `self.name` or a variable of the author's can go
-  // there too. The list is the map's own: an owner's `stats` keys the owner's stats, and the bare `stats` the world's.
+  // there too. The list is the map's own: an owner's `stats` keys the owner's stats, and the bare `stats` the global stats.
   const bracketMap = /\[\s*$/.test(beforeWord) ? resolver.valueBefore(punctuationAt) : null;
   const quotedNames = bracketMap?.is === 'statMap' ? statNamesOf(options, bracketMap.owner) ?? [] : null;
   const quotedStats = quotedNames

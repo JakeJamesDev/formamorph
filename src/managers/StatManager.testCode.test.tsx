@@ -199,7 +199,7 @@ describe('whose code a box holds', () => {
   it('binds each box’s card lookup to the stat and its owner', () => {
     const lookupOf = (box: 'Before the AI' | 'After the AI') => editorProps.get(`Stat Code ${box}`)!.lookup as CodeWorldLookup;
     renderCodePanel(stats[0]);
-    expect(lookupOf('After the AI').self()).toMatchObject({ stat: { id: 's1', name: 'Warmth' }, scope: 'world', owners: [] });
+    expect(lookupOf('After the AI').self()).toMatchObject({ stat: { id: 's1', name: 'Warmth' }, scope: 'global', owners: [] });
     expect(lookupOf('After the AI').owner()).toEqual({ kind: 'empty' });
 
     render(<StatManager stat={hub} tab="code" onTabChange={() => {}} store={{ stats: [hub, grit], updateStat, ownerId: 'e2' }} />);
@@ -209,7 +209,7 @@ describe('whose code a box holds', () => {
         kind: 'entity',
         entity: expect.objectContaining({ entity: expect.objectContaining({ id: 'e2' }), traits: ['Loyal'] }),
       }]);
-      expect([box, lookupOf(box).stat({ route: 'world' }, 'Damp')?.scope]).toEqual([box, 'world']);
+      expect([box, lookupOf(box).stat({ route: 'world' }, 'Damp')?.scope]).toEqual([box, 'global']);
       // The box hands its lookup the world's traits, so trait cards show their rows.
       expect([box, lookupOf(box).trait({ route: 'owner' }, 'Loyal')?.owners]).toEqual([box, ['Ash']]);
     }

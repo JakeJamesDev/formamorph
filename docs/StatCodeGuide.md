@@ -27,7 +27,7 @@ This guide explains Formamorph's **stat code**: a small JavaScript script attach
 <!-- keywords: reference an entity's trait, trait of an entity, find a name, pick a name, insert a path, menu, variable button, drill down, dictionary placeholder, persona trait, stat value, don't type names, copy the right spelling -->
 <!-- route: worldEditorStat.code -->
 
-Select the **Variable** button in the toolbar of a code box on a stat's **Code** tab. The menu opens on **This Stat**, **Stats**, **Traits**, **Entities**, **Persona**, **Placeholders**, **Dictionaries** and **Clock**. In the box of an entity's stat or a Blueprint stat, an **Owner** group follows **This Stat**. **Stats** always lists the world's stats. Each group opens level by level: a list of your world's own names, then a name's fields, and for an entity, its **Traits** and **Placeholders**. Select a field to insert its whole path at the caret. To reach `entities.Mira.traits.Wounded.enabled`, open **Entities**, **Mira**, **Traits**, **Wounded**, and then select **enabled**. The path runs as inserted, with no name to type.
+Select the **Variable** button in the toolbar of a code box on a stat's **Code** tab. The menu opens on **This Stat**, **Stats**, **Traits**, **Entities**, **Persona**, **Placeholders**, **Dictionaries** and **Clock**. In the box of an entity's stat or a Blueprint stat, an **Owner** group follows **This Stat**. **Stats** always lists the global stats. Each group opens level by level: a list of your world's own names, then a name's fields, and for an entity, its **Traits** and **Placeholders**. Select a field to insert its whole path at the caret. To reach `entities.Mira.traits.Wounded.enabled`, open **Entities**, **Mira**, **Traits**, **Wounded**, and then select **enabled**. The path runs as inserted, with no name to type.
 
 ## How to Limit the AI's Change to a Stat
 <!-- keywords: clamp, cap, max, restrict, prevent, too fast, delta, script, throttle, big swings, jumps too much, slow down gains, never go up, dampen, narrator overreacts, at most per turn -->
@@ -142,8 +142,8 @@ Follow these rules:
 - **A stat compares through `.value`.** Write `stats.<Stat>.value > <n>`. `stats.<Stat>` and `self` alone are whole entries, not numbers.
 - **A trait switches through `.enabled`.** Write `traits.<Trait>.enabled = true`. The editor underlines `traits.<Trait> = true`.
 - **A trait sits under its owner.** `traits` holds the world's own traits only. A trait on the entity that owns the stat is under `owner.traits`. A trait on the played persona is under `persona.traits`. A trait on another entity is under `entities.<Entity>.traits`, the Custom Persona under a library persona included.
-- **`stats` is the world's stats in every box.** It means the same in an entity's stat code as in a world stat's code, as `traits` does. It never holds the entity's own stats.
-- **An entity's stat code reads its own entity's stats through `owner.stats`.** `owner` is the entity that owns the running stat, so `owner.stats.<Stat>.value` is the entity's own stat. In a Blueprint stat's code, `owner` is the entity the run is for. In a world stat's code, it's an empty entry: reads are blank, and a write is ignored and reported.
+- **`stats` is the global stats in every box.** It means the same in an entity's stat code as in a global stat's code, as `traits` does. It never holds the entity's own stats.
+- **An entity's stat code reads its own entity's stats through `owner.stats`.** `owner` is the entity that owns the running stat, so `owner.stats.<Stat>.value` is the entity's own stat. In a Blueprint stat's code, `owner` is the entity the run is for. In a global stat's code, it's an empty entry: reads are blank, and a write is ignored and reported.
 - **Another entity's stats are under `entities.<Entity>.stats`.** The played persona's are under `persona.stats`.
 - **"After N days" is `clock.day > <n>`.** `clock.day` starts at 1. For timing in hours, use `clock.elapsedHours`. The time of day is `clock.daypart`.
 - **`self` and every `stats` entry take writes to `value`, `min`, `max` and `regen`.** So does every stat entry under `owner.stats`, `entities.<Entity>.stats` and `persona.stats`. Their other fields are read-only.
@@ -153,7 +153,7 @@ Follow these rules:
 ### Basic Syntax
 <!-- keywords: what language, first script, minimal example, is return required, fixed number -->
 
-Your code is plain JavaScript. Return a number to set the stat's value. The code has access to `stats`, a map of the world's stats keyed by name, and to `self`, the stat the code belongs to. It also has `owner`, the entity that owns the stat: empty for a world stat, and the entity the run is for in a Blueprint stat (see [Owner](#owner)).
+Your code is plain JavaScript. Return a number to set the stat's value. The code has access to `stats`, a map of the global stats keyed by name, and to `self`, the stat the code belongs to. It also has `owner`, the entity that owns the stat: empty for a global stat, and the entity the run is for in a Blueprint stat (see [Owner](#owner)).
 
 ```javascript
 // Example: Return a fixed value
@@ -166,13 +166,13 @@ A script does not have to return anything. One that only writes `self`, a placeh
 <!-- keywords: this stat, the running stat, own value, own entry, current stat, self name, self value -->
 <!-- route: worldEditorStat.code -->
 
-`self` is the stat the code belongs to, in every box. It has the [same members as a `stats` entry](#stat-properties). In a world stat's code, it is the same entry as `stats.<own name>`. In an entity stat's code, it is the same entry as `owner.stats.<own name>`. Four of its fields take writes (see [Writing to `self`](#writing-to-self)).
+`self` is the stat the code belongs to, in every box. It has the [same members as a `stats` entry](#stat-properties). In a global stat's code, it is the same entry as `stats.<own name>`. In an entity stat's code, it is the same entry as `owner.stats.<own name>`. Four of its fields take writes (see [Writing to `self`](#writing-to-self)).
 
 ### Stats
-<!-- keywords: world stats, stats map, stats object, all stats, other stats, read a stat, stat by name, stats in an entity's code, loop over stats -->
+<!-- keywords: global stats, stats map, stats object, all stats, other stats, read a stat, stat by name, stats in an entity's code, loop over stats -->
 <!-- route: worldEditorStat.code -->
 
-`stats` is a map of the world's stats keyed by name, in every box. An entity's stat code gets the same map as a world stat's code, as `traits` does. It never holds the entity's own stats: those are under `owner.stats`. Each entry has the [same members as `self`](#stat-properties), and takes writes to `value`, `min`, `max` and `regen` (see [Writing to Other Stats](#writing-to-other-stats)). To read a stat by name, see [Accessing Other Stats](#accessing-other-stats).
+`stats` is a map of the global stats keyed by name, in every box. An entity's stat code gets the same map as a global stat's code, as `traits` does. It never holds the entity's own stats: those are under `owner.stats`. Each entry has the [same members as `self`](#stat-properties), and takes writes to `value`, `min`, `max` and `regen` (see [Writing to Other Stats](#writing-to-other-stats)). To read a stat by name, see [Accessing Other Stats](#accessing-other-stats).
 
 ### Owner
 <!-- keywords: own stats, read the entity's other stats, script on a monster's stat, this entity, entity's own stat, self entity, creature code, npc code, blueprint owner, empty owner, owner is blank, owner stats, owner traits, owner placeholders -->
@@ -184,7 +184,7 @@ A script does not have to return anything. One that only writes `self`, a placeh
 | --- | --- |
 | A stat on an entity's **Stats** tab | That entity |
 | A Blueprint stat | The entity the run is for. The code runs once for each owner |
-| A world stat | An empty entry |
+| A global stat | An empty entry |
 
 In an entity stat's code, `self` is the same entry as `owner.stats.<own name>`, so a write through either route is one write.
 
@@ -193,7 +193,7 @@ In an entity stat's code, `self` is the same entry as `owner.stats.<own name>`, 
 if (owner.traits.Hunted.enabled) owner.stats.Rage.value += 2;
 ```
 
-Code that uses `owner` never throws in a world stat's box. Every read is blank, and every trait reads as off. A write through it is ignored and reported.
+Code that uses `owner` never throws in a global stat's box. Every read is blank, and every trait reads as off. A write through it is ignored and reported.
 
 > ℹ️ **Two entities can share a code name.** The later one is the entry in `entities`. `owner` is still the owner's own entry, so a same-name entity never hides it.
 
@@ -214,7 +214,7 @@ A name with a space needs brackets: `stats["Hit Points"].value`. A name the worl
 To read the entity's own stats in an entity's stat code, use `owner.stats`. To read another entity's stats, use `entities.<Entity>.stats`:
 
 ```javascript
-// In The Creature's stat code: read a world stat and the Creature's own stat.
+// In The Creature's stat code: read a global stat and the Creature's own stat.
 const alert = stats["Alert Level"].value;
 return owner.stats.Rage.value + alert / 2;
 ```
@@ -249,7 +249,7 @@ A stat that a trait switched off still reads as a real entry. Its name, value an
 ### Writing to `self`
 <!-- keywords: raise the ceiling, upper limit, lower limit, regeneration rate, assign, modify own stat, underlined write, scale with level up, this keyword -->
 
-`self` is the stat the code belongs to. In a world stat's code, it is the same entry that sits in `stats`, so `self.value` and `stats[self.name].value` read the same. In an entity stat's code, it is the same entry that sits in `owner.stats`, so `self.value` and `owner.stats[self.name].value` read the same. A write through either path is one write. Four of its fields take writes:
+`self` is the stat the code belongs to. In a global stat's code, it is the same entry that sits in `stats`, so `self.value` and `stats[self.name].value` read the same. In an entity stat's code, it is the same entry that sits in `owner.stats`, so `self.value` and `owner.stats[self.name].value` read the same. A write through either path is one write. Four of its fields take writes:
 
 | Write | Effect |
 | --- | --- |
@@ -278,14 +278,14 @@ A bound write works like a value write. After `self.max = 20`, the cap reads 20 
 No code bound hides the traits or the AI under it. Deleting the code leaves the bounds as they are. Writing `null` to `value`, `min`, `max` or `regen` fails the run, as any other non-number does. Every other field of `self` is read-only. To write a stat other than `self`, see [Writing to Other Stats](#writing-to-other-stats).
 
 ### Writing to Other Stats
-<!-- keywords: move another stat, change another stat, hub stat, one event many stats, write stats map, damage health from a roll, raise luck on a twenty, cap another stat, change another stat's max, change another stat's regen, change an entity's stat, drain an npc, push a world stat from an entity's code, cross-owner write, owner order, entity's own stats, npc stat code, two scripts write one stat, which write wins, order of stats, last write wins, target does not see the write, blueprint stat code, each owner's copy, two writers warning, two boxes write one field -->
+<!-- keywords: move another stat, change another stat, hub stat, one event many stats, write stats map, damage health from a roll, raise luck on a twenty, cap another stat, change another stat's max, change another stat's regen, change an entity's stat, drain an npc, push a global stat from an entity's code, cross-owner write, owner order, entity's own stats, npc stat code, two scripts write one stat, which write wins, order of stats, last write wins, target does not see the write, blueprint stat code, each owner's copy, two writers warning, two boxes write one field -->
 <!-- route: worldEditorStat.code -->
 
 Code can write any stat in the game, by the route that reaches it. One box can move several stats, so an event needs no reaction code in each target stat. A stat whose code writes other stats is a hub.
 
 | Route | Reaches |
 | --- | --- |
-| `stats.<Stat>` | A world stat |
+| `stats.<Stat>` | A global stat |
 | `owner.stats.<Stat>` | A stat of the entity that owns the running stat |
 | `entities.<Entity>.stats.<Stat>` | A stat of that entity |
 | `persona.stats.<Stat>` | A stat of the played persona |
@@ -298,7 +298,7 @@ if (roll === 20) stats.Luck.value += 1;
 return roll;
 ```
 
-An entity's stat can move a world stat too. This code runs on a stat of The Creature:
+An entity's stat can move a global stat too. This code runs on a stat of The Creature:
 
 ```javascript
 // The Creature's Rage pushes the world's Alert Level.
@@ -309,10 +309,10 @@ Every stat entry on every route takes writes to the same four fields as `self`: 
 
 | Rule | What it means |
 | --- | --- |
-| Owner order, last write wins | Two writes to one field land in owner order, and the later write wins. The order is the world's own stats first, then the world's entities in the order you authored them, then the library entities in the order the player picked them. The played persona sits in that order like any entity, so a library persona lands last |
+| Owner order, last write wins | Two writes to one field land in owner order, and the later write wins. The order is the global stats first, then the world's entities in the order you authored them, then the library entities in the order the player picked them. The played persona sits in that order like any entity, so a library persona lands last |
 | Stat order inside one owner | Writes from one owner's stats land in the order of that owner's stat list. A write through `self` and a write through any route count alike. The target's own box is one of the writers |
 | One snapshot per run | Every box of every owner reads the snapshot the run started from. A hub's write to Health isn't in Health's own box on that run, or in its `delta.actual`. It's in Health's `previous` on the next turn |
-| Blueprint stats | A Blueprint stat's code runs once for each owner. In it, `owner` is the entity the run is for, and `owner.stats.Mana.value` lands on that owner's own copy of Mana. A write through `stats` lands on the world stat |
+| Blueprint stats | A Blueprint stat's code runs once for each owner. In it, `owner` is the entity the run is for, and `owner.stats.Mana.value` lands on that owner's own copy of Mana. A write through `stats` lands on the global stat |
 | Unknown or switched-off stats | A write to a name the target doesn't have, or to a stat a trait switched off, is ignored and reported. The editor underlines an unknown name |
 | An entity not in the game | A write through `entities.<Entity>.stats` to an entity that isn't in the game is ignored and reported |
 | Fields that stay read-only | `id`, `name`, `type`, `description`, `previous` and `delta` never take a write, on any route |
@@ -331,7 +331,7 @@ The [Test Bench](Test-Bench#issues) warns when more than one box writes the same
 - It reads literal names only: `stats.Health.value`, `stats["Health"].value`, `owner.stats.Rage.value`, `entities.Mira.stats.Trust.value` and `self.max`. It skips a computed name such as `stats[name].value`. It skips a variable that holds a stat entry too.
 - Two routes that reach one stat count as one target. `owner.stats.Rage.value`, `entities.Creature.stats.Rage.value` and `persona.stats.Rage.value` are one field when they reach the same stat.
 - `persona.stats` reaches every entity that the player can play, because the world doesn't know which one the player picks.
-- A Blueprint stat's box counts once for each owner. Each owner's own copy of the stat is judged on its own, so two owners don't clash on their own stats. A Blueprint box that writes a world stat's field gets the warning when it has two or more owners (see [A Note on Accumulating Stats](#a-note-on-accumulating-stats)).
+- A Blueprint stat's box counts once for each owner. Each owner's own copy of the stat is judged on its own, so two owners don't clash on their own stats. A Blueprint box that writes a global stat's field gets the warning when it has two or more owners (see [A Note on Accumulating Stats](#a-note-on-accumulating-stats)).
 
 A warning isn't an error. Owner order, then stat order, already settles which write wins. The finding shows two boxes that may overwrite each other by mistake.
 
@@ -585,7 +585,7 @@ dictionaries.Weather.placeholders.Sky.pin(self.value < 20 ? 'storm' : 'clear');
 
 Each box is a separate run. Within one run every stat's code reads the same snapshot, so no script sees another stat's writes from that run. After each run, effects apply in this order: trait switches, then bounds, then values, then placeholder pins. A bound a stat writes lands at the written number, after the run's trait switches have moved the bounds. When two stats write the same placeholder, trait, or stat field in one run, owner order decides first, then the later stat in the list wins. See [Writing to Other Stats](#writing-to-other-stats).
 
-Each run covers the world's stats and every entity's stats over that one snapshot. Writes land in owner order, then stat order within one owner. The last write to a field wins. See [Writing to Other Stats](#writing-to-other-stats) for the order.
+Each run covers the global stats and every entity's stats over that one snapshot. Writes land in owner order, then stat order within one owner. The last write to a field wins. See [Writing to Other Stats](#writing-to-other-stats) for the order.
 
 The two runs are ordered against each other, though: everything the before box wrote is already in place when the after box reads.
 
@@ -627,12 +627,12 @@ return health * 0.75;
 Calculate a stat as the average of every stat, iterating with `Object.values`:
 
 ```javascript
-// Make Morale the average of every world stat, this one included
+// Make Morale the average of every global stat, this one included
 const all = Object.values(stats);
 return all.reduce((sum, stat) => sum + stat.value, 0) / all.length;
 ```
 
-`stats` holds the world's stats in every box, so this code gives the same average on an entity's stat. To average the entity's own stats, iterate `owner.stats` instead:
+`stats` holds the global stats in every box, so this code gives the same average on an entity's stat. To average the entity's own stats, iterate `owner.stats` instead:
 
 ```javascript
 // On an entity's stat: the average of the entity's own stats, this one included
@@ -784,7 +784,7 @@ Most stat code is a **formula**: it reads other stats and returns an answer, and
 
 Formamorph runs it once per turn. A re-roll of a turn's stat changes runs it again by design: the re-roll rebuilds the turn from its starting values, so the total is not counted twice. A running total is more fragile than a formula. Prefer a formula where one will do.
 
-**A Blueprint stat's write to a world stat moves the stat once, not once for each owner.** The code runs once for each owner, but every run reads one snapshot. Two owners that each write `stats.Alert.value += 5` both write the snapshot's Alert plus 5. The later write wins, so Alert rises by 5, not by 10. To count each owner, write to `owner.stats`, where each owner has its own copy. The [Test Bench](Test-Bench#issues) warns on a Blueprint box that writes a world stat's field when two or more owners run it.
+**A Blueprint stat's write to a global stat moves the stat once, not once for each owner.** The code runs once for each owner, but every run reads one snapshot. Two owners that each write `stats.Alert.value += 5` both write the snapshot's Alert plus 5. The later write wins, so Alert rises by 5, not by 10. To count each owner, write to `owner.stats`, where each owner has its own copy. The [Test Bench](Test-Bench#issues) warns on a Blueprint box that writes a global stat's field when two or more owners run it.
 
 ## Troubleshooting
 <!-- keywords: no effect, value never changes, nan, silent failure, checklist, capital letters matter, ignored writes -->

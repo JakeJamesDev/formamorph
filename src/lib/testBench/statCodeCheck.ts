@@ -54,7 +54,7 @@ function unknownNames({ unknownPlaceholders = [], unknownTraits = [] }: StatCode
 interface CodedBox {
   stat: Stat;
   box: CodeBox;
-  /** Absent for a world stat: `owner` is the empty entry. */
+  /** Absent for a global stat: `owner` is the empty entry. */
   owner?: SandboxEntity;
   /** The stat, quoted, then its entity for an owned box. */
   name: string;
@@ -63,7 +63,7 @@ interface CodedBox {
 
 /**
  * Run each filled box once and report the ones that fail, then the ones whose writes named nothing. A blank
- * box never reaches the sandbox, so a world of plain stats costs nothing. A world stat runs with no owner, an
+ * box never reaches the sandbox, so a world of plain stats costs nothing. A global stat runs with no owner, an
  * entity's own stat with its entity, and a Blueprint stat once with its group alone as owner (Q10).
  */
 export async function checkStatCode(world: RuleWorld): Promise<Finding[]> {
