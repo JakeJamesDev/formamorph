@@ -534,6 +534,42 @@ The live reference uses the production menu against the production entity card f
 
 Tile Size, Add To Group, Create New Group, Remove From Group, Check for Updates, Set as Default Persona, Clear Default Persona, Default, Delete, Delete Character, Cancel, and Confirm reuse production copy so the reference and Main Menu cannot drift. The confirmation says “character” where the terminology rule says “entity”; the reference keeps it for parity. Reuse does not certify those labels or the confirmation as fully ASD-STE100 compliant. In particular, the existing Delete label remains unchanged for production parity; this ticket does not perform the app-wide terminology decision that would be required before replacing it.
 
+### Item detail line
+
+**Use it when** an item's action goes somewhere the player may not expect. Today that is an AI request: the line names the endpoint that gets it.
+
+**Composition:**
+
+- The label comes first. A muted line in the meta size sits under it: "Sends to Default · default".
+- The line truncates on one row. The menu keeps its width.
+- Items with nothing to add keep one line. Do not add a blank second line to line them up.
+- The line is described, not named. The item's `aria-label` is the label alone, and `aria-description` carries the line.
+- A button has no room for the line, so its tooltip shows it under the label instead. Send and the World Editor's generate buttons do this.
+
+**Production mapping:**
+
+| Need | Component |
+| --- | --- |
+| The two-line item, its accessible name and description, and the tooltip on the row buttons | `BubbleMenu` and `BubbleActionButton` in [`BubbleMenu.tsx`](../src/components/game/BubbleMenu.tsx) |
+| Which actions send a request, and the line on each | `request` and `withEndpoints` in [`bubbleActions.ts`](../src/lib/bubbleActions.ts) |
+| The line's text | `endpointTipLine` in [`endpointTip.ts`](../src/lib/endpointTip.ts) |
+| The endpoint each request kind resolves to | `useEndpointTip` in [`useEndpointTip.ts`](../src/lib/useEndpointTip.ts) |
+| Isolated reference, on the Context Menu tab's Item Detail Line view | [`MenuDetailLineReference.tsx`](../src/components/design-system/MenuDetailLineReference.tsx) |
+
+Re-generate Narration, Re-generate Stats, Re-generate Choices, and Write Scene Tags carry the line, in the turn's More menu and its right-click menu.
+
+**States:**
+
+| State | Treatment |
+| --- | --- |
+| Long preset or model name | The line truncates with an ellipsis. The full text stays in `aria-description`. |
+| Model same as the preset name | The line names the preset once: "Sends to GLM 5.3". |
+| Demo AI | The preset is Default and the model is default, so the line is "Sends to Default · default". |
+| Disabled | The line dims with its label. |
+| Destructive | No destructive item sends a request today, so none carries a line. |
+
+**Writing review:** the line follows STE. It is one fixed form, "Sends to <preset> · <model>", with the preset and model names in their own spelling. It never explains the request or repeats the label.
+
 ## Pattern: Compact Selection Lists
 
 **Purpose:** Choose one destination from a simple list without reserving room for absent controls.
