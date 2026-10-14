@@ -11,7 +11,7 @@ import {
 import { gateStates, settle, switchTrait, type SettleResult } from '@/lib/traitGates';
 import type { TraitCascade } from '@/components/game/SetupTraitList';
 import { namedStartLocation, offeredStartLocations, withoutPersona } from '@/lib/personaPick';
-import type { Entity, EntityMetadata, GameLocation, PersonaRef, Trait } from '@/types';
+import type { Entity, EntityMetadata, GameLocation, PersonaRef, Stat, Trait } from '@/types';
 
 const identity = (text: string) => text;
 const traitIdentity = (_trait: Trait, text: string) => text;
@@ -1053,6 +1053,18 @@ describe('EnterWorldWorkspace cast pages', () => {
     expect(within(main).getByText('A grey wolf.')).toBeInTheDocument();
     expect(within(main).getByRole('checkbox', { name: 'Tamed' })).toBeChecked();
     expect(within(main).getByRole('checkbox', { name: 'Guard' })).not.toBeDisabled();
+  });
+
+  it("shows an owned trait's change to its owner's own stat on the owner's page", async () => {
+    const user = userEvent.setup();
+    const howling: Entity = {
+      ...ash,
+      stats: [{ id: 'howl', name: 'Howl', min: 0, max: 10, value: 1 } as Stat],
+      traits: [owned('tamed', { isDefault: true, statChanges: [{ statId: 'howl', value: 2, type: 'starting' }] })],
+    };
+    render(<CastHarness cast={{ ...castWorld, entities: [howling, bob] }} />);
+    await user.click(within(nav()).getByRole('button', { name: /^Ash/ }));
+    expect(within(screen.getByRole('main')).getByRole('listitem')).toHaveTextContent('Howl: +2');
   });
 
   it("shows slot 0 on an entity's page even when slot 0 carries a Visibility rule that would hide it in play", async () => {

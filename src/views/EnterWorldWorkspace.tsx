@@ -12,7 +12,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tip } from '@/components/ui/tooltip';
 import type { DictionarySelectionItem } from '@/lib/dictionarySelection';
-import type { Entity, GameLocation, PersonaRef, Stat, Trait, TraitGroup } from '@/types';
+import type { Entity, GameLocation, PersonaRef, Stat, StatGroup, Trait, TraitGroup } from '@/types';
+import { resolvedEntityStats } from '@/lib/statLinks';
 import { PersonaPicker, PersonaPortrait, type PersonaOption } from '@/components/game/PersonaPicker';
 import { primaryImage } from '@/lib/entityImages';
 import type { ResolveEntityText } from '@/lib/resolveWorldNames';
@@ -41,6 +42,8 @@ export interface EnterWorldWorkspaceProps {
   traitLibrary?: readonly Entity[];
   resolveEntityText?: ResolveEntityText;
   stats: Stat[];
+  /** The world's stat groups, which hold the blueprints entity stats link to. */
+  statGroups?: StatGroup[];
   locations: GameLocation[];
   resolveText: (text: string) => string;
   /** A trait's own text, bound for its owner, which is the Character Name in it. */
@@ -117,6 +120,10 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
     [traitTree, props.selectedTraits],
   );
   const playerIds = playerEntityIds(traitTree);
+  const ownStatsOf = (entityId: string) => {
+    const entity = traitTree.entityNodes.get(entityId);
+    return entity ? resolvedEntityStats({ stats: props.stats, statGroups: props.statGroups ?? [] }, entity) : undefined;
+  };
   // On the selected row the primary text would vanish into the primary fill.
   const youMarkOf = (onFill: boolean) => (
     <span className={cn('ml-2 text-meta font-normal', onFill ? 'text-primary-foreground' : 'text-primary')}>You</span>
@@ -347,6 +354,8 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
                 props.resolveTraitText(trait, text, current.entityId ? traitTree.entityNodes.get(current.entityId) ?? null : null)}
               onTraitSelect={props.onTraitSelect}
               ownerId={current.entityId ?? PLAYER_OWNER}
+              ownStats={current.entityNode ? ownStatsOf(current.entityId!) : undefined}
+              played={!!current.entityId && playerIds.includes(current.entityId)}
               gates={props.traitGates}
               cascade={props.traitCascade}
               onDismissCascade={props.onDismissTraitCascade}
