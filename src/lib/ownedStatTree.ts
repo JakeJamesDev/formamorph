@@ -8,6 +8,7 @@ import {
   removeChildrenOf, type FlatTreeNode,
 } from './groupTree';
 import type { HeldReason } from './heldReasons';
+import { ancestors, parentLookup } from './ancestors';
 import { nodePlacement } from './traitTree';
 import { statsInTreeOrder } from './statGroupTree';
 import {
@@ -121,13 +122,8 @@ function rowsBelow(tree: Pick<OwnedStatTree, 'groups' | 'stats'>, id: string): S
     ...tree.groups.map((g) => [g.id, g.parentId] as const),
     ...tree.stats.map((s) => [s.id, s.groupId ?? null] as const),
   ]);
-  const below = new Set<string>();
-  for (const rowId of parentOf.keys()) {
-    for (let at: string | null | undefined = rowId; at; at = parentOf.get(at)) {
-      if (at === id) { below.add(rowId); break; }
-    }
-  }
-  return below;
+  const parentOfId = (rowId: string) => parentOf.get(rowId);
+  return new Set([...parentOf.keys()].filter((rowId) => rowId === id || ancestors(rowId, parentOfId).includes(id)));
 }
 
 /** The link roots a dragged row carries: itself when it is one, and every one below it. */
@@ -211,11 +207,9 @@ export function applyOwnedStatDrop(
   if (dropped.groups === tree.groups && dropped.leaves === tree.stats) return null;
 
   const groupById = new Map(dropped.groups.map((g) => [g.id, g]));
-  const ownerAt = (parent: string | null | undefined): string | null => {
-    let at = parent ?? null;
-    while (at && !tree.entityNodes.has(at)) at = groupById.get(at)?.parentId ?? null;
-    return at;
-  };
+  const groupParent = parentLookup(dropped.groups, (g) => g.parentId);
+  const ownerAt = (parent: string | null | undefined): string | null =>
+    (parent ? [parent, ...ancestors(parent, groupParent)].find((id) => tree.entityNodes.has(id)) : undefined) ?? null;
   const subtree = rowsBelow({ groups: dropped.groups, stats: dropped.leaves }, activeId);
   const isNode = tree.entityNodes.has(activeId);
   const from = tree.owned.get(activeId)?.entityId ?? null;

@@ -1,4 +1,5 @@
 import dagre from "@dagrejs/dagre";
+import { ancestors } from "@/lib/ancestors";
 import type { Connection, GameLocation } from "@/types";
 import {
   CANVAS_GRID, CANVAS_NODE_HEIGHT, CANVAS_NODE_WIDTH, GROUP_HEADER, GROUP_PADDING,
@@ -233,11 +234,8 @@ export function autoArrange(
  */
 export function autoArrangeAll(locations: GameLocation[], connections: Connection[]): GameLocation[] {
   const byId = new Map(locations.map((l) => [l.id, l]));
-  const depthOf = (loc: GameLocation) => {
-    let depth = 0;
-    for (let at = loc; holderOf(locations, at); depth += 1) at = byId.get(holderOf(locations, at)!)!;
-    return depth;
-  };
+  const parentIdOf = (id: string) => holderOf(locations, byId.get(id)!);
+  const depthOf = (loc: GameLocation) => ancestors(loc.id, parentIdOf).length;
   const groups = locations
     .filter((loc) => locations.some((l) => holderOf(locations, l) === loc.id))
     .sort((a, b) => depthOf(b) - depthOf(a))

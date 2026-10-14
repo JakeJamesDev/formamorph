@@ -12,6 +12,7 @@ import { xmlEscape } from './utils';
 import { blueprintsGroup, blueprintsSubtreeIds, groupsBelow } from './blueprintGroups';
 import { ownsOrLinksTraits, heldReason, makeLink, originalOf, resolveOwners } from './owners';
 import type { HeldReason } from './heldReasons';
+import { ancestors, parentLookup } from './ancestors';
 import { traitReaderOutsideBlueprints, type TraitReader, type TraitReaderWorld } from './traitMoveReaders';
 import { randomUUID } from './uuid';
 
@@ -452,11 +453,9 @@ export function applyOwnedTraitDrop(
   if (dropped.groups === tree.groups && dropped.leaves === tree.traits) return null;
 
   const groupById = new Map(dropped.groups.map((g) => [g.id, g]));
-  const ownerAt = (parent: string | null | undefined): string | null => {
-    let at = parent ?? null;
-    while (at && !tree.entityNodes.has(at)) at = groupById.get(at)?.parentId ?? null;
-    return at;
-  };
+  const groupParent = parentLookup(dropped.groups, (g) => g.parentId);
+  const ownerAt = (parent: string | null | undefined): string | null =>
+    (parent ? [parent, ...ancestors(parent, groupParent)].find((id) => tree.entityNodes.has(id)) : undefined) ?? null;
 
   // The dragged item with everything below it.
   const subtree = new Set([activeId]);

@@ -12,6 +12,7 @@
  * spelling anywhere would let an author complete one path and run another.
  */
 import type { Placeholder } from '@/types';
+import { ancestors } from './ancestors';
 import type { PlaceholderOwnerRef, PlaceholderOwners } from './placeholderHomes';
 import { PLACEHOLDER_PATH_SEPARATOR } from './placeholders';
 import { holderOf } from './placeholderTree';
@@ -106,19 +107,15 @@ function buildMap({ list, owners }: PlaceholderPathSource): PlaceholderPathMap {
 
   /** The canonical segments that reach `p`: its owner, every parent above it, then its own name. */
   const pathOf = (p: Placeholder): { path: string[]; owner?: PlaceholderOwnerRef } => {
-    const chain: string[] = [];
-    const seen = new Set<string>();
-    let at: Placeholder | undefined = p;
-    while (at && !seen.has(at.id)) {
-      seen.add(at.id);
-      chain.unshift(at.name);
-      const parent = heldBy.get(at.id);
-      at = parent ? byId.get(parent) : undefined;
-    }
+    const above = ancestors(p.id, (id) => {
+      const parent = heldBy.get(id);
+      return parent && byId.has(parent) ? parent : null;
+    });
+    const chain = [...above.reverse().map((id) => byId.get(id)!.name), p.name];
     // The owner of the outermost parent is the one that opens the path: the owner node holds that row, and
     // everything below it is reached through that row rather than through the owner again.
-    const root = [...seen].pop();
-    const owner = root === undefined ? undefined : owners?.get(root);
+    const root = above[0] ?? p.id;
+    const owner = owners?.get(root);
     return owner ? { path: [ownerKey(owner.name), ...chain], owner } : { path: chain };
   };
 

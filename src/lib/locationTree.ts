@@ -4,6 +4,7 @@
 // tree from the single flat array; a drag rewrites the array so its order encodes the new tree.
 
 import { arrayMove } from '@dnd-kit/sortable';
+import { ancestors, parentLookup } from "@/lib/ancestors";
 import { effectiveDestinations } from "@/lib/locationGraph";
 import { clamp } from "@/lib/utils";
 import type { Connection, GameLocation } from '@/types';
@@ -77,13 +78,8 @@ export function removeCollapsedChildren(items: FlatLocationNode[], ids: Iterable
 
 /** True if `candidateId` is `ancestorId` itself or nested beneath it — guards illegal (cyclic) moves. */
 export function isDescendantLocation(locations: GameLocation[], ancestorId: string, candidateId: string): boolean {
-  const byId = new Map(locations.map((l) => [l.id, l]));
-  let cur: string | null | undefined = candidateId;
-  while (cur) {
-    if (cur === ancestorId) return true;
-    cur = byId.get(cur)?.parentId ?? null;
-  }
-  return false;
+  return candidateId === ancestorId
+    || ancestors(candidateId, parentLookup(locations, (l) => l.parentId)).includes(ancestorId);
 }
 
 /** Remove a location. Its direct children move up to its parent, into the slot it held: sibling order is the
@@ -193,14 +189,14 @@ export function defaultCollapsedLocations(
   const parents = new Set(locations.map((l) => holderOf(locations, l)).filter((id): id is string => id !== null));
 
   const keep = new Set<string>([currentLocationId, ...effectiveDestinations(currentLocationId, locations, connections).keys()]);
+  const parentIdOf = (id: string) => {
+    const loc = byId.get(id);
+    return loc ? holderOf(locations, loc) : null;
+  };
   const expanded = new Set<string>();
   for (const id of keep) {
-    let cur: string | null = id;
-    while (cur && !expanded.has(cur)) {
-      expanded.add(cur);
-      const loc = byId.get(cur);
-      cur = loc ? holderOf(locations, loc) : null;
-    }
+    expanded.add(id);
+    for (const above of ancestors(id, parentIdOf)) expanded.add(above);
   }
   return new Set([...parents].filter((id) => !expanded.has(id)));
 }

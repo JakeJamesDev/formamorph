@@ -1,3 +1,4 @@
+import { ancestors } from "@/lib/ancestors";
 import type { GameLocation } from "@/types";
 import { UNNAMED_LOCATION } from "./locationCanvas";
 import { holderOf } from "./locationTree";
@@ -49,20 +50,9 @@ export function searchLocations(
   const nameOf = new Map(locations.map((l) => [l.id, resolveName(l) || UNNAMED_LOCATION]));
   const byId = new Map(locations.map((l) => [l.id, l]));
 
-  const pathOf = (location: GameLocation): string[] => {
-    const names: string[] = [];
-    const seen = new Set<string>([location.id]);
-    for (let at = location; ;) {
-      const parentId = holderOf(locations, at);
-      // A cycle in the tree would otherwise walk forever; the world can hold one between two saves.
-      if (!parentId || seen.has(parentId)) break;
-      seen.add(parentId);
-      const parent = byId.get(parentId)!; // holderOf only names a parent that is here
-      names.unshift(nameOf.get(parent.id)!);
-      at = parent;
-    }
-    return names;
-  };
+  const parentIdOf = (id: string) => holderOf(locations, byId.get(id)!); // only ids from `locations` come here
+  const pathOf = (location: GameLocation): string[] =>
+    ancestors(location.id, parentIdOf).reverse().map((id) => nameOf.get(id)!);
 
   return locations
     .map((location) => {

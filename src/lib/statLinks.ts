@@ -9,6 +9,7 @@ import { removeStatGroup, statRootCount, statsInTreeOrder } from './statGroupTre
 import { buildTree, flattenTree, type TreeLeaf } from './groupTree';
 import type { OwnerChoice } from './ownerChoices';
 import type { HeldReason } from './heldReasons';
+import { ancestors, parentLookup } from './ancestors';
 import { randomUUID } from './uuid';
 import { newStat } from './blankWorld';
 import { regenUnitOf } from './regenUnits';
@@ -95,7 +96,12 @@ export function statBlueprintChoices(world: StatLinkWorld): OwnerChoice[] {
   const groups = world.statGroups.filter((g) => g.id !== bp.id && inside.has(g.id)).map((g) => ({ ...g, parentId: up(g.parentId) }));
   const stats = world.stats.filter((s) => s.groupId != null && inside.has(s.groupId)).map((s) => ({ ...s, groupId: up(s.groupId) }));
   const holdsStat = new Set<string>();
-  for (const s of stats) for (let at = s.groupId; at; at = groups.find((g) => g.id === at)?.parentId ?? null) holdsStat.add(at);
+  const parentOfGroup = parentLookup(groups, (g) => g.parentId);
+  for (const s of stats) {
+    if (!s.groupId) continue;
+    holdsStat.add(s.groupId);
+    for (const above of ancestors(s.groupId, parentOfGroup)) holdsStat.add(above);
+  }
   return flattenTree(buildTree(groups, stats)).flatMap((row): OwnerChoice[] => {
     if (row.leaf) return [{ kind: 'owner', id: row.leaf.id, name: row.leaf.name, parentId: row.parentId }];
     return row.group && holdsStat.has(row.group.id) ? [{ kind: 'group', id: row.group.id, name: row.group.name, parentId: row.parentId }] : [];
