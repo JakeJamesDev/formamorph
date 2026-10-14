@@ -1,6 +1,7 @@
 # Spec: Global Scope Split
 
-Status: ready-for-agent
+Status: done
+Status note: Closed on 2026-10-14. Tickets 01–12 landed; the last landing is 8e3c2b513. Closed without gates.
 Spec session: world-scope-split — spec
 
 ## Problem Statement
