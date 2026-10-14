@@ -221,6 +221,7 @@ import { LikePrompt } from "../components/game/LikePrompt";
 import { useLikePrompt } from "../components/game/useLikePrompt";
 import { nextEntryDialog } from "@/lib/entryDialogOrder";
 import { useAiReachable } from "../lib/useAiReachable";
+import { useLoopingAudio } from "@/hooks/useLoopingAudio";
 
 /** Where this entry is with the Demo AI dialog. */
 type DemoAIEntryState = 'waiting' | 'open' | 'done';
@@ -4261,25 +4262,8 @@ const GameViewer = ({
     scrollToBottom();
   }, [logEntries, scrollToBottom]);
 
-  // Handle BGM playback
-  useEffect(() => {
-    if (bgmEnabled && worldOverview?.bgm) {
-      const bgmAudio = new Audio(worldOverview.bgm);
-      bgmAudio.loop = true;
-      bgmAudio.play();
-      return () => bgmAudio.pause();
-    }
-  }, [bgmEnabled, worldOverview]);
-
-  // Handle ambient sound playback
-  useEffect(() => {
-    if (ambientSound) {
-      const audio = new Audio(ambientSound.data);
-      audio.loop = true;
-      audio.play();
-      return () => audio.pause();
-    }
-  }, [ambientSound]);
+  useLoopingAudio(bgmEnabled ? worldOverview?.bgm : null);
+  useLoopingAudio(ambientSound?.data);
 
   // Extract the displayed narration from an assistant message (see lib/aiResponse).
   const parseAssistantMessage = parseNarration;
