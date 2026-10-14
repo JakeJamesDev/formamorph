@@ -52,14 +52,14 @@ import {
   type OwnerWorld,
 } from '@/lib/owners';
 import {
-  PLAYER_OWNER, alwaysOnOverMax, complementary, deadRows, gateOf, gateStates, groupPickState, neverUnlockable, playerOwnerIds, sameRequirement, settleDefaults,
+  PLAYER_OWNER, alwaysOnOverMax, complementary, deadRows, gateOf, gateStates, groupPickState, neverUnlockable, sameRequirement, settleDefaults,
   unstableCycles, type GateInput, type GateOwner, type GateState, type GateStat, type GateStates, type GateStats, type GateTraitRef,
 } from '@/lib/traitGates';
 import { startingGateStats } from '@/lib/gateStats';
 import { ruleText, rowText } from '@/lib/traitGateLine';
 import { conditionsOf } from '@/lib/requirementRows';
 import { isAlwaysOn } from '@/lib/traitEffects';
-import { statRows, statRowSide, type StatRow } from '@/lib/traitTree';
+import { offeredWorldTraits, statRows, statRowSide, type StatRow } from '@/lib/traitTree';
 import { playerStatsOf, resolvedEntityStats } from '@/lib/statLinks';
 import type {
   DictionaryEntry, Entity, GalleryImage, GameLocation, PersonaRef, Placeholder, PlaceholderPin, PlaceholderValue, Stat, StatDescriptor, StatRequirement,
@@ -1982,17 +1982,17 @@ const personaChoices = (world: RuleWorld): PersonaRef[] => [
   ...(world.entities ?? []).filter((e) => e.persona).map((e): PersonaRef => ({ source: 'world', entityId: e.id })),
 ];
 
-/** The owners a stat Condition on `ownerId`'s trait or image reads: its named owner, the player set for `you`
- *  (the world's player and every persona, Q28), else `ownerId` itself. */
-const statReadOwners = (world: RuleWorld, ownerId: string, req: StatRequirement): string[] => {
-  if (req.owner?.kind === 'entity') return [req.owner.id];
-  if (req.owner?.kind === 'you') return [PLAYER_OWNER, ...(world.entities ?? []).filter(canBePlayer).map((e) => e.id)];
-  return [ownerId];
+/** The owners a stat Condition on `ownerId`'s trait or image reads: those it names (every entity that can be
+ *  played for `you`) when one holds the stat, else the global stats for a global stat (Q10, Q29). */
+const statReadOwners = (world: RuleWorld, stats: GateStats, ownerId: string, req: StatRequirement): string[] => {
+  const named = req.owner?.kind === 'entity' ? [req.owner.id]
+    : req.owner?.kind === 'you' ? (world.entities ?? []).filter(canBePlayer).map((e) => e.id) : [ownerId];
+  return named.some((id) => stats[id]?.[req.id]) || !stats[PLAYER_OWNER]?.[req.id] ? named : [PLAYER_OWNER];
 };
 
 /** The stats a stat Condition on `ownerId` reads, one per owner that holds it. */
 const statsReadBy = (world: RuleWorld, stats: GateStats, ownerId: string, req: StatRequirement): GateStat[] =>
-  statReadOwners(world, ownerId, req).flatMap((id) => stats[id]?.[req.id] ?? []);
+  statReadOwners(world, stats, ownerId, req).flatMap((id) => stats[id]?.[req.id] ?? []);
 
 /** An owner as a finding names it: the entity, or null for the player's own root. */
 const entityNameOf = (owner: Owner | undefined): string | null => (owner?.entity ? owner.name : null);
@@ -2076,6 +2076,8 @@ interface GateReport {
   ownStatReads: OwnStatRead[];
   /** Percent Conditions on a stat whose minimum equals its maximum. */
   zeroSpans: ZeroSpanCondition[];
+  /** Same Owner Conditions on a global trait whose target only entities hold (Q6, Q14). */
+  crossings: Array<{ gate: HeldGate; condition: string }>;
 }
 
 /** One group on one owner that can't meet its minimum. */
@@ -2108,7 +2110,7 @@ const gateReportOf = (world: RuleWorld): GateReport => {
 
   // Stat Conditions read each stat's authored start, as Enter World does (Q23).
   const stats = startingGateStats({ stats: world.stats, statGroups: world.statGroups, entities: world.entities ?? [] });
-  const readOwners = (gate: HeldGate, req: StatRequirement): string[] => statReadOwners(world, gate.owner.id, req);
+  const readOwners = (gate: HeldGate, req: StatRequirement): string[] => statReadOwners(world, stats, gate.owner.id, req);
   const statsRead = (gate: HeldGate, req: StatRequirement): GateStat[] => statsReadBy(world, stats, gate.owner.id, req);
 
   const plain = ownerWorldOf(world);
@@ -2307,7 +2309,20 @@ const gateReportOf = (world: RuleWorld): GateReport => {
     else if (defaults.length === runs && defaults[0].min <= (defaults[0].group.maxPicks ?? Infinity)) picks.push(defaults[0]);
   }
 
-  report = { unresolved, deadRows: dead, stuck, unstable, offDefaults, picks, ownStatReads, zeroSpans };
+  // A global trait's Same Owner reads global scope only, so it never pairs with an entity's item (Q6).
+  const global = offeredWorldTraits(traits, world.traitGroups ?? []);
+  const globalIds = new Set([...global.traits, ...global.groups].map((item) => item.id));
+  const entityHolds = (req: TraitRequirement): boolean => (req.kind === 'stat'
+    ? Object.entries(stats).some(([id, set]) => id !== PLAYER_OWNER && !!set[req.id])
+    : req.kind !== 'playingAs' && editor.owners.some((o) => o.id !== PLAYER_OWNER && (req.kind === 'trait' ? o.traits : o.groups).some((x) => x.id === req.id)));
+  const crossings = held.filter((gate) => gate.owner.id === PLAYER_OWNER && global.traits.some((t) => t.id === gate.trait.id))
+    .flatMap((gate) => (gate.trait.requires ?? []).flatMap((row, i) => row.all.flatMap((req, j) => {
+      if (req.kind === 'playingAs' || req.owner) return [];
+      const isGlobal = req.kind === 'stat' ? !!stats[PLAYER_OWNER]?.[req.id] : globalIds.has(req.id);
+      return !isGlobal && entityHolds(req) ? [{ gate, condition: quote(gate.rows[i][j]) }] : [];
+    })));
+
+  report = { unresolved, deadRows: dead, stuck, unstable, offDefaults, picks, ownStatReads, zeroSpans, crossings };
   gateReportsByWorld.set(world, report);
   return report;
 };
@@ -2407,6 +2422,21 @@ const traitRequirementRowNeverHolds: Rule = {
     const item = heldItem(gate, world);
     const subject = gate.link ? `${quote(labelOf(gate.owner.name, world))} links ${quote(item.name)} with` : `${quote(item.name)} has`;
     return finding(traitRequirementRowNeverHolds, `${subject} a row that can never hold: ${row}`, [item]);
+  }),
+};
+
+const traitRequirementGlobalSameOwner: Rule = {
+  id: 'trait-requirement-global-same-owner',
+  severity: 'warning',
+  section: 'traits',
+  summary: (count) => `${count} global traits require an entity's item from the same owner`,
+  check: (world) => gateReportOf(world).crossings.map(({ gate, condition }) => {
+    const item = heldItem(gate, world);
+    return finding(
+      traitRequirementGlobalSameOwner,
+      `${quote(item.name)} is a global trait and requires ${condition} from the same owner. Only entities have it, so the requirement never holds. Pick You or an entity as the owner`,
+      [item],
+    );
   }),
 };
 
@@ -2515,11 +2545,7 @@ const imageReportOf = (world: RuleWorld): ImageRuleReport => {
   const swapped = new Map(ruled.map(({ entity, images }) => [entity.id, ownerOf(entity, images)]));
   const owners = [...input.owners.map((o) => swapped.get(o.id) ?? o), ...[...swapped.values()].filter((o) => !input.owners.some((x) => x.id === o.id))];
   const states = gateStates({ ...input, owners, stats });
-  // The owners the evaluator reads a stat Condition from: its named owner, else the player's set when the
-  // entity is part of it, else the entity alone.
-  const player = playerOwnerIds({ source: 'none' }, input.entities);
-  const readFrom = (entity: Entity, req: StatRequirement): string[] =>
-    (req.owner?.kind === 'entity' ? [req.owner.id] : req.owner?.kind === 'you' || player.includes(entity.id) ? player : [entity.id]);
+  const readFrom = (entity: Entity, req: StatRequirement): string[] => statReadOwners(world, stats, entity.id, req);
 
   const missing: DeadImageCondition[] = [];
   const hideable: Entity[] = [];
@@ -3525,7 +3551,7 @@ export const RULES: readonly Rule[] = [
   entityLongDescriptionNoSummary, aiSummaryHidesDescription, locationNoEntities,
   traitGroupDefaultsOverMax, traitGroupAlwaysOnOverMax, traitGroupTooSmall, traitGroupMinAboveMax, traitGroupMinUnreachable,
   traitGroupDefaultsBelowMin, traitRequirementNeverUnlockable, traitRequirementUnstable, traitRequirementUnresolved,
-  traitRequirementRowNeverHolds, traitGateReadsOwnStat, requirementPercentZeroSpan, traitDefaultGated,
+  traitRequirementRowNeverHolds, traitRequirementGlobalSameOwner, traitGateReadsOwnStat, requirementPercentZeroSpan, traitDefaultGated,
   imageRuleMissingTarget, entityImagesAllHideable, imageRulePercentZeroSpan, traitLinkRedundant, traitStatNoTarget,
   copyPinRemovedValue, blueprintRefusedField, copyEditedUnused, copyMissing,
   placeholderWeightUnknownValue, wildcardSingleValue,

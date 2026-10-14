@@ -28,25 +28,36 @@ const read = (host: string, world = input) => requirementStatSections(world, hos
 }));
 
 describe('requirementStatSections', () => {
-  it('lists, for a world trait, the player set first with no owner, then each entity that has stats', () => {
+  const persona = { heading: 'Persona Stats', own: false, rows: ['Grit', 'Luck'], owners: ['{"kind":"you"}'] };
+  const hero = { heading: 'Hero Stats', own: false, rows: ['Grit'], owners: ['{"kind":"entity","id":"hero","name":"Hero"}'] };
+  const custom = { heading: 'Custom Stats', own: false, rows: ['Luck'], owners: ['{"kind":"entity","id":"cp","name":"Custom"}'] };
+
+  // Q29: the global stats alone, then Persona Stats under You, then every other entity by name.
+  it('lists, for a world trait, the global stats first with no owner, then Persona Stats, then each entity that has stats', () => {
     expect(read(PLAYER_OWNER)).toEqual([
-      { heading: 'Player Stats', own: true, rows: ['Rage', 'Gold', 'Luck'], owners: ['null'] },
+      { heading: 'Global Stats', own: true, rows: ['Rage', 'Gold'], owners: ['null'] },
+      persona,
       { heading: 'Ash Stats', own: false, rows: ['Hunger'], owners: ['{"kind":"entity","id":"ash","name":"Ash"}'] },
-      { heading: 'Hero Stats', own: false, rows: ['Grit'], owners: ['{"kind":"entity","id":"hero","name":"Hero"}'] },
+      hero,
+      custom,
     ]);
   });
 
-  it('lists, for an entity, its own stats with no owner, then You, then the others', () => {
+  // Q10: a global stat takes no owner from any host.
+  it('lists, for an entity, its own stats, then the global stats, both with no owner, then You, then the others', () => {
     expect(read('ash')).toEqual([
       { heading: 'Ash Stats', own: true, rows: ['Hunger'], owners: ['null'] },
-      { heading: 'Player Stats', own: false, rows: ['Rage', 'Gold', 'Luck'], owners: ['{"kind":"you"}'] },
-      { heading: 'Hero Stats', own: false, rows: ['Grit'], owners: ['{"kind":"entity","id":"hero","name":"Hero"}'] },
+      { heading: 'Global Stats', own: false, rows: ['Rage', 'Gold'], owners: ['null'] },
+      persona,
+      hero,
+      custom,
     ]);
   });
 
-  it('keeps a world persona’s own stats under its own owner, not under You (Q28)', () => {
-    const you = read('ash').find((s) => s.heading === 'Player Stats');
-    expect(you?.rows).not.toContain('Grit');
+  // Q29 replaces Q28: a world persona's stats show under Persona Stats as well as its own name.
+  it('lists every entity that can be played under Persona Stats, and never one that can’t', () => {
+    expect(read('ash').find((s) => s.heading === 'Persona Stats')?.rows).not.toContain('Hunger');
+    expect(read('hero')[0]).toEqual({ heading: 'Hero Stats', own: true, rows: ['Grit'], owners: ['null'] });
   });
 
   it('leaves out an inert stat and an entity with no stats', () => {
@@ -55,17 +66,17 @@ describe('requirementStatSections', () => {
     expect(read(PLAYER_OWNER).map((s) => s.heading)).not.toContain('Bare Stats');
   });
 
+  // Q29: the global section holds the global stats alone, so Luck sits under Persona Stats.
   it('keeps hidden stats, which an author may gate on', () => {
     const world = { ...input, stats: { ...stats, [PLAYER_OWNER]: { rage: S('Rage', { hidden: true }) } } };
-    expect(read(PLAYER_OWNER, world)[0].rows).toEqual(['Rage', 'Luck']);
+    expect(read(PLAYER_OWNER, world)[0].rows).toEqual(['Rage']);
   });
 
   it('adds each stat as ">= the middle of its span, in raw units"', () => {
-    const [player] = requirementStatSections(input, PLAYER_OWNER);
-    expect(player.options.map((o) => o.requirement)).toEqual([
+    const [global] = requirementStatSections(input, PLAYER_OWNER);
+    expect(global.options.map((o) => o.requirement)).toEqual([
       { kind: 'stat', id: 'rage', operator: '>=', value: 50, unit: 'raw' },
       { kind: 'stat', id: 'gold', operator: '>=', value: 500, unit: 'raw' },
-      { kind: 'stat', id: 'luck', operator: '>=', value: 50, unit: 'raw' },
     ]);
   });
 

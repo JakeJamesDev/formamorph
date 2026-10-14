@@ -141,6 +141,19 @@ describe('traitForceScope', () => {
     expect(scope.owners.mira.map((t) => t.id)).toEqual(['quiet']);
   });
 
+  // Q17: the root's pick and the persona's link are held apart.
+  it("gives a persona's link to a root pick in the persona's own part, beside the global pick", () => {
+    const linking: Entity = { ...albus, traitLinks: [{ id: 'l-brave', originalId: 'brave', kind: 'trait', originalName: 'Brave', groupId: null, order: 1 }] };
+    const linked = { ...world, entities: [linking, bram, mira] };
+    const { gate } = resolveOwners(linked, asAlbus);
+    const scope = traitForceScope(
+      forceState({ ownedTraits: { albus: { chosen: ['paladin', 'brave'] } } }),
+      { traits: linked.traits, groups: [], entities: gate.entities, owners: gate.owners, persona: asAlbus },
+    );
+    expect(scope.global.map((t) => t.id)).toEqual(['brave']);
+    expect(scope.owners.albus.map((t) => t.id)).toEqual(['paladin', 'brave']);
+  });
+
   it('gives a played entity that is no owner an empty part', () => {
     // Sable's library entity is not carried, so it owns no tree in this playthrough.
     const scope = traitForceScope(forceState(), traitWorld(asSable));

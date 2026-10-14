@@ -247,15 +247,16 @@ describe('resolveOwners: the player owner', () => {
     expect(ids(owner(w, PLAYER_OWNER, AS_ALBUS).traits)).toEqual(['brave']);
   });
 
-  it('holds a root trait once when the Custom Persona entity also links it, the root winning', () => {
+  // Q17: the root's pick and the Custom Persona entity's link are held apart; the link expands once.
+  it('holds a root trait in the root and once in the Custom Persona entity that also links it', () => {
     const doubled: Entity = { ...newcomer, traitLinks: [link('cp-brave', 'brave', 'trait'), link('cp-brave-2', 'brave', 'trait')] };
     const w = world({ entities: [albus, mira, custom, doubled] });
     const root = owner(w, PLAYER_OWNER);
     expect(ids(root.traits)).toEqual(['brave']);
     expect(root.traits[0]).toMatchObject({ groupId: null, order: 0 });
     const cp = owner(w, 'cp');
-    expect(ids(cp.traits)).toEqual([]);
-    expect(cp.linkOf.has('brave')).toBe(false);
+    expect(ids(cp.traits)).toEqual(['brave']);
+    expect(cp.linkOf.get('brave')?.id).toBe('cp-brave');
   });
 
   it('is the only player owner under None; a persona’s owner joins it when picked, and the Custom Persona entity’s when the world has one', () => {
@@ -340,32 +341,34 @@ describe('resolveOwners: a world persona’s tree', () => {
     expect(unpicked.isPlayer).toBe(false);
   });
 
-  it('drops a link to an original the root already offers while the persona is played, and keeps it as a cast entity', () => {
-    // Brave is at the root, and Oaths holds Mira's node; a link to either duplicates what the player holds.
+  // Q17: the played-entity dedup is gone, so a played persona keeps the same links as a cast entity.
+  it('keeps a link to an original the root already offers, played or in the cast', () => {
+    // Brave is at the root, and Oaths holds Mira's node.
     const doubled: Entity = {
       ...albus,
       traitLinks: [...albus.traitLinks!, link('l-brave', 'brave', 'trait', { order: 2 }), link('l-oaths', 'oaths', 'group', { order: 3 })],
     };
     const w = world({ entities: [doubled, mira] });
     const played = owner(w, 'albus', AS_ALBUS);
-    expect(ids(played.traits)).toEqual(['oath', 'paladin', 'wizard']);
-    expect(ids(played.groups)).toEqual(['classes']);
-    expect(played.linkOf.has('brave')).toBe(false);
+    expect(ids(played.traits)).toEqual(['oath', 'paladin', 'wizard', 'brave']);
+    expect(ids(played.groups)).toEqual(['classes', 'oaths']);
+    expect(played.linkOf.get('brave')?.id).toBe('l-brave');
     const cast = owner(w, 'albus', NONE);
     expect(ids(cast.traits)).toEqual(['oath', 'paladin', 'wizard', 'brave']);
     expect(ids(cast.groups)).toEqual(['classes', 'oaths']);
     expect(cast.linkOf.get('brave')?.id).toBe('l-brave');
   });
 
-  it("drops a played library persona's link to what the root offers, and keeps one the Custom Persona entity also links, each in its own tree", () => {
+  // Q17: a played library persona keeps its link to what the root offers, each in its own tree.
+  it("keeps a played library persona's link to what the root offers, and one the Custom Persona entity also links", () => {
     const w = world({ entities: [albus, mira, custom, { ...newcomer, traitLinks: [link('cp-wizard', 'wizard', 'trait')] }] });
     const lib: Entity = {
       id: 'lib', name: 'Lib', persona: true,
       traitLinks: [link('l-brave', 'brave', 'trait'), link('l-wizard', 'wizard', 'trait', { order: 1 }), link('l-smite', 'smite', 'trait', { order: 2 })],
     };
     const played = owner(w, 'lib', AS_LIBRARY, [lib]);
-    expect(ids(played.traits)).toEqual(['wizard', 'smite']);
-    expect(played.linkOf.has('brave')).toBe(false);
+    expect(ids(played.traits)).toEqual(['brave', 'wizard', 'smite']);
+    expect(played.linkOf.get('brave')?.id).toBe('l-brave');
     expect(ids(owner(w, 'cp', AS_LIBRARY, [lib]).traits)).toEqual(['wizard']);
     expect(ids(owner(w, PLAYER_OWNER, AS_LIBRARY, [lib]).traits)).toEqual(['brave']);
   });
@@ -486,22 +489,24 @@ describe('holdsOriginal', () => {
     ['mira', 'paladin', true, 'a trait linked directly'],
     ['mira', 'classes', true, 'the group holding a directly linked trait'],
     ['mira', 'wizard', false, 'a sibling of a directly linked trait'],
-    [PLAYER_OWNER, 'brave', true, 'a root trait the player already has'],
-    [PLAYER_OWNER, 'oaths', true, 'a root group the player already has'],
+    // Q17: the root's own items never block a link.
+    [PLAYER_OWNER, 'brave', false, 'a root trait the root offers'],
+    [PLAYER_OWNER, 'oaths', false, 'a root group the root offers'],
     [PLAYER_OWNER, 'smite', false, 'a Blueprints trait the Custom Persona entity links, which the root does not expand'],
     [PLAYER_OWNER, 'paladin', false, 'a Blueprints trait nobody offers the player'],
     ['cp', 'smite', true, 'a Blueprints trait the Custom Persona entity links'],
-    ['cp', 'brave', true, 'a root trait the Custom Persona entity holds through the root'],
-    ['cp', 'oaths', true, 'a root group the Custom Persona entity holds through the root'],
+    ['cp', 'brave', false, 'a root trait the Custom Persona entity does not link'],
+    ['cp', 'oaths', false, 'a root group the Custom Persona entity does not link'],
     ['cp', 'paladin', false, 'a Blueprints trait the Custom Persona entity has no link to'],
   ])('%s holds %s → %s (%s)', (ownerId, originalId, held) => {
     expect(holdsOriginal(w, owner(w, ownerId), originalId)).toBe(held);
   });
 
-  it('counts the root for the Custom Persona entity under a world persona too, so the editor check never drifts', () => {
+  // Q17: the root never blocks a link, under any persona.
+  it('reads the Custom Persona entity’s links the same under a world persona, so the editor check never drifts', () => {
     const cp = owner(w, 'cp', AS_ALBUS);
     expect(cp.present).toBe(false);
-    expect(holdsOriginal(w, cp, 'brave')).toBe(true);
+    expect(holdsOriginal(w, cp, 'brave')).toBe(false);
     expect(holdsOriginal(w, cp, 'smite')).toBe(true);
     expect(holdsOriginal(w, owner(w, PLAYER_OWNER, AS_ALBUS), 'smite')).toBe(false);
   });
@@ -516,8 +521,6 @@ describe('heldReason', () => {
     ['albus', 'classes', { kind: 'links', name: 'Classes' }, 'a group linked directly'],
     ['albus', 'paladin', { kind: 'group', name: 'Paladin', group: 'Classes' }, 'a trait inside a linked group'],
     ['mira', 'classes', { kind: 'inside', name: 'Paladin', group: 'Classes' }, 'a group holding a directly linked trait'],
-    [PLAYER_OWNER, 'brave', { kind: 'player', name: 'Brave' }, 'a root trait the player already has'],
-    ['cp', 'brave', { kind: 'player', name: 'Brave' }, 'a root trait the Custom Persona entity holds through the root'],
     ['cp', 'smite', { kind: 'links', name: 'Smite' }, 'a Blueprints trait the Custom Persona entity links'],
   ] satisfies [string, string, HeldReason, string][])('%s holding %s reads %j (%s)', (ownerId, originalId, reason, _case) => {
     expect(reasonOf(ownerId, originalId)).toEqual(reason);
@@ -526,6 +529,11 @@ describe('heldReason', () => {
   it('gives no reason where a link works', () => {
     expect(reasonOf('albus', 'smite')).toBeNull();
     expect(reasonOf('mira', 'wizard')).toBeNull();
+  });
+
+  // Q17: the root's pick and an entity's link are held apart, so the root never refuses a link.
+  it('gives no reason for a root trait the root holds', () => {
+    expect(reasonOf('cp', 'brave')).toBeNull();
   });
 });
 

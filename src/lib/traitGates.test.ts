@@ -168,7 +168,8 @@ describe('requirement kinds', () => {
     expect(reason(world(traits, groups), 'Cant')).toEqual(['any Class']);
   });
 
-  it('holds a group requirement through an entity node placed inside the group only while that entity is played', () => {
+  // Q6: a world group counts global items only, so a placed entity node never holds it up, played or not.
+  it('never holds a world group requirement through an entity node placed inside the group', () => {
     const wolf: GateOwner = {
       id: 'wolf', name: 'Ash', parentGroupId: 'Hybrid', groups: [G('Bond')], traits: [T('Tamed', { groupId: 'Bond' })],
     };
@@ -177,7 +178,7 @@ describe('requirement kinds', () => {
       owners: [world(traits, groups).owners[0], wolf], active: { wolf: ['Tamed'] }, entities, persona,
     });
     expect(unlocked(as({ source: 'none' }), 'Cant')).toBe(false);
-    expect(unlocked(as({ source: 'world', entityId: 'wolf' }), 'Cant')).toBe(true);
+    expect(unlocked(as({ source: 'world', entityId: 'wolf' }), 'Cant')).toBe(false);
   });
 
   it('holds playing-as only while the persona is that world entity', () => {
@@ -264,9 +265,10 @@ describe('requirements per owner', () => {
     expect(reason(input({}), 'Squire', 'mira')).toEqual(['You: Paladin']);
   });
 
-  it('reads a same-owner requirement on a root trait through the played persona’s set (Q74)', () => {
+  // Q6 replaces Q74: a global trait never counts as the persona's, so the played persona's Paladin opens nothing.
+  it('never reads a same-owner requirement on a root trait through the played persona', () => {
     const asAlbus = input({ albus: ['Paladin'] }, { source: 'world', entityId: 'albus' });
-    expect(unlocked(asAlbus, 'Smite', PLAYER_OWNER)).toBe(true);
+    expect(unlocked(asAlbus, 'Smite', PLAYER_OWNER)).toBe(false);
     expect(unlocked(input({ albus: ['Paladin'] }, { source: 'world', entityId: 'mira' }), 'Smite', PLAYER_OWNER)).toBe(false);
     expect(playerOwnerIds({ source: 'library', entityId: 'lib' })).toEqual([PLAYER_OWNER, 'lib']);
   });
@@ -764,19 +766,29 @@ describe('never-unlockable sets', () => {
   });
 
   it('reports a linked trait stuck on the owner that lacks its requirement, and open on the one that has it', () => {
-    // Smite requires Faithful. The player has Faithful at the root; Albus links Smite alone.
-    const smite = T('Smite', { requires: [{ all: [trait('Faithful')] }] });
+    // Smite requires Faithful, both Blueprints. The world tree holds both; Albus links Smite alone.
+    const blueprints = G('bp', { system: 'blueprints' });
+    const smite = T('Smite', { groupId: 'bp', requires: [{ all: [trait('Faithful')] }] });
     const input: Omit<GateInput, 'active'> = {
       owners: [
-        { id: PLAYER_OWNER, name: '', traits: [T('Faithful'), smite], groups: [] },
+        { id: PLAYER_OWNER, name: '', traits: [T('Faithful', { groupId: 'bp' }), smite], groups: [blueprints] },
         { id: 'albus', name: 'Albus', groups: [], traits: [smite] },
       ],
       entities: [], persona: { source: 'none' },
     };
     expect(neverUnlockable(input)).toEqual([[{ ownerId: 'albus', traitId: 'Smite' }]]);
-    // A named requirement opens through the named owner, and a You requirement through the player.
-    const named = { ...input, owners: [input.owners[0], { ...input.owners[1], traits: [T('Smite', { requires: [{ all: [you('Faithful')] }] })] }] };
-    expect(neverUnlockable(named)).toEqual([]);
+    // Q10: a global Faithful reads global scope from Albus's trait too, so nothing is stuck.
+    const global = { ...input, owners: input.owners.map((o) => ({ ...o, groups: [], traits: o.traits.map((t) => ({ ...t, groupId: null })) })) };
+    expect(neverUnlockable(global)).toEqual([]);
+    // A You requirement opens through the played entity that holds the target, and only under a played one (Q13).
+    const mira: GateOwner = { id: 'mira', name: 'Mira', groups: [], traits: [T('Faithful', { groupId: 'bp' })] };
+    const named = {
+      ...input,
+      owners: [input.owners[0], { ...input.owners[1], traits: [T('Smite', { requires: [{ all: [you('Faithful')] }] })] }, mira],
+      entities: [{ id: 'mira', name: 'Mira', persona: true }],
+    };
+    expect(neverUnlockable({ ...named, persona: { source: 'world', entityId: 'mira' } })).toEqual([]);
+    expect(neverUnlockable(named)).toEqual([[{ ownerId: 'albus', traitId: 'Smite' }]]);
   });
 });
 
@@ -807,16 +819,18 @@ describe('requirement options', () => {
     ]);
   });
 
-  it('lists a target once, where the first owner holds it, with You and every entity that owns it', () => {
+  // Q10: a global target offers no owner; an entity's target offers You and every entity that owns it.
+  it('lists a target once, where the first owner holds it, with owners for an entity target only', () => {
     const albus: GateOwner = { id: 'albus', name: 'Albus', groups: [G('Class', { maxPicks: 1 })], traits: [T('Paladin', { groupId: 'Class' }), T('Oath')] };
     const options = requirementOptions({ ...input, owners: [...input.owners, albus] }, 'Loose');
     expect(rows(options.traits)).toEqual(['Paladin @ Class', 'Knight @ Class', 'Plate Armor @ Gear › Heavy', 'Tamed @ Ash › Bond', 'Oath @ Albus']);
     const owners = (label: string) => options.traits.find((o) => o.label === label)?.owners.map((b) => b.name);
-    expect(owners('Paladin')).toEqual(['You', 'Albus']);
+    expect(owners('Paladin')).toEqual([]);
+    expect(owners('Knight')).toEqual([]);
     expect(owners('Tamed')).toEqual(['You', 'Ash']);
-    expect(owners('Knight')).toEqual(['You']);
-    expect(options.traits[0].owners[1].owner).toEqual({ kind: 'entity', id: 'albus', name: 'Albus' });
-    expect(options.groups.find((o) => o.label === 'any Class')?.owners.map((b) => b.name)).toEqual(['You', 'Albus']);
+    expect(owners('Oath')).toEqual(['You', 'Albus']);
+    expect(options.traits.find((o) => o.label === 'Oath')?.owners[1].owner).toEqual({ kind: 'entity', id: 'albus', name: 'Albus' });
+    expect(options.groups.find((o) => o.label === 'any Class')?.owners).toEqual([]);
   });
 
   it('leaves out a group that holds only the trait and its exclusive siblings, and keeps one with another way in', () => {

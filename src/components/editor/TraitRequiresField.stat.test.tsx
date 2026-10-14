@@ -43,12 +43,13 @@ function Harness({ subject, offWorld = false }: { subject: Trait; offWorld?: boo
   );
 }
 
+// Q29: the picker's global section reads Global Stats.
 describe('TraitRequiresField with stats', () => {
-  it('offers a world trait the player’s stats with no owner, then each entity’s with its owner', async () => {
+  it('offers a world trait the global stats with no owner, then each entity’s with its owner', async () => {
     render(<Harness subject={berserk} />);
     fireEvent.click(screen.getByRole('button', { name: 'Add Requirement' }));
     expect(await screen.findByPlaceholderText('Search traits, groups, stats, and personas')).toBeInTheDocument();
-    expect(screen.getByText('Player Stats')).toBeInTheDocument();
+    expect(screen.getByText('Global Stats')).toBeInTheDocument();
     expect(screen.getByText('Mira Stats')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('option', { name: /^Nerve/ }));
@@ -60,19 +61,20 @@ describe('TraitRequiresField with stats', () => {
     expect(chip).not.toHaveAttribute('data-unresolved');
   });
 
-  it('offers an entity’s trait its own stats with no owner, and the player’s as You', async () => {
+  // Q10: a global stat takes no owner from an entity's trait either.
+  it('offers an entity’s trait its own stats and the global stats, both with no owner', async () => {
     render(<Harness subject={squire} />);
     fireEvent.click(screen.getByRole('button', { name: 'Add Requirement' }));
     expect(await screen.findByText('Mira Stats')).toBeInTheDocument();
-    expect(screen.getByText('Player Stats')).toBeInTheDocument();
+    expect(screen.getByText('Global Stats')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('option', { name: /^Nerve/ }));
     fireEvent.click(screen.getByRole('button', { name: 'And' }));
     fireEvent.click(await screen.findByRole('option', { name: /^Rage/ }));
     expect(JSON.parse(screen.getByTestId('rows').textContent!)[0].all.map((c: { id: string; owner?: unknown }) => [c.id, c.owner ?? null]))
-      .toEqual([['nerve', null], ['rage', { kind: 'you' }]]);
+      .toEqual([['nerve', null], ['rage', null]]);
     expect(screen.getByRole('group', { name: 'Nerve >= 50' })).toBeInTheDocument();
-    expect(screen.getByRole('group', { name: 'You: Rage >= 50' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Rage >= 50' })).toBeInTheDocument();
   });
 
   it('offers an off-world entity only its own stats', async () => {
@@ -80,6 +82,6 @@ describe('TraitRequiresField with stats', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add Requirement' }));
     expect(await screen.findByPlaceholderText('Search traits, groups, and stats')).toBeInTheDocument();
     expect(screen.getByText('Mira Stats')).toBeInTheDocument();
-    expect(screen.queryByText('Player Stats')).not.toBeInTheDocument();
+    expect(screen.queryByText('Global Stats')).not.toBeInTheDocument();
   });
 });

@@ -32,7 +32,7 @@ function Harness({ initial = [], owner = PLAYER_OWNER, offWorld = false, onOpen 
   return (
     <TooltipProvider>
       <RequirementRowsField
-        rows={rows} owner={owner} states={states} placeholders={[]} offWorld={offWorld}
+        rows={rows} states={states} placeholders={[]} offWorld={offWorld}
         options={{ traits: [], groups: [], personas: [] }}
         statSections={requirementStatSections(input, owner)}
         textOf={textOf} onChange={setRows} onOpen={onOpen}
@@ -54,11 +54,12 @@ const pickOperator = async (name: string) => {
   await userEvent.click(await screen.findByRole('option', { name }));
 };
 
+// Q29: the picker's global section reads Global Stats.
 describe('a stat Condition in the rows editor', () => {
   it('lists each owner’s stats and places a chip with an operator, a value and a unit', async () => {
     render(<Harness />);
     fireEvent.click(screen.getByRole('button', { name: 'Add Requirement' }));
-    expect(await screen.findByText('Player Stats')).toBeInTheDocument();
+    expect(await screen.findByText('Global Stats')).toBeInTheDocument();
     expect(screen.getByText('Ash Stats')).toBeInTheDocument();
     expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Rage', 'Gold', 'Hunger']);
 
@@ -194,7 +195,7 @@ describe('a stat Condition in the rows editor', () => {
     render(<Harness owner="ash" offWorld />);
     fireEvent.click(screen.getByRole('button', { name: 'Add Requirement' }));
     expect(await screen.findByText('Ash Stats')).toBeInTheDocument();
-    expect(screen.queryByText('Player Stats')).not.toBeInTheDocument();
+    expect(screen.queryByText('Global Stats')).not.toBeInTheDocument();
     expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Hunger']);
   });
 });

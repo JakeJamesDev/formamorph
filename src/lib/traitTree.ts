@@ -9,6 +9,7 @@ import {
 } from './groupTree';
 import type { Entity, StatChange, Trait, TraitGroup, TraitLink, TreePlacement } from '@/types';
 import { xmlEscape } from './utils';
+import { blueprintsGroup, blueprintsSubtreeIds, groupsBelow } from './blueprintGroups';
 import { ownsOrLinksTraits, heldReason, makeLink, originalOf, resolveOwners } from './owners';
 import type { HeldReason } from './heldReasons';
 import { traitReaderOutsideBlueprints, type TraitReader, type TraitReaderWorld } from './traitMoveReaders';
@@ -88,25 +89,7 @@ export interface LinkRow {
 /** The row id of a node in a linked group's subtree. The original's own id already has a world row. */
 export const linkRowId = (linkId: string, originalId: string): string => `${linkId}/${originalId}`;
 
-/** The world's Blueprints group, when the author added one. */
-export const blueprintsGroup = (groups: readonly TraitGroup[]): TraitGroup | undefined =>
-  groups.find((g) => g.system === 'blueprints');
-
-/** Every group below `groupId`, depth-first. */
-export function groupsBelow(groups: readonly TraitGroup[], groupId: string): TraitGroup[] {
-  const out: TraitGroup[] = [];
-  const walk = (parentId: string) => {
-    for (const g of groups) if (g.parentId === parentId) { out.push(g); walk(g.id); }
-  };
-  walk(groupId);
-  return out;
-}
-
-/** Blueprints and every world group below it. Empty when the world has no Blueprints group. */
-export function blueprintsSubtreeIds(groups: readonly TraitGroup[]): Set<string> {
-  const blueprints = blueprintsGroup(groups);
-  return new Set(blueprints ? [blueprints.id, ...groupsBelow(groups, blueprints.id).map((g) => g.id)] : []);
-}
+export { blueprintsGroup, blueprintsSubtreeIds, groupsBelow };
 
 /** Every world trait and group inside Blueprints, the group itself left out: the only items a link may point at. */
 export function blueprintItemIds(lists: WorldTraitLists): Set<string> {

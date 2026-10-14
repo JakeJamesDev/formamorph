@@ -46,7 +46,6 @@ function ImageRuleRows({ ownerId, rows, onChange }: {
     <RequirementRowsField
       label="Visibility Rule"
       rows={rows}
-      owner={ownerId}
       states={read.states}
       options={read.options}
       statSections={read.statSections}

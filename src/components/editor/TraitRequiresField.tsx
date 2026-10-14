@@ -52,12 +52,12 @@ export function TraitRequiresField({ trait, onChange, onOpen, opens, ownerId, la
   labelAside?: ReactNode;
 }) {
   const { gateInput, placeholders, offWorld } = useTraitStore();
-  const { states, options, statSections, owner, textOf } = useMemo(() => {
+  const { states, options, statSections, textOf } = useMemo(() => {
     const gates = gateStates(gateInput);
     const hostOwnerId = ownerHolding(gateInput.owners, trait.id)?.id ?? PLAYER_OWNER;
     const gate = (ownerId !== undefined ? gateOf(gates, ownerId, trait.id) : undefined) ?? gateOf(gates, hostOwnerId, trait.id);
     return {
-      states: gate?.rows ?? [], options: requirementOptions(gateInput, trait.id), owner: ownerId ?? hostOwnerId,
+      states: gate?.rows ?? [], options: requirementOptions(gateInput, trait.id),
       statSections: requirementStatSections(gateInput, ownerId ?? hostOwnerId),
       textOf: conditionTexts(gateInput),
     };
@@ -66,7 +66,6 @@ export function TraitRequiresField({ trait, onChange, onOpen, opens, ownerId, la
   return (
     <RequirementRowsField
       rows={trait.requires ?? []}
-      owner={owner}
       states={states}
       options={options}
       statSections={statSections}

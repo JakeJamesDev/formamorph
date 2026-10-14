@@ -307,7 +307,6 @@ describe('heldReasonText', () => {
     [{ kind: 'owns', name: 'Trust' }, undefined, 'Already owns Trust'],
     [{ kind: 'group', name: 'Trust', group: 'Social' }, undefined, 'Already links Social, which holds Trust'],
     [{ kind: 'inside', name: 'Fear', group: 'Social' }, undefined, 'Already links Fear, which Social holds'],
-    [{ kind: 'player', name: 'Hardy' }, undefined, 'Already holds Hardy as a player trait'],
     [{ kind: 'links', name: 'Trust' }, 'Bram', 'Bram already links Trust'],
     [{ kind: 'owns', name: 'Trust' }, 'Bram', 'Bram already owns Trust'],
   ] as const)('%j with subject %s reads "%s"', (reason, subject, text) => {

@@ -1,10 +1,12 @@
-// Trait gates: what a requirement list unlocks, and what a selection settles to. Every owner
-// gates on its own active set; the player's owners (the world root and the played entity) read as one.
+// Trait gates: what a requirement list unlocks, and what a selection settles to. Every owner gates on its
+// own active set. A Condition reads the owner it names when that owner holds the target, else global scope
+// for a global target (Q10, Q29).
 
 import type { PersonaRef, RequirementOwner, StatComparison, StatRequirement, Trait, TraitGroup, TraitRequirement, TraitRequirementRow } from '@/types';
 import { defaultPicks, exclusiveSiblings, isAlwaysOn, isHidden, traitOrderIndex } from './traitEffects';
 // The generic tree, not traitTree: that module reads the owner resolver, which reads this one.
 import { buildTree, flattenTree } from './groupTree';
+import { blueprintsSubtreeIds } from './blueprintGroups';
 import { conditionsOf, rowsHold } from './requirementRows';
 import { playedEntityIds, scopedOf, PLAYER_OWNER, type Scoped } from './scope';
 
@@ -161,8 +163,7 @@ interface OwnerIndex {
   owner: GateOwner;
   traits: Map<string, Located<Trait>>;
   groups: Map<string, Located<TraitGroup>>;
-  /** Group id → every trait below it in this owner's tree, plus the traits of entity nodes placed in a
-   *  world group's subtree. */
+  /** Group id → every trait below it in this owner's tree. */
   below: Map<string, string[]>;
   /** Trait id → its exclusive siblings, which picking it retires, so they never hold it up. */
   rivals: Map<string, Set<string>>;
@@ -194,9 +195,6 @@ function index(input: GateInput) {
       const ids = [
         ...owner.traits.filter((t) => (t.groupId ?? null) === groupId).map((t) => t.id),
         ...owner.groups.filter((g) => g.parentId === groupId).flatMap((g) => collect(g.id)),
-        ...(owner.id === PLAYER_OWNER
-          ? input.owners.filter((o) => o.id !== PLAYER_OWNER && o.parentGroupId === groupId).flatMap((o) => o.traits.map((t) => t.id))
-          : []),
       ];
       below.set(groupId, ids);
       return ids;
@@ -206,28 +204,50 @@ function index(input: GateInput) {
     owners.set(owner.id, { owner, traits, groups, below, rivals });
   }
   const entities = new Map(input.entities.map((entity) => [entity.id, entity]));
-  const playerIds = new Set(playerOwnerIds(input.persona, input.entities));
-  /** The owners a requirement from `owner` reads: the player's owners together, or the owner alone. */
-  const setOf = (owner: GateOwner): ReadonlySet<string> => (playerIds.has(owner.id) ? playerIds : new Set([owner.id]));
-  const ownerSet = (owner: RequirementOwner | undefined, from: GateOwner): ReadonlySet<string> =>
-    (owner === undefined ? setOf(from) : owner.kind === 'you' ? playerIds : new Set([owner.id]));
+  const played = playedEntityIds(input.persona, input.entities);
+  const stats = input.stats ?? {};
+  const global = globalItems(input);
+  const holds = (ownerId: string, req: Targeted): boolean => (req.kind === 'stat' ? !!stats[ownerId]?.[req.id]
+    : !!owners.get(ownerId)?.[req.kind === 'trait' ? 'traits' : 'groups'].has(req.id));
+  const isGlobal = (req: Targeted): boolean => (req.kind === 'stat' ? !!stats[PLAYER_OWNER]?.[req.id]
+    : (req.kind === 'trait' ? global.traits : global.groups).has(req.id));
+  /** The owners a Condition on `from` reads: those it names (the host for Same Owner, the played entities for
+   *  You) when one holds the target; else global scope for a global target (Q10, Q29); else the named ones. */
+  const ownerSet = (req: Targeted, from: GateOwner): ReadonlySet<string> => {
+    const named = req.owner === undefined ? [from.id] : req.owner.kind === 'you' ? played : [req.owner.id];
+    if (named.some((id) => holds(id, req)) || !isGlobal(req)) return new Set(named);
+    return new Set([PLAYER_OWNER]);
+  };
   const traitsBelow = (set: ReadonlySet<string>, groupId: string): string[] =>
     [...set].flatMap((ownerId) => owners.get(ownerId)?.below.get(groupId) ?? []);
-  const stats = input.stats ?? {};
   const statNames = new Map<string, string>();
   for (const set of Object.values(stats)) for (const [id, stat] of Object.entries(set)) if (!statNames.has(id)) statNames.set(id, stat.name);
-  /** The stat a stat Condition on `from` reads: the first owner holding the id in the owner set the Condition
-   *  names. Null when the named entity is gone or no owner in the set holds it. */
+  /** The stat a stat Condition on `from` reads: the first owner holding the id in its owner set. Null when no
+   *  owner in the set holds it. */
   const statOf = (req: StatRequirement, from: GateOwner): GateStat | null => {
-    if (req.owner?.kind === 'entity' && !entities.has(req.owner.id) && !owners.has(req.owner.id)) return null;
-    for (const ownerId of ownerSet(req.owner, from)) {
+    for (const ownerId of ownerSet(req, from)) {
       const stat = stats[ownerId]?.[req.id];
       if (stat) return stat;
     }
     return null;
   };
   return {
-    owners, traitNames, groupNames, hiddenTraits, statNames, entities, playerIds, ownerSet, traitsBelow, statOf, persona: input.persona,
+    owners, traitNames, groupNames, hiddenTraits, statNames, entities, global, isGlobal, ownerSet, traitsBelow, statOf, persona: input.persona,
+  };
+}
+
+/** A Condition that names a trait, a group or a stat. */
+type Targeted = Exclude<TraitRequirement, { kind: 'playingAs' }>;
+
+/** The global traits and groups: the world's own, outside Blueprints. Read from the originals, else from the
+ *  global owner's tree. */
+function globalItems(input: Pick<GateInput, 'owners' | 'originals'>): { traits: ReadonlySet<string>; groups: ReadonlySet<string> } {
+  const world = input.originals ?? input.owners.find((o) => o.id === PLAYER_OWNER);
+  const groups = world?.groups ?? [];
+  const blueprints = blueprintsSubtreeIds(groups);
+  return {
+    traits: new Set((world?.traits ?? []).filter((t) => t.groupId == null || !blueprints.has(t.groupId)).map((t) => t.id)),
+    groups: new Set(groups.filter((g) => !blueprints.has(g.id)).map((g) => g.id)),
   };
 }
 
@@ -247,7 +267,7 @@ const activeSets = (input: GateInput): ActiveIn => {
  *  never count (Q26); another owner's copy of a sibling does. */
 function targetOn(req: Exclude<TraitRequirement, StatRequirement>, trait: Located<{ id: string }>, activeIn: ActiveIn, idx: Index): boolean {
   if (req.kind === 'playingAs') return idx.persona.source === 'world' && idx.persona.entityId === req.id;
-  const set = idx.ownerSet(req.owner, trait.owner);
+  const set = idx.ownerSet(req, trait.owner);
   const rivals = idx.owners.get(trait.owner.id)?.rivals.get(trait.item.id);
   const own = (id: string) => id === trait.item.id || !!rivals?.has(id);
   const counts = (id: string) => [...set].some((ownerId) => !(ownerId === trait.owner.id && own(id)) && activeIn(ownerId, id));
@@ -302,11 +322,11 @@ function ownerName(owner: RequirementOwner, idx: Index): string | null {
   return idx.entities.get(owner.id)?.name ?? idx.owners.get(owner.id)?.owner.name ?? null;
 }
 
-/** Whether a Condition's target, and its named owner, still exist. */
+/** Whether a Condition's target, and its named owner, still exist. A global target's owner is inert (Q10). */
 function resolves(req: Exclude<TraitRequirement, StatRequirement>, idx: Index): boolean {
   if (req.kind === 'playingAs') return idx.entities.has(req.id);
   const target = req.kind === 'trait' ? idx.traitNames.has(req.id) : idx.groupNames.has(req.id);
-  return target && (!req.owner || ownerName(req.owner, idx) !== null);
+  return target && (!req.owner || idx.isGlobal(req) || ownerName(req.owner, idx) !== null);
 }
 
 /** What follows the stat's name in a stat Condition's text: the operator, then the number, with `%` under percent. */
@@ -338,7 +358,10 @@ function requirementText(req: TraitRequirement, idx: Index): { text: string; unr
   const name = ownerName(req.owner, idx);
   return name
     ? { text: `${name}: ${target.text}`, unresolved: target.unresolved }
-    : { text: `${req.owner.kind === 'entity' && req.owner.name ? req.owner.name : 'a missing entity'}: ${target.text}`, unresolved: true };
+    : {
+      text: `${req.owner.kind === 'entity' && req.owner.name ? req.owner.name : 'a missing entity'}: ${target.text}`,
+      unresolved: target.unresolved || !idx.isGlobal(req),
+    };
 }
 
 /** A reader for any Condition's text against the input's names, as the gate line reads it. */
@@ -437,7 +460,7 @@ const byRank = <T extends Located<Trait>>(items: readonly T[], rank: ReadonlyMap
 /** The traits a Condition on `from` names, in the owners it reads, either polarity. */
 function targetsOf(req: TraitRequirement, from: GateOwner, idx: Index): Located<Trait>[] {
   if (req.kind === 'playingAs' || req.kind === 'stat') return [];
-  const set = idx.ownerSet(req.owner, from);
+  const set = idx.ownerSet(req, from);
   const ids = req.kind === 'trait' ? [req.id] : [...new Set(idx.traitsBelow(set, req.id))];
   return [...set].flatMap((ownerId) => ids.flatMap((id) => idx.owners.get(ownerId)?.traits.get(id) ?? []));
 }
@@ -820,15 +843,14 @@ export interface RowRef extends GateTraitRef {
  */
 export function deadRows(input: Omit<GateInput, 'active'>): RowRef[] {
   const idx = index({ ...input, active: {} });
-  // Two Conditions share an owner set when they read the same owners, however each names it: "You:" on the
-  // player's own trait reads what no named owner does.
+  // Two Conditions share an owner set when they read the same owners, however each names them.
   const sameOwners = (a: ReadonlySet<string>, b: ReadonlySet<string>) => a.size === b.size && [...a].every((id) => b.has(id));
   // A stat Condition is satisfiable both ways, so it clashes with nothing (Q20).
   const clash = (owner: GateOwner) => (plain: TraitRequirement, not: TraitRequirement): boolean => {
     if (plain.not || !not.not || plain.kind === 'stat' || not.kind === 'stat') return false;
     if (plain.kind === 'playingAs' || not.kind === 'playingAs') return plain.kind === not.kind && plain.id === not.id;
-    const set = idx.ownerSet(plain.owner, owner);
-    if (!sameOwners(set, idx.ownerSet(not.owner, owner))) return false;
+    const set = idx.ownerSet(plain, owner);
+    if (!sameOwners(set, idx.ownerSet(not, owner))) return false;
     if (plain.kind === not.kind && plain.id === not.id) return true;
     return plain.kind === 'trait' && not.kind === 'group' && idx.traitsBelow(set, not.id).includes(plain.id);
   };
@@ -900,7 +922,7 @@ function opensTogether(targets: Located<Trait>[], idx: Index, stuck: ReadonlySet
   const clashes = (t: Located<Trait>) =>
     [...(idx.owners.get(t.owner.id)?.rivals.get(t.item.id) ?? [])].some((id) => picked.has(key(t.owner.id, id)));
   const satisfiers = (req: Exclude<TraitRequirement, { kind: 'playingAs' } | StatRequirement>, t: Located<Trait>): Located<Trait>[] => {
-    const set = idx.ownerSet(req.owner, t.owner);
+    const set = idx.ownerSet(req, t.owner);
     const rivals = idx.owners.get(t.owner.id)?.rivals.get(t.item.id);
     const ids = req.kind === 'trait' ? [req.id] : [...new Set(idx.traitsBelow(set, req.id))];
     return ids.filter((id) => !rivals?.has(id)).flatMap((id) => [...set].flatMap((ownerId) => {
@@ -947,7 +969,8 @@ export interface RequirementOption {
   label: string;
   /** The owner, when not the world, then the group path. `World` for a top-level world item. */
   breadcrumb: string[];
-  /** The owners the row can name instead of the same owner: You, then every entity that owns the target. */
+  /** The owners the row can name instead of the same owner: You, then every entity that owns the target. None
+   *  for a global target. */
   owners: RequirementOwnerOption[];
 }
 
@@ -987,12 +1010,13 @@ export function requirementOptions(input: Omit<GateInput, 'active' | 'persona'>,
     if (owner.id !== PLAYER_OWNER) path.unshift(owner.name);
     return path.length > 0 ? path : [...WORLD_BREADCRUMB];
   };
-  const ownersOf = (id: string, kind: 'trait' | 'group'): RequirementOwnerOption[] => [
+  // A global item reads global scope whoever is named (Q10), so it offers no owner.
+  const ownersOf = (id: string, kind: 'trait' | 'group'): RequirementOwnerOption[] => ((kind === 'trait' ? idx.global.traits : idx.global.groups).has(id) ? [] : [
     { owner: { kind: 'you' }, name: 'You' },
     ...input.owners
       .filter((o) => o.id !== PLAYER_OWNER && (kind === 'trait' ? o.traits : o.groups).some((item) => item.id === id))
       .map((o): RequirementOwnerOption => ({ owner: { kind: 'entity', id: o.id, name: o.name }, name: o.name })),
-  ];
+  ]);
   const option = (requirement: TraitRequirement, breadcrumb: string[], owners: RequirementOwnerOption[] = []): RequirementOption =>
     ({ requirement, label: requirementText(requirement, idx).text, breadcrumb, owners });
 
