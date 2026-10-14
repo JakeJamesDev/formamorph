@@ -14,6 +14,11 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 ### Minor Changes
 
+#### ➕ Added
+
+- **👤 User-facing**
+  - **Buttons that send an AI request now say in their tooltip where it goes.** **Send**, **Re-generate** and the turn's More items, **Re-generate Choices** and the World Editor's generate buttons add a line such as *Sends to GLM 5.3 · glm-5.3*, read from the same routing the request uses, so a prompt set to another endpoint names that one.
+
 #### 🔧 Fixed
 
 - **👤 User-facing**
