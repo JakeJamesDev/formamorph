@@ -110,7 +110,7 @@ describe('the Emberwatch default world', () => {
     const readme = world.worldOverview.readme ?? '';
     expect(readme).toContain('## How this world is built');
     for (const label of ['Blueprints', 'Group links', 'Trait links', 'Per-link defaults', 'Link overrides', 'Blueprint pins', 'Blueprint chips',
-      'Custom Persona', 'Persona-only', 'Same-bearer gates', 'Any-of gates', 'Named-scope gates', 'Gated defaults']) {
+      'Custom Persona', 'Persona-only', 'Same-owner gates', 'Any-of gates', 'Named-scope gates', 'Gated defaults']) {
       expect(readme, label).toContain(`**${label}`);
     }
   });

@@ -429,7 +429,7 @@ function useProvideGameData() {
       ? worldData.dictionaries : [makeDefaultBook()];
     const nextPlaceholders = Array.isArray(worldData.placeholders) ? worldData.placeholders : [];
     const nextPlaceholderGroups = Array.isArray(worldData.placeholderGroups) ? worldData.placeholderGroups : [];
-    // Every bearer holds the copies its traits need before the baseline is taken, so a world that arrives
+    // Every owner holds the copies its traits need before the baseline is taken, so a world that arrives
     // without them opens clean.
     const nextEntities = syncBlueprintCopies({
       traits: nextTraits, traitGroups: nextTraitGroups, entities: loadedEntities, placeholders: nextPlaceholders, placeholderGroups: nextPlaceholderGroups,

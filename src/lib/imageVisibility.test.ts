@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { visibleImages } from './imageVisibility';
-import { WORLD_OWNER, type GateInput, type GateStat } from './traitGates';
+import { PLAYER_OWNER, type GateInput, type GateStat } from './traitGates';
 import type { GalleryImage, StatRequirement, Trait, TraitRequirement } from '@/types';
 
 const T = (id: string): Trait => ({ id, name: id, statChanges: [] });
@@ -9,8 +9,8 @@ const hurt: StatRequirement = { kind: 'stat', id: 'health', operator: '<', value
 const when = (...all: TraitRequirement[]): GalleryImage['requires'] => [{ all }];
 
 const input = (hp: number, active: string[] = []): GateInput => ({
-  owners: [{ id: WORLD_OWNER, name: '', traits: [T('Night Vision')], groups: [] }],
-  active: { [WORLD_OWNER]: active },
+  owners: [{ id: PLAYER_OWNER, name: '', traits: [T('Night Vision')], groups: [] }],
+  active: { [PLAYER_OWNER]: active },
   stats: { ash: { health: health(hp) } },
   entities: [{ id: 'ash', name: 'Ash' }],
   persona: { source: 'none' },
@@ -35,11 +35,11 @@ describe('visibleImages', () => {
     expect(visibleImages(ash(gallery), input(90))).toEqual([{ slot: 1, data: 'calm' }]);
   });
 
-  it('reads the image’s own entity for a rule with no bearer', () => {
+  it('reads the image’s own entity for a rule with no owner', () => {
     expect(shown([{ data: 'wounded', requires: when(hurt) }], input(10))).toEqual(['wounded']);
   });
 
-  it('reads the player’s traits under the you bearer', () => {
+  it('reads the player’s traits under the you owner', () => {
     const gallery = [{ data: 'true form', requires: when({ kind: 'trait', id: 'Night Vision', owner: { kind: 'you' } }) }];
     expect(shown(gallery, input(50, ['Night Vision']))).toEqual(['true form']);
     expect(shown(gallery, input(50))).toEqual([]);

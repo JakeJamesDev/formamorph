@@ -25,10 +25,10 @@ function snapshotWithCodeDeltas(snapshot: GameState, world: TraitWorld): GameSta
 }
 
 /**
- * Settle every bearer's traits against the current world once per save load (Q34), after the loaded state
+ * Settle every owner's traits against the current world once per save load (Q34), after the loaded state
  * and its world have rendered. Code bounds an older save stored become code deltas first, in the live state
  * and in `history`. `loads` is the gameplay save-load count; loads before mount don't settle. The settle
- * waits while `ready` is false, so a library persona's bearer is in the world first. A load that changes
+ * waits while `ready` is false, so a library persona's owner is in the world first. A load that changes
  * nothing commits nothing.
  */
 export function useSettleOnSaveLoad(

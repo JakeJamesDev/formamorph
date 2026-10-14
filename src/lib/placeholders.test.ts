@@ -210,7 +210,7 @@ describe('resolveOwnerText', () => {
       .toBe('Albus swore the oath.');
   });
 
-  it('reads Character Name as the Player Name when the player bears the trait', () => {
+  it('reads Character Name as the Player Name when the player has the trait', () => {
     expect(resolveOwnerText(null, '{{char}} swore the oath.', { placeholders: [], rolls: {}, player: { name: 'Wren' } }))
       .toBe('Wren swore the oath.');
     expect(resolveOwnerText(null, '{{char}} swore. Kneel to {{char}}’s oath.', { placeholders: [], rolls: {} }))

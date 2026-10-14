@@ -14,7 +14,7 @@ interface PendingSettle {
 
 /**
  * The per-turn settle (Q9, Q19). `settle` waits for the render that holds every update the commit queued
- * before it, then settles every bearer's traits once against `gateStats`, the commit's one stat snapshot.
+ * before it, then settles every owner's traits once against `gateStats`, the commit's one stat snapshot.
  * It resolves once a render holds what the settle committed, so a snapshot armed after it captures that.
  * Null `gateStats` reads the stats as they landed. A settle that moves nothing commits nothing. An unmount
  * resolves a pending settle without settling, and a settle asked for after it resolves at once.

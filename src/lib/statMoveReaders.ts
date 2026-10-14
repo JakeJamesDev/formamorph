@@ -2,7 +2,7 @@
 // it. A move to another owner that would leave one of them pointing at nothing is refused.
 
 import type { Entity, Placeholder, Stat, StatChange, Trait, TraitGroup, TraitStatToggle } from '@/types';
-import { canBePlayer, resolveBearers } from './bearers';
+import { canBePlayer, resolveOwners } from './owners';
 import { routeTargets, routesIn, statCodeBoxes, statCodeOwners, type StatTarget } from './statCodeTargets';
 import { playerStatsOf, resolvedEntityStats, type StatLinkWorld } from './statLinks';
 import { statRowSide } from './traitTree';
@@ -24,20 +24,20 @@ export type StatReader =
   /** The moved stat's own code reads `stat` through `owner`, which stays, or which the world's empty owner lacks. */
   | { kind: 'reads'; stat: string };
 
-/** The owner a bearer's row reaches: an entity's id, null for the world, undefined for none. */
+/** Whose stat an owner's row reaches: an entity's id, null for the world, undefined for none. */
 const reachedOwner = (side: ReturnType<typeof statRowSide>, entityId: string): string | null | undefined =>
   (side === 'own' ? entityId : side === 'player' ? null : undefined);
 
 /** The first trait row that reaches one of `moved` on owner `from` (null = the world). */
 function traitReader(world: StatReaderWorld, from: string | null, moved: ReadonlyMap<string, Stat>): { stat: Stat; reader: StatReader } | null {
   const player = new Set(playerStatsOf([...world.stats], world.statGroups).map((s) => s.id));
-  for (const bearer of resolveBearers(world, undefined).owners) {
-    const entity = bearer.entity;
+  for (const owner of resolveOwners(world, undefined).owners) {
+    const entity = owner.entity;
     const own = entity ? new Set(resolvedEntityStats(world, entity).map((s) => s.id)) : new Set<string>();
     const reaches = (row: StatChange | TraitStatToggle) => (entity
       ? reachedOwner(statRowSide(row, own, player, canBePlayer(entity)), entity.id)
       : player.has(row.statId) ? null : undefined);
-    for (const trait of bearer.traits) {
+    for (const trait of owner.traits) {
       const rows = [
         ...trait.statChanges.map((row) => ['change', row] as const),
         ...(trait.statToggles ?? []).map((row) => ['toggle', row] as const),
@@ -54,7 +54,7 @@ function traitReader(world: StatReaderWorld, from: string | null, moved: Readonl
 /**
  * The first stat code that reads one of `moved` on owner `from` and would read nothing once it leaves, or a
  * moved stat's own code whose `owner.stats` reads a stat left behind on `from`, or reads any stat when `toWorld`
- * leaves it no owner. Only exact map lookups count. A Blueprint box counts once per bearer.
+ * leaves it no owner. Only exact map lookups count. A Blueprint box counts once per owner.
  */
 function codeReader(
   world: StatReaderWorld, from: string | null, moved: ReadonlyMap<string, Stat>, toWorld = false,

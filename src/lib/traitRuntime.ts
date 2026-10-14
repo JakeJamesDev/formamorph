@@ -155,9 +155,6 @@ export function treeStatTraits(
 export const entityStatTraitsInForce = (ownedTraits: OwnedTraitStates | undefined, world: TraitWorld, ownerId: string): Trait[] =>
   treeStatTraits(entityOwners(world), activeOwnedTraitIds(ownedTraits ?? {}))(ownerId);
 
-/** Alias kept while call sites move to {@link entityStatTraitsInForce}. */
-export const bearerStatTraitsInForce = entityStatTraitsInForce;
-
 /** The stat traits in force for one owner's stats: the player's are {@link statTraitsInForce}; an entity's
  *  are its own. A change on a stat the owner lacks finds nothing to move. */
 export const ownerStatTraitsInForce = (state: TraitForceState, world: TraitWorld, ownerId: string): Trait[] =>

@@ -4,6 +4,7 @@ import { canBePlayer, resolveOwners, type OwnerWorld } from './owners';
 import { playerStatsOf, resolvedEntityStats, statBlueprintIds } from './statLinks';
 import { seedEntityStats } from './entityStats';
 import { seedNewGameStats } from './traitRuntime';
+import { PLAYER_OWNER } from './traitGates';
 import { executeStatCode, type SandboxEntity } from './statCodeExecutor';
 import { statCodeNamed } from './statCodeNames';
 import { runRules } from './testBench/rules';
@@ -118,9 +119,8 @@ describe.each(LOOSE_ROWS)('the %s world: %s', (id, traitName, statName) => {
 const atStart = (stats: readonly Stat[]): Stat[] => stats.map((s) => ({ ...s, value: s.starting ?? s.value ?? s.min }));
 
 /** Each owner's stats under their code names, owner by owner: the world's, then each entity's own and linked. */
-const WORLD_OWNER = 'world';
 const owners = (w: World): { owner: string; stats: Stat[] }[] => [
-  { owner: WORLD_OWNER, stats: statCodeNamed(atStart(looseStats(w)), w.placeholders ?? []) },
+  { owner: PLAYER_OWNER, stats: statCodeNamed(atStart(looseStats(w)), w.placeholders ?? []) },
   ...w.entities.map((e) => ({ owner: e.name, stats: statCodeNamed(atStart(resolvedEntityStats(statWorld(w), e)), w.placeholders ?? []) }))
     .filter(({ stats }) => stats.length),
 ];
@@ -139,9 +139,9 @@ describe.each([...OWNING, 'emberwatch'])('stat code in the %s world', (id) => {
 
   it('runs every stat to a number under its own owner', async () => {
     const entities = sandboxEntities(world, held);
-    const worldStats = held.find((o) => o.owner === WORLD_OWNER)?.stats ?? [];
+    const worldStats = held.find((o) => o.owner === PLAYER_OWNER)?.stats ?? [];
     for (const { owner, stat } of coded) {
-      const own = owner === WORLD_OWNER ? undefined : entities.find((e) => e.name === owner);
+      const own = owner === PLAYER_OWNER ? undefined : entities.find((e) => e.name === owner);
       for (const code of [stat.beforeCode, stat.code].filter((c): c is string => !!c?.trim())) {
         const res = await executeStatCode(code, worldStats, stat, { entities, owner: own });
         expect(res.error, `${owner}: ${stat.name}`).toBeNull();
@@ -154,7 +154,7 @@ describe.each([...OWNING, 'emberwatch'])('stat code in the %s world', (id) => {
 describe('Alert Level in the rampage world', () => {
   const world = load('rampage');
   const held = owners(world);
-  const worldStats = held.find((o) => o.owner === WORLD_OWNER)!.stats;
+  const worldStats = held.find((o) => o.owner === PLAYER_OWNER)!.stats;
   const alert = worldStats.find((s) => s.name === 'Alert Level')!;
 
   it('reads the Rampage its creature holds', async () => {

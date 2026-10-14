@@ -152,7 +152,7 @@ describe('placeholder copies in the world store', () => {
   const copies = (result: { current: ReturnType<typeof useGameData> }, id: string) =>
     (result.current.entities.find((e) => e.id === id)?.placeholders ?? []).map((p) => p.blueprintId);
 
-  it('gives a bearer its copies on load, clean, and writes them into the payload', () => {
+  it('gives an owner its copies on load, clean, and writes them into the payload', () => {
     const { result } = renderHook(() => useGameData(), { wrapper });
     act(() => { result.current.loadWorldData(pinned); });
     expect(copies(result, 'ash')).toEqual(['garb']);
@@ -172,7 +172,7 @@ describe('placeholder copies in the world store', () => {
     expect(copies(result, 'bob')).toEqual([]);
   });
 
-  it('creates a copy when a pin joins an original that already has a bearer', () => {
+  it('creates a copy when a pin joins an original that already has an owner', () => {
     const { result } = renderHook(() => useGameData(), { wrapper });
     const { placeholderPins: _p, ...bare } = pinned.traits[0];
     act(() => { result.current.loadWorldData({ ...pinned, traits: [bare] }); });
@@ -713,8 +713,8 @@ describe('placeholders an entity or a book carries', () => {
     expect(result.current.worldPlaceholders.map((p) => p.id)).toEqual(['shared', 'mood']);
   });
 
-  it('puts a part created from inside a scoped holder beside that holder, not on the world list', () => {
-    // What the typeahead's inline create writes: a placeholder born with its holder as owner.
+  it('puts a part created from inside a scoped parent placeholder beside that parent, not on the world list', () => {
+    // What the typeahead's inline create writes: a placeholder born with its parent placeholder as owner.
     const result = load();
     act(() => { result.current.phStore.addPlaceholder({ id: 'iris', name: 'Iris', values: phValues(['gold']), ownerId: 'eyes' }); });
     expect(result.current.entities[0].placeholders?.map((p) => p.id)).toEqual(['eyes', 'iris']);

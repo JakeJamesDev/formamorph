@@ -54,7 +54,7 @@ const SAMPLES = [
   { title: 'Declared Name', code: 'const total = stats.Courage.value;\nreturn tot|al;' },
 ] as const;
 
-/** The uses a Fatigue search finds: a world stat's box, an entity's own box, and a Blueprint no one bears. */
+/** The uses a Fatigue search finds: a world stat's box, an entity's own box, and a Blueprint no one owns. */
 const USES: readonly CodeUse[] = [
   { entityId: null, rowId: 'courage', timing: 'after', stat: 'Courage', line: 3, noOwners: false },
   { entityId: 'tom', rowId: 'tom-health', timing: 'before', stat: 'Health', entity: 'Tom', line: 1, noOwners: false },

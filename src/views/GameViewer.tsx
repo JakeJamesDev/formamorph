@@ -636,19 +636,19 @@ const GameViewer = ({
   // The save froze each chosen trait as the world stood on turn 1; the world owns its authoring, so read it
   // back before anything derives from it.
   const chosenTraits = useMemo(() => refreshChosenTraits(playerTraits, traits), [playerTraits, traits]);
-  /** What the bearer resolver reads: the authored world. */
-  const bearerWorld = useMemo(
+  /** What the owner resolver reads: the authored world. */
+  const ownerWorld = useMemo(
     () => ({ traits: authoredTraits, traitGroups, entities: traitEntities }),
     [authoredTraits, traitGroups, traitEntities],
   );
-  /** The authored world every bearer's trait gates read: the traits, the groups, who the player is, and each
-   *  present bearer's tree under that persona. */
+  /** The authored world every owner's trait gates read: the traits, the groups, who the player is, and each
+   *  present owner's tree under that persona. */
   const gatedWorld = useCallback(
     (ref: PersonaRef | undefined = personaRef): TraitWorld => ({
       traits: authoredTraits, groups: traitGroups, entities: worldEntitiesOf(entities, persona), persona: ref ?? { source: 'none' },
-      owners: inPlayOwners(bearerWorld, ref, traitLibrary),
+      owners: inPlayOwners(ownerWorld, ref, traitLibrary),
     }),
-    [authoredTraits, traitGroups, entities, persona, personaRef, bearerWorld, traitLibrary],
+    [authoredTraits, traitGroups, entities, persona, personaRef, ownerWorld, traitLibrary],
   );
   // A Custom Persona pick lies dormant under a world persona, so only the held picks are active.
   const activeTraits = useMemo(() => {
@@ -3907,11 +3907,11 @@ const GameViewer = ({
    * trait freezes the world's stat changes as they stand right now, authored and chips intact, as seeding does.
    */
   const toggleTrait = useCallback(
-    (traitId: string, enabled: boolean, bearerId: string) => {
+    (traitId: string, enabled: boolean, ownerId: string) => {
       const world = gatedWorld();
-      const result = switchPlayerTrait(traitState, traitId, enabled, world, traitName, bearerId);
+      const result = switchPlayerTrait(traitState, traitId, enabled, world, traitName, ownerId);
       if (!result) return;
-      commitGatedTraits(result, traitNameIn(world, traitId, traitName, bearerId) ?? traitId);
+      commitGatedTraits(result, traitNameIn(world, traitId, traitName, ownerId) ?? traitId);
     },
     [traitState, gatedWorld, traitName, commitGatedTraits],
   );
@@ -3975,7 +3975,7 @@ const GameViewer = ({
       const seedLibrary = inPlayLibrary({ traits: authoredTraits, traitGroups, entities: traitEntities }, initialPersona?.libraryEntity, initialCharacters ?? []);
       const seedWorld: TraitWorld = {
         traits: authoredTraits, groups: traitGroups, entities: traitEntities, persona: initialPersona?.ref ?? { source: 'none' },
-        owners: inPlayOwners(bearerWorld, initialPersona?.ref, seedLibrary),
+        owners: inPlayOwners(ownerWorld, initialPersona?.ref, seedLibrary),
       };
       // Only the held picks: a Custom Persona pick made before the entry step moved to a world persona is not
       // the player's under it.
@@ -4008,7 +4008,7 @@ const GameViewer = ({
       // and the bands the post-trait stats fall in. None of it is in state yet, so anything written in this
       // pass resolves against these rather than the (empty) pins still in force.
       const openingPins = ownerPins({
-        world: bearerWorld,
+        world: ownerWorld,
         persona: initialPersona?.ref,
         library: seedLibrary,
         playerTraits: chosenList,
@@ -4094,7 +4094,7 @@ const GameViewer = ({
     authoredTraits,
     authoredLocations,
     traitGroups,
-    bearerWorld,
+    ownerWorld,
     worldPlaceholders,
     traitOrder,
     locations,

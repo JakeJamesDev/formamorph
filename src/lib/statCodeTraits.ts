@@ -6,7 +6,7 @@ import type { CodeEntityNames, CodeTraitPlace } from './statCodeAnalysis';
 import { statCodeName, statCodeNamed } from './statCodeNames';
 import { refreshChosenTraits } from './traitEffects';
 import { traitGates, traitUnlocked, type AppliedTraitValues, type TraitWorld } from './traitRuntime';
-import { WORLD_OWNER, type GateStates } from './traitGates';
+import { PLAYER_OWNER, type GateStates } from './traitGates';
 
 /** Every owner's trait state, the authored world code switches it against, and who is in play and in the scene. */
 export interface StatCodeOwners {
@@ -29,9 +29,6 @@ export interface StatCodeOwners {
   inSceneIds?: readonly string[];
 }
 
-/** Alias kept while call sites move to {@link StatCodeOwners}. */
-export type StatCodeBearers = StatCodeOwners;
-
 /** The player's traits as a saved state holds them, each re-read from the world as play reads them. */
 export function savedTraits(
   saved: Pick<GameState, 'playerTraits' | 'disabledTraitIds' | 'appliedTraitValues' | 'cascadeOffTraitIds' | 'ownedTraits'>,
@@ -53,7 +50,7 @@ export function sandboxTraits(ownerTraits: StatCodeOwners, placeholders: readonl
   const off = new Set(ownerTraits.disabledTraitIds);
   const gates = gatesOf(ownerTraits);
   return ownerTraits.world.traits.map((trait) => ({
-    ...traitIdentity(trait, WORLD_OWNER, ownerTraits.world.groups, gates, placeholders),
+    ...traitIdentity(trait, PLAYER_OWNER, ownerTraits.world.groups, gates, placeholders),
     acquired: acquired.has(trait.id),
     enabled: acquired.has(trait.id) && !off.has(trait.id),
   }));
@@ -254,7 +251,3 @@ export function traitOwnerMaps(world: OwnerWorld, placeholders: readonly Placeho
     entities: owning.map(({ entity }) => statCodeName(entity.name, withOwnPlaceholders(placeholders, entity))),
   };
 }
-
-// Old names, kept while call sites move to the owner names.
-export type TraitHolders = TraitOwnerMaps;
-export const traitHolders = traitOwnerMaps;

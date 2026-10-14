@@ -7,7 +7,7 @@ import { runStatCodeTurn, type OwnerCodeTurn, type StatCodeTurn } from './statCo
 import type { StatCodeOwners } from './statCodeTraits';
 import { inPlayOwners } from './ownedTraitsInPlay';
 import { withPersonaEntry } from './persona';
-import { WORLD_OWNER } from './traitGates';
+import { PLAYER_OWNER } from './traitGates';
 import type { Entity, PersonaRef, PlayerStat } from '@/types';
 
 const stat = (over: Partial<PlayerStat>): PlayerStat => ({
@@ -134,9 +134,9 @@ describe('runStatCodeTurn writes across owners', () => {
       [owner('bram', [stat({ id: 'fury', name: 'Fury', code: 'stats.Health.value = 60;' })])],
       { penalties: { health: 10, stamina: 10 } },
     );
-    expect(out.gateStats[WORLD_OWNER].health.value).toBe(60);
+    expect(out.gateStats[PLAYER_OWNER].health.value).toBe(60);
     // Control: the stat no code moved takes the penalty.
-    expect(out.gateStats[WORLD_OWNER].stamina.value).toBe(40);
+    expect(out.gateStats[PLAYER_OWNER].stamina.value).toBe(40);
     expect(out.moved).toEqual(['health']);
   });
 

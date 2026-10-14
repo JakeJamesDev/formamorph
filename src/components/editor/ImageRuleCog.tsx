@@ -27,7 +27,7 @@ export function useHasRuleSource(): boolean {
   return !!(build ?? store ?? world);
 }
 
-/** The Requirement Rows editor over one image's rule, with the image's own entity as the default bearer. */
+/** The Requirement Rows editor over one image's rule, with the image's own entity as the default owner. */
 function ImageRuleRows({ ownerId, rows, onChange }: {
   ownerId: string;
   rows: TraitRequirementRow[];

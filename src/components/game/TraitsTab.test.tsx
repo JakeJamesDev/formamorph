@@ -370,7 +370,7 @@ describe('entity nodes in the traits tab', () => {
     expect(within(ashSection).queryByText('Gruff')).toBeNull();
   });
 
-  it('hands an owned trait’s switch to the runtime by id and bearer', () => {
+  it('hands an owned trait’s switch to the runtime by id and owner', () => {
     const view = withAsh();
     fireEvent.click(screen.getByRole('checkbox', { name: 'Switch off Tamed' }));
     expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-tamed', false, 'e-ash');
@@ -426,7 +426,7 @@ describe('linked traits in the traits tab', () => {
     openDisabled(name);
   };
 
-  it('lists a linked original once per bearer, under each bearer’s node, and never at the top level', () => {
+  it('lists a linked original once per owner, under each owner’s node, and never at the top level', () => {
     withLinks();
     expect(within(section('Ash')).getByRole('radio', { name: 'Switch off Paladin' })).toBeEnabled();
     unfold('Bo');
@@ -436,7 +436,7 @@ describe('linked traits in the traits tab', () => {
     expect(screen.queryByRole('group', { name: 'Classes' })).toBeNull();
   });
 
-  it('hands a linked trait’s switch to the runtime with the bearer whose row it is', () => {
+  it('hands a linked trait’s switch to the runtime with the owner whose row it is', () => {
     const view = withLinks();
     fireEvent.click(within(section('Ash')).getByRole('radio', { name: 'Switch off Paladin' }));
     expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-paladin', false, 'e-ash');
@@ -448,7 +448,7 @@ describe('linked traits in the traits tab', () => {
     expect(screen.getByRole('button', { name: 'Wanderer, You, 0 enabled' })).toBeTruthy();
     unfold('Wanderer');
     expect(within(section('Wanderer')).getByRole('checkbox', { name: 'Switch on Wizard' })).toBeEnabled();
-    // The Character Name chip resolves to the marked entity, never to another bearer.
+    // The Character Name chip resolves to the marked entity, never to another owner.
     expect(within(section('Wanderer')).getByText(/studies\.$/).textContent).toBe('Wanderer studies.');
     expect(screen.getByText("Ash's Paladin")).toBeTruthy();
   });
@@ -477,7 +477,7 @@ describe('linked traits in the traits tab', () => {
     expect(screen.getAllByRole('group').map((g) => g.getAttribute('aria-label'))).toEqual(['Bo', 'Ash']);
   });
 
-  it("reads a linked trait's Character Name as its bearer", () => {
+  it("reads a linked trait's Character Name as its owner", () => {
     withLinks({ seed: (gameplay) => gameplay.setOwnedTraits({ 'e-ash': { chosen: ['t-wizard'] } }) });
     expect(within(section('Ash')).getByText('Ash studies.')).toBeTruthy();
   });

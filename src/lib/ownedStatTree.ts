@@ -169,8 +169,8 @@ export type StatDropRefusal =
   | { reason: 'read'; name: string; owner: string | null; reader: StatReader }
   /** A world stat `name` would join Blueprints while something outside reads it. */
   | { reason: 'into-blueprints'; name: string; reader: StatReader }
-  /** A Blueprints item would leave Blueprints while the `bearers` link it or something in it. */
-  | { reason: 'blueprint-linked'; name: string; bearers: string[] }
+  /** A Blueprints item would leave Blueprints while the `owners` link it or something in it. */
+  | { reason: 'blueprint-linked'; name: string; owners: string[] }
   /** The Custom Persona entity's node left the top level. */
   | { reason: 'root'; name: string };
 
@@ -273,8 +273,8 @@ export function applyOwnedStatDrop(
   // A linked Blueprint stays in Blueprints, so every link points into it.
   if (original) {
     const leaves = parentAfter == null || !statBlueprintsSubtreeIds(dropped.groups).has(parentAfter);
-    const bearers = leaves ? entities.filter((e) => e.statLinks?.some((l) => subtree.has(l.originalId))).map((e) => e.name) : [];
-    if (bearers.length) return refused({ reason: 'blueprint-linked', name: original.item.name, bearers });
+    const owners = leaves ? entities.filter((e) => e.statLinks?.some((l) => subtree.has(l.originalId))).map((e) => e.name) : [];
+    if (owners.length) return refused({ reason: 'blueprint-linked', name: original.item.name, owners });
   }
   // A world stat that joins Blueprints stops being a player stat, so nothing outside may read it.
   if (!isNode && from === null && !original && parentAfter != null && statBlueprintsSubtreeIds(dropped.groups).has(parentAfter)) {

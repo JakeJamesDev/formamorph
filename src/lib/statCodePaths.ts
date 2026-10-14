@@ -19,7 +19,7 @@ import { statCodeName } from './statCodeNames';
 
 /**
  * The members every entry of the map carries. A child named like one of them loses to the member, so the
- * member is what the path reaches and the child is unreachable under its holder.
+ * member is what the path reaches and the child is unreachable under its parent.
  */
 export const PLACEHOLDER_ENTRY_MEMBERS: readonly string[] = ['id', 'name', 'value', 'values', 'text', 'roll', 'pin', 'unpin'];
 
@@ -28,7 +28,7 @@ const MEMBERS: ReadonlySet<string> = new Set(PLACEHOLDER_ENTRY_MEMBERS);
 /** Whether a name is one of an entry's own members, and so loses to it as a child name. */
 export const isPlaceholderEntryMember = (name: string): boolean => MEMBERS.has(name);
 
-/** One node of the map: a placeholder entry, an owner node, or a holder that is both. */
+/** One node of the map: a placeholder entry, an owner node, or a parent that is both. */
 export interface PlaceholderPathNode {
   /** The key this node takes in its parent, and at the top level. */
   name: string;
@@ -36,7 +36,7 @@ export interface PlaceholderPathNode {
   placeholder: Placeholder | null;
   /** The entity or dictionary this node stands for, on an owner node only. */
   owner?: PlaceholderOwnerRef;
-  /** Every segment from the map root to this node: owner, then the holder chain, then its own name. */
+  /** Every segment from the map root to this node: owner, then the parent chain, then its own name. */
   path: readonly string[];
   /** The kind of owner whose entry the path starts at; absent for the world's own rows. */
   ownedBy?: PlaceholderOwnerRef['kind'];
@@ -94,17 +94,17 @@ function buildMap({ list, owners }: PlaceholderPathSource): PlaceholderPathMap {
   const heldBy = new Map(list.map((p) => [p.id, holderOf(list, p)]));
   const childrenOf = new Map<string, Placeholder[]>();
   for (const p of list) {
-    const holder = heldBy.get(p.id);
-    if (!holder) continue;
-    const held = childrenOf.get(holder);
+    const parent = heldBy.get(p.id);
+    if (!parent) continue;
+    const held = childrenOf.get(parent);
     if (held) held.push(p);
-    else childrenOf.set(holder, [p]);
+    else childrenOf.set(parent, [p]);
   }
 
   /** The name an entity or a dictionary takes as a key: its own name, chips read as code reads them. */
   const ownerKey = (name: string) => statCodeName(name, list);
 
-  /** The canonical segments that reach `p`: its owner, every holder above it, then its own name. */
+  /** The canonical segments that reach `p`: its owner, every parent above it, then its own name. */
   const pathOf = (p: Placeholder): { path: string[]; owner?: PlaceholderOwnerRef } => {
     const chain: string[] = [];
     const seen = new Set<string>();
@@ -112,10 +112,10 @@ function buildMap({ list, owners }: PlaceholderPathSource): PlaceholderPathMap {
     while (at && !seen.has(at.id)) {
       seen.add(at.id);
       chain.unshift(at.name);
-      const holder = heldBy.get(at.id);
-      at = holder ? byId.get(holder) : undefined;
+      const parent = heldBy.get(at.id);
+      at = parent ? byId.get(parent) : undefined;
     }
-    // The owner of the outermost holder is the one that opens the path: the owner node holds that row, and
+    // The owner of the outermost parent is the one that opens the path: the owner node holds that row, and
     // everything below it is reached through that row rather than through the owner again.
     const root = [...seen].pop();
     const owner = root === undefined ? undefined : owners?.get(root);
@@ -164,7 +164,7 @@ function buildMap({ list, owners }: PlaceholderPathSource): PlaceholderPathMap {
 export interface PlaceholderWalk {
   node: PlaceholderPathNode | null;
   rest: readonly string[];
-  /** True where the walk stopped because a child's name lost to a member of its holder. */
+  /** True where the walk stopped because a child's name lost to a member of its parent. */
   shadowed?: boolean;
 }
 

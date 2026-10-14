@@ -267,7 +267,7 @@ export function inOwnerPlaces(traits: readonly Trait[], tree: OwnerTree | undefi
 }
 
 /** Each item with the Character Name in its name and AI description written as the Player Name, for items the
- *  player bears. */
+ *  player has. */
 export const borneByPlayer = <T extends { name: string; aiDescription?: string }>(items: readonly T[]): T[] =>
   mapPreservingIdentity(items, (item) => {
     const name = characterAsPlayer(item.name);
@@ -343,20 +343,3 @@ export function ownerPriming(world: OwnerWorld, library: readonly Entity[], shar
   });
   return { texts, pinTraits, copyTexts };
 }
-
-// Old names, kept while call sites move to the owner names.
-export const inPlayBearers = inPlayOwners;
-export type BearerTraitTree = OwnerTraitTree;
-export const bearerGroupId = ownerGroupId;
-export const bearerTraitTree = ownerTraitTree;
-export const rowBearer = rowOwner;
-export type BearerPinState = OwnerPinState;
-export const bearerPins = ownerPins;
-export type BearerPreview = OwnerPreview;
-export const bearerPreview = ownerPreview;
-export type BearerTree = OwnerTree;
-export const withBearerTrees = withOwnerTrees;
-export const inBearerPlaces = inOwnerPlaces;
-export const withBearerNames = withOwnerNames;
-export type BearerPriming = OwnerPriming;
-export const bearerPriming = ownerPriming;

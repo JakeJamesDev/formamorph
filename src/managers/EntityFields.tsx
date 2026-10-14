@@ -36,10 +36,10 @@ export interface EntityFieldGroupProps {
 }
 
 /** Identity fields, with Advanced-only Aliases, Persona, and Type. */
-export const EntityIdentityFields = ({ value, onChange, placeholders = [], ownerId, nameHandlers, home, customPersonaHolder }: EntityFieldGroupProps & {
+export const EntityIdentityFields = ({ value, onChange, placeholders = [], ownerId, nameHandlers, home, customPersonaEntityName }: EntityFieldGroupProps & {
   home: EntityHome;
   /** See {@link EntityPersonaField}. */
-  customPersonaHolder?: string;
+  customPersonaEntityName?: string;
   /** What reports a committed rename of this entity, so the code that reaches its placeholders by path can
    *  follow. Absent outside the World Editor, where there is no world code to rewrite. */
   nameHandlers?: RenameFieldHandlers;
@@ -83,7 +83,7 @@ export const EntityIdentityFields = ({ value, onChange, placeholders = [], owner
           placeholder="she/her, he/him, it/its"
         />
       </div>
-      <EntityPersonaField value={value} onChange={onChange} placeholders={placeholders} home={home} customPersonaHolder={customPersonaHolder} />
+      <EntityPersonaField value={value} onChange={onChange} placeholders={placeholders} home={home} customPersonaEntityName={customPersonaEntityName} />
       {advanced && (
         <div className="space-y-2" {...fieldFrame('type')}>
           <Label>Type</Label>
@@ -119,10 +119,10 @@ const ROLE_GRID: Record<EntityHome, string> = { world: 'h-auto grid-cols-2 [@con
 
 /** The Persona role. Advanced only in the World Editor; the library editor is always Advanced. Leaving the
  *  Custom Persona role asks first when the entity carries links, traits or copies. */
-export const EntityPersonaField = ({ value, onChange, placeholders = [], home, customPersonaHolder }: EntityFieldGroupProps & {
+export const EntityPersonaField = ({ value, onChange, placeholders = [], home, customPersonaEntityName }: EntityFieldGroupProps & {
   home: EntityHome;
   /** The name of another entity holding the Custom Persona mark, which keeps the role off this one. */
-  customPersonaHolder?: string;
+  customPersonaEntityName?: string;
 }) => {
   const { advanced } = useEditorMode();
   const [pending, setPending] = useState<{ role: PersonaRole; line: string } | null>(null);
@@ -149,7 +149,7 @@ export const EntityPersonaField = ({ value, onChange, placeholders = [], home, c
         className={`grid w-full ${ROLE_GRID[home]}`}
       >
         {roles.map((r) => (
-          <ToggleGroupItem key={r.value} value={r.value} disabled={r.value === 'custom' && !!customPersonaHolder}>
+          <ToggleGroupItem key={r.value} value={r.value} disabled={r.value === 'custom' && !!customPersonaEntityName}>
             {r.label}
           </ToggleGroupItem>
         ))}
@@ -160,10 +160,10 @@ export const EntityPersonaField = ({ value, onChange, placeholders = [], home, c
           <Hint key={r.value} className={`col-start-1 row-start-1${r.value === role ? '' : ' invisible'}`}>{r.hint}</Hint>
         ))}
       </div>
-      {customPersonaHolder && (
+      {customPersonaEntityName && (
         <Hint>
           Only one entity can be the Custom Persona.{' '}
-          <strong><PlaceholderText text={customPersonaHolder} placeholders={placeholders} /></strong> has it now.
+          <strong><PlaceholderText text={customPersonaEntityName} placeholders={placeholders} /></strong> has it now.
         </Hint>
       )}
       <ConfirmDialog
@@ -347,20 +347,20 @@ export const EntityModelField = ({ value, onChange }: EntityFieldGroupProps) => 
  * the Persona mark, then `locations` (World Editor only) and the model. `columnsClassName` sets when the grid splits into
  * two columns, since each host's pane widens differently.
  */
-export const EntityProfileFields = ({ columnsClassName, nameHandlers, locations, home, customPersonaHolder, ...props }: EntityFieldGroupProps & {
+export const EntityProfileFields = ({ columnsClassName, nameHandlers, locations, home, customPersonaEntityName, ...props }: EntityFieldGroupProps & {
   columnsClassName: string;
   nameHandlers?: RenameFieldHandlers;
   locations?: ReactNode;
   home: EntityHome;
   /** See {@link EntityPersonaField}. */
-  customPersonaHolder?: string;
+  customPersonaEntityName?: string;
 }) => (
   <>
     <EntityImageWidget {...props}>
       <div className={`grid gap-4 ${columnsClassName}`}>
         <ImageGallery />
         <div className="space-y-4">
-          <EntityIdentityFields {...props} nameHandlers={nameHandlers} home={home} customPersonaHolder={customPersonaHolder} />
+          <EntityIdentityFields {...props} nameHandlers={nameHandlers} home={home} customPersonaEntityName={customPersonaEntityName} />
           <ImageTags />
         </div>
       </div>

@@ -35,7 +35,7 @@ function played(
   const library = over.library ?? [];
   // Play's owners and gate entities carry the player's entry in the Custom Persona entity's name.
   const entered = [...withPersonaEntry(entities, persona, library[0]?.name)];
-  const bearerWorld = { traits: [worldBrave], traitGroups: [], entities: entered };
+  const ownerWorld = { traits: [worldBrave], traitGroups: [], entities: entered };
   return {
     acquired: over.acquired ?? [],
     disabledTraitIds: [],
@@ -45,7 +45,7 @@ function played(
     library,
     world: {
       traits: [worldBrave], groups: [], entities: entered, persona,
-      owners: inPlayOwners(bearerWorld, persona, library),
+      owners: inPlayOwners(ownerWorld, persona, library),
     },
   };
 }

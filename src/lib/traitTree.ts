@@ -9,7 +9,7 @@ import {
 } from './groupTree';
 import type { Entity, StatChange, Trait, TraitGroup, TraitLink, TreePlacement } from '@/types';
 import { xmlEscape } from './utils';
-import { bearsTraits, heldReason, makeLink, originalOf, resolveBearers } from './bearers';
+import { ownsOrLinksTraits, heldReason, makeLink, originalOf, resolveOwners } from './owners';
 import type { HeldReason } from './heldReasons';
 import { traitReaderOutsideBlueprints, type TraitReader, type TraitReaderWorld } from './traitMoveReaders';
 import { randomUUID } from './uuid';
@@ -121,8 +121,8 @@ export function blueprintItemIds(lists: WorldTraitLists): Set<string> {
 export const isBlueprintItem = (lists: WorldTraitLists, id: string): boolean => blueprintItemIds(lists).has(id);
 
 /** The world's traits and groups without Blueprints and everything below it: what the root offers the player.
- *  The bearer resolver builds the player bearer from it; the trait runtime falls back to it only for a world
- *  given without bearers. */
+ *  The owner resolver builds the player owner from it; the trait runtime falls back to it only for a world
+ *  given without owners. */
 export function offeredWorldTraits<T extends Trait, G extends TraitGroup>(
   traits: readonly T[], groups: readonly G[],
 ): { traits: readonly T[]; groups: readonly G[] } {
@@ -179,7 +179,7 @@ export function ownedTraitTree(
   const worldGroupIds = new Set(world.traitGroups.map((g) => g.id));
   const placeable = placeableGroupIds(world.traitGroups);
   const atRoot = (ref: string | null | undefined) => ref == null || !worldGroupIds.has(ref);
-  const hasNode = links ? (e: Entity) => bearsTraits(e) || (emptySystemNodes && !!e.customPersona) : ownsTraits;
+  const hasNode = links ? (e: Entity) => ownsOrLinksTraits(e) || (emptySystemNodes && !!e.customPersona) : ownsTraits;
   const owning = entities.filter(hasNode);
   const rootSorts = [
     ...world.traitGroups.map((g, i) => (atRoot(g.parentId) ? g.order ?? i : -1)),
@@ -280,16 +280,16 @@ export function entityRootTraitTree(entity: Entity, world: Pick<WorldTraitLists,
   return tree;
 }
 
-/** Why a drop was refused: the bearer's tree already holds the original `name`; the Custom Persona entity
+/** Why a drop was refused: the owner's tree already holds the original `name`; the Custom Persona entity
  *  `name` left the top level; something outside Blueprints reads `name` as it would join; or a linked Blueprint
  *  would leave Blueprints. */
 export type TraitDropRefusal =
-  | { reason: 'duplicate'; name: string; bearer: string }
+  | { reason: 'duplicate'; name: string; owner: string }
   | { reason: 'root'; name: string }
   /** A trait or group `name` would join Blueprints while something outside reads it. */
   | { reason: 'into-blueprints'; name: string; reader: TraitReader }
-  /** A Blueprints item moved out of Blueprints, or into an entity, while the `bearers` link it or something below it. */
-  | { reason: 'blueprint-linked'; name: string; bearers: string[] };
+  /** A Blueprints item moved out of Blueprints, or into an entity, while the `owners` link it or something below it. */
+  | { reason: 'blueprint-linked'; name: string; owners: string[] };
 
 export interface OwnedTraitDropOptions {
   /** Whether a world row dropped into an entity links it. Off, the row moves in as the entity's own item. */
@@ -312,10 +312,10 @@ export const statRows = (t: Trait): readonly StatRow[] => [...t.statChanges, ...
 /** One stat change or stat toggle, as routing reads it. */
 export type StatRow = Pick<StatChange, 'statId' | 'target'>;
 
-/** Whose stat a bearer's trait row moves; null when it names neither. */
+/** Whose stat an owner's trait row moves; null when it names neither. */
 export type StatRowSide = 'own' | 'player' | null;
 
-/** Whose stat a bearer's trait row moves: its own stat by id, else a world player stat on a bearer the
+/** Whose stat an owner's trait row moves: its own stat by id, else a world player stat on an owner the
  *  player can play; with `target`, only the player stat. */
 export function statRowSide(
   row: StatRow, own: ReadonlySet<string>, player: ReadonlySet<string>, canPlay: boolean,
@@ -429,22 +429,22 @@ export function withOwnedLists(entity: Entity, traits: Trait[], traitGroups: Tra
   };
 }
 
-/** What the bearer node already holds that blocks a link to the original; null when it can link. */
+/** What the owner node already holds that blocks a link to the original; null when it can link. */
 export function linkHeldReason(
   world: WorldTraitLists, entities: readonly Entity[], nodeId: string, originalId: string,
 ): HeldReason | null {
-  const bearerWorld = { ...world, entities };
-  const resolved = resolveBearers(bearerWorld, undefined).owners.find((b) => b.id === nodeId);
-  return resolved ? heldReason(bearerWorld, resolved, originalId) : null;
+  const ownerWorld = { ...world, entities };
+  const resolved = resolveOwners(ownerWorld, undefined).owners.find((b) => b.id === nodeId);
+  return resolved ? heldReason(ownerWorld, resolved, originalId) : null;
 }
 
-/** Why the bearer node can't link the original; null when it can. A bearer's tree holds each original once. */
+/** Why the owner node can't link the original; null when it can. An owner's tree holds each original once. */
 export function linkRefusal(
   world: WorldTraitLists, entities: readonly Entity[], nodeId: string, originalId: string,
 ): Extract<TraitDropRefusal, { reason: 'duplicate' }> | null {
   if (!linkHeldReason(world, entities, nodeId, originalId)) return null;
   const name = originalOf(world, originalId)?.item.name ?? '';
-  return { reason: 'duplicate', name, bearer: entities.find((e) => e.id === nodeId)?.name ?? '' };
+  return { reason: 'duplicate', name, owner: entities.find((e) => e.id === nodeId)?.name ?? '' };
 }
 
 /**
@@ -538,8 +538,8 @@ export function applyOwnedTraitDrop(
   // A linked Blueprint stays in Blueprints, so every link points into it.
   if (blueprint) {
     const leavesBlueprints = parentAfter == null || !blueprintsSubtreeIds(dropped.groups).has(parentAfter);
-    const bearers = leavesBlueprints ? entities.filter((e) => e.traitLinks?.some((l) => subtree.has(l.originalId))).map((e) => e.name) : [];
-    if (bearers.length) return { kind: 'refused', refusal: { reason: 'blueprint-linked', name: movedItem.name, bearers } };
+    const owners = leavesBlueprints ? entities.filter((e) => e.traitLinks?.some((l) => subtree.has(l.originalId))).map((e) => e.name) : [];
+    if (owners.length) return { kind: 'refused', refusal: { reason: 'blueprint-linked', name: movedItem.name, owners } };
   }
   // An item that joins Blueprints reaches play only through links, so nothing outside may read it.
   if (!isNode && !blueprint && to === null && parentAfter != null && blueprintsSubtreeIds(dropped.groups).has(parentAfter)) {

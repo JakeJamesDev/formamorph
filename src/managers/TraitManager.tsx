@@ -82,9 +82,6 @@ export function OwnerStatNote({ owner, traits }: { owner: Entity; traits: readon
   return named ? <Hint>Player stat changes apply only when you play as them</Hint> : null;
 }
 
-/** Alias kept while call sites move to {@link OwnerStatNote}. */
-export const BearerStatNote = OwnerStatNote;
-
 /** Whose stat each of an owner's trait rows moves, as play routes it. */
 const ownerRowSide = (world: { stats: Stat[]; statGroups: StatGroup[] }, owner: Entity) => {
   const own = new Set(resolvedEntityStats(world, owner).map((s) => s.id));

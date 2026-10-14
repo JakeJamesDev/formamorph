@@ -22,14 +22,14 @@ export function holderOf(locations: GameLocation[], location: GameLocation): str
 }
 
 /** Build the full nested tree of top-level nodes, each carrying its recursive children. Every location is
- *  filed under its holder in one pass, so a deep world costs one walk rather than one per level. */
+ *  filed under its parent in one pass, so a deep world costs one walk rather than one per level. */
 export function buildLocationTree(locations: GameLocation[]): LocationTreeNode[] {
   const known = new Set(locations.map((l) => l.id));
   const childrenOf = new Map<string | null, GameLocation[]>();
   for (const location of locations) {
     const parentId = location.parentId ?? null;
-    const holder = parentId && known.has(parentId) ? parentId : null;
-    childrenOf.set(holder, [...(childrenOf.get(holder) ?? []), location]);
+    const parent = parentId && known.has(parentId) ? parentId : null;
+    childrenOf.set(parent, [...(childrenOf.get(parent) ?? []), location]);
   }
   const build = (parentId: string | null): LocationTreeNode[] =>
     (childrenOf.get(parentId) ?? []).map((l) => ({ id: l.id, location: l, children: build(l.id) }));

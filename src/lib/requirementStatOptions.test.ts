@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { requirementStatSections } from './requirementStatOptions';
-import { WORLD_OWNER, type GateEntity, type GateInput, type GateStat } from './traitGates';
+import { PLAYER_OWNER, type GateEntity, type GateInput, type GateStat } from './traitGates';
 
 const S = (name: string, extra: Partial<GateStat> = {}): GateStat => ({ name, value: 10, min: 0, max: 100, ...extra });
 
@@ -11,7 +11,7 @@ const entities: GateEntity[] = [
   { id: 'bare', name: 'Bare' },
 ];
 const stats: NonNullable<GateInput['stats']> = {
-  [WORLD_OWNER]: { rage: S('Rage'), gold: S('Gold', { min: 0, max: 1000 }) },
+  [PLAYER_OWNER]: { rage: S('Rage'), gold: S('Gold', { min: 0, max: 1000 }) },
   ash: { hunger: S('Hunger') },
   hero: { grit: S('Grit') },
   cp: { luck: S('Luck') },
@@ -29,7 +29,7 @@ const read = (host: string, world = input) => requirementStatSections(world, hos
 
 describe('requirementStatSections', () => {
   it('lists, for a world trait, the player set first with no owner, then each entity that has stats', () => {
-    expect(read(WORLD_OWNER)).toEqual([
+    expect(read(PLAYER_OWNER)).toEqual([
       { heading: 'Player Stats', own: true, rows: ['Rage', 'Gold', 'Luck'], owners: ['null'] },
       { heading: 'Ash Stats', own: false, rows: ['Hunger'], owners: ['{"kind":"entity","id":"ash","name":"Ash"}'] },
       { heading: 'Hero Stats', own: false, rows: ['Grit'], owners: ['{"kind":"entity","id":"hero","name":"Hero"}'] },
@@ -52,16 +52,16 @@ describe('requirementStatSections', () => {
   it('leaves out an inert stat and an entity with no stats', () => {
     const world = { ...input, stats: { ...stats, ash: { hunger: S('Hunger', { inert: true }), thirst: S('Thirst') } } };
     expect(read('ash', world)[0].rows).toEqual(['Thirst']);
-    expect(read(WORLD_OWNER).map((s) => s.heading)).not.toContain('Bare Stats');
+    expect(read(PLAYER_OWNER).map((s) => s.heading)).not.toContain('Bare Stats');
   });
 
   it('keeps hidden stats, which an author may gate on', () => {
-    const world = { ...input, stats: { ...stats, [WORLD_OWNER]: { rage: S('Rage', { hidden: true }) } } };
-    expect(read(WORLD_OWNER, world)[0].rows).toEqual(['Rage', 'Luck']);
+    const world = { ...input, stats: { ...stats, [PLAYER_OWNER]: { rage: S('Rage', { hidden: true }) } } };
+    expect(read(PLAYER_OWNER, world)[0].rows).toEqual(['Rage', 'Luck']);
   });
 
   it('adds each stat as ">= the middle of its span, in raw units"', () => {
-    const [player] = requirementStatSections(input, WORLD_OWNER);
+    const [player] = requirementStatSections(input, PLAYER_OWNER);
     expect(player.options.map((o) => o.requirement)).toEqual([
       { kind: 'stat', id: 'rage', operator: '>=', value: 50, unit: 'raw' },
       { kind: 'stat', id: 'gold', operator: '>=', value: 500, unit: 'raw' },
@@ -70,6 +70,6 @@ describe('requirementStatSections', () => {
   });
 
   it('lists nothing without stats', () => {
-    expect(requirementStatSections({ ...input, stats: undefined }, WORLD_OWNER)).toEqual([]);
+    expect(requirementStatSections({ ...input, stats: undefined }, PLAYER_OWNER)).toEqual([]);
   });
 });

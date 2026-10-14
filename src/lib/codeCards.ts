@@ -267,9 +267,6 @@ export function reachedPlaceholderOwners(
   });
 }
 
-/** Alias kept while call sites move to {@link reachedPlaceholderOwners}. */
-export const placeholderHolders = reachedPlaceholderOwners;
-
 /** An entity's World Details: what it is, then the names its maps hold. */
 export function entityRows({ entity, stats, traits, placeholders }: CodeEntityRecord): CodeCardRow[] {
   return [

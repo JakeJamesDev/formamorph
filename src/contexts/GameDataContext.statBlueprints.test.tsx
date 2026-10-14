@@ -45,7 +45,7 @@ describe('the world as play reads it', () => {
     expect(odette.stats?.map((s) => [s.id, s.value])).toEqual([['stock', 4], ['bp-trust', 5]]);
   });
 
-  it('seeds each bearer\'s own value of one Blueprint, and stat code reads it under the entity', () => {
+  it('seeds each owner\'s own value of one Blueprint, and stat code reads it under the entity', () => {
     const { result } = renderHook(() => useGameData(), { wrapper });
     act(() => { result.current.loadWorldData(world); });
     const seeded = seedEntityStats(result.current.playEntities);

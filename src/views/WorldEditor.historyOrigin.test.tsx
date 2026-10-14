@@ -77,10 +77,10 @@ const treeRow = (name: string) => {
   if (!row) throw new Error(`No tree row named ${name}`);
   return row;
 };
-/** The tree row a link draws under its bearer's node. */
-const linkRow = (bearer: string) => {
+/** The tree row a link draws under its owner's node. */
+const linkRow = (owner: string) => {
   const rows = screen.getAllByLabelText('Drag to reorder or nest').map((grip) => grip.parentElement as HTMLElement);
-  return rows[rows.findIndex((row) => within(row).queryByText(bearer, { exact: true })) + 1];
+  return rows[rows.findIndex((row) => within(row).queryByText(owner, { exact: true })) + 1];
 };
 
 /** A Placeholders tree row by its label; the palette above the list draws the same name as a chip button. */

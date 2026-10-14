@@ -398,7 +398,7 @@ describe('planCodeRename over the placeholder tree', () => {
     expect(plan?.edits[0].boxes.after).toBe(`entities['Ashford Guard'].placeholders.Ashford.text`);
   });
 
-  it('leaves a path alone where a member of the holder won the name', () => {
+  it('leaves a path alone where a member of the parent won the name', () => {
     // `value` is a member of every entry, so `placeholders.Hair.value` reads the member and never the child
     // that shares its name. Renaming that child moves nothing the code says.
     const chip = '{{ph:shade:world:p-shade}}';

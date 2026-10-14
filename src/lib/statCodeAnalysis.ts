@@ -763,10 +763,10 @@ function checkPlaceholderPath(refs: readonly EntryRef[], placeholders: CodePlace
 }
 
 /** The warning for a child whose name loses to a member every placeholder entry has. */
-const shadowedChild = (ref: EntryRef, holder: PlaceholderPathNode): CodeDiagnostic => ({
+const shadowedChild = (ref: EntryRef, parent: PlaceholderPathNode): CodeDiagnostic => ({
   from: ref.from, to: ref.to, severity: 'warning',
   message: `Every placeholder has a ${ref.name} member, so this reads the member. `
-    + `The placeholder named “${ref.name}” under “${placeholderPathLabel(holder.path)}” is not reachable from code.`,
+    + `The placeholder named “${ref.name}” under “${placeholderPathLabel(parent.path)}” is not reachable from code.`,
 });
 
 /** What is wrong with a path through an owner's `placeholders`: a key no placeholder answers, or a child that

@@ -630,7 +630,7 @@ describe('executeStatCode by placeholder kind', () => {
   });
 });
 
-// The map is a tree: an owner node stands for an entity or a dictionary, and a holder carries what it owns
+// The map is a tree: an owner node stands for an entity or a dictionary, and a parent carries what it owns
 // as members. These are the sandbox-only facts — the paths a world actually produces are the resolver's.
 describe('executeStatCode placeholders as a tree', () => {
   const stat = makeStat({ id: 'a', max: 1000 });
@@ -654,7 +654,7 @@ describe('executeStatCode placeholders as a tree', () => {
     await expect(run(code)).resolves.toEqual({ value: 1, error: null });
   });
 
-  it('reads a holder’s owned child as a member of the holder at any depth', async () => {
+  it('reads a parent’s owned child as a member of the parent at any depth', async () => {
     const code = 'return placeholders.Molly.Hair.Shade.value === "ash"'
       + ' && placeholders.Molly.Hair.Shade.Tone.value === "warm" ? 1 : 0;';
     await expect(run(code)).resolves.toEqual({ value: 1, error: null });
@@ -672,9 +672,9 @@ describe('executeStatCode placeholders as a tree', () => {
     await expect(run(code)).resolves.toEqual({ value: 1, error: null });
   });
 
-  it('gives a child named like a member the member, so the child is unreachable under its holder', async () => {
+  it('gives a child named like a member the member, so the child is unreachable under its parent', async () => {
     const shadowed = phMap([{ name: 'Molly', value: 'hi', children: [{ name: 'value', value: 'child' }] }]);
-    // `placeholders.Molly.value` is the holder's own value; nothing under Molly reaches the child.
+    // `placeholders.Molly.value` is the parent's own value; nothing under Molly reaches the child.
     const code = 'return placeholders.Molly.value === "hi"'
       + ` && Object.keys(placeholders.Molly).filter((k) => k === 'value').length === 1 ? 1 : 0;`;
     await expect(run(code, shadowed)).resolves.toEqual({ value: 1, error: null });
@@ -685,7 +685,7 @@ describe('executeStatCode placeholders as a tree', () => {
       .resolves.toEqual({ value: 1, error: null, unknownPlaceholders: ['Molly › Hiar'] });
   });
 
-  it('lands a pin through a path on that child alone, leaving the holder and the bare name untouched', async () => {
+  it('lands a pin through a path on that child alone, leaving the parent and the bare name untouched', async () => {
     const result = await run('placeholders.Molly.Hair.Shade.pin("silver"); return 1;');
     expect(result.placeholders).toEqual([phWrite(['Molly', 'Hair', 'Shade'], 'silver')]);
   });

@@ -468,7 +468,7 @@ describe('placeholders in stat code', () => {
   // `placeholders` is a tree: a placeholder that holds others carries them as members. The editor completes
   // and checks the same paths. Owner routes have their own suite.
   describe('paths', () => {
-    /** Hair holds Shade, and Shade holds Tone. An owned placeholder is always a chip value of its holder. */
+    /** Hair holds Shade, and Shade holds Tone. An owned placeholder is always a chip value of its parent. */
     const chip = (id: string) => ({ id: `v:${id}`, text: encodePlaceholderToken({ id, mode: 'world', placementId: `p-${id}` }) });
     const hair = ph('hair', 'Hair', { values: [chip('shade')] });
     const shade = ph('shade', 'Shade', { ownerId: 'hair', values: [chip('tone')] });
@@ -490,7 +490,7 @@ describe('placeholders in stat code', () => {
       expect(messages('placeholders.Molly.Hair.pin("x");', scoped)).toEqual(['Unknown placeholder name “Molly”.']);
     });
 
-    it('underlines a segment no entry has, and names the nearest under its holder', () => {
+    it('underlines a segment no entry has, and names the nearest under its parent', () => {
       const [problem] = statCodeDiagnostics('placeholders.Hair.Shdae.pin("x");', scoped);
       expect(problem).toMatchObject({
         severity: 'error',
@@ -506,11 +506,11 @@ describe('placeholders in stat code', () => {
     });
 
     it('warns on a child whose name loses to a member every placeholder has', () => {
-      const holder = ph('holder', 'Holder', { values: [chip('child')] });
-      const shadowed = { placeholders: { list: [holder, ph('child', 'value', { ownerId: 'holder' })] } };
-      expect(messages('placeholders.Holder.value = "x";', shadowed)).toEqual([
+      const parent = ph('parent', 'Parent', { values: [chip('child')] });
+      const shadowed = { placeholders: { list: [parent, ph('child', 'value', { ownerId: 'parent' })] } };
+      expect(messages('placeholders.Parent.value = "x";', shadowed)).toEqual([
         'Every placeholder has a value member, so this reads the member. '
-        + 'The placeholder named “value” under “Holder” is not reachable from code.',
+        + 'The placeholder named “value” under “Parent” is not reachable from code.',
       ]);
     });
 
@@ -519,7 +519,7 @@ describe('placeholders in stat code', () => {
       expect(messages('return placeholders.Hair.Shade.Tone.text.length;', scoped)).toEqual([]);
     });
 
-    it('offers a holder’s own members first, then what it holds', () => {
+    it('offers a parent’s own members first, then what it holds', () => {
       const members = placeholderEntryFields('Wildcard').map((entry) => entry.name);
       expect(labels('return placeholders.Hair.|', scoped)).toEqual([...members, 'Shade']);
     });

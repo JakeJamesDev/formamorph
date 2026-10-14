@@ -1,6 +1,6 @@
 # 11: Remove Bearer Names and Guard the Term
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 03, 04, 05, 06, 07, 08, 09, 10
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium

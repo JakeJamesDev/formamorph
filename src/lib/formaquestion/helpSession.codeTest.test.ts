@@ -311,7 +311,7 @@ describe('a code test call on an owned or Blueprint stat', () => {
 
   it('runs a Blueprint stat with an owner that holds its group’s stats only, and names a write outside the group as dropped', async () => {
     const [result] = await testOn(stage(), { code: 'owner.stats.Awe.value = 7; owner.stats.Courage.value = 1; return Object.keys(owner.stats).length;', stat: 'Dread' });
-    // A bearer can hold stats beyond its group, so the reader warns on Courage and raises no error.
+    // An owner can hold stats beyond its group, so the reader warns on Courage and raises no error.
     expect(result.errors).toEqual([]);
     expect(result.warnings).toEqual([expect.objectContaining({ text: 'Courage' })]);
     expect(result.run).toMatchObject({

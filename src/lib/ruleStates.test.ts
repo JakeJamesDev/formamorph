@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { shownWhileLine } from './traitGateLine';
-import { WORLD_OWNER, ruleStates, type GateInput, type GateStat } from './traitGates';
+import { PLAYER_OWNER, ruleStates, type GateInput, type GateStat } from './traitGates';
 import type { Trait, TraitRequirementRow } from '@/types';
 
 const S = (name: string, value: number, extra: Partial<GateStat> = {}): GateStat => ({ name, value, min: 0, max: 100, ...extra });
 const trait = (id: string, name: string): Trait => ({ id, name, statChanges: [] });
 
 const input = (extra: Partial<GateInput> = {}): GateInput => ({
-  owners: [{ id: WORLD_OWNER, name: '', traits: [trait('knight', 'Knight'), trait('healed', 'Healed')], groups: [] }],
+  owners: [{ id: PLAYER_OWNER, name: '', traits: [trait('knight', 'Knight'), trait('healed', 'Healed')], groups: [] }],
   active: {},
   entities: [{ id: 'wren', name: 'Wren' }],
   persona: { source: 'none' },
@@ -37,7 +37,7 @@ describe('ruleStates', () => {
   });
 
   it('reads a trait Condition from the input’s active sets, and Not flips it', () => {
-    const active = { [WORLD_OWNER]: ['knight'] };
+    const active = { [PLAYER_OWNER]: ['knight'] };
     const rows = [row({ kind: 'trait', id: 'knight', owner: { kind: 'you' } }), row({ kind: 'trait', id: 'healed', owner: { kind: 'you' }, not: true })];
     expect(ruleStates(input({ active }), 'wren', rows).map((r) => r.holds)).toEqual([true, true]);
     expect(ruleStates(input(), 'wren', rows).map((r) => r.holds)).toEqual([false, true]);
@@ -46,7 +46,7 @@ describe('ruleStates', () => {
   it('reads each row on its own, and a row holds only when every Condition does', () => {
     const rows = [row(lowHealth, { kind: 'trait', id: 'knight', owner: { kind: 'you' } })];
     expect(ruleStates(input(), 'wren', rows)[0].holds).toBe(false);
-    expect(ruleStates(input({ active: { [WORLD_OWNER]: ['knight'] } }), 'wren', rows)[0].holds).toBe(true);
+    expect(ruleStates(input({ active: { [PLAYER_OWNER]: ['knight'] } }), 'wren', rows)[0].holds).toBe(true);
   });
 });
 

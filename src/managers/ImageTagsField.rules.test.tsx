@@ -6,7 +6,7 @@ import ImageTagsField from './ImageTagsField';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { TraitStoreContext, type TraitStore } from '@/contexts/TraitStoreContext';
-import { editorGateInput } from '@/lib/bearers';
+import { editorGateInput } from '@/lib/owners';
 import { startingGateStats } from '@/lib/gateStats';
 import type { Entity, GalleryImage, Stat, Trait, TraitRequirementRow } from '@/types';
 

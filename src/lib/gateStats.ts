@@ -3,7 +3,7 @@
 import type { Entity, Stat, StatGroup } from '@/types';
 import { statMax, statMin, statStartValue } from './statDescriptorGeometry';
 import { playerStatsOf, resolvedEntityStats } from './statLinks';
-import { WORLD_OWNER, type GateStat, type GateStats } from './traitGates';
+import { PLAYER_OWNER, type GateStat, type GateStats } from './traitGates';
 
 /** A stat at its authored start, on its authored min→max. */
 export const startingGateStat = (stat: Stat): GateStat => ({
@@ -20,7 +20,7 @@ const byId = (stats: readonly Stat[]): Record<string, GateStat> =>
 
 /** Each owner's stats at their authored start: the player's under the world owner, each entity's under its id. */
 export const startingGateStatsOf = (player: readonly Stat[], entities: Readonly<Record<string, readonly Stat[]>>): GateStats => ({
-  [WORLD_OWNER]: byId(player),
+  [PLAYER_OWNER]: byId(player),
   ...Object.fromEntries(Object.entries(entities).map(([id, stats]) => [id, byId(stats)])),
 });
 

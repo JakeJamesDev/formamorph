@@ -35,8 +35,8 @@ export function StatDropRefusalNotice({ refusal, placeholders, onDismiss }: {
       case 'blueprint-linked':
         return (
           <>
-            {name} stays in Blueprints, because {joinedList(refusal.bearers.map(bold))}{' '}
-            {refusal.bearers.length === 1 ? 'links' : 'link'} to it or to something in it. Remove those links first.
+            {name} stays in Blueprints, because {joinedList(refusal.owners.map(bold))}{' '}
+            {refusal.owners.length === 1 ? 'links' : 'link'} to it or to something in it. Remove those links first.
           </>
         );
       case 'root':

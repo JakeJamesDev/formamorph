@@ -16,7 +16,7 @@ export interface TraitBlock {
   /** The group the traits sit in directly, whose pick count governs them; null outside any group. */
   group: TraitGroup | null;
   traits: Trait[];
-  /** Set when the block sits in an entity node's subtree: the bearer whose traits these are. */
+  /** Set when the block sits in an entity node's subtree: the owner whose traits these are. */
   entityId?: string;
   /** Set on the entity node's own block, which wears the node's heading. */
   entityNode?: true;
@@ -77,18 +77,18 @@ export function buildTraitSections(
     const blocks: TraitBlock[] = [];
     const walk = (node: Extract<TraitTreeNode, { kind: 'group' }>, path: string[], within?: string) => {
       const own = leaves(node.children);
-      const bearer = entity(node.id, within);
+      const owner = entity(node.id, within);
       if (own.length > 0) {
         blocks.push({
           key: `g:${node.id}`,
           subheader: path.length > 0 ? path.join(' › ') : null,
           group: node.group,
           traits: own,
-          ...bearer,
+          ...owner,
           ...(entityNodeIds.has(node.id) ? { entityNode: true as const } : {}),
         });
       }
-      for (const child of subgroups(node.children).filter(holdsTraits)) walk(child, [...path, child.group.name], bearer.entityId);
+      for (const child of subgroups(node.children).filter(holdsTraits)) walk(child, [...path, child.group.name], owner.entityId);
     };
     walk(top, []);
     sections.push({ key: `g:${top.id}`, name: top.group.name, blocks, ...entity(top.id) });
@@ -108,10 +108,10 @@ export interface TraitSectionView {
 
 export interface TraitSectionViewOptions {
   query: string;
-  /** Whether the trait is off in the block's bearer's tree; the world's when the block names none. */
-  isOff: (traitId: string, bearerId?: string) => boolean;
+  /** Whether the trait is off in the block's owner's tree; the player's when the block names none. */
+  isOff: (traitId: string, ownerId?: string) => boolean;
   /** The description as the player reads it; defaults to the raw authored text. */
-  describe?: (trait: Trait, bearerId?: string) => string;
+  describe?: (trait: Trait, ownerId?: string) => string;
 }
 
 /**
@@ -124,17 +124,17 @@ export function viewTraitSection(
   { query, isOff, describe = (t) => t.playerDescription ?? '' }: TraitSectionViewOptions,
 ): TraitSectionView | null {
   const q = query.trim().toLowerCase();
-  const matches = (t: Trait, bearerId?: string) =>
-    q === '' || t.name.toLowerCase().includes(q) || describe(t, bearerId).toLowerCase().includes(q);
+  const matches = (t: Trait, ownerId?: string) =>
+    q === '' || t.name.toLowerCase().includes(q) || describe(t, ownerId).toLowerCase().includes(q);
 
-  const split = (keep: (t: Trait, bearerId?: string) => boolean): TraitBlock[] =>
+  const split = (keep: (t: Trait, ownerId?: string) => boolean): TraitBlock[] =>
     section.blocks
       .map((b) => ({ ...b, traits: b.traits.filter((t) => matches(t, b.entityId) && keep(t, b.entityId)) }))
       .filter((b) => b.traits.length > 0);
 
   // A Hidden trait never shows (Q13), and a dormant Always On trait isn't shown at all (Q15).
-  const enabled = split((t, bearerId) => !isOff(t.id, bearerId) && !isHidden(t));
-  const disabled = split((t, bearerId) => isOff(t.id, bearerId) && !isAlwaysOn(t));
+  const enabled = split((t, ownerId) => !isOff(t.id, ownerId) && !isHidden(t));
+  const disabled = split((t, ownerId) => isOff(t.id, ownerId) && !isAlwaysOn(t));
   const count = (blocks: TraitBlock[]) => blocks.reduce((n, b) => n + b.traits.length, 0);
   if (enabled.length === 0 && disabled.length === 0) return null;
   return { enabled, disabled, enabledCount: count(enabled), disabledCount: count(disabled) };

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { gateLine } from './traitGateLine';
-import { WORLD_OWNER, gateOf, gateStates, type ConditionState, type GateInput, type GateOwner, type GateState } from './traitGates';
+import { PLAYER_OWNER, gateOf, gateStates, type ConditionState, type GateInput, type GateOwner, type GateState } from './traitGates';
 import type { Trait, TraitRequirement } from '@/types';
 
 const c = (text: string, holds = false, hidden = false): ConditionState => ({ text, holds, unresolved: false, hidden });
@@ -57,13 +57,13 @@ describe('gateLine with Not Conditions', () => {
   const lineOf = (gated: Trait, active: string[] = [], extra: Partial<GateInput> = {}) => {
     const traits = [T('Knight', { groupId: 'Class' }), T('Paladin'), T('Mercenary'), T('Bond', { mode: 'hidden' }), gated];
     const input: GateInput = {
-      owners: [{ id: WORLD_OWNER, name: '', traits, groups: [{ id: 'Class', name: 'Class', parentId: null }] }, wolf],
-      active: { [WORLD_OWNER]: active },
+      owners: [{ id: PLAYER_OWNER, name: '', traits, groups: [{ id: 'Class', name: 'Class', parentId: null }] }, wolf],
+      active: { [PLAYER_OWNER]: active },
       entities: [{ id: 'wolf', name: 'Ash' }, { id: 'aldric', name: 'Sir Aldric', persona: true }],
       persona: { source: 'none' },
       ...extra,
     };
-    return gateLine(gateOf(gateStates(input), WORLD_OWNER, gated.id));
+    return gateLine(gateOf(gateStates(input), PLAYER_OWNER, gated.id));
   };
 
   it('reads "not X" inside the rule', () => {
@@ -72,7 +72,7 @@ describe('gateLine with Not Conditions', () => {
     expect(lineOf(smarts, ['Knight'])).toBe('Unlocked by Knight and not Paladin');
   });
 
-  it('reads Not on a group, a persona, and a bearer (Q11)', () => {
+  it('reads Not on a group, a persona, and an owner (Q11)', () => {
     const many = T('Drifter', {
       requires: [
         { all: [not({ kind: 'playingAs', id: 'aldric' }), not(trait('Tamed', { owner: { kind: 'entity', id: 'wolf' } }))] },

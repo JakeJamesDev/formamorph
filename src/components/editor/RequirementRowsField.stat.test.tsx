@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { RequirementRowsField } from './RequirementRowsField';
 import { requirementStatSections } from '@/lib/requirementStatOptions';
-import { WORLD_OWNER, conditionTexts, type GateInput, type GateStat, type RowState } from '@/lib/traitGates';
+import { PLAYER_OWNER, conditionTexts, type GateInput, type GateStat, type RowState } from '@/lib/traitGates';
 import type { TraitRequirement, TraitRequirementRow } from '@/types';
 
 const S = (name: string, extra: Partial<GateStat> = {}): GateStat => ({ name, value: 10, min: 0, max: 100, ...extra });
@@ -13,12 +13,12 @@ const entities = [{ id: 'ash', name: 'Ash' }];
 const input: Pick<GateInput, 'owners' | 'entities' | 'stats'> = {
   owners: [],
   entities,
-  stats: { [WORLD_OWNER]: { rage: S('Rage'), gold: S('Gold') }, ash: { hunger: S('Hunger') } },
+  stats: { [PLAYER_OWNER]: { rage: S('Rage'), gold: S('Gold') }, ash: { hunger: S('Hunger') } },
 };
 const textOf = conditionTexts(input);
 
 /** The field over real stat sections and the real rule text, with edits that land. */
-function Harness({ initial = [], owner = WORLD_OWNER, offWorld = false, onOpen = () => {} }: {
+function Harness({ initial = [], owner = PLAYER_OWNER, offWorld = false, onOpen = () => {} }: {
   initial?: TraitRequirementRow[];
   owner?: string;
   offWorld?: boolean;

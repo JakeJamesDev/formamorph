@@ -148,11 +148,11 @@ export interface StatChange {
   type?: 'min' | 'max' | 'starting' | 'regen';
   /** Stat-update cadence, e.g. 'hour'. */
   interval?: string;
-  /** On a trait the player can bear, the world player stat, even where the bearer owns a stat with this id. */
+  /** On a trait the player can have, the world player stat, even where the owner owns a stat with this id. */
   target?: StatRowTarget;
 }
 
-/** Which owner's stat a bearer's trait row names when the id alone could mean two. */
+/** Whose stat an owner's trait row names when the id alone could mean two. */
 export type StatRowTarget = 'player';
 
 /** A stat this trait switches on or off while active; overrides the stat's own `enabled` default. */
@@ -166,8 +166,8 @@ export interface TraitStatToggle {
 /** A placeholder its source forces to a fixed value while the source is active, masking that playthrough's
  *  roll. The one shape every source carries: a trait, a location, a stat descriptor, a placeholder value. */
 export interface PlaceholderPin {
-  /** The target's id. A trait pin may name a blueprint placeholder: on each bearer it then traces to that
-   *  bearer's copy (see lib/blueprints). */
+  /** The target's id. A trait pin may name a blueprint placeholder: on each owner it then traces to that
+   *  owner's copy (see lib/blueprints). */
   placeholderId: string;
   value: string;
   /** The pinned value's id, when the pin names one the placeholder carries. Preferred over `value`, so a
@@ -190,9 +190,6 @@ export type BlueprintOverrides<T> = { [K in keyof T]?: BlueprintOverride<T[K]> }
 export type RequirementOwner =
   | { kind: 'you' }
   | { kind: 'entity'; id: string; name?: string };
-
-/** Alias kept while call sites move to {@link RequirementOwner}. */
-export type RequirementBearer = RequirementOwner;
 
 /** How a stat Condition compares the stat to its number. */
 export type StatComparison = '>' | '<' | '>=' | '<=' | '=' | '≠';
@@ -257,7 +254,7 @@ export interface TreePlacement {
   order: number;
 }
 
-/** A node under a bearer that points at a world trait or group, the original, and reads it live. It stores
+/** A node under an owner that points at a world trait or group, the original, and reads it live. It stores
  *  only its own place and per-link data; the original's text, gates and pins reach every link. */
 export interface TraitLink {
   id: string;
@@ -266,9 +263,9 @@ export interface TraitLink {
   kind: 'trait' | 'group';
   /** The original's name when the link was stored, so it travels off-world and rebinds by name. */
   originalName: string;
-  /** null = the bearer's root; otherwise one of the bearer's own groups. */
+  /** null = the owner's root; otherwise one of the owner's own groups. */
   groupId: string | null;
-  /** Sibling order among the bearer's items sharing the same parent. */
+  /** Sibling order among the owner's items sharing the same parent. */
   order?: number;
   /** Original trait id → this link's overrides on that trait. A trait absent here, or a field absent in its
    *  map, reads the original live. A linked group keys its children here. */
@@ -345,7 +342,7 @@ export interface Entity {
    *  scene. Read only with the Persona mark. */
   personaOnly?: boolean;
   /** Marks the entity as the Custom Persona: the player's own entity under None and under a library persona,
-   *  never in the cast (see lib/bearers). At most one per world, at the root. Excludes the Persona marks and
+   *  never in the cast (see lib/owners). At most one per world, at the root. Excludes the Persona marks and
    *  implies persona-only. */
   customPersona?: boolean;
   /** Where a world persona begins, flagged as a starting location or not. Absent = Automatic: the first of
@@ -393,18 +390,18 @@ export interface Entity {
   openingWeights?: Record<string, number>;
   /** Traits this entity owns. They describe it to the AI, and join the player's traits when the player plays
    *  as it. Their stat changes and toggles act on the entity's own stats, and on the world's player stats where
-   *  the entity is a player bearer and does not own the stat. Ids are unique across the world and every entity. */
+   *  the entity is a player owner and does not own the stat. Ids are unique across the world and every entity. */
   traits?: Trait[];
   /** Groups for this entity's own traits, nestable via `parentId` like the world's. */
   traitGroups?: TraitGroup[];
-  /** Links to world traits and groups, placed among the entity's own items (see lib/bearers). Each original
+  /** Links to world traits and groups, placed among the entity's own items (see lib/owners). Each original
    *  appears at most once in the entity's tree, directly or through a linked group. */
   traitLinks?: TraitLink[];
   /** Where this entity's node sits in the world's Traits tree: a world group and a sibling order. Absent,
    *  or a group that no longer exists, = the end of the top level. */
   traitPlacement?: TreePlacement;
   /** Stats this entity owns: the world stat type, every field. Order is list order. Absent = none. In play
-   *  they are the entity's own values, and the player's when the entity is a player bearer. */
+   *  they are the entity's own values, and the player's when the entity is a player owner. */
   stats?: Stat[];
   /** Groups for this entity's own stats, nestable via `parentId` like the world's. */
   statGroups?: StatGroup[];
@@ -743,7 +740,7 @@ export interface Placeholder {
   valueOverrides?: Record<string, CopyValueOverrides>;
   /** The editor folder this placeholder sits in on the Placeholders tab; null/absent = ungrouped. Only a
    *  shared placeholder is grouped: a scoped one sits under its entity or book, an owned one under its
-   *  holder. Editor-only, never sent to the AI, and dropped from card and dictionary exports. */
+   *  parent placeholder. Editor-only, never sent to the AI, and dropped from card and dictionary exports. */
   groupId?: string | null;
 }
 
@@ -802,7 +799,7 @@ export interface PlaceholderGroup {
   /** Sibling order among groups sharing the same parent. */
   order?: number;
   /** `blueprints` marks the world's Blueprints group: its shared placeholders are blueprints, read per
-   *  bearer through copies and never as World placeholders. At most one, at the top level. */
+   *  owner through copies and never as World placeholders. At most one, at the top level. */
   system?: 'blueprints';
 }
 

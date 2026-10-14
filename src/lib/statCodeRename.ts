@@ -86,7 +86,7 @@ type NameRenames = ReadonlyMap<string, string>;
  * Resolution rather than name matching is what keeps a rename of Molly's `Hair` off a world-level
  * `placeholders.Hair`. More than one key can move at once: an owner named through a chip is renamed by the
  * same edit that renames the placeholder behind the chip. Each prefix goes through the one walk, so a key that lost to a
- * member of its holder is left alone here exactly as it is everywhere else.
+ * member of its parent is left alone here exactly as it is everywhere else.
  */
 function pathSplices(
   map: PlaceholderPathMap, chain: readonly CodeRenameKey[], renames: PathRenames, start: PlaceholderPathNode | null = null,

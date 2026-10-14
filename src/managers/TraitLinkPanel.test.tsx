@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { useState, type ReactNode } from 'react';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { TraitStoreContext, type TraitStore } from '@/contexts/TraitStoreContext';
-import { editorGateInput } from '@/lib/bearers';
+import { editorGateInput } from '@/lib/owners';
 import type { LinkRow } from '@/lib/traitTree';
 import { LinkedFromLine, LinkedTraitManager, LinkFooter, ThisLinkSection } from './TraitLinkPanel';
 import type { TraitPanelTab } from '@/views/traitPanelTabs';
@@ -92,7 +92,7 @@ describe('LinkedFromLine', () => {
 const radio = (row: string, label: string) => within(screen.getByRole('radiogroup', { name: row })).getByRole('radio', { name: label });
 
 describe('LinkedTraitManager', () => {
-  it("writes an edit as this link's override; the original and another bearer's link stay as they were", () => {
+  it("writes an edit as this link's override; the original and another owner's link stay as they were", () => {
     const updateTrait = vi.fn();
     const seen = renderLink([ashLinks(), mira], { updateTrait });
     expect(screen.queryByRole('button', { name: /^Reset/ })).toBeNull();

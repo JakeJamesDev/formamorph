@@ -42,7 +42,7 @@ describe('buildTraitWorkspace with entity nodes', () => {
     ]);
   });
 
-  it('gives a linked group under an entity its own page in that entity, so two bearers of one group get two pages', () => {
+  it('gives a linked group under an entity its own page in that entity, so two owners of one group get two pages', () => {
     const classes = { id: 'classes', name: 'Classes', parentId: 'blueprints', order: 0 };
     const link = (id: string, order: number) => ({ id, originalId: 'classes', kind: 'group' as const, originalName: 'Classes', groupId: null, order });
     const tree = ownerTraitTree({

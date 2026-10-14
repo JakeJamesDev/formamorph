@@ -295,11 +295,11 @@ export function newLocationPosition(
   const nested = parentId !== null && locations.some((l) => l.id === parentId);
   const originX = nested ? GROUP_PADDING : 0;
   const originY = nested ? GROUP_HEADER : 0;
-  const holder = nested ? parentId : null;
+  const parent = nested ? parentId : null;
   const nodes = buildLocationCanvas(locations, []).nodes;
   let bottom: number | null = null;
   for (const loc of locations) {
-    if (holderOf(locations, loc) !== holder) continue;
+    if (holderOf(locations, loc) !== parent) continue;
     const node = nodes.find((n) => n.id === loc.id);
     if (node) bottom = Math.max(bottom ?? originY, node.position.y + node.height);
   }
