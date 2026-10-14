@@ -6,6 +6,7 @@ import {
   applyAiMaxChanges,
   pageStatDeltas,
   appliedStatDeltas,
+  sumDeltas,
   applyRegen,
 } from './statChanges';
 import { deriveEffectiveStats } from './traitRuntime';
@@ -104,6 +105,22 @@ describe('appliedStatDeltas', () => {
     const before = [stat('Rampage', 30)];
     const after = applyAiStatChanges(before, { rampage: 5 });
     expect(appliedStatDeltas(before, after)).toEqual({ rampage: 5 });
+  });
+});
+
+describe('sumDeltas', () => {
+  it('adds a stat that moved in both runs and keeps one that moved in a single run', () => {
+    expect(sumDeltas({ health: 10, mana: -2 }, { health: 5, rage: 1 })).toEqual({ health: 15, mana: -2, rage: 1 });
+  });
+
+  it('drops a stat the two runs return to where it began', () => {
+    expect(sumDeltas({ health: 10 }, { health: -10 })).toEqual({});
+  });
+
+  it('leaves both inputs as they were', () => {
+    const first = { health: 10 };
+    sumDeltas(first, { health: 1 });
+    expect(first).toEqual({ health: 10 });
   });
 });
 
