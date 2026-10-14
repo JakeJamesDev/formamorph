@@ -589,7 +589,7 @@ It differs from the Searchable Group Picker. That pattern is a Dialog for an unb
 - **Search.** The search field always shows. It matches a row's name and its full breadcrumb, with no sorting.
 - **Rows.** Rows keep the order of the matching editor tab. A group is never a row. It shows only as a breadcrumb segment.
 - **Hint.** A row can carry a right-aligned hint that is not a location. A hint never collapses and has no tooltip.
-- **Caller page.** A caller can replace the list with its own page, such as Add Requirement's bearer page.
+- **Caller page.** A caller can replace the list with its own page, such as Add Requirement's owner page.
 - **Check column.** A picker with a value reserves a check column. Every row that holds the value shows a check.
 
 ### Row layout and collapse
@@ -1215,7 +1215,7 @@ The reference's mobile section selector previews the current prompt's sections; 
 
 Prompt and section labels reuse the production registry. The reference's title and selector label name their controls; it adds no instructional prose.
 
-## Pattern: Bearer Flyouts
+## Pattern: Owner Flyouts
 
 **Purpose:** Pick one entity from the world's entity groups without leaving the Traits tab.
 
@@ -1237,15 +1237,15 @@ This pattern differs from two others on purpose. Its entity list sits inside the
 
 | Need | Component |
 | --- | --- |
-| Levels, Back row, check column | `BearerList` in [`BearerPicker.tsx`](../src/managers/BearerPicker.tsx) |
-| Rows and levels | `bearerChoices` in [`bearerChoices.ts`](../src/lib/bearerChoices.ts) |
+| Levels, Back row, check column | `OwnerList` in [`OwnerPicker.tsx`](../src/managers/OwnerPicker.tsx) |
+| Rows and levels | `ownerChoices` in [`ownerChoices.ts`](../src/lib/ownerChoices.ts) |
 | Menu row | `MENU_ROW` in [`menuRow.ts`](../src/components/menuRow.ts) |
-| Link button | `LinkToBearerButton` in [`BearerPicker.tsx`](../src/managers/BearerPicker.tsx) |
+| Link button | `LinkToOwnerButton` in [`OwnerPicker.tsx`](../src/managers/OwnerPicker.tsx) |
 | Refusal reasons and their text | `HeldReason` and `heldReasonText` in [`heldReasons.ts`](../src/lib/heldReasons.ts) |
 | **+** menu drill-in | `traitsMenu` in [`WorldEditor.tsx`](../src/views/WorldEditor.tsx) |
-| Isolated reference | [`BearerFlyoutReference.tsx`](../src/components/design-system/BearerFlyoutReference.tsx) |
+| Isolated reference | [`OwnerFlyoutReference.tsx`](../src/components/design-system/OwnerFlyoutReference.tsx) |
 
-Open `#dev?modal=designSystem&tab=bearer-flyouts`. The reference uses sample entities and local state. It never reads or writes a world.
+Open `#dev?modal=designSystem&tab=owner-flyouts`. The reference uses sample entities and local state. It never reads or writes a world.
 
 ### Responsive behavior
 

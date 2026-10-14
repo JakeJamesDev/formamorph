@@ -67,7 +67,7 @@ function renderLink(entities: Entity[], { tab = 'availability' as TraitPanelTab,
         const ash = all.find((e) => e.id === 'ash')!;
         return (
           <LinkedTraitManager
-            bearer={ash} link={ash.traitLinks![0]} original={traits[0]}
+            owner={ash} link={ash.traitLinks![0]} original={traits[0]}
             onOpenTrait={vi.fn()} tab={tab} onTabChange={vi.fn()}
           />
         );
@@ -188,7 +188,7 @@ describe('LinkFooter', () => {
       <Harness entities={[entity]}>
         {([e]) => {
           seen.entity = e;
-          return <LinkFooter bearer={e} row={pick(e)} onEditBlueprint={onEditBlueprint} />;
+          return <LinkFooter owner={e} row={pick(e)} onEditBlueprint={onEditBlueprint} />;
         }}
       </Harness>,
     );

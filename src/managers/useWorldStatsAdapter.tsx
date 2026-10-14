@@ -18,7 +18,7 @@ import {
 } from '@/lib/statLinks';
 import type { FindingSection } from '@/lib/testBench/rules';
 import { alsoDeletesLinks } from './useRemoveWorldTrait';
-import { StatLinkToButton } from './BearerPicker';
+import { StatLinkToButton } from './OwnerPicker';
 import { randomUUID } from '@/lib/uuid';
 import type { FocusFieldHint, Stat } from '@/types';
 import type { EntityPanelTab } from '@/views/entityPanelTabs';

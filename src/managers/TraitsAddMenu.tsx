@@ -5,8 +5,8 @@ import { ListMenuRow } from '@/components/ListToolbar';
 import { useListAdd } from '@/components/listToolbarHooks';
 import { MENU_ROW } from '@/components/menuRow';
 import { DrillSlide, type SlideFrom } from '@/components/DrillSlide';
-import { BearerList } from '@/managers/BearerPicker';
-import { bearerChoices } from '@/lib/bearerChoices';
+import { OwnerList } from '@/managers/OwnerPicker';
+import { ownerChoices } from '@/lib/ownerChoices';
 import type { Entity, EntityGroup } from '@/types';
 
 /** What the + menu's drill-in adds to an entity. */
@@ -46,8 +46,8 @@ export function TraitsAddMenu({
   return (
     <DrillSlide key={drilled ?? ''} from={from}>
       {drilled ? (
-        <BearerList
-          choices={bearerChoices(entityGroups, entities)}
+        <OwnerList
+          choices={ownerChoices(entityGroups, entities)}
           label="Entities"
           onPick={(id) => add((typed) => onAddToEntity(drilled, id, typed))}
           back={{ label: TO_ENTITY_LABEL[drilled], onBack: () => drill(null) }}

@@ -4,7 +4,7 @@ import { ListMenuRow } from '@/components/ListToolbar';
 import { useListAdd } from '@/components/listToolbarHooks';
 import { MENU_ROW } from '@/components/menuRow';
 import { DrillSlide, type SlideFrom } from '@/components/DrillSlide';
-import { BearerList } from '@/managers/BearerPicker';
+import { OwnerList } from '@/managers/OwnerPicker';
 import { statBlueprintChoices, type StatLinkWorld } from '@/lib/statLinks';
 
 /** A Blueprint stat row carries no icon. */
@@ -30,7 +30,7 @@ export function EntityStatsAddMenu({ world, refusal, onAddGroup, onAddStat, onLi
   return (
     <DrillSlide key={drilled ? 'link' : ''} from={from}>
       {drilled ? (
-        <BearerList
+        <OwnerList
           choices={choices}
           label="Blueprints"
           leafIcon={NO_ICON}

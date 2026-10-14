@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, type ReactNode } from 'react';
-import { bearerPreview } from '@/lib/ownedTraitsInPlay';
+import { ownerPreview } from '@/lib/ownedTraitsInPlay';
 import { useTraitStore } from '@/contexts/TraitStoreContext';
 import { useEditingDraft } from '@/lib/useEditingDraft';
 import { Label } from "@/components/ui/label";
@@ -20,7 +20,7 @@ import { statCodeName } from '@/lib/statCodeNames';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { traitConflicts, type TraitConflict } from '@/lib/traitEffects';
 import { updateOwnedTrait } from '@/lib/ownedTraits';
-import { canBePlayer } from '@/lib/bearers';
+import { canBePlayer } from '@/lib/owners';
 import { statRows, statRowSide, type StatRow, type StatRowSide } from '@/lib/traitTree';
 import { useEditorMode } from '@/lib/editorMode';
 import { HelpButton } from '@/components/HelpButton';
@@ -36,7 +36,7 @@ import { fieldFrame } from '@/lib/historyField';
 /** A link's edit of one trait it brings: which fields it overrides, which of those the blueprint changed
  *  since, and where a whole-trait write and a field reset go. */
 export interface TraitLinkEdit {
-  bearerId: string;
+  ownerId: string;
   overridden: readonly (keyof TraitLinkFields)[];
   stale: readonly (keyof TraitLinkFields)[];
   write: (next: Trait) => void;
@@ -74,10 +74,10 @@ const ConflictNote = ({ conflict, placeholders, onOpen }: {
 
 /** The line under a world persona's stat sections when its traits change a player stat, which they do only
  *  while it is played. The Custom Persona entity's traits are the player's, so it gets none. */
-export function OwnerStatNote({ bearer, traits }: { bearer: Entity; traits: readonly Trait[] }) {
+export function OwnerStatNote({ owner, traits }: { owner: Entity; traits: readonly Trait[] }) {
   const { stats, statGroups } = useTraitStore();
-  if (!bearer.persona || bearer.customPersona) return null;
-  const sideOf = bearerRowSide({ stats, statGroups: statGroups ?? [] }, bearer);
+  if (!owner.persona || owner.customPersona) return null;
+  const sideOf = ownerRowSide({ stats, statGroups: statGroups ?? [] }, owner);
   const named = traits.flatMap(statRows).some((row) => sideOf(row) === 'player');
   return named ? <Hint>Player stat changes apply only when you play as them</Hint> : null;
 }
@@ -85,17 +85,17 @@ export function OwnerStatNote({ bearer, traits }: { bearer: Entity; traits: read
 /** Alias kept while call sites move to {@link OwnerStatNote}. */
 export const BearerStatNote = OwnerStatNote;
 
-/** Whose stat each of a bearer's trait rows moves, as play routes it. */
-const bearerRowSide = (world: { stats: Stat[]; statGroups: StatGroup[] }, bearer: Entity) => {
-  const own = new Set(resolvedEntityStats(world, bearer).map((s) => s.id));
+/** Whose stat each of an owner's trait rows moves, as play routes it. */
+const ownerRowSide = (world: { stats: Stat[]; statGroups: StatGroup[] }, owner: Entity) => {
+  const own = new Set(resolvedEntityStats(world, owner).map((s) => s.id));
   const player = new Set(playerStatsOf(world.stats, world.statGroups).map((s) => s.id));
-  return (row: StatRow) => statRowSide(row, own, player, canBePlayer(bearer));
+  return (row: StatRow) => statRowSide(row, own, player, canBePlayer(owner));
 };
 
-/** The picker value of a player stat on a bearer's trait, kept apart from an own stat with the same id. */
+/** The picker value of a player stat on an owner's trait, kept apart from an own stat with the same id. */
 const PLAYER_ITEM = 'player:';
 
-/** A stat row's picker value: its Player item when it moves a player stat on a bearer. */
+/** A stat row's picker value: its Player item when it moves a player stat on an owner. */
 const pickerValue = (row: StatRow, side: StatRowSide) => (side === 'player' ? PLAYER_ITEM + row.statId : row.statId);
 
 /** `row` pointed at the stat a picker value names; a Player item targets the player. */
@@ -111,7 +111,7 @@ function pickedRow<R extends StatRow>(row: R, value: string): R {
 interface StatChoices {
   label?: string;
   stats: readonly Stat[];
-  /** The list of a bearer's player stats, whose items target the player. */
+  /** The list of an owner's player stats, whose items target the player. */
   player?: boolean;
 }
 
@@ -175,12 +175,12 @@ const TraitManager = ({
     updateTrait, editEntity, stats, statGroups, placeholders, placementLetters, placeholderOwners, traits, traitGroups, pinWorld, entities,
   } = useTraitStore();
   const ownerId = owner?.id;
-  // A link or an owned trait previews as its bearer's text: the bearer's name, copies and pins.
-  const bearer = link ? entities.find((e) => e.id === link.bearerId) : owner;
-  const bearerId = bearer?.id;
+  // A link or an owned trait previews as its owner's text: the owner's name, copies and pins.
+  const traitOwner = link ? entities.find((e) => e.id === link.ownerId) : owner;
+  const traitOwnerId = traitOwner?.id;
   const preview = useMemo(
-    () => (bearerId ? bearerPreview({ traits, traitGroups, entities }, placeholders, placeholders, bearerId, trait.id) ?? undefined : undefined),
-    [bearerId, traits, traitGroups, entities, placeholders, trait.id],
+    () => (traitOwnerId ? ownerPreview({ traits, traitGroups, entities }, placeholders, placeholders, traitOwnerId, trait.id) ?? undefined : undefined),
+    [traitOwnerId, traits, traitGroups, entities, placeholders, trait.id],
   );
   // A link shows its original's text, which the world holds.
   const traitField = useMemo(() => ({ owned: !!owner && !link }), [owner, link]);
@@ -226,10 +226,10 @@ const TraitManager = ({
   const updateStatToggle = (index: number, patch: Partial<TraitStatToggle>) =>
     setStatToggles(statToggles.map((t, i) => (i === index ? { ...t, ...patch } : t)));
 
-  // A bearer's rows route to its own stats or the player's; world traits rival only the ones on the player's.
+  // An owner's rows route to its own stats or the player's; world traits rival only the ones on the player's.
   const statWorld = { stats, statGroups: statGroups ?? [] };
-  const rowSide = bearer ? bearerRowSide(statWorld, bearer) : () => null;
-  const playerToggles = bearer ? statToggles.filter((toggle) => rowSide(toggle) === 'player') : statToggles;
+  const rowSide = traitOwner ? ownerRowSide(statWorld, traitOwner) : () => null;
+  const playerToggles = traitOwner ? statToggles.filter((toggle) => rowSide(toggle) === 'player') : statToggles;
   // Computed off the saved world (edits write through on every keystroke), so the note follows a drag or a
   // change in another trait without any extra plumbing.
   const conflicts = traitConflicts({ ...editingTrait, statToggles: playerToggles }, traits, traitGroups);
@@ -255,12 +255,12 @@ const TraitManager = ({
   if (!editingTrait) return null;
 
   const tabs = traitPanelTabsFor(advanced);
-  // A bearer's trait changes the bearer's own stats; one the player can play also changes the player's.
+  // An owner's trait changes the owner's own stats; one the player can play also changes the player's.
   const statLabel = (name: string) => labelPlaceholders(name, placeholders, { letters: placementLetters, owners: placeholderOwners });
-  // A bearer's own stats include its links; the player's leave the Blueprints out.
-  const statChoices: StatChoices[] = !bearer ? [{ stats }] : [
-    { label: statLabel(bearer.name), stats: resolvedEntityStats(statWorld, bearer) },
-    ...(canBePlayer(bearer) ? [{ label: 'Player', stats: playerStatsOf(stats, statWorld.statGroups), player: true }] : []),
+  // An owner's own stats include its links; the player's leave the Blueprints out.
+  const statChoices: StatChoices[] = !traitOwner ? [{ stats }] : [
+    { label: statLabel(traitOwner.name), stats: resolvedEntityStats(statWorld, traitOwner) },
+    ...(canBePlayer(traitOwner) ? [{ label: 'Player', stats: playerStatsOf(stats, statWorld.statGroups), player: true }] : []),
   ];
   const shownTab = tabs.some((t) => t.value === tab) ? tab : 'details';
 
@@ -305,7 +305,7 @@ const TraitManager = ({
         value={editingTrait.playerDescription || ''}
         onChange={(v) => handleChange('playerDescription', v)}
         placeholders={placeholders}
-        ownerName={bearer?.name}
+        ownerName={traitOwner?.name}
         ownerPreview={preview}
         readOnly={readOnly}
         resizable
@@ -317,7 +317,7 @@ const TraitManager = ({
         value={editingTrait.aiDescription || ''}
         onChange={(v) => handleChange('aiDescription', v)}
         placeholders={placeholders}
-        ownerName={bearer?.name}
+        ownerName={traitOwner?.name}
         ownerPreview={preview}
         readOnly={readOnly}
         resizable
@@ -334,7 +334,7 @@ const TraitManager = ({
         onChange={setRequires}
         onOpen={openRequirement}
         opens={requirementOpens}
-        bearerId={link?.bearerId}
+        bearerId={link?.ownerId}
         labelAside={resetControl('requires', 'Requires')}
       />
       {availabilityFooter}
@@ -343,7 +343,7 @@ const TraitManager = ({
 
   const statsPanel = (
     <>
-      {owner && !link && <OwnerStatNote bearer={owner} traits={[editingTrait]} />}
+      {owner && !link && <OwnerStatNote owner={owner} traits={[editingTrait]} />}
       <div data-tour-anchor="trait-stat-changes" className="space-y-2">
         <LabelRow reset={resetControl('statChanges', 'Stat Changes')}>
           <Label>Stat Changes</Label>

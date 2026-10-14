@@ -131,7 +131,7 @@ const EntityTraitsEditor = ({ store, layout, selectedId, onSelect, onOpenEntity,
           <div key={id}>
             {linkedTrait ? (
               <LinkedTraitManager
-                bearer={bearer}
+                owner={bearer}
                 link={linkRow.link}
                 original={linkedTrait}
                 onOpenTrait={openHeld}
@@ -176,7 +176,7 @@ const EntityTraitsEditor = ({ store, layout, selectedId, onSelect, onOpenEntity,
     names: { placeholders },
     noun: 'traits',
     detail,
-    footer: () => (linkRow && !linkRow.unbound ? <LinkFooter bearer={bearer} row={linkRow} /> : undefined),
+    footer: () => (linkRow && !linkRow.unbound ? <LinkFooter owner={bearer} row={linkRow} /> : undefined),
     add: {
       label: `Add to ${entityName}`,
       menu: (

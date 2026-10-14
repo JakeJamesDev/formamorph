@@ -221,7 +221,7 @@ const traitRows = (path: Path, traits: readonly TraitPlace[]): VariableNameRow[]
   }));
 
 /** The Owner group's header. */
-const OWNER_INFO = 'The entity that owns this stat, with its own stats, traits and placeholders. It’s the bearer the code runs for in a Blueprint stat, and empty in a world stat.';
+const OWNER_INFO = 'The entity that owns this stat, with its own stats, traits and placeholders. A Blueprint stat’s code runs once for each owner. It’s empty in a world stat.';
 
 /**
  * Builds the Variable menu's top level. Without `names`, every name list is one type-over row. `stats` lists the

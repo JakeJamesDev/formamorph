@@ -35,7 +35,7 @@ export function OwnerFlyoutReference() {
   const [linked, setLinked] = useState(() => new Set(['albus']));
   const [status, setStatus] = useState('The sample has no new trait.');
   return (
-    <section aria-label="Bearer Flyouts" className="flex flex-wrap items-start gap-6 rounded-lg border bg-background p-4">
+    <section aria-label="Owner Flyouts" className="flex flex-wrap items-start gap-6 rounded-lg border bg-background p-4">
       <div className="space-y-2">
         <Popover open={addOpen} onOpenChange={(open) => { setAddOpen(open); setDrilled(false); setFrom(null); }}>
           <PopoverTrigger asChild><ListAddButton label="Add to Traits" /></PopoverTrigger>

@@ -89,7 +89,7 @@ describe('RequirementRowsField without a trait or a store', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Add Requirement' }));
       fireEvent.click(await screen.findByRole('option', { name: /^Brave/ }));
       expect(screen.getByRole('button', { name: 'Back to targets' })).toBeInTheDocument();
-      expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Same BearerWhoever has the trait', 'You']);
+      expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Same OwnerWhoever has the trait', 'You']);
     });
   });
 });
