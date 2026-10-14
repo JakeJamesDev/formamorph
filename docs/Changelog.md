@@ -93,6 +93,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Gallery images in world and card JSON are now objects that can carry a Visibility rule.** Each `images` element is `{ data, requires? }`, and string galleries migrate on load. A card's `extraImages` follow, and `primaryImageRequires` holds slot 0's rule.
   - **`entity-stats-probe.cli.ts` compares three request shapes for entity stats against today's stat pass.** One call with text lines, one call per entity, and one call with a JSON schema run on Sedge Landing cases with shared stat names. It reports exact replies, misses, invented and misattributed changes, latency and tokens.
   - **The player name header probe compares the narration prompt with and without the player's name in its persona heading.** It scores name leaks and stat tabulation on the default endpoint.
+  - **The Likers dialog now removes Anonymous Likes with the same icon button as account likes.** An address with one like shows the button on its row. An address with more shows it on a frame around its rows. A like too old for an address shows the button dimmed, and its tip says why.
 - **⚙️ Backend**
   - **Request Anatomy:**
     - **Digests and diaries now show their Request Anatomy in the AI-context viewer.** The Background Pass Queue builds them from the same pass records as a live turn, so each request is labeled.
