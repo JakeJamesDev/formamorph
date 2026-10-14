@@ -96,6 +96,26 @@ export function buildTraitSections(
   return sections;
 }
 
+/**
+ * Fold every block no entity owns into one leading Global section (Q27), the root groups as its subheaders.
+ * A root group that also holds an entity node keeps a section for the entity's blocks.
+ */
+export function groupGlobalSections(sections: TraitSection[]): TraitSection[] {
+  const globalBlocks: TraitBlock[] = [];
+  const rest: TraitSection[] = [];
+  for (const section of sections) {
+    const unowned = section.blocks.filter((b) => !b.entityId);
+    const entityBlocks = section.blocks.filter((b) => b.entityId);
+    // A root group names its blocks; the ungrouped "General" and flat sections add no subheader.
+    const rooted = section.key.startsWith('g:');
+    const named = (b: TraitBlock): TraitBlock =>
+      (rooted ? { ...b, subheader: [section.name, b.subheader].filter(Boolean).join(' › ') } : b);
+    globalBlocks.push(...unowned.map(named));
+    if (entityBlocks.length > 0) rest.push({ ...section, blocks: entityBlocks });
+  }
+  return globalBlocks.length > 0 ? [{ key: 'global', name: 'Global', blocks: globalBlocks }, ...rest] : rest;
+}
+
 /** One section narrowed to the filter and split enabled-first. */
 export interface TraitSectionView {
   /** Blocks holding the section's matching enabled traits, empty blocks dropped. */

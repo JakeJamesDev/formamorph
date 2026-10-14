@@ -285,6 +285,20 @@ describe('RightPanel — the stats of the entity the player plays as (Q11, Q16, 
     expect(within(section()!).getByText('40 / 100')).toBeInTheDocument();
   });
 
+  it('heads the world stats with Global, as a node beside the persona’s', () => {
+    renderRightPanel({}, asMira('bram'));
+    const global = screen.getByRole('region', { name: 'Global stats' });
+    expect(within(global).getByRole('heading', { name: 'Global' })).toBeInTheDocument();
+    expect(within(global).getByText('50 / 100')).toBeInTheDocument();
+    expect(within(global).queryByText('60 / 100')).toBeNull();
+    expect(within(personaSection('Mira')).getByRole('heading', { name: 'Mira' })).toBeInTheDocument();
+  });
+
+  it('adds no Global node when no world stat is visible', () => {
+    renderRightPanel({}, { ...asMira(), stats: [] });
+    expect(screen.queryByRole('region', { name: 'Global stats' })).toBeNull();
+  });
+
   it('lists the persona as "(You)" and shows no entity section when it is picked', async () => {
     renderRightPanel({}, asMira('bram'));
     await choose('Mira (You)');

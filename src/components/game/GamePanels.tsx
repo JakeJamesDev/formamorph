@@ -1438,30 +1438,35 @@ export const RightPanel = ({
             </div>
           )}
           <ScrollArea className="min-h-0 flex-grow mb-4 relative">
-            <StatGroupSections
-              nodes={playerLayout}
-              idOf={({ stat }) => stat.id}
-              nameOf={resolvePH}
-              renderStat={({ stat, index }) => {
-                const key = stat.name.toLowerCase();
-                return (
-                  <StatRow
-                    stat={stat}
-                    {...rowDelta(statDeltas, PLAYER_OWNER, key, isViewingPast ? (viewStatChanges[key] || 0) : null)}
-                    page={currentPage}
-                    isViewingPast={isViewingPast}
-                    snap={snapStats}
-                    editable={isEditMode && !isViewingPast}
-                    reserveDescriptorLine={anyDescriptors}
-                    onCommitValue={(value) => {
-                      const newStats = [...playerStats];
-                      newStats[index] = { ...stat, value };
-                      commitManualStatEdit(newStats);
-                    }}
-                  />
-                );
-              }}
-            />
+            {visibleStats.length > 0 && (
+              <section aria-label="Global stats" data-testid="global-stats">
+                <h3 className="truncate px-2 pb-1 text-label font-medium">Global</h3>
+                <StatGroupSections
+                  nodes={playerLayout}
+                  idOf={({ stat }) => stat.id}
+                  nameOf={resolvePH}
+                  renderStat={({ stat, index }) => {
+                    const key = stat.name.toLowerCase();
+                    return (
+                      <StatRow
+                        stat={stat}
+                        {...rowDelta(statDeltas, PLAYER_OWNER, key, isViewingPast ? (viewStatChanges[key] || 0) : null)}
+                        page={currentPage}
+                        isViewingPast={isViewingPast}
+                        snap={snapStats}
+                        editable={isEditMode && !isViewingPast}
+                        reserveDescriptorLine={anyDescriptors}
+                        onCommitValue={(value) => {
+                          const newStats = [...playerStats];
+                          newStats[index] = { ...stat, value };
+                          commitManualStatEdit(newStats);
+                        }}
+                      />
+                    );
+                  }}
+                />
+              </section>
+            )}
             {playedRows.map((owner) => (
               <section key={owner.entity.id} aria-label={`${owner.entity.name} stats`} data-testid="persona-stats" className="mt-2">
                 <h3 className="truncate px-2 pb-1 text-label font-medium">{owner.entity.name}</h3>
