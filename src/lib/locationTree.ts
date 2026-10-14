@@ -86,14 +86,16 @@ export function isDescendantLocation(locations: GameLocation[], ancestorId: stri
   return false;
 }
 
-/** Remove a location, promoting its direct children up to the removed node's own parent (nothing lost). */
+/** Remove a location. Its direct children move up to its parent, into the slot it held: sibling order is the
+ *  array order, so they take its place in the array. */
 export function removeLocationPromotingChildren(locations: GameLocation[], id: string): GameLocation[] {
   const target = locations.find((l) => l.id === id);
   if (!target) return locations;
   const newParent = target.parentId ?? null;
-  return locations
-    .filter((l) => l.id !== id)
-    .map((l) => ((l.parentId ?? null) === id ? { ...l, parentId: newParent } : l));
+  const children = locations.filter((l) => l.id !== id && (l.parentId ?? null) === id);
+  const promoted = children.map((l) => ({ ...l, parentId: newParent }));
+  const kids = new Set(children.map((l) => l.id));
+  return locations.flatMap((l) => (l.id === id ? promoted : kids.has(l.id) ? [] : [l]));
 }
 
 /** Projected drop `{depth, parentId}` for the active row, given the pointer's horizontal drag offset. */

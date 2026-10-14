@@ -16,6 +16,7 @@ import { removeLocationPromotingChildren } from '@/lib/locationTree';
 import { newLocationPosition } from '@/lib/locationCanvas';
 import { withDefaultDescriptors } from '@/lib/blankWorld';
 import { removeStatGroup as removeStatGroupFrom } from '@/lib/statGroupTree';
+import { removeGroupPromotingChildren } from '@/lib/groupTree';
 import { followRename } from '@/lib/statDescriptors';
 import { renamedPlaceholderValues, repinRenamedValues } from '@/lib/traitEffects';
 import { directChipTargets } from '@/lib/placeholders';
@@ -301,17 +302,12 @@ function useProvideGameData() {
     setEntityGroups(prev => [...prev, newGroup]);
   }, []);
 
-  // Removing a group reparents its direct children (subgroups + entities) to the group's own parent,
-  // rather than orphaning them under a deleted id.
+  // The group's subgroups and entities take its slot in the parent, and sibling order closes up around them.
   const removeEntityGroup = useCallback((groupId: string) => {
-    setEntityGroups(prev => {
-      const parentId = prev.find(g => g.id === groupId)?.parentId ?? null;
-      return prev
-        .filter(g => g.id !== groupId)
-        .map(g => (g.parentId === groupId ? { ...g, parentId } : g));
-    });
-    const parentId = latest.current.entityGroups.find(g => g.id === groupId)?.parentId ?? null;
-    setEntities(prev => prev.map(e => (e.groupId === groupId ? { ...e, groupId: parentId } : e)));
+    const { entityGroups: groups, entities: held } = latest.current;
+    const next = removeGroupPromotingChildren(groups, held, groupId);
+    if (next.groups !== groups) setEntityGroups(next.groups);
+    if (next.leaves !== held) setEntities(next.leaves);
   }, []);
 
   const addTrait = useCallback((newTrait: Trait) => {
@@ -328,8 +324,7 @@ function useProvideGameData() {
     setTraitGroups(prev => [...prev, newGroup]);
   }, []);
 
-  // Removing a group reparents its direct children (subgroups + traits) to the group's own parent,
-  // rather than orphaning them under a deleted id. Blueprints detaches its linked items and moves the rest up.
+  // The group's subgroups and traits take its slot in the parent. Blueprints detaches its linked items and moves the rest up.
   const removeTraitGroup = useCallback((groupId: string) => {
     const { traits, traitGroups, entities } = latest.current;
     if (traitGroups.find(g => g.id === groupId)?.system === 'blueprints') {
@@ -340,14 +335,9 @@ function useProvideGameData() {
       setEntities(removed.entities);
       return;
     }
-    setTraitGroups(prev => {
-      const parentId = prev.find(g => g.id === groupId)?.parentId ?? null;
-      return prev
-        .filter(g => g.id !== groupId)
-        .map(g => (g.parentId === groupId ? { ...g, parentId } : g));
-    });
-    const parentId = traitGroups.find(g => g.id === groupId)?.parentId ?? null;
-    setTraits(prev => prev.map(t => (t.groupId === groupId ? { ...t, groupId: parentId } : t)));
+    const next = removeGroupPromotingChildren(traitGroups, traits, groupId);
+    if (next.groups !== traitGroups) setTraitGroups(next.groups);
+    if (next.leaves !== traits) setTraits(next.leaves);
     setEntities(prevEntities => dropLinksTo(prevEntities, groupId));
   }, []);
 

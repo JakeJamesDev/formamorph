@@ -1,7 +1,8 @@
 // Traits an entity owns: pure edits of one entity's own trait tree, and the gate input that sees every owner.
 
-import type { Entity, Trait, TraitGroup, TraitRequirement } from '@/types';
+import type { Entity, Trait, TraitGroup, TraitLink, TraitRequirement } from '@/types';
 import { randomUUID } from './uuid';
+import { removeGroupPromotingChildren } from './groupTree';
 import { newTrait } from './blankWorld';
 import type { GateInput, GateOwner } from './traitGates';
 import { mapConditions } from './requirementRows';
@@ -44,11 +45,18 @@ export const updateOwnedGroup = (entity: Entity, group: TraitGroup): Entity =>
 export function removeOwnedItem(entity: Entity, id: string): Entity {
   const group = groupsOf(entity).find((g) => g.id === id);
   if (!group) return withOwnedTraits(entity, traitsOf(entity).filter((t) => t.id !== id), groupsOf(entity));
-  return withOwnedTraits(
-    entity,
-    traitsOf(entity).map((t) => (t.groupId === id ? { ...t, groupId: group.parentId } : t)),
-    groupsOf(entity).filter((g) => g.id !== id).map((g) => (g.parentId === id ? { ...g, parentId: group.parentId } : g)),
-  );
+  // Links share the group's slots with the traits, so they renumber with them.
+  const links = entity.traitLinks ?? [];
+  const named = links.map((l) => ({ ...l, name: l.originalName }));
+  const next = removeGroupPromotingChildren(groupsOf(entity), [...traitsOf(entity), ...named], id);
+  const placed = new Map(next.leaves.map((leaf) => [leaf.id, leaf]));
+  const traits = traitsOf(entity).map((t) => placed.get(t.id) as Trait);
+  const moved = links.map((l) => {
+    const { name: _name, ...rest } = placed.get(l.id) as TraitLink & { name: string };
+    return rest as TraitLink;
+  });
+  const { traitLinks: _links, ...rest } = withOwnedTraits(entity, traits, next.groups);
+  return { ...rest, ...(moved.length ? { traitLinks: moved } : {}) };
 }
 
 /** The writes a trait store over one entity makes, each through `edit` on that entity. */

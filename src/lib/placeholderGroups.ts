@@ -4,7 +4,7 @@
 // like the entity folder tree it mirrors: the world tab and the chip menus read these, nothing writes them
 // but a drop or a delete.
 
-import { buildTree, flattenTree, isDescendantGroup } from './groupTree';
+import { buildTree, flattenTree, isDescendantGroup, removeGroupPromotingChildren } from './groupTree';
 import { PLACEHOLDER_PATH_SEPARATOR } from './placeholders';
 import type { Placeholder, PlaceholderGroup } from '@/types';
 
@@ -69,15 +69,8 @@ export function withPlaceholderGroup(placeholder: Placeholder, groupId: string |
 export function removePlaceholderGroup(
   groups: PlaceholderGroup[], placeholders: Placeholder[], id: string,
 ): { groups: PlaceholderGroup[]; placeholders: Placeholder[] } {
-  const doomed = groups.find((g) => g.id === id);
-  if (!doomed) return { groups, placeholders };
-  const parentId = doomed.parentId;
-  return {
-    groups: groups.filter((g) => g.id !== id).map((g) => (g.parentId === id ? { ...g, parentId } : g)),
-    placeholders: placeholders.some((p) => p.groupId === id)
-      ? placeholders.map((p) => (p.groupId === id ? withPlaceholderGroup(p, parentId) : p))
-      : placeholders,
-  };
+  const next = removeGroupPromotingChildren(groups, placeholders, id, { orderLeaves: false, placeLeaf: withPlaceholderGroup });
+  return { groups: next.groups, placeholders: next.leaves };
 }
 
 /** Placeholders as they travel off-world, in a character card or dictionary file: the folders are the

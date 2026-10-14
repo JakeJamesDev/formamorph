@@ -53,6 +53,19 @@ describe('owned trait edits', () => {
     expect(next.traits?.find((t) => t.id === 't-tamed')?.groupId).toBeNull();
   });
 
+  it('removing a group keeps sibling order, links included', () => {
+    const entity: Entity = {
+      id: 'ash', name: 'Ash',
+      traitGroups: [{ id: 'g', name: 'G', parentId: null, order: 1 }],
+      traits: [trait('a', { groupId: null, order: 0 }), trait('x', { groupId: 'g', order: 0 }), trait('b', { groupId: null, order: 3 })],
+      traitLinks: [{ id: 'l', originalId: 'o', kind: 'trait', originalName: 'O', groupId: 'g', order: 1 }],
+    };
+    const next = removeOwnedItem(entity, 'g');
+    expect(next.traitGroups).toBeUndefined();
+    const placed = [...(next.traits ?? []), ...(next.traitLinks ?? [])].map((i) => [i.id, i.groupId, i.order]);
+    expect(placed.sort((p, q) => (p[2] as number) - (q[2] as number))).toEqual([['a', null, 0], ['x', null, 1], ['l', null, 2], ['b', null, 3]]);
+  });
+
   it('removing the last trait leaves the entity owning nothing', () => {
     const next = removeOwnedItem({ id: 'wolf', name: 'Wolf', traits: [trait('only')] }, 'only');
     expect(next.traits).toBeUndefined();
