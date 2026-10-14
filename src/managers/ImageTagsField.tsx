@@ -52,6 +52,8 @@ interface ImageWidgetProps {
    *  comes back as a tag no image model knows; an author who wants one types it into the tags. */
   description?: string;
   kind: ImageSubjectKind;
+  /** The subject's name for a generated picture's file name on the image server; never sent to the model. */
+  fileSubject?: string;
   tags?: string;
   onTagsChange: (value: string) => void;
   /** The world's (or the standalone item's) placeholders, so a tag can be one. None simply means no chip
@@ -217,7 +219,7 @@ function withSlotData(list: readonly GalleryImage[], index: number, data: string
  */
 export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
   const {
-    label, images, onImagesChange, slots = 1, imageId, cap, description, kind, tags, onTagsChange, tourAnchor, ruleOwnerId,
+    label, images, onImagesChange, slots = 1, imageId, cap, description, kind, fileSubject, tags, onTagsChange, tourAnchor, ruleOwnerId,
   } = useImageWidget();
   const ruleSourced = useHasRuleSource();
   // SD prompt pulled from an uploaded image, pending the user's OK to use it as Image Tags.
@@ -446,7 +448,7 @@ export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
       />
       {tagsSlot}
       <GenerateImageButton
-        subject={{ description: description || '', kind }}
+        subject={{ description: description || '', kind, name: fileSubject }}
         cap={cap}
         onChange={placeGenerated}
         tags={tags ?? ''}

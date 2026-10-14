@@ -278,7 +278,7 @@ The **Connection** section sets which server makes the images. The setup steps f
 |---|---|
 | **Provider** | ComfyUI, InvokeAI, Automatic1111 / Forge, NovelAI, or an OpenAI-compatible service on the desktop app. **How to Set Up** shows the steps for the picked provider. |
 | **Endpoint URL**, **API Token** | The image server address and its token |
-| **Model** | The checkpoint that makes the image |
+| **Model** | The checkpoint that makes the image. On ComfyUI it fills the workflow's `%ckpt%`; a workflow without one (the **Z-Image Turbo**, **Flux 2 Klein** and **Chroma** setups) loads its own model, which the row then shows, greyed out. |
 
 The **Image** section sets how each image is made.
 
@@ -290,7 +290,9 @@ The **Image** section sets how each image is made.
 | **Steps / CFG** | Sampling steps and how closely the image follows the prompt |
 | **Sampler** | The sampling method |
 | **Face Fix** | Automatic1111 / Forge and InvokeAI only. Draws faces again in a second pass. On Automatic1111 / Forge it needs the **ADetailer** extension on your server. On InvokeAI it about doubles the time. |
-| **Workflow (API Format)** | **Advanced**, ComfyUI only. Replaces the default ComfyUI graph. **How to Get This** shows how to export one. |
+| **Image Prompts** | Which [Image Prompts](#image-prompts) preset writes this endpoint's prompts: booru tags or plain sentences. |
+| **Workflow (API Format)** | **Advanced**, ComfyUI only. Replaces the default ComfyUI graph. **How to Get This** shows how to export one. The **Z-Image Turbo** and **Flux 2 Klein** buttons set up a natural-language preset in one step. |
+| **File Name** | **Advanced**, ComfyUI only. Where each image is saved under ComfyUI's `output` folder: `{world}`, `{subject}` (an entity's name, or `turn-12-scene`), `{turn}` and `{preset}`. The default is `formamorph/{world}/{subject}`. A custom workflow uses it where its save node's prefix is `%prefix%`. |
 | **Board** | **Advanced**, InvokeAI only. The InvokeAI board that gets the images |
 | **Qwen3 Encoder**, **Z-Image VAE**, **Anima VAE** | **Advanced**, InvokeAI only. Shows for a Z-Image or Anima model. Leave them empty to pick one automatically. |
 

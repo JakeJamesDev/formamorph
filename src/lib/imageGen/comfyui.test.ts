@@ -235,4 +235,24 @@ describe('comfyuiProvider', () => {
     expect(error).not.toBeInstanceOf(DetailedError);
     expect((error as Error).message).toBe('ComfyUI rejected the workflow: HTTP 502');
   });
+
+  it('uses the first checkpoint the server lists when Model is empty', async () => {
+    const posted: unknown[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes('/object_info/CheckpointLoaderSimple')) {
+        return { ok: true, json: async () => ({ CheckpointLoaderSimple: { input: { required: { ckpt_name: [['a.safetensors', 'b.safetensors']] } } } }) } as Response;
+      }
+      if (url.includes('/object_info/')) return { ok: true, json: async () => ({}) } as Response;
+      posted.push(JSON.parse(String(init?.body)));
+      return { ok: false, status: 400, json: async () => ({ error: 'stop' }) } as Response;
+    }));
+    await comfyuiProvider({ ...params, model: '' }, { endpointUrl: 'http://127.0.0.1:8188', apiToken: '' }).catch(() => {});
+    expect((posted[0] as { prompt: Record<string, { inputs: { ckpt_name?: string } }> }).prompt['4'].inputs.ckpt_name).toBe('a.safetensors');
+  });
+
+  it('says so when Model is empty and the server has no checkpoints', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({}) } as Response)));
+    const error = await comfyuiProvider({ ...params, model: '' }, { endpointUrl: 'http://127.0.0.1:8188', apiToken: '' }).catch((e: unknown) => e);
+    expect((error as Error).message).toMatch(/no checkpoints installed/);
+  });
 });

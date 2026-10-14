@@ -48,7 +48,7 @@ export const DEFAULT_COMFY_WORKFLOW = `{
   },
   "9": {
     "class_type": "SaveImage",
-    "inputs": { "filename_prefix": "Formamorph", "images": ["8", 0] }
+    "inputs": { "filename_prefix": "%prefix%", "images": ["8", 0] }
   }
 }`;
 
@@ -102,6 +102,7 @@ export function buildComfyGraph(template: string, params: ImageGenParams): unkno
   str('negative', params.negativePrompt);
   str('sampler', toComfySampler(params.sampler));
   str('ckpt', params.model);
+  str('prefix', params.filePrefix || 'Formamorph');
   num('width', params.width);
   num('height', params.height);
   num('steps', params.steps);
@@ -315,7 +316,15 @@ async function pollHistory(base: string, promptId: string, opts: ImageGenOpts): 
 export const comfyuiProvider: ImageProvider = async (params: ImageGenParams, opts: ImageGenOpts) => {
   const base = trimUrl(opts.endpointUrl);
   const clientId = randomUUID();
-  const graph = buildComfyGraph((opts.workflow ?? '').trim() || DEFAULT_COMFY_WORKFLOW, params);
+  const template = (opts.workflow ?? '').trim() || DEFAULT_COMFY_WORKFLOW;
+  // ComfyUI has no default checkpoint and rejects an empty name, so an empty Model means the first
+  // checkpoint the server lists, as the Model field's placeholder says.
+  let model = params.model.trim();
+  if (!model && template.includes('%ckpt%')) {
+    model = (await fetchComfyMeta(opts.endpointUrl, opts.apiToken)).checkpoints[0] ?? '';
+    if (!model) throw new Error('ComfyUI has no checkpoints installed. Put one in its models/checkpoints folder.');
+  }
+  const graph = buildComfyGraph(template, { ...params, model });
   const auth = authHeaders(opts.apiToken, 'Bearer');
 
   let promptId: string | null = null;
@@ -361,3 +370,25 @@ export const comfyuiProvider: ImageProvider = async (params: ImageGenParams, opt
     }
   }
 };
+
+/** The model inputs a workflow can name its files in, across the loaders the shipped graphs and common ones use. */
+const MODEL_INPUTS = ['ckpt_name', 'unet_name', 'model_name'];
+
+/**
+ * The model files a workflow loads itself, when it does: a workflow without `%ckpt%` ignores the Model setting,
+ * so this is what it actually draws with. Empty when the workflow takes the Model setting, or does not parse.
+ */
+export function workflowOwnModels(workflow: string): string[] {
+  if (workflow.includes('%ckpt%')) return [];
+  // Placeholders for numbers sit bare in the template; any number makes it parse.
+  const parsable = workflow.replace(/%\w+%/g, (token) => (workflow.includes(`"${token}"`) ? token : '0'));
+  try {
+    const graph = JSON.parse(parsable) as Record<string, { inputs?: Record<string, unknown> }>;
+    return Object.values(graph).flatMap((node) => MODEL_INPUTS.flatMap((key) => {
+      const value = node?.inputs?.[key];
+      return typeof value === 'string' && value ? [value] : [];
+    }));
+  } catch {
+    return [];
+  }
+}
