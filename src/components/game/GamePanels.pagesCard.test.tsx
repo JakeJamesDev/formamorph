@@ -22,7 +22,7 @@ const rightClick = (el: HTMLElement) => fireEvent.contextMenu(el, { button: 2, c
 /** The labels of the menu a right-click on `el` opens, then closes it. */
 async function menuLabels(el: HTMLElement) {
   rightClick(el);
-  const labels = within(screen.getByRole('menu')).getAllByRole('menuitem').map((item) => item.textContent);
+  const labels = within(screen.getByRole('menu')).getAllByRole('menuitem').map((item) => item.getAttribute('aria-label') ?? item.textContent);
   fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' });
   await waitFor(() => expect(screen.queryByRole('menu')).toBeNull());
   return labels;

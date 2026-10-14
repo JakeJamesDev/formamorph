@@ -172,7 +172,7 @@ async function actionBubble(turn: number) {
 function menuRows() {
   const menu = screen.getByRole('menu');
   return [...menu.querySelectorAll('[role="menuitem"], [role="separator"]')]
-    .map((el) => (el.getAttribute('role') === 'separator' ? '|' : el.textContent));
+    .map((el) => (el.getAttribute('role') === 'separator' ? '|' : el.getAttribute('aria-label') ?? el.textContent));
 }
 const rightClick = (el: HTMLElement) => fireEvent.contextMenu(el, { button: 2, clientX: 10, clientY: 10 });
 
