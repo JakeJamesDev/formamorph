@@ -114,6 +114,7 @@ export function liveChipScene(
     stats: box?.activeStats ?? sources.stats,
     statPlacement: sources.statPlacement,
     playedStats: ownerStatParts(sources.playedEntities ?? [], ownedStats),
+    playedEntities: ownText([...(sources.playedEntities ?? [])]),
     traits,
     traitGroups: player ? borneByPlayer(player.groups) : sources.traitGroups,
     ownedTraits: ownedInForce,

@@ -94,7 +94,7 @@ describe('the keyed scene for the stat pass', () => {
     }
   });
 
-  it('keys the Stats chip over the world stats and a played entity that is not the persona', () => {
+  it('keys the Persona chip over a played entity that is not the persona, and the Stats chip over the global stats alone', () => {
     const custom = entity('custom', 'The Creature', []);
     const customHealth = stat('custom-health', 'Health', 40);
     const both = scene({
@@ -104,7 +104,9 @@ describe('the keyed scene for the stat pass', () => {
     const withCustom = createStatRequest([health], PLAYER_OWNER, {
       persona: ownerOf(traveler), played: [{ id: 'custom', name: 'The Creature', stats: [customHealth] }],
     });
-    expect(chipValues(keyedScene(both, withCustom))('<STATS DESCRIPTION|numbers>')).toBe('Health: 62/100\nHealth (3): 40/100');
+    const keyed = chipValues(keyedScene(both, withCustom));
+    expect(keyed('<STATS DESCRIPTION|numbers>')).toBe('Health: 62/100');
+    expect(keyed('<PERSONA|withstats.summary>')).toContain('Health (3): 40/100');
   });
 
   it('leaves a stat the request does not hold under its raw name, and the narration scene untouched', () => {

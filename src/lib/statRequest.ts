@@ -13,11 +13,11 @@ import type { ResponseSchema, ResponseSchemaNode } from './aiRequest/responseSch
 const nameKey = (name: string) => name.trim().replace(/\s+/g, ' ').toLowerCase();
 const symbolKey = (name: string) => nameKey(name).replace(/\p{Variation_Selector}|[^\p{L}\p{N}\p{M}]/gu, '');
 
-/** The heading the played persona's stats sit under, and their key in a schema reply. */
+/** The heading every played entity's stats sit under, and their key in a schema reply. */
 export const PLAYER_STAT_HEADING = 'Player Character';
 
-/** The heading the stats no character owns sit under, and their key in a schema reply. */
-export const OTHER_STATS_HEADING = 'Other Stats';
+/** The heading the global stats sit under, and their key in a schema reply. */
+export const GLOBAL_STATS_HEADING = 'Global Stats';
 
 /** The largest change, up or down, the schema lets one value or maximum take in a turn. */
 export const STAT_CHANGE_BOUND = 20;
@@ -38,9 +38,9 @@ export interface StatRequestTarget {
 
 export interface StatRequestSnapshot {
   id: string;
-  /** The played persona's targets first, then the loose stats', then each entity owner's. */
+  /** The played entities' targets first, then the global stats', then each entity owner's. */
   targets: StatRequestTarget[];
-  /** The Stats chip over the loose stats alone, for both passes. */
+  /** The Stats chip over the global stats alone, for both passes. */
   context: ValueLookup;
   /** Each entity owner's key, in order. The text pass skips them. */
   entityKeys: string[];
@@ -50,7 +50,7 @@ export interface StatRequestSnapshot {
   textPass?: boolean;
 }
 
-/** An entity whose stats join the player's in one request. */
+/** An entity whose stats join the global stats in one request. */
 export interface StatRequestOwner {
   id: string;
   /** Its heading in the request; a clash takes a numbered key. */
@@ -63,7 +63,7 @@ export interface StatRequestOwner {
 
 export interface StatUpdateDiagnostic {
   name: string;
-  /** `textPass` marks a reply the text pass wrote; it skips none of the player's stats. `skipped` names an
+  /** `textPass` marks a reply the text pass wrote; it skips none of the played or global stats. `skipped` names an
    *  entity owner the text pass left out. */
   reason: 'ambiguous' | 'unknown' | 'invalid' | 'disabled' | 'missing' | 'textPass' | 'skipped';
 }
@@ -116,9 +116,9 @@ function keyedParts(parts: readonly OwnerPart[]) {
 }
 
 /** Capture the names and identities this stat request exposes, with plain names in every Stats chip. `stats`
- *  are the loose stats, owned by `ownerId` and keyed Other Stats; `persona` is keyed Player Character; the
- *  stats of `played`, any other entity the player plays as, join the loose ones. Each of `entities` takes
- *  its own owner key. `inSceneIds` names every entity present this turn. */
+ *  are the global stats, owned by `ownerId` and keyed Global Stats; `persona` and `played`, any other entity
+ *  the player plays as, are keyed Player Character. Each of `entities` takes its own owner key. `inSceneIds`
+ *  names every entity present this turn. */
 export function createStatRequest(
   stats: readonly PlayerStat[],
   ownerId: string = PLAYER_OWNER,
@@ -127,20 +127,17 @@ export function createStatRequest(
     played?: readonly StatRequestOwner[]; placement?: StatPlacement; inSceneIds?: readonly string[];
   } = {},
 ): StatRequestSnapshot {
-  const loose = { id: ownerId, stats, placement, ownerKey: OTHER_STATS_HEADING };
-  const others = played.map((owner) => ({ ...owner, ownerKey: OTHER_STATS_HEADING }));
-  const own = persona ? [{ ...persona, ownerKey: PLAYER_STAT_HEADING }] : [];
-  // Stat keys run loose, persona, played, as the narration's chips number a played stat.
-  const player = keyedParts([loose, ...own, ...others]);
-  const personaParts = player.filter((part) => part.ownerKey === PLAYER_STAT_HEADING);
-  const otherStatsParts = player.filter((part) => part.ownerKey === OTHER_STATS_HEADING);
+  const global = { id: ownerId, stats, placement, ownerKey: GLOBAL_STATS_HEADING };
+  const own = [...(persona ? [persona] : []), ...played].map((owner) => ({ ...owner, ownerKey: PLAYER_STAT_HEADING }));
+  // Stat keys run global, persona, played, as the narration's chips number a played stat.
+  const [globalPart, ...personaParts] = keyedParts([global, ...own]);
   const owners = entities.filter((owner) => owner.stats.length);
-  const keys = ownerKeys(owners.map((owner) => owner.name), new Set([PLAYER_STAT_HEADING, OTHER_STATS_HEADING]));
+  const keys = ownerKeys(owners.map((owner) => owner.name), new Set([PLAYER_STAT_HEADING, GLOBAL_STATS_HEADING]));
   const sections = owners.flatMap((owner, i) => keyedParts([{ ...owner, ownerKey: keys[i] }]));
   return {
     id: randomUUID(),
-    targets: [...personaParts, ...otherStatsParts, ...sections].flatMap((part) => part.targets),
-    context: statChipPartValues(otherStatsParts),
+    targets: [...personaParts, globalPart, ...sections].flatMap((part) => part.targets),
+    context: statChipPartValues([globalPart]),
     entityKeys: keys,
     inSceneIds: [...inSceneIds],
     ...(textPass && { textPass }),
@@ -176,7 +173,7 @@ export function keyedScene(scene: ChipScene, snapshot: StatRequestSnapshot): Chi
   };
 }
 
-/** The persona's, loose and played targets, with no entity owner's: what the text pass asks about. */
+/** The played and global targets, with no entity owner's: what the text pass asks about. */
 export function playerTargets(snapshot: StatRequestSnapshot): StatRequestTarget[] {
   const entityKeys = new Set(snapshot.entityKeys);
   return snapshot.targets.filter((target) => !entityKeys.has(target.ownerKey));
@@ -318,7 +315,7 @@ export function applyStatResponse(
   };
 }
 
-/** The history's change map: the player's stats alone, by name; request identities stay transient. */
+/** The history's change map: the global stats alone, by name; request identities stay transient. */
 export function statResponseChanges(response: StatResponse): Record<string, number>[] {
   return response.updates.filter((update) => update.ownerId === PLAYER_OWNER && update.value !== 0)
     .map((update) => ({ [update.name.toLowerCase()]: update.value }));

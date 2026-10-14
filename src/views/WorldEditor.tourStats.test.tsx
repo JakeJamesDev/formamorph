@@ -245,10 +245,10 @@ describe('In Game — Stats', () => {
     // The default descriptors follow the rename, so narration names the stat in the descriptor too.
     expect(marks(narration)).toEqual(['Sea Change', 'Sea Change']);
     expect(marks(updates)).toEqual(['Sea Change']);
-    // The shipped Stat Updates prompt heads its Stats chip Other Stats.
-    expect(readText(updates)).toBe('## Other Stats\n- **Sea Change:** 0/100');
+    // The shipped Stat Updates prompt heads its Stats chip Global Stats.
+    expect(readText(updates)).toBe('## Global Stats\n- **Sea Change:** 0/100');
     // Narration reads the status the Add button's descriptors give the stat, and never the number, under its chip's Header.
-    expect(readText(narration)).toBe(`## Other Stats\n${narrationLine(onlyStat(ctx))}`);
+    expect(readText(narration)).toBe(`## Global Stats\n${narrationLine(onlyStat(ctx))}`);
     expect(readText(narration)).not.toMatch(/\d/);
   });
 
@@ -262,10 +262,10 @@ describe('In Game — Stats', () => {
     fireEvent.click(noteButton('Use Example')!);
     const updates = reader('Stat Updates Prompt')!;
     await waitFor(() => expect(marks(updates)).toEqual([SEA_CHANGE_DESCRIPTION]));
-    expect(readText(updates)).toBe(`## Other Stats\n- **Sea Change:** 0/100 — ${SEA_CHANGE_DESCRIPTION}`);
+    expect(readText(updates)).toBe(`## Global Stats\n- **Sea Change:** 0/100 — ${SEA_CHANGE_DESCRIPTION}`);
 
     const narration = reader('Narration Prompt')!;
-    expect(readText(narration)).toBe(`## Other Stats\n${narrationLine(onlyStat(ctx))}`);
+    expect(readText(narration)).toBe(`## Global Stats\n${narrationLine(onlyStat(ctx))}`);
     expect(readText(narration)).not.toMatch(/\d/);
     expect(readText(narration)).not.toContain(SEA_CHANGE_DESCRIPTION);
     expect(marks(narration)).toEqual([]);

@@ -1,10 +1,13 @@
-// Persona block stats probe — what changes when the played persona's own stats move from the Stats chip into
-// its block, the Stats chip becomes "Other Stats" after Other Traits, and the choice writer reads the
-// persona's Summary in place of its Name? Sedge Landing with a played library persona nobody here knows:
-// Calm low, a Resolve that clashes with the world's and so reads "Resolve (2)", and one owned trait.
+// Persona block stats probe — what changes when the global blocks move before the Persona block under the
+// Global headings, the stat lines name the player character, and every played entity's stats sit in the
+// Persona block (world-scope-split Q11, Q12, Q24)? Sedge Landing with a played library persona nobody here
+// knows: Calm low, a Resolve that clashes with the world's and so reads "Resolve (2)", and one owned trait.
 //
-// Arms, paired by run index: `control` (ticket 02's prompts: Player Stats before the block, the persona's
-// stats in that chip, the choice writer on Name) and `block` (the working tree). Every other byte is shared.
+// Scenes: `own` (the library persona owns the stats) and `custom` (the world's Custom Persona entity holds
+// them beside the library persona, as Q11 covers).
+// Arms, paired by run index: `control` (the prompts at --control-ref, default HEAD, with the chips as that
+// commit laid them out: the Custom Persona entity's stats after the global stats) and `global` (the working
+// tree). Every other byte is shared.
 //
 // Checks:
 //   player-name     — the narration or a choice names the player, whom nobody here knows (guard, down)
@@ -14,21 +17,26 @@
 //   numeral-leak    — the output repeats a stat value, a range or a percent (guard, down)
 //   numbered-name   — the output writes a numbered stat name such as "Resolve (2)" (guard, down)
 //   label-leak      — the output repeats a stat label such as "Calm:" or "**Resolve**" (guard, down)
-//   rattled         — the output shows the player shaken or wavering: the stats shape it (up)
+//   rattled         — the output shows the player shaken or wavering: the persona's stats shape it (up)
 //   trait-fit       — the output draws on the player's herbalist trait (up)
 //   contract        — 3 to 5 option lines, each one "I ..." clause of at most 25 words (choices guard, up)
 // Also reported per arm: mean words and the share of outputs with quoted dialogue (regression check).
 //
 // Usage: npx vite-node testing/baseline/harness/persona-block-stats-probe.cli.ts --
 //          [--endpoint URL] [--model default] [--runs 12] [--max 600] [--only narr-bram,choice-odette] [--pool 4]
-//          [--dump] [--show]
-import { readFileSync } from 'node:fs';
+//          [--scenes own,custom] [--control-ref HEAD] [--dump] [--show]
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import {
   defaultChoicesPrompt, defaultChoicesUserPrompt, defaultStoryboardPrompt, defaultSystemPrompt,
 } from '@/components/game/GamePrompts';
 import { authoredChipScene } from '@/lib/chipValues/authoredScene';
+import type { ChipScene } from '@/lib/chipValues/chipScene';
 import { chipValues, playedStatParts, sceneEntityChipValues, statChipPartValues } from '@/lib/chipValues/chipValues';
+import { personaContextValues } from '@/lib/personaContext';
 import { resolveEntityText } from '@/lib/placeholders';
 import { renderPromptTemplate } from '@/lib/promptTemplate';
 import { layerValues, type ValueLookup } from '@/lib/promptValues';
@@ -50,8 +58,12 @@ const runs = Number(argVal('--runs', '12'));
 const maxTokens = Number(argVal('--max', '600'));
 const pool = Number(argVal('--pool', '4'));
 const only = argVal('--only', '');
-const ARMS = ['control', 'block'] as const;
+const controlRef = argVal('--control-ref', 'HEAD');
+const ARMS = ['control', 'global'] as const;
 type Arm = typeof ARMS[number];
+const SCENES = ['own', 'custom'] as const;
+type SceneId = typeof SCENES[number];
+const scenes = argVal('--scenes', SCENES.join(',')).split(',') as SceneId[];
 const SEED = 939393;
 
 type Case = {
@@ -67,26 +79,29 @@ const fixture = JSON.parse(readFileSync(path.join(BASELINE, 'persona-stats-chip-
   personaStats: Stat[]; cases: Case[];
 };
 
-// The template's trailing backslashes are line continuations, so the chips sit back to back in the string.
-const BLOCK = (content: string) => `<PERSONA|${content}|header="{{user}} (Player Character)">`;
-const OTHER_TRAITS = '<TRAITS DESCRIPTION|markdown|header="Other Traits">';
-const OTHER_STATS = '<STATS DESCRIPTION|descriptions.markdown|header="Other Stats">';
-const PLAYER_STATS = '<STATS DESCRIPTION|descriptions.markdown|header="Player Stats">';
-/** The prompt as ticket 02 shipped it: Player Stats before a block that carried no stats. */
-function controlOf(template: string, blockContent: string, controlContent: string): string {
-  const now = BLOCK(blockContent) + OTHER_TRAITS + OTHER_STATS;
-  if (!template.includes(now)) throw new Error(`A prompt does not carry ${now}.`);
-  return template.replace(now, PLAYER_STATS + BLOCK(controlContent) + OTHER_TRAITS);
+type Templates = { narration: string; choices: string; planning: string };
+/** The three prompts as committed at `ref`, imported from a copy of GamePrompts.ts at that ref. */
+async function templatesAt(ref: string): Promise<Templates> {
+  const source = execFileSync('git', ['show', `${ref}:src/components/game/GamePrompts.ts`], { encoding: 'utf8' });
+  const dir = mkdtempSync(path.join(tmpdir(), 'fm-prompts-'));
+  const file = path.join(dir, 'GamePrompts.ts');
+  writeFileSync(file, source);
+  try {
+    const mod = await import(pathToFileURL(file).href) as {
+      defaultSystemPrompt: string; defaultChoicesPrompt: string; defaultStoryboardPrompt: string;
+    };
+    return { narration: mod.defaultSystemPrompt, choices: mod.defaultChoicesPrompt, planning: mod.defaultStoryboardPrompt };
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 }
-// The control block sends no stats, so its persona reads as before the stats moved in.
-const TEMPLATES: Record<Arm, { narration: string; choices: string; planning: string }> = {
-  control: {
-    narration: controlOf(defaultSystemPrompt, 'markdown', 'nostats.markdown'),
-    choices: controlOf(defaultChoicesPrompt, 'summary.markdown', 'name.markdown'),
-    planning: controlOf(defaultStoryboardPrompt, 'markdown', 'nostats.markdown'),
-  },
-  block: { narration: defaultSystemPrompt, choices: defaultChoicesPrompt, planning: defaultStoryboardPrompt },
+const TEMPLATES: Record<Arm, Templates> = {
+  control: await templatesAt(controlRef),
+  global: { narration: defaultSystemPrompt, choices: defaultChoicesPrompt, planning: defaultStoryboardPrompt },
 };
+if (TEMPLATES.control.narration === TEMPLATES.global.narration) {
+  console.log(`warning: the narration prompt at ${controlRef} matches the working tree`);
+}
 
 const resolveOwn = (entity: Entity, text: string) => resolveEntityText(entity, text, { placeholders: [], rolls: {} });
 const location = base.locations.find((candidate) => candidate.id === 'loc-sedge');
@@ -96,12 +111,13 @@ const herbalist: Trait = {
   aiDescription: 'Knows every root, leaf and moss of the river country, and what each one cures or poisons.',
 };
 const personaStats: PlayerStat[] = fixture.personaStats.map((stat) => ({ ...stat, value: stat.value ?? stat.min }));
-const sylvie: Entity = {
+const sylvieOf = (stats: Stat[]): Entity => ({
   id: 'probe-sylvie', name: 'Sylvie Thornwhistle', pronouns: 'she/her',
   aiDescription: 'A traveling herbalist with a satchel of dried roots, quick-eyed and a little too curious.',
   aiSummary: 'A curious traveling herbalist.',
-  traits: [herbalist], stats: fixture.personaStats,
-};
+  traits: [herbalist], stats,
+});
+const custom: Entity = { id: 'probe-custom', name: 'You', customPersona: true, stats: fixture.personaStats };
 const cast = base.entities.map((e) => (entityFixture.entityStats[e.id] ? { ...e, stats: entityFixture.entityStats[e.id] } : e));
 const authored = authoredChipScene({ ...base, entities: cast }, {
   location,
@@ -109,27 +125,43 @@ const authored = authoredChipScene({ ...base, entities: cast }, {
   resolve: (text: string) => text,
   resolveEntity: resolveOwn,
 });
-const scene = {
-  ...authored,
-  persona: { source: 'library' as const, entity: sylvie },
-  playerName: sylvie.name,
-  ownedTraits: { ...authored.ownedTraits, [sylvie.id]: [herbalist.id] },
-  ownedStats: { ...authored.ownedStats, [sylvie.id]: personaStats },
-  playedStats: [{ ownerId: sylvie.id, stats: personaStats, placement: statPlacementOf(sylvie) }],
-};
-const blockCtx = chipValues(scene);
-// The control arm's Stats chip is ticket 02's: the world's stats, then the persona's, numbered on a clash.
-const world = { stats: scene.stats, placement: scene.statPlacement };
-const CTX: Record<Arm, ValueLookup> = {
-  block: blockCtx,
-  control: layerValues(
-    blockCtx,
-    statChipPartValues([world, ...playedStatParts(world, scene.playedStats, (name) => stripMarkdown(name).trim())]),
-  ),
-};
-if (!CTX.control(OTHER_STATS.replace(/\|header="[^"]*"/, ''))?.includes('Resolve (2)')) {
-  throw new Error('The control Stats chip does not carry the numbered persona stat.');
+
+/** The scene with the library persona played, its stats held by itself or by the Custom Persona entity. */
+function sceneOf(id: SceneId): ChipScene {
+  const sylvie = sylvieOf(id === 'own' ? fixture.personaStats : []);
+  const holder = id === 'own' ? sylvie : custom;
+  const played = id === 'own' ? [sylvie] : [sylvie, custom];
+  return {
+    ...authored,
+    persona: { source: 'library', entity: sylvie },
+    playerName: sylvie.name,
+    ownedTraits: { ...authored.ownedTraits, [sylvie.id]: [herbalist.id] },
+    ownedStats: { ...authored.ownedStats, [holder.id]: personaStats },
+    playedStats: played.map((e) => ({ ownerId: e.id, stats: e.id === holder.id ? personaStats : [], placement: statPlacementOf(e) })),
+    playedEntities: played,
+  };
 }
+
+/** Both arms' chips for one scene. The control arm lays a non-persona played entity's stats after the global
+ *  stats and leaves them out of the Persona block, as the control commit did. */
+function ctxOf(id: SceneId): Record<Arm, ValueLookup> {
+  const scene = sceneOf(id);
+  const now = chipValues(scene);
+  if (id === 'own') return { control: now, global: now };
+  const world = { stats: scene.stats, placement: scene.statPlacement };
+  const played = playedStatParts(world, scene.playedStats ?? [], (name) => stripMarkdown(name).trim());
+  const control = layerValues(
+    now,
+    statChipPartValues([world, ...played]),
+    personaContextValues(scene.persona, scene.ownedTraits, []),
+  );
+  if (!control('<STATS DESCRIPTION|descriptions.markdown>')?.includes('Resolve (2)')) {
+    throw new Error('The control Stats chip does not carry the numbered persona stat.');
+  }
+  if (!now('<PERSONA|markdown>')?.includes('Resolve (2)')) throw new Error('The Persona block does not carry the persona stats.');
+  return { control, global: now };
+}
+const CTX = Object.fromEntries(scenes.map((id) => [id, ctxOf(id)])) as Record<SceneId, Record<Arm, ValueLookup>>;
 
 const STAT_LABELS = ['Vigor', 'Resolve', 'Calm', 'Trust', 'Stock'];
 const contract = (text: string) => {
@@ -155,8 +187,8 @@ const CHECKS_BY_KIND = { narration: NARRATION_CHECKS, planning: PLANNING_CHECKS,
 const checksOf = (c: Case) => CHECKS_BY_KIND[c.kind];
 const DIALOGUE = /["“][^"”]{3,}["”]/;
 
-function request(arm: Arm, c: Case): { system: string; user: string; max?: number } {
-  const ctx = CTX[arm];
+function request(sceneId: SceneId, arm: Arm, c: Case): { system: string; user: string; max?: number } {
+  const ctx = CTX[sceneId][arm];
   if (c.kind === 'planning') {
     return {
       system: renderPromptTemplate(TEMPLATES[arm].planning, ctx),
@@ -167,7 +199,7 @@ function request(arm: Arm, c: Case): { system: string; user: string; max?: numbe
   }
   if (c.kind === 'choices') {
     // The choice writer reads only who is in the scene, through the scene-roster override.
-    const values = layerValues(ctx, sceneEntityChipValues(scene, Array.isArray(c.scene) ? c.scene : []), { '<LANGUAGE>': '' });
+    const values = layerValues(ctx, sceneEntityChipValues(sceneOf(sceneId), Array.isArray(c.scene) ? c.scene : []), { '<LANGUAGE>': '' });
     return {
       system: renderPromptTemplate(TEMPLATES[arm].choices, values),
       user: renderPromptTemplate(defaultChoicesUserPrompt, layerValues(values, { '<NARRATION>': c.narration ?? '' })),
@@ -204,35 +236,37 @@ async function complete(req: ReturnType<typeof request>, seed: number): Promise<
 
 const cases = fixture.cases.filter((c) => !only || only.split(',').includes(c.id));
 if (args.includes('--dump')) {
-  for (const c of cases.filter((x, i, all) => all.findIndex((y) => y.kind === x.kind) === i)) {
-    for (const arm of ARMS) {
-      const sys = request(arm, c).system;
-      const at = sys.indexOf('(Player Character)');
-      console.log(`\n--- ${c.kind} · ${arm}\n${sys.slice(Math.max(0, at - 400), at + 1400)}`);
+  for (const sceneId of scenes) {
+    for (const c of cases.filter((x, i, all) => all.findIndex((y) => y.kind === x.kind) === i)) {
+      for (const arm of ARMS) {
+        const sys = request(sceneId, arm, c).system;
+        const from = sys.search(/\n## (Global|Other) Traits\n|\n## Player Character\n/);
+        console.log(`\n--- ${sceneId} · ${c.kind} · ${arm}\n${sys.slice(Math.max(0, from), from + 1400)}`);
+      }
     }
   }
   process.exit(0);
 }
 
-type Result = { arm: Arm; case: string; run: number; text: string };
+type Result = { scene: SceneId; arm: Arm; case: string; run: number; text: string };
 const results: Result[] = [];
 const started = Date.now();
-console.log(`model ${model} · runs ${runs} per arm per case · pool ${pool}`);
+console.log(`model ${model} · runs ${runs} per arm per case per scene · pool ${pool} · control ${controlRef}`);
 // Arms interleave run by run, so drift during the batch lands on both.
-const jobs = cases.flatMap((c) => Array.from({ length: runs }, (_, run) => ARMS.map((arm) => ({ arm, c, run })))).flat();
+const jobs = scenes.flatMap((scene) => cases.flatMap((c) => Array.from({ length: runs }, (_, run) => ARMS.map((arm) => ({ scene, arm, c, run }))))).flat();
 let next = 0;
 await Promise.all(Array.from({ length: pool }, async () => {
   while (next < jobs.length) {
-    const { arm, c, run } = jobs[next++];
+    const { scene, arm, c, run } = jobs[next++];
     try {
-      const text = await complete(request(arm, c), SEED + run);
-      results.push({ arm, case: c.id, run, text });
+      const text = await complete(request(scene, arm, c), SEED + run);
+      results.push({ scene, arm, case: c.id, run, text });
       const hits = checksOf(c).map((check) => `${check}=${CHECKS[check].test(text) ? 1 : 0}`).join(' ');
-      console.log(`[${arm}] ${c.id} #${run} ${hits} · ${text.split(/\s+/).length}w`);
+      console.log(`[${scene} ${arm}] ${c.id} #${run} ${hits} · ${text.split(/\s+/).length}w`);
       if (args.includes('--show')) console.log(`    ${text.replace(/\n+/g, ' ¶ ')}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      console.log(`[${arm}] ${c.id} #${run} FAILED ${message.slice(0, 160)}`);
+      console.log(`[${scene} ${arm}] ${c.id} #${run} FAILED ${message.slice(0, 160)}`);
     }
   }
 }));
@@ -240,15 +274,17 @@ await Promise.all(Array.from({ length: pool }, async () => {
 const rate = (xs: Result[], test: (t: string) => boolean) => ({ k: xs.filter((r) => test(r.text)).length, n: xs.length });
 const words = (xs: Result[]) => (xs.length ? (xs.reduce((s, r) => s + r.text.split(/\s+/).length, 0) / xs.length).toFixed(0) : '-');
 console.log('\nTOTALS (↑/↓ = direction wanted)');
-for (const kind of ['narration', 'planning', 'choices'] as const) {
-  const ids = new Set(cases.filter((c) => c.kind === kind).map((c) => c.id));
-  if (!ids.size) continue;
-  const of = (arm: Arm) => results.filter((r) => r.arm === arm && ids.has(r.case));
-  for (const check of CHECKS_BY_KIND[kind]) {
-    const [a, b] = [rate(of('control'), CHECKS[check].test), rate(of('block'), CHECKS[check].test)];
-    console.log(`${`${kind} ${check}`.padEnd(28)} ${CHECKS[check].want ? '↑' : '↓'}  control ${a.k}/${a.n} · block ${b.k}/${b.n}`);
+for (const sceneId of scenes) {
+  for (const kind of ['narration', 'planning', 'choices'] as const) {
+    const ids = new Set(cases.filter((c) => c.kind === kind).map((c) => c.id));
+    if (!ids.size) continue;
+    const of = (arm: Arm) => results.filter((r) => r.scene === sceneId && r.arm === arm && ids.has(r.case));
+    for (const check of CHECKS_BY_KIND[kind]) {
+      const [a, b] = [rate(of('control'), CHECKS[check].test), rate(of('global'), CHECKS[check].test)];
+      console.log(`${`${sceneId} ${kind} ${check}`.padEnd(34)} ${CHECKS[check].want ? '↑' : '↓'}  control ${a.k}/${a.n} · global ${b.k}/${b.n}`);
+    }
+    const [da, db] = [rate(of('control'), (t) => DIALOGUE.test(t)), rate(of('global'), (t) => DIALOGUE.test(t))];
+    console.log(`${`${sceneId} ${kind} words / dialogue`.padEnd(34)}    control ${words(of('control'))}w ${da.k}/${da.n} · global ${words(of('global'))}w ${db.k}/${db.n}`);
   }
-  const [da, db] = [rate(of('control'), (t) => DIALOGUE.test(t)), rate(of('block'), (t) => DIALOGUE.test(t))];
-  console.log(`${`${kind} words / dialogue`.padEnd(28)}    control ${words(of('control'))}w ${da.k}/${da.n} · block ${words(of('block'))}w ${db.k}/${db.n}`);
 }
 console.log(`duration ${((Date.now() - started) / 1000).toFixed(0)}s`);

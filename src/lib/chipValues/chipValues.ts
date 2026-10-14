@@ -82,16 +82,24 @@ export function chipValues(scene: ChipScene): ValueLookup {
   const traitIds = scene.traits.map((trait) => trait.id);
   const world = { stats: scene.stats, placement: scene.statPlacement };
   const played = playedStatParts(world, scene.playedStats ?? [], (name) => stripMarkdown(scene.resolve(name)).trim());
-  // The persona's own stats render in its block; any other played entity's follow the world's.
+  // Every played entity's stats render in the persona's block; with no persona, they follow the global stats.
   const personaId = scene.persona?.entity.id;
+  const otherIds = [...new Set([...(scene.playedEntities ?? []).map((e) => e.id), ...played.map((part) => part.ownerId)])]
+    .filter((id) => id !== personaId);
+  const others = otherIds.map((id) => {
+    const part = played.find((p) => p.ownerId === id);
+    return { stats: part?.stats ?? [], placement: part?.placement, entity: scene.playedEntities?.find((e) => e.id === id) };
+  });
   const families = new Map<PromptVariable, ValueLookup>([
     [WORLD, chipFamilyValues(WORLD.token, () => scene.overview)],
-    [STATS, statChipPartValues([world, ...played.filter((part) => part.ownerId !== personaId)])],
+    [STATS, statChipPartValues(scene.persona ? [world] : [world, ...played])],
     [TRAITS, chipFamilyValues(TRAITS.token, (sel) => (
       buildTraitContext(traitIds, scene.traits, scene.traitGroups, chipFormat(sel.format)) || NONE_PLACEHOLDER
     ))],
-    // The played entity's owned traits and stats render in its own block, as a cast member's do.
-    [PERSONA, personaContextValues(scene.persona, scene.ownedTraits, played.find((part) => part.ownerId === personaId)?.stats)],
+    // The played entities' owned traits and stats render in the persona's block, as a cast member's do.
+    [PERSONA, personaContextValues(
+      scene.persona, scene.ownedTraits, played.find((part) => part.ownerId === personaId)?.stats, others,
+    )],
     [DICTIONARY, chipFamilyValues(DICTIONARY.token, (sel) => {
       const position = sel.variant === 'before' ? 'before' : 'after';
       const entries = scene.lore.filter((entry) => (entry.position ?? 'after') === position);
