@@ -295,6 +295,8 @@ export interface TraitLinkFields {
   statChanges: StatChange[];
   /** 'optional' stands for an absent `Trait.mode`, so an override to Optional survives the JSON export. */
   mode: 'optional' | TraitMode;
+  /** One override for the whole list, as a stat link's. */
+  scripts: Script[];
 }
 
 export type TraitLinkOverrides = BlueprintOverrides<TraitLinkFields>;

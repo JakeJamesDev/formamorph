@@ -1,11 +1,11 @@
 /**
- * A stat's code as the Code tab's two boxes and the readers see it: each box is the stat's first script of its
- * timing. Its own module because the editor, the template library, the Test Bench and the help text all name a
- * box, and none of them should pull the turn runner — and the QuickJS engine behind it — in to do it.
+ * A stat's scripts as the readers see them, and the two timings the templates and the test clock know. Its own
+ * module because the editor, the template library, the Test Bench and the help text all name a box, and none of
+ * them should pull the turn runner — and the QuickJS engine behind it — in to do it.
  */
 
-import type { Script } from '@/types';
-import { filledScripts, firstCodeAt, SCRIPT_TIMING_LABEL, type ScriptHome } from './scripts';
+import type { Script, ScriptTiming } from '@/types';
+import { filledScripts, SCRIPT_TIMING_LABEL, type ScriptHome } from './scripts';
 
 /** The two timings a stat's Code tab shows a box for. */
 export type StatCodeTiming = 'before' | 'after';
@@ -20,6 +20,9 @@ export const readsTurnStart = (timing: RunTiming): boolean => timing !== 'after'
 /** Both boxes in the order the turn runs them. */
 export const STAT_CODE_TIMINGS = ['before', 'after'] as const satisfies readonly StatCodeTiming[];
 
+/** The template menu and test clock a script's timing reads: every timing but Before the AI reads After the AI's. */
+export const statCodeTimingOf = (timing: ScriptTiming): StatCodeTiming => (timing === 'before' ? 'before' : 'after');
+
 /** What each box is called wherever an author reads it: the editor caption, the template menu, the help,
  *  the Test Bench findings. */
 export const TIMING_LABEL = SCRIPT_TIMING_LABEL;
@@ -29,19 +32,12 @@ export const TIMING_SHORT: Record<Script['timing'], string> = {
   before: 'Before', after: 'After', output: 'Output', start: 'Start', switch: 'Switch',
 };
 
-/** Each box's target on the stat's Code tab, for a landing on it. */
-export const CODE_BOX_TARGET = { before: 'before-code', after: 'after-code' } as const satisfies Record<StatCodeTiming, string>;
-
-/** The confirm before an insert replaces a box's code, shared by the templates and the help window. */
+/** The confirm before a template replaces a box's code. */
 export const REPLACE_CODE_TITLE = 'Replace The Existing Code';
-export const replaceCodeDescription = (inserted: 'template' | 'code') =>
-  `This box already has code. Inserting this ${inserted} overwrites it.`;
+export const REPLACE_CODE_DESCRIPTION = 'This box already has code. Inserting this template overwrites it.';
 
 /** A stat as far as its scripts go. Everything that reads code takes this much and no more. */
 export type CodedStat = ScriptHome;
-
-/** The code a single box for `timing` edits on one stat: its first script of that timing, empty when it has none. */
-export const boxCode = (stat: CodedStat, timing: StatCodeTiming): string => firstCodeAt(stat, timing);
 
 /** Whether a stat holds no script with code. */
 export const noBoxes = (stat: CodedStat): boolean => filledScripts(stat).length === 0;

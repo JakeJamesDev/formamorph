@@ -9,7 +9,7 @@ import { tabForField } from './findFocus';
 export const STAT_PANEL_TABS = [
   { value: 'details', label: 'Details', icon: ELEMENT_ICONS.stat },
   { value: 'descriptors', label: 'Descriptors', icon: ListOrdered, advancedOnly: true },
-  { value: 'code', label: 'Code', icon: Code, advancedOnly: true },
+  { value: 'code', label: 'Scripts', icon: Code, advancedOnly: true },
 ] as const;
 
 export type StatPanelTab = (typeof STAT_PANEL_TABS)[number]['value'];

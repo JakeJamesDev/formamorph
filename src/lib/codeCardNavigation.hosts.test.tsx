@@ -79,12 +79,12 @@ describe('hosts that hide Open and Find All Uses', () => {
   });
 
   it('the library editor', async () => {
-    const ash: Entity = { id: 'ash', name: 'Ash', stats: [stat('grit', 'Grit')] } as Entity;
+    const ash: Entity = { id: 'ash', name: 'Ash', stats: [{ ...stat('grit', 'Grit'), scripts: [{ id: 'after', timing: 'after', code: '' }] }] } as Entity;
     underWorldEditor(<EntityEditorModal entityId={null} draft={ash} onClose={vi.fn()} />);
     await userEvent.click(screen.getByRole('tab', { name: 'Stats' }));
     await userEvent.click(screen.getByText('Grit'));
-    fireEvent.mouseDown(within(screen.getByRole('tablist', { name: 'Stat Fields' })).getByRole('tab', { name: 'Code' }));
-    await waitFor(() => expect(navigations.has('Stat Code After the AI')).toBe(true));
-    expect(navigations.get('Stat Code After the AI')).toBeUndefined();
+    fireEvent.mouseDown(within(screen.getByRole('tablist', { name: 'Stat Fields' })).getByRole('tab', { name: 'Scripts' }));
+    await waitFor(() => expect(navigations.has('Code Grit · After the AI')).toBe(true));
+    expect(navigations.get('Code Grit · After the AI')).toBeUndefined();
   });
 });

@@ -184,6 +184,7 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
   'worldEditorTrait.availability': { page: 'World-Editor-Traits', anchor: 'availability' },
   'worldEditorTrait.stats': { page: 'World-Editor-Traits', anchor: 'stat-changes' },
   'worldEditorTrait.pins': { page: 'World-Editor-Traits', anchor: 'placeholder-pins' },
+  'worldEditorTrait.scripts': { page: 'World-Editor-Stats', anchor: 'dynamic-value-calculation' },
   'worldEditorEntry.details': { page: 'World-Editor-Dictionary', anchor: 'details' },
   'worldEditorEntry.matching': { page: 'World-Editor-Dictionary', anchor: 'matching' },
   'worldEditorBook.details': { page: 'World-Editor-Dictionary', anchor: 'books' },

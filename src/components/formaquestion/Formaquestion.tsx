@@ -380,13 +380,10 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     if (target) land(target);
   }, [requestSurface, sheet, closeWindow, openDialog, changeViewInWindow, land]);
 
-  // Insert: the sheet closes as for Take Me There; the desktop window steps aside for the replace confirm.
-  useEffect(() => onStatCodeInsert((event) => {
-    if (sheet) {
-      if (event !== 'settled') closeWindow();
-    } else if (event === 'confirming') stepAside();
-    else if (event === 'settled') comeBack();
-  }), [sheet, closeWindow, stepAside, comeBack]);
+  // Insert: the sheet closes as for Take Me There; the desktop window stays.
+  useEffect(() => onStatCodeInsert(() => {
+    if (sheet) closeWindow();
+  }), [sheet, closeWindow]);
 
   // A failed load drops the request, so a later Try Again does not jump the view.
   useEffect(() => {

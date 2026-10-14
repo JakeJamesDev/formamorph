@@ -13,7 +13,7 @@ import {
 } from '@/lib/statCodePaths';
 import {
   CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, DELTA_FIELDS, DELTA_MEMBERS, DICTIONARY_FIELDS, ENTITY_FIELDS, PERSONA_FIELDS,
-  PREVIOUS_FIELDS, SANDBOX_GLOBALS, STAT_FIELDS, TRAIT_ENTRY_FIELDS, placeholderEntryFields,
+  PREVIOUS_FIELDS, SANDBOX_GLOBALS, SELF_TRAIT_FIELDS, STAT_FIELDS, TRAIT_ENTRY_FIELDS, TRAIT_SCRIPT_SURFACE, placeholderEntryFields,
 } from '@/lib/statCodeSurface';
 
 /** The names the tree lists, as the editor's session holds them, with each world trait in its groups. */
@@ -227,7 +227,9 @@ const OWNER_INFO = 'The entity that owns this stat, with its own stats, traits a
  * Builds the Variable menu's top level. Without `names`, every name list is one type-over row. `stats` lists the
  * global stats in every box; an `owner` adds the Owner group, which lists the owner's own.
  */
-export function buildVariableTree(names?: VariableTreeNames, owner: VariableTreeOwner | null = null): VariableNode[] {
+export function buildVariableTree(
+  names?: VariableTreeNames, owner: VariableTreeOwner | null = null, self: 'stat' | 'trait' = 'stat',
+): VariableNode[] {
   const pathMap: PlaceholderPathMap | null = names?.placeholders
     ? placeholderPathMap({ list: names.placeholders.list, owners: names.placeholders.owners })
     : null;
@@ -304,7 +306,9 @@ export function buildVariableTree(names?: VariableTreeNames, owner: VariableTree
   };
 
   return [
-    { kind: 'group', label: 'This Stat', info: globalInfo('self'), children: statFields(root('self')) },
+    self === 'trait'
+      ? { kind: 'group', label: 'This Trait', info: TRAIT_SCRIPT_SURFACE.globals.find((entry) => entry.name === 'self')?.info, children: fields(root('self'), SELF_TRAIT_FIELDS) }
+      : { kind: 'group', label: 'This Stat', info: globalInfo('self'), children: statFields(root('self')) },
     ...(owner ? [{ kind: 'group' as const, label: 'Owner', info: OWNER_INFO, children: ownerChildren(owner) }] : []),
     nameList('Stats', statRows, 'No stats in this world', globalInfo('stats')),
     nameList('Traits', traitList, 'No traits in this world', globalInfo('traits')),

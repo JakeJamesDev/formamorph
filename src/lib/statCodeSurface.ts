@@ -285,6 +285,26 @@ export const STAT_CODE_SURFACE: CodeSurface = {
   guide: STAT_CODE_GUIDE_LINKS,
 };
 
+/** A trait's own entry as its script's `self` reads it: no field takes a write. */
+export const SELF_TRAIT_FIELDS: readonly SurfaceEntry[] = readOnlyEntries(TRAIT_ENTRY_FIELDS.map((entry) =>
+  (entry.name === TRAIT_WRITABLE_FIELD ? { ...entry, info: 'True when the trait is held and on' } : entry)));
+
+/** A trait script's surface: stat code's, with `self` as the trait and nothing owed back. */
+export const TRAIT_SCRIPT_SURFACE: CodeSurface = {
+  ...STAT_CODE_SURFACE,
+  label: 'trait script',
+  globals: SANDBOX_GLOBALS.map((entry) => {
+    if (entry.name === 'self') {
+      return { name: 'self', detail: 'Trait', info: 'The trait this script belongs to. Read-only. Switch a trait through traits or owner.traits.', access: 'readOnly' };
+    }
+    return entry.name === 'owner'
+      ? { ...entry, info: 'The entity that holds this trait, with the fields of an entities entry. It’s empty for a global trait. Use owner.stats["Two Words"] for a name with a space.' }
+      : entry;
+  }),
+  missingReturn: null,
+  selfIs: 'trait',
+};
+
 /**
  * The stat-code name an unknown identifier was most likely meant to be, or null when nothing is close
  * enough to be worth suggesting. Case-insensitive, so `Stats` still points at `stats`.

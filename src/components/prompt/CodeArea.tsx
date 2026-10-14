@@ -100,6 +100,8 @@ interface CodeAreaProps {
   preview?: ReactNode;
   className?: string;
   rows?: number;
+  /** Focus the editor once it is ready, which can be after its chunk loads. */
+  autoFocus?: boolean;
 }
 
 /** Toolbar + editor. Split out so the fullscreen overlay can mount a second copy against the same
@@ -299,7 +301,7 @@ export function CodeArea(props: CodeAreaProps) {
   const variableTree = useCallback(() => {
     const { slots: template, statNames, owner, placeholders, traits, entities, surface, variables } = latest.current;
     if (!surface.statMaps) return variables?.() ?? [];
-    return buildVariableTree(template ? undefined : { statNames, placeholders, traits, entities }, owner);
+    return buildVariableTree(template ? undefined : { statNames, placeholders, traits, entities }, owner, surface.selfIs ?? 'stat');
   }, []);
 
   const { ariaLabel, placeholder, slots } = props;
@@ -356,7 +358,10 @@ export function CodeArea(props: CodeAreaProps) {
   const traitNames = useMemo(() => props.traits?.map((trait) => trait.name), [props.traits]);
   useEffect(() => { session?.setTraits(traitNames); }, [session, traitNames]);
   useEffect(() => { session?.setEntities(props.entities); }, [session, props.entities]);
-  const { revealLine } = props;
+  const { revealLine, autoFocus } = props;
+  useEffect(() => {
+    if (session && autoFocus) session.focus();
+  }, [session, autoFocus]);
   useEffect(() => {
     if (!session || revealLine === undefined) return;
     session.revealLine(revealLine);

@@ -56,9 +56,9 @@ const SAMPLES = [
 
 /** The uses a Fatigue search finds: a world stat's box, an entity's own box, and a Blueprint no one owns. */
 const USES: readonly CodeUse[] = [
-  { entityId: null, rowId: 'courage', timing: 'after', stat: 'Courage', line: 3, noOwners: false },
-  { entityId: 'tom', rowId: 'tom-health', timing: 'before', stat: 'Health', entity: 'Tom', line: 1, noOwners: false },
-  { entityId: null, rowId: 'dread', timing: 'after', stat: 'Dread', line: 7, noOwners: true },
+  { entityId: null, rowId: 'courage', timing: 'after', scriptId: 'courage:after', name: 'Courage', line: 3, noOwners: false },
+  { entityId: 'tom', rowId: 'tom-health', timing: 'before', scriptId: 'tom-health:before', name: 'Health', entity: 'Tom', line: 1, noOwners: false },
+  { entityId: null, rowId: 'dread', timing: 'after', scriptId: 'dread:after', name: 'Dread', line: 7, noOwners: true },
 ];
 
 function cardFor(code: string): CodeCard {

@@ -5,11 +5,13 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useGameDataOptional } from '@/contexts/GameDataContext';
 import { updateOwnedStat } from '@/lib/ownedStats';
+import { updateOwnedTrait } from '@/lib/ownedTraits';
+import { setTraitLinkScripts } from '@/lib/blueprints';
 import { planCodeRename, type CodeRenamePlan, type RenameRoot } from '@/lib/statCodeRename';
 import { setStatLinkScripts, withStatLinks } from '@/lib/statLinks';
 import { traitOwnerMaps } from '@/lib/statCodeTraits';
 import { scriptsOf, withScriptCode } from '@/lib/scripts';
-import type { Stat, StatLink } from '@/types';
+import type { Stat, StatLink, Trait, TraitLink } from '@/types';
 import { CodeRenameContext, type CodeRenameRequest, type OfferCodeRename } from '@/lib/useCodeRename';
 
 /**
@@ -31,9 +33,22 @@ const renamedNoun = (plan: CodeRenamePlan) =>
 
 const plural = (count: number, one: string, many: string) => (count === 1 ? one : many);
 
+/** Whose code the plan rewrites: its stats, then its traits, each counted where there are any. */
+function codeOwnersText(plan: CodeRenamePlan): string {
+  const traits = plan.edits.filter(({ home }) => isTraitHome(home)).length;
+  const stats = plan.edits.length - traits;
+  return [
+    ...(stats ? [`${stats} ${plural(stats, 'stat', 'stats')}`] : []),
+    ...(traits ? [`${traits} ${plural(traits, 'trait', 'traits')}`] : []),
+  ].join(' and ');
+}
+
+const isTraitHome = (home: CodeRenamePlan['edits'][number]['home']) =>
+  home.kind === 'trait' || home.kind === 'entityTrait' || home.kind === 'traitLink';
+
 /** The question the dialog asks: whose code names the old name, how often, and what it would become. */
 const renameQuestion = (plan: CodeRenamePlan) =>
-  `The code of ${plan.edits.length} ${plural(plan.edits.length, 'stat', 'stats')} names the `
+  `The code of ${codeOwnersText(plan)} names the `
   + `${renamedNoun(plan)} “${plan.oldName}” ${plan.references} ${plural(plan.references, 'time', 'times')}. `
   + `Update ${plural(plan.references, 'it', 'them')} to “${plan.newName}”?`;
 
@@ -52,6 +67,7 @@ export function CodeRenameProvider({ children }: { children: ReactNode }) {
     [world?.placeholders, world?.placeholderOwners],
   );
   const updateStat = world?.updateStat;
+  const updateTrait = world?.updateTrait;
   const editEntity = world?.editEntity;
   // A queue, because one Replace All can rename several things at once. Requests are held rather than
   // plans: each answer rewrites code the next request has to read, so a plan is built only once its
@@ -64,7 +80,7 @@ export function CodeRenameProvider({ children }: { children: ReactNode }) {
       const maps = traitId === undefined ? undefined
         : traitOwnerMaps({ traits, traitGroups, entities }, placeholders.list, traitId);
       const plan = planCodeRename({
-        ...request, stats, statGroups, traits, entities, dictionaries, placeholders, traitOwnerMaps: maps,
+        ...request, stats, statGroups, traits, traitGroups, entities, dictionaries, placeholders, traitOwnerMaps: maps,
       });
       if (plan) return { plan, through: i };
     }
@@ -82,8 +98,8 @@ export function CodeRenameProvider({ children }: { children: ReactNode }) {
   }, [pending, queue.length]);
 
   // Held in a ref so the callback the name fields take never changes identity.
-  const latest = useRef({ stats, updateStat, editEntity });
-  latest.current = { stats, updateStat, editEntity };
+  const latest = useRef({ stats, traits, updateStat, updateTrait, editEntity });
+  latest.current = { stats, traits, updateStat, updateTrait, editEntity };
 
   const offer = useCallback<OfferCodeRename>((request) => {
     setQueue((waiting) => [...waiting, request]);
@@ -107,14 +123,36 @@ export function CodeRenameProvider({ children }: { children: ReactNode }) {
 
   const apply = () => {
     if (!plan) return;
-    const { stats: worldStats, updateStat: write, editEntity: edit } = latest.current;
+    const { stats: worldStats, traits: worldTraits, updateStat: write, updateTrait: writeTrait, editEntity: edit } = latest.current;
     const byId = new Map(worldStats.map((stat) => [stat.id, stat]));
+    const traitById = new Map(worldTraits.map((trait) => [trait.id, trait]));
     // The Blueprint scripts this rename rewrites, so a link's snapshot of them moves with them.
     const blueprintAfter = new Map(plan.edits.flatMap(({ home, scripts }) => (home.kind === 'stat' ? [[home.statId, scripts]] : [])));
+    const traitAfter = new Map(plan.edits.flatMap(({ home, scripts }) => (home.kind === 'trait' ? [[home.traitId, scripts]] : [])));
     // Only the scripts the plan rewrote, so a script the rename never read keeps whatever it holds.
-    const rewritten = (stat: Stat, scripts: Record<string, string>): Stat => ({ ...stat, scripts: withScriptCode(scriptsOf(stat), scripts) });
+    const rewritten = <T extends Stat | Trait>(item: T, scripts: Record<string, string>): T => ({ ...item, scripts: withScriptCode(scriptsOf(item), scripts) });
     for (const { home, scripts } of plan.edits) {
-      if (home.kind === 'stat') {
+      if (home.kind === 'trait') {
+        const trait = traitById.get(home.traitId);
+        if (trait && writeTrait) writeTrait(rewritten(trait, scripts));
+      } else if (home.kind === 'entityTrait') {
+        edit?.(home.entityId, (entity) => {
+          const trait = entity.traits?.find((entry) => entry.id === home.traitId);
+          return trait ? updateOwnedTrait(entity, rewritten(trait, scripts)) : entity;
+        });
+      } else if (home.kind === 'traitLink') {
+        const original = traitById.get(home.traitId);
+        if (!original) continue;
+        const rewrite = (link: TraitLink) => {
+          const overridden = link.overrides?.[home.traitId]?.scripts?.value ?? [];
+          const before = scriptsOf(original);
+          const after = withScriptCode(before, traitAfter.get(home.traitId) ?? {});
+          return setTraitLinkScripts(link, home.traitId, withScriptCode(overridden, scripts), before, after);
+        };
+        edit?.(home.entityId, (entity) => ({
+          ...entity, traitLinks: (entity.traitLinks ?? []).map((link) => (link.id === home.linkId ? rewrite(link) : link)),
+        }));
+      } else if (home.kind === 'stat') {
         const stat = byId.get(home.statId);
         if (stat && write) write(rewritten(stat, scripts));
       } else if (home.kind === 'entity') {

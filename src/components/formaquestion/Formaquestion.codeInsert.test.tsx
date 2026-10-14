@@ -162,7 +162,7 @@ describe('Insert on a help answer', () => {
     expect(within(article).queryByRole('button', { name: 'Insert' })).toBeNull();
   });
 
-  it.each(['written', 'confirming'] as const)('closes the sheet on a mobile-size screen when the panel reports %s', async (event) => {
+  it('closes the sheet on a mobile-size screen when the panel reports a write', async () => {
     vi.stubGlobal('innerWidth', 375);
     vi.stubGlobal('matchMedia', (query: string) => ({
       matches: query.includes('max-width'), media: query, addEventListener: () => {}, removeEventListener: () => {},
@@ -170,26 +170,12 @@ describe('Insert on a help answer', () => {
     storeFramedWindow({ sourcesOpen: true, chatStyle: 'minimal' });
     const stat = openStat();
     closeStat = stat.close;
-    stat.insert.mockImplementation(() => reportStatCodeInsert(event));
+    stat.insert.mockImplementation(() => reportStatCodeInsert('written'));
     await ask(UNTAGGED);
     await userEvent.click(insertButtons()[0]);
     await userEvent.click(await screen.findByRole('menuitem', { name: 'Before the AI' }));
     expect(stat.insert).toHaveBeenCalledOnce();
     await waitFor(() => expect(helpWindow()?.dataset.state ?? 'closed').toBe('closed'));
-  });
-
-  it('steps aside on the desktop while the replace confirm is open, and comes back when it closes', async () => {
-    const stat = openStat();
-    closeStat = stat.close;
-    stat.insert.mockImplementation(() => reportStatCodeInsert('confirming'));
-    await ask(UNTAGGED);
-    await userEvent.click(insertButtons()[0]);
-    await userEvent.click(await screen.findByRole('menuitem', { name: 'After the AI' }));
-    await waitFor(() => expect(helpWindow()?.dataset.state ?? 'closed').toBe('closed'));
-
-    act(() => reportStatCodeInsert('settled'));
-    await waitFor(() => expect(helpWindow()).toHaveAttribute('data-state', 'open'));
-    expect(conversation()).toHaveTextContent('return 1;');
   });
 
   it('keeps the desktop window open on a write', async () => {

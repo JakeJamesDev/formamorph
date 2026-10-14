@@ -5,8 +5,8 @@
 // the placeholder one owner reads.
 
 import type {
-  BlueprintOverride, BlueprintOverrides, CopyValueFields, CopyValueOverrides, Entity, PersonaRef, Placeholder, PlaceholderValue, Trait,
-  TraitLink, TraitLinkFields, TraitLinkOverrides,
+  BlueprintOverride, BlueprintOverrides, CopyValueFields, CopyValueOverrides, Entity, PersonaRef, Placeholder, PlaceholderValue, Script,
+  Trait, TraitLink, TraitLinkFields, TraitLinkOverrides,
 } from '@/types';
 
 /** A blueprint's record as one reader sees it, with the fields it overrides and the overrides the blueprint
@@ -68,6 +68,7 @@ export const linkFieldsOf = (trait: Trait): TraitLinkFields => ({
   playerToggle: !!trait.playerToggle,
   statChanges: trait.statChanges,
   mode: trait.mode ?? 'optional',
+  scripts: trait.scripts ?? [],
 });
 
 /** The original's overridable fields as `link` reads them, with what it overrides and what went stale. */
@@ -110,6 +111,17 @@ const withTraitOverrides = (link: TraitLink, traitId: string, next: TraitLinkOve
 export function setLinkOverride<K extends keyof TraitLinkFields>(link: TraitLink, trait: Trait, field: K, value: TraitLinkFields[K]): TraitLink {
   const next = withOverride(link.overrides?.[trait.id], field, value, linkFieldsOf(trait)[field]);
   return withTraitOverrides(link, trait.id, next);
+}
+
+/** The link with its scripts override on `traitId` set to `scripts`, as a rename rewrites both sides. The
+ *  snapshot moves from `before` to `after` only where it read `before`, so a stale override stays stale. */
+export function setTraitLinkScripts(
+  link: TraitLink, traitId: string, scripts: Script[], before: readonly Script[], after: Script[],
+): TraitLink {
+  const current = link.overrides?.[traitId]?.scripts;
+  if (!current) return link;
+  const blueprint = sameValue(current.blueprint, before) ? after : current.blueprint;
+  return withTraitOverrides(link, traitId, withOverride(link.overrides?.[traitId], 'scripts', scripts, blueprint));
 }
 
 /** The link reading `field` on `traitId` live again. The same link when it did not override it. */

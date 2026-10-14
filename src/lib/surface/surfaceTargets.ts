@@ -47,7 +47,7 @@ export const SURFACE_TARGETS = {
 
 /** Targets inside an open item's panel, which only an in-app action such as Insert lands on; never a route. */
 export const PANEL_TARGETS = {
-  'worldEditorStat.code': ['before-code', 'after-code'],
+  'worldEditorStat.code': ['add-script'],
 } as const satisfies Partial<Record<SurfaceId, readonly string[]>>;
 
 type AttributeTargets = typeof SURFACE_TARGETS & typeof PANEL_TARGETS;

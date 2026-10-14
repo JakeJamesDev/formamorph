@@ -7,11 +7,14 @@
  * Every authored entity counts as in the game, and `persona` may be any entity that can be played (Q11).
  */
 
-import type { Entity, Placeholder, Script, Stat, StatGroup, StatLink } from '@/types';
+import type { Entity, Placeholder, Script, Stat, StatGroup, StatLink, Trait, TraitGroup } from '@/types';
 import { canBePlayer } from './owners';
 import { codeRenameChains, type CodeRenameKey } from './codeRenameChains';
 import { hasEntityKey, statCodeName, statsByCodeName } from './statCodeNames';
 import { filledCodeBoxes } from './statCodeTiming';
+import { filledScripts } from './scripts';
+import { effectiveLinkTrait, linkTraitState } from './blueprints';
+import { blueprintItemIds, isDescendantGroup } from './traitTree';
 import {
   blueprintGroupStats, globalStatsOf, resolvedEntityStatTree, statBlueprintIds, statLinkState, type StatLinkWorld,
 } from './statLinks';
@@ -94,6 +97,9 @@ export interface CodeRun {
   owner: CodeOwner | null;
 }
 
+/** One run of a trait's box, which runs as no stat. */
+export type TraitRun = Pick<CodeRun, 'owner'>;
+
 /** One owner's stat a route lands on. */
 export interface StatTarget {
   owner: CodeOwner;
@@ -101,13 +107,13 @@ export interface StatTarget {
 }
 
 /** Each owner's stat `route` lands on from one run. */
-export function routeTargets(owners: CodeOwners, run: CodeRun, route: StatRoute): StatTarget[] {
+export function routeTargets(owners: CodeOwners, run: TraitRun & { self?: Stat }, route: StatRoute): StatTarget[] {
   const on = (owner: CodeOwner | null | undefined): StatTarget[] => {
     const stat = owner && route.stat !== null ? owner.byCodeName.get(route.stat) : undefined;
     return owner && stat ? [{ owner, stat }] : [];
   };
   switch (route.root) {
-    case 'self': return [{ owner: run.owner ?? owners.world, stat: run.self }];
+    case 'self': return run.self ? [{ owner: run.owner ?? owners.world, stat: run.self }] : [];
     case 'stats': return on(owners.world);
     case 'owner': return on(run.owner);
     case 'entities': return on(owners.byName.get(route.entity ?? ''));
@@ -136,6 +142,76 @@ export interface StatCodeBox extends Script {
   owner: CodeOwner | null;
   /** Each run the box gets in play: one per owner for a Blueprint stat whose link leaves the box alone. */
   runs: CodeRun[];
+}
+
+/** Where a trait's script is authored. */
+export type TraitCodeHome =
+  /** A world trait's own script, a Blueprint trait's included. */
+  | { kind: 'trait'; traitId: string }
+  /** An entity's own trait. */
+  | { kind: 'entityTrait'; entityId: string; traitId: string }
+  /** An owner's link that overrides the scripts of the Blueprint trait it brings. */
+  | { kind: 'traitLink'; entityId: string; linkId: string; traitId: string };
+
+/** One script of a trait that holds code. Its runs read no stat as `self`. */
+export interface TraitCodeBox extends Script {
+  home: TraitCodeHome;
+  /** The trait as its runs read it: a link's override applied. */
+  trait: Trait;
+  entity: Entity | null;
+  /** What `owner` holds where the editor reads the box: none for a global trait, an empty entry for a Blueprint
+   *  trait, whose owners vary, the entity otherwise. */
+  owner: CodeOwner | null;
+  /** Each run the box gets in play: one per owner for a Blueprint trait whose link leaves its scripts alone. */
+  runs: TraitRun[];
+}
+
+/** The world's traits, which a trait box reads. */
+export interface TraitCodeWorld {
+  traits: readonly Trait[];
+  traitGroups: readonly TraitGroup[];
+}
+
+/**
+ * Every filled trait script in the world once: the world's traits', each entity's own traits' and the scripts
+ * its links override. A link that leaves a Blueprint trait's scripts alone adds a run to that trait's box.
+ */
+export function traitCodeBoxes(owners: CodeOwners, world: TraitCodeWorld): TraitCodeBox[] {
+  const lists = { traits: [...world.traits], traitGroups: [...world.traitGroups] };
+  const blueprintIds = blueprintItemIds(lists);
+  const blueprintOwner: CodeOwner = { entity: null, stats: [], byCodeName: new Map(), linkOf: NO_LINKS };
+  const worldBoxes = world.traits.flatMap((trait) => {
+    const blueprint = blueprintIds.has(trait.id);
+    return filledScripts(trait).map((script): TraitCodeBox => ({
+      home: { kind: 'trait', traitId: trait.id }, ...script, trait, entity: null,
+      owner: blueprint ? blueprintOwner : null, runs: blueprint ? [] : [{ owner: null }],
+    }));
+  });
+  const runsOf = new Map(worldBoxes.map((box) => [box.id, box.runs]));
+  const entityBoxes = owners.all.flatMap((codeOwner) => {
+    const { entity } = codeOwner;
+    if (!entity) return [];
+    const run: TraitRun = { owner: codeOwner };
+    const own = (entity.traits ?? []).flatMap((trait) => filledScripts(trait).map((script): TraitCodeBox => ({
+      home: { kind: 'entityTrait', entityId: entity.id, traitId: trait.id }, ...script, trait, entity, owner: run.owner, runs: [run],
+    })));
+    const linked = (entity.traitLinks ?? []).flatMap((link) => world.traits
+      .filter((trait) => trait.id === link.originalId
+        || (trait.groupId != null && isDescendantGroup(lists.traitGroups, link.originalId, trait.groupId)))
+      .flatMap((original) => {
+        if (!linkTraitState(original, link).overridden.includes('scripts')) {
+          for (const script of filledScripts(original)) runsOf.get(script.id)?.push(run);
+          return [];
+        }
+        const trait = effectiveLinkTrait(original, link);
+        return filledScripts(trait).map((script): TraitCodeBox => ({
+          home: { kind: 'traitLink', entityId: entity.id, linkId: link.id, traitId: original.id },
+          ...script, trait, entity, owner: run.owner, runs: [run],
+        }));
+      }));
+    return [...own, ...linked];
+  });
+  return [...worldBoxes, ...entityBoxes];
 }
 
 /** Whether a link overrides the scripts of the stat it brings. */
@@ -182,9 +258,12 @@ export function statCodeBoxes(owners: CodeOwners): StatCodeBox[] {
   return [...worldBoxes, ...blueprintBoxes, ...entityBoxes];
 }
 
+/** What a route reads in a box: its code, and what `owner` holds in each of its runs. */
+export type ReferenceBox = Pick<StatCodeBox, 'code' | 'owner'> & { stat?: Stat; runs: readonly (TraitRun & { self?: Stat })[] };
+
 /** One literal route to a stat in a box's code. */
-export interface StatCodeReference {
-  box: StatCodeBox;
+export interface StatCodeReference<B extends ReferenceBox = StatCodeBox> {
+  box: B;
   route: Exclude<StatRoute['root'], 'self'>;
   /** The entity an `entities` route names, by code name. */
   entity?: string;
@@ -223,8 +302,8 @@ export function routesIn(code: string): RouteKey[] {
 }
 
 /** Every route in one box that reaches a stat, in text order. */
-export function boxReferences(owners: CodeOwners, box: StatCodeBox): StatCodeReference[] {
-  const runs: CodeRun[] = [{ self: box.stat, owner: box.owner }, ...box.runs];
+export function boxReferences<B extends ReferenceBox>(owners: CodeOwners, box: B): StatCodeReference<B>[] {
+  const runs = [{ self: box.stat, owner: box.owner }, ...box.runs];
   return routesIn(box.code).flatMap(({ route, key }) => {
     // One target per owner and stat, however many runs reach it.
     const seen = new Map<CodeOwner, Set<string>>();

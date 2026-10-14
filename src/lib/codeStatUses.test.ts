@@ -38,7 +38,7 @@ const world: StatRouteWorld = {
 
 const usesOf = (item: { statId: string; entityId?: string }, at: StatRouteWorld = world) => statUses(statCodeOwners(at), item);
 /** Each row as its box and line read, for a compact comparison. */
-const rows = (uses: CodeUse[]) => uses.map((use) => `${use.entity ? `${use.entity} › ` : ''}${use.stat} ${use.timing} ${use.line}${use.noOwners ? ' no owners' : ''}`);
+const rows = (uses: CodeUse[]) => uses.map((use) => `${use.entity ? `${use.entity} › ` : ''}${use.name} ${use.timing} ${use.line}${use.noOwners ? ' no owners' : ''}`);
 
 describe('statUses', () => {
   it('lists one row per box and line, so two spellings on one line join', () => {

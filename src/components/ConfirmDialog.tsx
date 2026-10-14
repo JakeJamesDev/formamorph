@@ -10,6 +10,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "./ui/alert-dialog"
+import { buttonVariants } from "./ui/button"
 import { useClosingSnapshot } from "@/lib/useClosingSnapshot"
 
 /**
@@ -26,6 +27,8 @@ export function ConfirmDialog({
   open,
   onOpenChange,
   onCloseAutoFocus,
+  confirmLabel = "Confirm",
+  destructive = false,
 }: {
   title?: ReactNode
   description?: ReactNode
@@ -38,6 +41,9 @@ export function ConfirmDialog({
   onOpenChange?: (open: boolean) => void
   /** Runs as the dialog closes. A controlled dialog has no trigger, so this is where it returns focus. */
   onCloseAutoFocus?: (event: Event) => void
+  confirmLabel?: string
+  /** Draws the confirm button in the destructive style, for a delete. */
+  destructive?: boolean
 }) {
   const handleConfirm = () => {
     onConfirm?.()
@@ -65,7 +71,12 @@ export function ConfirmDialog({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel onClick={handleCancel}>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={handleConfirm}>Confirm</AlertDialogAction>
+          <AlertDialogAction
+            onClick={handleConfirm}
+            className={destructive ? buttonVariants({ variant: "destructive" }) : undefined}
+          >
+            {confirmLabel}
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

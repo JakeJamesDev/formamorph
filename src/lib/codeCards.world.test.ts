@@ -159,7 +159,7 @@ describe('stat cards: routes', () => {
     const reader = stat('mood', 'Mood', { scripts: boxScripts({ after: 'return persona.stats.Rage.value;' }) });
     const options = box(null, reader, 'after', { ...world, stats: [health, fatigue, rage, calm, reader] });
     const card = cardAt('return persona.stats.Ra|ge.value;', options);
-    expect(options.lookup!.uses(card!.item!).map((use) => [use.stat, use.line])).toEqual([['Mood', 1]]);
+    expect(options.lookup!.uses(card!.item!).map((use) => [use.name, use.line])).toEqual([['Mood', 1]]);
   });
 
   it('shows the one playable entity’s own stat for `persona.stats`, with its item', () => {

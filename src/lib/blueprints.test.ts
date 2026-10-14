@@ -61,7 +61,7 @@ describe('trait links', () => {
     expect(linkTraitState(paladin, l)).toEqual({
       record: {
         isDefault: true, playerToggle: false, requires: paladin.requires, placeholderPins: paladin.placeholderPins,
-        statChanges: paladin.statChanges, mode: 'optional',
+        statChanges: paladin.statChanges, mode: 'optional', scripts: [],
       },
       overridden: [], stale: [],
     });
@@ -69,7 +69,7 @@ describe('trait links', () => {
 
   it('normalizes absent trait fields to their off or empty reading', () => {
     expect(linkTraitState(trait('bare'), link('l1', 'bare')).record)
-      .toEqual({ isDefault: false, playerToggle: false, requires: [], placeholderPins: [], statChanges: [], mode: 'optional' });
+      .toEqual({ isDefault: false, playerToggle: false, requires: [], placeholderPins: [], statChanges: [], mode: 'optional', scripts: [] });
   });
 
   it('overrides the mode, and an override to Optional clears the original\'s mode', () => {

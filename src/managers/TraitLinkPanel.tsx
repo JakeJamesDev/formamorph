@@ -11,7 +11,7 @@ import { effectiveLinkTrait, linkTraitState } from '@/lib/blueprints';
 import { editLinkTrait, linkedTraits, originalPath, resetLink, resetLinkField, resetLinkTrait, setLinkField } from '@/lib/traitLinks';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { fieldFrame } from '@/lib/historyField';
-import type { LinkRow } from '@/lib/traitTree';
+import { linkRowId, type LinkRow } from '@/lib/traitTree';
 import type { Entity, Trait, TraitLink } from '@/types';
 import TraitManager, { type TraitLinkEdit } from './TraitManager';
 
@@ -66,6 +66,7 @@ export function LinkedTraitManager({ owner, link, original, ...panel }: {
       {...panel}
       trait={trait}
       link={edit}
+      rowId={link.originalId === original.id ? link.id : linkRowId(link.id, original.id)}
       detailsHeader={<LinkedFromLine originalId={original.id} />}
     />
   );

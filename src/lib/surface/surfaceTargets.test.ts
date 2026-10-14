@@ -36,10 +36,10 @@ describe('PANEL_TARGETS', () => {
   });
 
   it('gives a panel target the same attribute, and no route', () => {
-    expect(targetAttribute('worldEditorStat.code', 'before-code')).toEqual({
-      'data-surface-target': 'worldEditorStat.code#before-code',
+    expect(targetAttribute('worldEditorStat.code', 'add-script')).toEqual({
+      'data-surface-target': 'worldEditorStat.code#add-script',
     });
-    expect(isSurfaceTarget('worldEditorStat.code', 'before-code')).toBe(false);
+    expect(isSurfaceTarget('worldEditorStat.code', 'add-script')).toBe(false);
   });
 });
 

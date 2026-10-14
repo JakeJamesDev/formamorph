@@ -131,6 +131,11 @@ export interface CodeBox {
   self: Stat;
 }
 
+/** A trait box's `self` in a lookup that takes a stat: nothing reads it as one, since a trait's `self` card is
+ *  the trait's own. */
+export const traitBoxSelf = (id: string, name: string): Stat =>
+  ({ id, name, type: 'number', description: '', min: 0, max: 0, regen: 0, descriptors: [] });
+
 /** The authored world a stat code box's cards read. */
 export interface CodeCardWorld extends PinEditorWorld {
   traits: readonly Trait[];
@@ -412,7 +417,7 @@ export function statBoxLookup(owners: CodeOwners, box: CodeBox, world?: CodeCard
     dictionary: (key) => cards()?.dictionary(key) ?? null,
     persona: () => owners.playable.map(entityName),
     uses: (item) => {
-      if (item.kind === 'stat') return statUses(owners, item);
+      if (item.kind === 'stat') return statUses(owners, item, world);
       // Other kinds are read the way their cards are, so they need the world beyond its stats.
       return world ? itemUses(owners, world, item, (other) => statBoxLookup(owners, other, world)) : [];
     },

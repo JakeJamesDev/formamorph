@@ -295,9 +295,14 @@ function dictionaryDetails({ dictionary, placeholders }: CodeDictionaryRecord): 
 const LIBRARY_PERSONA_NOTE = 'Under a library persona, reach the Custom Persona through entities[...]';
 
 /** `self`, `owner` and `persona` as the lookup's world holds them, laid over their surface card. */
-function boxGlobal(card: CodeCard, lookup: CodeWorldLookup): CodeCard {
+function boxGlobal(card: CodeCard, lookup: CodeWorldLookup, options: SurfaceAnalysisOptions): CodeCard {
   switch (card.signature.path) {
     case 'self': {
+      // A trait script's `self` is its trait, as its owner's map keys it.
+      if (options.surface.selfIs === 'trait') {
+        const record = options.selfName ? lookup.trait({ route: options.owner ? 'owner' : 'world' }, options.selfName) : null;
+        return record ? { ...card, ...traitDetails(record) } : card;
+      }
       const record = lookup.self();
       const { rows = [], item } = statDetails(record);
       const scope = record.scope ? ` (${scopedKind({ kind: 'stat', scope: record.scope })})` : '';
@@ -391,7 +396,7 @@ export function codeCard(code: string, pos: number, options: SurfaceAnalysisOpti
       const base = entry ? fromEntry(entry, 'global', entry.name, span) : null;
       const target = entry && options.surface.guide?.[entry.name];
       const card = base && target ? { ...base, links: [{ id: 'guide' as const, target }] } : base;
-      return card && options.lookup ? boxGlobal(card, options.lookup) : card;
+      return card && options.lookup ? boxGlobal(card, options.lookup, options) : card;
     }
     case 'member': {
       // A member the value doesn't carry gets no card, though the resolver read the value as a stat.

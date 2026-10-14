@@ -108,11 +108,11 @@ describe('World Editor — a Find hit opens the tab holding it', () => {
     expect((field as HTMLInputElement).value ?? field.textContent).toContain('marrow');
   });
 
-  it('leaves Code for Details when the hit is in the Description', async () => {
+  it('leaves Scripts for Details when the hit is in the Description', async () => {
     setup();
     await selectStat();
-    openPanelTab('Code');
-    await waitFor(() => expect(shownPanelTab()).toBe('Code'));
+    openPanelTab('Scripts');
+    await waitFor(() => expect(shownPanelTab()).toBe('Scripts'));
 
     await openFind();
     await findFirst('thawed');

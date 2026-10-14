@@ -26,6 +26,8 @@ import { HelpButton } from '@/components/HelpButton';
 import { Hint, Meta } from '@/components/ui/typography';
 import { traitPanelTabsFor, traitTabForField, type TraitPanelTab } from '@/views/traitPanelTabs';
 import { FieldReset, LabelRow } from '@/components/editor/BlueprintReset';
+import { TraitScripts } from './TraitScripts';
+import { useCodeUseReveal } from '@/lib/codeUseReveal';
 import type {
   Entity, FocusFieldHint, Placeholder, PlaceholderPin, Stat, StatGroup, Trait, StatChange, TraitLinkFields, TraitRequirement, TraitRequirementRow, TraitStatToggle,
 } from '@/types';
@@ -121,10 +123,10 @@ function StatOptions({ choices, label }: { choices: readonly StatChoices[]; labe
 }
 
 /**
- * Right-panel editor for one trait: its fields split across Details, Availability, Stats and Pins.
+ * Right-panel editor for one trait: its fields split across Details, Availability, Stats, Pins and Scripts.
  *
- * The panel remounts per trait, so the chosen tab is the editor's to hold and arrives as a prop. Pins is
- * Advanced only.
+ * The panel remounts per trait, so the chosen tab is the editor's to hold and arrives as a prop. Pins and
+ * Scripts are Advanced only.
  *
  * `focusField` is the search target the find bar just navigated to. A hit on a tab that isn't showing has no
  * field to mark, so the panel opens the owning tab; the same hint the other three panels take.
@@ -140,8 +142,10 @@ function StatOptions({ choices, label }: { choices: readonly StatChoices[]; labe
  */
 const TraitManager = ({
   trait, owner, link, ownerLine = true, detailsHeader, availabilityFooter, onOpenTrait, onOpenEntity, requirementOpens, tab, onTabChange,
-  focusField, surfaceTabs,
+  focusField, surfaceTabs, rowId,
 }: {
+  /** The row the trait's list selects to show this panel: a Link's row for a linked trait. Absent = the trait's id. */
+  rowId?: string;
   /** The tab ledger this panel reports under, for a host that has one. */
   surfaceTabs?: SurfaceLedgerName;
   trait: Trait;
@@ -230,6 +234,12 @@ const TraitManager = ({
   };
 
   const { advanced } = useEditorMode();
+
+  // A Find All Uses row bound for one of this trait's scripts shows it on the Scripts tab.
+  const reveal = useCodeUseReveal(rowId ?? trait.id, traitOwnerId ?? null, 'trait');
+  useEffect(() => {
+    if (reveal) onTabChange('scripts');
+  }, [reveal, onTabChange]);
 
   // Before the reveal, which is a timer behind this render: the field it looks for has to be mounting by
   // then. A key no tab claims leaves the panel where the author put it.
@@ -455,8 +465,19 @@ const TraitManager = ({
     </div>
   );
 
+  const scriptsPanel = (
+    <TraitScripts
+      trait={editingTrait}
+      owner={traitOwner}
+      ownerName={statLabel(editingTrait.name)}
+      onChange={(scripts) => apply({ scripts })}
+      reset={resetControl('scripts', 'Scripts')}
+      reveal={reveal}
+    />
+  );
+
   const panels: Record<TraitPanelTab, ReactNode> = {
-    details: detailsPanel, availability: availabilityPanel, stats: statsPanel, pins: pinsPanel,
+    details: detailsPanel, availability: availabilityPanel, stats: statsPanel, pins: pinsPanel, scripts: scriptsPanel,
   };
 
   return (

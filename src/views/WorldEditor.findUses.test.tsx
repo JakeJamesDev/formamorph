@@ -46,8 +46,13 @@ const howlLink = {
 };
 
 const WORLD: World = benchEditorWorld({
-  stats: [stat('s1', 'Warmth', 'return stats.Chill.value;'), stat('s2', 'Chill'), howl],
+  stats: [
+    stat('s1', 'Warmth', 'return stats.Chill.value;'),
+    { ...stat('s2', 'Chill'), scripts: [...boxScripts({ before: '', after: '' }), { id: 'chill-2', name: 'Second', timing: 'after', code: 'return 2;' }] },
+    howl,
+  ],
   statGroups: [{ id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' }],
+  traits: [{ id: 't-bold', name: 'Bold', statChanges: [], scripts: [{ id: 'bold-1', timing: 'after', code: 'stats.Chill.value = 1;' }] }],
   entities: [
     { id: 'resident', name: 'Odd Wick', playerDescription: 'The lamp-keeper.', aiDescription: 'Keeps the lamps.', locations: ['harbor'] },
     {
@@ -58,8 +63,10 @@ const WORLD: World = benchEditorWorld({
   ],
 } as Partial<World>);
 
-const AFTER = 'Stat Code After the AI';
-const BEFORE = 'Stat Code Before the AI';
+const AFTER = 'After the AI';
+const BEFORE = 'Before the AI';
+/** The open panel's unnamed box of `timing`. Only one panel's boxes are recorded at a time. */
+const boxAt = (timing: string) => [...boxes].find(([label]) => label.startsWith('Code ') && label.endsWith(` · ${timing}`))?.[1];
 
 const realScroll = Element.prototype.scrollIntoView;
 beforeEach(() => {
@@ -76,10 +83,10 @@ function goFromWarmth(use: CodeUse) {
   fireEvent.mouseDown(screen.getByRole('tab', { name: /Stats/ }));
   fireEvent.click(screen.getByText('Warmth'));
   const fields = () => within(screen.getByRole('tablist', { name: 'Stat Fields' }));
-  fireEvent.mouseDown(fields().getByRole('tab', { name: 'Code' }));
-  const goToUse = boxes.get(AFTER)?.navigation?.goToUse;
+  fireEvent.mouseDown(fields().getByRole('tab', { name: 'Scripts' }));
+  const goToUse = boxAt(AFTER)?.navigation?.goToUse;
   expect(goToUse, 'the box has Find All Uses').toBeTypeOf('function');
-  // So the Code tab the row lands on is its own doing.
+  // So the Scripts tab the row lands on is its own doing.
   fireEvent.mouseDown(fields().getByRole('tab', { name: 'Details' }));
   boxes.clear();
   act(() => goToUse!(use));
@@ -91,42 +98,60 @@ const statFieldsTab = (name: string) => within(screen.getAllByRole('tablist', { 
 describe('a Find All Uses row', () => {
   it('opens a world stat’s Code tab and hands its box the line, once', async () => {
     renderWorldEditorBench(WORLD, 'advanced');
-    goFromWarmth({ entityId: null, rowId: 's2', timing: 'before', stat: 'Chill', line: 3, noOwners: false });
+    goFromWarmth({ entityId: null, rowId: 's2', timing: 'before', scriptId: 'before', name: 'Chill', line: 3, noOwners: false });
 
     expect(sectionTab(/Stats/)).toHaveAttribute('aria-selected', 'true');
-    await waitFor(() => expect(statFieldsTab('Code')).toHaveAttribute('aria-selected', 'true'));
-    await waitFor(() => expect(boxes.get(BEFORE)?.revealLine).toBe(3));
-    expect(boxes.get(AFTER)?.revealLine, 'the other box keeps its caret').toBeUndefined();
+    await waitFor(() => expect(statFieldsTab('Scripts')).toHaveAttribute('aria-selected', 'true'));
+    await waitFor(() => expect(boxAt(BEFORE)?.revealLine).toBe(3));
+    expect(boxAt(AFTER)?.revealLine, 'the other box keeps its caret').toBeUndefined();
 
-    act(() => boxes.get(BEFORE)!.onLineRevealed!());
-    await waitFor(() => expect(boxes.get(BEFORE)?.revealLine).toBeUndefined());
+    act(() => boxAt(BEFORE)!.onLineRevealed!());
+    await waitFor(() => expect(boxAt(BEFORE)?.revealLine).toBeUndefined());
+  });
+
+  it('hands the line to the script the row names, not the first of its timing', async () => {
+    renderWorldEditorBench(WORLD, 'advanced');
+    goFromWarmth({ entityId: null, rowId: 's2', timing: 'after', scriptId: 'chill-2', name: 'Chill', line: 1, noOwners: false });
+
+    await waitFor(() => expect(boxes.get('Code Second')?.revealLine).toBe(1));
+    expect(boxAt(AFTER)?.revealLine, 'the first After script keeps its caret').toBeUndefined();
+  });
+
+  it('opens a world trait’s Scripts tab and hands its box the line', async () => {
+    renderWorldEditorBench(WORLD, 'advanced');
+    goFromWarmth({ entityId: null, rowId: 't-bold', trait: true, timing: 'after', scriptId: 'bold-1', name: 'Bold', line: 1, noOwners: false });
+
+    expect(sectionTab(/Traits/)).toHaveAttribute('aria-selected', 'true');
+    const traitTab = () => within(screen.getByRole('tablist', { name: 'Trait Fields' })).getByRole('tab', { name: 'Scripts' });
+    await waitFor(() => expect(traitTab()).toHaveAttribute('aria-selected', 'true'));
+    await waitFor(() => expect(boxes.get('Code Bold · After the AI')?.revealLine).toBe(1));
   });
 
   it('opens an entity’s own stat on its Stats tab at the box', async () => {
     renderWorldEditorBench(WORLD, 'advanced');
-    goFromWarmth({ entityId: 'mara', rowId: 'm-nerve', timing: 'after', stat: 'Nerve', entity: 'Mara', line: 2, noOwners: false });
+    goFromWarmth({ entityId: 'mara', rowId: 'm-nerve', timing: 'after', scriptId: 'after', name: 'Nerve', entity: 'Mara', line: 2, noOwners: false });
 
     expect(sectionTab(/Entities/)).toHaveAttribute('aria-selected', 'true');
     expect(entityFieldsTab('Stats')).toHaveAttribute('aria-selected', 'true');
-    await waitFor(() => expect(statFieldsTab('Code')).toHaveAttribute('aria-selected', 'true'));
-    await waitFor(() => expect(boxes.get(AFTER)?.revealLine).toBe(2));
-    expect(boxes.get(AFTER)?.value).toBe('self.value = 1;\nreturn stats.Chill.value;');
+    await waitFor(() => expect(statFieldsTab('Scripts')).toHaveAttribute('aria-selected', 'true'));
+    await waitFor(() => expect(boxAt(AFTER)?.revealLine).toBe(2));
+    expect(boxAt(AFTER)?.value).toBe('self.value = 1;\nreturn stats.Chill.value;');
   });
 
   it('opens a Blueprint stat’s own box', async () => {
     renderWorldEditorBench(WORLD, 'advanced');
-    goFromWarmth({ entityId: null, rowId: 'howl', timing: 'after', stat: 'Howl', line: 1, noOwners: false });
+    goFromWarmth({ entityId: null, rowId: 'howl', timing: 'after', scriptId: 'after', name: 'Howl', line: 1, noOwners: false });
 
-    await waitFor(() => expect(boxes.get(AFTER)?.revealLine).toBe(1));
-    expect(boxes.get(AFTER)?.value).toBe('return owner.stats.Howl.value;');
+    await waitFor(() => expect(boxAt(AFTER)?.revealLine).toBe(1));
+    expect(boxAt(AFTER)?.value).toBe('return owner.stats.Howl.value;');
   });
 
   it('opens a Link’s override box on the Link’s row', async () => {
     renderWorldEditorBench(WORLD, 'advanced');
-    goFromWarmth({ entityId: 'mara', rowId: 'l-howl', timing: 'after', stat: 'Howl', entity: 'Mara', line: 1, noOwners: false });
+    goFromWarmth({ entityId: 'mara', rowId: 'l-howl', timing: 'after', scriptId: 'after', name: 'Howl', entity: 'Mara', line: 1, noOwners: false });
 
     expect(entityFieldsTab('Stats')).toHaveAttribute('aria-selected', 'true');
-    await waitFor(() => expect(boxes.get(AFTER)?.revealLine).toBe(1));
-    expect(boxes.get(AFTER)?.value).toBe('return self.max;');
+    await waitFor(() => expect(boxAt(AFTER)?.revealLine).toBe(1));
+    expect(boxAt(AFTER)?.value).toBe('return self.max;');
   });
 });

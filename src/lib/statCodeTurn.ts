@@ -3,7 +3,8 @@ import type {
 } from '@/types';
 import {
   CODE_BOUND_FIELDS, executeStatCode, keyedEntities, type EntityTraitWrites, type KeyedEntities, type NarrationInput, type PlaceholderWrite,
-  type SandboxStats, type StatClock, type StatCodeResult, type StatTurnInputs, type StatWrite, type TraitWrite, type ValueAndMax,
+  type SandboxStats, type SandboxTrait, type StatClock, type StatCodeResult, type StatTurnInputs, type StatWrite, type TraitWrite,
+  type ValueAndMax,
 } from './statCodeExecutor';
 import { statCodeName, statCodeNamed } from './statCodeNames';
 import {
@@ -14,7 +15,7 @@ import {
   codeEntities, sandboxTraits, type CodeEntities, type CodeEntity, type StatCodeOwners,
 } from './statCodeTraits';
 import {
-  applyCodeTraitSwitches, codeDeltaFor, gateStatsOf, ownerStatTraitsInForce, sameCodeDelta, withCodeDelta, type AppliedTraitValues,
+  applyCodeTraitSwitches, codeDeltaFor, gateStatsOf, ownerStatTraitsInForce, sameCodeDelta, traitForceScope, withCodeDelta, type AppliedTraitValues,
   type CodeTraitSwitch, type TraitRuntimeState,
 } from './traitRuntime';
 import type { GateStats } from './traitGates';
@@ -217,13 +218,15 @@ interface OwnerRun<O extends RunOwner = RunOwner> {
   owner: O;
   named: PlayerStat[];
   inputs: Record<string, StatTurnInputs>;
-  /** In owner order: the world's scripts on the global run, then each enabled stat's in stat order. */
+  /** In owner order: the world's scripts on the global run, then each enabled stat's in stat order, then each
+   *  active trait's in tree order. */
   units: ScriptUnit[];
 }
 
-/** One script's run in a scope: its stat (none for a world script), and what it wrote. */
+/** One script's run in a scope: its stat or its trait (neither for a world script), and what it wrote. */
 interface ScriptUnit {
   stat: PlayerStat | null;
+  trait?: Trait;
   script: Script;
   /** Absent until the script ran clean. */
   writes?: ScriptWrites;
@@ -280,6 +283,8 @@ function statWritesByOwner(writers: readonly (ScriptWrites | undefined)[]): Map<
 
 function ownerRun<O extends RunOwner>(
   owner: O, timing: RunTiming, placeholderDefs: readonly Placeholder[], worldScripts: readonly Script[] = [],
+  /** The owner's active traits, whose scripts run after its stats' (Q3). */
+  traits: readonly Trait[] = [],
 ): OwnerRun<O> {
   // Code reaches a stat by its code name, which no roll moves. The log and the panel keep the rolled text.
   const named = statCodeNamed(owner.stats, placeholderDefs);
@@ -300,6 +305,7 @@ function ownerRun<O extends RunOwner>(
     ...filledScriptsAt({ scripts: worldScripts }, timing).map((script) => ({ stat: null, script })),
     ...named.filter((stat) => owner.enabled[stat.id] !== false)
       .flatMap((stat) => filledScriptsAt(stat, timing).map((script) => ({ stat, script }))),
+    ...traits.flatMap((trait) => filledScriptsAt(trait, timing).map((script) => ({ stat: null, trait, script }))),
   ];
   return { owner, named, inputs, units };
 }
@@ -313,10 +319,6 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
     id: null, stats: turn.stats, enabled: turn.enabled, previous: turn.previous,
     asks: turn.asks, regenApplied: turn.regenApplied,
   };
-  const globalRun = ownerRun(globalTurn, timing, placeholderDefs, turn.worldScripts);
-  const entityRuns = (turn.owners ?? []).map((owner) => ownerRun(owner, timing, placeholderDefs));
-  const runs: OwnerRun[] = [globalRun, ...entityRuns];
-  const anyCoded = runs.some((run) => run.units.length);
   const world = turn.ownerTraits.world;
   const before: TraitRuntimeState = {
     stats: [...turn.stats],
@@ -327,6 +329,30 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
     ownedTraits: turn.ownerTraits.ownedTraits,
     entityStats: Object.fromEntries((turn.owners ?? []).map((owner) => [owner.id, [...owner.stats]])),
   };
+  // A trait's scripts run while it is active (Q3). A global pick reads the world's current trait, not its stored copy.
+  const inForce = traitForceScope(before, world);
+  const authored = new Map(world.traits.map((trait) => [trait.id, trait]));
+  const globalTraits = inForce.global.map((trait) => authored.get(trait.id) ?? trait);
+  const globalRun = ownerRun(globalTurn, timing, placeholderDefs, turn.worldScripts, globalTraits);
+  const entityRuns = (turn.owners ?? []).map((owner) => ownerRun(owner, timing, placeholderDefs, [], inForce.owners[owner.id]));
+  // An owner with no stats of its own still runs its traits' scripts, in owner order: ahead of the next owner
+  // with stats in the played-first owner list, the owners that hold no trait last.
+  const withStats = new Set(entityRuns.map((run) => run.owner.id));
+  const order = [...new Set([...Object.keys(inForce.owners), ...withStats])];
+  const ahead = new Map<string, OwnerRun[]>();
+  let waiting: OwnerRun[] = [];
+  for (const id of order) {
+    if (withStats.has(id)) {
+      if (waiting.length) ahead.set(id, waiting);
+      waiting = [];
+      continue;
+    }
+    const run = ownerRun({ id, stats: [], enabled: {}, previous: [], regenApplied: {} }, timing, placeholderDefs, [], inForce.owners[id]);
+    if (run.units.length) waiting.push(run);
+  }
+  const ownerRuns = [...entityRuns.flatMap((run) => [...ahead.get(run.owner.id) ?? [], run]), ...waiting];
+  const runs: OwnerRun[] = [globalRun, ...ownerRuns];
+  const anyCoded = runs.some((run) => run.units.length);
   const gateStatsAt = (mainStats: PlayerStat[], ownerStats: EntityStatValues): GateStats => {
     const live = gateStatsOf({ ...before, stats: mainStats, entityStats: ownerStats }, world);
     return { global: live.global, owners: { ...turn.gateStats?.owners, ...live.owners } };
@@ -362,18 +388,25 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
   };
   const ownerEntries = new Map(runs.map((run) => [run, ownerEntryOf(run)]));
   const dictionaries = sandboxDictionaries(codeDictionaries(placeholderSet?.dictionaries, placeholderDefs), sandbox?.owners);
-  /** A script's name in the logs: its stat's, else its own name or the world-and-timing fallback. */
-  const whoRan = ({ stat, script }: ScriptUnit) => (stat ? `Stat ${stat.name}` : `Script ${scriptLabel(script, WORLD_OWNER)}`);
+  /** A script's name in the logs: its stat's or trait's, else its own name or the world-and-timing fallback. */
+  const whoRan = ({ stat, trait, script }: ScriptUnit) => (stat ? `Stat ${stat.name}`
+    : trait ? `Trait ${trait.name}` : `Script ${scriptLabel(script, WORLD_OWNER)}`);
+  /** A trait script's `self`: its trait's entry where its owner's map holds it. */
+  const selfTraitOf = (trait: Trait, owner: CodeEntity | undefined): SandboxTrait | undefined =>
+    (owner ? owner.traits : traits).find((entry) => entry.id === trait.id);
   // Run order: ordered scripts first, then owner order and stat order, so the later write wins.
   const ordered = inRunOrder(runs.flatMap((run) => run.units.map((unit) => ({ unit, run, script: unit.script }))));
   // The sentence a During AI Output run hands from one script to the next.
   let sentence = timing === 'output' ? turn.narration?.sentence : undefined;
   const runUnit = async ({ unit, run }: (typeof ordered)[number]) => {
-    const { stat, script } = unit;
+    const { stat, trait, script } = unit;
+    const owner = ownerEntries.get(run);
+    const selfTrait = trait && selfTraitOf(trait, owner);
     const result = await executeStatCode(script.code, [...globalStats.stats], stat, {
       clock: turn.clock, turn: globalStats.turn, enabled: globalStats.enabled, placeholders, traits, ...inPlay,
-      owner: ownerEntries.get(run), dictionaries,
+      owner, dictionaries,
       ...(sentence === undefined || !turn.narration ? {} : { narration: { ...turn.narration, sentence } }),
+      ...(selfTrait && { selfTrait }),
     });
     if (result.error) {
       console.error(`Error executing code for ${whoRan(unit)} (${SCRIPT_TIMING_LABEL[script.timing]}):`, result.error);
@@ -409,8 +442,8 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
   // Trait switches first, so bounds re-derive under them; the code's own bounds and values then go on top.
   const keyed = inPlay && keyedEntities(inPlay.entities, inPlay.persona);
   // The switch log names the switching stat as the player reads it, or the world script.
-  const switches = inOrder.map(({ stat, script, writes, owner }) => ({
-    by: stat ? turn.statNameOf(stat) : scriptLabel(script, WORLD_OWNER), written: writes?.traits, owner,
+  const switches = inOrder.map(({ stat, trait, script, writes, owner }) => ({
+    by: stat ? turn.statNameOf(stat) : trait ? turn.traitNameOf(trait) : scriptLabel(script, WORLD_OWNER), written: writes?.traits, owner,
   }));
   const switched = applyCodeTraitSwitches(
     before,

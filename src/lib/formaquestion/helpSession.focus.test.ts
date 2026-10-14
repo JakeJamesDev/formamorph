@@ -78,13 +78,13 @@ describe('the surface line with a focus', () => {
   it('names the focused stat after the open tab of its panel', async () => {
     const fetchImpl = script(sseReply('Done.'));
     await ask(fetchImpl, { surface: STAT_CODE, focus: COURAGE });
-    expect(userOf(fetchImpl)).toContain('this screen: World Editor dialog, Stats tab, Code tab of the stat Courage.');
+    expect(userOf(fetchImpl)).toContain('this screen: World Editor dialog, Stats tab, Scripts tab of the stat Courage.');
   });
 
   it('reads as before without a focus', async () => {
     const fetchImpl = script(sseReply('Done.'));
     await ask(fetchImpl, { surface: STAT_CODE });
-    expect(userOf(fetchImpl)).toContain('this screen: World Editor dialog, Stats tab, Code tab.');
+    expect(userOf(fetchImpl)).toContain('this screen: World Editor dialog, Stats tab, Scripts tab.');
   });
 
   it('leaves out a focus whose panel is not open', async () => {
