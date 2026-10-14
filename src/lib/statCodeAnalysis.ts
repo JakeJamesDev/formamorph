@@ -20,7 +20,7 @@ import {
 } from '@/lib/codeSurface';
 import {
   clockFieldsAt, DELTA_FIELDS, DELTA_MEMBERS, PREVIOUS_FIELDS, SELF_WRITABLE_FIELDS, STAT_CODE_SURFACE, STAT_FIELDS,
-  DICTIONARY_FIELDS, ENTITY_FIELDS, PERSONA_FIELDS, SELF_TRAIT_FIELDS, TRAIT_ENTRY_FIELDS, TRAIT_WRITABLE_FIELD, placeholderEntryFields,
+  DICTIONARY_FIELDS, ENTITY_FIELDS, PERSONA_FIELDS, SELF_TRAIT_FIELDS, SWITCHED_TRAIT_FIELDS, TRAIT_ENTRY_FIELDS, TRAIT_WRITABLE_FIELD, placeholderEntryFields,
 } from '@/lib/statCodeSurface';
 import {
   isIdentifier, isPlaceholderEntryMember, placeholderKeyWinner, placeholderPathLabel, placeholderPathMap,
@@ -472,6 +472,7 @@ function membersOf(value: CodeValue, options: SurfaceAnalysisOptions, rules: Sta
     case 'deltaSource': return DELTA_FIELDS;
     case 'trait': return TRAIT_ENTRY_FIELDS;
     case 'selfTrait': return SELF_TRAIT_FIELDS;
+    case 'switchedTrait': return SWITCHED_TRAIT_FIELDS;
     case 'placeholders': {
       const walk = placeholderWalk(value.owner, value.path, options, rules);
       return walk && options.placeholders ? placeholderMembersAt(options.placeholders, walk.segments, walk.start) : null;
@@ -842,6 +843,7 @@ function checkPlaceholderEntryWrite(
 
 /** The error on a write to a trait script's own `self`. */
 const SELF_TRAIT_READ_ONLY = 'self is read-only in a trait’s script. Switch a trait through traits or owner.traits.';
+const SWITCHED_TRAIT_READ_ONLY = 'trait is read-only. Switch a trait through traits or owner.traits.';
 
 /** What is wrong with a write into a trait map: to the entry itself, or to a field other than `enabled`. */
 function checkTraitWrite(
@@ -909,14 +911,17 @@ function checkClockField(member: SyntaxNode, code: string): CodeDiagnostic | nul
   return suggested({ from: field.from, to: field.to, severity: 'error', message: suggestion ? `${lead} Did you mean “${suggestion}”?` : lead }, suggestion);
 }
 
-/** What is wrong with a read of `self.<field>` in a trait's script: its trait carries no such field. */
-function checkSelfTraitField(member: SyntaxNode, code: string): CodeDiagnostic | null {
+/** What is wrong with a read of `<root>.<field>` on a trait entry, `self` in a trait's script or `trait` in a
+ *  switch script: the trait carries no such field. */
+function checkTraitEntryField(
+  member: SyntaxNode, code: string, root: 'self' | 'trait', fields: readonly SurfaceEntry[],
+): CodeDiagnostic | null {
   const object = member.firstChild;
   const field = member.getChild('PropertyName');
-  if (!object || !field || code.slice(object.from, object.to) !== 'self') return null;
+  if (!object || !field || code.slice(object.from, object.to) !== root) return null;
   const name = code.slice(field.from, field.to);
-  if (SELF_TRAIT_FIELDS.some((entry) => entry.name === name)) return null;
-  const suggestion = nearestName(name, SELF_TRAIT_FIELDS.map((entry) => entry.name));
+  if (fields.some((entry) => entry.name === name)) return null;
+  const suggestion = nearestName(name, fields.map((entry) => entry.name));
   const lead = `A trait has no field “${name}”.`;
   return suggested({ from: field.from, to: field.to, severity: 'error', message: suggestion ? `${lead} Did you mean “${suggestion}”?` : lead }, suggestion);
 }
@@ -1201,6 +1206,7 @@ export function codeDiagnostics(code: string, options: SurfaceAnalysisOptions): 
   const statsInScope = rules.stats && !declared.has('stats');
   const clockInScope = rules.stats && !declared.has('clock');
   const selfInScope = rules.self && !declared.has('self');
+  const switchedTraitInScope = surfaceHasGlobal(surface, 'trait') && !declared.has('trait');
   /** Whether an operand is a whole stat entry: `self`, or one key of `stats` or of an owner's `stats`. */
   const isStatEntry = (operand: SyntaxNode) => {
     if (operand.name === 'VariableName') return selfInScope && code.slice(operand.from, operand.to) === 'self';
@@ -1239,6 +1245,8 @@ export function codeDiagnostics(code: string, options: SurfaceAnalysisOptions): 
     if (target && !overlapsAny(target.from, target.to, ranges)) {
       if (surface.selfIs === 'trait' && !declared.has('self') && memberRoot(target, code) === 'self') {
         diagnostics.push({ from: target.from, to: target.to, severity: 'error', message: SELF_TRAIT_READ_ONLY });
+      } else if (switchedTraitInScope && memberRoot(target, code) === 'trait') {
+        diagnostics.push({ from: target.from, to: target.to, severity: 'error', message: SWITCHED_TRAIT_READ_ONLY });
       } else if (statWrites) {
         const { writes, problem } = checkWrite(target, code, tree, declared, options.selfName, options.owner !== undefined);
         if (writes) sawStatWrite = true;
@@ -1332,7 +1340,11 @@ export function codeDiagnostics(code: string, options: SurfaceAnalysisOptions): 
       if (problem && !overlapsAny(problem.from, problem.to, ranges)) diagnostics.push(problem);
     }
     if (cursor.type.name === 'MemberExpression' && surface.selfIs === 'trait' && !declared.has('self')) {
-      const problem = checkSelfTraitField(cursor.node, code);
+      const problem = checkTraitEntryField(cursor.node, code, 'self', SELF_TRAIT_FIELDS);
+      if (problem && !overlapsAny(problem.from, problem.to, ranges)) diagnostics.push(problem);
+    }
+    if (cursor.type.name === 'MemberExpression' && switchedTraitInScope) {
+      const problem = checkTraitEntryField(cursor.node, code, 'trait', SWITCHED_TRAIT_FIELDS);
       if (problem && !overlapsAny(problem.from, problem.to, ranges)) diagnostics.push(problem);
     }
     if (cursor.type.name === 'BinaryExpression' || cursor.type.name === 'UnaryExpression') {

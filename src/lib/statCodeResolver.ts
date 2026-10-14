@@ -37,6 +37,8 @@ export type CodeValue =
   | { is: 'trait'; owner: TraitOwner; key: string }
   /** A trait script's own trait, read-only. `key` is its code name where the editor knows it. */
   | { is: 'selfTrait'; key: string | null }
+  /** The trait a When a Trait Switches script fires on, read-only. */
+  | { is: 'switchedTrait' }
   /** A `placeholders` map or a node below it. `path` holds every key after the map, members included. */
   | { is: 'placeholders'; owner: PlaceholderOwner; path: readonly string[] }
   | { is: 'entityMap' }
@@ -187,6 +189,7 @@ export function codeResolver(
         case 'owner': return { is: 'owner' };
         case 'dictionaries': return { is: 'dictionaryMap' };
         case 'clock': return { is: 'clock', path: 'clock' };
+        case 'trait': return { is: 'switchedTrait' };
       }
     }
     if (surface.members.has(name)) return { is: 'listed', path: name };

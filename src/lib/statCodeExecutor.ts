@@ -164,6 +164,10 @@ export interface SandboxTrait {
   playerToggle?: boolean;
 }
 
+/** The `trait` a When a Trait Switches run reads: the switched trait's entry, `enabled` its new state, and
+ *  `owner` the code name of the entity that holds it, empty for a global trait. */
+export type SwitchedTrait = SandboxTrait & { owner: string };
+
 /** One entry of the sandbox's `entities`, or `persona`. Identity fields left out read blank. */
 export interface SandboxEntity {
   name: string;
@@ -1075,6 +1079,9 @@ export interface StatCodeRunOptions {
   narration?: NarrationInput;
   /** A trait script's own trait: `self` reads its entry, read-only. Only with no `currentStat`. */
   selfTrait?: SandboxTrait;
+  /** The trait a When a Trait Switches run fires on, as it stands after the switch. Absent in every other
+   *  timing, where `trait` does not exist. */
+  switchedTrait?: SwitchedTrait;
   /** Who answers `player.*`. Absent, the game's prompt store does. */
   prompts?: ScriptPromptHost;
 }
@@ -1146,7 +1153,7 @@ export const executeStatCode = async (
   currentStat: Stat | null,
   {
     clock, turn, enabled, placeholders = [], traits = [], entities = [], persona = EMPTY_PERSONA, owner, dictionaries = [],
-    narration, selfTrait, prompts = scriptPrompts,
+    narration, selfTrait, switchedTrait, prompts = scriptPrompts,
   }: StatCodeRunOptions = {},
 ): Promise<StatCodeResult> => {
   // If code is empty, return null (use the manually set value)
@@ -1240,6 +1247,10 @@ export const executeStatCode = async (
         `const narration = Object.seal((${LOCK_FIELDS})(`,
         `  ${JSON.stringify({ sentence: narration.sentence, full: narration.full, index: narration.index })}, ['full', 'index'], 'narration.', ${LOOSE_NOTE}));`,
         OUTPUT_PLAYER,
+      ] : []),
+      ...(switchedTrait ? [
+        `const trait = ((entry) => Object.freeze((${LOCK_FIELDS})(entry, Object.keys(entry), 'trait.', ${LOOSE_NOTE})))(`,
+        `  ${JSON.stringify({ ...Object.values(traitData([switchedTrait]))[0], owner: switchedTrait.owner })});`,
       ] : []),
       ...(engine === 'async' ? [PLAYER_PRELUDE] : []),
       placeholdersPrelude(placeholderMap),

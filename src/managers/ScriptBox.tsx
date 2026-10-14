@@ -6,7 +6,7 @@ import { migrateStatCodeRoutes } from "@/lib/statCodeRoutes";
 import { runTestCode } from "@/lib/statCodeTestRun";
 import { statBoxAnalysisOptions, type StatCodeNames } from "@/lib/statCodeBoxOptions";
 import type { CodeTraitPlace } from "@/lib/statCodeAnalysis";
-import { STAT_CODE_SURFACE, TRAIT_SCRIPT_SURFACE } from "@/lib/statCodeSurface";
+import { scriptSurface, STAT_CODE_SURFACE, TRAIT_SCRIPT_SURFACE } from "@/lib/statCodeSurface";
 import { StatCodeTemplateDialog } from "@/components/modals/StatCodeTemplateDialog";
 import { CodeArea } from "@/components/prompt/CodeArea";
 import type { CodeBoxOwner, CodeWorldLookup } from "@/lib/codeWorldLookup";
@@ -75,7 +75,7 @@ export function ScriptBox({ script, label, self, onChange, context, reveal, auto
   const { codeNamedStats: worldStats, traitPlaces, entities } = names;
   // The one build of this box's options: the editor and Test Code's problem count both read these.
   const analysis = useMemo(() => statBoxAnalysisOptions(names, {
-    selfName, surface: isStat ? STAT_CODE_SURFACE : TRAIT_SCRIPT_SURFACE,
+    selfName, surface: scriptSurface(isStat ? STAT_CODE_SURFACE : TRAIT_SCRIPT_SURFACE, timing),
     ...(owner && { owner: { kind: owner.kind, statNames: ownerStatNames } }), lookup: lookup?.(timing),
   }), [names, selfName, isStat, owner, ownerStatNames, lookup, timing]);
   const navigation = useCodeCardNavigation();

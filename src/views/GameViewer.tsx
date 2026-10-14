@@ -13,7 +13,9 @@ import { EXIT_TO_MENU_PROMPT } from "@/lib/leavePrompts";
 import { useGameplay } from "@/contexts/GameplayContext";
 import { useAccountDeletion } from "@/contexts/AccountDeletionContext";
 import { type StatClock } from "@/lib/statCodeExecutor";
-import { overlayStatCodeResult, playthroughPlaceholderSet, runStatCodeTurn, withPinWrites, type StatCodeTurn, type StatCodeTurnResult } from "@/lib/statCodeTurn";
+import {
+  overlayStatCodeResult, playthroughPlaceholderSet, runStatCodeTurn, runSwitchScripts, withPinWrites, type StatCodeTurn, type StatCodeTurnResult,
+} from "@/lib/statCodeTurn";
 import { openOutputRun, type OutputRun } from "@/lib/outputRun";
 import {
   applyEntityStatResponse, entityCodeTurns, entityStatOwners, personaEntities, personaStatOwners, seedEntityStats, statOwnerEntities,
@@ -193,7 +195,7 @@ import {
 import { usePlaceholderSession } from "../contexts/PlaceholderSessionContext";
 import {
   acquireTrait, activeTraits as traitsInForce, applyOwnedStatTraits, applyGlobalRowTraits, entityStatTraitsInForce, heldGlobalTraits, globalRowTraits, seedNewGameStats, startingTraitLog,
-  gateStatsOf, settleTraits, statTraitsInForce, switchPersonaStats, switchPlayerTrait, traitNameIn,
+  gateStatsOf, settleTraits, statTraitsInForce, switchPersonaStats, switchPlayerTrait, traitNameIn, traitSwitchEvents,
   type GatedTraitResult, type TraitRuntimeState, type TraitWorld,
 } from "../lib/traitRuntime";
 import type { GateStats } from "../lib/traitGates";
@@ -2259,7 +2261,7 @@ const GameViewer = ({
 
     // What the narration's During AI Output scripts wrote lands now, so the After batch starts from it. Its
     // bar share joins the before box's.
-    const outputBase = landOutputRun();
+    const outputBase = await landOutputRun();
 
     // Reset the persistent bar deltas for this turn, then let stat changes + regen below re-fill them. The
     // before box already moved before the narration, so its share is laid straight back over the reset.
@@ -2978,7 +2980,8 @@ const GameViewer = ({
           addStatDeltas(null, codeChanges);
           // The commit resets the bar deltas mid-turn, so the share of the runs before the AI is re-laid over that.
           // The start scripts, the before box and the output scripts can move one stat, so their shares add.
-          if (readsTurnStart(timing)) beforeBoxDeltasRef.current = sumDeltas(beforeBoxDeltasRef.current, codeChanges);
+          // A switch run between turns is no share of a turn's.
+          if (readsTurnStart(timing) && timing !== 'switch') beforeBoxDeltasRef.current = sumDeltas(beforeBoxDeltasRef.current, codeChanges);
           return { written: stateAfterRun(), gateStats: result.gateStats };
         };
         return { turn, finish };
@@ -3005,6 +3008,30 @@ const GameViewer = ({
       }
     },
     [prepareStatCode],
+  );
+
+  // The When a Trait Switches runs of every trait an in-play action switched, over the state the action left;
+  // their writes land at once (Q12, Q47). A run's own switches fire inside the run.
+  const fireSwitchScripts = useCallback(
+    /** `world` is the one `to` holds under; a persona change passes the one `from` held under as `fromWorld`. */
+    async (from: TraitRuntimeState, to: TraitRuntimeState, world: TraitWorld, fromWorld: TraitWorld = world) => {
+      const events = traitSwitchEvents(from, to, world, fromWorld);
+      if (!events.length) return;
+      const prepared = prepareStatCode(to.stats, to.stats, [], { deltaHours: 0, elapsedHours: gameTime, calendar }, {
+        codePins: liveCodeStateRef.current.codePins, globalTraits: to.traits, disabledTraitIds: to.disabledTraitIds,
+        appliedTraitValues: to.appliedValues, cascadeOffTraitIds: to.cascadeOffTraitIds ?? {}, ownedTraits: to.ownedTraits ?? {},
+        entityStats: to.entityStats ?? {},
+      }, 'switch');
+      if (!prepared) return;
+      try {
+        // The render that committed `to` has not run yet, so the run reads `world` rather than the live one.
+        const result = await runSwitchScripts({ ...prepared.turn, ownerTraits: { ...prepared.turn.ownerTraits, world } }, events);
+        if (result && mounted.current) prepared.finish(result);
+      } catch (error) {
+        console.error("Error processing stat code:", error);
+      }
+    },
+    [prepareStatCode, gameTime, calendar, mounted],
   );
 
   // The runs before the AI, over a turn's starting stats: on an opening that runs the start scripts, the start
@@ -3352,10 +3379,10 @@ const GameViewer = ({
    * Lays the output run's writes onto live state, once, ahead of the After batch. Answers the state it left,
    * which the After batch then starts from; null when the run wrote nothing or never ran.
    */
-  const landOutputRun = (): TurnCodeState | null => {
+  const landOutputRun = async (): Promise<TurnCodeState | null> => {
     const held = outputRunRef.current;
     outputRunRef.current = null;
-    const result = held?.run.result();
+    const result = await held?.run.landing();
     if (!held || !result) return null;
     const { written } = held.prepared.finish(result);
     // A turn that never commits puts the writes back with the before box's.
@@ -4023,8 +4050,10 @@ const GameViewer = ({
     (result: GatedTraitResult) => {
       commitTraitState(result.state);
       for (const line of result.log) addLogEntry(line);
+      // The settle waits for these runs, so the turn's snapshot holds their writes.
+      return fireSwitchScripts(traitState, result.state, gatedWorld());
     },
-    [commitTraitState, addLogEntry],
+    [commitTraitState, addLogEntry, fireSwitchScripts, traitState, gatedWorld],
   );
   const settleTurn = useTurnSettle(traitState, gatedWorld, traitName, commitTurnSettle);
 
@@ -4040,8 +4069,9 @@ const GameViewer = ({
       const result = switchPlayerTrait(traitState, traitId, enabled, world, traitName, ownerId);
       if (!result) return;
       commitGatedTraits(result, traitNameIn(world, traitId, traitName, ownerId) ?? traitId);
+      void fireSwitchScripts(traitState, result.state, world);
     },
-    [traitState, gatedWorld, traitName, commitGatedTraits],
+    [traitState, gatedWorld, traitName, commitGatedTraits, fireSwitchScripts],
   );
 
   /** Move the stats onto a new persona, whose linked stat traits replace the old one's, then settle the traits
@@ -4049,11 +4079,13 @@ const GameViewer = ({
   const settlePersonaTraits = useCallback(
     (ref: PersonaRef, name: string | null) => {
       const to = gatedWorld(ref);
-      const moved = switchPersonaStats(traitState, gatedWorld(), to, traitName);
+      const from = gatedWorld();
+      const moved = switchPersonaStats(traitState, from, to, traitName);
       const settled = settleTraits(moved.state, to, traitName);
       commitGatedTraits({ ...settled, log: [...moved.log, ...settled.log] }, name ?? 'the persona change');
+      void fireSwitchScripts(traitState, settled.state, to, from);
     },
-    [traitState, gatedWorld, traitName, commitGatedTraits],
+    [traitState, gatedWorld, traitName, commitGatedTraits, fireSwitchScripts],
   );
 
   const changeLocation = useCallback(
