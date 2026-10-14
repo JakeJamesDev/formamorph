@@ -27,7 +27,7 @@ const ownerTraits = (): StatCodeOwners => {
     acquired: [], disabledTraitIds: [], appliedValues: {}, ownedTraits: {}, entities,
     world: {
       traits: [brave], groups: [], entities, persona: { source: 'none' },
-      owners: inPlayOwners({ traits: [brave], traitGroups: [], entities }, { source: 'none' }, []),
+      ...inPlayOwners({ traits: [brave], traitGroups: [], entities }, { source: 'none' }, []),
     },
   };
 };
@@ -163,7 +163,7 @@ describe('runStatCodeTurn entity owners', () => {
       {
         ownerTraits: {
           ...ownerTraits(), entities,
-          world: { ...ownerTraits().world, entities, owners: inPlayOwners({ traits: [brave], traitGroups: [], entities }, { source: 'none' }, []) },
+          world: { ...ownerTraits().world, entities, ...inPlayOwners({ traits: [brave], traitGroups: [], entities }, { source: 'none' }, []) },
         },
       },
     );

@@ -4,7 +4,6 @@ import { migrateWorld } from './version';
 import { DEFAULT_WORLDS } from './defaultWorlds';
 import { runRules } from './testBench/rules';
 import { resolveOwners, type OwnerWorld } from './owners';
-import { PLAYER_OWNER } from './traitGates';
 import { gateOf, gateStates, settleDefaults, switchTrait } from './traitGates';
 import { syncBlueprintCopies } from './blueprintCopies';
 import { copyLookup, effectiveCopy, readerFor } from './blueprints';
@@ -41,7 +40,7 @@ const customPersonaId = (w: World): string => {
 /** The settled default active set of one owner under a persona choice. */
 const settledDefaults = (w: World, ownerId: string, persona: PersonaRef): string[] => {
   const { gate } = resolveOwners(ownerWorld(w), persona);
-  return settleDefaults(gate).active[ownerId] ?? [];
+  return settleDefaults(gate).active.owners[ownerId] ?? [];
 };
 
 const names = (w: World, ids: readonly string[]) => ids.map((id) => w.traits.find((t) => t.id === id)?.name ?? id);
@@ -137,12 +136,12 @@ describe('owners on Emberwatch', () => {
     expect(names(world, settledDefaults(world, albus.id, asEntity(world, 'Albus'))).sort()).toEqual(['Human', 'Paladin', 'Stubborn Heart']);
   });
 
-  it("starts Hesk's and Corvin's race and class on their own stats, never the player's", () => {
+  it("starts Hesk's and Corvin's race and class on their own stats, never the global ones", () => {
     const hesk = entityNamed(world, 'Mother Hesk').id;
     const corvin = entityNamed(world, 'Corvin Vale').id;
     const picks = { [hesk]: settledDefaults(world, hesk, NONE), [corvin]: settledDefaults(world, corvin, NONE) };
     const tw: TraitWorld = {
-      traits: world.traits, groups: world.traitGroups ?? [], entities: world.entities, persona: NONE, owners: inPlayOwners(ownerWorld(world), NONE),
+      traits: world.traits, groups: world.traitGroups ?? [], entities: world.entities, persona: NONE, ...inPlayOwners(ownerWorld(world), NONE),
     };
     const seeded: TraitRuntimeState = {
       stats: seedNewGameStats(world.stats), traits: [], disabledTraitIds: [], appliedValues: {},
@@ -167,9 +166,7 @@ describe('owners on Emberwatch', () => {
   it("gives the player the Custom Persona entity's links under None, and a persona's own tree when played", () => {
     const cp = customPersonaId(world);
     const none = resolveOwners(ownerWorld(world), NONE);
-    const root = none.owners.find((b) => b.id === PLAYER_OWNER)!;
-    expect(root.groups.map((g) => g.name)).toEqual(['Bonds']);
-    expect(root.linkOf.size).toBe(0);
+    expect(none.global.groups.map((g) => g.name)).toEqual(['Bonds']);
     const custom = none.owners.find((b) => b.id === cp)!;
     expect(custom.isPlayer).toBe(true);
     expect(custom.present).toBe(true);
@@ -179,18 +176,18 @@ describe('owners on Emberwatch', () => {
     expect(names(world, settledDefaults(world, cp, NONE)).sort()).toEqual(['Halfling', 'Lucky Step', 'Wizard']);
 
     const played = resolveOwners(ownerWorld(world), asEntity(world, 'Albus'));
-    expect(played.owners.find((b) => b.id === PLAYER_OWNER)!.groups.map((g) => g.name)).toEqual(['Bonds']);
+    expect(played.global.groups.map((g) => g.name)).toEqual(['Bonds']);
     expect(played.owners.find((b) => b.id === cp)!.present).toBe(false);
-    expect(played.playerOwnerIds).toEqual([PLAYER_OWNER, entityNamed(world, 'Albus').id]);
+    expect(played.playedIds).toEqual([entityNamed(world, 'Albus').id]);
   });
 
   it('switches a racial ability off and on with the race', () => {
     const { gate } = resolveOwners(ownerWorld(world), NONE);
     const wanderer = entityNamed(world, 'Wanderer').id;
     const start = settleDefaults(gate);
-    expect(names(world, start.active[wanderer]).sort()).toEqual(['Halfling', 'Lucky Step', 'Wizard']);
+    expect(names(world, start.active.owners[wanderer]).sort()).toEqual(['Halfling', 'Lucky Step', 'Wizard']);
     const asElf = switchTrait({ ...gate, active: start.active }, wanderer, traitId(world, 'Elf'), start.cascadeOff)!;
-    expect(names(world, asElf.active[wanderer]).sort()).toEqual(['Elf', 'Keen Senses', 'Wizard']);
+    expect(names(world, asElf.active.owners[wanderer]).sort()).toEqual(['Elf', 'Keen Senses', 'Wizard']);
   });
 
   it('unlocks a class ability only on an owner whose class it names', () => {
@@ -204,9 +201,9 @@ describe('owners on Emberwatch', () => {
   });
 
   it('never offers Squire to Albus to Albus himself', () => {
-    const player = (persona: PersonaRef) => resolveOwners(ownerWorld(world), persona).owners.find((b) => b.id === PLAYER_OWNER)!;
-    expect(names(world, player(asEntity(world, 'Sylvie Thornwhistle')).traits.map((t) => t.id))).toContain('Squire to Albus');
-    expect(names(world, player(asEntity(world, 'Albus')).traits.map((t) => t.id))).not.toContain('Squire to Albus');
+    const globalOf = (persona: PersonaRef) => resolveOwners(ownerWorld(world), persona).global;
+    expect(names(world, globalOf(asEntity(world, 'Sylvie Thornwhistle')).traits.map((t) => t.id))).toContain('Squire to Albus');
+    expect(names(world, globalOf(asEntity(world, 'Albus')).traits.map((t) => t.id))).not.toContain('Squire to Albus');
   });
 
   it('keeps a Custom Persona pick from unlocking a racial ability on the played persona', () => {
@@ -217,7 +214,7 @@ describe('owners on Emberwatch', () => {
     expect(owners.find((b) => b.id === cp)?.present).toBe(false);
     const sylvie = entityNamed(world, 'Sylvie Thornwhistle').id;
     const defaults = settleDefaults(gate).active;
-    const active = { ...defaults, [cp]: [traitId(world, 'Halfling'), traitId(world, 'Rogue'), traitId(world, 'Lucky Step')] };
+    const active = { ...defaults, owners: { ...defaults.owners, [cp]: [traitId(world, 'Halfling'), traitId(world, 'Rogue'), traitId(world, 'Lucky Step')] } };
     const states = gateStates({ ...gate, active });
     expect(gateOf(states, sylvie, traitId(world, 'Lucky Step'))?.unlocked).toBe(false);
     expect(gateOf(states, sylvie, traitId(world, 'Keen Senses'))?.unlocked).toBe(true);
@@ -229,8 +226,8 @@ describe('owners on Emberwatch', () => {
     const albus = entityNamed(world, 'Albus').id;
     const squire = traitId(world, 'Squire to Albus');
     const start = settleDefaults(gate);
-    expect(gateOf(gateStates({ ...gate, active: start.active }), PLAYER_OWNER, squire)?.unlocked).toBe(true);
+    expect(gateOf(gateStates({ ...gate, active: start.active }), null, squire)?.unlocked).toBe(true);
     const reclassed = switchTrait({ ...gate, active: start.active }, albus, traitId(world, 'Wizard'), start.cascadeOff)!;
-    expect(gateOf(gateStates({ ...gate, active: reclassed.active }), PLAYER_OWNER, squire)?.unlocked).toBe(false);
+    expect(gateOf(gateStates({ ...gate, active: reclassed.active }), null, squire)?.unlocked).toBe(false);
   });
 });

@@ -22,8 +22,8 @@ import { startingGateStats } from '@/lib/gateStats';
 import { entityStatOwners, seedEntityStats } from '@/lib/entityStats';
 import { ownedTraitStatesFrom } from '@/lib/ownedTraitState';
 import { allPlaceholders } from '@/lib/placeholderHomes';
-import { playStatWorld, playerStatsOf } from '@/lib/statLinks';
-import { PLAYER_OWNER, settle, settleDefaults } from '@/lib/traitGates';
+import { playStatWorld, globalStatsOf } from '@/lib/statLinks';
+import { settle, settleDefaults } from '@/lib/traitGates';
 import { DEFAULT_MAX_TOKENS } from '@/contexts/settingsDefaults';
 import { authoredChipScene } from '@/lib/chipValues/authoredScene';
 import { chipValues } from '@/lib/chipValues/chipValues';
@@ -294,7 +294,7 @@ function collisionChance(chances: number[], draws: number): number {
 /** The fresh game's starting stats: seeded exactly as a new game seeds them, then every active trait
  *  acquired in authored order — bounds derived, deltas applied, clamps allowed to bite. */
 function settleOpeningStats(world: OpeningWorld, active: Trait[]): { settled: PlayerStat[]; seeded: PlayerStat[] } {
-  const seeded = seedStatBases(playerStatsOf(world.stats ?? [], world.statGroups ?? []).map((stat) => {
+  const seeded = seedStatBases(globalStatsOf(world.stats ?? [], world.statGroups ?? []).map((stat) => {
     const value = stat.value || stat.min || 0;
     return { ...stat, value, starting: stat.starting ?? value };
   }));
@@ -319,12 +319,12 @@ function settleEntityStats(world: OpeningWorld, active: readonly Trait[], person
   const gate = { ...ownerGate, stats: startingGateStats({ ...world, entities: world.entities ?? [] }) };
   // Each owner's default picks, gated against the world traits the lens PC leaves active.
   const picks = settle({
-    ...gate, active: { ...settleDefaults(gate).active, [PLAYER_OWNER]: active.map((t) => t.id) },
+    ...gate, active: { ...settleDefaults(gate).active, global: active.map((t) => t.id) },
   }).active;
-  const ownedTraits = ownedTraitStatesFrom(Object.fromEntries(Object.entries(picks).filter(([id]) => id !== PLAYER_OWNER)));
+  const ownedTraits = ownedTraitStatesFrom(picks.owners);
   const traitWorld: TraitWorld = {
     traits: [...ownerWorld.traits], groups: [...ownerWorld.traitGroups], entities: ownerWorld.entities,
-    persona, owners: gate.owners,
+    persona, global: gate.global, owners: gate.owners,
   };
   const seeded = seedEntityStats(entities);
   const { entityStats = seeded } = applyOwnedStatTraits(
@@ -370,8 +370,8 @@ export function buildOpening(
     placeholders, rolls, pins, copies: copyLookup(blueprints, readerFor(undefined, entity, false)),
   });
 
-  const playerStats = playerStatsOf(world.stats ?? [], world.statGroups ?? []);
-  const enabled = activeStatEnabled(playerStats, active);
+  const globalStats = globalStatsOf(world.stats ?? [], world.statGroups ?? []);
+  const enabled = activeStatEnabled(globalStats, active);
   const liveStats = enabledStats(settled, enabled);
   const openingStats = (live: readonly PlayerStat[], from: readonly PlayerStat[]): OpeningStat[] => {
     const seededValue = new Map(from.map((stat) => [stat.id, stat.value]));
@@ -534,7 +534,7 @@ export function buildOpening(
     opening,
     openingsEnabled: openingsEnabled(world.worldOverview, world.entities),
     stats,
-    disabledStats: playerStats
+    disabledStats: globalStats
       .filter((stat) => !enabled[stat.id])
       .map((stat) => resolve(stat.name || stat.id)),
     entityStats,

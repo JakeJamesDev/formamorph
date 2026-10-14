@@ -1,6 +1,6 @@
 # 11: Remove the Stand-In Player Key
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 02, 04, 05, 06, 07, 08, 09
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high

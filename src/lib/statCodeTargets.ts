@@ -13,7 +13,7 @@ import { codeRenameChains, type CodeRenameKey } from './codeRenameChains';
 import { hasEntityKey, statCodeName, statsByCodeName } from './statCodeNames';
 import { CODE_FIELD, filledCodeBoxes, type StatCodeTiming } from './statCodeTiming';
 import {
-  blueprintGroupStats, playerStatsOf, resolvedEntityStatTree, statBlueprintIds, statLinkState, type StatLinkWorld,
+  blueprintGroupStats, globalStatsOf, resolvedEntityStatTree, statBlueprintIds, statLinkState, type StatLinkWorld,
 } from './statLinks';
 
 /** What the resolution reads from a world. */
@@ -63,7 +63,7 @@ export function statCodeOwners(world: StatRouteWorld): CodeOwners {
   const codeName = (text: string | undefined) => statCodeName(text, world.placeholders);
   const statWorld = { stats: [...world.stats ?? []], statGroups: [...world.statGroups ?? []] };
   const byCodeName = (stats: readonly Stat[]) => statsByCodeName(stats, (stat) => codeName(stat.name), isStatOn);
-  const worldStats = playerStatsOf(statWorld.stats, statWorld.statGroups);
+  const worldStats = globalStatsOf(statWorld.stats, statWorld.statGroups);
   const worldOwner: CodeOwner = { entity: null, stats: worldStats, byCodeName: byCodeName(worldStats), linkOf: NO_LINKS };
   const entities = (world.entities ?? []).map((entity): EntityOwner => {
     const tree = resolvedEntityStatTree(statWorld, entity);

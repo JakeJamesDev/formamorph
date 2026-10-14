@@ -1,7 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { partOf, scoped, scopedEntries, withPart, type OwnerId, type Scoped } from './scope';
 
-/** Signed stat changes by owner id, then by the key that owner's rows read. */
-export type OwnerStatDeltas = Record<string, Record<string, number>>;
+/** One scope's signed stat changes, by the key its rows read. */
+type Changes = Readonly<Record<string, number>>;
+
+/** Signed stat changes: global scope's, and each entity owner's by its id. */
+export type ScopedStatDeltas = Scoped<Changes>;
+
+/** Each entity owner's change this turn, by its id. */
+export type FollowedStatDeltas = Readonly<Record<string, Changes>>;
+
+/** No change anywhere. */
+export const NO_DELTAS: ScopedStatDeltas = scoped({});
 
 /** How long a turn's change chip stays up once the stat response lands. */
 export const CHIP_MS = 10000;
@@ -12,24 +22,24 @@ export const DRAIN_MS = 550;
 
 interface StatDeltaState {
   /** The change chips. */
-  recent: OwnerStatDeltas;
+  recent: ScopedStatDeltas;
   /** The chips are on their way out, because a new turn started. */
   fading: boolean;
   /** The bands, held until the next turn. */
-  held: OwnerStatDeltas;
+  held: ScopedStatDeltas;
   /** Last turn's bands, collapsing at a submit. */
-  draining: OwnerStatDeltas;
+  draining: ScopedStatDeltas;
   /** A chip write landed since the last close, so followed owners show their chips too. */
   chipsOpen: boolean;
 }
 
 export interface StatDeltas extends Omit<StatDeltaState, 'chipsOpen'> {
   /** The stat response landed: `owner`'s chips become `changes`, its bands take them, and the chips time out. */
-  show: (owner: string, changes: Record<string, number>) => void;
+  show: (owner: OwnerId, changes: Record<string, number>) => void;
   /** Add `changes` to `owner`'s chips and bands. Read when the update applies, so a sibling updater can fill it. */
-  add: (owner: string, changes: Record<string, number>) => void;
+  add: (owner: OwnerId, changes: Record<string, number>) => void;
   /** Replace `owner`'s bands. */
-  hold: (owner: string, changes: Record<string, number>) => void;
+  hold: (owner: OwnerId, changes: Record<string, number>) => void;
   /** Stop a chip fade, because the turn's changes are landing. */
   settle: () => void;
   /** A turn starts: every band drains and every chip fades. */
@@ -40,29 +50,33 @@ export interface StatDeltas extends Omit<StatDeltaState, 'chipsOpen'> {
   clear: () => void;
 }
 
-const EMPTY: StatDeltaState = { recent: {}, fading: false, held: {}, draining: {}, chipsOpen: false };
+const EMPTY: StatDeltaState = { recent: NO_DELTAS, fading: false, held: NO_DELTAS, draining: NO_DELTAS, chipsOpen: false };
 
-const anyMoved = (deltas: OwnerStatDeltas) => Object.values(deltas).some((changes) => Object.keys(changes).length > 0);
+const anyMoved = (deltas: ScopedStatDeltas) => scopedEntries(deltas).some(([, changes]) => Object.keys(changes).length > 0);
 
-const sum = (a: Record<string, number> | undefined, b: Record<string, number>) => {
+const sum = (a: Changes | undefined, b: Changes) => {
   const out = { ...a };
   for (const [key, value] of Object.entries(b)) out[key] = (out[key] || 0) + value;
   return out;
 };
 
+/** `deltas` with each followed owner's part replaced by its total. */
+const following = (deltas: ScopedStatDeltas, followed: FollowedStatDeltas): ScopedStatDeltas =>
+  ({ ...deltas, owners: { ...deltas.owners, ...followed } });
+
 /** What the rows read: a followed owner's band is its total, and so is its chip while the chips are open. */
-const shown = (s: StatDeltaState, followed: OwnerStatDeltas) => ({
-  recent: s.chipsOpen ? { ...s.recent, ...followed } : s.recent,
-  held: { ...s.held, ...followed },
+const shown = (s: StatDeltaState, followed: FollowedStatDeltas) => ({
+  recent: s.chipsOpen ? following(s.recent, followed) : s.recent,
+  held: following(s.held, followed),
 });
 
 /**
- * The live change feedback of every owner's stat rows: the chip, the held band and the draining band, with
- * their timers. Event owners (the player) write through the calls. Followed owners take `followed`, each
+ * The live change feedback of every scope's stat rows: the chip, the held band and the draining band, with
+ * their timers. Event scopes (global scope) write through the calls. Followed owners take `followed`, each
  * owner's change this turn, as their band, and as their chip while a chip write keeps the chips open. Read in
  * the render that moves them, so a followed row never paints a frame behind its value.
  */
-export function useStatDeltas(followed: OwnerStatDeltas): StatDeltas {
+export function useStatDeltas(followed: FollowedStatDeltas): StatDeltas {
   const [state, setState] = useState<StatDeltaState>(EMPTY);
   const stateRef = useRef(state);
   stateRef.current = state;
@@ -76,31 +90,31 @@ export function useStatDeltas(followed: OwnerStatDeltas): StatDeltas {
 
   useEffect(() => () => { stopChipTimer(); stopDrainTimer(); }, []);
 
-  const show = useCallback((owner: string, changes: Record<string, number>) => {
+  const show = useCallback((owner: OwnerId, changes: Record<string, number>) => {
     setState((s) => ({
       ...s,
-      recent: { [owner]: changes },
-      held: { ...s.held, [owner]: { ...s.held[owner], ...changes } },
+      recent: withPart(NO_DELTAS, owner, changes),
+      held: withPart(s.held, owner, { ...partOf(s.held, owner), ...changes }),
       chipsOpen: true,
     }));
     stopChipTimer();
     chipTimer.current = setTimeout(() => {
       chipTimer.current = null;
-      setState((s) => ({ ...s, recent: {}, chipsOpen: false }));
+      setState((s) => ({ ...s, recent: NO_DELTAS, chipsOpen: false }));
     }, CHIP_MS);
   }, []);
 
-  const add = useCallback((owner: string, changes: Record<string, number>) => {
+  const add = useCallback((owner: OwnerId, changes: Record<string, number>) => {
     setState((s) => ({
       ...s,
-      recent: { ...s.recent, [owner]: sum(s.recent[owner], changes) },
-      held: { ...s.held, [owner]: sum(s.held[owner], changes) },
+      recent: withPart(s.recent, owner, sum(partOf(s.recent, owner), changes)),
+      held: withPart(s.held, owner, sum(partOf(s.held, owner), changes)),
       chipsOpen: true,
     }));
   }, []);
 
-  const hold = useCallback((owner: string, changes: Record<string, number>) => {
-    setState((s) => ({ ...s, held: { ...s.held, [owner]: changes } }));
+  const hold = useCallback((owner: OwnerId, changes: Record<string, number>) => {
+    setState((s) => ({ ...s, held: withPart(s.held, owner, changes) }));
   }, []);
 
   const settle = useCallback(() => setState((s) => (s.fading ? { ...s, fading: false } : s)), []);
@@ -110,11 +124,11 @@ export function useStatDeltas(followed: OwnerStatDeltas): StatDeltas {
     const totals = followedRef.current;
     const now = shown(stateRef.current, totals);
     if (anyMoved(now.held)) {
-      setState((prev) => ({ ...prev, draining: shown(prev, totals).held, held: {} }));
+      setState((prev) => ({ ...prev, draining: shown(prev, totals).held, held: NO_DELTAS }));
       stopDrainTimer();
       drainTimer.current = setTimeout(() => {
         drainTimer.current = null;
-        setState((prev) => ({ ...prev, draining: {} }));
+        setState((prev) => ({ ...prev, draining: NO_DELTAS }));
       }, DRAIN_MS);
     }
     if (anyMoved(now.recent)) {
@@ -123,12 +137,12 @@ export function useStatDeltas(followed: OwnerStatDeltas): StatDeltas {
       stopChipTimer();
       chipTimer.current = setTimeout(() => {
         chipTimer.current = null;
-        setState((prev) => ({ ...prev, recent: {}, fading: false, chipsOpen: false }));
+        setState((prev) => ({ ...prev, recent: NO_DELTAS, fading: false, chipsOpen: false }));
       }, FADE_MS);
     }
   }, []);
 
-  const drop = useCallback(() => setState((s) => ({ ...s, recent: {}, held: {}, chipsOpen: false })), []);
+  const drop = useCallback(() => setState((s) => ({ ...s, recent: NO_DELTAS, held: NO_DELTAS, chipsOpen: false })), []);
 
   const clear = useCallback(() => {
     stopChipTimer();
@@ -146,19 +160,19 @@ export function useStatDeltas(followed: OwnerStatDeltas): StatDeltas {
 
 const NONE: Record<string, number> = {};
 
-/** One owner's changes, with a stable empty value. */
-export const deltasOf = (deltas: OwnerStatDeltas, owner: string): Record<string, number> => deltas[owner] ?? NONE;
+/** One scope's changes, with a stable empty value. */
+export const deltasOf = (deltas: ScopedStatDeltas, owner: OwnerId): Changes => partOf(deltas, owner) ?? NONE;
 
 /**
  * The delta props of one stat row. `past` is the viewed turn's recorded change, or null while live; a past
  * turn's band grows in and never drains.
  */
-export function rowDelta(deltas: StatDeltas, owner: string, key: string, past: number | null) {
+export function rowDelta(deltas: StatDeltas, owner: OwnerId, key: string, past: number | null) {
   if (past !== null) return { change: past, barDelta: past, draining: false, fading: deltas.fading };
-  const held = deltas.held[owner]?.[key] || 0;
-  const drainingBy = deltas.draining[owner]?.[key] || 0;
+  const held = partOf(deltas.held, owner)?.[key] || 0;
+  const drainingBy = partOf(deltas.draining, owner)?.[key] || 0;
   return {
-    change: deltas.recent[owner]?.[key] || 0,
+    change: partOf(deltas.recent, owner)?.[key] || 0,
     barDelta: held || drainingBy,
     draining: !held && !!drainingBy,
     fading: deltas.fading,

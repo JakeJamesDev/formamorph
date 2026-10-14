@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { migrateWorld } from './version';
 import { canBePlayer, resolveOwners, type OwnerWorld } from './owners';
-import { playerStatsOf, resolvedEntityStats, statBlueprintIds } from './statLinks';
+import { globalStatsOf, resolvedEntityStats, statBlueprintIds } from './statLinks';
 import { seedEntityStats } from './entityStats';
 import { seedNewGameStats } from './traitRuntime';
-import { PLAYER_OWNER } from './traitGates';
+import type { OwnerId } from './scope';
 import { executeStatCode, type SandboxEntity } from './statCodeExecutor';
 import { statCodeNamed } from './statCodeNames';
 import { runRules } from './testBench/rules';
@@ -39,7 +39,7 @@ const customPersona = (w: World): Entity => {
 };
 const names = (stats: readonly Stat[]) => stats.map((s) => s.name);
 /** The world's own stats: what stays loose once the player's moved or became Blueprints. */
-const looseStats = (w: World) => playerStatsOf(w.stats, w.statGroups ?? []);
+const looseStats = (w: World) => globalStatsOf(w.stats, w.statGroups ?? []);
 /** The Test Bench rows about stat targets and stat code. */
 const statFindings = (w: World) => runRules(w)
   .filter((f) => /^(trait-stat-no-target|stat-code-|trait-toggle-missing-stat)/.test(f.ruleId))
@@ -118,9 +118,10 @@ describe.each(LOOSE_ROWS)('the %s world: %s', (id, traitName, statName) => {
 /** Every stat's start value, as the code check seeds a run. */
 const atStart = (stats: readonly Stat[]): Stat[] => stats.map((s) => ({ ...s, value: s.starting ?? s.value ?? s.min }));
 
-/** Each owner's stats under their code names, owner by owner: the world's, then each entity's own and linked. */
-const owners = (w: World): { owner: string; stats: Stat[] }[] => [
-  { owner: PLAYER_OWNER, stats: statCodeNamed(atStart(looseStats(w)), w.placeholders ?? []) },
+/** Each owner's stats under their code names, owner by owner: the global ones (null), then each entity's own and
+ *  linked, by entity name. */
+const owners = (w: World): { owner: OwnerId; stats: Stat[] }[] => [
+  { owner: null, stats: statCodeNamed(atStart(looseStats(w)), w.placeholders ?? []) },
   ...w.entities.map((e) => ({ owner: e.name, stats: statCodeNamed(atStart(resolvedEntityStats(statWorld(w), e)), w.placeholders ?? []) }))
     .filter(({ stats }) => stats.length),
 ];
@@ -139,13 +140,13 @@ describe.each([...OWNING, 'emberwatch'])('stat code in the %s world', (id) => {
 
   it('runs every stat to a number under its own owner', async () => {
     const entities = sandboxEntities(world, held);
-    const worldStats = held.find((o) => o.owner === PLAYER_OWNER)?.stats ?? [];
+    const worldStats = held.find((o) => o.owner === null)?.stats ?? [];
     for (const { owner, stat } of coded) {
-      const own = owner === PLAYER_OWNER ? undefined : entities.find((e) => e.name === owner);
+      const own = owner === null ? undefined : entities.find((e) => e.name === owner);
       for (const code of [stat.beforeCode, stat.code].filter((c): c is string => !!c?.trim())) {
         const res = await executeStatCode(code, worldStats, stat, { entities, owner: own });
-        expect(res.error, `${owner}: ${stat.name}`).toBeNull();
-        expect(typeof res.value, `${owner}: ${stat.name}`).toBe('number');
+        expect(res.error, `${owner ?? 'Global'}: ${stat.name}`).toBeNull();
+        expect(typeof res.value, `${owner ?? 'Global'}: ${stat.name}`).toBe('number');
       }
     }
   });
@@ -154,7 +155,7 @@ describe.each([...OWNING, 'emberwatch'])('stat code in the %s world', (id) => {
 describe('Alert Level in the rampage world', () => {
   const world = load('rampage');
   const held = owners(world);
-  const worldStats = held.find((o) => o.owner === PLAYER_OWNER)!.stats;
+  const worldStats = held.find((o) => o.owner === null)!.stats;
   const alert = worldStats.find((s) => s.name === 'Alert Level')!;
 
   it('reads the Rampage its creature holds', async () => {

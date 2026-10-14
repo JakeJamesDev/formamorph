@@ -6,7 +6,6 @@ import { describe, it, expect } from 'vitest';
 import { runStatCodeTurn, type StatCodeTurn } from './statCodeTurn';
 import type { StatCodeOwners } from './statCodeTraits';
 import { activeTraits, settleTraits, type TraitRuntimeState, type TraitWorld } from './traitRuntime';
-import { PLAYER_OWNER } from './traitGates';
 import type { PlayerStat, Trait } from '@/types';
 
 const stat = (over: Partial<PlayerStat>): PlayerStat => ({
@@ -31,7 +30,7 @@ const berserk: Trait = {
 const world: TraitWorld = { traits: [spark, berserk], groups: [] };
 const ownerTraits: StatCodeOwners = {
   acquired: [berserk], disabledTraitIds: ['berserk'], appliedValues: { berserk: { focus: -10 } },
-  cascadeOffTraitIds: { [PLAYER_OWNER]: ['berserk'] }, world,
+  cascadeOffTraitIds: { global: ['berserk'] }, world,
 };
 
 describe('the stat snapshot a run settles against', () => {
@@ -43,7 +42,7 @@ describe('the stat snapshot a run settles against', () => {
 
   it('settles the code switch against the stats with the code writes landed', async () => {
     const out = await runStatCodeTurn(turn({ stats, ownerTraits }));
-    expect(out.gateStats[PLAYER_OWNER].rage.value).toBe(85);
+    expect(out.gateStats.global.rage.value).toBe(85);
     expect(activeTraits(out.traits!.acquired, out.traits!.disabledTraitIds).map((t) => t.id)).toEqual(['berserk', 'spark']);
     expect(out.traits!.cascadeOffTraitIds).toEqual({});
     expect(valueOf(out.stats, 'focus')).toBe(60);
@@ -72,10 +71,10 @@ describe('the stat snapshot a run settles against', () => {
       ownerTraits: { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [], groups: [] } },
       penalties: { health: 5, b: 5, low: 5 },
     }));
-    expect(out.gateStats[PLAYER_OWNER].health.value).toBe(47);
-    expect(out.gateStats[PLAYER_OWNER].b.value).toBe(30);
+    expect(out.gateStats.global.health.value).toBe(47);
+    expect(out.gateStats.global.b.value).toBe(30);
     // Clamped into the bounds, as the penalty's own updater clamps.
-    expect(out.gateStats[PLAYER_OWNER].low.value).toBe(0);
+    expect(out.gateStats.global.low.value).toBe(0);
     // The run's stats leave the penalty to its own updater.
     expect(valueOf(out.stats, 'health')).toBe(52);
   });
@@ -85,11 +84,11 @@ describe('the stat snapshot a run settles against', () => {
       stats: [stat({ id: 'rage', name: 'Rage', value: 70 })],
       ownerTraits: { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [], groups: [] } },
       owners: [{ id: 'ash', stats: [stat({ id: 'hunger', name: 'Hunger', value: 10, code: 'return 75;' })], enabled: {}, previous: [], regenApplied: {} }],
-      gateStats: { bram: { grit: { name: 'Grit', value: 33, min: 0, max: 100 } }, [PLAYER_OWNER]: {} },
+      gateStats: { global: {}, owners: { bram: { grit: { name: 'Grit', value: 33, min: 0, max: 100 } } } },
     }));
-    expect(out.gateStats.bram.grit.value).toBe(33);
-    expect(out.gateStats.ash.hunger.value).toBe(75);
-    expect(out.gateStats[PLAYER_OWNER].rage.value).toBe(70);
+    expect(out.gateStats.owners.bram.grit.value).toBe(33);
+    expect(out.gateStats.owners.ash.hunger.value).toBe(75);
+    expect(out.gateStats.global.rage.value).toBe(70);
   });
 
   it("lets code read a stat gate's state through available", async () => {

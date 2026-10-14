@@ -20,10 +20,10 @@ import { activeOwnedTraitIds } from './ownedTraitsInPlay';
 import { activeStatEnabled, exclusiveSiblings, inAuthoredOrder, isAlwaysOn, isHidden } from './traitEffects';
 import { hasStatEffects, offeredWorldTraits, type StatRow } from './traitTree';
 import {
-  gateOf, gateStates, modeRefuses, overfills, playerOwnerIds, settle, underfills, PLAYER_OWNER, type GateEntity, type GateInput, type GateOwner, type GateStat,
-  type GateStates, type GateStats, type GateTraitRef,
+  gateOf, gateStates, modeRefuses, overfills, settle, underfills, type GateEntity, type GateInput, type GateOwner, type GateStat,
+  type GateStates, type GateStats, type GateTraitRef, type GateTree,
 } from './traitGates';
-import { playedEntityIds, type Scoped } from './scope';
+import { mapScoped, playedEntityIds, scoped, scopedEntries, type OwnerId, type Scoped } from './scope';
 
 /** What a trait's last switch actually moved: record key → stat id → value delta, keyed as `recordKey` and
  *  `ownStatsRecordKey` (lib/ownedTraitState) spell it. */
@@ -32,11 +32,11 @@ export type AppliedTraitValues = Record<string, Record<string, number>>;
 /** The gameplay slice trait operations read and rewrite. */
 export interface TraitRuntimeState {
   stats: PlayerStat[];
-  /** The player's traits — chosen at creation or acquired during the game. Switched-off ones stay listed. */
+  /** The global traits — chosen at creation or acquired during the game. Switched-off ones stay listed. */
   traits: Trait[];
   disabledTraitIds: string[];
   appliedValues: AppliedTraitValues;
-  /** Owner id → the traits a cascade turned off, which return once their gate holds. Absent ⇒ none. */
+  /** The traits a cascade turned off, which return once their gate holds. Absent ⇒ none. */
   cascadeOffTraitIds?: CascadeOffTraitIds;
   /** Each entity's owned traits. Absent ⇒ none. */
   ownedTraits?: OwnedTraitStates;
@@ -54,13 +54,13 @@ export type TraitWorld = {
    *  state's live stats. */
   gateStats?: GateStats;
 } & (
-  | { entities?: readonly GateEntity[]; owners?: undefined }
-  /** Every present owner as the gate module reads it, the player first (see lib/owners). Absent ⇒ only
-   *  the world's offered traits gate. The entities name the Custom Persona entity among them. */
-  | { entities: readonly GateEntity[]; owners: readonly GateOwner[] }
+  | { entities?: readonly GateEntity[]; global?: undefined; owners?: undefined }
+  /** Global scope's tree and every present entity owner as the gate module reads them (see lib/owners).
+   *  Absent ⇒ only the world's offered traits gate. The entities name the Custom Persona entity among them. */
+  | { entities: readonly GateEntity[]; global: GateTree; owners: readonly GateOwner[] }
 );
 
-/** The traits currently in force: everything in the player's list that isn't switched off. */
+/** The traits currently in force: everything in the global list that isn't switched off. */
 export function activeTraits(traits: readonly Trait[], disabledTraitIds: readonly string[]): Trait[] {
   const off = new Set(disabledTraitIds);
   return traits.filter((t) => !off.has(t.id));
@@ -71,21 +71,20 @@ export interface TraitForceState {
   traits: readonly Trait[];
   disabledTraitIds: readonly string[];
   ownedTraits?: OwnedTraitStates;
-  /** Each entity's stat values: a player owner's change on one of its own stats leaves the player's alone. */
+  /** Each entity's stat values: a played owner's change on one of its own stats leaves the global stats alone. */
   entityStats?: EntityStatValues;
 }
 
-/** The player's chosen world traits the player owner holds right now. A Custom Persona pick lies dormant
- *  under a world persona: it stays chosen for a return to None, and does nothing until then. Without
- *  owners every chosen trait is held. */
-export function heldPlayerTraits(traits: readonly Trait[], world: TraitWorld): Trait[] {
-  const player = world.owners?.find((o) => o.id === PLAYER_OWNER);
-  if (!player) return [...traits];
-  const held = new Set(player.traits.map((t) => t.id));
+/** The chosen global traits global scope's tree holds right now. A trait gated only on the played persona
+ *  itself leaves the tree under that persona, and stays chosen for a return to another. Without a global
+ *  tree every chosen trait is held. */
+export function heldGlobalTraits(traits: readonly Trait[], world: TraitWorld): Trait[] {
+  if (!world.global) return [...traits];
+  const held = new Set(world.global.traits.map((t) => t.id));
   return traits.filter((t) => held.has(t.id));
 }
 
-/** The traits in force in two parts: the global part holds the player's active held world traits; each entity
+/** The traits in force in two parts: the global part holds the active held global traits; each entity
  *  owner's part holds its active traits, owned or linked, in its tree order. A played entity's traits sit only
  *  under its own id, and every played id has a part. */
 export function traitForceScope(state: TraitForceState, world: TraitWorld): Scoped<Trait[]> & { played: readonly string[] } {
@@ -96,19 +95,14 @@ export function traitForceScope(state: TraitForceState, world: TraitWorld): Scop
     const on = new Set(active[owner.id] ?? []);
     owners[owner.id] = owner.traits.filter((t) => on.has(t.id));
   }
-  return { global: heldPlayerTraits(activeTraits(state.traits, state.disabledTraitIds), world), owners, played };
+  return { global: heldGlobalTraits(activeTraits(state.traits, state.disabledTraitIds), world), owners, played };
 }
 
-/** The entity owners whose active traits are the player's, in owner order: the Custom Persona entity under
- *  None and a library persona, and the played persona. Empty with no persona or no owners. */
-const playerEntityOwners = (world: TraitWorld): readonly GateOwner[] => {
-  if (!world.persona || !world.owners) return [];
-  const ids = new Set(playerOwnerIds(world.persona, world.entities));
-  return world.owners.filter((o) => o.id !== PLAYER_OWNER && ids.has(o.id));
-};
-
-/** Whether `ownerId` is a player entity owner: its traits are the player's own. */
-const isPlayerOwner = (world: TraitWorld, ownerId: string): boolean => playerEntityOwners(world).some((o) => o.id === ownerId);
+/** Whether `ownerId` is a played entity owner: the played persona, or the Custom Persona entity under None
+ *  and a library persona. False with no persona or no owners. */
+const isPlayedOwner = (world: TraitWorld, ownerId: string): boolean =>
+  !!world.persona && !!world.owners?.some((o) => o.id === ownerId)
+  && playedEntityIds(world.persona, world.entities).includes(ownerId);
 
 /** The ids of the stats `ownerId` owns in play. */
 const ownStatIds = (state: Pick<TraitForceState, 'entityStats'>, ownerId: string): ReadonlySet<string> =>
@@ -150,7 +144,7 @@ export const globalRowTraits = (state: Pick<TraitForceState, 'ownedTraits' | 'en
 /** Every trait whose stat effects are in force on global stats: the held global traits, then every entity's
  *  active traits cut to their global rows. Bounds derive from this set, and so do stat toggles. */
 export function statTraitsInForce(state: TraitForceState, world: TraitWorld): Trait[] {
-  return [...heldPlayerTraits(activeTraits(state.traits, state.disabledTraitIds), world), ...globalRowTraits(state, world)];
+  return [...heldGlobalTraits(activeTraits(state.traits, state.disabledTraitIds), world), ...globalRowTraits(state, world)];
 }
 
 /** Each owner's traits among its `active` ids that change its own stats, in its tree order; none for an owner
@@ -170,14 +164,14 @@ export function treeStatTraits(
 export const entityStatTraitsInForce = (ownedTraits: OwnedTraitStates | undefined, world: TraitWorld, ownerId: string): Trait[] =>
   treeStatTraits(entityOwners(world), activeOwnedTraitIds(ownedTraits ?? {}))(ownerId);
 
-/** The stat traits in force for one owner's stats: the player's are {@link statTraitsInForce}; an entity's
+/** The stat traits in force for one scope's stats: global scope's are {@link statTraitsInForce}; an entity's
  *  are its own. A change on a stat the owner lacks finds nothing to move. */
-export const ownerStatTraitsInForce = (state: TraitForceState, world: TraitWorld, ownerId: string): Trait[] =>
-  (ownerId === PLAYER_OWNER ? statTraitsInForce(state, world) : entityStatTraitsInForce(state.ownedTraits, world, ownerId));
+export const ownerStatTraitsInForce = (state: TraitForceState, world: TraitWorld, ownerId: OwnerId): Trait[] =>
+  (ownerId === null ? statTraitsInForce(state, world) : entityStatTraitsInForce(state.ownedTraits, world, ownerId));
 
 /** Each stat trait in force with its record key, so two worlds' sets compare by what the record is under. */
 const keyedStatTraits = (state: TraitForceState, world: TraitWorld): [string, Trait][] => [
-  ...heldPlayerTraits(activeTraits(state.traits, state.disabledTraitIds), world).map((t): [string, Trait] => [t.id, t]),
+  ...heldGlobalTraits(activeTraits(state.traits, state.disabledTraitIds), world).map((t): [string, Trait] => [t.id, t]),
   ...globalRowTraitsByOwner(state, world).map(([ownerId, t]): [string, Trait] => [recordKey(ownerId, t.id), t]),
 ];
 
@@ -304,7 +298,7 @@ export function startingStatsWith(
   authored: readonly Stat[], chosenInOrder: readonly Trait[], world: TraitWorld, owned: OwnedTraitPicks = {},
 ): PlayerStat[] {
   let state: TraitRuntimeState = { stats: seedNewGameStats(authored), traits: [], disabledTraitIds: [], appliedValues: {} };
-  for (const trait of heldPlayerTraits(chosenInOrder, world)) state = acquireTrait(state, trait, world).state;
+  for (const trait of heldGlobalTraits(chosenInOrder, world)) state = acquireTrait(state, trait, world).state;
   return applyGlobalRowTraits({ ...state, ownedTraits: ownedTraitStatesFrom(owned) }, world).state.stats;
 }
 
@@ -471,10 +465,10 @@ function moveOwnStats(state: TraitRuntimeState, ownerId: string, ownerTrait: Tra
   };
 }
 
-/** Move a trait's switch in its owner's lists and settle the stats around it: the player's world traits in
- *  the disabled list, a played persona's in its owned lists. */
-function switchTrait(state: TraitRuntimeState, trait: Trait, on: boolean, world: TraitWorld, ownerId = PLAYER_OWNER): TraitRuntimeState {
-  const listed = ownerId === PLAYER_OWNER
+/** Move a trait's switch in its scope's lists and settle the stats around it: a global trait in the
+ *  disabled list, an entity's in its owned lists. */
+function switchTrait(state: TraitRuntimeState, trait: Trait, on: boolean, world: TraitWorld, ownerId: OwnerId = null): TraitRuntimeState {
+  const listed = ownerId === null
     ? { ...state, disabledTraitIds: withDisabled(state.disabledTraitIds, on ? null : trait.id, on ? trait.id : null) }
     : withOwnedSwitch(state, ownerId, trait.id, on);
   return moveStats(listed, trait, on, recordKey(ownerId, trait.id), statTraitsInForce(listed, world));
@@ -482,8 +476,8 @@ function switchTrait(state: TraitRuntimeState, trait: Trait, on: boolean, world:
 
 /** Switch an owner's trait in its lists and move the stats it changes: the world's traits and any entity
  *  owner's global rows move global stats, and an entity's own rows move its own stats. */
-function flipOwnerTrait(state: TraitRuntimeState, ownerId: string, trait: Trait, on: boolean, world: TraitWorld): TraitRuntimeState {
-  if (ownerId === PLAYER_OWNER) return switchTrait(state, trait, on, world);
+function flipOwnerTrait(state: TraitRuntimeState, ownerId: OwnerId, trait: Trait, on: boolean, world: TraitWorld): TraitRuntimeState {
+  if (ownerId === null) return switchTrait(state, trait, on, world);
   const globalRows = withoutOwnStatRows(trait, ownStatIds(state, ownerId));
   const switched = hasStatEffects(globalRows)
     ? switchTrait(state, globalRows, on, world, ownerId)
@@ -504,7 +498,7 @@ export function applyGlobalRowTraits(state: TraitRuntimeState, world: TraitWorld
     on.push(trait);
     next = moveStats(next, trait, true, recordKey(ownerId, trait.id), [...activeTraits(next.traits, next.disabledTraitIds), ...on]);
   }
-  return { state: next, applied: rows.filter(([ownerId]) => isPlayerOwner(world, ownerId)).map(([, t]) => t) };
+  return { state: next, applied: rows.filter(([ownerId]) => isPlayedOwner(world, ownerId)).map(([, t]) => t) };
 }
 
 /**
@@ -631,7 +625,7 @@ export interface CodeTraitSwitch {
   traitId: string;
   enabled: boolean;
   by: string;
-  /** The entity owner whose own trait this switches. Absent ⇒ the player's world trait. */
+  /** The entity owner whose own trait this switches. Absent ⇒ a global trait. */
   ownerId?: string;
 }
 
@@ -648,23 +642,24 @@ function ownerGateStats(stats: readonly PlayerStat[], inForce: readonly Trait[])
 /** The slice the gates' stats are read from. */
 export type GateStatState = TraitForceState & { stats: readonly PlayerStat[] };
 
-/** Every owner's live stats as gates read them: the player's under the world owner, each entity's under its
- *  id, on their effective bounds. */
+/** Every live stat as gates read it: the global stats, and each entity's under its id, on their effective
+ *  bounds. */
 export function gateStatsOf(state: GateStatState, world: TraitWorld): GateStats {
-  return {
-    [PLAYER_OWNER]: ownerGateStats(state.stats, statTraitsInForce(state, world)),
-    ...Object.fromEntries(Object.entries(state.entityStats ?? {}).map(([ownerId, stats]) =>
+  return scoped(
+    ownerGateStats(state.stats, statTraitsInForce(state, world)),
+    Object.fromEntries(Object.entries(state.entityStats ?? {}).map(([ownerId, stats]) =>
       [ownerId, ownerGateStats(stats, entityStatTraitsInForce(state.ownedTraits, world, ownerId))])),
-  };
+  );
 }
 
-/** Every owner's traits, active set and stats, as the gate module reads them. */
+/** Every scope's traits, active set and stats, as the gate module reads them. */
 export const traitGateInput = (state: GateStatState, world: TraitWorld): GateInput => ({
-  owners: world.owners ?? [{ id: PLAYER_OWNER, name: '', ...offeredWorldTraits(world.traits, world.groups) }],
-  active: {
-    ...activeOwnedTraitIds(state.ownedTraits ?? {}),
-    [PLAYER_OWNER]: heldPlayerTraits(activeTraits(state.traits, state.disabledTraitIds), world).map((t) => t.id),
-  },
+  global: world.global ?? offeredWorldTraits(world.traits, world.groups),
+  owners: world.owners ?? [],
+  active: scoped(
+    heldGlobalTraits(activeTraits(state.traits, state.disabledTraitIds), world).map((t) => t.id),
+    activeOwnedTraitIds(state.ownedTraits ?? {}),
+  ),
   stats: world.gateStats ?? gateStatsOf(state, world),
   entities: world.entities ?? [],
   persona: world.persona ?? { source: 'none' },
@@ -675,15 +670,15 @@ export const traitGateInput = (state: GateStatState, world: TraitWorld): GateInp
 export const traitGates = (state: GateStatState, world: TraitWorld): GateStates => gateStates(traitGateInput(state, world));
 
 /** Whether the owner's requirements on a trait hold in `gates`. A trait with no gate state is open. */
-export const traitUnlocked = (gates: GateStates, ownerId: string, traitId: string): boolean =>
+export const traitUnlocked = (gates: GateStates, ownerId: OwnerId, traitId: string): boolean =>
   gateOf(gates, ownerId, traitId)?.unlocked !== false;
 
-const isLocked = (state: TraitRuntimeState, world: TraitWorld, ownerId: string, traitId: string): boolean =>
+const isLocked = (state: TraitRuntimeState, world: TraitWorld, ownerId: OwnerId, traitId: string): boolean =>
   !traitUnlocked(traitGates(state, world), ownerId, traitId);
 
 /** Whether the gate module refuses the player's switch-on: the trait is locked, its group is full, or the
  *  mode refuses it. */
-const refusesOn = (state: TraitRuntimeState, world: TraitWorld, ownerId: string, traitId: string): boolean => {
+const refusesOn = (state: TraitRuntimeState, world: TraitWorld, ownerId: OwnerId, traitId: string): boolean => {
   const input = traitGateInput(state, world);
   return gateOf(gateStates(input), ownerId, traitId)?.unlocked === false || overfills(input, ownerId, traitId)
     || modeRefuses(input, ownerId, traitId);
@@ -691,39 +686,53 @@ const refusesOn = (state: TraitRuntimeState, world: TraitWorld, ownerId: string,
 
 /** Whether the gate module refuses the player's switch-off: its group would end below the minimum, or the
  *  mode refuses it. */
-const refusesOff = (state: TraitRuntimeState, world: TraitWorld, ownerId: string, traitId: string): boolean => {
+const refusesOff = (state: TraitRuntimeState, world: TraitWorld, ownerId: OwnerId, traitId: string): boolean => {
   const input = traitGateInput(state, world);
   return underfills(input, ownerId, traitId) || modeRefuses(input, ownerId, traitId);
 };
 
-/** The owners other than the player's. */
-const entityOwners = (world: TraitWorld): readonly GateOwner[] => (world.owners ?? []).filter((o) => o.id !== PLAYER_OWNER);
+/** Every entity owner in play. */
+const entityOwners = (world: TraitWorld): readonly GateOwner[] => world.owners ?? [];
 
-/** Whether the player's world owner offers `traitId`. */
-const playerHolds = (world: TraitWorld, traitId: string): boolean =>
-  (world.owners?.find((o) => o.id === PLAYER_OWNER)?.traits ?? world.traits).some((t) => t.id === traitId);
+/** Whether global scope's tree offers `traitId`. */
+const globalHolds = (world: TraitWorld, traitId: string): boolean =>
+  (world.global?.traits ?? world.traits).some((t) => t.id === traitId);
 
 /** The lists with every empty one dropped, so an empty list and an absent one read the same. */
-function compactCascadeOff(lists: Readonly<Record<string, readonly string[]>> = {}): CascadeOffTraitIds {
-  return Object.fromEntries(Object.entries(lists).filter(([, ids]) => ids.length).map(([owner, ids]) => [owner, [...ids]]));
+export function compactCascadeOff(lists: Partial<Scoped<readonly string[]>> = {}): CascadeOffTraitIds {
+  const owners = Object.fromEntries(Object.entries(lists.owners ?? {}).filter(([, ids]) => ids.length).map(([owner, ids]) => [owner, [...ids]]));
+  return {
+    ...(lists.global?.length ? { global: [...lists.global] } : {}),
+    ...(Object.keys(owners).length ? { owners } : {}),
+  };
 }
+
+/** The cascade-off lists as the gate module reads them. */
+export const cascadeOffInput = (lists: CascadeOffTraitIds | undefined): Scoped<string[]> =>
+  scoped(lists?.global ?? [], lists?.owners ?? {});
+
+const sameIds = (a: readonly string[] = [], b: readonly string[] = []) => a.length === b.length && a.every((id, i) => b[i] === id);
 
 function sameCascadeOff(a: CascadeOffTraitIds, b: CascadeOffTraitIds): boolean {
-  const owners = Object.keys(a);
-  return owners.length === Object.keys(b).length
-    && owners.every((owner) => a[owner].length === b[owner]?.length && a[owner].every((id, i) => b[owner][i] === id));
+  const owners = Object.keys(a.owners ?? {});
+  return sameIds(a.global, b.global) && owners.length === Object.keys(b.owners ?? {}).length
+    && owners.every((owner) => sameIds(a.owners?.[owner], b.owners?.[owner]));
 }
 
-/** `state` with `traitId` off its cascade-off list, so it never returns; the same state when it was not listed.
- *  With `ownerId`, only that owner's list. */
-function withoutCascadeOff(state: TraitRuntimeState, traitId: string, ownerId?: string): TraitRuntimeState {
-  const lists = state.cascadeOffTraitIds ?? {};
-  const inScope = (owner: string) => ownerId === undefined || owner === ownerId;
-  if (!Object.entries(lists).some(([owner, ids]) => inScope(owner) && ids.includes(traitId))) return state;
-  const next = Object.fromEntries(Object.entries(lists)
-    .map(([owner, ids]) => [owner, inScope(owner) ? ids.filter((id) => id !== traitId) : ids]));
+/** `state` with `traitId` off its cascade-off lists, so it never returns; the same state when it was not
+ *  listed. With `ownerId`, only that scope's list. */
+function withoutCascadeOff(state: TraitRuntimeState, traitId: string, ownerId?: OwnerId): TraitRuntimeState {
+  const lists = cascadeOffInput(state.cascadeOffTraitIds);
+  const inScope = (owner: OwnerId) => ownerId === undefined || owner === ownerId;
+  if (!scopedEntries(lists).some(([owner, ids]) => inScope(owner) && ids.includes(traitId))) return state;
+  const next = mapScoped(lists, (ids, owner) => (inScope(owner) ? ids.filter((id) => id !== traitId) : ids));
   return { ...state, cascadeOffTraitIds: compactCascadeOff(next) };
 }
+
+/** The cascade-off lists after a settle: its global list, and each owner's from it over `previous`, so an
+ *  owner the settle did not cover keeps its list. */
+export const settledCascadeOff = (previous: CascadeOffTraitIds | undefined, settled: Scoped<string[]>): CascadeOffTraitIds =>
+  ({ global: settled.global, owners: { ...previous?.owners, ...settled.owners } });
 
 /** An owner's trait: the owner and the trait itself. Without `ownerId`, the first owner that holds it. */
 function ownedTrait(world: TraitWorld, traitId: string, ownerId?: string): { owner: GateOwner; trait: Trait } | null {
@@ -751,19 +760,19 @@ function withOwnedSwitch(state: TraitRuntimeState, ownerId: string, traitId: str
   };
 }
 
-/** A trait as the log and the banner name it: an NPC's owned trait carries its owner's name. The world's
- *  traits and a player entity owner's are the player's own, so they read bare. */
+/** A trait as the log and the banner name it: an NPC's owned trait carries its owner's name. Global traits
+ *  and a played entity owner's read bare. */
 function labeler(world: TraitWorld, nameOf: (trait: Trait) => string) {
   const owners = new Map(entityOwners(world).map((o) => [o.id, o]));
-  return (trait: Trait, ownerId: string): string => {
-    const owner = ownerId === PLAYER_OWNER || isPlayerOwner(world, ownerId) ? undefined : owners.get(ownerId);
+  return (trait: Trait, ownerId: OwnerId): string => {
+    const owner = ownerId === null || isPlayedOwner(world, ownerId) ? undefined : owners.get(ownerId);
     return owner ? `${owner.name}'s ${nameOf(trait)}` : nameOf(trait);
   };
 }
 
 /** A world or owned trait as the log and the banner name it, found by id, in `ownerId`'s tree when given. */
-export function traitNameIn(world: TraitWorld, traitId: string, nameOf: (trait: Trait) => string, ownerId?: string): string | null {
-  const owned = ownerId === PLAYER_OWNER ? null : ownedTrait(world, traitId, ownerId);
+export function traitNameIn(world: TraitWorld, traitId: string, nameOf: (trait: Trait) => string, ownerId?: OwnerId): string | null {
+  const owned = ownerId === null ? null : ownedTrait(world, traitId, ownerId);
   if (owned) return labeler(world, nameOf)(owned.trait, owned.owner.id);
   const trait = world.traits.find((t) => t.id === traitId);
   return trait ? nameOf(trait) : null;
@@ -790,23 +799,23 @@ export function settleTraits(
   nameOf: (trait: Trait) => string = (trait) => trait.name,
   by?: string,
 ): GatedTraitResult {
-  const result = settle(traitGateInput(state, world), state.cascadeOffTraitIds ?? {});
+  const result = settle(traitGateInput(state, world), cascadeOffInput(state.cascadeOffTraitIds));
   const held = (refs: GateTraitRef[]) => refs.flatMap(({ ownerId, traitId }) => {
-    const trait = ownerId === PLAYER_OWNER
+    const trait = ownerId === null
       ? state.traits.find((t) => t.id === traitId) ?? world.traits.find((t) => t.id === traitId && isAlwaysOn(t))
       : ownedTrait(world, traitId, ownerId)?.trait;
     return trait ? [{ ownerId, trait }] : [];
   });
   const off = held(result.turnedOff);
   const back = held(result.returned);
-  const cascadeOff = compactCascadeOff({ ...state.cascadeOffTraitIds, ...result.cascadeOff });
+  const cascadeOff = compactCascadeOff(settledCascadeOff(state.cascadeOffTraitIds, result.cascadeOff));
   if (!off.length && !back.length && sameCascadeOff(cascadeOff, compactCascadeOff(state.cascadeOffTraitIds))) {
     return { state, log: [], cascade: [], cascadeNames: [] };
   }
   let next = state;
   for (const { ownerId, trait } of off) next = flipOwnerTrait(next, ownerId, trait, false, world);
   for (const { ownerId, trait } of back) {
-    if (ownerId === PLAYER_OWNER && !next.traits.some((t) => t.id === trait.id)) next = { ...next, traits: [...next.traits, trait] };
+    if (ownerId === null && !next.traits.some((t) => t.id === trait.id)) next = { ...next, traits: [...next.traits, trait] };
     next = flipOwnerTrait(next, ownerId, trait, true, world);
   }
   const label = labeler(world, nameOf);
@@ -869,18 +878,18 @@ export function switchPlayerTrait(
   enabled: boolean,
   world: TraitWorld,
   nameOf: (trait: Trait) => string = (trait) => trait.name,
-  ownerId?: string,
+  ownerId?: OwnerId,
 ): GatedTraitResult | null {
   const acquired = state.traits.find((t) => t.id === traitId);
   const owned = ownerId !== undefined
-    ? (ownerId === PLAYER_OWNER ? null : ownedTrait(world, traitId, ownerId))
-    : acquired || playerHolds(world, traitId) ? null : ownedTrait(world, traitId);
+    ? (ownerId === null ? null : ownedTrait(world, traitId, ownerId))
+    : acquired || globalHolds(world, traitId) ? null : ownedTrait(world, traitId);
   if (owned) return switchOwned(state, owned, enabled, world, nameOf);
-  if (ownerId !== undefined && ownerId !== PLAYER_OWNER) return null;
+  if (ownerId != null) return null;
   const trait = acquired ?? world.traits.find((t) => t.id === traitId);
   if (!trait || (!!acquired && !state.disabledTraitIds.includes(traitId)) === enabled) return null;
-  if (enabled && (refusesOn(state, world, PLAYER_OWNER, traitId) || (!acquired && !trait.playerToggle))) return null;
-  if (!enabled && refusesOff(state, world, PLAYER_OWNER, traitId)) return null;
+  if (enabled && (refusesOn(state, world, null, traitId) || (!acquired && !trait.playerToggle))) return null;
+  if (!enabled && refusesOff(state, world, null, traitId)) return null;
   const switched = acquired ? setTraitEnabled(state, traitId, enabled, world) : acquireTrait(state, trait, world);
   const kind: TraitSwitchKind = !acquired ? 'acquired' : enabled ? 'on' : 'off';
   const settled = settleTraits(switched.state, world, nameOf);
@@ -907,7 +916,7 @@ export function applyCodeTraitSwitches(
   let next = state;
   const log: string[] = [];
   for (const { traitId, enabled, by, ownerId } of switches) {
-    if (ownerId !== undefined && ownerId !== PLAYER_OWNER) {
+    if (ownerId !== undefined) {
       const switched = codeSwitchOwned(next, ownerId, traitId, enabled, by, world, nameOf);
       next = switched.state;
       log.push(...switched.log);
@@ -920,7 +929,7 @@ export function applyCodeTraitSwitches(
       if (!enabled) next = withoutCascadeOff(next, traitId);
       continue;
     }
-    const result = enabled && isLocked(next, world, PLAYER_OWNER, traitId)
+    const result = enabled && isLocked(next, world, null, traitId)
       ? { state: switchTrait(acquired ? next : { ...next, traits: [...next.traits, trait] }, trait, true, world), retired: [] }
       : acquired ? setTraitEnabled(next, traitId, enabled, world) : acquireTrait(next, trait, world);
     const kind = !acquired ? 'acquired' : enabled ? 'on' : 'off';
@@ -967,7 +976,7 @@ function codeSwitchOwned(
  * trait the world offers that they haven't. Once a trait can be taken at will, being acquired is only a
  * checkbox state.
  */
-export function listablePlayerTraits(
+export function listableGlobalTraits(
   acquiredTraits: readonly Trait[],
   authored: readonly Trait[],
   order: Map<string, number>,

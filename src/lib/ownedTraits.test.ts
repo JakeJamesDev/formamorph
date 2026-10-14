@@ -4,6 +4,7 @@ import {
   traitOwners, updateOwnedTrait,
 } from './ownedTraits';
 import { gateOf, gateStates } from './traitGates';
+import { scoped } from './scope';
 import type { Entity, Trait, TraitGroup } from '@/types';
 
 const trait = (id: string, extra: Partial<Trait> = {}): Trait => ({ id, name: id, statChanges: [], ...extra });
@@ -105,9 +106,9 @@ describe('traitOwners', () => {
   const keeper = trait('t-keeper', { name: 'Keeper', requires: [{ all: [{ kind: 'group', id: 'g-allies' }] }] });
   // Playing Ash, whose active traits are still Ash's own, not global (Q6).
   const unlocked = (entity: Entity) => gateOf(gateStates({
-    owners: traitOwners({ traits: [keeper], traitGroups: companions, entities: [entity] }),
-    active: { ash: ['t-tamed'] }, entities: [], persona: { source: 'world', entityId: 'ash' },
-  }), 'world', 't-keeper')?.unlocked;
+    ...traitOwners({ traits: [keeper], traitGroups: companions, entities: [entity] }),
+    active: scoped([], { ash: ['t-tamed'] }), entities: [], persona: { source: 'world', entityId: 'ash' },
+  }), null, 't-keeper')?.unlocked;
 
   // Q6: a world group counts global items only, so an entity node never holds it up, wherever it sits.
   it('counts no traits of an entity node toward a world group, placed inside it or not', () => {

@@ -20,7 +20,7 @@ import { languageDirective } from '@/lib/languages';
 import { matchLocationResponse } from '@/lib/locationMatch';
 import { parseChoices } from '@/lib/choices';
 import { parseStatUpdates } from '@/lib/statChanges';
-import { playerTargets, statRequestSchema, type StatRequestSnapshot } from '@/lib/statRequest';
+import { statRequestSchema, textPassTargets, type StatRequestSnapshot } from '@/lib/statRequest';
 import { parseTimeDelta, parseOpeningDaypart } from '@/lib/gameClock';
 import { cleanDiscoveredDescription, DISCOVER_LATER_LABEL, DISCOVER_PASSAGE_LABEL } from '@/lib/runtimeCharacters';
 import {
@@ -450,7 +450,7 @@ export function statUpdatesRequest(
   const user = { '<PLAYER ACTION>': values.action, '<NARRATION>': values.narration };
   const shared = { type: 'statUpdates' as const, silent: false, quiet: base.quiet, statRequest };
   const text = resolveStatText(prompts);
-  const textStats = statRequest ? playerTargets(statRequest).length : base.statCount;
+  const textStats = statRequest ? textPassTargets(statRequest).length : base.statCount;
   const textRequest = labeledRequest(
     { ...shared, maxTokens: statUpdatesCap(textStats) },
     systemTiled(text.system, layerValues(values.ctx, statRequest?.context)),
@@ -472,7 +472,7 @@ export function statUpdatesRequest(
 
 /** Whether a stat request has a stat to ask about on the path it takes. No snapshot sends the text pass. */
 export const statRequestReady = (snapshot: StatRequestSnapshot | undefined): boolean =>
-  !snapshot || (snapshot.textPass ? playerTargets(snapshot) : snapshot.targets).length > 0;
+  !snapshot || (snapshot.textPass ? textPassTargets(snapshot) : snapshot.targets).length > 0;
 
 /** How the turn moved every present owner's stats. */
 export const statUpdatesPass: TurnPassRecord<ReturnType<typeof parseStatUpdates>> = {

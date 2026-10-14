@@ -77,7 +77,6 @@ import { resolveEntityText, resolvePlaceholders, type ResolveOptions } from '@/l
 import { renderPromptTemplate } from '@/lib/promptTemplate';
 import { layerValues, mapValues, type ValueLookup } from '@/lib/promptValues';
 import { createStatRequest, keyedScene, type StatRequestSnapshot } from '@/lib/statRequest';
-import { PLAYER_OWNER } from '@/lib/statOwners';
 import { statUpdatesCap, statUpdatesRequest } from '@/lib/turnPipeline/turnPasses';
 import { migrateWorld } from '@/lib/version';
 import type { StatPlacement } from '@/lib/statContext';
@@ -271,6 +270,8 @@ function requestCall(snapshot: StatRequestSnapshot, ctx: ValueLookup, narration:
 }
 
 const PERSONA_ID = 'probe-persona';
+/** The played entity that owns every player stat in the BASE_REF layout. */
+const PLAYER_ID = 'probe-player';
 const SHIPPED_PROMPTS = { system: shippedStatPrompt, user: shippedStatUserPrompt };
 
 /** The request the app sends, built by the app's own stat pass over the world's scene, from `prompts` when
@@ -284,7 +285,7 @@ function shippedCall(owners: Owner[], narration: string, prompts = SHIPPED_PROMP
     : undefined;
   const cast = world.entities.map((e) => ({ ...e, stats: entityStatsOf(e.id) }));
   const scene = authoredChipScene({ ...world, stats: loose, entities: played ? [...cast, played] : cast }, sceneOptions);
-  const snapshot = createStatRequest(loose, PLAYER_OWNER, {
+  const snapshot = createStatRequest(loose, {
     ...(played && { persona: { id: played.id, name: played.name, stats: owned } }),
     entities: others.map((o) => ({ id: o.key, name: o.name, stats: o.stats })),
     inSceneIds: others.map((o) => o.key),
@@ -299,11 +300,11 @@ const BASE_REF = '633c60570';
 function baseLayoutCall(owners: Owner[], narration: string, groups: GroupStyle | undefined, prompts: { system: string; user: string }): Call {
   const placement = (stats: readonly PlayerStat[]) => (groups ? { placement: grouped(stats, groups) } : {});
   const others = owners.filter((o) => o !== playerOwner && o.stats.length);
-  const snapshot = createStatRequest([], PLAYER_OWNER, {
-    persona: { id: PLAYER_OWNER, name: PLAYER, stats: playerOwner.stats, ...placement(playerOwner.stats) },
+  const snapshot = createStatRequest([], {
+    persona: { id: PLAYER_ID, name: PLAYER, stats: playerOwner.stats, ...placement(playerOwner.stats) },
     entities: others.map((o) => ({ id: o.key, name: o.name, stats: o.stats, ...placement(o.stats) })),
   });
-  const sections = others.map((o, i) => ({ key: snapshot.entityKeys[i], values: createStatRequest(o.stats, o.key, placement(o.stats)).context }));
+  const sections = others.map((o, i) => ({ key: snapshot.entityKeys[i], values: createStatRequest(o.stats, placement(o.stats)).context }));
   const context = mapValues(snapshot.context, (value, token) =>
     [value, ...sections.map((section) => `### ${section.key}\n${section.values(token)}`)].join('\n\n'));
   return requestCall({ ...snapshot, context }, BASE_CTX, narration, prompts);
@@ -712,7 +713,7 @@ function parse(arm: Arm, owners: Owner[], calls: Call[], replies: Reply[]): Pars
   if (arm === 'LV') return parseJsonReply(readingsToChanges(replies[0].raw, owners), owners);
   if (arm === 'C' || arm === 'C2' || arm === 'C3' || arm === 'D' || isLean(arm)) return parseJsonReply(replies[0].raw, owners);
   if (arm === 'C3P') return parseJsonReply(replies[0].raw, [playerOwner]);
-  if (arm === 'S' || arm === 'OB' || arm === 'SB' || arm === 'S0' || arm === 'OB0' || arm === 'SU' || arm === 'SN' || arm === 'SG' || arm === 'SGB' || arm === 'SGO' || arm === 'SH' || arm === 'SP' || isWording(arm) || isFraming(arm) || isAblation(arm)) return parsePlainLines(replies[0].raw, playerOwner, calls[0].snapshot, (id) => (id === PLAYER_OWNER || id === PERSONA_ID ? playerOwner.key : id));
+  if (arm === 'S' || arm === 'OB' || arm === 'SB' || arm === 'S0' || arm === 'OB0' || arm === 'SU' || arm === 'SN' || arm === 'SG' || arm === 'SGB' || arm === 'SGO' || arm === 'SH' || arm === 'SP' || isWording(arm) || isFraming(arm) || isAblation(arm)) return parsePlainLines(replies[0].raw, playerOwner, calls[0].snapshot, (id) => (id === null || id === PERSONA_ID || id === PLAYER_ID ? playerOwner.key : id));
   const parts = calls.flatMap((call, i) => (call.owner ? [parsePlainLines(replies[i].raw, call.owner, call.snapshot)] : []));
   return {
     changes: parts.flatMap((p) => p.changes), invalid: parts.reduce((n, p) => n + p.invalid, 0), unreadable: false,

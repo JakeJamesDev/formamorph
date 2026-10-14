@@ -9,7 +9,7 @@ import { GameplayProvider, useGameplay } from './GameplayContext';
 import { GameDataProvider } from './GameDataContext';
 import { PlaceholderSessionProvider } from './PlaceholderSessionContext';
 import {
-  acquireTrait, applyCodeTraitSwitches, heldPlayerTraits, seedStatBases, setTraitEnabled, switchPlayerTrait, type TraitRuntimeState,
+  acquireTrait, applyCodeTraitSwitches, heldGlobalTraits, seedStatBases, setTraitEnabled, switchPlayerTrait, type TraitRuntimeState,
 } from '@/lib/traitRuntime';
 import { inPlayOwners } from '@/lib/ownedTraitsInPlay';
 import { getSaveRecord, putSaveRecord } from '@/components/modals/dbUtils';
@@ -66,16 +66,16 @@ const mount = () => {
 };
 
 const slice = (g: Gameplay): TraitRuntimeState => ({
-  stats: g.playerStats,
-  traits: g.playerTraits,
+  stats: g.globalStats,
+  traits: g.globalTraits,
   disabledTraitIds: g.disabledTraitIds,
   appliedValues: g.appliedTraitValues,
   cascadeOffTraitIds: g.cascadeOffTraitIds,
 });
 
 const commit = (g: Gameplay, next: TraitRuntimeState) => {
-  g.setPlayerStats(next.stats);
-  g.setPlayerTraits(next.traits);
+  g.setGlobalStats(next.stats);
+  g.setGlobalTraits(next.traits);
   g.setDisabledTraitIds(next.disabledTraitIds);
   g.setAppliedTraitValues(next.appliedValues);
   g.setCascadeOffTraitIds(next.cascadeOffTraitIds ?? {});
@@ -97,7 +97,7 @@ describe('trait movement records across a save/load round trip', () => {
       };
       commit(live(), acquireTrait(seeded, trait, { traits: [trait], groups: [] }).state);
     });
-    expect(valueOf(live().playerStats)).toBe(100);
+    expect(valueOf(live().globalStats)).toBe(100);
     expect(live().appliedTraitValues).toEqual({ t: {} });
 
     await act(async () => {
@@ -117,7 +117,7 @@ describe('trait movement records across a save/load round trip', () => {
     await act(async () => {
       commit(live(), setTraitEnabled(slice(live()), 't', false, { traits: [trait], groups: [] }).state);
     });
-    expect(valueOf(live().playerStats)).toBe(100);
+    expect(valueOf(live().globalStats)).toBe(100);
   });
 
   it('omits the record from a save with nothing to record, and reads its absence back as empty', async () => {
@@ -156,7 +156,7 @@ describe('the cascade-off list across a save/load round trip', () => {
       s = switchPlayerTrait(s, 't', true, world)!.state;
       commit(live(), switchPlayerTrait(s, 's', false, world)!.state);
     });
-    expect(live().cascadeOffTraitIds).toEqual({ world: ['t'] });
+    expect(live().cascadeOffTraitIds).toEqual({ global: ['t'] });
     expect(live().saveCurrentGameState().cascadeOffTraitIds).toEqual({ global: ['t'] });
 
     await act(async () => {
@@ -168,21 +168,21 @@ describe('the cascade-off list across a save/load round trip', () => {
     await act(async () => {
       await live().loadGame('save-5', [], [authored]);
     });
-    expect(live().cascadeOffTraitIds).toEqual({ world: ['t'] });
+    expect(live().cascadeOffTraitIds).toEqual({ global: ['t'] });
 
     // Sworn back on: Hale returns on its own, and its +25 comes back with it.
     await act(async () => {
       commit(live(), switchPlayerTrait(slice(live()), 's', true, world)!.state);
     });
     expect(live().disabledTraitIds).toEqual([]);
-    expect(valueOf(live().playerStats)).toBe(75);
+    expect(valueOf(live().globalStats)).toBe(75);
     expect(live().saveCurrentGameState().cascadeOffTraitIds).toBeUndefined();
   });
 
   it('reads a save without the list as empty', async () => {
     const live = mount();
     await act(async () => {
-      commit(live(), { ...fresh, cascadeOffTraitIds: { world: ['t'] } });
+      commit(live(), { ...fresh, cascadeOffTraitIds: { global: ['t'] } });
     });
     await act(async () => {
       live().loadGameState({ ...live().saveCurrentGameState(), cascadeOffTraitIds: undefined }, []);
@@ -222,11 +222,11 @@ describe('global fields across a save/load round trip', () => {
     } as unknown as SaveRecord);
     await act(async () => { await live().loadGame('save-global-2', []); });
     // The load derives each stat's bounds bookkeeping on top of what the save held.
-    expect(live().playerStats).toMatchObject([rampage]);
-    expect(live().playerTraits).toEqual([sworn]);
+    expect(live().globalStats).toMatchObject([rampage]);
+    expect(live().globalTraits).toEqual([sworn]);
     expect(live().disabledTraitIds).toEqual(['s']);
     expect(live().appliedTraitValues).toEqual({ s: { rampage: 5 }, 'ash/paladin': { rampage: 2 } });
-    expect(live().cascadeOffTraitIds).toEqual({ world: ['hale'], ash: ['loyal'] });
+    expect(live().cascadeOffTraitIds).toEqual({ global: ['hale'], owners: { ash: ['loyal'] } });
     expect(live().gameStates.map((state) => state.globalStats[0].value)).toEqual([10, 40]);
   });
 });
@@ -239,7 +239,7 @@ describe('owned trait state across a save/load round trip', () => {
     const live = mount();
     await act(async () => {
       live().setOwnedTraits(owned);
-      live().setCascadeOffTraitIds({ world: ['t'], bob: ['loyal'] });
+      live().setCascadeOffTraitIds({ global: ['t'], owners: { bob: ['loyal'] } });
     });
     expect(live().saveCurrentGameState().ownedTraits).toEqual(owned);
     await act(async () => {
@@ -253,7 +253,7 @@ describe('owned trait state across a save/load round trip', () => {
       await live().loadGame('save-owned-1', [], [authored], held);
     });
     expect(live().ownedTraits).toEqual(owned);
-    expect(live().cascadeOffTraitIds).toEqual({ world: ['t'], bob: ['loyal'] });
+    expect(live().cascadeOffTraitIds).toEqual({ global: ['t'], owners: { bob: ['loyal'] } });
   });
 
   it("keeps every entity's picks when the persona switches and back", async () => {
@@ -280,7 +280,7 @@ describe('owned trait state across a save/load round trip', () => {
     const wren = { id: 'wren', name: 'Wren' };
     await act(async () => {
       live().setOwnedTraits({ ...owned, wren: { chosen: ['brave'] } });
-      live().setCascadeOffTraitIds({ world: ['t'], bob: ['loyal'], wren: ['calm'] });
+      live().setCascadeOffTraitIds({ global: ['t'], owners: { bob: ['loyal'], wren: ['calm'] } });
       live().setDiscoveredEntities([{ entity: wren, sourceTurnId: 'start' }]);
     });
     await act(async () => {
@@ -290,7 +290,7 @@ describe('owned trait state across a save/load round trip', () => {
       await live().loadGame('save-owned-3', [], [authored], [{ id: 'ash' }]);
     });
     expect(live().ownedTraits).toEqual({ ash: owned.ash, wren: { chosen: ['brave'] } });
-    expect(live().cascadeOffTraitIds).toEqual({ world: ['t'], wren: ['calm'] });
+    expect(live().cascadeOffTraitIds).toEqual({ global: ['t'], owners: { wren: ['calm'] } });
   });
 
   it("keeps a played persona's linked stat records under its own key, and drops a gone owner's", async () => {
@@ -436,14 +436,14 @@ describe('owned trait state across a save/load round trip', () => {
       }],
     };
     const live = mount();
-    await act(async () => { live().setPlayerTraits([wizard]); });
+    await act(async () => { live().setGlobalTraits([wizard]); });
     await act(async () => { await live().saveGame('slot', 'World', 'w1', 'save-node-era'); });
-    await act(async () => { live().setPlayerTraits([]); });
+    await act(async () => { live().setGlobalTraits([]); });
     await act(async () => { await live().loadGame('save-node-era', [], [authored], [{ id: 'cp' }]); });
-    expect(live().playerTraits).toEqual([wizard]);
+    expect(live().globalTraits).toEqual([wizard]);
     expect(live().ownedTraits).toEqual({});
-    const owners = inPlayOwners(world, live().personaRef);
-    expect(heldPlayerTraits(live().playerTraits, { traits: world.traits, groups: world.traitGroups, entities: world.entities, owners })).toEqual([]);
+    const scope = inPlayOwners(world, live().personaRef);
+    expect(heldGlobalTraits(live().globalTraits, { traits: world.traits, groups: world.traitGroups, entities: world.entities, ...scope })).toEqual([]);
   });
 
   it('omits the field from a save with no owned state, and reads its absence as none', async () => {
@@ -472,21 +472,21 @@ describe('a code trait switch under undo', () => {
     await act(async () => {
       commit(live(), applyCodeTraitSwitches(slice(live()), [{ traitId: 'd', enabled: true, by: 'Vigor' }], world).state);
     });
-    expect(live().playerTraits.map((t) => t.id)).toEqual(['d']);
-    expect(valueOf(live().playerStats)).toBe(70);
+    expect(live().globalTraits.map((t) => t.id)).toEqual(['d']);
+    expect(valueOf(live().globalStats)).toBe(70);
 
     // Undo loads the snapshot the turn before the switch left.
     await act(async () => {
       live().loadGameState(preTurn, [], { keepLiveHistory: true });
     });
     expect(slice(live())).toMatchObject({ traits: [], disabledTraitIds: [], appliedValues: {} });
-    expect(valueOf(live().playerStats)).toBe(100);
+    expect(valueOf(live().globalStats)).toBe(100);
   });
 });
 
 describe('code deltas across a save/load round trip', () => {
   const raiseCap: Trait = { id: 'r', name: 'Robust', statChanges: [{ statId: 'vigor', value: 30, type: 'max' }] };
-  const statOf = (g: Gameplay) => g.playerStats.find((s) => s.id === 'vigor')!;
+  const statOf = (g: Gameplay) => g.globalStats.find((s) => s.id === 'vigor')!;
 
   it('loads a save with no code delta with none, its bounds as saved', async () => {
     const live = mount();

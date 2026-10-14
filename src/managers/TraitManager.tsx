@@ -8,7 +8,7 @@ import { Trash2 } from "lucide-react";
 import { EntityIcon } from '@/lib/elementIcons';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PanelTabContent, PanelTabs } from "@/components/ui/panel-tabs";
-import { playerStatsOf, resolvedEntityStats } from '@/lib/statLinks';
+import { globalStatsOf, resolvedEntityStats } from '@/lib/statLinks';
 import type { SurfaceLedgerName } from "@/components/ui/surface";
 import PlaceholderField, { PlaceholderNameField } from '@/components/prompt/PlaceholderField';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
@@ -74,22 +74,22 @@ const ConflictNote = ({ conflict, placeholders, onOpen }: {
 /** Whose stat each of an owner's trait rows moves, as play routes it. */
 const ownerRowSide = (world: { stats: Stat[]; statGroups: StatGroup[] }, owner: Entity) => {
   const own = new Set(resolvedEntityStats(world, owner).map((s) => s.id));
-  const global = new Set(playerStatsOf(world.stats, world.statGroups).map((s) => s.id));
+  const global = new Set(globalStatsOf(world.stats, world.statGroups).map((s) => s.id));
   return (row: StatRow) => statRowSide(row, own, global);
 };
 
-/** The picker value of a player stat on an owner's trait, kept apart from an own stat with the same id. */
-const PLAYER_ITEM = 'player:';
+/** The picker value of a global stat on an owner's trait, kept apart from an own stat with the same id. */
+const GLOBAL_ITEM = 'global:';
 
-/** A stat row's picker value: its Player item when it moves a player stat on an owner. */
-const pickerValue = (row: StatRow, side: StatRowSide) => (side === 'player' ? PLAYER_ITEM + row.statId : row.statId);
+/** A stat row's picker value: its Global item when it moves a global stat on an owner. */
+const pickerValue = (row: StatRow, side: StatRowSide) => (side === 'global' ? GLOBAL_ITEM + row.statId : row.statId);
 
-/** `row` pointed at the stat a picker value names; a Player item takes the global target. */
+/** `row` pointed at the stat a picker value names; a Global item takes the global target. */
 function pickedRow<R extends StatRow>(row: R, value: string): R {
   const rest = { ...row };
   delete rest.target;
-  return value.startsWith(PLAYER_ITEM)
-    ? { ...rest, statId: value.slice(PLAYER_ITEM.length), target: 'global' }
+  return value.startsWith(GLOBAL_ITEM)
+    ? { ...rest, statId: value.slice(GLOBAL_ITEM.length), target: 'global' }
     : { ...rest, statId: value };
 }
 
@@ -97,14 +97,14 @@ function pickedRow<R extends StatRow>(row: R, value: string): R {
 interface StatChoices {
   label?: string;
   stats: readonly Stat[];
-  /** The list of an owner's player stats, whose items target the player. */
-  player?: boolean;
+  /** The global stats on an owner's trait, whose items take the global target. */
+  global?: boolean;
 }
 
 /** The stat options of a trait's stat row, under a heading per list when there is more than one. */
 function StatOptions({ choices, label }: { choices: readonly StatChoices[]; label: (name: string) => string }) {
   const items = (choice: StatChoices) => choice.stats.map((stat) => {
-    const value = choice.player ? PLAYER_ITEM + stat.id : stat.id;
+    const value = choice.global ? GLOBAL_ITEM + stat.id : stat.id;
     return <SelectItem key={value} value={value}>{label(stat.name)}</SelectItem>;
   });
   if (choices.length === 1) return <>{items(choices[0])}</>;
@@ -215,10 +215,10 @@ const TraitManager = ({
   // An owner's rows route to its own stats or the player's; world traits rival only the ones on the player's.
   const statWorld = { stats, statGroups: statGroups ?? [] };
   const rowSide = traitOwner ? ownerRowSide(statWorld, traitOwner) : () => null;
-  const playerToggles = traitOwner ? statToggles.filter((toggle) => rowSide(toggle) === 'player') : statToggles;
+  const globalToggles = traitOwner ? statToggles.filter((toggle) => rowSide(toggle) === 'global') : statToggles;
   // Computed off the saved world (edits write through on every keystroke), so the note follows a drag or a
   // change in another trait without any extra plumbing.
-  const conflicts = traitConflicts({ ...editingTrait, statToggles: playerToggles }, traits, traitGroups);
+  const conflicts = traitConflicts({ ...editingTrait, statToggles: globalToggles }, traits, traitGroups);
 
   const pins = editingTrait.placeholderPins ?? [];
   const setPins = (next: PlaceholderPin[]) => apply({ placeholderPins: next.length ? next : undefined });
@@ -244,10 +244,10 @@ const TraitManager = ({
   // An owner's trait changes the owner's own stats, and the global stats whoever is played (Q18).
   const statLabel = (name: string) => labelPlaceholders(name, placeholders, { letters: placementLetters, owners: placeholderOwners });
   // An owner's own stats include its links; the global stats leave the Blueprints out.
-  const globalStats = traitOwner ? playerStatsOf(stats, statWorld.statGroups) : [];
+  const globalStats = traitOwner ? globalStatsOf(stats, statWorld.statGroups) : [];
   const statChoices: StatChoices[] = !traitOwner ? [{ stats }] : [
     { label: statLabel(traitOwner.name), stats: resolvedEntityStats(statWorld, traitOwner) },
-    ...(globalStats.length ? [{ label: 'Global', stats: globalStats, player: true }] : []),
+    ...(globalStats.length ? [{ label: 'Global', stats: globalStats, global: true }] : []),
   ];
   const shownTab = tabs.some((t) => t.value === tab) ? tab : 'details';
 
@@ -423,7 +423,7 @@ const TraitManager = ({
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
-          {playerToggles.includes(toggle) && (
+          {globalToggles.includes(toggle) && (
             <ConflictNote conflict={conflicts.stats[toggle.statId]} placeholders={placeholders} onOpen={onOpenTrait} />
           )}
           </div>

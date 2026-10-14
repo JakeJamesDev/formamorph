@@ -198,7 +198,7 @@ const Stage =({ options, stats, expose, children }: {
   useEffect(() => {
     gameData.loadWorldData(worldFixture({ ...options.world, stats: options.world?.stats ?? (stats as unknown as Stat[]) }));
     options.settings?.(settings);
-    gameplay.setPlayerStats(stats);
+    gameplay.setGlobalStats(stats);
     if (options.turns?.length) {
       seedTurns(gameplay, options.turns, options.page ?? options.turns.length, stats);
     }

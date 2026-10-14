@@ -7,20 +7,21 @@ import { useMountedRef } from '@/lib/useMountedRef';
 import { useResolvedAuthoredWorld } from '@/lib/useResolvedWorld';
 import { inAuthoredOrder, traitOrderIndex } from '@/lib/traitEffects';
 import { ownerPins, inPlayOwners, playedEntityId } from '@/lib/ownedTraitsInPlay';
-import { startingStatsWith } from '@/lib/traitRuntime';
+import { cascadeOffInput, startingStatsWith } from '@/lib/traitRuntime';
 import { toastError } from '@/lib/linkToast';
 import CharacterCustomization, { defaultCharacterData } from './CharacterCustomization';
 import EnterWorldWorkspace from './EnterWorldWorkspace';
 import { startingLocations } from '@/lib/startingLocation';
 import {
-  PLAYER_OWNER, gateStates, settle, shownRefs, switchTrait, type SettleResult,
+  gateTrees, gateStates, gateTreeOf, settle, shownRefs, switchTrait, type SettleResult,
 } from '@/lib/traitGates';
+import { scoped, type OwnerId } from '@/lib/scope';
 import type { TraitCascade } from '@/components/game/SetupTraitList';
 import { buildInitialSelection, finalizeSelection, shouldShowDictionaryChoices } from '@/lib/dictionarySelection';
 import { libraryLines } from '@/lib/librarySources';
 import { followedLibraryId } from '@/lib/publishLinks';
 import {
-  castOwnedTraits, emptyEntryDraft, entryDefaults, entryGateInput, entryOwners, libraryCastIds, rekeyOwnedPicks,
+  castOwnedTraits, emptyEntryDraft, entryDefaults, entryGateInput, entryTrees, libraryCastIds, rekeyOwnedPicks,
   withLibraryDefaults, withLocationPick, withPersonaPick, withSettledTraits, type EntryDraft, type EntryTraitWorld,
 } from '@/lib/entryDraft';
 import { bindLibraryEntity, blueprintBindWorld } from '@/lib/blueprintTravel';
@@ -163,13 +164,13 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
     // The persona's linked stat traits apply after the world picks, as the game's seed does.
     const starting = startingStatsWith(rawStats, chosen, {
       traits: rawTraits, groups: rawTraitGroups, entities: worldEntities, persona: draftPersona,
-      owners: inPlayOwners(world, draftPersona, libraryCast),
+      ...inPlayOwners(world, draftPersona, libraryCast),
     }, ownedTraitPicks);
     return ownerPins({
       world,
       persona: draftPersona,
       library: libraryCast,
-      playerTraits: chosen,
+      globalTraits: chosen,
       owned: ownedTraitPicks,
       sharedPlaceholders: worldPlaceholders,
     }, {
@@ -200,27 +201,27 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
   useEffect(() => {
     setEntryDraft((draft) => withLibraryDefaults(draft, entryWorld));
   }, [entryWorld]);
-  const castOwners = useMemo(() => entryOwners(entryWorld, entryDraft.persona), [entryWorld, entryDraft.persona]);
+  const castTrees = useMemo(() => entryTrees(entryWorld, entryDraft.persona), [entryWorld, entryDraft.persona]);
   const traitGates = useMemo(() => gateStates(entryGateInput(entryWorld, entryDraft)), [entryWorld, entryDraft]);
-  // A cast entity's trait carries its owner's name; the player's own, and the played persona's, read bare.
-  const traitName = (ownerId: string, traitId: string) => {
-    const owner = castOwners.find((o) => o.id === ownerId);
+  // A cast entity's trait carries its owner's name; a global trait, and the played persona's, read bare.
+  const traitName = (ownerId: OwnerId, traitId: string) => {
+    const owner = gateTreeOf(castTrees, ownerId);
     const name = owner?.traits.find((t) => t.id === traitId)?.name ?? traitId;
-    return owner && ownerId !== PLAYER_OWNER && ownerId !== playedEntityId(entryDraft.persona) ? `${owner.name}'s ${name}` : name;
+    return owner && ownerId !== null && ownerId !== playedEntityId(entryDraft.persona) ? `${owner.name}'s ${name}` : name;
   };
-  // Every owner's picks by owner id, the player's under the world's.
+  // Every scope's picks: the global picks, and each entity's by its id.
   const entrySelectedTraits = useMemo(
-    () => ({ ...entryDraft.ownedTraitIds, [PLAYER_OWNER]: entryDraft.traitIds }),
+    () => scoped(entryDraft.traitIds, entryDraft.ownedTraitIds),
     [entryDraft.traitIds, entryDraft.ownedTraitIds],
   );
   const cascadeFrom = (result: SettleResult, because: string): TraitCascade | null => {
-    const names = shownRefs(castOwners, result.turnedOff).map((ref) => traitName(ref.ownerId, ref.traitId));
+    const names = shownRefs(castTrees, result.turnedOff).map((ref) => traitName(ref.ownerId, ref.traitId));
     return names.length ? { off: names, because } : null;
   };
 
   // Toggle an owner's trait in the starting selection; a cascade shows in the banner.
-  const handleTraitSelection = (traitId: string, ownerId: string) => {
-    const result = switchTrait(entryGateInput(entryWorld, entryDraft), ownerId, traitId, entryDraft.cascadeOffTraitIds);
+  const handleTraitSelection = (traitId: string, ownerId: OwnerId) => {
+    const result = switchTrait(entryGateInput(entryWorld, entryDraft), ownerId, traitId, cascadeOffInput(entryDraft.cascadeOffTraitIds));
     if (!result) return;
     reviseDraft((draft) => withSettledTraits(draft, result));
     setTraitCascade(cascadeFrom(result, traitName(ownerId, traitId)));
@@ -230,7 +231,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
   const handlePersonaChange = (ref: PersonaRef) => {
     const next = withPersonaPick(entryDraft, ref, personaPickContext);
     // A pick the last persona turned off returns once the new one opens its gate again.
-    const result = settle(entryGateInput(entryWorld, next), next.cascadeOffTraitIds);
+    const result = settle(entryGateInput(entryWorld, next), cascadeOffInput(next.cascadeOffTraitIds));
     reviseDraft(() => withSettledTraits(next, result));
     const picked = ref.source === 'world' ? worldPersonaOptions.find((p) => p.id === ref.entityId)
       : ref.source === 'library' ? personaOptions.find((p) => p.id === ref.entityId) : undefined;
@@ -398,7 +399,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
   // and the Introduction overlay (see `lib/enterFlow`).
   const enterFlowSteps = (mode: EnterMode = 'newGame'): EnterStep[] => buildEnterFlow({
     introReadme: selectedWorld?.data.worldOverview?.introReadme,
-    traitCount: castOwners.reduce((count, owner) => count + owner.traits.length, 0),
+    traitCount: gateTrees(castTrees).reduce((count, owner) => count + owner.traits.length, 0),
     startingLocationCount: startingLocations(locations).length,
     hasLibraryAdditions,
     hasWorldPersonas: worldPersonaOptions.length > 0,

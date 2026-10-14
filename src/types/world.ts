@@ -388,9 +388,9 @@ export interface Entity {
   openings?: Opening[];
   /** Relative draw weight per opening id; an opening absent from the map weighs 1, and 0 benches it. */
   openingWeights?: Record<string, number>;
-  /** Traits this entity owns. They describe it to the AI, and join the player's traits when the player plays
-   *  as it. Their stat changes and toggles act on the entity's own stats, and on the world's player stats where
-   *  the entity is a player owner and does not own the stat. Ids are unique across the world and every entity. */
+  /** Traits this entity owns. They describe it to the AI, and are the persona's traits when the player plays
+   *  as it. Their stat changes and toggles act on the entity's own stats, and on the global stats where the
+   *  entity does not own the stat or the row targets global. Ids are unique across the world and every entity. */
   traits?: Trait[];
   /** Groups for this entity's own traits, nestable via `parentId` like the world's. */
   traitGroups?: TraitGroup[];
@@ -401,7 +401,7 @@ export interface Entity {
    *  or a group that no longer exists, = the end of the top level. */
   traitPlacement?: TreePlacement;
   /** Stats this entity owns: the world stat type, every field. Order is list order. Absent = none. In play
-   *  they are the entity's own values, and the player's when the entity is a player owner. */
+   *  they are the entity's own values, and the persona's stats when the entity is played. */
   stats?: Stat[];
   /** Groups for this entity's own stats, nestable via `parentId` like the world's. */
   statGroups?: StatGroup[];

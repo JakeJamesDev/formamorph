@@ -26,7 +26,7 @@ const ownerTraits = (acquired: Trait[] = [], off: string[] = []): StatCodeOwners
     acquired, disabledTraitIds: off, appliedValues: {}, ownedTraits: {}, entities,
     world: {
       traits: acquired, groups: [], entities, persona: { source: 'none' },
-      owners: inPlayOwners({ traits: acquired, traitGroups: [], entities }, { source: 'none' }, []),
+      ...inPlayOwners({ traits: acquired, traitGroups: [], entities }, { source: 'none' }, []),
     },
   };
 };

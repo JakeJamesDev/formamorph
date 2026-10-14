@@ -4,7 +4,7 @@ import type {
   Entity, GalleryImage, Placeholder, PlaceholderGroup, RequirementOwner, Stat, StatGroup, StatRequirement, Trait, TraitGroup, TraitLink, TraitRequirement,
 } from '@/types';
 import { linksInTreeOrder, originalOf } from './owners';
-import { playerStatsOf, resolvedEntityStats } from './statLinks';
+import { globalStatsOf, resolvedEntityStats } from './statLinks';
 import { rekeyed, uniqueNamed } from './carriedBinding';
 import { bindOwnedStats, type StatWorld } from './portableStats';
 import { remintOwnedTraits } from './ownedTraits';
@@ -220,7 +220,7 @@ function ruleBinder(entity: Entity, world: TraitWorld): (req: TraitRequirement) 
   // A stat binds among its owner's stats, since names like Health repeat across entities (Q25).
   const statsOf = (r: StatRequirement, at: NonNullable<typeof statWorld>): readonly Named[] => {
     if (!r.owner) return at.stats;
-    if (r.owner.kind === 'you') return playerStatsOf([...at.stats], at.statGroups);
+    if (r.owner.kind === 'you') return globalStatsOf([...at.stats], at.statGroups);
     const id = r.owner.id;
     const held = id === entity.id ? entity : others.find((e) => e.id === id);
     return held ? resolvedEntityStats(at, held) : [];

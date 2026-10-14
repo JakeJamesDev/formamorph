@@ -20,10 +20,10 @@ import { activeTraits, recoverStatBases, type AppliedTraitValues } from '../lib/
 import { heldEntityIds, withHeldOwners } from '../lib/ownedTraitState';
 import { pageAssistantIndex, pageNextActionIndex, placeSnapshot } from '../lib/turnHistory';
 import { backfillGameStateStats } from '../lib/statBackfill';
-import { liveAppliedValues, liveCascadeOff, migrateGlobalFields, savedAppliedValues, savedCascadeOff } from '../lib/globalSaveFields';
+import { liveAppliedValues, migrateGlobalFields, savedAppliedValues, savedCascadeOff } from '../lib/globalSaveFields';
 import { backfillEntityStats, backfillGameStateEntityStats, entityStatDeltas, withoutEntityCodeBounds } from '../lib/entityStats';
 import { deltasOf, useStatDeltas } from '../lib/useStatDeltas';
-import { PLAYER_OWNER } from '../lib/statOwners';
+
 import { normalizeVisibleEntities } from '../lib/sceneEntities';
 import { appendLogEntry, type LogKind } from '../lib/playLog';
 import { registerDevHook } from '../lib/devRouter';
@@ -98,9 +98,9 @@ function useProvideGameplay() {
     [startHour],
   );
   const [currentLocation, setCurrentLocation] = useState<GameLocation | null>(null);
-  const [playerStats, setPlayerStats] = useState<PlayerStat[]>([]);
-  const [playerTraits, setPlayerTraits] = useState<Trait[]>([]);
-  // Chosen traits the player has switched off mid-play. Kept as ids so `playerTraits` stays the full chosen
+  const [globalStats, setGlobalStats] = useState<PlayerStat[]>([]);
+  const [globalTraits, setGlobalTraits] = useState<Trait[]>([]);
+  // Chosen traits the player has switched off mid-play. Kept as ids so `globalTraits` stays the full chosen
   // set and a trait can go back on; snapshotted per turn, so a rewind restores the switch positions too.
   const [disabledTraitIds, setDisabledTraitIds] = useState<string[]>([]);
   // What each active trait's stat changes actually moved, so switching one off gives back what it took
@@ -196,8 +196,8 @@ function useProvideGameplay() {
   const added = useMemo(() => addedCharacters(discoveredEntities), [discoveredEntities]);
   // Added characters' and library books' placeholders join the session's set, and their Wildcards are drawn.
   useEffect(() => { setSessionLibraryAdditions(added, libraryDictionaries); }, [added, libraryDictionaries, setSessionLibraryAdditions]);
-  // Every owner's live chips and bands. Entity rows follow the turn's entity deltas; the player's are written.
-  // After `playerStats` in hook order, so a regen `add` reads the changes the stats updater just filled.
+  // Every live chip and band. Entity rows follow the turn's entity deltas; the global ones are written.
+  // After `globalStats` in hook order, so a regen `add` reads the changes the stats updater just filled.
   const statDeltas = useStatDeltas(entityStatChanges);
   const clearStatDeltas = statDeltas.clear;
   const [activeTab, setActiveTab] = useState("stats");
@@ -270,8 +270,8 @@ function useProvideGameplay() {
     const savedCascade = savedCascadeOff(cascadeOffTraitIds);
     // Create a state object without the gameStates array
     return {
-      globalStats: playerStats,
-      globalTraits: playerTraits,
+      globalStats: globalStats,
+      globalTraits: globalTraits,
       ...(disabledTraitIds.length ? { disabledTraitIds } : {}),
       ...(savedApplied ? { appliedTraitValues: savedApplied } : {}),
       ...(savedCascade ? { cascadeOffTraitIds: savedCascade } : {}),
@@ -299,7 +299,7 @@ function useProvideGameplay() {
       // Add a version flag for backward compatibility
       stateVersion: 2
     };
-  }, [playerStats, playerTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, entityStats, entityStatChanges, codePins, visibleEntities, discoveredEntities, suppressedCharacterNames, logEntries, currentLocation,
+  }, [globalStats, globalTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, entityStats, entityStatChanges, codePins, visibleEntities, discoveredEntities, suppressedCharacterNames, logEntries, currentLocation,
       gameTime, startHour, fullMessageHistory, characterData, choices, isGameStarted, playerNotes, currentPage]);
 
   /** Restore a `GameState` into the live gameplay state, resolving `locationId` against `locations` and
@@ -311,17 +311,17 @@ function useProvideGameplay() {
       // A save written before bounds were derived carries no bases; recover them from the world's authored
       // maxes and the traits that were active when it was written, so re-deriving reproduces its own numbers
       // rather than rebalancing them.
-      setPlayerStats(
+      setGlobalStats(
         recoverStatBases(
           gameState.globalStats,
           activeTraits(gameState.globalTraits, gameState.disabledTraitIds ?? []),
           opts?.worldStats,
         ),
       );
-      setPlayerTraits(gameState.globalTraits);
+      setGlobalTraits(gameState.globalTraits);
       setDisabledTraitIds(gameState.disabledTraitIds ?? []);
       setAppliedTraitValues(liveAppliedValues(gameState.appliedTraitValues));
-      setCascadeOffTraitIds(liveCascadeOff(gameState.cascadeOffTraitIds));
+      setCascadeOffTraitIds(gameState.cascadeOffTraitIds ?? {});
       setOwnedTraits(gameState.ownedTraits ?? {});
       resetEntityStats(gameState.entityStats ?? {});
       setCodePins(gameState.codePins ?? EMPTY_PINS);
@@ -474,7 +474,7 @@ function useProvideGameplay() {
   const loadGame = useCallback(async (
     saveId: string, locations: GameLocation[], worldStats: Stat[] = [], worldEntities?: readonly Pick<Entity, 'id' | 'stats'>[],
   ) => {
-    /** The state with every stat the world has since added, the player's and each entity's, and no entity stat
+    /** The state with every stat the world has since added, global and each entity's, and no entity stat
      *  carrying stored code bounds. */
     const backfilled = (state: GameState) => {
       const players = backfillGameStateStats(withoutEntityCodeBounds(state), worldStats);
@@ -634,8 +634,8 @@ function useProvideGameplay() {
   // controls contradicting live stats/location. No snapshot ⇒ not viewing past (panels stay live).
   const viewedSnapshot = currentPage < totalPages ? (gameStates[currentPage - 1] ?? null) : null;
   const isViewingPast = viewedSnapshot !== null;
-  const viewStats = viewedSnapshot?.globalStats ?? playerStats;
-  const viewTraits = viewedSnapshot?.globalTraits ?? playerTraits;
+  const viewStats = viewedSnapshot?.globalStats ?? globalStats;
+  const viewTraits = viewedSnapshot?.globalTraits ?? globalTraits;
   // Every `view*` below must keep a STABLE identity across renders while the viewed page doesn't change.
   // A fresh `[]` (or a fresh derived array) on each render propagates into consumers' useMemo/useEffect
   // deps — `viewDisabledTraitIds` feeds GameViewer's `viewActiveStats`, whose effect writes state, which
@@ -680,12 +680,12 @@ function useProvideGameplay() {
   // Stat deltas: while live, the animated last-turn changes; while viewing the past, the change this turn
   // made — vs the previous page's stats, or (on the opening turn, which has no predecessor) vs each stat's
   // starting value, so turn 1 still shows its deltas.
-  const livePlayerChips = deltasOf(statDeltas.recent, PLAYER_OWNER);
-  const viewStatChanges: Record<string, number> = useMemo(
+  const liveGlobalChips = deltasOf(statDeltas.recent, null);
+  const viewStatChanges: Readonly<Record<string, number>> = useMemo(
     () => (viewedSnapshot
       ? pageStatDeltas(viewStats, gameStates[currentPage - 2]?.globalStats)
-      : livePlayerChips),
-    [viewedSnapshot, viewStats, gameStates, currentPage, livePlayerChips],
+      : liveGlobalChips),
+    [viewedSnapshot, viewStats, gameStates, currentPage, liveGlobalChips],
   );
   // Per-turn player notes: on the current page the live scratchpad; on a past page that turn's frozen notes
   // (from its assistant message), falling back to the snapshot's global notes for pre-per-turn-notes saves.
@@ -712,10 +712,10 @@ function useProvideGameplay() {
   // A manual stat edit (the in-game slider) is authoritative post-turn state, so it must also update the
   // current page's snapshot — the mechanical baseline a later re-generate of the *next* turn restores from
   // (regenerateState reads gameStates[nextPage - 2] = this page's snapshot). Without this the edit lives
-  // only in `playerStats` and gets reverted on the next re-generate. Editing is disabled while viewing the
+  // only in `globalStats` and gets reverted on the next re-generate. Editing is disabled while viewing the
   // past, so this always targets the latest snapshot; guarded so a not-yet-captured slot is left alone.
   const commitManualStatEdit = useCallback((newStats: PlayerStat[]) => {
-    setPlayerStats(newStats);
+    setGlobalStats(newStats);
     const idx = currentPage - 1;
     setGameStates((prev) => (idx >= 0 && idx < prev.length
       ? placeSnapshot(prev, idx, { ...prev[idx], globalStats: newStats })
@@ -749,11 +749,11 @@ function useProvideGameplay() {
     currentLocation,
     setCurrentLocation,
     changeLocation,
-    playerStats,
-    setPlayerStats,
+    globalStats,
+    setGlobalStats,
     commitManualStatEdit,
-    playerTraits,
-    setPlayerTraits,
+    globalTraits,
+    setGlobalTraits,
     disabledTraitIds,
     setDisabledTraitIds,
     appliedTraitValues,

@@ -4,6 +4,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { TraitStoreContext, type TraitStore } from '@/contexts/TraitStoreContext';
 import TraitTree from './TraitTree';
 import type { Entity, Trait, TraitGroup } from '@/types';
+import { NO_ACTIVE } from '@/lib/traitGates';
 
 const trait = (id: string, extra: Partial<Trait> = {}): Trait => ({ id, name: id, statChanges: [], ...extra });
 const traits = [
@@ -33,7 +34,7 @@ function setup(start: Entity[] = [ash, bob]) {
     entities = current;
     const store = {
       traits, traitGroups, entities: current, placeholders: [], stats: [],
-      gateInput: { owners: [], active: {}, entities: [], persona: { source: 'none' } },
+      gateInput: { global: { traits: [], groups: [] }, owners: [], active: NO_ACTIVE, entities: [], persona: { source: 'none' } },
       setTraits: vi.fn(), setTraitGroups: vi.fn(), removeTrait, removeTraitGroup,
       editEntity: (id: string, edit: (e: Entity) => Entity) => setCurrent((es) => es.map((e) => (e.id === id ? edit(e) : e))),
     } as unknown as TraitStore;

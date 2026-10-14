@@ -88,7 +88,7 @@ describe('placeholders of added characters and library books', () => {
 
     // A turn's state writes, then an undo back to it: both read the same roll throughout.
     const snapshot = live().gameplay.saveCurrentGameState();
-    await act(async () => { live().gameplay.setPlayerStats([]); });
+    await act(async () => { live().gameplay.setGlobalStats([]); });
     expect(moodIn(pipText(live))).toBe(mood);
     await act(async () => { live().gameplay.loadGameState(snapshot, [], { keepLiveHistory: true }); });
     expect(moodIn(pipText(live))).toBe(mood);

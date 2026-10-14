@@ -5,22 +5,24 @@ import userEvent from '@testing-library/user-event';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { RequirementRowsField } from './RequirementRowsField';
 import { requirementStatSections } from '@/lib/requirementStatOptions';
-import { PLAYER_OWNER, conditionTexts, type GateInput, type GateStat, type RowState } from '@/lib/traitGates';
+import { conditionTexts, type GateInput, type GateStat, type GateStatSet, type RowState } from '@/lib/traitGates';
+import { scoped, type OwnerId } from '@/lib/scope';
 import type { TraitRequirement, TraitRequirementRow } from '@/types';
 
 const S = (name: string, extra: Partial<GateStat> = {}): GateStat => ({ name, value: 10, min: 0, max: 100, ...extra });
 const entities = [{ id: 'ash', name: 'Ash' }];
-const input: Pick<GateInput, 'owners' | 'entities' | 'stats'> = {
+const input: Pick<GateInput, 'global' | 'owners' | 'entities' | 'stats'> = {
+  global: { traits: [], groups: [] },
   owners: [],
   entities,
-  stats: { [PLAYER_OWNER]: { rage: S('Rage'), gold: S('Gold') }, ash: { hunger: S('Hunger') } },
+  stats: scoped<GateStatSet>({ rage: S('Rage'), gold: S('Gold') }, { ash: { hunger: S('Hunger') } }),
 };
 const textOf = conditionTexts(input);
 
 /** The field over real stat sections and the real rule text, with edits that land. */
-function Harness({ initial = [], owner = PLAYER_OWNER, offWorld = false, onOpen = () => {} }: {
+function Harness({ initial = [], owner = null, offWorld = false, onOpen = () => {} }: {
   initial?: TraitRequirementRow[];
-  owner?: string;
+  owner?: OwnerId;
   offWorld?: boolean;
   onOpen?: (r: TraitRequirement) => void;
 }) {

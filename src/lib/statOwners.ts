@@ -1,4 +1,4 @@
-// Stat owners: whose stats the runtime moves, the player's and each entity's, and how each owner's traits
+// Stat owners: whose stats the runtime moves, global scope's and each entity's, and how each owner's traits
 // switch them.
 
 import type { PlayerStat, Trait } from '@/types';
@@ -6,9 +6,7 @@ import { applyRegen } from './statChanges';
 import { activeStatEnabled } from './traitEffects';
 import type { Scoped } from './scope';
 
-export { PLAYER_OWNER } from './scope';
-
-/** Runtime stat values by owner id, each owner's stats in their own order. A stat id is unique only
+/** Runtime stat values by entity owner id, each owner's stats in their own order. A stat id is unique only
  *  within its owner. */
 export type OwnerStats = Readonly<Record<string, readonly PlayerStat[]>>;
 

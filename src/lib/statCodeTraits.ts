@@ -7,7 +7,8 @@ import type { CodeEntityNames, CodeTraitPlace } from './statCodeAnalysis';
 import { statCodeName, statCodeNamed } from './statCodeNames';
 import { refreshChosenTraits } from './traitEffects';
 import { traitGates, traitUnlocked, type AppliedTraitValues, type TraitWorld } from './traitRuntime';
-import { PLAYER_OWNER, type GateStates } from './traitGates';
+import type { GateStates } from './traitGates';
+import type { OwnerId } from './scope';
 
 /** Every owner's trait state, the authored world code switches it against, and who is in play and in the scene. */
 export interface StatCodeOwners {
@@ -30,13 +31,13 @@ export interface StatCodeOwners {
   inSceneIds?: readonly string[];
 }
 
-/** The player's traits as a snapshot holds them in live shapes, each re-read from the world as play reads them. */
+/** The traits as a snapshot holds them in live shapes, each re-read from the world as play reads them. */
 export function savedTraits(
-  saved: Pick<LiveSnapshot, 'playerTraits' | 'disabledTraitIds' | 'appliedTraitValues' | 'cascadeOffTraitIds' | 'ownedTraits'>,
+  saved: Pick<LiveSnapshot, 'globalTraits' | 'disabledTraitIds' | 'appliedTraitValues' | 'cascadeOffTraitIds' | 'ownedTraits'>,
   authored: Trait[],
 ): Pick<StatCodeOwners, 'acquired' | 'disabledTraitIds' | 'appliedValues' | 'cascadeOffTraitIds' | 'ownedTraits'> {
   return {
-    acquired: refreshChosenTraits(saved.playerTraits, authored),
+    acquired: refreshChosenTraits(saved.globalTraits, authored),
     disabledTraitIds: saved.disabledTraitIds ?? [],
     appliedValues: saved.appliedTraitValues ?? {},
     cascadeOffTraitIds: saved.cascadeOffTraitIds ?? {},
@@ -51,7 +52,7 @@ export function sandboxTraits(ownerTraits: StatCodeOwners, placeholders: readonl
   const off = new Set(ownerTraits.disabledTraitIds);
   const gates = gatesOf(ownerTraits);
   return ownerTraits.world.traits.map((trait) => ({
-    ...traitIdentity(trait, PLAYER_OWNER, ownerTraits.world.groups, gates, placeholders),
+    ...traitIdentity(trait, null, ownerTraits.world.groups, gates, placeholders),
     acquired: acquired.has(trait.id),
     enabled: acquired.has(trait.id) && !off.has(trait.id),
   }));
@@ -66,7 +67,7 @@ const gatesOf = (ownerTraits: StatCodeOwners): GateStates => traitGates(
 /** The read-only fields of a trait entry: who it is, how it switches, and whether its owner's gate holds. */
 function traitIdentity(
   trait: Trait,
-  ownerId: string,
+  ownerId: OwnerId,
   groups: readonly TraitGroup[],
   gates: GateStates,
   placeholders: readonly Placeholder[],

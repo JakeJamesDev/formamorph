@@ -8,7 +8,7 @@ import {
 import {
   applyEntityStatResponse, entityCodeTurns, entityStatDeltas, entityStatOwners, personaEntities, personaStatOwners, statRequestOwners,
 } from './entityStats';
-import { enabledOwnerStats, PLAYER_OWNER, type OwnerStatTraits } from './statOwners';
+import { enabledOwnerStats, type OwnerStatTraits } from './statOwners';
 import { ownerStatParts } from './statContext';
 import { chipValues } from './chipValues/chipValues';
 import type { ChipScene } from './chipValues/chipScene';
@@ -37,7 +37,7 @@ const none: PersonaRef = { source: 'none' };
 const noTraits = () => [];
 const owners = (present: Entity[], persona: PersonaRef = none) => statRequestOwners(present, values, persona, (s) => s, noTraits, (g) => g);
 const snapshotFor = (present: Entity[], textPass = false) =>
-  createStatRequest([vigor, playerTrust], PLAYER_OWNER, { textPass, entities: owners(present), inSceneIds: present.map((e) => e.id) });
+  createStatRequest([vigor, playerTrust], { textPass, entities: owners(present), inSceneIds: present.map((e) => e.id) });
 
 const statPass = TURN_PASSES.find((pass) => pass.id === 'statUpdates')!;
 const shipped = testInput({
@@ -100,7 +100,7 @@ describe('the stat request with entities', () => {
     const asked = statRequestOwners([odette], values, none, (s) => s, inForce, (g) => g);
     expect(asked.map((o) => o.stats.map((s) => s.id))).toEqual([['trust']]);
 
-    const full = createStatRequest([vigor, playerTrust], PLAYER_OWNER, { entities: owners([odette]) });
+    const full = createStatRequest([vigor, playerTrust], { entities: owners([odette]) });
     const reply = JSON.stringify({ You: { Vigor: 0, 'Vigor max': 0, Trust: 0, 'Trust max': 0 }, Odette: { Trust: 0, 'Trust max': 0, Stock: 4, 'Stock max': 0 } });
     const applied = applyEntityStatResponse(values, readStatResponse(reply, full), inForce);
     expect(applied.values.odette[1].value).toBe(12);
@@ -111,7 +111,7 @@ describe('the stat request with entities', () => {
       { id: 'a', name: 'Player Character' }, { id: 'o', name: 'Global Stats' }, { id: 'b', name: '**Bram**' }, { id: 'c', name: 'Bram' },
     ];
     const held = Object.fromEntries(cast.map((e) => [e.id, [stat()]]));
-    const snapshot = createStatRequest([vigor], PLAYER_OWNER, {
+    const snapshot = createStatRequest([vigor], {
       entities: cast.map((e) => ({ id: e.id, name: e.name, stats: held[e.id] })), inSceneIds: cast.map((e) => e.id),
     });
     expect(snapshot.entityKeys).toEqual(['Player Character (2)', 'Global Stats (2)', 'Bram', 'Bram (2)']);
@@ -129,7 +129,7 @@ describe('the stat request with entities', () => {
     };
     const resolveWho = (groups: StatGroup[]) => groups.map((g) => ({ ...g, aiDescription: g.aiDescription?.replace('{{who}}', 'Odette') }));
     const playerVigor = { ...vigor, groupId: 'body' };
-    const snapshot = createStatRequest([playerVigor, playerTrust], PLAYER_OWNER, {
+    const snapshot = createStatRequest([playerVigor, playerTrust], {
       placement: { groups: [body], authored: [playerVigor, playerTrust] },
       entities: statRequestOwners([grouped], values, none, (s) => s, noTraits, resolveWho), inSceneIds: ['odette'],
     });
@@ -140,7 +140,7 @@ describe('the stat request with entities', () => {
       '      - **Trust:** 40/100', '',
     ].join('\n'));
     expect(systemPrompt).toContain(['## Global Stats', '- **Trust:** 10/100', '- **Body:**', '  - **Vigor:** 50/100', ''].join('\n'));
-    const flat = createStatRequest([vigor, playerTrust], PLAYER_OWNER, { entities: owners([odette]) });
+    const flat = createStatRequest([vigor, playerTrust], { entities: owners([odette]) });
     expect(statRequestSchema(snapshot)).toEqual(statRequestSchema(flat));
     expect(snapshot.targets.map(({ ownerKey, key, maxKey }) => [ownerKey, key, maxKey]))
       .toEqual(flat.targets.map(({ ownerKey, key, maxKey }) => [ownerKey, key, maxKey]));
@@ -149,7 +149,7 @@ describe('the stat request with entities', () => {
   it('sends a hidden group\'s stats under their owner with no group heading', () => {
     const bonds: StatGroup = { id: 'bonds', name: 'Bonds', aiDescription: 'How Odette regards the player.', parentId: null, aiVisible: false };
     const grouped: Entity = { ...odette, statGroups: [bonds], stats: [stat({ groupId: 'bonds' })] };
-    const snapshot = createStatRequest([vigor, playerTrust], PLAYER_OWNER, {
+    const snapshot = createStatRequest([vigor, playerTrust], {
       entities: statRequestOwners([grouped], values, none, (s) => s, noTraits, (groups) => groups), inSceneIds: ['odette'],
     });
     const prompt = build(snapshot, sceneOf([vigor, playerTrust], { cast: [grouped], held: { odette: [stat({ value: 40, groupId: 'bonds' })] } })).systemPrompt;
@@ -194,7 +194,7 @@ describe('the played persona in the stat request', () => {
   const miraValues: EntityStatValues = { ...values, mira: [stat({ value: 60 }), stat({ id: 'calm', name: 'Calm', value: 5 })] };
   const personaOwners = (personas: Entity[] = [mira], held: EntityStatValues = miraValues, inForce: OwnerStatTraits = noTraits) =>
     personaStatOwners(personas, held, (s) => s, inForce, (g) => g);
-  const joined = (textPass = false) => createStatRequest([vigor, playerTrust], PLAYER_OWNER, {
+  const joined = (textPass = false) => createStatRequest([vigor, playerTrust], {
     textPass, persona: personaOwners()[0], entities: statRequestOwners([bram, mira], miraValues, playing, (s) => s, noTraits, (g) => g),
     inSceneIds: ['bram'],
   });
@@ -204,7 +204,7 @@ describe('the played persona in the stat request', () => {
     const snapshot = joined();
     expect(snapshot.targets.map((t) => [t.ownerId, t.ownerKey, t.key])).toEqual([
       ['mira', PLAYER_STAT_HEADING, 'Trust (2)'], ['mira', PLAYER_STAT_HEADING, 'Calm'],
-      [PLAYER_OWNER, GLOBAL_STATS_HEADING, 'Vigor'], [PLAYER_OWNER, GLOBAL_STATS_HEADING, 'Trust'], ['bram', 'Bram', 'Trust'],
+      [null, GLOBAL_STATS_HEADING, 'Vigor'], [null, GLOBAL_STATS_HEADING, 'Trust'], ['bram', 'Bram', 'Trust'],
     ]);
     expect(snapshot.entityKeys).toEqual(['Bram']);
     const { schema } = statRequestSchema(snapshot);
@@ -223,7 +223,7 @@ describe('the played persona in the stat request', () => {
   });
 
   it('renders no Player Character block and asks no Player Character object of a persona that owns no stats', () => {
-    const snapshot = createStatRequest([vigor, playerTrust], PLAYER_OWNER, {
+    const snapshot = createStatRequest([vigor, playerTrust], {
       persona: personaOwners([mira], { mira: [] })[0], entities: owners([bram]), inSceneIds: ['bram'],
     });
     const { schema } = statRequestSchema(snapshot);
@@ -232,11 +232,11 @@ describe('the played persona in the stat request', () => {
     expect(systemPrompt).not.toContain('## Player Character');
     expect(systemPrompt).toContain('## In Scene\n- **Bram**');
     const response = readStatResponse(JSON.stringify({ [GLOBAL_STATS_HEADING]: { Vigor: 3, 'Vigor max': 0 }, Bram: { Trust: 0, 'Trust max': 0 } }), snapshot);
-    expect(response).toMatchObject({ updates: [{ ownerId: PLAYER_OWNER, id: 'vigor', value: 3 }], diagnostics: [] });
+    expect(response).toMatchObject({ updates: [{ ownerId: null, id: 'vigor', value: 3 }], diagnostics: [] });
   });
 
   it('asks one object per owner kind: Player Character, Global Stats and each present entity, every key unique', () => {
-    const snapshot = createStatRequest([vigor, playerTrust], PLAYER_OWNER, {
+    const snapshot = createStatRequest([vigor, playerTrust], {
       persona: personaOwners()[0], entities: owners([bram, odette]), inSceneIds: ['bram', 'odette'],
     });
     const { schema } = statRequestSchema(snapshot);
@@ -249,7 +249,7 @@ describe('the played persona in the stat request', () => {
 
   it('sends a present entity with no stats to a custom prompt with no filter, never to the shipped prompt', () => {
     const rook: Entity = { id: 'rook', name: 'Rook' };
-    const snapshot = createStatRequest([vigor], PLAYER_OWNER, { entities: owners([bram, rook]), inSceneIds: ['bram', 'rook'] });
+    const snapshot = createStatRequest([vigor], { entities: owners([bram, rook]), inSceneIds: ['bram', 'rook'] });
     const scene = sceneOf([vigor], { cast: [bram, rook] });
     expect(build(snapshot, scene).systemPrompt).not.toContain('Rook');
     const custom = testInput({ prompts: { ...TEST_PROMPTS, statUpdates: 'Cast:\n<ENTITIES|inscene.name>', statUpdatesUser: '<NARRATION>' } });
@@ -266,7 +266,7 @@ describe('the played persona in the stat request', () => {
     });
     const response = readStatResponse(reply, snapshot);
     expect(response.updates).toEqual([
-      { ownerId: PLAYER_OWNER, id: 'trust', name: 'Trust', value: 2, max: 0 },
+      { ownerId: null, id: 'trust', name: 'Trust', value: 2, max: 0 },
       { ownerId: 'mira', id: 'trust', name: 'Trust', value: -7, max: 0 },
     ]);
     expect(applyEntityStatResponse(miraValues, response, noTraits).values.mira[0].value).toBe(53);
@@ -285,7 +285,7 @@ describe('the played persona in the stat request', () => {
   });
 
   it('runs for a player whose only live stats are the persona\'s', () => {
-    const snapshot = createStatRequest([], PLAYER_OWNER, { textPass: true, persona: personaOwners()[0] });
+    const snapshot = createStatRequest([], { textPass: true, persona: personaOwners()[0] });
     expect(statRequestReady(snapshot)).toBe(true);
     expect(build(snapshot, sceneOf([], { persona: mira, held: miraValues })).systemPrompt)
       .toMatch(/## Player Character\n[\s\S]*- \*\*Trust:\*\* 60\/100[\s\S]*- \*\*Calm:\*\* 5\/100/);
@@ -295,7 +295,7 @@ describe('the played persona in the stat request', () => {
     const mood: StatGroup = { id: 'mood', name: 'Mood', parentId: null, order: 0 };
     const grouped: Entity = { ...mira, statGroups: [mood], stats: [stat({ id: 'calm', name: 'Calm', groupId: 'mood' })] };
     const held = { mira: [stat({ id: 'calm', name: 'Calm', value: 5, groupId: 'mood' })] };
-    const snapshot = createStatRequest([vigor], PLAYER_OWNER, { textPass: true, persona: personaOwners([grouped], held)[0] });
+    const snapshot = createStatRequest([vigor], { textPass: true, persona: personaOwners([grouped], held)[0] });
     expect(snapshot.context('<STATS DESCRIPTION|numbers.markdown>')).toBe('- **Vigor:** 50/100');
     const { systemPrompt } = build(snapshot, sceneOf([vigor], { persona: grouped, held }));
     expect(systemPrompt).toContain('## Player Character');
@@ -326,10 +326,10 @@ describe('the played persona in the stat request', () => {
     const custom: Entity = { id: 'custom', name: 'You', customPersona: true };
     const held: EntityStatValues = { shade: [stat({ value: 30 })], custom: [stat({ value: 70 })] };
     const [played, other] = personaOwners([shade, custom], held);
-    const snapshot = createStatRequest([vigor], PLAYER_OWNER, { persona: played, played: [other] });
+    const snapshot = createStatRequest([vigor], { persona: played, played: [other] });
     // Every played entity's stats sit under Player Character, a clash numbered (Q11).
     expect(snapshot.targets.map((t) => [t.ownerId, t.ownerKey, t.key])).toEqual([
-      ['shade', PLAYER_STAT_HEADING, 'Trust'], ['custom', PLAYER_STAT_HEADING, 'Trust (2)'], [PLAYER_OWNER, GLOBAL_STATS_HEADING, 'Vigor'],
+      ['shade', PLAYER_STAT_HEADING, 'Trust'], ['custom', PLAYER_STAT_HEADING, 'Trust (2)'], [null, GLOBAL_STATS_HEADING, 'Vigor'],
     ]);
     expect(snapshot.context('<STATS DESCRIPTION|numbers.markdown>')).toBe('- **Vigor:** 50/100');
     const reply = {
@@ -349,19 +349,19 @@ describe('the text-pass fallback', () => {
     expect(request.systemPrompt).not.toContain('Bram');
     expect(request.maxTokens).toBe(statUpdatesCap(2));
     const response = readStatResponse('Trust: +4', snapshot);
-    expect(response.updates).toEqual([{ ownerId: PLAYER_OWNER, id: 'trust', name: 'Trust', value: 4, max: 0 }]);
+    expect(response.updates).toEqual([{ ownerId: null, id: 'trust', name: 'Trust', value: 4, max: 0 }]);
     expect(response.diagnostics).toEqual([
       { name: '', reason: 'textPass' }, { name: 'Bram', reason: 'skipped' }, { name: 'Odette', reason: 'skipped' },
     ]);
   });
 
   it('asks nothing of a player with no stats: no text pass, and no fallback for a refused schema', () => {
-    const textPass = createStatRequest([], PLAYER_OWNER, { textPass: true, entities: owners([bram]) });
+    const textPass = createStatRequest([], { textPass: true, entities: owners([bram]) });
     expect(statRequestReady(textPass)).toBe(false);
-    const schema = createStatRequest([], PLAYER_OWNER, { entities: owners([bram]) });
+    const schema = createStatRequest([], { entities: owners([bram]) });
     expect(statRequestReady(schema)).toBe(true);
     expect(build(schema).textFallback).toBeUndefined();
-    expect(statRequestReady(createStatRequest([], PLAYER_OWNER))).toBe(false);
+    expect(statRequestReady(createStatRequest([]))).toBe(false);
   });
 
   it('builds the retry after a mid-turn refusal from the player alone', () => {
@@ -393,7 +393,7 @@ describe('the stat pass over a turn', () => {
           return { narration: event.outcomes[0].raw };
         }
         if (event.at === 'stage' && event.stage === 'postNarration') {
-          return { statRequest: createStatRequest(playerStats, PLAYER_OWNER, { entities: owners(confirmed) }) };
+          return { statRequest: createStatRequest(playerStats, { entities: owners(confirmed) }) };
         }
       },
     });

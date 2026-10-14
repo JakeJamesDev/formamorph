@@ -8,7 +8,6 @@ import {
   type OwnerPinState,
 } from './ownedTraitsInPlay';
 import { INITIAL_SOURCE_TURN_ID } from './runtimeCharacters';
-import { PLAYER_OWNER } from './traitGates';
 
 const pin = (placeholderId: string, value: string, valueId?: string): PlaceholderPin =>
   ({ placeholderId, value, ...(valueId ? { valueId } : {}) });
@@ -63,9 +62,9 @@ const owned = { albus: ['t-stern', 'paladin'], mira: ['paladin'], bo: ['paladin'
 /** The player picked the Custom Persona entity's Paladin. */
 const picked = { ...owned, cp: ['paladin'] };
 const allPlaceholders = [...shared, ...albus.placeholders!, ...bo.placeholders!, ...lib.placeholders!];
-const pinsUnder = (persona: PersonaRef, playerTraits: Trait[], extra: Partial<OwnerPinState> = {}) =>
+const pinsUnder = (persona: PersonaRef, globalTraits: Trait[], extra: Partial<OwnerPinState> = {}) =>
   ownerPins(
-    { world, persona, library: [lib], playerTraits, owned, sharedPlaceholders: shared, ...extra },
+    { world, persona, library: [lib], globalTraits, owned, sharedPlaceholders: shared, ...extra },
     { placeholders: allPlaceholders },
   );
 
@@ -82,7 +81,7 @@ describe('ownerPins — each owner lays its own pins', () => {
     };
     const kit: Entity = { id: 'kit', name: 'Kit', placeholders: [kitCopy], traitLinks: [link('l-kit', 'paladin', [pin('garb', 'Robe', ROBE)])] };
     const pins = ownerPins(
-      { world: { ...world, entities: [...world.entities, kit] }, persona: NONE, playerTraits: [], owned: { ...owned, kit: ['paladin'] }, sharedPlaceholders: shared },
+      { world: { ...world, entities: [...world.entities, kit] }, persona: NONE, globalTraits: [], owned: { ...owned, kit: ['paladin'] }, sharedPlaceholders: shared },
       { placeholders: [...allPlaceholders, kitCopy] },
     );
     expect(pins.of('kit')).toEqual({ 'kit-garb': 'Sackcloth' });
@@ -103,12 +102,10 @@ describe('ownerPins — each owner lays its own pins', () => {
     expect(pins.of(null)).toBe(pins.world);
   });
 
-  it('reads the global slot for no owner and for its stand-in id, with one copy lookup between them', () => {
+  it('reads the global slot for no owner, with one copy lookup between them', () => {
     const pins = pinsUnder(NONE, [brave]);
     expect(pins.of(undefined)).toBe(pins.world);
-    expect(pins.of(PLAYER_OWNER)).toBe(pins.world);
     expect(pins.copies(undefined)).toBe(pins.copies(null));
-    expect(pins.copies(PLAYER_OWNER)).toBe(pins.copies(null));
   });
 
   it("lays the player's pins in world-level text and in a cast entity's, under the entity's own", () => {
@@ -150,7 +147,7 @@ describe('ownerPins — each owner lays its own pins', () => {
     const youCopy: Entity = { ...you, placeholders: [garbCopy('cp-garb', 'Newcomer robe')], traitLinks: [link('l-you', 'paladin')] };
     const w = { ...world, entities: [albus, mira, bo, youCopy] };
     const under = (persona: PersonaRef, library: Entity[]) => ownerPins(
-      { world: w, persona, library, playerTraits: [], owned: picked, sharedPlaceholders: shared },
+      { world: w, persona, library, globalTraits: [], owned: picked, sharedPlaceholders: shared },
       { placeholders: [...allPlaceholders, ...youCopy.placeholders!] },
     ).world;
     expect(under(NONE, [])).toEqual({ 'cp-garb': 'Newcomer robe' });
@@ -161,7 +158,7 @@ describe('ownerPins — each owner lays its own pins', () => {
 
   it("lets only the player's traits decide which stat bands pin", () => {
     const pins = ownerPins(
-      { world, persona: NONE, playerTraits: [], owned, sharedPlaceholders: shared },
+      { world, persona: NONE, globalTraits: [], owned, sharedPlaceholders: shared },
       { placeholders: shared, stats: [hunger] },
     );
     // Mira's Paladin switches Hunger off; that toggle is not the player's, so the band still pins.
@@ -265,7 +262,7 @@ describe('ownerTraitTree — the player-facing tree', () => {
     ]);
     expect([...tree.entityNodes.keys()]).toEqual(['albus', 'mira', 'cp']);
     expect(tree.groups.find((g) => g.id === ownerGroupId('albus', 'classes'))?.maxPicks).toBe(1);
-    expect(tree.traits.map((t) => rowOwner(tree, t))).toEqual(['world', 'world', 'albus', 'albus', 'albus', 'mira', 'mira', 'cp']);
+    expect(tree.traits.map((t) => rowOwner(tree, t))).toEqual([null, null, 'albus', 'albus', 'albus', 'mira', 'mira', 'cp']);
   });
 
   it("gives the Custom Persona entity a node beside the player's top level under None, and none under a world persona", () => {
@@ -388,7 +385,7 @@ describe('blueprint chips per owner — copies and priming', () => {
   // Paladin's text places Class Garb; each owner should read and roll its own copy.
   const texted = { ...world, traits: world.traits.map((t) => (t.id === 'paladin' ? { ...t, aiDescription: `Wears ${chipOf('garb')}.` } : t)) };
   const withText = (persona: PersonaRef) => ownerPins(
-    { world: texted, persona, library: [lib], playerTraits: [], owned, sharedPlaceholders: shared }, { placeholders: allPlaceholders },
+    { world: texted, persona, library: [lib], globalTraits: [], owned, sharedPlaceholders: shared }, { placeholders: allPlaceholders },
   );
 
   it("gives each owner a copy lookup that reads its own copy, and the player's under the played persona", () => {

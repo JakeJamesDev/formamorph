@@ -1,18 +1,16 @@
 // A snapshot's global scope: the fields a save writes, and the shapes live gameplay state holds them in.
-// Live state keeps the player's traits and stats in `playerTraits` / `playerStats` and the trait maps under
-// the `world` owner key; a save splits every map into a global part and an owners part.
+// Live state keys trait stat records by `recordKey`; a save splits them into a global part and an owners part.
 
 import type {
-  CascadeOffTraitIds, CodePins, EntityStatValues, GameState, OwnedTraitStates, PlayerStat, SavedAppliedValues, SavedCascadeOff, Trait,
+  CascadeOffTraitIds, CodePins, EntityStatValues, GameState, OwnedTraitStates, PlayerStat, SavedAppliedValues, Trait,
 } from '@/types';
-import { PLAYER_OWNER } from './traitGates';
 import { recordKey, splitRecordKey } from './ownedTraitState';
-import type { AppliedTraitValues } from './traitRuntime';
+import { compactCascadeOff, type AppliedTraitValues } from './traitRuntime';
 
 /** The trait and stat slice of a snapshot, in the shapes live state holds. */
 export interface LiveSnapshot {
-  playerStats: PlayerStat[];
-  playerTraits: Trait[];
+  globalStats: PlayerStat[];
+  globalTraits: Trait[];
   disabledTraitIds?: string[];
   appliedTraitValues?: AppliedTraitValues;
   cascadeOffTraitIds?: CascadeOffTraitIds;
@@ -24,16 +22,18 @@ export interface LiveSnapshot {
 const hasKeys = (map: object | undefined): boolean => !!map && Object.keys(map).length > 0;
 
 /** A live cascade-off map as a save holds it. Absent when nothing is cascaded off. */
-export function savedCascadeOff(live: CascadeOffTraitIds | undefined): SavedCascadeOff | undefined {
-  const { [PLAYER_OWNER]: global, ...owners } = live ?? {};
-  const kept = Object.fromEntries(Object.entries(owners).filter(([, ids]) => ids.length));
-  if (!global?.length && !hasKeys(kept)) return undefined;
-  return { ...(global?.length ? { global } : {}), ...(hasKeys(kept) ? { owners: kept } : {}) };
+export function savedCascadeOff(live: CascadeOffTraitIds | undefined): CascadeOffTraitIds | undefined {
+  const compact = compactCascadeOff(live);
+  return hasKeys(compact) ? compact : undefined;
 }
 
-/** A saved cascade-off map as live state holds it. */
-export function liveCascadeOff(saved: SavedCascadeOff | undefined): CascadeOffTraitIds {
-  return { ...(saved?.global?.length ? { [PLAYER_OWNER]: saved.global } : {}), ...saved?.owners };
+/** The owner key a save before global scope's own fields kept the global cascade-off list under. */
+const LEGACY_GLOBAL_KEY = 'world';
+
+/** A cascade-off map as a save before global scope's own fields held it, keyed by owner. */
+function legacyCascadeOff(keyed: Readonly<Record<string, string[]>> | undefined): CascadeOffTraitIds | undefined {
+  const { [LEGACY_GLOBAL_KEY]: global, ...owners } = keyed ?? {};
+  return savedCascadeOff({ ...(global ? { global } : {}), owners });
 }
 
 /** Live trait stat records as a save holds them. Absent when there are none. */
@@ -60,11 +60,11 @@ export function liveAppliedValues(saved: SavedAppliedValues | undefined): Applie
 
 /** A snapshot's trait and stat fields in the shapes live state holds them. */
 export const liveSnapshotOf = (state: GameState): LiveSnapshot => ({
-  playerStats: state.globalStats,
-  playerTraits: state.globalTraits,
+  globalStats: state.globalStats,
+  globalTraits: state.globalTraits,
   disabledTraitIds: state.disabledTraitIds,
   appliedTraitValues: liveAppliedValues(state.appliedTraitValues),
-  cascadeOffTraitIds: liveCascadeOff(state.cascadeOffTraitIds),
+  cascadeOffTraitIds: state.cascadeOffTraitIds ?? {},
   ownedTraits: state.ownedTraits,
   entityStats: state.entityStats,
   codePins: state.codePins,
@@ -75,7 +75,7 @@ type PreGlobalSnapshot = Omit<GameState, 'globalStats' | 'globalTraits' | 'appli
   playerStats?: PlayerStat[];
   playerTraits?: Trait[];
   appliedTraitValues?: AppliedTraitValues;
-  cascadeOffTraitIds?: CascadeOffTraitIds;
+  cascadeOffTraitIds?: Record<string, string[]>;
 };
 
 /**
@@ -89,7 +89,7 @@ export function migrateGlobalFields(state: GameState): GameState {
   if (!('playerStats' in old) && !('playerTraits' in old)) return state;
   const { playerStats, playerTraits, appliedTraitValues, cascadeOffTraitIds, ...rest } = old;
   const applied = savedAppliedValues(appliedTraitValues);
-  const cascade = savedCascadeOff(cascadeOffTraitIds);
+  const cascade = legacyCascadeOff(cascadeOffTraitIds);
   // A field the old snapshot lacked stays absent, as it read before.
   return {
     ...rest,

@@ -1,7 +1,8 @@
 // The stats the requirement picker offers: one section per owner, each stat ready to add as a Condition.
 
-import { PLAYER_OWNER, type GateInput, type RequirementOption } from './traitGates';
+import type { GateInput, GateStatSet, RequirementOption } from './traitGates';
 import { canBePlayer } from './owners';
+import { partOf, type OwnerId } from './scope';
 import type { RequirementOwner } from '@/types';
 
 /** One owner's stats in the picker. */
@@ -19,17 +20,17 @@ export interface RequirementStatSection {
  * span, so its text reads at once. An inert stat is left out: a Condition on it never resolves.
  */
 export function requirementStatSections(
-  input: Pick<GateInput, 'owners' | 'entities' | 'stats'>, hostId: string,
+  input: Pick<GateInput, 'owners' | 'entities' | 'stats'>, hostId: OwnerId,
 ): RequirementStatSection[] {
-  const stats = input.stats ?? {};
+  const statsOf = (ownerId: OwnerId): GateStatSet => (input.stats && partOf(input.stats, ownerId)) ?? {};
   const playable = input.entities.filter(canBePlayer).map((e) => e.id);
   const name = (id: string) => input.entities.find((e) => e.id === id)?.name ?? input.owners.find((o) => o.id === id)?.name ?? '';
 
-  const section = (heading: string, ids: readonly string[], named?: RequirementOwner): RequirementStatSection => {
+  const section = (heading: string, ids: readonly OwnerId[], named?: RequirementOwner): RequirementStatSection => {
     const seen = new Set<string>();
     const options: RequirementOption[] = [];
     for (const ownerId of ids) {
-      for (const [id, stat] of Object.entries(stats[ownerId] ?? {})) {
+      for (const [id, stat] of Object.entries(statsOf(ownerId))) {
         if (seen.has(id) || stat.inert) continue;
         seen.add(id);
         options.push({
@@ -43,10 +44,9 @@ export function requirementStatSections(
     return { heading, options };
   };
 
-  const global = hostId === PLAYER_OWNER;
   const sections = [
-    { ...(global ? section('Global Stats', [PLAYER_OWNER]) : section(`${name(hostId)} Stats`, [hostId])), own: true as const },
-    ...(global ? [] : [section('Global Stats', [PLAYER_OWNER])]),
+    { ...(hostId === null ? section('Global Stats', [null]) : section(`${name(hostId)} Stats`, [hostId])), own: true as const },
+    ...(hostId === null ? [] : [section('Global Stats', [null])]),
     section('Persona Stats', playable, { kind: 'you' }),
     ...input.entities
       .filter((e) => e.id !== hostId)

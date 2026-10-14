@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { APP_VERSION, migrateWorld, migrateSave, isSaveEnvelope, migrateCarriedPlaceholders } from './version';
 import { placeholderWeight } from './placeholders';
-import { PLAYER_OWNER, gateOf, gateStates, worldGateInput } from './traitGates';
+import { gateOf, gateStates, worldGateInput } from './traitGates';
 import { headingReachesAi } from './groupTree';
 import { entityIdsAt } from './entityPresence';
 import { buildEntityContext, navigableDestinationEntries } from './locationContext';
@@ -995,7 +995,7 @@ describe('migrateWorld — requirement bearer key to owner', () => {
   });
 
   it('gates an old world on the global scope where its file named an owner for a global item (Q10, Q19)', () => {
-    // Brave is a root trait, so no one owns it: the stored owner goes and Not Brave reads the player's pick.
+    // Brave is a root trait, so no one owns it: the stored owner goes and Not Brave reads the global pick.
     const notOnMira = { ...onMira, not: true };
     const world = migrateWorld({ version: APP_VERSION, traits: [
       { id: 'brave', name: 'Brave', statChanges: [] },
@@ -1003,7 +1003,7 @@ describe('migrateWorld — requirement bearer key to owner', () => {
     ], entities: [{ id: 'mira', name: 'Mira' }] });
     expect(world.traits[1].requires).toEqual([{ all: [{ kind: 'trait', id: 'brave', not: true }] }]);
     const input = worldGateInput({ traits: world.traits, groups: [], entities: world.entities }, { source: 'none' }, ['brave']);
-    expect(gateOf(gateStates(input), PLAYER_OWNER, 'smite')?.unlocked).toBe(false);
+    expect(gateOf(gateStates(input), null, 'smite')?.unlocked).toBe(false);
   });
 });
 

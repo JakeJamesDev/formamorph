@@ -2,6 +2,7 @@
 // against a case's gold cells.
 import { createStatRequest, readStatResponse, type StatRequestSnapshot } from '@/lib/statRequest';
 import { stripMarkdown } from '@/lib/stripMarkdown';
+import type { OwnerId } from '@/lib/scope';
 import type { PlayerStat } from '@/types';
 
 export type Direction = '+' | '-';
@@ -50,7 +51,7 @@ const key = (text: string) => stripMarkdown(text).replace(/^[\s*_+-]+|[\s*_]+$/g
  *  request over several owners maps each update's owner id through `ownerKeyOf`. */
 export function parsePlainLines(
   raw: string, owner: Owner, snapshot: StatRequestSnapshot = createStatRequest(owner.stats),
-  ownerKeyOf: (ownerId: string) => string = () => owner.key,
+  ownerKeyOf: (ownerId: OwnerId) => string = () => owner.key,
 ): Parsed {
   const response = readStatResponse(raw, snapshot);
   return {

@@ -8,7 +8,9 @@ import {
   emptyEntryDraft, entryDefaults, entryGateInput, withLocationPick, withPersonaPick, withSettledTraits,
   type EntryDraft, type EntryTraitWorld,
 } from '@/lib/entryDraft';
-import { gateStates, settle, switchTrait, type SettleResult } from '@/lib/traitGates';
+import { gateStates, gateTreeOf, settle, switchTrait, type SettleResult } from '@/lib/traitGates';
+import { scoped } from '@/lib/scope';
+import { cascadeOffInput } from '@/lib/traitRuntime';
 import type { TraitCascade } from '@/components/game/SetupTraitList';
 import { namedStartLocation, offeredStartLocations, withoutPersona } from '@/lib/personaPick';
 import type { Entity, EntityMetadata, GameLocation, PersonaRef, Stat, Trait } from '@/types';
@@ -132,7 +134,7 @@ function Harness({ initialDictionaryItems = dictionaryItems, ...props }: Partial
       locations={[]}
       resolveText={identity}
       resolveTraitText={traitIdentity}
-      selectedTraits={{ world: selectedTraits }}
+      selectedTraits={scoped(selectedTraits)}
       selectedLocationId={selectedLocationId}
       libraryEntities={libraryEntities}
       selectedEntityIds={selectedEntityIds}
@@ -263,29 +265,29 @@ describe('EnterWorldWorkspace', () => {
     render(<Harness onTraitSelect={onTraitSelect} />);
 
     expect(fireEvent.click(screen.getByText('Local'))).toBe(true);
-    expect(onTraitSelect).toHaveBeenLastCalledWith('local', 'world');
+    expect(onTraitSelect).toHaveBeenLastCalledWith('local', null);
     expect(onTraitSelect).toHaveBeenCalledTimes(1);
 
     onTraitSelect.mockClear();
     fireEvent.click(screen.getByRole('radio', { name: 'Local' }));
-    expect(onTraitSelect).toHaveBeenLastCalledWith('local', 'world');
+    expect(onTraitSelect).toHaveBeenLastCalledWith('local', null);
     expect(onTraitSelect).toHaveBeenCalledTimes(1);
 
     onTraitSelect.mockClear();
     await user.click(screen.getByRole('radio', { name: 'Outsider' }));
-    expect(onTraitSelect).toHaveBeenLastCalledWith('outsider', 'world');
+    expect(onTraitSelect).toHaveBeenLastCalledWith('outsider', null);
     expect(onTraitSelect).toHaveBeenCalledTimes(1);
 
     fireEvent.click(screen.getByRole('button', { name: /Practice/ }));
     expect(screen.getByRole('checkbox', { name: 'Artisan' })).not.toBeChecked();
     onTraitSelect.mockClear();
     await user.click(screen.getByText('Artisan'));
-    expect(onTraitSelect).toHaveBeenLastCalledWith('artisan', 'world');
+    expect(onTraitSelect).toHaveBeenLastCalledWith('artisan', null);
     expect(onTraitSelect).toHaveBeenCalledTimes(1);
 
     onTraitSelect.mockClear();
     await user.click(screen.getByRole('checkbox', { name: 'Artisan' }));
-    expect(onTraitSelect).toHaveBeenLastCalledWith('artisan', 'world');
+    expect(onTraitSelect).toHaveBeenLastCalledWith('artisan', null);
     expect(onTraitSelect).toHaveBeenCalledTimes(1);
   });
 
@@ -1006,10 +1008,9 @@ describe('EnterWorldWorkspace cast pages', () => {
     const [categoryIndex, setCategoryIndex] = useState(0);
     const [cascade, setCascade] = useState<TraitCascade | null>(null);
     const input = entryGateInput(cast, draft);
-    const ownerOf = (id: string) => input.owners.find((o) => o.id === id)!;
-    const settled = (base: EntryDraft, result: SettleResult, because: string) => {
+        const settled = (base: EntryDraft, result: SettleResult, because: string) => {
       setDraft(withSettledTraits(base, result));
-      const off = result.turnedOff.map((r) => ownerOf(r.ownerId).traits.find((t) => t.id === r.traitId)!.name);
+      const off = result.turnedOff.map((r) => gateTreeOf(input, r.ownerId)!.traits.find((t) => t.id === r.traitId)!.name);
       setCascade(off.length ? { off, because } : null);
     };
     return (
@@ -1020,9 +1021,9 @@ describe('EnterWorldWorkspace cast pages', () => {
         resolveEntityText={(_entity, text) => text}
         // The owner the workspace hands over is the Character Name in a trait's own text.
         resolveTraitText={(_trait, text, owner) => text.replace('{{char}}', owner?.name ?? 'you')}
-        selectedTraits={{ ...draft.ownedTraitIds, world: draft.traitIds }}
+        selectedTraits={scoped(draft.traitIds, draft.ownedTraitIds)}
         onTraitSelect={(id, ownerId) => {
-          const result = switchTrait(input, ownerId, id, draft.cascadeOffTraitIds);
+          const result = switchTrait(input, ownerId, id, cascadeOffInput(draft.cascadeOffTraitIds));
           if (result) settled(draft, result, id);
         }}
         traitGates={gateStates(input)}
@@ -1032,7 +1033,7 @@ describe('EnterWorldWorkspace cast pages', () => {
         persona={draft.persona}
         onPersonaChange={(ref) => {
           const next = { ...draft, persona: ref };
-          settled(next, settle(entryGateInput(cast, next), next.cascadeOffTraitIds), ref.source === 'none' ? 'None' : ref.entityId);
+          settled(next, settle(entryGateInput(cast, next), cascadeOffInput(next.cascadeOffTraitIds)), ref.source === 'none' ? 'None' : ref.entityId);
         }}
         categoryIndex={categoryIndex}
         onCategoryChange={setCategoryIndex}

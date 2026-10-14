@@ -34,7 +34,7 @@ const renderTraits = (
     ...options,
     world: { traits, traitGroups, ...options.world },
     seed: (gameplay) => {
-      gameplay.setPlayerTraits(traits.filter((t) => held.includes(t.id)));
+      gameplay.setGlobalTraits(traits.filter((t) => held.includes(t.id)));
       gameplay.setActiveTab('traits');
       options.seed?.(gameplay);
     },
@@ -283,7 +283,7 @@ describe('the traits tab keeps how the player left it', () => {
       stats: STATS,
       world: { traits: TRAITS, traitGroups: GROUPS },
       seed: (gameplay) => {
-        gameplay.setPlayerTraits(held);
+        gameplay.setGlobalTraits(held);
         gameplay.setActiveTab('traits');
       },
     });
@@ -627,13 +627,13 @@ describe('a max-one trait group reads as a set of alternatives', () => {
     const view = renderTraits(TRAITS, GROUPS, ['t-farm']);
     openDisabled('Global');
     fireEvent.click(screen.getByRole('radio', { name: 'Switch on Scholar' }));
-    expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-book', true, 'world');
+    expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-book', true, null);
   });
 
   it('clears the selected alternative when it is clicked again, so none is a legal answer', () => {
     const view = renderTraits(TRAITS, GROUPS, ['t-farm']);
     fireEvent.click(screen.getByRole('radio', { name: 'Switch off Farmhand' }));
-    expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-farm', false, 'world');
+    expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-farm', false, null);
   });
 
   it('marks the radios by what is actually held', () => {

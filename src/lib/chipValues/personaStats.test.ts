@@ -5,7 +5,6 @@ import { defaultStatUpdatesPrompt, textStatUpdatesPrompt } from '@/components/ga
 import { renderPromptTemplate } from '../promptTemplate';
 import { layerValues } from '../promptValues';
 import { createStatRequest, keyedScene, statRequestSchema } from '../statRequest';
-import { PLAYER_OWNER } from '../statOwners';
 import { NONE_PLACEHOLDER } from '../promptFallbacks';
 import { ownerStatParts, statPlacementOf } from '../statContext';
 import type { ResolvedPersona } from '../persona';
@@ -78,7 +77,7 @@ describe("the persona's own stats in the Persona chip", () => {
   });
 
   it('names a clashing stat by the numbered key the stat request gives it', () => {
-    const request = createStatRequest([health], PLAYER_OWNER, {
+    const request = createStatRequest([health], {
       persona: travelerOwner,
     });
     expect(request.targets.find((target) => target.id === 'own-health')?.key).toBe('Health (2)');
@@ -143,7 +142,7 @@ describe("the persona's own stats in the Persona chip", () => {
 });
 
 describe('the stat request with a played persona that owns stats', () => {
-  const request = createStatRequest([health], PLAYER_OWNER, {
+  const request = createStatRequest([health], {
     persona: travelerOwner,
   });
   const ctx = chipValues(keyedScene(scene(), request));

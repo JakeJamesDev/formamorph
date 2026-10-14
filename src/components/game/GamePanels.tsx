@@ -12,7 +12,7 @@ import { usePlayerModelUrl } from '@/lib/usePlayerModelUrl';
 import { mergeBodyMorphs } from '@/lib/bodyMorphs';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { traitOrderIndex, activeStatEnabled, refreshChosenTraits } from '@/lib/traitEffects';
-import { entityStatTraitsInForce, listablePlayerTraits, statTraitsInForce, traitGateInput, type TraitWorld } from '@/lib/traitRuntime';
+import { entityStatTraitsInForce, listableGlobalTraits, statTraitsInForce, traitGateInput, type TraitWorld } from '@/lib/traitRuntime';
 import {
   activeOwnedTraitIds, ownerTraitTree, inPlayOwners, playerEntityIds, rowOwner, withOwnerNames,
 } from '@/lib/ownedTraitsInPlay';
@@ -83,7 +83,7 @@ import { EntityListRow } from './EntityListRow';
 import { TraitsTab } from './TraitsTab';
 import { StatRow } from './StatRow';
 import { rowDelta } from '@/lib/useStatDeltas';
-import { PLAYER_OWNER } from '@/lib/statOwners';
+import type { OwnerId } from '@/lib/scope';
 import { StatGroupSections } from './StatGroupSections';
 import { statPanelLayout } from '@/lib/statGroupTree';
 import { PersonaRow } from './PersonaRow';
@@ -604,7 +604,7 @@ export const MiddlePanel = ({
     ttsPlayback,
     setFullMessageHistory,
     setMemoryEdits,
-    playerStats,
+    globalStats,
     isViewingPast,
     viewChoices: choices,
     choices: latestChoices,
@@ -636,7 +636,7 @@ export const MiddlePanel = ({
   const revealStyle = revealVars(revealSpec) as React.CSSProperties;
   // Which partial re-generate actions to offer (mirrors the aux-request gates).
   const canRegenChoices = choicesEnabled && fullMessageHistory[fullMessageHistory.length - 1]?.role === 'assistant';
-  const canRegenStats = statUpdatesEnabled && playerStats.length > 0;
+  const canRegenStats = statUpdatesEnabled && globalStats.length > 0;
   const [toolMenuOpen, setToolMenuOpen] = useState(false);
 
   // Ctrl/Cmd+click or a touch long-press appends a choice as a new sentence; a plain tap replaces it.
@@ -1217,7 +1217,7 @@ export const RightPanel = ({
 }: {
   onLocationClick: () => void;
   /** Switch an owner's trait on or off mid-play; owned by GameViewer, which reverses its stat changes. */
-  onToggleTrait: (traitId: string, enabled: boolean, ownerId: string) => void;
+  onToggleTrait: (traitId: string, enabled: boolean, ownerId: OwnerId) => void;
   /** Settle the traits after the player picks another persona. `name` is that persona's; null for None. */
   onPersonaChange: (ref: PersonaRef, name: string | null) => void;
   /** What the player's last trait switch or persona change turned off. */
@@ -1257,7 +1257,7 @@ export const RightPanel = ({
     setSelectedEntityId,
   } = useGameplay();
   const {
-    locations, connections, traits, traitGroups, viewStats: playerStats, currentLocation, resolveTraitText, resolveEntityText,
+    locations, connections, traits, traitGroups, viewStats: globalStats, currentLocation, resolveTraitText, resolveEntityText,
     entities: cast, persona, traitEntities, traitLibrary,
   } = useResolvedWorld();
   // In Chat a scroll moves the viewed turn, so the stat rows snap to it.
@@ -1269,8 +1269,8 @@ export const RightPanel = ({
   const disabledTraits = React.useMemo(() => new Set(viewDisabledTraitIds), [viewDisabledTraitIds]);
   // The save froze each chosen trait as the world stood on turn 1, so its authoring is re-read from the
   // world — otherwise a trait made switchable after this playthrough began would never get its control.
-  const playerTraits = React.useMemo(() => refreshChosenTraits(savedTraits, traits), [savedTraits, traits]);
-  const heldTraitIds = React.useMemo(() => new Set(playerTraits.map((t) => t.id)), [playerTraits]);
+  const globalTraits = React.useMemo(() => refreshChosenTraits(savedTraits, traits), [savedTraits, traits]);
+  const heldTraitIds = React.useMemo(() => new Set(globalTraits.map((t) => t.id)), [globalTraits]);
   // The one tree from the owner resolver: the player's rows at the top, then a node per present owner with
   // its owned traits and links expanded. A trait under two owners is two rows, told apart by their node.
   const gameData = useGameDataOptional();
@@ -1289,8 +1289,8 @@ export const RightPanel = ({
   );
   // An owner's trait card reads that owner as the Character Name, as the AI does.
   const resolveTreeTraitText = React.useCallback(
-    (trait: Trait, text: string, ownerId: string) =>
-      resolveTraitText(trait, text, ownerId === PLAYER_OWNER ? null : traitTree.entityNodes.get(ownerId) ?? null),
+    (trait: Trait, text: string, ownerId: OwnerId) =>
+      resolveTraitText(trait, text, ownerId === null ? null : traitTree.entityNodes.get(ownerId) ?? null),
     [traitTree, resolveTraitText],
   );
   const activeOwned = React.useMemo(() => activeOwnedTraitIds(viewOwnedTraits), [viewOwnedTraits]);
@@ -1298,35 +1298,35 @@ export const RightPanel = ({
   // could take, together in authored order — owned and unowned differ only by the checkbox. A past turn shows
   // only what was held then: acquirables can't be acted on there. An entity's rows list the same way.
   const listedTraits = React.useMemo(() => {
-    const playerRows = traitTree.traits.filter((t) => rowOwner(traitTree, t) === PLAYER_OWNER);
+    const globalRows = traitTree.traits.filter((t) => rowOwner(traitTree, t) === null);
     const entityRows = traitTree.traits.filter((t) => {
       const owner = rowOwner(traitTree, t);
-      return owner !== PLAYER_OWNER && (!!viewOwnedTraits[owner]?.chosen.includes(t.id) || (!isViewingPast && !!t.playerToggle));
+      return owner !== null && (!!viewOwnedTraits[owner]?.chosen.includes(t.id) || (!isViewingPast && !!t.playerToggle));
     });
-    const playerOrder = traitOrderIndex(playerRows, traitTree.groups);
+    const globalOrder = traitOrderIndex(globalRows, traitTree.groups);
     // A Custom Persona pick lies dormant under a world persona: it has no row until a return to None.
-    const heldRows = new Set(playerRows.map((t) => t.id));
-    const held = playerTraits.filter((t) => heldRows.has(t.id));
-    return [...(isViewingPast ? held : listablePlayerTraits(held, playerRows, playerOrder)), ...entityRows];
-  }, [isViewingPast, playerTraits, traitTree, viewOwnedTraits]);
+    const heldRows = new Set(globalRows.map((t) => t.id));
+    const held = globalTraits.filter((t) => heldRows.has(t.id));
+    return [...(isViewingPast ? held : listableGlobalTraits(held, globalRows, globalOrder)), ...entityRows];
+  }, [isViewingPast, globalTraits, traitTree, viewOwnedTraits]);
   // The played world entity is out of the cast, and a "playing as" gate has to find it.
   const gateWorld = React.useMemo<TraitWorld>(() => ({
     traits, groups: traitGroups, entities: worldEntitiesOf(cast, persona), persona: personaRef ?? { source: 'none' },
-    owners: inPlayOwners(ownerWorld, personaRef, traitLibrary),
+    ...inPlayOwners(ownerWorld, personaRef, traitLibrary),
   }), [traits, traitGroups, cast, persona, personaRef, ownerWorld, traitLibrary]);
   const viewTraitState = React.useMemo(
-    () => ({ traits: playerTraits, disabledTraitIds: viewDisabledTraitIds, ownedTraits: viewOwnedTraits }),
-    [playerTraits, viewDisabledTraitIds, viewOwnedTraits],
+    () => ({ traits: globalTraits, disabledTraitIds: viewDisabledTraitIds, ownedTraits: viewOwnedTraits }),
+    [globalTraits, viewDisabledTraitIds, viewOwnedTraits],
   );
   // The stats a trait switched off stay off under the global traits and every entity's global rows.
   const statEnabled = React.useMemo(
-    () => activeStatEnabled(playerStats, statTraitsInForce({ ...viewTraitState, entityStats: viewEntityStats }, gateWorld)),
-    [playerStats, viewTraitState, viewEntityStats, gateWorld],
+    () => activeStatEnabled(globalStats, statTraitsInForce({ ...viewTraitState, entityStats: viewEntityStats }, gateWorld)),
+    [globalStats, viewTraitState, viewEntityStats, gateWorld],
   );
   // Stat Conditions read the viewed turn's stats.
   const traitGates = React.useMemo(
-    () => gateStates(traitGateInput({ ...viewTraitState, stats: playerStats, entityStats: viewEntityStats }, gateWorld)),
-    [viewTraitState, playerStats, viewEntityStats, gateWorld],
+    () => gateStates(traitGateInput({ ...viewTraitState, stats: globalStats, entityStats: viewEntityStats }, gateWorld)),
+    [viewTraitState, globalStats, viewEntityStats, gateWorld],
   );
   // Each entity's own traits switch its stats on and off, on the viewed turn.
   const entityInForce = React.useCallback(
@@ -1344,14 +1344,14 @@ export const RightPanel = ({
   // Filtered for display but carrying each stat's index in the full array, which the edit slider writes back to.
   // Hidden stats stay live for the AI, regen and code — they just never render, which also drops their
   // delta chip, bar band and history deltas (all keyed off the row).
-  const visibleStats = playerStats
+  const visibleStats = globalStats
     .map((stat, index) => ({ stat, index }))
     .filter(({ stat }) => statEnabled[stat.id] !== false && stat.hidden !== true);
   // Whether the descriptor line is part of this world's stat list at all. Held across every row so the list
   // keeps its shape as values move in and out of bands; a world that names none of them pays nothing, and a
   // stat the player never sees can't put the line there for the ones they do.
   // A world with no stat the player can see gets no Stats tab; the panel then opens on Traits.
-  const hasShownStats = playerStats.some((stat) => stat.hidden !== true) || ownersShowStats;
+  const hasShownStats = globalStats.some((stat) => stat.hidden !== true) || ownersShowStats;
   const shownTab = !hasShownStats && activeTab === 'stats' ? 'traits' : activeTab;
   const anyDescriptors = visibleStats.some(({ stat }) => (stat.descriptors?.length ?? 0) > 0);
   // The author's groups decide where each row sits, so a save made before a regrouping follows it.
@@ -1450,14 +1450,14 @@ export const RightPanel = ({
                     return (
                       <StatRow
                         stat={stat}
-                        {...rowDelta(statDeltas, PLAYER_OWNER, key, isViewingPast ? (viewStatChanges[key] || 0) : null)}
+                        {...rowDelta(statDeltas, null, key, isViewingPast ? (viewStatChanges[key] || 0) : null)}
                         page={currentPage}
                         isViewingPast={isViewingPast}
                         snap={snapStats}
                         editable={isEditMode && !isViewingPast}
                         reserveDescriptorLine={anyDescriptors}
                         onCommitValue={(value) => {
-                          const newStats = [...playerStats];
+                          const newStats = [...globalStats];
                           newStats[index] = { ...stat, value };
                           commitManualStatEdit(newStats);
                         }}
@@ -1487,7 +1487,7 @@ export const RightPanel = ({
               busy={totalPages === 0 || isWaitingForAI || isRevealingNarration || sceneImageJob !== null}
               editing={isEditMode}
               onEditingChange={setIsEditMode}
-              onRegenerate={statUpdatesEnabled && (playerStats.length > 0 || ownersShowStats) ? () => onRegenerateStats(currentPage) : undefined}
+              onRegenerate={statUpdatesEnabled && (globalStats.length > 0 || ownersShowStats) ? () => onRegenerateStats(currentPage) : undefined}
             />
           </ScrollArea>
         </TabsContent>
@@ -1499,9 +1499,9 @@ export const RightPanel = ({
             groups={traitTree.groups}
             entityNodes={traitTree.entityNodes}
             playerEntityIds={playerEntityIds(traitTree)}
-            stats={playerStats}
+            stats={globalStats}
             ownerStats={viewEntityStats}
-            isOff={(id, ownerId) => (ownerId === PLAYER_OWNER
+            isOff={(id, ownerId) => (ownerId === null
               ? disabledTraits.has(id) || !heldTraitIds.has(id)
               : !activeOwned[ownerId]?.includes(id))}
             readOnly={isViewingPast}

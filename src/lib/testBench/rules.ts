@@ -48,19 +48,20 @@ import { clamp } from '@/lib/utils';
 import { entityTexts } from '@/lib/entityTexts';
 import { overviewTexts } from '@/lib/overviewTexts';
 import {
-  broughtIds, canBePlayer, editorGateInput, linksInTreeOrder, originalOf, resolveOwners, type Owner,
+  broughtIds, canBePlayer, editorGateInput, linksInTreeOrder, originalOf, resolveOwners, type GlobalTree, type Owner,
   type OwnerWorld,
 } from '@/lib/owners';
+import { partOf, scopedEntries, scopeKey, type OwnerId } from '@/lib/scope';
 import {
-  PLAYER_OWNER, alwaysOnOverMax, complementary, deadRows, gateOf, gateStates, groupPickState, neverUnlockable, sameRequirement, settleDefaults,
-  unstableCycles, type GateInput, type GateOwner, type GateState, type GateStat, type GateStates, type GateStats, type GateTraitRef,
+  NO_ACTIVE, activeOf, alwaysOnOverMax, gateTrees, gateTreeOf, complementary, deadRows, gateOf, gateStates, groupPickState, neverUnlockable, sameRequirement, settleDefaults,
+  unstableCycles, type GateScopeTree, type GateInput, type GateOwner, type GateState, type GateStat, type GateStatSet, type GateStates, type GateStats, type GateTraitRef,
 } from '@/lib/traitGates';
 import { startingGateStats } from '@/lib/gateStats';
 import { ruleText, rowText } from '@/lib/traitGateLine';
 import { conditionsOf } from '@/lib/requirementRows';
 import { isAlwaysOn } from '@/lib/traitEffects';
 import { offeredWorldTraits, statRows, statRowSide, type StatRow } from '@/lib/traitTree';
-import { playerStatsOf, resolvedEntityStats } from '@/lib/statLinks';
+import { globalStatsOf, resolvedEntityStats } from '@/lib/statLinks';
 import type {
   DictionaryEntry, Entity, GalleryImage, GameLocation, PersonaRef, Placeholder, PlaceholderPin, PlaceholderValue, Stat, StatDescriptor, StatRequirement,
   Trait, TraitGroup, TraitLink, TraitRequirement, TraitRequirementRow, World,
@@ -1827,10 +1828,10 @@ const traitGroupDefaultsOverMax: Rule = {
   severity: 'warning',
   section: 'traits',
   summary: (count) => `${count} trait groups mark more traits as default than they allow`,
-  check: (world) => [...ownersOf(world).values()].flatMap((owner) => owner.groups.flatMap((group) => {
+  check: (world) => treesOf(world).flatMap(({ owner, tree }) => tree.groups.flatMap((group) => {
     const max = group.maxPicks;
     if (max === undefined) return [];
-    const defaults = owner.traits.filter((t) => (t.groupId ?? null) === group.id && t.isDefault && !isAlwaysOn(t));
+    const defaults = tree.traits.filter((t) => (t.groupId ?? null) === group.id && t.isDefault && !isAlwaysOn(t));
     if (defaults.length <= max) return [];
     const groupItem = ownerTraitItem(group, owner, world);
     const defaultItems = defaults.map((t) => ownerTraitItem(t, owner, world));
@@ -1856,7 +1857,7 @@ const traitGroupAlwaysOnOverMax: Rule = {
       for (const over of alwaysOnOverMax(gate)) {
         const k = pairKey(over.ownerId, over.groupId);
         if ((found.get(k)?.traits.length ?? 0) >= over.traitIds.length) continue;
-        const owner = gate.owners.find((o) => o.id === over.ownerId)!;
+        const owner = gateTreeOf(gate, over.ownerId)!;
         found.set(k, {
           owner: owners.find((b) => b.id === over.ownerId),
           group: owner.groups.find((g) => g.id === over.groupId)!,
@@ -1880,7 +1881,7 @@ const traitGroupMinAboveMax: Rule = {
   severity: 'error',
   section: 'traits',
   summary: (count) => `${count} trait groups need more picks than they allow`,
-  check: (world) => [...ownersOf(world).values()].flatMap((owner) => owner.groups.flatMap((group) => {
+  check: (world) => treesOf(world).flatMap(({ owner, tree }) => tree.groups.flatMap((group) => {
     const min = group.minPicks ?? 0;
     if (group.maxPicks === undefined || min <= group.maxPicks) return [];
     return [finding(
@@ -1946,7 +1947,7 @@ const traitGroupTooSmall: Rule = {
 /** The slices the owner resolver reads. */
 export type OwnerSource = Partial<Pick<RuleWorld, 'traits' | 'traitGroups' | 'entities'>>;
 
-const pairKey = (a: string, b: string) => `${a}\u0000${b}`;
+const pairKey = (a: OwnerId, b: string) => `${scopeKey(a)}\u0000${b}`;
 
 /** The gates a report opens: world and owned traits by id, and link requirement overrides by
  *  `pairKey(link id, trait id)`. */
@@ -1984,17 +1985,20 @@ const personaChoices = (world: RuleWorld): PersonaRef[] => [
 
 /** The owners a stat Condition on `ownerId`'s trait or image reads: those it names (every entity that can be
  *  played for `you`) when one holds the stat, else the global stats for a global stat (Q10, Q29). */
-const statReadOwners = (world: RuleWorld, stats: GateStats, ownerId: string, req: StatRequirement): string[] => {
-  const named = req.owner?.kind === 'entity' ? [req.owner.id]
+const statReadOwners = (world: RuleWorld, stats: GateStats, ownerId: OwnerId, req: StatRequirement): OwnerId[] => {
+  const named: OwnerId[] = req.owner?.kind === 'entity' ? [req.owner.id]
     : req.owner?.kind === 'you' ? (world.entities ?? []).filter(canBePlayer).map((e) => e.id) : [ownerId];
-  return named.some((id) => stats[id]?.[req.id]) || !stats[PLAYER_OWNER]?.[req.id] ? named : [PLAYER_OWNER];
+  return named.some((id) => statSetOf(stats, id)?.[req.id]) || !stats.global[req.id] ? named : [null];
 };
 
-/** The stats a stat Condition on `ownerId` reads, one per owner that holds it. */
-const statsReadBy = (world: RuleWorld, stats: GateStats, ownerId: string, req: StatRequirement): GateStat[] =>
-  statReadOwners(world, stats, ownerId, req).flatMap((id) => stats[id]?.[req.id] ?? []);
+/** The stats `ownerId` holds; none for an owner the set lacks. */
+const statSetOf = (stats: GateStats, ownerId: OwnerId): GateStatSet | undefined => partOf(stats, ownerId);
 
-/** An owner as a finding names it: the entity, or null for the player's own root. */
+/** The stats a stat Condition on `ownerId` reads, one per owner that holds it. */
+const statsReadBy = (world: RuleWorld, stats: GateStats, ownerId: OwnerId, req: StatRequirement): GateStat[] =>
+  statReadOwners(world, stats, ownerId, req).flatMap((id) => statSetOf(stats, id)?.[req.id] ?? []);
+
+/** An owner as a finding names it: the entity, or null for global scope. */
 const entityNameOf = (owner: Owner | undefined): string | null => (owner?.entity ? owner.name : null);
 
 /** "“Smite”", or "“Smite” on “Albus”" for a trait an entity owns. Both names arrive quoted. */
@@ -2002,7 +2006,7 @@ const onOwner = (trait: string, owner: string | null): string => (owner === null
 
 /** A trait on one owner, as a gate finding names it and opens it. */
 interface GateTrait {
-  ownerId: string;
+  ownerId: OwnerId;
   traitId: string;
   traitName: string;
   /** See {@link entityNameOf}. */
@@ -2014,7 +2018,7 @@ interface GateTrait {
 
 /** One trait's gate as one owner holds it in the editor. */
 interface HeldGate {
-  owner: GateOwner;
+  owner: GateScopeTree;
   trait: Trait;
   /** The link that brought the trait; absent for a world or owned trait. */
   link?: TraitLink;
@@ -2110,19 +2114,19 @@ const gateReportOf = (world: RuleWorld): GateReport => {
 
   // Stat Conditions read each stat's authored start, as Enter World does (Q23).
   const stats = startingGateStats({ stats: world.stats, statGroups: world.statGroups, entities: world.entities ?? [] });
-  const readOwners = (gate: HeldGate, req: StatRequirement): string[] => statReadOwners(world, stats, gate.owner.id, req);
+  const readOwners = (gate: HeldGate, req: StatRequirement): OwnerId[] => statReadOwners(world, stats, gate.owner.id, req);
   const statsRead = (gate: HeldGate, req: StatRequirement): GateStat[] => statsReadBy(world, stats, gate.owner.id, req);
 
   const plain = ownerWorldOf(world);
   const editor = { ...editorGateInput(plain), stats };
   const editorStates = gateStates(editor);
-  const linksOf = new Map(resolveOwners(plain, undefined).owners.map((b) => [b.id, b.linkOf]));
-  const held: HeldGate[] = editor.owners.flatMap((owner) => owner.traits.map((trait) => {
+  const linksOf = new Map<OwnerId, ReadonlyMap<string, TraitLink>>(resolveOwners(plain, undefined).owners.map((b) => [b.id, b.linkOf]));
+  const held: HeldGate[] = gateTrees(editor).flatMap((owner) => owner.traits.map((trait) => {
     const link = linksOf.get(owner.id)?.get(trait.id);
     return { owner, trait, ...(link ? { link } : {}), rows: rowsOf(gateOf(editorStates, owner.id, trait.id)) };
   }));
   // A linked copy reports only what its original does not: a Condition or a row its link override adds.
-  const originals = new Map(editor.owners.find((o) => o.id === PLAYER_OWNER)?.traits.map((t) => [t.id, t]) ?? []);
+  const originals = new Map(editor.global.traits.map((t) => [t.id, t]));
   const inOriginal = (gate: HeldGate, req: TraitRequirement) =>
     conditionsOf(originals.get(gate.trait.id)?.requires).some((o) => sameRequirement(o, req));
 
@@ -2131,7 +2135,7 @@ const gateReportOf = (world: RuleWorld): GateReport => {
   const openTraits = new Set<string>();
   const openLinks = new Set<string>();
   for (const gate of held) {
-    if (gate.owner.id === PLAYER_OWNER) requirementTexts.set(gate.trait.id, quotedRules(gate.rows));
+    if (gate.owner.id === null) requirementTexts.set(gate.trait.id, quotedRules(gate.rows));
     const rows = gate.trait.requires ?? [];
     gateOf(editorStates, gate.owner.id, gate.trait.id)?.rows.forEach((row, i) => row.conditions.forEach((c, j) => {
       if (!c.unresolved) return;
@@ -2162,9 +2166,9 @@ const gateReportOf = (world: RuleWorld): GateReport => {
       if (req.kind !== 'stat' || (gate.link && (!overridden || inOriginal(gate, req)))) return;
       const read = statsRead(gate, req);
       const stat = labelOf(read[0]?.name ?? req.name ?? '', world);
-      // An effect lands on the trait's owner, or on the player's stat for a `target: 'global'` row.
+      // An effect lands on the trait's owner, or on the global stat for a `target: 'global'` row.
       const readers = readOwners(gate, req);
-      const changes = effects.some((row) => row.statId === req.id && readers.includes(row.target === 'global' ? PLAYER_OWNER : gate.owner.id));
+      const changes = effects.some((row) => row.statId === req.id && readers.includes(row.target === 'global' ? null : gate.owner.id));
       if (changes && !reported.has(req.id)) {
         reported.add(req.id);
         ownStatReads.push({ gate, stat });
@@ -2176,7 +2180,7 @@ const gateReportOf = (world: RuleWorld): GateReport => {
   }
   const heldAt = new Map(held.map((g) => [pairKey(g.owner.id, g.trait.id), g]));
   const neverHolding = deadRows(editor);
-  const deadInWorld = new Set(neverHolding.filter((r) => r.ownerId === PLAYER_OWNER).map((r) => pairKey(r.traitId, String(r.row))));
+  const deadInWorld = new Set(neverHolding.filter((r) => r.ownerId === null).map((r) => pairKey(r.traitId, String(r.row))));
   const sameRow = (a: TraitRequirementRow, b: TraitRequirementRow) =>
     a.all.length === b.all.length && a.all.every((x) => b.all.some((y) => sameRequirement(x, y)));
   const dead = neverHolding.flatMap((r) => {
@@ -2195,13 +2199,13 @@ const gateReportOf = (world: RuleWorld): GateReport => {
     const byId = new Map(owners.map((b) => [b.id, b]));
     let states: GateStates | undefined;
     const named = (r: GateTraitRef): GateTrait => {
-      const owner = byId.get(r.ownerId);
+      const owner = r.ownerId === null ? undefined : byId.get(r.ownerId);
       const link = owner?.linkOf.get(r.traitId);
-      states ??= gateStates({ ...gate, active: {} });
+      states ??= gateStates({ ...gate, active: NO_ACTIVE });
       return {
         ownerId: r.ownerId,
         traitId: r.traitId,
-        traitName: owner?.traits.find((t) => t.id === r.traitId)?.name ?? '',
+        traitName: gateTreeOf(gate, r.ownerId)?.traits.find((t) => t.id === r.traitId)?.name ?? '',
         ownerName: entityNameOf(owner),
         ...(link ? { link } : {}),
         requirements: quotedRules(rowsOf(gateOf(states, r.ownerId, r.traitId))),
@@ -2213,11 +2217,11 @@ const gateReportOf = (world: RuleWorld): GateReport => {
   const openable = ownerWorldOf(world, { traits: openTraits, links: openLinks });
   const passes = personaChoices(world).map((persona) => {
     const pass = passOver(openable, persona);
-    const holds = new Map(pass.gate.owners.map((o) => [o.id, new Set(o.traits.map((t) => t.id))]));
+    const holds = new Map(gateTrees(pass.gate).map((o) => [o.id, new Set(o.traits.map((t) => t.id))]));
     const sets = neverUnlockable(pass.gate);
     return { ...pass, holds, sets, stuck: new Set(sets.flat().map((r) => pairKey(r.ownerId, r.traitId))) };
   });
-  const stuckEverywhere = (ownerId: string, traitId: string) =>
+  const stuckEverywhere = (ownerId: OwnerId, traitId: string) =>
     passes.every((p) => !p.holds.get(ownerId)?.has(traitId) || p.stuck.has(pairKey(ownerId, traitId)));
 
   const reported = new Set<string>();
@@ -2245,29 +2249,30 @@ const gateReportOf = (world: RuleWorld): GateReport => {
   const overrideKey = (link: TraitLink | undefined, traitId: string): string | null =>
     (link?.overrides?.[traitId]?.requires ? pairKey(link.id, traitId) : null);
   const stuckIds = new Set([
-    ...neverUnlockable(input).flat().filter((r) => r.ownerId === PLAYER_OWNER).map((r) => r.traitId),
-    ...stuck.flat().filter((t) => t.ownerId === PLAYER_OWNER && !t.link).map((t) => t.traitId),
+    ...neverUnlockable(input).flat().filter((r) => r.ownerId === null).map((r) => r.traitId),
+    ...stuck.flat().filter((t) => t.ownerId === null && !t.link).map((t) => t.traitId),
     ...stuck.flat().flatMap((t) => overrideKey(t.link, t.traitId) ?? []),
   ]);
   // Each owner settles its own defaults, so a default is off only when no owner keeps it under any persona.
   const everOff = new Set<string>();
   const everOn = new Set<string>();
   const overridden = new Map<string, GateTraitRef>();
-  const settleInto = (gate: Omit<GateInput, 'active'>, linkOf: (ownerId: string, traitId: string) => TraitLink | undefined) => {
+  const settleInto = (gate: Omit<GateInput, 'active'>, linkOf: (ownerId: OwnerId, traitId: string) => TraitLink | undefined) => {
     const settled = settleDefaults(gate);
-    const keyOf = (ownerId: string, traitId: string) => {
+    const keyOf = (ownerId: OwnerId, traitId: string) => {
       const key = overrideKey(linkOf(ownerId, traitId), traitId);
       if (key !== null) overridden.set(key, { ownerId, traitId });
       return key ?? traitId;
     };
     for (const r of settled.turnedOff) everOff.add(keyOf(r.ownerId, r.traitId));
-    for (const [ownerId, ids] of Object.entries(settled.active)) {
+    for (const [ownerId, ids] of scopedEntries(settled.active)) {
       // An owner that keeps an overridden trait on also keeps the original quiet.
       for (const id of ids) everOn.add(id).add(keyOf(ownerId, id));
     }
     return settled;
   };
-  const settledByPass = passes.map((pass) => settleInto(pass.gate, (ownerId, traitId) => pass.owners.get(ownerId)?.linkOf.get(traitId)).active);
+  const settledByPass = passes.map((pass) => settleInto(pass.gate, (ownerId, traitId) =>
+    (ownerId === null ? undefined : pass.owners.get(ownerId)?.linkOf.get(traitId))).active);
   for (const persona of personaChoices(world)) settleInto({ ...input, persona }, (ownerId, traitId) => linksOf.get(ownerId)?.get(traitId));
   const isOff = (key: string) => !stuckIds.has(key) && everOff.has(key) && !everOn.has(key);
   const offDefaults: OffDefault[] = [
@@ -2282,11 +2287,11 @@ const gateReportOf = (world: RuleWorld): GateReport => {
   // unreachable minimum leaves its defaults to that finding, as does a minimum above the maximum.
   const shortfallsByGroup = new Map<string, { runs: number; unreachable: PickShortfall[]; defaults: PickShortfall[] }>();
   passes.forEach((pass, i) => {
-    for (const owner of pass.gate.owners) {
-      const started = settledByPass[i][owner.id] ?? [];
+    for (const owner of gateTrees(pass.gate)) {
+      const started = activeOf(settledByPass[i], owner.id);
       for (const group of owner.groups) {
         const min = group.minPicks ?? 0;
-        const resolvedOwner = pass.owners.get(owner.id);
+        const resolvedOwner = owner.id === null ? undefined : pass.owners.get(owner.id);
         const direct = owner.traits.filter((t) => (t.groupId ?? null) === group.id);
         const entry = shortfallsByGroup.get(pairKey(owner.id, group.id)) ?? { runs: 0, unreachable: [], defaults: [] };
         shortfallsByGroup.set(pairKey(owner.id, group.id), entry);
@@ -2313,12 +2318,12 @@ const gateReportOf = (world: RuleWorld): GateReport => {
   const global = offeredWorldTraits(traits, world.traitGroups ?? []);
   const globalIds = new Set([...global.traits, ...global.groups].map((item) => item.id));
   const entityHolds = (req: TraitRequirement): boolean => (req.kind === 'stat'
-    ? Object.entries(stats).some(([id, set]) => id !== PLAYER_OWNER && !!set[req.id])
-    : req.kind !== 'playingAs' && editor.owners.some((o) => o.id !== PLAYER_OWNER && (req.kind === 'trait' ? o.traits : o.groups).some((x) => x.id === req.id)));
-  const crossings = held.filter((gate) => gate.owner.id === PLAYER_OWNER && global.traits.some((t) => t.id === gate.trait.id))
+    ? Object.values(stats.owners).some((set) => !!set[req.id])
+    : req.kind !== 'playingAs' && editor.owners.some((o) => (req.kind === 'trait' ? o.traits : o.groups).some((x) => x.id === req.id)));
+  const crossings = held.filter((gate) => gate.owner.id === null && global.traits.some((t) => t.id === gate.trait.id))
     .flatMap((gate) => (gate.trait.requires ?? []).flatMap((row, i) => row.all.flatMap((req, j) => {
       if (req.kind === 'playingAs' || req.owner) return [];
-      const isGlobal = req.kind === 'stat' ? !!stats[PLAYER_OWNER]?.[req.id] : globalIds.has(req.id);
+      const isGlobal = req.kind === 'stat' ? !!stats.global[req.id] : globalIds.has(req.id);
       return !isGlobal && entityHolds(req) ? [{ gate, condition: quote(gate.rows[i][j]) }] : [];
     })));
 
@@ -2545,7 +2550,7 @@ const imageReportOf = (world: RuleWorld): ImageRuleReport => {
   const swapped = new Map(ruled.map(({ entity, images }) => [entity.id, ownerOf(entity, images)]));
   const owners = [...input.owners.map((o) => swapped.get(o.id) ?? o), ...[...swapped.values()].filter((o) => !input.owners.some((x) => x.id === o.id))];
   const states = gateStates({ ...input, owners, stats });
-  const readFrom = (entity: Entity, req: StatRequirement): string[] => statReadOwners(world, stats, entity.id, req);
+  const readFrom = (entity: Entity, req: StatRequirement): OwnerId[] => statReadOwners(world, stats, entity.id, req);
 
   const missing: DeadImageCondition[] = [];
   const hideable: Entity[] = [];
@@ -2555,14 +2560,14 @@ const imageReportOf = (world: RuleWorld): ImageRuleReport => {
     images.forEach((img, i) => (img.requires ?? []).forEach((row, r) => row.all.forEach((req, c) => {
       const state = stateOf(i)?.rows[r]?.conditions[c];
       if (req.kind === 'stat' && req.unit === 'percent' && !state?.unresolved) {
-        const read = readFrom(entity, req).flatMap((id) => (stats[id]?.[req.id] ? [stats[id][req.id]] : []));
+        const read = readFrom(entity, req).flatMap((id) => statSetOf(stats, id)?.[req.id] ?? []);
         if (read.length > 0 && read.every((s) => s.min === s.max)) {
           zeroSpans.push({ entity, position: i + 1, condition: quote(labelOf(state!.text, world)), stat: labelOf(read[0].name, world) });
         }
       }
       if (!state?.unresolved) return;
       // A switched-off stat is not missing: the stats rules judge it.
-      if (req.kind === 'stat' && readFrom(entity, req).some((id) => stats[id]?.[req.id]?.inert)) return;
+      if (req.kind === 'stat' && readFrom(entity, req).some((id) => statSetOf(stats, id)?.[req.id]?.inert)) return;
       const texts = stateOf(i)!.rows[r].conditions.map((cond) => labelOf(cond.text, world));
       missing.push({
         entity, position: i + 1, condition: quote(texts[c]), row: row.all.length > 1 ? quote(rowText(texts)) : null, stat: req.kind === 'stat',
@@ -2679,14 +2684,24 @@ const traitLinkRedundant: Rule = {
 // ── Blueprints and copies ─────────────────────────────────────────────────────────────────────────────────
 
 /** Every owner's tree with no persona picked, walked once per world object. */
-const ownersByWorld = new WeakMap<RuleWorld, Map<string, Owner>>();
-const ownersOf = (world: RuleWorld): Map<string, Owner> => {
-  let owners = ownersByWorld.get(world);
-  if (!owners) {
-    owners = new Map(resolveOwners(ownerWorldOf(world), undefined).owners.map((b) => [b.id, b]));
-    ownersByWorld.set(world, owners);
+const resolvedByWorld = new WeakMap<RuleWorld, { global: GlobalTree; owners: Map<string, Owner> }>();
+const resolvedOf = (world: RuleWorld): { global: GlobalTree; owners: Map<string, Owner> } => {
+  let resolved = resolvedByWorld.get(world);
+  if (!resolved) {
+    const { global, owners } = resolveOwners(ownerWorldOf(world), undefined);
+    resolved = { global, owners: new Map(owners.map((b) => [b.id, b])) };
+    resolvedByWorld.set(world, resolved);
   }
-  return owners;
+  return resolved;
+};
+
+/** Each entity owner with no persona picked, by id. */
+const ownersOf = (world: RuleWorld): Map<string, Owner> => resolvedOf(world).owners;
+
+/** Every tree a group rule reads: global scope's, with no owner, then each entity owner's. */
+const treesOf = (world: RuleWorld): { owner: Owner | undefined; tree: Pick<Owner, 'traits' | 'groups'> }[] => {
+  const { global, owners } = resolvedOf(world);
+  return [{ owner: undefined, tree: global }, ...[...owners.values()].map((owner) => ({ owner, tree: owner }))];
 };
 
 /** The copies each entity needs, with why, reconciled once per world object; two rules read it. */
@@ -2740,13 +2755,13 @@ const traitStatNoTarget: Rule = {
   // A blank row is an edit in progress. A trait on any entity may also name a global stat.
   check: (world) => {
     const statWorld = { stats: world.stats ?? [], statGroups: world.statGroups ?? [] };
-    const playerStats = new Set(playerStatsOf(statWorld.stats, statWorld.statGroups).map((s) => s.id));
+    const globalStats = new Set(globalStatsOf(statWorld.stats, statWorld.statGroups).map((s) => s.id));
     const owners = ownersOf(world);
     return (world.entities ?? []).flatMap((entity) => {
       const owner = owners.get(entity.id);
       if (!owner) return [];
       const own = new Set(resolvedEntityStats(statWorld, entity).map((s) => s.id));
-      const namesOwnedStat = (row: StatRow) => !row.statId || statRowSide(row, own, playerStats) !== null;
+      const namesOwnedStat = (row: StatRow) => !row.statId || statRowSide(row, own, globalStats) !== null;
       const name = quote(labelOf(entity.name, world));
       return owner.traits
         .filter((trait) => statRows(trait).some((row) => !namesOwnedStat(row)))
@@ -2776,11 +2791,11 @@ const copyPinRemovedValue: Rule = {
       .filter(({ removed }) => removed.size);
     if (!removing.length) return [];
     const owners = ownersOf(world);
-    const player = owners.get(PLAYER_OWNER);
+    const globalTraits = resolvedOf(world).global.traits;
     const byId = indexPlaceholders(world.placeholders ?? []);
     return removing.flatMap(({ owner, copy, removed }) => {
       const resolvedOwner = owners.get(owner.id);
-      const traits = [...(resolvedOwner?.traits ?? []), ...(canBePlayer(owner) ? player?.traits ?? [] : [])];
+      const traits = [...(resolvedOwner?.traits ?? []), ...(canBePlayer(owner) ? globalTraits : [])];
       const hits = new Map<string, { valueId: string; label: string; item: FindingItem }>();
       const add = (pin: PlaceholderPin, label: string, item: () => FindingItem) => {
         if (!pin.valueId || !removed.has(pin.valueId)) return;

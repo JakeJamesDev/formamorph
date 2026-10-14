@@ -4,7 +4,7 @@ import { buildEntityCardData, parseEntityCardData } from './entityFile';
 import { bindOwnedTraits, comparableOwnedTraits, portableOwnedTraits, type TraitWorld } from './portableTraits';
 import { conditionsOf } from './requirementRows';
 import { entryDefaults, entryGateInput, emptyEntryDraft } from './entryDraft';
-import { gateOf, gateStates, PLAYER_OWNER } from './traitGates';
+import { gateOf, gateStates } from './traitGates';
 import { gateLine } from './traitGateLine';
 
 const S = (id: string, name: string, extra: Partial<Stat> = {}): Stat =>
@@ -66,7 +66,7 @@ describe('a stat Condition on a character card', () => {
       stats: [S('p-hp', 'Health'), S('bp-hp', 'Health', { groupId: 'bp' })],
       entities: [{ id: 'ash', name: 'Ash', stats: [S('ash-hp', 'Health')] }, { id: 'bo', name: 'Bo', stats: [S('bo-hp', 'Health')] }],
     };
-    // The player's Health for You; with no owner, two world stats share the name, so it stays unresolved.
+    // The global Health for You; with no owner, two world stats share the name, so it stays unresolved.
     expect(wounded(bindOwnedTraits(carried, world)).map((r) => r.id)).toEqual(['ash-hp', 'p-hp', '']);
   });
 
@@ -92,7 +92,7 @@ describe('a stat Condition at setup (Q23)', () => {
   });
 
   it('reads the requirement line off the stat, and leaves out a hidden stat', () => {
-    const line = (rage: Partial<Stat>) => gateLine(gateOf(gateStates(entryGateInput(world(rage), emptyEntryDraft())), PLAYER_OWNER, 'Berserk'));
+    const line = (rage: Partial<Stat>) => gateLine(gateOf(gateStates(entryGateInput(world(rage), emptyEntryDraft())), null, 'Berserk'));
     expect(line({ starting: 40 })).toBe('Requires Rage >= 80');
     expect(line({ starting: 40, hidden: true })).toBe('Locked');
     expect(line({ starting: 40, enabled: false })).toBe('Locked');

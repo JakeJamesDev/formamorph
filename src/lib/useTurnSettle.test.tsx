@@ -60,7 +60,7 @@ describe('the per-turn settle', () => {
     let s = await turn(withValue(raging(), 'rage', 70));
     expect(on(s)).toEqual([]);
     expect(valueOf(s, 'focus')).toBe(50);
-    expect(s.cascadeOffTraitIds).toEqual({ world: ['berserk'] });
+    expect(s.cascadeOffTraitIds).toEqual({ global: ['berserk'] });
 
     s = await turn(withValue(s, 'rage', 90));
     expect(on(s)).toEqual(['berserk']);
@@ -90,7 +90,7 @@ describe('the per-turn settle', () => {
     const w: TraitWorld = { traits: [draining], groups: [] };
     const start: TraitRuntimeState = {
       stats: [stat('rage', 85)], traits: [draining], disabledTraitIds: ['berserk'], appliedValues: { berserk: { rage: 30 } },
-      cascadeOffTraitIds: { world: ['berserk'] },
+      cascadeOffTraitIds: { global: ['berserk'] },
     };
     const { turn, commit } = mount(start, w);
     const s = await turn(start, gateStatsOf(start, w));

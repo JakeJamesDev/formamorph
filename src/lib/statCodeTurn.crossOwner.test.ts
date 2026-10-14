@@ -7,7 +7,6 @@ import { runStatCodeTurn, type OwnerCodeTurn, type StatCodeTurn } from './statCo
 import type { StatCodeOwners } from './statCodeTraits';
 import { inPlayOwners } from './ownedTraitsInPlay';
 import { withPersonaEntry } from './persona';
-import { PLAYER_OWNER } from './traitGates';
 import type { Entity, PersonaRef, PlayerStat } from '@/types';
 
 const stat = (over: Partial<PlayerStat>): PlayerStat => ({
@@ -32,7 +31,7 @@ function cast(persona: PersonaRef = asMira, library: Entity[] = []): StatCodeOwn
     acquired: [], disabledTraitIds: [], appliedValues: {}, ownedTraits: {}, entities, library,
     world: {
       traits: [], groups: [], entities: entered, persona,
-      owners: inPlayOwners({ traits: [], traitGroups: [], entities: entered }, persona, library),
+      ...inPlayOwners({ traits: [], traitGroups: [], entities: entered }, persona, library),
     },
   };
 }
@@ -134,9 +133,9 @@ describe('runStatCodeTurn writes across owners', () => {
       [owner('bram', [stat({ id: 'fury', name: 'Fury', code: 'stats.Health.value = 60;' })])],
       { penalties: { health: 10, stamina: 10 } },
     );
-    expect(out.gateStats[PLAYER_OWNER].health.value).toBe(60);
+    expect(out.gateStats.global.health.value).toBe(60);
     // Control: the stat no code moved takes the penalty.
-    expect(out.gateStats[PLAYER_OWNER].stamina.value).toBe(40);
+    expect(out.gateStats.global.stamina.value).toBe(40);
     expect(out.moved).toEqual(['health']);
   });
 
@@ -145,7 +144,7 @@ describe('runStatCodeTurn writes across owners', () => {
       [stat({ id: 'gold', name: 'Gold', code: 'entities.Odette.stats.Calm.value = 75;' })],
       [owner('odette', [stat({ id: 'calm', name: 'Calm', value: 10 })])],
     );
-    expect(out.gateStats.odette.calm.value).toBe(75);
+    expect(out.gateStats.owners.odette.calm.value).toBe(75);
   });
 
   it('drops a write to a switched-off stat, an unknown stat, an entity without the stat and one not in the game, each by its full path', async () => {

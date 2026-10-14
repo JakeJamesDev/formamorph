@@ -10,11 +10,11 @@ import type { Stat, PlayerStat } from '@/types';
  * per-save balance are untouched. Stats the world *removed* are left in place rather than pruned (pruning
  * would delete player data). Returns the same array reference when nothing was added.
  */
-export function backfillPlayerStats(playerStats: PlayerStat[], worldStats: Stat[]): PlayerStat[] {
-  if (!Array.isArray(playerStats) || !Array.isArray(worldStats)) return playerStats;
-  const have = new Set(playerStats.map((s) => s.id));
+export function backfillPlayerStats(stats: PlayerStat[], worldStats: Stat[]): PlayerStat[] {
+  if (!Array.isArray(stats) || !Array.isArray(worldStats)) return stats;
+  const have = new Set(stats.map((s) => s.id));
   const missing = worldStats.filter((s) => s && s.id != null && !have.has(s.id));
-  if (missing.length === 0) return playerStats;
+  if (missing.length === 0) return stats;
   const seeded = missing.map((s) => ({
     ...s,
     // PlayerStat.value is a number; prefer the definition's starting value, then any numeric live value,
@@ -23,7 +23,7 @@ export function backfillPlayerStats(playerStats: PlayerStat[], worldStats: Stat[
       : typeof s.value === 'number' ? s.value
       : s.min ?? 0,
   })) as PlayerStat[];
-  return [...playerStats, ...seeded];
+  return [...stats, ...seeded];
 }
 
 /** Apply {@link backfillPlayerStats} to a GameState (a save's current state or a rollback snapshot),

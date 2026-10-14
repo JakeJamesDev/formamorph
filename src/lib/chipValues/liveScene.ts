@@ -4,7 +4,7 @@ import type {
 } from '@/types';
 import { entityIdsAt } from '../entityPresence';
 import { entityNamed, scenePresentHere, type OwnedTraitsInForce } from '../locationContext';
-import { PLAYER_OWNER } from '../traitGates';
+import type { GateTree } from '../traitGates';
 import { borneByPlayer, inOwnerPlaces, withOwnerTrees, type OwnerTree } from '../ownedTraitsInPlay';
 import type { ResolvedPersona } from '../persona';
 import { treeStatTraits } from '../traitRuntime';
@@ -28,7 +28,9 @@ export interface LiveSceneSources {
   traitGroups: TraitGroup[];
   /** Each entity's owned trait picks and switch-offs. None when absent. */
   ownedTraits?: OwnedTraitStates;
-  /** Each owner's tree, links expanded. An entity with none reads its owned traits alone. */
+  /** Global scope's tree. Absent, the traits keep their own places and the groups are `traitGroups`. */
+  global?: GateTree;
+  /** Each entity owner's tree, links expanded. An entity with none reads its owned traits alone. */
   owners?: readonly OwnerTree[];
   /** Each entity's stat values. None when absent. */
   entityStats?: OwnerStats;
@@ -100,9 +102,9 @@ export function liveChipScene(
   }
   // A trait's own description resolves with its own pins, so the AI reads the same words the player's card
   // shows; the scene's resolve then covers the group headers, since trait text is token-free by then.
-  // The player's traits sit in the player owner's tree, so a Custom Persona pick reads at the root.
-  const player = sources.owners?.find((b) => b.id === PLAYER_OWNER);
-  const traits = inOwnerPlaces(box?.activeTraits ?? sources.traits, player).map((trait) =>
+  // The global traits sit where global scope's tree places them.
+  const globalTree = sources.global;
+  const traits = inOwnerPlaces(box?.activeTraits ?? sources.traits, globalTree).map((trait) =>
     trait.aiDescription ? { ...trait, aiDescription: resolveTrait(trait, trait.aiDescription) } : trait,
   );
 
@@ -116,7 +118,7 @@ export function liveChipScene(
     playedStats: ownerStatParts(sources.playedEntities ?? [], ownedStats),
     playedEntities: ownText([...(sources.playedEntities ?? [])]),
     traits,
-    traitGroups: player ? borneByPlayer(player.groups) : sources.traitGroups,
+    traitGroups: globalTree ? borneByPlayer(globalTree.groups) : sources.traitGroups,
     ownedTraits: ownedInForce,
     ownedStats,
     persona,
@@ -150,16 +152,16 @@ function inForceByOwner(states: OwnedTraitStates | undefined): OwnedTraitsInForc
 /** The live adapter: one memoized builder over the playthrough's contexts. */
 export function useLiveChipScene(sources: LiveSceneSources): (location?: GameLocation | null, box?: SceneWrites | null) => ChipScene {
   const {
-    overview, stats, statPlacement, traits, traitGroups, ownedTraits, owners, entityStats, playedEntities, resolve, resolveTrait, resolveEntity, persona,
+    overview, stats, statPlacement, traits, traitGroups, ownedTraits, global, owners, entityStats, playedEntities, resolve, resolveTrait, resolveEntity, persona,
     location, locations, connections, entities, allEntities, participants, notes, time, placeholders,
   } = sources;
   return useCallback(
     (at?: GameLocation | null, box?: SceneWrites | null) => liveChipScene({
-      overview, stats, statPlacement, traits, traitGroups, ownedTraits, owners, entityStats, playedEntities, resolve, resolveTrait, resolveEntity, persona,
+      overview, stats, statPlacement, traits, traitGroups, ownedTraits, global, owners, entityStats, playedEntities, resolve, resolveTrait, resolveEntity, persona,
       location, locations, connections, entities, allEntities, participants, notes, time, placeholders,
     }, at, box),
     [
-      overview, stats, statPlacement, traits, traitGroups, ownedTraits, owners, entityStats, playedEntities, resolve, resolveTrait, resolveEntity, persona,
+      overview, stats, statPlacement, traits, traitGroups, ownedTraits, global, owners, entityStats, playedEntities, resolve, resolveTrait, resolveEntity, persona,
       location, locations, connections, entities, allEntities, participants, notes, time, placeholders,
     ],
   );

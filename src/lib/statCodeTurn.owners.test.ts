@@ -49,7 +49,7 @@ function played(persona: PersonaRef, library: Entity[] = []): StatCodeOwners {
     acquired: [], disabledTraitIds: [], appliedValues: {}, ownedTraits: {}, entities, library,
     world: {
       traits: [], groups: [], entities: entered, persona,
-      owners: inPlayOwners({ traits: [], traitGroups: [], entities: entered }, persona, library),
+      ...inPlayOwners({ traits: [], traitGroups: [], entities: entered }, persona, library),
     },
   };
 }

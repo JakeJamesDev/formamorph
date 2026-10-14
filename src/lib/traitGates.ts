@@ -8,22 +8,44 @@ import { defaultPicks, exclusiveSiblings, isAlwaysOn, isHidden, traitOrderIndex 
 import { buildTree, flattenTree } from './groupTree';
 import { blueprintsSubtreeIds } from './blueprintGroups';
 import { conditionsOf, rowsHold } from './requirementRows';
-import { playedEntityIds, scopedOf, PLAYER_OWNER, type Scoped } from './scope';
-
-export { PLAYER_OWNER };
+import { partOf, playedEntityIds, scoped, scopedEntries, scopeKey, withPart, type OwnerId, type Scoped } from './scope';
 
 /** The breadcrumb of a world trait or group with no group above it. */
 export const WORLD_BREADCRUMB: readonly string[] = ['World'];
 
-/** One owner's traits and groups. An entity owner's node sits in the world tree under `parentGroupId`. */
-export interface GateOwner {
-  id: string;
-  /** The entity's name, for "Albus: Paladin". Unused for the world. */
-  name: string;
+/** One tree of traits and groups: global scope's, or an entity owner's. */
+export interface GateTree {
   traits: readonly Trait[];
   groups: readonly TraitGroup[];
-  /** The world group an entity owner's node sits in; absent or null = top level. */
+}
+
+/** One entity owner's traits and groups. Its node sits in the world tree under `parentGroupId`. */
+export interface GateOwner extends GateTree {
+  id: string;
+  /** The entity's name, for "Albus: Paladin". */
+  name: string;
+  /** The world group the owner's node sits in; absent or null = top level. */
   parentGroupId?: string | null;
+}
+
+/** A tree with the owner that holds it: an entity owner, or global scope with a null id and no name. */
+export type GateScopeTree = GateTree & { id: OwnerId; name: string; parentGroupId?: string | null };
+
+/** The global tree as a scope. */
+const globalScopeTree = (tree: GateTree): GateScopeTree => ({ id: null, name: '', traits: tree.traits, groups: tree.groups });
+
+/** Every scope in the input: global scope first, then each entity owner in input order. */
+export const gateTrees = (input: Pick<GateInput, 'global' | 'owners'>): GateScopeTree[] => [globalScopeTree(input.global), ...input.owners];
+
+/** `fn` of each scope, scoped by the scope's id. A list without a global scope gets `fn`'s value for none. */
+function perScopeOf<T, H extends { id: OwnerId }>(scopes: Iterable<H>, fn: (scope: H) => T, none: T): Scoped<T> {
+  let global = none;
+  const owners: Record<string, T> = {};
+  for (const scope of scopes) {
+    if (scope.id === null) global = fn(scope);
+    else owners[scope.id] = fn(scope);
+  }
+  return { global, owners };
 }
 
 /** A world entity a "playing as" requirement can name. */
@@ -47,14 +69,24 @@ export interface GateStat {
   hidden?: boolean;
 }
 
-/** Owner id → stat id → that owner's stat. */
-export type GateStats = Readonly<Record<string, Readonly<Record<string, GateStat>>>>;
+/** Stat id → one scope's stat. */
+export type GateStatSet = Readonly<Record<string, GateStat>>;
+
+/** The global stats and each entity owner's, by stat id. */
+export type GateStats = Scoped<GateStatSet>;
+
+/** Each scope's active trait ids. */
+export type GateActive = Scoped<readonly string[]>;
+
+/** No trait active anywhere. */
+export const NO_ACTIVE: GateActive = scoped([]);
 
 export interface GateInput {
-  /** Every present owner, the player first. */
+  /** Global scope's tree: the traits and groups no one owns. */
+  global: GateTree;
+  /** Every present entity owner. */
   owners: readonly GateOwner[];
-  /** Owner id → its active trait ids. */
-  active: Readonly<Record<string, readonly string[]>>;
+  active: GateActive;
   /** Absent, every stat Condition is unresolved. */
   stats?: GateStats;
   entities: readonly GateEntity[];
@@ -88,54 +120,34 @@ export interface GateState {
 /** Every Condition's state across the gate's rows, in authored order. */
 export const gateConditions = (gate: GateState): ConditionState[] => gate.rows.flatMap((row) => row.conditions);
 
-/** Owner id → trait id → that owner's gate on the trait. */
-export type GateStates = ReadonlyMap<string, ReadonlyMap<string, GateState>>;
+/** Trait id → a scope's gate on the trait, for global scope and each entity owner. */
+export type GateStates = Scoped<ReadonlyMap<string, GateState>>;
 
-export const gateOf = (states: GateStates, ownerId: string, traitId: string): GateState | undefined =>
-  states.get(ownerId)?.get(traitId);
+export const gateOf = (states: GateStates, ownerId: OwnerId, traitId: string): GateState | undefined =>
+  partOf(states, ownerId)?.get(traitId);
 
-/** A trait and the owner it belongs to. */
+/** A trait and the owner it belongs to; a null owner is global scope. */
 export interface GateTraitRef {
-  ownerId: string;
+  ownerId: OwnerId;
   traitId: string;
 }
 
-/** The owner ids whose active sets are the player's: the world root, the played entity, and the Custom
- *  Persona entity under None and a library persona. */
-export const playerOwnerIds = (persona: PersonaRef, entities: readonly GateEntity[] = []): string[] =>
-  [PLAYER_OWNER, ...playedEntityIds(persona, entities)];
+/** The active ids `ownerId` holds; none for an owner the input lacks. */
+export const activeOf = (active: GateActive, ownerId: OwnerId): readonly string[] =>
+  partOf(active, ownerId) ?? [];
 
-/** One owner's part of the gate input. `tree` is absent while the input holds none for the owner. */
-export interface GateScopePart {
-  tree?: GateOwner;
-  active: readonly string[];
-  stats: Readonly<Record<string, GateStat>>;
-}
+/** The first scope whose tree holds `traitId`, global scope first: the world's copy of an original, else
+ *  the entity that owns it. */
+export const ownerHolding = (input: Pick<GateInput, 'global' | 'owners'>, traitId: string): GateScopeTree | undefined =>
+  gateTrees(input).find((o) => o.traits.some((t) => t.id === traitId));
 
-/** The gate input in global and owner parts, with the played entities' ids. Every played id has a part. */
-export interface GateScope extends Scoped<GateScopePart> {
-  played: readonly string[];
-}
-
-/** The gate input split into global scope and each entity owner's part by its id. */
-export function gateScope(input: GateInput): GateScope {
-  const trees = new Map(input.owners.map((o) => [o.id, o]));
-  const played = playedEntityIds(input.persona, input.entities);
-  const ids = new Set([...trees.keys(), ...Object.keys(input.active), ...Object.keys(input.stats ?? {}), ...played]);
-  const parts = Object.fromEntries([...ids].map((id): [string, GateScopePart] => {
-    const tree = trees.get(id);
-    return [id, { ...(tree ? { tree } : {}), active: input.active[id] ?? [], stats: input.stats?.[id] ?? {} }];
-  }));
-  return { ...scopedOf(parts, { active: [], stats: {} }), played };
-}
-
-/** The first owner whose tree holds `traitId`: the world's copy of an original, else the entity that owns it. */
-export const ownerHolding = (owners: readonly GateOwner[], traitId: string): GateOwner | undefined =>
-  owners.find((o) => o.traits.some((t) => t.id === traitId));
+/** The scope `ownerId` names in the input. */
+export const gateTreeOf = (input: Pick<GateInput, 'global' | 'owners'>, ownerId: OwnerId): GateScopeTree | undefined =>
+  (ownerId === null ? globalScopeTree(input.global) : input.owners.find((o) => o.id === ownerId));
 
 /** The refs the player may see named: every one but a Hidden trait in its owner's tree. */
-export const shownRefs = (owners: readonly GateOwner[], refs: readonly GateTraitRef[]): GateTraitRef[] =>
-  refs.filter((ref) => !owners.some((o) => o.id === ref.ownerId && o.traits.some((t) => t.id === ref.traitId && isHidden(t))));
+export const shownRefs = (input: Pick<GateInput, 'global' | 'owners'>, refs: readonly GateTraitRef[]): GateTraitRef[] =>
+  refs.filter((ref) => !gateTreeOf(input, ref.ownerId)?.traits.some((t) => t.id === ref.traitId && isHidden(t)));
 
 /** The owner a requirement names; absent for the same owner and for "playing as". */
 export const requirementOwnerOf = (req: TraitRequirement): RequirementOwner | undefined =>
@@ -151,16 +163,20 @@ export const sameRequirement = (a: TraitRequirement, b: TraitRequirement): boole
   a.kind === b.kind && a.id === b.id && requirementOwnerKey(requirementOwnerOf(a)) === requirementOwnerKey(requirementOwnerOf(b)) && !a.not === !b.not
   && (a.kind !== 'stat' || (b.kind === 'stat' && a.operator === b.operator && a.value === b.value && a.unit === b.unit));
 
-interface Located<T> { owner: GateOwner; item: T }
+interface Located<T> { owner: GateScopeTree; item: T }
 
-const key = (ownerId: string, traitId: string) => `${ownerId}\u0000${traitId}`;
+const key = (ownerId: OwnerId, traitId: string) => `${scopeKey(ownerId)}\u0000${traitId}`;
 const keyOf = (t: Located<{ id: string }>) => key(t.owner.id, t.item.id);
 
-/** Whether `id` is active in owner `ownerId`. */
-type ActiveIn = (ownerId: string, id: string) => boolean;
+/** Whether `id` is active in scope `ownerId`. */
+type ActiveIn = (ownerId: OwnerId, id: string) => boolean;
+
+/** The stats `ownerId` holds; none for an owner the input lacks. */
+const statsIn = (stats: GateStats | undefined, ownerId: OwnerId): GateStatSet | undefined =>
+  (stats && partOf(stats, ownerId));
 
 interface OwnerIndex {
-  owner: GateOwner;
+  owner: GateScopeTree;
   traits: Map<string, Located<Trait>>;
   groups: Map<string, Located<TraitGroup>>;
   /** Group id → every trait below it in this owner's tree. */
@@ -171,7 +187,7 @@ interface OwnerIndex {
 
 /** Lookups built once per input: each owner's tree, every name a requirement can read, and the player set. */
 function index(input: GateInput) {
-  const owners = new Map<string, OwnerIndex>();
+  const owners = new Map<OwnerId, OwnerIndex>();
   const traitNames = new Map<string, string>();
   const groupNames = new Map<string, string>();
   const hiddenTraits = new Set<string>();
@@ -182,7 +198,7 @@ function index(input: GateInput) {
   };
   for (const trait of input.originals?.traits ?? []) nameTrait(trait);
   for (const group of input.originals?.groups ?? []) groupNames.set(group.id, group.name);
-  for (const owner of input.owners) {
+  for (const owner of gateTrees(input)) {
     const traits = new Map(owner.traits.map((item) => [item.id, { owner, item }]));
     const groups = new Map(owner.groups.map((item) => [item.id, { owner, item }]));
     for (const trait of owner.traits) nameTrait(trait);
@@ -205,28 +221,31 @@ function index(input: GateInput) {
   }
   const entities = new Map(input.entities.map((entity) => [entity.id, entity]));
   const played = playedEntityIds(input.persona, input.entities);
-  const stats = input.stats ?? {};
+  const stats = input.stats;
   const global = globalItems(input);
-  const holds = (ownerId: string, req: Targeted): boolean => (req.kind === 'stat' ? !!stats[ownerId]?.[req.id]
+  const holds = (ownerId: OwnerId, req: Targeted): boolean => (req.kind === 'stat' ? !!statsIn(stats, ownerId)?.[req.id]
     : !!owners.get(ownerId)?.[req.kind === 'trait' ? 'traits' : 'groups'].has(req.id));
-  const isGlobal = (req: Targeted): boolean => (req.kind === 'stat' ? !!stats[PLAYER_OWNER]?.[req.id]
+  const isGlobal = (req: Targeted): boolean => (req.kind === 'stat' ? !!stats?.global[req.id]
     : (req.kind === 'trait' ? global.traits : global.groups).has(req.id));
-  /** The owners a Condition on `from` reads: those it names (the host for Same Owner, the played entities for
-   *  You) when one holds the target; else global scope for a global target (Q10, Q29); else the named ones. */
-  const ownerSet = (req: Targeted, from: GateOwner): ReadonlySet<string> => {
-    const named = req.owner === undefined ? [from.id] : req.owner.kind === 'you' ? played : [req.owner.id];
+  /** The scopes a Condition on `from` reads: those it names (the host for Same Owner, the played entities
+   *  for You) when one holds the target; else global scope for a global target (Q10, Q29); else the named
+   *  ones. */
+  const ownerSet = (req: Targeted, from: GateScopeTree): ReadonlySet<OwnerId> => {
+    const named: OwnerId[] = req.owner === undefined ? [from.id] : req.owner.kind === 'you' ? played : [req.owner.id];
     if (named.some((id) => holds(id, req)) || !isGlobal(req)) return new Set(named);
-    return new Set([PLAYER_OWNER]);
+    return new Set([null]);
   };
-  const traitsBelow = (set: ReadonlySet<string>, groupId: string): string[] =>
+  const traitsBelow = (set: ReadonlySet<OwnerId>, groupId: string): string[] =>
     [...set].flatMap((ownerId) => owners.get(ownerId)?.below.get(groupId) ?? []);
   const statNames = new Map<string, string>();
-  for (const set of Object.values(stats)) for (const [id, stat] of Object.entries(set)) if (!statNames.has(id)) statNames.set(id, stat.name);
-  /** The stat a stat Condition on `from` reads: the first owner holding the id in its owner set. Null when no
-   *  owner in the set holds it. */
-  const statOf = (req: StatRequirement, from: GateOwner): GateStat | null => {
+  for (const [, set] of stats ? scopedEntries(stats) : []) {
+    for (const [id, stat] of Object.entries(set)) if (!statNames.has(id)) statNames.set(id, stat.name);
+  }
+  /** The stat a stat Condition on `from` reads: the first scope of the id in its owner set. Null when no
+   *  scope in the set has it. */
+  const statOf = (req: StatRequirement, from: GateScopeTree): GateStat | null => {
     for (const ownerId of ownerSet(req, from)) {
-      const stat = stats[ownerId]?.[req.id];
+      const stat = statsIn(stats, ownerId)?.[req.id];
       if (stat) return stat;
     }
     return null;
@@ -240,13 +259,13 @@ function index(input: GateInput) {
 type Targeted = Exclude<TraitRequirement, { kind: 'playingAs' }>;
 
 /** The global traits and groups: the world's own, outside Blueprints. Read from the originals, else from the
- *  global owner's tree. */
-function globalItems(input: Pick<GateInput, 'owners' | 'originals'>): { traits: ReadonlySet<string>; groups: ReadonlySet<string> } {
-  const world = input.originals ?? input.owners.find((o) => o.id === PLAYER_OWNER);
-  const groups = world?.groups ?? [];
+ *  global tree. */
+function globalItems(input: Pick<GateInput, 'global' | 'originals'>): { traits: ReadonlySet<string>; groups: ReadonlySet<string> } {
+  const world = input.originals ?? input.global;
+  const groups = world.groups;
   const blueprints = blueprintsSubtreeIds(groups);
   return {
-    traits: new Set((world?.traits ?? []).filter((t) => t.groupId == null || !blueprints.has(t.groupId)).map((t) => t.id)),
+    traits: new Set(world.traits.filter((t) => t.groupId == null || !blueprints.has(t.groupId)).map((t) => t.id)),
     groups: new Set(groups.filter((g) => !blueprints.has(g.id)).map((g) => g.id)),
   };
 }
@@ -256,9 +275,9 @@ type Index = ReturnType<typeof index>;
 /** Each owner's active set, limited to the traits it holds: a pick an owner no longer holds, such as a
  *  Custom Persona pick lying dormant under a world persona, opens nothing. `settle` locates the same way. */
 const activeSets = (input: GateInput): ActiveIn => {
-  const sets = new Map(input.owners.map((owner) => {
+  const sets = new Map(gateTrees(input).map((owner) => {
     const held = new Set(owner.traits.map((t) => t.id));
-    return [owner.id, new Set((input.active[owner.id] ?? []).filter((id) => held.has(id)))];
+    return [owner.id, new Set(activeOf(input.active, owner.id).filter((id) => held.has(id)))];
   }));
   return (ownerId, id) => sets.get(ownerId)?.has(id) ?? false;
 };
@@ -298,7 +317,7 @@ function compares(reading: number, operator: StatRequirement['operator'], value:
 
 /** Whether a stat Condition on `from` holds: its stat resolves and is not inert, and it compares, or fails to
  *  under Not. */
-function statHolds(req: StatRequirement, from: GateOwner, idx: Index): boolean {
+function statHolds(req: StatRequirement, from: GateScopeTree, idx: Index): boolean {
   const stat = idx.statOf(req, from);
   if (!stat || stat.inert) return false;
   return compares(statReading(stat, req.unit), req.operator, req.value) !== !!req.not;
@@ -366,7 +385,7 @@ function requirementText(req: TraitRequirement, idx: Index): { text: string; unr
 
 /** A reader for any Condition's text against the input's names, as the gate line reads it. */
 export function conditionTexts(input: Omit<GateInput, 'active' | 'persona'>): (req: TraitRequirement) => string {
-  const idx = index({ ...input, active: {}, persona: { source: 'none' } });
+  const idx = index({ ...input, active: NO_ACTIVE, persona: { source: 'none' } });
   return (req) => requirementText(req, idx).text;
 }
 
@@ -395,16 +414,14 @@ export const complementary = (a: TraitRequirement, b: TraitRequirement): boolean
 export function gateStates(input: GateInput): GateStates {
   const idx = index(input);
   const activeIn = activeSets(input);
-  const out = new Map<string, Map<string, GateState>>();
-  for (const { owner, traits } of idx.owners.values()) {
+  return perScopeOf([...idx.owners.values()].map((o) => o.owner), (owner) => {
     const states = new Map<string, GateState>();
-    for (const trait of traits.values()) {
+    for (const trait of idx.owners.get(owner.id)!.traits.values()) {
       const rows = rowStatesOf(trait.item.requires ?? [], trait, activeIn, idx);
       states.set(trait.item.id, { unlocked: rows.length === 0 || rows.some((r) => r.holds), rows });
     }
-    out.set(owner.id, states);
-  }
-  return out;
+    return states;
+  }, new Map());
 }
 
 /** Each row's state for `rows` read from `host`: a stat resolves against the owner set of `host`, which the
@@ -426,28 +443,31 @@ function rowStatesOf(rows: readonly TraitRequirementRow[], host: Located<{ id: s
  * The state of loose Requirement Rows, such as an image's Visibility rule, read from `ownerId`: that owner when
  * the input holds it, else an owner with no traits (an entity that only has stats and images).
  */
-export function ruleStates(input: GateInput, ownerId: string, rows: readonly TraitRequirementRow[]): RowState[] {
+export function ruleStates(input: GateInput, ownerId: OwnerId, rows: readonly TraitRequirementRow[]): RowState[] {
   const idx = index(input);
   const owner = idx.owners.get(ownerId)?.owner
-    ?? { id: ownerId, name: idx.entities.get(ownerId)?.name ?? '', traits: [], groups: [] };
-  return rowStatesOf(rows, { owner, item: { id: `rule:${ownerId}` } }, activeSets(input), idx);
+    ?? { id: ownerId, name: (ownerId !== null && idx.entities.get(ownerId)?.name) || '', traits: [], groups: [] };
+  return rowStatesOf(rows, { owner, item: { id: `rule:${scopeKey(ownerId)}` } }, activeSets(input), idx);
 }
 
+/** Each scope's trait id lists. */
+export type ScopedIds = Scoped<string[]>;
+
 export interface SettleResult {
-  /** Owner id → the settled active trait ids: the proposed order, then returned traits as they joined. */
-  active: Record<string, string[]>;
+  /** Each scope's settled active trait ids: the proposed order, then returned traits as they joined. */
+  active: ScopedIds;
   /** Proposed traits whose gate did not hold, dependents before their prerequisites. */
   turnedOff: GateTraitRef[];
   /** Cascade-off traits whose gate holds again, prerequisites first. */
   returned: GateTraitRef[];
-  /** Owner id → the traits a cascade has turned off and that may still return. */
-  cascadeOff: Record<string, string[]>;
+  /** Each scope's traits a cascade has turned off and that may still return. */
+  cascadeOff: ScopedIds;
 }
 
-/** Every trait's position across owners: the world's tree first, then each owner's in input order. */
+/** Every trait's position across scopes: the global tree first, then each owner's in input order. */
 function authoredRank(input: GateInput): Map<string, number> {
   const rank = new Map<string, number>();
-  for (const owner of input.owners) {
+  for (const owner of gateTrees(input)) {
     const base = rank.size;
     for (const [id, i] of traitOrderIndex(owner.traits, owner.groups)) rank.set(key(owner.id, id), base + i);
   }
@@ -458,7 +478,7 @@ const byRank = <T extends Located<Trait>>(items: readonly T[], rank: ReadonlyMap
   [...items].sort((a, b) => (rank.get(keyOf(a)) ?? 0) - (rank.get(keyOf(b)) ?? 0));
 
 /** The traits a Condition on `from` names, in the owners it reads, either polarity. */
-function targetsOf(req: TraitRequirement, from: GateOwner, idx: Index): Located<Trait>[] {
+function targetsOf(req: TraitRequirement, from: GateScopeTree, idx: Index): Located<Trait>[] {
   if (req.kind === 'playingAs' || req.kind === 'stat') return [];
   const set = idx.ownerSet(req, from);
   const ids = req.kind === 'trait' ? [req.id] : [...new Set(idx.traitsBelow(set, req.id))];
@@ -466,7 +486,7 @@ function targetsOf(req: TraitRequirement, from: GateOwner, idx: Index): Located<
 }
 
 /** Whether `req` on `from` could be met by `p` being active. A Not Condition is never met by a trait. */
-const metBy = (req: TraitRequirement, from: GateOwner, p: Located<Trait>, idx: Index): boolean =>
+const metBy = (req: TraitRequirement, from: GateScopeTree, p: Located<Trait>, idx: Index): boolean =>
   !req.not && targetsOf(req, from, idx).includes(p);
 
 /** Order turned-off traits so each comes before every trait it required; ties and loops go by authored rank. */
@@ -488,10 +508,10 @@ function cascadeOrder(off: Located<Trait>[], idx: Index, rank: ReadonlyMap<strin
 }
 
 /** The traits `lists` names, each located in its own owner; an id the owner lacks is skipped. */
-function locate(idx: Index, lists: Readonly<Record<string, readonly string[]>>): Located<Trait>[] {
+function locate(idx: Index, lists: GateActive): Located<Trait>[] {
   const out: Located<Trait>[] = [];
   for (const owner of idx.owners.values()) {
-    for (const id of lists[owner.owner.id] ?? []) {
+    for (const id of activeOf(lists, owner.owner.id)) {
       const found = owner.traits.get(id);
       if (found) out.push(found);
     }
@@ -515,7 +535,7 @@ function locate(idx: Index, lists: Readonly<Record<string, readonly string[]>>):
  * turns off a pick or an Always On trait: it stays waiting instead. A left-out trait comes back once the set
  * checks clean with it. A pick that turns off this way goes to the cascade-off list like any other.
  */
-export function settle(input: GateInput, cascadeOff: Readonly<Record<string, readonly string[]>> = {}): SettleResult {
+export function settle(input: GateInput, cascadeOff: GateActive = NO_ACTIVE): SettleResult {
   const idx = index(input);
   const rank = authoredRank(input);
   const proposed = locate(idx, input.active);
@@ -589,20 +609,15 @@ export function settle(input: GateInput, cascadeOff: Readonly<Record<string, rea
 
   // An id the owner does not hold has no gate to check, so it stays: a save keeps a trait the world has
   // since deleted.
-  const active: Record<string, string[]> = {};
-  for (const owner of input.owners) {
-    const held = idx.owners.get(owner.id)!.traits;
-    active[owner.id] = [
-      ...(input.active[owner.id] ?? []).filter((id) => kept.has(key(owner.id, id)) || !held.has(id)),
-      ...returned.filter((t) => t.owner === owner).map((t) => t.item.id),
-    ];
-  }
   const off = cascadeOrder(proposed.filter((t) => !kept.has(keyOf(t))), idx, rank);
   const stillWaiting = candidates.filter((t) => !kept.has(keyOf(t)));
-  const nextCascadeOff: Record<string, string[]> = {};
-  for (const owner of input.owners) {
-    nextCascadeOff[owner.id] = [...off, ...stillWaiting].filter((t) => t.owner === owner && !isAlwaysOn(t.item)).map((t) => t.item.id);
-  }
+  const scopes = [...idx.owners.values()].map((o) => o.owner);
+  const active = perScopeOf(scopes, (owner) => [
+    ...activeOf(input.active, owner.id).filter((id) => kept.has(key(owner.id, id)) || !idx.owners.get(owner.id)!.traits.has(id)),
+    ...returned.filter((t) => t.owner === owner).map((t) => t.item.id),
+  ], []);
+  const nextCascadeOff = perScopeOf(scopes, (owner) =>
+    [...off, ...stillWaiting].filter((t) => t.owner === owner && !isAlwaysOn(t.item)).map((t) => t.item.id), []);
   const ref = (t: Located<Trait>): GateTraitRef => ({ ownerId: t.owner.id, traitId: t.item.id });
   return { active, turnedOff: off.map(ref), returned: returned.map(ref), cascadeOff: nextCascadeOff };
 }
@@ -628,21 +643,25 @@ export function groupPickState(group: TraitGroup, traits: readonly Trait[], acti
   return { count, min, max, short: count < min, full: max !== null && count >= max };
 }
 
-/** Owner id → group id → that owner's pick state, for every group in every owner's tree. */
-export function groupPickStates(input: Pick<GateInput, 'owners' | 'active'>): Map<string, Map<string, GroupPickState>> {
-  return new Map(input.owners.map((owner) => {
-    const active = input.active[owner.id] ?? [];
-    return [owner.id, new Map(owner.groups.map((g) => [g.id, groupPickState(g, owner.traits, active)]))];
-  }));
+/** Group id → each scope's pick state, for every group in every scope's tree. */
+export function groupPickStates(input: Pick<GateInput, 'global' | 'owners' | 'active'>): Scoped<Map<string, GroupPickState>> {
+  const of = (tree: GateTree, ownerId: OwnerId) => {
+    const active = activeOf(input.active, ownerId);
+    return new Map(tree.groups.map((g) => [g.id, groupPickState(g, tree.traits, active)]));
+  };
+  return scoped(of(input.global, null), Object.fromEntries(input.owners.map((owner) => [owner.id, of(owner, owner.id)])));
 }
+
+/** The input the switch checks read: the trees and the active sets. */
+type SwitchInput = Pick<GateInput, 'global' | 'owners' | 'active'>;
 
 /** Whether switching `traitId` on would overfill its group in `ownerId`: the group is full at a max above
  *  one. A max-one group swaps its pick instead. */
-export function overfills(input: Pick<GateInput, 'owners' | 'active'>, ownerId: string, traitId: string): boolean {
-  const owner = input.owners.find((o) => o.id === ownerId);
+export function overfills(input: SwitchInput, ownerId: OwnerId, traitId: string): boolean {
+  const owner = gateTreeOf(input, ownerId);
   const groupId = owner?.traits.find((t) => t.id === traitId)?.groupId ?? null;
   const group = owner?.groups.find((g) => g.id === groupId);
-  const active = input.active[ownerId] ?? [];
+  const active = activeOf(input.active, ownerId);
   return !!owner && !!group && group.maxPicks !== 1 && !active.includes(traitId)
     && groupPickState(group, owner.traits, active).full;
 }
@@ -652,22 +671,22 @@ export const leavesShort = (picks: GroupPickState): boolean => picks.count - 1 <
 
 /** Whether switching `traitId` off would leave its group in `ownerId` below the minimum, including a group
  *  a cascade has already left short. */
-export function underfills(input: Pick<GateInput, 'owners' | 'active'>, ownerId: string, traitId: string): boolean {
-  const owner = input.owners.find((o) => o.id === ownerId);
+export function underfills(input: SwitchInput, ownerId: OwnerId, traitId: string): boolean {
+  const owner = gateTreeOf(input, ownerId);
   const groupId = owner?.traits.find((t) => t.id === traitId)?.groupId ?? null;
   const group = owner?.groups.find((g) => g.id === groupId);
-  const active = input.active[ownerId] ?? [];
+  const active = activeOf(input.active, ownerId);
   return !!owner && !!group && active.includes(traitId) && leavesShort(groupPickState(group, owner.traits, active));
 }
 
 /** Whether a trait's mode refuses the switch in `ownerId`: the trait is Always On, or switching it on would
  *  retire an active Always On sibling in a max-one group. */
-export function modeRefuses(input: Pick<GateInput, 'owners' | 'active'>, ownerId: string, traitId: string): boolean {
-  const owner = input.owners.find((o) => o.id === ownerId);
+export function modeRefuses(input: SwitchInput, ownerId: OwnerId, traitId: string): boolean {
+  const owner = gateTreeOf(input, ownerId);
   const trait = owner?.traits.find((t) => t.id === traitId);
   if (!owner || !trait) return false;
   if (isAlwaysOn(trait)) return true;
-  const active = input.active[ownerId] ?? [];
+  const active = activeOf(input.active, ownerId);
   const groupId = trait.groupId ?? null;
   return !active.includes(traitId) && owner.groups.find((g) => g.id === groupId)?.maxPicks === 1
     && owner.traits.some((t) => (t.groupId ?? null) === groupId && isAlwaysOn(t) && active.includes(t.id));
@@ -679,34 +698,35 @@ export function modeRefuses(input: Pick<GateInput, 'owners' | 'active'>, ownerId
  * on, and the mode refuses what `modeRefuses` names: the result is null.
  */
 export function switchTrait(
-  input: GateInput, ownerId: string, traitId: string, cascadeOff: Readonly<Record<string, readonly string[]>> = {},
+  input: GateInput, ownerId: OwnerId, traitId: string, cascadeOff: GateActive = NO_ACTIVE,
 ): SettleResult | null {
   if (modeRefuses(input, ownerId, traitId)) return null;
-  const current = input.active[ownerId] ?? [];
+  const current = activeOf(input.active, ownerId);
   let next: string[];
   if (current.includes(traitId)) {
     next = current.filter((id) => id !== traitId);
   } else {
     if (gateOf(gateStates(input), ownerId, traitId)?.unlocked === false || overfills(input, ownerId, traitId)) return null;
-    const owner = input.owners.find((o) => o.id === ownerId);
+    const owner = gateTreeOf(input, ownerId);
     const trait = owner?.traits.find((t) => t.id === traitId);
     const retire = new Set(owner && trait ? exclusiveSiblings(trait, owner.traits, owner.groups) : []);
     next = [...current.filter((id) => !retire.has(id)), traitId];
   }
-  return settle({ ...input, active: { ...input.active, [ownerId]: next } }, cascadeOff);
+  return settle({ ...input, active: withPart(input.active, ownerId, next) }, cascadeOff);
 }
 
-/** Every owner's default traits, capped at each group's max in authored order after the Always On traits
+/** Every scope's default traits, capped at each group's max in authored order after the Always On traits
  *  active with no pick, settled so a gated default whose chain has no open root starts unselected. */
 export function settleDefaults(input: Omit<GateInput, 'active'>): SettleResult {
-  const alwaysOnIn = (active: Record<string, string[]>) => Object.fromEntries(input.owners.map((owner) =>
-    [owner.id, (active[owner.id] ?? []).filter((id) => owner.traits.some((t) => t.id === id && isAlwaysOn(t)))]));
-  const withDefaults = (alwaysOn: Record<string, string[]>) => settle({
+  const scopes = gateTrees(input);
+  const alwaysOnIn = (active: GateActive): GateActive => perScopeOf(scopes, (owner) =>
+    activeOf(active, owner.id).filter((id) => owner.traits.some((t) => t.id === id && isAlwaysOn(t))), []);
+  const withDefaults = (alwaysOn: GateActive) => settle({
     ...input,
-    active: Object.fromEntries(input.owners.map((o) => [o.id, defaultPicks(o.traits, o.groups, alwaysOn[o.id] ?? [])])),
+    active: perScopeOf(scopes, (o) => defaultPicks(o.traits, o.groups, [...activeOf(alwaysOn, o.id)]), []),
   });
   // A default can open an Always On trait that then takes its group's room, so the cap reruns with it counted.
-  let alwaysOn = alwaysOnIn(settle({ ...input, active: {} }).active);
+  let alwaysOn = alwaysOnIn(settle({ ...input, active: NO_ACTIVE }).active);
   let result = withDefaults(alwaysOn);
   for (let pass = 0; pass < 3; pass++) {
     const next = alwaysOnIn(result.active);
@@ -725,7 +745,7 @@ export function settleDefaults(input: Omit<GateInput, 'active'>): SettleResult {
  * Not Condition counts as holding, so the check may under-report (Q15).
  */
 export function neverUnlockable(input: Omit<GateInput, 'active'>): GateTraitRef[][] {
-  const idx = index({ ...input, active: {} });
+  const idx = index({ ...input, active: NO_ACTIVE });
   const personas = new Set(input.entities.filter((e) => e.persona).map((e) => e.id));
   const open = new Set<string>();
   const activeIn: ActiveIn = (ownerId, id) => open.has(key(ownerId, id));
@@ -744,7 +764,7 @@ export function neverUnlockable(input: Omit<GateInput, 'active'>): GateTraitRef[
     }
   }
 
-  const rank = authoredRank({ ...input, active: {} });
+  const rank = authoredRank({ ...input, active: NO_ACTIVE });
   const stuck = byRank(all.filter((t) => !open.has(keyOf(t))), rank);
   const root = new Map(stuck.map((t) => [keyOf(t), keyOf(t)]));
   const find = (k: string): string => (root.get(k) === k ? k : find(root.get(k)!));
@@ -767,8 +787,8 @@ export function neverUnlockable(input: Omit<GateInput, 'active'>): GateTraitRef[
  * order and passes. Each set is a strongly connected part of the requirement graph, in authored order.
  */
 export function unstableCycles(input: Omit<GateInput, 'active'>): GateTraitRef[][] {
-  const idx = index({ ...input, active: {} });
-  const rank = authoredRank({ ...input, active: {} });
+  const idx = index({ ...input, active: NO_ACTIVE });
+  const rank = authoredRank({ ...input, active: NO_ACTIVE });
   const all = byRank([...idx.owners.values()].flatMap((o) => [...o.traits.values()]), rank);
   // The trait itself and its exclusive siblings in its own tree never count (Q26), so they add no edge.
   const own = (d: Located<Trait>, p: Located<Trait>) => p.owner.id === d.owner.id
@@ -842,11 +862,11 @@ export interface RowRef extends GateTraitRef {
  * Not, under the same owner (Q14, Q34). The group reads the owner's own tree, as the gate does.
  */
 export function deadRows(input: Omit<GateInput, 'active'>): RowRef[] {
-  const idx = index({ ...input, active: {} });
+  const idx = index({ ...input, active: NO_ACTIVE });
   // Two Conditions share an owner set when they read the same owners, however each names them.
-  const sameOwners = (a: ReadonlySet<string>, b: ReadonlySet<string>) => a.size === b.size && [...a].every((id) => b.has(id));
+  const sameOwners = (a: ReadonlySet<OwnerId>, b: ReadonlySet<OwnerId>) => a.size === b.size && [...a].every((id) => b.has(id));
   // A stat Condition is satisfiable both ways, so it clashes with nothing (Q20).
-  const clash = (owner: GateOwner) => (plain: TraitRequirement, not: TraitRequirement): boolean => {
+  const clash = (owner: GateScopeTree) => (plain: TraitRequirement, not: TraitRequirement): boolean => {
     if (plain.not || !not.not || plain.kind === 'stat' || not.kind === 'stat') return false;
     if (plain.kind === 'playingAs' || not.kind === 'playingAs') return plain.kind === not.kind && plain.id === not.id;
     const set = idx.ownerSet(plain, owner);
@@ -854,13 +874,13 @@ export function deadRows(input: Omit<GateInput, 'active'>): RowRef[] {
     if (plain.kind === not.kind && plain.id === not.id) return true;
     return plain.kind === 'trait' && not.kind === 'group' && idx.traitsBelow(set, not.id).includes(plain.id);
   };
-  return input.owners.flatMap((owner) => owner.traits.flatMap((trait) => (trait.requires ?? []).flatMap((row, i) =>
+  return gateTrees(input).flatMap((owner) => owner.traits.flatMap((trait) => (trait.requires ?? []).flatMap((row, i) =>
     (row.all.some((a) => row.all.some((b) => clash(owner)(a, b))) ? [{ ownerId: owner.id, traitId: trait.id, row: i }] : []))));
 }
 
-/** A group whose Always On traits can be on together past its max, on one owner. */
+/** A group whose Always On traits can be on together past its max, on one scope. */
 export interface AlwaysOnOverflow {
-  ownerId: string;
+  ownerId: OwnerId;
   groupId: string;
   max: number;
   /** The largest set one selection opens together, in authored order. */
@@ -876,8 +896,8 @@ const OVERFLOW_SEARCH_BUDGET = 20_000;
  * open root with no two max-one rivals picked. The search is brute force over the group's Always On traits.
  */
 export function alwaysOnOverMax(input: Omit<GateInput, 'active'>): AlwaysOnOverflow[] {
-  const idx = index({ ...input, active: {} });
-  const rank = authoredRank({ ...input, active: {} });
+  const idx = index({ ...input, active: NO_ACTIVE });
+  const rank = authoredRank({ ...input, active: NO_ACTIVE });
   const stuck = new Set(neverUnlockable(input).flat().map((r) => key(r.ownerId, r.traitId)));
   const out: AlwaysOnOverflow[] = [];
   for (const { owner, traits } of idx.owners.values()) {
@@ -990,16 +1010,16 @@ export const withRequirementOwner = (requirement: TraitRequirement, owner?: Requ
  * ever hold it up.
  */
 export function requirementOptions(input: Omit<GateInput, 'active' | 'persona'>, traitId: string): RequirementOptions {
-  const idx = index({ ...input, active: {}, persona: { source: 'none' } });
-  const from = ownerHolding(input.owners, traitId) ?? input.owners[0];
-  const skip = new Set([traitId, ...(idx.owners.get(from.id)?.rivals.get(traitId) ?? [])]);
+  const idx = index({ ...input, active: NO_ACTIVE, persona: { source: 'none' } });
+  const fromId = ownerHolding(input, traitId)?.id ?? null;
+  const skip = new Set([traitId, ...(idx.owners.get(fromId)?.rivals.get(traitId) ?? [])]);
   const everyOwner = new Set(idx.owners.keys());
   // A group whose every trait is skipped can never hold; an empty one still can, once it gains a trait.
   const deadGroup = (groupId: string) => {
     const ids = idx.traitsBelow(everyOwner, groupId);
     return ids.length > 0 && ids.every((id) => skip.has(id));
   };
-  const breadcrumbOf = (owner: GateOwner, groupId: string | null | undefined): string[] => {
+  const breadcrumbOf = (owner: GateScopeTree, groupId: string | null | undefined): string[] => {
     const path: string[] = [];
     for (let id = groupId ?? null, seen = 0; id && seen < owner.groups.length; seen++) {
       const group = owner.groups.find((g) => g.id === id);
@@ -1007,14 +1027,14 @@ export function requirementOptions(input: Omit<GateInput, 'active' | 'persona'>,
       path.unshift(group.name);
       id = group.parentId;
     }
-    if (owner.id !== PLAYER_OWNER) path.unshift(owner.name);
+    if (owner.id !== null) path.unshift(owner.name);
     return path.length > 0 ? path : [...WORLD_BREADCRUMB];
   };
   // A global item reads global scope whoever is named (Q10), so it offers no owner.
   const ownersOf = (id: string, kind: 'trait' | 'group'): RequirementOwnerOption[] => ((kind === 'trait' ? idx.global.traits : idx.global.groups).has(id) ? [] : [
     { owner: { kind: 'you' }, name: 'You' },
     ...input.owners
-      .filter((o) => o.id !== PLAYER_OWNER && (kind === 'trait' ? o.traits : o.groups).some((item) => item.id === id))
+      .filter((o) => (kind === 'trait' ? o.traits : o.groups).some((item) => item.id === id))
       .map((o): RequirementOwnerOption => ({ owner: { kind: 'entity', id: o.id, name: o.name }, name: o.name })),
   ]);
   const option = (requirement: TraitRequirement, breadcrumb: string[], owners: RequirementOwnerOption[] = []): RequirementOption =>
@@ -1023,7 +1043,7 @@ export function requirementOptions(input: Omit<GateInput, 'active' | 'persona'>,
   const seen = new Set<string>();
   const traits: RequirementOption[] = [];
   const groups: RequirementOption[] = [];
-  for (const owner of input.owners) {
+  for (const owner of gateTrees(input)) {
     for (const node of flattenTree(buildTree(owner.groups, owner.traits))) {
       const id = node.leaf?.id ?? node.group?.id;
       if (!id || seen.has(id)) continue;
@@ -1042,8 +1062,9 @@ export const worldGateInput = (
   persona: PersonaRef,
   active: readonly string[] = [],
 ): GateInput => ({
-  owners: [{ id: PLAYER_OWNER, name: '', traits: world.traits, groups: world.groups }],
-  active: { [PLAYER_OWNER]: active },
+  global: { traits: world.traits, groups: world.groups },
+  owners: [],
+  active: scoped(active),
   entities: world.entities,
   persona,
   originals: { traits: world.traits, groups: world.groups },

@@ -16,7 +16,6 @@ import { copyLookup, readerFor, type CopyLookup } from '@/lib/blueprints';
 import { activeStatEnabled, defaultPicks, exclusiveSiblings, inAuthoredOrder, traitOrderIndex } from '@/lib/traitEffects';
 import { startingStatsWith } from '@/lib/traitRuntime';
 import { resolveOwners, type Owner } from '@/lib/owners';
-import { PLAYER_OWNER } from '@/lib/traitGates';
 import type { GameLocation, Placeholder, Trait } from '@/types';
 import { ownerWorldOf, type RuleWorld } from './rules';
 
@@ -26,21 +25,22 @@ export type LensWorld =
   Pick<RuleWorld, 'traits' | 'traitGroups' | 'locations' | 'placeholders' | 'stats'>
   & Partial<Pick<RuleWorld, 'entities' | 'entityGroups' | 'dictionaries' | 'worldOverview'>>;
 
+/** The traits the lens PC picks from, with the links that brought them. */
+type LensTree = Pick<Owner, 'traits' | 'groups' | 'linkOf'>;
+
 /** The lens tests as the None player: the root outside Blueprints, and the Custom Persona entity's tree after
  *  it, as one list. Cached per world object, since every instrument reads it. */
-const playerByWorld = new WeakMap<LensWorld, Owner>();
-function lensPlayer(world: LensWorld): Owner {
+const playerByWorld = new WeakMap<LensWorld, LensTree>();
+function lensPlayer(world: LensWorld): LensTree {
   let player = playerByWorld.get(world);
   if (!player) {
-    const { owners } = resolveOwners(ownerWorldOf(world), { source: 'none' });
-    const root = owners.find((b) => b.id === PLAYER_OWNER)!;
-    const custom = owners.find((b) => b.isPlayer && b.entity);
+    const { global, owners } = resolveOwners(ownerWorldOf(world), { source: 'none' });
+    const custom = owners.find((b) => b.isPlayer);
     player = custom ? {
-      ...root,
-      traits: [...root.traits, ...custom.traits],
-      groups: [...root.groups, ...custom.groups],
-      linkOf: new Map([...root.linkOf, ...custom.linkOf]),
-    } : root;
+      traits: [...global.traits, ...custom.traits],
+      groups: [...global.groups, ...custom.groups],
+      linkOf: custom.linkOf,
+    } : { ...global, linkOf: new Map() };
     playerByWorld.set(world, player);
   }
   return player;

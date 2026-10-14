@@ -1,7 +1,7 @@
 import { useMemo, type ReactNode } from 'react';
 import { useTraitStore } from '@/contexts/TraitStoreContext';
 import { RequirementRowsField } from '@/components/editor/RequirementRowsField';
-import { PLAYER_OWNER, conditionTexts, gateOf, gateStates, ownerHolding, requirementOptions } from '@/lib/traitGates';
+import { conditionTexts, gateOf, gateStates, ownerHolding, requirementOptions } from '@/lib/traitGates';
 import { joinAnd, summarizeRequirement } from '@/lib/requirementSummary';
 import { requirementStatSections } from '@/lib/requirementStatOptions';
 import type { Trait, TraitRequirement, TraitRequirementRow } from '@/types';
@@ -54,7 +54,7 @@ export function TraitRequiresField({ trait, onChange, onOpen, opens, ownerId, la
   const { gateInput, placeholders, offWorld } = useTraitStore();
   const { states, options, statSections, textOf } = useMemo(() => {
     const gates = gateStates(gateInput);
-    const hostOwnerId = ownerHolding(gateInput.owners, trait.id)?.id ?? PLAYER_OWNER;
+    const hostOwnerId = ownerHolding(gateInput, trait.id)?.id ?? null;
     const gate = (ownerId !== undefined ? gateOf(gates, ownerId, trait.id) : undefined) ?? gateOf(gates, hostOwnerId, trait.id);
     return {
       states: gate?.rows ?? [], options: requirementOptions(gateInput, trait.id),
