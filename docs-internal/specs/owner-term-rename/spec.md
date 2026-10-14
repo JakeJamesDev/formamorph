@@ -1,6 +1,7 @@
 # Spec: Owner Term Rename
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-10-13. Tickets 01–11 landed; last landing 37f5cefcb. Review fixes 2344aca08 and 7b649816c followed. Gates green on 2026-10-13 at 7b649816c.
 Spec session: owner-term-rename — spec
 
 ## Problem Statement
