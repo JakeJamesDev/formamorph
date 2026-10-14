@@ -1782,10 +1782,10 @@ Open `#dev?modal=designSystem&tab=chip-options` for the dialog on an **Entities*
 
 ### Composition
 
-- 🔤 **Signature.** The kind in muted text in parentheses, then the path in the code font, then the type: `(stat) owner.stats.Health: Stat`. A world or Blueprint item names its scope with its kind: `(world stat) stats.Fatigue: Stat`, `(Blueprint stat)`, `(world placeholder)`. A method reads `roll(max): number`. A declared name has no type.
+- 🔤 **Signature.** The kind in muted text in parentheses, then the path in the code font, then the type: `(stat) owner.stats.Health: Stat`. A global or Blueprint item names its scope with its kind: `(global stat) stats.Fatigue: Stat`, `(global trait)`, `(Blueprint stat)`, `(world placeholder)`. A method reads `roll(max): number`. A declared name has no type.
 - 🏷️ **Access badge.** A pill at the right of the signature, for a name a write can reach or not. **Read-Only** is muted. **Writable** and **Writable After This Run** use the code `string` color.
 - 📝 **Description.** Muted text, three lines at most. The **Open** link reaches the full text.
-- 🧾 **World Details.** A two-column list: the label in muted text, the value in the card's text color. A row at its default value is left out. A value can run over several lines, such as one Requirement Row per line. One **Owners** row lists who owns the item, **You** first; a world item has none. A nested placeholder adds a **Parent Placeholder** row. The `self` card's **Stat** row names a world or Blueprint stat's scope: "Health (world stat)".
+- 🧾 **World Details.** A two-column list: the label in muted text, the value in the card's text color. A row at its default value is left out. A value can run over several lines, such as one Requirement Row per line. One **Owners** row lists who owns the item, **You** first; a global item or a world placeholder has none. A nested placeholder adds a **Parent Placeholder** row. The `self` card's **Stat** row names a global or Blueprint stat's scope: "Health (global stat)".
 - 🎲 **Allowed Values.** The heading in muted text, then one line per value in the code font, with `×weight` after it. A weight-0 value shows at half strength. A list stops at 12 values, then reads "and N more" in the muted text.
 - 🪪 **Default.** A slot's start value, on one line with its label.
 - 🔗 **Links.** One row of text links at the bottom, in the `info` color: **Open**, **Find All Uses**, **Go to Line N** and **Read in the Guide**. A host that cannot act on a link leaves it out. The completion pane shows only **Read in the Guide**.

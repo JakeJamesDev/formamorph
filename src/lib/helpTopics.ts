@@ -249,7 +249,7 @@ The **Add Pin** button picks the kind of source, then the source, and writes an 
 
 The **Test Code** button under each box runs that box alone on that box's clock: the opening turn for Before the AI, a one-hour turn on day one for After the AI. Test Code executes the code. Editor underlines are static analysis only.
 
-**What the script can reach.** A copy of every stat, the world's placeholders, and the world's traits. The sandbox exposes nothing else. \`stats\` is a map of the world's stats keyed by name, in every box. \`self\` is the stat that owns the code. On an entity's stat, \`owner\` is that entity, so its own stats are \`owner.stats\`. Each stat carries \`id\`, \`name\`, \`type\`, \`description\`, \`min\`, \`max\`, \`value\` and \`regen\`.
+**What the script can reach.** A copy of every stat, the world's placeholders, and the world's traits. The sandbox exposes nothing else. \`stats\` is a map of the global stats keyed by name, in every box. \`self\` is the stat that owns the code. On an entity's stat, \`owner\` is that entity, so its own stats are \`owner.stats\`. Each stat carries \`id\`, \`name\`, \`type\`, \`description\`, \`min\`, \`max\`, \`value\` and \`regen\`.
 
 \`\`\`js
 const health = stats.Health.value;
@@ -265,11 +265,11 @@ const level = stats.Level.value;
 self.max = level * 10;
 \`\`\`
 
-**Writing to other stats.** Write \`value\`, \`min\`, \`max\` or \`regen\` on any stat to move it from this box. Each route reaches one owner: \`stats.Health\` is a world stat, \`owner.stats.Rage\` is the owner's stat, \`entities.Mira.stats.Trust\` is an entity's stat, and \`persona.stats.Stamina\` is the played persona's stat.
+**Writing to other stats.** Write \`value\`, \`min\`, \`max\` or \`regen\` on any stat to move it from this box. Each route reaches one owner: \`stats.Health\` is a global stat, \`owner.stats.Rage\` is the owner's stat, \`entities.Mira.stats.Trust\` is an entity's stat, and \`persona.stats.Stamina\` is the played persona's stat.
 
-Two writes to one field land in owner order, and the later write wins. The order is the world's stats, then the world's entities as authored, then the library entities as picked. Inside one owner, stat order decides.
+Two writes to one field land in owner order, and the later write wins. The order is the global stats, then the world's entities as authored, then the library entities as picked. Inside one owner, stat order decides.
 
-Every box reads the same snapshot. A box can't see another box's write on the same turn. In a Blueprint stat, \`owner\` is the entity the run is for, so \`owner.stats\` reaches that owner's own copy. A write to a world stat moves it once, not once for each owner.
+Every box reads the same snapshot. A box can't see another box's write on the same turn. In a Blueprint stat, \`owner\` is the entity the run is for, so \`owner.stats\` reaches that owner's own copy. A write to a global stat moves it once, not once for each owner.
 
 A write to an unknown stat, a switched-off stat, or an entity that isn't in the game is ignored and reported. **Test Code** lists each write to another stat with its owner and applies none. In Advanced mode, the Test Bench warns when two boxes write one field.
 
