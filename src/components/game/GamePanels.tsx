@@ -1318,10 +1318,10 @@ export const RightPanel = ({
     () => ({ traits: playerTraits, disabledTraitIds: viewDisabledTraitIds, ownedTraits: viewOwnedTraits }),
     [playerTraits, viewDisabledTraitIds, viewOwnedTraits],
   );
-  // The stats a trait switched off stay off under the player's world traits and the played persona's linked ones.
+  // The stats a trait switched off stay off under the global traits and every entity's global rows.
   const statEnabled = React.useMemo(
-    () => activeStatEnabled(playerStats, statTraitsInForce(viewTraitState, gateWorld)),
-    [playerStats, viewTraitState, gateWorld],
+    () => activeStatEnabled(playerStats, statTraitsInForce({ ...viewTraitState, entityStats: viewEntityStats }, gateWorld)),
+    [playerStats, viewTraitState, viewEntityStats, gateWorld],
   );
   // Stat Conditions read the viewed turn's stats.
   const traitGates = React.useMemo(

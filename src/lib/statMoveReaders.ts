@@ -2,7 +2,7 @@
 // it. A move to another owner that would leave one of them pointing at nothing is refused.
 
 import type { Entity, Placeholder, Stat, StatChange, Trait, TraitGroup, TraitStatToggle } from '@/types';
-import { canBePlayer, resolveOwners } from './owners';
+import { resolveOwners } from './owners';
 import { routeTargets, routesIn, statCodeBoxes, statCodeOwners, type StatTarget } from './statCodeTargets';
 import { playerStatsOf, resolvedEntityStats, type StatLinkWorld } from './statLinks';
 import { statRowSide } from './traitTree';
@@ -35,7 +35,7 @@ function traitReader(world: StatReaderWorld, from: string | null, moved: Readonl
     const entity = owner.entity;
     const own = entity ? new Set(resolvedEntityStats(world, entity).map((s) => s.id)) : new Set<string>();
     const reaches = (row: StatChange | TraitStatToggle) => (entity
-      ? reachedOwner(statRowSide(row, own, player, canBePlayer(entity)), entity.id)
+      ? reachedOwner(statRowSide(row, own, player), entity.id)
       : player.has(row.statId) ? null : undefined);
     for (const trait of owner.traits) {
       const rows = [

@@ -249,11 +249,11 @@ describe('applyOwnedStatDrop: what reads a stat', () => {
       .toEqual({ reason: 'read', name: 'grit', owner: 'Ash', reader: { kind: 'change', trait: 'gruff' } });
   });
 
-  it('refuses a world stat a playable entity\'s trait reaches as a player stat', () => {
+  it('refuses a world stat any entity\'s trait reaches as a global stat, played or not (Q30)', () => {
     const bold = { ...bob, persona: true, traits: [trait('bold', { statChanges: [{ statId: 'luck', value: 1 }] })] };
     expect(read(drop(world([ash, bold]), 'luck', a('grit'), 0))?.reader).toEqual({ kind: 'change', trait: 'bold' });
-    // A cast entity's row can't reach a player stat, so nothing reads Luck.
-    expect(drop(world([ash, { ...bold, persona: undefined }]), 'luck', a('grit'), 0)?.kind).toBe('moved');
+    expect(read(drop(world([ash, { ...bold, persona: undefined }]), 'luck', a('grit'), 0))?.reader)
+      .toEqual({ kind: 'change', trait: 'bold' });
   });
 
   it('refuses a group when a trait reads a stat inside it', () => {

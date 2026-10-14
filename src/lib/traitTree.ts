@@ -298,14 +298,12 @@ export type StatRow = Pick<StatChange, 'statId' | 'target'>;
 /** Whose stat an owner's trait row moves; null when it names neither. */
 export type StatRowSide = 'own' | 'player' | null;
 
-/** Whose stat an owner's trait row moves: its own stat by id, else a world player stat on an owner the
- *  player can play; with `target`, only the player stat. */
-export function statRowSide(
-  row: StatRow, own: ReadonlySet<string>, player: ReadonlySet<string>, canPlay: boolean,
-): StatRowSide {
-  const reachesPlayer = canPlay && player.has(row.statId);
-  if (row.target === 'global') return reachesPlayer ? 'player' : null;
-  return own.has(row.statId) ? 'own' : reachesPlayer ? 'player' : null;
+/** Whose stat an entity's trait row moves, played or not (Q18, Q30): its own stat by id, else the global stat
+ *  with that id; with `target`, only the global stat. The `player` side is the global stat. */
+export function statRowSide(row: StatRow, own: ReadonlySet<string>, global: ReadonlySet<string>): StatRowSide {
+  const reachesGlobal = global.has(row.statId);
+  if (row.target === 'global') return reachesGlobal ? 'player' : null;
+  return own.has(row.statId) ? 'own' : reachesGlobal ? 'player' : null;
 }
 
 /** The one tree's visible rows, with collapsed groups' children hidden. */

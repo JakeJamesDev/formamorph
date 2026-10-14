@@ -128,10 +128,10 @@ export const TraitsTab = ({
     return (ownerId: string, change: StatChange): TraitTabStat | undefined => {
       if (ownerId === PLAYER_OWNER) return player.get(change.statId);
       const own = ownOf(ownerId);
-      const side = statRowSide(change, new Set(own.keys()), playerIds, playerEntityIds.includes(ownerId));
+      const side = statRowSide(change, new Set(own.keys()), playerIds);
       return side === 'own' ? own.get(change.statId) : side === 'player' ? player.get(change.statId) : undefined;
     };
-  }, [stats, ownerStats, playerEntityIds]);
+  }, [stats, ownerStats]);
   const filtering = query.trim() !== '';
 
   const views = sections

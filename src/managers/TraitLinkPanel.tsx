@@ -13,7 +13,7 @@ import { labelPlaceholders } from '@/lib/placementLetters';
 import { fieldFrame } from '@/lib/historyField';
 import type { LinkRow } from '@/lib/traitTree';
 import type { Entity, Trait, TraitLink } from '@/types';
-import TraitManager, { OwnerStatNote, type TraitLinkEdit } from './TraitManager';
+import TraitManager, { type TraitLinkEdit } from './TraitManager';
 
 /** The line above a link's original: where the original lives. */
 export function LinkedFromLine({ originalId }: { originalId: string }) {
@@ -67,7 +67,6 @@ export function LinkedTraitManager({ owner, link, original, ...panel }: {
       trait={trait}
       link={edit}
       detailsHeader={<LinkedFromLine originalId={original.id} />}
-      availabilityFooter={<OwnerStatNote owner={owner} traits={[trait]} />}
     />
   );
 }
@@ -117,7 +116,6 @@ export function ThisLinkSection({ entity, link, originalId }: { entity: Entity; 
           </ul>
         </div>
       )}
-      <OwnerStatNote owner={entity} traits={rows} />
     </Section>
   );
 }

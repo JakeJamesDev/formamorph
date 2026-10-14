@@ -107,7 +107,7 @@ const playerEntityOwners = (world: TraitWorld): readonly GateOwner[] => {
   return world.owners.filter((o) => o.id !== PLAYER_OWNER && ids.has(o.id));
 };
 
-/** Whether `ownerId` is a player entity owner, whose stat traits move the player's stats. */
+/** Whether `ownerId` is a player entity owner: its traits are the player's own. */
 const isPlayerOwner = (world: TraitWorld, ownerId: string): boolean => playerEntityOwners(world).some((o) => o.id === ownerId);
 
 /** The ids of the stats `ownerId` owns in play. */
@@ -122,19 +122,19 @@ function withStatRows(trait: Trait, keep: (row: StatRow) => boolean): Trait {
   return { ...trait, statChanges, ...(statToggles ? { statToggles } : {}) };
 }
 
-/** A player owner's trait as it acts on the player's stats: its rows on the owner's own stats left out, a
- *  row with the global target kept. */
+/** An entity's trait as it acts on global stats: its rows on the entity's own stats left out (Q30). A row
+ *  names the entity's own stat by id, else the global stat with that id; the global target forces the latter. */
 const withoutOwnStatRows = (trait: Trait, own: ReadonlySet<string>): Trait =>
   withStatRows(trait, (row) => row.target === 'global' || !own.has(row.statId));
 
 /** An owner's trait as it acts on the owner's own stats: its rows with the global target left out. */
-const withoutPlayerRows = (trait: Trait): Trait => withStatRows(trait, (row) => row.target !== 'global');
+const withoutGlobalRows = (trait: Trait): Trait => withStatRows(trait, (row) => row.target !== 'global');
 
-/** Each player entity owner's active traits that change the player's stats, owned or linked, with the owner
- *  that holds them: the played persona's, and the Custom Persona entity's. */
-function playedStatTraitsByOwner(state: Pick<TraitForceState, 'ownedTraits' | 'entityStats'>, world: TraitWorld): [string, Trait][] {
+/** Each entity owner's active traits that change global stats, owned or linked, with the owner that holds
+ *  them, played or not (Q18). A trait that two owners hold shows once per owner (Q17). */
+function globalRowTraitsByOwner(state: Pick<TraitForceState, 'ownedTraits' | 'entityStats'>, world: TraitWorld): [string, Trait][] {
   const active = activeOwnedTraitIds(state.ownedTraits ?? {});
-  return playerEntityOwners(world).flatMap((owner) => {
+  return entityOwners(world).flatMap((owner) => {
     const on = new Set(active[owner.id] ?? []);
     const own = ownStatIds(state, owner.id);
     return owner.traits.filter((t) => on.has(t.id)).map((t) => withoutOwnStatRows(t, own))
@@ -142,15 +142,15 @@ function playedStatTraitsByOwner(state: Pick<TraitForceState, 'ownedTraits' | 'e
   });
 }
 
-/** The player's active entity traits that change stats: the played persona's, and the Custom Persona
- *  entity's under None and a library persona. Empty with no persona, or under a world with no owners. */
-export const playedStatTraits = (state: Pick<TraitForceState, 'ownedTraits' | 'entityStats'>, world: TraitWorld): Trait[] =>
-  playedStatTraitsByOwner(state, world).map(([, t]) => t);
+/** The active entity traits that change global stats, each cut to the rows that reach them: every entity's,
+ *  played or not. Empty under a world with no owners. */
+export const globalRowTraits = (state: Pick<TraitForceState, 'ownedTraits' | 'entityStats'>, world: TraitWorld): Trait[] =>
+  globalRowTraitsByOwner(state, world).map(([, t]) => t);
 
-/** Every trait whose stat effects are in force: the player's active held world traits, then the player's
- *  active linked stat traits. Bounds derive from this set, and so do stat toggles. */
+/** Every trait whose stat effects are in force on global stats: the held global traits, then every entity's
+ *  active traits cut to their global rows. Bounds derive from this set, and so do stat toggles. */
 export function statTraitsInForce(state: TraitForceState, world: TraitWorld): Trait[] {
-  return [...heldPlayerTraits(activeTraits(state.traits, state.disabledTraitIds), world), ...playedStatTraits(state, world)];
+  return [...heldPlayerTraits(activeTraits(state.traits, state.disabledTraitIds), world), ...globalRowTraits(state, world)];
 }
 
 /** Each owner's traits among its `active` ids that change its own stats, in its tree order; none for an owner
@@ -161,7 +161,7 @@ export function treeStatTraits(
   const byId = new Map(trees.map((tree) => [tree.id, tree]));
   return (ownerId) => {
     const on = new Set(active[ownerId] ?? []);
-    return (byId.get(ownerId)?.traits ?? []).flatMap((t) => (on.has(t.id) ? [withoutPlayerRows(t)] : [])).filter(hasStatEffects);
+    return (byId.get(ownerId)?.traits ?? []).flatMap((t) => (on.has(t.id) ? [withoutGlobalRows(t)] : [])).filter(hasStatEffects);
   };
 }
 
@@ -178,7 +178,7 @@ export const ownerStatTraitsInForce = (state: TraitForceState, world: TraitWorld
 /** Each stat trait in force with its record key, so two worlds' sets compare by what the record is under. */
 const keyedStatTraits = (state: TraitForceState, world: TraitWorld): [string, Trait][] => [
   ...heldPlayerTraits(activeTraits(state.traits, state.disabledTraitIds), world).map((t): [string, Trait] => [t.id, t]),
-  ...playedStatTraitsByOwner(state, world).map(([ownerId, t]): [string, Trait] => [recordKey(ownerId, t.id), t]),
+  ...globalRowTraitsByOwner(state, world).map(([ownerId, t]): [string, Trait] => [recordKey(ownerId, t.id), t]),
 ];
 
 /** Summed trait contributions to one stat, per axis. */
@@ -298,14 +298,14 @@ export function seedNewGameStats(authored: readonly Stat[]): PlayerStat[] {
 }
 
 /** The stats a fresh playthrough holds once the held picks among `chosenInOrder` have applied, then the
- *  played persona's linked stat traits among `owned` — the fold Enter World runs, for a picker that needs
- *  the numbers before the game exists. */
+ *  entities' global rows among `owned` — the fold Enter World runs, for a picker that needs the numbers
+ *  before the game exists. */
 export function startingStatsWith(
   authored: readonly Stat[], chosenInOrder: readonly Trait[], world: TraitWorld, owned: OwnedTraitPicks = {},
 ): PlayerStat[] {
   let state: TraitRuntimeState = { stats: seedNewGameStats(authored), traits: [], disabledTraitIds: [], appliedValues: {} };
   for (const trait of heldPlayerTraits(chosenInOrder, world)) state = acquireTrait(state, trait, world).state;
-  return applyPlayedStatTraits({ ...state, ownedTraits: ownedTraitStatesFrom(owned) }, world).state.stats;
+  return applyGlobalRowTraits({ ...state, ownedTraits: ownedTraitStatesFrom(owned) }, world).state.stats;
 }
 
 /** Seed a fresh playthrough's bases from the authored bounds. */
@@ -458,7 +458,7 @@ const changesAny = (trait: Trait, stats: readonly PlayerStat[]): boolean =>
 /** {@link settleSwitch} on an entity's own stats, its lists already moved; the same state when the entity
  *  holds no stats, or the trait changes none of them and has nothing to reverse. */
 function moveOwnStats(state: TraitRuntimeState, ownerId: string, ownerTrait: Trait, on: boolean, world: TraitWorld): TraitRuntimeState {
-  const trait = withoutPlayerRows(ownerTrait);
+  const trait = withoutGlobalRows(ownerTrait);
   const stats = state.entityStats?.[ownerId];
   const key = ownStatsRecordKey(ownerId, trait.id);
   const record = state.appliedValues[key];
@@ -480,30 +480,31 @@ function switchTrait(state: TraitRuntimeState, trait: Trait, on: boolean, world:
   return moveStats(listed, trait, on, recordKey(ownerId, trait.id), statTraitsInForce(listed, world));
 }
 
-/** Switch an owner's trait in its lists and move the stats it changes: the world's traits and a player entity
- *  owner's move the player's stats, and an entity's own traits move its own stats. */
+/** Switch an owner's trait in its lists and move the stats it changes: the world's traits and any entity
+ *  owner's global rows move global stats, and an entity's own rows move its own stats. */
 function flipOwnerTrait(state: TraitRuntimeState, ownerId: string, trait: Trait, on: boolean, world: TraitWorld): TraitRuntimeState {
   if (ownerId === PLAYER_OWNER) return switchTrait(state, trait, on, world);
-  const played = isPlayerOwner(world, ownerId) ? withoutOwnStatRows(trait, ownStatIds(state, ownerId)) : null;
-  const switched = played && hasStatEffects(played)
-    ? switchTrait(state, played, on, world, ownerId)
+  const globalRows = withoutOwnStatRows(trait, ownStatIds(state, ownerId));
+  const switched = hasStatEffects(globalRows)
+    ? switchTrait(state, globalRows, on, world, ownerId)
     : withOwnedSwitch(state, ownerId, trait.id, on);
   return moveOwnStats(switched, ownerId, trait, on, world);
 }
 
 /**
- * Apply the player's active linked stat traits, owner by owner in tree order, as picking them at creation
- * would. For a new game and the Enter World preview, whose owned picks are already chosen.
+ * Apply every entity's active traits' global rows, owner by owner in tree order, as picking them at creation
+ * would. For a new game and the Enter World preview, whose owned picks are already chosen. `applied` is the
+ * played entities' traits alone: the start log never names another entity's.
  */
-export function applyPlayedStatTraits(state: TraitRuntimeState, world: TraitWorld): { state: TraitRuntimeState; applied: Trait[] } {
-  const applied = playedStatTraitsByOwner(state, world);
+export function applyGlobalRowTraits(state: TraitRuntimeState, world: TraitWorld): { state: TraitRuntimeState; applied: Trait[] } {
+  const rows = globalRowTraitsByOwner(state, world);
   let next = state;
   const on: Trait[] = [];
-  for (const [ownerId, trait] of applied) {
+  for (const [ownerId, trait] of rows) {
     on.push(trait);
     next = moveStats(next, trait, true, recordKey(ownerId, trait.id), [...activeTraits(next.traits, next.disabledTraitIds), ...on]);
   }
-  return { state: next, applied: applied.map(([, t]) => t) };
+  return { state: next, applied: rows.filter(([ownerId]) => isPlayerOwner(world, ownerId)).map(([, t]) => t) };
 }
 
 /**
@@ -533,8 +534,8 @@ export function applyOwnedStatTraits(state: TraitRuntimeState, world: TraitWorld
 /**
  * The stat side of a persona switch during the game: every stat trait in force under the old persona and not the
  * new one reverses through its record, then every one in force only under the new persona applies, each
- * logged as a switch. That covers the old persona's links and the Custom Persona picks a world persona
- * leaves dormant. The lists themselves do not move, so a return to a persona the playthrough still holds
+ * logged as a switch. That covers the Custom Persona picks a world persona leaves dormant and the owners
+ * that join or leave the world with the persona; an entity's global rows stay put. The lists themselves do not move, so a return to a persona the playthrough still holds
  * finds its picks. Nothing moves when both name the same persona.
  */
 export function switchPersonaStats(
@@ -823,9 +824,9 @@ export function settleTraits(
 }
 
 /**
- * The player's switch of an owner's trait in that entity's lists. A cast entity's trait moves lists only;
- * the played persona's linked stat trait moves the stats too. Switching on retires its active exclusive
- * siblings in the entity's groups.
+ * The player's switch of an owner's trait in that entity's lists. The trait moves the entity's own stats and,
+ * by its global rows, the global stats, played or not. Switching on retires its active exclusive siblings in
+ * the entity's groups.
  */
 function switchOwned(
   state: TraitRuntimeState,

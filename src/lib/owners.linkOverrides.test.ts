@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { resolveOwners, type OwnerWorld } from './owners';
 import { inPlayOwners } from './ownedTraitsInPlay';
 import { setLinkOverride } from './blueprints';
-import { applyPlayedStatTraits, switchPersonaStats, switchPlayerTrait, type TraitRuntimeState, type TraitWorld } from './traitRuntime';
+import { applyGlobalRowTraits, switchPersonaStats, switchPlayerTrait, type TraitRuntimeState, type TraitWorld } from './traitRuntime';
 import type { Entity, PersonaRef, PlayerStat, Trait, TraitGroup, TraitLink } from '@/types';
 
 // Paladin is a Blueprints original: +5 starting health, not player-toggleable. Albus's link raises it to +12
@@ -49,18 +49,17 @@ describe('link overrides in play', () => {
     expect(switchPlayerTrait(state(), 'paladin', true, AS_MIRA, name, 'mira')).toBeNull();
   });
 
-  it("applies the played persona's overridden stat change, and the switch reverses it rather than the original's", () => {
+  it("applies each owner's own link override, and a switch of one reverses its own value rather than the original's", () => {
     const both = state({ ownedTraits: { albus: { chosen: ['paladin'] }, mira: { chosen: ['paladin'] } } });
-    const seeded = applyPlayedStatTraits(both, AS_ALBUS).state;
-    expect(valueOf(seeded)).toBe(62);
+    const seeded = applyGlobalRowTraits(both, AS_ALBUS).state;
+    // Albus's link gives +12 and Mira's the original's +5, whoever is played (Q17, Q30).
+    expect(valueOf(seeded)).toBe(67);
+    expect(seeded.appliedValues).toEqual({ 'albus/paladin': { h: 12 }, 'mira/paladin': { h: 5 } });
+    expect(switchPersonaStats(seeded, AS_ALBUS, AS_MIRA, name)).toEqual({ state: seeded, log: [] });
 
-    const toMira = switchPersonaStats(seeded, AS_ALBUS, AS_MIRA, name);
-    expect(toMira.log).toEqual(['Trait switched off: Paladin', 'Trait switched on: Paladin']);
-    expect(toMira.state.appliedValues).toEqual({ 'albus/paladin': { h: -12 }, 'mira/paladin': { h: 5 } });
-    expect(valueOf(toMira.state)).toBe(55);
-
-    const back = switchPersonaStats(toMira.state, AS_MIRA, AS_ALBUS, name);
-    expect(valueOf(back.state)).toBe(62);
+    const off = switchPlayerTrait(seeded, 'paladin', false, AS_ALBUS, name, 'albus')!;
+    expect(valueOf(off.state)).toBe(55);
+    expect(off.state.appliedValues).toEqual({ 'albus/paladin': { h: -12 }, 'mira/paladin': { h: 5 } });
   });
 });
 
@@ -75,13 +74,10 @@ describe("a persona's own stat traits in play (Q3)", () => {
   };
   const picked = state({ ownedTraits: { sylvie: { chosen: ['vow'] }, mira: { chosen: ['paladin'] } } });
 
-  it('applies the played persona’s owned stat trait, and a switch reverses it', () => {
-    const seeded = applyPlayedStatTraits(picked, as('sylvie')).state;
-    expect(valueOf(seeded)).toBe(57);
-    expect(seeded.appliedValues).toEqual({ 'sylvie/vow': { h: 7 } });
-
-    const toMira = switchPersonaStats(seeded, as('sylvie'), as('mira'), name);
-    expect(toMira.log).toEqual(['Trait switched off: Vow', 'Trait switched on: Paladin']);
-    expect(valueOf(toMira.state)).toBe(55);
+  it('applies every persona’s owned stat trait, and a persona switch moves none of them', () => {
+    const seeded = applyGlobalRowTraits(picked, as('sylvie')).state;
+    expect(valueOf(seeded)).toBe(62);
+    expect(seeded.appliedValues).toEqual({ 'mira/paladin': { h: 5 }, 'sylvie/vow': { h: 7 } });
+    expect(switchPersonaStats(seeded, as('sylvie'), as('mira'), name).log).toEqual([]);
   });
 });

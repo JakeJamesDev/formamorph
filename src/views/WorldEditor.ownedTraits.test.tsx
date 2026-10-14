@@ -200,7 +200,7 @@ describe('an owned trait\'s panel', () => {
     expect(screen.getByRole('tab', { name: /Entities/, selected: true })).toBeInTheDocument();
   });
 
-  it("picks a cast entity's own stats on its trait's Stats tab, and a persona's player stats too, with a note (Q53)", () => {
+  it("picks a cast entity's own stats on its trait's Stats tab, and the global stats too, played or not (Q18)", async () => {
     const withStats = (persona: boolean, statId: string) => ({
       ...WORLD,
       stats: [{ id: 'hp', name: 'Health', type: 'number', description: '', min: 0, max: 100, regen: 0, descriptors: [] }],
@@ -221,16 +221,20 @@ describe('an owned trait\'s panel', () => {
     const { unmount } = renderWorldEditorBench(withStats(false, 'vigor'), 'advanced');
     statsTab();
     expect(screen.getByText('Vigor')).toBeInTheDocument();
-    expect(screen.queryByText(/stat changes apply/i)).toBeNull();
     unmount();
 
-    renderWorldEditorBench(withStats(true, 'hp'), 'advanced');
+    // A cast entity nobody plays is offered the Global stats under their own heading, and its row reads one.
+    renderWorldEditorBench(withStats(false, 'hp'), 'advanced');
     statsTab();
-    expect(screen.getByText('Health')).toBeInTheDocument();
-    expect(screen.getByText('Player stat changes apply only when you play as them')).toBeInTheDocument();
+    const trigger = screen.getAllByRole('combobox').find((c) => /Health/.test(c.textContent ?? ''))!;
+    fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: 'mouse' });
+    await waitFor(() => expect(trigger).toHaveAttribute('aria-expanded', 'true'));
+    expect(await screen.findByText('Global')).toBeInTheDocument();
+    const options = await screen.findAllByRole('option', { hidden: true });
+    expect(options.map((o) => o.textContent)).toEqual(['Vigor', 'Health']);
   });
 
-  it("tells a persona's own stat from a world player stat with its id, and notes only rows on the player's (Q58)", async () => {
+  it("tells an entity's own stat from a global stat with its id (Q58)", async () => {
     const health = { id: 'hp', type: 'number', description: '', min: 0, max: 100, regen: 0, descriptors: [] };
     const world = {
       ...WORLD,
@@ -265,7 +269,6 @@ describe('an owned trait\'s panel', () => {
     await choose(statPickers()[0], 'Health');
     expect(entity(ctx, 'ash').traits!.find((t) => t.id === 't-tamed')!.statChanges)
       .toEqual([{ statId: 'hp', value: 5, type: 'max', target: 'global' }]);
-    expect(screen.getByText('Player stat changes apply only when you play as them')).toBeInTheDocument();
 
     await choose(statPickers()[1], 'Health');
     expect(entity(ctx, 'ash').traits!.find((t) => t.id === 't-tamed')!.statToggles).toEqual([{ statId: 'hp', enabled: false, target: 'global' }]);
