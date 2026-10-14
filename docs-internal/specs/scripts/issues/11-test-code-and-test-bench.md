@@ -23,3 +23,7 @@ Spec: Q22, Q24, story 13.
 ## Blocked by
 
 - 02, 06, 09
+
+## Comments
+
+From ticket 05: Test Code and the Test Bench give no `trait` in a When a Trait Switches box, so a script that reads it fails there. Supply a sample `trait` for that timing.
