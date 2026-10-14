@@ -356,7 +356,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
                 props.resolveTraitText(trait, text, current.entityId ? traitTree.entityNodes.get(current.entityId) ?? null : null)}
               onTraitSelect={props.onTraitSelect}
               ownerId={current.entityId ?? null}
-              ownStats={current.entityNode ? ownStatsOf(current.entityId!) : undefined}
+              ownStats={current.entityId ? ownStatsOf(current.entityId) : undefined}
               gates={props.traitGates}
               cascade={props.traitCascade}
               onDismissCascade={props.onDismissTraitCascade}
