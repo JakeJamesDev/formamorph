@@ -614,9 +614,38 @@ describe('the Anonymous Likes on a listing', () => {
     show();
     await pressAudit();
 
-    expect(await screen.findByText(/too old to name an address for/)).toBeTruthy();
+    const inert = await screen.findByRole('button', { name: 'Remove this Anonymous Like' });
+    expect(inert.getAttribute('aria-disabled')).toBe('true');
     expect(markEls()).toHaveLength(1);
     expect(screen.queryByRole('button', { name: /from this address/ })).toBeNull();
+
+    fireEvent.click(inert);
+    expect(screen.queryByText('Remove these Anonymous Likes?')).toBeNull();
+  });
+
+  it('puts the removal on the row when an address has one like', async () => {
+    withList([], 1, 0);
+    withAudit([], [mark({ addressKey: 'key-a' })]);
+
+    show();
+    await pressAudit();
+
+    const button = await screen.findByRole('button', { name: 'Remove 1 Anonymous Like from this address' });
+    expect(markEls()[0].contains(button)).toBe(true);
+    expect(document.querySelector('[data-address-frame]')).toBeNull();
+  });
+
+  it('puts the removal on a frame, not a row, when an address has more than one like', async () => {
+    withList([], 2, 0);
+    withAudit([], [mark({ addressKey: 'key-a' }), mark({ addressKey: 'key-a' })]);
+
+    show();
+    await pressAudit();
+
+    const button = await screen.findByRole('button', { name: 'Remove 2 Anonymous Likes from this address' });
+    const frame = document.querySelector('[data-address-frame]');
+    expect(frame?.contains(button)).toBe(true);
+    for (const row of markEls()) expect(within(row).queryByRole('button')).toBeNull();
   });
 
   it('flags an anonymous like that came from the author’s address', async () => {
