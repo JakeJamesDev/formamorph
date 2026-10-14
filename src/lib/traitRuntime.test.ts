@@ -1091,6 +1091,15 @@ describe('an entity’s global rows act for every owner, played or not (Q17, Q18
     const withPaladin = startingStatsWith(authored, [vigil], asAlbus, { albus: ['paladin'] });
     expect(withPaladin[0]).toMatchObject({ value: 58, max: 110 });
   });
+
+  // Q30, Q33: an untargeted row moves the entity's own stat when it owns the id, else the global one.
+  it('leaves the global stat alone when the persona owns a stat with the row’s id', () => {
+    const authored = [{ ...stat('h'), value: 50 }] as unknown as Parameters<typeof startingStatsWith>[0];
+    const own = { albus: [stat('h')] };
+    expect(startingStatsWith(authored, [vigil], asAlbus, { albus: ['paladin'] }, own)[0]).toMatchObject({ value: 53, max: 100 });
+    // With no own stat to take the row, it reaches the global stat.
+    expect(startingStatsWith(authored, [vigil], asAlbus, { albus: ['paladin'] }, { albus: [stat('x')] })[0].value).toBe(58);
+  });
 });
 
 describe('a Custom Persona pick under a world persona', () => {

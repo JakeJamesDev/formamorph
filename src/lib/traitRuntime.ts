@@ -293,13 +293,15 @@ export function seedNewGameStats(authored: readonly Stat[]): PlayerStat[] {
 
 /** The stats a fresh playthrough holds once the held picks among `chosenInOrder` have applied, then the
  *  entities' global rows among `owned` — the fold Enter World runs, for a picker that needs the numbers
- *  before the game exists. */
+ *  before the game exists. `entityStats` holds each entity's seeded own stats, so a row whose id an entity
+ *  owns stays off the global stat (Q30). */
 export function startingStatsWith(
   authored: readonly Stat[], chosenInOrder: readonly Trait[], world: TraitWorld, owned: OwnedTraitPicks = {},
+  entityStats: EntityStatValues = {},
 ): PlayerStat[] {
   let state: TraitRuntimeState = { stats: seedNewGameStats(authored), traits: [], disabledTraitIds: [], appliedValues: {} };
   for (const trait of heldGlobalTraits(chosenInOrder, world)) state = acquireTrait(state, trait, world).state;
-  return applyGlobalRowTraits({ ...state, ownedTraits: ownedTraitStatesFrom(owned) }, world).state.stats;
+  return applyGlobalRowTraits({ ...state, ownedTraits: ownedTraitStatesFrom(owned), entityStats }, world).state.stats;
 }
 
 /** Seed a fresh playthrough's bases from the authored bounds. */

@@ -8,6 +8,7 @@ import { useResolvedAuthoredWorld } from '@/lib/useResolvedWorld';
 import { inAuthoredOrder, traitOrderIndex } from '@/lib/traitEffects';
 import { ownerPins, inPlayOwners, playedEntityId } from '@/lib/ownedTraitsInPlay';
 import { cascadeOffInput, startingStatsWith } from '@/lib/traitRuntime';
+import { seedWorldEntityStats } from '@/lib/entityStats';
 import { toastError } from '@/lib/linkToast';
 import CharacterCustomization, { defaultCharacterData } from './CharacterCustomization';
 import EnterWorldWorkspace from './EnterWorldWorkspace';
@@ -165,7 +166,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
     const starting = startingStatsWith(rawStats, chosen, {
       traits: rawTraits, groups: rawTraitGroups, entities: worldEntities, persona: draftPersona,
       ...inPlayOwners(world, draftPersona, libraryCast),
-    }, ownedTraitPicks);
+    }, ownedTraitPicks, seedWorldEntityStats({ stats: rawStats, statGroups: rawStatGroups, entities: [...worldEntities, ...libraryCast] }));
     return ownerPins({
       world,
       persona: draftPersona,
@@ -181,7 +182,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
     });
   }, [
     selectedTraits, ownedTraitPicks, draftPersona, selectedLocationId, rawTraits, rawTraitGroups, worldEntities,
-    worldPlaceholders, rawStats, rawLocations, placeholders, rolls, libraryCast,
+    worldPlaceholders, rawStats, rawStatGroups, rawLocations, placeholders, rolls, libraryCast,
   ]);
   const {
     traits, traitGroups, locations, entities: resolvedWorldEntities, resolvePH, resolveTraitText, resolveEntityText,

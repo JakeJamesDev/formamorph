@@ -41,14 +41,14 @@ import type { StatOwner } from '@/lib/statOwners';
 import { allPinTexts, collectPins, valuePinRollChips } from '@/lib/placeholderPins';
 import { activeStatEnabled, enabledStats } from '@/lib/traitEffects';
 import {
-  acquireTrait, applyOwnedStatTraits, entityStatTraitsInForce, seedStatBases, type TraitRuntimeState, type TraitWorld,
+  applyOwnedStatTraits, entityStatTraitsInForce, seedStatBases, type TraitWorld,
 } from '@/lib/traitRuntime';
 import { buildNarrationPrompt } from '@/lib/turnPipeline/narrationPrompt';
 import { startingLocations } from '@/lib/startingLocation';
 import type {
   Entity, EntityStatValues, GameLocation, Opening, PersonaRef, PlaceholderRolls, PlayerStat, Stat, StatDescriptor, ThresholdUnit, Trait,
 } from '@/types';
-import { lensActiveTraits, lensPinTraits, resolveLensText, type BenchLens } from './lens';
+import { lensActiveTraits, lensPersonaPicks, lensPinTraits, lensStartingStats, resolveLensText, type BenchLens } from './lens';
 import { ownerWorldOf, chipBearingTexts, type RuleWorld } from './rules';
 import { scannedEntries } from './triggers';
 
@@ -298,11 +298,8 @@ function settleOpeningStats(world: OpeningWorld, active: Trait[]): { settled: Pl
     const value = stat.value || stat.min || 0;
     return { ...stat, value, starting: stat.starting ?? value };
   }));
-  let state: TraitRuntimeState = { stats: seeded, traits: [], disabledTraitIds: [], appliedValues: {} };
-  for (const trait of active) {
-    state = acquireTrait(state, trait, { traits: world.traits ?? [], groups: world.traitGroups ?? [] }).state;
-  }
-  return { settled: state.stats, seeded };
+  // The persona's picks reach the global stats only through their Global rows (Q33).
+  return { settled: lensStartingStats(world, globalStatsOf(world.stats ?? [], world.statGroups ?? []), active), seeded };
 }
 
 /** Each authored entity's stats as a new game seeds them, then settles under the entity's own default traits.
@@ -317,9 +314,17 @@ function settleEntityStats(world: OpeningWorld, active: readonly Trait[], person
   const { gate: ownerGate } = resolveOwners(ownerWorld, persona);
   // Stat Conditions read the authored start, as Enter World's do (Q23).
   const gate = { ...ownerGate, stats: startingGateStats({ ...world, entities: world.entities ?? [] }) };
-  // Each owner's default picks, gated against the world traits the lens PC leaves active.
+  // Each owner's default picks; the Custom Persona entity holds the lens PC when it is the persona's (Q33).
+  const custom = lensPersonaPicks(world, active);
+  const defaults = settleDefaults(gate).active;
   const picks = settle({
-    ...gate, active: { ...settleDefaults(gate).active, global: active.map((t) => t.id) },
+    ...gate,
+    active: {
+      global: active.map((t) => t.id),
+      owners: custom && gate.owners.some((o) => o.id === custom.personaId)
+        ? { ...defaults.owners, [custom.personaId]: custom.ids }
+        : defaults.owners,
+    },
   }).active;
   const ownedTraits = ownedTraitStatesFrom(picks.owners);
   const traitWorld: TraitWorld = {
