@@ -7,7 +7,6 @@
 //
 // Data in, data out, like `placeholderTree`: the tree component only wires this to the drag scaffold.
 
-import { arrayMove } from '@dnd-kit/sortable';
 import { entitiesInTreeOrder } from './entityGroupTree';
 import { childPlaceholderGroups, isDescendantPlaceholderGroup, placeholderGroupOf } from './placeholderGroups';
 import {
@@ -15,10 +14,11 @@ import {
   type PlaceholderHome, type PlaceholderHomesWorld, type PlaceholderOwnerRef, type PlaceholderSlices,
 } from './placeholderHomes';
 import {
-  commitPlaceholderDrop, getPlaceholderDropProjection, placeholderRows, removeCollapsedPlaceholderRows,
+  commitPlaceholderDrop, placeholderRows,
   type PlaceholderDropContext, type PlaceholderTreeRow,
 } from './placeholderTree';
 import { SHARED_PATH_SEP } from './placeholders';
+import { anyRowCanParent, planTreeDrop } from './treeProjection';
 import type { Placeholder, PlaceholderGroup } from '@/types';
 
 /** A placeholder row, plus which of the world's lists it lives in. */
@@ -158,19 +158,14 @@ export function applyScopedPlaceholderDrop(
   context: PlaceholderDropContext = {},
 ): PlaceholderSlices | null {
   const nodes = placeholderTreeNodes(world);
-  const visible = removeCollapsedPlaceholderRows(nodes, [...collapsedIds, activeId]);
-  if (!visible.some((n) => n.id === overId) || !visible.some((n) => n.id === activeId)) return null;
-
-  const activeIndex = nodes.findIndex((n) => n.id === activeId);
-  const overIndex = nodes.findIndex((n) => n.id === overId);
-  const active = nodes[activeIndex];
-  if (!active || active.kind === 'owner' || overIndex === -1) return null;
-
-  const { parentId } = getPlaceholderDropProjection(visible, activeId, overId, dragOffset, indentationWidth);
-  if (!placeholderDropAllowed(world, nodes, activeId, parentId)) return null;
-  const parent = parentId === null ? null : nodes.find((n) => n.id === parentId) ?? null;
-  const reParented = nodes.map((n) => (n.id === activeId ? { ...n, parentId } : n));
-  const moved = arrayMove(reParented, activeIndex, overIndex);
+  const plan = planTreeDrop(nodes, collapsedIds, activeId, overId, dragOffset, indentationWidth, {
+    canParent: anyRowCanParent,
+    refuses: (active, parent) => !placeholderDropAllowed(world, nodes, active.id, parent?.id ?? null),
+  });
+  if (!plan) return null;
+  const { active, parent, parentId, moved } = plan;
+  // Narrows the type: placeholderDropAllowed already refused owner nodes.
+  if (active.kind === 'owner') return null;
 
   if (active.kind === 'group') {
     const groups = world.placeholderGroups ?? [];

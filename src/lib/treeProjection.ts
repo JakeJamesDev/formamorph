@@ -57,6 +57,47 @@ export function removeCollapsedRows<R extends { id: string; parentId: string | n
   return out;
 }
 
+/** A drop every tree agrees on: the dragged row, where it lands, and the full row list after the move. */
+export interface TreeDropPlan<R extends ProjectedRow> {
+  active: R;
+  /** The row the active row lands under, or null at the top level. */
+  parent: R | null;
+  parentId: string | null;
+  /** Every row in drop order, the active row re-parented. Each tree reads its sibling order from here. */
+  moved: R[];
+}
+
+/** What a tree supplies to the shared drop head. */
+export interface TreeDropRules<R extends ProjectedRow> {
+  canParent: (row: R) => boolean;
+  /** True for a landing the tree can't take, such as one that nests a record inside itself. */
+  refuses: (active: R, parent: R | null) => boolean;
+}
+
+/**
+ * The shared head of a tree drop: hide collapsed rows and the dragged subtree, require both rows visible,
+ * project the parent over the visible rows, apply the tree's refusal, then move the row in the full list.
+ * Null for a hidden or unknown row, or a landing the tree refuses. Each tree commits the plan to its own data.
+ */
+export function planTreeDrop<R extends ProjectedRow>(
+  rows: readonly R[], collapsedIds: Iterable<string>, activeId: string, overId: string,
+  dragOffset: number, indentationWidth: number, { canParent, refuses }: TreeDropRules<R>,
+): TreeDropPlan<R> | null {
+  const visible = removeCollapsedRows(rows, [...collapsedIds, activeId]);
+  if (!visible.some((r) => r.id === overId) || !visible.some((r) => r.id === activeId)) return null;
+
+  const activeIndex = rows.findIndex((r) => r.id === activeId);
+  const overIndex = rows.findIndex((r) => r.id === overId);
+  const active = rows[activeIndex];
+
+  const { parentId } = projectDrop(visible, activeId, overId, dragOffset, indentationWidth, canParent);
+  const parent = parentId === null ? null : rows.find((r) => r.id === parentId) ?? null;
+  if ((parentId !== null && !parent) || refuses(active, parent)) return null;
+
+  const reParented = rows.map((r) => (r.id === activeId ? { ...r, parentId } : r));
+  return { active, parent, parentId, moved: arrayMove(reParented, activeIndex, overIndex) };
+}
+
 /** The parent a raw `parentId`/`groupId` names, or null (top level) when it is absent or names nothing in
  *  `known`. A dangling reference must never make an item unreachable. */
 export function knownParent(ref: string | null | undefined, known: Pick<ReadonlySet<string>, 'has'>): string | null {

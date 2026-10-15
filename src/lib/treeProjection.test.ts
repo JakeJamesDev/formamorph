@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { anyRowCanParent, knownParent, projectDrop, removeCollapsedRows } from './treeProjection';
+import { anyRowCanParent, knownParent, planTreeDrop, projectDrop, removeCollapsedRows } from './treeProjection';
 
 interface Row { id: string; parentId: string | null; depth: number; folder: boolean }
 const row = (id: string, parentId: string | null, depth: number, folder = false): Row => ({ id, parentId, depth, folder });
@@ -70,6 +70,60 @@ describe('removeCollapsedRows', () => {
 
   it('keeps every row when nothing named is a row', () => {
     expect(removeCollapsedRows(rows, ['missing'])).toEqual(rows);
+  });
+});
+
+describe('planTreeDrop', () => {
+  // A (folder): [B] · C · D
+  const rows = [row('A', null, 0, true), row('B', 'A', 1), row('C', null, 0), row('D', null, 0)];
+  const ids = (list: readonly Row[]) => list.map((r) => `${r.id}<${r.parentId ?? ''}`);
+  const never = () => false;
+
+  it('re-parents the active row and moves it to the drop spot', () => {
+    const plan = planTreeDrop(rows, [], 'D', 'C', 24, 24, { canParent: anyRowCanParent, refuses: never });
+    expect(plan?.parentId).toBe('A');
+    expect(plan?.parent?.id).toBe('A');
+    expect(plan?.active.id).toBe('D');
+    expect(ids(plan?.moved ?? [])).toEqual(['A<', 'B<A', 'D<A', 'C<']);
+  });
+
+  it('projects with the tree’s parent rule', () => {
+    const plan = planTreeDrop(rows, [], 'D', 'D', 24, 24, { canParent: foldersOnly, refuses: never });
+    expect(plan?.parentId).toBeNull();
+    expect(plan?.parent).toBeNull();
+  });
+
+  it('projects over the visible rows only', () => {
+    // A collapsed hides B, so C sits directly below A and nests in it at depth 1.
+    const plan = planTreeDrop(rows, ['A'], 'C', 'C', 24, 24, { canParent: anyRowCanParent, refuses: never });
+    expect(plan?.parentId).toBe('A');
+    expect(ids(plan?.moved ?? [])).toEqual(['A<', 'B<A', 'C<A', 'D<']);
+  });
+
+  it('refuses a drop onto a hidden row', () => {
+    expect(planTreeDrop(rows, ['A'], 'D', 'B', 0, 24, { canParent: anyRowCanParent, refuses: never })).toBeNull();
+  });
+
+  it('refuses a drop onto the dragged subtree', () => {
+    expect(planTreeDrop(rows, [], 'A', 'B', 0, 24, { canParent: anyRowCanParent, refuses: never })).toBeNull();
+  });
+
+  it('refuses ids that are not rows', () => {
+    expect(planTreeDrop(rows, [], 'missing', 'C', 0, 24, { canParent: anyRowCanParent, refuses: never })).toBeNull();
+    expect(planTreeDrop(rows, [], 'C', 'missing', 0, 24, { canParent: anyRowCanParent, refuses: never })).toBeNull();
+  });
+
+  it('refuses a drop the tree’s rule calls a cycle', () => {
+    // C and D name one record, as a shared row does: nesting D under C would put the record inside itself.
+    const sameRecord = (active: Row, parent: Row | null) => parent !== null && [active.id, parent.id].every((id) => 'CD'.includes(id));
+    expect(planTreeDrop(rows, [], 'D', 'D', 24, 24, { canParent: anyRowCanParent, refuses: sameRecord })).toBeNull();
+    expect(planTreeDrop(rows, [], 'D', 'C', 24, 24, { canParent: anyRowCanParent, refuses: sameRecord })?.parentId).toBe('A');
+  });
+
+  it('never mutates its inputs', () => {
+    const before = structuredClone(rows);
+    planTreeDrop(rows, [], 'D', 'C', 24, 24, { canParent: anyRowCanParent, refuses: never });
+    expect(rows).toEqual(before);
   });
 });
 

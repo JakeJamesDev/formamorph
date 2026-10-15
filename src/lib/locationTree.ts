@@ -3,10 +3,9 @@
 // Sibling order is the `locations` array order (no separate `order` field). The editor builds/walks the
 // tree from the single flat array; a drag rewrites the array so its order encodes the new tree.
 
-import { arrayMove } from '@dnd-kit/sortable';
 import { ancestors, parentLookup } from "@/lib/ancestors";
 import { effectiveDestinations } from "@/lib/locationGraph";
-import { anyRowCanParent, knownParent, projectDrop, removeCollapsedRows } from "@/lib/treeProjection";
+import { anyRowCanParent, knownParent, planTreeDrop, projectDrop, removeCollapsedRows } from "@/lib/treeProjection";
 import type { Connection, GameLocation } from '@/types';
 
 export interface LocationTreeNode {
@@ -101,25 +100,17 @@ export function applyLocationDrop(
   locations: GameLocation[], collapsedIds: Iterable<string>,
   activeId: string, overId: string, dragOffset: number, indentationWidth: number,
 ): GameLocation[] {
-  const full = locationRows(locations);
-  const visible = removeCollapsedChildren(full, [...collapsedIds, activeId]);
-  if (!visible.some((i) => i.id === overId) || !visible.some((i) => i.id === activeId)) return locations;
+  const plan = planTreeDrop(locationRows(locations), collapsedIds, activeId, overId, dragOffset, indentationWidth, {
+    canParent: anyRowCanParent,
+    refuses: (active, parent) => parent !== null && isDescendantLocation(locations, active.id, parent.id),
+  });
+  if (!plan) return locations;
 
-  const { parentId } = getLocationDropProjection(visible, activeId, overId, dragOffset, indentationWidth);
-  if (parentId !== null && isDescendantLocation(locations, activeId, parentId)) return locations;
-
-  const activeIndex = full.findIndex((i) => i.id === activeId);
-  const overIndex = full.findIndex((i) => i.id === overId);
-  if (activeIndex === -1 || overIndex === -1) return locations;
-
-  const reParented = full.map((i) => (i.id === activeId ? { ...i, parentId } : i));
-  const sorted = arrayMove(reParented, activeIndex, overIndex);
-
-  // Apply new parentId to shallow-cloned locations and capture each node's sibling order from `sorted`.
+  // Apply new parentId to shallow-cloned locations and capture each node's sibling order from the move.
   const byId = new Map(locations.map((l) => [l.id, { ...l }]));
   const orderByParent = new Map<string, number>();
   const orderOf = new Map<string, number>();
-  for (const item of sorted) {
+  for (const item of plan.moved) {
     const key = item.parentId ?? '\0root';
     const order = orderByParent.get(key) ?? 0;
     orderByParent.set(key, order + 1);

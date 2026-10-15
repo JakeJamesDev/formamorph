@@ -7,10 +7,9 @@
 // over the shared drag-tree scaffold, so the owned-versus-shared decision, the delete cascade and the
 // release rule are testable directly.
 
-import { arrayMove } from '@dnd-kit/sortable';
 import { ancestors } from '@/lib/ancestors';
 import { randomUUID } from '@/lib/uuid';
-import { anyRowCanParent, projectDrop, removeCollapsedRows, type ProjectedRow } from '@/lib/treeProjection';
+import { anyRowCanParent, planTreeDrop, projectDrop, removeCollapsedRows, type ProjectedRow } from '@/lib/treeProjection';
 import {
   PLACEHOLDER_PATH_SEPARATOR, SHARED_PATH_SEP, collectPlaceholderParts, decodePlaceholderToken,
   directChipTargets, encodePlaceholderToken, lonePlaceholderToken, mergePlaceholderWeights,
@@ -454,27 +453,18 @@ export function applyPlaceholderDrop(
   activeId: string, overId: string, dragOffset: number, indentationWidth: number,
   context: PlaceholderDropContext = {},
 ): Placeholder[] {
-  const full = placeholderRows(placeholders, context.all);
-  const visible = removeCollapsedPlaceholderRows(full, [...collapsedIds, activeId]);
-  if (!visible.some((i) => i.id === overId) || !visible.some((i) => i.id === activeId)) return placeholders;
-
-  const activeIndex = full.findIndex((i) => i.id === activeId);
-  const overIndex = full.findIndex((i) => i.id === overId);
-  if (activeIndex === -1 || overIndex === -1) return placeholders;
-  const active = full[activeIndex];
-
-  const { parentId: parentRowId } = getPlaceholderDropProjection(visible, activeId, overId, dragOffset, indentationWidth);
-  const parentRow = parentRowId === null ? null : full.find((i) => i.id === parentRowId) ?? null;
-  if (parentRowId !== null && !parentRow) return placeholders;
-  // A row's id is the chain of ids that reached it, so a chain already naming this placeholder would nest
-  // it inside itself.
-  if (parentRow?.id.split(ROW_SEP).includes(active.placeholder.id)) return placeholders;
+  const plan = planTreeDrop(placeholderRows(placeholders, context.all), collapsedIds, activeId, overId, dragOffset, indentationWidth, {
+    canParent: anyRowCanParent,
+    // A row's id is the chain of ids that reached it, so a chain already naming this placeholder would nest
+    // it inside itself.
+    refuses: (active, parent) => !!parent?.id.split(ROW_SEP).includes(active.placeholder.id),
+  });
+  if (!plan) return placeholders;
+  const { active, parent: parentRow, parentId: parentRowId } = plan;
 
   // Sibling order comes from the flat list moved the way the drop moves it, exactly as the location tree
   // reads it: whichever rows end up under a parent, in the order they end up there.
-  const reParented = full.map((i) => (i.id === activeId ? { ...i, parentId: parentRowId } : i));
-  const moved = arrayMove(reParented, activeIndex, overIndex);
-  const siblingOrder = moved.filter((i) => i.parentId === parentRowId).map((i) => i.placeholder.id);
+  const siblingOrder = plan.moved.filter((i) => i.parentId === parentRowId).map((i) => i.placeholder.id);
 
   return commitPlaceholderDrop(placeholders, {
     targetId: active.placeholder.id, activeHolderId: active.holderId, holderId: parentRow?.placeholder.id ?? null, siblingOrder,
