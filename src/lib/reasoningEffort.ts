@@ -436,6 +436,11 @@ export function thinkingRoom(strength: ReasoningLevel): number {
   return THINKING_ROOM[strength === 'auto' ? 'medium' : strength];
 }
 
+/** The room readout beside a strength, such as "Low · 1,024 tok". */
+export function roomReadout(strength: string, tokens: number): string {
+  return `${strength} · ${tokens.toLocaleString('en-US')} tok`;
+}
+
 /** The budget slider's floor. Off is the prompt's switch, not a 0% position, so the slider never reads as off. */
 export const MIN_REASONING_BUDGET_PCT = 50;
 

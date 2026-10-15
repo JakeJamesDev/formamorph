@@ -7,15 +7,13 @@ import { MIN_REASONING_BUDGET_PCT, MAX_REASONING_BUDGET_PCT, budgetReadout } fro
 /**
  * The strength half of a Native Reasoning control: a dropdown of the levels the endpoint accepts, or the
  * budget slider on a target that caps the thought segment by tokens — the built-in engine and LM Studio.
+ * Where no slider shows, a readout gives the tokens the strength buys.
  * Inert while the switch beside it is off, but still showing the remembered value.
  */
 export type ReasoningStrength<L extends string> =
-  | { kind: 'level'; value: L; options: { value: L; label: string }[]; onChange: (v: L) => void }
-  | {
-      kind: 'budget'; value: number; tokens?: number; onChange: (v: number) => void;
-      /** The target has no base to take a percent of, so the slider is inert while the switch stays live. */
-      disabled?: boolean;
-    };
+  | { kind: 'level'; value: L; options: { value: L; label: string }[]; onChange: (v: L) => void; room?: string }
+  | { kind: 'budget'; value: number; tokens?: number; onChange: (v: number) => void }
+  | { kind: 'room'; room: string };
 
 /**
  * A Native Reasoning control: the on/off switch, then the strength. The switch is the one lever every prompt
@@ -36,7 +34,6 @@ export function ReasoningSwitch<L extends string>({ id, label = SETTINGS_COPY.na
   lockedOn?: boolean;
 }) {
   const inert = disabled || !(enabled || lockedOn);
-  const sliderInert = inert || (strength?.kind === 'budget' && strength.disabled === true);
   return (
     <div className="flex items-center gap-3">
       <span className="flex h-9 shrink-0 items-center">
@@ -56,16 +53,19 @@ export function ReasoningSwitch<L extends string>({ id, label = SETTINGS_COPY.na
           </SelectContent>
         </Select>
       )}
+      {(strength?.kind === 'level' || strength?.kind === 'room') && strength.room && (
+        <span className={`shrink-0 whitespace-nowrap text-label tabular-nums${strength.kind === 'room' ? ' flex-1' : ''}${inert ? ' opacity-60' : ''}`}>{strength.room}</span>
+      )}
       {strength?.kind === 'budget' && (
         <>
           {/* pl-2.5 for the thumb's overhang at the floor — see SamplerControl. */}
           <Slider
-            className={`flex-grow pl-2.5${sliderInert ? ' opacity-60' : ''}`}
+            className={`flex-grow pl-2.5${inert ? ' opacity-60' : ''}`}
             value={[strength.value]}
             min={MIN_REASONING_BUDGET_PCT}
             max={MAX_REASONING_BUDGET_PCT}
             step={5}
-            disabled={sliderInert}
+            disabled={inert}
             onValueChange={(v) => strength.onChange(v[0])}
             aria-label={SETTINGS_COPY.reasoningBudget.label}
           />

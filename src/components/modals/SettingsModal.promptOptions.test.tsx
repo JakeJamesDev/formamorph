@@ -11,7 +11,7 @@ import { DEFAULT_ENDPOINT, DEFAULT_MODEL_NAME } from '@/contexts/settingsDefault
 import type { ReasoningCapability } from '@/lib/reasoningEffort';
 import { DEFAULT_TEXT_ENDPOINT_VALUES, textEndpointPresetCodec } from '@/lib/textEndpointPresets';
 import { presetStoreCodec } from '@/lib/promptPresets';
-import { SETTINGS_COPY, REASONING_NOTES } from './settingsCopy';
+import { SETTINGS_COPY } from './settingsCopy';
 
 /**
  * A prompt's Options panel tunes that prompt and no other. These cases open the Scene Tags tab, whose
@@ -289,19 +289,19 @@ describe('the Reasoning Budget readout', () => {
     expect(screen.getByText('50% · 400 tok')).toBeTruthy();
   });
 
-  it('disables the slider, keeps the percent, and names the fix while the endpoint override is off', () => {
+  it('swaps the slider for the room readout while the endpoint override is off', () => {
     seedEndpointMaxOutput({ enabled: false, value: 800 });
     openOptions('narration');
     makeEditable();
-    // Narration ships switched on, so only the missing base can disable the slider.
+    // Narration ships on at Global, which follows Model Default, so the room is Medium's.
     expect(reasoningSwitch().getAttribute('data-state')).toBe('checked');
     expect(reasoningSwitch().hasAttribute('disabled')).toBe(false);
-    expect(budgetSlider().getAttribute('data-disabled')).not.toBeNull();
-    expect(screen.getByText('150%')).toBeTruthy();
-    expect(screen.getByText(REASONING_NOTES.noBudgetBase)).toBeTruthy();
+    expect(screen.queryByRole('slider', { name: SETTINGS_COPY.reasoningBudget.label })).toBeNull();
+    expect(screen.queryByText('150%')).toBeNull();
+    expect(screen.getByText('Model Default · 2,048 tok')).toBeTruthy();
   });
 
-  it('disables the budget-only slider and names the fix while the endpoint override is off', () => {
+  it('swaps the budget-only slider for the room readout while the endpoint override is off', () => {
     localStorage.setItem(
       'FORMAMORPH_reasoningSupport',
       JSON.stringify({ [`${normalizeEndpointUrl(DEFAULT_ENDPOINT)}|${DEFAULT_MODEL_NAME}`]: { ...takesBudget, levels: [] } }),
@@ -310,20 +310,19 @@ describe('the Reasoning Budget readout', () => {
     openOptions('narration');
     makeEditable();
     expect(reasoningSwitch().hasAttribute('disabled')).toBe(false);
-    expect(budgetSlider().getAttribute('data-disabled')).not.toBeNull();
-    expect(screen.getByText('150%')).toBeTruthy();
-    expect(screen.getByText(REASONING_NOTES.noBudgetBase)).toBeTruthy();
+    expect(screen.queryByRole('slider', { name: SETTINGS_COPY.reasoningBudget.label })).toBeNull();
+    expect(screen.getByText('Model Default · 2,048 tok')).toBeTruthy();
   });
 
-  it('shows the floor a floor dialect still sends while the endpoint override is off', () => {
+  it('raises the room to the floor a floor dialect still sends while the endpoint override is off', () => {
     localStorage.setItem(
       'FORMAMORPH_reasoningSupport',
       JSON.stringify({ [`${normalizeEndpointUrl(DEFAULT_ENDPOINT)}|${DEFAULT_MODEL_NAME}`]: { ...takesBudget, levels: [], dialect: 'anthropic-budget' } }),
     );
     seedEndpointMaxOutput({ enabled: false, value: 800 });
     openOptions('narration');
-    expect(screen.getByText('150% · 1024 tok')).toBeTruthy();
-    expect(budgetSlider().getAttribute('data-disabled')).not.toBeNull();
+    expect(screen.getByText('Model Default · 2,048 tok')).toBeTruthy();
+    expect(screen.queryByRole('slider', { name: SETTINGS_COPY.reasoningBudget.label })).toBeNull();
   });
 });
 

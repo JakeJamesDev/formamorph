@@ -34,6 +34,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **ComfyUI's File Name setting sets the folders and name for each saved image.** By default, images go in `formamorph/<world>/`, named for their entity, location or turn. A `/` in the pattern makes a folder. A custom workflow needs `%prefix%` in its save node.
   - **Buttons and menu items that send an AI request now show which endpoint gets it.** **Send** and the World Editor's generate buttons show it in their tooltip. **Re-generate Narration**, **Re-generate Stats**, **Re-generate Choices** and **Write Scene Tags** show it as a second line in the More and right-click menus.
   - **Each text endpoint has Extra Parameters: a JSON object added to every request sent to it.** A field the app sets for a request wins. You can't set `model`, `messages`, `stream`, `tools`, `tool_choice`, `response_format`, `n` or `stop`. If the text has an error, requests go out without it.
+  - **A prompt's Native Reasoning now shows its thinking room beside the strength, such as "Low · 1,024 tok".** The readout updates when you change the strength. With Max Output off, it replaces the Reasoning Budget slider and its note.
 
 #### 🔧 Fixed
 

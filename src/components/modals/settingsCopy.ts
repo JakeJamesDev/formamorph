@@ -778,7 +778,6 @@ export const SETTINGS_OPTIONS = {
 export const REASONING_NOTES = {
   never: 'This model doesn’t support reasoning, so there’s nothing to configure',
   always: 'This model always reasons, so it can’t be switched off',
-  noBudgetBase: 'Set “Max Output Tokens” on this prompt’s endpoint to use this budget',
 } as const;
 
 export const TOOLS_NOTES = {

@@ -1,6 +1,6 @@
 import {
   promptReasoningLevelOptions, reasoningRuledOut, reasoningLevelControl, reasoningOffRefused, reasoningAwaitingProof,
-  reasoningBudget, type PromptReasoningSetting, type ReasoningCapability,
+  reasoningBudget, reasoningLevelLabel, thinkingRoom, type PromptReasoningSetting, type ReasoningCapability, type ReasoningLevel,
 } from '@/lib/reasoningEffort';
 import { reasoningDialectShowsBudgetSlider, reasoningDialectBudgetFloor } from '@/lib/reasoningDialect';
 import type { AIRequestType } from '@/types';
@@ -12,8 +12,10 @@ export interface PromptReasoningFieldProps {
   setting: PromptReasoningSetting;
   onChange: (v: PromptReasoningSetting) => void;
   options: { value: PromptReasoningSetting['level']; label: string }[];
-  /** The budget percent and its setter when the target takes a token budget; absent otherwise. */
-  budget: { value: number; set: (v: number) => void; tokens?: number; disabled: boolean } | null;
+  /** The budget percent and its setter where the target takes a token budget the endpoint's Max Output can scale. */
+  budget: { value: number; set: (v: number) => void; tokens?: number } | null;
+  /** The strength and its Thinking Room where no budget slider shows, for the readout beside the strength. */
+  room: { strength: string; tokens: number } | null;
   /** Whether the target honors the effort level, so the dropdown is worth showing. */
   level: boolean;
   /** The endpoint refuses to switch reasoning off, so the switch reads checked and locked. */
@@ -41,6 +43,8 @@ export interface PromptReasoningFieldInput {
   kind: AIRequestType;
   setting: PromptReasoningSetting;
   budgetPct: number;
+  /** The endpoint-wide strength a prompt set to Global follows. Model Default where the caller has none. */
+  globalLevel?: ReasoningLevel;
   /** The call never sends native reasoning, as Inline narration does not. */
   suppressed: boolean;
   /** Draws the field while the dialect awaits proof, as the Output row does. */
@@ -54,7 +58,7 @@ export interface PromptReasoningFieldInput {
  * external endpoint whose record rules reasoning out or still awaits proof. The local engine always draws one.
  */
 export function promptReasoningFieldProps(input: PromptReasoningFieldInput): Omit<PromptReasoningFieldProps, 'disabled'> | null {
-  const { target, kind, setting, budgetPct, suppressed, showAwaitingProof = false, onChange, onBudgetChange } = input;
+  const { target, kind, setting, budgetPct, globalLevel = 'auto', suppressed, showAwaitingProof = false, onChange, onBudgetChange } = input;
   const capability = target.reasoning;
   // An unanswered record keeps the field; a proof-needing dialect (vLLM) waits for its first reply.
   const applicable = !suppressed
@@ -65,15 +69,23 @@ export function promptReasoningFieldProps(input: PromptReasoningFieldInput): Omi
     effort: 'auto', kind, budgets: { [kind]: budgetPct }, base: target.maxTokens, answerCap: undefined,
     floor: reasoningDialectBudgetFloor(capability.dialect),
   }).budget ?? undefined;
+  const slider = capability.budget && reasoningDialectShowsBudgetSlider(capability.dialect);
+  const level = reasoningLevelControl(capability);
+  const scalable = target.maxTokens !== undefined;
+  // With no Max Output to take a percent of, the strength's room is the budget, raised to the dialect's floor.
+  const strength = setting.level === 'global' ? globalLevel : setting.level;
+  // A slider target with no base, or a level target with no slider; no other target shows a strength to read beside.
+  const room = (slider && !scalable) || (!slider && level)
+    ? { strength: reasoningLevelLabel(strength), tokens: Math.max(thinkingRoom(strength), slider ? reasoningDialectBudgetFloor(capability.dialect) : 0) }
+    : null;
   return {
     setting,
     onChange,
     options: promptReasoningLevelOptions(capability, setting.level),
     lockedOn: reasoningOffRefused(capability),
     // Each half follows the dialect's row and the record; the engine names no level field, so no dropdown.
-    budget: capability.budget && reasoningDialectShowsBudgetSlider(capability.dialect)
-      ? { value: budgetPct, set: onBudgetChange, tokens, disabled: target.maxTokens === undefined }
-      : null,
-    level: reasoningLevelControl(capability),
+    budget: slider && scalable ? { value: budgetPct, set: onBudgetChange, tokens } : null,
+    room,
+    level,
   };
 }

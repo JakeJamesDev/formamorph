@@ -11,6 +11,7 @@ import { DEFAULT_ENDPOINT, DEFAULT_MODEL_NAME } from '@/contexts/settingsDefault
 import type { ReasoningCapability } from '@/lib/reasoningEffort';
 import { reasoningIdentityAnswer } from '@/lib/reasoningIdentity';
 import { REASONING_NOTES } from './settingsCopy';
+import { DEFAULT_TEXT_ENDPOINT_VALUES, textEndpointPresetCodec } from '@/lib/textEndpointPresets';
 
 /**
  * Which strength a prompt's Options tab offers. The record on the routed target decides it: a target that
@@ -91,6 +92,35 @@ describe('the prompt Options strength follows the capability record', () => {
     openNarrationOptions();
     expect(screen.getByText('Native Reasoning')).toBeTruthy();
     expect(screen.queryByText('Reasoning Budget')).toBeNull();
+  });
+});
+
+describe('the Thinking Room readout beside the strength', () => {
+  beforeEach(() => localStorage.clear());
+
+  it('reads the room of the strength where no budget slider shows, and follows a change of strength', () => {
+    seedCapability({ ...takesBudget, dialect: 'openai' });
+    openNarrationOptions();
+    makeEditable();
+    // Narration ships on at Global, which follows Model Default, so the room is Medium's.
+    expect(screen.getByText('Model Default · 2,048 tok')).toBeTruthy();
+    const strength = screen.getAllByRole('combobox').find((c) => c.textContent?.includes('Global'))!;
+    // Radix opens a Select from the keyboard; a click needs pointer capture, which jsdom has not got.
+    fireEvent.keyDown(strength, { key: 'Enter' });
+    fireEvent.click(screen.getByRole('option', { name: 'High' }));
+    expect(screen.getByText('High · 4,096 tok')).toBeTruthy();
+    expect(screen.queryByText('Model Default · 2,048 tok')).toBeNull();
+  });
+
+  it('keeps the slider and shows no readout where Max Output gives the budget a base', () => {
+    localStorage.setItem('FORMAMORPH_textEndpointPresets', textEndpointPresetCodec.serialize({
+      activeId: 'mine',
+      presets: [{ id: 'mine', name: 'Mine', values: { ...DEFAULT_TEXT_ENDPOINT_VALUES, maxOutputOverride: { enabled: true, value: 800 } } }],
+    }));
+    seedCapability(takesBudget);
+    openNarrationOptions();
+    expect(screen.getByRole('slider', { name: 'Reasoning Budget' })).toBeTruthy();
+    expect(screen.queryByText(/^(Model Default|Low|Medium|High) · [\d,]+ tok$/)).toBeNull();
   });
 });
 
