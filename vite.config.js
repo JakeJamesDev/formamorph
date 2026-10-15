@@ -167,6 +167,10 @@ export default defineConfig({
       '.env*',
     ].map((file) => path.resolve(__dirname, file).replace(/\\/g, '/')),
     css: false,
+    // One fork per hardware thread halves each test's speed for the same throughput: on 32 threads the
+    // 5-second tests ran 4.6 s idle and timed out under a peer's load. Half the threads keeps the wall
+    // time and gives every fork a thread of its own.
+    maxWorkers: '50%',
     // A new jsdom per file is a large share of the suite's CPU, so plain .ts tests run in node. A .ts test
     // that needs the DOM opts in with `// @vitest-environment jsdom`.
     projects: [
