@@ -167,3 +167,10 @@ Open edges from ticket 05 (landed as 5214c1d161):
 - The Variable menu does not list `trait` (ticket 13).
 - A toggle or persona-change run that itself switches traits sets the whole trait state when it lands, as the Before box does. A second toggle made while it runs, for example with a `player.*` prompt open, can be overwritten.
 - A persona-change run reads the cast (`persona`, `entities`) from before the change; `trait` and the trait scope use the new world.
+
+Open edges from ticket 11:
+
+- The bench's choice row shows the question only, not which script asks.
+- The static stat-code rules (unknown stat routes, Before reads delta) still read stat scripts only.
+- `STAT_CODE_EXECUTION` and `STAT_CODE_UNKNOWN_NAME` keep section `stats`, so trait and world script failures group under Stats; each item still opens its own tab.
+- `checkStatCode`, `runStatCodeCheck` and the `StatCodeCheck` component still say stat code.
