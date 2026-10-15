@@ -7,6 +7,7 @@ import { memberStep, placeholderPathExpression } from '@/lib/statCodePaths';
 import { statBoxAnalysisOptions } from '@/lib/statCodeBoxOptions';
 import { findStat, missingSegments, runTestCode, statCodeNames, type StatCodeWorld, type TestCodeReport } from '@/lib/statCodeTestRun';
 import type { StatCodeTiming } from '@/lib/statCodeTiming';
+import { randomUUID } from '@/lib/uuid';
 
 /** The most characters of code one finding quotes. */
 const FINDING_TEXT_MAX = 60;
@@ -93,6 +94,6 @@ export async function testStatCode(code: string, box: StatCodeTiming, statName: 
   return {
     world: true,
     ...rest,
-    run: await runTestCode(code, box, found?.stat ?? { id: crypto.randomUUID(), name: '' }, names, { pendingPersona: true, missing, owner: found?.owner }),
+    run: await runTestCode(code, box, found?.stat ?? { id: randomUUID(), name: '' }, names, { pendingPersona: true, missing, owner: found?.owner }),
   };
 }

@@ -14,6 +14,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { HelpButton } from '@/components/HelpButton';
 import { Pin, PinOff, RotateCcw, Trash2, Undo2, Pencil, RefreshCw, Plus, Loader2, Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { randomUUID } from '@/lib/uuid';
 
 /**
  * The Memory Manager: the full surface for the story's long-term memory. The side panel stays the
@@ -142,7 +143,7 @@ export const MemoryManagerModal = ({
       ...prev,
       // Anchored at the current message-history length, which places it chronologically among the
       // digests and never moves again.
-      { id: crypto.randomUUID(), text, anchorTurn: fullMessageHistory.length },
+      { id: randomUUID(), text, anchorTurn: fullMessageHistory.length },
     ]);
     setDraft('');
     setAdding(false);

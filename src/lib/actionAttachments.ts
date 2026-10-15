@@ -5,6 +5,7 @@ import type { ChatMessage, ImageAttachment } from '@/types';
 import { bytesToDataUrl, dataUrlMime, fitWithin } from './imageBytes';
 import { parseTurnContent, pruneTurnMap } from './turnDigest';
 import { pageAssistantIndex } from './turnHistory';
+import { randomUUID } from '@/lib/uuid';
 
 /** How many images one action carries. */
 export const MAX_ATTACHMENTS = 4;
@@ -55,7 +56,7 @@ async function encodeAttachment(file: File): Promise<ImageAttachment | null> {
     const blob = await canvas.convertToBlob({ type: ATTACHMENT_MIME, quality: ATTACHMENT_QUALITY });
     if (blob.type !== ATTACHMENT_MIME) return null;
     const dataUrl = bytesToDataUrl(new Uint8Array(await blob.arrayBuffer()), ATTACHMENT_MIME);
-    return { id: crypto.randomUUID(), mime: ATTACHMENT_MIME, dataUrl };
+    return { id: randomUUID(), mime: ATTACHMENT_MIME, dataUrl };
   } catch {
     return null;
   }

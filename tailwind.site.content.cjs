@@ -92,6 +92,7 @@ const FILES = [
   'src/lib/useMountedRef.ts',
   'src/lib/useResetOnOpen.ts',
   'src/lib/utils.ts',
+  'src/lib/uuid.ts',
   'src/services/AuthService.ts',
   'src/services/AgeGateService.ts',
   'src/services/authRequest.ts',

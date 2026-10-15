@@ -155,7 +155,8 @@ describe('the site entry stays out of the game bundle', () => {
     // 59: `elementIcons`, a lucide-only leaf that `catalogKinds` reads for its kind icons.
     // 60: `gesture-group`, the leaf the slider and color picker read to group a drag into one undo Step.
     // 61: `authRequest`, the one auth header and error helper the age gate, user and Patreon services read.
-    expect(reachableFromSite().size).toBeLessThanOrEqual(61);
+    // 62: `uuid`, the one ID helper, which the age gate flow now reads.
+    expect(reachableFromSite().size).toBeLessThanOrEqual(62);
   });
 
   it('reaches the gesture group helper through the slider and color picker, and nothing behind it', () => {

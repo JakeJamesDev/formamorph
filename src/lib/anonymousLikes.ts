@@ -9,6 +9,7 @@
  * copied from it rather than guessed: an unrecognized code reads as an unexplained refusal, and a header
  * the server does not read is no header at all.
  */
+import { randomUUID } from '@/lib/uuid';
 
 /** Where the id lives, under the prefix every other browser-stored value here uses. */
 export const INSTALL_STORAGE_KEY = 'FORMAMORPH_installId';
@@ -100,7 +101,7 @@ export function refusalAnswer(code: string): RefusalAnswer {
   }
 }
 
-/** A UUID as `crypto.randomUUID()` writes one. The server checks the same shape and refuses anything else. */
+/** A UUID as `randomUUID()` writes one. The server checks the same shape and refuses anything else. */
 const INSTALL_ID_SHAPE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** The id in hand, so a browser that refuses to store keeps one Install for as long as it is open. */
@@ -143,7 +144,7 @@ export function installId(): string {
   const existing = storedInstallId();
   if (existing) return existing;
 
-  held = crypto.randomUUID().toLowerCase();
+  held = randomUUID().toLowerCase();
   try {
     localStorage.setItem(INSTALL_STORAGE_KEY, held);
   } catch {
