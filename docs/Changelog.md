@@ -27,6 +27,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### 🔧 Fixed
 
 - **👤 User-facing**
+  - **A failed AI request now names the prompt it was sent for and the endpoint it went to.** The toast reads, for example, **Location Change failed (GLM 5.3)**, and Error Details starts with the same two lines, for every kind of failure, a lost connection included. An empty narration names the endpoint and model it came from too.
   - **ComfyUI with an empty Model now uses the first checkpoint the server lists.** It used to send an empty checkpoint name, which ComfyUI rejects. The Model placeholder says which one is used.
   - **Drifted Copies:**
     - **Duplicating a location from the filtered list now gives the copy its own Unique chip rolls.** The copy no longer shares the source's values, the same as in the tree.

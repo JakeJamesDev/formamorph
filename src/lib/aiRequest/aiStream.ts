@@ -1,12 +1,13 @@
 import type { WireMessage } from '@/types';
 import { redactUrl } from '@/lib/redactUrl';
+import { REQUEST_LABELS } from '@/lib/promptGroups';
 import type { AiRequestBody, AiRequestSpec } from './aiRequestSpec';
 import { noteImagesDropped } from './localEngineImageDrop';
 
 /** Why a stream failed. `parse` is reported per bad line as a debug event, never thrown — a malformed
  *  frame is skipped so the rest of the stream still arrives. `cut-thought`: the server stopped the reply
  *  on its token limit before any answer or call. */
-export type AiStreamErrorKind = 'http' | 'no-body' | 'parse' | 'cut-thought';
+export type AiStreamErrorKind = 'http' | 'no-body' | 'parse' | 'cut-thought' | 'empty';
 
 /** Structured detail an endpoint returned with an HTTP failure, when it supplied an OpenAI-style error body. */
 export interface AiServerError {
@@ -23,9 +24,13 @@ export class AiStreamError extends Error {
   readonly serverError?: AiServerError;
   /** The Error Details text: the request, the status, the server's fields and its raw body. */
   readonly details?: string;
+  /** The prompt the request was sent for, and the endpoint it went to, for the toast's headline. */
+  readonly prompt?: string;
+  readonly endpoint?: string;
 
   constructor(kind: AiStreamErrorKind, message: string, detail?: {
     status?: number; response?: Response; serverError?: AiServerError; details?: string; cause?: unknown;
+    prompt?: string; endpoint?: string;
   }) {
     super(message, { cause: detail?.cause });
     this.name = 'AiStreamError';
@@ -34,6 +39,8 @@ export class AiStreamError extends Error {
     this.response = detail?.response;
     this.serverError = detail?.serverError;
     this.details = detail?.details;
+    this.prompt = detail?.prompt;
+    this.endpoint = detail?.endpoint;
   }
 }
 
@@ -62,15 +69,58 @@ function parseServerError(raw: string): AiServerError | undefined {
   }
 }
 
-/** The Error Details lines that name the request. */
-const requestLines = (spec: AiStreamSpec): string[] =>
-  [`Request: POST ${redactUrl(spec.url)}`, spec.body.model ? `Model: ${spec.body.model}` : ''].filter(Boolean);
+/** The requests that have no prompt of their own under Settings → Prompts, by the button that sends them. */
+const UNLISTED_REQUESTS: Partial<Record<AiStreamSpec['requestType'], string>> = {
+  descriptionSummary: 'Generate Summary',
+  descriptionBridge: 'Generate Description',
+  imageTags: 'Image Tags',
+  help: 'Help',
+};
+
+/** The prompt a request was sent for, by the name Settings → Prompts shows it under. */
+export const promptNameOf = (spec: Pick<AiStreamSpec, 'requestType'>): string =>
+  REQUEST_LABELS[spec.requestType] ?? UNLISTED_REQUESTS[spec.requestType] ?? spec.requestType;
+
+/** Which prompt a request was for and which endpoint it went to, carried by every error it ends in. */
+export const requestContextOf = (spec: AiStreamSpec): { prompt: string; endpoint?: string } => ({
+  prompt: promptNameOf(spec),
+  ...(spec.target.presetName ? { endpoint: spec.target.presetName } : {}),
+});
+
+/** The Error Details lines that name the request: which prompt, which endpoint, where it went, which model. */
+const requestLines = (spec: AiStreamSpec): string[] => [
+  `Prompt: ${promptNameOf(spec)}`,
+  spec.target.presetName ? `Endpoint: ${spec.target.presetName}` : '',
+  `Request: POST ${redactUrl(spec.url)}`,
+  spec.body.model ? `Model: ${spec.body.model}` : '',
+].filter(Boolean);
+
+/**
+ * A failure from outside the stream's own checks (the network, the browser) with the request's prompt,
+ * endpoint and lines attached, so its toast and Error Details say which request it was. Its type is kept,
+ * since the connection guide is offered by type.
+ */
+function withRequestContext(error: unknown, spec: AiStreamSpec): unknown {
+  if (!(error instanceof Error) || 'prompt' in error) return error;
+  const own = (error as { details?: unknown }).details;
+  return Object.assign(error, {
+    ...requestContextOf(spec),
+    details: [error.message, ...requestLines(spec), ...(typeof own === 'string' ? [own] : [])].join('\n'),
+  });
+}
 
 /** The error for a reply the server stopped on its token limit before any answer or call. */
 export function cutThoughtFailure(spec: AiStreamSpec): AiStreamError {
   const limit = spec.body.max_tokens === undefined ? [] : [`max_tokens: ${spec.body.max_tokens}`];
   return new AiStreamError('cut-thought', 'The model reached its token limit before it wrote an answer', {
-    details: [...requestLines(spec), ...limit].join('\n'),
+    details: [...requestLines(spec), ...limit].join('\n'), ...requestContextOf(spec),
+  });
+}
+
+/** The error for a request that ended with no answer text. */
+export function emptyAnswerFailure(spec: AiStreamSpec, finishReason: string | null | undefined): AiStreamError {
+  return new AiStreamError('empty', `The model sent an empty answer (finish reason: ${finishReason ?? 'none'})`, {
+    details: requestLines(spec).join('\n'), ...requestContextOf(spec),
   });
 }
 
@@ -94,6 +144,7 @@ async function httpFailure(response: Response, spec: AiStreamSpec): Promise<AiSt
     response,
     serverError,
     details: [...lines, '', 'Response:', raw.trim() ? raw : '(empty)'].join('\n'),
+    ...requestContextOf(spec),
   });
 }
 
@@ -279,12 +330,12 @@ export async function* streamAiRequest(spec: AiStreamSpec, options: AiStreamOpti
       yield { type: 'done', result: result() };
       return;
     }
-    throw error;
+    throw withRequestContext(error, spec);
   }
 
   if (!response.ok) throw await httpFailure(response, spec);
   noteImagesDropped(response);
-  if (!response.body) throw new AiStreamError('no-body', 'Response has no body to stream');
+  if (!response.body) throw new AiStreamError('no-body', 'Response has no body to stream', { details: requestLines(spec).join('\n'), ...requestContextOf(spec) });
 
   yield { type: 'debug', debug: { kind: 'response', status: response.status, openedAt: now() } };
 
@@ -341,7 +392,7 @@ export async function* streamAiRequest(spec: AiStreamSpec, options: AiStreamOpti
         // A stop press errors the body under an in-flight read, so the rejection is the abort arriving —
         // not a failure. Anything else is a real transport error and belongs to the caller.
         if (signal?.aborted || (error as Error).name === 'AbortError') break;
-        throw error;
+        throw withRequestContext(error, spec);
       }
       const { done, value } = chunk;
       if (done) break;
