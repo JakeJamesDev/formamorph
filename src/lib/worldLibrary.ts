@@ -131,7 +131,8 @@ function fillMetadata(transaction: IDBTransaction): void {
   cursor.onsuccess = () => {
     const at = cursor.result;
     if (!at) return;
-    meta.put(worldMetaOf(at.value as StoredWorldShape));
+    // A value the browser can't read back comes out null; listing it would abort the upgrade.
+    if (at.value && typeof at.value === 'object') meta.put(worldMetaOf(at.value as StoredWorldShape));
     at.continue();
   };
 }
