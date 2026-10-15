@@ -6,7 +6,7 @@ import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
 import type { Surface } from '@/lib/surface/surfaceRegistry';
 import { sseReply, sseResponse, textSnapshot, textTarget } from '@/test/aiTextFixtures';
 import { GENERAL_KNOWLEDGE_MARKER } from './generalKnowledge';
-import { DEFAULT_CODE_RIDER, QUICK_REFERENCE_SECTION, STAT_CODE_TAB } from './helpCodeRider';
+import { DEFAULT_CODE_RIDER, QUICK_REFERENCE_SECTION, SCRIPT_TAB } from './helpCodeRider';
 import { helpUserMessage, screenLine } from './helpPrompt';
 import { askHelp, HELP_SECTION_LIMIT, helpSections, type HelpEvent, type HelpQuestion } from './helpSession';
 import { helpSettingsOf, type HelpSettings } from './helpSettings';
@@ -31,7 +31,7 @@ const PAGES = {
 const index = createDocsIndex({ pages: PAGES, sidebar: '- [World Editor Stats](World-Editor-Stats)\n- [Scripts Guide](ScriptsGuide)\n- [Traits](Traits)\n' });
 
 const surface = (...tabs: SurfaceId[]): Surface => ({ screen: 'worldEditor', dialog: null, tabs });
-const CODE_TAB = surface(STAT_CODE_TAB);
+const CODE_TAB = surface(SCRIPT_TAB);
 const DETAILS_TAB = surface('worldEditorStat.details');
 
 /** One request per question: the pick request is off. */

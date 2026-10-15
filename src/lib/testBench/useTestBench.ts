@@ -1,6 +1,6 @@
 /**
  * The whole Test Bench orchestration behind the World Editor: open/close, the per-world Instrument tab, the
- * debounced rule pass and the on-demand stat-code check, the lens, the trigger report, the two view-models,
+ * debounced rule pass and the on-demand script check, the lens, the trigger report, the two view-models,
  * seen-state, and quick-fix write-through. The editor keeps only wiring — where its own selection stands and
  * how to land on an item — so the view stops changing for Bench reasons.
  *
@@ -22,7 +22,7 @@ import { buildAiContext, EMPTY_AI_CONTEXT } from './aiContext';
 import { buildOpening, EMPTY_OPENING, type OpeningChoice } from './opening';
 import { useOpeningRolls } from './useOpeningRolls';
 import { loadLastTurn, type LastTurn } from './lastTurn';
-import { checkedScriptCount, checkStatCode } from './statCodeCheck';
+import { checkedScriptCount, checkScripts } from './scriptCheck';
 import { useEditorPromptRun } from '@/lib/useEditorPromptRun';
 import { lensStatOverrides } from './lens';
 import { useBenchFindings } from './useBenchFindings';
@@ -133,12 +133,12 @@ export function useTestBench({
     setCodeCheckStatus((prev) => (prev === 'idle' ? prev : 'idle'));
     closeCodePrompts();
   }, [benchWorld, closeCodePrompts]);
-  const runStatCodeCheck = useCallback(async () => {
+  const runScriptCheck = useCallback(async () => {
     const stillCurrent = beginCodeRun();
     const prompts = openCodePrompts();
     setCodeCheckStatus('running');
     try {
-      const found = await checkStatCode(getWorldData(), prompts.host);
+      const found = await checkScripts(getWorldData(), prompts.host);
       if (!stillCurrent()) return;
       setCodeFindings(found);
       setCodeCheckStatus('done');
@@ -320,7 +320,7 @@ export function useTestBench({
       setEntityGroups, setTraits, setTraitGroups, setStatUpdates, setDictionaries, setWorldPlaceholders,
       setPlaceholderGroups, noteFirstDownloadEdit]);
   // The image conversion is the one repair the pure pass can't carry — it decodes and re-encodes every
-  // convertible picture. So it runs like the stat-code check: one at a time, and a result about a world the
+  // convertible picture. So it runs like the script check: one at a time, and a result about a world the
   // author has since edited is dropped rather than written over the world they now have.
   const [fixingRuleId, setFixingRuleId] = useState<string | null>(null);
   const beginImageRun = useLatestRun(benchWorld);
@@ -401,7 +401,7 @@ export function useTestBench({
     onDismissRule: bench.dismissRule,
     onRestoreRule: bench.restoreRule,
     onMarkAllSeen: bench.markAllSeen,
-    onCheckStatCode: runStatCodeCheck,
+    onCheckScripts: runScriptCheck,
     sources: {
       sourceCount: sources.copies.length,
       status: sources.status,

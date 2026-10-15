@@ -9,7 +9,7 @@ import { statCodeCompletions, statCodeDiagnostics } from './statCodeAnalysis';
 import { statCodeName, statCodeNamed } from './statCodeNames';
 import { placeholderPathLabel, placeholderPathMap, walkPlaceholderPath } from './statCodePaths';
 import type { PlaceholderOwners } from './placeholderHomes';
-import { checkStatCode } from './testBench/statCodeCheck';
+import { checkScripts } from './testBench/scriptCheck';
 import { runStatCodeTurn } from './statCodeTurn';
 import { entityTraitNames } from './statCodeTraits';
 import { STAT_CODE_TIMINGS, type StatCodeTiming } from './statCodeTiming';
@@ -68,7 +68,7 @@ function benchFindings(lookup: string, timing: StatCodeTiming): string[] {
     locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true }],
     entities: [], traits: [], statUpdates: [], dictionaries: [], placeholders: [beast],
   };
-  return runRules(world).filter((f) => f.ruleId === 'stat-code-unknown-stat').map((f) => f.message);
+  return runRules(world).filter((f) => f.ruleId === 'script-unknown-stat').map((f) => f.message);
 }
 
 describe.each(STAT_CODE_TIMINGS)('one code name across the sandbox, the completions, and the bench (%s box)', (timing) => {
@@ -136,7 +136,7 @@ function benchTraitFindings(lookup: string, timing: StatCodeTiming): Promise<str
     locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true }],
     entities: [], traits: [fury], statUpdates: [], dictionaries: [], placeholders: [beast],
   };
-  return checkStatCode(world).then((found) => found.map((f) => f.message));
+  return checkScripts(world).then((found) => found.map((f) => f.message));
 }
 
 describe.each(STAT_CODE_TIMINGS)('one trait code name across the sandbox, the completions, the editor and the bench (%s box)', (timing) => {
@@ -261,7 +261,7 @@ async function entityStatKeysInSandbox(rolled: string, timing: StatCodeTiming): 
   return String(out.pinWrites['ph-probe']);
 }
 
-describe.each(STAT_CODE_TIMINGS)('one entity stat code name across the sandbox and the completions (%s box)', (timing) => {
+describe.each(STAT_CODE_TIMINGS)('one entity stat name across the sandbox and the completions (%s box)', (timing) => {
   it('keys the entity’s stats on the code name whatever the playthrough rolled, and offers that same name', async () => {
     const keys = await entityStatKeysInSandbox('Wolf', timing);
     expect(keys).toBe(await entityStatKeysInSandbox('Bear', timing));
@@ -327,7 +327,7 @@ function benchPathFindings(lookup: string, timing: StatCodeTiming): Promise<stri
     locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true }],
     entities: [molly], traits: [], statUpdates: [], dictionaries: [], placeholders: [worldHair, probe],
   };
-  return checkStatCode(world).then((found) => found.map((f) => f.message));
+  return checkScripts(world).then((found) => found.map((f) => f.message));
 }
 
 describe.each(STAT_CODE_TIMINGS)('one placeholder path across the sandbox, the completions, the editor and the bench (%s box)', (timing) => {
@@ -391,7 +391,7 @@ describe('a stat with code in both boxes', () => {
   };
 
   it('reports each box’s own miss under that box’s name', () => {
-    const found = runRules(twoBoxes).filter((f) => f.ruleId === 'stat-code-unknown-stat').map((f) => f.message);
+    const found = runRules(twoBoxes).filter((f) => f.ruleId === 'script-unknown-stat').map((f) => f.message);
     expect(found).toEqual([
       '“Mana · Before the AI” looks up a stat named “Wolf Power”, which does not exist',
       '“Mana · After the AI” looks up a stat named “Bear Power”, which does not exist',

@@ -1,7 +1,7 @@
 /**
  * The repair behind the `image-not-webp` row. It can't be one of the registry's pure `fix` functions — every
  * image has to be decoded and re-encoded — so it lives beside the rule seam and the Bench hook runs it on
- * demand, the way the stat-code check runs.
+ * demand, the way the script check runs.
  *
  * It re-derives what to convert from the world it is handed, so a run started before an edit converts what
  * that world held, and the caller decides whether that result is still current.
