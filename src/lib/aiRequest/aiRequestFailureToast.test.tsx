@@ -44,16 +44,24 @@ afterEach(() => act(() => {
 }));
 
 describe('toastAiRequestFailure', () => {
-  it('keeps the toast words and shows the server reason in Error Details', async () => {
+  it('names the prompt that failed and shows the server reason in Error Details', async () => {
     const error = await rejection(404, { message: 'model not found', code: 'model_not_found' });
     render(<ThemedToastContainer />);
     act(() => toastAiRequestFailure(error, vi.fn()));
 
-    await screen.findByText('Failed to process AI request');
+    await screen.findByText('Narration failed');
     fireEvent.click(screen.getByRole('button', { name: 'View Details →' }));
     const dialog = await screen.findByRole('dialog', { name: 'Error Details' });
     expect(dialog.textContent).toContain('Message: model not found');
     expect(dialog.textContent).toContain('Status: 404');
+    expect(dialog.textContent).toContain('Prompt: Narration');
+  });
+
+  it('names the endpoint beside the prompt when the request knows it', async () => {
+    const error = Object.assign(new Error('HTTP 500'), { prompt: 'Location Change', endpoint: 'GLM 5.3' });
+    render(<ThemedToastContainer />);
+    act(() => toastAiRequestFailure(error, vi.fn()));
+    await screen.findByText('Location Change failed (GLM 5.3)');
   });
 
   it('offers the connection guide, not Error Details, when the server is unreachable', async () => {

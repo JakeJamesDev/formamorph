@@ -1,6 +1,6 @@
 import { stripReasoning } from '@/lib/aiResponse';
 import { buildAiRequestSpec, type AiCall, type AiRequestSpec, type AiSettingsSnapshot } from './aiRequestSpec';
-import { ABORTED_FINISH_REASON, type AiStreamOptions, type AiStreamResult } from './aiStream';
+import { ABORTED_FINISH_REASON, emptyAnswerFailure, type AiStreamOptions, type AiStreamResult } from './aiStream';
 import { streamAiToolLoop } from './toolLoop';
 
 export interface AiTextOptions extends Pick<AiStreamOptions, 'signal' | 'fetchImpl'> {
@@ -30,6 +30,6 @@ export async function requestAiText(
     throw new DOMException('The operation was aborted.', 'AbortError');
   }
   const text = stripReasoning(result?.content ?? '').trim();
-  if (!text) throw new Error(`The model sent an empty answer (finish reason: ${result?.finishReason ?? 'none'})`);
+  if (!text) throw emptyAnswerFailure(spec, result?.finishReason);
   return text;
 }

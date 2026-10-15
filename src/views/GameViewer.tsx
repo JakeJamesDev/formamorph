@@ -2144,8 +2144,11 @@ const GameViewer = ({
     // never set and is left alone. Silence here would be indistinguishable from a dead submit button.
     if (kind === "emptyNarration") {
       discardUnpairedUserTurn();
-      addSystemLogEntry("The AI returned an empty narration — the turn was not advanced.");
-      toast.error("The AI returned an empty response. Try again, or switch models if it keeps happening.", {
+      // Named like every other failed request: the prompt, then the endpoint and model it went to.
+      const sentTo = [narrationEndpoint.presetName, narrationEndpoint.model].filter(Boolean).join(" · ");
+      const on = sentTo ? ` (${sentTo})` : "";
+      addSystemLogEntry(`Narration returned an empty answer${on} — the turn was not advanced.`);
+      toast.error(`Narration returned an empty answer${on}. Try again, or switch models if it keeps happening.`, {
         position: "top-right",
         autoClose: 5000,
       });
