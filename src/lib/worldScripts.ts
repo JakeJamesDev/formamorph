@@ -9,12 +9,12 @@ import { rowIdOf, WORLD_SCRIPT_OWNER } from './codeUses';
 import { updateOwnedStat } from './ownedStats';
 import { linksInTreeOrder } from './owners';
 import { updateOwnedTrait } from './ownedTraits';
-import { inRunOrder, SCRIPT_TIMINGS, scriptLabel, scriptsOf } from './scripts';
+import { filledScripts, inRunOrder, SCRIPT_TIMINGS, scriptLabel, scriptsOf } from './scripts';
 import { setStatLinkScripts, withStatLinks } from './statLinks';
 import { traitOrderIndex } from './traitEffects';
 import {
-  statCodeBoxes, statCodeOwners, traitCodeBoxes, type CodeHome, type StatCodeBox, type TraitCodeBox, type TraitCodeHome,
-  type WorldScriptHome,
+  statCodeBoxes, statCodeOwners, traitCodeBoxes, worldScriptBoxes, type CodeHome, type CodeOwners, type ScriptPick,
+  type StatCodeBox, type TraitCodeBox, type TraitCodeHome, type WorldScriptBox, type WorldScriptHome,
 } from './statCodeTargets';
 
 /** Where a script is stored: the world's own list, or a stat's or trait's home as Find All Uses names it. */
@@ -62,6 +62,38 @@ const homeKey = (home: ScriptHomeRef): string => {
 /** The row key of the script `scriptId` at `home`. */
 export const scriptEntryKey = (home: ScriptHomeRef, scriptId: string): string => `${homeKey(home)}|${scriptId}`;
 
+/** The editor tab whose row opens a script's home. */
+export type ScriptSection = 'scripts' | 'stats' | 'traits' | 'entities';
+
+/** One script of the world with its box: its owner, its timing and its runs. */
+export type ListedScript = { key: string; section: ScriptSection } & (
+  | { kind: 'world'; box: WorldScriptBox }
+  | { kind: 'stat'; box: StatCodeBox }
+  | { kind: 'trait'; box: TraitCodeBox }
+);
+
+/**
+ * Every script of the world once, as every reader walks it: the world's, then each stat's, then each trait's. A
+ * Blueprint stat or trait is one box that runs once per owner; a link adds its own box only where it overrides
+ * the scripts. `pick` widens the walk, such as to blank scripts.
+ */
+export function worldScriptList(
+  world: ScriptTreeWorld, pick: ScriptPick = filledScripts, owners: CodeOwners = statCodeOwners(world),
+): ListedScript[] {
+  const onEntity = (box: StatCodeBox | TraitCodeBox, own: ScriptSection) => (box.entity ? 'entities' : own);
+  return [
+    ...worldScriptBoxes({ worldScripts: world.scripts }, pick).map((box): ListedScript => ({
+      kind: 'world', box, key: scriptEntryKey(box.home, box.id), section: 'scripts',
+    })),
+    ...statCodeBoxes(owners, pick).map((box): ListedScript => ({
+      kind: 'stat', box, key: scriptEntryKey(box.home, box.id), section: onEntity(box, 'stats'),
+    })),
+    ...traitCodeBoxes(owners, world, pick).map((box): ListedScript => ({
+      kind: 'trait', box, key: scriptEntryKey(box.home, box.id), section: onEntity(box, 'traits'),
+    })),
+  ];
+}
+
 const entryOf = (home: ScriptHomeRef, script: Script, ownerName: string, entity: Entity | null, box?: StatCodeBox | TraitCodeBox): ScriptEntry => ({
   key: scriptEntryKey(home, script.id), home, script, ownerName, label: scriptLabel(script, ownerName), entity, ...(box && { box }),
 });
@@ -76,9 +108,10 @@ export const ownerRowId = (entry: ScriptEntry): string | null => (entry.box ? ro
  * the front is a play-time fact the editor can't show.
  */
 export function worldScriptEntries(world: ScriptTreeWorld): ScriptEntry[] {
-  const owners = statCodeOwners(world);
-  const stats = statCodeBoxes(owners, scriptsOf);
-  const traits = traitCodeBoxes(owners, world, scriptsOf);
+  const listed = worldScriptList(world, scriptsOf);
+  const stats = listed.flatMap((entry) => (entry.kind === 'stat' ? [entry.box] : []));
+  const traits = listed.flatMap((entry) => (entry.kind === 'trait' ? [entry.box] : []));
+  const worldScripts = listed.flatMap((entry) => (entry.kind === 'world' ? [entry.box] : []));
   const statEntry = (box: StatCodeBox) => entryOf(box.home, box, box.stat.name, box.entity, box);
   const traitEntry = (box: TraitCodeBox) => entryOf(box.home, box, box.trait.name, box.entity, box);
   const blueprint = (box: StatCodeBox | TraitCodeBox) => (box.home.kind === 'stat' || box.home.kind === 'trait') && box.owner !== null;
@@ -95,7 +128,7 @@ export function worldScriptEntries(world: ScriptTreeWorld): ScriptEntry[] {
     return traits.filter(onEntity(entity.id)).sort((a, b) => at(a) - at(b));
   };
   return [
-    ...scriptsOf(world).map((script) => entryOf({ kind: 'world' }, script, WORLD_SCRIPT_OWNER, null)),
+    ...worldScripts.map(({ home, owner, runs, ...script }) => entryOf(home, script, WORLD_SCRIPT_OWNER, null)),
     ...stats.filter(global).map(statEntry),
     ...globalTraits().map(traitEntry),
     ...world.entities.flatMap((entity) => [

@@ -35,11 +35,12 @@ import {
 } from '@/lib/statDescriptorGeometry';
 import { statCodeName } from '@/lib/statCodeNames';
 import { filledCodeBoxes, noBoxes, TIMING_LABEL } from '@/lib/statCodeTiming';
-import { filledScripts, filledScriptsAt } from '@/lib/scripts';
+import { filledScripts, scriptLabel } from '@/lib/scripts';
 import { scanStatLookups, scanStatWrites } from '@/lib/statCodeWriteScan';
 import {
-  isStatOn, routeTargets, statCodeBoxes, statCodeOwners, traitCodeBoxes, type CodeOwner, type CodeOwners, type TraitRun,
+  isStatOn, routeTargets, statCodeOwners, traitCodeBoxes, type CodeOwner, type CodeOwners, type TraitRun,
 } from '@/lib/statCodeTargets';
+import { worldScriptList, type ListedScript } from '@/lib/worldScripts';
 import { estimateTokens } from '@/lib/memoryUtils';
 import { entityImageData, entityImages } from '@/lib/entityImages';
 import {
@@ -956,25 +957,78 @@ const codeOwnersOf = (world: RuleWorld): CodeOwners => statCodeOwners({
   stats: world.stats, statGroups: world.statGroups, entities: world.entities, placeholders: allPlaceholders(world),
 });
 
+/** One script of the world as a finding names it. */
+export interface RuleScript {
+  listed: ListedScript;
+  /** The script by its name or its owner-and-timing fallback, then the entity it sits on (Q22, Q49). */
+  ref: string;
+  /** The row that opens the script's home, on its home's tab. */
+  item: FindingItem;
+}
+
+/** Every filled script of the world once, from the list every script reader walks. */
+export const ruleScripts = (world: RuleWorld, owners: CodeOwners = codeOwnersOf(world)): RuleScript[] => {
+  const listWorld = {
+    scripts: world.scripts, stats: world.stats ?? [], statGroups: world.statGroups ?? [], traits: world.traits ?? [],
+    traitGroups: world.traitGroups ?? [], entities: world.entities ?? [], placeholders: allPlaceholders(world),
+  };
+  return worldScriptList(listWorld, filledScripts, owners).map((listed): RuleScript => {
+    const { box, section } = listed;
+    if (listed.kind === 'world') {
+      return { listed, ref: scriptRef(box, null), item: { id: listed.key, name: scriptLabel(box, WORLD_SCRIPT_OWNER), section } };
+    }
+    const { box: { entity } } = listed;
+    const [id, name] = listed.kind === 'stat' ? [listed.box.stat.id, listed.box.stat.name] : [listed.box.trait.id, listed.box.trait.name];
+    const home = labelOf(name, world);
+    if (!entity) return { listed, ref: scriptRef(box, home), item: namedItem(id, name, world, section) };
+    return { listed, ref: scriptRef(box, home, ` of ${quote(labelOf(entity.name, world))}`), item: { ...asItem(entity, world), section } };
+  });
+};
+
+/** What a script's `owner` holds where the rules judge it. */
+type OwnerReach =
+  /** No owner: the sentence says which kind of script has none. */
+  | { none: string }
+  /** One owner's stats; `blueprint` marks a Blueprint stat's group, which an owner can outgrow. */
+  | { stats: ReadonlyMap<string, Stat>; blueprint: boolean }
+  /** A Blueprint trait's owners: each entity whose link runs its scripts (Q12). */
+  | { linkers: readonly CodeOwner[] };
+
+const ownerReachOf = ({ kind, box }: ListedScript): OwnerReach => {
+  if (kind === 'world') return { none: 'a world script has no owner' };
+  if (!box.owner) return { none: kind === 'stat' ? 'a global stat has no owner' : 'a global trait has no owner' };
+  const blueprint = !box.entity;
+  if (kind === 'trait' && blueprint) return { linkers: box.runs.flatMap(({ owner }) => (owner ? [owner] : [])) };
+  return { stats: box.owner.byCodeName, blueprint };
+};
+
 /** Every unknown stat name in a script, each once per box. `blueprintOwner` marks an `owner.stats` miss in a
- *  Blueprint box, where an owner can hold more than the group. */
+ *  Blueprint stat's box, where an owner can hold more than the group. */
 const unknownStatMisses = (world: RuleWorld): { label: string; item: FindingItem; miss: string; blueprintOwner: boolean }[] => {
   const owners = codeOwnersOf(world);
   const inWorld = owners.world.byCodeName;
-  return codeBoxesOf(world, owners).flatMap(({ code, label, item, ownerStats, blueprint }) => {
+  return ruleScripts(world, owners).flatMap(({ listed, ref: label, item }) => {
+    const { code } = listed.box;
+    const reach = ownerReachOf(listed);
+    const ownerKnows = (name: string) => ('stats' in reach ? reach.stats.has(name)
+      : 'linkers' in reach && reach.linkers.some((owner) => owner.byCodeName.has(name)));
     const misses = new Map<string, boolean>();
     const miss = (text: string, blueprintOwner = false) => misses.set(text, blueprintOwner);
     for (const name of comparedStatNames(code)) {
-      if (!inWorld.has(name) && !ownerStats?.has(name)) miss(`looks up a stat named ${quote(name)}, which does not exist`);
+      if (!inWorld.has(name) && !ownerKnows(name)) miss(`looks up a stat named ${quote(name)}, which does not exist`);
     }
     for (const { root, entity = '', stat } of scanStatLookups(code)) {
       const named = quote(stat);
       if (root === 'stats') {
         if (!inWorld.has(stat)) miss(`looks up a stat named ${named}, which does not exist`);
       } else if (root === 'owner') {
-        if (!ownerStats) miss(`looks up ${named} on its owner, but a world stat has no owner`);
-        else if (ownerStats.has(stat)) continue;
-        else if (blueprint) miss(`looks up a stat named ${named} on its owner, which its Blueprint group does not have`, true);
+        if ('none' in reach) miss(`looks up ${named} on its owner, but ${reach.none}`);
+        else if ('linkers' in reach) {
+          for (const { entity: linker } of reach.linkers.filter((owner) => !owner.byCodeName.has(stat))) {
+            miss(`looks up a stat named ${named} on its owner, which ${quote(labelOf(linker?.name, world))} does not have`);
+          }
+        } else if (reach.stats.has(stat)) continue;
+        else if (reach.blueprint) miss(`looks up a stat named ${named} on its owner, which its Blueprint group does not have`, true);
         else miss(`looks up a stat named ${named} on its owner, which does not exist`);
       } else if (root === 'persona') {
         if (!owners.playable.some((o) => o.byCodeName.has(stat))) {
@@ -995,7 +1049,7 @@ const scriptUnknownStat: Rule = {
   severity: 'error',
   section: 'stats',
   advanced: true,
-  summary: (count) => `${count} stats’ code looks up stat names that don’t exist`,
+  summary: (count) => `${count} scripts look up stat names that don’t exist`,
   // Code reaches a stat by its code name, which is the same in every playthrough.
   check: (world) => unknownStatMisses(world)
     .filter(({ blueprintOwner }) => !blueprintOwner)
@@ -1013,28 +1067,6 @@ const scriptUnknownBlueprintOwnerStat: Rule = {
     .map(({ label, item, miss }) => finding(scriptUnknownBlueprintOwnerStat, `${label} ${miss}`, [item])),
 };
 
-/** One filled box the static rules read: its code, how a finding names it, and the stats its `owner.stats`
- *  holds, null in a world stat's box. */
-interface OwnedCodeBox {
-  code: string;
-  label: string;
-  item: FindingItem;
-  ownerStats: ReadonlyMap<string, Stat> | null;
-  /** A Blueprint stat's own box, whose `owner.stats` holds the group alone. */
-  blueprint: boolean;
-}
-
-/** Every script box once, as a finding names it. An entity's own box and its link's name the entity. */
-const codeBoxesOf = (world: RuleWorld, owners: CodeOwners): OwnedCodeBox[] => statCodeBoxes(owners).map((box) => {
-  const home = labelOf(box.stat.name, world);
-  const ownerStats = box.owner?.byCodeName ?? null;
-  if (!box.entity) {
-    return { code: box.code, label: scriptRef(box, home), item: namedItem(box.stat.id, box.stat.name, world), ownerStats, blueprint: !!box.owner };
-  }
-  const item = { ...asItem(box.entity, world), section: 'entities' as const };
-  return { code: box.code, label: scriptRef(box, home, ` of ${quote(labelOf(box.entity.name, world))}`), item, ownerStats, blueprint: false };
-});
-
 // A read of a stat's `delta`, in either lookup form. A bare `delta` is nothing the sandbox injects, so only
 // a member read counts — which also leaves an author's own variable of that name alone.
 const DELTA_READ = /\??\.\s*delta\b|\[\s*(["'`])delta\1\s*\]/;
@@ -1044,15 +1076,14 @@ const scriptBeforeReadsDelta: Rule = {
   severity: 'warning',
   section: 'stats',
   advanced: true,
-  summary: (count) => `${count} stats read delta in their ${TIMING_LABEL.before} box, where every source is zero`,
-  check: (world) => (world.stats ?? []).flatMap((stat) => {
-    const item = namedItem(stat.id, stat.name, world);
-    return filledScriptsAt(stat, 'before').filter((script) => DELTA_READ.test(script.code)).map((script) => finding(
+  summary: (count) => `${count} scripts read delta in their ${TIMING_LABEL.before} timing, where every source is zero`,
+  check: (world) => ruleScripts(world)
+    .filter(({ listed: { box } }) => box.timing === 'before' && DELTA_READ.test(box.code))
+    .map(({ ref, item }) => finding(
       scriptBeforeReadsDelta,
-      `${scriptRef(script, item.name)} reads delta, but it runs before the AI asks and before regen — every delta reads zero there`,
+      `${ref} reads delta, but it runs before the AI asks and before regen — every delta reads zero there`,
       [item],
-    ));
-  }),
+    )),
 };
 
 /** One owner's stat field that scripts of one timing write, with each script that writes it once. */

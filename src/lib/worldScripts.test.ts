@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { Entity, Script, Stat, StatGroup, Trait, TraitGroup } from '@/types';
 import {
-  editScripts, orderEdits, reorderWrites, scriptsByTiming, worldScriptEntries, type ScriptEntry, type ScriptTreeWorld,
+  editScripts, orderEdits, reorderWrites, scriptsByTiming, worldScriptEntries, worldScriptList, type ScriptEntry,
+  type ScriptTreeWorld,
 } from './worldScripts';
+import { scriptsOf } from './scripts';
 
 const stat = (id: string, name: string, extra: Partial<Stat> = {}): Stat =>
   ({ id, name, type: 'number', description: '', min: 0, max: 100, value: 0, regen: 0, descriptors: [], ...extra });
@@ -46,6 +48,35 @@ const world: ScriptTreeWorld = {
 };
 
 const ids = (entries: readonly ScriptEntry[]) => entries.map((entry) => `${entry.home.kind}:${entry.script.id}`);
+
+describe('worldScriptList', () => {
+  const keysOf = (rows: readonly { key: string }[]) => rows.map((row) => row.key).sort();
+
+  it('lists the same scripts the Scripts tab lists', () => {
+    expect(keysOf(worldScriptList(world, scriptsOf))).toEqual(keysOf(worldScriptEntries(world)));
+  });
+
+  it('files each script under the tab of its home', () => {
+    expect(worldScriptList(world).map(({ box, section }) => `${box.home.kind}:${box.id}:${section}`)).toEqual([
+      'world:w-after:scripts', 'world:w-start:scripts',
+      'stat:h-after:stats', 'stat:h-before:stats', 'stat:howl-after:stats', 'entity:rage-after:entities', 'link:howl-after:entities',
+      'trait:brave-after:traits', 'trait:fury-after:traits', 'entityTrait:calm-after:entities', 'traitLink:fury-after:entities',
+    ]);
+  });
+
+  it('keeps a Blueprint’s one box, run by each owner whose link leaves its scripts alone', () => {
+    const runsOf = (homeKind: string, id: string) => worldScriptList(world)
+      .find(({ box }) => box.home.kind === homeKind && box.id === id)!.box.runs.map((run) => run.owner?.entity?.id);
+    expect(runsOf('stat', 'howl-after')).toEqual(['ann']);
+    expect(runsOf('trait', 'fury-after')).toEqual(['ann']);
+  });
+
+  it('skips a blank script unless the walk is widened', () => {
+    const blank = { ...world, scripts: [s('w-blank', 'after', { code: '  ' })] };
+    expect(worldScriptList(blank).some(({ box }) => box.id === 'w-blank')).toBe(false);
+    expect(worldScriptList(blank, scriptsOf).some(({ box }) => box.id === 'w-blank')).toBe(true);
+  });
+});
 
 describe('worldScriptEntries', () => {
   it('lists every script in owner order: world, global stats, global traits, each entity, then Blueprints', () => {
