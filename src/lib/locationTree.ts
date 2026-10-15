@@ -6,7 +6,7 @@
 import { arrayMove } from '@dnd-kit/sortable';
 import { ancestors, parentLookup } from "@/lib/ancestors";
 import { effectiveDestinations } from "@/lib/locationGraph";
-import { clamp } from "@/lib/utils";
+import { anyRowCanParent, knownParent, projectDrop, removeCollapsedRows } from "@/lib/treeProjection";
 import type { Connection, GameLocation } from '@/types';
 
 export interface LocationTreeNode {
@@ -18,8 +18,7 @@ export interface LocationTreeNode {
 /** The box a location actually sits in. A parent id pointing at a location that isn't here holds nothing, so
  *  it reads as no parent at all — otherwise the location it names would be nowhere in the tree at all. */
 export function holderOf(locations: GameLocation[], location: GameLocation): string | null {
-  const parentId = location.parentId ?? null;
-  return parentId && locations.some((l) => l.id === parentId) ? parentId : null;
+  return knownParent(location.parentId, { has: (id) => locations.some((l) => l.id === id) });
 }
 
 /** Build the full nested tree of top-level nodes, each carrying its recursive children. Every location is
@@ -28,8 +27,7 @@ export function buildLocationTree(locations: GameLocation[]): LocationTreeNode[]
   const known = new Set(locations.map((l) => l.id));
   const childrenOf = new Map<string | null, GameLocation[]>();
   for (const location of locations) {
-    const parentId = location.parentId ?? null;
-    const parent = parentId && known.has(parentId) ? parentId : null;
+    const parent = knownParent(location.parentId, known);
     childrenOf.set(parent, [...(childrenOf.get(parent) ?? []), location]);
   }
   const build = (parentId: string | null): LocationTreeNode[] =>
@@ -64,16 +62,7 @@ export function locationRows(locations: GameLocation[]): FlatLocationNode[] {
 
 /** Drop every node that descends from any id in `ids` (collapsed nodes, the dragged subtree). */
 export function removeCollapsedChildren(items: FlatLocationNode[], ids: Iterable<string>): FlatLocationNode[] {
-  const exclude = new Set(ids);
-  const out: FlatLocationNode[] = [];
-  for (const item of items) {
-    if (item.parentId !== null && exclude.has(item.parentId)) {
-      exclude.add(item.id);
-      continue;
-    }
-    out.push(item);
-  }
-  return out;
+  return removeCollapsedRows(items, ids);
 }
 
 /** True if `candidateId` is `ancestorId` itself or nested beneath it — guards illegal (cyclic) moves. */
@@ -94,35 +83,12 @@ export function removeLocationPromotingChildren(locations: GameLocation[], id: s
   return locations.flatMap((l) => (l.id === id ? promoted : kids.has(l.id) ? [] : [l]));
 }
 
-/** Projected drop `{depth, parentId}` for the active row, given the pointer's horizontal drag offset. */
+/** Projected drop `{depth, parentId}` for the active row. Any location can take children. */
 export function getLocationDropProjection(
   items: FlatLocationNode[], activeId: string, overId: string,
   dragOffset: number, indentationWidth: number,
 ): { depth: number; parentId: string | null } {
-  const overIndex = items.findIndex((i) => i.id === overId);
-  const activeIndex = items.findIndex((i) => i.id === activeId);
-  if (overIndex === -1 || activeIndex === -1) return { depth: 0, parentId: null };
-
-  const activeItem = items[activeIndex];
-  const newItems = arrayMove(items, activeIndex, overIndex);
-  const prev = newItems[overIndex - 1];
-  const next = newItems[overIndex + 1];
-
-  const dragDepth = Math.round(dragOffset / indentationWidth);
-  const projectedDepth = activeItem.depth + dragDepth;
-  // Any location can be a parent, so a row may descend one level past the row above it.
-  const maxDepth = prev ? prev.depth + 1 : 0;
-  const minDepth = next ? next.depth : 0;
-  const depth = clamp(projectedDepth, minDepth, maxDepth);
-
-  const parentId = (() => {
-    if (depth === 0 || !prev) return null;
-    if (depth === prev.depth) return prev.parentId;
-    if (depth > prev.depth) return prev.id;
-    return newItems.slice(0, overIndex).reverse().find((i) => i.depth === depth)?.parentId ?? null;
-  })();
-
-  return { depth, parentId };
+  return projectDrop(items, activeId, overId, dragOffset, indentationWidth, anyRowCanParent);
 }
 
 /**

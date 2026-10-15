@@ -6,13 +6,13 @@
 
 import { buildTree, flattenTree, isDescendantGroup, removeGroupPromotingChildren } from './groupTree';
 import { PLACEHOLDER_PATH_SEPARATOR } from './placeholders';
+import { knownParent } from './treeProjection';
 import type { Placeholder, PlaceholderGroup } from '@/types';
 
 /** The folder a placeholder sits in: null when ungrouped, or when the folder it names is gone. A dangling
  *  reference reads as loose rather than hiding the row. */
 export function placeholderGroupOf(groups: readonly PlaceholderGroup[], placeholder: Pick<Placeholder, 'groupId'>): string | null {
-  const id = placeholder.groupId ?? null;
-  return id !== null && groups.some((g) => g.id === id) ? id : null;
+  return knownParent(placeholder.groupId, { has: (id) => groups.some((g) => g.id === id) });
 }
 
 /** Direct subfolders of `parentId` (null for the top level), in sibling order. */
@@ -20,7 +20,7 @@ export function childPlaceholderGroups(groups: readonly PlaceholderGroup[], pare
   const known = new Set(groups.map((g) => g.id));
   return groups
     .map((group, index) => ({ group, index }))
-    .filter(({ group }) => (group.parentId !== null && known.has(group.parentId) ? group.parentId : null) === parentId)
+    .filter(({ group }) => knownParent(group.parentId, known) === parentId)
     .sort((a, b) => (a.group.order ?? a.index) - (b.group.order ?? b.index))
     .map(({ group }) => group);
 }
