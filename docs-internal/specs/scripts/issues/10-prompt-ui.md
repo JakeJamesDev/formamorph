@@ -9,17 +9,18 @@ Opus at high: builds the pattern ticket 14's prototype got approved, a choice-ro
 
 ## What to build
 
-The pending-prompt store gets its UI, built to the pattern the user approved on ticket 14's prototype (see the spec's Prototype heading). `confirm` and an `ask` with up to four options show as a choice row under the narration (Q17). `askText` and a longer `ask` open one small dialog with the question as its title, as approved. `player.tell` renders a message card in the turn column, saved with history, never in a request (Q16, Q23). `player.toast` shows a toast. A prompt during a turn holds the turn until answered.
+The pending-prompt store gets its UI, built to the pattern the user picked on ticket 14's prototype, B3, the **inline prompt line** (see the spec's Prototype heading and Q17). Every prompt kind is a left-ruled italic line in the turn column under the narration, the control under the question, text-link actions. `confirm` and a short `ask` are pill buttons that answer on one press; a five-plus `ask` is an inline dropdown; a multiple `ask` is toggle pills plus OK; `askText` is a text field plus OK with Enter. Cancel is a text link; Escape cancels while focus is inside the prompt (Q15); a global Escape is this ticket's call. `player.tell` is the same line with text alone, saved with history, never in a request (Q16, Q23). `player.toast` is the app toast. A prompt during a turn holds the turn until answered. The same line mounts in the editor's Test Code and Test Bench (Q49). This ticket writes the Design System entry for the inline prompt line.
 
-Spec: Q16, Q17, Q23, stories 14, 15.
+Spec: Q15, Q16, Q17, Q23, Q49, the Prototype heading, stories 14, 15.
 
 ## Acceptance criteria
 
-- [ ] A confirm shows two choice buttons under the narration and the script reads the pick
-- [ ] An ask with five options opens the dialog with a dropdown; askText opens it with a text field
-- [ ] A tell card pages with its turn, survives save and load, and a test proves it is absent from the next request
-- [ ] Escape on the dialog cancels the script as ticket 09 specifies
-- [ ] Dev routes exist for the dialog and the card; both themes checked
+- [ ] A confirm shows two pill buttons under the narration and the script reads the pick
+- [ ] An ask with five options shows the inline dropdown; a multiple ask shows toggle pills plus OK; askText shows the text field and Enter submits
+- [ ] A tell line pages with its turn, survives save and load, and a test proves it is absent from the next request
+- [ ] Cancel, and Escape with focus inside the prompt, cancel the script as ticket 09 specifies
+- [ ] The editor's Test Code and Test Bench answer askText, a long ask and a multiple ask through the same line
+- [ ] The Design System has the inline prompt line with a dev-router showcase; dev routes exist for each kind; both themes checked
 - [ ] Four gates green
 
 ## Blocked by
