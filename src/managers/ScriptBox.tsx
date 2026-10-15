@@ -1,6 +1,11 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useId, useMemo, useState } from "react";
 import type { VariableTreeOwner } from "@/lib/statCodeVariableTree";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ScriptPromptChoices } from "@/components/editor/ScriptPromptChoices";
+import { useEditorPromptRun } from "@/lib/useEditorPromptRun";
+import { useMountedRef } from "@/lib/useMountedRef";
 import { SquareFunction } from "lucide-react";
 import { migrateStatCodeRoutes } from "@/lib/statCodeRoutes";
 import { runTestCode } from "@/lib/statCodeTestRun";
@@ -70,9 +75,17 @@ export function ScriptBox({ script, label, self, onChange, context, reveal, auto
   const [problems, setProblems] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
   const [templatesOpen, setTemplatesOpen] = useState(false);
+  /** The sentence a During AI Output test rewrites. Never saved. */
+  const [sample, setSample] = useState("");
+  const sampleId = useId();
+  /** The running test's prompts, which its choice rows answer. */
+  const prompts = useEditorPromptRun();
+  const { close: closePrompts } = prompts;
+  const mounted = useMountedRef();
 
   const { timing, code: value } = script;
   const isStat = self.kind === 'stat';
+  const isOutput = timing === 'output';
   const { selfName, names, placeholderPlaces, owner, ownerStats, ownerStatNames, lookup } = context;
   const { codeNamedStats: worldStats, traitPlaces, entities } = names;
   // The one build of this box's options: the editor and Test Code's problem count both read these.
@@ -93,11 +106,12 @@ export function ScriptBox({ script, label, self, onChange, context, reveal, auto
 
   /** Drop what the last test said. Editing the code makes every part of that report stale together. */
   const clearReport = useCallback(() => {
+    closePrompts();
     setResult(null);
     setError(null);
     setWarnings([]);
     setProblems(null);
-  }, []);
+  }, [closePrompts]);
 
   // A write from outside the box, such as the help window's Insert, makes the report stale as typing does.
   const [reportedCode, setReportedCode] = useState(value);
@@ -124,6 +138,9 @@ export function ScriptBox({ script, label, self, onChange, context, reveal, auto
       // What the run itself found is the point; the count is what the editor adds to it.
     }
 
+    // An unmount mid-import leaves nothing to run for.
+    if (!mounted.current) return;
+    const run = prompts.open();
     try {
       // A switch is reported here and never applied.
       const report = await runTestCode(
@@ -131,19 +148,24 @@ export function ScriptBox({ script, label, self, onChange, context, reveal, auto
         {
           ...(owner && { owner: { ...(owner.kind === 'entity' && { entityId: owner.entityId }), stats: ownerStats } }),
           ...(self.kind === 'trait' && { selfTrait: { id: self.id, name: selfName } }),
+          ...(isOutput && { sentence: sample }), prompts: run.host,
         },
       );
-      if (report.error) {
-        setError(report.error);
-        return;
-      }
-      const parts = [...(report.value !== null ? [`Result: ${report.value}`] : []), ...report.writes];
+      // An edit or an unmount mid-run closed this run, and its report is stale.
+      if (!prompts.isCurrent(run)) return;
+      // A tell or toast before a failure still showed, so the report keeps it.
+      const parts = report.error ? run.notes : [
+        ...(report.sentence !== undefined ? [`Sentence: ${report.sentence}`] : []),
+        ...(report.value !== null ? [`Result: ${report.value}`] : []), ...report.writes, ...run.notes,
+      ];
       if (parts.length) setResult(parts.join(' · '));
-      setWarnings(report.dropped);
+      if (report.error) setError(report.error);
+      else setWarnings(report.dropped);
     } catch (thrown) {
-      setError((thrown as Error).message);
+      if (prompts.isCurrent(run)) setError(thrown instanceof Error ? thrown.message : String(thrown));
     } finally {
-      setTesting(false);
+      if (prompts.isCurrent(run)) closePrompts();
+      if (mounted.current) setTesting(false);
     }
   };
 
@@ -195,12 +217,24 @@ export function ScriptBox({ script, label, self, onChange, context, reveal, auto
         />
       )}
 
+      {isOutput && (
+        <div className="space-y-1">
+          <Label htmlFor={sampleId}>Sample Sentence</Label>
+          <Input
+            id={sampleId}
+            value={sample}
+            onChange={(event) => { clearReport(); setSample(event.target.value); }}
+            placeholder="Type a sentence for Test Code to rewrite"
+          />
+        </div>
+      )}
+
       <div className="flex flex-wrap justify-between items-center gap-2">
         {/* Each button acts on this box alone, so each names it: a home can hold several. */}
         <div className="flex items-center gap-2">
           <Button
             onClick={() => void run()}
-            disabled={testing || !value.trim()}
+            disabled={testing || !value.trim() || (isOutput && !sample.trim())}
             variant="outline"
             aria-label={`Test Code ${label}`}
           >
@@ -223,6 +257,8 @@ export function ScriptBox({ script, label, self, onChange, context, reveal, auto
           {problems && <div className="text-warning text-label">{problems}</div>}
         </div>
       </div>
+
+      {prompts.store && <ScriptPromptChoices store={prompts.store} />}
     </div>
   );
 }

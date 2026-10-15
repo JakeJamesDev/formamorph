@@ -17,6 +17,8 @@ import { cn } from '@/lib/utils';
 import { SEVERITIES, SOURCE_UNAVAILABLE, type FindingGroup, type Severity } from '@/lib/testBench/rules';
 import { isSourceRule, sourceSection } from '@/lib/testBench/missingSources';
 import { REPAIR_CHOICES, type MissingSource, type RepairAction } from '@/lib/sourceChecks';
+import type { ScriptPromptStore } from '@/lib/scriptPrompts';
+import { ScriptPromptChoices } from '@/components/editor/ScriptPromptChoices';
 import type {
   CheckStatus, IssuesProps, OpenFindingItem, SourceCheckProps,
 } from '@/lib/testBench/benchProps';
@@ -317,28 +319,32 @@ const AdvancedOnlySection = ({ count }: { count: number }) => {
   );
 };
 
-/** The list's one manual action: run every stat's code for real and list what fails. Absent entirely from a
- *  world with no coded stats, since there would be nothing to run — and from Simple mode, which folds the
- *  verdicts away, so running it there would look like a button that does nothing. */
-const StatCodeCheck = ({ codedStatCount, advanced, status, onRun }: {
-  codedStatCount: number;
+/** The list's one manual action: run every script for real and list what fails. Absent entirely from a
+ *  world with no scripts, since there would be nothing to run — and from Simple mode, which folds the
+ *  verdicts away, so running it there would look like a button that does nothing. A script's prompt shows
+ *  under it while the check runs (Q24). */
+const StatCodeCheck = ({ scriptCount, advanced, status, prompts, onRun }: {
+  scriptCount: number;
   advanced: boolean;
   status: CheckStatus;
+  prompts: ScriptPromptStore | null;
   onRun: () => void;
 }) => {
-  if (codedStatCount === 0 || !advanced) return null;
+  if (scriptCount === 0 || !advanced) return null;
   const running = status === 'running';
+  const scripts = `${scriptCount} ${scriptCount === 1 ? 'script' : 'scripts'}`;
   return (
-    <div className="mt-2 flex items-center gap-2 border-t pt-2">
-      <p className="min-w-0 flex-grow text-meta text-muted-foreground">
-        {status === 'done'
-          ? `Checked ${codedStatCount} coded ${codedStatCount === 1 ? 'stat' : 'stats'}`
-          : `${codedStatCount} ${codedStatCount === 1 ? 'stat has' : 'stats have'} code, run separately`}
-      </p>
-      <Button variant="outline" size="sm" className="h-6 shrink-0 px-2 text-meta" onClick={onRun} disabled={running}>
-        <Play className="mr-1 h-3 w-3" aria-hidden />
-        {running ? 'Running…' : status === 'done' ? 'Check Again' : 'Check Stat Code'}
-      </Button>
+    <div className="mt-2 border-t pt-2">
+      <div className="flex items-center gap-2">
+        <p className="min-w-0 flex-grow text-meta text-muted-foreground">
+          {status === 'done' ? `Checked ${scripts}` : `${scripts} ${scriptCount === 1 ? 'runs' : 'run'} separately`}
+        </p>
+        <Button variant="outline" size="sm" className="h-6 shrink-0 px-2 text-meta" onClick={onRun} disabled={running}>
+          <Play className="mr-1 h-3 w-3" aria-hidden />
+          {running ? 'Running…' : status === 'done' ? 'Check Again' : 'Check Scripts'}
+        </Button>
+      </div>
+      {prompts && <ScriptPromptChoices store={prompts} />}
     </div>
   );
 };
@@ -441,7 +447,8 @@ export function IssuesInstrument({ issues, onFix }: IssuesInstrumentProps) {
         </div>
       )}
       <StatCodeCheck
-        codedStatCount={issues.codedStatCount}
+        scriptCount={issues.scriptCount}
+        prompts={issues.codePrompts}
         advanced={issues.advanced}
         status={issues.codeCheckStatus}
         onRun={issues.onCheckStatCode}

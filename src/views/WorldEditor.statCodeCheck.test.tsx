@@ -4,6 +4,7 @@ import { checkStatCode } from '@/lib/testBench/statCodeCheck';
 import { benchEditorWorld, clickOpenBench, renderWorldEditorBench } from '@/test/worldEditorBench';
 import type { Finding } from '@/lib/testBench/rules';
 import { boxScripts } from '@/test/scriptFixtures';
+import { PromptCanceled } from '@/lib/scriptPrompts';
 
 /**
  * Guards the on-demand stat-code check through the real editor.
@@ -31,7 +32,10 @@ vi.mock('react-toastify', () => ({
   ToastContainer: () => null,
 }));
 
-vi.mock('@/lib/testBench/statCodeCheck', () => ({ checkStatCode: vi.fn() }));
+vi.mock('@/lib/testBench/statCodeCheck', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@/lib/testBench/statCodeCheck')>(),
+  checkStatCode: vi.fn(),
+}));
 
 const FAILURE: Finding = {
   ruleId: 'stat-code-execution',
@@ -55,7 +59,7 @@ const setup = () => renderWorldEditorBench(WORLD, 'advanced');
 /** Open the Bench and hand back the check's run button. */
 const openBench = async () => {
   await clickOpenBench();
-  return screen.findByRole('button', { name: /Check Stat Code/ });
+  return screen.findByRole('button', { name: /Check Scripts/ });
 };
 
 /** A run the test finishes by hand, so the world can be edited while it is still in flight. */
@@ -98,7 +102,7 @@ describe('WorldEditor — the on-demand stat-code check', () => {
 
     expect(screen.queryByText(FAILURE.message)).toBeNull();
     // And the action reads as never-run, so the author is invited to check the code they now have.
-    await waitFor(() => expect(screen.getByRole('button', { name: /Check Stat Code/ })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('button', { name: /Check Scripts/ })).toBeInTheDocument());
   });
 
   it('clears a finished run’s findings as soon as the world moves', async () => {
@@ -113,6 +117,22 @@ describe('WorldEditor — the on-demand stat-code check', () => {
     expect(screen.queryByText(FAILURE.message)).toBeNull();
   });
 
+  it('shows a script’s prompt while the check runs, and closes it as canceled when the world moves', async () => {
+    const { ctx } = setup();
+    const button = await openBench();
+    let asked!: Promise<boolean>;
+    vi.mocked(checkStatCode).mockImplementation((_world, prompts) => {
+      asked = prompts!.prompt({ kind: 'confirm', question: 'Drink it?' });
+      return asked.then(() => [], () => [FAILURE]);
+    });
+    fireEvent.click(button);
+    expect(await screen.findByRole('group', { name: 'Script Prompt' })).toHaveTextContent('Drink it?');
+
+    act(() => { ctx().setStats([{ ...WORLD.stats[0], scripts: boxScripts({ after: 'return elapsedHours * 2;' }) }]); });
+    await expect(asked).rejects.toBeInstanceOf(PromptCanceled);
+    expect(screen.queryByRole('group', { name: 'Script Prompt' })).toBeNull();
+  });
+
   it('lets the author try again when the check itself breaks', async () => {
     setup();
     const button = await openBench();
@@ -121,6 +141,6 @@ describe('WorldEditor — the on-demand stat-code check', () => {
 
     await act(async () => { fireEvent.click(button); });
     // A stranded "Running…" would leave no way back; the action has to return to the author.
-    expect(screen.getByRole('button', { name: /Check Stat Code/ })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /Check Scripts/ })).toBeEnabled();
   });
 });

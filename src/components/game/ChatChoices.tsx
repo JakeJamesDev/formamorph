@@ -44,8 +44,8 @@ export function ChoiceText({ choice, plainQuotes = false, word }: {
   );
 }
 
-/** The press handlers of one choice button: the Pages stage-and-append contract. */
-export type ChoicePress = (choice: string) => Pick<
+/** The press handlers of one choice button, by its text and row: the Pages stage-and-append contract. */
+export type ChoicePress = (choice: string, index: number) => Pick<
   React.ButtonHTMLAttributes<HTMLButtonElement>,
   'onClick' | 'onPointerDown' | 'onPointerUp' | 'onPointerLeave' | 'onPointerCancel'
 >;
@@ -76,7 +76,7 @@ export function ChatChoices({ choices, showContinue, disabled, isSelected, choic
       <div data-testid="chat-choices" className="mt-3 flex flex-col gap-2">
         {all.map((choice, index) => {
           if (!reveal.shown(index)) return null;
-          const press = choicePress(choice);
+          const press = choicePress(choice, index);
           return (
             <button
               key={index}

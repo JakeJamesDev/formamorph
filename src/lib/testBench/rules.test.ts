@@ -529,7 +529,7 @@ describe('reference-integrity rules', () => {
     expect(only(coded('return entities.Bram?.stats["Trust"].value + persona.stats.Trust.value;'), 'stat-code-unknown-stat')).toEqual([]);
     // A world stat's name is no entity's.
     expect(only(coded('return entities.Bram.stats.Vigor.value;'), 'stat-code-unknown-stat').map((f) => f.message)).toEqual([
-      'After the AI code on “Mana” looks up a stat named “Vigor” on “Bram”, which does not exist',
+      '“Mana · After the AI” looks up a stat named “Vigor” on “Bram”, which does not exist',
     ]);
     // The world's own map still checks, beside a qualified read in the same code.
     const mixed = only(coded('return entities.Bram.stats.Trust.value + stats.Vigro.value;'), 'stat-code-unknown-stat');
@@ -554,26 +554,26 @@ describe('reference-integrity rules', () => {
       expect(messages(ownedBox('return stats.Destruction.value + owner.stats.Rage.value + owner.stats["Fury"].value;'))).toEqual([]);
       const found = only(ownedBox('return stats.Rage.value + owner.stats.Rgae.value;'), RULE);
       expect(found.map((f) => f.message)).toEqual([
-        'After the AI code on “Fury” of “The Creature” looks up a stat named “Rage”, which does not exist',
-        'After the AI code on “Fury” of “The Creature” looks up a stat named “Rgae” on its owner, which does not exist',
+        '“Fury · After the AI” of “The Creature” looks up a stat named “Rage”, which does not exist',
+        '“Fury · After the AI” of “The Creature” looks up a stat named “Rgae” on its owner, which does not exist',
       ]);
       expect(found[0].items).toEqual([{ id: 'creature', name: 'The Creature', section: 'entities' }]);
     });
 
     it('reports an unknown name after entities and persona in an owned box and a world box', () => {
       expect(messages(ownedBox('entities["The Creature"].stats.Rgae.value = 1; persona.stats.Stamina.max = 2;'))).toEqual([
-        'After the AI code on “Fury” of “The Creature” looks up a stat named “Rgae” on “The Creature”, which does not exist',
-        'After the AI code on “Fury” of “The Creature” looks up a stat named “Stamina” on the persona, but no entity that can be played has it',
+        '“Fury · After the AI” of “The Creature” looks up a stat named “Rgae” on “The Creature”, which does not exist',
+        '“Fury · After the AI” of “The Creature” looks up a stat named “Stamina” on the persona, but no entity that can be played has it',
       ]);
       expect(messages(worldBox('entities["The Creature"].stats.Rgae.value = 1; persona.stats.Stamina.max = 2;'))).toEqual([
-        'After the AI code on “Alarm” looks up a stat named “Rgae” on “The Creature”, which does not exist',
-        'After the AI code on “Alarm” looks up a stat named “Stamina” on the persona, but no entity that can be played has it',
+        '“Alarm · After the AI” looks up a stat named “Rgae” on “The Creature”, which does not exist',
+        '“Alarm · After the AI” looks up a stat named “Stamina” on the persona, but no entity that can be played has it',
       ]);
     });
 
     it('names a missing entity, and leaves a computed entity name alone', () => {
       expect(messages(worldBox('return entities.Brm.stats.Rage.value;'))).toEqual([
-        'After the AI code on “Alarm” looks up a stat on “Brm”, but no entity is named “Brm”',
+        '“Alarm · After the AI” looks up a stat on “Brm”, but no entity is named “Brm”',
       ]);
       expect(messages(worldBox('const who = "Brm"; return entities[who].stats.Rage.value;'))).toEqual([]);
     });
@@ -584,13 +584,13 @@ describe('reference-integrity rules', () => {
       const bram = creature({ id: 'bram', name: 'Bram', stats: [stat({ id: 'grit', name: 'Grit' })] });
       expect(messages(worldBox('return persona.stats.Stamina.value;', [tobb, maren, bram]))).toEqual([]);
       expect(messages(worldBox('return persona.stats.Grit.value;', [tobb, maren, bram]))).toEqual([
-        'After the AI code on “Alarm” looks up a stat named “Grit” on the persona, but no entity that can be played has it',
+        '“Alarm · After the AI” looks up a stat named “Grit” on the persona, but no entity that can be played has it',
       ]);
     });
 
     it('reports owner.stats in a world box, since a world stat has no owner', () => {
       expect(messages(worldBox('owner.stats.Rage.value = 1;'))).toEqual([
-        'After the AI code on “Alarm” looks up “Rage” on its owner, but a world stat has no owner',
+        '“Alarm · After the AI” looks up “Rage” on its owner, but a world stat has no owner',
       ]);
     });
 
@@ -609,13 +609,13 @@ describe('reference-integrity rules', () => {
       const w = blueprint('return stats.Watch.value + owner.stats.Rage.value;');
       const found = only(w, RULE);
       expect(found.map((f) => f.message)).toEqual([
-        'After the AI code on “Guard” looks up a stat named “Watch”, which does not exist',
+        '“Guard · After the AI” looks up a stat named “Watch”, which does not exist',
       ]);
       expect(found[0].items).toEqual([{ id: 'guard', name: 'Guard' }]);
       // An owner can hold more than the group, so an owner.stats miss is only a warning.
       expect(only(w, 'stat-code-unknown-blueprint-owner-stat').map(({ severity, message, items }) => ({ severity, message, items }))).toEqual([{
         severity: 'warning',
-        message: 'After the AI code on “Guard” looks up a stat named “Rage” on its owner, which its Blueprint group does not have',
+        message: '“Guard · After the AI” looks up a stat named “Rage” on its owner, which its Blueprint group does not have',
         items: [{ id: 'guard', name: 'Guard' }],
       }]);
       // An owner's own box reads the owner's stats, so its miss stays an error.
@@ -632,10 +632,10 @@ describe('reference-integrity rules', () => {
       });
       const linked = (code?: string) => messages(base({ statGroups: [blueprints], stats: [guard], entities: [owner(code)] }));
       // The owner's copy holds the Blueprint's code, which the Blueprint's own row already reports.
-      const own = 'After the AI code on “Guard” looks up a stat named “Vigro”, which does not exist';
+      const own = '“Guard · After the AI” looks up a stat named “Vigro”, which does not exist';
       expect(linked()).toEqual([own]);
       expect(linked('return owner.stats.Rage.value + owner.stats.Rgae.value;')).toEqual([
-        own, 'After the AI code on “Guard” of “The Creature” looks up a stat named “Rgae” on its owner, which does not exist',
+        own, '“Guard · After the AI” of “The Creature” looks up a stat named “Rgae” on its owner, which does not exist',
       ]);
     });
   });
@@ -671,19 +671,19 @@ describe('reference-integrity rules', () => {
     const beforeOnly = only(boxed({ scripts: boxScripts({ before: miss, after: hit }) }), 'stat-code-unknown-stat');
     expect(beforeOnly).toHaveLength(1);
     expect(beforeOnly[0].message).toBe(
-      'Before the AI code on “Mana” looks up a stat named “Vigour”, which does not exist',
+      '“Mana · Before the AI” looks up a stat named “Vigour”, which does not exist',
     );
 
     const afterOnly = only(boxed({ scripts: boxScripts({ before: hit, after: miss }) }), 'stat-code-unknown-stat');
     expect(afterOnly).toHaveLength(1);
     expect(afterOnly[0].message).toBe(
-      'After the AI code on “Mana” looks up a stat named “Vigour”, which does not exist',
+      '“Mana · After the AI” looks up a stat named “Vigour”, which does not exist',
     );
 
     // One miss per box, so an author who typed it twice is told twice rather than once.
     expect(only(boxed({ scripts: boxScripts({ before: miss, after: miss }) }), 'stat-code-unknown-stat').map((f) => f.message)).toEqual([
-      'Before the AI code on “Mana” looks up a stat named “Vigour”, which does not exist',
-      'After the AI code on “Mana” looks up a stat named “Vigour”, which does not exist',
+      '“Mana · Before the AI” looks up a stat named “Vigour”, which does not exist',
+      '“Mana · After the AI” looks up a stat named “Vigour”, which does not exist',
     ]);
   });
 
@@ -695,7 +695,7 @@ describe('reference-integrity rules', () => {
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe('warning');
     expect(found[0].message).toBe(
-      'Before the AI code on “Mana” reads delta, but that box runs before the AI asks and before regen — '
+      '“Mana · Before the AI” reads delta, but it runs before the AI asks and before regen — '
       + 'every delta reads zero there',
     );
     expect(found[0].items.map((i) => i.id)).toEqual(['s1']);
@@ -722,6 +722,17 @@ describe('reference-integrity rules', () => {
     ];
     expect(only(base({ stats: [stat({ id: 's1', name: 'Mana', scripts })] }), 'stat-code-before-reads-delta')).toHaveLength(1);
   });
+
+  it('names each before script that reads delta, by its name', () => {
+    const scripts: Script[] = [
+      { id: 'b1', name: 'Drain', timing: 'before', code: 'return self.delta.ai.value;' },
+      { id: 'b2', name: 'Gain', timing: 'before', code: 'return self.delta.regen.value;' },
+    ];
+    expect(only(base({ stats: [stat({ id: 's1', name: 'Mana', scripts })] }), 'stat-code-before-reads-delta').map((f) => f.message)).toEqual([
+      '“Drain” (Before the AI) on “Mana” reads delta, but it runs before the AI asks and before regen — every delta reads zero there',
+      '“Gain” (Before the AI) on “Mana” reads delta, but it runs before the AI asks and before regen — every delta reads zero there',
+    ]);
+  });
 });
 
 describe('stat code two writers rule', () => {
@@ -736,21 +747,56 @@ describe('stat code two writers rule', () => {
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe('warning');
     expect(found[0].message).toBe(
-      'Two boxes write the value of “Health”: After the AI code on “Health” and After the AI code on “Fate”',
+      'Two scripts write the value of “Health”: “Health · After the AI” and “Fate · After the AI”',
     );
     expect(found[0].items.map((i) => i.id)).toEqual(['h']);
   });
 
-  it('warns once when two hubs write one field, and names each box a hub writes from', () => {
+  it('warns once when two hubs write one field, and names each script a hub writes from', () => {
     const found = coded([
       stat({ id: 'h', name: 'Health' }),
-      stat({ id: 'a', name: 'Fate', scripts: boxScripts({ before: 'stats.Health.max = 5;' }) }),
+      stat({ id: 'a', name: 'Fate', scripts: boxScripts({ after: 'stats.Health.max = 5;' }) }),
       stat({ id: 'b', name: 'Luck', scripts: boxScripts({ after: 'stats.Health.max = 6;' }) }),
     ]);
     expect(found).toHaveLength(1);
     expect(found[0].message).toBe(
-      'Two boxes write the max of “Health”: Before the AI code on “Fate” and After the AI code on “Luck”',
+      'Two scripts write the max of “Health”: “Fate · After the AI” and “Luck · After the AI”',
     );
+  });
+
+  it('keeps writers of different timings apart, so a before hub and an after hub stay quiet', () => {
+    expect(coded([
+      stat({ id: 'h', name: 'Health' }),
+      stat({ id: 'a', name: 'Fate', scripts: boxScripts({ before: 'stats.Health.max = 5;' }) }),
+      stat({ id: 'b', name: 'Luck', scripts: boxScripts({ after: 'stats.Health.max = 6;' }) }),
+    ])).toEqual([]);
+  });
+
+  it('names a named script by its name, timing and stat', () => {
+    const [found] = coded([
+      stat({ id: 'h', name: 'Health', scripts: [{ id: 's1', name: 'Clamp', timing: 'after', code: 'self.value = 1;' }] }),
+      stat({ id: 'a', name: 'Fate', scripts: boxScripts({ after: 'stats.Health.value = 2;' }) }),
+    ]);
+    expect(found.message).toBe('Two scripts write the value of “Health”: “Clamp” (After the AI) on “Health” and “Fate · After the AI”');
+  });
+
+  it('counts a world script and a trait script as writers', () => {
+    const found = only(base({
+      scripts: [{ id: 'w1', timing: 'after', code: 'stats.Health.value = 1;' }],
+      stats: [stat({ id: 'h', name: 'Health' })],
+      traits: [{ id: 't1', name: 'Brave', statChanges: [], scripts: [{ id: 'ts', timing: 'after', code: 'stats.Health.value = 2;' }] }],
+    }), RULE);
+    expect(found.map((f) => f.message)).toEqual([
+      'Two scripts write the value of “Health”: “World · After the AI” and “Brave · After the AI”',
+    ]);
+    // A named world script names the world as its home.
+    const named = only(base({
+      scripts: [{ id: 'w1', name: 'Tide', timing: 'after', code: 'stats.Health.value = 1;' }],
+      stats: [stat({ id: 'h', name: 'Health', scripts: boxScripts({ after: 'self.value = 2;' }) })],
+    }), RULE);
+    expect(named.map((f) => f.message)).toEqual([
+      'Two scripts write the value of “Health”: “Tide” (After the AI) on the world and “Health · After the AI”',
+    ]);
   });
 
   it('counts two scripts of one timing on one stat as two writers', () => {
@@ -788,22 +834,18 @@ describe('stat code two writers rule', () => {
     ])).toEqual([]);
   });
 
-  it('counts the before and the after box of one stat as two writers', () => {
-    const found = coded([stat({ id: 'h', name: 'Health', scripts: boxScripts({ before: 'self.value = 1;', after: 'self.value += 2;' }) })]);
-    expect(found).toHaveLength(1);
-    expect(found[0].message).toBe(
-      'Two boxes write the value of “Health”: Before the AI code on “Health” and After the AI code on “Health”',
-    );
+  it('stays quiet for the before and the after script of one stat, which never run in one timing', () => {
+    expect(coded([stat({ id: 'h', name: 'Health', scripts: boxScripts({ before: 'self.value = 1;', after: 'self.value += 2;' }) })])).toEqual([]);
   });
 
-  it('counts the boxes when more than two write one field, and names each', () => {
+  it('counts the scripts when more than two write one field, and names each', () => {
     const [found] = coded([
       stat({ id: 'h', name: 'Health', scripts: boxScripts({ after: 'self.max = 1;' }) }),
-      stat({ id: 'a', name: 'Fate', scripts: boxScripts({ before: 'stats.Health.max = 2;' }) }),
+      stat({ id: 'a', name: 'Fate', scripts: boxScripts({ after: 'stats.Health.max = 2;' }) }),
       stat({ id: 'b', name: 'Luck', scripts: boxScripts({ after: 'stats.Health.max = 3;' }) }),
     ]);
     expect(found.message).toBe(
-      '3 boxes write the max of “Health”: After the AI code on “Health”, Before the AI code on “Fate” and After the AI code on “Luck”',
+      '3 scripts write the max of “Health”: “Health · After the AI”, “Fate · After the AI” and “Luck · After the AI”',
     );
   });
 
@@ -865,7 +907,7 @@ describe('stat code two writers rule', () => {
       }), RULE);
       expect(found).toHaveLength(1);
       expect(found[0].message).toBe(
-        'Two boxes write the value of “Guard” on “Maren”: After the AI code on “Hub” and After the AI code on “Guard”',
+        'Two scripts write the value of “Guard” on “Maren”: “Hub · After the AI” and “Guard · After the AI”',
       );
       expect(found[0].items).toEqual([{ id: 'Maren', name: 'Maren', section: 'entities' }]);
     });
@@ -922,7 +964,7 @@ describe('stat code two writers rule', () => {
       }), RULE);
       expect(found).toHaveLength(1);
       expect(found[0].message).toBe(
-        'Two boxes write the value of “Destruction”: After the AI code on “Destruction” and After the AI code on “Rage” of “The Creature”',
+        'Two scripts write the value of “Destruction”: “Destruction · After the AI” and “Rage · After the AI” of “The Creature”',
       );
       expect(found[0].items).toEqual([{ id: 'dest', name: 'Destruction' }]);
     });
@@ -931,14 +973,14 @@ describe('stat code two writers rule', () => {
       const found = only(base({
         stats: [
           stat({ id: 'w1', name: 'Alarm', scripts: boxScripts({ after: 'entities["The Creature"].stats.Rage.max = 5;' }) }),
-          stat({ id: 'w2', name: 'Dread', scripts: boxScripts({ before: 'persona.stats["Rage"].max = 6;' }) }),
+          stat({ id: 'w2', name: 'Dread', scripts: boxScripts({ after: 'persona.stats["Rage"].max = 6;' }) }),
         ],
         entities: [creature([rage('self.max = 7;'), stat({ id: 'fury', name: 'Fury', scripts: boxScripts({ after: 'owner.stats.Rage.max = 8;' }) })], { persona: true })],
       }), RULE);
       expect(found).toHaveLength(1);
       expect(found[0].message).toBe(
-        '4 boxes write the max of “Rage” on “The Creature”: After the AI code on “Alarm”, Before the AI code on “Dread”, '
-        + 'After the AI code on “Rage” and After the AI code on “Fury”',
+        '4 scripts write the max of “Rage” on “The Creature”: “Alarm · After the AI”, “Dread · After the AI”, '
+        + '“Rage · After the AI” and “Fury · After the AI”',
       );
       expect(found[0].items).toEqual([{ id: 'creature', name: 'The Creature', section: 'entities' }]);
     });
@@ -986,7 +1028,7 @@ describe('stat code two writers rule', () => {
       const found = owners('Maren', 'Tobb');
       expect(found).toHaveLength(1);
       expect(found[0].message).toBe(
-        'Two boxes write the value of “Destruction”: After the AI code on “Guard” of “Maren” and After the AI code on “Guard” of “Tobb”',
+        'Two scripts write the value of “Destruction”: “Guard · After the AI” of “Maren” and “Guard · After the AI” of “Tobb”',
       );
       expect(owners('Maren')).toEqual([]);
     });
