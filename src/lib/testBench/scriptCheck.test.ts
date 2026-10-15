@@ -6,7 +6,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { Entity, Script, Stat, Trait, WorldOverview } from '@/types';
-import { checkedScriptCount, checkStatCode, STAT_CODE_EXECUTION, STAT_CODE_UNKNOWN_NAME } from './statCodeCheck';
+import { checkedScriptCount, checkScripts, SCRIPT_EXECUTION, SCRIPT_UNKNOWN_NAME } from './scriptCheck';
 import { editorPromptRun } from '@/lib/editorScriptPrompts';
 import { groupFindings, type RuleWorld } from './rules';
 import { boxScripts } from '@/test/scriptFixtures';
@@ -22,13 +22,13 @@ const stat = (over: Partial<Stat> & { id: string; name: string }): Stat => ({
   type: 'number', description: '', min: 0, max: 100, regen: 0, descriptors: [], ...over,
 });
 
-describe('the on-demand stat-code check', () => {
+describe('the on-demand script check', () => {
   // The executor logs its error paths to console.error by design; keep test output clean.
   beforeEach(() => vi.spyOn(console, 'error').mockImplementation(() => {}));
   afterEach(() => vi.restoreAllMocks());
 
   it('says nothing about code that runs and returns a number', async () => {
-    expect(await checkStatCode(base([
+    expect(await checkScripts(base([
       stat({ id: 's1', name: 'Fertility', scripts: boxScripts({ after: 'return 25;' }) }),
       stat({ id: 's2', name: 'Vigor' }),
     ]))).toEqual([]);
@@ -41,22 +41,22 @@ describe('the on-demand stat-code check', () => {
         id: 'berserk', name: 'Berserk', statChanges: [],
         requires: [{ all: [{ kind: 'stat', id: 'rage', operator: '>=', value: 80, unit: 'raw' }] }],
       }];
-      return checkStatCode(world);
+      return checkScripts(world);
     };
     expect(await at(85)).toEqual([]);
-    expect((await at(70)).map((f) => f.ruleId)).toEqual([STAT_CODE_EXECUTION.id]);
+    expect((await at(70)).map((f) => f.ruleId)).toEqual([SCRIPT_EXECUTION.id]);
   });
 
   it('runs code that reads a placeholder the world has, and reports none', async () => {
     const world = base([stat({ id: 's1', name: 'Fertility', scripts: boxScripts({ after: 'return placeholders.Mood.value === "calm" ? 1 : 2;' }) })]);
     world.placeholders = [{ id: 'mood', name: 'Mood', values: [{ id: 'v:calm', text: 'calm' }] }];
-    expect(await checkStatCode(world)).toEqual([]);
+    expect(await checkScripts(world)).toEqual([]);
   });
 
   it('runs code that reads and switches a trait the world has, and reports none', async () => {
     const world = base([stat({ id: 's1', name: 'Fertility', scripts: boxScripts({ after: 'traits.Cursed.enabled = !traits.Cursed.acquired;' }) })]);
     world.traits = [{ id: 't1', name: 'Cursed', playerDescription: '', aiDescription: '', statChanges: [] }];
-    expect(await checkStatCode(world)).toEqual([]);
+    expect(await checkScripts(world)).toEqual([]);
   });
 
   it('runs code that pins an owner’s placeholder through its entry, and reports only a name the owner lacks', async () => {
@@ -67,12 +67,12 @@ describe('the on-demand stat-code check', () => {
     ]);
     world.entities = [{ id: 'mira', name: 'Mira', persona: true, placeholders: [{ id: 'hair', name: 'Hair', values: [] }] }];
     world.dictionaries = [{ id: 'lore', name: 'Lore', entries: [], placeholders: [{ id: 'sky', name: 'Sky', values: [] }] }];
-    const found = await checkStatCode(world);
+    const found = await checkScripts(world);
     expect(found.map((f) => [f.items[0].id, f.message])).toEqual([['s2', expect.stringContaining('Mira › Hiar')]]);
   });
 
   it('runs code that sets its own bounds, and reports none', async () => {
-    expect(await checkStatCode(base([
+    expect(await checkScripts(base([
       stat({ id: 's1', name: 'Fertility', scripts: boxScripts({ after: 'self.max = 200; self.regen = 2;' }) }),
     ]))).toEqual([]);
   });
@@ -85,10 +85,10 @@ describe('the on-demand stat-code check', () => {
     ]);
     world.placeholders = [{ id: 'mood', name: 'Mood', values: [{ id: 'v:calm', text: 'calm' }] }];
     world.traits = [{ id: 't1', name: 'Cursed', playerDescription: '', aiDescription: '', statChanges: [] }];
-    const found = await checkStatCode(world);
+    const found = await checkScripts(world);
     expect(found.map((f) => [f.ruleId, f.severity, f.items[0].id])).toEqual([
-      [STAT_CODE_UNKNOWN_NAME.id, 'warning', 's1'],
-      [STAT_CODE_UNKNOWN_NAME.id, 'warning', 's2'],
+      [SCRIPT_UNKNOWN_NAME.id, 'warning', 's1'],
+      [SCRIPT_UNKNOWN_NAME.id, 'warning', 's2'],
     ]);
     expect(found[0].message).toContain('Fertility');
     expect(found[0].message).toContain('Moood');
@@ -98,10 +98,10 @@ describe('the on-demand stat-code check', () => {
   });
 
   it('reports code that throws, naming the stat and the failure', async () => {
-    const [found] = await checkStatCode(base([
+    const [found] = await checkScripts(base([
       stat({ id: 's1', name: 'Fertility', scripts: boxScripts({ after: 'return stats.find(s => s.name === "Missing").value;' }) }),
     ]));
-    expect(found.ruleId).toBe(STAT_CODE_EXECUTION.id);
+    expect(found.ruleId).toBe(SCRIPT_EXECUTION.id);
     expect(found.severity).toBe('error');
     expect(found.section).toBe('stats');
     expect(found.items.map((i) => i.id)).toEqual(['s1']);
@@ -110,7 +110,7 @@ describe('the on-demand stat-code check', () => {
   });
 
   it('reports code that returns something other than a number as its own failure, not as a throw', async () => {
-    const [found] = await checkStatCode(base([
+    const [found] = await checkScripts(base([
       stat({ id: 's1', name: 'Fertility', scripts: boxScripts({ after: 'return "25";' }) }),
     ]));
     expect(found.message).toContain('doesn’t return a number');
@@ -118,22 +118,22 @@ describe('the on-demand stat-code check', () => {
   });
 
   it('reports a placeholder written something other than text as a wrong-type write, not as a throw', async () => {
-    const [found] = await checkStatCode({ ...base([
+    const [found] = await checkScripts({ ...base([
       stat({ id: 's1', name: 'Fertility', scripts: boxScripts({ after: 'placeholders.Mood.value = {};' }) }),
     ]), placeholders: [{ id: 'p1', name: 'Mood', values: [{ id: 'v1', text: 'calm' }] }] });
-    expect(found.ruleId).toBe(STAT_CODE_EXECUTION.id);
+    expect(found.ruleId).toBe(SCRIPT_EXECUTION.id);
     expect(found.message).toContain('wrong type');
     expect(found.message).not.toContain('throws');
   });
 
   it('accepts code that sets its value through self and returns nothing', async () => {
-    expect(await checkStatCode(base([
+    expect(await checkScripts(base([
       stat({ id: 's1', name: 'Fertility', scripts: boxScripts({ after: 'self.value = 25;' }) }),
     ]))).toEqual([]);
   });
 
   it('reports code that never finishes as a timeout', async () => {
-    const [found] = await checkStatCode(base([
+    const [found] = await checkScripts(base([
       stat({ id: 's1', name: 'Fertility', scripts: boxScripts({ after: 'while (true) {}' }) }),
     ]));
     expect(found.message).toContain('times out');
@@ -141,7 +141,7 @@ describe('the on-demand stat-code check', () => {
 
   it('runs each coded stat against the world’s starting values, so a run mirrors turn one', async () => {
     // Vigor opens at 80; code reading it must see 80, not the live-value default of zero.
-    const found = await checkStatCode(base([
+    const found = await checkScripts(base([
       stat({ id: 's1', name: 'Vigor', starting: 80 }),
       stat({
         id: 's2',
@@ -153,7 +153,7 @@ describe('the on-demand stat-code check', () => {
   });
 
   it('checks every coded stat rather than stopping at the first failure', async () => {
-    const found = await checkStatCode(base([
+    const found = await checkScripts(base([
       stat({ id: 's1', name: 'Fertility', scripts: boxScripts({ after: 'throw new Error("nope");' }) }),
       stat({ id: 's2', name: 'Weave', scripts: boxScripts({ after: 'return "not a number";' }) }),
       stat({ id: 's3', name: 'Vigor', scripts: boxScripts({ after: 'return 10;' }) }),
@@ -162,14 +162,14 @@ describe('the on-demand stat-code check', () => {
   });
 
   it('says nothing about stats with no code, or blank code', async () => {
-    expect(await checkStatCode(base([
+    expect(await checkScripts(base([
       stat({ id: 's1', name: 'Vigor' }),
       stat({ id: 's2', name: 'Weave', scripts: boxScripts({ before: '\n', after: '   ' }) }),
     ]))).toEqual([]);
   });
 
   it('runs both of a stat’s boxes and names the box each row is about', async () => {
-    const found = await checkStatCode(base([
+    const found = await checkScripts(base([
       stat({ id: 's1', name: 'Fertility', scripts: boxScripts({ before: 'throw new Error("nope");', after: 'return "not a number";' }) }),
     ]));
     expect(found.map((f) => f.message)).toEqual([
@@ -179,7 +179,7 @@ describe('the on-demand stat-code check', () => {
   });
 
   it('leaves a stat alone when only its before box holds code and that box runs clean', async () => {
-    expect(await checkStatCode(base([
+    expect(await checkScripts(base([
       stat({ id: 's1', name: 'Fertility', scripts: boxScripts({ before: 'return 25;' }) }),
     ]))).toEqual([]);
   });
@@ -190,7 +190,7 @@ describe('the on-demand stat-code check', () => {
     const entries = Object.entries(worlds);
     expect(entries.length).toBeGreaterThan(0);
     for (const [path, world] of entries) {
-      expect(await checkStatCode(world.default), path).toEqual([]);
+      expect(await checkScripts(world.default), path).toEqual([]);
     }
   });
 
@@ -206,14 +206,14 @@ describe('the on-demand stat-code check', () => {
       ]),
       placeholders: [{ id: 'ph-beast', name: 'Beast', values: [{ id: 'v-wolf', text: 'Wolf' }] }],
     });
-    expect(await checkStatCode(chipped(lookup('Beast Power')))).toEqual([]);
-    const rolled = await checkStatCode(chipped(lookup('Wolf Power')));
+    expect(await checkScripts(chipped(lookup('Beast Power')))).toEqual([]);
+    const rolled = await checkScripts(chipped(lookup('Wolf Power')));
     expect(rolled).toHaveLength(1);
-    expect(rolled[0].ruleId).toBe(STAT_CODE_EXECUTION.id);
+    expect(rolled[0].ruleId).toBe(SCRIPT_EXECUTION.id);
   });
 
   it('names its row by the stat the author sees in the list, chips and all', async () => {
-    const found = await checkStatCode({
+    const found = await checkScripts({
       ...base([stat({ id: 's1', name: '{{ph:ph-beast:world:p1}} Power', scripts: boxScripts({ after: 'throw new Error("nope");' }) })]),
       placeholders: [{ id: 'ph-beast', name: 'Beast', values: [{ id: 'v-wolf', text: 'Wolf' }] }],
     });
@@ -227,9 +227,9 @@ describe('the on-demand stat-code check', () => {
     const owned = (stats: Stat[], world: Stat[] = []): RuleWorld => ({ ...base(world), entities: [creature(stats)] });
 
     it('reports a failing owned box on its entity, naming the stat and the entity', async () => {
-      const found = await checkStatCode(owned([stat({ id: 'rage', name: 'Rage', scripts: boxScripts({ after: 'throw new Error("nope");' }) })]));
+      const found = await checkScripts(owned([stat({ id: 'rage', name: 'Rage', scripts: boxScripts({ after: 'throw new Error("nope");' }) })]));
       expect(found.map((f) => [f.ruleId, f.message])).toEqual([[
-        STAT_CODE_EXECUTION.id, '“Rage · After the AI” of “The Creature” throws when it runs, so the stat keeps its manual value',
+        SCRIPT_EXECUTION.id, '“Rage · After the AI” of “The Creature” throws when it runs, so the stat keeps its manual value',
       ]]);
       expect(found[0].items).toEqual([{ id: 'creature', name: 'The Creature', section: 'entities' }]);
     });
@@ -242,13 +242,13 @@ describe('the on-demand stat-code check', () => {
         [stat({ id: 'rage', name: 'Rage', starting: 7 }), stat({ id: 'fury', name: 'Fury', scripts: boxScripts({ after: check }) })],
         [stat({ id: 'dest', name: 'Destruction', starting: 3 })],
       );
-      expect(await checkStatCode(world)).toEqual([]);
+      expect(await checkScripts(world)).toEqual([]);
       // A world box reads the same entity through `entities`, and its own owner is empty.
       world.stats = [...world.stats, stat({
         id: 'alarm', name: 'Alarm',
         scripts: boxScripts({ after: 'if (entities["The Creature"].stats.Rage.value !== 7 || owner.stats.Rage.name) throw new Error("x"); return 1;' }),
       })];
-      expect(await checkStatCode(world)).toEqual([]);
+      expect(await checkScripts(world)).toEqual([]);
     });
 
     it('runs a Blueprint box once, with its group’s stats alone as owner, however many owners it has', async () => {
@@ -268,10 +268,10 @@ describe('the on-demand stat-code check', () => {
           ],
         };
       };
-      expect(await checkStatCode(blueprint(
+      expect(await checkScripts(blueprint(
         'if (owner.stats.Watch.value !== 4 || owner.stats.Rage.name || stats.Destruction.value !== 3) throw new Error("x");\nreturn 1;',
       ))).toEqual([]);
-      const found = await checkStatCode(blueprint('throw new Error("nope");'));
+      const found = await checkScripts(blueprint('throw new Error("nope");'));
       expect(found.map((f) => [f.message, f.items])).toEqual([[
         '“Guard · After the AI” throws when it runs, so the stat keeps its manual value', [{ id: 'guard', name: 'Guard' }],
       ]]);
@@ -285,7 +285,7 @@ describe('the on-demand stat-code check', () => {
           overrides: { guard: { scripts: { value: boxScripts({ after: code }), blueprint: boxScripts({ after: 'return 1;' }) } } },
         }],
       });
-      const linked = (code: string) => checkStatCode({ ...base([guard]), statGroups: [blueprints], entities: [owner(code)] });
+      const linked = (code: string) => checkScripts({ ...base([guard]), statGroups: [blueprints], entities: [owner(code)] });
       expect(await linked('if (owner.stats.Rage.value !== 7) throw new Error("owner"); return 2;')).toEqual([]);
       const found = await linked('throw new Error("nope");');
       expect(found.map((f) => [f.message, f.items])).toEqual([[
@@ -296,7 +296,7 @@ describe('the on-demand stat-code check', () => {
   });
 
   it('collapses its findings into one counted row like any other rule', async () => {
-    const found = await checkStatCode(base([
+    const found = await checkScripts(base([
       stat({ id: 's1', name: 'Fertility', scripts: boxScripts({ after: 'throw new Error("nope");' }) }),
       stat({ id: 's2', name: 'Weave', scripts: boxScripts({ after: 'return "not a number";' }) }),
     ]));
@@ -310,7 +310,7 @@ describe('the on-demand stat-code check', () => {
     const brave = (scripts: Script[], over: Partial<Trait> = {}): Trait => ({ id: 'brave', name: 'Brave', statChanges: [], scripts, ...over });
 
     it('names a named script by its name, timing and stat', async () => {
-      const [found] = await checkStatCode(base([
+      const [found] = await checkScripts(base([
         stat({ id: 's1', name: 'Fertility', scripts: [{ id: 'x', name: 'Clamp', timing: 'before', code: 'throw new Error("nope");' }] }),
       ]));
       expect(found.message).toBe('“Clamp” (Before the AI) on “Fertility” throws when it runs, so the stat keeps its manual value');
@@ -321,7 +321,7 @@ describe('the on-demand stat-code check', () => {
         { id: 'w1', timing: 'after' as const, code: 'throw new Error("nope");' },
         { id: 'w2', name: 'Tide', timing: 'start' as const, code: 'while (true) {}' },
       ] };
-      const found = await checkStatCode(world);
+      const found = await checkScripts(world);
       expect(found.map((f) => [f.message, f.items])).toEqual([
         ['“World · After the AI” throws when it runs, so the run changes nothing',
           [{ id: 'world|w1', name: 'World · After the AI', section: 'scripts' }]],
@@ -331,7 +331,7 @@ describe('the on-demand stat-code check', () => {
     }, 15000);
 
     it('runs a trait script with the trait as self, and names it on the Traits tab', async () => {
-      const at = (code: string) => checkStatCode({ ...base([]), traits: [brave([{ id: 't', timing: 'after', code }])] });
+      const at = (code: string) => checkScripts({ ...base([]), traits: [brave([{ id: 't', timing: 'after', code }])] });
       expect(await at('if (self.name !== "Brave" || self.acquired) throw new Error("self"); return 3;')).toEqual([]);
       const found = await at('throw new Error("nope");');
       expect(found.map((f) => [f.message, f.items])).toEqual([[
@@ -341,16 +341,16 @@ describe('the on-demand stat-code check', () => {
 
     it('runs an entity’s own trait script under its entity, and names the entity', async () => {
       const entity: Entity = { id: 'mira', name: 'Mira', traits: [brave([{ id: 't', timing: 'after', code: 'if (owner.name !== "Mira") throw new Error("owner");' }])] };
-      expect(await checkStatCode({ ...base([]), entities: [entity] })).toEqual([]);
+      expect(await checkScripts({ ...base([]), entities: [entity] })).toEqual([]);
       entity.traits = [brave([{ id: 't', timing: 'after', code: 'throw new Error("nope");' }])];
-      const found = await checkStatCode({ ...base([]), entities: [entity] });
+      const found = await checkScripts({ ...base([]), entities: [entity] });
       expect(found.map((f) => [f.message, f.items])).toEqual([[
         '“Brave · After the AI” of “Mira” throws when it runs, so the run changes nothing', [{ id: 'mira', name: 'Mira', section: 'entities' }],
       ]]);
     });
 
     it('hands a During AI Output script the sample sentence, and says its sentence passes unchanged on a failure', async () => {
-      const output = (code: string) => checkStatCode(base([stat({ id: 's1', name: 'Mood', scripts: [{ id: 'o', timing: 'output', code }] })]));
+      const output = (code: string) => checkScripts(base([stat({ id: 's1', name: 'Mood', scripts: [{ id: 'o', timing: 'output', code }] })]));
       const reads = 'if (narration.sentence !== "The door opens." || narration.full !== narration.sentence || narration.index !== 0'
         + ' || narration.sent.length || narration.buffered.length) throw new Error("sample"); narration.sentence = "x";';
       expect(await output(reads)).toEqual([]);
@@ -369,12 +369,12 @@ describe('the on-demand stat-code check', () => {
         ],
         traitGroups: [{ id: 'g', name: 'Mood', parentId: null }],
       };
-      expect(await checkStatCode(world)).toEqual([]);
+      expect(await checkScripts(world)).toEqual([]);
     });
 
     it('shows a prompt through the host it is given, and reads the pick', async () => {
       const prompts = editorPromptRun();
-      const checking = checkStatCode(base([
+      const checking = checkScripts(base([
         stat({ id: 's1', name: 'Mood', scripts: boxScripts({ after: 'if (player.confirm("Drink?")) throw new Error("drank");' }) }),
       ]), prompts.host);
       await vi.waitFor(() => expect(prompts.store.pending()).toHaveLength(1));
@@ -384,7 +384,7 @@ describe('the on-demand stat-code check', () => {
 
     it('reports a prompt the author closes as canceled', async () => {
       const prompts = editorPromptRun();
-      const checking = checkStatCode(base([
+      const checking = checkScripts(base([
         stat({ id: 's1', name: 'Mood', scripts: boxScripts({ after: 'player.confirm("Drink?"); return 1;' }) }),
       ]), prompts.host);
       await vi.waitFor(() => expect(prompts.store.pending()).toHaveLength(1));

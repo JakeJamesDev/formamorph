@@ -109,7 +109,7 @@ export interface Finding {
 }
 
 /** What a finding's row needs from whatever raised it, with no way of raising it. Split out because not
- *  everything the Issues list shows can run in the live pass — the stat-code execution check spins a VM. */
+ *  everything the Issues list shows can run in the live pass — the script execution check spins a VM. */
 export interface RuleHead {
   id: string;
   severity: Severity;
@@ -934,7 +934,7 @@ const placeholderPinnedUnused: Rule = {
   },
 };
 
-// A stat-name lookup in stat code, in either direction: `s.name === "X"` or `"X" === s.name`. Also matches
+// A stat-name lookup in a script, in either direction: `s.name === "X"` or `"X" === s.name`. Also matches
 // `==`/`!=` forms — any comparison against `.name` names a stat.
 const NAME_THEN_LITERAL = /\.name\s*[!=]==?\s*(["'`])((?:\\.|(?!\1).)*)\1/g;
 const LITERAL_THEN_NAME = /(["'`])((?:\\.|(?!\1).)*)\1\s*[!=]==?\s*[\w$]+(?:\??\.[\w$]+)*\??\.name\b/g;
@@ -951,12 +951,12 @@ const statNamesInCode = (code: string): string[] => [
   ...scanStatLookups(code).flatMap((lookup) => (lookup.root === 'stats' ? [lookup.stat] : [])),
 ];
 
-/** The owners stat code reaches in this world. */
+/** The owners a script reaches in this world. */
 const codeOwnersOf = (world: RuleWorld): CodeOwners => statCodeOwners({
   stats: world.stats, statGroups: world.statGroups, entities: world.entities, placeholders: allPlaceholders(world),
 });
 
-/** Every unknown stat name in stat code, each once per box. `blueprintOwner` marks an `owner.stats` miss in a
+/** Every unknown stat name in a script, each once per box. `blueprintOwner` marks an `owner.stats` miss in a
  *  Blueprint box, where an owner can hold more than the group. */
 const unknownStatMisses = (world: RuleWorld): { label: string; item: FindingItem; miss: string; blueprintOwner: boolean }[] => {
   const owners = codeOwnersOf(world);
@@ -990,8 +990,8 @@ const unknownStatMisses = (world: RuleWorld): { label: string; item: FindingItem
   });
 };
 
-const statCodeUnknownStat: Rule = {
-  id: 'stat-code-unknown-stat',
+const scriptUnknownStat: Rule = {
+  id: 'script-unknown-stat',
   severity: 'error',
   section: 'stats',
   advanced: true,
@@ -999,18 +999,18 @@ const statCodeUnknownStat: Rule = {
   // Code reaches a stat by its code name, which is the same in every playthrough.
   check: (world) => unknownStatMisses(world)
     .filter(({ blueprintOwner }) => !blueprintOwner)
-    .map(({ label, item, miss }) => finding(statCodeUnknownStat, `${label} ${miss}`, [item])),
+    .map(({ label, item, miss }) => finding(scriptUnknownStat, `${label} ${miss}`, [item])),
 };
 
-const statCodeUnknownBlueprintOwnerStat: Rule = {
-  id: 'stat-code-unknown-blueprint-owner-stat',
+const scriptUnknownBlueprintOwnerStat: Rule = {
+  id: 'script-unknown-blueprint-owner-stat',
   severity: 'warning',
   section: 'stats',
   advanced: true,
   summary: (count) => `${count} Blueprint stats’ code looks up owner stats their Blueprint group doesn’t have`,
   check: (world) => unknownStatMisses(world)
     .filter(({ blueprintOwner }) => blueprintOwner)
-    .map(({ label, item, miss }) => finding(statCodeUnknownBlueprintOwnerStat, `${label} ${miss}`, [item])),
+    .map(({ label, item, miss }) => finding(scriptUnknownBlueprintOwnerStat, `${label} ${miss}`, [item])),
 };
 
 /** One filled box the static rules read: its code, how a finding names it, and the stats its `owner.stats`
@@ -1024,7 +1024,7 @@ interface OwnedCodeBox {
   blueprint: boolean;
 }
 
-/** Every box of stat code once, as a finding names it. An entity's own box and its link's name the entity. */
+/** Every script box once, as a finding names it. An entity's own box and its link's name the entity. */
 const codeBoxesOf = (world: RuleWorld, owners: CodeOwners): OwnedCodeBox[] => statCodeBoxes(owners).map((box) => {
   const home = labelOf(box.stat.name, world);
   const ownerStats = box.owner?.byCodeName ?? null;
@@ -1039,8 +1039,8 @@ const codeBoxesOf = (world: RuleWorld, owners: CodeOwners): OwnedCodeBox[] => st
 // a member read counts — which also leaves an author's own variable of that name alone.
 const DELTA_READ = /\??\.\s*delta\b|\[\s*(["'`])delta\1\s*\]/;
 
-const statCodeBeforeReadsDelta: Rule = {
-  id: 'stat-code-before-reads-delta',
+const scriptBeforeReadsDelta: Rule = {
+  id: 'script-before-reads-delta',
   severity: 'warning',
   section: 'stats',
   advanced: true,
@@ -1048,7 +1048,7 @@ const statCodeBeforeReadsDelta: Rule = {
   check: (world) => (world.stats ?? []).flatMap((stat) => {
     const item = namedItem(stat.id, stat.name, world);
     return filledScriptsAt(stat, 'before').filter((script) => DELTA_READ.test(script.code)).map((script) => finding(
-      statCodeBeforeReadsDelta,
+      scriptBeforeReadsDelta,
       `${scriptRef(script, item.name)} reads delta, but it runs before the AI asks and before regen — every delta reads zero there`,
       [item],
     ));
@@ -1064,8 +1064,8 @@ interface WrittenField {
   writers: Map<string, { owner: CodeOwner; label: string }>;
 }
 
-const statCodeTwoWriters: Rule = {
-  id: 'stat-code-two-writers',
+const scriptTwoWriters: Rule = {
+  id: 'script-two-writers',
   severity: 'warning',
   section: 'stats',
   advanced: true,
@@ -1112,7 +1112,7 @@ const statCodeTwoWriters: Rule = {
       const labels = [...writers.values()].map(({ owner: from, label }) =>
         (from.entity && from !== owner ? `${label} of ${quote(labelOf(from.entity.name, world))}` : label));
       return finding(
-        statCodeTwoWriters,
+        scriptTwoWriters,
         `${howMany} scripts write the ${field} of ${quote(labelOf(target.name, world))}${at}: ${listNames(labels)}`,
         [item],
       );
@@ -1516,8 +1516,8 @@ const codeReadsSelf = (code: string, stat: Stat, world: RuleWorld): boolean => {
   return statNamesInCode(code).some((name) => name === own);
 };
 
-const statCodeOverridesTrait: Rule = {
-  id: 'stat-code-overrides-trait',
+const scriptOverridesTrait: Rule = {
+  id: 'script-overrides-trait',
   severity: 'warning',
   section: 'stats',
   advanced: true,
@@ -1531,7 +1531,7 @@ const statCodeOverridesTrait: Rule = {
     const items = statAndTrait(stat, trait, world);
     const boxes = listNames(guilty.map((box) => TIMING_LABEL[box.timing]));
     return [finding(
-      statCodeOverridesTrait,
+      scriptOverridesTrait,
       `${quote(items[1].name)} ${delta < 0 ? 'lowers' : 'raises'} ${quote(items[0].name)} by ${Math.abs(delta)}, `
       + `but that stat’s ${boxes} code ${guilty.length > 1 ? 'recompute' : 'recomputes'} its value `
       + 'without reading it — the change is gone by the next run',
@@ -3575,13 +3575,13 @@ const imageMislabeled: Rule = {
 export const RULES: readonly Rule[] = [
   aliasLeadingArticle, entityMatchCollision, aliasSelfDuplicate,
   entityLocationOrphan, linkConnectionBroken, traitToggleMissingStat, placeholderPinBroken,
-  chipUnknownPlaceholder, placeholderUnused, placeholderPinnedUnused, statCodeUnknownStat, statCodeUnknownBlueprintOwnerStat,
-  statCodeBeforeReadsDelta, statCodeTwoWriters,
+  chipUnknownPlaceholder, placeholderUnused, placeholderPinnedUnused, scriptUnknownStat, scriptUnknownBlueprintOwnerStat,
+  scriptBeforeReadsDelta, scriptTwoWriters,
   entrySecondaryWithoutPrimary, entryInert, entryRegexInvalid,
   noStartingLocation, legacyStartLocation, entityNowhere, entityNoCodeName, statDisabledForever,
   statStartingOutOfRange, statStartNoDescriptor, statDescriptorDuplicateThreshold, statDescriptorOutOfRange,
   statDescriptorCoverageGap, statPercentageBounds,
-  statTraitDeltaClamped, statCodeOverridesTrait, statAiLockFrozen,
+  statTraitDeltaClamped, scriptOverridesTrait, statAiLockFrozen,
   locationParentOrphan, connectionEndpointOrphan, statUpdateUnknownStat,
   aliasLowercaseNoTwin, entityNameInWildcardPool,
   entityMissingPlayerDescription, entityMissingAiDescription, entityMissingBothDescriptions,
@@ -3601,12 +3601,12 @@ export const RULES: readonly Rule[] = [
 ];
 
 /**
- * The stat-code execution check's row. It is a head without a `check` because it can't run in the live pass:
- * every stat costs a sandbox VM, and the badge has to stay instant. `lib/testBench/statCodeCheck` raises its
+ * The script execution check's row. It is a head without a `check` because it can't run in the live pass:
+ * every stat costs a sandbox VM, and the badge has to stay instant. `lib/testBench/scriptCheck` raises its
  * findings from the explicit action; they group and sort here like any other row.
  */
-export const STAT_CODE_EXECUTION: RuleHead = {
-  id: 'stat-code-execution',
+export const SCRIPT_EXECUTION: RuleHead = {
+  id: 'script-execution',
   severity: 'error',
   section: 'stats',
   advanced: true,
@@ -3614,12 +3614,12 @@ export const STAT_CODE_EXECUTION: RuleHead = {
 };
 
 /**
- * The stat-code unknown-name row: a run wrote a placeholder or trait the world lacks, so the write was
- * dropped. Raised from the same explicit action as {@link STAT_CODE_EXECUTION}; a warning, because the code
+ * The script unknown-name row: a run wrote a placeholder or trait the world lacks, so the write was
+ * dropped. Raised from the same explicit action as {@link SCRIPT_EXECUTION}; a warning, because the code
  * still runs and the stat still gets its value.
  */
-export const STAT_CODE_UNKNOWN_NAME: RuleHead = {
-  id: 'stat-code-unknown-name',
+export const SCRIPT_UNKNOWN_NAME: RuleHead = {
+  id: 'script-unknown-name',
   severity: 'warning',
   section: 'stats',
   advanced: true,
@@ -3664,7 +3664,7 @@ export const SOURCE_UNAVAILABLE: RuleHead = {
 
 /** Everything that can put a row in the Issues list — the live rules plus the on-demand checks. */
 const RULE_HEADS: readonly RuleHead[] = [
-  ...RULES, STAT_CODE_EXECUTION, STAT_CODE_UNKNOWN_NAME, WORLD_TOO_LARGE,
+  ...RULES, SCRIPT_EXECUTION, SCRIPT_UNKNOWN_NAME, WORLD_TOO_LARGE,
   SOURCE_NOT_FOUND, SOURCE_UNAVAILABLE,
 ];
 

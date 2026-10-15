@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { hasCodeWords, isCodeTurn } from '@/lib/formaquestion/helpCodeRider';
-import { testStatCode } from '@/lib/formaquestion/helpCodeTestRun';
+import { testScript } from '@/lib/formaquestion/helpCodeTestRun';
 import { FIXTURE_STAT, FIXTURE_WORLD, fixtureRunner, HELP_CODE_CASES, testsClean } from './help-code-cases';
 import { passesCase, scoreCodeAnswer, scoreNames } from './help-code-score';
 
@@ -75,7 +75,7 @@ describe('the known cases', () => {
 describe('the known cases under the code test', () => {
   const tested = async (id: string, code: string) => {
     const c = HELP_CODE_CASES.find((x) => x.id === id);
-    return testsClean(await testStatCode(code, 'before', FIXTURE_STAT.name, c?.world ?? FIXTURE_WORLD));
+    return testsClean(await testScript(code, 'before', FIXTURE_STAT.name, c?.world ?? FIXTURE_WORLD));
   };
 
   it.each(Object.entries(KNOWN))('test %s clean on the code the guide writes', async (id, { right }) => {

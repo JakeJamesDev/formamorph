@@ -81,7 +81,7 @@ function analysis(code: string, options: AnalysisOptions): Omit<CodeTestResult, 
  * entity's own stat, which runs with its `owner`. With no world, the analysis runs with every name check off
  * and the run is skipped. An unknown stat reads as a blank `self`.
  */
-export async function testStatCode(code: string, box: StatCodeTiming, statName: string, world: StatCodeWorld | undefined): Promise<CodeTestResult> {
+export async function testScript(code: string, box: StatCodeTiming, statName: string, world: StatCodeWorld | undefined): Promise<CodeTestResult> {
   if (!world) {
     const { errors, warnings } = analysis(code, {});
     return { world: false, errors, warnings };

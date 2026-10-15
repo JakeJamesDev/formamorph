@@ -4,7 +4,7 @@
  * has to answer instantly on every keystroke.
  *
  * Pure with respect to the world — it marshals a turn-one snapshot, runs it, and returns findings. The rules
- * module owns the rows this raises ({@link STAT_CODE_EXECUTION}, {@link STAT_CODE_UNKNOWN_NAME}), so an
+ * module owns the rows this raises ({@link SCRIPT_EXECUTION}, {@link SCRIPT_UNKNOWN_NAME}), so an
  * execution failure lists, groups and sorts exactly like a static finding.
  */
 import {
@@ -22,12 +22,12 @@ import { scriptEntryKey } from '@/lib/worldScripts';
 import { SAMPLE_SENTENCE, sampleNarration, sampleSwitchedTrait } from '@/lib/scriptTestSamples';
 import type { ScriptPromptHost } from '@/lib/scriptPrompts';
 import {
-  finding, scriptRef, STAT_CODE_EXECUTION, STAT_CODE_UNKNOWN_NAME, WORLD_SCRIPT_OWNER, type Finding, type FindingItem, type RuleWorld,
+  finding, scriptRef, SCRIPT_EXECUTION, SCRIPT_UNKNOWN_NAME, WORLD_SCRIPT_OWNER, type Finding, type FindingItem, type RuleWorld,
 } from './rules';
 import { startingGateStats } from '@/lib/gateStats';
 import type { Script, Stat, Trait } from '@/types';
 
-export { STAT_CODE_EXECUTION, STAT_CODE_UNKNOWN_NAME } from './rules';
+export { SCRIPT_EXECUTION, SCRIPT_UNKNOWN_NAME } from './rules';
 
 /** How a run failed, in the author's words. */
 const FAILURE: Record<StatCodeFailure, string> = {
@@ -142,7 +142,7 @@ export const checkedScriptCount = (world: RuleWorld): number => scriptUnits(worl
  * as owner (Q10). A During AI Output script rewrites a sample sentence and a switch script fires on a sample
  * trait (Q49). `prompts` answers `player.*`.
  */
-export async function checkStatCode(world: RuleWorld, prompts?: ScriptPromptHost): Promise<Finding[]> {
+export async function checkScripts(world: RuleWorld, prompts?: ScriptPromptHost): Promise<Finding[]> {
   const units = scriptUnits(world);
   if (!units.length) return [];
   const statWorld = { stats: world.stats ?? [], statGroups: world.statGroups ?? [] };
@@ -194,10 +194,10 @@ export async function checkStatCode(world: RuleWorld, prompts?: ScriptPromptHost
     });
     if (result.error) {
       const kind = result.kind ?? 'throw';
-      return finding(STAT_CODE_EXECUTION, `${ref} ${FAILURE[kind]}, ${leftBehind(unit, kind)}`, [item]);
+      return finding(SCRIPT_EXECUTION, `${ref} ${FAILURE[kind]}, ${leftBehind(unit, kind)}`, [item]);
     }
     const unknown = unknownNames(result);
-    return unknown ? finding(STAT_CODE_UNKNOWN_NAME, `${ref} writes to unknown names. Writes ignored: ${unknown}`, [item]) : null;
+    return unknown ? finding(SCRIPT_UNKNOWN_NAME, `${ref} writes to unknown names. Writes ignored: ${unknown}`, [item]) : null;
   }));
   return results.filter((found): found is Finding => found !== null);
 }

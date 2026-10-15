@@ -1,5 +1,5 @@
 /**
- * The code test: a fixed function of Formaquestion. It runs stat code the AI wrote through the editor's
+ * The code test: a fixed function of Formaquestion. It runs a script the AI wrote through the editor's
  * analysis and a Test Code run on the open world, and applies nothing. It is app-internal and no Tool
  * (ADR-0009). The analysis and the sandbox engine load at the first call, so the help bundle stays small.
  */
@@ -15,10 +15,10 @@ export const HELP_CODE_TEST_CALL_LIMIT = 3;
 
 export const HELP_CODE_TEST: OfferedFunction = {
   id: 'help-code-test',
-  name: 'test_stat_code',
+  name: 'test_script',
   description: [
-    'Purpose: Check stat code you wrote, and run it once on the open world, before you give it to the player.',
-    'Use when: You wrote stat code for the player. Call it before you answer. When it reports errors or dropped writes, fix the code and call it again. When an error remains after your last call, give your best code and name the remaining error in one sentence.',
+    'Purpose: Check a script you wrote, and run it once on the open world, before you give it to the player.',
+    'Use when: You wrote a script for the player. Call it before you answer. When it reports errors or dropped writes, fix the code and call it again. When an error remains after your last call, give your best code and name the remaining error in one sentence.',
     'Input: code, box and stat. The code reads that stat as self. Without stat, self is the stat the player has selected, if any.',
     'Output: JSON with errors and warnings, each with its line; notInWorld: the names the world does not have yet, each with its kind; and run: the value the code set, its writes, its pending writes, its assumed stats, its dropped writes, or the error it threw. A pending write lands on the played persona during the game. It is not an error. A notInWorld name and an assumed stat are not errors: keep the code, tell the player to create each one, and name its kind. An assumed stat is a stat the world does not have yet, run as a number at 0 in 0–100. With world false, no world is open: names go unchecked and nothing runs.',
   ].join('\n'),
@@ -41,9 +41,9 @@ export function createCodeTest(world: StatCodeWorldSource | undefined, openStat?
     const parsed = parseToolArgs(HELP_CODE_TEST.params, argumentsText);
     if ('error' in parsed) return { text: JSON.stringify({ error: parsed.error }), failure: 'arguments' };
     read ??= world?.();
-    const { testStatCode } = await import('./helpCodeTestRun');
+    const { testScript } = await import('./helpCodeTestRun');
     const { code, box, stat } = parsed.args;
     const named = typeof stat === 'string' ? stat.trim() : '';
-    return { text: JSON.stringify(await testStatCode(String(code), box as StatCodeTiming, named || (openStat ?? ''), read)) };
+    return { text: JSON.stringify(await testScript(String(code), box as StatCodeTiming, named || (openStat ?? ''), read)) };
   };
 }

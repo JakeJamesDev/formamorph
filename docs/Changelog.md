@@ -41,6 +41,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### 🔧 Fixed
 
 - **👤 User-facing**
+  - **Scripts:**
+    - **Formaquestion's code test function is now named `test_script`, and its description and code rider say "script."** They said "stat code" before.
   - **ComfyUI with an empty Model now uses the first checkpoint the server lists.** It used to send an empty checkpoint name, which ComfyUI rejects. The Model placeholder says which one is used.
   - **Native Reasoning:**
     - **Models that always reason now have room to answer small prompts like Location Change.** Each strength gives a fixed Thinking Room, from Minimal at 128 tokens to Max at 16,384. Max Output limits only the answer, so turning it off no longer shrinks the room.

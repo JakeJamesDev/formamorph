@@ -1,15 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, waitFor, act } from '@testing-library/react';
-import { checkStatCode } from '@/lib/testBench/statCodeCheck';
+import { checkScripts } from '@/lib/testBench/scriptCheck';
 import { benchEditorWorld, clickOpenBench, renderWorldEditorBench } from '@/test/worldEditorBench';
 import type { Finding } from '@/lib/testBench/rules';
 import { boxScripts } from '@/test/scriptFixtures';
 import { PromptCanceled } from '@/lib/scriptPrompts';
 
 /**
- * Guards the on-demand stat-code check through the real editor.
+ * Guards the on-demand script check through the real editor.
  *
- * `statCodeCheck.test.ts` proves the check itself against the real sandbox; what these tests are about is the
+ * `scriptCheck.test.ts` proves the check itself against the real sandbox; what these tests are about is the
  * wiring around it — that a run only ever happens because the author asked for one, and that a verdict about
  * code the author has since edited can never land on the list. The check is stubbed here purely so the test
  * decides when a run finishes; the world, the editor and the rule pass are all real.
@@ -32,13 +32,13 @@ vi.mock('react-toastify', () => ({
   ToastContainer: () => null,
 }));
 
-vi.mock('@/lib/testBench/statCodeCheck', async (importOriginal) => ({
-  ...await importOriginal<typeof import('@/lib/testBench/statCodeCheck')>(),
-  checkStatCode: vi.fn(),
+vi.mock('@/lib/testBench/scriptCheck', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@/lib/testBench/scriptCheck')>(),
+  checkScripts: vi.fn(),
 }));
 
 const FAILURE: Finding = {
-  ruleId: 'stat-code-execution',
+  ruleId: 'script-execution',
   severity: 'error',
   section: 'stats',
   message: 'Code on “Fertility” throws when it runs, so the stat keeps its manual value',
@@ -53,7 +53,7 @@ const WORLD = benchEditorWorld({
   }],
 });
 
-// Stat Code is an Advanced-only field, so an author with code to check is an author in Advanced mode.
+// Scripts are an Advanced-only field, so an author with code to check is an author in Advanced mode.
 const setup = () => renderWorldEditorBench(WORLD, 'advanced');
 
 /** Open the Bench and hand back the check's run button. */
@@ -65,7 +65,7 @@ const openBench = async () => {
 /** A run the test finishes by hand, so the world can be edited while it is still in flight. */
 const deferredRun = () => {
   let finish!: (findings: Finding[]) => void;
-  vi.mocked(checkStatCode).mockReturnValue(new Promise<Finding[]>((resolve) => { finish = resolve; }));
+  vi.mocked(checkScripts).mockReturnValue(new Promise<Finding[]>((resolve) => { finish = resolve; }));
   return (findings: Finding[]) => act(async () => { finish(findings); });
 };
 
@@ -74,16 +74,16 @@ beforeEach(() => {
   localStorage.clear();
 });
 
-describe('WorldEditor — the on-demand stat-code check', () => {
+describe('WorldEditor — the on-demand script check', () => {
   it('runs only when the author asks, and lists what came back', async () => {
     setup();
     const button = await openBench();
     // Opening the Bench must not have run anything: a VM per coded stat is what the live pass can't afford.
-    expect(checkStatCode).not.toHaveBeenCalled();
+    expect(checkScripts).not.toHaveBeenCalled();
 
     const finish = deferredRun();
     fireEvent.click(button);
-    expect(checkStatCode).toHaveBeenCalledTimes(1);
+    expect(checkScripts).toHaveBeenCalledTimes(1);
     await finish([FAILURE]);
 
     expect(screen.getByText(FAILURE.message)).toBeInTheDocument();
@@ -121,7 +121,7 @@ describe('WorldEditor — the on-demand stat-code check', () => {
     const { ctx } = setup();
     const button = await openBench();
     let asked!: Promise<boolean>;
-    vi.mocked(checkStatCode).mockImplementation((_world, prompts) => {
+    vi.mocked(checkScripts).mockImplementation((_world, prompts) => {
       asked = prompts!.prompt({ kind: 'confirm', question: 'Drink it?' });
       return asked.then(() => [], () => [FAILURE]);
     });
@@ -137,7 +137,7 @@ describe('WorldEditor — the on-demand stat-code check', () => {
     setup();
     const button = await openBench();
     vi.spyOn(console, 'error').mockImplementation(() => {});
-    vi.mocked(checkStatCode).mockRejectedValue(new Error('sandbox unavailable'));
+    vi.mocked(checkScripts).mockRejectedValue(new Error('sandbox unavailable'));
 
     await act(async () => { fireEvent.click(button); });
     // A stranded "Running…" would leave no way back; the action has to return to the author.

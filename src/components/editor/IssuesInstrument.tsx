@@ -323,7 +323,7 @@ const AdvancedOnlySection = ({ count }: { count: number }) => {
  *  world with no scripts, since there would be nothing to run — and from Simple mode, which folds the
  *  verdicts away, so running it there would look like a button that does nothing. A script's prompt shows
  *  under it while the check runs (Q24). */
-const StatCodeCheck = ({ scriptCount, advanced, status, prompts, onRun }: {
+const ScriptCheck = ({ scriptCount, advanced, status, prompts, onRun }: {
   scriptCount: number;
   advanced: boolean;
   status: CheckStatus;
@@ -446,12 +446,12 @@ export function IssuesInstrument({ issues, onFix }: IssuesInstrumentProps) {
           })}
         </div>
       )}
-      <StatCodeCheck
+      <ScriptCheck
         scriptCount={issues.scriptCount}
         prompts={issues.codePrompts}
         advanced={issues.advanced}
         status={issues.codeCheckStatus}
-        onRun={issues.onCheckStatCode}
+        onRun={issues.onCheckScripts}
       />
       <SourceCheck sources={issues.sources} />
       <AdvancedOnlySection count={issues.advancedOnlyCount} />

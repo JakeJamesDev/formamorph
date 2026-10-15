@@ -16,7 +16,7 @@ import type { ScriptPromptStore } from '@/lib/scriptPrompts';
 /** Where the author is sent when they click an item a finding names. */
 export type OpenFindingItem = (section: FindingSection, itemId: string) => void;
 
-/** How far one of the Bench's on-demand checks has got. Neither runs on its own: the stat-code check costs
+/** How far one of the Bench's on-demand checks has got. Neither runs on its own: the script check costs
  *  a sandbox VM per script, and the source check costs a request per source. */
 export type CheckStatus = 'idle' | 'running' | 'done';
 
@@ -44,7 +44,7 @@ export interface IssuesProps {
   newCount: number;
   /** How many rows Simple mode folded away, so the fold can say what is out of sight. Zero in Advanced. */
   advancedOnlyCount: number;
-  /** The editor's mode. Simple shows no stat-code action: its verdicts are among the rows Simple folds. */
+  /** The editor's mode. Simple shows no script-check action: its verdicts are among the rows Simple folds. */
   advanced: boolean;
   /** How many scripts hold code — what the on-demand check would have to run. */
   scriptCount: number;
@@ -63,7 +63,7 @@ export interface IssuesProps {
   onRestoreRule: (ruleId: string) => void;
   onMarkAllSeen: () => void;
   /** Run every stat's code in the real sandbox and fold the failures into the list. */
-  onCheckStatCode: () => void;
+  onCheckScripts: () => void;
   /** The missing-source check and the repairs its rows offer. */
   sources: SourceCheckProps;
 }

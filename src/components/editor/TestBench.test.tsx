@@ -74,7 +74,7 @@ const benchProps = (groups: FindingGroup[], over: BenchOver = {}): TestBenchProp
     onDismissRule: vi.fn(),
     onRestoreRule: vi.fn(),
     onMarkAllSeen: vi.fn(),
-    onCheckStatCode: vi.fn(),
+    onCheckScripts: vi.fn(),
     sources: { sourceCount: 0, status: 'idle', missing: [], onCheckSources: vi.fn(), onRepair: vi.fn() },
     ...over.issues,
   },
@@ -363,7 +363,7 @@ describe('TestBench lens bar', () => {
   });
 });
 
-describe('TestBench stat-code check', () => {
+describe('TestBench script check', () => {
   const CHECK = { name: 'Check Scripts' };
 
   it('shows a running check’s prompt as the inline prompt line, and answers it with the pick', async () => {
@@ -407,9 +407,9 @@ describe('TestBench stat-code check', () => {
     const { issues } = renderBench(world([]), { issues: { scriptCount: 2 } });
     expect(screen.getByText('2 scripts run separately')).toBeInTheDocument();
     // Rendering alone must not have run anything — a VM per stat is exactly what the badge can't afford.
-    expect(issues.onCheckStatCode).not.toHaveBeenCalled();
+    expect(issues.onCheckScripts).not.toHaveBeenCalled();
     await userEvent.click(screen.getByRole('button', CHECK));
-    expect(issues.onCheckStatCode).toHaveBeenCalledTimes(1);
+    expect(issues.onCheckScripts).toHaveBeenCalledTimes(1);
   });
 
   it('closes the button while a run is in flight', () => {
@@ -427,7 +427,7 @@ describe('TestBench stat-code check', () => {
   });
 
   it('offers nothing to run in Simple mode, which would fold every verdict away', () => {
-    // Stat Code is an Advanced-only field, so its failures are among the rows Simple hides — a button whose
+    // Scripts are an Advanced-only field, so its failures are among the rows Simple hides — a button whose
     // whole result disappears into the fold is a button that reads as broken.
     renderBench(world([]), { issues: { scriptCount: 2, advanced: false } });
     expect(screen.queryByRole('button', { name: /Check Scripts|Check Again/ })).toBeNull();
