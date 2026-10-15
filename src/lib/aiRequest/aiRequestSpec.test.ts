@@ -781,7 +781,7 @@ describe('Thinking Room — a fixed room per strength', () => {
     const snap = snapshot(levelOnly(), { reasoningEngaged: true, promptReasoning: { summary: strength } });
     const spec = buildAiRequestSpec(snap, summary);
     expect(spec.body.max_tokens).toBe(300 + room);
-    expect(spec).toMatchObject({ thinkingRoom: room, thinkingStrength: strength });
+    expect(spec).toMatchObject({ thinkingRoom: { tokens: room, strength } });
   });
 
   it('keeps the same room with Max Output on or off, which moves only the Answer Cap', () => {
@@ -806,10 +806,9 @@ describe('Thinking Room — a fixed room per strength', () => {
     expect(spec.body.max_tokens).toBe(300);
     expect(outputCaps(plain, summary).reserve).toBe(300);
     expect(spec).not.toHaveProperty('thinkingRoom');
-    expect(spec).not.toHaveProperty('thinkingStrength');
   });
 
-  it('carries no room on a budget call or a switched-off one', () => {
+  it('carries no room on a budget call with Max Output set, or a switched-off one', () => {
     const budgeted = snapshot(lmStudioReasoning({ maxTokens: 800 }), { promptReasoning: { summary: 'high' } });
     expect(buildAiRequestSpec(budgeted, summary)).not.toHaveProperty('thinkingRoom');
     const off = snapshot(levelOnly(), { reasoningEngaged: true, promptReasoning: { summary: 'none' } });
@@ -823,9 +822,9 @@ describe('Thinking Room — a fixed room per strength', () => {
       snapshot(lmStudio(), { thinkingMode: 'inline', reasoningEngaged: true, ...over }), call(),
     );
     expect(inline({ promptReasoning: { narration: 'low' }, reasoningEffort: 'max' }))
-      .toMatchObject({ body: { max_tokens: 800 + 1024 }, thinkingRoom: 1024, thinkingStrength: 'low' });
+      .toMatchObject({ body: { max_tokens: 800 + 1024 }, thinkingRoom: { tokens: 1024, strength: 'low' } });
     expect(inline({ promptReasoning: { narration: 'global' }, reasoningEffort: 'max' }))
-      .toMatchObject({ body: { max_tokens: 800 + 16384 }, thinkingStrength: 'max' });
+      .toMatchObject({ body: { max_tokens: 800 + 16384 }, thinkingRoom: { strength: 'max' } });
     expect(inline({ promptReasoning: {}, reasoningEffort: 'minimal' }).body.max_tokens).toBe(800 + 128);
   });
 
@@ -834,7 +833,7 @@ describe('Thinking Room — a fixed room per strength', () => {
       thinkingMode: 'inline', reasoningEngaged: true, reasoningEffort: 'none', promptReasoning: { narration: 'none' },
       keptReasoning: { prompts: { narration: { enabled: false, level: 'global' } }, global: { enabled: false, level: 'xhigh' } },
     });
-    expect(buildAiRequestSpec(snap, call())).toMatchObject({ body: { max_tokens: 800 + 8192 }, thinkingStrength: 'xhigh' });
+    expect(buildAiRequestSpec(snap, call())).toMatchObject({ body: { max_tokens: 800 + 8192 }, thinkingRoom: { strength: 'xhigh' } });
   });
 });
 
@@ -998,6 +997,15 @@ describe('dialects — one spelling per row', () => {
     expect(uncapped).not.toHaveProperty('max_tokens');
   });
 
+  it('carries the budget it sends as the room on the spec when the endpoint has no Max Output, and none with one', () => {
+    const at = (maxTokens: number | undefined) => buildAiRequestSpec(
+      snapshot(speaking('anthropic-budget', { maxTokens }), { reasoningEngaged: true, promptReasoning: { narration: 'minimal' } }),
+      call({ requestType: 'narration', maxTokensOverride: 300 }),
+    );
+    expect(at(undefined)).toMatchObject({ thinkingRoom: { tokens: 1024, strength: 'minimal' } });
+    expect(at(1000)).not.toHaveProperty('thinkingRoom');
+  });
+
   it('applies no floor on a dialect that has none', () => {
     expect(sends(speaking('lmstudio', { maxTokens: 300 }), { promptReasoningBudget: { narration: 50 } }))
       .toMatchObject({ thinking_budget_tokens: 150, reasoning_effort: 'high', max_tokens: 450 });
@@ -1091,8 +1099,8 @@ describe('dialects — one spelling per row', () => {
         .toEqual({ reasoning_budget_tokens: 1024 });
     });
 
-    it('carries no Thought Ceiling room on the spec, since the budget ends the thought', () => {
-      expect(buildAiRequestSpec(engaged(plainTemplate()), director)).not.toHaveProperty('thinkingRoom');
+    it('carries the room its budget sends on the spec, so a cut names it', () => {
+      expect(buildAiRequestSpec(engaged(plainTemplate()), director)).toMatchObject({ thinkingRoom: { tokens: 1024, strength: 'low' } });
     });
 
     it.each([

@@ -1,10 +1,11 @@
 import type { WireMessage } from '@/types';
+import type { ReasoningDialect } from '@/lib/reasoningDialect';
 import { redactUrl } from '@/lib/redactUrl';
 import { reasoningLevelLabel } from '@/lib/reasoningEffort';
 import type { AiRequestBody, AiRequestSpec } from './aiRequestSpec';
 import { noteImagesDropped } from './localEngineImageDrop';
 import { noteUnusableExtraParams } from './extraParamsWarning';
-import { noteReasoningOverrun } from './reasoningOverrun';
+import { reasoningOverrun } from './reasoningOverrun';
 
 /** Why a stream failed. `parse` is reported per bad line as a debug event, never thrown — a malformed
  *  frame is skipped so the rest of the stream still arrives. `cut-thought`: the server stopped the reply
@@ -72,12 +73,15 @@ const requestLines = (spec: AiStreamSpec): string[] =>
 /** The error for a reply the server stopped on its token limit before any answer or call. */
 export function cutThoughtFailure(spec: AiStreamSpec): AiStreamError {
   const limit = spec.body.max_tokens === undefined ? [] : [`max_tokens: ${spec.body.max_tokens}`];
-  const room = spec.thinkingRoom === undefined || spec.thinkingStrength === undefined ? [] : [
-    `Thinking Room: ${spec.thinkingRoom}`,
-    `Thinking Room strength: ${reasoningLevelLabel(spec.thinkingStrength)}`,
-  ];
-  return new AiStreamError('cut-thought', 'The model used all its thinking room before it wrote an answer', {
-    details: [...requestLines(spec), ...limit, ...room].join('\n'),
+  const { thinkingRoom: room } = spec;
+  const roomLines = room
+    ? [`Thinking Room: ${room.tokens}`, `Thinking Room Strength: ${reasoningLevelLabel(room.strength)}`]
+    : [];
+  const message = room
+    ? 'The model used all its Thinking Room before it wrote an answer'
+    : 'The model reached its token limit before it wrote an answer';
+  return new AiStreamError('cut-thought', message, {
+    details: [...requestLines(spec), ...limit, ...roomLines].join('\n'),
   });
 }
 
@@ -140,7 +144,9 @@ export type AiStreamDebug =
   /** The endpoint accepted the request and has a body to stream — the first point a consumer can commit
    *  to this turn, since everything before it can still throw. */
   | { kind: 'response'; status: number; openedAt: number }
-  | { kind: 'parse'; line: string; error: AiStreamError };
+  | { kind: 'parse'; line: string; error: AiStreamError }
+  /** A thought ran past the budget its server should have ended it at. `tokens` counts reasoning frames. */
+  | { kind: 'overrun'; dialect: ReasoningDialect; tokens: number; budget: number };
 
 export type AiStreamEvent =
   | { type: 'delta'; delta: string; content: string }
@@ -263,7 +269,6 @@ export async function* streamAiRequest(spec: AiStreamSpec, options: AiStreamOpti
   let lastReasoningTick = -Infinity;
 
   const done = (): AiStreamEvent => {
-    noteReasoningOverrun(spec, reasoningFrames);
     return {
       type: 'done',
       result: {
@@ -275,6 +280,11 @@ export async function* streamAiRequest(spec: AiStreamSpec, options: AiStreamOpti
         timings: { startedAt, firstTokenAt, firstContentAt, endedAt: now() },
       },
     };
+  };
+  const finish = function* (): Generator<AiStreamEvent, void, void> {
+    const overrun = reasoningOverrun(spec, reasoningFrames);
+    if (overrun) yield { type: 'debug', debug: { kind: 'overrun', ...overrun } };
+    yield done();
   };
 
   yield { type: 'debug', debug: { kind: 'request', url: spec.url, body: spec.body, startedAt } };
@@ -291,7 +301,7 @@ export async function* streamAiRequest(spec: AiStreamSpec, options: AiStreamOpti
   } catch (error) {
     if (signal?.aborted || (error as Error).name === 'AbortError') {
       finishReason = ABORTED_FINISH_REASON;
-      yield done();
+      yield* finish();
       return;
     }
     throw error;
@@ -371,7 +381,7 @@ export async function* streamAiRequest(spec: AiStreamSpec, options: AiStreamOpti
 
     if (signal?.aborted) {
       finishReason = ABORTED_FINISH_REASON;
-      yield done();
+      yield* finish();
       return;
     }
 
@@ -380,7 +390,7 @@ export async function* streamAiRequest(spec: AiStreamSpec, options: AiStreamOpti
     if (buffer.trim()) consume(buffer.trim());
     while (pending.length) yield pending.shift() as AiStreamEvent;
 
-    yield done();
+    yield* finish();
   } finally {
     signal?.removeEventListener('abort', cancelOnAbort);
   }

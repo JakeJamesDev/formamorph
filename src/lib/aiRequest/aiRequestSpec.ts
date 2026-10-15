@@ -4,8 +4,9 @@ import type { ThinkingMode, ReasoningEffort } from '@/contexts/SettingsContext';
 import type { ParagraphLimit } from '@/lib/outputLength';
 import {
   nativeReasoningSuppressed, promptReasoningStrength, schemaAccepted, reasoningBudget, reasoningEffortValue, reasoningRuledOut,
-  resolveRequestReasoning, thinkingRoom, toolsSupported,
+  resolveRequestReasoning, thinkingRoomFor, toolsSupported,
   type KeptReasoningSettings, type PromptReasoning, type ReasoningCapability, type ReasoningEffortField, type ReasoningLevel,
+  type ThinkingRoom,
 } from '@/lib/reasoningEffort';
 import { extraParamsOf } from '@/lib/extraParams';
 import {
@@ -115,10 +116,9 @@ export interface AiRequestSpec<TMessage extends WireMessage = RequestMessage, TT
   /** The effort literal this request carried, whichever field the dialect spelled it in. Absent where it
    *  carried none. Read by the observation, which asks what was in force rather than which key held it. */
   reasoningLevel?: ReasoningEffortField;
-  /** The Thinking Room `max_tokens` holds above the Answer Cap, present where the call reasons with no budget. */
-  thinkingRoom?: number;
-  /** The strength that sized `thinkingRoom`. */
-  thinkingStrength?: ReasoningLevel;
+  /** The Thinking Room `max_tokens` holds above the Answer Cap, present where the call's thought room came from
+   *  its strength: a Thought Ceiling, or a budget sized by strength. */
+  thinkingRoom?: ThinkingRoom;
   /** Where every emitted sampler value came from, retained for targeted rejection handling. */
   samplerSources: Partial<Record<EndpointSampler, 'prompt' | 'prompt-pin' | 'endpoint' | 'local-engine'>>;
   /** Origin of an emitted output cap, kept apart from the sampler provenance. */
@@ -207,12 +207,6 @@ export interface OutputCaps {
   reserve: number | undefined;
 }
 
-/** The fixed thought room one call's `max_tokens` holds above its Answer Cap. */
-interface ThinkingRoom {
-  tokens: number;
-  strength: ReasoningLevel;
-}
-
 /** One call's reasoning slice, in the target's spelling, and the output caps that go with it. */
 interface ResolvedReasoning {
   fields: ReasoningBodyFields;
@@ -221,7 +215,7 @@ interface ResolvedReasoning {
   answerCap: number | undefined;
   /** The `max_tokens` the request sends, which the context reserve holds back too. */
   maxTokens: number | undefined;
-  /** Present where `max_tokens` is the Thought Ceiling. */
+  /** Present where the strength sized the thought: the Thought Ceiling, or a budget sent as the room. */
   room: ThinkingRoom | null;
 }
 
@@ -253,10 +247,12 @@ function resolveReasoning(snapshot: AiSettingsSnapshot, call: CapCall, target: A
   const answerCap = capFor(snapshot, call, target);
   // A dialect whose budget is the strength's room scales from no base.
   const base = reasoningDialectBudgetFromStrength(target.reasoning.dialect) ? undefined : target.maxTokens;
+  const floor = takesBudget ? reasoningDialectBudgetFloor(target.reasoning.dialect) : 0;
+  // With no base, a budget target's budget is the strength's room.
+  const budgetRoom = takesBudget && effort !== 'none' && base === undefined ? thinkingRoomFor(effort, floor) : null;
   const planned = reasoningBudget({
-    effort, kind: call.requestType, budgets: snapshot.promptReasoningBudget, base, answerCap,
-    floor: takesBudget ? reasoningDialectBudgetFloor(target.reasoning.dialect) : 0,
-    ...(takesBudget && effort !== 'none' && { room: thinkingRoom(effort) }),
+    effort, kind: call.requestType, budgets: snapshot.promptReasoningBudget, base, answerCap, floor,
+    ...(budgetRoom && { room: budgetRoom.tokens }),
   });
   // Reasoning is engaged somewhere and this model is not ruled out, so the target may hear about it at all.
   const eligible = snapshot.reasoningEngaged && reasons;
@@ -270,10 +266,13 @@ function resolveReasoning(snapshot: AiSettingsSnapshot, call: CapCall, target: A
   const carriesReasoning = Object.keys(fields).length > 0 || target.reasoning.reasons === true;
   const strength = roomStrength(snapshot, call.requestType, effort, carriesReasoning && budget === null);
   if (strength !== null && answerCap !== undefined) {
-    const room = { tokens: thinkingRoom(strength), strength };
+    const room = thinkingRoomFor(strength);
     return { fields, level, answerCap, maxTokens: answerCap + room.tokens, room };
   }
-  return { fields, level, answerCap, maxTokens: carriesReasoning ? planned.maxTokens : answerCap, room: null };
+  return {
+    fields, level, answerCap, maxTokens: carriesReasoning ? planned.maxTokens : answerCap,
+    room: budgetRoom && budget !== null ? budgetRoom : null,
+  };
 }
 
 /** The caps the context reserve and the length guidance read for one call. */
@@ -346,7 +345,7 @@ export function buildAiRequestSpec<TTool extends OfferedFunction = OfferedFuncti
     ...(reasoning.answerCap !== undefined && { answerCap: reasoning.answerCap }),
     ...(offeredTools(call, target) && { tools: call.tools }),
     ...(reasoning.level !== null && { reasoningLevel: reasoning.level }),
-    ...(reasoning.room && { thinkingRoom: reasoning.room.tokens, thinkingStrength: reasoning.room.strength }),
+    ...(reasoning.room && { thinkingRoom: reasoning.room }),
     ...(internalCapFor(snapshot, call) !== null
       ? { maxTokensSource: 'internal' as const }
       : target.maxTokens !== undefined

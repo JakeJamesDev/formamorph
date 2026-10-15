@@ -34,12 +34,17 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **ComfyUI's File Name setting sets the folders and name for each saved image.** By default, images go in `formamorph/<world>/`, named for their entity, location or turn. A `/` in the pattern makes a folder. A custom workflow needs `%prefix%` in its save node.
   - **Buttons and menu items that send an AI request now show which endpoint gets it.** **Send** and the World Editor's generate buttons show it in their tooltip. **Re-generate Narration**, **Re-generate Stats**, **Re-generate Choices** and **Write Scene Tags** show it as a second line in the More and right-click menus.
   - **Each text endpoint has Extra Parameters: a JSON object added to every request sent to it.** A field the app sets for a request wins. You can't set `model`, `messages`, `stream`, `tools`, `tool_choice`, `response_format`, `n` or `stop`. If the text has an error, requests go out without it.
-  - **A prompt's Native Reasoning now shows its thinking room beside the strength, such as "Low · 1,024 tok".** The readout updates when you change the strength. With Max Output off, it replaces the Reasoning Budget slider and its note.
+  - **A prompt's Native Reasoning now shows its Thinking Room beside the strength, such as "Low · 1,024 tok".** The readout updates when you change the strength. With Max Output off, it replaces the Reasoning Budget slider and its note.
 
 #### 🔧 Fixed
 
 - **👤 User-facing**
   - **ComfyUI with an empty Model now uses the first checkpoint the server lists.** It used to send an empty checkpoint name, which ComfyUI rejects. The Model placeholder says which one is used.
+  - **Native Reasoning:**
+    - **Models that always reason now have room to answer small prompts like Location Change.** Each strength gives a fixed Thinking Room, from Minimal at 128 tokens to Max at 16,384. Max Output limits only the answer, so turning it off no longer shrinks the room.
+    - **With Max Output off, models that take a thinking budget now get the strength's Thinking Room as that budget.** Before, no budget went out, so the model could think without a limit.
+    - **On a llama.cpp server, a looping thought now stops at the Thinking Room and the model writes its answer.** Switching Native Reasoning off now stops thinking for every llama.cpp model.
+    - **A thought that uses its whole Thinking Room now says so in the error.** Error Details list the room and its strength beside `max_tokens`.
   - **Drifted Copies:**
     - **Duplicating a location from the filtered list now gives the copy its own Unique chip rolls.** The copy no longer shares the source's values, the same as in the tree.
     - **Signed out, the app no longer sends a login token with community requests.** Every community service now shows the server's own error text. The world list and comment list used to hide it.
@@ -47,10 +52,6 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Arrange on the location canvas no longer freezes on a world whose locations hold each other in a loop.** Every walk up the location, group and placeholder trees now stops at a loop.
   - **World music or ambient sound your browser can't play now stays silent instead of showing an error.** This covers a new game, a loaded save and a move to a new location.
   - **The world library now opens when one stored world can't be read.** An unreadable world stopped the library's one-time update, with the error "Cannot read properties of null", on every launch. The update now skips that world.
-  - **Models that always reason now have room to answer small prompts like Location Change.** Each strength gives a fixed thinking room, from Minimal at 128 tokens to Max at 16,384. Max Output limits only the answer, so turning it off no longer shrinks the room.
-  - **With Max Output off, models that take a thinking budget now get the strength's thinking room as that budget.** Before, no budget went out, so the model could think without a limit. Minimal, Low and High give 128, 1,024 and 4,096 tokens.
-  - **On a llama.cpp server, a model whose thought loops now stops thinking and writes its answer.** Each request sends the strength's thinking room as the server's reasoning budget. Switching Native Reasoning off now stops thinking for every model.
-  - **A cut thought now says the model used all its thinking room before it wrote an answer.** Error Details list the Thinking Room and its strength beside `max_tokens`, for a call that had a room.
 
 ---
 

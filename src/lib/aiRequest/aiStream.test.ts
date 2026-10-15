@@ -505,12 +505,12 @@ describe('streamAiRequest', () => {
 
 describe('the error for a thought the token limit cut', () => {
   const roomed: AiRequestSpec = {
-    ...spec, body: { ...spec.body, max_tokens: 1088 }, thinkingRoom: 1024, thinkingStrength: 'low',
+    ...spec, body: { ...spec.body, max_tokens: 1088 }, thinkingRoom: { tokens: 1024, strength: 'low' },
   };
 
-  it('says the model used all its thinking room before it wrote an answer', () => {
+  it('says the model used all its Thinking Room before it wrote an answer', () => {
     expect(cutThoughtFailure(roomed)).toMatchObject({
-      kind: 'cut-thought', message: 'The model used all its thinking room before it wrote an answer',
+      kind: 'cut-thought', message: 'The model used all its Thinking Room before it wrote an answer',
     });
   });
 
@@ -518,18 +518,19 @@ describe('the error for a thought the token limit cut', () => {
     const lines = cutThoughtFailure(roomed).details?.split('\n');
     expect(lines).toContain('max_tokens: 1088');
     expect(lines).toContain('Thinking Room: 1024');
-    expect(lines).toContain('Thinking Room strength: Low');
+    expect(lines).toContain('Thinking Room Strength: Low');
   });
 
   it('names Model Default as the strength a call at Model Default had', () => {
-    const lines = cutThoughtFailure({ ...roomed, thinkingRoom: 2048, thinkingStrength: 'auto' }).details?.split('\n');
-    expect(lines).toContain('Thinking Room strength: Model Default');
+    const lines = cutThoughtFailure({ ...roomed, thinkingRoom: { tokens: 2048, strength: 'auto' } }).details?.split('\n');
+    expect(lines).toContain('Thinking Room Strength: Model Default');
   });
 
-  it('omits the room and its strength for a call that had none', () => {
-    const details = cutThoughtFailure(spec).details ?? '';
-    expect(details).toContain('max_tokens: 64');
-    expect(details).not.toContain('Thinking Room');
+  it('names the token limit, and omits the room, for a call that had none', () => {
+    const error = cutThoughtFailure(spec);
+    expect(error.message).toBe('The model reached its token limit before it wrote an answer');
+    expect(error.details).toContain('max_tokens: 64');
+    expect(error.details).not.toContain('Thinking Room');
   });
 });
 
@@ -545,30 +546,25 @@ describe('a llama.cpp thought past its budget', () => {
   const run = (target: AiRequestSpec, chunks: string[]) =>
     collect(streamAiRequest(target, { fetchImpl: fetchOf(streamingResponse(chunks)) }));
 
-  afterEach(() => { vi.restoreAllMocks(); });
+  const overruns = (events: AiStreamEvent[]) =>
+    events.flatMap((e) => (e.type === 'debug' && e.debug.kind === 'overrun' ? [e.debug] : []));
 
-  it('writes one debug line naming the tokens and the budget', async () => {
-    const debug = vi.spyOn(console, 'debug').mockImplementation(() => {});
-    await run(llamaSpec(3), thought(5, [frame({ content: 'answer' }, 'stop')]));
-    expect(debug).toHaveBeenCalledTimes(1);
-    expect(String(debug.mock.calls[0][0])).toMatch(/5 tokens.*budget of 3/);
+  it('reports one overrun naming the tokens and the budget', async () => {
+    const events = await run(llamaSpec(3), thought(5, [frame({ content: 'answer' }, 'stop')]));
+    expect(overruns(events)).toEqual([{ kind: 'overrun', dialect: 'llamacpp', tokens: 5, budget: 3 }]);
   });
 
-  it('writes the line for a thought the token limit cut', async () => {
-    const debug = vi.spyOn(console, 'debug').mockImplementation(() => {});
-    await run(llamaSpec(3), thought(6, [frame({}, 'length')]));
-    expect(debug).toHaveBeenCalledTimes(1);
+  it('reports the overrun before the done event of a thought the token limit cut', async () => {
+    const events = await run(llamaSpec(3), thought(6, [frame({}, 'length')]));
+    expect(overruns(events)).toHaveLength(1);
+    expect(events.at(-1)?.type).toBe('done');
   });
 
-  it('writes nothing for a thought the server ended at its budget', async () => {
-    const debug = vi.spyOn(console, 'debug').mockImplementation(() => {});
-    await run(llamaSpec(3), thought(3, [frame({ content: 'answer' }, 'stop')]));
-    expect(debug).not.toHaveBeenCalled();
+  it('reports nothing for a thought the server ended at its budget', async () => {
+    expect(overruns(await run(llamaSpec(3), thought(3, [frame({ content: 'answer' }, 'stop')])))).toEqual([]);
   });
 
-  it('writes nothing for another dialect, whose server may not end the thought', async () => {
-    const debug = vi.spyOn(console, 'debug').mockImplementation(() => {});
-    await run(llamaSpec(3, 'unknown'), thought(5, [frame({ content: 'answer' }, 'stop')]));
-    expect(debug).not.toHaveBeenCalled();
+  it('reports nothing for another dialect, whose server may not end the thought', async () => {
+    expect(overruns(await run(llamaSpec(3, 'unknown'), thought(5, [frame({ content: 'answer' }, 'stop')])))).toEqual([]);
   });
 });

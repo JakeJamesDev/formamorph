@@ -62,9 +62,9 @@ function SemanticStatus({ semantic }: { semantic: SemanticSearch }) {
 function ReasoningRow({ settings, onChange, target }: { settings: HelpSettings; onChange: (change: HelpSettingsChange) => void; target: ReasoningFieldTarget }) {
   const row = targetAttribute('formaquestionSettings.general', 'reasoning');
   const copy = GENERAL_COPY.reasoning;
-  const globalLevel = useSettingsOptional()?.nativeReasoning.level;
+  const global = useSettingsOptional()?.nativeReasoning;
   const field = promptReasoningFieldProps({
-    target, kind: 'help', setting: settings.reasoning, budgetPct: settings.reasoningBudget, globalLevel, suppressed: false, showAwaitingProof: true,
+    target, kind: 'help', setting: settings.reasoning, budgetPct: settings.reasoningBudget, global, suppressed: false, showAwaitingProof: true,
     onChange: (reasoning) => onChange({ reasoning }),
     onBudgetChange: (reasoningBudget) => onChange({ reasoningBudget }),
   });

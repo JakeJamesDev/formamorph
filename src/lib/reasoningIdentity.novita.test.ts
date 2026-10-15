@@ -84,8 +84,7 @@ describe('GLM-5.3 on Novita', () => {
     expect(storedAfterResolve(stale, fresh)).toMatchObject({ offAllowed: false, tools: true });
   });
 
-  // The reported failures: an 11-token Location Change sent `enable_thinking: false`, which GLM-5.3 ignored,
-  // and then, with Max Output off, a 33-token cap the model spent thinking.
+  // GLM-5.3 ignores `enable_thinking: false`, so an 11-token Location Change needs the kept strength's room.
   describe('a switched-off Location Change with Max Output off', () => {
     const answer = reasoningIdentityAnswer(NOVITA, MODEL);
     if (!answer) throw new Error('Novita row claimed nothing');

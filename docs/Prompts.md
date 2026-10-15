@@ -241,12 +241,12 @@ A field shows only while its feature can send it.
 | **Include Attachments** | Sends the images attached to your action with this prompt. On for **Narration** only, by default. | Prompts that send your action, while **Image Attachments** is on |
 | **Max Output** | Caps the answer length of this prompt. Off shows **Auto** and the shipped cap. It does not cap reasoning. | **Planning**, **Director**, **Character**, **Storyboard**, **Choices**, **Discover Entity**, **Summaries**, **Milestone Select**, **Diary**, **Scene Tags** |
 | **Verbatim Turns** | Sets how many recent turns go word for word. Older turns go as summaries. | **Narration**, **Planning**, **Choices**, **Stat Updates**, **Location Change**, **Summaries**, while **Memory Summaries** is on |
-| **Native Reasoning** | Sets whether this prompt reasons, and how hard. Clear the checkbox and the prompt does no reasoning. **Global** follows **Native Reasoning** in Settings → **Output**. **Model Default** sends no hint. | Endpoints whose model reasons. Not on **Narration** with **Thinking** set to **Inline**. |
+| **Native Reasoning** | Sets whether this prompt reasons, and how hard. Clear the checkbox and the prompt does no reasoning. **Global** follows **Native Reasoning** in Settings → **Output**. **Model Default** sends no hint. Where no **Reasoning Budget** slider shows, a readout gives the prompt's Thinking Room, such as "Low · 1,024 tok". | Endpoints whose model reasons. Not on **Narration** with **Thinking** set to **Inline**. |
 | **Reasoning Budget** | Sets the reasoning tokens as a percent of the endpoint's **Max Output Tokens**. The answer keeps its full length. | Endpoints that take a token budget, such as the desktop engine. Not on llama.cpp, where the strength sets the budget. |
 | **Custom Temperature** | Sets this prompt's temperature. Off shows the value the prompt sends now. | Every prompt |
 | **Custom Repetition Penalty** | Sets this prompt's repetition penalty. Off shows the value the prompt sends now. | Every prompt |
 
-**Reasoning Budget** needs **Max Output Tokens** on the prompt's endpoint. Without it, the slider is off, and a note tells you to set it. A model that always reasons keeps the **Native Reasoning** checkbox on, with a note.
+**Reasoning Budget** needs **Max Output Tokens** on the prompt's endpoint. Without it, the slider goes away, and the strength's Thinking Room is the budget: Minimal 128, Low 1,024, Medium and Model Default 2,048, High 4,096, Extra High 8,192, Max 16,384 tokens. A model that always reasons keeps the **Native Reasoning** checkbox on, with a note.
 
 ## The Chip Editor
 <!-- keywords: variables, macros, template tags, insert stats, curly braces, dynamic values, pill, pop out, blocks, fill in -->
