@@ -126,11 +126,11 @@ describe('WorldEditor — the on-demand stat-code check', () => {
       return asked.then(() => [], () => [FAILURE]);
     });
     fireEvent.click(button);
-    expect(await screen.findByRole('group', { name: 'Script Prompt' })).toHaveTextContent('Drink it?');
+    expect(await screen.findByTestId('script-prompt')).toHaveTextContent('Drink it?');
 
     act(() => { ctx().setStats([{ ...WORLD.stats[0], scripts: boxScripts({ after: 'return elapsedHours * 2;' }) }]); });
     await expect(asked).rejects.toBeInstanceOf(PromptCanceled);
-    expect(screen.queryByRole('group', { name: 'Script Prompt' })).toBeNull();
+    expect(screen.queryByTestId('script-prompt')).toBeNull();
   });
 
   it('lets the author try again when the check itself breaks', async () => {

@@ -90,6 +90,7 @@ const DIALOGS: Record<DevModal, DialogRoute> = {
   persona: { ancestor: 'gameViewer' },
   editText: { ancestor: 'gameViewer' },
   likePrompt: { ancestor: 'gameViewer' },
+  scriptPrompt: { ancestor: 'gameViewer' },
 
   // Raised by the app itself, never by the player: a refused build, an error toast, the Android back button.
   updateRequired: { ancestor: null },
@@ -107,6 +108,7 @@ const LEDGERS: Record<TabKey, LedgerRoute> = {
   gameViewer: { parent: 'gameViewer' },
   gameViewerLayout: { ancestor: 'gameViewer' },
   gameViewerAttach: { ancestor: 'gameViewer' },
+  scriptPrompt: { ancestor: 'gameViewer' },
   designSystemGroupPicker: { ancestor: 'mainMenu' },
 
   settings: { parent: 'settings' },

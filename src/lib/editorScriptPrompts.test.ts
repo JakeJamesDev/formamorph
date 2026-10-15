@@ -1,19 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { editorPromptRun, fitsChoiceRow } from './editorScriptPrompts';
+import { editorPromptRun } from './editorScriptPrompts';
 import { PromptCanceled } from './scriptPrompts';
-
-describe('fitsChoiceRow', () => {
-  it('takes a confirm and a single ask of up to four options', () => {
-    expect(fitsChoiceRow({ kind: 'confirm', question: 'Sure?' })).toBe(true);
-    expect(fitsChoiceRow({ kind: 'ask', question: 'Door?', options: ['A', 'B', 'C', 'D'], multiple: false })).toBe(true);
-  });
-
-  it('leaves a fifth option, a multiple ask and askText to the dialog', () => {
-    expect(fitsChoiceRow({ kind: 'ask', question: 'Door?', options: ['A', 'B', 'C', 'D', 'E'], multiple: false })).toBe(false);
-    expect(fitsChoiceRow({ kind: 'ask', question: 'Door?', options: ['A', 'B'], multiple: true })).toBe(false);
-    expect(fitsChoiceRow({ kind: 'askText', question: 'Name?' })).toBe(false);
-  });
-});
 
 describe('editorPromptRun', () => {
   it('holds a confirm open in its store until the row answers', async () => {
@@ -25,11 +12,18 @@ describe('editorPromptRun', () => {
     await expect(answer).resolves.toBe(true);
   });
 
-  it('cancels a prompt the dialog would show, and opens nothing', async () => {
+  it('holds askText, a long ask and a multiple ask open for the line too', async () => {
     const run = editorPromptRun();
-    await expect(run.host.prompt({ kind: 'askText', question: 'Name?' })).rejects.toBeInstanceOf(PromptCanceled);
-    await expect(run.host.prompt({ kind: 'ask', question: 'Pick', options: ['A'], multiple: true })).rejects.toBeInstanceOf(PromptCanceled);
-    expect(run.store.pending()).toEqual([]);
+    const text = run.host.prompt({ kind: 'askText', question: 'Name?' });
+    const long = run.host.prompt({ kind: 'ask', question: 'Road?', options: ['A', 'B', 'C', 'D', 'E'], multiple: false });
+    const multi = run.host.prompt({ kind: 'ask', question: 'Pack?', options: ['A', 'B'], multiple: true });
+    const [first, second, third] = run.store.pending();
+    run.store.answer(first.id, 'Ada');
+    run.store.answer(second.id, 4);
+    run.store.answer(third.id, [1]);
+    await expect(text).resolves.toBe('Ada');
+    await expect(long).resolves.toBe(4);
+    await expect(multi).resolves.toEqual([1]);
   });
 
   it('notes a tell and a toast in call order and resolves both', async () => {

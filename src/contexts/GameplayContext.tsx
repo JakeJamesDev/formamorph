@@ -14,6 +14,7 @@ import { usePlaceholderSession } from './PlaceholderSessionContext';
 import { parseTurnContent, serializeTurnContent } from '../lib/turnDigest';
 import type { SceneImageMap } from '../lib/sceneImages';
 import { restoreAttachments, type AttachmentMap } from '../lib/actionAttachments';
+import { restoreTells, type TellMap } from '../lib/scriptTells';
 import { matchChoicesToAction, CONTINUE_CHOICE } from '../lib/choices';
 import { pageStatDeltas } from '../lib/statChanges';
 import { activeTraits, recoverStatBases, type AppliedTraitValues } from '../lib/traitRuntime';
@@ -190,6 +191,8 @@ function useProvideGameplay() {
   // history for the same reason as scene images (see lib/actionAttachments).
   const [actionAttachments, setActionAttachments] = useState<AttachmentMap>({});
   const [pendingAttachments, setPendingAttachments] = useState<ImageAttachment[]>([]);
+  // What scripts told the player, by turn id, beside the history so no request carries it (Q23).
+  const [scriptTells, setScriptTells] = useState<TellMap>({});
   // Flattened enabled entries fed to the injection pipeline (mirrors GameData's old derived `dictionary`).
   const runtimeDictionary = useMemo(() => flattenEnabledBookEntries(runtimeDictionaries), [runtimeDictionaries]);
   const libraryDictionaries = useMemo(() => libraryBooksInPlay(runtimeDictionaries, worldBooks), [runtimeDictionaries, worldBooks]);
@@ -427,6 +430,7 @@ function useProvideGameplay() {
         ...(memoryNotes.length ? { memoryNotes } : {}),
         ...(keepSceneImages && Object.keys(sceneImages).length ? { sceneImages } : {}),
         ...(Object.keys(actionAttachments).length ? { actionAttachments } : {}),
+        ...(Object.keys(scriptTells).length ? { scriptTells } : {}),
         ...(isAutosave ? { isAutosave: true } : {}),
       };
 
@@ -445,7 +449,7 @@ function useProvideGameplay() {
       }
       return false;
     }
-  }, [saveCurrentGameState, gameStates, runtimeDictionaries, placeholderRolls, memoryPins, entityVisualPreference, personaRef, milestoneSelection, memoryEdits, memoryDeleted, memoryNotes, sceneImages, actionAttachments, addSystemLogEntry]);
+  }, [saveCurrentGameState, gameStates, runtimeDictionaries, placeholderRolls, memoryPins, entityVisualPreference, personaRef, milestoneSelection, memoryEdits, memoryDeleted, memoryNotes, sceneImages, actionAttachments, scriptTells, addSystemLogEntry]);
 
   // Autosave has failed at least once this session — used to toast only once, re-armed on a later success.
   const autosaveFailedRef = useRef(false);
@@ -531,6 +535,7 @@ function useProvideGameplay() {
           setSceneImages(migrated.sceneImages ?? {});
           // Absent on a save written with no attachments ⇒ none.
           setActionAttachments(restoreAttachments(migrated.actionAttachments));
+          setScriptTells(restoreTells(migrated.scriptTells));
           setPendingAttachments([]);
           addSystemLogEntry(`Game loaded from "${saveName}"`);
           setSaveLoads((n) => n + 1);
@@ -581,6 +586,7 @@ function useProvideGameplay() {
             setPersonaRef(undefined);
             // A legacy save predates attachments ⇒ none.
             setActionAttachments({});
+            setScriptTells({});
             setPendingAttachments([]);
             addSystemLogEntry(`Game loaded from "${saveName}"`);
             setSaveLoads((n) => n + 1);
@@ -776,6 +782,8 @@ function useProvideGameplay() {
     sceneImages,
     actionAttachments,
     setActionAttachments,
+    scriptTells,
+    setScriptTells,
     pendingAttachments,
     setPendingAttachments,
     setSceneImages,

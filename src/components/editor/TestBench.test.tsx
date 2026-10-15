@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { buildAiContext, type AiContextData } from '@/lib/testBench/aiContext';
 import { buildLens, EMPTY_LENS, lensLocationOptions, lensPcOptions, type LensState } from '@/lib/testBench/lens';
@@ -366,13 +366,36 @@ describe('TestBench lens bar', () => {
 describe('TestBench stat-code check', () => {
   const CHECK = { name: 'Check Scripts' };
 
-  it('shows a running check’s prompt as choice rows, and answers it with the pick', async () => {
+  it('shows a running check’s prompt as the inline prompt line, and answers it with the pick', async () => {
     const prompts = editorPromptRun();
     const answer = prompts.host.prompt({ kind: 'ask', question: 'Which door?', options: ['Left', 'Right'], multiple: false });
     renderBench(world([]), { issues: { scriptCount: 1, codeCheckStatus: 'running', codePrompts: prompts.store } });
-    expect(screen.getByRole('group', { name: 'Script Prompt' })).toHaveTextContent('Which door?');
+    expect(screen.getByTestId('script-prompt')).toHaveTextContent('Which door?');
     await userEvent.click(screen.getByRole('button', { name: 'Right' }));
     await expect(answer).resolves.toBe(1);
+  });
+
+  it('answers askText, a long ask and a multiple ask of a running check through the same line', async () => {
+    const prompts = editorPromptRun();
+    const name = prompts.host.prompt({ kind: 'askText', question: 'Your name?' });
+    renderBench(world([]), { issues: { scriptCount: 1, codeCheckStatus: 'running', codePrompts: prompts.store } });
+    const user = userEvent.setup();
+    await user.type(screen.getByRole('textbox', { name: 'Your name?' }), 'Ada{Enter}');
+    await expect(name).resolves.toBe('Ada');
+
+    let road!: Promise<number | number[]>;
+    act(() => { road = prompts.host.prompt({ kind: 'ask', question: 'Which road?', options: ['A', 'B', 'C', 'D', 'E'], multiple: false }); });
+    await user.click(screen.getByRole('combobox', { name: 'Which road?' }));
+    await user.click(await screen.findByRole('option', { name: 'B' }));
+    await user.click(screen.getByRole('button', { name: 'OK' }));
+    await expect(road).resolves.toBe(1);
+
+    let packed!: Promise<number | number[]>;
+    act(() => { packed = prompts.host.prompt({ kind: 'ask', question: 'Pack what?', options: ['Rope', 'Lamp'], multiple: true }); });
+    await user.click(screen.getByRole('button', { name: 'Rope' }));
+    await user.click(screen.getByRole('button', { name: 'Lamp' }));
+    await user.click(screen.getByRole('button', { name: 'OK' }));
+    await expect(packed).resolves.toEqual([0, 1]);
   });
 
   it('offers nothing to run in a world whose stats carry no code', () => {

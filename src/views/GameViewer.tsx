@@ -45,6 +45,10 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Tip } from "@/components/ui/tooltip";
 import { toast } from "react-toastify";
 import { toastError } from "@/lib/linkToast";
+import { cancelOpenPrompts, noticeHost, scriptPrompts, type ScriptPromptHost } from "@/lib/scriptPrompts";
+import { isScriptPromptSample, SCRIPT_PROMPT_SAMPLES } from "@/lib/devScriptPromptSamples";
+import { addTell, latestTurnId, pruneTells, REROLLED_TIMINGS, setTurnTells, turnTells, withoutTimings } from "@/lib/scriptTells";
+import { useScriptPromptListener } from "@/lib/useScriptPromptListener";
 import { ThemedToastContainer } from "@/components/ThemedToastContainer";
 import "react-toastify/dist/ReactToastify.css";
 import type { TTSModalHandle, TTSProgress } from "../components/game/TTSModal";
@@ -627,6 +631,8 @@ const GameViewer = ({
     setActionAttachments,
     pendingAttachments,
     setPendingAttachments,
+    scriptTells,
+    setScriptTells,
   } = useGameplay();
   const {
     show: showStatDeltas, add: addStatDeltas, hold: holdStatDeltas, settle: settleStatDeltas,
@@ -897,6 +903,16 @@ const GameViewer = ({
   const sceneListCtxRef = useRef<{ cast: DirectorCastMember[] | null; prior: string }>({ cast: null, prior: "" });
   const userTurnAddedRef = useRef(false); // whether this turn's user message has been appended to history yet
   const currentTurnIdRef = useRef(""); // stable id for the in-progress turn, stamped into its assistant JSON
+  // The turn a `player.tell` belongs to while a sent turn runs; between turns a tell joins the latest one (Q53).
+  const tellTurnRef = useRef<string | null>(null);
+  // The prompt host of one run: its tells keep the run's timing (Q54), a toast shows at once, asks go to the line.
+  const playPrompts = useCallback((timing: RunTiming): ScriptPromptHost => noticeHost(scriptPrompts, {
+    onTell: (text) => {
+      const turnId = tellTurnRef.current ?? latestTurnId(fullMessageHistoryRef.current);
+      if (turnId) setScriptTells((prev) => addTell(prev, turnId, { text, timing }));
+    },
+    onToast: (text) => { toast.info(text); },
+  }), [setScriptTells]);
   // This turn's dictionary activation, computed at narration-assembly time and consumed by the narration
   // request's AI-context capture (reset per turn so a turn without one never reuses a stale report).
   const pendingDictionaryDebugRef = useRef<DictionaryDebug | null>(null);
@@ -1066,12 +1082,14 @@ const GameViewer = ({
       setActionAttachments((prev) => setTurnAttachments(prev, turnId, pending.slice(2)));
     })();
   }, [devRoute?.attach, fullMessageHistory, mounted, setPendingAttachments, setActionAttachments]);
-  // Images belong to turns in the history. Between turns, drop the ones whose turn failed, rolled back or
+  // Images and tells belong to turns in the history. Between turns, drop the ones whose turn failed, rolled back or
   // was re-generated. The controller marks a running turn at once: a regenerate starts inside an effect, and
   // its user message can commit before `isWaitingForAI` does.
   useEffect(() => {
-    if (!isWaitingForAI && !abortControllerRef.current) setActionAttachments((prev) => pruneAttachments(prev, fullMessageHistory));
-  }, [isWaitingForAI, fullMessageHistory, setActionAttachments]);
+    if (isWaitingForAI || abortControllerRef.current) return;
+    setActionAttachments((prev) => pruneAttachments(prev, fullMessageHistory));
+    setScriptTells((prev) => pruneTells(prev, fullMessageHistory));
+  }, [isWaitingForAI, fullMessageHistory, setActionAttachments, setScriptTells]);
   const [isEditingWorld, setIsEditingWorld] = useState(false);
   const [uiHidden, setUiHidden] = useState(false); // hide all panels/buttons to reveal the background image
   const [showEditorExitPrompt, setShowEditorExitPrompt] = useState(false);
@@ -1558,6 +1576,10 @@ const GameViewer = ({
       // A re-roll replays the whole turn, so the before box runs again first, on the clock as it read at
       // turn start. Its writes are the baseline the asks then land on, and the request reads them.
       beforeBoxDeltasRef.current = {};
+      // The replay tells again, so its timings' tells give way to the new ones (Q54); an abandoned re-roll puts them back.
+      const tellTurn = latestTurnId(fullMessageHistoryRef.current);
+      const priorTells = turnTells(scriptTells, tellTurn);
+      if (tellTurn) setScriptTells((now) => withoutTimings(now, tellTurn, REROLLED_TIMINGS));
       // Page one of a fresh game restores the pre-start state, so the start scripts run again first.
       const written = await runBeforeAI(
         preTurn.globalStats ?? [], { deltaHours: 0, elapsedHours: gameTime - turnHours, calendar }, preTurn,
@@ -1599,6 +1621,7 @@ const GameViewer = ({
           setGlobalStats(preTurn.globalStats ?? []);
           toPreTurn();
         }
+        if (!committed && tellTurn) setScriptTells((now) => setTurnTells(now, tellTurn, priorTells));
       }
     });
   };
@@ -2415,6 +2438,7 @@ const GameViewer = ({
       // The attachments leave the action box with the text, and the turn keeps the ones it may carry.
       // A regenerate keeps its turn's attachments and leaves the box alone.
       const turnId = currentTurnIdRef.current;
+      tellTurnRef.current = turnId;
       const carried = resentAttachments ?? plan.attachments;
       setActionAttachments((prev) => setTurnAttachments(prev, turnId, carried));
       if (!resentAttachments) setPendingAttachments([]);
@@ -2804,7 +2828,10 @@ const GameViewer = ({
       setIsRevealingNarration(false);
       setAiRequestType(null);
       // Release the turn's controller (unless a newer turn already replaced it).
-      if (abortControllerRef.current === controller) abortControllerRef.current = null;
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+        tellTurnRef.current = null;
+      }
     }
   };
 
@@ -2917,6 +2944,7 @@ const GameViewer = ({
         const health = healthLoss === null ? undefined : stats.find((s) => s.name === "Health");
         const turn: StatCodeTurn = {
           timing,
+          prompts: playPrompts(timing),
           stats, enabled, previous: before, asks, regenApplied, clock,
           gateStats: gateStatsOf({
             traits: held.acquired, disabledTraitIds: held.disabledTraitIds, ownedTraits: held.ownedTraits, stats, entityStats: entityBase,
@@ -2993,7 +3021,7 @@ const GameViewer = ({
       }
     },
     [setGlobalStats, setEntityStats, entityOwnersOf, entityInForceUnder, addStatDeltas, setCodePins, resolvePH, statCodePlaceholders, pinsFor, traits, authoredStats, worldScripts, resolveTraitText, gatedWorld, codeEntities, statEntities, inForceOn, liveScene,
-      setGlobalTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, setOwnedTraits, addLogEntry],
+      setGlobalTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, setOwnedTraits, addLogEntry, playPrompts],
   );
 
   // Runs one timing's scripts over this turn and lays the result: a turn with no stat response runs it directly.
@@ -3152,6 +3180,9 @@ const GameViewer = ({
   const abortGeneration = () => {
     if (!abortControllerRef.current) return;
     abortControllerRef.current.abort();
+    // A script waiting on the player fails as canceled, so the stopped turn's run ends.
+    cancelOpenPrompts(scriptPrompts);
+    tellTurnRef.current = null;
     abortControllerRef.current = null;
     // A scene-image click queued behind this turn dies with it — Stop means stop, not "draw later".
     pendingSceneImageRef.current = null;
@@ -3803,6 +3834,26 @@ const GameViewer = ({
 
   const fullMessageHistoryRef = useRef(fullMessageHistory);
   fullMessageHistoryRef.current = fullMessageHistory;
+
+  // Scripts ask the player through the inline prompt line while the game is mounted.
+  useScriptPromptListener(scriptPrompts);
+  // DEV dev-router: `#dev?modal=scriptPrompt&tab=<sample>` fires one canned prompt once a turn is on screen, as a
+  // switch script between turns would. A fixture boots a fresh game, then loads its save, so the sample waits.
+  const firedPromptSample = useRef<string | null>(null);
+  useEffect(() => {
+    if (!import.meta.env.DEV || devRoute?.modal !== 'scriptPrompt') return;
+    const sample = devRoute.tab;
+    if (!isScriptPromptSample(sample) || firedPromptSample.current === sample) return;
+    if (isWaitingForAI || !latestTurnId(fullMessageHistory)) return;
+    const timer = setTimeout(() => {
+      firedPromptSample.current = sample;
+      playPrompts('switch').prompt(SCRIPT_PROMPT_SAMPLES[sample]).then(
+        (answer) => console.info('[scriptPrompt]', sample, answer),
+        () => console.info('[scriptPrompt]', sample, 'canceled'),
+      );
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [devRoute?.modal, devRoute?.tab, isWaitingForAI, fullMessageHistory, playPrompts]);
 
   // Regenerate one memory on demand (Memory Manager): re-run the digest prompt on that turn and land the
   // result in the override layer as AI text — no pin and no importance bump, because the player authored

@@ -4,7 +4,7 @@ import type { ScriptPromptStore } from './scriptPrompts';
 
 /** One editor surface's running prompts: at most one run at a time, closed at unmount. */
 export interface EditorPromptRunHandle {
-  /** The running run's choice-row prompts; null while none runs. */
+  /** The running run's open prompts; null while none runs. */
   store: ScriptPromptStore | null;
   /** Close any running run and start a new one. */
   open(): EditorPromptRun;
