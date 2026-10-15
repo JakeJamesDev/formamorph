@@ -53,16 +53,36 @@ describe('Test Code with a prompt', () => {
     }
   });
 
-  it('shows the choice row in the editor and completes with the pick', async () => {
+  it('shows the inline prompt line in the editor and completes with the pick', async () => {
     confirming();
     const user = userEvent.setup();
     render(<Box initial={{ id: 's', timing: 'after', code: 'player.confirm("Drink it?")' }} />);
     await user.click(screen.getByRole('button', { name: `Test Code ${LABEL}` }));
-    const prompt = await screen.findByRole('group', { name: 'Script Prompt' });
+    const prompt = await screen.findByTestId('script-prompt');
     expect(prompt).toHaveTextContent('Drink it?');
     await user.click(screen.getByRole('button', { name: 'No' }));
     expect(await screen.findByText('stats.Health.value = 20 · Tell: The bottle glows.')).toBeInTheDocument();
-    expect(screen.queryByRole('group', { name: 'Script Prompt' })).toBeNull();
+    expect(screen.queryByTestId('script-prompt')).toBeNull();
+  });
+
+  it('answers askText, a long ask and a multiple ask through the same line', async () => {
+    executeStatCode.mockImplementation(async (_code: string, _stats: unknown, _self: unknown, options: StatCodeRunOptions) => {
+      const name = await options.prompts!.prompt({ kind: 'askText', question: 'Your name?' });
+      const road = await options.prompts!.prompt({ kind: 'ask', question: 'Which road?', options: ['A', 'B', 'C', 'D', 'E'], multiple: false });
+      const packed = await options.prompts!.prompt({ kind: 'ask', question: 'Pack what?', options: ['Rope', 'Lamp'], multiple: true });
+      return ran({ statWrites: [{ id: 'h', name: 'Health', value: name.length * 10 + Number(road) + (packed as number[]).length }] });
+    });
+    const user = userEvent.setup();
+    render(<Box initial={{ id: 's', timing: 'after', code: 'player.askText("Your name?")' }} />);
+    await user.click(screen.getByRole('button', { name: `Test Code ${LABEL}` }));
+    await user.type(await screen.findByRole('textbox', { name: 'Your name?' }), 'Ada{Enter}');
+    await user.click(await screen.findByRole('combobox', { name: 'Which road?' }));
+    await user.click(await screen.findByRole('option', { name: 'E' }));
+    await user.click(screen.getByRole('button', { name: 'OK' }));
+    await user.click(await screen.findByRole('button', { name: 'Lamp' }));
+    await user.click(screen.getByRole('button', { name: 'OK' }));
+    // 3 letters, the fifth road, one item.
+    expect(await screen.findByText('stats.Health.value = 35')).toBeInTheDocument();
   });
 
   it('fails the run as canceled when Escape closes the prompt', async () => {
@@ -94,7 +114,7 @@ describe('Test Code with a prompt', () => {
     const user = userEvent.setup();
     const { unmount } = render(<Box initial={{ id: 's', timing: 'after', code: 'player.confirm("Drink it?")' }} />);
     await user.click(screen.getByRole('button', { name: `Test Code ${LABEL}` }));
-    await screen.findByRole('group', { name: 'Script Prompt' });
+    await screen.findByTestId('script-prompt');
     unmount();
     await expect(asked).rejects.toBeInstanceOf(PromptCanceled);
   });
@@ -104,9 +124,9 @@ describe('Test Code with a prompt', () => {
     const user = userEvent.setup();
     render(<Box initial={{ id: 's', timing: 'after', code: 'player.confirm("Drink it?")' }} />);
     await user.click(screen.getByRole('button', { name: `Test Code ${LABEL}` }));
-    await screen.findByRole('group', { name: 'Script Prompt' });
+    await screen.findByTestId('script-prompt');
     await user.type(screen.getByLabelText(`Code ${LABEL}`), ';');
-    await waitFor(() => expect(screen.queryByRole('group', { name: 'Script Prompt' })).toBeNull());
+    await waitFor(() => expect(screen.queryByTestId('script-prompt')).toBeNull());
     expect(screen.queryByText(/Error:/)).toBeNull();
     expect(screen.getByRole('button', { name: `Test Code ${LABEL}` })).toBeEnabled();
   });

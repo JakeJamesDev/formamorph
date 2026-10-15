@@ -20,6 +20,8 @@ import { TurnCard } from './TurnCard';
 import { ScenePlate } from './ScenePlate';
 import { AttachmentThumbs } from './AttachmentThumbs';
 import { turnAttachments } from '@/lib/actionAttachments';
+import { turnTells } from '@/lib/scriptTells';
+import { ScriptTellLines } from './ScriptPromptLine';
 import type { BubbleAction } from '@/lib/bubbleActions';
 import type { ChatMessage } from '@/types';
 
@@ -87,7 +89,7 @@ export function ChatNarration({ parseAssistantMessage, latestFooter, actionsFor,
   /** Deletes one scene image of the named turn. */
   onDeleteSceneImage: (turnId: string, index: number) => void;
 }) {
-  const { fullMessageHistory, isRevealingNarration, isWaitingForAI, sceneImages, actionAttachments, currentPage, totalPages, setUserPage } = useGameplay();
+  const { fullMessageHistory, isRevealingNarration, isWaitingForAI, sceneImages, actionAttachments, scriptTells, currentPage, totalPages, setUserPage } = useGameplay();
   const { revealSpec, revealEasing, showReasoning } = useSettings();
   const gameplayText = useGameplayText();
   const liveReasoning = useLiveReasoning();
@@ -246,6 +248,7 @@ export function ChatNarration({ parseAssistantMessage, latestFooter, actionsFor,
                     )}
                   </TurnCard>
                 )}
+                <ScriptTellLines tells={turnTells(scriptTells, turnId)} layout="chat" className="mt-3" />
                 {isLatest && latestFooter}
                 <div data-content-end />
               </article>

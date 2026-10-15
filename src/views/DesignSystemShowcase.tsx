@@ -45,6 +45,7 @@ import { LocationsCanvasReference } from '@/components/design-system/LocationsCa
 import { ContextMenuReferences } from '@/components/design-system/ContextMenuReferences';
 import { FooterActionOrderReference } from '@/components/design-system/FooterActionOrderReference';
 import { NarrationTurnReference } from '@/components/design-system/NarrationTurnReference';
+import { ScriptPromptLineReference } from '@/components/design-system/ScriptPromptLineReference';
 import { PanelTabStripReference } from '@/components/design-system/PanelTabStripReference';
 import { SectionsBarReference } from '@/components/design-system/SectionsBarReference';
 import { NavRailReference } from '@/components/design-system/NavRailReference';
@@ -372,6 +373,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Narration Turn',
     description: 'Turn Card, Scene Plate, and choice rows',
     Component: NarrationTurnReference,
+  },
+  {
+    id: 'prompt-line',
+    label: 'Inline Prompt Line',
+    description: 'A script’s question or message in the turn column',
+    Component: ScriptPromptLineReference,
   },
   {
     id: 'owner-flyouts',

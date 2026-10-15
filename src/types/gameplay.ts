@@ -1,4 +1,4 @@
-import type { Stat, Trait, Entity, Dictionary, CommunityLink } from './world';
+import type { Stat, Trait, Entity, Dictionary, CommunityLink, ScriptTiming } from './world';
 import type { ChatMessage } from './ai';
 
 /** A director-invented character promoted to a persisted, per-playthrough entity (runtime characters,
@@ -339,6 +339,9 @@ export interface SaveObject {
   /** The images the player attached to actions, by turn id. Always written when there are any, so a save
    *  is self-contained. Absent ⇒ none. Out of the messages for the same reason as `sceneImages`. */
   actionAttachments?: Record<string, ImageAttachment[]>;
+  /** What scripts told the player with `player.tell`, by turn id, in call order, each with its script's
+   *  timing. Never sent in a request. Absent ⇒ none. */
+  scriptTells?: Record<string, { text: string; timing: ScriptTiming }[]>;
   /** v2.x memory editing: memories the player wrote by hand. `anchorTurn` is the message-history length
    *  at creation, which places the note chronologically among the digests. Never judged by the selector —
    *  a player-written memory rides until deleted. Absent (or empty) on older saves ⇒ none. */

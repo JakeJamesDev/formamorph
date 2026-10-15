@@ -16,6 +16,12 @@ export type ScriptPromptRequest =
 
 export type ScriptPromptKind = ScriptPromptRequest['kind'];
 
+/** A request that takes no answer from the player: a tell or a toast. */
+export type ScriptNotice = Extract<ScriptPromptRequest, { kind: 'tell' | 'toast' }>;
+
+export const isNotice = (request: ScriptPromptRequest): request is ScriptNotice =>
+  request.kind === 'tell' || request.kind === 'toast';
+
 /** What each kind's answer holds: `ask` answers with option indexes, one or a list with `multiple`. */
 export interface ScriptPromptAnswers {
   tell: undefined;
@@ -108,7 +114,7 @@ export function createScriptPromptStore(mintId: () => string = randomUUID): Scri
     prompt(request) {
       type Answer = ScriptPromptAnswer<typeof request.kind>;
       if (!listeners.size) {
-        if (request.kind === 'tell' || request.kind === 'toast') return Promise.resolve(undefined as Answer);
+        if (isNotice(request)) return Promise.resolve(undefined as Answer);
         return Promise.reject(new PromptCanceled());
       }
       const id = mintId();
@@ -126,6 +132,30 @@ export function createScriptPromptStore(mintId: () => string = randomUUID): Scri
     },
     cancel(id) {
       close(id)?.reject(new PromptCanceled());
+    },
+  };
+}
+
+/** Close every open prompt of `store`: each script fails as canceled (Q15). */
+export const cancelOpenPrompts = (store: ScriptPromptStore): void =>
+  store.pending().forEach(({ id }) => store.cancel(id));
+
+/** Where a host sends the requests that take no answer. */
+export interface ScriptNoticeHandlers {
+  onTell(text: string): void;
+  onToast(text: string): void;
+}
+
+/** A host that hands each tell and toast to `handlers` at once, and every ask to `asks`. */
+export function noticeHost(asks: ScriptPromptHost, handlers: ScriptNoticeHandlers): ScriptPromptHost {
+  return {
+    prompt(request) {
+      // Widened so the kind check narrows the request; the generic form does not narrow.
+      const asked: ScriptPromptRequest = request;
+      if (!isNotice(asked)) return asks.prompt(request);
+      if (asked.kind === 'tell') handlers.onTell(asked.text);
+      else handlers.onToast(asked.text);
+      return Promise.resolve(undefined as ScriptPromptAnswer<typeof request.kind>);
     },
   };
 }

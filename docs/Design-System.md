@@ -1230,6 +1230,67 @@ The live reference renders the production card, plate, action line, rows, and St
 - The pair's labels and tooltips come from `StatsActions`, and the action line's menu from `playerBubbleActions`, so the reference and the game cannot drift.
 - **Unverified:** the description's "Right-click a card or the action line for its menu", the past page's "The Stats panel actions are disabled", and the "Stats Panel" label have terminology review only; vocabulary and grammar evidence is not recorded. The sample action text is creative prose and exempt.
 
+## Pattern: Inline Prompt Line
+
+**Purpose:** Show a script's question or message as part of the turn, not as a window over it.
+
+**Rule:**
+
+- A prompt is a line in the turn column under the narration. It has the action line's left rule in the primary color and italic text.
+- The control sits under the question. The actions are text links: **Cancel** on every prompt, and **OK** where the answer takes more than one press.
+- A confirm, and a single ask with up to four options, are pill buttons. One press answers.
+- A single ask with five or more options is the production dropdown. **OK** sends the pick and stays disabled until there is one.
+- A multiple ask is pill buttons that toggle, then **OK**. An empty pick is an answer.
+- An ask for text is the production text field, then **OK**. Enter submits, an empty field included.
+- The prompt takes focus when it opens. Escape cancels while focus is inside it. There is no global Escape.
+- A tell is the same line with the text alone. It stays with its turn and pages with it. After an answer, a prompt leaves the column.
+- A toast is the app toast. The line is never a dialog.
+
+**Density:** Compact. The line uses `text-label`. The field and the dropdown are 2rem tall.
+
+### Composition
+
+| Part | Holds | Notes |
+| --- | --- | --- |
+| **Rule** | `border-l-2 border-primary pl-3` | The same rule as the Pages action line, so the prompt reads as part of the turn. |
+| **Question** | The script's text, italic, in the foreground color | A tell shows this part alone. |
+| **Control** | Pills, the dropdown, or the text field | It fills the row. The actions sit at its right. |
+| **Actions** | **Cancel** in the muted color, then **OK** in the primary color | Cancel comes first in keyboard order. |
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| The prompt line and the tell lines | `ScriptPromptLine` and `ScriptTellLines` in [`ScriptPromptLine.tsx`](../src/components/game/ScriptPromptLine.tsx) |
+| Tells and toasts out of the store, asks into it | `noticeHost` in [`scriptPrompts.ts`](../src/lib/scriptPrompts.ts) |
+| The listener that keeps asks open, and cancels them at unmount | `useScriptPromptListener` in [`useScriptPromptListener.ts`](../src/lib/useScriptPromptListener.ts) |
+| Each turn's tells, with their script's timing, kept in the save | [`scriptTells.ts`](../src/lib/scriptTells.ts) |
+| Pages host | [`GamePanels.tsx`](../src/components/game/GamePanels.tsx) |
+| Chat host | [`ChatNarration.tsx`](../src/components/game/ChatNarration.tsx) |
+| Editor hosts: Test Code and the Test Bench | [`ScriptBox.tsx`](../src/managers/ScriptBox.tsx) and [`IssuesInstrument.tsx`](../src/components/editor/IssuesInstrument.tsx) |
+| Isolated reference | [`ScriptPromptLineReference.tsx`](../src/components/design-system/ScriptPromptLineReference.tsx) |
+
+### Responsive behavior
+
+Pages spans the narration column. Chat centers the line at bubble width, 85% of the column. Pills wrap onto more rows. A long question wraps; it never truncates.
+
+### State reference
+
+| State | Treatment |
+| --- | --- |
+| Default | Pills on the panel with a border. Text links without an underline. |
+| Hover | A pill takes a light primary tint. A text link takes an underline. |
+| Selected | A toggled pill takes the primary fill and a check icon. |
+| Disabled | **OK** is dimmed until the dropdown has a pick. |
+| Focus | Pills, links, the field and the dropdown use the shared inset focus ring. The line itself takes focus with no ring. |
+| Canceled | Cancel or Escape removes the line. The script stops as canceled, and its writes drop. |
+
+The live reference opens the production line in a store of its own under a sample turn, in either layout. Its status line shows what the sample script read. It never reaches play or a save.
+
+### Writing review
+
+- **Unverified:** "Choose One", the reference description, its sample labels, and its status lines have terminology review only; vocabulary and grammar evidence is not recorded. The sample questions are creative prose and exempt.
+
 ## Pattern: Nested Prompt Navigation
 
 **Purpose:** Show the active prompt section while retaining the surrounding prompt list.

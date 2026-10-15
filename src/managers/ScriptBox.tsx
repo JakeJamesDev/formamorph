@@ -3,7 +3,7 @@ import type { VariableTreeOwner } from "@/lib/statCodeVariableTree";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ScriptPromptChoices } from "@/components/editor/ScriptPromptChoices";
+import { ScriptPromptLine } from "@/components/game/ScriptPromptLine";
 import { useEditorPromptRun } from "@/lib/useEditorPromptRun";
 import { useMountedRef } from "@/lib/useMountedRef";
 import { SquareFunction } from "lucide-react";
@@ -263,7 +263,7 @@ export function ScriptBox({ script, label, self, onChange, context, reveal, auto
         </div>
       </div>
 
-      {prompts.store && <ScriptPromptChoices store={prompts.store} />}
+      {prompts.store && <ScriptPromptLine store={prompts.store} className="mt-3" />}
     </div>
   );
 }

@@ -18,7 +18,7 @@ import { SEVERITIES, SOURCE_UNAVAILABLE, type FindingGroup, type Severity } from
 import { isSourceRule, sourceSection } from '@/lib/testBench/missingSources';
 import { REPAIR_CHOICES, type MissingSource, type RepairAction } from '@/lib/sourceChecks';
 import type { ScriptPromptStore } from '@/lib/scriptPrompts';
-import { ScriptPromptChoices } from '@/components/editor/ScriptPromptChoices';
+import { ScriptPromptLine } from '@/components/game/ScriptPromptLine';
 import type {
   CheckStatus, IssuesProps, OpenFindingItem, SourceCheckProps,
 } from '@/lib/testBench/benchProps';
@@ -344,7 +344,7 @@ const StatCodeCheck = ({ scriptCount, advanced, status, prompts, onRun }: {
           {running ? 'Running…' : status === 'done' ? 'Check Again' : 'Check Scripts'}
         </Button>
       </div>
-      {prompts && <ScriptPromptChoices store={prompts} />}
+      {prompts && <ScriptPromptLine store={prompts} className="mt-2" />}
     </div>
   );
 };

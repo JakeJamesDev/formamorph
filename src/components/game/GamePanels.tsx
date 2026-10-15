@@ -94,6 +94,9 @@ import { firstShowableEntity, type StatPanelOption } from '@/lib/statPanelEntiti
 import { useStatPanelEntity, type StatPanelOwner } from './useStatPanelEntity';
 
 import { parseSavedReasoning } from '@/lib/savedReasoning';
+import { scriptPrompts } from '@/lib/scriptPrompts';
+import { turnTells } from '@/lib/scriptTells';
+import { ScriptPromptLine, ScriptTellLines } from './ScriptPromptLine';
 
 /** One side-panel tab: an icon, and the label where the panel is wide enough to hold it. */
 const PanelTab = ({ value, icon: Icon, label }: { value: string; icon: LucideIcon; label: string }) => (
@@ -617,6 +620,7 @@ export const MiddlePanel = ({
     setActionAttachments,
     pendingAttachments,
     setPendingAttachments,
+    scriptTells,
   } = useGameplay();
   const gameplayText = useGameplayText();
   const { ttsHighlight, choicesEnabled, setChoicesEnabled, continueChoiceMode, statUpdatesEnabled, revealSpec, revealEasing, showReasoning, memoryDigests, setMemoryDigests } = useSettings();
@@ -934,15 +938,18 @@ export const MiddlePanel = ({
                 playerActionsFor={playerActionsFor}
                 onDeleteSceneImage={onDeleteSceneImage}
                 latestFooter={
-                  <ChatChoices
-                    stream={playedTurn}
-                    choices={latestChoices}
-                    showContinue={chatShowContinue}
-                    disabled={disabled || isWaitingForAI}
-                    isSelected={(choice) => playerInput.includes(choice)}
-                    choicePress={choicePress}
-                    actions={regenChoicesActions(latestChoices.length > 0 || chatShowContinue)}
-                  />
+                  <>
+                    <ScriptPromptLine store={scriptPrompts} layout="chat" className="mb-3" />
+                    <ChatChoices
+                      stream={playedTurn}
+                      choices={latestChoices}
+                      showContinue={chatShowContinue}
+                      disabled={disabled || isWaitingForAI}
+                      isSelected={(choice) => playerInput.includes(choice)}
+                      choicePress={choicePress}
+                      actions={regenChoicesActions(latestChoices.length > 0 || chatShowContinue)}
+                    />
+                  </>
                 }
               />
               )}
@@ -990,6 +997,7 @@ export const MiddlePanel = ({
                 )}
               </TurnCard>
             )}
+            {!commandPreview && <ScriptTellLines tells={turnTells(scriptTells, sceneTurnId)} className="mt-3" />}
             {!commandPreview && sceneImagesAvailable && (
               <SceneImagePanel
                 // Keyed by turn: paging to another turn remounts the panel, so the tag draft and open
@@ -1006,6 +1014,7 @@ export const MiddlePanel = ({
                 onCancel={onCancelSceneImage}
               />
             )}
+            {!commandPreview && <ScriptPromptLine store={scriptPrompts} className="mt-4" />}
             {!commandPreview && (
               <ChoiceRows
                 stream={playedTurn && !isViewingPast}
