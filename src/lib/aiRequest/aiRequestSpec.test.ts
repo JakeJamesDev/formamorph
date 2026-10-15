@@ -578,13 +578,12 @@ describe('the whole spec', () => {
       .toMatchObject({ max_tokens: 1400, thinking_budget_tokens: 400 });
   });
 
-  it('gives Choices no budget and High’s Thinking Room over its shipped cap on an endpoint with no Max Output', () => {
+  it('gives Choices High’s Thinking Room as its budget over its shipped cap on an endpoint with no Max Output', () => {
     const snap = snapshot(lmStudioReasoning({ maxTokens: undefined }), {
       reasoningEngaged: true, promptReasoning: { choices: 'high' }, promptReasoningBudget: { choices: 25 },
     });
     const body = buildRequestBody(snap, call({ requestType: 'choices', maxTokensOverride: 256 }));
-    expect(body).toMatchObject({ max_tokens: 256 + 4096, reasoning_effort: 'high' });
-    expect(body).not.toHaveProperty('thinking_budget_tokens');
+    expect(body).toMatchObject({ max_tokens: 256 + 4096, reasoning_effort: 'high', thinking_budget_tokens: 4096 });
   });
 
   it('routes each kind to its own resolved target', () => {
@@ -644,14 +643,36 @@ describe('reasoning budget base — the thinking rides on top of the answer', ()
     expect(buildRequestBody(snap, call())).toMatchObject({ thinking_budget_tokens: 256, max_tokens: 768 });
   });
 
-  it('sends no budget and the Answer Cap plus the Thinking Room when the endpoint Max Output override is off', () => {
+  it('sends the strength’s Thinking Room as the budget when the endpoint Max Output override is off', () => {
     const snap = snapshot(routed(undefined), { promptReasoning: { summary: 'high' } });
     const summary = buildRequestBody(snap, call({ requestType: 'summary', maxTokensOverride: 300 }));
-    expect(summary).toMatchObject({ max_tokens: 300 + 4096 });
-    expect(summary).not.toHaveProperty('thinking_budget_tokens');
+    expect(summary).toMatchObject({ thinking_budget_tokens: 4096, max_tokens: 300 + 4096 });
+    // The percent has no base to scale from, so it never moves the room.
+    const stretched = snapshot(routed(undefined), { promptReasoning: { summary: 'high' }, promptReasoningBudget: { summary: 200 } });
+    expect(buildRequestBody(stretched, call({ requestType: 'summary', maxTokensOverride: 300 }))).toEqual(summary);
+    // No cap on the answer, so no cap on the request; the budget still goes out.
     const narration = buildRequestBody(snap, call());
-    expect(narration).not.toHaveProperty('thinking_budget_tokens');
+    expect(narration).toHaveProperty('thinking_budget_tokens');
     expect(narration).not.toHaveProperty('max_tokens');
+  });
+
+  it('sizes the no-Max-Output budget by the prompt’s strength, and Model Default as Medium', () => {
+    const budgetAt = (strength: 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max' | 'auto') =>
+      buildRequestBody(
+        snapshot(routed(undefined), { promptReasoning: { summary: strength } }),
+        call({ requestType: 'summary', maxTokensOverride: 300 }),
+      );
+    expect(budgetAt('minimal')).toMatchObject({ thinking_budget_tokens: 128, max_tokens: 300 + 128 });
+    expect(budgetAt('low')).toMatchObject({ thinking_budget_tokens: 1024, max_tokens: 300 + 1024 });
+    expect(budgetAt('max')).toMatchObject({ thinking_budget_tokens: 16384, max_tokens: 300 + 16384 });
+    expect(budgetAt('auto')).toMatchObject({ thinking_budget_tokens: 2048, max_tokens: 300 + 2048 });
+  });
+
+  it('keeps the percent-of-Max-Output budget while Max Output is set', () => {
+    const snap = snapshot(routed(1000), { promptReasoning: { summary: 'high' }, promptReasoningBudget: { summary: 100 } });
+    // 100% of 1,000, not High's 4,096.
+    expect(buildRequestBody(snap, call({ requestType: 'summary', maxTokensOverride: 300 })))
+      .toMatchObject({ thinking_budget_tokens: 1000, max_tokens: 1300 });
   });
 
   it('sends the zero budget as the off signal with or without a base, and adds no headroom', () => {
@@ -726,7 +747,7 @@ describe('reasoning budget base — the thinking rides on top of the answer', ()
     expect(buildRequestBody(snap, call())).toMatchObject({ thinking_budget_tokens: 400, max_tokens: 1200 });
   });
 
-  it('sends a Gemini 2.5 prompt no budget and the Answer Cap plus the Thinking Room when the endpoint Max Output override is off', () => {
+  it('sends a Gemini 2.5 prompt the Thinking Room as its budget when the endpoint Max Output override is off', () => {
     const gemini = external({
       maxTokens: undefined,
       reasoning: { ...accepts('none', 'low', 'medium', 'high'), reasons: true, budget: true, dialect: 'google-2.5' },
@@ -735,9 +756,8 @@ describe('reasoning budget base — the thinking rides on top of the answer', ()
       snapshot(gemini, { reasoningEngaged: true, reasoningEffort: 'high' }),
       call({ requestType: 'summary', maxTokensOverride: 300 }),
     );
-    expect(body).not.toHaveProperty('google');
     // Summary ships at Low, not Global.
-    expect(body).toMatchObject({ max_tokens: 300 + 1024 });
+    expect(body).toMatchObject({ google: { thinking_config: { thinking_budget: 1024 } }, max_tokens: 300 + 1024 });
   });
 
   it('sends a model the record rules out its answer cap alone', () => {
@@ -955,11 +975,16 @@ describe('dialects — one spelling per row', () => {
 
   it('sends the Anthropic floor as the budget and the headroom when the endpoint has no Max Output', () => {
     const noBase = speaking('anthropic-budget', { maxTokens: undefined });
-    expect(sends(noBase, {}, { requestType: 'narration', maxTokensOverride: 300 }))
+    // Minimal's room is 128, under the floor, so the floor wins.
+    expect(sends(noBase, { promptReasoning: { narration: 'minimal' } }, { requestType: 'narration', maxTokensOverride: 300 }))
       .toMatchObject({ thinking: { budget_tokens: 1024, type: 'enabled' }, max_tokens: 1324 });
+    // Above the floor the room is the budget.
+    expect(sends(noBase, { promptReasoning: { narration: 'high' } }, { requestType: 'narration', maxTokensOverride: 300 }))
+      .toMatchObject({ thinking: { budget_tokens: 4096, type: 'enabled' }, max_tokens: 4396 });
     // Narration with no cap of its own still sends no max_tokens.
     const uncapped = sends(noBase);
-    expect(uncapped).toMatchObject({ thinking: { budget_tokens: 1024, type: 'enabled' } });
+    // Global High: 4,096.
+    expect(uncapped).toMatchObject({ thinking: { budget_tokens: 4096, type: 'enabled' } });
     expect(uncapped).not.toHaveProperty('max_tokens');
   });
 

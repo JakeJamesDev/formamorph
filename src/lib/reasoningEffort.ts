@@ -467,6 +467,8 @@ export interface ReasoningBudgetInput {
   readonly answerCap: number | undefined;
   /** The smallest budget the target's dialect accepts, or 0 where it sends none. */
   readonly floor: number;
+  /** The Thinking Room a budget target sends as its budget while `base` is absent. Absent where the target takes no budget. */
+  readonly room?: number;
 }
 
 /** One prompt's thinking room and the request cap that holds it. */
@@ -477,14 +479,14 @@ export interface ReasoningBudget {
   readonly maxTokens: number | undefined;
 }
 
-/** The budget, `round(pct% × base)` raised to the dialect's floor, and the answer cap plus that budget. */
+/** The budget, `round(pct% × base)` or the Thinking Room without a base, raised to the dialect's floor, and the answer cap plus that budget. */
 export function reasoningBudget(input: ReasoningBudgetInput): ReasoningBudget {
-  const { effort, kind, budgets, base, answerCap, floor } = input;
+  const { effort, kind, budgets, base, answerCap, floor, room = 0 } = input;
   if (effort === 'none') return { budget: 0, maxTokens: answerCap };
-  const scaled = base === undefined ? 0 : Math.round((resolveReasoningBudgetPct(kind, budgets) / 100) * base);
+  const scaled = base === undefined ? room : Math.round((resolveReasoningBudgetPct(kind, budgets) / 100) * base);
   // 0 is the off signal, so an on prompt with a base never rounds down to it.
   const budget = Math.max(scaled, floor, base === undefined ? 0 : 1);
-  if (base === undefined && floor === 0) return { budget: null, maxTokens: answerCap };
+  if (base === undefined && budget === 0) return { budget: null, maxTokens: answerCap };
   return { budget, maxTokens: answerCap === undefined ? undefined : answerCap + budget };
 }
 
