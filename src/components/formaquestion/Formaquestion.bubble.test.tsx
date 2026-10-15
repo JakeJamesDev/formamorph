@@ -40,7 +40,9 @@ async function openWindow() {
 }
 
 async function ask(field: HTMLElement, question: string) {
-  await userEvent.type(field, question);
+  // The click keeps the default delay, which Radix's pointer-events cleanup needs; the keys skip it.
+  await userEvent.click(field);
+  await userEvent.type(field, question, { delay: null, skipClick: true });
   await userEvent.click(screen.getByRole('button', { name: 'Send' }));
   await waitFor(() => expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled());
 }
