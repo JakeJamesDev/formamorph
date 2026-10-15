@@ -1,6 +1,7 @@
 # Spec: Thinking Room
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-10-15. Tickets 01–06 landed, last landing b310f9eea; review fixes in c9ab17f24. Gates green on 2026-10-15 (run at 42fd19d72).
 Spec session: thinking-room — spec
 
 ## Problem Statement
