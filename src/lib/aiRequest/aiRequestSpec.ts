@@ -9,7 +9,8 @@ import {
 } from '@/lib/reasoningEffort';
 import { extraParamsOf } from '@/lib/extraParams';
 import {
-  reasoningDialectBody, reasoningDialectBudgetFloor, reasoningDialectBudgetFromStrength, type ReasoningBodyFields,
+  reasoningDialectBody, reasoningDialectBudgetFloor, reasoningDialectBudgetFromStrength,
+  reasoningDialectOffWhenDisengaged, type ReasoningBodyFields,
 } from '@/lib/reasoningDialect';
 import { resolvePromptSampler, type PromptSampler, type PromptSamplerMap } from '@/lib/promptSamplers';
 import type { EndpointSampler, EndpointSamplerOverrides } from '@/lib/endpointSamplers';
@@ -261,8 +262,9 @@ function resolveReasoning(snapshot: AiSettingsSnapshot, call: CapCall, target: A
   const eligible = snapshot.reasoningEngaged && reasons;
   const level = snapshot.reasoningEngaged ? reasoningEffortValue(effort, target.reasoning) : null;
   const budget = takesBudget ? planned.budget : null;
+  const mayStateOff = eligible || (reasons && reasoningDialectOffWhenDisengaged(target.reasoning.dialect));
   const fields = reasoningDialectBody(target.reasoning.dialect, {
-    budget, level, off: eligible && effort === 'none', eligible,
+    budget, level, off: mayStateOff && effort === 'none', eligible,
     unbounded: target.maxTokens === undefined,
   });
   const carriesReasoning = Object.keys(fields).length > 0 || target.reasoning.reasons === true;

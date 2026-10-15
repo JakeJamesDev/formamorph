@@ -6,7 +6,7 @@ import {
 import type { ReasoningDialect } from '@/lib/reasoningDialect';
 import { defaultEndpointSamplerOverrides } from '@/lib/endpointSamplers';
 import {
-  reasoningCapabilityFromLevels, UNKNOWN_REASONING_CAPABILITY,
+  PROMPT_REQUEST_KINDS, reasoningCapabilityFromLevels, UNKNOWN_REASONING_CAPABILITY,
   type ReasoningCapability, type ReasoningEffortField,
 } from '@/lib/reasoningEffort';
 import { resolvePromptEndpoint, type ActiveEndpointState } from '@/lib/promptEndpoints';
@@ -867,6 +867,13 @@ describe('dialects — one spelling per row', () => {
 
   const speaks = (target: AiEndpointTarget, over: Partial<AiSettingsSnapshot> = {}) => reasoningSlice(sends(target, over));
 
+  /** Every prompt switched off and Thinking off, as Settings resolves that state. */
+  const engagedNowhere = (target: AiEndpointTarget): AiSettingsSnapshot => snapshot(target, {
+    reasoningEngaged: false,
+    reasoningEffort: 'none',
+    promptReasoning: Object.fromEntries(PROMPT_REQUEST_KINDS.map((kind) => [kind, 'none' as const])),
+  });
+
   it.each([
     ['unknown', { thinking_budget_tokens: 500, reasoning_effort: 'high' }],
     ['engine', { thinking_budget_tokens: 500 }],
@@ -1087,6 +1094,60 @@ describe('dialects — one spelling per row', () => {
     it('carries no Thought Ceiling room on the spec, since the budget ends the thought', () => {
       expect(buildAiRequestSpec(engaged(plainTemplate()), director)).not.toHaveProperty('thinkingRoom');
     });
+
+    it.each([
+      ['without', plainTemplate], ['with', effortTemplate],
+    ] as const)('sends the none literal alone %s effort support when reasoning is engaged nowhere', (_t, template) => {
+      for (const requestType of ['narration', 'director'] as const) {
+        const body = buildRequestBody(engagedNowhere(template()), call({ requestType }));
+        expect(reasoningSlice(body)).toEqual({ reasoning_effort: 'none' });
+        expect(body.max_tokens).toBe(800);
+      }
+    });
+
+    it('adds no Thinking Room to the none literal with Max Output off', () => {
+      const unbounded = buildRequestBody(engagedNowhere(plainTemplate({ maxTokens: undefined })), director);
+      const bare = buildRequestBody(engagedNowhere(external({ maxTokens: undefined, reasoning: UNKNOWN_REASONING_CAPABILITY })), director);
+      expect(reasoningSlice(unbounded)).toEqual({ reasoning_effort: 'none' });
+      expect(unbounded.max_tokens).toBe(bare.max_tokens);
+    });
+
+    it('stays silent on a llama.cpp record that rules the model out', () => {
+      const ruledOut = llamaCpp(['none'], {});
+      ruledOut.reasoning = { ...ruledOut.reasoning, reasons: false };
+      expect(reasoningSlice(buildRequestBody(engagedNowhere(ruledOut), director))).toEqual({});
+    });
+
+    it('sends a switched-off prompt the none literal alone while another prompt is on', () => {
+      const oneOn = engaged(effortTemplate(), { promptReasoning: { director: 'low', narration: 'none' } });
+      expect(reasoningSlice(buildRequestBody(oneOn, call()))).toEqual({ reasoning_effort: 'none' });
+    });
+  });
+
+  /** With every prompt off and Thinking off, every dialect but llama.cpp sends exactly these bodies. */
+  it.each([
+    ['unknown', { thinking_budget_tokens: 0 }, 1000],
+    ['engine', { thinking_budget_tokens: 0 }, 1000],
+    ['openai', {}, 1000],
+    ['lmstudio', { thinking_budget_tokens: 0 }, 1000],
+    ['vllm', { thinking_token_budget: 0 }, 1000],
+    ['openrouter', { reasoning: { max_tokens: 0 } }, 1000],
+    ['anthropic-budget', { thinking: { budget_tokens: 0, type: 'enabled' } }, 1000],
+    ['anthropic-adaptive', {}, 1000],
+    ['google-2.5', { google: { thinking_config: { thinking_budget: 0 } } }, 1000],
+    ['google-3', {}, 2500],
+    ['moonshot-k3', {}, 2500],
+    ['moonshot-k2', {}, 1000],
+    ['novita', {}, 1000],
+  ] as const)('sends no off signal the %s way when reasoning is engaged nowhere', (dialect, slice, maxTokens) => {
+    const body = buildRequestBody(engagedNowhere(speaking(dialect)), call());
+    expect(reasoningSlice(body)).toEqual(slice);
+    expect(body.max_tokens).toBe(maxTokens);
+  });
+
+  it('keeps an unidentified endpoint silent when reasoning is engaged nowhere', () => {
+    const bare = external({ reasoning: UNKNOWN_REASONING_CAPABILITY });
+    expect(reasoningSlice(buildRequestBody(engagedNowhere(bare), call()))).toEqual({});
   });
 
   /**

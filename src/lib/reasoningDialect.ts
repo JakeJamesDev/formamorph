@@ -56,6 +56,8 @@ export interface DialectSpelling {
   /** This dialect's own spelling of "do not reason", which replaces the budget and level writes. Absent
    *  where the `none` literal already says it. */
   readonly off?: readonly FieldWrite[];
+  /** Set where `off` is safe on every request, so it goes out even while reasoning is engaged nowhere. */
+  readonly offWhenDisengaged?: true;
   /** Set where the endpoint rejects a budget of zero, so a switched-off prompt sends the switch alone. */
   readonly noBudgetWhenOff?: true;
   /** Set where the endpoint rejects a switched-off request, so `none` sends no reasoning field at all. */
@@ -131,12 +133,14 @@ export const DIALECT_SPELLINGS: Record<ReasoningDialect, DialectSpelling> = {
   // Thinking is on by default, so only off is spelled.
   novita: { off: [{ path: ['enable_thinking'], value: false, label: 'Reasoning' }] },
   // The server forces the thought's end at the budget. Builds before 2026-04-14 ignore the field, and the
-  // request cap still holds. `none` works on every template, so off is spelled whatever the levels say.
+  // request cap still holds. `none` works on every template, so off is spelled whatever the levels say, and
+  // whether or not reasoning is engaged anywhere.
   llamacpp: {
     budgetPath: ['reasoning_budget_tokens'],
     budgetFromStrength: true,
     levelPath: EFFORT_PATH,
     off: [{ path: EFFORT_PATH, value: 'none', label: 'Effort' }],
+    offWhenDisengaged: true,
   },
 };
 
@@ -158,8 +162,8 @@ export interface ReasoningWrite {
   readonly level: ReasoningEffortField | null;
   /** The token budget, where the target takes one. */
   readonly budget: number | null;
-  /** True when the resolved choice is off, reasoning is engaged, and the record has not ruled the model out.
-   *  Only then may a dialect spell off in a field of its own. */
+  /** True when the resolved choice is off, reasoning is engaged or the dialect sends off regardless, and the
+   *  record has not ruled the model out. Only then may a dialect spell off in a field of its own. */
   readonly off: boolean;
   /** True where reasoning is engaged somewhere and the record has not ruled the model out, so this target
    *  may be told about reasoning at all. A switched-off request is eligible too: `off` is what it says.
@@ -185,6 +189,11 @@ export function reasoningDialectNeedsProof(dialect: ReasoningDialect): boolean {
 /** The smallest budget the dialect accepts, or 0 where it sets none. */
 export function reasoningDialectBudgetFloor(dialect: ReasoningDialect): number {
   return DIALECT_SPELLINGS[dialect].budgetMin ?? 0;
+}
+
+/** True where the dialect's off goes out even while reasoning is engaged nowhere. */
+export function reasoningDialectOffWhenDisengaged(dialect: ReasoningDialect): boolean {
+  return DIALECT_SPELLINGS[dialect].offWhenDisengaged === true;
 }
 
 /** True where the strength's Thinking Room is the dialect's budget. */
