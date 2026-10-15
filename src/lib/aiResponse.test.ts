@@ -1,37 +1,53 @@
 import { describe, it, expect } from 'vitest';
-import { parseNarration, stripReasoning, stripReasoningLive, extractReasoning, extractReasoningLive } from './aiResponse';
+import type { ChatMessage } from '@/types';
+import { narrationOf, storyText, stripReasoning, stripReasoningLive, extractReasoning, extractReasoningLive } from './aiResponse';
 
-describe('parseNarration', () => {
+describe('narrationOf', () => {
   it('returns narration from strict JSON', () => {
-    expect(parseNarration('{"narration":"You enter the cave."}')).toBe('You enter the cave.');
+    expect(narrationOf('{"narration":"You enter the cave."}')).toBe('You enter the cave.');
   });
 
   it('parses lenient JSON5 (unquoted key, single quotes, trailing comma)', () => {
-    expect(parseNarration("{ narration: 'hi there', }")).toBe('hi there');
+    expect(narrationOf("{ narration: 'hi there', }")).toBe('hi there');
   });
 
   it('trims surrounding whitespace before parsing', () => {
-    expect(parseNarration('  \n {"narration":"trimmed"} \n ')).toBe('trimmed');
+    expect(narrationOf('  \n {"narration":"trimmed"} \n ')).toBe('trimmed');
   });
 
-  it('falls back to regex extraction when there is trailing garbage', () => {
-    expect(parseNarration('{"narration":"recovered"} <<junk>>')).toBe('recovered');
+  it('recovers narration from truncated content by regex', () => {
+    expect(narrationOf('{"narration":"recovered","choices":["a"')).toBe('recovered');
+    expect(narrationOf('{"narration":"recovered"} <<junk>>')).toBe('recovered');
   });
 
-  it('returns a placeholder when the parsed object has no narration', () => {
-    expect(parseNarration('{"choices":["a","b"]}')).toBe('No narration available');
+  it('returns null when the parsed object has no narration', () => {
+    expect(narrationOf('{"choices":["a","b"]}')).toBeNull();
   });
 
-  it('returns the error placeholder for unparseable content', () => {
-    expect(parseNarration('this is not json at all')).toBe(
-      'Error parsing message. Please check console for details.',
-    );
+  it('returns null for unparseable content', () => {
+    expect(narrationOf('this is not json at all')).toBeNull();
+    expect(narrationOf('')).toBeNull();
   });
 
   // Backward compat: legacy v1.2 / pre-release 2.0 saves stored the narration under `game_text`.
   it('reads the legacy game_text field (object and regex-fallback paths)', () => {
-    expect(parseNarration('{"game_text":"You enter the cave."}')).toBe('You enter the cave.');
-    expect(parseNarration('{"game_text":"recovered"} <<junk>>')).toBe('recovered');
+    expect(narrationOf('{"game_text":"You enter the cave."}')).toBe('You enter the cave.');
+    expect(narrationOf('{"game_text":"recovered"} <<junk>>')).toBe('recovered');
+  });
+});
+
+describe('storyText', () => {
+  const turn = (narration: string): ChatMessage => ({ role: 'assistant', content: JSON.stringify({ narration, choices: [], stat_changes: [] }) });
+
+  it('leaves out turns that do not parse, with no error text', () => {
+    const story = storyText([
+      { role: 'user', content: 'go' },
+      turn('First.'),
+      { role: 'assistant', content: 'this is not json at all' },
+      turn('<think>x</think>Third.'),
+    ]);
+    expect(story).toBe('First.\n\nThird.');
+    expect(story).not.toMatch(/error|no narration/i);
   });
 });
 
