@@ -6,19 +6,26 @@
 // JUnit, not JSON: vitest's JSON reporter writes a timeout as a placeholder stack and drops the message.
 
 const TIMED_OUT = /timed out/i;
-// An error thrown inside a `waitFor` callback carries the frame that retried it. A real miss carries it
+// A `findBy*` miss and a sync `waitFor` callback carry the frame that retried them. A real miss carries it
 // too, and the rerun alone still fails on it.
 const WAIT_FOR_FRAME = /@testing-library\/dom\/dist\/wait-for\.js/;
+// An async `waitFor` callback loses those frames, so the other mark is the DOM dump `waitFor` appends to the
+// last error when it gives up. A query's own miss carries the same dump without `waitFor`, so that type is out.
+const DOM_DUMP = /Ignored nodes: comments, script, style/;
+const QUERY_ERROR = 'TestingLibraryElementError';
 const SUITE = /<testsuite\s[^>]*?name="([^"]*)"[^>]*>([\s\S]*?)<\/testsuite>/g;
-const PROBLEM = /<(failure|error)\b[^>]*?message="([^"]*)"[^>]*>([\s\S]*?)<\/\1>/g;
+const PROBLEM = /<(failure|error)\b([^>]*?)message="([^"]*)"([^>]*)>([\s\S]*?)<\/\1>/g;
+const TYPE = /\btype="([^"]*)"/;
 
-const expired = ({ message, stack }) => TIMED_OUT.test(message) || WAIT_FOR_FRAME.test(stack);
+const expired = ({ type, message, stack }) =>
+  TIMED_OUT.test(message) || WAIT_FOR_FRAME.test(stack) || (DOM_DUMP.test(message) && type !== QUERY_ERROR);
 
 /** Every file whose failures are all expired timers, as the suite names the report carries; empty when any failure is real. */
 export function retryableFiles(junit) {
   const files = [];
   for (const [, file, body] of junit.matchAll(SUITE)) {
-    const problems = [...body.matchAll(PROBLEM)].map(([, , message, stack]) => ({ message, stack }));
+    const problems = [...body.matchAll(PROBLEM)].map(([, , before, message, after, stack]) =>
+      ({ type: (before + after).match(TYPE)?.[1] ?? '', message, stack }));
     if (problems.length === 0) {
       // A suite with no failure element is green, or failed in a way the report cannot show: never retried.
       if (/\b(?:failures|errors)="[1-9]/.test(junit.slice(junit.indexOf(file), junit.indexOf(body)))) return [];
