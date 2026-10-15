@@ -50,6 +50,31 @@ describe('the on-demand script check', () => {
     expect(checkedScriptCount(world)).toBe(5);
   });
 
+  it('files each failure under the section that holds its script, one finding per script', async () => {
+    const fails: Script[] = [{ id: 'f', timing: 'after', code: 'throw new Error("x");' }];
+    const ash: Entity = { id: 'ash', name: 'Ash', traits: [{ id: 'grim', name: 'Grim', statChanges: [], scripts: fails }] };
+    const world: RuleWorld = {
+      ...base([stat({ id: 'mana', name: 'Mana', scripts: fails })]),
+      scripts: fails, entities: [ash], traits: [{ id: 'brave', name: 'Brave', statChanges: [], scripts: fails }],
+    };
+    const found = await checkScripts(world);
+    expect(found.map((f) => [f.section, f.items.map((item) => item.id)])).toEqual([
+      ['scripts', ['world|f']], ['stats', ['mana']], ['traits', ['brave']], ['entities', ['ash']],
+    ]);
+    // Opening an item goes to its own tab, whatever section the row sits under.
+    expect(found.map((f) => f.items[0].section)).toEqual(found.map((f) => f.section));
+  });
+
+  it('files an unknown-name warning under the section of its script too', async () => {
+    const writes: Script[] = [{ id: 'w', timing: 'after', code: 'traits.Nope.enabled = true;' }];
+    const found = await checkScripts({
+      ...base([]), scripts: writes, traits: [{ id: 'brave', name: 'Brave', statChanges: [], scripts: writes }],
+    });
+    expect(found.map((f) => [f.ruleId, f.section])).toEqual([
+      [SCRIPT_UNKNOWN_NAME.id, 'scripts'], [SCRIPT_UNKNOWN_NAME.id, 'traits'],
+    ]);
+  });
+
   it("reads a stat gate against each stat's authored start", async () => {
     const at = (start: number) => {
       const world = base([stat({ id: 'rage', name: 'Rage', value: start, scripts: boxScripts({ after: 'if (!traits.Berserk.available) throw new Error("locked"); return 1;' }) })]);
@@ -396,6 +421,29 @@ describe('the on-demand script check', () => {
       await vi.waitFor(() => expect(prompts.store.pending()).toHaveLength(1));
       prompts.store.answer(prompts.store.pending()[0].id, true);
       expect((await checking).map((f) => f.message)).toEqual(['“Mood · After the AI” throws when it runs, so the stat keeps its manual value']);
+    });
+
+    it('names the asking script on its prompt: its own name, or the owner and timing', async () => {
+      const prompts = editorPromptRun();
+      const ask = (script: Script) => ({ ...script, code: 'player.confirm("Drink?"); return 1;' });
+      const checking = checkScripts({
+        ...base([
+          stat({ id: 's1', name: 'Mood', scripts: [ask({ id: 'a', name: 'Clamp', timing: 'before', code: '' })] }),
+          stat({ id: 's2', name: 'Weave', scripts: [ask({ id: 'b', timing: 'after', code: '' })] }),
+        ]),
+        scripts: [ask({ id: 'c', timing: 'start', code: '' })],
+        entities: [{ id: 'mira', name: 'Mira', traits: [brave([ask({ id: 'd', timing: 'after', code: '' })])] }],
+      }, prompts.host);
+      // The sandbox runs one prompting script at a time, so each prompt opens after the last is answered.
+      const askers: (string | undefined)[] = [];
+      for (let asked = 0; asked < 4; asked += 1) {
+        await vi.waitFor(() => expect(prompts.store.pending()).toHaveLength(1));
+        const [{ id, request }] = prompts.store.pending();
+        askers.push('asker' in request ? request.asker : undefined);
+        prompts.store.answer(id, true);
+      }
+      expect(await checking).toEqual([]);
+      expect(askers.sort()).toEqual(['Brave · After the AI', 'Clamp', 'Weave · After the AI', 'World · At Game Start']);
     });
 
     it('reports a prompt the author closes as canceled', async () => {

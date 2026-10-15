@@ -16,9 +16,9 @@ import { globalStatsOf, resolvedEntityStats } from '@/lib/statLinks';
 import { codeDictionaries, sandboxDictionaries, sandboxPlaceholders } from '@/lib/statCodePlaceholders';
 import { entityTraitNames, sandboxTraits, unplayedEntities, worldTraitPlaces } from '@/lib/statCodeTraits';
 import { SAMPLE_SENTENCE, sampleNarration, sampleSwitchedTrait } from '@/lib/scriptTestSamples';
-import type { ScriptPromptHost } from '@/lib/scriptPrompts';
+import { askedBy, type ScriptPromptHost } from '@/lib/scriptPrompts';
 import {
-  finding, ruleScripts, SCRIPT_EXECUTION, SCRIPT_UNKNOWN_NAME, type Finding, type FindingItem, type RuleWorld,
+  ruleScripts, scriptFinding, SCRIPT_EXECUTION, SCRIPT_UNKNOWN_NAME, type Finding, type FindingItem, type RuleWorld,
 } from './rules';
 import { startingGateStats } from '@/lib/gateStats';
 import type { Script, Stat, Trait } from '@/types';
@@ -74,6 +74,8 @@ type ScriptUnit = {
   script: Script;
   /** The script by its name or its owner-and-timing fallback, then its owner (Q22, Q49). */
   ref: string;
+  /** The script's display name, shown beside its prompts (Q9). */
+  label: string;
   item: FindingItem;
   /** The entity an owned script runs under. */
   entityId?: string;
@@ -89,17 +91,17 @@ type ScriptUnit = {
 /** Every filled script in the world, in check order: the world's, then each stat's, then each trait's. A linked
  *  stat runs only scripts its link overrides; a Blueprint stat's box runs once with its group as owner, and a
  *  Blueprint trait's once with an empty owner. */
-const scriptUnits = (world: RuleWorld): ScriptUnit[] => ruleScripts(world).map(({ listed, ref, item }): ScriptUnit => {
+const scriptUnits = (world: RuleWorld): ScriptUnit[] => ruleScripts(world).map(({ listed, ref, label, item }): ScriptUnit => {
   if (listed.kind === 'world') {
     const { home, owner, runs, ...script } = listed.box;
-    return { kind: 'world', script, ref, item };
+    return { kind: 'world', script, ref, label, item };
   }
   if (listed.kind === 'stat') {
     const { stat, entity, owner, home, runs, ...script } = listed.box;
-    return { kind: 'stat', script, stat, ref, item, ...(entity ? { entityId: entity.id } : owner && { group: owner.stats }) };
+    return { kind: 'stat', script, stat, ref, label, item, ...(entity ? { entityId: entity.id } : owner && { group: owner.stats }) };
   }
   const { trait, entity, owner, home, runs, ...script } = listed.box;
-  return { kind: 'trait', script, trait, blueprint: !entity && !!owner, ref, item, ...(entity && { entityId: entity.id }) };
+  return { kind: 'trait', script, trait, blueprint: !entity && !!owner, ref, label, item, ...(entity && { entityId: entity.id }) };
 });
 
 /** How many scripts a check runs. */
@@ -143,7 +145,7 @@ export async function checkScripts(world: RuleWorld, prompts?: ScriptPromptHost)
   const dictionaries = sandboxDictionaries(codeDictionaries(world.dictionaries, placeholderDefs), placeholders.owners);
 
   const results = await Promise.all(units.map(async (unit) => {
-    const { script, ref, item, entityId } = unit;
+    const { script, ref, label, item, entityId } = unit;
     const entityOwner = entityId === undefined ? undefined : entryOf.get(entityId);
     const owner: SandboxEntity | undefined = entityOwner
       ?? (unit.kind === 'stat' && unit.group ? { name: '', traits: [], stats: { stats: seeded(unit.group) } } : undefined)
@@ -156,7 +158,7 @@ export async function checkScripts(world: RuleWorld, prompts?: ScriptPromptHost)
         ?? { id: unit.trait.id, name: statCodeName(unit.trait.name, placeholderDefs), enabled: false, acquired: false };
     const result = await executeStatCode(script.code, stats, self, {
       placeholders: placeholders.top, traits, entities, owner, dictionaries,
-      ...(selfTrait && { selfTrait }), ...(prompts && { prompts }),
+      ...(selfTrait && { selfTrait }), ...(prompts && { prompts: askedBy(prompts, label) }),
       ...(script.timing === 'output' && { narration: sampleNarration(SAMPLE_SENTENCE) }),
       ...(script.timing === 'switch' && {
         switchedTrait: sampleSwitchedTrait(traits, firstTraitId, selfTrait && { entry: selfTrait, owner: owner?.name ?? '' }),
@@ -164,10 +166,10 @@ export async function checkScripts(world: RuleWorld, prompts?: ScriptPromptHost)
     });
     if (result.error) {
       const kind = result.kind ?? 'throw';
-      return finding(SCRIPT_EXECUTION, `${ref} ${FAILURE[kind]}, ${leftBehind(unit, kind)}`, [item]);
+      return scriptFinding(SCRIPT_EXECUTION, `${ref} ${FAILURE[kind]}, ${leftBehind(unit, kind)}`, item);
     }
     const unknown = unknownNames(result);
-    return unknown ? finding(SCRIPT_UNKNOWN_NAME, `${ref} writes to unknown names. Writes ignored: ${unknown}`, [item]) : null;
+    return unknown ? scriptFinding(SCRIPT_UNKNOWN_NAME, `${ref} writes to unknown names. Writes ignored: ${unknown}`, item) : null;
   }));
   return results.filter((found): found is Finding => found !== null);
 }

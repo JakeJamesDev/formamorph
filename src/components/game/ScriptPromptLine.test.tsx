@@ -92,6 +92,25 @@ describe('ScriptPromptLine', () => {
     expect(store.pending()).toHaveLength(1);
   });
 
+  it('shows the asking script’s name as muted text beside the question, on a confirm and an askText', async () => {
+    const { store, answer } = open({ kind: 'confirm', question: 'Open the door?', asker: 'Latch · After the AI' });
+    const meta = screen.getByText('Latch · After the AI');
+    expect(meta).toHaveClass('text-muted-foreground');
+    expect(screen.getByText('Open the door?').parentElement).toContainElement(meta);
+    act(() => { store.cancel(store.pending()[0].id); });
+    await expect(answer).rejects.toBeInstanceOf(PromptCanceled);
+    let text: Promise<unknown> = Promise.resolve();
+    act(() => { text = store.prompt({ kind: 'askText', question: 'A word?', asker: 'Tide' }); });
+    expect(screen.getByText('Tide')).toBeInTheDocument();
+    act(() => { store.cancel(store.pending()[0].id); });
+    await expect(text).rejects.toBeInstanceOf(PromptCanceled);
+  });
+
+  it('shows no name when the request has none', () => {
+    open({ kind: 'confirm', question: 'Open the door?' });
+    expect(screen.getByText('Open the door?').parentElement).toHaveTextContent(/^Open the door\?$/);
+  });
+
   it('shows nothing for a tell or a toast left in the store', () => {
     const store = createScriptPromptStore();
     render(<ScriptPromptLine store={store} />);

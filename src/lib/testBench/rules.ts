@@ -157,6 +157,11 @@ export const finding = (rule: RuleHead, message: string, items: FindingItem[]): 
   ruleId: rule.id, severity: rule.severity, section: rule.section, message, items,
 });
 
+/** A finding about one script, filed under the section that holds it. */
+export const scriptFinding = (rule: RuleHead, message: string, item: FindingItem): Finding => ({
+  ...finding(rule, message, [item]), section: item.section ?? rule.section,
+});
+
 /** `list` with `fn` applied, or `list` itself when nothing changed — an untouched slice keeping its identity
  *  is what lets a fix be written back as only the parts it actually rebuilt. */
 const mapChanged = <T>(list: T[], fn: (item: T) => T): T[] => {
@@ -962,6 +967,8 @@ export interface RuleScript {
   listed: ListedScript;
   /** The script by its name or its owner-and-timing fallback, then the entity it sits on (Q22, Q49). */
   ref: string;
+  /** The script's display name: its own name, or its home and timing (Q9). */
+  label: string;
   /** The row that opens the script's home, on its home's tab. */
   item: FindingItem;
 }
@@ -974,14 +981,19 @@ export const ruleScripts = (world: RuleWorld, owners: CodeOwners = codeOwnersOf(
   };
   return worldScriptList(listWorld, filledScripts, owners).map((listed): RuleScript => {
     const { box, section } = listed;
+    const label = (home: string) => scriptLabel(box, home);
     if (listed.kind === 'world') {
-      return { listed, ref: scriptRef(box, null), item: { id: listed.key, name: scriptLabel(box, WORLD_SCRIPT_OWNER), section } };
+      const worldLabel = label(WORLD_SCRIPT_OWNER);
+      return { listed, ref: scriptRef(box, null), label: worldLabel, item: { id: listed.key, name: worldLabel, section } };
     }
     const { box: { entity } } = listed;
     const [id, name] = listed.kind === 'stat' ? [listed.box.stat.id, listed.box.stat.name] : [listed.box.trait.id, listed.box.trait.name];
     const home = labelOf(name, world);
-    if (!entity) return { listed, ref: scriptRef(box, home), item: namedItem(id, name, world, section) };
-    return { listed, ref: scriptRef(box, home, ` of ${quote(labelOf(entity.name, world))}`), item: { ...asItem(entity, world), section } };
+    if (!entity) return { listed, ref: scriptRef(box, home), label: label(home), item: namedItem(id, name, world, section) };
+    return {
+      listed, ref: scriptRef(box, home, ` of ${quote(labelOf(entity.name, world))}`), label: label(home),
+      item: { ...asItem(entity, world), section },
+    };
   });
 };
 
