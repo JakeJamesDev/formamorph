@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // Must load before importing the service: its singleton constructor opens IndexedDB.
 import 'fake-indexeddb/auto';
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
 import { ANONYMOUS_LIKE_CODES, INSTALL_HEADER_NAME, INSTALL_STORAGE_KEY } from '@/lib/anonymousLikes';
 
 /**
@@ -47,6 +47,12 @@ const freshModules = async () => {
   const likes = await import('@/lib/anonymousLikes');
   return { service, auth, likes };
 };
+
+// The first import transforms the service's module graph; under a loaded suite that alone outruns a test's
+// timeout, and the timed-out test's import then spends the next test's fetch mocks.
+beforeAll(async () => {
+  await import('./WorldStorageService');
+}, 60_000);
 
 beforeEach(() => {
   localStorage.clear();
