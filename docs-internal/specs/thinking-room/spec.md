@@ -53,6 +53,7 @@ Settled in the grill on 2026-10-14. Research: `docs-internal/notes/multi-endpoin
 13. **Q13 Slider with Max Output off.** On a budget target with Max Output off, the readout replaces the slider and its "no base" note.
 14. **Q14 Old llama.cpp builds.** A build that ignores `reasoning_budget_tokens` falls back to the `max_tokens` cut. Nothing tells the player; the debug log records it.
 15. **Q15 Full ladder.** Minimal 128, Extra High 8,192, Max 16,384, exactly as LiteLLM.
+16. **Q16 llama.cpp levels (spec session, from ticket 03).** `/props` answers `levels: ['none']` on a template without effort support, since llama.cpp takes `none` on every template. The record is then not ruled out, so Q5's off and the room go out before any reply proves reasoning. The switch shows on those templates, with Model Default as the only strength. Known cost: a llama.cpp model that never thinks also gets the room in its `max_tokens` and context reserve.
 
 ## User Stories
 
@@ -91,7 +92,7 @@ Settled in the grill on 2026-10-14. Research: `docs-internal/notes/multi-endpoin
 - **One strength-to-room table** lives beside the existing reasoning budget constants. Model Default resolves to Medium. The resolved strength is the one the request already uses, with the kept strength for endpoints that refuse off.
 - **The reasoning resolver** replaces the 200%-of-base Thought Ceiling with Answer Cap + Thinking Room. The same branch covers Inline narration, using narration's resolved strength.
 - **Budget targets with no base.** Where a target takes a budget and the endpoint's Max Output is off, the budget becomes the Thinking Room, raised to the dialect's floor. `max_tokens` is Answer Cap + budget. With Max Output set, the percent-of-Max-Output budget stays.
-- **A `llamacpp` dialect row.** The llama.cpp capability source names this dialect. The row writes the budget to `reasoning_budget_tokens`, the level to `reasoning_effort` where levels are honored, and off as `reasoning_effort: "none"` on every template. The record marks it as taking a budget sized by strength, so the request sends the room and the budget slider stays hidden. The existing `/props` levels answer is unchanged.
+- **A `llamacpp` dialect row.** The llama.cpp capability source names this dialect. The row writes the budget to `reasoning_budget_tokens`, the level to `reasoning_effort` where levels are honored, and off as `reasoning_effort: "none"` on every template. The record marks it as taking a budget sized by strength, so the request sends the room and the budget slider stays hidden. `/props` answers `levels: ['none']` on a template without effort support and the safe set on one with it (Q16).
 - **Cut-thought error.** The message states that the model used all its thinking room before it wrote an answer. Error Details add the Thinking Room and its strength beside `max_tokens`. Copy follows STE.
 - **Readout.** The prompt's reasoning field shows "‹Strength› · N tok" beside the strength where no budget slider shows. On a budget target with Max Output off, it replaces the slider and the "no base" note. Copy goes through the copy sweep.
 - **Old llama.cpp builds.** No detection. A reply whose reasoning ran past the room on a llama.cpp target adds a debug-log line. Nothing shows to the player.
