@@ -170,12 +170,21 @@ export function useWorldScriptsAdapter({ selectedId, onSelect }: {
         };
       }
       const { entry } = node;
+      // The runner skips a disabled stat's scripts.
+      const off = !!entry.box && 'stat' in entry.box && !isStatOn(entry.box.stat);
       return {
         lead: 'spacer',
-        // The runner skips a disabled stat's scripts.
-        faded: !!entry.box && 'stat' in entry.box && !isStatOn(entry.box.stat),
+        faded: off,
         label: <PlaceholderText text={entry.label} placeholders={placeholders} />,
-        ...(entry.entity && { meta: <PlaceholderText text={entry.entity.name} placeholders={placeholders} /> }),
+        ...((entry.entity || off) && {
+          meta: (
+            <>
+              {entry.entity && <PlaceholderText text={entry.entity.name} placeholders={placeholders} />}
+              {entry.entity && off && ' · '}
+              {off && 'Off'}
+            </>
+          ),
+        }),
       };
     },
   };
