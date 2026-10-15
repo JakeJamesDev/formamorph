@@ -1,12 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { retryableFiles } from './testRetry.mjs';
 
-const problem = (kind, message, body = 'stack') => (message === undefined ? '' : `<${kind} message="${message}" type="Error">\n${body}\n</${kind}>`);
+const problem = (kind, message, body = 'stack', type = 'Error') =>
+  (message === undefined ? '' : `<${kind} message="${message}" type="${type}">\n${body}\n</${kind}>`);
 const suite = (name, cases, counts = {}) => {
   const failures = counts.failures ?? cases.filter(([, message]) => message !== undefined).length;
   const errors = counts.errors ?? 0;
-  const body = cases.map(([title, message, kind = 'failure', stack]) =>
-    `<testcase classname="${name}" name="${title}" time="0.1">${problem(kind, message, stack)}</testcase>`).join('\n');
+  const body = cases.map(([title, message, kind = 'failure', stack, type]) =>
+    `<testcase classname="${name}" name="${title}" time="0.1">${problem(kind, message, stack, type)}</testcase>`).join('\n');
   return `<testsuite name="${name}" tests="${cases.length}" failures="${failures}" errors="${errors}" skipped="0" time="1">\n${body}\n</testsuite>`;
 };
 const report = (...suites) => `<?xml version="1.0" encoding="UTF-8" ?>\n<testsuites name="vitest tests">\n${suites.join('\n')}\n</testsuites>\n`;
@@ -24,6 +25,21 @@ const WAIT_FOR_MISS = [
   ' ❯ runWithExpensiveErrorDiagnosticsDisabled node_modules/@testing-library/dom/dist/config.js:47:12',
   ' ❯ checkCallback node_modules/@testing-library/dom/dist/wait-for.js:124:77',
   ' ❯ src/views/WorldEditor.historyOrigin.test.tsx:88:11',
+].join('\n');
+// A `waitFor` with an async callback: no wait-for frame, but the DOM dump `waitFor` appends when it gives up.
+const DUMP = 'Ignored nodes: comments, script, style\n&lt;body&gt;\n  &lt;div /&gt;\n&lt;/body&gt;';
+const ASYNC_WAIT_FOR_MISS = `expected [] to include &apos;Fenwick Reach&apos;\n\n${DUMP}`;
+const ASYNC_WAIT_FOR_STACK = [
+  `AssertionError: ${ASYNC_WAIT_FOR_MISS}`,
+  ' ❯ waitFor.timeout src/views/MainMenu.worldImport.test.tsx:54:60',
+].join('\n');
+// A sync `getBy*` miss carries the same dump from the query itself, with no `waitFor` behind it.
+const GET_BY_MISS = `Unable to find an element with the text: missing.\n\n${DUMP}`;
+const GET_BY_STACK = [
+  `TestingLibraryElementError: ${GET_BY_MISS}`,
+  ' ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19',
+  ' ❯ node_modules/@testing-library/dom/dist/query-helpers.js:76:38',
+  ' ❯ src/views/MainMenu.entry.test.tsx:19:12',
 ].join('\n');
 const PLAIN_MISS = [
   'AssertionError: expected 62 to be less than or equal to 61',
@@ -47,6 +63,18 @@ describe('retryableFiles', () => {
       suite('src/b.test.ts', [['one']]),
     ));
     expect(files).toEqual(['src/views/WorldEditor.autoSave.test.tsx', 'src/views/WorldEditor.historyOrigin.test.tsx']);
+  });
+
+  it('counts an async waitFor callback that gave up as a timeout, by the DOM dump on a non-query error', () => {
+    expect(retryableFiles(report(
+      suite('src/views/MainMenu.worldImport.test.tsx', [['one', ASYNC_WAIT_FOR_MISS, 'failure', ASYNC_WAIT_FOR_STACK, 'AssertionError']]),
+    ))).toEqual(['src/views/MainMenu.worldImport.test.tsx']);
+  });
+
+  it('leaves a sync getBy miss alone: the query dumped the DOM, not a waitFor that gave up', () => {
+    expect(retryableFiles(report(
+      suite('src/views/MainMenu.entry.test.tsx', [['one', GET_BY_MISS, 'failure', GET_BY_STACK, 'TestingLibraryElementError']]),
+    ))).toEqual([]);
   });
 
   it('returns nothing when any failure is not a timeout, so a real red is never retried', () => {
