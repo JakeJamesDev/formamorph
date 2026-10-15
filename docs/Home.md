@@ -46,7 +46,7 @@ Formamorph runs entirely in the browser and talks to any **OpenAI-compatible** c
 | 🛠️ **[World Editor](WorldEditor)** | The editor's modes, find and replace, the Authoring Tour, and saving your changes |
 | 🌍 **[World Editor: Overview](World-Editor-Overview)** | The world's name, card, avatar, music and AI-facing text, and uploaded or linked images |
 | 🎬 **[World Editor: Openings](World-Editor-Openings)** | The ways a game can start, their weights, and Self openings for personas |
-| 📊 **[World Editor: Stats](World-Editor-Stats)** | The player's numbers, their descriptors, and stat code |
+| 📊 **[World Editor: Stats](World-Editor-Stats)** | The player's numbers, their descriptors, and their scripts |
 | 🎭 **[World Editor: Entities](World-Editor-Entities)** | The people, creatures and things in a world, their names and aliases, and SillyTavern cards |
 | 🗺️ **[World Editor: Locations](World-Editor-Locations)** | The places, nesting, Connections and Travel Hints, and starting locations |
 | 🧬 **[World Editor: Traits](World-Editor-Traits)** | Trait modes, Pick Counts, requirements, entity traits, Blueprints and links |
@@ -55,7 +55,7 @@ Formamorph runs entirely in the browser and talks to any **OpenAI-compatible** c
 | 🧪 **[Test Bench](Test-Bench)** | Checking a world before you play it — the World Doctor, which dictionary entries fire, what the AI gets at a location, and turn one of a new game |
 | 🪪 **[Personas for Authors](Persona-Authoring)** | Playable entities, the **Allowed Personas** and **Starts On** controls, and the Persona and Player Name chips |
 | 📐 **[World Format](WorldFormat)** | Every field of a world `.json` file, and how to add a stat, a trait or an entity by hand |
-| 🧮 **[Stat Code Guide](StatCodeGuide)** | Writing dynamic JS formulas that derive one stat from others |
+| 🧮 **[Scripts Guide](ScriptsGuide)** | Writing JavaScript scripts for stats, traits and the world: formulas, narration rewrites and player prompts |
 | 🔗 **[Linked Content](LinkedContent)** | How a world's entities and dictionaries follow a library item, take updates, publish, download, and repair a missing source |
 
 ### Project
@@ -79,7 +79,7 @@ Open the app, go to **Settings**, and point it at your AI endpoint. Full setup, 
 ## 🧱 Tech stack
 <!-- keywords: built with, framework, technology used, programming language, open source code -->
 
-**React 18** · **TypeScript** (strict) · **Vite 5** · **Tailwind CSS** + **shadcn/ui** (Radix) · **three.js** + **@pixiv/three-vrm** · **Kokoro** (TTS) · **QuickJS** (sandboxed stat code)
+**React 18** · **TypeScript** (strict) · **Vite 5** · **Tailwind CSS** + **shadcn/ui** (Radix) · **three.js** + **@pixiv/three-vrm** · **Kokoro** (TTS) · **QuickJS** (sandboxed scripts)
 
 ---
 

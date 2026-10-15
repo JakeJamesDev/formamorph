@@ -45,7 +45,7 @@ The part of a Tool that runs when the AI calls it: a Lookup (searches world data
 _Avoid_: resolver, source
 
 **Formaquestion**:
-The help window that a player can open on every screen. It holds the player docs, a search over them, and a field to ask a question that the connected AI answers from the docs. It only answers: it never navigates and never edits a world, a save or a setting. A request carries the docs and the current Surface, and nothing from a world or a save, with two exceptions that read the open world: a Formaquestion Tool the player turns on, and the code test, a fixed function offered on code turns that checks and test-runs the AI's stat code on the open world's authored data (ADR-0011).
+The help window that a player can open on every screen. It holds the player docs, a search over them, and a field to ask a question that the connected AI answers from the docs. It only answers: it never navigates and never edits a world, a save or a setting. A request carries the docs and the current Surface, and nothing from a world or a save, with two exceptions that read the open world: a Formaquestion Tool the player turns on, and the code test, a fixed function offered on code turns that checks and test-runs the AI's scripts on the open world's authored data (ADR-0011).
 _Avoid_: help chat, assistant, help bot, wiki (the web copy of the docs)
 
 **Mascot**:
@@ -338,7 +338,7 @@ The entity or dictionary whose tree holds a trait, stat or placeholder, as its o
 _Avoid_: bearer, holder
 
 **Global Stat**:
-A stat in the world's own list, not under an entity or a Blueprint. It has no owner and belongs to no one. The AI reads it under **Global Stats**, and stat code reaches it as `stats`.
+A stat in the world's own list, not under an entity or a Blueprint. It has no owner and belongs to no one. The AI reads it under **Global Stats**, and a script reaches it as `stats`.
 _Avoid_: player stat, world stat, other stat
 
 **Global Trait**:
@@ -349,16 +349,43 @@ _Avoid_: player trait, world trait, other trait
 A stat of the played entity, kept under its entity id. The AI reads it in the Persona block, under the `Player Character` key. The Custom Persona entity's stats are Persona Stats too, under a library persona and under None.
 _Avoid_: player stat (as the word for a Global Stat)
 
-**`owner` (stat-code global)**:
-The entity that owns the running stat, with the same fields as an `entities` entry, so code reaches its own stats as `owner.stats`. For a Blueprint stat it is the entity the run is for. In a Global Stat's code it is an empty entry, and a write through it is dropped and reported.
+**`owner` (script global)**:
+The entity that owns the running stat, with the same fields as an `entities` entry, so code reaches its own stats as `owner.stats`. For a Blueprint stat it is the entity the run is for. In a Global Stat's script and in a world script it is an empty entry, and a write through it is dropped and reported.
 _Avoid_: self (the running stat's own entry), persona (the played entity)
+
+**Script**:
+One box of JavaScript with a Timing, kept on a stat, on a trait or on the world. Its home decides what `self` is and when the script is in force; the surface is otherwise the same. It reads the world and writes through `self`, other stats, placeholders and traits. A script that names `player` can tell or ask the player.
+_Avoid_: stat code, code box, formula (a returned number is one use), macro
+
+**Timing**:
+When a Script runs: Before the AI, After the AI, During AI Output, At Game Start or When a Trait Switches. The Timing menu is the only way to move a script between timings. Inside one timing, an optional `order` decides who runs first.
+_Avoid_: hook, phase, trigger (a Test Bench Instrument), event
+
+**Before the AI**:
+The Timing that runs at the start of a turn, before the prompt is built. Its writes are in that turn's prompt. No AI change, regen or clock time exists yet, so `previous` reads as the stat and every `delta` reads zero.
+_Avoid_: pre-turn, before box
+
+**After the AI**:
+The Timing that runs after the AI's stat changes and Regen apply. It reads the AI's change, this turn's regen and what the Before the AI scripts set._Avoid_: post-turn, after box, stat code (the old name of the whole feature)
+
+**During AI Output**:
+The Timing that runs once for each completed narration sentence, never for each token. The script reads `narration` and rewrites the sentence through `narration.sentence`. The rewrite is the one copy that the screen, the save, read-aloud and the AI's recap carry. It has no `player`.
+_Avoid_: stream hook, token hook, live edit
+
+**At Game Start**:
+The Timing that runs once for each new playthrough, on the opening turn, before the Before the AI scripts. A loaded save never runs it.
+_Avoid_: on load, setup script, init
+
+**When a Trait Switches**:
+The Timing that runs once for each trait that turns on or off in play, whatever switched it. The script reads `trait`, the trait that switched, with `enabled` as its new state. Setup picks fire nothing.
+_Avoid_: on toggle, trait hook, trait event
 
 **Original**:
 The world trait, group or stat a Link points at, at the root or under Blueprints. An Original is a Blueprint trait or stat. An entity's own trait or stat is never an Original.
 _Avoid_: source (a listing's term), template, parent
 
 **Automatic**:
-A trait Mode. The trait is active exactly when its gate holds, and no one can switch it: not the player, not Stat code. With no Requirement Rows it is always active. A curse is an Automatic trait that requires the cursed item. Automatic traits count toward their group's Pick Count. The stored value stays `alwaysOn`.
+A trait Mode. The trait is active exactly when its gate holds, and no one can switch it: not the player, not a script. With no Requirement Rows it is always active. A curse is an Automatic trait that requires the cursed item. Automatic traits count toward their group's Pick Count. The stored value stays `alwaysOn`.
 _Avoid_: Always On (the old name), forced, mandatory, locked (a Locked trait is one whose gate fails), permanent
 
 **Requirement**:

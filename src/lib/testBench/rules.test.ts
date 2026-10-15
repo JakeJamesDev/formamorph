@@ -1136,11 +1136,11 @@ describe('reachability rules', () => {
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe('warning');
     expect(found[0].items.map((i) => i.id)).toEqual(['e1']);
-    expect(found[0].message).toBe('An entity has no name, so stat code can’t reach it');
-    expect(RULES.find((rule) => rule.id === 'entity-no-code-name')?.summary(2)).toBe('2 entities have no code name, so stat code can’t reach them');
+    expect(found[0].message).toBe('An entity has no name, so scripts can’t reach it');
+    expect(RULES.find((rule) => rule.id === 'entity-no-code-name')?.summary(2)).toBe('2 entities have no code name, so scripts can’t reach them');
     // A name of only a chip no placeholder answers is written, but reads as no code name.
     const [chipOnly] = only(coded('{{ph:gone:world:Gone}}'), 'entity-no-code-name');
-    expect(chipOnly.message).toMatch(/^“.+” has no code name, so stat code can’t reach it$/);
+    expect(chipOnly.message).toMatch(/^“.+” has no code name, so scripts can’t reach it$/);
     expect(only(coded('Maren'), 'entity-no-code-name')).toEqual([]);
     expect(only(coded('', ''), 'entity-no-code-name')).toEqual([]);
   });

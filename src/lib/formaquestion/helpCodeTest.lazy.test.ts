@@ -22,7 +22,7 @@ vi.mock('@/lib/statCodeAnalysis', async (actual) => {
   return actual();
 });
 
-const index = createDocsIndex({ pages: { StatCodeGuide: '# Stat Code\n\nCode sets a stat.\n' } });
+const index = createDocsIndex({ pages: { ScriptsGuide: '# Stat Code\n\nCode sets a stat.\n' } });
 const snapshot = textSnapshot(textTarget({ reasoning: { ...UNKNOWN_REASONING_CAPABILITY, tools: true, sources: { tools: 'native' } } }));
 
 const replies = (...scripted: string[][]) => {

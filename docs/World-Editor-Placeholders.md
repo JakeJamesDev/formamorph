@@ -181,7 +181,7 @@ A pin keeps a placeholder at one value while a condition is true. The playthroug
 | A trait | The trait is active | The trait's [**Pins** tab](World-Editor-Traits#placeholder-pins). A trait can [pin a blueprint](World-Editor-Traits#pins-by-blueprint), and each owner's copy takes the pin. |
 | A placeholder value | That value is the placeholder's current value | The pin button beside the value. Its panel has **Add Placeholder Pin**. |
 
-When two sources pin the same placeholder, the higher row in this table wins. [Stat code](StatCodeGuide) can also pin and unpin a placeholder, and a code pin wins over all four.
+When two sources pin the same placeholder, the higher row in this table wins. A [script](ScriptsGuide) can also pin and unpin a placeholder, and a script pin wins over all four.
 
 The placeholder's **Pins** tab gathers every pin aimed at it. A change there is a change on the source. **Add Pin** picks the kind of source, then the source, and adds an empty pin there for you to fill in.
 

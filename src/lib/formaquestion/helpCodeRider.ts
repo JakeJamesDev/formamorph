@@ -54,8 +54,8 @@ const CODE_WORDS: readonly RegExp[] = [
 /** True when the question uses a code word. */
 export const hasCodeWords = (question: string): boolean => CODE_WORDS.some((word) => word.test(question));
 
-/** The Stat Code Guide section that lists the whole sandbox API. Every code turn sends it. */
-export const QUICK_REFERENCE_SECTION = 'StatCodeGuide#quick-reference';
+/** The Scripts Guide section that lists the whole sandbox API. Every code turn sends it. */
+export const QUICK_REFERENCE_SECTION = 'ScriptsGuide#quick-reference';
 
 /** True when a stat's Code tab is open. */
 export const isOnCodeTab = (surface?: Surface | null): boolean => surface?.tabs.includes(STAT_CODE_TAB) === true;

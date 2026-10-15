@@ -1092,7 +1092,7 @@ describe('PlaceholderManager — the Pins section', () => {
 // its own. A part named like one of those loses the name, which the author has to be told here.
 describe('PlaceholderManager — a part named like a code member', () => {
   const parent = ph({ id: 'parent', name: 'Hair', values: phValues([chip('part')]) });
-  const warning = () => screen.queryByText(/stat code can’t reach this part by name/);
+  const warning = () => screen.queryByText(/scripts can’t reach this part by name/);
 
   it('warns on a part whose name is one of an entry’s own members', () => {
     const part = ph({ id: 'part', name: 'value', values: phValues(['ash']), ownerId: 'parent' });

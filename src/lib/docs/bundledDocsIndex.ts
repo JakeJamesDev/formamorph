@@ -8,7 +8,7 @@ import { pageNameOf, type DocsPages } from './docsChecks';
 
 // Glob patterns must be literals; `isNonGuidePage` names the same pages and a test keeps them equal.
 const FILES = import.meta.glob<string>(
-  ['../../../docs/*.md', '!**/_Sidebar.md', '!**/Design-System.md', '!**/Writing-Guide.md', '!**/Changelog-v*.md'],
+  ['../../../docs/*.md', '!**/_Sidebar.md', '!**/Design-System.md', '!**/Writing-Guide.md', '!**/StatCodeGuide.md', '!**/Changelog-v*.md'],
   { query: '?docs-index', import: 'default', eager: true },
 );
 

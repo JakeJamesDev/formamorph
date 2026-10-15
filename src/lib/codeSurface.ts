@@ -63,7 +63,7 @@ export const readOnlyEntries = (entries: readonly SurfaceEntry[], maps: readonly
  * `statMaps` and lists that name among its globals.
  */
 export interface CodeSurface {
-  /** What a message calls the code, as in “x” isn’t available in stat code. */
+  /** What a message calls the code, as in “x” isn’t available in this script. */
   label: string;
   /** The names the sandbox injects, in the order an author meets them. Offered first. */
   globals: readonly SurfaceEntry[];

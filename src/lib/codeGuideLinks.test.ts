@@ -4,7 +4,8 @@ import { STAT_CODE_GUIDE_LINKS, TOOL_GUIDE_LINKS } from '@/lib/codeGuideLinks';
 import type { CodeSurface } from '@/lib/codeSurface';
 import { helpTopicProblems, pageNameOf, type DocsPages } from '@/lib/docs/docsChecks';
 import { docTargetId } from '@/lib/docs/docsLinks';
-import { STAT_CODE_SURFACE } from '@/lib/statCodeSurface';
+import { scriptSurface, STAT_CODE_SURFACE } from '@/lib/statCodeSurface';
+import type { ScriptTiming } from '@/types';
 import { toolScriptSurface } from '@/lib/tools/toolScriptSurface';
 
 const DOCS: DocsPages = Object.fromEntries(
@@ -19,6 +20,10 @@ const asTopics = (table: Readonly<Record<string, { page: string; anchor?: string
 
 const globalsOf = (surface: CodeSurface) => surface.globals.map((entry) => entry.name).filter((name) => name !== 'console');
 
+const TIMINGS: readonly ScriptTiming[] = ['before', 'after', 'output', 'start', 'switch'];
+/** Every global a script reads in some timing: the base surface's, then `narration`, `player` and `trait`. */
+const TIMING_GLOBALS = new Set(TIMINGS.flatMap((timing) => globalsOf(scriptSurface(STAT_CODE_SURFACE, timing))));
+
 describe('the Guide link table', () => {
   it('resolves every stat code row to a heading of the Guide', () => {
     expect(helpTopicProblems(asTopics(STAT_CODE_GUIDE_LINKS), DOCS)).toEqual([]);
@@ -28,8 +33,8 @@ describe('the Guide link table', () => {
     expect(helpTopicProblems(asTopics(TOOL_GUIDE_LINKS), DOCS)).toEqual([]);
   });
 
-  it('has a row for every stat code global, and none for a name the sandbox lacks', () => {
-    expect(Object.keys(STAT_CODE_GUIDE_LINKS).sort()).toEqual(globalsOf(STAT_CODE_SURFACE).sort());
+  it('has a row for every script global in any timing, and none for a name the sandbox lacks', () => {
+    expect(Object.keys(STAT_CODE_GUIDE_LINKS).sort()).toEqual([...TIMING_GLOBALS].sort());
   });
 
   it('has a row for every Tool global, and none for a name the sandbox lacks', () => {
@@ -38,7 +43,7 @@ describe('the Guide link table', () => {
 
   it('points the three owner-route globals at the headings the Guide gives them', () => {
     expect(['self', 'stats', 'owner'].map((name) => docTargetId(STAT_CODE_GUIDE_LINKS[name]))).toEqual([
-      'StatCodeGuide#self', 'StatCodeGuide#stats', 'StatCodeGuide#owner',
+      'ScriptsGuide#self', 'ScriptsGuide#stats', 'ScriptsGuide#owner',
     ]);
   });
 });
@@ -51,12 +56,19 @@ describe('the Guide link on a global’s card', () => {
     expect(linkOf(name, 1, STAT_CODE_SURFACE)).toEqual({ id: 'guide', target: STAT_CODE_GUIDE_LINKS[name] });
   });
 
+  it.each([['narration', 'output'], ['player', 'before'], ['trait', 'switch']] as const)(
+    'carries the Scripts Guide row of %s in a %s script',
+    (name, timing) => {
+      expect(linkOf(name, 1, scriptSurface(STAT_CODE_SURFACE, timing))).toEqual({ id: 'guide', target: { page: 'ScriptsGuide', anchor: name } });
+    },
+  );
+
   it.each(globalsOf(toolScriptSurface([])))('carries the Tool row of %s', (name) => {
     expect(linkOf(name, 1, toolScriptSurface([]))).toEqual({ id: 'guide', target: TOOL_GUIDE_LINKS[name] });
   });
 
   it('reads the row of the surface the code is in, as placeholders sits in both tables', () => {
-    expect(linkOf('placeholders', 1, STAT_CODE_SURFACE)).toMatchObject({ target: { page: 'StatCodeGuide' } });
+    expect(linkOf('placeholders', 1, STAT_CODE_SURFACE)).toMatchObject({ target: { page: 'ScriptsGuide' } });
     expect(linkOf('placeholders', 1, toolScriptSurface([]))).toMatchObject({ target: { page: 'Tools' } });
   });
 

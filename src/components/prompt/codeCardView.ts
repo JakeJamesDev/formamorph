@@ -149,7 +149,7 @@ export function renderCodeUses(uses: readonly CodeUse[], onPick: (use: CodeUse) 
   root.dataset.codeUses = '';
   root.setAttribute('aria-label', 'Uses');
   if (!uses.length) {
-    root.append(element('p', 'px-2.5 py-1 text-muted-foreground', 'No uses in stat code'));
+    root.append(element('p', 'px-2.5 py-1 text-muted-foreground', 'No uses in scripts'));
     return root;
   }
   root.append(element('h3', 'px-2.5 py-1 text-muted-foreground', uses.length === 1 ? '1 Use' : `${uses.length} Uses`));

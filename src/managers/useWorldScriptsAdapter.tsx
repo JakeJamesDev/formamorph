@@ -189,7 +189,7 @@ export function useWorldScriptsAdapter({ selectedId, onSelect }: {
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <span className="font-medium">Scripts</span>
-          <HelpButton topicId="worldEditor.statCode" className="h-6 w-6" />
+          <HelpButton topicId="worldEditor.scriptBox" className="h-6 w-6" />
         </div>
         <Hint>
           Shows every script by timing, in the order they run. Drag a script to change its place in its timing. In play,

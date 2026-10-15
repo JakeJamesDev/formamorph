@@ -565,7 +565,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
         <LabelRow reset={resetControl('scripts', 'Scripts')}>
           <div className="flex items-center gap-2">
             <Label>Scripts</Label>
-            <HelpButton topicId="worldEditor.statCode" className="h-6 w-6" />
+            <HelpButton topicId="worldEditor.scriptBox" className="h-6 w-6" />
           </div>
         </LabelRow>
         <Hint>Runs code at the timing you select. Code can set this stat&apos;s value, Min, Max, or Regen, pin a placeholder, or switch a trait.</Hint>

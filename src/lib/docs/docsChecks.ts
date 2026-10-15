@@ -15,8 +15,9 @@ export const HOME_PAGE = 'Home';
 /** The wiki's navigation page, which holds the second page index. */
 export const SIDEBAR_PAGE = '_Sidebar';
 
-/** Pages in `docs/` that are not part of the player guide, so nothing in the app points at them. */
-export const NON_GUIDE_PAGES: readonly string[] = [SIDEBAR_PAGE, 'Design-System', 'Writing-Guide'];
+/** Pages in `docs/` that are not part of the player guide, so nothing in the app points at them. `StatCodeGuide` is
+ *  the moved-to stub that keeps old wiki links open. */
+export const NON_GUIDE_PAGES: readonly string[] = [SIDEBAR_PAGE, 'Design-System', 'Writing-Guide', 'StatCodeGuide'];
 
 /** An archived changelog, one per old major series (`Changelog-v2`); the wiki keeps it, the app never loads it. */
 export const ARCHIVED_CHANGELOG = /^Changelog-v\d+$/;

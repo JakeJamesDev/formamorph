@@ -9,7 +9,7 @@ import { traitBoxSelf, type CodeBox, type CodeCardWorld, type CodeWorldLookup } 
 import type { SurfaceAnalysisOptions } from './statCodeAnalysis';
 import { cardWorldNames, statBoxAnalysisOptions } from './statCodeBoxOptions';
 import { parseCode, resolveCodeName } from './statCodeResolver';
-import { scriptSurface, TRAIT_SCRIPT_SURFACE, WORLD_SCRIPT_SURFACE } from './statCodeSurface';
+import { scriptSurface, STAT_CODE_SURFACE, TRAIT_SCRIPT_SURFACE, WORLD_SCRIPT_SURFACE } from './statCodeSurface';
 import {
   statCodeBoxes, traitCodeBoxes, worldScriptBoxes, type CodeOwners, type StatCodeBox, type TraitCodeBox,
 } from './statCodeTargets';
@@ -83,7 +83,7 @@ export function itemUses(
     const owner = boxOwnerOf(box);
     const selfName = owners.codeName(box.stat.name);
     const options = statBoxAnalysisOptions(names, {
-      selfName,
+      selfName, surface: scriptSurface(STAT_CODE_SURFACE, box.timing),
       ...(owner && { owner: { kind: owner.kind, statNames: box.owner?.stats.map((stat) => owners.codeName(stat.name)) ?? [] } }),
       lookup: lookupOf({ owner, timing: box.timing, self: { ...box.stat, name: selfName } }),
     });
@@ -95,7 +95,7 @@ export function itemUses(
     const selfName = owners.codeName(box.trait.name);
     const self = traitBoxSelf(box.trait.id, selfName);
     const options = statBoxAnalysisOptions(names, {
-      selfName, surface: TRAIT_SCRIPT_SURFACE,
+      selfName, surface: scriptSurface(TRAIT_SCRIPT_SURFACE, box.timing),
       ...(owner && { owner: { kind: owner.kind, ...(box.entity && { statNames: box.owner?.stats.map((stat) => owners.codeName(stat.name)) ?? [] }) } }),
       lookup: lookupOf({ owner, timing: box.timing, self }),
     });

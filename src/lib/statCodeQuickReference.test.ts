@@ -16,12 +16,12 @@ import {
 import type { SurfaceEntry } from './codeSurface';
 
 /**
- * The Stat Code Guide's Quick Reference states the whole sandbox API in one section. Its objects and members
+ * The Scripts Guide's Quick Reference states the whole sandbox API in one section. Its objects and members
  * are held to the surface lists, which `statCodeSurface.test.ts` holds to the sandbox; its code forms run in
  * the sandbox and in the editor's checks.
  */
-const SECTION_ID = 'StatCodeGuide#quick-reference';
-const WRITING_SECTION_ID = 'StatCodeGuide#writing-to-other-stats';
+const SECTION_ID = 'ScriptsGuide#quick-reference';
+const WRITING_SECTION_ID = 'ScriptsGuide#writing-to-other-stats';
 
 interface Row { object: string; members: string[]; read: string; write: string }
 
@@ -135,7 +135,7 @@ const rows = quickReferenceRows();
 
 afterEach(() => vi.restoreAllMocks());
 
-describe('the Stat Code Guide’s Quick Reference', () => {
+describe('the Scripts Guide’s Quick Reference', () => {
   it('has one row for each object the sandbox injects', () => {
     expect(rows.map((row) => row.object).sort()).toEqual(SANDBOX_GLOBALS.map((entry) => entry.name).sort());
   });

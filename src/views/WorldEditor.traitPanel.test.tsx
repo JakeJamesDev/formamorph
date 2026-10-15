@@ -132,7 +132,7 @@ describe('the World Editor trait panel tabs', () => {
     selectTrait('Sedge-Born');
     openPanelTab('Scripts');
     // The help topic keeps its stat code title until the help catches up.
-    expect(screen.getByRole('button', { name: 'About Dynamic Value Calculation' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'About Scripts' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Add Script' }));
 
     const sedge = ctx().traits.find((trait) => trait.id === 't1');

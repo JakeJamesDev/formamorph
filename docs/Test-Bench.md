@@ -93,7 +93,7 @@ The **Issues** tab is the World Doctor. It checks your world's structure: broken
 
 Some checks run only when you ask:
 
-- **Check Stat Code** runs each stat's code and lists what fails. It shows in Advanced mode when a stat has code.
+- **Check Scripts** runs every script of every stat, trait and the world, in each timing, and lists what fails. Each finding names the script by its name, or by its owner and timing. It shows prompts as it runs: each `player` question shows, one after another, for you to answer. It shows in Advanced mode when the world has a script with code.
 - **Check Sources** asks the server whether the library items this world's copies follow still exist. It shows when a copy follows a published item. A copy whose source is gone gets a repair list and **Apply**.
 
 In Simple mode, findings about hidden fields fold into one line. Switch to Advanced mode to see them.

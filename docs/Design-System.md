@@ -1873,7 +1873,7 @@ Open `#dev?modal=designSystem&tab=chip-options` for the dialog on an **Entities*
 
 **Purpose:** Explain the name under the pointer or caret in a code editor, and list every place the world's code uses a stat.
 
-> ✅ **Approved.** The user approved the look as a Design System pattern in the Code Hover Cards spec (ruling Q19; Q4 and Q24 settled the completion pane and the pinned list). Production: stat code, Tool scripts and the stat code template dialog.
+> ✅ **Approved.** The user approved the look as a Design System pattern in the Code Hover Cards spec (ruling Q19; Q4 and Q24 settled the completion pane and the pinned list). Production: scripts, Tool scripts and the script template dialog.
 
 **Density:** Compact. The card is 22.5rem wide, or the screen width less 2rem. Every section pads 0.625rem across and 0.375rem down, and one rule divides the sections.
 
@@ -1887,7 +1887,7 @@ Open `#dev?modal=designSystem&tab=chip-options` for the dialog on an **Entities*
 - 🪪 **Default.** A slot's start value, on one line with its label.
 - 🔗 **Links.** One row of text links at the bottom, in the `info` color: **Open**, **Find All Uses**, **Go to Line N** and **Read in the Guide**. A host that cannot act on a link leaves it out. The completion pane shows only **Read in the Guide**.
 - 📦 **Box.** A 1px `border` line, a 0.375rem radius, the `popover` fill and a soft shadow. A hover and a pinned list use this box. The completion pane has the same border, radius and fill, without the shadow.
-- 📌 **Find All Uses.** A click on the link pins the card. A second box hangs 0.25rem below it, with a heading such as "3 Uses". A row reads "Stat · Before · Line 3", or "Entity › Stat · After · Line 7". A Blueprint box that no entity runs carries a muted **No Owners** tag. The list scrolls past 14rem. An empty list reads "No uses in stat code".
+- 📌 **Find All Uses.** A click on the link pins the card. A second box hangs 0.25rem below it, with a heading such as "3 Uses". A row reads "Stat · Before · Line 3", or "Entity › Stat · After · Line 7". A Blueprint box that no entity runs carries a muted **No Owners** tag. The list scrolls past 14rem. An empty list reads "No uses in scripts".
 
 ### Behavior
 
@@ -1930,7 +1930,7 @@ Build a new card row in the card model. Do not draw a row in the DOM by hand.
 | Slot | The slot's type, and its **Default**. |
 | No world data | The first three sections only, with no World Details. |
 | Pinned | The card with the uses list below it. A press outside or Escape closes both. |
-| No uses | "No uses in stat code". |
+| No uses | "No uses in scripts". |
 | Blueprint with no owners | A muted **No Owners** tag on the row. |
 
 ### Writing review

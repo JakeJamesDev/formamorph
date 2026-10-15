@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { codeCard, statRows, type CodeCard } from './codeCards';
 import { lazyLookup, statBoxLookup, type CodeBox, type CodeBoxOwner } from './codeWorldLookup';
 import type { SurfaceAnalysisOptions } from './statCodeAnalysis';
-import { STAT_CODE_SURFACE } from './statCodeSurface';
+import { STAT_CODE_SURFACE, WORLD_SCRIPT_SURFACE } from './statCodeSurface';
 import { statCodeOwners, type StatRouteWorld } from './statCodeTargets';
 import type { StatCodeTiming } from './statCodeTiming';
 import type { Entity, Stat, StatGroup, StatLink } from '@/types';
@@ -254,5 +254,32 @@ describe('`self` and `owner` cards', () => {
 
   it('marks a Blueprint box no one runs', () => {
     expect(cardAt('return own|er.name;', box({ kind: 'blueprint' }, calm))?.rows).toEqual([{ label: 'Owners', value: 'No Owners' }]);
+  });
+});
+
+describe('self in a world script', () => {
+  // The lookup binds a stat as `self`, as it does for any box; the world script's `self` must not read it.
+  const worldScript: SurfaceAnalysisOptions = {
+    surface: WORLD_SCRIPT_SURFACE, selfName: '', lookup: statBoxLookup(statCodeOwners(world), { owner: null, timing: 'after', self: health }),
+  };
+
+  it('keeps the card of an empty object and names no stat', () => {
+    const card = cardAt('const x = se|lf;', worldScript);
+    expect(card?.description).toBe('Empty in a world script.');
+    expect(card?.rows).toBeUndefined();
+    expect(card?.item).toBeUndefined();
+  });
+
+  it('gives a field of self no card, since the object is empty', () => {
+    expect(cardAt('const x = self.val|ue;', worldScript)).toBeNull();
+    expect(cardAt('const x = self.val|ue;', worldBox)?.signature.path).toBe('Stat.value');
+  });
+
+  it('keeps the surface line on owner too', () => {
+    expect(cardAt('const x = ow|ner;', worldScript)?.description).toBe('Empty in a world script.');
+  });
+
+  it('still names the stat on a stat script’s self', () => {
+    expect(rowsOf(cardAt('const x = se|lf;', worldBox))).toMatchObject({ Stat: 'Health (global stat)' });
   });
 });

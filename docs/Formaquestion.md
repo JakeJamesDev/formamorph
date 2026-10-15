@@ -497,9 +497,9 @@ The **General** tab sets how the window looks, how your AI answers, how a questi
 | **Use the Open Screen** | On | Sends the open screen, your selected item, and its guide section |
 | **History Length** | 4 | Sets how many earlier questions and answers each request holds, from 0 to 20. 0 sends each question alone. |
 
-The selected item is a stat, trait, entity, location or dictionary entry open in the World Editor, or the entity open in the Entity Editor. Its name goes with the screen, such as "Code tab of the stat Courage".
+The selected item is a stat, trait, entity, location or dictionary entry open in the World Editor, or the entity open in the Entity Editor. Its name goes with the screen, such as "Scripts tab of the stat Courage".
 
-A question about code always sends the **Quick Reference** of the Stat Code Guide. On a stat's **Code** tab, it comes second, after the tab's own section. From any other screen, it comes first, and the answer request does not name the screen.
+A question about code always sends the **Quick Reference** of the Scripts Guide. On a stat's **Scripts** tab, it comes second, after the tab's own section. From any other screen, it comes first, and the answer request does not name the screen.
 
 With **Keyword Search**, **AI Search** and **Use the Open Screen** all off, no other guide section can reach your AI. A question that is not about code then goes alone, and the answer has no note that it is not from the guide.
 
@@ -539,7 +539,7 @@ The **Prompts** tab holds the help prompts: the text that tells your AI how to a
 | **Answer** | Tells your AI how to answer from the guide sections in the request |
 | **Search** | Tells your AI how to choose guide sections from the list of headings, for the **AI Search** request |
 | **Lookup** | Tells your AI how to answer when it can read more sections through the lookup function |
-| **Code** | Tells your AI how to write stat code. It goes after a question about code, and after any question from a stat's **Code** tab while **Use the Open Screen** is on |
+| **Code** | Tells your AI how to write scripts. It goes after a question about code, and after any question from a stat's **Scripts** tab while **Use the Open Screen** is on |
 
 - **Default** is read-only. Its text comes from the app, so each release updates it.
 - **Duplicate & Edit** in the notice above a Default prompt makes a copy of the preset and opens it for edits. The **Duplicate** button beside the preset list does the same. **Add New Preset…** in the list asks for a name first.
@@ -595,7 +595,7 @@ The **Tools** tab lists the functions your AI can call while it answers. It uses
 |---|---|---|
 | **read_guide** | Off | The guide lookup. It starts off, and it runs only while the **Answer Endpoint** takes function calls. Your AI reads more guide sections when the sections in the request don't answer the question. It can search the guide by words or read sections by id. It roughly quadruples the input tokens of a question. |
 | **roll** | Off | A dice roll. Ask your AI to roll, such as "roll two six-sided dice", and it rolls and gives you the total. |
-| **test_stat_code** | On | The code test. On a question about stat code, your AI checks its code and runs it once before it answers, as **Test Code** does. It reads the world you have open, so the names of its stats, traits, entities, placeholders and dictionaries can go to your **Answer Endpoint**. When your AI names no stat, it tests the stat you have selected. It never changes the world. With no world open, it checks the code without the names and does not run it. Your AI is told to fix what the test finds, and to give its best code and name the error that remains after its last call. |
+| **test_stat_code** | On | The code test. On a question about scripts, your AI checks its code and runs it once before it answers, as **Test Code** does. It reads the world you have open, so the names of its stats, traits, entities, placeholders and dictionaries can go to your **Answer Endpoint**. When your AI names no stat, it tests the stat you have selected. It never changes the world. With no world open, it checks the code without the names and does not run it. Your AI is told to fix what the test finds, and to give its best code and name the error that remains after its last call. |
 
 - **Enabled** turns a function on or off. This device keeps the switches, for every help preset.
 - **Max Calls per Request** sets how many times your AI can call the function for one question, from 1 to 20. Leave it blank for the default: 3 for **read_guide**, 4 for **roll**, 3 for **test_stat_code**.

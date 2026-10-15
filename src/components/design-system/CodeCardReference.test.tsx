@@ -47,7 +47,7 @@ describe('code hover card reference', () => {
       'Tom › Health · Before · Line 1',
       'Dread · After · Line 7No Owners',
     ]);
-    expect(within(within(theme('Dark')).getByRole('region', { name: 'No Uses' })).getByText('No uses in stat code')).toBeInTheDocument();
+    expect(within(within(theme('Dark')).getByRole('region', { name: 'No Uses' })).getByText('No uses in scripts')).toBeInTheDocument();
   });
 
   it('reports what each control does in its own theme only', async () => {

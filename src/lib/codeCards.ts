@@ -303,6 +303,8 @@ function boxGlobal(card: CodeCard, lookup: CodeWorldLookup, options: SurfaceAnal
         const record = options.selfName ? lookup.trait({ route: options.owner ? 'owner' : 'world' }, options.selfName) : null;
         return record ? { ...card, ...traitDetails(record) } : card;
       }
+      // A world script's `self` is empty, so its card keeps the surface line and names no stat.
+      if (options.surface.selfIs === 'empty') return card;
       const record = lookup.self();
       const { rows = [], item } = statDetails(record);
       const scope = record.scope ? ` (${scopedKind({ kind: 'stat', scope: record.scope })})` : '';
@@ -313,7 +315,8 @@ function boxGlobal(card: CodeCard, lookup: CodeWorldLookup, options: SurfaceAnal
       description: [card.description, LIBRARY_PERSONA_NOTE].filter(Boolean).join(' '),
       rows: [{ label: 'Can Play', value: listText(lookup.persona()) }],
     };
-    case 'owner': return ownerCard(card, lookup.owner());
+    // A world script's `owner` is empty too, and its surface line says so.
+    case 'owner': return options.surface.selfIs === 'empty' ? card : ownerCard(card, lookup.owner());
     default: return card;
   }
 }

@@ -62,7 +62,7 @@ To remove a target, select the **×** on its chip. To remove a whole row, select
 
 The item is now a blueprint. The player never picks it directly. Entities get it only through [links](#links).
 
-> ⚠️ **Blueprints refuses the item while something outside it reads the item.** That is a requirement that names it, or stat code that reads it by name. A note names the first one. Remove it, then drag again.
+> ⚠️ **Blueprints refuses the item while something outside it reads the item.** That is a requirement that names it, or a script that reads it by name. A note names the first one. Remove it, then drag again.
 
 ## How to Link to a Blueprint
 <!-- keywords: give to entity, assign, share, attach, reuse, template, npc class, apply to characters, same perk several npcs, hand out, drag onto character, tick boxes -->
@@ -102,7 +102,7 @@ A blank **AI-Facing Description** is fine for a name that explains itself, such 
 > 💡 **The AI doesn't see Stat Changes.** It reads that the player is *Sickly*. It doesn't read that the trait cost 20 Vigor. The stat carries the number. So write the description as a fact the narrator can use: *"Flinches at open water"*, not *"-20 swimming"*.
 
 ## The Panel
-<!-- keywords: pins tab missing, stats tab missing, owned by line, details tab, four tabs -->
+<!-- keywords: pins tab missing, scripts tab missing, stats tab missing, owned by line, details tab, five tabs -->
 <!-- route: worldEditorTrait.details -->
 
 Select a trait to open its panel.
@@ -113,6 +113,7 @@ Select a trait to open its panel.
 | **Availability** | **Mode**, **Starts**, **In Game** and [**Requires**](#requirements) | Simple and Advanced |
 | **Stats** | **Stat Changes**, and **Stat Availability** in Advanced mode | Simple and Advanced |
 | **Pins** | **Placeholder Pins** | Advanced only |
+| **Scripts** | [Scripts](#scripts) | Advanced only |
 
 On an entity's own trait, the **Details** tab starts with the line **Owned by** and the entity's name. The **Stats** tab shows only when the entity can [own stat traits](#entity-traits).
 
@@ -149,7 +150,7 @@ A **Hidden** trait can carry **Stat Changes**, and visible stat bars move. Use i
 
 > 💡 **A requirement can point at an Automatic or Hidden trait.** A hidden bonus can unlock other traits.
 
-> ⚠️ **Stat code never switches an Automatic or Hidden trait.** Its requirements alone decide.
+> ⚠️ **A script never switches an Automatic or Hidden trait.** Its requirements alone decide.
 
 ## Stat Changes
 <!-- keywords: bonus, buff, debuff, modifier, penalty, extra hp, raise cap, boost, adds not sets -->
@@ -175,7 +176,7 @@ On an entity's trait, the rows change that entity's own stats. The stat list sho
 
 **Advanced mode only.** Select **Add Stat Availability** to add a row. Each row names a stat and picks **Enable** or **Disable**. The row overrides the stat's own [**Enabled** checkbox](World-Editor-Stats#availability) while the trait is active.
 
-A disabled stat isn't shown to the player or sent to the AI. Its Regen and code don't run.
+A disabled stat isn't shown to the player or sent to the AI. Its Regen and scripts don't run.
 
 ## Placeholder Pins
 <!-- keywords: appearance from choice, force a word, lock random text, returns when off, type custom text, hair by perk -->
@@ -184,6 +185,16 @@ A disabled stat isn't shown to the player or sent to the AI. Its Regen and code 
 **Advanced mode only.** A pin keeps a [placeholder](World-Editor-Placeholders#pins) at one value while the trait is active. For example, a *Redhead* trait pins Hair Color to *copper*. The playthrough keeps its own roll, and the roll comes back when the trait is switched off.
 
 You can type a value that isn't in the placeholder's list. The game uses it as written.
+
+## Scripts
+<!-- keywords: trait script, script only while active, rule that follows a trait, switch script, add script, when a trait switches -->
+<!-- route: worldEditorTrait.scripts -->
+
+**Advanced mode only.** The **Scripts** tab holds the trait's own scripts. Select **Add Script**, pick a timing in the **Timing** menu, and write JavaScript in the box.
+
+A trait's script runs only while the trait is active, as a stat with **Enabled** cleared pauses its scripts. In the script, `self` is the trait, read-only. A trait's own **When a Trait Switches** script also runs when the trait switches off. A trait an entity owns, or links, runs once for each entity that holds it, and `owner` is that entity.
+
+> 📘 Full reference: [Scripts Guide](ScriptsGuide).
 
 ## When two traits conflict
 <!-- keywords: clash, priority, which wins, overlap, contradiction, order matters, tie -->

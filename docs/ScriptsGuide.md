@@ -1,0 +1,1075 @@
+# 🧮 Scripts Guide
+<!-- keywords: scripts, stat code, stat script, trait script, world script, scripting, automation, custom logic, game mechanics, coding, rules engine, javascript, dynamic value calculation -->
+
+This guide explains Formamorph's **scripts**. Older worlds and posts call them stat code. A script is one box of JavaScript with a timing. It belongs to a stat, a trait, or the world. A script can set a stat's value from other stats, set its own bounds, or write another stat. It can also pin a placeholder, switch a trait, rewrite a narration sentence, or ask the player a question. In a world file a script is one entry in a `scripts` list ([Scripts](WorldFormat#scripts)). The [World Format](WorldFormat#stats) page describes the rest of a stat.
+
+## How to Add a Script
+<!-- keywords: add stat code, stat code, script, javascript, js, formula, calculate, dynamic, programming, tab, computed value, derived, equation, math, tab is missing, where to write it, depends on another stat, auto update each turn, timing, add script button, name a script -->
+<!-- route: worldEditorStat.code -->
+
+1. In the World Editor, select **Advanced** in the mode switch. The **Scripts** tab shows in Advanced mode only.
+2. Open the **Stats** tab and select the stat. Open its **Scripts** tab. Only a number or percentage stat has it.
+3. Select **Add Script**. Pick a timing in the **Timing** menu. For a value the AI should read this turn, use **Before the AI**. For a reaction to the AI's change, use **After the AI**. See [The Five Timings](#the-five-timings).
+4. Type your JavaScript in the box. A **Name** is optional. A blank name reads as the owner and timing, such as "Health · After the AI".
+5. Select **Test Code** under the box. Read the result, any error, and every write the run made.
+
+A trait has its own **Scripts** tab. It runs its scripts only while the trait is active. The world has a **Scripts** tab in the **Logic** group. It lists every script by timing, in run order. See [How to Review Every Script in One Place](#how-to-review-every-script-in-one-place).
+
+## How to Insert a Template
+<!-- keywords: example, snippet, preset code, starter, sample, script, ready made, boilerplate, prebuilt, no coding skills, recipe, wizard, fill in the blanks -->
+<!-- route: worldEditorStat.code -->
+
+1. Open the stat's **Scripts** tab.
+2. Select **Templates** beside the box's **Test Code** button.
+3. Pick a template. Each box lists only the templates written for its timing.
+4. Fill in the inputs the template asks for.
+5. Edit the inserted code as you like.
+
+## How to Insert a Name from Your World
+<!-- keywords: reference an entity's trait, trait of an entity, find a name, pick a name, insert a path, menu, variable button, drill down, dictionary placeholder, persona trait, stat value, don't type names, copy the right spelling -->
+<!-- route: worldEditorStat.code -->
+
+Select the **Variable** button in the toolbar of a code box on a stat's **Scripts** tab. The menu opens on **This Stat**, **Stats**, **Traits**, **Entities**, **Persona**, **Placeholders**, **Dictionaries** and **Clock**. In the box of an entity's stat or a Blueprint stat, an **Owner** group follows **This Stat**. **Stats** always lists the global stats. Each group opens level by level: a list of your world's own names, then a name's fields, and for an entity, its **Traits** and **Placeholders**. Select a field to insert its whole path at the caret. To reach `entities.Mira.traits.Wounded.enabled`, open **Entities**, **Mira**, **Traits**, **Wounded**, and then select **enabled**. The path runs as inserted, with no name to type.
+
+## How to Limit the AI's Change to a Stat
+<!-- keywords: clamp, cap, max, restrict, prevent, too fast, delta, script, throttle, big swings, jumps too much, slow down gains, never go up, dampen, narrator overreacts, at most per turn -->
+<!-- route: worldEditorStat.code -->
+
+1. Open the stat's **Scripts** tab.
+2. Add a script with the **After the AI** timing. Read the AI's ask from `self.delta.ai.value`.
+3. Clamp the ask.
+4. Set `self.value` from `self.previous.value`, the clamped ask and `self.delta.regen.value`. See [Reading This Turn](#reading-this-turn) for an example.
+5. Select **Test Code**.
+
+## How to Change Another Stat from Code
+<!-- keywords: move two stats at once, one event changes several stats, one script hurts health and raises luck, dice roll with a penalty, halve health on a bad roll, bonus on a good roll, hub stat, one box for many stats, write to another stat, change a different stat, cap another stat, raise another stat's max, speed up another stat's regen, my script changes the wrong stat, two scripts fight over one stat, split logic across stats, reaction in each stat's box, world script writes stats -->
+<!-- route: worldEditorStat.code -->
+
+1. Open the **Scripts** tab of the stat that decides the change. This stat is the hub. For a rule that belongs to no stat, add the script to the world's **Scripts** tab.
+2. In its code box, write the field of the stat to move: `stats.Health.value = stats.Health.value / 2`. To move an entity's stat, name the entity: `entities.Mira.stats.Trust.value -= 5`. Use the **After the AI** timing to react to this turn's roll or ask.
+3. Select **Test Code**. It lists every write to another stat, such as `stats.Health.value = 30`, with the owner of each target stat.
+4. In **Advanced** mode, open the [Test Bench](Test-Bench#issues) and read **Issues**. It warns when two scripts write one field.
+
+See [Writing to Other Stats](#writing-to-other-stats) for the four fields and the rules.
+
+## How to Pin a Placeholder from Code
+<!-- keywords: script, javascript, set value, force, wildcard, variable, wording follows a stat, conditional text, override the roll, swap wording by value, lock in, mood changes with number, programmatically -->
+<!-- route: worldEditorStat.code -->
+
+1. Open the stat's **Scripts** tab.
+2. Add a script with the **Before the AI** timing. Call `pin` on the placeholder, such as `placeholders.Mood.pin('calm')`. A pin from this script is in the prompt for this turn.
+3. Select **Test Code**. It lists each placeholder the run pinned.
+
+## How to Rewrite a Narration Sentence
+<!-- keywords: filter words, censor, replace a word, swap a word, turn a name into a link, add a link, add an image, markdown link, clean up narration, fix wording, during ai output, narration script, rewrite the story as it streams, remove a phrase, change what the narrator says -->
+<!-- route: worldEditorStat.code -->
+
+1. Open a **Scripts** tab and select **Add Script**. A world script suits a rule for the whole story.
+2. Pick **During AI Output** in the **Timing** menu.
+3. Assign the new sentence to `narration.sentence`, or return a string: `narration.sentence = narration.sentence.replace('door', '[door](https://example.com)');`
+4. Type a sentence in **Sample Sentence** and select **Test Code**. The report leads with the rewritten sentence.
+
+See [During AI Output](#during-ai-output) for what the rewrite changes.
+
+## How to Ask the Player a Question
+<!-- keywords: prompt the player, ask the player, yes or no, confirm, choose an option, pick from a list, type an answer, show a message, toast, tell the player, dialog, player input, interactive script, question from a script -->
+<!-- route: worldEditorStat.code -->
+
+1. Open a **Scripts** tab and select **Add Script**. Pick any timing except **During AI Output**.
+2. Call a `player` function. `player.confirm("Open the door?")` returns `true` or `false`. `player.ask("Which path?", ["Left", "Right"])` returns the pick. `player.askText("Name the dog")` returns the typed text.
+3. Use the answer in the next line. There is no `await`.
+4. Select **Test Code**. The question shows under the box, as it does in play.
+
+See [Player](#player) for every call and for what closing a prompt does.
+
+## How to Review Every Script in One Place
+<!-- keywords: scripts tab, all scripts, list of scripts, run order, order of scripts, drag script, reorder scripts, which script runs first, world script, add a world script, find a script, scripts by timing -->
+<!-- route: worldEditor.scripts -->
+
+1. In the World Editor, select **Advanced** in the mode switch and open the **Scripts** tab in the **Logic** group.
+2. Read the tree. It has one group for each timing, and each script is a row, in the order the scripts run.
+3. Select a row to edit its script in the same box its owner shows. **Open** followed by the owner's name jumps to the owner's **Scripts** tab. A world script has no owner to open.
+4. Drag a row to change its place in its timing. A drop sets the **order** of the scripts in that timing. A drag to another timing is refused. Change a script's timing in its **Timing** menu.
+5. Select **Add Script** and pick a timing. The new script belongs to the world. The text typed in the search box becomes its name.
+
+## How to Debug Scripts
+<!-- keywords: error, console, log, fix, broken, not working, test, script, print values, devtools, f12, trace, inspect, wrong number, canceled prompt -->
+<!-- route: worldEditorStat.code -->
+
+1. Select **Test Code** to see the error and every write.
+2. Add `console.log()` lines.
+3. Open your browser's developer console. Each line shows there.
+4. In the World Editor's [Test Bench](Test-Bench#issues), read the **Issues** list for writes to unknown names and for two scripts that write one stat field. Each finding names the script by its name, or by its owner and timing.
+
+## Overview
+
+A script runs in a sandbox at its own point in the turn (see [The Five Timings](#the-five-timings)). It can:
+
+- **Derive a value** from other stats (e.g., carrying capacity based on strength)
+- **Combine stats** (e.g., defense calculated from armor + agility)
+- **React to thresholds** (e.g., speed penalties when health is below 30%)
+- **Follow time**: how long a turn took, or what time of day it is (see [The Story Clock](#the-story-clock))
+- **Set its own Min, Max, or Regen** (see [Writing to `self`](#writing-to-self))
+- **Write another stat**, global or owned by any entity, so one event can move several stats (see [Writing to Other Stats](#writing-to-other-stats))
+- **Shape what the AI asked for** before it lands (see [Reading This Turn](#reading-this-turn))
+- **Pin a placeholder** to any text (see [Placeholders](#placeholders))
+- **Switch a trait** on or off (see [Traits](#traits))
+- **Read or switch an entity's traits**, and read its placeholders (see [Persona](#persona) and [Entities](#entities))
+- **Find the entity that owns the stat** with `owner` (see [Owner](#owner))
+- **Read a dictionary's placeholders** (see [Dictionaries](#dictionaries))
+- **Rewrite a narration sentence** as it completes (see [Narration](#narration))
+- **Tell or ask the player** (see [Player](#player))
+- **React when a trait switches** (see [Trait](#trait))
+
+## How It Works
+<!-- keywords: which box to use, lifecycle, sequence of steps, pre and post, how often it executes, hooks, script crashes, reads zero early, older single box worlds, where scripts live, home of a script, stat script, trait script, world script -->
+
+1. A script is one box of JavaScript with a timing. A stat, a trait or the world holds any number of them
+2. At its timing, each script runs in a safe environment
+3. A script reads every stat, the story clock, the world's placeholders and traits, and the entities and dictionaries in the game
+4. `return <number>` sets the stat's value, clamped to its range. Writes to `self`, `stats`, `owner`, `placeholders`, `traits`, `persona`, `entities` and `dictionaries` apply after the run
+5. A script that throws or times out changes nothing
+
+### The Home of a Script
+
+A script's home decides two things: what `self` is, and when the script is in force.
+
+| Home | `self` | In force |
+| --- | --- | --- |
+| A stat | The stat | Always. A stat that a trait switched off pauses its scripts |
+| A trait | The trait's own entry. It is read-only, and a return value is ignored | While the trait is active. A global trait runs once with `owner` empty. An entity's trait runs once for each entity that holds it, with that entity as `owner` |
+| The world | An empty object. A return value and a write to `self` are ignored | Always |
+
+A Blueprint stat's script runs once for each owner, in every timing.
+
+### The Five Timings
+
+A turn runs scripts at five points:
+
+| Timing | When it runs | Writes apply | Names it adds |
+| --- | --- | --- | --- |
+| **Before the AI** | At the start of a turn, before the prompt is built | In that turn's prompt | `player` |
+| **After the AI** | After the AI's changes and Regen apply | When the turn ends | `player` |
+| **During AI Output** | Once for each narration sentence, when it completes | The sentence, then the stats with the After the AI scripts | `narration` |
+| **At Game Start** | Once, on the opening turn of a new game, before the Before the AI scripts | In the opening prompt | `player` |
+| **When a Trait Switches** | Each time a trait turns on or off in play | At once | `player` and `trait` |
+
+A timing adds names to the ones every script reads. The editor's **Variable** menu lists the names a timing adds in a group at the end: **Narration**, **Player**, and **Switched Trait**. In a trait's script, **This Trait** replaces **This Stat**, and a world script has neither.
+
+| Step | What happens |
+| --- | --- |
+| 1 | **At Game Start** runs, on the opening turn of a new game only |
+| 2 | **Before the AI** runs, on the state the turn started in |
+| 3 | The prompt is built and the AI answers. **During AI Output** runs on each sentence as the narration streams |
+| 4 | The AI's stat changes apply |
+| 5 | Regen applies |
+| 6 | **After the AI** runs |
+| 7 | **When a Trait Switches** runs right after any step above that switches a trait |
+
+**Before the AI** runs before the prompt is built. A value it sets, a placeholder it pins, or a trait it switches is in the prompt for that turn. A value it sets shows on the bar while the AI is still writing.
+
+**After the AI** is where a stat's one code box always ran, so a world written before scripts keeps its meaning with no edits. It reads the AI's change, this turn's regen, and the values the Before the AI scripts set.
+
+> ⚠️ **A Before the AI script has no turn behind it yet.** `previous` reads as the stat itself, `delta.ai`, `delta.regen`, `delta.total` and `delta.actual` all read zeros, and the clock reads turn start, so `clock.deltaHours` is `0`. Code that scales the AI's change belongs in an After the AI script. At Game Start and During AI Output read the same turn start.
+
+**Bounds carry across timings.** A `self.max` a Before the AI script sets persists through an After the AI script that never writes it. Emptying a script leaves the bounds as they are.
+
+#### During AI Output
+
+The script runs once for each narration sentence, when the sentence completes. It never runs for each token. It reads `narration` (see [Narration](#narration)) and rewrites the sentence by assigning `narration.sentence` or by returning a string.
+
+- The rewrite is the one copy. The screen, the save, read-aloud and the AI's recap of the story all carry it.
+- A rewrite is one sentence, whatever it holds. The reveal and read-aloud release it as one unit.
+- Scripts that run on one sentence chain. Each reads the sentence as the one before left it, in run order.
+- A script that throws or times out passes its sentence unchanged. The error logs, and the [Test Bench](Test-Bench#issues) reports it.
+- Stat, placeholder and trait writes from every sentence apply once, with the After the AI scripts. Across sentences, sentence N+1 reads the stats as sentences 0 to N left them.
+- A turn that you stop but keep lands none of these writes. The kept text shows the rewritten sentences.
+- With one of these scripts in the world, the narration reveal shows only complete sentences.
+- `player` is not available. A call to it fails the script, and the sentence passes unchanged.
+
+#### At Game Start
+
+The script runs once for each new game, after setup and before the opening turn's AI call. Loading a save never runs it. It runs before the Before the AI scripts, on the current state, so its writes shape the opening prompt. Regenerating the opening of a new game restores the state from before the start scripts, and they run again. Regenerating the opening of a loaded save runs nothing.
+
+#### When a Trait Switches
+
+The script runs once for each trait that turns on or off in play, whatever switched it. A switch can come from the player's checkbox, a script, a group that turns its other traits off, a requirement that stops holding, or a persona change. Setup picks and loading a save run no script. A trait that switches and switches back inside one action fires nothing.
+
+- A script in this timing reads `trait`: the trait that switched, with `enabled` set to its new state (see [Trait](#trait)).
+- A trait's own script also has `self`. It runs on its own switch-off too, which is the one time a trait's script runs while the trait is off.
+- Several switches from one action run one at a time, the ones that turned off first. Each run reads the state the one before left.
+- A switch that a script makes fires its own scripts, to a depth of 8. Past that, the switch applies, no script fires, and the browser console warns.
+
+### When Your Code Runs
+
+**Your scripts run every turn.** There is no schedule to choose and no option to enable. Before the AI and After the AI run on the opening turn and on a turn with no AI stat change.
+
+> 💡 Both run even when the stat request is off, or when it fails. On such a turn `delta.ai` reads zeros in an After the AI script too, so code that scales an ask leaves the value where it stood.
+
+### Run Order
+
+Within one timing, scripts run in this order:
+
+1. Scripts with an **order**, from the lowest. Drag a row in the world's **Scripts** tab to set it.
+2. Scripts with no order: world scripts first, then each owner's. Global stats and traits come first, then each entity. Inside one owner, its stats' scripts run in stat order, then its active traits' scripts in the Traits tab's order.
+
+A later write to a field wins. So the order decides who wins: a world script ordered before a stat script loses the field to the stat script. Swap their orders and the world script wins. See [Writing to Other Stats](#writing-to-other-stats).
+
+### Strip Links And Images
+
+**Strip Links And Images** is a world rule, not a script. It sends past narration to the AI with each markdown link as its text and every image removed. A script can still add a link or an image to a sentence, and the player sees it. The rule is on for a new world and off for an existing one. See [World Editor Overview](World-Editor-Overview).
+
+## Quick Reference
+<!-- keywords: cheat sheet, api, syntax, members, fields, properties, objects, globals, what can code read, what can code write, how to access, dot notation, available variables, narration fields, player calls -->
+
+A script can use only these objects. A word in angle brackets stands for a name from your world, `<n>` for a number, and `<text>` for text. A name with a space needs brackets: `stats["<Stat>"]`.
+
+| Object | Members | Read | Write |
+| --- | --- | --- | --- |
+| `self` | `id`, `name`, `type`, `description`, `enabled`, `min`, `max`, `value`, `regen`, `previous`, `delta` | `self.value` | `self.value = <n>` |
+| `stats` | `id`, `name`, `type`, `description`, `enabled`, `min`, `max`, `value`, `regen`, `previous`, `delta` | `stats.<Stat>.value` | `stats.<Stat>.value = <n>` |
+| `owner` | `id`, `name`, `type`, `pronouns`, `inScene`, `traits`, `placeholders`, `stats` | `owner.stats.<Stat>.value` | `owner.stats.<Stat>.value = <n>` |
+| `clock` | `day`, `daypart`, `deltaHours`, `elapsedHours`, `previous` | `clock.day` | Read-only |
+| `traits` | `enabled`, `acquired`, `id`, `name`, `mode`, `available`, `group`, `playerToggle` | `traits.<Trait>.enabled` | `traits.<Trait>.enabled = true` |
+| `persona` | `id`, `name`, `type`, `pronouns`, `inScene`, `traits`, `placeholders`, `stats` | `persona.traits.<Trait>.enabled` | `persona.traits.<Trait>.enabled = true` |
+| `entities` | `id`, `name`, `type`, `pronouns`, `inScene`, `traits`, `placeholders`, `stats` | `entities.<Entity>.stats.<Stat>.value` | `entities.<Entity>.traits.<Trait>.enabled = true` |
+| `placeholders` | `id`, `name`, `value`, `values`, `text`, `roll()`, `pin()`, `unpin()` | `placeholders.<Placeholder>.text` | `placeholders.<Placeholder>.pin(<text>)` |
+| `dictionaries` | `id`, `name`, `placeholders` | `dictionaries.<Dictionary>.placeholders.<Placeholder>.text` | `dictionaries.<Dictionary>.placeholders.<Placeholder>.pin(<text>)` |
+| `console` | `log()` | — | `console.log(<text>)` |
+
+A timing adds one name to those objects. A script reads only the name its own timing adds:
+
+| Name | Timing | Members | Read | Write |
+| --- | --- | --- | --- | --- |
+| **`narration`** | During AI Output only | `sentence`, `sent`, `buffered`, `full`, `index` | `narration.sentence` | `narration.sentence = <text>` |
+| **`player`** | Every timing but During AI Output | `tell()`, `toast()`, `confirm()`, `ask()`, `askText()` | `player.confirm(<text>)` | Calls, not writes |
+| **`trait`** | When a Trait Switches only | `enabled`, `acquired`, `id`, `name`, `mode`, `available`, `group`, `playerToggle`, `owner` | `trait.enabled` | Read-only |
+
+Follow these rules:
+
+- **A stat compares through `.value`.** Write `stats.<Stat>.value > <n>`. `stats.<Stat>` and `self` alone are whole entries, not numbers.
+- **A trait switches through `.enabled`.** Write `traits.<Trait>.enabled = true`. The editor underlines `traits.<Trait> = true`.
+- **A trait sits under its owner.** `traits` holds the global traits only. A trait on the entity that owns the stat is under `owner.traits`. A trait on the played persona is under `persona.traits`. A trait on another entity is under `entities.<Entity>.traits`, the Custom Persona under a library persona included.
+- **`stats` is the global stats in every box.** It means the same in an entity's scripts as in a global stat's, as `traits` does. It never holds the entity's own stats.
+- **An entity's scripts read its own entity's stats through `owner.stats`.** `owner` is the entity that owns the running stat, so `owner.stats.<Stat>.value` is the entity's own stat. In a Blueprint stat's script, `owner` is the entity the run is for. In a global stat's script, it's an empty entry: reads are blank, and a write is ignored and reported.
+- **Another entity's stats are under `entities.<Entity>.stats`.** The played persona's are under `persona.stats`.
+- **"After N days" is `clock.day > <n>`.** `clock.day` starts at 1. For timing in hours, use `clock.elapsedHours`. The time of day is `clock.daypart`.
+- **`self` and every `stats` entry take writes to `value`, `min`, `max` and `regen`.** So does every stat entry under `owner.stats`, `entities.<Entity>.stats` and `persona.stats`. Their other fields are read-only.
+- **A name that its timing does not add is unknown.** `narration` in a Before the AI script, and `player` in a During AI Output script, show an error underline. A `narration` read fails the run with "not defined". A `player` call in During AI Output throws "can't run in During AI Output".
+
+## Writing Scripts
+
+### Basic Syntax
+<!-- keywords: what language, first script, minimal example, is return required, fixed number -->
+
+Your code is plain JavaScript. Return a number to set the stat's value. The code has access to `stats`, a map of the global stats keyed by name, and to `self`, the stat the code belongs to. It also has `owner`, the entity that owns the stat: empty for a global stat, and the entity the run is for in a Blueprint stat (see [Owner](#owner)).
+
+```javascript
+// Example: Return a fixed value
+return 50;
+```
+
+A script does not have to return anything. One that only writes `self`, a placeholder, or a trait leaves the value to the AI and regen.
+
+### Self
+<!-- keywords: this stat, the running stat, own value, own entry, current stat, self name, self value -->
+<!-- route: worldEditorStat.code -->
+
+`self` is the stat the code belongs to, in every box. It has the [same members as a `stats` entry](#stat-properties). In a global stat's code, it is the same entry as `stats.<own name>`. In an entity stat's code, it is the same entry as `owner.stats.<own name>`. Four of its fields take writes (see [Writing to `self`](#writing-to-self)).
+
+### Stats
+<!-- keywords: global stats, stats map, stats object, all stats, other stats, read a stat, stat by name, stats in an entity's code, loop over stats -->
+<!-- route: worldEditorStat.code -->
+
+`stats` is a map of the global stats keyed by name, in every box. An entity's scripts get the same map as a global stat's scripts, as `traits` does. It never holds the entity's own stats: those are under `owner.stats`. Each entry has the [same members as `self`](#stat-properties), and takes writes to `value`, `min`, `max` and `regen` (see [Writing to Other Stats](#writing-to-other-stats)). To read a stat by name, see [Accessing Other Stats](#accessing-other-stats).
+
+### Owner
+<!-- keywords: own stats, read the entity's other stats, script on a monster's stat, this entity, entity's own stat, self entity, creature code, npc code, blueprint owner, empty owner, owner is blank, owner stats, owner traits, owner placeholders -->
+<!-- route: worldEditorStat.code -->
+
+`owner` is the entity that owns the running stat. It has the same members as an [entity entry](#entities): `id`, `name`, `type`, `pronouns`, `inScene`, `traits`, `placeholders` and `stats`. So code reaches the entity's own stats as `owner.stats`, its own traits as `owner.traits`, and its own placeholders as `owner.placeholders`.
+
+| Box | What `owner` is |
+| --- | --- |
+| A stat on an entity's **Stats** tab | That entity |
+| A Blueprint stat | The entity the run is for. The code runs once for each owner |
+| A global stat | An empty entry |
+
+In an entity stat's code, `self` is the same entry as `owner.stats.<own name>`, so a write through either route is one write.
+
+```javascript
+// On a stat of The Creature: the Creature's Rage grows while it is Hunted.
+if (owner.traits.Hunted.enabled) owner.stats.Rage.value += 2;
+```
+
+Code that uses `owner` never throws in a global stat's box. Every read is blank, and every trait reads as off. A write through it is ignored and reported.
+
+> ℹ️ **Two entities can share a code name.** The later one is the entry in `entities`. `owner` is still the owner's own entry, so a same-name entity never hides it.
+
+### Accessing Other Stats
+<!-- keywords: reference another, dot notation, square brackets, misspelled name, undefined, get hp, missing gives zero, randomized names -->
+<!-- route: codeRename -->
+
+Read another stat by its name:
+
+```javascript
+// Example: Return the value of another stat
+const health = stats.Health.value;
+return health;
+```
+
+A name with a space needs brackets: `stats["Hit Points"].value`. A name the world does not have reads as a blank entry with every number `0`, so a typo never throws.
+
+To read the entity's own stats in an entity's script, use `owner.stats`. To read another entity's stats, use `entities.<Entity>.stats`:
+
+```javascript
+// In a script of The Creature's stat: read a global stat and the Creature's own stat.
+const alert = stats["Alert Level"].value;
+return owner.stats.Rage.value + alert / 2;
+```
+
+Rename a stat, a trait or a placeholder that code names, and **Update Code References** asks whether to change the name in that code too. **Leave Code** keeps the code as it is.
+
+> ℹ️ **A stat name with a placeholder chip in it reads in code as the placeholder's own name.** A stat named `{{Beast}} Power` is `stats["Beast Power"]` in every playthrough, whatever the chip rolled. The player still sees the rolled name.
+
+### Stat Properties
+<!-- keywords: attributes, members, api reference, object shape, what can i read, disabled stat, hidden by perk, descriptors unavailable -->
+
+Each stat in the `stats` map, `self` included, exposes the following properties. So does each stat under `owner.stats`, `entities.<Entity>.stats` and `persona.stats`:
+
+| Property | What it is |
+| --- | --- |
+| `id` | Unique identifier |
+| `name` | Code name. The authored name with each chip replaced by its placeholder's name |
+| `type` | Type of stat (`'number'` or `'percentage'`) |
+| `description` | Text description |
+| `min` | Minimum value |
+| `max` | Maximum value |
+| `value` | Current value, with this turn's AI change and regen applied |
+| `enabled` | False while a trait's stat toggle switches the stat off. Read-only |
+| `regen` | Regen per story hour, with traits applied |
+| `previous` | The full stat at the start of the turn: `id`, `name`, `type`, `description`, `min`, `max`, `value`, `regen`. Read-only |
+| `delta` | Every change this turn made, by source: `ai`, `regen`, `total`, `actual`. Read-only |
+
+A stat that a trait switched off still reads as a real entry. Its name, value and bounds read as usual, with `enabled` false. A write to it is ignored and reported. A live stat wins a code name over a switched-off one. Between stats in the same state, the later one wins.
+
+> ℹ️ Only these fields are passed into the sandbox. A stat's own `code` and `descriptors` are **not** available from inside a script.
+
+### Writing to `self`
+<!-- keywords: raise the ceiling, upper limit, lower limit, regeneration rate, assign, modify own stat, underlined write, scale with level up, this keyword -->
+
+`self` is the stat the code belongs to. In a global stat's code, it is the same entry that sits in `stats`, so `self.value` and `stats[self.name].value` read the same. In an entity stat's code, it is the same entry that sits in `owner.stats`, so `self.value` and `owner.stats[self.name].value` read the same. A write through either path is one write. Four of its fields take writes:
+
+| Write | Effect |
+| --- | --- |
+| `self.value = n` | Sets the value this turn, clamped to the range. Same as `return n` |
+| `self.min = n` | Sets the floor to `n` now, but never below the authored min. Later changes move it from `n` |
+| `self.max = n` | Sets the cap to `n` now. Later changes move it from `n` |
+| `self.regen = n` | Sets regen per story hour to `n` now. Later changes move it from `n` |
+
+A field you do not write keeps what the turn gave it. So a script can move the cap and leave the value to the AI:
+
+```javascript
+// Max grows with Level. The value still moves as the AI narrates.
+const level = stats.Level.value;
+self.max = 50 + level * 10;
+```
+
+A bound write works like a value write. After `self.max = 20`, the cap reads 20 when the run lands, whatever a trait switch in the same run moved. Every later change moves it from 20:
+
+| Later change | Effect on the cap |
+| --- | --- |
+| A trait that adds 10 to the max switches on | 30 |
+| That trait switches off again | 20 |
+| The AI raises the max by 5 | 25 |
+| The code writes `self.max = 40` | 40 |
+
+No code bound hides the traits or the AI under it. Deleting the code leaves the bounds as they are. Writing `null` to `value`, `min`, `max` or `regen` fails the run, as any other non-number does. Every other field of `self` is read-only. To write a stat other than `self`, see [Writing to Other Stats](#writing-to-other-stats).
+
+### Writing to Other Stats
+<!-- keywords: move another stat, change another stat, hub stat, one event many stats, write stats map, damage health from a roll, raise luck on a twenty, cap another stat, change another stat's max, change another stat's regen, change an entity's stat, drain an npc, push a global stat from an entity's code, cross-owner write, owner order, entity's own stats, npc stat code, two scripts write one stat, which write wins, order of stats, last write wins, target does not see the write, blueprint stat code, each owner's copy, two writers warning, two boxes write one field -->
+<!-- route: worldEditorStat.code -->
+
+Code can write any stat in the game, by the route that reaches it. One box can move several stats, so an event needs no reaction code in each target stat. A stat whose code writes other stats is a hub.
+
+| Route | Reaches |
+| --- | --- |
+| `stats.<Stat>` | A global stat |
+| `owner.stats.<Stat>` | A stat of the entity that owns the running stat |
+| `entities.<Entity>.stats.<Stat>` | A stat of that entity |
+| `persona.stats.<Stat>` | A stat of the played persona |
+
+```javascript
+// Roll a d20. A 1 halves Health. A 20 adds 1 to Luck.
+const roll = Math.floor(Math.random() * 20) + 1;
+if (roll === 1) stats.Health.value = stats.Health.value / 2;
+if (roll === 20) stats.Luck.value += 1;
+return roll;
+```
+
+An entity's stat can move a global stat too. This code runs on a stat of The Creature:
+
+```javascript
+// The Creature's Rage pushes the world's Alert Level.
+stats["Alert Level"].value += owner.stats.Rage.value / 10;
+```
+
+Every stat entry on every route takes writes to the same four fields as `self`: `value`, `min`, `max` and `regen`. They work as they do on `self`. A value clamps to the target's range. A bound sets the number now, and later changes move it from there. A min never goes below the authored min. `stats.Health.max = 20` makes the cap 20 now, and a trait that adds 10 later makes it 30. `null` fails the run.
+
+| Rule | What it means |
+| --- | --- |
+| Owner order, last write wins | Two writes to one field land in owner order, and the later write wins. The order is the global stats first, then the world's entities in the order you authored them, then the library entities in the order the player picked them. The played persona sits in that order like any entity, so a library persona lands last |
+| Stat order inside one owner | Writes from one owner's stats land in the order of that owner's stat list. A write through `self` and a write through any route count alike. The target's own box is one of the writers |
+| One snapshot per run | Every box of every owner reads the snapshot the run started from. A hub's write to Health isn't in Health's own box on that run, or in its `delta.actual`. It's in Health's `previous` on the next turn |
+| Blueprint stats | A Blueprint stat's code runs once for each owner. In it, `owner` is the entity the run is for, and `owner.stats.Mana.value` lands on that owner's own copy of Mana. A write through `stats` lands on the global stat |
+| Unknown or switched-off stats | A write to a name the target doesn't have, or to a stat a trait switched off, is ignored and reported. The editor underlines an unknown name |
+| An entity not in the game | A write through `entities.<Entity>.stats` to an entity that isn't in the game is ignored and reported |
+| Fields that stay read-only | `id`, `name`, `type`, `description`, `previous` and `delta` never take a write, on any route |
+| A whole entry | `stats.Health = 5` is ignored. Write `stats.Health.value = 5` |
+
+A stat that a hub moved shows the change on its bar, as any code change does. The turn log gets no new line. A failed or stopped turn rolls the write back with the rest of the turn.
+
+**Test Code** lists each write to another stat, such as `stats.Health.value = 30`, and applies none of them to your world. A write to an entity's stat shows with the owner, the stat, the field and the number. Every target stat starts at its starting value. In a Blueprint stat's box, `owner.stats` holds only the stats of that Blueprint's group.
+
+#### Two Scripts, One Field
+
+The [Test Bench](Test-Bench#issues) warns when more than one box writes the same field of one stat. The finding names the field and each writer's box. A writer on another owner than the target shows with its stat and owner. It shows in **Advanced** mode.
+
+- It counts a box that assigns the field, such as `self.max = 10` or `stats.Health.value -= 5`. It counts the target's own box too. The **Before the AI** and **After the AI** boxes of one stat count as two.
+- It doesn't count `return`. A hub that writes `stats.Health.value` and a Health box that only returns a number raise no finding.
+- It reads literal names only: `stats.Health.value`, `stats["Health"].value`, `owner.stats.Rage.value`, `entities.Mira.stats.Trust.value` and `self.max`. It skips a computed name such as `stats[name].value`. It skips a variable that holds a stat entry too.
+- Two routes that reach one stat count as one target. `owner.stats.Rage.value`, `entities.Creature.stats.Rage.value` and `persona.stats.Rage.value` are one field when they reach the same stat.
+- `persona.stats` reaches every entity that the player can play, because the world doesn't know which one the player picks.
+- A Blueprint stat's box counts once for each owner. Each owner's own copy of the stat is judged on its own, so two owners don't clash on their own stats. A Blueprint box that writes a global stat's field gets the warning when it has two or more owners (see [A Note on Accumulating Stats](#a-note-on-accumulating-stats)).
+
+A warning isn't an error. Owner order, then stat order, already settles which write wins. The finding shows two boxes that may overwrite each other by mistake.
+
+### Reading This Turn
+<!-- keywords: old value, how much it moved, overflow, wasted gain, halve damage, multiply narrator change, before and after, excess past maximum, requested amount -->
+
+Every stat carries the turn's state before the code ran. `previous` holds the full stat, every field `self` has, at the start of the turn. In a Before the AI script the turn has done nothing yet, so `previous` reads as the stat itself and every `delta` below reads zero. This section is about After the AI scripts.
+
+`delta` holds every change the turn made to the stat, by source. Each member has the same four fields: `value`, `min`, `max`, and `regen`. A field that a source cannot move reads `0`.
+
+| Member | What it is |
+| --- | --- |
+| `delta.ai` | The change the AI asked for, raw: before flags and the range. The AI asks for `value` and `max` only |
+| `delta.regen` | What regen did this turn. Only `value` moves |
+| `delta.total` | Every source added up: what the turn asked of the stat, before flags and the range |
+| `delta.actual` | Current values minus `previous`. A bound a trait changed since the turn started shows here |
+
+`previous` and `delta` are read-only. A write to them is ignored and reported. Together they let a script clamp or scale an ask:
+
+```javascript
+// The AI may lower Sanity by at most 10 per turn, and never raise it.
+const ask = Math.max(-10, Math.min(0, self.delta.ai.value));
+self.value = self.previous.value + ask + self.delta.regen.value;
+```
+
+On a turn with no ask, every field of `delta.ai` is `0`.
+
+#### Refunding What a Cap Ate
+
+`total - actual` is what flags and the range took from the turn. A `noIncrease` flag that blocks a gain still shows the gain in `total`, so the loss shows in the difference.
+
+```javascript
+// A gain the cap cut off stretches the cap instead.
+const lost = self.delta.total.value - self.delta.actual.value;
+if (lost > 0 && self.value === self.max) {
+  self.max += lost;
+  self.value += lost;
+}
+```
+
+### Placeholders
+<!-- keywords: random text variables, nested path, reroll in script, string versus array, release a forced value, macros in scripts, check current wording, characters own variables, wrong type crashes -->
+
+`placeholders` holds the world's own placeholders, by name. A name with a space needs brackets: `placeholders["Hair Color"]`. A placeholder that an entity or a dictionary owns is not in it. Reach that one through its owner (see [Owned Placeholders](#owned-placeholders)). Each entry has:
+
+| Member | What it is |
+| --- | --- |
+| `id` | Unique identifier. Read-only |
+| `name` | The placeholder's name. Read-only |
+| `values` | Every authored value as text, in authored order. Values with weight 0 are included |
+| `value` | The current value. One text on a Wildcard or a Variable, a list on an Object |
+| `text` | `value` as one string: exactly what the prompt sees. A list joins with `", "`. Read-only |
+| `roll()` | One draw with the author's weights. The draw is not kept |
+| `pin(x)` | Pin the placeholder. Takes what `value` reads on that entry |
+| `unpin()` | Remove the pin code set. The next pin in rank, or the roll, applies again |
+
+#### Paths
+
+Code reaches a placeholder the way the editor names it. A placeholder that holds parts carries them as members, to any depth:
+
+```javascript
+placeholders.Hair.Shade                          // the Shade that the world's Hair holds
+entities.Molly.placeholders.Hair                 // the Hair that Molly owns
+entities["Old Molly"].placeholders["Eye Color"]  // brackets, at any depth
+```
+
+| You write | You reach |
+| --- | --- |
+| `placeholders.Hair` | The world's own `Hair` |
+| `placeholders.Hair.Shade` | The `Shade` that the world's `Hair` holds |
+| `entities.Molly.placeholders.Hair` | Molly's `Hair` |
+
+Each placeholder has one path. A part's bare name doesn't reach it, and neither does an owner's name under `placeholders`.
+
+Each placeholder has all the members above, so a part named `value` or `roll` is shadowed by the member. The editor warns on the part's name field.
+
+#### Owned Placeholders
+
+An entity or a dictionary can own placeholders. Code reaches them only through the owner's entry:
+
+```javascript
+entities.Molly.placeholders.Hair       // the Hair that Molly owns
+persona.placeholders.Hair              // the played persona's Hair
+dictionaries.Weather.placeholders.Sky  // the Sky that the Weather dictionary owns
+```
+
+An owned placeholder has the same members as a world placeholder, and `pin` lands on that placeholder. A name the owner doesn't have reads as a blank entry, and a pin through it is ignored. **Test Code** and the Test Bench report it.
+
+#### The three words
+
+`values` is what the author wrote. `value` is the current value. `text` is what the prompt sees.
+
+A Wildcard draws one value, so its `value` is one text and its `text` is that same text. An Object shows every value at once, so its `value` is the list of current values and its `text` joins that list with `", "`. Compare against narration wording with `text`, never with `value`. `text` reads the same on either kind.
+
+```javascript
+// Works on either kind: the prompt's own words.
+if (placeholders.Hair.text.includes('gray')) self.value -= 1;
+```
+
+#### Pinning
+
+`pin(x)` pins the placeholder until the code changes it again. Assigning `value` is equivalent. `pin` is the documented form, and the last of `pin`, `value` or `unpin` in a run wins. The pin ranks above the roll and every other pin and never replaces them, so `unpin()` restores the next pin in rank or the roll. Any text is allowed, on the list or off it:
+
+```javascript
+// Mood follows Sanity's band.
+placeholders.Mood.pin(self.value < 20 ? 'furious' : self.value < 50 ? 'wary' : 'calm');
+```
+
+`pin` takes the type `value` reads. A Wildcard takes one text. An Object takes a list, and one text handed to an Object pins a one-item list:
+
+```javascript
+// The prompt then reads "gray, cropped short".
+placeholders.Hair.pin(['gray', 'cropped short']);
+```
+
+A list handed to a Wildcard, or anything that is not text, **fails the run**, and every write that run made is discarded.
+
+A write to an unknown placeholder name is ignored. **Test Code** and the Test Bench both report it.
+
+### Traits
+<!-- keywords: perks, grant ability, status effect, buff, debuff, unlock, boolean flag, check if player has, apply condition, switch had no effect -->
+
+`traits` holds every trait in the world's own trait list, by name, whether the player has it or not. Blueprint items are in it. A trait that an entity owns is not. Each entry has:
+
+| Member | What it is |
+| --- | --- |
+| `enabled` | True when the player has the trait and it is on. Write it to switch the trait |
+| `acquired` | True when the player has the trait, on or off. Read-only |
+| `id` | Unique identifier. Read-only |
+| `name` | Code name. Read-only |
+| `mode` | `'optional'`, `'alwaysOn'` or `'hidden'`. Read-only |
+| `available` | True when the trait's requirements hold for its owner now. Read-only |
+| `group` | The code name of the trait's group, or `''` when it has none. Read-only |
+| `playerToggle` | True when the player can switch the trait during the game. Read-only |
+
+`enabled` and `acquired` read the player's state only. An entity that holds the same trait does not change them. Use `mode`, `available` and `group` to see why a switch had no effect.
+
+Writing `enabled` switches the trait after the run, with the same effect as the player's checkbox. Switching on disables its siblings in an Up to One group. Code never switches an Automatic or Hidden trait, and it ignores pick counts. Switching on a trait the player never took acquires it. The switch persists until the player, the AI, or a later run switches it again. Code ignores **In Game**, so a script can switch a trait the player cannot toggle.
+
+```javascript
+// Cursed while Sanity is on the floor.
+traits.Cursed.enabled = self.value <= 0;
+```
+
+A write to an unknown trait name is ignored. **Test Code** and the Test Bench both report it. A write to `acquired`, or to any other read-only field, is ignored, and **Test Code** says so.
+
+> ℹ️ **A trait name with a placeholder chip in it reads in code as the placeholder's own name.** A trait named `{{Beast}} Fury` is `traits["Beast Fury"]` in every playthrough, whatever the chip rolled. The player still sees the rolled name, and the turn log still writes it.
+
+### Persona
+<!-- keywords: hero object, who is being played, main character perks, current player body, nobody chosen, test run ignores it, custom persona, my character, my own character traits, player character trait -->
+
+`persona` is the entity the player plays: the picked persona, or the **Custom Persona** entity when the player picks **None**.
+
+| Member | What it is |
+| --- | --- |
+| `name` | The persona's code name, never the name the player typed under **None**. Read-only |
+| `traits` | The persona's own traits by name, owned or linked |
+| `placeholders` | The placeholders the persona owns. See [Owned Placeholders](#owned-placeholders) |
+| `stats` | The persona's own stats by name, as an [entity's `stats`](#entities). Entries take writes |
+
+`persona` also has the `id`, `type`, `pronouns` and `inScene` of an [entity entry](#entities). `inScene` is always true for the played persona. Each entry in `persona.traits` has the [same members as a `traits` entry](#traits), for the persona's state. Writing `enabled` switches the persona's own trait by the same rules as `traits`.
+
+```javascript
+// Lose a point each turn while the persona is Scarred.
+if (persona.traits.Scarred.enabled) self.value -= 1;
+
+// Read the persona's own placeholder.
+if (persona.placeholders.Hair.text.includes('gray')) self.value -= 1;
+```
+
+`persona.traits` and `traits` are separate. A global trait and a persona trait can share a name, and each map reads its own.
+
+Writing `value`, `min`, `max` or `regen` on an entry in `persona.stats` moves the persona's stat, by the rules in [Writing to Other Stats](#writing-to-other-stats).
+
+When the player plays no entity, `persona` is an empty entry. Its `name` is `''`, every trait reads as off, and a switch or a stat write through it is ignored and reported. Code that reads `persona.traits.X.enabled` never throws. **Test Code** runs with no persona, so it reports each persona write as ignored.
+
+> ⚠️ **Under a library persona, `persona` is the library persona, not the Custom Persona.** Code reaches the **Custom Persona** entity's stats through `entities[...]`, not through `persona`.
+
+> ℹ️ **The editor offers the traits of every entity that can be played.** A library persona can bring traits and placeholders the world doesn't have, so an unknown name after `persona.traits` or `persona.placeholders` is a warning, not an error.
+
+### Entities
+<!-- keywords: companion status, is someone nearby, does character exist, invented ones missing, duplicate names, npc, npc traits, companion traits, another character's trait, side character -->
+
+`entities` holds every entity in the game by its code name: the world's cast, the played persona, and the library entities the player added at **Enter World**. A name with a space needs brackets: `entities["Old Mira"]`. Each entry has:
+
+| Member | What it is |
+| --- | --- |
+| `id` | Unique identifier. Read-only |
+| `name` | The entity's code name. Read-only |
+| `type` | The entity's type, or `''` when it has none. Read-only |
+| `pronouns` | The entity's pronouns, or `''` when it has none. Read-only |
+| `inScene` | True when the entity is in this turn's scene. Read-only |
+| `traits` | The entity's own traits by name, owned or linked |
+| `placeholders` | The placeholders the entity owns. See [Owned Placeholders](#owned-placeholders) |
+| `stats` | The entity's own stats by name. Entries take writes |
+
+Each entry in an entity's `stats` has the [same members as a `stats` entry](#stat-properties), `previous` and `delta` included. Code writes `value`, `min`, `max` and `regen` on an entry, by the rules in [Writing to Other Stats](#writing-to-other-stats). A write to any other field is ignored and reported. An entity's stats run every turn, whether or not the entity is in the scene. A stat the entity has switched off reads with `enabled` false, and a write to it is ignored and reported.
+
+Each entry in an entity's `traits` has the [same members as a `traits` entry](#traits), for that entity's state. Writing `enabled` switches the entity's own trait. The other traits in its groups follow, as after a manual switch. A write to any other field is ignored.
+
+```javascript
+// Mira's wound costs the party a point each turn.
+if (entities.Mira.traits.Wounded.enabled) self.value -= 1;
+
+// Switch Mira's own trait. Her other traits in the group follow.
+entities.Mira.traits.Calm.enabled = self.value > 50;
+
+// React while Mira is in the scene.
+if (entities.Mira.inScene) self.value += 1;
+
+// Lose a point when Mira's Trust dropped this turn.
+if (entities.Mira.stats.Trust.delta.actual.value < 0) self.value -= 1;
+
+// Drain Mira's Stamina when this stat runs dry.
+if (self.value <= 0) entities.Mira.stats.Stamina.value -= 10;
+```
+
+- `persona` is the played persona's entry, so `persona === entities[persona.name]` when the persona entity has a code name. A persona entity with no code name still plays as `persona`, but it isn't in `entities`.
+- An entity's `traits` lists only that entity's own set. A name outside it reads as a blank entry: `enabled` and `acquired` are false, and a switch through it is ignored and reported.
+- An entity the narrator invents during the game is not listed. Neither is a persona-only entity the player didn't pick, the **Custom Persona** entity under a world persona, or an entity with no code name.
+- Of two entities that share a code name, the later one is the entry. The played persona always keeps its own name.
+- An entity's descriptions, aliases, locations and media are not in the entry.
+
+A name no entity in the game has reads as a blank entry. Its `name` and `id` are `''`, and every trait reads as off. A switch or a stat write through it is ignored and reported. Check `entities.Mira.name` to test whether Mira is in the game.
+
+**Test Code** lists every authored entity, with no trait chosen and each stat at its starting value. A switch or a stat write it makes is reported and never applied.
+
+### Dictionaries
+<!-- keywords: book variables, disabled book, lore owned values -->
+
+`dictionaries` holds every dictionary in the game by its code name. Each entry has:
+
+| Member | What it is |
+| --- | --- |
+| `id` | Unique identifier. Read-only |
+| `name` | The dictionary's code name. Read-only |
+| `placeholders` | The placeholders the dictionary owns. See [Owned Placeholders](#owned-placeholders) |
+
+```javascript
+// The sky follows Sanity's band.
+dictionaries.Weather.placeholders.Sky.pin(self.value < 20 ? 'storm' : 'clear');
+```
+
+- The list holds the world's dictionaries that the player left on at **Enter World**, then the library dictionaries the player picked there. Of two that share a code name, the later one is the entry.
+- A dictionary the player turned off reads as an unknown dictionary.
+- A name no dictionary in the game has reads as a blank entry. Its `name` and `id` are `''`, and every placeholder under it reads as blank. A pin through it is ignored.
+- The editor warns on a dictionary name it doesn't know, because a library dictionary can bring more.
+
+### Narration
+<!-- keywords: rewrite a sentence, sentence hook, during ai output, narration object, narration sentence, sent, buffered, full, index, filter narration, replace words in the story, narration is not defined, error underline on narration -->
+<!-- route: worldEditorStat.code -->
+
+`narration` is the narration around the sentence that just completed. It exists in a **During AI Output** script only. In any other timing the name is unknown.
+
+| Member | What it is |
+| --- | --- |
+| `sentence` | The sentence that just completed. Write it, or return a string, to replace it |
+| `sent` | The earlier sentences the reveal already released, as rewritten. A list. Read-only |
+| `buffered` | The complete sentences the reveal still holds, already past their scripts. A list. Read-only |
+| `full` | The narration as it stands: the earlier sentences as rewritten, then the current sentence and the partial tail as the model wrote them. Read-only |
+| `index` | The sentence's position in the reply, from 0. Read-only |
+
+```javascript
+// Turn the first mention of "door" in each sentence into a link.
+narration.sentence = narration.sentence.replace('door', '[door](https://example.com)');
+```
+
+`sentence` must stay a string. Any other type fails the script, and the sentence passes unchanged. The model's original earlier sentences are not in `narration`: `sent` and `full` hold what earlier scripts left.
+
+When the reveal shows sentences in turn, `sent` and `buffered` split where the reveal stands. Otherwise `buffered` is empty and `sent` holds every earlier sentence. A sentence that completes only when the stream ends reads as `buffered`.
+
+**Test Code** reads a sample. The **Sample Sentence** field gives `sentence`. `sent` and `buffered` are empty and `index` is `0`.
+
+### Player
+<!-- keywords: ask the player, tell the player, toast, confirm, ask, askText, prompt, dialog, choice, pick one, pick several, multiple, text field, question, answer, wait for the player, await, canceled prompt, player is not defined, message that stays in history -->
+<!-- route: worldEditorStat.code -->
+
+`player` is the human who plays, not the entity they play. `persona` stays that entity. `player` has five calls. It exists in every timing except **During AI Output**, where a call fails the script.
+
+| Call | Returns | Shows |
+| --- | --- | --- |
+| `player.tell(text)` | Nothing | A message line under the turn's narration. It stays with the turn in the save and never reaches the AI |
+| `player.toast(text)` | Nothing | A toast. It is not saved |
+| `player.confirm(question)` | `true` or `false` | The question with two buttons |
+| `player.ask(question, options, { multiple })` | The picked value. With `multiple`, a list | Up to four options as buttons, five or more as a dropdown. With `multiple`, toggle buttons and **OK** |
+| `player.askText(question, placeholder)` | The typed text | The question with a text field and **OK** |
+
+`options` takes text, or `{ label, value }` pairs. The call returns the `value` of the pick. The script waits for the answer with no `await`.
+
+```javascript
+// Ask once, when the game starts.
+const path = player.ask('Which road do you take?', [
+  { label: 'The ridge', value: 'ridge' },
+  { label: 'The river', value: 'river' },
+]);
+placeholders.Route.pin(path);
+```
+
+- **Closing a prompt fails the script.** Cancel, or Escape inside the prompt, fails it as canceled. Its writes drop, as on any error. The turn goes on, and the other scripts in the timing still apply.
+- **A prompt needs a screen.** With no game screen to answer, `ask`, `confirm` and `askText` fail as canceled at once. `tell` and `toast` do nothing.
+- **A bad call is a TypeError.** A question that is not text, an `ask` with no options, or an option that is neither text nor `{ label, value }` throws in the script.
+- **A multiple pick with nothing chosen** returns an empty list. A single `ask` always returns one value.
+- **Prompts show one at a time.** An open prompt holds every other script that prompts, until you answer it. A script that never names `player` is not held.
+- **The timeout pauses** while a prompt is open. The one-second limit counts the script's own work.
+- **Write `player.` by name.** A script that reaches `player` another way, such as `const p = player;`, fails with "player is not defined".
+
+A message belongs to the turn that runs when the script makes it. A message from At Game Start goes with the opening turn. A message from a trait switch goes with the latest turn on screen. A re-roll of a turn's stats replaces the messages from the timings it replays and keeps the During AI Output ones.
+
+**Test Code** and the **Test Bench** show the real question, one after another, as play does. Editing the code, or closing the editor, closes an open prompt. `tell` and `toast` appear as lines in the report.
+
+### Trait
+<!-- keywords: trait that switched, switch script, trait switched on, trait switched off, trait enabled, which trait changed, when a trait switches, trait is not defined, trait read-only, error underline on trait -->
+<!-- route: worldEditorStat.code -->
+
+`trait` is the trait that switched, as it stands after the switch. It exists in a **When a Trait Switches** script only. In any other timing the name is unknown. It is read-only: a write to it is an error.
+
+| Member | What it is |
+| --- | --- |
+| `enabled` | True when the switch turned the trait on. False when it turned the trait off |
+| `owner` | The code name of the entity that holds the trait, or `''` for a global trait |
+
+`trait` also has every other member of a [`traits` entry](#traits): `acquired`, `id`, `name`, `mode`, `available`, `group` and `playerToggle`.
+
+```javascript
+// A stat or world script sees every switch. Wounded costs 5 Vigor.
+if (trait.name === 'Wounded' && trait.enabled) stats.Vigor.value -= 5;
+```
+
+A stat or world script sees every switch through `trait`. A trait's own script sees its own switches, with `self` as the trait and `trait` as the same entry.
+
+**Test Code** reads a sample. In a trait's own script, `trait` is that trait. Elsewhere it is the world's first trait in tree order that is on, or a blank one.
+
+### Order of Effects
+<!-- keywords: which script wins, priority, precedence, conflict, race condition, execution sequence, overwrite each other, see other scripts changes -->
+
+Each timing is a separate run. Within one run every script reads the same snapshot, so no script sees another script's writes from that run. After each run, effects apply in this order: trait switches, then bounds, then values, then placeholder pins. A bound a stat writes lands at the written number, after the run's trait switches have moved the bounds. When two stats write the same placeholder, trait, or stat field in one run, owner order decides first, then the later stat in the list wins. See [Writing to Other Stats](#writing-to-other-stats).
+
+Each run covers the global stats and every entity's stats over that one snapshot. Writes land in owner order, then stat order within one owner. The last write to a field wins. See [Writing to Other Stats](#writing-to-other-stats) for the order.
+
+The timings are ordered against each other, though: everything a Before the AI script wrote is already in place when an After the AI script reads. An At Game Start script's writes are in place when Before the AI reads, on the opening turn.
+
+### The Story Clock
+<!-- keywords: calendar, date, day night cycle, duration, time passed, timer, how long slept, always one hour, in game time -->
+
+`clock` is a read-only object that describes the story time. A write to any of its fields is ignored and reported.
+
+| Field | What it is |
+| --- | --- |
+| `clock.deltaHours` | Story hours **this turn** consumed |
+| `clock.elapsedHours` | Total story hours so far, counting this turn |
+| `clock.day` | Day number (1-based) at the **end** of the turn |
+| `clock.daypart` | Time of day at the **end** of the turn |
+| `clock.previous.day` | Day number at the **start** of the turn |
+| `clock.previous.daypart` | Time of day at the **start** of the turn |
+
+`clock.daypart` and `clock.previous.daypart` are one of six words: `night`, `dawn`, `morning`, `midday`, `afternoon`, `evening`.
+
+**Why start and end are both given.** A turn spans time. An eight-hour sleep that begins at 15:00 has `clock.previous.daypart === 'afternoon'` and `clock.daypart === 'night'`. Neither reading alone describes the turn.
+
+> ⚠️ **With the clock off, `clock.deltaHours` is always the Time Per Turn setting** (`1` unless the player changes it), and every turn advances the story by that much. Your code works either way; it just gets a flat number instead of a measured one. The setting is **Measured Clock**, under [Settings](Settings#time) → **Output** → **Time**, in **Advanced** mode.
+
+### Examples
+<!-- keywords: sample scripts, cookbook, survival needs, decay over time, combat math, rng, randomness same number, soft cap, copy paste ideas -->
+
+#### Percentage-Based Stat
+
+Calculate a stat as a percentage of another stat:
+
+```javascript
+// Make Stamina 75% of Health
+const health = stats.Health.value;
+return health * 0.75;
+```
+
+#### Average of All Stats
+
+Calculate a stat as the average of every stat, iterating with `Object.values`:
+
+```javascript
+// Make Morale the average of every global stat, this one included
+const all = Object.values(stats);
+return all.reduce((sum, stat) => sum + stat.value, 0) / all.length;
+```
+
+`stats` holds the global stats in every box, so this code gives the same average on an entity's stat. To average the entity's own stats, iterate `owner.stats` instead:
+
+```javascript
+// On an entity's stat: the average of the entity's own stats, this one included
+const own = Object.values(owner.stats);
+return own.reduce((sum, stat) => sum + stat.value, 0) / own.length;
+```
+
+#### Conditional Calculation
+
+Calculate a stat differently based on conditions:
+
+```javascript
+// Make Speed depend on Health
+// Full speed when Health > 50, otherwise reduced
+const health = stats.Health.value;
+const baseSpeed = 100;
+
+if (health > 50) {
+  return baseSpeed;
+} else {
+  // Reduce speed by up to 50% as health approaches 0
+  const healthPercent = health / 50;
+  return baseSpeed * (0.5 + (healthPercent * 0.5));
+}
+```
+
+#### Complex Formula
+
+Use more complex formulas for game mechanics:
+
+```javascript
+// Calculate Damage based on Strength, Weapon Skill, and a random factor
+const strength = stats.Strength.value;
+const weaponSkill = stats["Weapon Skill"].value;
+
+// Base damage from strength
+const baseDamage = strength * 0.8;
+
+// Skill multiplier (1.0 to 2.0 based on skill)
+const skillMultiplier = 1.0 + (weaponSkill / 100);
+
+// Random factor (±20%)
+const randomFactor = 0.8 + (Math.random() * 0.4);
+
+return baseDamage * skillMultiplier * randomFactor;
+```
+
+> 💡 **Each stat's code draws its own `Math.random()` numbers.** The sandbox seeds from the clock, and two stats' code in one turn starts at different times, so two dice stats roll independently.
+
+#### Diminishing Returns
+
+Implement diminishing returns for stat scaling:
+
+```javascript
+// Calculate Dodge Chance with diminishing returns
+const agility = stats.Agility.value;
+
+// Diminishing returns formula
+// First 50 points give full value, after that diminishing returns
+let dodgeChance = 0;
+
+if (agility <= 50) {
+  dodgeChance = agility * 0.5; // 0.5% per point
+} else {
+  // First 50 points give 25% dodge
+  // Additional points give less and less
+  const baseChance = 25;
+  const diminishedPoints = agility - 50;
+  const diminishedChance = 25 * (1 - Math.exp(-diminishedPoints / 50));
+  
+  dodgeChance = baseChance + diminishedChance;
+}
+
+// Cap at 75%
+return Math.min(dodgeChance, 75);
+```
+
+#### Drain Per Hour
+
+Scale a change by how long the turn actually took, so a night's sleep costs more than a short conversation:
+
+```javascript
+// Thirst rises 2 per story hour
+const current = stats.Thirst.value;
+return current + (2 * clock.deltaHours);
+```
+
+#### Time of Day
+
+React to when the turn happened rather than to another stat:
+
+```javascript
+// A vampire's Power climbs at night and fades by day
+const current = stats.Power.value;
+const rate = (clock.daypart === 'night' || clock.daypart === 'evening') ? 4 : -4;
+return current + (rate * clock.deltaHours);
+```
+
+#### Resource Consumption
+
+Calculate resource consumption based on other stats:
+
+```javascript
+// Calculate Hunger Rate based on activity and size
+const activityLevel = stats.Activity.value;
+const size = stats.Size.value;
+
+// Base consumption rate
+const baseRate = 1;
+
+// Activity multiplier (1.0 to 3.0)
+const activityMultiplier = 1.0 + (activityLevel / 50);
+
+// Size factor (larger characters consume more)
+const sizeFactor = size / 50;
+
+return baseRate * activityMultiplier * sizeFactor;
+```
+
+> 💡 **Prefer the `regen` field for plain regeneration.** A stat that simply drifts at a fixed rate already scales with story hours without any code at all. Use `clock.deltaHours` when the rate itself depends on something: the time of day, another stat, a threshold.
+
+## Best Practices
+<!-- keywords: pitfalls, dos and donts -->
+
+1. **Keep it simple**: Complex code can be hard to debug and may impact performance
+2. **Trust the zero default**: a stat name not in the world reads as a blank entry, every number `0`, so a lookup never throws
+3. **Stay within min/max**: The system will automatically clamp your result to the stat's min/max range
+4. **Avoid infinite loops**: Do not create circular dependencies between stats
+5. **Write only what you mean to change**: A field, placeholder, or trait you leave alone keeps the turn's own result
+6. **Test your code**: Use the box's own "Test Code" button to validate that box before saving
+7. **Pick the right timing**: put a write the AI should read this turn in **Before the AI**, and a reaction to what the AI asked in **After the AI**. Use **At Game Start** for a one-time setup, and **When a Trait Switches** for an effect that follows a gain or a loss
+8. **Add comments**: Document your code for future reference
+
+## Limitations
+<!-- keywords: not allowed, fetch from internet, http request, freeze or hang, double counting, counter that increments, regenerate adds twice -->
+
+- Code execution has a timeout of 1 second to prevent infinite loops
+- The code cannot access external resources (network, files, etc.)
+- Circular dependencies between stats may cause unexpected behavior
+- The code runs in a sandboxed environment with limited JavaScript features
+- Code writes `value`, `min`, `max` and `regen` only. Every other field of a stat entry is read-only on every route
+- A write to an entity that isn't in the game, to an unknown stat, or to a stat a trait switched off is ignored and reported
+- **Test Code** runs one box with no player traits, so it cannot preview a long turn or a different daypart. Before the AI runs as the opening turn, where `clock.deltaHours` and `clock.elapsedHours` are both `0`; every other timing runs as a one-hour turn on day one. It shows a trait switch and never applies it to the world
+- Each box's **Templates** menu lists only the templates written for that box
+
+### A Note on Accumulating Stats
+
+Most scripts are **formulas**: it reads other stats and returns an answer, and running it twice gives the same result. Code that adds to its own current value (`return current + …`) is a **running total**. It depends on running exactly once per turn.
+
+Formamorph runs it once per turn. A re-roll of a turn's stat changes runs it again by design: the re-roll rebuilds the turn from its starting values, so the total is not counted twice. A running total is more fragile than a formula. Prefer a formula where one will do.
+
+**A Blueprint stat's write to a global stat moves the stat once, not once for each owner.** The code runs once for each owner, but every run reads one snapshot. Two owners that each write `stats.Alert.value += 5` both write the snapshot's Alert plus 5. The later write wins, so Alert rises by 5, not by 10. To count each owner, write to `owner.stats`, where each owner has its own copy. The [Test Bench](Test-Bench#issues) warns on a Blueprint box that writes a global stat's field when two or more owners run it.
+
+## Troubleshooting
+<!-- keywords: no effect, value never changes, nan, silent failure, checklist, capital letters matter, ignored writes -->
+
+If your code does not work as expected:
+
+1. Check for typos in stat, placeholder, and trait names (they are case-sensitive)
+2. Ensure your code returns a number, or writes a field instead
+3. Verify that every stat you reference exists
+4. Use the "Test Code" button to see any error messages, every field, placeholder, and trait the run wrote, and every write it ignored
+5. Add `console.log()` statements to debug your code (output appears in browser console)
+
+## Advanced Examples
+<!-- keywords: rpg attributes, hp per level, leveling up, exhaustion, tiredness, encumbrance, inventory weight, spell strength, dnd style -->
+
+### Stat Scaling with Level
+
+```javascript
+// Scale Health based on Level and Constitution
+const level = stats.Level.value;
+const constitution = stats.Constitution.value;
+
+// Base health
+const baseHealth = 50;
+
+// Level scaling (10 health per level)
+const levelBonus = (level - 1) * 10;
+
+// Constitution scaling (2 health per point)
+const constitutionBonus = (constitution - 10) * 2;
+
+return baseHealth + levelBonus + constitutionBonus;
+```
+
+### Fatigue System
+
+```javascript
+// Calculate Fatigue based on recent actions and Stamina
+const stamina = stats.Stamina.value;
+const staminaMax = stats.Stamina.max;
+const actions = stats["Recent Actions"].value;
+
+// Base fatigue from actions
+const actionFatigue = actions * 5;
+
+// Recovery from stamina (higher stamina = less fatigue)
+const staminaFactor = 1 - (stamina / staminaMax);
+
+// Final fatigue value (0-100)
+return Math.min(actionFatigue * staminaFactor, 100);
+```
+
+### Carrying Capacity
+
+```javascript
+// Calculate Carrying Capacity based on Strength
+const strength = stats.Strength.value;
+
+// Base capacity
+const baseCapacity = 50;
+
+// Linear scaling for first 50 points (2 units per point)
+let capacity = baseCapacity;
+if (strength <= 50) {
+  capacity += strength * 2;
+} else {
+  // First 50 points add 100 capacity
+  // After that, diminishing returns
+  capacity += 100;
+  capacity += Math.sqrt(strength - 50) * 10;
+}
+
+return capacity;
+```
+
+### Magical Power
+
+```javascript
+// Calculate Magical Power based on Intelligence, Wisdom, and current Mana
+const intelligence = stats.Intelligence.value;
+const wisdom = stats.Wisdom.value;
+const mana = stats.Mana.value;
+const maxMana = stats.Mana.max;
+
+// Base power from intelligence
+const basePower = intelligence * 1.5;
+
+// Wisdom bonus (diminishing returns)
+const wisdomBonus = Math.sqrt(wisdom) * 5;
+
+// Mana percentage factor (more effective with higher mana)
+const manaFactor = 0.5 + (0.5 * (mana / maxMana));
+
+return (basePower + wisdomBonus) * manaFactor;
+```

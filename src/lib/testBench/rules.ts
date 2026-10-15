@@ -1258,7 +1258,7 @@ const entityNoCodeName: Rule = {
   severity: 'warning',
   section: 'entities',
   advanced: true,
-  summary: (count) => `${count} entities have no code name, so stat code can’t reach them`,
+  summary: (count) => `${count} entities have no code name, so scripts can’t reach them`,
   check: (world) => {
     if (!(world.stats ?? []).some((stat) => filledCodeBoxes(stat).length)) return [];
     return (world.entities ?? [])
@@ -1266,7 +1266,7 @@ const entityNoCodeName: Rule = {
       .map((entity) => {
         const item = asItem(entity, world);
         const who = (entity.name ?? '').trim() ? `${quote(item.name)} has no code name` : 'An entity has no name';
-        return finding(entityNoCodeName, `${who}, so stat code can’t reach it`, [item]);
+        return finding(entityNoCodeName, `${who}, so scripts can’t reach it`, [item]);
       });
   },
 };

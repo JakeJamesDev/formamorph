@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { Dictionary, Entity, Placeholder, Stat, Trait } from '@/types';
+import type { Dictionary, Entity, Placeholder, ScriptTiming, Stat, Trait } from '@/types';
 import { phValues } from '@/test/placeholderValues';
 import { allPlaceholders, placeholderOwners } from './placeholderHomes';
 import { executeStatCode } from './statCodeExecutor';
@@ -7,11 +7,13 @@ import { statCodeNamed } from './statCodeNames';
 import { codeDictionaries, sandboxDictionaries, sandboxPlaceholders } from './statCodePlaceholders';
 import {
   CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, DELTA_FIELDS, DELTA_MEMBERS, DICTIONARY_FIELDS, ENTITY_FIELDS, PERSONA_FIELDS,
-  PREVIOUS_FIELDS, SANDBOX_GLOBALS, STAT_FIELDS, TRAIT_ENTRY_FIELDS, placeholderEntryFields,
+  NARRATION_FIELDS, PLAYER_CALL_ENTRIES, PREVIOUS_FIELDS, SANDBOX_GLOBALS, STAT_CODE_SURFACE, STAT_FIELDS, TRAIT_ENTRY_FIELDS,
+  placeholderEntryFields, scriptSurface,
 } from './statCodeSurface';
+import { codeDiagnostics } from './statCodeAnalysis';
 import { entityTraitNames, sandboxTraits, unplayedEntities, worldTraitPlaces } from './statCodeTraits';
 import {
-  TEMPLATE_NAME, buildVariableTree, variableTreeLeaves, type VariableField, type VariableNode, type VariableTreeNames,
+  TEMPLATE_NAME, buildVariableTree, timingGlobalsOf, variableTreeLeaves, type VariableField, type VariableNode, type VariableTreeNames,
 } from './statCodeVariableTree';
 
 const ph = (id: string, name: string, values: readonly string[], over: Partial<Placeholder> = {}): Placeholder =>
@@ -448,4 +450,46 @@ describe('every leaf against the sandbox', () => {
     await expect(asTrust('return owner.stats["Cold Streak"].name === "Cold Streak" && stats.Health.name === "Health" ? 1 : 0;'))
       .resolves.toMatchObject({ value: 1, error: null });
   });
+});
+
+describe('the names a script’s timing adds', () => {
+  const treeAt = (timing: ScriptTiming) => {
+    const surface = scriptSurface(STAT_CODE_SURFACE, timing);
+    return { surface, built: buildVariableTree(editorNames(), null, 'stat', timingGlobalsOf(surface)) };
+  };
+
+  it('lists Narration in During AI Output only, Player in every other timing, and Switched Trait on a switch only', () => {
+    expect(treeAt('output').built.map(labelOf).slice(-1)).toEqual(['Narration']);
+    expect(treeAt('before').built.map(labelOf).slice(-1)).toEqual(['Player']);
+    expect(treeAt('switch').built.map(labelOf).slice(-2)).toEqual(['Player', 'Switched Trait']);
+    for (const timing of ['before', 'after', 'output', 'start'] as const) {
+      expect(treeAt(timing).built.map(labelOf)).not.toContain('Switched Trait');
+    }
+    expect(tree.map(labelOf)).not.toContain('Narration');
+    expect(tree.map(labelOf)).not.toContain('Player');
+  });
+
+  it('opens Narration to its fields and Player to its calls, each inserted whole', () => {
+    expect(levelAt(treeAt('output').built, 'Narration')).toEqual(NARRATION_FIELDS.map((field) => field.name));
+    expect(inserts(treeAt('output').built, 'Narration', 'sentence')).toBe('narration.sentence');
+    expect(levelAt(treeAt('after').built, 'Player')).toEqual(PLAYER_CALL_ENTRIES.map((call) => call.name));
+    const confirm = leaf(treeAt('after').built, 'Player', 'confirm');
+    expect(confirm.insert).toBe('player.confirm("")');
+    expect(confirm.selection).toEqual({ from: 'player.confirm("'.length, to: 'player.confirm("'.length });
+    expect(inserts(treeAt('after').built, 'Player', 'ask')).toBe('player.ask("", [])');
+    expect(inserts(treeAt('switch').built, 'Switched Trait', 'enabled')).toBe('trait.enabled');
+  });
+
+  const insertsOf = (timing: ScriptTiming) => {
+    const { surface, built } = treeAt(timing);
+    const added = built.filter((node) => ['Narration', 'Player', 'Switched Trait'].includes(labelOf(node)));
+    return variableTreeLeaves(added).map((field) => [timing, field.insert, surface] as const);
+  };
+  it.each((['before', 'after', 'output', 'start', 'switch'] as const).flatMap(insertsOf))(
+    'inserts a path the %s script reads clean: %s',
+    (_timing, insert, surface) => {
+      const errors = codeDiagnostics(`const read = ${insert};`, { surface, statNames: ['Health'] }).filter((d) => d.severity === 'error');
+      expect(errors.map((d) => d.message)).toEqual([]);
+    },
+  );
 });

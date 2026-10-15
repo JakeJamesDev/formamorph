@@ -179,9 +179,12 @@ export function codeResolver(
     if (has(name)) {
       switch (name) {
         case 'stats': return { is: 'statMap', owner: { route: 'world' } };
-        case 'self': return surface.selfIs === 'trait'
-          ? { is: 'selfTrait', key: options.selfName ?? null }
-          : { is: 'stat', owner: selfOwner, key: options.selfName ?? null };
+        // A world script's `self` is an empty object, so it has no fields to name.
+        case 'self':
+          if (surface.selfIs === 'empty') return null;
+          return surface.selfIs === 'trait'
+            ? { is: 'selfTrait', key: options.selfName ?? null }
+            : { is: 'stat', owner: selfOwner, key: options.selfName ?? null };
         case 'placeholders': return { is: 'placeholders', owner: { route: 'world' }, path: [] };
         case 'traits': return { is: 'traitMap', owner: { route: 'world' } };
         case 'entities': return { is: 'entityMap' };
