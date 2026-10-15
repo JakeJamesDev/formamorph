@@ -1,5 +1,6 @@
 import type { WireMessage } from '@/types';
 import { redactUrl } from '@/lib/redactUrl';
+import { reasoningLevelLabel } from '@/lib/reasoningEffort';
 import type { AiRequestBody, AiRequestSpec } from './aiRequestSpec';
 import { noteImagesDropped } from './localEngineImageDrop';
 import { noteUnusableExtraParams } from './extraParamsWarning';
@@ -71,8 +72,12 @@ const requestLines = (spec: AiStreamSpec): string[] =>
 /** The error for a reply the server stopped on its token limit before any answer or call. */
 export function cutThoughtFailure(spec: AiStreamSpec): AiStreamError {
   const limit = spec.body.max_tokens === undefined ? [] : [`max_tokens: ${spec.body.max_tokens}`];
-  return new AiStreamError('cut-thought', 'The model reached its token limit before it wrote an answer', {
-    details: [...requestLines(spec), ...limit].join('\n'),
+  const room = spec.thinkingRoom === undefined || spec.thinkingStrength === undefined ? [] : [
+    `Thinking Room: ${spec.thinkingRoom}`,
+    `Thinking Room strength: ${reasoningLevelLabel(spec.thinkingStrength)}`,
+  ];
+  return new AiStreamError('cut-thought', 'The model used all its thinking room before it wrote an answer', {
+    details: [...requestLines(spec), ...limit, ...room].join('\n'),
   });
 }
 
