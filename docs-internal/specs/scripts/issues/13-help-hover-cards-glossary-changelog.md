@@ -28,3 +28,5 @@ Spec: R1, R5, Q6, Q20.
 ## Comments
 
 From ticket 05: the Variable menu does not list `trait`; add it for the When a Trait Switches timing only.
+
+From ticket 03 (landed as 10a939ef95): `worldEditor.scripts` maps to `World-Editor-Stats#dynamic-value-calculation` in `surfaceMap.ts` until a Scripts tab docs section exists, and the tab's ? opens topic `worldEditor.statCode`. Give the tab its own docs section and topic, and point both at it.
