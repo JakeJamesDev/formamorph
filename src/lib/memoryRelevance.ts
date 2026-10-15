@@ -11,6 +11,12 @@ import { contentHash } from './contentHash';
  *  silently invalidates old vectors. */
 export const EMBEDDING_MODEL_ID = 'Xenova/all-MiniLM-L6-v2';
 
+/** The bound a caller that must not hang passes to `embedTexts`; normal inference takes milliseconds. */
+export const EMBED_BOUND_MS = 2000;
+
+/** The bound for a backfill batch, which embeds several texts and may run on a slow device. */
+export const EMBED_BATCH_BOUND_MS = 10_000;
+
 /** Turns of age at which a memory's relevance halves. Deliberately a constant: half-life tuning needs
  *  probe evidence, not a player knob. */
 export const RELEVANCE_HALF_LIFE_TURNS = 40;

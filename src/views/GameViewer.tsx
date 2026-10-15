@@ -160,7 +160,7 @@ import {
 import { buildStamper, hoursByPosition, FLAT_HOURS_PER_TURN } from "../lib/gameClock";
 import { agedMilestoneCandidates, resolveMilestoneDrop } from "../lib/milestoneMemory";
 import { applyMemoryOverrides, activeNotes } from "../lib/memoryOverrides";
-import { buildRelevanceScores, vectorKey } from "../lib/memoryRelevance";
+import { buildRelevanceScores, EMBED_BATCH_BOUND_MS, EMBED_BOUND_MS, vectorKey } from "../lib/memoryRelevance";
 import { entryVectorKey, entryEmbedText } from "../lib/semanticDictionary";
 import { selectSemanticRehydrations, rehydrationCooldownBlocked } from "../lib/semanticRehydration";
 import { embedTexts, isEmbeddingModelReady, loadEmbeddingModel } from "../lib/embeddingWorkerClient";
@@ -1774,11 +1774,8 @@ const GameViewer = ({
     const anySemantic = semanticLore || (semanticMemory && (memoryDigests || (semanticDiaries && characterDiaries)));
     if (!anySemantic || !isEmbeddingModelReady() || !action.trim()) return null;
     try {
-      const vecs = await Promise.race([
-        embedTexts([action]),
-        new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000)),
-      ]);
-      return vecs && vecs.length > 0 ? vecs[0] : null;
+      const vecs = await embedTexts([action], EMBED_BOUND_MS);
+      return vecs.length > 0 ? vecs[0] : null;
     } catch {
       return null;
     }
@@ -3921,7 +3918,7 @@ const GameViewer = ({
         const toEmbed = missing.filter((k) => !cached.has(k));
         for (let start = 0; start < toEmbed.length; start += 8) {
           const batch = toEmbed.slice(start, start + 8);
-          const vecs = await embedTexts(batch.map((k) => wanted.get(k)!));
+          const vecs = await embedTexts(batch.map((k) => wanted.get(k)!), EMBED_BATCH_BOUND_MS);
           await Promise.all(vecs.map((vec, i) => {
             embedVectorsRef.current.set(batch[i], vec);
             return putVector(batch[i], vec).catch(() => {}); // cache write is best-effort
@@ -3971,11 +3968,8 @@ const GameViewer = ({
     if (source === 'semantic' && isEmbeddingModelReady()) {
       try {
         const query = `${name}. ${entity.aiDescription ?? ''}`.trim();
-        const vecs = await Promise.race([
-          embedTexts([query]),
-          new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000)),
-        ]);
-        if (vecs && vecs.length > 0) semantic = { queryVec: vecs[0], vectorsByKey: embedVectorsRef.current };
+        const vecs = await embedTexts([query], EMBED_BOUND_MS);
+        if (vecs.length > 0) semantic = { queryVec: vecs[0], vectorsByKey: embedVectorsRef.current };
       } catch {
         semantic = null;
       }

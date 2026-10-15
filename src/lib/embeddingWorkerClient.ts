@@ -6,6 +6,7 @@
  */
 import { randomUUID } from '@/lib/uuid';
 import { EMBEDDING_MODEL_ID } from './memoryRelevance';
+import { withTimeout } from './withTimeout';
 
 /** Aggregate model-download progress across files; `total` grows as files announce sizes. */
 export interface EmbeddingLoadProgress {
@@ -123,10 +124,12 @@ export async function openCachedEmbeddingModel(): Promise<boolean> {
   return true;
 }
 
-/** Embed texts into L2-normalized vectors, one per input, in input order. */
-export async function embedTexts(texts: string[]): Promise<Float32Array[]> {
+/** Embed texts into L2-normalized vectors, one per input, in input order. Rejects after `boundMs` when given. */
+export async function embedTexts(texts: string[], boundMs?: number): Promise<Float32Array[]> {
   if (texts.length === 0) return [];
-  const buffers = (await run({ cmd: 'embed', texts })) as ArrayBuffer[];
+  const request = run({ cmd: 'embed', texts }) as Promise<ArrayBuffer[]>;
+  const buffers = boundMs === undefined ? await request : await withTimeout(request, boundMs, null);
+  if (!buffers) throw new Error(`Embedding timed out after ${boundMs} ms`);
   return buffers.map((b) => new Float32Array(b));
 }
 

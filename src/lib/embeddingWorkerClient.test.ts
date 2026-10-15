@@ -4,6 +4,8 @@ import { EMBEDDING_MODEL_FILES, embeddingCacheKey } from './embeddingWorkerClien
 /** A worker that answers every request with success, as the real one does once the model is loaded. */
 class FakeWorker {
   static made: FakeWorker[] = [];
+  /** A command the worker never answers, as a wedged worker would. */
+  static silentOn: string | null = null;
   posted: { cmd: string; id: string }[] = [];
   private listeners: ((event: { data: unknown }) => void)[] = [];
   constructor() { FakeWorker.made.push(this); }
@@ -12,6 +14,7 @@ class FakeWorker {
   }
   postMessage(message: { cmd: string; id: string }) {
     this.posted.push(message);
+    if (message.cmd === FakeWorker.silentOn) return;
     queueMicrotask(() => this.listeners.forEach((listener) => listener({ data: { type: 'success', id: message.id, result: true } })));
   }
   terminate() {}
@@ -32,11 +35,26 @@ const freshClient = () => import('./embeddingWorkerClient');
 beforeEach(() => {
   vi.resetModules();
   FakeWorker.made = [];
+  FakeWorker.silentOn = null;
   vi.stubGlobal('Worker', FakeWorker);
 });
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.useRealTimers();
+});
+
+describe('embedTexts', () => {
+  it('rejects after the bound when the worker never answers, and leaves no timer', async () => {
+    vi.useFakeTimers();
+    FakeWorker.silentOn = 'embed';
+    const client = await freshClient();
+    const pending = client.embedTexts(['hello'], 500);
+    const outcome = expect(pending).rejects.toThrow('timed out after 500 ms');
+    await vi.advanceTimersByTimeAsync(500);
+    await outcome;
+    expect(vi.getTimerCount()).toBe(0);
+  });
 });
 
 describe('openCachedEmbeddingModel', () => {

@@ -6,6 +6,7 @@ import { randomUUID } from "@/lib/uuid";
 import type { ImageGenOpts, ImageGenParams, ImageProvider } from './types';
 import { bytesToDataUrl } from '../imageOptim';
 import { DetailedError } from '../errorDetails';
+import { withTimeout } from '../withTimeout';
 import { trimUrl, authHeaders, POLL_INTERVAL_MS, reachFetch } from './http';
 
 /** The canonical ComfyUI txt2img API-format graph, with %tokens% for the values we inject. Users can edit
@@ -362,10 +363,7 @@ export const comfyuiProvider: ImageProvider = async (params: ImageGenParams, opt
     promptId = submit.prompt_id;
 
     // Wait for the WS "done" signal, but don't hang forever if the socket never connected.
-    await Promise.race([
-      watcher.done,
-      new Promise<void>((r) => setTimeout(r, WS_SETTLE_MS)),
-    ]);
+    await withTimeout(watcher.done, WS_SETTLE_MS, undefined);
 
     const img = await pollHistory(base, promptId, opts);
     const view = await reachFetch('comfyui', opts.endpointUrl, viewUrl(base, img), { headers: auth, signal: opts.signal });
