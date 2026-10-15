@@ -11,7 +11,7 @@ const health: Stat = {
 };
 
 const narration = (over: Partial<NonNullable<StatCodeRunOptions['narration']>> = {}) => ({
-  sentence: 'The door creaks.', full: 'Earlier. The door creaks. Wind', index: 1, ...over,
+  sentence: 'The door creaks.', full: 'Earlier. The door creaks. Wind', index: 1, sent: ['Earlier.'], buffered: [], ...over,
 });
 
 describe('executeStatCode in During AI Output', () => {
@@ -54,6 +54,25 @@ describe('executeStatCode in During AI Output', () => {
     const res = await executeStatCode('narration.sentence = 5;', [health], health, { narration: narration() });
     expect(res).toMatchObject({ value: null, kind: 'bad-write' });
     expect(res.error).toMatch(/narration\.sentence/);
+  });
+
+  it('reads the released sentences and the ones the reveal holds', async () => {
+    const res = await executeStatCode(
+      'return JSON.stringify([narration.sent, narration.buffered]);',
+      [health], health, { narration: narration({ index: 3, sent: ['One.'], buffered: ['Two.', 'Three.'] }) },
+    );
+    expect(res.sentence).toBe(JSON.stringify([['One.'], ['Two.', 'Three.']]));
+  });
+
+  it('keeps sent and buffered read-only', async () => {
+    const swap = await executeStatCode(
+      "narration.sent = []; narration.buffered = ['x']; narration.sent[0] = 'y'; return narration.sent.join('|');",
+      [health], health, { narration: narration() },
+    );
+    expect(swap.sentence).toBe('Earlier.');
+    expect(swap.readOnlyWrites).toEqual(expect.arrayContaining(['narration.sent', 'narration.buffered']));
+    const grow = await executeStatCode("narration.buffered.push('x');", [health], health, { narration: narration() });
+    expect(grow.error).toMatch(/object is not extensible/);
   });
 
   it('drops writes to the read-only fields and reports them', async () => {

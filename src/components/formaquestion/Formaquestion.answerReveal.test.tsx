@@ -126,7 +126,7 @@ describe('Answer Reveal', () => {
   it("neither reads nor writes the game view's timing while a turn reveals", async () => {
     // The game view's pacer, floored well above help's pace, mid-turn.
     const turn = renderHook(() => useSentenceReveal(() => {}, 120, 1300));
-    act(() => turn.result.current.push('The lantern gutters as you step inside.'));
+    act(() => turn.result.current.push('The lantern gutters as you step inside.', 1));
     const turnTiming = getRevealTiming();
     expect(turnTiming).toEqual({ stagger: 120, duration: 1300 });
 

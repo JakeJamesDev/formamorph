@@ -16,7 +16,7 @@ const inForce = (): StatCodeOwners => ({ acquired: [], disabledTraitIds: [], app
 
 /** A During AI Output run over `sentence`, with nothing else happening unless a case says so. */
 const output = (over: Partial<StatCodeTurn> & Pick<StatCodeTurn, 'stats'>, sentence = 'The door creaks.'): StatCodeTurn => ({
-  timing: 'output', narration: { sentence, full: sentence, index: 0 },
+  timing: 'output', narration: { sentence, full: sentence, index: 0, sent: [], buffered: [] },
   enabled: {}, previous: over.stats, asks: [], regenApplied: {}, clock: {}, ownerTraits: inForce(),
   statNameOf: (s) => s.name, traitNameOf: (t) => t.name, ...over,
 });

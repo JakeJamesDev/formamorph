@@ -112,6 +112,10 @@ export interface NarrationInput {
   full: string;
   /** The sentence's position in the reply, from 0. */
   index: number;
+  /** Earlier sentences the reveal has released to the screen, as rewritten. */
+  sent: readonly string[];
+  /** Earlier sentences past their scripts that the reveal still holds. */
+  buffered: readonly string[];
 }
 
 /** What one run wrote to one entity's stats. */
@@ -1244,8 +1248,10 @@ export const executeStatCode = async (
       `  return Object.freeze(lock(clock, Object.keys(clock), 'clock.', ${LOOSE_NOTE}));`,
       `})(${LOCK_FIELDS});`,
       ...(narration ? [
-        `const narration = Object.seal((${LOCK_FIELDS})(`,
-        `  ${JSON.stringify({ sentence: narration.sentence, full: narration.full, index: narration.index })}, ['full', 'index'], 'narration.', ${LOOSE_NOTE}));`,
+        // `sent` and `buffered` freeze, so code can neither swap nor grow them.
+        `const narration = Object.seal((${LOCK_FIELDS})(((entry) => (Object.freeze(entry.sent), Object.freeze(entry.buffered), entry))(`,
+        `  ${JSON.stringify({ sentence: narration.sentence, full: narration.full, index: narration.index, sent: narration.sent, buffered: narration.buffered })}),`,
+        `  ['full', 'index', 'sent', 'buffered'], 'narration.', ${LOOSE_NOTE}));`,
         OUTPUT_PLAYER,
       ] : []),
       ...(switchedTrait ? [

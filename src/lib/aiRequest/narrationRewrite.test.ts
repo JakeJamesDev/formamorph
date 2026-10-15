@@ -91,6 +91,19 @@ describe('rewriteSentences', () => {
     expect(seen).toEqual(['One. Two. Th', '<One.> Two. Th', '<One.> <Two.> Three.']);
   });
 
+  it('shows a script the earlier sentences as rewritten, and none of a retracted round', async () => {
+    const seen: (readonly string[])[] = [];
+    const { feed, final } = wire((sentence, { earlier }) => {
+      seen.push(earlier);
+      return `<${sentence}>`;
+    });
+    feed([opened, ...deltas('Hm. Plan')]);
+    await vi.waitFor(() => expect(seen).toHaveLength(1));
+    feed([{ type: 'retract' }, ...deltas('One. Two. Th', 'ree.'), done('One. Two. Three.')]);
+    await final();
+    expect(seen).toEqual([[], [], ['<One.>'], ['<One.>', '<Two.>']]);
+  });
+
   it('drops queued work when the request is canceled', async () => {
     const { heard, feed, final } = wire(async (sentence) => {
       await sleep(20);

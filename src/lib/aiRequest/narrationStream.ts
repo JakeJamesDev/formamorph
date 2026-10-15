@@ -15,9 +15,9 @@ export type NarrationEvent =
   /** A completed sentence, once and in order. `index` restarts at 0 after a retract. `full` is the running
    *  text when it completed, the in-progress tail included. */
   | { type: 'sentence'; index: number; text: string; full: string }
-  /** The running narration: `text` in full, `revealed` up to its last complete sentence. `boundary` marks
-   *  a delta that completed at least one sentence. */
-  | { type: 'display'; text: string; revealed: string; boundary: boolean }
+  /** The running narration: `text` in full, `revealed` up to its last complete sentence, which holds
+   *  `sentences` of them. `boundary` marks a delta that completed at least one sentence. */
+  | { type: 'display'; text: string; revealed: string; sentences: number; boundary: boolean }
   /** The partial assistant message to persist: on the first narration text, then on each sentence boundary. */
   | { type: 'partial'; text: string }
   /** The streamed text was not the reply. `hadPartial` says a partial message was persisted for it. */
@@ -32,6 +32,11 @@ export type NarrationListener = (event: NarrationEvent) => void;
 /** The prefix of `text` up to its last complete sentence; '' until the first sentence completes. */
 export function completeSentencePrefix(text: string): string {
   return prefixBeforeLast(text, splitSentenceSegments(text));
+}
+
+/** How many complete sentences `text` holds; the last segment is the sentence still in progress. */
+export function completeSentenceCount(text: string): number {
+  return Math.max(0, splitSentenceSegments(text).length - 1);
 }
 
 /** `text` without its last segment, the sentence still in progress. */
@@ -69,7 +74,7 @@ export function narrationStream(...listeners: NarrationListener[]): TransportSin
         const complete = segments.length - 1;
         const boundary = complete > emittedCount;
         emitSentencesUpTo(segments, complete, text);
-        emit({ type: 'display', text, revealed: prefixBeforeLast(text, segments), boundary });
+        emit({ type: 'display', text, revealed: prefixBeforeLast(text, segments), sentences: Math.max(0, complete), boundary });
         // Added once, so a stop before any text leaves no partial; refreshed per sentence, not per token.
         if (persisted ? boundary : text.length > 0) {
           persisted = true;
