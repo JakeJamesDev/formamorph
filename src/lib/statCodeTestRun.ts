@@ -22,6 +22,7 @@ import { sampleNarration, sampleSwitchedTrait } from '@/lib/scriptTestSamples';
 import type { ScriptPromptHost } from '@/lib/scriptPrompts';
 import { startingGateStatsOf } from '@/lib/gateStats';
 import type { ScriptTiming, Stat, World } from '@/types';
+import { randomUUID } from '@/lib/uuid';
 
 /** Test Code names each bound a run wrote with its Details field label. */
 const BOUND_LABELS: Record<CodeBoundField, string> = { min: 'Min', max: 'Max', regen: 'Regen' };
@@ -255,7 +256,7 @@ export async function runTestCode(
   const assumed = [...new Set((missing ?? []).filter(({ kind }) => kind === 'stat').map(({ segments }) => segments[0]))];
   const stats = assumed.length ? [
     ...codeNamedStats,
-    ...assumed.map((name): Stat => ({ id: crypto.randomUUID(), name, type: 'number', description: '', regen: 0, descriptors: [], ...ASSUMED_STAT })),
+    ...assumed.map((name): Stat => ({ id: randomUUID(), name, type: 'number', description: '', regen: 0, descriptors: [], ...ASSUMED_STAT })),
   ] : codeNamedStats;
   // Each entity's stats read as authored, as `stats` does, a switched-off one as off.
   const entityEntries = unplayedEntities(entities, owners).map((entity) => {

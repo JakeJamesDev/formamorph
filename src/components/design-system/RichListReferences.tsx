@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { randomUUID } from '@/lib/uuid';
 
 interface EditorSampleItem extends SortableListItem {
   kind: 'Character' | 'Location';
@@ -52,7 +53,7 @@ function WorldEditorListReference() {
       const index = current.findIndex((item) => item.id === id);
       if (index < 0) return current;
       const source = current[index];
-      const copy = { ...source, id: crypto.randomUUID(), name: `${source.name} Copy` };
+      const copy = { ...source, id: randomUUID(), name: `${source.name} Copy` };
       return [...current.slice(0, index + 1), copy, ...current.slice(index + 1)];
     });
   };
@@ -106,7 +107,7 @@ function SaveLoadListReference() {
   const save = () => {
     const name = saveName.trim();
     if (!name) return;
-    setRows((current) => [{ id: crypto.randomUUID(), name, timestamp: Date.now(), gameTime: 3.5 }, ...current]);
+    setRows((current) => [{ id: randomUUID(), name, timestamp: Date.now(), gameTime: 3.5 }, ...current]);
     setStatus(`Saved “${name}”.`);
   };
 

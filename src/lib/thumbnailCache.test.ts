@@ -7,8 +7,15 @@ describe('toEpoch', () => {
     expect(toEpoch('2026-01-02T03:04:05Z')).toBe(Date.parse('2026-01-02T03:04:05Z'));
   });
 
-  it('parses the server space-separated format identically to ISO', () => {
-    expect(toEpoch('2026-01-02 03:04:05')).toBe(toEpoch('2026-01-02T03:04:05'));
+  describe('a bare server timestamp', () => {
+    const zone = process.env.TZ;
+    // A non-UTC zone makes a local-time parse differ from the UTC one.
+    beforeEach(() => { process.env.TZ = 'America/New_York'; });
+    afterEach(() => { if (zone === undefined) delete process.env.TZ; else process.env.TZ = zone; });
+
+    it('reads as UTC', () => {
+      expect(toEpoch('2026-01-02 03:04:05')).toBe(Date.UTC(2026, 0, 2, 3, 4, 5));
+    });
   });
 
   it('returns 0 for null / undefined', () => {

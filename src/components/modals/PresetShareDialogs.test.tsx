@@ -1,10 +1,13 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen, fireEvent, within } from '@testing-library/react';
-import { ImportPresetDialog } from './PresetShareDialogs';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, within, waitFor } from '@testing-library/react';
+import { toast } from 'react-toastify';
+import { ExportPresetDialog, ImportPresetDialog } from './PresetShareDialogs';
 import { buildSharedPreset, serializeSharedCode } from '@/lib/promptPresetShare';
 import type { PresetOverview, PromptValues } from '@/lib/promptPresets';
 import type { Tool } from '@/types';
 import { PRESET_SCRIPT_TOOL_WARNING } from '@/lib/tools/toolPack';
+
+vi.mock('react-toastify', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const APP = '2.1.0';
 const values = { systemPrompt: 'X' } as unknown as PromptValues;
@@ -18,6 +21,32 @@ function openWith(overview?: PresetOverview) {
   const code = serializeSharedCode(buildSharedPreset({ name: 'Gift', style: 'markdown', values, overview }, APP));
   fireEvent.change(screen.getByPlaceholderText('FMPRESET1:…'), { target: { value: code } });
 }
+
+describe('ExportPresetDialog: copy', () => {
+  const shared = buildSharedPreset({ name: 'Gift', style: 'markdown', values }, APP);
+  const unhandled = vi.fn();
+  beforeEach(() => { vi.clearAllMocks(); process.on('unhandledRejection', unhandled); });
+  afterEach(() => { process.off('unhandledRejection', unhandled); vi.unstubAllGlobals(); });
+
+  const copyWith = (writeText: () => Promise<void>) => {
+    vi.stubGlobal('navigator', { clipboard: { writeText } });
+    render(<ExportPresetDialog open onOpenChange={() => {}} shared={shared} />);
+    fireEvent.click(screen.getByRole('button', { name: /copy/i }));
+  };
+
+  it('shows a failure toast and leaves no unhandled rejection when the write is refused', async () => {
+    copyWith(() => Promise.reject(new Error('denied')));
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Couldn't copy the share code"));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(toast.success).not.toHaveBeenCalled();
+    expect(unhandled).not.toHaveBeenCalled();
+  });
+
+  it('shows the success toast when the write works', async () => {
+    copyWith(() => Promise.resolve());
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Share code copied'));
+  });
+});
 
 describe('ImportPresetDialog: Overview preview', () => {
   it('shows author, rendered description, tags, and models before import', () => {

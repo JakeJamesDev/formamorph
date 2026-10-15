@@ -4,6 +4,8 @@ import { arrayMove, verticalListSortingStrategy, useSortable } from '@dnd-kit/so
 import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, X } from 'lucide-react';
+import { toast } from 'react-toastify';
+import { copyText } from '@/lib/clipboard';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
@@ -51,6 +53,7 @@ const CATALOG_BY_FILE = new Map(LOCAL_MODELS.map((m) => [m.fileName, m.name]));
 
 /** localStorage key for the user's manual ordering of the Installed list (model refs, in order). */
 const INSTALLED_ORDER_KEY = 'formamorph:installedModelOrder';
+const COPIED_LABEL_MS = 2000;
 
 /** Sort installed models by the saved manual order; unranked (new) files keep their input order at the end. */
 function applyInstalledOrder(list: LocalInstalledModel[]): LocalInstalledModel[] {
@@ -137,7 +140,7 @@ function InstalledRow({ item, engine, busyFile, onLoad, onUnload, onDelete }: {
 type ModelView = 'installed' | 'recommended' | 'options';
 
 /** The move-on-folder-change flow, in the one state it's currently in. */
-type MoveFlow =
+export type MoveFlow =
   | { phase: 'confirm'; from: string; to: string; count: number; bytes: number; freeBytes: number | null }
   | { phase: 'moving'; from: string; to: string; progress: LocalMoveProgress | null }
   | { phase: 'result'; from: string; result: LocalMoveResult };
@@ -147,7 +150,7 @@ type MoveFlow =
  * either way, so the result panel is the only record of anything left behind — it names each file and
  * why it stayed, and can copy the paths out.
  */
-function MoveModelsDialog({ flow, onMove, onSkip, onCancel, onDone }: {
+export function MoveModelsDialog({ flow, onMove, onSkip, onCancel, onDone }: {
   flow: MoveFlow | null;
   onMove: () => void;
   onSkip: () => void;
@@ -156,11 +159,18 @@ function MoveModelsDialog({ flow, onMove, onSkip, onCancel, onDone }: {
 }) {
   const [copied, setCopied] = useState(false);
 
+  // The timer dies with the effect, so an unmount or a second copy cancels it.
+  useEffect(() => {
+    if (!copied) return;
+    const timer = setTimeout(() => setCopied(false), COPIED_LABEL_MS);
+    return () => clearTimeout(timer);
+  }, [copied]);
+
   if (!flow) return null;
 
   const copyPaths = (from: string, result: LocalMoveResult) => {
     const text = result.skipped.map((s) => `${from}${'\\'}${s.file} — ${s.reason}`).join('\n');
-    navigator.clipboard.writeText(text).then(() => setCopied(true)).catch(() => { /* ignore */ });
+    void copyText(text).then((ok) => { if (ok) setCopied(true); else toast.error("Couldn't copy the text"); });
   };
 
   return (

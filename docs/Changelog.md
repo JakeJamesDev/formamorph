@@ -56,6 +56,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The world library now opens when one stored world can't be read.** An unreadable world stopped the library's one-time update, with the error "Cannot read properties of null", on every launch. The update now skips that world.
   - **A stuck semantic search no longer hangs Help or the Test Bench.** Every embedding call now gives up after a set time and leaves no timer running.
   - **Undo no longer empties a name field that loaded after you opened it.** Chip name fields now treat a late-arriving value as the starting text, not as an edit.
+  - **A failed share-code copy shows an error, Copy Paths resets, and Community sorts server dates as UTC.** Listings keep their order in every time zone.
 
 ---
 

@@ -2,6 +2,7 @@ import { AGE_GATE_VERSION } from '@/lib/ageGate';
 import AgeGateService from '@/services/AgeGateService';
 import AuthService from '@/services/AuthService';
 import type { AgeGateAuthenticationFlow, BoundAgeGateAuthentication } from '@/types';
+import { randomUUID } from '@/lib/uuid';
 
 const STORAGE_KEY = 'FORMAMORPH_ageGateAuthentication';
 export const AGE_GATE_AUTH_FLOW_PARAM = 'contentWarningFlow';
@@ -32,7 +33,7 @@ const isStoredFlow = (flow: AgeGateAuthenticationFlow): boolean => {
 
 /** Start one authentication flow from the warning the visitor just accepted. */
 export function beginAgeGateAuthentication(): AgeGateAuthenticationFlow {
-  const flow = { id: crypto.randomUUID(), acceptanceVersion: AGE_GATE_VERSION };
+  const flow = { id: randomUUID(), acceptanceVersion: AGE_GATE_VERSION };
   volatileFlow = flow;
   try {
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(flow));

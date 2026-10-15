@@ -20,6 +20,7 @@ import { cropFrame, fitMask, headSize, type MascotSize } from '@/lib/formaquesti
 import { activeMascotRig } from '@/lib/formaquestion/mascotPresets';
 import type { Edge } from '@/lib/formaquestion/tabPlace';
 import { HEAD_HEIGHT, NARROW_WIDTH, READER_WIDTH, WIDE_WIDTH } from '@/lib/formaquestion/windowBox';
+import { randomUUID } from '@/lib/uuid';
 
 /** A small guide for the sample window. The app's own docs stay out of the reference. */
 const SAMPLE_PAGES = {
@@ -88,7 +89,7 @@ function useSampleChat(): HelpChat {
     readsImages: false,
     pending: [],
     setPending: () => {},
-    ask: (question) => setExchanges((all) => [...all, { id: crypto.randomUUID(), question, images: [], answer: '', reasoning: '', status: 'no-ai', sources: [], flagged: false, nearest: [] }]),
+    ask: (question) => setExchanges((all) => [...all, { id: randomUUID(), question, images: [], answer: '', reasoning: '', status: 'no-ai', sources: [], flagged: false, nearest: [] }]),
     stop: () => {},
     clear: () => setExchanges([]),
   }), [exchanges]);

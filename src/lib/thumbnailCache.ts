@@ -6,6 +6,7 @@
  * HTTP cache on these images.
  */
 import { clearStore, openDatabase, promisifyRequest } from './idb';
+import { parseServerDate } from './serverDate';
 
 const DB_NAME = 'FORMAMORPH_THUMBS_DB';
 const STORE_NAME = 'thumbnails';
@@ -22,13 +23,11 @@ export interface ThumbRecord {
   cachedAt: number;  // epoch ms, used for LRU pruning
 }
 
-// Normalize the server's mixed timestamp formats ("…T…Z" and "YYYY-MM-DD HH:MM:SS") to epoch ms.
-// A number is already epoch ms and passes through unchanged.
+// Server timestamps to epoch ms; bare ones read as UTC. A number is already epoch ms.
 export const toEpoch = (s: string | number | null | undefined): number => {
   if (s == null) return 0;
   if (typeof s === 'number') return Number.isNaN(s) ? 0 : s;
-  const ms = Date.parse(s.replace(' ', 'T'));
-  return Number.isNaN(ms) ? 0 : ms;
+  return parseServerDate(s)?.getTime() ?? 0;
 };
 
 // One shared connection — opening a fresh DB per image (many per page) was a real cost.
