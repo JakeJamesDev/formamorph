@@ -13,7 +13,7 @@ import { useMorphFullscreen } from '@/lib/useMorphFullscreen';
 import { FullscreenShell } from '@/components/FullscreenShell';
 import { cn } from '@/lib/utils';
 import { SLOT_SNIPPETS, snippetSelection, type InsertSelection, type InsertSnippet } from '@/lib/codeSnippets';
-import { buildVariableTree, type VariableNode, type VariableTreeOwner } from '@/lib/statCodeVariableTree';
+import { buildVariableTree, timingGlobalsOf, type VariableNode, type VariableTreeOwner } from '@/lib/statCodeVariableTree';
 import type { CodeSurface } from '@/lib/codeSurface';
 import type { CodeWorldLookup } from '@/lib/codeWorldLookup';
 import type { CodeCardNavigation } from '@/lib/codeCardNavigation';
@@ -301,7 +301,7 @@ export function CodeArea(props: CodeAreaProps) {
   const variableTree = useCallback(() => {
     const { slots: template, statNames, owner, placeholders, traits, entities, surface, variables } = latest.current;
     if (!surface.statMaps) return variables?.() ?? [];
-    return buildVariableTree(template ? undefined : { statNames, placeholders, traits, entities }, owner, surface.selfIs ?? 'stat');
+    return buildVariableTree(template ? undefined : { statNames, placeholders, traits, entities }, owner, surface.selfIs ?? 'stat', timingGlobalsOf(surface));
   }, []);
 
   const { ariaLabel, placeholder, slots } = props;

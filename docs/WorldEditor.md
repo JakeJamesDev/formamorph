@@ -146,7 +146,7 @@ History works while the editor is open during play. It clears when you close the
 
 The World Editor has two modes. **Simple** is the default.
 
-- **Simple** shows the fields a new world needs. It hides the **Placeholders** tab, the placeholder bar and **Optimize Images**.
+- **Simple** shows the fields a new world needs. It hides the **Placeholders** tab, the **Scripts** tab, the placeholder bar and **Optimize Images**.
 - **Advanced** shows every field.
 
 Simple mode also hides these panel tabs:
@@ -155,8 +155,8 @@ Simple mode also hides these panel tabs:
 |---|---|
 | Entity | **Traits**, **Placeholders**, **Openings** |
 | Location | **Pins**, **Openings** |
-| Stat | **Descriptors**, **Code** |
-| Trait | **Pins** |
+| Stat | **Descriptors**, **Scripts** |
+| Trait | **Pins**, **Scripts** |
 | Dictionary entry | **Matching** |
 | Dictionary book | **Placeholders** |
 
@@ -249,7 +249,7 @@ When another tab deletes the world, the **World Deleted in Another Tab** dialog 
 ## Help Buttons
 <!-- keywords: question mark, info icon, explain this section, colored icon, short reference -->
 
-Some sections have a **?** button beside their name, such as **Aliases** and **Dynamic Value Calculation**. It opens a short help window for that section. **Learn more** opens the full page.
+Some sections have a **?** button beside their name, such as **Aliases** and **Scripts**. It opens a short help window for that section. **Learn more** opens the full page.
 
 A **?** you haven't opened yet shows in the accent color.
 

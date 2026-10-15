@@ -47,7 +47,7 @@ describe('Read in the Guide on a code card', () => {
   it('links the wiki heading of the global', async () => {
     render(<Harness initial="return self.value;" />);
     hover(await editor(), 'self');
-    expect(guideLink(await openCard()).getAttribute('href')).toBe('https://github.com/JakeJamesDev/formamorph/wiki/StatCodeGuide#self');
+    expect(guideLink(await openCard()).getAttribute('href')).toBe('https://github.com/JakeJamesDev/formamorph/wiki/ScriptsGuide#self');
   });
 
   it('opens the heading in the reader and closes the card', async () => {
@@ -58,7 +58,7 @@ describe('Read in the Guide on a code card', () => {
       render(<Harness initial="return self.value;" />);
       hover(await editor(), 'self');
       await user.click(guideLink(await openCard()));
-      expect(opener).toHaveBeenCalledWith({ page: 'StatCodeGuide', anchor: 'self' });
+      expect(opener).toHaveBeenCalledWith({ page: 'ScriptsGuide', anchor: 'self' });
       await waitFor(() => expect(card()).toBeNull());
     } finally {
       unregister();
@@ -114,7 +114,7 @@ describe('Read in the Guide on a code card', () => {
       });
       expect(shown.textContent).toContain('(global) self');
       await user.click(guideLink(shown));
-      expect(opener).toHaveBeenCalledWith({ page: 'StatCodeGuide', anchor: 'self' });
+      expect(opener).toHaveBeenCalledWith({ page: 'ScriptsGuide', anchor: 'self' });
       await waitFor(() => expect(document.querySelector('.cm-tooltip-autocomplete')).toBeNull());
     } finally {
       unregister();

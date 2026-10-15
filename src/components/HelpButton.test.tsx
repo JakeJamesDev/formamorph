@@ -66,8 +66,23 @@ describe('HelpButton', () => {
   });
 });
 
+describe('the Scripts help topic', () => {
+  it('answers to its old key too, so an old link still opens it', () => {
+    expect(HELP_TOPICS['worldEditor.statCode']).toBe(HELP_TOPICS['worldEditor.scriptBox']);
+    expect(HELP_TOPICS['worldEditor.scriptBox']).toMatchObject({ title: 'Scripts', wikiPage: 'ScriptsGuide' });
+  });
+
+  it('names the five timings and the name each one adds', () => {
+    const body = HELP_TOPICS['worldEditor.scriptBox'].body ?? '';
+    for (const timing of ['Before the AI', 'After the AI', 'During AI Output', 'At Game Start', 'When a Trait Switches']) {
+      expect(body).toContain(`**${timing}**`);
+    }
+    for (const name of ['narration', 'trait', 'player']) expect(body).toContain(`\`${name}\``);
+  });
+});
+
 describe('HelpButton Learn more', () => {
-  const topicId = 'worldEditor.statCode';
+  const topicId = 'worldEditor.scriptBox';
   const topic = HELP_TOPICS[topicId];
   let unregister: (() => void) | null = null;
   beforeEach(() => {

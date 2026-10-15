@@ -23,7 +23,7 @@ The import adds a new world. It never replaces the world you exported. Import sk
 <!-- keywords: json, file, list, by hand, manual, schema, field, raw object, property names, regen key, meter entry, required keys -->
 
 1. Add an object to the top-level `stats` list.
-2. Give it a new `id` and a `name`. Stat code and the AI find a stat by its name, so keep names unique.
+2. Give it a new `id` and a `name`. Scripts and the AI find a stat by its name, so keep names unique.
 3. Set `type` to `"number"`, or to `"percentage"` for a 0–100 stat.
 4. Set `min`, `max`, `value` (the **Base Value**) and `regen`.
 5. Write a `description`, and set `descriptors` to `[]` or to a list of [descriptors](#stat-descriptors).
@@ -124,7 +124,7 @@ Import runs every world through a migration. The migration changes an older shap
 | An entity link to a trait outside Blueprints | Removed, with its overrides |
 | A stat's `beforeCode` and `code` | Scripts with the timings `"before"` and `"after"` |
 | A stat with `type: "list"` | A `number` stat at its `min`. The items are dropped |
-| Stat code that uses `stats.find(…)` | The same code with the stat map |
+| A script that uses `stats.find(…)` | The same code with the stat map |
 | A Stomach, Fatness or Breastsize stat with no `morphBindings` | The matching body morphs |
 | A root `customPlayerVRM` | `worldOverview.customPlayerVRM` |
 | Entity and location `inGameDescription` and `detailedDescription` | `playerDescription` and `aiDescription` |
@@ -173,12 +173,12 @@ See [Persona Rules](Persona-Authoring#persona-rules) for how the last two fields
 ## Stats
 <!-- keywords: meter properties, threshold bands, morph bindings, code keys, lock flags, bonus object, percent unit, hidden flag -->
 
-Each stat is a number the player has. The AI reads it, and [stat code](StatCodeGuide) can calculate it.
+Each stat is a number the player has. The AI reads it, and a [script](ScriptsGuide) can calculate it.
 
 | Field | Req. | Type | Meaning |
 |---|---|---|---|
 | `id` | ✓ | String | Unique id |
-| `name` | ✓ | String | The name. Stat code and the AI find the stat by it |
+| `name` | ✓ | String | The name. Scripts and the AI find the stat by it |
 | `type` | ✓ | `"number"` \| `"percentage"` | A `percentage` stat has `min` 0 and `max` 100, and shows as `N%`. The AI can't change its max |
 | `description` | ✓ | String | What the stat means |
 | `min` | ✓ | Number | The lowest value |
@@ -189,7 +189,7 @@ Each stat is a number the player has. The AI reads it, and [stat code](StatCodeG
 | `regenUnit` | | `"minutes"` \| `"hours"` \| `"days"` \| `"weeks"` | The span the editor shows **Regen** per. `regen` stays per hour. Absent = `"hours"` |
 | `descriptors` | ✓ | [Descriptor](#stat-descriptors)[] | Text for each band of values |
 | `thresholdUnit` | | `"raw"` \| `"percent"` | What a descriptor's `threshold` measures. `"raw"` = the stat's own units. `"percent"` = a percent of `min` to `max`. Absent = `"raw"`. A `percentage` stat is always percent |
-| `scripts` | | [Script](#scripts)[] | Code with this stat as `self`. See the [Stat Code Guide](StatCodeGuide) |
+| `scripts` | | [Script](#scripts)[] | Code with this stat as `self`. See the [Scripts Guide](ScriptsGuide) |
 | `morphBindings` | | String[] | Body morph names this stat drives. `min` to `max` maps to 0 to 1 |
 | `enabled` | | Boolean | `false` starts the stat off. The player and the AI don't see it, and regen and code stop. A trait's `statToggles` switches it on. Absent = on |
 | `hidden` | | Boolean | `true` hides the stat from the player. The AI still reads it, and regen and code still run |
@@ -197,19 +197,19 @@ Each stat is a number the player has. The AI reads it, and [stat code](StatCodeG
 | `noIncreaseMax` / `noDecreaseMax` | | Boolean | The AI can't raise or lower the max |
 
 ### Scripts
-<!-- keywords: stat code, beforeCode, code field, before the ai, after the ai, run order, timing -->
+<!-- keywords: scripts, stat code, beforeCode, code field, before the ai, after the ai, during ai output, at game start, when a trait switches, run order, timing -->
 
-A script is one box of code. A stat and the world each hold a `scripts` list.
+A script is one box of code with a timing. A stat, a trait and the world each hold a `scripts` list.
 
 | Field | Req. | Type | Meaning |
 |---|---|---|---|
 | `id` | ✓ | String | Unique id |
 | `name` | | String | The script's name. Absent = the owner and timing name it |
-| `timing` | ✓ | `"before"` \| `"after"` | When it runs. `"before"` runs before the AI's turn, and its changes reach that turn's prompt. `"after"` runs after the AI's changes and regen |
+| `timing` | ✓ | `"before"` \| `"after"` \| `"output"` \| `"start"` \| `"switch"` | When it runs. `"before"` runs before the AI's turn, and its changes reach that turn's prompt. `"after"` runs after the AI's changes and regen. `"output"` runs on each completed narration sentence. `"start"` runs once on a new game's opening turn. `"switch"` runs when a trait turns on or off |
 | `code` | ✓ | String | The JavaScript |
 | `order` | | Number | Run position within the timing. Scripts with an `order` run first, lowest first. The rest run after them, world scripts first, then each stat's in stat order |
 
-When two scripts write the same field, the later one wins. A world script has no `self`.
+When two scripts write the same field, the later one wins. A world script has no `self`. A trait's script runs only while the trait is active. The [Scripts Guide](ScriptsGuide) lists what each timing reads.
 
 ### Stat Descriptors
 
@@ -260,6 +260,7 @@ A trait describes the player or an entity. The player picks traits before play. 
 | `requires` | | [Requirement row](#trait-requirements)[] | Any one row that holds makes the trait available. Absent or empty = always available |
 | `statToggles` | | `{ "statId", "enabled" }`[] | Stats switched on or off while the trait is active |
 | `placeholderPins` | | [Pin](#placeholder-pins)[] | Placeholder values pinned while the trait is active |
+| `scripts` | | [Script](#scripts)[] | Code with this trait as `self`. It runs while the trait is active. See the [Scripts Guide](ScriptsGuide) |
 
 See [World Editor: Traits](World-Editor-Traits) for how modes, requirements and pick counts behave during the game.
 
@@ -723,6 +724,6 @@ A short world. `...` replaces the media data.
 ## Related
 
 - [🛠️ World Editor](WorldEditor): the editor that writes this format
-- [🧮 Stat Code Guide](StatCodeGuide): what a script's `code` can do
+- [🧮 Scripts Guide](ScriptsGuide): what a script's `code` can do
 - [🪪 Personas for Authors](Persona-Authoring): persona marks and rules
 - [🔗 Linked Content](LinkedContent): linked copies and world files

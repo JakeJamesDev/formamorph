@@ -275,7 +275,7 @@ export const LANGUAGE_NAMES: readonly string[] = [
 
 /** Stat code's whole surface, as the editor and its reader take it. */
 export const STAT_CODE_SURFACE: CodeSurface = {
-  label: 'stat code',
+  label: 'stat script',
   globals: SANDBOX_GLOBALS,
   builtins: SANDBOX_BUILTINS,
   members: BUILTIN_MEMBERS,
@@ -314,14 +314,56 @@ export const SWITCHED_TRAIT_FIELDS: readonly SurfaceEntry[] = readOnlyEntries([
 ]);
 
 /** `trait`, which only a When a Trait Switches script reads. */
-const SWITCHED_TRAIT_GLOBAL: SurfaceEntry = {
+export const SWITCHED_TRAIT_GLOBAL: SurfaceEntry = {
   name: 'trait', detail: 'Trait', access: 'readOnly',
   info: 'The trait that switched. Read-only. Its enabled field tells you which way it switched.',
 };
 
-/** A script box's surface: its home's, with `trait` in a When a Trait Switches script only. */
-export const scriptSurface = (surface: CodeSurface, timing: ScriptTiming): CodeSurface =>
-  (timing === 'switch' ? { ...surface, globals: [...surface.globals, SWITCHED_TRAIT_GLOBAL] } : surface);
+/** The fields of `narration` in a During AI Output script. Only `sentence` takes a write. */
+export const NARRATION_FIELDS: readonly SurfaceEntry[] = withAccess([
+  { name: 'sentence', detail: 'string', info: 'The sentence that just completed. Assign it, or return a string, to replace it' },
+  { name: 'sent', detail: 'string[]', info: 'The earlier sentences the reveal already released' },
+  { name: 'buffered', detail: 'string[]', info: 'The complete sentences the reveal still holds, already past their scripts' },
+  { name: 'full', detail: 'string', info: 'Everything received so far, the sentence and the partial tail included' },
+  { name: 'index', detail: 'number', info: 'The position of the sentence in the reply, from 0' },
+], ['sentence'], 'writable');
+
+/** `narration`, which only a During AI Output script reads. */
+export const NARRATION_GLOBAL: SurfaceEntry = {
+  name: 'narration', detail: shapeOf(NARRATION_FIELDS),
+  info: 'The narration around the sentence that just completed. Assign narration.sentence to rewrite the sentence.',
+};
+
+/** The calls on `player`, in the order the guide lists them. */
+export const PLAYER_CALL_ENTRIES: readonly SurfaceEntry[] = [
+  { name: 'tell', detail: '(text) => void', info: 'Shows the player a message under the narration. It stays with the turn and never reaches the AI.' },
+  { name: 'toast', detail: '(text) => void', info: 'Shows the player a toast. It isn’t saved.' },
+  { name: 'confirm', detail: '(question) => boolean', info: 'Asks a yes or no question and waits for the answer' },
+  { name: 'ask', detail: '(question, options, { multiple }?) => any', info: 'Asks the player to pick from text or { label, value } options, and waits. Returns the value picked, or a list with multiple.' },
+  { name: 'askText', detail: '(question, placeholder?) => string', info: 'Asks the player for typed text and waits for the answer' },
+];
+
+/** `player`, which every script reads except a During AI Output one. */
+export const PLAYER_GLOBAL: SurfaceEntry = {
+  name: 'player', detail: shapeOf(PLAYER_CALL_ENTRIES),
+  info: 'The human playing, not the entity they play. Tell or ask them through its calls. A call that asks waits for the answer, with no await.',
+};
+
+/** The object a timing hands its script, with its members: `narration` in During AI Output, `player` elsewhere. */
+const timingObject = (timing: ScriptTiming) => (timing === 'output'
+  ? { global: NARRATION_GLOBAL, members: NARRATION_FIELDS }
+  : { global: PLAYER_GLOBAL, members: PLAYER_CALL_ENTRIES });
+
+/** A script box's surface: its home's, with the names its timing adds. `narration` is During AI Output's, and
+ *  `player` is every other timing's. `trait` is When a Trait Switches's. */
+export const scriptSurface = (surface: CodeSurface, timing: ScriptTiming): CodeSurface => {
+  const { global, members } = timingObject(timing);
+  return {
+    ...surface,
+    globals: [...surface.globals, global, ...(timing === 'switch' ? [SWITCHED_TRAIT_GLOBAL] : [])],
+    members: new Map([...surface.members, [global.name, members]]),
+  };
+};
 
 /** A world script's surface: stat code's, with `self` and `owner` empty and nothing owed back (Q31). */
 export const WORLD_SCRIPT_SURFACE: CodeSurface = {

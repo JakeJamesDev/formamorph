@@ -79,9 +79,9 @@
     { "id": "format-b1", "page": "WorldFormat", "question": "can I open the file in a text editor and change it directly?", "section": "WorldFormat#how-to-edit-a-world-file-by-hand" },
     { "id": "format-b2", "page": "WorldFormat", "question": "will something I made a long time ago in an old release still load?", "section": "WorldFormat#versions-and-older-files" },
     { "id": "format-b3", "page": "WorldFormat", "question": "is there a complete sample file I can copy from?", "section": "WorldFormat#example-world" },
-    { "id": "statcode-b1", "page": "StatCodeGuide", "question": "my script on a number isn't doing anything, how do I figure out why?", "section": "StatCodeGuide#how-to-debug-stat-code", "otherSections": ["StatCodeGuide#troubleshooting"] },
-    { "id": "statcode-b2", "page": "StatCodeGuide", "question": "how do I stop the AI from moving a number by too much in one go?", "section": "StatCodeGuide#how-to-limit-the-ais-change-to-a-stat", "otherSections": ["StatCodeGuide#reading-this-turn"] },
-    { "id": "statcode-b3", "page": "StatCodeGuide", "question": "can a script read the in-game time of day?", "section": "StatCodeGuide#the-story-clock" },
+    { "id": "statcode-b1", "page": "ScriptsGuide", "question": "my script on a number isn't doing anything, how do I figure out why?", "section": "ScriptsGuide#how-to-debug-scripts", "otherSections": ["ScriptsGuide#troubleshooting"] },
+    { "id": "statcode-b2", "page": "ScriptsGuide", "question": "how do I stop the AI from moving a number by too much in one go?", "section": "ScriptsGuide#how-to-limit-the-ais-change-to-a-stat", "otherSections": ["ScriptsGuide#reading-this-turn"] },
+    { "id": "statcode-b3", "page": "ScriptsGuide", "question": "can a script read the in-game time of day?", "section": "ScriptsGuide#the-story-clock" },
     { "id": "linked-b1", "page": "LinkedContent", "question": "the original character I copied from was changed, how do I get those changes?", "section": "LinkedContent#how-to-update-a-linked-copy", "otherSections": ["LinkedContent#updates"] },
     { "id": "linked-b2", "page": "LinkedContent", "question": "the game says it can't find the original of something in my setting, how do I fix that?", "section": "LinkedContent#how-to-repair-a-missing-source", "otherSections": ["LinkedContent#repairs"] },
     { "id": "linked-b3", "page": "LinkedContent", "question": "how do I let other people's settings use my character as an optional extra?", "section": "LinkedContent#how-to-offer-an-entity-or-dictionary-as-an-add-on" }

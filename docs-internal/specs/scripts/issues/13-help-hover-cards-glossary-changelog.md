@@ -1,6 +1,6 @@
 # 13: Help, Hover Cards, Glossary And Changelog
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 03, 05, 07, 10
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: high

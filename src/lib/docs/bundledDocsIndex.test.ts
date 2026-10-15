@@ -175,13 +175,33 @@ describe('hub sections in the bundled docs', () => {
   });
 });
 
-describe('the Variable menu section of the Stat Code Guide', () => {
+describe('the Scripts sections for a player who still says stat code', () => {
+  const SCRIPTS_SECTIONS = /^(ScriptsGuide#|World-Editor-Stats#scripts$|World-Editor-Traits#scripts$)/;
+
+  it.each([
+    'stat code',
+    'what is stat code?',
+    'where do I put stat code?',
+    'how do I write stat code?',
+  ])('fills the top 3 for "%s" with Scripts sections', (question) => {
+    const top = index.search(question, 3).map((s) => s.id);
+    expect(top.filter((id) => !SCRIPTS_SECTIONS.test(id))).toEqual([]);
+  });
+
+  it('still holds a page at the old name, and keeps it out of the search', () => {
+    expect(DOCS_FOLDER).toContain('StatCodeGuide');
+    expect(Object.keys(BUNDLED_DOCS)).not.toContain('StatCodeGuide');
+    expect(ids.filter((id) => id.startsWith('StatCodeGuide'))).toEqual([]);
+  });
+});
+
+describe('the Variable menu section of the Scripts Guide', () => {
   it.each([
     "how do I reference an entity's trait in stat code?",
     'how do I insert a trait of an entity into my stat code?',
     'what does the Variable menu hold?',
   ])('is in the top 3 for "%s"', (question) => {
-    expect(index.search(question, 3).map((s) => s.id)).toContain('StatCodeGuide#how-to-insert-a-name-from-your-world');
+    expect(index.search(question, 3).map((s) => s.id)).toContain('ScriptsGuide#how-to-insert-a-name-from-your-world');
   });
 });
 
@@ -203,7 +223,7 @@ describe('the Chip Options sections of the Prompts guide', () => {
 });
 
 describe('the other-stat write sections of the Stat Code Guide', () => {
-  const IDS = ['StatCodeGuide#how-to-change-another-stat-from-code', 'StatCodeGuide#writing-to-other-stats'];
+  const IDS = ['ScriptsGuide#how-to-change-another-stat-from-code', 'ScriptsGuide#writing-to-other-stats'];
 
   it.each([
     'how can one of my stat scripts change a different stat, like lowering health when a dice roll comes up 1?',
@@ -217,14 +237,14 @@ describe('the other-stat write sections of the Stat Code Guide', () => {
 
   it('is first for a question about two scripts that write one stat', () => {
     expect(index.search('two of my stat scripts change the same stat, which one wins?', 1).map((s) => s.id))
-      .toEqual(['StatCodeGuide#writing-to-other-stats']);
+      .toEqual(['ScriptsGuide#writing-to-other-stats']);
   });
 });
 
 describe('the owner sections of the Stat Code Guide', () => {
   // Code hover cards link each global to its own heading.
   it.each(['self', 'stats', 'owner'])('has one heading for %s', (name) => {
-    const [section] = index.get([`StatCodeGuide#${name}`]);
+    const [section] = index.get([`ScriptsGuide#${name}`]);
     expect(section?.markdown).toMatch(new RegExp(`^### ${name}\\b`, 'i'));
   });
 
@@ -234,7 +254,7 @@ describe('the owner sections of the Stat Code Guide', () => {
     'in a script on one of my monster\'s stats, how do I get to that monster\'s other stats?',
     'what does owner mean in a Blueprint stat script?',
   ])('answers "%s" in its top 3', (question) => {
-    expect(index.search(question, 3).map((s) => s.id)).toContain('StatCodeGuide#owner');
+    expect(index.search(question, 3).map((s) => s.id)).toContain('ScriptsGuide#owner');
   });
 
   it.each([
@@ -242,6 +262,6 @@ describe('the owner sections of the Stat Code Guide', () => {
     'I want a village event script to lower a villager\'s energy. How do I write that?',
     'when two scripts set one number in the same turn, whose result stays?',
   ])('answers "%s" with the write section in its top 3', (question) => {
-    expect(index.search(question, 3).map((s) => s.id)).toContain('StatCodeGuide#writing-to-other-stats');
+    expect(index.search(question, 3).map((s) => s.id)).toContain('ScriptsGuide#writing-to-other-stats');
   });
 });

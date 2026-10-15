@@ -113,7 +113,7 @@ Each piece is a checkbox in the **Stat Detail** row of the chip's [Chip Options]
 > ⚠️ **Every active stat is sent on every turn.** Stats use your context budget all the time. Three stats that matter are better than twelve that don't.
 
 ## The panel
-<!-- keywords: code tab missing, cant find descriptors, no tabs showing, three tabs -->
+<!-- keywords: scripts tab missing, code tab missing, cant find descriptors, no tabs showing, three tabs -->
 
 Select a stat to open its panel. In Advanced mode the panel has three tabs.
 
@@ -121,7 +121,7 @@ Select a stat to open its panel. In Advanced mode the panel has three tabs.
 |---|---|---|
 | **Details** | The fields below | Simple and Advanced |
 | **Descriptors** | [Stat Descriptors](#stat-descriptors) | Advanced only |
-| **Code** | [Dynamic Value Calculation](#dynamic-value-calculation) | Advanced only |
+| **Scripts** | [Scripts](#scripts) | Advanced only |
 
 In Simple mode the panel shows the basic fields with no tabs.
 
@@ -187,30 +187,34 @@ When you switch, your numbers convert, so no band moves. The choice only changes
 
 **Advanced mode only.** Each descriptor row has a pin button. A pin keeps a [placeholder](World-Editor-Placeholders) at one value while the stat is in that band.
 
-## Dynamic Value Calculation
-<!-- keywords: javascript, script, formula, derived from another, automatic math, custom logic, programming, ai change overwritten, code box, computed -->
+## Scripts
+<!-- keywords: scripts tab, stat code, dynamic value calculation, javascript, script, formula, derived from another, automatic math, custom logic, programming, ai change overwritten, code box, computed, add script, timing -->
 <!-- route: worldEditorStat.code -->
 
-The **Code** tab holds two code boxes. Each box takes JavaScript, and each has its own **Test Code** and **Templates** buttons. **Templates** opens a list of code shapes to insert.
+The **Scripts** tab lists the stat's scripts. A script is one box of JavaScript with a timing. Select **Add Script** to add one. Pick its timing in the **Timing** menu, and give it a name if you like. Each box has its own **Test Code** and **Templates** buttons. **Templates** opens a list of code shapes to insert.
 
-| Box | Runs |
+| Timing | Runs |
 |---|---|
 | **Before the AI** | Before the prompt is built |
 | **After the AI** | After the AI's stat changes and Regen apply |
+| **During AI Output** | Once for each narration sentence, when it completes |
+| **At Game Start** | Once on the opening turn of a new game |
+| **When a Trait Switches** | Each time a trait turns on or off in play |
 
-The turn order is: Before the AI, the AI's stat changes, Regen, After the AI. An empty box is skipped, and the manual value stays.
+The turn order is: At Game Start on the opening turn, Before the AI, the AI's stat changes, Regen, After the AI. During AI Output runs while the narration streams. When a Trait Switches runs right after any step that switches a trait. An empty script is skipped, and the manual value stays.
 
-Code can do five things:
+A script can do these things:
 
 - Set this stat's value, Min, Max or Regen. A returned number sets the value.
 - Write the value, Min, Max or Regen of another stat, global or owned by any entity
 - Pin or unpin a placeholder
 - Switch a trait on or off
 - Read every active stat, every trait, every placeholder and the story clock
+- Rewrite a narration sentence, or tell or ask the player
 
-The code runs in an isolated sandbox with no page and no network. The editor suggests the names you can use as you type, and it underlines unknown names. **Test Code** runs one box and shows the result, the warnings and the errors.
+The code runs in an isolated sandbox with no page and no network. The editor suggests the names you can use as you type, and it underlines unknown names. Hover a name to read what it is. **Test Code** runs one box and shows the result, the warnings and the errors.
 
-> ⚠️ **Code that sets the value overwrites the AI.** The value is set again on every turn, so the AI's change to it is lost. The AI still reads the value and the description.
+> ⚠️ **A script that sets the value overwrites the AI.** The value is set again on every turn, so the AI's change to it is lost. The AI still reads the value and the description.
 
-> 📘 Full reference: [Stat Code Guide](StatCodeGuide).
+> 📘 Full reference: [Scripts Guide](ScriptsGuide).
 

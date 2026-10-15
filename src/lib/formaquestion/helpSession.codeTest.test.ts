@@ -16,7 +16,7 @@ import { askHelp, type HelpEvent, type HelpQuestion } from './helpSession';
 import { helpSettingsOf, type HelpSettingsChange } from './helpSettings';
 import type { HelpTrace } from './helpTrace';
 
-const index = createDocsIndex({ pages: { StatCodeGuide: '# Stat Code\n\nCode sets a stat.\n\n## Quick Reference\n\nRead a stat through `.value`.\n' } });
+const index = createDocsIndex({ pages: { ScriptsGuide: '# Stat Code\n\nCode sets a stat.\n\n## Quick Reference\n\nRead a stat through `.value`.\n' } });
 
 const endpoint = (tools: boolean | null) => {
   const reasoning: ReasoningCapability = { ...UNKNOWN_REASONING_CAPABILITY, tools, sources: tools === null ? {} : { tools: 'native' } };

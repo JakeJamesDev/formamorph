@@ -1,19 +1,20 @@
 /**
- * The stat code Variable menu as a tree: the sandbox's globals, the world's names under each, and each name's
+ * The scripts' Variable menu as a tree: the sandbox's globals, the world's names under each, and each name's
  * fields from the surface lists. Every leaf inserts a whole path that runs as inserted. Template mode has no
  * names, so each name list is one `Name` row to type over.
  */
 
 import type { AnalysisOptions, CodeEntityNames, CodeTraitPlace } from '@/lib/statCodeAnalysis';
 import { WORLD_BREADCRUMB } from '@/lib/traitGates';
-import type { CodeAccess, SurfaceEntry } from '@/lib/codeSurface';
+import { surfaceHasGlobal, type CodeAccess, type CodeSurface, type SurfaceEntry } from '@/lib/codeSurface';
 import { placeholderKindNoun, type PlaceholderKindNoun } from '@/lib/placeholders';
 import {
   isPlaceholderEntryMember, memberStep, placeholderPathMap, type PlaceholderPathMap, type PlaceholderPathNode,
 } from '@/lib/statCodePaths';
 import {
-  CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, DELTA_FIELDS, DELTA_MEMBERS, DICTIONARY_FIELDS, ENTITY_FIELDS, PERSONA_FIELDS,
-  PREVIOUS_FIELDS, SANDBOX_GLOBALS, SELF_TRAIT_FIELDS, STAT_FIELDS, TRAIT_ENTRY_FIELDS, TRAIT_SCRIPT_SURFACE, placeholderEntryFields,
+  CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, DELTA_FIELDS, DELTA_MEMBERS, DICTIONARY_FIELDS, ENTITY_FIELDS, NARRATION_FIELDS,
+  NARRATION_GLOBAL, PERSONA_FIELDS, PLAYER_CALL_ENTRIES, PLAYER_GLOBAL, PREVIOUS_FIELDS, SANDBOX_GLOBALS, SELF_TRAIT_FIELDS,
+  STAT_FIELDS, SWITCHED_TRAIT_FIELDS, SWITCHED_TRAIT_GLOBAL, TRAIT_ENTRY_FIELDS, TRAIT_SCRIPT_SURFACE, placeholderEntryFields,
 } from '@/lib/statCodeSurface';
 
 /** The names the tree lists, as the editor's session holds them, with each world trait in its groups. */
@@ -220,6 +221,39 @@ const traitRows = (path: Path, traits: readonly TraitPlace[]): VariableNameRow[]
     ...trait, children: fields(keyed(path, trait.name), TRAIT_ENTRY_FIELDS),
   }));
 
+/** Which of the names a script's timing adds its surface injects: `narration`, `player` and `trait`. */
+export interface TimingGlobals {
+  narration: boolean;
+  player: boolean;
+  trait: boolean;
+}
+
+/** The timing globals of a surface, read off the one list the editor and the menu share. */
+export const timingGlobalsOf = (surface: CodeSurface): TimingGlobals => ({
+  narration: surfaceHasGlobal(surface, 'narration'),
+  player: surfaceHasGlobal(surface, 'player'),
+  trait: surfaceHasGlobal(surface, 'trait'),
+});
+
+/** A call on `player` inserts complete, with the caret between the quotes of its question. */
+function playerFields(): VariableNode[] {
+  return PLAYER_CALL_ENTRIES.map((entry) => {
+    const args = entry.name === 'ask' ? '("", [])' : '("")';
+    const call = field(root('player'), entry, args);
+    const caret = call.insert.length - args.length + args.indexOf('"') + 1;
+    return { ...call, selection: { from: caret, to: caret } };
+  });
+}
+
+/** The groups a script's timing adds, in the order its surface lists them. */
+function timingGroups(globals: TimingGlobals): VariableNode[] {
+  return [
+    ...(globals.narration ? [{ kind: 'group' as const, label: 'Narration', info: NARRATION_GLOBAL.info, children: fields(root('narration'), NARRATION_FIELDS) }] : []),
+    ...(globals.player ? [{ kind: 'group' as const, label: 'Player', info: PLAYER_GLOBAL.info, children: playerFields() }] : []),
+    ...(globals.trait ? [{ kind: 'group' as const, label: 'Switched Trait', info: SWITCHED_TRAIT_GLOBAL.info, children: fields(root('trait'), SWITCHED_TRAIT_FIELDS) }] : []),
+  ];
+}
+
 /** The Owner group's header. */
 const OWNER_INFO = 'The entity that owns this stat, with its own stats, traits and placeholders. A Blueprint stat’s code runs once for each owner. It’s empty in a global stat.';
 
@@ -229,6 +263,7 @@ const OWNER_INFO = 'The entity that owns this stat, with its own stats, traits a
  */
 export function buildVariableTree(
   names?: VariableTreeNames, owner: VariableTreeOwner | null = null, self: 'stat' | 'trait' | 'empty' = 'stat',
+  timing: TimingGlobals = { narration: false, player: false, trait: false },
 ): VariableNode[] {
   const pathMap: PlaceholderPathMap | null = names?.placeholders
     ? placeholderPathMap({ list: names.placeholders.list, owners: names.placeholders.owners })
@@ -320,6 +355,7 @@ export function buildVariableTree(
     nameList('Placeholders', placeholderList, 'No placeholders in this world', globalInfo('placeholders')),
     nameList('Dictionaries', dictionaryRows, 'No dictionaries in this world', globalInfo('dictionaries')),
     { kind: 'group', label: 'Clock', info: globalInfo('clock'), children: clockFields(root('clock')) },
+    ...timingGroups(timing),
   ];
 }
 

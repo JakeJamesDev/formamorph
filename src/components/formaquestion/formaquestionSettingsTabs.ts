@@ -199,7 +199,7 @@ export const PROMPTS_COPY = {
     answer: { label: 'Answer', hint: 'Tells your AI how to answer from the guide sections' },
     pick: { label: 'Search', hint: 'Tells your AI how to choose guide sections from the heading list' },
     lookup: { label: 'Lookup', hint: 'Tells your AI how to answer with the lookup function' },
-    code: { label: 'Code', hint: 'Tells your AI how to write stat code on questions about code' },
+    code: { label: 'Code', hint: 'Tells your AI how to write scripts on questions about code' },
   },
   options: {
     title: 'Options',
@@ -230,7 +230,7 @@ export const PROMPTS_COPY = {
 export const TOOLS_COPY = {
   lookupSummary: 'Reads guide sections on function-calling endpoints. Roughly quadruples input tokens per question.',
   rollSummary: 'Rolls the dice you name, and returns each die and the total',
-  codeTestSummary: "Tests stat code before your AI answers. Sends your open world's names.",
+  codeTestSummary: "Tests scripts before your AI answers. Sends your open world's names.",
   unsupported: "Your Answer Endpoint won't receive these functions. Its model doesn't support them, or support isn't confirmed yet.",
   worldText: 'Sends text from the world you have open when a Tool is on',
 } as const;

@@ -143,9 +143,15 @@ The words Formamorph uses, and what each one means. Each term links the page tha
 | [Stat](World-Editor-Stats) | A number the game tracks, between a **Min** and a **Max**. It is global or an entity's own. |
 | [Stat Descriptor](World-Editor-Stats#stat-descriptors) | A word the AI gets for a band of a stat's values |
 | [Regen](World-Editor-Stats#the-fields) | The amount a stat changes for each hour of story time |
-| [Stat Code](StatCodeGuide) | JavaScript that a stat runs each turn, in its **Before the AI** and **After the AI** boxes |
+| [Script](ScriptsGuide) | One box of JavaScript with a timing, on a stat, a trait or the world. It was called stat code. |
+| [Timing](ScriptsGuide#the-five-timings) | When a script runs. Pick it in the script's **Timing** menu. |
+| [Before the AI](ScriptsGuide#the-five-timings) | The timing that runs at the start of a turn, before the prompt is built |
+| [After the AI](ScriptsGuide#the-five-timings) | The timing that runs after the AI's stat changes and Regen apply |
+| [During AI Output](ScriptsGuide#during-ai-output) | The timing that runs once for each completed narration sentence, and can rewrite it |
+| [At Game Start](ScriptsGuide#at-game-start) | The timing that runs once on the opening turn of a new game |
+| [When a Trait Switches](ScriptsGuide#when-a-trait-switches) | The timing that runs each time a trait turns on or off in play |
 | [Trait](World-Editor-Traits) | A fact about the player or an entity, such as a class or a fear. It is global or an entity's own. |
-| [Acquired](StatCodeGuide#traits) | A trait the player has. A trait switched off is still acquired. |
+| [Acquired](ScriptsGuide#traits) | A trait the player has. A trait switched off is still acquired. |
 | [Trait Modes](World-Editor-Traits#mode) | **Optional**: the player chooses. **Automatic**: active while its requirements hold. **Hidden**: Automatic, and the player never sees it. |
 | [Curse](World-Editor-Traits#curses) | An Automatic trait that requires the cursed item |
 | [Pick Count](World-Editor-Traits#pick-count) | How many traits the player must and can pick from a group: **Any**, **Exactly One**, **Up to One** or **Custom** |

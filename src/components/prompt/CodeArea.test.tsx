@@ -4,7 +4,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CodeArea } from './CodeArea';
 import type { CodeSurface } from '@/lib/codeSurface';
-import { STAT_CODE_SURFACE, STAT_FIELDS, WORLD_SCRIPT_SURFACE } from '@/lib/statCodeSurface';
+import { scriptSurface, STAT_CODE_SURFACE, STAT_FIELDS, WORLD_SCRIPT_SURFACE } from '@/lib/statCodeSurface';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { SCRIPT_SURFACE as SCRIPT } from '@/test/scriptSurface';
@@ -896,6 +896,30 @@ describe('CodeArea', () => {
         expect(level('Stats')).toBeNull();
         expect(owned()).toBe('');
       });
+    });
+  });
+
+  describe('the names a script’s timing adds to the Variable menu', () => {
+    it.each([
+      ['output', 'Narration', 'sentence', 'narration.sentence'],
+      ['before', 'Player', 'tell', 'player.tell("")'],
+      ['switch', 'Switched Trait', 'enabled', 'trait.enabled'],
+    ] as const)('lists the %s timing’s %s group and inserts its %s field', async (timing, group, field, insert) => {
+      const user = userEvent.setup();
+      render(<Harness names={worldNames()} surface={scriptSurface(STAT_CODE_SURFACE, timing)} />);
+      await user.click(await editor());
+      await pick(user, group, field);
+      expect(owned()).toBe(insert);
+    });
+
+    it('lists none of them on a surface with no timing', async () => {
+      const user = userEvent.setup();
+      render(<Harness names={worldNames()} />);
+      await editor();
+      await user.click(screen.getByLabelText('Variable'));
+      for (const group of ['Narration', 'Player', 'Switched Trait']) {
+        expect(screen.queryByRole('button', { name: group })).toBeNull();
+      }
     });
   });
 

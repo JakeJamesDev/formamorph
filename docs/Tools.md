@@ -205,4 +205,4 @@ A script reads four values. Each one is frozen: a script reads it and cannot cha
 
 - [📜 Prompts](Prompts): prompt presets, which carry the **Enabled** switches
 - [⚙️ Settings](Settings): the **Tools** row in the **Output** tab, and the text endpoints
-- [🧮 Stat Code Guide](StatCodeGuide): the other place you write JavaScript for a world
+- [🧮 Scripts Guide](ScriptsGuide): the other place you write JavaScript for a world

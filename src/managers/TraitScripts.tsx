@@ -65,7 +65,7 @@ export function TraitScripts({ trait, owner, ownerName, onChange, reset, reveal 
         <LabelRow reset={reset}>
           <div className="flex items-center gap-2">
             <Label>Scripts</Label>
-            <HelpButton topicId="worldEditor.statCode" className="h-6 w-6" />
+            <HelpButton topicId="worldEditor.scriptBox" className="h-6 w-6" />
           </div>
         </LabelRow>
         <Hint>Runs code at the timing you select, while this trait is active. Code can set a stat, pin a placeholder, or switch a trait.</Hint>

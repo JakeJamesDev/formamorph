@@ -379,7 +379,7 @@ const PlaceholderManager = ({ placeholder, rowId, share, tab, onTabChange }: {
           {locked ? nameInput : <ListDetailFirstRow>{nameInput}</ListDetailFirstRow>}
           {shadowsMember && (
             <p role="status" className="text-meta text-warning">
-              Every placeholder has a <code>{editing.name}</code> of its own, so stat code can’t reach this part
+              Every placeholder has a <code>{editing.name}</code> of its own, so scripts can’t reach this part
               by name. Rename it to reach it from code.
             </p>
           )}

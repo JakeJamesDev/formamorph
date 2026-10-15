@@ -49,7 +49,7 @@ describe('answerRoute', () => {
       route: 'worldEditor.entities',
       markdown: '## How to Add an Entity\n\n1. Open the **Entities** tab.\n2. Type the entity\'s name in the **Search or add new entities** box.\n3. Select the **+** button (**Add to Entities**). In Advanced mode, the button opens a menu: select **Add Entity**.\n4. The new entity opens in the panel. On the **Profile** tab, pick one or more places in **Locations**.\n5. On the **Descriptions** tab, write the **AI-Facing Description**.\n6. Select **Save** at the bottom of the editor.',
     };
-    const lead = { id: 'World-Editor-Stats#dynamic-value-calculation', route: 'worldEditor.stats', markdown: '## Dynamic Value Calculation' };
+    const lead = { id: 'World-Editor-Stats#scripts', route: 'worldEditor.stats', markdown: '## Scripts' };
     const answer = 'Adding entities to a location is a breeze! Here\'s how you do it:\n\n1. Open the **Entities** tab.\n2. Type the entity\'s name in the **Search or add new entities** box.\n3. Select the **+** button (**Add to Entities**). In Advanced mode, the button opens a menu: select **Add Entity**.\n4. The new entity opens in the panel. On the **Profile** tab, pick one or more places in **Locations**.\n5. On the **Descriptions** tab, write the **AI-Facing Description**.\n6. Select **Save** at the bottom of the editor.';
 
     it('routes to the copied source over an earlier one', () => {
