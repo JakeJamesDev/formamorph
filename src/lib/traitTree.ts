@@ -3,7 +3,7 @@
 // the block sent to the AI. The editor and selection screen build/walk the tree from the two flat world arrays.
 
 import {
-  buildTree, flattenTree, getDropProjection, applyDrop, duplicateNode, aiVisibleTree, projectionPastBlocked, nodeDropWrites,
+  buildTree, flattenTree, getDropProjection, applyDrop, duplicateNode, aiVisibleTree, projectionPastBlocked,
   removeChildrenOf as removeChildrenOfGeneric, isDescendantGroup as isDescendantGroupGeneric,
   type GroupTreeNode, type FlatTreeNode,
 } from './groupTree';
@@ -12,7 +12,11 @@ import { xmlEscape } from './utils';
 import { blueprintsGroup, blueprintsSubtreeIds, groupsBelow } from './blueprintGroups';
 import { ownsOrLinksTraits, heldReason, makeLink, originalOf, resolveOwners } from './owners';
 import type { HeldReason } from './heldReasons';
-import { ancestors, parentLookup } from './ancestors';
+import {
+  applyOwnerTreeDrop, buildOwnerTree, linksCarried, nodePlacement, ownerTreeDropProjection, ownerTreeRows,
+  placeableGroupIds as placeableIdsOf,
+  type OwnerTree, type OwnerTreeDrop, type OwnerTreeDropRules, type OwnerTreeSource,
+} from './ownerTree';
 import { traitReaderOutsideBlueprints, type TraitReader, type TraitReaderWorld } from './traitMoveReaders';
 import { randomUUID } from './uuid';
 
@@ -119,17 +123,9 @@ export function offeredWorldTraits<T extends Trait, G extends TraitGroup>(
 }
 
 /** The world groups an entity node can sit in: every one outside Blueprints. */
-export function placeableGroupIds(groups: readonly TraitGroup[]): Set<string> {
-  const inBlueprints = blueprintsSubtreeIds(groups);
-  return new Set(groups.filter((g) => !inBlueprints.has(g.id)).map((g) => g.id));
-}
+export const placeableGroupIds = (groups: readonly TraitGroup[]): Set<string> => placeableIdsOf(groups, blueprintsSubtreeIds);
 
-/** An entity node's stored placement when its group is one of `placeableIds`; a gone, foreign or Blueprints group
- *  reads as none. The Custom Persona entity's node sits at the top level only. */
-export function nodePlacement(p: TreePlacement | undefined, entity: Entity, placeableIds: ReadonlySet<string>): TreePlacement | null {
-  if (p && p.groupId !== null && entity.customPersona) return null;
-  return p && (p.groupId === null || placeableIds.has(p.groupId)) ? p : null;
-}
+export { nodePlacement };
 
 /** The entity node's place in the Traits tree; see {@link nodePlacement}. */
 export const effectivePlacement = (entity: Entity, placeableIds: ReadonlySet<string>): TreePlacement | null =>
@@ -150,58 +146,52 @@ const showsSystemNode = (holds: boolean, emptySystemNodes: boolean) => holds || 
  *  player's view, Blueprints and everything in it drop out. With `links`, the editor's view, an entity's links
  *  draw too, and an entity with links only gets a node, as does the Custom Persona entity while empty.
  *  `emptySystemNodes` off hides an empty Blueprints group and an empty Custom Persona entity. */
-export function ownedTraitTree(
+export const ownedTraitTree = (
+  lists: WorldTraitLists, entities: readonly Entity[], library: readonly Entity[] = [], options: TraitTreeOptions = {},
+): OwnedTraitTree => fromOwnerTree(buildOwnerTree(traitTreeSource(lists, entities, library, options)));
+
+/** Which rows the one tree draws; see {@link ownedTraitTree}. */
+export interface TraitTreeOptions { links?: boolean; emptySystemNodes?: boolean }
+
+type TraitOwnerTree = OwnerTree<TraitGroup, Trait, LinkRow>;
+const fromOwnerTree = ({ leaves, ...rest }: TraitOwnerTree): OwnedTraitTree => ({ ...rest, traits: leaves });
+const toOwnerTree = ({ traits, ...rest }: OwnedTraitTree): TraitOwnerTree => ({ ...rest, leaves: traits });
+
+/** The owner-tree source for owned traits: raw row ids, links drawn only in the editor's view. */
+export function traitTreeSource(
   lists: WorldTraitLists, entities: readonly Entity[], library: readonly Entity[] = [],
-  { links = false, emptySystemNodes = true } = {},
-): OwnedTraitTree {
+  { links = false, emptySystemNodes = true }: TraitTreeOptions = {},
+): OwnerTreeSource<TraitGroup, Trait, LinkRow> {
   const offered = links ? null : offeredWorldTraits(lists.traits, lists.traitGroups);
   const blueprints = links ? blueprintsGroup(lists.traitGroups) : undefined;
   const hideBlueprints = !!blueprints && !showsSystemNode(groupHoldsItems(lists, blueprints.id), emptySystemNodes);
   const world: WorldTraitLists = offered
     ? { traits: offered.traits, traitGroups: offered.groups }
     : hideBlueprints ? { ...lists, traitGroups: lists.traitGroups.filter((g) => g !== blueprints) } : lists;
-  const worldGroupIds = new Set(world.traitGroups.map((g) => g.id));
-  const placeable = placeableGroupIds(world.traitGroups);
-  const atRoot = (ref: string | null | undefined) => ref == null || !worldGroupIds.has(ref);
   const hasNode = links ? (e: Entity) => ownsOrLinksTraits(e) || (emptySystemNodes && !!e.customPersona) : ownsTraits;
-  const owning = entities.filter(hasNode);
-  const rootSorts = [
-    ...world.traitGroups.map((g, i) => (atRoot(g.parentId) ? g.order ?? i : -1)),
-    ...world.traits.map((t, i) => (atRoot(t.groupId) ? t.order ?? i : -1)),
-    ...owning.map((e) => effectivePlacement(e, placeable)).map((p) => (p?.groupId === null ? p.order : -1)),
-  ];
-  const firstNodeOrder = Math.max(-1, ...rootSorts) + 1;
-
-  const groups = [...world.traitGroups];
-  const traits = [...world.traits];
-  const entityNodes = new Map<string, Entity>();
-  const ownerOf = new Map<string, string>();
-  const linkRows = new Map<string, LinkRow>();
-  let unplaced = 0;
-  const libraryIds = new Set(library.map((e) => e.id));
-  [...owning, ...library.filter(hasNode)].forEach((entity) => {
-    entityNodes.set(entity.id, entity);
-    const placement = libraryIds.has(entity.id) ? null : effectivePlacement(entity, placeable);
-    groups.push({
-      id: entity.id, name: entity.name,
-      parentId: placement?.groupId ?? null, order: placement ? placement.order : firstNodeOrder + unplaced++,
-    });
-    const ownGroupIds = new Set((entity.traitGroups ?? []).map((g) => g.id));
-    const parent = (ref: string | null | undefined) => (ref != null && ownGroupIds.has(ref) ? ref : entity.id);
-    for (const g of entity.traitGroups ?? []) {
-      groups.push({ ...g, parentId: parent(g.parentId) });
-      ownerOf.set(g.id, entity.id);
-    }
-    for (const t of entity.traits ?? []) {
-      traits.push({ ...t, groupId: parent(t.groupId) });
-      ownerOf.set(t.id, entity.id);
-    }
-    for (const link of links ? entity.traitLinks ?? [] : []) {
-      const original = originalOf(world, link.originalId);
-      if (original) pushLinkRows({ groups, traits, ownerOf, linkRows }, world, entity.id, link, original, parent);
-    }
-  });
-  return { groups, traits, entityNodes, ownerOf, linkRows };
+  return {
+    groups: world.traitGroups, leaves: world.traits,
+    entities: entities.filter(hasNode), library: library.filter(hasNode),
+    placement: (e) => e.traitPlacement,
+    blueprintsSubtreeIds,
+    nodeGroup: (e, parentId, order) => ({ id: e.id, name: e.name, parentId, order }),
+    pushRows: (tree, entity) => {
+      const ownGroupIds = new Set((entity.traitGroups ?? []).map((g) => g.id));
+      const parent = (ref: string | null | undefined) => (ref != null && ownGroupIds.has(ref) ? ref : entity.id);
+      for (const g of entity.traitGroups ?? []) {
+        tree.groups.push({ ...g, parentId: parent(g.parentId) });
+        tree.ownerOf.set(g.id, entity.id);
+      }
+      for (const t of entity.traits ?? []) {
+        tree.leaves.push({ ...t, groupId: parent(t.groupId) });
+        tree.ownerOf.set(t.id, entity.id);
+      }
+      for (const link of links ? entity.traitLinks ?? [] : []) {
+        const original = originalOf(world, link.originalId);
+        if (original) pushLinkRows({ ...tree, traits: tree.leaves }, world, entity.id, link, original, parent);
+      }
+    },
+  };
 }
 
 /** One link's rows: the original at the link's place and, for a group, its live subtree below it. */
@@ -309,53 +299,13 @@ export function statRowSide(row: StatRow, own: ReadonlySet<string>, global: Read
 
 /** The one tree's visible rows, with collapsed groups' children hidden. */
 export const ownedTraitRows = (tree: OwnedTraitTree, collapsedIds: Iterable<string>): FlatTraitNode[] =>
-  removeChildrenOf(flattenTraitTree(buildTraitTree(tree.groups, tree.traits)), collapsedIds);
+  ownerTreeRows(toOwnerTree(tree), collapsedIds);
 
-/** Whether the row is an entity node, or a world group with one anywhere below it. */
-const carriesEntityNode = (tree: OwnedTraitTree, id: string): boolean =>
-  [...tree.entityNodes.keys()].some((nodeId) => isDescendantGroup(tree.groups, id, nodeId));
-
-/** The entity whose tree a parent row is in; null for the world. */
-const ownerOfParent = (tree: OwnedTraitTree, parentId: string | null): string | null =>
-  (parentId === null ? null : tree.entityNodes.has(parentId) ? parentId : tree.ownerOf.get(parentId) ?? null);
-
-/** The links a dragged row carries: itself when it is a link, and every link below it. */
-function linksCarried(tree: OwnedTraitTree, id: string): LinkRow[] {
-  const parentOf = new Map<string, string | null>([
-    ...tree.groups.map((g) => [g.id, g.parentId] as const),
-    ...tree.traits.map((t) => [t.id, t.groupId ?? null] as const),
-  ]);
-  const below = (rowId: string) => {
-    for (let at: string | null | undefined = rowId; at; at = parentOf.get(at)) if (at === id) return true;
-    return false;
-  };
-  return [...tree.linkRows].filter(([rowId, row]) => row.root && below(rowId)).map(([, row]) => row);
-}
-
-/**
- * Where a drag in the one tree would land. Blueprints stays at the top level. A row that is or holds an entity
- * node stops at the top level or a world group outside Blueprints. Nothing lands inside a linked group, whose
- * subtree is its original's. A row carrying a link stays in an entity. Null when the rows below would hold
- * the row where it can't be.
- */
-export function getOwnedTraitDropProjection(
+/** Where a drag in the one tree would land; see {@link ownerTreeDropProjection}. */
+export const getOwnedTraitDropProjection = (
   tree: OwnedTraitTree, items: FlatTraitNode[], activeId: string, overId: string, dragOffset: number, indentationWidth: number,
-): DropProjection | null {
-  const projection = getDropProjection(items, activeId, overId, dragOffset, indentationWidth);
-  const active = items.find((i) => i.id === activeId);
-  if (!active) return null;
-  const inEntity = (id: string) => tree.entityNodes.has(id) || tree.ownerOf.has(id);
-  const inBlueprints = blueprintsSubtreeIds(tree.groups);
-  const systemNode = active.group?.system === 'blueprints';
-  const blocked = systemNode ? () => true : carriesEntityNode(tree, activeId)
-    ? (id: string) => inEntity(id) || inBlueprints.has(id)
-    : (id: string) => tree.linkRows.has(id);
-  const replayed = projectionPastBlocked(items, active, overId, projection, blocked, indentationWidth);
-  if (!replayed) return null;
-  // An entity node's links ride inside it; any other row carrying a link stays in an entity.
-  if (!tree.entityNodes.has(activeId) && ownerOfParent(tree, replayed.parentId) === null && linksCarried(tree, activeId).length) return null;
-  return replayed;
-}
+): DropProjection | null =>
+  ownerTreeDropProjection(toOwnerTree(tree), blueprintsSubtreeIds, items, activeId, overId, dragOffset, indentationWidth);
 
 /** Where a drag in a one-entity tree would land. Nothing lands inside a link's rows, which are its original's. */
 export function getEntityRootDropProjection(
@@ -438,127 +388,74 @@ export function linkRefusal(
 export function applyOwnedTraitDrop(
   world: WorldTraitLists, entities: readonly Entity[],
   collapsedIds: Iterable<string>, activeId: string, overId: string, dragOffset: number, indentationWidth: number,
-  { createLinks = true, emptySystemNodes = true, newLinkId = randomUUID, codeWorld }:
-    OwnedTraitDropOptions & { emptySystemNodes?: boolean; newLinkId?: () => string } = {},
+  { emptySystemNodes = true, ...options }: TraitDropRuleOptions & { emptySystemNodes?: boolean } = {},
 ): OwnedTraitDrop | null {
-  const tree = ownedTraitTree(world, entities, [], { links: true, emptySystemNodes });
-  const collapsed = [...collapsedIds];
-  const rows = ownedTraitRows(tree, [...collapsed, activeId]);
-  const projection = getOwnedTraitDropProjection(tree, rows, activeId, overId, dragOffset, indentationWidth);
-  const activeRow = rows.find((r) => r.id === activeId);
-  if (!projection || !activeRow) return null;
-  // The drop replays the projection's depth, which for an entity node may sit left of the pointer.
-  const offset = (projection.depth - activeRow.depth) * indentationWidth;
-  const dropped = applyDrop(tree.groups, tree.traits, collapsed, activeId, overId, offset, indentationWidth);
-  if (dropped.groups === tree.groups && dropped.leaves === tree.traits) return null;
+  const drop = applyOwnerTreeDrop(
+    traitTreeSource(world, entities, [], { links: true, emptySystemNodes }), traitDropRules(world, entities, options),
+    collapsedIds, activeId, overId, dragOffset, indentationWidth,
+  );
+  if (drop?.kind !== 'moved') return drop;
+  return { kind: 'moved', ...(drop.world ? { world: { traits: drop.world.leaves, groups: drop.world.groups } } : {}), entities: drop.entities };
+}
 
-  const groupById = new Map(dropped.groups.map((g) => [g.id, g]));
-  const groupParent = parentLookup(dropped.groups, (g) => g.parentId);
-  const ownerAt = (parent: string | null | undefined): string | null =>
-    (parent ? [parent, ...ancestors(parent, groupParent)].find((id) => tree.entityNodes.has(id)) : undefined) ?? null;
+/** {@link OwnedTraitDropOptions} with the id a new link takes. */
+export type TraitDropRuleOptions = OwnedTraitDropOptions & { newLinkId?: () => string };
 
-  // The dragged item with everything below it.
-  const subtree = new Set([activeId]);
-  for (let grew = true; grew;) {
-    grew = false;
-    for (const g of dropped.groups) if (g.parentId && subtree.has(g.parentId) && !subtree.has(g.id)) { subtree.add(g.id); grew = true; }
-  }
-  const leavesBelow = dropped.leaves.filter((t) => subtree.has(t.id) || (t.groupId != null && subtree.has(t.groupId)));
-  leavesBelow.forEach((t) => subtree.add(t.id));
-
-  const isNode = tree.entityNodes.has(activeId);
-  const from = tree.ownerOf.get(activeId) ?? null;
-  const movedGroup = groupById.get(activeId);
-  const movedItem = movedGroup ?? dropped.leaves.find((t) => t.id === activeId)!;
-  const to = isNode ? null : ownerAt(movedGroup ? movedGroup.parentId : (movedItem as Trait).groupId);
-  const ownerBefore = (id: string) => tree.ownerOf.get(id) ?? null;
-  const nodeEntity = isNode ? tree.entityNodes.get(activeId)! : null;
-  if (nodeEntity?.customPersona && movedGroup!.parentId !== null) {
-    return { kind: 'refused', refusal: { reason: 'root', name: nodeEntity.name } };
-  }
-
-  /** The entity's lists and links as the drop leaves them. `added` joins its links at the dragged row's place. */
-  const writeEntity = (entity: Entity, ownerAfter: (id: string) => string | null, placement?: TreePlacement, added?: TraitLink): Entity => {
-    // The entity node's id stands for the entity's root, which its own lists store as null.
-    const fromNode = (parent: string | null | undefined) => (parent === entity.id ? null : parent ?? null);
-    const mine = (id: string) => ownerAfter(id) === entity.id;
-    const owned = (id: string) => mine(id) && !tree.linkRows.has(id);
-    const traits = dropped.leaves.filter((t) => owned(t.id)).map((t) => ({ ...t, groupId: fromNode(t.groupId) }));
-    const groups = dropped.groups
-      .filter((g) => !tree.entityNodes.has(g.id) && owned(g.id))
-      .map((g) => ({ ...g, parentId: fromNode(g.parentId) }));
-    const placeOf = (id: string) => {
-      const g = groupById.get(id);
-      const t = g ? undefined : dropped.leaves.find((l) => l.id === id)!;
-      return { groupId: fromNode(g ? g.parentId : t!.groupId), order: (g ?? t!).order ?? 0 };
-    };
-    const links = [...tree.linkRows].filter(([id, row]) => row.root && mine(id)).map(([id, row]) => ({ ...row.link, ...placeOf(id) }));
-    if (added) links.push({ ...added, ...placeOf(activeId) });
-    const written = withOwnedLists(entity, traits, groups, links);
-    return placement ? { ...written, traitPlacement: placement } : written;
-  };
-
-  const duplicateIn = (nodeId: string, originalId: string): OwnedTraitDrop | null => {
+/**
+ * The owner-tree drop rules for owned traits. A Blueprints row dropped into an entity links it there, refused
+ * when the entity's tree already holds it; with links off, or for any other world row, it moves in. A linked
+ * Blueprint stays in Blueprints. A hidden empty Blueprints group stays in the world's lists.
+ */
+export function traitDropRules(
+  world: WorldTraitLists, entities: readonly Entity[], { createLinks = true, newLinkId = randomUUID, codeWorld }: TraitDropRuleOptions = {},
+): OwnerTreeDropRules<TraitGroup, Trait, TraitLink, LinkRow, TraitDropRefusal> {
+  const duplicateIn = (nodeId: string, originalId: string): OwnerTreeDrop<TraitGroup, Trait, TraitDropRefusal> | null => {
     const refusal = linkRefusal(world, entities, nodeId, originalId);
     return refusal && { kind: 'refused', refusal };
   };
-  const moved = (entities: Entity[], worldOut?: { traits: Trait[]; groups: TraitGroup[] }): OwnedTraitDrop =>
-    ({ kind: 'moved', ...(worldOut ? { world: worldOut } : {}), entities });
-
-  const blueprint = !isNode && from === null && isBlueprintItem(world, activeId);
-  // A Blueprints row dropped into an entity links it there; the original stays where it is. Any other world
-  // row, or any row with links off, moves in.
-  if (blueprint && createLinks && to !== null) {
-    const refused = duplicateIn(to, activeId);
-    if (refused) return refused;
-    const link = makeLink(world, activeId, newLinkId(), { groupId: null, order: 0 });
-    return link && moved([writeEntity(tree.entityNodes.get(to)!, ownerBefore, undefined, link)]);
-  }
-  const parentAfter = movedGroup ? movedGroup.parentId : (movedItem as Trait).groupId;
-  // A linked Blueprint stays in Blueprints, so every link points into it.
-  if (blueprint) {
-    const leavesBlueprints = parentAfter == null || !blueprintsSubtreeIds(dropped.groups).has(parentAfter);
-    const owners = leavesBlueprints ? entities.filter((e) => e.traitLinks?.some((l) => subtree.has(l.originalId))).map((e) => e.name) : [];
-    if (owners.length) return { kind: 'refused', refusal: { reason: 'blueprint-linked', name: movedItem.name, owners } };
-  }
-  // An item that joins Blueprints reaches play only through links, so nothing outside may read it.
-  if (!isNode && !blueprint && to === null && parentAfter != null && blueprintsSubtreeIds(dropped.groups).has(parentAfter)) {
-    const movedItems = new Map([...dropped.groups, ...dropped.leaves].filter((item) => subtree.has(item.id)).map((item) => [item.id, item]));
-    const read = traitReaderOutsideBlueprints({ ...world, entities, ...codeWorld }, from, movedItems, blueprintItemIds(world));
-    if (read) return { kind: 'refused', refusal: { reason: 'into-blueprints', ...read } };
-  }
-  if (!isNode && from !== to && to !== null) {
-    for (const { link } of linksCarried(tree, activeId)) {
-      const refused = duplicateIn(to, link.originalId);
-      if (refused) return refused;
-    }
-  }
-
-  const ownerAfter = (id: string) => (subtree.has(id) && from !== to ? to : ownerBefore(id));
-  const placeable = placeableGroupIds(world.traitGroups);
-  const unplaced = [...tree.entityNodes.values()].filter((e) => !effectivePlacement(e, placeable)).map((e) => e.id);
-  const { touched, pinned } = nodeDropWrites(
-    { groups: tree.groups, leaves: tree.traits }, { groups: dropped.groups, leaves: dropped.leaves },
-    new Set(tree.entityNodes.keys()), unplaced, ownerBefore, ownerAfter,
-  );
-  if (!touched.size) return null;
-
-  // A hidden empty Blueprints group had no row to move, so it stays with its parent, after the reindexed siblings.
-  const siblingOrders = (parentId: string | null) => [
-    ...dropped.groups.filter((g) => (g.parentId ?? null) === parentId),
-    ...dropped.leaves.filter((t) => (t.groupId ?? null) === parentId),
-  ].map((item) => item.order ?? 0);
-  const hidden = world.traitGroups.filter((g) => !tree.groups.includes(g))
-    .map((g) => ({ ...g, order: Math.max(-1, ...siblingOrders(g.parentId ?? null)) + 1 }));
-  const worldGroups = [...dropped.groups.filter((g) => !tree.entityNodes.has(g.id) && ownerAfter(g.id) === null), ...hidden];
-  const entitiesOut = [...tree.entityNodes.values()].filter((e) => touched.has(e.id)).map((entity) => {
-    const node = groupById.get(entity.id)!;
-    return writeEntity(entity, ownerAfter, pinned.has(entity.id) ? { groupId: node.parentId, order: node.order ?? 0 } : undefined);
-  });
-  return moved(
-    entitiesOut,
-    touched.has(null) ? { traits: dropped.leaves.filter((t) => ownerAfter(t.id) === null), groups: worldGroups } : undefined,
-  );
+  return {
+    check: ({ tree, dropped, activeId, isNode, from, to, parentAfter, moved, subtree, ownerBefore, writeEntity }) => {
+      const blueprint = !isNode && from === null && isBlueprintItem(world, activeId);
+      if (blueprint && createLinks && to !== null) {
+        const refused = duplicateIn(to, activeId);
+        if (refused) return refused;
+        const link = makeLink(world, activeId, newLinkId(), { groupId: null, order: 0 });
+        return link && { kind: 'moved', entities: [writeEntity(tree.entityNodes.get(to)!, ownerBefore, undefined, link)] };
+      }
+      // A linked Blueprint stays in Blueprints, so every link points into it.
+      if (blueprint) {
+        const leavesBlueprints = parentAfter == null || !blueprintsSubtreeIds(dropped.groups).has(parentAfter);
+        const owners = leavesBlueprints ? entities.filter((e) => e.traitLinks?.some((l) => subtree.has(l.originalId))).map((e) => e.name) : [];
+        if (owners.length) return { kind: 'refused', refusal: { reason: 'blueprint-linked', name: moved.name, owners } };
+      }
+      // An item that joins Blueprints reaches play only through links, so nothing outside may read it.
+      if (!isNode && !blueprint && to === null && parentAfter != null && blueprintsSubtreeIds(dropped.groups).has(parentAfter)) {
+        const movedItems = new Map([...dropped.groups, ...dropped.leaves].filter((item) => subtree.has(item.id)).map((item) => [item.id, item]));
+        const read = traitReaderOutsideBlueprints({ ...world, entities, ...codeWorld }, from, movedItems, blueprintItemIds(world));
+        if (read) return { kind: 'refused', refusal: { reason: 'into-blueprints', ...read } };
+      }
+      if (!isNode && from !== to && to !== null) {
+        for (const { link } of linksCarried(tree, activeId)) {
+          const refused = duplicateIn(to, link.originalId);
+          if (refused) return refused;
+        }
+      }
+      return undefined;
+    },
+    write: (entity, { groups, leaves, links }, placement) => {
+      const written = withOwnedLists(entity, leaves, groups, links);
+      return placement ? { ...written, traitPlacement: placement } : written;
+    },
+    // A hidden empty Blueprints group had no row to move, so it stays with its parent, after the reindexed siblings.
+    hiddenWorldGroups: (tree, dropped) => {
+      const siblingOrders = (parentId: string | null) => [
+        ...dropped.groups.filter((g) => (g.parentId ?? null) === parentId),
+        ...dropped.leaves.filter((t) => (t.groupId ?? null) === parentId),
+      ].map((item) => item.order ?? 0);
+      return world.traitGroups.filter((g) => !tree.groups.includes(g))
+        .map((g) => ({ ...g, order: Math.max(-1, ...siblingOrders(g.parentId ?? null)) + 1 }));
+    },
+  };
 }
 
 /** The selected traits among one level's nodes, in tree order. */

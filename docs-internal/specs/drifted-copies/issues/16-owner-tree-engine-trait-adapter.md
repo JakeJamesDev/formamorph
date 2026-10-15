@@ -1,6 +1,6 @@
 # 16: Owner-Tree Engine, Trait Adapter
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 02, 15
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
