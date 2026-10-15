@@ -251,6 +251,7 @@ function resolveReasoning(snapshot: AiSettingsSnapshot, call: CapCall, target: A
   const planned = reasoningBudget({
     effort, kind: call.requestType, budgets: snapshot.promptReasoningBudget, base: target.maxTokens, answerCap,
     floor: takesBudget ? reasoningDialectBudgetFloor(target.reasoning.dialect) : 0,
+    ...(takesBudget && effort !== 'none' && { room: thinkingRoom(effort) }),
   });
   // Reasoning is engaged somewhere and this model is not ruled out, so the target may hear about it at all.
   const eligible = snapshot.reasoningEngaged && reasons;
