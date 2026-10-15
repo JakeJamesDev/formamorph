@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import {
-  COMMAND_PRIORITY_LOW, HISTORY_MERGE_TAG, SELECTION_CHANGE_COMMAND,
+  COMMAND_PRIORITY_LOW, SELECTION_CHANGE_COMMAND,
   UNDO_COMMAND, REDO_COMMAND, CAN_UNDO_COMMAND, CAN_REDO_COMMAND, FORMAT_TEXT_COMMAND,
   type NodeKey, type TextFormatType,
 } from 'lexical';
@@ -9,7 +9,7 @@ import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
 import { FieldHistoryPlugin } from './fieldHistory';
-import { useWorldValueSync } from './useWorldValueSync';
+import { ValueSyncPlugin, EditablePlugin } from './ValueSyncPlugin';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import {
@@ -49,7 +49,7 @@ import {
   ActiveValueContext, ChipReadsContext, EditValueContext, OpenValuesContext,
   type ActiveValueRelay, type EditValueRelay, type OpenValueView,
 } from './openValueContext';
-import { buildEditorState, createEchoLedger, serializeRoot, $applyMarkdownAction } from './promptFieldState';
+import { buildEditorState, $applyMarkdownAction } from './promptFieldState';
 import { ChipTypeaheadPlugin } from './ChipTypeahead';
 import { ChipInsertTargetPlugin, useChipInsertRegistration } from './ChipInsertTarget';
 import { ChipDragPlugin } from './ChipDrag';
@@ -298,63 +298,6 @@ function MarkdownToolbar({ parse, disabled }: { parse: ChipVocabulary['parse']; 
 
 // --- plugins ---
 
-/** Two-way sync between the controlled `value` string and the Lexical editor state. Our own edits go through
- *  the echo ledger, so the external-value effect never rebuilds (and jolts the caret) on an echo. */
-function ValueSyncPlugin({ value, onChange, parse, onExternalValue }: {
-  value: string;
-  onChange: (v: string) => void;
-  parse: ChipVocabulary['parse'];
-  /** Fired when `value` changes from outside the editor (a Reset or a template swap), not on a typed echo. */
-  onExternalValue?: () => void;
-}) {
-  const [editor] = useLexicalComposerContext();
-  const [echoes] = useState(() => createEchoLedger(value));
-  const onChangeRef = useRef(onChange);
-  onChangeRef.current = onChange;
-  const parseRef = useRef(parse);
-  parseRef.current = parse;
-  const onExternalRef = useRef(onExternalValue);
-  onExternalRef.current = onExternalValue;
-
-  // Whether a person has done anything since this field mounted. A value that arrives on its own — a world
-  // still loading, a draft resolving — is not an edit and must not become an undo step, or a freshly opened
-  // editor offers to "undo" back to the empty field it rendered for one tick. A generation, a Reset or a
-  // template swap all follow a click, which is what tells them apart: by shape they are the same change.
-  const userActed = useRef(false);
-  useEffect(() => {
-    const mark = () => { userActed.current = true; };
-    const doc = editor.getRootElement()?.ownerDocument ?? document;
-    doc.addEventListener('pointerdown', mark, { capture: true });
-    doc.addEventListener('keydown', mark, { capture: true });
-    return () => {
-      doc.removeEventListener('pointerdown', mark, { capture: true });
-      doc.removeEventListener('keydown', mark, { capture: true });
-    };
-  }, [editor]);
-
-  const { markWrite, restoreTags } = useWorldValueSync();
-  useEffect(() => {
-    if (echoes.receive(value)) return;
-    // The merge tag folds the rebuild into the current history entry instead of pushing one.
-    const tag = restoreTags(value) ?? (userActed.current ? undefined : HISTORY_MERGE_TAG);
-    editor.update(() => buildEditorState(value, parseRef.current), tag ? { tag } : undefined);
-    onExternalRef.current?.();
-  }, [value, editor, echoes, restoreTags]);
-
-  useEffect(
-    () => editor.registerUpdateListener(({ editorState, tags }) => {
-      editorState.read(() => {
-        const next = serializeRoot();
-        if (!echoes.send(next)) return;
-        markWrite(tags);
-        onChangeRef.current(next);
-      });
-    }),
-    [editor, echoes, markWrite],
-  );
-  return null;
-}
-
 /**
  * Keeps the preview on the line being written. Every selection change (and the edit that follows it) reports
  * the caret, and the field scrolls the other pane to match — so with both panes on screen the resolved text
@@ -372,13 +315,6 @@ function CaretFollowPlugin({ onCaret }: { onCaret: () => void }) {
       editor.registerCommand(SELECTION_CHANGE_COMMAND, () => { report(); return false; }, COMMAND_PRIORITY_LOW),
     );
   }, [editor, onCaret]);
-  return null;
-}
-
-/** Reflects `readOnly` into the editor's editability (initialConfig only applies it at mount). */
-function EditablePlugin({ readOnly }: { readOnly: boolean }) {
-  const [editor] = useLexicalComposerContext();
-  useEffect(() => editor.setEditable(!readOnly), [editor, readOnly]);
   return null;
 }
 
