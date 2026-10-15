@@ -89,4 +89,12 @@ describe('statUses', () => {
   it('finds nothing for a stat no code names', () => {
     expect(usesOf({ statId: 'alert' })).toEqual([]);
   });
+
+  it('lists a world script’s uses, where self is empty and names no stat', () => {
+    const worldScripts = [{ id: 'weather', timing: 'after' as const, code: 'self.value = 1;\nstats.Alert.value = 2;' }];
+    const uses = statUses(statCodeOwners(world), { statId: 'alert' }, { traits: [], traitGroups: [], worldScripts });
+    expect(uses).toEqual([
+      { entityId: null, rowId: 'weather', world: true, timing: 'after', scriptId: 'weather', name: 'World', line: 2, noOwners: false },
+    ]);
+  });
 });

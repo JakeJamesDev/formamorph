@@ -70,6 +70,7 @@ import type { FindingSection } from '@/lib/testBench/rules';
 import { CodeCardNavigationContext, type CodeCardNavigation } from '@/lib/codeCardNavigation';
 import type { CodeUse } from '@/lib/codeUses';
 import { clearCodeUseReveal, requestCodeUseReveal } from '@/lib/codeUseReveal';
+import { scriptEntryKey } from '@/lib/worldScripts';
 import type { CodeCardItem } from '@/lib/codeCards';
 import { useTestBench } from '@/lib/testBench/useTestBench';
 import { collectSearchTargets, type SearchMatch } from '@/lib/worldSearch';
@@ -572,8 +573,10 @@ const WorldEditorInner = ({
     }
   }, [navigateToBenchItem]);
   // A Find All Uses row: select the box's stat or trait; its panel opens the Scripts tab and the box takes the caret.
-  const goToCodeUse = useCallback(({ entityId, rowId, trait, timing, scriptId, line }: CodeUse) => {
-    requestCodeUseReveal({ entityId, rowId, ...(trait && { trait }), timing, scriptId, line });
+  const goToCodeUse = useCallback(({ entityId, rowId, trait, world, timing, scriptId, line }: CodeUse) => {
+    requestCodeUseReveal({ entityId, rowId, ...(trait && { trait }), ...(world && { world }), timing, scriptId, line });
+    // A world script's one place is its row on the Scripts tab.
+    if (world) return navigateToBenchItem('scripts', scriptEntryKey({ kind: 'world' }, scriptId));
     const tab = trait ? 'traits' : 'stats';
     if (!entityId) return navigateToBenchItem(tab, rowId);
     if (trait) setEntityTraitId(rowId);
@@ -1029,7 +1032,7 @@ const WorldEditorInner = ({
   const listEditorParts = partsByTab[activeTab] ?? null;
   const adaptersByTab: Partial<Record<RevealTab, { holds: (id: string) => boolean }>> = {
     traits: traitsAdapter, placeholders: placeholdersEditor.adapter, stats: statsAdapter,
-    entities: entitiesEditor.adapter, locations: locationsAdapter, dictionary: dictionaryEditor.adapter,
+    entities: entitiesEditor.adapter, locations: locationsAdapter, dictionary: dictionaryEditor.adapter, scripts: scriptsAdapter,
   };
   listHoldsRef.current = (tab, id) => !!adaptersByTab[tab]?.holds(id);
   // What the author sees on the active tab beyond the tab itself, for a new Step's Origin.

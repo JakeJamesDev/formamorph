@@ -24,8 +24,10 @@ import {
 import { statCodeName } from './statCodeNames';
 import type { TraitOwnerMaps } from './statCodeTraits';
 import { filledScripts } from './scripts';
+import { WORLD_SCRIPT_OWNER } from './codeUses';
 import {
-  boxReferences, nameHomeOf, statCodeBoxes, statCodeOwners, traitCodeBoxes, type CodeHome, type StatNameHome, type TraitCodeHome,
+  boxReferences, nameHomeOf, statCodeBoxes, statCodeOwners, traitCodeBoxes, worldScriptBoxes, type CodeHome, type StatNameHome,
+  type TraitCodeHome, type WorldScriptHome,
 } from './statCodeTargets';
 
 /** The name-keyed maps a rename can reach. */
@@ -232,8 +234,8 @@ export const codeNameReader = (
 
 /** One stat's or trait's code, rewritten. A script the rename does not touch is absent rather than rewritten to itself. */
 export interface CodeRenameEdit {
-  /** Where the code is authored: a stat or a trait, an entity's own, or a link's override. */
-  home: CodeHome | TraitCodeHome;
+  /** Where the code is authored: the world's own scripts, a stat or a trait, an entity's own, or a link's override. */
+  home: WorldScriptHome | CodeHome | TraitCodeHome;
   /** The stat's or trait's own name, so the offer can say whose code it is about. */
   name: string;
   /** The new code of each script the rename moved something in, by script id. */
@@ -273,6 +275,8 @@ export interface CodeRenameInput {
   newName: string;
   /** Every stat in the world, for the code they hold. */
   stats: readonly Stat[];
+  /** The world's own scripts. */
+  worldScripts?: readonly Script[];
   /** Every trait in the world, for the scripts they hold. A placeholder rename moves the code name of a trait
    *  whose name carries it. */
   traits?: readonly { id?: string; name: string; groupId?: string | null; scripts?: Script[] }[];
@@ -418,6 +422,7 @@ function statRenameEdits(
   // Only traits with ids hold scripts a home can name.
   const traits = (input.traits ?? []).flatMap((trait) => (trait.id === undefined ? [] : [{ statChanges: [], ...trait, id: trait.id }]));
   const boxes = [
+    ...worldScriptBoxes(input).map((box) => ({ box, name: WORLD_SCRIPT_OWNER })),
     ...statCodeBoxes(owners).map((box) => ({ box, name: box.stat.name })),
     ...traitCodeBoxes(owners, { traits, traitGroups: input.traitGroups ?? [] }).map((box) => ({ box, name: box.trait.name })),
   ];
@@ -461,7 +466,8 @@ export function planCodeRename(input: CodeRenameInput): CodeRenamePlan | null {
     };
   const edits: CodeRenameEdit[] = [];
   let references = 0;
-  const homes: { home: CodeHome | TraitCodeHome; name: string; scripts: readonly Script[] }[] = [
+  const homes: { home: CodeRenameEdit['home']; name: string; scripts: readonly Script[] }[] = [
+    { home: { kind: 'world' }, name: WORLD_SCRIPT_OWNER, scripts: filledScripts({ scripts: input.worldScripts }) },
     ...stats.map((stat) => ({ home: { kind: 'stat' as const, statId: stat.id }, name: stat.name, scripts: filledScripts(stat) })),
     ...traits.flatMap((trait) => (trait.id === undefined ? []
       : [{ home: { kind: 'trait' as const, traitId: trait.id }, name: trait.name, scripts: filledScripts(trait) }])),

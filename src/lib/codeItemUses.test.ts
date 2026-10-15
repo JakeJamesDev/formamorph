@@ -114,4 +114,13 @@ describe('Find All Uses for other kinds', () => {
     const owners = statCodeOwners({ ...world, placeholders });
     expect(statBoxLookup(owners, { owner: null, timing: 'after', self: courage }).uses({ kind: 'entity', entityId: 'mara' })).toEqual([]);
   });
+
+  it('lists a world script’s uses as the world’s, at the script’s line', () => {
+    const at: CodeCardWorld = { ...world, worldScripts: [{ id: 'weather', timing: 'start', code: '// open\nconst b = traits.Brave;' }] };
+    const owners = statCodeOwners({ ...at, placeholders });
+    const uses = statBoxLookup(owners, { owner: null, timing: 'after', self: courage }, at).uses({ kind: 'trait', traitId: 'brave' });
+    expect(uses.filter((use) => use.world)).toEqual([
+      { entityId: null, rowId: 'weather', world: true, timing: 'start', scriptId: 'weather', name: 'World', line: 2, noOwners: false },
+    ]);
+  });
 });

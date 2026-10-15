@@ -3,7 +3,7 @@
 import { useSyncExternalStore } from 'react';
 import type { CodeUse } from './codeUses';
 
-export type CodeUseReveal = Pick<CodeUse, 'entityId' | 'rowId' | 'trait' | 'timing' | 'scriptId' | 'line'>;
+export type CodeUseReveal = Pick<CodeUse, 'entityId' | 'rowId' | 'trait' | 'world' | 'timing' | 'scriptId' | 'line'>;
 
 let pending: CodeUseReveal | null = null;
 const listeners = new Set<() => void>();
@@ -29,8 +29,8 @@ const subscribe = (listener: () => void) => {
 };
 
 /** The waiting reveal when it is for the `panel` of `rowId` on `entityId`, else null. */
-export function useCodeUseReveal(rowId: string, entityId: string | null, panel: 'stat' | 'trait' = 'stat'): CodeUseReveal | null {
+export function useCodeUseReveal(rowId: string, entityId: string | null, panel: 'stat' | 'trait' | 'world' = 'stat'): CodeUseReveal | null {
   const reveal = useSyncExternalStore(subscribe, () => pending, () => pending);
-  const at = reveal?.trait ? 'trait' : 'stat';
+  const at = reveal?.trait ? 'trait' : reveal?.world ? 'world' : 'stat';
   return reveal && reveal.rowId === rowId && reveal.entityId === entityId && at === panel ? reveal : null;
 }

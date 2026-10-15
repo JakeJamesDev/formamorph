@@ -2,7 +2,7 @@
  * The row Find All Uses lists, one per box and line, for a stat or any other item a card names.
  */
 
-import type { CodeOwners, StatCodeBox, TraitCodeBox } from './statCodeTargets';
+import { isWorldScriptBox, type CodeOwners, type StatCodeBox, type TraitCodeBox, type WorldScriptBox } from './statCodeTargets';
 import { linkRowId } from './traitTree';
 import type { ScriptTiming } from '@/types';
 
@@ -14,10 +14,12 @@ export interface CodeUse {
   rowId: string;
   /** On a trait's script; absent on a stat's. */
   trait?: true;
+  /** On a world script, which the Scripts tab shows; `rowId` is then the script's id. */
+  world?: true;
   timing: ScriptTiming;
   /** The script the box edits. */
   scriptId: string;
-  /** The box's stat or trait, by code name. */
+  /** The box's stat or trait, by code name; the world's name for a world script. */
   name: string;
   /** The entity an own or Link box sits on, by code name. */
   entity?: string;
@@ -28,6 +30,9 @@ export interface CodeUse {
 }
 
 const lineAt = (code: string, at: number) => code.slice(0, at).split('\n').length;
+
+/** What a world script's rows and offers call its owner. */
+export const WORLD_SCRIPT_OWNER = 'World';
 
 /** The row the World Editor selects for a box: a Link's root row carries the Link's id, and a row below it
  *  the Link's row id for the item. */
@@ -49,8 +54,13 @@ export function rowIdOf(box: StatCodeBox | TraitCodeBox): string {
 }
 
 /** One row per line of `box` that holds one of `offsets`, in line order. */
-export function boxUses(owners: CodeOwners, box: StatCodeBox | TraitCodeBox, offsets: readonly number[]): CodeUse[] {
+export function boxUses(owners: CodeOwners, box: StatCodeBox | TraitCodeBox | WorldScriptBox, offsets: readonly number[]): CodeUse[] {
   const lines = [...new Set(offsets.map((at) => lineAt(box.code, at)))].sort((a, b) => a - b);
+  if (isWorldScriptBox(box)) {
+    return lines.map((line) => ({
+      entityId: null, rowId: box.id, world: true as const, timing: box.timing, scriptId: box.id, name: WORLD_SCRIPT_OWNER, line, noOwners: false,
+    }));
+  }
   const entity = box.entity ? owners.codeName(box.entity.name) : undefined;
   const isTrait = 'trait' in box;
   return lines.map((line) => ({

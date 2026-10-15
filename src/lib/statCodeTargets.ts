@@ -175,6 +175,29 @@ export interface TraitCodeWorld {
 /** Which of a home's scripts a walk visits. */
 export type ScriptPick = (home: ScriptHome) => readonly Script[];
 
+/** Where a world script is authored: the world's own list. */
+export type WorldScriptHome = { kind: 'world' };
+
+/** One world script that holds code. It runs once, with `self` and `owner` empty (Q31). */
+export interface WorldScriptBox extends Script {
+  home: WorldScriptHome;
+  owner: null;
+  runs: TraitRun[];
+}
+
+/** What a walk of world scripts reads from a world. */
+export interface WorldScriptsSource {
+  worldScripts?: readonly Script[];
+}
+
+/** Whether a box is a world script's. */
+export const isWorldScriptBox = (box: { home: { kind: string } }): box is WorldScriptBox => box.home.kind === 'world';
+
+/** The world's filled scripts, in stored order. `pick` widens the walk. */
+export function worldScriptBoxes(world: WorldScriptsSource, pick: ScriptPick = filledScripts): WorldScriptBox[] {
+  return pick({ scripts: world.worldScripts }).map((script) => ({ home: { kind: 'world' }, ...script, owner: null, runs: [] }));
+}
+
 /**
  * Every filled trait script in the world once: the world's traits', each entity's own traits' and the scripts
  * its links override. A link that leaves a Blueprint trait's scripts alone adds a run to that trait's box.

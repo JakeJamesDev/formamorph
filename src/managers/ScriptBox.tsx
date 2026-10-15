@@ -18,6 +18,7 @@ import type { CodeBoxOwner, CodeWorldLookup } from "@/lib/codeWorldLookup";
 import { useCodeCardNavigation } from "@/lib/codeCardNavigation";
 import { statCodeTimingOf } from "@/lib/statCodeTiming";
 import { settleCodeUseReveal, type CodeUseReveal } from "@/lib/codeUseReveal";
+import type { HistoryFieldAttribute } from "@/lib/historyField";
 import type { Script, ScriptTiming, Stat } from "@/types";
 
 export type { CodeBoxOwner as ScriptBoxOwner } from "@/lib/codeWorldLookup";
@@ -53,7 +54,7 @@ const SURFACES = { stat: STAT_CODE_SURFACE, trait: TRAIT_SCRIPT_SURFACE, world: 
  * A run here is handed no turn, so `previous` reads as the stat itself and every `delta` reads zero, which
  * is what the before box reads in play too.
  */
-export function ScriptBox({ script, label, self, onChange, context, reveal, autoFocus }: {
+export function ScriptBox({ script, label, self, onChange, context, reveal, autoFocus, frame }: {
   script: Script;
   /** The script's name, or its owner and timing. Each box's controls carry it. */
   label: string;
@@ -64,6 +65,8 @@ export function ScriptBox({ script, label, self, onChange, context, reveal, auto
   reveal?: CodeUseReveal | null;
   /** Focus the editor once it loads, as for a script just added. */
   autoFocus?: boolean;
+  /** The code field's history frame. */
+  frame?: HistoryFieldAttribute;
 }) {
   /** What the last run wrote: the value, each bound, each placeholder, then each trait switch, as one
    *  line. Null when it wrote nothing. */
@@ -178,27 +181,29 @@ export function ScriptBox({ script, label, self, onChange, context, reveal, auto
 
   return (
     <div className="space-y-2">
-      <CodeArea
-        value={value}
-        onChange={write}
-        ariaLabel={`Code ${label}`}
-        surface={analysis.surface}
-        statNames={analysis.statNames}
-        owner={treeOwner}
-        selfName={analysis.selfName}
-        placeholders={analysis.placeholders}
-        traits={traitPlaces}
-        entities={analysis.entities}
-        lookup={analysis.lookup}
-        navigation={navigation}
-        revealLine={reveal?.line}
-        onLineRevealed={() => { if (reveal) settleCodeUseReveal(reveal); }}
-        // Full screen leaves the row's name field behind, so the field names itself in the toolbar.
-        label={label}
-        placeholder={hint}
-        rows={6}
-        autoFocus={autoFocus}
-      />
+      <div {...frame}>
+        <CodeArea
+          value={value}
+          onChange={write}
+          ariaLabel={`Code ${label}`}
+          surface={analysis.surface}
+          statNames={analysis.statNames}
+          owner={treeOwner}
+          selfName={analysis.selfName}
+          placeholders={analysis.placeholders}
+          traits={traitPlaces}
+          entities={analysis.entities}
+          lookup={analysis.lookup}
+          navigation={navigation}
+          revealLine={reveal?.line}
+          onLineRevealed={() => { if (reveal) settleCodeUseReveal(reveal); }}
+          // Full screen leaves the row's name field behind, so the field names itself in the toolbar.
+          label={label}
+          placeholder={hint}
+          rows={6}
+          autoFocus={autoFocus}
+        />
+      </div>
 
       {self.kind === 'stat' && (
         <StatCodeTemplateDialog
