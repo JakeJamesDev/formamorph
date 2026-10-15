@@ -34,7 +34,7 @@ const StatTree = ({
   const adapter: SortableTreeAdapter<FlatStatNode> = {
     visibleDeps: [groups, stats],
     rowDeps: [linked],
-    rowInputs: (node) => [chipInput(placeholders, node.kind === 'group' ? node.group?.name : node.leaf?.name)],
+    rowInputs: (node) => [chipInput(placeholders, node.kind === 'group' ? node.group?.name : node.leaf?.name), node.leaf?.enabled],
     placeholders,
     getVisible: (collapsed) => removeChildrenOf(flattenStatTree(buildStatTree(groups, stats)), collapsed),
     projectDepth: (visible, activeId, overId, offsetLeft) =>

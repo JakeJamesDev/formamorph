@@ -3,6 +3,7 @@ import { Tip } from '@/components/ui/tooltip';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { BlueprintIcon, GroupIcon } from '@/lib/elementIcons';
 import { labelPlaceholders } from '@/lib/placementLetters';
+import { isStatOn } from '@/lib/statCodeTargets';
 import type { FlatStatNode } from '@/lib/statGroupTree';
 import type { LinkedStatRow } from '@/lib/statLinks';
 import type { Placeholder } from '@/types';
@@ -17,8 +18,18 @@ export interface StatRowActions {
   onDuplicate: (id: string) => void;
 }
 
-/** One stat tree row: a stat, a group, the Blueprints group, or a row a link brings (`linked`). */
+/** One stat tree row: a stat, a group, the Blueprints group, or a row a link brings (`linked`).
+ *  A disabled stat's row is dimmed and reads "Off", as its rows on the Scripts tab do. */
 export function statRowSpec(
+  node: FlatStatNode, select: (id: string) => void, linked: LinkedStatRow | undefined, placeholders: Placeholder[],
+  actions: StatRowActions,
+): TreeRowSpec {
+  const spec = baseStatRowSpec(node, select, linked, placeholders, actions);
+  if (node.kind === 'group' || !node.leaf || isStatOn(node.leaf)) return spec;
+  return { ...spec, faded: true, meta: 'Off' };
+}
+
+function baseStatRowSpec(
   node: FlatStatNode, select: (id: string) => void, linked: LinkedStatRow | undefined, placeholders: Placeholder[],
   { onDetach, onRemoveStat, onRemoveGroup, onDuplicate }: StatRowActions,
 ): TreeRowSpec {

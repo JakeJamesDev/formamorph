@@ -207,9 +207,12 @@ describe('the Scripts tab', () => {
     expect(opacityOf('Warmth · After the AI')).toBe('0.5');
     expect(opacityOf('Warmth · Before the AI')).toBe('0.5');
     expect(opacityOf('World · After the AI')).toBe('1');
+    // Each of the stat's two rows reads Off; no other row does.
+    expect(screen.getAllByText('Off')).toHaveLength(2);
 
     act(() => bench.ctx().updateStat({ ...bench.ctx().stats[0], enabled: true }));
     expect(opacityOf('Warmth · After the AI')).toBe('1');
+    expect(screen.queryByText('Off')).toBeNull();
   });
 
   it('is an Advanced tab', () => {

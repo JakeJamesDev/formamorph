@@ -112,7 +112,7 @@ const WorldStatTree = ({ tree, selectedId, onSelect, world, emptyHint }: {
     rowInputs: (node) => {
       const owned = tree.owned.get(node.id);
       const entity = tree.entityNodes.get(node.id);
-      return [owned, entity, chipInput(placeholders, node.group?.name, node.leaf?.name, entity?.name, owned?.linked?.link.originalName)];
+      return [owned, entity, node.leaf?.enabled, chipInput(placeholders, node.group?.name, node.leaf?.name, entity?.name, owned?.linked?.link.originalName)];
     },
     placeholders,
     getVisible: (collapsed) => ownedStatRows(tree, collapsed),

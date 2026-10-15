@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { benchEditorWorld, entityFieldsTab, openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
 import { StatDropRefusalNotice } from '@/managers/WorldStatTree';
 import type { StatDropRefusal } from '@/lib/ownedStatTree';
@@ -148,6 +148,57 @@ describe('entity nodes on the Stats tab', () => {
     fireEvent.change(screen.getByPlaceholderText('Filter Stats'), { target: { value: 't' } });
     const found = screen.queryAllByRole('button', { name: /^Select / }).map((b) => b.getAttribute('aria-label'));
     expect(found).toEqual(['Select Health']);
+  });
+});
+
+describe('the Off marker on a disabled stat', () => {
+  const OFF_WORLD: World = {
+    ...WORLD,
+    stats: [stat('hp', 'Health', { enabled: false }), stat('luck', 'Luck')],
+    entities: WORLD.entities.map((e) => (e.id === 'ash'
+      ? { ...e, stats: e.stats!.map((s) => (s.id === 'vigor' ? { ...s, enabled: false } : s)) }
+      : e)),
+  };
+  /** The row's own dim, read off the nearest ancestor that carries one. */
+  const opacityOf = (row: HTMLElement) => {
+    let el: HTMLElement | null = row;
+    while (el && !el.style.opacity) el = el.parentElement;
+    return el?.style.opacity;
+  };
+
+  it('dims a disabled world stat and an entity-owned stat in the world tree, and marks each Off', () => {
+    renderWorldEditorBench(OFF_WORLD, 'advanced');
+    openEditorTab(/Stats/);
+    const [worldHealth, ashHealth] = treeRows('Health');
+    const [vigor] = treeRows('Vigor');
+    expect(worldHealth).toHaveTextContent(/Off/);
+    expect(opacityOf(worldHealth)).toBe('0.5');
+    expect(vigor).toHaveTextContent(/Off/);
+    expect(opacityOf(vigor)).toBe('0.5');
+    // An enabled stat shows neither, though it shares the disabled one's id.
+    expect(ashHealth).not.toHaveTextContent(/Off/);
+    expect(opacityOf(ashHealth)).toBe('1');
+    expect(treeRows('Luck')[0]).not.toHaveTextContent(/Off/);
+  });
+
+  it('drops the marker when the stat is enabled again', () => {
+    const { ctx } = renderWorldEditorBench(OFF_WORLD, 'advanced');
+    openEditorTab(/Stats/);
+    expect(treeRows('Health')[0]).toHaveTextContent(/Off/);
+    act(() => ctx().updateStat({ ...ctx().stats[0], enabled: true }));
+    expect(treeRows('Health')[0]).not.toHaveTextContent(/Off/);
+    expect(opacityOf(treeRows('Health')[0])).toBe('1');
+  });
+
+  it('marks an entity\'s own disabled stat on the entity Stats tab', () => {
+    renderWorldEditorBench(OFF_WORLD, 'advanced');
+    openEditorTab(/Entities/);
+    fireEvent.click(screen.getByText('Ash'));
+    fireEvent.mouseDown(entityFieldsTab('Stats'));
+    const [vigor] = treeRows('Vigor');
+    expect(vigor).toHaveTextContent(/Off/);
+    expect(opacityOf(vigor)).toBe('0.5');
+    expect(treeRows('Health')[0]).not.toHaveTextContent(/Off/);
   });
 });
 
