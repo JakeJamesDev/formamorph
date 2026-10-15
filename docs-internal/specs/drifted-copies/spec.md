@@ -38,6 +38,9 @@ Settled with the user on 2026-10-14.
 | Q1 | The spec covers the drifted-copy bugs with the copies they live in, the tree drag-drop merge, and the owner-tree engine merge. Services and UI consolidation without a bug is a later effort |
 | Q2 | Tests sit at two seams: behavior tests on each new shared helper, and one regression test per bug at its existing public entry, proved to bite by putting the bug back |
 | Q3 | IDs go through the project's UUID helper, not direct `crypto.randomUUID()`. A wording change to the agent manual's ID convention is proposed in chat, not made here |
+| Q4 | Ticket 13: the generic tree module holds the only projection, collapsed-row and dangling-parent bodies. Each tree keeps its exported names as one-line bindings that pass its parent rule, so callers and tests stay as they are. The dangling-parent helper covers the group, location and placeholder-group lookups and their inline checks. The placeholder chip-holder lookup, the location graph's parent index and the stat group top-level count keep their own rules |
+| Q5 | Ticket 15: the parity harness records owned-trait and owned-stat drops and the bind and portable link outputs on the bundled worlds, with each case's outcome kind asserted. Bundled data stays as is. Ticket 18 adds the overlapping-links fixture and its regression case |
+| Q6 | With link creation off, a stat drop keeps its current behavior: it returns no result and writes nothing. It is not a `refused` result. The parity harness records it as `none` |
 
 ## User Stories
 
@@ -114,7 +117,7 @@ Settled with the user on 2026-10-14.
   - Stat row ids carry an `entity/id` prefix. Trait row ids stay raw.
   - Stats check for duplicate ids and readers when an item crosses owners.
   - Traits keep a hidden empty Blueprints group.
-  - With link creation off, a stat drop is refused. A trait moves in as the entity's own.
+  - With link creation off, a stat drop writes nothing (no result, not a refusal; Q6). A trait moves in as the entity's own.
 - The portable and bound-link helpers for traits and stats share one implementation. Links are deduplicated in tree order on both sides. This fixes the stat bind that kept the first link in array order while play keeps the first in tree order.
 - The twin helpers fold into the engine: placeable group ids, Blueprints subtree ids, links in tree order, owner choices and "replace an entity's lists, empty means absent".
 
