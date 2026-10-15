@@ -1,6 +1,7 @@
 # Spec: Thinking Room
 
 Status: ready-for-agent
+Spec session: thinking-room — spec
 
 ## Problem Statement
 
