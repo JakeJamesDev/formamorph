@@ -4,10 +4,9 @@
 // pure and never mutates its inputs. The dnd-kit "sortable tree" recipe drives drag: one flat list where the
 // horizontal pointer offset during a drag decides drop depth (and thus parent); leaves can't be parents.
 
-import { arrayMove } from '@dnd-kit/sortable';
 import { ancestors, parentLookup } from "@/lib/ancestors";
 import { randomUUID } from "@/lib/uuid";
-import { knownParent, projectDrop, removeCollapsedRows } from "@/lib/treeProjection";
+import { knownParent, planTreeDrop, projectDrop, removeCollapsedRows } from "@/lib/treeProjection";
 import { remintPlaceholdersDeep } from "@/lib/placeholders";
 
 /** A nestable folder. `parentId` null = top-level. */
@@ -238,32 +237,18 @@ export function applyDrop<G extends TreeGroup, L extends TreeLeaf>(
   groups: G[], leaves: L[], collapsedIds: Iterable<string>,
   activeId: string, overId: string, dragOffset: number, indentationWidth: number,
 ): { groups: G[]; leaves: L[] } {
-  const full = flattenTree(buildTree(groups, leaves));
-  const visible = removeChildrenOf(full, [...collapsedIds, activeId]);
-  // The drop target must be a visible row; dropping onto the dragged subtree (or a hidden row) is a no-op.
-  if (!visible.some((i) => i.id === overId) || !visible.some((i) => i.id === activeId)) {
-    return { groups, leaves };
-  }
-  const { parentId } = getDropProjection(visible, activeId, overId, dragOffset, indentationWidth);
-
-  const isGroup = groups.some((g) => g.id === activeId);
-  if (isGroup && parentId !== null && isDescendantGroup(groups, activeId, parentId)) {
-    return { groups, leaves };
-  }
-
-  const activeIndex = full.findIndex((i) => i.id === activeId);
-  const overIndex = full.findIndex((i) => i.id === overId);
-  if (activeIndex === -1 || overIndex === -1) return { groups, leaves };
-
-  const reParented = full.map((i) => (i.id === activeId ? { ...i, parentId } : i));
-  const sorted = arrayMove(reParented, activeIndex, overIndex);
+  const plan = planTreeDrop(flattenTree(buildTree(groups, leaves)), collapsedIds, activeId, overId, dragOffset, indentationWidth, {
+    canParent: (row) => row.kind === 'group',
+    refuses: (active, parent) => active.kind === 'group' && parent !== null && isDescendantGroup(groups, active.id, parent.id),
+  });
+  if (!plan) return { groups, leaves };
 
   const g2 = groups.map((g) => ({ ...g }));
   const l2 = leaves.map((l) => ({ ...l }));
   const byGroup = new Map(g2.map((g) => [g.id, g]));
   const byLeaf = new Map(l2.map((l) => [l.id, l]));
   const orderByParent = new Map<string, number>();
-  for (const item of sorted) {
+  for (const item of plan.moved) {
     const key = item.parentId ?? '\0root';
     const order = orderByParent.get(key) ?? 0;
     orderByParent.set(key, order + 1);

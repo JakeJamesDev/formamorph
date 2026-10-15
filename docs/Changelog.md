@@ -38,6 +38,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **A disabled stat now reads "Off" and dims on the Stats tab and on its rows in the Scripts tab.** The marker shows in the world and entity stat trees.
 - **🛠️ Developer tooling**
   - **`projectDrop` in `src/lib/treeProjection.ts` finds where a dragged row lands in the group, location and placeholder trees.** Each tree passes the rule for which rows can take children. The same file hides collapsed rows and reads a missing parent as the top level.
+  - **`planTreeDrop` in `src/lib/treeProjection.ts` runs the shared start of a drop in the group, location and placeholder trees.** It projects the drop, refuses a hidden target or a cycle, and moves the row. Each tree writes the result to its own data.
 
 #### 🔧 Fixed
 
