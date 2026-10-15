@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { promptReasoningFieldProps, type PromptReasoningFieldInput } from './promptReasoningField';
-import { UNKNOWN_REASONING_CAPABILITY, type ReasoningCapability } from '@/lib/reasoningEffort';
+import { UNKNOWN_REASONING_CAPABILITY, type PromptReasoningSetting, type ReasoningCapability } from '@/lib/reasoningEffort';
 
 const capability = (over: Partial<ReasoningCapability>): ReasoningCapability => ({ ...UNKNOWN_REASONING_CAPABILITY, ...over });
 
@@ -64,7 +64,7 @@ describe('promptReasoningFieldProps', () => {
   it('builds the budget slider with its tokens from the endpoint Max Output', () => {
     const onBudgetChange = vi.fn();
     const props = promptReasoningFieldProps(input({ reasoning: { dialect: 'lmstudio', budget: true }, maxTokens: 1000, budgetPct: 80, onBudgetChange }));
-    expect(props?.budget).toMatchObject({ value: 80, tokens: 800, disabled: false });
+    expect(props?.budget).toMatchObject({ value: 80, tokens: 800 });
     props?.budget?.set(55);
     expect(onBudgetChange).toHaveBeenCalledWith(55);
   });
@@ -74,14 +74,57 @@ describe('promptReasoningFieldProps', () => {
     expect(props?.budget?.tokens).toBe(1024);
   });
 
-  it('disables the budget slider with no Max Output to scale from', () => {
-    const props = promptReasoningFieldProps(input({ reasoning: { dialect: 'lmstudio', budget: true }, maxTokens: undefined }));
-    expect(props?.budget).toMatchObject({ disabled: true, tokens: undefined });
+  it('draws no slider and reads the room with no Max Output to scale from', () => {
+    const props = promptReasoningFieldProps(input({
+      reasoning: { dialect: 'lmstudio', budget: true }, maxTokens: undefined, setting: { enabled: true, level: 'low' },
+    }));
+    expect(props?.budget).toBeNull();
+    expect(props?.room).toEqual({ strength: 'Low', tokens: 1024 });
   });
 
-  it('still reads the dialect floor with no Max Output to scale from', () => {
-    const props = promptReasoningFieldProps(input({ reasoning: { dialect: 'anthropic-budget', budget: true }, maxTokens: undefined }));
-    expect(props?.budget).toMatchObject({ disabled: true, tokens: 1024 });
+  it('raises the room to the dialect floor where the room is the budget', () => {
+    const props = promptReasoningFieldProps(input({
+      reasoning: { dialect: 'anthropic-budget', budget: true }, maxTokens: undefined, setting: { enabled: true, level: 'minimal' },
+    }));
+    expect(props?.room).toEqual({ strength: 'Minimal', tokens: 1024 });
+  });
+
+  it('reads the room of a budget-only target with no Max Output', () => {
+    const props = promptReasoningFieldProps(input({
+      localEngine: true, reasoning: { dialect: 'engine', budget: true, reasons: false }, maxTokens: undefined, setting: { enabled: true, level: 'high' },
+    }));
+    expect(props).toMatchObject({ level: false, budget: null, room: { strength: 'High', tokens: 4096 } });
+  });
+
+  it('reads no room beside a budget slider that has a Max Output to scale from', () => {
+    const props = promptReasoningFieldProps(input({ reasoning: { dialect: 'lmstudio', budget: true }, maxTokens: 1000 }));
+    expect(props?.room).toBeNull();
+  });
+
+  it('reads the room of the strength beside a level dropdown with no budget', () => {
+    const rooms = (level: PromptReasoningSetting['level']) =>
+      promptReasoningFieldProps(input({ reasoning: { dialect: 'openai', levels: ['low', 'high', 'max'] }, setting: { enabled: true, level } }))?.room;
+    expect(rooms('low')).toEqual({ strength: 'Low', tokens: 1024 });
+    expect(rooms('max')).toEqual({ strength: 'Max', tokens: 16384 });
+    expect(rooms('auto')).toEqual({ strength: 'Model Default', tokens: 2048 });
+  });
+
+  it('follows the endpoint-wide strength for a prompt set to Global', () => {
+    const props = promptReasoningFieldProps(input({
+      reasoning: { dialect: 'openai', levels: ['low', 'high'] }, setting: { enabled: true, level: 'global' }, globalLevel: 'high',
+    }));
+    expect(props?.room).toEqual({ strength: 'High', tokens: 4096 });
+  });
+
+  it('reads the room of a llama.cpp target, which has no slider', () => {
+    const props = promptReasoningFieldProps(input({
+      reasoning: { dialect: 'llamacpp', budget: true, levels: ['none', 'low'] }, setting: { enabled: true, level: 'low' },
+    }));
+    expect(props?.room).toEqual({ strength: 'Low', tokens: 1024 });
+  });
+
+  it('reads no room where the target has no level and no budget to show it beside', () => {
+    expect(promptReasoningFieldProps(input({ reasoning: { dialect: 'novita' } }))?.room).toBeNull();
   });
 
   it('draws no slider where the record says the endpoint takes no budget', () => {

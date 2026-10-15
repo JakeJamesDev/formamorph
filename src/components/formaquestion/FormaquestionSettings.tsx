@@ -19,6 +19,7 @@ import {
 import { routeText, targetAttribute } from '@/lib/surface/surfaceTargets';
 import { useRouteLanding } from '@/lib/surface/useLanding';
 import { toolsSupported } from '@/lib/reasoningEffort';
+import { useSettingsOptional } from '@/contexts/SettingsContext';
 import { EndpointTab } from './FormaquestionEndpointTab';
 import { MascotTab } from './FormaquestionMascotTab';
 import { PromptsTab } from './FormaquestionPromptsTab';
@@ -61,8 +62,9 @@ function SemanticStatus({ semantic }: { semantic: SemanticSearch }) {
 function ReasoningRow({ settings, onChange, target }: { settings: HelpSettings; onChange: (change: HelpSettingsChange) => void; target: ReasoningFieldTarget }) {
   const row = targetAttribute('formaquestionSettings.general', 'reasoning');
   const copy = GENERAL_COPY.reasoning;
+  const globalLevel = useSettingsOptional()?.nativeReasoning.level;
   const field = promptReasoningFieldProps({
-    target, kind: 'help', setting: settings.reasoning, budgetPct: settings.reasoningBudget, suppressed: false, showAwaitingProof: true,
+    target, kind: 'help', setting: settings.reasoning, budgetPct: settings.reasoningBudget, globalLevel, suppressed: false, showAwaitingProof: true,
     onChange: (reasoning) => onChange({ reasoning }),
     onBudgetChange: (reasoningBudget) => onChange({ reasoningBudget }),
   });
