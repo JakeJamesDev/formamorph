@@ -69,6 +69,14 @@ describe('worldScriptEntries', () => {
     expect(rows.filter((row) => row.entity?.id === 'cara').map((row) => row.script.id)).toEqual(['second-after', 'fury-after']);
   });
 
+  it('lists global traits in the Traits tab’s order: a folder placed ahead of a root trait lists first', () => {
+    const inner = trait('inner', 'Inner', { groupId: 'folder', scripts: [s('inner-after', 'after')] });
+    const folder = { id: 'folder', name: 'Folder', parentId: null, order: 0 } as TraitGroup;
+    const tree = { ...world, traits: [{ ...brave, order: 1 }, inner], traitGroups: [traitBlueprints, folder] };
+    const rows = scriptsByTiming(worldScriptEntries(tree)).after.filter((row) => row.home.kind === 'trait');
+    expect(rows.map((row) => row.script.id)).toEqual(['inner-after', 'brave-after']);
+  });
+
   it('files each script under its own timing', () => {
     const byTiming = scriptsByTiming(worldScriptEntries(world));
     expect(ids(byTiming.before)).toEqual(['stat:h-before']);

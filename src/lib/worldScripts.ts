@@ -11,6 +11,7 @@ import { linksInTreeOrder } from './owners';
 import { updateOwnedTrait } from './ownedTraits';
 import { inRunOrder, SCRIPT_TIMINGS, scriptLabel, scriptsOf } from './scripts';
 import { setStatLinkScripts, withStatLinks } from './statLinks';
+import { traitOrderIndex } from './traitEffects';
 import {
   statCodeBoxes, statCodeOwners, traitCodeBoxes, type CodeHome, type StatCodeBox, type TraitCodeBox, type TraitCodeHome,
 } from './statCodeTargets';
@@ -73,7 +74,7 @@ export const ownerRowId = (entry: ScriptEntry): string | null => (entry.box ? ro
  * Every script in the world, blank ones included, in the order the runner reaches owners: the world's, the global
  * stats' in stat order, the global traits', each entity's stats then traits in authored order, then the Blueprints'.
  * A Blueprint script runs under each owner that links it, so its one row comes last. The played persona's move to
- * the front and the global traits' pick order are play-time facts the editor can't show.
+ * the front is a play-time fact the editor can't show.
  */
 export function worldScriptEntries(world: ScriptTreeWorld): ScriptEntry[] {
   const owners = statCodeOwners(world);
@@ -83,6 +84,10 @@ export function worldScriptEntries(world: ScriptTreeWorld): ScriptEntry[] {
   const traitEntry = (box: TraitCodeBox) => entryOf(box.home, box, box.trait.name, box.entity, box);
   const blueprint = (box: StatCodeBox | TraitCodeBox) => (box.home.kind === 'stat' || box.home.kind === 'trait') && box.owner !== null;
   const global = (box: StatCodeBox | TraitCodeBox) => (box.home.kind === 'stat' || box.home.kind === 'trait') && box.owner === null;
+  // The runner reaches global traits in the Traits tab's order (Q50); the sort is stable within one trait's scripts.
+  const treeOrder = traitOrderIndex(world.traits, world.traitGroups);
+  const treePlace = (box: TraitCodeBox) => treeOrder.get(box.trait.id) ?? Number.MAX_SAFE_INTEGER;
+  const globalTraits = () => traits.filter(global).sort((a, b) => treePlace(a) - treePlace(b));
   const onEntity = (id: string) => (box: StatCodeBox | TraitCodeBox) => box.entity?.id === id;
   // An entity runs its own traits, then its links' in the link tree's order.
   const entityTraits = (entity: Entity) => {
@@ -93,7 +98,7 @@ export function worldScriptEntries(world: ScriptTreeWorld): ScriptEntry[] {
   return [
     ...scriptsOf(world).map((script) => entryOf({ kind: 'world' }, script, WORLD_OWNER, null)),
     ...stats.filter(global).map(statEntry),
-    ...traits.filter(global).map(traitEntry),
+    ...globalTraits().map(traitEntry),
     ...world.entities.flatMap((entity) => [
       ...stats.filter(onEntity(entity.id)).map(statEntry),
       ...entityTraits(entity).map(traitEntry),

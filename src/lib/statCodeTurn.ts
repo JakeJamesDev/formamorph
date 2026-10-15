@@ -21,6 +21,7 @@ import {
 import type { GateStats } from './traitGates';
 import { readsTurnStart, type RunTiming } from './statCodeTiming';
 import { filledScriptsAt, inRunOrder, SCRIPT_TIMING_LABEL, scriptLabel } from './scripts';
+import { inAuthoredOrder, traitOrderIndex } from './traitEffects';
 import { clamp } from './utils';
 import type { OwnerId, Scoped } from './scope';
 import type { ScriptPromptHost } from './scriptPrompts';
@@ -488,11 +489,13 @@ async function runScripts(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
     ownedTraits: turn.ownerTraits.ownedTraits,
     entityStats: Object.fromEntries((turn.owners ?? []).map((owner) => [owner.id, [...owner.stats]])),
   };
-  // A trait's scripts run while it is active (Q3). A global pick reads the world's current trait, not its stored copy.
+  // A trait's scripts run while it is active (Q3). A global pick reads the world's current trait, not its stored copy,
+  // and runs in the world's tree order, not pick order (Q38).
   const force = traitForceScope(before, world);
   const authored = new Map(world.traits.map((trait) => [trait.id, trait]));
   const inForce = scriptTraits(timing, turn.switched, {
-    global: force.global.map((trait) => authored.get(trait.id) ?? trait), owners: force.owners,
+    global: inAuthoredOrder(force.global.map((trait) => authored.get(trait.id) ?? trait), traitOrderIndex(world.traits, world.groups)),
+    owners: force.owners,
   }, world);
   const globalRun = ownerRun(globalTurn, timing, placeholderDefs, turn.worldScripts, inForce.global);
   const entityRuns = (turn.owners ?? []).map((owner) => ownerRun(owner, timing, placeholderDefs, [], inForce.owners[owner.id]));
