@@ -53,7 +53,7 @@ Settled in the grill on 2026-10-14. Research: `docs-internal/notes/multi-endpoin
 13. **Q13 Slider with Max Output off.** On a budget target with Max Output off, the readout replaces the slider and its "no base" note.
 14. **Q14 Old llama.cpp builds.** A build that ignores `reasoning_budget_tokens` falls back to the `max_tokens` cut. Nothing tells the player; the debug log records it.
 15. **Q15 Full ladder.** Minimal 128, Extra High 8,192, Max 16,384, exactly as LiteLLM.
-16. **Q16 llama.cpp levels (spec session, from ticket 03).** `/props` answers `levels: ['none']` on a template without effort support, since llama.cpp takes `none` on every template. The record is then not ruled out, so Q5's off and the room go out before any reply proves reasoning. The switch shows on those templates, with Model Default as the only strength. Known cost: a llama.cpp model that never thinks also gets the room in its `max_tokens` and context reserve.
+16. **Q16 llama.cpp levels (user, via ticket 03).** `/props` answers `levels: ['none']` on a template without effort support, since llama.cpp takes `none` on every template. The record is then not ruled out, so Q5's off and the room go out before any reply proves reasoning. The switch shows on those templates, with Model Default as the only strength. Known cost: a llama.cpp model that never thinks also gets the room in its `max_tokens` and context reserve.
 
 ## User Stories
 
