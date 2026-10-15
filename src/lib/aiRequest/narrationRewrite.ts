@@ -8,6 +8,8 @@ export interface SentenceAt {
   /** The narration as it stands: earlier sentences as rewritten, then this one and the partial tail as the
    *  model wrote them. */
   full: string;
+  /** The reply's earlier sentences, as their rewrites left them. */
+  earlier: readonly string[];
 }
 
 /** Answers the sentence the listeners hear. A result is one sentence whatever it holds. */
@@ -80,7 +82,9 @@ export function rewriteSentences(rewrite: SentenceRewrite, ...listeners: Narrati
       case 'sentence': {
         const mine = round;
         enqueue(async () => {
-          const text = await rewritten(event.text, { index: event.index, full: recompose(event.full, released, event.index) });
+          const text = await rewritten(event.text, {
+            index: event.index, full: recompose(event.full, released, event.index), earlier: released.slice(0, event.index),
+          });
           // The round may have restarted while the rewrite ran.
           if (mine !== round) return;
           released[event.index] = text;

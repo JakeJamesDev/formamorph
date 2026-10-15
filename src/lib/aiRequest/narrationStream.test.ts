@@ -32,7 +32,7 @@ describe('Narration Stream', () => {
     const heard = run([opened, ...deltas('The door creaks.', ' Wind howls')]);
     expect(sentences(heard)).toEqual([[0, 'The door creaks.']]);
     const last = heard.filter((e) => e.type === 'display').at(-1);
-    expect(last).toEqual({ type: 'display', text: 'The door creaks. Wind howls', revealed: 'The door creaks.', boundary: true });
+    expect(last).toEqual({ type: 'display', text: 'The door creaks. Wind howls', revealed: 'The door creaks.', sentences: 1, boundary: true });
   });
 
   it('emits two sentences that complete in one delta in order', () => {

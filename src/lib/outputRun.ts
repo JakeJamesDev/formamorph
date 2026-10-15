@@ -29,19 +29,25 @@ const hasOutputScripts = (turn: StatCodeTurn): boolean => {
     || (turn.owners ?? []).some((owner) => owner.stats.some(enabledStat(owner.enabled)));
 };
 
-/** The run of one reply's sentences over `turn`; null when the turn has no output script to run. */
-export function openOutputRun(turn: StatCodeTurn): OutputRun | null {
+/**
+ * The run of one reply's sentences over `turn`; null when the turn has no output script to run. `released`
+ * reads how many of the reply's sentences the reveal has put on screen; a reply with no paced reveal shows
+ * each sentence as it passes.
+ */
+export function openOutputRun(turn: StatCodeTurn, released: () => number = () => Number.POSITIVE_INFINITY): OutputRun | null {
   if (!hasOutputScripts(turn)) return null;
   let now = turn;
   const steps: StatCodeTurnResult[] = [];
 
-  const rewrite: SentenceRewrite = async (sentence, { index, full }) => {
+  const rewrite: SentenceRewrite = async (sentence, { index, full, earlier }) => {
     // A reply starts at sentence 0, so a retract that restarts it leaves none of the first attempt's writes.
     if (index === 0) {
       now = turn;
       steps.length = 0;
     }
-    const step = await runStatCodeTurn({ ...now, timing: 'output', narration: { sentence, full, index } });
+    const shown = Math.min(released(), earlier.length);
+    const narration = { sentence, full, index, sent: earlier.slice(0, shown), buffered: earlier.slice(shown) };
+    const step = await runStatCodeTurn({ ...now, timing: 'output', narration });
     steps.push(step);
     now = afterRun(now, step);
     return step.sentence ?? sentence;

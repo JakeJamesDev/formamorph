@@ -2,13 +2,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useSentenceReveal } from './useSentenceReveal';
-import { getRevealTiming } from './revealTimingStore';
+import { getRevealReleased, getRevealTiming } from './revealTimingStore';
 import { DEFAULT_STAGGER, TARGET_BUFFER_WORDS, STAGGER_MIN, STAGGER_MAX } from './narrationRevealConfig';
 
 function setup() {
   const onText = vi.fn();
   const { result } = renderHook(() => useSentenceReveal(onText));
-  return { onText, reveal: result.current };
+  // These cases pace text; the release count has cases of its own.
+  return { onText, reveal: { ...result.current, push: (prefix: string) => result.current.push(prefix, 0) } };
 }
 
 // Build a cumulative prefix of `n` single-char words ("w w w …") for easy word counting.
@@ -194,5 +195,60 @@ describe('useSentenceReveal', () => {
     expect(reveal.isDrained()).toBe(false);
     act(() => vi.advanceTimersByTime(3 * STAGGER_MAX));
     expect(reveal.isDrained()).toBe(true);
+  });
+
+  describe('release count', () => {
+    const counted = () => renderHook(() => useSentenceReveal(() => {})).result.current;
+
+    it('publishes the sentences of each prefix as it releases it, not as it arrives', () => {
+      const reveal = counted();
+      act(() => {
+        reveal.reset();
+        reveal.push('One two.', 1);
+        reveal.push('One two. Three four. Five six.', 3);
+      });
+      expect(getRevealReleased()).toBe(1);
+      act(() => vi.advanceTimersByTime(2 * STAGGER_MAX));
+      expect(getRevealReleased()).toBe(3);
+    });
+
+    it('counts the final text as every sentence, and a reset as none', () => {
+      const reveal = counted();
+      act(() => { reveal.reset(); reveal.push('One two.', 1); reveal.finish('One two. Three'); });
+      act(() => vi.advanceTimersByTime(2 * STAGGER_MAX));
+      expect(getRevealReleased()).toBe(Number.POSITIVE_INFINITY);
+      act(() => { reveal.reset(); });
+      expect(getRevealReleased()).toBe(0);
+    });
+
+    it('counts a sentence that adds no text with the prefix before it', () => {
+      const reveal = counted();
+      act(() => {
+        reveal.reset();
+        reveal.push('One two.', 1);
+        reveal.push('One two.', 2);
+      });
+      expect(getRevealReleased()).toBe(2);
+      act(() => {
+        reveal.push('One two. Three four.', 3);
+        reveal.push('One two. Three four.', 4);
+      });
+      expect(getRevealReleased()).toBe(2);
+      act(() => vi.advanceTimersByTime(2 * STAGGER_MAX));
+      expect(getRevealReleased()).toBe(4);
+    });
+
+    it('publishes the deepest count at once while skipping', () => {
+      const reveal = counted();
+      act(() => {
+        reveal.reset();
+        reveal.push('One two.', 1);
+        reveal.push('One two. Three four.', 2);
+        reveal.push('One two. Three four. Five six.', 3);
+      });
+      expect(getRevealReleased()).toBe(1);
+      act(() => { reveal.setSkipping(true); });
+      expect(getRevealReleased()).toBe(3);
+    });
   });
 });

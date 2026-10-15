@@ -103,7 +103,9 @@ import { surfaceRejectedEndpointOverride } from "../lib/aiRequest/rejectedOverri
 import { transportRequest, type TransportContext, type TransportRequest, type TransportSink } from "../lib/aiRequest/requestTransport";
 import { toastAiRequestFailure } from "../lib/aiRequest/aiRequestFailureToast";
 import { schemaAccepted } from "../lib/reasoningEffort";
-import { completeSentencePrefix, narrationStream, type NarrationListener } from "../lib/aiRequest/narrationStream";
+import { completeSentenceCount, completeSentencePrefix, narrationStream, type NarrationListener } from "../lib/aiRequest/narrationStream";
+import { narrationRevealListener } from "../lib/narrationRevealListener";
+import { getRevealReleased } from "../lib/revealTimingStore";
 import { fanOut } from "../lib/aiRequest/fanOut";
 import { rewriteSentences } from "../lib/aiRequest/narrationRewrite";
 import { parseTurnContent, recentParticipants, collectCharacterDiary } from "../lib/turnDigest";
@@ -783,7 +785,7 @@ const GameViewer = ({
 
   const pushPreviewNarration = useCallback((slice: string) => {
     // Whole sentences only, so the fade never shows a late trim of the unfinished tail.
-    if (fadeRevealActive) fadeReveal.push(completeSentencePrefix(slice));
+    if (fadeRevealActive) fadeReveal.push(completeSentencePrefix(slice), completeSentenceCount(slice));
     else smoothReveal.push(slice);
   }, [fadeReveal, smoothReveal, fadeRevealActive]);
 
@@ -3313,25 +3315,11 @@ const GameViewer = ({
     };
   };
 
-  /**
-   * The reveal: fade releases whole sentences paced to Streamdown's per-word fade; smooth trails the full
-   * text. Opening clears the last turn's narration and marks the reveal live, so a dead endpoint, which
-   * fails before opening, leaves the previous narration on screen.
-   */
-  const revealListener: NarrationListener = (event) => {
-    if (event.type === "opened") {
-      fadeReveal.reset(); smoothReveal.reset();
-      setIsRevealingNarration(true);
-    } else if (event.type === "display") {
-      if (fadeRevealActive) fadeReveal.push(event.revealed);
-      else smoothReveal.push(event.text);
-    } else if (event.type === "finished") {
-      if (fadeRevealActive) fadeReveal.finish(event.text);
-      else smoothReveal.finish(event.text);
-    } else if (event.type === "retract" || event.type === "canceled") {
-      fadeReveal.reset(); smoothReveal.reset();
-    }
-  };
+  /** The reveal: fade releases whole sentences paced to Streamdown's per-word fade; smooth crawls the text. */
+  const revealListenerFor = (wholeSentences: boolean): NarrationListener => narrationRevealListener({
+    fade: fadeReveal, crawl: smoothReveal, paced: fadeRevealActive, wholeSentences,
+    onOpened: () => setIsRevealingNarration(true),
+  });
 
   /** Streaming read-aloud: synthesizes each sentence as it completes. */
   const readAloudListener: NarrationListener = (event) => {
@@ -3370,7 +3358,8 @@ const GameViewer = ({
     const base = turnBeforeBoxRef.current;
     const stats = base?.globalStats ?? rawGlobalStatsRef.current;
     const prepared = prepareStatCode(stats, stats, [], { deltaHours: 0, elapsedHours: gameTime, calendar }, base ?? undefined, 'output');
-    const run = prepared && openOutputRun(prepared.turn);
+    // The crawl shows each sentence as it passes, so only the fade reveal holds any back.
+    const run = prepared && openOutputRun(prepared.turn, fadeRevealActive ? getRevealReleased : undefined);
     outputRunRef.current = prepared && run ? { run, prepared } : null;
     return run;
   };
@@ -3395,10 +3384,11 @@ const GameViewer = ({
    * the narration after its During AI Output scripts, once the last sentence has passed; undefined with none.
    */
   const narrationSink = (): { sink: TransportSink; settled: () => Promise<string | undefined> } => {
-    const listeners = [revealListener, sceneListListener, historyListener];
+    const output = startOutputRun();
+    // An output script rewrites whole sentences, so the crawl must not show the raw tail.
+    const listeners = [revealListenerFor(output !== null), sceneListListener, historyListener];
     // Opt-in streaming read-aloud needs a loaded model.
     if (streamNarrationAudio && ttsLoaded) listeners.push(readAloudListener);
-    const output = startOutputRun();
     const rewriting = output && rewriteSentences(output.rewrite, ...listeners);
     const toScreen = fanOut([liveReasoningSink(), narrationStream(...(rewriting ? [rewriting.listener] : listeners))]);
     // Unmount aborts the turn, and its canceled event must not reach the screen. The turn stops waiting on the scripts.

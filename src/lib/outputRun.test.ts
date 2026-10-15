@@ -39,7 +39,9 @@ const turn = (over: Partial<StatCodeTurn>): StatCodeTurn => {
 /** Plays `sentences` through a run, one after another, and answers what each one came out as. */
 async function play(run: NonNullable<ReturnType<typeof openOutputRun>>, sentences: string[]) {
   const out: string[] = [];
-  for (const [index, sentence] of sentences.entries()) out.push(await run.rewrite(sentence, { index, full: sentences.slice(0, index + 1).join(' ') }));
+  for (const [index, sentence] of sentences.entries()) {
+    out.push(await run.rewrite(sentence, { index, full: sentences.slice(0, index + 1).join(' '), earlier: [...out] }));
+  }
   return out;
 }
 const valueOf = (stats: readonly PlayerStat[], id: string) => stats.find((s) => s.id === id)?.value;
@@ -158,6 +160,20 @@ describe('openOutputRun', () => {
     sink({ type: 'done', text: 'The door creaks. Wind howls. Rain falls.', raw: '', reasoningText: '', finishReason: 'stop' });
     // Two sentences came before the retract, three after: only the three count.
     await vi.waitFor(() => expect(valueOf(run.result()!.stats, 'h')).toBe(13));
+  });
+
+  const reportSent = 'narration.sentence = narration.index === 3 ? JSON.stringify([narration.sent, narration.buffered]) : narration.sentence.toUpperCase();';
+
+  it('shows every earlier sentence as sent, and none buffered, with no paced reveal', async () => {
+    const run = openOutputRun(turn({ stats: [], worldScripts: [script(reportSent)] }))!;
+    const out = await play(run, ['One.', 'Two.', 'Three.', 'Four.']);
+    expect(out[3]).toBe(JSON.stringify([['ONE.', 'TWO.', 'THREE.'], []]));
+  });
+
+  it('splits the earlier sentences at the release count it reads', async () => {
+    const run = openOutputRun(turn({ stats: [], worldScripts: [script(reportSent)] }), () => 1)!;
+    const out = await play(run, ['One.', 'Two.', 'Three.', 'Four.']);
+    expect(out[3]).toBe(JSON.stringify([['ONE.'], ['TWO.', 'THREE.']]));
   });
 
   it('answers no result before the first sentence', () => {

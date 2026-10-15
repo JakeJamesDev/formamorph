@@ -210,7 +210,7 @@ describe('an output script’s switch', () => {
       timing: 'output', worldScripts: [script('traits.Brave.enabled = false;', 'output')],
     });
     const run = openOutputRun(turn)!;
-    await run.rewrite('One.', { index: 0, full: 'One.' });
+    await run.rewrite('One.', { index: 0, full: 'One.', earlier: [] });
     expect(hpOf(run.result())).toBe(50);
     const landed = await run.landing();
     expect(hpOf(landed)).toBe(5);

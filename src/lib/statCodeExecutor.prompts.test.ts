@@ -139,7 +139,7 @@ describe('executeStatCode on the async engine', () => {
 
   it('fails a During AI Output script that calls player, on the sync engine, naming the timing', async () => {
     const { prompts, asked } = host(() => 0);
-    const narration = { sentence: 'A door.', full: 'A door.', index: 0 };
+    const narration = { sentence: 'A door.', full: 'A door.', index: 0, sent: [], buffered: [] };
     const result = await executeStatCode(`player.ask('Door?', ['Left']); return 1;`, [], makeStat({}), { prompts, narration });
     expect(result).toMatchObject({ value: null, kind: 'throw' });
     expect(result.error).toContain("player.ask can't run in During AI Output");
