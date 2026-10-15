@@ -223,6 +223,11 @@ const REASONING_LEVEL_LABELS: Record<PromptReasoningLevel, string> = {
   global: 'Global', auto: 'Model Default', minimal: 'Minimal', low: 'Low', medium: 'Medium', high: 'High', xhigh: 'Extra High', max: 'Max',
 };
 
+/** The full-word label of one strength. */
+export function reasoningLevelLabel(level: PromptReasoningLevel): string {
+  return REASONING_LEVEL_LABELS[level];
+}
+
 /** The switch-off form of a setting, as the request layer reads it. */
 export function resolveReasoningSetting(setting: ReasoningSetting): ReasoningEffort {
   return setting.enabled ? setting.level : 'none';

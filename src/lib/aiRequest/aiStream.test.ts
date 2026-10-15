@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { streamAiRequest, AiStreamError, ABORTED_FINISH_REASON, type AiStreamEvent } from './aiStream';
+import { streamAiRequest, cutThoughtFailure, AiStreamError, ABORTED_FINISH_REASON, type AiStreamEvent } from './aiStream';
 import type { AiRequestSpec } from './aiRequestSpec';
 import { defaultEndpointSamplerOverrides } from '@/lib/endpointSamplers';
 import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
@@ -500,6 +500,36 @@ describe('streamAiRequest', () => {
 
     const none = await collect(streamAiRequest(spec, { fetchImpl: fetchOf(streamingResponse([frame({ content: 'x' })])) }));
     expect(doneOf(none).result.reasoningField).toBeNull();
+  });
+});
+
+describe('the error for a thought the token limit cut', () => {
+  const roomed: AiRequestSpec = {
+    ...spec, body: { ...spec.body, max_tokens: 1088 }, thinkingRoom: 1024, thinkingStrength: 'low',
+  };
+
+  it('says the model used all its thinking room before it wrote an answer', () => {
+    expect(cutThoughtFailure(roomed)).toMatchObject({
+      kind: 'cut-thought', message: 'The model used all its thinking room before it wrote an answer',
+    });
+  });
+
+  it('lists the room and its strength beside max_tokens for a call that had a room', () => {
+    const lines = cutThoughtFailure(roomed).details?.split('\n');
+    expect(lines).toContain('max_tokens: 1088');
+    expect(lines).toContain('Thinking Room: 1024');
+    expect(lines).toContain('Thinking Room strength: Low');
+  });
+
+  it('names Model Default as the strength a call at Model Default had', () => {
+    const lines = cutThoughtFailure({ ...roomed, thinkingRoom: 2048, thinkingStrength: 'auto' }).details?.split('\n');
+    expect(lines).toContain('Thinking Room strength: Model Default');
+  });
+
+  it('omits the room and its strength for a call that had none', () => {
+    const details = cutThoughtFailure(spec).details ?? '';
+    expect(details).toContain('max_tokens: 64');
+    expect(details).not.toContain('Thinking Room');
   });
 });
 

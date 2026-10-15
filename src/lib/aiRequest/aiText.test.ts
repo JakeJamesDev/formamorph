@@ -33,7 +33,7 @@ describe('requestAiText', () => {
 
   it('names the cut thought when the model spends the cap reasoning', async () => {
     stubStream([sseFrame({ reasoning_content: 'Let me think about' }), sseFrame({}, 'length'), 'data: [DONE]\n\n']);
-    await expect(requestAiText(textSnapshot(), call)).rejects.toThrow('token limit before it wrote an answer');
+    await expect(requestAiText(textSnapshot(), call)).rejects.toThrow('thinking room before it wrote an answer');
   });
 
   it('names the finish reason of an empty answer', async () => {

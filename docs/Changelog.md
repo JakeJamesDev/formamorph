@@ -44,6 +44,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Models that always reason now have room to answer small prompts like Location Change.** Each strength gives a fixed thinking room, from Minimal at 128 tokens to Max at 16,384. Max Output limits only the answer, so turning it off no longer shrinks the room.
   - **With Max Output off, models that take a thinking budget now get the strength's thinking room as that budget.** Before, no budget went out, so the model could think without a limit. Minimal, Low and High give 128, 1,024 and 4,096 tokens.
   - **On a llama.cpp server, a model whose thought loops now stops thinking and writes its answer.** Each request sends the strength's thinking room as the server's reasoning budget. Switching Native Reasoning off now stops thinking for every model.
+  - **A cut thought now says the model used all its thinking room before it wrote an answer.** Error Details list the Thinking Room and its strength beside `max_tokens`, for a call that had a room.
 
 ---
 
