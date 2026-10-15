@@ -46,11 +46,13 @@ export function StatDropRefusalNotice({ refusal, placeholders, onDismiss }: {
         const stays = refusal.reason === 'into-blueprints' ? <>{name} stays out of Blueprints</>
           : refusal.owner === null ? <>{name} stays a world stat</> : <>{name} stays {text(refusal.owner)}&apos;s stat</>;
         const { reader } = refusal;
+        if (reader.kind === 'readByWorld') return <>{stays}, because a world script reads it.</>;
         const other = bold('trait' in reader ? reader.trait : reader.stat);
         switch (reader.kind) {
           case 'change': return <>{stays}, because {other} changes it. Remove that stat change first.</>;
           case 'toggle': return <>{stays}, because {other} switches it on or off. Remove that stat toggle first.</>;
           case 'readBy': return <>{stays}, because the code of {other} reads it.</>;
+          case 'readByTrait': return <>{stays}, because a script of {other} reads it.</>;
           case 'reads': return <>{stays}, because its code reads {other}.</>;
         }
       }
@@ -73,13 +75,13 @@ const WorldStatTree = ({ tree, selectedId, onSelect, world, emptyHint }: {
   emptyHint: ReactNode;
 }) => {
   const {
-    stats, statGroups, traits, traitGroups, entities, placeholders, setStats, setStatGroups, editEntity,
+    stats, statGroups, traits, traitGroups, entities, placeholders, worldScripts, setStats, setStatGroups, editEntity,
   } = useGameData();
   const { advanced } = useEditorMode();
   const [refusal, setRefusal] = useState<StatDropRefusal | null>(null);
   const dropWorld = useMemo(
-    () => ({ stats, statGroups, traits, traitGroups, entities, placeholders }),
-    [stats, statGroups, traits, traitGroups, entities, placeholders],
+    () => ({ stats, statGroups, traits, traitGroups, entities, placeholders, scripts: worldScripts }),
+    [stats, statGroups, traits, traitGroups, entities, placeholders, worldScripts],
   );
 
   /** An entity row's buttons, writing to its entity. A link's row passes the link's id. */

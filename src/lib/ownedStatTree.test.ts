@@ -335,6 +335,44 @@ describe('applyOwnedStatDrop: what reads a stat', () => {
   });
 });
 
+describe('applyOwnedStatDrop: what a world or trait script reads', () => {
+  const read = (out: OwnedStatDrop | null) => {
+    const r = refusal(out);
+    return r?.reason === 'read' ? r : null;
+  };
+  const worldScript = (code: string) => ({ scripts: [{ id: 'ws', timing: 'after' as const, code }] });
+
+  it('refuses a world stat that a world script reads', () => {
+    expect(read(drop(world([ash], worldScript('return stats.health;')), 'health', a('grit'), 0)))
+      .toEqual({ reason: 'read', name: 'health', owner: null, reader: { kind: 'readByWorld' } });
+  });
+
+  it('refuses a world stat that a world trait script reads', () => {
+    const watcher = trait('watcher', { scripts: boxScripts({ after: 'return stats.health;' }) });
+    expect(read(drop(world([ash], { traits: [watcher] }), 'health', a('grit'), 0)))
+      .toEqual({ reason: 'read', name: 'health', owner: null, reader: { kind: 'readByTrait', trait: 'watcher' } });
+  });
+
+  it('refuses an entity stat that its own trait script reads through owner', () => {
+    const gruff = { ...ash, traits: [trait('gruff', { scripts: boxScripts({ after: 'return owner.stats.grit;' }) })] };
+    expect(read(drop(world([gruff, bob]), a('grit'), b('nerve'), 0))?.reader).toEqual({ kind: 'readByTrait', trait: 'gruff' });
+  });
+
+  it('moves a stat that every script still reaches', () => {
+    const other = { ...worldScript('return stats.luck;'), traits: [trait('watcher', { scripts: boxScripts({ after: 'return stats.luck;' }) })] };
+    expect(drop(world([ash], other), 'health', a('grit'), 0)?.kind).toBe('moved');
+    // A trait script that reads another owner's stat is no reader of this one.
+    const gruff = { ...ash, traits: [trait('gruff', { scripts: boxScripts({ after: 'return owner.stats.tame;' }) })] };
+    expect(drop(world([gruff, bob]), a('grit'), b('nerve'), 0)?.kind).toBe('moved');
+  });
+
+  it('refuses a world stat moving into Blueprints that a world script reads', () => {
+    const out = drop(world([], worldScript('return stats.luck;')), 'luck', 'trust', 24);
+    const r = refusal(out);
+    expect(r).toEqual({ reason: 'into-blueprints', name: 'luck', reader: { kind: 'readByWorld' } });
+  });
+});
+
 describe('applyOwnedStatDrop: what reads a stat moving into Blueprints', () => {
   const intoBlueprints = (out: OwnedStatDrop | null) => {
     const r = refusal(out);
