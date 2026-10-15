@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { runStatCodeTurn, type OwnerCodeTurn, type StatCodeTurn } from './statCodeTurn';
 import type { StatCodeOwners } from './statCodeTraits';
 import { inPlayOwners } from './ownedTraitsInPlay';
+import { worldScriptEntries } from './worldScripts';
 import type { Entity, OwnedTraitStates, PersonaRef, PlayerStat, Script, Trait, TraitGroup } from '@/types';
 
 const NO_PERSONA: PersonaRef = { source: 'none' };
@@ -100,6 +101,31 @@ describe('a global trait’s scripts', () => {
     const early = trait('brave', 'Brave', [script('stats.HP.value = 80;', { order: 0 })]);
     const writer = stat({ id: 'hp', name: 'HP', value: 50, scripts: [script('return 20;', { order: 1 })] });
     expect(hpOf(await run(ownerTraits({ traits: [early], acquired: [early] }), { stats: [writer] }))).toBe(20);
+  });
+
+  it('run in the world’s tree order, not pick order, so the later-authored trait wins a shared write (Q38)', async () => {
+    const first = trait('first', 'First', [script('stats.HP.value = 10;')]);
+    const second = trait('second', 'Second', [script('stats.HP.value = 90;')]);
+    const authored = [first, second];
+    expect(hpOf(await run(ownerTraits({ traits: authored, acquired: [first, second] })))).toBe(90);
+    expect(hpOf(await run(ownerTraits({ traits: authored, acquired: [second, first] })))).toBe(90);
+  });
+
+  it('run in the tree order a group sets, not the order the traits were authored in', async () => {
+    const outer = { ...trait('outer', 'Outer', [script('stats.HP.value = 10;')]), order: 1 };
+    const inner = { ...trait('inner', 'Inner', [script('stats.HP.value = 90;')]), groupId: 'folder' };
+    const folder: TraitGroup = { id: 'folder', name: 'Folder', parentId: null, order: 0 };
+    // The folder sits ahead of `outer`, so `inner` runs first and `outer` wins.
+    expect(hpOf(await run(ownerTraits({ traits: [outer, inner], groups: [folder], acquired: [outer, inner] })))).toBe(10);
+  });
+
+  it('move with the Traits tab together with the Scripts tab when a trait is dragged (Q50)', async () => {
+    const stored = { ...trait('stored', 'Stored', [script('stats.HP.value = 10;', { id: 'stored-after' })]), order: 1 };
+    const dragged = { ...trait('dragged', 'Dragged', [script('stats.HP.value = 90;', { id: 'dragged-after' })]), order: 0 };
+    const traits = [stored, dragged];
+    const tab = worldScriptEntries({ stats: [], statGroups: [], traits, traitGroups: [], entities: [], placeholders: [] });
+    expect(tab.map((entry) => entry.script.id)).toEqual(['dragged-after', 'stored-after']);
+    expect(hpOf(await run(ownerTraits({ traits, acquired: [dragged, stored] })))).toBe(10);
   });
 });
 
