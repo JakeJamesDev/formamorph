@@ -1,5 +1,5 @@
 import { randomUUID } from "@/lib/uuid";
-import { openDatabase, promisifyRequest } from '@/lib/idb';
+import { cachedConnection, promisifyRequest } from '@/lib/idb';
 import type { SaveRecord } from '@/types';
 
 export const DB_NAME = 'FORMAMORPH_DB';
@@ -15,17 +15,11 @@ export const DB_VERSION = 2;
  *  record store and the ordering store (existing `saves` rows are migrated in `migrateLegacySaves`).
  *  The connection is cached — autosave issues several ops per turn, and a fresh connection each time
  *  leaks handles that would block a future `DB_VERSION` bump. */
-let dbPromise: Promise<IDBDatabase> | null = null;
-export const initDB = (): Promise<IDBDatabase> => {
-  if (!dbPromise) {
-    dbPromise = openDatabase(DB_NAME, DB_VERSION, [
-      { name: LEGACY_STORE, keyPath: 'name' },
-      { name: STORE_NAME, keyPath: 'id' },
-      { name: ORDER_STORE, keyPath: 'key' },
-    ]).catch((err) => { dbPromise = null; throw err; }); // let a later call retry the open
-  }
-  return dbPromise;
-};
+export const initDB = cachedConnection(DB_NAME, DB_VERSION, [
+  { name: LEGACY_STORE, keyPath: 'name' },
+  { name: STORE_NAME, keyPath: 'id' },
+  { name: ORDER_STORE, keyPath: 'key' },
+]);
 
 const store = async (name: string, mode: IDBTransactionMode) =>
   (await initDB()).transaction([name], mode).objectStore(name);

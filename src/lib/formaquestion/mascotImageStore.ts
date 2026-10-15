@@ -2,7 +2,7 @@
  * The player's Mascot images, as blobs by id in their own IndexedDB database. Not a cache: nothing drops an
  * image but a delete or a clear. The rig in the help settings holds the ids; bundled images never enter it.
  */
-import { clearStore, openDatabase, promisifyRequest } from '@/lib/idb';
+import { cachedConnection, clearStore, promisifyRequest } from '@/lib/idb';
 import { randomUUID } from '@/lib/uuid';
 
 const DB_NAME = 'FORMAMORPH_MASCOT_DB';
@@ -14,14 +14,7 @@ interface MascotImageRecord {
   blob: Blob;
 }
 
-let dbPromise: Promise<IDBDatabase> | null = null;
-const openDB = (): Promise<IDBDatabase> => {
-  dbPromise ??= openDatabase(DB_NAME, DB_VERSION, [{ name: STORE_NAME, keyPath: 'id' }]).catch((error: unknown) => {
-    dbPromise = null; // a later call retries the open
-    throw error;
-  });
-  return dbPromise;
-};
+const openDB = cachedConnection(DB_NAME, DB_VERSION, [{ name: STORE_NAME, keyPath: 'id' }]);
 
 const objectStore = async (mode: IDBTransactionMode): Promise<IDBObjectStore> =>
   (await openDB()).transaction([STORE_NAME], mode).objectStore(STORE_NAME);

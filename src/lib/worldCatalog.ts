@@ -5,7 +5,7 @@
  * (~600 records × ~700 B) and the server returns all of it in one `?limit=1000` request, so we
  * refresh by replacing the whole set (which also reconciles new/updated/removed worlds + counts).
  */
-import { clearStore, openDatabase, promisifyRequest } from './idb';
+import { cachedConnection, clearStore, promisifyRequest } from './idb';
 
 const DB_NAME = 'FORMAMORPH_CATALOG_DB';
 const STORE_NAME = 'worlds';
@@ -37,18 +37,10 @@ interface FlagRecord {
   value: boolean;
 }
 
-let dbPromise: Promise<IDBDatabase> | null = null;
-const openDB = (): Promise<IDBDatabase> => {
-  if (!dbPromise) {
-    dbPromise = openDatabase(DB_NAME, DB_VERSION, [
-      { name: STORE_NAME, keyPath: 'id' },
-      { name: META_STORE, keyPath: 'key' },
-    ]).catch(
-      (err) => { dbPromise = null; throw err; }, // let a later call retry the open
-    );
-  }
-  return dbPromise;
-};
+const openDB = cachedConnection(DB_NAME, DB_VERSION, [
+  { name: STORE_NAME, keyPath: 'id' },
+  { name: META_STORE, keyPath: 'key' },
+]);
 
 /** All cached worlds (empty array if nothing cached yet). */
 export const getCatalog = async (): Promise<CatalogWorld[]> => {

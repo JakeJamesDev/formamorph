@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   listUserTemplates,
   saveUserTemplate,
@@ -22,6 +22,26 @@ const template = (over: Partial<StatCodeTemplate> = {}): StatCodeTemplate => ({
 });
 
 describe('StatTemplateStorageService', () => {
+  it('retries the open on the next call after the first open fails', async () => {
+    vi.resetModules();
+    const fresh = await import('./StatTemplateStorageService');
+    const real = indexedDB.open.bind(indexedDB);
+    vi.spyOn(indexedDB, 'open').mockImplementationOnce(() => {
+      const request = {} as IDBOpenDBRequest;
+      queueMicrotask(() => {
+        Object.defineProperty(request, 'error', { value: new DOMException('open failed', 'AbortError') });
+        request.onerror?.(new Event('error'));
+      });
+      return request;
+    }).mockImplementation(real);
+    try {
+      await expect(fresh.listUserTemplates()).rejects.toThrow('open failed');
+      await expect(fresh.listUserTemplates()).resolves.toEqual(expect.any(Array));
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+
   it('saves, lists and deletes a template', async () => {
     const saved = await saveUserTemplate(template({ name: 'First' }));
     expect(saved.id).not.toBe('');
