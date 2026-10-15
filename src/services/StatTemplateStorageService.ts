@@ -6,7 +6,7 @@
  * `worldsDB`, because adding a store there would mean a version bump that every open tab must allow.
  */
 
-import { openDatabase, promisifyRequest } from '@/lib/idb';
+import { cachedConnection, promisifyRequest } from '@/lib/idb';
 import { randomUUID } from '@/lib/uuid';
 import { isBuiltInTemplate, timingOf, type StatCodeTemplate } from '@/lib/statCodeTemplates';
 import { APP_VERSION } from '@/lib/version';
@@ -28,8 +28,7 @@ export interface StatTemplatePack {
 
 export const TEMPLATE_PACK_VERSION = 1;
 
-let dbPromise: Promise<IDBDatabase> | null = null;
-const connect = () => (dbPromise ??= openDatabase(DB_NAME, DB_VERSION, [{ name: STORE_NAME, keyPath: 'id' }]));
+const connect = cachedConnection(DB_NAME, DB_VERSION, [{ name: STORE_NAME, keyPath: 'id' }]);
 
 /** Every saved template, newest edits last as stored (the UI sorts by name). A row with no timing reads
  *  back as an after-the-AI one. */
