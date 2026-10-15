@@ -8,7 +8,9 @@ import {
   type KeptReasoningSettings, type PromptReasoning, type ReasoningCapability, type ReasoningEffortField, type ReasoningLevel,
 } from '@/lib/reasoningEffort';
 import { extraParamsOf } from '@/lib/extraParams';
-import { reasoningDialectBody, reasoningDialectBudgetFloor, type ReasoningBodyFields } from '@/lib/reasoningDialect';
+import {
+  reasoningDialectBody, reasoningDialectBudgetFloor, reasoningDialectBudgetFromStrength, type ReasoningBodyFields,
+} from '@/lib/reasoningDialect';
 import { resolvePromptSampler, type PromptSampler, type PromptSamplerMap } from '@/lib/promptSamplers';
 import type { EndpointSampler, EndpointSamplerOverrides } from '@/lib/endpointSamplers';
 import { customMaxOutput, type PromptMaxOutputMap } from '@/lib/promptMaxOutput';
@@ -248,8 +250,10 @@ function resolveReasoning(snapshot: AiSettingsSnapshot, call: CapCall, target: A
   const reasons = !reasoningRuledOut(target.reasoning);
   const takesBudget = target.reasoning.budget === true && reasons;
   const answerCap = capFor(snapshot, call, target);
+  // A dialect whose budget is the strength's room scales from no base.
+  const base = reasoningDialectBudgetFromStrength(target.reasoning.dialect) ? undefined : target.maxTokens;
   const planned = reasoningBudget({
-    effort, kind: call.requestType, budgets: snapshot.promptReasoningBudget, base: target.maxTokens, answerCap,
+    effort, kind: call.requestType, budgets: snapshot.promptReasoningBudget, base, answerCap,
     floor: takesBudget ? reasoningDialectBudgetFloor(target.reasoning.dialect) : 0,
     ...(takesBudget && effort !== 'none' && { room: thinkingRoom(effort) }),
   });

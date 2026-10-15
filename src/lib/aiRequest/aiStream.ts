@@ -3,6 +3,7 @@ import { redactUrl } from '@/lib/redactUrl';
 import type { AiRequestBody, AiRequestSpec } from './aiRequestSpec';
 import { noteImagesDropped } from './localEngineImageDrop';
 import { noteUnusableExtraParams } from './extraParamsWarning';
+import { noteReasoningOverrun } from './reasoningOverrun';
 
 /** Why a stream failed. `parse` is reported per bad line as a debug event, never thrown — a malformed
  *  frame is skipped so the rest of the stream still arrives. `cut-thought`: the server stopped the reply
@@ -247,6 +248,7 @@ export async function* streamAiRequest(spec: AiStreamSpec, options: AiStreamOpti
   const startedAt = now();
   let content = '';
   let reasoningText = '';
+  let reasoningFrames = 0;
   let reasoningField: AiReasoningField | null = null;
   let finishReason: string | null = null;
   const toolCalls: AiToolCall[] = [];
@@ -255,14 +257,20 @@ export async function* streamAiRequest(spec: AiStreamSpec, options: AiStreamOpti
   let firstContentAt: number | null = null;
   let lastReasoningTick = -Infinity;
 
-  const result = (): AiStreamResult => ({
-    content,
-    reasoningText,
-    reasoningField,
-    finishReason,
-    toolCalls,
-    timings: { startedAt, firstTokenAt, firstContentAt, endedAt: now() },
-  });
+  const done = (): AiStreamEvent => {
+    noteReasoningOverrun(spec, reasoningFrames);
+    return {
+      type: 'done',
+      result: {
+        content,
+        reasoningText,
+        reasoningField,
+        finishReason,
+        toolCalls,
+        timings: { startedAt, firstTokenAt, firstContentAt, endedAt: now() },
+      },
+    };
+  };
 
   yield { type: 'debug', debug: { kind: 'request', url: spec.url, body: spec.body, startedAt } };
   noteUnusableExtraParams(spec.target?.extraParams);
@@ -278,7 +286,7 @@ export async function* streamAiRequest(spec: AiStreamSpec, options: AiStreamOpti
   } catch (error) {
     if (signal?.aborted || (error as Error).name === 'AbortError') {
       finishReason = ABORTED_FINISH_REASON;
-      yield { type: 'done', result: result() };
+      yield done();
       return;
     }
     throw error;
@@ -313,7 +321,7 @@ export async function* streamAiRequest(spec: AiStreamSpec, options: AiStreamOpti
     }
     if (!frame) return;
 
-    if (frame.reasoning) reasoningText += frame.reasoning;
+    if (frame.reasoning) { reasoningText += frame.reasoning; reasoningFrames += 1; }
     reasoningField ??= frame.reasoningField;
     if (frame.content) content += frame.content;
     for (const piece of frame.toolCalls) foldToolCall(toolCalls, callsByIndex, piece);
@@ -358,7 +366,7 @@ export async function* streamAiRequest(spec: AiStreamSpec, options: AiStreamOpti
 
     if (signal?.aborted) {
       finishReason = ABORTED_FINISH_REASON;
-      yield { type: 'done', result: result() };
+      yield done();
       return;
     }
 
@@ -367,7 +375,7 @@ export async function* streamAiRequest(spec: AiStreamSpec, options: AiStreamOpti
     if (buffer.trim()) consume(buffer.trim());
     while (pending.length) yield pending.shift() as AiStreamEvent;
 
-    yield { type: 'done', result: result() };
+    yield done();
   } finally {
     signal?.removeEventListener('abort', cancelOnAbort);
   }

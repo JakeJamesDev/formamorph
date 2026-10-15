@@ -672,9 +672,10 @@ const ollamaSource: NativeSource = async (target, doFetch, signal) => {
 /**
  * A llama.cpp server's properties endpoint (`GET {origin}/props`). Its `chat_template_caps` report whether
  * the loaded template reads `reasoning_effort` at all, which settles the levels: the safe set when it does,
- * none when it does not, so the strength control appears only where the template honors it. The server
- * exposes no flag for whether the model thinks, so the reasons question stays open either way. Builds
- * before the template capabilities existed omit the flag, and say nothing.
+ * `none` alone when it does not, since `none` disables thinking on any template. Only llama.cpp serves
+ * these caps, so they name its dialect and its per-request budget. The server exposes no flag for whether
+ * the model thinks, so the reasons question stays open either way. Builds before the template
+ * capabilities existed omit the flag, and say nothing.
  */
 const llamaCppSource: NativeSource = async (target, doFetch, signal) => {
   const origin = originOf(target.url);
@@ -686,12 +687,12 @@ const llamaCppSource: NativeSource = async (target, doFetch, signal) => {
   if (typeof honored !== 'boolean') return null;
   return {
     reasons: null,
-    levels: honored ? [...SAFE_REASONING_EFFORTS] : [],
-    budget: null,
-    dialect: 'unknown',
+    levels: honored ? [...SAFE_REASONING_EFFORTS] : ['none'],
+    budget: true,
+    dialect: 'llamacpp',
     offAllowed: null,
     tools: null, structuredOutput: null,
-    sources: { levels: 'native' },
+    sources: { levels: 'native', budget: 'native', dialect: 'native' },
   };
 };
 
@@ -1008,11 +1009,18 @@ function observedCapability(observation: ReasoningObservation | null | undefined
  * Whether a stored record still wants resolving: nothing stored at all, an answer only the cache vouches
  * for, or no tools answer. A record written before this session's advertisement sources existed carries
  * `cache` as its source, and whatever levels were stored with it, so it is asked again and a live source
- * replaces them. A record stored before the tools question existed is asked once for that answer.
+ * replaces them. A record stored before the tools question existed is asked once for that answer, and so
+ * is a llama.cpp record stored before `/props` named its dialect.
  */
 export function reasoningNeedsResolve(capability: ReasoningCapability | null | undefined): boolean {
   if (!capability || capability.tools === null) return true;
-  return Object.values(capability.sources).some((source) => source === 'cache');
+  return Object.values(capability.sources).some((source) => source === 'cache') || predatesLlamaCppDialect(capability);
+}
+
+/** Native levels with no native reasons answer and no dialect: only `/props` wrote that, before it named one. */
+function predatesLlamaCppDialect(capability: ReasoningCapability): boolean {
+  const { sources } = capability;
+  return sources.levels === 'native' && sources.reasons !== 'native' && sources.dialect === undefined;
 }
 
 /** True for a record LM Studio's model list answered. A model loaded behind the same name (`default`, or
