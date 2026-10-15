@@ -1,6 +1,6 @@
 # 06: llama.cpp Off When Reasoning Is Off Everywhere
 
-Status: ready-for-human
+Status: done
 Blocked by: 03
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
