@@ -51,13 +51,12 @@ export function MaxOutputControl({ custom, value, shipped, disabled, onCustomCha
  */
 export function PromptReasoningField({ setting, onChange, options, budget, room, level, lockedOn, disabled, copy = SETTINGS_COPY.promptNativeReasoning, id = 'promptReasoning', switchLabel }: PromptReasoningFieldProps) {
   const inert = disabled || !(setting.enabled || lockedOn);
-  const roomText = room ? roomReadout(room.strength, room.tokens) : undefined;
   const levelStrength: ReasoningStrength<PromptReasoningSetting['level']> = {
-    kind: 'level', value: setting.level, options, onChange: (next) => onChange({ ...setting, level: next }), room: roomText,
+    kind: 'level', value: setting.level, options, onChange: (next) => onChange({ ...setting, level: next }),
   };
   const budgetStrength: ReasoningStrength<PromptReasoningSetting['level']> | null = budget
     ? { kind: 'budget', value: budget.value, tokens: budget.tokens, onChange: budget.set }
-    : roomText ? { kind: 'room', room: roomText } : null;
+    : null;
   // The field is named for what it actually offers: the budget where that is the only strength, and the
   // switch's own name where the target takes a level, or takes neither and the switch stands alone.
   const lead: ReasoningFieldCopy | null = copy && (level || !budget ? copy : SETTINGS_COPY.reasoningBudget);
@@ -80,6 +79,7 @@ export function PromptReasoningField({ setting, onChange, options, budget, room,
         disabled={disabled}
         lockedOn={lockedOn}
         strength={level ? levelStrength : budgetStrength}
+        room={room ? roomReadout(room) : undefined}
       />
       {lockedOn && <p className="text-helper text-muted-foreground">{REASONING_NOTES.always}</p>}
       {level && budget && (

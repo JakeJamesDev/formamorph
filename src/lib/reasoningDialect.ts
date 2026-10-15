@@ -39,8 +39,7 @@ interface FieldWrite {
 export interface DialectSpelling {
   /** Where the token budget goes. Absent where the dialect takes no budget. */
   readonly budgetPath?: readonly string[];
-  /** Set where the strength's Thinking Room is the budget and the server ends the thought there, so the
-   *  budget slider has nothing to size. */
+  /** Set where the budget is the strength's Thinking Room and the server ends the thought there. */
   readonly budgetFromStrength?: true;
   /** Fields written beside a budget, such as Anthropic's `thinking.type`. */
   readonly budgetWith?: readonly FieldWrite[];
@@ -196,14 +195,14 @@ export function reasoningDialectOffWhenDisengaged(dialect: ReasoningDialect): bo
   return DIALECT_SPELLINGS[dialect].offWhenDisengaged === true;
 }
 
+/** True where the dialect names a field for the token budget. */
+export function reasoningDialectTakesBudget(dialect: ReasoningDialect): boolean {
+  return DIALECT_SPELLINGS[dialect].budgetPath !== undefined;
+}
+
 /** True where the strength's Thinking Room is the dialect's budget. */
 export function reasoningDialectBudgetFromStrength(dialect: ReasoningDialect): boolean {
   return DIALECT_SPELLINGS[dialect].budgetFromStrength === true;
-}
-
-/** True where the dialect takes a token budget the player sizes, so the budget slider is worth showing. */
-export function reasoningDialectShowsBudgetSlider(dialect: ReasoningDialect): boolean {
-  return DIALECT_SPELLINGS[dialect].budgetPath !== undefined && !reasoningDialectBudgetFromStrength(dialect);
 }
 
 /** The budget a body sent where the dialect's server ends the thought at it, or `undefined` where it sent none. */

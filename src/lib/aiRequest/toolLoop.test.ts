@@ -515,7 +515,7 @@ describe('streamAiToolLoop: cut thoughts', () => {
   );
 
   it('names the Thinking Room and its strength in the details of a cut round, on the first round and after a lookup', async () => {
-    const roomed = { ...spec(), thinkingRoom: 1024, thinkingStrength: 'low' } as const;
+    const roomed = { ...spec(), thinkingRoom: { tokens: 1024, strength: 'low' } } as const;
     const first = await runUntilThrow(scripted([cutFrames()]), roomed);
     const later = await runUntilThrow(scripted([
       [frame({ reasoning_content: 'Look up Bram.' }), ...callFrames(['get_entity', { name: 'Bram' }])],
@@ -524,7 +524,7 @@ describe('streamAiToolLoop: cut thoughts', () => {
 
     for (const { error } of [first, later]) {
       expect((error as AiStreamError).details).toContain('Thinking Room: 1024');
-      expect((error as AiStreamError).details).toContain('Thinking Room strength: Low');
+      expect((error as AiStreamError).details).toContain('Thinking Room Strength: Low');
     }
   });
 

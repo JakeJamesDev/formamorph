@@ -436,9 +436,20 @@ export function thinkingRoom(strength: ReasoningLevel): number {
   return THINKING_ROOM[strength === 'auto' ? 'medium' : strength];
 }
 
+/** The Thinking Room one call holds above its Answer Cap, and the strength that sized it. */
+export interface ThinkingRoom {
+  tokens: number;
+  strength: ReasoningLevel;
+}
+
+/** A strength's Thinking Room, raised to the dialect's budget floor where the room goes out as a budget. */
+export function thinkingRoomFor(strength: ReasoningLevel, floor = 0): ThinkingRoom {
+  return { tokens: Math.max(thinkingRoom(strength), floor), strength };
+}
+
 /** The room readout beside a strength, such as "Low · 1,024 tok". */
-export function roomReadout(strength: string, tokens: number): string {
-  return `${strength} · ${tokens.toLocaleString('en-US')} tok`;
+export function roomReadout(room: ThinkingRoom): string {
+  return `${reasoningLevelLabel(room.strength)} · ${room.tokens.toLocaleString('en-US')} tok`;
 }
 
 /** The budget slider's floor. Off is the prompt's switch, not a 0% position, so the slider never reads as off. */

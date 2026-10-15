@@ -162,6 +162,10 @@ async function sendOnce(request: TransportRequest, context: TransportContext, si
       if (event.type === 'debug') {
         if (event.debug.kind === 'response') { opened = true; sink({ type: 'opened' }); }
         if (event.debug.kind === 'parse') console.error('Error parsing streaming response:', event.debug.error);
+        if (event.debug.kind === 'overrun') {
+          const { dialect, tokens, budget } = event.debug;
+          console.debug(`${dialect} thought ran ${tokens} tokens against a budget of ${budget}`);
+        }
         continue;
       }
       if (event.type === 'toolRound') { toolRounds.push(event.round); sink({ type: 'toolRound', round: event.round }); continue; }

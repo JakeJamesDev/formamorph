@@ -79,21 +79,21 @@ describe('promptReasoningFieldProps', () => {
       reasoning: { dialect: 'lmstudio', budget: true }, maxTokens: undefined, setting: { enabled: true, level: 'low' },
     }));
     expect(props?.budget).toBeNull();
-    expect(props?.room).toEqual({ strength: 'Low', tokens: 1024 });
+    expect(props?.room).toEqual({ tokens: 1024, strength: 'low' });
   });
 
   it('raises the room to the dialect floor where the room is the budget', () => {
     const props = promptReasoningFieldProps(input({
       reasoning: { dialect: 'anthropic-budget', budget: true }, maxTokens: undefined, setting: { enabled: true, level: 'minimal' },
     }));
-    expect(props?.room).toEqual({ strength: 'Minimal', tokens: 1024 });
+    expect(props?.room).toEqual({ tokens: 1024, strength: 'minimal' });
   });
 
   it('reads the room of a budget-only target with no Max Output', () => {
     const props = promptReasoningFieldProps(input({
       localEngine: true, reasoning: { dialect: 'engine', budget: true, reasons: false }, maxTokens: undefined, setting: { enabled: true, level: 'high' },
     }));
-    expect(props).toMatchObject({ level: false, budget: null, room: { strength: 'High', tokens: 4096 } });
+    expect(props).toMatchObject({ level: false, budget: null, room: { tokens: 4096, strength: 'high' } });
   });
 
   it('reads no room beside a budget slider that has a Max Output to scale from', () => {
@@ -104,23 +104,38 @@ describe('promptReasoningFieldProps', () => {
   it('reads the room of the strength beside a level dropdown with no budget', () => {
     const rooms = (level: PromptReasoningSetting['level']) =>
       promptReasoningFieldProps(input({ reasoning: { dialect: 'openai', levels: ['low', 'high', 'max'] }, setting: { enabled: true, level } }))?.room;
-    expect(rooms('low')).toEqual({ strength: 'Low', tokens: 1024 });
-    expect(rooms('max')).toEqual({ strength: 'Max', tokens: 16384 });
-    expect(rooms('auto')).toEqual({ strength: 'Model Default', tokens: 2048 });
+    expect(rooms('low')).toEqual({ tokens: 1024, strength: 'low' });
+    expect(rooms('max')).toEqual({ tokens: 16384, strength: 'max' });
+    expect(rooms('auto')).toEqual({ tokens: 2048, strength: 'auto' });
   });
 
   it('follows the endpoint-wide strength for a prompt set to Global', () => {
     const props = promptReasoningFieldProps(input({
-      reasoning: { dialect: 'openai', levels: ['low', 'high'] }, setting: { enabled: true, level: 'global' }, globalLevel: 'high',
+      reasoning: { dialect: 'openai', levels: ['low', 'high'] }, setting: { enabled: true, level: 'global' }, global: { enabled: true, level: 'high' },
     }));
-    expect(props?.room).toEqual({ strength: 'High', tokens: 4096 });
+    expect(props?.room).toEqual({ tokens: 4096, strength: 'high' });
+  });
+
+  it('reads no room for a prompt set to Global while the endpoint-wide switch is off, which sends none', () => {
+    const props = promptReasoningFieldProps(input({
+      reasoning: { dialect: 'openai', levels: ['low', 'high'] }, setting: { enabled: true, level: 'global' }, global: { enabled: false, level: 'high' },
+    }));
+    expect(props?.room).toBeNull();
+  });
+
+  it('reads the kept strength for a prompt set to Global on an endpoint that refuses off', () => {
+    const props = promptReasoningFieldProps(input({
+      reasoning: { dialect: 'moonshot-k3', levels: ['low', 'high'], offAllowed: false },
+      setting: { enabled: true, level: 'global' }, global: { enabled: false, level: 'high' },
+    }));
+    expect(props?.room).toEqual({ tokens: 4096, strength: 'high' });
   });
 
   it('reads the room of a llama.cpp target, which has no slider', () => {
     const props = promptReasoningFieldProps(input({
       reasoning: { dialect: 'llamacpp', budget: true, levels: ['none', 'low'] }, setting: { enabled: true, level: 'low' },
     }));
-    expect(props?.room).toEqual({ strength: 'Low', tokens: 1024 });
+    expect(props?.room).toEqual({ tokens: 1024, strength: 'low' });
   });
 
   it('reads no room where the target has no level and no budget to show it beside', () => {

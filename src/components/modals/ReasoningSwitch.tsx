@@ -11,15 +11,14 @@ import { MIN_REASONING_BUDGET_PCT, MAX_REASONING_BUDGET_PCT, budgetReadout } fro
  * Inert while the switch beside it is off, but still showing the remembered value.
  */
 export type ReasoningStrength<L extends string> =
-  | { kind: 'level'; value: L; options: { value: L; label: string }[]; onChange: (v: L) => void; room?: string }
-  | { kind: 'budget'; value: number; tokens?: number; onChange: (v: number) => void }
-  | { kind: 'room'; room: string };
+  | { kind: 'level'; value: L; options: { value: L; label: string }[]; onChange: (v: L) => void }
+  | { kind: 'budget'; value: number; tokens?: number; onChange: (v: number) => void };
 
 /**
  * A Native Reasoning control: the on/off switch, then the strength. The switch is the one lever every prompt
  * and engine share; what sits beside it depends on the engine. `id` labels the switch for assistive tech.
  */
-export function ReasoningSwitch<L extends string>({ id, label = SETTINGS_COPY.nativeReasoning.label, enabled, onEnabledChange, strength, disabled, lockedOn }: {
+export function ReasoningSwitch<L extends string>({ id, label = SETTINGS_COPY.nativeReasoning.label, enabled, onEnabledChange, strength, room, disabled, lockedOn }: {
   id: string;
   /** The switch's accessible name, matching the visible label of its row. */
   label?: string;
@@ -27,6 +26,8 @@ export function ReasoningSwitch<L extends string>({ id, label = SETTINGS_COPY.na
   onEnabledChange: (on: boolean) => void;
   /** Absent where the target takes neither a level nor a budget, so the switch is the whole control. */
   strength: ReasoningStrength<L> | null;
+  /** The room readout, such as "Low · 1,024 tok", beside a level or in place of a strength control. */
+  room?: string;
   disabled?: boolean;
   /** The endpoint refuses to switch reasoning off, so the switch reads checked and takes no clicks. The
    *  strength beside it stays live, and applies on every prompt whose own switch is on. A prompt left off
@@ -53,8 +54,8 @@ export function ReasoningSwitch<L extends string>({ id, label = SETTINGS_COPY.na
           </SelectContent>
         </Select>
       )}
-      {(strength?.kind === 'level' || strength?.kind === 'room') && strength.room && (
-        <span className={`shrink-0 whitespace-nowrap text-label tabular-nums${strength.kind === 'room' ? ' flex-1' : ''}${inert ? ' opacity-60' : ''}`}>{strength.room}</span>
+      {room && strength?.kind !== 'budget' && (
+        <span className={`shrink-0 whitespace-nowrap text-label tabular-nums${strength ? '' : ' flex-1'}${inert ? ' opacity-60' : ''}`}>{room}</span>
       )}
       {strength?.kind === 'budget' && (
         <>
