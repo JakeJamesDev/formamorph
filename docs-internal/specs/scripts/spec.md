@@ -126,6 +126,27 @@ interface Script {
 
 Within a timing: scripts with `order`, ascending; then scripts without one in owner order (global scripts, then the player's persona, then entities) and stat order within an owner. Later writes win a field, as today.
 
+## Prototype
+
+Ticket 14 asked what the `player.*` surfaces look like in play, and whether the small dialog of Q17 earns a place in the Design System.
+
+- **Branch:** `prototype/script-prompts`, commit `31ff1bd02`. Round one (A centered dialog, C bottom sheet) is commit `c80e18c8d`.
+- **Launch:** the `prototype-script-prompts` launch entry (port 5233), or from the worktree `npx vite --port 5233 --strictPort --force`.
+- **Route:** `http://localhost:5233/?variant=B3#dev?view=gameViewer&fixture=whiteRoom&modal=scriptPrompt&tab=<sample>` with `sample` one of `confirm`, `ask`, `askLong`, `askMulti`, `askText`, `tell`, `toast`. The deck at the top switches variants, fires samples, toggles the theme and shows what the script read back.
+- **Verdict: B3, the inline prompt line.** No dialog and no box. The prompt is a line in the turn column under the narration. It has the action line's left rule (`border-l-2 border-primary pl-3`) and italic text. Its control sits under the question. Its actions are text links, not buttons. Per kind:
+  - `confirm`, and a single `ask` with up to four options: pill buttons under the question. One press answers.
+  - `ask` with five or more options: the dropdown, inline under the question (Q17).
+  - `ask` with `multiple`: pill buttons that toggle, and an OK text link. This is the multi-pick look Q49 left to the prototype. An empty pick submits as an empty array (Q45).
+  - `askText`: the text field and an OK text link. Enter submits, an empty string included.
+  - Cancel: a text link on every prompt. Escape cancels while focus is inside the prompt (Q15). The prompt takes focus when it opens. A global Escape is ticket 10's call.
+  - After the answer the line leaves the column. Nothing of it is saved.
+  - `tell`: the same left-ruled italic line with the text alone. It stays with its turn (Q16).
+  - `toast`: the app toast.
+  - Chat centers the line at bubble width. Pages spans the column. The editor mount of Q49 was not prototyped and takes the same line.
+- **Design System:** the dialog of Q17 does not earn a place. The user's pick is the pattern approval Q17 asks for. Ticket 10 writes the Design System entry for the inline prompt line.
+- **For the spec session:** Q15, Q17, the Surface table and ticket 10 still say "dialog". The ruling, the table and the ticket's criteria need the inline line.
+- **Rejected:** A centered dialog and C bottom sheet (round one); B1 prompt card, B2 choice-row box, B4 docked card, B5 compact line (round two). All stay on the branch.
+
 ## User Stories
 
 1. As an author, I want to add a script to a stat, a trait or the world and pick when it fires, so that logic sits where it belongs.

@@ -1,6 +1,6 @@
 # 14: Prompt UI Prototype
 
-Status: ready-for-agent
+Status: ready-for-human
 Type: prototype
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
