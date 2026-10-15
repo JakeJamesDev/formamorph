@@ -58,7 +58,7 @@ export function ChoiceRows({ choices, showContinue, disabled, isSelected, contin
                     className={`${ROW}${!isContinue && index > 0 ? ' border-t border-border' : ''}${disabled && !selected ? ' opacity-50' : ''}`}
                     aria-pressed={selected}
                     disabled={disabled}
-                    {...choicePress(choice)}
+                    {...choicePress(choice, index)}
                   >
                     {/* On the primary fill the dialogue color loses contrast, so a picked row's quotes inherit. */}
                     <span className="min-w-0 flex-1 break-words">

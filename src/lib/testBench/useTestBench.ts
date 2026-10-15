@@ -22,8 +22,8 @@ import { buildAiContext, EMPTY_AI_CONTEXT } from './aiContext';
 import { buildOpening, EMPTY_OPENING, type OpeningChoice } from './opening';
 import { useOpeningRolls } from './useOpeningRolls';
 import { loadLastTurn, type LastTurn } from './lastTurn';
-import { checkStatCode } from './statCodeCheck';
-import { noBoxes } from '@/lib/statCodeTiming';
+import { checkedScriptCount, checkStatCode } from './statCodeCheck';
+import { useEditorPromptRun } from '@/lib/useEditorPromptRun';
 import { lensStatOverrides } from './lens';
 import { useBenchFindings } from './useBenchFindings';
 import { useBenchLens } from './useBenchLens';
@@ -119,36 +119,39 @@ export function useTestBench({
   // Null until the first pass lands: the list holds every row till then, so it never reads as clean.
   const pass = useBenchPass(benchWorld);
   const publishBytes = pass.bytes;
-  // Stat-code execution is the one check the live pass can't carry — each stat costs a sandbox VM. Its
-  // findings are held from the last explicit run and dropped the moment the world moves, so a repaired stat
+  // Script execution is the one check the live pass can't carry — each script costs a sandbox VM. Its
+  // findings are held from the last explicit run and dropped the moment the world moves, so a repaired script
   // can never keep showing its old failure.
   const [codeFindings, setCodeFindings] = useState<Finding[]>([]);
   const [codeCheckStatus, setCodeCheckStatus] = useState<CheckStatus>('idle');
+  // The running check's prompts. Closing them fails an open prompt's script as canceled.
+  const { store: codePrompts, open: openCodePrompts, close: closeCodePrompts, isCurrent: isCurrentCodeRun } = useEditorPromptRun();
   const beginCodeRun = useLatestRun(benchWorld);
   useEffect(() => {
     // Guarded so an ordinary keystroke doesn't re-render the panel to replace nothing with nothing.
     setCodeFindings((prev) => (prev.length === 0 ? prev : []));
     setCodeCheckStatus((prev) => (prev === 'idle' ? prev : 'idle'));
-  }, [benchWorld]);
+    closeCodePrompts();
+  }, [benchWorld, closeCodePrompts]);
   const runStatCodeCheck = useCallback(async () => {
     const stillCurrent = beginCodeRun();
+    const prompts = openCodePrompts();
     setCodeCheckStatus('running');
     try {
-      const found = await checkStatCode(getWorldData());
+      const found = await checkStatCode(getWorldData(), prompts.host);
       if (!stillCurrent()) return;
       setCodeFindings(found);
       setCodeCheckStatus('done');
     } catch (error) {
       // The executor reports its own failures as results, so reaching here means the check itself broke —
       // leaving the button spinning would strand the author with no way to try again.
-      console.error('Stat code check failed:', error);
+      console.error('Script check failed:', error);
       if (stillCurrent()) setCodeCheckStatus('idle');
+    } finally {
+      if (isCurrentCodeRun(prompts)) closeCodePrompts();
     }
-  }, [getWorldData, beginCodeRun]);
-  const codedStatCount = useMemo(
-    () => benchWorld.stats.filter((s) => !noBoxes(s)).length,
-    [benchWorld],
-  );
+  }, [getWorldData, beginCodeRun, openCodePrompts, closeCodePrompts, isCurrentCodeRun]);
+  const scriptCount = useMemo(() => checkedScriptCount(benchWorld), [benchWorld]);
   // Out of the rule catalog, since its input is the measured byte count rather than the world.
   // Kept while it says the same thing: a keystroke in an over-limit world must not re-mark every finding.
   const sizeFindings = useSameFindings(useMemo(() => checkWorldSize(benchWorld, publishBytes), [benchWorld, publishBytes]));
@@ -388,7 +391,8 @@ export function useTestBench({
     newCount: bench.newCount,
     advancedOnlyCount: bench.advancedOnlyCount,
     advanced,
-    codedStatCount,
+    scriptCount,
+    codePrompts,
     codeCheckStatus,
     fixingRuleId,
     publishBytes,

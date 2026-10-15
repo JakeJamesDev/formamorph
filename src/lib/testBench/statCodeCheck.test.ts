@@ -5,8 +5,9 @@
  * nothing against a fake.)
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import type { Entity, Stat, WorldOverview } from '@/types';
-import { checkStatCode, STAT_CODE_EXECUTION, STAT_CODE_UNKNOWN_NAME } from './statCodeCheck';
+import type { Entity, Script, Stat, Trait, WorldOverview } from '@/types';
+import { checkedScriptCount, checkStatCode, STAT_CODE_EXECUTION, STAT_CODE_UNKNOWN_NAME } from './statCodeCheck';
+import { editorPromptRun } from '@/lib/editorScriptPrompts';
 import { groupFindings, type RuleWorld } from './rules';
 import { boxScripts } from '@/test/scriptFixtures';
 
@@ -172,8 +173,8 @@ describe('the on-demand stat-code check', () => {
       stat({ id: 's1', name: 'Fertility', scripts: boxScripts({ before: 'throw new Error("nope");', after: 'return "not a number";' }) }),
     ]));
     expect(found.map((f) => f.message)).toEqual([
-      'Before the AI code on “Fertility” throws when it runs, so the stat keeps its manual value',
-      'After the AI code on “Fertility” doesn’t return a number, so the stat keeps its manual value',
+      '“Fertility · Before the AI” throws when it runs, so the stat keeps its manual value',
+      '“Fertility · After the AI” doesn’t return a number, so the stat keeps its manual value',
     ]);
   });
 
@@ -228,7 +229,7 @@ describe('the on-demand stat-code check', () => {
     it('reports a failing owned box on its entity, naming the stat and the entity', async () => {
       const found = await checkStatCode(owned([stat({ id: 'rage', name: 'Rage', scripts: boxScripts({ after: 'throw new Error("nope");' }) })]));
       expect(found.map((f) => [f.ruleId, f.message])).toEqual([[
-        STAT_CODE_EXECUTION.id, 'After the AI code on “Rage” of “The Creature” throws when it runs, so the stat keeps its manual value',
+        STAT_CODE_EXECUTION.id, '“Rage · After the AI” of “The Creature” throws when it runs, so the stat keeps its manual value',
       ]]);
       expect(found[0].items).toEqual([{ id: 'creature', name: 'The Creature', section: 'entities' }]);
     });
@@ -272,7 +273,7 @@ describe('the on-demand stat-code check', () => {
       ))).toEqual([]);
       const found = await checkStatCode(blueprint('throw new Error("nope");'));
       expect(found.map((f) => [f.message, f.items])).toEqual([[
-        'After the AI code on “Guard” throws when it runs, so the stat keeps its manual value', [{ id: 'guard', name: 'Guard' }],
+        '“Guard · After the AI” throws when it runs, so the stat keeps its manual value', [{ id: 'guard', name: 'Guard' }],
       ]]);
     });
 
@@ -288,7 +289,7 @@ describe('the on-demand stat-code check', () => {
       expect(await linked('if (owner.stats.Rage.value !== 7) throw new Error("owner"); return 2;')).toEqual([]);
       const found = await linked('throw new Error("nope");');
       expect(found.map((f) => [f.message, f.items])).toEqual([[
-        'After the AI code on “Guard” of “The Creature” throws when it runs, so the stat keeps its manual value',
+        '“Guard · After the AI” of “The Creature” throws when it runs, so the stat keeps its manual value',
         [{ id: 'creature', name: 'The Creature', section: 'entities' }],
       ]]);
     });
@@ -303,5 +304,102 @@ describe('the on-demand stat-code check', () => {
     expect(group.headline).toContain('2');
     expect(group.fixable).toBe(false);
     expect(group.items.map((i) => i.id)).toEqual(['s1', 's2']);
+  });
+
+  describe('every script and every timing', () => {
+    const brave = (scripts: Script[], over: Partial<Trait> = {}): Trait => ({ id: 'brave', name: 'Brave', statChanges: [], scripts, ...over });
+
+    it('names a named script by its name, timing and stat', async () => {
+      const [found] = await checkStatCode(base([
+        stat({ id: 's1', name: 'Fertility', scripts: [{ id: 'x', name: 'Clamp', timing: 'before', code: 'throw new Error("nope");' }] }),
+      ]));
+      expect(found.message).toBe('“Clamp” (Before the AI) on “Fertility” throws when it runs, so the stat keeps its manual value');
+    });
+
+    it('runs a world script, named by its fallback or its name, and opens its Scripts tab row', async () => {
+      const world = { ...base([]), scripts: [
+        { id: 'w1', timing: 'after' as const, code: 'throw new Error("nope");' },
+        { id: 'w2', name: 'Tide', timing: 'start' as const, code: 'while (true) {}' },
+      ] };
+      const found = await checkStatCode(world);
+      expect(found.map((f) => [f.message, f.items])).toEqual([
+        ['“World · After the AI” throws when it runs, so the run changes nothing',
+          [{ id: 'world|w1', name: 'World · After the AI', section: 'scripts' }]],
+        ['“Tide” (At Game Start) on the world times out — it never finishes, so the run changes nothing',
+          [{ id: 'world|w2', name: 'Tide', section: 'scripts' }]],
+      ]);
+    }, 15000);
+
+    it('runs a trait script with the trait as self, and names it on the Traits tab', async () => {
+      const at = (code: string) => checkStatCode({ ...base([]), traits: [brave([{ id: 't', timing: 'after', code }])] });
+      expect(await at('if (self.name !== "Brave" || self.acquired) throw new Error("self"); return 3;')).toEqual([]);
+      const found = await at('throw new Error("nope");');
+      expect(found.map((f) => [f.message, f.items])).toEqual([[
+        '“Brave · After the AI” throws when it runs, so the run changes nothing', [{ id: 'brave', name: 'Brave', section: 'traits' }],
+      ]]);
+    });
+
+    it('runs an entity’s own trait script under its entity, and names the entity', async () => {
+      const entity: Entity = { id: 'mira', name: 'Mira', traits: [brave([{ id: 't', timing: 'after', code: 'if (owner.name !== "Mira") throw new Error("owner");' }])] };
+      expect(await checkStatCode({ ...base([]), entities: [entity] })).toEqual([]);
+      entity.traits = [brave([{ id: 't', timing: 'after', code: 'throw new Error("nope");' }])];
+      const found = await checkStatCode({ ...base([]), entities: [entity] });
+      expect(found.map((f) => [f.message, f.items])).toEqual([[
+        '“Brave · After the AI” of “Mira” throws when it runs, so the run changes nothing', [{ id: 'mira', name: 'Mira', section: 'entities' }],
+      ]]);
+    });
+
+    it('hands a During AI Output script the sample sentence, and says its sentence passes unchanged on a failure', async () => {
+      const output = (code: string) => checkStatCode(base([stat({ id: 's1', name: 'Mood', scripts: [{ id: 'o', timing: 'output', code }] })]));
+      const reads = 'if (narration.sentence !== "The door opens." || narration.full !== narration.sentence || narration.index !== 0'
+        + ' || narration.sent.length || narration.buffered.length) throw new Error("sample"); narration.sentence = "x";';
+      expect(await output(reads)).toEqual([]);
+      const found = await output('throw new Error("nope");');
+      expect(found.map((f) => f.message)).toEqual(['“Mood · During AI Output” throws when it runs, so its sentence passes unchanged']);
+    });
+
+    it('fires a switch script on the world’s first trait in tree order, and a trait’s own on itself', async () => {
+      const reads = (name: string) => `if (trait.name !== "${name}" || !trait.enabled || trait.owner !== "") throw new Error(trait.name);`;
+      const world = {
+        ...base([stat({ id: 's1', name: 'Mood', scripts: [{ id: 'sw', timing: 'switch', code: reads('Brave') }] })]),
+        // Calm is first in the list, Brave first in the tree: its group sits at the top.
+        traits: [
+          { id: 'calm', name: 'Calm', statChanges: [], scripts: [{ id: 'own', timing: 'switch' as const, code: `${reads('Calm')} if (self.name !== "Calm") throw new Error("self");` }] },
+          brave([], { groupId: 'g' }),
+        ],
+        traitGroups: [{ id: 'g', name: 'Mood', parentId: null }],
+      };
+      expect(await checkStatCode(world)).toEqual([]);
+    });
+
+    it('shows a prompt through the host it is given, and reads the pick', async () => {
+      const prompts = editorPromptRun();
+      const checking = checkStatCode(base([
+        stat({ id: 's1', name: 'Mood', scripts: boxScripts({ after: 'if (player.confirm("Drink?")) throw new Error("drank");' }) }),
+      ]), prompts.host);
+      await vi.waitFor(() => expect(prompts.store.pending()).toHaveLength(1));
+      prompts.store.answer(prompts.store.pending()[0].id, true);
+      expect((await checking).map((f) => f.message)).toEqual(['“Mood · After the AI” throws when it runs, so the stat keeps its manual value']);
+    });
+
+    it('reports a prompt the author closes as canceled', async () => {
+      const prompts = editorPromptRun();
+      const checking = checkStatCode(base([
+        stat({ id: 's1', name: 'Mood', scripts: boxScripts({ after: 'player.confirm("Drink?"); return 1;' }) }),
+      ]), prompts.host);
+      await vi.waitFor(() => expect(prompts.store.pending()).toHaveLength(1));
+      prompts.store.cancel(prompts.store.pending()[0].id);
+      expect((await checking).map((f) => f.message)).toEqual([
+        '“Mood · After the AI” asked the player and the prompt was closed, so the run changes nothing',
+      ]);
+    });
+
+    it('counts every filled script it runs', () => {
+      expect(checkedScriptCount({
+        ...base([stat({ id: 's1', name: 'Mood', scripts: boxScripts({ before: 'return 1;', after: ' ' }) })]),
+        scripts: [{ id: 'w', timing: 'after', code: 'return 1;' }],
+        traits: [brave([{ id: 't', timing: 'switch', code: 'return 1;' }])],
+      })).toBe(3);
+    });
   });
 });

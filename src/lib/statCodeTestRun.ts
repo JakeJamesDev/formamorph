@@ -18,6 +18,8 @@ import { placeholderPathExpression, placeholderPathLabel } from '@/lib/statCodeP
 import { statCodeTimingOf, type StatCodeTiming } from '@/lib/statCodeTiming';
 import { sandboxTraits, unplayedEntities } from '@/lib/statCodeTraits';
 import { activeStatEnabled } from '@/lib/traitEffects';
+import { sampleNarration, sampleSwitchedTrait } from '@/lib/scriptTestSamples';
+import type { ScriptPromptHost } from '@/lib/scriptPrompts';
 import { startingGateStatsOf } from '@/lib/gateStats';
 import type { ScriptTiming, Stat, World } from '@/types';
 
@@ -102,6 +104,8 @@ export interface TestCodeReport {
   assumed?: string[];
   /** Each kind of write the run dropped, as one line each with the names. */
   dropped: string[];
+  /** The sentence a During AI Output run left. */
+  sentence?: string;
 }
 
 /** How a run reads a world still being built. */
@@ -117,6 +121,10 @@ export interface TestRunOptions {
   owner?: TestRunOwner;
   /** A trait script's own trait, which `self` reads in place of a stat. */
   selfTrait?: { id: string; name: string };
+  /** The sentence a During AI Output run rewrites. Absent, it reads blank. */
+  sentence?: string;
+  /** Who answers `player.*`. Absent, the game's prompt store does. */
+  prompts?: ScriptPromptHost;
 }
 
 /** The range and value an assumed stat runs with. */
@@ -227,9 +235,9 @@ const droppedLine = (lead: string, names: readonly string[] | undefined) =>
  */
 export async function runTestCode(
   code: string, timing: ScriptTiming, stat: (Partial<Stat> & Pick<Stat, 'id' | 'name'>) | null,
-  { codeNamedStats, placeholders, traits, entities, entityStats }:
-    Pick<StatCodeNames, 'codeNamedStats' | 'placeholders' | 'traits' | 'entities' | 'entityStats'>,
-  { pendingPersona: pending = false, missing, owner, selfTrait }: TestRunOptions = {},
+  { codeNamedStats, placeholders, traits, traitPlaces, entities, entityStats }:
+    Pick<StatCodeNames, 'codeNamedStats' | 'placeholders' | 'traits' | 'traitPlaces' | 'entities' | 'entityStats'>,
+  { pendingPersona: pending = false, missing, owner, selfTrait, sentence, prompts }: TestRunOptions = {},
 ): Promise<TestCodeReport> {
   // No playthrough: an unrolled placeholder reads as a fresh draw, no one holds a trait, and no persona plays.
   // A pending run's empty persona holds the playable entities' traits and placeholders, so a write to one is kept.
@@ -265,6 +273,10 @@ export async function runTestCode(
     (ownerEntry ? ownerEntry.traits : traitEntries).find((entry) => entry.id === selfTrait.id)
     ?? { ...selfTrait, enabled: false, acquired: false }
   );
+  // A switch run fires on the trait's own switch, else on the world's first trait (Q49).
+  const switchedTrait = timing === 'switch' ? sampleSwitchedTrait(
+    traitEntries, traitPlaces[0]?.id, traitSelf && { entry: traitSelf, owner: ownerEntry?.name ?? '' },
+  ) : undefined;
   const outcome = await executeStatCode(
     // A half-filled stat still runs: the executor defaults every number it marshals, so only the id and the
     // code name have to be real.
@@ -278,6 +290,8 @@ export async function runTestCode(
       dictionaries: sandboxDictionaries(placeholders.dictionaries ?? [], owners),
       ...(personaNode && { persona: personaOfPlayables(entities, personaNode, entityStats) }),
       ...(ownerEntry && { owner: ownerEntry }),
+      ...(timing === 'output' && { narration: sampleNarration(sentence ?? '') }),
+      ...(switchedTrait && { switchedTrait }), ...(prompts && { prompts }),
     },
   );
   const assumedField = missing ? { assumed } : {};
@@ -339,5 +353,6 @@ export async function runTestCode(
     }),
     ...assumedField,
     dropped,
+    ...(outcome.sentence !== undefined && { sentence: outcome.sentence }),
   };
 }

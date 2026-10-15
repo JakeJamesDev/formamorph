@@ -35,9 +35,11 @@ import {
 } from '@/lib/statDescriptorGeometry';
 import { statCodeName } from '@/lib/statCodeNames';
 import { filledCodeBoxes, noBoxes, TIMING_LABEL } from '@/lib/statCodeTiming';
-import { filledScriptsAt } from '@/lib/scripts';
+import { filledScripts, filledScriptsAt } from '@/lib/scripts';
 import { scanStatLookups, scanStatWrites } from '@/lib/statCodeWriteScan';
-import { isStatOn, routeTargets, statCodeBoxes, statCodeOwners, type CodeOwner, type CodeOwners } from '@/lib/statCodeTargets';
+import {
+  isStatOn, routeTargets, statCodeBoxes, statCodeOwners, traitCodeBoxes, type CodeOwner, type CodeOwners, type TraitRun,
+} from '@/lib/statCodeTargets';
 import { estimateTokens } from '@/lib/memoryUtils';
 import { entityImageData, entityImages } from '@/lib/entityImages';
 import {
@@ -64,8 +66,8 @@ import { isAlwaysOn } from '@/lib/traitEffects';
 import { offeredWorldTraits, statRows, statRowSide, type StatRow } from '@/lib/traitTree';
 import { globalStatsOf, resolvedEntityStats } from '@/lib/statLinks';
 import type {
-  DictionaryEntry, Entity, GalleryImage, GameLocation, PersonaRef, Placeholder, PlaceholderPin, PlaceholderValue, Stat, StatDescriptor, StatRequirement,
-  Trait, TraitGroup, TraitLink, TraitRequirement, TraitRequirementRow, World,
+  DictionaryEntry, Entity, GalleryImage, GameLocation, PersonaRef, Placeholder, PlaceholderPin, PlaceholderValue, Script, Stat, StatDescriptor,
+  StatRequirement, Trait, TraitGroup, TraitLink, TraitRequirement, TraitRequirementRow, World,
 } from '@/types';
 
 /**
@@ -86,7 +88,7 @@ export const SEVERITIES: readonly Severity[] = ['error', 'warning', 'info'] as c
 
 /** The editor tab that owns a finding's items — where Open navigates to. */
 export type FindingSection =
-  | 'overview' | 'stats' | 'entities' | 'locations' | 'traits' | 'dictionary' | 'placeholders';
+  | 'overview' | 'stats' | 'entities' | 'locations' | 'traits' | 'dictionary' | 'placeholders' | 'scripts';
 
 /** One item a finding names, labeled as the editor's own lists label it. */
 export interface FindingItem {
@@ -136,6 +138,18 @@ export interface Rule extends RuleHead {
 }
 
 const quote = (text: string) => `“${text}”`;
+
+/** The owner a world script's fallback name reads (Q6). */
+export const WORLD_SCRIPT_OWNER = 'World';
+
+/** A script as a finding names it: by its name, its timing and its home; unnamed, by its home and timing (Q6, Q49).
+ *  A null home is the world. `of` names the entity the home sits on, as ` of “Mira”`. */
+export const scriptRef = (script: Pick<Script, 'name' | 'timing'>, home: string | null, of = ''): string => {
+  const name = script.name?.trim();
+  const timing = TIMING_LABEL[script.timing];
+  if (!name) return `${quote(`${home ?? WORLD_SCRIPT_OWNER} · ${timing}`)}${of}`;
+  return `${quote(name)} (${timing}) on ${home === null ? 'the world' : quote(home)}${of}`;
+};
 
 /** A finding for `rule` — the boilerplate trio copied from the rule itself. */
 export const finding = (rule: RuleHead, message: string, items: FindingItem[]): Finding => ({
@@ -1012,13 +1026,13 @@ interface OwnedCodeBox {
 
 /** Every box of stat code once, as a finding names it. An entity's own box and its link's name the entity. */
 const codeBoxesOf = (world: RuleWorld, owners: CodeOwners): OwnedCodeBox[] => statCodeBoxes(owners).map((box) => {
-  const label = `${TIMING_LABEL[box.timing]} code on ${quote(labelOf(box.stat.name, world))}`;
+  const home = labelOf(box.stat.name, world);
   const ownerStats = box.owner?.byCodeName ?? null;
   if (!box.entity) {
-    return { code: box.code, label, item: namedItem(box.stat.id, box.stat.name, world), ownerStats, blueprint: !!box.owner };
+    return { code: box.code, label: scriptRef(box, home), item: namedItem(box.stat.id, box.stat.name, world), ownerStats, blueprint: !!box.owner };
   }
   const item = { ...asItem(box.entity, world), section: 'entities' as const };
-  return { code: box.code, label: `${label} of ${quote(labelOf(box.entity.name, world))}`, item, ownerStats, blueprint: false };
+  return { code: box.code, label: scriptRef(box, home, ` of ${quote(labelOf(box.entity.name, world))}`), item, ownerStats, blueprint: false };
 });
 
 // A read of a stat's `delta`, in either lookup form. A bare `delta` is nothing the sandbox injects, so only
@@ -1031,25 +1045,22 @@ const statCodeBeforeReadsDelta: Rule = {
   section: 'stats',
   advanced: true,
   summary: (count) => `${count} stats read delta in their ${TIMING_LABEL.before} box, where every source is zero`,
-  check: (world) => (world.stats ?? [])
-    .filter((stat) => filledScriptsAt(stat, 'before').some((script) => DELTA_READ.test(script.code)))
-    .map((stat) => {
-      const item = namedItem(stat.id, stat.name, world);
-      return finding(
-        statCodeBeforeReadsDelta,
-        `${TIMING_LABEL.before} code on ${quote(item.name)} reads delta, but that box runs before the AI `
-        + 'asks and before regen — every delta reads zero there',
-        [item],
-      );
-    }),
+  check: (world) => (world.stats ?? []).flatMap((stat) => {
+    const item = namedItem(stat.id, stat.name, world);
+    return filledScriptsAt(stat, 'before').filter((script) => DELTA_READ.test(script.code)).map((script) => finding(
+      statCodeBeforeReadsDelta,
+      `${scriptRef(script, item.name)} reads delta, but it runs before the AI asks and before regen — every delta reads zero there`,
+      [item],
+    ));
+  }),
 };
 
-/** One owner's stat field that stat code writes, with each box that writes it once. */
+/** One owner's stat field that scripts of one timing write, with each script that writes it once. */
 interface WrittenField {
   owner: CodeOwner;
   target: Stat;
   field: string;
-  /** Keyed by the writer's owner, stat and box. The label names the box without its owner. */
+  /** Keyed by the writer's owner, home and script. The label names the script without its owner. */
   writers: Map<string, { owner: CodeOwner; label: string }>;
 }
 
@@ -1058,28 +1069,38 @@ const statCodeTwoWriters: Rule = {
   severity: 'warning',
   section: 'stats',
   advanced: true,
-  summary: (count) => `${count} stat fields are written by more than one box of stat code`,
-  // Judged per owner and field across every box in the world. A Blueprint stat runs once per owner, so each
-  // owner's box is its own writer and each owner's copy its own target.
+  summary: (count) => `${count} stat fields have more than one script of one timing writing them`,
+  // Judged per timing, owner and field across every world, stat and trait script. A Blueprint stat or trait runs
+  // once per owner, so each owner's script is its own writer and each owner's copy its own target.
   check: (world) => {
     const owners = codeOwnersOf(world);
     const fields = new Map<string, WrittenField>();
+    const write = (writerKey: string, from: CodeOwner, label: string, script: Script, run: TraitRun & { self?: Stat }) => {
+      for (const route of scanStatWrites(script.code)) {
+        for (const { owner: targetOwner, stat: target } of routeTargets(owners, run, route)) {
+          if (!isStatOn(target)) continue;
+          const key = JSON.stringify([script.timing, targetOwner.entity?.id ?? null, target.id, route.field]);
+          const held = fields.get(key) ?? { owner: targetOwner, target, field: route.field, writers: new Map() };
+          held.writers.set(writerKey, { owner: from, label });
+          fields.set(key, held);
+        }
+      }
+    };
+    for (const script of filledScripts(world)) {
+      write(JSON.stringify(['world', script.id]), owners.world, scriptRef(script, null), script, { owner: null });
+    }
     for (const owner of owners.all) {
       for (const writer of owner.stats.filter(isStatOn)) {
-        for (const box of filledCodeBoxes(writer)) {
-          for (const write of scanStatWrites(box.code)) {
-            const run = { self: writer, owner: owner.entity ? owner : null };
-            for (const { owner: targetOwner, stat: target } of routeTargets(owners, run, write)) {
-              if (!isStatOn(target)) continue;
-              const key = JSON.stringify([targetOwner.entity?.id ?? null, target.id, write.field]);
-              const held = fields.get(key) ?? { owner: targetOwner, target, field: write.field, writers: new Map() };
-              held.writers.set(JSON.stringify([owner.entity?.id ?? null, writer.id, box.id]), {
-                owner, label: `${TIMING_LABEL[box.timing]} code on ${quote(labelOf(writer.name, world))}`,
-              });
-              fields.set(key, held);
-            }
-          }
+        for (const script of filledCodeBoxes(writer)) {
+          write(JSON.stringify([owner.entity?.id ?? null, 'stat', writer.id, script.id]), owner,
+            scriptRef(script, labelOf(writer.name, world)), script, { self: writer, owner: owner.entity ? owner : null });
         }
+      }
+    }
+    for (const box of traitCodeBoxes(owners, { traits: world.traits ?? [], traitGroups: world.traitGroups ?? [] })) {
+      for (const run of box.runs) {
+        write(JSON.stringify([run.owner?.entity?.id ?? null, 'trait', box.trait.id, box.id]), run.owner ?? owners.world,
+          scriptRef(box, labelOf(box.trait.name, world)), box, run);
       }
     }
     return [...fields.values()].filter(({ writers }) => writers.size > 1).map(({ owner, target, field, writers }) => {
@@ -1087,12 +1108,12 @@ const statCodeTwoWriters: Rule = {
       const { entity } = owner;
       const at = entity ? ` on ${quote(labelOf(entity.name, world))}` : '';
       const item = entity ? { ...asItem(entity, world), section: 'entities' as const } : namedItem(target.id, target.name, world);
-      // A writer from another entity names it; a world box and a same-owner box need no owner.
+      // A writer from another entity names it; a world script and a same-owner script need no owner.
       const labels = [...writers.values()].map(({ owner: from, label }) =>
         (from.entity && from !== owner ? `${label} of ${quote(labelOf(from.entity.name, world))}` : label));
       return finding(
         statCodeTwoWriters,
-        `${howMany} boxes write the ${field} of ${quote(labelOf(target.name, world))}${at}: ${listNames(labels)}`,
+        `${howMany} scripts write the ${field} of ${quote(labelOf(target.name, world))}${at}: ${listNames(labels)}`,
         [item],
       );
     });
@@ -3589,7 +3610,7 @@ export const STAT_CODE_EXECUTION: RuleHead = {
   severity: 'error',
   section: 'stats',
   advanced: true,
-  summary: (count) => `${count} stats’ code fails when it actually runs`,
+  summary: (count) => `${count} scripts fail when they actually run`,
 };
 
 /**
@@ -3602,7 +3623,7 @@ export const STAT_CODE_UNKNOWN_NAME: RuleHead = {
   severity: 'warning',
   section: 'stats',
   advanced: true,
-  summary: (count) => `${count} stats’ code writes names the world doesn’t have`,
+  summary: (count) => `${count} scripts write names the world doesn’t have`,
 };
 
 /**
