@@ -54,6 +54,9 @@ Settled with the user on 2026-10-14. R rulings came from the design discussion; 
 | Q31 | A world script runs with `self` and `owner` as empty objects, matching the Surface table. A return value and a `self` write are ignored, never a non-number failure. Ticket 01 runs stat and world scripts; trait scripts arrive with ticket 02 and the Q3 gate (ticket 01 ruling) |
 | Q32 | A Blueprint link overrides `scripts` as one whole list, not per script. Migration folds the two old field overrides into it and keeps each one's `blueprint` value for staleness (ticket 01 ruling) |
 | Q33 | Migrated scripts take deterministic ids, `<statId>:before` and `<statId>:after`, so a shipped world gets the same ids on every load. New scripts mint `crypto.randomUUID()`. Bundled world files stay in the old form; the load path migrates them (ticket 01 ruling) |
+| Q34 | Until ticket 02 lands, the stat Code tab keeps its two boxes: each edits the stat's first script of its timing, typing into an empty box adds a script, clearing a box removes it. Templates and help Insert write the same way (ticket 01 ruling) |
+| Q35 | The strip rule follows the text, not the request: any past passage, diary entry or digest in any request is stripped, the discovered-entity note request included. Q9 says "before any request" (ticket 08 ruling) |
+| Q36 | Off-world, a link override of one old box stays on its old key until the entity enters a world, where the original is in reach and the fold into the whole-list `scripts` override is exact. A fold that blanks the other box is a silent break of a shipped card, which the stat-code-entities Q19 precedent rules out (ticket 01 ruling, option B) |
 | Q37 | On a trait script, `self` is the trait's sandbox entry, read-only, as `traits[name]` reads it; a return value is ignored. Switching the trait goes through `traits` or `owner` as today. A global trait's scripts run in the global run with `owner` empty; an entity's active trait, owned or linked, runs under that entity as `owner`, once per owner that holds it (ticket 02 ruling) |
 | Q38 | Scripts without `order` run: world scripts, then per owner its stats' scripts in stat order, then its active traits' scripts in tree order (ticket 02 ruling) |
 | Q39 | A trait link overrides `scripts` as one whole list, as a stat link does (Q32). Find All Uses rows carry the script id so the reveal opens the right box. Stat rename and Find All Uses cover trait scripts in ticket 02; the Test Bench stays ticket 11 (ticket 02 ruling) |
@@ -73,9 +76,6 @@ Settled with the user on 2026-10-14. R rulings came from the design discussion; 
 | Q53 | The editor shows every prompt kind through the inline prompt line, so Test Code and the Test Bench match play; the choice-row path from Q49 goes. A tell belongs to the turn that runs when it is made: a Before, During or After tell to that turn, an At Game Start tell to the opening turn, a When a Trait Switches tell between turns to the latest turn on screen. Tells live in a save-envelope map keyed by turn id beside history, as scene images do, so a rollback or a regenerate drops them with their turn. In chat, each turn's tells show under that turn's narration at bubble width. No global Escape; the prompt takes focus when it opens. A Stop on the turn or leaving the game cancels an open prompt (ticket 10 ruling) |
 | Q54 | Each saved tell records its timing, `{ text, timing }`. A stats re-roll replaces the tells of the timings it replays (Before the AI, At Game Start on page one, After the AI) and keeps During AI Output tells, so a tell whose text depends on stats reads the re-rolled value. In the editor, `tell` and `toast` stay report lines (Q49); only the asking kinds use the inline line there. The open prompt line shows on whatever Pages page is open (ticket 10 ruling) |
 | Q55 | The Stat Code Guide becomes `docs/ScriptsGuide.md`. `docs/StatCodeGuide.md` stays as a short moved-to stub, listed as a non-guide page, so old wiki links open something. The app's old ids stay as aliases of the new ones: the `worldEditorStat.code` surface route, the `worldEditor.statCode` help topic as an alias of `worldEditor.scripts`, and the route lines; only their targets move (ticket 13 ruling) |
-| Q36 | Off-world, a link override of one old box stays on its old key until the entity enters a world, where the original is in reach and the fold into the whole-list `scripts` override is exact. A fold that blanks the other box is a silent break of a shipped card, which the stat-code-entities Q19 precedent rules out (ticket 01 ruling, option B) |
-| Q35 | The strip rule follows the text, not the request: any past passage, diary entry or digest in any request is stripped, the discovered-entity note request included. Q9 says "before any request" (ticket 08 ruling) |
-| Q34 | Until ticket 02 lands, the stat Code tab keeps its two boxes: each edits the stat's first script of its timing, typing into an empty box adds a script, clearing a box removes it. Templates and help Insert write the same way (ticket 01 ruling) |
 
 Q26 was not used.
 
@@ -112,7 +112,7 @@ interface Script {
 | `sentence` | read and write | the sentence that just completed |
 | `sent` | read | sentences the reveal already released |
 | `buffered` | read | complete sentences the pacer holds, already past the script |
-| `full` | read | everything received so far, partial tail included |
+| `full` | read | the narration as it stands: earlier sentences as rewritten, then the current sentence and the partial tail as the model wrote them (Q43) |
 | `index` | read | the sentence's position in the reply, from 0 |
 
 `player`:
@@ -125,11 +125,11 @@ interface Script {
 | `player.ask(question, options, { multiple? })` | the picked value, or an array with `multiple` | pill buttons up to four options, an inline dropdown past that, toggle pills plus OK with `multiple` |
 | `player.askText(question, placeholder?)` | the typed string | an inline prompt line with a text field plus OK |
 
-`options` takes strings or `{ label, value }`. The script waits for the answer with no `await`: the executor runs a script that names `player.` on the async engine, where a host function suspends the VM. The one-second timeout pauses while a dialog is open. Scripts that never name `player.` keep today's sync engine.
+`options` takes strings or `{ label, value }`. The script waits for the answer with no `await`: the executor runs a script that names `player.` on the async engine, where a host function suspends the VM. The one-second timeout pauses while a prompt is open. Scripts that never name `player.` keep today's sync engine.
 
 ### Run order
 
-Within a timing: scripts with `order`, ascending; then scripts without one in owner order (global scripts, then the player's persona, then entities) and stat order within an owner. Later writes win a field, as today.
+Within a timing: scripts with `order`, ascending; then scripts without one in owner order (world scripts, then global stats and traits, then the player's persona, then entities), and within an owner its stats' scripts in stat order, then its active traits' in tree order (Q38, Q50). Later writes win a field, as today.
 
 ## Prototype
 
@@ -149,7 +149,7 @@ Ticket 14 asked what the `player.*` surfaces look like in play, and whether the 
   - `toast`: the app toast.
   - Chat centers the line at bubble width. Pages spans the column. The editor mount of Q49 was not prototyped and takes the same line.
 - **Design System:** the dialog of Q17 does not earn a place. The user's pick is the pattern approval Q17 asks for. Ticket 10 writes the Design System entry for the inline prompt line.
-- **For the spec session:** Q15, Q17, the Surface table and ticket 10 still say "dialog". The ruling, the table and the ticket's criteria need the inline line.
+- **Folded:** Q15, Q17, Q24, Q49, the Surface table and ticket 10 say the inline prompt line.
 - **Rejected:** A centered dialog and C bottom sheet (round one); B1 prompt card, B2 choice-row box, B4 docked card, B5 compact line (round two). All stay on the branch.
 
 ## User Stories
@@ -188,10 +188,8 @@ Ticket 14 asked what the `player.*` surfaces look like in play, and whether the 
 
 ## Backlog
 
-Open edges from ticket 05 (landed as 5214c1d161):
+Open edges from ticket 05:
 
-- Test Code and the Test Bench give no `trait` in a When a Trait Switches box, so a script that reads it fails there (ticket 11).
-- The Variable menu does not list `trait` (ticket 13).
 - A toggle or persona-change run that itself switches traits sets the whole trait state when it lands, as the Before box does. A second toggle made while it runs, for example with a `player.*` prompt open, can be overwritten.
 - A persona-change run reads the cast (`persona`, `entities`) from before the change; `trait` and the trait scope use the new world.
 
@@ -203,3 +201,4 @@ Open edges from ticket 11:
 - `checkStatCode`, `runStatCodeCheck` and the `StatCodeCheck` component still say stat code.
 - Disabled stat rows: the Scripts tab dims a disabled stat's script row at 50% (Q52). Whether an "Off" meta text joins it, and whether the Stats tab's own rows get the same marker, is the user's design call.
 - The stat-move readers (`statMoveReaders.ts`) skip world scripts, so a stat move does not see a world script that reads it (ticket 16).
+- The help window's code test (`helpCodeTestRun`) still checks only the two stat timings, and the Formaquestion code prompts still say stat code (ticket 13).
