@@ -12,17 +12,13 @@ import {
 } from '@/lib/statCodeExecutor';
 import { allPlaceholders, placeholderOwners } from '@/lib/placeholderHomes';
 import { statCodeName, statCodeNamed } from '@/lib/statCodeNames';
-import { statCodeBoxes, statCodeOwners, traitCodeBoxes } from '@/lib/statCodeTargets';
 import { globalStatsOf, resolvedEntityStats } from '@/lib/statLinks';
 import { codeDictionaries, sandboxDictionaries, sandboxPlaceholders } from '@/lib/statCodePlaceholders';
 import { entityTraitNames, sandboxTraits, unplayedEntities, worldTraitPlaces } from '@/lib/statCodeTraits';
-import { labelPlaceholders, worldPlacementLetters } from '@/lib/placementLetters';
-import { filledScripts, scriptLabel } from '@/lib/scripts';
-import { scriptEntryKey } from '@/lib/worldScripts';
 import { SAMPLE_SENTENCE, sampleNarration, sampleSwitchedTrait } from '@/lib/scriptTestSamples';
 import type { ScriptPromptHost } from '@/lib/scriptPrompts';
 import {
-  finding, scriptRef, SCRIPT_EXECUTION, SCRIPT_UNKNOWN_NAME, WORLD_SCRIPT_OWNER, type Finding, type FindingItem, type RuleWorld,
+  finding, ruleScripts, SCRIPT_EXECUTION, SCRIPT_UNKNOWN_NAME, type Finding, type FindingItem, type RuleWorld,
 } from './rules';
 import { startingGateStats } from '@/lib/gateStats';
 import type { Script, Stat, Trait } from '@/types';
@@ -90,47 +86,21 @@ type ScriptUnit = {
 );
 
 
-/** Every filled script in the world, in check order: the world's, then each stat's, then each trait's. */
-function scriptUnits(world: RuleWorld): ScriptUnit[] {
-  const placeholderDefs = allPlaceholders(world);
-  const letters = worldPlacementLetters(world);
-  // The row names a stat, trait or entity as the author sees it in the list, not as code reaches it.
-  const label = (text: string | undefined) => labelPlaceholders(text ?? '', placeholderDefs, { letters }).trim() || 'Untitled';
-  const entityOf = (entity: { id: string; name?: string } | null) => (entity
-    ? { item: { id: entity.id, name: label(entity.name), section: 'entities' as const }, of: ` of ${quote(label(entity.name))}` }
-    : null);
-
-  const worldUnits = filledScripts(world).map((script): ScriptUnit => ({
-    kind: 'world', script, ref: scriptRef(script, null),
-    // The Scripts tab's row, where a world script is edited.
-    item: { id: scriptEntryKey({ kind: 'world' }, script.id), name: scriptLabel(script, WORLD_SCRIPT_OWNER), section: 'scripts' },
-  }));
-  // A linked stat runs only scripts its link overrides; the Blueprint's own run covers the rest.
-  const owners = statCodeOwners({
-    stats: world.stats ?? [], statGroups: world.statGroups ?? [], entities: world.entities ?? [], placeholders: placeholderDefs,
-  });
-  const statUnits = statCodeBoxes(owners).map(({ stat, entity, owner, home, runs, ...script }): ScriptUnit => {
-    const on = entityOf(entity);
-    const name = label(stat.name);
-    return {
-      kind: 'stat', script, stat, ref: scriptRef(script, name, on?.of ?? ''),
-      item: on?.item ?? { id: stat.id, name },
-      ...(entity ? { entityId: entity.id } : owner && { group: owner.stats }),
-    };
-  });
-  // A Blueprint trait's box runs once with an empty owner, as a Blueprint stat's does with its group.
-  const traitUnits = traitCodeBoxes(owners, { traits: world.traits ?? [], traitGroups: world.traitGroups ?? [] })
-    .map(({ trait, entity, owner, home, runs, ...script }): ScriptUnit => {
-      const on = entityOf(entity);
-      const name = label(trait.name);
-      return {
-        kind: 'trait', script, trait, blueprint: !entity && !!owner, ref: scriptRef(script, name, on?.of ?? ''),
-        item: on?.item ?? { id: trait.id, name, section: 'traits' },
-        ...(entity && { entityId: entity.id }),
-      };
-    });
-  return [...worldUnits, ...statUnits, ...traitUnits];
-}
+/** Every filled script in the world, in check order: the world's, then each stat's, then each trait's. A linked
+ *  stat runs only scripts its link overrides; a Blueprint stat's box runs once with its group as owner, and a
+ *  Blueprint trait's once with an empty owner. */
+const scriptUnits = (world: RuleWorld): ScriptUnit[] => ruleScripts(world).map(({ listed, ref, item }): ScriptUnit => {
+  if (listed.kind === 'world') {
+    const { home, owner, runs, ...script } = listed.box;
+    return { kind: 'world', script, ref, item };
+  }
+  if (listed.kind === 'stat') {
+    const { stat, entity, owner, home, runs, ...script } = listed.box;
+    return { kind: 'stat', script, stat, ref, item, ...(entity ? { entityId: entity.id } : owner && { group: owner.stats }) };
+  }
+  const { trait, entity, owner, home, runs, ...script } = listed.box;
+  return { kind: 'trait', script, trait, blueprint: !entity && !!owner, ref, item, ...(entity && { entityId: entity.id }) };
+});
 
 /** How many scripts a check runs. */
 export const checkedScriptCount = (world: RuleWorld): number => scriptUnits(world).length;

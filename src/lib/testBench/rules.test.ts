@@ -14,6 +14,7 @@ import { syncBlueprintCopies } from '@/lib/blueprintCopies';
 import { allPlaceholders } from '@/lib/placeholderHomes';
 import { placeholderSelection } from '@/lib/placeholderTree';
 import { boxScripts } from '@/test/scriptFixtures';
+import { scriptEntryKey } from '@/lib/worldScripts';
 
 /** A described entity at the starting location — what keeps the completeness rules quiet about a fixture
  *  that is about something else entirely. */
@@ -588,9 +589,9 @@ describe('reference-integrity rules', () => {
       ]);
     });
 
-    it('reports owner.stats in a world box, since a world stat has no owner', () => {
+    it('reports owner.stats in a global stat’s script, since a global stat has no owner', () => {
       expect(messages(worldBox('owner.stats.Rage.value = 1;'))).toEqual([
-        '“Alarm · After the AI” looks up “Rage” on its owner, but a world stat has no owner',
+        '“Alarm · After the AI” looks up “Rage” on its owner, but a global stat has no owner',
       ]);
     });
 
@@ -611,12 +612,12 @@ describe('reference-integrity rules', () => {
       expect(found.map((f) => f.message)).toEqual([
         '“Guard · After the AI” looks up a stat named “Watch”, which does not exist',
       ]);
-      expect(found[0].items).toEqual([{ id: 'guard', name: 'Guard' }]);
+      expect(found[0].items).toEqual([{ id: 'guard', name: 'Guard', section: 'stats' }]);
       // An owner can hold more than the group, so an owner.stats miss is only a warning.
       expect(only(w, 'script-unknown-blueprint-owner-stat').map(({ severity, message, items }) => ({ severity, message, items }))).toEqual([{
         severity: 'warning',
         message: '“Guard · After the AI” looks up a stat named “Rage” on its owner, which its Blueprint group does not have',
-        items: [{ id: 'guard', name: 'Guard' }],
+        items: [{ id: 'guard', name: 'Guard', section: 'stats' }],
       }]);
       // An owner's own box reads the owner's stats, so its miss stays an error.
       expect(only(ownedBox('return owner.stats.Rgae.value;'), 'script-unknown-blueprint-owner-stat')).toEqual([]);
@@ -732,6 +733,121 @@ describe('reference-integrity rules', () => {
       '“Drain” (Before the AI) on “Mana” reads delta, but it runs before the AI asks and before regen — every delta reads zero there',
       '“Gain” (Before the AI) on “Mana” reads delta, but it runs before the AI asks and before regen — every delta reads zero there',
     ]);
+  });
+});
+
+describe('script rules read trait and world scripts', () => {
+  const UNKNOWN = 'script-unknown-stat';
+  const DELTA = 'script-before-reads-delta';
+  const blueprints = { id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' as const };
+  const vigor = stat({ id: 'vigor', name: 'Vigor' });
+  const after = (code: string): Script[] => [{ id: 'sc', timing: 'after', code }];
+  const before = (code: string): Script[] => [{ id: 'sc', timing: 'before', code }];
+  const summaryOf = (ruleId: string) => RULES.find((rule) => rule.id === ruleId)!.summary(2);
+  const withTrait = (scripts: Script[], over: Partial<RuleWorld> = {}) =>
+    base({ stats: [vigor], traits: [trait({ id: 'brave', name: 'Brave', scripts })], ...over });
+  const withWorldScript = (scripts: Script[]) => base({ stats: [vigor], scripts });
+  const worldItem = { id: scriptEntryKey({ kind: 'world' }, 'sc'), name: 'World · After the AI', section: 'scripts' };
+
+  it('flags an unknown stat in a global trait script, filed under Traits', () => {
+    const found = only(withTrait(after('return stats.Vigro.value;')), UNKNOWN);
+    expect(found.map(({ message, items }) => ({ message, items }))).toEqual([{
+      message: '“Brave · After the AI” looks up a stat named “Vigro”, which does not exist',
+      items: [{ id: 'brave', name: 'Brave', section: 'traits' }],
+    }]);
+    expect(only(withTrait(after('return stats.Vigor.value;')), UNKNOWN)).toEqual([]);
+  });
+
+  it('flags an unknown stat in a world script, filed under Scripts', () => {
+    const found = only(withWorldScript(after('const v = stats.find(s => s.name === "Vigour"); return 0;')), UNKNOWN);
+    expect(found.map(({ message, items }) => ({ message, items }))).toEqual([{
+      message: '“World · After the AI” looks up a stat named “Vigour”, which does not exist',
+      items: [worldItem],
+    }]);
+  });
+
+  it('files an entity’s own trait script under Entities', () => {
+    const ash: Entity = { ...resident, id: 'ash', name: 'Ash', traits: [trait({ id: 'own', name: 'Grim', scripts: after('return stats.Vigro.value;') })] };
+    const found = only(base({ stats: [vigor], entities: [resident, ash] }), UNKNOWN);
+    expect(found.map(({ message, items }) => ({ message, items }))).toEqual([{
+      message: '“Grim · After the AI” of “Ash” looks up a stat named “Vigro”, which does not exist',
+      items: [{ id: 'ash', name: 'Ash', section: 'entities' }],
+    }]);
+  });
+
+  it('files a stat script under Stats', () => {
+    const found = only(base({ stats: [stat({ id: 's1', name: 'Mana', scripts: after('return stats.Vigro.value;') })] }), UNKNOWN);
+    expect(found[0].items).toEqual([{ id: 's1', name: 'Mana', section: 'stats' }]);
+  });
+
+  it('reports owner.stats in a world script and a global trait script, which have no owner', () => {
+    expect(only(withWorldScript(after('return owner.stats.Vigor.value;')), UNKNOWN).map((f) => f.message)).toEqual([
+      '“World · After the AI” looks up “Vigor” on its owner, but a world script has no owner',
+    ]);
+    expect(only(withTrait(after('return owner.stats.Vigor.value;')), UNKNOWN).map((f) => f.message)).toEqual([
+      '“Brave · After the AI” looks up “Vigor” on its owner, but a global trait has no owner',
+    ]);
+  });
+
+  describe('a Blueprint trait', () => {
+    const guard = (code: string) => trait({ id: 'guard', name: 'Guard', groupId: 'bp', scripts: after(code) });
+    const linker = (id: string, name: string, stats: Stat[], scripts?: Script[]): Entity => ({
+      ...resident, id, name, stats,
+      traitLinks: [{
+        id: `l-${id}`, originalId: 'guard', kind: 'trait', originalName: 'Guard', groupId: null,
+        ...(scripts ? { overrides: { guard: { scripts: { value: scripts, blueprint: [] } } } } : {}),
+      }],
+    });
+    const blueprintWorld = (code: string, entities: Entity[]) =>
+      base({ stats: [vigor], traitGroups: [blueprints], traits: [guard(code)], entities: [resident, ...entities] });
+    const rage = stat({ id: 'rage', name: 'Rage' });
+
+    it('judges owner.stats against each entity that links it, and names the one that misses', () => {
+      const w = blueprintWorld('return owner.stats.Rage.value;', [linker('ash', 'Ash', [rage]), linker('bree', 'Bree', [])]);
+      expect(only(w, UNKNOWN).map(({ message, items }) => ({ message, items }))).toEqual([{
+        message: '“Guard · After the AI” looks up a stat named “Rage” on its owner, which “Bree” does not have',
+        items: [{ id: 'guard', name: 'Guard', section: 'traits' }],
+      }]);
+      expect(only(w, 'script-unknown-blueprint-owner-stat')).toEqual([]);
+    });
+
+    it('raises nothing on owner.stats when no entity links it, since it never runs', () => {
+      expect(only(blueprintWorld('return owner.stats.Rage.value;', []), UNKNOWN)).toEqual([]);
+    });
+
+    it('leaves out an entity whose link overrides the scripts, and checks that entity’s own copy instead', () => {
+      const w = blueprintWorld('return owner.stats.Rage.value;', [linker('ash', 'Ash', [rage]), linker('bree', 'Bree', [], after('return 1;'))]);
+      expect(only(w, UNKNOWN)).toEqual([]);
+      const typo = blueprintWorld('return 1;', [linker('bree', 'Bree', [], after('return owner.stats.Rgae.value;'))]);
+      expect(only(typo, UNKNOWN).map(({ message, items }) => ({ message, items }))).toEqual([{
+        message: '“Guard · After the AI” of “Bree” looks up a stat named “Rgae” on its owner, which does not exist',
+        items: [{ id: 'bree', name: 'Bree', section: 'entities' }],
+      }]);
+    });
+  });
+
+  it('warns on a trait and a world Before the AI script that reads delta', () => {
+    const reads = 'return stats.Vigor.delta.ai.value;';
+    expect(only(withTrait(before(reads)), DELTA).map(({ severity, message, items }) => ({ severity, message, items }))).toEqual([{
+      severity: 'warning',
+      message: '“Brave · Before the AI” reads delta, but it runs before the AI asks and before regen — every delta reads zero there',
+      items: [{ id: 'brave', name: 'Brave', section: 'traits' }],
+    }]);
+    expect(only(withWorldScript(before(reads)), DELTA).map(({ message, items }) => ({ message, items }))).toEqual([{
+      message: '“World · Before the AI” reads delta, but it runs before the AI asks and before regen — every delta reads zero there',
+      items: [{ ...worldItem, name: 'World · Before the AI' }],
+    }]);
+    expect(only(withTrait(after(reads)), DELTA)).toEqual([]);
+  });
+
+  it('warns on an entity’s own Before the AI stat script that reads delta', () => {
+    const ash: Entity = { ...resident, id: 'ash', name: 'Ash', stats: [stat({ id: 'grit', name: 'Grit', scripts: before('return self.delta.ai.value;') })] };
+    expect(only(base({ entities: [resident, ash] }), DELTA).map((f) => f.items)).toEqual([[{ id: 'ash', name: 'Ash', section: 'entities' }]]);
+  });
+
+  it('counts scripts, not stats, in the summaries', () => {
+    expect(summaryOf(UNKNOWN)).toBe('2 scripts look up stat names that don’t exist');
+    expect(summaryOf(DELTA)).toBe('2 scripts read delta in their Before the AI timing, where every source is zero');
   });
 });
 

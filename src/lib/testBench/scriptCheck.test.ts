@@ -8,7 +8,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { Entity, Script, Stat, Trait, WorldOverview } from '@/types';
 import { checkedScriptCount, checkScripts, SCRIPT_EXECUTION, SCRIPT_UNKNOWN_NAME } from './scriptCheck';
 import { editorPromptRun } from '@/lib/editorScriptPrompts';
-import { groupFindings, type RuleWorld } from './rules';
+import { groupFindings, ruleScripts, type RuleWorld } from './rules';
 import { boxScripts } from '@/test/scriptFixtures';
 
 const base = (stats: Stat[]): RuleWorld => ({
@@ -32,6 +32,22 @@ describe('the on-demand script check', () => {
       stat({ id: 's1', name: 'Fertility', scripts: boxScripts({ after: 'return 25;' }) }),
       stat({ id: 's2', name: 'Vigor' }),
     ]))).toEqual([]);
+  });
+
+  it('runs every script the static rules read, and names each by the same row', async () => {
+    const fails: Script[] = [{ id: 'f', timing: 'after', code: 'throw new Error("x");' }];
+    const ash: Entity = {
+      id: 'ash', name: 'Ash', stats: [stat({ id: 'grit', name: 'Grit', scripts: fails })],
+      traits: [{ id: 'grim', name: 'Grim', statChanges: [], scripts: fails }],
+    };
+    const world: RuleWorld = {
+      ...base([stat({ id: 'mana', name: 'Mana', scripts: fails })]),
+      scripts: fails, entities: [ash], traits: [{ id: 'brave', name: 'Brave', statChanges: [], scripts: fails }],
+    };
+    const ran = (await checkScripts(world)).flatMap((f) => f.items);
+    expect(ran).toEqual(ruleScripts(world).map(({ item }) => item));
+    expect(ran.map((item) => item.section)).toEqual(['scripts', 'stats', 'entities', 'traits', 'entities']);
+    expect(checkedScriptCount(world)).toBe(5);
   });
 
   it("reads a stat gate against each stat's authored start", async () => {
@@ -273,7 +289,7 @@ describe('the on-demand script check', () => {
       ))).toEqual([]);
       const found = await checkScripts(blueprint('throw new Error("nope");'));
       expect(found.map((f) => [f.message, f.items])).toEqual([[
-        '“Guard · After the AI” throws when it runs, so the stat keeps its manual value', [{ id: 'guard', name: 'Guard' }],
+        '“Guard · After the AI” throws when it runs, so the stat keeps its manual value', [{ id: 'guard', name: 'Guard', section: 'stats' }],
       ]]);
     });
 
