@@ -94,6 +94,7 @@ const FILES = [
   'src/lib/utils.ts',
   'src/services/AuthService.ts',
   'src/services/AgeGateService.ts',
+  'src/services/authRequest.ts',
   'src/services/PatreonService.ts',
   'src/services/PolicyService.ts',
   'src/services/responseError.ts',

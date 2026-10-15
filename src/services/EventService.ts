@@ -1,5 +1,5 @@
 import AuthService from './AuthService';
-import { responseError } from './responseError';
+import { authHeaders, unwrap } from './authRequest';
 import type { ContestPlace, ServerEvent, ServerEventDraft } from '@/types';
 
 /** One step of a podium as the write routes take it: which place, and which listing is on it. */
@@ -20,25 +20,10 @@ class EventService {
     return AuthService.API_URL;
   }
 
-  /** A bearer header only when signed in — the read surface is public, so an anonymous call is normal. */
-  private authHeaders(): HeadersInit {
-    return AuthService.token ? { Authorization: `Bearer ${AuthService.token}` } : {};
-  }
-
-  private async unwrap<T>(response: Response, fallback: string): Promise<T> {
-    if (!response.ok) throw await responseError(response, fallback);
-    return (await response.json()) as T;
-  }
-
-  /** A JSON body with the caller's token — every write below needs one. */
-  private writeHeaders(): HeadersInit {
-    return { 'Content-Type': 'application/json', ...this.authHeaders() };
-  }
-
   /** Every event currently running, of every type. Empty on a server that has no events layer. */
   async fetchActive(): Promise<ServerEvent[]> {
-    const response = await fetch(`${this.apiUrl}/events/active`, { headers: this.authHeaders() });
-    const body = await this.unwrap<{ data: ServerEvent[] }>(response, 'Failed to load events');
+    const response = await fetch(`${this.apiUrl}/events/active`, { headers: authHeaders() });
+    const body = await unwrap<{ data: ServerEvent[] }>(response, 'Failed to load events');
     return body.data ?? [];
   }
 
@@ -53,15 +38,15 @@ class EventService {
    * @param options - `slim` asks for rows without prose
    */
   async fetchList({ slim = false }: { slim?: boolean } = {}): Promise<ServerEvent[]> {
-    const response = await fetch(`${this.apiUrl}/events${slim ? '?slim=1' : ''}`, { headers: this.authHeaders() });
-    const body = await this.unwrap<{ data: ServerEvent[] }>(response, 'Failed to load events');
+    const response = await fetch(`${this.apiUrl}/events${slim ? '?slim=1' : ''}`, { headers: authHeaders() });
+    const body = await unwrap<{ data: ServerEvent[] }>(response, 'Failed to load events');
     return body.data ?? [];
   }
 
   /** One event in full, prose included — what a slim row is read out to when a surface needs its text. */
   async fetchOne(id: string): Promise<ServerEvent> {
-    const response = await fetch(`${this.apiUrl}/events/${id}`, { headers: this.authHeaders() });
-    return (await this.unwrap<{ data: ServerEvent }>(response, 'Failed to load the event')).data;
+    const response = await fetch(`${this.apiUrl}/events/${id}`, { headers: authHeaders() });
+    return (await unwrap<{ data: ServerEvent }>(response, 'Failed to load the event')).data;
   }
 
   /**
@@ -72,10 +57,10 @@ class EventService {
   async create(draft: ServerEventDraft): Promise<ServerEvent> {
     const response = await fetch(`${this.apiUrl}/events`, {
       method: 'POST',
-      headers: this.writeHeaders(),
+      headers: authHeaders(true),
       body: JSON.stringify(draft),
     });
-    return (await this.unwrap<{ data: ServerEvent }>(response, 'Failed to create the event')).data;
+    return (await unwrap<{ data: ServerEvent }>(response, 'Failed to create the event')).data;
   }
 
   /**
@@ -88,28 +73,28 @@ class EventService {
   async update(id: string, draft: Partial<ServerEventDraft>): Promise<ServerEvent> {
     const response = await fetch(`${this.apiUrl}/events/${id}`, {
       method: 'PUT',
-      headers: this.writeHeaders(),
+      headers: authHeaders(true),
       body: JSON.stringify(draft),
     });
-    return (await this.unwrap<{ data: ServerEvent }>(response, 'Failed to save the event')).data;
+    return (await unwrap<{ data: ServerEvent }>(response, 'Failed to save the event')).data;
   }
 
   /** Call an event off — the answer for anything already announced. Releases a contest's entries. */
   async cancel(id: string): Promise<ServerEvent> {
     const response = await fetch(`${this.apiUrl}/events/${id}/cancel`, {
       method: 'POST',
-      headers: this.writeHeaders(),
+      headers: authHeaders(true),
     });
-    return (await this.unwrap<{ data: ServerEvent }>(response, 'Failed to cancel the event')).data;
+    return (await unwrap<{ data: ServerEvent }>(response, 'Failed to cancel the event')).data;
   }
 
   /** Remove an event nobody was told about. The server refuses one that has started. */
   async remove(id: string): Promise<void> {
     const response = await fetch(`${this.apiUrl}/events/${id}`, {
       method: 'DELETE',
-      headers: this.writeHeaders(),
+      headers: authHeaders(true),
     });
-    await this.unwrap<{ success: boolean }>(response, 'Failed to delete the event');
+    await unwrap<{ success: boolean }>(response, 'Failed to delete the event');
   }
 
   /**
@@ -122,20 +107,20 @@ class EventService {
   async announceResults(id: string, placements: PodiumEntry[]): Promise<ServerEvent> {
     const response = await fetch(`${this.apiUrl}/events/${id}/results`, {
       method: 'PUT',
-      headers: this.writeHeaders(),
+      headers: authHeaders(true),
       body: JSON.stringify({ placements }),
     });
-    return (await this.unwrap<{ data: ServerEvent }>(response, 'Failed to announce the results')).data;
+    return (await unwrap<{ data: ServerEvent }>(response, 'Failed to announce the results')).data;
   }
 
   /** Correct an announced podium. Admins only; broadcasts nothing, and is recorded per change. */
   async editPlacements(id: string, placements: PodiumEntry[]): Promise<ServerEvent> {
     const response = await fetch(`${this.apiUrl}/events/${id}/placements`, {
       method: 'PUT',
-      headers: this.writeHeaders(),
+      headers: authHeaders(true),
       body: JSON.stringify({ placements }),
     });
-    return (await this.unwrap<{ data: ServerEvent }>(response, 'Failed to update the podium')).data;
+    return (await unwrap<{ data: ServerEvent }>(response, 'Failed to update the podium')).data;
   }
 }
 

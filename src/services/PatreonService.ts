@@ -1,5 +1,6 @@
 import { API_BASE_URL } from '@/lib/apiBase';
 import AuthService from '@/services/AuthService';
+import { authHeaders } from '@/services/authRequest';
 import type { SupporterTier } from '@/types';
 
 /** The caller's own Patreon link, as the server reports it. */
@@ -17,17 +18,13 @@ export class PatreonError extends Error {
 
 /** Send one authenticated request to a Patreon route and return its `data`. */
 async function request<T>(path: string, method: string, failure: string, body?: unknown): Promise<T> {
-  const token = AuthService.token;
-  if (!token) throw new PatreonError('Not authenticated');
+  if (!AuthService.token) throw new PatreonError('Not authenticated');
 
   let response: Response;
   try {
     response = await fetch(`${API_BASE_URL}/users/me/patreon${path}`, {
       method,
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
-      },
+      headers: authHeaders(body !== undefined),
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch {
