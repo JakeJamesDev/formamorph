@@ -29,3 +29,5 @@ Spec: Q16, Q17, Q23, stories 14, 15.
 ## Comments
 
 Handoff from ticket 09 (landed as b26c63efb): the pending-prompt store is `scriptPrompts` in `src/lib/scriptPrompts.ts` with `pending()`, `subscribe(listener)`, `answer(id, value)` and `cancel(id)`. Requests carry labels only; an `ask` answers with an option index, or a list of indexes with `multiple`; `tell` and `toast` answer with `undefined`. Until a listener subscribes, asks cancel at once (Q45). Prompts arrive one at a time (Q45).
+
+From ticket 11 (Q49): Test Code and the Test Bench run prompts on a per-run prompt store the editor subscribes to. `askText` and a longer `ask` cancel there until this ticket mounts its dialog in the editor as well as in play.
