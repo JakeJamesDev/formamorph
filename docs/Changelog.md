@@ -41,6 +41,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Arrange on the location canvas no longer freezes on a world whose locations hold each other in a loop.** Every walk up the location, group and placeholder trees now stops at a loop.
   - **World music or ambient sound your browser can't play now stays silent instead of showing an error.** This covers a new game, a loaded save and a move to a new location.
   - **The world library now opens when one stored world can't be read.** An unreadable world stopped the library's one-time update, with the error "Cannot read properties of null", on every launch. The update now skips that world.
+  - **Models that always reason now have room to answer small prompts like Location Change.** Each strength gives a fixed thinking room, from Minimal at 128 tokens to Max at 16,384. Max Output limits only the answer, so turning it off no longer shrinks the room.
 
 ---
 

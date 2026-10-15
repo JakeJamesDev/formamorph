@@ -357,6 +357,11 @@ export function resolvePromptReasoning(
   mode: ThinkingMode,
 ): ReasoningEffort {
   if (nativeReasoningSuppressed(mode, kind) || REASONING_OFF_KINDS.includes(kind)) return 'none';
+  return promptChoice(kind, prefs, globalEffort);
+}
+
+/** The prompt's stored choice or shipped default, with Global folding in the endpoint-wide level. */
+function promptChoice(kind: AIRequestType, prefs: Record<string, PromptReasoning>, globalEffort: ReasoningEffort): ReasoningEffort {
   const pref = prefs[kind] ?? defaultPromptReasoning(kind);
   return pref === 'global' ? globalEffort : pref;
 }
@@ -371,13 +376,13 @@ export interface KeptReasoningSettings {
 }
 
 /**
- * The strength a prompt keeps while its switch is off. Both switches are ignored, since this is read only
- * where the endpoint refuses off and both switches therefore render checked and locked.
+ * The strength a prompt keeps while its switch is off. Both switches are ignored: this is read where the
+ * endpoint refuses off, so both render checked and locked, and for Inline narration, whose switch is hidden.
  */
 export function keptReasoningLevel(
   kind: AIRequestType,
   kept: KeptReasoningSettings,
-): ReasoningEffort {
+): ReasoningLevel {
   const level = (kept.prompts?.[kind] ?? defaultPromptReasoningSetting(kind)).level;
   return level === 'global' ? (kept.global ?? DEFAULT_REASONING_SETTING).level : level;
 }
@@ -400,6 +405,30 @@ export function resolveRequestReasoning(
   if (choice !== 'none') return choice;
   if (nativeReasoningSuppressed(mode, kind) || !reasoningOffRefused(capability)) return choice;
   return keptReasoningLevel(kind, kept);
+}
+
+/**
+ * The strength a prompt holds whatever its switch says: its own choice, Global folding in the endpoint level,
+ * and the kept strength where that choice is off. Inline narration sizes its own thought from this.
+ */
+export function promptReasoningStrength(
+  kind: AIRequestType,
+  prefs: Record<string, PromptReasoning>,
+  globalEffort: ReasoningEffort,
+  kept: KeptReasoningSettings = {},
+): ReasoningLevel {
+  const choice = promptChoice(kind, prefs, globalEffort);
+  return choice === 'none' ? keptReasoningLevel(kind, kept) : choice;
+}
+
+/** The tokens each strength gives a thought, after LiteLLM's effort ladder. Model Default reads as Medium. */
+const THINKING_ROOM: Readonly<Record<Exclude<ReasoningLevel, 'auto'>, number>> = {
+  minimal: 128, low: 1024, medium: 2048, high: 4096, xhigh: 8192, max: 16384,
+};
+
+/** One strength's Thinking Room. */
+export function thinkingRoom(strength: ReasoningLevel): number {
+  return THINKING_ROOM[strength === 'auto' ? 'medium' : strength];
 }
 
 /** The budget slider's floor. Off is the prompt's switch, not a 0% position, so the slider never reads as off. */

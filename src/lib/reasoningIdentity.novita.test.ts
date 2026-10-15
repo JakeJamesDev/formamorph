@@ -4,7 +4,7 @@ import { buildRequestBody, type AiEndpointTarget, type AiSettingsSnapshot } from
 import { defaultEndpointSamplerOverrides } from '@/lib/endpointSamplers';
 import {
   UNKNOWN_REASONING_CAPABILITY, reasoningRereadsPerSession, resolveReasoningCapability, storedAfterResolve,
-  type ReasoningCapability,
+  type KeptReasoningSettings, type ReasoningCapability,
 } from '@/lib/reasoningEffort';
 
 /**
@@ -84,8 +84,9 @@ describe('GLM-5.3 on Novita', () => {
     expect(storedAfterResolve(stale, fresh)).toMatchObject({ offAllowed: false, tools: true });
   });
 
-  // The reported failure: an 11-token Location Change sent `enable_thinking: false`, which GLM-5.3 ignored.
-  it('gives a switched-off pass thought room instead of a switch the model ignores', () => {
+  // The reported failures: an 11-token Location Change sent `enable_thinking: false`, which GLM-5.3 ignored,
+  // and then, with Max Output off, a 33-token cap the model spent thinking.
+  describe('a switched-off Location Change with Max Output off', () => {
     const answer = reasoningIdentityAnswer(NOVITA, MODEL);
     if (!answer) throw new Error('Novita row claimed nothing');
     const target: AiEndpointTarget = {
@@ -93,15 +94,25 @@ describe('GLM-5.3 on Novita', () => {
       samplerOverrides: defaultEndpointSamplerOverrides(),
       reasoning: { ...UNKNOWN_REASONING_CAPABILITY, ...answer, offAllowed: answer.offAllowed ?? null },
     };
-    const snapshot: AiSettingsSnapshot = {
+    const snapshot = (kept?: KeptReasoningSettings): AiSettingsSnapshot => ({
       resolveTarget: () => target, thinkingMode: 'off', reasoningEffort: 'auto', reasoningEngaged: true,
-      promptReasoning: {}, promptReasoningBudget: {}, promptSamplers: {}, promptMaxOutput: {}, genTemperature: 0.9,
+      promptReasoning: {}, keptReasoning: kept, promptReasoningBudget: {}, promptSamplers: {}, promptMaxOutput: {}, genTemperature: 0.9,
       genRepetitionPenalty: 1.1, genTopP: 0.95, genTopK: 40, genMinP: 0.05, paragraphLimit: 'none', disableThinking: false,
-    };
-    const body = buildRequestBody(snapshot, {
-      systemPrompt: 's', messages: [{ role: 'user', content: 'x' }], requestType: 'locationChange', maxTokensOverride: 11,
     });
-    expect(body).not.toHaveProperty('enable_thinking');
-    expect(body.max_tokens).toBeGreaterThan(11);
+    const locationChange = {
+      systemPrompt: 's', messages: [{ role: 'user' as const, content: 'x' }], requestType: 'locationChange' as const, maxTokensOverride: 11,
+    };
+
+    it('sends no switch the model ignores, and the shipped kept strength’s room on top of the answer', () => {
+      const body = buildRequestBody(snapshot(), locationChange);
+      expect(body).not.toHaveProperty('enable_thinking');
+      // Shipped: Location Change keeps Global, and Global keeps Model Default, which reads as Medium.
+      expect(body.max_tokens).toBe(11 + 2048);
+    });
+
+    it('sizes the room from the strength the switch keeps', () => {
+      const kept: KeptReasoningSettings = { prompts: { locationChange: { enabled: false, level: 'low' } } };
+      expect(buildRequestBody(snapshot(kept), locationChange).max_tokens).toBe(11 + 1024);
+    });
   });
 });
