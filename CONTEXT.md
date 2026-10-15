@@ -12,6 +12,14 @@ _Avoid_: fetch helper, completion client
 The complete, plain-value description of one AI call — prompt, messages, resolved endpoint, sampler, reasoning preferences — built from a settings snapshot; everything the AI Stream needs, nothing live.
 _Avoid_: request options, config
 
+**Thinking Room**:
+The fixed number of tokens one reasoning strength buys a thought, from Minimal's short room to Max's long one. Model Default reads as Medium. The prompt's strength sets it; neither its Answer Cap nor the endpoint's Max Output does.
+_Avoid_: headroom, thought budget
+
+**Thought Ceiling**:
+The output cap of a call that reasons with no budget on the wire, and of Inline narration: the Answer Cap plus the Thinking Room. A thought that reaches it before an answer is a cut thought.
+_Avoid_: max tokens
+
 **Request Transport**:
 The module that carries one AI request from spec to final text, outside React: resolves the endpoint, offers Tools, runs the AI Stream and its tool rounds, strips reasoning, records parity, and classifies failures. Reports what it sees through one sink; it never touches the screen.
 _Avoid_: request adapter (the Turn Pipeline's slot the transport fills), makeAIRequest, AI client
