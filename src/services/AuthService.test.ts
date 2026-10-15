@@ -4,7 +4,17 @@ import AuthService from './AuthService';
 
 // Minimal fetch Response stub (only the bits AuthService reads).
 const res = (body: unknown, ok = true, status = 200): Response =>
-  ({ ok, status, json: async () => body } as unknown as Response);
+  ({ ok, status, json: async () => body, text: async () => JSON.stringify(body) } as unknown as Response);
+
+// An error page: the body is HTML, so `json()` throws the way a real parse does.
+const htmlPage = (status: number): Response =>
+  ({
+    ok: false,
+    status,
+    statusText: 'Bad Gateway',
+    json: async () => { throw new SyntaxError('Unexpected token < in JSON'); },
+    text: async () => '<html><body>502 Bad Gateway</body></html>',
+  } as unknown as Response);
 
 beforeEach(() => {
   localStorage.clear();
@@ -55,6 +65,16 @@ describe('login', () => {
     vi.mocked(fetch).mockResolvedValue(res({ message: 'Bad creds' }, false, 401));
     await expect(AuthService.login('bob', 'pw')).rejects.toThrow('Bad creds');
     expect(AuthService.token).toBeNull();
+  });
+
+  it('shows the server reason from the error field', async () => {
+    vi.mocked(fetch).mockResolvedValue(res({ error: 'Account suspended' }, false, 403));
+    await expect(AuthService.login('bob', 'pw')).rejects.toThrow('Account suspended');
+  });
+
+  it('says "Login failed" when the server answers with an error page', async () => {
+    vi.mocked(fetch).mockResolvedValue(htmlPage(502));
+    await expect(AuthService.login('bob', 'pw')).rejects.toThrow('Login failed');
   });
 
   it('reports a deletion the sign-in cancelled', async () => {
@@ -183,10 +203,37 @@ describe('changePassword', () => {
     expect(AuthService.token).toBe('old-tok');
   });
 
+  it('says "Failed to change password" when the server answers with an error page', async () => {
+    AuthService.token = 'old-tok';
+    vi.mocked(fetch).mockResolvedValue(htmlPage(502));
+    await expect(AuthService.changePassword('a', 'b')).rejects.toThrow('Failed to change password');
+  });
+
   it('makes no request without a token', async () => {
     AuthService.token = null;
     await expect(AuthService.changePassword('a', 'b')).rejects.toThrow(/Not authenticated/);
     expect(fetch).not.toHaveBeenCalled();
+  });
+});
+
+describe('resetPassword', () => {
+  it('calls a dead link dead, rather than throwing', async () => {
+    vi.mocked(fetch).mockResolvedValue(res({ code: 'TOKEN_INVALID', error: 'That link has expired' }, false, 400));
+
+    expect(await AuthService.resetPassword('t0ken', 'new-pw')).toEqual({
+      reset: false,
+      message: 'That link has expired',
+    });
+  });
+
+  it('says "Failed to reset the password" when the server answers with an error page', async () => {
+    vi.mocked(fetch).mockResolvedValue(htmlPage(502));
+    await expect(AuthService.resetPassword('t0ken', 'new-pw')).rejects.toThrow('Failed to reset the password');
+  });
+
+  it('reports success', async () => {
+    vi.mocked(fetch).mockResolvedValue(res({ success: true }));
+    expect(await AuthService.resetPassword('t0ken', 'new-pw')).toEqual({ reset: true });
   });
 });
 
