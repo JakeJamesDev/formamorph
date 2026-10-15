@@ -5,6 +5,7 @@ import { useHistoryChords } from '@/components/editor/useHistoryChords';
 import { DevEditorPrompts } from '@/components/editor/DevEditorPrompts';
 import { HistoryPill } from '@/components/editor/HistoryPill';
 import { useDevRoute } from '@/lib/devRouter';
+import { filesFrom } from '@/lib/importFiles';
 import { useSurfaceTab } from '@/components/ui/surface';
 import { isSurfaceTarget, routeText, TARGET_ATTRIBUTE, targetAttribute, type TargetAttribute } from '@/lib/surface/surfaceTargets';
 import { useRouteLanding } from '@/lib/surface/useLanding';
@@ -912,7 +913,7 @@ const WorldEditorInner = ({
   const takeTourOffer = () => (newWorld ? startTour() : leaveWorld(startTourOnNewWorld));
 
   const loadWorld = async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const [file] = filesFrom(e);
     if (!file) return;
     try {
       // Parsed off-thread — an image-heavy world file is multi-MB and JSON.parse can't be chunked.

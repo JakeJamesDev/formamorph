@@ -25,6 +25,7 @@ import { fromLocalInputValue, toLocalInputValue } from "@/lib/adminEvents";
 import { eventState } from "@/lib/serverEvents";
 import { parsePosterColor, parsePosterPlacement } from "@/lib/posterStyle";
 import { IMAGE_UPLOAD_ACCEPT } from "@/lib/avatar";
+import { filesFrom } from "@/lib/importFiles";
 import EventService from "@/services/EventService";
 import type { PosterPlacement, ServerEvent, ServerEventDraft, ServerEventType } from "@/types";
 
@@ -316,7 +317,7 @@ export function EventFormDialog({ open, onOpenChange, editing = null, onSaved }:
                   accept={IMAGE_UPLOAD_ACCEPT}
                   aria-label="Poster image"
                   className="hidden"
-                  onChange={(e) => { takeImage(e.target.files?.[0]); e.target.value = ''; }}
+                  onChange={(e) => takeImage(filesFrom(e)[0])}
                 />
               </div>
               <p className="text-meta text-muted-foreground">

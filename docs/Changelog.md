@@ -61,6 +61,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **A failed share-code copy shows an error, Copy Paths resets, and Community sorts server dates as UTC.** Listings keep their order in every time zone.
   - **Pressing Enter while a keyboard suggestion is open no longer saves a chip you are still editing.** Editing a chip on Android now finishes the word first, like the tag field.
   - **Stat code templates load again after a failed first open.** The template list now retries the database on the next use instead of staying empty until you reload.
+  - **Load World in the editor now accepts the same file twice.** Player avatar uploads, event images and profile images reset the same way.
 
 ---
 

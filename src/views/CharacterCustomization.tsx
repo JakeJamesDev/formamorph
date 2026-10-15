@@ -13,6 +13,7 @@ import VRMViewer from './VRMViewer';
 import { useGameData } from '../contexts/GameDataContext';
 import type { CharacterData, ModelMetadata } from '@/types';
 import ModelStorageService from '@/services/ModelStorageService';
+import { filesFrom } from '@/lib/importFiles';
 import { usePlayerModelUrl } from '@/lib/usePlayerModelUrl';
 import { useBackStop } from '@/hooks/useBackStop';
 import { useVrmCustomization } from '@/lib/useVrmCustomization';
@@ -49,8 +50,7 @@ const CharacterCustomization = ({ onCharacterCustomized, onBack, onAbort }: {
   }, []);
 
   const handleModelUpload = async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
+    const [file] = filesFrom(e);
     if (!file) return;
     try {
       const model = await ModelStorageService.addModel(file);

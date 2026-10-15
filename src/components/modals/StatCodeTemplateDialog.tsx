@@ -14,7 +14,7 @@ import { ActionIcon } from '@/lib/actionIcons';
 import { toast } from 'react-toastify';
 import { toastError } from '@/lib/linkToast';
 import { downloadBlob } from '@/lib/downloadBlob';
-import { filesFrom } from '@/lib/importFiles';
+import { importPackFile } from '@/lib/importFiles';
 import { useResetOnOpen } from '@/lib/useResetOnOpen';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { cn } from '@/lib/utils';
@@ -458,12 +458,7 @@ export function StatCodeTemplateDialog({
     }
   };
 
-  const importPack = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const [file] = filesFrom(event);
-    // Clearing the input is what lets the same file be chosen twice — an unchanged value fires no change.
-    event.target.value = '';
-    if (file) void importPackText(() => file.text());
-  };
+  const importPack = (event: React.ChangeEvent<HTMLInputElement>) => importPackFile(event, importPackText);
 
   const requestImport = () => {
     if (fileTransfer) {

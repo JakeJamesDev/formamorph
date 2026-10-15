@@ -156,7 +156,8 @@ describe('the site entry stays out of the game bundle', () => {
     // 60: `gesture-group`, the leaf the slider and color picker read to group a drag into one undo Step.
     // 61: `authRequest`, the one auth header and error helper the age gate, user and Patreon services read.
     // 62: `uuid`, the one ID helper, which the age gate flow now reads.
-    expect(reachableFromSite().size).toBeLessThanOrEqual(62);
+    // 63: `filesFrom`, the file-input reset the profile image picker reads; a type-only leaf, no toast.
+    expect(reachableFromSite().size).toBeLessThanOrEqual(63);
   });
 
   it('reaches the gesture group helper through the slider and color picker, and nothing behind it', () => {
