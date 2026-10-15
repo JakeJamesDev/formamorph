@@ -1,6 +1,6 @@
 # 09: Prompt Runtime
 
-Status: ready-for-human
+Status: done
 Blocked by: 01
 Recommended model: Claude Fable 5.1 (`claude-fable-5-1`)
 Reasoning effort: high
