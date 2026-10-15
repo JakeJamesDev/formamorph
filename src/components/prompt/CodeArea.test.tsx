@@ -4,7 +4,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CodeArea } from './CodeArea';
 import type { CodeSurface } from '@/lib/codeSurface';
-import { STAT_CODE_SURFACE, STAT_FIELDS } from '@/lib/statCodeSurface';
+import { STAT_CODE_SURFACE, STAT_FIELDS, WORLD_SCRIPT_SURFACE } from '@/lib/statCodeSurface';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { SCRIPT_SURFACE as SCRIPT } from '@/test/scriptSurface';
@@ -674,6 +674,15 @@ describe('CodeArea', () => {
       await user.click(await editor());
       await user.click(screen.getByLabelText('Variable'));
       expect(screen.queryByRole('button', { name: 'Owner' })).toBeNull();
+      expect(screen.getByRole('button', { name: 'Stats' })).toBeInTheDocument();
+    });
+
+    it('has no group for self in a world script’s box, where self is empty', async () => {
+      const user = userEvent.setup();
+      render(<Harness statNames={['Health']} surface={WORLD_SCRIPT_SURFACE} />);
+      await user.click(await editor());
+      await user.click(screen.getByLabelText('Variable'));
+      expect(screen.queryByRole('button', { name: 'This Stat' })).toBeNull();
       expect(screen.getByRole('button', { name: 'Stats' })).toBeInTheDocument();
     });
 

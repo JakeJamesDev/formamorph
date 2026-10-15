@@ -331,6 +331,7 @@ export const WORLD_SCRIPT_SURFACE: CodeSurface = {
     ? { name: entry.name, detail: 'object', info: 'Empty in a world script.', access: 'readOnly' }
     : entry)),
   missingReturn: null,
+  selfIs: 'empty',
 };
 
 /**

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { Entity, Placeholder, Stat, StatGroup, Trait, TraitGroup } from '@/types';
+import type { Entity, Placeholder, Script, Stat, StatGroup, Trait, TraitGroup } from '@/types';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import { statCodeName } from '@/lib/statCodeNames';
 import type { RenamedStat } from '@/lib/statCodeRename';
@@ -16,9 +16,9 @@ const stat = (id: string, name: string, code: string): Stat =>
 
 const store: {
   stats: Stat[]; statGroups: StatGroup[]; traits: Trait[]; traitGroups: TraitGroup[]; entities: Entity[]; placeholders: Placeholder[];
-  rerender: () => void;
+  worldScripts: Script[]; rerender: () => void;
 } = {
-  stats: [], statGroups: [], traits: [], traitGroups: [], entities: [], placeholders: [], rerender: () => {},
+  stats: [], statGroups: [], traits: [], traitGroups: [], entities: [], placeholders: [], worldScripts: [], rerender: () => {},
 };
 
 vi.mock('@/contexts/GameDataContext', () => ({
@@ -28,6 +28,11 @@ vi.mock('@/contexts/GameDataContext', () => ({
     traits: store.traits,
     traitGroups: store.traitGroups,
     entities: store.entities,
+    worldScripts: store.worldScripts,
+    setWorldScripts: (next: Script[]) => {
+      store.worldScripts = next;
+      store.rerender();
+    },
     updateStat: (next: Stat) => {
       store.stats = store.stats.map((entry) => (entry.id === next.id ? next : entry));
       store.rerender();
@@ -112,6 +117,7 @@ beforeEach(() => {
   store.traits = [];
   store.traitGroups = [];
   store.entities = [];
+  store.worldScripts = [];
   store.stats = [
     stat('a', 'Health', 'return stats.Health.value * 2;'),
     stat('b', 'Stamina', `return stats['Health'].max - 1;`),
@@ -193,6 +199,31 @@ describe('the rename offer', () => {
     expect(overriddenCodeAt(link)).toBe('stats.Vigor.value = 2;');
     // The rename rewrote the Blueprint too, so the override's snapshot moved with it and stays current.
     expect(link?.blueprint).toEqual(after('stats.Vigor.value = 1;'));
+  });
+
+  it('rewrites a world script that alone names the renamed stat', async () => {
+    store.stats = [stat('gale', 'Gale', '')];
+    store.worldScripts = [{ id: 'weather', timing: 'after', code: 'stats.Gale.value = 3;' }, { id: 'calm', timing: 'before', code: 'return 0;' }];
+    render(<Harness root="stats" initial="Gale" otherNames={[]} renamed={{ id: 'gale' }} />);
+    const user = await renameTo('Gust');
+
+    expect(screen.getByText(/The code of 1 world script names the stat “Gale” 1 time\./)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Update Code' }));
+    expect(store.worldScripts).toEqual([
+      { id: 'weather', timing: 'after', code: 'stats.Gust.value = 3;' }, { id: 'calm', timing: 'before', code: 'return 0;' },
+    ]);
+  });
+
+  it('carries a trait rename into world scripts', async () => {
+    store.stats = [];
+    store.traits = [{ id: 'brave', name: 'Brave', statChanges: [] }];
+    store.worldScripts = [{ id: 'w1', timing: 'after', code: 'const b = traits.Brave;' }, { id: 'w2', timing: 'start', code: 'traits.Brave.enabled = true;' }];
+    render(<Harness root="traits" initial="Brave" otherNames={[]} />);
+    const user = await renameTo('Bold');
+
+    expect(screen.getByText(/The code of 2 world scripts names the trait “Brave” 2 times\./)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Update Code' }));
+    expect(store.worldScripts.map((script) => script.code)).toEqual(['const b = traits.Bold;', 'traits.Bold.enabled = true;']);
   });
 
   it('asks with the count, and rewrites every script on Yes', async () => {
@@ -298,6 +329,18 @@ describe('the rename offer', () => {
     expect(screen.getByText(/names the placeholder “Mood” 1 time\./)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Update Code' }));
     expect(codeOf('a')).toBe(`placeholders.Temper.pin('calm'); return self.value;`);
+  });
+
+  it('carries a placeholder rename into world scripts beside a stat’s', async () => {
+    store.stats = [stat('a', 'Health', `placeholders.Mood.pin('calm'); return self.value;`)];
+    store.worldScripts = [{ id: 'w1', timing: 'start', code: `placeholders.Mood.pin('calm');` }];
+    render(<Harness root="placeholders" initial="Mood" otherNames={['Weather']} />);
+    const user = await renameTo('Temper');
+
+    expect(screen.getByText(/The code of 1 stat and 1 world script names the placeholder “Mood” 2 times\./)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Update Code' }));
+    expect(codeOf('a')).toBe(`placeholders.Temper.pin('calm'); return self.value;`);
+    expect(store.worldScripts[0].code).toBe(`placeholders.Temper.pin('calm');`);
   });
 
   it('compares a chip-bearing stat name the way code reads it', async () => {

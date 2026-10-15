@@ -17,7 +17,7 @@ import { blueprintGroupStats } from './statLinks';
 import { placeholderPathMap } from './statCodePaths';
 import { codeDictionaries } from './statCodePlaceholders';
 import type { StatOwner, TraitOwner } from './statCodeResolver';
-import { overridesScripts, statCodeOwners, type CodeOwner, type CodeOwners } from './statCodeTargets';
+import { overridesScripts, statCodeOwners, type CodeOwner, type CodeOwners, type WorldScriptsSource } from './statCodeTargets';
 import { entityTraitNames, worldTraitPlaces } from './statCodeTraits';
 import { conditionTexts, gateTrees } from './traitGates';
 
@@ -137,7 +137,7 @@ export const traitBoxSelf = (id: string, name: string): Stat =>
   ({ id, name, type: 'number', description: '', min: 0, max: 0, regen: 0, descriptors: [] });
 
 /** The authored world a stat code box's cards read. */
-export interface CodeCardWorld extends PinEditorWorld {
+export interface CodeCardWorld extends PinEditorWorld, WorldScriptsSource {
   traits: readonly Trait[];
   traitGroups: readonly TraitGroup[];
   entities: readonly Entity[];

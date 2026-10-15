@@ -67,6 +67,8 @@ export interface TreeRowSpec {
   /** The row is derived from something else (an owner node read off an entity): it cannot be dragged, and
    *  rows may still be dropped beside or under it. */
   fixed?: boolean;
+  /** Dims the row at rest, as an off entry is dimmed. */
+  faded?: boolean;
 }
 
 /** What a specific tree plugs into the shared scaffold. */
@@ -155,7 +157,7 @@ function TreeRowBase<N extends { id: string; depth: number }>({
     // Translate (not Transform): Transform bakes in a scale that resizes the dragged row to the target slot.
     transform: CSS.Translate.toString(rowTransform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging || row.faded ? 0.5 : 1,
   };
   return (
     <EditorRow

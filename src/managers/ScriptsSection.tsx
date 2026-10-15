@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { hasCode, SCRIPT_TIMING_LABEL, SCRIPT_TIMINGS, scriptLabel } from "@/lib/scripts";
 import { useLanding } from "@/lib/surface/useLanding";
+import { fieldFrame } from "@/lib/historyField";
 import { newScript, noFocus, SCRIPT_ROW_ATTRIBUTE, scriptRow } from "@/lib/scriptRows";
 import type { TargetAttribute } from "@/lib/surface/surfaceTargets";
 import type { CodeUseReveal } from "@/lib/codeUseReveal";
@@ -42,13 +43,14 @@ export function ScriptRow({ script, ownerName, self, context, onChange, onRemove
       <div className="flex items-center gap-2">
         <Input
           className="min-w-0 flex-1"
+          {...fieldFrame('scripts', script.id, 'name')}
           aria-label="Name"
           placeholder={fallback}
           value={script.name ?? ''}
           onChange={(e) => onChange(renamedScript(script, e.target.value))}
         />
         <Select value={script.timing} onValueChange={(timing: ScriptTiming) => onChange({ ...script, timing })}>
-          <SelectTrigger className="w-auto shrink-0 gap-1" aria-label="Timing">
+          <SelectTrigger className="w-auto shrink-0 gap-1" aria-label="Timing" {...fieldFrame('scripts', script.id, 'timing')}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -68,6 +70,7 @@ export function ScriptRow({ script, ownerName, self, context, onChange, onRemove
         </Button>
       </div>
       <ScriptBox
+        frame={fieldFrame('scripts', script.id, 'code')}
         script={script}
         label={label}
         self={self}

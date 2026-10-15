@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { benchEditorWorld, openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { benchEditorWorld, openEditorTab, renderWorldEditorBench, shownEditorTab } from '@/test/worldEditorBench';
+import { frames } from '@/test/landing';
+import { LANDING_PULSE_CLASS, landingTarget } from '@/lib/landingPulse';
 import type { SortableTreeAdapter } from '@/managers/SortableTree';
 import type { World } from '@/types';
 
@@ -191,8 +193,72 @@ describe('the Scripts tab', () => {
     expect(screen.queryByRole('textbox', { name: 'Code Brave · After the AI' })).toBeNull();
   });
 
+  it('dims the row of a disabled stat’s script until the stat is enabled', () => {
+    const bench = renderWorldEditorBench(WORLD, 'advanced');
+    const warmth = bench.ctx().stats[0];
+    act(() => bench.ctx().updateStat({ ...warmth, enabled: false }));
+    openScripts();
+    const opacityOf = (label: string) => {
+      const text = screen.getAllByText(label).find((el) => !el.closest('[role="group"]'))!;
+      let row: HTMLElement | null = text;
+      while (row && !row.style.opacity) row = row.parentElement;
+      return row?.style.opacity;
+    };
+    expect(opacityOf('Warmth · After the AI')).toBe('0.5');
+    expect(opacityOf('Warmth · Before the AI')).toBe('0.5');
+    expect(opacityOf('World · After the AI')).toBe('1');
+
+    act(() => bench.ctx().updateStat({ ...bench.ctx().stats[0], enabled: true }));
+    expect(opacityOf('Warmth · After the AI')).toBe('1');
+  });
+
   it('is an Advanced tab', () => {
     renderWorldEditorBench(WORLD, 'simple');
     expect(within(screen.getByRole('tablist', { name: 'Editor Sections' })).queryByRole('tab', { name: /^Scripts/ })).toBeNull();
+  });
+});
+
+type Ctx = ReturnType<ReturnType<typeof renderWorldEditorBench>['ctx']>;
+
+describe('undo of an edit made on the Scripts tab', () => {
+  /** One author action, then the event loop moves on as it does between two presses. */
+  const step = (action: () => void) => act(async () => {
+    action();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+  const undo = async () => {
+    await step(() => { fireEvent.keyDown(document.activeElement ?? document.body, { key: 'z', ctrlKey: true }); });
+    await frames(2);
+  };
+  const ringed = () => {
+    const rings = document.querySelectorAll<HTMLElement>(`.${LANDING_PULSE_CLASS}`);
+    expect(rings).toHaveLength(1);
+    return landingTarget(rings[0]);
+  };
+
+  /** Types into a script's box on the Scripts tab, then leaves for the Stats tab. */
+  const editThenLeave = async (label: string, code: string) => {
+    openScripts();
+    selectRow(label);
+    await step(() => codeBox(label).focus());
+    await step(() => { fireEvent.change(codeBox(label), { target: { value: code } }); });
+    await step(() => openEditorTab(/^Stats/));
+  };
+
+  it.each([
+    ['a world script', 'World · After the AI', (ctx: Ctx) => ctx.worldScripts[0].code],
+    ['a stat script', 'Warmth · After the AI', (ctx: Ctx) => ctx.stats[0].scripts![0].code],
+    ['a trait script', 'Brave · After the AI', (ctx: Ctx) => ctx.traits[0].scripts![0].code],
+  ])('returns to the Scripts tab with %s’s row and box, and pulses the box', async (_kind, label, codeOf) => {
+    const bench = renderWorldEditorBench(WORLD, 'advanced');
+    const was = codeOf(bench.ctx());
+    await editThenLeave(label, 'return 9;');
+
+    await undo();
+    expect(codeOf(bench.ctx())).toBe(was);
+    expect(shownEditorTab()).toMatch(/^Scripts/);
+    expect(codeBox(label).value).toBe(was);
+    // The detail shows the box of the selected row alone.
+    expect(ringed()).toContainElement(codeBox(label));
   });
 });

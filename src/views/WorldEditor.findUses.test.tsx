@@ -3,6 +3,7 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { benchEditorWorld, entityFieldsTab, renderWorldEditorBench } from '@/test/worldEditorBench';
 import type { CodeCardNavigation } from '@/lib/codeCardNavigation';
 import type { CodeUse } from '@/lib/codeUses';
+import type { CodeWorldLookup } from '@/lib/codeWorldLookup';
 import type { World } from '@/types';
 import { boxScripts } from '@/test/scriptFixtures';
 
@@ -25,7 +26,9 @@ vi.mock('react-toastify', () => ({
   ToastContainer: () => null,
 }));
 
-interface BoxProps { value: string; ariaLabel: string; navigation?: CodeCardNavigation; revealLine?: number; onLineRevealed?: () => void }
+interface BoxProps {
+  value: string; ariaLabel: string; navigation?: CodeCardNavigation; revealLine?: number; onLineRevealed?: () => void; lookup?: CodeWorldLookup;
+}
 
 // CodeMirror arrives on its own chunk; a plain field stands in for it and records what each box was handed.
 const boxes = vi.hoisted(() => new Map<string, BoxProps>());
@@ -46,7 +49,10 @@ const howlLink = {
 };
 
 const WORLD: World = benchEditorWorld({
+  // Gale is used by this world script alone.
+  scripts: [{ id: 'weather', timing: 'after', code: '// gusts\nstats.Gale.value = 3;' }],
   stats: [
+    stat('s3', 'Gale'),
     stat('s1', 'Warmth', 'return stats.Chill.value;'),
     { ...stat('s2', 'Chill'), scripts: [...boxScripts({ before: '', after: '' }), { id: 'chill-2', name: 'Second', timing: 'after', code: 'return 2;' }] },
     howl,
@@ -153,5 +159,25 @@ describe('a Find All Uses row', () => {
     expect(entityFieldsTab('Stats')).toHaveAttribute('aria-selected', 'true');
     await waitFor(() => expect(boxAt(AFTER)?.revealLine).toBe(1));
     expect(boxAt(AFTER)?.value).toBe('return self.max;');
+  });
+
+  it('lists a stat a world script alone uses', () => {
+    renderWorldEditorBench(WORLD, 'advanced');
+    fireEvent.mouseDown(screen.getByRole('tab', { name: /Stats/ }));
+    fireEvent.click(screen.getByText('Warmth'));
+    fireEvent.mouseDown(within(screen.getByRole('tablist', { name: 'Stat Fields' })).getByRole('tab', { name: 'Scripts' }));
+    expect(boxAt(AFTER)?.lookup?.uses({ kind: 'stat', statId: 's3' })).toEqual([
+      { entityId: null, rowId: 'weather', world: true, timing: 'after', scriptId: 'weather', name: 'World', line: 2, noOwners: false },
+    ]);
+  });
+
+  it('opens a world script on the Scripts tab and hands its box the line', async () => {
+    renderWorldEditorBench(WORLD, 'advanced');
+    goFromWarmth({ entityId: null, rowId: 'weather', world: true, timing: 'after', scriptId: 'weather', name: 'World', line: 2, noOwners: false });
+
+    expect(sectionTab(/^Scripts/)).toHaveAttribute('aria-selected', 'true');
+    await waitFor(() => expect(boxes.get('Code World · After the AI')?.revealLine).toBe(2));
+    act(() => boxes.get('Code World · After the AI')!.onLineRevealed!());
+    await waitFor(() => expect(boxes.get('Code World · After the AI')?.revealLine).toBeUndefined());
   });
 });

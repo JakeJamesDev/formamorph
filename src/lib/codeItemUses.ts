@@ -9,8 +9,10 @@ import { traitBoxSelf, type CodeBox, type CodeCardWorld, type CodeWorldLookup } 
 import type { SurfaceAnalysisOptions } from './statCodeAnalysis';
 import { cardWorldNames, statBoxAnalysisOptions } from './statCodeBoxOptions';
 import { parseCode, resolveCodeName } from './statCodeResolver';
-import { TRAIT_SCRIPT_SURFACE } from './statCodeSurface';
-import { statCodeBoxes, traitCodeBoxes, type CodeOwners, type StatCodeBox, type TraitCodeBox } from './statCodeTargets';
+import { scriptSurface, TRAIT_SCRIPT_SURFACE, WORLD_SCRIPT_SURFACE } from './statCodeSurface';
+import {
+  statCodeBoxes, traitCodeBoxes, worldScriptBoxes, type CodeOwners, type StatCodeBox, type TraitCodeBox,
+} from './statCodeTargets';
 
 /** An item other than a stat. */
 export type OtherUseItem = Exclude<CodeCardItem, { kind: 'stat' }>;
@@ -68,6 +70,15 @@ export function itemUses(
 ): CodeUse[] {
   const names = cardWorldNames(world);
   const matches = matcherOf(item, world);
+  // A world script's box reads with no `self` and no owner, as the Scripts tab reads it.
+  const worldBoxUses = worldScriptBoxes(world).flatMap((box) => {
+    const options = statBoxAnalysisOptions(names, {
+      selfName: '', surface: scriptSurface(WORLD_SCRIPT_SURFACE, box.timing),
+      // A lookup takes a stat as `self`; a blank one stands in for the empty `self`.
+      lookup: lookupOf({ owner: null, timing: box.timing, self: traitBoxSelf('', '') }),
+    });
+    return boxUses(owners, box, matchingOffsets(box.code, options, matches));
+  });
   const statBoxUses = statCodeBoxes(owners).flatMap((box) => {
     const owner = boxOwnerOf(box);
     const selfName = owners.codeName(box.stat.name);
@@ -90,5 +101,5 @@ export function itemUses(
     });
     return boxUses(owners, box, matchingOffsets(box.code, options, matches));
   });
-  return [...statBoxUses, ...traitBoxUses];
+  return [...worldBoxUses, ...statBoxUses, ...traitBoxUses];
 }

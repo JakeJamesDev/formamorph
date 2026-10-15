@@ -33,18 +33,23 @@ const renamedNoun = (plan: CodeRenamePlan) =>
 
 const plural = (count: number, one: string, many: string) => (count === 1 ? one : many);
 
-/** Whose code the plan rewrites: its stats, then its traits, each counted where there are any. */
+/** Whose code the plan rewrites: its stats, its traits, then the world's scripts, each counted where there are any. */
 function codeOwnersText(plan: CodeRenamePlan): string {
   const traits = plan.edits.filter(({ home }) => isTraitHome(home)).length;
-  const stats = plan.edits.length - traits;
+  const stats = plan.edits.filter(({ home }) => isStatHome(home)).length;
+  const world = plan.edits.find(({ home }) => home.kind === 'world');
+  const scripts = world ? Object.keys(world.scripts).length : 0;
   return [
     ...(stats ? [`${stats} ${plural(stats, 'stat', 'stats')}`] : []),
     ...(traits ? [`${traits} ${plural(traits, 'trait', 'traits')}`] : []),
+    ...(scripts ? [`${scripts} world ${plural(scripts, 'script', 'scripts')}`] : []),
   ].join(' and ');
 }
 
 const isTraitHome = (home: CodeRenamePlan['edits'][number]['home']) =>
   home.kind === 'trait' || home.kind === 'entityTrait' || home.kind === 'traitLink';
+const isStatHome = (home: CodeRenamePlan['edits'][number]['home']) =>
+  home.kind === 'stat' || home.kind === 'entity' || home.kind === 'link';
 
 /** The question the dialog asks: whose code names the old name, how often, and what it would become. */
 const renameQuestion = (plan: CodeRenamePlan) =>
@@ -66,9 +71,11 @@ export function CodeRenameProvider({ children }: { children: ReactNode }) {
     () => ({ list: world?.placeholders ?? [], owners: world?.placeholderOwners }),
     [world?.placeholders, world?.placeholderOwners],
   );
+  const worldScripts = useMemo(() => world?.worldScripts ?? [], [world?.worldScripts]);
   const updateStat = world?.updateStat;
   const updateTrait = world?.updateTrait;
   const editEntity = world?.editEntity;
+  const setWorldScripts = world?.setWorldScripts;
   // A queue, because one Replace All can rename several things at once. Requests are held rather than
   // plans: each answer rewrites code the next request has to read, so a plan is built only once its
   // request reaches the front.
@@ -80,12 +87,12 @@ export function CodeRenameProvider({ children }: { children: ReactNode }) {
       const maps = traitId === undefined ? undefined
         : traitOwnerMaps({ traits, traitGroups, entities }, placeholders.list, traitId);
       const plan = planCodeRename({
-        ...request, stats, statGroups, traits, traitGroups, entities, dictionaries, placeholders, traitOwnerMaps: maps,
+        ...request, stats, statGroups, traits, traitGroups, entities, dictionaries, placeholders, worldScripts, traitOwnerMaps: maps,
       });
       if (plan) return { plan, through: i };
     }
     return null;
-  }, [queue, stats, statGroups, traits, traitGroups, entities, dictionaries, placeholders]);
+  }, [queue, stats, statGroups, traits, traitGroups, entities, dictionaries, placeholders, worldScripts]);
   const plan: CodeRenamePlan | null = pending?.plan ?? null;
   // What the dialog reads, kept past the answer: the plan goes as soon as the question is settled, and the
   // body would otherwise empty while the dialog is still animating out.
@@ -98,8 +105,8 @@ export function CodeRenameProvider({ children }: { children: ReactNode }) {
   }, [pending, queue.length]);
 
   // Held in a ref so the callback the name fields take never changes identity.
-  const latest = useRef({ stats, traits, updateStat, updateTrait, editEntity });
-  latest.current = { stats, traits, updateStat, updateTrait, editEntity };
+  const latest = useRef({ stats, traits, worldScripts, updateStat, updateTrait, editEntity, setWorldScripts });
+  latest.current = { stats, traits, worldScripts, updateStat, updateTrait, editEntity, setWorldScripts };
 
   const offer = useCallback<OfferCodeRename>((request) => {
     setQueue((waiting) => [...waiting, request]);
@@ -123,7 +130,10 @@ export function CodeRenameProvider({ children }: { children: ReactNode }) {
 
   const apply = () => {
     if (!plan) return;
-    const { stats: worldStats, traits: worldTraits, updateStat: write, updateTrait: writeTrait, editEntity: edit } = latest.current;
+    const {
+      stats: worldStats, traits: worldTraits, worldScripts: ownScripts, updateStat: write, updateTrait: writeTrait, editEntity: edit,
+      setWorldScripts: writeWorldScripts,
+    } = latest.current;
     const byId = new Map(worldStats.map((stat) => [stat.id, stat]));
     const traitById = new Map(worldTraits.map((trait) => [trait.id, trait]));
     // The Blueprint scripts this rename rewrites, so a link's snapshot of them moves with them.
@@ -132,7 +142,9 @@ export function CodeRenameProvider({ children }: { children: ReactNode }) {
     // Only the scripts the plan rewrote, so a script the rename never read keeps whatever it holds.
     const rewritten = <T extends Stat | Trait>(item: T, scripts: Record<string, string>): T => ({ ...item, scripts: withScriptCode(scriptsOf(item), scripts) });
     for (const { home, scripts } of plan.edits) {
-      if (home.kind === 'trait') {
+      if (home.kind === 'world') {
+        writeWorldScripts?.(withScriptCode(ownScripts, scripts));
+      } else if (home.kind === 'trait') {
         const trait = traitById.get(home.traitId);
         if (trait && writeTrait) writeTrait(rewritten(trait, scripts));
       } else if (home.kind === 'entityTrait') {

@@ -8,8 +8,10 @@ import type { ListEditorAdapter } from '@/components/listEditorHooks';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useCodeCardNavigation } from '@/lib/codeCardNavigation';
+import { useCodeUseReveal } from '@/lib/codeUseReveal';
 import { newScript } from '@/lib/scriptRows';
 import { SCRIPT_TIMING_LABEL, SCRIPT_TIMINGS } from '@/lib/scripts';
+import { isStatOn } from '@/lib/statCodeTargets';
 import {
   editScripts, orderEdits, ownerRowId, reorderWrites, scriptEntryKey, scriptsByTiming, worldScriptEntries,
   type ScriptEdit, type ScriptEntry, type ScriptSlices,
@@ -65,6 +67,8 @@ function WorldScriptDetail({ entry, onWrite, autoFocus }: {
 }) {
   const { self, context } = useScriptEntryContext(entry);
   const { script, home } = entry;
+  // A stat's or trait's Find All Uses row opens its owner's tab, so only a world script's lands here.
+  const reveal = useCodeUseReveal(script.id, null, 'world');
   const replace = (next: Script) => onWrite([{ home, edit: (scripts) => scripts.map((s) => (s.id === script.id ? next : s)) }]);
   const remove = () => onWrite([{ home, edit: (scripts) => scripts.filter((s) => s.id !== script.id) }]);
   return (
@@ -75,6 +79,7 @@ function WorldScriptDetail({ entry, onWrite, autoFocus }: {
       context={context}
       onChange={replace}
       onRemove={remove}
+      reveal={home.kind === 'world' ? reveal : null}
       autoFocus={autoFocus}
     />
   );
@@ -167,6 +172,8 @@ export function useWorldScriptsAdapter({ selectedId, onSelect }: {
       const { entry } = node;
       return {
         lead: 'spacer',
+        // The runner skips a disabled stat's scripts.
+        faded: !!entry.box && 'stat' in entry.box && !isStatOn(entry.box.stat),
         label: <PlaceholderText text={entry.label} placeholders={placeholders} />,
         ...(entry.entity && { meta: <PlaceholderText text={entry.entity.name} placeholders={placeholders} /> }),
       };

@@ -228,7 +228,7 @@ const OWNER_INFO = 'The entity that owns this stat, with its own stats, traits a
  * global stats in every box; an `owner` adds the Owner group, which lists the owner's own.
  */
 export function buildVariableTree(
-  names?: VariableTreeNames, owner: VariableTreeOwner | null = null, self: 'stat' | 'trait' = 'stat',
+  names?: VariableTreeNames, owner: VariableTreeOwner | null = null, self: 'stat' | 'trait' | 'empty' = 'stat',
 ): VariableNode[] {
   const pathMap: PlaceholderPathMap | null = names?.placeholders
     ? placeholderPathMap({ list: names.placeholders.list, owners: names.placeholders.owners })
@@ -305,10 +305,13 @@ export function buildVariableTree(
     }, 'in this Blueprint group');
   };
 
+  // A world script's `self` is empty, so it gets no group.
+  const selfGroup: VariableNode[] = self === 'empty' ? []
+    : self === 'trait'
+      ? [{ kind: 'group', label: 'This Trait', info: TRAIT_SCRIPT_SURFACE.globals.find((entry) => entry.name === 'self')?.info, children: fields(root('self'), SELF_TRAIT_FIELDS) }]
+      : [{ kind: 'group', label: 'This Stat', info: globalInfo('self'), children: statFields(root('self')) }];
   return [
-    self === 'trait'
-      ? { kind: 'group', label: 'This Trait', info: TRAIT_SCRIPT_SURFACE.globals.find((entry) => entry.name === 'self')?.info, children: fields(root('self'), SELF_TRAIT_FIELDS) }
-      : { kind: 'group', label: 'This Stat', info: globalInfo('self'), children: statFields(root('self')) },
+    ...selfGroup,
     ...(owner ? [{ kind: 'group' as const, label: 'Owner', info: OWNER_INFO, children: ownerChildren(owner) }] : []),
     nameList('Stats', statRows, 'No stats in this world', globalInfo('stats')),
     nameList('Traits', traitList, 'No traits in this world', globalInfo('traits')),

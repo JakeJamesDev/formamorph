@@ -5,7 +5,7 @@
 
 import type { Entity, Placeholder, Script, ScriptTiming, Stat, StatGroup, Trait, TraitGroup } from '@/types';
 import { setTraitLinkScripts } from './blueprints';
-import { rowIdOf } from './codeUses';
+import { rowIdOf, WORLD_SCRIPT_OWNER } from './codeUses';
 import { updateOwnedStat } from './ownedStats';
 import { linksInTreeOrder } from './owners';
 import { updateOwnedTrait } from './ownedTraits';
@@ -14,10 +14,11 @@ import { setStatLinkScripts, withStatLinks } from './statLinks';
 import { traitOrderIndex } from './traitEffects';
 import {
   statCodeBoxes, statCodeOwners, traitCodeBoxes, type CodeHome, type StatCodeBox, type TraitCodeBox, type TraitCodeHome,
+  type WorldScriptHome,
 } from './statCodeTargets';
 
 /** Where a script is stored: the world's own list, or a stat's or trait's home as Find All Uses names it. */
-export type ScriptHomeRef = { kind: 'world' } | CodeHome | TraitCodeHome;
+export type ScriptHomeRef = WorldScriptHome | CodeHome | TraitCodeHome;
 
 /** What the tree reads from a world. */
 export interface ScriptTreeWorld {
@@ -45,8 +46,6 @@ export interface ScriptEntry {
   /** The stat or trait the box opens on its own tab; absent on a world script. */
   box?: StatCodeBox | TraitCodeBox;
 }
-
-const WORLD_OWNER = 'World';
 
 const homeKey = (home: ScriptHomeRef): string => {
   switch (home.kind) {
@@ -96,7 +95,7 @@ export function worldScriptEntries(world: ScriptTreeWorld): ScriptEntry[] {
     return traits.filter(onEntity(entity.id)).sort((a, b) => at(a) - at(b));
   };
   return [
-    ...scriptsOf(world).map((script) => entryOf({ kind: 'world' }, script, WORLD_OWNER, null)),
+    ...scriptsOf(world).map((script) => entryOf({ kind: 'world' }, script, WORLD_SCRIPT_OWNER, null)),
     ...stats.filter(global).map(statEntry),
     ...globalTraits().map(traitEntry),
     ...world.entities.flatMap((entity) => [
