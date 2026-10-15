@@ -17,7 +17,7 @@ import { DEFAULT_TOOL_CALL_LIMIT } from '@/contexts/settingsDefaults';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { ActionIcon } from '@/lib/actionIcons';
 import { downloadBlob } from '@/lib/downloadBlob';
-import { filesFrom } from '@/lib/importFiles';
+import { importPackFile } from '@/lib/importFiles';
 import { randomUUID } from '@/lib/uuid';
 import { cn } from '@/lib/utils';
 import { isCatalogToolId } from '@/lib/tools/toolCatalog';
@@ -235,12 +235,7 @@ export function ToolsTab({
     }
   };
 
-  const importPack = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const [file] = filesFrom(event);
-    // Clearing the input lets the same file be chosen twice.
-    event.target.value = '';
-    if (file) void importPackText(() => file.text());
-  };
+  const importPack = (event: React.ChangeEvent<HTMLInputElement>) => importPackFile(event, importPackText);
 
   const requestImport = () => {
     if (my?.fileTransfer) void importPackText(my.fileTransfer.readImportPack);
