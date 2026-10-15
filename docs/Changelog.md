@@ -31,6 +31,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The help window, Scripts Guide and hover cards now explain each script timing, `narration`, `player` and `trait`.** The Stat Code Guide is now the Scripts Guide, and searching "stat code" finds it. The Variable menu lists each name for its timing, and the editor no longer flags them. A world script's `self` card reads empty.
     - **The Test Bench now checks trait and world scripts for unknown stat names and for reading delta before the AI.** A Blueprint trait's `owner` lookups use each entity that links it. Each finding opens the script's own tab.
     - **The Test Bench now shows which script asks a prompt, beside the question.** The name is the script's own, or its owner and timing.
+    - **Moving a stat now stops when a trait or world script reads it.** The notice names the trait, or says a world script reads it. Before, only stat scripts counted.
   - **Image Generation:**
     - **ComfyUI's Model row shows the model a workflow loads itself.** A workflow without `%ckpt%` ignores the Model setting, so the row shows its own model file, grayed out.
     - **ComfyUI's File Name setting sets the folders and name for each saved image.** By default, images go in `formamorph/<world>/`, named for their entity, location or turn. A `/` in the pattern makes a folder. A custom workflow needs `%prefix%` in its save node.
