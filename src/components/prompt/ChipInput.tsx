@@ -11,13 +11,13 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import { ChipVocabularyContext, type ChipVocabulary } from '@/lib/chipVocabulary';
 import { cn } from '@/lib/utils';
 import { VariableNode, PromptDragContext } from './VariableNode';
-import { buildEditorState, createEchoLedger, serializeRoot } from './promptFieldState';
+import { buildEditorState } from './promptFieldState';
 import { ChipTypeaheadPlugin } from './ChipTypeahead';
 import { ChipInsertTargetPlugin } from './ChipInsertTarget';
 import { ChipDragPlugin } from './ChipDrag';
 import { RefusedChipPastePlugin } from './PromptTokenPastePlugin';
 import { FieldHistoryPlugin } from './fieldHistory';
-import { useWorldValueSync } from './useWorldValueSync';
+import { ValueSyncPlugin, EditablePlugin } from './ValueSyncPlugin';
 
 /**
  * A one-line chip editor shaped like an ordinary text input — for name fields, where the full prompt editor's
@@ -39,40 +39,6 @@ const INPUT_CLASS =
   '[&>p]:min-w-full ' +
   'px-3 py-2 text-label outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset ' +
   'disabled:cursor-not-allowed disabled:opacity-50';
-
-/** Two-way sync between the controlled string and the editor state (the single-line twin of PromptField's). */
-function ValueSyncPlugin({ value, onChange, parse }: {
-  value: string;
-  onChange: (v: string) => void;
-  parse: ChipVocabulary['parse'];
-}) {
-  const [editor] = useLexicalComposerContext();
-  const [echoes] = useState(() => createEchoLedger(value));
-  const onChangeRef = useRef(onChange);
-  onChangeRef.current = onChange;
-  const parseRef = useRef(parse);
-  parseRef.current = parse;
-
-  const { markWrite, restoreTags } = useWorldValueSync();
-  useEffect(() => {
-    if (echoes.receive(value)) return;
-    const tag = restoreTags(value);
-    editor.update(() => buildEditorState(value, parseRef.current), tag ? { tag } : undefined);
-  }, [value, editor, echoes, restoreTags]);
-
-  useEffect(
-    () => editor.registerUpdateListener(({ editorState, tags }) => {
-      editorState.read(() => {
-        const next = serializeRoot();
-        if (!echoes.send(next)) return;
-        markWrite(tags);
-        onChangeRef.current(next);
-      });
-    }),
-    [editor, echoes, markWrite],
-  );
-  return null;
-}
 
 /** Keeps the field to one line: Enter never breaks the line, and any line break that arrives by paste or
  *  by the external value becomes a space. A host that wants Enter to mean something (a tag input, where it
@@ -138,13 +104,6 @@ function CancelPlugin({ onCancel }: { onCancel: () => void }) {
     // Below the typeahead's HIGH, so Escape first dismisses its menu and only then abandons the edit.
     COMMAND_PRIORITY_LOW,
   ), [editor]);
-  return null;
-}
-
-/** Reflects `readOnly` into editability (initialConfig only applies it at mount). */
-function EditablePlugin({ readOnly }: { readOnly: boolean }) {
-  const [editor] = useLexicalComposerContext();
-  useEffect(() => editor.setEditable(!readOnly), [editor, readOnly]);
   return null;
 }
 
