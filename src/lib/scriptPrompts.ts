@@ -6,13 +6,14 @@
 
 import { randomUUID } from './uuid';
 
-/** What one `player.*` call asks the host for. `ask` carries labels only; the picked values stay in the VM. */
+/** What one `player.*` call asks the host for. `ask` carries labels only; the picked values stay in the VM.
+ *  `asker` is the asking script's display name, set by a host that runs many scripts (the Test Bench). */
 export type ScriptPromptRequest =
   | { kind: 'tell'; text: string }
   | { kind: 'toast'; text: string }
-  | { kind: 'confirm'; question: string }
-  | { kind: 'ask'; question: string; options: readonly string[]; multiple: boolean }
-  | { kind: 'askText'; question: string; placeholder?: string };
+  | { kind: 'confirm'; question: string; asker?: string }
+  | { kind: 'ask'; question: string; options: readonly string[]; multiple: boolean; asker?: string }
+  | { kind: 'askText'; question: string; placeholder?: string; asker?: string };
 
 export type ScriptPromptKind = ScriptPromptRequest['kind'];
 
@@ -156,6 +157,16 @@ export function noticeHost(asks: ScriptPromptHost, handlers: ScriptNoticeHandler
       if (asked.kind === 'tell') handlers.onTell(asked.text);
       else handlers.onToast(asked.text);
       return Promise.resolve(undefined as ScriptPromptAnswer<typeof request.kind>);
+    },
+  };
+}
+
+/** `host` with every ask, confirm and askText stamped with `asker`; a tell or toast passes unchanged. */
+export function askedBy(host: ScriptPromptHost, asker: string): ScriptPromptHost {
+  return {
+    prompt(request) {
+      const asked: ScriptPromptRequest = request;
+      return host.prompt(isNotice(asked) ? request : { ...request, asker });
     },
   };
 }

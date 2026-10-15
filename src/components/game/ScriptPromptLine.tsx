@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent, 
 import { Check } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Meta } from '@/components/ui/typography';
 import { cn } from '@/lib/utils';
 import { isNotice, type ScriptPromptAnswer, type ScriptPromptRequest, type ScriptPromptStore } from '@/lib/scriptPrompts';
 
@@ -78,7 +79,10 @@ function PromptLine({ store, id, request, className }: { store: ScriptPromptStor
       className={cn(RULE, 'focus:outline-none', className)}
       onKeyDown={onKeyDown}
     >
-      <p className={LINE_TEXT}>{request.question}</p>
+      <div className="flex items-baseline gap-2">
+        <p className={cn(LINE_TEXT, 'min-w-0 flex-1')}>{request.question}</p>
+        {request.asker && <Meta className="max-w-[40%] shrink-0 truncate">{request.asker}</Meta>}
+      </div>
       <Control request={request} answer={answer} cancel={cancel} />
     </div>
   );
