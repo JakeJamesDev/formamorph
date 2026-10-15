@@ -323,6 +323,16 @@ const SWITCHED_TRAIT_GLOBAL: SurfaceEntry = {
 export const scriptSurface = (surface: CodeSurface, timing: ScriptTiming): CodeSurface =>
   (timing === 'switch' ? { ...surface, globals: [...surface.globals, SWITCHED_TRAIT_GLOBAL] } : surface);
 
+/** A world script's surface: stat code's, with `self` and `owner` empty and nothing owed back (Q31). */
+export const WORLD_SCRIPT_SURFACE: CodeSurface = {
+  ...STAT_CODE_SURFACE,
+  label: 'world script',
+  globals: SANDBOX_GLOBALS.map((entry) => (entry.name === 'self' || entry.name === 'owner'
+    ? { name: entry.name, detail: 'object', info: 'Empty in a world script.', access: 'readOnly' }
+    : entry)),
+  missingReturn: null,
+};
+
 /**
  * The stat-code name an unknown identifier was most likely meant to be, or null when nothing is close
  * enough to be worth suggesting. Case-insensitive, so `Stats` still points at `stats`.

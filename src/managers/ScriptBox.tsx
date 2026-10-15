@@ -6,7 +6,7 @@ import { migrateStatCodeRoutes } from "@/lib/statCodeRoutes";
 import { runTestCode } from "@/lib/statCodeTestRun";
 import { statBoxAnalysisOptions, type StatCodeNames } from "@/lib/statCodeBoxOptions";
 import type { CodeTraitPlace } from "@/lib/statCodeAnalysis";
-import { scriptSurface, STAT_CODE_SURFACE, TRAIT_SCRIPT_SURFACE } from "@/lib/statCodeSurface";
+import { scriptSurface, STAT_CODE_SURFACE, TRAIT_SCRIPT_SURFACE, WORLD_SCRIPT_SURFACE } from "@/lib/statCodeSurface";
 import { StatCodeTemplateDialog } from "@/components/modals/StatCodeTemplateDialog";
 import { CodeArea } from "@/components/prompt/CodeArea";
 import type { CodeBoxOwner, CodeWorldLookup } from "@/lib/codeWorldLookup";
@@ -36,8 +36,10 @@ export interface ScriptBoxContext {
   lookup?: (timing: ScriptTiming) => CodeWorldLookup;
 }
 
-/** What `self` is in a box: the stat as the panel holds it mid-edit, or a trait. */
-export type ScriptSelf = { kind: 'stat'; stat: Partial<Stat> & Pick<Stat, 'id'> } | { kind: 'trait'; id: string };
+/** What `self` is in a box: the stat as the panel holds it mid-edit, a trait, or nothing on a world script. */
+export type ScriptSelf = { kind: 'stat'; stat: Partial<Stat> & Pick<Stat, 'id'> } | { kind: 'trait'; id: string } | { kind: 'world' };
+
+const SURFACES = { stat: STAT_CODE_SURFACE, trait: TRAIT_SCRIPT_SURFACE, world: WORLD_SCRIPT_SURFACE } as const;
 
 /**
  * One script's code box: the editor, the Templates menu on a stat, its own Test Code button, and the report
@@ -75,9 +77,9 @@ export function ScriptBox({ script, label, self, onChange, context, reveal, auto
   const { codeNamedStats: worldStats, traitPlaces, entities } = names;
   // The one build of this box's options: the editor and Test Code's problem count both read these.
   const analysis = useMemo(() => statBoxAnalysisOptions(names, {
-    selfName, surface: scriptSurface(isStat ? STAT_CODE_SURFACE : TRAIT_SCRIPT_SURFACE, timing),
+    selfName, surface: scriptSurface(SURFACES[self.kind], timing),
     ...(owner && { owner: { kind: owner.kind, statNames: ownerStatNames } }), lookup: lookup?.(timing),
-  }), [names, selfName, isStat, owner, ownerStatNames, lookup, timing]);
+  }), [names, selfName, self.kind, owner, ownerStatNames, lookup, timing]);
   const navigation = useCodeCardNavigation();
 
   // What the Variable menu's Owner group lists. An entity the editor has no names for, as in the library, still lists its stats.

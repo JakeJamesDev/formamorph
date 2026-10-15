@@ -163,13 +163,13 @@ function useProvideGameData() {
 
   const slices = useMemo(() => ({
     worldOverview, stats, statGroups, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries,
-    placeholders: worldPlaceholders, placeholderGroups,
-  }), [worldOverview, stats, statGroups, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, worldPlaceholders, placeholderGroups]);
+    placeholders: worldPlaceholders, placeholderGroups, scripts: worldScripts,
+  }), [worldOverview, stats, statGroups, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, worldPlaceholders, placeholderGroups, worldScripts]);
   const sliceSetters = useMemo(() => ({
     worldOverview: setWorldOverview, stats: setStats, statGroups: setStatGroups, locations: setLocations, connections: setConnections,
     entities: setEntities, entityGroups: setEntityGroups, traits: setTraits, traitGroups: setTraitGroups,
     statUpdates: setStatUpdates, dictionaries: setDictionaries, placeholders: setWorldPlaceholders,
-    placeholderGroups: setPlaceholderGroups,
+    placeholderGroups: setPlaceholderGroups, scripts: setWorldScripts,
   }), [setDictionaries]);
   const { intent: writeIntent, controls: history, disarm: disarmHistory, beginSave: beginHistorySave } = useWorldRecorder(
     slices, worldId, sliceSetters, savedWorld,
@@ -217,13 +217,14 @@ function useProvideGameData() {
       updateTraitGroup: keyedTo('traitGroups', replaceIn(setTraitGroups)),
       // A folder's delete goes through the placeholder store (`setLists`), beside the drops that move folders.
       updatePlaceholderGroup: keyedTo('placeholderGroups', replaceIn(setPlaceholderGroups)),
+      updateWorldScript: keyedTo('scripts', replaceIn(setWorldScripts)),
       updateWorldOverview: keyedTo('worldOverview', (updates: Partial<WorldOverview>) =>
         setWorldOverview((prev) => ({ ...prev, ...updates }))),
     };
   }, [keyNext, updateBookUnkeyed, updateEntryUnkeyed]);
   const {
     keyedTo, updateDictionary, updateDictionaryEntry, updateStat, updateStatGroup, updateLocation, updateConnection, updateEntity, editEntity,
-    updateEntityGroup, updateTrait, updateTraitGroup, updatePlaceholderGroup, updateWorldOverview,
+    updateEntityGroup, updateTrait, updateTraitGroup, updatePlaceholderGroup, updateWorldOverview, updateWorldScript,
   } = keyed;
   const dictStore = useMemo(() => ({
     dictionaries, setDictionaries, addDictionary, updateDictionary, removeDictionary,
@@ -729,7 +730,7 @@ function useProvideGameData() {
     addPlaceholder, updatePlaceholder, removePlaceholder,
     addPlaceholderGroup, updatePlaceholderGroup, setPlaceholderGroups,
     setStats, setStatGroups, setLocations, setConnections, setEntities, setEntityGroups, setTraits, setTraitGroups, setStatUpdates,
-    setDictionaries, setWorldPlaceholders,
+    setDictionaries, setWorldPlaceholders, setWorldScripts, updateWorldScript,
     loadWorldData, setWorldId, saveWorld, discardChanges, setOwnedLibraryIds, reloadWorld, keepWorldCopy,
   }), [
     updateWorldOverview, loadWorldMetadata,
@@ -744,7 +745,7 @@ function useProvideGameData() {
     addDictionary, updateDictionary, removeDictionary,
     addDictionaryEntry, updateDictionaryEntry, removeDictionaryEntry,
     addPlaceholder, updatePlaceholder, removePlaceholder,
-    addPlaceholderGroup, updatePlaceholderGroup,
+    addPlaceholderGroup, updatePlaceholderGroup, updateWorldScript,
     setDictionaries, loadWorldData, saveWorld, discardChanges, setOwnedLibraryIds, reloadWorld, keepWorldCopy,
   ]);
 

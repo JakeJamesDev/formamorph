@@ -12,7 +12,7 @@ import { canBePlayer } from './owners';
 import { codeRenameChains, type CodeRenameKey } from './codeRenameChains';
 import { hasEntityKey, statCodeName, statsByCodeName } from './statCodeNames';
 import { filledCodeBoxes } from './statCodeTiming';
-import { filledScripts } from './scripts';
+import { filledScripts, type ScriptHome } from './scripts';
 import { effectiveLinkTrait, linkTraitState } from './blueprints';
 import { blueprintItemIds, isDescendantGroup } from './traitTree';
 import {
@@ -172,17 +172,21 @@ export interface TraitCodeWorld {
   traitGroups: readonly TraitGroup[];
 }
 
+/** Which of a home's scripts a walk visits. */
+export type ScriptPick = (home: ScriptHome) => readonly Script[];
+
 /**
  * Every filled trait script in the world once: the world's traits', each entity's own traits' and the scripts
  * its links override. A link that leaves a Blueprint trait's scripts alone adds a run to that trait's box.
+ * `pick` widens the walk, such as to blank scripts.
  */
-export function traitCodeBoxes(owners: CodeOwners, world: TraitCodeWorld): TraitCodeBox[] {
+export function traitCodeBoxes(owners: CodeOwners, world: TraitCodeWorld, pick: ScriptPick = filledScripts): TraitCodeBox[] {
   const lists = { traits: [...world.traits], traitGroups: [...world.traitGroups] };
   const blueprintIds = blueprintItemIds(lists);
   const blueprintOwner: CodeOwner = { entity: null, stats: [], byCodeName: new Map(), linkOf: NO_LINKS };
   const worldBoxes = world.traits.flatMap((trait) => {
     const blueprint = blueprintIds.has(trait.id);
-    return filledScripts(trait).map((script): TraitCodeBox => ({
+    return pick(trait).map((script): TraitCodeBox => ({
       home: { kind: 'trait', traitId: trait.id }, ...script, trait, entity: null,
       owner: blueprint ? blueprintOwner : null, runs: blueprint ? [] : [{ owner: null }],
     }));
@@ -192,7 +196,7 @@ export function traitCodeBoxes(owners: CodeOwners, world: TraitCodeWorld): Trait
     const { entity } = codeOwner;
     if (!entity) return [];
     const run: TraitRun = { owner: codeOwner };
-    const own = (entity.traits ?? []).flatMap((trait) => filledScripts(trait).map((script): TraitCodeBox => ({
+    const own = (entity.traits ?? []).flatMap((trait) => pick(trait).map((script): TraitCodeBox => ({
       home: { kind: 'entityTrait', entityId: entity.id, traitId: trait.id }, ...script, trait, entity, owner: run.owner, runs: [run],
     })));
     const linked = (entity.traitLinks ?? []).flatMap((link) => world.traits
@@ -200,11 +204,11 @@ export function traitCodeBoxes(owners: CodeOwners, world: TraitCodeWorld): Trait
         || (trait.groupId != null && isDescendantGroup(lists.traitGroups, link.originalId, trait.groupId)))
       .flatMap((original) => {
         if (!linkTraitState(original, link).overridden.includes('scripts')) {
-          for (const script of filledScripts(original)) runsOf.get(script.id)?.push(run);
+          for (const script of pick(original)) runsOf.get(script.id)?.push(run);
           return [];
         }
         const trait = effectiveLinkTrait(original, link);
-        return filledScripts(trait).map((script): TraitCodeBox => ({
+        return pick(trait).map((script): TraitCodeBox => ({
           home: { kind: 'traitLink', entityId: entity.id, linkId: link.id, traitId: original.id },
           ...script, trait, entity, owner: run.owner, runs: [run],
         }));
@@ -220,18 +224,18 @@ export const overridesScripts = (link: StatLink, original: Stat) =>
 
 /**
  * Every filled box in the world once, in this order: the global stats', each Blueprint stat's, then each
- * entity's own stats' and the boxes its links override, in the entity's tree order.
+ * entity's own stats' and the boxes its links override, in the entity's tree order. `pick` widens the walk.
  */
-export function statCodeBoxes(owners: CodeOwners): StatCodeBox[] {
+export function statCodeBoxes(owners: CodeOwners, pick: ScriptPick = filledCodeBoxes): StatCodeBox[] {
   const { statWorld } = owners;
   const blueprintIds = statBlueprintIds(statWorld);
-  const worldBoxes = owners.world.stats.flatMap((stat) => filledCodeBoxes(stat).map((box): StatCodeBox => ({
+  const worldBoxes = owners.world.stats.flatMap((stat) => pick(stat).map((box): StatCodeBox => ({
     home: { kind: 'stat', statId: stat.id }, ...box, stat, entity: null, owner: null, runs: [{ self: stat, owner: null }],
   })));
   const blueprintBoxes = statWorld.stats.filter((stat) => blueprintIds.has(stat.id)).flatMap((stat) => {
     const group = blueprintGroupStats(statWorld, stat);
     const owner: CodeOwner = { entity: null, stats: group, byCodeName: owners.byCodeName(group), linkOf: NO_LINKS };
-    return filledCodeBoxes(stat).map((box): StatCodeBox => ({
+    return pick(stat).map((box): StatCodeBox => ({
       home: { kind: 'stat', statId: stat.id }, ...box, stat, entity: null, owner, runs: [],
     }));
   });
@@ -239,7 +243,7 @@ export function statCodeBoxes(owners: CodeOwners): StatCodeBox[] {
   const entityBoxes = owners.all.flatMap((owner) => {
     const { entity } = owner;
     if (!entity) return [];
-    return owner.stats.flatMap((stat) => filledCodeBoxes(stat).flatMap((box): StatCodeBox[] => {
+    return owner.stats.flatMap((stat) => pick(stat).flatMap((box): StatCodeBox[] => {
       const link = owner.linkOf.get(stat.id);
       const original = link && statWorld.stats.find((s) => s.id === stat.id);
       const run: CodeRun = { self: stat, owner };

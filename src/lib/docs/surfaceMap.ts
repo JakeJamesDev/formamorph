@@ -163,6 +163,7 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
   'worldEditor.traits': { page: 'World-Editor-Traits', anchor: '-world-editor-traits' },
   'worldEditor.dictionary': { page: 'World-Editor-Dictionary', anchor: '-world-editor-dictionary' },
   'worldEditor.placeholders': { page: 'World-Editor-Placeholders', anchor: '-world-editor-placeholders' },
+  'worldEditor.scripts': { page: 'World-Editor-Stats', anchor: 'dynamic-value-calculation' },
 
   'worldEditorLocations.list': { page: 'World-Editor-Locations', anchor: 'list-and-canvas' },
   'worldEditorLocations.canvas': { page: 'World-Editor-Locations', anchor: 'list-and-canvas' },

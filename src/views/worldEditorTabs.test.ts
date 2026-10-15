@@ -14,18 +14,17 @@ describe('editorTabGroupsFor', () => {
     ]);
   });
 
-  it('adds Placeholders to Vocabulary in Advanced mode', () => {
+  it('adds Placeholders to Vocabulary and Scripts under Logic in Advanced mode', () => {
     expect(shape(true)).toEqual([
       [null, ['Overview']],
       ['Content', ['Entities', 'Locations', 'Traits', 'Stats']],
       ['Vocabulary', ['Dictionary', 'Placeholders']],
+      ['Logic', ['Scripts']],
     ]);
   });
 
-  it('leaves Logic out in both modes while it has no tab', () => {
-    for (const advanced of [false, true]) {
-      expect(editorTabGroupsFor(advanced).some((group) => group.id === 'logic')).toBe(false);
-    }
+  it('leaves Logic out in Simple mode, where Scripts is hidden', () => {
+    expect(editorTabGroupsFor(false).some((group) => group.id === 'logic')).toBe(false);
   });
 
   it('holds Overview alone in the landing slot, under no group name', () => {

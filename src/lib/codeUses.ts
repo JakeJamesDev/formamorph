@@ -31,7 +31,7 @@ const lineAt = (code: string, at: number) => code.slice(0, at).split('\n').lengt
 
 /** The row the World Editor selects for a box: a Link's root row carries the Link's id, and a row below it
  *  the Link's row id for the item. */
-function rowIdOf(box: StatCodeBox | TraitCodeBox): string {
+export function rowIdOf(box: StatCodeBox | TraitCodeBox): string {
   switch (box.home.kind) {
     case 'stat': case 'entity': return box.home.statId;
     case 'trait': case 'entityTrait': return box.home.traitId;
