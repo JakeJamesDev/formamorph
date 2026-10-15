@@ -10,7 +10,7 @@
 import { arrayMove } from '@dnd-kit/sortable';
 import { ancestors } from '@/lib/ancestors';
 import { randomUUID } from '@/lib/uuid';
-import { clamp } from '@/lib/utils';
+import { anyRowCanParent, projectDrop, removeCollapsedRows, type ProjectedRow } from '@/lib/treeProjection';
 import {
   PLACEHOLDER_PATH_SEPARATOR, SHARED_PATH_SEP, collectPlaceholderParts, decodePlaceholderToken,
   directChipTargets, encodePlaceholderToken, lonePlaceholderToken, mergePlaceholderWeights,
@@ -255,16 +255,7 @@ export function placeholderSelection(
 export function removeCollapsedPlaceholderRows<N extends { id: string; parentId: string | null }>(
   rows: N[], ids: Iterable<string>,
 ): N[] {
-  const exclude = new Set(ids);
-  const out: N[] = [];
-  for (const row of rows) {
-    if (row.parentId !== null && exclude.has(row.parentId)) {
-      exclude.add(row.id);
-      continue;
-    }
-    out.push(row);
-  }
-  return out;
+  return removeCollapsedRows(rows, ids);
 }
 
 /** How many placeholders hold each one and which — the hint a top-level row carries, so an author knows
@@ -288,35 +279,12 @@ export function placeholderUsedBy(
   return placeholderUsedByMap(placeholders).get(id) ?? null;
 }
 
-/** Projected drop `{depth, parentId}` for the active row, given the pointer's horizontal drag offset. */
-export function getPlaceholderDropProjection<N extends { id: string; parentId: string | null; depth: number }>(
+/** Projected drop `{depth, parentId}` for the active row. Any placeholder can hold another. */
+export function getPlaceholderDropProjection<N extends ProjectedRow>(
   rows: N[], activeId: string, overId: string,
   dragOffset: number, indentationWidth: number,
 ): { depth: number; parentId: string | null } {
-  const overIndex = rows.findIndex((i) => i.id === overId);
-  const activeIndex = rows.findIndex((i) => i.id === activeId);
-  if (overIndex === -1 || activeIndex === -1) return { depth: 0, parentId: null };
-
-  const activeRow = rows[activeIndex];
-  const moved = arrayMove(rows, activeIndex, overIndex);
-  const prev = moved[overIndex - 1];
-  const next = moved[overIndex + 1];
-
-  const dragDepth = Math.round(dragOffset / indentationWidth);
-  const projectedDepth = activeRow.depth + dragDepth;
-  // Any placeholder can hold another, so a row may descend one level past the row above it.
-  const maxDepth = prev ? prev.depth + 1 : 0;
-  const minDepth = next ? next.depth : 0;
-  const depth = clamp(projectedDepth, minDepth, maxDepth);
-
-  const parentId = (() => {
-    if (depth === 0 || !prev) return null;
-    if (depth === prev.depth) return prev.parentId;
-    if (depth > prev.depth) return prev.id;
-    return moved.slice(0, overIndex).reverse().find((i) => i.depth === depth)?.parentId ?? null;
-  })();
-
-  return { depth, parentId };
+  return projectDrop(rows, activeId, overId, dragOffset, indentationWidth, anyRowCanParent);
 }
 
 /** What a drop needs to know beyond the placeholders themselves. */
