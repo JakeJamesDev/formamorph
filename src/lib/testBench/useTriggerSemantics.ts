@@ -10,6 +10,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { allPlaceholders } from '@/lib/placeholderHomes';
 import { getVectors } from '@/lib/embeddingCache';
 import { embedTexts, isEmbeddingModelReady, loadEmbeddingModel } from '@/lib/embeddingWorkerClient';
+import { EMBED_BOUND_MS } from '@/lib/memoryRelevance';
 import { semanticIndexKeys, type SemanticInput } from './semantic';
 import { scannedEntries, type TriggerWorld } from './triggers';
 
@@ -94,7 +95,7 @@ export function useTriggerSemantics(
       void (async () => {
         try {
           if (!isEmbeddingModelReady()) await loadEmbeddingModel();
-          const [queryVec] = await embedTexts([text]);
+          const [queryVec] = await embedTexts([text], EMBED_BOUND_MS);
           if (!live) return;
           setRun({ key: indexKey, text, input: { queryVec, vectors } });
           setFailed(null);
