@@ -1,5 +1,6 @@
 import { API_BASE_URL } from '@/lib/apiBase';
 import type { AuthUser } from '@/types';
+import { codedResponseError, readFailure, responseError } from './responseError';
 
 /** What a sign-in tells the caller beyond the session it establishes. */
 export interface LoginResult {
@@ -162,10 +163,7 @@ class AuthService {
         body: JSON.stringify({ username, password })
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Login failed');
-      }
+      if (!response.ok) throw await responseError(response, 'Login failed');
 
       const data = await response.json();
 
@@ -216,13 +214,9 @@ class AuthService {
         body: JSON.stringify(requestBody)
       });
 
-      if (!response.ok) {
-        // This API answers refusals in `error`. A taken name and a taken address are two sentences with
-        // two different fixes — pick another name, or recover the account holding the address — so both
-        // are shown verbatim rather than collapsing into one generic failure.
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || errorData.message || 'Registration failed');
-      }
+      // A taken name and a taken address are two sentences with two different fixes — pick another name,
+      // or recover the account holding the address — so the server's text is shown verbatim.
+      if (!response.ok) throw await responseError(response, 'Registration failed');
 
       const data = await response.json();
 
@@ -267,7 +261,7 @@ class AuthService {
           this.logout();
           return null;
         }
-        throw new Error('Failed to fetch user profile');
+        throw await responseError(response, 'Failed to fetch user profile');
       }
 
       const userData = await response.json();
@@ -317,12 +311,8 @@ class AuthService {
         body: JSON.stringify({ currentPassword, newPassword })
       });
 
-      if (!response.ok) {
-        // This API answers with `error`; a suspended account's rejection lands here and is worth
-        // showing verbatim rather than as a generic failure.
-        const errorData = await response.json();
-        throw new Error(errorData.error || errorData.message || 'Failed to change password');
-      }
+      // A suspended account's rejection lands here and is worth showing verbatim.
+      if (!response.ok) throw await responseError(response, 'Failed to change password');
 
       // Tolerated as absent so an app pointed at a server predating the replacement token keeps working:
       // that session stays valid there, because nothing retired it.
@@ -347,10 +337,7 @@ class AuthService {
       body: JSON.stringify({ account })
     });
 
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(data.error || data.message || 'Failed to request a password reset');
-    }
+    if (!response.ok) throw await responseError(response, 'Failed to request a password reset');
   }
 
   /** Replace the password named by a reset token. */
@@ -361,15 +348,12 @@ class AuthService {
       body: JSON.stringify({ token, newPassword })
     });
 
-    const data = await response.json().catch(() => ({}));
     if (!response.ok) {
-      if (data.code === 'TOKEN_INVALID') {
-        return {
-          reset: false,
-          message: data.error || data.message || 'That password reset link could not be used'
-        };
+      const failure = await codedResponseError(response, 'Failed to reset the password');
+      if (failure.code === 'TOKEN_INVALID') {
+        return { reset: false, message: failure.message };
       }
-      throw new Error(data.error || data.message || 'Failed to reset the password');
+      throw failure;
     }
 
     return { reset: true };
@@ -397,13 +381,11 @@ class AuthService {
       body: JSON.stringify({ email })
     });
 
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      // A taken address and a spent mail budget both land here, and each sentence is the one thing the
-      // reader has to act on.
-      throw new Error(data.error || data.message || 'Failed to save the email address');
-    }
+    // A taken address and a spent mail budget both land here, and each sentence is the one thing the
+    // reader has to act on.
+    if (!response.ok) throw await responseError(response, 'Failed to save the email address');
 
+    const data = await response.json().catch(() => ({}));
     if (data.user) this.adoptUser(data.user as AuthUser);
 
     return { emailVerified: data.user?.emailVerified === true, mailSent: data.mailSent === true };
@@ -448,11 +430,9 @@ class AuthService {
       headers: { 'Authorization': `Bearer ${this.token}` }
     });
 
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(data.error || data.message || 'Failed to send the verification email');
-    }
+    if (!response.ok) throw await responseError(response, 'Failed to send the verification email');
 
+    const data = await response.json().catch(() => ({}));
     return { emailVerified: data.emailVerified === true, mailSent: data.mailSent === true };
   }
 
@@ -481,15 +461,12 @@ class AuthService {
       };
     }
 
-    const data = await response.json().catch(() => ({}));
     if (!response.ok) {
-      return {
-        verified: false,
-        spent: data.code === 'TOKEN_INVALID',
-        message: data.error || data.message || 'That verification link could not be used'
-      };
+      const { body, message } = await readFailure(response, 'That verification link could not be used');
+      return { verified: false, spent: body.code === 'TOKEN_INVALID', message };
     }
 
+    const data = await response.json().catch(() => ({}));
     // A session held on this device stops saying the address is unproven — but only when the session is
     // the one the link belongs to. A mail opened in a browser signed in as somebody else would
     // otherwise stamp that account's record with an address it does not hold. Folded, because the
@@ -534,13 +511,11 @@ class AuthService {
       body: JSON.stringify({ password, deleteContent })
     });
 
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      // A wrong password and a suspended account both answer here, and both sentences are worth
-      // showing verbatim: they are the two things the user has to act on.
-      throw new Error(data.error || data.message || 'Failed to request the deletion');
-    }
+    // A wrong password and a suspended account both answer here, and both sentences are worth
+    // showing verbatim: they are the two things the user has to act on.
+    if (!response.ok) throw await responseError(response, 'Failed to request the deletion');
 
+    const data = await response.json().catch(() => ({}));
     return data.deletionScheduledFor as string;
   }
 
@@ -565,12 +540,10 @@ class AuthService {
       body: JSON.stringify({ image })
     });
 
-    const data = await response.json();
-    if (!response.ok) {
-      // A suspended account's refusal lands here and is worth showing verbatim.
-      throw new Error(data.error || data.message || 'Failed to save the profile image');
-    }
+    // A suspended account's refusal lands here and is worth showing verbatim.
+    if (!response.ok) throw await responseError(response, 'Failed to save the profile image');
 
+    const data = await response.json();
     const avatarUrl: string | null = data.data?.avatarUrl ?? null;
     this.applyAvatar(avatarUrl);
 
@@ -586,10 +559,7 @@ class AuthService {
       headers: { 'Authorization': `Bearer ${this.token}` }
     });
 
-    if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
-      throw new Error(data.error || data.message || 'Failed to remove the profile image');
-    }
+    if (!response.ok) throw await responseError(response, 'Failed to remove the profile image');
 
     this.applyAvatar(null);
   }
@@ -607,10 +577,7 @@ class AuthService {
       headers: { 'Authorization': `Bearer ${this.token}` }
     });
 
-    if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
-      throw new Error(data.error || data.message || 'Failed to remove the profile image');
-    }
+    if (!response.ok) throw await responseError(response, 'Failed to remove the profile image');
   }
 
   /** Write an avatar URL into the cached user, so the header changes without a round trip. */

@@ -7,7 +7,7 @@ vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), in
 
 /** Minimal fetch stub: only what AuthService reads back. */
 const res = (body: unknown, ok = true, status = 200): Response =>
-  ({ ok, status, json: async () => body } as unknown as Response);
+  ({ ok, status, json: async () => body, text: async () => JSON.stringify(body) } as unknown as Response);
 
 const DUE = '2026-12-25T12:00:00.000Z';
 
