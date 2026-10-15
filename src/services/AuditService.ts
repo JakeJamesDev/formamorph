@@ -1,5 +1,5 @@
 import AuthService from './AuthService';
-import { responseError } from './responseError';
+import { authHeaders, unwrap } from './authRequest';
 import type { AuditAction, AuditEntry } from '@/types';
 
 /** A page of entries, with the match count before paging so a pager can be drawn. */
@@ -19,15 +19,6 @@ class AuditService {
     return AuthService.API_URL;
   }
 
-  private authHeaders(): HeadersInit {
-    return { Authorization: `Bearer ${AuthService.token}` };
-  }
-
-  private async unwrap<T>(response: Response, fallback: string): Promise<T> {
-    if (!response.ok) throw await responseError(response, fallback);
-    return (await response.json()) as T;
-  }
-
   /**
    * A page of entries, newest first.
    *
@@ -44,8 +35,8 @@ class AuditService {
     if (action) query.set('action', action);
     if (search) query.set('search', search);
 
-    const response = await fetch(`${this.apiUrl}/audit?${query}`, { headers: this.authHeaders() });
-    const body = await this.unwrap<{ data: AuditEntry[]; total: number }>(response, 'Failed to load the log');
+    const response = await fetch(`${this.apiUrl}/audit?${query}`, { headers: authHeaders() });
+    const body = await unwrap<{ data: AuditEntry[]; total: number }>(response, 'Failed to load the log');
 
     return { entries: body.data, total: body.total };
   }

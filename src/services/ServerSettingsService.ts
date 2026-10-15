@@ -1,5 +1,5 @@
 import AuthService from './AuthService';
-import { authHeaders, unwrap } from './staffApi';
+import { authHeaders, unwrap } from './authRequest';
 
 /** Whether this server accepts a like from a reader with no account. */
 export const ANONYMOUS_LIKES = 'anonymous_likes';

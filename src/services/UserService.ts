@@ -3,6 +3,7 @@ import { kindOf } from '@/lib/catalogKinds';
 import { likeCountOf } from '@/lib/likeCount';
 import { API_BASE_URL } from '@/lib/apiBase';
 import AuthService from '@/services/AuthService';
+import { authHeaders } from '@/services/authRequest';
 import { failureFromText, responseError } from '@/services/responseError';
 import { DetailedError } from '@/lib/errorDetails';
 
@@ -60,7 +61,7 @@ class UserService {
    */
   async fetchProfile(userId: string): Promise<PublicProfile> {
     const response = await fetch(`${this.apiUrl}/users/${encodeURIComponent(userId)}/profile`, {
-      headers: this.authHeaders(),
+      headers: authHeaders(),
     });
     const body = await this.unwrap<{ data: PublicProfile }>(response, 'Failed to load this profile');
 
@@ -97,7 +98,7 @@ class UserService {
   async fetchProfileByUsername(username: string): Promise<PublicProfile | null> {
     const response = await fetch(
       `${this.apiUrl}/users/by-username/${encodeURIComponent(username)}/profile`,
-      { headers: this.authHeaders() }
+      { headers: authHeaders() }
     );
 
     if (response.status === 404) return null;
@@ -123,7 +124,7 @@ class UserService {
   async fetchCreations(userId: string): Promise<ProfileCreation[]> {
     const response = await fetch(
       `${this.apiUrl}/users/${encodeURIComponent(userId)}/worlds?kind=all`,
-      { headers: this.authHeaders() }
+      { headers: authHeaders() }
     );
     const body = await this.unwrap<{ data: RawCreation[] }>(response, 'Failed to load their creations');
 
@@ -142,11 +143,6 @@ class UserService {
       // may see the row at all.
       quarantined: Boolean(row.quarantined_at),
     }));
-  }
-
-  /** A bearer header for the signed-in reader. */
-  private authHeaders(): HeadersInit {
-    return AuthService.token ? { Authorization: `Bearer ${AuthService.token}` } : {};
   }
 
   /** Read a JSON body, throwing the server's own wording on a refusal. */
@@ -172,7 +168,7 @@ class UserService {
   async setFollowing(userId: string, following: boolean): Promise<{ following: boolean; followers: number }> {
     const response = await fetch(`${this.apiUrl}/users/${encodeURIComponent(userId)}/follow`, {
       method: following ? 'PUT' : 'DELETE',
-      headers: this.authHeaders(),
+      headers: authHeaders(),
     });
 
     const body = await this.unwrap<{ data: { following: boolean; followers: number } }>(
@@ -185,7 +181,7 @@ class UserService {
 
   /** Who the signed-in reader follows, newest first. Nobody sees anybody else's list. */
   async fetchFollowing(): Promise<FollowedUser[]> {
-    const response = await fetch(`${this.apiUrl}/users/me/following`, { headers: this.authHeaders() });
+    const response = await fetch(`${this.apiUrl}/users/me/following`, { headers: authHeaders() });
     const body = await this.unwrap<{ data: FollowedUser[] }>(response, 'Failed to load who you follow');
 
     return body.data;
@@ -200,7 +196,7 @@ class UserService {
    * @returns The feed rows and how many of them were new
    */
   async fetchNotifications(): Promise<{ items: FeedItem[]; unread: number }> {
-    const response = await fetch(`${this.apiUrl}/users/me/notifications`, { headers: this.authHeaders() });
+    const response = await fetch(`${this.apiUrl}/users/me/notifications`, { headers: authHeaders() });
     const body = await this.unwrap<{ data: FeedItem[]; unread: number }>(response, 'Failed to load your notifications');
 
     return { items: body.data, unread: body.unread };
@@ -211,7 +207,7 @@ class UserService {
     if (!AuthService.token) return 0;
 
     const response = await fetch(`${this.apiUrl}/users/me/notifications/unread-count`, {
-      headers: this.authHeaders(),
+      headers: authHeaders(),
     });
     if (!response.ok) return 0;
 
@@ -231,7 +227,7 @@ class UserService {
    */
   async fetchLikesGiven(userId: string): Promise<{ total: number; rows: LikeGiven[] }> {
     const response = await fetch(`${this.apiUrl}/users/${encodeURIComponent(userId)}/likes`, {
-      headers: this.authHeaders(),
+      headers: authHeaders(),
     });
     const body = await this.unwrap<{ data: { total?: number; rows?: LikeGiven[] } }>(
       response,
@@ -252,7 +248,7 @@ class UserService {
    */
   async fetchLinkedAccounts(userId: string): Promise<LinkedAccount[]> {
     const response = await fetch(`${this.apiUrl}/users/${encodeURIComponent(userId)}/linked`, {
-      headers: this.authHeaders(),
+      headers: authHeaders(),
     });
     const body = await this.unwrap<{ data: { accounts?: LinkedAccount[] } }>(
       response,
@@ -274,7 +270,7 @@ class UserService {
   async clearLikesGiven(userId: string): Promise<number> {
     const response = await fetch(`${this.apiUrl}/users/${encodeURIComponent(userId)}/likes`, {
       method: 'DELETE',
-      headers: this.authHeaders(),
+      headers: authHeaders(),
     });
     const body = await this.unwrap<{ data: { removed?: number } }>(
       response,

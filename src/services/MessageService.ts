@@ -1,5 +1,5 @@
 import AuthService from './AuthService';
-import { responseError } from './responseError';
+import { authHeaders, unwrap } from './authRequest';
 import type { ComposeMessageInput, EditMessageInput, InboxMessage, SentMessage } from '@/types';
 
 /** A paged inbox fetch. `total` is everything visible, so the caller can tell the list was truncated. */
@@ -26,25 +26,13 @@ class MessageService {
     return AuthService.API_URL;
   }
 
-  private authHeaders(withBody = false): HeadersInit {
-    const headers: Record<string, string> = { Authorization: `Bearer ${AuthService.token}` };
-    if (withBody) headers['Content-Type'] = 'application/json';
-    return headers;
-  }
-
-  /** Unwrap a response, raising the server's own error text so callers can surface it verbatim. */
-  private async unwrap<T>(response: Response, fallback: string): Promise<T> {
-    if (!response.ok) throw await responseError(response, fallback);
-    return (await response.json()) as T;
-  }
-
   /** The current user's inbox, newest first. */
   async fetchInbox(limit = 50): Promise<InboxResult> {
     const response = await fetch(`${this.apiUrl}/messages?limit=${limit}`, {
-      headers: this.authHeaders(),
+      headers: authHeaders(),
     });
 
-    const body = await this.unwrap<{ data: InboxMessage[]; total: number; unread: number }>(
+    const body = await unwrap<{ data: InboxMessage[]; total: number; unread: number }>(
       response, 'Failed to load messages',
     );
 
@@ -61,10 +49,10 @@ class MessageService {
    */
   async fetchUnreadCount(): Promise<{ unread: number; topSeverity: string | null }> {
     const response = await fetch(`${this.apiUrl}/messages/unread-count`, {
-      headers: this.authHeaders(),
+      headers: authHeaders(),
     });
 
-    const body = await this.unwrap<{ unread: number; topSeverity?: string | null }>(
+    const body = await unwrap<{ unread: number; topSeverity?: string | null }>(
       response,
       'Failed to load unread count'
     );
@@ -77,31 +65,31 @@ class MessageService {
   async markRead(id: string): Promise<void> {
     const response = await fetch(`${this.apiUrl}/messages/${id}/read`, {
       method: 'POST',
-      headers: this.authHeaders(),
+      headers: authHeaders(),
     });
 
-    await this.unwrap(response, 'Failed to mark the message read');
+    await unwrap(response, 'Failed to mark the message read');
   }
 
   /** Clear a message from the current user's inbox. The server keeps the row for the admin's receipt. */
   async dismiss(id: string): Promise<void> {
     const response = await fetch(`${this.apiUrl}/messages/${id}`, {
       method: 'DELETE',
-      headers: this.authHeaders(),
+      headers: authHeaders(),
     });
 
-    await this.unwrap(response, 'Failed to dismiss the message');
+    await unwrap(response, 'Failed to dismiss the message');
   }
 
   /** Send to one user, several users, or everyone. Returns one record per message created. */
   async send(input: ComposeMessageInput): Promise<SentMessage[]> {
     const response = await fetch(`${this.apiUrl}/messages`, {
       method: 'POST',
-      headers: this.authHeaders(true),
+      headers: authHeaders(true),
       body: JSON.stringify(input),
     });
 
-    const body = await this.unwrap<{ data: SentMessage[] }>(response, 'Failed to send the message');
+    const body = await unwrap<{ data: SentMessage[] }>(response, 'Failed to send the message');
     return body.data;
   }
 
@@ -120,10 +108,10 @@ class MessageService {
     if (audience) query.set('audience', audience);
 
     const response = await fetch(`${this.apiUrl}/messages/sent?${query}`, {
-      headers: this.authHeaders(),
+      headers: authHeaders(),
     });
 
-    const body = await this.unwrap<{ data: SentMessage[]; total: number }>(
+    const body = await unwrap<{ data: SentMessage[]; total: number }>(
       response, 'Failed to load sent messages',
     );
 
@@ -137,11 +125,11 @@ class MessageService {
   async edit(id: string, input: EditMessageInput): Promise<SentMessage> {
     const response = await fetch(`${this.apiUrl}/messages/sent/${id}`, {
       method: 'PUT',
-      headers: this.authHeaders(true),
+      headers: authHeaders(true),
       body: JSON.stringify(input),
     });
 
-    const body = await this.unwrap<{ data: SentMessage }>(response, 'Failed to save the message');
+    const body = await unwrap<{ data: SentMessage }>(response, 'Failed to save the message');
     return body.data;
   }
 
@@ -149,10 +137,10 @@ class MessageService {
   async recall(id: string): Promise<void> {
     const response = await fetch(`${this.apiUrl}/messages/sent/${id}`, {
       method: 'DELETE',
-      headers: this.authHeaders(),
+      headers: authHeaders(),
     });
 
-    await this.unwrap(response, 'Failed to recall the message');
+    await unwrap(response, 'Failed to recall the message');
   }
 }
 

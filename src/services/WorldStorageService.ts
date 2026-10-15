@@ -1,4 +1,5 @@
 import AuthService from './AuthService';
+import { authHeaders } from './authRequest';
 import { codedResponseError, readFailure, responseError } from './responseError';
 import type { CatalogKindQuery } from '@/lib/catalogKinds';
 import { API_BASE_URL } from '@/lib/apiBase';
@@ -191,7 +192,7 @@ class WorldStorageService {
    * refused the header once already.
    */
   private readerHeaders(): Record<string, string> {
-    if (AuthService.isAuthenticated()) return { Authorization: `Bearer ${AuthService.token}` };
+    if (AuthService.isAuthenticated()) return authHeaders();
 
     const install = readerInstallId();
     return install ? { [INSTALL_HEADER_NAME]: install } : {};
@@ -619,7 +620,7 @@ class WorldStorageService {
 
       const response = await this.installFallbackFetch(`${this.API_URL}/worlds?page=1&limit=1000&kind=all`, init);
       if (response.status === 304) return { status: 'unchanged' };
-      if (!response.ok) throw new Error('Failed to fetch worlds');
+      if (!response.ok) throw await responseError(response, 'Failed to fetch worlds');
 
       const body = await response.json();
       // Absent against a server that predates the feature, which reads as off — the same answer the
@@ -648,10 +649,7 @@ class WorldStorageService {
       // Omitted entirely for 'world' so the request stays byte-identical to what shipped before kinds.
       if (kind !== 'world') url += `&kind=${encodeURIComponent(kind)}`;
 
-      const headers: Record<string, string> = {};
-      if (AuthService.isAuthenticated()) {
-        headers['Authorization'] = `Bearer ${AuthService.token}`;
-      }
+      const headers = authHeaders();
 
       // If ownedOnly is true, fetch only the user's worlds
       if (ownedOnly) {
@@ -663,9 +661,7 @@ class WorldStorageService {
 
       const response = await fetch(url, { headers });
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch worlds');
-      }
+      if (!response.ok) throw await responseError(response, 'Failed to fetch worlds');
 
       const responseData = await response.json();
 
@@ -694,10 +690,7 @@ class WorldStorageService {
   async setRemoteWorldLiked(worldId: string, liked: boolean) {
     const response = await fetch(`${this.API_URL}/worlds/${worldId}/like`, {
       method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${AuthService.token}`,
-        'Content-Type': 'application/json',
-      },
+      headers: authHeaders(true),
       body: JSON.stringify({ liked }),
     });
 
@@ -814,10 +807,7 @@ class WorldStorageService {
 
     const response = await fetch(`${this.API_URL}/users/me/anonymous-likes/claim`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${AuthService.token}`,
-        [INSTALL_HEADER_NAME]: install,
-      },
+      headers: { ...authHeaders(), [INSTALL_HEADER_NAME]: install },
     });
 
     if (!response.ok) throw await responseError(response, 'Failed to claim those likes');
@@ -837,10 +827,7 @@ class WorldStorageService {
   async quarantineRemoteWorld(worldId: string, days: number) {
     const response = await fetch(`${this.API_URL}/worlds/${worldId}/quarantine`, {
       method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${AuthService.token}`,
-        'Content-Type': 'application/json',
-      },
+      headers: authHeaders(true),
       body: JSON.stringify({ days }),
     });
 
@@ -858,7 +845,7 @@ class WorldStorageService {
   async releaseRemoteWorld(worldId: string) {
     const response = await fetch(`${this.API_URL}/worlds/${worldId}/quarantine`, {
       method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${AuthService.token}` },
+      headers: authHeaders(),
     });
 
     if (!response.ok) throw await responseError(response, 'Failed to release this');
@@ -868,15 +855,12 @@ class WorldStorageService {
    *  a `{success:false}` shape. */
   async fetchComments(worldId: string, page = 1, limit = 20, signal?: AbortSignal) {
     try {
-      const headers: Record<string, string> = {};
-      if (AuthService.isAuthenticated()) {
-        headers['Authorization'] = `Bearer ${AuthService.token}`;
-      }
+      const headers = authHeaders();
       const response = await fetch(
         `${this.API_URL}/worlds/${worldId}/comments?page=${page}&limit=${limit}`,
         { headers, signal },
       );
-      if (!response.ok) throw new Error('Failed to fetch comments');
+      if (!response.ok) throw await responseError(response, 'Failed to fetch comments');
       const responseData = await response.json();
       return {
         success: true,
@@ -897,10 +881,7 @@ class WorldStorageService {
     }
     const response = await fetch(`${this.API_URL}/worlds/${worldId}/comments`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${AuthService.token}`,
-      },
+      headers: authHeaders(true),
       body: JSON.stringify({ content }),
     });
     if (!response.ok) throw await responseError(response, 'Failed to post comment', ['message']);
@@ -923,10 +904,7 @@ class WorldStorageService {
     }
     const response = await fetch(`${this.API_URL}/comments/${commentId}`, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${AuthService.token}`,
-      },
+      headers: authHeaders(true),
       body: JSON.stringify({ content }),
     });
     if (!response.ok) throw await responseError(response, 'Failed to save the comment');
@@ -945,7 +923,7 @@ class WorldStorageService {
     }
     const response = await fetch(`${this.API_URL}/comments/${commentId}`, {
       method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${AuthService.token}` },
+      headers: authHeaders(),
     });
     if (!response.ok) throw await responseError(response, 'Failed to delete the comment');
   }
@@ -1021,10 +999,7 @@ class WorldStorageService {
    */
   async checkSource(listingId: string): Promise<SourceCheckStatus> {
     try {
-      const headers: Record<string, string> = {};
-      if (AuthService.isAuthenticated()) {
-        headers['Authorization'] = `Bearer ${AuthService.token}`;
-      }
+      const headers = authHeaders();
       const response = await fetch(`${this.API_URL}/worlds/${listingId}`, { headers });
       if (response.status === 404) return 'not_found';
       return response.ok ? 'ok' : 'unavailable';
@@ -1047,10 +1022,7 @@ class WorldStorageService {
    * @param absent - What a 404 means here. Omitted, a 404 throws like any other refusal
    */
   private async fetchRelationship<T>(path: string, fallback: string, absent?: T): Promise<T> {
-    const headers: Record<string, string> = {};
-    if (AuthService.isAuthenticated()) {
-      headers['Authorization'] = `Bearer ${AuthService.token}`;
-    }
+    const headers = authHeaders();
     const response = await fetch(`${this.API_URL}${path}`, { headers });
     if (response.status === 404 && absent !== undefined) return absent;
     if (!response.ok) throw await responseError(response, fallback);
@@ -1110,10 +1082,7 @@ class WorldStorageService {
   async setAddonReview(worldId: string, componentId: string, reviewState: ReviewState): Promise<void> {
     const response = await fetch(`${this.API_URL}/worlds/${worldId}/addons/${componentId}/review`, {
       method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${AuthService.token}`,
-        'Content-Type': 'application/json',
-      },
+      headers: authHeaders(true),
       body: JSON.stringify({ reviewState }),
     });
 
@@ -1154,7 +1123,7 @@ class WorldStorageService {
 
     const response = await fetch(`${this.API_URL}/worlds/${worldId}/changelog/${entryId}`, {
       method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${AuthService.token}` },
+      headers: authHeaders(),
     });
 
     if (!response.ok) throw await responseError(response, 'Failed to delete the entry');
@@ -1171,10 +1140,7 @@ class WorldStorageService {
 
     const response = await fetch(`${this.API_URL}${path}`, {
       method,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${AuthService.token}`,
-      },
+      headers: authHeaders(true),
       body: JSON.stringify({ title: draft.title.trim(), body: draft.body.trim(), date: draft.date }),
     });
 
@@ -1193,14 +1159,10 @@ class WorldStorageService {
     const query = kind === 'world' ? '' : `?kind=${encodeURIComponent(kind)}`;
     try {
       const response = await fetch(`${this.API_URL}/users/me/worlds${query}`, {
-        headers: {
-          'Authorization': `Bearer ${AuthService.token}`
-        }
+        headers: authHeaders()
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch user worlds');
-      }
+      if (!response.ok) throw await responseError(response, 'Failed to fetch user worlds');
 
       const responseData = await response.json();
 
@@ -1244,10 +1206,7 @@ class WorldStorageService {
     try {
       const response = await fetch(endpoint, {
         method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${AuthService.token}`
-        },
+        headers: authHeaders(true),
         body
       });
 
@@ -1283,7 +1242,7 @@ class WorldStorageService {
 
     const response = await fetch(`${this.API_URL}/worlds/${listingId}/contest`, {
       method: 'DELETE',
-      headers: { Authorization: `Bearer ${AuthService.token}` },
+      headers: authHeaders(),
     });
 
     if (!response.ok) throw await codedResponseError(response, 'Failed to withdraw the entry');
@@ -1301,7 +1260,7 @@ class WorldStorageService {
    */
   async fetchLikers(worldId: string): Promise<{ total: number; rows: LikerRow[]; anonymous: number }> {
     const response = await fetch(`${this.API_URL}/worlds/${worldId}/likes`, {
-      headers: { 'Authorization': `Bearer ${AuthService.token}` },
+      headers: authHeaders(),
     });
 
     if (!response.ok) throw await responseError(response, 'Failed to load who liked this');
@@ -1336,7 +1295,7 @@ class WorldStorageService {
     anonymousRows: AnonymousLikeRow[];
   }> {
     const response = await fetch(`${this.API_URL}/worlds/${worldId}/likes/audit`, {
-      headers: { 'Authorization': `Bearer ${AuthService.token}` },
+      headers: authHeaders(),
     });
 
     if (!response.ok) throw await responseError(response, 'Failed to audit these likes');
@@ -1390,7 +1349,7 @@ class WorldStorageService {
   private async deleteAnonymousLikes(url: string): Promise<AnonymousLikesRemoved> {
     const response = await fetch(url, {
       method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${AuthService.token}` },
+      headers: authHeaders(),
     });
 
     if (!response.ok) throw await responseError(response, 'Failed to remove those Anonymous Likes');
@@ -1418,7 +1377,7 @@ class WorldStorageService {
   async removeLike(worldId: string, userId: string): Promise<number> {
     const response = await fetch(
       `${this.API_URL}/worlds/${worldId}/likes/${encodeURIComponent(userId)}`,
-      { method: 'DELETE', headers: { 'Authorization': `Bearer ${AuthService.token}` } }
+      { method: 'DELETE', headers: authHeaders() }
     );
 
     if (!response.ok) throw await responseError(response, 'Failed to remove that like');

@@ -1,4 +1,5 @@
 import AuthService from './AuthService';
+import { authHeaders } from './authRequest';
 import { responseError } from './responseError';
 
 interface AccountAgeGateState {
@@ -15,7 +16,7 @@ async function readResponse(response: Response, fallback: string): Promise<Accou
 class AgeGateService {
   async read(): Promise<AccountAgeGateState> {
     const response = await fetch(`${AuthService.API_URL}/policies/age-gate`, {
-      headers: { Authorization: `Bearer ${AuthService.token}` },
+      headers: authHeaders(),
     });
     return readResponse(response, 'Failed to check your content-warning answer');
   }
@@ -23,10 +24,7 @@ class AgeGateService {
   async accept(acceptanceVersion: number): Promise<AccountAgeGateState> {
     const response = await fetch(`${AuthService.API_URL}/policies/age-gate/accept`, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${AuthService.token}`,
-        'Content-Type': 'application/json',
-      },
+      headers: authHeaders(true),
       body: JSON.stringify({ acceptanceVersion }),
     });
     return readResponse(response, 'Failed to record your answer');
