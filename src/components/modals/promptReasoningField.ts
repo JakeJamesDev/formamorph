@@ -2,7 +2,7 @@ import {
   promptReasoningLevelOptions, reasoningRuledOut, reasoningLevelControl, reasoningOffRefused, reasoningAwaitingProof,
   reasoningBudget, type PromptReasoningSetting, type ReasoningCapability,
 } from '@/lib/reasoningEffort';
-import { reasoningDialectTakesBudget, reasoningDialectBudgetFloor } from '@/lib/reasoningDialect';
+import { reasoningDialectShowsBudgetSlider, reasoningDialectBudgetFloor } from '@/lib/reasoningDialect';
 import type { AIRequestType } from '@/types';
 
 /** The label, line and ⓘ of a reasoning field. */
@@ -71,7 +71,7 @@ export function promptReasoningFieldProps(input: PromptReasoningFieldInput): Omi
     options: promptReasoningLevelOptions(capability, setting.level),
     lockedOn: reasoningOffRefused(capability),
     // Each half follows the dialect's row and the record; the engine names no level field, so no dropdown.
-    budget: capability.budget && reasoningDialectTakesBudget(capability.dialect)
+    budget: capability.budget && reasoningDialectShowsBudgetSlider(capability.dialect)
       ? { value: budgetPct, set: onBudgetChange, tokens, disabled: target.maxTokens === undefined }
       : null,
     level: reasoningLevelControl(capability),

@@ -502,3 +502,43 @@ describe('streamAiRequest', () => {
     expect(doneOf(none).result.reasoningField).toBeNull();
   });
 });
+
+/** llama.cpp streams one token per frame, so the reasoning frames count the thought's tokens. */
+describe('a llama.cpp thought past its budget', () => {
+  const llamaSpec = (budget: number, dialect: 'llamacpp' | 'unknown' = 'llamacpp'): AiRequestSpec => ({
+    ...spec,
+    // Another dialect sends its own budget field, and can carry llama.cpp's through the Extra Parameters.
+    body: { ...spec.body, reasoning_budget_tokens: budget, thinking_budget_tokens: budget },
+    target: { ...spec.target, reasoning: { ...UNKNOWN_REASONING_CAPABILITY, levels: ['none'], budget: true, dialect } },
+  });
+  const thought = (tokens: number, tail: string[]) => [...Array.from({ length: tokens }, () => frame({ reasoning_content: 't' })), ...tail];
+  const run = (target: AiRequestSpec, chunks: string[]) =>
+    collect(streamAiRequest(target, { fetchImpl: fetchOf(streamingResponse(chunks)) }));
+
+  afterEach(() => { vi.restoreAllMocks(); });
+
+  it('writes one debug line naming the tokens and the budget', async () => {
+    const debug = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    await run(llamaSpec(3), thought(5, [frame({ content: 'answer' }, 'stop')]));
+    expect(debug).toHaveBeenCalledTimes(1);
+    expect(String(debug.mock.calls[0][0])).toMatch(/5 tokens.*budget of 3/);
+  });
+
+  it('writes the line for a thought the token limit cut', async () => {
+    const debug = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    await run(llamaSpec(3), thought(6, [frame({}, 'length')]));
+    expect(debug).toHaveBeenCalledTimes(1);
+  });
+
+  it('writes nothing for a thought the server ended at its budget', async () => {
+    const debug = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    await run(llamaSpec(3), thought(3, [frame({ content: 'answer' }, 'stop')]));
+    expect(debug).not.toHaveBeenCalled();
+  });
+
+  it('writes nothing for another dialect, whose server may not end the thought', async () => {
+    const debug = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    await run(llamaSpec(3, 'unknown'), thought(5, [frame({ content: 'answer' }, 'stop')]));
+    expect(debug).not.toHaveBeenCalled();
+  });
+});

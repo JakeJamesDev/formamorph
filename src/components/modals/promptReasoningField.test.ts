@@ -52,6 +52,15 @@ describe('promptReasoningFieldProps', () => {
     expect(props?.budget).toBeNull();
   });
 
+  // The strength sizes a llama.cpp budget, so a slider there would move nothing.
+  it('draws no budget slider for a llama.cpp target, which still takes a budget', () => {
+    for (const levels of [['none'], ['none', 'low', 'medium', 'high']] as const) {
+      const props = promptReasoningFieldProps(input({ reasoning: { dialect: 'llamacpp', budget: true, levels: [...levels] } }));
+      expect(props).not.toBeNull();
+      expect(props?.budget).toBeNull();
+    }
+  });
+
   it('builds the budget slider with its tokens from the endpoint Max Output', () => {
     const onBudgetChange = vi.fn();
     const props = promptReasoningFieldProps(input({ reasoning: { dialect: 'lmstudio', budget: true }, maxTokens: 1000, budgetPct: 80, onBudgetChange }));
