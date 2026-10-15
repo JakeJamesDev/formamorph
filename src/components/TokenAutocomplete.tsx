@@ -6,6 +6,7 @@ import { Chip, SortableChip, splitPastedChips, replaceChipValue } from "./Chip";
 import { EditableChip } from "./EditableChip";
 import { SuggestionList } from "./SuggestionList";
 import { rankTagSuggestions } from "@/lib/tagSuggest";
+import { useSuggestionKeys } from "@/lib/useSuggestionKeys";
 
 const SUGGESTION_LIMIT = 50;
 const NO_MODIFIERS: never[] = [];
@@ -149,32 +150,28 @@ export function TokenAutocomplete({ values, onChange, options, placeholder, aria
     onChange(arrayMove(values, oldIndex, newIndex));
   };
 
+  // Tab accepts like Enter, but only once something is typed, so tabbing across the form past an
+  // openOnFocus field deposits nothing. Beside a pill the input is empty however full the value is, so the
+  // pill itself is what says nothing has been typed.
+  const suggestionKeys = useSuggestionKeys({
+    count: suggestions.length,
+    setActive,
+    onEnter: () => commit(open && suggestions[active] ? suggestions[active] : query),
+    onTab: () => commit(suggestions[active]),
+    tabAccepts: open && !!suggestions[active] && !pill && !!query.trim(),
+    onEscape: () => setOpen(false),
+    onArrowDown: () => setOpen(true),
+  });
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    // Ignore Enter while an IME composition is open — Android keyboards fire it mid-word.
-    if (e.key === "Enter" && !e.nativeEvent.isComposing) {
-      e.preventDefault();
-      commit(open && suggestions[active] ? suggestions[active] : query);
-    } else if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setOpen(true);
-      setActive((a) => Math.min(a + 1, suggestions.length - 1));
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setActive((a) => Math.max(a - 1, 0));
-    } else if (e.key === "Tab" && !e.shiftKey && open && suggestions[active] && !pill && query.trim()) {
-      // Tab accepts like Enter — but only once something is typed, so tabbing across the form past an
-      // openOnFocus field deposits nothing. Shift+Tab always just leaves. Beside a pill the input is empty
-      // however full the value is, so the pill itself is what says nothing has been typed.
-      e.preventDefault();
-      commit(suggestions[active]);
-    } else if (e.key === "Backspace" && !single && !text && values.length) {
+    // Shift+Tab always just leaves.
+    if (e.key === "Tab" && e.shiftKey) return;
+    if (suggestionKeys(e)) return;
+    if (e.key === "Backspace" && !single && !text && values.length) {
       remove(values[values.length - 1]);
     } else if (e.key === "Backspace" && pill) {
       // The input beside a pill is always empty, so Backspace there clears the pill — the same gesture the
       // chip row answers to.
       onChange([]);
-    } else if (e.key === "Escape") {
-      setOpen(false);
     }
   };
 
