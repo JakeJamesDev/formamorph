@@ -200,3 +200,4 @@ Open edges from ticket 11:
 - `STAT_CODE_EXECUTION` and `STAT_CODE_UNKNOWN_NAME` keep section `stats`, so trait and world script failures group under Stats; each item still opens its own tab.
 - `checkStatCode`, `runStatCodeCheck` and the `StatCodeCheck` component still say stat code.
 - Disabled stat rows: the Scripts tab dims a disabled stat's script row at 50% (Q52). Whether an "Off" meta text joins it, and whether the Stats tab's own rows get the same marker, is the user's design call.
+- The stat-move readers (`statMoveReaders.ts`) skip world scripts, so a stat move does not see a world script that reads it (ticket 16).

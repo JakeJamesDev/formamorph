@@ -32,3 +32,5 @@ From ticket 05: the Variable menu does not list `trait`; add it for the When a T
 From ticket 03 (landed as 10a939ef95): `worldEditor.scripts` maps to `World-Editor-Stats#dynamic-value-calculation` in `surfaceMap.ts` until a Scripts tab docs section exists, and the tab's ? opens topic `worldEditor.statCode`. Give the tab its own docs section and topic, and point both at it.
 
 From ticket 11: the editor underlines `player`, `narration` and `trait` as errors in every box, so Test Code reports "2 errors in this code" beside a run that works. Add each name to its timing's surface: `player` in every timing but During AI Output, `narration` in During AI Output, `trait` in When a Trait Switches.
+
+From ticket 16: the `self` hover card in a world script still reads as a stat (the `selfIs` check in `statCodeResolver.ts`). A world script has no `self` group in the Variable menu (Q51); the hover card should match, or say the script is a world script.
