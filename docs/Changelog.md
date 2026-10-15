@@ -18,6 +18,9 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **👤 User-facing**
   - **Scripts:**
+    - **Stats, traits and the world now hold Scripts: code boxes with a timing, replacing a stat's two code tabs.** Add Script adds a box; its dropdown picks Before the AI, After the AI, During AI Output, At Game Start or When a Trait Switches. A trait's scripts run only while it is active. Old code loads as scripts.
+    - **The World Editor's Scripts tab lists every script by timing in run order and edits it in place.** Drag a script within its timing to set the order. Add Script there makes a world script that belongs to no stat or trait. A link jumps to the script's owner.
+    - **A script with the When a Trait Switches timing runs when a trait turns on or off in play.** A trait's own script sees its switches, its switch-off included. A stat or world script runs on every switch and reads `trait`, with `enabled` as the new state. Setup picks and loading a save fire nothing.
     - **A world option, Strip Links And Images, sends past narration without markdown links and images.** A link becomes its text and an image goes. It covers the last story, memory digests, diary entries and recall results, never your authored text. New worlds start with it on; older worlds keep it off.
     - **A script with the At Game Start timing runs once before a new game's opening.** Its writes shape the opening prompt. Loading a save never runs it, and a regenerated page one on a save skips it.
     - **A During AI Output script rewrites each narration sentence as it completes.** Assign `narration.sentence` or return a string. The reveal, read-aloud, save and next request all carry the rewrite. Stat writes sum across sentences and land with the After batch.

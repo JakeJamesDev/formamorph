@@ -1,6 +1,7 @@
 # Spec: Scripts
 
-Status: ready-for-agent
+Status: done
+Status note: Closed on 2026-10-15. Tickets 01–16 landed; the last landing is 4f99507be. Closed red: the full test run timed out in 18 files under load from parallel sessions (33 timeouts, 382 s); typecheck, lint and build were green, and the 18 files pass alone (420 tests, 53 s).
 Spec session: scripts — spec
 
 ## Problem Statement
