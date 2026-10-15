@@ -54,6 +54,7 @@ Settled in the grill on 2026-10-14. Research: `docs-internal/notes/multi-endpoin
 14. **Q14 Old llama.cpp builds.** A build that ignores `reasoning_budget_tokens` falls back to the `max_tokens` cut. Nothing tells the player; the debug log records it.
 15. **Q15 Full ladder.** Minimal 128, Extra High 8,192, Max 16,384, exactly as LiteLLM.
 16. **Q16 llama.cpp levels (user, via ticket 03).** `/props` answers `levels: ['none']` on a template without effort support, since llama.cpp takes `none` on every template. The record is then not ruled out, so Q5's off and the room go out before any reply proves reasoning. The switch shows on those templates, with Model Default as the only strength. Known cost: a llama.cpp model that never thinks also gets the room in its `max_tokens` and context reserve.
+17. **Q17 llama.cpp off everywhere (user, via ticket 03).** When reasoning is engaged nowhere, a llama.cpp target still sends `reasoning_effort: "none"`, not `reasoning_budget_tokens: 0`. Other dialects and plain endpoints keep today's bodies. Ticket 06.
 
 ## User Stories
 
