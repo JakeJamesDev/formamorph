@@ -13,6 +13,17 @@ llama.cpp gets its own dialect row. The `/props` capability source names it. The
 
 Spec: Q5, Q6, Q12, Q14; stories 3, 4, 14, 23, 27, 28. Research: `docs-internal/notes/multi-endpoint-reasoning/providers.md`, llama.cpp section.
 
+## Wire facts
+
+Read from llama.cpp master source on 2026-10-14 (the server's common request parser); the field is not in the README.
+
+- The server reads `reasoning_budget_tokens` and falls back to `thinking_budget_tokens`. The `unknown` row already writes `thinking_budget_tokens`, so the field works today; it never goes out only because the llama.cpp record answers `budget: null`. The new row may keep either spelling.
+- `-1` means "use the server's `--reasoning-budget`". Never send it.
+- The budget applies only when the loaded template has thinking end tags. On other templates the server ignores it silently.
+- At the budget the server injects `reasoning_budget_message` (none by default) before the end tag, then the model answers.
+- Builds from 2026-04-14 on have the per-request budget. Older builds ignore it (Q14).
+- `reasoning_effort: "none"` disables thinking on any template.
+
 ## Acceptance criteria
 
 - [ ] Director at Low on llama.cpp sends `reasoning_budget_tokens` 1,024 and `max_tokens` = Answer Cap + 1,024
