@@ -87,6 +87,7 @@ import { toastError } from '@/lib/linkToast';
 import { ThemedToastContainer } from '@/components/ThemedToastContainer';
 import 'react-toastify/dist/ReactToastify.css';
 import { useWorldStatsAdapter } from '../managers/useWorldStatsAdapter';
+import { useWorldScriptsAdapter } from '../managers/useWorldScriptsAdapter';
 import { useWorldEntitiesAdapter } from '../managers/useWorldEntitiesAdapter';
 import { useWorldLocationsAdapter } from '../managers/useWorldLocationsAdapter';
 import { useWorldDictionaryAdapter } from '../managers/useWorldDictionaryAdapter';
@@ -961,6 +962,9 @@ const WorldEditorInner = ({
     onTabChange: setStatTab, focusField: findField,
   });
   const statsParts = useListEditor(statsAdapter, { selectedId: selections.stats ?? null, onSelect: selectStat, search });
+  const selectScript = useCallback((id: string | null) => select('scripts', id), [select]);
+  const scriptsAdapter = useWorldScriptsAdapter({ selectedId: selections.scripts ?? null, onSelect: selectScript });
+  const scriptsParts = useListEditor(scriptsAdapter, { selectedId: selections.scripts ?? null, onSelect: selectScript, search });
   // The entity panel's tab and its trait and placeholder rows live here, so a new entity keeps them.
   const selectEntity = useCallback((id: string | null) => select('entities', id), [select]);
   const entitiesEditor = useWorldEntitiesAdapter({
@@ -1020,7 +1024,7 @@ const WorldEditorInner = ({
   // The active tab's List Editor parts, on a tab that runs on it.
   const partsByTab: Partial<Record<string, ListEditorParts>> = {
     traits: traitsParts, placeholders: placeholdersParts, stats: statsParts,
-    entities: entitiesParts, locations: locationsParts, dictionary: dictionaryParts,
+    entities: entitiesParts, locations: locationsParts, dictionary: dictionaryParts, scripts: scriptsParts,
   };
   const listEditorParts = partsByTab[activeTab] ?? null;
   const adaptersByTab: Partial<Record<RevealTab, { holds: (id: string) => boolean }>> = {

@@ -15,6 +15,8 @@ import { codeAt } from '@/test/scriptFixtures';
 import { statCodeNamed } from './statCodeNames';
 import { parseEntityCardData } from './entityFile';
 import { clamp } from './utils';
+import { newScript } from './scriptRows';
+import { editScripts, orderEdits, reorderWrites, scriptsByTiming, worldScriptEntries } from './worldScripts';
 
 const NO_PERSONA: PersonaRef = { source: 'none' };
 
@@ -24,7 +26,7 @@ const stat = (over: Partial<PlayerStat>): PlayerStat => ({
 
 /** One turn of `world` at `timing`, every entity with stats running beside the global stats, as play runs it.
  *  The lists `loadWorldData` defaults after the migration default here too. */
-function playTurn(migrated: World, timing: 'before' | 'after') {
+function playTurn(migrated: World, timing: 'before' | 'after' | 'start') {
   const world = { ...migrated, entities: migrated.entities ?? [], traits: migrated.traits ?? [] };
   const atStart = (stats: readonly Stat[]): PlayerStat[] => stats.map((s) => ({ ...s, value: s.starting ?? s.value ?? s.min }));
   const ownerTraits: StatCodeOwners = {
@@ -234,6 +236,14 @@ describe('run order within a timing', () => {
     expect(await health(world())).toBe(1);
   });
 
+  it('follows a Scripts tab drag: the script dragged last wins the shared write', async () => {
+    const w = world();
+    const rows = scriptsByTiming(worldScriptEntries({ ...w, statGroups: [], traits: [], traitGroups: [], entities: [], placeholders: [] })).after;
+    expect(rows.map((row) => row.script.id)).toEqual(['w-s', 'mp-s']);
+    const dragged = editScripts({ ...w, traits: [], entities: [] }, orderEdits(reorderWrites(rows, rows[0].key, rows[1].key)!));
+    expect(await health({ ...w, ...dragged })).toBe(2);
+  });
+
   it('runs a world script with an empty self, ignoring a self write and a return value', async () => {
     const w = migrateWorld({
       worldOverview: { name: 'No Self' },
@@ -245,6 +255,17 @@ describe('run order within a timing', () => {
     });
     const out = await playTurn(w, 'after');
     expect(out.stats.find((s) => s.id === 'hp')).toMatchObject({ value: 7, max: 100 });
+  });
+
+  it('runs a world script the Scripts tab adds in its picked timing, with self and owner empty', async () => {
+    const added = { ...newScript('start'), code: [
+        // The empty owner is a blank entry, as a global stat's is: no name, no stats, no traits.
+        'const empty = !Object.keys(self).length && owner.name === "" && !Object.keys(owner.stats).length && !Object.keys(owner.traits).length;',
+        'stats.Health.value = empty ? 7 : 8;',
+      ].join('\n') };
+    const w = migrateWorld({ worldOverview: { name: 'Added' }, stats: [stat({ id: 'hp', name: 'Health', value: 50 })], scripts: [added] });
+    expect((await playTurn(w, 'start')).stats.find((s) => s.id === 'hp')?.value).toBe(7);
+    expect(await health(w)).toBe(50);
   });
 
   it('runs a world script only in its own timing', async () => {
