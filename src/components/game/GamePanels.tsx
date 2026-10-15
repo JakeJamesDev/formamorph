@@ -7,7 +7,8 @@ import { useSettings } from '@/contexts/SettingsContext';
 import { templateChipKeys } from '@/lib/promptTemplate';
 import { useSentenceHighlight } from '@/lib/useSentenceHighlight';
 import { findEntityNames, resolveEntityByName } from '@/lib/entityMatch';
-import { clearTurnDerived } from '@/lib/turnDigest';
+import { clearTurnDerived, parseTurnContent } from '@/lib/turnDigest';
+import { narrationOf } from '@/lib/aiResponse';
 import { usePlayerModelUrl } from '@/lib/usePlayerModelUrl';
 import { mergeBodyMorphs } from '@/lib/bodyMorphs';
 import { useIsMobile } from '@/lib/useIsMobile';
@@ -701,16 +702,9 @@ export const MiddlePanel = ({
 
   // The viewed page's narration: the editor's text when no action row opened it.
   const currentAssistantMessage = displayedMessages.find(m => m.role === 'assistant');
-  let currentPageText = gameplayText;
-  if (currentAssistantMessage) {
-    try {
-      // Read the current `narration` field, falling back to legacy `game_text` (pre-rename saves).
-      const parsed = JSON.parse(currentAssistantMessage.content);
-      currentPageText = parsed.narration ?? parsed.game_text ?? currentAssistantMessage.content;
-    } catch {
-      currentPageText = currentAssistantMessage.content;
-    }
-  }
+  const currentPageText = currentAssistantMessage
+    ? narrationOf(currentAssistantMessage.content) ?? currentAssistantMessage.content
+    : gameplayText;
 
   // A turn's Edit and Rewind to Here target that turn's own page, never the viewed one.
   // Each request-sending action names where it goes.
@@ -1061,8 +1055,8 @@ export const MiddlePanel = ({
                 if (messageIndex < updatedHistory.length) {
                   const message = updatedHistory[messageIndex];
                   if (message.role === 'assistant') {
-                    try {
-                      const content = JSON.parse(message.content);
+                    const content = parseTurnContent(message.content);
+                    if (content) {
                       editedTurnId = content.turnId;
                       updatedHistory[messageIndex] = {
                         role: 'assistant',
@@ -1073,7 +1067,7 @@ export const MiddlePanel = ({
                           entities: findEntityNames(text, entities)
                         })
                       };
-                    } catch {
+                    } else {
                       // If parsing fails, create new content object
                       updatedHistory[messageIndex] = {
                         role: 'assistant',
@@ -1108,8 +1102,8 @@ export const MiddlePanel = ({
                 const updatedMessages = [...prev];
                 const assistantMessageIndex = updatedMessages.findIndex(m => m.role === 'assistant');
                 if (assistantMessageIndex !== -1) {
-                  try {
-                    const content = JSON.parse(updatedMessages[assistantMessageIndex].content);
+                  const content = parseTurnContent(updatedMessages[assistantMessageIndex].content);
+                  if (content) {
                     updatedMessages[assistantMessageIndex] = {
                       role: 'assistant',
                       content: JSON.stringify({
@@ -1117,7 +1111,7 @@ export const MiddlePanel = ({
                         narration: text
                       })
                     };
-                  } catch {
+                  } else {
                     updatedMessages[assistantMessageIndex] = {
                       role: 'assistant',
                       content: JSON.stringify({

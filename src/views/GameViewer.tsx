@@ -83,7 +83,7 @@ import WorldEditor, { type EditorExit } from "./WorldEditor";
 import type { CharacterData, ChatMessage, ChatRole, ImageAttachment, AIRequestType, AITurnResult, GameLocation, MediaAsset, Dictionary, Entity, EntityStatValues, SaveRecord, World, PlayerStat, Trait, PersonaRef, OwnedTraitPicks, OwnedTraitStates } from "@/types";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars, estimateTokens } from "../lib/memoryUtils";
-import { parseNarration, stripReasoning, stripReasoningLive, extractReasoning, extractReasoningLive } from "../lib/aiResponse";
+import { narrationOf, storyText, stripReasoningLive, extractReasoning, extractReasoningLive } from "../lib/aiResponse";
 import { setLiveReasoning, getLiveReasoning } from "../lib/reasoningStreamStore";
 import { activeCharacterGuidance } from "../components/game/GamePrompts";
 import {
@@ -1331,11 +1331,7 @@ const GameViewer = ({
     else openSurfaceHere(steps);
   });
   const exportStory = (format: 'txt' | 'md') => {
-    const story = fullMessageHistory
-      .filter((m) => m.role === 'assistant')
-      .map((m) => stripReasoning(parseNarration(m.content)).trim())
-      .filter((text) => text && text !== 'No narration available')
-      .join('\n\n');
+    const story = storyText(fullMessageHistory);
     const type = format === 'md' ? 'text/markdown' : 'text/plain';
     const slug = (worldOverview?.name || "world").replace(/[^a-z0-9]+/gi, "-").toLowerCase();
     downloadBlob(new Blob([story], { type }), `story-${slug}.${format}`);
@@ -2518,7 +2514,7 @@ const GameViewer = ({
         // both the plan sanitizer and each scene-list row's reveal state).
         priorNarration = fullMessageHistory
           .filter((m) => m.role === "assistant")
-          .map((m) => parseNarration(m.content))
+          .map((m) => narrationOf(m.content) ?? "")
           .join("\n");
 
         // Track the assembled system-prompt size for the memory-usage breakdown
@@ -3164,16 +3160,8 @@ const GameViewer = ({
     // closure-agnostic: it lands on the prior assistant whether or not this turn's user message is in the
     // current render's history snapshot (it is in abortGeneration, isn't yet inside sendGameAction).
     const lastAssistant = [...fullMessageHistory].reverse().find((m) => m.role === "assistant");
-    let restored: string[] = [];
-    if (lastAssistant) {
-      try {
-        const parsed = JSON.parse(lastAssistant.content);
-        if (Array.isArray(parsed.choices)) restored = parsed.choices;
-      } catch {
-        restored = [];
-      }
-    }
-    setChoices(restored);
+    const restored = lastAssistant ? parseTurnContent(lastAssistant.content)?.choices : undefined;
+    setChoices(Array.isArray(restored) ? [...restored] : []);
   };
 
   // Function to abort ongoing AI generation
@@ -4339,7 +4327,7 @@ const GameViewer = ({
   useLoopingAudio(ambientSound?.data);
 
   // Extract the displayed narration from an assistant message (see lib/aiResponse).
-  const parseAssistantMessage = parseNarration;
+  const parseAssistantMessage = (content: string) => narrationOf(content) ?? "";
 
   // Status line shown above the input while a turn is being generated, naming the current AI
   // request (Narration / Choices / Stat Updates / Location) so the player knows what's processing.

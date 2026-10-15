@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { APP_VERSION, isSaveEnvelope, migrateLegacySaveState, migrateSave } from './version';
 import { DEFAULT_AVATAR_ID } from './defaultAvatar';
-import { parseNarration } from './aiResponse';
+import { narrationOf } from './aiResponse';
 import { appendCurrentToHistory, rollbackState } from './turnHistory';
 import type { GameState, SaveObject } from '@/types';
 
@@ -74,9 +74,9 @@ describe('v1.2 save-load compatibility', () => {
 
   it('parses legacy game_text assistant messages as narration (not raw JSON)', () => {
     const assistant = v12Save.currentState.fullMessageHistory.find((m) => m.role === 'assistant');
-    const narration = parseNarration(assistant!.content);
+    const narration = narrationOf(assistant!.content);
     expect(narration).toBe('You awaken in Magiterra Nova.\n\n\tNearby Characters:\n\t\tNone');
-    expect(narration.startsWith('{')).toBe(false);
+    expect(narration?.startsWith('{')).toBe(false);
   });
 });
 
