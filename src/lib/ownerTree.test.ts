@@ -2,7 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { applyOwnerTreeDrop, buildOwnerTree, linksCarried, ownerTreeDropProjection, ownerTreeRows, rowsBelow } from './ownerTree';
 import { traitDropRules, traitTreeSource, type TraitDropRuleOptions, type TraitTreeOptions } from './traitTree';
 import { blueprintsSubtreeIds } from './blueprintGroups';
-import type { Entity, Trait, TraitGroup, TraitLink } from '@/types';
+import { statDropRules, statTreeSource } from './ownedStatTree';
+import type { StatReaderWorld } from './statMoveReaders';
+import type { Entity, Stat, StatGroup, StatLink, Trait, TraitGroup, TraitLink } from '@/types';
 
 const group = (id: string, parentId: string | null, order: number): TraitGroup => ({ id, name: id, parentId, order });
 const trait = (id: string, groupId: string | null, order: number): Trait => ({ id, name: id, statChanges: [], groupId, order });
@@ -142,9 +144,56 @@ describe('applyOwnerTreeDrop', () => {
     expect(out?.entities[0].traitLinks).toEqual([{ ...link('new', 'tmpl'), groupId: null, order: 1 }]);
   });
 
+  it('reports the dragged row\'s id after the drop', () => {
+    expect(moved(drop(world, [ash, bob], 'gruff', 'pack', 0))?.rowId).toBe('gruff');
+    expect(moved(drop(withBlueprints, [bob], 'tmpl', 'gruff', 0, { newLinkId: () => 'new' }))?.rowId).toBe('new');
+  });
+
   it('keeps a hidden empty Blueprints group after its reindexed siblings', () => {
     const lists = { ...world, traitGroups: [...world.traitGroups, { ...blueprints, order: 0 }] };
     const out = moved(drop(lists, [], 'loner', 'class', 0, { emptySystemNodes: false }));
     expect(out?.world?.groups.map((g) => [g.id, g.order])).toEqual([['class', 1], ['bp', 2]]);
+  });
+});
+
+describe('the owner-tree engine with the stat adapter', () => {
+  const stat = (id: string, groupId: string | null, order: number): Stat => ({
+    id, name: id, type: 'number', description: '', min: 0, max: 100, value: 10, regen: 0, descriptors: [], groupId, order,
+  });
+  const statBlueprints: StatGroup = { id: 'sbp', name: 'Blueprints', parentId: null, order: 1, system: 'blueprints' };
+  const lists = { stats: [stat('luck', null, 0), stat('trust', 'sbp', 0)], statGroups: [statBlueprints] };
+  const statLink: StatLink = { id: 'l1', originalId: 'trust', kind: 'stat', originalName: 'trust', groupId: null, order: 1 };
+  const cy: Entity = { id: 'cy', name: 'Cy', stats: [stat('grit', null, 0)], statLinks: [statLink] };
+  const dee: Entity = { id: 'dee', name: 'Dee', stats: [stat('nerve', null, 0)] };
+  const statDrop = (entities: Entity[], activeId: string, overId: string, dragOffset: number, createLinks = true) => {
+    const w: StatReaderWorld = { ...lists, traits: [], traitGroups: [], entities };
+    return applyOwnerTreeDrop(
+      statTreeSource(w, entities), statDropRules(w, { createLinks, newLinkId: () => 'new' }), [], activeId, overId, dragOffset, 24,
+    );
+  };
+  const moved = (out: ReturnType<typeof statDrop>) => (out?.kind === 'moved' ? out : null);
+
+  it('names an entity\'s rows by entity and records each owner and link row', () => {
+    const t = buildOwnerTree(statTreeSource(lists, [cy]));
+    expect(ownerTreeRows(t, []).map((r) => r.id)).toEqual(['luck', 'sbp', 'trust', 'cy', 'cy/grit', 'cy/l1']);
+    expect(t.ownerOf.get('cy/grit')).toBe('cy');
+    expect(t.linkRows.get('cy/l1')).toMatchObject({ entityId: 'cy', root: true, originalId: 'trust' });
+  });
+
+  it('writes an entity row that joins the world under its own id, in tree order', () => {
+    const out = moved(statDrop([cy], 'cy/grit', 'luck', 0));
+    expect(out?.world?.leaves.map((s) => [s.id, s.groupId, s.order])).toEqual([['grit', null, 0], ['luck', null, 1], ['trust', 'sbp', 0]]);
+    expect(out?.rowId).toBe('grit');
+  });
+
+  it('writes a world row that joins an entity under its own id, and names its new row by entity', () => {
+    const out = moved(statDrop([dee], 'luck', 'dee/nerve', 24));
+    expect(out?.entities[0].stats?.map((s) => [s.id, s.groupId])).toEqual([['nerve', null], ['luck', null]]);
+    expect(out?.rowId).toBe('dee/luck');
+  });
+
+  it('names a new link\'s row by entity, and writes nothing with link creation off', () => {
+    expect(moved(statDrop([dee], 'trust', 'dee/nerve', 24))?.rowId).toBe('dee/new');
+    expect(statDrop([dee], 'trust', 'dee/nerve', 24, false)).toBeNull();
   });
 });
