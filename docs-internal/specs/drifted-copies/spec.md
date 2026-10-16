@@ -1,7 +1,7 @@
 # Spec: Drifted Copies
 
 Status: done
-Status note: Closed 2026-10-15. Tickets 01–19 done; last landing bc0baf847. Closed without gates.
+Status note: Closed 2026-10-15. Tickets 01–19 done; last landing bc0baf847. Closed without gates; gates green on main on 2026-10-16.
 Spec session: drifted-copies — spec
 
 ## Problem Statement
