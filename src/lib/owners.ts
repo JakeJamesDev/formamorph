@@ -3,8 +3,8 @@
 
 import type { Entity, PersonaRef, Trait, TraitGroup, TraitLink, TreePlacement, TraitRequirement } from '@/types';
 import { NO_ACTIVE, type GateInput, type GateOwner, type GateTree } from './traitGates';
-import { effectivePlacement, groupsBelow, offeredWorldTraits, ownsTraits, placeableGroupIds } from './traitTree';
-import { buildTree, flattenTree } from './groupTree';
+import { groupsBelow, offeredWorldTraits, ownsTraits } from './traitTree';
+import { nodePlacement, ownerLinksInTreeOrder, placeableGroupIds } from './ownerTree';
 import { effectiveLinkTrait } from './blueprints';
 import type { HeldReason } from './heldReasons';
 
@@ -138,11 +138,8 @@ function expandLinks(world: OwnerWorld, links: readonly TraitLink[]) {
 }
 
 /** An entity's links in its tree's order: by place among its own groups, then by order. */
-export function linksInTreeOrder(entity: Entity, links: readonly TraitLink[] = entity.traitLinks ?? []): TraitLink[] {
-  const byId = new Map(links.map((l) => [l.id, l]));
-  const leaves = links.map((l) => ({ id: l.id, name: '', groupId: l.groupId, order: l.order }));
-  return flattenTree(buildTree(entity.traitGroups ?? [], leaves)).flatMap((row) => byId.get(row.id) ?? []);
-}
+export const linksInTreeOrder = (entity: Entity, links: readonly TraitLink[] = entity.traitLinks ?? []): TraitLink[] =>
+  ownerLinksInTreeOrder(entity.traitGroups ?? [], links);
 
 /** An entity's owner tree: its own items with its links expanded among them. A link to a root item the root
  *  also holds stays: each holds it apart (Q17). The Custom Persona entity's tree is the player's under a
@@ -211,7 +208,7 @@ export function resolveOwners(
   const libraryOwners = library.filter(ownsOrLinksTraits).map((e) => entityOwner(world, e, persona, e.id === played, true));
   const owners = [...worldOwners, ...libraryOwners];
   const global = globalTree(world, persona);
-  const placementOf = new Map(world.entities.map((e) => [e.id, effectivePlacement(e, placeable)?.groupId ?? null]));
+  const placementOf = new Map(world.entities.map((e) => [e.id, nodePlacement(e.traitPlacement, e, placeable)?.groupId ?? null]));
   return {
     global,
     owners,
@@ -239,7 +236,7 @@ export function editorGateInput(world: OwnerWorld, stats?: GateInput['stats']): 
   return {
     ...gate,
     global: whole,
-    owners: owners.map((o) => gateOwner(o, effectivePlacement(o.entity, placeable)?.groupId ?? null)),
+    owners: owners.map((o) => gateOwner(o, nodePlacement(o.entity.traitPlacement, o.entity, placeable)?.groupId ?? null)),
     active: NO_ACTIVE,
     ...(stats ? { stats } : {}),
   };

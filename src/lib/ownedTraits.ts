@@ -7,16 +7,15 @@ import { newTrait } from './blankWorld';
 import type { GateInput, GateOwner } from './traitGates';
 import { mapConditions } from './requirementRows';
 import { hasImageRules, withImageRules } from './entityImages';
-import { effectivePlacement, offeredWorldTraits, ownsTraits, placeableGroupIds } from './traitTree';
+import { offeredWorldTraits, ownsTraits } from './traitTree';
+import { nodePlacement, placeableGroupIds, withEntityLists } from './ownerTree';
 
 const traitsOf = (entity: Entity): Trait[] => entity.traits ?? [];
 const groupsOf = (entity: Entity): TraitGroup[] => entity.traitGroups ?? [];
 
 /** The entity with its owned lists replaced. An empty list is stored as absent. */
-export function withOwnedTraits(entity: Entity, traits: Trait[], groups: TraitGroup[]): Entity {
-  const { traits: _t, traitGroups: _g, ...rest } = entity;
-  return { ...rest, ...(traits.length ? { traits } : {}), ...(groups.length ? { traitGroups: groups } : {}) };
-}
+export const withOwnedTraits = (entity: Entity, traits: Trait[], groups: TraitGroup[]): Entity =>
+  withEntityLists(entity, { traits, traitGroups: groups });
 
 /** How many items sit at the entity's root: owned traits and groups, and links. */
 export const rootCount = (entity: Entity): number =>
@@ -55,8 +54,7 @@ export function removeOwnedItem(entity: Entity, id: string): Entity {
     const { name: _name, ...rest } = placed.get(l.id) as TraitLink & { name: string };
     return rest as TraitLink;
   });
-  const { traitLinks: _links, ...rest } = withOwnedTraits(entity, traits, next.groups);
-  return { ...rest, ...(moved.length ? { traitLinks: moved } : {}) };
+  return withEntityLists(entity, { traits, traitGroups: next.groups, traitLinks: moved });
 }
 
 /** The writes a trait store over one entity makes, each through `edit` on that entity. */
@@ -125,7 +123,7 @@ export function traitOwners(
   return {
     global: keepBlueprints ? { traits: world.traits, groups: world.traitGroups } : offeredWorldTraits(world.traits, world.traitGroups),
     owners: [
-      ...world.entities.filter(ownsTraits).map((e) => owner(e, effectivePlacement(e, placeable)?.groupId ?? null)),
+      ...world.entities.filter(ownsTraits).map((e) => owner(e, nodePlacement(e.traitPlacement, e, placeable)?.groupId ?? null)),
       ...library.filter(ownsTraits).map((e) => owner(e, null)),
     ],
   };

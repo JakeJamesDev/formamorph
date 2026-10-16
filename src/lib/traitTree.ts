@@ -7,14 +7,13 @@ import {
   removeChildrenOf as removeChildrenOfGeneric, isDescendantGroup as isDescendantGroupGeneric,
   type GroupTreeNode, type FlatTreeNode,
 } from './groupTree';
-import type { Entity, StatChange, Trait, TraitGroup, TraitLink, TreePlacement } from '@/types';
+import type { Entity, StatChange, Trait, TraitGroup, TraitLink } from '@/types';
 import { xmlEscape } from './utils';
 import { blueprintsGroup, blueprintsSubtreeIds, groupsBelow } from './blueprintGroups';
 import { ownsOrLinksTraits, heldReason, makeLink, originalOf, resolveOwners } from './owners';
 import type { HeldReason } from './heldReasons';
 import {
-  applyOwnerTreeDrop, buildOwnerTree, linksCarried, nodePlacement, ownerTreeDropProjection, ownerTreeRows,
-  placeableGroupIds as placeableIdsOf,
+  applyOwnerTreeDrop, buildOwnerTree, linksCarried, ownerTreeDropProjection, ownerTreeRows, withEntityLists,
   type OwnerTree, type OwnerTreeDrop, type OwnerTreeDropRules, type OwnerTreeSource,
 } from './ownerTree';
 import { traitReaderOutsideBlueprints, type TraitReader, type TraitReaderWorld } from './traitMoveReaders';
@@ -122,15 +121,6 @@ export function offeredWorldTraits<T extends Trait, G extends TraitGroup>(
   };
 }
 
-/** The world groups an entity node can sit in: every one outside Blueprints. */
-export const placeableGroupIds = (groups: readonly TraitGroup[]): Set<string> => placeableIdsOf(groups, blueprintsSubtreeIds);
-
-export { nodePlacement };
-
-/** The entity node's place in the Traits tree; see {@link nodePlacement}. */
-export const effectivePlacement = (entity: Entity, placeableIds: ReadonlySet<string>): TreePlacement | null =>
-  nodePlacement(entity.traitPlacement, entity, placeableIds);
-
 type WorldTraitLists = { traits: readonly Trait[]; traitGroups: readonly TraitGroup[] };
 
 /** Whether a world group holds a trait or a group directly. */
@@ -173,7 +163,6 @@ export function traitTreeSource(
     groups: world.traitGroups, leaves: world.traits,
     entities: entities.filter(hasNode), library: library.filter(hasNode),
     placement: (e) => e.traitPlacement,
-    blueprintsSubtreeIds,
     nodeGroup: (e, parentId, order) => ({ id: e.id, name: e.name, parentId, order }),
     pushRows: (tree, entity) => {
       const ownGroupIds = new Set((entity.traitGroups ?? []).map((g) => g.id));
@@ -305,7 +294,7 @@ export const ownedTraitRows = (tree: OwnedTraitTree, collapsedIds: Iterable<stri
 export const getOwnedTraitDropProjection = (
   tree: OwnedTraitTree, items: FlatTraitNode[], activeId: string, overId: string, dragOffset: number, indentationWidth: number,
 ): DropProjection | null =>
-  ownerTreeDropProjection(toOwnerTree(tree), blueprintsSubtreeIds, items, activeId, overId, dragOffset, indentationWidth);
+  ownerTreeDropProjection(toOwnerTree(tree), items, activeId, overId, dragOffset, indentationWidth);
 
 /** Where a drag in a one-entity tree would land. Nothing lands inside a link's rows, which are its original's. */
 export function getEntityRootDropProjection(
@@ -351,15 +340,8 @@ export function applyEntityRootDrop(
 }
 
 /** The entity with its three lists replaced. An empty list is stored as absent. */
-export function withOwnedLists(entity: Entity, traits: Trait[], traitGroups: TraitGroup[], traitLinks: TraitLink[]): Entity {
-  const { traits: _t, traitGroups: _g, traitLinks: _l, ...rest } = entity;
-  return {
-    ...rest,
-    ...(traits.length ? { traits } : {}),
-    ...(traitGroups.length ? { traitGroups } : {}),
-    ...(traitLinks.length ? { traitLinks } : {}),
-  };
-}
+export const withOwnedLists = (entity: Entity, traits: Trait[], traitGroups: TraitGroup[], traitLinks: TraitLink[]): Entity =>
+  withEntityLists(entity, { traits, traitGroups, traitLinks });
 
 /** What the owner node already holds that blocks a link to the original; null when it can link. */
 export function linkHeldReason(

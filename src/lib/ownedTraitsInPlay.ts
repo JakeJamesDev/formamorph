@@ -11,7 +11,7 @@ import { INITIAL_SOURCE_TURN_ID } from './runtimeCharacters';
 import { defaultPicks, exclusiveSiblings, inAuthoredOrder, traitOrderIndex } from './traitEffects';
 import type { GateInput, GateOwner } from './traitGates';
 import type { OwnerId } from './scope';
-import { effectivePlacement, placeableGroupIds } from './traitTree';
+import { nodePlacement, placeableGroupIds } from './ownerTree';
 import { mapPreservingIdentity } from './utils';
 
 /** The entity whose owned traits are the player's own: the played persona's, or null. */
@@ -82,7 +82,7 @@ export function ownerTraitTree(world: OwnerWorld, persona: PersonaRef | undefine
   const libraryIds = new Set(library.map((e) => e.id));
   const placementOf = (b: Owner) => {
     const slot = slotOf(b);
-    return libraryIds.has(slot.id) ? null : effectivePlacement(slot, placeable);
+    return libraryIds.has(slot.id) ? null : nodePlacement(slot.traitPlacement, slot, placeable);
   };
   const rootGroupIds = new Set(global.groups.map((g) => g.id));
   const atRoot = (ref: string | null | undefined) => ref == null || !rootGroupIds.has(ref);

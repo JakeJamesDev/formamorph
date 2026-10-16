@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ownerChoices } from './ownerChoices';
+import { ownerChoices, treeChoices } from './ownerChoices';
 import type { Entity, EntityGroup } from '@/types';
 
 const entity = (id: string, groupId: string | null, order: number, extra: Partial<Entity> = {}): Entity =>
@@ -26,5 +26,17 @@ describe('ownerChoices', () => {
     expect(rows.at(-1)).toEqual({ kind: 'owner', id: 'you', name: 'you', parentId: null, customPersona: true });
     expect(rows.slice(0, -1)).toEqual(ownerChoices(groups, entities));
     expect(rows.slice(0, -1).some((r) => 'customPersona' in r)).toBe(false);
+  });
+});
+
+describe('treeChoices', () => {
+  it('lists any group tree the same way, with no Custom Persona mark by default', () => {
+    const leaves = [{ id: 'gold', name: 'gold', groupId: 'loot', order: 0 }, { id: 'hp', name: 'hp', groupId: null, order: 1 }];
+    const treeGroups = [group('loot', null, 0), group('bare', null, 2)];
+    expect(treeChoices(treeGroups, leaves)).toEqual([
+      { kind: 'group', id: 'loot', name: 'loot', parentId: null },
+      { kind: 'owner', id: 'gold', name: 'gold', parentId: 'loot' },
+      { kind: 'owner', id: 'hp', name: 'hp', parentId: null },
+    ]);
   });
 });

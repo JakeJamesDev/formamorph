@@ -4,12 +4,12 @@
 
 import type { Entity, Script, Stat, StatGroup, StatLink, StatLinkFields, StatLinkOverrides } from '@/types';
 import { effectiveRecord, sameValue, withOverride, withoutOverride, type EffectiveRecord } from './blueprints';
-import { groupsBelow } from './traitTree';
+import { blueprintsGroup, blueprintsSubtreeIds, groupsBelow } from './blueprintGroups';
 import { removeStatGroup, statRootCount, statsInTreeOrder } from './statGroupTree';
-import { buildTree, flattenTree, type TreeLeaf } from './groupTree';
-import type { OwnerChoice } from './ownerChoices';
+import type { TreeLeaf } from './groupTree';
+import { treeChoices, type OwnerChoice } from './ownerChoices';
+import { ownerLinksInTreeOrder, withEntityLists } from './ownerTree';
 import type { HeldReason } from './heldReasons';
-import { ancestors, parentLookup } from './ancestors';
 import { randomUUID } from './uuid';
 import { newStat } from './blankWorld';
 import { regenUnitOf } from './regenUnits';
@@ -29,19 +29,9 @@ export const NO_STAT_WORLD: StatLinkWorld = { stats: [], statGroups: [] };
 
 // ---- The Blueprints group ----
 
-/** The world's Blueprints stat group, when the author added one. */
-export const statBlueprintsGroup = (groups: readonly StatGroup[]): StatGroup | undefined =>
-  groups.find((g) => g.system === 'blueprints');
-
-/** Blueprints and every world stat group below it. Empty without a Blueprints group. */
-export function statBlueprintsSubtreeIds(groups: readonly StatGroup[]): Set<string> {
-  const blueprints = statBlueprintsGroup(groups);
-  return new Set(blueprints ? [blueprints.id, ...groupsBelow(groups as StatGroup[], blueprints.id).map((g) => g.id)] : []);
-}
-
 /** The world stats inside Blueprints. */
 export function statBlueprintIds(world: StatLinkWorld): Set<string> {
-  const inBlueprints = statBlueprintsSubtreeIds(world.statGroups);
+  const inBlueprints = blueprintsSubtreeIds(world.statGroups);
   return new Set(world.stats.filter((s) => s.groupId != null && inBlueprints.has(s.groupId)).map((s) => s.id));
 }
 
@@ -63,7 +53,7 @@ export type StatOriginal = { kind: 'stat'; item: Stat } | { kind: 'group'; item:
 
 /** The original with this id, or null when the id names nothing inside Blueprints. */
 export function statOriginalOf(world: StatLinkWorld, id: string): StatOriginal | null {
-  const inside = statBlueprintsSubtreeIds(world.statGroups);
+  const inside = blueprintsSubtreeIds(world.statGroups);
   const stat = world.stats.find((s) => s.id === id);
   if (stat) return stat.groupId != null && inside.has(stat.groupId) ? { kind: 'stat', item: stat } : null;
   const group = world.statGroups.find((g) => g.id === id);
@@ -72,7 +62,7 @@ export function statOriginalOf(world: StatLinkWorld, id: string): StatOriginal |
 
 /** A Blueprint group's live subtree: the groups below it and every stat in it or below it. */
 function statSubtree(world: StatLinkWorld, group: StatGroup): { groups: StatGroup[]; stats: Stat[] } {
-  const groups = groupsBelow(world.statGroups as StatGroup[], group.id);
+  const groups = groupsBelow(world.statGroups, group.id);
   const ids = new Set([group.id, ...groups.map((g) => g.id)]);
   return { groups, stats: world.stats.filter((s) => s.groupId != null && ids.has(s.groupId)) };
 }
@@ -89,28 +79,18 @@ export function statBroughtIds(world: StatLinkWorld, originalId: string): string
 /** The Blueprint stats and the groups that hold one, as a drill-down flyout's rows in tree order. A row in the
  *  Blueprints group itself sits at the top level. */
 export function statBlueprintChoices(world: StatLinkWorld): OwnerChoice[] {
-  const bp = statBlueprintsGroup(world.statGroups);
+  const bp = blueprintsGroup(world.statGroups);
   if (!bp) return [];
-  const inside = statBlueprintsSubtreeIds(world.statGroups);
+  const inside = blueprintsSubtreeIds(world.statGroups);
   const up = (id: string | null | undefined) => (id === bp.id ? null : id ?? null);
   const groups = world.statGroups.filter((g) => g.id !== bp.id && inside.has(g.id)).map((g) => ({ ...g, parentId: up(g.parentId) }));
   const stats = world.stats.filter((s) => s.groupId != null && inside.has(s.groupId)).map((s) => ({ ...s, groupId: up(s.groupId) }));
-  const holdsStat = new Set<string>();
-  const parentOfGroup = parentLookup(groups, (g) => g.parentId);
-  for (const s of stats) {
-    if (!s.groupId) continue;
-    holdsStat.add(s.groupId);
-    for (const above of ancestors(s.groupId, parentOfGroup)) holdsStat.add(above);
-  }
-  return flattenTree(buildTree(groups, stats)).flatMap((row): OwnerChoice[] => {
-    if (row.leaf) return [{ kind: 'owner', id: row.leaf.id, name: row.leaf.name, parentId: row.parentId }];
-    return row.group && holdsStat.has(row.group.id) ? [{ kind: 'group', id: row.group.id, name: row.group.name, parentId: row.parentId }] : [];
-  });
+  return treeChoices(groups, stats);
 }
 
 /** The world's stats without Blueprints: the global stats. The same list when it holds no Blueprint. */
 export function globalStatsOf<T extends Stat>(stats: T[], groups: readonly StatGroup[]): T[] {
-  const inBlueprints = statBlueprintsSubtreeIds(groups);
+  const inBlueprints = blueprintsSubtreeIds(groups);
   if (!inBlueprints.size || !stats.some((s) => s.groupId != null && inBlueprints.has(s.groupId))) return stats;
   return stats.filter((s) => s.groupId == null || !inBlueprints.has(s.groupId));
 }
@@ -212,10 +192,7 @@ export function resetStatLinkOverrides(link: StatLink): StatLink {
 // ---- An entity's links ----
 
 /** The entity with its stat links replaced. No links are stored as absent. */
-export function withStatLinks(entity: Entity, links: StatLink[]): Entity {
-  const { statLinks: _l, ...rest } = entity;
-  return links.length ? { ...rest, statLinks: links } : rest;
-}
+export const withStatLinks = (entity: Entity, links: StatLink[]): Entity => withEntityLists(entity, { statLinks: links });
 
 const withStatLink = (entity: Entity, linkId: string, edit: (link: StatLink) => StatLink): Entity =>
   withStatLinks(entity, (entity.statLinks ?? []).map((l) => (l.id === linkId ? edit(l) : l)));
@@ -300,8 +277,7 @@ export function withEntityStatTree<L extends Omit<TreeLeaf, 'name'>>(
     const leaf = placed.get(l.id);
     return leaf ? { ...l, ...placeOf(leaf) } : l;
   });
-  const { stats: _s, statGroups: _g, ...rest } = withStatLinks(entity, nextLinks);
-  return { ...rest, ...(stats.length ? { stats } : {}), ...(groups.length ? { statGroups: groups } : {}) };
+  return withEntityLists(entity, { statLinks: nextLinks, stats, statGroups: groups });
 }
 
 /** Delete one of the entity's stat groups; its stats, links and subgroups move up to its parent. */
@@ -332,9 +308,7 @@ export function detachStatLink(
   const unlinked = removeStatLink(entity, linkId);
   const withTree = (stats: Stat[], groups: StatGroup[]): Entity => {
     const allGroups = [...(entity.statGroups ?? []), ...groups];
-    const { stats: _s, statGroups: _g, ...rest } = unlinked;
-    const nextStats = statsInTreeOrder(allGroups, [...own, ...stats]);
-    return { ...rest, ...(nextStats.length ? { stats: nextStats } : {}), ...(allGroups.length ? { statGroups: allGroups } : {}) };
+    return withEntityLists(unlinked, { stats: statsInTreeOrder(allGroups, [...own, ...stats]), statGroups: allGroups });
   };
   if (original.kind === 'stat') {
     const copy = held.has(original.item.id) ? [] : [linkedStat(original.item, link)];
@@ -366,10 +340,7 @@ export interface EntityStatTree {
 }
 
 /** The entity's links in its tree's order: by place among its own groups, then by order. */
-export function statLinksInTreeOrder(entity: Entity): StatLink[] {
-  const byId = new Map((entity.statLinks ?? []).map((l) => [l.id, l]));
-  return statsInTreeOrder(entity.statGroups ?? [], statLinkLeaves(entity)).flatMap((leaf) => byId.get(leaf.id) ?? []);
-}
+export const statLinksInTreeOrder = (entity: Entity): StatLink[] => ownerLinksInTreeOrder(entity.statGroups ?? [], entity.statLinks ?? []);
 
 /**
  * The entity's stats as play reads them: its own and each link's, a stat link's original in the link's place and
@@ -437,9 +408,9 @@ export interface StatBlueprintsRemoval {
  * everything below it is deleted, and the rest move to the top level. Null without a Blueprints group.
  */
 export function removeStatBlueprints(world: StatLinkWorld, entities: readonly Entity[]): StatBlueprintsRemoval | null {
-  const bp = statBlueprintsGroup(world.statGroups);
+  const bp = blueprintsGroup(world.statGroups);
   if (!bp) return null;
-  const inside = new Set([...statBlueprintIds(world), ...statBlueprintsSubtreeIds(world.statGroups)]);
+  const inside = new Set([...statBlueprintIds(world), ...blueprintsSubtreeIds(world.statGroups)]);
   const gone = new Set<string>();
   let detached = 0;
   const entitiesOut = entities.map((entity) => {
@@ -467,9 +438,8 @@ export function playStatWorld(world: StatLinkWorld & { stats: Stat[]; entities: 
   if (!world.entities.some((e) => e.statLinks?.length)) return { stats, entities: world.entities };
   const entities = world.entities.map((e) => {
     if (!e.statLinks?.length) return e;
-    const { statLinks: _l, stats: _s, statGroups: _g, ...rest } = e;
     const tree = resolvedEntityStatTree(world, e);
-    return { ...rest, ...(tree.stats.length ? { stats: tree.stats } : {}), ...(tree.groups.length ? { statGroups: tree.groups } : {}) };
+    return withEntityLists(e, { statLinks: [], stats: tree.stats, statGroups: tree.groups });
   });
   return { stats, entities };
 }

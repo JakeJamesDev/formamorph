@@ -11,14 +11,12 @@ import { blueprintItemIds, blueprintsGroup, buildTraitTree, flattenTraitTree, gr
 import { rootCount, withOwnedTraits } from './ownedTraits';
 import { mapConditions } from './requirementRows';
 import { ancestors, parentLookup } from './ancestors';
+import { withEntityLists } from './ownerTree';
 
 type WorldTraitLists = Pick<OwnerWorld, 'traits' | 'traitGroups'>;
 
 /** The entity with its links replaced. No links are stored as absent. */
-function withLinks(entity: Entity, links: TraitLink[]): Entity {
-  const { traitLinks: _l, ...rest } = entity;
-  return links.length ? { ...rest, traitLinks: links } : rest;
-}
+const withLinks = (entity: Entity, links: TraitLink[]): Entity => withEntityLists(entity, { traitLinks: links });
 
 /** The entity with one link rewritten through `edit`. */
 const withLink = (entity: Entity, linkId: string, edit: (link: TraitLink) => TraitLink): Entity =>
