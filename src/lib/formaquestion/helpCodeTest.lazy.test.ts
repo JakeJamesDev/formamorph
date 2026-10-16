@@ -40,7 +40,7 @@ describe('the code test bundle boundary', () => {
     await ask(replies(sseReply('self.value = 5;')));
     expect(loaded).toEqual({ executor: 0, analysis: 0 });
 
-    const call = sseFrame({ tool_calls: [{ index: 0, id: 'srv-0', type: 'function', function: { name: HELP_CODE_TEST.name, arguments: JSON.stringify({ code: 'self.value = 5;', box: 'before', stat: 'Courage' }) } }] });
+    const call = sseFrame({ tool_calls: [{ index: 0, id: 'srv-0', type: 'function', function: { name: HELP_CODE_TEST.name, arguments: JSON.stringify({ code: 'self.value = 5;', timing: 'before', name: 'Courage' }) } }] });
     await ask(replies([call, sseFrame({}, 'tool_calls'), 'data: [DONE]\n\n'], sseReply('self.value = 5;')));
     expect(loaded).toEqual({ executor: 1, analysis: 1 });
   });

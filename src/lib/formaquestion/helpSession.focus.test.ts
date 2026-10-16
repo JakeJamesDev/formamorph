@@ -54,7 +54,7 @@ const script = (...replies: string[][]): FetchSpy => {
 /** One code test call per argument set, as the model sends them. */
 const testFrames = (...calls: Record<string, string>[]): string[] => [
   ...calls.map((args, at) => sseFrame({
-    tool_calls: [{ index: at, id: `srv-${at}`, type: 'function', function: { name: HELP_CODE_TEST.name, arguments: JSON.stringify({ box: 'before', ...args }) } }],
+    tool_calls: [{ index: at, id: `srv-${at}`, type: 'function', function: { name: HELP_CODE_TEST.name, arguments: JSON.stringify({ timing: 'before', ...args }) } }],
   })),
   sseFrame({}, 'tool_calls'),
   'data: [DONE]\n\n',
@@ -127,11 +127,11 @@ describe('the code test stat default', () => {
     ask(fetchImpl, { question: 'Write the code for me.', surface: STAT_CODE, focus: COURAGE, snapshot: endpoint(true), world: openWorld(undefined, sedge), ...over });
 
   it('is optional', () => {
-    expect(HELP_CODE_TEST.params.find((param) => param.name === 'stat')?.required).toBe(false);
+    expect(HELP_CODE_TEST.params.find((param) => param.name === 'name')?.required).toBe(false);
   });
 
   it('reads the focused stat as self when the call names none, and an explicit stat wins', async () => {
-    const fetchImpl = script(testFrames({ code }, { code, stat: ' ' }, { code, stat: 'Int' }), sseReply('Done.'));
+    const fetchImpl = script(testFrames({ code }, { code, name: ' ' }, { code, name: 'Int' }), sseReply('Done.'));
     await asked(fetchImpl);
     expect(results(fetchImpl).map((result) => result.run?.value)).toEqual([41, 41, 33]);
   });
