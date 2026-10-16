@@ -1,6 +1,6 @@
 # 04: World Scripts Get The Rider And Insert
 
-Status: ready-for-human
+Status: done
 Blocked by: 01, 02, 03
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: high
