@@ -97,7 +97,7 @@ Every world: current shape on disk, `openings` (no `openingCue`), `imageTags` on
   - Ticket 10 ruling (user): the animated-WebP encoder tolerates a truncated GIF. It encodes the frames that decode and stops at the first broken one. Ticket 10 ships this app fix with a test.
   - Ticket 05 ruling: Open Chat keeps one opening, because a library entity's openings replace the world pool (story 23 over story 7). It gets no lore and no entities. Its content pass covers the system prompt, location text, opening and tone values, Style trait text, readmes, and imageTags.
   - Ticket 04 and 06 rulings: any world may follow its play part with a "How this world is built" authoring section that names the features it shows (story 26). The play part comes first, stands alone, and states the win condition.
-  - Ticket 06 ruling: Q14 converts only what the app's fix converts. JPEG is left as it is by design, because a lossless WebP copy grows and a lossy one costs quality.
+  - Ticket 06 ruling (user-confirmed): Q14 converts only what the app's fix converts. JPEG is left as it is by design, because a lossless WebP copy grows and a lossy one costs quality.
 - **Q16 (user): showcase code.** The bundled worlds are example worlds first. Readability beats efficiency. No script uses a one-character variable name. A script is split into sections the way you would explain it to someone in steps, and each section carries a comment that explains its logic, not only a header comment.
 - **Q17 (user): placeholder names.** Placeholder names use title case and spaces, written like a proper noun: `Player Character`, `Placeholder Name`. Never lowercase or camelCase names.
 - **Threshold units.** A stat whose max a trait changes uses percent thresholds on its descriptors.
