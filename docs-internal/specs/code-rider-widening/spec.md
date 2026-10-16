@@ -1,6 +1,7 @@
 # Spec: Code Rider Widening
 
 Status: ready-for-agent
+Spec session: code-rider-widening — spec
 
 ## Problem Statement
 
