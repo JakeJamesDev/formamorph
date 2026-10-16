@@ -1,6 +1,7 @@
 # Spec: Drifted Copies
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-10-15. Tickets 01–19 done; last landing bc0baf847. Closed without gates.
 Spec session: drifted-copies — spec
 
 ## Problem Statement
