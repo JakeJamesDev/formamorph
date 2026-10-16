@@ -5716,7 +5716,7 @@
       "boundStats": {
         "stats": [
           {
-            "description": "Represents the player's physical well-being and ability to sustain damage",
+            "description": "The player's physical condition: how many knocks, rams and tumbles they can take. It mends slowly.",
             "descriptors": [
               {
                 "description": "Critical condition. Severely battered, barely conscious, in real trouble.",
@@ -5750,7 +5750,7 @@
             "value": 100
           },
           {
-            "description": "Represents the player's energy and ability to perform physical actions",
+            "description": "The player's energy for running, climbing and dodging. Rams and cyclone tosses knock it out of them; rest brings it back.",
             "descriptors": [
               {
                 "description": "Exhausted. Barely able to move, risk of collapse, unable to perform strenuous actions.",
@@ -5784,7 +5784,7 @@
             "value": 100
           },
           {
-            "description": "The curse of unending hunger. Climbs relentlessly on its own; eating anything quiets it for a while.",
+            "description": "The curse of unending hunger. It climbs by itself between turns. When the player eats, lower it: a little for a bite, a lot for a meal. On a turn without eating, leave it unchanged.",
             "descriptors": [
               {
                 "description": "Quiet. The hunger naps; thoughts are entirely the player's own.",
@@ -5811,13 +5811,20 @@
             "max": 100,
             "min": 0,
             "name": "Craving",
-            "regen": 3,
+            "regen": 0,
+            "scripts": [
+              {
+                "code": "// Hunger tick: the curse climbs one step every turn, however much story time the turn took.\n// This script runs after the AI's change, so a meal the AI already took off this turn stays off.\nconst fullness = owner.stats.Fullness;\nconst traits = owner.traits;\n\n// Every curse starts from the same base step.\nlet step = 3;\n\n// Appetite sets how loud the curse runs. Exactly one of these is on.\nif (traits.Grazer.enabled) step -= 1;\nif (traits.Glutton.enabled) step += 2;\nif (traits[\"Iron Will\"].enabled) step -= 2;\n\n// Pantry Tricks tilt it further: a satisfying meal lasts, a sugar rush burns off fast.\nif (traits[\"Hearty Appetite\"].enabled) step -= 1;\nif (traits[\"Sugar Rush\"].enabled) step += 1;\n\n// An empty stomach feeds the curse, and a full one muffles it.\n// A share of max, not a fixed number, so a Glutton's bigger stomach reads the same way.\nconst fullShare = fullness.value / fullness.max;\nif (fullShare < 0.1) step += 2;\nelse if (fullShare >= 0.7) step -= 1;\n\n// Gritted Teeth beats the curse back while the player holds it. Craving falls every turn,\n// at least one point even for a hungry Glutton, and more for a calm appetite.\nif (traits[\"Gritted Teeth\"].enabled) step = Math.min(step - 4, -1);\n\n// Add the step to this turn's value. The stat clamps the result to 0–100.\nreturn self.value + step;",
+                "id": "craving:after",
+                "timing": "after"
+              }
+            ],
             "starting": 30,
             "type": "number",
             "value": 30
           },
           {
-            "description": "How much the player has eaten. Rises with every bite and falls slowly as they digest.",
+            "description": "How much the player has eaten. Raise it with every bite: a little for a nibble, a lot for a feast. It falls slowly as they digest.",
             "descriptors": [
               {
                 "description": "Empty. Hollow and rumbling — the curse loves this.",
@@ -5851,7 +5858,7 @@
             "value": 10
           },
           {
-            "description": "How much sugar, syrup, and cream coats the player. Rises from messy eating, gummy pools, and sugar dust; falls when they wash, especially in the cream surf.",
+            "description": "How much sugar, syrup and cream coats the player. Raise it for messy eating, gummy pools and sugar dust. Lower it when they wash, most of all in the cream surf.",
             "descriptors": [
               {
                 "description": "Clean-ish. A dusting of powdered sugar; unremarkable to the wildlife.",
@@ -5892,79 +5899,66 @@
             "aiDescription": "How the player's curse expresses itself:",
             "id": "4b78ed0f-74d0-4bd2-856c-80a30b104185",
             "maxPicks": 1,
+            "minPicks": 1,
             "name": "Appetite",
             "order": 0,
             "parentId": null,
-            "playerDescription": "How the curse sits in your stomach. Pick one."
+            "playerDescription": "How fast the curse climbs. Pick one."
           },
           {
             "aiDescription": "The player's build:",
             "id": "3f42677b-98c9-4b19-9abb-fc237d44a65d",
             "maxPicks": 1,
+            "minPicks": 1,
             "name": "Build",
             "order": 1,
             "parentId": null,
-            "playerDescription": "What you're working with. Pick one."
+            "playerDescription": "Your Health and Stamina. Pick one."
           },
           {
             "aiDescription": "The player's tricks and habits:",
             "id": "0b78fbb1-d278-4cfc-ae00-e0c0d9bd6e3d",
+            "maxPicks": 2,
             "name": "Pantry Tricks",
             "order": 2,
             "parentId": null,
-            "playerDescription": "Tricks for a world made of pudding. Take any."
+            "playerDescription": "Tricks for a world made of pudding. Pick up to two."
           }
         ],
         "traits": [
           {
-            "aiDescription": "The player manages the curse by grazing — small bites, often. The hunger builds noticeably slower for them.",
+            "aiDescription": "The player keeps the curse drowsy by grazing: small bites, often.",
             "groupId": "4b78ed0f-74d0-4bd2-856c-80a30b104185",
             "id": "grazer",
             "isDefault": true,
             "name": "Grazer",
             "order": 0,
-            "playerDescription": "Little and often. The curse stays drowsy if you keep it snacking.",
-            "statChanges": [
-              {
-                "statId": "craving",
-                "type": "regen",
-                "value": -1
-              }
-            ]
+            "playerDescription": "Little and often. The curse climbs a little slower.",
+            "statChanges": []
           },
           {
-            "aiDescription": "The player can eat enormous amounts in one sitting before feeling it — but the curse burns hotter in them.",
+            "aiDescription": "The player can eat enormous amounts in one sitting before they feel it, and the curse burns hotter in them.",
             "groupId": "4b78ed0f-74d0-4bd2-856c-80a30b104185",
             "id": "glutton",
             "name": "Glutton",
             "order": 1,
-            "playerDescription": "Go big. You can pack it away like a champion — and the curse loves you for it.",
+            "playerDescription": "Go big. You have room for a feast, and the curse climbs faster for it.",
             "statChanges": [
               {
                 "statId": "fullness",
                 "type": "max",
                 "value": 25
-              },
-              {
-                "statId": "craving",
-                "type": "regen",
-                "value": 1
               }
             ]
           },
           {
-            "aiDescription": "The player resists the curse better than anyone — the hunger builds slowly — but the constant refusal wears them down.",
+            "aiDescription": "The player resists the curse better than anyone, and the constant refusal wears them down.",
             "groupId": "4b78ed0f-74d0-4bd2-856c-80a30b104185",
             "id": "iron_will",
             "name": "Iron Will",
             "order": 2,
-            "playerDescription": "You've told it no before. It costs you.",
+            "playerDescription": "You've told it no before. The curse climbs slowest, and the refusal tires you.",
             "statChanges": [
-              {
-                "statId": "craving",
-                "type": "regen",
-                "value": -2
-              },
               {
                 "statId": "stamina",
                 "type": "regen",
@@ -5973,7 +5967,7 @@
             ]
           },
           {
-            "aiDescription": "The player is quick and light on their feet, recovering breath fast between sprints.",
+            "aiDescription": "The player is quick and light on their feet, and gets their breath back fast between sprints.",
             "groupId": "3f42677b-98c9-4b19-9abb-fc237d44a65d",
             "id": "nimble",
             "isDefault": true,
@@ -6049,18 +6043,13 @@
             ]
           },
           {
-            "aiDescription": "Food genuinely satisfies the player — every meal quiets the curse longer than it should.",
+            "aiDescription": "Food truly satisfies the player. Every meal quiets the curse longer than it should.",
             "groupId": "0b78fbb1-d278-4cfc-ae00-e0c0d9bd6e3d",
             "id": "hearty_appetite",
             "name": "Hearty Appetite",
             "order": 1,
-            "playerDescription": "Meals actually satisfy you. The curse hates that.",
+            "playerDescription": "Meals actually satisfy you. The curse climbs slower, and you have more room.",
             "statChanges": [
-              {
-                "statId": "craving",
-                "type": "regen",
-                "value": -1
-              },
               {
                 "statId": "fullness",
                 "type": "max",
@@ -6069,38 +6058,28 @@
             ]
           },
           {
-            "aiDescription": "Sugar hits the player like rocket fuel: bursts of speed and energy after eating, with a hunger that comes back sooner.",
+            "aiDescription": "Sugar hits the player like rocket fuel: bursts of speed and energy after eating, and a hunger that comes back sooner.",
             "groupId": "0b78fbb1-d278-4cfc-ae00-e0c0d9bd6e3d",
             "id": "sugar_rush",
             "name": "Sugar Rush",
             "order": 2,
-            "playerDescription": "Everything you eat hits like rocket fuel — and burns off just as fast.",
+            "playerDescription": "Every bite hits like rocket fuel. You recover Stamina faster, and the curse climbs faster.",
             "statChanges": [
               {
                 "statId": "stamina",
                 "type": "regen",
                 "value": 2
-              },
-              {
-                "statId": "craving",
-                "type": "regen",
-                "value": 1
               }
             ]
           },
           {
-            "aiDescription": "ACTIVE: the player is actively white-knuckling the curse — jaw set, fists closed, refusing every smell. The craving quiets while this holds, but the effort is visibly exhausting.",
+            "aiDescription": "ACTIVE: the player is white-knuckling the curse, jaw set and fists closed, refusing every smell. The effort is plain to see and exhausting.",
             "id": "gritted_teeth",
             "name": "Gritted Teeth",
             "order": 3,
-            "playerDescription": "White-knuckle the curse into silence. It works. It costs.",
+            "playerDescription": "White-knuckle the curse. Craving falls each turn, and it drains your Stamina.",
             "playerToggle": true,
             "statChanges": [
-              {
-                "statId": "craving",
-                "type": "regen",
-                "value": -3
-              },
               {
                 "statId": "stamina",
                 "type": "regen",
@@ -6113,7 +6092,7 @@
       "carriedStats": {
         "stats": [
           {
-            "description": "Represents the player's physical well-being and ability to sustain damage",
+            "description": "The player's physical condition: how many knocks, rams and tumbles they can take. It mends slowly.",
             "descriptors": [
               {
                 "description": "Critical condition. Severely battered, barely conscious, in real trouble.",
@@ -6147,7 +6126,7 @@
             "value": 100
           },
           {
-            "description": "Represents the player's energy and ability to perform physical actions",
+            "description": "The player's energy for running, climbing and dodging. Rams and cyclone tosses knock it out of them; rest brings it back.",
             "descriptors": [
               {
                 "description": "Exhausted. Barely able to move, risk of collapse, unable to perform strenuous actions.",
@@ -6181,7 +6160,7 @@
             "value": 100
           },
           {
-            "description": "The curse of unending hunger. Climbs relentlessly on its own; eating anything quiets it for a while.",
+            "description": "The curse of unending hunger. It climbs by itself between turns. When the player eats, lower it: a little for a bite, a lot for a meal. On a turn without eating, leave it unchanged.",
             "descriptors": [
               {
                 "description": "Quiet. The hunger naps; thoughts are entirely the player's own.",
@@ -6208,13 +6187,20 @@
             "max": 100,
             "min": 0,
             "name": "Craving",
-            "regen": 3,
+            "regen": 0,
+            "scripts": [
+              {
+                "code": "// Hunger tick: the curse climbs one step every turn, however much story time the turn took.\n// This script runs after the AI's change, so a meal the AI already took off this turn stays off.\nconst fullness = owner.stats.Fullness;\nconst traits = owner.traits;\n\n// Every curse starts from the same base step.\nlet step = 3;\n\n// Appetite sets how loud the curse runs. Exactly one of these is on.\nif (traits.Grazer.enabled) step -= 1;\nif (traits.Glutton.enabled) step += 2;\nif (traits[\"Iron Will\"].enabled) step -= 2;\n\n// Pantry Tricks tilt it further: a satisfying meal lasts, a sugar rush burns off fast.\nif (traits[\"Hearty Appetite\"].enabled) step -= 1;\nif (traits[\"Sugar Rush\"].enabled) step += 1;\n\n// An empty stomach feeds the curse, and a full one muffles it.\n// A share of max, not a fixed number, so a Glutton's bigger stomach reads the same way.\nconst fullShare = fullness.value / fullness.max;\nif (fullShare < 0.1) step += 2;\nelse if (fullShare >= 0.7) step -= 1;\n\n// Gritted Teeth beats the curse back while the player holds it. Craving falls every turn,\n// at least one point even for a hungry Glutton, and more for a calm appetite.\nif (traits[\"Gritted Teeth\"].enabled) step = Math.min(step - 4, -1);\n\n// Add the step to this turn's value. The stat clamps the result to 0–100.\nreturn self.value + step;",
+                "id": "craving:after",
+                "timing": "after"
+              }
+            ],
             "starting": 30,
             "type": "number",
             "value": 30
           },
           {
-            "description": "How much the player has eaten. Rises with every bite and falls slowly as they digest.",
+            "description": "How much the player has eaten. Raise it with every bite: a little for a nibble, a lot for a feast. It falls slowly as they digest.",
             "descriptors": [
               {
                 "description": "Empty. Hollow and rumbling — the curse loves this.",
@@ -6248,7 +6234,7 @@
             "value": 10
           },
           {
-            "description": "How much sugar, syrup, and cream coats the player. Rises from messy eating, gummy pools, and sugar dust; falls when they wash, especially in the cream surf.",
+            "description": "How much sugar, syrup and cream coats the player. Raise it for messy eating, gummy pools and sugar dust. Lower it when they wash, most of all in the cream surf.",
             "descriptors": [
               {
                 "description": "Clean-ish. A dusting of powdered sugar; unremarkable to the wildlife.",
@@ -6289,79 +6275,66 @@
             "aiDescription": "How the player's curse expresses itself:",
             "id": "4b78ed0f-74d0-4bd2-856c-80a30b104185",
             "maxPicks": 1,
+            "minPicks": 1,
             "name": "Appetite",
             "order": 0,
             "parentId": null,
-            "playerDescription": "How the curse sits in your stomach. Pick one."
+            "playerDescription": "How fast the curse climbs. Pick one."
           },
           {
             "aiDescription": "The player's build:",
             "id": "3f42677b-98c9-4b19-9abb-fc237d44a65d",
             "maxPicks": 1,
+            "minPicks": 1,
             "name": "Build",
             "order": 1,
             "parentId": null,
-            "playerDescription": "What you're working with. Pick one."
+            "playerDescription": "Your Health and Stamina. Pick one."
           },
           {
             "aiDescription": "The player's tricks and habits:",
             "id": "0b78fbb1-d278-4cfc-ae00-e0c0d9bd6e3d",
+            "maxPicks": 2,
             "name": "Pantry Tricks",
             "order": 2,
             "parentId": null,
-            "playerDescription": "Tricks for a world made of pudding. Take any."
+            "playerDescription": "Tricks for a world made of pudding. Pick up to two."
           }
         ],
         "traits": [
           {
-            "aiDescription": "The player manages the curse by grazing — small bites, often. The hunger builds noticeably slower for them.",
+            "aiDescription": "The player keeps the curse drowsy by grazing: small bites, often.",
             "groupId": "4b78ed0f-74d0-4bd2-856c-80a30b104185",
             "id": "grazer",
             "isDefault": true,
             "name": "Grazer",
             "order": 0,
-            "playerDescription": "Little and often. The curse stays drowsy if you keep it snacking.",
-            "statChanges": [
-              {
-                "statId": "craving",
-                "type": "regen",
-                "value": -1
-              }
-            ]
+            "playerDescription": "Little and often. The curse climbs a little slower.",
+            "statChanges": []
           },
           {
-            "aiDescription": "The player can eat enormous amounts in one sitting before feeling it — but the curse burns hotter in them.",
+            "aiDescription": "The player can eat enormous amounts in one sitting before they feel it, and the curse burns hotter in them.",
             "groupId": "4b78ed0f-74d0-4bd2-856c-80a30b104185",
             "id": "glutton",
             "name": "Glutton",
             "order": 1,
-            "playerDescription": "Go big. You can pack it away like a champion — and the curse loves you for it.",
+            "playerDescription": "Go big. You have room for a feast, and the curse climbs faster for it.",
             "statChanges": [
               {
                 "statId": "fullness",
                 "type": "max",
                 "value": 25
-              },
-              {
-                "statId": "craving",
-                "type": "regen",
-                "value": 1
               }
             ]
           },
           {
-            "aiDescription": "The player resists the curse better than anyone — the hunger builds slowly — but the constant refusal wears them down.",
+            "aiDescription": "The player resists the curse better than anyone, and the constant refusal wears them down.",
             "groupId": "4b78ed0f-74d0-4bd2-856c-80a30b104185",
             "id": "iron_will",
             "name": "Iron Will",
             "order": 2,
-            "playerDescription": "You've told it no before. It costs you.",
+            "playerDescription": "You've told it no before. The curse climbs slowest, and the refusal tires you.",
             "statChanges": [
-              {
-                "statId": "craving",
-                "type": "regen",
-                "value": -2
-              },
               {
                 "statId": "stamina",
                 "type": "regen",
@@ -6370,7 +6343,7 @@
             ]
           },
           {
-            "aiDescription": "The player is quick and light on their feet, recovering breath fast between sprints.",
+            "aiDescription": "The player is quick and light on their feet, and gets their breath back fast between sprints.",
             "groupId": "3f42677b-98c9-4b19-9abb-fc237d44a65d",
             "id": "nimble",
             "isDefault": true,
@@ -6446,18 +6419,13 @@
             ]
           },
           {
-            "aiDescription": "Food genuinely satisfies the player — every meal quiets the curse longer than it should.",
+            "aiDescription": "Food truly satisfies the player. Every meal quiets the curse longer than it should.",
             "groupId": "0b78fbb1-d278-4cfc-ae00-e0c0d9bd6e3d",
             "id": "hearty_appetite",
             "name": "Hearty Appetite",
             "order": 1,
-            "playerDescription": "Meals actually satisfy you. The curse hates that.",
+            "playerDescription": "Meals actually satisfy you. The curse climbs slower, and you have more room.",
             "statChanges": [
-              {
-                "statId": "craving",
-                "type": "regen",
-                "value": -1
-              },
               {
                 "statId": "fullness",
                 "type": "max",
@@ -6466,38 +6434,28 @@
             ]
           },
           {
-            "aiDescription": "Sugar hits the player like rocket fuel: bursts of speed and energy after eating, with a hunger that comes back sooner.",
+            "aiDescription": "Sugar hits the player like rocket fuel: bursts of speed and energy after eating, and a hunger that comes back sooner.",
             "groupId": "0b78fbb1-d278-4cfc-ae00-e0c0d9bd6e3d",
             "id": "sugar_rush",
             "name": "Sugar Rush",
             "order": 2,
-            "playerDescription": "Everything you eat hits like rocket fuel — and burns off just as fast.",
+            "playerDescription": "Every bite hits like rocket fuel. You recover Stamina faster, and the curse climbs faster.",
             "statChanges": [
               {
                 "statId": "stamina",
                 "type": "regen",
                 "value": 2
-              },
-              {
-                "statId": "craving",
-                "type": "regen",
-                "value": 1
               }
             ]
           },
           {
-            "aiDescription": "ACTIVE: the player is actively white-knuckling the curse — jaw set, fists closed, refusing every smell. The craving quiets while this holds, but the effort is visibly exhausting.",
+            "aiDescription": "ACTIVE: the player is white-knuckling the curse, jaw set and fists closed, refusing every smell. The effort is plain to see and exhausting.",
             "id": "gritted_teeth",
             "name": "Gritted Teeth",
             "order": 3,
-            "playerDescription": "White-knuckle the curse into silence. It works. It costs.",
+            "playerDescription": "White-knuckle the curse. Craving falls each turn, and it drains your Stamina.",
             "playerToggle": true,
             "statChanges": [
-              {
-                "statId": "craving",
-                "type": "regen",
-                "value": -3
-              },
               {
                 "statId": "stamina",
                 "type": "regen",
@@ -6510,7 +6468,7 @@
       "portableStats": {
         "stats": [
           {
-            "description": "Represents the player's physical well-being and ability to sustain damage",
+            "description": "The player's physical condition: how many knocks, rams and tumbles they can take. It mends slowly.",
             "descriptors": [
               {
                 "description": "Critical condition. Severely battered, barely conscious, in real trouble.",
@@ -6544,7 +6502,7 @@
             "value": 100
           },
           {
-            "description": "Represents the player's energy and ability to perform physical actions",
+            "description": "The player's energy for running, climbing and dodging. Rams and cyclone tosses knock it out of them; rest brings it back.",
             "descriptors": [
               {
                 "description": "Exhausted. Barely able to move, risk of collapse, unable to perform strenuous actions.",
@@ -6578,7 +6536,7 @@
             "value": 100
           },
           {
-            "description": "The curse of unending hunger. Climbs relentlessly on its own; eating anything quiets it for a while.",
+            "description": "The curse of unending hunger. It climbs by itself between turns. When the player eats, lower it: a little for a bite, a lot for a meal. On a turn without eating, leave it unchanged.",
             "descriptors": [
               {
                 "description": "Quiet. The hunger naps; thoughts are entirely the player's own.",
@@ -6605,13 +6563,20 @@
             "max": 100,
             "min": 0,
             "name": "Craving",
-            "regen": 3,
+            "regen": 0,
+            "scripts": [
+              {
+                "code": "// Hunger tick: the curse climbs one step every turn, however much story time the turn took.\n// This script runs after the AI's change, so a meal the AI already took off this turn stays off.\nconst fullness = owner.stats.Fullness;\nconst traits = owner.traits;\n\n// Every curse starts from the same base step.\nlet step = 3;\n\n// Appetite sets how loud the curse runs. Exactly one of these is on.\nif (traits.Grazer.enabled) step -= 1;\nif (traits.Glutton.enabled) step += 2;\nif (traits[\"Iron Will\"].enabled) step -= 2;\n\n// Pantry Tricks tilt it further: a satisfying meal lasts, a sugar rush burns off fast.\nif (traits[\"Hearty Appetite\"].enabled) step -= 1;\nif (traits[\"Sugar Rush\"].enabled) step += 1;\n\n// An empty stomach feeds the curse, and a full one muffles it.\n// A share of max, not a fixed number, so a Glutton's bigger stomach reads the same way.\nconst fullShare = fullness.value / fullness.max;\nif (fullShare < 0.1) step += 2;\nelse if (fullShare >= 0.7) step -= 1;\n\n// Gritted Teeth beats the curse back while the player holds it. Craving falls every turn,\n// at least one point even for a hungry Glutton, and more for a calm appetite.\nif (traits[\"Gritted Teeth\"].enabled) step = Math.min(step - 4, -1);\n\n// Add the step to this turn's value. The stat clamps the result to 0–100.\nreturn self.value + step;",
+                "id": "craving:after",
+                "timing": "after"
+              }
+            ],
             "starting": 30,
             "type": "number",
             "value": 30
           },
           {
-            "description": "How much the player has eaten. Rises with every bite and falls slowly as they digest.",
+            "description": "How much the player has eaten. Raise it with every bite: a little for a nibble, a lot for a feast. It falls slowly as they digest.",
             "descriptors": [
               {
                 "description": "Empty. Hollow and rumbling — the curse loves this.",
@@ -6645,7 +6610,7 @@
             "value": 10
           },
           {
-            "description": "How much sugar, syrup, and cream coats the player. Rises from messy eating, gummy pools, and sugar dust; falls when they wash, especially in the cream surf.",
+            "description": "How much sugar, syrup and cream coats the player. Raise it for messy eating, gummy pools and sugar dust. Lower it when they wash, most of all in the cream surf.",
             "descriptors": [
               {
                 "description": "Clean-ish. A dusting of powdered sugar; unremarkable to the wildlife.",
@@ -6686,79 +6651,66 @@
             "aiDescription": "How the player's curse expresses itself:",
             "id": "4b78ed0f-74d0-4bd2-856c-80a30b104185",
             "maxPicks": 1,
+            "minPicks": 1,
             "name": "Appetite",
             "order": 0,
             "parentId": null,
-            "playerDescription": "How the curse sits in your stomach. Pick one."
+            "playerDescription": "How fast the curse climbs. Pick one."
           },
           {
             "aiDescription": "The player's build:",
             "id": "3f42677b-98c9-4b19-9abb-fc237d44a65d",
             "maxPicks": 1,
+            "minPicks": 1,
             "name": "Build",
             "order": 1,
             "parentId": null,
-            "playerDescription": "What you're working with. Pick one."
+            "playerDescription": "Your Health and Stamina. Pick one."
           },
           {
             "aiDescription": "The player's tricks and habits:",
             "id": "0b78fbb1-d278-4cfc-ae00-e0c0d9bd6e3d",
+            "maxPicks": 2,
             "name": "Pantry Tricks",
             "order": 2,
             "parentId": null,
-            "playerDescription": "Tricks for a world made of pudding. Take any."
+            "playerDescription": "Tricks for a world made of pudding. Pick up to two."
           }
         ],
         "traits": [
           {
-            "aiDescription": "The player manages the curse by grazing — small bites, often. The hunger builds noticeably slower for them.",
+            "aiDescription": "The player keeps the curse drowsy by grazing: small bites, often.",
             "groupId": "4b78ed0f-74d0-4bd2-856c-80a30b104185",
             "id": "grazer",
             "isDefault": true,
             "name": "Grazer",
             "order": 0,
-            "playerDescription": "Little and often. The curse stays drowsy if you keep it snacking.",
-            "statChanges": [
-              {
-                "statId": "craving",
-                "type": "regen",
-                "value": -1
-              }
-            ]
+            "playerDescription": "Little and often. The curse climbs a little slower.",
+            "statChanges": []
           },
           {
-            "aiDescription": "The player can eat enormous amounts in one sitting before feeling it — but the curse burns hotter in them.",
+            "aiDescription": "The player can eat enormous amounts in one sitting before they feel it, and the curse burns hotter in them.",
             "groupId": "4b78ed0f-74d0-4bd2-856c-80a30b104185",
             "id": "glutton",
             "name": "Glutton",
             "order": 1,
-            "playerDescription": "Go big. You can pack it away like a champion — and the curse loves you for it.",
+            "playerDescription": "Go big. You have room for a feast, and the curse climbs faster for it.",
             "statChanges": [
               {
                 "statId": "fullness",
                 "type": "max",
                 "value": 25
-              },
-              {
-                "statId": "craving",
-                "type": "regen",
-                "value": 1
               }
             ]
           },
           {
-            "aiDescription": "The player resists the curse better than anyone — the hunger builds slowly — but the constant refusal wears them down.",
+            "aiDescription": "The player resists the curse better than anyone, and the constant refusal wears them down.",
             "groupId": "4b78ed0f-74d0-4bd2-856c-80a30b104185",
             "id": "iron_will",
             "name": "Iron Will",
             "order": 2,
-            "playerDescription": "You've told it no before. It costs you.",
+            "playerDescription": "You've told it no before. The curse climbs slowest, and the refusal tires you.",
             "statChanges": [
-              {
-                "statId": "craving",
-                "type": "regen",
-                "value": -2
-              },
               {
                 "statId": "stamina",
                 "type": "regen",
@@ -6767,7 +6719,7 @@
             ]
           },
           {
-            "aiDescription": "The player is quick and light on their feet, recovering breath fast between sprints.",
+            "aiDescription": "The player is quick and light on their feet, and gets their breath back fast between sprints.",
             "groupId": "3f42677b-98c9-4b19-9abb-fc237d44a65d",
             "id": "nimble",
             "isDefault": true,
@@ -6843,18 +6795,13 @@
             ]
           },
           {
-            "aiDescription": "Food genuinely satisfies the player — every meal quiets the curse longer than it should.",
+            "aiDescription": "Food truly satisfies the player. Every meal quiets the curse longer than it should.",
             "groupId": "0b78fbb1-d278-4cfc-ae00-e0c0d9bd6e3d",
             "id": "hearty_appetite",
             "name": "Hearty Appetite",
             "order": 1,
-            "playerDescription": "Meals actually satisfy you. The curse hates that.",
+            "playerDescription": "Meals actually satisfy you. The curse climbs slower, and you have more room.",
             "statChanges": [
-              {
-                "statId": "craving",
-                "type": "regen",
-                "value": -1
-              },
               {
                 "statId": "fullness",
                 "type": "max",
@@ -6863,38 +6810,28 @@
             ]
           },
           {
-            "aiDescription": "Sugar hits the player like rocket fuel: bursts of speed and energy after eating, with a hunger that comes back sooner.",
+            "aiDescription": "Sugar hits the player like rocket fuel: bursts of speed and energy after eating, and a hunger that comes back sooner.",
             "groupId": "0b78fbb1-d278-4cfc-ae00-e0c0d9bd6e3d",
             "id": "sugar_rush",
             "name": "Sugar Rush",
             "order": 2,
-            "playerDescription": "Everything you eat hits like rocket fuel — and burns off just as fast.",
+            "playerDescription": "Every bite hits like rocket fuel. You recover Stamina faster, and the curse climbs faster.",
             "statChanges": [
               {
                 "statId": "stamina",
                 "type": "regen",
                 "value": 2
-              },
-              {
-                "statId": "craving",
-                "type": "regen",
-                "value": 1
               }
             ]
           },
           {
-            "aiDescription": "ACTIVE: the player is actively white-knuckling the curse — jaw set, fists closed, refusing every smell. The craving quiets while this holds, but the effort is visibly exhausting.",
+            "aiDescription": "ACTIVE: the player is white-knuckling the curse, jaw set and fists closed, refusing every smell. The effort is plain to see and exhausting.",
             "id": "gritted_teeth",
             "name": "Gritted Teeth",
             "order": 3,
-            "playerDescription": "White-knuckle the curse into silence. It works. It costs.",
+            "playerDescription": "White-knuckle the curse. Craving falls each turn, and it drains your Stamina.",
             "playerToggle": true,
             "statChanges": [
-              {
-                "statId": "craving",
-                "type": "regen",
-                "value": -3
-              },
               {
                 "statId": "stamina",
                 "type": "regen",

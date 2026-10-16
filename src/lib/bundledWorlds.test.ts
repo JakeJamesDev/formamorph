@@ -16,6 +16,7 @@ const FEATURES: Record<string, Feature[]> = {
   'emberwatch': ['traitGates', 'blueprints'],
   'open-chat': [],
   'rampage': ['scripts', 'statToggles'],
+  'sugarscape': ['scripts', 'minMaxPicks', 'openingWeights'],
 };
 
 /** Image size has no budget the bundled worlds must meet (Q13). */
@@ -37,15 +38,6 @@ const OPEN_FINDINGS: Record<string, Record<string, string>> = {
     'image-not-webp: Green Slime': WEBP,
     'location-no-entities: Ashburn': PLACE,
     'location-no-entities: The Night Pharmacy': PLACE,
-  },
-  'sugarscape': {
-    'alias-lowercase-no-twin: Saltlick Stones': TWIN,
-    'image-not-webp: Cookie Brawler': WEBP,
-    'image-not-webp: Cream Cyclone': WEBP,
-    'image-not-webp: Gummy Bear': WEBP,
-    'image-not-webp: Peppermint Pouncer': WEBP,
-    'image-not-webp: Sprinkle Swarmers': WEBP,
-    'location-no-entities: The Sugarscape': PLACE,
   },
   'valentines': {
     'alias-lowercase-no-twin: The Swarm': TWIN,

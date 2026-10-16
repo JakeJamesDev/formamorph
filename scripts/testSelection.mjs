@@ -81,6 +81,7 @@ export const PATH_TRIGGERS = {
   'src/defaultworlds/emberwatch.json': ['src/lib/emberwatchWorld.test.ts', 'src/components/game/GamePrompts.globalBlocks.test.ts'],
   'src/defaultworlds/rampage.json': ['src/lib/rampageWorld.test.ts', 'src/components/game/GamePrompts.globalBlocks.test.ts'],
   'src/defaultworlds/open-chat.json': ['src/lib/openChatWorld.test.ts', 'src/components/game/GamePrompts.globalBlocks.test.ts'],
+  'src/defaultworlds/sugarscape.json': ['src/lib/sugarscapeWorld.test.ts'],
   'src/lib/formaquestion/mascotAssets/*.webp': ['src/lib/formaquestion/mascotAssets.ts'],
   'testing/parity/turn-pipeline-parity.json': ['src/lib/turnPipeline/parityFixture.test.ts', 'src/lib/turnPipeline/parityTestInputs.ts'],
   'testing/baseline/help-baseline-cases.json': ['testing/baseline/harness/help-baseline-cases.ts'],
