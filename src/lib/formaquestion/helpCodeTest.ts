@@ -24,7 +24,7 @@ export const HELP_CODE_TEST: OfferedFunction = {
   description: [
     'Purpose: Check a script you wrote, and run it once on the open world, before you give it to the player.',
     'Use when: You wrote a script for the player. Call it before you answer. When it reports errors or dropped writes, fix the code and call it again. When an error remains after your last call, give your best code and name the remaining error in one sentence.',
-    'Input: code, timing, owner and name. The script runs in its timing on its owner. A stat or trait script reads that stat or trait as self. Without owner and name, the script sits on the stat or trait the player has open, else on a stat. Without name, self is the open stat or trait of that kind, if any.',
+    'Input: code, timing, owner and name. The script runs in its timing on its owner. A stat or trait script reads that stat or trait as self. Without owner and name, the script sits on the stat, trait or world the player has open, else on a stat. Without name, self is the open stat or trait of that kind, if any.',
     'Output: JSON with errors and warnings, each with its line; notInWorld: the names the world does not have yet, each with its kind; and run: the value the code set, its writes, its pending writes, its assumed stats, its dropped writes, the sentence a During AI Output script left, or the error it threw. A During AI Output script runs on a sample sentence, and a When a Trait Switches script on a sample switched trait. A pending write lands on the played persona during the game. It is not an error. A notInWorld name and an assumed stat are not errors: keep the code, tell the player to create each one, and name its kind. An assumed stat is a stat the world does not have yet, run as a number at 0 in 0–100. With world false, no world is open: names go unchecked and nothing runs.',
   ].join('\n'),
   params: [
@@ -46,7 +46,7 @@ const openNameOf = (openHome: CodeTestOwner | undefined, kind: CodeTestOwner['ki
 
 /**
  * The code test's executor for one help question. The world is read once, at the first call; none means no
- * world is open. A call that names no owner tests `openHome`, the stat or trait whose panel is open, and a
+ * world is open. A call that names no owner tests `openHome`, the stat or trait whose panel is open or the world, and a
  * stat or trait call that names no item tests the open one of its kind.
  */
 export function createCodeTest(world: StatCodeWorldSource | undefined, openHome?: CodeTestOwner): ToolExecutor<OfferedFunction> {

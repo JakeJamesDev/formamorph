@@ -69,15 +69,19 @@ export const QUICK_REFERENCE_SECTION = 'ScriptsGuide#quick-reference';
 /** A trait's Scripts tab, as the surface registry reports it. */
 export const TRAIT_SCRIPT_TAB: SurfaceId = 'worldEditorTrait.scripts';
 
+/** The world's Scripts tab, as the surface registry reports it. */
+export const WORLD_SCRIPT_TAB: SurfaceId = 'worldEditor.scripts';
+
 /** The line of each script home's tab: what `self` is there and what the owner reads. */
 const HOME_LINES: Partial<Record<SurfaceId, string>> = {
   [SCRIPT_TAB]: '- This is a stat\'s script: `self` is the stat, and `owner.stats` reads the stats of the entity that owns it.',
   [TRAIT_SCRIPT_TAB]: '- This is a trait\'s script, and it runs only while the trait is on: `self` is the trait, read-only. `owner.stats` reads the stats of the entity that holds the trait. A trait that no entity holds has no owner stats.',
+  [WORLD_SCRIPT_TAB]: '- This is a world script: it has no owner, so it does not read `owner` or `self`. It reads the world through `stats`, `traits`, `placeholders`, and `clock`.',
 };
 
 const homeTabOf = (surface?: Surface | null): SurfaceId | undefined => surface?.tabs.findLast((tab) => Object.hasOwn(HOME_LINES, tab));
 
-/** True when a script home's tab is open: a stat's Code tab or a trait's Scripts tab. */
+/** True when a script home's tab is open: a stat's Code tab, a trait's Scripts tab or the world's Scripts tab. */
 export const isOnCodeTab = (surface?: Surface | null): boolean => homeTabOf(surface) !== undefined;
 
 /** The line for the open script home, naming what `self` and the owner read there; null off a home. */

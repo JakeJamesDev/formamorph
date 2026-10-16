@@ -39,6 +39,11 @@ const KNOWN: Record<string, { right: string; given: string }> = {
     right: 'stats.Health.value += 5;',
     given: 'self.value += 5;',
   },
+  // A world script has no stat as `self`, so a `self.value` read is NaN and the write throws.
+  'world-heal-on-stamina': {
+    right: 'if (stats.Stamina.value > 30) stats.Health.value += 5;',
+    given: 'if (stats.Stamina.value > 30) stats.Health.value = self.value + 5;',
+  },
 };
 
 describe('the known cases', () => {
@@ -66,7 +71,7 @@ describe('the known cases', () => {
   });
 
   it('name the fixture stat as the focus of every case on the Code tab', () => {
-    const onTab = HELP_CODE_CASES.filter((c) => c.surface && !c.trait);
+    const onTab = HELP_CODE_CASES.filter((c) => c.surface && !c.trait && !c.worldScript);
     expect(onTab.length).toBeGreaterThan(0);
     expect(onTab.every((c) => c.focus?.kind === 'stat' && c.focus.name === FIXTURE_STAT.name)).toBe(true);
   });
@@ -76,6 +81,12 @@ describe('the known cases', () => {
     expect(onTab.length).toBeGreaterThan(0);
     expect(onTab.every((c) => c.surface && c.focus?.kind === 'trait' && c.focus.name === c.trait)).toBe(true);
     expect(onTab.every((c) => FIXTURE_WORLD.traits.some((t) => t.name === c.trait))).toBe(true);
+  });
+
+  it('open the world Scripts tab with no focus on every world case', () => {
+    const onTab = HELP_CODE_CASES.filter((c) => c.worldScript);
+    expect(onTab.length).toBeGreaterThan(0);
+    expect(onTab.every((c) => c.surface?.tabs.join() === 'worldEditor.scripts' && c.focus === undefined)).toBe(true);
   });
 
   it('pass two weeks read through elapsed hours, and still fail a clock field that is not a count of time', async () => {
@@ -93,7 +104,8 @@ describe('the known cases', () => {
 describe('the known cases under the code test', () => {
   const tested = async (id: string, code: string) => {
     const c = HELP_CODE_CASES.find((x) => x.id === id);
-    const owner = c?.trait ? { kind: 'trait' as const, name: c.trait } : { kind: 'stat' as const, name: FIXTURE_STAT.name };
+    const owner = c?.trait ? { kind: 'trait' as const, name: c.trait }
+      : c?.worldScript ? { kind: 'world' as const } : { kind: 'stat' as const, name: FIXTURE_STAT.name };
     return testsClean(await testScript(code, 'before', owner, c?.world ?? FIXTURE_WORLD));
   };
 
@@ -114,6 +126,8 @@ const TIMED: Record<HelpCodeCase['id'], string> = {
   'switch-brave': "if (trait.name === 'Brave' && trait.enabled) stats.Health.value += 10;",
   'trait-start-stamina': 'stats.Stamina.value = 80;',
   'trait-switch-off': 'if (!trait.enabled) stats.Courage.value -= 10;',
+  'world-start-stamina': 'stats.Stamina.value = 80;',
+  'world-switch-brave': "if (trait.name === 'Brave' && !trait.enabled) stats.Courage.value -= 10;",
 };
 
 describe('the timing cases', () => {

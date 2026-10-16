@@ -12,7 +12,7 @@
 //   <name>   with `--docs-alt PAGE=FILE,PAGE=FILE`: per file, the Default preset over docs whose page PAGE is
 //            the file's text, as an arm named after the file
 //
-// A code case asks with code words, or with a stat's Code tab or a trait's Scripts tab open.
+// A code case asks with code words, or with a stat's Code tab, a trait's Scripts tab or the world's Scripts tab open.
 // A prose case is a how-to control: no turn
 // of it is a code turn, so it wants no fence on any arm. A known case carries its real names: it passes when
 // every fence runs, the fences hold those names, and they hold no invented one (an unknown clock field, a whole

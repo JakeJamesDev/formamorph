@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Hint } from '@/components/ui/typography';
 import { HelpButton } from '@/components/HelpButton';
@@ -9,6 +9,7 @@ import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useCodeCardNavigation } from '@/lib/codeCardNavigation';
 import { useCodeUseReveal } from '@/lib/codeUseReveal';
+import { registerScriptInsert, reportScriptInsert } from '@/lib/formaquestion/scriptInsert';
 import { newScript } from '@/lib/scriptRows';
 import { SCRIPT_TIMING_LABEL, SCRIPT_TIMINGS } from '@/lib/scripts';
 import { isStatOn } from '@/lib/statCodeTargets';
@@ -111,9 +112,11 @@ function OpenOwnerFooter({ entry }: { entry: ScriptEntry }) {
  * The Scripts tab: every script in the world under its timing, in run order. A drag reorders within a timing and
  * writes `order` (Q5); the timing menu alone moves a script between timings (Q4). Add Script adds a world script.
  */
-export function useWorldScriptsAdapter({ selectedId, onSelect }: {
+export function useWorldScriptsAdapter({ selectedId, onSelect, active = false }: {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
+  /** True while the Scripts tab shows: the help window's Insert targets the world then. */
+  active?: boolean;
 }): ListEditorAdapter {
   const { worldScripts, stats, statGroups, traits, traitGroups, entities, placeholders, setWorldScripts } = useGameData();
   const write = useScriptWrites();
@@ -126,13 +129,27 @@ export function useWorldScriptsAdapter({ selectedId, onSelect }: {
   const byTiming = useMemo(() => scriptsByTiming(entries), [entries]);
   const byKey = useMemo(() => new Map(entries.map((entry) => [entry.key, entry])), [entries]);
 
-  const add = useCallback((timing: ScriptTiming, name: string) => {
-    const script: Script = { ...newScript(timing), ...(name && { name }) };
+  const add = useCallback((timing: ScriptTiming, name: string, code = '') => {
+    const script: Script = { ...newScript(timing, code), ...(name && { name }) };
     setWorldScripts([...worldScripts, script]);
     const key = scriptEntryKey({ kind: 'world' }, script.id);
     setFocusKey(key);
     onSelect(key);
   }, [worldScripts, setWorldScripts, onSelect]);
+
+  // Read at insert time, so the registration does not change with each keystroke.
+  const latestAdd = useRef(add);
+  latestAdd.current = add;
+  useEffect(() => {
+    if (!active) return;
+    return registerScriptInsert({
+      homeName: 'World Scripts',
+      insert: (timing, code) => {
+        latestAdd.current(timing, '', code);
+        reportScriptInsert('written');
+      },
+    });
+  }, [active]);
 
   const tree: SortableTreeAdapter<ScriptTreeRow> = {
     visibleDeps: [byTiming],

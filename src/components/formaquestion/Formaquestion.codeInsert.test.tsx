@@ -71,7 +71,7 @@ describe('Insert on a help answer', () => {
     await userEvent.click(insert);
     expect(screen.queryByText('Before the AI')).toBeNull();
     await userEvent.hover(insert);
-    expect(await screen.findByText("Switch the World Editor to Advanced and open a stat's Code tab or a trait's Scripts tab")).toBeInTheDocument();
+    expect(await screen.findByText("Switch the World Editor to Advanced and open a stat's Code tab, a trait's Scripts tab or the world's Scripts tab")).toBeInTheDocument();
     expect(within(conversation()).getByRole('button', { name: 'Copy' })).toBeInTheDocument();
   });
 
