@@ -19,7 +19,8 @@ Spec: ../spec.md (Q1, Q3, Q4, Q6, Q8; Feature assignment)
 
 - [ ] The world's row is in the shared coverage table and passes.
 - [ ] The shared suite passes for this world, including the old-save check.
-- [ ] Every script and code field uses full variable names (no one-character names) and explains its logic with step comments (Q16).
+- [ ] Every script uses full variable names (no one-character names), is split into explained sections, and comments each section's logic (Q16).
+- [ ] Every placeholder name is in title case with spaces, like a proper noun (Q17).
 - [ ] Per-world tests cover each script's effect on its stat and each gate that must hold.
 - [ ] The probe (01) shows no structural regression and a rubric win over the pre-refresh revision, with 5 or more runs per arm. Numbers go in this ticket's comments.
 - [ ] Each animated GIF becomes an animated WebP with the same frame count and per-frame timing, shown in comments.
