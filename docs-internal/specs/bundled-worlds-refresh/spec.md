@@ -93,6 +93,7 @@ Every world: current shape on disk, `openings` (no `openingCue`), `imageTags` on
 - **Readme split.** `introReadme` holds trait guidance and shows before trait picks. `readme` holds stat behavior, toggles, and the win condition, and shows on entering play.
   - Ticket 05 ruling: Open Chat keeps one opening, because a library entity's openings replace the world pool (story 23 over story 7). It gets no lore and no entities. Its content pass covers the system prompt, location text, opening and tone values, Style trait text, readmes, and imageTags.
   - Ticket 04 ruling: Emberwatch keeps its "How this world is built" authoring section in `readme`, after the play-only part. The play part comes first and states the win condition.
+- **Q16 (user): showcase code.** The worlds are a showcase. No script, stat code, or other authored code uses a one-character variable name. Scripts carry comments that explain their logic step by step, not only a header comment.
 - **Threshold units.** A stat whose max a trait changes uses percent thresholds on its descriptors.
 - **Prompts.** World prompt text follows the prompt-writing guide: positive contracts, no example values a small model can parrot.
 - **Fingerprints.** Each world ticket regenerates the bundled fingerprints and commits them with the world. A rebase conflict in the fingerprint file is resolved by regenerating it, never by hand.
