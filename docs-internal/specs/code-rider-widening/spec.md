@@ -26,6 +26,8 @@ Settled with the user on 2026-10-16, from the Out of Scope list of the Scripts L
 | Q7 | A code turn with no home open sends the generic rider with no home line. The answer has no Insert |
 | Q8 | With no owner named, the help code test falls back to the open home (stat, trait or world), not only the open stat. This widens Scripts Leftovers Q10's fallback |
 | Q9 | The help code probe gains cases for the three new timings and for trait and world homes. Existing cases do not regress; new cases meet the existing pass bar |
+| Q10 | The generic reads line keeps `self` in home-neutral words (the script's home), so a code turn with no home open still writes through `self`. Each home line says what `self` is in that home. Spec-session ruling for ticket 02 |
+| Q11 | When lines ride together, the order is: rider, home line, code-test line. The test instruction stays last. Spec-session ruling for ticket 02 |
 
 ## User Stories
 
