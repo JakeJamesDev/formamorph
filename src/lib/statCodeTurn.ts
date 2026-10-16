@@ -53,6 +53,9 @@ export interface StatCodeTurn {
   narration?: NarrationInput;
   /** The switch a `switch` run fires on. The run's state is the one the switch left. */
   switched?: TraitSwitchEvent;
+  /** The world the switches held under before they fired, when it differs (a persona change). A switch-off's
+   *  trait reads this one (Q16). Absent ⇒ `ownerTraits.world`. */
+  switchedFrom?: TraitWorld;
   /** The world's own scripts, which run with no `self` and no `owner`. Absent ⇒ none. */
   worldScripts?: readonly Script[];
   /** Every stat as the turn's pipeline left it: AI asks and regen applied, code not yet run. Names are the
@@ -365,8 +368,9 @@ async function switchRuns(
   for (const switched of events) {
     const step = await runScripts({ ...now, timing: 'switch', switched });
     steps.push(step);
-    const next = afterRun(now, step);
-    now = await switchRuns(next, switchesBetween(now, next), depth + 1, steps);
+    // A run's own switches hold under the world it ran in.
+    const next = { ...afterRun(now, step), switchedFrom: undefined };
+    now = { ...await switchRuns(next, switchesBetween(now, next), depth + 1, steps), switchedFrom: turn.switchedFrom };
   }
   return now;
 }
@@ -451,7 +455,9 @@ function scriptTraits(
   if (timing !== 'switch' || !switched) return inForce;
   const trait = switchedTraitOf(switched, world);
   const own = (ownerId: OwnerId) => (trait && ownerId === switched.ownerId ? [trait] : []);
-  return { global: own(null), owners: Object.fromEntries(Object.keys(inForce.owners).map((id) => [id, own(id)])) };
+  // An owner that left the world with the switch still runs its trait's script.
+  const ownerIds = new Set([...Object.keys(inForce.owners), ...(switched.ownerId === null ? [] : [switched.ownerId])]);
+  return { global: own(null), owners: Object.fromEntries([...ownerIds].map((id) => [id, own(id)])) };
 }
 
 /** The authored trait a switch names, in its owner's tree. */
@@ -459,6 +465,10 @@ function switchedTraitOf({ traitId, ownerId }: TraitSwitchEvent, world: TraitWor
   const tree = ownerId === null ? world.traits : world.owners?.find((owner) => owner.id === ownerId)?.traits;
   return tree?.find((trait) => trait.id === traitId);
 }
+
+/** The world a switch's trait reads: a switch-off's is the one it held under. */
+const switchedWorldOf = (turn: StatCodeTurn, switched: TraitSwitchEvent): TraitWorld =>
+  (!switched.enabled && turn.switchedFrom && switchedTraitOf(switched, turn.switchedFrom) ? turn.switchedFrom : turn.ownerTraits.world);
 
 /** The `trait` a switch run reads: the switched trait's entry in its owner's map after the switch, else one
  *  built from the authored trait. */
@@ -487,6 +497,7 @@ async function runScripts(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
     asks: turn.asks, regenApplied: turn.regenApplied,
   };
   const world = turn.ownerTraits.world;
+  const switchWorld = turn.switched ? switchedWorldOf(turn, turn.switched) : world;
   const before: TraitRuntimeState = {
     stats: [...turn.stats],
     traits: [...turn.ownerTraits.acquired],
@@ -503,7 +514,7 @@ async function runScripts(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
   const inForce = scriptTraits(timing, turn.switched, {
     global: inAuthoredOrder(force.global.map((trait) => authored.get(trait.id) ?? trait), traitOrderIndex(world.traits, world.groups)),
     owners: force.owners,
-  }, world);
+  }, switchWorld);
   const globalRun = ownerRun(globalTurn, timing, placeholderDefs, turn.worldScripts, inForce.global);
   const entityRuns = (turn.owners ?? []).map((owner) => ownerRun(owner, timing, placeholderDefs, [], inForce.owners[owner.id]));
   // An owner with no stats of its own still runs its traits' scripts, in owner order: ahead of the next owner
@@ -565,7 +576,7 @@ async function runScripts(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
   /** A trait script's `self`: its trait's entry where its owner's map holds it. */
   const selfTraitOf = (trait: Trait, owner: CodeEntity | undefined): SandboxTrait | undefined =>
     (owner ? owner.traits : traits).find((entry) => entry.id === trait.id);
-  const switchedTrait = timing === 'switch' && turn.switched ? switchedTraitEntry(turn.switched, traits, inPlay, world, placeholderDefs) : undefined;
+  const switchedTrait = timing === 'switch' && turn.switched ? switchedTraitEntry(turn.switched, traits, inPlay, switchWorld, placeholderDefs) : undefined;
   // Run order: ordered scripts first, then owner order and stat order, so the later write wins.
   const ordered = inRunOrder(runs.flatMap((run) => run.units.map((unit) => ({ unit, run, script: unit.script }))));
   // The sentence a During AI Output run hands from one script to the next.

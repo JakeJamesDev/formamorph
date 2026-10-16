@@ -12,6 +12,14 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.3.0** (just released below)._
 
+### Major Changes
+
+#### ➕ Added
+
+- **👤 User-facing**
+  - **Scripts:**
+    - **A When a Trait Switches script fired by a persona change reads the new persona and cast.** `persona` is the persona you now play, with its stats. The persona you left leaves `entities`, and its traits switch off and fire their scripts. A library persona's scripts wait until it loads.
+
 ### Minor Changes
 
 #### ➕ Added

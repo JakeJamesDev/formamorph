@@ -3,7 +3,7 @@ import type { Entity, PersonaRef, Placeholder, PlaceholderPin, Trait, TraitLink 
 import { phValueId, phValues } from '@/test/placeholderValues';
 import { allPinTexts, type PinnableStat } from './placeholderPins';
 import {
-  activeOwnedTraitIds, addedCharacters, ownerGroupId, ownerPins, ownerPriming, ownerTraitTree, inPlayLibrary, playerEntityIds,
+  activeOwnedTraitIds, addedCharacters, ownerGroupId, ownerPins, ownerPriming, ownerTraitTree, inPlayLibrary, libraryUnder, playerEntityIds,
   rowOwner, withOwnerNames,
   type OwnerPinState,
 } from './ownedTraitsInPlay';
@@ -377,6 +377,22 @@ describe('the library entities in play', () => {
     expect(wren.traits![0].requires).toEqual([{ all: [{ kind: 'trait', id: 'w-paladin', name: 'Paladin' }] }]);
     expect(moss.traits![0].requires).toEqual([{ all: [{ kind: 'trait', id: 'w-paladin', name: 'Paladin' }] }]);
     expect(inPlayLibrary(world, null)).toEqual([]);
+  });
+
+  describe('libraryUnder — the library a new persona leaves', () => {
+    const library = [persona, added];
+    const wren: PersonaRef = { source: 'library', entityId: 'lib-wren' };
+
+    it('drops the library persona the player stopped playing, and keeps the added characters', () => {
+      expect(libraryUnder(library, wren, { source: 'world', entityId: 'w-mira' }).map((e) => e.id)).toEqual(['copy-moss']);
+      expect(libraryUnder(library, wren, { source: 'none' }).map((e) => e.id)).toEqual(['copy-moss']);
+    });
+
+    it('keeps the list as it is when the library persona still plays, or none played', () => {
+      expect(libraryUnder(library, wren, { ...wren })).toBe(library);
+      expect(libraryUnder(library, { source: 'world', entityId: 'w-ash' }, { source: 'none' })).toBe(library);
+      expect(libraryUnder(library, undefined, wren)).toBe(library);
+    });
   });
 });
 
