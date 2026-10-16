@@ -4,7 +4,7 @@
       "boundStats": {
         "stats": [
           {
-            "description": "Represents the player's physical well-being and ability to sustain damage",
+            "description": "The drone's armor and core integrity.",
             "descriptors": [
               {
                 "description": "Critical Failure: Core systems failing. Emergency power only, weapons offline, mobility severely limited. Immediate maintenance required.",
@@ -12,7 +12,7 @@
                 "threshold": 10
               },
               {
-                "description": " Severe Damage: Multiple systems compromised. Mobility impaired, weapon systems unstable, armor integrity compromised.",
+                "description": "Severe Damage: Multiple systems compromised. Mobility impaired, weapon systems unstable, armor integrity compromised.",
                 "id": "health_injured",
                 "threshold": 40
               },
@@ -38,7 +38,7 @@
             "value": 100
           },
           {
-            "description": "Represents the player's energy and ability to perform physical actions",
+            "description": "The drone's battery. Firing, dashing and evading spend it.",
             "descriptors": [
               {
                 "description": "Emergency Power: Severe power depletion, barely maintaining basic functions. Emergency shutdown imminent.",
@@ -72,7 +72,7 @@
             "value": 100
           },
           {
-            "description": "Live readout of how well the drone can move — tracks Power, and craters when the core is badly damaged.",
+            "description": "How well the drone moves right now: its speed, handling and footing.",
             "descriptors": [
               {
                 "description": "Crippled: Barely able to move. Most terrain is impassable; risk of full immobilization.",
@@ -102,17 +102,17 @@
             "regen": 0,
             "scripts": [
               {
-                "code": "const power = owner.stats.Power.value;\nconst health = owner.stats.Health.value;\nlet m = Math.round(power * 0.8 + 20);\nif (health < 30) m = Math.min(m, 35); // crippled when the core is failing\nreturn m;",
+                "code": "// Power share sets the base; the chassis and thrusters shift it; a failing core cripples it.\nconst power = owner.stats.Power;\nconst health = owner.stats.Health;\nconst t = owner.traits;\nlet m = (power.value / power.max) * 70 + 15;\nif (t[\"Scout Frame\"].enabled) m += 10;\nif (t[\"Siege Frame\"].enabled) m -= 15;\nif (t[\"Evasion Thrusters\"].enabled) m += 15;\nif (health.value / health.max < 0.3) m = Math.min(m, 35);\nreturn Math.round(m);",
                 "id": "1739621674256:after",
                 "timing": "after"
               }
             ],
-            "starting": 90,
+            "starting": 85,
             "type": "number",
-            "value": 90
+            "value": 85
           },
           {
-            "description": "Live readout of weapon output — scales with Power, drops with core damage, and spikes when Charge hits Overdrive.",
+            "description": "How hard the drone's weapons hit right now.",
             "descriptors": [
               {
                 "description": "Disabled: Weapon systems critically starved. Barely able to engage.",
@@ -142,17 +142,17 @@
             "regen": 0,
             "scripts": [
               {
-                "code": "const power = owner.stats.Power.value;\nconst charge = owner.stats.Charge.value;\nconst health = owner.stats.Health.value;\nlet out = Math.round(power * 0.9 + 10);\nif (health < 30) out = Math.round(out * 0.5); // damaged core weakens fire\nif (charge >= 100) out = Math.min(100, out + 30); // Overdrive burst primed\nreturn out;",
+                "code": "// Power share sets the base; the build adds to it; a failing core halves it; full Charge primes Overdrive.\nconst power = owner.stats.Power;\nconst health = owner.stats.Health;\nconst charge = owner.stats.Charge;\nconst t = owner.traits;\nlet out = (power.value / power.max) * 70 + 10;\nif (t[\"Assault Frame\"].enabled) out += 5;\nif (t[\"Overcharged Rounds\"].enabled) out += 10;\nif (t[\"Recon Optics\"].enabled) out += 5;\nif (t[\"Siege Cannon\"].enabled) out += 15;\nif (health.value / health.max < 0.3) out *= 0.5;\nif (charge.value >= charge.max) out += 30;\nreturn Math.round(out);",
                 "id": "1739621783199:after",
                 "timing": "after"
               }
             ],
-            "starting": 80,
+            "starting": 85,
             "type": "number",
-            "value": 80
+            "value": 85
           },
           {
-            "description": "Overdrive meter. Fills as the drone lands hits and takes bold risks; at full it can unleash a single devastating Overdrive burst, then empties.",
+            "description": "The Overdrive meter. It fills as the drone lands hits and takes bold risks. At full Charge the drone can fire one Overdrive burst, which empties it.",
             "descriptors": [
               {
                 "description": "Depleted: No reserve. The capacitors need to spin back up.",
@@ -192,45 +192,49 @@
             "aiDescription": "The drone’s chassis:",
             "id": "a8d1e41c-ae2e-4a03-a2b0-7f97ab7f4c52",
             "maxPicks": 1,
+            "minPicks": 1,
             "name": "Chassis",
             "order": 0,
             "parentId": null,
-            "playerDescription": "Your frame — it shapes your Power, Health, and how fast Overdrive charges. Pick one."
+            "playerDescription": "Your frame. It sets your Power, Health, Mobility and how fast Overdrive charges."
           },
           {
-            "aiDescription": "Installed Assault-frame modules:",
+            "aiDescription": "Installed modules:",
             "id": "a71d0a7e-a693-41ba-b01d-35bdf01acbc3",
+            "maxPicks": 2,
             "name": "Assault Modules",
             "order": 0,
             "parentId": "a8d1e41c-ae2e-4a03-a2b0-7f97ab7f4c52",
-            "playerDescription": "Optional modules that specialize the Assault frame."
+            "playerDescription": "Add-ons for the Assault Frame. They work only on that chassis."
           },
           {
-            "aiDescription": "Installed Scout-frame modules:",
+            "aiDescription": "Installed modules:",
             "id": "fc8cd760-c60e-4fcc-b925-ccb991aaff53",
+            "maxPicks": 2,
             "name": "Scout Modules",
             "order": 1,
             "parentId": "a8d1e41c-ae2e-4a03-a2b0-7f97ab7f4c52",
-            "playerDescription": "Optional modules that specialize the Scout frame."
+            "playerDescription": "Add-ons for the Scout Frame. They work only on that chassis."
           },
           {
-            "aiDescription": "Installed Siege-frame modules:",
+            "aiDescription": "Installed modules:",
             "id": "ea554bd2-ec77-41f6-9478-156b7e061ff8",
+            "maxPicks": 2,
             "name": "Siege Modules",
             "order": 2,
             "parentId": "a8d1e41c-ae2e-4a03-a2b0-7f97ab7f4c52",
-            "playerDescription": "Optional modules that specialize the Siege frame."
+            "playerDescription": "Add-ons for the Siege Frame. They work only on that chassis."
           }
         ],
         "traits": [
           {
-            "aiDescription": "Assault frame: prioritizes offense and fast Overdrive charging; runs a reduced Power ceiling.",
+            "aiDescription": "Assault Frame: built for offense. Its capacitors charge Overdrive fast, and it runs on a smaller Power reserve.",
             "groupId": "a8d1e41c-ae2e-4a03-a2b0-7f97ab7f4c52",
             "id": "e21c6cec-c532-457b-ab4e-fd9876adb691",
             "isDefault": true,
             "name": "Assault Frame",
             "order": 0,
-            "playerDescription": "A hard-hitting frame that spins its Overdrive capacitors fast — at the cost of a smaller power reserve. Aggressive, glass-cannon play.",
+            "playerDescription": "A hard-hitting frame. Overdrive charges fast, but the Power reserve is smaller.",
             "statChanges": [
               {
                 "statId": "charge",
@@ -245,12 +249,23 @@
             ]
           },
           {
-            "aiDescription": "Rapid-Fire: Charge accumulates faster.",
+            "aiDescription": "Rapid-Fire Actuators: the cannon cycles fast, so Charge builds quickly in a fight.",
             "groupId": "a71d0a7e-a693-41ba-b01d-35bdf01acbc3",
             "id": "21fa1245-57d0-439b-b03e-2ca90c03f28a",
             "name": "Rapid-Fire Actuators",
             "order": 0,
-            "playerDescription": "Charge builds even faster.",
+            "playerDescription": "Charge builds faster.",
+            "requires": [
+              {
+                "all": [
+                  {
+                    "id": "e21c6cec-c532-457b-ab4e-fd9876adb691",
+                    "kind": "trait",
+                    "name": "Assault Frame"
+                  }
+                ]
+              }
+            ],
             "statChanges": [
               {
                 "statId": "charge",
@@ -260,28 +275,59 @@
             ]
           },
           {
-            "aiDescription": "Overcharged Rounds: improved Power regeneration.",
+            "aiDescription": "Overcharged Rounds: each shot hits far harder than the cannon's size suggests.",
             "groupId": "a71d0a7e-a693-41ba-b01d-35bdf01acbc3",
             "id": "cd2e97ff-4a46-4168-922d-84532a44fa66",
             "name": "Overcharged Rounds",
             "order": 1,
-            "playerDescription": "Recovers Power a little faster between bursts.",
+            "playerDescription": "Raises Firepower.",
+            "requires": [
+              {
+                "all": [
+                  {
+                    "id": "e21c6cec-c532-457b-ab4e-fd9876adb691",
+                    "kind": "trait",
+                    "name": "Assault Frame"
+                  }
+                ]
+              }
+            ],
+            "statChanges": []
+          },
+          {
+            "aiDescription": "Ram Plate: a reinforced front plate. The drone can ram targets at speed.",
+            "groupId": "a71d0a7e-a693-41ba-b01d-35bdf01acbc3",
+            "id": "4b9a32d9-a7a8-4120-8af5-d7a884a5db91",
+            "name": "Ram Plate",
+            "order": 2,
+            "playerDescription": "A reinforced front plate for ramming. Raises max Health.",
+            "requires": [
+              {
+                "all": [
+                  {
+                    "id": "e21c6cec-c532-457b-ab4e-fd9876adb691",
+                    "kind": "trait",
+                    "name": "Assault Frame"
+                  }
+                ]
+              }
+            ],
             "statChanges": [
               {
-                "statId": "stamina",
-                "type": "regen",
-                "value": 2
+                "statId": "health",
+                "type": "max",
+                "value": 10
               }
             ]
           },
           {
-            "aiDescription": "Scout frame: high Power ceiling and regen, fragile chassis (reduced Health ceiling).",
+            "aiDescription": "Scout Frame: light and quick, with a large, fast-recharging Power reserve and thin armor.",
             "groupId": "a8d1e41c-ae2e-4a03-a2b0-7f97ab7f4c52",
             "id": "05fc7964-8a02-42a2-8ac2-e4d6f51fb35d",
             "isDefault": false,
             "name": "Scout Frame",
             "order": 1,
-            "playerDescription": "A light, fast frame with a big, quick-recovering power reserve — but thin armor. Speed and uptime over durability.",
+            "playerDescription": "A light, fast frame. A large Power reserve that recharges quickly and high Mobility, but thin armor.",
             "statChanges": [
               {
                 "statId": "stamina",
@@ -301,12 +347,63 @@
             ]
           },
           {
-            "aiDescription": "Recon Optics: further improved Power regeneration.",
+            "aiDescription": "Recon Optics: the drone sees through darkness and smoke and picks out weak points.",
             "groupId": "fc8cd760-c60e-4fcc-b925-ccb991aaff53",
             "id": "05724582-82f0-4a22-a518-db1707c36e4c",
             "name": "Recon Optics",
             "order": 0,
-            "playerDescription": "Even better Power recovery.",
+            "playerDescription": "Sees in the dark and spots weak points. Raises Firepower a little.",
+            "requires": [
+              {
+                "all": [
+                  {
+                    "id": "05fc7964-8a02-42a2-8ac2-e4d6f51fb35d",
+                    "kind": "trait",
+                    "name": "Scout Frame"
+                  }
+                ]
+              }
+            ],
+            "statChanges": []
+          },
+          {
+            "aiDescription": "Evasion Thrusters: side thrusters let the drone dodge, hop gaps and climb short ledges.",
+            "groupId": "fc8cd760-c60e-4fcc-b925-ccb991aaff53",
+            "id": "c16f2322-7259-41a3-913b-8943a4084cb3",
+            "name": "Evasion Thrusters",
+            "order": 1,
+            "playerDescription": "Short thruster bursts for dodges and jumps. Raises Mobility.",
+            "requires": [
+              {
+                "all": [
+                  {
+                    "id": "05fc7964-8a02-42a2-8ac2-e4d6f51fb35d",
+                    "kind": "trait",
+                    "name": "Scout Frame"
+                  }
+                ]
+              }
+            ],
+            "statChanges": []
+          },
+          {
+            "aiDescription": "Solar Skin: thin solar panels in the plating trickle-charge Power.",
+            "groupId": "fc8cd760-c60e-4fcc-b925-ccb991aaff53",
+            "id": "9b1a9c6d-f84c-4b2f-961c-7ae2207af5a9",
+            "name": "Solar Skin",
+            "order": 2,
+            "playerDescription": "Solar panels in the plating. Power recharges faster.",
+            "requires": [
+              {
+                "all": [
+                  {
+                    "id": "05fc7964-8a02-42a2-8ac2-e4d6f51fb35d",
+                    "kind": "trait",
+                    "name": "Scout Frame"
+                  }
+                ]
+              }
+            ],
             "statChanges": [
               {
                 "statId": "stamina",
@@ -316,28 +413,13 @@
             ]
           },
           {
-            "aiDescription": "Evasion Thrusters: slow Health regeneration.",
-            "groupId": "fc8cd760-c60e-4fcc-b925-ccb991aaff53",
-            "id": "c16f2322-7259-41a3-913b-8943a4084cb3",
-            "name": "Evasion Thrusters",
-            "order": 1,
-            "playerDescription": "Repairs minor damage over time.",
-            "statChanges": [
-              {
-                "statId": "health",
-                "type": "regen",
-                "value": 2
-              }
-            ]
-          },
-          {
-            "aiDescription": "Siege frame: high Health ceiling and self-repair, slow Power regeneration.",
+            "aiDescription": "Siege Frame: heavy armor that repairs itself, a slow Power recharge, and heavy, slow movement.",
             "groupId": "a8d1e41c-ae2e-4a03-a2b0-7f97ab7f4c52",
             "id": "3944ad50-92c0-4f74-98d1-69031e8ad6fc",
             "isDefault": false,
             "name": "Siege Frame",
             "order": 2,
-            "playerDescription": "A heavy, armored frame that soaks punishment and repairs itself — but its capacitors are sluggish. Slow, unkillable, relentless.",
+            "playerDescription": "A heavy, armored frame that repairs itself. Its Power recharges slowly, and it moves slowly.",
             "statChanges": [
               {
                 "statId": "health",
@@ -357,12 +439,23 @@
             ]
           },
           {
-            "aiDescription": "Bulwark Plating: further increased Health ceiling.",
+            "aiDescription": "Bulwark Plating: extra layers of armor plate.",
             "groupId": "ea554bd2-ec77-41f6-9478-156b7e061ff8",
             "id": "69023454-8ba4-48f6-86d3-334cdb2fb157",
             "name": "Bulwark Plating",
             "order": 0,
-            "playerDescription": "Even more armor.",
+            "playerDescription": "Even more armor. Raises max Health.",
+            "requires": [
+              {
+                "all": [
+                  {
+                    "id": "3944ad50-92c0-4f74-98d1-69031e8ad6fc",
+                    "kind": "trait",
+                    "name": "Siege Frame"
+                  }
+                ]
+              }
+            ],
             "statChanges": [
               {
                 "statId": "health",
@@ -372,17 +465,54 @@
             ]
           },
           {
-            "aiDescription": "Siege Cannon: increased Power ceiling.",
+            "aiDescription": "Siege Cannon: a long, heavy barrel that fires shells able to crack stone walls.",
             "groupId": "ea554bd2-ec77-41f6-9478-156b7e061ff8",
             "id": "8fac79ed-4135-455d-8d27-1c66bd06c860",
             "name": "Siege Cannon",
             "order": 1,
-            "playerDescription": "A bigger power reserve to feed a heavier gun.",
+            "playerDescription": "A heavier gun with its own power cell. Raises Firepower and max Power.",
+            "requires": [
+              {
+                "all": [
+                  {
+                    "id": "3944ad50-92c0-4f74-98d1-69031e8ad6fc",
+                    "kind": "trait",
+                    "name": "Siege Frame"
+                  }
+                ]
+              }
+            ],
             "statChanges": [
               {
                 "statId": "stamina",
                 "type": "max",
                 "value": 15
+              }
+            ]
+          },
+          {
+            "aiDescription": "Repair Nanites: a silver haze of tiny machines that seal cracks and dents.",
+            "groupId": "ea554bd2-ec77-41f6-9478-156b7e061ff8",
+            "id": "19054a4c-fd44-4431-8a6a-45bb0cd6443d",
+            "name": "Repair Nanites",
+            "order": 2,
+            "playerDescription": "A swarm of tiny repair machines. Health repairs faster.",
+            "requires": [
+              {
+                "all": [
+                  {
+                    "id": "3944ad50-92c0-4f74-98d1-69031e8ad6fc",
+                    "kind": "trait",
+                    "name": "Siege Frame"
+                  }
+                ]
+              }
+            ],
+            "statChanges": [
+              {
+                "statId": "health",
+                "type": "regen",
+                "value": 2
               }
             ]
           }
@@ -391,7 +521,7 @@
       "carriedStats": {
         "stats": [
           {
-            "description": "Represents the player's physical well-being and ability to sustain damage",
+            "description": "The drone's armor and core integrity.",
             "descriptors": [
               {
                 "description": "Critical Failure: Core systems failing. Emergency power only, weapons offline, mobility severely limited. Immediate maintenance required.",
@@ -399,7 +529,7 @@
                 "threshold": 10
               },
               {
-                "description": " Severe Damage: Multiple systems compromised. Mobility impaired, weapon systems unstable, armor integrity compromised.",
+                "description": "Severe Damage: Multiple systems compromised. Mobility impaired, weapon systems unstable, armor integrity compromised.",
                 "id": "health_injured",
                 "threshold": 40
               },
@@ -425,7 +555,7 @@
             "value": 100
           },
           {
-            "description": "Represents the player's energy and ability to perform physical actions",
+            "description": "The drone's battery. Firing, dashing and evading spend it.",
             "descriptors": [
               {
                 "description": "Emergency Power: Severe power depletion, barely maintaining basic functions. Emergency shutdown imminent.",
@@ -459,7 +589,7 @@
             "value": 100
           },
           {
-            "description": "Live readout of how well the drone can move — tracks Power, and craters when the core is badly damaged.",
+            "description": "How well the drone moves right now: its speed, handling and footing.",
             "descriptors": [
               {
                 "description": "Crippled: Barely able to move. Most terrain is impassable; risk of full immobilization.",
@@ -489,17 +619,17 @@
             "regen": 0,
             "scripts": [
               {
-                "code": "const power = owner.stats.Power.value;\nconst health = owner.stats.Health.value;\nlet m = Math.round(power * 0.8 + 20);\nif (health < 30) m = Math.min(m, 35); // crippled when the core is failing\nreturn m;",
+                "code": "// Power share sets the base; the chassis and thrusters shift it; a failing core cripples it.\nconst power = owner.stats.Power;\nconst health = owner.stats.Health;\nconst t = owner.traits;\nlet m = (power.value / power.max) * 70 + 15;\nif (t[\"Scout Frame\"].enabled) m += 10;\nif (t[\"Siege Frame\"].enabled) m -= 15;\nif (t[\"Evasion Thrusters\"].enabled) m += 15;\nif (health.value / health.max < 0.3) m = Math.min(m, 35);\nreturn Math.round(m);",
                 "id": "1739621674256:after",
                 "timing": "after"
               }
             ],
-            "starting": 90,
+            "starting": 85,
             "type": "number",
-            "value": 90
+            "value": 85
           },
           {
-            "description": "Live readout of weapon output — scales with Power, drops with core damage, and spikes when Charge hits Overdrive.",
+            "description": "How hard the drone's weapons hit right now.",
             "descriptors": [
               {
                 "description": "Disabled: Weapon systems critically starved. Barely able to engage.",
@@ -529,17 +659,17 @@
             "regen": 0,
             "scripts": [
               {
-                "code": "const power = owner.stats.Power.value;\nconst charge = owner.stats.Charge.value;\nconst health = owner.stats.Health.value;\nlet out = Math.round(power * 0.9 + 10);\nif (health < 30) out = Math.round(out * 0.5); // damaged core weakens fire\nif (charge >= 100) out = Math.min(100, out + 30); // Overdrive burst primed\nreturn out;",
+                "code": "// Power share sets the base; the build adds to it; a failing core halves it; full Charge primes Overdrive.\nconst power = owner.stats.Power;\nconst health = owner.stats.Health;\nconst charge = owner.stats.Charge;\nconst t = owner.traits;\nlet out = (power.value / power.max) * 70 + 10;\nif (t[\"Assault Frame\"].enabled) out += 5;\nif (t[\"Overcharged Rounds\"].enabled) out += 10;\nif (t[\"Recon Optics\"].enabled) out += 5;\nif (t[\"Siege Cannon\"].enabled) out += 15;\nif (health.value / health.max < 0.3) out *= 0.5;\nif (charge.value >= charge.max) out += 30;\nreturn Math.round(out);",
                 "id": "1739621783199:after",
                 "timing": "after"
               }
             ],
-            "starting": 80,
+            "starting": 85,
             "type": "number",
-            "value": 80
+            "value": 85
           },
           {
-            "description": "Overdrive meter. Fills as the drone lands hits and takes bold risks; at full it can unleash a single devastating Overdrive burst, then empties.",
+            "description": "The Overdrive meter. It fills as the drone lands hits and takes bold risks. At full Charge the drone can fire one Overdrive burst, which empties it.",
             "descriptors": [
               {
                 "description": "Depleted: No reserve. The capacitors need to spin back up.",
@@ -579,45 +709,49 @@
             "aiDescription": "The drone’s chassis:",
             "id": "a8d1e41c-ae2e-4a03-a2b0-7f97ab7f4c52",
             "maxPicks": 1,
+            "minPicks": 1,
             "name": "Chassis",
             "order": 0,
             "parentId": null,
-            "playerDescription": "Your frame — it shapes your Power, Health, and how fast Overdrive charges. Pick one."
+            "playerDescription": "Your frame. It sets your Power, Health, Mobility and how fast Overdrive charges."
           },
           {
-            "aiDescription": "Installed Assault-frame modules:",
+            "aiDescription": "Installed modules:",
             "id": "a71d0a7e-a693-41ba-b01d-35bdf01acbc3",
+            "maxPicks": 2,
             "name": "Assault Modules",
             "order": 0,
             "parentId": "a8d1e41c-ae2e-4a03-a2b0-7f97ab7f4c52",
-            "playerDescription": "Optional modules that specialize the Assault frame."
+            "playerDescription": "Add-ons for the Assault Frame. They work only on that chassis."
           },
           {
-            "aiDescription": "Installed Scout-frame modules:",
+            "aiDescription": "Installed modules:",
             "id": "fc8cd760-c60e-4fcc-b925-ccb991aaff53",
+            "maxPicks": 2,
             "name": "Scout Modules",
             "order": 1,
             "parentId": "a8d1e41c-ae2e-4a03-a2b0-7f97ab7f4c52",
-            "playerDescription": "Optional modules that specialize the Scout frame."
+            "playerDescription": "Add-ons for the Scout Frame. They work only on that chassis."
           },
           {
-            "aiDescription": "Installed Siege-frame modules:",
+            "aiDescription": "Installed modules:",
             "id": "ea554bd2-ec77-41f6-9478-156b7e061ff8",
+            "maxPicks": 2,
             "name": "Siege Modules",
             "order": 2,
             "parentId": "a8d1e41c-ae2e-4a03-a2b0-7f97ab7f4c52",
-            "playerDescription": "Optional modules that specialize the Siege frame."
+            "playerDescription": "Add-ons for the Siege Frame. They work only on that chassis."
           }
         ],
         "traits": [
           {
-            "aiDescription": "Assault frame: prioritizes offense and fast Overdrive charging; runs a reduced Power ceiling.",
+            "aiDescription": "Assault Frame: built for offense. Its capacitors charge Overdrive fast, and it runs on a smaller Power reserve.",
             "groupId": "a8d1e41c-ae2e-4a03-a2b0-7f97ab7f4c52",
             "id": "e21c6cec-c532-457b-ab4e-fd9876adb691",
             "isDefault": true,
             "name": "Assault Frame",
             "order": 0,
-            "playerDescription": "A hard-hitting frame that spins its Overdrive capacitors fast — at the cost of a smaller power reserve. Aggressive, glass-cannon play.",
+            "playerDescription": "A hard-hitting frame. Overdrive charges fast, but the Power reserve is smaller.",
             "statChanges": [
               {
                 "statId": "charge",
@@ -632,12 +766,23 @@
             ]
           },
           {
-            "aiDescription": "Rapid-Fire: Charge accumulates faster.",
+            "aiDescription": "Rapid-Fire Actuators: the cannon cycles fast, so Charge builds quickly in a fight.",
             "groupId": "a71d0a7e-a693-41ba-b01d-35bdf01acbc3",
             "id": "21fa1245-57d0-439b-b03e-2ca90c03f28a",
             "name": "Rapid-Fire Actuators",
             "order": 0,
-            "playerDescription": "Charge builds even faster.",
+            "playerDescription": "Charge builds faster.",
+            "requires": [
+              {
+                "all": [
+                  {
+                    "id": "e21c6cec-c532-457b-ab4e-fd9876adb691",
+                    "kind": "trait",
+                    "name": "Assault Frame"
+                  }
+                ]
+              }
+            ],
             "statChanges": [
               {
                 "statId": "charge",
@@ -647,28 +792,59 @@
             ]
           },
           {
-            "aiDescription": "Overcharged Rounds: improved Power regeneration.",
+            "aiDescription": "Overcharged Rounds: each shot hits far harder than the cannon's size suggests.",
             "groupId": "a71d0a7e-a693-41ba-b01d-35bdf01acbc3",
             "id": "cd2e97ff-4a46-4168-922d-84532a44fa66",
             "name": "Overcharged Rounds",
             "order": 1,
-            "playerDescription": "Recovers Power a little faster between bursts.",
+            "playerDescription": "Raises Firepower.",
+            "requires": [
+              {
+                "all": [
+                  {
+                    "id": "e21c6cec-c532-457b-ab4e-fd9876adb691",
+                    "kind": "trait",
+                    "name": "Assault Frame"
+                  }
+                ]
+              }
+            ],
+            "statChanges": []
+          },
+          {
+            "aiDescription": "Ram Plate: a reinforced front plate. The drone can ram targets at speed.",
+            "groupId": "a71d0a7e-a693-41ba-b01d-35bdf01acbc3",
+            "id": "4b9a32d9-a7a8-4120-8af5-d7a884a5db91",
+            "name": "Ram Plate",
+            "order": 2,
+            "playerDescription": "A reinforced front plate for ramming. Raises max Health.",
+            "requires": [
+              {
+                "all": [
+                  {
+                    "id": "e21c6cec-c532-457b-ab4e-fd9876adb691",
+                    "kind": "trait",
+                    "name": "Assault Frame"
+                  }
+                ]
+              }
+            ],
             "statChanges": [
               {
-                "statId": "stamina",
-                "type": "regen",
-                "value": 2
+                "statId": "health",
+                "type": "max",
+                "value": 10
               }
             ]
           },
           {
-            "aiDescription": "Scout frame: high Power ceiling and regen, fragile chassis (reduced Health ceiling).",
+            "aiDescription": "Scout Frame: light and quick, with a large, fast-recharging Power reserve and thin armor.",
             "groupId": "a8d1e41c-ae2e-4a03-a2b0-7f97ab7f4c52",
             "id": "05fc7964-8a02-42a2-8ac2-e4d6f51fb35d",
             "isDefault": false,
             "name": "Scout Frame",
             "order": 1,
-            "playerDescription": "A light, fast frame with a big, quick-recovering power reserve — but thin armor. Speed and uptime over durability.",
+            "playerDescription": "A light, fast frame. A large Power reserve that recharges quickly and high Mobility, but thin armor.",
             "statChanges": [
               {
                 "statId": "stamina",
@@ -688,12 +864,63 @@
             ]
           },
           {
-            "aiDescription": "Recon Optics: further improved Power regeneration.",
+            "aiDescription": "Recon Optics: the drone sees through darkness and smoke and picks out weak points.",
             "groupId": "fc8cd760-c60e-4fcc-b925-ccb991aaff53",
             "id": "05724582-82f0-4a22-a518-db1707c36e4c",
             "name": "Recon Optics",
             "order": 0,
-            "playerDescription": "Even better Power recovery.",
+            "playerDescription": "Sees in the dark and spots weak points. Raises Firepower a little.",
+            "requires": [
+              {
+                "all": [
+                  {
+                    "id": "05fc7964-8a02-42a2-8ac2-e4d6f51fb35d",
+                    "kind": "trait",
+                    "name": "Scout Frame"
+                  }
+                ]
+              }
+            ],
+            "statChanges": []
+          },
+          {
+            "aiDescription": "Evasion Thrusters: side thrusters let the drone dodge, hop gaps and climb short ledges.",
+            "groupId": "fc8cd760-c60e-4fcc-b925-ccb991aaff53",
+            "id": "c16f2322-7259-41a3-913b-8943a4084cb3",
+            "name": "Evasion Thrusters",
+            "order": 1,
+            "playerDescription": "Short thruster bursts for dodges and jumps. Raises Mobility.",
+            "requires": [
+              {
+                "all": [
+                  {
+                    "id": "05fc7964-8a02-42a2-8ac2-e4d6f51fb35d",
+                    "kind": "trait",
+                    "name": "Scout Frame"
+                  }
+                ]
+              }
+            ],
+            "statChanges": []
+          },
+          {
+            "aiDescription": "Solar Skin: thin solar panels in the plating trickle-charge Power.",
+            "groupId": "fc8cd760-c60e-4fcc-b925-ccb991aaff53",
+            "id": "9b1a9c6d-f84c-4b2f-961c-7ae2207af5a9",
+            "name": "Solar Skin",
+            "order": 2,
+            "playerDescription": "Solar panels in the plating. Power recharges faster.",
+            "requires": [
+              {
+                "all": [
+                  {
+                    "id": "05fc7964-8a02-42a2-8ac2-e4d6f51fb35d",
+                    "kind": "trait",
+                    "name": "Scout Frame"
+                  }
+                ]
+              }
+            ],
             "statChanges": [
               {
                 "statId": "stamina",
@@ -703,28 +930,13 @@
             ]
           },
           {
-            "aiDescription": "Evasion Thrusters: slow Health regeneration.",
-            "groupId": "fc8cd760-c60e-4fcc-b925-ccb991aaff53",
-            "id": "c16f2322-7259-41a3-913b-8943a4084cb3",
-            "name": "Evasion Thrusters",
-            "order": 1,
-            "playerDescription": "Repairs minor damage over time.",
-            "statChanges": [
-              {
-                "statId": "health",
-                "type": "regen",
-                "value": 2
-              }
-            ]
-          },
-          {
-            "aiDescription": "Siege frame: high Health ceiling and self-repair, slow Power regeneration.",
+            "aiDescription": "Siege Frame: heavy armor that repairs itself, a slow Power recharge, and heavy, slow movement.",
             "groupId": "a8d1e41c-ae2e-4a03-a2b0-7f97ab7f4c52",
             "id": "3944ad50-92c0-4f74-98d1-69031e8ad6fc",
             "isDefault": false,
             "name": "Siege Frame",
             "order": 2,
-            "playerDescription": "A heavy, armored frame that soaks punishment and repairs itself — but its capacitors are sluggish. Slow, unkillable, relentless.",
+            "playerDescription": "A heavy, armored frame that repairs itself. Its Power recharges slowly, and it moves slowly.",
             "statChanges": [
               {
                 "statId": "health",
@@ -744,12 +956,23 @@
             ]
           },
           {
-            "aiDescription": "Bulwark Plating: further increased Health ceiling.",
+            "aiDescription": "Bulwark Plating: extra layers of armor plate.",
             "groupId": "ea554bd2-ec77-41f6-9478-156b7e061ff8",
             "id": "69023454-8ba4-48f6-86d3-334cdb2fb157",
             "name": "Bulwark Plating",
             "order": 0,
-            "playerDescription": "Even more armor.",
+            "playerDescription": "Even more armor. Raises max Health.",
+            "requires": [
+              {
+                "all": [
+                  {
+                    "id": "3944ad50-92c0-4f74-98d1-69031e8ad6fc",
+                    "kind": "trait",
+                    "name": "Siege Frame"
+                  }
+                ]
+              }
+            ],
             "statChanges": [
               {
                 "statId": "health",
@@ -759,17 +982,54 @@
             ]
           },
           {
-            "aiDescription": "Siege Cannon: increased Power ceiling.",
+            "aiDescription": "Siege Cannon: a long, heavy barrel that fires shells able to crack stone walls.",
             "groupId": "ea554bd2-ec77-41f6-9478-156b7e061ff8",
             "id": "8fac79ed-4135-455d-8d27-1c66bd06c860",
             "name": "Siege Cannon",
             "order": 1,
-            "playerDescription": "A bigger power reserve to feed a heavier gun.",
+            "playerDescription": "A heavier gun with its own power cell. Raises Firepower and max Power.",
+            "requires": [
+              {
+                "all": [
+                  {
+                    "id": "3944ad50-92c0-4f74-98d1-69031e8ad6fc",
+                    "kind": "trait",
+                    "name": "Siege Frame"
+                  }
+                ]
+              }
+            ],
             "statChanges": [
               {
                 "statId": "stamina",
                 "type": "max",
                 "value": 15
+              }
+            ]
+          },
+          {
+            "aiDescription": "Repair Nanites: a silver haze of tiny machines that seal cracks and dents.",
+            "groupId": "ea554bd2-ec77-41f6-9478-156b7e061ff8",
+            "id": "19054a4c-fd44-4431-8a6a-45bb0cd6443d",
+            "name": "Repair Nanites",
+            "order": 2,
+            "playerDescription": "A swarm of tiny repair machines. Health repairs faster.",
+            "requires": [
+              {
+                "all": [
+                  {
+                    "id": "3944ad50-92c0-4f74-98d1-69031e8ad6fc",
+                    "kind": "trait",
+                    "name": "Siege Frame"
+                  }
+                ]
+              }
+            ],
+            "statChanges": [
+              {
+                "statId": "health",
+                "type": "regen",
+                "value": 2
               }
             ]
           }
@@ -778,7 +1038,7 @@
       "portableStats": {
         "stats": [
           {
-            "description": "Represents the player's physical well-being and ability to sustain damage",
+            "description": "The drone's armor and core integrity.",
             "descriptors": [
               {
                 "description": "Critical Failure: Core systems failing. Emergency power only, weapons offline, mobility severely limited. Immediate maintenance required.",
@@ -786,7 +1046,7 @@
                 "threshold": 10
               },
               {
-                "description": " Severe Damage: Multiple systems compromised. Mobility impaired, weapon systems unstable, armor integrity compromised.",
+                "description": "Severe Damage: Multiple systems compromised. Mobility impaired, weapon systems unstable, armor integrity compromised.",
                 "id": "health_injured",
                 "threshold": 40
               },
@@ -812,7 +1072,7 @@
             "value": 100
           },
           {
-            "description": "Represents the player's energy and ability to perform physical actions",
+            "description": "The drone's battery. Firing, dashing and evading spend it.",
             "descriptors": [
               {
                 "description": "Emergency Power: Severe power depletion, barely maintaining basic functions. Emergency shutdown imminent.",
@@ -846,7 +1106,7 @@
             "value": 100
           },
           {
-            "description": "Live readout of how well the drone can move — tracks Power, and craters when the core is badly damaged.",
+            "description": "How well the drone moves right now: its speed, handling and footing.",
             "descriptors": [
               {
                 "description": "Crippled: Barely able to move. Most terrain is impassable; risk of full immobilization.",
@@ -876,17 +1136,17 @@
             "regen": 0,
             "scripts": [
               {
-                "code": "const power = owner.stats.Power.value;\nconst health = owner.stats.Health.value;\nlet m = Math.round(power * 0.8 + 20);\nif (health < 30) m = Math.min(m, 35); // crippled when the core is failing\nreturn m;",
+                "code": "// Power share sets the base; the chassis and thrusters shift it; a failing core cripples it.\nconst power = owner.stats.Power;\nconst health = owner.stats.Health;\nconst t = owner.traits;\nlet m = (power.value / power.max) * 70 + 15;\nif (t[\"Scout Frame\"].enabled) m += 10;\nif (t[\"Siege Frame\"].enabled) m -= 15;\nif (t[\"Evasion Thrusters\"].enabled) m += 15;\nif (health.value / health.max < 0.3) m = Math.min(m, 35);\nreturn Math.round(m);",
                 "id": "1739621674256:after",
                 "timing": "after"
               }
             ],
-            "starting": 90,
+            "starting": 85,
             "type": "number",
-            "value": 90
+            "value": 85
           },
           {
-            "description": "Live readout of weapon output — scales with Power, drops with core damage, and spikes when Charge hits Overdrive.",
+            "description": "How hard the drone's weapons hit right now.",
             "descriptors": [
               {
                 "description": "Disabled: Weapon systems critically starved. Barely able to engage.",
@@ -916,17 +1176,17 @@
             "regen": 0,
             "scripts": [
               {
-                "code": "const power = owner.stats.Power.value;\nconst charge = owner.stats.Charge.value;\nconst health = owner.stats.Health.value;\nlet out = Math.round(power * 0.9 + 10);\nif (health < 30) out = Math.round(out * 0.5); // damaged core weakens fire\nif (charge >= 100) out = Math.min(100, out + 30); // Overdrive burst primed\nreturn out;",
+                "code": "// Power share sets the base; the build adds to it; a failing core halves it; full Charge primes Overdrive.\nconst power = owner.stats.Power;\nconst health = owner.stats.Health;\nconst charge = owner.stats.Charge;\nconst t = owner.traits;\nlet out = (power.value / power.max) * 70 + 10;\nif (t[\"Assault Frame\"].enabled) out += 5;\nif (t[\"Overcharged Rounds\"].enabled) out += 10;\nif (t[\"Recon Optics\"].enabled) out += 5;\nif (t[\"Siege Cannon\"].enabled) out += 15;\nif (health.value / health.max < 0.3) out *= 0.5;\nif (charge.value >= charge.max) out += 30;\nreturn Math.round(out);",
                 "id": "1739621783199:after",
                 "timing": "after"
               }
             ],
-            "starting": 80,
+            "starting": 85,
             "type": "number",
-            "value": 80
+            "value": 85
           },
           {
-            "description": "Overdrive meter. Fills as the drone lands hits and takes bold risks; at full it can unleash a single devastating Overdrive burst, then empties.",
+            "description": "The Overdrive meter. It fills as the drone lands hits and takes bold risks. At full Charge the drone can fire one Overdrive burst, which empties it.",
             "descriptors": [
               {
                 "description": "Depleted: No reserve. The capacitors need to spin back up.",
@@ -966,45 +1226,49 @@
             "aiDescription": "The drone’s chassis:",
             "id": "a8d1e41c-ae2e-4a03-a2b0-7f97ab7f4c52",
             "maxPicks": 1,
+            "minPicks": 1,
             "name": "Chassis",
             "order": 0,
             "parentId": null,
-            "playerDescription": "Your frame — it shapes your Power, Health, and how fast Overdrive charges. Pick one."
+            "playerDescription": "Your frame. It sets your Power, Health, Mobility and how fast Overdrive charges."
           },
           {
-            "aiDescription": "Installed Assault-frame modules:",
+            "aiDescription": "Installed modules:",
             "id": "a71d0a7e-a693-41ba-b01d-35bdf01acbc3",
+            "maxPicks": 2,
             "name": "Assault Modules",
             "order": 0,
             "parentId": "a8d1e41c-ae2e-4a03-a2b0-7f97ab7f4c52",
-            "playerDescription": "Optional modules that specialize the Assault frame."
+            "playerDescription": "Add-ons for the Assault Frame. They work only on that chassis."
           },
           {
-            "aiDescription": "Installed Scout-frame modules:",
+            "aiDescription": "Installed modules:",
             "id": "fc8cd760-c60e-4fcc-b925-ccb991aaff53",
+            "maxPicks": 2,
             "name": "Scout Modules",
             "order": 1,
             "parentId": "a8d1e41c-ae2e-4a03-a2b0-7f97ab7f4c52",
-            "playerDescription": "Optional modules that specialize the Scout frame."
+            "playerDescription": "Add-ons for the Scout Frame. They work only on that chassis."
           },
           {
-            "aiDescription": "Installed Siege-frame modules:",
+            "aiDescription": "Installed modules:",
             "id": "ea554bd2-ec77-41f6-9478-156b7e061ff8",
+            "maxPicks": 2,
             "name": "Siege Modules",
             "order": 2,
             "parentId": "a8d1e41c-ae2e-4a03-a2b0-7f97ab7f4c52",
-            "playerDescription": "Optional modules that specialize the Siege frame."
+            "playerDescription": "Add-ons for the Siege Frame. They work only on that chassis."
           }
         ],
         "traits": [
           {
-            "aiDescription": "Assault frame: prioritizes offense and fast Overdrive charging; runs a reduced Power ceiling.",
+            "aiDescription": "Assault Frame: built for offense. Its capacitors charge Overdrive fast, and it runs on a smaller Power reserve.",
             "groupId": "a8d1e41c-ae2e-4a03-a2b0-7f97ab7f4c52",
             "id": "e21c6cec-c532-457b-ab4e-fd9876adb691",
             "isDefault": true,
             "name": "Assault Frame",
             "order": 0,
-            "playerDescription": "A hard-hitting frame that spins its Overdrive capacitors fast — at the cost of a smaller power reserve. Aggressive, glass-cannon play.",
+            "playerDescription": "A hard-hitting frame. Overdrive charges fast, but the Power reserve is smaller.",
             "statChanges": [
               {
                 "statId": "charge",
@@ -1019,12 +1283,23 @@
             ]
           },
           {
-            "aiDescription": "Rapid-Fire: Charge accumulates faster.",
+            "aiDescription": "Rapid-Fire Actuators: the cannon cycles fast, so Charge builds quickly in a fight.",
             "groupId": "a71d0a7e-a693-41ba-b01d-35bdf01acbc3",
             "id": "21fa1245-57d0-439b-b03e-2ca90c03f28a",
             "name": "Rapid-Fire Actuators",
             "order": 0,
-            "playerDescription": "Charge builds even faster.",
+            "playerDescription": "Charge builds faster.",
+            "requires": [
+              {
+                "all": [
+                  {
+                    "id": "e21c6cec-c532-457b-ab4e-fd9876adb691",
+                    "kind": "trait",
+                    "name": "Assault Frame"
+                  }
+                ]
+              }
+            ],
             "statChanges": [
               {
                 "statId": "charge",
@@ -1034,28 +1309,59 @@
             ]
           },
           {
-            "aiDescription": "Overcharged Rounds: improved Power regeneration.",
+            "aiDescription": "Overcharged Rounds: each shot hits far harder than the cannon's size suggests.",
             "groupId": "a71d0a7e-a693-41ba-b01d-35bdf01acbc3",
             "id": "cd2e97ff-4a46-4168-922d-84532a44fa66",
             "name": "Overcharged Rounds",
             "order": 1,
-            "playerDescription": "Recovers Power a little faster between bursts.",
+            "playerDescription": "Raises Firepower.",
+            "requires": [
+              {
+                "all": [
+                  {
+                    "id": "e21c6cec-c532-457b-ab4e-fd9876adb691",
+                    "kind": "trait",
+                    "name": "Assault Frame"
+                  }
+                ]
+              }
+            ],
+            "statChanges": []
+          },
+          {
+            "aiDescription": "Ram Plate: a reinforced front plate. The drone can ram targets at speed.",
+            "groupId": "a71d0a7e-a693-41ba-b01d-35bdf01acbc3",
+            "id": "4b9a32d9-a7a8-4120-8af5-d7a884a5db91",
+            "name": "Ram Plate",
+            "order": 2,
+            "playerDescription": "A reinforced front plate for ramming. Raises max Health.",
+            "requires": [
+              {
+                "all": [
+                  {
+                    "id": "e21c6cec-c532-457b-ab4e-fd9876adb691",
+                    "kind": "trait",
+                    "name": "Assault Frame"
+                  }
+                ]
+              }
+            ],
             "statChanges": [
               {
-                "statId": "stamina",
-                "type": "regen",
-                "value": 2
+                "statId": "health",
+                "type": "max",
+                "value": 10
               }
             ]
           },
           {
-            "aiDescription": "Scout frame: high Power ceiling and regen, fragile chassis (reduced Health ceiling).",
+            "aiDescription": "Scout Frame: light and quick, with a large, fast-recharging Power reserve and thin armor.",
             "groupId": "a8d1e41c-ae2e-4a03-a2b0-7f97ab7f4c52",
             "id": "05fc7964-8a02-42a2-8ac2-e4d6f51fb35d",
             "isDefault": false,
             "name": "Scout Frame",
             "order": 1,
-            "playerDescription": "A light, fast frame with a big, quick-recovering power reserve — but thin armor. Speed and uptime over durability.",
+            "playerDescription": "A light, fast frame. A large Power reserve that recharges quickly and high Mobility, but thin armor.",
             "statChanges": [
               {
                 "statId": "stamina",
@@ -1075,12 +1381,63 @@
             ]
           },
           {
-            "aiDescription": "Recon Optics: further improved Power regeneration.",
+            "aiDescription": "Recon Optics: the drone sees through darkness and smoke and picks out weak points.",
             "groupId": "fc8cd760-c60e-4fcc-b925-ccb991aaff53",
             "id": "05724582-82f0-4a22-a518-db1707c36e4c",
             "name": "Recon Optics",
             "order": 0,
-            "playerDescription": "Even better Power recovery.",
+            "playerDescription": "Sees in the dark and spots weak points. Raises Firepower a little.",
+            "requires": [
+              {
+                "all": [
+                  {
+                    "id": "05fc7964-8a02-42a2-8ac2-e4d6f51fb35d",
+                    "kind": "trait",
+                    "name": "Scout Frame"
+                  }
+                ]
+              }
+            ],
+            "statChanges": []
+          },
+          {
+            "aiDescription": "Evasion Thrusters: side thrusters let the drone dodge, hop gaps and climb short ledges.",
+            "groupId": "fc8cd760-c60e-4fcc-b925-ccb991aaff53",
+            "id": "c16f2322-7259-41a3-913b-8943a4084cb3",
+            "name": "Evasion Thrusters",
+            "order": 1,
+            "playerDescription": "Short thruster bursts for dodges and jumps. Raises Mobility.",
+            "requires": [
+              {
+                "all": [
+                  {
+                    "id": "05fc7964-8a02-42a2-8ac2-e4d6f51fb35d",
+                    "kind": "trait",
+                    "name": "Scout Frame"
+                  }
+                ]
+              }
+            ],
+            "statChanges": []
+          },
+          {
+            "aiDescription": "Solar Skin: thin solar panels in the plating trickle-charge Power.",
+            "groupId": "fc8cd760-c60e-4fcc-b925-ccb991aaff53",
+            "id": "9b1a9c6d-f84c-4b2f-961c-7ae2207af5a9",
+            "name": "Solar Skin",
+            "order": 2,
+            "playerDescription": "Solar panels in the plating. Power recharges faster.",
+            "requires": [
+              {
+                "all": [
+                  {
+                    "id": "05fc7964-8a02-42a2-8ac2-e4d6f51fb35d",
+                    "kind": "trait",
+                    "name": "Scout Frame"
+                  }
+                ]
+              }
+            ],
             "statChanges": [
               {
                 "statId": "stamina",
@@ -1090,28 +1447,13 @@
             ]
           },
           {
-            "aiDescription": "Evasion Thrusters: slow Health regeneration.",
-            "groupId": "fc8cd760-c60e-4fcc-b925-ccb991aaff53",
-            "id": "c16f2322-7259-41a3-913b-8943a4084cb3",
-            "name": "Evasion Thrusters",
-            "order": 1,
-            "playerDescription": "Repairs minor damage over time.",
-            "statChanges": [
-              {
-                "statId": "health",
-                "type": "regen",
-                "value": 2
-              }
-            ]
-          },
-          {
-            "aiDescription": "Siege frame: high Health ceiling and self-repair, slow Power regeneration.",
+            "aiDescription": "Siege Frame: heavy armor that repairs itself, a slow Power recharge, and heavy, slow movement.",
             "groupId": "a8d1e41c-ae2e-4a03-a2b0-7f97ab7f4c52",
             "id": "3944ad50-92c0-4f74-98d1-69031e8ad6fc",
             "isDefault": false,
             "name": "Siege Frame",
             "order": 2,
-            "playerDescription": "A heavy, armored frame that soaks punishment and repairs itself — but its capacitors are sluggish. Slow, unkillable, relentless.",
+            "playerDescription": "A heavy, armored frame that repairs itself. Its Power recharges slowly, and it moves slowly.",
             "statChanges": [
               {
                 "statId": "health",
@@ -1131,12 +1473,23 @@
             ]
           },
           {
-            "aiDescription": "Bulwark Plating: further increased Health ceiling.",
+            "aiDescription": "Bulwark Plating: extra layers of armor plate.",
             "groupId": "ea554bd2-ec77-41f6-9478-156b7e061ff8",
             "id": "69023454-8ba4-48f6-86d3-334cdb2fb157",
             "name": "Bulwark Plating",
             "order": 0,
-            "playerDescription": "Even more armor.",
+            "playerDescription": "Even more armor. Raises max Health.",
+            "requires": [
+              {
+                "all": [
+                  {
+                    "id": "3944ad50-92c0-4f74-98d1-69031e8ad6fc",
+                    "kind": "trait",
+                    "name": "Siege Frame"
+                  }
+                ]
+              }
+            ],
             "statChanges": [
               {
                 "statId": "health",
@@ -1146,17 +1499,54 @@
             ]
           },
           {
-            "aiDescription": "Siege Cannon: increased Power ceiling.",
+            "aiDescription": "Siege Cannon: a long, heavy barrel that fires shells able to crack stone walls.",
             "groupId": "ea554bd2-ec77-41f6-9478-156b7e061ff8",
             "id": "8fac79ed-4135-455d-8d27-1c66bd06c860",
             "name": "Siege Cannon",
             "order": 1,
-            "playerDescription": "A bigger power reserve to feed a heavier gun.",
+            "playerDescription": "A heavier gun with its own power cell. Raises Firepower and max Power.",
+            "requires": [
+              {
+                "all": [
+                  {
+                    "id": "3944ad50-92c0-4f74-98d1-69031e8ad6fc",
+                    "kind": "trait",
+                    "name": "Siege Frame"
+                  }
+                ]
+              }
+            ],
             "statChanges": [
               {
                 "statId": "stamina",
                 "type": "max",
                 "value": 15
+              }
+            ]
+          },
+          {
+            "aiDescription": "Repair Nanites: a silver haze of tiny machines that seal cracks and dents.",
+            "groupId": "ea554bd2-ec77-41f6-9478-156b7e061ff8",
+            "id": "19054a4c-fd44-4431-8a6a-45bb0cd6443d",
+            "name": "Repair Nanites",
+            "order": 2,
+            "playerDescription": "A swarm of tiny repair machines. Health repairs faster.",
+            "requires": [
+              {
+                "all": [
+                  {
+                    "id": "3944ad50-92c0-4f74-98d1-69031e8ad6fc",
+                    "kind": "trait",
+                    "name": "Siege Frame"
+                  }
+                ]
+              }
+            ],
+            "statChanges": [
+              {
+                "statId": "health",
+                "type": "regen",
+                "value": 2
               }
             ]
           }

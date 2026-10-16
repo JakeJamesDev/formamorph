@@ -12,6 +12,7 @@ const worlds = Object.entries(raws).map(([path, raw]) => [path.replace(/.*\/|\.j
 type Feature = 'scripts' | 'traitGates' | 'traitModes' | 'minMaxPicks' | 'statToggles' | 'openingWeights' | 'blueprints';
 
 const FEATURES: Record<string, Feature[]> = {
+  'drone': ['scripts', 'traitGates', 'minMaxPicks'],
   'open-chat': [],
 };
 
@@ -22,17 +23,10 @@ const IGNORED_RULES = new Set(['world-oversized-images']);
 const WEBP = 'its world ticket re-encodes the art as WebP';
 const PLACE = 'its world ticket places entities here';
 const TWIN = 'its world ticket adds a capitalized twin';
-const SUMMARY = 'its world ticket rewrites the summary';
 const BY_DESIGN = 'the blank stage holds no entities by design';
 
 /** Findings still open, as `rule: items` with the reason each stays, by world. */
 const OPEN_FINDINGS: Record<string, Record<string, string>> = {
-  'drone': {
-    'ai-summary-hides-description: Scavenger Wastes': SUMMARY,
-    'alias-lowercase-no-twin: Tiamat': TWIN,
-    'image-not-webp: Tiamat': WEBP,
-    'location-no-entities: Magiterra Nova': PLACE,
-  },
   'open-chat': {
     'location-no-entities: Here': BY_DESIGN,
   },
