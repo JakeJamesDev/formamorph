@@ -1,7 +1,7 @@
 // What binding a carried entity's links to a receiving world shares: finding an original by name, and moving a
 // link's data keys onto the original it bound to.
 
-type Named = { id: string; name: string };
+export type Named = { id: string; name: string };
 
 /** The one item carrying `name`, else null: no match and two matches both bind nothing. */
 export function uniqueNamed<T extends Named>(list: readonly T[], name: string | undefined): T | null {

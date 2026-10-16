@@ -4,6 +4,7 @@ import {
   bindOwnedStats, comparableOwnedStats, playLibraryStats, portableOwnedStats, statLinksBoundTo, statLinksCarriedFrom,
 } from './portableStats';
 import { statOwnerEntities } from './entityStats';
+import { resolvedEntityStats } from './statLinks';
 
 const stat = (id: string, over: Partial<Stat> = {}): Stat => ({
   id, name: id, type: 'number', description: '', min: 0, max: 100, value: 10, regen: 0, descriptors: [], ...over,
@@ -67,6 +68,15 @@ describe('bindOwnedStats', () => {
   it('keeps the first of two links to one Blueprint', () => {
     const twice = bram({ statLinks: [link({ id: 'l1' }), link({ id: 'l2', originalId: 'gone', originalName: 'Trust' })] });
     expect(bindOwnedStats(twice, origin).statLinks!.map((l) => l.id)).toEqual(['l1']);
+  });
+
+  it('keeps the link first in tree order when two overlap, as play does', () => {
+    const late = link({ id: 'late', order: 1, overrides: { trust: { value: { value: 1, blueprint: 5 } } } });
+    const early = link({ id: 'early', order: 0, overrides: { trust: { value: { value: 9, blueprint: 5 } } } });
+    const entity = bram({ statLinks: [late, early] });
+    expect(bindOwnedStats(entity, origin).statLinks!.map((l) => l.id)).toEqual(['early']);
+    expect(resolvedEntityStats(origin, entity)).toEqual([expect.objectContaining({ id: 'trust', value: 9 })]);
+    expect(playLibraryStats(entity, origin).stats).toEqual([expect.objectContaining({ id: 'trust', value: 9 })]);
   });
 
   it('leaves the entity as it is when the world carries no stats', () => {

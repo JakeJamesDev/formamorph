@@ -366,7 +366,7 @@ export interface EntityStatTree {
 }
 
 /** The entity's links in its tree's order: by place among its own groups, then by order. */
-function statLinksInTreeOrder(entity: Entity): StatLink[] {
+export function statLinksInTreeOrder(entity: Entity): StatLink[] {
   const byId = new Map((entity.statLinks ?? []).map((l) => [l.id, l]));
   return statsInTreeOrder(entity.statGroups ?? [], statLinkLeaves(entity)).flatMap((leaf) => byId.get(leaf.id) ?? []);
 }
