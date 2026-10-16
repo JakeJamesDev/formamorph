@@ -10,6 +10,7 @@ import { GameplayProvider, useGameplay } from '@/contexts/GameplayContext';
 import { PlaceholderSessionProvider } from '@/contexts/PlaceholderSessionContext';
 import { setGameplayText } from '@/lib/gameplayTextStore';
 import { pageAssistantIndex } from '@/lib/turnHistory';
+import { readEditedNarration } from '@/lib/turnPipeline/narrationReading';
 import { LeftPanel, MiddlePanel, RightPanel } from '@/components/game/GamePanels';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { defaultSystemPrompt } from '@/components/game/GamePrompts';
@@ -317,6 +318,10 @@ export function middlePanelProps(
     locationSuggestion: null,
     commandPreview: false,
     onDismissCommandPreview: vi.fn(),
+    // The view owns the exclusions; the harness reads against the staged world's entities alone.
+    onRescanNarration: (narration, priorNarration) => readEditedNarration({
+      narration, priorNarration, entities: options.world?.entities ?? [], exclusions: {},
+    }).participants,
     ...overrides,
   };
 }

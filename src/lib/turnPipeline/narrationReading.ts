@@ -73,6 +73,28 @@ export function readNarration(input: NarrationReadingInput): NarrationReading {
   return { prose, narratedNames, participants, visibleEntities };
 }
 
+export interface EditedNarrationInput {
+  narration: string;
+  /** Narration of the turns before the edited one. */
+  priorNarration: string;
+  entities: Entity[];
+  exclusions: CandidateExclusions;
+}
+
+/**
+ * Who took part in an edited turn, read the way a live turn reads its narration. No planner ran for an edit,
+ * so only the prose-based sources apply.
+ */
+export function readEditedNarration(input: EditedNarrationInput): { participants: string[] } {
+  const { participants } = readNarration({
+    ...input,
+    directorCandidates: [],
+    adHocCandidates: [],
+    sceneCast: null,
+  });
+  return { participants };
+}
+
 export interface VisitorInput {
   /** The narration prose — same corpus presence is read from. */
   prose: string;

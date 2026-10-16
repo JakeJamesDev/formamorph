@@ -314,6 +314,20 @@ describe('MiddlePanel — editing a turn\'s narration', () => {
     expect(readTurn(view.gameplay().fullMessageHistory, 2).entities).toEqual(['Sedge']);
   });
 
+  it('leaves a character out of the turn when the edit only quotes them', async () => {
+    const view = setup();
+    await rewriteAs('Sedge waits and says, "Marrow will be late."');
+
+    expect(readTurn(view.gameplay().fullMessageHistory, 2).entities).toEqual(['Sedge']);
+  });
+
+  it('stores a new character the edit names, so discovery can find them', async () => {
+    const view = setup();
+    await rewriteAs('Captain Halric Dune ties off the line.');
+
+    expect(readTurn(view.gameplay().fullMessageHistory, 2).entities).toContain('Captain Halric Dune');
+  });
+
   it("drops the turn's digest and diaries so they rebuild from the edit", async () => {
     const view = setup();
     await rewriteAs('Marrow turns back before the bridge.');
