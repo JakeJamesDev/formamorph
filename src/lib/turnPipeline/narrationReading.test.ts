@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { readNarration, selectVisitorAdditions, splitParticipants, presentSceneEntities } from './narrationReading';
+import { readNarration, readEditedNarration, selectVisitorAdditions, splitParticipants, presentSceneEntities } from './narrationReading';
 import type { Entity, GameLocation } from '@/types';
 
 const ent = (id: string, name: string): Entity => ({ id, name });
@@ -134,5 +134,29 @@ describe('presentSceneEntities', () => {
     expect(presentSceneEntities([MAREN, SERANA], ['Maren Vosk'], ['Professor Serana', 'Nobody At All']))
       .toEqual([MAREN, SERANA]);
     expect(presentSceneEntities([MAREN, SERANA], [], [])).toEqual([]);
+  });
+});
+
+describe('readEditedNarration', () => {
+  const edited = (narration: string, over: Partial<Parameters<typeof readEditedNarration>[0]> = {}) =>
+    readEditedNarration({ narration, priorNarration: '', entities: [MAREN, SERANA], exclusions: {}, ...over });
+
+  it('drops a name the edit removed and adds a known name it introduced', () => {
+    expect(edited('Maren Vosk hauls the net aboard.').participants).toEqual(['Maren Vosk']);
+    expect(edited('Professor Serana watches the harbor.').participants).toEqual(['Professor Serana']);
+  });
+
+  it('reads a name the edit introduced that no entity matches yet', () => {
+    expect(edited('Captain Halric Dune ties off the line.').participants).toContain('Captain Halric Dune');
+  });
+
+  it('leaves out a known name that only the dialogue speaks', () => {
+    const { participants } = edited('The deckhand mutters, "for Professor Serana\'s review, then."');
+    expect(participants).not.toContain('Professor Serana');
+  });
+
+  it('leaves out a suppressed name', () => {
+    const { participants } = edited('Captain Halric Dune ties off the line.', { exclusions: { suppressed: ['Captain Halric Dune'] } });
+    expect(participants).not.toContain('Captain Halric Dune');
   });
 });

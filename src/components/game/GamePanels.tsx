@@ -6,7 +6,7 @@ import { usePlaceholderResolver } from '@/lib/usePlaceholderResolver';
 import { useSettings } from '@/contexts/SettingsContext';
 import { templateChipKeys } from '@/lib/promptTemplate';
 import { useSentenceHighlight } from '@/lib/useSentenceHighlight';
-import { findEntityNames, resolveEntityByName } from '@/lib/entityMatch';
+import { resolveEntityByName } from '@/lib/entityMatch';
 import { clearTurnDerived, parseTurnContent } from '@/lib/turnDigest';
 import { narrationOf } from '@/lib/aiResponse';
 import { usePlayerModelUrl } from '@/lib/usePlayerModelUrl';
@@ -535,7 +535,8 @@ export const MiddlePanel = ({
   commandChoices = null,
   commandAction = null,
   commandRunId = 0,
-  onDismissCommandPreview
+  onDismissCommandPreview,
+  onRescanNarration
 }: {
   /** A status badge that leads the narration options. */
   narrationBadge?: React.ReactNode;
@@ -592,9 +593,9 @@ export const MiddlePanel = ({
   /** Changes per preview run, so each run starts on a fresh renderer. */
   commandRunId?: number;
   onDismissCommandPreview: () => void;
+  /** Reads who took part in edited narration, given the narration of the turns before it. */
+  onRescanNarration: (narration: string, priorNarration: string) => string[];
 }) => {
-  // Resolved: narration is matched against these names, and a chip can never appear in AI prose.
-  const { entities } = useResolvedWorld();
   const {
     displayedMessages,
     setDisplayedMessages,
@@ -1052,6 +1053,13 @@ export const MiddlePanel = ({
               setFullMessageHistory(prev => {
                 const updatedHistory = [...prev];
                 let editedTurnId: string | undefined;
+                // Presence is read from the edit the way a live turn reads its narration.
+                const priorNarration = prev
+                  .slice(0, messageIndex)
+                  .filter((m) => m.role === 'assistant')
+                  .map((m) => narrationOf(m.content) ?? '')
+                  .join('\n');
+                const participants = onRescanNarration(text, priorNarration);
                 if (messageIndex < updatedHistory.length) {
                   const message = updatedHistory[messageIndex];
                   if (message.role === 'assistant') {
@@ -1063,8 +1071,7 @@ export const MiddlePanel = ({
                         content: JSON.stringify({
                           ...content,
                           narration: text,
-                          // Re-derive participants from the edited text so they don't go stale.
-                          entities: findEntityNames(text, entities)
+                          entities: participants
                         })
                       };
                     } else {
@@ -1075,7 +1082,7 @@ export const MiddlePanel = ({
                           narration: text,
                           choices: choices,
                           stat_changes: [],
-                          entities: findEntityNames(text, entities)
+                          entities: participants
                         })
                       };
                     }

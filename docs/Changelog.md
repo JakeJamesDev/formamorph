@@ -70,6 +70,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Pressing Enter while a keyboard suggestion is open no longer saves a chip you are still editing.** Editing a chip on Android now finishes the word first, like the tag field.
   - **Stat code templates load again after a failed first open.** The template list now retries the database on the next use instead of staying empty until you reload.
   - **Load World in the editor now accepts the same file twice.** Player avatar uploads, event images and profile images reset the same way.
+  - **Editing narration now updates which entities are in the turn and discovers new ones.** A name that only appears in dialogue no longer counts as present. A new name you write in becomes an entity.
 - **🛠️ Developer tooling**
   - **Tests run on half the hardware threads, and the ticket test gate retries a `findBy` or `waitFor` that gave up.** One fork per thread ran the 5-second tests at 4.6 s idle, so a peer's load timed them out. The retry alone still fails on a real miss.
 

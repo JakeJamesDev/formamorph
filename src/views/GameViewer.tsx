@@ -147,7 +147,7 @@ import {
 import { BackgroundPassStatus } from "../components/game/BackgroundPassStatus";
 import { buildNarrationPrompt, type DictionaryDebug } from "../lib/turnPipeline/narrationPrompt";
 import { buildPlannerBand } from "../lib/turnPipeline/plannerBand";
-import { readNarration, selectVisitorAdditions, presentSceneEntities, splitParticipants } from "../lib/turnPipeline/narrationReading";
+import { readNarration, readEditedNarration, selectVisitorAdditions, presentSceneEntities, splitParticipants } from "../lib/turnPipeline/narrationReading";
 import { planTurn, planHasPass } from "../lib/turnPipeline/planTurn";
 import { runTurn, type TurnAdvance, type TurnRequestAdapter } from "../lib/turnPipeline/turnRunner";
 import { computeTurnCommit, type TurnCommit } from "../lib/turnPipeline/computeTurnCommit";
@@ -730,6 +730,16 @@ const GameViewer = ({
       ]),
     };
   }, [allEntities, playerNames, locations, stats, traits, dictionary, placeholders, playerNotes]);
+
+  const rescanNarration = useCallback(
+    (narration: string, priorNarration: string) => readEditedNarration({
+      narration,
+      priorNarration,
+      entities: allEntities,
+      exclusions: { ...characterExclusions, suppressed: suppressedCharacterNames },
+    }).participants,
+    [allEntities, characterExclusions, suppressedCharacterNames],
+  );
 
   /** Who belongs at `loc` — authored cast plus any discovered/visiting character anchored there. */
   const presentIdsAt = useCallback(
@@ -4632,6 +4642,7 @@ const GameViewer = ({
       commandRunId={commandRunId}
       commandAction={commandChoices ? CHOICES_TEST_ACTION : null}
       onDismissCommandPreview={stopCommandPreview}
+      onRescanNarration={rescanNarration}
     />
   );
 
