@@ -18,6 +18,15 @@ export const SCRIPT_TIMING_LABEL: Record<ScriptTiming, string> = {
   switch: 'When a Trait Switches',
 };
 
+/** When a timing runs and what it is for, shown when an author selects the timing. */
+export const SCRIPT_TIMING_DESCRIPTION: Record<ScriptTiming, string> = {
+  before: 'Runs at the start of each turn, before the prompt is built. Use it to set values the AI reads this turn.',
+  after: "Runs after the AI's stat changes and Regen apply. Use it to react to what the AI asked for, such as capping a value or switching a trait.",
+  output: 'Runs once for each narration sentence as it completes. Use it to rewrite or filter the narration.',
+  start: 'Runs once on the opening turn of a new game, before Before the AI. Use it to roll starting values or pin placeholders.',
+  switch: 'Runs each time a trait turns on or off in play. Use it to apply or undo what the trait changes.',
+};
+
 /** Anything that holds scripts: a stat, a trait, the world. */
 export interface ScriptHome {
   scripts?: readonly Script[];
