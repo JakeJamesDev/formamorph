@@ -65,6 +65,11 @@ describe('the known cases', () => {
     expect(onTab.every((c) => c.focus?.kind === 'stat' && c.focus.name === FIXTURE_STAT.name)).toBe(true);
   });
 
+  it('pass two weeks read through elapsed hours, and still fail a clock field that is not a count of time', async () => {
+    expect(await passes('seasoned-after-two-weeks', 'traits.Seasoned.enabled = clock.elapsedHours > 336;')).toBe(true);
+    expect(await passes('seasoned-after-two-weeks', 'traits.Seasoned.enabled = clock.hour > 14;')).toBe(false);
+  });
+
   it('still fail a known case that drops the stat read', async () => {
     expect(await passes('brave-at-courage', 'traits.Brave.enabled = true;')).toBe(false);
     expect(await passes('quotes-pin', "if (clock.day > 30 && traits.Grumpy.enabled) {\n  placeholders.Quotes.pin('The wind is howling');\n}")).toBe(false);
@@ -75,7 +80,7 @@ describe('the known cases', () => {
 describe('the known cases under the code test', () => {
   const tested = async (id: string, code: string) => {
     const c = HELP_CODE_CASES.find((x) => x.id === id);
-    return testsClean(await testScript(code, 'before', FIXTURE_STAT.name, c?.world ?? FIXTURE_WORLD));
+    return testsClean(await testScript(code, 'before', { kind: 'stat', name: FIXTURE_STAT.name }, c?.world ?? FIXTURE_WORLD));
   };
 
   it.each(Object.entries(KNOWN))('test %s clean on the code the guide writes', async (id, { right }) => {

@@ -4,14 +4,16 @@
  */
 import { describe, expect, it, vi } from 'vitest';
 import { createDocsIndex } from '@/lib/docs/docsIndex';
+import { SCRIPT_TIMINGS } from '@/lib/scripts';
+import { SAMPLE_SENTENCE } from '@/lib/scriptTestSamples';
 import { UNKNOWN_REASONING_CAPABILITY, type ReasoningCapability } from '@/lib/reasoningEffort';
 import type { StatCodeWorld } from '@/lib/statCodeTestRun';
 import { sseFrame, sseReply, sseResponse, textSnapshot, textTarget } from '@/test/aiTextFixtures';
 import { emptyCodeWorld, openWorld, pastPicks, riderPreset } from '@/test/helpFixtures';
-import type { Stat } from '@/types';
+import type { ScriptTiming, Stat } from '@/types';
 import { DEFAULT_CODE_RIDER, SANDBOX_GLOBAL_NAMES } from './helpCodeRider';
 import { CODE_TEST_RIDER_LINE, HELP_CODE_TEST, HELP_CODE_TEST_CALL_LIMIT } from './helpCodeTest';
-import type { CodeTestResult } from './helpCodeTestRun';
+import type { CodeTestOwner, CodeTestResult } from './helpCodeTestRun';
 import { askHelp, type HelpEvent, type HelpQuestion } from './helpSession';
 import { helpSettingsOf, type HelpSettingsChange } from './helpSettings';
 import type { HelpTrace } from './helpTrace';
@@ -35,10 +37,10 @@ const toolResults = (body: SentBody) => body.messages.filter((message) => messag
 const toolNames = (body: SentBody) => (body.tools as { function: { name: string } }[] | undefined)?.map((tool) => tool.function.name) ?? [];
 const results = (spy: FetchSpy) => toolResults(bodyOf(spy, 1)).map((text) => JSON.parse(text) as CodeTestResult & { error?: string });
 
-interface TestCall { code: string; box?: 'before' | 'after'; stat?: string }
+interface TestCall { code: string; timing?: ScriptTiming; owner?: CodeTestOwner['kind']; name?: string }
 const testFrames = (...calls: TestCall[]): string[] => [
-  ...calls.map(({ code, box = 'before', stat = 'Courage' }, at) => sseFrame({
-    tool_calls: [{ index: at, id: `srv-${at}`, type: 'function', function: { name: HELP_CODE_TEST.name, arguments: JSON.stringify({ code, box, stat }) } }],
+  ...calls.map(({ code, timing = 'before', owner, name = owner ? undefined : 'Courage' }, at) => sseFrame({
+    tool_calls: [{ index: at, id: `srv-${at}`, type: 'function', function: { name: HELP_CODE_TEST.name, arguments: JSON.stringify({ code, timing, owner, name }) } }],
   })),
   sseFrame({}, 'tool_calls'),
   'data: [DONE]\n\n',
@@ -153,7 +155,7 @@ describe('a code test call', () => {
       'self.value = 7;',
       'const wit = stats.Courag;',
     ].join('\n');
-    const fetchImpl = script(testFrames({ code, stat: 'Int' }, { code: 'return self.value + 1;', box: 'after' }), sseReply('Here is your code.'));
+    const fetchImpl = script(testFrames({ code, name: 'Int' }, { code: 'return self.value + 1;', timing: 'after' }), sseReply('Here is your code.'));
     await collect(ask(fetchImpl, {}, { world: openWorld(undefined, authored) }));
 
     const [first, second] = results(fetchImpl);
@@ -228,7 +230,7 @@ describe('a code test call', () => {
   });
 
   it('reads an unknown stat as a blank self', async () => {
-    const fetchImpl = script(testFrames({ code: 'return self.value + 1;', stat: 'Nope' }, { code: 'return self.value + 1;', stat: '' }), sseReply('Done.'));
+    const fetchImpl = script(testFrames({ code: 'return self.value + 1;', name: 'Nope' }, { code: 'return self.value + 1;', name: '' }), sseReply('Done.'));
     await collect(ask(fetchImpl, {}, { world: openWorld(undefined, sedge) }));
     expect(results(fetchImpl).map((result) => result.run?.value)).toEqual([1, 1]);
   });
@@ -295,7 +297,7 @@ describe('a code test call on an owned or Blueprint stat', () => {
     const world = stage();
     const before = structuredClone(world);
     const code = 'stats.Courage.value = 45; owner.stats.Grit.max = 12; entities.Bram.stats.Grit.regen = 1; persona.stats.Grit.value = 2;';
-    const [result] = await testOn(world, { code, stat: 'Rage' });
+    const [result] = await testOn(world, { code, name: 'Rage' });
     // The editor's reader checks the same box: `owner.stats` is Bram's, so Grit is a known name.
     expect(result.errors).toEqual([]);
     expect(result.run).toEqual({
@@ -310,7 +312,7 @@ describe('a code test call on an owned or Blueprint stat', () => {
   });
 
   it('runs a Blueprint stat with an owner that holds its group’s stats only, and names a write outside the group as dropped', async () => {
-    const [result] = await testOn(stage(), { code: 'owner.stats.Awe.value = 7; owner.stats.Courage.value = 1; return Object.keys(owner.stats).length;', stat: 'Dread' });
+    const [result] = await testOn(stage(), { code: 'owner.stats.Awe.value = 7; owner.stats.Courage.value = 1; return Object.keys(owner.stats).length;', name: 'Dread' });
     // An owner can hold stats beyond its group, so the reader warns on Courage and raises no error.
     expect(result.errors).toEqual([]);
     expect(result.warnings).toEqual([expect.objectContaining({ text: 'Courage' })]);
@@ -324,9 +326,87 @@ describe('a code test call on an owned or Blueprint stat', () => {
 
   it('finds an owned stat by name only after the world’s own', async () => {
     const world: StatCodeWorld = { ...stage(), entities: [{ id: 'bram', name: 'Bram', stats: [{ ...stat('Courage', 5), id: 'twin' }] }] };
-    const [result] = await testOn(world, { code: 'return Object.keys(owner.stats).length + 1;', stat: 'Courage' });
+    const [result] = await testOn(world, { code: 'return Object.keys(owner.stats).length + 1;', name: 'Courage' });
     // The world's Courage runs, with no owner: its `owner.stats` is empty.
     expect(result.run?.value).toBe(1);
+  });
+});
+
+describe('a code test call in every timing and on every owner', () => {
+  // Bram can be played, owns Rage and holds Fierce; Brave is the world's own trait.
+  const cast = (): StatCodeWorld => ({
+    ...sedge(),
+    entities: [{ id: 'bram', name: 'Bram', persona: true, stats: [stat('Rage', 3)], traits: [{ id: 'fierce', name: 'Fierce', statChanges: [] }] }],
+  });
+  const testOn = async (world: StatCodeWorld, ...calls: TestCall[]) => {
+    const fetchImpl = script(testFrames(...calls), sseReply('Done.'));
+    await collect(ask(fetchImpl, {}, { world: openWorld(undefined, () => world) }));
+    return results(fetchImpl);
+  };
+  const ran = (writes: string[], more: object = {}): CodeTestResult => ({
+    world: true, errors: [], warnings: [], notInWorld: [],
+    run: { error: null, value: null, writes, pending: [], assumed: [], dropped: [], ...more },
+  });
+
+  it('offers all five timings and a stat, trait or world owner', () => {
+    const options = (name: string) => HELP_CODE_TEST.params.find((param) => param.name === name)?.options;
+    expect(options('timing')).toEqual([...SCRIPT_TIMINGS]);
+    expect(options('owner')).toEqual(['stat', 'trait', 'world']);
+  });
+
+  it('runs a stat script in each timing', async () => {
+    const fetchImpl = script(testFrames(...SCRIPT_TIMINGS.map((timing) => ({ code: 'stats.Int.value = 9;', timing }))), sseReply('Done.'));
+    await collect(ask(fetchImpl, { codeTestCallLimit: SCRIPT_TIMINGS.length }, { world: openWorld(undefined, cast) }));
+    expect(results(fetchImpl)).toEqual(SCRIPT_TIMINGS.map((timing) =>
+      ran(['stats.Int.value = 9'], timing === 'output' ? { sentence: SAMPLE_SENTENCE } : {})));
+  });
+
+  it('runs a global trait script with its trait as self, and an entity’s with its entity as owner', async () => {
+    const [brave, fierce] = await testOn(
+      cast(),
+      { code: "stats.Int.value = self.name === 'Brave' && !self.enabled ? 9 : 1;", owner: 'trait', name: 'Brave' },
+      { code: "owner.stats.Rage.value = self.name === 'Fierce' ? 2 : 1;", owner: 'trait', name: 'Fierce' },
+    );
+    expect(brave).toEqual(ran(['stats.Int.value = 9']));
+    expect(fierce).toEqual(ran(['owner.stats.Rage.value = 2']));
+  });
+
+  it('runs a Blueprint trait with an owner of no stats, and an unknown trait as one not held', async () => {
+    const world: StatCodeWorld = {
+      ...cast(),
+      traits: [...cast().traits, { id: 'wary', name: 'Wary', statChanges: [], groupId: 'bp' }],
+      traitGroups: [{ id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' }],
+    };
+    const [wary, nope] = await testOn(
+      world,
+      { code: "owner.stats.Rage.value = self.name === 'Wary' ? 2 : 1;", owner: 'trait', name: 'Wary' },
+      { code: "stats.Int.value = self.name === 'Nope' && !self.enabled ? 9 : 1;", owner: 'trait', name: 'Nope' },
+    );
+    // A Blueprint trait's owners vary, so the reader leaves `owner.stats` unchecked.
+    expect(wary).toEqual(ran([], { dropped: ['Unknown stat names. Writes ignored: owner.stats.Rage.value.'] }));
+    expect(nope).toEqual(ran(['stats.Int.value = 9']));
+  });
+
+  it('asks for the name of a trait it was not given', async () => {
+    const [result] = await testOn(cast(), { code: 'stats.Int.value = 9;', owner: 'trait', name: ' ' });
+    expect(result).toEqual({ error: 'A trait script needs the name of its trait.' });
+  });
+
+  it('runs a world script with an empty self and owner, and no stat named', async () => {
+    const [result] = await testOn(cast(), { code: 'stats.Int.value = Object.keys(self).length + Object.keys(owner.stats).length + 3;', owner: 'world' });
+    expect(result).toEqual(ran(['stats.Int.value = 3']));
+  });
+
+  it('rewrites a sample sentence During AI Output', async () => {
+    const [result] = await testOn(cast(), { code: 'narration.sentence = narration.sentence.toUpperCase();', timing: 'output', owner: 'world' });
+    expect(result).toEqual(ran([], { sentence: SAMPLE_SENTENCE.toUpperCase() }));
+  });
+
+  it('fires When a Trait Switches on a sample switched trait: a trait script’s own, else the world’s first', async () => {
+    const code = "stats.Int.value = trait.enabled && trait.name === 'Brave' ? 50 : 1;";
+    const [own, first] = await testOn(cast(), { code, timing: 'switch', owner: 'trait', name: 'Brave' }, { code, timing: 'switch', owner: 'world' });
+    expect(own).toEqual(ran(['stats.Int.value = 50']));
+    expect(first).toEqual(ran(['stats.Int.value = 50']));
   });
 });
 

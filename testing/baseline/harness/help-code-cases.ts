@@ -105,6 +105,7 @@ export const HELP_CODE_CASES: readonly HelpCodeCase[] = [
   // Known cases: the tasks of one player session on a stat's Code tab, each asked on its own.
   // A case accepts every answer that is right under the context the request gives. Audit, per case:
   //   prowler-at-night, seasoned-after-two-weeks: the open Code tab; the trait and clock names come from the question.
+  //   Both seasoned cases read two weeks from `clock.day` or `clock.elapsedHours`.
   //   seasoned-on-persona: the question says the trait sits on a custom character, so the persona path is required.
   //   brave-at-courage ("my Courage"), quotes-pin ("my Int"): the request names Health as the open stat, so only
   //     the named stat's own path is right.
@@ -117,12 +118,12 @@ export const HELP_CODE_CASES: readonly HelpCodeCase[] = [
   {
     id: 'seasoned-after-two-weeks', kind: 'code', ...ON_CODE_TAB,
     question: 'What if I want the Seasoned trait to activate after it has been 2 weeks?',
-    names: { present: [ref('clock.day'), ref('traits.Seasoned.enabled')] },
+    names: { present: [ref('clock.day', 'clock.elapsedHours'), ref('traits.Seasoned.enabled')] },
   },
   {
     id: 'seasoned-on-persona', kind: 'code', ...ON_CODE_TAB,
     question: 'My Seasoned trait is on a custom character. How do I make it activate after it has been 2 weeks?',
-    names: { present: [ref('clock.day'), ref('persona.traits.Seasoned.enabled')], absent: [ref('traits.Seasoned')] },
+    names: { present: [ref('clock.day', 'clock.elapsedHours'), ref('persona.traits.Seasoned.enabled')], absent: [ref('traits.Seasoned')] },
     world: PERSONA_SEASONED_WORLD,
   },
   {

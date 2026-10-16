@@ -376,6 +376,9 @@ export const WORLD_SCRIPT_SURFACE: CodeSurface = {
   selfIs: 'empty',
 };
 
+/** Each home's surface, by the kind of home a script sits on. */
+export const SCRIPT_SURFACES = { stat: STAT_CODE_SURFACE, trait: TRAIT_SCRIPT_SURFACE, world: WORLD_SCRIPT_SURFACE } as const;
+
 /**
  * The stat-code name an unknown identifier was most likely meant to be, or null when nothing is close
  * enough to be worth suggesting. Case-insensitive, so `Stats` still points at `stats`.

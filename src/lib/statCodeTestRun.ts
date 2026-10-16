@@ -12,7 +12,8 @@ import {
 } from '@/lib/statCodeExecutor';
 import type { CodeEntityNames, MissingName } from '@/lib/statCodeAnalysis';
 import { cardWorldNames, type StatCodeNames } from '@/lib/statCodeBoxOptions';
-import { statCodeNamed } from '@/lib/statCodeNames';
+import { statCodeName, statCodeNamed } from '@/lib/statCodeNames';
+import { blueprintItemIds } from '@/lib/traitTree';
 import { sandboxDictionaries, sandboxPlaceholders } from '@/lib/statCodePlaceholders';
 import { placeholderPathExpression, placeholderPathLabel } from '@/lib/statCodePaths';
 import { statCodeTimingOf, type StatCodeTiming } from '@/lib/statCodeTiming';
@@ -21,7 +22,7 @@ import { activeStatEnabled } from '@/lib/traitEffects';
 import { sampleNarration, sampleSwitchedTrait } from '@/lib/scriptTestSamples';
 import type { ScriptPromptHost } from '@/lib/scriptPrompts';
 import { startingGateStatsOf } from '@/lib/gateStats';
-import type { ScriptTiming, Stat, World } from '@/types';
+import type { ScriptTiming, Stat, Trait, World } from '@/types';
 import { randomUUID } from '@/lib/uuid';
 
 /** Test Code names each bound a run wrote with its Details field label. */
@@ -86,6 +87,33 @@ export function findStat(world: StatCodeWorld, names: StatCodeNames, name: strin
     const coded = names.entityStats[entity.id];
     const owned = coded && hit(entity.stats ?? [], coded);
     if (owned) return { stat: owned, owner: { entityId: entity.id, stats: coded } };
+  }
+  return undefined;
+}
+
+/** A trait found by name, under its code name, with the owner its scripts run under. */
+export interface TraitCodeTarget {
+  trait: { id: string; name: string };
+  /** Absent for a global trait. A Blueprint trait's owner holds no stats, since its owners vary. */
+  owner?: TestRunOwner;
+}
+
+/** The trait that `name` names, by code name first, then by authored name: a global trait, then a Blueprint
+ *  trait, then an entity's own trait in authored order. */
+export function findTrait(world: StatCodeWorld, names: StatCodeNames, name: string): TraitCodeTarget | undefined {
+  const list = allPlaceholders(world);
+  const hit = (traits: readonly Trait[]) => {
+    const found = traits.find((trait) => statCodeName(trait.name, list) === name) ?? traits.find((trait) => trait.name === name);
+    return found && { id: found.id, name: statCodeName(found.name, list) };
+  };
+  const blueprintIds = blueprintItemIds({ traits: world.traits, traitGroups: world.traitGroups ?? [] });
+  const global = hit(world.traits.filter((trait) => !blueprintIds.has(trait.id)));
+  if (global) return { trait: global };
+  const blueprint = hit(world.traits.filter((trait) => blueprintIds.has(trait.id)));
+  if (blueprint) return { trait: blueprint, owner: { stats: [] } };
+  for (const entity of world.entities) {
+    const owned = hit(entity.traits ?? []);
+    if (owned) return { trait: owned, owner: { entityId: entity.id, stats: names.entityStats[entity.id] ?? [] } };
   }
   return undefined;
 }

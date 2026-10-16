@@ -2,12 +2,16 @@
  * The code test's work: the analysis, then a Test Code run. The help session imports this module only at the
  * first code test call, since it pulls in the analysis and the sandbox engine.
  */
-import { statCodeDiagnostics, type AnalysisOptions, type CodeDiagnostic, type EntryNoun, type MissingName } from '@/lib/statCodeAnalysis';
+import { codeDiagnostics, type SurfaceAnalysisOptions, type CodeDiagnostic, type EntryNoun, type MissingName } from '@/lib/statCodeAnalysis';
 import { memberStep, placeholderPathExpression } from '@/lib/statCodePaths';
 import { statBoxAnalysisOptions } from '@/lib/statCodeBoxOptions';
-import { findStat, missingSegments, runTestCode, statCodeNames, type StatCodeWorld, type TestCodeReport } from '@/lib/statCodeTestRun';
-import type { StatCodeTiming } from '@/lib/statCodeTiming';
+import {
+  findStat, findTrait, missingSegments, runTestCode, statCodeNames, type StatCodeWorld, type TestCodeReport, type TestRunOwner,
+} from '@/lib/statCodeTestRun';
+import { SCRIPT_SURFACES, scriptSurface } from '@/lib/statCodeSurface';
+import { SAMPLE_SENTENCE } from '@/lib/scriptTestSamples';
 import { randomUUID } from '@/lib/uuid';
+import type { ScriptTiming } from '@/types';
 
 /** The most characters of code one finding quotes. */
 const FINDING_TEXT_MAX = 60;
@@ -60,8 +64,8 @@ function missingPath(name: MissingName): string {
 }
 
 /** The findings and the names the world does not have yet. A missing name is neither error nor warning. */
-function analysis(code: string, options: AnalysisOptions): Omit<CodeTestResult, 'world' | 'run'> & { missing: MissingName[] } {
-  const diagnostics = statCodeDiagnostics(code, options);
+function analysis(code: string, options: SurfaceAnalysisOptions): Omit<CodeTestResult, 'world' | 'run'> & { missing: MissingName[] } {
+  const diagnostics = codeDiagnostics(code, options);
   const of = (severity: CodeDiagnostic['severity']) =>
     diagnostics.filter((d) => d.severity === severity && !d.missing).map((d) => findingOf(code, d));
   const notInWorld = new Map<string, CodeTestMissing>();
@@ -76,24 +80,42 @@ function analysis(code: string, options: AnalysisOptions): Omit<CodeTestResult, 
   return { errors: of('error'), warnings: of('warning'), notInWorld: [...notInWorld.values()], missing };
 }
 
+/** Whose script a test runs: a stat or trait by name, or the world. */
+export type CodeTestOwner = { kind: 'stat' | 'trait'; name: string } | { kind: 'world' };
+
+/** The analysis owner of a run's owner. A Blueprint trait's owner stats go unchecked, since its owners vary. */
+const analysisOwner = (owner: TestRunOwner | undefined, kind: CodeTestOwner['kind']) => owner && {
+  kind: owner.entityId ? 'entity' as const : 'blueprint' as const,
+  ...((owner.entityId || kind === 'stat') && { statNames: owner.stats.map((owned) => owned.name) }),
+};
+
 /**
- * Tests `code` from the `box` box of the stat `statName` names: a world stat, a Blueprint stat, or an
- * entity's own stat, which runs with its `owner`. With no world, the analysis runs with every name check off
- * and the run is skipped. An unknown stat reads as a blank `self`.
+ * Tests `code` in its `timing` on `owner`: a world stat, a Blueprint stat or an entity's own stat; a global,
+ * Blueprint or entity trait; or the world. An owned stat or trait runs with its `owner`. With no world, the
+ * analysis runs with every name check off and the run is skipped. An unknown stat reads as a blank `self`, and
+ * an unknown trait as one not held. During AI Output rewrites the sample sentence.
  */
-export async function testScript(code: string, box: StatCodeTiming, statName: string, world: StatCodeWorld | undefined): Promise<CodeTestResult> {
+export async function testScript(code: string, timing: ScriptTiming, owner: CodeTestOwner, world: StatCodeWorld | undefined): Promise<CodeTestResult> {
+  const surface = scriptSurface(SCRIPT_SURFACES[owner.kind], timing);
   if (!world) {
-    const { errors, warnings } = analysis(code, {});
+    const { errors, warnings } = analysis(code, { surface });
     return { world: false, errors, warnings };
   }
   const names = statCodeNames(world);
-  const found = findStat(world, names, statName.trim());
-  const selfName = found?.stat.name ?? '';
-  const owner = found?.owner && { kind: found.owner.entityId ? 'entity' as const : 'blueprint' as const, statNames: found.owner.stats.map((owned) => owned.name) };
-  const { missing, ...rest } = analysis(code, statBoxAnalysisOptions(names, { selfName, owner }));
+  const name = owner.kind === 'world' ? '' : owner.name.trim();
+  const stat = owner.kind === 'stat' ? findStat(world, names, name) : undefined;
+  const trait = owner.kind === 'trait' ? findTrait(world, names, name) : undefined;
+  const runOwner = stat?.owner ?? trait?.owner;
+  const selfName = stat?.stat.name ?? trait?.trait.name ?? (owner.kind === 'trait' ? name : '');
+  const { missing, ...rest } = analysis(code, statBoxAnalysisOptions(names, { selfName, owner: analysisOwner(runOwner, owner.kind), surface }));
+  const self = owner.kind === 'stat' ? stat?.stat ?? { id: randomUUID(), name: '' } : null;
   return {
     world: true,
     ...rest,
-    run: await runTestCode(code, box, found?.stat ?? { id: randomUUID(), name: '' }, names, { pendingPersona: true, missing, owner: found?.owner }),
+    run: await runTestCode(code, timing, self, names, {
+      pendingPersona: true, missing, owner: runOwner,
+      ...(owner.kind === 'trait' && { selfTrait: trait?.trait ?? { id: randomUUID(), name } }),
+      ...(timing === 'output' && { sentence: SAMPLE_SENTENCE }),
+    }),
   };
 }

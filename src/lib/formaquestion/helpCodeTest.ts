@@ -5,10 +5,15 @@
  */
 import type { ToolExecutor } from '@/lib/aiRequest/toolLoop';
 import type { StatCodeWorld } from '@/lib/statCodeTestRun';
-import { STAT_CODE_TIMINGS, type StatCodeTiming } from '@/lib/statCodeTiming';
+import { SCRIPT_TIMING_LABEL, SCRIPT_TIMINGS } from '@/lib/scripts';
 import { parseToolArgs, type ToolCallResult } from '@/lib/tools/toolRunner';
 import type { OfferedFunction } from '@/lib/tools/toolSchema';
+import type { ScriptTiming } from '@/types';
+import type { CodeTestOwner } from './helpCodeTestRun';
 import type { StatCodeWorldSource } from './helpWorld';
+
+/** The kinds of home a tested script can sit on. */
+const CODE_TEST_OWNERS = ['stat', 'trait', 'world'] as const satisfies readonly CodeTestOwner['kind'][];
 
 /** The default most code test calls one help question runs. */
 export const HELP_CODE_TEST_CALL_LIMIT = 3;
@@ -19,13 +24,17 @@ export const HELP_CODE_TEST: OfferedFunction = {
   description: [
     'Purpose: Check a script you wrote, and run it once on the open world, before you give it to the player.',
     'Use when: You wrote a script for the player. Call it before you answer. When it reports errors or dropped writes, fix the code and call it again. When an error remains after your last call, give your best code and name the remaining error in one sentence.',
-    'Input: code, box and stat. The code reads that stat as self. Without stat, self is the stat the player has selected, if any.',
-    'Output: JSON with errors and warnings, each with its line; notInWorld: the names the world does not have yet, each with its kind; and run: the value the code set, its writes, its pending writes, its assumed stats, its dropped writes, or the error it threw. A pending write lands on the played persona during the game. It is not an error. A notInWorld name and an assumed stat are not errors: keep the code, tell the player to create each one, and name its kind. An assumed stat is a stat the world does not have yet, run as a number at 0 in 0–100. With world false, no world is open: names go unchecked and nothing runs.',
+    'Input: code, timing, owner and name. The script runs in its timing on its owner. A stat or trait script reads that stat or trait as self. Without owner, the script is a stat\'s. Without name on a stat, self is the stat the player has selected, if any.',
+    'Output: JSON with errors and warnings, each with its line; notInWorld: the names the world does not have yet, each with its kind; and run: the value the code set, its writes, its pending writes, its assumed stats, its dropped writes, the sentence a During AI Output script left, or the error it threw. A During AI Output script runs on a sample sentence, and a When a Trait Switches script on a sample switched trait. A pending write lands on the played persona during the game. It is not an error. A notInWorld name and an assumed stat are not errors: keep the code, tell the player to create each one, and name its kind. An assumed stat is a stat the world does not have yet, run as a number at 0 in 0–100. With world false, no world is open: names go unchecked and nothing runs.',
   ].join('\n'),
   params: [
-    { name: 'code', type: 'string', description: 'The whole contents of the box.', required: true, options: [] },
-    { name: 'box', type: 'enum', description: 'The box the code goes in.', required: true, options: [...STAT_CODE_TIMINGS] },
-    { name: 'stat', type: 'string', description: 'The name of the stat whose code it is.', required: false, options: [] },
+    { name: 'code', type: 'string', description: 'The whole contents of the script.', required: true, options: [] },
+    {
+      name: 'timing', type: 'enum', required: true, options: [...SCRIPT_TIMINGS],
+      description: `When the script runs: ${SCRIPT_TIMINGS.map((timing) => `${timing} is ${SCRIPT_TIMING_LABEL[timing]}`).join(', ')}.`,
+    },
+    { name: 'owner', type: 'enum', description: 'What the script sits on.', required: false, options: [...CODE_TEST_OWNERS] },
+    { name: 'name', type: 'string', description: 'The name of the stat or trait the script sits on.', required: false, options: [] },
   ],
 };
 
@@ -33,7 +42,7 @@ export const HELP_CODE_TEST: OfferedFunction = {
 export const CODE_TEST_RIDER_LINE = `- Before you answer, test the block with the \`${HELP_CODE_TEST.name}\` function. Fix each error and dropped write it reports.`;
 /**
  * The code test's executor for one help question. The world is read once, at the first call; none means no
- * world is open. A call that names no stat tests `openStat`, the stat whose panel is open.
+ * world is open. A stat call that names no stat tests `openStat`, the stat whose panel is open.
  */
 export function createCodeTest(world: StatCodeWorldSource | undefined, openStat?: string): ToolExecutor<OfferedFunction> {
   let read: StatCodeWorld | undefined;
@@ -42,8 +51,11 @@ export function createCodeTest(world: StatCodeWorldSource | undefined, openStat?
     if ('error' in parsed) return { text: JSON.stringify({ error: parsed.error }), failure: 'arguments' };
     read ??= world?.();
     const { testScript } = await import('./helpCodeTestRun');
-    const { code, box, stat } = parsed.args;
-    const named = typeof stat === 'string' ? stat.trim() : '';
-    return { text: JSON.stringify(await testScript(String(code), box as StatCodeTiming, named || (openStat ?? ''), read)) };
+    const { code, timing, owner = 'stat', name } = parsed.args;
+    const named = typeof name === 'string' ? name.trim() : '';
+    if (owner === 'trait' && !named) return { text: JSON.stringify({ error: 'A trait script needs the name of its trait.' }), failure: 'arguments' };
+    const target: CodeTestOwner = owner === 'world' ? { kind: 'world' }
+      : owner === 'trait' ? { kind: 'trait', name: named } : { kind: 'stat', name: named || (openStat ?? '') };
+    return { text: JSON.stringify(await testScript(String(code), timing as ScriptTiming, target, read)) };
   };
 }
