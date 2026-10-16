@@ -36,6 +36,7 @@ import {
   type HelpRequestTrace, type HelpSamplers, type HelpSearchRecord, type HelpSource, type HelpTrace,
 } from './helpTrace';
 import type { HelpFocus } from './helpFocus';
+import type { CodeTestOwner } from './helpCodeTestRun';
 import type { OpenWorld } from './helpWorld';
 import { mergeRanks } from './rankMerge';
 import { focusWords, openFocus, surfaceHint, surfaceWords, type SurfaceHint } from './surfaceHint';
@@ -382,6 +383,10 @@ export async function guideSearch(index: DocsIndex, query: string, { semantic, l
  * The sections a turn sends before its search hits, and the screen its message names. A code turn sends the
  * Quick Reference: after the lead on the Code tab, and as the lead on any other screen, which then goes unnamed.
  */
+/** The script home the open panel shows: its stat or trait. Other focus kinds hold no scripts. */
+const codeTestHomeOf = (focus: HelpFocus | undefined): CodeTestOwner | undefined =>
+  (focus?.kind === 'stat' || focus?.kind === 'trait' ? { kind: focus.kind, name: focus.name } : undefined);
+
 function turnLead(hint: SurfaceHint | null, quickReference: DocSection | null, onCodeTab: boolean): { lead?: DocSection; pinned: DocSection[]; where?: string } {
   if (!quickReference) return { lead: hint?.section, pinned: [], where: hint?.where };
   if (hint && onCodeTab) return { lead: hint.section, pinned: [quickReference], where: hint.where };
@@ -429,7 +434,7 @@ export async function* askHelp({
   const lookupMode = settings.lookup && takesFunctions;
   const playerTools = takesFunctions ? helpToolsOn(settings.tools, settings.toolSwitches) : [];
   const face = settings.mascot && takesFunctions ? createFaceCall(activeMascotRig(settings.mascotPresets)) : null;
-  const codeTest = codeTurn && settings.codeTest && takesFunctions ? createCodeTest(world?.authored, shownFocus?.kind === 'stat' ? shownFocus.name : undefined) : null;
+  const codeTest = codeTurn && settings.codeTest && takesFunctions ? createCodeTest(world?.authored, codeTestHomeOf(shownFocus)) : null;
   // No part of the request can carry a section, so the question goes alone and its answer is never flagged.
   const bare = !lead && !lookupMode && !Object.values(settings.sources).some(Boolean);
   const record = bare ? null : emptySearchRecord((Object.keys(settings.sources) as HelpSource[]).filter((source) => settings.sources[source]));

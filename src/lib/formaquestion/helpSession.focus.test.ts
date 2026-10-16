@@ -30,6 +30,7 @@ const editor = (...tabs: SurfaceId[]): Surface => ({ screen: 'mainMenu', dialog:
 const STAT_CODE = editor('worldEditor.stats', 'worldEditorStat.code');
 const STAT_DETAILS = editor('worldEditor.stats', 'worldEditorStat.details');
 const TRAIT_PANEL = editor('worldEditor.traits', 'worldEditorTrait.details');
+const TRAIT_SCRIPTS = editor('worldEditor.traits', 'worldEditorTrait.scripts');
 const COURAGE: HelpFocus = { kind: 'stat', id: 'courage', name: 'Courage' };
 
 const endpoint = (tools: boolean) => {
@@ -142,9 +143,44 @@ describe('the code test stat default', () => {
     expect(results(fetchImpl).map((result) => result.run?.value)).toEqual([1]);
   });
 
-  it('takes no focus of another kind', async () => {
+  it('takes no focus of a kind that is no script home', async () => {
     const fetchImpl = script(testFrames({ code }), sseReply('Done.'));
-    await asked(fetchImpl, { surface: TRAIT_PANEL, focus: { kind: 'trait', id: 'courage', name: 'Courage' } });
+    await asked(fetchImpl, { surface: editor('worldEditor.entities', 'worldEditorEntity.profile'), focus: { kind: 'entity', id: 'courage', name: 'Courage' } });
     expect(results(fetchImpl).map((result) => result.run?.value)).toEqual([1]);
+  });
+});
+
+describe('the code test trait default', () => {
+  // Brave is the open trait. A script that sets Int to 9 ran on Brave; to 1, on anything else.
+  const code = "stats.Int.value = self.name === 'Brave' && !self.enabled ? 9 : 1;";
+  const world = (): StatCodeWorld => ({ ...sedge(), traits: [{ id: 'brave', name: 'Brave', statChanges: [] }, { id: 'wary', name: 'Wary', statChanges: [] }] });
+  const BRAVE: HelpFocus = { kind: 'trait', id: 'brave', name: 'Brave' };
+  const asked = async (...calls: Record<string, string>[]) => {
+    const fetchImpl = script(testFrames(...calls), sseReply('Done.'));
+    await ask(fetchImpl, {
+      question: 'Write the code for me.', surface: TRAIT_SCRIPTS, focus: BRAVE, snapshot: endpoint(true), world: openWorld(undefined, world),
+      settings: helpSettingsOf({ mascot: false, codeTest: true, codeTestCallLimit: 5 }),
+    });
+    return results(fetchImpl).map((result) => result.run?.writes);
+  };
+  const ON_BRAVE = ['stats.Int.value = 9'];
+  const NOT_BRAVE = ['stats.Int.value = 1'];
+
+  it('tests the open trait when the call names no owner', async () => {
+    expect(await asked({ code })).toEqual([ON_BRAVE]);
+  });
+
+  it('reads the open trait as self when a trait call names none, and an explicit trait wins', async () => {
+    expect(await asked({ code, owner: 'trait' }, { code, owner: 'trait', name: ' ' }, { code, owner: 'trait', name: 'Wary' })).toEqual([ON_BRAVE, ON_BRAVE, NOT_BRAVE]);
+  });
+
+  it('keeps a call that names a stat and no owner a stat call, whatever trait is open', async () => {
+    // Courage is a stat of the world and no trait, so a trait run would not find it by name.
+    const onCourage = "stats.Int.value = self.name === 'Courage' ? 9 : 1;";
+    expect(await asked({ code: onCourage, name: 'Courage' })).toEqual([['stats.Int.value = 9']]);
+  });
+
+  it('keeps an explicit stat or world owner off the open trait', async () => {
+    expect(await asked({ code, owner: 'stat' }, { code, owner: 'world' })).toEqual([NOT_BRAVE, NOT_BRAVE]);
   });
 });

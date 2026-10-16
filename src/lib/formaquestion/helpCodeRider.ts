@@ -1,6 +1,6 @@
 /**
  * The Code rider: the text a code turn adds to the user message of the answer request, so the answer gives
- * each script's code as one fenced block tagged with its timing. A code turn is one asked from a stat's Code
+ * each script's code as one fenced block tagged with its timing. A code turn is one asked from a script home's
  * tab, or one whose question uses code words. Every other turn sends no rider.
  */
 import type { SurfaceId } from '@/lib/docs/surfaceMap';
@@ -66,14 +66,27 @@ export const hasCodeWords = (question: string): boolean => CODE_WORDS.some((word
 /** The Scripts Guide section that lists the whole sandbox API. Every code turn sends it. */
 export const QUICK_REFERENCE_SECTION = 'ScriptsGuide#quick-reference';
 
-/** True when a stat's Code tab is open. */
-export const isOnCodeTab = (surface?: Surface | null): boolean => surface?.tabs.includes(SCRIPT_TAB) === true;
+/** A trait's Scripts tab, as the surface registry reports it. */
+export const TRAIT_SCRIPT_TAB: SurfaceId = 'worldEditorTrait.scripts';
+
+/** The line of each script home's tab: what `self` is there and what the owner reads. */
+const HOME_LINES: Partial<Record<SurfaceId, string>> = {
+  [SCRIPT_TAB]: '- This is a stat\'s script: `self` is the stat, and `owner.stats` reads the stats of the entity that owns it.',
+  [TRAIT_SCRIPT_TAB]: '- This is a trait\'s script, and it runs only while the trait is on: `self` is the trait, read-only. `owner.stats` reads the stats of the entity that holds the trait. A trait that no entity holds has no owner stats.',
+};
+
+const homeTabOf = (surface?: Surface | null): SurfaceId | undefined => surface?.tabs.findLast((tab) => Object.hasOwn(HOME_LINES, tab));
+
+/** True when a script home's tab is open: a stat's Code tab or a trait's Scripts tab. */
+export const isOnCodeTab = (surface?: Surface | null): boolean => homeTabOf(surface) !== undefined;
 
 /** The line for the open script home, naming what `self` and the owner read there; null off a home. */
-export const scriptHomeLine = (surface?: Surface | null): string | null =>
-  (isOnCodeTab(surface) ? '- This is a stat\'s script: `self` is the stat, and `owner.stats` reads the stats of the entity that owns it.' : null);
+export const scriptHomeLine = (surface?: Surface | null): string | null => {
+  const tab = homeTabOf(surface);
+  return tab ? HOME_LINES[tab] ?? null : null;
+};
 
-/** True when the turn rides the rider: a stat's Code tab is open, or the question uses a code word. */
+/** True when the turn rides the rider: a script home's tab is open, or the question uses a code word. */
 export const isCodeTurn = (question: string, surface?: Surface | null): boolean => isOnCodeTab(surface) || hasCodeWords(question);
 
 /** The rider with a line after it. An empty rider gives the line alone. */

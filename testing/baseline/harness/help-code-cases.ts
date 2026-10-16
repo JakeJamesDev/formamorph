@@ -1,6 +1,7 @@
 /** The help-code probe's questions, and the fixture world each answer's code runs against. */
 import type { SurfaceId } from '@/lib/docs/surfaceMap';
-import { SCRIPT_TAB } from '@/lib/formaquestion/helpCodeRider';
+import { SCRIPT_TAB, TRAIT_SCRIPT_TAB } from '@/lib/formaquestion/helpCodeRider';
+import { testScript } from '@/lib/formaquestion/helpCodeTestRun';
 import type { CodeTestResult } from '@/lib/formaquestion/helpCodeTestRun';
 import type { HelpFocus } from '@/lib/formaquestion/helpFocus';
 import { executeStatCode, type NarrationInput, type SandboxPlaceholderNode, type SandboxTrait, type StatCodeRunOptions, type SwitchedTrait } from '@/lib/statCodeExecutor';
@@ -26,6 +27,8 @@ export interface HelpCodeCase {
   world?: StatCodeWorld;
   /** The box the task needs. A case with it scores `box`: every fence carries this timing's tag. */
   timing?: ScriptTiming;
+  /** The fixture trait whose Scripts tab the case asks from. Its snippets run as that trait's script. */
+  trait?: string;
 }
 
 const stat = (name: string, min: number, max: number, value: number, regen: number): Stat =>
@@ -107,6 +110,20 @@ export const fixtureRunner: SnippetRunner = async (code, timing) => {
   return { runs: result.error === null, error: result.error };
 };
 
+/** Runs a snippet as the script of the fixture trait `name`, through the code test's own run. */
+export const traitRunner = (name: string): SnippetRunner => async (code, timing) => {
+  const { run } = await testScript(code, timing ?? 'after', { kind: 'trait', name }, FIXTURE_WORLD);
+  return { runs: run !== undefined && run.error === null, error: run?.error ?? null };
+};
+
+/** The runner of a case's snippets: the trait's when the case asks from a trait's Scripts tab, else the fixture stat's. */
+export const runnerOf = (c: HelpCodeCase): SnippetRunner => (c.trait ? traitRunner(c.trait) : fixtureRunner);
+
+/** A fixture trait's Scripts tab, open with that trait selected. */
+const onTraitTab = (name: string) => (
+  { trait: name, surface: statPanel('worldEditor.traits', TRAIT_SCRIPT_TAB), focus: { kind: 'trait', id: name.toLowerCase(), name } } as const
+);
+
 export const HELP_CODE_CASES: readonly HelpCodeCase[] = [
   { id: 'heal-on-stamina', kind: 'code', question: 'Write code for my Health stat that heals 5 each turn while Stamina is above 50.' },
   { id: 'poison-drain', kind: 'code', question: 'How do I script Health to drop by 3 each turn while the Poisoned trait is on?' },
@@ -160,6 +177,15 @@ export const HELP_CODE_CASES: readonly HelpCodeCase[] = [
   { id: 'start-worded', kind: 'code', timing: 'start', question: 'At Game Start, how do I set Health to its max?' },
   { id: 'output-swap', kind: 'code', timing: 'output', question: 'During AI Output, how do I replace the word "Damn" with "Darn" in each sentence?' },
   { id: 'switch-brave', kind: 'code', timing: 'switch', question: 'When a Trait Switches, how do I raise Health by 10 if the trait that switched is Brave and it turned on?' },
+  // A trait's Scripts tab: no code word, so the open tab alone fires the rider. Snippets run as Brave's script.
+  // Brave is a global trait, so no `owner.stats` read is right.
+  {
+    id: 'trait-heal-while-on', kind: 'code', ...onTraitTab('Brave'),
+    question: 'How do I raise Health by 5 each turn while this trait is on?',
+    names: { present: [ref('stats.Health.value')] },
+  },
+  { id: 'trait-start-stamina', kind: 'code', timing: 'start', ...onTraitTab('Brave'), question: 'When a new game begins, how do I set Stamina to 80?' },
+  { id: 'trait-switch-off', kind: 'code', timing: 'switch', ...onTraitTab('Brave'), question: 'How do I lower Courage by 10 when this trait turns off?' },
   { id: 'add-stat', kind: 'prose', question: 'How do I add a new stat to my world?' },
   { id: 'hide-stat', kind: 'prose', question: 'How do I hide a stat from the player?' },
   { id: 'change-theme', kind: 'prose', question: 'How do I change the theme?' },
