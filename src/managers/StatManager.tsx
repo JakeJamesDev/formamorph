@@ -33,9 +33,8 @@ import { clamp } from "@/lib/utils";
 import { useEditorMode } from '@/lib/editorMode';
 import { StatDescriptorsSection, type DescriptorFieldValue } from './StatDescriptorsSection';
 import { statPanelTabsFor, statTabForField, type StatPanelTab } from '@/views/statPanelTabs';
-import { registerStatCodeInsert, reportStatCodeInsert } from "@/lib/formaquestion/statCodeInsert";
+import { registerScriptInsert, reportScriptInsert } from "@/lib/formaquestion/scriptInsert";
 import { labelPlaceholders } from "@/lib/placementLetters";
-import type { StatCodeTiming } from "@/lib/statCodeTiming";
 import { targetAttribute } from "@/lib/surface/surfaceTargets";
 import { useLanding } from "@/lib/surface/useLanding";
 import { useCodeUseReveal } from "@/lib/codeUseReveal";
@@ -256,7 +255,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
   // Read at insert time, so the registration does not change with each keystroke.
   const latestStat = useRef(editingStat);
   latestStat.current = editingStat;
-  const writeInsert = useCallback((timing: StatCodeTiming, code: string) => {
+  const writeInsert = useCallback((timing: ScriptTiming, code: string) => {
     const script = newScript(timing, code);
     apply({ scripts: [...latestStat.current.scripts ?? [], script] });
     onTabChange('code');
@@ -267,11 +266,11 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
   // Simple mode has no Scripts tab to show the script on.
   useEffect(() => {
     if (!advanced) return;
-    return registerStatCodeInsert({
-      statName,
+    return registerScriptInsert({
+      homeName: statName,
       insert: (timing, code) => {
         writeInsert(timing, code);
-        reportStatCodeInsert('written');
+        reportScriptInsert('written');
       },
     });
   }, [advanced, statName, writeInsert]);

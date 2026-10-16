@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBench';
-import { onStatCodeInsert, statCodeInsertTarget } from '@/lib/formaquestion/statCodeInsert';
+import { onScriptInsert, scriptInsertTarget } from '@/lib/formaquestion/scriptInsert';
 import { LANDING_PULSE_CLASS } from '@/lib/landingPulse';
 import { ringOn } from '@/test/landing';
-import type { World } from '@/types';
+import type { ScriptTiming, World } from '@/types';
 import { boxScripts, codeAt } from '@/test/scriptFixtures';
 
 /** The stat panel's side of the help window's Insert: the registration, the draft write, the confirm, and the landing. */
@@ -52,7 +52,7 @@ const panelTab = (name: string) => within(screen.getByRole('tablist', { name: 'S
 function warmth(ctx: () => { stats: World['stats'] }) {
   return ctx().stats.find((stat) => stat.id === 's1')!;
 }
-const insert = (timing: 'before' | 'after', code: string) => act(() => statCodeInsertTarget()!.insert(timing, code));
+const insert = (timing: ScriptTiming, code: string) => act(() => scriptInsertTarget()!.insert(timing, code));
 
 let scrolled: Element[];
 const realScroll = Element.prototype.scrollIntoView;
@@ -68,10 +68,25 @@ afterEach(() => {
 describe('inserting help code into the open stat', () => {
   it('registers the open stat by name, on any of its tabs', () => {
     renderWorldEditorBench(WORLD, 'advanced');
-    expect(statCodeInsertTarget()).toBeNull();
+    expect(scriptInsertTarget()).toBeNull();
     selectStat('Warmth');
     expect(panelTab('Details')).toHaveAttribute('aria-selected', 'true');
-    expect(statCodeInsertTarget()?.statName).toBe('Warmth');
+    expect(scriptInsertTarget()?.homeName).toBe('Warmth');
+  });
+
+  it.each([
+    ['output', 'Code Warmth · During AI Output'],
+    ['start', 'Code Warmth · At Game Start'],
+    ['switch', 'Code Warmth · When a Trait Switches'],
+  ] as const)('writes a %s script and lands on it', async (timing, label) => {
+    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+    selectStat('Warmth');
+    insert(timing, 'return 5;');
+
+    expect(warmth(ctx).scripts?.at(-1)).toMatchObject({ timing, code: 'return 5;' });
+    expect(panelTab('Scripts')).toHaveAttribute('aria-selected', 'true');
+    await waitFor(() => expect(scrolled).toContain(addedRow(ctx)));
+    expect(document.activeElement).toBe(screen.getByRole('textbox', { name: label }));
   });
 
   it('writes a new script of its timing at once, opens the Scripts tab, and lands on it with the pulse', async () => {
@@ -99,7 +114,7 @@ describe('inserting help code into the open stat', () => {
 
   it('reports each insert as written, so the help window steps aside for none', () => {
     const events: string[] = [];
-    const stop = onStatCodeInsert((event) => events.push(event));
+    const stop = onScriptInsert((event) => events.push(event));
     renderWorldEditorBench(WORLD, 'advanced');
     selectStat('Warmth');
 
@@ -123,14 +138,14 @@ describe('inserting help code into the open stat', () => {
   it('unregisters when the stat panel closes', () => {
     const { unmount } = renderWorldEditorBench(WORLD, 'advanced');
     selectStat('Warmth');
-    expect(statCodeInsertTarget()).not.toBeNull();
+    expect(scriptInsertTarget()).not.toBeNull();
     unmount();
-    expect(statCodeInsertTarget()).toBeNull();
+    expect(scriptInsertTarget()).toBeNull();
   });
 
   it('registers nothing in Simple mode, which has no Scripts tab', () => {
     renderWorldEditorBench(WORLD, 'simple');
     selectStat('Warmth');
-    expect(statCodeInsertTarget()).toBeNull();
+    expect(scriptInsertTarget()).toBeNull();
   });
 });

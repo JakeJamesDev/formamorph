@@ -11,7 +11,7 @@ import { docTargetId, type DocTarget } from '@/lib/docs/docsLinks';
 import { opensInHelpWindow, resolveSurface, stepTab, targetRoute, type SurfaceRoute } from '@/lib/surface/surfaceRoute';
 import { useRouteLanding } from '@/lib/surface/useLanding';
 import { registerDocsOpener } from '@/lib/formaquestion/docsOpener';
-import { onStatCodeInsert } from '@/lib/formaquestion/statCodeInsert';
+import { onScriptInsert } from '@/lib/formaquestion/scriptInsert';
 import { createGuide } from '@/lib/formaquestion/guide';
 import { cn } from '@/lib/utils';
 import { wikiPageUrl } from '@/lib/helpTopics';
@@ -381,7 +381,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   }, [requestSurface, sheet, closeWindow, openDialog, changeViewInWindow, land]);
 
   // Insert: the sheet closes as for Take Me There; the desktop window stays.
-  useEffect(() => onStatCodeInsert(() => {
+  useEffect(() => onScriptInsert(() => {
     if (sheet) closeWindow();
   }), [sheet, closeWindow]);
 
