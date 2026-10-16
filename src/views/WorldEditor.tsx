@@ -967,7 +967,7 @@ const WorldEditorInner = ({
   });
   const statsParts = useListEditor(statsAdapter, { selectedId: selections.stats ?? null, onSelect: selectStat, search });
   const selectScript = useCallback((id: string | null) => select('scripts', id), [select]);
-  const scriptsAdapter = useWorldScriptsAdapter({ selectedId: selections.scripts ?? null, onSelect: selectScript });
+  const scriptsAdapter = useWorldScriptsAdapter({ selectedId: selections.scripts ?? null, onSelect: selectScript, active: activeTab === 'scripts' });
   const scriptsParts = useListEditor(scriptsAdapter, { selectedId: selections.scripts ?? null, onSelect: selectScript, search });
   // The entity panel's tab and its trait and placeholder rows live here, so a new entity keeps them.
   const selectEntity = useCallback((id: string | null) => select('entities', id), [select]);

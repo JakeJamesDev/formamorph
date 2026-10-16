@@ -180,6 +180,17 @@ describe('the code test trait default', () => {
     expect(await asked({ code: onCourage, name: 'Courage' })).toEqual([['stats.Int.value = 9']]);
   });
 
+  it('tests as a world script when the world Scripts tab is open and the call names no owner', async () => {
+    // A world script has no self value; a stat test with no stat named runs with a blank stat as self.
+    const probe = 'stats.Int.value = self.value === undefined ? 9 : 1;';
+    const fetchImpl = script(testFrames({ code: probe }, { code: probe, owner: 'stat' }), sseReply('Done.'));
+    await ask(fetchImpl, {
+      question: 'Write the code for me.', surface: editor('worldEditor.scripts'), snapshot: endpoint(true), world: openWorld(undefined, world),
+      settings: helpSettingsOf({ mascot: false, codeTest: true, codeTestCallLimit: 5 }),
+    });
+    expect(results(fetchImpl).map((result) => result.run?.writes)).toEqual([['stats.Int.value = 9'], ['stats.Int.value = 1']]);
+  });
+
   it('keeps an explicit stat or world owner off the open trait', async () => {
     expect(await asked({ code, owner: 'stat' }, { code, owner: 'world' })).toEqual([NOT_BRAVE, NOT_BRAVE]);
   });

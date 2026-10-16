@@ -1,7 +1,7 @@
 /** The help-code probe's questions, and the fixture world each answer's code runs against. */
 import type { SurfaceId } from '@/lib/docs/surfaceMap';
-import { SCRIPT_TAB, TRAIT_SCRIPT_TAB } from '@/lib/formaquestion/helpCodeRider';
-import { testScript } from '@/lib/formaquestion/helpCodeTestRun';
+import { SCRIPT_TAB, TRAIT_SCRIPT_TAB, WORLD_SCRIPT_TAB } from '@/lib/formaquestion/helpCodeRider';
+import { testScript, type CodeTestOwner } from '@/lib/formaquestion/helpCodeTestRun';
 import type { CodeTestResult } from '@/lib/formaquestion/helpCodeTestRun';
 import type { HelpFocus } from '@/lib/formaquestion/helpFocus';
 import { executeStatCode, type NarrationInput, type SandboxPlaceholderNode, type SandboxTrait, type StatCodeRunOptions, type SwitchedTrait } from '@/lib/statCodeExecutor';
@@ -29,6 +29,8 @@ export interface HelpCodeCase {
   timing?: ScriptTiming;
   /** The fixture trait whose Scripts tab the case asks from. Its snippets run as that trait's script. */
   trait?: string;
+  /** True when the case asks from the world's Scripts tab. Its snippets run as a world script. */
+  worldScript?: true;
 }
 
 const stat = (name: string, min: number, max: number, value: number, regen: number): Stat =>
@@ -110,14 +112,25 @@ export const fixtureRunner: SnippetRunner = async (code, timing) => {
   return { runs: result.error === null, error: result.error };
 };
 
-/** Runs a snippet as the script of the fixture trait `name`, through the code test's own run. */
-export const traitRunner = (name: string): SnippetRunner => async (code, timing) => {
-  const { run } = await testScript(code, timing ?? 'after', { kind: 'trait', name }, FIXTURE_WORLD);
-  return { runs: run !== undefined && run.error === null, error: run?.error ?? null };
-};
+/** A runner that runs each snippet on `owner`, through the code test's own run. */
+function ownerRunner(owner: CodeTestOwner): SnippetRunner {
+  return async (code, timing) => {
+    const { run } = await testScript(code, timing ?? 'after', owner, FIXTURE_WORLD);
+    return { runs: run !== undefined && run.error === null, error: run?.error ?? null };
+  };
+}
 
-/** The runner of a case's snippets: the trait's when the case asks from a trait's Scripts tab, else the fixture stat's. */
-export const runnerOf = (c: HelpCodeCase): SnippetRunner => (c.trait ? traitRunner(c.trait) : fixtureRunner);
+/** Runs a snippet as the script of the fixture trait `name`, through the code test's own run. */
+export const traitRunner = (name: string): SnippetRunner => ownerRunner({ kind: 'trait', name });
+
+/** Runs a snippet as a world script, through the code test's own run. */
+export const worldRunner: SnippetRunner = ownerRunner({ kind: 'world' });
+
+/** The runner of a case's snippets: the trait's or the world's when the case asks from that Scripts tab, else the fixture stat's. */
+export const runnerOf = (c: HelpCodeCase): SnippetRunner => (c.trait ? traitRunner(c.trait) : c.worldScript ? worldRunner : fixtureRunner);
+
+/** The world's Scripts tab: no item is selected, and no entity or stat owns the script. */
+const ON_WORLD_TAB = { worldScript: true, surface: statPanel(WORLD_SCRIPT_TAB) } as const;
 
 /** A fixture trait's Scripts tab, open with that trait selected. */
 const onTraitTab = (name: string) => (
@@ -186,6 +199,14 @@ export const HELP_CODE_CASES: readonly HelpCodeCase[] = [
   },
   { id: 'trait-start-stamina', kind: 'code', timing: 'start', ...onTraitTab('Brave'), question: 'When a new game begins, how do I set Stamina to 80?' },
   { id: 'trait-switch-off', kind: 'code', timing: 'switch', ...onTraitTab('Brave'), question: 'How do I lower Courage by 10 when this trait turns off?' },
+  // The world's Scripts tab: a world script has no owner and no self, so a `self` read is wrong.
+  {
+    id: 'world-heal-on-stamina', kind: 'code', ...ON_WORLD_TAB,
+    question: 'How do I raise Health by 5 each turn while Stamina is above 30?',
+    names: { present: [ref('stats.Health.value'), ref('stats.Stamina.value')] },
+  },
+  { id: 'world-start-stamina', kind: 'code', timing: 'start', ...ON_WORLD_TAB, question: 'When a new game begins, how do I set Stamina to 80?' },
+  { id: 'world-switch-brave', kind: 'code', timing: 'switch', ...ON_WORLD_TAB, question: 'How do I lower Courage by 10 when the Brave trait turns off?' },
   { id: 'add-stat', kind: 'prose', question: 'How do I add a new stat to my world?' },
   { id: 'hide-stat', kind: 'prose', question: 'How do I hide a stat from the player?' },
   { id: 'change-theme', kind: 'prose', question: 'How do I change the theme?' },

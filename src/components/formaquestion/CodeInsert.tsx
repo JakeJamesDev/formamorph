@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 import type { ScriptTiming } from '@/types';
 import type { SnippetBlock } from './CodeSnippet';
 
-const NO_PANEL_TIP = "Switch the World Editor to Advanced and open a stat's Code tab or a trait's Scripts tab";
+const NO_PANEL_TIP = "Switch the World Editor to Advanced and open a stat's Code tab, a trait's Scripts tab or the world's Scripts tab";
 
 /** Insert: a menu that writes the block as a new script of the chosen timing. */
 export function CodeInsert({ block }: { block: SnippetBlock }) {

@@ -4,7 +4,7 @@ import { benchEditorWorld, openTraitFieldsTab, renderWorldEditorBench } from '@/
 import { onScriptInsert, scriptInsertTarget } from '@/lib/formaquestion/scriptInsert';
 import { LANDING_PULSE_CLASS } from '@/lib/landingPulse';
 import { ringOn } from '@/test/landing';
-import type { ScriptTiming, World } from '@/types';
+import type { Script, ScriptTiming, World } from '@/types';
 import { boxScripts, codeAt } from '@/test/scriptFixtures';
 
 /** The stat panel's and the trait panel's side of the help window's Insert: the registration, the draft write, the confirm, and the landing. */
@@ -205,6 +205,55 @@ describe('inserting help code into the open trait', () => {
     const { unmount } = renderWorldEditorBench(WORLD, 'advanced');
     selectTrait();
     openTraitFieldsTab('Scripts');
+    expect(scriptInsertTarget()).not.toBeNull();
+    unmount();
+    expect(scriptInsertTarget()).toBeNull();
+  });
+});
+
+describe('inserting help code into the world', () => {
+  const openScripts = () => fireEvent.mouseDown(screen.getByRole('tab', { name: /^Scripts/ }));
+  const added = (ctx: () => { worldScripts: Script[] }) => ctx().worldScripts.at(-1)!;
+
+  it('registers the world only while its Scripts tab is shown', () => {
+    renderWorldEditorBench(WORLD, 'advanced');
+    expect(scriptInsertTarget()).toBeNull();
+    openScripts();
+    expect(scriptInsertTarget()?.homeName).toBe('World Scripts');
+    fireEvent.mouseDown(screen.getByRole('tab', { name: /Stats/ }));
+    expect(scriptInsertTarget()).toBeNull();
+  });
+
+  it.each([
+    ['start', 'At Game Start'],
+    ['switch', 'When a Trait Switches'],
+    ['output', 'During AI Output'],
+  ] as const)('writes a %s world script and lands on it', async (timing, label) => {
+    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+    openScripts();
+    insert(timing, 'return 5;');
+
+    expect(added(ctx)).toMatchObject({ timing, code: 'return 5;' });
+    const box = await screen.findByRole('textbox', { name: new RegExp(`^Code .*${label}$`) });
+    expect(box).toHaveValue('return 5;');
+    expect(box).toBe(document.activeElement);
+  });
+
+  it('adds beside the world scripts it holds and reports it written', () => {
+    const events: string[] = [];
+    const stop = onScriptInsert((event) => events.push(event));
+    const { ctx } = renderWorldEditorBench({ ...WORLD, scripts: [{ id: 'w1', timing: 'after', code: 'return 1;' }] }, 'advanced');
+    openScripts();
+    insert('after', 'return 9;');
+
+    expect(ctx().worldScripts.map((script) => script.code)).toEqual(['return 1;', 'return 9;']);
+    expect(events).toEqual(['written']);
+    stop();
+  });
+
+  it('unregisters when the editor closes', () => {
+    const { unmount } = renderWorldEditorBench(WORLD, 'advanced');
+    openScripts();
     expect(scriptInsertTarget()).not.toBeNull();
     unmount();
     expect(scriptInsertTarget()).toBeNull();

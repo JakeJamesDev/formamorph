@@ -6,7 +6,7 @@ import type { Surface } from '@/lib/surface/surfaceRegistry';
 import { sseReply, sseResponse, textSnapshot, textTarget } from '@/test/aiTextFixtures';
 import { riderPreset } from '@/test/helpFixtures';
 import { HELP_CHIP } from './helpChips';
-import { DEFAULT_CODE_RIDER, SCRIPT_TAB, scriptHomeLine, TRAIT_SCRIPT_TAB } from './helpCodeRider';
+import { DEFAULT_CODE_RIDER, SCRIPT_TAB, scriptHomeLine, TRAIT_SCRIPT_TAB, WORLD_SCRIPT_TAB } from './helpCodeRider';
 import { CODE_TEST_RIDER_LINE } from './helpCodeTest';
 import { helpUserMessage } from './helpPrompt';
 import { askHelp, type HelpEvent, type HelpQuestion } from './helpSession';
@@ -23,6 +23,8 @@ const CODE_TAB = surface(SCRIPT_TAB);
 const STAT_HOME_LINE = scriptHomeLine(CODE_TAB)!;
 const TRAIT_TAB = surface(TRAIT_SCRIPT_TAB);
 const TRAIT_HOME_LINE = scriptHomeLine(TRAIT_TAB)!;
+const WORLD_TAB = surface(WORLD_SCRIPT_TAB);
+const WORLD_HOME_LINE = scriptHomeLine(WORLD_TAB)!;
 
 type FetchSpy = ReturnType<typeof vi.fn<(url: string, init: RequestInit) => Promise<Response>>>;
 interface SentBody { messages: { role: string; content: string }[]; max_tokens?: number }
@@ -82,6 +84,17 @@ describe('the Code rider', () => {
     expect(userOf(fetchImpl).endsWith(`\n\n${DEFAULT_CODE_RIDER}\n${TRAIT_HOME_LINE}`)).toBe(true);
     expect(userOf(fetchImpl)).not.toContain(STAT_HOME_LINE);
     expect(bodyOf(fetchImpl).max_tokens).toBe(800);
+  });
+
+  it('rides any question asked from the world Scripts tab, with the world home line after it', async () => {
+    const { fetchImpl } = await ask('How do I make this go down?', { surface: WORLD_TAB });
+    expect(userOf(fetchImpl).endsWith(`\n\n${DEFAULT_CODE_RIDER}\n${WORLD_HOME_LINE}`)).toBe(true);
+    expect(userOf(fetchImpl)).not.toContain(STAT_HOME_LINE);
+    expect(userOf(fetchImpl)).not.toContain(TRAIT_HOME_LINE);
+    const tested = await ask(CODE_QUESTION, { surface: WORLD_TAB, settings: settingsOf({ lookup: true }), snapshot: CAPABLE });
+    expect(userOf(tested.fetchImpl).endsWith(`\n\n${DEFAULT_CODE_RIDER}\n${WORLD_HOME_LINE}\n${CODE_TEST_RIDER_LINE}`)).toBe(true);
+    const empty = await ask(CODE_QUESTION, { surface: WORLD_TAB, settings: settingsOf({ presets: riderPreset(' \n') }) });
+    expect(userOf(empty.fetchImpl).endsWith(`\n\n${WORLD_HOME_LINE}`)).toBe(true);
   });
 
   it('sends the trait home line after an edited rider, alone after an empty one, and before the code-test line', async () => {
