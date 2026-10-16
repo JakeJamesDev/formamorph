@@ -33,6 +33,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The Test Bench now shows which script asks a prompt, beside the question.** The name is the script's own, or its owner and timing.
     - **Moving a stat now stops when a trait or world script reads it.** The notice names the trait, or says a world script reads it. Before, only stat scripts counted.
     - **The help window's script test runs any script in its own timing, on a stat, a trait or the world.** During AI Output rewrites a sample sentence. When a Trait Switches fires on a sample trait. With no owner named, it tests the open stat.
+    - **A trait you switch while a When a Trait Switches script waits on a prompt keeps your setting.** The script's own trait switches still land. When the script and you switch the same trait, your switch wins, with its stat changes.
   - **Image Generation:**
     - **ComfyUI's Model row shows the model a workflow loads itself.** A workflow without `%ckpt%` ignores the Model setting, so the row shows its own model file, grayed out.
     - **ComfyUI's File Name setting sets the folders and name for each saved image.** By default, images go in `formamorph/<world>/`, named for their entity, location or turn. A `/` in the pattern makes a folder. A custom workflow needs `%prefix%` in its save node.

@@ -24,10 +24,14 @@ const switchScript: Script = { id: 'sw', timing: 'switch', code: 'stats.Vigor.va
 const world = (): World => ({ ...harborWorld({ stats: [vigor] }), traits: [brave], scripts: [switchScript] });
 
 let stats: PlayerStat[] = [];
+let traitsOn: string[] = [];
+let logLines: string[] = [];
 let showTraits = () => {};
 function Probe() {
   const play = useGameplay();
   stats = play.globalStats;
+  traitsOn = play.globalTraits.filter((t) => !play.disabledTraitIds.includes(t.id)).map((t) => t.id).sort();
+  logLines = play.logEntries.map(({ text }) => text);
   showTraits = () => play.setActiveTab('traits');
   return null;
 }
@@ -54,17 +58,18 @@ beforeEach(async () => {
 });
 afterEach(() => vi.restoreAllMocks());
 
-/** Brave's switch in the Traits tab. The Global section starts closed with nothing on, and an off trait sits
+/** A trait's switch in the Traits tab. The Global section starts closed with nothing on, and an off trait sits
  *  under its closed Disabled list. */
-async function clickBrave() {
+async function clickTrait(name: string) {
   showTraits();
   const global = await screen.findByRole('group', { name: 'Global' });
   const header = within(global).getByRole('button', { name: /^Global,/ });
   if (header.getAttribute('aria-expanded') !== 'true') fireEvent.click(header);
   const disabled = within(global).queryByRole('button', { name: /^Disabled/ });
   if (disabled?.getAttribute('aria-expanded') === 'false') fireEvent.click(disabled);
-  fireEvent.click(await within(global).findByRole('checkbox', { name: /Brave/ }));
+  fireEvent.click(await within(global).findByRole('checkbox', { name: new RegExp(name) }));
 }
+const clickBrave = () => clickTrait('Brave');
 
 async function playTurn() {
   stubEndpoint();
@@ -90,6 +95,65 @@ describe('When a Trait Switches in play', () => {
     renderGameViewer({ ...world(), stats: [drop], traits: [gated] }, { inGameplay: <Probe />, initialTraits: ['brave'] });
     await playTurn();
     await waitFor(() => expect(vigorNow()).toBe(30));
+  });
+
+  describe('while the run holds a prompt open', () => {
+    // Brave's switch-on asks, then switches Bold and Calm on. Each trait's stat change tells whether it landed.
+    const rally: Trait = {
+      ...brave,
+      scripts: [{ id: 'rally', timing: 'switch', code: 'if (trait.enabled && player.confirm("Rally?")) { traits.Bold.enabled = true; traits.Calm.enabled = true; }' }],
+    };
+    const plus = (id: string, name: string, value: number, more: Partial<Trait> = {}): Trait =>
+      ({ id, name, playerToggle: true, statChanges: [{ statId: 'vigor', type: 'starting', value }], ...more });
+    /** `code` as the trait's own When a Trait Switches script. */
+    const onSwitch = (code: string): Partial<Trait> => ({ scripts: [{ id: 'sw', timing: 'switch', code }] });
+    const calm = plus('calm', 'Calm', 10);
+
+    async function openRally({ bold = plus('bold', 'Bold', 5), keen = plus('keen', 'Keen', 2), extra = [] as Trait[] } = {}) {
+      renderGameViewer({ ...harborWorld({ stats: [vigor] }), traits: [rally, bold, calm, keen, ...extra] }, { inGameplay: <Probe /> });
+      await screen.findByPlaceholderText(/Type your action/);
+      await clickBrave();
+      await screen.findByRole('group', { name: 'Rally?' });
+    }
+
+    it('lands the run’s own switches and keeps a toggle the player made meanwhile', { timeout: 30_000 }, async () => {
+      await openRally();
+      await clickTrait('Keen');
+      await waitFor(() => expect(vigorNow()).toBe(52));
+
+      fireEvent.click(screen.getByRole('button', { name: 'Yes' }));
+      await waitFor(() => expect(traitsOn).toEqual(['bold', 'brave', 'calm', 'keen']));
+      expect(vigorNow()).toBe(67);
+    });
+
+    it('lets the player’s toggle win a trait the run also switched, stat changes included', { timeout: 30_000 }, async () => {
+      await openRally();
+      await clickTrait('Calm');
+      await waitFor(() => expect(vigorNow()).toBe(60));
+      await clickTrait('Calm');
+      await waitFor(() => expect(vigorNow()).toBe(50));
+
+      fireEvent.click(screen.getByRole('button', { name: 'Yes' }));
+      await waitFor(() => expect(traitsOn).toEqual(['bold', 'brave']));
+      expect(vigorNow()).toBe(55);
+      // The run's own switch writes its line; its dropped switch of Calm writes none.
+      expect(logLines.filter((line) => line.includes('(by '))).toEqual(['Acquired trait: Bold (by Brave)']);
+    });
+
+    it('lands a nested run’s switches, and a run the player’s toggle fired, each on its own', { timeout: 30_000 }, async () => {
+      // Bold's own switch-on, nested in Brave's run, switches Lucky on; Keen's, fired by the player, switches Sharp on.
+      await openRally({
+        bold: plus('bold', 'Bold', 5, onSwitch('if (trait.enabled) traits.Lucky.enabled = true;')),
+        keen: plus('keen', 'Keen', 2, onSwitch('if (trait.enabled) traits.Sharp.enabled = true;')),
+        extra: [plus('lucky', 'Lucky', 3), plus('sharp', 'Sharp', 20)],
+      });
+      await clickTrait('Keen');
+      await waitFor(() => expect(traitsOn).toEqual(['brave', 'keen', 'sharp']));
+
+      fireEvent.click(screen.getByRole('button', { name: 'Yes' }));
+      await waitFor(() => expect(traitsOn).toEqual(['bold', 'brave', 'calm', 'keen', 'lucky', 'sharp']));
+      expect(vigorNow()).toBe(90);
+    });
   });
 
   it('does not run for a setup pick, nor on a load of a save', { timeout: 30_000 }, async () => {

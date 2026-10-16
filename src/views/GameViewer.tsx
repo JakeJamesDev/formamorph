@@ -16,6 +16,7 @@ import { type StatClock } from "@/lib/statCodeExecutor";
 import {
   overlayStatCodeResult, playthroughPlaceholderSet, runStatCodeTurn, runSwitchScripts, withPinWrites, type StatCodeTurn, type StatCodeTurnResult,
 } from "@/lib/statCodeTurn";
+import { landSwitchRun } from "@/lib/switchRunLanding";
 import { openOutputRun, type OutputRun } from "@/lib/outputRun";
 import {
   applyEntityStatResponse, entityCodeTurns, entityStatOwners, personaEntities, personaStatOwners, seedEntityStats, statOwnerEntities,
@@ -2866,6 +2867,32 @@ const GameViewer = ({
   liveCodeStateRef.current = {
     codePins, pins, chosenTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, statTraits,
   };
+  /** The gameplay slice the trait runtime reads and rewrites. */
+  const traitState = useMemo<TraitRuntimeState>(
+    () => ({
+      stats: globalStats, traits: chosenTraits, disabledTraitIds, appliedValues: appliedTraitValues, cascadeOffTraitIds, ownedTraits,
+      entityStats,
+    }),
+    [globalStats, chosenTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, entityStats],
+  );
+  // The trait state play stands at, which a switch run lands onto. A commit writes it at once, so a landing
+  // before the next render builds on that commit.
+  const liveTraitStateRef = useRef(traitState);
+  liveTraitStateRef.current = traitState;
+  const commitTraitState = useCallback(
+    (next: TraitRuntimeState) => {
+      liveTraitStateRef.current = next;
+      // Runtime-only: the authored world (GameData.stats) is never mutated by play.
+      setGlobalStats(next.stats);
+      setGlobalTraits(next.traits);
+      setDisabledTraitIds(next.disabledTraitIds);
+      setAppliedTraitValues(next.appliedValues);
+      setCascadeOffTraitIds(next.cascadeOffTraitIds ?? {});
+      setOwnedTraits(next.ownedTraits ?? {});
+      setEntityStats(next.entityStats ?? {});
+    },
+    [setGlobalStats, setGlobalTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, setOwnedTraits, setEntityStats],
+  );
   // Stats, Code Pins and traits as they stood before this turn's before box, so a turn that never commits
   // puts back exactly what the box moved. The last snapshot holds the same seven fields — nothing else
   // touches them between it and the box — and undoing the box alone spares a trait the player switched
@@ -2893,11 +2920,13 @@ const GameViewer = ({
       before: PlayerStat[], afterAsks: PlayerStat[], asks: StatCodeTurn["asks"], clock: StatClock,
       preTurn?: PreTurnCodeState,
       timing: RunTiming = 'after',
-      { entityTurn, thresholdStats }: {
+      { entityTurn, thresholdStats, traitWorld }: {
         /** The entities' values after this turn's AI asks, and the asks, by owner. */
         entityTurn?: { values: EntityStatValues; asks: Record<string, StatCodeTurn["asks"]> };
         /** The pre-turn stats the regen tick's starvation check reads. Absent ⇒ no penalty lands beside the run. */
         thresholdStats?: readonly PlayerStat[];
+        /** The world the run's traits hold under, when its render has not committed yet. Absent ⇒ the live one. */
+        traitWorld?: TraitWorld;
       } = {},
     ): PreparedStatCode | null => {
       try {
@@ -2931,7 +2960,7 @@ const GameViewer = ({
           };
         const inForce = preTurn ? inForceOn(held, entityBase) : live.statTraits;
         const basePins = preTurn ? preTurn.codePins ?? {} : live.codePins;
-        const world = gatedWorld();
+        const world = traitWorld ?? gatedWorld();
         // The starvation penalty the regen tick lands beside this run, so the run's stat snapshot holds it.
         const healthLoss = tick && thresholdStats ? starvationLoss(thresholdStats, enabled, clock.deltaHours ?? FLAT_HOURS_PER_TURN) : null;
         const health = healthLoss === null ? undefined : stats.find((s) => s.name === "Health");
@@ -2964,6 +2993,7 @@ const GameViewer = ({
         };
         /** Lays the run's result onto live state and hands back what it left. */
         const finish = (result: StatCodeTurnResult) => {
+          if (timing === 'switch') return landSwitch(result);
           const nextPins = withPinWrites(basePins, result.pinWrites);
           // Onto the latest values, as the player's stats below: the regen tick can apply while the run awaits.
           const ownersInForce = entityInForceUnder(result.traits?.ownedTraits ?? held.ownedTraits ?? {});
@@ -3003,9 +3033,33 @@ const GameViewer = ({
           addStatDeltas(null, codeChanges);
           // The commit resets the bar deltas mid-turn, so the share of the runs before the AI is re-laid over that.
           // The start scripts, the before box and the output scripts can move one stat, so their shares add.
-          // A switch run between turns is no share of a turn's.
-          if (readsTurnStart(timing) && timing !== 'switch') beforeBoxDeltasRef.current = sumDeltas(beforeBoxDeltasRef.current, codeChanges);
+          if (readsTurnStart(timing)) beforeBoxDeltasRef.current = sumDeltas(beforeBoxDeltasRef.current, codeChanges);
           return { written: stateAfterRun(), gateStats: result.gateStats };
+        };
+        /** A switch run's landing: only what the run changed lands on the state play reached meanwhile. */
+        const landSwitch = (result: StatCodeTurnResult) => {
+          const latest = liveTraitStateRef.current;
+          const start: TraitRuntimeState = {
+            stats, traits: [...held.acquired], disabledTraitIds: [...held.disabledTraitIds], appliedValues: held.appliedValues,
+            cascadeOffTraitIds: held.cascadeOffTraitIds, ownedTraits: held.ownedTraits, entityStats: entityPrevious,
+          };
+          const ranTraits = result.traits;
+          const ran: TraitRuntimeState = {
+            stats: [...result.stats],
+            traits: ranTraits?.acquired ?? start.traits, disabledTraitIds: ranTraits?.disabledTraitIds ?? start.disabledTraitIds,
+            appliedValues: ranTraits?.appliedValues ?? start.appliedValues,
+            cascadeOffTraitIds: ranTraits?.cascadeOffTraitIds ?? start.cascadeOffTraitIds, ownedTraits: ranTraits?.ownedTraits ?? start.ownedTraits,
+            entityStats: { ...entityPrevious, ...Object.fromEntries(Object.entries(result.owners ?? {}).map(([id, run]) => [id, [...run.stats]])) },
+          };
+          const { state: landed, dropped } = landSwitchRun(start, ran, latest, world);
+          commitTraitState(landed);
+          setCodePins((prev) => withPinWrites(prev, result.pinWrites));
+          ranTraits?.log.forEach((line, i) => {
+            const trait = ranTraits.logTraits?.[i];
+            if (!trait || !dropped.has(trait)) addLogEntry(line);
+          });
+          addStatDeltas(null, appliedStatDeltas(resolveStatNames(latest.stats, resolvePH), resolveStatNames(landed.stats, resolvePH)));
+          return { written: null, gateStats: result.gateStats };
         };
         return { turn, finish };
       } catch (error) {
@@ -3014,7 +3068,7 @@ const GameViewer = ({
       }
     },
     [setGlobalStats, setEntityStats, entityOwnersOf, entityInForceUnder, addStatDeltas, setCodePins, resolvePH, statCodePlaceholders, pinsFor, traits, authoredStats, worldScripts, resolveTraitText, gatedWorld, codeEntities, statEntities, inForceOn, liveScene,
-      setGlobalTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, setOwnedTraits, addLogEntry, playPrompts],
+      setGlobalTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, setOwnedTraits, addLogEntry, playPrompts, commitTraitState],
   );
 
   // Runs one timing's scripts over this turn and lays the result: a turn with no stat response runs it directly.
@@ -3044,11 +3098,11 @@ const GameViewer = ({
         codePins: liveCodeStateRef.current.codePins, globalTraits: to.traits, disabledTraitIds: to.disabledTraitIds,
         appliedTraitValues: to.appliedValues, cascadeOffTraitIds: to.cascadeOffTraitIds ?? {}, ownedTraits: to.ownedTraits ?? {},
         entityStats: to.entityStats ?? {},
-      }, 'switch');
+        // The render that committed `to` has not run yet, so the run reads `world` rather than the live one.
+      }, 'switch', { traitWorld: world });
       if (!prepared) return;
       try {
-        // The render that committed `to` has not run yet, so the run reads `world` rather than the live one.
-        const result = await runSwitchScripts({ ...prepared.turn, ownerTraits: { ...prepared.turn.ownerTraits, world } }, events);
+        const result = await runSwitchScripts(prepared.turn, events);
         if (result && mounted.current) prepared.finish(result);
       } catch (error) {
         console.error("Error processing stat code:", error);
@@ -4028,28 +4082,6 @@ const GameViewer = ({
       handleSendAction();
     }
   };
-
-  /** The gameplay slice the trait runtime reads and rewrites, and the setters that put a result back. */
-  const traitState = useMemo<TraitRuntimeState>(
-    () => ({
-      stats: globalStats, traits: chosenTraits, disabledTraitIds, appliedValues: appliedTraitValues, cascadeOffTraitIds, ownedTraits,
-      entityStats,
-    }),
-    [globalStats, chosenTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, entityStats],
-  );
-  const commitTraitState = useCallback(
-    (next: TraitRuntimeState) => {
-      // Runtime-only: the authored world (GameData.stats) is never mutated by play.
-      setGlobalStats(next.stats);
-      setGlobalTraits(next.traits);
-      setDisabledTraitIds(next.disabledTraitIds);
-      setAppliedTraitValues(next.appliedValues);
-      setCascadeOffTraitIds(next.cascadeOffTraitIds ?? {});
-      setOwnedTraits(next.ownedTraits ?? {});
-      setEntityStats(next.entityStats ?? {});
-    },
-    [setGlobalStats, setGlobalTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, setOwnedTraits, setEntityStats],
-  );
 
   // The banner naming what the player's last switch or persona change turned off. Session-only.
   const [traitCascade, setTraitCascade] = useState<TraitCascade | null>(null);

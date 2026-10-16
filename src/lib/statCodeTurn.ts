@@ -36,6 +36,9 @@ export interface StatCodeTraitResult {
   /** The owner's stat traits in force after the switches, which the bounds re-derive under. */
   inForce: Trait[];
   log: string[];
+  /** The record key of the trait each `log` line reports, null for a line no single switch owns. Absent ⇒ none
+   *  is tagged. */
+  logTraits?: (string | null)[];
 }
 
 /** Everything one turn hands to stat code. The forward turn and the re-roll both build one of these; a turn
@@ -424,7 +427,11 @@ export function chainedResult(start: StatCodeTurn, steps: readonly StatCodeTurnR
   if (!finalStep) throw new Error('A chained result needs a step');
   const pinWrites: PinWrites = Object.assign({}, ...steps.map((step) => step.pinWrites));
   const last = steps.findLast((step) => step.traits)?.traits;
-  const traits: StatCodeTraitResult | undefined = last && { ...last, log: steps.flatMap((step) => step.traits?.log ?? []) };
+  const logs = steps.map((step) => step.traits?.log ?? []);
+  const traits: StatCodeTraitResult | undefined = last && {
+    ...last, log: logs.flat(),
+    logTraits: steps.flatMap((step, i) => step.traits?.logTraits ?? logs[i].map(() => null)),
+  };
   const owners = start.owners && Object.fromEntries(start.owners.map((owner): [string, OwnerCodeResult] => {
     const after = now.owners?.find((ran) => ran.id === owner.id) ?? owner;
     const inForce = steps.findLast((step) => step.owners?.[owner.id]?.inForce)?.owners?.[owner.id]?.inForce;
@@ -624,6 +631,7 @@ async function runScripts(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
     ownedTraits: switched.state.ownedTraits ?? {},
     inForce: active,
     log: switched.log,
+    logTraits: switched.logTraits,
   };
 
   const owners = turn.owners && Object.fromEntries(entityRuns.map(({ owner }): [string, OwnerCodeResult] => {
