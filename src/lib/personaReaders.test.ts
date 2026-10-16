@@ -58,7 +58,7 @@ describe('entity readers in play', () => {
     { reader: 'opening pool, new game', source: viewer, pattern: /drawNewGameOpening\(\{\s*pick: personaPick, worldEntities: traitEntities,/ },
     { reader: 'opening pool, regenerate and load', source: viewer, pattern: /const sessionPool = \(\) => openingPool\(\{\s*overview: worldOverview,\s*entities,/ },
     { reader: 'panels, scene list', source: panels, pattern: /const \{ entities: authoredEntities(?:, \w+)* \} = useResolvedWorld\(\)/ },
-    { reader: 'narration edit rescan', source: viewer, pattern: /readEditedNarration\(\{[^}]*entities: allEntities,/ },
+    { reader: 'narration edit rescan', source: viewer, pattern: /useNarrationRescan\(\{ entities: allEntities,/ },
   ];
 
   it.each(readers)('$reader reads the cast', ({ source, pattern }) => {

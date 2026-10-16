@@ -593,8 +593,8 @@ export const MiddlePanel = ({
   /** Changes per preview run, so each run starts on a fresh renderer. */
   commandRunId?: number;
   onDismissCommandPreview: () => void;
-  /** Reads who took part in edited narration, given the narration of the turns before it. */
-  onRescanNarration: (narration: string, priorNarration: string) => string[];
+  /** Rescans a page's edited narration: rebuilds its scene list and returns who took part. */
+  onRescanNarration: (page: number, narration: string) => string[];
 }) => {
   const {
     displayedMessages,
@@ -1050,16 +1050,11 @@ export const MiddlePanel = ({
               if (page === totalPages) setGameplayText(text);
               // Update the message in history for the edited page
               const messageIndex = (page - 1) * 2 + 1; // +1 for assistant message
+              // Only a stored narration turn is rescanned, so its participants and scene list stay in step.
+              const participants = fullMessageHistory[messageIndex]?.role === 'assistant' ? onRescanNarration(page, text) : [];
               setFullMessageHistory(prev => {
                 const updatedHistory = [...prev];
                 let editedTurnId: string | undefined;
-                // Presence is read from the edit the way a live turn reads its narration.
-                const priorNarration = prev
-                  .slice(0, messageIndex)
-                  .filter((m) => m.role === 'assistant')
-                  .map((m) => narrationOf(m.content) ?? '')
-                  .join('\n');
-                const participants = onRescanNarration(text, priorNarration);
                 if (messageIndex < updatedHistory.length) {
                   const message = updatedHistory[messageIndex];
                   if (message.role === 'assistant') {

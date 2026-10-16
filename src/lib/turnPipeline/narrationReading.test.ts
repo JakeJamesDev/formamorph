@@ -139,7 +139,7 @@ describe('presentSceneEntities', () => {
 
 describe('readEditedNarration', () => {
   const edited = (narration: string, over: Partial<Parameters<typeof readEditedNarration>[0]> = {}) =>
-    readEditedNarration({ narration, priorNarration: '', entities: [MAREN, SERANA], exclusions: {}, ...over });
+    readEditedNarration({ narration, priorNarration: '', entities: [MAREN, SERANA], exclusions: {}, previousScene: [], ...over });
 
   it('drops a name the edit removed and adds a known name it introduced', () => {
     expect(edited('Maren Vosk hauls the net aboard.').participants).toEqual(['Maren Vosk']);
@@ -158,5 +158,51 @@ describe('readEditedNarration', () => {
   it('leaves out a suppressed name', () => {
     const { participants } = edited('Captain Halric Dune ties off the line.', { exclusions: { suppressed: ['Captain Halric Dune'] } });
     expect(participants).not.toContain('Captain Halric Dune');
+  });
+
+  describe('scene list', () => {
+    // Planner-cast members with no entity record, so only the previous list can keep them.
+    const TAMSIN = { name: 'Old Tamsin', revealed: true };
+    const ILSE = { name: 'Ilse Dorn', alias: 'the silver-haired woman', revealed: false };
+    const scene = (narration: string, previousScene = [TAMSIN, ILSE], priorNarration = '') =>
+      edited(narration, { previousScene, priorNarration }).visibleEntities;
+
+    it('keeps a cast member the edit still names, by name and by alias', () => {
+      expect(scene('Tamsin mends the sail.')).toContainEqual(TAMSIN);
+      expect(scene('The silver-haired woman watches the harbor.')).toContainEqual(ILSE);
+    });
+
+    it('drops a cast member the edit no longer names', () => {
+      const names = scene('The harbor lies empty.').map((se) => se.name);
+      expect(names).not.toContain('Old Tamsin');
+      expect(names).not.toContain('Ilse Dorn');
+    });
+
+    it('drops a cast member the edit names only inside dialogue', () => {
+      expect(scene('The deckhand mutters, "Tamsin is late again."').map((se) => se.name)).not.toContain('Old Tamsin');
+    });
+
+    it('keeps an unrevealed member unrevealed until the edit writes the real name', () => {
+      expect(scene('The silver-haired woman nods.')).toContainEqual(ILSE);
+      expect(scene('Ilse Dorn, the silver-haired woman, nods.')).toContainEqual({ ...ILSE, revealed: true });
+    });
+
+    it('never un-reveals a member the edit names by alias only', () => {
+      const known = { ...ILSE, revealed: true };
+      expect(scene('The silver-haired woman nods.', [known])).toContainEqual(known);
+    });
+
+    it('adds a known entity the prose names, revealed', () => {
+      expect(scene('Professor Serana watches the harbor.')).toContainEqual({ name: 'Professor Serana', revealed: true });
+    });
+
+    it('adds a name no entity matches yet, revealed', () => {
+      expect(scene('Captain Halric Dune ties off the line.', [])).toContainEqual({ name: 'Captain Halric Dune', revealed: true });
+    });
+
+    it('leaves out a known name only the dialogue speaks', () => {
+      const names = scene('The deckhand mutters, "for Professor Serana\'s review, then."', []).map((se) => se.name);
+      expect(names).not.toContain('Professor Serana');
+    });
   });
 });
