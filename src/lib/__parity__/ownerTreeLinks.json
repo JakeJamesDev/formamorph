@@ -102,7 +102,7 @@
             "regen": 0,
             "scripts": [
               {
-                "code": "// Power share sets the base; the chassis and thrusters shift it; a failing core cripples it.\nconst power = owner.stats.Power;\nconst health = owner.stats.Health;\nconst t = owner.traits;\nlet m = (power.value / power.max) * 70 + 15;\nif (t[\"Scout Frame\"].enabled) m += 10;\nif (t[\"Siege Frame\"].enabled) m -= 15;\nif (t[\"Evasion Thrusters\"].enabled) m += 15;\nif (health.value / health.max < 0.3) m = Math.min(m, 35);\nreturn Math.round(m);",
+                "code": "// Mobility: how well the drone moves this turn, set from its Power, Health and build.\nconst power = owner.stats.Power;\nconst health = owner.stats.Health;\nconst traits = owner.traits;\n\n// The share of Power left sets the base: 15 when drained, 85 when full.\nlet mobility = (power.value / power.max) * 70 + 15;\n\n// The chassis shifts the base: Scout is light and fast, Siege is heavy and slow.\nif (traits[\"Scout Frame\"].enabled) mobility += 10;\nif (traits[\"Siege Frame\"].enabled) mobility -= 15;\n\n// Evasion Thrusters add bursts of speed on top.\nif (traits[\"Evasion Thrusters\"].enabled) mobility += 15;\n\n// Below 30% of max Health the core fails, so movement caps out low.\n// A share of max, not a fixed number, keeps the line fair on every chassis.\nif (health.value / health.max < 0.3) mobility = Math.min(mobility, 35);\n\n// The stat clamps the result to 0–100.\nreturn Math.round(mobility);",
                 "id": "1739621674256:after",
                 "timing": "after"
               }
@@ -142,7 +142,7 @@
             "regen": 0,
             "scripts": [
               {
-                "code": "// Power share sets the base; the build adds to it; a failing core halves it; full Charge primes Overdrive.\nconst power = owner.stats.Power;\nconst health = owner.stats.Health;\nconst charge = owner.stats.Charge;\nconst t = owner.traits;\nlet out = (power.value / power.max) * 70 + 10;\nif (t[\"Assault Frame\"].enabled) out += 5;\nif (t[\"Overcharged Rounds\"].enabled) out += 10;\nif (t[\"Recon Optics\"].enabled) out += 5;\nif (t[\"Siege Cannon\"].enabled) out += 15;\nif (health.value / health.max < 0.3) out *= 0.5;\nif (charge.value >= charge.max) out += 30;\nreturn Math.round(out);",
+                "code": "// Firepower: how hard the drone's weapons hit this turn, set from its Power, Health, Charge and build.\nconst power = owner.stats.Power;\nconst health = owner.stats.Health;\nconst charge = owner.stats.Charge;\nconst traits = owner.traits;\n\n// The share of Power left sets the base: 10 when drained, 80 when full.\nlet firepower = (power.value / power.max) * 70 + 10;\n\n// Each weapon part adds its own bonus.\nif (traits[\"Assault Frame\"].enabled) firepower += 5;\nif (traits[\"Overcharged Rounds\"].enabled) firepower += 10;\nif (traits[\"Recon Optics\"].enabled) firepower += 5;\nif (traits[\"Siege Cannon\"].enabled) firepower += 15;\n\n// Below 30% of max Health the failing core halves the output.\nif (health.value / health.max < 0.3) firepower *= 0.5;\n\n// Full Charge primes the Overdrive burst, a large spike on top.\nif (charge.value >= charge.max) firepower += 30;\n\n// The stat clamps the result to 0–100.\nreturn Math.round(firepower);",
                 "id": "1739621783199:after",
                 "timing": "after"
               }
@@ -619,7 +619,7 @@
             "regen": 0,
             "scripts": [
               {
-                "code": "// Power share sets the base; the chassis and thrusters shift it; a failing core cripples it.\nconst power = owner.stats.Power;\nconst health = owner.stats.Health;\nconst t = owner.traits;\nlet m = (power.value / power.max) * 70 + 15;\nif (t[\"Scout Frame\"].enabled) m += 10;\nif (t[\"Siege Frame\"].enabled) m -= 15;\nif (t[\"Evasion Thrusters\"].enabled) m += 15;\nif (health.value / health.max < 0.3) m = Math.min(m, 35);\nreturn Math.round(m);",
+                "code": "// Mobility: how well the drone moves this turn, set from its Power, Health and build.\nconst power = owner.stats.Power;\nconst health = owner.stats.Health;\nconst traits = owner.traits;\n\n// The share of Power left sets the base: 15 when drained, 85 when full.\nlet mobility = (power.value / power.max) * 70 + 15;\n\n// The chassis shifts the base: Scout is light and fast, Siege is heavy and slow.\nif (traits[\"Scout Frame\"].enabled) mobility += 10;\nif (traits[\"Siege Frame\"].enabled) mobility -= 15;\n\n// Evasion Thrusters add bursts of speed on top.\nif (traits[\"Evasion Thrusters\"].enabled) mobility += 15;\n\n// Below 30% of max Health the core fails, so movement caps out low.\n// A share of max, not a fixed number, keeps the line fair on every chassis.\nif (health.value / health.max < 0.3) mobility = Math.min(mobility, 35);\n\n// The stat clamps the result to 0–100.\nreturn Math.round(mobility);",
                 "id": "1739621674256:after",
                 "timing": "after"
               }
@@ -659,7 +659,7 @@
             "regen": 0,
             "scripts": [
               {
-                "code": "// Power share sets the base; the build adds to it; a failing core halves it; full Charge primes Overdrive.\nconst power = owner.stats.Power;\nconst health = owner.stats.Health;\nconst charge = owner.stats.Charge;\nconst t = owner.traits;\nlet out = (power.value / power.max) * 70 + 10;\nif (t[\"Assault Frame\"].enabled) out += 5;\nif (t[\"Overcharged Rounds\"].enabled) out += 10;\nif (t[\"Recon Optics\"].enabled) out += 5;\nif (t[\"Siege Cannon\"].enabled) out += 15;\nif (health.value / health.max < 0.3) out *= 0.5;\nif (charge.value >= charge.max) out += 30;\nreturn Math.round(out);",
+                "code": "// Firepower: how hard the drone's weapons hit this turn, set from its Power, Health, Charge and build.\nconst power = owner.stats.Power;\nconst health = owner.stats.Health;\nconst charge = owner.stats.Charge;\nconst traits = owner.traits;\n\n// The share of Power left sets the base: 10 when drained, 80 when full.\nlet firepower = (power.value / power.max) * 70 + 10;\n\n// Each weapon part adds its own bonus.\nif (traits[\"Assault Frame\"].enabled) firepower += 5;\nif (traits[\"Overcharged Rounds\"].enabled) firepower += 10;\nif (traits[\"Recon Optics\"].enabled) firepower += 5;\nif (traits[\"Siege Cannon\"].enabled) firepower += 15;\n\n// Below 30% of max Health the failing core halves the output.\nif (health.value / health.max < 0.3) firepower *= 0.5;\n\n// Full Charge primes the Overdrive burst, a large spike on top.\nif (charge.value >= charge.max) firepower += 30;\n\n// The stat clamps the result to 0–100.\nreturn Math.round(firepower);",
                 "id": "1739621783199:after",
                 "timing": "after"
               }
@@ -1136,7 +1136,7 @@
             "regen": 0,
             "scripts": [
               {
-                "code": "// Power share sets the base; the chassis and thrusters shift it; a failing core cripples it.\nconst power = owner.stats.Power;\nconst health = owner.stats.Health;\nconst t = owner.traits;\nlet m = (power.value / power.max) * 70 + 15;\nif (t[\"Scout Frame\"].enabled) m += 10;\nif (t[\"Siege Frame\"].enabled) m -= 15;\nif (t[\"Evasion Thrusters\"].enabled) m += 15;\nif (health.value / health.max < 0.3) m = Math.min(m, 35);\nreturn Math.round(m);",
+                "code": "// Mobility: how well the drone moves this turn, set from its Power, Health and build.\nconst power = owner.stats.Power;\nconst health = owner.stats.Health;\nconst traits = owner.traits;\n\n// The share of Power left sets the base: 15 when drained, 85 when full.\nlet mobility = (power.value / power.max) * 70 + 15;\n\n// The chassis shifts the base: Scout is light and fast, Siege is heavy and slow.\nif (traits[\"Scout Frame\"].enabled) mobility += 10;\nif (traits[\"Siege Frame\"].enabled) mobility -= 15;\n\n// Evasion Thrusters add bursts of speed on top.\nif (traits[\"Evasion Thrusters\"].enabled) mobility += 15;\n\n// Below 30% of max Health the core fails, so movement caps out low.\n// A share of max, not a fixed number, keeps the line fair on every chassis.\nif (health.value / health.max < 0.3) mobility = Math.min(mobility, 35);\n\n// The stat clamps the result to 0–100.\nreturn Math.round(mobility);",
                 "id": "1739621674256:after",
                 "timing": "after"
               }
@@ -1176,7 +1176,7 @@
             "regen": 0,
             "scripts": [
               {
-                "code": "// Power share sets the base; the build adds to it; a failing core halves it; full Charge primes Overdrive.\nconst power = owner.stats.Power;\nconst health = owner.stats.Health;\nconst charge = owner.stats.Charge;\nconst t = owner.traits;\nlet out = (power.value / power.max) * 70 + 10;\nif (t[\"Assault Frame\"].enabled) out += 5;\nif (t[\"Overcharged Rounds\"].enabled) out += 10;\nif (t[\"Recon Optics\"].enabled) out += 5;\nif (t[\"Siege Cannon\"].enabled) out += 15;\nif (health.value / health.max < 0.3) out *= 0.5;\nif (charge.value >= charge.max) out += 30;\nreturn Math.round(out);",
+                "code": "// Firepower: how hard the drone's weapons hit this turn, set from its Power, Health, Charge and build.\nconst power = owner.stats.Power;\nconst health = owner.stats.Health;\nconst charge = owner.stats.Charge;\nconst traits = owner.traits;\n\n// The share of Power left sets the base: 10 when drained, 80 when full.\nlet firepower = (power.value / power.max) * 70 + 10;\n\n// Each weapon part adds its own bonus.\nif (traits[\"Assault Frame\"].enabled) firepower += 5;\nif (traits[\"Overcharged Rounds\"].enabled) firepower += 10;\nif (traits[\"Recon Optics\"].enabled) firepower += 5;\nif (traits[\"Siege Cannon\"].enabled) firepower += 15;\n\n// Below 30% of max Health the failing core halves the output.\nif (health.value / health.max < 0.3) firepower *= 0.5;\n\n// Full Charge primes the Overdrive burst, a large spike on top.\nif (charge.value >= charge.max) firepower += 30;\n\n// The stat clamps the result to 0–100.\nreturn Math.round(firepower);",
                 "id": "1739621783199:after",
                 "timing": "after"
               }
