@@ -70,6 +70,62 @@ npm run probe:narration-tools -- --lm-studio <model-id>
 This targets `http://127.0.0.1:1234/v1/chat/completions`, records the selected model and seed in every request,
 and writes a separate `lm-studio-batch-*.json` evidence file.
 
+## World probe
+
+Plays a bundled world against an older revision of itself, in the real dev build, on the cloud endpoint.
+Each world ticket of the bundled-worlds refresh uses it for its evidence.
+
+```bash
+npx vite-node testing/baseline/harness/world-probe.cli.ts -- --worlds drone --runs 5
+```
+
+🎮 **What a run is.** The probe imports one arm's world file, enters it with the default picks, plays the
+opening, then plays the world's scripted actions (`world-probe-worlds.ts`). The app does the rest, exactly as
+in play: prompts, sampler pins, the stat pass, choices, and every world, trait and entity script at its
+timing. The probe only adds `reasoning_effort: "none"` to each request.
+
+### Arms
+
+| Flag | Meaning | Default |
+|---|---|---|
+| `--arms A,B` | Two or more arms. `worktree` is the file on disk; anything else is a git revision (`HEAD`, `HEAD~2`, a sha). | `worktree,ace2e0204` |
+| `--worlds` | `all`, or world ids (file names in `src/defaultworlds/`). | `all` |
+| `--runs` | Runs per arm. | `5` |
+| `--endpoint` / `--model` | Where requests go. | the cloud default |
+| `--out` | Output folder. | `testing/baseline/runs/world-probe/<time>/` |
+| `--port` | The probe's own dev-server port. `WORLD_PROBE_PORT` sets it too. | a free port |
+
+- 🔌 The probe always starts its own dev server from the checkout it runs in, so several worktrees can probe
+  at once. A port already in use stops the run; it never attaches to another server. Port 5180 is refused:
+  the launch config owns it.
+
+- `ace2e0204` is the last commit before the refresh, so the default compares the new world with the old one.
+- An old revision loads through the app's own import, so legacy fields migrate as they do for a player.
+- Arms alternate run by run (A B, then B A), so each batch carries its own control. The cloud model drifts
+  between batches, so compare arms only within one batch.
+- Open Chat has no cast of its own. Both arms get the lead from `../open-chat-cards.json` at the starting
+  location.
+- Set `FORMAMORPH_PROBE_TOKEN` when the endpoint needs a bearer token. It is never written to the output.
+
+### Output
+
+- **Summary table** (printed, and `summary.md`): per world and arm, the turns played, empty narrations,
+  turns with chat-template token leaks, reasoning leaks, unresolved placeholders, choices that parse, stat
+  passes the app could apply, turns with a world red flag, and runs that errored.
+- **Transcripts** (`transcripts/`): one file per run under a blind label (A, B). `key.json` maps the labels
+  to arms. Score them against the [baseline rubric](../BASELINE-TEST.md) before you open the key.
+- **Raw results** (`<world>.json`): every turn's requests, replies and scores.
+
+### ✅ The Q8 pass bar
+
+A refreshed world passes when all three hold in **one batch**:
+
+1. **No structural regression.** No metric is worse on the new arm than on the old one.
+2. **Rubric win.** The new arm's blind transcripts score higher on the baseline rubric.
+3. **Five or more runs per arm** on the cloud endpoint.
+
+Post the arms, run counts, summary table and rubric result in the ticket.
+
 ## Notes
 
 - **Nondeterministic** by design — the script is fixed, the model output isn't. That's fine; runs are comparable.

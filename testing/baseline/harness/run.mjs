@@ -7,13 +7,12 @@
 //         profiles.json (copy of profiles.example.json).
 
 import { chromium } from "playwright";
-import { spawn } from "node:child_process";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
-import net from "node:net";
 import path from "node:path";
+import { enterWorld, startDevServer } from "./appDriver.mjs";
 
 const HARNESS_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HARNESS_DIR, "../../..");
@@ -33,25 +32,7 @@ async function presetFor(profile) {
   if (!presetCache.has(profile.promptPreset)) presetCache.set(profile.promptPreset, await loadPreset(profile.promptPreset));
   return presetCache.get(profile.promptPreset);
 }
-// A fixed port made runs collide: `npm run dev` under shell:true spawns vite as a GRANDCHILD, so killing the
-// npm wrapper orphaned the real server. The next run then failed to bind ("port already in use"), silently
-// attached to the stale orphan instead, and died mid-turn with "Execution context was destroyed" as soon as
-// another run's cleanup killed the server out from under it. Now: claim a free port per run, and spawn vite
-// directly so kill() reaches it.
-let PORT = 0;
 let BASE_URL = "";
-
-/** An OS-assigned free port. Bind to 0, read the port, release it, hand it to vite (--strictPort). */
-function freePort() {
-  return new Promise((resolve, reject) => {
-    const srv = net.createServer();
-    srv.on("error", reject);
-    srv.listen(0, "127.0.0.1", () => {
-      const { port } = srv.address();
-      srv.close(() => resolve(port));
-    });
-  });
-}
 
 const args = process.argv.slice(2);
 const argVal = (flag) => {
@@ -196,23 +177,6 @@ function buildSeed(cfg, model, profile, preset) {
   return seed;
 }
 
-async function waitForServer(url, timeoutMs = 60000, hasExited = () => false) {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    // If vite died (e.g. it couldn't bind), stop: a responder on this port would be someone else's server,
-    // and attaching to it is what produced mid-run "Execution context was destroyed" failures.
-    if (hasExited()) throw new Error("vite exited before the dev server came up — see its output");
-    try {
-      const res = await fetch(url);
-      if (res.ok) return;
-    } catch {
-      /* not up yet */
-    }
-    await new Promise((r) => setTimeout(r, 500));
-  }
-  throw new Error(`Dev server did not come up on ${url} within ${timeoutMs}ms`);
-}
-
 async function runOne(browser, cfg, model, profile) {
   const label = `${profile.name} x ${model.label}`;
   console.log(`\n▶ ${label} — launching`);
@@ -289,37 +253,8 @@ async function runOne(browser, cfg, model, profile) {
   }
   await page.goto(BASE_URL);
 
-  // Import the world via the hidden file input (no OS dialog), then enter it. Per-profile `world` overrides
-  // the Sedge Landing default (e.g. the gate profiles use blackrue-waystation.json).
-  const worldPath = path.join(BASELINE_DIR, profile.world ?? DEFAULT_WORLD);
-  await page.locator('input[type="file"]').first().setInputFiles(worldPath);
-  // Worlds with embedded images pop an "Optimize imported images?" dialog before the world card renders.
-  const keepAsIs = page.getByRole("button", { name: "Keep as-is" });
-  await keepAsIs.click({ timeout: 5000 }).catch(() => {});
-  await page.getByRole("button", { name: /Enter World/i }).click();
-
-  // Advance the enter-world steps (defaults pre-selected) until the game mounts and __baseline registers.
-  // Each step's primary button is labeled with the NEXT step's name (Traits→Characters→Dictionaries→Start),
-  // so click whichever advance label is present this iteration. Richer worlds (a character library, a
-  // dictionary choice) chain more steps than Sedge's traits-only flow.
-  // "Got It" first: the contest popup overlays the enter dialog and must go before anything else is clickable.
-  const ADVANCE = ["Got It", "Next", "Location", "Characters", "Dictionaries", "Avatar", "Start game", "Start", "Continue", "Random", "Skip"];
-  for (let i = 0; i < 24; i++) {
-    if (await page.evaluate(() => Boolean(window.__baseline))) break;
-    for (const name of ADVANCE) {
-      const btn = page.getByRole("button", { name, exact: true });
-      if (await btn.count()) { await btn.first().click().catch(() => {}); break; }
-    }
-    await page.waitForTimeout(500);
-  }
-  if (!(await page.evaluate(() => Boolean(window.__baseline)))) {
-    // Name what is on screen so a new dialog in the enter flow is diagnosable from the log alone.
-    const seen = await page.evaluate(() => ({
-      buttons: [...document.querySelectorAll("button")].map((b) => b.textContent?.trim()).filter(Boolean).slice(0, 30),
-      dialogs: [...document.querySelectorAll('[role="dialog"], [role="alertdialog"]')].map((d) => d.textContent?.trim().slice(0, 300)),
-    }));
-    throw new Error(`${label}: window.__baseline never registered (did the game screen mount?)\n  buttons: ${JSON.stringify(seen.buttons)}\n  dialogs: ${JSON.stringify(seen.dialogs)}`);
-  }
+  // Per-profile `world` overrides the Sedge Landing default (e.g. the gate profiles use blackrue-waystation.json).
+  await enterWorld(page, path.join(BASELINE_DIR, profile.world ?? DEFAULT_WORLD), label);
 
   // Arm the parity recording before any turn runs, so the fixture holds the whole scripted run.
   if (parityOut) {
@@ -438,35 +373,12 @@ async function main() {
   const profiles = cfg.profiles.filter((p) => !profileFilter || p.name === profileFilter);
   if (!models.length || !profiles.length) throw new Error("No models/profiles matched the filters.");
 
-  PORT = await freePort();
-  BASE_URL = `http://localhost:${PORT}`;
-  console.log(`Starting dev server on ${BASE_URL} …`);
-  // Spawn vite's own entry with this node binary — no npm wrapper, no shell — so `dev` IS the server process
-  // and kill() actually stops it (see the PORT comment above for what the wrapper cost us).
-  const dev = spawn(process.execPath, [path.join(REPO_ROOT, "node_modules", "vite", "bin", "vite.js"), "--port", String(PORT), "--strictPort"], {
-    cwd: REPO_ROOT,
-    stdio: "ignore",
-    // Disable HMR/file-watching for the harness's server (see vite.config.js): a developer editing source
-    // during a long scripted run then can't trigger a page reload that kills the turn under it.
-    env: { ...process.env, BASELINE_NO_WATCH: "1" },
-  });
-  let devExited = false;
-  dev.on("exit", () => { devExited = true; });
-  const cleanup = () => {
-    try {
-      dev.kill();
-    } catch {
-      /* already gone */
-    }
-  };
-  process.on("exit", cleanup);
-  process.on("SIGINT", () => {
-    cleanup();
-    process.exit(1);
-  });
+  console.log("Starting dev server …");
+  const dev = await startDevServer(REPO_ROOT);
+  BASE_URL = dev.baseUrl;
+  console.log(`Dev server on ${BASE_URL}`);
 
   try {
-    await waitForServer(BASE_URL, 60000, () => devExited);
     const browser = await chromium.launch();
     try {
       for (let run = 1; run <= repeat; run++) {
@@ -500,7 +412,7 @@ async function main() {
       await browser.close();
     }
   } finally {
-    cleanup();
+    dev.stop();
   }
   console.log("\nDone.");
 }
