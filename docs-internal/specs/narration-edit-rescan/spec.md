@@ -1,6 +1,7 @@
 # Narration Edit Rescan
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-10-16. Tickets 01–02 landed; last landing e1f8e83ef. Gates green on 2026-10-16.
 Spec session: narration-edit-rescan — spec
 
 Source: a Supporter suggestion, "Rescan Entities" (Gameplay feedback, 2026-10-12).
