@@ -10,6 +10,7 @@ import { APP_VERSION, isSaveEnvelope, migrateSave, migrateLegacySaveState, strip
 import { flattenEnabledBookEntries } from '../lib/dictionaryUtils';
 import { getGameplayText, setGameplayText } from '../lib/gameplayTextStore';
 import { turnActivity } from '../lib/turnActivity';
+import { setLiveReasoning } from '../lib/reasoningStreamStore';
 import { usePlaceholderSession } from './PlaceholderSessionContext';
 import { parseTurnContent, serializeTurnContent } from '../lib/turnDigest';
 import type { SceneImageMap } from '../lib/sceneImages';
@@ -227,6 +228,8 @@ function useProvideGameplay() {
   // Formaquestion holds its Send while a turn generates. Leaving the game ends the turn.
   useEffect(() => { turnActivity.set(isWaitingForAI); }, [isWaitingForAI]);
   useEffect(() => () => turnActivity.set(false), []);
+  // The live thought is module state; the next game must not open on this one's.
+  useEffect(() => () => setLiveReasoning({ text: "", ms: 0, active: false }), []);
   const [fullMessageHistory, setFullMessageHistory] = useState<ChatMessage[]>([]);
   const [displayedMessages, setDisplayedMessages] = useState<ChatMessage[]>([]);
   // The page the player has deliberately paged back to; null means "follow the latest turn".
@@ -336,6 +339,7 @@ function useProvideGameplay() {
         // A loaded save is another playthrough: the old pick may name an entity this one never met.
         setSelectedEntityId(undefined);
         clearStatDeltas();
+        setLiveReasoning({ text: "", ms: 0, active: false });
         setDiscoveredEntities(gameState.discoveredEntities ?? []);
         setSuppressedCharacterNames(gameState.suppressedCharacterNames ?? []);
       }
