@@ -96,7 +96,7 @@ export interface ToolMemorySource {
   readonly verbatimFloor: number;
   /** No meaning match means recall matches by words only. */
   readonly meaning?: ToolMeaning | null;
-  /** The world's Strip Links And Images rule: recall returns digests and diary entries as plain text. */
+  /** The Strip Links And Images setting: recall returns digests and diary entries as plain text. */
   readonly stripMedia?: boolean;
 }
 

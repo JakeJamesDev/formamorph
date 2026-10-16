@@ -121,6 +121,7 @@ What you see and hear.
 | **AI Language** | Sets the language or style of the narration, the choices and the answers in [Formaquestion](Formaquestion). Pick a suggestion or type your own, such as *formal English*. |
 | **Paragraph Limit** | **Advanced.** **None**, **Single** or **Auto**. **Auto** fits the paragraph count to **Max Output Tokens**, so the turn has a planned ending. With **None**, a long turn can stop at the token cap with no real ending. |
 | **Markdown Formatting** | **Advanced.** Lets the narration use bold, lists and tables. See [Text Formatting](TextFormatting). |
+| **Strip Links And Images** | **Advanced.** On by default. Sends past narration to the AI with each markdown link as its text and every image removed. It covers the last story, memory summaries, diary entries and recall results. You still see them in the story, and your world's own text stays as written. Turn it off if your model should keep writing the links it sees. |
 
 ### Accessibility
 

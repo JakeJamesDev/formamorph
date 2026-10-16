@@ -408,7 +408,7 @@ export function buildBandedHistory(args: {
    *  verbatim floor is never stamped — that is the live scene, not a memory. Absent = unstamped, the
    *  exact pre-feature body. */
   stamp?: BandStamp;
-  /** The Strip Links And Images world rule: narration and digests ride as plain text. Relevance scores and
+  /** The Strip Links And Images setting: narration and digests ride as plain text. Relevance scores and
    *  rehydration picks arrive keyed by turn id, so the rule never changes which turns are chosen. */
   stripMedia?: boolean;
 }): BandResult {

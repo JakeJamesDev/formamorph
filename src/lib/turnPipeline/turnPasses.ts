@@ -178,7 +178,7 @@ const discoverUserTiled = (template: string, subject: TurnPassSubject, firstPass
  */
 const quietInBatch = (input: TurnPlanInput): boolean => input.settings.concurrentTurnRequests;
 
-/** Past narration text as the world's Strip Links And Images rule sends it. */
+/** Past narration text as the Strip Links And Images setting sends it. */
 const strippedText = (text: string, input: TurnPlanInput): string =>
   input.settings.stripLinksAndImages ? stripLinksAndImages(text) : text;
 

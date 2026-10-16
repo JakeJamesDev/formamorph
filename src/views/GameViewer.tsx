@@ -59,7 +59,6 @@ const TTSModal = lazy(() => import("../components/game/TTSModal"));
 import ReadmeModal from "../components/game/ReadmeModal";
 import { useReadmeVisibility } from "@/lib/useReadmeVisibility";
 import { drawPoolEntry, drawUnseenOpening, openingOwner, openingPool, type DrawnOpening } from "@/lib/openings";
-import { worldStripsLinksAndImages } from "@/lib/stripLinksAndImages";
 import { drawNewGameOpening } from "@/lib/newGameOpening";
 import { customPersonaEntity } from "@/lib/blueprints";
 import { worldEntitiesOf, type PersonaPick } from "@/lib/persona";
@@ -446,6 +445,8 @@ const GameViewer = ({
     setLanguage,
     paragraphLimit,
     markdownOutput,
+    // Applied at every seam that sends narration history.
+    stripLinksAndImages: stripMedia,
     streamNarrationAudio,
     // Active endpoint settings: the user's values when "Use Custom Endpoint" is on, built-in defaults otherwise.
     activeEndpointUrl: endpointUrl,
@@ -537,8 +538,6 @@ const GameViewer = ({
   const resolvedStatUpdatesPrompt =
     resolveWorldPrompt(worldOverview, 'statUpdates', statUpdatesPrompt, declinedWorldPrompts);
   const worldStatPromptApplies = appliedWorldPrompt(worldOverview, 'statUpdates', declinedWorldPrompts) !== null;
-  // The world's Strip Links And Images rule, applied at every seam that sends narration history.
-  const stripMedia = worldStripsLinksAndImages(worldOverview);
 
   const {
     setCharacterData,

@@ -14,10 +14,6 @@ const DEFINITION = /^ {0,3}\[([^\]\n]+)\]:[ \t]*\S.*(?:\n|$)/gm;
 const REFERENCE_IMAGE = /[ \t]?!\[[^\]]*\]\[([^\]\n]*)\]/g;
 const REFERENCE_LINK = /([ \t]?)\[((?:[^[\]]|\[[^\]]*\])+)\]\[([^\]\n]*)\]/g;
 
-/** Whether a world applies the rule. Absent is off; only `true` turns it on. */
-export const worldStripsLinksAndImages = (overview: { stripLinksAndImages?: boolean } | null | undefined): boolean =>
-  overview?.stripLinksAndImages === true;
-
 const normalize = (label: string): string => label.trim().replace(/\s+/g, ' ').toLowerCase();
 
 /** `text` with its markdown links turned into their text and its markdown images removed. */

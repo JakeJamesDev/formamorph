@@ -22,7 +22,7 @@ export interface PlannerBandInput {
   notes: MemoryNote[];
   /** Narration's last story, used when the planner's own band has no assistant message. */
   fallbackLastStory: string;
-  /** The world's Strip Links And Images rule, applied to the band's narration and digests. */
+  /** The Strip Links And Images setting, applied to the band's narration and digests. */
   stripMedia?: boolean;
 }
 

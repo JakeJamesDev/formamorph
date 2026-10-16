@@ -26,6 +26,7 @@ export interface SettingsAdvancedInput {
   // Display → Narration
   paragraphLimit: ParagraphLimit;
   markdownOutput: boolean;
+  stripLinksAndImages: boolean;
   // Output → Reasoning
   reasoningEffort: ReasoningEffort;
   limitActiveCharacters: boolean;
@@ -71,6 +72,7 @@ export interface SettingsAdvancedInput {
 export const HIDDEN_SETTING_DEFAULTS = {
   paragraphLimit: 'auto',
   markdownOutput: true,
+  stripLinksAndImages: true,
   reasoningEffort: 'auto',
   limitActiveCharacters: true,
   activeCharacterLimit: 5,
@@ -111,7 +113,7 @@ export function settingsUseAdvancedValues(s: Partial<SettingsAdvancedInput>): bo
 }
 
 type SectionField =
-  | 'paragraphLimit' | 'markdownOutput' | 'showReasoning' | 'showSilentRequests'
+  | 'paragraphLimit' | 'markdownOutput' | 'stripLinksAndImages' | 'showReasoning' | 'showSilentRequests'
   | 'reasoningEffort' | 'limitActiveCharacters' | 'activeCharacterLimit' | 'toolsEnabled'
   | 'memoryDigests' | 'semanticMemory' | 'semanticBandCap' | 'semanticRehydration' | 'timeContext' | 'aiClock' | 'fixedTurnHours'
   | 'semanticLore' | 'describeCharacters' | 'characterDiaries' | 'semanticDiaries' | 'concurrentTurnRequests';
@@ -124,7 +126,7 @@ export function sectionHiddenFields(
   s: Pick<SettingsAdvancedInput, SectionField> & { reasoningCapability: ReasoningCapability | null },
 ): Partial<SettingsAdvancedInput> {
   return {
-    paragraphLimit: s.paragraphLimit, markdownOutput: s.markdownOutput,
+    paragraphLimit: s.paragraphLimit, markdownOutput: s.markdownOutput, stripLinksAndImages: s.stripLinksAndImages,
     showReasoning: s.showReasoning, showSilentRequests: s.showSilentRequests,
     ...(reasoningRuledOut(s.reasoningCapability) ? {} : { reasoningEffort: s.reasoningEffort }),
     limitActiveCharacters: s.limitActiveCharacters, activeCharacterLimit: s.activeCharacterLimit,

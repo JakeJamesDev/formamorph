@@ -15,6 +15,7 @@ export type DisplaySettingsSource = Pick<SettingsValue,
   | 'backgroundOverlay' | 'setBackgroundOverlay' | 'imageGenDisabled' | 'sceneImageAuto' | 'setSceneImageAuto'
   | 'narrationLayout' | 'setNarrationLayout' | 'language' | 'setLanguage'
   | 'paragraphLimit' | 'setParagraphLimit' | 'markdownOutput' | 'setMarkdownOutput'
+  | 'stripLinksAndImages' | 'setStripLinksAndImages'
   | 'narrationFont' | 'setNarrationFont' | 'narrationScale' | 'setNarrationScale'
   | 'narrationLineHeight' | 'setNarrationLineHeight'
   | 'quoteColor' | 'setQuoteColor' | 'quoteColorMode' | 'activeQuoteColor' | 'setActiveQuoteColor'

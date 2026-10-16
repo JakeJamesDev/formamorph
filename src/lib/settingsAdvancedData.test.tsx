@@ -18,6 +18,7 @@ describe('settingsUseAdvancedValues', () => {
   it.each([
     ['a paragraph limit', { paragraphLimit: 'single' as const }],
     ['markdown off', { markdownOutput: false }],
+    ['links and images kept', { stripLinksAndImages: false }],
     ['a native reasoning level', { reasoningEffort: 'high' as const }],
     ['the character limit lifted', { limitActiveCharacters: false }],
     ['a different character limit', { activeCharacterLimit: 3 }],
@@ -86,7 +87,7 @@ function freshSettings() {
 // — the dot would appear on a fresh install, and nothing else would notice.
 describe('the hidden-field defaults match the live ones', () => {
   it.each(([
-    'paragraphLimit', 'markdownOutput', 'reasoningEffort', 'limitActiveCharacters', 'activeCharacterLimit',
+    'paragraphLimit', 'markdownOutput', 'stripLinksAndImages', 'reasoningEffort', 'limitActiveCharacters', 'activeCharacterLimit',
     'memoryDigests', 'semanticMemory', 'semanticBandCap', 'semanticRehydration', 'timeContext', 'aiClock',
     'fixedTurnHours', 'semanticLore', 'characterDiaries', 'describeCharacters', 'semanticDiaries', 'concurrentTurnRequests',
     'showReasoning', 'showSilentRequests', 'maxTokens', 'imagePortraitWidth', 'imagePortraitHeight',

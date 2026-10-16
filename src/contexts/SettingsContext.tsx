@@ -391,6 +391,8 @@ function useProvideSettings() {
   const [backgroundOverlay, setBackgroundOverlay] = usePersistentState<number>(`${APP_ID}_backgroundOverlay`, 0, floatCodec);
   // Let the AI format narration with Markdown (seeds the <MARKDOWN GUIDANCE> token in the game-text prompt).
   const [markdownOutput, setMarkdownOutput] = usePersistentState<boolean>(`${APP_ID}_markdownOutput`, true, boolCodec);
+  // Send past narration with markdown links as their text and images removed (lib/stripLinksAndImages).
+  const [stripLinksAndImages, setStripLinksAndImages] = usePersistentState<boolean>(`${APP_ID}_stripLinksAndImages`, true, boolCodec);
   // Synthesize narration audio sentence-by-sentence as the story streams (vs. after the full text).
   // Default off: streaming TTS competes with the LLM for the GPU when both run on one machine.
   const [streamNarrationAudio, setStreamNarrationAudio] = usePersistentState<boolean>(`${APP_ID}_streamNarrationAudio`, false, boolCodec);
@@ -1672,6 +1674,8 @@ function useProvideSettings() {
     setBackgroundOverlay,
     markdownOutput,
     setMarkdownOutput,
+    stripLinksAndImages,
+    setStripLinksAndImages,
     streamNarrationAudio,
     setStreamNarrationAudio,
     memoryDigests,

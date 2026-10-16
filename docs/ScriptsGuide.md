@@ -217,7 +217,7 @@ A later write to a field wins. So the order decides who wins: a world script ord
 
 ### Strip Links And Images
 
-**Strip Links And Images** is a world rule, not a script. It sends past narration to the AI with each markdown link as its text and every image removed. A script can still add a link or an image to a sentence, and the player sees it. The rule is on for a new world and off for an existing one. See [World Editor Overview](World-Editor-Overview).
+**Strip Links And Images** is a setting, not a script. It sends past narration to the AI with each markdown link as its text and every image removed. A script can still add a link or an image to a sentence, and the player sees it. The setting is on by default. See [Settings](Settings).
 
 ## Quick Reference
 <!-- keywords: cheat sheet, api, syntax, members, fields, properties, objects, globals, what can code read, what can code write, how to access, dot notation, available variables, narration fields, player calls -->

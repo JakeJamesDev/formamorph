@@ -64,7 +64,7 @@ export interface TurnSettings {
   promptAttachments: PromptAttachmentsMap;
   /** Narration language or style; anything but English appends a language directive to some prompts. */
   language: string;
-  /** The world's Strip Links And Images rule. On, the diary entries and digests a pass reads lose their
+  /** The Strip Links And Images setting. On, the diary entries and digests a pass reads lose their
    *  markdown links and images (see lib/stripLinksAndImages). */
   stripLinksAndImages: boolean;
 }

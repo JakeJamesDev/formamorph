@@ -62,6 +62,7 @@ export function DisplaySettingsSection({ source, mode }: { source: DisplaySettin
     language, setLanguage,
     paragraphLimit, setParagraphLimit,
     markdownOutput, setMarkdownOutput,
+    stripLinksAndImages, setStripLinksAndImages,
     narrationFont, setNarrationFont,
     narrationScale, setNarrationScale,
     narrationLineHeight, setNarrationLineHeight,
@@ -238,6 +239,14 @@ export function DisplaySettingsSection({ source, mode }: { source: DisplaySettin
         checked={markdownOutput}
         onChange={setMarkdownOutput}
         {...rowCopy('markdownFormatting')}
+      />
+      )}
+      {advanced && (
+      <CheckRow
+        htmlFor="stripLinksAndImages"
+        checked={stripLinksAndImages}
+        onChange={setStripLinksAndImages}
+        {...rowCopy('stripLinksAndImages')}
       />
       )}
       </Section>
