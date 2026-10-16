@@ -1,6 +1,7 @@
 # Spec: Code Rider Widening
 
-Status: ready-for-agent
+Status: done
+Status note: Closed on 2026-10-16. Tickets 01–04 landed; the last landing is 302a38499. Closed without gates.
 Spec session: code-rider-widening — spec
 
 ## Problem Statement
