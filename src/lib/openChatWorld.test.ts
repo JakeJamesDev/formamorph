@@ -84,6 +84,10 @@ describe('the Open Chat default world', () => {
     expect(world.dictionaries.flatMap((book) => book.entries)).toEqual([]);
   });
 
+  it('gives its location image tags for the generator', () => {
+    for (const location of world.locations) expect(location.imageTags?.trim(), location.name).toBeTruthy();
+  });
+
   it('customizes the narration and choices prompts, and leaves the stats prompt alone', () => {
     expect(customizedPromptKinds(world.worldOverview)).toEqual(['narration', 'choices']);
   });
