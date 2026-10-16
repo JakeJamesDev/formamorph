@@ -1708,6 +1708,18 @@ describe('the unused-placeholder rule', () => {
     }
   });
 
+  it("counts a chip in an entity's own trait or trait group as a use", () => {
+    // Play rolls an owner's own trait text, so the Fix must never delete a placeholder only it places.
+    const owning = (field: Partial<Entity>) => base({
+      placeholders: [{ id: 'p1', name: 'Strain', values: phValues(['quick', 'deep']) }],
+      entities: [resident, { id: 'e-you', name: 'Wanderer', customPersona: true, ...field }],
+    });
+    expect(only(owning({ traits: [trait({ id: 't1', name: 'Strain', mode: 'hidden', aiDescription: 'Carries {{ph:p1:world:pl1}}.' })] }),
+      'placeholder-unused')).toEqual([]);
+    expect(only(owning({ traitGroups: [{ id: 'g1', name: 'Infection', parentId: null, order: 0, aiDescription: 'The {{ph:p1:world:pl1}} strain:' }] }),
+      'placeholder-unused')).toEqual([]);
+  });
+
   it('counts a chip in the world blurb as a use', () => {
     expect(only(base({
       worldOverview: { name: 'Sedge Landing', description: 'A fen of {{ph:p1:world:pl1}}.', systemPrompt: '' } as WorldOverview,

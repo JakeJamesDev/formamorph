@@ -368,6 +368,11 @@ const everyTrait = (world: RuleWorld): Trait[] => [
   ...(world.traits ?? []), ...(world.entities ?? []).flatMap((e) => e.traits ?? []),
 ];
 
+/** The world's trait groups, then every group an entity owns. */
+const everyTraitGroup = (world: RuleWorld): TraitGroup[] => [
+  ...(world.traitGroups ?? []), ...(world.entities ?? []).flatMap((e) => e.traitGroups ?? []),
+];
+
 /** The traits whose stat effects can reach the player: the world's, and the ones persona entities own. */
 const statTraits = (world: RuleWorld): Trait[] => [
   ...(world.traits ?? []), ...(world.entities ?? []).filter(canBePlayer).flatMap((e) => e.traits ?? []),
@@ -817,11 +822,12 @@ const chipOwners = (world: RuleWorld): ChipOwner[] => [
     item: namedItem(s.id, s.name, world, 'stats'),
     texts: [s.name, s.description, ...(s.descriptors ?? []).map((d) => d.description)],
   })),
-  ...(world.traits ?? []).map((t) => ({
+  // Play primes an entity's own traits and groups too. A linked trait's text lives on its world original.
+  ...everyTrait(world).map((t) => ({
     item: namedItem(t.id, t.name, world, 'traits'),
     texts: [t.name, t.playerDescription, t.aiDescription],
   })),
-  ...(world.traitGroups ?? []).map((g) => ({
+  ...everyTraitGroup(world).map((g) => ({
     item: namedItem(g.id, g.name, world, 'traits'),
     texts: [g.name, g.playerDescription, g.aiDescription],
   })),

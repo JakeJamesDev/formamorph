@@ -79,6 +79,7 @@ export const PATH_TRIGGERS = {
   'src/lib/__parity__/*.json': ['src/lib/ownerTreeParity.test.ts'],
   'src/defaultworlds/drone.json': ['src/lib/droneWorld.test.ts'],
   'src/defaultworlds/emberwatch.json': ['src/lib/emberwatchWorld.test.ts', 'src/components/game/GamePrompts.globalBlocks.test.ts'],
+  'src/defaultworlds/slime.json': ['src/lib/slimeWorld.test.ts'],
   'src/defaultworlds/rampage.json': ['src/lib/rampageWorld.test.ts', 'src/components/game/GamePrompts.globalBlocks.test.ts'],
   'src/defaultworlds/open-chat.json': ['src/lib/openChatWorld.test.ts', 'src/components/game/GamePrompts.globalBlocks.test.ts'],
   'src/defaultworlds/sugarscape.json': ['src/lib/sugarscapeWorld.test.ts'],
