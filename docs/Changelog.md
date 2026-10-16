@@ -61,6 +61,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Signed out, the app no longer sends a login token with community requests.** Every community service now shows the server's own error text. The world list and comment list used to hide it.
     - **Login now shows the server's reason when it refuses you.** A login or password change that gets an error page shows "Login failed" or its own fallback, not a parse error.
     - **Story export now leaves out turns that can't be read, so no error text lands in your story.** The history size estimate also counts turns saved in a looser format.
+    - **A library entity with two links to one stat now uses the same link in the editor and in play.** Play keeps the link higher in the stat tree, and adding the entity to a world now keeps that one too.
   - **Deleting an entity, trait, location or placeholder group keeps your item order.** The group's items take its place in the list.
   - **Arrange on the location canvas no longer freezes on a world whose locations hold each other in a loop.** Every walk up the location, group and placeholder trees now stops at a loop.
   - **World music or ambient sound your browser can't play now stays silent instead of showing an error.** This covers a new game, a loaded save and a move to a new location.

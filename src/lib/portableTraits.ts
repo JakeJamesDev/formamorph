@@ -5,7 +5,8 @@ import type {
 } from '@/types';
 import { canBePlayer, linksInTreeOrder, originalOf } from './owners';
 import { resolvedEntityStats } from './statLinks';
-import { rekeyed, uniqueNamed } from './carriedBinding';
+import { uniqueNamed, type Named } from './carriedBinding';
+import { bindLinks, comparableLink, linksBound, portableLinks, type ComparableLink, type LinkLists } from './portableLinks';
 import { bindOwnedStats, type StatWorld } from './portableStats';
 import { remintOwnedTraits } from './ownedTraits';
 import { worldBlueprints } from './placeholderBlueprints';
@@ -29,9 +30,7 @@ export interface TraitWorld extends StatWorld {
 }
 
 type Portable = Pick<Entity, 'traits' | 'traitGroups' | 'traitLinks'>;
-type Named = { id: string; name: string };
 type EntityOwner = Extract<RequirementOwner, { kind: 'entity' }>;
-type Original = NonNullable<ReturnType<typeof originalOf>>;
 
 /** A world's trait lists, its stats and its blueprints, when a record carries traits. A record with no placeholder folders has no blueprints. */
 export const traitWorldOf = (data: {
@@ -84,90 +83,40 @@ function withLinks<T extends Portable>(entity: T, links: TraitLink[] | undefined
   return (links?.length ? { ...rest, traitLinks: links } : rest) as T;
 }
 
-/** The trait ids a link's own data keys: its overrides. */
-const keyedIds = (link: TraitLink): string[] => Object.keys(link.overrides ?? {});
-
-/** The world original the link points at by id, when it is one of the `linkable` Blueprints items of the link's kind. */
-function originalById(world: TraitWorld, linkable: ReadonlySet<string>, link: TraitLink): Original | null {
-  const original = linkable.has(link.originalId) ? originalOf(world, link.originalId) : null;
-  return original?.kind === link.kind ? original : null;
-}
-
-/** The one `linkable` Blueprints item of the link's kind that carries its stored name. */
-function originalByName(world: TraitWorld, linkable: ReadonlySet<string>, link: TraitLink): Original | null {
-  const list: readonly Named[] = (link.kind === 'trait' ? world.traits : world.traitGroups).filter((item) => linkable.has(item.id));
-  const named = uniqueNamed(list, link.originalName);
-  return named && originalOf(world, named.id);
-}
-
 /** What a link to the original brings: the original, the groups below it, and every trait in them. */
-function brought(world: TraitWorld, original: Original): { ids: string[]; traits: readonly Trait[] } {
-  if (original.kind === 'trait') return { ids: [original.item.id], traits: [original.item] };
-  const groups = groupsBelow(world.traitGroups, original.item.id);
-  const inside = new Set([original.item.id, ...groups.map((g) => g.id)]);
+function brought(world: TraitWorld, original: Named, kind: TraitLink['kind']): { ids: string[]; leaves: readonly Trait[] } {
+  if (kind === 'trait') return { ids: [original.id], leaves: world.traits.filter((t) => t.id === original.id) };
+  const groups = groupsBelow(world.traitGroups, original.id);
+  const inside = new Set([original.id, ...groups.map((g) => g.id)]);
   const traits = world.traits.filter((t) => t.groupId != null && inside.has(t.groupId));
-  return { ids: [...inside, ...traits.map((t) => t.id)], traits };
+  return { ids: [...inside, ...traits.map((t) => t.id)], leaves: traits };
 }
 
-/** Each link naming its original, and each other trait its data keys, by the world's names. */
-function portableLinks(links: readonly TraitLink[], world?: TraitWorld): TraitLink[] {
-  return links.map((link) => {
-    const found = world && originalOf(world, link.originalId);
-    const original = found?.kind === link.kind ? found : null;
-    const keyNames = Object.fromEntries(keyedIds(link).filter((id) => id !== link.originalId).flatMap((id) => {
-      const name = world?.traits.find((t) => t.id === id)?.name ?? link.keyNames?.[id];
-      return name ? [[id, name] as const] : [];
-    }));
-    const { keyNames: _stored, ...rest } = link;
-    return { ...rest, originalName: original ? original.item.name : link.originalName, ...(Object.keys(keyNames).length ? { keyNames } : {}) };
-  });
-}
-
-/**
- * The entity's links bound to `world`: each by its original's id, else by the one original of its kind
- * carrying its name, else dropped. A link that brings anything a link before it in tree order already brings
- * is dropped too, as the resolver keeps the first. Each data key follows the same rule inside what the bound
- * original brings.
- */
-function bindLinks(entity: Entity, links: readonly TraitLink[], world: TraitWorld): TraitLink[] {
-  const held = new Set<string>();
-  const kept = new Map<string, TraitLink>();
-  const linkable = blueprintItemIds(world);
-  for (const link of linksInTreeOrder(entity, links)) {
-    const bound = bindLink(link, world, linkable);
-    if (!bound || bound.ids.some((id) => held.has(id))) continue;
-    bound.ids.forEach((id) => held.add(id));
-    kept.set(link.id, bound.link);
-  }
-  return links.flatMap((l) => kept.get(l.id) ?? []);
-}
-
-/** One link bound to `world`, with the ids it brings; null when no `linkable` original matches. */
-function bindLink(link: TraitLink, world: TraitWorld, linkable: ReadonlySet<string>): { link: TraitLink; ids: string[] } | null {
-  const original = originalById(world, linkable, link) ?? originalByName(world, linkable, link);
-  if (!original) return null;
-  const { ids, traits } = brought(world, original);
-  const key = (id: string): string | null => {
-    if (id === link.originalId) return original.item.id;
-    if (traits.some((t) => t.id === id)) return id;
-    return uniqueNamed(traits, link.keyNames?.[id])?.id ?? null;
+/** The world's trait lists as its links read them. A link binds only to a Blueprints item. */
+function traitLists(world: TraitWorld): LinkLists<TraitLink> {
+  let linkable: Set<string> | undefined;
+  const listOf = (kind: TraitLink['kind']): readonly Named[] => (kind === 'trait' ? world.traits : world.traitGroups);
+  return {
+    originalNamed: (link) => listOf(link.kind).find((item) => item.id === link.originalId && originalOf(world, item.id)),
+    originals: (kind) => {
+      const ids = (linkable ??= blueprintItemIds(world));
+      return listOf(kind).filter((item) => ids.has(item.id));
+    },
+    leaves: world.traits,
+    brought: (original, kind) => brought(world, original, kind),
   };
-  const overrides = rekeyed(link.overrides, key);
-  const { keyNames: _k, overrides: _o, ...rest } = link;
-  return { ids, link: { ...rest, originalId: original.item.id, kind: original.kind, ...(overrides ? { overrides } : {}) } };
 }
 
 /** A library entity's links as the world it is opened in reads them: each that binds takes the world's ids,
  *  and one that does not stays as stored. Nothing is dropped, since the entity stays in the library. */
 export function linksBoundTo(entity: Entity, world: TraitWorld): Entity {
   if (!entity.traitLinks?.length) return entity;
-  const linkable = blueprintItemIds(world);
-  return { ...entity, traitLinks: entity.traitLinks.map((l) => bindLink(l, world, linkable)?.link ?? l) };
+  return { ...entity, traitLinks: linksBound(entity.traitLinks, traitLists(world)) };
 }
 
 /** A library entity's links as the library stores them, named from the world it is opened in. */
 export const linksCarriedFrom = (entity: Entity, world: TraitWorld): Entity =>
-  withLinks(entity, entity.traitLinks && portableLinks(entity.traitLinks, world));
+  withLinks(entity, entity.traitLinks && portableLinks(entity.traitLinks, traitLists(world)));
 
 /** One of the entity's Conditions as it travels: see {@link portableOwnedTraits}. */
 function portableRequirement(entity: Entity, world?: TraitWorld): (req: TraitRequirement) => TraitRequirement {
@@ -202,7 +151,7 @@ export function portableOwnedTraits(entity: Entity, world?: TraitWorld): Portabl
   return {
     ...(traits?.length ? { traits } : {}),
     ...(entity.traitGroups?.length ? { traitGroups: entity.traitGroups } : {}),
-    ...(entity.traitLinks?.length ? { traitLinks: portableLinks(entity.traitLinks, world) } : {}),
+    ...(entity.traitLinks?.length ? { traitLinks: portableLinks(entity.traitLinks, world && traitLists(world)) } : {}),
   };
 }
 
@@ -261,7 +210,7 @@ export function bindOwnedTraits(entity: Entity, world: TraitWorld): Entity {
   const bind = ruleBinder(entity, world);
   const traits = withRequires(entity, bind);
   const bound = withImageRules(traits ? { ...entity, traits } : entity, bind);
-  const links = entity.traitLinks && bindLinks(entity, entity.traitLinks, world).map((l) => linkWithRules(l, bind));
+  const links = entity.traitLinks && bindLinks(entity.traitLinks, linksInTreeOrder(entity), traitLists(world)).map((l) => linkWithRules(l, bind));
   return entity.traitLinks ? withLinks(bound, links) : bound;
 }
 
@@ -280,23 +229,12 @@ function linkWithRules(link: TraitLink, map: (r: TraitRequirement) => TraitRequi
 const comparableOwner = (b: EntityOwner, entityId: string): RequirementOwner =>
   (isSelfOwner(b, entityId) ? { kind: 'entity', id: SELF_ENTITY } : b.name ? { kind: 'entity', id: '', name: b.name } : { kind: 'entity', id: b.id });
 
-/** A link as two copies compare it: its original and data keys by name, since their ids are each world's own. */
-type ComparableLink = Pick<TraitLink, 'id' | 'kind' | 'originalName' | 'groupId' | 'order' | 'overrides'>;
-
-function comparableLink(link: TraitLink): ComparableLink {
-  const key = (id: string) => (id === link.originalId ? '' : link.keyNames?.[id] ?? id);
-  return {
-    id: link.id, kind: link.kind, originalName: link.originalName, groupId: link.groupId ?? null, order: link.order,
-    overrides: rekeyed(link.overrides, key),
-  };
-}
-
 /**
  * The entity's owned traits, links and image Visibility rules as two copies compare them: a requirement out
  * of it by the name it stores (its id is each world's own), one into it by id, "playing as" itself as
  * {@link SELF_ENTITY}, and a named owner by its name. Links compare as {@link comparableLink} reads them.
  */
-export const comparableOwnedTraits = (entity: Entity): { traits?: Trait[]; traitLinks?: ComparableLink[]; images?: GalleryImage[] } => {
+export const comparableOwnedTraits = (entity: Entity): { traits?: Trait[]; traitLinks?: ComparableLink<TraitLink>[]; images?: GalleryImage[] } => {
   const inside = ownIds(entity);
   const comparable = (req: TraitRequirement): TraitRequirement => {
     const not = notFlag(req.not);

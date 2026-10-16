@@ -45,6 +45,12 @@ function emberwatchSpare(): World {
   const w = bundledWorld('emberwatch');
   return { ...w, entities: w.entities.map((e) => (e.name === 'Mother Hesk' ? { ...e, stats: [...e.stats ?? [], spareStat('parity-resolve', 'Resolve', e.stats?.length ?? 0)] } : e)) };
 }
+/** Emberwatch with Albus holding a second Health link, stored last but placed above the first. */
+function emberwatchOverlap(): World {
+  const w = bundledWorld('emberwatch');
+  const above = { id: 'parity-health-above', originalId: 'health', kind: 'stat' as const, originalName: 'Health', groupId: null, order: -1 };
+  return { ...w, entities: w.entities.map((e) => (e.name === 'Albus' ? { ...e, statLinks: [...e.statLinks ?? [], above] } : e)) };
+}
 /** Veilwood with an empty trait Blueprints group, which the trait tree hides with `emptySystemNodes` off. */
 const veilwoodTraitBlueprints = (): World => {
   const w = bundledWorld('veilwood');
@@ -264,9 +270,20 @@ describe('owner-tree link parity', () => {
     expect([r.carriedTraits.traitLinks?.length ?? 0, r.carriedStats.statLinks?.length ?? 0]).toEqual(links);
   });
 
+  const overlap = (() => {
+    const w = emberwatchOverlap();
+    return { file: 'emberwatch-overlap', w, e: w.entities.find((e) => e.name === 'Albus')! };
+  })();
+
+  it('binds the tree-first of two overlapping stat links, by id and by name', () => {
+    const r = linkRecord(overlap);
+    expect(r.boundStats.statLinks?.filter((l) => l.originalId === 'health').map((l) => l.id)).toEqual(['parity-health-above']);
+    expect(r.carriedStats.statLinks?.filter((l) => l.originalId === 'health').map((l) => l.id)).toEqual(['parity-health-above']);
+  });
+
   it('records the portable and bound lists of every owning bundled entity', async () => {
     const record: Record<string, Record<string, ReturnType<typeof linkRecord>>> = {};
-    for (const x of entities) (record[x.file] ??= {})[x.e.name] = linkRecord(x);
+    for (const x of [...entities, overlap]) (record[x.file] ??= {})[x.e.name] = linkRecord(x);
     await expect(json(record)).toMatchFileSnapshot('./__parity__/ownerTreeLinks.json');
   });
 });

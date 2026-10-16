@@ -2778,6 +2778,360 @@
       }
     }
   },
+  "emberwatch-overlap": {
+    "Albus": {
+      "boundStats": {
+        "statLinks": [
+          {
+            "groupId": null,
+            "id": "332363da-b1a4-405f-8d73-f7049744716a",
+            "kind": "stat",
+            "order": 1,
+            "originalId": "mana",
+            "originalName": "Mana"
+          },
+          {
+            "groupId": null,
+            "id": "39c38a13-200e-4564-b77d-2a2bfbd50207",
+            "kind": "stat",
+            "order": 2,
+            "originalId": "faith",
+            "originalName": "Faith"
+          },
+          {
+            "groupId": null,
+            "id": "689b39f8-c729-40bd-b9f5-be8bf9fcc3da",
+            "kind": "stat",
+            "order": 3,
+            "originalId": "gold",
+            "originalName": "Gold"
+          },
+          {
+            "groupId": null,
+            "id": "0dfbf22e-8538-4159-9179-f34ec5f79799",
+            "kind": "stat",
+            "order": 4,
+            "originalId": "renown",
+            "originalName": "Renown"
+          },
+          {
+            "groupId": null,
+            "id": "parity-health-above",
+            "kind": "stat",
+            "order": -1,
+            "originalId": "health",
+            "originalName": "Health"
+          }
+        ]
+      },
+      "boundTraits": {
+        "traitLinks": [
+          {
+            "groupId": null,
+            "id": "8554ef4b-05c9-5714-a4a3-e4a34a4f8090",
+            "kind": "group",
+            "order": 0,
+            "originalId": "0b69078b-79fc-58ea-81fe-d358aaa43e13",
+            "originalName": "Races",
+            "overrides": {
+              "889d6e62-5641-5102-a184-7e409aa95d60": {
+                "isDefault": {
+                  "blueprint": false,
+                  "value": true
+                }
+              }
+            }
+          },
+          {
+            "groupId": null,
+            "id": "898f43ef-98ff-514a-8375-7d883b2f534d",
+            "kind": "group",
+            "order": 1,
+            "originalId": "fc9ffd07-11d1-5ed3-a6f2-1ebf90d7c481",
+            "originalName": "Classes",
+            "overrides": {
+              "6289a54c-9886-5693-a0e2-0ef61f735109": {
+                "isDefault": {
+                  "blueprint": false,
+                  "value": true
+                },
+                "statChanges": {
+                  "blueprint": [
+                    {
+                      "statId": "faith",
+                      "type": "max",
+                      "value": 30
+                    }
+                  ],
+                  "value": [
+                    {
+                      "statId": "faith",
+                      "type": "max",
+                      "value": 40
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "groupId": null,
+            "id": "63e6b171-e78c-5c64-8a5e-be830cf6ff05",
+            "kind": "group",
+            "order": 2,
+            "originalId": "dea4f1f1-9308-540b-bd4d-3e1c845d5a6c",
+            "originalName": "Racial Abilities"
+          },
+          {
+            "groupId": null,
+            "id": "346ada1b-d245-50c2-983d-56085d311456",
+            "kind": "group",
+            "order": 3,
+            "originalId": "5ef8a6b9-d25f-50de-96c3-004fddd8df1b",
+            "originalName": "Class Abilities"
+          }
+        ]
+      },
+      "carriedStats": {
+        "statLinks": [
+          {
+            "groupId": null,
+            "id": "332363da-b1a4-405f-8d73-f7049744716a",
+            "kind": "stat",
+            "order": 1,
+            "originalId": "mana",
+            "originalName": "Mana"
+          },
+          {
+            "groupId": null,
+            "id": "39c38a13-200e-4564-b77d-2a2bfbd50207",
+            "kind": "stat",
+            "order": 2,
+            "originalId": "faith",
+            "originalName": "Faith"
+          },
+          {
+            "groupId": null,
+            "id": "689b39f8-c729-40bd-b9f5-be8bf9fcc3da",
+            "kind": "stat",
+            "order": 3,
+            "originalId": "gold",
+            "originalName": "Gold"
+          },
+          {
+            "groupId": null,
+            "id": "0dfbf22e-8538-4159-9179-f34ec5f79799",
+            "kind": "stat",
+            "order": 4,
+            "originalId": "renown",
+            "originalName": "Renown"
+          },
+          {
+            "groupId": null,
+            "id": "parity-health-above",
+            "kind": "stat",
+            "order": -1,
+            "originalId": "health",
+            "originalName": "Health"
+          }
+        ]
+      },
+      "carriedTraits": {
+        "traitLinks": [
+          {
+            "groupId": null,
+            "id": "8554ef4b-05c9-5714-a4a3-e4a34a4f8090",
+            "kind": "group",
+            "order": 0,
+            "originalId": "0b69078b-79fc-58ea-81fe-d358aaa43e13",
+            "originalName": "Races",
+            "overrides": {
+              "889d6e62-5641-5102-a184-7e409aa95d60": {
+                "isDefault": {
+                  "blueprint": false,
+                  "value": true
+                }
+              }
+            }
+          },
+          {
+            "groupId": null,
+            "id": "898f43ef-98ff-514a-8375-7d883b2f534d",
+            "kind": "group",
+            "order": 1,
+            "originalId": "fc9ffd07-11d1-5ed3-a6f2-1ebf90d7c481",
+            "originalName": "Classes",
+            "overrides": {
+              "6289a54c-9886-5693-a0e2-0ef61f735109": {
+                "isDefault": {
+                  "blueprint": false,
+                  "value": true
+                },
+                "statChanges": {
+                  "blueprint": [
+                    {
+                      "statId": "faith",
+                      "type": "max",
+                      "value": 30
+                    }
+                  ],
+                  "value": [
+                    {
+                      "statId": "faith",
+                      "type": "max",
+                      "value": 40
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "groupId": null,
+            "id": "63e6b171-e78c-5c64-8a5e-be830cf6ff05",
+            "kind": "group",
+            "order": 2,
+            "originalId": "dea4f1f1-9308-540b-bd4d-3e1c845d5a6c",
+            "originalName": "Racial Abilities"
+          },
+          {
+            "groupId": null,
+            "id": "346ada1b-d245-50c2-983d-56085d311456",
+            "kind": "group",
+            "order": 3,
+            "originalId": "5ef8a6b9-d25f-50de-96c3-004fddd8df1b",
+            "originalName": "Class Abilities"
+          }
+        ]
+      },
+      "portableStats": {
+        "statLinks": [
+          {
+            "groupId": null,
+            "id": "13f29380-6c73-40d0-9d82-0818b24aae1a",
+            "kind": "stat",
+            "order": 0,
+            "originalId": "health",
+            "originalName": "Health"
+          },
+          {
+            "groupId": null,
+            "id": "332363da-b1a4-405f-8d73-f7049744716a",
+            "kind": "stat",
+            "order": 1,
+            "originalId": "mana",
+            "originalName": "Mana"
+          },
+          {
+            "groupId": null,
+            "id": "39c38a13-200e-4564-b77d-2a2bfbd50207",
+            "kind": "stat",
+            "order": 2,
+            "originalId": "faith",
+            "originalName": "Faith"
+          },
+          {
+            "groupId": null,
+            "id": "689b39f8-c729-40bd-b9f5-be8bf9fcc3da",
+            "kind": "stat",
+            "order": 3,
+            "originalId": "gold",
+            "originalName": "Gold"
+          },
+          {
+            "groupId": null,
+            "id": "0dfbf22e-8538-4159-9179-f34ec5f79799",
+            "kind": "stat",
+            "order": 4,
+            "originalId": "renown",
+            "originalName": "Renown"
+          },
+          {
+            "groupId": null,
+            "id": "parity-health-above",
+            "kind": "stat",
+            "order": -1,
+            "originalId": "health",
+            "originalName": "Health"
+          }
+        ]
+      },
+      "portableTraits": {
+        "traitLinks": [
+          {
+            "groupId": null,
+            "id": "8554ef4b-05c9-5714-a4a3-e4a34a4f8090",
+            "keyNames": {
+              "889d6e62-5641-5102-a184-7e409aa95d60": "Human"
+            },
+            "kind": "group",
+            "order": 0,
+            "originalId": "0b69078b-79fc-58ea-81fe-d358aaa43e13",
+            "originalName": "Races",
+            "overrides": {
+              "889d6e62-5641-5102-a184-7e409aa95d60": {
+                "isDefault": {
+                  "blueprint": false,
+                  "value": true
+                }
+              }
+            }
+          },
+          {
+            "groupId": null,
+            "id": "898f43ef-98ff-514a-8375-7d883b2f534d",
+            "keyNames": {
+              "6289a54c-9886-5693-a0e2-0ef61f735109": "Paladin"
+            },
+            "kind": "group",
+            "order": 1,
+            "originalId": "fc9ffd07-11d1-5ed3-a6f2-1ebf90d7c481",
+            "originalName": "Classes",
+            "overrides": {
+              "6289a54c-9886-5693-a0e2-0ef61f735109": {
+                "isDefault": {
+                  "blueprint": false,
+                  "value": true
+                },
+                "statChanges": {
+                  "blueprint": [
+                    {
+                      "statId": "faith",
+                      "type": "max",
+                      "value": 30
+                    }
+                  ],
+                  "value": [
+                    {
+                      "statId": "faith",
+                      "type": "max",
+                      "value": 40
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "groupId": null,
+            "id": "63e6b171-e78c-5c64-8a5e-be830cf6ff05",
+            "kind": "group",
+            "order": 2,
+            "originalId": "dea4f1f1-9308-540b-bd4d-3e1c845d5a6c",
+            "originalName": "Racial Abilities"
+          },
+          {
+            "groupId": null,
+            "id": "346ada1b-d245-50c2-983d-56085d311456",
+            "kind": "group",
+            "order": 3,
+            "originalId": "5ef8a6b9-d25f-50de-96c3-004fddd8df1b",
+            "originalName": "Class Abilities"
+          }
+        ]
+      }
+    }
+  },
   "rampage": {
     "The Creature": {
       "boundStats": {
