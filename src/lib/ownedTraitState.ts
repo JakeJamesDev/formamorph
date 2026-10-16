@@ -29,8 +29,15 @@ export const splitRecordKey = (key: string): [owner: string | null, rest: string
   return slash < 0 ? [null, key] : [key.slice(0, slash), key.slice(slash + 1)];
 };
 
+const OWN_STATS_SUFFIX = '/stats';
 /** The key an entity's trait keeps the record of what it moved on that entity's own stats. */
-export const ownStatsRecordKey = (ownerId: string, traitId: string): string => `${ownerId}/${traitId}/stats`;
+export const ownStatsRecordKey = (ownerId: string, traitId: string): string => `${ownerId}/${traitId}${OWN_STATS_SUFFIX}`;
+
+/** The trait a record key belongs to, whichever of its owner's two records the key names. */
+export const recordKeyTrait = (key: string): [owner: string | null, traitId: string] => {
+  const [owner, rest] = splitRecordKey(key);
+  return [owner, owner !== null && rest.endsWith(OWN_STATS_SUFFIX) ? rest.slice(0, -OWN_STATS_SUFFIX.length) : rest];
+};
 
 /** The state without the owned trait state, cascade-off lists, stat records and stat values of entities it no
  *  longer holds. The global parts stay. */

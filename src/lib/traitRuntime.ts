@@ -940,14 +940,16 @@ export function applyCodeTraitSwitches(
   switches: readonly CodeTraitSwitch[],
   world: TraitWorld,
   nameOf: (trait: Trait) => string = (trait) => trait.name,
-): { state: TraitRuntimeState; log: string[] } {
+): { state: TraitRuntimeState; log: string[]; logTraits: (string | null)[] } {
   let next = state;
   const log: string[] = [];
+  const logTraits: (string | null)[] = [];
   for (const { traitId, enabled, by, ownerId } of switches) {
     if (ownerId !== undefined) {
       const switched = codeSwitchOwned(next, ownerId, traitId, enabled, by, world, nameOf);
       next = switched.state;
       log.push(...switched.log);
+      logTraits.push(...switched.logTraits);
       continue;
     }
     const acquired = next.traits.find((t) => t.id === traitId);
@@ -965,20 +967,27 @@ export function applyCodeTraitSwitches(
     const settled = settleTraits(result.state, world, nameOf, by);
     next = settled.state;
     log.push(...settled.log);
+    logTraits.push(...switchLogTraits(null, traitId, result.retired, settled.log));
   }
-  return { state: next, log };
+  return { state: next, log, logTraits };
 }
+
+/** The record key of the trait each line of one code switch's log reports, in {@link traitSwitchLog}'s order;
+ *  null for a settle line, which no single switch owns. */
+const switchLogTraits = (ownerId: OwnerId, traitId: string, retired: readonly Trait[], settleLog: readonly string[]): (string | null)[] => [
+  ...retired.map((sibling) => recordKey(ownerId, sibling.id)), recordKey(ownerId, traitId), ...settleLog.map(() => null),
+];
 
 /** One code switch of an owner's own trait, then a settle: the world-trait rules of
  *  {@link applyCodeTraitSwitches}, in the owner's lists and groups. */
 function codeSwitchOwned(
   state: TraitRuntimeState, ownerId: string, traitId: string, enabled: boolean, by: string, world: TraitWorld,
   nameOf: (trait: Trait) => string,
-): { state: TraitRuntimeState; log: string[] } {
+): { state: TraitRuntimeState; log: string[]; logTraits: (string | null)[] } {
   const owned = ownedTrait(world, traitId, ownerId);
-  if (!owned || isAlwaysOn(owned.trait)) return { state, log: [] };
+  if (!owned || isAlwaysOn(owned.trait)) return { state, log: [], logTraits: [] };
   if (ownedOn(state, ownerId, traitId) === enabled) {
-    return { state: enabled ? state : withoutCascadeOff(state, traitId, ownerId), log: [] };
+    return { state: enabled ? state : withoutCascadeOff(state, traitId, ownerId), log: [], logTraits: [] };
   }
   const { owner, trait } = owned;
   const chosen = !!state.ownedTraits?.[ownerId]?.chosen.includes(traitId);
@@ -996,6 +1005,7 @@ function codeSwitchOwned(
   return {
     state: settled.state,
     log: [...traitSwitchLog(label(trait, ownerId), kind, retired.map((t) => label(t, ownerId)), by), ...settled.log],
+    logTraits: switchLogTraits(ownerId, traitId, retired, settled.log),
   };
 }
 
