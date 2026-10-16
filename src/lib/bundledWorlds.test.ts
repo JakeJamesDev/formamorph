@@ -16,6 +16,7 @@ const FEATURES: Record<string, Feature[]> = {
   'emberwatch': ['traitGates', 'blueprints'],
   'open-chat': [],
   'rampage': ['scripts', 'statToggles'],
+  'slime': ['scripts', 'traitModes'],
   'sugarscape': ['scripts', 'minMaxPicks', 'openingWeights'],
 };
 
@@ -32,12 +33,6 @@ const BY_DESIGN = 'the blank stage holds no entities by design';
 const OPEN_FINDINGS: Record<string, Record<string, string>> = {
   'open-chat': {
     'location-no-entities: Here': BY_DESIGN,
-  },
-  'slime': {
-    'alias-lowercase-no-twin: neighbor › name': TWIN,
-    'image-not-webp: Green Slime': WEBP,
-    'location-no-entities: Ashburn': PLACE,
-    'location-no-entities: The Night Pharmacy': PLACE,
   },
   'valentines': {
     'alias-lowercase-no-twin: The Swarm': TWIN,

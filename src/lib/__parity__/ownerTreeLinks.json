@@ -4641,7 +4641,7 @@
       "boundStats": {
         "stats": [
           {
-            "description": "Represents the player's physical well-being and ability to sustain damage",
+            "description": "The player's body: bumps, scrapes and strains. Rest restores it.",
             "descriptors": [
               {
                 "description": "Critical condition. Severely hurt, barely upright, in real trouble.",
@@ -4675,7 +4675,7 @@
             "value": 100
           },
           {
-            "description": "Represents the player's energy and ability to perform physical actions",
+            "description": "The player's energy for running, climbing and holding themselves together. Rest restores it.",
             "descriptors": [
               {
                 "description": "Exhausted. Barely able to move, risk of collapse, unable to perform strenuous actions.",
@@ -4709,7 +4709,7 @@
             "value": 100
           },
           {
-            "description": "How far the slime has spread through the player. Climbs steadily on its own, spikes on slime contact, and falls with remedies, rest, and salt-scrubbing.",
+            "description": "How far the slime has spread through the player. Its script adds the spread for each story hour. Slime contact raises it; remedies, rest in dry warmth and salt-scrubbing lower it.",
             "descriptors": [
               {
                 "description": "Early signs. A faint green tint under the fingernails; skin cool to the touch. Nothing anyone would notice in this fog.",
@@ -4736,13 +4736,21 @@
             "max": 100,
             "min": 0,
             "name": "Assimilation",
-            "regen": 2,
+            "regen": 0,
+            "scripts": [
+              {
+                "code": "// Assimilation: the slime spreads through the player with every story hour.\n// This runs after the AI, so the turn's slime contact and remedies are already in self.value.\nconst traits = owner.traits;\nconst panic = owner.stats.Panic;\n\n// 1. The base rate: two points for each story hour.\nlet pointsPerHour = 2;\n\n// 2. The change feeds itself. Once the skin turns translucent at 40, the slime has a hold and spreads faster.\n// It reads the value from the start of the turn, so one big splash of slime does not also speed up this turn.\nif (self.previous.value >= 40) pointsPerHour += 1;\n\n// 3. A racing heart pumps it through faster. Panic is read as a share of its max,\n// because Morbid Curiosity raises that max and half of it should still mean \"half panicked\".\nif (panic.value / panic.max >= 0.5) pointsPerHour += 1;\n\n// 4. What slows it: a nurse's careful habits, and the effort of Fight It.\nif (traits[\"Night-Shift Nurse\"].enabled) pointsPerHour -= 1;\nif (traits[\"Fight It\"].enabled) pointsPerHour -= 2;\n\n// 5. Spread for the hours this turn took. Holding on can stop the spread, but only remedies push it back,\n// so the rate never goes below zero.\nself.value += Math.max(0, pointsPerHour) * clock.deltaHours;",
+                "id": "assimilation:after",
+                "name": "Infection Spread",
+                "timing": "after"
+              }
+            ],
             "starting": 10,
             "type": "number",
             "value": 10
           },
           {
-            "description": "The player’s fear level. Rises in encounters and darkness; settles in safety and light.",
+            "description": "The player's fear. It rises in encounters and darkness and settles in safety and light.",
             "descriptors": [
               {
                 "description": "Level. Breathing even, thoughts in order.",
@@ -4808,19 +4816,14 @@
         ],
         "traits": [
           {
-            "aiDescription": "The player is a night-shift nurse: they know which remedies actually slow the film, how to dress a wound, and how to talk to exhausted officials. Treatments they apply work better than they should.",
+            "aiDescription": "The player is a night-shift nurse. They know which remedies actually slow the film, how to dress a wound, and how to talk to exhausted officials, and their steady habits slow the spread.",
             "groupId": "e1fe79eb-767b-45fd-b21c-426bc227dffe",
             "id": "night_shift_nurse",
             "isDefault": true,
             "name": "Night-Shift Nurse",
             "order": 0,
-            "playerDescription": "You know which pharmacy shelves matter, and what a body can take.",
+            "playerDescription": "You know which pharmacy shelves matter, and your habits slow the spread.",
             "statChanges": [
-              {
-                "statId": "assimilation",
-                "type": "regen",
-                "value": -1
-              },
               {
                 "statId": "health",
                 "type": "regen",
@@ -4974,31 +4977,35 @@
             ]
           },
           {
-            "aiDescription": "ACTIVE: the player is consciously fighting the assimilation — flexing warmth back into their hands, reciting their own name, refusing the softness. The spread slows while this holds, but the sustained effort is deeply draining.",
+            "aiDescription": "ACTIVE: the player is fighting the change with everything they have: flexing warmth back into their hands, saying their own name, holding their shape. The spread slows while this holds, and the effort drains their stamina fast.",
             "id": "fight_it",
             "name": "Fight It",
             "order": 3,
-            "playerDescription": "Clench yourself back into shape. It works. It takes everything you have.",
+            "playerDescription": "Hold yourself together. The spread slows while you do, and it drains your Stamina fast.",
             "playerToggle": true,
             "statChanges": [
-              {
-                "statId": "assimilation",
-                "type": "regen",
-                "value": -2
-              },
               {
                 "statId": "stamina",
                 "type": "regen",
                 "value": -3
               }
             ]
+          },
+          {
+            "aiDescription": "The player carries {{ph:b7e2c4a1-5d3f-4e8b-9a6c-2f1d0e7b3c85:world:9a4e2c6b-1f8d-4b37-8e5a-3c0d7f2b6e91}}. Show the strain through the signs of the player's change.",
+            "id": "hidden_strain",
+            "mode": "hidden",
+            "name": "Strain",
+            "order": 4,
+            "playerDescription": "The strain you carry. You learn it by how your body changes.",
+            "statChanges": []
           }
         ]
       },
       "carriedStats": {
         "stats": [
           {
-            "description": "Represents the player's physical well-being and ability to sustain damage",
+            "description": "The player's body: bumps, scrapes and strains. Rest restores it.",
             "descriptors": [
               {
                 "description": "Critical condition. Severely hurt, barely upright, in real trouble.",
@@ -5032,7 +5039,7 @@
             "value": 100
           },
           {
-            "description": "Represents the player's energy and ability to perform physical actions",
+            "description": "The player's energy for running, climbing and holding themselves together. Rest restores it.",
             "descriptors": [
               {
                 "description": "Exhausted. Barely able to move, risk of collapse, unable to perform strenuous actions.",
@@ -5066,7 +5073,7 @@
             "value": 100
           },
           {
-            "description": "How far the slime has spread through the player. Climbs steadily on its own, spikes on slime contact, and falls with remedies, rest, and salt-scrubbing.",
+            "description": "How far the slime has spread through the player. Its script adds the spread for each story hour. Slime contact raises it; remedies, rest in dry warmth and salt-scrubbing lower it.",
             "descriptors": [
               {
                 "description": "Early signs. A faint green tint under the fingernails; skin cool to the touch. Nothing anyone would notice in this fog.",
@@ -5093,13 +5100,21 @@
             "max": 100,
             "min": 0,
             "name": "Assimilation",
-            "regen": 2,
+            "regen": 0,
+            "scripts": [
+              {
+                "code": "// Assimilation: the slime spreads through the player with every story hour.\n// This runs after the AI, so the turn's slime contact and remedies are already in self.value.\nconst traits = owner.traits;\nconst panic = owner.stats.Panic;\n\n// 1. The base rate: two points for each story hour.\nlet pointsPerHour = 2;\n\n// 2. The change feeds itself. Once the skin turns translucent at 40, the slime has a hold and spreads faster.\n// It reads the value from the start of the turn, so one big splash of slime does not also speed up this turn.\nif (self.previous.value >= 40) pointsPerHour += 1;\n\n// 3. A racing heart pumps it through faster. Panic is read as a share of its max,\n// because Morbid Curiosity raises that max and half of it should still mean \"half panicked\".\nif (panic.value / panic.max >= 0.5) pointsPerHour += 1;\n\n// 4. What slows it: a nurse's careful habits, and the effort of Fight It.\nif (traits[\"Night-Shift Nurse\"].enabled) pointsPerHour -= 1;\nif (traits[\"Fight It\"].enabled) pointsPerHour -= 2;\n\n// 5. Spread for the hours this turn took. Holding on can stop the spread, but only remedies push it back,\n// so the rate never goes below zero.\nself.value += Math.max(0, pointsPerHour) * clock.deltaHours;",
+                "id": "assimilation:after",
+                "name": "Infection Spread",
+                "timing": "after"
+              }
+            ],
             "starting": 10,
             "type": "number",
             "value": 10
           },
           {
-            "description": "The player’s fear level. Rises in encounters and darkness; settles in safety and light.",
+            "description": "The player's fear. It rises in encounters and darkness and settles in safety and light.",
             "descriptors": [
               {
                 "description": "Level. Breathing even, thoughts in order.",
@@ -5165,19 +5180,14 @@
         ],
         "traits": [
           {
-            "aiDescription": "The player is a night-shift nurse: they know which remedies actually slow the film, how to dress a wound, and how to talk to exhausted officials. Treatments they apply work better than they should.",
+            "aiDescription": "The player is a night-shift nurse. They know which remedies actually slow the film, how to dress a wound, and how to talk to exhausted officials, and their steady habits slow the spread.",
             "groupId": "e1fe79eb-767b-45fd-b21c-426bc227dffe",
             "id": "night_shift_nurse",
             "isDefault": true,
             "name": "Night-Shift Nurse",
             "order": 0,
-            "playerDescription": "You know which pharmacy shelves matter, and what a body can take.",
+            "playerDescription": "You know which pharmacy shelves matter, and your habits slow the spread.",
             "statChanges": [
-              {
-                "statId": "assimilation",
-                "type": "regen",
-                "value": -1
-              },
               {
                 "statId": "health",
                 "type": "regen",
@@ -5331,31 +5341,35 @@
             ]
           },
           {
-            "aiDescription": "ACTIVE: the player is consciously fighting the assimilation — flexing warmth back into their hands, reciting their own name, refusing the softness. The spread slows while this holds, but the sustained effort is deeply draining.",
+            "aiDescription": "ACTIVE: the player is fighting the change with everything they have: flexing warmth back into their hands, saying their own name, holding their shape. The spread slows while this holds, and the effort drains their stamina fast.",
             "id": "fight_it",
             "name": "Fight It",
             "order": 3,
-            "playerDescription": "Clench yourself back into shape. It works. It takes everything you have.",
+            "playerDescription": "Hold yourself together. The spread slows while you do, and it drains your Stamina fast.",
             "playerToggle": true,
             "statChanges": [
-              {
-                "statId": "assimilation",
-                "type": "regen",
-                "value": -2
-              },
               {
                 "statId": "stamina",
                 "type": "regen",
                 "value": -3
               }
             ]
+          },
+          {
+            "aiDescription": "The player carries {{ph:b7e2c4a1-5d3f-4e8b-9a6c-2f1d0e7b3c85:world:9a4e2c6b-1f8d-4b37-8e5a-3c0d7f2b6e91}}. Show the strain through the signs of the player's change.",
+            "id": "hidden_strain",
+            "mode": "hidden",
+            "name": "Strain",
+            "order": 4,
+            "playerDescription": "The strain you carry. You learn it by how your body changes.",
+            "statChanges": []
           }
         ]
       },
       "portableStats": {
         "stats": [
           {
-            "description": "Represents the player's physical well-being and ability to sustain damage",
+            "description": "The player's body: bumps, scrapes and strains. Rest restores it.",
             "descriptors": [
               {
                 "description": "Critical condition. Severely hurt, barely upright, in real trouble.",
@@ -5389,7 +5403,7 @@
             "value": 100
           },
           {
-            "description": "Represents the player's energy and ability to perform physical actions",
+            "description": "The player's energy for running, climbing and holding themselves together. Rest restores it.",
             "descriptors": [
               {
                 "description": "Exhausted. Barely able to move, risk of collapse, unable to perform strenuous actions.",
@@ -5423,7 +5437,7 @@
             "value": 100
           },
           {
-            "description": "How far the slime has spread through the player. Climbs steadily on its own, spikes on slime contact, and falls with remedies, rest, and salt-scrubbing.",
+            "description": "How far the slime has spread through the player. Its script adds the spread for each story hour. Slime contact raises it; remedies, rest in dry warmth and salt-scrubbing lower it.",
             "descriptors": [
               {
                 "description": "Early signs. A faint green tint under the fingernails; skin cool to the touch. Nothing anyone would notice in this fog.",
@@ -5450,13 +5464,21 @@
             "max": 100,
             "min": 0,
             "name": "Assimilation",
-            "regen": 2,
+            "regen": 0,
+            "scripts": [
+              {
+                "code": "// Assimilation: the slime spreads through the player with every story hour.\n// This runs after the AI, so the turn's slime contact and remedies are already in self.value.\nconst traits = owner.traits;\nconst panic = owner.stats.Panic;\n\n// 1. The base rate: two points for each story hour.\nlet pointsPerHour = 2;\n\n// 2. The change feeds itself. Once the skin turns translucent at 40, the slime has a hold and spreads faster.\n// It reads the value from the start of the turn, so one big splash of slime does not also speed up this turn.\nif (self.previous.value >= 40) pointsPerHour += 1;\n\n// 3. A racing heart pumps it through faster. Panic is read as a share of its max,\n// because Morbid Curiosity raises that max and half of it should still mean \"half panicked\".\nif (panic.value / panic.max >= 0.5) pointsPerHour += 1;\n\n// 4. What slows it: a nurse's careful habits, and the effort of Fight It.\nif (traits[\"Night-Shift Nurse\"].enabled) pointsPerHour -= 1;\nif (traits[\"Fight It\"].enabled) pointsPerHour -= 2;\n\n// 5. Spread for the hours this turn took. Holding on can stop the spread, but only remedies push it back,\n// so the rate never goes below zero.\nself.value += Math.max(0, pointsPerHour) * clock.deltaHours;",
+                "id": "assimilation:after",
+                "name": "Infection Spread",
+                "timing": "after"
+              }
+            ],
             "starting": 10,
             "type": "number",
             "value": 10
           },
           {
-            "description": "The player’s fear level. Rises in encounters and darkness; settles in safety and light.",
+            "description": "The player's fear. It rises in encounters and darkness and settles in safety and light.",
             "descriptors": [
               {
                 "description": "Level. Breathing even, thoughts in order.",
@@ -5522,19 +5544,14 @@
         ],
         "traits": [
           {
-            "aiDescription": "The player is a night-shift nurse: they know which remedies actually slow the film, how to dress a wound, and how to talk to exhausted officials. Treatments they apply work better than they should.",
+            "aiDescription": "The player is a night-shift nurse. They know which remedies actually slow the film, how to dress a wound, and how to talk to exhausted officials, and their steady habits slow the spread.",
             "groupId": "e1fe79eb-767b-45fd-b21c-426bc227dffe",
             "id": "night_shift_nurse",
             "isDefault": true,
             "name": "Night-Shift Nurse",
             "order": 0,
-            "playerDescription": "You know which pharmacy shelves matter, and what a body can take.",
+            "playerDescription": "You know which pharmacy shelves matter, and your habits slow the spread.",
             "statChanges": [
-              {
-                "statId": "assimilation",
-                "type": "regen",
-                "value": -1
-              },
               {
                 "statId": "health",
                 "type": "regen",
@@ -5688,24 +5705,28 @@
             ]
           },
           {
-            "aiDescription": "ACTIVE: the player is consciously fighting the assimilation — flexing warmth back into their hands, reciting their own name, refusing the softness. The spread slows while this holds, but the sustained effort is deeply draining.",
+            "aiDescription": "ACTIVE: the player is fighting the change with everything they have: flexing warmth back into their hands, saying their own name, holding their shape. The spread slows while this holds, and the effort drains their stamina fast.",
             "id": "fight_it",
             "name": "Fight It",
             "order": 3,
-            "playerDescription": "Clench yourself back into shape. It works. It takes everything you have.",
+            "playerDescription": "Hold yourself together. The spread slows while you do, and it drains your Stamina fast.",
             "playerToggle": true,
             "statChanges": [
-              {
-                "statId": "assimilation",
-                "type": "regen",
-                "value": -2
-              },
               {
                 "statId": "stamina",
                 "type": "regen",
                 "value": -3
               }
             ]
+          },
+          {
+            "aiDescription": "The player carries {{ph:b7e2c4a1-5d3f-4e8b-9a6c-2f1d0e7b3c85:world:9a4e2c6b-1f8d-4b37-8e5a-3c0d7f2b6e91}}. Show the strain through the signs of the player's change.",
+            "id": "hidden_strain",
+            "mode": "hidden",
+            "name": "Strain",
+            "order": 4,
+            "playerDescription": "The strain you carry. You learn it by how your body changes.",
+            "statChanges": []
           }
         ]
       }
