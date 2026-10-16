@@ -54,7 +54,7 @@ Settled with the user on 2026-10-16, from the Out of Scope list of the Scripts L
 ## Implementation Decisions
 
 - **Timings.** The rider and the fence parser read the five script timings, not the two stat-code timings. Labels come from the shared timing label list, so a rename stays in one place.
-- **Default rider.** The Default preset's rider names five boxes and five fence lines. Its reads line keeps the reads every home shares and drops `owner.stats`, which the home line now carries. The rider stays positive and gives no example values.
+- **Default rider.** The Default preset's rider names five boxes and five fence lines, and says when each box runs. Names alone sent time checks to At Game Start in ticket 02's probe. Its reads line keeps the reads every home shares and drops `owner.stats`, which the home line now carries. The rider stays positive and gives no example values.
 - **Home line.** A pure function takes the open surface and returns the line for that home, or nothing. Stat: `self` is the stat, `owner.stats` reads its entity. Trait: the line names the trait scope reads. World: the line says a world script has no owner. It rides after the rider through the same line-append helper the code-test line uses, and still rides when the rider is empty.
 - **Code turn.** The code-surface check widens from the stat's Code tab to the three home surfaces in the surface registry. The new timing labels join the code words as whole-phrase matches.
 - **Insert target.** The insert target generalizes from "the open stat" to "the open script home". It carries the home's display name for the Insert menu header and an insert function that takes any of the five timings. The stat panel, the trait's Scripts tab and the world's Scripts section each register while visible. One target at a time, as today.
@@ -85,3 +85,4 @@ A good test drives the public seam and checks what the author or the request see
 ## Further Notes
 
 - Every rider change is a prompt change. Read the prompt writing guide first, and ship probe numbers with the change.
+- Ticket 02's cloud probe (8 runs): known cases pass 55% for both the old and the new rider; timing cases 97%. The known cases miss the 80% bar on cloud with either rider, so for tickets 03 and 04 "no regression" means no drop from the old rider in the same batch. A trait or world home line that names its reads by when they apply follows the same lesson.
