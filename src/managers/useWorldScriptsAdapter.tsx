@@ -11,7 +11,7 @@ import { useCodeCardNavigation } from '@/lib/codeCardNavigation';
 import { useCodeUseReveal } from '@/lib/codeUseReveal';
 import { registerScriptInsert, reportScriptInsert } from '@/lib/formaquestion/scriptInsert';
 import { newScript } from '@/lib/scriptRows';
-import { SCRIPT_TIMING_LABEL, SCRIPT_TIMINGS } from '@/lib/scripts';
+import { SCRIPT_TIMING_DESCRIPTION, SCRIPT_TIMING_LABEL, SCRIPT_TIMINGS } from '@/lib/scripts';
 import { isStatOn } from '@/lib/statCodeTargets';
 import {
   editScripts, orderEdits, ownerRowId, reorderWrites, scriptEntryKey, scriptsByTiming, worldScriptEntries,
@@ -211,6 +211,18 @@ export function useWorldScriptsAdapter({ selectedId, onSelect, active = false }:
     if (entry) {
       return <WorldScriptDetail key={entry.key} entry={entry} onWrite={write} autoFocus={focusKey === entry.key} />;
     }
+    const timing = id ? groupTiming(id) : null;
+    if (timing) {
+      return (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="font-medium">{SCRIPT_TIMING_LABEL[timing]}</span>
+            <HelpButton topicId="worldEditor.scriptBox" className="h-6 w-6" />
+          </div>
+          <Hint>{SCRIPT_TIMING_DESCRIPTION[timing]}</Hint>
+        </div>
+      );
+    }
     return (
       <div className="space-y-2">
         <div className="flex items-center gap-2">
@@ -252,7 +264,7 @@ export function useWorldScriptsAdapter({ selectedId, onSelect, active = false }:
       )),
     },
     placeholder: 'Search scripts',
-    holds: (id) => byKey.has(id),
+    holds: (id) => byKey.has(id) || groupTiming(id) !== null,
     isEmpty: false,
     emptyHint: null,
   };

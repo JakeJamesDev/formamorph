@@ -3,6 +3,7 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { benchEditorWorld, openEditorTab, renderWorldEditorBench, shownEditorTab } from '@/test/worldEditorBench';
 import { frames } from '@/test/landing';
 import { LANDING_PULSE_CLASS, landingTarget } from '@/lib/landingPulse';
+import { SCRIPT_TIMING_DESCRIPTION } from '@/lib/scripts';
 import type { SortableTreeAdapter } from '@/managers/SortableTree';
 import type { World } from '@/types';
 
@@ -92,6 +93,19 @@ describe('the Scripts tab', () => {
     ]);
     expect(screen.getByText('World · After the AI')).toBeInTheDocument();
     expect(screen.getByText('Temper')).toBeInTheDocument();
+  });
+
+  it('selects a timing and shows when it runs, then keeps the selection through a script edit', () => {
+    const bench = renderWorldEditorBench(WORLD, 'advanced');
+    openScripts();
+    expect(screen.queryByText(SCRIPT_TIMING_DESCRIPTION.start)).toBeNull();
+    selectRow('At Game Start');
+    expect(screen.getByText(SCRIPT_TIMING_DESCRIPTION.start)).toBeInTheDocument();
+    act(() => bench.ctx().setWorldScripts([...bench.ctx().worldScripts, { id: 'roll', timing: 'start', code: '' }]));
+    expect(screen.getByText(SCRIPT_TIMING_DESCRIPTION.start)).toBeInTheDocument();
+    selectRow('When a Trait Switches');
+    expect(screen.getByText(SCRIPT_TIMING_DESCRIPTION.switch)).toBeInTheDocument();
+    expect(screen.queryByText(SCRIPT_TIMING_DESCRIPTION.start)).toBeNull();
   });
 
   it('reorders within a timing, writes order on the moved scripts, and undoes the drop in one step', () => {

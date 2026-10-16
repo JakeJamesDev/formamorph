@@ -72,12 +72,14 @@ describe('the Scripts help topic', () => {
     expect(HELP_TOPICS['worldEditor.scriptBox']).toMatchObject({ title: 'Scripts', wikiPage: 'ScriptsGuide' });
   });
 
-  it('names the five timings and the name each one adds', () => {
-    const body = HELP_TOPICS['worldEditor.scriptBox'].body ?? '';
+  it('names the five timings on its Timings tab and the name each one adds on its Variables tab', () => {
+    const tabs = HELP_TOPICS['worldEditor.scriptBox'].tabs ?? [];
+    expect(tabs.map((t) => t.label)).toEqual(['Overview', 'Timings', 'Variables', 'Stat Writes']);
+    const tab = (label: string) => tabs.find((t) => t.label === label)?.body ?? '';
     for (const timing of ['Before the AI', 'After the AI', 'During AI Output', 'At Game Start', 'When a Trait Switches']) {
-      expect(body).toContain(`**${timing}**`);
+      expect(tab('Timings')).toContain(`**${timing}**`);
     }
-    for (const name of ['narration', 'trait', 'player']) expect(body).toContain(`\`${name}\``);
+    for (const name of ['narration', 'trait', 'player']) expect(tab('Variables')).toContain(`\`${name}\``);
   });
 });
 

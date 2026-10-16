@@ -47,9 +47,18 @@ const SCRIPTS_TOPIC: HelpTopic = {
   title: 'Scripts',
   wikiPage: 'ScriptsGuide',
   wikiAnchor: '-scripts-guide',
-  body: `A script is one box of JavaScript with a timing. It belongs to a stat, a trait, or the world. A returned number replaces the stat's value. A script with no return can still set \`self\`, write another stat, pin a placeholder, or switch a trait. Leave a script empty and the manual value stands.
+  tabs: [
+    {
+      label: 'Overview',
+      body: `A script is one box of JavaScript with a timing. It belongs to a stat, a trait, or the world. A returned number replaces the stat's value. A script with no return can still set \`self\`, write another stat, pin a placeholder, or switch a trait. Leave a script empty and the manual value stands.
 
-**Pick a timing.** Each script has one, and a script runs only at its timing:
+**Whose script it is.** A stat's script runs with the stat as \`self\`. A trait's script runs only while the trait is active, with the trait as \`self\`. A world script has an empty \`self\`. The world's **Scripts** tab lists every script by timing, in run order. Drag a script to change its place in its timing.
+
+**Test Code** under each box runs that box alone. It runs the code, and the editor underlines are static analysis only. A script that throws or times out changes nothing. **Templates** inserts common code shapes for the box's timing.`,
+    },
+    {
+      label: 'Timings',
+      body: `Each script has one timing, and a script runs only at its timing:
 
 | Timing | Runs |
 |---|---|
@@ -59,11 +68,11 @@ const SCRIPTS_TOPIC: HelpTopic = {
 | **At Game Start** | Once, on the opening turn of a new game, before the Before the AI scripts. |
 | **When a Trait Switches** | Each time a trait turns on or off in play. |
 
-Turn order: At Game Start, Before the AI, the AI's stat changes, Regen, After the AI. **During AI Output** runs while the narration streams.
-
-**Whose script it is.** A stat's script runs with the stat as \`self\`. A trait's script runs only while the trait is active, with the trait as \`self\`. A world script has an empty \`self\`. The world's **Scripts** tab lists every script by timing, in run order. Drag a script to change its place in its timing.
-
-**What it can reach.** A copy of every stat, the world's placeholders and traits, the entities, the dictionaries and the clock. Each timing adds one name:
+Turn order: At Game Start, Before the AI, the AI's stat changes, Regen, After the AI. **During AI Output** runs while the narration streams.`,
+    },
+    {
+      label: 'Variables',
+      body: `A script gets a copy of every stat, the world's placeholders and traits, the entities, the dictionaries and the clock. Each timing adds one name:
 
 - \`narration\` in **During AI Output**. Assign \`narration.sentence\`, or return a string, to rewrite the sentence.
 - \`trait\` in **When a Trait Switches**. It is the trait that switched, and \`trait.enabled\` is its new state.
@@ -74,11 +83,15 @@ const health = stats.Health.value;
 return health / 2;
 \`\`\`
 
-A name with a space needs brackets: \`stats["Hit Points"]\`. \`stats\` is the global stats in every script. An entity's own stats are \`owner.stats\`.
+A name with a space needs brackets: \`stats["Hit Points"]\`. \`stats\` is the global stats in every script. An entity's own stats are \`owner.stats\`.`,
+    },
+    {
+      label: 'Stat Writes',
+      body: `Set \`self.value\`, \`self.min\`, \`self.max\` or \`self.regen\` and the stat takes that number this turn. Write \`value\`, \`min\`, \`max\` or \`regen\` on any stat to move it from this script.
 
-**Writing.** Set \`self.value\`, \`self.min\`, \`self.max\` or \`self.regen\` and the stat takes that number this turn. Write \`value\`, \`min\`, \`max\` or \`regen\` on any stat to move it from this script. Two writes to one field land in run order, and the later write wins.
-
-**Test Code** under each box runs that box alone. It runs the code, and the editor underlines are static analysis only. A script that throws or times out changes nothing. **Templates** inserts common code shapes for the box's timing.`,
+Two writes to one field land in run order, and the later write wins.`,
+    },
+  ],
 };
 
 export const HELP_TOPICS: Record<string, HelpTopic> = {
