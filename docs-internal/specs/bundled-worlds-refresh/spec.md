@@ -91,6 +91,7 @@ Every world: current shape on disk, `openings` (no `openingCue`), `imageTags` on
 - **Shape first.** One ticket saves `migrateWorld(world)` to disk for all eight worlds, with no content change. World tickets edit content only. The stored `version` stamp follows what `migrateWorld` writes.
 - **Edits by script.** World files are edited by parsing, changing, and re-serializing. Ids and existing images are preserved. Every reference (connections, owners, placeholder tokens, trait groups, gates, script stat names) is validated before saving. The `bundled-worlds` project skill holds the procedure and the strip tool (`npm run strip-worlds`).
 - **Readme split.** `introReadme` holds trait guidance and shows before trait picks. `readme` holds stat behavior, toggles, and the win condition, and shows on entering play.
+  - Ticket 05 ruling: Open Chat keeps one opening, because a library entity's openings replace the world pool (story 23 over story 7). It gets no lore and no entities. Its content pass covers the system prompt, location text, opening and tone values, Style trait text, readmes, and imageTags.
   - Ticket 04 ruling: Emberwatch keeps its "How this world is built" authoring section in `readme`, after the play-only part. The play part comes first and states the win condition.
 - **Threshold units.** A stat whose max a trait changes uses percent thresholds on its descriptors.
 - **Prompts.** World prompt text follows the prompt-writing guide: positive contracts, no example values a small model can parrot.
