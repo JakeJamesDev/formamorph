@@ -17,6 +17,8 @@ Spec: ../spec.md (Q1, Q3, Q4, Q6, Q8; Feature assignment)
 
 ## Acceptance criteria
 
+- [ ] (Follow-up) Every script uses full variable names (no one-character names), is split into explained sections, and comments each section's logic (Q16).
+- [ ] (Follow-up) Every placeholder name is in title case with spaces, like a proper noun (Q17).
 - [x] The world's row is in the shared coverage table and passes.
 - [x] The shared suite passes for this world, including the old-save check.
 - [x] Per-world tests cover each script's effect on its stat and each gate that must hold.
