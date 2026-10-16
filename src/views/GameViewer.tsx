@@ -1,6 +1,7 @@
 import { randomUUID } from "@/lib/uuid";
 import { ownedTraitStatesFrom } from '@/lib/ownedTraitState';
-import { ownerPins, inPlayOwners, inPlayLibrary } from '@/lib/ownedTraitsInPlay';
+import { ownerPins, inPlayOwners, inPlayLibrary, libraryUnder } from '@/lib/ownedTraitsInPlay';
+import { samePersonaRef } from '@/lib/personaPick';
 import { libraryBooksInPlay } from '@/lib/dictionarySelection';
 import React, { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo, useSyncExternalStore, lazy, Suspense } from "react";
 import { useGameData } from "../contexts/GameDataContext";
@@ -648,6 +649,7 @@ const GameViewer = ({
     entities, locations, stats, traits, traitGroups, dictionary, globalStats, viewStats,
     currentLocation, traitOrder, pins, pinsFor, resolvePH, resolveFor, resolveWith, resolveOpening, resolveTraitText,
     resolveTraitFor, resolveEntityText, resolveEntityFor, playerNames, persona, traitEntities, traitLibrary, codeEntities,
+    presentEntitiesUnder,
   } = useResolvedWorld();
   usePersonaNotice();
   // The session's rolls for the init effect's pins, and its Placeholder Set with the library's lists.
@@ -671,10 +673,12 @@ const GameViewer = ({
    *  present owner's tree under that persona. */
   const gatedWorld = useCallback(
     (ref: PersonaRef | undefined = personaRef): TraitWorld => ({
-      traits: authoredTraits, groups: traitGroups, entities: worldEntitiesOf(entities, persona), persona: ref ?? { source: 'none' },
-      ...inPlayOwners(ownerWorld, ref, traitLibrary),
+      traits: authoredTraits, groups: traitGroups, persona: ref ?? { source: 'none' },
+      // A persona change reads this before its render, so its entities and library are the ones under `ref`.
+      entities: ref === personaRef ? worldEntitiesOf(entities, persona) : presentEntitiesUnder(ref),
+      ...inPlayOwners(ownerWorld, ref, libraryUnder(traitLibrary, personaRef, ref)),
     }),
-    [authoredTraits, traitGroups, entities, persona, personaRef, ownerWorld, traitLibrary],
+    [authoredTraits, traitGroups, entities, persona, personaRef, ownerWorld, traitLibrary, presentEntitiesUnder],
   );
   // A Custom Persona pick lies dormant under a world persona, so only the held picks are active.
   const activeTraits = useMemo(() => {
@@ -1805,18 +1809,27 @@ const GameViewer = ({
   const activeStats = useMemo(() => enabledStats(globalStats, statEnabled), [globalStats, statEnabled]);
   statEnabledRef.current = statEnabled;
 
-  /** Each entity's stat traits in force under `owned`, the owned trait state they read. */
+  /** Each entity's stat traits in force under `owned`, the owned trait state they read, in `world`. */
   const entityInForceUnder = useCallback(
-    (owned: OwnedTraitStates) => (ownerId: string) => entityStatTraitsInForce(owned, gatedWorld(), ownerId),
+    (owned: OwnedTraitStates, world: TraitWorld = gatedWorld()) => (ownerId: string) => entityStatTraitsInForce(owned, world, ownerId),
     [gatedWorld],
   );
   const statEntities = useMemo(() => statOwnerEntities(codeEntities), [codeEntities]);
+  /** The library in play under `world`'s persona, which a persona change's run reads before its render. */
+  const libraryIn = useCallback(
+    (world: TraitWorld) => libraryUnder(codeEntities.library, personaRef, world.persona),
+    [codeEntities, personaRef],
+  );
   /** The entity owners whose regen and code run over `values`: everyone in the playthrough, present or not.
-   *  `owned` is the owned trait state their toggles read, the live one by default. */
+   *  `owned` is the owned trait state their toggles read, the live one by default; `world` is the one they
+   *  hold under, the live one by default. */
   const entityOwnersOf = useCallback(
-    (values: EntityStatValues, owned: OwnedTraitStates = ownedTraits) =>
-      entityStatOwners(values, statEntities, personaRef, entityInForceUnder(owned)),
-    [statEntities, personaRef, entityInForceUnder, ownedTraits],
+    (values: EntityStatValues, owned: OwnedTraitStates = ownedTraits, world: TraitWorld = gatedWorld()) => {
+      const library = libraryIn(world);
+      const entities = library === codeEntities.library ? statEntities : statOwnerEntities({ world: codeEntities.world, library });
+      return entityStatOwners(values, entities, world.persona, entityInForceUnder(owned, world));
+    },
+    [statEntities, ownedTraits, gatedWorld, libraryIn, codeEntities, entityInForceUnder],
   );
   // The latest committed entity stats, which the turn callbacks read as they read `rawGlobalStatsRef`.
   const entityStatsRef = useRef(entityStats);
@@ -2944,8 +2957,9 @@ const GameViewer = ({
         // Every entity in the playthrough runs beside the player, over the same tick, each over its own asks.
         const entityPrevious = preTurn ? preTurn.entityStats ?? {} : entityStatsRef.current;
         const entityBase = entityTurn?.values ?? entityPrevious;
+        const world = traitWorld ?? gatedWorld();
         const owners = entityCodeTurns(
-          entityOwnersOf(entityBase, preTurn ? preTurn.ownedTraits ?? {} : undefined), readsTurnStart(timing) ? null : clock.deltaHours ?? FLAT_HOURS_PER_TURN,
+          entityOwnersOf(entityBase, preTurn ? preTurn.ownedTraits ?? {} : undefined, world), readsTurnStart(timing) ? null : clock.deltaHours ?? FLAT_HOURS_PER_TURN,
           (ownerId, ticked) => resolveStatText(
             refreshSavedStats(ticked, statEntities.find((e) => e.id === ownerId)?.stats ?? []), resolvePH,
           ),
@@ -2960,7 +2974,6 @@ const GameViewer = ({
           };
         const inForce = preTurn ? inForceOn(held, entityBase) : live.statTraits;
         const basePins = preTurn ? preTurn.codePins ?? {} : live.codePins;
-        const world = traitWorld ?? gatedWorld();
         // The starvation penalty the regen tick lands beside this run, so the run's stat snapshot holds it.
         const healthLoss = tick && thresholdStats ? starvationLoss(thresholdStats, enabled, clock.deltaHours ?? FLAT_HOURS_PER_TURN) : null;
         const health = healthLoss === null ? undefined : stats.find((s) => s.name === "Health");
@@ -2973,7 +2986,7 @@ const GameViewer = ({
           }, world),
           ...(health && healthLoss !== null ? { penalties: { [health.id]: healthLoss } } : {}),
           ownerTraits: {
-            ...held, world, entities: codeEntities.world, library: codeEntities.library,
+            ...held, world, entities: codeEntities.world, library: libraryIn(world),
             inSceneIds: liveScene().inSceneIds,
           },
           placeholders: {
@@ -3067,7 +3080,7 @@ const GameViewer = ({
         return null;
       }
     },
-    [setGlobalStats, setEntityStats, entityOwnersOf, entityInForceUnder, addStatDeltas, setCodePins, resolvePH, statCodePlaceholders, pinsFor, traits, authoredStats, worldScripts, resolveTraitText, gatedWorld, codeEntities, statEntities, inForceOn, liveScene,
+    [setGlobalStats, setEntityStats, entityOwnersOf, entityInForceUnder, addStatDeltas, setCodePins, resolvePH, statCodePlaceholders, pinsFor, traits, authoredStats, worldScripts, resolveTraitText, gatedWorld, codeEntities, statEntities, inForceOn, liveScene, libraryIn,
       setGlobalTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, setOwnedTraits, addLogEntry, playPrompts, commitTraitState],
   );
 
@@ -3102,7 +3115,8 @@ const GameViewer = ({
       }, 'switch', { traitWorld: world });
       if (!prepared) return;
       try {
-        const result = await runSwitchScripts(prepared.turn, events);
+        const turn = fromWorld === world ? prepared.turn : { ...prepared.turn, switchedFrom: fromWorld };
+        const result = await runSwitchScripts(turn, events);
         if (result && mounted.current) prepared.finish(result);
       } catch (error) {
         console.error("Error processing stat code:", error);
@@ -4132,9 +4146,8 @@ const GameViewer = ({
   /** Move the stats onto a new persona, whose linked stat traits replace the old one's, then settle the traits
    *  under it, which can open or close "playing as" gates. */
   const settlePersonaTraits = useCallback(
-    (ref: PersonaRef, name: string | null) => {
+    (ref: PersonaRef, name: string | null, from: TraitWorld) => {
       const to = gatedWorld(ref);
-      const from = gatedWorld();
       const moved = switchPersonaStats(traitState, from, to, traitName);
       const settled = settleTraits(moved.state, to, traitName);
       commitGatedTraits({ ...settled, log: [...moved.log, ...settled.log] }, name ?? 'the persona change');
@@ -4142,6 +4155,26 @@ const GameViewer = ({
     },
     [traitState, gatedWorld, traitName, commitGatedTraits, fireSwitchScripts],
   );
+  // A library persona settles once its entity loads, so the settle and the run read it (Q15). `from` is the
+  // world the traits still hold under.
+  const [waitingPersona, setWaitingPersona] = useState<{ ref: PersonaRef; name: string | null; from: TraitWorld } | null>(null);
+  const changePersona = useCallback(
+    (ref: PersonaRef, name: string | null) => {
+      const from = waitingPersona?.from ?? gatedWorld();
+      if (ref.source === 'library') {
+        setWaitingPersona({ ref, name, from });
+        return;
+      }
+      setWaitingPersona(null);
+      settlePersonaTraits(ref, name, from);
+    },
+    [waitingPersona, gatedWorld, settlePersonaTraits],
+  );
+  useEffect(() => {
+    if (!waitingPersona || personaPending || !personaRef || !samePersonaRef(personaRef, waitingPersona.ref)) return;
+    setWaitingPersona(null);
+    settlePersonaTraits(waitingPersona.ref, waitingPersona.name, waitingPersona.from);
+  }, [waitingPersona, personaPending, personaRef, settlePersonaTraits]);
 
   const changeLocation = useCallback(
     (newLocation: GameLocation) => {
@@ -4600,7 +4633,7 @@ const GameViewer = ({
     <RightPanel
       onLocationClick={() => setIsLocationModalOpen(true)}
       onToggleTrait={toggleTrait}
-      onPersonaChange={settlePersonaTraits}
+      onPersonaChange={changePersona}
       traitCascade={traitCascade}
       onDismissTraitCascade={() => setTraitCascade(null)}
       onRegenerateStats={handleRegenerateStats}

@@ -37,6 +37,14 @@ export const inPlayLibrary = (
   world: TraitWorld, libraryPersona: Entity | null | undefined, added: readonly Entity[] = [],
 ): Entity[] => [...(libraryPersona ? [libraryPersona] : []), ...added].map((e) => bindOwnedTraits(e, world));
 
+/** `library` without `from`'s library persona unless `to` still plays it; `library` itself when none leaves. */
+export const libraryUnder = (
+  library: readonly Entity[], from: PersonaRef | undefined, to: PersonaRef | undefined,
+): readonly Entity[] => {
+  const left = from?.source === 'library' && !(to?.source === 'library' && to.entityId === from.entityId) ? from.entityId : null;
+  return left === null ? library : library.filter((entity) => entity.id !== left);
+};
+
 /** Global scope's tree and every present entity owner as the gate module reads them in play: the world's
  *  entities, then the library's. */
 export const inPlayOwners = (

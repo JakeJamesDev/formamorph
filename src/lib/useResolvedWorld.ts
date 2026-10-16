@@ -5,7 +5,7 @@ import { usePlaceholderSession } from '@/contexts/PlaceholderSessionContext';
 import { resolveOwnerText, resolveEntityText as resolveEntityCore, resolvePlaceholders } from '@/lib/placeholders';
 import { activeOwnedTraitIds, addedCharacters, inPlayLibrary, ownerPins, type PinSet } from '@/lib/ownedTraitsInPlay';
 import { traitScopedPins } from '@/lib/placeholderPins';
-import { resolvePersona, withPersonaEntry, type ResolvedPersona } from '@/lib/persona';
+import { resolvePersona, withPersonaEntry, worldEntitiesOf, type ResolvedPersona } from '@/lib/persona';
 import { customPersonaEntity } from '@/lib/blueprints';
 import { libraryPlaceholderSet, type LibraryCarrier } from '@/lib/libraryPlaceholders';
 import { inAuthoredOrder, refreshChosenTraits, traitOrderIndex } from '@/lib/traitEffects';
@@ -14,8 +14,8 @@ import {
   resolveDictionaryEntryNames, type ResolveEntityText,
 } from '@/lib/resolveWorldNames';
 import type {
-  CodePins, Connection, DictionaryEntry, Entity, GameLocation, OwnedTraitStates, PlaceholderRolls, PlayerStat, Stat, Trait,
-  TraitGroup,
+  CodePins, Connection, DictionaryEntry, Entity, GameLocation, OwnedTraitStates, PersonaRef, PlaceholderRolls, PlayerStat, Stat,
+  Trait, TraitGroup,
 } from '@/types';
 
 /**
@@ -67,6 +67,9 @@ export interface ResolvedWorld {
   traitEntities: Entity[];
   /** The library entities in the playthrough, resolved the same way; their nodes sit last in the tree. */
   traitLibrary: Entity[];
+  /** Every present world entity under `ref`, the played one included, resolved: what a persona change reads
+   *  before its render. */
+  presentEntitiesUnder: (ref: PersonaRef | undefined) => Entity[];
   /** The world's and the playthrough's library entities as authored, chips and all. Only stat code reads
    *  them: code names derive from authored names, never from a roll. */
   codeEntities: { world: Entity[]; library: Entity[] };
@@ -310,6 +313,10 @@ export function useResolvedWorld(): ResolvedWorld {
     [resolveOwnedNames, rawLibrary, resolveNameOf],
   );
   const codeEntities = useMemo(() => ({ world: rawEntities, library: rawLibrary }), [rawEntities, rawLibrary]);
+  const presentEntitiesUnder = useCallback((ref: PersonaRef | undefined) => {
+    const resolved = resolvePersona(ref, worldEntities, libraryEntities);
+    return worldEntitiesOf(resolved.cast, resolved.persona);
+  }, [worldEntities, libraryEntities]);
 
   // Every write to gameplay's `currentLocation` is a member of `locations`, so its id is the durable part —
   // the object it stored is a snapshot of how the name read on arrival. Falls back to the stored copy for a
@@ -329,7 +336,7 @@ export function useResolvedWorld(): ResolvedWorld {
   return {
     entities, persona, playerNames, worldPersonas, customPersona, personaUnresolved: unresolved && !personaPending,
     locations, connections, stats, traits, traitGroups, dictionary, currentLocation,
-    globalStats, viewStats, traitOrder, traitEntities, traitLibrary, codeEntities, pins, pinSet, pinsFor,
+    globalStats, viewStats, traitOrder, traitEntities, traitLibrary, presentEntitiesUnder, codeEntities, pins, pinSet, pinsFor,
     resolvePH, resolveFor, resolveWith, resolveOpening, resolveTraitText, resolveTraitFor,
     resolveEntityText, resolveEntityFor,
   };
