@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useGameDataOptional } from "@/contexts/GameDataContext";
 import { Label } from "@/components/ui/label";
 import { Hint } from "@/components/ui/typography";
@@ -8,6 +8,9 @@ import { statBoxLookups, traitBoxSelf } from "@/lib/codeWorldLookup";
 import { statCodeName, statCodeNamed } from "@/lib/statCodeNames";
 import { resolvedEntityStats } from "@/lib/statLinks";
 import { isBlueprintItem } from "@/lib/traitTree";
+import { registerScriptInsert, reportScriptInsert } from "@/lib/formaquestion/scriptInsert";
+import { newScript, noFocus, scriptRow } from "@/lib/scriptRows";
+import { useLanding } from "@/lib/surface/useLanding";
 import type { CodeUseReveal } from "@/lib/codeUseReveal";
 import { useScriptWorldNames } from "@/lib/useScriptWorldNames";
 import type { Entity, Script, ScriptTiming, Trait } from "@/types";
@@ -59,6 +62,23 @@ export function TraitScripts({ trait, owner, ownerName, onChange, reset, reveal 
     selfName, owner: boxOwner, names, ownerStats, ...(ownerStatNames && { ownerStatNames }), placeholderPlaces, lookup,
   }), [selfName, boxOwner, names, ownerStats, ownerStatNames, placeholderPlaces, lookup]);
 
+  // The help window's Insert adds a script of its timing to this trait and lands on it. This tab mounts only while shown.
+  const landOnScript = useLanding(scriptRow, { focus: noFocus });
+  const [inserted, setInserted] = useState<string | null>(null);
+  // Read at insert time, so the registration does not change with each keystroke.
+  const latest = useRef({ scripts: trait.scripts, onChange });
+  latest.current = { scripts: trait.scripts, onChange };
+  useEffect(() => registerScriptInsert({
+    homeName: ownerName,
+    insert: (timing, code) => {
+      const script = newScript(timing, code);
+      latest.current.onChange([...latest.current.scripts ?? [], script]);
+      setInserted(script.id);
+      landOnScript(script.id);
+      reportScriptInsert('written');
+    },
+  }), [ownerName, landOnScript]);
+
   return (
     <div className="space-y-4">
       <div className="space-y-2">
@@ -77,6 +97,7 @@ export function TraitScripts({ trait, owner, ownerName, onChange, reset, reveal 
         self={{ kind: 'trait', id: trait.id }}
         context={context}
         reveal={reveal}
+        focusId={inserted}
       />
     </div>
   );

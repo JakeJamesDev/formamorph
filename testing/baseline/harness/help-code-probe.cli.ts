@@ -12,7 +12,8 @@
 //   <name>   with `--docs-alt PAGE=FILE,PAGE=FILE`: per file, the Default preset over docs whose page PAGE is
 //            the file's text, as an arm named after the file
 //
-// A code case asks with code words, or with a stat's Code tab open. A prose case is a how-to control: no turn
+// A code case asks with code words, or with a stat's Code tab or a trait's Scripts tab open.
+// A prose case is a how-to control: no turn
 // of it is a code turn, so it wants no fence on any arm. A known case carries its real names: it passes when
 // every fence runs, the fences hold those names, and they hold no invented one (an unknown clock field, a whole
 // stat compared, or a name the case rules out).
@@ -43,7 +44,7 @@ import { HELP_CODE_TEST } from '@/lib/formaquestion/helpCodeTest';
 import type { CodeTestResult } from '@/lib/formaquestion/helpCodeTestRun';
 import { DEFAULT_HELP_SETTINGS, helpSettingsOf, type HelpSettings } from '@/lib/formaquestion/helpSettings';
 import { emptyToolSnapshot } from '@/lib/tools/toolSnapshot';
-import { FIXTURE_WORLD, HELP_CODE_CASES, fixtureRunner, testsClean, type HelpCodeCase, type HelpCodeKind } from './help-code-cases';
+import { FIXTURE_WORLD, HELP_CODE_CASES, runnerOf, testsClean, type HelpCodeCase, type HelpCodeKind } from './help-code-cases';
 import { inBox, passesCase, scoreCodeAnswer, scoreNames, summarizeCodeScores, type CodeScore, type NameScore } from './help-code-score';
 import { noUsage, pct, probeSnapshot, sessionFetch, type Usage } from './help-probe-shared';
 
@@ -229,7 +230,7 @@ for (let run = 1; run <= runs; run++) {
         let out: Row;
         try {
           const sample = await ask(arm, c);
-          const score = await scoreCodeAnswer(sample.answer, fixtureRunner);
+          const score = await scoreCodeAnswer(sample.answer, runnerOf(c));
           const names = c.names ? scoreNames(sample.answer, c.names) : undefined;
           out = { ...row, sample, score, ...(names && { names, pass: passesCase(score, names) }), ...(c.timing && { box: inBox(sample.answer, c.timing) }) };
         } catch (error) {

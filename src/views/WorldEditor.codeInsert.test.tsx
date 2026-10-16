@@ -1,13 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { benchEditorWorld, openTraitFieldsTab, renderWorldEditorBench } from '@/test/worldEditorBench';
 import { onScriptInsert, scriptInsertTarget } from '@/lib/formaquestion/scriptInsert';
 import { LANDING_PULSE_CLASS } from '@/lib/landingPulse';
 import { ringOn } from '@/test/landing';
 import type { ScriptTiming, World } from '@/types';
 import { boxScripts, codeAt } from '@/test/scriptFixtures';
 
-/** The stat panel's side of the help window's Insert: the registration, the draft write, the confirm, and the landing. */
+/** The stat panel's and the trait panel's side of the help window's Insert: the registration, the draft write, the confirm, and the landing. */
 
 vi.mock('../services/WorldStorageService', () => ({
   default: {
@@ -37,6 +37,9 @@ vi.mock('@/components/prompt/CodeArea', () => ({
 const WORLD: World = benchEditorWorld({
   stats: [
     { id: 's1', name: 'Warmth', type: 'number', description: '', min: 0, max: 10, value: 4, regen: 0, scripts: boxScripts({ after: 'return 4;' }), descriptors: [] },
+  ],
+  traits: [
+    { id: 't1', name: 'Bold', statChanges: [], scripts: boxScripts({ after: 'return 4;' }) },
   ],
 } as Partial<World>);
 
@@ -146,6 +149,64 @@ describe('inserting help code into the open stat', () => {
   it('registers nothing in Simple mode, which has no Scripts tab', () => {
     renderWorldEditorBench(WORLD, 'simple');
     selectStat('Warmth');
+    expect(scriptInsertTarget()).toBeNull();
+  });
+});
+
+describe('inserting help code into the open trait', () => {
+  const bold = (ctx: () => { traits: World['traits'] }) => ctx().traits.find((trait) => trait.id === 't1')!;
+  const selectTrait = () => {
+    fireEvent.mouseDown(screen.getByRole('tab', { name: /Traits/ }));
+    fireEvent.click(screen.getByText('Bold'));
+  };
+  const addedTraitRow = (ctx: () => { traits: World['traits'] }) =>
+    document.querySelector<HTMLElement>(`[data-script-id="${bold(ctx).scripts!.at(-1)!.id}"]`);
+
+  it('registers the trait by name only while its Scripts tab is shown', () => {
+    renderWorldEditorBench(WORLD, 'advanced');
+    selectTrait();
+    expect(scriptInsertTarget()).toBeNull();
+    openTraitFieldsTab('Scripts');
+    expect(scriptInsertTarget()?.homeName).toBe('Bold');
+    openTraitFieldsTab('Details');
+    expect(scriptInsertTarget()).toBeNull();
+  });
+
+  it.each([
+    ['start', 'Code Bold · At Game Start'],
+    ['switch', 'Code Bold · When a Trait Switches'],
+    ['before', 'Code Bold · Before the AI'],
+  ] as const)('writes a %s script into the trait and lands on it', async (timing, label) => {
+    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+    selectTrait();
+    openTraitFieldsTab('Scripts');
+    insert(timing, 'return 5;');
+
+    expect(bold(ctx).scripts?.at(-1)).toMatchObject({ timing, code: 'return 5;' });
+    await waitFor(() => expect(scrolled).toContain(addedTraitRow(ctx)));
+    expect(document.activeElement).toBe(screen.getByRole('textbox', { name: label }));
+  });
+
+  it('adds a script beside the ones the trait holds, asks nothing, and reports it written', () => {
+    const events: string[] = [];
+    const stop = onScriptInsert((event) => events.push(event));
+    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+    selectTrait();
+    openTraitFieldsTab('Scripts');
+    insert('after', 'return 9;');
+
+    expect(bold(ctx).scripts?.map((script) => [script.timing, script.code])).toEqual([['after', 'return 4;'], ['after', 'return 9;']]);
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(events).toEqual(['written']);
+    stop();
+  });
+
+  it('unregisters when the trait panel closes', () => {
+    const { unmount } = renderWorldEditorBench(WORLD, 'advanced');
+    selectTrait();
+    openTraitFieldsTab('Scripts');
+    expect(scriptInsertTarget()).not.toBeNull();
+    unmount();
     expect(scriptInsertTarget()).toBeNull();
   });
 });

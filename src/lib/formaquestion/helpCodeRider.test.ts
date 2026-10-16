@@ -3,7 +3,7 @@ import type { SurfaceId } from '@/lib/docs/surfaceMap';
 import { SANDBOX_GLOBALS } from '@/lib/statCodeSurface';
 import { SCRIPT_TIMING_LABEL, SCRIPT_TIMINGS } from '@/lib/scripts';
 import {
-  CODE_RIDER_LANGUAGE, DEFAULT_CODE_RIDER, hasCodeWords, isCodeTurn, SANDBOX_GLOBAL_NAMES, SCRIPT_TAB, scriptHomeLine, withCodeRider,
+  CODE_RIDER_LANGUAGE, DEFAULT_CODE_RIDER, hasCodeWords, isCodeTurn, SANDBOX_GLOBAL_NAMES, SCRIPT_TAB, scriptHomeLine, TRAIT_SCRIPT_TAB, withCodeRider,
 } from './helpCodeRider';
 
 const tabs = (...ids: SurfaceId[]) => ({ screen: 'worldEditor' as SurfaceId, dialog: null, tabs: ids });
@@ -66,7 +66,15 @@ describe('a code turn', () => {
     expect(isCodeTurn('How do I make this go down?', tabs(SCRIPT_TAB))).toBe(true);
     expect(isCodeTurn('How do I make this go down?', tabs('worldEditorStat.details'))).toBe(false);
     expect(isCodeTurn('How do I make this go down?', null)).toBe(false);
+    expect(isCodeTurn('How do I make this go down?', tabs('worldEditorTrait.details'))).toBe(false);
     expect(isCodeTurn('Can I return self.value?', null)).toBe(true);
+  });
+});
+
+describe('a code turn on a trait', () => {
+  it('is any question asked from a trait’s Scripts tab', () => {
+    expect(isCodeTurn('How do I make this go down?', tabs(TRAIT_SCRIPT_TAB))).toBe(true);
+    expect(isCodeTurn('How do I make this go down?', tabs('worldEditor.traits', TRAIT_SCRIPT_TAB))).toBe(true);
   });
 });
 
@@ -134,13 +142,23 @@ describe('the home line', () => {
     expect(namedIn(line)).toEqual(['self', 'owner.stats']);
   });
 
+  it('on a trait Scripts tab says self is the trait, and names what the owner reads and when the script runs', () => {
+    const line = scriptHomeLine(tabs(TRAIT_SCRIPT_TAB));
+    expect(line).toMatch(/^- /);
+    expect(line).toMatch(/\btrait's script\b/);
+    expect(line).toMatch(/only while the trait is on/);
+    expect(namedIn(line)).toEqual(['self', 'owner.stats']);
+    expect(line).not.toBe(scriptHomeLine(tabs(SCRIPT_TAB)));
+  });
+
   it('is none off a script home', () => {
     expect(scriptHomeLine(tabs('worldEditorStat.details'))).toBeNull();
+    expect(scriptHomeLine(tabs('worldEditorTrait.details'))).toBeNull();
     expect(scriptHomeLine(null)).toBeNull();
     expect(scriptHomeLine(undefined)).toBeNull();
   });
 
   it('carries no example code', () => {
-    expect(scriptHomeLine(tabs(SCRIPT_TAB))).not.toMatch(/[=;(){}[\]]|\breturn\b|\bfunction\b/);
+    for (const tab of [SCRIPT_TAB, TRAIT_SCRIPT_TAB]) expect(scriptHomeLine(tabs(tab)), tab).not.toMatch(/[=;(){}[\]]|\breturn\b|\bfunction\b/);
   });
 });

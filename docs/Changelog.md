@@ -32,6 +32,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **When a Trait Switches scripts now keep your own trait switches and read the new cast after a persona change.** A trait you switch while a script waits on a prompt keeps your setting. After a persona change, `persona` and `entities` show the new cast; the left persona's traits switch off. A library persona's scripts wait for it to load.
     - **Help Insert writes scripts for all five timings.** A code block tagged `start`, `output` or `switch` adds a script to the open stat, and an untagged block offers all five timings in the Insert menu.
     - **The help window now writes At Game Start, During AI Output and When a Trait Switches scripts.** Naming one of these timings makes a code question. On a stat's Code tab, the answer reads the stat as `self` and its entity through `owner.stats`.
+    - **A trait's Scripts tab now gets script answers and Insert from the help window.** Any question asked there counts as a code question. Insert adds a script to the open trait. The code test runs on that trait.
   - **Image Generation:**
     - **ComfyUI's Model row shows the model a workflow loads itself.** A workflow without `%ckpt%` ignores the Model setting, so the row shows its own model file, grayed out.
     - **ComfyUI's File Name setting sets the folders and name for each saved image.** By default, images go in `formamorph/<world>/`, named for their entity, location or turn. A `/` in the pattern makes a folder. A custom workflow needs `%prefix%` in its save node.

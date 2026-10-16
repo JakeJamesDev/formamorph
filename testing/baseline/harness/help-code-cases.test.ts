@@ -2,14 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { hasCodeWords, isCodeTurn } from '@/lib/formaquestion/helpCodeRider';
 import { testScript } from '@/lib/formaquestion/helpCodeTestRun';
 import type { ScriptTiming } from '@/types';
-import { FIXTURE_STAT, FIXTURE_WORLD, fixtureRunner, HELP_CODE_CASES, testsClean, type HelpCodeCase } from './help-code-cases';
+import { FIXTURE_STAT, FIXTURE_WORLD, fixtureRunner, HELP_CODE_CASES, runnerOf, testsClean, type HelpCodeCase } from './help-code-cases';
 import { inBox, passesCase, scoreCodeAnswer, scoreNames } from './help-code-score';
 
 const answer = (code: string) => `Put this in **Before the AI**:\n\n\`\`\`javascript before\n${code}\n\`\`\``;
 const passes = async (id: string, code: string) => {
-  const names = HELP_CODE_CASES.find((c) => c.id === id)?.names;
-  if (!names) throw new Error(`no known case ${id}`);
-  return passesCase(await scoreCodeAnswer(answer(code), fixtureRunner), scoreNames(answer(code), names));
+  const c = HELP_CODE_CASES.find((x) => x.id === id);
+  if (!c?.names) throw new Error(`no known case ${id}`);
+  return passesCase(await scoreCodeAnswer(answer(code), runnerOf(c)), scoreNames(answer(code), c.names));
 };
 
 // Each known case's code as the guide writes it, and the code the source session gave for it.
@@ -33,6 +33,11 @@ const KNOWN: Record<string, { right: string; given: string }> = {
   'quotes-pin': {
     right: "if (clock.day > 30 && stats.Int.value > 30 && traits.Grumpy.enabled) {\n  placeholders.Quotes.pin('The wind is howling');\n}",
     given: "if (clock.days >= 30 && self.value > 30 && traits.Grumpy.enabled) {\n  placeholders.Quotes.pin('The wind is howling');\n} else {\n  placeholders.Quotes.unpin();\n}",
+  },
+  // A trait script's `self` is the trait, so a `self.value` read is no stat read.
+  'trait-heal-while-on': {
+    right: 'stats.Health.value += 5;',
+    given: 'self.value += 5;',
   },
 };
 
@@ -61,9 +66,16 @@ describe('the known cases', () => {
   });
 
   it('name the fixture stat as the focus of every case on the Code tab', () => {
-    const onTab = HELP_CODE_CASES.filter((c) => c.surface);
+    const onTab = HELP_CODE_CASES.filter((c) => c.surface && !c.trait);
     expect(onTab.length).toBeGreaterThan(0);
     expect(onTab.every((c) => c.focus?.kind === 'stat' && c.focus.name === FIXTURE_STAT.name)).toBe(true);
+  });
+
+  it('name the fixture trait as the focus of every case on its Scripts tab', () => {
+    const onTab = HELP_CODE_CASES.filter((c) => c.trait);
+    expect(onTab.length).toBeGreaterThan(0);
+    expect(onTab.every((c) => c.surface && c.focus?.kind === 'trait' && c.focus.name === c.trait)).toBe(true);
+    expect(onTab.every((c) => FIXTURE_WORLD.traits.some((t) => t.name === c.trait))).toBe(true);
   });
 
   it('pass two weeks read through elapsed hours, and still fail a clock field that is not a count of time', async () => {
@@ -81,7 +93,8 @@ describe('the known cases', () => {
 describe('the known cases under the code test', () => {
   const tested = async (id: string, code: string) => {
     const c = HELP_CODE_CASES.find((x) => x.id === id);
-    return testsClean(await testScript(code, 'before', { kind: 'stat', name: FIXTURE_STAT.name }, c?.world ?? FIXTURE_WORLD));
+    const owner = c?.trait ? { kind: 'trait' as const, name: c.trait } : { kind: 'stat' as const, name: FIXTURE_STAT.name };
+    return testsClean(await testScript(code, 'before', owner, c?.world ?? FIXTURE_WORLD));
   };
 
   it.each(Object.entries(KNOWN))('test %s clean on the code the guide writes', async (id, { right }) => {
@@ -99,6 +112,8 @@ const TIMED: Record<HelpCodeCase['id'], string> = {
   'start-worded': 'return self.max;',
   'output-swap': "narration.sentence = narration.sentence.replace('Damn', 'Darn');",
   'switch-brave': "if (trait.name === 'Brave' && trait.enabled) stats.Health.value += 10;",
+  'trait-start-stamina': 'stats.Stamina.value = 80;',
+  'trait-switch-off': 'if (!trait.enabled) stats.Courage.value -= 10;',
 };
 
 describe('the timing cases', () => {
@@ -112,9 +127,10 @@ describe('the timing cases', () => {
   });
 
   it.each(Object.entries(TIMED))('run %s on the code the guide writes, in its box', async (id, code) => {
-    const timing = timed.find((c) => c.id === id)!.timing!;
+    const c = timed.find((x) => x.id === id)!;
+    const timing = c.timing!;
     const answer = tagged(timing, code);
-    expect(await scoreCodeAnswer(answer, fixtureRunner)).toMatchObject({ runs: true, tagged: 1 });
+    expect(await scoreCodeAnswer(answer, runnerOf(c))).toMatchObject({ runs: true, tagged: 1 });
     expect(inBox(answer, timing)).toBe(true);
   });
 
