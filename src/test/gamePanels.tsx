@@ -10,11 +10,11 @@ import { GameplayProvider, useGameplay } from '@/contexts/GameplayContext';
 import { PlaceholderSessionProvider } from '@/contexts/PlaceholderSessionContext';
 import { setGameplayText } from '@/lib/gameplayTextStore';
 import { pageAssistantIndex } from '@/lib/turnHistory';
-import { readEditedNarration } from '@/lib/turnPipeline/narrationReading';
+import { useNarrationRescan } from '@/components/game/useNarrationRescan';
 import { LeftPanel, MiddlePanel, RightPanel } from '@/components/game/GamePanels';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { defaultSystemPrompt } from '@/components/game/GamePrompts';
-import type { AITurnResult, ChatMessage, EntityStatChanges, EntityStatValues, GameState, PlayerStat, SceneEntity, Stat, Trait, World } from '@/types';
+import type { AITurnResult, ChatMessage, Entity, EntityStatChanges, EntityStatValues, GameState, PlayerStat, SceneEntity, Stat, Trait, World } from '@/types';
 
 /**
  * Render helper for the three gameplay panels (`GamePanels.tsx`).
@@ -37,6 +37,8 @@ import type { AITurnResult, ChatMessage, EntityStatChanges, EntityStatValues, Ga
  */
 
 type MiddlePanelProps = ComponentProps<typeof MiddlePanel>;
+/** The rescan defaults to the view's real one, mounted by the harness, unless a case passes its own. */
+type HarnessMiddlePanelProps = Omit<MiddlePanelProps, 'onRescanNarration'> & Partial<Pick<MiddlePanelProps, 'onRescanNarration'>>;
 type LeftPanelProps = ComponentProps<typeof LeftPanel>;
 type RightPanelProps = ComponentProps<typeof RightPanel>;
 
@@ -275,7 +277,7 @@ function renderPanel<P extends object>(
 export function middlePanelProps(
   overrides: Partial<MiddlePanelProps> = {},
   options: PanelHarnessOptions = {},
-): MiddlePanelProps {
+): HarnessMiddlePanelProps {
   const turns = options.turns ?? [];
   const page = options.page ?? Math.max(1, turns.length);
   const job = overrides.sceneImageJob ?? null;
@@ -318,24 +320,30 @@ export function middlePanelProps(
     locationSuggestion: null,
     commandPreview: false,
     onDismissCommandPreview: vi.fn(),
-    // The view owns the exclusions; the harness reads against the staged world's entities alone.
-    onRescanNarration: (narration, priorNarration) => readEditedNarration({
-      narration, priorNarration, entities: options.world?.entities ?? [], exclusions: {},
-    }).participants,
     ...overrides,
   };
 }
+
+const NO_EXCLUSIONS = {};
+
+/** MiddlePanel with the view's narration rescan, read against the staged world's entities and no exclusions. */
+// eslint-disable-next-line react-refresh/only-export-components -- test-only module; nothing is hot-reloaded
+const RescanningMiddlePanel = ({ entities, onRescanNarration, ...props }: HarnessMiddlePanelProps & { entities: Entity[] }) => {
+  const rescan = useNarrationRescan({ entities, exclusions: NO_EXCLUSIONS });
+  return <MiddlePanel {...props} onRescanNarration={onRescanNarration ?? rescan} />;
+};
 
 /** Render the narration panel over a staged playthrough. */
 export function renderMiddlePanel(
   overrides: Partial<MiddlePanelProps> = {},
   options: PanelHarnessOptions = {},
-): PanelHarness<MiddlePanelProps> {
+): PanelHarness<HarnessMiddlePanelProps> {
+  const entities = options.world?.entities ?? [];
   return renderPanel(
     middlePanelProps(overrides, options),
     {},
     options,
-    (props) => <MiddlePanel {...props} />,
+    (props) => <RescanningMiddlePanel {...props} entities={entities} />,
   );
 }
 

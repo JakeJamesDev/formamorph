@@ -91,7 +91,7 @@ To re-roll only the choices, select **Re-generate Choices** beside them.
 2. Change the text in the **Edit Text** dialog. **Edit full screen** gives the editor the whole window.
 3. Select **Save**.
 
-Saving rewrites the turn's narration. The game reads the edited text for entities again. It also clears that turn's memory and diary entries, and your own edit to that memory. The story then writes them again from your version.
+Saving rewrites the turn's narration. The game reads the edited text again to find who is in the turn, and that page's **Entities** tab updates to match. A new name you write in becomes an entity. It also clears that turn's memory and diary entries, and your own edit to that memory. The story then writes them again from your version.
 
 ## How to Edit Your Action
 <!-- keywords: change, fix, typo, rewrite, my message, input, correct, what i typed, my post, sent by mistake, amend, own line, user turn, remove picture, after sending -->

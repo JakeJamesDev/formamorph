@@ -363,6 +363,49 @@ describe('MiddlePanel — editing a turn\'s narration', () => {
     // Only the latest page feeds the live reveal text, so editing history must not touch it.
     expect(getGameplayText()).toBe('Marrow follows the path.');
   });
+
+  describe('the scene list', () => {
+    const SEDGE_ROW = { name: 'Sedge', revealed: true };
+    const MARROW_ROW = { name: 'Marrow', revealed: true };
+    const DUNE = { entity: { id: 'd1', name: 'Captain Halric Dune' }, sourceTurnId: 't2' };
+    const SCENE_TURNS = [
+      { ...EDITED_TURNS[0], scene: [SEDGE_ROW] },
+      { ...EDITED_TURNS[1], scene: [MARROW_ROW, { name: DUNE.entity.name, revealed: true }] },
+    ];
+    const sceneSetup = (page?: number) => renderMiddlePanel({}, {
+      turns: SCENE_TURNS,
+      page,
+      world: WORLD as never,
+      seed: (gameplay) => {
+        gameplay.setVisibleEntities(SCENE_TURNS[1].scene);
+        gameplay.setDiscoveredEntities([DUNE]);
+      },
+    });
+
+    it("rebuilds the latest page's snapshot and the live list", async () => {
+      const view = sceneSetup();
+      await rewriteAs('Sedge waits alone; the path stays empty.');
+
+      expect(view.gameplay().gameStates[1].visibleEntities).toEqual([SEDGE_ROW]);
+      expect(view.gameplay().visibleEntities).toEqual([SEDGE_ROW]);
+    });
+
+    it("rebuilds an older page's snapshot and leaves the live list", async () => {
+      const view = sceneSetup(1);
+      await rewriteAs('Sedge and Marrow wait at the dock.');
+
+      expect(view.gameplay().gameStates[0].visibleEntities).toEqual([SEDGE_ROW, MARROW_ROW]);
+      expect(view.gameplay().visibleEntities).toEqual(SCENE_TURNS[1].scene);
+    });
+
+    it('keeps a discovered entity the edit removed, off the list', async () => {
+      const view = sceneSetup();
+      await rewriteAs('Marrow follows the path.');
+
+      expect(view.gameplay().visibleEntities).toEqual([MARROW_ROW]);
+      expect(view.gameplay().discoveredEntities).toEqual([DUNE]);
+    });
+  });
 });
 
 describe('RightPanel', () => {
