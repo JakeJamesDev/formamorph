@@ -22,7 +22,7 @@ import {
 type LocalSettingsValues = Pick<SettingsSource,
   | 'theme' | 'themeColor' | 'fontFamily' | 'fontTunings'
   | 'bgmEnabled' | 'locationBackground' | 'backgroundOverlay' | 'sceneImageAuto'
-  | 'narrationLayout' | 'language' | 'paragraphLimit' | 'markdownOutput'
+  | 'narrationLayout' | 'language' | 'paragraphLimit' | 'markdownOutput' | 'stripLinksAndImages'
   | 'narrationFont' | 'narrationScale' | 'narrationLineHeight' | 'quoteColor' | 'quoteItalic'
   | 'showReasoning' | 'showSilentRequests'
   | 'revealFade' | 'revealMove' | 'revealMoveDirection' | 'revealMoveDistance'
@@ -49,6 +49,7 @@ export const LOCAL_SETTINGS_DEFAULTS: LocalSettingsValues = {
   language: 'English',
   paragraphLimit: HIDDEN_SETTING_DEFAULTS.paragraphLimit,
   markdownOutput: HIDDEN_SETTING_DEFAULTS.markdownOutput,
+  stripLinksAndImages: HIDDEN_SETTING_DEFAULTS.stripLinksAndImages,
   narrationFont: DEFAULT_NARRATION_FONT,
   narrationScale: DEFAULT_NARRATION_SCALE,
   narrationLineHeight: DEFAULT_NARRATION_LINE_HEIGHT,
@@ -132,6 +133,7 @@ export function useLocalSettingsSource(report: (status: string) => void): Settin
       setLanguage: set('language'),
       setParagraphLimit: set('paragraphLimit'),
       setMarkdownOutput: set('markdownOutput'),
+      setStripLinksAndImages: set('stripLinksAndImages'),
       setNarrationFont: set('narrationFont'),
       setNarrationScale: set('narrationScale'),
       setNarrationLineHeight: set('narrationLineHeight'),

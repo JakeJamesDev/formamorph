@@ -39,7 +39,6 @@ Each location's background is on its **Media** tab. See [World Editor: Locations
 | **Custom Player Avatar** | **Advanced mode only**, and only with **3D Player Avatar** on. Your own `.vrm` or `.glb` replaces the bundled model. See [The World Avatar](Avatars#the-world-avatar). **Preview** opens it, and **Remove** goes back to the default. |
 | **Allowed Personas** | **Advanced mode only.** Decides which personas the player can pick: **Any** or **World Only**. See [Personas for Authors](Persona-Authoring#persona-rules). |
 | **Starts On** | **Advanced mode only.** Decides which persona a new player starts on. See [Personas for Authors](Persona-Authoring#persona-rules). |
-| **Strip Links And Images** | Sends past narration to the AI with each markdown link as its text and every image removed. It covers the last story, memory digests, diary entries and recall results. Your own text, such as descriptions and dictionary entries, stays as you wrote it. New worlds start with it on. A world saved before the option keeps it off. |
 | **Background Music** | The track the world plays. Select **Add Sound** to pick a file. **Remove sound** clears it. |
 
 ## The right column: what you write

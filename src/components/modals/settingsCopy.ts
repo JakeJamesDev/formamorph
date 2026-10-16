@@ -97,6 +97,11 @@ Pick a suggestion or type your own. A **style** works too, like *formal English*
     label: 'Markdown Formatting',
     description: 'Allows bold, lists, and tables in narration',
   },
+  stripLinksAndImages: {
+    label: 'Strip Links And Images',
+    description: 'Sends past narration to the AI without markdown links and images',
+    info: 'A link keeps its text and an image is removed. Covers the last story, memory summaries, diary entries and recall results. You still see them in the story, and your world’s own text is never changed. Turn off if your model should keep writing links it sees.',
+  },
 
   // ── Display · Accessibility ─────────────────────────────────────────────────
   narrationFont: {

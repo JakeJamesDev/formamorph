@@ -77,6 +77,8 @@ const savedNarration = () => (JSON.parse(history.filter((m) => m.role === 'assis
 
 describe('During AI Output in play', () => {
   it('shows the rewrite in the reveal and the saved turn, and sends it as the next request\'s last story', async () => {
+    // Strip Links And Images off, so the link marks the rewrite in the request.
+    localStorage.setItem('FORMAMORPH_stripLinksAndImages', 'false');
     renderGameViewer(world([outputScript]), { inGameplay: <Probe /> });
     const narrationBodies = stubEndpoint(NARRATION);
 
@@ -88,6 +90,18 @@ describe('During AI Output in play', () => {
     expect(narrationBodies).toHaveLength(2);
     expect(narrationBodies[0]).not.toContain(LINK);
     expect(narrationBodies[1]).toContain(LINK);
+  }, 30_000);
+
+  it('keeps the rewritten link in the saved turn but strips it from the next request by default', async () => {
+    renderGameViewer(world([outputScript]), { inGameplay: <Probe /> });
+    const narrationBodies = stubEndpoint(NARRATION);
+
+    await playTurn('I wait.');
+    expect(savedNarration()).toBe(LINKED);
+
+    await playTurn('I wait more.');
+    expect(narrationBodies[1]).toContain(NARRATION);
+    expect(narrationBodies[1]).not.toContain('](');
   }, 30_000);
 
   it('lands the sum of a script\'s per-sentence writes once, before the After scripts read it', async () => {

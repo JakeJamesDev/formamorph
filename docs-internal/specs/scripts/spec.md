@@ -31,7 +31,7 @@ Settled with the user on 2026-10-14. R rulings came from the design discussion; 
 | Q6 | A script's name is optional. A blank name reads as the owner and timing, such as "Health · After the AI" |
 | Q7 | The Tool script runtime merges into the one executor. Tool scripts keep their own surface: `args`, `world`, `scene`, `placeholders` |
 | Q8 | Prompt functions live on one `player` object: `player.tell`, `player.toast`, `player.confirm`, `player.ask`, `player.askText`. `player` is the human; `persona` stays the played entity. `prompt` is never a function name |
-| Q9 | A built-in world rule, **Strip Links And Images**, removes markdown links and images from narration history before any request. Links become their text; images are removed. No script category for this |
+| Q9 | A built-in setting, **Strip Links And Images** (Settings → Display → Narration, Advanced), removes markdown links and images from narration history before any request. Links become their text; images are removed. No script category for this. Moved from a world option to a setting on 2026-10-16: the need follows the model, not the world |
 | Q10 | The strip rule covers narration history only: last story, turn digests, diary entries, recall results. Authored text is never touched |
 | Q11 | At Game Start fires once per new playthrough, after setup, before the opening AI call. Never on load of a save |
 | Q12 | When a Trait Switches fires on in-game switches in both directions. A trait's own script sees its own switches with the trait as `self`. A stat or world script sees every switch through `trait`, the trait that switched, with `enabled` giving the direction. Setup picks do not fire it |
@@ -49,7 +49,7 @@ Settled with the user on 2026-10-14. R rulings came from the design discussion; 
 | Q24 | Test Code and the Test Bench show the real prompt lines in the editor |
 | Q25 | Clicking a row in the Scripts tab edits the script inline, in the same box the owner's editor shows. The box carries a jump-to-owner link |
 | Q27 | A During AI Output result is one sentence whatever it holds. The reveal and TTS release it as one unit; `index` never shifts |
-| Q28 | Strip Links And Images is on for a new world and off for an existing one, so an update changes no request |
+| Q28 | Strip Links And Images defaults to on (2026-10-16, replacing the per-world default) |
 | Q29 | A Blueprint stat's script runs once per owner in every timing, owner order, During AI Output included |
 | Q30 | Later writes win a field, as today; `order` decides who runs later. A world script ordered before a stat script loses the field to it; flip the orders and the world script wins (ticket 01 ruling) |
 | Q31 | A world script runs with `self` and `owner` as empty objects, matching the Surface table. A return value and a `self` write are ignored, never a non-number failure. Ticket 01 runs stat and world scripts; trait scripts arrive with ticket 02 and the Q3 gate (ticket 01 ruling) |
