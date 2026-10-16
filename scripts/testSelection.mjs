@@ -77,6 +77,7 @@ export const PATH_TRIGGERS = {
   'index.html': ['src/components/themeBootstrap.test.ts'],
   'src/defaultworlds/*.json': ['src/services/WorldStorageService.ts', 'src/lib/perTurnSettle.parity.test.ts', 'src/lib/bundledPlayerStats.test.ts', 'src/lib/bundledWorlds.test.ts', 'src/views/GameViewer.bundledSaves.test.tsx', 'src/lib/ownerTreeParity.test.ts'],
   'src/lib/__parity__/*.json': ['src/lib/ownerTreeParity.test.ts'],
+  'src/defaultworlds/drone.json': ['src/lib/droneWorld.test.ts'],
   'src/defaultworlds/emberwatch.json': ['src/lib/emberwatchWorld.test.ts', 'src/components/game/GamePrompts.globalBlocks.test.ts'],
   'src/defaultworlds/rampage.json': ['src/components/game/GamePrompts.globalBlocks.test.ts'],
   'src/defaultworlds/open-chat.json': ['src/lib/openChatWorld.test.ts', 'src/components/game/GamePrompts.globalBlocks.test.ts'],

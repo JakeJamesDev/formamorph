@@ -7,6 +7,8 @@ import { executeStatCode } from './statCodeExecutor';
 import type { Stat } from '@/types';
 import { codeAt } from '@/test/scriptFixtures';
 import { migrateStatBoxes } from './scripts';
+import { DEFAULT_WORLDS } from './defaultWorlds';
+import { preRefreshWorld } from '@/test/preRefreshWorlds';
 
 /** Every rewrite case, input to expected output. */
 const REWRITES: Array<[string, string, string]> = [
@@ -133,9 +135,10 @@ describe('migrateStatLookups', () => {
   });
 });
 
-describe('migrateStatLookups on the bundled worlds', () => {
+// The shipped code these formulas check is the bundled worlds' pre-refresh revision.
+describe('migrateStatLookups on the pre-refresh bundled worlds', () => {
   type BundledWorld = { stats?: Stat[]; entities?: { name: string; stats?: Stat[] }[] };
-  const worlds = import.meta.glob<{ default: BundledWorld }>('../defaultworlds/*.json', { eager: true });
+  const worlds: Record<string, BundledWorld> = Object.fromEntries(DEFAULT_WORLDS.map(({ id }) => [id, preRefreshWorld(id)]));
   /** A world's stat lists by owner: the world's own, then each entity's, read as the load reads them. The old flat
    *  list is their union. */
   const ownersOf = (world: BundledWorld) => [
@@ -165,13 +168,13 @@ return Math.round(stamina * 0.7 + 30 - sugar * 0.4);`],
   ];
 
   it('covers every bundled stat that carries code', () => {
-    const coded = Object.entries(worlds).flatMap(([path, world]) => ownersOf(world.default)
-      .flatMap((owner) => owner.stats).filter((s) => codeAt(s)?.trim()).map((s) => `${path.match(/(\w+)\.json$/)?.[1]}/${s.name}`));
+    const coded = Object.entries(worlds).flatMap(([id, world]) => ownersOf(world)
+      .flatMap((owner) => owner.stats).filter((s) => codeAt(s)?.trim()).map((s) => `${id}/${s.name}`));
     expect(coded.sort()).toEqual(BEFORE.map(([file, name]) => `${file}/${name}`).sort());
   });
 
   it.each(BEFORE)('%s %s: the migrated code returns what the array form returned', async (file, name, before) => {
-    const world = worlds[`../defaultworlds/${file}.json`].default;
+    const world = worlds[file];
     const owners = ownersOf(world);
     // The array form reads one flat list; the shipped code reads `stats`, `owner.stats` and `entities`.
     const flat = owners.flatMap((owner) => owner.stats);
