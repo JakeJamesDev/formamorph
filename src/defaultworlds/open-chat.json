@@ -1,5 +1,5 @@
 {
-  "version": "2.19.0",
+  "version": "3.3.0",
   "worldOverview": {
     "name": "Open Chat",
     "description": "A blank stage for talking with an entity from your library. Bring the entity; it brings the scene.",
@@ -27,7 +27,8 @@
         "text": "{{ph:9d062ad2-1032-4015-b1fa-d4d48c8f762a:world:d28a67c8-c1b7-47b2-b8d3-fea48208dca6}}",
         "kind": "action"
       }
-    ]
+    ],
+    "customPlayerVRM": null
   },
   "stats": [],
   "locations": [
@@ -228,7 +229,7 @@
       "playerDescription": "How long each reply runs",
       "parentId": null,
       "order": 0,
-      "exclusive": true
+      "maxPicks": 1
     },
     {
       "id": "b62384a5-60c1-42aa-b7f5-a04db1e9bd94",
@@ -236,7 +237,7 @@
       "playerDescription": "How the whole chat reads",
       "parentId": null,
       "order": 1,
-      "exclusive": true
+      "maxPicks": 1
     },
     {
       "id": "c0a3e596-0e3f-4124-b874-d527d0527532",
@@ -244,11 +245,18 @@
       "playerDescription": "Who drives the conversation",
       "parentId": null,
       "order": 2,
-      "exclusive": true
+      "maxPicks": 1
     }
   ],
   "statUpdates": [],
-  "dictionaries": [],
+  "dictionaries": [
+    {
+      "id": "a76e58c9-1e88-406a-ba38-2b4108bffa0f",
+      "name": "Default",
+      "enabled": true,
+      "entries": []
+    }
+  ],
   "placeholders": [
     {
       "id": "fdaef22b-547b-4183-b659-ce07a341cf20",

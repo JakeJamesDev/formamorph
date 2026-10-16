@@ -12,6 +12,13 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.3.0** (just released below)._
 
+### Major Changes
+
+#### ➕ Added
+
+- **👤 User-facing**
+  - **The eight bundled worlds now have new writing and show scripts, trait gates, trait modes, pick limits and weighted openings.** Each world keeps its title, hook and core cast. Each file is stored the way the World Editor saves it. A save of an older bundled world still loads and plays.
+
 ### Minor Changes
 
 #### ➕ Added

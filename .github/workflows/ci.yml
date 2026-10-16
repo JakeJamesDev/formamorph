@@ -35,4 +35,6 @@ jobs:
           node-version-file: '.nvmrc'
           cache: npm
       - run: npm ci
+      # The pre-refresh bundled worlds; the sha matches PRE_REFRESH_SHA in src/test/preRefreshWorlds.ts.
+      - run: git fetch --depth=1 origin ace2e02040d6e94e0367beae64e72bc0aa65bdef
       - run: npx vitest run --shard=${{ matrix.shard }}/4
