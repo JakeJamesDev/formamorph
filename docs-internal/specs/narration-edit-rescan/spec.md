@@ -1,6 +1,7 @@
 # Narration Edit Rescan
 
 Status: ready-for-agent
+Spec session: narration-edit-rescan — spec
 
 Source: a Supporter suggestion, "Rescan Entities" (Gameplay feedback, 2026-10-12).
 
