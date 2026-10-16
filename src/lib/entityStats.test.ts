@@ -8,6 +8,7 @@ import type { Entity, PlayerStat, Stat } from '@/types';
 import {
   backfillEntityStats, entityCodeTurns, entityStatOwners, seedEntityStats, withEntityRegen, withOwnerCodeResults,
 } from './entityStats';
+import { boxScripts } from '@/test/scriptFixtures';
 
 const stat = (over: Partial<Stat> = {}): Stat => ({
   id: 'trust', name: 'Trust', type: 'number', description: '', min: 0, max: 100, value: 20, regen: 1, descriptors: [], ...over,
@@ -116,7 +117,7 @@ describe('entityStatOwners', () => {
   });
 
   it('regens and runs the Custom Persona entity’s stats under a library persona, as its traits are the player’s there', async () => {
-    const custom: Entity = { id: 'cp', name: 'Wanderer', customPersona: true, stats: [stat({ id: 'grit', name: 'Grit', code: 'return self.value + 10;' })] };
+    const custom: Entity = { id: 'cp', name: 'Wanderer', customPersona: true, stats: [stat({ id: 'grit', name: 'Grit', scripts: boxScripts({ after: 'return self.value + 10;' }) })] };
     const all = seedEntityStats([bram, custom]);
     const owners = entityStatOwners(all, [bram, custom], { source: 'library', entityId: 'lib' }, noTraits);
     expect(owners.map((o) => o.id)).toEqual(['bram', 'cp']);
@@ -124,7 +125,7 @@ describe('entityStatOwners', () => {
     const turns = entityCodeTurns(owners, 2, (_, stats) => stats);
     const out = await runStatCodeTurn({
       stats: [], enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {}, owners: turns,
-      bearers: { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [], groups: [] } },
+      ownerTraits: { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [], groups: [] } },
       statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
     });
     expect(out.owners?.cp.stats[0].value).toBe(32);

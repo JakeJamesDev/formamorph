@@ -6,7 +6,7 @@ import { embedEntityCard } from './entityCard';
 import { saveCopyToLibrary } from './librarySources';
 import { adoptOwnedTraits, type TraitWorld } from './portableTraits';
 import { inPlayLibrary } from './ownedTraitsInPlay';
-import { resolveBearers } from './bearers';
+import { resolveOwners } from './owners';
 import EntityStorageService from '@/services/EntityStorageService';
 import type { Entity, Trait, TraitLink } from '@/types';
 
@@ -38,7 +38,7 @@ const paladinLink: TraitLink = { id: 'l-paladin', originalId: 'w-paladin', kind:
 /** A persona linking Class (Paladin on), Smite, and Paladin again, with a vow gated on Albus's Smite. */
 const mira: Entity = {
   id: 'mira', name: 'Mira', persona: true,
-  traits: [{ ...trait('t-vow', 'Vow'), requires: [{ all: [{ kind: 'trait', id: 'w-smite', bearer: { kind: 'entity', id: 'albus' } }] }] }],
+  traits: [{ ...trait('t-vow', 'Vow'), requires: [{ all: [{ kind: 'trait', id: 'w-smite', owner: { kind: 'entity', id: 'albus' } }] }] }],
   traitLinks: [classLink, smiteLink, paladinLink],
 };
 
@@ -99,18 +99,18 @@ describe.each(carriers)('links through %s', (_name, carry) => {
   it('bind at enter-world for a library persona, and resolve as the player', async () => {
     const persona = { ...await carry(mira), id: 'lib-mira' };
     const library = inPlayLibrary(elsewhere, persona);
-    const { bearers, playerBearerIds } = resolveBearers(elsewhere, { source: 'library', entityId: 'lib-mira' }, library);
-    const bearer = bearers.find((b) => b.id === 'lib-mira')!;
-    expect(playerBearerIds).toContain('lib-mira');
-    expect(bearer.traits.map((t) => [t.id, !!t.isDefault])).toEqual([['t-vow', false], ['n-paladin', true], ['n-smite', false]]);
-    expect(bearer.traits[1].placeholderPins).toEqual([{ placeholderId: 'garb', value: 'plate' }]);
-    expect(bearer.traits.map((t) => t.mode)).toEqual([undefined, 'hidden', undefined]);
+    const { owners, playedIds } = resolveOwners(elsewhere, { source: 'library', entityId: 'lib-mira' }, library);
+    const owner = owners.find((b) => b.id === 'lib-mira')!;
+    expect(playedIds).toContain('lib-mira');
+    expect(owner.traits.map((t) => [t.id, !!t.isDefault])).toEqual([['t-vow', false], ['n-paladin', true], ['n-smite', false]]);
+    expect(owner.traits[1].placeholderPins).toEqual([{ placeholderId: 'garb', value: 'plate' }]);
+    expect(owner.traits.map((t) => t.mode)).toEqual([undefined, 'hidden', undefined]);
   });
 
-  it('rebind a named-scope requirement by bearer name', async () => {
+  it('rebind a named-scope requirement by owner name', async () => {
     const adopted = adoptOwnedTraits(await carry(mira), elsewhere);
     expect(adopted.traits![0].requires).toEqual([
-      { all: [{ kind: 'trait', id: 'n-smite', name: 'Smite', bearer: { kind: 'entity', id: 'n-albus', name: 'Albus' } }] },
+      { all: [{ kind: 'trait', id: 'n-smite', name: 'Smite', owner: { kind: 'entity', id: 'n-albus', name: 'Albus' } }] },
     ]);
   });
 });

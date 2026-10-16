@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import {
-  COMMAND_PRIORITY_LOW, HISTORY_MERGE_TAG, SELECTION_CHANGE_COMMAND,
+  COMMAND_PRIORITY_LOW, SELECTION_CHANGE_COMMAND,
   UNDO_COMMAND, REDO_COMMAND, CAN_UNDO_COMMAND, CAN_REDO_COMMAND, FORMAT_TEXT_COMMAND,
   type NodeKey, type TextFormatType,
 } from 'lexical';
@@ -9,7 +9,7 @@ import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
 import { FieldHistoryPlugin } from './fieldHistory';
-import { useWorldValueSync } from './useWorldValueSync';
+import { ValueSyncPlugin, EditablePlugin } from './ValueSyncPlugin';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import {
@@ -31,6 +31,7 @@ import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
 import { type MarkdownAction, HIGHLIGHT_COLORS } from '@/lib/markdownToolbar';
 import { type PromptVariable } from '@/lib/promptVariables';
 import { resolvePromptSegments } from '@/lib/promptTemplate';
+import type { TokenValues } from '@/lib/promptValues';
 import {
   tintValue, emptyMarker, stripTintSentinels, tintMarkStyle, emptyMarkStyle,
   TINT_MARK_CLASS, EMPTY_MARK_CLASS, EMPTY_MARK_LABEL,
@@ -45,10 +46,10 @@ import { ValueEdgesPlugin } from './ValueEdgesPlugin';
 import { OpenValueLayoutPlugin } from './OpenValueLayoutPlugin';
 import { ActiveValuePlugin } from './ActiveValuePlugin';
 import {
-  ActiveValueContext, EditValueContext, OpenValuesContext,
+  ActiveValueContext, ChipReadsContext, EditValueContext, OpenValuesContext,
   type ActiveValueRelay, type EditValueRelay, type OpenValueView,
 } from './openValueContext';
-import { buildEditorState, createEchoLedger, serializeRoot, $applyMarkdownAction } from './promptFieldState';
+import { buildEditorState, $applyMarkdownAction } from './promptFieldState';
 import { ChipTypeaheadPlugin } from './ChipTypeahead';
 import { ChipInsertTargetPlugin, useChipInsertRegistration } from './ChipInsertTarget';
 import { ChipDragPlugin } from './ChipDrag';
@@ -297,63 +298,6 @@ function MarkdownToolbar({ parse, disabled }: { parse: ChipVocabulary['parse']; 
 
 // --- plugins ---
 
-/** Two-way sync between the controlled `value` string and the Lexical editor state. Our own edits go through
- *  the echo ledger, so the external-value effect never rebuilds (and jolts the caret) on an echo. */
-function ValueSyncPlugin({ value, onChange, parse, onExternalValue }: {
-  value: string;
-  onChange: (v: string) => void;
-  parse: ChipVocabulary['parse'];
-  /** Fired when `value` changes from outside the editor (a Reset or a template swap), not on a typed echo. */
-  onExternalValue?: () => void;
-}) {
-  const [editor] = useLexicalComposerContext();
-  const [echoes] = useState(() => createEchoLedger(value));
-  const onChangeRef = useRef(onChange);
-  onChangeRef.current = onChange;
-  const parseRef = useRef(parse);
-  parseRef.current = parse;
-  const onExternalRef = useRef(onExternalValue);
-  onExternalRef.current = onExternalValue;
-
-  // Whether a person has done anything since this field mounted. A value that arrives on its own — a world
-  // still loading, a draft resolving — is not an edit and must not become an undo step, or a freshly opened
-  // editor offers to "undo" back to the empty field it rendered for one tick. A generation, a Reset or a
-  // template swap all follow a click, which is what tells them apart: by shape they are the same change.
-  const userActed = useRef(false);
-  useEffect(() => {
-    const mark = () => { userActed.current = true; };
-    const doc = editor.getRootElement()?.ownerDocument ?? document;
-    doc.addEventListener('pointerdown', mark, { capture: true });
-    doc.addEventListener('keydown', mark, { capture: true });
-    return () => {
-      doc.removeEventListener('pointerdown', mark, { capture: true });
-      doc.removeEventListener('keydown', mark, { capture: true });
-    };
-  }, [editor]);
-
-  const { markWrite, restoreTags } = useWorldValueSync();
-  useEffect(() => {
-    if (echoes.receive(value)) return;
-    // The merge tag folds the rebuild into the current history entry instead of pushing one.
-    const tag = restoreTags(value) ?? (userActed.current ? undefined : HISTORY_MERGE_TAG);
-    editor.update(() => buildEditorState(value, parseRef.current), tag ? { tag } : undefined);
-    onExternalRef.current?.();
-  }, [value, editor, echoes, restoreTags]);
-
-  useEffect(
-    () => editor.registerUpdateListener(({ editorState, tags }) => {
-      editorState.read(() => {
-        const next = serializeRoot();
-        if (!echoes.send(next)) return;
-        markWrite(tags);
-        onChangeRef.current(next);
-      });
-    }),
-    [editor, echoes, markWrite],
-  );
-  return null;
-}
-
 /**
  * Keeps the preview on the line being written. Every selection change (and the edit that follows it) reports
  * the caret, and the field scrolls the other pane to match — so with both panes on screen the resolved text
@@ -371,13 +315,6 @@ function CaretFollowPlugin({ onCaret }: { onCaret: () => void }) {
       editor.registerCommand(SELECTION_CHANGE_COMMAND, () => { report(); return false; }, COMMAND_PRIORITY_LOW),
     );
   }, [editor, onCaret]);
-  return null;
-}
-
-/** Reflects `readOnly` into the editor's editability (initialConfig only applies it at mount). */
-function EditablePlugin({ readOnly }: { readOnly: boolean }) {
-  const [editor] = useLexicalComposerContext();
-  useEffect(() => editor.setEditable(!readOnly), [editor, readOnly]);
   return null;
 }
 
@@ -434,7 +371,7 @@ const EDITOR_CLASS =
  *  chip and the Insert key) so it's obvious which text came from which variable. */
 function PreviewPane({ value, previewValues, vocab, scrollRef, onScroll }: {
   value: string;
-  previewValues: Record<string, string>;
+  previewValues: TokenValues;
   vocab: ChipVocabulary;
   scrollRef?: React.Ref<HTMLDivElement>;
   onScroll?: React.UIEventHandler<HTMLDivElement>;
@@ -475,7 +412,7 @@ function PreviewPane({ value, previewValues, vocab, scrollRef, onScroll }: {
  *  (see previewTint). Author text and values are scrubbed first, so neither can forge a pairing. */
 function MarkdownPreviewPane({ value, previewValues, vocab, scrollRef, onScroll }: {
   value: string;
-  previewValues?: Record<string, string>;
+  previewValues?: TokenValues;
   vocab: ChipVocabulary;
   scrollRef?: React.Ref<HTMLDivElement>;
   onScroll?: React.UIEventHandler<HTMLDivElement>;
@@ -503,14 +440,16 @@ function MarkdownPreviewPane({ value, previewValues, vocab, scrollRef, onScroll 
  * With `markdown`, it also gains a formatting toolbar and its Preview renders markdown instead of tinting
  * chips — for author-facing prose fields (world description, readme) that the player reads as markdown.
  */
-const PromptField = ({ value, onChange, variables = [], vocabulary, previewValues, openValues, onReroll, insertOwnerId, markdown = false, resizable = false, placeholder, className, readOnly = false, ariaLabel, sampleData = false, onRequestEdit, readOnlyReason, onRequestFullscreen, fullscreen: fullscreenProp, insertTrigger, label, info, labelAside, hint, tourAnchor, historyField }: {
+const PromptField = ({ value, onChange, variables = [], vocabulary, previewValues, chipReads, openValues, onReroll, insertOwnerId, markdown = false, resizable = false, placeholder, className, readOnly = false, ariaLabel, sampleData = false, onRequestEdit, readOnlyReason, onRequestFullscreen, fullscreen: fullscreenProp, insertTrigger, label, info, labelAside, hint, tourAnchor, historyField }: {
   value: string;
   onChange: (v: string) => void;
   /** Prompt-variable palette (used when no explicit `vocabulary` is given — the default prompt family). */
   variables?: PromptVariable[];
   /** Override the token family (e.g. world placeholders). Defaults to the prompt vocabulary from `variables`. */
   vocabulary?: ChipVocabulary;
-  previewValues?: Record<string, string>;
+  previewValues?: TokenValues;
+  /** What a chip's Chip Options reads, for a field that has no Preview to take `previewValues` from. */
+  chipReads?: TokenValues;
   /** Token → the value each chip opens on. Given with `previewValues`, the field offers a Values tab that
    *  shows every chip open on its value. */
   openValues?: Record<string, OpenValueView>;
@@ -986,6 +925,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   return (
     <LexicalComposer initialConfig={initialConfig}>
       <ChipVocabularyContext.Provider value={vocab}>
+      <ChipReadsContext.Provider value={chipReads ?? previewValues}>
       <OpenValuesContext.Provider value={openValues ?? NO_OPEN_VALUES}>
       <EditValueContext.Provider value={editValue}>
       <ActiveValueContext.Provider value={activeValue}>
@@ -1033,6 +973,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
       </ActiveValueContext.Provider>
       </EditValueContext.Provider>
       </OpenValuesContext.Provider>
+      </ChipReadsContext.Provider>
       </ChipVocabularyContext.Provider>
     </LexicalComposer>
   );

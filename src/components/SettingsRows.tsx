@@ -2,7 +2,7 @@
 // All build on the same two-column `grid grid-cols-[minmax(0,1fr)_minmax(0,3fr)]` (a fixed 1:3 with a 0
 // floor so a wide control can't squeeze the label column; stacked to one column below `sm`) with a
 // right-aligned label on wider screens.
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 import { FlaskConical, Info, Sparkles } from 'lucide-react';
 import { Streamdown } from 'streamdown';
 import remarkGfm from 'remark-gfm';
@@ -17,6 +17,19 @@ import type { TargetAttribute } from '@/lib/surface/surfaceTargets';
 import { useWheelScroll } from '@/lib/useWheelScroll';
 import { cn } from '@/lib/utils';
 import 'streamdown/styles.css';
+
+/** A note under a control. Bold and code spans in its Markdown render; nothing else does. */
+export function SettingsNote({ text }: { text: string }) {
+  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/);
+  return (
+    <p className="text-helper text-muted-foreground [&_strong]:font-medium [&_strong]:text-foreground">
+      {parts.map((part, i) => {
+        if (i % 2 === 0) return part;
+        return part.startsWith('**') ? <strong key={i}>{part.slice(2, -2)}</strong> : <code key={i}>{part.slice(1, -1)}</code>;
+      })}
+    </p>
+  );
+}
 
 /** An `ⓘ` button that reveals its full explanation in a popover, so a setting row can show a terse lead
  *  inline and keep the long detail on demand. `children` is a **Markdown string** — write hints with a
@@ -57,11 +70,13 @@ export function HintInfo({ children }: { children: string }) {
 /** A titled block of setting rows: a small-caps header with a hairline rule, so a long tab reads as a few
  *  named groups instead of one undifferentiated list. Sections space themselves via the tab's outer grid. */
 export function Section({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
+  const titleId = useId();
+  // The title names the group, so two sections can hold rows with the same label.
   return (
-    <section className="grid gap-4">
+    <section role="group" aria-labelledby={titleId} className="grid gap-4">
       <div className="space-y-1">
         <div className="flex items-baseline gap-3">
-          <h3 className="text-meta font-semibold uppercase tracking-wider text-muted-foreground">{title}</h3>
+          <h3 id={titleId} className="text-meta font-semibold uppercase tracking-wider text-muted-foreground">{title}</h3>
           <div className="h-hairline flex-1 bg-border" />
         </div>
         {hint && <Hint>{hint}</Hint>}

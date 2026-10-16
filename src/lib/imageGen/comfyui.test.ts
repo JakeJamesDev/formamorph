@@ -9,9 +9,11 @@ import {
   fetchComfyMeta,
   comfyRejection,
   comfyuiProvider,
+  workflowOwnModels,
 } from './comfyui';
 import type { ImageGenParams } from './types';
 import { DetailedError } from '../errorDetails';
+import { ImageConnectionError } from './http';
 
 const params: ImageGenParams = {
   prompt: 'a knight, "shiny" armor\nby a river',
@@ -49,6 +51,13 @@ describe('buildComfyGraph', () => {
   it('maps the A1111 default sampler name to a ComfyUI name', () => {
     const graph = buildComfyGraph(DEFAULT_COMFY_WORKFLOW, { ...params, sampler: 'Euler a' }) as Record<string, { inputs: Record<string, unknown> }>;
     expect(graph['3'].inputs.sampler_name).toBe('euler_ancestral');
+  });
+
+  it('fills %prefix% with the file prefix, and a plain name without one', () => {
+    const named = buildComfyGraph(DEFAULT_COMFY_WORKFLOW, { ...params, filePrefix: 'formamorph/W/Suya' }) as Record<string, { inputs: Record<string, unknown> }>;
+    expect(named['9'].inputs.filename_prefix).toBe('formamorph/W/Suya');
+    const plain = buildComfyGraph(DEFAULT_COMFY_WORKFLOW, params) as Record<string, { inputs: Record<string, unknown> }>;
+    expect(plain['9'].inputs.filename_prefix).toBe('Formamorph');
   });
 
   it('throws a clear error on invalid JSON', () => {
@@ -234,5 +243,75 @@ describe('comfyuiProvider', () => {
     const error = await comfyuiProvider(params, { endpointUrl: 'http://127.0.0.1:8188', apiToken: '' }).catch((e: unknown) => e);
     expect(error).not.toBeInstanceOf(DetailedError);
     expect((error as Error).message).toBe('ComfyUI rejected the workflow: HTTP 502');
+  });
+
+  it('uses the first checkpoint the server lists when Model is empty', async () => {
+    const posted: unknown[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes('/object_info/CheckpointLoaderSimple')) {
+        return { ok: true, json: async () => ({ CheckpointLoaderSimple: { input: { required: { ckpt_name: [['a.safetensors', 'b.safetensors']] } } } }) } as Response;
+      }
+      if (url.includes('/object_info/')) return { ok: true, json: async () => ({}) } as Response;
+      posted.push(JSON.parse(String(init?.body)));
+      return { ok: false, status: 400, json: async () => ({ error: 'stop' }) } as Response;
+    }));
+    await comfyuiProvider({ ...params, model: '' }, { endpointUrl: 'http://127.0.0.1:8188', apiToken: '' }).catch(() => {});
+    expect((posted[0] as { prompt: Record<string, { inputs: { ckpt_name?: string } }> }).prompt['4'].inputs.ckpt_name).toBe('a.safetensors');
+  });
+
+  it('passes the abort signal to the checkpoint lookup', async () => {
+    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => ({ ok: true, json: async () => ({}) } as Response));
+    vi.stubGlobal('fetch', fetchMock);
+    const signal = new AbortController().signal;
+    await comfyuiProvider({ ...params, model: '' }, { endpointUrl: 'http://127.0.0.1:8188', apiToken: '', signal }).catch(() => {});
+    expect(fetchMock.mock.calls[0][0]).toContain('/object_info/CheckpointLoaderSimple');
+    expect(fetchMock.mock.calls[0][1]?.signal).toBe(signal);
+  });
+
+  it('reports a server it cannot reach during the checkpoint lookup as a connection error', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('Failed to fetch'); }));
+    const error = await comfyuiProvider({ ...params, model: '' }, { endpointUrl: 'http://127.0.0.1:8188', apiToken: '' }).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ImageConnectionError);
+  });
+
+  it('keeps the HTTP status when the checkpoint lookup fails', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 500, json: async () => ({}) } as Response)));
+    const error = await comfyuiProvider({ ...params, model: '' }, { endpointUrl: 'http://127.0.0.1:8188', apiToken: '' }).catch((e: unknown) => e);
+    expect((error as Error).message).toBe('ComfyUI could not list its checkpoints: HTTP 500');
+  });
+
+  it('says so when Model is empty and the server has no checkpoints', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({}) } as Response)));
+    const error = await comfyuiProvider({ ...params, model: '' }, { endpointUrl: 'http://127.0.0.1:8188', apiToken: '' }).catch((e: unknown) => e);
+    expect((error as Error).message).toMatch(/no checkpoints installed/);
+  });
+});
+
+describe('workflowOwnModels', () => {
+  const graph = (nodes: Record<string, unknown>) => JSON.stringify(nodes);
+
+  it('names the files the checkpoint and diffusion-model loaders load', () => {
+    expect(workflowOwnModels(graph({
+      1: { class_type: 'UNETLoader', inputs: { unet_name: 'z-image-turbo.safetensors', weight_dtype: 'default' } },
+      2: { class_type: 'CheckpointLoaderSimple', inputs: { ckpt_name: 'sdxl.safetensors' } },
+      3: { class_type: 'KSampler', inputs: { steps: '%steps%' } },
+    }))).toEqual(['z-image-turbo.safetensors', 'sdxl.safetensors']);
+  });
+
+  it('skips other loaders that name a model file', () => {
+    expect(workflowOwnModels(graph({
+      1: { class_type: 'UNETLoader', inputs: { unet_name: 'flux.safetensors' } },
+      2: { class_type: 'UpscaleModelLoader', inputs: { model_name: '4x-UltraSharp.pth' } },
+    }))).toEqual(['flux.safetensors']);
+  });
+
+  it('parses a workflow with bare number tokens', () => {
+    const template = '{ "1": { "class_type": "UNETLoader", "inputs": { "unet_name": "u.safetensors" } }, "2": { "class_type": "EmptyLatentImage", "inputs": { "width": %width% } } }';
+    expect(workflowOwnModels(template)).toEqual(['u.safetensors']);
+  });
+
+  it('is empty for a workflow that takes the Model setting, or does not parse', () => {
+    expect(workflowOwnModels(DEFAULT_COMFY_WORKFLOW)).toEqual([]);
+    expect(workflowOwnModels('{ not json')).toEqual([]);
   });
 });

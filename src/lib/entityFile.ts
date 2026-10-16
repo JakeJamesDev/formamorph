@@ -1,12 +1,12 @@
 import { randomUUID } from "@/lib/uuid";
 import type {
-  BlueprintOverride, Entity, Opening, Placeholder, PlaceholderPin, LibraryDetails, RequirementBearer, Stat, StatChange, StatGroup,
+  Base64Data, BlueprintOverride, Entity, GalleryImage, Opening, Placeholder, PlaceholderPin, LibraryDetails, RequirementOwner, Stat, StatChange, StatComparison, StatGroup,
   StatLink, Trait, TraitGroup,
   TraitLink, TraitLinkOverrides, TraitRequirement, TraitRequirementRow, TraitStatToggle,
 } from '@/types';
 import { readLibraryDetails } from './contentAuthor';
 import { remintOpenings } from './openings';
-import { APP_VERSION, WORLD_FILE_KIND, SAVE_FILE_KIND, migrateCarriedPlaceholders, migrateEntityStatFields } from './version';
+import { APP_VERSION, WORLD_FILE_KIND, SAVE_FILE_KIND, conditionWithOwnerKey, globalRowTarget, migrateCarriedPlaceholders, migrateEntityStatFields, migrateEntityStatScripts } from './version';
 import { DICTIONARY_FILE_KIND } from './dictionaryFile';
 import type { WorldAssociation } from './compatibleWorlds';
 import { readComponentFileLinks, type ComponentFileLinks, type ComponentFileSource } from './componentFileLinks';
@@ -17,11 +17,11 @@ import type { Dictionary } from '@/types';
 import { embedEntityCard, readEntityCard } from './entityCard';
 import { readTavernCard, readTavernJson } from './tavernCard';
 import { IMAGE_CAPS, bytesToDataUrl, dataUrlMime, measureDataUrl, optimizeImageDataUrl, optimizeToWebpDataUrl } from './imageOptim';
-import { entityImages, primaryImage } from './entityImages';
+import { primaryImage } from './entityImages';
 import { fetchAsDataUrl, isRemoteImage } from './imageSource';
 import { morphCardImage } from './morphArtCanvas';
 import { portableOwnedStats, type OwnedStatFields } from './portableStats';
-import { portableOwnedTraits, type TraitWorld } from './portableTraits';
+import { portableImages, portableOwnedTraits, type TraitWorld } from './portableTraits';
 import { carriedBlueprints } from './blueprintTravel';
 import { notFlag } from './requirementRows';
 
@@ -45,9 +45,12 @@ export interface EntityCardData {
   /** Listing tags. Distinct from `imageTags`, which is the booru string for the image generator. */
   tags?: string[];
   imageTags?: string;
-  /** Gallery slots past the first, as data-URLs. The primary is the card's own pixels, so only these need
-   *  carrying in the text — which is also why a multi-picture card is a much bigger file. */
-  extraImages?: string[];
+  /** Gallery slots past the first. The primary is the card's own pixels, so only these need carrying in the
+   *  text — which is also why a multi-picture card is a much bigger file. A card written before Visibility
+   *  rules holds data-URL strings here. */
+  extraImages?: GalleryImage[];
+  /** The primary's Visibility rule, which has no other home since the primary travels as the card's pixels. */
+  primaryImageRequires?: TraitRequirementRow[];
   /** The entity's own placeholders, as they are (see lib/placeholders). A card with no
    *  `sharedPlaceholders` carries everything its chips use here, and reads it all as owned. */
   placeholders?: Placeholder[];
@@ -94,7 +97,7 @@ export function buildEntityCardData(
   // The blueprints' values, and the copies' reworded ones, reach shared placeholders too.
   const reworded = owned.flatMap((p) => Object.values(p.valueOverrides ?? {}).flatMap((o) => (o.text ? [o.text.value] : [])));
   const shared = portablePlaceholders(sharedPlaceholdersUsed([...chipTexts(entity), ...reworded], [...owned, ...blueprints], available));
-  const extras = entityImages(entity).slice(1);
+  const [primary, ...extras] = portableImages(entity, world);
   return {
     formamorphKind: ENTITY_FILE_KIND,
     version: APP_VERSION,
@@ -110,6 +113,7 @@ export function buildEntityCardData(
     ...(entity.tags?.length ? { tags: entity.tags } : {}),
     ...(entity.imageTags ? { imageTags: entity.imageTags } : {}),
     ...(extras.length ? { extraImages: extras } : {}),
+    ...(primary?.requires?.length ? { primaryImageRequires: primary.requires } : {}),
     ...(owned.length ? { placeholders: owned } : {}),
     ...(shared.length ? { sharedPlaceholders: shared } : {}),
     ...(blueprints.length ? { blueprints } : {}),
@@ -125,10 +129,10 @@ export function buildEntityCardData(
 
 /**
  * Parse an embedded card payload into a NEW entity (fresh id, so importing the same card twice never collides).
- * The gallery comes back holding only the carried extras — the importer unshifts the card's own pixels onto the
- * front as the primary. Rejects world/save/dictionary payloads with a targeted message.
+ * `pixels`, the card's own picture, leads the gallery as the primary with the card's primary rule; without it
+ * the gallery holds only the carried extras. Rejects world/save/dictionary payloads with a targeted message.
  */
-export function parseEntityCardData(raw: unknown): Entity {
+export function parseEntityCardData(raw: unknown, pixels?: Base64Data): Entity {
   if (!raw || typeof raw !== 'object') throw new Error('Not a valid character card.');
   const obj = raw as Record<string, unknown>;
   const kind = obj.formamorphKind;
@@ -142,9 +146,9 @@ export function parseEntityCardData(raw: unknown): Entity {
   const tags = Array.isArray(obj.tags)
     ? (obj.tags as unknown[]).filter((t): t is string => typeof t === 'string' && !!t.trim())
     : [];
-  const extras = Array.isArray(obj.extraImages)
-    ? (obj.extraImages as unknown[]).filter((u): u is string => typeof u === 'string' && !!u)
-    : [];
+  const extras = Array.isArray(obj.extraImages) ? (obj.extraImages as unknown[]).flatMap(cardImage) : [];
+  const primaryRows = Array.isArray(obj.primaryImageRequires) ? cardRows(obj.primaryImageRequires) : [];
+  const images = pixels ? [{ data: pixels, ...(primaryRows.length ? { requires: primaryRows } : {}) }, ...extras] : extras;
   const openings = Array.isArray(obj.openings) ? (obj.openings as unknown[]).flatMap(cardOpening) : [];
   const weights = obj.openingWeights && typeof obj.openingWeights === 'object' && !Array.isArray(obj.openingWeights)
     ? Object.fromEntries(Object.entries(obj.openingWeights as Record<string, unknown>)
@@ -163,7 +167,7 @@ export function parseEntityCardData(raw: unknown): Entity {
     ...(typeof obj.aiSummary === 'string' && obj.aiSummary ? { aiSummary: obj.aiSummary } : {}),
     ...(tags.length ? { tags } : {}),
     ...(typeof obj.imageTags === 'string' && obj.imageTags ? { imageTags: obj.imageTags } : {}),
-    ...(extras.length ? { images: extras } : {}),
+    ...(images.length ? { images } : {}),
     // Carried placeholders ride along: the owned ones stay the entity's when it is added to a world, the shared
     // ones merge into the world's list (see `adoptEntityPlaceholders`).
     ...(Array.isArray(obj.placeholders) ? { placeholders: migrateCarriedPlaceholders(obj.placeholders) } : {}),
@@ -182,18 +186,36 @@ const hasIdAndName = (v: unknown): v is Record<string, unknown> & { id: string; 
 
 const nameOf = (raw: Record<string, unknown>) => (typeof raw.name === 'string' && raw.name ? { name: raw.name } : {});
 
-function cardBearer(raw: unknown): { bearer?: RequirementBearer } {
+function cardOwner(raw: unknown): { owner?: RequirementOwner } {
   if (!isRecord(raw)) return {};
-  if (raw.kind === 'you') return { bearer: { kind: 'you' } };
-  return raw.kind === 'entity' && typeof raw.id === 'string' ? { bearer: { kind: 'entity', id: raw.id, ...nameOf(raw) } } : {};
+  if (raw.kind === 'you') return { owner: { kind: 'you' } };
+  return raw.kind === 'entity' && typeof raw.id === 'string' ? { owner: { kind: 'entity', id: raw.id, ...nameOf(raw) } } : {};
 }
 
-function cardRequirement(raw: unknown): TraitRequirement[] {
+// A record, so a new operator fails the compile here until the card reads it.
+const STAT_COMPARISONS: Record<StatComparison, true> = { '>': true, '<': true, '>=': true, '<=': true, '=': true, '≠': true };
+const isStatComparison = (v: unknown): v is StatComparison => typeof v === 'string' && Object.hasOwn(STAT_COMPARISONS, v);
+
+function cardRequirement(condition: unknown): TraitRequirement[] {
+  const raw = conditionWithOwnerKey(condition);
   if (!isRecord(raw) || typeof raw.id !== 'string') return [];
   const not = notFlag(raw.not);
   if (raw.kind === 'playingAs') return [{ kind: raw.kind, id: raw.id, ...nameOf(raw), ...not }];
+  if (raw.kind === 'stat') {
+    const { operator, value, unit } = raw;
+    if (!isStatComparison(operator) || typeof value !== 'number' || !Number.isFinite(value) || (unit !== 'raw' && unit !== 'percent')) return [];
+    return [{ kind: 'stat', id: raw.id, ...nameOf(raw), ...cardOwner(raw.owner), operator, value, unit, ...not }];
+  }
   if (raw.kind !== 'trait' && raw.kind !== 'group') return [];
-  return [{ kind: raw.kind, id: raw.id, ...nameOf(raw), ...cardBearer(raw.bearer), ...not }];
+  return [{ kind: raw.kind, id: raw.id, ...nameOf(raw), ...cardOwner(raw.owner), ...not }];
+}
+
+/** One carried gallery slot: a data-URL string, or an image whose rule reads as the card's rows do. */
+function cardImage(raw: unknown): GalleryImage[] {
+  if (typeof raw === 'string') return raw ? [{ data: raw }] : [];
+  if (!isRecord(raw) || typeof raw.data !== 'string' || !raw.data) return [];
+  const requires = Array.isArray(raw.requires) ? cardRows(raw.requires) : [];
+  return [{ data: raw.data, ...(requires.length ? { requires } : {}) }];
 }
 
 /** The card's Requirement Rows. A bare Condition reads as a row of its own; a row left with no Condition is
@@ -220,17 +242,24 @@ const cardPins = (raw: unknown): PlaceholderPin[] => (Array.isArray(raw) ? raw :
     ? [{ placeholderId: p.placeholderId, value: p.value, ...(typeof p.valueId === 'string' ? { valueId: p.valueId } : {}) }]
     : []));
 
+/** A row's target as the card stores it; a legacy `player` reads as `global`. */
+const rowTarget = (row: Record<string, unknown>): { target?: 'global' } => {
+  const target = globalRowTarget(row.target);
+  return target ? { target } : {};
+};
+
 const cardStatChanges = (raw: unknown): StatChange[] => (Array.isArray(raw) ? raw : []).flatMap((c): StatChange[] =>
   (isRecord(c) && typeof c.statId === 'string' && typeof c.value === 'number'
     ? [{
       statId: c.statId, value: c.value,
       ...(c.type === 'min' || c.type === 'max' || c.type === 'starting' || c.type === 'regen' ? { type: c.type } : {}),
       ...(typeof c.interval === 'string' ? { interval: c.interval } : {}),
+      ...rowTarget(c),
     }]
     : []));
 
 const cardStatToggles = (raw: unknown): TraitStatToggle[] => (Array.isArray(raw) ? raw : []).flatMap((t): TraitStatToggle[] =>
-  (isRecord(t) && typeof t.statId === 'string' && typeof t.enabled === 'boolean' ? [{ statId: t.statId, enabled: t.enabled }] : []));
+  (isRecord(t) && typeof t.statId === 'string' && typeof t.enabled === 'boolean' ? [{ statId: t.statId, enabled: t.enabled, ...rowTarget(t) }] : []));
 
 /** One override as the card stores it, both sides read through `read`; undefined when either side is not one. */
 function cardOverride<V>(raw: unknown, read: (v: unknown) => V | undefined): BlueprintOverride<V> | undefined {
@@ -324,7 +353,7 @@ function cardOwnedTraits(obj: Record<string, unknown>): Pick<Entity, 'traits' | 
  *  as an entity with none. */
 function cardOwnedStats(obj: Record<string, unknown>): OwnedStatFields {
   const { stats, statGroups, statLinks } = obj;
-  const { stats: s, statGroups: g, statLinks: l } = migrateEntityStatFields({ stats, statGroups, statLinks }) as OwnedStatFields;
+  const { stats: s, statGroups: g, statLinks: l } = migrateEntityStatScripts(migrateEntityStatFields({ stats, statGroups, statLinks })) as OwnedStatFields;
   return { ...(s ? { stats: s } : {}), ...(g ? { statGroups: g } : {}), ...(l ? { statLinks: l } : {}) };
 }
 
@@ -378,9 +407,7 @@ export async function importEntityCard(file: File): Promise<Entity> {
   } catch {
     throw new Error('This character card is corrupted.');
   }
-  const entity = parseEntityCardData(raw);
-  entity.images = [bytesToDataUrl(bytes, 'image/webp'), ...(entity.images ?? [])];
-  return entity;
+  return parseEntityCardData(raw, bytesToDataUrl(bytes, 'image/webp'));
 }
 
 /**
@@ -405,15 +432,14 @@ export async function importCharacterFile(
     } catch {
       throw new Error('This character card is corrupted.');
     }
-    const entity = parseEntityCardData(raw);
-    entity.images = [bytesToDataUrl(bytes, 'image/webp'), ...(entity.images ?? [])];
+    const entity = parseEntityCardData(raw, bytesToDataUrl(bytes, 'image/webp'));
     return { entity, book: null, links: readComponentFileLinks(raw), libraryDetails: readLibraryDetails(raw) };
   }
 
   const tavern = readTavernCard(bytes);
   if (tavern) {
     // The PNG's pixels are the portrait; re-encode to WebP to match how entity images are stored.
-    tavern.entity.images = [await optimizeImageDataUrl(bytesToDataUrl(bytes, 'image/png'), IMAGE_CAPS.entity)];
+    tavern.entity.images = [{ data: await optimizeImageDataUrl(bytesToDataUrl(bytes, 'image/png'), IMAGE_CAPS.entity) }];
     // A foreign card carries no relationships of ours.
     return { ...tavern, links: {} };
   }

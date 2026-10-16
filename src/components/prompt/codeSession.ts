@@ -11,7 +11,7 @@
 import { Compartment, EditorState, RangeSetBuilder, StateEffect, type Extension } from '@codemirror/state';
 import {
   EditorView, keymap, lineNumbers, placeholder as placeholderExt, highlightSpecialChars,
-  tooltips, Decoration, ViewPlugin,
+  tooltips, Decoration, ViewPlugin, hoverTooltip, closeHoverTooltips,
   type DecorationSet, type ViewUpdate,
 } from '@codemirror/view';
 import {
@@ -24,14 +24,23 @@ import {
 } from '@codemirror/language';
 import { javascript } from '@codemirror/lang-javascript';
 import {
-  acceptCompletion, autocompletion,
+  acceptCompletion, autocompletion, closeCompletion, completionStatus,
   type CompletionContext, type CompletionResult as CMCompletionResult,
 } from '@codemirror/autocomplete';
 import { forceLinting, linter, lintGutter, type Diagnostic } from '@codemirror/lint';
 import { codeHighlightStyle, SLOT_CLASS } from '@/lib/codeHighlight';
 import { findSlotRanges } from '@/lib/statCodeTemplates';
-import { codeCompletions, codeDiagnostics, type CodeEntityNames, type CodePlaceholders } from '@/lib/statCodeAnalysis';
+import {
+  codeCompletions, codeDiagnostics, type CodeDiagnostic, type CodeEntityNames, type CodeOwnerKind, type CodePlaceholders, type SurfaceAnalysisOptions,
+} from '@/lib/statCodeAnalysis';
+import { codeCard, completionCard } from '@/lib/codeCards';
+import { renderCodeCard, renderInfoLine } from '@/components/prompt/codeCardView';
+import { cardTooltipView, createCaretCards } from '@/components/prompt/codeCaretCard';
+import type { CodeCardNavigation } from '@/lib/codeCardNavigation';
+import { quickFixes, quickFixGutter } from '@/components/prompt/codeQuickFix';
+import { TOOLTIP_DELAY_MS } from '@/components/ui/tooltip';
 import type { CodeSurface } from '@/lib/codeSurface';
+import type { CodeWorldLookup } from '@/lib/codeWorldLookup';
 import type { InsertSelection } from '@/lib/codeSnippets';
 
 /** Marks `{{slot}}` spans in the editor with the same class the read-only previews use. */
@@ -55,6 +64,15 @@ function build(view: EditorView): DecorationSet {
   for (const { from, to } of findSlotRanges(view.state.doc.toString())) builder.add(from, to, slotMark);
   return builder.finish();
 }
+
+/** A code card's box: the hover card, and the pinned card and its uses list. The Design System reference draws the same one. */
+export const CARD_BOX = {
+  border: '1px solid hsl(var(--border))',
+  borderRadius: '0.375rem',
+  backgroundColor: 'hsl(var(--popover))',
+  color: 'hsl(var(--popover-foreground))',
+  boxShadow: '0 4px 12px hsl(var(--foreground) / 0.12)',
+};
 
 const editorTheme = EditorView.theme({
   // Grown by its host rather than sized in percentages: the host is a flex column with a floor, and a
@@ -125,8 +143,9 @@ const editorTheme = EditorView.theme({
     borderRadius: '0.375rem',
     backgroundColor: 'hsl(var(--popover))',
     color: 'hsl(var(--muted-foreground))',
-    padding: '0.375rem 0.5rem',
-    maxWidth: '18rem',
+    // The card and the plain info line pad themselves, so one pane fits both. The width is the card's.
+    padding: 0,
+    maxWidth: '22.5rem',
   },
   '.cm-diagnostic': {
     backgroundColor: 'hsl(var(--popover))',
@@ -144,6 +163,30 @@ const editorTheme = EditorView.theme({
     backgroundColor: 'hsl(var(--popover))',
   },
   '.cm-gutter-lint .cm-gutterElement': { padding: '0 0.2rem' },
+  '.cm-diagnosticAction': {
+    display: 'block',
+    margin: '0.25rem 0 0.125rem',
+    padding: '0.125rem 0.5rem',
+    border: '1px solid hsl(var(--border))',
+    borderRadius: '0.25rem',
+    backgroundColor: 'hsl(var(--accent))',
+    color: 'hsl(var(--accent-foreground))',
+    fontSize: '0.75rem',
+  },
+  '.cm-gutter-fixes .cm-gutterElement': { padding: '0 0.1rem', color: 'hsl(var(--warning))', cursor: 'pointer' },
+  '.cm-fixLightbulb': { display: 'inline-flex', height: '100%', alignItems: 'center' },
+  '.cm-tooltip[data-code-fixes]': {
+    border: '1px solid hsl(var(--border))',
+    borderRadius: '0.375rem',
+    backgroundColor: 'hsl(var(--popover))',
+    boxShadow: '0 4px 12px hsl(var(--foreground) / 0.12)',
+  },
+  '.cm-tooltip.cm-tooltip-hover': CARD_BOX,
+  // A pinned card and its uses list are two boxes in one tooltip, so the tooltip itself draws nothing.
+  '.cm-tooltip[data-code-card-pinned]': { border: 'none', backgroundColor: 'transparent' },
+  '.code-card-box': CARD_BOX,
+  // Scrolls natively, as the completion list does.
+  '[data-code-uses] ul': { maxHeight: '14rem', overflowY: 'auto' },
 });
 
 /** Tooltips hang off `<body>` so nothing clips them, which puts them under the `pointer-events: none` a
@@ -214,12 +257,14 @@ export interface CodeSession {
   redo: () => void;
   canUndo: () => boolean;
   canRedo: () => boolean;
-  /** Show the margin of lint marks beside the line numbers. Full screen only — it costs a column. */
+  /** Show the margins of lint marks and fix lightbulbs beside the line numbers. Full screen only: they cost columns. */
   setLintGutter: (show: boolean) => void;
   /** What the code can reach. Re-lints when it changes. */
   setSurface: (surface: CodeSurface) => void;
   /** The world's stat names, for completions and name checks. Re-lints when the names change. */
   setStatNames: (names: readonly string[] | undefined) => void;
+  /** Whose code this is, and the stat names `owner.stats` keys. Re-lints when either changes. */
+  setOwner: (owner: CodeOwnerKind | undefined, statNames: readonly string[] | undefined) => void;
   /** The name of the stat the code belongs to. Re-lints when it changes. */
   setSelfName: (name: string | undefined) => void;
   /** The world's placeholders, for completions and name checks. Re-lints when the list changes. */
@@ -227,6 +272,8 @@ export interface CodeSession {
   /** The world's trait names, for completions and name checks. Re-lints when the list changes. */
   setTraits: (traits: readonly string[] | undefined) => void;
   setEntities: (entities: readonly CodeEntityNames[] | undefined) => void;
+  /** Move the caret to the start of the code on `line` (from 1), center it, and focus the editor. */
+  revealLine: (line: number) => void;
   focus: () => void;
   destroy: () => void;
 }
@@ -239,9 +286,13 @@ export interface CodeSessionOptions {
   slots?: boolean;
   /** What the code can reach: completions and diagnostics read this. */
   surface: CodeSurface;
-  /** The world's stat names. Absent, stat names are neither offered nor checked. */
+  /** The world's stat names, which `stats` keys. Absent, stat names are neither offered nor checked. */
   statNames?: readonly string[];
-  /** The name of the stat the code belongs to, so a write through `stats` to it counts as its own. */
+  /** Whose code this is: an entity's own stat, or a Blueprint stat. Absent in a global stat's box. */
+  owner?: CodeOwnerKind;
+  /** The stat names `owner.stats` keys. Absent, they are neither offered nor checked. */
+  ownerStatNames?: readonly string[];
+  /** The name of the stat the code belongs to, so a write to it counts as its own. */
   selfName?: string;
   /** The world's placeholders. Absent, placeholder names are neither offered nor checked. */
   placeholders?: CodePlaceholders;
@@ -249,9 +300,32 @@ export interface CodeSessionOptions {
   traits?: readonly string[];
   /** The world's entities and their trait names. Absent, entity and persona trait names are neither offered nor checked. */
   entities?: readonly CodeEntityNames[];
+  /** The box's world lookup, read when a card opens. Absent, cards show no World Details. */
+  lookup?: () => CodeWorldLookup | undefined;
+  /** Where a card's Open and Find All Uses go, read when a card opens. Absent, cards show neither. */
+  navigation?: () => CodeCardNavigation | undefined;
   onChange: (value: string) => void;
   /** Any update at all, so the toolbar can re-read what undo and redo have to offer. */
   onUpdate?: () => void;
+}
+
+/** A diagnostic as the linter shows it, its fixes as the error card's buttons. */
+function lintDiagnostic({ fixes, missing: _missing, ...diagnostic }: CodeDiagnostic, code: string): Diagnostic {
+  if (!fixes?.length) return diagnostic;
+  const flagged = code.slice(diagnostic.from, diagnostic.to);
+  return {
+    ...diagnostic,
+    actions: fixes.map((fix) => ({
+      name: fix.label,
+      apply: (view, from, to) => {
+        // An edit inside the flagged text since the lint leaves the fix's span stale.
+        if (view.state.sliceDoc(from, to) !== flagged) return;
+        
+        const shift = from - diagnostic.from;
+        view.dispatch({ changes: { from: fix.from + shift, to: fix.to + shift, insert: fix.insert }, userEvent: 'input.complete' });
+      },
+    })),
+  };
 }
 
 const sameNames = (a?: readonly string[], b?: readonly string[]) =>
@@ -267,35 +341,78 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
   // every render that could rebuild an extension around it.
   let surface: CodeSurface = options.surface;
   let statNames: readonly string[] | undefined = options.statNames;
+  let owner: CodeOwnerKind | undefined = options.owner;
+  let ownerStatNames: readonly string[] | undefined = options.ownerStatNames;
   let selfName: string | undefined = options.selfName;
   let placeholders: CodePlaceholders | undefined = options.placeholders;
   let traits: readonly string[] | undefined = options.traits;
   let entities: readonly CodeEntityNames[] | undefined = options.entities;
 
+  /** What the analysis reads the code against, as it stands now. */
+  const analysisOptions = (): SurfaceAnalysisOptions => ({
+    surface, slots: options.slots, statNames, owner, ownerStatNames, selfName, placeholders, traits, entities, lookup: options.lookup?.(),
+  });
+
   /** The one completion source. Everything it offers comes from the analysis module; nothing here knows
    *  what the sandbox exposes. */
   const complete = (context: CompletionContext): CMCompletionResult | null => {
     const doc = context.state.doc.toString();
-    const result = codeCompletions(doc, context.pos, {
-      surface, slots: options.slots, statNames, selfName, placeholders, traits, entities,
-    });
+    const analysis = analysisOptions();
+    const result = codeCompletions(doc, context.pos, analysis);
     if (!result || result.options.length === 0) return null;
     // Explicit means the author asked for the list; otherwise an empty word is every option at once.
     if (!context.explicit && result.from === result.to && !context.matchBefore(/["'.]|\{\{/)) return null;
     // No `validFor`: which list applies depends on where the caret is, and a stat name may carry a space,
     // so re-asking on every keystroke is both cheaper to reason about and always right.
-    return { from: result.from, to: result.to, options: result.options };
+    return {
+      from: result.from,
+      to: result.to,
+      options: result.options.map(({ info, ...option }) => ({
+        ...option,
+        // CodeMirror calls this for the selected option only, so a list of fifty builds one card.
+        info: () => {
+          const card = completionCard(doc, result, option.label, analysis);
+          if (!card) return info ? renderInfoLine(info) : null;
+          // The pane keeps the one link it can act on; the Guide opening closes the list.
+          const { view } = context;
+          const pane = renderCodeCard(card, { guide: () => { if (view) closeCompletion(view); } });
+          // A press keeps the editor's focus, so a browser that never focuses a link doesn't close the list first.
+          pane.addEventListener('mousedown', (event) => event.preventDefault());
+          return pane;
+        },
+      })),
+    };
   };
 
   const codeLinter = linter(
-    (view): Diagnostic[] => codeDiagnostics(view.state.doc.toString(), {
-      surface, slots: options.slots, statNames, selfName, placeholders, traits, entities,
-    }),
+    (view): Diagnostic[] => {
+      const code = view.state.doc.toString();
+      return codeDiagnostics(code, analysisOptions()).map((diagnostic) => lintDiagnostic(diagnostic, code));
+    },
     {
       delay: 400,
       needsRefresh: (update) => update.transactions.some((tr) => tr.effects.some((effect) => effect.is(worldListsChanged))),
     },
   );
+  /** The cards the caret opens: the keyboard chord and a tap. */
+  const caretCards = createCaretCards(
+    (state, pos) => codeCard(state.doc.toString(), pos, analysisOptions()),
+    () => ({ navigation: options.navigation?.(), uses: options.lookup?.()?.uses }),
+  );
+  /** The card for the name under the pointer. */
+  const cards = hoverTooltip((view, pos) => {
+    // A tap's own hover would open a second card beside the one the caret pause opens.
+    if (!caretCards.hoverAllowed()) return null;
+    const card = codeCard(view.state.doc.toString(), pos, analysisOptions());
+    if (!card || caretCards.closeUnlessOpenAt(view, card.from)) return null;
+    return {
+      pos: card.from,
+      end: card.to,
+      above: false,
+      create: () => cardTooltipView(card, () => view.dispatch({ effects: closeHoverTooltips }), caretCards.actions(view, card)),
+    };
+  }, { hoverTime: TOOLTIP_DELAY_MS, hideOnChange: true });
+
   /** Set by Escape, so the next Tab moves focus instead of indenting — otherwise a keyboard-only user is
    *  trapped in the field. Spent by that Tab, and dropped by anything else typed in between. */
   let tabEscapes = false;
@@ -318,6 +435,20 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
     },
   ]);
 
+  /** A dialog or full screen takes Escape on the document in the capture phase, ahead of the completion
+   *  keymap, so an open list takes it on the window first and stops it there. */
+  const completionEscape = ViewPlugin.define((target) => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || completionStatus(target.state) !== 'active') return;
+      if (!(event.target instanceof Node) || !target.contentDOM.contains(event.target)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      closeCompletion(target);
+    };
+    window.addEventListener('keydown', onKeyDown, true);
+    return { destroy: () => window.removeEventListener('keydown', onKeyDown, true) };
+  });
+
   const view = new EditorView({
     state: EditorState.create({
       doc: options.doc,
@@ -339,6 +470,9 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
           icons: false,
         }),
         codeLinter,
+        cards,
+        caretCards.extension,
+        quickFixes,
         // A completion list or a diagnostic is taller than the field it belongs to, so it is positioned
         // against the window instead — otherwise the box, the panel it scrolls in, or the dialog around
         // it cuts the popup off wherever the caret happens to be low.
@@ -348,6 +482,7 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
         gutter.of([]),
         lineNumbers(),
         tabKeys,
+        completionEscape,
         // `autocompletion()` installs `completionKeymap` at the top precedence itself, which is what puts
         // the popup ahead of the Escape binding above.
         keymap.of([...defaultKeymap, ...historyKeymap]),
@@ -405,6 +540,12 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
       statNames = next;
       relint();
     },
+    setOwner(nextOwner, nextNames) {
+      if (nextOwner === owner && sameNames(nextNames, ownerStatNames)) return;
+      owner = nextOwner;
+      ownerStatNames = nextNames;
+      relint();
+    },
     setSelfName(next) {
       if (next === selfName) return;
       selfName = next;
@@ -431,7 +572,14 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
       relint();
     },
     setLintGutter(show) {
-      view.dispatch({ effects: gutter.reconfigure(show ? lintGutter() : []) });
+      view.dispatch({ effects: gutter.reconfigure(show ? [lintGutter(), quickFixGutter] : []) });
+    },
+    revealLine(line) {
+      const { doc } = view.state;
+      const at = doc.line(Math.min(Math.max(1, line), doc.lines));
+      const anchor = at.from + (/^\s*/.exec(at.text)?.[0].length ?? 0);
+      view.dispatch({ selection: { anchor }, effects: EditorView.scrollIntoView(anchor, { y: 'center' }) });
+      view.focus();
     },
     focus() { view.focus(); },
     destroy() { view.destroy(); },

@@ -2,7 +2,7 @@ import { HintInfo } from '@/components/SettingsRows';
 import { SETTINGS_COPY, REASONING_NOTES } from '@/components/modals/settingsCopy';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Slider } from '@/components/ui/slider';
-import { MIN_REASONING_BUDGET_PCT, MAX_REASONING_BUDGET_PCT, budgetReadout, type PromptReasoningSetting } from '@/lib/reasoningEffort';
+import { MIN_REASONING_BUDGET_PCT, MAX_REASONING_BUDGET_PCT, budgetReadout, roomReadout, type PromptReasoningSetting } from '@/lib/reasoningEffort';
 import { MAX_OUTPUT_MIN, MAX_OUTPUT_MAX, MAX_OUTPUT_STEP } from '@/lib/promptMaxOutput';
 import { ReasoningSwitch, type ReasoningStrength } from './ReasoningSwitch';
 import type { PromptReasoningFieldProps, ReasoningFieldCopy } from './promptReasoningField';
@@ -49,18 +49,17 @@ export function MaxOutputControl({ custom, value, shipped, disabled, onCustomCha
  * switch governs both. Global follows Settings → Output → Native Reasoning, switch included. The built-in
  * engine ignores the effort field, so it shows the slider alone (`level` false).
  */
-export function PromptReasoningField({ setting, onChange, options, budget, level, lockedOn, disabled, copy = SETTINGS_COPY.promptNativeReasoning, id = 'promptReasoning', switchLabel }: PromptReasoningFieldProps) {
+export function PromptReasoningField({ setting, onChange, options, budget, room, level, lockedOn, disabled, copy = SETTINGS_COPY.promptNativeReasoning, id = 'promptReasoning', switchLabel }: PromptReasoningFieldProps) {
   const inert = disabled || !(setting.enabled || lockedOn);
-  const sliderInert = inert || budget?.disabled === true;
   const levelStrength: ReasoningStrength<PromptReasoningSetting['level']> = {
     kind: 'level', value: setting.level, options, onChange: (next) => onChange({ ...setting, level: next }),
   };
   const budgetStrength: ReasoningStrength<PromptReasoningSetting['level']> | null = budget
-    ? { kind: 'budget', value: budget.value, tokens: budget.tokens, onChange: budget.set, disabled: budget.disabled }
+    ? { kind: 'budget', value: budget.value, tokens: budget.tokens, onChange: budget.set }
     : null;
   // The field is named for what it actually offers: the budget where that is the only strength, and the
   // switch's own name where the target takes a level, or takes neither and the switch stands alone.
-  const lead: ReasoningFieldCopy | null = copy && (level || !budgetStrength ? copy : SETTINGS_COPY.reasoningBudget);
+  const lead: ReasoningFieldCopy | null = copy && (level || !budget ? copy : SETTINGS_COPY.reasoningBudget);
   return (
     <div className="flex flex-col gap-1">
       {lead && (
@@ -80,9 +79,10 @@ export function PromptReasoningField({ setting, onChange, options, budget, level
         disabled={disabled}
         lockedOn={lockedOn}
         strength={level ? levelStrength : budgetStrength}
+        room={room ? roomReadout(room) : undefined}
       />
       {lockedOn && <p className="text-helper text-muted-foreground">{REASONING_NOTES.always}</p>}
-      {level && budgetStrength && (
+      {level && budget && (
         <div className="mt-2 flex flex-col gap-1">
           <div className="flex items-center gap-1.5">
             <span className="text-label">{SETTINGS_COPY.reasoningBudget.label}</span>
@@ -92,20 +92,19 @@ export function PromptReasoningField({ setting, onChange, options, budget, level
           {/* Same switch as above: the row only carries the slider, flush with every other track. */}
           <div className="flex items-center gap-3 pl-2.5">
             <Slider
-              className={`flex-grow${sliderInert ? ' opacity-60' : ''}`}
-              value={[budgetStrength.value]}
+              className={`flex-grow${inert ? ' opacity-60' : ''}`}
+              value={[budget.value]}
               min={MIN_REASONING_BUDGET_PCT}
               max={MAX_REASONING_BUDGET_PCT}
               step={5}
-              disabled={sliderInert}
-              onValueChange={(v) => budgetStrength.onChange(v[0])}
+              disabled={inert}
+              onValueChange={(v) => budget.set(v[0])}
               aria-label={SETTINGS_COPY.reasoningBudget.label}
             />
-            <span className="w-[17ch] shrink-0 whitespace-nowrap text-right text-label tabular-nums">{budgetReadout(budgetStrength.value, budgetStrength.tokens)}</span>
+            <span className="w-[17ch] shrink-0 whitespace-nowrap text-right text-label tabular-nums">{budgetReadout(budget.value, budget.tokens)}</span>
           </div>
         </div>
       )}
-      {budget?.disabled && <p className="text-helper text-muted-foreground">{REASONING_NOTES.noBudgetBase}</p>}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { chipValues } from '@/lib/chipValues/chipValues';
 import type { ChipScene } from '@/lib/chipValues/chipScene';
 import { sampleChipScene, sampleDictionaries } from '@/lib/chipValues/sampleScene';
 import { enabledBooks } from '@/lib/dictionaryUtils';
+import type { ValueLookup } from '@/lib/promptValues';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import { parseTurns } from '@/lib/turnBanding';
 import { diaryHoldsMemory, parseTurnContent, serializeTurnContent } from '@/lib/turnDigest';
@@ -95,6 +96,8 @@ export interface ToolMemorySource {
   readonly verbatimFloor: number;
   /** No meaning match means recall matches by words only. */
   readonly meaning?: ToolMeaning | null;
+  /** The world's Strip Links And Images rule: recall returns digests and diary entries as plain text. */
+  readonly stripMedia?: boolean;
 }
 
 /** What every Tool call in one turn reads. Built once, frozen, and never read back from React or storage. */
@@ -102,7 +105,7 @@ export interface ToolSnapshot {
   readonly world: ToolWorld;
   readonly scene: ToolScene;
   /** Each scene chip's value, as a prompt renders it. */
-  readonly chips: Readonly<Record<string, string>>;
+  readonly chips: ValueLookup;
   /** Placeholder resolution for chips a Template body carries. */
   readonly resolve: (text: string) => string;
   /** The world's shared placeholders, name to resolved text. */
@@ -111,6 +114,8 @@ export interface ToolSnapshot {
   readonly memories: readonly ToolMemory[];
   /** Recall's meaning match, holding only the memory list's cached vectors. */
   readonly meaning: ToolMeaning | null;
+  /** Whether recall strips links and images from what it returns (see `ToolMemorySource.stripMedia`). */
+  readonly stripMedia: boolean;
 }
 
 function deepFreeze<T>(value: T): T {
@@ -193,10 +198,11 @@ export function buildToolSnapshot(scene: ChipScene, dictionaries: readonly Dicti
   };
 
   return Object.freeze({
-    world: deepFreeze(world), scene: deepFreeze(sceneData), chips: Object.freeze(chipValues(scene)), resolve,
+    world: deepFreeze(world), scene: deepFreeze(sceneData), chips: chipValues(scene), resolve,
     placeholders: Object.freeze(placeholderValues(scene.placeholders, resolve)),
     memories: deepFreeze(memories),
     meaning: memory?.meaning ? toolMeaning(memory.meaning, memories) : null,
+    stripMedia: memory?.stripMedia === true,
   });
 }
 

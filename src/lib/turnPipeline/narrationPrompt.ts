@@ -15,6 +15,7 @@ import { markdownDefinitions, markdownGuidance } from "../../components/game/Gam
 import { lengthGuidance, type ParagraphLimit } from "../outputLength";
 import { NONE_PLACEHOLDER } from "../promptFallbacks";
 import { languageDirective } from "../languages";
+import { layerValues, readValue, type TokenValues } from "../promptValues";
 
 /** The per-entry activation report plus the verbatim scanned strings a hit landed in. */
 export interface DictionaryDebug {
@@ -26,7 +27,7 @@ export interface NarrationPromptInput {
   /** The active narration prompt, chips unresolved. */
   template: string;
   /** The shared context values this turn's location produced. */
-  ctx: Record<string, string>;
+  ctx: TokenValues;
   action: string;
   history: ChatMessage[];
   dictionary: DictionaryEntry[];
@@ -75,7 +76,7 @@ export function buildNarrationPrompt(input: NarrationPromptInput): NarrationProm
     ctx,
     action,
     // Notes reach the model only through their chip, so a prompt without one has no notes to scan.
-    notes: chips.has("<NOTES>") ? ctx["<NOTES>"] ?? "" : "",
+    notes: chips.has("<NOTES>") ? readValue(ctx, "<NOTES>") ?? "" : "",
     history,
   });
   const activationReport = explainActivation(dictionary, dictCorpus.scene, { history: dictCorpus.history });
@@ -97,15 +98,14 @@ export function buildNarrationPrompt(input: NarrationPromptInput): NarrationProm
   const afterEntries = hasAfterChip ? activatedEntries.filter((e) => !beforeEntries.includes(e)) : [];
 
   // Placements own headers; trimming keeps empty trailing chips from leaving blank lines.
-  const rendered = trimEndTiled(renderPromptTemplateRuns(template, {
-    ...ctx,
+  const rendered = trimEndTiled(renderPromptTemplateRuns(template, layerValues(ctx, {
     "<LENGTH GUIDANCE>": lengthGuidance(paragraphLimit, maxTokens),
     "<MARKDOWN GUIDANCE>": markdownGuidance(markdownOutput),
     "<MARKDOWN GUIDANCE|definitions>": markdownDefinitions(markdownOutput),
     "<DICTIONARY>": resolvePH(buildDictionaryContext(afterEntries, false)) || NONE_PLACEHOLDER,
     "<DICTIONARY|before>": resolvePH(buildDictionaryContext(beforeEntries, false)) || NONE_PLACEHOLDER,
     "<LANGUAGE>": languageDirective("narration", language),
-  }, { source: "system-template" }));
+  }), { source: "system-template" }));
   const prompt = rendered.content;
 
   // AI-context capture. Every scanned source is a string the prompt genuinely contains, so the viewer can

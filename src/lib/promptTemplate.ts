@@ -2,6 +2,9 @@ import { TOKEN_PATTERN, splitToken, type TokenParts } from './promptVariables';
 import { NONE_PLACEHOLDER } from './promptFallbacks';
 import { promptHeader } from './promptHeader';
 import { decodePlaceholderToken, parsePlaceholderText } from './placeholders';
+import { PLAYER_NAME_HEADER_KEY, withPlayerName } from './builtinPlaceholders';
+import { readMarked, readValue, type TokenValues } from './promptValues';
+import { mark, runs, sliceRuns, textOf, type MarkedRun } from './markedText';
 import { tilePieces, type AnatomyPiece, type AnatomySource, type ContextLabel, type TiledRuns } from './requestAnatomy';
 
 /** A prompt template parsed into an ordered run of literal text and variable tokens. */
@@ -70,14 +73,14 @@ function isBlankValue(value: string): boolean {
 }
 
 /** Resolve all placements, retaining tokens without a value; values use keys without Header or affixes. */
-export function renderPromptTemplate(template: string, values: Record<string, string>): string {
+export function renderPromptTemplate(template: string, values: TokenValues): string {
   return resolvePromptSegments(parseTemplateWithPlaceholders(template), values).map(part => part.text).join('');
 }
 
 /** Resolve every placement for every rendering surface; each chip's text is self-contained. */
-export function resolvePromptSegments(segments: PromptSegment[], values: Record<string, string>) {
+export function resolvePromptSegments(segments: PromptSegment[], values: TokenValues) {
   return segments.map(segment => {
-    const resolved = segment.type === 'variable' ? resolveToken(segment.token, values) ?? values[segment.token] : undefined;
+    const resolved = segment.type === 'variable' ? resolveToken(segment.token, values) ?? readValue(values, segment.token) : undefined;
     return { segment, resolved: resolved !== undefined,
       text: segment.type === 'text' ? segment.value : resolved ?? segment.token };
   });
@@ -93,7 +96,7 @@ export function resolvePromptSegments(segments: PromptSegment[], values: Record<
  */
 export function renderPromptTemplateRuns(
   template: string,
-  values: Record<string, string>,
+  values: TokenValues,
   labels: TemplateLabels,
 ): TiledRuns {
   return tilePieces(promptTemplatePieces(template, values, labels));
@@ -111,7 +114,7 @@ export interface TemplateLabels {
  *  (the narration's OOC rider, a mode directive) before tiling the message as a whole. */
 export function promptTemplatePieces(
   template: string,
-  values: Record<string, string>,
+  values: TokenValues,
   labels: TemplateLabels,
 ): AnatomyPiece[] {
   return resolvePromptSegments(parseTemplateWithPlaceholders(template), values).map(({ segment, text, resolved }) => {
@@ -135,6 +138,12 @@ export function chipHeaderFormat(parts: TokenParts): 'markdown' | 'xml' | undefi
   return parts.headerFormat ?? parts.variantId?.split('.').find((id): id is 'markdown' | 'xml' => id === 'markdown' || id === 'xml');
 }
 
+/** A Header with its Player Name from the map, before it is framed. A map without one leaves the token. */
+function headerText(header: string | undefined, values: TokenValues): string | undefined {
+  const name = readValue(values, PLAYER_NAME_HEADER_KEY);
+  return name === undefined || header === undefined ? header : withPlayerName(header, name);
+}
+
 /**
  * What one token renders to, or `undefined` when it has no value in the map (callers keep the raw token).
  * An empty string is a real result — an affixed placement whose value is absent renders as nothing — so
@@ -144,15 +153,63 @@ export function chipHeaderFormat(parts: TokenParts): 'markdown' | 'xml' | undefi
  * all. Values are keyed by the affix-free token; a token from another chip family (placeholders) doesn't
  * parse here and returns undefined, leaving that family's own lookup to handle it.
  */
-export function resolveToken(token: string, values: Record<string, string>): string | undefined {
+export function resolveToken(token: string, values: TokenValues): string | undefined {
+  const rendered = resolveTokenParts(token, values);
+  return rendered && `${rendered.before}${rendered.value}${rendered.after}`;
+}
+
+/** What one token renders to, split into the chip's own value and the placement text around it: the Header's
+ *  frame and the Prepend and Append. `before + value + after` is exactly {@link resolveToken}'s text. */
+export interface RenderedToken {
+  before: string;
+  value: string;
+  after: string;
+  /** The Header's frame on each side, the outer part of `before` and `after`. */
+  header: { pre: string; post: string };
+  /** The Prepend and Append, the inner part of `before` and `after`. */
+  pre: string;
+  post: string;
+  /** Where `value` starts in the value the map holds. */
+  valueStart: number;
+}
+
+/** {@link resolveToken}, with the value kept apart from the text that wraps it. */
+export function resolveTokenParts(token: string, values: TokenValues): RenderedToken | undefined {
   const parts = splitToken(token);
   if (!parts) return undefined;
-  const value = values[parts.key];
+  const value = readValue(values, parts.key);
   if (value === undefined) return undefined;
-  const header = promptHeader(parts.header, chipHeaderFormat(parts));
-  // The value's own edge line breaks would shift the static frame.
-  if (header) return isBlankValue(value) ? ''
-    : `${header.pre}${parts.pre}${value.replace(/^(?:[ \t]*\r?\n)+/, '').trimEnd()}${parts.post}${header.post}`;
-  if (!parts.pre && !parts.post) return value;
-  return isBlankValue(value) ? '' : `${parts.pre}${value}${parts.post}`;
+  const header = promptHeader(headerText(parts.header, values), chipHeaderFormat(parts));
+  const none: RenderedToken = { before: '', value: '', after: '', header: { pre: '', post: '' }, pre: '', post: '', valueStart: 0 };
+  const placed = (frame: RenderedToken['header'], shown: string, valueStart: number): RenderedToken => ({
+    before: `${frame.pre}${parts.pre}`, value: shown, after: `${parts.post}${frame.post}`,
+    header: frame, pre: parts.pre, post: parts.post, valueStart,
+  });
+  if (header) {
+    if (isBlankValue(value)) return none;
+    // The value's own edge line breaks would shift the static frame.
+    const lead = /^(?:[ \t]*\r?\n)*/.exec(value)![0].length;
+    return placed(header, value.slice(lead).trimEnd(), lead);
+  }
+  if (!parts.pre && !parts.post) return { ...none, value };
+  return isBlankValue(value) ? none : placed(none.header, value, 0);
+}
+
+/** {@link resolveTokenParts} as marked runs: the placement text marked as Header, Prepend and Append, and the
+ *  value as the map's report gives it. `reported` is false where the map reports no runs for the key, or
+ *  reports runs that do not spell its value; the value is then one run with no origin. */
+export function resolveTokenRuns(token: string, values: TokenValues): { runs: MarkedRun[]; reported: boolean } | undefined {
+  const rendered = resolveTokenParts(token, values);
+  const key = splitToken(token)?.key;
+  if (!rendered || key === undefined) return undefined;
+  const report = readMarked(values, key);
+  const reported = !!report && textOf(report) === readValue(values, key);
+  const value = reported ? sliceRuns(report, rendered.valueStart, rendered.valueStart + rendered.value.length) : runs(rendered.value);
+  return {
+    runs: runs(
+      mark(['header'], rendered.header.pre), mark(['prepend'], rendered.pre), value,
+      mark(['append'], rendered.post), mark(['header'], rendered.header.post),
+    ),
+    reported,
+  };
 }

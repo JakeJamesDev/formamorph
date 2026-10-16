@@ -68,7 +68,7 @@ describe('Exit Without Saving in the in-play editor', () => {
   });
 });
 
-/** Saves by hand, which opts the world into auto save, and waits for the Save face to settle. */
+/** Saves by hand, which opts the world into autosave, and waits for the Save face to settle. */
 const saveByHand = async (editor: HTMLElement) => {
   fireEvent.click(within(editor).getByRole('button', { name: 'Save' }));
   await within(editor).findByRole('button', { name: 'Saved' });
@@ -77,7 +77,7 @@ const storedName = async () => ((await WorldStorageService.getWorldData(WORLD.id
 const FULL_COUNT = `Brinewell${'x'.repeat(300)}`;
 
 describe('the in-play prompt copy', () => {
-  it('says Exit drops only the changes since the last save once an auto save wrote the world', async () => {
+  it('says Exit drops only the changes since the last save once an autosave wrote the world', async () => {
     renderGameViewer(WORLD);
     const editor = await editName('Brinewell');
     await saveByHand(editor);
@@ -90,7 +90,7 @@ describe('the in-play prompt copy', () => {
     expect(await screen.findByText(/“Exit Without Saving” drops only the changes since the last save/)).toBeInTheDocument();
   });
 
-  it('keeps the plain copy on a world no auto save wrote, with Auto Save on', async () => {
+  it('keeps the plain copy on a world no autosave wrote, with Autosave on', async () => {
     renderGameViewer(WORLD);
     const editor = await editName('Brinewell');
 
@@ -98,7 +98,7 @@ describe('the in-play prompt copy', () => {
     expect(await screen.findByText(/exit without saving, or keep editing/)).toBeInTheDocument();
   });
 
-  it('keeps the plain copy while Auto Save is off', async () => {
+  it('keeps the plain copy while Autosave is off', async () => {
     localStorage.setItem('FORMAMORPH_editorAutoSave', 'false');
     renderGameViewer(WORLD);
     const editor = await editName('Brinewell');
@@ -150,7 +150,7 @@ describe('a clean close in the in-play editor', () => {
       .mockImplementationOnce(() => new Promise<void>((resolve) => { finish = resolve; }));
     fireEvent.change(within(editor).getByDisplayValue('Brinewell'), { target: { value: FULL_COUNT } });
     await waitFor(() => expect(storeWorld).toHaveBeenCalledTimes(1));
-    // Back to what is on disk while the auto save still runs.
+    // Back to what is on disk while the autosave still runs.
     fireEvent.change(within(editor).getByDisplayValue(FULL_COUNT), { target: { value: 'Brinewell' } });
     await waitFor(() => expect(within(editor).getByRole('button', { name: 'Saving…' })).toBeInTheDocument());
 

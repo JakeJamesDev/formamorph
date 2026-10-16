@@ -11,6 +11,7 @@
  * body and nothing ships (same guard as `baselineTestHook.ts`).
  */
 import { useSyncExternalStore } from 'react';
+import { randomUUID } from '@/lib/uuid';
 
 const DEV = import.meta.env.DEV;
 
@@ -183,7 +184,7 @@ export function installDevRouter(): () => void {
         import('@/lib/version'),
       ]);
       const data = migrateWorld(world);
-      const id = (world as { id?: string }).id ?? crypto.randomUUID();
+      const id = (world as { id?: string }).id ?? randomUUID();
       await svc.storeWorld({
         id,
         name: data.worldOverview?.name || 'Untitled',

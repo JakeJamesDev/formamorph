@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { toastError } from "@/lib/linkToast";
 import { Fingerprint, HeartOff, Link2, UserCheck, VenetianMask } from "lucide-react";
 import {
@@ -109,6 +109,26 @@ const partitionByGroup = <T,>(items: T[], groupOf: (item: T) => number | null | 
 
   return { groups, alone };
 };
+
+/** The icon button every like row removes with. Without `onClick` it stays visible but inert, and the tip says why. */
+const RemoveLikeButton = ({ tip, label, onClick }: { tip: string; label: string; onClick?: () => void }) => (
+  <Tip tip={tip}>
+    <Button
+      variant="ghost"
+      size="icon"
+      // aria-disabled rather than disabled, so the tip still opens on hover and focus.
+      aria-disabled={onClick ? undefined : true}
+      className={cn(
+        'shrink-0 text-muted-foreground',
+        onClick ? 'hover:text-destructive' : 'cursor-not-allowed opacity-50 hover:bg-transparent'
+      )}
+      aria-label={label}
+      onClick={onClick}
+    >
+      <HeartOff className="h-4 w-4" />
+    </Button>
+  </Tip>
+);
 
 /**
  * Who liked a listing. Staff only.
@@ -390,24 +410,18 @@ export function LikersDialog({
         </div>
 
         {mayRemove(row) && (
-          <Tip tip="Remove this like">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="shrink-0 text-muted-foreground hover:text-destructive"
-              aria-label={`Remove the like by ${row.username}`}
-              onClick={() => setPending({ kind: 'like', row })}
-            >
-              <HeartOff className="h-4 w-4" />
-            </Button>
-          </Tip>
+          <RemoveLikeButton
+            tip="Remove this like"
+            label={`Remove the like by ${row.username}`}
+            onClick={() => setPending({ kind: 'like', row })}
+          />
         )}
       </li>
     );
   };
 
   /** One Anonymous Like: a time, a browser family, and whatever the grouping made of it. */
-  const anonListItem = (anon: AnonymousLikeRow, index: number) => (
+  const anonListItem = (anon: AnonymousLikeRow, index: number, action?: ReactNode) => (
     <li
       key={`${anon.addressKey ?? 'ungrouped'}-${anon.likedAt}-${index}`}
       data-anonymous="true"
@@ -429,31 +443,57 @@ export function LikersDialog({
           {anon.browserFamily ? ` — ${anon.browserFamily}` : ''}
         </p>
       </div>
+
+      {action}
     </li>
   );
 
-  /** The Anonymous Likes from one address, with the action that takes them off. */
-  const anonClusterBlock = ({ addressKey, rows: marked }: AnonCluster, index: number) => (
-    <div key={addressKey ?? `ungrouped-${index}`} className="space-y-2">
-      <ul className="space-y-2">{marked.map(anonListItem)}</ul>
-      {addressKey ? (
-        <Button
-          variant="outline"
-          size="sm"
-          className="text-destructive"
-          onClick={() => setPending({ kind: 'address', addressKey, count: marked.length })}
-        >
-          <HeartOff className="mr-2 h-4 w-4" />
-          Remove {countAnon(marked.length)} from this address
-        </Button>
-      ) : (
-        // Past ninety days the sweep has emptied the hash, so there is no address left to act on.
-        <p className="text-meta text-muted-foreground">
-          {marked.length === 1 ? 'This one is' : 'These are'} too old to name an address for.
-        </p>
-      )}
-    </div>
-  );
+  /**
+   * The Anonymous Likes from one address. Removal acts on the whole address, so the button sits on the
+   * row when the address has one like and on a frame around the rows when it has more.
+   */
+  const anonClusterBlock = ({ addressKey, rows: marked }: AnonCluster, index: number) => {
+    const key = addressKey ?? `ungrouped-${index}`;
+
+    // Past ninety days the sweep has emptied the hash, so there is no address left to act on.
+    if (!addressKey) {
+      const expired = (
+        <RemoveLikeButton
+          tip="Too old to remove alone. Remove all Anonymous Likes instead."
+          label="Remove this Anonymous Like"
+        />
+      );
+      return (
+        <ul key={key} className="space-y-2">
+          {marked.map((anon, i) => anonListItem(anon, i, expired))}
+        </ul>
+      );
+    }
+
+    const removeAll = (tip: string) => (
+      <RemoveLikeButton
+        tip={tip}
+        label={`Remove ${countAnon(marked.length)} from this address`}
+        onClick={() => setPending({ kind: 'address', addressKey, count: marked.length })}
+      />
+    );
+
+    if (marked.length === 1) {
+      return <ul key={key}>{anonListItem(marked[0], 0, removeAll('Remove this like'))}</ul>;
+    }
+
+    return (
+      <div key={key} data-address-frame="true" className="space-y-2 rounded-md border bg-muted/30 p-2">
+        <div className="flex items-center gap-3 pl-1">
+          <p className="min-w-0 flex-1 text-meta text-muted-foreground">
+            {countAnon(marked.length)} from one address
+          </p>
+          {removeAll(`Remove these ${countAnon(marked.length)}`)}
+        </div>
+        <ul className="space-y-2">{marked.map((anon, i) => anonListItem(anon, i))}</ul>
+      </div>
+    );
+  };
 
   const confirmation = () => {
     if (!pending) return { title: '', description: '' };

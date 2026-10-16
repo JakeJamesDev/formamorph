@@ -1,5 +1,5 @@
 import AuthService from './AuthService';
-import { authHeaders, unwrap } from './staffApi';
+import { authHeaders, unwrap } from './authRequest';
 import { readFailure } from './responseError';
 import { serverSupportsReports, type ReportGroup } from '@/lib/contentReports';
 

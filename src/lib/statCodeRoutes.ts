@@ -11,7 +11,8 @@ import { javascriptLanguage } from '@codemirror/lang-javascript';
 import type { SyntaxNode } from '@lezer/common';
 import type { PlaceholderOwnerRef } from './placeholderHomes';
 import { holderOf } from './placeholderTree';
-import { codeRenameChains, spliced, type CodeRenameKey, type CodeSplice } from './statCodeRename';
+import { codeRenameChains, type CodeRenameKey } from './codeRenameChains';
+import { spliced, type CodeSplice } from './statCodeRename';
 import { statCodeName } from './statCodeNames';
 import {
   memberStep, OWNER_GLOBAL, placeholderPathMap, walkPlaceholderPath,
@@ -112,12 +113,12 @@ function placeholderSplice(
   const authored = code.slice(first.objectTo, first.memberTo);
   if (!node.placeholder) return owner ? { ...span, insert: ownerPrefix(owner, authored) } : null;
   if (node.path.length === 1 && !owner) return null;
-  // The path the editor names it by: owner first where it has one, then every holder above it.
-  const holders = node.path.slice(owner ? 1 : 0, -1);
+  // The path the editor names it by: owner first where it has one, then every parent above it.
+  const parents = node.path.slice(owner ? 1 : 0, -1);
   const start = owner ? map.owners.get(owner.id) ?? null : null;
-  if (walkPlaceholderPath(map, [...holders, node.name], start).node !== node) return null;
+  if (walkPlaceholderPath(map, [...parents, node.name], start).node !== node) return null;
   const head = owner ? ownerPrefix(owner, memberStep(node.path[0])) : 'placeholders';
-  return { ...span, insert: `${head}${holders.map(memberStep).join('')}${authored}` };
+  return { ...span, insert: `${head}${parents.map(memberStep).join('')}${authored}` };
 }
 
 /** `code` with every retired route rewritten. `source` is the world's placeholder tree as authored. */

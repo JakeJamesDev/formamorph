@@ -101,7 +101,7 @@ describe('a library persona with placeholders of its own', () => {
 
     // A turn's state writes, then an undo back to it: the persona reads the same roll throughout.
     const snapshot = live().gameplay.saveCurrentGameState();
-    await act(async () => { live().gameplay.setPlayerStats([]); });
+    await act(async () => { live().gameplay.setGlobalStats([]); });
     expect(eyesIn(narrationPrompt(live))).toBe(first);
     await act(async () => { live().gameplay.loadGameState(snapshot, [], { keepLiveHistory: true }); });
     expect(eyesIn(narrationPrompt(live))).toBe(first);

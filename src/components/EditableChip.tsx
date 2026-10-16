@@ -4,6 +4,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
 import { Chip, CHIP_BASE, CHIP_REMOVE_RESERVE, ChipFieldSizer } from "./Chip";
 import { SuggestionList } from "./SuggestionList";
+import { useSuggestionKeys } from "@/lib/useSuggestionKeys";
 import ChipInput from "@/components/prompt/ChipInput";
 import { placeholderVocabulary, type ChipVocabulary } from "@/lib/chipVocabulary";
 import { hasPlaceholders } from "@/lib/placeholders";
@@ -35,7 +36,7 @@ export function EditableChip({ value, onCommit, onRemove, sortable = false, getS
    *  so the placeholders inside it can be drawn as chips; `value` still names the chip for a screen reader. */
   label?: ReactNode;
   /** Given these, editing opens a chip editor instead of a text input, so a value holding placeholders can
-   *  be edited in place — and its chips keep their World/Unique pop-out while it is open. */
+   *  be edited in place — and its chips keep their World/Unique Chip Options while it is open. */
   placeholders?: Placeholder[];
   /** The host field's vocabulary, so the chip editor refuses what the field refuses. */
   vocabulary?: ChipVocabulary;
@@ -74,21 +75,8 @@ export function EditableChip({ value, onCommit, onRemove, sortable = false, getS
     else if (next !== value) onCommit(next);
   };
 
-  const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" || e.key === "Tab") {
-      e.preventDefault();
-      finish(suggestions[active] ?? text);
-    } else if (e.key === "Escape") {
-      e.preventDefault();
-      cancel();
-    } else if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setActive((a) => Math.min(a + 1, suggestions.length - 1));
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setActive((a) => Math.max(a - 1, 0));
-    }
-  };
+  const accept = () => finish(suggestions[active] ?? text);
+  const onKeyDown = useSuggestionKeys({ count: suggestions.length, setActive, onEnter: accept, onTab: accept, onEscape: (e) => { e.preventDefault(); cancel(); } });
 
   const shown = label ?? value;
   // A node label carries no readable text, so the stored value names the remove button and the edit field.

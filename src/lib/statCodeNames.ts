@@ -43,5 +43,11 @@ export function statCodeNamed<T extends { name: string }>(
   });
 }
 
+/** The stat a `stats` map keys each code name by: a live stat wins a shared name over a switched-off one,
+ *  and within each the later one wins. */
+export function statsByCodeName<T>(stats: readonly T[], codeNameOf: (stat: T) => string, isOn: (stat: T) => boolean): Map<string, T> {
+  return new Map([...stats.filter((stat) => !isOn(stat)), ...stats.filter(isOn)].map((stat) => [codeNameOf(stat), stat]));
+}
+
 /** Whether `entities` keys an entity by this code name: only a named one gets a key. */
 export const hasEntityKey = (name: string): boolean => name !== '';

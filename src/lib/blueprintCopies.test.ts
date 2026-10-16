@@ -23,7 +23,7 @@ const TRAIT_BLUEPRINTS: TraitGroup = group('tbp', { name: 'Blueprints', system: 
 
 const garb = ph('garb', 'Class Garb', { groupId: 'bp', values: [value('tabard', 'a tabard'), value('robes', 'blue robes')] });
 const heritage = ph('heritage', 'Heritage', { groupId: 'bp' });
-// Trim's values reach Heritage, so a bearer of Trim needs Heritage too.
+// Trim's values reach Heritage, so an owner of Trim needs Heritage too.
 const trim = ph('trim', 'Trim', { groupId: 'bp', values: [value('trim-v', `trim of ${chip('heritage')}`)] });
 const eyes = ph('eyes', 'Eyes');
 
@@ -104,7 +104,7 @@ describe('neededCopies', () => {
 });
 
 describe('copyNeeds', () => {
-  it('names the trait that needs a copy, and the placeholder whose values reach one, as the bearer reads it', () => {
+  it('names the trait that needs a copy, and the placeholder whose values reach one, as the owner reads it', () => {
     const w = world({ entities: [entity('a', { traitLinks: [link('l1', 'tailor')] })] });
     const why = copyNeeds(w).get('a');
     expect(why?.get('trim')).toMatchObject({ kind: 'trait', item: { id: 'tailor' } });
@@ -149,7 +149,7 @@ describe('syncBlueprintCopies: creating', () => {
     expect(copiesOf(sync(marked)[0])).toEqual(['garb']);
   });
 
-  it('creates copies when a chip or pin joins an original that already has bearers', () => {
+  it('creates copies when a chip or pin joins an original that already has owners', () => {
     const bare = world({ traits: [trait('paladin', { groupId: 'tbp' })], entities: [entity('a', { traitLinks: [link('l1', 'paladin')] })] });
     expect(sync(bare)).toBe(bare.entities);
     const pinned = { ...bare, traits: [paladin] };

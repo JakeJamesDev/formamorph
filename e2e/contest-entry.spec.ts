@@ -50,7 +50,7 @@ const ADMIN = {
 let unavailable = '';
 /** Set when the entry flow can run but the results half cannot — a contest only ever announces once. */
 let cannotAnnounce = '';
-/** The admin bearer the announce goes through, once `beforeAll` has proved there is one. */
+/** The admin token the announce goes through, once `beforeAll` has proved there is one. */
 let adminToken: string | null = null;
 /** The contest this run enters, read from the server. */
 let contest: ServerEvent | null = null;

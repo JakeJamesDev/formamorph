@@ -1,18 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { World } from '@/types';
+import type { TraitRequirementRow, World } from '@/types';
+
+const KNIGHT: TraitRequirementRow[] = [{ all: [{ kind: 'trait', id: 'knight' }] }];
 
 const fetchAsDataUrl = vi.fn();
 vi.mock('./imageSource', () => ({ fetchAsDataUrl: (...a: unknown[]) => fetchAsDataUrl(...a) }));
 
-const { embedWorldRemoteImages, remoteWorldImages } = await import('./embedRemoteImages');
+const { embedWorldRemoteImages, remoteImagesInContent, remoteWorldImages } = await import('./embedRemoteImages');
 
 const world = (): World => ({
   id: 'w',
   version: '2.9.2',
   worldOverview: { name: 'W', thumbnail: 'https://host/thumb.png' },
   entities: [
-    { id: 'e1', name: 'A', images: ['https://host/a1.png', 'data:image/webp;base64,KEEP'] },
-    { id: 'e2', name: 'B', images: ['data:image/webp;base64,ONLY'] },
+    { id: 'e1', name: 'A', images: [{ data: 'https://host/a1.png', requires: KNIGHT }, { data: 'data:image/webp;base64,KEEP' }] },
+    { id: 'e2', name: 'B', images: [{ data: 'data:image/webp;base64,ONLY' }] },
   ],
   locations: [{ id: 'l1', name: 'L', backgroundImage: 'https://host/bg.png' }],
 } as unknown as World);
@@ -34,9 +36,16 @@ describe('remoteWorldImages', () => {
   it('reports none for a world that embeds everything, so the export dialog stays out of the way', () => {
     const w = world();
     w.worldOverview.thumbnail = 'data:image/webp;base64,T';
-    w.entities[0].images = ['data:image/webp;base64,A'];
+    w.entities[0].images = [{ data: 'data:image/webp;base64,A' }];
     w.locations[0].backgroundImage = 'data:image/webp;base64,B';
     expect(remoteWorldImages(w)).toEqual([]);
+  });
+});
+
+describe('remoteImagesInContent', () => {
+  it('lists a published character’s linked pictures, ruled ones included', () => {
+    const entity = { id: 'e1', name: 'A', images: [{ data: 'https://host/a.png', requires: KNIGHT }, { data: 'data:image/webp;base64,K' }, { data: 'https://host/b.png' }] };
+    expect(remoteImagesInContent(entity)).toEqual(['https://host/a.png', 'https://host/b.png']);
   });
 });
 
@@ -46,10 +55,10 @@ describe('embedWorldRemoteImages', () => {
     expect(failures).toEqual([]);
     expect(out.worldOverview.thumbnail).toBe('data:image/webp;base64,EMBEDDED(https://host/thumb.png)');
     expect(out.entities[0].images).toEqual([
-      'data:image/webp;base64,EMBEDDED(https://host/a1.png)',
-      'data:image/webp;base64,KEEP',
+      { data: 'data:image/webp;base64,EMBEDDED(https://host/a1.png)', requires: KNIGHT },
+      { data: 'data:image/webp;base64,KEEP' },
     ]);
-    expect(out.entities[1].images).toEqual(['data:image/webp;base64,ONLY']);
+    expect(out.entities[1].images).toEqual([{ data: 'data:image/webp;base64,ONLY' }]);
     expect(out.locations[0].backgroundImage).toBe('data:image/webp;base64,EMBEDDED(https://host/bg.png)');
   });
 
@@ -69,7 +78,7 @@ describe('embedWorldRemoteImages', () => {
     const original = world();
     await embedWorldRemoteImages(original);
     expect(original.worldOverview.thumbnail).toBe('https://host/thumb.png');
-    expect(original.entities[0].images?.[0]).toBe('https://host/a1.png');
+    expect(original.entities[0].images?.[0].data).toBe('https://host/a1.png');
   });
 
   it('reports progress once per linked image', async () => {

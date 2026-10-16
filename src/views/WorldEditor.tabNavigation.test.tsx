@@ -68,9 +68,9 @@ const sizeListCard = (width: number) => {
 };
 
 describe('World Editor rail (desktop)', () => {
-  it('draws seven tabs in Advanced mode, grouped by lines, inside the list card', () => {
+  it('draws eight tabs in Advanced mode, grouped by lines, inside the list card', () => {
     renderWorldEditorBench(WORLD, 'advanced');
-    expect(railRows()).toEqual(['Overview', '|', 'Entities', 'Locations', 'Traits', 'Stats', '|', 'Dictionary', 'Placeholders']);
+    expect(railRows()).toEqual(['Overview', '|', 'Entities', 'Locations', 'Traits', 'Stats', '|', 'Dictionary', 'Placeholders', '|', 'Scripts']);
     expect(editorTabs()).toHaveAttribute('aria-orientation', 'vertical');
     expect(listCard().contains(editorTabs())).toBe(true);
     expect(screen.getAllByRole('tablist', { name: 'Editor Sections' })).toHaveLength(1);
@@ -151,7 +151,7 @@ describe('World Editor Sections bar (mobile)', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     await user.click(sections());
     expect(sections()).toHaveAttribute('aria-expanded', 'true');
-    expect(tabNames()).toEqual(['Overview', 'Entities', 'Locations', 'Traits', 'Stats', 'Dictionary', 'Placeholders']);
+    expect(tabNames()).toEqual(['Overview', 'Entities', 'Locations', 'Traits', 'Stats', 'Dictionary', 'Placeholders', 'Scripts']);
     expect(document.getElementById('world-editor-sections')).not.toHaveAttribute('inert');
 
     await user.click(within(editorTabs()).getByRole('tab', { name: 'Entities' }));

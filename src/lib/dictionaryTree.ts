@@ -1,5 +1,5 @@
 import { randomUUID } from "@/lib/uuid";
-import { remintPlaceholdersDeep } from "@/lib/placeholders";
+import { copyWithFreshRolls, duplicateAfter } from "@/lib/duplicateAfter";
 import type { Dictionary, DictionaryEntry } from '@/types';
 
 /** A new entry. Its name is blank by default, so the tree and the prompt label read its first keyword until it has one. */
@@ -98,13 +98,10 @@ export function moveEntryInBooks(
 export function duplicateEntryInBooks(books: Dictionary[], entryId: string): { books: Dictionary[]; newId: string | null } {
   let newId: string | null = null;
   const next = books.map((b) => {
-    const idx = b.entries.findIndex((e) => e.id === entryId);
-    if (idx === -1) return b;
-    // Re-mint chip placements: a copied Unique chip must not share the source entry's roll.
-    const copy: DictionaryEntry = { ...remintPlaceholdersDeep(structuredClone(b.entries[idx])), id: randomUUID() };
-    copy.name = `${copy.name} (Copy)`;
+    const { list, copy } = duplicateAfter(b.entries, entryId, copyWithFreshRolls);
+    if (!copy) return b;
     newId = copy.id;
-    return { ...b, entries: [...b.entries.slice(0, idx + 1), copy, ...b.entries.slice(idx + 1)] };
+    return { ...b, entries: list };
   });
   return { books: next, newId };
 }

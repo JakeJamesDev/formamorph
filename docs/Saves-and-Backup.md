@@ -101,7 +101,7 @@ On a Mac, **Download** opens the new `.dmg` file in your browser. Open the file 
 
 A save holds the full story and a copy of each turn, so **Rewind to Here** still works after you load it. It also holds your notes, memories, persona, the game's dictionaries and the images you attached to actions.
 
-The autosave is not in this list. You cannot save over it.
+Autosaves are not in this list. You cannot save over them.
 
 ## The Load Game Dialog
 <!-- keywords: erase a slot, rename, world not installed, wrong world, old version, compatibility, convert, reorder, game time, remove old -->
@@ -143,15 +143,15 @@ Saves from older versions of Formamorph load too. Formamorph converts a save in 
 ## Autosave
 <!-- keywords: automatic, forgot, crash, closed tab, lost progress, recover, disable, auto tag, browser closed -->
 
-**Autosave** saves your game after every turn. Each world has one **Autosave** slot, and each turn replaces it.
+**Autosave** saves your game after every turn, named by turn, such as **Autosave · Turn 12**. **Autosaves Kept** sets how many each world keeps; it starts at one. A new turn adds an autosave until the world has that many, then replaces the oldest. If you lower it, the world's oldest extra autosaves are deleted on its next autosave.
 
-- It starts after the opening scene, and it also saves after **Re-generate**.
+- It starts after the opening scene. After **Re-generate**, it replaces that turn's autosave.
 - It never changes your own saves.
 - It never keeps scene images.
 - It shows under **Load Game** with an **Auto** tag. You can load, export or delete it.
 - If an autosave fails, a message shows once. Your own saves still work.
 
-To turn it off, clear **Autosave** in the **Saves** section of the [Settings](Settings#saves) **Data** tab.
+To turn it off, clear **Autosave** in the **Saves** section of the [Settings](Settings#saves) **Data** tab. **Autosaves Kept** is in the same section.
 
 ## Quick Start
 <!-- keywords: continue button, not a resume, new run instantly, lightning icon -->

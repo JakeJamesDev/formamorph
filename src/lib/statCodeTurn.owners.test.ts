@@ -4,12 +4,13 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { runStatCodeTurn, type StatCodeTurn } from './statCodeTurn';
-import type { StatCodeBearers } from './statCodeTraits';
-import { inPlayBearers } from './ownedTraitsInPlay';
+import type { StatCodeOwners } from './statCodeTraits';
+import { inPlayOwners } from './ownedTraitsInPlay';
 import { withPersonaEntry } from './persona';
 import type { PlaceholderOwners } from './placeholderHomes';
 import { phValues } from '@/test/placeholderValues';
 import type { Dictionary, Entity, PersonaRef, Placeholder, PlayerStat } from '@/types';
+import { boxScripts } from '@/test/scriptFixtures';
 
 const stat = (over: Partial<PlayerStat>): PlayerStat => ({
   id: 'x', name: 'Stat', type: 'number', description: '', min: 0, max: 100, value: 50, regen: 0, descriptors: [],
@@ -42,14 +43,14 @@ const owners: PlaceholderOwners = new Map([
 const dictionaries = [{ id: 'first-weather', name: 'Weather' }, { id: 'later-weather', name: 'Weather' }, { id: 'lore', name: 'Lore' }];
 
 /** The trait state of a playthrough under `persona`, the library persona among its library entities. */
-function played(persona: PersonaRef, library: Entity[] = []): StatCodeBearers {
+function played(persona: PersonaRef, library: Entity[] = []): StatCodeOwners {
   const entities = [molly, rook, mira];
   const entered = [...withPersonaEntry(entities, persona, library[0]?.name)];
   return {
     acquired: [], disabledTraitIds: [], appliedValues: {}, ownedTraits: {}, entities, library,
     world: {
       traits: [], groups: [], entities: entered, persona,
-      bearers: inPlayBearers({ traits: [], traitGroups: [], entities: entered }, persona, library),
+      ...inPlayOwners({ traits: [], traitGroups: [], entities: entered }, persona, library),
     },
   };
 }
@@ -57,9 +58,9 @@ function played(persona: PersonaRef, library: Entity[] = []): StatCodeBearers {
 const asLyra: PersonaRef = { source: 'library', entityId: 'lyra' };
 const asMira: PersonaRef = { source: 'world', entityId: 'mira' };
 
-const run = (code: string, traits: StatCodeBearers = played(asLyra, [lyra])) => runStatCodeTurn({
-  stats: [stat({ id: 's0', name: 'S0', value: 0, code })],
-  enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {}, bearers: traits,
+const run = (code: string, traits: StatCodeOwners = played(asLyra, [lyra])) => runStatCodeTurn({
+  stats: [stat({ id: 's0', name: 'S0', value: 0, scripts: boxScripts({ after: code }) })],
+  enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {}, ownerTraits: traits,
   placeholders: { placeholders: list, owners, dictionaries, rolls: { world: {} } },
   statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
 } satisfies StatCodeTurn);
@@ -130,8 +131,8 @@ describe('runStatCodeTurn owner placeholders', () => {
       + ' dictionaries.Tides.placeholders.Tide.pin("flood");'
       + ' return dictionaries.Tides.id === "run-tides" && dictionaries.Weather.id === "run-weather" ? 1 : 0;';
     const out = await runStatCodeTurn({
-      stats: [stat({ id: 's0', name: 'S0', value: 0, code })],
-      enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {}, bearers: played(asLyra, [lyra]),
+      stats: [stat({ id: 's0', name: 'S0', value: 0, scripts: boxScripts({ after: code }) })],
+      enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {}, ownerTraits: played(asLyra, [lyra]),
       placeholders: { placeholders: list, owners, dictionaries, libraryDictionaries: [tides, weather], rolls: { world: {} } },
       statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
     });
@@ -143,8 +144,8 @@ describe('runStatCodeTurn owner placeholders', () => {
     const pip: Entity = { id: 'pip', name: 'Pip', placeholders: [ph('pip-tag', 'Tag', ['loyal'])] };
     const tides: Dictionary = { id: 'run-tides', name: 'Tides', entries: [], placeholders: [ph('tide', 'Tide', ['ebb'])] };
     const out = await runStatCodeTurn({
-      stats: [stat({ id: 's0', name: 'S0', value: 0, code: 'placeholders.Tag.pin("x"); placeholders.Tide.pin("y");' })],
-      enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {}, bearers: played(asMira, [pip]),
+      stats: [stat({ id: 's0', name: 'S0', value: 0, scripts: boxScripts({ after: 'placeholders.Tag.pin("x"); placeholders.Tide.pin("y");' }) })],
+      enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {}, ownerTraits: played(asMira, [pip]),
       placeholders: { placeholders: list, owners, dictionaries, libraryDictionaries: [tides], rolls: { world: {} } },
       statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
     });
@@ -189,8 +190,8 @@ describe('runStatCodeTurn owner placeholders', () => {
     const mood = ph('lore-mood', 'Mood', ['calm']);
     const withLore = new Map([...owners, ['lore-mood', { kind: 'dictionary' as const, id: 'lore', name: 'Lore' }]]);
     const out = await runStatCodeTurn({
-      stats: [stat({ id: 's0', name: 'S0', value: 0, code })],
-      enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {}, bearers: played(asLyra, [lyra]),
+      stats: [stat({ id: 's0', name: 'S0', value: 0, scripts: boxScripts({ after: code }) })],
+      enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {}, ownerTraits: played(asLyra, [lyra]),
       placeholders: {
         placeholders: [...list, mood], owners: withLore, dictionaries, rolls: { world: {} },
         inPlayDictionaryIds: new Set(['first-weather', 'later-weather']),
@@ -210,8 +211,8 @@ describe('runStatCodeTurn owner placeholders', () => {
   it('lists an authored dictionary left on and every library dictionary beside one turned off', async () => {
     const tides: Dictionary = { id: 'run-tides', name: 'Tides', entries: [], placeholders: [ph('tide', 'Tide', ['ebb'])] };
     const out = await runStatCodeTurn({
-      stats: [stat({ id: 's0', name: 'S0', value: 0, code: 'return dictionaries.Lore.id === "lore" && dictionaries.Tides.id === "run-tides" && dictionaries.Weather.id === "" ? 1 : 0;' })],
-      enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {}, bearers: played(asLyra, [lyra]),
+      stats: [stat({ id: 's0', name: 'S0', value: 0, scripts: boxScripts({ after: 'return dictionaries.Lore.id === "lore" && dictionaries.Tides.id === "run-tides" && dictionaries.Weather.id === "" ? 1 : 0;' }) })],
+      enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {}, ownerTraits: played(asLyra, [lyra]),
       placeholders: {
         placeholders: list, owners, dictionaries, libraryDictionaries: [tides], rolls: { world: {} },
         inPlayDictionaryIds: new Set(['lore']),

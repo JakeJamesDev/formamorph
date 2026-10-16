@@ -4,8 +4,8 @@ import type {
 } from '@/types';
 import { entityIdsAt } from '../entityPresence';
 import { entityNamed, scenePresentHere, type OwnedTraitsInForce } from '../locationContext';
-import { PLAYER_BEARER } from '../bearers';
-import { borneByPlayer, inBearerPlaces, withBearerTrees, type BearerTree } from '../ownedTraitsInPlay';
+import type { GateTree } from '../traitGates';
+import { borneByPlayer, inOwnerPlaces, withOwnerTrees, type OwnerTree } from '../ownedTraitsInPlay';
 import type { ResolvedPersona } from '../persona';
 import { treeStatTraits } from '../traitRuntime';
 import { enabledOwnerStats, withTraitToggles, type OwnerStats } from '../statOwners';
@@ -28,8 +28,10 @@ export interface LiveSceneSources {
   traitGroups: TraitGroup[];
   /** Each entity's owned trait picks and switch-offs. None when absent. */
   ownedTraits?: OwnedTraitStates;
-  /** Each bearer's tree, links expanded. An entity with none reads its owned traits alone. */
-  bearers?: readonly BearerTree[];
+  /** Global scope's tree. Absent, the traits keep their own places and the groups are `traitGroups`. */
+  global?: GateTree;
+  /** Each entity owner's tree, links expanded. An entity with none reads its owned traits alone. */
+  owners?: readonly OwnerTree[];
   /** Each entity's stat values. None when absent. */
   entityStats?: OwnerStats;
   /** The entities the player plays as, whose stats are the player's. None when absent. */
@@ -80,9 +82,9 @@ export function liveChipScene(
   // Each entity's text resolves with that entity as its owner, as trait text resolves under its own pins.
   const resolveEntity = box?.resolveEntity ?? sources.resolveEntity;
   const resolveTrait = box?.resolveTrait ?? sources.resolveTrait;
-  // An entity's links join its owned traits, each resolved with the entity as its bearer.
+  // An entity's links join its owned traits, each resolved with the entity as its owner.
   const ownText = (entities: Entity[]) => resolveOwnedTraitTexts(
-    resolveEntityTexts(withBearerTrees(entities, sources.bearers), resolveEntity), resolveTrait, resolveEntity,
+    resolveEntityTexts(withOwnerTrees(entities, sources.owners), resolveEntity), resolveTrait, resolveEntity,
   );
   const allEntities = ownText(sources.allEntities);
   const persona = sources.persona && { ...sources.persona, entity: ownText([sources.persona.entity])[0] };
@@ -100,25 +102,27 @@ export function liveChipScene(
   }
   // A trait's own description resolves with its own pins, so the AI reads the same words the player's card
   // shows; the scene's resolve then covers the group headers, since trait text is token-free by then.
-  // The player's traits sit in the player bearer's tree, so a Custom Persona pick reads at the root.
-  const player = sources.bearers?.find((b) => b.id === PLAYER_BEARER);
-  const traits = inBearerPlaces(box?.activeTraits ?? sources.traits, player).map((trait) =>
+  // The global traits sit where global scope's tree places them.
+  const globalTree = sources.global;
+  const traits = inOwnerPlaces(box?.activeTraits ?? sources.traits, globalTree).map((trait) =>
     trait.aiDescription ? { ...trait, aiDescription: resolveTrait(trait, trait.aiDescription) } : trait,
   );
 
   const ownedInForce = inForceByOwner(box?.ownedTraits ?? sources.ownedTraits);
   // An entity's traits in force switch its stats on and off.
-  const ownedStats = enabledOwnerStats(withTraitToggles(box?.entityStats ?? sources.entityStats ?? {}, treeStatTraits(sources.bearers ?? [], ownedInForce)));
+  const ownedStats = enabledOwnerStats(withTraitToggles(box?.entityStats ?? sources.entityStats ?? {}, treeStatTraits(sources.owners ?? [], ownedInForce)));
   return {
     overview: sources.overview,
     stats: box?.activeStats ?? sources.stats,
     statPlacement: sources.statPlacement,
     playedStats: ownerStatParts(sources.playedEntities ?? [], ownedStats),
+    playedEntities: ownText([...(sources.playedEntities ?? [])]),
     traits,
-    traitGroups: player ? borneByPlayer(player.groups) : sources.traitGroups,
+    traitGroups: globalTree ? borneByPlayer(globalTree.groups) : sources.traitGroups,
     ownedTraits: ownedInForce,
     ownedStats,
     persona,
+    playerName: persona?.entity.name ?? null,
     location: loc,
     locations: sources.locations,
     connections: sources.connections,
@@ -148,16 +152,16 @@ function inForceByOwner(states: OwnedTraitStates | undefined): OwnedTraitsInForc
 /** The live adapter: one memoized builder over the playthrough's contexts. */
 export function useLiveChipScene(sources: LiveSceneSources): (location?: GameLocation | null, box?: SceneWrites | null) => ChipScene {
   const {
-    overview, stats, statPlacement, traits, traitGroups, ownedTraits, bearers, entityStats, playedEntities, resolve, resolveTrait, resolveEntity, persona,
+    overview, stats, statPlacement, traits, traitGroups, ownedTraits, global, owners, entityStats, playedEntities, resolve, resolveTrait, resolveEntity, persona,
     location, locations, connections, entities, allEntities, participants, notes, time, placeholders,
   } = sources;
   return useCallback(
     (at?: GameLocation | null, box?: SceneWrites | null) => liveChipScene({
-      overview, stats, statPlacement, traits, traitGroups, ownedTraits, bearers, entityStats, playedEntities, resolve, resolveTrait, resolveEntity, persona,
+      overview, stats, statPlacement, traits, traitGroups, ownedTraits, global, owners, entityStats, playedEntities, resolve, resolveTrait, resolveEntity, persona,
       location, locations, connections, entities, allEntities, participants, notes, time, placeholders,
     }, at, box),
     [
-      overview, stats, statPlacement, traits, traitGroups, ownedTraits, bearers, entityStats, playedEntities, resolve, resolveTrait, resolveEntity, persona,
+      overview, stats, statPlacement, traits, traitGroups, ownedTraits, global, owners, entityStats, playedEntities, resolve, resolveTrait, resolveEntity, persona,
       location, locations, connections, entities, allEntities, participants, notes, time, placeholders,
     ],
   );

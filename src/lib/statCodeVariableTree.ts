@@ -1,25 +1,32 @@
 /**
- * The stat code Variable menu as a tree: the sandbox's globals, the world's names under each, and each name's
+ * The scripts' Variable menu as a tree: the sandbox's globals, the world's names under each, and each name's
  * fields from the surface lists. Every leaf inserts a whole path that runs as inserted. Template mode has no
  * names, so each name list is one `Name` row to type over.
  */
 
 import type { AnalysisOptions, CodeEntityNames, CodeTraitPlace } from '@/lib/statCodeAnalysis';
 import { WORLD_BREADCRUMB } from '@/lib/traitGates';
-import type { SurfaceEntry } from '@/lib/codeSurface';
+import { surfaceHasGlobal, type CodeAccess, type CodeSurface, type SurfaceEntry } from '@/lib/codeSurface';
 import { placeholderKindNoun, type PlaceholderKindNoun } from '@/lib/placeholders';
 import {
   isPlaceholderEntryMember, memberStep, placeholderPathMap, type PlaceholderPathMap, type PlaceholderPathNode,
 } from '@/lib/statCodePaths';
 import {
-  CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, DELTA_FIELDS, DELTA_MEMBERS, DICTIONARY_FIELDS, ENTITY_FIELDS, PERSONA_FIELDS,
-  PREVIOUS_FIELDS, SANDBOX_GLOBALS, STAT_FIELDS, TRAIT_ENTRY_FIELDS, placeholderEntryFields,
+  CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, DELTA_FIELDS, DELTA_MEMBERS, DICTIONARY_FIELDS, ENTITY_FIELDS, NARRATION_FIELDS,
+  NARRATION_GLOBAL, PERSONA_FIELDS, PLAYER_CALL_ENTRIES, PLAYER_GLOBAL, PREVIOUS_FIELDS, SANDBOX_GLOBALS, SELF_TRAIT_FIELDS,
+  STAT_FIELDS, SWITCHED_TRAIT_FIELDS, SWITCHED_TRAIT_GLOBAL, TRAIT_ENTRY_FIELDS, TRAIT_SCRIPT_SURFACE, placeholderEntryFields,
 } from '@/lib/statCodeSurface';
 
 /** The names the tree lists, as the editor's session holds them, with each world trait in its groups. */
 export type VariableTreeNames = Pick<AnalysisOptions, 'statNames' | 'placeholders' | 'entities'> & {
   traits?: readonly CodeTraitPlace[];
 };
+
+/** What an owned or Blueprint stat's `owner` holds, for the menu's Owner group. A null owner or name list is the
+ *  template editor's, which has no world: each list there is one type-over row. */
+export type VariableTreeOwner =
+  | { kind: 'entity'; entity: CodeEntityNames | null }
+  | { kind: 'blueprint'; statNames: readonly string[] | null };
 
 /** Offsets into an insert text: the part left selected after the insert. */
 export interface VariableSelection {
@@ -33,6 +40,8 @@ export interface VariableField {
   label: string;
   detail: string;
   info: string;
+  /** Absent on a method. The menu draws no badge, so it states this as text. */
+  access?: CodeAccess;
   insert: string;
   selection?: VariableSelection;
 }
@@ -48,9 +57,11 @@ export interface VariableGroup {
 /** One name in a name list, by its code name. */
 export interface VariableNameRow {
   name: string;
-  /** Folder, group, holder or owner names, outermost first. */
+  /** Folder, group, parent or owner names, outermost first. */
   trail: readonly string[];
   children: readonly VariableNode[];
+  /** Set on a name that is itself a value: picking it inserts this instead of opening `children`. */
+  field?: VariableField;
 }
 
 /** A level that lists the world's names. Never empty: an empty one is a group with an empty marker. */
@@ -94,6 +105,7 @@ function typeOver(path: Path): Path {
 
 const field = (path: Path, entry: SurfaceEntry, call = ''): VariableField => ({
   kind: 'field', label: entry.name, detail: entry.detail, info: entry.info, insert: `${path.text}.${entry.name}${call}`,
+  ...(entry.access ? { access: entry.access } : {}),
   ...(path.selection ? { selection: path.selection } : {}),
 });
 
@@ -179,17 +191,17 @@ function keyedLastWins<T extends { name: string }>(items: readonly T[]): T[] {
   return [...byName.values()];
 }
 
-/** Every placeholder under `nodes`, depth first, its holders as its trail. A child named like a member of its
- *  holder is skipped: the member is what that path reads. */
+/** Every placeholder under `nodes`, depth first, its parents as its trail. A child named like a member of its
+ *  parent is skipped: the member is what that path reads. */
 function placeholderRows(nodes: readonly PlaceholderPathNode[], path: Path, trail: readonly string[]): VariableNameRow[] {
   const rows: VariableNameRow[] = [];
-  const visit = (list: readonly PlaceholderPathNode[], at: Path, holders: readonly string[], seen: ReadonlySet<PlaceholderPathNode>) => {
+  const visit = (list: readonly PlaceholderPathNode[], at: Path, parents: readonly string[], seen: ReadonlySet<PlaceholderPathNode>) => {
     for (const node of keyedLastWins(list)) {
       if (!node.placeholder || seen.has(node)) continue;
       const nodePath = keyed(at, node.name);
-      rows.push({ name: node.name, trail: holders, children: placeholderFields(nodePath, placeholderKindNoun(node.placeholder)) });
+      rows.push({ name: node.name, trail: parents, children: placeholderFields(nodePath, placeholderKindNoun(node.placeholder)) });
       const children = node.children.filter((child) => !isPlaceholderEntryMember(child.name));
-      visit(children, nodePath, [...holders, node.name], new Set([...seen, node]));
+      visit(children, nodePath, [...parents, node.name], new Set([...seen, node]));
     }
   };
   visit(nodes, path, trail, new Set());
@@ -209,8 +221,50 @@ const traitRows = (path: Path, traits: readonly TraitPlace[]): VariableNameRow[]
     ...trait, children: fields(keyed(path, trait.name), TRAIT_ENTRY_FIELDS),
   }));
 
-/** Builds the Variable menu's top level. Without `names`, every name list is one type-over row. */
-export function buildVariableTree(names?: VariableTreeNames): VariableNode[] {
+/** Which of the names a script's timing adds its surface injects: `narration`, `player` and `trait`. */
+export interface TimingGlobals {
+  narration: boolean;
+  player: boolean;
+  trait: boolean;
+}
+
+/** The timing globals of a surface, read off the one list the editor and the menu share. */
+export const timingGlobalsOf = (surface: CodeSurface): TimingGlobals => ({
+  narration: surfaceHasGlobal(surface, 'narration'),
+  player: surfaceHasGlobal(surface, 'player'),
+  trait: surfaceHasGlobal(surface, 'trait'),
+});
+
+/** A call on `player` inserts complete, with the caret between the quotes of its question. */
+function playerFields(): VariableNode[] {
+  return PLAYER_CALL_ENTRIES.map((entry) => {
+    const args = entry.name === 'ask' ? '("", [])' : '("")';
+    const call = field(root('player'), entry, args);
+    const caret = call.insert.length - args.length + args.indexOf('"') + 1;
+    return { ...call, selection: { from: caret, to: caret } };
+  });
+}
+
+/** The groups a script's timing adds, in the order its surface lists them. */
+function timingGroups(globals: TimingGlobals): VariableNode[] {
+  return [
+    ...(globals.narration ? [{ kind: 'group' as const, label: 'Narration', info: NARRATION_GLOBAL.info, children: fields(root('narration'), NARRATION_FIELDS) }] : []),
+    ...(globals.player ? [{ kind: 'group' as const, label: 'Player', info: PLAYER_GLOBAL.info, children: playerFields() }] : []),
+    ...(globals.trait ? [{ kind: 'group' as const, label: 'Switched Trait', info: SWITCHED_TRAIT_GLOBAL.info, children: fields(root('trait'), SWITCHED_TRAIT_FIELDS) }] : []),
+  ];
+}
+
+/** The Owner group's header. */
+const OWNER_INFO = 'The entity that owns this stat, with its own stats, traits and placeholders. A Blueprint stat’s code runs once for each owner. It’s empty in a global stat.';
+
+/**
+ * Builds the Variable menu's top level. Without `names`, every name list is one type-over row. `stats` lists the
+ * global stats in every box; an `owner` adds the Owner group, which lists the owner's own.
+ */
+export function buildVariableTree(
+  names?: VariableTreeNames, owner: VariableTreeOwner | null = null, self: 'stat' | 'trait' | 'empty' = 'stat',
+  timing: TimingGlobals = { narration: false, player: false, trait: false },
+): VariableNode[] {
   const pathMap: PlaceholderPathMap | null = names?.placeholders
     ? placeholderPathMap({ list: names.placeholders.list, owners: names.placeholders.owners })
     : null;
@@ -247,6 +301,7 @@ export function buildVariableTree(names?: VariableTreeNames): VariableNode[] {
   } : typeOverLists, 'on a persona entity');
 
   const stats = root('stats');
+  const ownerRoot = root('owner');
   const traits = root('traits');
   const entities = root('entities');
   const placeholders = root('placeholders');
@@ -273,8 +328,26 @@ export function buildVariableTree(names?: VariableTreeNames): VariableNode[] {
     }))
     : templateRows(dictionaries, (at) => dictionaryFields(at, null));
 
+  // A Blueprint group holds stats only, so its Owner has no traits or placeholders.
+  const ownerChildren = (at: VariableTreeOwner): VariableNode[] => {
+    if (at.kind === 'entity') return at.entity && names ? entityFields(ownerRoot, at.entity) : ownerFields(ownerRoot, ENTITY_FIELDS, typeOverLists, 'on this entity');
+    const groupStats = at.statNames;
+    if (!groupStats || !names) return ownerFields(ownerRoot, ENTITY_FIELDS, typeOverLists, 'on this entity');
+    return ownerFields(ownerRoot, ENTITY_FIELDS, {
+      traits: () => [],
+      placeholders: () => [],
+      stats: (path) => statNameRows(path, groupStats.map((name) => ({ name, trail: [] }))),
+    }, 'in this Blueprint group');
+  };
+
+  // A world script's `self` is empty, so it gets no group.
+  const selfGroup: VariableNode[] = self === 'empty' ? []
+    : self === 'trait'
+      ? [{ kind: 'group', label: 'This Trait', info: TRAIT_SCRIPT_SURFACE.globals.find((entry) => entry.name === 'self')?.info, children: fields(root('self'), SELF_TRAIT_FIELDS) }]
+      : [{ kind: 'group', label: 'This Stat', info: globalInfo('self'), children: statFields(root('self')) }];
   return [
-    { kind: 'group', label: 'This Stat', info: globalInfo('self'), children: statFields(root('self')) },
+    ...selfGroup,
+    ...(owner ? [{ kind: 'group' as const, label: 'Owner', info: OWNER_INFO, children: ownerChildren(owner) }] : []),
     nameList('Stats', statRows, 'No stats in this world', globalInfo('stats')),
     nameList('Traits', traitList, 'No traits in this world', globalInfo('traits')),
     nameList('Entities', entityRows, 'No entities in this world', globalInfo('entities')),
@@ -282,6 +355,7 @@ export function buildVariableTree(names?: VariableTreeNames): VariableNode[] {
     nameList('Placeholders', placeholderList, 'No placeholders in this world', globalInfo('placeholders')),
     nameList('Dictionaries', dictionaryRows, 'No dictionaries in this world', globalInfo('dictionaries')),
     { kind: 'group', label: 'Clock', info: globalInfo('clock'), children: clockFields(root('clock')) },
+    ...timingGroups(timing),
   ];
 }
 

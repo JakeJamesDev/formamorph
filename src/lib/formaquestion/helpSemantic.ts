@@ -3,6 +3,8 @@
  * the question is embedded on the device with the semantic-memory model.
  */
 import { embedTexts, openCachedEmbeddingModel } from '@/lib/embeddingWorkerClient';
+import { EMBED_BOUND_MS } from '@/lib/memoryRelevance';
+import { withTimeout } from '@/lib/withTimeout';
 import { FAVORED_PAGE_WEIGHT, type DocSection, type DocsIndex } from '@/lib/docs/docsIndex';
 import { rankByVector } from './rankMerge';
 import { sectionEntries, type SectionEntry, type SectionVectorsFile } from './sectionVectors';
@@ -49,7 +51,8 @@ export async function semanticRanking(index: DocsIndex, queries: readonly string
     if (!(await embedder.open())) return null;
     const entries = entriesOf(index, await embedder.vectors());
     if (entries.length === 0) return null;
-    const embedded = await embedder.embed([...queries]);
+    const embedded = await withTimeout(embedder.embed([...queries]), EMBED_BOUND_MS, null);
+    if (!embedded) return null;
     const vectorOf = new Map(queries.map((query, at) => [query, embedded[at]]));
     const sectionOf = new Map(entries.map((entry) => [entry.id, entry.section]));
     return (query, limit, favor) => {

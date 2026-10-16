@@ -1,17 +1,22 @@
 // Entity stats in play: each authored entity's stat values, seeded at a new game and backfilled on load, and
 // the owners whose regen and code run each turn.
 
-import type { Entity, EntityStatChanges, EntityStatValues, PersonaRef, PlayerStat, StatGroup } from '@/types';
-import { inCast, playsAs } from './bearers';
+import type { Entity, EntityStatChanges, EntityStatValues, LegacyCodeBoundsStat, PersonaRef, PlayerStat, Stat, StatGroup } from '@/types';
+import { playStatWorld, type StatLinkWorld } from './statLinks';
+import { inCast, playsAs } from './owners';
 import { backfillPlayerStats } from './statBackfill';
 import { activeStatEnabled, enabledStats } from './traitEffects';
 import { seedNewGameStats } from './traitRuntime';
-import { PLAYER_OWNER, regenOwners, statsOf, type OwnerStats, type OwnerStatTraits, type StatOwner } from './statOwners';
+import { regenOwners, statsOf, type OwnerStats, type OwnerStatTraits, type StatOwner } from './statOwners';
 import { statPlacementOf } from './statContext';
 import { applyStatResponse, type StatRequestOwner, type StatResponse, type StatUpdateDiagnostic } from './statRequest';
 import { overlayStatCodeResult, type OwnerCodeResult, type OwnerCodeTurn } from './statCodeTurn';
 
 type StatEntity = Pick<Entity, 'id' | 'stats'>;
+
+/** Each entity's own stats as a new game seeds them, its links resolved against the world's stats. */
+export const seedWorldEntityStats = (world: StatLinkWorld & { stats: Stat[]; entities: Entity[] }): EntityStatValues =>
+  seedEntityStats(playStatWorld(world).entities);
 
 /** Every entity that can own stats in a playthrough: the world's, then the library's, which are the library
  *  persona and the characters added at Enter World. */
@@ -112,9 +117,9 @@ function requestOwners(
 export function applyEntityStatResponse(
   values: EntityStatValues, response: StatResponse, inForce: OwnerStatTraits,
 ): { values: EntityStatValues; diagnostics: StatUpdateDiagnostic[] } {
-  const ownerIds = [...new Set(response.updates.map((u) => u.ownerId).filter((id) => id !== PLAYER_OWNER))];
+  const ownerIds = [...new Set(response.updates.flatMap((u) => (u.ownerId === null ? [] : [u.ownerId])))];
   if (!ownerIds.length) return { values, diagnostics: [] };
-  // The response's own diagnostics go out with the player's apply, once.
+  // The response's own diagnostics go out with the global apply, once.
   const updatesOnly = { ...response, diagnostics: [] };
   const next = { ...values };
   const diagnostics: StatUpdateDiagnostic[] = [];
@@ -165,6 +170,20 @@ export function withOwnerCodeResults(
 export function backfillGameStateEntityStats<S extends { entityStats?: EntityStatValues }>(state: S, entities: readonly StatEntity[]): S {
   const next = backfillEntityStats(state.entityStats, entities);
   return next === state.entityStats || !Object.keys(next).length ? state : { ...state, entityStats: next };
+}
+
+/** A saved state with no entity stat carrying stored code bounds; the same state when none carries them. */
+export function withoutEntityCodeBounds<S extends { entityStats?: EntityStatValues }>(state: S): S {
+  const saved = state.entityStats;
+  const carries = (stat: LegacyCodeBoundsStat) => 'codeBounds' in stat;
+  if (!saved || !Object.values(saved).some((stats) => stats.some(carries))) return state;
+  const entityStats = Object.fromEntries(Object.entries(saved).map(([id, stats]) =>
+    [id, stats.map((stat: LegacyCodeBoundsStat) => {
+      if (!carries(stat)) return stat;
+      const { codeBounds: _dropped, ...rest } = stat;
+      return rest;
+    })]));
+  return { ...state, entityStats };
 }
 
 /** The entity owners whose regen and code run, in authored order: every entity in the playthrough that holds

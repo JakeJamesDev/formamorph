@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { getRevealTiming, setRevealTiming } from './revealTimingStore';
+import { getRevealReleased, getRevealTiming, setRevealReleased, setRevealTiming } from './revealTimingStore';
 import {
   flooredTiming, pacedStagger, FADE_SPREAD, DEFAULT_STAGGER, DEFAULT_DURATION,
   ARRIVAL_MIN_GAP_MS, ARRIVAL_EMA_ALPHA,
@@ -9,6 +9,12 @@ const countWords = (text: string): number => {
   const trimmed = text.trim();
   return trimmed ? trimmed.split(/\s+/).length : 0;
 };
+
+/** A cumulative prefix waiting to show, with the count of sentences it holds. */
+interface Release {
+  text: string;
+  sentences: number;
+}
 
 /**
  * Paced sentence reveal (the Fade-in Narration path). Feed it cumulative completed-sentence prefixes
@@ -21,12 +27,15 @@ const countWords = (text: string): number => {
  * renderer's word-fade matches. `minStagger`/`minDuration` are the user's readability floors. The
  * measured rate carries across turns (`reset` keeps it), so only the first turn pays the slow-start ramp.
  *
+ * Each push names how many sentences its prefix holds; the pacer publishes the count it has released to the
+ * store, and the final text counts as every sentence.
+ *
  * `finish` queues the final text (including the held last sentence), `reset` clears everything, and
  * `drained` resolves once the whole queue has played out, so the caller can hold the turn "busy" until
  * the reveal completes rather than dumping the backlog when the request ends.
  */
 export function useSentenceReveal(onText: (text: string) => void, minStagger = 0, minDuration = 0) {
-  const queueRef = useRef<string[]>([]);
+  const queueRef = useRef<Release[]>([]);
   const shownRef = useRef('');
   const busyRef = useRef(false);
   const finishedRef = useRef(false);
@@ -78,9 +87,10 @@ export function useSentenceReveal(onText: (text: string) => void, minStagger = 0
     if (skippingRef.current) {
       const deepest = queueRef.current[queueRef.current.length - 1];
       queueRef.current = [];
-      shownRef.current = deepest;
+      shownRef.current = deepest.text;
       visualEndRef.current = 0;
-      onTextRef.current(deepest);
+      setRevealReleased(deepest.sentences);
+      onTextRef.current(deepest.text);
       settleDrain();
       return;
     }
@@ -88,14 +98,15 @@ export function useSentenceReveal(onText: (text: string) => void, minStagger = 0
     // then write it to the store so the renderer's word fade matches. Backlog = all arrived-but-unshown
     // words (the deepest queued prefix minus what's shown), measured before we shift this one off.
     const deepest = queueRef.current[queueRef.current.length - 1];
-    const backlogWords = countWords(deepest) - countWords(shownRef.current);
+    const backlogWords = countWords(deepest.text) - countWords(shownRef.current);
     const stagger = pacedStagger(msPerWordRef.current, backlogWords, finishedRef.current);
     setRevealTiming(flooredTiming({ stagger, duration: stagger * FADE_SPREAD }, minStaggerRef.current, minDurationRef.current));
 
     queueRef.current.shift();
-    const addedWords = countWords(next) - countWords(shownRef.current);
-    shownRef.current = next;
-    onTextRef.current(next);
+    const addedWords = countWords(next.text) - countWords(shownRef.current);
+    shownRef.current = next.text;
+    setRevealReleased(next.sentences);
+    onTextRef.current(next.text);
     const timing = getRevealTiming();
     visualEndRef.current = Date.now() + addedWords * timing.stagger + timing.duration;
     busyRef.current = true;
@@ -109,12 +120,18 @@ export function useSentenceReveal(onText: (text: string) => void, minStagger = 0
   // Cumulative prefixes only grow, so a longer target is a genuinely new sentence to reveal. `measure`
   // updates the arrival-rate estimate from the gap since the previous arrival (skipped for the final
   // flush, and for arrivals closer than the burst threshold, which would read as infinitely fast).
-  const enqueue = useCallback((target: string, measure: boolean) => {
+  const enqueue = useCallback((target: string, sentences: number, measure: boolean) => {
     const last = queueRef.current.length
-      ? queueRef.current[queueRef.current.length - 1]
+      ? queueRef.current[queueRef.current.length - 1].text
       : shownRef.current;
-    if (target.length <= last.length) return;
-    queueRef.current.push(target);
+    if (target.length <= last.length) {
+      // A sentence rewritten to nothing adds no text, yet it releases with the prefix before it.
+      const tail = queueRef.current.at(-1);
+      if (tail) tail.sentences = Math.max(tail.sentences, sentences);
+      else setRevealReleased(Math.max(getRevealReleased(), sentences));
+      return;
+    }
+    queueRef.current.push({ text: target, sentences });
     if (!measure) return;
     const now = Date.now();
     const words = countWords(target);
@@ -133,13 +150,13 @@ export function useSentenceReveal(onText: (text: string) => void, minStagger = 0
   }, []);
 
   const push = useCallback(
-    (cumulativePrefix: string) => {
+    (cumulativePrefix: string, sentences: number) => {
       // The first call marks the stream's start, so the first sentence's arrival is a rate sample too.
       if (lastArrivalAtRef.current === null && !cumulativePrefix && !shownRef.current && !queueRef.current.length) {
         lastArrivalAtRef.current = Date.now();
         lastArrivalWordsRef.current = 0;
       }
-      enqueue(cumulativePrefix, true);
+      enqueue(cumulativePrefix, sentences, true);
       pump();
     },
     [enqueue, pump],
@@ -147,7 +164,7 @@ export function useSentenceReveal(onText: (text: string) => void, minStagger = 0
 
   const finish = useCallback(
     (finalText: string) => {
-      enqueue(finalText, false); // the end flush isn't a rate sample
+      enqueue(finalText, Number.POSITIVE_INFINITY, false); // the end flush isn't a rate sample
       finishedRef.current = true;
       pump();
     },
@@ -172,6 +189,7 @@ export function useSentenceReveal(onText: (text: string) => void, minStagger = 0
     lastArrivalWordsRef.current = 0;
     sampledRef.current = false;
     setRevealTiming(flooredTiming({ stagger: DEFAULT_STAGGER, duration: DEFAULT_DURATION }, minStaggerRef.current, minDurationRef.current));
+    setRevealReleased(0);
     onTextRef.current('');
     // Don't leave a caller awaiting a reveal we just cleared.
     const waiters = drainWaitersRef.current;

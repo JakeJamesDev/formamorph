@@ -1,6 +1,6 @@
 # 06: Diary And Discover In The Queue
 
-Status: ready-for-agent
+Status: done
 Blocked by: 05
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: high
@@ -17,6 +17,8 @@ Diary and discover join the Background Pass Queue and their drainer effects leav
 - Diary builds from the diary pass over the standalone pass input, with the entity text that now exists after discover. Discover keeps its pass record. Both carry the abort signal and pass through the session guard (discover's entity write is a guard target).
 - The diary characterization test from 01 is deleted with the hand-built builder.
 - The status bar gains "Describing character…" for a running discover, under the same toggle and precedence as the others. The old per-pass flags for diary and discover go.
+
+**Hand-off from ticket 05 (landed as `6e41cff7b`).** The interim guards carry the comment "Interim until diary and discover join the queue": the queue's busy flag in the game view and the running-set checks in the diary and discover drainers. Delete them here. The status component's pass kind union adds a diary case beside the queue's kinds; it collapses once diary joins. Keep two queue rules 05 introduced: an applied pass stays out of the due set while a snapshot still shows the state it read, because a render can lag the write and the live app double-sent a digest without it; and a tick waits while the session counter differs from the last snapshot's.
 
 Changelog fragment, Minor → Fixed → ⚙️: a new character's diary now carries the character's description; no diary is written for a name that never becomes an entity; the status bar names a running character description.
 

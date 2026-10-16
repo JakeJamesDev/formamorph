@@ -2,6 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { sampleChipScene } from './sampleScene';
 import { chipValues } from './chipValues';
 import { NONE_PLACEHOLDER } from '../promptFallbacks';
+import { spelledTokens } from '@/test/chipTokens';
+import { renderPromptTemplate } from '../promptTemplate';
+import { defaultStatUpdatesPrompt } from '@/components/game/GamePrompts';
 
 describe('sampleChipScene', () => {
   it('opens on the Landing with the sample cast, as a player mid-scene would see it', () => {
@@ -16,11 +19,19 @@ describe('sampleChipScene', () => {
   it('gives every scene-derived chip real sample content, never the empty placeholder', () => {
     // A preview that showed N/A for a chip would tell the player nothing about what the chip carries.
     const values = chipValues(sampleChipScene());
-    const empty = Object.keys(values).filter((token) => !values[token].trim() || values[token] === NONE_PLACEHOLDER);
+    const tokens = ['<WORLD DESCRIPTION>', '<STATS DESCRIPTION>', '<TRAITS DESCRIPTION>', '<PERSONA>', '<LOCATION>',
+      '<ENTITIES>', '<NOTES>', '<TIME>', '<DICTIONARY>'].flatMap(spelledTokens);
+    const empty = tokens.filter((token) => !values(token)?.trim() || values(token) === NONE_PLACEHOLDER);
     expect(empty).toEqual([]);
   });
 
   it('renders the sample clock as the old preview did', () => {
-    expect(chipValues(sampleChipScene())['<TIME>']).toBe('Day 3, evening');
+    expect(chipValues(sampleChipScene())('<TIME>')).toBe('Day 3, evening');
+  });
+
+  it('fills both owner blocks of the default stat prompt in the Settings preview', () => {
+    const prompt = renderPromptTemplate(defaultStatUpdatesPrompt, chipValues(sampleChipScene()));
+    expect(prompt).toMatch(/## Player Character\n- \*\*Traveler\*\*[^#]*- \*\*Nerve:\*\* 55\/100/);
+    expect(prompt).toMatch(/## In Scene\n- \*\*Wren\*\*[^#]*- \*\*Patience:\*\* 70\/100/);
   });
 });

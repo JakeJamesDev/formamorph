@@ -1,11 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { Placeholder, PlayerStat } from '@/types';
 import {
-  createStatRequest, readStatResponse, applyStatResponse, statResponseChanges, statRequestSchema, PLAYER_STAT_HEADING,
+  createStatRequest, readStatResponse, applyStatResponse, statResponseChanges, statRequestSchema, GLOBAL_STATS_HEADING,
   type StatRequestSnapshot, type StatResponse, type StatUpdateDiagnostic,
 } from './statRequest';
 import type { ResponseSchemaNode } from './aiRequest/responseSchema';
-import { PLAYER_OWNER } from './statOwners';
 import { collectPins } from './placeholderPins';
 import { resolvePlaceholders } from './placeholders';
 import { resolveStatNames } from './resolveWorldNames';
@@ -35,8 +34,8 @@ describe('stat request names', () => {
       ...material, statRequest: snapshot,
     });
     expect(request.systemPrompt).toContain('- **Health:** 100/100 — Physical condition.');
-    expect(request.statRequest?.targets).toEqual([{ id: 'health', name, plainName: 'Health', ownerId: PLAYER_OWNER, ownerKey: PLAYER_STAT_HEADING, key: 'Health', maxKey: 'Health max' }]);
-    expect(snapshot.context['<STATS DESCRIPTION>']).not.toContain(name === '`Health`' ? '`' : name);
+    expect(request.statRequest?.targets).toEqual([{ id: 'health', name, plainName: 'Health', ownerId: null, ownerKey: GLOBAL_STATS_HEADING, key: 'Health', maxKey: 'Health max' }]);
+    expect(snapshot.context('<STATS DESCRIPTION>')).not.toContain(name === '`Health`' ? '`' : name);
   });
 
   it.each(['Health: -25', '**Health:** -25', '=c=Health==: -25', '[Health](https://example.com): -25', '- **Health**: -25'])('accepts plain and formatted replies: %s', (reply) => {
@@ -55,7 +54,7 @@ describe('stat request names', () => {
 
   it('names colliding stats apart by numbered key, and still accepts an exact colored name', () => {
     const stats = [stat({ name: '=r=Health==' }), stat({ id: 'blue', name: '=b=Health==' })];
-    const chip = createStatRequest(stats).context['<STATS DESCRIPTION>'];
+    const chip = createStatRequest(stats).context('<STATS DESCRIPTION>');
     expect(chip).toContain('Health (2)');
     expect(apply(stats, 'Health: -5').stats.map((s) => s.value)).toEqual([95, 100]);
     expect(apply(stats, '**Health (2):** -5').stats.map((s) => s.value)).toEqual([100, 95]);
@@ -123,17 +122,17 @@ describe('stat request names', () => {
   });
 
   it("stamps each update with its target's owner", () => {
-    const response = readStatResponse('Health: -5', createStatRequest([stat()], 'bram'));
+    const response = readStatResponse('Health: -5', createStatRequest([], { persona: { id: 'bram', name: 'Bram', stats: [stat()] } }));
     expect(response.updates).toEqual([{ ownerId: 'bram', id: 'health', name: 'Health', value: -5, max: 0 }]);
   });
 
   it('keeps two owners of one stat id apart in the reply', () => {
-    const snapshot: StatRequestSnapshot = { id: 'r', context: {}, textContext: {}, entityKeys: [], targets: [
-      { ownerId: PLAYER_OWNER, id: 'health', name: 'Health', plainName: 'Health', ownerKey: PLAYER_STAT_HEADING, key: 'Health', maxKey: 'Health max' },
+    const snapshot: StatRequestSnapshot = { id: 'r', context: () => undefined, entityKeys: [], inSceneIds: [], targets: [
+      { ownerId: null, id: 'health', name: 'Health', plainName: 'Health', ownerKey: GLOBAL_STATS_HEADING, key: 'Health', maxKey: 'Health max' },
       { ownerId: 'bram', id: 'health', name: 'Bram Health', plainName: 'Bram Health', ownerKey: 'Bram', key: 'Health', maxKey: 'Health max' },
     ] };
     expect(readStatResponse('Health: -5\nBram Health: -9', snapshot).updates).toEqual([
-      { ownerId: PLAYER_OWNER, id: 'health', name: 'Health', value: -5, max: 0 },
+      { ownerId: null, id: 'health', name: 'Health', value: -5, max: 0 },
       { ownerId: 'bram', id: 'health', name: 'Bram Health', value: -9, max: 0 },
     ]);
   });
@@ -141,7 +140,7 @@ describe('stat request names', () => {
   it("applies only the named owner's updates, matched by owner and stat id", () => {
     // Two owners hold one stat id, as two links to one Blueprint do.
     const response: StatResponse = { requestId: 'r', diagnostics: [], updates: [
-      { ownerId: PLAYER_OWNER, id: 'health', name: 'Health', value: -5, max: 0 },
+      { ownerId: null, id: 'health', name: 'Health', value: -5, max: 0 },
       { ownerId: 'bram', id: 'health', name: 'Health', value: -30, max: 10 },
     ] };
     const live = new Set(['health']);
@@ -171,15 +170,15 @@ const keywordsIn = (node: ResponseSchemaNode): string[] => [
 
 describe('the schema request', () => {
   const stats = [stat({ name: '**Vigor**' }), stat({ id: 'resolve', name: 'Resolve' }), stat({ id: 'vigor-2', name: 'Vigor' })];
-  const json = (body: unknown) => JSON.stringify({ [PLAYER_STAT_HEADING]: body });
+  const json = (body: unknown) => JSON.stringify({ [GLOBAL_STATS_HEADING]: body });
 
-  it('requires every stat under the player, each a bounded change beside a bounded max change', () => {
+  it('requires every loose stat under Other Stats, each a bounded change beside a bounded max change', () => {
     const { name, schema } = statRequestSchema(createStatRequest(stats));
     const bounded = { type: 'integer', minimum: -20, maximum: 20 };
     const keys = ['Vigor', 'Vigor max', 'Resolve', 'Resolve max', 'Vigor (2)', 'Vigor (2) max'];
     expect(name).toBe('stat_changes');
-    expect(schema).toEqual({ type: 'object', additionalProperties: false, required: [PLAYER_STAT_HEADING], properties: {
-      [PLAYER_STAT_HEADING]: {
+    expect(schema).toEqual({ type: 'object', additionalProperties: false, required: [GLOBAL_STATS_HEADING], properties: {
+      [GLOBAL_STATS_HEADING]: {
         type: 'object', additionalProperties: false, required: keys,
         properties: Object.fromEntries(keys.map((key) => [key, bounded])),
       },
@@ -204,8 +203,8 @@ describe('the schema request', () => {
     const snapshot = createStatRequest(stats);
     const response = readStatResponse(json({ Vigor: -4, 'Vigor max': 0, Resolve: 0, 'Resolve max': 0, 'Vigor (2)': 2, 'Vigor (2) max': -5 }), snapshot);
     expect(response.updates).toEqual([
-      { ownerId: PLAYER_OWNER, id: 'health', name: '**Vigor**', value: -4, max: 0 },
-      { ownerId: PLAYER_OWNER, id: 'vigor-2', name: 'Vigor', value: 2, max: -5 },
+      { ownerId: null, id: 'health', name: '**Vigor**', value: -4, max: 0 },
+      { ownerId: null, id: 'vigor-2', name: 'Vigor', value: 2, max: -5 },
     ]);
     expect(response.diagnostics).toEqual([]);
   });
@@ -213,11 +212,11 @@ describe('the schema request', () => {
   it('reads a fenced reply, and reports keys and values it cannot place', () => {
     const snapshot = createStatRequest(stats);
     const fenced = readStatResponse(`\`\`\`json\n${json({ Resolve: -3, 'Resolve max': 0, Mana: 1, Vigor: 'lots' })}\n\`\`\``, snapshot);
-    expect(fenced.updates).toEqual([{ ownerId: PLAYER_OWNER, id: 'resolve', name: 'Resolve', value: -3, max: 0 }]);
+    expect(fenced.updates).toEqual([{ ownerId: null, id: 'resolve', name: 'Resolve', value: -3, max: 0 }]);
     expect(fenced.diagnostics).toEqual([{ name: 'Mana', reason: 'unknown' }, { name: 'Vigor', reason: 'invalid' }]);
     expect(readStatResponse(JSON.stringify({ Bram: { Trust: 2 } }), snapshot).diagnostics)
       .toEqual([{ name: 'Bram', reason: 'unknown' }]);
-    expect(readStatResponse('{"Player Character":{"Vigor":-4,', snapshot)).toMatchObject({
+    expect(readStatResponse('{"Other Stats":{"Vigor":-4,', snapshot)).toMatchObject({
       updates: [], diagnostics: [{ reason: 'invalid' }],
     });
   });
@@ -232,7 +231,7 @@ describe('the schema request', () => {
   });
 
   it('marks every text-pass reply, an empty one included, and no schema reply', () => {
-    const textPass = createStatRequest([stat()], PLAYER_OWNER, { textPass: true });
+    const textPass = createStatRequest([stat()], { textPass: true });
     expect(readStatResponse('', textPass).diagnostics).toEqual([{ name: '', reason: 'textPass' }]);
     expect(readStatResponse('Health: -5', createStatRequest([stat()])).diagnostics).toEqual([{ name: '', reason: 'textPass' }]);
     // The first refused turn's retry runs on a schema snapshot; nothing moving still marks it.

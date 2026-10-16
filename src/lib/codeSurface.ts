@@ -6,7 +6,28 @@
  * A surface describes a sandbox; it never widens one. The exposure lives in each executor.
  */
 
-import type { InsertSnippet } from '@/lib/codeSnippets';
+import type { DocTarget } from '@/lib/docs/docsLinks';
+
+/** Whether code can write a name: now, only from the next run on, or not at all. */
+export type CodeAccess = 'writable' | 'afterRun' | 'readOnly';
+
+/** The badge label for each access, in the card's AP title case. */
+export const ACCESS_LABEL: Record<CodeAccess, string> = {
+  writable: 'Writable',
+  afterRun: 'Writable After This Run',
+  readOnly: 'Read-Only',
+};
+
+/** `text` ended by a period, unless it already ends a sentence. */
+export const closeSentence = (text: string): string => (/[.!?]$/.test(text) ? text : `${text}.`);
+
+/** The access as a closing sentence, for a list that draws no badge. Prose keeps "read-only" in sentence case. */
+const accessSentence = (access: CodeAccess): string => closeSentence(ACCESS_LABEL[access].charAt(0) + ACCESS_LABEL[access].slice(1).toLowerCase());
+
+/** `info` closed by its access as a sentence. Info lines carry no access words, so the badge-less lists add them here. */
+export function infoWithAccess({ info, access }: Pick<SurfaceEntry, 'info' | 'access'>): string {
+  return access ? `${closeSentence(info)} ${accessSentence(access)}` : info;
+}
 
 /** One reachable name and what an author needs to know about it. */
 export interface SurfaceEntry {
@@ -15,7 +36,25 @@ export interface SurfaceEntry {
   detail: string;
   /** The one-line explanation shown beside the entry. */
   info: string;
+  /** Absent on a method, and on a map whose own entries carry the access. */
+  access?: CodeAccess;
 }
+
+/** Whether an entry is a function, by the arrow its detail spells. */
+export const isMethodEntry = (entry: SurfaceEntry): boolean => /^\(.*\)\s*=>/.test(entry.detail);
+
+/** `entries` with each field's access. A method and a name in `maps` carry none. */
+const applyAccess = (entries: readonly SurfaceEntry[], accessOf: (name: string) => CodeAccess, maps: readonly string[]) =>
+  entries.map((entry) => (isMethodEntry(entry) || maps.includes(entry.name) ? entry : { ...entry, access: accessOf(entry.name) }));
+
+/** `entries` with each field's access, from an executor's own list of the fields a write reaches. */
+export const withAccess = (
+  entries: readonly SurfaceEntry[], writable: readonly string[], when: Exclude<CodeAccess, 'readOnly'>, maps: readonly string[] = [],
+): SurfaceEntry[] => applyAccess(entries, (name) => (writable.includes(name) ? when : 'readOnly'), maps);
+
+/** `entries` where no write reaches any field. */
+export const readOnlyEntries = (entries: readonly SurfaceEntry[], maps: readonly string[] = []): SurfaceEntry[] =>
+  applyAccess(entries, () => 'readOnly', maps);
 
 /**
  * The names one kind of code can reach, their members, and how its reader talks about it.
@@ -24,7 +63,7 @@ export interface SurfaceEntry {
  * `statMaps` and lists that name among its globals.
  */
 export interface CodeSurface {
-  /** What a message calls the code, as in “x” isn’t available in stat code. */
+  /** What a message calls the code, as in “x” isn’t available in this script. */
   label: string;
   /** The names the sandbox injects, in the order an author meets them. Offered first. */
   globals: readonly SurfaceEntry[];
@@ -35,12 +74,15 @@ export interface CodeSurface {
   members: ReadonlyMap<string, readonly SurfaceEntry[]>;
   /** Language-level names a reference may use without being a typo. Never offered. */
   languageNames: readonly string[];
-  /** The Variable menu, as a flat list. Empty where `statMaps` is set: stat code's menu is a drill tree. */
-  snippets: readonly InsertSnippet[];
   /** The warning for code that neither returns nor writes anything, or null when that is fine. */
   missingReturn: string | null;
   /** True when `stats`, `self`, `placeholders` and `traits` are stat code's maps, with their rules. */
   statMaps: boolean;
+  /** What `self` holds with `statMaps`: a trait's script reads its trait's entry, read-only; a world script's is
+   *  empty. Absent = a stat. */
+  selfIs?: 'trait' | 'empty';
+  /** The Guide heading of each global that has one, for its card's Read in the Guide link. */
+  guide?: Readonly<Record<string, DocTarget>>;
 }
 
 const knownNames = new WeakMap<CodeSurface, ReadonlySet<string>>();

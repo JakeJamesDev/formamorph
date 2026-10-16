@@ -396,6 +396,7 @@ function seekChip(token: string, attempt: number): void {
  * Selecting an item from the find bar sets the id the tree reads, but nothing scrolls the list to it, so a
  * hit far down a long tree left the list sitting wherever it was — the detail pane moved and the list did
  * not. Retried on the same budget as the field lookup, since the row appears with the tree's next render.
+ * Every selected row comes on screen: an entity's own stat or trait is selected in the entity list and in its tab.
  */
 export function revealSelectedRow(root: HTMLElement | null): void {
   cancelPending('row');
@@ -403,10 +404,10 @@ export function revealSelectedRow(root: HTMLElement | null): void {
 }
 
 function seekSelectedRow(root: HTMLElement | null, attempt: number): void {
-  const row = root?.querySelector<HTMLElement>('[data-editor-row-selected]');
-  if (!row) {
+  const found = root ? [...root.querySelectorAll<HTMLElement>('[data-editor-row-selected]')] : [];
+  if (!found.length) {
     if (root && attempt < RETRY_LIMIT) retryLater('row', () => seekSelectedRow(root, attempt + 1));
     return;
   }
-  row.scrollIntoView({ block: 'nearest', behavior: scrollBehavior() });
+  for (const row of found) row.scrollIntoView({ block: 'nearest', behavior: scrollBehavior() });
 }

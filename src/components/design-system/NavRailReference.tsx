@@ -17,6 +17,7 @@ const BODY: Record<(typeof WORLD_EDITOR_TABS)[number]['value'], string> = {
   traits: 'The trait tree beside the selected trait\'s details.',
   dictionary: 'The dictionaries and their entries.',
   placeholders: 'Every placeholder in the world, by owner.',
+  scripts: 'Every script in the world, by timing.',
 };
 
 function Option({ id, label, checked, onChange }: { id: string; label: string; checked: boolean; onChange: (value: boolean) => void }) {

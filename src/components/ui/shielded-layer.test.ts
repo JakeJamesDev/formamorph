@@ -31,10 +31,10 @@ describe('the shielded layer', () => {
     expect(document.querySelectorAll('[data-shielded-layer="window"]')).toHaveLength(1);
   });
 
-  it('paints above dialogs and under the chip typeahead and tooltips', () => {
+  it('paints above dialogs and the chip typeaheads, and under tooltips', () => {
     const host = ensureShieldedLayer().parentElement!;
-    expect(Number(host.style.zIndex)).toBeGreaterThan(50);
-    expect(Number(host.style.zIndex)).toBeLessThan(70);
+    expect(Number(host.style.zIndex)).toBeGreaterThan(60);
+    expect(Number(host.style.zIndex)).toBeLessThan(80);
   });
 
   it('sinks under dialogs and goes inert while a dialog covers it, and rises again after the dialog exits', () => {
@@ -52,13 +52,13 @@ describe('the shielded layer', () => {
     expect(host.style.transition).toBe('z-index 0s linear 200ms');
   });
 
-  it('gives toasts their own host, above the window layer and below the chip typeahead', () => {
+  it('gives toasts their own host, above the window layer and below tooltips', () => {
     const toasts = ensureShieldedLayer('toasts');
     const windowLayer = ensureShieldedLayer();
     expect(toasts).not.toBe(windowLayer);
     expect(ensureShieldedLayer('toasts')).toBe(toasts);
     expect(Number(toasts.parentElement!.style.zIndex)).toBeGreaterThan(Number(windowLayer.parentElement!.style.zIndex));
-    expect(Number(toasts.parentElement!.style.zIndex)).toBeLessThan(70);
+    expect(Number(toasts.parentElement!.style.zIndex)).toBeLessThan(80);
     expect(inShieldedLayer(toasts)).toBe(true);
   });
 

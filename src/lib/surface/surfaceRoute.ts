@@ -40,8 +40,10 @@ const DIALOGS: Record<DevModal, DialogRoute> = {
   formaquestion: { host: 'any' },
   formaquestionSettings: { host: 'any' },
   formaquestionAiContext: { host: 'any' },
+  formaquestionWikiConfirm: { ancestor: 'formaquestion' },
   formaquestionCompare: { ancestor: 'formaquestionSettings.prompts' },
   settingsCompare: { ancestor: 'settings.prompts' },
+  chipOptions: { ancestor: 'settings.prompts' },
 
   menu: { host: 'mainMenu' },
   intro: { host: 'mainMenu' },
@@ -88,10 +90,12 @@ const DIALOGS: Record<DevModal, DialogRoute> = {
   persona: { ancestor: 'gameViewer' },
   editText: { ancestor: 'gameViewer' },
   likePrompt: { ancestor: 'gameViewer' },
+  scriptPrompt: { ancestor: 'gameViewer' },
 
   // Raised by the app itself, never by the player: a refused build, an error toast, the Android back button.
   updateRequired: { ancestor: null },
   errorDetails: { ancestor: null },
+  imageSetup: { ancestor: null },
   exitApp: { ancestor: null },
   designSystem: { ancestor: null },
 
@@ -104,6 +108,7 @@ const LEDGERS: Record<TabKey, LedgerRoute> = {
   gameViewer: { parent: 'gameViewer' },
   gameViewerLayout: { ancestor: 'gameViewer' },
   gameViewerAttach: { ancestor: 'gameViewer' },
+  scriptPrompt: { ancestor: 'gameViewer' },
   designSystemGroupPicker: { ancestor: 'mainMenu' },
 
   settings: { parent: 'settings' },

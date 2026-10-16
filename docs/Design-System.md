@@ -174,7 +174,7 @@ Built-in Placeholders (**Player Name**, **Character Name**) keep the chip shape 
 A blueprint chip keeps the chip shape and its placeholder's accent. It carries a leading `LayoutTemplate` icon, the Blueprint element icon, from [`BlueprintMark`](../src/components/prompt/BlueprintMark.tsx) in the same three places. `Link2` keeps the linked-copy meaning. The showcase's **Blueprint Chips** card shows it.
 
 - The palette and the `{` menu list them first, under a quiet **Built-in** heading.
-- A placed Built-in chip opens no pop-out. Its tooltip says what it becomes.
+- A placed Built-in chip opens no Chip Options. Its tooltip says what it becomes.
 - A palette chip that the focused field refuses stays in place, dimmed, so the strip doesn't reflow.
 
 Preview reads each Built-in chip by one rule:
@@ -534,6 +534,42 @@ The live reference uses the production menu against the production entity card f
 
 Tile Size, Add To Group, Create New Group, Remove From Group, Check for Updates, Set as Default Persona, Clear Default Persona, Default, Delete, Delete Character, Cancel, and Confirm reuse production copy so the reference and Main Menu cannot drift. The confirmation says “character” where the terminology rule says “entity”; the reference keeps it for parity. Reuse does not certify those labels or the confirmation as fully ASD-STE100 compliant. In particular, the existing Delete label remains unchanged for production parity; this ticket does not perform the app-wide terminology decision that would be required before replacing it.
 
+### Item detail line
+
+**Use it when** an item's action goes somewhere the player may not expect. Today that is an AI request: the line names the endpoint that gets it.
+
+**Composition:**
+
+- The label comes first. A muted line in the meta size sits under it: "Sends to Default · default".
+- The line truncates on one row. The menu keeps its width.
+- Items with nothing to add keep one line. Do not add a blank second line to line them up.
+- The line is described, not named. The item's `aria-label` is the label alone, and `aria-description` carries the line.
+- A button has no room for the line, so its tooltip shows it under the label instead. Send and the World Editor's generate buttons do this.
+
+**Production mapping:**
+
+| Need | Component |
+| --- | --- |
+| The two-line item, its accessible name and description, and the tooltip on the row buttons | `BubbleMenu` and `BubbleActionButton` in [`BubbleMenu.tsx`](../src/components/game/BubbleMenu.tsx) |
+| Which actions send a request, and the line on each | `request` and `withEndpoints` in [`bubbleActions.ts`](../src/lib/bubbleActions.ts) |
+| The line's text | `endpointTipLine` in [`endpointTip.ts`](../src/lib/endpointTip.ts) |
+| The endpoint each request kind resolves to | `useEndpointTip` in [`useEndpointTip.ts`](../src/lib/useEndpointTip.ts) |
+| Isolated reference, on the Context Menu tab's Item Detail Line view | [`MenuDetailLineReference.tsx`](../src/components/design-system/MenuDetailLineReference.tsx) |
+
+Re-generate Narration, Re-generate Stats, Re-generate Choices, and Write Scene Tags carry the line, in the turn's More menu and its right-click menu.
+
+**States:**
+
+| State | Treatment |
+| --- | --- |
+| Long preset or model name | The line truncates with an ellipsis. The full text stays in `aria-description`. |
+| Model same as the preset name | The line names the preset once: "Sends to GLM 5.3". |
+| Demo AI | The preset is Default and the model is default, so the line is "Sends to Default · default". |
+| Disabled | The line dims with its label. |
+| Destructive | No destructive item sends a request today, so none carries a line. |
+
+**Writing review:** the line follows STE. It is one fixed form, "Sends to <preset> · <model>", with the preset and model names in their own spelling. It never explains the request or repeats the label.
+
 ## Pattern: Compact Selection Lists
 
 **Purpose:** Choose one destination from a simple list without reserving room for absent controls.
@@ -589,7 +625,7 @@ It differs from the Searchable Group Picker. That pattern is a Dialog for an unb
 - **Search.** The search field always shows. It matches a row's name and its full breadcrumb, with no sorting.
 - **Rows.** Rows keep the order of the matching editor tab. A group is never a row. It shows only as a breadcrumb segment.
 - **Hint.** A row can carry a right-aligned hint that is not a location. A hint never collapses and has no tooltip.
-- **Caller page.** A caller can replace the list with its own page, such as Add Requirement's bearer page.
+- **Caller page.** A caller can replace the list with its own page, such as Add Requirement's owner page.
 - **Check column.** A picker with a value reserves a check column. Every row that holds the value shows a check.
 
 ### Row layout and collapse
@@ -1006,7 +1042,7 @@ The live reference draws the World Editor's registry as the rail beside sample p
 
 - The World Editor reads: back, **World Editor**, a chevron, the world's name; the **Search World** field; the History pill; the Mode Select; Optimize Images as an icon button in Advanced; the Test Bench; Save with its menu.
 - The title is the surface's name. The world is the surface's subject, so its name follows the title. No tab's open item ever does.
-- Save is a split button. The face saves, and the chevron opens a menu that holds Export World and the Auto Save checkbox in both modes. A checkbox row toggles in place and leaves the menu open.
+- Save is a split button. The face saves, and the chevron opens a menu that holds Export World and the Autosave checkbox in both modes. A checkbox row toggles in place and leaves the menu open.
 - Every Save label stacks in one grid cell, so the face is as wide as **Saving…** in every state. Saved uses the full `success` fill with `success-foreground` text and icon. After about 2 s it eases over 700ms to the muted Save. Failed uses the destructive fill and does not fade.
 - A polite live region beside Save announces Saving, Saved and Save failed. Mobile's icon-only face swaps its icon the same way.
 - Optimize Images shows a spinner while it runs, and its tooltip shows the progress.
@@ -1046,8 +1082,8 @@ The bar is desktop-only. On mobile the surface keeps its card header, and its fo
 | Just saved | A check and **Saved** on the success fill. An edit returns the face to Save. |
 | Saved | After the hold the face fades to the muted, disabled Save. The chevron stays enabled. |
 | Save failed | An alert icon and **Failed** on the destructive fill, enabled. Its tooltip and its accessible description say the save failed and a click tries again. It stays until a save succeeds. |
-| Simple | The Save menu holds Export World and Auto Save. No other world action shows. |
-| Advanced | The Save menu holds Export World and Auto Save. Optimize Images is an icon button before the Test Bench. |
+| Simple | The Save menu holds Export World and Autosave. No other world action shows. |
+| Advanced | The Save menu holds Export World and Autosave. Optimize Images is an icon button before the Test Bench. |
 | Optimizing | The Optimize Images icon turns into a spinner, and its tooltip shows the count. A second click does nothing. |
 | Tour running | The Mode Select is disabled; its tooltip says to end the tour. |
 
@@ -1194,6 +1230,67 @@ The live reference renders the production card, plate, action line, rows, and St
 - The pair's labels and tooltips come from `StatsActions`, and the action line's menu from `playerBubbleActions`, so the reference and the game cannot drift.
 - **Unverified:** the description's "Right-click a card or the action line for its menu", the past page's "The Stats panel actions are disabled", and the "Stats Panel" label have terminology review only; vocabulary and grammar evidence is not recorded. The sample action text is creative prose and exempt.
 
+## Pattern: Inline Prompt Line
+
+**Purpose:** Show a script's question or message as part of the turn, not as a window over it.
+
+**Rule:**
+
+- A prompt is a line in the turn column under the narration. It has the action line's left rule in the primary color and italic text.
+- The control sits under the question. The actions are text links: **Cancel** on every prompt, and **OK** where the answer takes more than one press.
+- A confirm, and a single ask with up to four options, are pill buttons. One press answers.
+- A single ask with five or more options is the production dropdown. **OK** sends the pick and stays disabled until there is one.
+- A multiple ask is pill buttons that toggle, then **OK**. An empty pick is an answer.
+- An ask for text is the production text field, then **OK**. Enter submits, an empty field included.
+- The prompt takes focus when it opens. Escape cancels while focus is inside it. There is no global Escape.
+- A tell is the same line with the text alone. It stays with its turn and pages with it. After an answer, a prompt leaves the column.
+- A toast is the app toast. The line is never a dialog.
+
+**Density:** Compact. The line uses `text-label`. The field and the dropdown are 2rem tall.
+
+### Composition
+
+| Part | Holds | Notes |
+| --- | --- | --- |
+| **Rule** | `border-l-2 border-primary pl-3` | The same rule as the Pages action line, so the prompt reads as part of the turn. |
+| **Question** | The script's text, italic, in the foreground color | A tell shows this part alone. |
+| **Control** | Pills, the dropdown, or the text field | It fills the row. The actions sit at its right. |
+| **Actions** | **Cancel** in the muted color, then **OK** in the primary color | Cancel comes first in keyboard order. |
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| The prompt line and the tell lines | `ScriptPromptLine` and `ScriptTellLines` in [`ScriptPromptLine.tsx`](../src/components/game/ScriptPromptLine.tsx) |
+| Tells and toasts out of the store, asks into it | `noticeHost` in [`scriptPrompts.ts`](../src/lib/scriptPrompts.ts) |
+| The listener that keeps asks open, and cancels them at unmount | `useScriptPromptListener` in [`useScriptPromptListener.ts`](../src/lib/useScriptPromptListener.ts) |
+| Each turn's tells, with their script's timing, kept in the save | [`scriptTells.ts`](../src/lib/scriptTells.ts) |
+| Pages host | [`GamePanels.tsx`](../src/components/game/GamePanels.tsx) |
+| Chat host | [`ChatNarration.tsx`](../src/components/game/ChatNarration.tsx) |
+| Editor hosts: Test Code and the Test Bench | [`ScriptBox.tsx`](../src/managers/ScriptBox.tsx) and [`IssuesInstrument.tsx`](../src/components/editor/IssuesInstrument.tsx) |
+| Isolated reference | [`ScriptPromptLineReference.tsx`](../src/components/design-system/ScriptPromptLineReference.tsx) |
+
+### Responsive behavior
+
+Pages spans the narration column. Chat centers the line at bubble width, 85% of the column. Pills wrap onto more rows. A long question wraps; it never truncates.
+
+### State reference
+
+| State | Treatment |
+| --- | --- |
+| Default | Pills on the panel with a border. Text links without an underline. |
+| Hover | A pill takes a light primary tint. A text link takes an underline. |
+| Selected | A toggled pill takes the primary fill and a check icon. |
+| Disabled | **OK** is dimmed until the dropdown has a pick. |
+| Focus | Pills, links, the field and the dropdown use the shared inset focus ring. The line itself takes focus with no ring. |
+| Canceled | Cancel or Escape removes the line. The script stops as canceled, and its writes drop. |
+
+The live reference opens the production line in a store of its own under a sample turn, in either layout. Its status line shows what the sample script read. It never reaches play or a save.
+
+### Writing review
+
+- **Unverified:** "Choose One", the reference description, its sample labels, and its status lines have terminology review only; vocabulary and grammar evidence is not recorded. The sample questions are creative prose and exempt.
+
 ## Pattern: Nested Prompt Navigation
 
 **Purpose:** Show the active prompt section while retaining the surrounding prompt list.
@@ -1215,7 +1312,7 @@ The reference's mobile section selector previews the current prompt's sections; 
 
 Prompt and section labels reuse the production registry. The reference's title and selector label name their controls; it adds no instructional prose.
 
-## Pattern: Bearer Flyouts
+## Pattern: Owner Flyouts
 
 **Purpose:** Pick one entity from the world's entity groups without leaving the Traits tab.
 
@@ -1237,15 +1334,15 @@ This pattern differs from two others on purpose. Its entity list sits inside the
 
 | Need | Component |
 | --- | --- |
-| Levels, Back row, check column | `BearerList` in [`BearerPicker.tsx`](../src/managers/BearerPicker.tsx) |
-| Rows and levels | `bearerChoices` in [`bearerChoices.ts`](../src/lib/bearerChoices.ts) |
+| Levels, Back row, check column | `OwnerList` in [`OwnerPicker.tsx`](../src/managers/OwnerPicker.tsx) |
+| Rows and levels | `ownerChoices` in [`ownerChoices.ts`](../src/lib/ownerChoices.ts) |
 | Menu row | `MENU_ROW` in [`menuRow.ts`](../src/components/menuRow.ts) |
-| Link button | `LinkToBearerButton` in [`BearerPicker.tsx`](../src/managers/BearerPicker.tsx) |
+| Link button | `LinkToOwnerButton` in [`OwnerPicker.tsx`](../src/managers/OwnerPicker.tsx) |
 | Refusal reasons and their text | `HeldReason` and `heldReasonText` in [`heldReasons.ts`](../src/lib/heldReasons.ts) |
 | **+** menu drill-in | `traitsMenu` in [`WorldEditor.tsx`](../src/views/WorldEditor.tsx) |
-| Isolated reference | [`BearerFlyoutReference.tsx`](../src/components/design-system/BearerFlyoutReference.tsx) |
+| Isolated reference | [`OwnerFlyoutReference.tsx`](../src/components/design-system/OwnerFlyoutReference.tsx) |
 
-Open `#dev?modal=designSystem&tab=bearer-flyouts`. The reference uses sample entities and local state. It never reads or writes a world.
+Open `#dev?modal=designSystem&tab=owner-flyouts`. The reference uses sample entities and local state. It never reads or writes a world.
 
 ### Responsive behavior
 
@@ -1709,6 +1806,138 @@ The pattern adds no player-facing text. The reference labels **Play Landing**, *
 | Isolated reference | [`PanelCrashCardReference.tsx`](../src/components/design-system/PanelCrashCardReference.tsx) |
 
 Open `#dev?modal=designSystem&tab=panel-crash-card` for the card in both themes, beside a list at desktop width and alone at phone width.
+
+## Pattern: Chip Options
+
+**Purpose:** Show every setting of one placed chip in a centered dialog, and for a prompt chip, show the text it sends beside the settings.
+
+> 📝 **Proposal.** The layout was settled with the user in the Chip Options spec (rulings Q1, Q18, Q19 and Q20). The user has not yet approved it in the showcase. Production already uses it, so approval is the next step.
+
+**Density:** Compact. One short row per setting, 5.5rem for the name and the rest for the control.
+
+### Composition
+
+- 🪟 **Dialog.** A centered `Dialog` with the app's content shell. It stays centered on every screen size and scrolls inside, at most 85dvh tall. It nests in the dialog it opens from, such as Settings or the entity editor.
+- 🏷️ **Header.** The title is **Chip Options**. The description line holds the chip's color swatch and its label.
+- ↔️ **Two panes for a prompt chip.** The rows sit on the left at about 1.15 parts, and **What the AI Reads** sits on the right at 1 part. The dialog is `max-w-3xl`.
+- 📄 **One column for the rest.** Placeholder chips and Tool argument chips show the rows alone, in `max-w-md`.
+- 📏 **Rows.** The name sits in a fixed column, and the control fills the rest. A pick-one setting is a segmented control up to three options, and a dropdown from four. A pick-many setting is a group of inline checkboxes with labels, never pills.
+- 🔒 **Lock groups.** The last checked piece of a group, such as **Stat Detail**, stays checked and disabled.
+- 🌫️ **Moot rows.** A row that has no effect under the current picks is disabled, and its tooltip says why.
+- 💬 **Help.** An option's help is the tooltip of its segment or dropdown item. A checkbox's help is the tooltip of its label. A read-only control's help says why it is shut.
+- ➖ **Placement.** **Label**, **Header**, **Prepend** and **Append** sit below a rule.
+- 🔘 **Footer.** **Re-Pick…** and **Edit Value** sit right-aligned under a rule, only where the chip has them. **Re-Pick…** swaps the body for the picker, with a **Back** control.
+- 📖 **What the AI Reads.** A title over a bordered box on a muted fill. The box holds the chip's value as the prompt sends it. **Header**, **Prepend** and **Append** show one shade dimmer.
+- 💡 **Hover and focus.** A control lights the text it produces with a `primary` tint, and every line without it dims. A piece such as **Range** lights only its own part of the stat line. A control that produces no text, such as **Scope** or **Format**, lights nothing.
+- 📊 **Real data first.** The pane reads the live scene in a game, the authored world in the World Editor and the sample scene in Settings. It never carries its own data.
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| The dialog, its rows, the footer and the pane | `ChipOptionsDialog` in [`ChipOptionsDialog.tsx`](../src/components/prompt/ChipOptionsDialog.tsx) |
+| The rows of one chip | The axes in [`promptVariables.ts`](../src/lib/promptVariables.ts) |
+| The affix fields | `AffixInput` in [`ChipOptionsDialog.tsx`](../src/components/prompt/ChipOptionsDialog.tsx) |
+| The text the pane shows, with its origins | `resolveTokenRuns` in [`promptTemplate.ts`](../src/lib/promptTemplate.ts) |
+| The glyph on a chip that uses **Only With** | [`TokenChip.tsx`](../src/components/prompt/TokenChip.tsx) |
+| Isolated reference | [`ChipOptionsReference.tsx`](../src/components/design-system/ChipOptionsReference.tsx) |
+
+Build a new chip setting as an axis in the registry. Do not draw a control in the dialog by hand.
+
+### Responsive behavior
+
+- Below `sm` the panes stack, with the rows above **What the AI Reads**.
+- The dialog never grows past 85dvh. The body scrolls inside, and the footer stays in view.
+- A row's control shrinks first. The name keeps its column.
+
+### State reference
+
+| State | Treatment |
+| --- | --- |
+| Editable | Every control live. |
+| Read-only | Every control disabled. The rows and the pane still show. |
+| Moot | The row is disabled. Its tooltip names the pick that made it moot. |
+| Locked | The last checked piece of a lock group is checked and disabled. |
+| Lit | The text the hovered or focused control produces has a `primary` tint. Other lines are at 40% opacity. |
+| Nothing to light | A control with no text, such as **Scope**, leaves the pane as it is. |
+| No chip rows | The dialog reads "No options for this variable." |
+| Re-Pick | The picker replaces the body. **Back** returns to the rows. |
+
+### Writing review
+
+The title is **Chip Options**. The pane title is **What the AI Reads**. The rows are **Only With**, **Include** and **Stat Detail**, in Title Case, as are **Scope**, **Content**, **Format**, **Label**, **Header**, **Prepend** and **Append**. Help lines follow the Writing Guide: verb first, with no on and off preamble. This review is local; it does not certify STE compliance.
+
+Open `#dev?modal=designSystem&tab=chip-options` for the dialog on an **Entities** chip, a **Stats** chip and a placeholder chip, with an **Editable** switch. Open `#dev?modal=chipOptions` for the dialog inside Settings, on a canned **Entities** chip.
+
+## Pattern: Code Hover Card
+
+**Purpose:** Explain the name under the pointer or caret in a code editor, and list every place the world's code uses a stat.
+
+> ✅ **Approved.** The user approved the look as a Design System pattern in the Code Hover Cards spec (ruling Q19; Q4 and Q24 settled the completion pane and the pinned list). Production: scripts, Tool scripts and the script template dialog.
+
+**Density:** Compact. The card is 22.5rem wide, or the screen width less 2rem. Every section pads 0.625rem across and 0.375rem down, and one rule divides the sections.
+
+### Composition
+
+- 🔤 **Signature.** The kind in muted text in parentheses, then the path in the code font, then the type: `(stat) owner.stats.Health: Stat`. A global or Blueprint item names its scope with its kind: `(global stat) stats.Fatigue: Stat`, `(global trait)`, `(Blueprint stat)`, `(world placeholder)`. A method reads `roll(max): number`. A declared name has no type.
+- 🏷️ **Access badge.** A pill at the right of the signature, for a name a write can reach or not. **Read-Only** is muted. **Writable** and **Writable After This Run** use the code `string` color.
+- 📝 **Description.** Muted text, three lines at most. The **Open** link reaches the full text.
+- 🧾 **World Details.** A two-column list: the label in muted text, the value in the card's text color. A row at its default value is left out. A value can run over several lines, such as one Requirement Row per line. One **Owners** row lists who owns the item, **You** first; a global item or a world placeholder has none. A nested placeholder adds a **Parent Placeholder** row. The `self` card's **Stat** row names a global or Blueprint stat's scope: "Health (global stat)".
+- 🎲 **Allowed Values.** The heading in muted text, then one line per value in the code font, with `×weight` after it. A weight-0 value shows at half strength. A list stops at 12 values, then reads "and N more" in the muted text.
+- 🪪 **Default.** A slot's start value, on one line with its label.
+- 🔗 **Links.** One row of text links at the bottom, in the `info` color: **Open**, **Find All Uses**, **Go to Line N** and **Read in the Guide**. A host that cannot act on a link leaves it out. The completion pane shows only **Read in the Guide**.
+- 📦 **Box.** A 1px `border` line, a 0.375rem radius, the `popover` fill and a soft shadow. A hover and a pinned list use this box. The completion pane has the same border, radius and fill, without the shadow.
+- 📌 **Find All Uses.** A click on the link pins the card. A second box hangs 0.25rem below it, with a heading such as "3 Uses". A row reads "Stat · Before · Line 3", or "Entity › Stat · After · Line 7". A Blueprint box that no entity runs carries a muted **No Owners** tag. The list scrolls past 14rem. An empty list reads "No uses in scripts".
+
+### Behavior
+
+- 🖱️ **Hover.** A hover opens the card after the standard delay and keeps it open while the pointer is on it.
+- ⌨️ **Keyboard.** Ctrl+K Ctrl+I (Cmd on macOS) opens the card for the name at the caret. A screen reader hears the card through a live region.
+- 👆 **Touch.** A tap that places the caret on a name opens the card after a short pause. Typing closes it.
+- 📃 **Completion list.** The info pane beside the selected option draws the same card, always open.
+- ⎋ **Escape.** Escape closes the card and stops there. With no card open, it passes through, so full screen still closes on it.
+- 🚫 **Hidden links.** The template dialog, the Tool editor and the library editor hide **Open** and **Find All Uses**.
+- 👁️ **Live editors only.** A read-only code preview, such as a Guide code fence, shows no card.
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| The card's DOM, and the uses list | `renderCodeCard` and `renderCodeUses` in [`codeCardView.ts`](../src/components/prompt/codeCardView.ts) |
+| What the card says for a position | `codeCard` in [`codeCards.ts`](../src/lib/codeCards.ts) |
+| The world's side: stat, trait, placeholder, entity and dictionary rows | `statBoxLookup` in [`codeWorldLookup.ts`](../src/lib/codeWorldLookup.ts) |
+| The uses of a stat | `statUses` in [`codeStatUses.ts`](../src/lib/codeStatUses.ts) |
+| The box, the hover tooltip and the completion pane | [`codeSession.ts`](../src/components/prompt/codeSession.ts) |
+| The keyboard and touch triggers, and the pinned card | [`codeCaretCard.ts`](../src/components/prompt/codeCaretCard.ts) |
+| Isolated reference | [`CodeCardReference.tsx`](../src/components/design-system/CodeCardReference.tsx) |
+
+Build a new card row in the card model. Do not draw a row in the DOM by hand.
+
+### Responsive behavior
+
+- The card never grows past the screen width less 2rem. A long path or value wraps.
+- The reference stacks its samples in one column per theme, and the two themes sit side by side from `lg`.
+
+### State reference
+
+| State | Treatment |
+| --- | --- |
+| World name | Signature, badge, description, World Details and links. |
+| Sandbox global or member | Signature, badge, description, and **Read in the Guide** for a global. |
+| Read-Only name | The muted **Read-Only** badge. |
+| Weight-0 value | The value line at half strength. |
+| Declared name | The kind and name, "Declared on line N" and **Go to Line N**. |
+| Slot | The slot's type, and its **Default**. |
+| No world data | The first three sections only, with no World Details. |
+| Pinned | The card with the uses list below it. A press outside or Escape closes both. |
+| No uses | "No uses in scripts". |
+| Blueprint with no owners | A muted **No Owners** tag on the row. |
+
+### Writing review
+
+Every label is AP title case, and both parts of a hyphenated label are capitalized: **Starts At**, **Shown To**, **Find All Uses**, **Read-Only**, **Writable After This Run**. Descriptions use the Writing Guide voice. A single sentence has no period. This review is local; it does not certify STE compliance.
+
+Open `#dev?modal=designSystem&tab=code-card` for a global, a stat, a trait, a placeholder, a Read-Only name and a declared name, then a pinned card with its list and an empty list, in both themes. The controls only report what they do.
 
 ## UI and prototype workflow
 

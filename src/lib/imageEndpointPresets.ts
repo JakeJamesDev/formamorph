@@ -1,3 +1,4 @@
+import { DEFAULT_IMAGE_FILE_NAME } from './imageGen/fileName';
 import type { Codec } from './usePersistentState';
 import type { ImageProviderId } from './imageGen';
 import { DEFAULT_COMFY_WORKFLOW } from './imageGen/comfyui';
@@ -33,6 +34,8 @@ export interface ImageEndpointValues {
   invokeVae: string;
   /** InvokeAI only: gallery board to file generated images under (board id); blank = Uncategorized. */
   invokeBoard: string;
+  /** ComfyUI: where images are saved under its output folder (lib/imageGen/fileName). */
+  fileName: string;
 }
 
 export type ImageEndpointValueKey = keyof ImageEndpointValues;
@@ -76,6 +79,7 @@ export const DEFAULT_IMAGE_ENDPOINT_VALUES: ImageEndpointValues = {
   invokeEncoder: '',
   invokeVae: '',
   invokeBoard: '',
+  fileName: DEFAULT_IMAGE_FILE_NAME,
 };
 
 export const DEFAULT_IMAGE_PRESET_ID = 'default';
@@ -112,6 +116,7 @@ function coerceValues(rec: Record<string, unknown>): ImageEndpointValues {
     invokeEncoder: str('invokeEncoder', d.invokeEncoder),
     invokeVae: str('invokeVae', d.invokeVae),
     invokeBoard: str('invokeBoard', d.invokeBoard),
+    fileName: str('fileName', d.fileName),
   };
 }
 

@@ -19,16 +19,16 @@ function statsWithCodeDeltas(stats: PlayerStat[], state: TraitForceState, world:
 }
 
 function snapshotWithCodeDeltas(snapshot: GameState, world: TraitWorld): GameState {
-  const { playerStats, playerTraits, disabledTraitIds = [], ownedTraits, entityStats } = snapshot;
-  const stats = statsWithCodeDeltas(playerStats, { traits: playerTraits, disabledTraitIds, ownedTraits, entityStats }, world);
-  return stats === playerStats ? snapshot : { ...snapshot, playerStats: stats };
+  const { globalStats, globalTraits, disabledTraitIds = [], ownedTraits, entityStats } = snapshot;
+  const stats = statsWithCodeDeltas(globalStats, { traits: globalTraits, disabledTraitIds, ownedTraits, entityStats }, world);
+  return stats === globalStats ? snapshot : { ...snapshot, globalStats: stats };
 }
 
 /**
- * Settle every bearer's traits against the current world once per save load (Q34), after the loaded state
+ * Settle every owner's traits against the current world once per save load (Q34), after the loaded state
  * and its world have rendered. Code bounds an older save stored become code deltas first, in the live state
  * and in `history`. `loads` is the gameplay save-load count; loads before mount don't settle. The settle
- * waits while `ready` is false, so a library persona's bearer is in the world first. A load that changes
+ * waits while `ready` is false, so a library persona's owner is in the world first. A load that changes
  * nothing commits nothing.
  */
 export function useSettleOnSaveLoad(

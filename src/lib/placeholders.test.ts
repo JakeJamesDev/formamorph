@@ -5,7 +5,7 @@ import { phValueId, phValues } from '@/test/placeholderValues';
 import {
   resolvePlaceholders,
   resolveEntityText,
-  resolveBearerText,
+  resolveOwnerText,
   encodePlaceholderToken,
   decodePlaceholderToken,
   encodePlaceholderPath,
@@ -204,16 +204,16 @@ describe('resolveEntityText', () => {
   });
 });
 
-describe('resolveBearerText', () => {
-  it('fills Character Name with an entity bearer, as its own text does', () => {
-    expect(resolveBearerText({ name: 'Albus' }, '{{char}} swore the oath.', { placeholders: [], rolls: {}, player: { name: 'Wren' } }))
+describe('resolveOwnerText', () => {
+  it('fills Character Name with an entity owner, as its own text does', () => {
+    expect(resolveOwnerText({ name: 'Albus' }, '{{char}} swore the oath.', { placeholders: [], rolls: {}, player: { name: 'Wren' } }))
       .toBe('Albus swore the oath.');
   });
 
-  it('reads Character Name as the Player Name when the player bears the trait', () => {
-    expect(resolveBearerText(null, '{{char}} swore the oath.', { placeholders: [], rolls: {}, player: { name: 'Wren' } }))
+  it('reads Character Name as the Player Name when the player has the trait', () => {
+    expect(resolveOwnerText(null, '{{char}} swore the oath.', { placeholders: [], rolls: {}, player: { name: 'Wren' } }))
       .toBe('Wren swore the oath.');
-    expect(resolveBearerText(null, '{{char}} swore. Kneel to {{char}}’s oath.', { placeholders: [], rolls: {} }))
+    expect(resolveOwnerText(null, '{{char}} swore. Kneel to {{char}}’s oath.', { placeholders: [], rolls: {} }))
       .toBe('The player swore. Kneel to the player’s oath.');
   });
 });
@@ -1182,7 +1182,7 @@ describe('collectPlaceholderParts', () => {
     );
   });
 
-  it('names a holder once however many of its values point at the same part', () => {
+  it('names a parent placeholder once however many of its values point at the same part', () => {
     const world: Placeholder[] = [
       { id: 'variant', name: 'Variant', values: phValues([chip('hair', val('brown')), chip('hair', val('black'))]) },
       { id: 'hair', name: 'Hair', values: phValues(['brown', 'black']) },
@@ -1688,7 +1688,7 @@ describe('remintPlaceholderDef', () => {
 
 /**
  * A shared row — a placeholder held as a value of something that does not own it — draws with weights of
- * its own. They live on the holder, keyed by the value holding the chip plus the ids walked below it, and
+ * its own. They live on the parent placeholder, keyed by the value holding the chip plus the ids walked below it, and
  * lie over the original's own map rather than replacing it: a value in neither weighs 1, so a value the
  * author adds to the original afterwards rolls in every shared row.
  */
@@ -1962,8 +1962,8 @@ describe('drawPlaceholderSpans', () => {
   });
 
   it('drops a chip that resolves to nothing, so no empty span is rendered', () => {
-    const holder = P('holder', [`${tok('gone', 'world', 'v1')}x${tok('hair', 'world', 'v2')}`]);
-    expect(drawPlaceholderSpans(holder, [holder, gone, hair], undefined, first))
+    const parent = P('parent', [`${tok('gone', 'world', 'v1')}x${tok('hair', 'world', 'v2')}`]);
+    expect(drawPlaceholderSpans(parent, [parent, gone, hair], undefined, first))
       .toEqual([{ text: 'x' }, { text: 'brown', placeholderId: 'hair' }]);
     expect(drawPlaceholderSpans(gone, [gone])).toEqual([]);
   });
@@ -1978,7 +1978,7 @@ describe('drawPlaceholderSpans', () => {
   });
 
   it('joins to exactly what drawPlaceholderOnce draws for the same pick', () => {
-    // Last value each time: the tagged branch of the holder, the last color of hair.
+    // Last value each time: the tagged branch of the parent placeholder, the last color of hair.
     const last: PlaceholderPick = (v) => v[v.length - 1].text;
     const bench = { ...molly, values: phValues(['bald', `${tok('hair', 'world', 'v1')} hair`]) };
     const spans = drawPlaceholderSpans(bench, [bench, hair], undefined, last);

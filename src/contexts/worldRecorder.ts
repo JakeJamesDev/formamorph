@@ -194,8 +194,8 @@ export function useWorldRecorder(slices: WorldSlices, worldId: string | null, se
     restored.current = NO_TEXTS;
     const at = follow ? last.current.tick : currentTick();
     // A key whose record did not change belongs to a write that bailed, so it never keys another one.
-    const fits = !follow && key && edits.some((edit) => keyHolders(key).includes(edit.slice));
-    const settled = fits ? settleKey(key, edits, keyHolders(key)) : undefined;
+    const fits = !follow && key && edits.some((edit) => keySlices(key).includes(edit.slice));
+    const settled = fits ? settleKey(key, edits, keySlices(key)) : undefined;
     const was = store.get();
     // A mark left by a field write that never reached the world is from an earlier tick.
     const fieldMove = !follow && fieldHistory === at ? recordFieldMove(was, edits, settled) : null;
@@ -312,7 +312,7 @@ export function useWorldRecorder(slices: WorldSlices, worldId: string | null, se
 }
 
 /** The slices a keyed record can live in: a placeholder also sits inside an entity or a book as a Copy. */
-const keyHolders = (key: StepKey): SliceName[] =>
+const keySlices = (key: StepKey): SliceName[] =>
   key.slice === 'placeholders' ? ['placeholders', 'entities', 'dictionaries'] : [key.slice];
 
 export const WorldHistoryContext = createContext<WorldHistoryControls | null>(null);

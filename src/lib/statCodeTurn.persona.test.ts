@@ -4,12 +4,13 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { runStatCodeTurn, type StatCodeTurn } from './statCodeTurn';
-import type { StatCodeBearers } from './statCodeTraits';
-import { inPlayBearers } from './ownedTraitsInPlay';
+import type { StatCodeOwners } from './statCodeTraits';
+import { inPlayOwners } from './ownedTraitsInPlay';
 import { recordKey } from './ownedTraitState';
 import { withPersonaEntry } from './persona';
 import { encodePlaceholderToken } from './placeholders';
 import type { Entity, OwnedTraitStates, PersonaRef, Placeholder, PlayerStat, Trait } from '@/types';
+import { boxScripts } from '@/test/scriptFixtures';
 
 const stat = (over: Partial<PlayerStat>): PlayerStat => ({
   id: 'x', name: 'Stat', type: 'number', description: '', min: 0, max: 100, value: 50, regen: 0, descriptors: [],
@@ -30,12 +31,12 @@ const rook: Entity = { id: 'rook', name: 'Rook', traits: [rookScarred] };
 function played(
   persona: PersonaRef,
   over: { ownedTraits?: OwnedTraitStates; acquired?: Trait[]; entities?: Entity[]; library?: Entity[] } = {},
-): StatCodeBearers {
+): StatCodeOwners {
   const entities = over.entities ?? [mira, wanderer];
   const library = over.library ?? [];
-  // Play's bearers and gate entities carry the player's entry in the Custom Persona entity's name.
+  // Play's owners and gate entities carry the player's entry in the Custom Persona entity's name.
   const entered = [...withPersonaEntry(entities, persona, library[0]?.name)];
-  const bearerWorld = { traits: [worldBrave], traitGroups: [], entities: entered };
+  const ownerWorld = { traits: [worldBrave], traitGroups: [], entities: entered };
   return {
     acquired: over.acquired ?? [],
     disabledTraitIds: [],
@@ -45,7 +46,7 @@ function played(
     library,
     world: {
       traits: [worldBrave], groups: [], entities: entered, persona,
-      bearers: inPlayBearers(bearerWorld, persona, library),
+      ...inPlayOwners(ownerWorld, persona, library),
     },
   };
 }
@@ -53,9 +54,9 @@ function played(
 const asMira: PersonaRef = { source: 'world', entityId: 'mira' };
 
 /** Health at 40 under Scarred, plus one stat per piece of code, in order. */
-const run = (codes: string[], traits: StatCodeBearers = played(asMira)) => runStatCodeTurn({
-  stats: [stat({ id: 'h', name: 'Health', value: 40 }), ...codes.map((code, i) => stat({ id: `s${i}`, name: `S${i}`, value: 0, code }))],
-  enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {}, bearers: traits,
+const run = (codes: string[], traits: StatCodeOwners = played(asMira)) => runStatCodeTurn({
+  stats: [stat({ id: 'h', name: 'Health', value: 40 }), ...codes.map((code, i) => stat({ id: `s${i}`, name: `S${i}`, value: 0, scripts: boxScripts({ after: code }) }))],
+  enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {}, ownerTraits: traits,
   statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
 } satisfies StatCodeTurn);
 

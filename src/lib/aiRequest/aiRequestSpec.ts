@@ -3,10 +3,16 @@ import { toolSchema, type OfferedFunction, type ToolFunctionSchema } from '@/lib
 import type { ThinkingMode, ReasoningEffort } from '@/contexts/SettingsContext';
 import type { ParagraphLimit } from '@/lib/outputLength';
 import {
-  MAX_REASONING_BUDGET_PCT, nativeReasoningSuppressed, schemaAccepted, reasoningBudget, reasoningEffortValue, reasoningRuledOut, resolveRequestReasoning, toolsSupported,
-  type KeptReasoningSettings, type PromptReasoning, type ReasoningCapability, type ReasoningEffortField,
+  nativeReasoningSuppressed, promptReasoningStrength, schemaAccepted, reasoningBudget, reasoningEffortValue, reasoningRuledOut,
+  resolveRequestReasoning, thinkingRoomFor, toolsSupported,
+  type KeptReasoningSettings, type PromptReasoning, type ReasoningCapability, type ReasoningEffortField, type ReasoningLevel,
+  type ThinkingRoom,
 } from '@/lib/reasoningEffort';
-import { reasoningDialectBody, reasoningDialectBudgetFloor, type ReasoningBodyFields } from '@/lib/reasoningDialect';
+import { extraParamsOf } from '@/lib/extraParams';
+import {
+  reasoningDialectBody, reasoningDialectBudgetFloor, reasoningDialectBudgetFromStrength,
+  reasoningDialectOffWhenDisengaged, type ReasoningBodyFields,
+} from '@/lib/reasoningDialect';
 import { resolvePromptSampler, type PromptSampler, type PromptSamplerMap } from '@/lib/promptSamplers';
 import type { EndpointSampler, EndpointSamplerOverrides } from '@/lib/endpointSamplers';
 import { customMaxOutput, type PromptMaxOutputMap } from '@/lib/promptMaxOutput';
@@ -28,6 +34,8 @@ export interface AiEndpointTarget {
   localEngine: boolean;
   /** Per-endpoint sampler switches and remembered values. The engine ignores these. */
   samplerOverrides: EndpointSamplerOverrides;
+  /** The endpoint's Extra Parameters, as written; merged first into the body, under the app's fields (lib/extraParams). */
+  extraParams?: string;
   /** What is known about this target's native reasoning: whether the model reasons, which effort literals the
    *  endpoint accepts, and whether it takes a token budget. An unanswered question sends no field. */
   reasoning: ReasoningCapability;
@@ -108,6 +116,9 @@ export interface AiRequestSpec<TMessage extends WireMessage = RequestMessage, TT
   /** The effort literal this request carried, whichever field the dialect spelled it in. Absent where it
    *  carried none. Read by the observation, which asks what was in force rather than which key held it. */
   reasoningLevel?: ReasoningEffortField;
+  /** The Thinking Room `max_tokens` holds above the Answer Cap, present where the call's thought room came from
+   *  its strength: a Thought Ceiling, or a budget sized by strength. */
+  thinkingRoom?: ThinkingRoom;
   /** Where every emitted sampler value came from, retained for targeted rejection handling. */
   samplerSources: Partial<Record<EndpointSampler, 'prompt' | 'prompt-pin' | 'endpoint' | 'local-engine'>>;
   /** Origin of an emitted output cap, kept apart from the sampler provenance. */
@@ -192,24 +203,31 @@ function internalCapFor(snapshot: AiSettingsSnapshot, call: CapCall): number | n
 /** One call's output room: the answer's cap, and the room the context reserve holds back for the reply. */
 export interface OutputCaps {
   answerCap: number | undefined;
-  /** The Answer Cap plus the budget at the prompt's own percent, never the Thought Ceiling. */
+  /** The `max_tokens` the request sends, or the Answer Cap where it sends none. */
   reserve: number | undefined;
 }
 
 /** One call's reasoning slice, in the target's spelling, and the output caps that go with it. */
-interface ResolvedReasoning extends OutputCaps {
+interface ResolvedReasoning {
   fields: ReasoningBodyFields;
   /** The effort literal the slice carries, whichever field spelled it. */
   level: ReasoningEffortField | null;
-  /** The `max_tokens` the request sends. */
+  answerCap: number | undefined;
+  /** The `max_tokens` the request sends, which the context reserve holds back too. */
   maxTokens: number | undefined;
+  /** Present where the strength sized the thought: the Thought Ceiling, or a budget sent as the room. */
+  room: ThinkingRoom | null;
 }
 
-/** The Answer Cap plus the budget at the top of the slider. The Answer Cap is the base where the endpoint has none. */
-function thoughtCeiling(answerCap: number | undefined, base: number | undefined): number | undefined {
-  return answerCap === undefined
-    ? undefined
-    : answerCap + Math.round((MAX_REASONING_BUDGET_PCT / 100) * (base ?? answerCap));
+/** The strength that sizes a call's Thinking Room, or `null` where the call gets none. Inline narration's own
+ *  <think> block rides in the answer, whatever the native settings say. */
+function roomStrength(
+  snapshot: AiSettingsSnapshot, kind: AIRequestType, effort: ReasoningEffort, noBudgetReasoning: boolean,
+): ReasoningLevel | null {
+  if (nativeReasoningSuppressed(snapshot.thinkingMode, kind)) {
+    return promptReasoningStrength(kind, snapshot.promptReasoning, snapshot.reasoningEffort, snapshot.keptReasoning);
+  }
+  return noBudgetReasoning && effort !== 'none' ? effort : null;
 }
 
 /**
@@ -217,7 +235,7 @@ function thoughtCeiling(answerCap: number | undefined, base: number | undefined)
  * engaged nowhere, and a record that rules the model out licenses no off signal. The budget rides on top of
  * the answer cap where the slice carries a reasoning field or the record knows the model reasons. A request
  * that reasons with no budget on the wire, and Inline narration, send the Thought Ceiling, since the server
- * never closes that thought.
+ * never closes that thought: the Answer Cap plus the Thinking Room of the call's strength.
  */
 function resolveReasoning(snapshot: AiSettingsSnapshot, call: CapCall, target: AiEndpointTarget): ResolvedReasoning {
   const effort = resolveRequestReasoning(
@@ -227,33 +245,40 @@ function resolveReasoning(snapshot: AiSettingsSnapshot, call: CapCall, target: A
   const reasons = !reasoningRuledOut(target.reasoning);
   const takesBudget = target.reasoning.budget === true && reasons;
   const answerCap = capFor(snapshot, call, target);
+  // A dialect whose budget is the strength's room scales from no base.
+  const base = reasoningDialectBudgetFromStrength(target.reasoning.dialect) ? undefined : target.maxTokens;
+  const floor = takesBudget ? reasoningDialectBudgetFloor(target.reasoning.dialect) : 0;
+  // With no base, a budget target's budget is the strength's room.
+  const budgetRoom = takesBudget && effort !== 'none' && base === undefined ? thinkingRoomFor(effort, floor) : null;
   const planned = reasoningBudget({
-    effort, kind: call.requestType, budgets: snapshot.promptReasoningBudget, base: target.maxTokens, answerCap,
-    floor: takesBudget ? reasoningDialectBudgetFloor(target.reasoning.dialect) : 0,
+    effort, kind: call.requestType, budgets: snapshot.promptReasoningBudget, base, answerCap, floor,
+    ...(budgetRoom && { room: budgetRoom.tokens }),
   });
   // Reasoning is engaged somewhere and this model is not ruled out, so the target may hear about it at all.
   const eligible = snapshot.reasoningEngaged && reasons;
   const level = snapshot.reasoningEngaged ? reasoningEffortValue(effort, target.reasoning) : null;
   const budget = takesBudget ? planned.budget : null;
+  const mayStateOff = eligible || (reasons && reasoningDialectOffWhenDisengaged(target.reasoning.dialect));
   const fields = reasoningDialectBody(target.reasoning.dialect, {
-    budget, level, off: eligible && effort === 'none', eligible,
+    budget, level, off: mayStateOff && effort === 'none', eligible,
     unbounded: target.maxTokens === undefined,
   });
   const carriesReasoning = Object.keys(fields).length > 0 || target.reasoning.reasons === true;
-  const reserve = carriesReasoning ? planned.maxTokens : answerCap;
-  // Inline narration's own <think> block rides in the answer, whatever the native settings say.
-  const sendsCeiling = nativeReasoningSuppressed(snapshot.thinkingMode, call.requestType)
-    || (carriesReasoning && effort !== 'none' && budget === null);
+  const strength = roomStrength(snapshot, call.requestType, effort, carriesReasoning && budget === null);
+  if (strength !== null && answerCap !== undefined) {
+    const room = thinkingRoomFor(strength);
+    return { fields, level, answerCap, maxTokens: answerCap + room.tokens, room };
+  }
   return {
-    fields, level, answerCap, reserve,
-    maxTokens: sendsCeiling ? thoughtCeiling(answerCap, target.maxTokens) : reserve,
+    fields, level, answerCap, maxTokens: carriesReasoning ? planned.maxTokens : answerCap,
+    room: budgetRoom && budget !== null ? budgetRoom : null,
   };
 }
 
 /** The caps the context reserve and the length guidance read for one call. */
 export function outputCaps(snapshot: AiSettingsSnapshot, call: CapCall): OutputCaps {
-  const { answerCap, reserve } = resolveReasoning(snapshot, call, snapshot.resolveTarget(call.requestType));
-  return { answerCap, reserve };
+  const { answerCap, maxTokens } = resolveReasoning(snapshot, call, snapshot.resolveTarget(call.requestType));
+  return { answerCap, reserve: maxTokens };
 }
 
 function bodyForTarget(snapshot: AiSettingsSnapshot, call: AiCall, target: AiEndpointTarget): AiRequestBody {
@@ -265,6 +290,8 @@ function bodyForTarget(snapshot: AiSettingsSnapshot, call: AiCall, target: AiEnd
   const tools = offeredTools(call, target);
 
   return {
+    // The player's Extra Parameters go first, so every field the app sets for this call wins over them.
+    ...extraParamsOf(target.extraParams),
     model: target.model,
     messages: buildMessages(snapshot, call),
     ...(maxTokens !== undefined && { max_tokens: maxTokens }),
@@ -318,6 +345,7 @@ export function buildAiRequestSpec<TTool extends OfferedFunction = OfferedFuncti
     ...(reasoning.answerCap !== undefined && { answerCap: reasoning.answerCap }),
     ...(offeredTools(call, target) && { tools: call.tools }),
     ...(reasoning.level !== null && { reasoningLevel: reasoning.level }),
+    ...(reasoning.room && { thinkingRoom: reasoning.room }),
     ...(internalCapFor(snapshot, call) !== null
       ? { maxTokensSource: 'internal' as const }
       : target.maxTokens !== undefined

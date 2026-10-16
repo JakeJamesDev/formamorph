@@ -2,14 +2,14 @@ import { describe, it, expect } from 'vitest';
 import {
   SAMPLE_PREVIEW_VALUES, DERIVED_TOKENS, derivedPreviewValues, composePreviewValues, languagePreviewValue,
 } from './previewValuePool';
-import { ALL_PROMPT_VARIABLES, variableVariantIds, withVariant, baseToken } from './promptVariables';
 import { resolveToken } from './promptTemplate';
 import { personaContextValues } from './personaContext';
+import { chipValues } from './chipValues/chipValues';
+import { sampleChipScene } from './chipValues/sampleScene';
+import { allSpelledTokens, spelledTokens } from '@/test/chipTokens';
 
 /** Every concrete token the chip vocabulary can produce, variants and all. */
-const everyToken = ALL_PROMPT_VARIABLES.flatMap((v) =>
-  [null, ...variableVariantIds(v)].map((id) => withVariant(baseToken(v.token), id)),
-);
+const everyToken = allSpelledTokens();
 
 const SETTINGS = {
   paragraphLimit: 'auto' as const,
@@ -31,15 +31,15 @@ const LANGUAGE = '<LANGUAGE>';
 describe('the pool as a whole', () => {
   it('gives every token non-empty content', () => {
     const pool = composePreviewValues(SETTINGS);
-    const blank = everyToken.filter((t) => !pool[t]?.trim());
+    const blank = everyToken.filter((t) => !pool(t)?.trim());
     expect(blank).toEqual([]);
   });
 
   it('shows the language chip as nothing on an English game, and as the directive otherwise', () => {
     // The one token that legitimately renders empty — a preview that padded it with a stand-in would show
     // a line the model never receives.
-    expect(composePreviewValues({ ...SETTINGS, language: 'English' })[LANGUAGE]).toBe('');
-    expect(composePreviewValues(SETTINGS)[LANGUAGE]).toBe('Write all narration in French.');
+    expect(composePreviewValues({ ...SETTINGS, language: 'English' })(LANGUAGE)).toBe('');
+    expect(composePreviewValues(SETTINGS)(LANGUAGE)).toBe('Write all narration in French.');
   });
 });
 
@@ -71,21 +71,47 @@ describe('the derived layer', () => {
 
   it('is never shadowed by a sample of the same token', () => {
     // A sample here would quietly replace the player's real setting in the preview.
-    for (const token of DERIVED_TOKENS) expect(SAMPLE_PREVIEW_VALUES[token]).toBeUndefined();
+    for (const token of DERIVED_TOKENS) expect(SAMPLE_PREVIEW_VALUES(token)).toBeUndefined();
   });
 });
 
 describe('composePreviewValues', () => {
   it('lets a live game override the samples', () => {
     const pool = composePreviewValues(SETTINGS, { '<LOCATION>': 'The real place' });
-    expect(pool['<LOCATION>']).toBe('The real place');
-    expect(pool['<ENTITIES>']).toBe(SAMPLE_PREVIEW_VALUES['<ENTITIES>']); // untouched keys stay sampled
+    expect(pool('<LOCATION>')).toBe('The real place');
+    expect(pool('<ENTITIES>')).toBe(SAMPLE_PREVIEW_VALUES('<ENTITIES>')); // untouched keys stay sampled
+  });
+
+  it('reads every in-game scene token from the live scene, never from the sample world', () => {
+    const sample = sampleChipScene();
+    const live$ = <T extends { name: string }>(item: T): T => ({ ...item, name: `Live ${item.name}` });
+    const live = chipValues({
+      ...sample,
+      overview: 'A live overview.',
+      notes: 'Live notes.',
+      stats: sample.stats.map(live$),
+      traits: sample.traits.map(live$),
+      persona: sample.persona && { ...sample.persona, entity: live$(sample.persona.entity) },
+      location: sample.location && live$(sample.location),
+      locations: sample.locations.map(live$),
+      entities: sample.entities.map((e) => ({ ...live$(e), aiSummary: `Live ${e.aiSummary ?? ''}` })),
+      time: { elapsed: 3 },
+    });
+    const pool = composePreviewValues(SETTINGS, live);
+    const families = ['<WORLD DESCRIPTION>', '<STATS DESCRIPTION>', '<TRAITS DESCRIPTION>', '<PERSONA>', '<LOCATION>',
+      '<ENTITIES>', '<NOTES>', '<TIME>'];
+    // Every family reads differently live, so a sample showing through would fail below.
+    for (const base of families) expect(live(base), base).not.toBe(SAMPLE_PREVIEW_VALUES(base));
+    for (const token of families.flatMap(spelledTokens)) expect(pool(token), token).toBe(live(token));
+    // A combination no default prompt places still reads the live cast.
+    expect(pool('<ENTITIES|reachable.summary.nostats.xml>')).toContain('Live ');
+    expect(pool('<ENTITIES|reachable.summary.nostats.xml>')).not.toBe(SAMPLE_PREVIEW_VALUES('<ENTITIES|reachable.summary.nostats.xml>'));
   });
 
   it('keeps derived guidance real even in a live game', () => {
     // The in-game map no longer carries guidance strings of its own; they must still be the true ones.
     const pool = composePreviewValues(SETTINGS, { '<LOCATION>': 'The real place' });
-    expect(pool['<ACTIVE CHARACTER GUIDANCE>']).toBe(derivedPreviewValues(SETTINGS)['<ACTIVE CHARACTER GUIDANCE>']);
+    expect(pool('<ACTIVE CHARACTER GUIDANCE>')).toBe(derivedPreviewValues(SETTINGS)['<ACTIVE CHARACTER GUIDANCE>']);
   });
 });
 
@@ -109,10 +135,10 @@ describe('SAMPLE_PREVIEW_VALUES', () => {
     const live = personaContextValues({ source: 'library', entity: { id: 'traveler', name: 'Traveler', pronouns: 'they/them' } });
     for (const token of ['<PERSONA|name>', '<PERSONA|name.markdown>', '<PERSONA|name.xml>']) {
       expect(resolveToken(token, SAMPLE_PREVIEW_VALUES)).toBe('Traveler (they/them)');
-      expect(resolveToken(token, SAMPLE_PREVIEW_VALUES)).toBe(live[token]);
+      expect(resolveToken(token, SAMPLE_PREVIEW_VALUES)).toBe(live(token));
     }
-    expect(SAMPLE_PREVIEW_VALUES['<PERSONA|xml>']).toContain('<entity>');
-    expect(SAMPLE_PREVIEW_VALUES['<PERSONA|summary.xml>']).toContain('<entity>');
+    expect(SAMPLE_PREVIEW_VALUES('<PERSONA|xml>')).toContain('<entity>');
+    expect(SAMPLE_PREVIEW_VALUES('<PERSONA|summary.xml>')).toContain('<entity>');
   });
 
   it('resolves through the same path the preview uses, affixes included', () => {
@@ -123,30 +149,30 @@ describe('SAMPLE_PREVIEW_VALUES', () => {
   });
 
   it('varies by scope, so a prompt using two scopes does not show the same block twice', () => {
-    const here = SAMPLE_PREVIEW_VALUES['<LOCATION>'];
-    const reachable = SAMPLE_PREVIEW_VALUES['<LOCATION|reachable>'];
-    const sub = SAMPLE_PREVIEW_VALUES['<LOCATION|sublocations>'];
+    const here = SAMPLE_PREVIEW_VALUES('<LOCATION>');
+    const reachable = SAMPLE_PREVIEW_VALUES('<LOCATION|reachable>');
+    const sub = SAMPLE_PREVIEW_VALUES('<LOCATION|sublocations>');
     expect(new Set([here, reachable, sub]).size).toBe(3);
   });
 
   it('shortens for the summary and name variants', () => {
-    const full = SAMPLE_PREVIEW_VALUES['<ENTITIES>'];
-    const summary = SAMPLE_PREVIEW_VALUES['<ENTITIES|summary>'];
-    const name = SAMPLE_PREVIEW_VALUES['<ENTITIES|name>'];
+    const full = SAMPLE_PREVIEW_VALUES('<ENTITIES>')!;
+    const summary = SAMPLE_PREVIEW_VALUES('<ENTITIES|summary>')!;
+    const name = SAMPLE_PREVIEW_VALUES('<ENTITIES|name>')!;
     expect(summary.length).toBeLessThan(full.length);
     expect(name.length).toBeLessThan(summary.length);
     expect(name).not.toContain('\n'); // names go inside a sentence
   });
 
   it('honors the stats toggles rather than always printing everything', () => {
-    expect(SAMPLE_PREVIEW_VALUES['<STATS DESCRIPTION|numbers>']).toContain('82/100');
-    expect(SAMPLE_PREVIEW_VALUES['<STATS DESCRIPTION|numbers>']).not.toContain('Bruised');
-    expect(SAMPLE_PREVIEW_VALUES['<STATS DESCRIPTION|descriptions>']).toContain('Bruised');
-    expect(SAMPLE_PREVIEW_VALUES['<STATS DESCRIPTION|meaning>']).toContain('punishment');
+    expect(SAMPLE_PREVIEW_VALUES('<STATS DESCRIPTION|numbers>')).toContain('82/100');
+    expect(SAMPLE_PREVIEW_VALUES('<STATS DESCRIPTION|numbers>')).not.toContain('Bruised');
+    expect(SAMPLE_PREVIEW_VALUES('<STATS DESCRIPTION|descriptions>')).toContain('Bruised');
+    expect(SAMPLE_PREVIEW_VALUES('<STATS DESCRIPTION|meaning>')).toContain('punishment');
   });
 
   it('shapes the block the way the format axis asks', () => {
-    expect(SAMPLE_PREVIEW_VALUES['<ENTITIES|markdown>']).toContain('- ');
-    expect(SAMPLE_PREVIEW_VALUES['<ENTITIES|xml>']).toContain('<entity>');
+    expect(SAMPLE_PREVIEW_VALUES('<ENTITIES|markdown>')).toContain('- ');
+    expect(SAMPLE_PREVIEW_VALUES('<ENTITIES|xml>')).toContain('<entity>');
   });
 });

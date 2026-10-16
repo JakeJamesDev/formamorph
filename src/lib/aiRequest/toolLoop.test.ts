@@ -514,6 +514,20 @@ describe('streamAiToolLoop: cut thoughts', () => {
     },
   );
 
+  it('names the Thinking Room and its strength in the details of a cut round, on the first round and after a lookup', async () => {
+    const roomed = { ...spec(), thinkingRoom: { tokens: 1024, strength: 'low' } } as const;
+    const first = await runUntilThrow(scripted([cutFrames()]), roomed);
+    const later = await runUntilThrow(scripted([
+      [frame({ reasoning_content: 'Look up Bram.' }), ...callFrames(['get_entity', { name: 'Bram' }])],
+      cutFrames(),
+    ]), roomed);
+
+    for (const { error } of [first, later]) {
+      expect((error as AiStreamError).details).toContain('Thinking Room: 1024');
+      expect((error as AiStreamError).details).toContain('Thinking Room Strength: Low');
+    }
+  });
+
   it('fails an Inline-mode round cut inside its <think> block', async () => {
     const { error } = await runUntilThrow(scripted([[frame({ content: '<think>' }), frame({ content: CUT }), frame({}, 'length')]]), spec(null));
 

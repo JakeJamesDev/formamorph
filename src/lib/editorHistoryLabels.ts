@@ -17,6 +17,7 @@ export const SLICE_TYPE_NAMES: Record<SliceName, [string, string]> = {
   dictionaries: ["Dictionary", "Dictionaries"],
   placeholders: ["Placeholder", "Placeholders"],
   placeholderGroups: ["Placeholder Group", "Placeholder Groups"],
+  scripts: ["Script", "Scripts"],
 };
 
 /** Field labels as the editor shows them. A field missing here reads as its name in title case. */
@@ -40,6 +41,7 @@ export const FIELD_LABELS: Partial<Record<SliceName | "*", Record<string, string
     bgm: "Background Music",
     systemPrompt: "System Prompt",
     use3DModel: "3D Player Avatar",
+    stripLinksAndImages: "Strip Links And Images",
     customPlayerVRM: "Custom Player Avatar",
     readme: "Readme",
     introReadme: "Intro Readme",
@@ -53,12 +55,13 @@ export const FIELD_LABELS: Partial<Record<SliceName | "*", Record<string, string
     type: "Type",
     min: "Min",
     max: "Max",
-    starting: "Initial Value",
+    value: "Base Value",
+    starting: "Base Value",
     regen: "Regen",
+    regenUnit: "Regen",
     descriptors: "Stat Descriptors",
     morphBindings: "Body Sliders",
-    beforeCode: "Dynamic Value Calculation",
-    code: "Dynamic Value Calculation",
+    scripts: "Scripts",
   },
   locations: {
     backgroundImage: "Background Image",

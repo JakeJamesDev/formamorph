@@ -7,9 +7,11 @@ import { Hint } from '@/components/ui/typography';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { choiceRowClass } from './setupChoiceRow';
 import { cn } from '@/lib/utils';
-import { WORLD_OWNER, gateOf, type GateStates, type GroupPickState } from '@/lib/traitGates';
+import { gateOf, type GateStates, type GroupPickState } from '@/lib/traitGates';
+import type { OwnerId } from '@/lib/scope';
 import { gateLine } from '@/lib/traitGateLine';
 import { isAlwaysOn, isDormant, isShown } from '@/lib/traitEffects';
+import { statRowSide } from '@/lib/traitTree';
 import type { Stat, StatChange, Trait, TraitGroup } from '@/types';
 
 /** What the last selection change turned off, by name, and the pick that caused it. */
@@ -43,7 +45,7 @@ export function TraitCascadeNotice({ cascade, onDismiss }: { cascade: TraitCasca
  */
 export function SetupTraitList({
   name, groups, traits, picks, stats, selectedTraits, resolveText, resolveTraitText, onTraitSelect,
-  ownerId = WORLD_OWNER, gates, cascade, onDismissCascade, heading,
+  ownerId = null, ownStats, gates, cascade, onDismissCascade, heading,
 }: {
   name: string;
   /** Replaces the eyebrow and the name heading. */
@@ -52,23 +54,36 @@ export function SetupTraitList({
   groups: TraitGroup[];
   /** This category's traits, in authored order. */
   traits: Trait[];
-  /** The category's own group's pick state for this bearer; absent for traits outside any group. */
+  /** The category's own group's pick state for this owner; absent for traits outside any group. */
   picks?: GroupPickState | null;
   stats: Stat[];
-  /** The bearer's picks. */
+  /** The owner's picks. */
   selectedTraits: readonly string[];
   resolveText: (text: string) => string;
   resolveTraitText: (trait: Trait, text: string) => string;
-  /** The player's pick of one of this bearer's traits. */
-  onTraitSelect: (traitId: string, ownerId: string) => void;
-  /** The bearer whose traits these are; the world's by default. */
-  ownerId?: string;
-  /** Each bearer's gates; absent shows every trait open. */
+  /** The player's pick of one of this owner's traits. */
+  onTraitSelect: (traitId: string, ownerId: OwnerId) => void;
+  /** The owner whose traits these are; global scope by default. */
+  ownerId?: OwnerId;
+  /** An entity owner's own stats, which its trait rows move by id. */
+  ownStats?: readonly Stat[];
+  /** Each owner's gates; absent shows every trait open. */
   gates?: GateStates;
   cascade?: TraitCascade | null;
   onDismissCascade?: () => void;
 }) {
-  const statById = useMemo(() => new Map(stats.map((stat) => [stat.id, stat])), [stats]);
+  // The stat a change moves: a global trait's moves a global stat, and an entity's as its row routes.
+  const statOf = useMemo(() => {
+    const global = new Map(stats.map((stat) => [stat.id, stat]));
+    if (ownerId === null) return (change: StatChange) => global.get(change.statId);
+    const own = new Map((ownStats ?? []).map((stat) => [stat.id, stat]));
+    const ownIds = new Set(own.keys());
+    const globalIds = new Set(global.keys());
+    return (change: StatChange) => {
+      const side = statRowSide(change, ownIds, globalIds);
+      return side === 'own' ? own.get(change.statId) : side === 'global' ? global.get(change.statId) : undefined;
+    };
+  }, [stats, ownerId, ownStats]);
   const radio = picks?.max === 1;
   const needed = picks ? picks.min - picks.count : 0;
   const shown = traits.filter((trait) => isShown(trait, selectedTraits));
@@ -84,7 +99,7 @@ export function SetupTraitList({
     const line = gateLine(gate);
     const description = resolveTraitText(trait, trait.playerDescription ?? '').trim();
     const changes = trait.statChanges
-      .map((change) => ({ change, stat: statById.get(change.statId) }))
+      .map((change) => ({ change, stat: statOf(change) }))
       .filter((row): row is { change: StatChange; stat: Stat } => row.stat !== undefined && row.stat.hidden !== true);
     return (
       <div

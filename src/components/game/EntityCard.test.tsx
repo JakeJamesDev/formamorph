@@ -9,7 +9,7 @@ import type { Entity } from '@/types';
  */
 
 const IMAGE = 'data:image/webp;base64,AAAA';
-const sedge: Entity = { id: 'e1', name: 'Sedge', playerDescription: 'A heron-thin ferryman.', images: [IMAGE] };
+const sedge: Entity = { id: 'e1', name: 'Sedge', playerDescription: 'A heron-thin ferryman.', images: [{ data: IMAGE }] };
 
 afterEach(cleanup);
 

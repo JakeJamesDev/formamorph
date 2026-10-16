@@ -2,17 +2,22 @@ import type { PlayerStat } from '@/types';
 import type { StatPlacement } from './statContext';
 import { stripMarkdown } from './stripMarkdown';
 import { statChipPartValues } from './chipValues/chipValues';
+import type { ChipScene } from './chipValues/chipScene';
 import { maxKeyOf, statKeys } from './statKeys';
+import type { ValueLookup } from './promptValues';
 import { applyAiMaxChanges, applyAiStatChanges, parseStatUpdates } from './statChanges';
 import { randomUUID } from './uuid';
-import { PLAYER_OWNER } from './statOwners';
+import { scopeKey, type OwnerId } from './scope';
 import type { ResponseSchema, ResponseSchemaNode } from './aiRequest/responseSchema';
 
 const nameKey = (name: string) => name.trim().replace(/\s+/g, ' ').toLowerCase();
 const symbolKey = (name: string) => nameKey(name).replace(/\p{Variation_Selector}|[^\p{L}\p{N}\p{M}]/gu, '');
 
-/** The heading the player's stats sit under, and their key in a schema reply. */
+/** The heading every played entity's stats sit under, and their key in a schema reply. */
 export const PLAYER_STAT_HEADING = 'Player Character';
+
+/** The heading the global stats sit under, and their key in a schema reply. */
+export const GLOBAL_STATS_HEADING = 'Global Stats';
 
 /** The largest change, up or down, the schema lets one value or maximum take in a turn. */
 export const STAT_CHANGE_BOUND = 20;
@@ -21,7 +26,8 @@ export interface StatRequestTarget {
   id: string;
   name: string;
   plainName: string;
-  ownerId: string;
+  /** The entity that owns the stat; null for a global stat. */
+  ownerId: OwnerId;
   /** The owner's key in a schema reply. */
   ownerKey: string;
   /** The stat's key under its owner in a schema reply, holding its change: its plain name, numbered when
@@ -33,19 +39,19 @@ export interface StatRequestTarget {
 
 export interface StatRequestSnapshot {
   id: string;
-  /** The player's targets first, then each entity owner's. */
+  /** The played entities' targets first, then the global stats', then each entity owner's. */
   targets: StatRequestTarget[];
-  /** Every owner's section, for the schema request. */
-  context: Record<string, string>;
-  /** The player's section alone, for the text pass. */
-  textContext: Record<string, string>;
+  /** The Stats chip over the global stats alone, for both passes. */
+  context: ValueLookup;
   /** Each entity owner's key, in order. The text pass skips them. */
   entityKeys: string[];
+  /** Every entity present this turn, stat-less ones included: the stat pass's In Scene. */
+  inSceneIds: string[];
   /** The request takes the text pass, because its endpoint refused the schema. */
   textPass?: boolean;
 }
 
-/** An entity whose stats join the player's in one request. */
+/** An entity whose stats join the global stats in one request. */
 export interface StatRequestOwner {
   id: string;
   /** Its heading in the request; a clash takes a numbered key. */
@@ -58,14 +64,14 @@ export interface StatRequestOwner {
 
 export interface StatUpdateDiagnostic {
   name: string;
-  /** `textPass` marks a reply the text pass wrote; it skips none of the player's stats. `skipped` names an
+  /** `textPass` marks a reply the text pass wrote; it skips none of the played or global stats. `skipped` names an
    *  entity owner the text pass left out. */
   reason: 'ambiguous' | 'unknown' | 'invalid' | 'disabled' | 'missing' | 'textPass' | 'skipped';
 }
 
 export interface ResolvedStatUpdate {
-  /** The owner whose stat this moves; with `id`, the stat's address. */
-  ownerId: string;
+  /** The entity whose stat this moves, null for a global stat; with `id`, the stat's address. */
+  ownerId: OwnerId;
   id: string;
   name: string;
   value: number;
@@ -89,59 +95,89 @@ function ownerKeys(names: readonly string[], taken: Set<string>): string[] {
   });
 }
 
-/** One owner's stats as a section holds them. */
-type SectionPart = Pick<StatRequestOwner, 'id' | 'stats' | 'placement'>;
+/** One owner's stats and the owner key they sit under in a schema reply. */
+type OwnerPart = Pick<StatRequestOwner, 'stats' | 'placement'> & { id: OwnerId; ownerKey: string };
 
-/** One section's targets under `ownerKey`, and its Stats chip values naming each stat by its key. Each part
- *  keeps its owner and its own layout, its stats after the earlier parts'; keys are unique across the parts. */
-function ownerSection(parts: readonly SectionPart[], ownerKey: string) {
+/** Each part's targets and its stats named by their keys, unique across the parts, in part order. */
+function keyedParts(parts: readonly OwnerPart[]) {
   const plainNames = parts.flatMap((part) => part.stats.map(({ name }) => stripMarkdown(name).trim()));
   const keys = statKeys(plainNames);
   let at = 0;
-  const laid = parts.map((part) => {
+  return parts.map((part) => {
     const start = at;
     at += part.stats.length;
-    const targets = part.stats.map(({ id, name }, i) => ({
-      id, name, plainName: plainNames[start + i], ownerId: part.id, ownerKey, key: keys[start + i], maxKey: maxKeyOf(keys[start + i]),
+    const targets: StatRequestTarget[] = part.stats.map(({ id, name }, i) => ({
+      id, name, plainName: plainNames[start + i], ownerId: part.id, ownerKey: part.ownerKey, key: keys[start + i],
+      maxKey: maxKeyOf(keys[start + i]),
     }));
     // The chip names each stat by its key, so a numbered key is the name the reply sees.
-    return { targets, stats: part.stats.map((stat, i) => ({ ...stat, name: keys[start + i] })), placement: part.placement };
+    const keyed = part.stats.map((stat, i) => ({ ...stat, name: keys[start + i] }));
+    return { ownerKey: part.ownerKey, targets, stats: keyed, placement: part.placement };
   });
-  const context = statChipPartValues(laid);
-  return { targets: laid.flatMap((part) => part.targets), context };
 }
 
-/** Capture the names and identities this stat request exposes, with plain names in every Stats chip. The
- *  player's targets belong to `ownerId`, keyed `ownerKey` in a schema reply, and sit as `placement` puts
- *  them. The stats of `personas`, the entities the player plays as, follow in the player's section, each
- *  owner's own. Each of `entities` follows under its own heading in every Stats chip value. */
+/** Capture the names and identities this stat request exposes, with plain names in every Stats chip. `stats`
+ *  are the global stats, keyed Global Stats; `persona` and `played`, any other entity
+ *  the player plays as, are keyed Player Character. Each of `entities` takes its own owner key. `inSceneIds`
+ *  names every entity present this turn. */
 export function createStatRequest(
   stats: readonly PlayerStat[],
-  ownerId: string = PLAYER_OWNER,
-  { ownerKey = PLAYER_STAT_HEADING, textPass = false, entities = [], personas = [], placement }: {
-    ownerKey?: string; textPass?: boolean; entities?: readonly StatRequestOwner[]; personas?: readonly StatRequestOwner[];
-    placement?: StatPlacement;
+  { textPass = false, entities = [], persona, played = [], placement, inSceneIds = [] }: {
+    textPass?: boolean; entities?: readonly StatRequestOwner[]; persona?: StatRequestOwner;
+    played?: readonly StatRequestOwner[]; placement?: StatPlacement; inSceneIds?: readonly string[];
   } = {},
 ): StatRequestSnapshot {
-  const player = ownerSection([{ id: ownerId, stats, placement }, ...personas], ownerKey);
+  const global: OwnerPart = { id: null, stats, placement, ownerKey: GLOBAL_STATS_HEADING };
+  const own = [...(persona ? [persona] : []), ...played].map((owner) => ({ ...owner, ownerKey: PLAYER_STAT_HEADING }));
+  // Stat keys run global, persona, played, as the narration's chips number a played stat.
+  const [globalPart, ...personaParts] = keyedParts([global, ...own]);
   const owners = entities.filter((owner) => owner.stats.length);
-  const keys = ownerKeys(owners.map((owner) => owner.name), new Set([ownerKey]));
-  const sections = owners.map((owner, i) => ({ key: keys[i], ...ownerSection([owner], keys[i]) }));
-  const context = Object.fromEntries(Object.entries(player.context).map(([token, value]) => [
-    token, [value, ...sections.map((section) => `### ${section.key}\n${section.context[token]}`)].join('\n\n'),
-  ]));
+  const keys = ownerKeys(owners.map((owner) => owner.name), new Set([PLAYER_STAT_HEADING, GLOBAL_STATS_HEADING]));
+  const sections = owners.flatMap((owner, i) => keyedParts([{ ...owner, ownerKey: keys[i] }]));
   return {
     id: randomUUID(),
-    targets: [...player.targets, ...sections.flatMap((section) => section.targets)],
-    context,
-    textContext: player.context,
+    targets: [...personaParts, globalPart, ...sections].flatMap((part) => part.targets),
+    context: statChipPartValues([globalPart]),
     entityKeys: keys,
+    inSceneIds: [...inSceneIds],
     ...(textPass && { textPass }),
   };
 }
 
-/** The player's targets alone: what the text pass asks about. */
-export function playerTargets(snapshot: StatRequestSnapshot): StatRequestTarget[] {
+/** `scene` with each stat the request keys named by its key: the world's, each played entity's and each owned
+ *  by an entity. Each entity owner reads as its owner key, and In Scene holds the request's present entities.
+ *  The stat pass renders its chips from this scene. A stat the request does not hold keeps its name, and
+ *  `scene` itself is left as it was. */
+export function keyedScene(scene: ChipScene, snapshot: StatRequestSnapshot): ChipScene {
+  if (!snapshot.targets.length) return scene;
+  const keys = new Map(snapshot.targets.map((target) => [targetKey(target.ownerId, target.id), target.key]));
+  const keyed = (ownerId: OwnerId, stats: readonly PlayerStat[]): PlayerStat[] => stats.map((stat) => {
+    const key = keys.get(targetKey(ownerId, stat.id));
+    return key === undefined || key === stat.name ? stat : { ...stat, name: key };
+  });
+  const entityKeys = new Set(snapshot.entityKeys);
+  const entityOwnerKeys = new Map(snapshot.targets.filter((t) => entityKeys.has(t.ownerKey)).map((t) => [t.ownerId, t.ownerKey]));
+  return {
+    ...scene,
+    entities: scene.entities.map((entity) => {
+      const key = entityOwnerKeys.get(entity.id);
+      return key === undefined || key === entity.name ? entity : { ...entity, name: key };
+    }),
+    inSceneIds: snapshot.inSceneIds,
+    inSceneNames: [],
+    stats: keyed(null, scene.stats),
+    playedStats: scene.playedStats?.map((part) => ({ ...part, stats: keyed(part.ownerId, part.stats) })),
+    ownedStats: scene.ownedStats && Object.fromEntries(
+      Object.entries(scene.ownedStats).map(([ownerId, stats]) => [ownerId, keyed(ownerId, stats)]),
+    ),
+  };
+}
+
+/** One stat's address: its scope, then its id. */
+const targetKey = (ownerId: OwnerId, statId: string) => `${scopeKey(ownerId)}/${statId}`;
+
+/** The played and global targets, with no entity owner's: what the text pass asks about. */
+export function textPassTargets(snapshot: StatRequestSnapshot): StatRequestTarget[] {
   const entityKeys = new Set(snapshot.entityKeys);
   return snapshot.targets.filter((target) => !entityKeys.has(target.ownerKey));
 }
@@ -221,7 +257,7 @@ export function readStatResponse(raw: string, snapshot: StatRequestSnapshot): St
   const diagnostics: StatUpdateDiagnostic[] = [
     { name: '', reason: 'textPass' }, ...snapshot.entityKeys.map((name) => ({ name, reason: 'skipped' as const })),
   ];
-  const targets = playerTargets(snapshot);
+  const targets = textPassTargets(snapshot);
   for (const line of raw.split('\n').filter((text) => text.trim())) {
     const plain = stripMarkdown(line);
     const separator = plain.lastIndexOf(':');
@@ -245,7 +281,7 @@ export function readStatResponse(raw: string, snapshot: StatRequestSnapshot): St
       continue;
     }
     const target = matches[0];
-    const key = `${target.ownerId}/${target.id}`;
+    const key = targetKey(target.ownerId, target.id);
     const update = updates.get(key) ?? { ownerId: target.ownerId, id: target.id, name: target.name, value: 0, max: 0 };
     update.value += values.stat ?? 0;
     update.max += maxes.stat ?? 0;
@@ -260,7 +296,7 @@ export function applyStatResponse(
   stats: PlayerStat[],
   response: StatResponse,
   enabledIds: ReadonlySet<string>,
-  ownerId: string = PLAYER_OWNER,
+  ownerId: OwnerId = null,
 ): { stats: PlayerStat[]; diagnostics: StatUpdateDiagnostic[] } {
   const owned = response.updates.filter((update) => update.ownerId === ownerId);
   const byId = new Map(owned.map((update) => [update.id, update]));
@@ -282,8 +318,8 @@ export function applyStatResponse(
   };
 }
 
-/** The history's change map: the player's stats alone, by name; request identities stay transient. */
+/** The history's change map: the global stats alone, by name; request identities stay transient. */
 export function statResponseChanges(response: StatResponse): Record<string, number>[] {
-  return response.updates.filter((update) => update.ownerId === PLAYER_OWNER && update.value !== 0)
+  return response.updates.filter((update) => update.ownerId === null && update.value !== 0)
     .map((update) => ({ [update.name.toLowerCase()]: update.value }));
 }

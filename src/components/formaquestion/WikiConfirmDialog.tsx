@@ -43,6 +43,7 @@ export function WikiConfirmDialog({ confirm, onOpen, onCancel, returnFocus }: {
       }}
     >
       <AlertDialogContent
+        surface="formaquestionWikiConfirm"
         onCloseAutoFocus={(event) => {
           const opener = returnFocus();
           if (!opener?.isConnected) return;

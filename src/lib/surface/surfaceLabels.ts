@@ -11,7 +11,7 @@ import { HUB_LABEL, OVERVIEW_LABEL, PROMPT_LABELS, SURFACE_LABELS as PROMPT_SURF
 import { BENCH_TABS } from '@/lib/testBench/benchTabs';
 import type { SurfaceId } from '@/lib/docs/surfaceMap';
 import { FORMAQUESTION_TABS } from '@/components/formaquestion/formaquestionTabs';
-import { FORMAQUESTION_SETTINGS_TABS } from '@/components/formaquestion/formaquestionSettingsTabs';
+import { FORMAQUESTION_SETTINGS_TABS, WIKI_CONFIRM_COPY } from '@/components/formaquestion/formaquestionSettingsTabs';
 import { SETTINGS_ENDPOINT_TABS, SETTINGS_TABS } from '@/components/modals/settingsTabs';
 import { TOOL_EDIT_TABS } from '@/components/modals/toolsView';
 import { DICTIONARY_BOOK_PANEL_TABS } from '@/views/dictionaryBookPanelTabs';
@@ -58,6 +58,7 @@ const ENTRIES: [string, string][] = [
   ['entity', 'Entity'],
   ['enterWorld', 'Enter World'],
   ['errorDetails', 'Error Details'],
+  ['imageSetup', 'Image Setup'],
   ['export', 'Export story'],
   ['intro', 'Introduction'],
   ['location', 'Change Location'],
@@ -83,7 +84,9 @@ const ENTRIES: [string, string][] = [
   ['formaquestionSettings', 'Formaquestion Settings'],
   ['formaquestionCompare', 'Compare'],
   ['settingsCompare', 'Compare'],
+  ['chipOptions', 'Chip Options'],
   ['formaquestionAiContext', 'AI Context'],
+  ['formaquestionWikiConfirm', WIKI_CONFIRM_COPY.title],
   ['designSystemGroupPicker.picker', 'Add To Group'],
   ['designSystemGroupPicker.create', 'Create New Group'],
 

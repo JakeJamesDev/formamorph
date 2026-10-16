@@ -7,6 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'react-toastify';
 import { downloadBlob } from '@/lib/downloadBlob';
+import { copyText } from '@/lib/clipboard';
 import { filesFrom } from '@/lib/importFiles';
 import { CHIP_BASE } from '@/components/Chip';
 import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
@@ -29,7 +30,12 @@ export function ExportPresetDialog({ open, onOpenChange, shared }: {
 }) {
   if (!shared) return null;
   const code = serializeSharedCode(shared);
-  const copy = () => { void navigator.clipboard.writeText(code).then(() => toast.success('Share code copied')); };
+  const copy = () => {
+    void copyText(code).then((copied) => {
+      if (copied) toast.success('Share code copied');
+      else toast.error("Couldn't copy the share code");
+    });
+  };
   const download = () => downloadBlob(new Blob([serializeSharedJson(shared)], { type: 'application/json' }), `${safeFile(shared.name)}.preset.json`);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

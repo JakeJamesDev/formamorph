@@ -67,11 +67,12 @@ describe('computeInPlay readers', () => {
   it('reads the stat through whichever Stats chip each prompt places', () => {
     const readers = computeInPlay(step('stat-name'), world, 'w1', { location: 'well', stat: 'sea' }, templates({})).readers;
     const byPrompt = Object.fromEntries(readers.map((r) => [r.prompt, r]));
-    expect(byPrompt['Narration Prompt'].text).toMatch(/^## Player Stats\n/);
+    expect(byPrompt['Narration Prompt'].text).toMatch(/^## Global Stats\n/);
     expect(byPrompt['Narration Prompt'].text).not.toMatch(/\d/);
-    // The shipped Stat Updates prompt places its Stats chip with no Header.
-    expect(byPrompt['Stat Updates Prompt'].text).toBe('- **Sea Change:** 10/100 — How far the sea has claimed you.');
-    expect(byPrompt['Stat Updates Prompt'].marks).toEqual([{ start: 4, end: 14 }]);
+    // The shipped Stat Updates prompt heads its Stats chip Global Stats too, and reads the number.
+    expect(byPrompt['Stat Updates Prompt'].text).toBe('## Global Stats\n- **Sea Change:** 10/100 — How far the sea has claimed you.');
+    const start = '## Global Stats\n- **'.length;
+    expect(byPrompt['Stat Updates Prompt'].marks).toEqual([{ start, end: start + 'Sea Change'.length }]);
 
     const none = computeInPlay(step('stat-name'), world, 'w1', { location: 'well', stat: 'sea' },
       templates({ 'Stat Updates Prompt': 'Track stats with no Stats chip.' })).readers;

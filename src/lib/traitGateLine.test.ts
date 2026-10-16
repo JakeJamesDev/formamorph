@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { gateLine } from './traitGateLine';
-import { WORLD_OWNER, gateOf, gateStates, type ConditionState, type GateInput, type GateOwner, type GateState } from './traitGates';
+import { gateOf, gateStates, type ConditionState, type GateInput, type GateOwner, type GateState } from './traitGates';
+import { scoped } from './scope';
 import type { Trait, TraitRequirement } from '@/types';
 
 const c = (text: string, holds = false, hidden = false): ConditionState => ({ text, holds, unresolved: false, hidden });
@@ -57,13 +58,14 @@ describe('gateLine with Not Conditions', () => {
   const lineOf = (gated: Trait, active: string[] = [], extra: Partial<GateInput> = {}) => {
     const traits = [T('Knight', { groupId: 'Class' }), T('Paladin'), T('Mercenary'), T('Bond', { mode: 'hidden' }), gated];
     const input: GateInput = {
-      owners: [{ id: WORLD_OWNER, name: '', traits, groups: [{ id: 'Class', name: 'Class', parentId: null }] }, wolf],
-      active: { [WORLD_OWNER]: active },
+      global: { traits, groups: [{ id: 'Class', name: 'Class', parentId: null }] },
+      owners: [wolf],
+      active: scoped(active),
       entities: [{ id: 'wolf', name: 'Ash' }, { id: 'aldric', name: 'Sir Aldric', persona: true }],
       persona: { source: 'none' },
       ...extra,
     };
-    return gateLine(gateOf(gateStates(input), WORLD_OWNER, gated.id));
+    return gateLine(gateOf(gateStates(input), null, gated.id));
   };
 
   it('reads "not X" inside the rule', () => {
@@ -72,11 +74,11 @@ describe('gateLine with Not Conditions', () => {
     expect(lineOf(smarts, ['Knight'])).toBe('Unlocked by Knight and not Paladin');
   });
 
-  it('reads Not on a group, a persona, and a bearer (Q11)', () => {
+  it('reads Not on a group, a persona, and an owner (Q11)', () => {
     const many = T('Drifter', {
       requires: [
-        { all: [not({ kind: 'playingAs', id: 'aldric' }), not(trait('Tamed', { bearer: { kind: 'entity', id: 'wolf' } }))] },
-        { all: [not(trait('Paladin', { bearer: { kind: 'you' } })), not({ kind: 'group', id: 'Class' })] },
+        { all: [not({ kind: 'playingAs', id: 'aldric' }), not(trait('Tamed', { owner: { kind: 'entity', id: 'wolf' } }))] },
+        { all: [not(trait('Paladin', { owner: { kind: 'you' } })), not({ kind: 'group', id: 'Class' })] },
       ],
     });
     expect(lineOf(many)).toBe('Unlocked by not playing as Sir Aldric and Ash: not Tamed, or You: not Paladin and not any Class');

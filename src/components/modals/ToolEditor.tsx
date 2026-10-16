@@ -1,4 +1,4 @@
-import { useId, useMemo, type ReactNode } from 'react';
+import { useCallback, useId, useMemo, type ReactNode } from 'react';
 import { Info, Plus, Trash2 } from 'lucide-react';
 import type { Tool, ToolHandler, ToolParam, ToolParamType } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -23,8 +23,11 @@ import {
   draftProblems, finishDraft, hasDraftProblems, namedParams, renameParam, withHandlerKind,
   type DraftProblems, type KeptHandlers, type HandlerProblem, type ParamProblem,
 } from '@/lib/tools/toolDraft';
+import { infoWithAccess, type SurfaceEntry } from '@/lib/codeSurface';
 import { toolScriptSurface } from '@/lib/tools/toolScriptSurface';
+import { buildToolVariableTree, type ToolVariableNames } from '@/lib/tools/toolVariableTree';
 import { toolTemplateVocabulary } from '@/lib/tools/toolTemplateVocabulary';
+import type { ValueLookup } from '@/lib/promptValues';
 import type { ToolNameProblem } from '@/lib/tools/toolValidation';
 import { TOOL_EDIT_TABS, type ToolEditTab } from './toolsView';
 import { ToolTryIt, type TryItWorld } from './ToolTryIt';
@@ -214,7 +217,7 @@ function ParametersTab({ draft, onChange, problems }: TabProps) {
 }
 
 /** An ⓘ beside the Script label that opens the table of values a script can read. */
-function ScriptReference({ globals }: { globals: readonly { name: string; detail: string; info: string }[] }) {
+function ScriptReference({ globals }: { globals: readonly SurfaceEntry[] }) {
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -228,7 +231,7 @@ function ScriptReference({ globals }: { globals: readonly { name: string; detail
       <DialogContent className="flex max-h-[85dvh] flex-col sm:max-w-[640px]">
         <DialogHeader className="shrink-0">
           <DialogTitle>What a Script Can Read</DialogTitle>
-          <DialogDescription>Reads these read-only values. Returns text, or any other value as JSON.</DialogDescription>
+          <DialogDescription>Lists the values a script can read. A script returns text, or any other value as JSON.</DialogDescription>
         </DialogHeader>
         <ScrollArea className="-mx-1 min-h-0 flex-1 px-1">
           <dl aria-label="What the script can read" className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 pr-1 text-label">
@@ -236,7 +239,7 @@ function ScriptReference({ globals }: { globals: readonly { name: string; detail
               <div key={entry.name} className="contents">
                 <dt className="font-mono">{entry.name}</dt>
                 <dd className="min-w-0 text-muted-foreground">
-                  <span className="font-mono break-words text-foreground/80">{entry.detail}</span> {entry.info}
+                  <span className="font-mono break-words text-foreground/80">{entry.detail}</span> {infoWithAccess(entry)}
                 </dd>
               </div>
             ))}
@@ -247,8 +250,12 @@ function ScriptReference({ globals }: { globals: readonly { name: string; detail
   );
 }
 
-function HandlerTab({ draft, onChange, onKindChange, problems, placeholderNames }: TabProps & {
+function HandlerTab({ draft, onChange, onKindChange, problems, placeholderNames, chipReads, names }: TabProps & {
   onKindChange: (kind: ToolHandler['kind']) => void; placeholderNames: readonly string[];
+  /** The open world's names, which the script's Variable menu lists. Null with only the sample world. */
+  names: ToolVariableNames | null;
+  /** The scene chips' values on the world Try It runs on, which Chip Options shows. */
+  chipReads: ValueLookup;
 }) {
   const id = useId();
   const { handler, params } = draft;
@@ -257,6 +264,7 @@ function HandlerTab({ draft, onChange, onKindChange, problems, placeholderNames 
   const handlerError = problems.handler && HANDLER_PROBLEM[problems.handler];
   const surface = useMemo(() => toolScriptSurface(params, placeholderNames), [params, placeholderNames]);
   const vocabulary = useMemo(() => toolTemplateVocabulary(params), [params]);
+  const variables = useCallback(() => buildToolVariableTree(params, names), [params, names]);
   const setHandler = (next: ToolHandler) => onChange({ ...draft, handler: next });
   const kind = HANDLER_KINDS.find((k) => k.value === handler.kind) ?? HANDLER_KINDS[0];
   return (
@@ -325,14 +333,14 @@ function HandlerTab({ draft, onChange, onKindChange, problems, placeholderNames 
       )}
       {handler.kind === 'template' && (
         <PromptField
-          label="Template" ariaLabel="Template" vocabulary={vocabulary}
+          label="Template" ariaLabel="Template" vocabulary={vocabulary} chipReads={chipReads}
           hint="Returns this text. Insert a parameter to place what the AI passed."
           value={handler.body} onChange={(body) => setHandler({ ...handler, body })}
         />
       )}
       {handler.kind === 'script' && (
         <CodeArea
-          label="Script" ariaLabel="Script" rows={10} surface={surface}
+          label="Script" ariaLabel="Script" rows={10} surface={surface} variables={variables}
           info={<ScriptReference globals={surface.globals} />}
           value={handler.code} onChange={(code) => setHandler({ ...handler, code })}
         />
@@ -398,9 +406,10 @@ export function ToolEditor({
     const next = withHandlerKind(draft, kind, keptHandlers);
     onDraftChange(next.draft, next.kept);
   };
-  // Autocomplete lists the shared placeholders of the world Try It runs on.
-  const { snapshot } = world;
-  const placeholderNames = useMemo(() => Object.keys(snapshot().placeholders), [snapshot]);
+  // Autocomplete and the Variable menu list the open world's names, never the sample world's.
+  const { snapshot, open } = world;
+  const toolSnapshot = useMemo(() => snapshot(), [snapshot]);
+  const placeholderNames = useMemo(() => (open ? Object.keys(toolSnapshot.placeholders) : []), [open, toolSnapshot]);
 
   return (
     <div className="flex flex-col flex-1 min-h-0 gap-3">
@@ -425,7 +434,7 @@ export function ToolEditor({
             <div className="pr-3 pb-1">
               <TabsContent value="definition" className="mt-0"><DefinitionTab {...body} /></TabsContent>
               <TabsContent value="parameters" className="mt-0"><ParametersTab {...body} /></TabsContent>
-              <TabsContent value="handler" className="mt-0"><HandlerTab {...body} onKindChange={switchKind} placeholderNames={placeholderNames} /></TabsContent>
+              <TabsContent value="handler" className="mt-0"><HandlerTab {...body} onKindChange={switchKind} placeholderNames={placeholderNames} chipReads={toolSnapshot.chips} names={open ? toolSnapshot : null} /></TabsContent>
             </div>
           </ScrollArea>
         </Tabs>

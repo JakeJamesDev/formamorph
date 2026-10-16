@@ -22,6 +22,7 @@ export const TEST_PROMPTS: TurnPrompts = {
   choicesUser: 'Choices: <PLAYER ACTION> | <NARRATION>',
   statUpdates: 'STATS <WORLD DESCRIPTION>',
   statUpdatesUser: 'Stats: <PLAYER ACTION> | <NARRATION>',
+  statText: { system: null, user: null },
   summary: 'SUMMARY <WORLD DESCRIPTION>',
   summaryUser: 'Digest: <PLAYER ACTION> | <NARRATION>',
   milestoneSelect: 'MILESTONE <WORLD DESCRIPTION>',
@@ -53,6 +54,7 @@ export const TEST_SETTINGS: TurnSettings = {
   imageAttachments: false,
   promptAttachments: {},
   language: 'English',
+  stripLinksAndImages: false,
 };
 
 /** A mid-story turn with somewhere to go, overridable field by field. */

@@ -13,18 +13,27 @@
 //   D        C3, with each stat's change written after a short `evidence` field
 //   E        a gate call names the owners whose stats moved, then B's call runs for each named owner
 //   C3P      C3 with the player alone, which S's request matches but for the max keys
-//   S        the shipped request: the app's own stat pass builder, prompts and schema, every present owner
-//   SU       S, with C3's user line
-//   SN       S, with no max keys in the schema, the format or the user line
-//   SG       S, with every owner's stats in author-style groups (Body, Mind, Bonds, Trade)
+//   S        the shipped request: the app's own stat pass builder, prompts and schema, every present owner, the
+//            world's stats loose as the world authors them
+//   OB       S, with the player's stats on a Custom Persona entity and only the world's own stats loose
+//   SB       the request as built at BASE_REF (stat-pass-owner-blocks ticket 02's Base): every player stat under
+//            `### Player Character`, each owner's section appended to the Stats chip
+//   S0       S, with the stat prompts as committed at --s0-ref (default HEAD, the before arm for an uncommitted edit)
+//   OB0      OB, with the stat prompts as committed at --s0-ref
+// The arms below are the request at BASE_REF with one change each, built as SB is:
+//   SU       SB, with C3's user line
+//   SN       SB, with no max keys in the schema, the format or the user line
+//   SG       SB, with every owner's stats in author-style groups (Body, Mind, Bonds, Trade)
 //   SGB      SG with bare group headings, no descriptions
-//   SGO      SG with every group's heading hidden from the AI (`aiVisible: false`); matches S byte for byte
+//   SGO      SG with every group's heading hidden from the AI (`aiVisible: false`); matches SB byte for byte
 //   SH       SG with each group as a #### sub-heading and its stats flat beneath
 //   SP       SG with each group as a plain `Name: description` line and its stats flat beneath
-//   S0       S, with the stat prompts as committed at --s0-ref (default HEAD, the before arm for an uncommitted edit)
 //   WA..WR   ticket 05's request (ded57a32), with one wording change each (WORDINGS below)
 //   FA..FDG  ticket 23's framings on the request at 9f4400ad (FRAMINGS below); a G suffix sends SG's groups
 // A to E derive from the text pass's prompt by checked text swaps; S is built by the app, so it is what ships.
+//
+// --world rampage|slime swaps Sedge Landing for that bundled world and world-stats-cases.json. Its loose stats
+// (the case file's `loose`) grade as the `world` owner; the `WORLD` table reports their recall per arm.
 //
 // Per reply: exact (every gold move right, nothing spurious), hits / wrong sign / misses, spurious moves,
 // misattributed (a spurious move whose stat the gold moves on another owner), invalid rows, duplicates,
@@ -40,17 +49,16 @@
 //
 // Usage: npx vite-node testing/baseline/harness/entity-stats-probe.cli.ts --
 //          [--endpoint URL] [--model ID] [--runs 6] [--pool 3] [--arms control,A,B,C] [--only storm-crowd]
-//          [--ws free|pattern|xgrammar|outlines|lmfe] [--s0-ref REF] [--sheet sedge|familiar] [--cases FILE] [--show] [--dump]
+//          [--ws free|pattern|xgrammar|outlines|lmfe] [--s0-ref REF] [--sheet sedge|familiar] [--cases FILE]
+//          [--world sedge|rampage|slime] [--show] [--dump]
 // --sheet familiar swaps every owner's stats for Fear, Morale, Energy and Trust (entity-stats-familiar-cases.json).
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-// Arms A to E derive from the text pass's prompts, under the names they were written against.
 import {
   defaultStatUpdatesPrompt as shippedStatPrompt, defaultStatUpdatesUserPrompt as shippedStatUserPrompt,
-  textStatUpdatesPrompt as defaultStatUpdatesPrompt, textStatUpdatesUserPrompt as defaultStatUpdatesUserPrompt,
 } from '@/components/game/GamePrompts';
 import {
   DEFAULT_GEN_MIN_P, DEFAULT_GEN_REPETITION_PENALTY, DEFAULT_GEN_TEMPERATURE, DEFAULT_GEN_TOP_K, DEFAULT_GEN_TOP_P, DEFAULT_MAX_TOKENS,
@@ -64,9 +72,11 @@ import {
   DEFAULT_REASONING_SETTING, UNKNOWN_REASONING_CAPABILITY, isReasoningEngaged, resolveReasoningCapability, resolveReasoningSetting,
   type PromptReasoning,
 } from '@/lib/reasoningEffort';
+import { collectPins } from '@/lib/placeholderPins';
+import { resolveEntityText, resolvePlaceholders, type ResolveOptions } from '@/lib/placeholders';
 import { renderPromptTemplate } from '@/lib/promptTemplate';
-import { createStatRequest, type StatRequestSnapshot } from '@/lib/statRequest';
-import { PLAYER_OWNER } from '@/lib/statOwners';
+import { layerValues, mapValues, type ValueLookup } from '@/lib/promptValues';
+import { createStatRequest, keyedScene, type StatRequestSnapshot } from '@/lib/statRequest';
 import { statUpdatesCap, statUpdatesRequest } from '@/lib/turnPipeline/turnPasses';
 import { migrateWorld } from '@/lib/version';
 import type { StatPlacement } from '@/lib/statContext';
@@ -86,7 +96,7 @@ const model = argVal('--model', 'default');
 const runs = Number(argVal('--runs', '6'));
 const pool = Number(argVal('--pool', '3'));
 const only = argVal('--only', '');
-const ALL_ARMS = ['control', 'A', 'A2', 'A3', 'B', 'C', 'C2', 'C3', 'D', 'E', 'S', 'SU', 'SN', 'SG', 'SGB', 'SGO', 'SH', 'SP', 'C3P', 'S0', 'WA', 'WB', 'WC', 'WD', 'WE', 'WF', 'WH', 'WJ', 'WK', 'WL', 'WP', 'WQ', 'WR', 'FA', 'FAG', 'FB', 'FBG', 'FR', 'FRG', 'FC', 'FCG', 'FD', 'FDG',
+const ALL_ARMS = ['control', 'A', 'A2', 'A3', 'B', 'C', 'C2', 'C3', 'D', 'E', 'S', 'OB', 'SB', 'SU', 'SN', 'SG', 'SGB', 'SGO', 'SH', 'SP', 'C3P', 'S0', 'OB0', 'WA', 'WB', 'WC', 'WD', 'WE', 'WF', 'WH', 'WJ', 'WK', 'WL', 'WP', 'WQ', 'WR', 'FA', 'FAG', 'FB', 'FBG', 'FR', 'FRG', 'FC', 'FCG', 'FD', 'FDG',
   'XR', 'XRG', 'XL', 'XLG', 'XC', 'XCG', 'XW', 'XWG', 'XT', 'XTG', 'XA', 'XAG', 'XF', 'XFG', 'XU', 'XUG', 'XUA', 'XUAG', 'XA1', 'XA1G', 'XA2', 'XA2G', 'XA3', 'XA3G', 'XA4', 'XA4G', 'XA5', 'XA5G', 'XA6', 'XA6G', 'XF1', 'XF1G', 'XF2', 'XF2G', 'XF3', 'XF3G', 'XF4', 'XF4G', 'XN', 'XNG', 'SV', 'SVG', 'L', 'LR', 'LT', 'LV', 'LD'] as const;
 type Arm = typeof ALL_ARMS[number];
 const arms = argVal('--arms', ALL_ARMS.join(',')).split(',') as Arm[];
@@ -104,11 +114,22 @@ if (!(whitespace in WHITESPACE)) throw new Error(`--ws takes ${Object.keys(WHITE
 const PLAYER = 'Player Character';
 
 const BASELINE = path.resolve('testing/baseline');
-const world = migrateWorld(JSON.parse(readFileSync(path.join(BASELINE, 'sedge-landing.json'), 'utf8')));
-const sedgeFixture = JSON.parse(readFileSync(path.join(BASELINE, 'entity-stats-cases.json'), 'utf8')) as {
+const worldName = argVal('--world', 'sedge');
+if (worldName !== 'sedge' && worldName !== 'rampage' && worldName !== 'slime') throw new Error('--world takes sedge, rampage or slime.');
+type CaseFile = {
   entityStats: Record<string, PlayerStat[]>;
-  cases: Array<{ id: string; present: string[]; narration: string; expect: GoldCells; allow: GoldCells }>;
+  cases: Array<{ id: string; world?: string; present: string[]; narration: string; expect: GoldCells; allow: GoldCells }>;
 };
+/** A bundled world's probe setup: its file, its played persona's name and text, and the stats that stay loose. */
+type WorldSetup = { file: string; persona: string; description: string; loose: string[] };
+const worldCases = worldName === 'sedge' ? undefined
+  : JSON.parse(readFileSync(path.join(BASELINE, 'world-stats-cases.json'), 'utf8')) as CaseFile & { worlds: Record<string, WorldSetup> };
+const worldSetup: WorldSetup = worldCases?.worlds[worldName]
+  ?? { file: 'testing/baseline/sedge-landing.json', persona: 'The Stranger', description: 'A newcomer to the landing.', loose: [] };
+const world = migrateWorld(JSON.parse(readFileSync(path.resolve(worldSetup.file), 'utf8')));
+const sedgeFixture: CaseFile = worldCases
+  ? { entityStats: {}, cases: worldCases.cases.filter((c) => c.world === worldName) }
+  : JSON.parse(readFileSync(path.join(BASELINE, 'entity-stats-cases.json'), 'utf8')) as CaseFile;
 // --cases swaps in another case file over the same entity stats (the held-out set).
 const casesFile = argVal('--cases', '');
 if (casesFile) sedgeFixture.cases = (JSON.parse(readFileSync(path.join(BASELINE, casesFile), 'utf8')) as typeof sedgeFixture).cases;
@@ -129,20 +150,34 @@ const fixture = familiar ? {
   }),
 } : sedgeFixture;
 
-const location = world.locations.find((candidate) => candidate.id === 'loc-sedge');
-if (!location) throw new Error('Sedge Landing fixture is missing loc-sedge.');
-const BASE_CTX = chipValues(authoredChipScene(world, {
+const location = worldName === 'sedge'
+  ? world.locations.find((candidate) => candidate.id === 'loc-sedge') : world.locations.find((candidate) => candidate.isStarting);
+if (!location) throw new Error(`${worldName} has no probe location.`);
+// Each placeholder takes its first value, so every run reads the same world.
+const activeTraits = world.traits.filter((trait) => trait.isDefault);
+const resolveOptions: ResolveOptions = {
+  placeholders: world.placeholders ?? [], rolls: {}, pick: (values) => values[0]?.text ?? '',
+  pins: collectPins({ traits: activeTraits, disabledTraitIds: [], placeholders: world.placeholders ?? [] }),
+};
+const sceneOptions = {
   location,
-  activeTraitIds: world.traits.filter((trait) => trait.isDefault).map((trait) => trait.id),
-  resolve: (text: string) => text,
-  resolveEntity: (_entity, text) => text,
-}));
+  activeTraitIds: activeTraits.map((trait) => trait.id),
+  resolve: (text: string) => resolvePlaceholders(text, resolveOptions),
+  resolveEntity: (entity: { name: string }, text: string) => resolveEntityText(entity, text, resolveOptions),
+};
+const BASE_CTX = chipValues(authoredChipScene(world, sceneOptions));
 const playerOwner: Owner = { key: 'player', name: PLAYER, stats: familiar?.playerStats ?? world.stats as PlayerStat[] };
+/** An entity's request stats: the case sheet's, descriptors dropped, or the world's own. */
+const entityStatsOf = (id: string): PlayerStat[] =>
+  (fixture.entityStats[id] ?? world.entities.find((e) => e.id === id)?.stats ?? []).map((s) => ({ ...s, descriptors: [] }) as PlayerStat);
 const entityOwner = (id: string): Owner => {
   const entity = world.entities.find((e) => e.id === id);
-  if (!entity) throw new Error(`No entity ${id} in Sedge Landing.`);
-  return { key: id, name: entity.name, stats: fixture.entityStats[id].map((s) => ({ ...s, descriptors: [] }) as PlayerStat) };
+  if (!entity) throw new Error(`No entity ${id} in ${worldName}.`);
+  return { key: id, name: entity.name, stats: entityStatsOf(id) };
 };
+/** The grading owner of a player-side cell: a loose stat is the world's. */
+const gradeOwner = (owner: string, stat: string) =>
+  (owner === 'player' && worldSetup.loose.includes(stat) ? 'world' : owner);
 
 const STATS_TOKEN = '<STATS DESCRIPTION|numbers.meaning.markdown>';
 /** A text swap that throws when the real prompt no longer carries the text it replaces. */
@@ -151,7 +186,7 @@ function swap(text: string, from: string | RegExp, to: string): string {
   if (out === text) throw new Error(`Stat prompt drifted: ${String(from).slice(0, 60)} not found.`);
   return out;
 }
-const statsBlock = (owner: Owner) => createStatRequest(owner.stats).context[STATS_TOKEN];
+const statsBlock = (owner: Owner) => createStatRequest(owner.stats).context(STATS_TOKEN);
 const ownerSections = (owners: Owner[]) => owners.map((o) => `### ${o.name}\n${statsBlock(o)}`).join('\n\n');
 
 function sharedSystem(owners: Owner[]): string {
@@ -163,7 +198,7 @@ function sharedSystem(owners: Owner[]): string {
 interface Call { owner?: Owner; system: string; user: string; maxTokens: number; schema?: object; snapshot?: StatRequestSnapshot }
 const userFor = (narration: string, template = defaultStatUpdatesUserPrompt) => template.replace('<NARRATION>', narration);
 const render = (system: string, owner?: Owner) =>
-  renderPromptTemplate(system, owner ? { ...BASE_CTX, ...createStatRequest(owner.stats).context } : BASE_CTX);
+  renderPromptTemplate(system, owner ? layerValues(BASE_CTX, createStatRequest(owner.stats).context) : BASE_CTX);
 const total = (owners: Owner[]) => owners.reduce((n, o) => n + o.stats.length, 0);
 
 const SOCIAL_RULE = ['a real exertion, injury, loss, or gain.', 'a real exertion, injury, loss, or gain, or a clear shift in how a character regards the player.'] as const;
@@ -222,26 +257,57 @@ function grouped(stats: readonly PlayerStat[], style: GroupStyle): StatPlacement
   return { groups, authored: stats.map((s) => ({ ...s, groupId: STAT_GROUPS[s.name].id })) };
 }
 
-/** The request the app sends, built by the app's own stat pass: the player's stats and each present owner's,
- *  in groups when `groups` names a style, from `prompts` when given. */
-function shippedCall(
-  owners: Owner[], narration: string, groups?: GroupStyle, prompts = { system: shippedStatPrompt, user: shippedStatUserPrompt },
-): Call {
-  const placement = (stats: readonly PlayerStat[]) => (groups ? { placement: grouped(stats, groups) } : {});
-  const snapshot = createStatRequest(playerOwner.stats, PLAYER_OWNER, {
-    ...placement(playerOwner.stats),
-    entities: owners.filter((o) => o !== playerOwner).map((o) => ({ id: o.key, name: o.name, stats: o.stats, ...placement(o.stats) })),
-  });
+/** The stat pass's request for `snapshot` over `ctx`, as the app builds it. */
+function requestCall(snapshot: StatRequestSnapshot, ctx: ValueLookup, narration: string, prompts: { system: string; user: string }): Call {
   const request = statUpdatesRequest(
-    prompts,
-    { ctx: BASE_CTX, action: '', narration },
-    { statCount: playerOwner.stats.length, statRequest: snapshot, quiet: false },
+    { ...prompts, text: { system: null, user: null } }, { ctx, action: '', narration }, { statCount: playerOwner.stats.length, statRequest: snapshot, quiet: false },
   );
-  if (!request.responseSchema) throw new Error('The shipped stat request carries no schema.');
+  if (!request.responseSchema) throw new Error('The stat request carries no schema.');
   return {
     owner: playerOwner, system: request.systemPrompt, user: request.messages[0].content, snapshot,
     maxTokens: request.maxTokens ?? 0, schema: request.responseSchema.schema,
   };
+}
+
+const PERSONA_ID = 'probe-persona';
+/** The played entity that owns every player stat in the BASE_REF layout. */
+const PLAYER_ID = 'probe-player';
+const SHIPPED_PROMPTS = { system: shippedStatPrompt, user: shippedStatUserPrompt };
+
+/** The request the app sends, built by the app's own stat pass over the world's scene, from `prompts` when
+ *  given. With `persona`, a Custom Persona entity owns every player stat the world does not leave loose. */
+function shippedCall(owners: Owner[], narration: string, prompts = SHIPPED_PROMPTS, { persona = false } = {}): Call {
+  const others = owners.filter((o) => o !== playerOwner);
+  const loose = persona ? playerOwner.stats.filter((s) => worldSetup.loose.includes(s.name)) : playerOwner.stats;
+  const owned = persona ? playerOwner.stats.filter((s) => !worldSetup.loose.includes(s.name)) : [];
+  const played = persona
+    ? { id: PERSONA_ID, name: worldSetup.persona, aiDescription: worldSetup.description, customPersona: true, stats: owned }
+    : undefined;
+  const cast = world.entities.map((e) => ({ ...e, stats: entityStatsOf(e.id) }));
+  const scene = authoredChipScene({ ...world, stats: loose, entities: played ? [...cast, played] : cast }, sceneOptions);
+  const snapshot = createStatRequest(loose, {
+    ...(played && { persona: { id: played.id, name: played.name, stats: owned } }),
+    entities: others.map((o) => ({ id: o.key, name: o.name, stats: o.stats })),
+    inSceneIds: others.map((o) => o.key),
+  });
+  return requestCall(snapshot, chipValues(keyedScene(scene, snapshot)), narration, prompts);
+}
+
+/** The request as built at BASE_REF, from `prompts`: every player stat under the prompt's Player Character
+ *  heading, then each owner's own heading and section appended to every Stats chip value, in groups when
+ *  `groups` names a style. The owner and stat keys are the ones that build gave. */
+const BASE_REF = '633c60570';
+function baseLayoutCall(owners: Owner[], narration: string, groups: GroupStyle | undefined, prompts: { system: string; user: string }): Call {
+  const placement = (stats: readonly PlayerStat[]) => (groups ? { placement: grouped(stats, groups) } : {});
+  const others = owners.filter((o) => o !== playerOwner && o.stats.length);
+  const snapshot = createStatRequest([], {
+    persona: { id: PLAYER_ID, name: PLAYER, stats: playerOwner.stats, ...placement(playerOwner.stats) },
+    entities: others.map((o) => ({ id: o.key, name: o.name, stats: o.stats, ...placement(o.stats) })),
+  });
+  const sections = others.map((o, i) => ({ key: snapshot.entityKeys[i], values: createStatRequest(o.stats, placement(o.stats)).context }));
+  const context = mapValues(snapshot.context, (value, token) =>
+    [value, ...sections.map((section) => `### ${section.key}\n${section.values(token)}`)].join('\n\n'));
+  return requestCall({ ...snapshot, context }, BASE_CTX, narration, prompts);
 }
 
 /** The stat request's user line, after the narration. */
@@ -251,7 +317,7 @@ const C3_FORMAT = "- One key per character, named exactly as its heading shows. 
 
 /** S with C3's user line (SU), or with no max keys at all, in the schema, the format or the user line (SN). */
 function shippedVariant(arm: 'SU' | 'SN', owners: Owner[], narration: string): Call {
-  const call = shippedCall(owners, narration);
+  const call = baseLayoutCall(owners, narration, undefined, basePrompts!);
   const user = swap(call.user, USER_LINE, C3_USER);
   if (arm === 'SU') return { ...call, user };
   const strip = (node: Record<string, unknown>): Record<string, unknown> => {
@@ -264,20 +330,31 @@ function shippedVariant(arm: 'SU' | 'SN', owners: Owner[], narration: string): C
   return { ...call, user, system: swap(system, 'A value or maximum that did not move gets 0.', 'A stat that did not move gets 0.'), schema: strip(call.schema as Record<string, unknown>) };
 }
 
-/** The stat prompt pair as committed at a ref, imported from a copy of GamePrompts.ts at that ref. */
-async function promptsAt(ref: string): Promise<{ system: string; user: string }> {
+/** The stat prompt pair as committed at a ref, imported from a copy of GamePrompts.ts at that ref. `text` is
+ *  the text pass's pair. */
+async function promptsAt(ref: string): Promise<{ system: string; user: string; text: { system: string; user: string } }> {
   const source = execFileSync('git', ['show', `${ref}:src/components/game/GamePrompts.ts`], { encoding: 'utf8' });
   const dir = mkdtempSync(path.join(tmpdir(), 'fm-prompts-'));
   const file = path.join(dir, 'GamePrompts.ts');
   writeFileSync(file, source);
   try {
-    const mod = await import(pathToFileURL(file).href) as { defaultStatUpdatesPrompt: string; defaultStatUpdatesUserPrompt: string };
-    return { system: mod.defaultStatUpdatesPrompt, user: mod.defaultStatUpdatesUserPrompt };
+    const mod = await import(pathToFileURL(file).href) as {
+      defaultStatUpdatesPrompt: string; defaultStatUpdatesUserPrompt: string;
+      textStatUpdatesPrompt: string; textStatUpdatesUserPrompt: string;
+    };
+    return {
+      system: mod.defaultStatUpdatesPrompt, user: mod.defaultStatUpdatesUserPrompt,
+      text: { system: mod.textStatUpdatesPrompt, user: mod.textStatUpdatesUserPrompt },
+    };
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
 }
-const s0Prompts = arms.includes('S0') ? await promptsAt(argVal('--s0-ref', 'HEAD')) : undefined;
+// Arms A to E derive from the text pass's prompts as they stood before the owner blocks, under the names they were written against.
+const { text: { system: defaultStatUpdatesPrompt, user: defaultStatUpdatesUserPrompt } } = await promptsAt('62e87af3c');
+const s0Prompts = arms.includes('S0') || arms.includes('OB0') ? await promptsAt(argVal('--s0-ref', 'HEAD')) : undefined;
+const BASE_LAYOUT_ARMS: readonly Arm[] = ['SB', 'SU', 'SN', 'SG', 'SGB', 'SGO', 'SH', 'SP'];
+const basePrompts = arms.some((arm) => BASE_LAYOUT_ARMS.includes(arm)) ? await promptsAt(BASE_REF) : undefined;
 
 /** One wording change on the stat prompts ticket 17 started from, each a checked text swap. */
 type Wording = { system?: Array<[string | RegExp, string]>; user?: Array<[string | RegExp, string]> };
@@ -320,7 +397,7 @@ const WORDINGS = {
 const isWording = (arm: Arm): arm is keyof typeof WORDINGS => arm in WORDINGS;
 const wordingBase = arms.some(isWording) ? await promptsAt('ded57a32') : undefined;
 function worded(arm: keyof typeof WORDINGS, owners: Owner[], narration: string): Call {
-  const call = shippedCall(owners, narration, undefined, wordingBase);
+  const call = baseLayoutCall(owners, narration, undefined, wordingBase!);
   const { system = [], user = [] }: Wording = WORDINGS[arm];
   return {
     ...call,
@@ -362,7 +439,7 @@ const isFraming = (arm: Arm): arm is keyof typeof FRAMING_ARMS => arm in FRAMING
 const framingBase = arms.some(isFraming) ? await promptsAt(FRAMING_REF) : undefined;
 function framed(arm: keyof typeof FRAMING_ARMS, owners: Owner[], narration: string): Call {
   const [wording, groups] = FRAMING_ARMS[arm];
-  const call = shippedCall(owners, narration, groups ? 'described' : undefined, framingBase);
+  const call = baseLayoutCall(owners, narration, groups ? 'described' : undefined, framingBase!);
   return { ...call, system: FRAMINGS[wording].reduce((text, [from, to]) => swap(text, from, to), call.system) };
 }
 
@@ -405,7 +482,7 @@ const ablationOf = (arm: Arm) => (arm.endsWith('G') ? arm.slice(0, -1) : arm);
 const isAblation = (arm: Arm): arm is AblationArm & Arm => /^(X|SV)/.test(arm) && ablationOf(arm) in ABLATIONS;
 const ablationBase = arms.some(isAblation) ? await promptsAt(ABLATION_REF) : undefined;
 function ablated(arm: AblationArm, owners: Owner[], narration: string): Call {
-  const call = shippedCall(owners, narration, arm.endsWith('G') ? 'described' : undefined, ablationBase);
+  const call = baseLayoutCall(owners, narration, arm.endsWith('G') ? 'described' : undefined, ablationBase!);
   const { system = [], user = [] }: Wording = ABLATIONS[ablationOf(arm) as keyof typeof ABLATIONS];
   return {
     ...call,
@@ -417,7 +494,7 @@ function ablated(arm: AblationArm, owners: Owner[], narration: string): Call {
 /** SG with each group bullet in the Stats section reshaped and its stat bullets dedented to the owner's level:
  *  a `####` sub-heading over its description (SH), or a plain `Name: description` line (SP). Prototype only. */
 function regroupedCall(arm: 'SH' | 'SP', owners: Owner[], narration: string): Call {
-  const call = shippedCall(owners, narration, 'described');
+  const call = baseLayoutCall(owners, narration, 'described', basePrompts!);
   const names = new Set(Object.values(STAT_GROUPS).map((g) => g.name));
   const start = call.system.indexOf('## Stats\n');
   const end = call.system.indexOf('\n## ', start + 1);
@@ -468,14 +545,17 @@ function leanCall(arm: LeanArm, owners: Owner[], narration: string): Call {
 function callsFor(arm: Arm, owners: Owner[], narration: string): Call[] {
   if (isLean(arm)) return [leanCall(arm, owners, narration)];
   if (arm === 'S') return [shippedCall(owners, narration)];
-  if (arm === 'S0') return [shippedCall(owners, narration, undefined, s0Prompts)];
+  if (arm === 'OB') return [shippedCall(owners, narration, SHIPPED_PROMPTS, { persona: true })];
+  if (arm === 'SB') return [baseLayoutCall(owners, narration, undefined, basePrompts!)];
+  if (arm === 'S0') return [shippedCall(owners, narration, s0Prompts)];
+  if (arm === 'OB0') return [shippedCall(owners, narration, s0Prompts, { persona: true })];
   if (isWording(arm)) return [worded(arm, owners, narration)];
   if (isFraming(arm)) return [framed(arm, owners, narration)];
   if (isAblation(arm)) return [ablated(arm, owners, narration)];
-  if (arm === 'SG') return [shippedCall(owners, narration, 'described')];
+  if (arm === 'SG') return [baseLayoutCall(owners, narration, 'described', basePrompts!)];
   if (arm === 'SH' || arm === 'SP') return [regroupedCall(arm, owners, narration)];
-  if (arm === 'SGB') return [shippedCall(owners, narration, 'bare')];
-  if (arm === 'SGO') return [shippedCall(owners, narration, 'hidden')];
+  if (arm === 'SGB') return [baseLayoutCall(owners, narration, 'bare', basePrompts!)];
+  if (arm === 'SGO') return [baseLayoutCall(owners, narration, 'hidden', basePrompts!)];
   if (arm === 'SU' || arm === 'SN') return [shippedVariant(arm, owners, narration)];
   if (arm === 'C3P') return callsFor('C3', [playerOwner], narration);
   if (arm === 'control') {
@@ -633,7 +713,7 @@ function parse(arm: Arm, owners: Owner[], calls: Call[], replies: Reply[]): Pars
   if (arm === 'LV') return parseJsonReply(readingsToChanges(replies[0].raw, owners), owners);
   if (arm === 'C' || arm === 'C2' || arm === 'C3' || arm === 'D' || isLean(arm)) return parseJsonReply(replies[0].raw, owners);
   if (arm === 'C3P') return parseJsonReply(replies[0].raw, [playerOwner]);
-  if (arm === 'S' || arm === 'S0' || arm === 'SU' || arm === 'SN' || arm === 'SG' || arm === 'SGB' || arm === 'SGO' || arm === 'SH' || arm === 'SP' || isWording(arm) || isFraming(arm) || isAblation(arm)) return parsePlainLines(replies[0].raw, playerOwner, calls[0].snapshot, (id) => (id === PLAYER_OWNER ? playerOwner.key : id));
+  if (arm === 'S' || arm === 'OB' || arm === 'SB' || arm === 'S0' || arm === 'OB0' || arm === 'SU' || arm === 'SN' || arm === 'SG' || arm === 'SGB' || arm === 'SGO' || arm === 'SH' || arm === 'SP' || isWording(arm) || isFraming(arm) || isAblation(arm)) return parsePlainLines(replies[0].raw, playerOwner, calls[0].snapshot, (id) => (id === null || id === PERSONA_ID || id === PLAYER_ID ? playerOwner.key : id));
   const parts = calls.flatMap((call, i) => (call.owner ? [parsePlainLines(replies[i].raw, call.owner, call.snapshot)] : []));
   return {
     changes: parts.flatMap((p) => p.changes), invalid: parts.reduce((n, p) => n + p.invalid, 0), unreadable: false,
@@ -658,7 +738,7 @@ if (args.includes('--dump')) {
 }
 
 interface Result {
-  arm: Arm; case: string; run: number; score: Score; player: Score; parsed: Parsed; replies: Reply[]; ms: number;
+  arm: Arm; case: string; run: number; score: Score; player: Score; world: Score; parsed: Parsed; replies: Reply[]; ms: number;
   /** Arm E: owners with a gold move the gate left out, and owners it named with nothing to move. */
   gate?: { missed: number; extra: number };
 }
@@ -689,10 +769,12 @@ await Promise.all(Array.from({ length: pool }, async () => {
         replies.push(...await Promise.all(second.map((call) => complete(call, SEED + run))));
       }
       const ms = Date.now() - t0;
-      const parsed = parse(arm, owners, calls, replies);
-      const score = scoreChanges(parsed.changes, c.expect, c.allow, scope);
+      const read = parse(arm, owners, calls, replies);
+      const parsed = { ...read, changes: read.changes.map((ch) => ({ ...ch, owner: gradeOwner(ch.owner, ch.stat) })) };
+      const score = scoreChanges(parsed.changes, c.expect, c.allow, worldSetup.loose.length && arm !== 'control' && arm !== 'C3P' ? [...scope, 'world'] : scope);
       const player = scoreChanges(parsed.changes, c.expect, c.allow, ['player']);
-      results.push({ arm, case: c.id, run, score, player, parsed, replies, ms, gate });
+      const loose = scoreChanges(parsed.changes, c.expect, c.allow, ['world']);
+      results.push({ arm, case: c.id, run, score, player, world: loose, parsed, replies, ms, gate });
       const caps = replies.filter((r) => r.capHit).length;
       console.log(`[${arm}] ${c.id} #${run} exact=${score.exact ? 1 : 0} hits ${score.hits}/${score.expected} sign ${score.wrongSign} spur ${score.spurious} misattr ${score.misattributed} inv ${parsed.invalid}${parsed.unreadable ? ' UNREADABLE' : ''} dup ${score.duplicates}${caps ? ` CAP×${caps}` : ''}${gate ? ` gate-missed ${gate.missed} gate-extra ${gate.extra}` : ''} · ${ms}ms`);
       if (args.includes('--show')) {
@@ -735,6 +817,15 @@ const gated = results.filter((r) => r.gate);
 if (gated.length) {
   const owed = sum(gated, (r) => Object.values(fixture.cases.find((c) => c.id === r.case)!.expect).filter((cells) => Object.keys(cells).length).length);
   console.log(`E gate: missed ${sum(gated, (r) => r.gate!.missed)}/${owed} owners with a gold move · named ${sum(gated, (r) => r.gate!.extra)} with nothing to move`);
+}
+
+if (worldSetup.loose.length) {
+  console.log(`\nWORLD (the loose stats ${worldSetup.loose.join(', ')}: recall, wrong signs, invented moves)`);
+  for (const arm of arms) {
+    const xs = results.filter((r) => r.arm === arm);
+    if (!xs.length) continue;
+    console.log(`${arm.padEnd(8)} recall ${pct(sum(xs, (r) => r.world.hits), sum(xs, (r) => r.world.expected)).padEnd(14)} sign ${sum(xs, (r) => r.world.wrongSign)}  spur ${sum(xs, (r) => r.world.spurious)}`);
+  }
 }
 
 console.log('\nPLAYER-ONLY (every arm regraded on player cells)');

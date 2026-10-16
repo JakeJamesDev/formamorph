@@ -1,6 +1,6 @@
 # 01: Characterization Tests For The Hand-Built Requests
 
-Status: ready-for-agent
+Status: done
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium

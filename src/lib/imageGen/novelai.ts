@@ -4,7 +4,7 @@
 // holding the PNG. Request shape verified against the caru-ini/novelai-sdk client.
 import { unzipSync } from 'fflate';
 import type { ImageGenOpts, ImageGenParams, ImageProvider } from './types';
-import { trimUrl, authHeaders } from './http';
+import { trimUrl, authHeaders, reachFetch } from './http';
 import { bytesToDataUrl } from '../imageOptim';
 
 /** A model the dropdown offers. NovelAI has no model-listing endpoint, so the list is maintained here. */
@@ -207,7 +207,7 @@ async function novelaiErrorMessage(res: Pick<Response, 'status' | 'text'>): Prom
 }
 
 export const novelaiProvider: ImageProvider = async (params: ImageGenParams, opts: ImageGenOpts) => {
-  const res = await fetch(`${trimUrl(opts.endpointUrl)}/ai/generate-image`, {
+  const res = await reachFetch('novelai', opts.endpointUrl, `${trimUrl(opts.endpointUrl)}/ai/generate-image`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders(opts.apiToken, 'Bearer') },
     body: JSON.stringify(buildNovelAIBody(params)),

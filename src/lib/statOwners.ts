@@ -1,17 +1,18 @@
-// Stat owners: whose stats the runtime moves, the player's and each entity's, and how each owner's traits
+// Stat owners: whose stats the runtime moves, global scope's and each entity's, and how each owner's traits
 // switch them.
 
 import type { PlayerStat, Trait } from '@/types';
 import { applyRegen } from './statChanges';
 import { activeStatEnabled } from './traitEffects';
-import { WORLD_OWNER } from './traitGates';
+import type { Scoped } from './scope';
 
-/** The player's owner id, the one owned traits key the player by. */
-export const PLAYER_OWNER = WORLD_OWNER;
-
-/** Runtime stat values by owner id, each owner's stats in their own order. A stat id is unique only
+/** Runtime stat values by entity owner id, each owner's stats in their own order. A stat id is unique only
  *  within its owner. */
 export type OwnerStats = Readonly<Record<string, readonly PlayerStat[]>>;
+
+/** Every stat value in play in two parts: the global stats, and each entity's by its id. */
+export const statScope = (state: { stats: readonly PlayerStat[]; entityStats?: OwnerStats }): Scoped<readonly PlayerStat[]> =>
+  ({ global: state.stats, owners: state.entityStats ?? {} });
 
 /** One owner as the stat runtime reads it. */
 export interface StatOwner {

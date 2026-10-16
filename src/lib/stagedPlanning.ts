@@ -1,5 +1,6 @@
 import type { Entity, ChatMessage, AIRequestType, SceneEntity } from "@/types";
 import { renderPromptTemplate } from "./promptTemplate";
+import { layerValues, type TokenValues } from "./promptValues";
 import { collectCharacterDiary } from "./turnDigest";
 import { selectRelevantDiary } from "./semanticDiary";
 import { sameCharacterName, matchNames, findEntityNames, stripQuotedSpeech } from "./entityMatch";
@@ -319,19 +320,24 @@ export function matchCastToEntities(
 const entityBlurb = (entity: Entity): string =>
   entity.aiSummary?.trim() || entity.aiDescription?.trim() || "";
 
-/** Build the user message for one character's motivation pass (entity vs. ad-hoc identity line). */
+/**
+ * Build the user message for one character's motivation pass (entity vs. ad-hoc identity line). `stats` is a
+ * defined character's own stats field, rendered as the Entities chip renders it; it follows the background.
+ */
 export function buildCharacterUserMessage(args: {
   character: ChosenCharacter;
+  stats?: string;
   scene: string;
   action: string;
   diary?: string[];
   recap?: string;
 }): string {
-  const { character, scene, action, diary, recap } = args;
+  const { character, stats, scene, action, diary, recap } = args;
   // The blurb is a general baseline, not this turn's pose — framed so a static description doesn't
   // re-anchor the character to its opening stance every turn (the recap/scene carry the live situation).
+  const statsField = stats?.trim() ? `\n${stats.trimEnd()}` : "";
   const identity = character.entity
-    ? `You are ${character.name}.\nMy background (who I am in general, not this exact moment): ${entityBlurb(character.entity) || "(no description provided)"}`
+    ? `You are ${character.name}.\nMy background (who I am in general, not this exact moment): ${entityBlurb(character.entity) || "(no description provided)"}${statsField}`
     : `You are ${character.name}.\n(Introduced by the director and not a predefined character — portray yourself as a fitting minor presence.)`;
 
   const diaryBlock = diary && diary.length
@@ -401,7 +407,7 @@ export function buildStagedPlan(args: {
   return parts.join("\n\n");
 }
 
-/** The AI-request callback the staged pipeline drives (a subset of GameViewer's makeAIRequest). */
+/** The AI-request callback the staged pipeline drives (a subset of the Request Transport's request). */
 export type StagedRequestFn = (
   systemPrompt: string,
   messages: ChatMessage[],
@@ -427,12 +433,12 @@ export interface StagedPlanningResult {
  * Run the staged planning pipeline for one turn: director (scene + cast) → one motivation pass per
  * chosen character (sequential, capped) → storyboarder. Returns the plan plus the cast names to
  * confirm against the narration afterward. On abort it returns early with an empty plan; the caller
- * should re-check `signal.aborted` and bail. `request` is GameViewer's makeAIRequest, injected so this
+ * should re-check `signal.aborted` and bail. `request` sends through the Request Transport, injected so this
  * stays pure/testable.
  */
 export async function runStagedPlanning(ctx: {
   action: string;
-  stageValues: Record<string, string>;
+  stageValues: TokenValues;
   lastStory: string;
   entities: Entity[];
   presentEntityIds: string[];
@@ -495,7 +501,7 @@ export async function runStagedPlanning(ctx: {
       : [];
     const diary = diaryRetrieval ? selectRelevantDiary(all, diaryRetrieval.queryVec, diaryRetrieval.vectorsByKey) : all;
     return request(
-      renderPromptTemplate(characterPrompt, { ...stageValues, "<CHARACTER NAME>": member.name }),
+      renderPromptTemplate(characterPrompt, layerValues(stageValues, { "<CHARACTER NAME>": member.name })),
       [{ role: "user", content: buildCharacterUserMessage({ character: member, scene, action, diary, recap: lastStory }) }],
       "character", caps.character, signal,
     );

@@ -35,6 +35,7 @@ export const ALWAYS_RUN = {
   'src/lib/elementIcons.test.ts': 'scans every src file for direct lucide-react imports',
   'src/lib/formaquestion/helpSettings.test.ts': 'reads helpSession.ts, which it does not import',
   'src/lib/helpTopics.test.ts': 'checks that each help topic page exists in docs/',
+  'src/lib/ownerTermGuard.test.ts': 'scans the docs, every src file and the e2e specs for bearer and holder',
   'src/lib/personaReaders.test.ts': 'scans src/components/game sources',
   'src/lib/scrollGuard.test.ts': 'scans every src file for native overflow scrollers',
   'src/lib/supporterTokens.test.ts': 'reads src/index.css',
@@ -43,6 +44,7 @@ export const ALWAYS_RUN = {
   'src/lib/viewportSizing.test.ts': 'reads view sources and src/index.css',
   'src/lib/worldSearchLabels.test.ts': 'scans src/managers sources',
   'src/managers/fieldLabels.test.ts': 'scans src/managers sources',
+  'src/test/tokenCorpus.ts': 'scans every src file and bundled world for prompt tokens; selects promptTokenGrammar.test.ts',
 };
 
 /** Tests, and modules that tests import, that read from disk, but only what the module graph already covers. */
@@ -69,12 +71,14 @@ export const GRAPH_COVERED = {
  * selects its importers.
  */
 export const PATH_TRIGGERS = {
-  'docs/*.md': ['src/lib/docs/bundledDocsIndex.ts', 'src/lib/docs/docsCoverage.test.ts', 'src/lib/docs/bundledDocsIndex.test.ts'],
+  'docs/*.md': ['src/lib/docs/bundledDocsIndex.ts', 'src/lib/docs/docsCoverage.test.ts', 'src/lib/docs/bundledDocsIndex.test.ts', 'src/lib/codeGuideLinks.test.ts'],
   'src/index.css': ['src/lib/landingPulse.test.ts'],
   'index.html': ['src/components/themeBootstrap.test.ts'],
-  'src/defaultworlds/*.json': ['src/services/WorldStorageService.ts'],
-  'src/defaultworlds/emberwatch.json': ['src/lib/emberwatchWorld.test.ts'],
-  'src/defaultworlds/open-chat.json': ['src/lib/openChatWorld.test.ts'],
+  'src/defaultworlds/*.json': ['src/services/WorldStorageService.ts', 'src/lib/perTurnSettle.parity.test.ts', 'src/lib/bundledPlayerStats.test.ts', 'src/lib/bundledGates.test.ts', 'src/lib/ownerTreeParity.test.ts'],
+  'src/lib/__parity__/*.json': ['src/lib/ownerTreeParity.test.ts'],
+  'src/defaultworlds/emberwatch.json': ['src/lib/emberwatchWorld.test.ts', 'src/components/game/GamePrompts.globalBlocks.test.ts'],
+  'src/defaultworlds/rampage.json': ['src/components/game/GamePrompts.globalBlocks.test.ts'],
+  'src/defaultworlds/open-chat.json': ['src/lib/openChatWorld.test.ts', 'src/components/game/GamePrompts.globalBlocks.test.ts'],
   'src/lib/formaquestion/mascotAssets/*.webp': ['src/lib/formaquestion/mascotAssets.ts'],
   'testing/parity/turn-pipeline-parity.json': ['src/lib/turnPipeline/parityFixture.test.ts', 'src/lib/turnPipeline/parityTestInputs.ts'],
   'testing/baseline/help-baseline-cases.json': ['testing/baseline/harness/help-baseline-cases.ts'],

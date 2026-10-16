@@ -1,5 +1,5 @@
 import AuthService from './AuthService';
-import { responseError } from './responseError';
+import { authHeaders, unwrap } from './authRequest';
 import { collectDiagnostics } from '@/lib/bugDiagnostics';
 import type {
   FeedbackCategory, FeedbackComment, FeedbackDetail, FeedbackDraft, FeedbackStatus, FeedbackThread,
@@ -23,17 +23,6 @@ class FeedbackService {
     return AuthService.API_URL;
   }
 
-  private authHeaders(withBody = false): HeadersInit {
-    const headers: Record<string, string> = { Authorization: `Bearer ${AuthService.token}` };
-    if (withBody) headers['Content-Type'] = 'application/json';
-    return headers;
-  }
-
-  private async unwrap<T>(response: Response, fallback: string): Promise<T> {
-    if (!response.ok) throw await responseError(response, fallback);
-    return (await response.json()) as T;
-  }
-
   /**
    * File a bug report or a suggestion.
    *
@@ -44,14 +33,14 @@ class FeedbackService {
   async file(draft: FeedbackDraft): Promise<FeedbackThread> {
     const response = await fetch(`${this.apiUrl}/feedback`, {
       method: 'POST',
-      headers: this.authHeaders(true),
+      headers: authHeaders(true),
       body: JSON.stringify({
         ...draft,
         ...(draft.type === 'bug' ? { diagnostics: collectDiagnostics() } : {}),
       }),
     });
 
-    const body = await this.unwrap<{ data: FeedbackThread }>(response, 'Failed to file this');
+    const body = await unwrap<{ data: FeedbackThread }>(response, 'Failed to file this');
     return body.data;
   }
 
@@ -80,16 +69,16 @@ class FeedbackService {
     if (scope) query.set('scope', scope);
     if (sort) query.set('sort', sort);
 
-    const response = await fetch(`${this.apiUrl}/feedback?${query}`, { headers: this.authHeaders() });
-    const body = await this.unwrap<{ data: FeedbackThread[]; total: number }>(response, 'Failed to load these');
+    const response = await fetch(`${this.apiUrl}/feedback?${query}`, { headers: authHeaders() });
+    const body = await unwrap<{ data: FeedbackThread[]; total: number }>(response, 'Failed to load these');
 
     return { threads: body.data, total: body.total };
   }
 
   /** One thread with its comments. Reading marks it seen for anyone it badges. */
   async fetchThread(id: string): Promise<FeedbackDetail> {
-    const response = await fetch(`${this.apiUrl}/feedback/${id}`, { headers: this.authHeaders() });
-    const body = await this.unwrap<{ data: FeedbackThread; comments: FeedbackComment[] }>(response, 'Failed to load this');
+    const response = await fetch(`${this.apiUrl}/feedback/${id}`, { headers: authHeaders() });
+    const body = await unwrap<{ data: FeedbackThread; comments: FeedbackComment[] }>(response, 'Failed to load this');
 
     return { thread: body.data, comments: body.comments };
   }
@@ -98,11 +87,11 @@ class FeedbackService {
   async comment(id: string, body: string): Promise<FeedbackComment> {
     const response = await fetch(`${this.apiUrl}/feedback/${id}/comments`, {
       method: 'POST',
-      headers: this.authHeaders(true),
+      headers: authHeaders(true),
       body: JSON.stringify({ body }),
     });
 
-    const payload = await this.unwrap<{ data: FeedbackComment }>(response, 'Failed to post the comment');
+    const payload = await unwrap<{ data: FeedbackComment }>(response, 'Failed to post the comment');
     return payload.data;
   }
 
@@ -110,11 +99,11 @@ class FeedbackService {
   async editComment(id: string, commentId: string, body: string): Promise<FeedbackComment> {
     const response = await fetch(`${this.apiUrl}/feedback/${id}/comments/${commentId}`, {
       method: 'PUT',
-      headers: this.authHeaders(true),
+      headers: authHeaders(true),
       body: JSON.stringify({ body }),
     });
 
-    const payload = await this.unwrap<{ data: FeedbackComment }>(response, 'Failed to save the comment');
+    const payload = await unwrap<{ data: FeedbackComment }>(response, 'Failed to save the comment');
     return payload.data;
   }
 
@@ -122,21 +111,21 @@ class FeedbackService {
   async removeComment(id: string, commentId: string): Promise<void> {
     const response = await fetch(`${this.apiUrl}/feedback/${id}/comments/${commentId}`, {
       method: 'DELETE',
-      headers: this.authHeaders(),
+      headers: authHeaders(),
     });
 
-    await this.unwrap(response, 'Failed to delete the comment');
+    await unwrap(response, 'Failed to delete the comment');
   }
 
   /** Vote for a suggestion, or take the vote back. */
   async setVote(id: string, voted: boolean): Promise<FeedbackThread> {
     const response = await fetch(`${this.apiUrl}/feedback/${id}/vote`, {
       method: 'PUT',
-      headers: this.authHeaders(true),
+      headers: authHeaders(true),
       body: JSON.stringify({ voted }),
     });
 
-    const body = await this.unwrap<{ data: FeedbackThread }>(response, 'Failed to record your vote');
+    const body = await unwrap<{ data: FeedbackThread }>(response, 'Failed to record your vote');
     return body.data;
   }
 
@@ -158,11 +147,11 @@ class FeedbackService {
   ): Promise<FeedbackThread> {
     const response = await fetch(`${this.apiUrl}/feedback/${id}`, {
       method: 'PUT',
-      headers: this.authHeaders(true),
+      headers: authHeaders(true),
       body: JSON.stringify(fields),
     });
 
-    const body = await this.unwrap<{ data: FeedbackThread }>(response, 'Failed to save the changes');
+    const body = await unwrap<{ data: FeedbackThread }>(response, 'Failed to save the changes');
     return body.data;
   }
 
@@ -170,11 +159,11 @@ class FeedbackService {
   async setStatus(id: string, status: FeedbackStatus): Promise<FeedbackThread> {
     const response = await fetch(`${this.apiUrl}/feedback/${id}/status`, {
       method: 'PUT',
-      headers: this.authHeaders(true),
+      headers: authHeaders(true),
       body: JSON.stringify({ status }),
     });
 
-    const body = await this.unwrap<{ data: FeedbackThread }>(response, 'Failed to update the status');
+    const body = await unwrap<{ data: FeedbackThread }>(response, 'Failed to update the status');
     return body.data;
   }
 
@@ -182,11 +171,11 @@ class FeedbackService {
   async setLocked(id: string, locked: boolean): Promise<FeedbackThread> {
     const response = await fetch(`${this.apiUrl}/feedback/${id}/lock`, {
       method: 'PUT',
-      headers: this.authHeaders(true),
+      headers: authHeaders(true),
       body: JSON.stringify({ locked }),
     });
 
-    const body = await this.unwrap<{ data: FeedbackThread }>(response, 'Failed to lock the thread');
+    const body = await unwrap<{ data: FeedbackThread }>(response, 'Failed to lock the thread');
     return body.data;
   }
 
@@ -194,16 +183,16 @@ class FeedbackService {
   async remove(id: string): Promise<void> {
     const response = await fetch(`${this.apiUrl}/feedback/${id}`, {
       method: 'DELETE',
-      headers: this.authHeaders(),
+      headers: authHeaders(),
     });
 
-    await this.unwrap(response, 'Failed to delete this');
+    await unwrap(response, 'Failed to delete this');
   }
 
   /** How many of the caller's threads have something new in them, both branches together. */
   async fetchUnreadCount(): Promise<number> {
-    const response = await fetch(`${this.apiUrl}/feedback/unread-count`, { headers: this.authHeaders() });
-    const body = await this.unwrap<{ unread: number }>(response, 'Failed to read the feedback count');
+    const response = await fetch(`${this.apiUrl}/feedback/unread-count`, { headers: authHeaders() });
+    const body = await unwrap<{ unread: number }>(response, 'Failed to read the feedback count');
 
     return body.unread || 0;
   }

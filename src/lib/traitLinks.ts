@@ -3,15 +3,16 @@
 
 import type { Entity, Trait, TraitGroup, TraitLink, TraitLinkFields } from '@/types';
 import { randomUUID } from './uuid';
-import { broughtIds, makeLink, originalOf, type BearerWorld } from './bearers';
+import { broughtIds, makeLink, originalOf, type OwnerWorld } from './owners';
 import {
   effectiveLinkTrait, resetLinkOverride, resetLinkOverrides, resetLinkTraitOverrides, setLinkEdits, setLinkOverride,
 } from './blueprints';
 import { blueprintItemIds, blueprintsGroup, buildTraitTree, flattenTraitTree, groupsBelow, isBlueprintItem, isDescendantGroup } from './traitTree';
 import { rootCount, withOwnedTraits } from './ownedTraits';
 import { mapConditions } from './requirementRows';
+import { ancestors, parentLookup } from './ancestors';
 
-type WorldTraitLists = Pick<BearerWorld, 'traits' | 'traitGroups'>;
+type WorldTraitLists = Pick<OwnerWorld, 'traits' | 'traitGroups'>;
 
 /** The entity with its links replaced. No links are stored as absent. */
 function withLinks(entity: Entity, links: TraitLink[]): Entity {
@@ -28,10 +29,9 @@ export function originalPath(world: WorldTraitLists, originalId: string): string
   const original = originalOf(world, originalId);
   if (!original) return [];
   const byId = new Map(world.traitGroups.map((g) => [g.id, g]));
-  const path = [original.item.name];
-  let at = original.kind === 'trait' ? original.item.groupId : original.item.parentId;
-  for (let g = at ? byId.get(at) : undefined; g; at = g.parentId, g = at ? byId.get(at) : undefined) path.unshift(g.name);
-  return path;
+  const start = original.kind === 'trait' ? original.item.groupId : original.item.parentId;
+  const above = start ? [start, ...ancestors(start, parentLookup(world.traitGroups, (g) => g.parentId))] : [];
+  return [...above.reverse().flatMap((id) => byId.get(id)?.name ?? []), original.item.name];
 }
 
 /** The traits a link's row at `originalId` brings, in tree order, each as the link reads it. */
@@ -56,11 +56,11 @@ export function dropLinksTo(entities: Entity[], originalIds: string | ReadonlySe
   return entities.map((e) => (linksGone(e) ? withLinks(e, e.traitLinks!.filter((l) => !gone.has(l.originalId))) : e));
 }
 
-/** Link the original at the end of the bearer's top level. Null when the id is not a Blueprints item. */
-export function addLink(world: WorldTraitLists, bearer: Entity, originalId: string, id: string): Entity | null {
+/** Link the original at the end of the owner's top level. Null when the id is not a Blueprints item. */
+export function addLink(world: WorldTraitLists, owner: Entity, originalId: string, id: string): Entity | null {
   if (!isBlueprintItem(world, originalId)) return null;
-  const link = makeLink(world, originalId, id, { groupId: null, order: rootCount(bearer) });
-  return link && withLinks(bearer, [...(bearer.traitLinks ?? []), link]);
+  const link = makeLink(world, originalId, id, { groupId: null, order: rootCount(owner) });
+  return link && withLinks(owner, [...(owner.traitLinks ?? []), link]);
 }
 
 /** Remove one link. The original is untouched. */

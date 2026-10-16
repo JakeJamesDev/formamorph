@@ -29,6 +29,8 @@ export interface ResolvedPromptEndpoint {
   model: string;
   maxTokens: number | undefined;
   samplerOverrides: EndpointSamplerOverrides;
+  /** The endpoint's Extra Parameters, as written (lib/extraParams). */
+  extraParams?: string;
   /** Manual context-window override on the resolved preset; null = detect or fall back. */
   contextWindowOverride: number | null;
   /** The resolved target is the built-in Default. */
@@ -122,6 +124,7 @@ export function resolvePromptEndpoint(
       model: active.values.model,
       maxTokens: active.maxTokens,
       samplerOverrides: active.values.samplerOverrides,
+      extraParams: active.values.extraParams,
       contextWindowOverride: active.values.contextWindowOverride,
       isBuiltIn: active.isBuiltIn,
       localEngine: false,
@@ -136,6 +139,7 @@ export function resolvePromptEndpoint(
     model: values.model,
     maxTokens: values.maxOutputOverride.enabled ? values.maxOutputOverride.value : undefined,
     samplerOverrides: values.samplerOverrides,
+    extraParams: values.extraParams,
     contextWindowOverride: values.contextWindowOverride,
     isBuiltIn: routed === DEFAULT_TEXT_PRESET_ID,
     localEngine: false,

@@ -5,7 +5,8 @@
  * same-filename re-upload still invalidates. Complements (and outlives) the browser's 24h
  * HTTP cache on these images.
  */
-import { clearStore, openDatabase, promisifyRequest } from './idb';
+import { cachedConnection, clearStore, promisifyRequest, pruneLeastRecent, transactionDone } from './idb';
+import { parseServerDate } from './serverDate';
 
 const DB_NAME = 'FORMAMORPH_THUMBS_DB';
 const STORE_NAME = 'thumbnails';
@@ -22,25 +23,15 @@ export interface ThumbRecord {
   cachedAt: number;  // epoch ms, used for LRU pruning
 }
 
-// Normalize the server's mixed timestamp formats ("…T…Z" and "YYYY-MM-DD HH:MM:SS") to epoch ms.
-// A number is already epoch ms and passes through unchanged.
+// Server timestamps to epoch ms; bare ones read as UTC. A number is already epoch ms.
 export const toEpoch = (s: string | number | null | undefined): number => {
   if (s == null) return 0;
   if (typeof s === 'number') return Number.isNaN(s) ? 0 : s;
-  const ms = Date.parse(s.replace(' ', 'T'));
-  return Number.isNaN(ms) ? 0 : ms;
+  return parseServerDate(s)?.getTime() ?? 0;
 };
 
 // One shared connection — opening a fresh DB per image (many per page) was a real cost.
-let dbPromise: Promise<IDBDatabase> | null = null;
-const openDB = (): Promise<IDBDatabase> => {
-  if (!dbPromise) {
-    dbPromise = openDatabase(DB_NAME, DB_VERSION, [{ name: STORE_NAME, keyPath: 'file' }]).catch(
-      (err) => { dbPromise = null; throw err; }, // let a later call retry the open
-    );
-  }
-  return dbPromise;
-};
+const openDB = cachedConnection(DB_NAME, DB_VERSION, [{ name: STORE_NAME, keyPath: 'file' }]);
 
 export const getThumb = async (file: string): Promise<ThumbRecord | null> => {
   const db = await openDB();
@@ -58,27 +49,11 @@ export const putThumb = async (file: string, blob: Blob, updatedAt: number): Pro
   pruneThumbs().catch(() => {});
 };
 
-// LRU prune: only does the heavy work when actually over the cap. A cheap count() gates it,
-// so the common (under-cap) case never loads blobs into memory.
+// LRU prune: only does the heavy work when actually over the cap, so under-cap never loads blobs.
 export const pruneThumbs = async (maxEntries = MAX_ENTRIES): Promise<void> => {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const store = db.transaction([STORE_NAME], 'readwrite').objectStore(STORE_NAME);
-    const countReq = store.count();
-    countReq.onsuccess = () => {
-      if (countReq.result <= maxEntries) { resolve(); return; }
-      const getAll = store.getAll();
-      getAll.onsuccess = () => {
-        (getAll.result as ThumbRecord[])
-          .sort((a, b) => b.cachedAt - a.cachedAt)
-          .slice(maxEntries)
-          .forEach((r) => store.delete(r.file));
-        resolve();
-      };
-      getAll.onerror = () => reject(getAll.error);
-    };
-    countReq.onerror = () => reject(countReq.error);
-  });
+  const tx = (await openDB()).transaction([STORE_NAME], 'readwrite');
+  pruneLeastRecent<ThumbRecord>(tx.objectStore(STORE_NAME), maxEntries, (r) => r.cachedAt, (r) => r.file);
+  await transactionDone(tx);
 };
 
 /** Read many records in one transaction. Files with nothing stored are simply absent from the answer. */

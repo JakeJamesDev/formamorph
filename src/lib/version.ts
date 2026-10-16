@@ -1,21 +1,22 @@
 import { randomUUID } from "@/lib/uuid";
 import type {
   World, SaveObject, Stat, StatGroup, GameState, Trait, TraitGroup, Entity, PlayerStat, Connection, ConnectionLeg, GameLocation, Placeholder, PlaceholderValue,
-  Opening,
+  Opening, TraitRequirement,
 } from '@/types';
 import { isImplicitPair, parentIndex } from './locationGraph';
 import { normalizeCustomVRM } from './worldImport';
 import { autoBindLegacyBodyStats } from './bodyMorphs';
 import { appendCurrentToHistory } from './turnHistory';
+import { migrateGlobalFields } from './globalSaveFields';
 import { DEFAULT_AVATAR_ID, LEGACY_DEFAULT_AVATAR_ID, LEGACY_DEFAULT_AVATAR_SENTINEL } from './defaultAvatar';
 import { migrateEntityImages } from './entityImages';
 import { normalizeLinkedItem } from './contentLink';
 import { migrateStatLookups } from './statLookupMigration';
 import { migrateStatCodeRoutes } from './statCodeRoutes';
-import { CODE_FIELD } from './statCodeTiming';
+import { migrateStatBoxes, migrateStatLinkBoxes, type OriginalOf } from './scripts';
 import { allPlaceholders, placeholderOwners, type PlaceholderHomesWorld } from './placeholderHomes';
-import { blueprintItemIds } from './traitTree';
-import { mergeDuplicateStatLinks, mergeStatBlueprintsGroups } from './statLinks';
+import { blueprintItemIds, offeredWorldTraits } from './traitTree';
+import { mergeDuplicateStatLinks, mergeStatBlueprintsGroups, statBlueprintIds } from './statLinks';
 
 /** Current app version, derived from package.json (see vite.config.js `define`). User-managed. */
 export const APP_VERSION = __APP_VERSION__;
@@ -91,9 +92,10 @@ function foldDictionaryIntoBooks(world: Record<string, unknown>): void {
 }
 
 /**
- * Fold every entity's legacy single `image` into the `images` gallery. Deliberately NOT version-gated, for
- * the same reason as `foldDictionaryIntoBooks`: shipped 2.x worlds carry `version === APP_VERSION` yet
- * predate the gallery, so this must also run on already-current worlds.
+ * Fold every entity's legacy single `image` into the `images` gallery and wrap each data string as an image.
+ * Deliberately NOT version-gated, for the same reason as `foldDictionaryIntoBooks`: shipped worlds carry
+ * `version === APP_VERSION` yet predate the gallery or the image object, so this must also run on
+ * already-current worlds.
  */
 function migrateEntityGalleries(world: Record<string, unknown>): void {
   if (!Array.isArray(world.entities)) return;
@@ -398,12 +400,20 @@ function migrateExclusiveGroups(world: Record<string, unknown>): void {
   }
 }
 
-/** Each flat requirement wrapped in its own Requirement Row. A row passes through, and an empty row is
- *  dropped, since a row with no Condition cannot exist (Q6). */
+/** One Condition with its legacy `bearer` key stored as `owner`. An `owner` already there wins. Idempotent. */
+export function conditionWithOwnerKey(raw: unknown): unknown {
+  if (!raw || typeof raw !== 'object' || !('bearer' in raw)) return raw;
+  const { bearer, ...rest } = raw as Record<string, unknown>;
+  return 'owner' in rest || bearer === undefined ? rest : { ...rest, owner: bearer };
+}
+
+/** Each flat requirement wrapped in its own Requirement Row, with every Condition's owner under `owner`. A row
+ *  passes through, and an empty row is dropped, since a row with no Condition cannot exist (Q6). */
 const wrapFlatRequirements = (list: unknown[]): unknown[] => list.flatMap((entry) => {
-  if (entry && typeof entry === 'object' && 'kind' in entry) return [{ all: [entry] }];
+  if (entry && typeof entry === 'object' && 'kind' in entry) return [{ all: [conditionWithOwnerKey(entry)] }];
   const all = entry && typeof entry === 'object' ? (entry as Record<string, unknown>).all : undefined;
-  return Array.isArray(all) && all.length === 0 ? [] : [entry];
+  if (!Array.isArray(all)) return [entry];
+  return all.length === 0 ? [] : [{ ...(entry as object), all: all.map(conditionWithOwnerKey) }];
 });
 
 const traitWithRows = (raw: unknown) => {
@@ -440,11 +450,154 @@ export function migrateEntityRequirementRows<T>(entity: T): T {
 
 /**
  * Turn the shipped flat `requires` list into Requirement Rows, one row per entry, on world traits and every
- * entity. Not version-gated: 3.2.x worlds carry the flat list under the current version. Idempotent.
+ * entity, and store each Condition's `bearer` as `owner`. Not version-gated: 3.2.x worlds carry both under the
+ * current version. Idempotent.
  */
 function migrateRequirementRows(world: Record<string, unknown>): void {
   if (Array.isArray(world.traits)) world.traits = world.traits.map(traitWithRows);
   if (Array.isArray(world.entities)) world.entities = world.entities.map(migrateEntityRequirementRows);
+}
+
+// ---- Global scope: stat row targets and requirement owners ----
+
+const isRecordLike = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
+
+/** `raw` with `key` replaced by `next` of its value; the same object when `next` returns the value itself. */
+function withField(raw: unknown, key: string, next: (value: unknown) => unknown): unknown {
+  if (!isRecordLike(raw) || !(key in raw)) return raw;
+  const after = next(raw[key]);
+  return after === raw[key] ? raw : { ...raw, [key]: after };
+}
+
+/** `fn` over each item of a list; the same list when no item changes, and anything else as it is. */
+const mapList = (fn: (item: unknown) => unknown) => (value: unknown): unknown => {
+  if (!Array.isArray(value)) return value;
+  const out = value.map(fn);
+  return out.every((item, i) => item === value[i]) ? value : out;
+};
+
+/** A stat row's target as stored: the legacy `player` reads as `global`. */
+export const globalRowTarget = (target: unknown): 'global' | undefined =>
+  (target === 'global' || target === 'player' ? 'global' : undefined);
+
+/** One stat change or toggle with a legacy `player` target stored as `global`. */
+const rowWithGlobalTarget = (row: unknown): unknown =>
+  (isRecordLike(row) && row.target === 'player' ? { ...row, target: 'global' } : row);
+
+const rowsWithGlobalTarget = mapList(rowWithGlobalTarget);
+
+/** One trait with its stat rows' legacy `player` target stored as `global`. */
+const traitWithGlobalTargets = (raw: unknown): unknown =>
+  withField(withField(raw, 'statChanges', rowsWithGlobalTarget), 'statToggles', rowsWithGlobalTarget);
+
+/** One link with `fn` over both sides of `field` on each of its overrides. */
+const linkWithOverrideSides = (field: string, fn: (side: unknown) => unknown) => (raw: unknown): unknown =>
+  withField(raw, 'overrides', (overrides) => {
+    if (!isRecordLike(overrides)) return overrides;
+    let changed = false;
+    const out = Object.fromEntries(Object.entries(overrides).map(([id, fields]) => {
+      const next = withField(fields, field, (override) => withField(withField(override, 'value', fn), 'blueprint', fn));
+      if (next !== fields) changed = true;
+      return [id, next];
+    }));
+    return changed ? out : overrides;
+  });
+
+const linkWithGlobalTargets = linkWithOverrideSides('statChanges', rowsWithGlobalTarget);
+
+/** One entity with its owned traits' and its links' legacy `player` row targets stored as `global`. Idempotent. */
+export function migrateEntityGlobalTargets<T>(entity: T): T {
+  return withField(withField(entity, 'traits', mapList(traitWithGlobalTargets)), 'traitLinks', mapList(linkWithGlobalTargets)) as T;
+}
+
+/** The ids a requirement can name that no one owns (Q10). */
+interface GlobalItems {
+  traits: ReadonlySet<string>;
+  groups: ReadonlySet<string>;
+  stats: ReadonlySet<string>;
+  /** Entity id → the ids of its own stats, which can share an id with a global stat. */
+  ownStats: ReadonlyMap<string, ReadonlySet<string>>;
+  /** The ids of every entity that can be played, the Custom Persona entity included: a `you` owner can name their own stats. */
+  personas: readonly string[];
+}
+
+/** The slices of a world that say which items are global. */
+interface GlobalScopeWorld {
+  traits?: unknown; traitGroups?: unknown; stats?: unknown; statGroups?: unknown; entities?: unknown;
+}
+
+function globalItemsOf(world: GlobalScopeWorld): GlobalItems {
+  const list = (v: unknown) => (Array.isArray(v) ? v.filter(isRecordLike) : []);
+  const entities = list(world.entities);
+  const offered = offeredWorldTraits(list(world.traits) as unknown as Trait[], list(world.traitGroups) as unknown as TraitGroup[]);
+  const blueprintStats = statBlueprintIds(statLinkWorldOf(world as Record<string, unknown>));
+  const ids = (items: readonly { id: string }[]) => new Set(items.map((i) => i.id));
+  const idsOf = (v: unknown) => new Set(list(v).flatMap((s) => (typeof s.id === 'string' ? [s.id] : [])));
+  return {
+    traits: ids(offered.traits),
+    groups: ids(offered.groups),
+    stats: new Set([...idsOf(world.stats)].filter((id) => !blueprintStats.has(id))),
+    ownStats: new Map(entities.flatMap((e) => (typeof e.id === 'string' ? [[e.id, idsOf(e.stats)] as const] : []))),
+    personas: entities.flatMap((e) => ((e.persona === true || e.customPersona === true) && typeof e.id === 'string' ? [e.id] : [])),
+  };
+}
+
+/** Whether the Condition names a global item, so its stored owner has no meaning. A stat shared with the
+ *  named owner's own stat is that owner's, so the owner stays. */
+function namesGlobalItem(condition: Record<string, unknown>, global: GlobalItems): boolean {
+  const owner = condition.owner;
+  if (!owner || typeof condition.id !== 'string') return false;
+  const id = condition.id;
+  if (condition.kind === 'trait') return global.traits.has(id);
+  if (condition.kind === 'group') return global.groups.has(id);
+  if (condition.kind !== 'stat' || !global.stats.has(id) || !isRecordLike(owner)) return false;
+  const named = owner.kind === 'entity' && typeof owner.id === 'string' ? [owner.id] : owner.kind === 'you' ? global.personas : [];
+  return !named.some((entityId) => global.ownStats.get(entityId)?.has(id));
+}
+
+/** One Condition with the owner it names a global item through removed (Q19). */
+const conditionWithoutGlobalOwner = (global: GlobalItems) => (raw: unknown): unknown => {
+  if (!isRecordLike(raw) || !namesGlobalItem(raw, global)) return raw;
+  const { owner: _owner, ...rest } = raw;
+  return rest;
+};
+
+/** A Condition with its stored owner removed when it names a global item of `world`, read once for a whole
+ *  entity binding into it. */
+export function withoutGlobalOwner<R extends TraitRequirement>(world: GlobalScopeWorld): (req: R) => R {
+  const strip = conditionWithoutGlobalOwner(globalItemsOf(world));
+  return (req) => strip(req) as R;
+}
+
+/** One Requirement Row with each of its Conditions read through {@link conditionWithoutGlobalOwner}. */
+const rowWithoutGlobalOwners = (global: GlobalItems) => (raw: unknown): unknown =>
+  withField(raw, 'all', mapList(conditionWithoutGlobalOwner(global)));
+
+/** One trait or image with the owner stripped from its `requires` rows. */
+const ruledItemWithoutGlobalOwners = (global: GlobalItems) => (raw: unknown): unknown =>
+  withField(raw, 'requires', mapList(rowWithoutGlobalOwners(global)));
+
+/** One link with the owner stripped from both sides of each override's `requires`. */
+const linkWithoutGlobalOwners = (global: GlobalItems) =>
+  linkWithOverrideSides('requires', mapList(rowWithoutGlobalOwners(global)));
+
+/**
+ * Store a trait stat row's legacy `player` target as `global` (Q5) on world traits, entity traits and links.
+ * Remove the stored owner from every requirement Condition that names a global item (Q19), on traits, links and
+ * entity gallery rules. Not version-gated: 3.2.x worlds carry both under the current version. Idempotent.
+ */
+function migrateGlobalScope(world: Record<string, unknown>): void {
+  if (Array.isArray(world.traits)) world.traits = world.traits.map(traitWithGlobalTargets);
+  if (Array.isArray(world.entities)) world.entities = world.entities.map(migrateEntityGlobalTargets);
+  const global = globalItemsOf(world);
+  const strip = ruledItemWithoutGlobalOwners(global);
+  if (Array.isArray(world.traits)) world.traits = world.traits.map(strip);
+  if (!Array.isArray(world.entities)) return;
+  world.entities = world.entities.map((raw) => {
+    const traits = withField(raw, 'traits', mapList(strip));
+    const links = withField(traits, 'traitLinks', mapList(linkWithoutGlobalOwners(global)));
+    return withField(links, 'images', mapList(strip));
+  });
 }
 
 /** Remove every entity link whose original sits outside Blueprints, overrides and all: only Blueprints items
@@ -546,7 +699,7 @@ function coerceLegacyListStats(stats: readonly Stat[]): Stat[] {
   });
 }
 
-/** Rewrite the retired routes in both of every stat's boxes: the `stats.find` lookups to the map form, then
+/** Rewrite the retired routes in every global stat's scripts: the `stats.find` lookups to the map form, then
  *  the rest against the world's placeholder tree (`migrateStatCodeRoutes`). The lookups go first, since they
  *  match `currentStatId`. Idempotent; a stat whose code needs nothing keeps its reference. */
 function migrateStatCode(world: Record<string, unknown>): void {
@@ -554,22 +707,50 @@ function migrateStatCode(world: Record<string, unknown>): void {
   const slices = world as PlaceholderHomesWorld;
   const source = { list: allPlaceholders(slices), owners: placeholderOwners(slices) };
   world.stats = (world.stats as Stat[]).map((stat) => {
-    let next = stat;
-    for (const field of Object.values(CODE_FIELD)) {
-      const code = stat?.[field];
-      if (typeof code !== 'string') continue;
-      const migrated = migrateStatCodeRoutes(migrateStatLookups(code), source);
-      if (migrated !== code) next = { ...next, [field]: migrated };
-    }
-    return next;
+    if (!Array.isArray(stat?.scripts)) return stat;
+    let changed = false;
+    const scripts = stat.scripts.map((script) => {
+      if (typeof script?.code !== 'string') return script;
+      const code = migrateStatCodeRoutes(migrateStatLookups(script.code), source);
+      if (code === script.code) return script;
+      changed = true;
+      return { ...script, code };
+    });
+    return changed ? { ...stat, scripts } : stat;
   });
+}
+
+/** One entity with its own stats' two code boxes rewritten as scripts, and its stat links' box overrides folded
+ *  into one `scripts` override where `originalOf` reaches the original. An entity card and a library entity never
+ *  pass through `migrateWorld`, so their boundaries call this too, with no original in reach. */
+export function migrateEntityStatScripts<T>(entity: T, originalOf: OriginalOf = () => undefined): T {
+  if (!entity || typeof entity !== 'object') return entity;
+  const raw = entity as Record<string, unknown>;
+  const lists = {
+    stats: Array.isArray(raw.stats) ? raw.stats.map(migrateStatBoxes) : undefined,
+    statLinks: Array.isArray(raw.statLinks) ? raw.statLinks.map((link) => migrateStatLinkBoxes(link, originalOf)) : undefined,
+  };
+  const changed = Object.entries(lists).filter(([key, next]) => next?.some((item, i) => item !== (raw[key] as unknown[])[i]));
+  return changed.length ? { ...raw, ...Object.fromEntries(changed) } as T : entity;
+}
+
+/** Rewrite every stat's two code boxes as scripts (Q19): the global and Blueprint stats', their retired routes
+ *  (`migrateStatCode`), then each entity's own stats' and links'. The routes go first, so a link folds the
+ *  rewritten code of the side it left live. Not version-gated, since shipped worlds carry the boxes under the
+ *  current version. */
+function migrateStatScripts(world: Record<string, unknown>): void {
+  if (Array.isArray(world.stats)) world.stats = world.stats.map(migrateStatBoxes);
+  migrateStatCode(world);
+  if (!Array.isArray(world.entities)) return;
+  const originals = new Map((Array.isArray(world.stats) ? world.stats as Stat[] : []).map((stat) => [stat?.id, stat]));
+  world.entities = world.entities.map((entity) => migrateEntityStatScripts(entity, (id) => originals.get(id)));
 }
 
 /**
  * Bring an imported world up to the current format and stamp it with `APP_VERSION`. The dictionary→books
  * fold, the keyword-array migration, the entity-gallery fold, the entity-location flip, the
  * connection-record pair-merge, the Connection-leg conversion, the start-flag rename, the placeholder value-record conversion, the
- * opening-cue move, the player-setting split, the requirement-row wrap, the entity-stat shape guard, the stat-group shape guard, the content-link guard and the stat-code route rewrite run unconditionally (they aren't version-gated — see `foldDictionaryIntoBooks`); the
+ * opening-cue move, the player-setting split, the requirement-row wrap, the global-scope rewrite, the entity-stat shape guard, the stat-group shape guard, the content-link guard, the code-box-to-scripts rewrite and the stat-code route rewrite run unconditionally (they aren't version-gated — see `foldDictionaryIntoBooks`); the
  * rest is skipped for a world already at `APP_VERSION`. Moves the legacy root `customPlayerVRM` bare
  * data-URL into `worldOverview.customPlayerVRM` as a `MediaAsset`, auto-binds legacy body stats to morphs,
  * and renames v1.2 description keys on entities/locations/traits to the audience-based keys. Remaining field defaults are left to `loadWorldData`. Add further 2.0 → 2.x steps here when the shape changes — a version
@@ -592,8 +773,9 @@ export function migrateWorld(raw: unknown): World {
   migrateRequirementRows(world);
   dropRootTraitLinks(world);
   migrateStatLists(world);
+  migrateGlobalScope(world);
   normalizeContentLinks(world);
-  migrateStatCode(world);
+  migrateStatScripts(world);
   if (world.version === APP_VERSION) return world as unknown as World;
 
   const overview = { ...((world.worldOverview as Record<string, unknown>) ?? {}) };
@@ -633,22 +815,23 @@ export function isSaveEnvelope(raw: unknown): raw is SaveObject {
  * `migrateWorld` steps, applied to the save copies. Also stamps an empty `discoveredEntities` (a v2-only
  * field absent in v1.2) so every persisted snapshot carries it, not just the one `loadGameState` defaults
  * on read. Idempotent — the rename prefers an existing new key, the bind skips a stat that already carries
- * `morphBindings`, and the stamp leaves an existing array untouched. (`game_text` narration is normalized
- * separately on read by parseTurnContent.)
+ * `morphBindings`, and the stamp leaves an existing array untouched. Each saved stat's code boxes become
+ * scripts. (`game_text` narration is normalized separately on read by parseTurnContent.)
  */
 export function migrateLegacySaveState(state: GameState): GameState {
-  const next = { ...state };
-  if (Array.isArray(next.playerTraits)) {
+  // The global fields first: the steps below read them under their current names.
+  const next = { ...migrateGlobalFields(state) };
+  if (Array.isArray(next.globalTraits)) {
     // renameTraitDescriptions returns loosened records; the shape matches Trait (new keys added, legacy
     // `description` dropped), so cast back.
-    next.playerTraits = renameTraitDescriptions(next.playerTraits) as unknown as Trait[];
+    next.globalTraits = renameTraitDescriptions(next.globalTraits) as unknown as Trait[];
   }
-  if (Array.isArray(next.playerStats)) {
+  if (Array.isArray(next.globalStats)) {
     // autoBindLegacyBodyStats preserves each stat's value, so the (narrower) PlayerStat shape is intact.
-    next.playerStats = autoBindLegacyBodyStats(next.playerStats) as unknown as PlayerStat[];
+    next.globalStats = autoBindLegacyBodyStats(next.globalStats) as unknown as PlayerStat[];
   }
   if (!Array.isArray(next.discoveredEntities)) next.discoveredEntities = [];
-  return next;
+  return migrateSnapshotScripts(next);
 }
 
 /** Drop a snapshot's own `fullMessageHistory` copy — the canonical history lives once at
@@ -730,16 +913,34 @@ function migrateBodyMorphs(state: GameState): GameState {
  *      library id. A save that never used it is untouched, and a rewritten one no longer matches.
  *   4. Body morphs (presence-based, every snapshot): fold the legacy fixed body fields into the generic
  *      `bodyMorphs` map. A character already carrying the map is untouched.
+ *   5. Global fields (presence-based, every snapshot): `playerStats` and `playerTraits` become `globalStats` and
+ *      `globalTraits`, and the cascade-off and applied-value maps split into global and owners parts.
+ *   6. Scripts (presence-based, every snapshot): each saved stat's two code boxes become scripts.
  * The appended current page stays `=== currentState`, so `gameStates[page - 1]` resolves the current page
  * identically. Pure — callers decide whether to persist the result (import) or just load it (load).
  */
+/** A snapshot with every saved stat's two code boxes rewritten as scripts. The same snapshot when none has one. */
+function migrateSnapshotScripts(state: GameState): GameState {
+  const migrate = (stats: PlayerStat[]) => {
+    const next = stats.map(migrateStatBoxes);
+    return next.some((stat, i) => stat !== stats[i]) ? next : stats;
+  };
+  const globalStats = Array.isArray(state.globalStats) ? migrate(state.globalStats) : state.globalStats;
+  const entityStats = state.entityStats && Object.fromEntries(
+    Object.entries(state.entityStats).map(([id, stats]) => [id, Array.isArray(stats) ? migrate(stats) : stats]),
+  );
+  const entitiesSame = !state.entityStats || Object.entries(state.entityStats).every(([id, stats]) => entityStats?.[id] === stats);
+  if (globalStats === state.globalStats && entitiesSame) return state;
+  return { ...state, globalStats, ...(entityStats ? { entityStats } : {}) };
+}
+
 export function migrateSave(save: SaveObject): SaveObject {
   const isLegacy = typeof save.version === 'number';
   const migratedCurrent = isLegacy ? migrateLegacySaveState(save.currentState) : save.currentState;
   const migratedHistory = isLegacy ? save.stateHistory.map(migrateLegacySaveState) : save.stateHistory;
   // Canonical flat history: an already-hoisted top-level copy, else the current snapshot's own copy.
   const messageHistory = save.messageHistory ?? migratedCurrent.fullMessageHistory ?? [];
-  const normalizeSnapshot = (s: GameState) => migrateBodyMorphs(migrateDefaultAvatarId(s));
+  const normalizeSnapshot = (s: GameState) => migrateSnapshotScripts(migrateBodyMorphs(migrateDefaultAvatarId(migrateGlobalFields(s))));
   const currentState = normalizeSnapshot(stripSnapshotHistory(migratedCurrent));
   const history = isLegacy
     ? appendCurrentToHistory(migratedHistory.map(stripSnapshotHistory), currentState)

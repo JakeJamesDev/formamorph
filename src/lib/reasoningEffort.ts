@@ -223,6 +223,11 @@ const REASONING_LEVEL_LABELS: Record<PromptReasoningLevel, string> = {
   global: 'Global', auto: 'Model Default', minimal: 'Minimal', low: 'Low', medium: 'Medium', high: 'High', xhigh: 'Extra High', max: 'Max',
 };
 
+/** The full-word label of one strength. */
+export function reasoningLevelLabel(level: PromptReasoningLevel): string {
+  return REASONING_LEVEL_LABELS[level];
+}
+
 /** The switch-off form of a setting, as the request layer reads it. */
 export function resolveReasoningSetting(setting: ReasoningSetting): ReasoningEffort {
   return setting.enabled ? setting.level : 'none';
@@ -357,6 +362,11 @@ export function resolvePromptReasoning(
   mode: ThinkingMode,
 ): ReasoningEffort {
   if (nativeReasoningSuppressed(mode, kind) || REASONING_OFF_KINDS.includes(kind)) return 'none';
+  return promptChoice(kind, prefs, globalEffort);
+}
+
+/** The prompt's stored choice or shipped default, with Global folding in the endpoint-wide level. */
+function promptChoice(kind: AIRequestType, prefs: Record<string, PromptReasoning>, globalEffort: ReasoningEffort): ReasoningEffort {
   const pref = prefs[kind] ?? defaultPromptReasoning(kind);
   return pref === 'global' ? globalEffort : pref;
 }
@@ -371,13 +381,13 @@ export interface KeptReasoningSettings {
 }
 
 /**
- * The strength a prompt keeps while its switch is off. Both switches are ignored, since this is read only
- * where the endpoint refuses off and both switches therefore render checked and locked.
+ * The strength a prompt keeps while its switch is off. Both switches are ignored: this is read where the
+ * endpoint refuses off, so both render checked and locked, and for Inline narration, whose switch is hidden.
  */
 export function keptReasoningLevel(
   kind: AIRequestType,
   kept: KeptReasoningSettings,
-): ReasoningEffort {
+): ReasoningLevel {
   const level = (kept.prompts?.[kind] ?? defaultPromptReasoningSetting(kind)).level;
   return level === 'global' ? (kept.global ?? DEFAULT_REASONING_SETTING).level : level;
 }
@@ -400,6 +410,46 @@ export function resolveRequestReasoning(
   if (choice !== 'none') return choice;
   if (nativeReasoningSuppressed(mode, kind) || !reasoningOffRefused(capability)) return choice;
   return keptReasoningLevel(kind, kept);
+}
+
+/**
+ * The strength a prompt holds whatever its switch says: its own choice, Global folding in the endpoint level,
+ * and the kept strength where that choice is off. Inline narration sizes its own thought from this.
+ */
+export function promptReasoningStrength(
+  kind: AIRequestType,
+  prefs: Record<string, PromptReasoning>,
+  globalEffort: ReasoningEffort,
+  kept: KeptReasoningSettings = {},
+): ReasoningLevel {
+  const choice = promptChoice(kind, prefs, globalEffort);
+  return choice === 'none' ? keptReasoningLevel(kind, kept) : choice;
+}
+
+/** The tokens each strength gives a thought, after LiteLLM's effort ladder. Model Default reads as Medium. */
+const THINKING_ROOM: Readonly<Record<Exclude<ReasoningLevel, 'auto'>, number>> = {
+  minimal: 128, low: 1024, medium: 2048, high: 4096, xhigh: 8192, max: 16384,
+};
+
+/** One strength's Thinking Room. */
+export function thinkingRoom(strength: ReasoningLevel): number {
+  return THINKING_ROOM[strength === 'auto' ? 'medium' : strength];
+}
+
+/** The Thinking Room one call holds above its Answer Cap, and the strength that sized it. */
+export interface ThinkingRoom {
+  tokens: number;
+  strength: ReasoningLevel;
+}
+
+/** A strength's Thinking Room, raised to the dialect's budget floor where the room goes out as a budget. */
+export function thinkingRoomFor(strength: ReasoningLevel, floor = 0): ThinkingRoom {
+  return { tokens: Math.max(thinkingRoom(strength), floor), strength };
+}
+
+/** The room readout beside a strength, such as "Low · 1,024 tok". */
+export function roomReadout(room: ThinkingRoom): string {
+  return `${reasoningLevelLabel(room.strength)} · ${room.tokens.toLocaleString('en-US')} tok`;
 }
 
 /** The budget slider's floor. Off is the prompt's switch, not a 0% position, so the slider never reads as off. */
@@ -438,6 +488,8 @@ export interface ReasoningBudgetInput {
   readonly answerCap: number | undefined;
   /** The smallest budget the target's dialect accepts, or 0 where it sends none. */
   readonly floor: number;
+  /** The Thinking Room a budget target sends as its budget while `base` is absent. Absent where the target takes no budget. */
+  readonly room?: number;
 }
 
 /** One prompt's thinking room and the request cap that holds it. */
@@ -448,14 +500,14 @@ export interface ReasoningBudget {
   readonly maxTokens: number | undefined;
 }
 
-/** The budget, `round(pct% × base)` raised to the dialect's floor, and the answer cap plus that budget. */
+/** The budget, `round(pct% × base)` or the Thinking Room without a base, raised to the dialect's floor, and the answer cap plus that budget. */
 export function reasoningBudget(input: ReasoningBudgetInput): ReasoningBudget {
-  const { effort, kind, budgets, base, answerCap, floor } = input;
+  const { effort, kind, budgets, base, answerCap, floor, room = 0 } = input;
   if (effort === 'none') return { budget: 0, maxTokens: answerCap };
-  const scaled = base === undefined ? 0 : Math.round((resolveReasoningBudgetPct(kind, budgets) / 100) * base);
+  const scaled = base === undefined ? room : Math.round((resolveReasoningBudgetPct(kind, budgets) / 100) * base);
   // 0 is the off signal, so an on prompt with a base never rounds down to it.
   const budget = Math.max(scaled, floor, base === undefined ? 0 : 1);
-  if (base === undefined && floor === 0) return { budget: null, maxTokens: answerCap };
+  if (base === undefined && budget === 0) return { budget: null, maxTokens: answerCap };
   return { budget, maxTokens: answerCap === undefined ? undefined : answerCap + budget };
 }
 
@@ -641,9 +693,10 @@ const ollamaSource: NativeSource = async (target, doFetch, signal) => {
 /**
  * A llama.cpp server's properties endpoint (`GET {origin}/props`). Its `chat_template_caps` report whether
  * the loaded template reads `reasoning_effort` at all, which settles the levels: the safe set when it does,
- * none when it does not, so the strength control appears only where the template honors it. The server
- * exposes no flag for whether the model thinks, so the reasons question stays open either way. Builds
- * before the template capabilities existed omit the flag, and say nothing.
+ * `none` alone when it does not, since `none` disables thinking on any template. Only llama.cpp serves
+ * these caps, so they name its dialect and its per-request budget. The server exposes no flag for whether
+ * the model thinks, so the reasons question stays open either way. Builds before the template
+ * capabilities existed omit the flag, and say nothing.
  */
 const llamaCppSource: NativeSource = async (target, doFetch, signal) => {
   const origin = originOf(target.url);
@@ -655,12 +708,12 @@ const llamaCppSource: NativeSource = async (target, doFetch, signal) => {
   if (typeof honored !== 'boolean') return null;
   return {
     reasons: null,
-    levels: honored ? [...SAFE_REASONING_EFFORTS] : [],
-    budget: null,
-    dialect: 'unknown',
+    levels: honored ? [...SAFE_REASONING_EFFORTS] : ['none'],
+    budget: true,
+    dialect: 'llamacpp',
     offAllowed: null,
     tools: null, structuredOutput: null,
-    sources: { levels: 'native' },
+    sources: { levels: 'native', budget: 'native', dialect: 'native' },
   };
 };
 
@@ -977,17 +1030,25 @@ function observedCapability(observation: ReasoningObservation | null | undefined
  * Whether a stored record still wants resolving: nothing stored at all, an answer only the cache vouches
  * for, or no tools answer. A record written before this session's advertisement sources existed carries
  * `cache` as its source, and whatever levels were stored with it, so it is asked again and a live source
- * replaces them. A record stored before the tools question existed is asked once for that answer.
+ * replaces them. A record stored before the tools question existed is asked once for that answer, and so
+ * is a llama.cpp record stored before `/props` named its dialect.
  */
 export function reasoningNeedsResolve(capability: ReasoningCapability | null | undefined): boolean {
   if (!capability || capability.tools === null) return true;
-  return Object.values(capability.sources).some((source) => source === 'cache');
+  return Object.values(capability.sources).some((source) => source === 'cache') || predatesLlamaCppDialect(capability);
+}
+
+/** Native levels with no native reasons answer and no dialect: only `/props` wrote that, before it named one. */
+function predatesLlamaCppDialect(capability: ReasoningCapability): boolean {
+  const { sources } = capability;
+  return sources.levels === 'native' && sources.reasons !== 'native' && sources.dialect === undefined;
 }
 
 /** True for a record LM Studio's model list answered. A model loaded behind the same name (`default`, or
- *  any name the list lacks) changes those answers, so the list is read again once per session. */
+ *  any name the list lacks) changes those answers, so the list is read again once per session. Also true
+ *  for a record an identity row answered: the row ships with the app, so an update must reach the cache. */
 export function reasoningRereadsPerSession(capability: ReasoningCapability | null | undefined): boolean {
-  return capability?.dialect === 'lmstudio';
+  return capability?.dialect === 'lmstudio' || capability?.sources.dialect === 'identity';
 }
 
 /** The record to store after a resolve. A fresh LM Studio answer replaces an LM Studio record whole, since

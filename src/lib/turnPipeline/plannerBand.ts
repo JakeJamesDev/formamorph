@@ -2,13 +2,14 @@ import { buildBandedHistory, type BandTurn } from "../turnBanding";
 import { estimateTokens } from "../memoryUtils";
 import { renderPromptTemplate } from "../promptTemplate";
 import type { MemoryNote } from "../memoryOverrides";
+import type { TokenValues } from "../promptValues";
 import { TURN_PASS_CAPS } from "./turnPasses";
 
 export interface PlannerBandInput {
   turns: BandTurn[];
   /** The planner prompt, chips unresolved, plus the context to render it against — its size sets the band budget. */
   template: string;
-  ctx: Record<string, string>;
+  ctx: TokenValues;
   /** The planner's own endpoint window: routing it to a smaller model must shrink its band, not narration's. */
   contextWindow: number;
   verbatimFloor: number;
@@ -21,6 +22,8 @@ export interface PlannerBandInput {
   notes: MemoryNote[];
   /** Narration's last story, used when the planner's own band has no assistant message. */
   fallbackLastStory: string;
+  /** The world's Strip Links And Images rule, applied to the band's narration and digests. */
+  stripMedia?: boolean;
 }
 
 export interface PlannerBand {
@@ -51,6 +54,7 @@ export function buildPlannerBand(input: PlannerBandInput): PlannerBand {
     bandCap: input.bandCap,
     stickyIds: input.stickyIds,
     notes: input.notes,
+    stripMedia: input.stripMedia,
   });
   return {
     recap: planner.recap,

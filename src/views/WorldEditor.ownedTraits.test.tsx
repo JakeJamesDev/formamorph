@@ -190,7 +190,7 @@ describe('an owned trait\'s panel', () => {
     expect(screen.getByText(/^Owned by/)).toHaveTextContent('Owned by Ash');
     expect(screen.getByText('Describes them to the AI, and joins your traits when you play as them')).toBeInTheDocument();
     const strip = screen.getByRole('tablist', { name: 'Trait Fields' });
-    expect(within(strip).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Details', 'Availability', 'Stats', 'Pins']);
+    expect(within(strip).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Details', 'Availability', 'Stats', 'Pins', 'Scripts']);
     // Tamed names no player stat, so the persona note stays away.
     fireEvent.mouseDown(within(strip).getByRole('tab', { name: 'Stats' }));
     expect(screen.queryByText(/stat changes apply/i)).toBeNull();
@@ -200,7 +200,7 @@ describe('an owned trait\'s panel', () => {
     expect(screen.getByRole('tab', { name: /Entities/, selected: true })).toBeInTheDocument();
   });
 
-  it("picks a cast entity's own stats on its trait's Stats tab, and a persona's player stats too, with a note (Q53)", () => {
+  it("picks a cast entity's own stats on its trait's Stats tab, and the global stats too, played or not (Q18)", async () => {
     const withStats = (persona: boolean, statId: string) => ({
       ...WORLD,
       stats: [{ id: 'hp', name: 'Health', type: 'number', description: '', min: 0, max: 100, regen: 0, descriptors: [] }],
@@ -215,22 +215,26 @@ describe('an owned trait\'s panel', () => {
       openTab(/Traits/);
       fireEvent.click(treeRow('Tamed')!);
       const strip = screen.getByRole('tablist', { name: 'Trait Fields' });
-      expect(within(strip).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Details', 'Availability', 'Stats', 'Pins']);
+      expect(within(strip).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Details', 'Availability', 'Stats', 'Pins', 'Scripts']);
       fireEvent.mouseDown(within(strip).getByRole('tab', { name: 'Stats' }));
     };
     const { unmount } = renderWorldEditorBench(withStats(false, 'vigor'), 'advanced');
     statsTab();
     expect(screen.getByText('Vigor')).toBeInTheDocument();
-    expect(screen.queryByText(/stat changes apply/i)).toBeNull();
     unmount();
 
-    renderWorldEditorBench(withStats(true, 'hp'), 'advanced');
+    // A cast entity nobody plays is offered the Global stats under their own heading, and its row reads one.
+    renderWorldEditorBench(withStats(false, 'hp'), 'advanced');
     statsTab();
-    expect(screen.getByText('Health')).toBeInTheDocument();
-    expect(screen.getByText('Player stat changes apply only when you play as them')).toBeInTheDocument();
+    const trigger = screen.getAllByRole('combobox').find((c) => /Health/.test(c.textContent ?? ''))!;
+    fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: 'mouse' });
+    await waitFor(() => expect(trigger).toHaveAttribute('aria-expanded', 'true'));
+    expect(await screen.findByText('Global')).toBeInTheDocument();
+    const options = await screen.findAllByRole('option', { hidden: true });
+    expect(options.map((o) => o.textContent)).toEqual(['Vigor', 'Health']);
   });
 
-  it("tells a persona's own stat from a world player stat with its id, and notes only rows on the player's (Q58)", async () => {
+  it("tells an entity's own stat from a global stat with its id (Q58)", async () => {
     const health = { id: 'hp', type: 'number', description: '', min: 0, max: 100, regen: 0, descriptors: [] };
     const world = {
       ...WORLD,
@@ -264,11 +268,10 @@ describe('an owned trait\'s panel', () => {
 
     await choose(statPickers()[0], 'Health');
     expect(entity(ctx, 'ash').traits!.find((t) => t.id === 't-tamed')!.statChanges)
-      .toEqual([{ statId: 'hp', value: 5, type: 'max', target: 'player' }]);
-    expect(screen.getByText('Player stat changes apply only when you play as them')).toBeInTheDocument();
+      .toEqual([{ statId: 'hp', value: 5, type: 'max', target: 'global' }]);
 
     await choose(statPickers()[1], 'Health');
-    expect(entity(ctx, 'ash').traits!.find((t) => t.id === 't-tamed')!.statToggles).toEqual([{ statId: 'hp', enabled: false, target: 'player' }]);
+    expect(entity(ctx, 'ash').traits!.find((t) => t.id === 't-tamed')!.statToggles).toEqual([{ statId: 'hp', enabled: false, target: 'global' }]);
     expect(screen.getByText(/Also set by/)).toBeInTheDocument();
 
     await choose(statPickers()[0], 'Ash Health');
@@ -300,7 +303,7 @@ describe('an owned trait\'s panel', () => {
     fireEvent.click(treeRow('Paladin')!);
     expect(screen.queryByText(/^Owned by/)).toBeNull();
     const strip = screen.getByRole('tablist', { name: 'Trait Fields' });
-    expect(within(strip).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Details', 'Availability', 'Stats', 'Pins']);
+    expect(within(strip).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Details', 'Availability', 'Stats', 'Pins', 'Scripts']);
   });
 
   it('writes an edit to its entity, never to the world\'s traits', () => {
@@ -325,10 +328,10 @@ describe('requirements across owners', () => {
     const tamed = within(list).getByRole('option', { name: /^Tamed/ });
     expect(tamed).toHaveTextContent('TamedAsh › Bond');
     fireEvent.click(tamed);
-    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Same BearerWhoever has the trait', 'You', 'Ash']);
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Same OwnerWhoever has the trait', 'You', 'Ash']);
     fireEvent.click(screen.getByRole('option', { name: /^Ash/ }));
     expect(ctx().traits.find((t) => t.id === 't-tamer')?.requires)
-      .toEqual([{ all: [{ kind: 'trait', id: 't-tamed', bearer: { kind: 'entity', id: 'ash', name: 'Ash' } }] }]);
+      .toEqual([{ all: [{ kind: 'trait', id: 't-tamed', owner: { kind: 'entity', id: 'ash', name: 'Ash' } }] }]);
     expect(screen.getByRole('button', { name: 'Ash: Tamed' })).toBeInTheDocument();
   });
 

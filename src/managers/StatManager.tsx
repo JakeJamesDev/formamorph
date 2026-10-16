@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Hint } from "@/components/ui/typography";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Code } from "lucide-react";
 import { PanelTabContent, PanelTabs } from "@/components/ui/panel-tabs";
 import {
   Select,
@@ -19,11 +18,13 @@ import {
 import { HelpButton } from "@/components/HelpButton";
 import { HintInfo } from "@/components/SettingsRows";
 import { statCodeName, statCodeNamed } from "@/lib/statCodeNames";
-import { entityCodeStats, entityTraitNames, worldTraitPlaces } from "@/lib/statCodeTraits";
-import { codeDictionaries } from "@/lib/statCodePlaceholders";
-import { worldPlaceholderPlaces } from "@/lib/statCodePlaceholderPlaces";
+import { useScriptWorldNames } from "@/lib/useScriptWorldNames";
 import { useRenameField } from "@/lib/useCodeRename";
-import { StatCodeBox, type StatCodeBoxContext } from "./StatCodeBox";
+import type { ScriptBoxContext, ScriptBoxOwner } from "./ScriptBox";
+import { ScriptsSection } from "./ScriptsSection";
+import { newScript, noFocus, scriptRow } from "@/lib/scriptRows";
+import { blueprintGroupStats } from "@/lib/statLinks";
+import { statBoxLookups } from "@/lib/codeWorldLookup";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { PlaceholderNameField } from "@/components/prompt/PlaceholderField";
 import { useBodyMorphSources, useOwnerMorphSources, type MorphOwner } from "@/lib/useBodyMorphNames";
@@ -32,13 +33,14 @@ import { clamp } from "@/lib/utils";
 import { useEditorMode } from '@/lib/editorMode';
 import { StatDescriptorsSection, type DescriptorFieldValue } from './StatDescriptorsSection';
 import { statPanelTabsFor, statTabForField, type StatPanelTab } from '@/views/statPanelTabs';
-import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { registerStatCodeInsert, reportStatCodeInsert } from "@/lib/formaquestion/statCodeInsert";
 import { labelPlaceholders } from "@/lib/placementLetters";
-import { CODE_BOX_TARGET, CODE_FIELD, REPLACE_CODE_TITLE, replaceCodeDescription, type StatCodeTiming } from "@/lib/statCodeTiming";
-import { findTargetRow, routeText } from "@/lib/surface/surfaceTargets";
+import type { StatCodeTiming } from "@/lib/statCodeTiming";
+import { targetAttribute } from "@/lib/surface/surfaceTargets";
 import { useLanding } from "@/lib/surface/useLanding";
-import type { FocusFieldHint, Stat, StatDescriptor, StatLinkFields, StatType, ThresholdUnit } from "@/types";
+import { useCodeUseReveal } from "@/lib/codeUseReveal";
+import type { FocusFieldHint, RegenUnit, ScriptTiming, Stat, StatDescriptor, StatLinkFields, StatType, ThresholdUnit } from "@/types";
+import { REGEN_UNIT_LABELS, REGEN_UNITS, regenPer, regenPerHour, regenUnitOf } from "@/lib/regenUnits";
 import { FieldReset, LabelRow } from '@/components/editor/BlueprintReset';
 import { WorldInput } from '@/components/editor/WorldField';
 import { fieldFrame } from '@/lib/historyField';
@@ -47,15 +49,12 @@ export const AVAILABILITY_INFO = `**Enabled** keeps the stat active. Uncheck it 
 
 **Hidden** hides the stat from the player. It's still sent to the AI, and its Regen and Code run. Use it for dice rolls, cooldowns, and other bookkeeping.`;
 
-const findBox = (timing: StatCodeTiming) =>
-  findTargetRow(document, routeText('worldEditorStat.code', CODE_BOX_TARGET[timing]));
-// The editor is a contenteditable, which the landing's own control list leaves out.
-const boxEditor = (row: HTMLElement) => row.querySelector<HTMLElement>('[contenteditable="true"], textarea');
-
 /** What the stat editor reads and writes besides the world: the stats beside the open one, and its write. */
 export interface StatEditorStore {
   stats: Stat[];
   updateStat: (stat: Stat) => void;
+  /** The id of the entity that owns these stats: `owner` in their code. */
+  ownerId: string;
   /** The owner whose model the Body Sliders picker lists. Absent = the world's player models. */
   morphOwner?: MorphOwner;
 }
@@ -69,14 +68,16 @@ export interface StatLinkEdit {
   header: ReactNode;
 }
 
+/** The named stats' code names, in order. */
+const namesOf = (stats: readonly Stat[]) => stats.map((entry) => entry.name).filter((name): name is string => !!name);
+
 /** The stat being edited — a loose, partial Stat while fields are filled in. */
 type EditingStat = Partial<Stat>;
 
-/** Draft shape for an incoming stat: default a blank type/code so the editor controls stay bound. */
+/** Draft shape for an incoming stat: default a blank type so the editor controls stay bound. */
 const normalizeStat = (stat: EditingStat): EditingStat => ({
   ...(stat ?? {}),
   type: stat?.type || "number",
-  code: stat?.code || "",
 });
 
 /**
@@ -98,11 +99,12 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
   /** Edits the stat as an entity's link reads it: writes go to the link's overrides. */
   link?: StatLinkEdit;
 }) => {
-  const { placeholders, placeholderGroups, placeholderOwners, placementLetters, traits, traitGroups, playEntities, entityGroups, dictionaries } = useStatEditorWorld();
+  const { placeholders, placeholderOwners, placementLetters } = useStatEditorWorld();
+  const { names, placeholderPlaces } = useScriptWorldNames();
   // A store carries an owner's own stats; only a world stat reads the world, which an owned stat's editor may not have.
   const world = useGameDataOptional();
   if (!store && !world) throw new Error('StatManager needs a store or a world');
-  // A player stat's code reads the player's stats; a Blueprint's own code reads the world list it sits in.
+  // A global stat's code reads the global stats; a Blueprint's own code reads the world list it sits in.
   const stats = store?.stats ?? (world!.playStats.some((s) => s.id === stat.id) ? world!.playStats : world!.stats);
   const updateStat = store?.updateStat ?? world!.updateStat;
   const [newDescriptor, setNewDescriptor] = useState<{ threshold: number | string; description: string }>({
@@ -130,48 +132,44 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
     return buildMorphGroups(morphSources, taken);
   }, [morphSources, stats, stat.id]);
 
-  // The code names `stats` is keyed by, for the code field's completions and name checks. Test Code runs
-  // under the same names, so what completes is what runs.
+  // The code names of the stats beside this one, which `owner.stats` reads when an entity owns them.
   const codeNamedStats = useMemo(() => statCodeNamed(stats, placeholders), [stats, placeholders]);
-  const statNames = useMemo(
-    () => codeNamedStats.map(entry => entry.name).filter((name): name is string => !!name),
-    [codeNamedStats],
-  );
   const selfCodeName = statCodeName(editingStat.name, placeholders);
+  // Whose code this is: an entity's own stat runs under that entity, a Blueprint stat under each owner, a world stat under none.
+  const isBlueprint = !store && !!world && !world.playStats.some((s) => s.id === stat.id);
+  const owner = useMemo<ScriptBoxOwner | null>(
+    () => (store ? { kind: 'entity', entityId: store.ownerId } : isBlueprint ? { kind: 'blueprint' } : null),
+    [store, isBlueprint],
+  );
+  // `owner.stats` is the entity's own, or a Blueprint group's.
+  const ownerStats = useMemo(() => {
+    if (store) return codeNamedStats;
+    if (!isBlueprint || !world) return [];
+    return statCodeNamed(blueprintGroupStats({ stats: world.stats, statGroups: world.statGroups }, stat), placeholders);
+  }, [store, isBlueprint, codeNamedStats, world, stat, placeholders]);
+  const ownerStatNames = useMemo(() => namesOf(ownerStats), [ownerStats]);
   // Code reaches a stat by its code name, so the rename offer compares the two names the way code reads them.
-  const worldRename = useRenameField({
+  const nameRename = useRenameField({
     root: 'stats',
     value: editingStat.name ?? '',
     siblings: stats,
     ownId: stat.id,
     codeNameOf: (name) => statCodeName(name, placeholders),
+    stat: { id: stat.id, entityId: store?.ownerId },
   });
-  // The offer rewrites the world's stat code, which an owned stat's name is not part of.
-  const rename = store ? undefined : worldRename;
-  const codePlaceholders = useMemo(
-    () => ({ list: placeholders, owners: placeholderOwners, dictionaries: codeDictionaries(dictionaries, placeholders) }),
-    [placeholders, placeholderOwners, dictionaries],
-  );
-  const entityNames = useMemo(
-    () => entityTraitNames({ traits, traitGroups, entities: playEntities, entityGroups }, placeholders),
-    [traits, traitGroups, playEntities, entityGroups, placeholders],
-  );
-  const entityStats = useMemo(() => entityCodeStats(playEntities, placeholders), [playEntities, placeholders]);
-  const traitPlaces = useMemo(
-    () => worldTraitPlaces({ traits, traitGroups }, placeholders),
-    [traits, traitGroups, placeholders],
-  );
-  // Code reaches a trait by its code name, so completions, Test Code and the Variable menu share one list.
-  const traitNames = useMemo(() => traitPlaces.map((trait) => trait.name), [traitPlaces]);
-  const placeholderPlaces = useMemo(
-    () => worldPlaceholderPlaces({ list: placeholders, owners: placeholderOwners, groups: placeholderGroups }),
-    [placeholders, placeholderOwners, placeholderGroups],
-  );
-  // One surface for both boxes: what completes in either is what runs in either.
-  const codeContext = useMemo<StatCodeBoxContext>(() => ({
-    codeNamedStats, statNames, selfName: selfCodeName,
-    placeholders: codePlaceholders, placeholderPlaces, traitNames, traitPlaces, traits, entities: entityNames, entityStats,
-  }), [codeNamedStats, statNames, selfCodeName, codePlaceholders, placeholderPlaces, traitNames, traitPlaces, traits, entityNames, entityStats]);
+  // A link's name stays the Blueprint's, so its field never renames.
+  const rename = link ? undefined : nameRename;
+  // Cards read the authored world, so the library, which has none, gets no lookup.
+  const boxLookups = useMemo(() => world && statBoxLookups(world), [world]);
+  const lookup = useMemo(() => {
+    if (!boxLookups) return undefined;
+    const self: Stat = { ...stat, ...editingStat, id: stat.id, name: selfCodeName };
+    return (timing: ScriptTiming) => boxLookups({ owner, timing, self });
+  }, [boxLookups, stat, editingStat, selfCodeName, owner]);
+  // One surface for every box: what completes in one is what runs in each.
+  const codeContext = useMemo<ScriptBoxContext>(() => ({
+    selfName: selfCodeName, owner, names, ownerStats, ownerStatNames, placeholderPlaces, lookup,
+  }), [selfCodeName, owner, names, ownerStats, ownerStatNames, placeholderPlaces, lookup]);
 
   const resetControl = (field: keyof StatLinkFields, label: string) => (link?.overridden.includes(field)
     ? <FieldReset field={label} stale={link.stale.includes(field)} onReset={() => link.reset(field)} />
@@ -246,40 +244,37 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
     if (owning) onTabChange(owning);
   }, [focusField, onTabChange]);
 
-  // The help window's Insert writes a box the way typing does, then shows that box on the Code tab.
-  const landOnBox = useLanding(findBox, { focus: boxEditor });
-  const [pendingInsert, setPendingInsert] = useState<{ timing: StatCodeTiming; code: string } | null>(null);
-  const writeInsert = useCallback((timing: StatCodeTiming, code: string) => {
-    apply({ [CODE_FIELD[timing]]: code });
-    onTabChange('code');
-    landOnBox(timing);
-  }, [apply, onTabChange, landOnBox]);
+  // A Find All Uses row bound for one of this stat's scripts shows it on the Scripts tab.
+  const reveal = useCodeUseReveal(stat.id, store?.ownerId ?? null);
+  useEffect(() => {
+    if (reveal) onTabChange('code');
+  }, [reveal, onTabChange]);
+
+  // The help window's Insert adds a script of its timing, then shows it on the Scripts tab. It overwrites nothing.
+  const landOnScript = useLanding(scriptRow, { focus: noFocus });
+  const [inserted, setInserted] = useState<string | null>(null);
   // Read at insert time, so the registration does not change with each keystroke.
   const latestStat = useRef(editingStat);
   latestStat.current = editingStat;
+  const writeInsert = useCallback((timing: StatCodeTiming, code: string) => {
+    const script = newScript(timing, code);
+    apply({ scripts: [...latestStat.current.scripts ?? [], script] });
+    onTabChange('code');
+    setInserted(script.id);
+    landOnScript(script.id);
+  }, [apply, onTabChange, landOnScript]);
   const statName = labelPlaceholders(editingStat.name ?? '', placeholders, { letters: placementLetters, owners: placeholderOwners });
-  // Simple mode has no Code tab to show the box on.
+  // Simple mode has no Scripts tab to show the script on.
   useEffect(() => {
     if (!advanced) return;
     return registerStatCodeInsert({
       statName,
       insert: (timing, code) => {
-        if (latestStat.current[CODE_FIELD[timing]]?.trim()) {
-          setPendingInsert({ timing, code });
-          return;
-        }
         writeInsert(timing, code);
         reportStatCodeInsert('written');
       },
     });
   }, [advanced, statName, writeInsert]);
-  // Closing the panel settles the confirm too, so the help window never waits on one that is gone.
-  const confirming = pendingInsert !== null;
-  useEffect(() => {
-    if (!confirming) return;
-    reportStatCodeInsert('confirming');
-    return () => reportStatCodeInsert('settled');
-  }, [confirming]);
 
   if (!editingStat) return null;
 
@@ -292,6 +287,50 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
   // A stat with no numeric value has nothing for code to calculate, so it takes no Code tab rather than an
   // empty one. The shared list stays whole: it is what the dev-router ledger is guarded against.
   const tabs = statPanelTabsFor(advanced).filter((t) => t.value !== 'code' || isNumeric);
+
+  // `regen` stays per hour; the unit only sets the span the number reads in. Picking a unit keeps the number
+  // shown, so typing 2 then picking Day means 2 per day.
+  const regenUnit = regenUnitOf(editingStat);
+  const regenShown = regenPer(editingStat.regen || 0, regenUnit);
+  const regenLinkFields = (['regen', 'regenUnit'] as const).filter((f) => link?.overridden.includes(f));
+  const regenReset = link && regenLinkFields.length > 0
+    ? <FieldReset field="Regen" stale={regenLinkFields.some((f) => link.stale.includes(f))} onReset={() => link.reset('regen')} />
+    : undefined;
+  const regenField = (
+    <div {...fieldFrame('regen')}>
+      {regenReset ? <LabelRow reset={regenReset}><Label>Regen</Label></LabelRow> : <Label>Regen</Label>}
+      <div className="flex items-center gap-1.5">
+        <WorldInput
+          type="number"
+          className="min-w-0 flex-1"
+          aria-label="Regen"
+          value={regenShown}
+          onChange={(e) => handleChange("regen", regenPerHour(Number(e.target.value), regenUnit))}
+        />
+        <span className="shrink-0 text-meta text-muted-foreground" aria-hidden="true">per</span>
+        <Select
+          value={regenUnit}
+          onValueChange={(unit: RegenUnit) => apply({ regenUnit: unit, regen: regenPerHour(regenShown, unit) })}
+        >
+          <SelectTrigger className="w-auto shrink-0 gap-1 px-2" aria-label="Regen Unit">
+            {/* Every label stacks invisibly under the value, so the trigger holds the widest one's width.
+                `!grid` beats the trigger's `[&>span]:line-clamp-1`, which would lay the labels side by side. */}
+            <span className="!grid text-left">
+              {REGEN_UNITS.map((unit) => (
+                <span key={unit} aria-hidden className="invisible col-start-1 row-start-1">{REGEN_UNIT_LABELS[unit]}</span>
+              ))}
+              <span className="col-start-1 row-start-1"><SelectValue /></span>
+            </span>
+          </SelectTrigger>
+          <SelectContent>
+            {REGEN_UNITS.map((unit) => (
+              <SelectItem key={unit} value={unit}>{REGEN_UNIT_LABELS[unit]}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+  );
 
   const details = (
     <>
@@ -342,16 +381,8 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {isPercentage ? (
               <>
-                <div>
-                  <Label>Min</Label>
-                  <Input type="number" value={0} readOnly disabled />
-                </div>
-                <div>
-                  <Label>Max</Label>
-                  <Input type="number" value={100} readOnly disabled />
-                </div>
                 <div {...fieldFrame('value')}>
-                  {fieldLabel('value', 'Initial Value (%)')}
+                  {fieldLabel('value', 'Base Value (%)')}
                   <WorldInput
                     type="number"
                     min={0}
@@ -360,17 +391,26 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
                     onChange={(e) => handleChange("value", clamp(Number(e.target.value), 0, 100))}
                   />
                 </div>
-                <div {...fieldFrame('regen')}>
-                  {fieldLabel('regen', 'Regen')}
-                  <WorldInput
-                    type="number"
-                    value={editingStat.regen || 0}
-                    onChange={(e) => handleChange("regen", Number(e.target.value))}
-                  />
+                <div>
+                  <Label>Min</Label>
+                  <Input type="number" value={0} readOnly disabled />
                 </div>
+                <div>
+                  <Label>Max</Label>
+                  <Input type="number" value={100} readOnly disabled />
+                </div>
+                {regenField}
               </>
             ) : (
               <>
+                <div {...fieldFrame('value')}>
+                  {fieldLabel('value', 'Base Value')}
+                  <WorldInput
+                    type="number"
+                    value={(editingStat.value as number) || 0}
+                    onChange={(e) => handleChange("value", Number(e.target.value))}
+                  />
+                </div>
                 <div {...fieldFrame('min')}>
                   {fieldLabel('min', 'Min')}
                   <WorldInput
@@ -387,22 +427,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
                     onChange={(e) => handleChange("max", Number(e.target.value))}
                   />
                 </div>
-                <div {...fieldFrame('value')}>
-                  {fieldLabel('value', 'Initial Value')}
-                  <WorldInput
-                    type="number"
-                    value={(editingStat.value as number) || 0}
-                    onChange={(e) => handleChange("value", Number(e.target.value))}
-                  />
-                </div>
-                <div {...fieldFrame('regen')}>
-                  {fieldLabel('regen', 'Regen')}
-                  <WorldInput
-                    type="number"
-                    value={editingStat.regen || 0}
-                    onChange={(e) => handleChange("regen", Number(e.target.value))}
-                  />
-                </div>
+                {regenField}
               </>
             )}
           </div>
@@ -536,29 +561,25 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
 
   const code = (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Code className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-        <Label>Dynamic Value Calculation</Label>
-        <HelpButton topicId="worldEditor.statCode" className="h-6 w-6" />
+      <div className="space-y-2">
+        <LabelRow reset={resetControl('scripts', 'Scripts')}>
+          <div className="flex items-center gap-2">
+            <Label>Scripts</Label>
+            <HelpButton topicId="worldEditor.scriptBox" className="h-6 w-6" />
+          </div>
+        </LabelRow>
+        <Hint>Runs code at the timing you select. Code can set this stat&apos;s value, Min, Max, or Regen, pin a placeholder, or switch a trait.</Hint>
+        <Hint>Turn order: Before the AI, AI stat changes, Regen, After the AI. An empty script is skipped.</Hint>
       </div>
-
-      <Hint>Code can set this stat&apos;s value, Min, Max, or Regen, pin a placeholder, or switch a trait</Hint>
-      <Hint>Turn order: Before the AI, AI stat changes, Regen, After the AI. An empty box is skipped.</Hint>
-      {tabResets([['beforeCode', 'Before the AI'], ['code', 'After the AI']])}
-
-      <StatCodeBox
-        timing="before"
-        stat={{ ...editingStat, id: stat.id }}
-        value={editingStat.beforeCode || ""}
-        onChange={(beforeCode) => handleChange("beforeCode", beforeCode)}
+      <ScriptsSection
+        scripts={editingStat.scripts ?? []}
+        onChange={(scripts) => apply({ scripts })}
+        ownerName={statName}
+        self={{ kind: 'stat', stat: { ...editingStat, id: stat.id } }}
         context={codeContext}
-      />
-      <StatCodeBox
-        timing="after"
-        stat={{ ...editingStat, id: stat.id }}
-        value={editingStat.code || ""}
-        onChange={(nextCode) => handleChange("code", nextCode)}
-        context={codeContext}
+        reveal={reveal}
+        addTarget={targetAttribute('worldEditorStat.code', 'add-script')}
+        focusId={inserted}
       />
     </div>
   );
@@ -575,15 +596,6 @@ const StatManager = ({ stat, tab, onTabChange, focusField, store, link }: {
           <PanelTabContent key={t.value} value={t.value}>{panels[t.value]}</PanelTabContent>
         ))}
       </PanelTabs>
-      <ConfirmDialog
-        open={confirming}
-        onOpenChange={(open) => { if (!open) setPendingInsert(null); }}
-        title={REPLACE_CODE_TITLE}
-        description={replaceCodeDescription('code')}
-        onConfirm={() => pendingInsert && writeInsert(pendingInsert.timing, pendingInsert.code)}
-        // The landing focuses the box; the help window's menu that had focus is gone.
-        onCloseAutoFocus={(event) => event.preventDefault()}
-      />
     </>
   );
 };

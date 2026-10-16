@@ -63,7 +63,7 @@ export function PlaceholderPinRows({ pins, onChange, source, world, placeholders
   const setPin = useStableCallback((index: number, next: PlaceholderPin) => onChange(pins.map((p, i) => (i === index ? next : p))));
   const removePin = useStableCallback((index: number) => onChange(pins.filter((_, i) => i !== index)));
   // The same sectioned rows every other placeholder picker draws. `allRows`, not `palette`: a pin may name a
-  // placeholder another one owns, and each of those keeps the holder chain that tells it from a root of the
+  // placeholder another one owns, and each of those keeps the parent placeholder chain that tells it from a root of the
   // same name. Every row reads its whole path, whichever surface the rows are drawn on.
   const owners = world?.placeholderOwners;
   const groups = world?.placeholderGroups;

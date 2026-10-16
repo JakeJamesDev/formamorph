@@ -54,7 +54,7 @@ describe('settling traits on save load', () => {
     const result = commit.mock.calls[0][0];
     expect(on(result.state)).toEqual([]);
     expect(valueOf(result.state)).toBe(50);
-    expect(result.state.cascadeOffTraitIds).toEqual({ world: ['ward'] });
+    expect(result.state.cascadeOffTraitIds).toEqual({ global: ['ward'] });
     expect(result.log).toEqual(['Trait switched off: Ward']);
     expect(result.cascadeNames).toEqual(['Ward']);
   });
@@ -65,6 +65,16 @@ describe('settling traits on save load', () => {
     expect(on(result.state)).toEqual(['sworn']);
     expect(valueOf(result.state)).toBe(60);
     expect(result.log).toEqual([]);
+  });
+
+  it("reads the save's stat values for a stat Condition", () => {
+    // The author gated Ward on h 60 or more since the save; the save stands at 70 with Ward's 20 in it.
+    const gated: Trait = { ...ward, requires: [{ all: [{ kind: 'stat', id: 'h', operator: '>=', value: 60, unit: 'raw' }] }] };
+    const at = (value: number) => saved({ traits: [gated], stats: [{ ...stat, value }], appliedValues: { ward: { h: 20 } } });
+    expect(loadInto(at(70), { traits: [gated], groups: [] })).not.toHaveBeenCalled();
+    const commit = loadInto(at(55), { traits: [gated], groups: [] });
+    expect(on(commit.mock.calls[0][0].state)).toEqual([]);
+    expect(valueOf(commit.mock.calls[0][0].state)).toBe(35);
   });
 
   it('commits nothing when the save already matches the world', () => {
@@ -94,13 +104,13 @@ describe('settling traits on save load', () => {
     const paladin: Trait = { id: 'paladin', name: 'Paladin', playerToggle: true, statChanges: [{ statId: 'h', value: 10, type: 'max' }] };
     const asAlbus: TraitWorld = {
       traits: [], groups: [], entities: [{ id: 'albus', name: 'Albus', persona: true }], persona: { source: 'world', entityId: 'albus' },
-      bearers: [{ id: 'world', name: '', traits: [], groups: [] }, { id: 'albus', name: 'Albus', traits: [paladin], groups: [] }],
+      global: { traits: [], groups: [] }, owners: [{ id: 'albus', name: 'Albus', traits: [paladin], groups: [] }],
     };
     const ownedTraits = { albus: { chosen: ['paladin'] } };
     /** Health as the save stored it: the code held the max at 60 over base 100 and Paladin's 10. */
     const legacy = (): LegacyCodeBoundsStat => ({ ...stat, max: 60, codeBounds: { max: 60 } });
-    const snapshot = (playerStats: PlayerStat[]): GameState => ({
-      playerStats, playerTraits: [], ownedTraits, visibleEntities: [], logEntries: [], gameplayText: '', gameTime: 0,
+    const snapshot = (globalStats: PlayerStat[]): GameState => ({
+      globalStats, globalTraits: [], ownedTraits, visibleEntities: [], logEntries: [], gameplayText: '', gameTime: 0,
       characterData: null, choices: [], isGameStarted: true, timestamp: '', worldName: null, playerNotes: '',
       previousStateIndex: null, stateVersion: 2,
     });
@@ -136,8 +146,8 @@ describe('settling traits on save load', () => {
       const { commit, commitHistory } = load(state, [snapshot([legacy()]), plain]);
       expect(commit).not.toHaveBeenCalled();
       const [older, kept] = commitHistory.mock.calls[0][0];
-      expect(older.playerStats[0].codeDelta).toEqual({ max: -50 });
-      expect('codeBounds' in older.playerStats[0]).toBe(false);
+      expect(older.globalStats[0].codeDelta).toEqual({ max: -50 });
+      expect('codeBounds' in older.globalStats[0]).toBe(false);
       expect(kept).toBe(plain);
     });
 

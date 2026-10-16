@@ -112,7 +112,10 @@ export default defineConfig({
     // Dev-mode pre-bundling rewrites these into .vite/deps, breaking their import.meta.url-relative
     // .wasm lookup (the QuickJS engine file). Serving them unbundled keeps the wasm path resolvable.
     // Pre-bundling also breaks the ONNX runtime's `?url` imports.
-    exclude: ['quickjs-emscripten', '@jitl/quickjs-wasmfile-release-sync', 'wasm-webp', 'onnxruntime-web-dist'],
+    exclude: [
+      'quickjs-emscripten', '@jitl/quickjs-wasmfile-release-sync', '@jitl/quickjs-wasmfile-release-asyncify',
+      'wasm-webp', 'onnxruntime-web-dist',
+    ],
   },
   worker: {
     // The image-encode worker lazily `import()`s wasm-webp; under the default iife worker format that dynamic
@@ -164,6 +167,10 @@ export default defineConfig({
       '.env*',
     ].map((file) => path.resolve(__dirname, file).replace(/\\/g, '/')),
     css: false,
+    // One fork per hardware thread halves each test's speed for the same throughput: on 32 threads the
+    // 5-second tests ran 4.6 s idle and timed out under a peer's load. Half the threads keeps the wall
+    // time and gives every fork a thread of its own.
+    maxWorkers: '50%',
     // A new jsdom per file is a large share of the suite's CPU, so plain .ts tests run in node. A .ts test
     // that needs the DOM opts in with `// @vitest-environment jsdom`.
     projects: [

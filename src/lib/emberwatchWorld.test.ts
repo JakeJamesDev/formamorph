@@ -3,12 +3,12 @@ import raw from '@/defaultworlds/emberwatch.json?raw';
 import { migrateWorld } from './version';
 import { DEFAULT_WORLDS } from './defaultWorlds';
 import { runRules } from './testBench/rules';
-import { PLAYER_BEARER, resolveBearers, type BearerWorld } from './bearers';
+import { resolveOwners, type OwnerWorld } from './owners';
 import { gateOf, gateStates, settleDefaults, switchTrait } from './traitGates';
 import { syncBlueprintCopies } from './blueprintCopies';
 import { copyLookup, effectiveCopy, readerFor } from './blueprints';
 import { buildPlaceholderPreview, resolvePlaceholders } from './placeholders';
-import { bearerPreview, inPlayBearers } from './ownedTraitsInPlay';
+import { ownerPreview, inPlayOwners } from './ownedTraitsInPlay';
 import { applyOwnedStatTraits, seedNewGameStats, type TraitRuntimeState, type TraitWorld } from './traitRuntime';
 import { ownedTraitStatesFrom } from './ownedTraitState';
 import { seedEntityStats } from './entityStats';
@@ -30,17 +30,17 @@ const traitId = (w: World, name: string): string => {
 };
 const asEntity = (w: World, name: string): PersonaRef => ({ source: 'world', entityId: entityNamed(w, name).id });
 
-const bearerWorld = (w: World): BearerWorld => ({ traits: w.traits, traitGroups: w.traitGroups ?? [], entities: w.entities });
+const ownerWorld = (w: World): OwnerWorld => ({ traits: w.traits, traitGroups: w.traitGroups ?? [], entities: w.entities });
 const customPersonaId = (w: World): string => {
   const marked = w.entities.find((e) => e.customPersona);
   if (!marked) throw new Error('no Custom Persona entity');
   return marked.id;
 };
 
-/** The settled default active set of one bearer under a persona choice. */
+/** The settled default active set of one owner under a persona choice. */
 const settledDefaults = (w: World, ownerId: string, persona: PersonaRef): string[] => {
-  const { gate } = resolveBearers(bearerWorld(w), persona);
-  return settleDefaults(gate).active[ownerId] ?? [];
+  const { gate } = resolveOwners(ownerWorld(w), persona);
+  return settleDefaults(gate).active.owners[ownerId] ?? [];
 };
 
 const names = (w: World, ids: readonly string[]) => ids.map((id) => w.traits.find((t) => t.id === id)?.name ?? id);
@@ -58,8 +58,8 @@ describe('the Emberwatch default world', () => {
     expect(runRules(world).map((f) => `${f.ruleId}: ${f.message}`)).toEqual([]);
   });
 
-  it('carries every copy its bearers need, so the reconcile has nothing to add or take', () => {
-    expect(syncBlueprintCopies({ ...bearerWorld(world), placeholders: world.placeholders ?? [], placeholderGroups: world.placeholderGroups ?? [] }))
+  it('carries every copy its owners need, so the reconcile has nothing to add or take', () => {
+    expect(syncBlueprintCopies({ ...ownerWorld(world), placeholders: world.placeholders ?? [], placeholderGroups: world.placeholderGroups ?? [] }))
       .toBe(world.entities);
   });
 
@@ -73,28 +73,28 @@ describe('the Emberwatch default world', () => {
     expect(hesk.playerDescription).toContain(`{{ph:${copy.id}:`);
   });
 
-  it("reads each bearer's own garb from the Class Garb chip in a class's text", () => {
+  it("reads each owner's own garb from the Class Garb chip in a class's text", () => {
     const garb = world.placeholders!.find((p) => p.name === 'Class Garb')!;
-    const classText = (bearer: string, className: string) => {
+    const classText = (owner: string, className: string) => {
       const cls = world.traits.find((t) => t.name === className)!;
       const pinned = cls.placeholderPins![0].valueId;
       return resolvePlaceholders(cls.aiDescription ?? '', {
         placeholders: [...world.placeholders!, ...world.entities.flatMap((e) => e.placeholders ?? [])],
         rolls: {}, pick: (values) => values.find((v) => v.id === pinned)!.text,
-        copies: copyLookup({ placeholders: world.placeholders!, entities: world.entities }, readerFor(undefined, entityNamed(world, bearer), false)),
+        copies: copyLookup({ placeholders: world.placeholders!, entities: world.entities }, readerFor(undefined, entityNamed(world, owner), false)),
       });
     };
     expect(classText('Mother Hesk', 'Cleric')).toMatch(/wears scorched gray vestments/);
     expect(classText('Albus', 'Paladin')).toContain(`wears ${garb.values[0].text}`);
   });
 
-  it("previews a class's text as each bearer's: its name, its copy and its class's pin", () => {
+  it("previews a class's text as each owner's: its name, its copy and its class's pin", () => {
     const shared = world.placeholders ?? [];
     const all = [...shared, ...world.entities.flatMap((e) => e.placeholders ?? [])];
-    const previewAs = (bearer: string, trait: string) => {
-      const entity = entityNamed(world, bearer);
+    const previewAs = (owner: string, trait: string) => {
+      const entity = entityNamed(world, owner);
       const text = world.traits.find((t) => t.name === trait)!.aiDescription!;
-      const as = bearerPreview(bearerWorld(world), shared, all, entity.id, traitId(world, trait))!;
+      const as = ownerPreview(ownerWorld(world), shared, all, entity.id, traitId(world, trait))!;
       const values = buildPlaceholderPreview(text, all, (vs) => vs[vs.length - 1].text, undefined, entity.name, as);
       return Object.entries(values).reduce((out, [token, value]) => out.split(token).join(value), text);
     };
@@ -109,22 +109,22 @@ describe('the Emberwatch default world', () => {
     const readme = world.worldOverview.readme ?? '';
     expect(readme).toContain('## How this world is built');
     for (const label of ['Blueprints', 'Group links', 'Trait links', 'Per-link defaults', 'Link overrides', 'Blueprint pins', 'Blueprint chips',
-      'Custom Persona', 'Persona-only', 'Same-bearer gates', 'Any-of gates', 'Named-scope gates', 'Gated defaults']) {
+      'Custom Persona', 'Persona-only', 'Same-owner gates', 'Any-of gates', 'Named-scope gates', 'Gated defaults']) {
       expect(readme, label).toContain(`**${label}`);
     }
   });
 });
 
-describe('bearers on Emberwatch', () => {
+describe('owners on Emberwatch', () => {
   it('makes Wanderer the Custom Persona entity, out of the cast either way', () => {
     expect(customPersonaId(world)).toBe(entityNamed(world, 'Wanderer').id);
-    expect(resolveBearers(bearerWorld(world), NONE).cast.map((e) => e.name)).not.toContain('Wanderer');
-    expect(resolveBearers(bearerWorld(world), asEntity(world, 'Albus')).cast.map((e) => e.name)).not.toContain('Wanderer');
+    expect(resolveOwners(ownerWorld(world), NONE).cast.map((e) => e.name)).not.toContain('Wanderer');
+    expect(resolveOwners(ownerWorld(world), asEntity(world, 'Albus')).cast.map((e) => e.name)).not.toContain('Wanderer');
   });
 
   it("gives Albus's Paladin more Faith than the blueprint's, and nobody else's", () => {
-    const faith = (persona: PersonaRef, bearer: string) => resolveBearers(bearerWorld(world), persona).bearers
-      .find((b) => b.name === bearer)!.traits.find((t) => t.name === 'Paladin')!.statChanges;
+    const faith = (persona: PersonaRef, owner: string) => resolveOwners(ownerWorld(world), persona).owners
+      .find((b) => b.name === owner)!.traits.find((t) => t.name === 'Paladin')!.statChanges;
     expect(faith(NONE, 'Albus')).toEqual([{ statId: 'faith', value: 40, type: 'max' }]);
     expect(faith(NONE, 'Sylvie Thornwhistle')).toEqual([{ statId: 'faith', value: 30, type: 'max' }]);
     expect(faith(NONE, 'Wanderer')).toEqual([{ statId: 'faith', value: 30, type: 'max' }]);
@@ -136,12 +136,12 @@ describe('bearers on Emberwatch', () => {
     expect(names(world, settledDefaults(world, albus.id, asEntity(world, 'Albus'))).sort()).toEqual(['Human', 'Paladin', 'Stubborn Heart']);
   });
 
-  it("starts Hesk's and Corvin's race and class on their own stats, never the player's", () => {
+  it("starts Hesk's and Corvin's race and class on their own stats, never the global ones", () => {
     const hesk = entityNamed(world, 'Mother Hesk').id;
     const corvin = entityNamed(world, 'Corvin Vale').id;
     const picks = { [hesk]: settledDefaults(world, hesk, NONE), [corvin]: settledDefaults(world, corvin, NONE) };
     const tw: TraitWorld = {
-      traits: world.traits, groups: world.traitGroups ?? [], entities: world.entities, persona: NONE, bearers: inPlayBearers(bearerWorld(world), NONE),
+      traits: world.traits, groups: world.traitGroups ?? [], entities: world.entities, persona: NONE, ...inPlayOwners(ownerWorld(world), NONE),
     };
     const seeded: TraitRuntimeState = {
       stats: seedNewGameStats(world.stats), traits: [], disabledTraitIds: [], appliedValues: {},
@@ -165,11 +165,9 @@ describe('bearers on Emberwatch', () => {
 
   it("gives the player the Custom Persona entity's links under None, and a persona's own tree when played", () => {
     const cp = customPersonaId(world);
-    const none = resolveBearers(bearerWorld(world), NONE);
-    const root = none.bearers.find((b) => b.id === PLAYER_BEARER)!;
-    expect(root.groups.map((g) => g.name)).toEqual(['Bonds']);
-    expect(root.linkOf.size).toBe(0);
-    const custom = none.bearers.find((b) => b.id === cp)!;
+    const none = resolveOwners(ownerWorld(world), NONE);
+    expect(none.global.groups.map((g) => g.name)).toEqual(['Bonds']);
+    const custom = none.owners.find((b) => b.id === cp)!;
     expect(custom.isPlayer).toBe(true);
     expect(custom.present).toBe(true);
     expect(none.cast.map((e) => e.id)).not.toContain(cp);
@@ -177,23 +175,23 @@ describe('bearers on Emberwatch', () => {
     expect(custom.groups.map((g) => g.name)).not.toContain('Blueprints');
     expect(names(world, settledDefaults(world, cp, NONE)).sort()).toEqual(['Halfling', 'Lucky Step', 'Wizard']);
 
-    const played = resolveBearers(bearerWorld(world), asEntity(world, 'Albus'));
-    expect(played.bearers.find((b) => b.id === PLAYER_BEARER)!.groups.map((g) => g.name)).toEqual(['Bonds']);
-    expect(played.bearers.find((b) => b.id === cp)!.present).toBe(false);
-    expect(played.playerBearerIds).toEqual([PLAYER_BEARER, entityNamed(world, 'Albus').id]);
+    const played = resolveOwners(ownerWorld(world), asEntity(world, 'Albus'));
+    expect(played.global.groups.map((g) => g.name)).toEqual(['Bonds']);
+    expect(played.owners.find((b) => b.id === cp)!.present).toBe(false);
+    expect(played.playedIds).toEqual([entityNamed(world, 'Albus').id]);
   });
 
   it('switches a racial ability off and on with the race', () => {
-    const { gate } = resolveBearers(bearerWorld(world), NONE);
+    const { gate } = resolveOwners(ownerWorld(world), NONE);
     const wanderer = entityNamed(world, 'Wanderer').id;
     const start = settleDefaults(gate);
-    expect(names(world, start.active[wanderer]).sort()).toEqual(['Halfling', 'Lucky Step', 'Wizard']);
+    expect(names(world, start.active.owners[wanderer]).sort()).toEqual(['Halfling', 'Lucky Step', 'Wizard']);
     const asElf = switchTrait({ ...gate, active: start.active }, wanderer, traitId(world, 'Elf'), start.cascadeOff)!;
-    expect(names(world, asElf.active[wanderer]).sort()).toEqual(['Elf', 'Keen Senses', 'Wizard']);
+    expect(names(world, asElf.active.owners[wanderer]).sort()).toEqual(['Elf', 'Keen Senses', 'Wizard']);
   });
 
-  it('unlocks a class ability only on a bearer whose class it names', () => {
-    const { gate } = resolveBearers(bearerWorld(world), asEntity(world, 'Albus'));
+  it('unlocks a class ability only on an owner whose class it names', () => {
+    const { gate } = resolveOwners(ownerWorld(world), asEntity(world, 'Albus'));
     const albus = entityNamed(world, 'Albus').id;
     const states = gateStates({ ...gate, active: settleDefaults(gate).active });
     expect(gateOf(states, albus, traitId(world, 'Smite'))?.unlocked).toBe(true);
@@ -203,20 +201,20 @@ describe('bearers on Emberwatch', () => {
   });
 
   it('never offers Squire to Albus to Albus himself', () => {
-    const player = (persona: PersonaRef) => resolveBearers(bearerWorld(world), persona).bearers.find((b) => b.id === PLAYER_BEARER)!;
-    expect(names(world, player(asEntity(world, 'Sylvie Thornwhistle')).traits.map((t) => t.id))).toContain('Squire to Albus');
-    expect(names(world, player(asEntity(world, 'Albus')).traits.map((t) => t.id))).not.toContain('Squire to Albus');
+    const globalOf = (persona: PersonaRef) => resolveOwners(ownerWorld(world), persona).global;
+    expect(names(world, globalOf(asEntity(world, 'Sylvie Thornwhistle')).traits.map((t) => t.id))).toContain('Squire to Albus');
+    expect(names(world, globalOf(asEntity(world, 'Albus')).traits.map((t) => t.id))).not.toContain('Squire to Albus');
   });
 
   it('keeps a Custom Persona pick from unlocking a racial ability on the played persona', () => {
     // The Custom Persona entity is absent under Sylvie, so its picks (Halfling among them) gate nothing on her.
     const cp = customPersonaId(world);
-    const { gate, bearers } = resolveBearers(bearerWorld(world), asEntity(world, 'Sylvie Thornwhistle'));
+    const { gate, owners } = resolveOwners(ownerWorld(world), asEntity(world, 'Sylvie Thornwhistle'));
     expect(gate.owners.map((o) => o.id)).not.toContain(cp);
-    expect(bearers.find((b) => b.id === cp)?.present).toBe(false);
+    expect(owners.find((b) => b.id === cp)?.present).toBe(false);
     const sylvie = entityNamed(world, 'Sylvie Thornwhistle').id;
     const defaults = settleDefaults(gate).active;
-    const active = { ...defaults, [cp]: [traitId(world, 'Halfling'), traitId(world, 'Rogue'), traitId(world, 'Lucky Step')] };
+    const active = { ...defaults, owners: { ...defaults.owners, [cp]: [traitId(world, 'Halfling'), traitId(world, 'Rogue'), traitId(world, 'Lucky Step')] } };
     const states = gateStates({ ...gate, active });
     expect(gateOf(states, sylvie, traitId(world, 'Lucky Step'))?.unlocked).toBe(false);
     expect(gateOf(states, sylvie, traitId(world, 'Keen Senses'))?.unlocked).toBe(true);
@@ -224,12 +222,12 @@ describe('bearers on Emberwatch', () => {
   });
 
   it('locks Squire to Albus when Albus stops being a Paladin', () => {
-    const { gate } = resolveBearers(bearerWorld(world), NONE);
+    const { gate } = resolveOwners(ownerWorld(world), NONE);
     const albus = entityNamed(world, 'Albus').id;
     const squire = traitId(world, 'Squire to Albus');
     const start = settleDefaults(gate);
-    expect(gateOf(gateStates({ ...gate, active: start.active }), PLAYER_BEARER, squire)?.unlocked).toBe(true);
+    expect(gateOf(gateStates({ ...gate, active: start.active }), null, squire)?.unlocked).toBe(true);
     const reclassed = switchTrait({ ...gate, active: start.active }, albus, traitId(world, 'Wizard'), start.cascadeOff)!;
-    expect(gateOf(gateStates({ ...gate, active: reclassed.active }), PLAYER_BEARER, squire)?.unlocked).toBe(false);
+    expect(gateOf(gateStates({ ...gate, active: reclassed.active }), null, squire)?.unlocked).toBe(false);
   });
 });

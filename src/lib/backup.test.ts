@@ -89,7 +89,7 @@ describe('readBackupIndex', () => {
       formamorphBackup: 1,
       data: {
         worlds: [{ id: 'w1', name: 'Sedge Landing', data: world }],
-        entities: [{ id: 'e1', data: { images: ['data:image/png;base64,AA'] } }],
+        entities: [{ id: 'e1', data: { images: [{ data: 'data:image/png;base64,AA', requires: [{ all: [{ kind: 'trait', id: 'knight' }] }] }] } }],
         dictionaries: [{ id: 'd1', data: world }],
       },
     });
@@ -353,6 +353,7 @@ describe('backup round trip (IndexedDB)', () => {
 
   it('reports image progress across records while it optimizes', async () => {
     const png = 'data:image/png;base64,iVBORw0KGgo=';
+    const wounded = [{ all: [{ kind: 'stat', id: 'health', operator: '<', value: 20, unit: 'percent' }] }];
     const world = {
       worldOverview: { thumbnail: png },
       entities: [{ id: 'e1', images: [png] }],
@@ -362,7 +363,7 @@ describe('backup round trip (IndexedDB)', () => {
       formamorphBackup: 1,
       data: {
         worlds: [{ id: 'w1', name: 'One', data: world }, { id: 'w2', name: 'Two', data: world }],
-        entities: [{ id: 'e1', name: 'Mara', data: { images: [png, png] } }],
+        entities: [{ id: 'e1', name: 'Mara', data: { images: [{ data: png }, { data: png, requires: wounded }] } }],
       },
     });
     const progress: number[] = [];
@@ -385,6 +386,8 @@ describe('backup round trip (IndexedDB)', () => {
     expect(worlds.map((r) => r.id)).toEqual(['w1', 'w2']);
     // The library card takes the optimized world's thumbnail.
     expect(worlds.map((r) => r.thumbnail)).toEqual([png, png]);
-    expect(await readAll('entitiesDB', 'entities')).toEqual([{ id: 'e1', name: 'Mara', data: { images: [png, png] } }]);
+    // Each image keeps its own rule through the re-encode.
+    expect(await readAll('entitiesDB', 'entities'))
+      .toEqual([{ id: 'e1', name: 'Mara', data: { images: [{ data: png }, { data: png, requires: wounded }] } }]);
   });
 });

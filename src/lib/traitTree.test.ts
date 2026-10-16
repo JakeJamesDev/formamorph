@@ -6,6 +6,7 @@ import {
   linkRefusal, entityRootTraitTree, getEntityRootDropProjection, applyEntityRootDrop, type OwnedTraitDropOptions,
 } from './traitTree';
 import type { Entity, StatLink, Trait, TraitGroup, TraitLink } from '@/types';
+import { boxScripts } from '@/test/scriptFixtures';
 
 const group = (id: string, parentId: string | null, order: number): TraitGroup =>
   ({ id, name: id, parentId, order });
@@ -588,10 +589,10 @@ describe('applyOwnedTraitDrop with links', () => {
     const albus: Entity = { id: 'albus', name: 'Albus', traitLinks: [{ id: 'l1', originalId: 'wizard', kind: 'trait', originalName: 'wizard', groupId: null, order: 0 }] };
     const bo: Entity = { id: 'bo', name: 'Bo', traitLinks: [{ id: 'l2', originalId: 'classes', kind: 'group', originalName: 'Classes', groupId: null, order: 0 }] };
     // Rows: blueprints, classes, paladin, wizard, loner, ash, …. Wizard dropped on Loner at the top level.
-    expect(drop([ash, albus], 'wizard', 'loner', -48)).toEqual({ kind: 'refused', refusal: { reason: 'blueprint-linked', name: 'wizard', bearers: ['Albus'] } });
+    expect(drop([ash, albus], 'wizard', 'loner', -48)).toEqual({ kind: 'refused', refusal: { reason: 'blueprint-linked', name: 'wizard', owners: ['Albus'] } });
     // Classes, holding the Wizard that Albus links, leaves Blueprints with it.
     expect(drop([ash, albus, bo], 'classes', 'loner', -24, ['classes']))
-      .toEqual({ kind: 'refused', refusal: { reason: 'blueprint-linked', name: 'Classes', bearers: ['Albus', 'Bo'] } });
+      .toEqual({ kind: 'refused', refusal: { reason: 'blueprint-linked', name: 'Classes', owners: ['Albus', 'Bo'] } });
     // Moving within Blueprints is fine, and so is an unlinked Blueprint leaving it.
     expect(drop([ash, albus], 'wizard', 'paladin', 0)?.kind).toBe('moved');
     expect(drop([ash, albus], 'paladin', 'loner', -48)?.kind).toBe('moved');
@@ -608,7 +609,7 @@ describe('applyOwnedTraitDrop with links', () => {
 
   it('refuses a link to an original the entity already holds, directly or through a linked group', () => {
     const linked = { ...ash, traitLinks: [{ id: 'l1', originalId: 'classes', kind: 'group' as const, originalName: 'Classes', groupId: null, order: 3 }] };
-    expect(drop([linked], 'paladin', 'pack', 0)).toEqual({ kind: 'refused', refusal: { reason: 'duplicate', name: 'paladin', bearer: 'Ash' } });
+    expect(drop([linked], 'paladin', 'pack', 0)).toEqual({ kind: 'refused', refusal: { reason: 'duplicate', name: 'paladin', owner: 'Ash' } });
     const paladin = { ...ash, traitLinks: [{ id: 'l1', originalId: 'paladin', kind: 'trait' as const, originalName: 'paladin', groupId: null, order: 3 }] };
     expect(drop([paladin], 'classes', 'pack', 0)?.kind).toBe('refused');
   });
@@ -632,7 +633,7 @@ describe('applyOwnedTraitDrop with links', () => {
     expect(entityOut(out, 'ash')).not.toHaveProperty('traitLinks');
     const holding = { ...bob, traitLinks: [{ id: 'l2', originalId: 'wizard', kind: 'trait' as const, originalName: 'wizard', groupId: null, order: 1 }] };
     expect(applyOwnedTraitDrop(strong, [linked, holding], ['l1'], 'l1', 'gruff', 0, 24))
-      .toEqual({ kind: 'refused', refusal: { reason: 'duplicate', name: 'Classes', bearer: 'Bob' } });
+      .toEqual({ kind: 'refused', refusal: { reason: 'duplicate', name: 'Classes', owner: 'Bob' } });
   });
 
   it('keeps an owned group holding a link inside an entity, and checks the link where it lands', () => {
@@ -648,7 +649,7 @@ describe('applyOwnedTraitDrop with links', () => {
     // Bob already links Loner, so the move is refused.
     const holding = { ...bob, traitLinks: [{ ...l1, id: 'l2', groupId: null, order: 1 }] };
     expect(applyOwnedTraitDrop(strong, [linked, holding], ['bond'], 'bond', 'gruff', 0, 24))
-      .toEqual({ kind: 'refused', refusal: { reason: 'duplicate', name: 'Loner', bearer: 'Bob' } });
+      .toEqual({ kind: 'refused', refusal: { reason: 'duplicate', name: 'Loner', owner: 'Bob' } });
   });
 
   it('never lands a link row outside an entity', () => {
@@ -680,10 +681,10 @@ describe('applyOwnedTraitDrop with links', () => {
     const linked: Entity = { id: 'bob', name: 'Bob', traitLinks: [{ id: 'l1', originalId: 'wizard', kind: 'trait', originalName: 'wizard', groupId: null, order: 0 }] };
     // Wizard dropped below Pack, one level out, lands at Ash's root.
     expect(drop([ash, linked], 'wizard', 'pack', -24, [], false))
-      .toEqual({ kind: 'refused', refusal: { reason: 'blueprint-linked', name: 'wizard', bearers: ['Bob'] } });
+      .toEqual({ kind: 'refused', refusal: { reason: 'blueprint-linked', name: 'wizard', owners: ['Bob'] } });
     const groupLinked: Entity = { ...linked, traitLinks: [{ id: 'l1', originalId: 'paladin', kind: 'trait', originalName: 'paladin', groupId: null, order: 0 }] };
     expect(drop([ash, groupLinked], 'classes', 'pack', 0, ['classes'], false))
-      .toEqual({ kind: 'refused', refusal: { reason: 'blueprint-linked', name: 'Classes', bearers: ['Bob'] } });
+      .toEqual({ kind: 'refused', refusal: { reason: 'blueprint-linked', name: 'Classes', owners: ['Bob'] } });
   });
 
   it('moves a world trait with stat effects in with links off, its stat effects kept', () => {
@@ -704,7 +705,7 @@ describe('applyOwnedTraitDrop: what reads a trait moving into Blueprints', () =>
   const ash: Entity = { id: 'ash', name: 'Ash', traits: [trait('pack', null, 0), trait('tamed', 'bond', 0)], traitGroups: [group('bond', null, 1)] };
   const withTrait = (id: string, over: Partial<Trait>) => ({ ...lists, traits: lists.traits.map((t) => (t.id === id ? { ...t, ...over } : t)) });
   const stat = (id: string, code: string, groupId: string | null = null) =>
-    ({ id, name: id, type: 'number' as const, description: '', min: 0, max: 100, value: 0, regen: 0, descriptors: [], groupId, code });
+    ({ id, name: id, type: 'number' as const, description: '', min: 0, max: 100, value: 0, regen: 0, descriptors: [], groupId, scripts: boxScripts({ after: code }) });
   const codeWorld = (...stats: ReturnType<typeof stat>[]) => ({ stats, statGroups: [{ id: 'sbp', name: 'sbp', parentId: null, system: 'blueprints' as const }], placeholders: [] });
   // Loner dropped on Wizard joins Classes, inside Blueprints.
   const lonerIn = (w = lists, ents: Entity[] = [ash], opts: OwnedTraitDropOptions = {}) => applyOwnedTraitDrop(w, ents, [], 'loner', 'wizard', 0, 24, opts);
@@ -759,7 +760,7 @@ describe('applyOwnedTraitDrop: what reads a trait moving into Blueprints', () =>
     const bpMood = (code: string) => codeWorld(stat('mood', code, 'sbp'));
     expect(refusal(lonerIn(lists, [linker()], { codeWorld: bpMood('return traits.Loner;') })))
       .toMatchObject({ reader: { kind: 'readBy', stat: 'mood' } });
-    const overridden = linker({ mood: { code: { value: 'return traits.Loner;', blueprint: 'return 0;' } } });
+    const overridden = linker({ mood: { scripts: { value: boxScripts({ after: 'return traits.Loner;' }), blueprint: boxScripts({ after: 'return 0;' }) } } });
     expect(refusal(lonerIn(lists, [overridden], { codeWorld: bpMood('return 0;') }))).toMatchObject({ reader: { kind: 'readBy', stat: 'mood' } });
   });
 
@@ -903,7 +904,7 @@ describe('system nodes in the one tree', () => {
   it('refuses a second link to a Blueprints trait the Custom Persona entity already has', () => {
     // Rows: blueprints, classes, paladin, wizard, loner, ash, pack, cp, l-cp (collapsed).
     expect(drop(world, [ash, cp('classes', 'group')], 'paladin', 'l-cp', 0, ['l-cp']))
-      .toEqual({ kind: 'refused', refusal: { reason: 'duplicate', name: 'paladin', bearer: 'Newcomer' } });
+      .toEqual({ kind: 'refused', refusal: { reason: 'duplicate', name: 'paladin', owner: 'Newcomer' } });
   });
 
   it('moves a link from an entity into the Custom Persona entity with its overrides', () => {
@@ -939,15 +940,15 @@ describe('system nodes in the one tree', () => {
     expect(getOwnedTraitDropProjection(linkedTree, rowsOf(linkedTree, ['ash']), 'ash', 'loner', 0, 24)).toEqual({ depth: 0, parentId: null });
   });
 
-  it('says why a bearer node cannot link an original, the same way a drop refuses it', () => {
+  it('says why an owner node cannot link an original, the same way a drop refuses it', () => {
     const linked = { ...ash, traitLinks: [{ id: 'l1', originalId: 'wizard', kind: 'trait' as const, originalName: 'wizard', groupId: null }] };
     const ents = [linked, cp('classes', 'group')];
     expect(linkRefusal(world, ents, 'ash', 'paladin')).toBeNull();
-    expect(linkRefusal(world, ents, 'ash', 'wizard')).toEqual({ reason: 'duplicate', name: 'wizard', bearer: 'Ash' });
+    expect(linkRefusal(world, ents, 'ash', 'wizard')).toEqual({ reason: 'duplicate', name: 'wizard', owner: 'Ash' });
     // A root trait is a duplicate for an ordinary entity only once it links it; the Custom Persona entity holds it through the root.
     expect(linkRefusal(world, ents, 'ash', 'loner')).toBeNull();
     // A linked group brings its children.
-    expect(linkRefusal(world, ents, 'cp', 'paladin')).toEqual({ reason: 'duplicate', name: 'paladin', bearer: 'Newcomer' });
+    expect(linkRefusal(world, ents, 'cp', 'paladin')).toEqual({ reason: 'duplicate', name: 'paladin', owner: 'Newcomer' });
   });
 
   it('keeps Blueprints at the top level (Q68)', () => {

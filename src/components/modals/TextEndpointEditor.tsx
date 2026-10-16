@@ -7,6 +7,8 @@ import { LocalModelPanel } from '@/components/modals/LocalModelPanel';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { readExtraParams } from '@/lib/extraParams';
+import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, SelectSeparator } from '@/components/ui/select';
@@ -65,15 +67,17 @@ export function TextEndpointEditor({ model, advanced, onOpenConnectionGuide, pre
 }) {
   const { presets, edited, fields, edit, onSelect, onAdd, onRename, onDelete, onReset } = model;
   const {
-    endpointUrl, apiToken, modelName, maxTokens, maxOutputOverrideEnabled, samplerOverrides,
+    endpointUrl, apiToken, modelName, maxTokens, maxOutputOverrideEnabled, samplerOverrides, extraParams,
     contextWindow, contextWindowOverride, detectedContextWindow, detectStatus,
   } = fields;
   const {
     setEndpointUrl, setApiToken, setModelName, setMaxTokens, setMaxOutputOverrideEnabled,
-    setContextWindowOverride, detectContextWindow, setSamplerEnabled, setSamplerValue,
+    setContextWindowOverride, detectContextWindow, setSamplerEnabled, setSamplerValue, setExtraParams,
   } = edit;
   const builtIn = edited.builtIn;
   const sharedEndpointActive = builtIn && !edited.engine;
+  const extraParamsRead = readExtraParams(extraParams);
+  const extraParamsError = 'error' in extraParamsRead ? extraParamsRead.error : null;
 
   const [presetDialog, setPresetDialog] = useState<{ mode: 'add' | 'rename' } | null>(null);
   const handlePresetSelect = (v: string) => {
@@ -106,6 +110,7 @@ export function TextEndpointEditor({ model, advanced, onOpenConnectionGuide, pre
     setApiToken(DEFAULT_API_TOKEN);
     setContextWindowOverride(null);
     setMaxTokens(DEFAULT_MAX_TOKENS);
+    setExtraParams('');
   };
 
   // Single status line under the Context Window field: red for over-limit or a failed manual detect,
@@ -290,6 +295,22 @@ export function TextEndpointEditor({ model, advanced, onOpenConnectionGuide, pre
                   {samplerControls.map((control) => <SamplerControl key={control.id} {...control} />)}
                 </div>
               </Section>
+              <Row top htmlFor="extraParams" {...rowCopy('extraParams')}>
+                <Textarea
+                  id="extraParams"
+                  className="min-h-24 font-mono text-meta"
+                  value={extraParams ?? ''}
+                  disabled={sharedEndpointActive}
+                  placeholder={'{"chat_template_kwargs": {"enable_thinking": true}}'}
+                  spellCheck={false}
+                  aria-invalid={extraParamsError !== null}
+                  aria-describedby={extraParamsError !== null ? 'extraParamsError' : undefined}
+                  onChange={(e) => setExtraParams(e.target.value)}
+                />
+                {extraParamsError !== null && (
+                  <FieldError id="extraParamsError" className="mt-1">{extraParamsError} Requests go out without these fields.</FieldError>
+                )}
+              </Row>
             </>)}
           </div>
         </ScrollArea>

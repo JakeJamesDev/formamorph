@@ -1,16 +1,16 @@
 # 08: Help Presses Keep Popups Below Open
 
-Status: ready-for-human
+Status: done
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
 
 ## What to build
 
-A click, a focus move or Escape in the help window no longer closes a popup below it, such as a select or popover in Settings (Q23).
+A click, a focus move or Escape in the help window no longer closes a popup or dialog below it, such as a select in Settings or Settings itself (Q23, Q29).
 
 - Today the dialog wrappers ignore a press in the shielded layer, but popovers, selects and menus do not. They close on any outside press or focus move, and likely on Escape.
-- The popover, select, dropdown-menu and context-menu wrappers ignore an outside press, focus move or Escape whose target is in the shielded layer, when their own content is outside the layer.
+- The popover, select and context-menu wrappers (the app has no dropdown-menu wrapper), plus the dialog, drawer and alert-dialog wrappers for Escape (Q29), ignore an outside press, focus move or Escape whose target is in the shielded layer, when their own content is outside the layer.
 - A popup inside the help window keeps today's dismissal: a press elsewhere in help still closes it. The layer must keep passing presses to `document` (see the shielded-layer module comment).
 - Check the Escape leak first and state the result. Fix it if it exists.
 - The guard sits beside `ignoreLayerPress` and keeps the shielded-layer module import-free, so the account site bundle stays under its ceiling.

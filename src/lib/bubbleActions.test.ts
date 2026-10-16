@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { bubbleActions, choicesActions, menuSections, playerBubbleActions, type BubbleActionHandlers, type BubbleState } from './bubbleActions';
+import { bubbleActions, choicesActions, menuSections, playerBubbleActions, withEndpoints, type BubbleActionHandlers, type BubbleState } from './bubbleActions';
 
 const idle: BubbleState = {
   isLatest: true,
@@ -183,6 +183,21 @@ describe('choicesActions', () => {
 
   it('offers nothing when the choices request is off', () => {
     expect(choicesActions({ canRegenerate: false, hasChoices: true, busy: false, regenerating: false }, vi.fn())).toEqual([]);
+  });
+});
+
+describe('withEndpoints', () => {
+  it('names where each request-sending action goes, and leaves the rest alone', () => {
+    const tip = (kind: string) => (kind === 'narration' ? 'Sends to GLM 5.3 · glm-5.3' : 'Sends to Kimi 3');
+    const named = withEndpoints(bubbleActions(idle, handlers()), tip);
+    expect(named.find((a) => a.key === 'regenerate')?.endpoint).toBe('Sends to GLM 5.3 · glm-5.3');
+    expect(named.find((a) => a.key === 'stats')?.endpoint).toBe('Sends to Kimi 3');
+    expect(named.find((a) => a.key === 'copy')?.endpoint).toBeUndefined();
+    // Writing tags is a text request; the image itself goes to the image provider, not a text endpoint.
+    expect(named.find((a) => a.key === 'tags')?.endpoint).toBe('Sends to Kimi 3');
+    expect(named.find((a) => a.key === 'image')?.endpoint).toBeUndefined();
+    // An empty line names nothing.
+    expect(withEndpoints(bubbleActions(idle, handlers()), () => '').every((a) => a.endpoint === undefined)).toBe(true);
   });
 });
 

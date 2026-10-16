@@ -383,9 +383,8 @@ export function RemoteWorldDetailsModal({
   const portrait = aspect === 'portrait';
   const models = world ? listingModels(world) : [];
   const madeFor = world ? listingAppVersion(world) : null;
-  // Resolve through the same blob cache the card thumbnails use, so the zoom gets a same-origin object URL
-  // rather than the raw cross-origin server URL (which CORP blocks from an <img> load, breaking the viewer).
-  const { src: thumbSrc } = useCachedThumbnail(thumbFile, thumbUrl, world?.updated_at);
+  // Resolve through the same blob cache the card thumbnails use.
+  const { src: thumbSrc, onError: onThumbError } = useCachedThumbnail(thumbFile, thumbUrl, world?.updated_at);
 
   // Matched on either id or name, the same pair the card uses — a catalog row and the signed-in user come
   // from different endpoints and have disagreed on which one is populated before.
@@ -437,8 +436,8 @@ export function RemoteWorldDetailsModal({
     isOwnComment(comment) || isOwnListing ||
     canModerate(currentUser, { id: comment.author?.id, accountType: comment.author?.role ?? 'normal' });
 
-  // Click opens the pan/zoom viewer on the cached blob src, which CORP does not block. No tip without a
-  // picture: the tip is the whole hint that it opens.
+  // Click opens the pan/zoom viewer on the resolved src. No tip without a picture: the tip is the whole
+  // hint that it opens.
   const art = world && (
     <Tip tip={thumbSrc ? "Click to enlarge" : undefined} labelsChild={false}>
       <div
@@ -452,6 +451,7 @@ export function RemoteWorldDetailsModal({
         {thumbSrc ? (
           <img
             src={thumbSrc}
+            onError={onThumbError}
             alt={world.name}
             className={cn("absolute top-0 left-0 w-full h-full", thumbFit(aspect))}
           />

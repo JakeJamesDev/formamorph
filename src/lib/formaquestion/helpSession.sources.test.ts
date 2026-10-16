@@ -9,7 +9,7 @@ import { GENERAL_KNOWLEDGE_MARKER } from './generalKnowledge';
 import { HELP_PICK_MAX_TOKENS, pickList } from './helpPicks';
 import { HELP_PICK_SYSTEM_PROMPT } from './helpPrompt';
 import type { HelpEmbedder } from './helpSemantic';
-import { askHelp, HELP_SCORE_FLOOR, type HelpEvent, type HelpQuestion } from './helpSession';
+import { askHelp, HELP_SCORE_FLOOR, HELP_SEMANTIC_FLOOR, type HelpEvent, type HelpQuestion } from './helpSession';
 import { DEFAULT_HELP_PRESET_ID, duplicateHelpPreset, editHelpOptions, EMPTY_HELP_PRESET_STORE } from './helpPresets';
 import { helpSettingsOf, type HelpSources } from './helpSettings';
 import { encodeVector, sectionTexts, type SectionVectorsFile } from './sectionVectors';
@@ -413,6 +413,14 @@ describe('the semantic source', () => {
       history: [{ question: 'How do I rewind?', answer: 'Select **Rewind**.' }],
     });
     expect(embed.mock.calls).toEqual([[['and then?', 'How do I rewind? and then?']]]);
+  });
+
+  it('leaves out a section whose similarity to the question is under the floor', async () => {
+    const far = vectorsFile({ [NEAREST]: [1, 0], [PICKED]: [HELP_SEMANTIC_FLOOR - 0.05, Math.sqrt(1 - (HELP_SEMANTIC_FLOOR - 0.05) ** 2)] });
+    const { sources } = await ask('import', { fetchImpl: endpoint().fetchImpl, embedder: embedderOf({ vectors: vi.fn(async () => far) }), settings: semanticOnly });
+    expect(sources).toEqual([NEAREST]);
+    const unfloored = await ask('import', { fetchImpl: endpoint().fetchImpl, embedder: embedderOf({ vectors: vi.fn(async () => far) }), settings: semanticOnly, semanticFloor: -Infinity });
+    expect(unfloored.sources).toEqual([NEAREST, PICKED]);
   });
 
   it('leaves out a section whose text changed after its vector was built', async () => {

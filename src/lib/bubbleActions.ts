@@ -1,3 +1,4 @@
+import type { AIRequestType } from '@/types';
 import { Copy, Dices, Headphones, ImagePlus, ListRestart, Pencil, RefreshCw, Undo2, type LucideIcon } from 'lucide-react';
 import { StatIcon } from '@/lib/elementIcons';
 
@@ -13,6 +14,10 @@ export interface BubbleAction {
   /** Listed under the row's More icon and in the menu, not as a row icon. */
   menuOnly?: boolean;
   run: () => void;
+  /** The model request this action sends, which names its endpoint. */
+  request?: AIRequestType;
+  /** Where that request goes ("Sends to …"), filled in by the surface that knows the settings. */
+  endpoint?: string;
 }
 
 /** What one bubble's actions depend on. */
@@ -53,17 +58,17 @@ export function bubbleActions(state: BubbleState, h: BubbleActionHandlers): Bubb
   const sceneBlocked = busy || sceneJob !== null;
   const actions: BubbleAction[] = [];
   if (state.isLatest) {
-    actions.push({ key: 'regenerate', label: 'Re-generate Narration', icon: RefreshCw, section: 'generate', disabled: busy, run: h.regenerate });
+    actions.push({ key: 'regenerate', request: 'narration', label: 'Re-generate Narration', icon: RefreshCw, section: 'generate', disabled: busy, run: h.regenerate });
     if (state.canRegenStats) {
       // A running scene render holds the graphics card, and the re-roll keeps the turn its picture belongs to.
-      actions.push({ key: 'stats', label: 'Re-generate Stats', icon: StatIcon, section: 'generate', disabled: sceneBlocked, menuOnly: true, run: h.regenerateStats });
+      actions.push({ key: 'stats', request: 'statUpdates', label: 'Re-generate Stats', icon: StatIcon, section: 'generate', disabled: sceneBlocked, menuOnly: true, run: h.regenerateStats });
     }
   }
   if (state.sceneImagesAvailable) {
     if (!state.hasImage) {
       actions.push({ key: 'image', label: 'Generate Scene Image', icon: ImagePlus, section: 'generate', disabled: sceneBlocked, spinning: sceneJob === 'image', menuOnly: true, run: h.sceneImage });
     }
-    actions.push({ key: 'tags', label: 'Write Scene Tags', icon: Dices, section: 'generate', disabled: sceneBlocked, spinning: sceneJob === 'tags', menuOnly: true, run: h.sceneTags });
+    actions.push({ key: 'tags', request: 'sceneTags', label: 'Write Scene Tags', icon: Dices, section: 'generate', disabled: sceneBlocked, spinning: sceneJob === 'tags', menuOnly: true, run: h.sceneTags });
   }
   actions.push({ key: 'edit', label: 'Edit', icon: Pencil, section: 'content', run: h.edit });
   // The TTS modal reads the latest turn's text, so only the latest bubble offers it.
@@ -101,7 +106,7 @@ export function choicesActions(
   if (!state.canRegenerate) return [];
   if (!state.hasChoices && state.busy && !state.regenerating) return [];
   return [{
-    key: 'regenerateChoices', label: 'Re-generate Choices', icon: ListRestart, section: 'generate',
+    key: 'regenerateChoices', request: 'choices', label: 'Re-generate Choices', icon: ListRestart, section: 'generate',
     disabled: state.busy, spinning: state.regenerating, run: regenerate,
   }];
 }
@@ -111,4 +116,9 @@ const SECTION_ORDER: BubbleAction['section'][] = ['generate', 'content', 'destru
 /** The actions as menu sections: generate, content, then destructive, with the empty ones dropped. */
 export function menuSections(actions: BubbleAction[]): BubbleAction[][] {
   return SECTION_ORDER.map((section) => actions.filter((a) => a.section === section)).filter((group) => group.length > 0);
+}
+
+/** `actions` with each request's endpoint line filled in. */
+export function withEndpoints(actions: BubbleAction[], tip: (kind: AIRequestType) => string): BubbleAction[] {
+  return actions.map((a) => (a.request ? { ...a, endpoint: tip(a.request) || undefined } : a));
 }

@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
+import { sentenceShapeViolation } from '@/test/copyShape';
 import {
   baseToken, tokenVariant, withVariant, variantLabelForToken,
   variableForToken, labelForToken, colorForToken,
-  variableAxes, decodeVariant, encodeVariant, ALL_VARIANT_IDS, NOW_LINE_VARIABLES,
-  PROMPT_KIND_VARIABLES,
+  variableAxes, decodeVariant, encodeVariant, NOW_LINE_VARIABLES,
+  PROMPT_KIND_VARIABLES, ALL_PROMPT_VARIABLES,
   type PromptVariable,
 } from './promptVariables';
 
@@ -83,12 +84,7 @@ describe('multi-axis variants (Stats: content × format)', () => {
     expect(encodeVariant(STATS, { numbers: null, descriptions: null, meaning: null, format: null })).toBeNull();
   });
 
-  it('lists every combined id, and a compound is not masked by its prefix', () => {
-    for (const id of ['descriptions', 'numbers', 'markdown', 'descriptions.markdown', 'numbers.markdown', 'summary', 'sublocations', 'reachable.summary.markdown']) {
-      expect(ALL_VARIANT_IDS).toContain(id);
-    }
-    // The real contract behind the longest-first ordering: a compound id decodes to BOTH axes rather than
-    // being truncated to its bare prefix (e.g. 'descriptions.markdown' isn't collapsed to 'descriptions').
+  it('decodes a compound id to both axes rather than its bare prefix', () => {
     expect(decodeVariant(STATS, 'descriptions.markdown')).toEqual({ numbers: null, descriptions: 'descriptions', meaning: null, format: 'markdown' });
   });
 
@@ -119,7 +115,9 @@ describe('multi-axis variants (Stats: content × format)', () => {
 
   it('gives Entities a scope axis (Here/Sub/Reachable) plus content, stats and format', () => {
     const ENT = variableForToken('<ENTITIES>')!;
-    expect(variableAxes(ENT).map((a) => a.id)).toEqual(['scope', 'content', 'stats', 'format']);
+    expect(variableAxes(ENT).map((a) => a.id)).toEqual([
+      'scope', 'withstats', 'withtraits', 'content', 'traits', 'stats', 'range', 'descriptor', 'description', 'format',
+    ]);
     expect(variantLabelForToken('<ENTITIES|reachable.summary.markdown>')).toBe('Reachable, Summary, Markdown');
     expect(variantLabelForToken('<ENTITIES|markdown>')).toBe('Markdown');
   });
@@ -150,11 +148,10 @@ describe('the Dictionary chip is narration-scoped', () => {
 });
 
 describe('phase 2 registry changes', () => {
-  it('offers Parent alongside the other location scopes, three per row', () => {
+  it('offers Parent alongside the other location scopes', () => {
     const LOC = variableForToken('<LOCATION>')!;
     const scope = variableAxes(LOC).find((a) => a.id === 'scope')!;
     expect(scope.options.map((o) => o.label)).toEqual(['Current', 'Sub', 'Parent', 'Reachable', 'Destinations']);
-    expect(scope.columns).toBe(3); // Current|Sub|Parent / Reachable|Destinations
     expect(variantLabelForToken('<LOCATION|parent.name>')).toBe('Parent, Name');
   });
 
@@ -184,3 +181,42 @@ describe('phase 2 registry changes', () => {
     expect(NOW_LINE_VARIABLES.every((v) => v.affixable)).toBe(true);
   });
 });
+
+describe('stat detail help', () => {
+  const help = (token: string) => Object.fromEntries(
+    variableAxes(variableForToken(token)!).filter((axis) => axis.row === 'Stat Detail').map((axis) => [axis.label, axis.help]),
+  );
+
+  it('reads the same on the Stats, Entities and Persona chips', () => {
+    const stats = help('<STATS DESCRIPTION>');
+    expect(Object.keys(stats)).toEqual(['Range', 'Descriptor', 'Description']);
+    expect(help('<ENTITIES>')).toEqual(stats);
+    expect(help('<PERSONA>')).toEqual(stats);
+  });
+
+  it('starts each piece with a verb and ends none with a period', () => {
+    for (const text of Object.values(help('<STATS DESCRIPTION>'))) {
+      expect(text).toMatch(/^Sends /);
+      expect(text).not.toMatch(/\.$/);
+    }
+  });
+});
+
+describe('registry help lines', () => {
+  const lines = ALL_PROMPT_VARIABLES.flatMap((variable) => variableAxes(variable).flatMap((axis) => [
+    axis.help, axis.rowHelp, axis.readOnlyHelp, ...axis.options.map((option) => option.help),
+  ].filter((text): text is string => !!text)));
+
+  it('covers every axis and option help the dialog shows as a tooltip', () => {
+    expect(lines.length).toBeGreaterThan(40);
+  });
+
+  it('follow the help-line shape, with no dash aside and no "character" for an entity', () => {
+    for (const text of lines) {
+      expect(sentenceShapeViolation(text), text).toBeNull();
+      expect(text, text).not.toMatch(/ — | - /);
+      expect(text, text).not.toMatch(/\bcharacters?\b/i);
+    }
+  });
+});
+

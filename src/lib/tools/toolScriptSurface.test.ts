@@ -61,10 +61,6 @@ describe('placeholders', () => {
     expect(messages('return placeholders.Weather + placeholders["Hair Color"];')).toEqual([]);
     expect(messages('placeholders.Weather = "sun";')).toEqual(['This script never returns, so the Tool sends its empty result.']);
   });
-
-  it('offers a snippet that reads one placeholder by name', () => {
-    expect(surface.snippets.map((s) => s.text)).toContain('placeholders["Name"]');
-  });
 });
 
 describe('args', () => {
@@ -80,16 +76,17 @@ describe('args', () => {
     expect(toolScriptSurface([]).members.get('args')).toEqual([]);
     expect(toolScriptSurface([{ ...params[0], name: '' }]).members.get('args')).toEqual([]);
   });
-
-  it('offers one Variable menu entry per parameter, bracketed where the name needs it', () => {
-    expect(surface.snippets.slice(0, 3).map((s) => s.text)).toEqual(['args.name', 'args.mood', 'args["place-name"]']);
-  });
 });
 
 describe('completions and diagnostics read the surface', () => {
   it('offers the world’s and the scene’s fields after a dot', () => {
     expect(labelsAt('return world.|')).toEqual(['entities', 'locations', 'dictionary']);
     expect(labelsAt('return scene.location.|')).toEqual(['id', 'name']);
+  });
+
+  it('reads the path through optional chaining and spaces, as the sandbox does', () => {
+    expect(labelsAt('return scene?.location?.|')).toEqual(['id', 'name']);
+    expect(labelsAt('return scene . location .|')).toEqual(['id', 'name']);
   });
 
   it('flags stat-code names in the Tool script’s words', () => {

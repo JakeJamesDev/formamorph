@@ -20,7 +20,6 @@ import { useEditorMode } from '@/lib/editorMode';
 import { EmptyListHint } from '@/components/EmptyListHint';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { labelPlaceholders } from '@/lib/placementLetters';
-import { PLAYER_BEARER } from '@/lib/bearers';
 import { gateConditions, gateOf, gateStates, type GateState } from '@/lib/traitGates';
 import { gateLine } from '@/lib/traitGateLine';
 import { cn } from '@/lib/utils';
@@ -48,7 +47,7 @@ const gateMeta = (gate: GateState | undefined, placeholders: Parameters<typeof l
 };
 
 /** `A`, `A and B`, `A, B and C`, each name in bold. */
-const bearerList = (names: readonly string[], placeholders: Placeholder[]) => {
+const ownerList = (names: readonly string[], placeholders: Placeholder[]) => {
   const bold = (n: string) => <strong><PlaceholderText text={n} placeholders={placeholders} /></strong>;
   return joinedList(names.map(bold));
 };
@@ -66,11 +65,11 @@ export function TraitDropRefusalNotice({ refusal, placeholders, onDismiss }: {
   return (
     <DropRefusalNotice onDismiss={onDismiss}>
       {refusal.reason === 'duplicate' ? (
-        <><PlaceholderText text={refusal.bearer} placeholders={placeholders} /> already has {name}.</>
+        <><PlaceholderText text={refusal.owner} placeholders={placeholders} /> already has {name}.</>
       ) : refusal.reason === 'blueprint-linked' ? (
         <>
-          {name} stays in Blueprints, because {bearerList(refusal.bearers, placeholders)}{' '}
-          {refusal.bearers.length === 1 ? 'links' : 'link'} to it or to something in it. Remove those links first.
+          {name} stays in Blueprints, because {ownerList(refusal.owners, placeholders)}{' '}
+          {refusal.owners.length === 1 ? 'links' : 'link'} to it or to something in it. Remove those links first.
         </>
       ) : refusal.reason === 'into-blueprints' ? (
         refusal.reader.kind === 'requires' ? (
@@ -101,7 +100,7 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
   const lists = useMemo(() => ({ traits, traitGroups }), [traits, traitGroups]);
   const tree = useMemo(
     () => (entityRoot
-      ? entityRootTraitTree(entityRoot.bearer, entityRoot.world)
+      ? entityRootTraitTree(entityRoot.owner, entityRoot.world)
       : ownedTraitTree(lists, entities, [], { links: true, emptySystemNodes: advanced })),
     [lists, entities, advanced, entityRoot],
   );
@@ -109,19 +108,19 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
   const { ask: askRemoveOriginal, dialog: removeDialog } = useRemoveWorldTrait();
 
   const detach = (entityId: string, linkId: string) => {
-    const bearer = entityRoot?.bearer.id === entityId ? entityRoot.bearer : entities.find((e) => e.id === entityId);
-    const res = bearer && detachLink(originals, bearer, linkId);
+    const owner = entityRoot?.owner.id === entityId ? entityRoot.owner : entities.find((e) => e.id === entityId);
+    const res = owner && detachLink(originals, owner, linkId);
     if (!res) return;
     editEntity(entityId, () => res.entity);
     onSelect(res.newId);
   };
 
-  // The gate a row shows. A link row reads its bearer's gate on the original. A one-entity tree's own rows
+  // The gate a row shows. A link row reads its owner's gate on the original. A one-entity tree's own rows
   // have no owner entry, since the editor edits them as the root; their gates are still the entity's.
   const gateOfRow = (node: FlatTraitNode, linkRow: LinkRow | undefined): GateState | undefined => (
     linkRow
       ? gateOf(gates, linkRow.entityId, linkRow.originalId)
-      : gateOf(gates, tree.ownerOf.get(node.id) ?? entityRoot?.bearer.id ?? PLAYER_BEARER, node.id)
+      : gateOf(gates, tree.ownerOf.get(node.id) ?? entityRoot?.owner.id ?? null, node.id)
   );
 
   const linkRowSpec = (node: FlatTraitNode, linkRow: LinkRow, select: (id: string) => void): TreeRowSpec => {
@@ -145,7 +144,7 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
         } : {}),
       };
     }
-    // A link row reads its bearer's gate on the original.
+    // A link row reads its owner's gate on the original.
     const { unresolved, meta, metaTitle } = isGroup ? {} : gateMeta(gateOfRow(node, linkRow), placeholders);
     const overrides = linkRow.link.overrides?.[linkRow.originalId];
     const modified = overrides && Object.keys(overrides).length ? 'Modified for this link' : undefined;
@@ -233,8 +232,8 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
     onDrop: (activeId, overId, offsetLeft, collapsed) => {
       // A one-entity tree reorders the entity's own items among its links, and nothing else moves.
       if (entityRoot) {
-        const moved = applyEntityRootDrop(entityRoot.bearer, entityRoot.world, collapsed, activeId, overId, offsetLeft, TREE_INDENT);
-        if (moved) editEntity(entityRoot.bearer.id, () => moved);
+        const moved = applyEntityRootDrop(entityRoot.owner, entityRoot.world, collapsed, activeId, overId, offsetLeft, TREE_INDENT);
+        if (moved) editEntity(entityRoot.owner.id, () => moved);
         return;
       }
       // Creating a link is Advanced only; existing links still drag in Simple.

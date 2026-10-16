@@ -248,8 +248,8 @@ The **Logs** tab lists what the game changed: your starting traits and location,
 |---|---|
 | Language box | Sets the language or style the AI writes in, the same as **AI Language** in **Settings** |
 | Persona row | Shows who you play. **Change** opens **Change Persona**. See [Change It in Game](Personas#change-it-in-game). |
-| **Stats** | Your stats. **Edit Stats** lets you drag them; **Re-generate Stats** asks the AI again. Shows only when the world has stats you can see. |
-| **Traits** | Your active traits. Filter them, or switch one on or off. |
+| **Stats** | The global stats under **Global**, and your persona's stats under its name. **Edit Stats** lets you drag them; **Re-generate Stats** asks the AI again. Shows only when the world has stats you can see. |
+| **Traits** | Your active traits. A **Global** section holds the global traits you picked. Your persona's section is marked **You**. Filter them, or switch one on or off. |
 | **Location** | Where you are, its description and the places it connects to |
 
 ## The Entity Dialog

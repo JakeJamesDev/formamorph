@@ -35,7 +35,7 @@
 - [🧪 Test Bench](Test-Bench)
 - [🪪 Personas for Authors](Persona-Authoring)
 - [📐 World Format](WorldFormat)
-- [🧮 Stat Code Guide](StatCodeGuide)
+- [🧮 Scripts Guide](ScriptsGuide)
 - [🔗 Linked Content](LinkedContent)
 
 **Project**

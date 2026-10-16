@@ -6,7 +6,7 @@ import type { Surface } from '@/lib/surface/surfaceRegistry';
 import { sseReply, sseResponse, textSnapshot, textTarget } from '@/test/aiTextFixtures';
 import { riderPreset } from '@/test/helpFixtures';
 import { HELP_CHIP } from './helpChips';
-import { DEFAULT_CODE_RIDER, STAT_CODE_TAB } from './helpCodeRider';
+import { DEFAULT_CODE_RIDER, SCRIPT_TAB } from './helpCodeRider';
 import { CODE_TEST_RIDER_LINE } from './helpCodeTest';
 import { helpUserMessage } from './helpPrompt';
 import { askHelp, type HelpEvent, type HelpQuestion } from './helpSession';
@@ -19,7 +19,7 @@ const PAGES = {
 const index = createDocsIndex({ pages: PAGES, sidebar: '- [World Editor Stats](World-Editor-Stats)\n- [Traits](Traits)\n' });
 
 const surface = (...tabs: SurfaceId[]): Surface => ({ screen: 'worldEditor', dialog: null, tabs });
-const CODE_TAB = surface(STAT_CODE_TAB);
+const CODE_TAB = surface(SCRIPT_TAB);
 
 type FetchSpy = ReturnType<typeof vi.fn<(url: string, init: RequestInit) => Promise<Response>>>;
 interface SentBody { messages: { role: string; content: string }[]; max_tokens?: number }

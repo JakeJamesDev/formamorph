@@ -14,7 +14,7 @@ import { ActionIcon } from '@/lib/actionIcons';
 import { toast } from 'react-toastify';
 import { toastError } from '@/lib/linkToast';
 import { downloadBlob } from '@/lib/downloadBlob';
-import { filesFrom } from '@/lib/importFiles';
+import { importPackFile } from '@/lib/importFiles';
 import { useResetOnOpen } from '@/lib/useResetOnOpen';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { cn } from '@/lib/utils';
@@ -32,14 +32,16 @@ import {
   resolveSlotValue,
   validateSlotValues,
   isNameSlotType,
+  ownerStatAnswer,
   PERSONA_TRAIT_OWNER,
   templatesForTiming,
   type NameSlotType,
   type StatCodeTemplate,
   type TemplateSlot,
 } from '@/lib/statCodeTemplates';
-import { REPLACE_CODE_TITLE, replaceCodeDescription, STAT_CODE_TIMINGS, TIMING_LABEL, type StatCodeTiming } from '@/lib/statCodeTiming';
+import { REPLACE_CODE_DESCRIPTION, REPLACE_CODE_TITLE, STAT_CODE_TIMINGS, TIMING_LABEL, type StatCodeTiming } from '@/lib/statCodeTiming';
 import { STAT_CODE_SURFACE } from '@/lib/statCodeSurface';
+import type { VariableTreeOwner } from '@/lib/statCodeVariableTree';
 import { keyedEntity, type CodeEntityNames, type CodeTraitPlace } from '@/lib/statCodeAnalysis';
 import { BreadcrumbPicker, type BreadcrumbPickerRow } from '@/components/ui/breadcrumb-picker';
 import { WORLD_BREADCRUMB } from '@/lib/traitGates';
@@ -86,7 +88,10 @@ const productionRepository: StatTemplateRepository = {
 
 /** The world's names the name slots pick from, under their code names. */
 interface SlotNames {
+  /** The world's stats, which `stats` keys. */
   stat: readonly Stat[];
+  /** The owner's own stats, which `owner.stats` keys. Absent in a world stat's box. */
+  ownerStat?: readonly Stat[];
   /** The names `placeholders["X"]` reaches, under their Placeholders-tab folders. */
   placeholder: readonly CodeTraitPlace[];
   /** The world's own traits, which `traits` keys. */
@@ -103,6 +108,9 @@ const PROMPTS: Record<NameSlotType, { pick: string; search: string }> = {
   trait: { pick: 'Pick a trait…', search: 'Search traits' },
   entity: { pick: 'Pick an entity…', search: 'Search entities' },
 };
+
+const OWNER_CRUMB: readonly string[] = ['Owner'];
+const NO_STATS: readonly Stat[] = [];
 
 /** Each name once, in first-seen order, as rows with no breadcrumb. */
 const plainRows = (names: readonly string[] | null): SlotRow[] =>
@@ -141,8 +149,15 @@ const withAnswer = (answers: Record<string, string>, slots: readonly TemplateSlo
 /** What a slot's picker offers, given the answers so far. A tied trait slot lists its owner's traits. */
 function slotOptions(slot: TemplateSlot, slots: readonly TemplateSlot[], values: Record<string, string>, names: SlotNames): SlotRow[] {
   switch (slot.type) {
-    case 'stat':
-      return names.stat.map((stat) => ({ key: stat.id, value: stat.name, name: stat.name }));
+    case 'stat': {
+      // An owned box lists both lists under a crumb each; the answer carries the list, so equal names stay two rows.
+      const crumb = names.ownerStat ? { breadcrumb: WORLD_BREADCRUMB } : {};
+      const world = names.stat.map((stat) => ({ key: stat.id, value: stat.name, name: stat.name, ...crumb }));
+      const owner = (names.ownerStat ?? []).map((stat) => ({
+        key: `owner:${stat.id}`, value: ownerStatAnswer(stat.name), name: stat.name, breadcrumb: OWNER_CRUMB,
+      }));
+      return [...owner, ...world];
+    }
     case 'placeholder':
       return names.placeholder.map((place) => ({ key: place.id, value: place.name, name: place.name, breadcrumb: place.path }));
     case 'entity':
@@ -286,6 +301,8 @@ export function StatCodeTemplateDialog({
   onOpenChange,
   timing,
   stats,
+  owner,
+  ownerStats = NO_STATS,
   currentStatId,
   hasExistingCode,
   onInsert,
@@ -300,8 +317,13 @@ export function StatCodeTemplateDialog({
   /** The box this menu fills. It lists only the templates written for that box, and a template saved here
    *  starts out belonging to it. */
   timing: StatCodeTiming;
-  /** Under their code names: what a slot fills in has to be what the run reaches. */
+  /** The world's stats, under their code names: what a slot fills in has to be what the run reaches. */
   stats: Stat[];
+  /** The kind of owner the box's code runs under. Its stat slots list `ownerStats` beside `stats`, and its
+   *  Variable menu gets an Owner group. */
+  owner?: VariableTreeOwner['kind'];
+  /** The owner's own stats, under their code names. */
+  ownerStats?: readonly Stat[];
   /** Excluded from stat pickers — a stat built from itself is a mistake, and templates reach their own
    *  value through `self` rather than by name. */
   currentStatId?: string;
@@ -349,10 +371,16 @@ export function StatCodeTemplateDialog({
   const selected = all.find(template => template.id === selectedId) ?? all[0];
   const slotNames = useMemo<SlotNames>(() => ({
     stat: stats.filter(stat => stat.id !== currentStatId && stat.name),
+    ...(owner ? { ownerStat: ownerStats.filter(stat => stat.id !== currentStatId && stat.name) } : {}),
     placeholder: placeholderPlaces,
     trait: traitPlaces,
     entities,
-  }), [stats, currentStatId, placeholderPlaces, traitPlaces, entities]);
+  }), [stats, owner, ownerStats, currentStatId, placeholderPlaces, traitPlaces, entities]);
+  // The template editor has no world, so its Owner group types over each name.
+  const treeOwner = useMemo<VariableTreeOwner | null>(() => {
+    if (!owner) return null;
+    return owner === 'entity' ? { kind: 'entity', entity: null } : { kind: 'blueprint', statNames: null };
+  }, [owner]);
   // Every stat, not the pickable ones: a slot picker must not offer the stat being edited (a formula
   // reading its own value from the list is a loop), but code written by hand may read it by name, so its
   // name belongs in the completions.
@@ -430,12 +458,7 @@ export function StatCodeTemplateDialog({
     }
   };
 
-  const importPack = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const [file] = filesFrom(event);
-    // Clearing the input is what lets the same file be chosen twice — an unchanged value fires no change.
-    event.target.value = '';
-    if (file) void importPackText(() => file.text());
-  };
+  const importPack = (event: React.ChangeEvent<HTMLInputElement>) => importPackFile(event, importPackText);
 
   const requestImport = () => {
     if (fileTransfer) {
@@ -506,6 +529,7 @@ export function StatCodeTemplateDialog({
                 ariaLabel="Template code"
                 surface={STAT_CODE_SURFACE}
                 statNames={statNames}
+                owner={treeOwner}
                 slots
                 className="flex-1"
                 preview={(
@@ -635,7 +659,7 @@ export function StatCodeTemplateDialog({
           open={confirmReplace}
           onOpenChange={setConfirmReplace}
           title={REPLACE_CODE_TITLE}
-          description={replaceCodeDescription('template')}
+          description={REPLACE_CODE_DESCRIPTION}
           onConfirm={doInsert}
         />
       </DialogContent>

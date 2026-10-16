@@ -10,6 +10,7 @@ import { helpWorld } from '@/lib/formaquestion/helpWorld';
 import { surfaceRegistry } from '@/lib/surface/surfaceRegistry';
 import { turnActivity, useTurnGenerating } from '@/lib/turnActivity';
 import { useMountedRef } from '@/lib/useMountedRef';
+import { randomUUID } from '@/lib/uuid';
 import type { ImageAttachment } from '@/types';
 import type { HelpAi } from './useHelpAi';
 
@@ -100,7 +101,7 @@ export function useHelpChat(index: DocsIndex | null, ai: HelpAi, settings: HelpS
     const sentSettings = settingsRef.current;
     const controller = new AbortController();
     running.current = controller;
-    const id = crypto.randomUUID();
+    const id = randomUUID();
     const images = aiRef.current.readsImages ? pendingRef.current : [];
     setPending([]);
     const change = (fields: Partial<HelpExchange>) => {

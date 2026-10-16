@@ -8,10 +8,12 @@ import {
   emptyEntryDraft, entryDefaults, entryGateInput, withLocationPick, withPersonaPick, withSettledTraits,
   type EntryDraft, type EntryTraitWorld,
 } from '@/lib/entryDraft';
-import { gateStates, settle, switchTrait, type SettleResult } from '@/lib/traitGates';
+import { gateStates, gateTreeOf, settle, switchTrait, type SettleResult } from '@/lib/traitGates';
+import { scoped } from '@/lib/scope';
+import { cascadeOffInput } from '@/lib/traitRuntime';
 import type { TraitCascade } from '@/components/game/SetupTraitList';
 import { namedStartLocation, offeredStartLocations, withoutPersona } from '@/lib/personaPick';
-import type { Entity, EntityMetadata, GameLocation, PersonaRef, Trait } from '@/types';
+import type { Entity, EntityMetadata, GameLocation, PersonaRef, Stat, Trait } from '@/types';
 
 const identity = (text: string) => text;
 const traitIdentity = (_trait: Trait, text: string) => text;
@@ -132,7 +134,7 @@ function Harness({ initialDictionaryItems = dictionaryItems, ...props }: Partial
       locations={[]}
       resolveText={identity}
       resolveTraitText={traitIdentity}
-      selectedTraits={{ world: selectedTraits }}
+      selectedTraits={scoped(selectedTraits)}
       selectedLocationId={selectedLocationId}
       libraryEntities={libraryEntities}
       selectedEntityIds={selectedEntityIds}
@@ -263,29 +265,29 @@ describe('EnterWorldWorkspace', () => {
     render(<Harness onTraitSelect={onTraitSelect} />);
 
     expect(fireEvent.click(screen.getByText('Local'))).toBe(true);
-    expect(onTraitSelect).toHaveBeenLastCalledWith('local', 'world');
+    expect(onTraitSelect).toHaveBeenLastCalledWith('local', null);
     expect(onTraitSelect).toHaveBeenCalledTimes(1);
 
     onTraitSelect.mockClear();
     fireEvent.click(screen.getByRole('radio', { name: 'Local' }));
-    expect(onTraitSelect).toHaveBeenLastCalledWith('local', 'world');
+    expect(onTraitSelect).toHaveBeenLastCalledWith('local', null);
     expect(onTraitSelect).toHaveBeenCalledTimes(1);
 
     onTraitSelect.mockClear();
     await user.click(screen.getByRole('radio', { name: 'Outsider' }));
-    expect(onTraitSelect).toHaveBeenLastCalledWith('outsider', 'world');
+    expect(onTraitSelect).toHaveBeenLastCalledWith('outsider', null);
     expect(onTraitSelect).toHaveBeenCalledTimes(1);
 
     fireEvent.click(screen.getByRole('button', { name: /Practice/ }));
     expect(screen.getByRole('checkbox', { name: 'Artisan' })).not.toBeChecked();
     onTraitSelect.mockClear();
     await user.click(screen.getByText('Artisan'));
-    expect(onTraitSelect).toHaveBeenLastCalledWith('artisan', 'world');
+    expect(onTraitSelect).toHaveBeenLastCalledWith('artisan', null);
     expect(onTraitSelect).toHaveBeenCalledTimes(1);
 
     onTraitSelect.mockClear();
     await user.click(screen.getByRole('checkbox', { name: 'Artisan' }));
-    expect(onTraitSelect).toHaveBeenLastCalledWith('artisan', 'world');
+    expect(onTraitSelect).toHaveBeenLastCalledWith('artisan', null);
     expect(onTraitSelect).toHaveBeenCalledTimes(1);
   });
 
@@ -989,7 +991,7 @@ describe('world personas in the Persona category', () => {
 describe('EnterWorldWorkspace cast pages', () => {
   const owned = (id: string, extra: Partial<Trait> = {}): Trait => ({ id, name: id[0].toUpperCase() + id.slice(1), statChanges: [], ...extra });
   const ash: Entity = {
-    id: 'ash', name: 'Ash', persona: true, images: ['data:image/png;base64,ash'], playerDescription: 'A grey wolf.',
+    id: 'ash', name: 'Ash', persona: true, images: [{ data: 'data:image/png;base64,ash' }], playerDescription: 'A grey wolf.',
     traitPlacement: { groupId: 'origin', order: 1 },
     traits: [owned('tamed', { isDefault: true }), owned('guard', { requires: [{ all: [{ kind: 'playingAs', id: 'ash' }] }] })],
   };
@@ -1006,10 +1008,9 @@ describe('EnterWorldWorkspace cast pages', () => {
     const [categoryIndex, setCategoryIndex] = useState(0);
     const [cascade, setCascade] = useState<TraitCascade | null>(null);
     const input = entryGateInput(cast, draft);
-    const ownerOf = (id: string) => input.owners.find((o) => o.id === id)!;
-    const settled = (base: EntryDraft, result: SettleResult, because: string) => {
+        const settled = (base: EntryDraft, result: SettleResult, because: string) => {
       setDraft(withSettledTraits(base, result));
-      const off = result.turnedOff.map((r) => ownerOf(r.ownerId).traits.find((t) => t.id === r.traitId)!.name);
+      const off = result.turnedOff.map((r) => gateTreeOf(input, r.ownerId)!.traits.find((t) => t.id === r.traitId)!.name);
       setCascade(off.length ? { off, because } : null);
     };
     return (
@@ -1018,11 +1019,11 @@ describe('EnterWorldWorkspace cast pages', () => {
         traitGroups={[...cast.traitGroups]}
         traitEntities={cast.entities}
         resolveEntityText={(_entity, text) => text}
-        // The bearer the workspace hands over is the Character Name in a trait's own text.
-        resolveTraitText={(_trait, text, bearer) => text.replace('{{char}}', bearer?.name ?? 'you')}
-        selectedTraits={{ ...draft.ownedTraitIds, world: draft.traitIds }}
+        // The owner the workspace hands over is the Character Name in a trait's own text.
+        resolveTraitText={(_trait, text, owner) => text.replace('{{char}}', owner?.name ?? 'you')}
+        selectedTraits={scoped(draft.traitIds, draft.ownedTraitIds)}
         onTraitSelect={(id, ownerId) => {
-          const result = switchTrait(input, ownerId, id, draft.cascadeOffTraitIds);
+          const result = switchTrait(input, ownerId, id, cascadeOffInput(draft.cascadeOffTraitIds));
           if (result) settled(draft, result, id);
         }}
         traitGates={gateStates(input)}
@@ -1032,7 +1033,7 @@ describe('EnterWorldWorkspace cast pages', () => {
         persona={draft.persona}
         onPersonaChange={(ref) => {
           const next = { ...draft, persona: ref };
-          settled(next, settle(entryGateInput(cast, next), next.cascadeOffTraitIds), ref.source === 'none' ? 'None' : ref.entityId);
+          settled(next, settle(entryGateInput(cast, next), cascadeOffInput(next.cascadeOffTraitIds)), ref.source === 'none' ? 'None' : ref.entityId);
         }}
         categoryIndex={categoryIndex}
         onCategoryChange={setCategoryIndex}
@@ -1053,6 +1054,46 @@ describe('EnterWorldWorkspace cast pages', () => {
     expect(within(main).getByText('A grey wolf.')).toBeInTheDocument();
     expect(within(main).getByRole('checkbox', { name: 'Tamed' })).toBeChecked();
     expect(within(main).getByRole('checkbox', { name: 'Guard' })).not.toBeDisabled();
+  });
+
+  it("shows an owned trait's change to its owner's own stat on the owner's page", async () => {
+    const user = userEvent.setup();
+    const howling: Entity = {
+      ...ash,
+      stats: [{ id: 'howl', name: 'Howl', min: 0, max: 10, value: 1 } as Stat],
+      traits: [owned('tamed', { isDefault: true, statChanges: [{ statId: 'howl', value: 2, type: 'starting' }] })],
+    };
+    render(<CastHarness cast={{ ...castWorld, entities: [howling, bob] }} />);
+    await user.click(within(nav()).getByRole('button', { name: /^Ash/ }));
+    expect(within(screen.getByRole('main')).getByRole('listitem')).toHaveTextContent('Howl: +2');
+  });
+
+  it("shows an owned trait's change to its owner's own stat on a group page under the owner", async () => {
+    const user = userEvent.setup();
+    const howling: Entity = {
+      ...ash,
+      stats: [{ id: 'howl', name: 'Howl', min: 0, max: 10, value: 1 } as Stat],
+      traitGroups: [{ id: 'pack', name: 'Pack', parentId: null }],
+      traits: [owned('alpha', { groupId: 'pack', statChanges: [{ statId: 'howl', value: 4, type: 'regen' }] })],
+    };
+    render(<CastHarness cast={{ ...castWorld, entities: [howling, bob] }} />);
+    await user.click(within(nav()).getByRole('button', { name: /^Pack/ }));
+    expect(within(screen.getByRole('main')).getByRole('listitem')).toHaveTextContent('Howl: +4 (regen)');
+  });
+
+  it("shows slot 0 on an entity's page even when slot 0 carries a Visibility rule that would hide it in play", async () => {
+    const user = userEvent.setup();
+    const ruled: Entity = {
+      ...ash,
+      images: [
+        { data: 'data:image/png;base64,ash', requires: [{ all: [{ kind: 'trait', id: 'knight', name: 'Knight' }] }] },
+        { data: 'data:image/png;base64,other' },
+      ],
+    };
+    render(<CastHarness cast={{ ...castWorld, entities: [ruled, bob] }} />);
+    await user.click(within(nav()).getByRole('button', { name: /^Ash/ }));
+    const main = screen.getByRole('main');
+    expect(within(main).getByTestId('persona-portrait').querySelector('img')).toHaveAttribute('src', 'data:image/png;base64,ash');
   });
 
   it('places a world entity node where the author put it, with the user icon, and ends the top level with the rest', () => {
@@ -1081,7 +1122,7 @@ describe('EnterWorldWorkspace cast pages', () => {
     expect(within(screen.getByRole('main')).getByRole('heading', { name: /^Bob/ })).toHaveTextContent('You');
   });
 
-  it("disables Begin while an entity bearer's group is short, and enables it once that bearer picks enough", async () => {
+  it("disables Begin while an entity owner's group is short, and enables it once that owner picks enough", async () => {
     const bonded = {
       ...ash, traitGroups: [{ id: 'bond', name: 'Bond', parentId: null, minPicks: 1 }],
       traits: [...ash.traits!, owned('wild', { groupId: 'bond' })],
@@ -1139,7 +1180,7 @@ describe('EnterWorldWorkspace cast pages', () => {
     };
     const NONE: PersonaRef = { source: 'none' };
 
-    it("shows a bearer's linked group as its own page under the bearer, defaults picked, and never at the top level", async () => {
+    it("shows an owner's linked group as its own page under the owner, defaults picked, and never at the top level", async () => {
       const user = userEvent.setup();
       render(<CastHarness cast={linked} persona={NONE} />);
       const names = within(nav()).getAllByRole('button').map((b) => b.textContent ?? '');
@@ -1157,7 +1198,7 @@ describe('EnterWorldWorkspace cast pages', () => {
       expect(within(screen.getByRole('main')).getByText('Bob keeps an oath.')).toBeInTheDocument();
     });
 
-    it("changes one bearer's pick without touching another bearer's row of the same original", async () => {
+    it("changes one owner's pick without touching another owner's row of the same original", async () => {
       const user = userEvent.setup();
       render(<CastHarness cast={linked} persona={NONE} />);
       await user.click(within(nav()).getByRole('button', { name: /^Classes/ }));

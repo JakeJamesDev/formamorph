@@ -1,6 +1,6 @@
 # 05: Background Pass Queue With Digest And Milestone
 
-Status: ready-for-agent
+Status: done
 Blocked by: 01, 02
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high

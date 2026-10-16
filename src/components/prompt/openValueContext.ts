@@ -1,5 +1,6 @@
 import { createContext } from 'react';
 import type { NodeKey } from 'lexical';
+import type { TokenValues } from '@/lib/promptValues';
 
 /** The slot an open chip keeps its value in. */
 export const VALUE_SLOT = 'value';
@@ -35,6 +36,10 @@ export interface OpenValueView {
 
 /** Token → the value its chip opens on, for the Values tab. */
 export const OpenValuesContext = createContext<Record<string, OpenValueView>>({});
+
+/** Where a chip's Chip Options reads the value it shows: the lookup the field's Preview renders from, so the
+ *  dialog and the Preview tab cannot disagree. Absent where the field has no scene to read. */
+export const ChipReadsContext = createContext<TokenValues | undefined>(undefined);
 
 /**
  * The "Edit Value" path from a chip's flyout to its open value. The flyout asks, the Values tab opens, and

@@ -2,15 +2,17 @@
 // and the stats each entity owns once its links are read through their originals. This module is the one place
 // that expands a stat link, for the editor and for play.
 
-import type { Entity, Stat, StatGroup, StatLink, StatLinkFields, StatLinkOverrides } from '@/types';
+import type { Entity, Script, Stat, StatGroup, StatLink, StatLinkFields, StatLinkOverrides } from '@/types';
 import { effectiveRecord, sameValue, withOverride, withoutOverride, type EffectiveRecord } from './blueprints';
 import { groupsBelow } from './traitTree';
 import { removeStatGroup, statRootCount, statsInTreeOrder } from './statGroupTree';
 import { buildTree, flattenTree, type TreeLeaf } from './groupTree';
-import type { BearerChoice } from './bearerChoices';
+import type { OwnerChoice } from './ownerChoices';
 import type { HeldReason } from './heldReasons';
+import { ancestors, parentLookup } from './ancestors';
 import { randomUUID } from './uuid';
 import { newStat } from './blankWorld';
+import { regenUnitOf } from './regenUnits';
 
 /** The tree place a link or leaf carries: its group and, when set, its order. */
 export const placeOf = (item: { groupId?: string | null; order?: number }): { groupId: string | null; order?: number } =>
@@ -48,6 +50,14 @@ export function statBlueprint(world: StatLinkWorld, id: string): Stat | undefine
   return statBlueprintIds(world).has(id) ? world.stats.find((s) => s.id === id) : undefined;
 }
 
+/** The stats of the Blueprint group `stat` sits in, itself included: what its code's `owner.stats` holds. A
+ *  Blueprint stat directly under Blueprints belongs to no group of its own, so it holds itself alone. */
+export function blueprintGroupStats(world: StatLinkWorld, stat: Stat): Stat[] {
+  const group = world.statGroups.find((g) => g.id === stat.groupId);
+  if (!group || group.system === 'blueprints') return [stat];
+  return world.stats.filter((s) => s.groupId === group.id);
+}
+
 /** What a link may point at: a stat or a stat group inside Blueprints. Blueprints itself is not an original. */
 export type StatOriginal = { kind: 'stat'; item: Stat } | { kind: 'group'; item: StatGroup };
 
@@ -78,7 +88,7 @@ export function statBroughtIds(world: StatLinkWorld, originalId: string): string
 
 /** The Blueprint stats and the groups that hold one, as a drill-down flyout's rows in tree order. A row in the
  *  Blueprints group itself sits at the top level. */
-export function statBlueprintChoices(world: StatLinkWorld): BearerChoice[] {
+export function statBlueprintChoices(world: StatLinkWorld): OwnerChoice[] {
   const bp = statBlueprintsGroup(world.statGroups);
   if (!bp) return [];
   const inside = statBlueprintsSubtreeIds(world.statGroups);
@@ -86,15 +96,20 @@ export function statBlueprintChoices(world: StatLinkWorld): BearerChoice[] {
   const groups = world.statGroups.filter((g) => g.id !== bp.id && inside.has(g.id)).map((g) => ({ ...g, parentId: up(g.parentId) }));
   const stats = world.stats.filter((s) => s.groupId != null && inside.has(s.groupId)).map((s) => ({ ...s, groupId: up(s.groupId) }));
   const holdsStat = new Set<string>();
-  for (const s of stats) for (let at = s.groupId; at; at = groups.find((g) => g.id === at)?.parentId ?? null) holdsStat.add(at);
-  return flattenTree(buildTree(groups, stats)).flatMap((row): BearerChoice[] => {
-    if (row.leaf) return [{ kind: 'bearer', id: row.leaf.id, name: row.leaf.name, parentId: row.parentId }];
+  const parentOfGroup = parentLookup(groups, (g) => g.parentId);
+  for (const s of stats) {
+    if (!s.groupId) continue;
+    holdsStat.add(s.groupId);
+    for (const above of ancestors(s.groupId, parentOfGroup)) holdsStat.add(above);
+  }
+  return flattenTree(buildTree(groups, stats)).flatMap((row): OwnerChoice[] => {
+    if (row.leaf) return [{ kind: 'owner', id: row.leaf.id, name: row.leaf.name, parentId: row.parentId }];
     return row.group && holdsStat.has(row.group.id) ? [{ kind: 'group', id: row.group.id, name: row.group.name, parentId: row.parentId }] : [];
   });
 }
 
-/** The world's stats without Blueprints: the player's stats. The same list when it holds no Blueprint. */
-export function playerStatsOf<T extends Stat>(stats: T[], groups: readonly StatGroup[]): T[] {
+/** The world's stats without Blueprints: the global stats. The same list when it holds no Blueprint. */
+export function globalStatsOf<T extends Stat>(stats: T[], groups: readonly StatGroup[]): T[] {
   const inBlueprints = statBlueprintsSubtreeIds(groups);
   if (!inBlueprints.size || !stats.some((s) => s.groupId != null && inBlueprints.has(s.groupId))) return stats;
   return stats.filter((s) => s.groupId == null || !inBlueprints.has(s.groupId));
@@ -102,7 +117,7 @@ export function playerStatsOf<T extends Stat>(stats: T[], groups: readonly StatG
 
 // ---- One link ----
 
-/** The overridable fields as the original carries them, absent ones read as off or empty. The Initial Value is
+/** The overridable fields as the original carries them, absent ones read as off or empty. The Base Value is
  *  the stored starting value when the original has one, since a new game seeds from it. */
 export const statLinkFieldsOf = (stat: Stat): StatLinkFields => ({
   type: stat.type,
@@ -111,10 +126,10 @@ export const statLinkFieldsOf = (stat: Stat): StatLinkFields => ({
   max: stat.max,
   value: stat.starting ?? stat.value ?? 0,
   regen: stat.regen ?? 0,
+  regenUnit: regenUnitOf(stat),
   descriptors: stat.descriptors ?? [],
   thresholdUnit: stat.thresholdUnit ?? 'raw',
-  beforeCode: stat.beforeCode ?? '',
-  code: stat.code ?? '',
+  scripts: stat.scripts ?? [],
   morphBindings: stat.morphBindings ?? [],
   enabled: stat.enabled !== false,
   hidden: stat.hidden === true,
@@ -129,13 +144,13 @@ export const statLinkState = (original: Stat, link: StatLink): EffectiveRecord<S
   effectiveRecord(statLinkFieldsOf(original), link.overrides?.[original.id]);
 
 /** The original stat as `link` reads it, at `at`: the link's own place by default. The id and name stay the
- *  original's, so in play each bearer holds its own value under the original's id. */
+ *  original's, so in play each owner holds its own value under the original's id. */
 export function linkedStat(original: Stat, link: StatLink, at: { groupId: string | null; order?: number } = placeOf(link)): Stat {
   const { groupId: _g, order: _o, ...base } = original;
   const { record, overridden } = statLinkState(original, link);
   if (!overridden.length && original.starting === undefined) return { ...base, ...at };
   const fields = Object.fromEntries(overridden.map((field) => [field, record[field]]));
-  // The Initial Value stands alone: a stored starting value would otherwise win at the seed.
+  // The Base Value stands alone: a stored starting value would otherwise win at the seed.
   const { starting: _s, ...rest } = base;
   return { ...rest, ...(original.starting !== undefined ? { value: record.value } : {}), ...fields, ...at };
 }
@@ -163,10 +178,29 @@ export function setStatLinkEdits(link: StatLink, original: Stat, edited: Stat): 
   return overrides === before ? link : withStatOverrides(link, original.id, overrides);
 }
 
+/**
+ * The link with its scripts override set to `scripts`, as a rename rewrites both sides. The snapshot of the
+ * Blueprint's scripts moves from `before` to `after` only where it read `before`, so a stale override stays stale.
+ */
+export function setStatLinkScripts(
+  link: StatLink, statId: string, scripts: Script[], before: readonly Script[], after: Script[],
+): StatLink {
+  const current = link.overrides?.[statId]?.scripts;
+  if (!current) return link;
+  const blueprint = sameValue(current.blueprint, before) ? after : current.blueprint;
+  return withStatOverrides(link, statId, withOverride(link.overrides?.[statId], 'scripts', scripts, blueprint));
+}
+
+/** Fields one Reset clears together: Regen's number and the unit it shows in are one field on screen. */
+const RESET_WITH: Partial<Record<keyof StatLinkFields, (keyof StatLinkFields)[]>> = { regen: ['regenUnit'] };
+
 /** The link reading `field` on one original stat live again. The same link when it did not override it. */
 export function resetStatLinkField(link: StatLink, statId: string, field: keyof StatLinkFields): StatLink {
   const current = link.overrides?.[statId];
-  return current?.[field] ? withStatOverrides(link, statId, withoutOverride(current, field)) : link;
+  if (!current) return link;
+  let next: StatLinkOverrides | undefined = current;
+  for (const f of [field, ...(RESET_WITH[field] ?? [])]) next = withoutOverride(next, f);
+  return next === current ? link : withStatOverrides(link, statId, next);
 }
 
 /** The link reading its original live everywhere: Reset to Blueprint. */
@@ -394,7 +428,7 @@ export interface StatBlueprintsRemoval {
   entities: Entity[];
   /** Links turned into their entity's own stats. */
   detached: number;
-  /** Whether any unlinked Blueprint stat or group moves to the top level, where its stats become player stats. */
+  /** Whether any unlinked Blueprint stat or group moves to the top level, where its stats become global stats. */
   movedUp: boolean;
 }
 
@@ -426,10 +460,10 @@ export function removeStatBlueprints(world: StatLinkWorld, entities: readonly En
   return { stats, statGroups, entities: entitiesOut, detached, movedUp };
 }
 
-/** The world as play reads it: the player's stats without Blueprints, and each entity with its stats and stat
+/** The world as play reads it: the global stats without Blueprints, and each entity with its stats and stat
  *  groups resolved through its links. Each list comes back as given when nothing changes it. */
 export function playStatWorld(world: StatLinkWorld & { stats: Stat[]; entities: Entity[] }): { stats: Stat[]; entities: Entity[] } {
-  const stats = playerStatsOf(world.stats, world.statGroups);
+  const stats = globalStatsOf(world.stats, world.statGroups);
   if (!world.entities.some((e) => e.statLinks?.length)) return { stats, entities: world.entities };
   const entities = world.entities.map((e) => {
     if (!e.statLinks?.length) return e;

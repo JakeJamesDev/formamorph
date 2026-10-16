@@ -39,7 +39,7 @@ describe('RightPanel — linked stats', () => {
     expect(within(section).getByText('40 / 100')).toBeInTheDocument();
   });
 
-  it('gives each bearer of one Blueprint its own value', () => {
+  it('gives each owner of one Blueprint its own value', () => {
     renderRightPanel({}, stage('odette'));
     expect(within(screen.getByTestId('entity-stats')).getByText('12 / 100')).toBeInTheDocument();
   });

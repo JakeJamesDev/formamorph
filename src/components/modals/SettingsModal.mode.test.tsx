@@ -1,7 +1,7 @@
 // Storage is real (in-memory): SettingsProvider and the modal both read it on mount.
 import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SettingsProvider } from '@/contexts/SettingsContext';
 import { ThemeProvider } from '@/components/theme-provider';
@@ -256,7 +256,7 @@ describe('settings mode', () => {
     expect(screen.queryByRole('button', { name: 'Clear Cached Images' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Reset Tutorials' })).toBeNull();
     // Autosave is a setting, not a put-it-back, so it stays.
-    expect(screen.getByText('Autosave')).toBeTruthy();
+    expect(within(screen.getByRole('group', { name: 'Saves' })).getByText('Autosave')).toBeTruthy();
     unmount();
 
     openSettings('advanced');

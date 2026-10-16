@@ -10,7 +10,7 @@
  * author-sized pictures rather than uniform 192px thumbnails and one world could otherwise fill the origin's
  * quota — taking saves and worlds with it when the browser evicts under pressure.
  */
-import { openDatabase, promisifyRequest } from './idb';
+import { cachedConnection, promisifyRequest } from './idb';
 
 const DB_NAME = 'FORMAMORPH_REMOTE_IMAGES_DB';
 const STORE_NAME = 'images';
@@ -25,15 +25,7 @@ export interface RemoteImageRecord {
 }
 
 // One shared connection: a world's gallery resolves many images at once.
-let dbPromise: Promise<IDBDatabase> | null = null;
-const openDB = (): Promise<IDBDatabase> => {
-  if (!dbPromise) {
-    dbPromise = openDatabase(DB_NAME, DB_VERSION, [{ name: STORE_NAME, keyPath: 'url' }]).catch(
-      (err) => { dbPromise = null; throw err; }, // let a later call retry the open
-    );
-  }
-  return dbPromise;
-};
+const openDB = cachedConnection(DB_NAME, DB_VERSION, [{ name: STORE_NAME, keyPath: 'url' }]);
 
 export const getCachedImage = async (url: string): Promise<RemoteImageRecord | null> => {
   const db = await openDB();

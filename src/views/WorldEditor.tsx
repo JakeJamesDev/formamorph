@@ -5,6 +5,7 @@ import { useHistoryChords } from '@/components/editor/useHistoryChords';
 import { DevEditorPrompts } from '@/components/editor/DevEditorPrompts';
 import { HistoryPill } from '@/components/editor/HistoryPill';
 import { useDevRoute } from '@/lib/devRouter';
+import { filesFrom } from '@/lib/importFiles';
 import { useSurfaceTab } from '@/components/ui/surface';
 import { isSurfaceTarget, routeText, TARGET_ATTRIBUTE, targetAttribute, type TargetAttribute } from '@/lib/surface/surfaceTargets';
 import { useRouteLanding } from '@/lib/surface/useLanding';
@@ -67,6 +68,11 @@ import { PanelErrorBoundary } from '@/components/PanelErrorBoundary';
 import { BenchPopover } from '@/components/editor/BenchPopover';
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
 import type { FindingSection } from '@/lib/testBench/rules';
+import { CodeCardNavigationContext, type CodeCardNavigation } from '@/lib/codeCardNavigation';
+import type { CodeUse } from '@/lib/codeUses';
+import { clearCodeUseReveal, requestCodeUseReveal } from '@/lib/codeUseReveal';
+import { scriptEntryKey } from '@/lib/worldScripts';
+import type { CodeCardItem } from '@/lib/codeCards';
 import { useTestBench } from '@/lib/testBench/useTestBench';
 import { collectSearchTargets, type SearchMatch } from '@/lib/worldSearch';
 import {
@@ -83,6 +89,7 @@ import { toastError } from '@/lib/linkToast';
 import { ThemedToastContainer } from '@/components/ThemedToastContainer';
 import 'react-toastify/dist/ReactToastify.css';
 import { useWorldStatsAdapter } from '../managers/useWorldStatsAdapter';
+import { useWorldScriptsAdapter } from '../managers/useWorldScriptsAdapter';
 import { useWorldEntitiesAdapter } from '../managers/useWorldEntitiesAdapter';
 import { useWorldLocationsAdapter } from '../managers/useWorldLocationsAdapter';
 import { useWorldDictionaryAdapter } from '../managers/useWorldDictionaryAdapter';
@@ -134,7 +141,7 @@ function listToolbarTarget(tab: string): TargetAttribute | undefined {
 
 const RAIL_STORAGE_KEY = 'formamorph.worldEditor.navRail';
 
-/** What a host's own unsaved-changes prompt needs from the editor: a save and a discard that go through auto save. */
+/** What a host's own unsaved-changes prompt needs from the editor: a save and a discard that go through autosave. */
 export interface EditorExit {
   /** Resolves false on a failure, after the failure toast. */
   save: () => Promise<boolean>;
@@ -142,7 +149,7 @@ export interface EditorExit {
   discard: (then: () => void) => void;
   /** Runs `then` now when no save runs, or after the render that follows the running saves. */
   afterSavesRender: (then: () => void) => void;
-  /** An auto save wrote the open world during this visit, so Exit drops only the changes since then. */
+  /** An autosave wrote the open world during this visit, so Exit drops only the changes since then. */
   autoSaved: boolean;
 }
 
@@ -521,6 +528,7 @@ const WorldEditorInner = ({
   useEffect(() => () => {
     if (revealTimerRef.current !== null) clearTimeout(revealTimerRef.current);
     cancelEditorReveals();
+    clearCodeUseReveal();
     clearEditorMatch();
   }, []);
   // An unmeasured card (0) has room: the rail never flashes collapsed before the first layout.
@@ -549,6 +557,37 @@ const WorldEditorInner = ({
     if (entityTab) setEntityTab(entityTab);
     deferReveal(() => revealSelectedRow(editorRootRef.current));
   }, [deferReveal, clearSearch, select]);
+  // A code card's Open. An entity's own stat or trait opens on the entity's tab with its row selected.
+  const openCodeCardItem = useCallback((item: CodeCardItem) => {
+    switch (item.kind) {
+      case 'stat':
+        if (!item.entityId) return navigateToBenchItem('stats', item.statId);
+        setEntityStatId(item.statId);
+        return navigateToBenchItem('entities', item.entityId, 'stats');
+      case 'trait':
+        if (!item.entityId) return navigateToBenchItem('traits', item.traitId);
+        setEntityTraitId(item.traitId);
+        return navigateToBenchItem('entities', item.entityId, 'traits');
+      case 'placeholder': return navigateToBenchItem('placeholders', item.placeholderId);
+      case 'entity': return navigateToBenchItem('entities', item.entityId);
+      case 'dictionary': return navigateToBenchItem('dictionary', item.dictionaryId);
+    }
+  }, [navigateToBenchItem]);
+  // A Find All Uses row: select the box's stat or trait; its panel opens the Scripts tab and the box takes the caret.
+  const goToCodeUse = useCallback(({ entityId, rowId, trait, world, timing, scriptId, line }: CodeUse) => {
+    requestCodeUseReveal({ entityId, rowId, ...(trait && { trait }), ...(world && { world }), timing, scriptId, line });
+    // A world script's one place is its row on the Scripts tab.
+    if (world) return navigateToBenchItem('scripts', scriptEntryKey({ kind: 'world' }, scriptId));
+    const tab = trait ? 'traits' : 'stats';
+    if (!entityId) return navigateToBenchItem(tab, rowId);
+    if (trait) setEntityTraitId(rowId);
+    else setEntityStatId(rowId);
+    navigateToBenchItem('entities', entityId, tab);
+  }, [navigateToBenchItem]);
+  const codeCardNavigation = useMemo<CodeCardNavigation>(
+    () => ({ open: openCodeCardItem, goToUse: goToCodeUse }),
+    [openCodeCardItem, goToCodeUse],
+  );
   const bench = useTestBench({
     // Read at the moment of opening for the lens seed; other tabs' selections are not locations.
     selectedLocationId: activeTab === 'locations' ? selections.locations ?? null : null,
@@ -623,7 +662,7 @@ const WorldEditorInner = ({
     exportDictionary: (book) => { void exportDictionary(book); },
   });
 
-  // The Save face walks every save through its states, the tour's and auto saves included.
+  // The Save face walks every save through its states, the tour's and autosaves included.
   const saveStatus = useSaveStatus(isWorldDirty);
   const mounted = useMountedRef();
   const runSave = (markSaved: boolean) => saveStatus.track(async () => {
@@ -640,7 +679,7 @@ const WorldEditorInner = ({
   const { onChange: onWorldChange } = historyMoves;
   const { edited: saveFaceEdited } = saveStatus;
   useEffect(() => onWorldChange(saveFaceEdited), [onWorldChange, saveFaceEdited]);
-  // The tour saves on every Next itself. A save or delete in another tab holds auto save until the author answers.
+  // The tour saves on every Next itself. A save or delete in another tab holds autosave until the author answers.
   const autoSave = useAutoSave({
     enabled: editorAutoSave && !touring && !worldChangedElsewhere,
     idleMs: editorAutoSaveIdleSeconds * 1000,
@@ -874,7 +913,7 @@ const WorldEditorInner = ({
   const takeTourOffer = () => (newWorld ? startTour() : leaveWorld(startTourOnNewWorld));
 
   const loadWorld = async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const [file] = filesFrom(e);
     if (!file) return;
     try {
       // Parsed off-thread — an image-heavy world file is multi-MB and JSON.parse can't be chunked.
@@ -904,7 +943,7 @@ const WorldEditorInner = ({
     focusField: findField,
   });
   const traitsParts = useListEditor(traitsAdapter, { selectedId: selections.traits ?? null, onSelect: selectTrait, search });
-  // Placeholders tab: selection is a *row*, since one shared placeholder draws a row under every holder and
+  // Placeholders tab: selection is a *row*, since one shared placeholder draws a row under every parent placeholder and
   // each of those weights it differently. An owner node opens a header naming its entity or book.
   const selectPlaceholder = useCallback((id: string | null) => select('placeholders', id), [select]);
   const placeholdersEditor = useWorldPlaceholdersAdapter({
@@ -927,6 +966,9 @@ const WorldEditorInner = ({
     onTabChange: setStatTab, focusField: findField,
   });
   const statsParts = useListEditor(statsAdapter, { selectedId: selections.stats ?? null, onSelect: selectStat, search });
+  const selectScript = useCallback((id: string | null) => select('scripts', id), [select]);
+  const scriptsAdapter = useWorldScriptsAdapter({ selectedId: selections.scripts ?? null, onSelect: selectScript });
+  const scriptsParts = useListEditor(scriptsAdapter, { selectedId: selections.scripts ?? null, onSelect: selectScript, search });
   // The entity panel's tab and its trait and placeholder rows live here, so a new entity keeps them.
   const selectEntity = useCallback((id: string | null) => select('entities', id), [select]);
   const entitiesEditor = useWorldEntitiesAdapter({
@@ -986,12 +1028,12 @@ const WorldEditorInner = ({
   // The active tab's List Editor parts, on a tab that runs on it.
   const partsByTab: Partial<Record<string, ListEditorParts>> = {
     traits: traitsParts, placeholders: placeholdersParts, stats: statsParts,
-    entities: entitiesParts, locations: locationsParts, dictionary: dictionaryParts,
+    entities: entitiesParts, locations: locationsParts, dictionary: dictionaryParts, scripts: scriptsParts,
   };
   const listEditorParts = partsByTab[activeTab] ?? null;
   const adaptersByTab: Partial<Record<RevealTab, { holds: (id: string) => boolean }>> = {
     traits: traitsAdapter, placeholders: placeholdersEditor.adapter, stats: statsAdapter,
-    entities: entitiesEditor.adapter, locations: locationsAdapter, dictionary: dictionaryEditor.adapter,
+    entities: entitiesEditor.adapter, locations: locationsAdapter, dictionary: dictionaryEditor.adapter, scripts: scriptsAdapter,
   };
   listHoldsRef.current = (tab, id) => !!adaptersByTab[tab]?.holds(id);
   // What the author sees on the active tab beyond the tab itself, for a new Step's Origin.
@@ -1205,7 +1247,7 @@ const WorldEditorInner = ({
     icon: <ActionIcon.export className="mr-2 h-4 w-4 shrink-0" />,
     onClick: exportCurrentWorld,
   }, {
-    label: 'Auto Save',
+    label: 'Autosave',
     checked: editorAutoSave,
     onClick: () => setEditorAutoSave(!editorAutoSave),
   }];
@@ -1323,6 +1365,7 @@ const WorldEditorInner = ({
   );
 
   return (
+    <CodeCardNavigationContext.Provider value={codeCardNavigation}>
     <div className={`${embedded ? "h-full" : "app-viewport"} flex flex-col overflow-hidden`}>
       {!embedded && (
         <ThemedToastContainer
@@ -1581,6 +1624,7 @@ const WorldEditorInner = ({
       )}
       <TourSaveNote tour={tour} />
     </div>
+    </CodeCardNavigationContext.Provider>
   );
 };
 

@@ -3,10 +3,10 @@ import {
   acquireTrait,
   activeTraits,
   applyCodeTraitSwitches,
-  applyPlayedStatTraits,
+  applyGlobalRowTraits,
   deriveEffectiveStats,
-  heldPlayerTraits,
-  listablePlayerTraits,
+  heldGlobalTraits,
+  listableGlobalTraits,
   recoverStatBases,
   seedStatBases,
   setTraitEnabled,
@@ -26,6 +26,9 @@ import {
 } from './traitRuntime';
 import { traitOrderIndex } from './traitEffects';
 import type { LegacyCodeBoundsStat, PersonaRef, PlayerStat, StatChange, Trait, TraitGroup } from '@/types';
+
+/** A trait world with global scope's tree and its entity owners. */
+type OwnersWorld = Extract<TraitWorld, { global: object }>;
 
 const stat = (id: string, over: Partial<PlayerStat> = {}): PlayerStat => ({
   id,
@@ -126,6 +129,24 @@ describe('deriveEffectiveStats with a code delta', () => {
     expect(deriveEffectiveStats([stat('h', { codeDelta: { min: 70, max: -60 } })], [])[0]).toMatchObject({ min: 70, max: 70 });
   });
 
+  it('floors the min at the authored base, traits and code delta together', () => {
+    const lower = trait('b', [{ statId: 'h', value: -30, type: 'min' }]);
+    expect(deriveEffectiveStats([stat('h', { min: 10, baseMin: 10, codeDelta: { min: -5 } })], [])[0].min).toBe(10);
+    // The trait's -30 and the code's +25 sum to -5: the floor applies to the sum, not each layer.
+    expect(deriveEffectiveStats([stat('h', { min: 10, baseMin: 10, codeDelta: { min: 25 } })], [lower])[0].min).toBe(10);
+    expect(deriveEffectiveStats([stat('h', { min: 10, baseMin: 10, codeDelta: { min: 35 } })], [lower])[0].min).toBe(15);
+  });
+
+  it('holds a code-set min at the authored base once the trait under it switches off', () => {
+    const lift = trait('a', [{ statId: 'h', value: 10, type: 'min' }]);
+    const on = setTraitEnabled(state({ traits: [lift] }), 'a', true, world([lift])).state;
+    expect(boundsOf(on).min).toBe(10);
+    const coded = { ...on, stats: [withCodeDelta(on.stats[0], codeDeltaFor(on.stats[0], { min: 5 }, [lift]), 50, [lift])] };
+    expect(boundsOf(coded).min).toBe(5);
+    const off = setTraitEnabled(coded, 'a', false, world([lift])).state;
+    expect(boundsOf(off).min).toBe(0);
+  });
+
   it('moves a code-set max by a trait switched on and off', () => {
     const before = state({ stats: [stat('h', { value: 60, max: 60, codeDelta: { max: -40 } })] });
     const on = setTraitEnabled({ ...before, traits: [raise] }, 'a', true, world([raise])).state;
@@ -150,6 +171,14 @@ describe('codeDeltaFor', () => {
 
   it('drops a field whose written bound matches the layers under it', () => {
     expect(codeDeltaFor(stat('h', { codeDelta: { max: -40 } }), { max: 120 }, [raiseCap])).toEqual({});
+  });
+
+  it('measures the min before the authored floor', () => {
+    const lower = trait('b', [{ statId: 'h', value: -30, type: 'min' }]);
+    const floored = stat('h', { min: 10, baseMin: 10 });
+    const codeDelta = codeDeltaFor(floored, { min: 20 }, [lower]);
+    expect(codeDelta).toEqual({ min: 40 });
+    expect(deriveEffectiveStats([{ ...floored, codeDelta }], [lower])[0].min).toBe(20);
   });
 
   it('measures against the max before the min floor, so the written max lands', () => {
@@ -203,10 +232,30 @@ describe('codeBoundsToDeltas', () => {
     expect(deriveEffectiveStats([migrated], [])[0]).toMatchObject({ min: 70, max: 70 });
   });
 
-  it('then moves the migrated bounds by a trait switched off', () => {
+  it('then moves the migrated bounds by a trait switched off, the min held at the authored floor', () => {
     const [migrated] = codeBoundsToDeltas([legacy()], [raise]);
     const off = setTraitEnabled(state({ stats: [migrated], traits: [raise] }), 'a', false, world([raise])).state;
-    expect(boundsOf(off)).toEqual({ min: -5, max: 40, regen: -3 });
+    expect(boundsOf(off)).toEqual({ min: 0, max: 40, regen: -3 });
+  });
+
+  it('derives a stored bound as an override until the settle books it, then holds the difference as a delta', () => {
+    const lift = trait('b', [{ statId: 'h', value: 20, type: 'max' }]);
+    const loaded: LegacyCodeBoundsStat = { ...stat('h', { max: 60 }), codeBounds: { max: 60 } };
+    // A switch in the window between load and settle derives the stored bound, not the base.
+    const early = setTraitEnabled(state({ stats: [loaded], traits: [lift] }), 'b', true, world([lift])).state;
+    expect(boundsOf(early).max).toBe(60);
+    const [settled] = codeBoundsToDeltas(early.stats, [lift]);
+    expect('codeBounds' in settled).toBe(false);
+    expect(settled.codeDelta).toEqual({ max: -60 });
+    expect(deriveEffectiveStats([settled], [lift])[0].max).toBe(60);
+    expect(deriveEffectiveStats([settled], [])[0].max).toBe(40);
+  });
+
+  it('raises a stored min below the authored min to it once the settle books the delta', () => {
+    const loaded: LegacyCodeBoundsStat = { ...stat('h', { min: -5, baseMin: 0 }), codeBounds: { min: -5 } };
+    expect(deriveEffectiveStats([loaded], [])[0].min).toBe(-5);
+    const [settled] = codeBoundsToDeltas([loaded], []);
+    expect(deriveEffectiveStats([settled], [])[0].min).toBe(0);
   });
 
   it('drops an empty stored field and leaves a stat without one as it is', () => {
@@ -524,7 +573,7 @@ describe('gates in play', () => {
     expect(log).toEqual(['Trait switched off: paladin', 'Trait switched off: aura', 'Trait switched off: plate']);
     expect(valueOf(next)).toBe(90);
     expect(boundsOf(next)).toEqual({ min: 0, max: 100, regen: 0 });
-    expect(next.cascadeOffTraitIds).toEqual({ world: ['aura', 'plate'] });
+    expect(next.cascadeOffTraitIds).toEqual({ global: ['aura', 'plate'] });
   });
 
   it('returns cascade-off traits once the gate holds again, and toggling stays neutral', () => {
@@ -545,7 +594,7 @@ describe('gates in play', () => {
   it('never returns a trait the player switched off by hand', () => {
     let s = player(armored(), 'plate', false).state;
     expect(on(s)).toEqual(['paladin']);
-    expect(s.cascadeOffTraitIds).toEqual({ world: ['aura'] });
+    expect(s.cascadeOffTraitIds).toEqual({ global: ['aura'] });
     s = player(s, 'paladin', false).state;
     s = player(s, 'paladin', true).state;
     expect(on(s)).toEqual(['paladin']);
@@ -556,7 +605,7 @@ describe('gates in play', () => {
     s = player(s, 'robes', true).state;
     s = player(s, 'paladin', true).state;
     expect(on(s)).toEqual(['paladin', 'robes']);
-    expect(s.cascadeOffTraitIds).toEqual({ world: ['aura'] });
+    expect(s.cascadeOffTraitIds).toEqual({ global: ['aura'] });
     s = player(s, 'robes', false).state;
     expect(on(s)).toEqual(['paladin']);
   });
@@ -634,7 +683,7 @@ describe('gates in play', () => {
       expect(log).toEqual(['Acquired trait: plate (by Vigor)', 'Trait switched off: plate (by Vigor)']);
       expect(valueOf(next)).toBe(50);
       expect(boundsOf(next)).toEqual({ min: 0, max: 100, regen: 0 });
-      expect(next.cascadeOffTraitIds).toEqual({ world: ['plate'] });
+      expect(next.cascadeOffTraitIds).toEqual({ global: ['plate'] });
 
       const back = player(next, 'paladin', true);
       expect(on(back.state)).toEqual(['plate', 'paladin']);
@@ -669,7 +718,7 @@ describe('gates in play', () => {
   it('takes a cascade-off trait off the list when code switches it off, so it never returns', () => {
     const cascaded = player(armored(), 'paladin', false).state;
     const { state: next } = applyCodeTraitSwitches(cascaded, [{ traitId: 'plate', enabled: false, by: 'Vigor' }], gated());
-    expect(next.cascadeOffTraitIds).toEqual({ world: ['aura'] });
+    expect(next.cascadeOffTraitIds).toEqual({ global: ['aura'] });
     expect(on(player(next, 'paladin', true).state)).toEqual(['paladin']);
   });
 });
@@ -735,14 +784,14 @@ describe('Always On traits in play', () => {
   });
 
   it('never lists an Always On trait as one the player can take', () => {
-    expect(listablePlayerTraits([], [ring, curse], traitOrderIndex([ring, curse], [])).map((t) => t.id)).toEqual(['ring']);
+    expect(listableGlobalTraits([], [ring, curse], traitOrderIndex([ring, curse], [])).map((t) => t.id)).toEqual(['ring']);
   });
 
   it('brings an entity’s curse in that entity’s lists, and refuses the player a switch of it', () => {
     const ashTraits = [trait('ring', [], { playerToggle: true }), trait('curse', [], { mode: 'alwaysOn', requires: [{ all: [{ kind: 'trait', id: 'ring' }] }] })];
     const owned: TraitWorld = {
       traits: [], groups: [], entities: [{ id: 'ash', name: 'Ash' }],
-      bearers: [{ id: 'world', name: '', traits: [], groups: [] }, { id: 'ash', name: 'Ash', traits: ashTraits, groups: [] }],
+      global: { traits: [], groups: [] }, owners: [{ id: 'ash', name: 'Ash', traits: ashTraits, groups: [] }],
     };
     const cursed = switchPlayerTrait(state(), 'ring', true, owned, name, 'ash')!;
     expect(cursed.state.ownedTraits).toEqual({ ash: { chosen: ['ring', 'curse'] } });
@@ -782,14 +831,18 @@ describe('Hidden traits in play', () => {
     expect(lifted.cascadeNames).toEqual([]);
   });
 
-  it('moves a Hidden linked stat trait on a persona switch with no log line', () => {
+  it('moves a Hidden linked stat trait with no log line when its owner joins or leaves on a persona switch', () => {
     const mark = trait('mark', [{ statId: 'h', value: 5, type: 'starting' }], { mode: 'hidden' });
+    // Albus is a library persona: present in the world only while played.
     const linked = (persona: PersonaRef): TraitWorld => ({
       traits: [], groups: [], entities: [{ id: 'albus', name: 'Albus', persona: true }], persona,
-      bearers: [{ id: 'world', name: '', traits: [], groups: [] }, { id: 'albus', name: 'Albus', traits: [mark], groups: [] }],
+      global: { traits: [], groups: [] },
+      owners: [
+        ...(persona.source === 'world' ? [{ id: 'albus', name: 'Albus', traits: [mark], groups: [] }] : []),
+      ],
     });
     const asAlbus = linked({ source: 'world', entityId: 'albus' });
-    const seeded = applyPlayedStatTraits(state({ ownedTraits: { albus: { chosen: ['mark'] } } }), asAlbus).state;
+    const seeded = applyGlobalRowTraits(state({ ownedTraits: { albus: { chosen: ['mark'] } } }), asAlbus).state;
     const toNone = switchPersonaStats(seeded, asAlbus, linked({ source: 'none' }), name);
     expect(valueOf(toNone.state)).toBe(50);
     expect(toNone.log).toEqual([]);
@@ -804,19 +857,19 @@ describe('owned traits in play', () => {
   // (Ash: Tamed). Tamed and Wild share Ash's exclusive Bond group. Gruff is Ash's but not switchable.
   const paladin = trait('paladin', [], { name: 'Paladin', playerToggle: true });
   const tamer = trait('tamer', [{ statId: 'h', value: 10, type: 'starting' }], {
-    name: 'Beast Tamer', playerToggle: true, requires: [{ all: [{ kind: 'trait', id: 'tamed', bearer: { kind: 'entity', id: 'ash' } }] }],
+    name: 'Beast Tamer', playerToggle: true, requires: [{ all: [{ kind: 'trait', id: 'tamed', owner: { kind: 'entity', id: 'ash' } }] }],
   });
   const bond: TraitGroup = { id: 'bond', name: 'Bond', parentId: null, maxPicks: 1 };
   const ashTraits = [
     trait('tamed', [], { name: 'Tamed', playerToggle: true, groupId: 'bond' }),
     trait('wild', [], { name: 'Wild', playerToggle: true, groupId: 'bond' }),
-    trait('loyal', [], { name: 'Loyal', playerToggle: true, requires: [{ all: [{ kind: 'trait', id: 'paladin', bearer: { kind: 'you' } }] }] }),
+    trait('loyal', [], { name: 'Loyal', playerToggle: true, requires: [{ all: [{ kind: 'trait', id: 'paladin', owner: { kind: 'you' } }] }] }),
     trait('gruff', [], { name: 'Gruff' }),
   ];
   const ash = { id: 'ash', name: 'Ash', traits: ashTraits, groups: [bond] };
-  const owned = (persona: PersonaRef = { source: 'none' }): TraitWorld => ({
+  const owned = (persona: PersonaRef = { source: 'none' }): OwnersWorld => ({
     traits: [paladin, tamer], groups: [], entities: [{ id: 'ash', name: 'Ash', persona: true }], persona,
-    bearers: [{ id: 'world', name: '', traits: [paladin, tamer], groups: [] }, ash],
+    global: { traits: [paladin, tamer], groups: [] }, owners: [ash],
   });
   const name = (t: Trait) => t.name;
   const flip = (s: TraitRuntimeState, id: string, enabled: boolean, w = owned()) => {
@@ -854,14 +907,14 @@ describe('owned traits in play', () => {
   it('refuses an owned switch-on in a full entity group with a max above one', () => {
     const calm = trait('calm', [], { name: 'Calm', playerToggle: true, groupId: 'bond' });
     const wide = { ...ash, traits: [...ashTraits, calm], groups: [{ ...bond, maxPicks: 2 }] };
-    const w: TraitWorld = { ...owned(), entities: owned().entities ?? [], bearers: [owned().bearers![0], wide] };
+    const w: TraitWorld = { ...owned(), owners: [wide] };
     const full = flip(flip(state(), 'tamed', true, w).state, 'wild', true, w).state;
     expect(onOf(full)).toEqual(['tamed', 'wild']);
     expect(switchPlayerTrait(full, 'calm', true, w, name)).toBeNull();
   });
 
   it('refuses an owned switch-off that drops an entity group below its minimum', () => {
-    const w: TraitWorld = { ...owned(), entities: owned().entities ?? [], bearers: [owned().bearers![0], { ...ash, groups: [{ ...bond, minPicks: 1 }] }] };
+    const w: TraitWorld = { ...owned(), owners: [{ ...ash, groups: [{ ...bond, minPicks: 1 }] }] };
     const s = flip(state(), 'tamed', true, w).state;
     expect(switchPlayerTrait(s, 'tamed', false, w, name)).toBeNull();
     expect(onOf(flip(s, 'wild', true, w).state)).toEqual(['wild']);
@@ -875,7 +928,7 @@ describe('owned traits in play', () => {
     const noPaladin = flip(s, 'paladin', false);
     expect(noPaladin.cascade.map((t) => t.id)).toEqual(['loyal']);
     expect(noPaladin.cascadeNames).toEqual(["Ash's Loyal"]);
-    expect(noPaladin.state.cascadeOffTraitIds).toEqual({ ash: ['loyal'] });
+    expect(noPaladin.state.cascadeOffTraitIds).toEqual({ owners: { ash: ['loyal'] } });
 
     const wild = flip(noPaladin.state, 'wild', true);
     expect(wild.cascadeNames).toEqual(['Beast Tamer']);
@@ -902,11 +955,11 @@ describe('owned traits in play', () => {
     const { state: next, log } = applyCodeTraitSwitches(s, [{ traitId: 'paladin', enabled: false, by: 'Vigor' }], owned(), name);
     expect(onOf(next)).toEqual([]);
     expect(log).toEqual(['Trait switched off: Paladin (by Vigor)', "Trait switched off: Ash's Loyal (by Vigor)"]);
-    expect(next.cascadeOffTraitIds).toEqual({ ash: ['loyal'] });
+    expect(next.cascadeOffTraitIds).toEqual({ owners: { ash: ['loyal'] } });
   });
 });
 
-describe('linked stat traits follow whoever the player plays', () => {
+describe('an entity’s global rows act for every owner, played or not (Q17, Q18, Q30)', () => {
   // Paladin (+10 max, +5 starting on h) is a Blueprints original; Albus and Mira both link it. Vigil is the
   // player's own world trait with the same effects, so a root row and a link row can hold one original.
   const paladin = trait('paladin', [{ statId: 'h', value: 10, type: 'max' }, { statId: 'h', value: 5, type: 'starting' }], {
@@ -915,48 +968,45 @@ describe('linked stat traits follow whoever the player plays', () => {
   const vigil = trait('vigil', [{ statId: 'h', value: 3, type: 'starting' }], { name: 'Vigil', playerToggle: true });
   const albus = { id: 'albus', name: 'Albus', traits: [paladin], groups: [] };
   const mira = { id: 'mira', name: 'Mira', traits: [paladin], groups: [] };
-  const linked = (persona: PersonaRef = { source: 'none' }): TraitWorld => ({
+  const linked = (persona: PersonaRef = { source: 'none' }): OwnersWorld => ({
     traits: [vigil], groups: [], entities: [{ id: 'albus', name: 'Albus', persona: true }, { id: 'mira', name: 'Mira', persona: true }], persona,
-    bearers: [{ id: 'world', name: '', traits: [vigil], groups: [] }, albus, mira],
+    global: { traits: [vigil], groups: [] }, owners: [albus, mira],
   });
   const asAlbus = linked({ source: 'world', entityId: 'albus' });
   const asMira = linked({ source: 'world', entityId: 'mira' });
   const bothPaladins = state({ ownedTraits: { albus: { chosen: ['paladin'] }, mira: { chosen: ['paladin'] } } });
   const name = (t: Trait) => t.name;
 
-  it('applies the played persona’s active linked stat traits at the start, under its own record key', () => {
-    const { state: seeded, applied } = applyPlayedStatTraits(bothPaladins, asAlbus);
+  it('applies every owner’s active linked stat traits at the start, once per owner, under its own record key', () => {
+    const { state: seeded, applied } = applyGlobalRowTraits(bothPaladins, asAlbus);
+    // The start log names the played persona's trait alone.
     expect(applied.map((t) => t.id)).toEqual(['paladin']);
-    expect(boundsOf(seeded)).toEqual({ min: 0, max: 110, regen: 0 });
-    expect(valueOf(seeded)).toBe(55);
-    expect(seeded.appliedValues).toEqual({ 'albus/paladin': { h: 5 } });
-    expect(applyPlayedStatTraits(bothPaladins, linked()).state).toBe(bothPaladins);
+    expect(boundsOf(seeded)).toEqual({ min: 0, max: 120, regen: 0 });
+    expect(valueOf(seeded)).toBe(60);
+    expect(seeded.appliedValues).toEqual({ 'albus/paladin': { h: 5 }, 'mira/paladin': { h: 5 } });
   });
 
-  it('reverses the old persona’s linked stats and applies the new one’s on a switch, with the switch log lines', () => {
-    const seeded = applyPlayedStatTraits(bothPaladins, asAlbus).state;
-    const toMira = switchPersonaStats(seeded, asAlbus, asMira, name);
-    expect(toMira.log).toEqual(['Trait switched off: Paladin', 'Trait switched on: Paladin']);
-    expect(boundsOf(toMira.state).max).toBe(110);
-    expect(valueOf(toMira.state)).toBe(55);
-    expect(toMira.state.appliedValues).toEqual({ 'albus/paladin': { h: -5 }, 'mira/paladin': { h: 5 } });
-    expect(toMira.state.ownedTraits).toEqual(bothPaladins.ownedTraits);
+  it('acts the same with no one playing either owner', () => {
+    const { state: seeded, applied } = applyGlobalRowTraits(bothPaladins, linked());
+    expect(applied).toEqual([]);
+    expect(valueOf(seeded)).toBe(60);
+    expect(seeded.appliedValues).toEqual({ 'albus/paladin': { h: 5 }, 'mira/paladin': { h: 5 } });
+  });
 
-    const toNone = switchPersonaStats(toMira.state, asMira, linked(), name);
-    expect(toNone.log).toEqual(['Trait switched off: Paladin']);
-    expect(boundsOf(toNone.state).max).toBe(100);
-    expect(valueOf(toNone.state)).toBe(50);
-    expect(switchPersonaStats(toNone.state, linked(), linked(), name).state).toBe(toNone.state);
+  it('moves nothing on a persona switch between two owners', () => {
+    const seeded = applyGlobalRowTraits(bothPaladins, asAlbus).state;
+    expect(switchPersonaStats(seeded, asAlbus, asMira, name)).toEqual({ state: seeded, log: [] });
+    expect(switchPersonaStats(seeded, asMira, linked(), name).state).toBe(seeded);
   });
 
   it('reverses a root trait the new persona is not offered, because its gate names that persona', () => {
-    // Squire (+4 starting on h) requires Albus: Paladin. Playing Albus, the player bearer no longer holds it.
+    // Squire (+4 starting on h) requires Albus: Paladin. Playing Albus, global scope no longer holds it.
     const squire = trait('squire', [{ statId: 'h', value: 4, type: 'starting' }], {
-      name: 'Squire', requires: [{ all: [{ kind: 'trait', id: 'paladin', bearer: { kind: 'entity', id: 'albus' } }] }],
+      name: 'Squire', requires: [{ all: [{ kind: 'trait', id: 'paladin', owner: { kind: 'entity', id: 'albus' } }] }],
     });
     const withSquire = (persona: PersonaRef, held: Trait[]): TraitWorld => {
       const base = linked(persona);
-      return { ...base, traits: [vigil, squire], entities: base.entities ?? [], bearers: [{ id: 'world', name: '', traits: held, groups: [] }, albus, mira] };
+      return { ...base, traits: [vigil, squire], global: { traits: held, groups: [] }, owners: [albus, mira] };
     };
     const asMiraSquire = withSquire({ source: 'world', entityId: 'mira' }, [vigil, squire]);
     const asAlbusNoSquire = withSquire({ source: 'world', entityId: 'albus' }, [vigil]);
@@ -969,21 +1019,24 @@ describe('linked stat traits follow whoever the player plays', () => {
   });
 
   it('reverses what actually moved, so a cap the switch clamped gives back only what it gave', () => {
-    const nearCap = { ...bothPaladins, stats: [stat('h', { value: 100, max: 100 })] };
-    const seeded = applyPlayedStatTraits(nearCap, asAlbus).state;
+    const nearCap = { ...state({ ownedTraits: { albus: { chosen: ['paladin'] } } }), stats: [stat('h', { value: 100, max: 100 })] };
+    const seeded = applyGlobalRowTraits(nearCap, asAlbus).state;
     // The cap rides up with the value on it, then the starting bonus lands: 100 → 110 → 110 (clamped +5).
     expect(valueOf(seeded)).toBe(110);
-    const away = switchPersonaStats(seeded, asAlbus, linked(), name).state;
+    const away = switchPlayerTrait(seeded, 'paladin', false, asAlbus, name, 'albus')!.state;
     expect(valueOf(away)).toBe(100);
     expect(boundsOf(away).max).toBe(100);
   });
 
-  it('moves the stats when the played persona switches its linked stat trait, and not when a cast entity does', () => {
+  it('moves the stats when an owner switches its linked stat trait, played or not', () => {
     const cast = switchPlayerTrait(state(), 'paladin', true, linked(), name, 'mira')!;
-    expect(valueOf(cast.state)).toBe(50);
-    expect(boundsOf(cast.state).max).toBe(100);
-    expect(cast.state.appliedValues).toEqual({});
+    expect(valueOf(cast.state)).toBe(55);
+    expect(boundsOf(cast.state).max).toBe(110);
+    expect(cast.state.appliedValues).toEqual({ 'mira/paladin': { h: 5 } });
     expect(cast.log).toEqual(["Acquired trait: Mira's Paladin"]);
+    const castOff = switchPlayerTrait(cast.state, 'paladin', false, linked(), name, 'mira')!;
+    expect(valueOf(castOff.state)).toBe(50);
+    expect(boundsOf(castOff.state).max).toBe(100);
 
     const own = switchPlayerTrait(state(), 'paladin', true, asMira, name, 'mira')!;
     expect(valueOf(own.state)).toBe(55);
@@ -995,23 +1048,24 @@ describe('linked stat traits follow whoever the player plays', () => {
     expect(boundsOf(off.state).max).toBe(100);
   });
 
-  it('routes a switch to the bearer whose row it came from when two bearers hold one original', () => {
+  it('routes a switch to the owner whose row it came from when two owners hold one original', () => {
     const w = linked();
     const onMira = switchPlayerTrait(state(), 'paladin', true, w, name, 'mira')!.state;
     expect(onMira.ownedTraits).toEqual({ mira: { chosen: ['paladin'] } });
     expect(switchPlayerTrait(onMira, 'paladin', true, w, name, 'albus')!.state.ownedTraits)
       .toEqual({ mira: { chosen: ['paladin'] }, albus: { chosen: ['paladin'] } });
-    expect(switchPlayerTrait(state(), 'paladin', true, w, name, 'world')).toBeNull();
+    expect(switchPlayerTrait(state(), 'paladin', true, w, name, null)).toBeNull();
     expect(switchPlayerTrait(state(), 'vigil', true, w, name, 'mira')).toBeNull();
     expect(traitNameIn(w, 'paladin', name, 'albus')).toBe("Albus's Paladin");
-    expect(traitNameIn(w, 'vigil', name, 'world')).toBe('Vigil');
+    expect(traitNameIn(w, 'vigil', name, null)).toBe('Vigil');
   });
 
-  it('counts the played persona’s linked stat traits among the traits in force', () => {
+  it('counts every owner’s linked stat traits among the traits in force, one per owner', () => {
     const s = { ...bothPaladins, traits: [vigil] };
-    expect(statTraitsInForce(s, asAlbus).map((t) => t.id)).toEqual(['vigil', 'paladin']);
-    expect(statTraitsInForce(s, linked()).map((t) => t.id)).toEqual(['vigil']);
-    expect(statTraitsInForce({ ...s, ownedTraits: { albus: { chosen: ['paladin'], disabled: ['paladin'] } } }, asAlbus).map((t) => t.id)).toEqual(['vigil']);
+    expect(statTraitsInForce(s, asAlbus).map((t) => t.id)).toEqual(['vigil', 'paladin', 'paladin']);
+    expect(statTraitsInForce(s, linked()).map((t) => t.id)).toEqual(['vigil', 'paladin', 'paladin']);
+    const albusOff = { ...s, ownedTraits: { ...s.ownedTraits, albus: { chosen: ['paladin'], disabled: ['paladin'] } } };
+    expect(statTraitsInForce(albusOff, asAlbus).map((t) => t.id)).toEqual(['vigil', 'paladin']);
   });
 
   it('retires the exclusive sibling on the played persona’s linked group, reversing its stats through its record', () => {
@@ -1019,8 +1073,8 @@ describe('linked stat traits follow whoever the player plays', () => {
     const wizard = trait('wizard', [{ statId: 'h', value: 3, type: 'starting' }], { name: 'Wizard', playerToggle: true, groupId: 'classes' });
     const classes: TraitGroup = { id: 'classes', name: 'Classes', parentId: null, maxPicks: 1 };
     const albusClasses = { id: 'albus', name: 'Albus', traits: [{ ...paladin, groupId: 'classes' }, wizard], groups: [classes] };
-    const w: TraitWorld = { ...asAlbus, entities: asAlbus.entities ?? [], bearers: [{ id: 'world', name: '', traits: [vigil], groups: [] }, albusClasses] };
-    const seeded = applyPlayedStatTraits(state({ ownedTraits: { albus: { chosen: ['paladin'] } } }), w).state;
+    const w: TraitWorld = { ...asAlbus, global: { traits: [vigil], groups: [] }, owners: [albusClasses] };
+    const seeded = applyGlobalRowTraits(state({ ownedTraits: { albus: { chosen: ['paladin'] } } }), w).state;
     expect(valueOf(seeded)).toBe(55);
     const swapped = switchPlayerTrait(seeded, 'wizard', true, w, name, 'albus')!;
     expect(swapped.log).toEqual(['Trait switched off: Paladin', 'Acquired trait: Wizard']);
@@ -1037,6 +1091,15 @@ describe('linked stat traits follow whoever the player plays', () => {
     const withPaladin = startingStatsWith(authored, [vigil], asAlbus, { albus: ['paladin'] });
     expect(withPaladin[0]).toMatchObject({ value: 58, max: 110 });
   });
+
+  // Q30, Q33: an untargeted row moves the entity's own stat when it owns the id, else the global one.
+  it('leaves the global stat alone when the persona owns a stat with the row’s id', () => {
+    const authored = [{ ...stat('h'), value: 50 }] as unknown as Parameters<typeof startingStatsWith>[0];
+    const own = { albus: [stat('h')] };
+    expect(startingStatsWith(authored, [vigil], asAlbus, { albus: ['paladin'] }, own)[0]).toMatchObject({ value: 53, max: 100 });
+    // With no own stat to take the row, it reaches the global stat.
+    expect(startingStatsWith(authored, [vigil], asAlbus, { albus: ['paladin'] }, { albus: [stat('x')] })[0].value).toBe(58);
+  });
 });
 
 describe('a Custom Persona pick under a world persona', () => {
@@ -1046,7 +1109,7 @@ describe('a Custom Persona pick under a world persona', () => {
   const albus = { id: 'albus', name: 'Albus', traits: [paladin], groups: [] };
   const under = (persona: PersonaRef): TraitWorld => ({
     traits: [wizard], groups: [], entities: [{ id: 'albus', name: 'Albus', persona: true }], persona,
-    bearers: [{ id: 'world', name: '', traits: persona.source === 'world' ? [] : [wizard], groups: [] }, albus],
+    global: { traits: persona.source === 'world' ? [] : [wizard], groups: [] }, owners: [albus],
   });
   const none = under({ source: 'none' });
   const asAlbus = under({ source: 'world', entityId: 'albus' });
@@ -1054,26 +1117,29 @@ describe('a Custom Persona pick under a world persona', () => {
 
   it('is held under None and dormant under the world persona, for stats and gates alike', () => {
     const s = state({ traits: [wizard], ownedTraits: { albus: { chosen: ['paladin'] } } });
-    expect(heldPlayerTraits([wizard], none).map((t) => t.id)).toEqual(['wizard']);
-    expect(heldPlayerTraits([wizard], asAlbus)).toEqual([]);
-    expect(statTraitsInForce(s, none).map((t) => t.id)).toEqual(['wizard']);
+    expect(heldGlobalTraits([wizard], none).map((t) => t.id)).toEqual(['wizard']);
+    expect(heldGlobalTraits([wizard], asAlbus)).toEqual([]);
+    // Albus's Paladin reaches the global stat whoever is played (Q30); the dormant pick does not.
+    expect(statTraitsInForce(s, none).map((t) => t.id)).toEqual(['wizard', 'paladin']);
     expect(statTraitsInForce(s, asAlbus).map((t) => t.id)).toEqual(['paladin']);
-    expect(traitGateInput(s, none).active.world).toEqual(['wizard']);
-    expect(traitGateInput(s, asAlbus).active.world).toEqual([]);
+    expect(traitGateInput(s, none).active.global).toEqual(['wizard']);
+    expect(traitGateInput(s, asAlbus).active.global).toEqual([]);
   });
 
   it('reverses on a switch from None to the world persona, and returns on the way back', () => {
-    const picked = acquireTrait(state(), wizard, none).state;
-    expect(valueOf(picked)).toBe(53);
-    const withAlbus = { ...picked, ownedTraits: { albus: { chosen: ['paladin'] } } };
-    const away = switchPersonaStats(withAlbus, none, asAlbus, name);
-    expect(away.log).toEqual(['Trait switched off: Wizard', 'Trait switched on: Paladin']);
+    // Albus's Paladin acts under both personas, so only the Wizard pick moves on a switch.
+    const held = applyGlobalRowTraits(state({ ownedTraits: { albus: { chosen: ['paladin'] } } }), none).state;
+    expect(valueOf(held)).toBe(55);
+    const picked = acquireTrait(held, wizard, none).state;
+    expect(valueOf(picked)).toBe(58);
+    const away = switchPersonaStats(picked, none, asAlbus, name);
+    expect(away.log).toEqual(['Trait switched off: Wizard']);
     expect(valueOf(away.state)).toBe(55);
     expect(away.state.traits.map((t) => t.id)).toEqual(['wizard']);
-    expect(away.state.appliedValues).toEqual({ wizard: { h: -3 }, 'albus/paladin': { h: 5 } });
+    expect(away.state.appliedValues).toEqual({ 'albus/paladin': { h: 5 }, wizard: { h: -3 } });
     const back = switchPersonaStats(away.state, asAlbus, none, name);
-    expect(back.log).toEqual(['Trait switched off: Paladin', 'Trait switched on: Wizard']);
-    expect(valueOf(back.state)).toBe(53);
+    expect(back.log).toEqual(['Trait switched on: Wizard']);
+    expect(valueOf(back.state)).toBe(58);
   });
 
   it('is left out of the Enter World preview under the world persona', () => {
@@ -1091,11 +1157,11 @@ describe('the Custom Persona entity’s stat traits', () => {
   const cp = { id: 'cp', name: 'Newcomer', traits: [paladin], groups: [] };
   const lib = { id: 'lib', name: 'Wren', traits: [oath], groups: [] };
   const entities = [{ id: 'cp', name: 'Newcomer', customPersona: true }, { id: 'albus', name: 'Albus', persona: true }];
-  const none: TraitWorld = { traits: [], groups: [], entities, persona: { source: 'none' }, bearers: [{ id: 'world', name: '', traits: [], groups: [] }, cp] };
-  const asLib: TraitWorld = { ...none, persona: { source: 'library', entityId: 'lib' }, bearers: [...none.bearers!, lib] };
+  const none: OwnersWorld = { traits: [], groups: [], entities, persona: { source: 'none' }, global: { traits: [], groups: [] }, owners: [cp] };
+  const asLib: TraitWorld = { ...none, persona: { source: 'library', entityId: 'lib' }, owners: [...none.owners, lib] };
   const asAlbus: TraitWorld = {
     ...none, persona: { source: 'world', entityId: 'albus' },
-    bearers: [{ id: 'world', name: '', traits: [], groups: [] }, { id: 'albus', name: 'Albus', traits: [], groups: [] }],
+    owners: [{ id: 'albus', name: 'Albus', traits: [], groups: [] }],
   };
   const picked = state({ ownedTraits: { cp: { chosen: ['paladin'] }, lib: { chosen: ['oath'] } } });
 
@@ -1106,14 +1172,14 @@ describe('the Custom Persona entity’s stat traits', () => {
   });
 
   it('apply at a new game under the marked entity’s own record key', () => {
-    const { state: seeded, applied } = applyPlayedStatTraits(picked, asLib);
+    const { state: seeded, applied } = applyGlobalRowTraits(picked, asLib);
     expect(applied.map((t) => t.id)).toEqual(['paladin', 'oath']);
     expect(valueOf(seeded)).toBe(57);
     expect(seeded.appliedValues).toEqual({ 'cp/paladin': { h: 5 }, 'lib/oath': { h: 2 } });
   });
 
   it('move the stats on a switch of the marked entity’s trait, as the played persona’s do', () => {
-    const off = switchPlayerTrait(applyPlayedStatTraits(picked, none).state, 'paladin', false, none, undefined, 'cp')!;
+    const off = switchPlayerTrait(applyGlobalRowTraits(picked, none).state, 'paladin', false, none, undefined, 'cp')!;
     expect(valueOf(off.state)).toBe(50);
     expect(off.state.ownedTraits?.cp).toEqual({ chosen: ['paladin'], disabled: ['paladin'] });
     expect(off.log).toEqual(['Trait switched off: Paladin']);
@@ -1122,7 +1188,7 @@ describe('the Custom Persona entity’s stat traits', () => {
   });
 
   it('reverse on a switch to a world persona and return on the way back', () => {
-    const seeded = applyPlayedStatTraits(picked, none).state;
+    const seeded = applyGlobalRowTraits(picked, none).state;
     const away = switchPersonaStats(seeded, none, asAlbus);
     expect(away.log).toEqual(['Trait switched off: Paladin']);
     expect(valueOf(away.state)).toBe(50);
@@ -1139,7 +1205,7 @@ describe('traitSwitchLog', () => {
   });
 });
 
-describe('listablePlayerTraits', () => {
+describe('listableGlobalTraits', () => {
   const groups: TraitGroup[] = [];
   const first = trait('first', [], { playerToggle: true });
   const middle = trait('middle', [], { playerToggle: false });
@@ -1148,20 +1214,20 @@ describe('listablePlayerTraits', () => {
   const order = traitOrderIndex(authored, groups);
 
   it('interleaves held and acquirable traits in authored order', () => {
-    expect(listablePlayerTraits([last], authored, order).map((t) => t.id)).toEqual(['first', 'last']);
+    expect(listableGlobalTraits([last], authored, order).map((t) => t.id)).toEqual(['first', 'last']);
   });
 
   it('omits a non-toggleable trait the player never chose', () => {
-    expect(listablePlayerTraits([], authored, order).map((t) => t.id)).not.toContain('middle');
+    expect(listableGlobalTraits([], authored, order).map((t) => t.id)).not.toContain('middle');
   });
 
   it('keeps a held non-toggleable trait listed', () => {
-    expect(listablePlayerTraits([middle], authored, order).map((t) => t.id)).toEqual(['first', 'middle', 'last']);
+    expect(listableGlobalTraits([middle], authored, order).map((t) => t.id)).toEqual(['first', 'middle', 'last']);
   });
 });
 
 describe('traitGateInput', () => {
-  it("leaves Blueprints out of the player's gates in play", () => {
+  it('leaves Blueprints out of the global gates in play', () => {
     const world: TraitWorld = {
       traits: [
         { id: 'paladin', name: 'Paladin', statChanges: [], groupId: 'blueprints' },
@@ -1169,8 +1235,8 @@ describe('traitGateInput', () => {
       ],
       groups: [{ id: 'blueprints', name: 'Blueprints', parentId: null, system: 'blueprints' }],
     };
-    const [player] = traitGateInput({ traits: [], disabledTraitIds: [] }, world).owners;
-    expect(player.traits.map((t) => t.id)).toEqual(['brave']);
-    expect(player.groups).toEqual([]);
+    const { global } = traitGateInput({ traits: [], disabledTraitIds: [], stats: [] }, world);
+    expect(global.traits.map((t) => t.id)).toEqual(['brave']);
+    expect(global.groups).toEqual([]);
   });
 });

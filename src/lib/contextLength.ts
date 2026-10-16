@@ -4,23 +4,6 @@
 // We probe and fall back to manual entry.
 
 import { probeKnownAbsent, recordProbeStatus } from '@/lib/probeMemo';
-import type { Codec } from '@/lib/usePersistentState';
-
-/** A detected context length and the `endpoint|model` signature it was read from. */
-export interface DetectedContextEntry { sig: string; tokens: number }
-
-/** Stores a detected entry as JSON; any other stored form reads as nothing detected. */
-export const detectedContextCodec: Codec<DetectedContextEntry | null> = {
-  parse: (raw) => {
-    if (raw === '') return null;
-    const value: unknown = JSON.parse(raw);
-    if (!value || typeof value !== 'object') throw new Error('not a detected entry');
-    const { sig, tokens } = value as Record<string, unknown>;
-    if (typeof sig !== 'string' || positive(tokens) === null) throw new Error('not a detected entry');
-    return { sig, tokens: tokens as number };
-  },
-  serialize: (value) => (value === null ? '' : JSON.stringify(value)),
-};
 
 interface ProbeUrls { openai: string; lmstudio: string; props: string }
 

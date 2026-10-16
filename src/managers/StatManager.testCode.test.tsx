@@ -4,14 +4,16 @@ import userEvent from '@testing-library/user-event';
 import type { Entity, Placeholder, Stat, Trait } from '@/types';
 import type { StatCodeTemplate } from '@/lib/statCodeTemplates';
 import type { CodeEntityNames, CodeTraitPlace } from '@/lib/statCodeAnalysis';
+import type { CodeWorldLookup } from '@/lib/codeWorldLookup';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import StatManager from './StatManager';
+import { boxScripts } from '@/test/scriptFixtures';
 
 /** Running the code and reading it are two different answers about the same text, and the panel has to
  *  show both. The editor itself is stubbed — what's under test is the row beneath it. */
 
 const stats = [
-  { id: 's1', name: 'Warmth', type: 'number', value: 7, min: 0, max: 10, code: '' },
+  { id: 's1', name: 'Warmth', type: 'number', value: 7, min: 0, max: 10 },
   { id: 's2', name: 'Damp', type: 'number', value: 3, min: 0, max: 10 },
 ] as unknown as Stat[];
 
@@ -32,9 +34,16 @@ const entities = [
 ] as Entity[];
 
 const updateStat = vi.fn();
+/** What a case adds to the mocked world, such as Blueprint stats. */
+const worldExtra = vi.hoisted(() => ({ current: {} as Record<string, unknown> }));
+/** True for a case in the library entity editor, which has no world. */
+const noWorld = vi.hoisted(() => ({ current: false }));
 vi.mock('@/contexts/GameDataContext', () => {
-  const world = () => ({ updateStat, stats, playStats: stats, placeholders: [beast], traits, traitGroups: [], entities, playEntities: entities });
-  return { useGameData: world, useGameDataOptional: world };
+  const world = () => ({
+    updateStat, stats, playStats: stats, placeholders: [beast], traits, traitGroups: [], entities, playEntities: entities,
+    ...worldExtra.current,
+  });
+  return { useGameData: world, useGameDataOptional: () => (noWorld.current ? null : world()) };
 });
 vi.mock('@/lib/useBodyMorphNames', () => ({
   useBodyMorphSources: () => ({ sources: [], loading: false, load: vi.fn() }),
@@ -53,6 +62,8 @@ const editorProps = vi.hoisted(() => new Map<string, Record<string, unknown>>())
 vi.mock('@/components/prompt/CodeArea', () => ({
   CodeArea: (props: { value: string; onChange: (next: string) => void; ariaLabel: string }) => {
     // The panel passes more than the three props this stub renders, and the case below reads those.
+    // Re-set last, so the latest render's box is the last of its timing.
+    editorProps.delete(props.ariaLabel);
     editorProps.set(props.ariaLabel, props as unknown as Record<string, unknown>);
     return (
       <textarea
@@ -78,29 +89,46 @@ vi.mock('@/lib/statCodeExecutor', async (importOriginal) => ({
   executeStatCode,
 }));
 
+type Box = 'Before the AI' | 'After the AI';
+
+/** A blank name reads as the stat and timing, so each box's controls end in its timing. */
+const boxName = (box: Box) => new RegExp(` · ${box}$`);
+const testButton = (box: Box) => new RegExp(`^Test Code .* · ${box}$`);
+const templatesButton = (box: Box) => new RegExp(`^Templates .* · ${box}$`);
+const fieldOf = (box: Box) => screen.getByLabelText(new RegExp(`^Code .* · ${box}$`));
+/** What the latest panel handed one box's editor. */
+const propsOf = (box: Box) => [...editorProps].filter(([label]) => label.startsWith('Code ') && boxName(box).test(label)).at(-1)![1];
+
 /** The report beside one box's Test Code button. The button and its report share a row, so the row is
  *  the button's grandparent: the buttons sit in a group of their own inside it. */
-const row = (box: 'Before the AI' | 'After the AI' = 'After the AI') =>
-  screen.getByRole('button', { name: `Test Code ${box}` }).parentElement?.parentElement as HTMLElement;
+const row = (box: Box = 'After the AI') =>
+  screen.getByRole('button', { name: testButton(box) }).parentElement?.parentElement as HTMLElement;
 
-/** The code editor lives on the panel's Code tab, so every case here opens there. The tab an author picks
+/** A stat with a script of each timing: blank where it held none, as an author who added both would leave it. */
+const withBoxes = (stat: Stat): Stat => {
+  const scripts = stat.scripts ?? [];
+  const missing = (['before', 'after'] as const).filter((timing) => !scripts.some((script) => script.timing === timing));
+  return { ...stat, scripts: [...scripts, ...missing.map((timing) => ({ id: timing, timing, code: '' }))] };
+};
+
+/** The code editor lives on the panel's Scripts tab, so every case here opens there. The tab an author picks
  *  belongs to the editor, which is why it arrives as a prop rather than being clicked to. */
-const renderCodePanel = (stat: Stat) => render(<StatManager stat={stat} tab="code" onTabChange={() => {}} />);
+const renderCodePanel = (stat: Stat) => render(<StatManager stat={withBoxes(stat)} tab="code" onTabChange={() => {}} />);
 
 /** Put code in one box the way an author would, and run that box. */
 async function testCode(
-  user: ReturnType<typeof userEvent.setup>, code: string, box: 'Before the AI' | 'After the AI' = 'After the AI',
+  user: ReturnType<typeof userEvent.setup>, code: string, box: Box = 'After the AI',
 ) {
-  const field = screen.getByLabelText(`Stat Code ${box}`);
+  const field = fieldOf(box);
   await user.clear(field);
   await user.paste(code);
-  await user.click(screen.getByRole('button', { name: `Test Code ${box}` }));
+  await user.click(screen.getByRole('button', { name: testButton(box) }));
 }
 
 describe('what each box completes and checks against', () => {
   /** What one box hands the editor, as the options its reader and its completions take. */
-  const optionsOf = (box: 'Before the AI' | 'After the AI') => {
-    const props = editorProps.get(`Stat Code ${box}`)!;
+  const optionsOf = (box: Box) => {
+    const props = propsOf(box);
     return {
       statNames: props.statNames as string[],
       selfName: props.selfName as string,
@@ -161,8 +189,82 @@ describe('what each box completes and checks against', () => {
   });
 });
 
+describe('whose code a box holds', () => {
+  const ownerOf = (box: Box) => propsOf(box).owner;
+  const worldNamesOf = (box: Box) => propsOf(box).statNames;
+  const hub = { id: 'o1', name: 'Hub', type: 'number', value: 1, min: 0, max: 5, regen: 0, description: '', descriptors: [] } as Stat;
+  const grit = { id: 'o2', name: 'Grit', type: 'number', value: 4, min: 0, max: 8, regen: 0, description: '', descriptors: [] } as Stat;
+
+  beforeEach(() => { worldExtra.current = {}; });
+
+  it('gives a world stat no owner, and its own world’s stats under Stats', () => {
+    renderCodePanel(stats[0]);
+    for (const box of ['Before the AI', 'After the AI'] as const) {
+      expect([box, ownerOf(box)]).toEqual([box, null]);
+      expect([box, worldNamesOf(box)]).toEqual([box, ['Warmth', 'Damp']]);
+    }
+  });
+
+  it('gives an entity stat its entity as owner, with its own stats, and still lists the world’s under Stats', () => {
+    render(<StatManager stat={withBoxes(hub)} tab="code" onTabChange={() => {}} store={{ stats: [hub, grit], updateStat, ownerId: 'e2' }} />);
+    for (const box of ['Before the AI', 'After the AI'] as const) {
+      expect([box, ownerOf(box)]).toEqual([box, {
+        kind: 'entity',
+        entity: expect.objectContaining({ id: 'e2', name: 'Ash', stats: ['Hub', 'Grit'], traits: [expect.objectContaining({ name: 'Loyal' })] }),
+      }]);
+      expect([box, worldNamesOf(box)]).toEqual([box, ['Warmth', 'Damp']]);
+    }
+  });
+
+  it('binds each box’s card lookup to the stat and its owner', () => {
+    const lookupOf = (box: Box) => propsOf(box).lookup as CodeWorldLookup;
+    renderCodePanel(stats[0]);
+    expect(lookupOf('After the AI').self()).toMatchObject({ stat: { id: 's1', name: 'Warmth' }, scope: 'global', owners: [] });
+    expect(lookupOf('After the AI').owner()).toEqual({ kind: 'empty' });
+
+    render(<StatManager stat={withBoxes(hub)} tab="code" onTabChange={() => {}} store={{ stats: [hub, grit], updateStat, ownerId: 'e2' }} />);
+    for (const box of ['Before the AI', 'After the AI'] as const) {
+      expect([box, lookupOf(box).self()]).toEqual([box, expect.objectContaining({ stat: expect.objectContaining({ id: 'o1' }), owners: ['Ash'], entityId: 'e2' })]);
+      expect([box, lookupOf(box).owner()]).toEqual([box, {
+        kind: 'entity',
+        entity: expect.objectContaining({ entity: expect.objectContaining({ id: 'e2' }), traits: ['Loyal'] }),
+      }]);
+      expect([box, lookupOf(box).stat({ route: 'world' }, 'Damp')?.scope]).toEqual([box, 'global']);
+      // The box hands its lookup the world's traits, so trait cards show their rows.
+      expect([box, lookupOf(box).trait({ route: 'owner' }, 'Loyal')?.owners]).toEqual([box, ['Ash']]);
+    }
+  });
+
+  it('gives the library’s boxes no lookup', () => {
+    noWorld.current = true;
+    try {
+      render(<StatManager stat={withBoxes(hub)} tab="code" onTabChange={() => {}} store={{ stats: [hub, grit], updateStat, ownerId: 'e2' }} />);
+      for (const box of ['Before the AI', 'After the AI'] as const) {
+        expect([box, propsOf(box).lookup]).toEqual([box, undefined]);
+      }
+    } finally {
+      noWorld.current = false;
+    }
+  });
+
+  it('gives a Blueprint stat its group’s stats as the owner’s, and the world’s play stats under Stats', () => {
+    const blueprints = { id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' };
+    const social = { id: 'bp-social', name: 'Social', parentId: 'bp' };
+    const fear = { ...hub, id: 'f', name: 'Fear', groupId: 'bp-social' } as Stat;
+    const calm = { ...grit, id: 'c', name: 'Calm', groupId: 'bp-social' } as Stat;
+    const lone = { ...grit, id: 'l', name: 'Lone', groupId: 'bp' } as Stat;
+    worldExtra.current = { stats: [...stats, fear, calm, lone], statGroups: [blueprints, social] };
+    renderCodePanel(fear);
+    for (const box of ['Before the AI', 'After the AI'] as const) {
+      expect([box, ownerOf(box)]).toEqual([box, { kind: 'blueprint', statNames: ['Fear', 'Calm'] }]);
+      expect([box, worldNamesOf(box)]).toEqual([box, ['Warmth', 'Damp']]);
+    }
+  });
+});
+
 describe('what Test Code reports', () => {
   beforeEach(() => {
+    worldExtra.current = {};
     executeStatCode.mockReset();
     updateStat.mockReset();
   });
@@ -191,6 +293,22 @@ describe('what Test Code reports', () => {
     await waitFor(() => expect(row()).toHaveTextContent('Result: 3'));
     await waitFor(() => expect(row()).toHaveTextContent('1 error in this code'));
     expect(executeStatCode.mock.calls[0][1]).toBe(stats);
+  });
+
+  it('reads an owned stat’s code against the owner’s stats under owner.stats and the world’s under stats', async () => {
+    const user = userEvent.setup();
+    executeStatCode.mockResolvedValue({ value: 1, error: null });
+    const hub = { id: 'o1', name: 'Hub', type: 'number', value: 1, min: 0, max: 5, regen: 0, description: '', descriptors: [] } as Stat;
+    const grit = { ...hub, id: 'o2', name: 'Grit' } as Stat;
+    render(<StatManager stat={withBoxes(hub)} tab="code" onTabChange={() => {}} store={{ stats: [hub, grit], updateStat, ownerId: 'e2' }} />);
+
+    // Grit is the owner's and Damp is the world's, so each route finds its own name. Warmth is the world's, not the owner's.
+    await testCode(user, 'owner.stats.Grit.value = stats.Damp.value;\nreturn 1;');
+    await waitFor(() => expect(row()).toHaveTextContent('Result: 1'));
+    expect(row()).not.toHaveTextContent('in this code');
+
+    await testCode(user, 'owner.stats.Warmth.value = 1;\nreturn stats.Grit.value;');
+    await waitFor(() => expect(row()).toHaveTextContent('2 errors in this code'));
   });
 
   it('leaves a clean result clean, with nothing to qualify it', async () => {
@@ -396,33 +514,66 @@ describe('what Test Code reports', () => {
     expect(row()).toHaveTextContent('Switched-off stats. Writes ignored: stats.Dusk.max.');
   });
 
-  // An entity stat's `stats` is its owner's list, so the targets its code can write are the owner's stats.
-  it('runs an entity stat’s box over its owner’s stats as authored, and lists its writes to them', async () => {
+  const hub = { id: 'o1', name: 'Hub', type: 'number', value: 1, min: 0, max: 5, regen: 0, description: '', descriptors: [] } as Stat;
+  const grit = { id: 'o2', name: 'Grit', type: 'number', value: 4, min: 0, max: 8, regen: 0, description: '', descriptors: [] } as Stat;
+
+  // An entity stat's `stats` is the world's list and its `owner.stats` its own, which is what the run is handed.
+  it('runs an entity stat’s box over the world’s stats and its entity as owner, and lists its writes to its own stats', async () => {
     const user = userEvent.setup();
-    const hub = { id: 'o1', name: 'Hub', type: 'number', value: 1, min: 0, max: 5, regen: 0, description: '', descriptors: [] } as Stat;
-    const grit = { id: 'o2', name: 'Grit', type: 'number', value: 4, min: 0, max: 8, regen: 0, description: '', descriptors: [] } as Stat;
-    executeStatCode.mockResolvedValue({ value: null, error: null, statWrites: [{ id: 'o2', name: 'Grit', value: 5 }] });
-    render(<StatManager stat={hub} tab="code" onTabChange={() => {}} store={{ stats: [hub, grit], updateStat }} />);
+    executeStatCode.mockResolvedValue({ value: null, error: null, ownerStatWrites: [{ ownerId: 'e2', writes: [{ id: 'o2', name: 'Grit', value: 5 }] }] });
+    render(<StatManager stat={withBoxes(hub)} tab="code" onTabChange={() => {}} store={{ stats: [hub, grit], updateStat, ownerId: 'e2' }} />);
 
-    await testCode(user, 'stats.Grit.value += 1;');
+    await testCode(user, 'owner.stats.Grit.value += 1;');
 
-    await waitFor(() => expect(row()).toHaveTextContent('stats.Grit.value = 5'));
-    expect(executeStatCode.mock.calls[0][1]).toEqual([hub, grit]);
+    await waitFor(() => expect(row()).toHaveTextContent('owner.stats.Grit.value = 5'));
+    const [, runStats, , options] = executeStatCode.mock.calls[0];
+    expect(runStats).toEqual(stats);
+    expect(options.owner).toMatchObject({ id: 'e2', name: 'Ash', stats: { stats: [hub, grit] } });
     expect(grit).toMatchObject({ value: 4, max: 8 });
     expect(updateStat.mock.calls.map(([saved]) => saved.id)).not.toContain('o2');
+  });
+
+  it('runs a Blueprint stat’s box over the world’s stats and an owner that holds its group’s stats only', async () => {
+    const user = userEvent.setup();
+    const blueprints = { id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' };
+    const social = { id: 'bp-social', name: 'Social', parentId: 'bp' };
+    const fear = { ...hub, id: 'f', name: 'Fear', groupId: 'bp-social' } as Stat;
+    const calm = { ...grit, id: 'c', name: 'Calm', groupId: 'bp-social' } as Stat;
+    worldExtra.current = { stats: [...stats, fear, calm], statGroups: [blueprints, social] };
+    executeStatCode.mockResolvedValue({ value: null, error: null, ownerStatWrites: [{ ownerId: '', writes: [{ id: 'c', name: 'Calm', value: 5 }] }] });
+    renderCodePanel(fear);
+
+    await testCode(user, 'owner.stats.Calm.value += 1;');
+
+    await waitFor(() => expect(row()).toHaveTextContent('owner.stats.Calm.value = 5'));
+    const [, runStats, , options] = executeStatCode.mock.calls[0];
+    expect(runStats).toEqual(stats);
+    expect(options.owner).toMatchObject({ name: '', stats: { stats: [fear, calm] } });
+    expect(options.owner.id).toBeUndefined();
+  });
+
+  it('runs a world stat’s box with no owner', async () => {
+    const user = userEvent.setup();
+    executeStatCode.mockResolvedValue({ value: 3, error: null });
+    renderCodePanel(stats[0]);
+
+    await testCode(user, 'return 3;');
+
+    await waitFor(() => expect(row()).toHaveTextContent('Result: 3'));
+    expect(executeStatCode.mock.calls[0][3].owner).toBeUndefined();
   });
 
   it('names every read-only write by its path', async () => {
     const user = userEvent.setup();
     executeStatCode.mockResolvedValue({
-      value: null, error: null, readOnlyWrites: ['clock.hour', 'stats.Health.max', 'entities.Ash.traits.Brave.mode'],
+      value: null, error: null, readOnlyWrites: ['clock.hour', 'stats.Health.name', 'entities.Ash.traits.Brave.mode'],
     });
     renderCodePanel(stats[0]);
 
-    await testCode(user, 'clock.hour = 3; stats.Health.max = 9; entities.Ash.traits.Brave.mode = "x";');
+    await testCode(user, 'clock.hour = 3; stats.Health.name = "x"; entities.Ash.traits.Brave.mode = "x";');
 
     await waitFor(() => expect(row())
-      .toHaveTextContent('Read-only fields. Writes ignored: clock.hour, stats.Health.max, entities.Ash.traits.Brave.mode.'));
+      .toHaveTextContent('Read-only fields. Writes ignored: clock.hour, stats.Health.name, entities.Ash.traits.Brave.mode.'));
   });
 
   it('still counts the problems when the run itself threw', async () => {
@@ -444,7 +595,7 @@ describe('what Test Code reports', () => {
     await testCode(user, 'if (false) { return nope; } return 5;');
     await waitFor(() => expect(row()).toHaveTextContent('1 error in this code'));
 
-    await user.type(screen.getByLabelText('Stat Code After the AI'), ' ');
+    await user.type(fieldOf('After the AI'), ' ');
     expect(row()).not.toHaveTextContent('Result:');
     expect(row()).not.toHaveTextContent('in this code');
   });
@@ -459,13 +610,14 @@ describe('a box tests itself', () => {
 
   it('runs the box whose button was pressed, on that box’s own code', async () => {
     const user = userEvent.setup();
-    executeStatCode.mockResolvedValue({ value: 11, error: null });
-    renderCodePanel({ ...stats[0], beforeCode: 'return 11;', code: 'return 22;' } as Stat);
+    // Inside Warmth's 0–10, so each Result shows the number its box returned.
+    executeStatCode.mockResolvedValue({ value: 4, error: null });
+    renderCodePanel({ ...stats[0], scripts: boxScripts({ before: 'return 4;', after: 'return 6;' }) });
 
-    await user.click(screen.getByRole('button', { name: 'Test Code Before the AI' }));
+    await user.click(screen.getByRole('button', { name: testButton('Before the AI') }));
 
-    await waitFor(() => expect(row('Before the AI')).toHaveTextContent('Result: 11'));
-    expect(executeStatCode.mock.calls[0][0]).toBe('return 11;');
+    await waitFor(() => expect(row('Before the AI')).toHaveTextContent('Result: 4'));
+    expect(executeStatCode.mock.calls[0][0]).toBe('return 4;');
     // The other box stays silent: its code was never run.
     expect(row('After the AI')).not.toHaveTextContent('Result:');
   });
@@ -475,9 +627,9 @@ describe('a box tests itself', () => {
   it('runs the before box with no turn behind it, so every delta reads zero', async () => {
     const user = userEvent.setup();
     executeStatCode.mockResolvedValue({ value: 3, error: null });
-    renderCodePanel({ ...stats[0], beforeCode: 'return self.delta.ai.value + 3;' } as Stat);
+    renderCodePanel({ ...stats[0], scripts: boxScripts({ before: 'return self.delta.ai.value + 3;' }) });
 
-    await user.click(screen.getByRole('button', { name: 'Test Code Before the AI' }));
+    await user.click(screen.getByRole('button', { name: testButton('Before the AI') }));
 
     await waitFor(() => expect(row('Before the AI')).toHaveTextContent('Result: 3'));
     expect(executeStatCode.mock.calls[0][3]).not.toHaveProperty('turn');
@@ -488,34 +640,35 @@ describe('a box tests itself', () => {
   it('runs each box on the clock that box gets', async () => {
     const user = userEvent.setup();
     executeStatCode.mockResolvedValue({ value: 1, error: null });
-    renderCodePanel({ ...stats[0], beforeCode: 'return 1;', code: 'return 1;' } as Stat);
+    renderCodePanel({ ...stats[0], scripts: boxScripts({ before: 'return 1;', after: 'return 1;' }) });
 
-    await user.click(screen.getByRole('button', { name: 'Test Code Before the AI' }));
+    await user.click(screen.getByRole('button', { name: testButton('Before the AI') }));
     await waitFor(() => expect(executeStatCode).toHaveBeenCalled());
     expect(executeStatCode.mock.calls[0][3].clock).toEqual({ deltaHours: 0, elapsedHours: 0 });
 
-    await user.click(screen.getByRole('button', { name: 'Test Code After the AI' }));
+    await user.click(screen.getByRole('button', { name: testButton('After the AI') }));
     await waitFor(() => expect(executeStatCode).toHaveBeenCalledTimes(2));
     expect(executeStatCode.mock.calls[1][3].clock).toEqual({ deltaHours: 1, elapsedHours: 1 });
   });
 
   it('clears only the edited box’s report', async () => {
     const user = userEvent.setup();
-    executeStatCode.mockResolvedValue({ value: 11, error: null });
-    renderCodePanel({ ...stats[0], beforeCode: 'return 11;' } as Stat);
+    // Inside Warmth's 0–10, so each Result shows the number its box returned.
+    executeStatCode.mockResolvedValue({ value: 4, error: null });
+    renderCodePanel({ ...stats[0], scripts: boxScripts({ before: 'return 4;' }) });
 
-    await user.click(screen.getByRole('button', { name: 'Test Code Before the AI' }));
-    await waitFor(() => expect(row('Before the AI')).toHaveTextContent('Result: 11'));
+    await user.click(screen.getByRole('button', { name: testButton('Before the AI') }));
+    await waitFor(() => expect(row('Before the AI')).toHaveTextContent('Result: 4'));
 
-    executeStatCode.mockResolvedValue({ value: 22, error: null });
-    await testCode(user, 'return 22;');
-    await waitFor(() => expect(row('After the AI')).toHaveTextContent('Result: 22'));
+    executeStatCode.mockResolvedValue({ value: 6, error: null });
+    await testCode(user, 'return 6;');
+    await waitFor(() => expect(row('After the AI')).toHaveTextContent('Result: 6'));
     // Running and editing the other box left this one's report where it was.
-    expect(row('Before the AI')).toHaveTextContent('Result: 11');
+    expect(row('Before the AI')).toHaveTextContent('Result: 4');
 
-    await user.type(screen.getByLabelText('Stat Code Before the AI'), ' ');
+    await user.type(fieldOf('Before the AI'), ' ');
     expect(row('Before the AI')).not.toHaveTextContent('Result:');
-    expect(row('After the AI')).toHaveTextContent('Result: 22');
+    expect(row('After the AI')).toHaveTextContent('Result: 6');
   });
 
   // The whole point of a per-box menu: what it inserts lands in that box and runs from that box's own
@@ -526,17 +679,18 @@ describe('a box tests itself', () => {
     executeStatCode.mockResolvedValue({ value: 50, error: null });
     renderCodePanel(stats[0]);
 
-    await user.click(screen.getByRole('button', { name: 'Templates Before the AI' }));
+    await user.click(screen.getByRole('button', { name: templatesButton('Before the AI') }));
     await user.click(await screen.findByRole('button', { name: 'Opening Turn Value' }));
     await user.click(screen.getByRole('button', { name: 'Insert Code' }));
 
     const inserted = ['if (clock.elapsedHours > 0) return;', 'return 50;'].join('\n');
-    await waitFor(() => expect(screen.getByLabelText('Stat Code Before the AI')).toHaveValue(inserted));
+    await waitFor(() => expect(fieldOf('Before the AI')).toHaveValue(inserted));
     // Into the before box alone: the after box is untouched.
-    expect(screen.getByLabelText('Stat Code After the AI')).toHaveValue('');
+    expect(fieldOf('After the AI')).toHaveValue('');
 
-    await user.click(screen.getByRole('button', { name: 'Test Code Before the AI' }));
-    await waitFor(() => expect(row('Before the AI')).toHaveTextContent('Result: 50'));
+    await user.click(screen.getByRole('button', { name: testButton('Before the AI') }));
+    // The template's 50 lands inside Warmth's 0–10.
+    await waitFor(() => expect(row('Before the AI')).toHaveTextContent('Result: 10'));
     expect(executeStatCode.mock.calls[0][0]).toBe(inserted);
   });
 
@@ -549,18 +703,18 @@ describe('a box tests itself', () => {
     });
     renderCodePanel(stats[0]);
 
-    await user.click(screen.getByRole('button', { name: 'Templates After the AI' }));
+    await user.click(screen.getByRole('button', { name: templatesButton('After the AI') }));
     await user.click(await screen.findByRole('button', { name: 'Saved Drain' }));
     await user.click(screen.getByRole('button', { name: 'Insert Code' }));
 
-    await waitFor(() => expect(screen.getByLabelText('Stat Code After the AI'))
+    await waitFor(() => expect(fieldOf('After the AI'))
       .toHaveValue('return self.value - clock.deltaHours + (self.id ? 0 : 1);'));
   });
 
   it('offers no run on an empty box', async () => {
-    renderCodePanel({ ...stats[0], beforeCode: '   ', code: 'return 1;' } as Stat);
+    renderCodePanel({ ...stats[0], scripts: boxScripts({ before: '   ', after: 'return 1;' }) });
 
-    expect(screen.getByRole('button', { name: 'Test Code Before the AI' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Test Code After the AI' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: testButton('Before the AI') })).toBeDisabled();
+    expect(screen.getByRole('button', { name: testButton('After the AI') })).toBeEnabled();
   });
 });

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/UserAvatar";
 import { AvatarCropDialog } from "@/components/menu/AvatarCropDialog";
 import { IMAGE_UPLOAD_ACCEPT, MAX_AVATAR_UPLOAD_BYTES } from "@/lib/avatar";
+import { filesFrom } from "@/lib/filesFrom";
 import AuthService from "@/services/AuthService";
 import { Tip } from "@/components/ui/tooltip";
 
@@ -100,7 +101,7 @@ export function ProfileAvatarEditor({ username, avatarUrl, onChanged, notify, di
           accept={IMAGE_UPLOAD_ACCEPT}
           className="hidden"
           aria-label="Profile image file"
-          onChange={(event) => pick(event.target.files?.[0])}
+          onChange={(event) => pick(filesFrom(event)[0])}
         />
       </div>
 

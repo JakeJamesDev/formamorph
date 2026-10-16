@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { SurfaceId } from '@/lib/docs/surfaceMap';
 import { SANDBOX_GLOBALS } from '@/lib/statCodeSurface';
 import { STAT_CODE_TIMINGS, TIMING_LABEL } from '@/lib/statCodeTiming';
-import { CODE_RIDER_LANGUAGE, DEFAULT_CODE_RIDER, hasCodeWords, isCodeTurn, SANDBOX_GLOBAL_NAMES, STAT_CODE_TAB, withCodeRider } from './helpCodeRider';
+import { CODE_RIDER_LANGUAGE, DEFAULT_CODE_RIDER, hasCodeWords, isCodeTurn, SANDBOX_GLOBAL_NAMES, SCRIPT_TAB, withCodeRider } from './helpCodeRider';
 
 const tabs = (...ids: SurfaceId[]) => ({ screen: 'worldEditor' as SurfaceId, dialog: null, tabs: ids });
 
@@ -52,7 +52,7 @@ describe('the code words of a question', () => {
 
 describe('a code turn', () => {
   it('is any question asked from a stat Code tab, and an ordinary question elsewhere is not', () => {
-    expect(isCodeTurn('How do I make this go down?', tabs(STAT_CODE_TAB))).toBe(true);
+    expect(isCodeTurn('How do I make this go down?', tabs(SCRIPT_TAB))).toBe(true);
     expect(isCodeTurn('How do I make this go down?', tabs('worldEditorStat.details'))).toBe(false);
     expect(isCodeTurn('How do I make this go down?', null)).toBe(false);
     expect(isCodeTurn('Can I return self.value?', null)).toBe(true);
@@ -94,17 +94,20 @@ describe('the rider', () => {
   });
 
   // Q10 leaves `entities` and `persona` out of this line.
-  it('names self, stats, traits, placeholders and clock on the line that reads the stat', () => {
+  it('names self, stats, owner.stats, traits, placeholders and clock on the line that reads the stat', () => {
     const line = DEFAULT_CODE_RIDER.split('\n').find((l) => l.startsWith('- Read the stat'));
     expect(line).toBeDefined();
-    const named = [...(line ?? '').matchAll(/`(\w+)`/g)].map(([, name]) => name);
-    expect(named).toEqual(['self', 'stats', 'traits', 'placeholders', 'clock']);
-    for (const name of named) expect(SANDBOX_GLOBAL_NAMES, name).toContain(name);
+    const named = [...(line ?? '').matchAll(/`([\w.]+)`/g)].map(([, name]) => name);
+    expect(named).toEqual(['self', 'stats', 'owner.stats', 'traits', 'placeholders', 'clock']);
+    for (const name of named) expect(SANDBOX_GLOBAL_NAMES, name).toContain(name.split('.')[0]);
+    // Q14: `stats` is the world's, `owner.stats` the owning entity's.
+    expect(line).toContain('the world\'s stats through `stats`');
+    expect(line).toContain('the entity that owns it through `owner.stats`');
   });
 
-  it('names each sandbox object it names alone, never with a member', () => {
+  it('names each sandbox object it names alone, never with a member, save the owner.stats route', () => {
     const named = [...DEFAULT_CODE_RIDER.matchAll(new RegExp(`\`(${SANDBOX_GLOBAL_NAMES.join('|')})([^\`]*)\``, 'g'))];
     expect(named.length).toBeGreaterThan(0);
-    expect(named.filter(([, , rest]) => rest !== '').map(([code]) => code)).toEqual([]);
+    expect(named.filter(([code, , rest]) => rest !== '' && code !== '`owner.stats`').map(([code]) => code)).toEqual([]);
   });
 });

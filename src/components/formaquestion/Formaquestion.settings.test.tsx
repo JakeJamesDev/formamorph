@@ -41,7 +41,9 @@ async function openAsk() {
 }
 
 async function send(field: HTMLElement, question: string) {
-  await userEvent.type(field, question);
+  // The click keeps the default delay, which Radix's pointer-events cleanup needs; the keys skip it.
+  await userEvent.click(field);
+  await userEvent.type(field, question, { delay: null, skipClick: true });
   await userEvent.click(screen.getByRole('button', { name: 'Send' }));
 }
 
@@ -84,7 +86,8 @@ describe('Formaquestion Settings', () => {
     expect(within(dialog).getAllByRole('checkbox').map((box) => box.getAttribute('aria-checked'))).toEqual(['false', 'true', 'false', 'true', 'true', 'false', 'true']);
     expect(within(dialog).getByRole('spinbutton', { name: 'History Length' })).toHaveValue(4);
 
-    expect(screen.getByRole('dialog', { name: 'Formaquestion' })).toHaveAttribute('data-state', 'closed');
+    // The closed window leaves the DOM once its close animation's timed backstop runs.
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Formaquestion' })).toBeNull());
 
     await userEvent.keyboard('{Escape}');
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Formaquestion Settings' })).toBeNull());

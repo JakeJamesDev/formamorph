@@ -17,7 +17,7 @@ import { readSettingsMode, writeSettingsMode, SETTINGS_MODE_DESCRIPTIONS, SETTIN
 import { settingsUseAdvancedValues, sectionHiddenFields } from '@/lib/settingsAdvancedData';
 import { TutorialPopover } from '@/components/TutorialPopover';
 import { useDevRoute } from '@/lib/devRouter';
-import { Row, CheckRow, Section, HintInfo, ValueSlider } from '@/components/SettingsRows';
+import { Row, CheckRow, Section, HintInfo, ValueSlider, SettingsNote } from '@/components/SettingsRows';
 import { MIN_EDITOR_AUTO_SAVE_IDLE_S, MAX_EDITOR_AUTO_SAVE_IDLE_S, EDITOR_AUTO_SAVE_IDLE_STEP_S } from '@/contexts/settingsDefaults';
 import { formatPause } from '@/lib/formatPause';
 import { SETTINGS_COPY, SETTINGS_BUTTONS, SETTINGS_CONFIRMS, SETTINGS_NOTES } from '@/components/modals/settingsCopy';
@@ -51,6 +51,7 @@ import { cn } from "@/lib/utils";
 import { PanelShell } from "@/components/PanelShell";
 import { useMorphFullscreen } from "@/lib/useMorphFullscreen";
 import { composePreviewValues, languagePreviewValue } from "@/lib/previewValuePool";
+import { layerValues, type TokenValues } from "@/lib/promptValues";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -63,6 +64,7 @@ import PromptField from '../prompt/PromptField';
 import { PROMPT_KIND_VARIABLES, PROMPT_KIND_USER_VARIABLES, NOW_LINE_VARIABLES, SUBJECT, type PromptVariable } from '@/lib/promptVariables';
 import { defaultPromptSampler } from '@/lib/promptSamplers';
 import { numInput } from '@/lib/numInput';
+import { MAX_AUTOSAVE_SLOTS } from '@/lib/autosave';
 import { FieldError } from '@/components/ui/typography';
 import { SamplerControl, type SamplerControlProps } from './SamplerControl';
 import { EndpointRouteField } from './EndpointRouteField';
@@ -72,6 +74,7 @@ import { TextEndpointEditor } from './TextEndpointEditor';
 import { activePresetEditor } from './textEndpointEditorModel';
 import { ReadOnlyNotice } from '@/components/prompt/ReadOnlyNotice';
 import { PromptCompareDialog } from '@/components/prompt/PromptCompareDialog';
+import { DevChipOptions } from '@/components/prompt/DevChipOptions';
 import { PromptResetCompare } from '@/components/prompt/PromptResetCompare';
 import { promptVocabulary } from '@/lib/chipVocabulary';
 import { ATTACHMENT_PROMPTS, includesAttachments } from '@/lib/promptAttachments';
@@ -85,10 +88,13 @@ import { cachedImageBytes, clearCachedImages } from '@/lib/remoteImageCache';
 import { formatBytes } from '@/lib/imageOptim';
 import { DEFAULT_WORLDS, readDeletedDefaultWorlds, clearDeletedDefaultWorlds } from '@/lib/defaultWorlds';
 import { PresetNameDialog } from './PresetNameDialog';
+import { workflowOwnModels } from '@/lib/imageGen/comfyui';
+import { DEFAULT_IMAGE_FILE_NAME } from '@/lib/imageGen/fileName';
 import { PresetHeader } from '@/components/presetHeader/PresetHeader';
 import { presetHeaderActions } from '@/lib/presetHeaderActions';
 import { OPENING_SCENE_CUE, PROMPT_TEXT_DEFAULTS } from '../game/GamePrompts';
 import { buildStyledValues } from '@/lib/sectionStyle';
+import { statTextFor } from '@/lib/statTextPrompts';
 import { isDesktop } from '@/lib/imageGen/desktop';
 import { fetchComfyMeta, DEFAULT_COMFY_WORKFLOW, type ComfyMeta } from '@/lib/imageGen/comfyui';
 import { fetchInvokeMeta, invokeConnectionMessage, encodersFor, vaesFor, PREFIXED_BASES, type InvokeMeta } from '@/lib/imageGen/invokeai';
@@ -212,7 +218,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   /** Starts the Authoring Tour on a new world. Only the main menu supplies it, so a running game hides the row. */
   onStartAuthoringTour?: () => void;
   /** Live variable values for the prompt-editor Preview tab. Supplied only in game; absent → no Preview. */
-  previewValues?: Record<string, string>;
+  previewValues?: TokenValues;
   /** The open world as a Tool Snapshot, for Try It. Supplied only in game; absent, Try It uses the sample world. */
   toolWorld?: () => ToolSnapshot;
   /** DEV dev-router: open on this top-level tab instead of the default (see `devRouter.ts`). */
@@ -237,6 +243,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   // DEV dev-router: `#dev?modal=settingsCompare` opens the compare view on a canned Narration edit.
   const [devCompare, setDevCompare] = useState(false);
   useEffect(() => { if (import.meta.env.DEV && devRoute?.modal === 'settingsCompare') setDevCompare(true); }, [devRoute]);
+  // DEV dev-router: `#dev?modal=chipOptions` opens Chip Options on a canned Entities chip.
+  const [devChipOptions, setDevChipOptions] = useState(false);
+  useEffect(() => { if (import.meta.env.DEV && devRoute?.modal === 'chipOptions') setDevChipOptions(true); }, [devRoute]);
   const routeMode = import.meta.env.DEV && (devRoute?.mode === 'simple' || devRoute?.mode === 'advanced')
     ? devRoute.mode
     : undefined;
@@ -367,6 +376,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     limitActiveCharacters,
     activeCharacterLimit,
     reasoningCapability,
+    nativeReasoning,
     promptReasoningSettings,
     setPromptReasoning,
     promptReasoningBudget,
@@ -432,6 +442,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     builtinPresets,
     activePresetId,
     activeSectionStyle,
+    statTextPrompts,
     presetPinnedToWorld,
     activePresetIsBuiltIn,
     selectPreset,
@@ -457,6 +468,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     toolsEnabled,
     autosaveEnabled,
     setAutosaveEnabled,
+    autosaveSlots,
+    setAutosaveSlots,
     editorAutoSave,
     setEditorAutoSave,
     editorAutoSaveIdleSeconds,
@@ -503,6 +516,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     setImageAdetailer,
     imageWorkflow,
     setImageWorkflow,
+    imageFileName,
+    setImageFileName,
     imageInvokeEncoder,
     imageInvokeBoard,
     setImageInvokeBoard,
@@ -522,6 +537,10 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     imageTagPrompt,
     setImageTagPrompt,
   } = settings;
+  // Autosaves Kept as it stood when Settings opened: lowering it below that warns until Settings closes.
+  const [autosaveSlotsAtOpen, setAutosaveSlotsAtOpen] = useState(autosaveSlots);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- taken on open only; the edits after it are what it is compared with
+  useEffect(() => { if (isOpen) setAutosaveSlotsAtOpen(autosaveSlots); }, [isOpen]);
   const themeState = useTheme();
   const desktop = isDesktop();
   const [connectionGuideOpen, setConnectionGuideOpen] = useState(false);
@@ -579,13 +598,16 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   const [showComfyWorkflow, setShowComfyWorkflow] = useState(false);
   useEffect(() => {
     if (!isOpen || imageProvider !== 'comfyui') return;
+    // The lists belong to one server; a changed endpoint must not name the old server's checkpoint.
+    setComfyMeta(null);
     let cancelled = false;
     const t = setTimeout(async () => {
       try {
         const meta = await fetchComfyMeta(resolveImageEndpoint(imageProvider, imageEndpoint), imageApiToken);
         if (!cancelled) setComfyMeta(meta);
       } catch {
-        // silent: ComfyUI not running / unreachable — the fields fall back to free text
+        // Silent: the fields fall back to free text.
+        if (!cancelled) setComfyMeta(null);
       }
     }, 300);
     return () => { cancelled = true; clearTimeout(t); };
@@ -664,7 +686,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   );
   // The choices prompt's language chip names itself in the directive, so its preview says "choices" where
   // the pool's default says "narration".
-  const choicesPreviewValues = { ...effectivePreviewValues, ...languagePreviewValue('choices', language) };
+  const choicesPreviewValues = layerValues(effectivePreviewValues, languagePreviewValue('choices', language));
 
   // The selected prompt sub-tab, so the Reset button can target just that prompt.
   const [promptTab, setPromptTab] = useState(initialPromptTab ?? 'narration');
@@ -874,6 +896,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
       choicesUser: choicesUserPrompt,
       statUpdates: statUpdatesPrompt,
       statUpdatesUser: statUpdatesUserPrompt,
+      statText: statTextFor(statTextPrompts, { worldPrompt: false }),
       summary: summaryPrompt,
       summaryUser: summaryUserPrompt,
       milestoneSelect: milestoneSelectPrompt,
@@ -890,7 +913,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     systemPrompt, recapUserPrompt, nowLinePrompt, rehydrateUserPrompt,
     locationChangePromptText, locationChangeUserPrompt, thinkingPrompt, directorPrompt, directorUserPrompt,
     characterPrompt, storyboardPrompt, narrationUserPrompt, oocDirectivePrompt,
-    choicesPrompt, choicesUserPrompt, statUpdatesPrompt, statUpdatesUserPrompt,
+    choicesPrompt, choicesUserPrompt, statUpdatesPrompt, statUpdatesUserPrompt, statTextPrompts,
     summaryPrompt, summaryUserPrompt, timePassedPrompt, timePassedUserPrompt,
     openingTimePrompt, openingTimeUserPrompt, diaryPrompt, sceneTagsPrompt, sceneTagsUserPrompt,
     discoverEntityPrompt, discoverEntityUserPrompt, milestoneSelectPrompt, milestoneSelectUserPrompt,
@@ -940,6 +963,13 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   // controls even while the engine is running, and vice versa.
   const promptTarget = resolveEndpointForKind(activeKind);
   const promptLocalEngine = promptTarget.localEngine;
+  // The model a ComfyUI workflow loads itself, when it ignores the Model setting.
+  const workflowModels = useMemo(
+    () => (imageProvider === 'comfyui' ? workflowOwnModels(imageWorkflow) : []),
+    [imageProvider, imageWorkflow],
+  );
+  // A custom workflow without %prefix% ignores the File Name setting.
+  const workflowIgnoresFileName = imageWorkflow.trim() !== '' && !imageWorkflow.includes('%prefix%');
   const pinnedEndpoint = routableEndpoints.find((p) => p.id === pinnedEndpointId);
   const endpointControl = {
     label: SETTINGS_COPY.promptEndpoint.label,
@@ -1011,6 +1041,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     kind: activeKind,
     setting: promptReasoningSettings[activeKind] ?? defaultPromptReasoningSetting(activeKind),
     budgetPct: resolveReasoningBudgetPct(activeKind, promptReasoningBudget),
+    global: nativeReasoning,
     suppressed: nativeReasoningSuppressed(thinkingMode, activeKind),
     onChange: (v: PromptReasoningSetting) => setPromptReasoning(activeKind, v),
     onBudgetChange: (v: number) => setPromptReasoningBudget(activeKind, v),
@@ -1187,14 +1218,20 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                 <Input id="imageApiToken" type="password" value={imageApiToken} onChange={(e) => setImageApiToken(e.target.value)} />
               </Row>
               <Row htmlFor="imageModel" {...rowCopy('imageModel')}>
-                {imageProvider === 'comfyui' ? (
+                {imageProvider === 'comfyui' && workflowModels.length > 0 ? (
+                  // A workflow without %ckpt% loads its own model; the Model setting would change nothing.
+                  <div className="grid gap-1">
+                    <Input id="imageModel" value={workflowModels.join(', ')} disabled readOnly />
+                    <SettingsNote text={SETTINGS_NOTES.imageModelFromWorkflow} />
+                  </div>
+                ) : imageProvider === 'comfyui' ? (
                   <TokenAutocomplete
                     single
                     openOnFocus
                     values={imageModel ? [imageModel] : []}
                     onChange={(v) => setImageModel(v[0] ?? '')}
                     options={comfyMeta?.checkpoints ?? []}
-                    placeholder="(server default)"
+                    placeholder={comfyMeta?.checkpoints[0] ? `(first on the server: ${comfyMeta.checkpoints[0]})` : '(first checkpoint on the server)'}
                   />
                 ) : imageProvider === 'novelai' ? (
                   <Select value={imageModel} onValueChange={setImageModel}>
@@ -1304,7 +1341,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                   {...rowCopy('imageWorkflow')}
                   info={<HintInfo>{`Tokens filled in for you:
 
-\`%prompt%\` \`%negative%\` \`%ckpt%\` \`%width%\` \`%height%\` \`%steps%\` \`%cfg%\` \`%seed%\` \`%sampler%\``}</HintInfo>}
+\`%prompt%\` \`%negative%\` \`%ckpt%\` \`%width%\` \`%height%\` \`%steps%\` \`%cfg%\` \`%seed%\` \`%sampler%\` \`%prefix%\``}</HintInfo>}
                 >
                   <div className="grid gap-1.5">
                     <Textarea
@@ -1326,6 +1363,18 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                       <Button variant="outline" size="sm" onClick={() => setShowComfyWorkflow(true)}>{SETTINGS_BUTTONS.howToGetThis}</Button>
                     </div>
                   </div>
+                </Row>
+              )}
+              {advanced && imageProvider === 'comfyui' && (
+                <Row htmlFor="imageFileName" {...rowCopy('imageFileName')}>
+                  {workflowIgnoresFileName ? (
+                    <div className="grid gap-1">
+                      <Input id="imageFileName" value={imageFileName} placeholder={DEFAULT_IMAGE_FILE_NAME} disabled readOnly />
+                      <SettingsNote text={SETTINGS_NOTES.imageFileNameNoPrefix} />
+                    </div>
+                  ) : (
+                    <Input id="imageFileName" value={imageFileName} onChange={(e) => setImageFileName(e.target.value)} placeholder={DEFAULT_IMAGE_FILE_NAME} />
+                  )}
                 </Row>
               )}
               {advanced && imageProvider === 'invokeai' && (
@@ -1403,7 +1452,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                   The prompt sent to your text model to turn a subject’s description into booru tags. The
                   <span className="mx-1 font-medium">Subject</span>chip expands per kind — character: “{SUBJECT_GUIDANCE.character}”; location: “{SUBJECT_GUIDANCE.location}”; world: “{SUBJECT_GUIDANCE.world}”.
                 </p>
-                <PromptField value={imageTagPrompt} onChange={setImageTagPrompt} variables={[SUBJECT]} />
+                <PromptField value={imageTagPrompt} onChange={setImageTagPrompt} variables={[SUBJECT]} chipReads={effectivePreviewValues} />
                 <div className="flex justify-start flex-shrink-0">
                   <ConfirmDialog
                     {...SETTINGS_CONFIRMS.resetTagPrompt}
@@ -1986,6 +2035,26 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                 onChange={setAutosaveEnabled}
                 {...rowCopy('autosave')}
               />
+              {autosaveEnabled && (
+                <Row htmlFor="autosaveSlots" {...rowCopy('autosaveSlots')}>
+                  <div className="grid gap-1">
+                    <ValueSlider
+                      id="autosaveSlots"
+                      value={autosaveSlots}
+                      min={1}
+                      max={MAX_AUTOSAVE_SLOTS}
+                      step={1}
+                      onChange={setAutosaveSlots}
+                      format={String}
+                    />
+                    {autosaveSlots < autosaveSlotsAtOpen && (
+                      <p role="status" className="text-helper text-destructive">
+                        Deletes each world&apos;s oldest autosaves past {autosaveSlots} on its next autosave
+                      </p>
+                    )}
+                  </div>
+                </Row>
+              )}
               </Section>
 
               <Section title="Authoring">
@@ -2098,6 +2167,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
         surface="settingsCompare"
       />
     )}
+    {import.meta.env.DEV && <DevChipOptions open={devChipOptions && isOpen} onOpenChange={setDevChipOptions} />}
     </>
   );
 };

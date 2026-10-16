@@ -380,13 +380,10 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     if (target) land(target);
   }, [requestSurface, sheet, closeWindow, openDialog, changeViewInWindow, land]);
 
-  // Insert: the sheet closes as for Take Me There; the desktop window steps aside for the replace confirm.
-  useEffect(() => onStatCodeInsert((event) => {
-    if (sheet) {
-      if (event !== 'settled') closeWindow();
-    } else if (event === 'confirming') stepAside();
-    else if (event === 'settled') comeBack();
-  }), [sheet, closeWindow, stepAside, comeBack]);
+  // Insert: the sheet closes as for Take Me There; the desktop window stays.
+  useEffect(() => onStatCodeInsert(() => {
+    if (sheet) closeWindow();
+  }), [sheet, closeWindow]);
 
   // A failed load drops the request, so a later Try Again does not jump the view.
   useEffect(() => {
@@ -482,6 +479,13 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     void import('@/lib/devHelpTraceSample').then(({ devHelpTraceSample }) => { if (mountedRef.current) setDevTrace([devHelpTraceSample(index), devHelpTraceSample(index, 'And how do I remove one?', 'dev-trace-2')]); });
   }, [devRoute, index, mountedRef]);
   const tracedExchanges = devTrace ?? chat.exchanges;
+  // `#dev?modal=formaquestionWikiConfirm`: waits for the guide, so its load cannot reopen a canceled confirm.
+  useEffect(() => {
+    if (!import.meta.env.DEV || devRoute?.modal !== 'formaquestionWikiConfirm') return;
+    setOpen(true);
+    if (!guide) return;
+    setWikiAsk(wikiTarget(devRoute.subtab ? guide.section(devRoute.subtab) : null));
+  }, [devRoute, guide]);
   useEffect(() => {
     if (!import.meta.env.DEV || devRoute?.modal !== 'formaquestion') return;
     setOpen(true);

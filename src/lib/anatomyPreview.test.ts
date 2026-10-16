@@ -9,6 +9,7 @@ import { PARITY_PROMPTS } from './turnPipeline/parityTestInputs';
 import { allGroupedTabs } from './promptGroups';
 import type { ThinkingMode } from '@/contexts/SettingsContext';
 import { buildStyledValues } from './sectionStyle';
+import { builtinStatTextPrompts } from './statTextPrompts';
 import { renderPromptTemplate } from './promptTemplate';
 import { PROMPT_TEXT_KEYS } from './promptPresets';
 import {
@@ -101,8 +102,11 @@ describe('current built-in Headers through production request builders', () => {
       const key = PROMPT_TEXT_KEYS.find(key => PROMPT_TEXT_DEFAULTS[key] === text);
       return key ? values[key] : text;
     };
-    const turn = { ...PROMPTS.turn };
-    for (const key of Object.keys(turn) as (keyof typeof turn)[]) turn[key] = styled(turn[key]);
+    const turn = { ...PROMPTS.turn, statText: builtinStatTextPrompts(sectionStyle) };
+    for (const key of Object.keys(turn) as (keyof typeof turn)[]) {
+      const text = turn[key];
+      if (typeof text === 'string') Object.assign(turn, { [key]: styled(text) });
+    }
     const prompts: AnatomyPreviewPrompts = {
       system: styled(PROMPTS.system), recap: styled(PROMPTS.recap), now: styled(PROMPTS.now), recall: styled(PROMPTS.recall),
       turn,
@@ -400,7 +404,8 @@ const withMarker = (tab: string, marker: string): AnatomyPreviewPrompts => {
   const value = `${marker} <WORLD DESCRIPTION>`;
   return key === 'system'
     ? { ...PROMPTS, system: value }
-    : { ...PROMPTS, turn: { ...PROMPTS.turn, [key]: value } };
+    // Authored text sits in a user preset, which sends its own stat prompt on the text pass too.
+    : { ...PROMPTS, turn: { ...PROMPTS.turn, [key]: value, ...(key === 'statUpdates' && { statText: { system: null, user: null } }) } };
 };
 
 describe('every prompt in the rail has a hub', () => {
@@ -507,10 +512,10 @@ describe('the hub and the editor Preview tell one story', () => {
 
   it('renders the same current-turn values the field previews sample', () => {
     const pool = SAMPLE_PREVIEW_VALUES;
-    expect(text('scenetags')).toContain(pool['<IN FRAME>']);
-    expect(text('statupdates')).toContain(pool['<NARRATION>']);
-    expect(text('summary')).toContain(pool['<PLAYER ACTION>']);
-    expect(text('character')).toContain(pool['<CHARACTER NAME>']);
+    expect(text('scenetags')).toContain(pool('<IN FRAME>'));
+    expect(text('statupdates')).toContain(pool('<NARRATION>'));
+    expect(text('summary')).toContain(pool('<PLAYER ACTION>'));
+    expect(text('character')).toContain(pool('<CHARACTER NAME>'));
   });
 
   it('describes the subject with the words the sample turn owns', () => {

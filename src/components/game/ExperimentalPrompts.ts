@@ -5,8 +5,8 @@ export const experimentalSystemPrompt = `You are the narrator of an interactive 
 <MARKDOWN GUIDANCE|definitions|pre="The game displays this syntax in your reply.\n\n"|format=markdown|header="Formatting">\
 <WORLD DESCRIPTION|pre="The setting, tone, and world-wide facts of this story.\n\n"|format=markdown|header="Game World">\
 <DICTIONARY|before|pre="Facts about the world that are true throughout the story.\n\n"|format=markdown|header="Background Lore">\
-<STATS DESCRIPTION|descriptions.markdown|pre="A stat is a named value that the game tracks and that changes during play.\n\n"|header="Stats">\
-<TRAITS DESCRIPTION|markdown|pre="A trait is a characteristic or condition that is either active or inactive.\n\n"|header="Traits">\
+<STATS DESCRIPTION|descriptions.markdown|pre="A stat is a named value that the game tracks and that changes during play.\n\n"|header="Global Stats">\
+<TRAITS DESCRIPTION|markdown|pre="A trait is a characteristic or condition that is either active or inactive.\n\n"|header="Global Traits">\
 <PERSONA|markdown|pre="The identity and description of the character controlled by the player.\n\n"|header="Player Character">\
 <NOTES|pre="Additional information supplied by the player for this story.\n\n"|format=markdown|header="Important Player Notes">\
 <LOCATION|markdown|pre="The place where the player character currently is.\n\n"|header="Current Location">\

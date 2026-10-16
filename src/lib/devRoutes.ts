@@ -93,13 +93,20 @@ export type DevPaneModal = (typeof DEV_PANE_MODALS)[number];
  *  answer comes from the server. Its Like press reaches the real route and fails there, which is the point
  *  at which a live listing is needed. `errorDetails` raises a canned ComfyUI rejection toast
  *  (`devErrorDetailsSample.ts`) from any view with toasts; its View Details link opens the dialog.
+ *  `imageSetup` raises a canned ComfyUI connection toast the same way; its Fix connection link opens
+ *  the image setup guide.
  *  `formaquestion` opens the help window over whatever is on screen. It is not a dialog, so it does not
  *  close one: open the dialog first, then the window, to see both. `formaquestionSettings` opens the window
  *  and Formaquestion Settings under it. `formaquestionCompare` adds the compare view over them, on a canned
  *  edit of the answer prompt. `formaquestionAiContext` opens the window and its AI Context under it, on two
- *  canned questions with traces, so the popup has pages to show without an AI. `settingsCompare` opens Settings
- *  and the compare view over it, on a canned edit of the Narration prompt. `DEV_PANE_MODALS` follow. */
-export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'auth', 'feedbackHub', 'adminPanel', 'editText', 'location', 'changelog', 'eventAck', 'publish', 'worldPrompts', 'aiContext', 'ageGate', 'likers', 'privacyPolicy', 'deleteAccount', 'deletionCancelled', 'updateRequired', 'exitApp', 'designSystem', 'enterWorld', 'connectReferences', 'manageAddons', 'componentUpdates', 'worldUpdate', 'importComponent', 'replaceSource', 'imageReplace', 'codeRename', 'replaceAll', 'savedElsewhere', 'deletedElsewhere', 'demoAI', 'persona', 'likePrompt', 'errorDetails', 'formaquestion', 'formaquestionSettings', 'formaquestionCompare', 'formaquestionAiContext', 'settingsCompare', ...DEV_PANE_MODALS] as const;
+ *  canned questions with traces, so the popup has pages to show without an AI. `formaquestionWikiConfirm` opens the
+ *  window and the Open Wiki confirm, named for the section `subtab=…` gives or for the wiki home, whatever the
+ *  Confirm Before Opening the Wiki setting says. `settingsCompare` opens Settings
+ *  and the compare view over it, on a canned edit of the Narration prompt. `chipOptions` opens Settings and
+ *  Chip Options over it, on a canned Entities chip. `scriptPrompt` is in game (GameViewer) and fires one
+ *  canned `player.*` request through the live prompt store once the game has a turn; `tab=…` picks the shape
+ *  (`devScriptPromptSamples.ts`). Pair it with `fixture=…`. `DEV_PANE_MODALS` follow. */
+export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'auth', 'feedbackHub', 'adminPanel', 'editText', 'location', 'changelog', 'eventAck', 'publish', 'worldPrompts', 'aiContext', 'ageGate', 'likers', 'privacyPolicy', 'deleteAccount', 'deletionCancelled', 'updateRequired', 'exitApp', 'designSystem', 'enterWorld', 'connectReferences', 'manageAddons', 'componentUpdates', 'worldUpdate', 'importComponent', 'replaceSource', 'imageReplace', 'codeRename', 'replaceAll', 'savedElsewhere', 'deletedElsewhere', 'demoAI', 'persona', 'likePrompt', 'errorDetails', 'imageSetup', 'formaquestion', 'formaquestionSettings', 'formaquestionCompare', 'formaquestionAiContext', 'formaquestionWikiConfirm', 'settingsCompare', 'chipOptions', 'scriptPrompt', ...DEV_PANE_MODALS] as const;
 export type DevModal = (typeof DEV_MODALS)[number];
 
 /** The `attach=…` value that stages sample attachments on the game view. */
@@ -120,7 +127,7 @@ export const DEV_MODAL_TABS = {
   // Settings → Endpoints opens its own tab with the same `subtab=…` (`#dev?modal=settings&tab=endpoints&subtab=image`).
   // `tagPrompt` is Advanced only and hidden while image generation is off.
   settingsEndpoints: ['text', 'image', 'tagPrompt'],
-  worldEditor: ['overview', 'entities', 'locations', 'traits', 'stats', 'dictionary', 'placeholders'],
+  worldEditor: ['overview', 'entities', 'locations', 'traits', 'stats', 'dictionary', 'placeholders', 'scripts'],
   // Community Creations browses one kind per tab, plus Contest — a view over the worlds already in the
   // catalog rather than a fourth kind (see lib/browseTabs). `tab=contest` serves canned contests, so the
   // tab is reachable whether or not one is really running.
@@ -151,7 +158,8 @@ export const DEV_MODAL_TABS = {
   // panel, so pair it with a world that has an entity to select. `openings` and `placeholders` are Advanced only.
   worldEditorEntity: ['profile', 'descriptions', 'traits', 'stats', 'placeholders', 'openings'],
   // The library entity editor (`#dev?modal=entityEditor&tab=placeholders`). It opens on a blank draft and is
-  // never in Simple mode, so every tab is reachable.
+  // never in Simple mode, so every tab is reachable. `fixture=gallery` opens it on an entity whose images carry
+  // Visibility rules (`#dev?modal=entityEditor&tab=entity&subtab=profile&fixture=gallery`).
   entityEditor: ['entity', 'traits', 'stats', 'placeholders'],
   dictionaryEditor: ['overview', 'dictionary', 'placeholders'],
   // Its Entity tab's sub-tabs, reached with `subtab=…` (`#dev?modal=entityEditor&tab=entity&subtab=openings`).
@@ -166,7 +174,7 @@ export const DEV_MODAL_TABS = {
   worldEditorStat: ['details', 'descriptors', 'code'],
   // The World Editor's trait panel does the same over the Traits tab
   // (`#dev?modal=worldEditor&tab=traits&subtab=stats`). `pins` is Advanced only.
-  worldEditorTrait: ['details', 'availability', 'stats', 'pins'],
+  worldEditorTrait: ['details', 'availability', 'stats', 'pins', 'scripts'],
   // The World Editor's dictionary entry panel does the same over the Dictionary tab
   // (`#dev?modal=worldEditor&tab=dictionary&subtab=matching`). It lands on the entry panel, so pair it with
   // a book that has an entry to select. `matching` is Advanced only, and Simple mode leaves one tab and no
@@ -206,6 +214,8 @@ export const DEV_MODAL_TABS = {
   adminPanelFeedback: ['bugs', 'suggestions'],
   // The acknowledge poster renders one of an event's two phases; `tab=…` picks which the canned event is at.
   eventAck: ['start', 'end'],
+  // `player.*` prompt shapes on the game view (`#dev?view=gameViewer&fixture=whiteRoom&modal=scriptPrompt&tab=askLong`).
+  scriptPrompt: ['confirm', 'ask', 'askLong', 'askMulti', 'askText', 'tell', 'toast'],
   // MainMenu's library card-type switcher. Not a modal: reached with `tab=…` and no `modal=…`, i.e.
   // `#dev?view=mainMenu&tab=models`. Listed here so the same drift guard covers it.
   mainMenu: ['worlds', 'entities', 'dictionaries', 'models'],

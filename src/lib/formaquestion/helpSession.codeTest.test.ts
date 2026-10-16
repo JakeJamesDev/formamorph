@@ -16,7 +16,7 @@ import { askHelp, type HelpEvent, type HelpQuestion } from './helpSession';
 import { helpSettingsOf, type HelpSettingsChange } from './helpSettings';
 import type { HelpTrace } from './helpTrace';
 
-const index = createDocsIndex({ pages: { StatCodeGuide: '# Stat Code\n\nCode sets a stat.\n\n## Quick Reference\n\nRead a stat through `.value`.\n' } });
+const index = createDocsIndex({ pages: { ScriptsGuide: '# Stat Code\n\nCode sets a stat.\n\n## Quick Reference\n\nRead a stat through `.value`.\n' } });
 
 const endpoint = (tools: boolean | null) => {
   const reasoning: ReasoningCapability = { ...UNKNOWN_REASONING_CAPABILITY, tools, sources: tools === null ? {} : { tools: 'native' } };
@@ -274,6 +274,59 @@ describe('a code test call', () => {
     const traces = events.flatMap((event): HelpTrace[] => (event.type === 'trace' ? [event.trace] : []));
     const [round] = traces.at(-1)!.requests.at(-1)!.record.toolRounds ?? [];
     expect(round.calls).toEqual([expect.objectContaining({ name: HELP_CODE_TEST.name, result: expect.stringContaining('"world":true') })]);
+  });
+});
+
+describe('a code test call on an owned or Blueprint stat', () => {
+  // Bram owns Rage and Grit and can be played, and Dread and Awe are Blueprint stats of one group.
+  const stage = (): StatCodeWorld => ({
+    ...sedge(),
+    stats: [stat('Courage', 40), stat('Int', 32), { ...stat('Dread', 4), groupId: 'bp-fear' }, { ...stat('Awe', 6), groupId: 'bp-fear' }],
+    statGroups: [{ id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' }, { id: 'bp-fear', name: 'Fear', parentId: 'bp' }],
+    entities: [{ id: 'bram', name: 'Bram', persona: true, stats: [stat('Rage', 3), stat('Grit', 8)] }],
+  });
+  const testOn = async (world: StatCodeWorld, ...calls: TestCall[]) => {
+    const fetchImpl = script(testFrames(...calls), sseReply('Done.'));
+    await collect(ask(fetchImpl, {}, { world: openWorld(undefined, () => world) }));
+    return results(fetchImpl);
+  };
+
+  it('runs an entity’s stat with the world’s stats as `stats` and its entity as `owner`, and lists each write by route', async () => {
+    const world = stage();
+    const before = structuredClone(world);
+    const code = 'stats.Courage.value = 45; owner.stats.Grit.max = 12; entities.Bram.stats.Grit.regen = 1; persona.stats.Grit.value = 2;';
+    const [result] = await testOn(world, { code, stat: 'Rage' });
+    // The editor's reader checks the same box: `owner.stats` is Bram's, so Grit is a known name.
+    expect(result.errors).toEqual([]);
+    expect(result.run).toEqual({
+      error: null,
+      value: null,
+      writes: ['stats.Courage.value = 45', 'owner.stats.Grit.max = 12', 'owner.stats.Grit.regen = 1'],
+      pending: ['persona.stats.Grit.value = 2'],
+      assumed: [],
+      dropped: [],
+    });
+    expect(world).toEqual(before);
+  });
+
+  it('runs a Blueprint stat with an owner that holds its group’s stats only, and names a write outside the group as dropped', async () => {
+    const [result] = await testOn(stage(), { code: 'owner.stats.Awe.value = 7; owner.stats.Courage.value = 1; return Object.keys(owner.stats).length;', stat: 'Dread' });
+    // An owner can hold stats beyond its group, so the reader warns on Courage and raises no error.
+    expect(result.errors).toEqual([]);
+    expect(result.warnings).toEqual([expect.objectContaining({ text: 'Courage' })]);
+    expect(result.run).toMatchObject({
+      error: null,
+      value: 2,
+      writes: ['owner.stats.Awe.value = 7'],
+      dropped: ['Unknown stat names. Writes ignored: owner.stats.Courage.value.'],
+    });
+  });
+
+  it('finds an owned stat by name only after the world’s own', async () => {
+    const world: StatCodeWorld = { ...stage(), entities: [{ id: 'bram', name: 'Bram', stats: [{ ...stat('Courage', 5), id: 'twin' }] }] };
+    const [result] = await testOn(world, { code: 'return Object.keys(owner.stats).length + 1;', stat: 'Courage' });
+    // The world's Courage runs, with no owner: its `owner.stats` is empty.
+    expect(result.run?.value).toBe(1);
   });
 });
 

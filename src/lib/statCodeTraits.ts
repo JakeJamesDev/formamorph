@@ -1,15 +1,17 @@
-import type { CascadeOffTraitIds, Entity, EntityGroup, GameState, OwnedTraitStates, Placeholder, Stat, Trait, TraitGroup } from '@/types';
+import type { CascadeOffTraitIds, Entity, EntityGroup, OwnedTraitStates, Placeholder, Stat, Trait, TraitGroup } from '@/types';
+import type { LiveSnapshot } from './globalSaveFields';
 import { buildTree, flattenTree, type TreeGroup, type TreeLeaf } from './groupTree';
-import { canBePlayer, inCast, playsAs, resolveBearers, type Bearer, type BearerWorld } from './bearers';
+import { canBePlayer, inCast, playsAs, resolveOwners, type Owner, type OwnerWorld } from './owners';
 import type { SandboxEntity, SandboxPlaceholderNode, SandboxTrait } from './statCodeExecutor';
 import type { CodeEntityNames, CodeTraitPlace } from './statCodeAnalysis';
 import { statCodeName, statCodeNamed } from './statCodeNames';
 import { refreshChosenTraits } from './traitEffects';
 import { traitGates, traitUnlocked, type AppliedTraitValues, type TraitWorld } from './traitRuntime';
-import { WORLD_OWNER, type GateStates } from './traitGates';
+import type { GateStates } from './traitGates';
+import type { OwnerId } from './scope';
 
-/** Every Bearer's trait state, the authored world code switches it against, and who is in play and in the scene. */
-export interface StatCodeBearers {
+/** Every owner's trait state, the authored world code switches it against, and who is in play and in the scene. */
+export interface StatCodeOwners {
   /** The player's list, chosen at creation or acquired during the game. Switched-off ones stay listed. */
   acquired: readonly Trait[];
   disabledTraitIds: readonly string[];
@@ -21,7 +23,7 @@ export interface StatCodeBearers {
   /** Every authored trait and group, and who the player is, for gates. `traits` maps each authored trait; a code switch-on acquires from here. */
   world: TraitWorld;
   /** The world's entities as authored, chips and all. Code names read these, never the resolved names the
-   *  bearers carry. Absent ⇒ none. */
+   *  owners carry. Absent ⇒ none. */
   entities?: readonly Entity[];
   /** The library entities in the playthrough as authored: the library persona, then the added characters. */
   library?: readonly Entity[];
@@ -29,13 +31,13 @@ export interface StatCodeBearers {
   inSceneIds?: readonly string[];
 }
 
-/** The player's traits as a saved state holds them, each re-read from the world as play reads them. */
+/** The traits as a snapshot holds them in live shapes, each re-read from the world as play reads them. */
 export function savedTraits(
-  saved: Pick<GameState, 'playerTraits' | 'disabledTraitIds' | 'appliedTraitValues' | 'cascadeOffTraitIds' | 'ownedTraits'>,
+  saved: Pick<LiveSnapshot, 'globalTraits' | 'disabledTraitIds' | 'appliedTraitValues' | 'cascadeOffTraitIds' | 'ownedTraits'>,
   authored: Trait[],
-): Pick<StatCodeBearers, 'acquired' | 'disabledTraitIds' | 'appliedValues' | 'cascadeOffTraitIds' | 'ownedTraits'> {
+): Pick<StatCodeOwners, 'acquired' | 'disabledTraitIds' | 'appliedValues' | 'cascadeOffTraitIds' | 'ownedTraits'> {
   return {
-    acquired: refreshChosenTraits(saved.playerTraits, authored),
+    acquired: refreshChosenTraits(saved.globalTraits, authored),
     disabledTraitIds: saved.disabledTraitIds ?? [],
     appliedValues: saved.appliedTraitValues ?? {},
     cascadeOffTraitIds: saved.cascadeOffTraitIds ?? {},
@@ -45,25 +47,27 @@ export function savedTraits(
 
 /** The sandbox's `traits` entries, one per authored trait in authored order, under their code names — the
  *  rule that names stats, so a chip in a trait's name never reaches code as this playthrough's roll. */
-export function sandboxTraits(bearers: StatCodeBearers, placeholders: readonly Placeholder[]): SandboxTrait[] {
-  const acquired = new Set(bearers.acquired.map((t) => t.id));
-  const off = new Set(bearers.disabledTraitIds);
-  const gates = gatesOf(bearers);
-  return bearers.world.traits.map((trait) => ({
-    ...traitIdentity(trait, WORLD_OWNER, bearers.world.groups, gates, placeholders),
+export function sandboxTraits(ownerTraits: StatCodeOwners, placeholders: readonly Placeholder[]): SandboxTrait[] {
+  const acquired = new Set(ownerTraits.acquired.map((t) => t.id));
+  const off = new Set(ownerTraits.disabledTraitIds);
+  const gates = gatesOf(ownerTraits);
+  return ownerTraits.world.traits.map((trait) => ({
+    ...traitIdentity(trait, null, ownerTraits.world.groups, gates, placeholders),
     acquired: acquired.has(trait.id),
     enabled: acquired.has(trait.id) && !off.has(trait.id),
   }));
 }
 
-/** Every bearer's gate on its traits, against the state the run reads. */
-const gatesOf = (bearers: StatCodeBearers): GateStates =>
-  traitGates({ traits: [...bearers.acquired], disabledTraitIds: [...bearers.disabledTraitIds], ownedTraits: bearers.ownedTraits }, bearers.world);
+/** Every owner's gate on its traits, against the state the run reads. Stat Conditions read the world's
+ *  `gateStats`; without them none resolves. */
+const gatesOf = (ownerTraits: StatCodeOwners): GateStates => traitGates(
+  { traits: [...ownerTraits.acquired], disabledTraitIds: [...ownerTraits.disabledTraitIds], ownedTraits: ownerTraits.ownedTraits, stats: [] }, ownerTraits.world,
+);
 
-/** The read-only fields of a trait entry: who it is, how it switches, and whether its Bearer's gate holds. */
+/** The read-only fields of a trait entry: who it is, how it switches, and whether its owner's gate holds. */
 function traitIdentity(
   trait: Trait,
-  ownerId: string,
+  ownerId: OwnerId,
   groups: readonly TraitGroup[],
   gates: GateStates,
   placeholders: readonly Placeholder[],
@@ -101,23 +105,23 @@ const NO_PERSONA: CodeEntity = { id: '', name: '', type: '', pronouns: '', inSce
 
 /** The entity the player plays: the picked world or library persona, else the Custom Persona entity under
  *  None. Null when none plays. */
-function playedPersonaId(bearers: StatCodeBearers): string | null {
-  const { persona, entities } = bearers.world;
+function playedPersonaId(ownerTraits: StatCodeOwners): string | null {
+  const { persona, entities } = ownerTraits.world;
   if (!persona) return null;
   if (persona.source !== 'none') return persona.entityId;
-  return (entities ?? bearers.entities ?? []).find((e) => e.customPersona)?.id ?? null;
+  return (entities ?? ownerTraits.entities ?? []).find((e) => e.customPersona)?.id ?? null;
 }
 
-/** One entity's entry: its Bearer's own trait set, owned or linked, under the authored code names. */
+/** One entity's entry: its own trait set, owned or linked, under the authored code names. */
 function codeEntity(
-  bearers: StatCodeBearers,
+  ownerTraits: StatCodeOwners,
   placeholders: readonly Placeholder[],
   authored: Entity,
   gates: GateStates,
   played: string | null,
 ): CodeEntity {
-  const bearer = bearers.world.bearers?.find((o) => o.id === authored.id);
-  const state = bearers.ownedTraits?.[authored.id];
+  const owner = ownerTraits.world.owners?.find((o) => o.id === authored.id);
+  const state = ownerTraits.ownedTraits?.[authored.id];
   const chosen = new Set(state?.chosen ?? []);
   const off = new Set(state?.disabled ?? []);
   const named = withOwnPlaceholders(placeholders, authored);
@@ -126,10 +130,10 @@ function codeEntity(
     name: statCodeName(authored.name, named),
     type: statCodeName(authored.type, named),
     pronouns: statCodeName(authored.pronouns, named),
-    inScene: authored.id === played || !!bearers.inSceneIds?.includes(authored.id),
-    traits: (bearer?.traits ?? []).map((trait) => ({
-      ...traitIdentity({ ...trait, name: authoredTraitName(trait, authored, bearers.world.traits) }, authored.id,
-        [...(bearer?.groups ?? []), ...bearers.world.groups], gates, named),
+    inScene: authored.id === played || !!ownerTraits.inSceneIds?.includes(authored.id),
+    traits: (owner?.traits ?? []).map((trait) => ({
+      ...traitIdentity({ ...trait, name: authoredTraitName(trait, authored, ownerTraits.world.traits) }, authored.id,
+        [...(owner?.groups ?? []), ...ownerTraits.world.groups], gates, named),
       acquired: chosen.has(trait.id),
       enabled: chosen.has(trait.id) && !off.has(trait.id),
     })),
@@ -137,16 +141,16 @@ function codeEntity(
 }
 
 /** Every entity in play, the played persona among them: the world's cast and persona, then the library's. */
-export function codeEntities(bearers: StatCodeBearers, placeholders: readonly Placeholder[]): CodeEntities {
-  const ref = bearers.world.persona;
-  const world = (bearers.entities ?? []).filter((e) => playsAs(e, ref) || inCast(e, ref));
-  const id = playedPersonaId(bearers);
-  const gates = gatesOf(bearers);
-  const entities = [...world, ...bearers.library ?? []].map((e) => codeEntity(bearers, placeholders, e, gates, id));
+export function codeEntities(ownerTraits: StatCodeOwners, placeholders: readonly Placeholder[]): CodeEntities {
+  const ref = ownerTraits.world.persona;
+  const world = (ownerTraits.entities ?? []).filter((e) => playsAs(e, ref) || inCast(e, ref));
+  const id = playedPersonaId(ownerTraits);
+  const gates = gatesOf(ownerTraits);
+  const entities = [...world, ...ownerTraits.library ?? []].map((e) => codeEntity(ownerTraits, placeholders, e, gates, id));
   return { entities, persona: entities.find((e) => e.id === id) ?? NO_PERSONA };
 }
 
-/** A bearer's trait as authored: the entity's own, else the original a link brings. */
+/** An owner's trait as authored: the entity's own, else the original a link brings. */
 const authoredTraitName = (trait: Trait, entity: Entity | null | undefined, worldTraits: readonly Trait[]): string =>
   entity?.traits?.find((t) => t.id === trait.id)?.name ?? worldTraits.find((t) => t.id === trait.id)?.name ?? trait.name;
 
@@ -175,11 +179,11 @@ export const entityCodeStats = (
   .map((entity) => [entity.id, statCodeNamed(entity.stats ?? [], withOwnPlaceholders(placeholders, entity))]));
 
 /** Every authored entity, persona-only ones included, as the editor reads it: code names only, since the
- *  editor knows no playthrough. Authored order, which decides who holds a shared name. */
+ *  editor knows no playthrough. Authored order, which decides who owns a shared name. */
 export function entityTraitNames(
-  world: BearerWorld & { entityGroups?: readonly EntityGroup[] }, placeholders: readonly Placeholder[],
+  world: OwnerWorld & { entityGroups?: readonly EntityGroup[] }, placeholders: readonly Placeholder[],
 ): CodeEntityNames[] {
-  const bearers = new Map(resolveBearers(world, undefined).bearers.map((bearer) => [bearer.id, bearer]));
+  const ownerById = new Map(resolveOwners(world, undefined).owners.map((owner) => [owner.id, owner]));
   const tab = new Map(inTreeOrder(world.entityGroups ?? [], world.entities, (group) => statCodeName(group.name, placeholders))
     .map(({ leaf, path }, position) => [leaf.id, { folder: path, tabPosition: position }]));
   return world.entities.map((entity) => {
@@ -188,27 +192,27 @@ export function entityTraitNames(
       id: entity.id,
       persona: canBePlayer(entity),
       name: statCodeName(entity.name, named),
-      traits: traitPlaces(bearers.get(entity.id), entity, world.traits, named),
+      traits: traitPlaces(ownerById.get(entity.id), entity, world.traits, named),
       ...(entity.stats?.length ? { stats: entity.stats.map((stat) => statCodeName(stat.name, named)) } : {}),
       ...tab.get(entity.id),
     };
   });
 }
 
-/** A bearer's traits, owned or linked, in the order play reads them, each placed in the bearer's tree. */
+/** An owner's traits, owned or linked, in the order play reads them, each placed in the owner's tree. */
 function traitPlaces(
-  bearer: Bearer | undefined, entity: Entity, worldTraits: readonly Trait[], named: readonly Placeholder[],
+  owner: Owner | undefined, entity: Entity, worldTraits: readonly Trait[], named: readonly Placeholder[],
 ): CodeTraitPlace[] {
-  const tab = new Map(inTreeOrder(bearer?.groups ?? [], bearer?.traits ?? [], (group) => statCodeName(group.name, named))
+  const tab = new Map(inTreeOrder(owner?.groups ?? [], owner?.traits ?? [], (group) => statCodeName(group.name, named))
     .map(({ leaf, path }, position) => [leaf.id, { path, tabPosition: position }]));
-  return (bearer?.traits ?? []).map((trait) => ({
+  return (owner?.traits ?? []).map((trait) => ({
     id: trait.id, name: statCodeName(authoredTraitName(trait, entity, worldTraits), named), path: [], ...tab.get(trait.id),
   }));
 }
 
 /** The world's own traits in Traits-tab order, which `traits` keys. */
 export const worldTraitPlaces = (
-  world: Pick<BearerWorld, 'traits' | 'traitGroups'>, placeholders: readonly Placeholder[],
+  world: Pick<OwnerWorld, 'traits' | 'traitGroups'>, placeholders: readonly Placeholder[],
 ): CodeTraitPlace[] =>
   inTreeOrder(world.traitGroups, world.traits, (group) => statCodeName(group.name, placeholders))
     .map(({ leaf, path }) => ({ id: leaf.id, name: statCodeName(leaf.name, placeholders), path }));
@@ -222,7 +226,7 @@ export const unplayedEntities = (
 }));
 
 /** Whose trait maps hold one trait: the world's `traits`, the persona's, and each entity's by code name. */
-export interface TraitHolders {
+export interface TraitOwnerMaps {
   world: boolean;
   persona: boolean;
   entities: readonly string[];
@@ -230,22 +234,22 @@ export interface TraitHolders {
 
 /** Whose trait maps hold a trait, as the editor reads the world: the world's own `traits` when it is a world
  *  trait, each entity whose set holds it owned or linked, and `persona` when one of those can be played. */
-export function traitHolders(world: BearerWorld, placeholders: readonly Placeholder[], traitId: string): TraitHolders {
+export function traitOwnerMaps(world: OwnerWorld, placeholders: readonly Placeholder[], traitId: string): TraitOwnerMaps {
   const codeNameOf = (trait: Trait, entity: Entity) =>
     statCodeName(authoredTraitName(trait, entity, world.traits), withOwnPlaceholders(placeholders, entity));
-  const bearers = resolveBearers(world, undefined).bearers.flatMap((bearer) => (bearer.entity ? [{ entity: bearer.entity, traits: bearer.traits }] : []));
-  const holding = bearers.flatMap(({ entity, traits }) => {
+  const entityOwners = resolveOwners(world, undefined).owners.flatMap((owner) => (owner.entity ? [{ entity: owner.entity, traits: owner.traits }] : []));
+  const owning = entityOwners.flatMap(({ entity, traits }) => {
     const trait = traits.find((t) => t.id === traitId);
     return trait ? [{ entity, trait }] : [];
   });
-  const playable = holding.find(({ entity }) => canBePlayer(entity));
+  const playable = owning.find(({ entity }) => canBePlayer(entity));
   const oldName = playable && codeNameOf(playable.trait, playable.entity);
-  // Another playable entity holding a different trait under the old name may be the one played.
-  const sharedName = bearers.some(({ entity, traits }) => canBePlayer(entity)
+  // Another playable entity owning a different trait under the old name may be the one played.
+  const sharedName = entityOwners.some(({ entity, traits }) => canBePlayer(entity)
     && traits.some((trait) => trait.id !== traitId && codeNameOf(trait, entity) === oldName));
   return {
     world: world.traits.some((trait) => trait.id === traitId),
     persona: !!playable && !sharedName,
-    entities: holding.map(({ entity }) => statCodeName(entity.name, withOwnPlaceholders(placeholders, entity))),
+    entities: owning.map(({ entity }) => statCodeName(entity.name, withOwnPlaceholders(placeholders, entity))),
   };
 }

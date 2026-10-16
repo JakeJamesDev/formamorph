@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   parseTimeDelta,
+  splitTurnHours,
+  joinTurnHours,
   hoursByPosition,
   MAX_TURN_HOURS,
   FLAT_HOURS_PER_TURN,
@@ -285,5 +287,35 @@ describe('parseTimeDelta — spelled-out counts', () => {
   it('ignores a bare word with no unit — prose is not a measurement', () => {
     expect(parseTimeDelta('a while')).toBeNull();
     expect(parseTimeDelta('one')).toBeNull();
+  });
+});
+
+describe('splitTurnHours', () => {
+  it.each([
+    [0, '0', 'hours'], [0.25, '15', 'minutes'], [1, '1', 'hours'], [1.5, '90', 'minutes'], [5, '5', 'hours'],
+    [24, '1', 'days'], [76, '76', 'hours'], [168, '1', 'weeks'], [336, '2', 'weeks'], [1 / 7, String(1 / 7), 'hours'],
+  ] as const)('shows %d hours as %s %s', (hours, amount, unit) => {
+    expect(splitTurnHours(hours)).toEqual({ amount, unit });
+  });
+});
+
+describe('joinTurnHours', () => {
+  it.each([
+    ['0', 'minutes', 0], ['15', 'minutes', 0.25], ['1.5', 'hours', 1.5], ['2', 'days', 48], ['1', 'weeks', 168],
+  ] as const)('reads %s %s as %d hours', (amount, unit, hours) => {
+    expect(joinTurnHours(amount, unit)).toBe(hours);
+  });
+
+  it.each([['', 'hours'], [' ', 'hours'], ['-1', 'hours'], ['abc', 'hours'], ['53', 'weeks']] as const)(
+    'refuses %j %s', (amount, unit) => {
+      expect(joinTurnHours(amount, unit)).toBeNull();
+    },
+  );
+
+  it('round-trips every split', () => {
+    for (const hours of [0, 0.25, 1, 1.5, 24, 76, 336, 1 / 7]) {
+      const { amount, unit } = splitTurnHours(hours);
+      expect(joinTurnHours(amount, unit)).toBeCloseTo(hours, 9);
+    }
   });
 });

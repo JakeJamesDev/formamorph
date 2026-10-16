@@ -14,35 +14,84 @@ import { labelPlaceholders, worldPlacementLetters } from '@/lib/placementLetters
 import { allPinRows, bindBlueprintPins, collectPinLayers, samePin, sameSource, type PinLayer } from '@/lib/placeholderPins';
 import { copyLookup, readerFor, type CopyLookup } from '@/lib/blueprints';
 import { activeStatEnabled, defaultPicks, exclusiveSiblings, inAuthoredOrder, traitOrderIndex } from '@/lib/traitEffects';
-import { startingStatsWith } from '@/lib/traitRuntime';
-import { PLAYER_BEARER, resolveBearers, type Bearer } from '@/lib/bearers';
-import type { GameLocation, Placeholder, Trait } from '@/types';
-import { bearerWorldOf, type RuleWorld } from './rules';
+import { startingStatsWith, statTraitsInForce, type TraitWorld } from '@/lib/traitRuntime';
+import { seedWorldEntityStats } from '@/lib/entityStats';
+import { ownedTraitStatesFrom } from '@/lib/ownedTraitState';
+import { resolveOwners, type Owner } from '@/lib/owners';
+import type { EntityStatValues, GameLocation, OwnedTraitPicks, Placeholder, PlayerStat, Stat, Trait } from '@/types';
+import { ownerWorldOf, type RuleWorld } from './rules';
 
 /** The slices of the authored world the lens reads. The rest of the document is optional and read only to
  *  letter the pickers' chips the way the editor letters them — entities come first in that walk. */
 export type LensWorld =
   Pick<RuleWorld, 'traits' | 'traitGroups' | 'locations' | 'placeholders' | 'stats'>
-  & Partial<Pick<RuleWorld, 'entities' | 'entityGroups' | 'dictionaries' | 'worldOverview'>>;
+  & Partial<Pick<RuleWorld, 'entities' | 'entityGroups' | 'dictionaries' | 'worldOverview' | 'statGroups'>>;
 
-/** The lens tests as the None player: the root outside Blueprints, and the Custom Persona entity's tree after
- *  it, as one list. Cached per world object, since every instrument reads it. */
-const playerByWorld = new WeakMap<LensWorld, Bearer>();
-function lensPlayer(world: LensWorld): Bearer {
+/** The traits the lens PC picks from, with the links that brought them. */
+type LensTree = Pick<Owner, 'traits' | 'groups' | 'linkOf'>;
+
+/** The lens's player: every trait it can pick from, and the gate world those traits act in. */
+interface LensPlayer extends LensTree {
+  /** The Custom Persona entity, whose traits are the persona's and never global. Null with no such entity. */
+  personaId: string | null;
+  personaTraitIds: ReadonlySet<string>;
+  /** Play's trait world under None: global scope's tree and the present owners. */
+  traitWorld: TraitWorld;
+}
+
+/** The lens tests as the None player: the root outside Blueprints, then the Custom Persona entity's tree, as one
+ *  pick list. Cached per world object. */
+const playerByWorld = new WeakMap<LensWorld, LensPlayer>();
+function lensPlayer(world: LensWorld): LensPlayer {
   let player = playerByWorld.get(world);
   if (!player) {
-    const { bearers } = resolveBearers(bearerWorldOf(world), { source: 'none' });
-    const root = bearers.find((b) => b.id === PLAYER_BEARER)!;
-    const custom = bearers.find((b) => b.isPlayer && b.entity);
-    player = custom ? {
-      ...root,
-      traits: [...root.traits, ...custom.traits],
-      groups: [...root.groups, ...custom.groups],
-      linkOf: new Map([...root.linkOf, ...custom.linkOf]),
-    } : root;
+    const ownerWorld = ownerWorldOf(world);
+    const { global, owners, gate } = resolveOwners(ownerWorld, { source: 'none' });
+    const custom = owners.find((b) => b.isPlayer);
+    const globalIds = new Set(global.traits.map((t) => t.id));
+    player = {
+      ...(custom ? {
+        traits: [...global.traits, ...custom.traits],
+        groups: [...global.groups, ...custom.groups],
+        linkOf: custom.linkOf,
+      } : { ...global, linkOf: new Map() }),
+      personaId: custom?.id ?? null,
+      personaTraitIds: new Set((custom?.traits ?? []).map((t) => t.id).filter((id) => !globalIds.has(id))),
+      traitWorld: {
+        traits: [...ownerWorld.traits], groups: [...ownerWorld.traitGroups], entities: gate.entities,
+        persona: gate.persona, global: gate.global, owners: gate.owners,
+      },
+    };
     playerByWorld.set(world, player);
   }
   return player;
+}
+
+/** The Custom Persona entity's picks among `active`; global scope's tree leaves them out of the global picks. */
+const personaPicks = (player: LensPlayer, active: readonly Trait[]): OwnedTraitPicks =>
+  (player.personaId ? { [player.personaId]: active.filter((t) => player.personaTraitIds.has(t.id)).map((t) => t.id) } : {});
+
+/** Each entity's own stats as a new game seeds them, so a row on an id an entity owns stays off the global stat (Q30). */
+const lensEntityStats = (world: LensWorld): EntityStatValues =>
+  seedWorldEntityStats({ stats: [...(world.stats ?? [])], statGroups: world.statGroups ?? [], entities: [...(world.entities ?? [])] });
+
+/** The traits in force on the global stats: the global picks, and the global rows of the persona's picks (Q30). */
+export function lensStatTraits(world: LensWorld, active: readonly Trait[]): Trait[] {
+  const player = lensPlayer(world);
+  const ownedTraits = ownedTraitStatesFrom(personaPicks(player, active));
+  return statTraitsInForce({ traits: active, disabledTraitIds: [], ownedTraits, entityStats: lensEntityStats(world) }, player.traitWorld);
+}
+
+/** The global stats a fresh game as the lens PC starts with: the global picks, then the persona's global rows (Q33). */
+export function lensStartingStats(world: LensWorld, authored: readonly Stat[], active: readonly Trait[]): PlayerStat[] {
+  const player = lensPlayer(world);
+  return startingStatsWith(authored, active, player.traitWorld, personaPicks(player, active), lensEntityStats(world));
+}
+
+/** The Custom Persona entity and the ids of its picks among `active`; null with no such entity. */
+export function lensPersonaPicks(world: LensWorld, active: readonly Trait[]): { personaId: string; ids: string[] } | null {
+  const player = lensPlayer(world);
+  return player.personaId ? { personaId: player.personaId, ids: personaPicks(player, active)[player.personaId] } : null;
 }
 
 /** What the author picked, as the two ids it comes down to. Both nullable: no PC is a real setting (the
@@ -194,7 +243,7 @@ export function buildLens(world: LensWorld, state: LensState): BenchLens {
   const { pins, layers } = collectPinLayers({
     traits: lensPinTraits(world, active),
     location,
-    stats: startingStatsWith(world.stats ?? [], active, { traits: player.traits, groups: player.groups }),
+    stats: lensStartingStats(world, world.stats ?? [], active),
     placeholders,
   });
   // The editors' labels for the same rows, matched by the stored pin: a layer carries the pin object its
@@ -217,7 +266,7 @@ export function buildLens(world: LensWorld, state: LensState): BenchLens {
     pins,
     pinLayers,
     brokenPins: brokenPinsOf(pinLayers, placeholders),
-    statEnabled: activeStatEnabled(world.stats ?? [], active),
+    statEnabled: activeStatEnabled(world.stats ?? [], lensStatTraits(world, active)),
     copies: copyLookup(lensBlueprints(world), LENS_READER),
   };
 }
@@ -285,6 +334,6 @@ export const resolveLensText = (
   text: string,
   placeholders: Placeholder[] | undefined,
   pins: Record<string, string>,
-  /** The bearer's copy lookup, for its trait text. */
+  /** The owner's copy lookup, for its trait text. */
   copies?: CopyLookup,
 ): string => describePlaceholders(text, placeholders ?? [], pins, copies);

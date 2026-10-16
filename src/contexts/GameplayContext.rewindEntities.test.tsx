@@ -50,8 +50,8 @@ const stale: DiscoveredEntity = {
 
 /** A snapshot as the rewind handlers feed it to loadGameState, carrying pre-edit entity state. */
 const snapshot = (): GameState => ({
-  playerStats: [],
-  playerTraits: [],
+  globalStats: [],
+  globalTraits: [],
   visibleEntities: [],
   discoveredEntities: [stale],
   suppressedCharacterNames: ['Snapshot Ghost'],

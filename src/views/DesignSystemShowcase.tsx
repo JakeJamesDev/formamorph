@@ -1,6 +1,6 @@
 import { useEffect, useState, type ComponentType } from 'react';
 import { PromptNavigationReference } from '@/components/design-system/PromptNavigationReference';
-import { BearerFlyoutReference } from '@/components/design-system/BearerFlyoutReference';
+import { OwnerFlyoutReference } from '@/components/design-system/OwnerFlyoutReference';
 import { BreadcrumbPickerReference } from '@/components/design-system/BreadcrumbPickerReference';
 import { TravelHintPairReference } from '@/components/design-system/TravelHintPairReference';
 import { FormaquestionReference } from '@/components/design-system/FormaquestionReference';
@@ -9,6 +9,8 @@ import { SupporterFlairReference } from '@/components/design-system/SupporterFla
 import { PresetHeaderReference } from '@/components/design-system/PresetHeaderReference';
 import { LandingPulseReference } from '@/components/design-system/LandingPulseReference';
 import { PanelCrashCardReference } from '@/components/design-system/PanelCrashCardReference';
+import { ChipOptionsReference } from '@/components/design-system/ChipOptionsReference';
+import { CodeCardReference } from '@/components/design-system/CodeCardReference';
 import { useDevRoute } from '@/lib/devRouter';
 import { BookOpen, MonitorCog } from 'lucide-react';
 import { OptionSwitcher, Row, Section } from '@/components/SettingsRows';
@@ -40,9 +42,10 @@ import { FindBarReference } from '@/components/design-system/FindBarReference';
 import { SearchFieldReference } from '@/components/design-system/SearchFieldReference';
 import { CodeTemplatesReference } from '@/components/design-system/CodeTemplatesReference';
 import { LocationsCanvasReference } from '@/components/design-system/LocationsCanvasReference';
-import { MainMenuContextMenuReference } from '@/components/design-system/MainMenuContextMenuReference';
+import { ContextMenuReferences } from '@/components/design-system/ContextMenuReferences';
 import { FooterActionOrderReference } from '@/components/design-system/FooterActionOrderReference';
 import { NarrationTurnReference } from '@/components/design-system/NarrationTurnReference';
+import { ScriptPromptLineReference } from '@/components/design-system/ScriptPromptLineReference';
 import { PanelTabStripReference } from '@/components/design-system/PanelTabStripReference';
 import { SectionsBarReference } from '@/components/design-system/SectionsBarReference';
 import { NavRailReference } from '@/components/design-system/NavRailReference';
@@ -314,8 +317,8 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
   {
     id: 'context-menu',
     label: 'Context Menu',
-    description: 'Grouped library tile actions',
-    Component: MainMenuContextMenuReference,
+    description: 'Grouped library tile actions and item detail lines',
+    Component: ContextMenuReferences,
   },
   {
     id: 'rich-lists',
@@ -372,10 +375,16 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     Component: NarrationTurnReference,
   },
   {
-    id: 'bearer-flyouts',
-    label: 'Bearer Flyouts',
+    id: 'prompt-line',
+    label: 'Inline Prompt Line',
+    description: 'A script’s question or message in the turn column',
+    Component: ScriptPromptLineReference,
+  },
+  {
+    id: 'owner-flyouts',
+    label: 'Owner Flyouts',
     description: 'Drill-down entity pickers in a menu and on a button',
-    Component: BearerFlyoutReference,
+    Component: OwnerFlyoutReference,
   },
   {
     id: 'breadcrumb-picker',
@@ -424,6 +433,18 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Panel Crash Card',
     description: 'The card a crashed editor panel shows in its own place',
     Component: PanelCrashCardReference,
+  },
+  {
+    id: 'chip-options',
+    label: 'Chip Options',
+    description: 'Chip settings in a centered dialog, with a live sample of what the chip sends',
+    Component: ChipOptionsReference,
+  },
+  {
+    id: 'code-card',
+    label: 'Code Hover Card',
+    description: 'The card a code editor shows for a name, and its Find All Uses list',
+    Component: CodeCardReference,
   },
 ];
 

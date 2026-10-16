@@ -189,12 +189,13 @@ Turn on **Show Reasoning** to read what a mode wrote.
 
 ### Time
 
-**Advanced.** Shows when **Memory Summaries** is on.
+**Advanced.**
 
 | Setting | What it does |
 |---|---|
-| **Time in Memory** | Marks each memory with when it happened, such as day and time of day. Without it, the AI guesses how long ago things were. |
-| **Measured Clock** | Lets the events of each turn set how much story time passes. Without it, each action takes one hour. Adds one small request per turn. |
+| **Time in Memory** | Shows when **Memory Summaries** is on. Marks each memory with when it happened, such as day and time of day. Without it, the AI guesses how long ago things were. |
+| **Measured Clock** | Lets the events of each turn set how much story time passes. Without it, each action takes the **Time Per Turn**. Adds one small request per turn. |
+| **Time Per Turn** | Shows when **Measured Clock** is off. The story time each turn adds, as an amount and a unit (minutes, hours, days or weeks). The default is 1 hour. Enter 0 to hold the clock still. |
 
 See [When Each Memory Happened](Memory#when-each-memory-happened).
 
@@ -222,7 +223,7 @@ See [When Each Memory Happened](Memory#when-each-memory-happened).
 
 ### Performance
 
-**Advanced.** **Concurrent Requests** sends the choices, the stat updates and the location change at the same time, not one after another. Turns are faster on endpoints that handle parallel requests. Turn it off if a local model with little memory slows down under the load.
+**Advanced.** **Concurrent Requests** sends the choices, the stat updates and the location change at the same time, not one after another. Turns are faster on endpoints that handle parallel requests. Requests between turns, like memory summaries, also run together when it is on and one at a time when it is off. Turn it off if a local model with little memory slows down under the load.
 
 ## Endpoints
 <!-- keywords: temperature, samplers, creativity, response length, cut off, context size, gpu layers, out of memory, api key, repetitive text -->
@@ -231,6 +232,7 @@ See [When Each Memory Happened](Memory#when-each-memory-happened).
 Which AI the app connects to. The tab has its own tabs: **Text**, **Image** and, in Advanced mode, **Tag Prompt**. To set up a text endpoint, follow [Connect Your Own AI](Connect-Your-Own-AI).
 
 ### Text
+<!-- route: settingsEndpoints.text -->
 
 The **Preset** list holds your saved endpoints. **Demo AI** is the shared cloud endpoint, and you cannot edit it. On the desktop app, **Built-In Engine** runs a model on your PC. **Add New Preset…** makes a new one. **Rename**, **Reset** and **Delete** act on the preset you made.
 
@@ -242,8 +244,9 @@ The **Preset** list holds your saved endpoints. **Demo AI** is the shared cloud 
 | **Context Window (tokens)** | **Advanced.** How much the model keeps in context. **Detect** asks the server. |
 | **Max Output Tokens** | **Advanced.** Caps how long each answer can be. It does not cap reasoning. Select **Override Endpoint Limit** to set it; without it, there is **No Limit**. |
 | **Sampling** | **Advanced.** A section of five rows: **Temperature**, **Repetition Penalty**, **Top-p**, **Top-k** and **Min-p**. Each has a checkbox. An unchecked row sends nothing. Per-prompt values and built-in prompt values come before **Temperature** and **Repetition Penalty**. |
+| **Extra Parameters** | **Advanced.** A JSON object added to every request to this endpoint: a vendor's reasoning switch, `top_a`, `chat_template_kwargs`, a routing block. A field the app sets for a request wins over the same field here, so these only add what the app leaves out. You can't set `model`, `messages`, `stream`, `tools`, `tool_choice`, `response_format`, `n` or `stop`. Text with an error shows why in red, and requests go out without these fields. The **Native Reasoning** row (Output) and each prompt's own setting control reasoning wherever the app sends a reasoning field. |
 
-**Reset AI Endpoint**, at the bottom of the tab, sets the URL, model name, token and limits back to their defaults.
+**Reset AI Endpoint**, at the bottom of the tab, sets the URL, model name, token and limits back to their defaults, and clears **Extra Parameters**.
 
 ### Built-In Engine
 
@@ -265,6 +268,7 @@ On the desktop app, the **Built-In Engine** preset shows the engine's own panel 
 Sampling changes apply on the next turn. The other changes need **Save & Reload Model**. **Reset to Defaults** sets the panel back.
 
 ### Image
+<!-- route: settingsEndpoints.image -->
 
 | Setting | What it does |
 |---|---|
@@ -277,7 +281,7 @@ The **Connection** section sets which server makes the images. The setup steps f
 |---|---|
 | **Provider** | ComfyUI, InvokeAI, Automatic1111 / Forge, NovelAI, or an OpenAI-compatible service on the desktop app. **How to Set Up** shows the steps for the picked provider. |
 | **Endpoint URL**, **API Token** | The image server address and its token |
-| **Model** | The checkpoint that makes the image |
+| **Model** | The checkpoint that makes the image. On ComfyUI it fills the workflow's `%ckpt%`. A workflow without `%ckpt%` loads its own model, and the row shows that model, grayed out. |
 
 The **Image** section sets how each image is made.
 
@@ -290,10 +294,12 @@ The **Image** section sets how each image is made.
 | **Sampler** | The sampling method |
 | **Face Fix** | Automatic1111 / Forge and InvokeAI only. Draws faces again in a second pass. On Automatic1111 / Forge it needs the **ADetailer** extension on your server. On InvokeAI it about doubles the time. |
 | **Workflow (API Format)** | **Advanced**, ComfyUI only. Replaces the default ComfyUI graph. **How to Get This** shows how to export one. |
+| **File Name** | **Advanced**, ComfyUI only. Where each image is saved under ComfyUI's `output` folder: `{world}`, `{subject}` (an entity's or location's name, or `turn-12-scene`), `{turn}` and `{preset}`. The default is `formamorph/{world}/{subject}`. A `/` in the pattern makes a folder. A custom workflow uses it where its save node's prefix is `%prefix%`; without one, the row is grayed out. |
 | **Board** | **Advanced**, InvokeAI only. The InvokeAI board that gets the images |
 | **Qwen3 Encoder**, **Z-Image VAE**, **Anima VAE** | **Advanced**, InvokeAI only. Shows for a Z-Image or Anima model. Leave them empty to pick one automatically. |
 
 ### Tag Prompt
+<!-- route: settingsEndpoints.tagPrompt -->
 
 **Advanced.** Shows when **Enable Image Generation** is on. It is the prompt that your text model gets to turn a description into image tags. **Reset to Defaults** brings back the original text.
 
@@ -305,13 +311,13 @@ Saves, the Authoring Tour, and stored data. To back up your worlds, saves, libra
 
 ### Saves
 
-**Autosave** saves after every turn to an **Autosave** slot for each world. It never changes your own saves. The slot shows under **Load Game** with an **Auto** tag. Autosave starts after the opening scene.
+**Autosave** saves after every turn, named by turn. It never changes your own saves. **Autosaves Kept** sets how many autosaves each world keeps; it starts at one, and a new turn replaces the oldest, and **Re-generate** replaces its turn's autosave. Lowering it shows a red warning while Settings is open: each world's oldest extras are deleted on its next autosave. Autosaves show under **Load Game** with an **Auto** tag. Autosave starts after the opening scene.
 
 ### Authoring
 
-**Auto Save** saves your world while you edit it in the World Editor. The **Save** menu in the editor has the same checkbox. The setting applies to every world. See [Saving and Discarding](WorldEditor#saving-and-discarding).
+**Autosave** saves your world while you edit it in the World Editor. The **Save** menu in the editor has the same checkbox. The setting applies to every world. See [Saving and Discarding](WorldEditor#saving-and-discarding).
 
-**Auto Save Pause** sets how long the editor waits after your last edit before it saves. The range is 10 seconds to 5 minutes. The default is 30 seconds. A longer pause writes less often but leaves more unsaved. A large run of edits saves without waiting. The slider shows only while **Auto Save** is on.
+**Autosave Pause** sets how long the editor waits after your last edit before it saves. The range is 10 seconds to 5 minutes. The default is 30 seconds. A longer pause writes less often but leaves more unsaved. A large run of edits saves without waiting. The slider shows only while **Autosave** is on.
 
 **Start Authoring Tour** opens the World Editor on a new world and shows an example for each step. See [The Authoring Tour](WorldEditor#the-authoring-tour). Your other worlds do not change. This button shows only when you open Settings from the main menu.
 

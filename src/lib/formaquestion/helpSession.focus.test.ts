@@ -20,9 +20,9 @@ import type { HelpTrace } from './helpTrace';
 
 const index = createDocsIndex({
   pages: {
-    'World-Editor-Stats': '# World Editor: Stats\n\nStats hold numbers.\n\n## The Fields\n\nA stat has a name.\n\n## Dynamic Value Calculation\n\nCode sets a stat.\n',
+    'World-Editor-Stats': '# World Editor: Stats\n\nStats hold numbers.\n\n## The Fields\n\nA stat has a name.\n\n## Scripts\n\nCode sets a stat.\n',
     'World-Editor-Traits': '# World Editor: Traits\n\nTraits change stats.\n\n## The Panel\n\nA trait has a name.\n',
-    StatCodeGuide: '# Stat Code\n\nCode sets a stat.\n\n## Quick Reference\n\nRead a stat through `.value`.\n',
+    ScriptsGuide: '# Stat Code\n\nCode sets a stat.\n\n## Quick Reference\n\nRead a stat through `.value`.\n',
   },
 });
 
@@ -78,13 +78,13 @@ describe('the surface line with a focus', () => {
   it('names the focused stat after the open tab of its panel', async () => {
     const fetchImpl = script(sseReply('Done.'));
     await ask(fetchImpl, { surface: STAT_CODE, focus: COURAGE });
-    expect(userOf(fetchImpl)).toContain('this screen: World Editor dialog, Stats tab, Code tab of the stat Courage.');
+    expect(userOf(fetchImpl)).toContain('this screen: World Editor dialog, Stats tab, Scripts tab of the stat Courage.');
   });
 
   it('reads as before without a focus', async () => {
     const fetchImpl = script(sseReply('Done.'));
     await ask(fetchImpl, { surface: STAT_CODE });
-    expect(userOf(fetchImpl)).toContain('this screen: World Editor dialog, Stats tab, Code tab.');
+    expect(userOf(fetchImpl)).toContain('this screen: World Editor dialog, Stats tab, Scripts tab.');
   });
 
   it('leaves out a focus whose panel is not open', async () => {

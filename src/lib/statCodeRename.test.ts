@@ -7,8 +7,9 @@ import {
   codeNameReader, codeRenameReferences, codeRenameTarget, planCodeRename, renameCodeReferences,
   type CodeRenameInput, type CodeRenameSubject, type RenameRoot,
 } from './statCodeRename';
+import { boxScripts } from '@/test/scriptFixtures';
 
-const stat = (id: string, code: string): Stat => ({ id, name: id, type: 'number', value: 0, min: 0, max: 100, code } as Stat);
+const stat = (id: string, code: string): Stat => ({ id, name: id, type: 'number', value: 0, min: 0, max: 100, scripts: boxScripts({ after: code }) } as Stat);
 
 describe('renameCodeReferences', () => {
   it('rewrites the dot form', () => {
@@ -112,9 +113,9 @@ describe('planCodeRename', () => {
     const plan = planCodeRename({ root: 'stats', oldName: 'Health', newName: 'Vigor', stats, otherNames: [] });
     expect(plan).not.toBeNull();
     expect(plan?.references).toBe(3);
-    expect(plan?.edits.map((edit) => edit.id)).toEqual(['a', 'b']);
-    expect(plan?.edits[0].boxes.after).toBe('return stats.Vigor.value * 2;');
-    expect(plan?.edits[1].boxes.after).toBe(`return stats['Vigor'].max - stats.Vigor.min;`);
+    expect(plan?.edits.map((edit) => edit.home)).toEqual([{ kind: 'stat', statId: 'a' }, { kind: 'stat', statId: 'b' }]);
+    expect(plan?.edits[0].scripts.after).toBe('return stats.Vigor.value * 2;');
+    expect(plan?.edits[1].scripts.after).toBe(`return stats['Vigor'].max - stats.Vigor.min;`);
   });
 
   it('offers nothing when nothing references the old name', () => {
@@ -144,8 +145,8 @@ describe('planCodeRename', () => {
 
   it('counts and rewrites both boxes, and touches neither box that has nothing to move', () => {
     const boxed = {
-      ...stat('a', 'return stats.Health.max;'),
-      beforeCode: `return stats['Health'].value + stats.Health.min;`,
+      ...stat('a', ''),
+      scripts: boxScripts({ before: `return stats['Health'].value + stats.Health.min;`, after: 'return stats.Health.max;' }),
     };
     const afterOnly = stat('b', 'return stats.Health.regen;');
     const plan = planCodeRename({
@@ -153,21 +154,21 @@ describe('planCodeRename', () => {
     });
     // Two in the before box, one in each after box.
     expect(plan?.references).toBe(4);
-    expect(plan?.edits[0].boxes).toEqual({
+    expect(plan?.edits[0].scripts).toEqual({
       before: `return stats['Vigor'].value + stats.Vigor.min;`,
       after: 'return stats.Vigor.max;',
     });
     // The second stat leaves its before box blank, so the plan carries no rewrite for it to blank out.
-    expect(plan?.edits[1].boxes).toEqual({ after: 'return stats.Vigor.regen;' });
+    expect(plan?.edits[1].scripts).toEqual({ after: 'return stats.Vigor.regen;' });
   });
 
   it('plans a stat whose reference lives in the before box alone', () => {
-    const beforeOnly = { ...stat('a', 'return self.value;'), beforeCode: 'return stats.Health.value;' };
+    const beforeOnly = { ...stat('a', ''), scripts: boxScripts({ before: 'return stats.Health.value;', after: 'return self.value;' }) };
     const plan = planCodeRename({
       root: 'stats', oldName: 'Health', newName: 'Vigor', stats: [beforeOnly], otherNames: [],
     });
     expect(plan?.references).toBe(1);
-    expect(plan?.edits[0].boxes).toEqual({ before: 'return stats.Vigor.value;' });
+    expect(plan?.edits[0].scripts).toEqual({ before: 'return stats.Vigor.value;' });
   });
 
   it('skips a stat whose code is empty', () => {
@@ -178,13 +179,13 @@ describe('planCodeRename', () => {
       stats: [stat('a', ''), stat('b', 'return traits.Brave.enabled ? 1 : 0;')],
       otherNames: [],
     });
-    expect(plan?.edits.map((edit) => edit.id)).toEqual(['b']);
+    expect(plan?.edits.map((edit) => edit.home)).toEqual([{ kind: 'stat', statId: 'b' }]);
   });
 });
 
 describe('codeRenameTarget', () => {
   it('maps a find-and-replace on a name field to its map', () => {
-    expect(codeRenameTarget('stat:s1', 'name')).toEqual({ root: 'stats' });
+    expect(codeRenameTarget('stat:s1', 'name')).toEqual({ root: 'stats', stat: { id: 's1' } });
     expect(codeRenameTarget('trait:t1', 'name')).toEqual({ root: 'traits', traitId: 't1' });
     expect(codeRenameTarget('placeholder:p1', 'name'))
       .toEqual({ root: 'placeholders', subject: { kind: 'placeholder', id: 'p1' } });
@@ -269,7 +270,7 @@ describe('planCodeRename over the placeholder tree', () => {
       otherNames: [],
     });
     expect(plan?.references).toBe(3);
-    expect(plan?.edits[0].boxes.after)
+    expect(plan?.edits[0].scripts.after)
       .toBe(`stats['Wolf Power'].value + traits['Wolf Fury'].enabled + placeholders.Wolf.text`);
   });
 
@@ -287,7 +288,7 @@ describe('planCodeRename over the placeholder tree', () => {
       otherNames: [],
     });
     expect(plan?.references).toBe(1);
-    expect(plan?.edits[0].boxes.after).toBe(`stats['Wolf Power'].value + stats['Beast Fury'].value`);
+    expect(plan?.edits[0].scripts.after).toBe(`stats['Wolf Power'].value + stats['Beast Fury'].value`);
   });
 
   it('rewrites the owner key of every entities path through a renamed owner', () => {
@@ -301,7 +302,7 @@ describe('planCodeRename over the placeholder tree', () => {
       },
     );
     expect(plan?.references).toBe(2);
-    expect(plan?.edits[0].boxes.after).toBe(`entities.Maud.placeholders.Hair.text + entities["Maud"].placeholders["Hair"].text`);
+    expect(plan?.edits[0].scripts.after).toBe(`entities.Maud.placeholders.Hair.text + entities["Maud"].placeholders["Hair"].text`);
   });
 
   it('rewrites the leaf of a child rename and leaves a world-level name of its own alone', () => {
@@ -315,7 +316,7 @@ describe('planCodeRename over the placeholder tree', () => {
       },
     );
     expect(plan?.references).toBe(1);
-    expect(plan?.edits[0].boxes.after).toBe(`entities.Molly.placeholders.Mane.text + placeholders.Hair.text`);
+    expect(plan?.edits[0].scripts.after).toBe(`entities.Molly.placeholders.Mane.text + placeholders.Hair.text`);
   });
 
   it('leaves a bare name alone, since it reaches no owned placeholder', () => {
@@ -341,7 +342,7 @@ describe('planCodeRename over the placeholder tree', () => {
         placeholders: { list: [hair('h1')], owners: new Map([['h1', molly]]) },
       },
     );
-    expect(plan?.edits[0].boxes.after).toBe(`entities.Molly.placeholders['Wild Mane'].text`);
+    expect(plan?.edits[0].scripts.after).toBe(`entities.Molly.placeholders['Wild Mane'].text`);
   });
 
   it('leaves a computed segment and everything under it alone', () => {
@@ -374,7 +375,7 @@ describe('planCodeRename over the placeholder tree', () => {
       ],
       otherNames: [],
     });
-    expect(plan?.edits[0].boxes.after).toBe('return stats.BeastLord + stats.BeastLordLord;');
+    expect(plan?.edits[0].scripts.after).toBe('return stats.BeastLord + stats.BeastLordLord;');
     expect(plan?.references).toBe(2);
   });
 
@@ -395,10 +396,10 @@ describe('planCodeRename over the placeholder tree', () => {
       },
     );
     expect(plan?.references).toBe(2);
-    expect(plan?.edits[0].boxes.after).toBe(`entities['Ashford Guard'].placeholders.Ashford.text`);
+    expect(plan?.edits[0].scripts.after).toBe(`entities['Ashford Guard'].placeholders.Ashford.text`);
   });
 
-  it('leaves a path alone where a member of the holder won the name', () => {
+  it('leaves a path alone where a member of the parent won the name', () => {
     // `value` is a member of every entry, so `placeholders.Hair.value` reads the member and never the child
     // that shares its name. Renaming that child moves nothing the code says.
     const chip = '{{ph:shade:world:p-shade}}';

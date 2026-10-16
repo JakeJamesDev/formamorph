@@ -31,9 +31,9 @@ describe('requestAiText', () => {
     expect(sentBody(spy).enable_thinking).toBe(false);
   });
 
-  it('names the cut thought when the model spends the cap reasoning', async () => {
+  it('names the token limit when a call with no Thinking Room spends its cap reasoning', async () => {
     stubStream([sseFrame({ reasoning_content: 'Let me think about' }), sseFrame({}, 'length'), 'data: [DONE]\n\n']);
-    await expect(requestAiText(textSnapshot(), call)).rejects.toThrow('token limit before it wrote an answer');
+    await expect(requestAiText(textSnapshot(), call)).rejects.toThrow('reached its token limit before it wrote an answer');
   });
 
   it('names the finish reason of an empty answer', async () => {

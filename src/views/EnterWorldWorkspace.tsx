@@ -5,18 +5,20 @@ import { Button } from '@/components/ui/button';
 import { NavDisclosure } from '@/components/NavDisclosure';
 import { SetupTraitList, TraitCascadeNotice, type TraitCascade } from '@/components/game/SetupTraitList';
 import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
-import { WORLD_OWNER, groupPickState, type GateStates } from '@/lib/traitGates';
+import { groupPickState, type GateStates } from '@/lib/traitGates';
+import type { OwnerId, Scoped } from '@/lib/scope';
 import { choiceRowClass } from '@/components/game/setupChoiceRow';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle, dialogCenteredAnimation } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tip } from '@/components/ui/tooltip';
 import type { DictionarySelectionItem } from '@/lib/dictionarySelection';
-import type { Entity, GameLocation, PersonaRef, Stat, Trait, TraitGroup } from '@/types';
+import type { Entity, GameLocation, PersonaRef, Stat, StatGroup, Trait, TraitGroup } from '@/types';
+import { resolvedEntityStats } from '@/lib/statLinks';
 import { PersonaPicker, PersonaPortrait, type PersonaOption } from '@/components/game/PersonaPicker';
 import { primaryImage } from '@/lib/entityImages';
 import type { ResolveEntityText } from '@/lib/resolveWorldNames';
-import { bearerTraitTree, playerEntityIds } from '@/lib/ownedTraitsInPlay';
+import { ownerTraitTree, playerEntityIds } from '@/lib/ownedTraitsInPlay';
 import { hasPersonaChoice } from '@/lib/personaPick';
 import { stripMarkdown } from '@/lib/stripMarkdown';
 import { navItemStates } from '@/lib/navSelection';
@@ -35,18 +37,20 @@ export interface EnterWorldWorkspaceProps {
   worldAuthor?: string;
   traits: Trait[];
   traitGroups: TraitGroup[];
-  /** The world's entities; each that bears traits gets a page in the tree. */
+  /** The world's entities; each that has traits gets a page in the tree. */
   traitEntities?: readonly Entity[];
   /** The library persona and the added library entities, in the order added. */
   traitLibrary?: readonly Entity[];
   resolveEntityText?: ResolveEntityText;
   stats: Stat[];
+  /** The world's stat groups, which hold the blueprints entity stats link to. */
+  statGroups?: StatGroup[];
   locations: GameLocation[];
   resolveText: (text: string) => string;
-  /** A trait's own text, bound for its bearer, which is the Character Name in it. */
-  resolveTraitText: (trait: Trait, text: string, bearer?: Entity | null) => string;
-  /** Each bearer's picks by owner id, the player's under the world's. */
-  selectedTraits: Readonly<Record<string, readonly string[]>>;
+  /** A trait's own text, bound for its owner, which is the Character Name in it. */
+  resolveTraitText: (trait: Trait, text: string, owner?: Entity | null) => string;
+  /** The global picks, and each entity's by its id. */
+  selectedTraits: Scoped<readonly string[]>;
   selectedLocationId: string | null;
   libraryEntities: EntityAddition[];
   selectedEntityIds: Set<string>;
@@ -63,7 +67,7 @@ export interface EnterWorldWorkspaceProps {
   onPersonaChange?: (ref: PersonaRef) => void;
   categoryIndex: number;
   onCategoryChange: (index: number) => void;
-  onTraitSelect: (traitId: string, ownerId: string) => void;
+  onTraitSelect: (traitId: string, ownerId: OwnerId) => void;
   traitGates?: GateStates;
   /** What the last selection change turned off; shown until dismissed or the next change. */
   traitCascade?: TraitCascade | null;
@@ -96,13 +100,14 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
   }, [additionsRemembered]);
   const categoryNavigationButton = useRef<HTMLButtonElement>(null);
   const traitTree = useMemo(
-    () => bearerTraitTree(
+    () => ownerTraitTree(
       { traits: props.traits, traitGroups: props.traitGroups, entities: props.traitEntities ?? [] },
       props.persona, props.traitLibrary ?? [],
     ),
     [props.traits, props.traitGroups, props.traitEntities, props.persona, props.traitLibrary],
   );
-  const picksOf = (ownerId: string | undefined) => props.selectedTraits[ownerId ?? WORLD_OWNER] ?? [];
+  const picksOf = (ownerId: string | undefined) =>
+    (ownerId === undefined ? props.selectedTraits.global : props.selectedTraits.owners[ownerId] ?? []);
   // Every category, seen or not, for the Begin check.
   const allCategories = useMemo(
     () => buildTraitWorkspace(traitTree.traits, traitTree.groups, new Set(traitTree.entityNodes.keys())).categories,
@@ -112,11 +117,15 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
   const traitWorkspace = useMemo(
     () => buildTraitWorkspace(
       traitTree.traits, traitTree.groups, new Set(traitTree.entityNodes.keys()),
-      (trait, entityId) => isShown(trait, props.selectedTraits[entityId ?? WORLD_OWNER] ?? []),
+      (trait, entityId) => isShown(trait, picksOf(entityId ?? undefined)),
     ),
     [traitTree, props.selectedTraits],
   );
   const playerIds = playerEntityIds(traitTree);
+  const ownStatsOf = (entityId: string) => {
+    const entity = traitTree.entityNodes.get(entityId);
+    return entity ? resolvedEntityStats({ stats: props.stats, statGroups: props.statGroups ?? [] }, entity) : undefined;
+  };
   // On the selected row the primary text would vanish into the primary fill.
   const youMarkOf = (onFill: boolean) => (
     <span className={cn('ml-2 text-meta font-normal', onFill ? 'text-primary-foreground' : 'text-primary')}>You</span>
@@ -150,7 +159,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
   );
   const pickStateOf = (category: TraitCategory) =>
     (category.group ? groupPickState(category.group, category.traits, picksOf(category.entityId)) : null);
-  // Begin waits for every bearer's groups to meet their minimums; Quick Start never comes through here.
+  // Begin waits for every owner's groups to meet their minimums; Quick Start never comes through here.
   const short = allCategories.some((category) => !!pickStateOf(category)?.short);
   const currentIndex = Math.min(props.categoryIndex, Math.max(categories.length - 1, 0));
   const current = categories[currentIndex];
@@ -346,7 +355,8 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
               resolveTraitText={(trait, text) =>
                 props.resolveTraitText(trait, text, current.entityId ? traitTree.entityNodes.get(current.entityId) ?? null : null)}
               onTraitSelect={props.onTraitSelect}
-              ownerId={current.entityId ?? WORLD_OWNER}
+              ownerId={current.entityId ?? null}
+              ownStats={current.entityId ? ownStatsOf(current.entityId) : undefined}
               gates={props.traitGates}
               cascade={props.traitCascade}
               onDismissCascade={props.onDismissTraitCascade}

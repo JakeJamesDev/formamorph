@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Columns2, Maximize2, Minimize2, Redo2, Square, Undo2, Braces, Variable, type LucideIcon } from 'lucide-react';
+import { Columns2, Maximize2, Minimize2, Redo2, Square, Undo2, Braces, type LucideIcon } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tip } from '@/components/ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -13,8 +13,10 @@ import { useMorphFullscreen } from '@/lib/useMorphFullscreen';
 import { FullscreenShell } from '@/components/FullscreenShell';
 import { cn } from '@/lib/utils';
 import { SLOT_SNIPPETS, snippetSelection, type InsertSelection, type InsertSnippet } from '@/lib/codeSnippets';
-import { buildVariableTree, type VariableNode } from '@/lib/statCodeVariableTree';
+import { buildVariableTree, timingGlobalsOf, type VariableNode, type VariableTreeOwner } from '@/lib/statCodeVariableTree';
 import type { CodeSurface } from '@/lib/codeSurface';
+import type { CodeWorldLookup } from '@/lib/codeWorldLookup';
+import type { CodeCardNavigation } from '@/lib/codeCardNavigation';
 import type { CodeSession } from '@/components/prompt/codeSession';
 import type { CodeEntityNames, CodePlaceholders, CodeTraitPlace } from '@/lib/statCodeAnalysis';
 
@@ -45,6 +47,16 @@ function InsertMenu({ items, label, Icon, onPick }: {
   );
 }
 
+const NO_NAMES: readonly string[] = [];
+
+/** The stat names `owner.stats` keys: the entity's, the Blueprint group's, none for a world stat's empty owner,
+ *  and unknown where the owner carries no names. */
+const ownerStatNamesOf = (owner: VariableTreeOwner | null | undefined): readonly string[] | undefined => {
+  if (owner === undefined) return undefined;
+  if (owner === null) return NO_NAMES;
+  return (owner.kind === 'entity' ? owner.entity?.stats : owner.statNames) ?? undefined;
+};
+
 interface CodeAreaProps {
   value: string;
   onChange: (next: string) => void;
@@ -58,9 +70,14 @@ interface CodeAreaProps {
   slots?: boolean;
   /** What the code can reach: the Variable menu, completions and diagnostics all read it. */
   surface: CodeSurface;
-  /** The world's stat names, completed after `stats` and inside string literals, and checked by name. */
+  /** The world's stat names, which `stats` keys in every box: completed after `stats` and inside string
+   *  literals, checked by name, and listed under the Variable menu's Stats group. */
   statNames?: readonly string[];
-  /** The name of the stat the code belongs to, so a write to it through `stats` is not flagged. */
+  /** What `owner` holds: gives the Variable menu an Owner group, and completion and checks the owner's stats.
+   *  Null in a world stat's box, where `owner` is empty. Absent, `owner.stats` names are not checked. */
+  owner?: VariableTreeOwner | null;
+  /** The name of the stat the code belongs to, so a write to it through `owner.stats` (or `stats` in a world
+   *  stat's box) reads as a write to `self`. */
   selfName?: string;
   /** The world's placeholders, completed after `placeholders` and checked by name. */
   placeholders?: CodePlaceholders;
@@ -68,19 +85,31 @@ interface CodeAreaProps {
   traits?: readonly CodeTraitPlace[];
   /** The world's entities and their trait names, completed after `entities` and `persona.traits` and checked by name. */
   entities?: readonly CodeEntityNames[];
+  /** The Variable menu's tree where the surface has no stat maps, built on each open. Absent there, no menu. */
+  variables?: () => readonly VariableNode[];
+  /** What cards ask the world, bound to this box. Absent, cards show no World Details. */
+  lookup?: CodeWorldLookup;
+  /** Where a card's Open and Find All Uses go. Absent, cards show neither. */
+  navigation?: CodeCardNavigation;
+  /** A line (from 1) to put the caret on once the editor is ready. */
+  revealLine?: number;
+  /** Called once `revealLine` is shown. */
+  onLineRevealed?: () => void;
   /** What the code produces. Given this, the field grows the Edit | Preview pair, which becomes a
    *  side-by-side split once full screen has the width for it. */
   preview?: ReactNode;
   className?: string;
   rows?: number;
+  /** Focus the editor once it is ready, which can be after its chunk loads. */
+  autoFocus?: boolean;
 }
 
 /** Toolbar + editor. Split out so the fullscreen overlay can mount a second copy against the same
  *  value without the outer component recursing into itself. */
 function CodeAreaBody({
   value, onChange, ariaLabel, placeholder, label, info, slots, surface, preview, className, rows = 8, fullscreen,
-  onToggleFullscreen, session, active, expose, variableTree,
-}: Omit<CodeAreaProps, 'statNames' | 'selfName' | 'placeholders' | 'traits' | 'entities'> & {
+  onToggleFullscreen, session, active, expose, variableTree, variables,
+}: Omit<CodeAreaProps, 'statNames' | 'owner' | 'selfName' | 'placeholders' | 'traits' | 'entities' | 'lookup'> & {
   fullscreen: boolean;
   onToggleFullscreen: () => void;
   /** The one editor both copies take turns hosting. Null until its chunk has loaded. */
@@ -89,7 +118,7 @@ function CodeAreaBody({
   active: boolean;
   /** The inline copy reports its own field up, so full screen knows which box to grow out of. */
   expose?: (element: HTMLElement | null) => void;
-  /** The stat code Variable menu's tree, built from the names as they are now. */
+  /** The Variable menu's tree, built from the names as they are now. */
   variableTree: () => readonly VariableNode[];
 }) {
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -166,9 +195,9 @@ function CodeAreaBody({
           {label && <Label className="leading-none">{label}</Label>}
           {info}
           {slots && <InsertMenu items={SLOT_SNIPPETS} label="Slot" Icon={Braces} onPick={insertSnippet} />}
-          {surface.statMaps
-            ? <VariableMenu build={variableTree} onPick={(field) => insert(field.insert, field.selection)} />
-            : <InsertMenu items={surface.snippets} label="Variable" Icon={Variable} onPick={insertSnippet} />}
+          {(surface.statMaps || variables) && (
+            <VariableMenu build={variableTree} onPick={(field) => insert(field.insert, field.selection)} />
+          )}
         </div>
         <div className="flex flex-shrink-0 items-center gap-1">
           <Tip tip="Undo">
@@ -256,6 +285,8 @@ export function CodeArea(props: CodeAreaProps) {
   // call time rather than captured.
   const latest = useRef(props);
   latest.current = props;
+  const latestMorph = useRef(morph);
+  latestMorph.current = morph;
   const [, bump] = useState(0);
   const onUpdate = useCallback(() => bump((n) => n + 1), []);
   // Stable, so the field's ref callback isn't torn down and re-run on every render — which would detach and
@@ -268,8 +299,9 @@ export function CodeArea(props: CodeAreaProps) {
 
   // A template has no world, so its tree types over each name.
   const variableTree = useCallback(() => {
-    const { slots: template, statNames, placeholders, traits, entities } = latest.current;
-    return buildVariableTree(template ? undefined : { statNames, placeholders, traits, entities });
+    const { slots: template, statNames, owner, placeholders, traits, entities, surface, variables } = latest.current;
+    if (!surface.statMaps) return variables?.() ?? [];
+    return buildVariableTree(template ? undefined : { statNames, placeholders, traits, entities }, owner, surface.selfIs ?? 'stat', timingGlobalsOf(surface));
   }, []);
 
   const { ariaLabel, placeholder, slots } = props;
@@ -285,10 +317,22 @@ export function CodeArea(props: CodeAreaProps) {
         slots,
         surface: latest.current.surface,
         statNames: latest.current.statNames,
+        owner: latest.current.owner?.kind,
+        ownerStatNames: ownerStatNamesOf(latest.current.owner),
         selfName: latest.current.selfName,
         placeholders: latest.current.placeholders,
         traits: latest.current.traits?.map((trait) => trait.name),
         entities: latest.current.entities,
+        lookup: () => latest.current.lookup,
+        navigation: () => {
+          const navigation = latest.current.navigation;
+          // Both lead into the World Editor behind the overlay.
+          const leaveFullscreen = () => { if (latestMorph.current.mounted) latestMorph.current.close(); };
+          return navigation && {
+            open: (item) => { leaveFullscreen(); navigation.open(item); },
+            goToUse: (use) => { leaveFullscreen(); navigation.goToUse(use); },
+          };
+        },
         onChange: (next) => latest.current.onChange(next),
         onUpdate,
       });
@@ -305,12 +349,24 @@ export function CodeArea(props: CodeAreaProps) {
   useEffect(() => { session?.setSurface(props.surface); }, [session, props.surface]);
   // Stats are renamed and added while a code field is open, so the completions follow the list.
   useEffect(() => { session?.setStatNames(props.statNames); }, [session, props.statNames]);
+  const ownerKind = props.owner?.kind;
+  const ownerStatNames = ownerStatNamesOf(props.owner);
+  useEffect(() => { session?.setOwner(ownerKind, ownerStatNames); }, [session, ownerKind, ownerStatNames]);
   useEffect(() => { session?.setSelfName(props.selfName); }, [session, props.selfName]);
   useEffect(() => { session?.setPlaceholders(props.placeholders); }, [session, props.placeholders]);
   // The session completes and checks names; the groups are the Variable menu's alone.
   const traitNames = useMemo(() => props.traits?.map((trait) => trait.name), [props.traits]);
   useEffect(() => { session?.setTraits(traitNames); }, [session, traitNames]);
   useEffect(() => { session?.setEntities(props.entities); }, [session, props.entities]);
+  const { revealLine, autoFocus } = props;
+  useEffect(() => {
+    if (session && autoFocus) session.focus();
+  }, [session, autoFocus]);
+  useEffect(() => {
+    if (!session || revealLine === undefined) return;
+    session.revealLine(revealLine);
+    latest.current.onLineRevealed?.();
+  }, [session, revealLine]);
 
   return (
     <>

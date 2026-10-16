@@ -73,10 +73,11 @@ const SLOT_PATTERN = /\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*(?::\s*([A-Za-z]+)\s*(?:
 
 /** Where each slot sits in the source, for surfaces that colour the syntax rather than fill it in. Shares
  *  the one pattern, so a slot the parser accepts is a slot the editor marks. */
-export function findSlotRanges(code: string): { from: number; to: number }[] {
+export function findSlotRanges(code: string): { from: number; to: number; name: string }[] {
   return [...(code || '').matchAll(SLOT_PATTERN)].map(match => ({
     from: match.index,
     to: match.index + match[0].length,
+    name: match[1],
   }));
 }
 
@@ -207,17 +208,46 @@ export function validateSlotValues(slots: TemplateSlot[], values: Record<string,
   return problems;
 }
 
+// A stat slot's answer is a name, or an owner's stat name behind this control-character mark.
+const OWNER_STAT_MARK = '\u0001owner\u0001';
+
+/** The answer a stat slot takes for the owner's stat `name`. */
+export const ownerStatAnswer = (name: string): string => OWNER_STAT_MARK + name;
+
+/** Which list a stat slot's answer came from, and the stat's name. A plain answer is the world's. */
+export function statAnswer(answer: string): { route: 'owner' | 'world'; name: string } {
+  return answer.startsWith(OWNER_STAT_MARK)
+    ? { route: 'owner', name: answer.slice(OWNER_STAT_MARK.length) }
+    : { route: 'world', name: answer };
+}
+
+// `stats` as the word that indexes a slot, by `[` or `?.[`: not a member of something (`foo.stats`) or a longer name.
+const STATS_BEFORE_SLOT = /(^|[^\w$.])stats(\s*(?:\?\.\s*)?\[\s*)$/;
+
 /** Fill a template's slots and return runnable sandbox code. Unfilled slots stand for their declared
- *  default, so a partially completed form still previews. */
+ *  default, so a partially completed form still previews. An owner's stat answer reroutes the `stats` that
+ *  indexes its slot to `owner.stats`. A slot used any other way gets the bare name. */
 export function fillTemplate(code: string, values: Record<string, string>): string {
-  const { slots } = parseTemplateSlots(code);
+  const source = code || '';
+  const { slots } = parseTemplateSlots(source);
   const byName = new Map(slots.map(slot => [slot.name, slot]));
 
-  return (code || '').replace(SLOT_PATTERN, (_match, name: string) => {
-    const slot = byName.get(name);
-    if (!slot) return '';
-    return renderSlot(slot, resolveSlotValue(slot, values));
-  });
+  let out = '';
+  let from = 0;
+  for (const match of source.matchAll(SLOT_PATTERN)) {
+    out += source.slice(from, match.index);
+    from = match.index + match[0].length;
+    const slot = byName.get(match[1]);
+    if (!slot) continue;
+    let answer = resolveSlotValue(slot, values);
+    if (slot.type === 'stat') {
+      const { route, name } = statAnswer(answer);
+      answer = name;
+      if (route === 'owner') out = out.replace(STATS_BEFORE_SLOT, (_all, lead: string, open: string) => `${lead}owner.stats${open}`);
+    }
+    out += renderSlot(slot, answer);
+  }
+  return out + source.slice(from);
 }
 
 /**
@@ -289,7 +319,7 @@ return base + (clock.daypart === {{when:daypart=night}} ? {{bonus:number=20}} : 
     id: 'builtin-random-roll',
     timing: 'after',
     name: 'Random Per-Turn Roll',
-    description: 'A fresh random value each turn, spread across this stat’s range. Use only one per world. A second draws the same numbers.',
+    description: 'A fresh random value each turn, spread across this stat’s range.',
     code: `// clock.elapsedHours keeps the roll moving even when the clock seed hasn't changed between turns.
 const roll = (Math.random() * 100 + clock.elapsedHours) % 100;
 return self.min + (self.max - self.min) * (roll / 100);`,
@@ -334,7 +364,7 @@ return base - (active ? {{penalty:number=10}} : 0);`,
     id: 'builtin-dice-roll-consequences',
     timing: 'after',
     name: 'Dice Roll With Consequences',
-    description: 'Roll a d20 each turn and pin the placeholder to the value for that roll. A 1 halves one stat. A 20 adds 1 to another. This stat keeps the roll. Set its range to 1–20. Use only one per world. A second draws the same numbers.',
+    description: 'Roll a d20 each turn and pin the placeholder to the value for that roll. A 1 halves one stat. A 20 adds 1 to another. This stat keeps the roll. Set its range to 1–20.',
     // Writes to one stat field apply in stat order. The last write wins.
     code: `const roll = Math.floor(Math.random() * 20) + 1;
 const target = placeholders[{{bandPlaceholder:placeholder}}];

@@ -113,12 +113,14 @@ function setChipFormat(text: string, format: 'markdown' | 'xml' | null): string 
   );
 }
 
+/** One canonical template in `style`: its section headers restyled and its chips set to the style's format. */
+export function styleTemplate(text: string, style: SectionStyle): string {
+  return setChipFormat(restyle(text, style), style === 'labels' ? null : style);
+}
+
 /** Style built-in prose sections and chip formats without changing raw Headers or affix content. */
 export function buildStyledValues(canonical: PromptValues, style: SectionStyle): PromptValues {
   const out = {} as PromptValues;
-  for (const key of PROMPT_TEXT_KEYS) {
-    const headered = restyle(canonical[key], style);
-    out[key] = setChipFormat(headered, style === 'labels' ? null : style);
-  }
+  for (const key of PROMPT_TEXT_KEYS) out[key] = styleTemplate(canonical[key], style);
   return out;
 }

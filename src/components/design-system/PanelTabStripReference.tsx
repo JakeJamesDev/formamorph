@@ -32,6 +32,7 @@ const TRAIT_BODY: Record<string, string> = {
   availability: 'The trait\'s two switches and its requirements.',
   stats: 'Stat Changes and Stat Availability, with their conflict notes.',
   pins: 'Placeholder pin rows.',
+  scripts: 'Script rows, each with its name, timing and code, and Add Script.',
 };
 
 const ENTRY_BODY: Record<string, string> = {

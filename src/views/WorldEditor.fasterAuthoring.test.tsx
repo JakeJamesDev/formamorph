@@ -55,7 +55,7 @@ const treeRow = (name: string) => screen.queryAllByLabelText('Drag to reorder or
   .map((grip) => grip.parentElement as HTMLElement)
   .find((row) => within(row).queryByText(name, { exact: true }));
 
-/** A flyout level's rows in order: `#` marks a group that opens a level, `✓` a held bearer. */
+/** A flyout level's rows in order: `#` marks a group that opens a level, `✓` a held owner. */
 const flyoutRows = (label: string) => [...screen.getByRole('group', { name: label }).children].map((row) =>
   `${row.querySelector('.lucide-chevron-right') ? '#' : ''}${row.getAttribute('aria-disabled') === 'true' ? '✓' : ''}${row.textContent}`);
 const flyoutRow = (label: string, name: string) => within(screen.getByRole('group', { name: label })).getByRole('button', { name });
@@ -138,7 +138,7 @@ describe('the + menu', () => {
 describe('the link button', () => {
   const openLinkFlyout = () => fireEvent.click(screen.getByRole('button', { name: 'Link To…' }));
 
-  it('lists entities by group with the Custom Persona entity marked, and bearers that have the original checked and disabled', () => {
+  it('lists entities by group with the Custom Persona entity marked, and owners that have the original checked and disabled', () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openTab(/Traits/);
     fireEvent.click(within(treeRow('Paladin')!).getByText('Paladin'));
@@ -158,7 +158,7 @@ describe('the link button', () => {
     fireEvent.click(flyoutRow('Link To', 'Albus'));
     expect(ctx().entities.find((e) => e.id === 'e-albus')!.traitLinks).toHaveLength(1);
 
-    // A pick links through the drag's path; the flyout stays open with the new bearer checked.
+    // A pick links through the drag's path; the flyout stays open with the new owner checked.
     fireEvent.click(flyoutRow('Link To', 'Mira'));
     expect(ctx().entities.find((e) => e.id === 'e-mira')!.traitLinks).toEqual([
       expect.objectContaining({ originalId: 't-paladin', kind: 'trait', groupId: null, order: 0 }),

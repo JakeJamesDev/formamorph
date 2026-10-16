@@ -2,11 +2,11 @@
 // placeholder copy, later a stat): a blueprint id and a sparse override map, each override keeping the
 // blueprint's value it was made against. This module is the one reader of that map: it gives the effective
 // record with its overridden and stale fields, and the copy lookup that traces a blueprint placeholder to
-// the placeholder one bearer reads.
+// the placeholder one owner reads.
 
 import type {
-  BlueprintOverride, BlueprintOverrides, CopyValueFields, CopyValueOverrides, Entity, PersonaRef, Placeholder, PlaceholderValue, Trait,
-  TraitLink, TraitLinkFields, TraitLinkOverrides,
+  BlueprintOverride, BlueprintOverrides, CopyValueFields, CopyValueOverrides, Entity, PersonaRef, Placeholder, PlaceholderValue, Script,
+  Trait, TraitLink, TraitLinkFields, TraitLinkOverrides,
 } from '@/types';
 
 /** A blueprint's record as one reader sees it, with the fields it overrides and the overrides the blueprint
@@ -68,6 +68,7 @@ export const linkFieldsOf = (trait: Trait): TraitLinkFields => ({
   playerToggle: !!trait.playerToggle,
   statChanges: trait.statChanges,
   mode: trait.mode ?? 'optional',
+  scripts: trait.scripts ?? [],
 });
 
 /** The original's overridable fields as `link` reads them, with what it overrides and what went stale. */
@@ -92,13 +93,13 @@ export function effectiveLinkTrait(trait: Trait, link: TraitLink | undefined): T
 }
 
 /**
- * `holder` with the map under `prop` holding `next` at `key`: an empty `next` drops the key, and an emptied
+ * `record` with the map under `prop` holding `next` at `key`: an empty `next` drops the key, and an emptied
  * map drops `prop`, so an untouched record stores no map.
  */
-function withKeyed<T extends object, P extends keyof T, V extends object>(holder: T, prop: P, key: string, next: V | undefined): T {
-  const { [key]: _old, ...others } = (holder[prop] ?? {}) as Record<string, V>;
+function withKeyed<T extends object, P extends keyof T, V extends object>(record: T, prop: P, key: string, next: V | undefined): T {
+  const { [key]: _old, ...others } = (record[prop] ?? {}) as Record<string, V>;
   const map = next && Object.keys(next).length ? { ...others, [key]: next } : others;
-  const { [prop]: _prev, ...rest } = holder;
+  const { [prop]: _prev, ...rest } = record;
   return (Object.keys(map).length ? { ...rest, [prop]: map } : rest) as T;
 }
 
@@ -110,6 +111,17 @@ const withTraitOverrides = (link: TraitLink, traitId: string, next: TraitLinkOve
 export function setLinkOverride<K extends keyof TraitLinkFields>(link: TraitLink, trait: Trait, field: K, value: TraitLinkFields[K]): TraitLink {
   const next = withOverride(link.overrides?.[trait.id], field, value, linkFieldsOf(trait)[field]);
   return withTraitOverrides(link, trait.id, next);
+}
+
+/** The link with its scripts override on `traitId` set to `scripts`, as a rename rewrites both sides. The
+ *  snapshot moves from `before` to `after` only where it read `before`, so a stale override stays stale. */
+export function setTraitLinkScripts(
+  link: TraitLink, traitId: string, scripts: Script[], before: readonly Script[], after: Script[],
+): TraitLink {
+  const current = link.overrides?.[traitId]?.scripts;
+  if (!current) return link;
+  const blueprint = sameValue(current.blueprint, before) ? after : current.blueprint;
+  return withTraitOverrides(link, traitId, withOverride(link.overrides?.[traitId], 'scripts', scripts, blueprint));
 }
 
 /** The link reading `field` on `traitId` live again. The same link when it did not override it. */
@@ -250,14 +262,14 @@ export const customPersonaEntity = (entities: readonly Entity[]): Entity | undef
 export const copyOf = (owner: Pick<Entity, 'placeholders'> | null | undefined, blueprintId: string): Placeholder | undefined =>
   owner?.placeholders?.find((p) => p.blueprintId === blueprintId);
 
-/** Who reads a blueprint: the bearer's entity, null for the root player bearer, and whether the Custom
- *  Persona entity's copies fill in where the bearer has none. */
+/** Who reads a blueprint: the owner's entity, null for global scope's tree, and whether the Custom
+ *  Persona entity's copies fill in where the owner has none. */
 export interface CopyReader {
   entity: Pick<Entity, 'placeholders'> | null;
   viaCustomPersona: boolean;
 }
 
-/** The reader for a bearer: the Custom Persona's copies fill in for the player under None and under a
+/** The reader for an owner: the Custom Persona's copies fill in for the player under None and under a
  *  library persona, never for a world persona or a cast entity. */
 export const readerFor = (persona: PersonaRef | undefined, entity: Pick<Entity, 'placeholders'> | null, isPlayer: boolean): CopyReader =>
   ({ entity, viaCustomPersona: isPlayer && persona?.source !== 'world' });
@@ -275,7 +287,7 @@ export function lookupCopy(world: BlueprintWorld, blueprintId: string, reader: C
   return copy ? effectiveCopy(copy, blueprint) : blueprint;
 }
 
-/** Blueprint id → the effective copy one bearer reads in its place; undefined where it reads the blueprint. */
+/** Blueprint id → the effective copy one owner reads in its place; undefined where it reads the blueprint. */
 export type CopyLookup = (blueprintId: string) => Placeholder | undefined;
 
 /** {@link lookupCopy} for one reader, remembered per id, answering only where a copy stands in. */

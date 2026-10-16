@@ -10,8 +10,8 @@ import { namedParams } from './toolDraft';
 
 /** The prompt chips a Template can place: the scene chips a Tool Snapshot carries values for. */
 export const TEMPLATE_SCENE_VARIABLES = (() => {
-  const sceneTokens = new Set(Object.keys(chipValues(sampleChipScene())));
-  return ALL_PROMPT_VARIABLES.filter((v) => sceneTokens.has(v.token));
+  const sceneValues = chipValues(sampleChipScene());
+  return ALL_PROMPT_VARIABLES.filter((v) => sceneValues(v.token) !== undefined);
 })();
 
 // The one palette entry no prompt chip wears, so a parameter never reads as a scene chip.
@@ -48,9 +48,11 @@ export function toolTemplateVocabulary(params: readonly ToolParam[]): ChipVocabu
   return {
     parse: parseToolTemplate,
     isKnown: (t) => familyOf(t).isKnown(t),
+    promptChip: (t) => familyOf(t).promptChip?.(t) ?? false,
     label: (t) => familyOf(t).label(t),
     hint: (t) => familyOf(t).hint?.(t),
     variantLabel: (t) => familyOf(t).variantLabel(t),
+    onlyWith: (t) => familyOf(t).onlyWith(t),
     color: (t) => familyOf(t).color(t),
     axes: (t) => familyOf(t).axes(t),
     selection: (t) => familyOf(t).selection(t),

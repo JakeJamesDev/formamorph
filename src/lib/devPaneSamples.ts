@@ -7,7 +7,7 @@ import type { ChangelogDraft } from '@/lib/listingChangelog';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import { PROMPT_TEXT_KEYS, type PromptValues } from '@/lib/promptPresets';
 import { buildSharedPreset, serializeSharedJson } from '@/lib/promptPresetShare';
-import type { FeedbackThread } from '@/types';
+import type { Entity, FeedbackThread, Stat, Trait } from '@/types';
 
 const PARAGRAPH = 'The lantern road climbs past the old mill, where the river turns twice before it reaches the harbor. '
   + 'Travelers stop at the ford to water their horses, and the miller sells bread to anyone who asks.';
@@ -67,4 +67,27 @@ export function devCustomCodeSample(): string {
     'const morale = stats.Morale ?? 50;',
     'return Math.max(0, Math.min(100, morale - fatigue / 2));',
   ].join('\n')).join('\n\n');
+}
+
+const galleryPicture = (hue: number, label: string): string => `data:image/svg+xml;utf8,${encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 90 120"><rect width="90" height="120" fill="hsl(${hue} 45% 45%)"/>`
+  + `<text x="45" y="68" font-size="30" text-anchor="middle" fill="white">${label}</text></svg>`,
+)}`;
+
+/** An entity whose gallery shows every Visibility rule shape: a rule on the primary image, a stat rule, a Not
+ *  trait rule, and a plain image. */
+export function devGalleryEntity(id: string): Entity {
+  const health: Stat = { id: 'dev-health', name: 'Health', type: 'number', description: '', min: 0, max: 100, starting: 100, regen: 0, descriptors: [] };
+  const healed: Trait = { id: 'dev-healed', name: 'Healed', statChanges: [] };
+  return {
+    id,
+    name: 'Wren',
+    stats: [health],
+    traits: [healed],
+    images: [
+      { data: galleryPicture(210, '1'), requires: [{ all: [{ kind: 'stat', id: health.id, operator: '>=', value: 50, unit: 'percent' }] }] },
+      { data: galleryPicture(20, '2'), requires: [{ all: [{ kind: 'stat', id: health.id, operator: '<', value: 20, unit: 'percent' }, { kind: 'trait', id: healed.id, not: true }] }] },
+      { data: galleryPicture(120, '3') },
+    ],
+  };
 }

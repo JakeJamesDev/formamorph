@@ -7,7 +7,6 @@
 //
 // Data in, data out, like `placeholderTree`: the tree component only wires this to the drag scaffold.
 
-import { arrayMove } from '@dnd-kit/sortable';
 import { entitiesInTreeOrder } from './entityGroupTree';
 import { childPlaceholderGroups, isDescendantPlaceholderGroup, placeholderGroupOf } from './placeholderGroups';
 import {
@@ -15,10 +14,11 @@ import {
   type PlaceholderHome, type PlaceholderHomesWorld, type PlaceholderOwnerRef, type PlaceholderSlices,
 } from './placeholderHomes';
 import {
-  commitPlaceholderDrop, getPlaceholderDropProjection, placeholderRows, removeCollapsedPlaceholderRows,
+  commitPlaceholderDrop, placeholderRows,
   type PlaceholderDropContext, type PlaceholderTreeRow,
 } from './placeholderTree';
 import { SHARED_PATH_SEP } from './placeholders';
+import { anyRowCanParent, planTreeDrop } from './treeProjection';
 import type { Placeholder, PlaceholderGroup } from '@/types';
 
 /** A placeholder row, plus which of the world's lists it lives in. */
@@ -65,12 +65,12 @@ export const ownerIdOfNode = (nodeId: string): string | null =>
  * The tab's rows: the shared list's folders, each holding its subfolders and then its placeholders as a
  * tree; the loose shared placeholders; then an owner node for each entity in tree order and each book in
  * book order that owns at least one placeholder, with that owner's own tree beneath it. Every row looks its
- * holders and chip targets up across the whole world, so a scoped placeholder holding a shared one still
+ * parent placeholders and chip targets up across the whole world, so a scoped placeholder holding a shared one still
  * draws it as a shared row.
  */
 export function placeholderTreeNodes(world: PlaceholderHomesWorld): PlaceholderTreeNode[] {
   const all = allPlaceholders(world);
-  // A shared row drawn under a scoped holder still lives in its own list, so each row's home is read off
+  // A shared row drawn under a scoped parent placeholder still lives in its own list, so each row's home is read off
   // the record rather than the section it is drawn in.
   const homeOf = placeholderHomeIndex(world);
   const rowsOf = (list: readonly Placeholder[], under?: { id: string; depth: number }): PlaceholderRowNode[] =>
@@ -110,7 +110,7 @@ export function placeholderTreeNodes(world: PlaceholderHomesWorld): PlaceholderT
 }
 
 /** One owner's list as its own tree, at the top level: what an entity or book panel draws. Rows still look
- *  chip targets and holders up across the whole world. */
+ *  chip targets and parent placeholders up across the whole world. */
 export function ownerPlaceholderNodes(world: PlaceholderHomesWorld, home: PlaceholderHome): PlaceholderRowNode[] {
   return placeholderRows(placeholderList(world, home), allPlaceholders(world)).map((row) => ({ ...row, kind: 'placeholder', home }));
 }
@@ -158,19 +158,14 @@ export function applyScopedPlaceholderDrop(
   context: PlaceholderDropContext = {},
 ): PlaceholderSlices | null {
   const nodes = placeholderTreeNodes(world);
-  const visible = removeCollapsedPlaceholderRows(nodes, [...collapsedIds, activeId]);
-  if (!visible.some((n) => n.id === overId) || !visible.some((n) => n.id === activeId)) return null;
-
-  const activeIndex = nodes.findIndex((n) => n.id === activeId);
-  const overIndex = nodes.findIndex((n) => n.id === overId);
-  const active = nodes[activeIndex];
-  if (!active || active.kind === 'owner' || overIndex === -1) return null;
-
-  const { parentId } = getPlaceholderDropProjection(visible, activeId, overId, dragOffset, indentationWidth);
-  if (!placeholderDropAllowed(world, nodes, activeId, parentId)) return null;
-  const parent = parentId === null ? null : nodes.find((n) => n.id === parentId) ?? null;
-  const reParented = nodes.map((n) => (n.id === activeId ? { ...n, parentId } : n));
-  const moved = arrayMove(reParented, activeIndex, overIndex);
+  const plan = planTreeDrop(nodes, collapsedIds, activeId, overId, dragOffset, indentationWidth, {
+    canParent: anyRowCanParent,
+    refuses: (active, parent) => !placeholderDropAllowed(world, nodes, active.id, parent?.id ?? null),
+  });
+  if (!plan) return null;
+  const { active, parent, parentId, moved } = plan;
+  // Narrows the type: placeholderDropAllowed already refused owner nodes.
+  if (active.kind === 'owner') return null;
 
   if (active.kind === 'group') {
     const groups = world.placeholderGroups ?? [];

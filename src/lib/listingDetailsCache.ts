@@ -5,7 +5,7 @@
  * same identity the catalog tag uses: what a listing says can differ by who asks, so one reader's entry
  * is never another's. Its own database, so a version change here never blocks the catalog's open.
  */
-import { clearStore, openDatabase, promisifyRequest } from './idb';
+import { cachedConnection, clearStore, promisifyRequest, pruneLeastRecent, transactionDone } from './idb';
 import { currentReader } from '@/lib/currentReader';
 import type { ListingDetails } from '@/services/WorldStorageService';
 
@@ -27,26 +27,11 @@ interface DetailsRecord {
 /** This reader's key for a listing. */
 const entryKey = (listingId: string): EntryKey => [currentReader(), listingId];
 
-let dbPromise: Promise<IDBDatabase> | null = null;
-const openDB = (): Promise<IDBDatabase> => {
-  if (!dbPromise) {
-    dbPromise = openDatabase(DB_NAME, DB_VERSION, [{ name: STORE_NAME, keyPath: 'key' }]).catch(
-      (err: unknown) => { dbPromise = null; throw err; }, // let a later call retry the open
-    );
-  }
-  return dbPromise;
-};
+const openDB = cachedConnection(DB_NAME, DB_VERSION, [{ name: STORE_NAME, keyPath: 'key' }]);
 
 // Strictly increasing, so entries stored within one millisecond still have an order to evict by.
 let lastStamp = 0;
 const stamp = (): number => (lastStamp = Math.max(Date.now(), lastStamp + 1));
-
-const transactionDone = (tx: IDBTransaction): Promise<void> =>
-  new Promise((resolve, reject) => {
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-    tx.onabort = () => reject(tx.error);
-  });
 
 /** This reader's cached details for a listing, or null. A hit counts as a use. */
 export const getCachedDetails = async (listingId: string): Promise<ListingDetails | null> => {
@@ -67,17 +52,7 @@ export const putCachedDetails = async (listingId: string, details: ListingDetail
   const tx = db.transaction([STORE_NAME], 'readwrite');
   const store = tx.objectStore(STORE_NAME);
   store.put({ key, details, usedAt: stamp() } satisfies DetailsRecord);
-  const count = store.count();
-  count.onsuccess = () => {
-    if (count.result <= MAX_CACHED_DETAILS) return;
-    const all = store.getAll() as IDBRequest<DetailsRecord[]>;
-    all.onsuccess = () => {
-      all.result
-        .sort((a, b) => b.usedAt - a.usedAt)
-        .slice(MAX_CACHED_DETAILS)
-        .forEach((r) => store.delete(r.key));
-    };
-  };
+  pruneLeastRecent<DetailsRecord>(store, MAX_CACHED_DETAILS, (r) => r.usedAt, (r) => r.key);
   await transactionDone(tx);
 };
 

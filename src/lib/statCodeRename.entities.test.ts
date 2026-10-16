@@ -3,9 +3,10 @@ import type { Entity, Placeholder, Stat, Trait } from '@/types';
 import { encodePlaceholderToken } from './placeholders';
 import { phValues } from '@/test/placeholderValues';
 import { planCodeRename } from './statCodeRename';
-import { traitHolders } from './statCodeTraits';
+import { traitOwnerMaps } from './statCodeTraits';
+import { boxScripts } from '@/test/scriptFixtures';
 
-const stat = (id: string, code: string): Stat => ({ id, name: id, type: 'number', value: 0, min: 0, max: 100, code } as Stat);
+const stat = (id: string, code: string): Stat => ({ id, name: id, type: 'number', value: 0, min: 0, max: 100, scripts: boxScripts({ after: code }) } as Stat);
 
 // Mira can be played and owns Scarred; Ash owns his own Scarred; Rook links the world's Brave.
 const brave: Trait = { id: 'brave', name: 'Brave', statChanges: [] };
@@ -20,7 +21,7 @@ const world = { traits: [brave], traitGroups: [], entities: [mira, ash, rook] };
 /** A trait rename of `traitId` from `oldName` to `newName`, planned over one stat's code. */
 const renameTrait = (code: string, traitId: string, oldName: string, newName: string) => planCodeRename({
   root: 'traits', oldName, newName, stats: [stat('a', code)], otherNames: [],
-  traitHolders: traitHolders(world, [], traitId),
+  traitOwnerMaps: traitOwnerMaps(world, [], traitId),
 });
 
 describe('a trait rename in entity trait maps', () => {
@@ -28,26 +29,26 @@ describe('a trait rename in entity trait maps', () => {
     const code = `entities.Mira.traits.Scarred.enabled + persona.traits['Scarred'].enabled + entities.Ash.traits.Scarred.enabled + traits.Scarred.enabled`;
     const plan = renameTrait(code, 'm-scarred', 'Scarred', 'Marked');
     expect(plan?.references).toBe(2);
-    expect(plan?.edits[0].boxes.after)
+    expect(plan?.edits[0].scripts.after)
       .toBe(`entities.Mira.traits.Marked.enabled + persona.traits['Marked'].enabled + entities.Ash.traits.Scarred.enabled + traits.Scarred.enabled`);
   });
 
   it('rewrites a cast entity’s owned trait without touching persona', () => {
     const plan = renameTrait('entities["Ash"].traits.Scarred.enabled + persona.traits.Scarred.enabled', 'a-scarred', 'Scarred', 'Burned');
-    expect(plan?.edits[0].boxes.after).toBe('entities["Ash"].traits.Burned.enabled + persona.traits.Scarred.enabled');
+    expect(plan?.edits[0].scripts.after).toBe('entities["Ash"].traits.Burned.enabled + persona.traits.Scarred.enabled');
   });
 
   it('follows a world trait into the entities that link it', () => {
     const plan = renameTrait('traits.Brave.enabled + entities.Rook.traits.Brave.enabled + entities.Ash.traits.Brave.enabled', 'brave', 'Brave', 'Bold Heart');
-    expect(plan?.edits[0].boxes.after)
+    expect(plan?.edits[0].scripts.after)
       .toBe(`traits['Bold Heart'].enabled + entities.Rook.traits['Bold Heart'].enabled + entities.Ash.traits.Brave.enabled`);
   });
 
-  it('keeps today’s rewrite of traits alone without holders', () => {
+  it('keeps today’s rewrite of traits alone without parent placeholders', () => {
     const plan = planCodeRename({
       root: 'traits', oldName: 'Scarred', newName: 'Marked', stats: [stat('a', 'traits.Scarred.enabled + persona.traits.Scarred.enabled')], otherNames: [],
     });
-    expect(plan?.edits[0].boxes.after).toBe('traits.Marked.enabled + persona.traits.Scarred.enabled');
+    expect(plan?.edits[0].scripts.after).toBe('traits.Marked.enabled + persona.traits.Scarred.enabled');
   });
 });
 
@@ -62,7 +63,7 @@ describe('an entity rename in entities', () => {
       entities: [mira, ash],
     });
     expect(plan?.references).toBe(3);
-    expect(plan?.edits[0].boxes.after)
+    expect(plan?.edits[0].scripts.after)
       .toBe(`entities['Old Mira'].traits.Scarred.enabled + entities['Old Mira'].name + entities['Old Mira'].placeholders.Hair.text + entities.Ash.name`);
   });
 
@@ -71,7 +72,7 @@ describe('an entity rename in entities', () => {
       root: 'placeholders', oldName: 'Ash', newName: 'Ashen', otherNames: [], subject: { kind: 'entity', id: 'ash' },
       placeholders: { list: [] }, stats: [stat('a', 'entities.Ash.traits.Scarred.enabled')], entities: [mira, ash],
     });
-    expect(plan?.edits[0].boxes.after).toBe('entities.Ashen.traits.Scarred.enabled');
+    expect(plan?.edits[0].scripts.after).toBe('entities.Ashen.traits.Scarred.enabled');
   });
 
   it('follows a placeholder rename into an entity name that carries it as a chip', () => {
@@ -81,7 +82,7 @@ describe('an entity rename in entities', () => {
       root: 'placeholders', oldName: 'Beast', newName: 'Hound', otherNames: [], subject: { kind: 'placeholder', id: 'beast' },
       placeholders: { list: [beast] }, stats: [stat('a', `entities['Beast Rider'].name`)], entities: [{ ...ash, name: `${chip} Rider` }],
     });
-    expect(plan?.edits[0].boxes.after).toBe(`entities['Hound Rider'].name`);
+    expect(plan?.edits[0].scripts.after).toBe(`entities['Hound Rider'].name`);
   });
 });
 
@@ -92,8 +93,8 @@ describe('a trait rename when two playable entities own the old name', () => {
   const rename = (traitId: string) => planCodeRename({
     root: 'traits', oldName: 'Scarred', newName: 'Marked', otherNames: [],
     stats: [stat('a', 'persona.traits.Scarred.enabled + entities.Mira.traits.Scarred.enabled + entities.Kira.traits.Scarred.enabled')],
-    traitHolders: traitHolders(both, [], traitId),
-  })?.edits[0].boxes.after;
+    traitOwnerMaps: traitOwnerMaps(both, [], traitId),
+  })?.edits[0].scripts.after;
 
   it('leaves the persona path and rewrites the owner’s own', () => {
     expect(rename('m-scarred')).toBe('persona.traits.Scarred.enabled + entities.Mira.traits.Marked.enabled + entities.Kira.traits.Scarred.enabled');
@@ -103,9 +104,9 @@ describe('a trait rename when two playable entities own the old name', () => {
     const solo = { ...both, entities: [mira, { ...kira, traits: [{ ...kit, name: 'Hurt' }] }] };
     const plan = planCodeRename({
       root: 'traits', oldName: 'Scarred', newName: 'Marked', otherNames: [], stats: [stat('a', 'persona.traits.Scarred.enabled')],
-      traitHolders: traitHolders(solo, [], 'm-scarred'),
+      traitOwnerMaps: traitOwnerMaps(solo, [], 'm-scarred'),
     });
-    expect(plan?.edits[0].boxes.after).toBe('persona.traits.Marked.enabled');
+    expect(plan?.edits[0].scripts.after).toBe('persona.traits.Marked.enabled');
   });
 
   it('rewrites the persona path for one trait two playable entities both hold', () => {
@@ -114,8 +115,8 @@ describe('a trait rename when two playable entities own the old name', () => {
     const linked = { traits: [brave], traitGroups: [], entities: [mirrorMira, linker] };
     const plan = planCodeRename({
       root: 'traits', oldName: 'Brave', newName: 'Bold', otherNames: [], stats: [stat('a', 'persona.traits.Brave.enabled')],
-      traitHolders: traitHolders(linked, [], 'brave'),
+      traitOwnerMaps: traitOwnerMaps(linked, [], 'brave'),
     });
-    expect(plan?.edits[0].boxes.after).toBe('persona.traits.Bold.enabled');
+    expect(plan?.edits[0].scripts.after).toBe('persona.traits.Bold.enabled');
   });
 });

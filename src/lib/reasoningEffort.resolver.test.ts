@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
-  resolveReasoningCapability, mergeReasoningCapability, reasoningRuledOut,
+  resolveReasoningCapability, mergeReasoningCapability, reasoningRuledOut, parseReasoningCapability,
+  reasoningNeedsResolve, storedAfterResolve,
   SAFE_REASONING_EFFORTS, REASONING_CANDIDATES,
   type ReasoningCapability,
 } from './reasoningEffort';
@@ -131,6 +132,17 @@ describe('llama.cpp properties endpoint', () => {
     expect(record?.sources.levels).toBe('native');
   });
 
+  // Only llama.cpp serves template caps, and it takes a per-request budget on every template that has them.
+  it('names the llama.cpp dialect and its token budget whatever the template says', async () => {
+    for (const honored of [true, false]) {
+      resetProbeMemo();
+      const { doFetch } = backend({ [PROPS]: props({ supports_reasoning_effort: honored }) });
+      const record = await resolveReasoningCapability(TARGET, doFetch);
+      expect(record).toMatchObject({ dialect: 'llamacpp', budget: true });
+      expect(record?.sources).toMatchObject({ dialect: 'native', budget: 'native' });
+    }
+  });
+
   // llama.cpp exposes no flag for "does this model think", so the question stays open either way.
   it('leaves the reasons question unknown whatever the template says', async () => {
     const honored = backend({ [PROPS]: props({ supports_reasoning_effort: true }) });
@@ -140,10 +152,29 @@ describe('llama.cpp properties endpoint', () => {
     expect((await resolveReasoningCapability(TARGET, ignored.doFetch))?.reasons).toBeNull();
   });
 
-  it('accepts no effort level when the template ignores the field', async () => {
+  // `none` disables thinking on any template, so it is the one literal a template that ignores the field takes.
+  it('accepts the none literal alone when the template ignores the field, which leaves the model in play', async () => {
     const { doFetch } = backend({ [PROPS]: props({ supports_reasoning_effort: false }) });
     const record = await resolveReasoningCapability(TARGET, doFetch);
-    expect(record?.levels).toEqual([]);
+    expect(record?.levels).toEqual(['none']);
+    expect(reasoningRuledOut(record)).toBe(false);
+  });
+
+  // A record written before llama.cpp named its dialect: levels from `/props`, no dialect, no budget.
+  it('asks a llama.cpp record cached before the dialect existed once more, and stores the new answers', async () => {
+    for (const reasons of [{}, { reasons: 'catalog' as const }]) {
+      resetProbeMemo();
+      const cached = parseReasoningCapability({
+        reasons: 'reasons' in reasons ? true : null, levels: [], budget: null, tools: false,
+        sources: { levels: 'native', tools: 'probe', ...reasons },
+      });
+      expect(reasoningNeedsResolve(cached)).toBe(true);
+      const { doFetch } = backend({ [PROPS]: props({ supports_reasoning_effort: false }) });
+      const fresh = await resolveReasoningCapability(TARGET, doFetch, { stored: cached });
+      const stored = storedAfterResolve(cached, fresh!);
+      expect(stored).toMatchObject({ dialect: 'llamacpp', budget: true, levels: ['none'] });
+      expect(reasoningNeedsResolve(stored)).toBe(false);
+    }
   });
 
   it('moves on when an older build omits the flag', async () => {
@@ -331,16 +362,17 @@ describe('the dialect each existing source names', () => {
     expect(ruledOut).toMatchObject({ reasons: false, dialect: 'lmstudio' });
   });
 
-  it('leaves Ollama and llama.cpp unknown, since neither names a spelling', async () => {
+  it('leaves Ollama unknown, since it names no spelling', async () => {
     const ollama = backend({ [OLLAMA]: { status: 200, body: { capabilities: ['completion', 'thinking'] } } });
     expect((await resolveReasoningCapability(TARGET, ollama.doFetch))?.dialect).toBe('unknown');
+  });
 
-    resetProbeMemo();
+  it('names llama.cpp from its template caps, through the probe that answers the reasons question', async () => {
     const llama = backend({
       [PROPS]: { status: 200, body: { chat_template_caps: { supports_reasoning_effort: true } } },
       [COMPLETIONS]: { status: 200, body: {} },
     });
-    expect((await resolveReasoningCapability(TARGET, llama.doFetch))?.dialect).toBe('unknown');
+    expect((await resolveReasoningCapability(TARGET, llama.doFetch))?.dialect).toBe('llamacpp');
   });
 
   it('leaves the dialect unknown when only the probe answered', async () => {
@@ -412,7 +444,7 @@ describe('the chain ends on the reasons question, not on any answer', () => {
       [COMPLETIONS]: { status: 200, body: {} },
     });
     const record = await resolveReasoningCapability(TARGET, doFetch);
-    expect(record?.levels).toEqual([]);
+    expect(record?.levels).toEqual(['none']);
     expect(record?.sources.levels).toBe('native');
   });
 

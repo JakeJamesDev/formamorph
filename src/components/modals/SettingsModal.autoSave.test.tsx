@@ -1,7 +1,7 @@
 // Storage is real (in-memory): SettingsProvider and the modal both read it on mount.
 import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { SettingsProvider, useSettings } from '@/contexts/SettingsContext';
 import { ThemeProvider } from '@/components/theme-provider';
 import { SettingsModal } from './SettingsModal';
@@ -34,13 +34,15 @@ const openData = (mode: SettingsMode = 'simple', onStartAuthoringTour?: () => vo
   </ThemeProvider>,
 );
 
-const toggle = () => screen.getByRole('checkbox', { name: 'Auto Save' });
-const slider = () => screen.queryByRole('slider');
+// The editor's toggle, not the gameplay Autosave in Saves.
+const toggle = () => within(screen.getByRole('group', { name: 'Authoring' })).getByRole('checkbox', { name: 'Autosave' });
+// The pause slider, not Autosaves Kept beside it in the Data tab.
+const slider = () => document.getElementById('editorAutoSaveIdleSeconds')?.querySelector<HTMLElement>('[role="slider"]') ?? null;
 const preference = () => screen.getByLabelText('Editor preference').textContent;
 
 beforeEach(() => localStorage.clear());
 
-describe('Auto Save in Settings', () => {
+describe('Autosave in Settings', () => {
   it.each<SettingsMode>(['simple', 'advanced'])('shows the toggle and the pause beside Authoring Tour in %s mode', (mode) => {
     openData(mode, () => {});
     expect(toggle()).toBeChecked();
@@ -58,7 +60,7 @@ describe('Auto Save in Settings', () => {
     expect(screen.queryByRole('button', { name: 'Start Authoring Tour' })).not.toBeInTheDocument();
   });
 
-  it('hides the pause while Auto Save is off and brings it back on', () => {
+  it('hides the pause while Autosave is off and brings it back on', () => {
     openData();
     fireEvent.click(toggle());
     expect(toggle()).not.toBeChecked();

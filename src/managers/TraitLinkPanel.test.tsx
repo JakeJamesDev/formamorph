@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { useState, type ReactNode } from 'react';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { TraitStoreContext, type TraitStore } from '@/contexts/TraitStoreContext';
-import { editorGateInput } from '@/lib/bearers';
+import { editorGateInput } from '@/lib/owners';
 import type { LinkRow } from '@/lib/traitTree';
 import { LinkedFromLine, LinkedTraitManager, LinkFooter, ThisLinkSection } from './TraitLinkPanel';
 import type { TraitPanelTab } from '@/views/traitPanelTabs';
@@ -67,7 +67,7 @@ function renderLink(entities: Entity[], { tab = 'availability' as TraitPanelTab,
         const ash = all.find((e) => e.id === 'ash')!;
         return (
           <LinkedTraitManager
-            bearer={ash} link={ash.traitLinks![0]} original={traits[0]}
+            owner={ash} link={ash.traitLinks![0]} original={traits[0]}
             onOpenTrait={vi.fn()} tab={tab} onTabChange={vi.fn()}
           />
         );
@@ -92,7 +92,7 @@ describe('LinkedFromLine', () => {
 const radio = (row: string, label: string) => within(screen.getByRole('radiogroup', { name: row })).getByRole('radio', { name: label });
 
 describe('LinkedTraitManager', () => {
-  it("writes an edit as this link's override; the original and another bearer's link stay as they were", () => {
+  it("writes an edit as this link's override; the original and another owner's link stay as they were", () => {
     const updateTrait = vi.fn();
     const seen = renderLink([ashLinks(), mira], { updateTrait });
     expect(screen.queryByRole('button', { name: /^Reset/ })).toBeNull();
@@ -188,7 +188,7 @@ describe('LinkFooter', () => {
       <Harness entities={[entity]}>
         {([e]) => {
           seen.entity = e;
-          return <LinkFooter bearer={e} row={pick(e)} onEditBlueprint={onEditBlueprint} />;
+          return <LinkFooter owner={e} row={pick(e)} onEditBlueprint={onEditBlueprint} />;
         }}
       </Harness>,
     );
@@ -237,19 +237,8 @@ describe('ThisLinkSection', () => {
     expect(within(list).queryByRole('button', { name: /^Reset/ })).toBeNull();
   });
 
-  it('notes that player stat changes wait for play as a playable entity', () => {
-    renderSection({ id: 'ash', name: 'Ash', persona: true, traitLinks: [link('l1', 'classes', 'group')] }, 'classes');
-    expect(screen.getByText('Player stat changes apply only when you play as them')).toBeInTheDocument();
-  });
-
-  it('has no stat note on an entity nobody can play as, whose traits change only its own stats', () => {
-    renderSection({ id: 'ash', name: 'Ash', traitLinks: [link('l1', 'classes', 'group')] }, 'classes');
-    expect(screen.queryByText(/stat changes/i)).toBeNull();
-  });
-
-  it("has no stat note on the Custom Persona entity, whose links are the player's", () => {
+  it("says the Custom Persona entity's links are selected when a new game starts", () => {
     renderSection({ id: 'you', name: 'Wanderer', customPersona: true, traitLinks: [link('l1', 'classes', 'group')] }, 'classes');
-    expect(screen.queryByText(/Stat changes/)).toBeNull();
     expect(screen.getByText('Selected when a new game starts')).toBeInTheDocument();
   });
 });

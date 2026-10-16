@@ -6,6 +6,7 @@ import {
 } from '@/test/worldEditorBench';
 import { reloadTourProgress } from '@/lib/authoringTour/progress';
 import type { World } from '@/types';
+import { boxScripts, codeAt } from '@/test/scriptFixtures';
 
 /** An edit made through a mirror returns the author to the tab and record they made it on. */
 
@@ -32,7 +33,7 @@ const linkTo = (id: string) =>
 const WORLD: World = benchEditorWorld({
   stats: [{
     id: 's-mood', name: 'Mood', type: 'number', description: '', min: 0, max: 10, value: 4, regen: 0, descriptors: [],
-    code: 'return placeholders.Weather.text.length;',
+    scripts: boxScripts({ after: 'return placeholders.Weather.text.length;' }),
   }],
   locations: [
     { id: 'harbor', name: 'Harbor Steps', isStarting: true },
@@ -77,10 +78,10 @@ const treeRow = (name: string) => {
   if (!row) throw new Error(`No tree row named ${name}`);
   return row;
 };
-/** The tree row a link draws under its bearer's node. */
-const linkRow = (bearer: string) => {
+/** The tree row a link draws under its owner's node. */
+const linkRow = (owner: string) => {
   const rows = screen.getAllByLabelText('Drag to reorder or nest').map((grip) => grip.parentElement as HTMLElement);
-  return rows[rows.findIndex((row) => within(row).queryByText(bearer, { exact: true })) + 1];
+  return rows[rows.findIndex((row) => within(row).queryByText(owner, { exact: true })) + 1];
 };
 
 /** A Placeholders tree row by its label; the palette above the list draws the same name as a chip button. */
@@ -210,10 +211,10 @@ describe('an undo of an edit made through a mirror', () => {
     await step(() => { fireEvent.blur(name); });
     // Apply is a later press, so it records its own Step on the stat.
     await step(() => { fireEvent.click(screen.getByRole('button', { name: 'Update Code' })); });
-    expect(ctx().stats[0].code).toBe('return placeholders.Sky.text.length;');
+    expect(codeAt(ctx().stats[0])).toBe('return placeholders.Sky.text.length;');
 
     await expectReturnTo(/Locations/, (move) => {
-      expect(ctx().stats[0].code).toBe(`return placeholders.${move === 'undo' ? 'Weather' : 'Sky'}.text.length;`);
+      expect(codeAt(ctx().stats[0])).toBe(`return placeholders.${move === 'undo' ? 'Weather' : 'Sky'}.text.length;`);
       expect(shownEditorTab()).toMatch(/Placeholders/);
       expect(openPlaceholderName()).toBe('Sky');
     });

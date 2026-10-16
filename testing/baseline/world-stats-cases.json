@@ -1,0 +1,92 @@
+{
+  "_note": "World-stat recall cases for entity-stats-probe.cli.ts --world rampage|slime. `player` cells are the persona's stats; `world` cells are the loose stats each world keeps (stat-pass-owner-blocks Q19). Alert Level is computed by its own code, so a move on it is allowed, never expected. Destruction never goes down.",
+  "worlds": {
+    "rampage": {
+      "file": "src/defaultworlds/rampage.json",
+      "persona": "The Creature",
+      "description": "A colossal kaiju loose in Neonspire, and the city's whole problem.",
+      "loose": ["Destruction", "Alert Level"]
+    },
+    "slime": {
+      "file": "src/defaultworlds/slime.json",
+      "persona": "The Resident",
+      "description": "An infected Ashburn resident racing the slime to its source.",
+      "loose": ["Suspicion"]
+    }
+  },
+  "entityStats": {},
+  "cases": [
+    {
+      "id": "rampage-tower",
+      "world": "rampage",
+      "present": [],
+      "narration": "You lower your head and drive straight through the glass face of the Meridian office tower. Steel ribs snap like reeds. The upper floors lean, groan, and come down in a rolling avalanche of concrete that buries two city blocks in gray dust. Car alarms wail for a mile in every direction. You rear back out of the cloud, chest heaving from the effort, and roar until the windows across the avenue burst.",
+      "expect": { "world": { "Destruction": "+" }, "player": { "Rampage": "+", "Stamina": "-" } },
+      "allow": { "world": { "Alert Level": "+" } }
+    },
+    {
+      "id": "rampage-tank-shell",
+      "world": "rampage",
+      "present": [],
+      "narration": "You wade into the empty plaza at the harbor's edge, and the Battle Tank waiting behind the fountain fires. The shell slams into your shoulder and bursts. Scales crack and split; hot blood runs down your foreleg, and you stagger sideways into the water with a shriek of pain. The tank's turret whines as it reloads. Nothing in the plaza is touched; the shot was aimed only at you.",
+      "expect": { "player": { "Health": "-" } },
+      "allow": { "player": { "Rampage": "+", "Stamina": "-" } }
+    },
+    {
+      "id": "rampage-rest",
+      "world": "rampage",
+      "present": [],
+      "narration": "You sink into the cold harbor water until only your eyes and the ridge of your back show. The sirens are far away now. Waves lap against the pilings, and your great heart slows from a hammer to a drum. For a long while you only breathe, and the ache in your limbs eases as the tide rocks you.",
+      "expect": { "player": { "Stamina": "+" } },
+      "allow": { "player": { "Rampage": "-", "Health": "+" } }
+    },
+    {
+      "id": "rampage-bridge",
+      "world": "rampage",
+      "present": [],
+      "narration": "You whip your tail across the harbor bridge. The main cable parts with a crack like a cannon, and the whole span twists and drops into the water, taking the toll plaza and a line of container cranes with it. Spray rises higher than the skyline. The shore you leave behind is a field of twisted steel, and the fury in you only climbs with every fall.",
+      "expect": { "world": { "Destruction": "+" }, "player": { "Rampage": "+" } },
+      "allow": { "player": { "Stamina": "-" }, "world": { "Alert Level": "+" } }
+    },
+    {
+      "id": "rampage-helicopter",
+      "world": "rampage",
+      "present": [],
+      "narration": "The Attack Helicopter dips in close to strafe your flank. You snatch it out of the air, crush the cockpit in your claws, and fling the wreck into a parking garage. The garage folds in on itself in a column of fire. Your lungs burn from the lunge, and the rage in you grows hotter with the blaze.",
+      "expect": { "world": { "Destruction": "+" }, "player": { "Rampage": "+" } },
+      "allow": { "player": { "Stamina": "-" }, "world": { "Alert Level": "+" } }
+    },
+    {
+      "id": "slime-checkpoint",
+      "world": "slime",
+      "present": [],
+      "narration": "The checkpoint guard waves you to a stop and lifts his flashlight. The beam lands on your wrist, and for a moment the skin there glows faintly green, nearly see-through. He frowns, writes your description on his clipboard, and keys his radio before he lets you pass. Your heart pounds so hard you can hear it.",
+      "expect": { "world": { "Suspicion": "+" }, "player": { "Panic": "+" } },
+      "allow": {}
+    },
+    {
+      "id": "slime-cover",
+      "world": "slime",
+      "present": [],
+      "narration": "You turn up the collar of the long coat, pull the gloves over your fingertips, and walk past the Quarantine Watch patrol at an easy pace. You even nod to the nearest officer. He nods back without a second look, and the patrol moves on down the block. Nobody writes anything down.",
+      "expect": { "world": { "Suspicion": "-" } },
+      "allow": { "player": { "Panic": "-" } }
+    },
+    {
+      "id": "slime-contact",
+      "world": "slime",
+      "present": [],
+      "narration": "Something drops from the alley fire escape and lands on your forearm. The green slime is cold enough to burn. You tear it away, but a slick film stays behind and sinks into your skin, and you watch the tint spread up toward your elbow under the surface. Your breath comes fast and shallow in the dark alley.",
+      "expect": { "player": { "Assimilation": "+", "Panic": "+" } },
+      "allow": { "player": { "Health": "-" } }
+    },
+    {
+      "id": "slime-spotted",
+      "world": "slime",
+      "present": [],
+      "narration": "You double over beside a lamppost and cough up a thin stream of green fluid. Across the street, a Quarantine Watch patrol stops. One officer points at you and shouts into his radio. You run, slipping on the wet cobbles, and do not stop until the street is three turns behind you and your legs shake under you.",
+      "expect": { "world": { "Suspicion": "+" }, "player": { "Stamina": "-", "Panic": "+" } },
+      "allow": {}
+    }
+  ]
+}

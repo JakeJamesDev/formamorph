@@ -12,6 +12,14 @@ _Avoid_: fetch helper, completion client
 The complete, plain-value description of one AI call — prompt, messages, resolved endpoint, sampler, reasoning preferences — built from a settings snapshot; everything the AI Stream needs, nothing live.
 _Avoid_: request options, config
 
+**Thinking Room**:
+The fixed number of tokens one reasoning strength buys a thought, from Minimal's short room to Max's long one. Model Default reads as Medium. The prompt's strength sets it; neither its Answer Cap nor the endpoint's Max Output does.
+_Avoid_: headroom, thought budget
+
+**Thought Ceiling**:
+The output cap of a call that reasons with no budget on the wire, and of Inline narration: the Answer Cap plus the Thinking Room. A thought that reaches it before an answer is a cut thought.
+_Avoid_: max tokens
+
 **Request Transport**:
 The module that carries one AI request from spec to final text, outside React: resolves the endpoint, offers Tools, runs the AI Stream and its tool rounds, strips reasoning, records parity, and classifies failures. Reports what it sees through one sink; it never touches the screen.
 _Avoid_: request adapter (the Turn Pipeline's slot the transport fills), makeAIRequest, AI client
@@ -37,7 +45,7 @@ The part of a Tool that runs when the AI calls it: a Lookup (searches world data
 _Avoid_: resolver, source
 
 **Formaquestion**:
-The help window that a player can open on every screen. It holds the player docs, a search over them, and a field to ask a question that the connected AI answers from the docs. It only answers: it never navigates and never edits a world, a save or a setting. A request carries the docs and the current Surface, and nothing from a world or a save, with two exceptions that read the open world: a Formaquestion Tool the player turns on, and the code test, a fixed function offered on code turns that checks and test-runs the AI's stat code on the open world's authored data (ADR-0011).
+The help window that a player can open on every screen. It holds the player docs, a search over them, and a field to ask a question that the connected AI answers from the docs. It only answers: it never navigates and never edits a world, a save or a setting. A request carries the docs and the current Surface, and nothing from a world or a save, with two exceptions that read the open world: a Formaquestion Tool the player turns on, and the code test, a fixed function offered on code turns that checks and test-runs the AI's scripts on the open world's authored data (ADR-0011).
 _Avoid_: help chat, assistant, help bot, wiki (the web copy of the docs)
 
 **Mascot**:
@@ -247,6 +255,10 @@ _Avoid_: turn config
 The computed state delta a finished turn applies — history, clock, stats, discoveries.
 _Avoid_: turn state, commit object
 
+**Stat Request**:
+The stat pass's request, which asks the AI how a turn moved each owner's stats. It has three owner kinds, each with its own reply key: the played entities (`Player Character`), the Global Stats no one owns (`Global Stats`), and each present entity that owns stats (its name). A persona with no stats has no block and no key. Owner keys stay unique across all three kinds. The stat pass renames each owned stat to its request key before any chip renders; narration keeps raw names.
+_Avoid_: stat update (the prompt's name), player stats (for global stats), other stats
+
 **Request Anatomy**:
 The labeled map of one assembled request — every message split into runs and marked as either the player's own prompt text or context the app assembled. Rendered in the AI Context viewer for real turns, and in Settings → Prompts → Narration → Anatomy for an example one built under the player's live generation settings. A sidecar alongside the messages, never part of them, so it never reaches an endpoint.
 _Avoid_: request breakdown, prompt map
@@ -268,8 +280,12 @@ The plain-value snapshot of one moment that chip values are built from: the worl
 _Avoid_: context, view, snapshot (unqualified)
 
 **Chip Values**:
-The module that turns a Chip Scene into a value for every chip token the registry defines, walking the registry's axes so no token can be missed. Per-turn tokens (Player Action, Narration, Character Name, Subject, activated lore) are not scene-derived and come from the pass records or the sample turn instead.
+The module that turns a Chip Scene into the value of any chip token, on demand, as a memoized lookup by token key. Per-turn tokens (Player Action, Narration, Character Name, Subject, activated lore) are not scene-derived and come from the pass records or the sample turn instead.
 _Avoid_: context values, value map
+
+**Chip Options**:
+The centered dialog a placed chip opens, for prompt chips and placeholder chips alike. A prompt chip gets two panes: its rows on the left and **What the AI Reads**, the chip's value as the prompt sends it, on the right. A placeholder chip and a Tool argument chip get one column of rows. The Entities and Persona chips add three rows: **Only With** (keep only entities that own stats, traits or either), **Include** (each entity's traits and stats, on or off) and **Stat Detail** (Range, Descriptor and Description of each stat).
+_Avoid_: pop-out, popover, chip menu (that is the editor's palette)
 
 ### Placeholders
 
@@ -306,27 +322,70 @@ A node in an entity's trait tree that points at an Original and reads it live un
 _Avoid_: shared trait, reference, copy; linked copy (that is a library item's world copy)
 
 **Blueprint**:
-A world trait, stat or placeholder that exists to be linked or copied. A Link or a Copy reads its Blueprint live until edited. An Original is a Blueprint trait or stat. A Blueprint stat is never a player stat.
+A world trait, stat or placeholder that exists to be linked or copied. A Link or a Copy reads its Blueprint live until edited. An Original is a Blueprint trait or stat. A Blueprint stat is never a Global Stat or a Persona Stat.
 _Avoid_: template, master, source
 
 **Copy**:
-An entity-owned placeholder that reads a Blueprint placeholder live, under the Blueprint's value ids. Its Overrides reword, reweight or remove one value at a time; its own values sit beside. Always named after its Blueprint; one per Blueprint per owner.
-_Avoid_: instance, clone, bearer placeholder
+A placeholder in an owner's list that reads a Blueprint placeholder live, under the Blueprint's value ids. Its Overrides reword, reweight or remove one value at a time; its own values sit beside. Always named after its Blueprint; one per Blueprint per owner.
+_Avoid_: instance, clone
 
 **Override**:
 One field a Link or a Copy sets for itself, stored with the Blueprint's value it was made against. A field with no Override reads the Blueprint live. **Reset** returns one field; **Reset to Blueprint** returns them all. An Override is stale when the Blueprint changed that field since.
 _Avoid_: local value, patch, delta
 
-**Bearer**:
-An entity whose trait tree holds a trait, directly or through a Link. The played persona is the Bearer "You"; so is the entity with the **Custom Persona** mark under None and a library persona. Requirements and pins resolve per Bearer.
-_Avoid_: owner (an owner holds its own traits only), holder
+**Owner**:
+The entity or dictionary whose tree holds a trait, stat or placeholder, as its own item or through a Link or Copy. The played persona is the owner **You**; so is the entity with the **Custom Persona** mark under None and a library persona. Global scope is never an owner: an item with no owner is global. Requirements and pins resolve per owner. Where it matters, the editor says **Own** or **Linked**.
+_Avoid_: bearer, holder
+
+**Global Stat**:
+A stat in the world's own list, not under an entity or a Blueprint. It has no owner and belongs to no one. The AI reads it under **Global Stats**, and a script reaches it as `stats`.
+_Avoid_: player stat, world stat, other stat
+
+**Global Trait**:
+A trait outside every entity's tree and outside Blueprints, including the root traits a player picks. It has no owner. A Global Trait never counts as the persona's for a gate, and **Same Owner** never pairs it with an entity's trait. The AI reads picked ones under **Global Traits**.
+_Avoid_: player trait, world trait, other trait
+
+**Persona Stat**:
+A stat of the played entity, kept under its entity id. The AI reads it in the Persona block, under the `Player Character` key. The Custom Persona entity's stats are Persona Stats too, under a library persona and under None.
+_Avoid_: player stat (as the word for a Global Stat)
+
+**`owner` (script global)**:
+The entity that owns the running stat, with the same fields as an `entities` entry, so code reaches its own stats as `owner.stats`. For a Blueprint stat it is the entity the run is for. In a Global Stat's script and in a world script it is an empty entry, and a write through it is dropped and reported.
+_Avoid_: self (the running stat's own entry), persona (the played entity)
+
+**Script**:
+One box of JavaScript with a Timing, kept on a stat, on a trait or on the world. Its home decides what `self` is and when the script is in force; the surface is otherwise the same. It reads the world and writes through `self`, other stats, placeholders and traits. A script that names `player` can tell or ask the player.
+_Avoid_: stat code, code box, formula (a returned number is one use), macro
+
+**Timing**:
+When a Script runs: Before the AI, After the AI, During AI Output, At Game Start or When a Trait Switches. The Timing menu is the only way to move a script between timings. Inside one timing, an optional `order` decides who runs first.
+_Avoid_: hook, phase, trigger (a Test Bench Instrument), event
+
+**Before the AI**:
+The Timing that runs at the start of a turn, before the prompt is built. Its writes are in that turn's prompt. No AI change, regen or clock time exists yet, so `previous` reads as the stat and every `delta` reads zero.
+_Avoid_: pre-turn, before box
+
+**After the AI**:
+The Timing that runs after the AI's stat changes and Regen apply. It reads the AI's change, this turn's regen and what the Before the AI scripts set._Avoid_: post-turn, after box, stat code (the old name of the whole feature)
+
+**During AI Output**:
+The Timing that runs once for each completed narration sentence, never for each token. The script reads `narration` and rewrites the sentence through `narration.sentence`. The rewrite is the one copy that the screen, the save, read-aloud and the AI's recap carry. It has no `player`.
+_Avoid_: stream hook, token hook, live edit
+
+**At Game Start**:
+The Timing that runs once for each new playthrough, on the opening turn, before the Before the AI scripts. A loaded save never runs it.
+_Avoid_: on load, setup script, init
+
+**When a Trait Switches**:
+The Timing that runs once for each trait that turns on or off in play, whatever switched it. The script reads `trait`, the trait that switched, with `enabled` as its new state. Setup picks fire nothing.
+_Avoid_: on toggle, trait hook, trait event
 
 **Original**:
 The world trait, group or stat a Link points at, at the root or under Blueprints. An Original is a Blueprint trait or stat. An entity's own trait or stat is never an Original.
 _Avoid_: source (a listing's term), template, parent
 
 **Automatic**:
-A trait Mode. The trait is active exactly when its gate holds, and no one can switch it: not the player, not Stat code. With no Requirement Rows it is always active. A curse is an Automatic trait that requires the cursed item. Automatic traits count toward their group's Pick Count. The stored value stays `alwaysOn`.
+A trait Mode. The trait is active exactly when its gate holds, and no one can switch it: not the player, not a script. With no Requirement Rows it is always active. A curse is an Automatic trait that requires the cursed item. Automatic traits count toward their group's Pick Count. The stored value stays `alwaysOn`.
 _Avoid_: Always On (the old name), forced, mandatory, locked (a Locked trait is one whose gate fails), permanent
 
 **Requirement**:
@@ -338,8 +397,16 @@ One alternative in a Requirement. A row holds when every Condition in it holds (
 _Avoid_: clause, branch, group (a group is a trait group)
 
 **Condition**:
-One check in a Requirement Row: a trait, any trait in a group, or a persona the player plays as, with an optional Bearer. A Condition can carry the Not flag, and then it holds while its target is off. Not is a flag on a Condition, not a separate item.
+One check in a Requirement Row: a trait, any trait in a group, a persona the player plays as, or a stat, with an optional owner. A Condition can carry the Not flag, and then it holds while its target is off. Not is a flag on a Condition, not a separate item.
 _Avoid_: exclusion, negation, rule, requirement (a Requirement is the whole gate)
+
+**Stat Condition**:
+A Condition that compares an owner's stat to a number with one of six operators (`>`, `<`, `>=`, `<=`, `=`, `≠`). The number is raw, in the stat's units, or a percent of the stat's min-to-max span; the author picks per Condition. Traits and image Visibility rules share it. The game reads stats once per turn commit, after the stat pass, and a Condition on an inert or missing stat does not hold.
+_Avoid_: stat gate, stat requirement, threshold (a descriptor's word)
+
+**Visibility rule**:
+Requirement Rows on one gallery image. In play the image shows while any row holds, and an image with no rows always shows. The primary is the first visible image in author order. Outside play slot 0 shows and rules are ignored. The summary reads "Shown while …". The trait side of the same rows is a Requirement.
+_Avoid_: image condition, image gate, hide rule (a rule only shows; Not covers hiding), image requirement
 
 **Hidden (trait)**:
 A trait Mode that is Automatic and never shown to the player. The AI reads it like any active trait. Only dev tools, the Prompt viewer and Test Bench show its name. Its Stat changes apply.

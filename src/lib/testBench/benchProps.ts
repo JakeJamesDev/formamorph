@@ -11,12 +11,13 @@ import type { OpeningData } from '@/lib/testBench/opening';
 import type { BenchTab } from './benchTabs';
 import type { BenchPlacement } from './benchPlacement';
 import type { MissingSource, RepairAction } from '@/lib/sourceChecks';
+import type { ScriptPromptStore } from '@/lib/scriptPrompts';
 
 /** Where the author is sent when they click an item a finding names. */
 export type OpenFindingItem = (section: FindingSection, itemId: string) => void;
 
-/** How far one of the Bench's on-demand checks has got. Neither runs on its own: the stat-code check costs
- *  a sandbox VM per coded stat, and the source check costs a request per source. */
+/** How far one of the Bench's on-demand checks has got. Neither runs on its own: the script check costs
+ *  a sandbox VM per script, and the source check costs a request per source. */
 export type CheckStatus = 'idle' | 'running' | 'done';
 
 /** The missing-source check and the repairs its rows offer. */
@@ -43,11 +44,13 @@ export interface IssuesProps {
   newCount: number;
   /** How many rows Simple mode folded away, so the fold can say what is out of sight. Zero in Advanced. */
   advancedOnlyCount: number;
-  /** The editor's mode. Simple shows no stat-code action: its verdicts are among the rows Simple folds. */
+  /** The editor's mode. Simple shows no script-check action: its verdicts are among the rows Simple folds. */
   advanced: boolean;
-  /** How many stats carry code — what the on-demand check would have to run. */
-  codedStatCount: number;
+  /** How many scripts hold code — what the on-demand check would have to run. */
+  scriptCount: number;
   codeCheckStatus: CheckStatus;
+  /** The running check's prompts, which its choice rows answer. Null while no check runs. */
+  codePrompts: ScriptPromptStore | null;
   /** The rule whose repair is running, when one is. Only the async image conversion can be — a pure fix
    *  lands within the click — and the row it belongs to shows the work rather than looking unresponsive. */
   fixingRuleId: string | null;
@@ -60,7 +63,7 @@ export interface IssuesProps {
   onRestoreRule: (ruleId: string) => void;
   onMarkAllSeen: () => void;
   /** Run every stat's code in the real sandbox and fold the failures into the list. */
-  onCheckStatCode: () => void;
+  onCheckScripts: () => void;
   /** The missing-source check and the repairs its rows offer. */
   sources: SourceCheckProps;
 }

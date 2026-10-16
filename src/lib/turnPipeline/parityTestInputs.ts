@@ -12,7 +12,7 @@ import {
   defaultLocationChangePrompt, defaultLocationChangeUserPrompt,
   defaultNarrationUserPrompt, defaultOocDirectivePrompt,
   defaultOpeningTimePrompt, defaultOpeningTimeUserPrompt, OPENING_SCENE_CUE,
-  defaultStatUpdatesPrompt, defaultStatUpdatesUserPrompt,
+  defaultStatUpdatesPrompt, defaultStatUpdatesUserPrompt, textStatUpdatesPrompt, textStatUpdatesUserPrompt,
   defaultSummaryPrompt, defaultSummaryUserPrompt,
   defaultMilestoneSelectPrompt, defaultMilestoneSelectUserPrompt,
   defaultThinkingPrompt, defaultTimePassedPrompt, defaultTimePassedUserPrompt,
@@ -48,6 +48,7 @@ export const PARITY_SETTINGS: TurnSettings = {
   imageAttachments: false,
   promptAttachments: {},
   language: 'English',
+  stripLinksAndImages: false,
 };
 
 /** Current defaults for request previews and assembly tests. */
@@ -66,6 +67,7 @@ export const PARITY_PROMPTS: TurnPrompts = {
   choicesUser: defaultChoicesUserPrompt,
   statUpdates: defaultStatUpdatesPrompt,
   statUpdatesUser: defaultStatUpdatesUserPrompt,
+  statText: { system: textStatUpdatesPrompt, user: textStatUpdatesUserPrompt },
   summary: defaultSummaryPrompt,
   summaryUser: defaultSummaryUserPrompt,
   milestoneSelect: defaultMilestoneSelectPrompt,

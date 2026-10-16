@@ -5,6 +5,7 @@
 
 import type { ImageGenOpts, ImageGenParams, ImageProviderId } from './types';
 import { resolveImageEndpoint } from './index';
+import { DEFAULT_IMAGE_FILE_NAME, imageFilePrefix, type ImageFileParts } from './fileName';
 
 /** The image-endpoint preset fields a request is built from (a subset of the settings context). */
 export interface ImageSettings {
@@ -24,6 +25,10 @@ export interface ImageSettings {
   imageInvokeEncoder: string;
   imageInvokeVae: string;
   imageInvokeBoard: string;
+  /** The file-name pattern (lib/imageGen/fileName). */
+  imageFileName?: string;
+  /** The image endpoint preset's name, for the pattern's `{preset}`. */
+  activeImageEndpointPresetName?: string;
 }
 
 /** What this particular subject contributes: its own prompt, and the size it wants. */
@@ -35,6 +40,8 @@ export interface ImageRequest {
   height: number;
   /** -1 (the default) asks the provider for a random one. */
   seed?: number;
+  /** What the image shows, for its file name. */
+  file?: Omit<ImageFileParts, 'preset'>;
 }
 
 /** Join a preset prefix onto a subject's own line. A trailing comma on either side would otherwise double
@@ -63,6 +70,7 @@ export function buildImageRequest(
       seed: req.seed ?? -1,
       model: settings.imageModel,
       adetailer: settings.imageAdetailer,
+      filePrefix: imageFilePrefix(settings.imageFileName ?? DEFAULT_IMAGE_FILE_NAME, { ...req.file, preset: settings.activeImageEndpointPresetName }),
     },
     opts: {
       endpointUrl: resolveImageEndpoint(settings.imageProvider, settings.imageEndpoint),

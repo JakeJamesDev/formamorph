@@ -573,7 +573,7 @@ const ENTITY_STEPS: readonly TourStep[] = [
     title: 'Image',
     body: 'Add a picture of the entity. Players see it on the entity’s card, and the AI never reads it.',
     isComplete: (world, items) => entityImages(tourEntity(world, items)).length > 0,
-    useExample: async (api, world, items) => patchEntity(api, world, items, { images: [await loadTourImage('maren')] }),
+    useExample: async (api, world, items) => patchEntity(api, world, items, { images: [{ data: await loadTourImage('maren') }] }),
     inPlay: { sees: 'entityCard', scene: 'entity', readers: [{ prompt: 'Narration Prompt', reads: 'entities' }] },
   },
   {
@@ -633,7 +633,7 @@ const STAT_STEPS: readonly TourStep[] = [
     anchor: 'stat-name',
     item: 'stat',
     title: 'Stat Name',
-    body: 'Name the stat. "Min", "Max" and "Initial Value" set its range and where it starts. Players see the name '
+    body: 'Name the stat. "Base Value" sets where it starts, and "Min" and "Max" set its range. Players see the name '
       + 'and the number, and the narration prompt never reads the number.',
     isComplete: (world, items) => isChosenName(tourStat(world, items)?.name, NEW_STAT_NAME),
     useExample: (api, world, items) => patchStat(api, world, items, {

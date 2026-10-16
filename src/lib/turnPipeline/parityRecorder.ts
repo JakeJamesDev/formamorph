@@ -2,7 +2,7 @@ import type { AIRequestType, ChatMessage } from '@/types';
 
 /**
  * Records the ordered AI request sequence a turn emits, as the ground truth the Turn Pipeline's parity
- * tests replay against. It observes the single request seam (`makeAIRequest`) and never touches what is
+ * tests replay against. It observes the Request Transport's entry and never touches what is
  * sent: every entry is a copy of the arguments the seam already received.
  *
  * Recording is inert until {@link startParityRecording} arms it, and only DEV code can arm it.

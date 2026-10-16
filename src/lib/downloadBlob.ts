@@ -1,6 +1,7 @@
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import { Directory, Filesystem } from '@capacitor/filesystem';
 import { toastError } from '@/lib/linkToast';
+import { randomUUID } from '@/lib/uuid';
 
 interface FileExportPlugin {
   save(options: { uri: string; filename: string; mimeType: string }): Promise<void>;
@@ -34,7 +35,7 @@ async function toBase64(blob: Blob): Promise<string> {
 
 /** Stage each export separately while the native Save As picker is open. */
 async function saveFile(blob: Blob, filename: string): Promise<void> {
-  const path = `exports/${crypto.randomUUID()}`;
+  const path = `exports/${randomUUID()}`;
   const { uri } = await Filesystem.writeFile({
     path,
     data: await toBase64(blob),

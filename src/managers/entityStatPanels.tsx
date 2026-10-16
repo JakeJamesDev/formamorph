@@ -7,6 +7,7 @@ import {
   detachStatLink, editStatLink, resetStatLinkFieldOn, resetStatLinkOn, resetStatLinkStatOn, statLinkState,
   type EntityStatRows, type StatLinkWorld,
 } from '@/lib/statLinks';
+import { ancestors, parentLookup } from '@/lib/ancestors';
 import type { Entity, Placeholder, Stat, StatGroup } from '@/types';
 import type { StatPanelTab } from '@/views/statPanelTabs';
 import StatManager, { type StatEditorStore } from './StatManager';
@@ -15,10 +16,9 @@ import { LinkNotice } from './TraitLinkPanel';
 /** The world groups from the top down to the stat or group, the item last. */
 function originalPath(groups: readonly StatGroup[], item: { name: string; parentId?: string | null; groupId?: string | null }): string[] {
   const byId = new Map(groups.map((g) => [g.id, g]));
-  const path = [item.name];
   const start = item.groupId ?? item.parentId;
-  for (let g = start ? byId.get(start) : undefined; g; g = g.parentId ? byId.get(g.parentId) : undefined) path.unshift(g.name);
-  return path;
+  const above = start ? [start, ...ancestors(start, parentLookup(groups, (g) => g.parentId))] : [];
+  return [...above.reverse().flatMap((id) => byId.get(id)?.name ?? []), item.name];
 }
 
 /** What one entity's stat panels read and write. */
@@ -48,7 +48,7 @@ export function entityStatPanels({ entity, world, edit, rows, resolved, placehol
   detach: (linkId: string) => string | null;
 } {
   const morphOwner = { name: labelPlaceholders(entity.name, placeholders), model: entity.model };
-  const store: StatEditorStore = { stats: resolved, updateStat: (stat) => edit((e) => updateOwnedStat(e, stat)), morphOwner };
+  const store: StatEditorStore = { stats: resolved, updateStat: (stat) => edit((e) => updateOwnedStat(e, stat)), ownerId: entity.id, morphOwner };
   const pathOf = (originalId: string) => {
     const item = world.stats.find((s) => s.id === originalId) ?? world.statGroups.find((g) => g.id === originalId);
     return item ? originalPath(world.statGroups, item).join(' › ') : '';
@@ -77,7 +77,7 @@ export function entityStatPanels({ entity, world, edit, rows, resolved, placehol
         stat={rows.stats.find((s) => s.id === id)!}
         tab={tab}
         onTabChange={onTabChange}
-        store={{ stats: resolved, updateStat: (next) => edit((e) => editStatLink(world, e, link.id, originalId, next)), morphOwner }}
+        store={{ stats: resolved, updateStat: (next) => edit((e) => editStatLink(world, e, link.id, originalId, next)), ownerId: entity.id, morphOwner }}
         link={{
           overridden,
           stale,

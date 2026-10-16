@@ -3,8 +3,9 @@ import type { Dictionary, Entity, Placeholder, Stat } from '@/types';
 import { phValues } from '@/test/placeholderValues';
 import type { PlaceholderOwners } from './placeholderHomes';
 import { planCodeRename, type CodeRenameSubject } from './statCodeRename';
+import { boxScripts } from '@/test/scriptFixtures';
 
-const stat = (id: string, code: string): Stat => ({ id, name: id, type: 'number', value: 0, min: 0, max: 100, code } as Stat);
+const stat = (id: string, code: string): Stat => ({ id, name: id, type: 'number', value: 0, min: 0, max: 100, scripts: boxScripts({ after: code }) } as Stat);
 const ph = (id: string, name: string): Placeholder => ({ id, name, values: [] });
 
 // Molly can be played and owns Hair; Rook owns a Hair too; the world has its own; the Weather book owns Sky.
@@ -21,7 +22,7 @@ const dictionaries: Dictionary[] = [{ id: 'weather', name: 'Weather', entries: [
 const rename = (code: string, subject: CodeRenameSubject, oldName: string, newName: string) => planCodeRename({
   root: 'placeholders', oldName, newName, otherNames: [], subject, stats: [stat('a', code)], entities, dictionaries,
   placeholders: { list, owners },
-})?.edits[0]?.boxes.after;
+})?.edits[0]?.scripts.after;
 
 describe('a rename through owner entries', () => {
   it('rewrites an entity’s placeholder under that entity and under persona, and nowhere else', () => {
@@ -55,7 +56,7 @@ describe('a rename of a placeholder two playable entities own', () => {
   const renameBoth = (code: string, id: string) => planCodeRename({
     root: 'placeholders', oldName: 'Hair', newName: 'Mane', otherNames: [], subject: { kind: 'placeholder', id },
     stats: [stat('a', code)], entities: both, dictionaries, placeholders: { list, owners },
-  })?.edits[0]?.boxes.after;
+  })?.edits[0]?.scripts.after;
 
   it('leaves the persona path alone and rewrites the owner’s own path', () => {
     expect(renameBoth('persona.placeholders.Hair.value + entities.Molly.placeholders.Hair.value', 'molly-hair'))
@@ -67,7 +68,7 @@ describe('a rename of a placeholder two playable entities own', () => {
     expect(planCodeRename({
       root: 'placeholders', oldName: 'Hair', newName: 'Mane', otherNames: [], subject: { kind: 'placeholder', id: 'molly-hair' },
       stats: [stat('a', 'persona.placeholders.Hair.value')], entities: both, dictionaries, placeholders: { list: renamedOther, owners },
-    })?.edits[0]?.boxes.after).toBe('persona.placeholders.Mane.value');
+    })?.edits[0]?.scripts.after).toBe('persona.placeholders.Mane.value');
   });
 
   it('rewrites a deeper persona path the other owner does not answer', () => {
@@ -78,6 +79,6 @@ describe('a rename of a placeholder two playable entities own', () => {
     expect(planCodeRename({
       root: 'placeholders', oldName: 'Shade', newName: 'Tint', otherNames: [], subject: { kind: 'placeholder', id: 'molly-shade' },
       stats: [stat('a', 'persona.placeholders.Hair.Shade.value')], entities: both, dictionaries, placeholders: { list: deeper, owners: nested },
-    })?.edits[0]?.boxes.after).toBe('persona.placeholders.Hair.Tint.value');
+    })?.edits[0]?.scripts.after).toBe('persona.placeholders.Hair.Tint.value');
   });
 });

@@ -790,6 +790,12 @@ describe('entity stats at game start', () => {
     expect(row).toMatchObject({ value: 35, min: 0, max: 150, regen: 3, traitShift: 15, descriptor: 'Warm' });
   });
 
+  it('gates a default trait on the entity’s own stat at its authored start, as Enter World does', () => {
+    const gatedOn = (value: number) => maren({ traits: [{ ...hardy, requires: [{ all: [{ kind: 'stat', id: 's-trust', operator: '>=', value, unit: 'raw' }] }] }] });
+    expect(marenOf(staged([gatedOn(20)]))!.stats[0]).toMatchObject({ value: 35, max: 150 });
+    expect(marenOf(staged([gatedOn(25)]))!.stats[0]).toMatchObject({ value: 20, max: 100 });
+  });
+
   it('leaves out a trait a fresh game does not pick', () => {
     const [row] = marenOf(staged([maren({ traits: [stoic] })]))!.stats;
     expect(row).toMatchObject({ value: 20, max: 100, traitShift: 0 });
@@ -865,6 +871,17 @@ describe('entity stats at game start', () => {
     // Wren is not persona-only, so she is in the cast under None and plays herself under her pick.
     expect(openingFor(w).entityStats.map((e) => e.id)).toEqual(['e-custom', 'e-wren']);
     expect(atPersona(w, 'e-wren').entityStats.map((e) => e.id)).toEqual(['e-wren']);
+  });
+
+  it('applies a persona trait picked as the lens PC to the persona’s own stats (Q33)', () => {
+    const knight: Trait = { id: 't-knight', name: 'Knight', groupId: 'cg', statChanges: [{ statId: 's-trust', value: 5, type: 'starting' }] };
+    const scout: Trait = { id: 't-scout', name: 'Scout', groupId: 'cg', statChanges: [] };
+    const w = staged([maren({
+      id: 'e-custom', name: 'Newcomer', customPersona: true, stats: [trust], traits: [knight, scout],
+      traitGroups: [{ id: 'cg', name: 'Class', parentId: null, maxPicks: 1 }],
+    })]);
+    const trustOf = (pc: string) => openingFor(w, pc).entityStats.find((e) => e.id === 'e-custom')!.stats[0].value;
+    expect([trustOf('t-knight'), trustOf('t-scout')]).toEqual([25, 20]);
   });
 
   it('names the entity through the active pins, as the rest of the instrument does', () => {

@@ -48,6 +48,17 @@ describe('EditableChip', () => {
     expect(screen.queryByLabelText('Edit cat')).not.toBeInTheDocument();
   });
 
+  it('Enter during IME composition does not commit the edit', () => {
+    const onCommit = vi.fn();
+    wrap(<EditableChip value="cat" onCommit={onCommit} onRemove={vi.fn()} sortable />);
+    dbl(screen.getByText('cat'));
+    const input = screen.getByLabelText('Edit cat');
+    fireEvent.change(input, { target: { value: 'dog' } });
+    fireEvent.keyDown(input, { key: 'Enter', isComposing: true });
+    expect(onCommit).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('Edit cat')).toBeInTheDocument(); // still editing
+  });
+
   it('Escape cancels without committing', () => {
     const onCommit = vi.fn();
     wrap(<EditableChip value="cat" onCommit={onCommit} onRemove={() => {}} sortable />);

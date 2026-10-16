@@ -1,7 +1,6 @@
 /**
  * Tiny shared helpers over the callback-based IndexedDB API: open a database (creating any missing
- * object stores) and promisify a single request. Each consumer keeps its own connection caching and
- * transaction logic — this just removes the repeated open/promise boilerplate.
+ * object stores), cache a connection, prune by recency, and settle requests and transactions as promises.
  */
 
 export interface StoreSpec {
@@ -31,6 +30,54 @@ export function openDatabase(
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
   });
+}
+
+/**
+ * One shared connection to a database, opened on first use. A failed open clears the cache, so the next
+ * call retries instead of replaying the rejection.
+ */
+export function cachedConnection(
+  name: string,
+  version: number | undefined,
+  stores: StoreSpec[],
+): () => Promise<IDBDatabase> {
+  let connection: Promise<IDBDatabase> | null = null;
+  return () => {
+    if (!connection) {
+      const opening = openDatabase(name, version, stores);
+      connection = opening;
+      opening.catch(() => {
+        if (connection === opening) connection = null;
+      });
+    }
+    return connection;
+  };
+}
+
+/**
+ * Queue deletes for the least recently used records of `store` beyond `maxEntries`, inside its transaction.
+ * A `count()` gates the work, so the common under-cap case never loads a record.
+ *
+ * @param order - A record's recency stamp; the highest is the most recent
+ * @param keyOf - A record's primary key
+ */
+export function pruneLeastRecent<R>(
+  store: IDBObjectStore,
+  maxEntries: number,
+  order: (record: R) => number,
+  keyOf: (record: R) => IDBValidKey,
+): void {
+  const count = store.count();
+  count.onsuccess = () => {
+    if (count.result <= maxEntries) return;
+    const all = store.getAll() as IDBRequest<R[]>;
+    all.onsuccess = () => {
+      all.result
+        .sort((a, b) => order(b) - order(a))
+        .slice(maxEntries)
+        .forEach((record) => store.delete(keyOf(record)));
+    };
+  };
 }
 
 /** Resolve with a request's `result` on success; reject with its `error` on failure. */

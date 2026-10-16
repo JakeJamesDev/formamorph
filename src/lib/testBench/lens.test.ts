@@ -6,6 +6,7 @@ import {
   buildLens, describeBrokenPin, lensActiveTraits, lensLocationOptions, lensPcOptions, lensStatOverrides, resolveLensText,
   seedLens, type LensWorld,
 } from './lens';
+import { settledOpeningStats, type OpeningWorld } from './opening';
 
 const hairColor: Placeholder = { id: 'ph-hair', name: 'Hair Color', values: phValues(['ash', 'copper', 'jet']) };
 const homeland: Placeholder = { id: 'ph-home', name: 'Homeland', values: phValues(['the Reach']) };
@@ -201,12 +202,12 @@ describe('pins from owned traits', () => {
       id: 'cp-hair', name: 'Hair Color', values: [], blueprintId: 'ph-hair',
       valueOverrides: { [phValueId('copper')]: { text: { value: 'rust', blueprint: 'copper' } } },
     };
-    const holder = (over: Partial<Entity>): Entity => ({ id: 'cp', name: 'Newcomer', placeholders: [copy], ...over });
+    const owner = (over: Partial<Entity>): Entity => ({ id: 'cp', name: 'Newcomer', placeholders: [copy], ...over });
     const w = (entities: Entity[]) => world({ traits: [{ ...traits[0], placeholderPins: [byId] }, ...traits.slice(1)], entities });
     const lens = (entities: Entity[]) => buildLens(w(entities), { pcTraitId: 't-sedge', locationId: null });
 
     it('traces to the Custom Persona entity’s copy under None, valued as the copy rewords it, labeled with the trait', () => {
-      const traced = lens([holder({ customPersona: true })]);
+      const traced = lens([owner({ customPersona: true })]);
       expect(traced.pins).toEqual({ 'cp-hair': 'rust' });
       expect(traced.pinLayers.map((l) => [l.label, l.wins])).toEqual([['Trait: Sedge-Born', true]]);
       expect(traced.brokenPins).toEqual([]);
@@ -214,17 +215,17 @@ describe('pins from owned traits', () => {
 
     it('reads the blueprint itself with no marked entity, whoever else holds a copy', () => {
       expect(lens([]).pins).toEqual({ 'ph-hair': 'copper' });
-      expect(lens([holder({ persona: true })]).pins).toEqual({ 'ph-hair': 'copper' });
+      expect(lens([owner({ persona: true })]).pins).toEqual({ 'ph-hair': 'copper' });
     });
 
     it('lays nothing for a value the Custom Persona entity’s copy removed', () => {
       const removed = { ...copy, valueOverrides: { [phValueId('copper')]: { removed: true as const } } };
-      expect(lens([holder({ customPersona: true, placeholders: [removed] })]).pins).toEqual({});
+      expect(lens([owner({ customPersona: true, placeholders: [removed] })]).pins).toEqual({});
     });
   });
 });
 
-describe('the player bearer', () => {
+describe('the player owner', () => {
   // Blueprints: Classes (Paladin pins Hair Color by value id, Wizard) and a default Warded pinning Homeland.
   const blueprints: TraitGroup[] = [
     { id: 'g-blueprints', name: 'Blueprints', parentId: null, system: 'blueprints' },
@@ -281,6 +282,48 @@ describe('the player bearer', () => {
       link('cp-warded', 't-warded', 'trait', { overrides: { 't-warded': { isDefault: { value: false, blueprint: true } } } }),
     ] };
     expect(active(withBlueprints({ entities: [newcomer] }))).toEqual([]);
+  });
+});
+
+describe('a persona trait picked as the lens PC (Q33)', () => {
+  const stat = (id: string, over: Record<string, unknown> = {}) =>
+    ({ id, name: id, type: 'number', value: 10, min: 0, max: 100, ...over });
+  const knight: Trait = { id: 't-knight', name: 'Knight', groupId: 'cg', order: 0, statChanges: [{ statId: 's-hp', type: 'starting', value: 5 }] };
+  const envoy: Trait = {
+    id: 't-envoy', name: 'Envoy', groupId: 'cg', order: 1,
+    statChanges: [{ statId: 's-hp', type: 'starting', value: 3, target: 'global' }],
+  };
+  const warden: Trait = { id: 't-warden', name: 'Warden', groupId: 'cg', order: 2, statChanges: [], statToggles: [{ statId: 's-gate', enabled: true }] };
+  // The Custom Persona entity owns the class group; `ownStats` are the stats it owns.
+  const personaWorld = (ownStats: unknown[]): LensWorld => world({
+    stats: [stat('s-hp'), stat('s-gate', { enabled: false })] as LensWorld['stats'],
+    entities: [{
+      id: 'cp', name: 'Newcomer', customPersona: true, stats: ownStats,
+      traitGroups: [{ id: 'cg', name: 'Class', parentId: null, maxPicks: 1 }], traits: [knight, envoy, warden],
+    } as Entity],
+  });
+  const asPc = (w: LensWorld, id: string) => buildLens(w, { pcTraitId: id, locationId: null });
+  const hpOf = (w: LensWorld, id: string) => settledOpeningStats(w as OpeningWorld, asPc(w, id)).find((s) => s.id === 's-hp')?.value;
+
+  it('is still offered as a PC', () => {
+    expect(lensPcOptions(personaWorld([])).map((o) => o.id)).toContain('t-knight');
+  });
+
+  it('moves the persona’s own stat, not the global stat with the same id', () => {
+    expect(hpOf(personaWorld([stat('s-hp', { value: 20 })]), 't-knight')).toBe(10);
+  });
+
+  it('reaches the global stat when the persona owns no stat with that id (Q30)', () => {
+    expect(hpOf(personaWorld([]), 't-knight')).toBe(15);
+  });
+
+  it('moves the global stat through a Global row, whatever the persona owns', () => {
+    expect(hpOf(personaWorld([stat('s-hp', { value: 20 })]), 't-envoy')).toBe(13);
+  });
+
+  it('switches a global stat on only when the persona owns no stat with that id', () => {
+    expect(asPc(personaWorld([stat('s-gate')]), 't-warden').statEnabled['s-gate']).toBe(false);
+    expect(asPc(personaWorld([]), 't-warden').statEnabled['s-gate']).toBe(true);
   });
 });
 

@@ -1,7 +1,7 @@
 /**
  * Registry for the in-app help pop-outs (`HelpButton`). One topic per surface that needs explaining —
  * what it does and why it exists — kept out of the components so the copy is editable in one place and
- * the mechanism stays generic. Topic ids are namespaced by surface (`worldEditor.statCode`) so other
+ * the mechanism stays generic. Topic ids are namespaced by surface (`worldEditor.scriptBox`) so other
  * screens can register their own without collision.
  *
  * Copy rules: written for an author who has never opened the section. Lead with what it is, then why it
@@ -42,6 +42,44 @@ export function helpWikiUrl(topic: HelpTopic): string | null {
   if (!topic.wikiPage) return null;
   return wikiPageUrl(docTargetId({ page: topic.wikiPage, anchor: topic.wikiAnchor }));
 }
+
+const SCRIPTS_TOPIC: HelpTopic = {
+  title: 'Scripts',
+  wikiPage: 'ScriptsGuide',
+  wikiAnchor: '-scripts-guide',
+  body: `A script is one box of JavaScript with a timing. It belongs to a stat, a trait, or the world. A returned number replaces the stat's value. A script with no return can still set \`self\`, write another stat, pin a placeholder, or switch a trait. Leave a script empty and the manual value stands.
+
+**Pick a timing.** Each script has one, and a script runs only at its timing:
+
+| Timing | Runs |
+|---|---|
+| **Before the AI** | At the start of the turn, before the prompt is built. Its writes are in the prompt. |
+| **After the AI** | After the AI's changes and Regen apply. It reads what the AI asked for. |
+| **During AI Output** | Once for each narration sentence, when it completes. It can rewrite the sentence. |
+| **At Game Start** | Once, on the opening turn of a new game, before the Before the AI scripts. |
+| **When a Trait Switches** | Each time a trait turns on or off in play. |
+
+Turn order: At Game Start, Before the AI, the AI's stat changes, Regen, After the AI. **During AI Output** runs while the narration streams.
+
+**Whose script it is.** A stat's script runs with the stat as \`self\`. A trait's script runs only while the trait is active, with the trait as \`self\`. A world script has an empty \`self\`. The world's **Scripts** tab lists every script by timing, in run order. Drag a script to change its place in its timing.
+
+**What it can reach.** A copy of every stat, the world's placeholders and traits, the entities, the dictionaries and the clock. Each timing adds one name:
+
+- \`narration\` in **During AI Output**. Assign \`narration.sentence\`, or return a string, to rewrite the sentence.
+- \`trait\` in **When a Trait Switches**. It is the trait that switched, and \`trait.enabled\` is its new state.
+- \`player\` in every other timing. \`player.tell\`, \`player.toast\`, \`player.confirm\`, \`player.ask\` and \`player.askText\` show the player a message or a question. The script waits for the answer, with no \`await\`. Closing a question fails the script.
+
+\`\`\`js
+const health = stats.Health.value;
+return health / 2;
+\`\`\`
+
+A name with a space needs brackets: \`stats["Hit Points"]\`. \`stats\` is the global stats in every script. An entity's own stats are \`owner.stats\`.
+
+**Writing.** Set \`self.value\`, \`self.min\`, \`self.max\` or \`self.regen\` and the stat takes that number this turn. Write \`value\`, \`min\`, \`max\` or \`regen\` on any stat to move it from this script. Two writes to one field land in run order, and the later write wins.
+
+**Test Code** under each box runs that box alone. It runs the code, and the editor underlines are static analysis only. A script that throws or times out changes nothing. **Templates** inserts common code shapes for the box's timing.`,
+};
 
 export const HELP_TOPICS: Record<string, HelpTopic> = {
   'game.howToPlay': {
@@ -190,7 +228,7 @@ Give an entity the one or two names the story will actually use. Each alias is a
     wikiAnchor: 'stat-availability',
     body: `Switches a stat on or off while this trait is active, overriding the stat's own default. Each row names a stat and whether taking the trait enables or disables it.
 
-A stat that is off is gone, not just hidden: the player doesn't see it, the AI isn't told about it, and its regen and stat code pause until something turns it back on. The stat's own **Enabled** checkbox sets the default. A trait's switch overrides it only while the trait is active.
+A stat that is off is gone, not just hidden: the player doesn't see it, the AI isn't told about it, and its regen and scripts pause until something turns it back on. The stat's own **Enabled** checkbox sets the default. A trait's switch overrides it only while the trait is active.
 
 When two active traits switch the same stat, the one lower in the trait list wins. The row says so whenever that applies.`,
   },
@@ -204,7 +242,7 @@ The pinned value doesn't have to come from the placeholder's own list. The box s
 
 A value that is a chip pins that part. Pin a Wildcard to the value holding *isAsian* and every chip of it takes that variant. The box names such a value after the part it holds, exactly as the Values list does, so you pick by the thing rather than by the words it joins to. A chip inside a longer value is prose, so that one reads as what it will resolve to.
 
-**Pin a blueprint** to reach every bearer's own copy of it. Albus's *Paladin* pins his copy of *Class Garb*, and nobody else's. A link can replace this list for one bearer.
+**Pin a blueprint** to reach every owner's own copy of it. Albus's *Paladin* pins his copy of *Class Garb*, and nobody else's. A link can replace this list for one owner.
 
 When two active traits pin the same placeholder, the one lower in the trait list wins. The row says so whenever that applies. A location's pin outranks a trait's, and a stat band's outranks both. A placeholder value's pin ranks under all three.`,
   },
@@ -228,98 +266,9 @@ Rows are in the order the game settles them: a stat band outranks a location, a 
 
 The **Add Pin** button picks the kind of source, then the source, and writes an empty pin there for you to fill in. A row's first box re-aims its pin at another source of the same kind. The value box suggests this placeholder's values, but anything you type is used as written.`,
   },
-  'worldEditor.statCode': {
-    title: 'Dynamic Value Calculation',
-    wikiPage: 'StatCodeGuide',
-    wikiAnchor: '-stat-code-guide',
-    body: `A stat can run a small script. Write JavaScript. A returned number replaces the stat's value. A script with no return can still set \`self\`, pin a placeholder, or switch a trait. Leave a box empty and the manual value stands.
-
-**Two boxes, one turn.** Turn order:
-
-| | |
-|---|---|
-| 1 | **Before the AI** |
-| 2 | AI stat changes |
-| 3 | Regen |
-| 4 | **After the AI** |
-
-**Before the AI** runs at the start of the turn, before the prompt is built. A value it sets, a placeholder it pins, or a trait it switches is in the prompt for that turn. \`previous\` reads as the stat itself, every \`delta\` reads zero, and the clock reads turn start.
-
-**After the AI** runs after the AI's changes and Regen apply. It reads the values the before box set. Both boxes run every turn. An empty box is skipped. A bound a box sets stays until a later write or change moves it. Emptying a box leaves it as it is.
-
-The **Test Code** button under each box runs that box alone on that box's clock: the opening turn for Before the AI, a one-hour turn on day one for After the AI. Test Code executes the code. Editor underlines are static analysis only.
-
-**What the script can reach.** A copy of every stat, the world's placeholders, and the world's traits. The sandbox exposes nothing else. \`stats\` is a map keyed by name. \`self\` is the stat that owns the code. Each stat carries \`id\`, \`name\`, \`type\`, \`description\`, \`min\`, \`max\`, \`value\` and \`regen\`.
-
-\`\`\`js
-const health = stats.Health.value;
-return health / 2;
-\`\`\`
-
-A name with a space needs brackets: \`stats["Hit Points"]\`. \`Object.values(stats)\` iterates every stat. A name with a placeholder chip reads in code as that placeholder's name, so a stat named \`{{Beast}} Power\` is \`stats["Beast Power"]\` in every playthrough.
-
-**Writing to \`self\`.** Set \`self.value\`, \`self.min\`, \`self.max\` or \`self.regen\` and the stat takes that number this turn. A bound works like the value: later trait, AI and code changes move it from the number the code set. A field the code doesn't write keeps the turn's value, so a script can set the cap and leave the value to the AI.
-
-\`\`\`js
-const level = stats.Level.value;
-self.max = level * 10;
-\`\`\`
-
-**Writing to other stats.** Write \`value\`, \`min\`, \`max\` or \`regen\` on any entry of \`stats\` to move that stat from this box, like \`stats.Health.value = 30\`. Write only your own stats. \`entities.Mira.stats\` and \`persona.stats\` stay read-only.
-
-Two writes to one field land in stat order, and the later stat wins. A stat's own box can't see another stat's write on the same turn. In a Blueprint stat, a write reaches each owner's own copy. **Test Code** lists each write to another stat and applies none. In Advanced mode, the Test Bench warns when two boxes write one field.
-
-\`\`\`js
-// In the Poison stat's box
-if (self.value > 50) stats.Health.value -= 5;
-\`\`\`
-
-**Reading this turn.** Each stat carries the turn's state before the code ran. \`previous\`: the full stat (\`id\`, \`name\`, \`type\`, \`description\`, \`min\`, \`max\`, \`value\` and \`regen\`) at the start of the turn. \`delta\`: every change the turn made. \`delta.ai\` is the AI's requested change. \`delta.regen\` is the regen change. \`delta.total\` is their sum. \`delta.actual\` is current values minus \`previous\`. Each has \`value\`, \`min\`, \`max\` and \`regen\`. \`previous\` and \`delta\` are read-only. Use them to clamp or scale the AI's change before it applies.
-
-\`\`\`js
-self.value = self.previous.value + Math.min(self.delta.ai.value, 10);
-\`\`\`
-
-**Placeholders.** \`placeholders\` holds the world's own placeholders by name. An entity's or a dictionary's placeholders are on its entry: \`entities.Molly.placeholders\`, \`persona.placeholders\` and \`dictionaries.Weather.placeholders\`. Each entry has \`values\`, every authored value as text; \`value\`, the current value; \`text\`, the value the prompt sees; and \`roll()\`, one weighted draw. On a Wildcard or a Variable, \`value\` is one text and \`text\` is the same text. On an Object, \`value\` is the list of current values and \`text\` joins them with \`", "\`. Compare narration wording with \`text\`. \`pin(x)\` pins the placeholder until the code changes it again. \`unpin()\` restores the other pins and the roll. \`pin\` takes the same shape \`value\` reads: one text on a Wildcard, a list on an Object. One text on an Object pins a one-item list. A name with a space needs brackets: \`placeholders["Hair Color"]\`.
-
-**Paths.** Code reaches a placeholder by the path the editor shows. A placeholder that holds parts carries them as members, to any depth. Each placeholder has one path: a part's bare name doesn't reach it. Every placeholder has \`values\`, \`value\`, \`text\`, \`roll\`, \`pin\` and \`unpin\`, so a part with one of those names is shadowed by the member.
-
-\`\`\`js
-placeholders.Mood.pin(self.value < 20 ? 'furious' : 'calm');
-placeholders.Hair.pin(['gray', 'cropped short']);
-placeholders.Hair.Shade.pin('ash');
-entities["Old Molly"].placeholders["Eye Color"].pin('green');
-\`\`\`
-
-**Traits.** \`traits\` holds every trait in the world's own trait list by name, Blueprint items included. A trait an entity owns is not in it. Each entry has \`enabled\`, true when the player has the trait and it is on, and \`acquired\`, true when the player has the trait. Both read the player's state only. Set \`enabled\` to switch the trait on or off after the run, with the same effect as the player's checkbox, exclusive siblings included. Enabling a trait the player never took acquires it. Code ignores the **In Game** row, so it can switch a trait set to Fixed. A trait name with a placeholder chip reads in code as that placeholder's name, so a trait named \`{{Beast}} Fury\` is \`traits["Beast Fury"]\` in every playthrough.
-
-\`\`\`js
-traits.Cursed.enabled = self.value <= 0;
-\`\`\`
-
-**Clock.** \`clock\` is a read-only object that describes the story time:
-
-| | |
-|---|---|
-| \`clock.deltaHours\` | Story hours **this** turn consumed |
-| \`clock.elapsedHours\` | Total story hours so far, counting this turn |
-| \`clock.day\` | Day number at the **end** of the turn |
-| \`clock.daypart\` | Time of day at the **end** of the turn |
-| \`clock.previous.day\` | Day number at the **start** of the turn |
-| \`clock.previous.daypart\` | Time of day at the **start** of the turn |
-
-Both ends are given because a turn spans time: an eight-hour sleep begins in the afternoon and ends at night. Dayparts are \`night\`, \`dawn\`, \`morning\`, \`midday\`, \`afternoon\`, \`evening\`. With **Measured Clock** off, \`clock.deltaHours\` is \`1\`.
-
-This enables a per-hour drain (\`current + 2 * clock.deltaHours\`) or a stat that only rises after dark.
-
-**The code runs every turn.** Both boxes run on the opening turn and on a turn with no AI stat change. They run when the stat request is off or fails. On those turns \`delta.ai\` reads zero in the after box, as it always does in the before box.
-
-**A script that sets the value overrides the AI.** The AI's write is recomputed away. The AI still reads the value and description. A script that only writes a bound, a placeholder or a trait leaves the value to the AI.
-
-**A failed run changes nothing.** Code that throws or times out leaves the stat, the placeholders and the traits unchanged. A write to an unknown placeholder or trait name is ignored. Test Code and the Test Bench both report it.
-
-**Templates.** The **Templates** menu beside each Test Code button inserts common code shapes. Each box offers the templates that match its timing. Before the AI: a placeholder pin, a trait switch, an opening value. After the AI: a drain, a timer, a blend of two stats, a bound from another stat, a bonus or penalty from a persona's or an entity's trait. Each template asks only for its inputs and inserts plain code you can edit.`,
-  },
+  // One topic for the stat, trait and world Scripts tabs. A saved help link to `worldEditor.statCode` still opens it.
+  'worldEditor.scriptBox': SCRIPTS_TOPIC,
+  'worldEditor.statCode': SCRIPTS_TOPIC,
   // Opened from the linked copy's footer menu in the World Editor, once on a profile's first link, and by
   // both update reviews. One topic for all: the dialog a reader opened decides which tab they read first,
   // so every tab stands alone.

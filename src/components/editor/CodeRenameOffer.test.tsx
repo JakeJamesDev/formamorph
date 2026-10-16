@@ -2,36 +2,61 @@ import { useMemo, useState } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { Placeholder, Stat } from '@/types';
+import type { Entity, Placeholder, Script, Stat, StatGroup, Trait, TraitGroup } from '@/types';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import { statCodeName } from '@/lib/statCodeNames';
+import type { RenamedStat } from '@/lib/statCodeRename';
+import { statLinkState } from '@/lib/statLinks';
 import { useCodeRenameOffer, useRenameField } from '@/lib/useCodeRename';
 import { CodeRenameProvider } from './CodeRenameOffer';
+import { boxScripts, codeAt, overriddenCodeAt } from '@/test/scriptFixtures';
 
 const stat = (id: string, name: string, code: string): Stat =>
-  ({ id, name, type: 'number', description: '', min: 0, max: 100, value: 0, regen: 0, code } as unknown as Stat);
+  ({ id, name, type: 'number', description: '', min: 0, max: 100, value: 0, regen: 0, scripts: boxScripts({ after: code }) } as unknown as Stat);
 
-const store: { stats: Stat[]; placeholders: Placeholder[]; rerender: () => void } = {
-  stats: [], placeholders: [], rerender: () => {},
+const store: {
+  stats: Stat[]; statGroups: StatGroup[]; traits: Trait[]; traitGroups: TraitGroup[]; entities: Entity[]; placeholders: Placeholder[];
+  worldScripts: Script[]; rerender: () => void;
+} = {
+  stats: [], statGroups: [], traits: [], traitGroups: [], entities: [], placeholders: [], worldScripts: [], rerender: () => {},
 };
 
 vi.mock('@/contexts/GameDataContext', () => ({
   useGameDataOptional: () => ({
     stats: store.stats,
+    statGroups: store.statGroups,
+    traits: store.traits,
+    traitGroups: store.traitGroups,
+    entities: store.entities,
+    worldScripts: store.worldScripts,
+    setWorldScripts: (next: Script[]) => {
+      store.worldScripts = next;
+      store.rerender();
+    },
     updateStat: (next: Stat) => {
       store.stats = store.stats.map((entry) => (entry.id === next.id ? next : entry));
+      store.rerender();
+    },
+    updateTrait: (next: Trait) => {
+      store.traits = store.traits.map((entry) => (entry.id === next.id ? next : entry));
+      store.rerender();
+    },
+    editEntity: (id: string, edit: (entity: Entity) => Entity) => {
+      store.entities = store.entities.map((entity) => (entity.id === id ? edit(entity) : entity));
       store.rerender();
     },
   }),
 }));
 
 /** A name field reduced to what the offer reads: a value, and the commit handlers the real fields wire. */
-const NameField = ({ root, initial, otherNames, chips }: {
+const NameField = ({ root, initial, otherNames, chips, renamed }: {
   root: 'stats' | 'placeholders' | 'traits';
   initial: string;
   otherNames: string[];
   /** Read the value as a code name, the way the stat and trait panels do. */
   chips?: boolean;
+  /** The stat the field names, as the stat panel passes it. */
+  renamed?: RenamedStat;
 }) => {
   const [value, setValue] = useState(initial);
   // The hook takes the whole sibling list and the id being edited; the cases name the other entries, so
@@ -46,6 +71,7 @@ const NameField = ({ root, initial, otherNames, chips }: {
     siblings,
     ownId: 'self',
     codeNameOf: chips ? (name) => statCodeName(name, store.placeholders) : undefined,
+    stat: renamed,
   });
   return (
     <input
@@ -70,8 +96,8 @@ const Harness = (props: Parameters<typeof NameField>[0]) => {
   );
 };
 
-const codeOf = (id: string) => store.stats.find((entry) => entry.id === id)?.code;
-const beforeCodeOf = (id: string) => store.stats.find((entry) => entry.id === id)?.beforeCode;
+const codeOf = (id: string) => codeAt(store.stats.find((entry) => entry.id === id));
+const beforeCodeOf = (id: string) => codeAt(store.stats.find((entry) => entry.id === id), 'before');
 
 /** Put a new name in the field and commit it by moving focus off, as blurring the real field does. Pasted
  *  rather than typed, so a chip token's braces reach the field instead of being read as typing syntax. */
@@ -87,6 +113,11 @@ async function renameTo(next: string) {
 
 beforeEach(() => {
   store.placeholders = [];
+  store.statGroups = [];
+  store.traits = [];
+  store.traitGroups = [];
+  store.entities = [];
+  store.worldScripts = [];
   store.stats = [
     stat('a', 'Health', 'return stats.Health.value * 2;'),
     stat('b', 'Stamina', `return stats['Health'].max - 1;`),
@@ -95,6 +126,106 @@ beforeEach(() => {
 });
 
 describe('the rename offer', () => {
+  it('keeps a link override current when the rename rewrites its Blueprint too, and a stale one stale', async () => {
+    const howl = { ...stat('howl', 'Howl', 'return stats.Ruin.value;'), groupId: 'bp' };
+    const howlLink = (entityId: string, blueprint: string) => ({
+      id: `l-${entityId}`, originalId: 'howl', kind: 'stat' as const, originalName: 'Howl', groupId: null,
+      overrides: { howl: { scripts: { value: boxScripts({ after: 'return stats.Ruin.value + 1;' }), blueprint: boxScripts({ after: blueprint }) } } },
+    });
+    store.statGroups = [{ id: 'bp', name: 'Blueprints', system: 'blueprints' } as StatGroup];
+    store.stats = [stat('ruin', 'Ruin', ''), howl];
+    store.entities = [
+      { id: 'bram', name: 'Bram', statLinks: [howlLink('bram', 'return stats.Ruin.value;')] },
+      { id: 'ash', name: 'Ash', statLinks: [howlLink('ash', 'return 0;')] },
+    ];
+    render(<Harness root="stats" initial="Ruin" otherNames={[]} renamed={{ id: 'ruin' }} />);
+    const user = await renameTo('Wreck');
+    await user.click(screen.getByRole('button', { name: 'Update Code' }));
+
+    const blueprint = store.stats.find((entry) => entry.id === 'howl')!;
+    expect(codeAt(blueprint)).toBe('return stats.Wreck.value;');
+    const [bram, ash] = store.entities.map((entity) => entity.statLinks![0]);
+    expect(overriddenCodeAt(bram.overrides?.howl?.scripts)).toBe('return stats.Wreck.value + 1;');
+    expect(statLinkState(blueprint, bram).stale).toEqual([]);
+    expect(overriddenCodeAt(ash.overrides?.howl?.scripts)).toBe('return stats.Wreck.value + 1;');
+    expect(statLinkState(blueprint, ash).stale).toEqual(['scripts']);
+  });
+
+  it('rewrites an entity’s own stat in its own box, its link’s override, and a world box', async () => {
+    const howl = { ...stat('howl', 'Howl', 'return owner.stats.Rage.value;'), groupId: 'bp' };
+    store.statGroups = [{ id: 'bp', name: 'Blueprints', system: 'blueprints' } as StatGroup];
+    store.stats = [stat('reader', 'Reader', 'return entities.Bram.stats.Rage.value + stats.Rage.value;'), stat('rage-w', 'Rage', ''), howl];
+    store.entities = [{
+      id: 'bram', name: 'Bram', stats: [stat('rage', 'Rage', 'return owner.stats.Rage.value;')],
+      statLinks: [{
+        id: 'l-howl', originalId: 'howl', kind: 'stat', originalName: 'Howl', groupId: null,
+        overrides: { howl: { scripts: { value: boxScripts({ after: 'return owner.stats.Rage.value + 1;' }), blueprint: boxScripts({ after: 'return owner.stats.Rage.value;' }) } } },
+      }],
+    }];
+    render(<Harness root="stats" initial="Rage" otherNames={[]} renamed={{ id: 'rage', entityId: 'bram' }} />);
+    const user = await renameTo('Spite');
+
+    expect(screen.getByText(/The code of 3 stats names the stat “Rage” 3 times\./)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Update Code' }));
+    const [bram] = store.entities;
+    expect(codeAt(bram.stats?.[0])).toBe('return owner.stats.Spite.value;');
+    expect(overriddenCodeAt(bram.statLinks?.[0].overrides?.howl?.scripts)).toBe('return owner.stats.Spite.value + 1;');
+    expect(codeOf('reader')).toBe('return entities.Bram.stats.Spite.value + stats.Rage.value;');
+    expect(codeOf('howl')).toBe('return owner.stats.Rage.value;');
+  });
+
+  it('rewrites a world trait’s script, an entity’s own trait’s and a trait link’s override, counting traits apart', async () => {
+    const after = (code: string) => [{ id: 'x', timing: 'after' as const, code }];
+    const howl: Trait = { id: 'howl', name: 'Howl', statChanges: [], groupId: 'bp', scripts: after('stats.Health.value = 1;') };
+    store.traitGroups = [{ id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' }];
+    store.traits = [{ id: 'brave', name: 'Brave', statChanges: [], scripts: after('stats.Health.value += 1;') }, howl];
+    store.entities = [{
+      id: 'bram', name: 'Bram', traits: [{ id: 'grim', name: 'Grim', statChanges: [], scripts: after('stats.Health.max = 5;') }],
+      traitLinks: [{
+        id: 'l-howl', originalId: 'howl', kind: 'trait', originalName: 'Howl', groupId: null,
+        overrides: { howl: { scripts: { value: after('stats.Health.value = 2;'), blueprint: howl.scripts! } } },
+      }],
+    }];
+    render(<Harness root="stats" initial="Health" otherNames={['Stamina', 'Grit']} renamed={{ id: 'a' }} />);
+    const user = await renameTo('Vigor');
+
+    expect(screen.getByText(/The code of 2 stats and 4 traits names the stat “Health” 6 times\./)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Update Code' }));
+    expect(codeAt(store.traits[0])).toBe('stats.Vigor.value += 1;');
+    expect(codeAt(store.traits[1])).toBe('stats.Vigor.value = 1;');
+    const [bram] = store.entities;
+    expect(codeAt(bram.traits?.[0])).toBe('stats.Vigor.max = 5;');
+    const link = bram.traitLinks![0].overrides?.howl?.scripts;
+    expect(overriddenCodeAt(link)).toBe('stats.Vigor.value = 2;');
+    // The rename rewrote the Blueprint too, so the override's snapshot moved with it and stays current.
+    expect(link?.blueprint).toEqual(after('stats.Vigor.value = 1;'));
+  });
+
+  it('rewrites a world script that alone names the renamed stat', async () => {
+    store.stats = [stat('gale', 'Gale', '')];
+    store.worldScripts = [{ id: 'weather', timing: 'after', code: 'stats.Gale.value = 3;' }, { id: 'calm', timing: 'before', code: 'return 0;' }];
+    render(<Harness root="stats" initial="Gale" otherNames={[]} renamed={{ id: 'gale' }} />);
+    const user = await renameTo('Gust');
+
+    expect(screen.getByText(/The code of 1 world script names the stat “Gale” 1 time\./)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Update Code' }));
+    expect(store.worldScripts).toEqual([
+      { id: 'weather', timing: 'after', code: 'stats.Gust.value = 3;' }, { id: 'calm', timing: 'before', code: 'return 0;' },
+    ]);
+  });
+
+  it('carries a trait rename into world scripts', async () => {
+    store.stats = [];
+    store.traits = [{ id: 'brave', name: 'Brave', statChanges: [] }];
+    store.worldScripts = [{ id: 'w1', timing: 'after', code: 'const b = traits.Brave;' }, { id: 'w2', timing: 'start', code: 'traits.Brave.enabled = true;' }];
+    render(<Harness root="traits" initial="Brave" otherNames={[]} />);
+    const user = await renameTo('Bold');
+
+    expect(screen.getByText(/The code of 2 world scripts names the trait “Brave” 2 times\./)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Update Code' }));
+    expect(store.worldScripts.map((script) => script.code)).toEqual(['const b = traits.Bold;', 'traits.Bold.enabled = true;']);
+  });
+
   it('asks with the count, and rewrites every script on Yes', async () => {
     render(<Harness root="stats" initial="Health" otherNames={['Stamina', 'Grit']} />);
     const user = await renameTo('Vigor');
@@ -109,7 +240,7 @@ describe('the rename offer', () => {
 
   it('counts both boxes, rewrites both on Yes, and leaves a blank box blank', async () => {
     store.stats = [
-      { ...stat('a', 'Health', 'return stats.Health.value * 2;'), beforeCode: `stats['Health'].min = 1;` },
+      { ...stat('a', 'Health', ''), scripts: boxScripts({ before: `stats['Health'].min = 1;`, after: 'return stats.Health.value * 2;' }) },
       stat('b', 'Stamina', 'return stats.Health.max - 1;'),
     ];
     render(<Harness root="stats" initial="Health" otherNames={['Stamina']} />);
@@ -126,7 +257,7 @@ describe('the rename offer', () => {
 
   it('rewrites nothing on No, in either box', async () => {
     store.stats = [
-      { ...stat('a', 'Health', 'return stats.Health.value * 2;'), beforeCode: `stats['Health'].min = 1;` },
+      { ...stat('a', 'Health', ''), scripts: boxScripts({ before: `stats['Health'].min = 1;`, after: 'return stats.Health.value * 2;' }) },
     ];
     render(<Harness root="stats" initial="Health" otherNames={['Stamina']} />);
     const user = await renameTo('Vigor');
@@ -198,6 +329,18 @@ describe('the rename offer', () => {
     expect(screen.getByText(/names the placeholder “Mood” 1 time\./)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Update Code' }));
     expect(codeOf('a')).toBe(`placeholders.Temper.pin('calm'); return self.value;`);
+  });
+
+  it('carries a placeholder rename into world scripts beside a stat’s', async () => {
+    store.stats = [stat('a', 'Health', `placeholders.Mood.pin('calm'); return self.value;`)];
+    store.worldScripts = [{ id: 'w1', timing: 'start', code: `placeholders.Mood.pin('calm');` }];
+    render(<Harness root="placeholders" initial="Mood" otherNames={['Weather']} />);
+    const user = await renameTo('Temper');
+
+    expect(screen.getByText(/The code of 1 stat and 1 world script names the placeholder “Mood” 2 times\./)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Update Code' }));
+    expect(codeOf('a')).toBe(`placeholders.Temper.pin('calm'); return self.value;`);
+    expect(store.worldScripts[0].code).toBe(`placeholders.Temper.pin('calm');`);
   });
 
   it('compares a chip-bearing stat name the way code reads it', async () => {

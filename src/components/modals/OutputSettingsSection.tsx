@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import type { ThinkingMode } from '@/contexts/SettingsContext';
+import { TURN_TIME_UNITS, joinTurnHours, splitTurnHours, type TurnTimeUnit } from '@/lib/gameClock';
 import { CONTINUE_CHOICE_MODES, type ContinueChoiceMode } from '@/contexts/settingsDefaults';
 import { Row, CheckRow, Section, SubGroup, OptionSwitcher, CheckboxOptionGroup } from '@/components/SettingsRows';
 import { SETTINGS_COPY, SETTINGS_OPTIONS, REASONING_EFFORT_HELP, REASONING_NOTES, TOOLS_NOTES, type SettingOptionCopy } from '@/components/modals/settingsCopy';
@@ -6,6 +8,7 @@ import { rowCopy, optionRowCopy } from '@/components/modals/settingsRowCopy';
 import { reasoningLevelOptions, reasoningOffRefused, toolsSupported, type ReasoningSetting } from '@/lib/reasoningEffort';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
 import type { SettingsMode } from '@/lib/settingsMode';
@@ -40,6 +43,7 @@ export function OutputSettingsSection({ source, mode, nativeReasoningRuledOut }:
     semanticRehydration, setSemanticRehydration,
     timeContext, setTimeContext,
     aiClock, setAiClock,
+    fixedTurnHours, setFixedTurnHours,
     semanticLore, setSemanticLore,
     describeCharacters, setDescribeCharacters,
     characterDiaries, setCharacterDiaries,
@@ -256,24 +260,25 @@ export function OutputSettingsSection({ source, mode, nativeReasoningRuledOut }:
       )}
       </Section>
 
-      {/* Both rows are about the story's clock rather than what the AI remembers, so they get their
-          own section — gated on Memory Summaries, which is what they already depended on as rows. */}
-      {memoryDigests && (
+      {/* The story's clock. It runs without memories too (the Log, stat regeneration), so only Time in
+          Memory is gated on Memory Summaries. */}
       <Section title="Time" hint="How long each turn takes, and when things happened.">
+      {memoryDigests && (
       <CheckRow
         htmlFor="timeContext"
         checked={timeContext}
         onChange={setTimeContext}
         {...rowCopy('timeInMemory')}
       />
+      )}
       <CheckRow
         htmlFor="aiClock"
         checked={aiClock}
         onChange={setAiClock}
         {...rowCopy('measuredClock')}
       />
+      {!aiClock && <TimePerTurnRow hours={fixedTurnHours} onChange={setFixedTurnHours} />}
       </Section>
-      )}
 
       {/* Semantic Lore acts on the dictionary, not on memories — it sat under Memory only because it
           shares Semantic Memory's on-device model, whose download progress stays up there. */}
@@ -350,5 +355,54 @@ export function OutputSettingsSection({ source, mode, nativeReasoningRuledOut }:
       </Section>
       )}
     </div>
+  );
+}
+
+const TURN_TIME_UNIT_LABELS: Record<TurnTimeUnit, [one: string, many: string]> = {
+  minutes: ['Minute', 'Minutes'],
+  hours: ['Hour', 'Hours'],
+  days: ['Day', 'Days'],
+  weeks: ['Week', 'Weeks'],
+};
+
+/** The story time a turn costs while Measured Clock is off: an amount and a unit. */
+function TimePerTurnRow({ hours, onChange }: { hours: number; onChange: (hours: number) => void }) {
+  const [draft, setDraft] = useState(() => ({ hours, ...splitTurnHours(hours) }));
+  // A change from elsewhere (another tab, a reset) replaces the draft; the row's own commits match it already.
+  if (draft.hours !== hours) setDraft({ hours, ...splitTurnHours(hours) });
+  const valid = joinTurnHours(draft.amount, draft.unit) !== null;
+
+  const edit = (patch: Partial<Pick<typeof draft, 'amount' | 'unit'>>) => {
+    const merged = { ...draft, ...patch };
+    const value = joinTurnHours(merged.amount, merged.unit);
+    setDraft({ ...merged, hours: value ?? draft.hours });
+    if (value !== null) onChange(value);
+  };
+
+  return (
+    <Row htmlFor="timePerTurn" {...rowCopy('timePerTurn')}>
+      <div className="flex items-center gap-3">
+        <Input
+          id="timePerTurn"
+          type="number"
+          min={0}
+          step="any"
+          className={`w-20 ${valid ? '' : 'border-destructive'}`}
+          value={draft.amount}
+          aria-invalid={!valid}
+          onChange={(e) => edit({ amount: e.target.value })}
+        />
+        <Select value={draft.unit} onValueChange={(v) => edit({ unit: v as TurnTimeUnit })}>
+          <SelectTrigger className="w-32" aria-label="Time Unit">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {TURN_TIME_UNITS.map((unit) => (
+              <SelectItem key={unit} value={unit}>{TURN_TIME_UNIT_LABELS[unit][Number(draft.amount) === 1 ? 0 : 1]}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </Row>
   );
 }

@@ -5,8 +5,9 @@ import { cn } from "@/lib/utils"
 
 /** Shared open delay, and the window in which moving to a neighboring trigger opens instantly. Both
  *  live on the provider so no call site can retune them. Native `title` waited about a second; this is
- *  fast enough to feel like part of the app and slow enough not to fire while the pointer crosses. */
-const TOOLTIP_DELAY_MS = 400
+ *  fast enough to feel like part of the app and slow enough not to fire while the pointer crosses.
+ *  The code editor's hover cards wait the same. */
+export const TOOLTIP_DELAY_MS = 400
 
 type TipPayload = Pick<TipProps, "side" | "align"> & { tip: string }
 
@@ -131,7 +132,7 @@ const TooltipTrigger = TooltipPrimitive.Trigger
 
 const TooltipPortal = TooltipPrimitive.Portal
 
-/** Sits above dialogs (z-50) and the prompt chip typeahead (z-70): a tip can be raised from inside both. */
+/** Sits above dialogs (z-50), the prompt chip typeahead (z-60) and the help window (z-65): a tip can be raised from inside each. */
 const TooltipPositioner = React.forwardRef<HTMLDivElement, TooltipPrimitive.Positioner.Props>(
   ({ className, sideOffset = 6, ...props }, ref) => (
     <TooltipPrimitive.Positioner

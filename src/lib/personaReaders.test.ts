@@ -46,9 +46,9 @@ describe('entity readers in play', () => {
     { reader: 'roster chip, live view hands the adapter both casts', source: viewer, pattern: /entities,\s*allEntities,\s*participants,/ },
     { reader: 'prose parse for participation', source: viewer, pattern: /readNarration\(\{[^}]*entities: allEntities,/ },
     { reader: 'participation fan-out', source: viewer, pattern: /splitParticipants\(turnParticipants, liveScene\(null, codeView\)\.entities,/ },
-    { reader: 'diaries', source: viewer, pattern: /const found = allEntities\.find\(\(e\) => e\.name\.trim\(\)/ },
-    { reader: 'diaries, text resolved with its owner', source: viewer, pattern: /const entity = found && resolveEntityTexts\(\[found\], resolveEntityText\)\[0\];/ },
-    { reader: 'discovery matching', source: viewer, pattern: /const knownNames = \[\.\.\.allEntities\.map/ },
+    { reader: 'diaries, view hands over the cast', source: viewer, pattern: /const found = findEntityByCharacterName\(target\.name, allEntities\);/ },
+    { reader: 'diaries, text resolved with its owner', source: viewer, pattern: /entity: found && resolveEntityTexts\(\[found\], resolveEntityText\)\[0\]/ },
+    { reader: 'discovery matching', source: viewer, pattern: /entityNames: allEntities\.map\(\(e\) => e\.name\),/ },
     { reader: 'discovery exclusions', source: viewer, pattern: /characters: clean\(\[\.\.\.allEntities\.map\(\(e\) => e\.name\), \.\.\.playerNames\]\)/ },
     // The persona joins the picture by its own slot, never through the cast.
     { reader: 'scene tags', source: viewer, pattern: /pickSceneCast\(\{ participants, entities: allEntities, persona: persona\?\.entity \?\? null,/ },

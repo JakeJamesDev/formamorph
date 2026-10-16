@@ -6,32 +6,32 @@ import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
 import type { Surface } from '@/lib/surface/surfaceRegistry';
 import { sseReply, sseResponse, textSnapshot, textTarget } from '@/test/aiTextFixtures';
 import { GENERAL_KNOWLEDGE_MARKER } from './generalKnowledge';
-import { DEFAULT_CODE_RIDER, QUICK_REFERENCE_SECTION, STAT_CODE_TAB } from './helpCodeRider';
+import { DEFAULT_CODE_RIDER, QUICK_REFERENCE_SECTION, SCRIPT_TAB } from './helpCodeRider';
 import { helpUserMessage, screenLine } from './helpPrompt';
 import { askHelp, HELP_SECTION_LIMIT, helpSections, type HelpEvent, type HelpQuestion } from './helpSession';
 import { helpSettingsOf, type HelpSettings } from './helpSettings';
 
-const LEAD = 'World-Editor-Stats#dynamic-value-calculation';
+const LEAD = 'World-Editor-Stats#scripts';
 const FIELDS = 'World-Editor-Stats#the-fields';
-const GUIDE_TRAITS = 'StatCodeGuide#traits';
+const GUIDE_TRAITS = 'ScriptsGuide#traits';
 
 const PAGES = {
   'World-Editor-Stats': [
     '# 📊 World Editor Stats', '', 'A stat holds a number.', '',
     '## The Fields', '', 'A stat has a name and a range.', '',
-    '## Dynamic Value Calculation', '', 'The **Code** tab holds two boxes, **Before the AI** and **After the AI**.', '',
+    '## Scripts', '', 'The **Scripts** tab lists every script and its timing.', '',
   ].join('\n'),
-  StatCodeGuide: [
-    '# Stat Code Guide', '', 'Stat code changes a stat each turn.', '',
+  ScriptsGuide: [
+    '# Scripts Guide', '', 'A script changes a stat each turn.', '',
     '## Quick Reference', '', '| Object | Read |', '|---|---|', '| `self` | `self.value` |', '', 'A stat compares through `.value`.', '',
     '## Traits', '', 'Switch a trait from code through `traits.<Name>.enabled`.', '',
   ].join('\n'),
   Traits: '# 🧬 Traits\n\nA trait changes a stat.\n\n## How to Add a Trait\n\n1. Open the **Traits** tab.\n',
 };
-const index = createDocsIndex({ pages: PAGES, sidebar: '- [World Editor Stats](World-Editor-Stats)\n- [Stat Code Guide](StatCodeGuide)\n- [Traits](Traits)\n' });
+const index = createDocsIndex({ pages: PAGES, sidebar: '- [World Editor Stats](World-Editor-Stats)\n- [Scripts Guide](ScriptsGuide)\n- [Traits](Traits)\n' });
 
 const surface = (...tabs: SurfaceId[]): Surface => ({ screen: 'worldEditor', dialog: null, tabs });
-const CODE_TAB = surface(STAT_CODE_TAB);
+const CODE_TAB = surface(SCRIPT_TAB);
 const DETAILS_TAB = surface('worldEditorStat.details');
 
 /** One request per question: the pick request is off. */
@@ -67,7 +67,7 @@ describe('the Quick Reference on the Code tab', () => {
     const { ids, lead, user } = await ask('How do I switch a trait?', { surface: CODE_TAB });
     expect(ids.slice(0, 3)).toEqual([LEAD, QUICK_REFERENCE_SECTION, GUIDE_TRAITS]);
     expect(lead).toBe(LEAD);
-    expect(user).toContain(screenLine('World Editor screen, Code tab'));
+    expect(user).toContain(screenLine('World Editor screen, Scripts tab'));
   });
 
   it('goes once when the search also finds it', async () => {

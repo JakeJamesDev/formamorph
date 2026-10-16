@@ -7,11 +7,11 @@ Reasoning effort: high
 
 Rationale: motion, a stable width across stacked labels, screen-reader status and per-frame Playwright sampling all have to agree.
 
-Parent: [World Editor Auto Save spec](../spec.md)
+Parent: [World Editor Autosave spec](../spec.md)
 
 ## What to build
 
-The Save button's face shows save state. This ticket drives it from the manual save, so it works before auto save exists. Ticket 04 reuses it.
+The Save button's face shows save state. This ticket drives it from the manual save, so it works before autosave exists. Ticket 04 reuses it.
 
 | State | Face |
 |---|---|

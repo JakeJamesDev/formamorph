@@ -1,11 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { liveChipScene, type LiveSceneSources } from './liveScene';
-import { chipValues } from './chipValues';
-import { resolveBearers, type BearerWorld } from '../bearers';
-import { resolveBearerText, resolveEntityText } from '../placeholders';
+import { chipValues, entityStatsField } from './chipValues';
+import { resolveOwners, type OwnerWorld } from '../owners';
+import { resolveOwnerText, resolveEntityText } from '../placeholders';
 import { buildCharacterUserMessage, buildDiaryUserMessage } from '../stagedPlanning';
 import { buildToolSnapshot } from '../tools/toolSnapshot';
-import type { Entity, GameLocation, PlayerStat, StatGroup, Trait, TraitGroup, TraitLink } from '@/types';
+import { renderPromptTemplate } from '../promptTemplate';
+import { layerValues } from '../promptValues';
+import type { Entity, GameLocation, PersonaRef, PlayerStat, StatGroup, Trait, TraitGroup, TraitLink } from '@/types';
 
 // The harbor: the Quay contains the Warehouse.
 const quay: GameLocation = { id: 'quay', name: 'Quay', aiDescription: 'Wet stone and rope.' };
@@ -51,16 +53,16 @@ const sources = (over: Partial<LiveSceneSources> = {}): LiveSceneSources => ({
 describe('the live adapter', () => {
   it('rosters Here from the full cast and the outer scopes from the authored cast', () => {
     const values = chipValues(liveChipScene(sources({ location: warehouse })));
-    expect(values['<ENTITIES|name>']).toBe('Porter, Stray');
+    expect(values('<ENTITIES|name>')).toBe('Porter, Stray');
     // Back on the Quay, the invented character is in the Warehouse but the outer scope never lists it.
-    expect(chipValues(liveChipScene(sources()))['<ENTITIES|sublocations.name>']).toBe('Porter');
+    expect(chipValues(liveChipScene(sources()))('<ENTITIES|sublocations.name>')).toBe('Porter');
   });
 
   it('splits the participants into scene ids and ad-hoc names, dropping a cast member who lives elsewhere', () => {
     const scene = liveChipScene(sources({ participants: ['Harbormaster', 'the ferryman', 'Porter'] }));
     expect(scene.inSceneIds).toEqual(['harbormaster']);
     expect(scene.inSceneNames).toEqual(['the ferryman']);
-    expect(chipValues(scene)['<ENTITIES|inscene.name>']).toBe('Harbormaster, the ferryman');
+    expect(chipValues(scene)('<ENTITIES|inscene.name>')).toBe('Harbormaster, the ferryman');
   });
 
   it("nests the Stats chip and each present entity's stats under their authored groups, headings resolved", () => {
@@ -73,9 +75,9 @@ describe('the live adapter', () => {
       statPlacement: { groups: [nerve], authored: [{ ...grit, groupId: 'nerve' }] },
       entities: [hauler, porter], allEntities: [hauler, porter], entityStats: { harbormaster: [load] },
     })));
-    expect(values['<STATS DESCRIPTION|numbers.meaning.markdown>'])
+    expect(values('<STATS DESCRIPTION|numbers.meaning.markdown>'))
       .toBe('- **Nerve:** Steady on a wet deck.\n  - **Grit:** 4/10 — Nerve.');
-    expect(values['<ENTITIES>']).toContain('  stats:\n    Back:\n      Load: 4/10\n');
+    expect(values('<ENTITIES>')).toContain('  stats:\n    Back:\n      Load: 4/10\n');
   });
 
   it('leaves out the heading of a group the AI cannot see and keeps its members, in every chip', () => {
@@ -89,10 +91,10 @@ describe('the live adapter', () => {
       traits: [{ ...seaLegs, groupId: 'crew' }], traitGroups: [crew],
       entities: [hauler, porter], allEntities: [hauler, porter], entityStats: { harbormaster: [load] },
     })));
-    expect(values['<STATS DESCRIPTION|numbers.meaning.markdown>']).toBe('- **Grit:** 4/10 — Nerve.');
-    expect(values['<TRAITS DESCRIPTION>']).toBe('Sea Legs: Steady on any deck.');
-    expect(values['<ENTITIES>']).toContain('  stats:\n    Load: 4/10\n');
-    expect(values['<ENTITIES>']).not.toContain('Back');
+    expect(values('<STATS DESCRIPTION|numbers.meaning.markdown>')).toBe('- **Grit:** 4/10 — Nerve.');
+    expect(values('<TRAITS DESCRIPTION>')).toBe('Sea Legs: Steady on any deck.');
+    expect(values('<ENTITIES>')).toContain('  stats:\n    Load: 4/10\n');
+    expect(values('<ENTITIES>')).not.toContain('Back');
   });
 
   it('scopes the scene to the location a turn was routed to', () => {
@@ -101,7 +103,7 @@ describe('the live adapter', () => {
 
   it('resolves a trait with its own pins before the scene resolves the rest', () => {
     const values = chipValues(liveChipScene(sources()));
-    expect(values['<TRAITS DESCRIPTION>']).toContain('Steady on any deck.');
+    expect(values('<TRAITS DESCRIPTION>')).toContain('Steady on any deck.');
   });
 
   it('reads the stats, traits and resolution from a before box in flight, and nothing else from it', () => {
@@ -123,7 +125,7 @@ describe('the live adapter', () => {
 
   it("resolves each entity's text with that entity as the Character Name", () => {
     const scene = liveChipScene(sources({ location: warehouse }));
-    expect(chipValues(scene)['<ENTITIES>']).toContain('Porter hauls crates.');
+    expect(chipValues(scene)('<ENTITIES>')).toContain('Porter hauls crates.');
     expect(buildToolSnapshot(scene, []).world.entities.find((e) => e.id === 'porter'))
       .toMatchObject({ description: 'Porter hauls crates.', summary: 'Porter, a hauler.' });
   });
@@ -152,10 +154,27 @@ describe('the live adapter', () => {
     expect(diary).not.toContain('{{');
   });
 
+  it("carries the played persona's name as the Player Name, which a chip Header reads", () => {
+    const header = '<PERSONA|markdown|header="{{user}} (Player Character)">';
+    const wren: Entity = { id: 'wren', name: 'Wren', persona: true, aiDescription: 'Rows the ferry.' };
+    const played = chipValues(liveChipScene(sources({ persona: { source: 'world', entity: wren } })));
+    expect(played('header:{{user}}')).toBe('Wren');
+    expect(renderPromptTemplate(header, played)).toMatch(/^\n## Wren \(Player Character\)\n- \*\*Wren\*\*/);
+    // Prompt text never takes the Player Name.
+    expect(renderPromptTemplate('Speak to {{user}}.', played)).toBe('Speak to {{user}}.');
+    const blank = chipValues(liveChipScene(sources({ persona: { source: 'library', entity: { ...wren, name: ' ' } } })));
+    expect(blank('header:{{user}}')).toBe('');
+    // With nobody played, the Header reads the player, and the Persona chip itself drops out.
+    const none = chipValues(liveChipScene(sources()));
+    expect(none('header:{{user}}')).toBe('the player');
+    expect(renderPromptTemplate(`A${header}<NOTES|format=markdown|header="{{user}} notes">B`, layerValues(none, { '<NOTES>': 'Find the map.' })))
+      .toBe('A\n## The Player Notes\nFind the map.\nB');
+  });
+
   it("resolves the persona's own text with the persona as the Character Name", () => {
     const wren: Entity = { id: 'wren', name: 'Wren', persona: true, aiDescription: '{{char}} rows the ferry.' };
     const scene = liveChipScene(sources({ persona: { source: 'world', entity: wren } }));
-    expect(chipValues(scene)['<PERSONA>']).toContain('Wren rows the ferry.');
+    expect(chipValues(scene)('<PERSONA>')).toContain('Wren rows the ferry.');
   });
 
   describe('entity stats', () => {
@@ -165,8 +184,8 @@ describe('the live adapter', () => {
     it('carries each entity’s switched-on stats at their live values, and drops a switched-off one', () => {
       const scene = liveChipScene(sources({ entityStats: { harbormaster: [trust, off] } }));
       expect(scene.ownedStats).toEqual({ harbormaster: [trust] });
-      expect(chipValues(scene)['<ENTITIES>']).toContain('Trust: 6/10');
-      expect(chipValues(scene)['<ENTITIES>']).not.toContain('Dread');
+      expect(chipValues(scene)('<ENTITIES>')).toContain('Trust: 6/10');
+      expect(chipValues(scene)('<ENTITIES>')).not.toContain('Dread');
     });
 
     it('switches an entity’s stats with its own traits in force', () => {
@@ -174,7 +193,7 @@ describe('the live adapter', () => {
       const grim: Trait = { id: 'grim', name: 'Grim', statChanges: [], statToggles: [{ statId: 'trust', enabled: false }, { statId: 'dread', enabled: true }] };
       const holding = (disabled: string[]) => liveChipScene(sources({
         entityStats: { harbormaster: [trust, off] },
-        bearers: [{ id: 'harbormaster', traits: [grim], groups: [] }],
+        owners: [{ id: 'harbormaster', traits: [grim], groups: [] }],
         ownedTraits: { harbormaster: { chosen: ['grim'], disabled } },
       }));
       expect(holding([]).ownedStats?.harbormaster.map((s) => s.name)).toEqual(['Dread']);
@@ -191,7 +210,39 @@ describe('the live adapter', () => {
     });
 
     it('holds none for a playthrough with no entity stats', () => {
-      expect(chipValues(liveChipScene(sources()))['<ENTITIES>']).not.toContain('stats:');
+      expect(chipValues(liveChipScene(sources()))('<ENTITIES>')).not.toContain('stats:');
+    });
+
+    describe('in the character pass', () => {
+      // The previous turn moved Trust from its authored 6 to 9.
+      const ledger: Entity = { ...harbormaster, stats: [trust] };
+      const scene = liveChipScene(sources({
+        entities: [ledger, porter], allEntities: [ledger, porter],
+        entityStats: { harbormaster: [{ ...trust, value: 9, description: 'Calm on {{deck}}.' }] },
+      }));
+      const brief = (name: string, entity?: Entity) => buildCharacterUserMessage({
+        character: { name, entity }, stats: entityStatsField(scene, entity), scene: '', action: 'Wave.',
+      });
+
+      it("gives a character its own stats after its background, as the narration's Entities chip gives them", () => {
+        const field = entityStatsField(scene, ledger);
+        expect(field).toContain('**Trust:** 9/10');
+        expect(field).toContain('Calm on a wet deck.');
+        expect(chipValues(scene)('<ENTITIES|markdown>')).toContain(field);
+        expect(brief('Harbormaster', ledger)).toContain(`not this exact moment): Keeps the ledger.\n${field.trimEnd()}\n\n`);
+      });
+
+      it('gives no stats field to a character with no stats, or to one the director introduced', () => {
+        expect(entityStatsField(scene, porter)).toBe('');
+        expect(brief('Porter', porter)).not.toContain('stats');
+        expect(entityStatsField(scene, undefined)).toBe('');
+        expect(brief('the ferryman')).not.toContain('stats');
+        // The builder holds the same rule: a field handed to an ad-hoc character stays out.
+        const adHoc = buildCharacterUserMessage({
+          character: { name: 'the ferryman' }, stats: entityStatsField(scene, ledger), scene: '', action: 'Wave.',
+        });
+        expect(adHoc).not.toContain('stats');
+      });
     });
 
     describe('of the entities the player plays as', () => {
@@ -204,13 +255,13 @@ describe('the live adapter', () => {
       }));
 
       it("lists their switched-on stats after the world's, hidden ones included, placed by their own groups", () => {
-        expect(chipValues(playing())['<STATS DESCRIPTION|numbers>']).toBe('Grit: 4/10\nVeiled: 2/10\nMind:\n  Calm: 7/10');
+        expect(chipValues(playing())('<STATS DESCRIPTION|numbers>')).toBe('Grit: 4/10\nVeiled: 2/10\nMind:\n  Calm: 7/10');
       });
 
       it('switches their stats with their own traits in force', () => {
         const stirred: Trait = { id: 'stirred', name: 'Stirred', statChanges: [], statToggles: [{ statId: 'dread', enabled: true }] };
-        const scene = playing({ bearers: [{ id: 'wren', traits: [stirred], groups: [] }], ownedTraits: { wren: { chosen: ['stirred'] } } });
-        expect(chipValues(scene)['<STATS DESCRIPTION|numbers>']).toContain('Dread: 4/10');
+        const scene = playing({ owners: [{ id: 'wren', traits: [stirred], groups: [] }], ownedTraits: { wren: { chosen: ['stirred'] } } });
+        expect(chipValues(scene)('<STATS DESCRIPTION|numbers>')).toContain('Dread: 4/10');
       });
 
       it('reads the values a before box wrote', () => {
@@ -218,11 +269,25 @@ describe('the live adapter', () => {
           activeStats: [grit], activeTraits: [], ownedTraits: {}, entityStats: { wren: [{ ...calm, value: 9 }] },
           resolve: (text) => text, resolveTrait: (_trait, text) => text, resolveEntity: (_entity, text) => text,
         });
-        expect(chipValues(scene)['<STATS DESCRIPTION|numbers>']).toContain('Calm: 9/10');
+        expect(chipValues(scene)('<STATS DESCRIPTION|numbers>')).toContain('Calm: 9/10');
       });
 
       it("leaves a cast member's stats out of the Stats chip", () => {
-        expect(chipValues(playing())['<STATS DESCRIPTION|numbers>']).not.toContain('Trust');
+        expect(chipValues(playing())('<STATS DESCRIPTION|numbers>')).not.toContain('Trust');
+      });
+
+      it("nests the persona's own stats in its block at their live values, and leaves the world's in the Stats chip", () => {
+        const scene = liveChipScene(sources({
+          persona: { source: 'world', entity: wren }, playedEntities: [wren], entityStats: { wren: [calm, veiled, off] },
+        }), null, {
+          activeStats: [grit], activeTraits: [], ownedTraits: {}, entityStats: { wren: [{ ...calm, value: 9 }, veiled, off] },
+          resolve: (text) => text, resolveTrait: (_trait, text) => text, resolveEntity: (_entity, text) => text,
+        });
+        const values = chipValues(scene);
+        expect(values('<STATS DESCRIPTION|numbers>')).toBe('Grit: 4/10');
+        expect(values('<PERSONA>')).toContain('  stats:\n    Veiled: 2/10');
+        expect(values('<PERSONA>')).toContain('    Mind:\n      Calm: 9/10');
+        expect(values('<PERSONA>')).not.toContain('Dread');
       });
     });
   });
@@ -237,9 +302,9 @@ describe('the live adapter', () => {
       const values = chipValues(liveChipScene({
         ...cast, ownedTraits: { harbormaster: { chosen: ['loyal', 'sullen'], disabled: ['sullen'] } },
       }));
-      expect(values['<ENTITIES>']).toContain('Loyal: Harbormaster stands by the player.');
-      expect(values['<ENTITIES>']).not.toContain('Sullen');
-      expect(values['<ENTITIES|summary>']).toContain('traits: Loyal');
+      expect(values('<ENTITIES>')).toContain('Loyal: Harbormaster stands by the player.');
+      expect(values('<ENTITIES>')).not.toContain('Sullen');
+      expect(values('<ENTITIES|summary>')).toContain('traits: Loyal');
     });
 
     it("reads an NPC's traits from a before box in flight", () => {
@@ -248,11 +313,11 @@ describe('the live adapter', () => {
         activeStats: [grit], activeTraits: [seaLegs], ownedTraits: { harbormaster: { chosen: ['loyal'], disabled: ['loyal'] } },
         resolve: (text) => text, resolveTrait: (_trait, text) => text, resolveEntity: (_entity, text) => text,
       });
-      expect(chipValues(scene)['<ENTITIES>']).not.toContain('Loyal');
+      expect(chipValues(scene)('<ENTITIES>')).not.toContain('Loyal');
     });
 
     it('gives an NPC nothing when the playthrough chose none of its traits', () => {
-      expect(chipValues(liveChipScene(cast))['<ENTITIES>']).not.toContain('traits');
+      expect(chipValues(liveChipScene(cast))('<ENTITIES>')).not.toContain('traits');
     });
 
     it("renders the played entity's owned traits in the Persona chip, resolved for it", () => {
@@ -261,8 +326,8 @@ describe('the live adapter', () => {
       const values = chipValues(liveChipScene({
         ...cast, persona: { source: 'world', entity: wren }, ownedTraits: { wren: { chosen: ['scar'] } },
       }));
-      expect(values['<TRAITS DESCRIPTION>']).toBe('Sea Legs: Steady on any deck.');
-      expect(values['<PERSONA>']).toContain('  traits:\n    Scarred: Wren carries a scar.');
+      expect(values('<TRAITS DESCRIPTION>')).toBe('Sea Legs: Steady on any deck.');
+      expect(values('<PERSONA>')).toContain('  traits:\n    Scarred: Wren carries a scar.');
     });
   });
 
@@ -275,11 +340,16 @@ describe('the live adapter', () => {
     const albus: Entity = { id: 'albus', name: 'Albus', locations: ['quay'], aiDescription: 'A knight.', traitLinks: [link('l1')] };
     const wren: Entity = { id: 'wren', name: 'Wren', persona: true, aiDescription: 'Rows the ferry.', traitLinks: [link('l2')] };
     const newcomer: Entity = { id: 'cp', name: 'Newcomer', customPersona: true, traitLinks: [link('l3')] };
-    const world: BearerWorld = { traits: [paladin], traitGroups: [blueprints], entities: [albus, wren, newcomer] };
+    const world: OwnerWorld = { traits: [paladin], traitGroups: [blueprints], entities: [albus, wren, newcomer] };
+    // Global scope's tree and each entity owner's, as play hands them to the scene.
+    const trees = (w: OwnerWorld, ref: PersonaRef | undefined) => {
+      const { global, owners } = resolveOwners(w, ref);
+      return { global, owners };
+    };
     const real = (persona: LiveSceneSources['persona'], over: Partial<LiveSceneSources> = {}) => sources({
       entities: [albus], allEntities: [albus], persona, traits: [], traitGroups: [blueprints],
-      bearers: resolveBearers(world, persona ? { source: 'world', entityId: persona.entity.id } : undefined).bearers,
-      resolveTrait: (_trait, text, owner) => resolveBearerText(owner ?? null, text, {
+      ...trees(world, persona ? { source: 'world', entityId: persona.entity.id } : undefined),
+      resolveTrait: (_trait, text, owner) => resolveOwnerText(owner ?? null, text, {
         placeholders: [], rolls: {}, player: { name: persona?.entity.name },
       }),
       ...over,
@@ -287,17 +357,17 @@ describe('the live adapter', () => {
 
     it("gives a cast entity its active linked trait in full, with the entity as the Character Name", () => {
       const values = chipValues(liveChipScene(real(null, { ownedTraits: { albus: { chosen: ['paladin'] } } })));
-      expect(values['<ENTITIES>']).toContain('Paladin: Albus swore the oath.');
-      expect(values['<ENTITIES|summary>']).toContain('traits: Paladin');
+      expect(values('<ENTITIES>')).toContain('Paladin: Albus swore the oath.');
+      expect(values('<ENTITIES|summary>')).toContain('traits: Paladin');
     });
 
     it('leaves out a linked trait the playthrough has not chosen', () => {
-      expect(chipValues(liveChipScene(real(null)))['<ENTITIES>']).not.toContain('Paladin');
+      expect(chipValues(liveChipScene(real(null)))('<ENTITIES>')).not.toContain('Paladin');
     });
 
     it("renders the played world persona's linked trait in the Persona chip, named for the persona", () => {
       const values = chipValues(liveChipScene(real({ source: 'world', entity: wren }, { ownedTraits: { wren: { chosen: ['paladin'] } } })));
-      expect(values['<PERSONA>']).toContain('  traits:\n    Paladin: Wren swore the oath.');
+      expect(values('<PERSONA>')).toContain('  traits:\n    Paladin: Wren swore the oath.');
     });
 
     it("names the player in the player's group text", () => {
@@ -305,10 +375,10 @@ describe('the live adapter', () => {
       const sworn: Trait = { id: 'sworn', name: 'Sworn', groupId: 'oaths', statChanges: [] };
       const grouped = { ...world, traits: [sworn], traitGroups: [oaths] };
       const values = chipValues(liveChipScene(real(null, {
-        traits: [sworn], traitGroups: [oaths], bearers: resolveBearers(grouped, undefined).bearers, resolve: (text) =>
+        traits: [sworn], traitGroups: [oaths], ...trees(grouped, undefined), resolve: (text) =>
           resolveEntityText(null, text, { placeholders: [], rolls: {} }),
       })));
-      expect(values['<TRAITS DESCRIPTION>']).toBe('Oaths:\n  The player is sworn.\n  Sworn');
+      expect(values('<TRAITS DESCRIPTION>')).toBe('Oaths:\n  The player is sworn.\n  Sworn');
     });
 
     it('keys a Custom Persona entity’s linked trait by the entity under None, apart from the root traits', () => {

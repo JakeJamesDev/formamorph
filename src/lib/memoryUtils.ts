@@ -1,4 +1,6 @@
 import type { ChatMessage } from '@/types';
+import { narrationOf } from './aiResponse';
+import { parseTurnContent } from './turnDigest';
 
 /**
  * Approximate the character cost of a chat history, matching what getTrimmedMessageHistory
@@ -10,12 +12,7 @@ export function estimateHistoryChars(history: ChatMessage[]): number {
   for (const msg of history) {
     if (!msg || !msg.content) continue;
     if (msg.role === 'assistant') {
-      try {
-        const parsed = JSON.parse(msg.content);
-        total += (parsed.narration ?? parsed.game_text ?? '').length;
-      } catch {
-        total += msg.content.length;
-      }
+      total += (parseTurnContent(msg.content) ? narrationOf(msg.content) ?? '' : msg.content).length;
     } else {
       total += msg.content.length;
     }

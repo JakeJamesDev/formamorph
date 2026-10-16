@@ -3,7 +3,7 @@ import { useGameData } from '@/contexts/GameDataContext';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { usePlaceholderSession } from '@/contexts/PlaceholderSessionContext';
 import { resolveEntityText, resolvePlaceholders, type ResolveOptions } from '@/lib/placeholders';
-import { activeOwnedTraitIds, addedCharacters, bearerPins, inPlayLibrary, type PinSet } from '@/lib/ownedTraitsInPlay';
+import { activeOwnedTraitIds, addedCharacters, ownerPins, inPlayLibrary, type PinSet } from '@/lib/ownedTraitsInPlay';
 import { inAuthoredOrder, traitOrderIndex } from '@/lib/traitEffects';
 import { usePersonaName } from '@/lib/useResolvedWorld';
 import type { ResolveEntityText } from '@/lib/resolveWorldNames';
@@ -41,11 +41,11 @@ function useViewPins(): { opts: ResolveOptions; pinSet: PinSet } {
     placeholderRolls, viewTraits, viewDisabledTraitIds, viewOwnedTraits, viewStats, viewLocationId, viewCodePins,
     personaRef, libraryPersona, discoveredEntities,
   } = useGameplay();
-  const pinSet = useMemo(() => bearerPins({
+  const pinSet = useMemo(() => ownerPins({
     world: { traits, traitGroups, entities },
     persona: personaRef,
     library: inPlayLibrary({ traits, traitGroups, entities }, libraryPersona, addedCharacters(discoveredEntities)),
-    playerTraits: inAuthoredOrder(viewTraits, traitOrderIndex(traits, traitGroups)),
+    globalTraits: inAuthoredOrder(viewTraits, traitOrderIndex(traits, traitGroups)),
     disabledTraitIds: viewDisabledTraitIds,
     owned: activeOwnedTraitIds(viewOwnedTraits),
     sharedPlaceholders: worldPlaceholders,

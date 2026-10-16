@@ -10,7 +10,10 @@ import {
   IMAGE_CAPS,
   type DownscaleDeps,
 } from './imageOptim';
-import type { World } from '@/types';
+import type { Entity, TraitRequirementRow, World } from '@/types';
+import { applyEntityImagesOptimize, type ImageCodec } from './imageOptimCore';
+
+const WOUNDED: TraitRequirementRow[] = [{ all: [{ kind: 'stat', id: 'hp', operator: '<', value: 20, unit: 'percent' }] }];
 
 describe('fitWithin', () => {
   it('never upscales an image already within the cap', () => {
@@ -58,8 +61,8 @@ describe('downscaleWorldImages', () => {
       { id: 'l2', name: 'Loc2' },
     ],
     entities: [
-      { id: 'e1', name: 'Ent1', images: ['BIG-e', 'BIG-e2'] },
-      { id: 'e2', name: 'Ent2', images: ['small-e'] },
+      { id: 'e1', name: 'Ent1', images: [{ data: 'BIG-e' }, { data: 'BIG-e2', requires: WOUNDED }] },
+      { id: 'e2', name: 'Ent2', images: [{ data: 'small-e', requires: WOUNDED }] },
     ],
     traits: [],
     traitGroups: [],
@@ -77,9 +80,9 @@ describe('downscaleWorldImages', () => {
     expect(out.worldOverview.thumbnail).toBe('OPT:BIG-thumb');
     expect(out.locations[0].backgroundImage).toBe('OPT:BIG-bg');
     expect(out.locations[1].backgroundImage).toBeUndefined();
-    // Every slot in a gallery is visited, not just the primary.
-    expect(out.entities[0].images).toEqual(['OPT:BIG-e', 'OPT:BIG-e2']);
-    expect(out.entities[1].images).toEqual(['small-e']); // within cap → untouched
+    // Every slot in a gallery is visited, not just the primary, and each keeps its own rule.
+    expect(out.entities[0].images).toEqual([{ data: 'OPT:BIG-e' }, { data: 'OPT:BIG-e2', requires: WOUNDED }]);
+    expect(out.entities[1].images).toEqual([{ data: 'small-e', requires: WOUNDED }]); // within cap → untouched
     // Non-image data is preserved.
     expect(out.entities[0].name).toBe('Ent1');
     expect(out.id).toBe('w1');
@@ -93,8 +96,8 @@ describe('downscaleWorldImages', () => {
     const out = await downscaleWorldImages(world, reencodeDeps);
     expect(out.worldOverview.thumbnail).toBe('WEBP:BIG-thumb');
     expect(out.locations[0].backgroundImage).toBe('WEBP:BIG-bg');
-    expect(out.entities[0].images).toEqual(['WEBP:BIG-e', 'WEBP:BIG-e2']);
-    expect(out.entities[1].images).toEqual(['small-e']); // within cap → untouched
+    expect(out.entities[0].images).toEqual([{ data: 'WEBP:BIG-e' }, { data: 'WEBP:BIG-e2', requires: WOUNDED }]);
+    expect(out.entities[1].images).toEqual([{ data: 'small-e', requires: WOUNDED }]); // within cap → untouched
   });
 
   it('reports monotonic progress that ticks once per image-bearing slot (skipped ones included)', async () => {
@@ -176,5 +179,30 @@ describe('applyWorldOptimize / applyImageOptimize (mode gating)', () => {
   it('passes a missing image url through for any mode', async () => {
     expect(await applyImageOptimize(undefined, 'downscale')).toBeUndefined();
     expect(await applyImageOptimize(null, 'optimize', IMAGE_CAPS.entity)).toBeNull();
+  });
+});
+
+/** The one-entity pass the downscale prompt, the character import and the backup restore all run. */
+describe('applyEntityImagesOptimize', () => {
+  const big = 'data:image/png;base64,BIG';
+  const small = 'data:image/png;base64,small';
+  const codec: ImageCodec = {
+    encode: async (url) => `data:image/webp;base64,ENC(${url.length})`,
+    measure: async (url) => (url === big ? { w: 4000, h: 4000, bytes: 9_000_000 } : { w: 10, h: 10, bytes: 10 }),
+  };
+  const ada: Entity = { id: 'e1', name: 'Ada', images: [{ data: small }, { data: big, requires: WOUNDED }, { data: small, requires: WOUNDED }] };
+
+  it('downscales an oversized picture and keeps every image’s rule on its own slot', async () => {
+    const out = await applyEntityImagesOptimize(codec, ada, 'downscale');
+    expect(out.images).toEqual([
+      { data: small },
+      { data: `data:image/webp;base64,ENC(${big.length})`, requires: WOUNDED },
+      { data: small, requires: WOUNDED },
+    ]);
+  });
+
+  it('wraps a gallery stored as data strings', async () => {
+    const legacy = { id: 'e1', name: 'Ada', images: [small] } as unknown as Entity;
+    expect((await applyEntityImagesOptimize(codec, legacy, 'downscale')).images).toEqual([{ data: small }]);
   });
 });

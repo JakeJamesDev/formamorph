@@ -9,6 +9,7 @@ import { DOCS_LOOKUP } from '@/lib/formaquestion/docsLookup';
 import { HELP_FACE } from '@/lib/formaquestion/helpFace';
 import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
 import { sseFrame, sseReply, sseResponse, textSnapshot, textTarget } from '@/test/aiTextFixtures';
+import { openDocs } from '@/lib/formaquestion/docsOpener';
 import { helpAi } from '@/test/helpAiFixture';
 import { stubReducedMotion } from '@/test/reducedMotion';
 import { mascotStoreOf, openHelpSettings, stubHelpStream, storeFramedWindow, storeMinimalWindow } from '@/test/helpFixtures';
@@ -17,10 +18,7 @@ import type { HelpAi } from './useHelpAi';
 const ai = vi.hoisted(() => ({ current: null as unknown as HelpAi }));
 vi.mock('./useHelpAi', () => ({ useHelpAi: () => ai.current }));
 vi.mock('@/components/theme-provider', () => ({ useTheme: () => ({ resolvedTheme: 'dark' }) }));
-
-// Each test is a fresh app load: the Initial look is once per load.
-let Formaquestion: typeof import('./Formaquestion').Formaquestion;
-let openDocs: typeof import('@/lib/formaquestion/docsOpener').openDocs;
+import { Formaquestion } from './Formaquestion';
 
 const PAGES = {
   Traits: '# 🧬 Traits\n\nA trait changes a stat.\n\n## How to Add a Trait\n\n1. Open the **Traits** tab.\n2. Select **Add Trait**.\n',
@@ -79,7 +77,9 @@ function loadBase() {
 }
 
 async function send(field: HTMLElement, question: string) {
-  await userEvent.type(field, question);
+  // The click keeps the default delay, which Radix's pointer-events cleanup needs; the keys skip it.
+  await userEvent.click(field);
+  await userEvent.type(field, question, { delay: null, skipClick: true });
   await userEvent.click(screen.getByRole('button', { name: 'Send' }));
 }
 
@@ -98,10 +98,7 @@ async function setMascot(on: boolean) {
   await waitFor(() => expect(helpWindow()).toHaveAttribute('data-state', 'open'));
 }
 
-beforeEach(async () => {
-  vi.resetModules();
-  ({ Formaquestion } = await import('./Formaquestion'));
-  ({ openDocs } = await import('@/lib/formaquestion/docsOpener'));
+beforeEach(() => {
   localStorage.clear();
   // These tests read the Minimal chrome's geometry with her toward the middle (Inside) on Auto scale; a new device starts on Outside at 25%.
   localStorage.setItem(PLACEMENT_KEY, 'inside');
@@ -582,10 +579,10 @@ describe('the Mascot below', () => {
     Object.defineProperty(base, 'naturalHeight', { configurable: true, value: 1184 });
     fireEvent.load(base);
     const frame = helpWindow().style;
-    const holder = piece.parentElement!.style;
-    expect(px(holder.top)).toBe(px(frame.top) + px(frame.height));
-    expect(px(holder.top) + px(holder.height)).toBe(window.innerHeight - MARGIN);
-    expect(px(holder.left) + px(piece.style.width) / 2).toBeCloseTo(px(frame.left) + px(frame.width) / 2);
+    const box = piece.parentElement!.style;
+    expect(px(box.top)).toBe(px(frame.top) + px(frame.height));
+    expect(px(box.top) + px(box.height)).toBe(window.innerHeight - MARGIN);
+    expect(px(box.left) + px(piece.style.width) / 2).toBeCloseTo(px(frame.left) + px(frame.width) / 2);
   });
 });
 

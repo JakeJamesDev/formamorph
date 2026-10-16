@@ -241,10 +241,19 @@ Runs one extra request per turn. Edit its prompt under **Prompts → Summaries**
     label: 'Measured Clock',
     description: 'Measures how much story time each turn takes',
     experimental: true,
-    info: `Lets the turn's events set how much story time passes. Without it, every action costs a flat **one hour**.
+    info: `Lets the turn's events set how much story time passes. Without it, each action costs the **Time Per Turn** below.
 
 - A few spoken words cost minutes; a night's rest costs hours; *"three weeks later"* costs three weeks
 - Adds one small request per turn, next to choices and stat updates
+- Feeds the **Log** panel's clock, stat regeneration, and **Time in Memory**`,
+  },
+  timePerTurn: {
+    label: 'Time Per Turn',
+    description: 'Sets how much story time each turn adds',
+    info: `Moves the clock this far each turn. The default is 1 hour.
+
+- Enter an amount, then pick minutes, hours, days or weeks
+- Enter 0 to hold the clock still, so short scenes don't run days ahead
 - Feeds the **Log** panel's clock, stat regeneration, and **Time in Memory**`,
   },
   semanticLore: {
@@ -303,7 +312,7 @@ Runs one extra request per participant. Edit its prompt under **Prompts → Diar
   concurrentRequests: {
     label: 'Concurrent Requests',
     description: 'Runs each turn’s follow-up requests at the same time',
-    info: `Sends choices, stat updates, and the location change together instead of one after another.
+    info: `Sends choices, stat updates, and the location change together instead of one after another. Requests between turns, like memory summaries, run together too.
 
 - Faster turns on endpoints that handle parallel requests (e.g. LM Studio's **Parallel** setting)
 - Turn off if a memory-tight local model slows down under the load`,
@@ -339,6 +348,17 @@ Runs one extra request per participant. Edit its prompt under **Prompts → Diar
   endpointTopP: { label: 'Top-p', description: 'Overrides this endpoint’s Top-p setting' },
   endpointTopK: { label: 'Top-k', description: 'Overrides this endpoint’s Top-k setting' },
   endpointMinP: { label: 'Min-p', description: 'Overrides this endpoint’s Min-p setting' },
+  extraParams: {
+    label: 'Extra Parameters',
+    description: 'Adds JSON fields to every request to this endpoint',
+    info: `Write one JSON object, for example a vendor's reasoning switch, \`top_a\`, \`chat_template_kwargs\` or a routing block.
+
+A field the app sets for a request wins over the same field here. These fields only add what the app does not set.
+
+You can't set \`model\`, \`messages\`, \`stream\`, \`tools\`, \`tool_choice\`, \`response_format\`, \`n\` or \`stop\`.
+
+If the text has an error, requests go out without these fields.`,
+  },
 
   // ── Endpoints · Image ───────────────────────────────────────────────────────
   enableImageGeneration: {
@@ -395,6 +415,15 @@ You can still generate a single scene yourself from the button above the story.`
   faceFix: {
     label: 'Face Fix',
     description: 'Re-renders faces in a second pass',
+  },
+  imageFileName: {
+    label: 'File Name',
+    description: 'Sets where ComfyUI saves each image in its output folder',
+    info: `A \`/\` makes a folder. ComfyUI adds a counter and \`.png\`.
+
+\`{world}\` \`{subject}\` (an entity's or location's name, or \`turn-12-scene\`) \`{turn}\` \`{preset}\`
+
+A custom workflow takes it where its save node's prefix is \`%prefix%\`.`,
   },
   imageWorkflow: {
     label: 'Workflow (API Format)',
@@ -603,15 +632,20 @@ Small steps matter: 1.05 to 1.15 is typical. High values can break names and pun
   // ── Data · Saves ────────────────────────────────────────────────────────────
   autosave: {
     label: 'Autosave',
-    description: 'Saves after every turn to a per-world Autosave slot',
-    info: `- Never touches your manual saves
+    description: 'Saves after every turn to the world\'s autosaves',
+    info: `- Named by turn
+- Never touches your manual saves
 - Appears under **Load Game** with an **Auto** tag
 - Starts once the opening scene finishes`,
+  },
+  autosaveSlots: {
+    label: 'Autosaves Kept',
+    description: 'Keeps this many autosaves per world, replacing the oldest',
   },
 
   // ── Data · Authoring ────────────────────────────────────────────────────────
   editorAutoSave: {
-    label: 'Auto Save',
+    label: 'Autosave',
     description: 'Saves your world while you edit it',
     info: `- Saves after a large run of edits or a short pause
 - **Save** and **Ctrl+S** still save right away
@@ -619,7 +653,7 @@ Small steps matter: 1.05 to 1.15 is typical. High values can break names and pun
 - The **Save** menu in the World Editor has the same switch`,
   },
   editorAutoSavePause: {
-    label: 'Auto Save Pause',
+    label: 'Autosave Pause',
     description: 'Waits this long after your last edit before saving',
     info: 'A longer pause writes less often but leaves more unsaved',
   },
@@ -651,6 +685,8 @@ export const SETTINGS_BUTTONS = {
 /** Status text the modal draws where a group of controls would be. */
 export const SETTINGS_NOTES = {
   imageGenerationOff: 'Image generation is off. Select “Enable Image Generation” to turn it on.',
+  imageModelFromWorkflow: `Shows the model the workflow loads. Change it in **${SETTINGS_COPY.imageWorkflow.label}** under **Advanced**.`,
+  imageFileNameNoPrefix: `Add \`%prefix%\` to the save node in **${SETTINGS_COPY.imageWorkflow.label}** to use this setting`,
 } as const;
 
 /** Every confirmation the modal raises. Bodies are sentences and carry their own punctuation. */
@@ -673,7 +709,7 @@ export const SETTINGS_CONFIRMS = {
   },
   resetAiEndpoint: {
     title: 'Reset AI Endpoint',
-    description: 'Are you sure you want to reset the endpoint URL, model name, API token, and limits to their default values?',
+    description: 'Are you sure you want to reset the endpoint URL, model name, API token, limits, and Extra Parameters to their default values?',
   },
   resetWorkflow: {
     title: 'Reset Workflow',
@@ -742,7 +778,6 @@ export const SETTINGS_OPTIONS = {
 export const REASONING_NOTES = {
   never: 'This model doesn’t support reasoning, so there’s nothing to configure',
   always: 'This model always reasons, so it can’t be switched off',
-  noBudgetBase: 'Set “Max Output Tokens” on this prompt’s endpoint to use this budget',
 } as const;
 
 export const TOOLS_NOTES = {

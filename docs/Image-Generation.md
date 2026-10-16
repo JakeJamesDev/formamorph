@@ -135,6 +135,7 @@ Select a preset in **Preset** to switch to it. See [Image Presets](#image-preset
 
 ## Providers
 <!-- keywords: supported backends, which image service, compare options, default ports, local versus paid, gallery folder, face fix slow, detector download -->
+<!-- route: imageSetup -->
 
 | Provider | Runs on | Default address | Setup |
 |---|---|---|---|
@@ -173,6 +174,7 @@ The workflow must be ComfyUI's API format, not the normal saved workflow. Formam
 | Sampler (`sampler_name`) | `"%sampler%"` |
 | Latent width and height | `%width%`, `%height%` |
 | KSampler seed, steps and cfg | `%seed%`, `%steps%`, `%cfg%` |
+| Save node file name (`filename_prefix`), from **File Name** | `"%prefix%"` |
 
 - A text token goes inside the quotes: `"text": "%prompt%"`.
 - A number token replaces the number: `"width": %width%`.

@@ -8,6 +8,7 @@ import { encodePlaceholderToken } from '@/lib/placeholders';
 import { phValueId, phValues } from '@/test/placeholderValues';
 import type { StatPanelTab } from '@/views/statPanelTabs';
 import StatManager from './StatManager';
+import { boxScripts, codeAt } from '@/test/scriptFixtures';
 
 // Ten rockets banded in the stat's own units — the case the unit toggle exists for.
 const rockets = {
@@ -158,7 +159,7 @@ describe('the coverage bar', () => {
 });
 
 describe('the tab strip', () => {
-  it('drops the Code tab for a stat with no numeric value, rather than offering an empty one', () => {
+  it('drops the Scripts tab for a stat with no numeric value, rather than offering an empty one', () => {
     // A type no editor writes any more. `migrateWorld` retypes it on the way in, so the editor never shows
     // one — but the panel takes whatever it is handed, and a tab whose body renders nothing is worse than
     // no tab. Rendered here rather than through the editor for exactly that reason.
@@ -171,55 +172,121 @@ describe('the tab strip', () => {
   it('offers all three tabs for a numeric stat', () => {
     renderManager('details');
     const strip = screen.getByRole('tablist', { name: 'Stat Fields' });
-    expect(within(strip).getAllByRole('tab').map((el) => el.textContent)).toEqual(['Details', 'Descriptors', 'Code']);
+    expect(within(strip).getAllByRole('tab').map((el) => el.textContent)).toEqual(['Details', 'Descriptors', 'Scripts']);
   });
 });
 
-describe('the two code boxes', () => {
-  /** The named box's editor, once its CodeMirror chunk has landed. Two editors fetch that chunk here, and
+describe('the Scripts section', () => {
+  /** A script row's editor, once its CodeMirror chunk has landed. Several editors fetch that chunk here, and
    *  under the whole suite's load they take longer than the default window allows. */
-  const box = (label: string) => waitFor(() => {
-    const field = screen.getAllByLabelText(label).find((el) => el.getAttribute('role') === 'textbox');
-    expect(field?.closest('.cm-editor')).toBeTruthy();
+  const editorIn = (row: HTMLElement) => waitFor(() => {
+    const field = within(row).getAllByRole('textbox').find((el) => el.closest('.cm-editor'));
+    expect(field).toBeTruthy();
     return field as HTMLElement;
   }, { timeout: 10000 });
+  const rowOf = (label: string) => screen.getByRole('group', { name: label });
+  const rows = () => screen.queryAllByRole('group').filter((el) => el.hasAttribute('data-script-id'));
 
-  it('shows both boxes in turn order, each carrying its timing as its caption', async () => {
+  it('shows each script in stored order, a blank name reading as the stat and its timing (Q6)', async () => {
+    store.stat = { ...store.stat, scripts: [...boxScripts({ before: 'return 1;', after: 'return 2;' })] };
     renderManager('code');
-    const before = await box('Stat Code Before the AI');
-    const after = await box('Stat Code After the AI');
-    // Before the AI sits above After the AI, which is the order the turn runs them in.
-    expect(before.compareDocumentPosition(after) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(screen.getByText('Before the AI')).toBeInTheDocument();
-    expect(screen.getByText('After the AI')).toBeInTheDocument();
+    expect(rows().map((row) => row.getAttribute('aria-label'))).toEqual(['Rockets · Before the AI', 'Rockets · After the AI']);
+    expect(within(rowOf('Rockets · Before the AI')).getByRole('textbox', { name: 'Name' })).toHaveAttribute('placeholder', 'Rockets · Before the AI');
+    expect(await editorIn(rowOf('Rockets · Before the AI'))).toHaveTextContent('return 1;');
+    expect(await editorIn(rowOf('Rockets · After the AI'))).toHaveTextContent('return 2;');
   });
 
-  it('shows each box the code its own field holds', async () => {
-    store.stat = { ...store.stat, beforeCode: 'return 1;', code: 'return 2;' };
+  it('reads a named script by its name', () => {
+    store.stat = { ...store.stat, scripts: [{ id: 'a', timing: 'after', code: '', name: 'Drain' }] };
     renderManager('code');
-    expect(await box('Stat Code Before the AI')).toHaveTextContent('return 1;');
-    expect(await box('Stat Code After the AI')).toHaveTextContent('return 2;');
+    expect(rows().map((row) => row.getAttribute('aria-label'))).toEqual(['Drain']);
   });
 
-  it('writes what the player types in the before box to beforeCode, leaving the after box alone', async () => {
-    store.stat = { ...store.stat, code: 'return 2;' };
+  it('adds a script Before the AI with an empty name and its editor focused', async () => {
+    store.stat = { ...store.stat, scripts: boxScripts({ after: 'return 2;' }) };
     const user = userEvent.setup();
     renderManager('code');
-    await user.click(await box('Stat Code Before the AI'));
+    await user.click(screen.getByRole('button', { name: 'Add Script' }));
+
+    expect(store.stat.scripts?.map(({ timing, code, name }) => ({ timing, code, name }))).toEqual([
+      { timing: 'after', code: 'return 2;', name: undefined },
+      { timing: 'before', code: '', name: undefined },
+    ]);
+    const added = rows().at(-1)!;
+    expect(within(added).getByRole('combobox', { name: 'Timing' })).toHaveTextContent('Before the AI');
+    expect(within(added).getByRole('textbox', { name: 'Name' })).toHaveValue('');
+    const editor = await editorIn(added);
+    await waitFor(() => expect(editor.contains(document.activeElement) || editor === document.activeElement).toBe(true));
+  });
+
+  it('lists the five timings with their labels and moves a script by its pick (Q4)', async () => {
+    store.stat = { ...store.stat, scripts: boxScripts({ before: 'return 1;' }) };
+    const user = userEvent.setup();
+    renderManager('code');
+    await user.click(within(rowOf('Rockets · Before the AI')).getByRole('combobox', { name: 'Timing' }));
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual([
+      'Before the AI', 'After the AI', 'During AI Output', 'At Game Start', 'When a Trait Switches',
+    ]);
+    await user.click(screen.getByRole('option', { name: 'At Game Start' }));
+    expect(store.stat.scripts).toEqual([{ id: 'before', timing: 'start', code: 'return 1;' }]);
+    expect(rows().map((row) => row.getAttribute('aria-label'))).toEqual(['Rockets · At Game Start']);
+  });
+
+  it('writes a typed name and drops a cleared one, so the fallback shows again', async () => {
+    store.stat = { ...store.stat, scripts: boxScripts({ after: '' }) };
+    const user = userEvent.setup();
+    renderManager('code');
+    await user.type(within(rowOf('Rockets · After the AI')).getByRole('textbox', { name: 'Name' }), 'Drain');
+    expect(store.stat.scripts?.[0].name).toBe('Drain');
+    await user.clear(within(rowOf('Drain')).getByRole('textbox', { name: 'Name' }));
+    expect(store.stat.scripts?.[0]).not.toHaveProperty('name');
+  });
+
+  it('removes an empty script without asking', async () => {
+    store.stat = { ...store.stat, scripts: boxScripts({ before: '  ', after: 'return 2;' }) };
+    const user = userEvent.setup();
+    renderManager('code');
+    await user.click(within(rowOf('Rockets · Before the AI')).getByRole('button', { name: 'Remove Script' }));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(store.stat.scripts?.map((script) => script.timing)).toEqual(['after']);
+  });
+
+  it('asks before it removes a script with code: Cancel keeps it, Remove deletes it', async () => {
+    store.stat = { ...store.stat, scripts: boxScripts({ before: 'return 1;', after: 'return 2;' }) };
+    const user = userEvent.setup();
+    renderManager('code');
+    const remove = () => user.click(within(rowOf('Rockets · Before the AI')).getByRole('button', { name: 'Remove Script' }));
+
+    await remove();
+    const dialog = await screen.findByRole('alertdialog');
+    expect(dialog).toHaveTextContent('Remove This Script');
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    expect(store.stat.scripts).toHaveLength(2);
+
+    await remove();
+    await user.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Remove' }));
+    expect(store.stat.scripts?.map((script) => script.timing)).toEqual(['after']);
+  });
+
+  it('writes what the player types into that script alone', async () => {
+    store.stat = { ...store.stat, scripts: boxScripts({ before: '', after: 'return 2;' }) };
+    const user = userEvent.setup();
+    renderManager('code');
+    await user.click(await editorIn(rowOf('Rockets · Before the AI')));
     // One key at a time, each confirmed landed: CodeMirror drops a key dispatched while it is mid-update.
     const typed = '7;';
     for (let i = 0; i < typed.length; i++) {
       await user.keyboard(typed[i]);
-      await waitFor(() => expect(store.stat.beforeCode).toBe(typed.slice(0, i + 1)));
+      await waitFor(() => expect(codeAt(store.stat, 'before')).toBe(typed.slice(0, i + 1)));
     }
-    expect(store.stat.code).toBe('return 2;');
+    expect(codeAt(store.stat)).toBe('return 2;');
   });
 });
 
 describe('the code field’s stat names', () => {
   /** The CodeMirror editor arrives on its own chunk, so the case waits for it to land. */
   const codeField = () => waitFor(() => {
-    const field = screen.getAllByLabelText('Stat Code After the AI').find((el) => el.getAttribute('role') === 'textbox');
+    const field = screen.getAllByLabelText(/^Code .* · After the AI$/).find((el) => el.getAttribute('role') === 'textbox');
     expect(field?.closest('.cm-editor')).toBeTruthy();
     return field as HTMLElement;
   });
@@ -229,7 +296,7 @@ describe('the code field’s stat names', () => {
     const BEAST: Placeholder = { id: 'ph-beast', name: 'Beast', values: phValues(['Wolf', 'Bear']) };
     store.placeholders = [BEAST];
     const chip = encodePlaceholderToken({ id: BEAST.id, mode: 'world', placementId: 'p1' });
-    store.stat = { ...store.stat, name: `${chip} Power` };
+    store.stat = { ...store.stat, name: `${chip} Power`, scripts: boxScripts({ after: '' }) };
     const user = userEvent.setup();
     renderManager('code');
     await user.click(await codeField());
@@ -237,7 +304,7 @@ describe('the code field’s stat names', () => {
     const typed = 'return "';
     for (let i = 0; i < typed.length; i++) {
       await user.keyboard(typed[i]);
-      await waitFor(() => expect(store.stat.code).toBe(typed.slice(0, i + 1)));
+      await waitFor(() => expect(codeAt(store.stat)).toBe(typed.slice(0, i + 1)));
     }
 
     // The popup opened for an earlier key stays up until the re-query lands, so wait for the list of names.

@@ -1,6 +1,7 @@
 # Request Transport
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-10-11. Tickets 01–08 done. Last landing a8763d7bf. Closed without gates.
 Spec session: request-transport — spec
 
 Rulings Q1–Q14 were settled in the grilling session of 2026-10-07 and are folded into the decisions below. Architecture review: candidate 2 (request adapter split) with candidate 1 (background pass queue) folded in by Q8. A code review of the first draft reopened Q6, Q10 and Q11 on new evidence the same day; the rulings below are the revised ones.
@@ -33,7 +34,7 @@ Three modules replace the closure and the five silent-pass effects.
 The re-rolls for choices and stats build their requests from the pass records.
 
 **Deliberate changes the player can notice**
-- A new character's diary now carries the character's description, because discover runs first.
+- A new character's diary now carries the character's description, because discover runs first. A diary written under a variant of an entity's name ("Aldric" for "Sergeant Aldric") now carries that entity's text too; today the exact-name lookup finds nothing (Q20).
 - Silent passes follow the Concurrent Requests setting. With it off, only one runs at a time; with it on, independent passes run together, as the in-turn batch already does. A backfill (Memory Digests turned on mid-game) sends every past turn's digest at once instead of one at a time; a rate-limited burst is set aside until the next turn.
 - A pass that keeps failing no longer stalls the passes behind it.
 - A diary is no longer written for a name that will never become an entity. Nothing read those diaries.
@@ -43,6 +44,7 @@ The re-rolls for choices and stats build their requests from the pass records.
 - The status bar names a running discover pass ("Describing character…"), under the same Show Silent Requests toggle as the others.
 - Re-rolls, digests and diaries show Request Anatomy in the AI-context viewer, because the pass records label their requests.
 - Leaving the game stops a running silent pass.
+- Backfills run oldest turn first for digests and discovers. In serial mode a newly invented character can wait behind older unknown names (Q21).
 
 Everything else the player sees stays as it is.
 
@@ -104,7 +106,14 @@ Everything else the player sees stays as it is.
   - Due items are (turn, name) pairs for diary and discover and turn ids for digest, so one stuck pair never hides the ones behind it. A turn whose narration is blank is not due for anything. A digest is due while the turn's summary is undefined; an empty string counts as written, which the due test must check explicitly, because today's test treats an empty string as missing.
   - Dependencies, always kept: a milestone is due only when no digest is due and none is set aside this window; a diary for a name is due only when that name is an entity, or when its discover has finished. A name with no entity and no discover coming (suppressed, Describe New Characters off, or its discover set aside) gets no diary this window; with no discover ever coming it gets none at all. Everything else is independent.
   - Concurrency follows Concurrent Requests (Q10, revised). On: every due pass whose dependencies are met starts together, with no cap; the endpoint's own limits apply, and a rate-limited reply is a failure that sets the pass aside. Off: one pass at a time, in the order discover → digest → diary → milestone (Q11). In both modes digest and diary pick the oldest due turn first.
-  - Failed pass (new): a pass that throws or answers empty is set aside for the rest of this idle window. The set-aside list clears on any history change the queue did not make and on a session change. An empty digest reply is stored as an empty string, as empty diaries already are, so the turn stops being due. A canceled pass is neither applied nor set aside.
+  - Failed pass (new): a pass that throws or answers empty is set aside for the rest of this idle window. The set-aside list clears on any history change the queue did not make and on a session change. A canceled pass is neither applied nor set aside.
+  - Empty replies per kind (Q15, Q16, ruled 2026-10-11 for ticket 05): an empty digest is stored as an empty string and counts as written, not set aside, as empty diaries already are; the turn stops being due and the milestone proceeds. An empty milestone reply is set aside and applies nothing; a non-empty malformed milestone reply keeps today's fail-safe apply, where fresh candidates are marked seen and kept.
+  - Milestone stamp (Q17, ruled 2026-10-11 for ticket 05): the session counter, the latest turn's id and that turn's narration. A rollback or edit of the latest turn during a selection drops the result, and the next tick re-judges.
+  - Discover order per name (Q19, ruled 2026-10-11 for ticket 06): a name found in several turns is discovered from its oldest pair, the passage it first appeared in. One discover per name at a time; once one applies, the name is an entity and its other pairs stop being due. A set-aside pair lets the next turn's pair for the same name try.
+  - Name matching (Q20, ruled 2026-10-11 for ticket 06): the diary's "is an entity" test and the diary request's entity lookup both use the variant-aware character-name match that discover already uses, so a variant name gets its entity text.
+  - Backfill order (Q21, ruled 2026-10-11 at the spec review): oldest-first stays for digest and discover. The oldest turn is closest to leaving the context window, and the discover prompt asks about the passage the character first appeared in. The old newest-first discover order is not restored.
+  - Copy exception (Q22, ruled 2026-10-11 at the spec review): "character" stays in the discover status label and the diary changelog lead. A runtime-invented person is a character, as the Describe New Characters setting and the glossary say; an authored one is an entity.
+  - Interim gating in ticket 05 (Q18, ruled 2026-10-11): until diary and discover join the queue, the queue's gate also holds while diary or discover runs, and diary and discover wait while the queue's running set is non-empty, milestone included. Interim behavior is never looser than today; ticket 06 removes the interim guard.
   - Idle gate: nothing starts while a turn or a scene render is running. A running pass finishes and applies its result (Q12). Results apply through a session guard: the view keeps a session counter bumped on load and on new game; the queue stamps each pass with that counter, the turn id it targets, and the narration text it read. A result is dropped when the counter changed or the target turn's narration differs. Digest and diary already drop a result whose turn id is gone; discover and milestone are the guard's real targets, since neither checks anything today.
   - Cancel (new): the queue holds one abort controller. Leaving the game and loading a save abort running passes, as both already cancel a scene render. A new turn does not. Every queue request and both regenerates carry the signal.
   - Regenerate Memory and the discovered-character regenerate (new) enter the queue as a foreground job: the press shows a spinner with a cancel, waits behind running passes, then holds the queue while it runs. Today the discovered-character button is disabled while passes run and Memory Manager's button only during a turn; both change to the waiting spinner. Partial re-rolls stay outside, gated by the turn flag as today.
@@ -146,5 +155,6 @@ Everything else the player sees stays as it is.
 - Q10 was first ruled "keep milestone concurrent", then reopened when review showed two silent requests overlap after most turns today, whichever endpoint. The revised ruling ties concurrency to Concurrent Requests, which already encodes whether the endpoint takes parallel requests.
 - Q11 was first described as behavior-preserving. Review showed today's order is digest, milestone, diary, discover, so discover-first changes a new character's diary request. The user accepted it as a deliberate fix.
 - A second review found the fixes' own gaps: an empty digest would stay due under the existing falsy test; an abort looks like an empty reply; a shared sink would interleave concurrent requests; no save session exists to stamp; unbounded fan-out; diaries for names that never become entities. The user first ruled a soft cap of three per kind, then a per-endpoint Parallel Requests count, then reverted to uncapped: the burst happens only on a backfill, and a rate-limited reply is already handled by set-aside. The user also ruled skipping orphan diaries, a cancelable wait for the regenerates, and abort on load.
+- The spec review of tickets 01–06 (2026-10-11) found no blocking defect. Its standards and spec findings are ticket 08; its two rulings are Q21 and Q22.
 - Q6 was first "parity byte-equal". Review showed the parity replay never reaches the code this spec moves. Characterization tests replaced it.
 - No export shape changes. No version change.

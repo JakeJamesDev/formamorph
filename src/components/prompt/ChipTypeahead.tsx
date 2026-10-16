@@ -28,7 +28,7 @@ import { $createVariableNode } from './VariableNode';
  * A vocabulary whose tokens nest (the placeholders) turns the menu into a drill: a row holding others
  * offers `›`, and walking into one filters that level instead of the root. Enter anywhere down there
  * inserts the path it took to get there, so `Molly › Hair` is one keyboard run rather than a trip to the
- * placeholder list. Owned placeholders are private to their holder, so the root offers only what an author
+ * placeholder list. Owned placeholders are private to their parent placeholder, so the root offers only what an author
  * places directly; a vocabulary that can mint a token offers to make what the filter names, and inside a
  * placeholder's own value field it says whose the new one will be.
  */
@@ -269,8 +269,8 @@ export function ChipTypeaheadPlugin({ trigger, vocab }: {
     <div
       data-testid="chip-typeahead"
       // `pointer-events-auto`: a modal Radix dialog sets `pointer-events: none` on the body, so anything
-      // portaled out of its content is visible but unclickable.
-      className="pointer-events-auto fixed z-[70] w-56 rounded-md border border-border bg-popover p-1 shadow-md"
+      // portaled out of its content is visible but unclickable. z-60: above dialogs, below the help window.
+      className="pointer-events-auto fixed z-[60] w-56 rounded-md border border-border bg-popover p-1 shadow-md"
       style={{
         left: Math.min(match.rect.left, window.innerWidth - 240),
         ...(below ? { top: match.rect.bottom + 4 } : { bottom: window.innerHeight - match.rect.top + 4 }),

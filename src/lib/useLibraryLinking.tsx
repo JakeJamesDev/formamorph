@@ -119,6 +119,11 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
   // The list state and its setters are read through the ref below, so the synchronization pass can run
   // from an effect without re-running on every edit.
   const { placeholders, locations, updateEntity, updateDictionary, exportEntity, exportDictionary } = options;
+  const { traits, traitGroups, entities, stats, statGroups, worldPlaceholders } = options;
+  const traitWorld = useMemo(
+    () => ({ traits, traitGroups, entities, stats, statGroups, placeholders: worldPlaceholders }),
+    [traits, traitGroups, entities, stats, statGroups, worldPlaceholders],
+  );
 
   const [pendingIds, setPendingIds] = useState<string[]>([]);
   const [linkPickerFor, setLinkPickerFor] = useState<LinkableContent | null>(null);
@@ -402,8 +407,8 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
     const item = linkPickerFor;
     setLinkPickerFor(null);
     if (!item) return;
-    applyLink(item, pick.source, !contentMatchesSource(item, pick.data));
-  }, [applyLink, linkPickerFor]);
+    applyLink(item, pick.source, !contentMatchesSource(item, pick.data, traitWorld));
+  }, [applyLink, linkPickerFor, traitWorld]);
 
   /**
    * Everything the selected item's split button needs, for the state that item is in.
@@ -495,12 +500,6 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
 
   /** The world was saved or rolled back, so nothing is waiting on it any more. */
   const clearPendingLinks = useCallback(() => setPendingIds([]), []);
-
-  const { traits, traitGroups, entities, stats, statGroups, worldPlaceholders } = options;
-  const traitWorld = useMemo(
-    () => ({ traits, traitGroups, entities, stats, statGroups, placeholders: worldPlaceholders }),
-    [traits, traitGroups, entities, stats, statGroups, worldPlaceholders],
-  );
 
   const dialogs: ReactNode = (
     <>

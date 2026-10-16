@@ -6,7 +6,7 @@ import {
 import type { ReasoningDialect } from '@/lib/reasoningDialect';
 import { defaultEndpointSamplerOverrides } from '@/lib/endpointSamplers';
 import {
-  reasoningCapabilityFromLevels, UNKNOWN_REASONING_CAPABILITY,
+  PROMPT_REQUEST_KINDS, reasoningCapabilityFromLevels, UNKNOWN_REASONING_CAPABILITY,
   type ReasoningCapability, type ReasoningEffortField,
 } from '@/lib/reasoningEffort';
 import { resolvePromptEndpoint, type ActiveEndpointState } from '@/lib/promptEndpoints';
@@ -203,6 +203,31 @@ describe('temperature and penalty — pinned, global, custom, omitted', () => {
     } });
 
     expect(buildRequestBody(snapshot(target), call({ requestType: 'summary' })).temperature).toBe(0);
+  });
+
+  it('keeps the app\'s own fields over the endpoint\'s Extra Parameters and adds the keys it does not set', () => {
+    const target = external({ extraParams: '{"temperature": 0.42, "top_a": 0.1, "chat_template_kwargs": {"enable_thinking": true}}' });
+    const body = buildRequestBody(snapshot(target), call({ requestType: 'summary' }));
+    expect(body).toMatchObject({ temperature: 0, top_a: 0.1, chat_template_kwargs: { enable_thinking: true }, stream: true });
+    // Text that can't be used sends nothing from it, rather than half of it.
+    expect(buildRequestBody(snapshot(external({ extraParams: '{"model": "other", "top_a": 1}' })), call())).not.toHaveProperty('top_a');
+  });
+
+  it('sends an Extra Parameters sampler where the app sends none for the call', () => {
+    const body = buildRequestBody(snapshot(external({ extraParams: '{"top_p": 0.5}' })), call());
+    expect(body.top_p).toBe(0.5);
+    // An enabled endpoint override is the app's own field, so it wins.
+    const overridden = external({
+      extraParams: '{"top_p": 0.5}',
+      samplerOverrides: { ...defaultEndpointSamplerOverrides(), topP: { enabled: true, value: 0.8 } },
+    });
+    expect(buildRequestBody(snapshot(overridden), call()).top_p).toBe(0.8);
+  });
+
+  it('keeps Inline narration\'s native off switch over an Extra Parameters reasoning field', () => {
+    const target = external({ extraParams: '{"reasoning_effort": "high", "chat_template_kwargs": {"enable_thinking": true}}' });
+    const snap = snapshot(target, { thinkingMode: 'inline', reasoningEngaged: true, reasoningEffort: 'high' });
+    expect(buildRequestBody(snap, call())).toMatchObject({ reasoning_effort: 'none', chat_template_kwargs: { enable_thinking: true } });
   });
 
   it('keeps a custom prompt sampler ahead of an enabled endpoint override', () => {
@@ -553,13 +578,12 @@ describe('the whole spec', () => {
       .toMatchObject({ max_tokens: 1400, thinking_budget_tokens: 400 });
   });
 
-  it('gives Choices no budget and the Thought Ceiling over its shipped cap on an endpoint with no Max Output', () => {
+  it('gives Choices High’s Thinking Room as its budget over its shipped cap on an endpoint with no Max Output', () => {
     const snap = snapshot(lmStudioReasoning({ maxTokens: undefined }), {
       reasoningEngaged: true, promptReasoning: { choices: 'high' }, promptReasoningBudget: { choices: 25 },
     });
     const body = buildRequestBody(snap, call({ requestType: 'choices', maxTokensOverride: 256 }));
-    expect(body).toMatchObject({ max_tokens: 768, reasoning_effort: 'high' });
-    expect(body).not.toHaveProperty('thinking_budget_tokens');
+    expect(body).toMatchObject({ max_tokens: 256 + 4096, reasoning_effort: 'high', thinking_budget_tokens: 4096 });
   });
 
   it('routes each kind to its own resolved target', () => {
@@ -619,14 +643,36 @@ describe('reasoning budget base — the thinking rides on top of the answer', ()
     expect(buildRequestBody(snap, call())).toMatchObject({ thinking_budget_tokens: 256, max_tokens: 768 });
   });
 
-  it('sends no budget and the Answer-Cap-based Thought Ceiling when the endpoint Max Output override is off', () => {
+  it('sends the strength’s Thinking Room as the budget when the endpoint Max Output override is off', () => {
     const snap = snapshot(routed(undefined), { promptReasoning: { summary: 'high' } });
     const summary = buildRequestBody(snap, call({ requestType: 'summary', maxTokensOverride: 300 }));
-    expect(summary).toMatchObject({ max_tokens: 900 });
-    expect(summary).not.toHaveProperty('thinking_budget_tokens');
+    expect(summary).toMatchObject({ thinking_budget_tokens: 4096, max_tokens: 300 + 4096 });
+    // The percent has no base to scale from, so it never moves the room.
+    const stretched = snapshot(routed(undefined), { promptReasoning: { summary: 'high' }, promptReasoningBudget: { summary: 200 } });
+    expect(buildRequestBody(stretched, call({ requestType: 'summary', maxTokensOverride: 300 }))).toEqual(summary);
+    // No cap on the answer, so no cap on the request; the budget still goes out.
     const narration = buildRequestBody(snap, call());
-    expect(narration).not.toHaveProperty('thinking_budget_tokens');
+    expect(narration).toHaveProperty('thinking_budget_tokens');
     expect(narration).not.toHaveProperty('max_tokens');
+  });
+
+  it('sizes the no-Max-Output budget by the prompt’s strength, and Model Default as Medium', () => {
+    const budgetAt = (strength: 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max' | 'auto') =>
+      buildRequestBody(
+        snapshot(routed(undefined), { promptReasoning: { summary: strength } }),
+        call({ requestType: 'summary', maxTokensOverride: 300 }),
+      );
+    expect(budgetAt('minimal')).toMatchObject({ thinking_budget_tokens: 128, max_tokens: 300 + 128 });
+    expect(budgetAt('low')).toMatchObject({ thinking_budget_tokens: 1024, max_tokens: 300 + 1024 });
+    expect(budgetAt('max')).toMatchObject({ thinking_budget_tokens: 16384, max_tokens: 300 + 16384 });
+    expect(budgetAt('auto')).toMatchObject({ thinking_budget_tokens: 2048, max_tokens: 300 + 2048 });
+  });
+
+  it('keeps the percent-of-Max-Output budget while Max Output is set', () => {
+    const snap = snapshot(routed(1000), { promptReasoning: { summary: 'high' }, promptReasoningBudget: { summary: 100 } });
+    // 100% of 1,000, not High's 4,096.
+    expect(buildRequestBody(snap, call({ requestType: 'summary', maxTokensOverride: 300 })))
+      .toMatchObject({ thinking_budget_tokens: 1000, max_tokens: 1300 });
   });
 
   it('sends the zero budget as the off signal with or without a base, and adds no headroom', () => {
@@ -639,8 +685,8 @@ describe('reasoning budget base — the thinking rides on top of the answer', ()
 
   it('gives a level-only endpoint its level and the Thought Ceiling, with no budget field', () => {
     const body = buildRequestBody(snapshot(levelOnly(), { reasoningEngaged: true, reasoningEffort: 'high' }), call());
-    // 200% of the 800-token Max Output rides on top of the 800-token answer, whatever the prompt's percent.
-    expect(body).toMatchObject({ reasoning_effort: 'high', max_tokens: 2400 });
+    // High's room rides on top of the 800-token answer, whatever the prompt's percent.
+    expect(body).toMatchObject({ reasoning_effort: 'high', max_tokens: 800 + 4096 });
     expect(body).not.toHaveProperty('thinking_budget_tokens');
   });
 
@@ -661,7 +707,7 @@ describe('reasoning budget base — the thinking rides on top of the answer', ()
     const k2 = external({ reasoning: { ...UNKNOWN_REASONING_CAPABILITY, reasons: true, budget: false, dialect: 'moonshot-k2' } });
     const body = buildRequestBody(snapshot(k2, { reasoningEngaged: true, reasoningEffort: 'high' }), call());
     expect(body).not.toHaveProperty('thinking');
-    expect(body).toMatchObject({ max_tokens: 2400 });
+    expect(body).toMatchObject({ max_tokens: 800 + 4096 });
   });
 
   it('sends a no-budget target the Thought Ceiling whatever the prompt’s own percent', () => {
@@ -669,30 +715,31 @@ describe('reasoning budget base — the thinking rides on top of the answer', ()
       reasoningEngaged: true, reasoningEffort: 'high', promptReasoningBudget: { summary: pct },
     });
     const summary = call({ requestType: 'summary', maxTokensOverride: 300 });
-    expect(buildRequestBody(snap(50), summary).max_tokens).toBe(1900);
-    expect(buildRequestBody(snap(200), summary).max_tokens).toBe(1900);
+    // Summary ships at Low, not Global.
+    expect(buildRequestBody(snap(50), summary).max_tokens).toBe(300 + 1024);
+    expect(buildRequestBody(snap(200), summary).max_tokens).toBe(300 + 1024);
   });
 
-  it('bases the Thought Ceiling on the Answer Cap when the endpoint Max Output override is off', () => {
+  it('sends no max_tokens where nothing caps the answer, room or not', () => {
     const snap = snapshot(levelOnly({ maxTokens: undefined }), { reasoningEngaged: true, reasoningEffort: 'high' });
-    expect(buildRequestBody(snap, call({ requestType: 'summary', maxTokensOverride: 300 })).max_tokens).toBe(900);
     expect(buildRequestBody(snap, call())).not.toHaveProperty('max_tokens');
   });
 
   it('sends Inline narration the Thought Ceiling on any endpoint, since its own <think> block rides in the answer', () => {
     const inline = (target: AiEndpointTarget) => snapshot(target, { thinkingMode: 'inline', reasoningEngaged: true, reasoningEffort: 'high' });
-    expect(buildRequestBody(inline(lmStudio()), call()).max_tokens).toBe(2400);
+    expect(buildRequestBody(inline(lmStudio()), call()).max_tokens).toBe(800 + 4096);
     expect(buildRequestBody(inline(lmStudioReasoning({ maxTokens: 800 })), call()))
-      .toMatchObject({ thinking_budget_tokens: 0, max_tokens: 2400 });
+      .toMatchObject({ thinking_budget_tokens: 0, max_tokens: 800 + 4096 });
     // An endpoint that refuses off still reasons natively under Inline narration.
     const google3 = external({ reasoning: { ...accepts('low', 'high'), reasons: true, dialect: 'google-3', offAllowed: false } });
-    expect(buildRequestBody(inline(google3), call()).max_tokens).toBe(2400);
+    expect(buildRequestBody(inline(google3), call()).max_tokens).toBe(800 + 4096);
     expect(buildRequestBody(inline(lmStudio()), call({ requestType: 'summary', maxTokensOverride: 300 })).max_tokens).toBe(300);
   });
 
-  it('keeps the reserve at the Answer Cap for Inline narration', () => {
+  it('reserves the Answer Cap plus the Thinking Room for Inline narration', () => {
     const snap = snapshot(lmStudio(), { thinkingMode: 'inline' });
-    expect(outputCaps(snap, { requestType: 'narration' }).reserve).toBe(800);
+    expect(outputCaps(snap, { requestType: 'narration' }).reserve).toBe(800 + 2048);
+    expect(buildRequestBody(snap, call()).max_tokens).toBe(800 + 2048);
   });
 
   it('sends a budget-taking target the Answer Cap plus its budget, not the Thought Ceiling', () => {
@@ -700,7 +747,7 @@ describe('reasoning budget base — the thinking rides on top of the answer', ()
     expect(buildRequestBody(snap, call())).toMatchObject({ thinking_budget_tokens: 400, max_tokens: 1200 });
   });
 
-  it('sends a Gemini 2.5 prompt no budget and the Thought Ceiling when the endpoint Max Output override is off', () => {
+  it('sends a Gemini 2.5 prompt the Thinking Room as its budget when the endpoint Max Output override is off', () => {
     const gemini = external({
       maxTokens: undefined,
       reasoning: { ...accepts('none', 'low', 'medium', 'high'), reasons: true, budget: true, dialect: 'google-2.5' },
@@ -709,13 +756,84 @@ describe('reasoning budget base — the thinking rides on top of the answer', ()
       snapshot(gemini, { reasoningEngaged: true, reasoningEffort: 'high' }),
       call({ requestType: 'summary', maxTokensOverride: 300 }),
     );
-    expect(body).not.toHaveProperty('google');
-    expect(body).toMatchObject({ max_tokens: 900 });
+    // Summary ships at Low, not Global.
+    expect(body).toMatchObject({ google: { thinking_config: { thinking_budget: 1024 } }, max_tokens: 300 + 1024 });
   });
 
   it('sends a model the record rules out its answer cap alone', () => {
     const snap = snapshot(lmStudio({ reasoning: { ...accepts(), budget: true } }), { reasoningEngaged: true, reasoningEffort: 'high' });
     expect(buildRequestBody(snap, call())).toMatchObject({ max_tokens: 800 });
+  });
+});
+
+/**
+ * A call that reasons with no budget on the wire gets the room its strength buys on top of its answer. Neither
+ * the answer's cap nor the endpoint's Max Output sizes the room.
+ */
+describe('Thinking Room — a fixed room per strength', () => {
+  const levelOnly = (over: Partial<AiEndpointTarget> = {}) =>
+    external({ reasoning: { ...accepts('none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'), reasons: true, dialect: 'openai' }, ...over });
+  const summary = call({ requestType: 'summary', maxTokensOverride: 300 });
+
+  it.each([
+    ['minimal', 128], ['low', 1024], ['medium', 2048], ['high', 4096], ['xhigh', 8192], ['max', 16384], ['auto', 2048],
+  ] as const)('gives %s its room on a no-budget call', (strength, room) => {
+    const snap = snapshot(levelOnly(), { reasoningEngaged: true, promptReasoning: { summary: strength } });
+    const spec = buildAiRequestSpec(snap, summary);
+    expect(spec.body.max_tokens).toBe(300 + room);
+    expect(spec).toMatchObject({ thinkingRoom: { tokens: room, strength } });
+  });
+
+  it('keeps the same room with Max Output on or off, which moves only the Answer Cap', () => {
+    const at = (maxTokens: number | undefined) =>
+      snapshot(levelOnly({ maxTokens }), { reasoningEngaged: true, promptReasoning: { summary: 'low', narration: 'low' } });
+    expect(buildRequestBody(at(800), summary).max_tokens).toBe(300 + 1024);
+    expect(buildRequestBody(at(4000), summary).max_tokens).toBe(300 + 1024);
+    expect(buildRequestBody(at(undefined), summary).max_tokens).toBe(300 + 1024);
+    expect(buildRequestBody(at(800), call()).max_tokens).toBe(800 + 1024);
+    expect(buildRequestBody(at(4000), call()).max_tokens).toBe(4000 + 1024);
+  });
+
+  it('reserves exactly the max_tokens it sends', () => {
+    const snap = snapshot(levelOnly(), { reasoningEngaged: true, promptReasoning: { summary: 'xhigh' } });
+    expect(outputCaps(snap, summary)).toEqual({ answerCap: 300, reserve: 300 + 8192 });
+    expect(buildRequestBody(snap, summary).max_tokens).toBe(300 + 8192);
+  });
+
+  it('carries no room on a plain endpoint, which keeps the Answer Cap alone', () => {
+    const plain = snapshot(external({ reasoning: UNKNOWN_REASONING_CAPABILITY }), { reasoningEngaged: true, reasoningEffort: 'high' });
+    const spec = buildAiRequestSpec(plain, summary);
+    expect(spec.body.max_tokens).toBe(300);
+    expect(outputCaps(plain, summary).reserve).toBe(300);
+    expect(spec).not.toHaveProperty('thinkingRoom');
+  });
+
+  it('carries no room on a budget call with Max Output set, or a switched-off one', () => {
+    const budgeted = snapshot(lmStudioReasoning({ maxTokens: 800 }), { promptReasoning: { summary: 'high' } });
+    expect(buildAiRequestSpec(budgeted, summary)).not.toHaveProperty('thinkingRoom');
+    const off = snapshot(levelOnly(), { reasoningEngaged: true, promptReasoning: { summary: 'none' } });
+    const spec = buildAiRequestSpec(off, summary);
+    expect(spec.body.max_tokens).toBe(300);
+    expect(spec).not.toHaveProperty('thinkingRoom');
+  });
+
+  it('sizes Inline narration’s room from narration’s own strength, with Global following the endpoint level', () => {
+    const inline = (over: Partial<AiSettingsSnapshot>) => buildAiRequestSpec(
+      snapshot(lmStudio(), { thinkingMode: 'inline', reasoningEngaged: true, ...over }), call(),
+    );
+    expect(inline({ promptReasoning: { narration: 'low' }, reasoningEffort: 'max' }))
+      .toMatchObject({ body: { max_tokens: 800 + 1024 }, thinkingRoom: { tokens: 1024, strength: 'low' } });
+    expect(inline({ promptReasoning: { narration: 'global' }, reasoningEffort: 'max' }))
+      .toMatchObject({ body: { max_tokens: 800 + 16384 }, thinkingRoom: { strength: 'max' } });
+    expect(inline({ promptReasoning: {}, reasoningEffort: 'minimal' }).body.max_tokens).toBe(800 + 128);
+  });
+
+  it('sizes a switched-off Inline narration from the strength its switch keeps', () => {
+    const snap = snapshot(lmStudio(), {
+      thinkingMode: 'inline', reasoningEngaged: true, reasoningEffort: 'none', promptReasoning: { narration: 'none' },
+      keptReasoning: { prompts: { narration: { enabled: false, level: 'global' } }, global: { enabled: false, level: 'xhigh' } },
+    });
+    expect(buildAiRequestSpec(snap, call())).toMatchObject({ body: { max_tokens: 800 + 8192 }, thinkingRoom: { strength: 'xhigh' } });
   });
 });
 
@@ -748,6 +866,13 @@ describe('dialects — one spelling per row', () => {
 
   const speaks = (target: AiEndpointTarget, over: Partial<AiSettingsSnapshot> = {}) => reasoningSlice(sends(target, over));
 
+  /** Every prompt switched off and Thinking off, as Settings resolves that state. */
+  const engagedNowhere = (target: AiEndpointTarget): AiSettingsSnapshot => snapshot(target, {
+    reasoningEngaged: false,
+    reasoningEffort: 'none',
+    promptReasoning: Object.fromEntries(PROMPT_REQUEST_KINDS.map((kind) => [kind, 'none' as const])),
+  });
+
   it.each([
     ['unknown', { thinking_budget_tokens: 500, reasoning_effort: 'high' }],
     ['engine', { thinking_budget_tokens: 500 }],
@@ -763,6 +888,8 @@ describe('dialects — one spelling per row', () => {
     ['moonshot-k2', {}],
     // Thinking is Novita's default, so an on request says nothing.
     ['novita', {}],
+    // llama.cpp's budget is High's Thinking Room, whatever the percent says.
+    ['llamacpp', { reasoning_budget_tokens: 4096, reasoning_effort: 'high' }],
   ] as const)('spells a 50%% budget at High the %s way', (dialect, expected) => {
     expect(speaks(speaking(dialect))).toEqual(expected);
   });
@@ -781,6 +908,7 @@ describe('dialects — one spelling per row', () => {
     ['moonshot-k3', {}],
     ['moonshot-k2', { thinking: { type: 'disabled' } }],
     ['novita', { enable_thinking: false }],
+    ['llamacpp', { reasoning_effort: 'none' }],
   ] as const)('spells a switched-off prompt the %s way', (dialect, expected) => {
     expect(speaks(speaking(dialect), { promptReasoning: { narration: 'none' } })).toEqual(expected);
   });
@@ -856,12 +984,26 @@ describe('dialects — one spelling per row', () => {
 
   it('sends the Anthropic floor as the budget and the headroom when the endpoint has no Max Output', () => {
     const noBase = speaking('anthropic-budget', { maxTokens: undefined });
-    expect(sends(noBase, {}, { requestType: 'narration', maxTokensOverride: 300 }))
+    // Minimal's room is 128, under the floor, so the floor wins.
+    expect(sends(noBase, { promptReasoning: { narration: 'minimal' } }, { requestType: 'narration', maxTokensOverride: 300 }))
       .toMatchObject({ thinking: { budget_tokens: 1024, type: 'enabled' }, max_tokens: 1324 });
+    // Above the floor the room is the budget.
+    expect(sends(noBase, { promptReasoning: { narration: 'high' } }, { requestType: 'narration', maxTokensOverride: 300 }))
+      .toMatchObject({ thinking: { budget_tokens: 4096, type: 'enabled' }, max_tokens: 4396 });
     // Narration with no cap of its own still sends no max_tokens.
     const uncapped = sends(noBase);
-    expect(uncapped).toMatchObject({ thinking: { budget_tokens: 1024, type: 'enabled' } });
+    // Global High: 4,096.
+    expect(uncapped).toMatchObject({ thinking: { budget_tokens: 4096, type: 'enabled' } });
     expect(uncapped).not.toHaveProperty('max_tokens');
+  });
+
+  it('carries the budget it sends as the room on the spec when the endpoint has no Max Output, and none with one', () => {
+    const at = (maxTokens: number | undefined) => buildAiRequestSpec(
+      snapshot(speaking('anthropic-budget', { maxTokens }), { reasoningEngaged: true, promptReasoning: { narration: 'minimal' } }),
+      call({ requestType: 'narration', maxTokensOverride: 300 }),
+    );
+    expect(at(undefined)).toMatchObject({ thinkingRoom: { tokens: 1024, strength: 'minimal' } });
+    expect(at(1000)).not.toHaveProperty('thinkingRoom');
   });
 
   it('applies no floor on a dialect that has none', () => {
@@ -897,6 +1039,123 @@ describe('dialects — one spelling per row', () => {
     expect(speaks(speaking('unknown'), { promptReasoning: { narration: 'none' } }))
       .toEqual({ thinking_budget_tokens: 0, reasoning_effort: 'none' });
     expect(external().reasoning.dialect).toBe('unknown');
+  });
+
+  /**
+   * The records a llama.cpp server's `/props` writes: a template that reads `reasoning_effort` lists the safe
+   * levels, and one that does not lists `none` alone. Nothing says whether the model thinks.
+   */
+  describe('llamacpp — the server ends the thought at the Thinking Room', () => {
+    const llamaCpp = (levels: readonly ReasoningEffortField[], over: Partial<AiEndpointTarget> = {}) => external({
+      url: 'http://127.0.0.1:8080/v1/chat/completions',
+      model: 'qwen3.gguf',
+      reasoning: {
+        ...UNKNOWN_REASONING_CAPABILITY, levels, budget: true, dialect: 'llamacpp',
+        sources: { levels: 'native', budget: 'native', dialect: 'native' },
+      },
+      ...over,
+    });
+    const plainTemplate = (over: Partial<AiEndpointTarget> = {}) => llamaCpp(['none'], over);
+    const effortTemplate = (over: Partial<AiEndpointTarget> = {}) => llamaCpp(['none', 'low', 'medium', 'high'], over);
+    const director = call({ requestType: 'director' });
+    const engaged = (target: AiEndpointTarget, over: Partial<AiSettingsSnapshot> = {}) =>
+      snapshot(target, { reasoningEngaged: true, ...over });
+
+    it('sends Director at its shipped Low the 1,024-token room as its budget, on top of the Answer Cap', () => {
+      const spec = buildAiRequestSpec(engaged(plainTemplate()), director);
+      expect(reasoningSlice(spec.body)).toEqual({ reasoning_budget_tokens: 1024 });
+      expect(spec.body.max_tokens).toBe(800 + 1024);
+      expect(outputCaps(engaged(plainTemplate()), director)).toEqual({ answerCap: 800, reserve: 800 + 1024 });
+    });
+
+    it('sizes the budget by strength alone, whatever Max Output and the budget percent say', () => {
+      const at = (maxTokens: number | undefined) => buildRequestBody(
+        engaged(plainTemplate({ maxTokens }), { promptReasoningBudget: { director: 200 } }),
+        call({ requestType: 'director', maxTokensOverride: 300 }),
+      );
+      for (const maxTokens of [800, 4000, undefined]) {
+        expect(at(maxTokens)).toMatchObject({ reasoning_budget_tokens: 1024, max_tokens: 300 + 1024 });
+      }
+    });
+
+    it.each([
+      ['minimal', 128], ['low', 1024], ['medium', 2048], ['high', 4096], ['xhigh', 8192], ['max', 16384], ['auto', 2048],
+    ] as const)('sends %s its Thinking Room as the budget', (strength, room) => {
+      const body = buildRequestBody(engaged(plainTemplate(), { promptReasoning: { director: strength } }), director);
+      expect(body).toMatchObject({ reasoning_budget_tokens: room, max_tokens: 800 + room });
+    });
+
+    it('sends a switched-off prompt the none literal and no budget on a template without effort support', () => {
+      const spec = buildAiRequestSpec(engaged(plainTemplate(), { promptReasoning: { director: 'none' } }), director);
+      expect(reasoningSlice(spec.body)).toEqual({ reasoning_effort: 'none' });
+      expect(spec.body.max_tokens).toBe(800);
+    });
+
+    it('sends a level only where the template reads reasoning_effort', () => {
+      const low = { promptReasoning: { director: 'low' as const } };
+      expect(reasoningSlice(buildRequestBody(engaged(effortTemplate(), low), director)))
+        .toEqual({ reasoning_budget_tokens: 1024, reasoning_effort: 'low' });
+      expect(reasoningSlice(buildRequestBody(engaged(plainTemplate(), low), director)))
+        .toEqual({ reasoning_budget_tokens: 1024 });
+    });
+
+    it('carries the room its budget sends on the spec, so a cut names it', () => {
+      expect(buildAiRequestSpec(engaged(plainTemplate()), director)).toMatchObject({ thinkingRoom: { tokens: 1024, strength: 'low' } });
+    });
+
+    it.each([
+      ['without', plainTemplate], ['with', effortTemplate],
+    ] as const)('sends the none literal alone %s effort support when reasoning is engaged nowhere', (_t, template) => {
+      for (const requestType of ['narration', 'director'] as const) {
+        const body = buildRequestBody(engagedNowhere(template()), call({ requestType }));
+        expect(reasoningSlice(body)).toEqual({ reasoning_effort: 'none' });
+        expect(body.max_tokens).toBe(800);
+      }
+    });
+
+    it('adds no Thinking Room to the none literal with Max Output off', () => {
+      const unbounded = buildRequestBody(engagedNowhere(plainTemplate({ maxTokens: undefined })), director);
+      const bare = buildRequestBody(engagedNowhere(external({ maxTokens: undefined, reasoning: UNKNOWN_REASONING_CAPABILITY })), director);
+      expect(reasoningSlice(unbounded)).toEqual({ reasoning_effort: 'none' });
+      expect(unbounded.max_tokens).toBe(bare.max_tokens);
+    });
+
+    it('stays silent on a llama.cpp record that rules the model out', () => {
+      const ruledOut = llamaCpp(['none'], {});
+      ruledOut.reasoning = { ...ruledOut.reasoning, reasons: false };
+      expect(reasoningSlice(buildRequestBody(engagedNowhere(ruledOut), director))).toEqual({});
+    });
+
+    it('sends a switched-off prompt the none literal alone while another prompt is on', () => {
+      const oneOn = engaged(effortTemplate(), { promptReasoning: { director: 'low', narration: 'none' } });
+      expect(reasoningSlice(buildRequestBody(oneOn, call()))).toEqual({ reasoning_effort: 'none' });
+    });
+  });
+
+  /** With every prompt off and Thinking off, every dialect but llama.cpp sends exactly these bodies. */
+  it.each([
+    ['unknown', { thinking_budget_tokens: 0 }, 1000],
+    ['engine', { thinking_budget_tokens: 0 }, 1000],
+    ['openai', {}, 1000],
+    ['lmstudio', { thinking_budget_tokens: 0 }, 1000],
+    ['vllm', { thinking_token_budget: 0 }, 1000],
+    ['openrouter', { reasoning: { max_tokens: 0 } }, 1000],
+    ['anthropic-budget', { thinking: { budget_tokens: 0, type: 'enabled' } }, 1000],
+    ['anthropic-adaptive', {}, 1000],
+    ['google-2.5', { google: { thinking_config: { thinking_budget: 0 } } }, 1000],
+    ['google-3', {}, 2500],
+    ['moonshot-k3', {}, 2500],
+    ['moonshot-k2', {}, 1000],
+    ['novita', {}, 1000],
+  ] as const)('sends no off signal the %s way when reasoning is engaged nowhere', (dialect, slice, maxTokens) => {
+    const body = buildRequestBody(engagedNowhere(speaking(dialect)), call());
+    expect(reasoningSlice(body)).toEqual(slice);
+    expect(body.max_tokens).toBe(maxTokens);
+  });
+
+  it('keeps an unidentified endpoint silent when reasoning is engaged nowhere', () => {
+    const bare = external({ reasoning: UNKNOWN_REASONING_CAPABILITY });
+    expect(reasoningSlice(buildRequestBody(engagedNowhere(bare), call()))).toEqual({});
   });
 
   /**
@@ -1095,11 +1354,11 @@ describe('narration output caps — the reserve and the length guidance', () => 
     expect(reserveFor(at(1024))).toBe(2560);
   });
 
-  it('reserves the prompt’s own percent on a no-budget target, not the Thought Ceiling it sends', () => {
+  it('reserves the Thought Ceiling a no-budget target sends, whatever the prompt’s own percent', () => {
     const levelOnly = external({ reasoning: { ...accepts('none', 'low', 'high'), reasons: true, dialect: 'openai' } });
     const snap = snapshot(levelOnly, { reasoningEngaged: true, reasoningEffort: 'high', promptReasoningBudget: { narration: 50 } });
-    expect(reserveFor(snap)).toBe(1200);
-    expect(buildRequestBody(snap, call()).max_tokens).toBe(2400);
+    expect(reserveFor(snap)).toBe(800 + 4096);
+    expect(buildRequestBody(snap, call()).max_tokens).toBe(800 + 4096);
     expect(lengthGuidance('auto', outputCaps(snap, narration).answerCap)).toMatch(/at most 9 /);
   });
 });

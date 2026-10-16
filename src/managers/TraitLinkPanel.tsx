@@ -11,9 +11,9 @@ import { effectiveLinkTrait, linkTraitState } from '@/lib/blueprints';
 import { editLinkTrait, linkedTraits, originalPath, resetLink, resetLinkField, resetLinkTrait, setLinkField } from '@/lib/traitLinks';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { fieldFrame } from '@/lib/historyField';
-import type { LinkRow } from '@/lib/traitTree';
+import { linkRowId, type LinkRow } from '@/lib/traitTree';
 import type { Entity, Trait, TraitLink } from '@/types';
-import TraitManager, { BearerStatNote, type TraitLinkEdit } from './TraitManager';
+import TraitManager, { type TraitLinkEdit } from './TraitManager';
 
 /** The line above a link's original: where the original lives. */
 export function LinkedFromLine({ originalId }: { originalId: string }) {
@@ -37,15 +37,15 @@ export function LinkNotice({ children }: { children: ReactNode }) {
 }
 
 /** The hint under a linked group's Enabled by Default list: the Custom Persona entity's links are the player's. */
-const defaultHintFor = (bearer: Entity) =>
-  (bearer.customPersona ? 'Selected when a new game starts' : 'Selected for this entity when a new game starts');
+const defaultHintFor = (owner: Entity) =>
+  (owner.customPersona ? 'Selected when a new game starts' : 'Selected for this entity when a new game starts');
 
 /**
  * The trait panel for one trait a link brings, as that link reads it. Edits write the link's overrides on the
- * bearer; the original is untouched.
+ * owner; the original is untouched.
  */
-export function LinkedTraitManager({ bearer, link, original, ...panel }: {
-  bearer: Entity;
+export function LinkedTraitManager({ owner, link, original, ...panel }: {
+  owner: Entity;
   link: TraitLink;
   original: Trait;
 } & Omit<Parameters<typeof TraitManager>[0], 'trait' | 'owner' | 'link' | 'detailsHeader' | 'availabilityFooter'>) {
@@ -55,19 +55,19 @@ export function LinkedTraitManager({ bearer, link, original, ...panel }: {
   const trait = useMemo(() => effectiveLinkTrait(original, link), [original, link]);
   const { overridden, stale } = useMemo(() => linkTraitState(original, link), [original, link]);
   const edit: TraitLinkEdit = {
-    bearerId: bearer.id,
+    ownerId: owner.id,
     overridden,
     stale,
-    write: (next) => editEntity(bearer.id, (e) => editLinkTrait(originals, e, link.id, original.id, next)),
-    reset: (field) => editEntity(bearer.id, (e) => resetLinkField(e, link.id, original.id, field)),
+    write: (next) => editEntity(owner.id, (e) => editLinkTrait(originals, e, link.id, original.id, next)),
+    reset: (field) => editEntity(owner.id, (e) => resetLinkField(e, link.id, original.id, field)),
   };
   return (
     <TraitManager
       {...panel}
       trait={trait}
       link={edit}
+      rowId={link.originalId === original.id ? link.id : linkRowId(link.id, original.id)}
       detailsHeader={<LinkedFromLine originalId={original.id} />}
-      availabilityFooter={<BearerStatNote bearer={bearer} traits={[trait]} />}
     />
   );
 }
@@ -117,7 +117,6 @@ export function ThisLinkSection({ entity, link, originalId }: { entity: Entity; 
           </ul>
         </div>
       )}
-      <BearerStatNote bearer={entity} traits={rows} />
     </Section>
   );
 }
@@ -127,8 +126,8 @@ export function ThisLinkSection({ entity, link, originalId }: { entity: Entity; 
  * row, and one trait's on a row of a linked group's subtree; a subgroup row has nothing of its own to reset.
  * `onEditBlueprint` selects the original, where the host can; `children` sit beside it.
  */
-export function LinkFooter({ bearer, row, onEditBlueprint, children }: {
-  bearer: Entity;
+export function LinkFooter({ owner, row, onEditBlueprint, children }: {
+  owner: Entity;
   row: LinkRow;
   onEditBlueprint?: () => void;
   children?: ReactNode;
@@ -137,7 +136,7 @@ export function LinkFooter({ bearer, row, onEditBlueprint, children }: {
   const { link, originalId } = row;
   const traitRow = !row.root && originalsOf(store).traits.some((t) => t.id === originalId);
   const canReset = row.root ? !!link.overrides : traitRow && !!link.overrides?.[originalId];
-  const onReset = () => store.editEntity(bearer.id, (e) => (row.root ? resetLink(e, link.id) : resetLinkTrait(e, link.id, originalId)));
+  const onReset = () => store.editEntity(owner.id, (e) => (row.root ? resetLink(e, link.id) : resetLinkTrait(e, link.id, originalId)));
   const actions = (
     <>
       {children}

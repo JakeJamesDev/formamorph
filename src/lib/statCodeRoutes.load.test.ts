@@ -5,8 +5,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { migrateWorld } from './version';
 import { runStatCodeTurn, type StatCodeTurn } from './statCodeTurn';
-import type { StatCodeBearers } from './statCodeTraits';
-import { inPlayBearers } from './ownedTraitsInPlay';
+import type { StatCodeOwners } from './statCodeTraits';
+import { inPlayOwners } from './ownedTraitsInPlay';
 import { allPlaceholders, placeholderOwners } from './placeholderHomes';
 import { phValues } from '@/test/placeholderValues';
 import type { PersonaRef, Placeholder, PlayerStat, World } from '@/types';
@@ -36,8 +36,8 @@ const released = {
   entities: [{ id: 'molly', name: 'Molly', placeholders: [ph('eyes', 'Eyes', ['hazel'])] }],
   dictionaries: [{ id: 'weather', name: 'Weather', enabled: true, entries: [], placeholders: [ph('sky', 'Sky', ['grey'])] }],
   stats: [
-    stat({
-      id: 'legacy', name: 'Legacy',
+    {
+      ...stat({ id: 'legacy', name: 'Legacy' }),
       code: [
         'const me = stats.find(s => s.id === currentStatId);',
         "placeholders.LegacyProbe.pin([day, daypart, startDay, startDaypart,",
@@ -45,16 +45,16 @@ const released = {
         "placeholders.Molly.Eyes.pin('green');",
         "return deltaHours * 100 + elapsedHours + me.value + (currentStatId === 'legacy' ? 1 : 0);",
       ].join('\n'),
-    }),
-    stat({
-      id: 'current', name: 'Current',
+    },
+    {
+      ...stat({ id: 'current', name: 'Current' }),
       code: [
         'placeholders.CurrentProbe.pin([clock.day, clock.daypart, clock.previous.day, clock.previous.daypart,',
         '  entities.Molly.placeholders.Eyes.value, entities.Molly.placeholders.Eyes.value,',
         '  placeholders.Hair.Shade.value, dictionaries.Weather.placeholders.Sky.value].join("/"));',
         "return clock.deltaHours * 100 + clock.elapsedHours + self.value + (self.id === 'current' ? 1 : 0);",
       ].join('\n'),
-    }),
+    },
   ],
 };
 
@@ -62,16 +62,16 @@ const NO_PERSONA: PersonaRef = { source: 'none' };
 
 /** One turn of the loaded world, run as play runs it. */
 function playTurn(world: World) {
-  const traits: StatCodeBearers = {
+  const traits: StatCodeOwners = {
     acquired: [], disabledTraitIds: [], appliedValues: {}, ownedTraits: {}, entities: world.entities, library: [],
     world: {
       traits: [], groups: [], entities: world.entities, persona: NO_PERSONA,
-      bearers: inPlayBearers({ traits: [], traitGroups: [], entities: world.entities }, NO_PERSONA, []),
+      ...inPlayOwners({ traits: [], traitGroups: [], entities: world.entities }, NO_PERSONA, []),
     },
   };
   return runStatCodeTurn({
     stats: world.stats as PlayerStat[],
-    enabled: {}, previous: [], asks: [], regenApplied: {}, clock: { deltaHours: 7, elapsedHours: 40 }, bearers: traits,
+    enabled: {}, previous: [], asks: [], regenApplied: {}, clock: { deltaHours: 7, elapsedHours: 40 }, ownerTraits: traits,
     placeholders: {
       placeholders: allPlaceholders(world), owners: placeholderOwners(world),
       dictionaries: world.dictionaries.map(({ id, name }) => ({ id, name })), rolls: { world: {} },

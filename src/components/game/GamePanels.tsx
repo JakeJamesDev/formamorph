@@ -7,17 +7,17 @@ import { useSettings } from '@/contexts/SettingsContext';
 import { templateChipKeys } from '@/lib/promptTemplate';
 import { useSentenceHighlight } from '@/lib/useSentenceHighlight';
 import { findEntityNames, resolveEntityByName } from '@/lib/entityMatch';
-import { clearTurnDerived } from '@/lib/turnDigest';
+import { clearTurnDerived, parseTurnContent } from '@/lib/turnDigest';
+import { narrationOf } from '@/lib/aiResponse';
 import { usePlayerModelUrl } from '@/lib/usePlayerModelUrl';
 import { mergeBodyMorphs } from '@/lib/bodyMorphs';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { traitOrderIndex, activeStatEnabled, refreshChosenTraits } from '@/lib/traitEffects';
-import { bearerStatTraitsInForce, listablePlayerTraits, statTraitsInForce, traitGateInput, type TraitWorld } from '@/lib/traitRuntime';
+import { entityStatTraitsInForce, listableGlobalTraits, statTraitsInForce, traitGateInput, type TraitWorld } from '@/lib/traitRuntime';
 import {
-  activeOwnedTraitIds, bearerTraitTree, inPlayBearers, playerEntityIds, rowBearer, withBearerNames,
+  activeOwnedTraitIds, ownerTraitTree, inPlayOwners, playerEntityIds, rowOwner, withOwnerNames,
 } from '@/lib/ownedTraitsInPlay';
 import { useGameDataOptional } from '@/contexts/GameDataContext';
-import { WORLD_OWNER } from '@/lib/traitGates';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { ReasoningBlock } from './ReasoningBlock';
 import { ChatNarration, PLAYER_ACTION_BUBBLE, type ChatBubbleTurn, type ChatPlayerTurn } from './ChatNarration';
@@ -26,7 +26,8 @@ import { ChoiceRows } from './ChoiceRows';
 import { TurnCard } from './TurnCard';
 import { ActionLine } from './ActionLine';
 import { StatsActions } from './StatsActions';
-import { bubbleActions, choicesActions, playerBubbleActions } from '@/lib/bubbleActions';
+import { bubbleActions, choicesActions, playerBubbleActions, withEndpoints } from '@/lib/bubbleActions';
+import { useEndpointTip, withEndpointLine } from '@/lib/useEndpointTip';
 import { rewriteTurnAction } from '@/lib/turnHistory';
 import { copyWithToast } from '@/lib/clipboard';
 import { useLiveReasoning } from '@/lib/reasoningStreamStore';
@@ -84,7 +85,7 @@ import { EntityListRow } from './EntityListRow';
 import { TraitsTab } from './TraitsTab';
 import { StatRow } from './StatRow';
 import { rowDelta } from '@/lib/useStatDeltas';
-import { PLAYER_OWNER } from '@/lib/statOwners';
+import type { OwnerId } from '@/lib/scope';
 import { StatGroupSections } from './StatGroupSections';
 import { statPanelLayout } from '@/lib/statGroupTree';
 import { PersonaRow } from './PersonaRow';
@@ -94,6 +95,9 @@ import { firstShowableEntity, type StatPanelOption } from '@/lib/statPanelEntiti
 import { useStatPanelEntity, type StatPanelOwner } from './useStatPanelEntity';
 
 import { parseSavedReasoning } from '@/lib/savedReasoning';
+import { scriptPrompts } from '@/lib/scriptPrompts';
+import { turnTells } from '@/lib/scriptTells';
+import { ScriptPromptLine, ScriptTellLines } from './ScriptPromptLine';
 
 /** One side-panel tab: an icon, and the label where the panel is wide enough to hold it. */
 const PanelTab = ({ value, icon: Icon, label }: { value: string; icon: LucideIcon; label: string }) => (
@@ -114,7 +118,7 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
   requestKey?: string;
   onEntityClick: (entityId: string) => void;
   /** Re-run the digest prompt for one turn (Memory Manager's regenerate); owned by GameViewer. */
-  onRegenerateMemory?: (turnId: string) => Promise<boolean>;
+  onRegenerateMemory?: (turnId: string, signal: AbortSignal) => Promise<boolean | undefined>;
   /** The narration prompt this world actually sends: the world's own unless declined, else the preset's. */
   narrationPrompt: string;
 }) => {
@@ -296,6 +300,7 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
                       <EntityVisual
                         key={entityViewEntity.id}
                         entity={entityViewEntity}
+                        images={entityViewGallery.images}
                         preference={entityViewPreference.preference}
                         onPreferenceChange={entityViewPreference.onPreferenceChange}
                         imageIndex={entityViewGallery.imageIndex}
@@ -604,7 +609,7 @@ export const MiddlePanel = ({
     ttsPlayback,
     setFullMessageHistory,
     setMemoryEdits,
-    playerStats,
+    globalStats,
     isViewingPast,
     viewChoices: choices,
     choices: latestChoices,
@@ -616,6 +621,7 @@ export const MiddlePanel = ({
     setActionAttachments,
     pendingAttachments,
     setPendingAttachments,
+    scriptTells,
   } = useGameplay();
   const gameplayText = useGameplayText();
   const { ttsHighlight, choicesEnabled, setChoicesEnabled, continueChoiceMode, statUpdatesEnabled, revealSpec, revealEasing, showReasoning, memoryDigests, setMemoryDigests } = useSettings();
@@ -636,7 +642,7 @@ export const MiddlePanel = ({
   const revealStyle = revealVars(revealSpec) as React.CSSProperties;
   // Which partial re-generate actions to offer (mirrors the aux-request gates).
   const canRegenChoices = choicesEnabled && fullMessageHistory[fullMessageHistory.length - 1]?.role === 'assistant';
-  const canRegenStats = statUpdatesEnabled && playerStats.length > 0;
+  const canRegenStats = statUpdatesEnabled && globalStats.length > 0;
   const [toolMenuOpen, setToolMenuOpen] = useState(false);
 
   // Ctrl/Cmd+click or a touch long-press appends a choice as a new sentence; a plain tap replaces it.
@@ -696,23 +702,18 @@ export const MiddlePanel = ({
 
   // The viewed page's narration: the editor's text when no action row opened it.
   const currentAssistantMessage = displayedMessages.find(m => m.role === 'assistant');
-  let currentPageText = gameplayText;
-  if (currentAssistantMessage) {
-    try {
-      // Read the current `narration` field, falling back to legacy `game_text` (pre-rename saves).
-      const parsed = JSON.parse(currentAssistantMessage.content);
-      currentPageText = parsed.narration ?? parsed.game_text ?? currentAssistantMessage.content;
-    } catch {
-      currentPageText = currentAssistantMessage.content;
-    }
-  }
+  const currentPageText = currentAssistantMessage
+    ? narrationOf(currentAssistantMessage.content) ?? currentAssistantMessage.content
+    : gameplayText;
 
   // A turn's Edit and Rewind to Here target that turn's own page, never the viewed one.
+  // Each request-sending action names where it goes.
+  const endpointTip = useEndpointTip();
   const [editTarget, setEditTarget] = useState<{ kind: 'narration' | 'action'; page: number; text: string; turnId?: string } | null>(null);
   const [rewindPage, setRewindPage] = useState<number | null>(null);
   const actionsFor = (turn: ChatBubbleTurn) => {
     const page = turn.index + 1;
-    return bubbleActions(
+    return withEndpoints(bubbleActions(
       {
         isLatest: turn.isLatest,
         live: turn.live,
@@ -735,7 +736,7 @@ export const MiddlePanel = ({
         copy: () => copyWithToast(turn.text),
         rewind: () => setRewindPage(page),
       },
-    );
+    ), endpointTip);
   };
   const editAction = (page: number, text: string) => {
     setEditTarget({ kind: 'action', page, text, turnId: pageTurnId(fullMessageHistory, page) });
@@ -772,10 +773,10 @@ export const MiddlePanel = ({
     index: currentPage - 1, live: !isViewingPast && (pageLive || (isWaitingForAI && !currentAssistantMessage)), text: actionLine,
   });
   /** The choices block's actions, for a block that shows `hasChoices`. */
-  const regenChoicesActions = (hasChoices: boolean) => choicesActions(
+  const regenChoicesActions = (hasChoices: boolean) => withEndpoints(choicesActions(
     { canRegenerate: canRegenChoices, hasChoices, busy: disabled || isWaitingForAI || isRevealingNarration, regenerating: choicesRegenerating && isWaitingForAI },
     () => { setChoicesRegenerating(true); handleRegenerateChoices(); },
-  );
+  ), endpointTip);
   const pageChoicesActions = isViewingPast ? [] : regenChoicesActions((choices?.length ?? 0) > 0 || showContinue);
 
   const narrationFrame = `narration-text flex-grow border border-border p-2 bg-muted/80 min-h-0 ${isFlashing ? 'flash-animation' : ''} relative`;
@@ -931,15 +932,18 @@ export const MiddlePanel = ({
                 playerActionsFor={playerActionsFor}
                 onDeleteSceneImage={onDeleteSceneImage}
                 latestFooter={
-                  <ChatChoices
-                    stream={playedTurn}
-                    choices={latestChoices}
-                    showContinue={chatShowContinue}
-                    disabled={disabled || isWaitingForAI}
-                    isSelected={(choice) => playerInput.includes(choice)}
-                    choicePress={choicePress}
-                    actions={regenChoicesActions(latestChoices.length > 0 || chatShowContinue)}
-                  />
+                  <>
+                    <ScriptPromptLine store={scriptPrompts} layout="chat" className="mb-3" />
+                    <ChatChoices
+                      stream={playedTurn}
+                      choices={latestChoices}
+                      showContinue={chatShowContinue}
+                      disabled={disabled || isWaitingForAI}
+                      isSelected={(choice) => playerInput.includes(choice)}
+                      choicePress={choicePress}
+                      actions={regenChoicesActions(latestChoices.length > 0 || chatShowContinue)}
+                    />
+                  </>
                 }
               />
               )}
@@ -987,6 +991,7 @@ export const MiddlePanel = ({
                 )}
               </TurnCard>
             )}
+            {!commandPreview && <ScriptTellLines tells={turnTells(scriptTells, sceneTurnId)} className="mt-3" />}
             {!commandPreview && sceneImagesAvailable && (
               <SceneImagePanel
                 // Keyed by turn: paging to another turn remounts the panel, so the tag draft and open
@@ -1003,6 +1008,7 @@ export const MiddlePanel = ({
                 onCancel={onCancelSceneImage}
               />
             )}
+            {!commandPreview && <ScriptPromptLine store={scriptPrompts} className="mt-4" />}
             {!commandPreview && (
               <ChoiceRows
                 stream={playedTurn && !isViewingPast}
@@ -1049,8 +1055,8 @@ export const MiddlePanel = ({
                 if (messageIndex < updatedHistory.length) {
                   const message = updatedHistory[messageIndex];
                   if (message.role === 'assistant') {
-                    try {
-                      const content = JSON.parse(message.content);
+                    const content = parseTurnContent(message.content);
+                    if (content) {
                       editedTurnId = content.turnId;
                       updatedHistory[messageIndex] = {
                         role: 'assistant',
@@ -1061,7 +1067,7 @@ export const MiddlePanel = ({
                           entities: findEntityNames(text, entities)
                         })
                       };
-                    } catch {
+                    } else {
                       // If parsing fails, create new content object
                       updatedHistory[messageIndex] = {
                         role: 'assistant',
@@ -1096,8 +1102,8 @@ export const MiddlePanel = ({
                 const updatedMessages = [...prev];
                 const assistantMessageIndex = updatedMessages.findIndex(m => m.role === 'assistant');
                 if (assistantMessageIndex !== -1) {
-                  try {
-                    const content = JSON.parse(updatedMessages[assistantMessageIndex].content);
+                  const content = parseTurnContent(updatedMessages[assistantMessageIndex].content);
+                  if (content) {
                     updatedMessages[assistantMessageIndex] = {
                       role: 'assistant',
                       content: JSON.stringify({
@@ -1105,7 +1111,7 @@ export const MiddlePanel = ({
                         narration: text
                       })
                     };
-                  } catch {
+                  } else {
                     updatedMessages[assistantMessageIndex] = {
                       role: 'assistant',
                       content: JSON.stringify({
@@ -1185,14 +1191,17 @@ export const MiddlePanel = ({
                   <Square className="h-4 w-4" />
                 </Button>
               ) : (
-                <Button
-                  onClick={handleSendAction}
-                  disabled={disabled}
-                  aria-label="Send"
-                  className="border-dashed border-2 w-12 sm:w-32"
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
+                // The narration's endpoint: the turn's other passes may route elsewhere, and their buttons name theirs.
+                <Tip tip={withEndpointLine('Send', endpointTip('narration'))} labelsChild={false}>
+                  <Button
+                    onClick={handleSendAction}
+                    disabled={disabled}
+                    aria-label="Send"
+                    className="border-dashed border-2 w-12 sm:w-32"
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </Tip>
               )}
             </div>
           </div>
@@ -1216,8 +1225,8 @@ export const RightPanel = ({
   language, setLanguage,
 }: {
   onLocationClick: () => void;
-  /** Switch a bearer's trait on or off mid-play; owned by GameViewer, which reverses its stat changes. */
-  onToggleTrait: (traitId: string, enabled: boolean, bearerId: string) => void;
+  /** Switch an owner's trait on or off mid-play; owned by GameViewer, which reverses its stat changes. */
+  onToggleTrait: (traitId: string, enabled: boolean, ownerId: OwnerId) => void;
   /** Settle the traits after the player picks another persona. `name` is that persona's; null for None. */
   onPersonaChange: (ref: PersonaRef, name: string | null) => void;
   /** What the player's last trait switch or persona change turned off. */
@@ -1257,7 +1266,7 @@ export const RightPanel = ({
     setSelectedEntityId,
   } = useGameplay();
   const {
-    locations, connections, traits, traitGroups, viewStats: playerStats, currentLocation, resolveTraitText, resolveEntityText,
+    locations, connections, traits, traitGroups, viewStats: globalStats, currentLocation, resolveTraitText, resolveEntityText,
     entities: cast, persona, traitEntities, traitLibrary,
   } = useResolvedWorld();
   // In Chat a scroll moves the viewed turn, so the stat rows snap to it.
@@ -1269,28 +1278,28 @@ export const RightPanel = ({
   const disabledTraits = React.useMemo(() => new Set(viewDisabledTraitIds), [viewDisabledTraitIds]);
   // The save froze each chosen trait as the world stood on turn 1, so its authoring is re-read from the
   // world — otherwise a trait made switchable after this playthrough began would never get its control.
-  const playerTraits = React.useMemo(() => refreshChosenTraits(savedTraits, traits), [savedTraits, traits]);
-  const heldTraitIds = React.useMemo(() => new Set(playerTraits.map((t) => t.id)), [playerTraits]);
-  // The one tree from the bearer resolver: the player's rows at the top, then a node per present bearer with
-  // its owned traits and links expanded. A trait under two bearers is two rows, told apart by their node.
+  const globalTraits = React.useMemo(() => refreshChosenTraits(savedTraits, traits), [savedTraits, traits]);
+  const heldTraitIds = React.useMemo(() => new Set(globalTraits.map((t) => t.id)), [globalTraits]);
+  // The one tree from the owner resolver: the player's rows at the top, then a node per present owner with
+  // its owned traits and links expanded. A trait under two owners is two rows, told apart by their node.
   const gameData = useGameDataOptional();
-  const bearerWorld = React.useMemo(
+  const ownerWorld = React.useMemo(
     () => ({ traits, traitGroups, entities: traitEntities }),
     [traits, traitGroups, traitEntities],
   );
   // A linked row's name reads its entity as the Character Name, from the original's authored text.
   const traitTree = React.useMemo(
-    () => withBearerNames(
-      bearerTraitTree(bearerWorld, personaRef, traitLibrary),
+    () => withOwnerNames(
+      ownerTraitTree(ownerWorld, personaRef, traitLibrary),
       { traits: gameData?.traits ?? [], traitGroups: gameData?.traitGroups ?? [] },
-      (text, bearer, trait) => (trait ? resolveTraitText(trait, text, bearer) : resolveEntityText(bearer, text)),
+      (text, owner, trait) => (trait ? resolveTraitText(trait, text, owner) : resolveEntityText(owner, text)),
     ),
-    [bearerWorld, personaRef, traitLibrary, gameData?.traits, gameData?.traitGroups, resolveTraitText, resolveEntityText],
+    [ownerWorld, personaRef, traitLibrary, gameData?.traits, gameData?.traitGroups, resolveTraitText, resolveEntityText],
   );
-  // A bearer's trait card reads that bearer as the Character Name, as the AI does.
+  // An owner's trait card reads that owner as the Character Name, as the AI does.
   const resolveTreeTraitText = React.useCallback(
-    (trait: Trait, text: string, bearerId: string) =>
-      resolveTraitText(trait, text, bearerId === WORLD_OWNER ? null : traitTree.entityNodes.get(bearerId) ?? null),
+    (trait: Trait, text: string, ownerId: OwnerId) =>
+      resolveTraitText(trait, text, ownerId === null ? null : traitTree.entityNodes.get(ownerId) ?? null),
     [traitTree, resolveTraitText],
   );
   const activeOwned = React.useMemo(() => activeOwnedTraitIds(viewOwnedTraits), [viewOwnedTraits]);
@@ -1298,35 +1307,39 @@ export const RightPanel = ({
   // could take, together in authored order — owned and unowned differ only by the checkbox. A past turn shows
   // only what was held then: acquirables can't be acted on there. An entity's rows list the same way.
   const listedTraits = React.useMemo(() => {
-    const playerRows = traitTree.traits.filter((t) => rowBearer(traitTree, t) === WORLD_OWNER);
+    const globalRows = traitTree.traits.filter((t) => rowOwner(traitTree, t) === null);
     const entityRows = traitTree.traits.filter((t) => {
-      const bearer = rowBearer(traitTree, t);
-      return bearer !== WORLD_OWNER && (!!viewOwnedTraits[bearer]?.chosen.includes(t.id) || (!isViewingPast && !!t.playerToggle));
+      const owner = rowOwner(traitTree, t);
+      return owner !== null && (!!viewOwnedTraits[owner]?.chosen.includes(t.id) || (!isViewingPast && !!t.playerToggle));
     });
-    const playerOrder = traitOrderIndex(playerRows, traitTree.groups);
+    const globalOrder = traitOrderIndex(globalRows, traitTree.groups);
     // A Custom Persona pick lies dormant under a world persona: it has no row until a return to None.
-    const heldRows = new Set(playerRows.map((t) => t.id));
-    const held = playerTraits.filter((t) => heldRows.has(t.id));
-    return [...(isViewingPast ? held : listablePlayerTraits(held, playerRows, playerOrder)), ...entityRows];
-  }, [isViewingPast, playerTraits, traitTree, viewOwnedTraits]);
+    const heldRows = new Set(globalRows.map((t) => t.id));
+    const held = globalTraits.filter((t) => heldRows.has(t.id));
+    return [...(isViewingPast ? held : listableGlobalTraits(held, globalRows, globalOrder)), ...entityRows];
+  }, [isViewingPast, globalTraits, traitTree, viewOwnedTraits]);
   // The played world entity is out of the cast, and a "playing as" gate has to find it.
   const gateWorld = React.useMemo<TraitWorld>(() => ({
     traits, groups: traitGroups, entities: worldEntitiesOf(cast, persona), persona: personaRef ?? { source: 'none' },
-    bearers: inPlayBearers(bearerWorld, personaRef, traitLibrary),
-  }), [traits, traitGroups, cast, persona, personaRef, bearerWorld, traitLibrary]);
+    ...inPlayOwners(ownerWorld, personaRef, traitLibrary),
+  }), [traits, traitGroups, cast, persona, personaRef, ownerWorld, traitLibrary]);
   const viewTraitState = React.useMemo(
-    () => ({ traits: playerTraits, disabledTraitIds: viewDisabledTraitIds, ownedTraits: viewOwnedTraits }),
-    [playerTraits, viewDisabledTraitIds, viewOwnedTraits],
+    () => ({ traits: globalTraits, disabledTraitIds: viewDisabledTraitIds, ownedTraits: viewOwnedTraits }),
+    [globalTraits, viewDisabledTraitIds, viewOwnedTraits],
   );
-  // The stats a trait switched off stay off under the player's world traits and the played persona's linked ones.
+  // The stats a trait switched off stay off under the global traits and every entity's global rows.
   const statEnabled = React.useMemo(
-    () => activeStatEnabled(playerStats, statTraitsInForce(viewTraitState, gateWorld)),
-    [playerStats, viewTraitState, gateWorld],
+    () => activeStatEnabled(globalStats, statTraitsInForce({ ...viewTraitState, entityStats: viewEntityStats }, gateWorld)),
+    [globalStats, viewTraitState, viewEntityStats, gateWorld],
   );
-  const traitGates = React.useMemo(() => gateStates(traitGateInput(viewTraitState, gateWorld)), [viewTraitState, gateWorld]);
+  // Stat Conditions read the viewed turn's stats.
+  const traitGates = React.useMemo(
+    () => gateStates(traitGateInput({ ...viewTraitState, stats: globalStats, entityStats: viewEntityStats }, gateWorld)),
+    [viewTraitState, globalStats, viewEntityStats, gateWorld],
+  );
   // Each entity's own traits switch its stats on and off, on the viewed turn.
   const entityInForce = React.useCallback(
-    (ownerId: string) => bearerStatTraitsInForce(viewOwnedTraits, gateWorld, ownerId),
+    (ownerId: string) => entityStatTraitsInForce(viewOwnedTraits, gateWorld, ownerId),
     [viewOwnedTraits, gateWorld],
   );
   const {
@@ -1340,14 +1353,14 @@ export const RightPanel = ({
   // Filtered for display but carrying each stat's index in the full array, which the edit slider writes back to.
   // Hidden stats stay live for the AI, regen and code — they just never render, which also drops their
   // delta chip, bar band and history deltas (all keyed off the row).
-  const visibleStats = playerStats
+  const visibleStats = globalStats
     .map((stat, index) => ({ stat, index }))
     .filter(({ stat }) => statEnabled[stat.id] !== false && stat.hidden !== true);
   // Whether the descriptor line is part of this world's stat list at all. Held across every row so the list
   // keeps its shape as values move in and out of bands; a world that names none of them pays nothing, and a
   // stat the player never sees can't put the line there for the ones they do.
   // A world with no stat the player can see gets no Stats tab; the panel then opens on Traits.
-  const hasShownStats = playerStats.some((stat) => stat.hidden !== true) || ownersShowStats;
+  const hasShownStats = globalStats.some((stat) => stat.hidden !== true) || ownersShowStats;
   const shownTab = !hasShownStats && activeTab === 'stats' ? 'traits' : activeTab;
   const anyDescriptors = visibleStats.some(({ stat }) => (stat.descriptors?.length ?? 0) > 0);
   // The author's groups decide where each row sits, so a save made before a regrouping follows it.
@@ -1434,30 +1447,35 @@ export const RightPanel = ({
             </div>
           )}
           <ScrollArea className="min-h-0 flex-grow mb-4 relative">
-            <StatGroupSections
-              nodes={playerLayout}
-              idOf={({ stat }) => stat.id}
-              nameOf={resolvePH}
-              renderStat={({ stat, index }) => {
-                const key = stat.name.toLowerCase();
-                return (
-                  <StatRow
-                    stat={stat}
-                    {...rowDelta(statDeltas, PLAYER_OWNER, key, isViewingPast ? (viewStatChanges[key] || 0) : null)}
-                    page={currentPage}
-                    isViewingPast={isViewingPast}
-                    snap={snapStats}
-                    editable={isEditMode && !isViewingPast}
-                    reserveDescriptorLine={anyDescriptors}
-                    onCommitValue={(value) => {
-                      const newStats = [...playerStats];
-                      newStats[index] = { ...stat, value };
-                      commitManualStatEdit(newStats);
-                    }}
-                  />
-                );
-              }}
-            />
+            {visibleStats.length > 0 && (
+              <section aria-label="Global stats" data-testid="global-stats">
+                <h3 className="truncate px-2 pb-1 text-label font-medium">Global</h3>
+                <StatGroupSections
+                  nodes={playerLayout}
+                  idOf={({ stat }) => stat.id}
+                  nameOf={resolvePH}
+                  renderStat={({ stat, index }) => {
+                    const key = stat.name.toLowerCase();
+                    return (
+                      <StatRow
+                        stat={stat}
+                        {...rowDelta(statDeltas, null, key, isViewingPast ? (viewStatChanges[key] || 0) : null)}
+                        page={currentPage}
+                        isViewingPast={isViewingPast}
+                        snap={snapStats}
+                        editable={isEditMode && !isViewingPast}
+                        reserveDescriptorLine={anyDescriptors}
+                        onCommitValue={(value) => {
+                          const newStats = [...globalStats];
+                          newStats[index] = { ...stat, value };
+                          commitManualStatEdit(newStats);
+                        }}
+                      />
+                    );
+                  }}
+                />
+              </section>
+            )}
             {playedRows.map((owner) => (
               <section key={owner.entity.id} aria-label={`${owner.entity.name} stats`} data-testid="persona-stats" className="mt-2">
                 <h3 className="truncate px-2 pb-1 text-label font-medium">{owner.entity.name}</h3>
@@ -1478,7 +1496,7 @@ export const RightPanel = ({
               busy={totalPages === 0 || isWaitingForAI || isRevealingNarration || sceneImageJob !== null}
               editing={isEditMode}
               onEditingChange={setIsEditMode}
-              onRegenerate={statUpdatesEnabled && (playerStats.length > 0 || ownersShowStats) ? () => onRegenerateStats(currentPage) : undefined}
+              onRegenerate={statUpdatesEnabled && (globalStats.length > 0 || ownersShowStats) ? () => onRegenerateStats(currentPage) : undefined}
             />
           </ScrollArea>
         </TabsContent>
@@ -1490,11 +1508,11 @@ export const RightPanel = ({
             groups={traitTree.groups}
             entityNodes={traitTree.entityNodes}
             playerEntityIds={playerEntityIds(traitTree)}
-            stats={playerStats}
+            stats={globalStats}
             ownerStats={viewEntityStats}
-            isOff={(id, bearerId) => (bearerId === WORLD_OWNER
+            isOff={(id, ownerId) => (ownerId === null
               ? disabledTraits.has(id) || !heldTraitIds.has(id)
-              : !activeOwned[bearerId]?.includes(id))}
+              : !activeOwned[ownerId]?.includes(id))}
             readOnly={isViewingPast}
             onToggleTrait={onToggleTrait}
             resolveTraitText={resolveTreeTraitText}

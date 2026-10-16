@@ -1,6 +1,7 @@
 # Spec: Guide Open and Search
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-10-11. Tickets 01–10 done; last landing 8dfb914a8. Closed red: src/components/prompt/CodeArea.test.tsx (failed once under full load, passed 3 of 3 alone; not this effort's code).
 Spec session: guide-open-and-search — spec
 
 ## Problem Statement
@@ -17,13 +18,13 @@ Semantic Search exists for the Ask tab, but it is off by default, the Search tab
 
 ## Solution
 
-- **Open Guide** opens the Guide full screen: the search and contents rail on the left, the reader on the right. It is in the ⋮ menu and on an expand button in the Guide tab header.
+- **Open Guide** opens the Guide full screen: the search and contents rail on the left, the reader on the right. It is in the ⋮ menu and, in the Full chrome, on a title-bar button (Q26).
 - **Open Wiki** opens the wiki page and heading the reader shows, or the wiki home with no section open. It confirms first, with a **Don't Ask Again** checkbox. It is in the ⋮ menu and in the full-screen Guide header.
 - The keyword search matches partial words and close spellings, on the Search tab and in Ask.
 - The Search tab merges Semantic Search with the keyword search, the same way Ask does.
 - On first open, a card in the help window offers Semantic Search as recommended. The player picks **Turn On** or **No Thanks**. When the model is already on the device, Semantic Search turns on with no card.
 - In Wide View and the full-screen Guide, **< >** Back and Forward buttons move through the reader's view history, as in a browser.
-- A press, a focus move or Escape in the help window no longer closes a popup below it, such as a select or popover in Settings.
+- A press, a focus move or Escape in the help window no longer closes a popup or dialog below it, such as a select in Settings or Settings itself (Q23, Q29).
 
 ## Rulings
 
@@ -39,7 +40,7 @@ Settled with the user on 2026-10-11.
 | Q6 | The existing Semantic Search switch in the help window's General settings stays the one control |
 | Q7 | With the switch on and the model not ready, search uses keywords alone, with no notice |
 | Q8 | The full-screen Guide holds the rail (search field and contents) and the reader |
-| Q9 | Open Guide is in the ⋮ menu and on an expand button in the Guide tab header |
+| Q9 | Superseded by Q26. Open Guide is in the ⋮ menu and on an expand button in the Guide tab header |
 | Q10 | Partial words and close spellings apply to the Ask tab's keyword source too |
 | Q11 | When the model is already on the device, the card does not show and Semantic Search turns on |
 | Q12 | Every undecided player sees the card, new and existing. A player who set the switch already is decided |
@@ -66,11 +67,19 @@ Settled with the user on 2026-10-11.
 | Q33 | Q16's 93% Take Me There applies to the live route of each answer (its first non-lead source), as no regression against the in-batch control. The offline route probe re-runs as a check |
 | Q34 | The probe builds section vectors from the current docs in memory. The shipped vectors file is rebuilt at release, not in ticket 06 |
 | Q35 | In the full-screen Guide, Back and Forward skip conversation entries and land on the nearest section entry. A button is disabled when no section entry is left in its direction |
+| Q36 | Ruled by the user in the ticket 06 session: Q16 is met. Answer quality 77.4% against the 77.5% bar counts, since the in-batch control runs 73.9% today (+3.5). Route hit 67.5% vs control 67.6%; offline route probe 93%. Ask's semantic source keeps a similarity floor of 0.45, tuned on the known set only |
+| Q37 | Accepted as built: the Minimal and Bubble reader piece does not record history. Those chromes show no Back or Forward. Amends Q19 |
+| Q38 | Accepted as built: the wiki confirm is an app alert dialog, and the help window sinks below it while it shows |
+| Q39 | Accepted as built: a card with a failed download has a Dismiss button that hides it. Retry stays in the Settings switch |
+| Q40 | Review follow-ups: ticket 09 adds this effort to the player docs; ticket 10 checks hover cards, the chip typeahead and Base UI popups under help, and adds a dev route for the wiki confirm |
+| Q41 | Recorded by the spec session as built, not ruled by the user: Back to the conversation does not restore its scroll (it follows its newest message); full screen also skips the section it already shows; the floor batches replaced the fuzzy-only arm with an unfloored arm |
+| Q42 | Page chip typeaheads (the `{` chip typeahead and tag suggestions) move from z-70 to z-60: above dialogs and popovers, below the help window, so they never draw over help or take its presses. Base UI tooltips closing on an outside press or Escape is not a leak (WCAG 1.4.13). The app uses no hover cards |
+| Q43 | The wiki confirm gets its own docs section, "The Wiki Confirm", routed to the confirm and mapped from it. "How to Open the Wiki" keeps its route to the help window |
 
 ## User Stories
 
 1. As a player, I want an Open Guide item in the ⋮ menu, so that I can read the docs in a large view.
-2. As a player, I want an expand button in the Guide tab header, so that I find the large view from the Guide itself.
+2. As a player in the Full chrome, I want an Open Guide button in the title bar, so that I find the large view without the ⋮ menu.
 3. As a player, I want the full-screen Guide to keep the search field and contents, so that I can move between sections without going back to the small window.
 4. As a player, I want the full-screen Guide to open on the section I was reading, so that I do not lose my place.
 5. As a player, I want closing the full-screen Guide to return me to the small window on the same section, so that I keep my place both ways.
@@ -126,19 +135,19 @@ Settled with the user on 2026-10-11.
 - **Docs Index keyword search** gains partial-word and close-spelling matching. A query term with no exact match expands to vocabulary terms that start with it, or that are one edit away (two for long words). An expanded term counts for less than an exact one. A short term (under the existing two-letter floor, plus a minimum for expansion) does not expand. The index builds its vocabulary once. The ranking rules stay as they are: hub penalty, What's New lead, favored page, changelog last.
 - **Fuzzy matching is on for every caller.** Ask's keyword source, the docs lookup function and the Ask fallback get it with the Search tab (Q10).
 - **The Search tab uses the help session's merged search.** The rank-fusion search that Ask uses today becomes a function the Search tab calls, with the sources Keyword and Semantic. AI Search stays off for the Search tab. It costs a request per keystroke.
-- **Semantic ranking on the Search tab** runs after a short pause in typing. The keyword results show at once, and the merged results replace them when the semantic ranking returns. A semantic-only hit needs a minimum similarity, so a nonsense query still reads "No sections match".
+- **Semantic ranking on the Search tab** runs after a short pause in typing. The keyword results show at once, and the merged results replace them when the semantic ranking returns. Every semantic hit needs a minimum similarity, so a nonsense query still reads "No sections match". The Search tab and Ask each have their own floor (Ask's is Q36).
 - **The semantic source never starts a download** (as today). It runs only when the model is on the device and the switch is on.
 - **Help settings** gain two fields:
   - the Semantic Search offer state: undecided, or decided. A player who flips the switch is decided.
   - a wiki confirm flag, on by default.
   Both live in the help settings store on the device. No world or save export shape changes.
-- **The offer card** shows at the top of the help window when the offer is undecided and the switch is off. On open, if the model is already on the device, the switch turns on and the offer becomes decided with no card. Turn On starts the existing download through the Semantic Search switch, with its progress and Retry. No Thanks marks the offer decided. Closing the window leaves it undecided.
+- **The offer card** shows at the top of the help window when the offer is undecided and the switch is off. On open, if the model is already on the device, the switch turns on and the offer becomes decided with no card. Turn On marks the offer decided and starts the existing download through the Semantic Search switch; the card then follows the download (Q25). A failed download shows Retry and a Dismiss button that hides the card (Q39). No Thanks marks the offer decided. Closing the window unanswered leaves it undecided.
 - **Open Guide** uses the existing full-screen morph that the Mascot and Prompts settings tabs use. The full-screen view renders the Guide tab's rail and reader. It shares the Guide view state, so the open section and open pages carry both ways.
 - **Open Wiki** builds the URL from the wiki base and the reader's section id. The section id already follows the wiki's anchor rule; a split section's part suffix drops. One shared function opens external links. Desktop already routes `window.open` to the system browser. Android needs a check that `window.open` leaves the WebView, and a fix if it does not.
-- **The wiki confirm** is a small dialog in the help window's layer, with the target page named, Open and Cancel, and the Don't Ask Again checkbox.
+- **The wiki confirm** is an app alert dialog, with the target page named, Open and Cancel, and the Don't Ask Again checkbox. The help window sinks below it while it shows (Q38).
 - **The ⋮ menu** gains Open Guide and Open Wiki in both chromes.
-- **Reader history** joins the Guide view state: a list of entries (a section id, or the conversation) with scroll positions, and a cursor. A reader change pushes an entry and drops the forward entries. Back and Forward move the cursor and do not push. History records in every layout, so the trail stays whole when the player moves to Wide View. The buttons show only in Wide View and the full-screen Guide. The mouse side buttons are caught inside the help window, so they never reach the app's own route history.
-- **Outside-press guard for popups:** the popover, select, dropdown-menu and context-menu wrappers ignore an outside press, focus move or Escape whose target is in the shielded layer, when their own content is outside the layer. Content inside the layer keeps today's dismissal. The guard lives beside `ignoreLayerPress` and keeps that module import-free for the account site bundle.
+- **Reader history** joins the Guide view state: a list of entries (a section id, or the conversation) with scroll positions, and a cursor. A reader change pushes an entry and drops the forward entries. Back and Forward move the cursor and do not push. History records the Full chrome's reader; the Minimal and Bubble reader piece does not record (Q37). The buttons show only in Wide View and the full-screen Guide. The mouse side buttons are caught inside the help window, so they never reach the app's own route history.
+- **Outside-press guard for popups:** the popover, select and context-menu wrappers ignore an outside press or Escape whose target is in the shielded layer, when their own content is outside the layer. Content inside the layer keeps today's dismissal. The guard lives beside `ignoreLayerPress` and keeps that module import-free for the account site bundle. The dialog, drawer and alert-dialog wrappers also ignore Escape from the layer (Q29). The layer already stops focus moves.
 - **The glossary** entry for Search Source changes: the Search tab uses Keyword and Semantic.
 
 ## Testing Decisions
@@ -147,11 +156,11 @@ Settled with the user on 2026-10-11.
 - **Docs Index search** (prior art: the docs index tests): partial words, close spellings, exact-over-fuzzy order, the short-term floor, and that expansion keeps the hub and What's New rules. Each guard is proven to bite by reinstating the strict match.
 - **Help session search** (prior art: the help session sources tests, with a fake embedder): the Search tab's merged ranking, the keyword-only fallback when the model is not on the device, and the similarity floor.
 - **Help settings** (prior art: the help settings tests): defaults, parse of stored values, and that a switch flip marks the offer decided.
-- **Formaquestion component** (prior art: the landing tests): the ⋮ items in both chromes, the expand button, the full-screen Guide keeping its section both ways, the card's three outcomes, the silent turn-on when the model is cached, the wiki confirm and its Don't Ask Again path, and the URL for a section, a split section and no section.
+- **Formaquestion component** (prior art: the landing tests): the ⋮ items in both chromes, the title-bar Open Guide button, the full-screen Guide keeping its section both ways, the card's three outcomes, the silent turn-on when the model is cached, the wiki confirm and its Don't Ask Again path, and the URL for a section, a split section and no section.
 - **Reader history** (prior art: the Formaquestion component tests): push, Back, Forward, forward entries dropped on a new open, the 50-entry cap, scroll restored, the keys and mouse buttons, and history kept across a close and a layout change.
 - **Outside-press guard** (prior art: the shielded-layer and context-menu tests): a press, focus move and Escape in the layer leave an outside popup open; a press in the layer still closes a popup inside it; a press elsewhere still closes both. Each guard proven to bite.
 - **Probes**: the help retrieval and baseline probes on the cloud model, with fuzzy keywords and Semantic Search on, against the Q16 bar. In-batch controls with today's ranking.
-- **UI verification** through the dev-router for the card, the full-screen Guide and the confirm, in both themes.
+- **UI verification** through the dev-router for the card, the full-screen Guide and the confirm, in both themes. The confirm's dev route is ticket 10.
 
 ## Out of Scope
 
@@ -166,3 +175,5 @@ Settled with the user on 2026-10-11.
 - The semantic model and its cache are shared with semantic memory. One download serves both.
 - The section vectors ship with the app. Docs edits must regenerate them, as today.
 - New copy (card, menu items, confirm, settings switch) gets a copy-sweep pass.
+- **Open:** with the floor, follow-up questions trail the control (70% vs 77%, 10 questions, two batches). Not yet probed further.
+- **Release:** 24 shipped section vectors are stale; ticket 06 lists them. Rebuild with `npm run build:help-vectors` before release.

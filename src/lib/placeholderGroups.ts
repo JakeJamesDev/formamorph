@@ -1,18 +1,18 @@
 // Editor folders for the world's shared placeholders. A group is a name with a parent, a placeholder names
 // its group by `groupId`, and the Placeholders tab draws the folders above the loose rows. Only a shared
-// placeholder is grouped: a scoped one sits under its entity or book, an owned one under its holder. Pure,
+// placeholder is grouped: a scoped one sits under its entity or book, an owned one under its parent placeholder. Pure,
 // like the entity folder tree it mirrors: the world tab and the chip menus read these, nothing writes them
 // but a drop or a delete.
 
-import { buildTree, flattenTree, isDescendantGroup } from './groupTree';
+import { buildTree, flattenTree, isDescendantGroup, removeGroupPromotingChildren } from './groupTree';
 import { PLACEHOLDER_PATH_SEPARATOR } from './placeholders';
+import { knownParent } from './treeProjection';
 import type { Placeholder, PlaceholderGroup } from '@/types';
 
 /** The folder a placeholder sits in: null when ungrouped, or when the folder it names is gone. A dangling
  *  reference reads as loose rather than hiding the row. */
 export function placeholderGroupOf(groups: readonly PlaceholderGroup[], placeholder: Pick<Placeholder, 'groupId'>): string | null {
-  const id = placeholder.groupId ?? null;
-  return id !== null && groups.some((g) => g.id === id) ? id : null;
+  return knownParent(placeholder.groupId, { has: (id) => groups.some((g) => g.id === id) });
 }
 
 /** Direct subfolders of `parentId` (null for the top level), in sibling order. */
@@ -20,7 +20,7 @@ export function childPlaceholderGroups(groups: readonly PlaceholderGroup[], pare
   const known = new Set(groups.map((g) => g.id));
   return groups
     .map((group, index) => ({ group, index }))
-    .filter(({ group }) => (group.parentId !== null && known.has(group.parentId) ? group.parentId : null) === parentId)
+    .filter(({ group }) => knownParent(group.parentId, known) === parentId)
     .sort((a, b) => (a.group.order ?? a.index) - (b.group.order ?? b.index))
     .map(({ group }) => group);
 }
@@ -69,15 +69,8 @@ export function withPlaceholderGroup(placeholder: Placeholder, groupId: string |
 export function removePlaceholderGroup(
   groups: PlaceholderGroup[], placeholders: Placeholder[], id: string,
 ): { groups: PlaceholderGroup[]; placeholders: Placeholder[] } {
-  const doomed = groups.find((g) => g.id === id);
-  if (!doomed) return { groups, placeholders };
-  const parentId = doomed.parentId;
-  return {
-    groups: groups.filter((g) => g.id !== id).map((g) => (g.parentId === id ? { ...g, parentId } : g)),
-    placeholders: placeholders.some((p) => p.groupId === id)
-      ? placeholders.map((p) => (p.groupId === id ? withPlaceholderGroup(p, parentId) : p))
-      : placeholders,
-  };
+  const next = removeGroupPromotingChildren(groups, placeholders, id, { orderLeaves: false, placeLeaf: withPlaceholderGroup });
+  return { groups: next.groups, placeholders: next.leaves };
 }
 
 /** Placeholders as they travel off-world, in a character card or dictionary file: the folders are the

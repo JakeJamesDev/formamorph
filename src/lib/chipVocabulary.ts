@@ -16,7 +16,7 @@ import { promptHeader } from './promptHeader';
 import { placeholderAccent } from './highlightUtils';
 import {
   labelForToken, colorForToken, variableForToken, baseToken, tokenVariant, splitToken, joinToken,
-  variantLabelForToken, variableAxes, decodeVariant, encodeVariant,
+  variantLabelForToken, onlyWithForToken, variableAxes, decodeVariant, encodeVariant, dropRedundantToggles,
   type PromptVariable, type PromptVariantAxis,
 } from './promptVariables';
 import {
@@ -30,7 +30,9 @@ import {
   topLevelPlaceholders,
 } from './placeholderTree';
 import { placeholderGroupOf, placeholderGroupsInTreeOrder } from './placeholderGroups';
-import { BUILTIN_HEADING, BUILTIN_PLACEHOLDERS, builtinForToken, type BuiltinPlaceholder } from './builtinPlaceholders';
+import {
+  BUILTIN_HEADING, BUILTIN_PLACEHOLDERS, PLAYER_NAME, builtinForToken, withPlayerName, type BuiltinPlaceholder,
+} from './builtinPlaceholders';
 import type { PlaceholderGroup } from '@/types';
 import { acceptsBlueprintChips, isBlueprintChip, type ChipField } from './blueprintChips';
 import { blueprintIds } from './placeholderBlueprints';
@@ -117,6 +119,8 @@ export interface ChipVocabulary {
   parse(text: string): PromptSegment[];
   /** True if the token is a well-formed member of this family (renders as a chip). */
   isKnown(token: string): boolean;
+  /** True for a prompt variable chip, which stands for a value rendered from the scene. */
+  promptChip?(token: string): boolean;
   /** Friendly chip label: what the token stands for, bare. Rename edits this; the remove button is named
    *  by it. */
   label(token: string): string;
@@ -128,9 +132,11 @@ export interface ChipVocabulary {
   hint?(token: string): string | undefined;
   /** The active non-default mode label shown in parens on the chip, or null. */
   variantLabel(token: string): string | null;
+  /** What the chip's Only With picks read as, or null. Drawn as a glyph after the label, not in it. */
+  onlyWith(token: string): string | null;
   /** Accent color, or undefined. */
   color(token: string): string | undefined;
-  /** The pop-out axes for this token (empty = no options). */
+  /** The Chip Options axes for this token (empty = no options). */
   axes(token: string): PromptVariantAxis[];
   /** Current per-axis selection for the token. */
   selection(token: string): Record<string, string | null>;
@@ -188,7 +194,7 @@ export interface ChipVocabulary {
   rename?(token: string, next: string): void;
   /** True for a reserved chip, which has nothing to rename or re-aim. */
   fixed?(token: string): boolean;
-  /** True for a Built-in Placeholder chip, which carries the Built-in mark and opens no pop-out. */
+  /** True for a Built-in Placeholder chip, which carries the Built-in mark and opens no Chip Options. */
   builtin?(token: string): boolean;
   /** True for a chip naming a blueprint, which carries the blueprint mark. */
   blueprint?(token: string): boolean;
@@ -204,8 +210,10 @@ export function promptVocabulary(palette: PromptVariable[]): ChipVocabulary {
   return {
     parse: parsePromptTemplate,
     isKnown: (t) => variableForToken(t) != null,
+    promptChip: (t) => variableForToken(t) != null,
     label: labelForToken,
     variantLabel: variantLabelForToken,
+    onlyWith: onlyWithForToken,
     color: colorForToken,
     axes: (t) => {
       const v = variableForToken(t);
@@ -233,7 +241,8 @@ export function promptVocabulary(palette: PromptVariable[]): ChipVocabulary {
         return joinToken({ ...splitToken(t), base: baseToken(t),
           headerFormat: optionId === 'markdown' || optionId === 'xml' ? optionId : undefined });
       }
-      const next = { ...decodeVariant(v, tokenVariant(t)), [axisId]: optionId };
+      const changed = { ...decodeVariant(v, tokenVariant(t)), [axisId]: optionId };
+      const next = axisId === 'scope' ? dropRedundantToggles(v, changed) : changed;
       // Preserve placement metadata while changing one selected axis.
       const parts = splitToken(t);
       return joinToken({ ...parts, base: baseToken(t), variantId: encodeVariant(v, next) });
@@ -262,7 +271,9 @@ export function promptVocabulary(palette: PromptVariable[]): ChipVocabulary {
     headerBoundaries: (t) => {
       const parts = splitToken(t);
       const v = variableForToken(t);
-      return parts && v ? promptHeader(parts.header, parts.headerFormat ?? decodeVariant(v, parts.variantId).format) : null;
+      // The editor has no playthrough, so the Player Name reads as its label.
+      const header = parts?.header && withPlayerName(parts.header, PLAYER_NAME.label);
+      return parts && v ? promptHeader(header, parts.headerFormat ?? decodeVariant(v, parts.variantId).format) : null;
     },
     palette: () => palette.map((v) => ({ token: v.token, label: v.label, color: v.color })),
     freshInsertToken: (t) => t,
@@ -275,8 +286,8 @@ const PLACEHOLDER_MODE_AXIS: PromptVariantAxis = {
   id: 'mode',
   label: '',
   options: [
-    { id: null, label: 'World', help: 'Rolls the same value everywhere in the World.' },
-    { id: 'unique', label: 'Unique', help: 'Rolls its own value for this instance.' },
+    { id: null, label: 'World', help: 'Rolls the same value everywhere in the world' },
+    { id: 'unique', label: 'Unique', help: 'Rolls its own value for this instance' },
   ],
 };
 
@@ -323,6 +334,7 @@ export function plainVocabulary(): ChipVocabulary {
     isKnown: () => false,
     label: (t) => t,
     variantLabel: () => null,
+    onlyWith: () => null,
     color: () => undefined,
     axes: () => [],
     selection: () => ({}),
@@ -469,6 +481,7 @@ export function placeholderVocabulary(
       return `${d.mode === 'unique' ? 'Unique' : 'World'} · ${values}`;
     },
     variantLabel: (t) => (decodePlaceholderToken(t)?.mode === 'unique' ? 'Unique' : null),
+    onlyWith: () => null,
     color: (t) => {
       const builtin = builtinForToken(t);
       if (builtin) return builtin.accent;
@@ -517,7 +530,7 @@ export function placeholderVocabulary(
       ),
     ],
     // The same sections, plus what one placeholder owns — a picker looking a name up needs the owned rows
-    // too, and each keeps the holder chain that tells it from a root of the same name.
+    // too, and each keeps the parent placeholder chain that tells it from a root of the same name.
     allRows: () => sectionedRows(
       refused.size ? placeholders.filter((p) => !refused.has(p.id)) : placeholders,
       (p, underOwner) => {
@@ -589,9 +602,9 @@ export function placeholderVocabulary(
     // is exactly that chip, which is what committing the value makes it. Created inside an entity's or
     // book's fields, it lands in that owner's list.
     create: onCreate && ((name) => {
-      const holder = ownerId && byId.has(ownerId) ? ownerId : undefined;
-      const made = { ...newPlaceholder(name), ...(holder ? { ownerId: holder } : {}) };
-      const home: PlaceholderHome | undefined = !holder && scope ? { kind: scope.kind, ownerId: scope.id } : undefined;
+      const parentId = ownerId && byId.has(ownerId) ? ownerId : undefined;
+      const made = { ...newPlaceholder(name), ...(parentId ? { ownerId: parentId } : {}) };
+      const home: PlaceholderHome | undefined = !parentId && scope ? { kind: scope.kind, ownerId: scope.id } : undefined;
       onCreate(made, home);
       return paletteToken(made);
     }),
@@ -679,10 +692,12 @@ export function worldPromptVocabulary(prompt: ChipVocabulary, placeholder: ChipV
   return {
     parse: parseTemplateWithPlaceholders,
     isKnown: (t) => familyOf(t).isKnown(t),
+    promptChip: (t) => familyOf(t).promptChip?.(t) ?? false,
     label: (t) => familyOf(t).label(t),
     display: (t) => familyOf(t).display?.(t),
     hint: (t) => familyOf(t).hint?.(t),
     variantLabel: (t) => familyOf(t).variantLabel(t),
+    onlyWith: (t) => familyOf(t).onlyWith(t),
     color: (t) => familyOf(t).color(t),
     axes: (t) => familyOf(t).axes(t),
     selection: (t) => familyOf(t).selection(t),

@@ -202,20 +202,20 @@ export function lonePlaceholderToken(value: string): string | null {
 
 /**
  * Who holds each placeholder as a **part** — {@link lonePlaceholderToken} read across a whole set. Keyed by
- * the part's id, valued by the ids holding it in list order; a holder is named once however many of its
+ * the part's id, valued by the ids holding it in list order; a parent placeholder is named once however many of its
  * values point there, and a placeholder is never its own part. A chip *inside* a longer value composes into
  * that value rather than becoming a part, so it names nobody here.
  */
 export function collectPlaceholderParts(placeholders: Placeholder[]): Map<string, string[]> {
   const parts = new Map<string, string[]>();
-  for (const holder of placeholders) {
-    for (const value of holder.values) {
+  for (const parent of placeholders) {
+    for (const value of parent.values) {
       const lone = lonePlaceholderToken(value.text);
       const id = lone ? decodePlaceholderToken(lone)?.id : undefined;
-      if (!id || id === holder.id) continue;
-      const holders = parts.get(id);
-      if (!holders) parts.set(id, [holder.id]);
-      else if (!holders.includes(holder.id)) holders.push(holder.id);
+      if (!id || id === parent.id) continue;
+      const parents = parts.get(id);
+      if (!parents) parts.set(id, [parent.id]);
+      else if (!parents.includes(parent.id)) parents.push(parent.id);
     }
   }
   return parts;
@@ -283,7 +283,7 @@ export function primeRolls(
   existing: PlaceholderRolls = {},
   pick: PlaceholderPick = weightedPick,
   pinTexts?: Record<string, readonly string[]>,
-  /** The copy lookup of the bearer whose texts these are, so its copies get their own rolls. */
+  /** The copy lookup of the owner whose texts these are, so its copies get their own rolls. */
   copies?: CopyLookup,
 ): PlaceholderRolls {
   const ctx = createResolveCtx({ placeholders, rolls: existing, pick, pinTexts, copies });
@@ -618,13 +618,13 @@ export function buildPlaceholderPreview(
   store?: AuthorDrawStore,
   /** The owning entity's authored name, which Character Name previews as. Absent or blank, it shows its label. */
   ownerName?: string,
-  /** The bearer whose trait text this is: its copies stand in for blueprints, and its pins hold. */
-  bearer?: Pick<ResolveOptions, 'copies' | 'pins'>,
+  /** The owner whose trait text this is: its copies stand in for blueprints, and its pins hold. */
+  ownerReads?: Pick<ResolveOptions, 'copies' | 'pins'>,
 ): Record<string, string> {
   if (!text || !hasPlaceholders(text)) return {};
   // One context across every token, so a structured chip resolves the way play resolves it and the sharing
   // rules still hold: World chips of one placeholder agree, Unique placements stay apart.
-  return drawWithValuePins({ ...authorDraw(placeholders, pick, store), ...bearer }, (ctx) => {
+  return drawWithValuePins({ ...authorDraw(placeholders, pick, store), ...ownerReads }, (ctx) => {
     // Drawn once, in the same context, so a chip the name shares with the text reads one value.
     let character: string | undefined;
     const previewBuiltin = (builtin: BuiltinPlaceholder): string => {
@@ -796,7 +796,7 @@ export function describePlaceholders(
   text: string,
   placeholders: readonly Placeholder[] = [],
   pins?: Record<string, string>,
-  /** The copy lookup of the bearer whose text this is, as {@link ResolveOptions.copies}. */
+  /** The copy lookup of the owner whose text this is, as {@link ResolveOptions.copies}. */
   copies?: CopyLookup,
 ): string {
   if (!text || !hasPlaceholders(text)) return text;
@@ -866,7 +866,7 @@ function describePh(ph: Placeholder, segs: PlaceholderSegment[], ctx: DescribeCt
   const inner: DescribeCtx = { ...ctx, depth: ctx.depth + 1, seen: new Set(ctx.seen).add(ph.id) };
   /** Only a lone-chip value nests a row, and only the pass over the placeholder's own values crosses one. */
   const crossing = (value: PlaceholderValue): Crossing =>
-    (pinned == null ? { holder: ph, value } : undefined);
+    (pinned == null ? { parent: ph, value } : undefined);
 
   if (!segs.length) {
     // A benched value can never be drawn, so it is left out of what this advertises — under the active
@@ -966,7 +966,7 @@ export interface ResolveOptions {
   player?: Omit<BuiltinRender, 'character'>;
   /** The resolved name of the entity that owns the text, which the Character Name chip renders. */
   character?: string | null;
-  /** The copy lookup of the bearer whose text this is: a blueprint chip reads that bearer's copy. Absent, it
+  /** The copy lookup of the owner whose text this is: a blueprint chip reads that owner's copy. Absent, it
    *  reads the blueprint itself. */
   copies?: CopyLookup;
 }
@@ -1147,7 +1147,7 @@ function childChips(
  * exactly that chip. Absent for a chip typed into world text or composed into a longer value — neither
  * nests a row, so neither can carry an override.
  */
-type Crossing = { holder: Placeholder; value: PlaceholderValue } | undefined;
+type Crossing = { parent: Placeholder; value: PlaceholderValue } | undefined;
 
 /** The shared row a walk is inside: the placeholder whose override map applies, and the key under it. */
 interface ShareCtx {
@@ -1155,11 +1155,11 @@ interface ShareCtx {
   key: string;
 }
 
-/** The value a holder holds `targetId` through, as the tree draws it: the first of its values that is
- *  exactly a chip of it. A holder naming one target twice still draws one row, so every crossing into that
+/** The value a parent placeholder holds `targetId` through, as the tree draws it: the first of its values that is
+ *  exactly a chip of it. A parent placeholder naming one target twice still draws one row, so every crossing into that
  *  target has to key by the same value the row was authored against. */
-function rowValueId(holder: Placeholder, targetId: string): string | undefined {
-  for (const value of holder.values ?? []) {
+function rowValueId(parent: Placeholder, targetId: string): string | undefined {
+  for (const value of parent.values ?? []) {
     const raw = lonePlaceholderToken(value.text);
     if (raw && decodePlaceholderToken(raw)?.id === targetId) return value.id;
   }
@@ -1167,7 +1167,7 @@ function rowValueId(holder: Placeholder, targetId: string): string | undefined {
 }
 
 /**
- * The shared row in force after crossing into `target`. A row opens where a holder reaches a placeholder it
+ * The shared row in force after crossing into `target`. A row opens where a parent placeholder reaches a placeholder it
  * does not own — that is exactly the row the list draws with the link icon — and every level below extends
  * its key, the same shape as the placement chain a Unique roll is keyed by. Crossing anything that nests no
  * row leaves the shared row behind, since no key below it could be authored.
@@ -1175,8 +1175,8 @@ function rowValueId(holder: Placeholder, targetId: string): string | undefined {
 function nextShare(share: ShareCtx | undefined, crossing: Crossing, target: Placeholder): ShareCtx | undefined {
   if (!crossing) return undefined;
   if (share) return { owner: share.owner, key: `${share.key}${SHARED_PATH_SEP}${target.id}` };
-  if (target.ownerId === crossing.holder.id) return undefined;
-  return { owner: crossing.holder, key: rowValueId(crossing.holder, target.id) ?? crossing.value.id };
+  if (target.ownerId === crossing.parent.id) return undefined;
+  return { owner: crossing.parent, key: rowValueId(crossing.parent, target.id) ?? crossing.value.id };
 }
 
 /** The weights a placeholder draws by right now: its own, with the active shared row's override over them. */
@@ -1446,7 +1446,7 @@ function phSpans(ph: Placeholder, ctx: ResolveCtx): PlaceholderSpan[] {
   for (const v of values) {
     // An Object holds every value at once, so each one's pins are laid as the walk reaches it.
     layDrawPins(ph, v.text, inner);
-    const spans = valueSpans(v.text, inner, { holder: ph, value: v });
+    const spans = valueSpans(v.text, inner, { parent: ph, value: v });
     if (!spans.length) continue;
     if (out.length) out.push({ text: VALUE_JOIN });
     out.push(...spans);
@@ -1458,7 +1458,7 @@ function phSpans(ph: Placeholder, ctx: ResolveCtx): PlaceholderSpan[] {
  *  the value the roll landed on. Nothing for a pin, which is not a value of this placeholder. */
 function valueCrossing(ph: Placeholder, text: string): Crossing {
   const value = (ph.values ?? []).find((v) => v.text === text);
-  return value ? { holder: ph, value } : undefined;
+  return value ? { parent: ph, value } : undefined;
 }
 
 /** Resolve one value's text: literal runs stay, and every chip inside it walks as an authored one. A chip
@@ -1551,13 +1551,13 @@ function walkSegs(ph: Placeholder, segs: WalkSegment[], ctx: ResolveCtx): string
       ctx.report({ kind: 'slot-miss', placeholderId: ph.id, asked: seg.ref, segment: 'val' });
       return '';
     }
-    return intoChild(hit.token, rest, { holder: ph, value: hit.value });
+    return intoChild(hit.token, rest, { parent: ph, value: hit.value });
   }
 
   // A slot takes a child of this placeholder by name; failing that, a choice routes through whichever value
   // it drew and the same slot is tried inside that variant.
   const direct = childChips(ph.values ?? [], ctx.byId).find((c) => c.target.name === seg.name);
-  if (direct) return intoChild(direct.token, rest, { holder: ph, value: direct.value });
+  if (direct) return intoChild(direct.token, rest, { parent: ph, value: direct.value });
   if (placeholderIsChoice(ph)) {
     // A pin is what `selectValue` hands back while its trait is on, so the slot routes through it as well.
     for (const text of pinTextsFor(ph, ctx)) {
@@ -1595,10 +1595,10 @@ export function resolveEntityText(entity: { name: string } | null, text: string,
   return resolvePlaceholders(text, { ...opts, character: entity && resolvePlaceholders(entity.name, noOwner) });
 }
 
-/** Resolve a trait's own text with its bearer as the Character Name. With no entity bearer the player bears
+/** Resolve a trait's own text with its owner as the Character Name. With no entity owner the player owns
  *  it, so the Character Name reads as the Player Name. */
-export function resolveBearerText(bearer: { name: string } | null, text: string, opts: ResolveOptions): string {
-  return resolveEntityText(bearer, bearer ? text : characterAsPlayer(text), opts);
+export function resolveOwnerText(owner: { name: string } | null, text: string, opts: ResolveOptions): string {
+  return resolveEntityText(owner, owner ? text : characterAsPlayer(text), opts);
 }
 
 /** One placeholder as play reads it right now: what it resolves to, and each authored value resolved. */
@@ -1623,7 +1623,7 @@ export function readPlaceholders(opts: ResolveOptions): PlaceholderReading[] {
       id: ph.id,
       name: ph.name,
       value: resolveChip({ id: ph.id, mode: 'world', placementId: ph.id }, ctx, [], false),
-      values: (ph.values ?? []).map((v) => resolveValue(v.text, inner, { holder: ph, value: v })),
+      values: (ph.values ?? []).map((v) => resolveValue(v.text, inner, { parent: ph, value: v })),
     };
   });
 }

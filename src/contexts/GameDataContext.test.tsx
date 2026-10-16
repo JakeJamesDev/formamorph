@@ -2,9 +2,11 @@ import { describe, it, expect, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { GameDataProvider, useGameData } from './GameDataContext';
+import { worldStripsLinksAndImages } from '@/lib/stripLinksAndImages';
 import type { Stat, World } from '@/types';
 
 import { phValueId, phValues } from '@/test/placeholderValues';
+import { boxScripts } from '@/test/scriptFixtures';
 // The provider initializes IndexedDB storage on mount; stub it out so these tests exercise only
 // loadWorldData's normalization.
 vi.mock('../services/WorldStorageService', () => ({
@@ -25,7 +27,7 @@ const wrapper = ({ children }: { children: ReactNode }) => <GameDataProvider>{ch
 describe('entity stats in the world store', () => {
   const trust: Stat = {
     id: 's-trust', name: 'Trust', type: 'number', description: 'How far Ash trusts you', min: -5, max: 20, value: 3, regen: 1,
-    descriptors: [{ id: 'd1', threshold: 10, description: 'Wary' }], hidden: true, noDecrease: true, code: 'return 1;',
+    descriptors: [{ id: 'd1', threshold: 10, description: 'Wary' }], hidden: true, noDecrease: true, scripts: boxScripts({ after: 'return 1;' }),
     morphBindings: ['Belly'],
   };
   const withStats = {
@@ -65,6 +67,30 @@ describe('entity stats in the world store', () => {
     expect(result.current.isWorldDirty).toBe(false);
     act(() => { result.current.editEntity('ash', (e) => ({ ...e, stats: [{ ...trust, value: 9 }] })); });
     expect(result.current.isWorldDirty).toBe(true);
+  });
+});
+
+describe('scripts in the world store', () => {
+  it('carries the world’s own scripts through load and export, and loads a stat’s boxes as scripts', () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    const worldScripts = [{ id: 'w1', timing: 'after', code: 'stats.Health.value = 1;', order: 2 }];
+    const legacy = {
+      ...world('w', {}),
+      stats: [{ id: 'hp', name: 'Health', type: 'number', description: '', min: 0, max: 10, value: 5, regen: 0, descriptors: [], code: 'return 3;' }],
+      scripts: worldScripts,
+    } as unknown as World;
+    act(() => { result.current.loadWorldData(legacy); });
+    const exported = JSON.parse(JSON.stringify(result.current.getWorldData()));
+    expect(exported.scripts).toEqual(worldScripts);
+    expect(exported.stats[0]).not.toHaveProperty('code');
+    expect(exported.stats[0].scripts).toEqual([{ id: 'hp:after', timing: 'after', code: 'return 3;' }]);
+    expect(result.current.isWorldDirty).toBe(false);
+  });
+
+  it('exports no world script list when the world has none', () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData(world('w', {})); });
+    expect(result.current.getWorldData()).not.toHaveProperty('scripts');
   });
 });
 
@@ -152,7 +178,7 @@ describe('placeholder copies in the world store', () => {
   const copies = (result: { current: ReturnType<typeof useGameData> }, id: string) =>
     (result.current.entities.find((e) => e.id === id)?.placeholders ?? []).map((p) => p.blueprintId);
 
-  it('gives a bearer its copies on load, clean, and writes them into the payload', () => {
+  it('gives an owner its copies on load, clean, and writes them into the payload', () => {
     const { result } = renderHook(() => useGameData(), { wrapper });
     act(() => { result.current.loadWorldData(pinned); });
     expect(copies(result, 'ash')).toEqual(['garb']);
@@ -172,7 +198,7 @@ describe('placeholder copies in the world store', () => {
     expect(copies(result, 'bob')).toEqual([]);
   });
 
-  it('creates a copy when a pin joins an original that already has a bearer', () => {
+  it('creates a copy when a pin joins an original that already has an owner', () => {
     const { result } = renderHook(() => useGameData(), { wrapper });
     const { placeholderPins: _p, ...bare } = pinned.traits[0];
     act(() => { result.current.loadWorldData({ ...pinned, traits: [bare] }); });
@@ -625,6 +651,23 @@ describe('loadWorldData', () => {
     expect(result.current.worldOverview.allowedPersonas).toBeUndefined();
     expect(result.current.worldOverview.startPersona).toBeUndefined();
   });
+
+  it('loads a world file with no Strip Links And Images field as off, and carries a saved choice through', () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData(JSON.parse(JSON.stringify(world('a', {})))); });
+    expect(worldStripsLinksAndImages(result.current.worldOverview)).toBe(false);
+    act(() => { result.current.loadWorldData(JSON.parse(JSON.stringify(world('b', { stripLinksAndImages: true })))); });
+    expect(result.current.worldOverview.stripLinksAndImages).toBe(true);
+    act(() => { result.current.loadWorldData(JSON.parse(JSON.stringify(world('c', { stripLinksAndImages: false })))); });
+    expect(result.current.worldOverview.stripLinksAndImages).toBe(false);
+  });
+
+  it("does not leak one world's Strip Links And Images choice into the next", () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData(world('a', { stripLinksAndImages: true })); });
+    act(() => { result.current.loadWorldData(world('b', {})); });
+    expect(worldStripsLinksAndImages(result.current.worldOverview)).toBe(false);
+  });
 });
 
 describe('renaming a placeholder value', () => {
@@ -713,8 +756,8 @@ describe('placeholders an entity or a book carries', () => {
     expect(result.current.worldPlaceholders.map((p) => p.id)).toEqual(['shared', 'mood']);
   });
 
-  it('puts a part created from inside a scoped holder beside that holder, not on the world list', () => {
-    // What the typeahead's inline create writes: a placeholder born with its holder as owner.
+  it('puts a part created from inside a scoped parent placeholder beside that parent, not on the world list', () => {
+    // What the typeahead's inline create writes: a placeholder born with its parent placeholder as owner.
     const result = load();
     act(() => { result.current.phStore.addPlaceholder({ id: 'iris', name: 'Iris', values: phValues(['gold']), ownerId: 'eyes' }); });
     expect(result.current.entities[0].placeholders?.map((p) => p.id)).toEqual(['eyes', 'iris']);

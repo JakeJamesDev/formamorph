@@ -205,12 +205,14 @@ describe('the lens PC', () => {
       .toBe(block(buildAiContext(w, lens), 'stats').text);
   });
 
-  it("lists the Custom Persona entity's stats after the world's, as the play chip does", () => {
+  it("leaves the Custom Persona entity's stats out of the Stats block, as the play chip does", () => {
+    // Those stats nest in the persona's block, which this panel does not show.
     const calm: Stat = { ...stats[0], id: 's-calm', name: 'Calm', value: 3, description: '' };
     const w = world({ entities: [...(world().entities ?? []), { id: 'e-you', name: 'You', customPersona: true, stats: [calm] }] });
     const lens = buildLens({ ...w, traitGroups: w.traitGroups ?? [] }, at('loc-harbor', 't-sedge'));
-    expect(buildStatBlock(w, lens, '<STATS DESCRIPTION|numbers.markdown>')).toBe('- **Nerve:** 5/10\n- **Tide Sense:** 2/10\n- **Calm:** 3/10');
-    expect(block(buildAiContext(w, lens), 'stats').text).toBe('- **Nerve**\n- **Tide Sense**\n- **Calm**');
+    expect(buildStatBlock(w, lens, '<STATS DESCRIPTION|numbers.markdown>')).toBe('- **Nerve:** 5/10\n- **Tide Sense:** 2/10');
+    expect(block(buildAiContext(w, lens), 'stats').text).toBe('- **Nerve**\n- **Tide Sense**');
+    expect(buildStatBlock(w, lens, '<PERSONA|markdown>')).toContain('**Calm:** 3/10');
   });
 
   it('replaces the default trait its own exclusive group contributed', () => {
@@ -219,6 +221,43 @@ describe('the lens PC', () => {
     expect(asDefault).toContain('Reach-Born');
     expect(asSedge).toContain('Sedge-Born');
     expect(asSedge).not.toContain('Reach-Born');
+  });
+});
+
+describe('the Persona block', () => {
+  const keen: Trait = { id: 't-keen', name: 'Keen-Eyed', isDefault: true, aiDescription: 'Sees the far shore.', statChanges: [], order: 0 };
+  const calm: Stat = { id: 's-calm', name: 'Calm', type: 'number', value: 3, min: 0, max: 10 } as Stat;
+  const you: Entity = { id: 'e-you', name: 'You', customPersona: true, traits: [keen], stats: [calm] };
+  const withYou = world({ entities: [...entities, you] });
+  const lensOf = (w: AiContextWorld) => buildLens({ ...w, traitGroups: w.traitGroups ?? [] }, at('loc-harbor', 't-sedge'));
+
+  it("serves the Custom Persona entity's traits and stats nested in one block, as the Persona chip renders it", () => {
+    const lens = lensOf(withYou);
+    const text = block(buildAiContext(withYou, lens), 'persona').text;
+    expect(text).toBe('- **You**\n  - **traits:**\n    - **Keen-Eyed:** Sees the far shore.\n  - **stats:**\n    - **Calm:** 3/10\n');
+    expect(text).toBe(buildStatBlock(withYou, lens, '<PERSONA|markdown>'));
+  });
+
+  it('has nothing to send in a world with no Custom Persona entity', () => {
+    expect(entities.some((e) => e.customPersona)).toBe(false);
+    const persona = block(context(at('loc-harbor', 't-sedge')), 'persona');
+    expect(persona.empty).toBe(true);
+    expect(persona.tokens).toBe(0);
+  });
+
+  it('sits before Stats and Traits', () => {
+    const order = buildAiContext(withYou, lensOf(withYou)).blocks.map((b) => b.id);
+    expect(order.indexOf('persona')).toBeGreaterThan(-1);
+    expect(order.indexOf('persona')).toBeLessThan(order.indexOf('stats'));
+    expect(order.indexOf('persona')).toBeLessThan(order.indexOf('traits'));
+  });
+
+  it('adds one to the blocks that have something to send, and its cost to the total', () => {
+    const served = (data: ReturnType<typeof context>) => data.blocks.filter((b) => !b.empty).length;
+    const without = context(at('loc-harbor', 't-sedge'));
+    const data = buildAiContext(withYou, lensOf(withYou));
+    expect(served(data)).toBe(served(without) + 1);
+    expect(data.totalTokens).toBe(without.totalTokens + block(data, 'persona').tokens);
   });
 });
 
@@ -287,7 +326,7 @@ describe('a malformed world', () => {
     // World JSON is hand-editable, so a collection the type calls required can simply be absent.
     const bare = { worldOverview: {}, stats: [], locations, entities: [], traits: [] } as unknown as AiContextWorld;
     const data = buildAiContext(bare, buildLens({ ...bare, traitGroups: [] }, at('loc-harbor')));
-    expect(data.blocks).toHaveLength(12);
+    expect(data.blocks).toHaveLength(13);
     expect(data.destinations.map((d) => d.id).sort()).toEqual(['loc-landing', 'loc-loft', 'loc-market']);
   });
 

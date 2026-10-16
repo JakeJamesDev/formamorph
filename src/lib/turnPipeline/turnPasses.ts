@@ -1,6 +1,8 @@
 import type { ChatMessage } from '@/types';
 import type { TurnPassRecord, TurnPassRequest, TurnPlanInput, TurnMaterial, TurnPassSubject } from './turnPlan';
+import type { StatText, StatTextPrompts } from '@/lib/statTextPrompts';
 import { renderPromptTemplateRuns, promptTemplatePieces } from '@/lib/promptTemplate';
+import { layerValues, type TokenValues } from '@/lib/promptValues';
 import {
   tilePieces, trimEndTiled, trimTiled, collapseBlankLines,
   type AnatomyPiece, type ContextLabel, type TiledRuns,
@@ -15,10 +17,11 @@ import {
   type ParsedDirector,
 } from '@/lib/stagedPlanning';
 import { languageDirective } from '@/lib/languages';
+import { stripLinksAndImages } from '@/lib/stripLinksAndImages';
 import { matchLocationResponse } from '@/lib/locationMatch';
 import { parseChoices } from '@/lib/choices';
 import { parseStatUpdates } from '@/lib/statChanges';
-import { playerTargets, statRequestSchema, type StatRequestSnapshot } from '@/lib/statRequest';
+import { statRequestSchema, textPassTargets, type StatRequestSnapshot } from '@/lib/statRequest';
 import { parseTimeDelta, parseOpeningDaypart } from '@/lib/gameClock';
 import { cleanDiscoveredDescription, DISCOVER_LATER_LABEL, DISCOVER_PASSAGE_LABEL } from '@/lib/runtimeCharacters';
 import {
@@ -29,10 +32,6 @@ import {
   stripOocDirectives,
   planDirective,
   INLINE_THINKING_DIRECTIVE,
-  defaultStatUpdatesPrompt,
-  defaultStatUpdatesUserPrompt,
-  textStatUpdatesPrompt,
-  textStatUpdatesUserPrompt,
 } from '@/components/game/GamePrompts';
 
 /**
@@ -88,14 +87,14 @@ export const SCENE_TAGS_EMPTY_CAST = 'nobody - an empty scene';
  */
 
 /** A system prompt and the runs over it: what the author typed, against the values its chips inject. */
-const systemTiled = (template: string, values: Record<string, string>): TiledRuns =>
+const systemTiled = (template: string, values: TokenValues): TiledRuns =>
   renderPromptTemplateRuns(template, values, { source: 'system-template' });
 
 /** A user-message template and the runs over it. A few of the chips a user message carries hold what an
  *  earlier prompt wrote — the action, the narration, who is in frame — so those name what wrote them. */
 const userTiled = (
   template: string,
-  values: Record<string, string>,
+  values: TokenValues,
   tokens?: Record<string, ContextLabel>,
 ): TiledRuns =>
   renderPromptTemplateRuns(template, values, {
@@ -127,10 +126,10 @@ export const effectiveActionFor = (input: TurnPlanInput): string =>
   isOpening(input) ? 'START GAME' : input.action;
 
 /**
- * The four assemblies a pass shares with a caller that asks the same thing outside a turn — the idle
- * drainers, which work on a turn that has already been stored, and the standalone re-rolls. Those callers
- * have no Turn Plan to run, so they call these directly rather than fabricating one; what matters is that
- * the wording, and the conditions on it, exist once.
+ * The four assemblies a pass shares with a caller that asks the same thing outside a turn — the
+ * Background Pass Queue, which works on a turn that has already been stored, and the standalone
+ * re-rolls. Those callers have no Turn Plan to run, so they call these directly rather than
+ * fabricating one; what matters is that the wording, and the conditions on it, exist once.
  */
 
 /**
@@ -141,22 +140,19 @@ export const effectiveActionFor = (input: TurnPlanInput): string =>
 export const choicesSystemTiled = (
   template: string,
   language: string,
-  values: Record<string, string>,
+  values: TokenValues,
 ): TiledRuns =>
-  trimEndTiled(systemTiled(template, { ...values, '<LANGUAGE>': languageDirective('choices', language) }));
+  trimEndTiled(systemTiled(template, layerValues(values, { '<LANGUAGE>': languageDirective('choices', language) })));
 
 export const choicesSystemPrompt = (
   template: string,
   language: string,
-  values: Record<string, string>,
+  values: TokenValues,
 ): string => choicesSystemTiled(template, language, values).content;
 
 /** The digest's user message. A bracketed authorial direction never reaches it — it records story content. */
 export const summaryUserTiled = (template: string, action: string, narration: string): TiledRuns =>
   userTiled(template, { '<PLAYER ACTION>': stripOocDirectives(action), '<NARRATION>': narration });
-
-export const summaryUserMessage = (template: string, action: string, narration: string): string =>
-  summaryUserTiled(template, action, narration).content;
 
 /** A headed block chip's value: its header over the text, or nothing at all. */
 const headedBlock = (header: string, text: string): string => (text.trim() ? `${header}\n${text}` : '');
@@ -182,10 +178,15 @@ const discoverUserTiled = (template: string, subject: TurnPassSubject, firstPass
  */
 const quietInBatch = (input: TurnPlanInput): boolean => input.settings.concurrentTurnRequests;
 
-const stageValues = (material: TurnMaterial): Record<string, string> => ({
-  ...material.ctx,
-  '<ACTIVE CHARACTER GUIDANCE>': material.activeCharacterGuidance,
-});
+/** Past narration text as the world's Strip Links And Images rule sends it. */
+const strippedText = (text: string, input: TurnPlanInput): string =>
+  input.settings.stripLinksAndImages ? stripLinksAndImages(text) : text;
+
+const strippedEntries = (entries: string[], input: TurnPlanInput): string[] =>
+  entries.map((entry) => strippedText(entry, input));
+
+const stageValues = (material: TurnMaterial): TokenValues =>
+  layerValues(material.ctx, { '<ACTIVE CHARACTER GUIDANCE>': material.activeCharacterGuidance });
 
 const subjectOf = (material: TurnMaterial): TurnPassSubject => {
   if (!material.subject) throw new Error('this pass runs once per subject, and none was given');
@@ -307,13 +308,14 @@ const characterPass: TurnPassRecord<string> = {
     const subject = subjectOf(material);
     return labeledRequest(
       { type: 'character', maxTokens: TURN_PASS_CAPS.character, silent: false, quiet: false },
-      systemTiled(input.prompts.character, { ...stageValues(material), '<CHARACTER NAME>': subject.name }),
+      systemTiled(input.prompts.character, layerValues(stageValues(material), { '<CHARACTER NAME>': subject.name })),
       assembledTiled(
         buildCharacterUserMessage({
           character: { name: subject.name, stance: subject.stance, entity: subject.entity },
+          stats: subject.stats,
           scene: material.directorScene,
           action: material.effectiveAction,
-          diary: subject.diary,
+          diary: subject.diary && strippedEntries(subject.diary, input),
           recap: material.lastStory,
         }),
         'character-brief',
@@ -411,7 +413,7 @@ export const narrationPass: TurnPassRecord<string> = {
 };
 
 /** What the player could do next. Sees only who is in the scene, never the whole location roster. */
-const choicesPass: TurnPassRecord<string[]> = {
+export const choicesPass: TurnPassRecord<string[]> = {
   id: 'choices',
   type: 'choices',
   stage: 'postNarration',
@@ -419,10 +421,7 @@ const choicesPass: TurnPassRecord<string[]> = {
   isDue: (input) => input.settings.choicesEnabled,
   buildRequest: (input, material) => labeledRequest(
     { type: 'choices', maxTokens: TURN_PASS_CAPS.choices, silent: false, quiet: quietInBatch(input) },
-    choicesSystemTiled(input.prompts.choices, input.settings.language, {
-      ...material.ctx,
-      ...material.sceneEntityTokens,
-    }),
+    choicesSystemTiled(input.prompts.choices, input.settings.language, layerValues(material.ctx, material.sceneEntityTokens)),
     userTiled(input.prompts.choicesUser, {
       '<PLAYER ACTION>': material.effectiveAction,
       '<NARRATION>': material.narration,
@@ -431,11 +430,17 @@ const choicesPass: TurnPassRecord<string[]> = {
   parseResponse: (raw) => parseChoices(raw),
 };
 
-/** The text pass's prompts. A prompt still at its shipped default takes the text wording; a custom one is
- *  sent as written. */
-export const statTextPrompts = (system: string, user: string): { system: string; user: string } => ({
-  system: system === defaultStatUpdatesPrompt ? textStatUpdatesPrompt : system,
-  user: user === defaultStatUpdatesUserPrompt ? textStatUpdatesUserPrompt : user,
+/** The stat pass's prompts: the schema request's, and the text pass's where a built-in preset supplies them. */
+export interface StatPrompts {
+  system: string;
+  user: string;
+  text: StatText;
+}
+
+/** The text pass's prompts. A side with no built-in text wording is sent as written. */
+const resolveStatText = ({ system, user, text }: StatPrompts): StatTextPrompts => ({
+  system: text.system ?? system,
+  user: text.user ?? user,
 });
 
 /**
@@ -445,26 +450,26 @@ export const statTextPrompts = (system: string, user: string): { system: string;
  * to translate.
  */
 export function statUpdatesRequest(
-  prompts: { system: string; user: string },
-  values: { ctx: Record<string, string>; action: string; narration: string },
+  prompts: StatPrompts,
+  values: { ctx: TokenValues; action: string; narration: string },
   base: { statCount: number; statRequest?: StatRequestSnapshot; quiet: boolean },
 ): TurnPassRequest<ChatMessage> {
   const { statRequest } = base;
   const user = { '<PLAYER ACTION>': values.action, '<NARRATION>': values.narration };
   const shared = { type: 'statUpdates' as const, silent: false, quiet: base.quiet, statRequest };
-  const text = statTextPrompts(prompts.system, prompts.user);
-  const textStats = statRequest ? playerTargets(statRequest).length : base.statCount;
+  const text = resolveStatText(prompts);
+  const textStats = statRequest ? textPassTargets(statRequest).length : base.statCount;
   const textRequest = labeledRequest(
     { ...shared, maxTokens: statUpdatesCap(textStats) },
-    systemTiled(text.system, { ...values.ctx, ...statRequest?.textContext }),
+    systemTiled(text.system, layerValues(values.ctx, statRequest?.context)),
     userTiled(text.user, user),
   );
   if (!statRequest || statRequest.textPass) return textRequest;
   const { systemPrompt, messages, maxTokens, anatomy } = textRequest;
   return {
     ...labeledRequest(
-      { ...shared, maxTokens: statSchemaCap(statRequest.targets.length, 1 + statRequest.entityKeys.length) },
-      systemTiled(prompts.system, { ...values.ctx, ...statRequest.context }),
+      { ...shared, maxTokens: statSchemaCap(statRequest.targets.length, new Set(statRequest.targets.map((t) => t.ownerKey)).size) },
+      systemTiled(prompts.system, layerValues(values.ctx, statRequest.context)),
       userTiled(prompts.user, user),
     ),
     responseSchema: statRequestSchema(statRequest),
@@ -475,10 +480,10 @@ export function statUpdatesRequest(
 
 /** Whether a stat request has a stat to ask about on the path it takes. No snapshot sends the text pass. */
 export const statRequestReady = (snapshot: StatRequestSnapshot | undefined): boolean =>
-  !snapshot || (snapshot.textPass ? playerTargets(snapshot) : snapshot.targets).length > 0;
+  !snapshot || (snapshot.textPass ? textPassTargets(snapshot) : snapshot.targets).length > 0;
 
 /** How the turn moved every present owner's stats. */
-const statUpdatesPass: TurnPassRecord<ReturnType<typeof parseStatUpdates>> = {
+export const statUpdatesPass: TurnPassRecord<ReturnType<typeof parseStatUpdates>> = {
   id: 'statUpdates',
   type: 'statUpdates',
   stage: 'postNarration',
@@ -488,17 +493,18 @@ const statUpdatesPass: TurnPassRecord<ReturnType<typeof parseStatUpdates>> = {
   // Entities join once the narration names who is present, and the text pass skips them.
   isReady: (material) => statRequestReady(material.statRequest),
   buildRequest: (input, material) => statUpdatesRequest(
-    { system: input.prompts.statUpdates, user: input.prompts.statUpdatesUser },
-    { ctx: material.ctx, action: material.effectiveAction, narration: material.narration },
+    { system: input.prompts.statUpdates, user: input.prompts.statUpdatesUser, text: input.prompts.statText },
+    { ctx: material.statCtx ?? material.ctx, action: material.effectiveAction, narration: material.narration },
     { statCount: input.settings.statCount, statRequest: material.statRequest, quiet: quietInBatch(input) },
   ),
   parseResponse: (raw) => parseStatUpdates(raw),
 };
 
 /**
- * This turn's memory digest. Only runs in the batch — dispatched one at a time, it is the idle drainer's job.
+ * This turn's memory digest. Due in the batch only; the Background Pass Queue writes any digest a turn
+ * leaves behind.
  */
-const summaryPass: TurnPassRecord<string> = {
+export const summaryPass: TurnPassRecord<string> = {
   id: 'summary',
   type: 'summary',
   stage: 'postNarration',
@@ -550,9 +556,9 @@ const openingTimePass: TurnPassRecord<number | null> = {
 
 /**
  * One participant's private record of the turn. Diaries are read only by the staged character pass, so
- * they are only written in that mode; like the digest, they are the drainer's job outside the batch.
+ * they are only written in that mode; like the digest, they are the queue's job outside the batch.
  */
-const diaryPass: TurnPassRecord<string> = {
+export const diaryPass: TurnPassRecord<string> = {
   id: 'diary',
   type: 'diary',
   stage: 'postNarration',
@@ -576,7 +582,7 @@ const diaryPass: TurnPassRecord<string> = {
 };
 
 /**
- * A lasting description for a participant the narration invented. The idle drainer and the player's
+ * A lasting description for a participant the narration invented. The Background Pass Queue and the player's
  * rewrite build theirs here too; a rewrite adds the subject's later material.
  */
 export const discoverEntityPass: TurnPassRecord<string> = {
@@ -590,7 +596,11 @@ export const discoverEntityPass: TurnPassRecord<string> = {
     return labeledRequest(
       { type: 'discoverEntity', maxTokens: TURN_PASS_CAPS.discoverEntity, ...silentOn(material) },
       systemTiled(input.prompts.discoverEntity, material.ctx),
-      discoverUserTiled(input.prompts.discoverEntityUser, subject, material.narration),
+      discoverUserTiled(
+        input.prompts.discoverEntityUser,
+        { ...subject, laterMaterial: subject.laterMaterial && strippedEntries(subject.laterMaterial, input) },
+        strippedText(material.narration, input),
+      ),
     );
   },
   parseResponse: (raw, material) => cleanDiscoveredDescription(raw, subjectOf(material).name),
@@ -648,7 +658,7 @@ export const milestoneSelectPass: TurnPassRecord<IncrementalVerdict | null> = {
     // An empty kept list leaves blank lines behind; they collapse, as the character note's do.
     const template = trimTiled(tilePieces(collapseBlankLines(promptTemplatePieces(
       input.prompts.milestoneSelectUser,
-      milestoneMomentValues(kept, fresh),
+      milestoneMomentValues(strippedEntries(kept, input), strippedEntries(fresh, input)),
       { source: 'user-template', tokens: { '<REMEMBERED MOMENTS>': 'condensed', '<NEW MOMENTS>': 'condensed' } },
     ))));
     const format = milestoneReplyFormat(kept.length > 0);

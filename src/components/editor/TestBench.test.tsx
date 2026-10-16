@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { buildAiContext, type AiContextData } from '@/lib/testBench/aiContext';
 import { buildLens, EMPTY_LENS, lensLocationOptions, lensPcOptions, type LensState } from '@/lib/testBench/lens';
@@ -13,6 +13,7 @@ import type {
   IssuesProps, LensBarProps, OpeningProps, PlacementControl, TestBenchProps, TriggersProps,
 } from '@/lib/testBench/benchProps';
 import { TestBench, TestBenchButton } from './TestBench';
+import { editorPromptRun } from '@/lib/editorScriptPrompts';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
 import { phValues } from '@/test/placeholderValues';
@@ -63,7 +64,8 @@ const benchProps = (groups: FindingGroup[], over: BenchOver = {}): TestBenchProp
     newCount: 0,
     advancedOnlyCount: 0,
     advanced: true,
-    codedStatCount: 0,
+    scriptCount: 0,
+    codePrompts: null,
     codeCheckStatus: 'idle',
     fixingRuleId: null,
     publishBytes: null,
@@ -72,7 +74,7 @@ const benchProps = (groups: FindingGroup[], over: BenchOver = {}): TestBenchProp
     onDismissRule: vi.fn(),
     onRestoreRule: vi.fn(),
     onMarkAllSeen: vi.fn(),
-    onCheckStatCode: vi.fn(),
+    onCheckScripts: vi.fn(),
     sources: { sourceCount: 0, status: 'idle', missing: [], onCheckSources: vi.fn(), onRepair: vi.fn() },
     ...over.issues,
   },
@@ -361,40 +363,75 @@ describe('TestBench lens bar', () => {
   });
 });
 
-describe('TestBench stat-code check', () => {
-  const CHECK = { name: 'Check Stat Code' };
+describe('TestBench script check', () => {
+  const CHECK = { name: 'Check Scripts' };
+
+  it('shows a running check’s prompt as the inline prompt line, and answers it with the pick', async () => {
+    const prompts = editorPromptRun();
+    const answer = prompts.host.prompt({ kind: 'ask', question: 'Which door?', options: ['Left', 'Right'], multiple: false });
+    renderBench(world([]), { issues: { scriptCount: 1, codeCheckStatus: 'running', codePrompts: prompts.store } });
+    expect(screen.getByTestId('script-prompt')).toHaveTextContent('Which door?');
+    await userEvent.click(screen.getByRole('button', { name: 'Right' }));
+    await expect(answer).resolves.toBe(1);
+  });
+
+  it('answers askText, a long ask and a multiple ask of a running check through the same line', async () => {
+    const prompts = editorPromptRun();
+    const name = prompts.host.prompt({ kind: 'askText', question: 'Your name?' });
+    renderBench(world([]), { issues: { scriptCount: 1, codeCheckStatus: 'running', codePrompts: prompts.store } });
+    const user = userEvent.setup();
+    await user.type(screen.getByRole('textbox', { name: 'Your name?' }), 'Ada{Enter}');
+    await expect(name).resolves.toBe('Ada');
+
+    let road!: Promise<number | number[]>;
+    act(() => { road = prompts.host.prompt({ kind: 'ask', question: 'Which road?', options: ['A', 'B', 'C', 'D', 'E'], multiple: false }); });
+    await user.click(screen.getByRole('combobox', { name: 'Which road?' }));
+    await user.click(await screen.findByRole('option', { name: 'B' }));
+    await user.click(screen.getByRole('button', { name: 'OK' }));
+    await expect(road).resolves.toBe(1);
+
+    let packed!: Promise<number | number[]>;
+    act(() => { packed = prompts.host.prompt({ kind: 'ask', question: 'Pack what?', options: ['Rope', 'Lamp'], multiple: true }); });
+    await user.click(screen.getByRole('button', { name: 'Rope' }));
+    await user.click(screen.getByRole('button', { name: 'Lamp' }));
+    await user.click(screen.getByRole('button', { name: 'OK' }));
+    await expect(packed).resolves.toEqual([0, 1]);
+  });
 
   it('offers nothing to run in a world whose stats carry no code', () => {
-    renderBench(world([]), { issues: { codedStatCount: 0 } });
-    expect(screen.queryByRole('button', { name: /Check Stat Code|Check Again/ })).toBeNull();
+    renderBench(world([]), { issues: { scriptCount: 0 } });
+    expect(screen.queryByRole('button', { name: /Check Scripts|Check Again/ })).toBeNull();
   });
 
   it('runs the check on demand and never on its own', async () => {
-    const { issues } = renderBench(world([]), { issues: { codedStatCount: 2 } });
-    expect(screen.getByText('2 stats have code, run separately')).toBeInTheDocument();
+    const { issues } = renderBench(world([]), { issues: { scriptCount: 2 } });
+    expect(screen.getByText('2 scripts run separately')).toBeInTheDocument();
     // Rendering alone must not have run anything — a VM per stat is exactly what the badge can't afford.
-    expect(issues.onCheckStatCode).not.toHaveBeenCalled();
+    expect(issues.onCheckScripts).not.toHaveBeenCalled();
     await userEvent.click(screen.getByRole('button', CHECK));
-    expect(issues.onCheckStatCode).toHaveBeenCalledTimes(1);
+    expect(issues.onCheckScripts).toHaveBeenCalledTimes(1);
   });
 
   it('closes the button while a run is in flight', () => {
-    renderBench(world([]), { issues: { codedStatCount: 2, codeCheckStatus: 'running' } });
+    renderBench(world([]), { issues: { scriptCount: 2, codeCheckStatus: 'running' } });
     expect(screen.getByRole('button', { name: /Running/ })).toBeDisabled();
   });
 
   it('says what it checked once a run has finished, and offers another', () => {
-    renderBench(world([]), { issues: { codedStatCount: 1, codeCheckStatus: 'done' } });
-    expect(screen.getByText('Checked 1 coded stat')).toBeInTheDocument();
+    renderBench(world([]), { issues: { scriptCount: 1 } });
+    expect(screen.getByText('1 script runs separately')).toBeInTheDocument();
+    cleanup();
+    renderBench(world([]), { issues: { scriptCount: 1, codeCheckStatus: 'done' } });
+    expect(screen.getByText('Checked 1 script')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Check Again' })).toBeEnabled();
   });
 
   it('offers nothing to run in Simple mode, which would fold every verdict away', () => {
-    // Stat Code is an Advanced-only field, so its failures are among the rows Simple hides — a button whose
+    // Scripts are an Advanced-only field, so its failures are among the rows Simple hides — a button whose
     // whole result disappears into the fold is a button that reads as broken.
-    renderBench(world([]), { issues: { codedStatCount: 2, advanced: false } });
-    expect(screen.queryByRole('button', { name: /Check Stat Code|Check Again/ })).toBeNull();
-    expect(screen.queryByText(/stats have code/)).toBeNull();
+    renderBench(world([]), { issues: { scriptCount: 2, advanced: false } });
+    expect(screen.queryByRole('button', { name: /Check Scripts|Check Again/ })).toBeNull();
+    expect(screen.queryByText(/scripts run separately/)).toBeNull();
   });
 });
 

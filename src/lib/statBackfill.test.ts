@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { backfillPlayerStats, backfillGameStateStats } from './statBackfill';
 import type { Stat, PlayerStat } from '@/types';
+import { boxScripts } from '@/test/scriptFixtures';
 
 const stat = (over: Partial<Stat>): Stat => ({
   id: 'x', name: 'X', type: 'number', description: '', min: 0, max: 100, regen: 0, descriptors: [], ...over,
@@ -19,7 +20,7 @@ describe('backfillPlayerStats', () => {
 
   it('never modifies or reorders existing saved stats (keeps their embedded schema)', () => {
     const saved = [pstat({ id: 'fp', name: 'Firepower', value: 80, descriptors: [{ id: 'a', threshold: 10, description: 'old' }] })];
-    const world = [stat({ id: 'fp', name: 'Firepower', descriptors: [{ id: 'b', threshold: 50, description: 'new' }], code: 'return 1;' })];
+    const world = [stat({ id: 'fp', name: 'Firepower', descriptors: [{ id: 'b', threshold: 50, description: 'new' }], scripts: boxScripts({ after: 'return 1;' }) })];
     const out = backfillPlayerStats(saved, world);
     expect(out).toBe(saved); // no additions → same array
     expect(out[0].descriptors[0].description).toBe('old'); // save's own schema wins
@@ -47,15 +48,15 @@ describe('backfillPlayerStats', () => {
 describe('backfillGameStateStats', () => {
   it('backfills a state snapshot and returns a new object only when changed', () => {
     const world = [stat({ id: 'a' }), stat({ id: 'new' })];
-    const changed = backfillGameStateStats({ playerStats: [pstat({ id: 'a' })], other: 1 }, world);
-    expect(changed.playerStats).toHaveLength(2);
+    const changed = backfillGameStateStats({ globalStats: [pstat({ id: 'a' })], other: 1 }, world);
+    expect(changed.globalStats).toHaveLength(2);
     expect(changed.other).toBe(1);
-    const unchanged = { playerStats: [pstat({ id: 'a' }), pstat({ id: 'new' })] };
+    const unchanged = { globalStats: [pstat({ id: 'a' }), pstat({ id: 'new' })] };
     expect(backfillGameStateStats(unchanged, world)).toBe(unchanged);
   });
 
-  it('leaves a state without playerStats untouched', () => {
-    const s = { foo: 1, playerStats: undefined };
+  it('leaves a state without globalStats untouched', () => {
+    const s = { foo: 1, globalStats: undefined };
     expect(backfillGameStateStats(s, [stat({ id: 'a' })])).toBe(s);
   });
 });

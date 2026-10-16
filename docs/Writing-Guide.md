@@ -62,11 +62,12 @@ These entries preserve established concepts. Noun admission is assessed under ru
 | cached images | Downloaded image copies in the remote-image cache, not embedded world images. | [remoteImageCache.ts](../src/lib/remoteImageCache.ts); category 19, two-word technical noun |
 | embedded image, linked image | An embedded image is stored in the world file. A linked image is stored as its URL only. | [entityImages.ts](../src/lib/entityImages.ts); category 19 data concepts |
 | publish, Publish Size, publish limit | Publishing sends a world, entity, dictionary, or avatar to Community Creations. Publish Size is the byte size of the content that publishing sends. The publish limit is the largest Publish Size the server accepts for that kind. | [publishLimits.ts](../src/lib/publishLimits.ts); category 19; `publish` is a technical verb under rule 1.12 because no approved verb names the upload-and-list operation |
-| stat code, code box | Stat code is the JavaScript a stat runs each turn. A code box is one of the two editors that hold it. | [StatCodeBox.tsx](../src/managers/StatCodeBox.tsx); category 19 |
-| Before the AI, After the AI | The two code boxes, named for when they run in the turn. Before the AI runs before the prompt is built. After the AI runs after the AI's changes and Regen apply. | [statCodeTiming.ts](../src/lib/statCodeTiming.ts); named controls, rule 1.5 |
-| Test Code, Templates | The button under a code box that runs that box alone, and the menu that inserts a code template into it. | [StatCodeBox.tsx](../src/managers/StatCodeBox.tsx); named controls, rule 1.5 |
+| script, code box | A script is one box of JavaScript with a timing, on a stat, a trait or the world. A code box is the editor that holds it. Never write "stat code" for it: that was the old name. | [ScriptBox.tsx](../src/managers/ScriptBox.tsx); category 19 |
+| timing, Before the AI, After the AI, During AI Output, At Game Start, When a Trait Switches | A script's timing is when it runs. Before the AI runs before the prompt is built. After the AI runs after the AI's changes and Regen apply. During AI Output runs on each completed narration sentence. At Game Start runs once on a new game's opening turn. When a Trait Switches runs when a trait turns on or off in play. | [scripts.ts](../src/lib/scripts.ts); named controls, rule 1.5 |
+| narration, player (in a script) | `narration` is the sentence and its context in a During AI Output script. `player` is the human who plays, with the calls `tell`, `toast`, `confirm`, `ask` and `askText`. `persona` stays the entity the player plays. | [statCodeSurface.ts](../src/lib/statCodeSurface.ts); rule 1.5, category 19 |
+| Test Code, Templates | The button under a code box that runs that box alone, and the menu that inserts a code template into it. | [ScriptBox.tsx](../src/managers/ScriptBox.tsx); named controls, rule 1.5 |
 | pin (verb), unpin (verb) | Code or the author fixes a placeholder to one value until the pin is removed. `pin(x)` in code; Pin in the editor. | [statCodeSurface.ts](../src/lib/statCodeSurface.ts); rule 1.12 technical verb, no approved verb names the hold-one-value operation |
-| switch (verb) | Code or the player turns a trait on or off through `enabled`. Only traits switch; stat fields are set. | [StatCodeGuide](StatCodeGuide); rule 1.12 technical verb, matches the trait checkbox |
+| switch (verb) | Code or the player turns a trait on or off through `enabled`. Only traits switch; stat fields are set. | [ScriptsGuide](ScriptsGuide); rule 1.12 technical verb, matches the trait checkbox |
 | listing | One published item on Community Creations. Distinct from the local copy it was published from, and from the world or library item it holds. | [publishPayload.ts](../src/lib/publishPayload.ts); category 19 |
 | source | The published listing a copy of an entity or a dictionary follows. A copy with no source is independent. | [publishLinks.ts](../src/lib/publishLinks.ts); category 19 |
 | required, Include as required | A world requires a source when downloading the world also downloads and links that source. Include as required is the checkbox that declares it. | [LinkedContentSection.tsx](../src/components/menu/LinkedContentSection.tsx); category 19, named control under rule 1.5 |
@@ -89,7 +90,7 @@ A setting's brief line, a help line under a field, a tooltip, and a ⓘ popover 
 | Rule | Passes | Fails |
 | --- | --- | --- |
 | **Second person or no subject.** Start with the verb. Never "the app" or "Formamorph" as the subject, never "we". | `Saves every few minutes while you work` | `The app saves every few minutes`, `We save your work` |
-| **No on/off preamble.** The label is the on state. State the effect once, then the consequence or trade-off. | `Shorter intervals show changes sooner but use more data` | `When Auto-Save is on, the app saves… When it is off…` |
+| **No on/off preamble.** The label is the on state. State the effect once, then the consequence or trade-off. | `Shorter intervals show changes sooner but use more data` | `When Autosave is on, the app saves… When it is off…` |
 | **Contractions, and the period rule.** One sentence takes no period. Two or more sentences end with one. | `You'll be signed out` | `You will be signed out.` |
 | **Common words, no figurative language.** "Trash", "badge", "bandwidth" pass. Metaphor, idiom, "simply", "easy", and exclamation marks fail. | `Sends requests to your model server` | `Points requests at your model server`, `Rides the narration history` |
 
@@ -102,7 +103,7 @@ Labels keep Title Case. The brief line stays within 12 words. A ⓘ popover may 
 
 ### The technical register
 
-Technical surfaces are instructions, not prose. This covers stat code help, the Stat Code Guide, editor warnings, Test Code output, Test Bench findings, completion info, template descriptions, and code comments. The reader is writing code and wants the exact term.
+Technical surfaces are instructions, not prose. This covers script help, the Scripts Guide, editor warnings, Test Code output, Test Bench findings, completion info, template descriptions, and code comments. The reader is writing code and wants the exact term.
 
 - **Defined words beat common words.** STE prefers the common word for a general reader. A technical reader needs the word that names the operation. "Overwrites" is correct; "writes over" is not a term. "Read-only" is correct; "code cannot change it" is a description of read-only.
 - **One term per concept, everywhere.** The same fact reads the same in the hint, the help topic, the guide, the warning, and the comment. Pick the term once and reuse it.

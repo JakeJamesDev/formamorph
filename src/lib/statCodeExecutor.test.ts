@@ -3,10 +3,12 @@
  * (No DOM needed; node keeps the QuickJS WASM engine loading through its filesystem path.)
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { executeStatCode, type SandboxPlaceholderNode, type SandboxTrait, type StatCodeRunOptions } from './statCodeExecutor';
+import { clampToOwnRange, executeStatCode, type SandboxPlaceholderNode, type SandboxTrait, type StatCodeRunOptions } from './statCodeExecutor';
 import { phMap, phNode, phUnpin, phWrite } from '@/test/sandboxPlaceholders';
 import { PLACEHOLDER_ENTRY_MEMBERS } from './statCodePaths';
 import type { Stat } from '@/types';
+import { codeAt } from '@/test/scriptFixtures';
+import { migrateWorld } from './version';
 
 const makeStat = (over: Partial<Stat>): Stat => ({
   id: '1',
@@ -35,10 +37,10 @@ describe('executeStatCode', () => {
     expect(await executeStatCode('return 42;', [], makeStat({}))).toEqual({ value: 42, error: null });
   });
 
-  it('clamps the result to the stat min/max', async () => {
+  it('hands back a returned number as written, for the turn to clamp once every bound has landed', async () => {
     const stat = makeStat({ min: 0, max: 50 });
-    expect((await executeStatCode('return 999;', [], stat)).value).toBe(50);
-    expect((await executeStatCode('return -999;', [], stat)).value).toBe(0);
+    expect((await executeStatCode('return 999;', [], stat)).value).toBe(999);
+    expect((await executeStatCode('return -999;', [], stat)).value).toBe(-999);
   });
 
   it('errors when the code does not return a number', async () => {
@@ -226,8 +228,8 @@ describe('executeStatCode self and turn inputs', () => {
     expect(await run('self.value = self.value; return undefined;')).toEqual({ value: null, error: null });
   });
 
-  it('clamps a self.value write to the stat range', async () => {
-    expect((await run('self.value = 500;')).value).toBe(100);
+  it('hands back a self.value write as written', async () => {
+    expect((await run('self.value = 500;')).value).toBe(500);
   });
 
   it('fails on a non-number return even after a valid write', async () => {
@@ -268,13 +270,18 @@ describe('executeStatCode bound writes', () => {
     expect(await run('return self.max;')).toEqual({ value: 100, error: null });
   });
 
-  it('clamps a value write to the range the same run wrote', async () => {
-    expect(await run('self.max = 30; self.value = 90;')).toEqual({ value: 30, error: null, bounds: { max: 30 } });
-    expect(await run('self.min = 50; return 20;')).toEqual({ value: 50, error: null, bounds: { min: 50 } });
+  it('hands back a value write beside the bounds the same run wrote, unclamped', async () => {
+    expect(await run('self.max = 30; self.value = 90;')).toEqual({ value: 90, error: null, bounds: { max: 30 } });
+    expect(await run('self.min = 50; return 20;')).toEqual({ value: 20, error: null, bounds: { min: 50 } });
   });
 
-  it('floors the written max at the written min when it clamps the value', async () => {
-    expect((await run('self.min = 70; self.max = 20; self.value = 0;')).value).toBe(70);
+  it('clamps to the range the run left on itself, the written max floored at the written min', () => {
+    expect(clampToOwnRange(90, me, { max: 30 })).toBe(30);
+    expect(clampToOwnRange(20, me, { min: 50 })).toBe(50);
+    expect(clampToOwnRange(0, me, { min: 70, max: 20 })).toBe(70);
+    expect(clampToOwnRange(500, me)).toBe(100);
+    expect(clampToOwnRange(0, me)).toBe(10);
+    expect(clampToOwnRange(3, me, { min: 5 })).toBe(10);
   });
 
   it('fails the run on a bound that is not a finite number, discarding every write', async () => {
@@ -299,15 +306,17 @@ describe('executeStatCode bound writes', () => {
 
 describe('executeStatCode on the bundled worlds', () => {
   const worlds = import.meta.glob<{ default: { stats?: Stat[] } }>('../defaultworlds/*.json', { eager: true });
-  const coded = Object.entries(worlds).flatMap(([path, world]) =>
-    (world.default.stats ?? []).filter(s => s.code?.trim()).map(s => [path, s.name, s, world.default.stats ?? []] as const));
+  const coded = Object.entries(worlds).flatMap(([path, world]) => {
+    const stats = migrateWorld(world.default).stats ?? [];
+    return stats.filter(s => codeAt(s)?.trim()).map(s => [path, s.name, s, stats] as const);
+  });
 
   it('finds stat code to run, so the guard below is not vacuous', () => {
     expect(coded.length).toBeGreaterThan(0);
   });
 
   it.each(coded)('%s: %s still returns a number', async (_path, _name, stat, stats) => {
-    const res = await executeStatCode(stat.code ?? '', stats, stat);
+    const res = await executeStatCode(codeAt(stat) ?? '', stats, stat);
     expect(res.error).toBeNull();
     expect(typeof res.value).toBe('number');
   });
@@ -625,7 +634,7 @@ describe('executeStatCode by placeholder kind', () => {
   });
 });
 
-// The map is a tree: an owner node stands for an entity or a dictionary, and a holder carries what it owns
+// The map is a tree: an owner node stands for an entity or a dictionary, and a parent carries what it owns
 // as members. These are the sandbox-only facts — the paths a world actually produces are the resolver's.
 describe('executeStatCode placeholders as a tree', () => {
   const stat = makeStat({ id: 'a', max: 1000 });
@@ -649,7 +658,7 @@ describe('executeStatCode placeholders as a tree', () => {
     await expect(run(code)).resolves.toEqual({ value: 1, error: null });
   });
 
-  it('reads a holder’s owned child as a member of the holder at any depth', async () => {
+  it('reads a parent’s owned child as a member of the parent at any depth', async () => {
     const code = 'return placeholders.Molly.Hair.Shade.value === "ash"'
       + ' && placeholders.Molly.Hair.Shade.Tone.value === "warm" ? 1 : 0;';
     await expect(run(code)).resolves.toEqual({ value: 1, error: null });
@@ -667,9 +676,9 @@ describe('executeStatCode placeholders as a tree', () => {
     await expect(run(code)).resolves.toEqual({ value: 1, error: null });
   });
 
-  it('gives a child named like a member the member, so the child is unreachable under its holder', async () => {
+  it('gives a child named like a member the member, so the child is unreachable under its parent', async () => {
     const shadowed = phMap([{ name: 'Molly', value: 'hi', children: [{ name: 'value', value: 'child' }] }]);
-    // `placeholders.Molly.value` is the holder's own value; nothing under Molly reaches the child.
+    // `placeholders.Molly.value` is the parent's own value; nothing under Molly reaches the child.
     const code = 'return placeholders.Molly.value === "hi"'
       + ` && Object.keys(placeholders.Molly).filter((k) => k === 'value').length === 1 ? 1 : 0;`;
     await expect(run(code, shadowed)).resolves.toEqual({ value: 1, error: null });
@@ -680,7 +689,7 @@ describe('executeStatCode placeholders as a tree', () => {
       .resolves.toEqual({ value: 1, error: null, unknownPlaceholders: ['Molly › Hiar'] });
   });
 
-  it('lands a pin through a path on that child alone, leaving the holder and the bare name untouched', async () => {
+  it('lands a pin through a path on that child alone, leaving the parent and the bare name untouched', async () => {
     const result = await run('placeholders.Molly.Hair.Shade.pin("silver"); return 1;');
     expect(result.placeholders).toEqual([phWrite(['Molly', 'Hair', 'Shade'], 'silver')]);
   });

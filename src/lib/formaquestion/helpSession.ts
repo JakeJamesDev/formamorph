@@ -101,6 +101,8 @@ export interface HelpQuestion {
   howToRule?: boolean;
   /** The embedder of the semantic source, in place of the device's: tests. */
   embedder?: HelpEmbedder;
+  /** The semantic source's floor in place of `HELP_SEMANTIC_FLOOR`: tests and a probe arm. */
+  semanticFloor?: number;
   /** Stop: the stream ends and the answer so far is kept. */
   signal?: AbortSignal;
   fetchImpl?: typeof fetch;
@@ -303,7 +305,7 @@ function historyMessages(kept: readonly EarlierExchange[]): RequestMessage[] {
   ]);
 }
 
-export interface HelpSearchQuestion extends Pick<HelpQuestion, 'question' | 'history' | 'settings' | 'snapshot' | 'index' | 'screenRule' | 'embedder' | 'signal' | 'fetchImpl'> {
+export interface HelpSearchQuestion extends Pick<HelpQuestion, 'question' | 'history' | 'settings' | 'snapshot' | 'index' | 'screenRule' | 'embedder' | 'semanticFloor' | 'signal' | 'fetchImpl'> {
   /** The open screen and its section. */
   hint?: SurfaceHint | null;
   /** Gets each source's ranking of each query, and the pick request, for the trace. */
@@ -324,7 +326,7 @@ function screenPicks(question: string, picks: DocSection[], lead: DocSection | u
  * screen rule empties, or a semantic source with no model on the device. The keyword search alone is the
  * index's own search, with its score floor.
  */
-export async function helpSearch({ question, history = [], settings, snapshot, index, hint, screenRule = true, embedder, signal, fetchImpl, record }: HelpSearchQuestion): Promise<DocsIndex> {
+export async function helpSearch({ question, history = [], settings, snapshot, index, hint, screenRule = true, embedder, semanticFloor = HELP_SEMANTIC_FLOOR, signal, fetchImpl, record }: HelpSearchQuestion): Promise<DocsIndex> {
   const on = settings.sources;
   // The embedder takes no stop signal, so Stop ends the wait for it here.
   const stopped = new Promise<null>((resolve) => signal?.addEventListener('abort', () => resolve(null), { once: true }));
@@ -337,7 +339,7 @@ export async function helpSearch({ question, history = [], settings, snapshot, i
     on.aiPicks
       ? requestPicks(index, { question, prompt, earlier: previous?.question, earlierAnswer: previous?.answer, where: hint?.where }, pickSnapshot, activeHelpOptions(settings.presets).pick, { signal, fetchImpl, observe }).catch(() => [])
       : [],
-    on.semantic ? Promise.race([semanticRanking(index, helpQueries(question, previous), { embedder }), stopped]) : null,
+    on.semantic ? Promise.race([semanticRanking(index, helpQueries(question, previous), { embedder, floor: semanticFloor }), stopped]) : null,
   ]);
   const picks = screenRule ? screenPicks(question, allPicks, hint?.section) : allPicks;
   const picked: SectionRanking = (_query, limit) => picks.slice(0, limit);
@@ -349,6 +351,9 @@ export async function helpSearch({ question, history = [], settings, snapshot, i
   if (on.keyword && sources.length === 1) return record ? recordedKeyword(index, record) : index;
   return mergedSearch(index, sources, record);
 }
+
+/** The least similarity a section needs to join a question's search by meaning; weaker hits pull answers off topic. */
+export const HELP_SEMANTIC_FLOOR = 0.45;
 
 /** The Docs Index search as a source. */
 const keywordRanking = (index: DocsIndex): SectionRanking => (query, limit, favor, onSurface) => index.search(query, limit, favor, { onSurface });
@@ -410,7 +415,7 @@ function turnLead(hint: SurfaceHint | null, quickReference: DocSection | null, o
  * Throws the request pipeline's errors, and an error for an empty answer.
  */
 export async function* askHelp({
-  question, history = [], language = '', settings, snapshot, index, surface, focus, images = [], world, screenRule, howToRule, embedder, signal, fetchImpl,
+  question, history = [], language = '', settings, snapshot, index, surface, focus, images = [], world, screenRule, howToRule, embedder, semanticFloor, signal, fetchImpl,
 }: HelpQuestion): AsyncGenerator<HelpEvent, void, void> {
   // The Code tab and the focus count only while the open screen does.
   const openSurface = settings.openScreen ? surface : null;
@@ -431,7 +436,7 @@ export async function* askHelp({
   // The keyword search is instant. The pick request and the semantic ranking take time, and picks take the name.
   if (record && settings.sources.aiPicks) yield { type: 'stage', stage: 'picking' };
   else if (record && settings.sources.semantic) yield { type: 'stage', stage: 'searching' };
-  const search = record ? await helpSearch({ question, history, settings, snapshot, index, hint, screenRule, embedder, signal, fetchImpl, record }) : index;
+  const search = record ? await helpSearch({ question, history, settings, snapshot, index, hint, screenRule, embedder, semanticFloor, signal, fetchImpl, record }) : index;
   if (signal?.aborted) {
     yield { type: 'done', text: '', sources: [], lead, stopped: true, flagged: false, nearest: [], reasoning: '' };
     return;

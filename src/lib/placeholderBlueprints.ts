@@ -1,11 +1,12 @@
 // The Placeholders tab's Blueprints group: a system folder at the root whose shared placeholders are
-// blueprints, read per bearer through copies (see lib/blueprints) and never as World placeholders. A chip or
+// blueprints, read per owner through copies (see lib/blueprints) and never as World placeholders. A chip or
 // pin naming a blueprint belongs in blueprint-side text only: a world trait or group, a blueprint's values,
 // a copy's values. A move across the group's edge that would strand one on the wrong side is refused.
 
 import { entityTexts } from './entityTexts';
 import { openingTexts } from './openings';
 import { overviewTexts } from './overviewTexts';
+import { ancestors } from './ancestors';
 import { isDescendantPlaceholderGroup, placeholderGroupOf } from './placeholderGroups';
 import { allPlaceholders, placeholderHomeIndex, type PlaceholderHomesWorld } from './placeholderHomes';
 import { directChipTargets } from './placeholders';
@@ -48,15 +49,12 @@ export function worldBlueprints(world: PlaceholderHomesWorld): Placeholder[] {
 
 /** The top-level placeholder `p` sits under, walking its owners through `byId`. */
 export function rootPlaceholder(p: Placeholder, byId: ReadonlyMap<string, Placeholder>): Placeholder {
-  const seen = new Set<string>();
-  let at = p;
-  while (at.ownerId && !seen.has(at.id)) {
-    seen.add(at.id);
-    const up = byId.get(at.ownerId);
-    if (!up) break;
-    at = up;
-  }
-  return at;
+  const ownerOf = (id: string) => {
+    const owner = byId.get(id)?.ownerId;
+    return owner && byId.has(owner) ? owner : null;
+  };
+  const top = ancestors(p.id, ownerOf).pop();
+  return (top && byId.get(top)) || p;
 }
 
 /** How the tree and the notices name a copy. */
@@ -110,7 +108,7 @@ function sourcesOfUse(world: BlueprintUseWorld, blueprints: ReadonlySet<string>)
     const own = (name: string) => `${e.name}'s ${name}`;
     for (const t of e.traits ?? []) add('trait', own(t.name), false, named(traitTexts(t), t.placeholderPins));
     for (const g of e.traitGroups ?? []) add('trait', own(g.name), false, named(traitTexts(g)));
-    // A link's pins are the original's, overridden for one bearer.
+    // A link's pins are the original's, overridden for one owner.
     for (const link of e.traitLinks ?? []) {
       for (const [traitId, fields] of Object.entries(link.overrides ?? {})) {
         const pins = fields.placeholderPins?.value;

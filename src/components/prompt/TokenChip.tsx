@@ -1,4 +1,5 @@
 import { forwardRef, type ComponentPropsWithoutRef, type ReactNode } from 'react';
+import { ListFilter } from 'lucide-react';
 import { Chip } from '@/components/Chip';
 import { chipTokenKey } from '@/lib/promptVariables';
 import { CHIP_TOKEN_ATTR } from '@/lib/editorFieldFocus';
@@ -12,7 +13,7 @@ import BlueprintMark from './BlueprintMark';
  * One chip token drawn as its pill: the shared chip shape, the vocabulary's accent, and the
  * `Name (Variant)` label composition.
  *
- * Presentational and read-only — the editor wraps it in the pop-out, the drag handle and the remove (×);
+ * Presentational and read-only — the editor wraps it in the Chip Options trigger, the drag handle and the remove (×);
  * the Request Anatomy wraps it in a button onto the editor. Both render this, so a chip cannot read one
  * way in the field the player typed it into and another in the request it produced.
  *
@@ -39,17 +40,28 @@ export interface TokenChipProps extends Omit<ComponentPropsWithoutRef<'span'>, '
 /** A label after a leading icon. The pill takes its baseline from its first baseline item, so the text sets it, not the icon. */
 const MarkedLabel = ({ children }: { children: ReactNode }) => <span className="self-baseline">{children}</span>;
 
+/** The sign of an Only With pick, after the label. The tip names the picks and gives the glyph its name. */
+const FilterGlyph = ({ picks }: { picks: string }) => (
+  <Tip tip={picks}>
+    <span role="img" data-chip-filter="" className="inline-flex self-center"><ListFilter className="h-3 w-3" aria-hidden /></span>
+  </Tip>
+);
+
 export const TokenChip = forwardRef<HTMLSpanElement, TokenChipProps>(function TokenChip(
   { token, vocab, neutral, tip, onRemove, grabbable, showAffixes, startsOnEmptyLine = true, className, ...rest },
   ref,
 ) {
   const color = neutral ? undefined : vocab.color(token);
-  // Reflect the mode in the chip text so it's readable at a glance, not only in the pop-out.
+  // Reflect the mode in the chip text so it's readable at a glance, not only in Chip Options.
   const variantLabel = vocab.variantLabel(token);
   const name = vocab.label(token);
   const shown = vocab.display?.(token) ?? (variantLabel ? `${name} (${variantLabel})` : name);
   // What the chip will become, for the tooltip — the label already says which placeholder it is.
   const hint = vocab.hint?.(token);
+  const onlyWithPicks = vocab.onlyWith(token);
+  const labelContent = vocab.builtin?.(token)
+    ? <><BuiltinMark /><MarkedLabel>{vocab.display?.(token) ?? name}</MarkedLabel></>
+    : vocab.blueprint?.(token) ? <><BlueprintMark /><MarkedLabel>{shown}</MarkedLabel></> : shown;
   const affixes = showAffixes ? vocab.affixes(token) : null;
   const header = showAffixes ? vocab.headerBoundaries?.(token) : null;
   const hasAffixes = !!(header || affixes?.pre || affixes?.post);
@@ -84,9 +96,7 @@ export const TokenChip = forwardRef<HTMLSpanElement, TokenChipProps>(function To
       {header && affixText(header.pre, startsOnEmptyLine)}
       {affixes?.pre && affixText(affixes.pre, header ? true : startsOnEmptyLine)}
       <Chip
-        label={vocab.builtin?.(token)
-          ? <><BuiltinMark /><MarkedLabel>{vocab.display?.(token) ?? name}</MarkedLabel></>
-          : vocab.blueprint?.(token) ? <><BlueprintMark /><MarkedLabel>{shown}</MarkedLabel></> : shown}
+        label={onlyWithPicks ? <>{labelContent}<FilterGlyph picks={onlyWithPicks} /></> : labelContent}
         removeLabel={name}
         tip={tip ?? (hint ? `${name} — ${hint}` : undefined)}
         onRemove={onRemove}

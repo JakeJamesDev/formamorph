@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { Dictionary, Entity, Placeholder, Stat, Trait } from '@/types';
+import type { Dictionary, Entity, Placeholder, ScriptTiming, Stat, Trait } from '@/types';
 import { phValues } from '@/test/placeholderValues';
 import { allPlaceholders, placeholderOwners } from './placeholderHomes';
 import { executeStatCode } from './statCodeExecutor';
@@ -7,11 +7,13 @@ import { statCodeNamed } from './statCodeNames';
 import { codeDictionaries, sandboxDictionaries, sandboxPlaceholders } from './statCodePlaceholders';
 import {
   CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, DELTA_FIELDS, DELTA_MEMBERS, DICTIONARY_FIELDS, ENTITY_FIELDS, PERSONA_FIELDS,
-  PREVIOUS_FIELDS, SANDBOX_GLOBALS, STAT_FIELDS, TRAIT_ENTRY_FIELDS, placeholderEntryFields,
+  NARRATION_FIELDS, PLAYER_CALL_ENTRIES, PREVIOUS_FIELDS, SANDBOX_GLOBALS, STAT_CODE_SURFACE, STAT_FIELDS, TRAIT_ENTRY_FIELDS,
+  placeholderEntryFields, scriptSurface,
 } from './statCodeSurface';
+import { codeDiagnostics } from './statCodeAnalysis';
 import { entityTraitNames, sandboxTraits, unplayedEntities, worldTraitPlaces } from './statCodeTraits';
 import {
-  TEMPLATE_NAME, buildVariableTree, variableTreeLeaves, type VariableField, type VariableNode, type VariableTreeNames,
+  TEMPLATE_NAME, buildVariableTree, timingGlobalsOf, variableTreeLeaves, type VariableField, type VariableNode, type VariableTreeNames,
 } from './statCodeVariableTree';
 
 const ph = (id: string, name: string, values: readonly string[], over: Partial<Placeholder> = {}): Placeholder =>
@@ -107,8 +109,10 @@ describe('the top level', () => {
     expect(tree.map(labelOf)).toEqual(['This Stat', 'Stats', 'Traits', 'Entities', 'Persona', 'Placeholders', 'Dictionaries', 'Clock']);
   });
 
-  it('reaches every global but console', () => {
-    const roots = new Set(variableTreeLeaves(tree).map((field) => field.insert.match(/^\w+/)![0]));
+  // `owner` is empty in a world stat's code, so only an owned or Blueprint stat's menu reaches it.
+  it('reaches every global but console, an owned stat’s menu included', () => {
+    const owned = buildVariableTree(editorNames(), { kind: 'entity', entity: null });
+    const roots = new Set(variableTreeLeaves(owned).map((field) => field.insert.match(/^\w+/)![0]));
     expect(SANDBOX_GLOBALS.map((entry) => entry.name).filter((name) => !roots.has(name))).toEqual(['console']);
   });
 });
@@ -156,7 +160,7 @@ describe('placeholders', () => {
     expect(leaf(tree, 'Placeholders', 'Mood', 'value').detail).toBe('string');
   });
 
-  it('lists a held placeholder under its holder’s trail, at its whole path', () => {
+  it('lists a held placeholder under its parent’s trail, at its whole path', () => {
     const level = pick(tree, 'Placeholders');
     expect(level.kind === 'names' && level.rows.map(({ name, trail }) => ({ name, trail }))).toEqual([
       { name: 'Mood', trail: [] }, { name: 'Gear', trail: [] }, { name: 'Hair', trail: [] }, { name: 'Shade', trail: ['Hair'] },
@@ -234,6 +238,71 @@ describe('entities, the persona and dictionaries', () => {
     expect(levelAt(tree, 'Clock')).toEqual(CLOCK_MEMBERS.map((entry) => entry.name));
     expect(levelAt(tree, 'Clock', 'previous')).toEqual(CLOCK_PREVIOUS_FIELDS.map((entry) => entry.name));
     expect(inserts(tree, 'Clock', 'previous', 'daypart')).toBe('clock.previous.daypart');
+  });
+});
+
+/** Mira holding two stats, as the stat box hands her to the editor. */
+const miraNames = () => {
+  const entities = world.entities.map((entity) => (entity.id === 'mira'
+    ? { ...entity, stats: [stat('m-trust', 'Trust'), stat('m-streak', 'Cold Streak')] } : entity));
+  return entityTraitNames({ traits: world.traits, traitGroups: [], entities }, allPlaceholders(world)).find((entity) => entity.id === 'mira')!;
+};
+
+describe('the owner’s group', () => {
+  const entityOwner = buildVariableTree(editorNames(), { kind: 'entity', entity: miraNames() });
+  const blueprintOwner = buildVariableTree(editorNames(), { kind: 'blueprint', statNames: ['Grit', 'Gold Lust'] });
+
+  it('adds an Owner group after This Stat in an owned box only', () => {
+    expect(entityOwner.map(labelOf)).toEqual(['This Stat', 'Owner', ...tree.map(labelOf).slice(1)]);
+    expect(blueprintOwner.map(labelOf)).toEqual(entityOwner.map(labelOf));
+    expect(tree.map(labelOf)).not.toContain('Owner');
+  });
+
+  it('opens an owned box’s Owner to an entity entry’s fields, as Entities does', () => {
+    expect(levelAt(entityOwner, 'Owner')).toEqual(asLevel(ENTITY_FIELDS));
+    expect(inserts(entityOwner, 'Owner', 'inScene')).toBe('owner.inScene');
+  });
+
+  it('lists the owner’s stats, traits and placeholders under owner', () => {
+    expect(levelAt(entityOwner, 'Owner', 'Stats')).toEqual(['Trust', 'Cold Streak']);
+    expect(inserts(entityOwner, 'Owner', 'Stats', 'Trust', 'value')).toBe('owner.stats.Trust.value');
+    expect(inserts(entityOwner, 'Owner', 'Stats', 'Cold Streak', 'delta', 'regen', 'value'))
+      .toBe('owner.stats["Cold Streak"].delta.regen.value');
+    expect(levelAt(entityOwner, 'Owner', 'Traits')).toEqual(['Scarred', 'Keen']);
+    expect(inserts(entityOwner, 'Owner', 'Traits', 'Keen', 'enabled')).toBe('owner.traits.Keen.enabled');
+    expect(levelAt(entityOwner, 'Owner', 'Placeholders')).toEqual(['Eye Color']);
+    expect(inserts(entityOwner, 'Owner', 'Placeholders', 'Eye Color', 'value')).toBe('owner.placeholders["Eye Color"].value');
+  });
+
+  it('lists the world stats under Stats in every box, never the owner’s', () => {
+    for (const built of [tree, entityOwner, blueprintOwner]) {
+      expect(levelAt(built, 'Stats')).toEqual(['Health', 'Mood Level']);
+      expect(inserts(built, 'Stats', 'Health', 'value')).toBe('stats.Health.value');
+    }
+  });
+
+  it('lists a Blueprint group’s stats under Owner, with no traits or placeholders of its own', () => {
+    expect(levelAt(blueprintOwner, 'Owner', 'Stats')).toEqual(['Grit', 'Gold Lust']);
+    expect(inserts(blueprintOwner, 'Owner', 'Stats', 'Gold Lust', 'value')).toBe('owner.stats["Gold Lust"].value');
+    expect(levelAt(blueprintOwner, 'Owner', 'Traits')).toEqual(['No traits in this Blueprint group']);
+    expect(levelAt(blueprintOwner, 'Owner', 'Placeholders')).toEqual(['No placeholders in this Blueprint group']);
+  });
+
+  it('marks an owner with no stats', () => {
+    const bare = buildVariableTree(editorNames(), { kind: 'entity', entity: { ...miraNames(), stats: [] } });
+    expect(levelAt(bare, 'Owner', 'Stats')).toEqual(['No stats on this entity']);
+  });
+
+  it('types over each Owner list in template mode, and adds nothing to a world box’s', () => {
+    const typed = buildVariableTree(undefined, { kind: 'entity', entity: null });
+    for (const steps of [['Owner', 'Stats'], ['Owner', 'Traits'], ['Owner', 'Placeholders']]) {
+      expect(levelAt(typed, ...steps)).toEqual([TEMPLATE_NAME]);
+    }
+    const value = leaf(typed, 'Owner', 'Stats', TEMPLATE_NAME, 'value');
+    expect(value.insert).toBe('owner.stats["Name"].value');
+    expect(selected(value)).toBe(TEMPLATE_NAME);
+    expect(levelAt(buildVariableTree(undefined, { kind: 'blueprint', statNames: null }), 'Owner', 'Stats')).toEqual([TEMPLATE_NAME]);
+    expect(buildVariableTree(undefined, null).map(labelOf)).toEqual(templateTree.map(labelOf));
   });
 });
 
@@ -364,4 +433,63 @@ describe('every leaf against the sandbox', () => {
   it.each(rowNames(tree))('reaches a real entry with %s', async (insert, key) => {
     await expect(run(`return ${insert} === ${JSON.stringify(key)} ? 1 : 0;`)).resolves.toMatchObject({ value: 1, error: null });
   });
+
+  // Mira's own Trust runs the code, so `owner` is a real entry and `stats` still holds the world's.
+  const trust = stat('m-trust', 'Trust');
+  const mira = { ...entities.find((entity) => entity.id === 'mira')!, stats: { stats: [trust, stat('m-streak', 'Cold Streak')] } };
+  const asTrust = (code: string) => executeStatCode(code, stats, trust, {
+    placeholders: placeholders.top, entities: entities.map((entity) => (entity.id === 'mira' ? mira : entity)), owner: mira,
+  });
+  const ownerTree = buildVariableTree(names, { kind: 'entity', entity: miraNames() });
+  const ownerLeaves = variableTreeLeaves(ownerTree).filter((field) => field.insert.startsWith('owner'));
+  it('has owner leaves to run', () => { expect(ownerLeaves.length).toBeGreaterThan(20); });
+  it.each(ownerLeaves.map((field) => [field.insert]))('runs the owner’s %s as inserted', async (insert) => {
+    await expect(asTrust(`const read = ${insert}; return 1;`)).resolves.toMatchObject({ value: 1, error: null });
+  });
+  it('reads a real stat through the owner’s and the world’s routes', async () => {
+    await expect(asTrust('return owner.stats["Cold Streak"].name === "Cold Streak" && stats.Health.name === "Health" ? 1 : 0;'))
+      .resolves.toMatchObject({ value: 1, error: null });
+  });
+});
+
+describe('the names a script’s timing adds', () => {
+  const treeAt = (timing: ScriptTiming) => {
+    const surface = scriptSurface(STAT_CODE_SURFACE, timing);
+    return { surface, built: buildVariableTree(editorNames(), null, 'stat', timingGlobalsOf(surface)) };
+  };
+
+  it('lists Narration in During AI Output only, Player in every other timing, and Switched Trait on a switch only', () => {
+    expect(treeAt('output').built.map(labelOf).slice(-1)).toEqual(['Narration']);
+    expect(treeAt('before').built.map(labelOf).slice(-1)).toEqual(['Player']);
+    expect(treeAt('switch').built.map(labelOf).slice(-2)).toEqual(['Player', 'Switched Trait']);
+    for (const timing of ['before', 'after', 'output', 'start'] as const) {
+      expect(treeAt(timing).built.map(labelOf)).not.toContain('Switched Trait');
+    }
+    expect(tree.map(labelOf)).not.toContain('Narration');
+    expect(tree.map(labelOf)).not.toContain('Player');
+  });
+
+  it('opens Narration to its fields and Player to its calls, each inserted whole', () => {
+    expect(levelAt(treeAt('output').built, 'Narration')).toEqual(NARRATION_FIELDS.map((field) => field.name));
+    expect(inserts(treeAt('output').built, 'Narration', 'sentence')).toBe('narration.sentence');
+    expect(levelAt(treeAt('after').built, 'Player')).toEqual(PLAYER_CALL_ENTRIES.map((call) => call.name));
+    const confirm = leaf(treeAt('after').built, 'Player', 'confirm');
+    expect(confirm.insert).toBe('player.confirm("")');
+    expect(confirm.selection).toEqual({ from: 'player.confirm("'.length, to: 'player.confirm("'.length });
+    expect(inserts(treeAt('after').built, 'Player', 'ask')).toBe('player.ask("", [])');
+    expect(inserts(treeAt('switch').built, 'Switched Trait', 'enabled')).toBe('trait.enabled');
+  });
+
+  const insertsOf = (timing: ScriptTiming) => {
+    const { surface, built } = treeAt(timing);
+    const added = built.filter((node) => ['Narration', 'Player', 'Switched Trait'].includes(labelOf(node)));
+    return variableTreeLeaves(added).map((field) => [timing, field.insert, surface] as const);
+  };
+  it.each((['before', 'after', 'output', 'start', 'switch'] as const).flatMap(insertsOf))(
+    'inserts a path the %s script reads clean: %s',
+    (_timing, insert, surface) => {
+      const errors = codeDiagnostics(`const read = ${insert};`, { surface, statNames: ['Health'] }).filter((d) => d.severity === 'error');
+      expect(errors.map((d) => d.message)).toEqual([]);
+    },
+  );
 });

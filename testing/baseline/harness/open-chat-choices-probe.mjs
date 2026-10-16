@@ -32,8 +32,9 @@ import { readTavernJson } from '@/lib/tavernCard';
 import { parseChoices } from '@/lib/choices';
 import { choicesSystemPrompt, TURN_PASS_CAPS } from '@/lib/turnPipeline/turnPasses';
 import { renderPromptTemplate } from '@/lib/promptTemplate';
-import { ALL_PROMPT_VARIABLES, variableVariantIds, withVariant } from '@/lib/promptVariables';
-import { expandScopedTokens, buildLocationContext, renderEntityRoster } from '@/lib/locationContext';
+import { decodeChipKey } from '@/lib/promptVariables';
+import { scopedChipValues, buildLocationContext, renderEntityRoster } from '@/lib/locationContext';
+import { layerValues, mapValues } from '@/lib/promptValues';
 import { personaContextValues } from '@/lib/personaContext';
 import { resolvePlaceholders } from '@/lib/placeholders';
 import { renderBuiltins } from '@/lib/builtinPlaceholders';
@@ -112,17 +113,14 @@ function buildMessages(arm, entities, reply) {
   const location = world.locations.find((l) => l.isStarting) ?? world.locations[0];
   const ids = entities.map((e) => e.id);
 
-  const values = Object.fromEntries(ALL_PROMPT_VARIABLES.flatMap((v) =>
-    [null, ...variableVariantIds(v)].map((id) => [withVariant(v.token, id), 'N/A'])));
-  Object.assign(values, {
-    ...expandScopedTokens('<LOCATION>', { '': (opts) => buildLocationContext(location, opts) }),
-    ...expandScopedTokens('<ENTITIES>', { '': (opts) => renderEntityRoster(ids, entities, opts) }),
-    ...personaContextValues(null),
-    '<WORLD DESCRIPTION>': overview.systemPrompt || '',
-    '<NOTES>': 'N/A',
-  });
-  for (const key in values) values[key] = resolvePH(values[key]);
-  Object.assign(values, worldPromptChipValues(overview, declined, resolvePH));
+  const scene = layerValues(
+    (key) => (decodeChipKey(key) ? 'N/A' : undefined),
+    scopedChipValues('<LOCATION>', { '': (opts) => buildLocationContext(location, opts) }),
+    scopedChipValues('<ENTITIES>', { '': (opts) => renderEntityRoster(ids, entities, opts) }),
+    personaContextValues(null),
+    { '<WORLD DESCRIPTION>': overview.systemPrompt || '', '<NOTES>': 'N/A' },
+  );
+  const values = layerValues(mapValues(scene, resolvePH), worldPromptChipValues(overview, declined, resolvePH));
 
   const template = resolveWorldPrompt(overview, 'choices', defaultChoicesPrompt, declined);
   return {

@@ -16,21 +16,29 @@ import {
 import type { SurfaceEntry } from './codeSurface';
 
 /**
- * The Stat Code Guide's Quick Reference states the whole sandbox API in one section. Its objects and members
+ * The Scripts Guide's Quick Reference states the whole sandbox API in one section. Its objects and members
  * are held to the surface lists, which `statCodeSurface.test.ts` holds to the sandbox; its code forms run in
  * the sandbox and in the editor's checks.
  */
-const SECTION_ID = 'StatCodeGuide#quick-reference';
+const SECTION_ID = 'ScriptsGuide#quick-reference';
+const WRITING_SECTION_ID = 'ScriptsGuide#writing-to-other-stats';
 
 interface Row { object: string; members: string[]; read: string; write: string }
 
 const codeOf = (cell: string) => [...cell.matchAll(/`([^`]+)`/g)].map((match) => match[1]);
 
-function quickReferenceMarkdown(): string {
-  const [section] = bundledDocsIndex().get([SECTION_ID]);
-  if (!section) throw new Error(`${SECTION_ID} is missing`);
+function sectionMarkdown(id: string): string {
+  const [section] = bundledDocsIndex().get([id]);
+  if (!section) throw new Error(`${id} is missing`);
   return section.markdown;
 }
+
+const quickReferenceMarkdown = () => sectionMarkdown(SECTION_ID);
+
+/** The routes the Writing to Other Stats table lists, in the order the guide gives them. */
+const writeRoutes = () => sectionMarkdown(WRITING_SECTION_ID).split('\n')
+  .filter((line) => line.startsWith('| `'))
+  .map((line) => codeOf(line.split('|')[1])[0]);
 
 /** The code in the bold lead of the rule bullet that starts with `start`. */
 function ruleLeadCode(start: string): string[] {
@@ -64,11 +72,15 @@ const [entityOwns, dictionaryOwns] = phMap([
   { name: 'Entity', children: [{ name: 'Placeholder', value: 'a' }] },
   { name: 'Dictionary', children: [{ name: 'Placeholder', value: 'a' }] },
 ]);
+// Each owner holds a stat named `Stat`, under its own id, so a write's target shows in the owner it landed on.
+const ownStats = (id: string) => ({ stats: [stat({ id, name: 'Stat' })] });
 const world = {
   placeholders: phMap([{ name: 'Placeholder', value: 'a' }]),
   traits: [trait()],
-  entities: [{ name: 'Entity', traits: [trait()], placeholders: entityOwns }],
-  persona: { name: 'Hero', traits: [trait()], inScene: true },
+  entities: [{ id: 'entity', name: 'Entity', traits: [trait()], placeholders: entityOwns, stats: ownStats('entity-stat') }],
+  persona: { id: 'hero', name: 'Hero', traits: [trait()], inScene: true, stats: ownStats('hero-stat') },
+  // The code's own owner, holding the same stat names as the world.
+  owner: { id: 'owner', name: 'Owner', traits: [trait()], stats: { stats } },
   dictionaries: [{ name: 'Dictionary', id: 'dictionary', placeholders: dictionaryOwns }],
 };
 const run = (code: string) => executeStatCode(code, stats, stats[0], world);
@@ -92,7 +104,7 @@ const editorNames: AnalysisOptions = {
 const editorFindings = (code: string) => statCodeDiagnostics(code, editorNames).map((finding) => finding.message);
 
 /** The result fields a run that changed only what it meant to fills. Any other field reports a dropped write. */
-const APPLIED_FIELDS = new Set(['value', 'error', 'bounds', 'statWrites', 'placeholders', 'traits', 'entities']);
+const APPLIED_FIELDS = new Set(['value', 'error', 'bounds', 'statWrites', 'ownerStatWrites', 'placeholders', 'traits', 'entities']);
 const APPLIED_ENTITY_FIELDS = new Set(['entity', 'traits']);
 
 /** The fields of a run's result that report a dropped write, an entity's own included. */
@@ -102,13 +114,15 @@ const dropped = (result: StatCodeResult) => [
 ];
 
 /** Whether a run left anything for the turn to apply. */
-const landed = (result: StatCodeResult) => result.value !== null || !!result.bounds || !!result.statWrites?.length || !!result.placeholders?.length
+const landed = (result: StatCodeResult) => result.value !== null || !!result.bounds || !!result.statWrites?.length
+  || !!result.ownerStatWrites?.length || !!result.placeholders?.length
   || !!result.traits?.length || !!result.entities?.some((entity) => entity.traits?.length);
 
 /** Each object's members as the surface lists them. `console` has no list; the sandbox answers for it below. */
 const SURFACE_MEMBERS: Record<string, readonly SurfaceEntry[]> = {
   self: STAT_FIELDS,
   stats: STAT_FIELDS,
+  owner: ENTITY_FIELDS,
   clock: CLOCK_MEMBERS,
   traits: TRAIT_ENTRY_FIELDS,
   persona: PERSONA_FIELDS,
@@ -121,7 +135,7 @@ const rows = quickReferenceRows();
 
 afterEach(() => vi.restoreAllMocks());
 
-describe('the Stat Code Guide’s Quick Reference', () => {
+describe('the Scripts Guide’s Quick Reference', () => {
   it('has one row for each object the sandbox injects', () => {
     expect(rows.map((row) => row.object).sort()).toEqual(SANDBOX_GLOBALS.map((entry) => entry.name).sort());
   });
@@ -159,6 +173,27 @@ describe('the Stat Code Guide’s Quick Reference', () => {
 
   it.each(rows.filter((row) => row.write !== 'Read-only').map((row) => row.write))('writes %s in a form the editor raises nothing on', (write) => {
     expect(editorFindings(`${runnable(write)};\nreturn 1;`)).toEqual([]);
+  });
+
+  it('lists a write route to each owner of a stat', () => {
+    expect(writeRoutes()).toEqual(['stats.<Stat>', 'owner.stats.<Stat>', 'entities.<Entity>.stats.<Stat>', 'persona.stats.<Stat>']);
+  });
+
+  // The world route lands in `statWrites`; every other route lands in `ownerStatWrites`, keyed by its owner.
+  const write = (id: string) => [{ id, name: 'Stat', value: 7 }];
+  const LANDS: Record<string, Pick<StatCodeResult, 'statWrites' | 'ownerStatWrites'>> = {
+    'stats.<Stat>': { statWrites: write('other') },
+    'owner.stats.<Stat>': { ownerStatWrites: [{ ownerId: 'owner', writes: write('other') }] },
+    'entities.<Entity>.stats.<Stat>': { ownerStatWrites: [{ ownerId: 'entity', writes: write('entity-stat') }] },
+    'persona.stats.<Stat>': { ownerStatWrites: [{ ownerId: 'hero', writes: write('hero-stat') }] },
+  };
+
+  it.each(writeRoutes())('writes a stat through %s to the stat of the owner it names', async (route) => {
+    const result = await run(`${runnable(route)}.value = 7;`);
+    expect(result.error).toBeNull();
+    expect(dropped(result)).toEqual([]);
+    expect({ statWrites: result.statWrites, ownerStatWrites: result.ownerStatWrites })
+      .toEqual({ statWrites: undefined, ownerStatWrites: undefined, ...LANDS[route] });
   });
 
   it('names every field self and a stats entry take a write to, and no other', () => {

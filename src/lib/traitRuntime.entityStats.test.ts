@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  applyCodeTraitSwitches, applyOwnedStatTraits, applyPlayedStatTraits, ownerStatTraitsInForce, settleTraits, switchPersonaStats,
+  applyCodeTraitSwitches, applyOwnedStatTraits, applyGlobalRowTraits, gateStatsOf, ownerStatTraitsInForce, settleTraits, switchPersonaStats,
   switchPlayerTrait, type TraitRuntimeState, type TraitWorld,
 } from './traitRuntime';
 import { entityStatOwners } from './entityStats';
@@ -15,9 +15,9 @@ const trait = (id: string, statChanges: StatChange[] = [], over: Partial<Trait> 
   id, name: id, statChanges, playerToggle: true, ...over,
 });
 
-// The player owns h. Bram (cast) owns vigor and trust; Albus (a world persona) owns stock.
-// Hardy raises Bram's Vigor; Boast aims at the player's h, which Bram doesn't own; Grim switches Trust off.
-// Paladin raises the player's h (the shipped persona rule) and Albus's own Stock.
+// Global scope holds h. Bram (cast) owns vigor and trust; Albus (a world persona) owns stock.
+// Hardy raises Bram's Vigor; Boast aims at the global h, which Bram doesn't own; Grim switches Trust off.
+// Paladin raises the global h (the shipped persona rule) and Albus's own Stock.
 const hardy = trait('hardy', [{ statId: 'vigor', value: 10, type: 'max' }, { statId: 'vigor', value: 5, type: 'starting' }], { name: 'Hardy' });
 const boast = trait('boast', [{ statId: 'h', value: 7, type: 'starting' }], { name: 'Boast' });
 const grim = trait('grim', [], { name: 'Grim', statToggles: [{ statId: 'trust', enabled: false }] });
@@ -28,8 +28,11 @@ const paladin = trait('paladin', [
 const bram = { id: 'bram', name: 'Bram', traits: [hardy, boast, grim], groups: [] };
 const albus = { id: 'albus', name: 'Albus', traits: [paladin], groups: [] };
 const entities = [{ id: 'bram', name: 'Bram' }, { id: 'albus', name: 'Albus', persona: true }];
-const world = (persona: PersonaRef = { source: 'none' }): TraitWorld => ({
-  traits: [], groups: [], entities, persona, bearers: [{ id: 'world', name: '', traits: [], groups: [] }, bram, albus],
+/** A trait world with global scope's tree and its entity owners. */
+type OwnersWorld = Extract<TraitWorld, { global: object }>;
+
+const world = (persona: PersonaRef = { source: 'none' }): OwnersWorld => ({
+  traits: [], groups: [], entities, persona, global: { traits: [], groups: [] }, owners: [bram, albus],
 });
 const asAlbus = world({ source: 'world', entityId: 'albus' });
 
@@ -62,14 +65,23 @@ describe('an entity’s own traits change its own stats', () => {
     expect(flip(off, 'bram', 'hardy', true).entityStats).toEqual(on.entityStats);
   });
 
-  it('drops a change on a stat the cast entity doesn’t own, so an NPC’s trait never moves the player', () => {
+  it('moves the global stat for a change on a stat the cast entity doesn’t own, as its row reads it (Q30)', () => {
     const on = flip(state(), 'bram', 'boast', true);
-    expect(on.stats).toEqual(state().stats);
+    expect(on.stats[0]).toMatchObject({ value: 57 });
     expect(on.entityStats).toEqual(state().entityStats);
-    expect(on.appliedValues).toEqual({});
+    expect(on.appliedValues).toEqual({ 'bram/boast': { h: 7 } });
+    expect(flip(on, 'bram', 'boast', false).stats).toEqual(state().stats);
   });
 
-  it('reads the cast entity’s traits in force for its stats, and none for an entity that isn’t a bearer', () => {
+  it('drops a change on a stat that neither the entity nor the world has', () => {
+    const phantom = trait('phantom', [{ statId: 'ghost', value: 7, type: 'starting' }], { name: 'Phantom' });
+    const w: TraitWorld = { ...world(), owners: [{ ...bram, traits: [phantom] }, albus] };
+    const on = flip(state(), 'bram', 'phantom', true, w);
+    expect(on.stats).toEqual(state().stats);
+    expect(on.entityStats).toEqual(state().entityStats);
+  });
+
+  it('reads the cast entity’s traits in force for its stats, and none for an entity that isn’t an owner', () => {
     const on = flip(state(), 'bram', 'hardy', true);
     expect(ownerStatTraitsInForce(on, world(), 'bram').map((t) => t.id)).toEqual(['hardy']);
     expect(ownerStatTraitsInForce(on, world(), 'nobody')).toEqual([]);
@@ -82,8 +94,8 @@ describe('an entity’s own traits change its own stats', () => {
   });
 
   it('reverses its own stats when a gate cascade turns the trait off', () => {
-    const gated = trait('hardy', hardy.statChanges, { name: 'Hardy', requires: [{ all: [{ kind: 'trait', id: 'grim', bearer: { kind: 'entity', id: 'bram' } }] }] });
-    const w: TraitWorld = { ...world(), entities, bearers: [world().bearers![0], { ...bram, traits: [gated, boast, grim] }, albus] };
+    const gated = trait('hardy', hardy.statChanges, { name: 'Hardy', requires: [{ all: [{ kind: 'trait', id: 'grim', owner: { kind: 'entity', id: 'bram' } }] }] });
+    const w: TraitWorld = { ...world(), owners: [{ ...bram, traits: [gated, boast, grim] }, albus] };
     const both = flip(flip(state(), 'bram', 'grim', true, w), 'bram', 'hardy', true, w);
     expect(own(both, 'bram', 'vigor')).toMatchObject({ max: 110, value: 55 });
     const cascade = flip(both, 'bram', 'grim', false, w);
@@ -107,11 +119,31 @@ describe('an entity’s own traits change its own stats', () => {
   });
 });
 
-describe('a player bearer’s traits', () => {
+describe('the global stats as gates read them', () => {
+  it('derive their bounds from global traits and Global rows alone, whoever is played', () => {
+    const picked = state({ ownedTraits: { albus: { chosen: ['paladin'] }, bram: { chosen: ['hardy'] } } });
+    const gates = (w: TraitWorld) => gateStatsOf(applyOwnedStatTraits(applyGlobalRowTraits(picked, w).state, w), w);
+    // Paladin's h rows reach the global stat even with no one playing Albus; Hardy's Vigor row stays on Bram.
+    expect(gates(world()).global.h).toMatchObject({ max: 110 });
+    expect(gates(asAlbus).global.h).toMatchObject({ max: 110 });
+    expect(Object.keys(gates(world()).global)).toEqual(['h']);
+    expect(gates(world()).owners.bram.vigor).toMatchObject({ max: 110 });
+  });
+
+  it('switch a global stat off through an unplayed entity’s Global toggle', () => {
+    const quiet = trait('quiet', [], { name: 'Quiet', statToggles: [{ statId: 'h', enabled: false, target: 'global' }] });
+    const w: TraitWorld = { ...world(), owners: [{ ...bram, traits: [quiet] }, albus] };
+    const on = flip(state(), 'bram', 'quiet', true, w);
+    expect(gateStatsOf(on, w).global.h).toMatchObject({ inert: true });
+    expect(gateStatsOf(flip(on, 'bram', 'quiet', false, w), w).global.h.inert).toBeUndefined();
+  });
+});
+
+describe('a player owner’s traits', () => {
   const picked = state({ ownedTraits: { albus: { chosen: ['paladin'] } } });
 
-  it('move the world player stat while played, as shipped, and its own stat always', () => {
-    const played = applyOwnedStatTraits(applyPlayedStatTraits(picked, asAlbus).state, asAlbus);
+  it('move the global stat and its own stat while played', () => {
+    const played = applyOwnedStatTraits(applyGlobalRowTraits(picked, asAlbus).state, asAlbus);
     expect(played.stats[0]).toMatchObject({ max: 110, value: 55 });
     expect(own(played, 'albus', 'stock').value).toBe(53);
     expect(played.appliedValues).toEqual({ 'albus/paladin': { h: 5 }, 'albus/paladin/stats': { stock: 3 } });
@@ -121,27 +153,27 @@ describe('a player bearer’s traits', () => {
     expect(own(off, 'albus', 'stock').value).toBe(50);
   });
 
-  it('move only its own stat while it isn’t played', () => {
+  it('move the global stat and its own stat while it isn’t played (Q18, Q30)', () => {
     const cast = flip(state(), 'albus', 'paladin', true);
-    expect(cast.stats).toEqual(state().stats);
+    expect(cast.stats[0]).toMatchObject({ max: 110, value: 55 });
     expect(own(cast, 'albus', 'stock').value).toBe(53);
   });
 
-  it('target its own stat over a world player stat with the same id', () => {
+  it('target its own stat over a global stat with the same id', () => {
     const twin = state({ entityStats: { albus: [stat('h', { value: 20 })] } });
     const on = flip(twin, 'albus', 'paladin', true, asAlbus);
     expect(on.stats).toEqual(twin.stats);
     expect(own(on, 'albus', 'h')).toMatchObject({ max: 110, value: 25 });
   });
 
-  it('reach the world player stat on a shared id through a row that targets the player', () => {
+  it('reach the global stat on a shared id through a row with the global target', () => {
     const oath = trait('oath', [
-      { statId: 'h', value: 10, type: 'max', target: 'player' }, { statId: 'h', value: 3, type: 'starting', target: 'player' },
+      { statId: 'h', value: 10, type: 'max', target: 'global' }, { statId: 'h', value: 3, type: 'starting', target: 'global' },
       { statId: 'h', value: 4, type: 'starting' },
-    ], { name: 'Oath', statToggles: [{ statId: 'h', enabled: false, target: 'player' }] });
+    ], { name: 'Oath', statToggles: [{ statId: 'h', enabled: false, target: 'global' }] });
     const sworn: TraitWorld = {
       traits: [], groups: [], entities, persona: { source: 'world', entityId: 'albus' },
-      bearers: [{ id: 'world', name: '', traits: [], groups: [] }, bram, { ...albus, traits: [oath] }],
+      global: { traits: [], groups: [] }, owners: [bram, { ...albus, traits: [oath] }],
     };
     const twin = state({ entityStats: { albus: [stat('h', { value: 20 })] } });
     const on = flip(twin, 'albus', 'oath', true, sworn);
@@ -155,8 +187,21 @@ describe('a player bearer’s traits', () => {
     expect(own(off, 'albus', 'h')).toMatchObject({ max: 100, value: 20 });
   });
 
+  it('reach the global stat on a shared id through a Global row while the entity isn’t played (Q18)', () => {
+    const oath = trait('oath', [{ statId: 'h', value: 10, type: 'max', target: 'global' }, { statId: 'h', value: 3, type: 'starting', target: 'global' }], { name: 'Oath' });
+    const cast: TraitWorld = {
+      traits: [], groups: [], entities, persona: { source: 'none' },
+      global: { traits: [], groups: [] }, owners: [bram, { ...albus, traits: [oath] }],
+    };
+    const twin = state({ entityStats: { albus: [stat('h', { value: 20 })] } });
+    const on = flip(twin, 'albus', 'oath', true, cast);
+    expect(on.stats[0]).toMatchObject({ max: 110, value: 53 });
+    expect(own(on, 'albus', 'h')).toEqual(own(twin, 'albus', 'h'));
+    expect(flip(on, 'albus', 'oath', false, cast).stats).toEqual(twin.stats);
+  });
+
   it("leave every entity's stat values where they were through a persona switch and back", () => {
-    const played = applyOwnedStatTraits(applyPlayedStatTraits(picked, asAlbus).state, asAlbus);
+    const played = applyOwnedStatTraits(applyGlobalRowTraits(picked, asAlbus).state, asAlbus);
     const moved = { ...played, entityStats: { bram: [stat('vigor', { value: 12 }), stat('trust', { value: 81 })], albus: [stat('stock', { value: 7 })] } };
     const away = switchPersonaStats(moved, asAlbus, world(), name).state;
     const back = switchPersonaStats(away, world(), asAlbus, name).state;
@@ -164,10 +209,10 @@ describe('a player bearer’s traits', () => {
     expect(back.stats).toEqual(moved.stats);
   });
 
-  it('keep their own stats where they are on a persona switch', () => {
-    const played = applyOwnedStatTraits(applyPlayedStatTraits(picked, asAlbus).state, asAlbus);
+  it('keep every stat where it is on a persona switch', () => {
+    const played = applyOwnedStatTraits(applyGlobalRowTraits(picked, asAlbus).state, asAlbus);
     const away = switchPersonaStats(played, asAlbus, world(), name).state;
-    expect(away.stats[0]).toMatchObject({ max: 100, value: 50 });
+    expect(away.stats[0]).toMatchObject({ max: 110, value: 55 });
     expect(away.entityStats).toEqual(played.entityStats);
   });
 });

@@ -1,5 +1,6 @@
 import { randomUUID } from "@/lib/uuid";
 import { newBlankWorld } from "@/lib/blankWorld";
+import { filledScripts, SCRIPT_TIMING_LABEL, type ScriptHome } from "@/lib/scripts";
 import { DEFAULT_WORLDS, isDefaultWorldId } from "@/lib/defaultWorlds";
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useGameData } from '../contexts/GameDataContext';
@@ -83,7 +84,7 @@ import { importedDefaultPersona, isJsonFile, isStPersonaBackupFile, readStPerson
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
 import { useWorldExport } from '@/lib/useWorldExport';
 import { IMAGE_CAPS, applyWorldOptimize, applyEntityImagesOptimize, countWorldImages } from '@/lib/imageOptim';
-import { entityImages, primaryImage } from '@/lib/entityImages';
+import { entityImageData, entityImages, primaryImage } from '@/lib/entityImages';
 import { withOptimizeProgress } from '@/lib/optimizeProgress';
 import { remoteWorldImages } from '@/lib/embedRemoteImages';
 import { warmCachedImages } from '@/lib/remoteImageCache';
@@ -267,7 +268,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     return () => { isMountedRef.current = false; };
   }, []);
   const {
-    placeholders, loadWorldData, getWorldData,
+    placeholders, worldScripts, loadWorldData, getWorldData,
   } = useGameData();
   const { showReadme, setShowReadme } = useReadmeVisibility();
   const { applyWorldPrompt, setApplyWorldPrompt } = useWorldPromptOptOut();
@@ -420,7 +421,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
   useEffect(() => {
     if (!import.meta.env.DEV) return;
-    if (devRoute?.modal === 'settings' || devRoute?.modal === 'settingsCompare') setShowSettings(true);
+    if (devRoute?.modal === 'settings' || devRoute?.modal === 'settingsCompare' || devRoute?.modal === 'chipOptions') setShowSettings(true);
     if (devRoute?.modal === 'menu') setShowLoadDialog(true);
     if (devRoute?.modal === 'backup') setShowBackup(true);
     if (devRoute?.modal === 'community') openCommunityBrowser();
@@ -446,7 +447,12 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       void import('@/lib/devPaneSamples').then(({ devCustomCodeSample }) => setDevCodeSample(devCustomCodeSample()));
     }
     // Library editors open on a blank draft — nothing is stored, so these are reachable on a fresh profile.
-    if (devRoute?.modal === 'entityEditor') setDraftEntity({ id: randomUUID(), name: 'New Character' });
+    // `fixture=gallery` opens it on an entity whose images carry Visibility rules.
+    if (devRoute?.modal === 'entityEditor') {
+      if (devRoute.fixture === 'gallery') {
+        void import('@/lib/devPaneSamples').then(({ devGalleryEntity }) => setDraftEntity(devGalleryEntity(randomUUID())));
+      } else setDraftEntity({ id: randomUUID(), name: 'New Character' });
+    }
     if (devRoute?.modal === 'dictionaryEditor') setDraftDictionary({ id: randomUUID(), name: 'New Dictionary', enabled: true, entries: [] });
     // The publish dialog names itself from a payload, so it opens on a canned world rather than on
     // whatever the library happens to hold — it is reachable on an empty profile that way.
@@ -487,7 +493,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     if (!devRoute?.modal && devRoute?.tab && (MAIN_MENU_CARD_TABS as readonly string[]).includes(devRoute.tab)) {
       setCardType(devRoute.tab as typeof cardType);
     }
-  }, [devRoute?.modal, devRoute?.tab, openCommunityBrowser]);
+  }, [devRoute?.modal, devRoute?.tab, devRoute?.fixture, openCommunityBrowser]);
 
   // DEV: the Authoring Tour always runs on a world of its own, so its route opens a new blank one.
   useEffect(() => {
@@ -818,7 +824,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
    * round-trip for the payload is the only part swapped out.
    *
    * **The invariant this rests on:** at the moment the editor closes, the store equals what is on disk —
-   * Save persists it, and Exit Without Saving has already run `discardChanges` to roll it back. An auto save
+   * Save persists it, and Exit Without Saving has already run `discardChanges` to roll it back. An autosave
    * moves the baseline it rolls back to, and Exit waits for a running one, so both still land on disk's copy.
    * A future exit path that leaves the two apart (a recovery flow) has to read the payload back here.
    */
@@ -962,23 +968,20 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     });
   }, [devRoute?.modal, reviewComponentFile]);
 
-  // A stat's two boxes, each named by its timing, in the order the turn runs them.
-  const statCodeBoxes = (stat: Stat) => ([
-    ['Before the AI', stat.beforeCode] as const,
-    ['After the AI', stat.code] as const,
-  ].filter(([, code]) => code && code.trim() !== ''));
+  // A home's scripts that hold code, each named by its timing.
+  const statCodeBoxes = (home: ScriptHome) => filledScripts(home).map((script) => [SCRIPT_TIMING_LABEL[script.timing], script.code] as const);
 
-  // Check if any stat has code
-  const hasStatWithCode = (statsArray: Stat[]) => {
-    return statsArray.some(stat => statCodeBoxes(stat).length > 0);
-  };
+  // Whether the world's own scripts or any stat's hold code.
+  const hasStatWithCode = (statsArray: Stat[]) =>
+    statCodeBoxes({ scripts: worldScripts }).length > 0 || statsArray.some(stat => statCodeBoxes(stat).length > 0);
 
-  // Generate concatenated code from all stats with code
-  const generateConcatenatedCode = (statsArray: Stat[]) => {
-    return statsArray.flatMap(stat => statCodeBoxes(stat).map(([timing, code]) => (
+  // Every script with code, the world's first, then each stat's.
+  const generateConcatenatedCode = (statsArray: Stat[]) => [
+    ...statCodeBoxes({ scripts: worldScripts }).map(([timing, code]) => `# World — ${timing}\n${code}`),
+    ...statsArray.flatMap(stat => statCodeBoxes(stat).map(([timing, code]) => (
       `# ${describePlaceholders(stat.name, placeholders) || 'Unnamed Stat'} — ${timing}\n${code}`
-    ))).join('\n\n----\n\n');
-  };
+    ))),
+  ].join('\n\n----\n\n');
 
   const handleWorldSelection = async (worldId: string) => {
     try {
@@ -1134,14 +1137,14 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     // A lone card that carries relationships is reviewed. Its portrait still goes through the downscale
     // offer first, so the review stores the same picture an ordinary import would.
     if (parsed.length === 1 && !skipped && hasComponentLinks(parsed[0].links)) {
-      const mode = await promptImagesBatch(entityImages(parsed[0].entity), IMAGE_CAPS.entity);
+      const mode = await promptImagesBatch(entityImageData(parsed[0].entity), IMAGE_CAPS.entity);
       const record = await applyEntityImagesOptimize(parsed[0].entity, mode, () => {});
       await reviewComponentFile('entity', record, parsed[0].links, parsed[0].libraryDetails);
       return;
     }
 
     if (parsed.length) {
-      const mode = await promptImagesBatch(parsed.flatMap((p) => entityImages(p.entity)), IMAGE_CAPS.entity);
+      const mode = await promptImagesBatch(parsed.flatMap((p) => entityImageData(p.entity)), IMAGE_CAPS.entity);
       const now = new Date().toISOString();
       let lorebooks = 0;
       let stored = 0;
@@ -1195,7 +1198,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       toastError(err, 'Could not read that persona backup.');
       return;
     }
-    const mode = await promptImagesBatch(backup.personas.flatMap((p) => entityImages(p.entity)), IMAGE_CAPS.entity);
+    const mode = await promptImagesBatch(backup.personas.flatMap((p) => entityImageData(p.entity)), IMAGE_CAPS.entity);
     const now = new Date().toISOString();
     const failed = new Set<string>();
     const total = mode === 'off' ? 0 : backup.personas.filter((p) => p.entity.images?.length).length;

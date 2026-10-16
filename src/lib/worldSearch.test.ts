@@ -83,7 +83,7 @@ describe('collectSearchTargets', () => {
         min: 0, max: 100, starting: 50, value: 50, regen: 0, descriptors: [],
         code: 'return value + 1;',
       } as Stat],
-      entities: [entity({ images: ['data:image/webp;base64,AAAA'] as Entity['images'] })],
+      entities: [entity({ images: [{ data: 'data:image/webp;base64,AAAA' }] })],
     });
     const keys = collectSearchTargets(src).map((t) => t.fieldKey);
     expect(keys).toContain('name');

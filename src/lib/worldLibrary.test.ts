@@ -116,6 +116,25 @@ describe('the version 2 upgrade', () => {
     expect(meta[0].description).toBe(`Adrift in the ${token}.`);
   });
 
+  it('skips a world that reads back as null, rather than abort the upgrade', async () => {
+    // Out-of-line keys stand in for a stored value the browser can no longer read.
+    const v1 = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open(WORLD_LIBRARY_DB, 1);
+      request.onupgradeneeded = () => request.result.createObjectStore(WORLD_STORE);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const tx = v1.transaction([WORLD_STORE], 'readwrite');
+    tx.objectStore(WORLD_STORE).put(null, 'lost');
+    tx.objectStore(WORLD_STORE).put(world('y'), 'y');
+    await new Promise((resolve) => { tx.oncomplete = resolve; });
+    v1.close();
+
+    const meta = await WorldStorageService.getWorldMetadata();
+
+    expect(meta.map((m) => m.id)).toEqual(['y']);
+  });
+
   it('shows a message while a version 1 tab blocks it, and finishes once that tab closes', async () => {
     const v1 = await openVersion1();
     const reading = WorldStorageService.getWorldMetadata();

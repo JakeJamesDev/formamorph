@@ -13,114 +13,31 @@
  * alone, because rewriting them would need judgment the Test Bench is the net for.
  */
 
-import { javascriptLanguage } from '@codemirror/lang-javascript';
-import type { SyntaxNode } from '@lezer/common';
-import type { Placeholder, Stat } from '@/types';
-import { canBePlayer } from './bearers';
+import type { Entity, Placeholder, Script, Stat, StatGroup, TraitGroup } from '@/types';
+import { canBePlayer } from './owners';
+import { codeRenameChains, type ChainRoot, type CodeRenameKey } from './codeRenameChains';
 import type { PlaceholderOwnerRef, PlaceholderOwners } from './placeholderHomes';
 import {
   placeholderPathMap, walkPlaceholderPath,
   type PlaceholderPathMap, type PlaceholderPathNode, type PlaceholderPathSource,
 } from './statCodePaths';
 import { statCodeName } from './statCodeNames';
-import type { TraitHolders } from './statCodeTraits';
-import { boxCode, STAT_CODE_TIMINGS, type StatCodeTiming } from './statCodeTiming';
+import type { TraitOwnerMaps } from './statCodeTraits';
+import { filledScripts } from './scripts';
+import { WORLD_SCRIPT_OWNER } from './codeUses';
+import {
+  boxReferences, nameHomeOf, statCodeBoxes, statCodeOwners, traitCodeBoxes, worldScriptBoxes, type CodeHome, type StatNameHome,
+  type TraitCodeHome, type WorldScriptHome,
+} from './statCodeTargets';
 
 /** The name-keyed maps a rename can reach. */
 export type RenameRoot = 'stats' | 'placeholders' | 'traits';
 
-/** Every global a renamed key can hang off: the maps, and the owner globals, whose entries hold trait and
- *  placeholder maps. */
-type ChainRoot = RenameRoot | 'entities' | 'persona' | 'dictionaries';
-
-/** One key of a member chain hanging off a map, and what it takes to rewrite that key alone. */
-export interface CodeRenameKey {
-  /** The name the key reads as. */
-  name: string;
-  /** The key's own text: the property name, or the string literal with its quotes. */
-  keyFrom: number;
-  keyTo: number;
-  /** The quote the author used, or null for the dot form. */
-  quote: string | null;
-  /** Whether this step is reached through `?.`, which a rebuilt bracket form has to keep. */
-  optional: boolean;
-  /** Where the object this key hangs off ends: the map's own name for the first key, the chain so far
-   *  after. What a bracket form replaces from. */
-  objectTo: number;
-  /** Where the member expression this key closes ends. */
-  memberTo: number;
-}
-
 const IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
 
-/** The key of one member step, or null where only a run could name it. */
-function keyOf(member: SyntaxNode, object: SyntaxNode, code: string): CodeRenameKey | null {
-  const optional = code.slice(object.to, member.to).trimStart().startsWith('?.');
-  const span = { optional, objectTo: object.to, memberTo: member.to };
-  const property = member.getChild('PropertyName');
-  if (property) {
-    const name = code.slice(property.from, property.to);
-    return { name, keyFrom: property.from, keyTo: property.to, quote: null, ...span };
-  }
-  const literal = member.getChild('String');
-  if (!literal || literal.to - literal.from < 2) return null;
-  const quote = code[literal.from];
-  if (code[literal.to - 1] !== quote || (quote !== '"' && quote !== "'")) return null;
-  const name = code.slice(literal.from + 1, literal.to - 1);
-  // An escape has to be evaluated to name the key, so the step cannot be proven to be this one.
-  if (name.includes('\\')) return null;
-  return { name, keyFrom: literal.from, keyTo: literal.to, quote, ...span };
-}
-
-/** Whether this member expression is the object of another, and so already covered by that longer chain. */
-function isInnerMember(node: SyntaxNode): boolean {
-  const object = node.parent?.name === 'MemberExpression' ? node.parent.firstChild : null;
-  return !!object && object.from === node.from && object.to === node.to;
-}
-
-/** The keys of one chain off `root`, outermost first, cut short at the first key a run would name. */
-function chainAt(node: SyntaxNode, code: string, root: ChainRoot): CodeRenameKey[] | null {
-  const members: SyntaxNode[] = [];
-  let at: SyntaxNode | null = node;
-  while (at?.name === 'MemberExpression') {
-    members.unshift(at);
-    at = at.firstChild;
-  }
-  if (at?.name !== 'VariableName' || code.slice(at.from, at.to) !== root) return null;
-  const keys: CodeRenameKey[] = [];
-  for (const member of members) {
-    const object = member.firstChild;
-    const key = object && keyOf(member, object, code);
-    // Nothing below an unreadable key can be resolved either, so the chain ends here.
-    if (!key) break;
-    keys.push(key);
-  }
-  return keys;
-}
-
-/**
- * Every member chain off `root` in `code`, in source order.
- *
- * The one scanner, and one parse per root however many names a rename moves. It answers both questions the
- * walk asks: whether the author declared a name of their own over the map — in which case none of these
- * members is the sandbox's map and the whole code is left alone — and where each key of each chain sits.
- */
-export function codeRenameChains(code: string, root: ChainRoot): CodeRenameKey[][] {
-  if (!code || !code.includes(root)) return [];
-  const found: CodeRenameKey[][] = [];
-  const cursor = javascriptLanguage.parser.parse(code).cursor();
-  do {
-    if (cursor.type.name === 'VariableDefinition' && code.slice(cursor.from, cursor.to) === root) return [];
-    if (cursor.type.name !== 'MemberExpression' || isInnerMember(cursor.node)) continue;
-    const chain = chainAt(cursor.node, code, root);
-    if (chain?.length) found.push(chain);
-  } while (cursor.next());
-  return found;
-}
-
-/** The key names of each chain off `root` in either of the stat's code boxes. */
+/** The key names of each chain off `root` in any of the stat's scripts. */
 export const statCodeChains = (stat: Stat, root: ChainRoot): string[][] =>
-  STAT_CODE_TIMINGS.flatMap((timing) => codeRenameChains(boxCode(stat, timing), root)).map((chain) => chain.map((key) => key.name));
+  filledScripts(stat).flatMap((script) => codeRenameChains(script.code, root)).map((chain) => chain.map((key) => key.name));
 
 /** Every exact map-lookup of `name` under `root`: the first key of each chain that reads as it. */
 export const codeRenameReferences = (code: string, root: RenameRoot, name: string): CodeRenameKey[] =>
@@ -145,7 +62,7 @@ export const spliced = (code: string, edits: readonly CodeSplice[]): string =>
 
 /** What one key becomes: the key alone where the author's form survives, the whole member expression where
  *  a dot form has to become a bracket to hold a name no identifier can spell. */
-function rewrittenKey(key: CodeRenameKey, newName: string): CodeSplice {
+export function rewrittenKey(key: CodeRenameKey, newName: string): CodeSplice {
   if (key.quote) return { from: key.keyFrom, to: key.keyTo, insert: quoted(newName, key.quote) };
   if (IDENTIFIER.test(newName)) return { from: key.keyFrom, to: key.keyTo, insert: newName };
   return { from: key.objectTo, to: key.memberTo, insert: `${key.optional ? '?.' : ''}[${quoted(newName, "'")}]` };
@@ -171,7 +88,7 @@ type NameRenames = ReadonlyMap<string, string>;
  * Resolution rather than name matching is what keeps a rename of Molly's `Hair` off a world-level
  * `placeholders.Hair`. More than one key can move at once: an owner named through a chip is renamed by the
  * same edit that renames the placeholder behind the chip. Each prefix goes through the one walk, so a key that lost to a
- * member of its holder is left alone here exactly as it is everywhere else.
+ * member of its parent is left alone here exactly as it is everywhere else.
  */
 function pathSplices(
   map: PlaceholderPathMap, chain: readonly CodeRenameKey[], renames: PathRenames, start: PlaceholderPathNode | null = null,
@@ -203,7 +120,7 @@ interface CodeRewrite {
   /** The bare-name lookups that move, per root. */
   names: ReadonlyMap<ChainRoot, NameRenames>;
   /** The trait names that move inside entity trait maps, and whose maps they move in. Absent where none do. */
-  entityTraits?: { moved: NameRenames; holders: TraitHolders };
+  entityTraits?: { moved: NameRenames; owners: TraitOwnerMaps };
 }
 
 /** The splices for one entity trait map's key: `traits` at `at`, the trait name after it. */
@@ -252,11 +169,11 @@ function rewriteCode(code: string, rewrite: CodeRewrite): { code: string; refere
     }
   }
   if (rewrite.entityTraits) {
-    const { moved, holders } = rewrite.entityTraits;
+    const { moved, owners } = rewrite.entityTraits;
     const splices = [
-      ...(holders.persona ? codeRenameChains(code, 'persona').map((chain) => entityTraitSplice(chain, 0, moved)) : []),
+      ...(owners.persona ? codeRenameChains(code, 'persona').map((chain) => entityTraitSplice(chain, 0, moved)) : []),
       ...codeRenameChains(code, 'entities')
-        .filter((chain) => holders.entities.includes(chain[0].name))
+        .filter((chain) => owners.entities.includes(chain[0].name))
         .map((chain) => entityTraitSplice(chain, 1, moved)),
     ];
     edits.push(...splices.filter((splice): splice is CodeSplice => splice !== null));
@@ -284,14 +201,15 @@ const TARGET_ROOTS: Record<string, { root: RenameRoot; kind?: CodeRenameSubject[
  *  not a rename. */
 export function codeRenameTarget(
   itemKey: string, fieldKey: string,
-): { root: RenameRoot; subject?: CodeRenameSubject; traitId?: string } | null {
+): { root: RenameRoot; subject?: CodeRenameSubject; traitId?: string; stat?: RenamedStat } | null {
   if (fieldKey !== 'name') return null;
   const at = itemKey.indexOf(':');
   const target = TARGET_ROOTS[itemKey.slice(0, at)];
   if (!target) return null;
   const id = itemKey.slice(at + 1);
   if (target.kind) return { root: target.root, subject: { kind: target.kind, id } };
-  return target.root === 'traits' ? { root: target.root, traitId: id } : { root: target.root };
+  if (target.root === 'traits') return { root: target.root, traitId: id };
+  return target.root === 'stats' ? { root: target.root, stat: { id } } : { root: target.root };
 }
 
 /** Whether a subject is the entity or book that owns placeholders, rather than an entry of its own. */
@@ -314,13 +232,14 @@ export const codeNameReader = (
     ? (name) => name
     : (name) => statCodeName(name, placeholders));
 
-/** One stat's code, rewritten. A box the rename does not touch is absent rather than rewritten to itself. */
+/** One stat's or trait's code, rewritten. A script the rename does not touch is absent rather than rewritten to itself. */
 export interface CodeRenameEdit {
-  id: string;
-  /** The stat's own name, so the offer can say whose code it is about. */
+  /** Where the code is authored: the world's own scripts, a stat or a trait, an entity's own, or a link's override. */
+  home: WorldScriptHome | CodeHome | TraitCodeHome;
+  /** The stat's or trait's own name, so the offer can say whose code it is about. */
   name: string;
-  /** The new text of each box the rename moved something in. */
-  boxes: Partial<Record<StatCodeTiming, string>>;
+  /** The new code of each script the rename moved something in, by script id. */
+  scripts: Record<string, string>;
 }
 
 /** What a rename would do to the world's stat code. */
@@ -330,7 +249,7 @@ export interface CodeRenamePlan {
   subject?: CodeRenameSubject;
   oldName: string;
   newName: string;
-  /** The stats whose code changes, in authored order. */
+  /** The stats whose code changes: the world's in authored order, then each entity's. */
   edits: CodeRenameEdit[];
   /** How many keys the rewrite covers. */
   references: number;
@@ -342,6 +261,13 @@ export interface CodeRenameSubject {
   id: string;
 }
 
+/** The stat a stat rename moved: a world or Blueprint stat, or one of an entity's own. */
+export interface RenamedStat {
+  id: string;
+  /** The entity that owns the stat. Absent for a global stat. */
+  entityId?: string;
+}
+
 export interface CodeRenameInput {
   root: RenameRoot;
   /** The name as code read it before the edit. For a stat this is its code name. */
@@ -349,21 +275,30 @@ export interface CodeRenameInput {
   newName: string;
   /** Every stat in the world, for the code they hold. */
   stats: readonly Stat[];
-  /** Every trait in the world. A placeholder rename moves the code name of a trait whose name carries it. */
-  traits?: readonly { name: string }[];
+  /** The world's own scripts. */
+  worldScripts?: readonly Script[];
+  /** Every trait in the world, for the scripts they hold. A placeholder rename moves the code name of a trait
+   *  whose name carries it. */
+  traits?: readonly { id?: string; name: string; groupId?: string | null; scripts?: Script[] }[];
+  /** The world's trait groups, for the Blueprint traits a stat rename follows. */
+  traitGroups?: readonly TraitGroup[];
   /** Every entity in the world. A placeholder rename moves the code name of an entity whose name carries it,
    *  and follows a playable one's own placeholders into `persona`. */
-  entities?: readonly { id?: string; name: string; persona?: boolean; customPersona?: boolean }[];
+  entities?: readonly Entity[];
+  /** The world's stat groups, for the Blueprints a stat rename follows. */
+  statGroups?: readonly StatGroup[];
   /** Every dictionary in the world. A rename moves the code name of a book whose name carries it. */
   dictionaries?: readonly { name: string }[];
   /** Whose trait maps hold a renamed trait. Absent, only `traits` follows the rename. */
-  traitHolders?: TraitHolders;
+  traitOwnerMaps?: TraitOwnerMaps;
   /** The names the other entries of this kind carry. A rename onto one of them is a duplicate, which the
    *  duplicate-name warning already covers, so it gets no offer. */
   otherNames: readonly string[];
   /** The world's placeholder tree. With `subject`, the rename follows paths rather than bare names. */
   placeholders?: PlaceholderPathSource;
   subject?: CodeRenameSubject;
+  /** The renamed stat. With it, a stat rename follows every route to that stat, in every box. */
+  stat?: RenamedStat;
 }
 
 /** `owners` with every reference to one owner renamed. */
@@ -463,40 +398,93 @@ function treeRewrite(
 }
 
 /**
+ * Every key that reaches the renamed stat and no other, rewritten, one edit per place the code is authored.
+ *
+ * Routes resolve against the world as it read before the edit, with the renamed stat under its old name. A
+ * key that also reaches another stat of that name, such as `persona.stats.X` where two entities that can be
+ * played both hold an X, is left alone.
+ */
+function statRenameEdits(
+  input: CodeRenameInput, renamed: RenamedStat, from: string, to: string,
+): { edits: CodeRenameEdit[]; references: number } {
+  const named = (stat: Stat) => (stat.id === renamed.id ? { ...stat, name: from } : stat);
+  const owners = statCodeOwners({
+    stats: renamed.entityId === undefined ? input.stats.map(named) : input.stats,
+    statGroups: input.statGroups,
+    entities: (input.entities ?? []).map((entity) =>
+      (entity.id === renamed.entityId && entity.stats ? { ...entity, stats: entity.stats.map(named) } : entity)),
+    placeholders: input.placeholders?.list ?? [],
+  });
+  const ownerId = renamed.entityId ?? null;
+  const isRenamed = (home: StatNameHome) => home.statId === renamed.id && home.entityId === ownerId;
+  const edits = new Map<string, CodeRenameEdit>();
+  let references = 0;
+  // Only traits with ids hold scripts a home can name.
+  const traits = (input.traits ?? []).flatMap((trait) => (trait.id === undefined ? [] : [{ statChanges: [], ...trait, id: trait.id }]));
+  const boxes = [
+    ...worldScriptBoxes(input).map((box) => ({ box, name: WORLD_SCRIPT_OWNER })),
+    ...statCodeBoxes(owners).map((box) => ({ box, name: box.stat.name })),
+    ...traitCodeBoxes(owners, { traits, traitGroups: input.traitGroups ?? [] }).map((box) => ({ box, name: box.trait.name })),
+  ];
+  for (const { box, name } of boxes) {
+    const splices = boxReferences(owners, box)
+      .filter(({ targets }) => targets.every((target) => isRenamed(nameHomeOf(target))))
+      .map(({ key }) => rewrittenKey(key, to));
+    if (!splices.length) continue;
+    references += splices.length;
+    const at = JSON.stringify(box.home);
+    const edit = edits.get(at) ?? { home: box.home, name, scripts: {} };
+    edit.scripts[box.id] = spliced(box.code, splices);
+    edits.set(at, edit);
+  }
+  return { edits: [...edits.values()], references };
+}
+
+/**
  * The rewrite a committed rename should offer, or null where there is nothing to offer: an unchanged or
  * blank name, a name another entry of the same kind already carries, or a name no stat's code references.
  */
 export function planCodeRename(input: CodeRenameInput): CodeRenamePlan | null {
-  const { root, stats, traits = [], entities = [], dictionaries = [], otherNames, placeholders, subject, traitHolders } = input;
+  const { root, stats, traits = [], entities = [], dictionaries = [], otherNames, placeholders, subject, traitOwnerMaps } = input;
   const from = input.oldName.trim();
   const to = input.newName.trim();
   // Trimmed on both sides of the comparison: the field's text is what an author typed, and a name that
   // differs from another only by its spaces is the duplicate the warning already covers.
   if (!from || !to || from === to || otherNames.some((name) => name.trim() === to)) return null;
+  if (root === 'stats' && input.stat) {
+    const found = statRenameEdits(input, input.stat, from, to);
+    return found.references ? { root, oldName: from, newName: to, ...found } : null;
+  }
   // A rename that names its node follows the tree. Without one — a caller that knows only the name — the
   // bare-name form is all that can be proven, which is what every root but `placeholders` has anyway.
   const moved: NameRenames = new Map([[from, to]]);
   const rewrite: CodeRewrite = placeholders && subject
     ? treeRewrite(placeholders, subject, from, to, stats, traits, entities, dictionaries)
     : {
-      names: new Map(root === 'traits' && traitHolders?.world === false ? [] : [[root, moved]]),
-      ...(root === 'traits' && traitHolders ? { entityTraits: { moved, holders: traitHolders } } : {}),
+      names: new Map(root === 'traits' && traitOwnerMaps?.world === false ? [] : [[root, moved]]),
+      ...(root === 'traits' && traitOwnerMaps ? { entityTraits: { moved, owners: traitOwnerMaps } } : {}),
     };
   const edits: CodeRenameEdit[] = [];
   let references = 0;
-  // Both boxes, because a rename that moved one and left the other would strand the lookups it skipped.
-  for (const stat of stats) {
-    const boxes: Partial<Record<StatCodeTiming, string>> = {};
+  const homes: { home: CodeRenameEdit['home']; name: string; scripts: readonly Script[] }[] = [
+    { home: { kind: 'world' }, name: WORLD_SCRIPT_OWNER, scripts: filledScripts({ scripts: input.worldScripts }) },
+    ...stats.map((stat) => ({ home: { kind: 'stat' as const, statId: stat.id }, name: stat.name, scripts: filledScripts(stat) })),
+    ...traits.flatMap((trait) => (trait.id === undefined ? []
+      : [{ home: { kind: 'trait' as const, traitId: trait.id }, name: trait.name, scripts: filledScripts(trait) }])),
+  ];
+  // Every script, because a rename that moved one and left another would strand the lookups it skipped.
+  for (const { home, name, scripts: held } of homes) {
+    const scripts: Record<string, string> = {};
     let moved = 0;
-    for (const timing of STAT_CODE_TIMINGS) {
-      const rewritten = rewriteCode(boxCode(stat, timing), rewrite);
+    for (const script of held) {
+      const rewritten = rewriteCode(script.code, rewrite);
       if (!rewritten.references) continue;
       moved += rewritten.references;
-      boxes[timing] = rewritten.code;
+      scripts[script.id] = rewritten.code;
     }
     if (!moved) continue;
     references += moved;
-    edits.push({ id: stat.id, name: stat.name, boxes });
+    edits.push({ home, name, scripts });
   }
   return references ? { root, subject, oldName: from, newName: to, edits, references } : null;
 }

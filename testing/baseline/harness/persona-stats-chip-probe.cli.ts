@@ -1,11 +1,11 @@
-// Persona stats chip probe — what changes when the Stats chip carries the played entity's stats after the
-// world's? Sedge Landing under no persona, so the Custom Persona entity's stats are the player's: Calm low,
-// and a Resolve that clashes with the world's Resolve and so reads as "Resolve (2)". Three prompts read the
-// chip: narration, the storyboard planner and the choice writer. The precall planner places no Stats chip;
+// Persona stats chip probe — what changes when the Persona block carries the played entity's stats? Sedge
+// Landing under None, so the Custom Persona entity plays and its stats are the persona's (Q11): Calm low, and a
+// Resolve that clashes with the global Resolve and so reads as "Resolve (2)". Three prompts read the block with
+// stats: narration, the storyboard planner and the choice writer. The precall planner reads it without stats;
 // `--dump` shows its bodies are the same in both arms.
 //
-// Arms, paired by run index: `off` (no played stats: the chip as it was) and `on` (the persona's stats after
-// the world's). The entity stats of entity-stats-chip-cases.json ride in both. Every other byte is shared.
+// Arms, paired by run index: `off` (the Custom Persona entity holds no stats) and `on` (its stats in the Persona
+// block). The entity stats of entity-stats-chip-cases.json ride in both. Every other byte is shared.
 //
 // Checks:
 //   rattled       — the output shows the player shaken or wavering (uptake, up in `on`)
@@ -25,8 +25,11 @@ import {
 } from '@/components/game/GamePrompts';
 import { authoredChipScene } from '@/lib/chipValues/authoredScene';
 import { chipValues, sceneEntityChipValues } from '@/lib/chipValues/chipValues';
+import { allSpelledTokens } from '@/test/chipTokens';
+import { PLAYER_NAME_HEADER_KEY } from '@/lib/builtinPlaceholders';
 import { resolveEntityText } from '@/lib/placeholders';
 import { renderPromptTemplate } from '@/lib/promptTemplate';
+import { layerValues } from '@/lib/promptValues';
 import { buildStoryboardUserMessage } from '@/lib/stagedPlanning';
 import { buildNarrationPrompt } from '@/lib/turnPipeline/narrationPrompt';
 import { migrateWorld } from '@/lib/version';
@@ -73,10 +76,10 @@ const sceneOn = sceneOf([...cast, you]);
 if (!sceneOn.playedStats?.some((part) => part.stats.length)) throw new Error('The scene holds no persona stats.');
 const SCENES = { on: sceneOn, off: { ...sceneOn, playedStats: [] } };
 const CTX = { on: chipValues(SCENES.on), off: chipValues(SCENES.off) };
-// The off arm is the chip as it was: the same world with no persona stats at all.
-const before = chipValues(sceneOf(cast));
-for (const token of Object.keys(before)) {
-  if (CTX.off[token] !== before[token]) throw new Error(`The off arm differs from the shipped chip at ${token}.`);
+// The off arm is the same world with a Custom Persona entity that holds no stats.
+const before = chipValues(sceneOf([...cast, { ...you, stats: [] }]));
+for (const token of [...allSpelledTokens(), PLAYER_NAME_HEADER_KEY]) {
+  if (CTX.off(token) !== before(token)) throw new Error(`The off arm differs from the shipped chip at ${token}.`);
 }
 
 const STAT_LABELS = ['Vigor', 'Resolve', 'Calm', 'Trust', 'Stock'];
@@ -106,10 +109,10 @@ function request(arm: typeof ARMS[number], c: Case): { system: string; user: str
   }
   if (c.kind === 'choices') {
     // The choice writer reads only who is in the scene, through the scene-roster override.
-    const values = { ...ctx, ...sceneEntityChipValues(SCENES[arm], Array.isArray(c.scene) ? c.scene : []), '<LANGUAGE>': '' };
+    const values = layerValues(ctx, sceneEntityChipValues(SCENES[arm], Array.isArray(c.scene) ? c.scene : []), { '<LANGUAGE>': '' });
     return {
       system: renderPromptTemplate(defaultChoicesPrompt, values),
-      user: renderPromptTemplate(defaultChoicesUserPrompt, { ...values, '<NARRATION>': c.narration ?? '' }),
+      user: renderPromptTemplate(defaultChoicesUserPrompt, layerValues(values, { '<NARRATION>': c.narration ?? '' })),
       max: 220,
     };
   }
@@ -154,7 +157,7 @@ async function complete(model: string, req: ReturnType<typeof request>, seed: nu
 
 const cases = fixture.cases.filter((c) => !only || only.split(',').includes(c.id));
 if (args.includes('--dump')) {
-  for (const arm of ARMS) console.log(`\n--- ${arm}: Stats chip\n${CTX[arm]['<STATS DESCRIPTION|descriptions.markdown>']}`);
+  for (const arm of ARMS) console.log(`\n--- ${arm}: Persona block\n${CTX[arm]('<PERSONA|markdown>')}`);
   const precall = ARMS.map((arm) => renderPromptTemplate(defaultThinkingPrompt, CTX[arm]));
   console.log(`\nprecall planner bodies identical across arms: ${precall[0] === precall[1]}`);
   for (const c of cases) console.log(`\n=== ${c.id} (on)\n${JSON.stringify(request('on', c), null, 2).slice(0, 6000)}`);

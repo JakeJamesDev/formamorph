@@ -8,6 +8,7 @@ import type { ReasoningEffortField } from '@/lib/reasoningEffort';
 export const REASONING_DIALECTS = [
   'unknown', 'engine', 'openai', 'lmstudio', 'vllm', 'openrouter',
   'anthropic-budget', 'anthropic-adaptive', 'google-2.5', 'google-3', 'moonshot-k3', 'moonshot-k2', 'novita',
+  'llamacpp',
 ] as const;
 
 export type ReasoningDialect = (typeof REASONING_DIALECTS)[number];
@@ -32,11 +33,14 @@ interface FieldWrite {
  * Off comes in three shapes. A dialect that carries the `none` literal needs no row of its own: the ordinary
  * level write says it, under the same guard as any other literal, so a server nothing has answered for is
  * never sent the field. A dialect whose off signal is its own field names it in `off`, which only a dialect
- * named from the endpoint's identity can do. And a dialect that refuses off sets `offRejected`.
+ * named from the endpoint's identity or its own advertisement can do. And a dialect that refuses off sets
+ * `offRejected`.
  */
 export interface DialectSpelling {
   /** Where the token budget goes. Absent where the dialect takes no budget. */
   readonly budgetPath?: readonly string[];
+  /** Set where the budget is the strength's Thinking Room and the server ends the thought there. */
+  readonly budgetFromStrength?: true;
   /** Fields written beside a budget, such as Anthropic's `thinking.type`. */
   readonly budgetWith?: readonly FieldWrite[];
   /** The smallest budget the endpoint accepts. The budget is raised to it before the headroom is added. */
@@ -51,6 +55,8 @@ export interface DialectSpelling {
   /** This dialect's own spelling of "do not reason", which replaces the budget and level writes. Absent
    *  where the `none` literal already says it. */
   readonly off?: readonly FieldWrite[];
+  /** Set where `off` is safe on every request, so it goes out even while reasoning is engaged nowhere. */
+  readonly offWhenDisengaged?: true;
   /** Set where the endpoint rejects a budget of zero, so a switched-off prompt sends the switch alone. */
   readonly noBudgetWhenOff?: true;
   /** Set where the endpoint rejects a switched-off request, so `none` sends no reasoning field at all. */
@@ -75,7 +81,9 @@ const THINKING_DISABLED: readonly FieldWrite[] = [{ path: ['thinking', 'type'], 
  * compatibility page (`google.thinking_config`, with
  * `thinking_budget` on 2.5 and `thinking_level` on 3.x, and the documented budget per effort); Kimi's chat
  * API reference (k3 takes `reasoning_effort` and always thinks, k2.6 switches with `thinking.type`). Novita's
- * chat-completions reference, read 2026-09-30 (`enable_thinking`, default `true`).
+ * chat-completions reference, read 2026-09-30 (`enable_thinking`, default `true`). llama.cpp's server source,
+ * read 2026-10-14 (`reasoning_budget_tokens`, honored on templates with thinking end tags; `reasoning_effort:
+ * none` disables thinking on any template).
  */
 export const DIALECT_SPELLINGS: Record<ReasoningDialect, DialectSpelling> = {
   // What the app sends wherever nothing has named a dialect. This row is the compatibility contract: change
@@ -123,11 +131,22 @@ export const DIALECT_SPELLINGS: Record<ReasoningDialect, DialectSpelling> = {
   'moonshot-k2': { off: THINKING_DISABLED },
   // Thinking is on by default, so only off is spelled.
   novita: { off: [{ path: ['enable_thinking'], value: false, label: 'Reasoning' }] },
+  // The server forces the thought's end at the budget. Builds before 2026-04-14 ignore the field, and the
+  // request cap still holds. `none` works on every template, so off is spelled whatever the levels say, and
+  // whether or not reasoning is engaged anywhere.
+  llamacpp: {
+    budgetPath: ['reasoning_budget_tokens'],
+    budgetFromStrength: true,
+    levelPath: EFFORT_PATH,
+    off: [{ path: EFFORT_PATH, value: 'none', label: 'Effort' }],
+    offWhenDisengaged: true,
+  },
 };
 
 /** Every field shape a dialect writes. One optional per spelling, so the table and the body type move together. */
 export interface ReasoningBodyFields {
   thinking_budget_tokens?: number;
+  reasoning_budget_tokens?: number;
   thinking_token_budget?: number;
   reasoning_effort?: ReasoningEffortField;
   reasoning?: { effort?: ReasoningEffortField; max_tokens?: number };
@@ -142,8 +161,8 @@ export interface ReasoningWrite {
   readonly level: ReasoningEffortField | null;
   /** The token budget, where the target takes one. */
   readonly budget: number | null;
-  /** True when the resolved choice is off, reasoning is engaged, and the record has not ruled the model out.
-   *  Only then may a dialect spell off in a field of its own. */
+  /** True when the resolved choice is off, reasoning is engaged or the dialect sends off regardless, and the
+   *  record has not ruled the model out. Only then may a dialect spell off in a field of its own. */
   readonly off: boolean;
   /** True where reasoning is engaged somewhere and the record has not ruled the model out, so this target
    *  may be told about reasoning at all. A switched-off request is eligible too: `off` is what it says.
@@ -171,9 +190,26 @@ export function reasoningDialectBudgetFloor(dialect: ReasoningDialect): number {
   return DIALECT_SPELLINGS[dialect].budgetMin ?? 0;
 }
 
-/** True where the dialect names a field for the token budget, so the budget slider is worth showing. */
+/** True where the dialect's off goes out even while reasoning is engaged nowhere. */
+export function reasoningDialectOffWhenDisengaged(dialect: ReasoningDialect): boolean {
+  return DIALECT_SPELLINGS[dialect].offWhenDisengaged === true;
+}
+
+/** True where the dialect names a field for the token budget. */
 export function reasoningDialectTakesBudget(dialect: ReasoningDialect): boolean {
   return DIALECT_SPELLINGS[dialect].budgetPath !== undefined;
+}
+
+/** True where the strength's Thinking Room is the dialect's budget. */
+export function reasoningDialectBudgetFromStrength(dialect: ReasoningDialect): boolean {
+  return DIALECT_SPELLINGS[dialect].budgetFromStrength === true;
+}
+
+/** The budget a body sent where the dialect's server ends the thought at it, or `undefined` where it sent none. */
+export function enforcedReasoningBudget(dialect: ReasoningDialect, body: unknown): number | undefined {
+  const { budgetPath, budgetFromStrength } = DIALECT_SPELLINGS[dialect];
+  const budget = budgetFromStrength && budgetPath ? readPath(body, budgetPath) : undefined;
+  return typeof budget === 'number' ? budget : undefined;
 }
 
 /** True where the dialect carries an effort literal, so the strength dropdown is worth showing. */

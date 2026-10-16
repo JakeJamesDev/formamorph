@@ -1,6 +1,6 @@
 # 06: Template Sweep
 
-Status: ready-for-human
+Status: done
 Status note: Swept 2026-10-11, all 15 templates unchanged; no template text needed an edit, so no changelog fragment. Verdicts in `## Sweep verdicts`.
 Blocked by: 01, 02
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)

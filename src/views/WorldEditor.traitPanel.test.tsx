@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, fireEvent, within } from '@testing-library/react';
+import { screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { benchEditorWorld, renderWorldEditorBench, pickEditorMode } from '@/test/worldEditorBench';
 import type { World } from '@/types';
 
@@ -7,8 +7,8 @@ import type { World } from '@/types';
  * What the World Editor's trait panel puts on screen, driven through the real editor.
  *
  * The panel splits its field groups across its own tabs, so a group that loses a field, gains a duplicate,
- * lands out of order, or lands on the wrong tab shows up here as a changed label list. Pins is Advanced only,
- * so Simple mode shows the other three.
+ * lands out of order, or lands on the wrong tab shows up here as a changed label list. Pins and Scripts are
+ * Advanced only, so Simple mode shows the other three.
  */
 
 vi.mock('../services/WorldStorageService', () => ({
@@ -85,10 +85,10 @@ const selectTrait = (name: string) => {
 beforeEach(() => { localStorage.clear(); });
 
 describe('the World Editor trait panel tabs', () => {
-  it('offers four tabs in Advanced mode and opens on Details', () => {
+  it('offers five tabs in Advanced mode and opens on Details', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     selectTrait('Sedge-Born');
-    expect(panelTabNames()).toEqual(['Details', 'Availability', 'Stats', 'Pins']);
+    expect(panelTabNames()).toEqual(['Details', 'Availability', 'Stats', 'Pins', 'Scripts']);
     expect(panelTab('Details')).toHaveAttribute('aria-selected', 'true');
   });
 
@@ -127,6 +127,28 @@ describe('the World Editor trait panel tabs', () => {
     expect(screen.getByRole('textbox', { name: 'Pinned Value' })).toHaveValue('copper');
   });
 
+  it('puts the script section on Scripts, where Add Script gives the trait a Before the AI script', async () => {
+    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+    selectTrait('Sedge-Born');
+    openPanelTab('Scripts');
+    // The help topic keeps its stat code title until the help catches up.
+    expect(screen.getByRole('button', { name: 'About Scripts' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Add Script' }));
+
+    const sedge = ctx().traits.find((trait) => trait.id === 't1');
+    expect(sedge?.scripts?.map(({ timing, code }) => ({ timing, code }))).toEqual([{ timing: 'before', code: '' }]);
+    const row = screen.getByRole('group', { name: 'Sedge-Born · Before the AI' });
+    expect(within(row).getByRole('button', { name: 'Test Code Sedge-Born · Before the AI' })).toBeDisabled();
+    // A trait's self is no stat, so its box offers no stat templates.
+    expect(within(row).queryByRole('button', { name: /^Templates/ })).toBeNull();
+    expect(within(row).getByRole('textbox', { name: 'Name' })).toHaveValue('');
+    // The editor arrives on its own chunk, then takes the focus.
+    await waitFor(() => {
+      const editor = within(row).getAllByRole('textbox').find((el) => el.closest('.cm-editor'));
+      expect(editor && (editor === document.activeElement || editor.contains(document.activeElement))).toBe(true);
+    }, { timeout: 10000 });
+  });
+
   it('leaves Simple mode three tabs, with Stat Availability gone from Stats', () => {
     renderWorldEditorBench(WORLD, 'simple');
     selectTrait('Sedge-Born');
@@ -159,7 +181,7 @@ describe('the World Editor trait panel tabs', () => {
 
     // The switch wears the hidden-data marker, whose own label joins its accessible name.
     pickEditorMode('Advanced');
-    expect(panelTabNames()).toEqual(['Details', 'Availability', 'Stats', 'Pins']);
+    expect(panelTabNames()).toEqual(['Details', 'Availability', 'Stats', 'Pins', 'Scripts']);
   });
 
   it('shows a trait group its own panel with no strip', () => {

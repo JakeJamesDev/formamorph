@@ -18,7 +18,7 @@ vi.mock('react-toastify', async (importOriginal) => {
   return { ...actual, toast: Object.assign(vi.fn(), actual.toast, { warn }) };
 });
 
-const wren: Entity = { id: 'l-wren', name: 'Wren', persona: true, images: ['data:image/webp;base64,AA'] };
+const wren: Entity = { id: 'l-wren', name: 'Wren', persona: true, images: [{ data: 'data:image/webp;base64,AA' }] };
 const ash: Entity = { id: 'l-ash', name: 'Ash', persona: true };
 const store = (entity: Entity) => EntityStorageService.storeEntity({ id: entity.id, name: entity.name, data: entity });
 
@@ -56,7 +56,7 @@ describe('the persona row', () => {
     expect(h.gameplay().personaRef).toEqual(ref);
     expect(readWorldPersona('w1')).toEqual(ref);
     await waitFor(() => expect(within(row()).getByText('Wren')).toBeTruthy());
-    expect(row().querySelector('img')?.getAttribute('src')).toBe(wren.images?.[0]);
+    expect(row().querySelector('img')?.getAttribute('src')).toBe(wren.images?.[0].data);
     // No re-attribution: the memory written before the change keeps its words.
     expect(h.gameplay().fullMessageHistory).toBe(history);
     expect(warn).not.toHaveBeenCalled();

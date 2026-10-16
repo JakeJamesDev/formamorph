@@ -18,9 +18,9 @@ On desktop, the bar at the top of the editor holds the controls that act on the 
 | Center | The **Search World** box |
 | Right | The **Undo**, **Redo** and **History** controls, the mode select, **Optimize Images** (Advanced mode only), the Test Bench, and **Save** |
 
-**Save** has an arrow beside it. Select the arrow to open a menu with **Export World** and the **Auto Save** checkbox, in both modes. The arrow works when **Save** is dim. In Advanced mode, **Optimize Images** is an icon button. It shows a spinner while it runs, and its tooltip shows the progress. The footer under the list holds only the tab's own actions, on Entities and Dictionary.
+**Save** has an arrow beside it. Select the arrow to open a menu with **Export World** and the **Autosave** checkbox, in both modes. The arrow works when **Save** is dim. In Advanced mode, **Optimize Images** is an icon button. It shows a spinner while it runs, and its tooltip shows the progress. The footer under the list holds only the tab's own actions, on Entities and Dictionary.
 
-On mobile, the header holds the back arrow and the mode select. At the right are **History**, the Test Bench and **Find and replace**. Select **Sections** under the header to pick a tab. The list has the rail's order and lines: **Overview** alone, then Entities, Locations, Traits and Stats, then Dictionary and Placeholders. The footer holds **Save to Library** on Entities and Dictionary. At its right are **Optimize Images** (Advanced mode only) and the **Save** icon with its arrow. The arrow opens **Export World** and **Auto Save**.
+On mobile, the header holds the back arrow and the mode select. At the right are **History**, the Test Bench and **Find and replace**. Select **Sections** under the header to pick a tab. The list has the rail's order and lines: **Overview** alone, then Entities, Locations, Traits and Stats, then Dictionary and Placeholders. The footer holds **Save to Library** on Entities and Dictionary. At its right are **Optimize Images** (Advanced mode only) and the **Save** icon with its arrow. The arrow opens **Export World** and **Autosave**.
 
 Each tab has its own page.
 
@@ -121,7 +121,7 @@ An edit after an undo erases the undone Steps. The list never branches.
 
 **Save** keeps your history. You can undo past the last save. The world then counts as unsaved again, and **Save** turns on. Undo back to the saved point, and **Save** turns off.
 
-An auto save doesn't move **Saved** and doesn't split a Step. Text you type across an auto save still undoes in one step.
+An autosave doesn't move **Saved** and doesn't split a Step. Text you type across an autosave still undoes in one step.
 
 ### Text fields
 
@@ -146,7 +146,7 @@ History works while the editor is open during play. It clears when you close the
 
 The World Editor has two modes. **Simple** is the default.
 
-- **Simple** shows the fields a new world needs. It hides the **Placeholders** tab, the placeholder bar and **Optimize Images**.
+- **Simple** shows the fields a new world needs. It hides the **Placeholders** tab, the **Scripts** tab, the placeholder bar and **Optimize Images**.
 - **Advanced** shows every field.
 
 Simple mode also hides these panel tabs:
@@ -155,8 +155,8 @@ Simple mode also hides these panel tabs:
 |---|---|
 | Entity | **Traits**, **Placeholders**, **Openings** |
 | Location | **Pins**, **Openings** |
-| Stat | **Descriptors**, **Code** |
-| Trait | **Pins** |
+| Stat | **Descriptors**, **Scripts** |
+| Trait | **Pins**, **Scripts** |
 | Dictionary entry | **Matching** |
 | Dictionary book | **Placeholders** |
 
@@ -175,7 +175,7 @@ A search covers the whole world, on every tab the current mode shows. It matches
 - Select the **X** button in a box to empty it and keep typing.
 - **Match case** and **Match whole word** stay on when you fold the bar back. An icon in the box shows each one that's on. Select it to open the options.
 - **Replace all** asks first, and says how many matches and fields it changes.
-- A chip can't be replaced as text. Change it from its pop-out.
+- A chip can't be replaced as text. Change it in its Chip Options.
 - A field that can't hold a chip is skipped when you replace text with a placeholder.
 
 In Advanced mode, the replace row can put a placeholder chip in place of text. Select the swap button, then pick a placeholder in **Choose Placeholder**.
@@ -201,16 +201,16 @@ The tour goes through the tabs in order: **Overview**, **Locations**, **Entities
 ## Saving and Discarding
 <!-- keywords: does it autosave, auto save, turn off autosave, edits not kept, work disappeared, prompt on closing, new world vanished, manual saving, confirm exit -->
 
-With **Auto Save** on, the editor saves your world by itself:
+With **Autosave** on, the editor saves your world by itself:
 
 - After about 300 characters of typing, or about 30 actions such as a toggle, an add or a delete.
-- After a pause with no edit, when any change is not saved. The pause is 30 seconds by default. To change it, use **Auto Save Pause** in [Settings](Settings#authoring). The pause can be 10 seconds to 5 minutes.
+- After a pause with no edit, when any change is not saved. The pause is 30 seconds by default. To change it, use **Autosave Pause** in [Settings](Settings#authoring). The pause can be 10 seconds to 5 minutes.
 
-**Save** and **Ctrl+S** still save at once. A new world isn't stored until you save it once yourself. After that, it auto saves too. A world that comes with Formamorph also waits for one save by you. Until then, it keeps getting the updates that come with the app. Auto save waits while the Authoring Tour runs, because each **Next** saves the world.
+**Save** and **Ctrl+S** still save at once. A new world isn't stored until you save it once yourself. After that, it autosaves too. A world that comes with Formamorph also waits for one save by you. Until then, it keeps getting the updates that come with the app. Autosave waits while the Authoring Tour runs, because each **Next** saves the world.
 
-**Auto Save** is on by default and applies to every world. To turn it off, select the arrow beside **Save**, then clear **Auto Save**. You can also clear **Auto Save** under **Authoring** in Settings. With it off, your edits stay in the editor until you select **Save**.
+**Autosave** is on by default and applies to every world. To turn it off, select the arrow beside **Save**, then clear **Autosave**. You can also clear **Autosave** under **Authoring** in Settings. With it off, your edits stay in the editor until you select **Save**.
 
-If an auto save fails, a message says why and **Save** shows **Failed**. Auto save then stops until a save that you start works.
+If an autosave fails, a message says why and **Save** shows **Failed**. Autosave then stops until a save that you start works.
 
 On desktop, **Save** in the bar at the top is on when you have changes to save and off when you don't.
 
@@ -237,7 +237,7 @@ When you leave with unsaved changes, the **Unsaved changes** dialog asks what to
 When you save a world in one browser tab, every other tab with that world open in the editor stops auto saving. The **World Saved in Another Tab** dialog asks which copy to keep. A tab where you play that world, or picked it on the Main Menu, asks when you open the editor.
 
 - **Reload** opens the other tab's save. It discards your unsaved changes in this tab, and **History** starts over.
-- **Keep Mine** keeps this tab's copy and turns auto save back on. Your next save replaces the other tab's copy.
+- **Keep Mine** keeps this tab's copy and turns autosave back on. Your next save replaces the other tab's copy.
 
 A save that you start in this tab counts as **Keep Mine** once it works. Only one tab should edit a world, so close the other tab when you're done.
 
@@ -249,7 +249,7 @@ When another tab deletes the world, the **World Deleted in Another Tab** dialog 
 ## Help Buttons
 <!-- keywords: question mark, info icon, explain this section, colored icon, short reference -->
 
-Some sections have a **?** button beside their name, such as **Aliases** and **Dynamic Value Calculation**. It opens a short help window for that section. **Learn more** opens the full page.
+Some sections have a **?** button beside their name, such as **Aliases** and **Scripts**. It opens a short help window for that section. **Learn more** opens the full page.
 
 A **?** you haven't opened yet shows in the accent color.
 

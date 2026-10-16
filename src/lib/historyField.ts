@@ -26,8 +26,11 @@ export function fieldOf(node: EventTarget | null): string | undefined {
   return node.closest(`[${HISTORY_FIELD_ATTRIBUTE}]`)?.getAttribute(HISTORY_FIELD_ATTRIBUTE) ?? undefined;
 }
 
-// A pop-out or option list renders in a portal, outside the frame of the field that opened it.
-const OVERLAY = '[data-radix-popper-content-wrapper], [role="listbox"], [role="menu"]';
+/** The attribute of a dialog whose controls edit the field that opened it, such as Chip Options. */
+export const HISTORY_OVERLAY_ATTRIBUTE = 'data-history-overlay';
+
+// A popover or option list renders in a portal, outside the frame of the field that opened it.
+const OVERLAY = `[data-radix-popper-content-wrapper], [role="listbox"], [role="menu"], [${HISTORY_OVERLAY_ATTRIBUTE}]`;
 
 /** The frame of a field. Of several, the one on screen wins: a layout can draw a field twice and hide one. */
 export function findHistoryField(root: ParentNode, field: string): HTMLElement | null {
@@ -39,8 +42,8 @@ export function findHistoryField(root: ParentNode, field: string): HTMLElement |
 /**
  * Reports the field in use each time it changes: the field focus moves into or a press ends on, or none. A
  * write the old field commits on blur is queued in the same events, so a host that keeps the field as React
- * state commits both in one render. Focus or a press inside a pop-out with no field of its own keeps the field
- * that opened it, so a chip's pop-out or a select's options edit the host field. Returns a stop.
+ * state commits both in one render. Focus or a press inside a popover with no field of its own keeps the field
+ * that opened it, so Chip Options or a select's options edit the host field. Returns a stop.
  */
 export function watchFieldInUse(doc: Document, onChange: (field: string | undefined) => void): () => void {
   let field: string | undefined;

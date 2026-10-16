@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { ChangeEvent } from 'react';
-import { filesFrom, importSummaryToast } from './importFiles';
+import { filesFrom, importPackFile, importSummaryToast } from './importFiles';
 
 vi.mock('react-toastify', () => ({
   toast: { success: vi.fn(), warning: vi.fn() },
@@ -56,6 +56,23 @@ describe('filesFrom', () => {
     const input = document.createElement('input');
     input.type = 'file';
     expect(filesFrom({ target: input } as ChangeEvent<HTMLInputElement>)).toEqual([]);
+  });
+});
+
+describe('importPackFile', () => {
+  it('resets the input and hands the picked file’s text to the importer', async () => {
+    const event = changeEvent([file('pack.json')]);
+    const importText = vi.fn(async (read: () => Promise<string | null>) => { expect(await read()).toBe('{}'); });
+    importPackFile(event, importText);
+    expect(event.target.value).toBe('');
+    expect(importText).toHaveBeenCalledTimes(1);
+    await importText.mock.results[0].value;
+  });
+
+  it('skips the importer when the picker was dismissed', () => {
+    const importText = vi.fn(async () => {});
+    importPackFile(changeEvent([]), importText);
+    expect(importText).not.toHaveBeenCalled();
   });
 });
 

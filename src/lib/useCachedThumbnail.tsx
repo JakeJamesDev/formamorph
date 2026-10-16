@@ -10,14 +10,15 @@ import { THUMB_INTRINSIC, type ThumbAspect } from './thumbAspect';
  * Resolve a world thumbnail to a displayable src.
  *
  * A thumbnail already resolved this session answers on the first render, with no effect and no
- * database open. Past that the blob cache answers, and only past that the network. Anything that
- * fails resolves to nothing, so the card shows its own placeholder.
+ * database open. Past that the blob cache answers, and only past that the network. The cache is
+ * best-effort: when it fails, or a cached picture will not load, the live URL stands in. Only a
+ * server that has no picture resolves to nothing, so the card shows its own placeholder.
  */
 export function useCachedThumbnail(
   file: string | null | undefined,
   url: string,
   updatedAt: string | number | null | undefined,
-): { src: string; loading: boolean } {
+): { src: string; loading: boolean; onError: () => void } {
   const wantEpoch = toEpoch(updatedAt);
   const key = file ? `${file}@${wantEpoch}` : '';
 
@@ -26,9 +27,15 @@ export function useCachedThumbnail(
   const remembered = file ? peekThumb(file, wantEpoch) : null;
   const [resolved, setResolved] = useState<{ key: string; src: string } | null>(null);
   const [loading, setLoading] = useState(false);
+  // Pictures that failed to load for this key: a blob (a WebKit bug with blobs read back from
+  // IndexedDB) falls back to the live URL, and a failed live URL falls back to the placeholder.
+  const [failed, setFailed] = useState<{ key: string; live: boolean } | null>(null);
+  const failedHere = failed?.key === key ? failed : null;
 
-  const src = remembered
-    ?? (file ? (resolved?.key === key ? resolved.src : '') : (url || ''));
+  const cachedSrc = remembered ?? (resolved?.key === key ? resolved.src : '');
+  const chosen = !file ? (url || '') : failedHere ? url : cachedSrc;
+  const src = failedHere?.live ? '' : chosen;
+  const onError = () => setFailed({ key, live: !src.startsWith('blob:') });
 
   useEffect(() => {
     // Recency is recorded here rather than during render: the map is a store, and render must not
@@ -51,21 +58,29 @@ export function useCachedThumbnail(
           if (primed) { setResolved({ key, src: primed }); return; }
         }
 
-        const cached = await getThumb(file);
-        if (cancelled) return;
-
-        let blob = cached && cached.updatedAt >= wantEpoch ? cached.blob : null;
-        if (!blob) {
-          const res = await fetch(url);
-          if (!res.ok) throw new Error(`thumbnail ${res.status}`);
-          blob = await res.blob();
-          if (cancelled) return;
-          await putThumb(file, blob, wantEpoch);
-          if (cancelled) return;
+        let cached: Awaited<ReturnType<typeof getThumb>> = null;
+        try {
+          cached = await getThumb(file);
+        } catch (err) {
+          console.warn('Thumbnail cache read failed:', err); // a miss: the network answers instead
         }
+        if (cancelled) return;
+        if (cached && cached.updatedAt >= wantEpoch) {
+          setResolved({ key, src: rememberThumb(file, cached.blob, wantEpoch) });
+          return;
+        }
+
+        const res = await fetch(url);
+        if (!res.ok) { if (!cancelled) setResolved({ key, src: '' }); return; } // the card's placeholder
+        const blob = await res.blob();
+        if (cancelled) return;
         setResolved({ key, src: rememberThumb(file, blob, wantEpoch) });
-      } catch {
-        if (!cancelled) setResolved({ key, src: '' }); // the card's placeholder, not a broken picture
+        putThumb(file, blob, wantEpoch).catch((err: unknown) => {
+          console.warn('Thumbnail cache write failed:', err);
+        });
+      } catch (err) {
+        console.warn('Thumbnail load failed:', err);
+        if (!cancelled) setResolved({ key, src: url }); // an <img> may still load what fetch could not
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -74,7 +89,7 @@ export function useCachedThumbnail(
     return () => { cancelled = true; };
   }, [file, url, wantEpoch, key]);
 
-  return { src, loading };
+  return { src, loading, onError };
 }
 
 /**
@@ -106,8 +121,8 @@ export function CachedThumbnail({ file, url, updatedAt, alt, className, aspect =
   /** The frame this thumbnail sits in, which gives the image its intrinsic size. */
   aspect?: ThumbAspect;
 }) {
-  const { src } = useCachedThumbnail(file, url, updatedAt);
+  const { src, onError } = useCachedThumbnail(file, url, updatedAt);
   if (!src) return null;
   const { width, height } = THUMB_INTRINSIC[aspect];
-  return <img src={src} alt={alt} className={className} width={width} height={height} decoding="async" />;
+  return <img src={src} alt={alt} className={className} width={width} height={height} decoding="async" onError={onError} />;
 }

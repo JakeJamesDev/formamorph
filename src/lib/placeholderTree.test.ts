@@ -53,11 +53,11 @@ const INDENT = 24;
 /**
  * The placeholder list is a tree, and the tree is read off the value lists themselves: a value that is
  * exactly one chip nests what it names. Ownership says whether that nesting is a possession or a reference,
- * which decides where the placeholder is offered and what deleting the holder takes with it.
+ * which decides where the placeholder is offered and what deleting the parent placeholder takes with it.
  */
 describe('placeholderTree', () => {
   describe('rows', () => {
-    it('nests every chip value under its holder', () => {
+    it('nests every chip value under its parent placeholder', () => {
       // Nothing is owned, so every original also keeps its own top-level row for anyone else to share.
       expect(shape(FLAT)).toEqual([
         'Molly',
@@ -74,7 +74,7 @@ describe('placeholderTree', () => {
       ]);
     });
 
-    it('reads an unowned nested row as shared and an owned one as its holder’s own', () => {
+    it('reads an unowned nested row as shared and an owned one as its parent placeholder’s own', () => {
       expect(shape(OWNED)).toEqual([
         'Molly',
         '  Northern',
@@ -101,7 +101,7 @@ describe('placeholderTree', () => {
       expect(named(topLevelPlaceholders(orphaned))).toContain('Northern');
     });
 
-    it('gives one row per holder however many of its values name the same target', () => {
+    it('gives one row per parent placeholder however many of its values name the same target', () => {
       const twice = [P('variant', 'Variant', [chip('hair'), chip('hair', '2')]), P('hair', 'Hair', ['brown'])];
       expect(shape(twice)).toEqual(['Variant', '  Hair *', 'Hair']);
     });
@@ -149,7 +149,7 @@ describe('placeholderTree', () => {
       expect(placeholderUsedBy(FLAT, 'town')).toBeNull();
     });
 
-    it('counts a holder once however many of its values point at the same one', () => {
+    it('counts a parent placeholder once however many of its values point at the same one', () => {
       const twice = [P('variant', 'Variant', [chip('hair'), chip('hair', '2')]), P('hair', 'Hair', ['brown'])];
       expect(placeholderUsedBy(twice, 'hair')?.count).toBe(1);
     });
@@ -178,7 +178,7 @@ describe('placeholderTree', () => {
       expect(dropTakesOwnership(prose, 'town', 'molly')).toBe(false);
     });
 
-    it('ignores the holder taking it — it is not another holder', () => {
+    it('ignores the parent placeholder taking it — it is not another parent', () => {
       // Molly already holds Northern. Dropping Northern under Molly must still be able to take it.
       expect(dropTakesOwnership(FLAT, 'northern', 'molly')).toBe(true);
     });
@@ -216,7 +216,7 @@ describe('placeholderTree', () => {
       expect(ownerOf(next, 'town')).toBeNull();
     });
 
-    it('reorders inside a holder without turning a shared row private', () => {
+    it('reorders inside a parent placeholder without turning a shared row private', () => {
       const next = applyPlaceholderDrop(FLAT, [], 'molly/southern', 'molly/northern', 0, INDENT);
       expect(shape(next).slice(0, 3)).toEqual(['Molly', '  Southern *', '    Hair *']);
       expect(ownerOf(next, 'southern')).toBeNull();
@@ -312,7 +312,7 @@ describe('placeholderTree', () => {
   });
 
   describe('the release rule', () => {
-    it('clears the owner when the holder drops the value that pointed at it', () => {
+    it('clears the owner when the parent placeholder drops the value that pointed at it', () => {
       const edited = OWNED.map((p) => (p.id === 'molly' ? P('molly', 'Molly', [chip('southern')]) : p));
       const next = releasePlaceholderOwners(edited);
       expect(ownerOf(next, 'northern')).toBeNull();
@@ -359,7 +359,7 @@ describe('placeholderTree', () => {
       expect(next.find((p) => p.id === 'northern')!.values).toHaveLength(0);
     });
 
-    it('leaves every other value of the holder where it was', () => {
+    it('leaves every other value of the parent placeholder where it was', () => {
       const next = removeChipValueFrom(FLAT, 'southern', 'hair');
       expect(next.find((p) => p.id === 'southern')!.values.map((v) => v.text)).toEqual(['dark brown eyes']);
     });
@@ -393,9 +393,9 @@ describe('placeholderTree', () => {
  * walks, or the panel and the roll would disagree about which weight applies.
  */
 describe('sharedWeightSite', () => {
-  /** The value id the holder holds the target through — the first segment of every override key. */
-  const via = (placeholders: Placeholder[], holderId: string, targetId: string) =>
-    placeholders.find((p) => p.id === holderId)!.values.find((v) => v.text.includes(targetId))!.id;
+  /** The value id the parent placeholder holds the target through — the first segment of every override key. */
+  const via = (placeholders: Placeholder[], parentId: string, targetId: string) =>
+    placeholders.find((p) => p.id === parentId)!.values.find((v) => v.text.includes(targetId))!.id;
 
   it('reports nothing for a top-level row, whose weights are its own', () => {
     expect(sharedWeightSite(FLAT, 'molly')).toBeNull();
@@ -405,13 +405,13 @@ describe('sharedWeightSite', () => {
     expect(sharedWeightSite(OWNED, 'molly/northern')).toBeNull();
   });
 
-  it('names the holder and the chip value for a shared row', () => {
+  it('names the parent placeholder and the chip value for a shared row', () => {
     expect(sharedWeightSite(FLAT, 'molly/northern')).toEqual({
       ownerId: 'molly', key: via(FLAT, 'molly', 'northern'),
     });
   });
 
-  it('gives two holders of one original two sites, so a bench in one leaves the other alone', () => {
+  it('gives two parent placeholders of one original two sites, so a bench in one leaves the other alone', () => {
     expect(sharedWeightSite(FLAT, 'northern/hair')?.ownerId).toBe('northern');
     expect(sharedWeightSite(FLAT, 'southern/hair')?.ownerId).toBe('southern');
   });
@@ -457,7 +457,7 @@ describe('placeholderRowChance', () => {
     expect(placeholderRowChance(asObject, 'molly/southern/hair')).toBe(50);
   });
 
-  it('reads a holder’s own weights', () => {
+  it('reads a parent placeholder’s own weights', () => {
     const weighted = FLAT.map((p) => (p.id === 'molly'
       ? { ...p, weights: { [phValueId(chip('northern'))]: 3, [phValueId(chip('southern'))]: 1 } }
       : p));

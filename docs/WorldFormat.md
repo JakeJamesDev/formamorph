@@ -23,9 +23,9 @@ The import adds a new world. It never replaces the world you exported. Import sk
 <!-- keywords: json, file, list, by hand, manual, schema, field, raw object, property names, regen key, meter entry, required keys -->
 
 1. Add an object to the top-level `stats` list.
-2. Give it a new `id` and a `name`. Stat code and the AI find a stat by its name, so keep names unique.
+2. Give it a new `id` and a `name`. Scripts and the AI find a stat by its name, so keep names unique.
 3. Set `type` to `"number"`, or to `"percentage"` for a 0–100 stat.
-4. Set `min`, `max`, `value` (the **Initial Value**) and `regen`.
+4. Set `min`, `max`, `value` (the **Base Value**) and `regen`.
 5. Write a `description`, and set `descriptors` to `[]` or to a list of [descriptors](#stat-descriptors).
 
 ```json
@@ -95,6 +95,7 @@ The import adds a new world. It never replaces the world you exported. Import sk
 | `placeholderGroups` | | [Group](#placeholder-groups)[] | Editor-only groups for shared placeholders |
 | `dictionaries` | ✓ | [Dictionary](#dictionaries)[] | Lore books. Import makes one empty book when the list is absent or empty |
 | `statUpdates` | ✓ | [StatUpdate](#stat-updates)[] | An older field. Write `[]` |
+| `scripts` | | [Script](#scripts)[] | Scripts no stat owns. They run with no `self` |
 
 A stored world also has an `id`. Export leaves it out, and import gives the world a new one.
 
@@ -111,6 +112,7 @@ Import runs every world through a migration. The migration changes an older shap
 | A flat `dictionary` list | One book named "Default" in `dictionaries` |
 | A dictionary `key` or `secondaryKeys` as one comma-separated string | A list of keywords |
 | An entity `image` string | The first item of `images` |
+| An entity `images` list of strings | Each string as `{ "data": … }` |
 | A location `entities` list | Each entity's `locations` |
 | A location `connections` list of names | Records in the top-level `connections` |
 | A connection with `from`, `to`, `twoWay` and `aiHint` | A connection with `a`, `b` and legs |
@@ -120,8 +122,9 @@ Import runs every world through a migration. The migration changes an older shap
 | `worldOverview.playerSetting` | `allowedPersonas` and `startPersona` |
 | A trait group `exclusive: true` | `maxPicks: 1` |
 | An entity link to a trait outside Blueprints | Removed, with its overrides |
+| A stat's `beforeCode` and `code` | Scripts with the timings `"before"` and `"after"` |
 | A stat with `type: "list"` | A `number` stat at its `min`. The items are dropped |
-| Stat code that uses `stats.find(…)` | The same code with the stat map |
+| A script that uses `stats.find(…)` | The same code with the stat map |
 | A Stomach, Fatness or Breastsize stat with no `morphBindings` | The matching body morphs |
 | A root `customPlayerVRM` | `worldOverview.customPlayerVRM` |
 | Entity and location `inGameDescription` and `detailedDescription` | `playerDescription` and `aiDescription` |
@@ -129,7 +132,7 @@ Import runs every world through a migration. The migration changes an older shap
 
 > ⚠️ **The last six rows run only when `version` is not the app's version.** A file stamped with the current version keeps those older forms as written.
 
-Write new files in the current shape.
+Write new files in the current shape. A file with `scripts` loads in an older version of the app, but its scripts don't run there.
 
 ## worldOverview
 <!-- keywords: metadata block, title key, system prompt key, music key, welcome markdown, replace narration prompt, creator, tag array, persona restriction keys -->
@@ -170,28 +173,43 @@ See [Persona Rules](Persona-Authoring#persona-rules) for how the last two fields
 ## Stats
 <!-- keywords: meter properties, threshold bands, morph bindings, code keys, lock flags, bonus object, percent unit, hidden flag -->
 
-Each stat is a number the player has. The AI reads it, and [stat code](StatCodeGuide) can calculate it.
+Each stat is a number the player has. The AI reads it, and a [script](ScriptsGuide) can calculate it.
 
 | Field | Req. | Type | Meaning |
 |---|---|---|---|
 | `id` | ✓ | String | Unique id |
-| `name` | ✓ | String | The name. Stat code and the AI find the stat by it |
+| `name` | ✓ | String | The name. Scripts and the AI find the stat by it |
 | `type` | ✓ | `"number"` \| `"percentage"` | A `percentage` stat has `min` 0 and `max` 100, and shows as `N%`. The AI can't change its max |
 | `description` | ✓ | String | What the stat means |
 | `min` | ✓ | Number | The lowest value |
 | `max` | ✓ | Number | The highest value |
-| `value` | | Number | The **Initial Value**: what a new game starts at. Absent or `0` = `min` |
+| `value` | | Number | The **Base Value**: what a new game starts at, before traits apply. Absent or `0` = `min` |
 | `starting` | | Number | The value a save gets when it did not have this stat yet. A new game also measures turn one's change from it. Absent = `value`. Keep it equal to `value` |
 | `regen` | ✓ | Number | The change per story hour. Negative drains |
+| `regenUnit` | | `"minutes"` \| `"hours"` \| `"days"` \| `"weeks"` | The span the editor shows **Regen** per. `regen` stays per hour. Absent = `"hours"` |
 | `descriptors` | ✓ | [Descriptor](#stat-descriptors)[] | Text for each band of values |
 | `thresholdUnit` | | `"raw"` \| `"percent"` | What a descriptor's `threshold` measures. `"raw"` = the stat's own units. `"percent"` = a percent of `min` to `max`. Absent = `"raw"`. A `percentage` stat is always percent |
-| `beforeCode` | | String | Stat code that runs before the AI's turn. Its changes reach that turn's prompt. See the [Stat Code Guide](StatCodeGuide) |
-| `code` | | String | Stat code that runs after the AI's changes and regen |
+| `scripts` | | [Script](#scripts)[] | Code with this stat as `self`. See the [Scripts Guide](ScriptsGuide) |
 | `morphBindings` | | String[] | Body morph names this stat drives. `min` to `max` maps to 0 to 1 |
 | `enabled` | | Boolean | `false` starts the stat off. The player and the AI don't see it, and regen and code stop. A trait's `statToggles` switches it on. Absent = on |
 | `hidden` | | Boolean | `true` hides the stat from the player. The AI still reads it, and regen and code still run |
 | `noIncrease` / `noDecrease` | | Boolean | The AI can't raise or lower the value |
 | `noIncreaseMax` / `noDecreaseMax` | | Boolean | The AI can't raise or lower the max |
+
+### Scripts
+<!-- keywords: scripts, stat code, beforeCode, code field, before the ai, after the ai, during ai output, at game start, when a trait switches, run order, timing -->
+
+A script is one box of code with a timing. A stat, a trait and the world each hold a `scripts` list.
+
+| Field | Req. | Type | Meaning |
+|---|---|---|---|
+| `id` | ✓ | String | Unique id |
+| `name` | | String | The script's name. Absent = the owner and timing name it |
+| `timing` | ✓ | `"before"` \| `"after"` \| `"output"` \| `"start"` \| `"switch"` | When it runs. `"before"` runs before the AI's turn, and its changes reach that turn's prompt. `"after"` runs after the AI's changes and regen. `"output"` runs on each completed narration sentence. `"start"` runs once on a new game's opening turn. `"switch"` runs when a trait turns on or off |
+| `code` | ✓ | String | The JavaScript |
+| `order` | | Number | Run position within the timing. Scripts with an `order` run first, lowest first. The rest run after them, world scripts first, then each stat's in stat order |
+
+When two scripts write the same field, the later one wins. A world script has no `self`. A trait's script runs only while the trait is active. The [Scripts Guide](ScriptsGuide) lists what each timing reads.
 
 ### Stat Descriptors
 
@@ -216,6 +234,11 @@ A trait changes a stat with a list of these.
 | `value` | ✓ | Number | The amount to add. Negative subtracts |
 | `type` | | `"min"` \| `"max"` \| `"starting"` \| `"regen"` | What the change adds to. `"starting"` adds to the value. Absent = no change |
 | `interval` | | String | An older field. Nothing reads it |
+| `target` | | `"global"` | On an entity's trait, `"global"` moves the global stat with this `id`, even when the entity has its own stat with the same `id`. Absent = the entity's own stat first, else the global stat |
+
+A `statToggles` entry takes the same `target`.
+
+> 🔁 Older files write `"target": "player"`. The app reads it as `"global"`, and new files write `"global"` only. Apps older than this change don't read `"global"`, so they apply these rows to the entity's own stat until updated.
 
 ## Traits
 <!-- keywords: perk properties, prerequisite object, pick limits keys, mode values, default flag, category object, template folder flag, toggle flag -->
@@ -228,7 +251,7 @@ A trait describes the player or an entity. The player picks traits before play. 
 | `name` | ✓ | String | The name |
 | `playerDescription` | | String | What the player reads on the setup screen |
 | `aiDescription` | | String | What the AI reads while the trait is active |
-| `statChanges` | ✓ | [StatChange](#stat-changes)[] | Changes to the player's stats while the trait is active |
+| `statChanges` | ✓ | [StatChange](#stat-changes)[] | Changes to stats while the trait is active. A global trait changes global stats. An entity's trait changes the entity's own stats, and global stats through a `"global"` row |
 | `groupId` | | String \| `null` | The [group's](#trait-groups) `id`. Absent or `null` = the top level |
 | `order` | | Number | The order among items in the same group |
 | `isDefault` | | Boolean | The trait starts selected |
@@ -237,6 +260,7 @@ A trait describes the player or an entity. The player picks traits before play. 
 | `requires` | | [Requirement row](#trait-requirements)[] | Any one row that holds makes the trait available. Absent or empty = always available |
 | `statToggles` | | `{ "statId", "enabled" }`[] | Stats switched on or off while the trait is active |
 | `placeholderPins` | | [Pin](#placeholder-pins)[] | Placeholder values pinned while the trait is active |
+| `scripts` | | [Script](#scripts)[] | Code with this trait as `self`. It runs while the trait is active. See the [Scripts Guide](ScriptsGuide) |
 
 See [World Editor: Traits](World-Editor-Traits) for how modes, requirements and pick counts behave during the game.
 
@@ -257,14 +281,18 @@ Each requirement has a `kind`:
 
 | `kind` | Other fields | Holds when |
 |---|---|---|
-| `"trait"` | `id`, `name`, `bearer` | The bearer has the trait with this `id` |
-| `"group"` | `id`, `name`, `bearer` | The bearer has any trait in the group with this `id` |
+| `"trait"` | `id`, `name`, `owner` | The owner has the trait with this `id` |
+| `"group"` | `id`, `name`, `owner` | The owner has any trait in the group with this `id` |
 | `"playingAs"` | `id`, `name` | The player plays as the entity with this `id` |
+| `"stat"` | `id`, `name`, `owner`, `operator`, `value`, `unit` | The owner's stat with this `id` compares true against `value` |
 
 - `name` is optional. It holds the target's name, so a requirement still reads when the target is gone.
-- `bearer` is optional. Absent = the trait's own bearer. `{ "kind": "you" }` checks the player. `{ "kind": "entity", "id": "<entity id>", "name": "…" }` checks that entity.
-- `not` is optional. `true` flips the requirement: it holds while its target is off. `{ "kind": "trait", "id": "paladin", "not": true }` holds while the bearer doesn't have Paladin.
+- A `"stat"` requirement's `operator` is one of `">"`, `"<"`, `">="`, `"<="`, `"="` or `"≠"`. Its `unit` is `"raw"` for the stat's own units or `"percent"` for a share of the stat's min→max span. `{ "kind": "stat", "id": "health", "operator": "<", "value": 20, "unit": "percent" }` holds while Health is under 20% of its range.
+- `owner` is optional, and it applies only to a trait, group or stat an entity owns. A requirement that names a global item (a root trait, a root group or a global stat) reads the global scope, and the app drops any `owner` stored with it. Absent = the trait's own owner. `{ "kind": "you" }` checks the entity the player plays, and never holds when the player plays none. `{ "kind": "entity", "id": "<entity id>", "name": "…" }` checks that entity.
+- `not` is optional. `true` flips the requirement: it holds while its target is off. `{ "kind": "trait", "id": "paladin", "not": true }` holds while the owner doesn't have Paladin.
 - A requirement whose target is gone never holds, with or without `not`.
+
+> 🔁 Older files name the owner under `bearer`. The app reads it as `owner`, and new files write `owner` only. Apps from v3.1 and v3.2 don't read `owner`, so they misread these requirements until updated.
 
 ### Trait Groups
 
@@ -339,7 +367,7 @@ A connection needs at least one leg. Both legs = two-way. A leg has one optional
 | `playerDescription` | | String | What the player reads |
 | `aiDescription` | | String | The full description the AI reads |
 | `aiSummary` | | String | A short description the AI reads where the full one is too long |
-| `images` | | [Image](#media-fields)[] | The gallery. The first image is the main one |
+| `images` | | [Gallery image](#media-fields)[] | The gallery, in author order. The first image is the main one |
 | `tags` | | String[] | Listing tags for Community Creations |
 | `imageTags` | | String | Comma-separated tags for image generation |
 | `sound` | | [MediaAsset](#media-fields) | A sound |
@@ -459,7 +487,7 @@ A pin sets one placeholder to one value while its source is active. Traits, loca
 
 | Field | Req. | Type | Meaning |
 |---|---|---|---|
-| `placeholderId` | ✓ | String | The placeholder's `id`. On a trait, a blueprint `id` pins each bearer's copy |
+| `placeholderId` | ✓ | String | The placeholder's `id`. On a trait, a blueprint `id` pins each owner's copy |
 | `value` | ✓ | String | The value's text |
 | `valueId` | | String | The value's `id`. When present, it wins over `value`, so a reworded value still matches |
 
@@ -575,10 +603,17 @@ An entity or a book in a world can follow a library item. Its `link` object reco
 ## Media Fields
 <!-- keywords: base64, embed binary, encode image, huge file size, web address string, audio encoding, mime, asset object -->
 
-**Images** (`thumbnail`, location `backgroundImage`, entity `images`, book `thumbnail`) hold one string:
+**Images** (`thumbnail`, location `backgroundImage`, a gallery image's `data`, book `thumbnail`) hold one string:
 
 - A base64 data URL, such as `data:image/png;base64,…`
 - Or an `http` or `https` URL. The app loads the image from that address
+
+**Gallery images** (entity `images`) are objects:
+
+| Field | Req. | Type | Meaning |
+|---|---|---|---|
+| `data` | ✓ | Image | The picture |
+| `requires` | | [Requirement rows](#trait-requirements) | The Visibility rule. Absent = always shown |
 
 **Background music** (`bgm`) is a base64 data URL.
 
@@ -689,6 +724,6 @@ A short world. `...` replaces the media data.
 ## Related
 
 - [🛠️ World Editor](WorldEditor): the editor that writes this format
-- [🧮 Stat Code Guide](StatCodeGuide): the `beforeCode` and `code` fields
+- [🧮 Scripts Guide](ScriptsGuide): what a script's `code` can do
 - [🪪 Personas for Authors](Persona-Authoring): persona marks and rules
 - [🔗 Linked Content](LinkedContent): linked copies and world files

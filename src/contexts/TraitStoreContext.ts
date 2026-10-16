@@ -1,6 +1,7 @@
 import { createContext, useContext, useMemo } from 'react';
 import { useGameDataOptional } from '@/contexts/GameDataContext';
-import { editorGateInput } from '@/lib/bearers';
+import { editorGateInput } from '@/lib/owners';
+import { startingGateStats } from '@/lib/gateStats';
 import type { GateInput } from '@/lib/traitGates';
 import type { PinEditorWorld } from '@/lib/placeholderPins';
 import type { PlacementLetters } from '@/lib/placementLetters';
@@ -18,7 +19,7 @@ export interface TraitStore {
   entities: Entity[];
   placeholders: Placeholder[];
   stats: Stat[];
-  /** The world's stat groups, so a bearer's links and the Blueprints read off them. Absent off-world. */
+  /** The world's stat groups, so an owner's links and the Blueprints read off them. Absent off-world. */
   statGroups?: StatGroup[];
   placementLetters?: PlacementLetters;
   placeholderOwners?: PlaceholderOwners;
@@ -42,7 +43,7 @@ export interface TraitStore {
 /** The entity at a one-entity tree's root, and the world its links read their originals from. */
 export interface EntityRoot {
   /** The entity, its links bound to `world` where they can be. */
-  bearer: Entity;
+  owner: Entity;
   /** The world the editor was opened from, which the links read their originals from; null standalone. */
   world: LinkOriginals & { placeholders: readonly Placeholder[] } | null;
 }
@@ -60,17 +61,29 @@ export const TraitStoreContext = createContext<TraitStore | null>(null);
 
 /** The trait store in scope: a provided one, else the loaded world's. */
 export function useTraitStore(): TraitStore {
+  const store = useOptionalTraitStore();
+  if (!store) throw new Error('useTraitStore needs a world or a TraitStoreContext');
+  return store;
+}
+
+/** The trait store in scope, or null where there is neither a provided one nor a world. */
+export function useOptionalTraitStore(): TraitStore | null {
   const provided = useContext(TraitStoreContext);
   const world = useGameDataOptional();
   const traits = world?.traits;
   const traitGroups = world?.traitGroups;
   const entities = world?.entities;
+  const stats = world?.stats;
+  const statGroups = world?.statGroups;
   const gateInput = useMemo(
-    () => editorGateInput({ traits: traits ?? [], traitGroups: traitGroups ?? [], entities: entities ?? [] }),
-    [traits, traitGroups, entities],
+    () => editorGateInput(
+      { traits: traits ?? [], traitGroups: traitGroups ?? [], entities: entities ?? [] },
+      startingGateStats({ stats, statGroups, entities: entities ?? [] }),
+    ),
+    [traits, traitGroups, entities, stats, statGroups],
   );
   if (provided) return provided;
-  if (!world) throw new Error('useTraitStore needs a world or a TraitStoreContext');
+  if (!world) return null;
   return {
     traits: world.traits,
     traitGroups: world.traitGroups,

@@ -7,16 +7,16 @@ Reasoning effort: high
 
 Rationale: cross-tab signaling has no prior art in the repo, and a wrong pause either loses work or overwrites it.
 
-Parent: [World Editor Auto Save spec](../spec.md)
+Parent: [World Editor Autosave spec](../spec.md)
 
 ## What to build
 
-Auto save makes a stale tab overwrite newer work without a click. A tab now notices when its open world is saved in another tab.
+Autosave makes a stale tab overwrite newer work without a click. A tab now notices when its open world is saved in another tab.
 
 - Each successful save of a world announces itself to other tabs on the same origin.
-- A tab with that world open in the editor pauses auto save and shows a notice with **Reload** and **Keep Mine**.
+- A tab with that world open in the editor pauses autosave and shows a notice with **Reload** and **Keep Mine**.
   - **Reload** loads the other tab's save into this editor.
-  - **Keep Mine** resumes auto save; the next save overwrites the other tab's copy.
+  - **Keep Mine** resumes autosave; the next save overwrites the other tab's copy.
 - A manual save in the paused tab counts as Keep Mine.
 - The notice follows the design system; a new visual pattern needs the user's approval.
 
@@ -24,7 +24,7 @@ Rulings: Q15, Q18.
 
 ## Acceptance criteria
 
-- [ ] Saving a world in one tab pauses auto save in another tab with that world open, and shows the notice.
+- [ ] Saving a world in one tab pauses autosave in another tab with that world open, and shows the notice.
 - [ ] Reload loads the other tab's save; Keep Mine resumes and the next save wins.
 - [ ] Tabs with different worlds open are not affected.
 - [ ] A Playwright test drives two pages on one profile.

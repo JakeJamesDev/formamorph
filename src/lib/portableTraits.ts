@@ -1,17 +1,20 @@
 // An entity's owned traits and links off-world: named on the way out, bound to a receiving world on the way in.
 
 import type {
-  Entity, Placeholder, PlaceholderGroup, RequirementBearer, Stat, StatGroup, Trait, TraitGroup, TraitLink, TraitRequirement,
+  Entity, GalleryImage, Placeholder, PlaceholderGroup, RequirementOwner, Stat, StatGroup, StatRequirement, Trait, TraitGroup, TraitLink, TraitRequirement,
 } from '@/types';
-import { linksInTreeOrder, originalOf } from './bearers';
+import { canBePlayer, linksInTreeOrder, originalOf } from './owners';
+import { resolvedEntityStats } from './statLinks';
 import { rekeyed, uniqueNamed } from './carriedBinding';
 import { bindOwnedStats, type StatWorld } from './portableStats';
 import { remintOwnedTraits } from './ownedTraits';
 import { worldBlueprints } from './placeholderBlueprints';
 import { blueprintItemIds, groupsBelow } from './traitTree';
 import { mapConditions, notFlag } from './requirementRows';
+import { hasImageRules, mapImageRules, withImageRules } from './entityImages';
+import { withoutGlobalOwner } from './version';
 
-/** Off-world, a "playing as" or a named bearer on the entity itself names it by this id, since each copy has
+/** Off-world, a "playing as" or a named owner on the entity itself names it by this id, since each copy has
  *  its own id. */
 export const SELF_ENTITY = 'self';
 
@@ -27,7 +30,7 @@ export interface TraitWorld extends StatWorld {
 
 type Portable = Pick<Entity, 'traits' | 'traitGroups' | 'traitLinks'>;
 type Named = { id: string; name: string };
-type EntityBearer = Extract<RequirementBearer, { kind: 'entity' }>;
+type EntityOwner = Extract<RequirementOwner, { kind: 'entity' }>;
 type Original = NonNullable<ReturnType<typeof originalOf>>;
 
 /** A world's trait lists, its stats and its blueprints, when a record carries traits. A record with no placeholder folders has no blueprints. */
@@ -44,7 +47,11 @@ export const traitWorldOf = (data: {
 const ownIds = (entity: Entity): Set<string> =>
   new Set([...(entity.traits ?? []), ...(entity.traitGroups ?? [])].map((item) => item.id));
 
-/** Every trait and group of the world and of its entities other than `except`. */
+/** Whether a requirement points inside the entity: at one of its own traits, groups or stats. */
+const pointsInside = (r: TraitRequirement, entity: Entity, inside: ReadonlySet<string>): boolean =>
+  (r.kind === 'stat' ? !!entity.stats?.some((s) => s.id === r.id) : r.kind !== 'playingAs' && inside.has(r.id));
+
+/** Every trait, group and stat of the world and of its entities other than `except`. */
 function targets(world: TraitWorld, except?: string) {
   const others = world.entities.filter((e) => e.id !== except);
   const lists: Record<TraitRequirement['kind'], readonly Named[]> = {
@@ -52,20 +59,21 @@ function targets(world: TraitWorld, except?: string) {
     group: [...world.traitGroups, ...others.flatMap((e) => e.traitGroups ?? [])],
     // Only a persona can be played as.
     playingAs: others.filter((e) => e.persona),
+    stat: [...world.stats ?? [], ...others.flatMap((e) => e.stats ?? [])],
   };
   return lists;
 }
 
-const NO_TARGETS: ReturnType<typeof targets> = { trait: [], group: [], playingAs: [] };
+const NO_TARGETS: ReturnType<typeof targets> = { trait: [], group: [], playingAs: [], stat: [] };
 
-const isSelf = (r: TraitRequirement, entityId: string) =>
+const isSelf = (r: TraitRequirement, entityId: string): r is Extract<TraitRequirement, { kind: 'playingAs' }> =>
   r.kind === 'playingAs' && (r.id === SELF_ENTITY || r.id === entityId);
 
-const isSelfBearer = (b: EntityBearer, entityId: string) => b.id === SELF_ENTITY || b.id === entityId;
+const isSelfOwner = (b: EntityOwner, entityId: string) => b.id === SELF_ENTITY || b.id === entityId;
 
-/** The requirement with its named bearer rewritten; the same requirement when it names none. */
-const withBearer = (r: TraitRequirement, map: (b: EntityBearer) => RequirementBearer): TraitRequirement =>
-  (r.kind !== 'playingAs' && r.bearer?.kind === 'entity' ? { ...r, bearer: map(r.bearer) } : r);
+/** The requirement with its named owner rewritten; the same requirement when it names none. */
+const withOwner = (r: TraitRequirement, map: (b: EntityOwner) => RequirementOwner): TraitRequirement =>
+  (r.kind !== 'playingAs' && r.owner?.kind === 'entity' ? { ...r, owner: map(r.owner) } : r);
 
 const withRequires = (entity: Entity, map: (r: TraitRequirement) => TraitRequirement): Trait[] | undefined =>
   entity.traits?.map((t) => (t.requires ? { ...t, requires: mapConditions(t.requires, map) } : t));
@@ -161,27 +169,36 @@ export function linksBoundTo(entity: Entity, world: TraitWorld): Entity {
 export const linksCarriedFrom = (entity: Entity, world: TraitWorld): Entity =>
   withLinks(entity, entity.traitLinks && portableLinks(entity.traitLinks, world));
 
+/** One of the entity's Conditions as it travels: see {@link portableOwnedTraits}. */
+function portableRequirement(entity: Entity, world?: TraitWorld): (req: TraitRequirement) => TraitRequirement {
+  const inside = ownIds(entity);
+  const pool = world ? targets(world, entity.id) : NO_TARGETS;
+  const owner = (b: EntityOwner): RequirementOwner => {
+    if (isSelfOwner(b, entity.id)) return { kind: 'entity', id: SELF_ENTITY, name: entity.name };
+    const name = world?.entities.find((e) => e.id === b.id)?.name ?? b.name;
+    return name ? { ...b, name } : b;
+  };
+  return (req) => {
+    if (isSelf(req, entity.id)) return { ...req, id: SELF_ENTITY, name: entity.name };
+    const r = withOwner(req, owner);
+    if (pointsInside(r, entity, inside)) return r;
+    const name = pool[r.kind].find((item) => item.id === r.id)?.name ?? r.name;
+    return name ? { ...r, name } : r;
+  };
+}
+
+/** The entity's gallery as it travels: each Visibility rule's Conditions named as an owned trait's are. */
+export const portableImages = (entity: Entity, world?: TraitWorld): GalleryImage[] =>
+  mapImageRules(entity, portableRequirement(entity, world));
+
 /**
  * The entity's owned traits and links as they travel: a requirement into the entity keeps its id, one out of
- * it also stores its target's name, a named bearer stores its name, and the entity itself reads
+ * it also stores its target's name, a named owner stores its name, and the entity itself reads
  * {@link SELF_ENTITY}. Each link stores its original's name and the names of the traits its data keys.
  */
 export function portableOwnedTraits(entity: Entity, world?: TraitWorld): Portable {
   if (!entity.traits?.length && !entity.traitGroups?.length && !entity.traitLinks?.length) return {};
-  const inside = ownIds(entity);
-  const pool = world ? targets(world, entity.id) : NO_TARGETS;
-  const bearer = (b: EntityBearer): RequirementBearer => {
-    if (isSelfBearer(b, entity.id)) return { kind: 'entity', id: SELF_ENTITY, name: entity.name };
-    const name = world?.entities.find((e) => e.id === b.id)?.name ?? b.name;
-    return name ? { ...b, name } : b;
-  };
-  const traits = withRequires(entity, (req) => {
-    if (isSelf(req, entity.id)) return { ...req, id: SELF_ENTITY, name: entity.name };
-    const r = withBearer(req, bearer);
-    if (r.kind !== 'playingAs' && inside.has(r.id)) return r;
-    const name = pool[r.kind].find((item) => item.id === r.id)?.name ?? r.name;
-    return name ? { ...r, name } : r;
-  });
+  const traits = withRequires(entity, portableRequirement(entity, world));
   return {
     ...(traits?.length ? { traits } : {}),
     ...(entity.traitGroups?.length ? { traitGroups: entity.traitGroups } : {}),
@@ -189,38 +206,79 @@ export function portableOwnedTraits(entity: Entity, world?: TraitWorld): Portabl
   };
 }
 
-/**
- * The entity's owned traits and links bound to `world`. A requirement into the entity stays; "playing as"
- * itself names the entity. An outward one keeps an id the world holds, else takes the one target carrying its
- * stored name. No match, or two, clears the id: the requirement stays unresolved and reads by its name. A
- * named bearer binds the same way among the world's entities. Links bind as {@link bindLinks} does.
- */
-export function bindOwnedTraits(entity: Entity, world: TraitWorld): Entity {
-  if (!entity.traits?.length && !entity.traitLinks?.length) return entity;
+/** One of the entity's Conditions bound to `world`: see {@link bindOwnedTraits}. */
+function ruleBinder(entity: Entity, world: TraitWorld): (req: TraitRequirement) => TraitRequirement {
   const inside = ownIds(entity);
   const pool = targets(world, entity.id);
   const others = world.entities.filter((e) => e.id !== entity.id);
-  const bearer = (b: EntityBearer): RequirementBearer => {
-    if (isSelfBearer(b, entity.id)) return { ...b, id: entity.id };
+  const owner = (b: EntityOwner): RequirementOwner => {
+    if (isSelfOwner(b, entity.id)) return { ...b, id: entity.id };
     if (others.some((e) => e.id === b.id)) return b;
     return { ...b, id: uniqueNamed(others, b.name)?.id ?? '' };
   };
-  const bind = (req: TraitRequirement): TraitRequirement => {
+  const statWorld = world.stats && { stats: world.stats, statGroups: world.statGroups ?? [] };
+  // A stat binds among its owner's stats (Q25). You binds among every playable entity's stats, never global ones (Q33).
+  const statsOf = (r: StatRequirement, at: NonNullable<typeof statWorld>): readonly Named[] => {
+    if (!r.owner) return at.stats;
+    if (r.owner.kind === 'you') return [...others, entity].filter(canBePlayer).flatMap((e) => resolvedEntityStats(at, e));
+    const id = r.owner.id;
+    const held = id === entity.id ? entity : others.find((e) => e.id === id);
+    return held ? resolvedEntityStats(at, held) : [];
+  };
+  // A Condition that names a global item reads global scope, so the owner it stored goes (Q19).
+  const withoutGlobalOwners = withoutGlobalOwner<TraitRequirement>({ ...world, entities: [...others, entity] });
+  const bindId = (req: TraitRequirement): TraitRequirement => {
     if (isSelf(req, entity.id)) return { ...req, id: entity.id };
-    const r = withBearer(req, bearer);
-    if (r.kind !== 'playingAs' && inside.has(r.id)) return r;
-    const list = pool[r.kind];
+    const r = withOwner(req, owner);
+    // A world record that carries no stats has none to bind a stat Condition to.
+    if (pointsInside(r, entity, inside) || (r.kind === 'stat' && !statWorld)) return r;
+    const list = r.kind === 'stat' ? statsOf(r, statWorld!) : pool[r.kind];
     if (list.some((item) => item.id === r.id)) return r;
     return { ...r, id: uniqueNamed(list, r.name)?.id ?? '' };
   };
-  const traits = withRequires(entity, bind);
-  const bound = traits ? { ...entity, traits } : entity;
-  return entity.traitLinks ? withLinks(bound, bindLinks(entity, entity.traitLinks, world)) : bound;
+  return (req) => withoutGlobalOwners(bindId(req));
 }
 
-/** A named bearer as two copies compare it: the entity itself as {@link SELF_ENTITY}, another by its name. */
-const comparableBearer = (b: EntityBearer, entityId: string): RequirementBearer =>
-  (isSelfBearer(b, entityId) ? { kind: 'entity', id: SELF_ENTITY } : b.name ? { kind: 'entity', id: '', name: b.name } : { kind: 'entity', id: b.id });
+/** The entity with each Condition of its owned traits, image Visibility rules and link overrides bound to
+ *  `world`, and its links left as they are. A copy and its library source compare through this, so both read
+ *  the owners a world drops (Q19). */
+export function bindOwnedRules(entity: Entity, world: TraitWorld): Entity {
+  if (!entity.traits?.length && !entity.traitLinks?.length && !hasImageRules(entity)) return entity;
+  const bind = ruleBinder(entity, world);
+  const traits = withRequires(entity, bind);
+  const bound = withImageRules(traits ? { ...entity, traits } : entity, bind);
+  return entity.traitLinks ? { ...bound, traitLinks: entity.traitLinks.map((l) => linkWithRules(l, bind)) } : bound;
+}
+
+/**
+ * The entity's owned traits, links and image Visibility rules bound to `world`. A requirement into the entity
+ * stays; "playing as" itself names the entity. An outward one keeps an id the world holds, else takes the one
+ * target carrying its stored name. No match, or two, clears the id: the requirement stays unresolved and reads
+ * by its name. A named owner binds the same way among the world's entities. Links bind as {@link bindLinks} does.
+ */
+export function bindOwnedTraits(entity: Entity, world: TraitWorld): Entity {
+  if (!entity.traits?.length && !entity.traitLinks?.length && !hasImageRules(entity)) return entity;
+  const bind = ruleBinder(entity, world);
+  const traits = withRequires(entity, bind);
+  const bound = withImageRules(traits ? { ...entity, traits } : entity, bind);
+  const links = entity.traitLinks && bindLinks(entity, entity.traitLinks, world).map((l) => linkWithRules(l, bind));
+  return entity.traitLinks ? withLinks(bound, links) : bound;
+}
+
+/** The link with `map` over the Conditions of both sides of each `requires` override. */
+function linkWithRules(link: TraitLink, map: (r: TraitRequirement) => TraitRequirement): TraitLink {
+  if (!link.overrides) return link;
+  const overrides = Object.fromEntries(Object.entries(link.overrides).map(([id, fields]) => {
+    const req = fields?.requires;
+    const requires = req && { value: mapConditions(req.value, map), blueprint: mapConditions(req.blueprint, map) };
+    return [id, requires ? { ...fields, requires } : fields];
+  }));
+  return { ...link, overrides };
+}
+
+/** A named owner as two copies compare it: the entity itself as {@link SELF_ENTITY}, another by its name. */
+const comparableOwner = (b: EntityOwner, entityId: string): RequirementOwner =>
+  (isSelfOwner(b, entityId) ? { kind: 'entity', id: SELF_ENTITY } : b.name ? { kind: 'entity', id: '', name: b.name } : { kind: 'entity', id: b.id });
 
 /** A link as two copies compare it: its original and data keys by name, since their ids are each world's own. */
 type ComparableLink = Pick<TraitLink, 'id' | 'kind' | 'originalName' | 'groupId' | 'order' | 'overrides'>;
@@ -234,22 +292,25 @@ function comparableLink(link: TraitLink): ComparableLink {
 }
 
 /**
- * The entity's owned traits and links as two copies compare them: a requirement out of it by the name it
- * stores (its id is each world's own), one into it by id, "playing as" itself as {@link SELF_ENTITY}, and a
- * named bearer by its name. Links compare as {@link comparableLink} reads them.
+ * The entity's owned traits, links and image Visibility rules as two copies compare them: a requirement out
+ * of it by the name it stores (its id is each world's own), one into it by id, "playing as" itself as
+ * {@link SELF_ENTITY}, and a named owner by its name. Links compare as {@link comparableLink} reads them.
  */
-export const comparableOwnedTraits = (entity: Entity): { traits?: Trait[]; traitLinks?: ComparableLink[] } => {
+export const comparableOwnedTraits = (entity: Entity): { traits?: Trait[]; traitLinks?: ComparableLink[]; images?: GalleryImage[] } => {
   const inside = ownIds(entity);
-  const traits = withRequires(entity, (req) => {
+  const comparable = (req: TraitRequirement): TraitRequirement => {
     const not = notFlag(req.not);
     if (isSelf(req, entity.id)) return { kind: req.kind, id: SELF_ENTITY, ...not };
-    const r = withBearer(req, (b) => comparableBearer(b, entity.id));
-    const bearer = r.kind !== 'playingAs' && r.bearer ? { bearer: r.bearer } : {};
-    if ((r.kind !== 'playingAs' && inside.has(r.id)) || !r.name) return { kind: r.kind, id: r.id, ...bearer, ...not } as TraitRequirement;
-    return { kind: r.kind, id: '', name: r.name, ...bearer, ...not } as TraitRequirement;
-  });
+    const r = withOwner(req, (b) => comparableOwner(b, entity.id));
+    const owner = r.kind !== 'playingAs' && r.owner ? { owner: r.owner } : {};
+    const comparison = r.kind === 'stat' ? { operator: r.operator, value: r.value, unit: r.unit } : {};
+    if (pointsInside(r, entity, inside) || !r.name) return { kind: r.kind, id: r.id, ...owner, ...comparison, ...not } as TraitRequirement;
+    return { kind: r.kind, id: '', name: r.name, ...owner, ...comparison, ...not } as TraitRequirement;
+  };
+  const traits = withRequires(entity, comparable);
   return {
     ...(traits ? { traits } : {}),
+    ...(hasImageRules(entity) ? { images: mapImageRules(entity, comparable) } : {}),
     ...(entity.traitLinks?.length ? { traitLinks: entity.traitLinks.map(comparableLink) } : {}),
   };
 };

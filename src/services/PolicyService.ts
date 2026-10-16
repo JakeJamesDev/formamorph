@@ -1,5 +1,5 @@
 import AuthService from './AuthService';
-import { authHeaders, unwrap } from './staffApi';
+import { authHeaders, unwrap } from './authRequest';
 import type {
   AdminPolicies, AdminPolicy, PolicyId, PolicyState, PublicPrivacyPolicy, SavePolicyInput,
 } from '@/types';

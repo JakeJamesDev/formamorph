@@ -5,6 +5,7 @@ import type { ListEditorAdapter, ListEditorRow } from '@/components/listEditorHo
 import type { ListSearch } from '@/components/listToolbarHooks';
 import { useGameData } from '@/contexts/GameDataContext';
 import { newLocation } from '@/lib/blankWorld';
+import { copyWithFreshRolls, duplicateAfter } from '@/lib/duplicateAfter';
 import { matchesListSearch } from '@/lib/listSearch';
 import { randomUUID } from '@/lib/uuid';
 import type { FocusFieldHint } from '@/types';
@@ -48,11 +49,9 @@ export function useWorldLocationsAdapter({
   };
   // The copy lands right after its original.
   const handleDuplicate = (id: string) => {
-    const index = locations.findIndex((l) => l.id === id);
-    if (index === -1) return;
-    const copy = { ...structuredClone(locations[index]), id: randomUUID() };
-    copy.name = `${copy.name} (Copy)`;
-    setLocations([...locations.slice(0, index + 1), copy, ...locations.slice(index + 1)]);
+    const { list, copy } = duplicateAfter(locations, id, copyWithFreshRolls);
+    if (!copy) return;
+    setLocations(list);
     onSelect(copy.id);
   };
 

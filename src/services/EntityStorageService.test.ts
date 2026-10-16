@@ -2,6 +2,7 @@
 import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach } from 'vitest';
 import EntityStorageService, { type StoredEntityRecord } from './EntityStorageService';
+import type { Entity } from '@/types';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 
 import { phValues } from '@/test/placeholderValues';
@@ -59,6 +60,59 @@ describe('EntityStorageService', () => {
     const read = await EntityStorageService.getEntityData('e1');
     expect(read.traits![0].requires).toEqual([{ all: [paladin] }, { all: [{ kind: 'playingAs', id: 'aldric' }] }]);
     expect(read.traitLinks![0].overrides!.smite.requires).toEqual({ value: [{ all: [paladin] }], blueprint: [] });
+  });
+
+  it('reads a character stored before the rename with each Condition’s owner under `owner`', async () => {
+    const ash = { kind: 'entity', id: 'w-ash', name: 'Ash' };
+    const old = (bearer: object) => ({ kind: 'trait', id: 'w-paladin', bearer });
+    const stored = {
+      id: 'e1', name: 'Mara',
+      traits: [{ id: 't-oath', name: 'Oath', statChanges: [], requires: [{ all: [old(ash), old({ kind: 'you' })] }] }],
+      traitLinks: [{
+        id: 'l', originalId: 'smite', kind: 'trait', originalName: 'Smite', groupId: null,
+        overrides: { smite: { requires: { value: [{ all: [old(ash)] }], blueprint: [] } } },
+      }],
+    } as unknown as StoredEntityRecord['data'];
+    await EntityStorageService.storeEntity({ id: 'e1', name: 'Mara', data: stored });
+    const read = await EntityStorageService.getEntityData('e1');
+    const owned = (owner: object) => ({ kind: 'trait', id: 'w-paladin', owner });
+    expect(read.traits![0].requires).toEqual([{ all: [owned(ash), owned({ kind: 'you' })] }]);
+    expect(read.traitLinks![0].overrides!.smite.requires).toEqual({ value: [{ all: [owned(ash)] }], blueprint: [] });
+  });
+
+  it('reads a character stored with `player` row targets as `global`, and keeps a stored owner (Q5, Q19)', async () => {
+    const owner = { kind: 'entity', id: 'w-ash', name: 'Ash' };
+    const stored = {
+      id: 'e1', name: 'Mara',
+      traits: [{ id: 't-oath', name: 'Oath', requires: [{ all: [{ kind: 'trait', id: 'w-brave', owner }] }],
+        statChanges: [{ statId: 'rage', value: 2, target: 'player' }], statToggles: [{ statId: 'rage', enabled: false, target: 'player' }] }],
+      traitLinks: [{
+        id: 'l', originalId: 'smite', kind: 'trait', originalName: 'Smite', groupId: null,
+        overrides: { smite: { statChanges: { value: [{ statId: 'rage', value: 1, target: 'player' }], blueprint: [] } } },
+      }],
+    } as unknown as StoredEntityRecord['data'];
+    await EntityStorageService.storeEntity({ id: 'e1', name: 'Mara', data: stored });
+    const read = await EntityStorageService.getEntityData('e1');
+    expect(read.traits![0].statChanges).toEqual([{ statId: 'rage', value: 2, target: 'global' }]);
+    expect(read.traits![0].statToggles).toEqual([{ statId: 'rage', enabled: false, target: 'global' }]);
+    expect(read.traitLinks![0].overrides!.smite.statChanges).toEqual({ value: [{ statId: 'rage', value: 1, target: 'global' }], blueprint: [] });
+    expect(read.traits![0].requires).toEqual([{ all: [{ kind: 'trait', id: 'w-brave', owner }] }]);
+  });
+
+  it('reads a stat’s two code boxes as scripts, and keeps a link’s box override for the world that binds it', async () => {
+    const stored = {
+      id: 'e1', name: 'Mara',
+      stats: [{ id: 'grit', name: 'Grit', beforeCode: 'return 1;', code: 'return 2;' }],
+      statLinks: [{ id: 'l', originalId: 'trust', overrides: { trust: { code: { value: 'return 3;', blueprint: 'return 4;' } } } }],
+    } as unknown as StoredEntityRecord['data'];
+    await EntityStorageService.storeEntity({ id: 'e1', name: 'Mara', data: stored });
+    const read = await EntityStorageService.getEntityData('e1');
+    expect(read.stats![0]).toEqual({
+      id: 'grit', name: 'Grit',
+      scripts: [{ id: 'grit:before', timing: 'before', code: 'return 1;' }, { id: 'grit:after', timing: 'after', code: 'return 2;' }],
+    });
+    // Off-world the original is out of reach, so the override waits unfolded for a world to bind it (Q36).
+    expect(read.statLinks![0].overrides).toEqual({ trust: { code: { value: 'return 3;', blueprint: 'return 4;' } } });
   });
 
   it('reads a character that holds no stats as one with none, and keeps each stat list to the records it can hold', async () => {
@@ -138,6 +192,17 @@ describe('EntityStorageService', () => {
       downloadedAt: '2026-07-01T00:00:00.000Z',
       sourceUpdatedAt: '2026-07-01T00:00:00.000Z',
     });
+  });
+
+  it('shows slot 0 on the library grid, its Visibility rule ignored', async () => {
+    const images = [{ data: 'data:slot0', requires: [{ all: [{ kind: 'trait' as const, id: 'knight' }] }] }, { data: 'data:slot1' }];
+    await EntityStorageService.storeEntity({ id: 'g1', name: 'Wren', data: { id: 'g1', name: 'Wren', images } });
+    expect((await EntityStorageService.getEntityMetadata()).find((m) => m.id === 'g1')?.image).toBe('data:slot0');
+  });
+
+  it('reads a gallery stored as data strings as images, once', async () => {
+    await EntityStorageService.storeEntity({ id: 'g2', name: 'Old', data: { id: 'g2', name: 'Old', images: ['data:a', 'data:b'] } as unknown as Entity });
+    expect((await EntityStorageService.getEntityData('g2')).images).toEqual([{ data: 'data:a' }, { data: 'data:b' }]);
   });
 
   it('flags a persona on the metadata the Personas filter reads, and only a persona', async () => {

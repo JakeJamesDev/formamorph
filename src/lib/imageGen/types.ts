@@ -16,6 +16,8 @@ export interface ImageGenParams {
   // Second-pass face fix. A1111 delegates to the ADetailer extension; InvokeAI builds the equivalent
   // graph itself. Ignored by the providers that can't express it (OpenAI, ComfyUI, Z-Image/Anima models).
   adetailer?: boolean;
+  /** Where the server saves the image (folders and a file name), for a server that takes one. */
+  filePrefix?: string;
 }
 
 /** Progress update during generation. `progress` is 0..1; `preview` is a live-frame data-URL. */

@@ -36,8 +36,8 @@ const mount = () => {
 
 /** A snapshot as a save written before Code Pins stores it: no `codePins` key at all. */
 const legacySnapshot = (): GameState => ({
-  playerStats: [],
-  playerTraits: [],
+  globalStats: [],
+  globalTraits: [],
   visibleEntities: [],
   logEntries: [],
   gameplayText: '',

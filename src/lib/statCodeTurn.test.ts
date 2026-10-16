@@ -4,7 +4,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { overlayStatCodeResult, runStatCodeTurn, withPinWrites, type StatCodeTurn } from './statCodeTurn';
-import type { StatCodeBearers } from './statCodeTraits';
+import type { StatCodeOwners } from './statCodeTraits';
 import type { CodePins, Placeholder, PlaceholderRolls, PlayerStat, Trait, TraitGroup } from '@/types';
 import { encodePlaceholderToken, resolvePlaceholders, type PlaceholderPick } from './placeholders';
 import { collectPins } from './placeholderPins';
@@ -13,6 +13,7 @@ import { phValueId, phValues } from '@/test/placeholderValues';
 import { dayAndHour, daypart } from './gameClock';
 import { deriveEffectiveStats, setTraitEnabled } from './traitRuntime';
 import { applyAiMaxChanges } from './statChanges';
+import { boxScripts } from '@/test/scriptFixtures';
 
 const stat = (over: Partial<PlayerStat>): PlayerStat => ({
   id: 'x', name: 'Stat', type: 'number', description: '', min: 0, max: 100, value: 50, regen: 0, descriptors: [],
@@ -20,13 +21,13 @@ const stat = (over: Partial<PlayerStat>): PlayerStat => ({
 });
 
 /** `active` acquired and on, as the only traits the world authors. */
-const inForce = (active: Trait[]): StatCodeBearers => ({
+const inForce = (active: Trait[]): StatCodeOwners => ({
   acquired: active, disabledTraitIds: [], appliedValues: {}, world: { traits: active, groups: [] },
 });
 
 /** A turn where nothing happened unless a case says so: no asks, no regen, previous equal to now, no traits. */
 const turn = (over: Partial<StatCodeTurn> & Pick<StatCodeTurn, 'stats'>): StatCodeTurn => ({
-  enabled: {}, previous: over.stats, asks: [], regenApplied: {}, clock: {}, bearers: inForce([]),
+  enabled: {}, previous: over.stats, asks: [], regenApplied: {}, clock: {}, ownerTraits: inForce([]),
   statNameOf: (stat) => stat.name, traitNameOf: (trait) => trait.name, ...over,
 });
 
@@ -37,19 +38,19 @@ describe('runStatCodeTurn', () => {
   afterEach(() => vi.restoreAllMocks());
 
   it('sets the value from a number return, as stat code always has', async () => {
-    const out = await runStatCodeTurn(turn({ stats: [stat({ id: 'a', code: 'return 42;' })] }));
+    const out = await runStatCodeTurn(turn({ stats: [stat({ id: 'a', scripts: boxScripts({ after: 'return 42;' }) })] }));
     expect(valueOf(out.stats, 'a')).toBe(42);
     expect(out.moved).toEqual(['a']);
   });
 
   it('sets the value from a self.value write with no return', async () => {
-    const out = await runStatCodeTurn(turn({ stats: [stat({ id: 'a', code: 'self.value = 7;' })] }));
+    const out = await runStatCodeTurn(turn({ stats: [stat({ id: 'a', scripts: boxScripts({ after: 'self.value = 7;' }) })] }));
     expect(valueOf(out.stats, 'a')).toBe(7);
     expect(out.moved).toEqual(['a']);
   });
 
   it('keeps the pipeline result for a value the code leaves alone', async () => {
-    const stats = [stat({ id: 'a', value: 63, code: 'const seen = self.value;' })];
+    const stats = [stat({ id: 'a', value: 63, scripts: boxScripts({ after: 'const seen = self.value;' }) })];
     const out = await runStatCodeTurn(turn({ stats }));
     expect(valueOf(out.stats, 'a')).toBe(63);
     expect(out.moved).toEqual([]);
@@ -60,7 +61,7 @@ describe('runStatCodeTurn', () => {
     // The AI asked +20 onto 50, so the pipeline already shows 70; the code keeps half of the ask.
     const code = 'self.value = self.previous.value + self.delta.ai.value / 2;';
     const out = await runStatCodeTurn(turn({
-      stats: [stat({ id: 'a', value: 70, code })],
+      stats: [stat({ id: 'a', value: 70, scripts: boxScripts({ after: code }) })],
       previous: [stat({ id: 'a', value: 50 })],
       asks: [{ id: 'a', value: 20, max: 0 }],
     }));
@@ -70,7 +71,7 @@ describe('runStatCodeTurn', () => {
   it('hands code the raw ask, before the flags and the clamp shaped it', async () => {
     // noIncrease blocked the +30 and the pipeline value stayed 50, but the ask itself reaches the code.
     const out = await runStatCodeTurn(turn({
-      stats: [stat({ id: 'a', value: 50, noIncrease: true, code: 'return self.delta.ai.value;' })],
+      stats: [stat({ id: 'a', value: 50, noIncrease: true, scripts: boxScripts({ after: 'return self.delta.ai.value;' }) })],
       asks: [{ id: 'a', value: 30, max: 5 }],
     }));
     expect(valueOf(out.stats, 'a')).toBe(30);
@@ -78,7 +79,7 @@ describe('runStatCodeTurn', () => {
 
   it('exposes the regen this turn applied', async () => {
     const out = await runStatCodeTurn(turn({
-      stats: [stat({ id: 'a', value: 55, code: 'return self.value - self.delta.regen.value;' })],
+      stats: [stat({ id: 'a', value: 55, scripts: boxScripts({ after: 'return self.value - self.delta.regen.value;' }) })],
       regenApplied: { a: 5 },
     }));
     expect(valueOf(out.stats, 'a')).toBe(50);
@@ -88,9 +89,9 @@ describe('runStatCodeTurn', () => {
     // 90 with +20 asked and +5 regen against a cap of 100: the range took 15.
     const out = await runStatCodeTurn(turn({
       stats: [
-        stat({ id: 'a', name: 'A', value: 100, code: 'return self.delta.total.value - self.delta.actual.value;' }),
-        stat({ id: 'b', name: 'B', max: 1000, code: 'const d = stats.A.delta; '
-          + 'return d.total.value === d.ai.value + d.regen.value ? d.total.value * 10 + d.actual.value : -1;' }),
+        stat({ id: 'a', name: 'A', value: 100, scripts: boxScripts({ after: 'return self.delta.total.value - self.delta.actual.value;' }) }),
+        stat({ id: 'b', name: 'B', max: 1000, scripts: boxScripts({ after: 'const d = stats.A.delta; '
+          + 'return d.total.value === d.ai.value + d.regen.value ? d.total.value * 10 + d.actual.value : -1;' }) }),
       ],
       previous: [stat({ id: 'a', name: 'A', value: 90 }), stat({ id: 'b', name: 'B' })],
       asks: [{ id: 'a', value: 20, max: 0 }],
@@ -102,7 +103,7 @@ describe('runStatCodeTurn', () => {
 
   it('keeps an ask a flag zeroed in total, and the loss in total minus actual', async () => {
     const out = await runStatCodeTurn(turn({
-      stats: [stat({ id: 'a', value: 50, noIncrease: true, code: 'return self.delta.total.value * 10 + self.delta.actual.value;' })],
+      stats: [stat({ id: 'a', value: 50, noIncrease: true, scripts: boxScripts({ after: 'return self.delta.total.value * 10 + self.delta.actual.value;' }) })],
       asks: [{ id: 'a', value: 3, max: 0 }],
     }));
     expect(valueOf(out.stats, 'a')).toBe(30);
@@ -110,7 +111,7 @@ describe('runStatCodeTurn', () => {
 
   it('reads an AI max change that landed in actual.max', async () => {
     const out = await runStatCodeTurn(turn({
-      stats: [stat({ id: 'a', value: 50, max: 120, code: 'return self.delta.actual.max * 2 + self.delta.ai.max;' })],
+      stats: [stat({ id: 'a', value: 50, max: 120, scripts: boxScripts({ after: 'return self.delta.actual.max * 2 + self.delta.ai.max;' }) })],
       previous: [stat({ id: 'a', value: 50, max: 100 })],
       asks: [{ id: 'a', value: 0, max: 20 }],
     }));
@@ -119,7 +120,7 @@ describe('runStatCodeTurn', () => {
 
   it('reads a bound a trait moved since turn start in actual.min, and not in total', async () => {
     const out = await runStatCodeTurn(turn({
-      stats: [stat({ id: 'a', value: 50, min: 10, regen: 3, code: 'return self.delta.actual.min * 2 + self.delta.actual.regen + self.delta.total.min;' })],
+      stats: [stat({ id: 'a', value: 50, min: 10, regen: 3, scripts: boxScripts({ after: 'return self.delta.actual.min * 2 + self.delta.actual.regen + self.delta.total.min;' }) })],
       previous: [stat({ id: 'a', value: 50, min: 0, regen: 0 })],
     }));
     expect(valueOf(out.stats, 'a')).toBe(23);
@@ -127,7 +128,7 @@ describe('runStatCodeTurn', () => {
 
   it('ignores a write to delta', async () => {
     const out = await runStatCodeTurn(turn({
-      stats: [stat({ id: 'a', value: 70, code: 'self.delta.ai.value = 5; self.delta.actual = { value: 1 }; return self.delta.ai.value + self.delta.actual.value;' })],
+      stats: [stat({ id: 'a', value: 70, scripts: boxScripts({ after: 'self.delta.ai.value = 5; self.delta.actual = { value: 1 }; return self.delta.ai.value + self.delta.actual.value;' }) })],
       previous: [stat({ id: 'a', value: 50 })],
       asks: [{ id: 'a', value: 20, max: 0 }],
     }));
@@ -137,8 +138,8 @@ describe('runStatCodeTurn', () => {
   it('matches previous by id, and reads a stat missing from it as unmoved', async () => {
     const out = await runStatCodeTurn(turn({
       stats: [
-        stat({ id: 'a', value: 70, max: 120, code: 'return self.previous.max;' }),
-        stat({ id: 'b', value: 30, code: 'return self.previous.value + 1;' }),
+        stat({ id: 'a', value: 70, max: 120, scripts: boxScripts({ after: 'return self.previous.max;' }) }),
+        stat({ id: 'b', value: 30, scripts: boxScripts({ after: 'return self.previous.value + 1;' }) }),
       ],
       previous: [stat({ id: 'a', value: 50, max: 90 })],
     }));
@@ -148,7 +149,7 @@ describe('runStatCodeTurn', () => {
 
   it('discards a write when the code throws after making it', async () => {
     const out = await runStatCodeTurn(turn({
-      stats: [stat({ id: 'a', value: 50, code: 'self.value = 9; throw new Error("late");' })],
+      stats: [stat({ id: 'a', value: 50, scripts: boxScripts({ after: 'self.value = 9; throw new Error("late");' }) })],
     }));
     expect(valueOf(out.stats, 'a')).toBe(50);
     expect(out.moved).toEqual([]);
@@ -156,7 +157,7 @@ describe('runStatCodeTurn', () => {
 
   it('discards a write when the code times out after making it', async () => {
     const out = await runStatCodeTurn(turn({
-      stats: [stat({ id: 'a', value: 50, code: 'self.value = 9; while (true) {}' })],
+      stats: [stat({ id: 'a', value: 50, scripts: boxScripts({ after: 'self.value = 9; while (true) {}' }) })],
     }));
     expect(valueOf(out.stats, 'a')).toBe(50);
   }, 15_000);
@@ -164,7 +165,7 @@ describe('runStatCodeTurn', () => {
   it('writes another stat of the same owner beside its own', async () => {
     const out = await runStatCodeTurn(turn({
       stats: [
-        stat({ id: 'a', value: 50, code: 'stats.B.value = 1; stats.B.max = 1; return 10;' }),
+        stat({ id: 'a', value: 50, scripts: boxScripts({ after: 'stats.B.value = 1; stats.B.max = 1; return 10;' }) }),
         stat({ id: 'b', name: 'B', value: 80 }),
       ],
     }));
@@ -176,8 +177,8 @@ describe('runStatCodeTurn', () => {
   it('keeps a disabled stat inert and lists it to every other stat', async () => {
     const out = await runStatCodeTurn(turn({
       stats: [
-        stat({ id: 'a', name: 'A', value: 50, code: 'return Object.keys(stats).length * 10 + ("Off" in stats ? 1 : 0);' }),
-        stat({ id: 'off', name: 'Off', value: 5, code: 'return 99;' }),
+        stat({ id: 'a', name: 'A', value: 50, scripts: boxScripts({ after: 'return Object.keys(stats).length * 10 + ("Off" in stats ? 1 : 0);' }) }),
+        stat({ id: 'off', name: 'Off', value: 5, scripts: boxScripts({ after: 'return 99;' }) }),
       ],
       enabled: { off: false },
     }));
@@ -189,7 +190,7 @@ describe('runStatCodeTurn', () => {
   it('reads another stat by name, the last authored winning a shared name and an unknown name reading zero', async () => {
     const out = await runStatCodeTurn(turn({
       stats: [
-        stat({ id: 'a', name: 'A', max: 1000, code: 'return stats.Health.value + stats["Night Vision"].value + stats.Gone.value;' }),
+        stat({ id: 'a', name: 'A', max: 1000, scripts: boxScripts({ after: 'return stats.Health.value + stats["Night Vision"].value + stats.Gone.value;' }) }),
         stat({ id: 'h1', name: 'Health', value: 10 }),
         stat({ id: 'h2', name: 'Health', value: 20 }),
         stat({ id: 'nv', name: 'Night Vision', value: 3 }),
@@ -201,7 +202,7 @@ describe('runStatCodeTurn', () => {
   it('reads a disabled stat’s value as it stands', async () => {
     const out = await runStatCodeTurn(turn({
       stats: [
-        stat({ id: 'a', name: 'A', value: 50, code: 'return stats.Off.value;' }),
+        stat({ id: 'a', name: 'A', value: 50, scripts: boxScripts({ after: 'return stats.Off.value;' }) }),
         stat({ id: 'off', name: 'Off', value: 5 }),
       ],
       enabled: { off: false },
@@ -213,7 +214,7 @@ describe('runStatCodeTurn', () => {
 
   it('reads zero asks on a clock-only run, with the clock still ticking', async () => {
     const out = await runStatCodeTurn(turn({
-      stats: [stat({ id: 'a', value: 50, max: 1000, code: 'return self.delta.ai.value + self.delta.ai.max + clock.deltaHours * 100;' })],
+      stats: [stat({ id: 'a', value: 50, max: 1000, scripts: boxScripts({ after: 'return self.delta.ai.value + self.delta.ai.max + clock.deltaHours * 100;' }) })],
       asks: [],
       clock: { deltaHours: 3, elapsedHours: 10 },
     }));
@@ -222,7 +223,7 @@ describe('runStatCodeTurn', () => {
 
   it('gives the same result for the same turn, so a re-roll does not stack', async () => {
     const input = turn({
-      stats: [stat({ id: 'a', value: 70, code: 'self.value = self.previous.value + self.delta.ai.value / 2;' })],
+      stats: [stat({ id: 'a', value: 70, scripts: boxScripts({ after: 'self.value = self.previous.value + self.delta.ai.value / 2;' }) })],
       previous: [stat({ id: 'a', value: 50 })],
       asks: [{ id: 'a', value: 20, max: 0 }],
     });
@@ -244,7 +245,7 @@ describe('runStatCodeTurn timing', () => {
   it('runs the before box and leaves the after box alone', async () => {
     const out = await runStatCodeTurn(turn({
       timing: 'before',
-      stats: [stat({ id: 'a', beforeCode: 'return 11;', code: 'return 22;' })],
+      stats: [stat({ id: 'a', scripts: boxScripts({ before: 'return 11;', after: 'return 22;' }) })],
     }));
     expect(valueOf(out.stats, 'a')).toBe(11);
   });
@@ -252,18 +253,18 @@ describe('runStatCodeTurn timing', () => {
   it('runs the after box and leaves the before box alone', async () => {
     const out = await runStatCodeTurn(turn({
       timing: 'after',
-      stats: [stat({ id: 'a', beforeCode: 'return 11;', code: 'return 22;' })],
+      stats: [stat({ id: 'a', scripts: boxScripts({ before: 'return 11;', after: 'return 22;' }) })],
     }));
     expect(valueOf(out.stats, 'a')).toBe(22);
   });
 
   it('runs the after box when no timing is given, which is what a caller that names none means', async () => {
-    const out = await runStatCodeTurn(turn({ stats: [stat({ id: 'a', beforeCode: 'return 11;', code: 'return 22;' })] }));
+    const out = await runStatCodeTurn(turn({ stats: [stat({ id: 'a', scripts: boxScripts({ before: 'return 11;', after: 'return 22;' }) })] }));
     expect(valueOf(out.stats, 'a')).toBe(22);
   });
 
   it('leaves a whitespace-only before box unrun, the stat’s after box included', async () => {
-    const stats = [stat({ id: 'a', value: 50, beforeCode: '  \n ', code: 'return 99;' })];
+    const stats = [stat({ id: 'a', value: 50, scripts: boxScripts({ before: '  \n ', after: 'return 99;' }) })];
     const out = await runStatCodeTurn(turn({ timing: 'before', stats }));
     expect(out.stats).toBe(stats);
     expect(out.moved).toEqual([]);
@@ -274,7 +275,7 @@ describe('runStatCodeTurn timing', () => {
       + ' + self.delta.total.value + self.delta.actual.value;';
     const out = await runStatCodeTurn(turn({
       timing: 'before',
-      stats: [stat({ id: 'a', value: 70, max: 1000, beforeCode: code })],
+      stats: [stat({ id: 'a', value: 70, max: 1000, scripts: boxScripts({ before: code }) })],
       previous: [stat({ id: 'a', value: 50 })],
       asks: [{ id: 'a', value: 20, max: 5 }],
       regenApplied: { a: 5 },
@@ -286,7 +287,7 @@ describe('runStatCodeTurn timing', () => {
     // +1 so an unrun box reads 70 and the turn's own previous reads 51; only self-as-previous reads 71.
     const out = await runStatCodeTurn(turn({
       timing: 'before',
-      stats: [stat({ id: 'a', value: 70, beforeCode: 'return self.previous.value + 1;' })],
+      stats: [stat({ id: 'a', value: 70, scripts: boxScripts({ before: 'return self.previous.value + 1;' }) })],
       previous: [stat({ id: 'a', value: 50 })],
     }));
     expect(valueOf(out.stats, 'a')).toBe(71);
@@ -295,7 +296,7 @@ describe('runStatCodeTurn timing', () => {
   it('still reads the clock in the before box', async () => {
     const out = await runStatCodeTurn(turn({
       timing: 'before',
-      stats: [stat({ id: 'a', max: 1000, beforeCode: 'return clock.elapsedHours;' })],
+      stats: [stat({ id: 'a', max: 1000, scripts: boxScripts({ before: 'return clock.elapsedHours;' }) })],
       clock: { deltaHours: 0, elapsedHours: 12 },
     }));
     expect(valueOf(out.stats, 'a')).toBe(12);
@@ -311,7 +312,7 @@ describe('runStatCodeTurn timing', () => {
   it.each(['before', 'after'] as const)('reads the turn’s end and start from clock in the %s box', async (timing) => {
     const out = await runStatCodeTurn(turn({
       timing,
-      stats: [stat({ id: 'a', value: 50, [timing === 'before' ? 'beforeCode' : 'code']: CLOCK_READS })],
+      stats: [stat({ id: 'a', value: 50, scripts: boxScripts({ [timing]: CLOCK_READS }) })],
       clock: { deltaHours: 30, elapsedHours: 30 },
     }));
     expect(valueOf(out.stats, 'a')).toBe(1);
@@ -319,7 +320,7 @@ describe('runStatCodeTurn timing', () => {
 
   it('reads a turn start that differs from its end, and the turn’s own hours', async () => {
     const out = await runStatCodeTurn(turn({
-      stats: [stat({ id: 'a', max: 1000, code: 'return (clock.day - clock.previous.day) * 100 + clock.deltaHours;' })],
+      stats: [stat({ id: 'a', max: 1000, scripts: boxScripts({ after: 'return (clock.day - clock.previous.day) * 100 + clock.deltaHours;' }) })],
       clock: { deltaHours: 30, elapsedHours: 30 },
     }));
     expect(valueOf(out.stats, 'a')).toBe(130);
@@ -329,10 +330,10 @@ describe('runStatCodeTurn timing', () => {
     const out = await runStatCodeTurn(turn({
       stats: [stat({
         id: 'a',
-        code: `const was = [clock.day, clock.deltaHours, clock.previous.day];
+        scripts: boxScripts({ after: `const was = [clock.day, clock.deltaHours, clock.previous.day];
           clock.day = 99; clock.deltaHours = 99; clock.previous = null; clock.extra = 1;
           return clock.day === was[0] && clock.deltaHours === was[1] && clock.previous.day === was[2]
-            && clock.extra === undefined ? 1 : 0;`,
+            && clock.extra === undefined ? 1 : 0;` }),
       })],
       clock: { deltaHours: 30, elapsedHours: 30 },
     }));
@@ -343,8 +344,8 @@ describe('runStatCodeTurn timing', () => {
     const out = await runStatCodeTurn(turn({
       stats: [stat({
         id: 'a',
-        code: 'const was = [clock.previous.day, clock.previous.daypart]; clock.previous.day = 99; clock.previous.daypart = "x";'
-          + ' return clock.previous.day === was[0] && clock.previous.daypart === was[1] ? 1 : 0;',
+        scripts: boxScripts({ after: 'const was = [clock.previous.day, clock.previous.daypart]; clock.previous.day = 99; clock.previous.daypart = "x";'
+          + ' return clock.previous.day === was[0] && clock.previous.daypart === was[1] ? 1 : 0;' }),
       })],
       clock: { deltaHours: 30, elapsedHours: 30 },
     }));
@@ -354,7 +355,7 @@ describe('runStatCodeTurn timing', () => {
   it('keeps a bound the before box set through an after box that writes none', async () => {
     const before = await runStatCodeTurn(turn({
       timing: 'before',
-      stats: [seeded({ beforeCode: 'self.max = 40;', code: 'return 30;' })],
+      stats: [seeded({ scripts: boxScripts({ before: 'self.max = 40;', after: 'return 30;' }) })],
     }));
     expect(before.stats[0].codeDelta).toEqual({ max: -60 });
     const after = await runStatCodeTurn(turn({ timing: 'after', stats: before.stats }));
@@ -363,19 +364,19 @@ describe('runStatCodeTurn timing', () => {
   });
 
   it('keeps the code delta of a stat that has only a before box, on the after run', async () => {
-    const stats = [seeded({ max: 40, codeDelta: { max: -60 }, beforeCode: 'self.max = 40;' })];
+    const stats = [seeded({ max: 40, codeDelta: { max: -60 }, scripts: boxScripts({ before: 'self.max = 40;' }) })];
     const out = await runStatCodeTurn(turn({ timing: 'after', stats }));
     expect(out.stats).toBe(stats);
   });
 
   it('keeps the code delta of a stat that has only an after box, on the before run', async () => {
-    const stats = [seeded({ max: 40, codeDelta: { max: -60 }, code: 'self.max = 40;' })];
+    const stats = [seeded({ max: 40, codeDelta: { max: -60 }, scripts: boxScripts({ after: 'self.max = 40;' }) })];
     const out = await runStatCodeTurn(turn({ timing: 'before', stats }));
     expect(out.stats).toBe(stats);
   });
 
   it.each(['before', 'after'] as const)('keeps the code delta on the %s run when both boxes are empty', async (timing) => {
-    const stats = [seeded({ min: 20, max: 40, codeDelta: { min: 20, max: -60 }, beforeCode: '  ', code: '' })];
+    const stats = [seeded({ min: 20, max: 40, codeDelta: { min: 20, max: -60 }, scripts: boxScripts({ before: '  ', after: '' }) })];
     const out = await runStatCodeTurn(turn({ timing, stats }));
     expect(out.stats).toBe(stats);
     expect(out.boundsChanged).toEqual([]);
@@ -392,7 +393,7 @@ describe('runStatCodeTurn stat code names', () => {
   /** One chip-named stat running `code` in a save that rolled `rolled`. */
   const run = (code: string, rolled: string) =>
     runStatCodeTurn(turn({
-      stats: [stat({ id: 'a', name: CHIPPED, value: 40, code })],
+      stats: [stat({ id: 'a', name: CHIPPED, value: 40, scripts: boxScripts({ after: code }) })],
       placeholders: { placeholders: [beast], rolls: { world: { beast: rolled } } },
     })).then((out) => valueOf(out.stats, 'a'));
 
@@ -429,8 +430,8 @@ describe('runStatCodeTurn trait code names', () => {
   /** One stat running `code` over a world holding the chip-named trait, in a save that rolled `roll`. */
   const run = (code: string, roll: string) =>
     runStatCodeTurn(turn({
-      stats: [stat({ id: 'a', name: 'Anchor', value: 40, code })],
-      bearers: { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [fury, calm], groups: [] } },
+      stats: [stat({ id: 'a', name: 'Anchor', value: 40, scripts: boxScripts({ after: code }) })],
+      ownerTraits: { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [fury, calm], groups: [] } },
       traitNameOf: (trait) => resolvePlaceholders(trait.name, rolled(roll)),
       placeholders: rolled(roll),
     }));
@@ -469,7 +470,7 @@ describe('runStatCodeTurn placeholders', () => {
   /** One stat running `code`, over `placeholders` with `rolls` and `pins`. */
   const run = (code: string, placeholders: Placeholder[], rolls: PlaceholderRolls = {}, extra: { pins?: Record<string, string>; pick?: PlaceholderPick } = {}) =>
     runStatCodeTurn(turn({
-      stats: [stat({ id: 'a', value: 0, code })],
+      stats: [stat({ id: 'a', value: 0, scripts: boxScripts({ after: code }) })],
       placeholders: { placeholders, rolls, ...extra },
     })).then((out) => valueOf(out.stats, 'a'));
 
@@ -546,7 +547,7 @@ describe('runStatCodeTurn placeholders', () => {
   });
 
   it('offers an empty map when the turn carries no placeholders', async () => {
-    const out = await runStatCodeTurn(turn({ stats: [stat({ id: 'a', value: 0, code: 'return Object.keys(placeholders).length + 1;' })] }));
+    const out = await runStatCodeTurn(turn({ stats: [stat({ id: 'a', value: 0, scripts: boxScripts({ after: 'return Object.keys(placeholders).length + 1;' }) })] }));
     expect(valueOf(out.stats, 'a')).toBe(1);
   });
 });
@@ -563,7 +564,7 @@ describe('runStatCodeTurn placeholder writes', () => {
   /** Stats running `codes` in order, over Mood rolled calm and the Code Pins already in force. */
   const run = (codes: string[], { placeholders = [mood], codePins = {} }: { placeholders?: Placeholder[]; codePins?: CodePins } = {}) =>
     runStatCodeTurn(turn({
-      stats: codes.map((code, i) => stat({ id: `s${i}`, value: 0, code })),
+      stats: codes.map((code, i) => stat({ id: `s${i}`, value: 0, scripts: boxScripts({ after: code }) })),
       placeholders: { placeholders, rolls, pins: collectPins({ traits: [], placeholders, rolls, codePins }), codePins },
     }));
   const chip = encodePlaceholderToken({ id: 'mood', mode: 'world', placementId: 'p' });
@@ -616,7 +617,7 @@ describe('runStatCodeTurn placeholder writes', () => {
     const band = stat({ id: 'band', value: 10, descriptors: [{ id: 'low', threshold: 50, description: 'low', placeholderPins: [{ placeholderId: 'mood', value: 'angry' }] }] });
     const pins = collectPins({ traits: [], stats: [band], placeholders: [mood], rolls });
     const out = await runStatCodeTurn(turn({
-      stats: [band, stat({ id: 's0', value: 0, code: 'placeholders.Mood.value = "angry";' })],
+      stats: [band, stat({ id: 's0', value: 0, scripts: boxScripts({ after: 'placeholders.Mood.value = "angry";' }) })],
       placeholders: { placeholders: [mood], rolls, pins },
     }));
     expect(out.pinWrites).toEqual({ mood: 'angry' });
@@ -649,7 +650,7 @@ describe('runStatCodeTurn placeholder writes', () => {
   it('discards the writes of a run that fails, and of a disabled stat', async () => {
     await expect(run(['placeholders.Mood.value = "sad"; throw new Error("late");'])).resolves.toMatchObject({ pinWrites: {} });
     const out = await runStatCodeTurn(turn({
-      stats: [stat({ id: 'off', value: 0, code: 'placeholders.Mood.value = "sad";' })],
+      stats: [stat({ id: 'off', value: 0, scripts: boxScripts({ after: 'placeholders.Mood.value = "sad";' }) })],
       enabled: { off: false },
       placeholders: { placeholders: [mood], rolls },
     }));
@@ -677,7 +678,7 @@ describe('runStatCodeTurn placeholders by kind', () => {
   /** One turn of `code`, over `placeholders`, under the Code Pins already in force. */
   const run = (code: string, placeholders: Placeholder[], codePins: CodePins = {}) =>
     runStatCodeTurn(turn({
-      stats: [stat({ id: 's0', value: 0, code })],
+      stats: [stat({ id: 's0', value: 0, scripts: boxScripts({ after: code }) })],
       placeholders: { placeholders, rolls, pins: collectPins({ traits: [], placeholders, rolls, codePins }), codePins },
     }));
   /** The narration text the next prompt sends for Hair, under the Code Pins a turn leaves. */
@@ -761,7 +762,7 @@ describe('runStatCodeTurn placeholders by kind', () => {
       descriptors: [{ id: 'low', threshold: 50, description: 'low', placeholderPins: [{ placeholderId: 'hair', value: 'Shorn' }] }],
     });
     const out = await runStatCodeTurn(turn({
-      stats: [band, stat({ id: 's0', value: 0, code: 'return placeholders.Hair.value.join("|") === "Shorn" && placeholders.Hair.text === "Shorn" ? 1 : 0;' })],
+      stats: [band, stat({ id: 's0', value: 0, scripts: boxScripts({ after: 'return placeholders.Hair.value.join("|") === "Shorn" && placeholders.Hair.text === "Shorn" ? 1 : 0;' }) })],
       placeholders: { placeholders: [hair], rolls, pins: collectPins({ traits: [], stats: [band], placeholders: [hair], rolls }) },
     }));
     expect(valueOf(out.stats, 's0')).toBe(1);
@@ -784,7 +785,7 @@ describe('runStatCodeTurn bound writes', () => {
   };
   const boostWorld = { traits: [boost], groups: [] };
   /** The player holds `boost`, switched off. */
-  const boostHeld: StatCodeBearers = { acquired: [boost], disabledTraitIds: [boost.id], appliedValues: {}, world: boostWorld };
+  const boostHeld: StatCodeOwners = { acquired: [boost], disabledTraitIds: [boost.id], appliedValues: {}, world: boostWorld };
   const boundsOf = (s: PlayerStat) => ({ min: s.min, max: s.max, regen: s.regen });
 
   it.each([
@@ -792,7 +793,7 @@ describe('runStatCodeTurn bound writes', () => {
     ['max', 'self.max = 80;', { max: 80 }, { max: -20 }],
     ['regen', 'self.regen = 3;', { regen: 3 }, { regen: 3 }],
   ] as const)('lands a self.%s write as the effective bound, its difference in the code delta', async (_field, code, bound, delta) => {
-    const out = await runStatCodeTurn(turn({ stats: [seeded({ code })] }));
+    const out = await runStatCodeTurn(turn({ stats: [seeded({ scripts: boxScripts({ after: code }) })] }));
     expect(only(out)).toMatchObject(bound);
     expect(only(out).codeDelta).toEqual(delta);
     expect(out.boundsChanged).toEqual(['a']);
@@ -804,14 +805,14 @@ describe('runStatCodeTurn bound writes', () => {
     ['max', 'self.max = 20; traits.Boost.enabled = true;', { min: 5, max: 20, regen: 2 }],
     ['regen', 'self.regen = 7; traits.Boost.enabled = true;', { min: 5, max: 120, regen: 7 }],
   ] as const)('derives the written %s after the run, whatever its own trait switch moved', async (_field, code, bounds) => {
-    const out = await runStatCodeTurn(turn({ stats: [seeded({ code })], bearers: boostHeld }));
+    const out = await runStatCodeTurn(turn({ stats: [seeded({ scripts: boxScripts({ after: code }) })], ownerTraits: boostHeld }));
     expect(out.traits?.disabledTraitIds).toEqual([]);
     expect(boundsOf(only(out))).toEqual(bounds);
   });
 
   it('lands a bound write equal to the run’s starting number over its own trait switch', async () => {
     const out = await runStatCodeTurn(turn({
-      stats: [seeded({ code: 'self.max = 100; traits.Boost.enabled = true;' })], bearers: boostHeld,
+      stats: [seeded({ scripts: boxScripts({ after: 'self.max = 100; traits.Boost.enabled = true;' }) })], ownerTraits: boostHeld,
     }));
     expect(boundsOf(only(out))).toEqual({ min: 5, max: 100, regen: 2 });
     expect(only(out).codeDelta).toEqual({ max: -20 });
@@ -822,7 +823,7 @@ describe('runStatCodeTurn bound writes', () => {
     ['max', 'self.max = 20;', { min: 5, max: 40, regen: 2 }, { min: 0, max: 20, regen: 0 }],
     ['regen', 'self.regen = 7;', { min: 5, max: 120, regen: 9 }, { min: 0, max: 100, regen: 7 }],
   ] as const)('moves a code-set %s by a trait switched on, then off, on later turns', async (_field, code, on, off) => {
-    const ran = only(await runStatCodeTurn(turn({ stats: [seeded({ value: 10, code })] })));
+    const ran = only(await runStatCodeTurn(turn({ stats: [seeded({ value: 10, scripts: boxScripts({ after: code }) })] })));
     const held = { stats: [ran], traits: [boost], disabledTraitIds: [boost.id], appliedValues: {} };
     const switchedOn = setTraitEnabled(held, boost.id, true, boostWorld).state;
     expect(boundsOf(switchedOn.stats[0])).toEqual(on);
@@ -831,22 +832,22 @@ describe('runStatCodeTurn bound writes', () => {
   });
 
   it('adds a later AI max change to the code-set max, and keeps it through the next derive', async () => {
-    const ran = only(await runStatCodeTurn(turn({ stats: [seeded({ value: 10, code: 'self.max = 20;' })] })));
+    const ran = only(await runStatCodeTurn(turn({ stats: [seeded({ value: 10, scripts: boxScripts({ after: 'self.max = 20;' }) })] })));
     const asked = applyAiMaxChanges([ran], { [ran.name.toLowerCase()]: 15 })[0];
     expect(asked.max).toBe(35);
     expect(deriveEffectiveStats([asked], [])[0].max).toBe(35);
   });
 
   it('books a later code write as a new difference from the layers under it', async () => {
-    const first = await runStatCodeTurn(turn({ stats: [seeded({ code: 'self.max = 20;' })] }));
-    const second = await runStatCodeTurn(turn({ stats: [{ ...only(first), code: 'self.max = 90;' }], bearers: inForce([raiseCap]) }));
+    const first = await runStatCodeTurn(turn({ stats: [seeded({ scripts: boxScripts({ after: 'self.max = 20;' }) })] }));
+    const second = await runStatCodeTurn(turn({ stats: [{ ...only(first), scripts: boxScripts({ after: 'self.max = 90;' }) }], ownerTraits: inForce([raiseCap]) }));
     expect(only(second).max).toBe(90);
     expect(only(second).codeDelta).toEqual({ max: -30 });
   });
 
   it.each(['value', 'min', 'max', 'regen'])('fails the run on null written to self.%s, discarding every write', async (field) => {
     const other = field === 'value' ? 'self.max = 60;' : 'self.value = 10;';
-    const stats = [seeded({ value: 50, code: `${other} self.${field} = null;` })];
+    const stats = [seeded({ value: 50, scripts: boxScripts({ after: `${other} self.${field} = null;` }) })];
     const out = await runStatCodeTurn(turn({ stats }));
     expect(out.stats).toBe(stats);
     expect(out.boundsChanged).toEqual([]);
@@ -854,62 +855,64 @@ describe('runStatCodeTurn bound writes', () => {
 
   it('leaves a bound the code did not write to the pipeline, and a code delta it did not rewrite in place', async () => {
     const out = await runStatCodeTurn(turn({
-      stats: [seeded({ min: 5, codeDelta: { min: 5 }, regen: 2, baseRegen: 2, code: 'self.max = 80;' })],
+      stats: [seeded({ min: 5, codeDelta: { min: 5 }, regen: 2, baseRegen: 2, scripts: boxScripts({ after: 'self.max = 80;' }) })],
     }));
     expect(only(out)).toMatchObject({ min: 5, max: 80, regen: 2 });
     expect(only(out).codeDelta).toEqual({ min: 5, max: -20 });
   });
 
   it('clamps a value write in the same run to the range it just wrote', async () => {
-    const out = await runStatCodeTurn(turn({ stats: [seeded({ value: 50, code: 'self.max = 30; self.value = 90;' })] }));
+    const out = await runStatCodeTurn(turn({ stats: [seeded({ value: 50, scripts: boxScripts({ after: 'self.max = 30; self.value = 90;' }) })] }));
     expect(only(out)).toMatchObject({ max: 30, value: 30 });
     expect(out.moved).toEqual(['a']);
   });
 
   it('settles an untouched value into a range the code shrank', async () => {
-    const out = await runStatCodeTurn(turn({ stats: [seeded({ value: 70, code: 'self.max = 40;' })] }));
+    const out = await runStatCodeTurn(turn({ stats: [seeded({ value: 70, scripts: boxScripts({ after: 'self.max = 40;' }) })] }));
     expect(only(out)).toMatchObject({ max: 40, value: 40 });
     expect(out.moved).toEqual(['a']);
   });
 
   it('keeps the active traits under a bound the code did not write', async () => {
     const out = await runStatCodeTurn(turn({
-      stats: [seeded({ max: 120, code: 'self.min = 10;' })],
-      bearers: inForce([raiseCap]),
+      stats: [seeded({ max: 120, scripts: boxScripts({ after: 'self.min = 10;' }) })],
+      ownerTraits: inForce([raiseCap]),
     }));
     expect(only(out)).toMatchObject({ min: 10, max: 120 });
   });
 
-  it("derives another owner's bounds without the player's traits in force", async () => {
-    const stats = [seeded({ code: 'self.min = 10;' })];
-    const player = await runStatCodeTurn(turn({ stats, bearers: inForce([raiseCap]) }));
-    const bram = await runStatCodeTurn(turn({ ownerId: 'bram', stats, bearers: inForce([raiseCap]) }));
-    expect(only(player)).toMatchObject({ min: 10, max: 120 });
-    expect(only(bram)).toMatchObject({ min: 10, max: 100 });
+  it("derives an entity owner's bounds without the player's traits in force", async () => {
+    const stats = [seeded({ scripts: boxScripts({ after: 'self.min = 10;' }) })];
+    const out = await runStatCodeTurn(turn({
+      stats, ownerTraits: inForce([raiseCap]),
+      owners: [{ id: 'bram', stats, enabled: {}, previous: stats, regenApplied: {} }],
+    }));
+    expect(only(out)).toMatchObject({ min: 10, max: 120 });
+    expect(only(out.owners!.bram)).toMatchObject({ min: 10, max: 100 });
   });
 
   it('keeps the code delta of a stat with empty code', async () => {
     const stats = [seeded({
-      value: 30, min: 20, max: 40, regen: 5, aiMaxDelta: 15, codeDelta: { min: 20, max: -75, regen: 5 }, code: '  ',
+      value: 30, min: 20, max: 40, regen: 5, aiMaxDelta: 15, codeDelta: { min: 20, max: -75, regen: 5 }, scripts: boxScripts({ after: '  ' }),
     })];
     expect((await runStatCodeTurn(turn({ stats }))).stats).toBe(stats);
   });
 
   it('keeps the code delta of a disabled stat, whose code never runs', async () => {
-    const stats = [seeded({ max: 40, codeDelta: { max: -60 }, code: '' })];
+    const stats = [seeded({ max: 40, codeDelta: { max: -60 }, scripts: boxScripts({ after: '' }) })];
     const out = await runStatCodeTurn(turn({ stats, enabled: { a: false } }));
     expect(out.stats).toBe(stats);
   });
 
   it('discards a bound write when the code throws after making it', async () => {
-    const stats = [seeded({ code: 'self.max = 30; throw new Error("late");' })];
+    const stats = [seeded({ scripts: boxScripts({ after: 'self.max = 30; throw new Error("late");' }) })];
     const out = await runStatCodeTurn(turn({ stats }));
     expect(out.stats).toBe(stats);
     expect(out.boundsChanged).toEqual([]);
   });
 
   it('writes nothing for code that sets a bound to the number it already has', async () => {
-    const stats = [seeded({ value: 30, max: 40, codeDelta: { max: -60 }, code: 'self.max = 40;' })];
+    const stats = [seeded({ value: 30, max: 40, codeDelta: { max: -60 }, scripts: boxScripts({ after: 'self.max = 40;' }) })];
     expect((await runStatCodeTurn(turn({ stats }))).stats).toBe(stats);
   });
 });
@@ -930,20 +933,20 @@ describe('runStatCodeTurn traits', () => {
   const timid: Trait = { id: 'timid', name: 'Timid', statChanges: [{ statId: 'h', value: -20, type: 'starting' }] };
   const cursed: Trait = { id: 'cursed', name: 'Cursed', groupId: 'g', statChanges: [{ statId: 'h', value: 50, type: 'max' }] };
   const world = { traits: [brave, timid, cursed], groups: [group] };
-  const held = (over: Partial<StatCodeBearers> = {}): StatCodeBearers => ({
+  const held = (over: Partial<StatCodeOwners> = {}): StatCodeOwners => ({
     acquired: [brave, timid], disabledTraitIds: ['timid'], appliedValues: { brave: { h: 10 }, timid: { h: 20 } }, world, ...over,
   });
   /** Health at 60 under Brave, plus one stat per piece of code, in order. */
-  const run = (codes: string[], traits: StatCodeBearers = held()) =>
+  const run = (codes: string[], traits: StatCodeOwners = held()) =>
     runStatCodeTurn(turn({
-      stats: [seeded({ id: 'h', name: 'Health', value: 60 }), ...codes.map((code, i) => seeded({ id: `s${i}`, name: `S${i}`, code }))],
-      bearers: traits,
+      stats: [seeded({ id: 'h', name: 'Health', value: 60 }), ...codes.map((code, i) => seeded({ id: `s${i}`, name: `S${i}`, scripts: boxScripts({ after: code }) }))],
+      ownerTraits: traits,
     }));
   const health = (out: { stats: readonly PlayerStat[] }) => out.stats.find((s) => s.id === 'h')!;
 
   it('reads enabled and acquired for an enabled, a switched-off, and an unacquired trait', async () => {
     const code = 'return [traits.Brave, traits.Timid, traits.Cursed].map(e => (e.enabled ? 2 : 0) + (e.acquired ? 1 : 0)).join("") * 1;';
-    const out = await runStatCodeTurn(turn({ stats: [seeded({ id: 'a', max: 1000, code })], bearers: held() }));
+    const out = await runStatCodeTurn(turn({ stats: [seeded({ id: 'a', max: 1000, scripts: boxScripts({ after: code }) })], ownerTraits: held() }));
     expect(valueOf(out.stats, 'a')).toBe(310);
   });
 
@@ -991,8 +994,8 @@ describe('runStatCodeTurn traits', () => {
 
   it('lands a bound the code wrote this run over the bound its trait switch moved', async () => {
     const out = await runStatCodeTurn(turn({
-      stats: [seeded({ id: 'h', name: 'Health', value: 60, code: 'traits.Cursed.enabled = true; self.max = 80;' })],
-      bearers: held(),
+      stats: [seeded({ id: 'h', name: 'Health', value: 60, scripts: boxScripts({ after: 'traits.Cursed.enabled = true; self.max = 80;' }) })],
+      ownerTraits: held(),
     }));
     // Cursed lifts the layers under code to 150, so the delta holds the rest.
     expect(health(out)).toMatchObject({ max: 80, codeDelta: { max: -70 } });
@@ -1031,8 +1034,8 @@ describe('runStatCodeTurn traits', () => {
   it('clamps a value the code wrote into the range its trait switch left', async () => {
     const frail: Trait = { id: 'frail', name: 'Frail', statChanges: [{ statId: 'h', value: -50, type: 'max' }] };
     const out = await runStatCodeTurn(turn({
-      stats: [seeded({ id: 'h', name: 'Health', value: 60, code: 'traits.Frail.enabled = true; self.value = 90;' })],
-      bearers: held({ world: { ...world, traits: [brave, timid, cursed, frail] } }),
+      stats: [seeded({ id: 'h', name: 'Health', value: 60, scripts: boxScripts({ after: 'traits.Frail.enabled = true; self.value = 90;' }) })],
+      ownerTraits: held({ world: { ...world, traits: [brave, timid, cursed, frail] } }),
     }));
     expect(health(out)).toMatchObject({ max: 50, value: 50 });
   });
@@ -1048,17 +1051,17 @@ describe('runStatCodeTurn traits', () => {
   it('discards the switches of a run that fails, and of a disabled stat', async () => {
     expect((await run(['traits.Timid.enabled = true; throw new Error("late");'])).traits).toBeUndefined();
     const out = await runStatCodeTurn(turn({
-      stats: [seeded({ id: 'h', value: 60 }), seeded({ id: 'off', code: 'traits.Timid.enabled = true;' })],
+      stats: [seeded({ id: 'h', value: 60 }), seeded({ id: 'off', scripts: boxScripts({ after: 'traits.Timid.enabled = true;' }) })],
       enabled: { off: false },
-      bearers: held(),
+      ownerTraits: held(),
     }));
     expect(out.traits).toBeUndefined();
   });
 
   it('logs a switch under the name the player reads, and still reaches the trait by its code name', async () => {
     const out = await runStatCodeTurn(turn({
-      stats: [seeded({ id: 'h', name: 'Health', value: 60 }), seeded({ id: 's0', name: 'S0', code: 'traits.Brave.enabled = false;' })],
-      bearers: held(),
+      stats: [seeded({ id: 'h', name: 'Health', value: 60 }), seeded({ id: 's0', name: 'S0', scripts: boxScripts({ after: 'traits.Brave.enabled = false;' }) })],
+      ownerTraits: held(),
       traitNameOf: (t) => t.name.toUpperCase(),
     }));
     expect(out.traits?.log).toEqual(['Trait switched off: BRAVE (by S0)']);
@@ -1066,15 +1069,15 @@ describe('runStatCodeTurn traits', () => {
 
   it('hands back the owned trait a code switch cascaded off', async () => {
     // Ash's Loyal needs the player's Brave, so switching Brave off in code turns Loyal off too.
-    const loyal: Trait = { id: 'loyal', name: 'Loyal', statChanges: [], requires: [{ all: [{ kind: 'trait', id: 'brave', bearer: { kind: 'you' } }] }] };
+    const loyal: Trait = { id: 'loyal', name: 'Loyal', statChanges: [], requires: [{ all: [{ kind: 'trait', id: 'brave', owner: { kind: 'you' } }] }] };
     const ash = { id: 'ash', name: 'Ash', traits: [loyal], groups: [] };
     const out = await run(['traits.Brave.enabled = false;'], held({
       ownedTraits: { ash: { chosen: ['loyal'] } },
-      world: { ...world, entities: [], bearers: [{ id: 'world', name: '', traits: world.traits, groups: world.groups }, ash] },
+      world: { ...world, entities: [], global: { traits: world.traits, groups: world.groups }, owners: [ash] },
     }));
     expect(out.traits?.log).toEqual(['Trait switched off: Brave (by S0)', "Trait switched off: Ash's Loyal (by S0)"]);
     expect(out.traits?.ownedTraits).toEqual({ ash: { chosen: ['loyal'], disabled: ['loyal'] } });
-    expect(out.traits?.cascadeOffTraitIds).toEqual({ ash: ['loyal'] });
+    expect(out.traits?.cascadeOffTraitIds).toEqual({ owners: { ash: ['loyal'] } });
   });
 
   it('carries a switch onto the latest stats, re-derived under the traits now in force', async () => {
@@ -1111,7 +1114,7 @@ describe('runStatCodeTurn placeholder paths', () => {
   // takes over for that.
   const run = (code: string, placeholders = list, owned: PlaceholderOwners | null = owners) =>
     runStatCodeTurn(turn({
-      stats: [stat({ id: 's0', value: 0, code })],
+      stats: [stat({ id: 's0', value: 0, scripts: boxScripts({ after: code }) })],
       placeholders: { placeholders, owners: owned ?? undefined, rolls: { world: {} } },
     }));
 
@@ -1139,11 +1142,11 @@ describe('runStatCodeTurn placeholder paths', () => {
     expect(pinWrites).toEqual({ 'world-hair': 'shorn' });
   });
 
-  it('resolves a holder through the pin a path laid on its child, so the next prompt reads it', async () => {
+  it('resolves a parent through the pin a path laid on its child, so the next prompt reads it', async () => {
     const { pinWrites } = await run('placeholders.Hair.Shade.pin("silver");');
     const chip = encodePlaceholderToken({ id: 'world-hair', mode: 'world', placementId: 'p-read' });
     const pins = collectPins({ traits: [], placeholders: list, rolls: { world: {} }, codePins: withPinWrites({}, pinWrites) });
-    // The world's Hair is nothing but its Shade, so a pin on the child is what the holder reads as.
+    // The world's Hair is nothing but its Shade, so a pin on the child is what the parent reads as.
     expect(resolvePlaceholders(`Her hair is ${chip}.`, { placeholders: list, rolls: { world: {} }, pins })).toBe('Her hair is silver.');
   });
 
@@ -1166,7 +1169,7 @@ describe('overlayStatCodeResult', () => {
   });
 
   it('carries a code delta onto the latest stat, re-derived from its own AI delta', async () => {
-    const result = await runStatCodeTurn(turn({ stats: [seeded({ value: 50, code: 'self.min = 10;' })] }));
+    const result = await runStatCodeTurn(turn({ stats: [seeded({ value: 50, scripts: boxScripts({ after: 'self.min = 10;' }) })] }));
     // An AI max ask landed on the latest copy while the run was in flight.
     const [latest] = overlayStatCodeResult([seeded({ value: 70, max: 120, aiMaxDelta: 20 })], result, []);
     expect(latest).toMatchObject({ min: 10, max: 120, value: 70, codeDelta: { min: 10 } });
@@ -1174,7 +1177,7 @@ describe('overlayStatCodeResult', () => {
 
   it('carries only the value the code moved, and leaves an untouched stat as it is', async () => {
     const result = await runStatCodeTurn(turn({
-      stats: [seeded({ value: 50, code: 'return 20;' }), seeded({ id: 'b', value: 50 })],
+      stats: [seeded({ value: 50, scripts: boxScripts({ after: 'return 20;' }) }), seeded({ id: 'b', value: 50 })],
     }));
     const latest = [seeded({ value: 45 }), seeded({ id: 'b', value: 44 })];
     const out = overlayStatCodeResult(latest, result, []);
@@ -1183,7 +1186,7 @@ describe('overlayStatCodeResult', () => {
   });
 
   it('keeps the latest value of a stat whose bounds alone changed, settled into the new range', async () => {
-    const result = await runStatCodeTurn(turn({ stats: [seeded({ value: 30, code: 'self.max = 60;' })] }));
+    const result = await runStatCodeTurn(turn({ stats: [seeded({ value: 30, scripts: boxScripts({ after: 'self.max = 60;' }) })] }));
     expect(overlayStatCodeResult([seeded({ value: 90 })], result, [])[0]).toMatchObject({ max: 60, value: 60 });
     expect(overlayStatCodeResult([seeded({ value: 25 })], result, [])[0]).toMatchObject({ max: 60, value: 25 });
   });

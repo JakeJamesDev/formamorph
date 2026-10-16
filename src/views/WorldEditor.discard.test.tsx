@@ -6,6 +6,7 @@ import { SettingsProvider } from '@/contexts/SettingsContext';
 import { pickEditorMode } from '@/test/worldEditorBench';
 import WorldEditor from './WorldEditor';
 import type { World } from '@/types';
+import { codeAt } from '@/test/scriptFixtures';
 
 /**
  * Guards the "Exit Without Saving" contract end to end, through the real JSX.
@@ -105,14 +106,14 @@ describe('WorldEditor — exit without saving', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it('keeps the plain copy on a new world, which auto save never joined', async () => {
+  it('keeps the plain copy on a new world, which autosave never joined', async () => {
     setup();
     renameTo('Sedge Landing EDITED');
 
     fireEvent.click(backArrow());
 
     expect(await screen.findByText(/exit without saving, or keep editing/)).toBeInTheDocument();
-    expect(screen.queryByText(/Auto Save kept the rest/)).toBeNull();
+    expect(screen.queryByText(/Autosave kept the rest/)).toBeNull();
   });
 
   it('keeps the edit when the prompt is cancelled', async () => {
@@ -243,16 +244,16 @@ describe('WorldEditor — exit without saving, after a rename rewrote stat code'
     fireEvent.blur(field);
 
     fireEvent.click(await screen.findByRole('button', { name: 'Update Code' }));
-    expect(ctx.stats[0].beforeCode).toBe('placeholders.Temper.pin("bleak");');
-    expect(ctx.stats[0].code).toBe('return placeholders.Temper.text.length;');
+    expect(codeAt(ctx.stats[0], 'before')).toBe('placeholders.Temper.pin("bleak");');
+    expect(codeAt(ctx.stats[0])).toBe('return placeholders.Temper.text.length;');
 
     await exitVia('Exit Without Saving');
 
     // Both halves of one edit. The rewrite goes through the editor's ordinary write path, so a discard that
     // took back only the name would leave the code naming a placeholder the world no longer has.
     expect(ctx.placeholders[0].name).toBe('Mood');
-    expect(ctx.stats[0].beforeCode).toBe('placeholders.Mood.pin("bleak");');
-    expect(ctx.stats[0].code).toBe('return placeholders.Mood.text.length;');
+    expect(codeAt(ctx.stats[0], 'before')).toBe('placeholders.Mood.pin("bleak");');
+    expect(codeAt(ctx.stats[0])).toBe('return placeholders.Mood.text.length;');
     expect(ctx.isWorldDirty).toBe(false);
     expect(onClose).toHaveBeenCalled();
   });

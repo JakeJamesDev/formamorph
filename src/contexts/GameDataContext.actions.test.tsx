@@ -76,6 +76,36 @@ describe('the data context actions', () => {
     expect(ctx().entities.find((e) => e.id === 'e1')?.groupId).toBe('outer');
   });
 
+  it('delete an entity group into its own slot, so the siblings keep their order', async () => {
+    const { ctx, renders } = await open();
+    const actions = renders[0];
+    act(() => actions.setEntityGroups([{ id: 'g', name: 'Crew', parentId: null, order: 1 }]));
+    act(() => actions.setEntities([
+      { id: 'a', name: 'A', groupId: null, order: 0 },
+      { id: 'x', name: 'X', groupId: 'g', order: 0 },
+      { id: 'y', name: 'Y', groupId: 'g', order: 1 },
+      { id: 'b', name: 'B', groupId: null, order: 2 },
+    ] as Entity[]));
+    act(() => actions.removeEntityGroup('g'));
+    const inOrder = [...ctx().entities].sort((p, q) => (p.order ?? 0) - (q.order ?? 0)).map((e) => [e.id, e.groupId, e.order]);
+    expect(inOrder).toEqual([['a', null, 0], ['x', null, 1], ['y', null, 2], ['b', null, 3]]);
+  });
+
+  it('delete a trait group into its own slot, so the siblings keep their order', async () => {
+    const { ctx, renders } = await open();
+    const actions = renders[0];
+    act(() => actions.setTraitGroups([{ id: 'tg', name: 'Gifts', parentId: null, order: 1 }]));
+    act(() => actions.setTraits([
+      { id: 'a', name: 'A', statChanges: [], groupId: null, order: 0 },
+      { id: 'x', name: 'X', statChanges: [], groupId: 'tg', order: 0 },
+      { id: 'b', name: 'B', statChanges: [], groupId: null, order: 2 },
+    ]));
+    act(() => actions.removeTraitGroup('tg'));
+    const inOrder = [...ctx().traits].sort((p, q) => (p.order ?? 0) - (q.order ?? 0)).map((t) => [t.id, t.groupId, t.order]);
+    expect(inOrder).toEqual([['a', null, 0], ['x', null, 1], ['b', null, 2]]);
+    expect(ctx().traitGroups).toEqual([]);
+  });
+
   it('save the world as it stands', async () => {
     const { ctx, renders } = await open();
     rename(ctx(), 'e2', 'Moss the Elder');

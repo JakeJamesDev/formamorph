@@ -1,5 +1,7 @@
 // The route-accuracy score of the keyed questions: does the keyed section's route name the surface the question is about.
-// No model runs; `help-route-probe.cli.ts` prints the report.
+// No model runs; `help-route-probe.cli.ts` prints the report. The help baseline scores its live answers with
+// `liveRouteVerdict`.
+import { answerRoute, type RoutedAnswer } from '@/components/formaquestion/answerRoute';
 
 /** `hit` the route is the expected surface; `miss` it is another one, or the question expects none and a route exists; `no-route` a surface is expected and the section has no route. */
 export type RouteVerdict = 'hit' | 'miss' | 'no-route';
@@ -9,6 +11,11 @@ export function scoreRoute(expectSurface: string | null, route: string | undefin
   if (expectSurface === null) return route === undefined ? 'hit' : 'miss';
   if (route === undefined) return 'no-route';
   return route === expectSurface ? 'hit' : 'miss';
+}
+
+/** The verdict of the route the answer's Take Me There button opens, picked as the app picks it. */
+export function liveRouteVerdict(expectSurface: string | null, answer: RoutedAnswer): RouteVerdict {
+  return scoreRoute(expectSurface, answerRoute(answer)?.id);
 }
 
 export const ROUTE_KINDS = ['task', 'here'] as const;

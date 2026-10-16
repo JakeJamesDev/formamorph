@@ -15,7 +15,7 @@ const entity: Entity = {
   aiDescription: 'Wren knows every channel of the fen.',
   aiSummary: 'marsh guide',
   imageTags: 'woman, cloak, reeds',
-  images: ['data:image/webp;base64,AAAA', 'data:image/webp;base64,BBBB'],
+  images: [{ data: 'data:image/webp;base64,AAAA' }, { data: 'data:image/webp;base64,BBBB' }],
   model: { data: 'data:model', type: 'model/gltf-binary' },
   sound: { data: 'data:sound', type: 'audio/mpeg' },
 };
@@ -173,7 +173,7 @@ describe('parseEntityCardData', () => {
     expect(a.id).not.toBe('orig-id');
     expect(a.id).not.toBe(b.id);
     // Only the carried extras come back; the primary is the card's own pixels, added by the importer.
-    expect(a.images).toEqual(['data:image/webp;base64,BBBB']);
+    expect(a.images).toEqual([{ data: 'data:image/webp;base64,BBBB' }]);
     expect(a.name).toBe('Wren');
     expect(a.imageTags).toBe('woman, cloak, reeds');
   });
@@ -184,6 +184,30 @@ describe('parseEntityCardData', () => {
     expect(() => parseEntityCardData({ formamorphKind: 'dictionary' })).toThrow(/dictionary/i);
     expect(() => parseEntityCardData({ foo: 1 })).toThrow(/not a character card/i);
     expect(() => parseEntityCardData(null)).toThrow();
+  });
+
+  it('loads a `player` row target as `global`, keeps `global`, and keeps a stored owner (Q5, Q19)', () => {
+    const owner = { kind: 'entity', id: 'w-ash', name: 'Ash' };
+    const card = {
+      formamorphKind: 'entity', name: 'Mara',
+      traits: [{
+        id: 't', name: 'Oath', requires: [{ all: [{ kind: 'trait', id: 'w-brave', owner }] }],
+        statChanges: [{ statId: 'rage', value: 2, target: 'player' }, { statId: 'rage', value: 1, target: 'global' }, { statId: 'rage', value: 3 }],
+        statToggles: [{ statId: 'rage', enabled: false, target: 'player' }],
+      }],
+      traitLinks: [{
+        id: 'l', originalId: 'smite', kind: 'trait', originalName: 'Smite', groupId: null,
+        overrides: { smite: { statChanges: { value: [{ statId: 'rage', value: 1, target: 'player' }], blueprint: [] } } },
+      }],
+    };
+    const parsed = parseEntityCardData(card);
+    expect(parsed.traits![0].statChanges).toEqual([
+      { statId: 'rage', value: 2, target: 'global' }, { statId: 'rage', value: 1, target: 'global' }, { statId: 'rage', value: 3 },
+    ]);
+    expect(parsed.traits![0].statToggles).toEqual([{ statId: 'rage', enabled: false, target: 'global' }]);
+    expect(parsed.traitLinks![0].overrides!.smite.statChanges).toEqual({ value: [{ statId: 'rage', value: 1, target: 'global' }], blueprint: [] });
+    expect(parsed.traits![0].requires).toEqual([{ all: [{ kind: 'trait', id: 'w-brave', owner }] }]);
+    expect(parseEntityCardData(JSON.parse(JSON.stringify(buildEntityCardData(parsed)))).traits![0].statChanges[0].target).toBe('global');
   });
 
   it('defaults a missing name', () => {

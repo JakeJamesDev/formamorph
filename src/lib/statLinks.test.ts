@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import type { Entity, Stat, StatGroup } from '@/types';
 import { heldReasonText } from './heldReasons';
 import {
-  addStatLink, applyEntityStatRows, detachStatLink, dropStatLinksTo, editStatLink, entityStatRows,
-  holdsStatOriginal, statHeldReason, linkedStat, mergeDuplicateStatLinks, mergeStatBlueprintsGroups, playStatWorld, playerStatsOf,
+  addStatLink, applyEntityStatRows, blueprintGroupStats, detachStatLink, dropStatLinksTo, editStatLink, entityStatRows,
+  holdsStatOriginal, statHeldReason, linkedStat, mergeDuplicateStatLinks, mergeStatBlueprintsGroups, playStatWorld, globalStatsOf,
   removeEntityStatGroup, removeStatBlueprints, removeStatLink, resetStatLinkFieldOn, resetStatLinkOn, resetStatLinkStatOn,
   resolvedEntityStatTree, resolvedEntityStats, statBlueprintChoices, statLinkState, statLinksTo, withEntityStatTree,
 } from './statLinks';
@@ -19,14 +19,27 @@ const health = stat('health');
 const world = { stats: [health, trust, fear], statGroups: [bp, sub] };
 const bram = (over: Partial<Entity> = {}): Entity => ({ id: 'bram', name: 'Bram', ...over });
 
-describe('playerStatsOf', () => {
+describe('globalStatsOf', () => {
   it('leaves every stat inside Blueprints out, nested ones included', () => {
-    expect(playerStatsOf(world.stats, world.statGroups).map((s) => s.id)).toEqual(['health']);
+    expect(globalStatsOf(world.stats, world.statGroups).map((s) => s.id)).toEqual(['health']);
   });
 
   it('keeps the list itself when it holds no Blueprint', () => {
     const stats = [health];
-    expect(playerStatsOf(stats, world.statGroups)).toBe(stats);
+    expect(globalStatsOf(stats, world.statGroups)).toBe(stats);
+  });
+});
+
+describe('blueprintGroupStats', () => {
+  const calm = stat('calm', { groupId: 'bp-social' });
+  const grouped = { stats: [health, trust, fear, calm], statGroups: [bp, sub] };
+
+  it('holds the stats of the group the Blueprint stat sits in, itself included', () => {
+    expect(blueprintGroupStats(grouped, fear).map((s) => s.id)).toEqual(['fear', 'calm']);
+  });
+
+  it('holds a stat directly under Blueprints alone', () => {
+    expect(blueprintGroupStats(grouped, trust)).toEqual([trust]);
   });
 });
 
@@ -90,7 +103,15 @@ describe('overrides', () => {
     expect(resetStatLinkOn(two, 'l1').statLinks![0].overrides).toBeUndefined();
   });
 
-  it('drops a stored starting value when the Initial Value is overridden', () => {
+  it('resets the Regen unit with the Regen number, since the two are one field on screen', () => {
+    const daily = editStatLink(world, overridden, 'l1', 'trust', { ...linkedStat(trust, link), regen: 1 / 24, regenUnit: 'days' });
+    expect(Object.keys(daily.statLinks![0].overrides!.trust)).toEqual(['value', 'regen', 'regenUnit']);
+    expect(resolvedEntityStats(world, daily)[0]).toMatchObject({ regen: 1 / 24, regenUnit: 'days' });
+    const reset = resetStatLinkFieldOn(daily, 'l1', 'trust', 'regen');
+    expect(Object.keys(reset.statLinks![0].overrides!.trust)).toEqual(['value']);
+  });
+
+  it('drops a stored starting value when the Base Value is overridden', () => {
     expect(linkedStat({ ...trust, starting: 3 }, link).starting).toBeUndefined();
   });
 });
@@ -139,9 +160,9 @@ describe('statBlueprintChoices', () => {
     const empty: StatGroup = { id: 'bp-empty', name: 'Empty', parentId: 'bp', order: 2 };
     const ordered = { stats: [health, { ...trust, order: 0 }, fear], statGroups: [bp, { ...sub, order: 1 }, empty] };
     expect(statBlueprintChoices(ordered)).toEqual([
-      { kind: 'bearer', id: 'trust', name: 'trust', parentId: null },
+      { kind: 'owner', id: 'trust', name: 'trust', parentId: null },
       { kind: 'group', id: 'bp-social', name: 'Social', parentId: null },
-      { kind: 'bearer', id: 'fear', name: 'fear', parentId: 'bp-social' },
+      { kind: 'owner', id: 'fear', name: 'fear', parentId: 'bp-social' },
     ]);
     expect(statBlueprintChoices({ stats: [health], statGroups: [] })).toEqual([]);
   });
@@ -193,7 +214,7 @@ describe('a group link', () => {
     expect(tree.linkOf.get('love')?.id).toBe('l1');
   });
 
-  it('overrides each stat on its own, and each bearer keeps its own', () => {
+  it('overrides each stat on its own, and each owner keeps its own', () => {
     const a = editStatLink(groupWorld, linked, 'l1', 'love', { ...love, value: 90 });
     const b = addStatLink(groupWorld, { id: 'odette', name: 'Odette' }, 'bp-social', 'l2')!;
     expect(Object.keys(a.statLinks![0].overrides!)).toEqual(['love']);
@@ -286,7 +307,6 @@ describe('heldReasonText', () => {
     [{ kind: 'owns', name: 'Trust' }, undefined, 'Already owns Trust'],
     [{ kind: 'group', name: 'Trust', group: 'Social' }, undefined, 'Already links Social, which holds Trust'],
     [{ kind: 'inside', name: 'Fear', group: 'Social' }, undefined, 'Already links Fear, which Social holds'],
-    [{ kind: 'player', name: 'Hardy' }, undefined, 'Already holds Hardy as a player trait'],
     [{ kind: 'links', name: 'Trust' }, 'Bram', 'Bram already links Trust'],
     [{ kind: 'owns', name: 'Trust' }, 'Bram', 'Bram already owns Trust'],
   ] as const)('%j with subject %s reads "%s"', (reason, subject, text) => {

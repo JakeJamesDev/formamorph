@@ -4,7 +4,7 @@ import { Copy, Link2, X } from 'lucide-react';
 import type { ListEditorAdapter, ListEditorRow } from '@/components/listEditorHooks';
 import { useGameData } from '@/contexts/GameDataContext';
 import { newTrait, traitRootCount } from '@/lib/blankWorld';
-import { bearsTraits, originalOf } from '@/lib/bearers';
+import { ownsOrLinksTraits, originalOf } from '@/lib/owners';
 import { useEditorMode } from '@/lib/editorMode';
 import { addOwnedGroup, addOwnedTrait, findOwnedItem, removeOwnedItem, withOwnedTraits } from '@/lib/ownedTraits';
 import { OWNER_NAME_SEPARATOR } from '@/lib/placementLetters';
@@ -16,7 +16,7 @@ import type { FocusFieldHint } from '@/types';
 import type { EntityPanelTab } from '@/views/entityPanelTabs';
 import { focusFieldForItem } from '@/views/findFocus';
 import type { TraitPanelTab } from '@/views/traitPanelTabs';
-import { LinkToBearerButton } from './BearerPicker';
+import { LinkToOwnerButton } from './OwnerPicker';
 import { EntityNodePanel } from './EntityNodePanel';
 import GroupManager from './GroupManager';
 import { LinkedFromLine, LinkedTraitManager, LinkFooter, ThisLinkSection } from './TraitLinkPanel';
@@ -56,14 +56,14 @@ export function useWorldTraitsAdapter({ selectedId, onSelect, navigate, tab, onT
   const trait = traits.find((t) => t.id === selectedId) ?? owned?.trait;
   const group = traitGroups.find((g) => g.id === selectedId) ?? owned?.group;
   const nodeEntity = entities.find((e) => e.id === selectedId);
-  const traitNode = nodeEntity && bearsTraits(nodeEntity) ? nodeEntity : undefined;
+  const traitNode = nodeEntity && ownsOrLinksTraits(nodeEntity) ? nodeEntity : undefined;
   // A link's row, or a row of its linked group's subtree, edits the original it reads.
   const linkRow = selectedId ? tree.linkRows.get(selectedId) : undefined;
-  const linkBearer = linkRow && entities.find((e) => e.id === linkRow.entityId);
+  const linkOwner = linkRow && entities.find((e) => e.id === linkRow.entityId);
   const linkedTrait = linkRow && traits.find((t) => t.id === linkRow.originalId);
   const linkedGroup = linkRow && traitGroups.find((g) => g.id === linkRow.originalId);
   // The trait or group shown, or the original a link row reads. `originalOf` drops owned ones.
-  const shownOriginalId = linkRow ? (linkBearer ? linkRow.originalId : undefined) : (group ?? trait)?.id;
+  const shownOriginalId = linkRow ? (linkOwner ? linkRow.originalId : undefined) : (group ?? trait)?.id;
 
   const handleAddTrait = (typed: string) => {
     const id = randomUUID();
@@ -177,10 +177,10 @@ export function useWorldTraitsAdapter({ selectedId, onSelect, navigate, tab, onT
           focusField={focusFieldForItem(focusField, trait.id)}
         />
       )}
-      {linkRow && linkBearer && linkedTrait && (
+      {linkRow && linkOwner && linkedTrait && (
         <LinkedTraitManager
           key={id}
-          bearer={linkBearer}
+          owner={linkOwner}
           link={linkRow.link}
           original={linkedTrait}
           onOpenTrait={(traitId) => navigate('traits', traitId)}
@@ -190,13 +190,13 @@ export function useWorldTraitsAdapter({ selectedId, onSelect, navigate, tab, onT
           focusField={focusFieldForItem(focusField, linkedTrait.id)}
         />
       )}
-      {linkRow && linkBearer && linkedGroup && (
+      {linkRow && linkOwner && linkedGroup && (
         <GroupManager
           key={id}
           group={linkedGroup}
           readOnly
           detailsHeader={<LinkedFromLine originalId={linkedGroup.id} />}
-          detailsFooter={<ThisLinkSection entity={linkBearer} link={linkRow.link} originalId={linkedGroup.id} />}
+          detailsFooter={<ThisLinkSection entity={linkOwner} link={linkRow.link} originalId={linkedGroup.id} />}
         />
       )}
     </>
@@ -206,9 +206,9 @@ export function useWorldTraitsAdapter({ selectedId, onSelect, navigate, tab, onT
   // shows, with Reset to Blueprint and Edit Blueprint.
   const footer = () => {
     const linkTo = advanced && shownOriginalId && isBlueprintItem({ traits, traitGroups }, shownOriginalId)
-      ? <LinkToBearerButton originalId={shownOriginalId} /> : null;
-    if (linkRow && linkBearer && shownOriginalId) {
-      return <LinkFooter bearer={linkBearer} row={linkRow} onEditBlueprint={() => onSelect(shownOriginalId)}>{linkTo}</LinkFooter>;
+      ? <LinkToOwnerButton originalId={shownOriginalId} /> : null;
+    if (linkRow && linkOwner && shownOriginalId) {
+      return <LinkFooter owner={linkOwner} row={linkRow} onEditBlueprint={() => onSelect(shownOriginalId)}>{linkTo}</LinkFooter>;
     }
     return linkTo && <div className="p-3 border-t flex justify-end">{linkTo}</div>;
   };
@@ -221,7 +221,7 @@ export function useWorldTraitsAdapter({ selectedId, onSelect, navigate, tab, onT
     detail,
     footer,
     // Tabbed panels keep their strip above a body that scrolls itself.
-    fills: () => (!group && !!trait) || (!!linkRow && !!linkBearer && !!linkedTrait),
+    fills: () => (!group && !!trait) || (!!linkRow && !!linkOwner && !!linkedTrait),
     onReorder,
     add: advanced ? {
       label: 'Add to Traits',

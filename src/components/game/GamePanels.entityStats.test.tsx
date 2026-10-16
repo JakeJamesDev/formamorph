@@ -5,7 +5,7 @@ import { LeftPanel, RightPanel } from './GamePanels';
 import { defaultSystemPrompt } from './GamePrompts';
 import { renderInGame, renderRightPanel, statFixture, type Gameplay, type TurnFixture } from '@/test/gamePanels';
 import type { EntityStatValues, SceneEntity } from '@/types';
-import { PLAYER_OWNER } from '@/lib/statOwners';
+import { NO_DELTAS } from '@/lib/useStatDeltas';
 import EntityStorageService from '@/services/EntityStorageService';
 
 vi.mock('@/views/VRMViewer', () => import('@/test/stubs/vrmViewer'));
@@ -46,7 +46,7 @@ const optionLabels = async () => {
 const section = () => screen.queryByTestId('entity-stats');
 
 describe('RightPanel — entity stats', () => {
-  it('shows the player stats first and the selected entity stats below, with the same rows', () => {
+  it('shows the global stats first and the selected entity stats below, with the same rows', () => {
     renderRightPanel({}, { ...stage, seed: (g) => { stage.seed(g); g.setSelectedEntityId('bram'); } });
     const rows = screen.getAllByText(/^(Vigor|Trust)$/);
     expect(rows.map((r) => r.textContent)).toEqual(['Vigor', 'Trust']);
@@ -179,7 +179,7 @@ describe('RightPanel — entity stats', () => {
       },
     });
     expect(within(section()!).queryByText('+6')).not.toBeInTheDocument();
-    act(() => { view.gameplay().statDeltas.show(PLAYER_OWNER, {}); });
+    act(() => { view.gameplay().statDeltas.show(null,{}); });
     expect(within(section()!).getByText('+6')).toBeInTheDocument();
   });
 
@@ -192,19 +192,19 @@ describe('RightPanel — entity stats', () => {
         g.setSelectedEntityId('bram');
       },
     });
-    act(() => { view.gameplay().statDeltas.show(PLAYER_OWNER, { vigor: -3 }); });
+    act(() => { view.gameplay().statDeltas.show(null,{ vigor: -3 }); });
     expect(screen.getByText('-3')).toBeInTheDocument();
     act(() => { view.gameplay().loadGameState(view.gameplay().gameStates[1], []); });
     act(() => { view.gameplay().setSelectedEntityId('bram'); });
     expect(screen.queryByText('-3')).not.toBeInTheDocument();
     expect(within(section()!).queryByText('+6')).not.toBeInTheDocument();
     const { recent, held, draining } = view.gameplay().statDeltas;
-    expect({ recent, held, draining }).toEqual({ recent: {}, held: {}, draining: {} });
+    expect({ recent, held, draining }).toEqual({ recent: NO_DELTAS, held: NO_DELTAS, draining: NO_DELTAS });
   });
 
   it("keeps the player's change through a rollback", () => {
     const view = renderRightPanel({}, stage);
-    act(() => { view.gameplay().statDeltas.show(PLAYER_OWNER, { vigor: -3 }); });
+    act(() => { view.gameplay().statDeltas.show(null,{ vigor: -3 }); });
     act(() => { view.gameplay().loadGameState(view.gameplay().gameStates[1], [], { keepLiveHistory: true }); });
     expect(screen.getByText('-3')).toBeInTheDocument();
   });
@@ -283,6 +283,20 @@ describe('RightPanel — the stats of the entity the player plays as (Q11, Q16, 
     expect(screen.getAllByText('Trust')).toHaveLength(3);
     expect(screen.getByText('10 / 100')).toBeInTheDocument();
     expect(within(section()!).getByText('40 / 100')).toBeInTheDocument();
+  });
+
+  it('heads the world stats with Global, as a node beside the persona’s', () => {
+    renderRightPanel({}, asMira('bram'));
+    const global = screen.getByRole('region', { name: 'Global stats' });
+    expect(within(global).getByRole('heading', { name: 'Global' })).toBeInTheDocument();
+    expect(within(global).getByText('50 / 100')).toBeInTheDocument();
+    expect(within(global).queryByText('60 / 100')).toBeNull();
+    expect(within(personaSection('Mira')).getByRole('heading', { name: 'Mira' })).toBeInTheDocument();
+  });
+
+  it('adds no Global node when no world stat is visible', () => {
+    renderRightPanel({}, { ...asMira(), stats: [] });
+    expect(screen.queryByRole('region', { name: 'Global stats' })).toBeNull();
   });
 
   it('lists the persona as "(You)" and shows no entity section when it is picked', async () => {

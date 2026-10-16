@@ -13,6 +13,11 @@ describe('estimateHistoryChars', () => {
     expect(estimateHistoryChars(history)).toBe('hello'.length);
   });
 
+  it('counts a json5-only assistant turn by its narration', () => {
+    const history: ChatMessage[] = [{ role: 'assistant', content: "{ narration: 'hello', choices: [], }" }];
+    expect(estimateHistoryChars(history)).toBe('hello'.length);
+  });
+
   it('falls back to full content when assistant JSON is invalid', () => {
     const history: ChatMessage[] = [{ role: 'assistant', content: 'not json' }];
     expect(estimateHistoryChars(history)).toBe('not json'.length);

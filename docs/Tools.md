@@ -173,9 +173,29 @@ The **Handler** tab sets the Tool Handler: the part that runs when the AI calls 
 
 - **Lookup Settings.** **Search** picks **Entities**, **Locations** or **Dictionary Entries**. **By Parameter** picks the parameter to search by. **Returns** picks **Full Description** or **Summary**, for entities and locations.
 - **Template Settings.** **Template** is the text to return. Insert a parameter chip where the AI's value goes.
-- **Script Settings.** **Script** is JavaScript. It reads `args`, `world`, `scene` and `placeholders`, and returns text, or any other value as JSON. The ⓘ next to **Script** opens **What a Script Can Read**, which lists every value. A script runs in a sandbox and stops after one second.
+- **Script Settings.** **Script** is JavaScript. It reads `args`, `world`, `scene` and `placeholders`, and returns text, or any other value as JSON. The ⓘ next to **Script** opens **What a Script Can Read**, which lists every value. The **Variable** menu opens level by level on **Arguments**, **Scene**, **Entities**, **Locations**, **Dictionary** and **Placeholders**, then your world's names, then their fields. Select a field to insert its full path. A script runs in a sandbox and stops after one second.
 
 When you switch the **Handler Type**, the editor keeps the settings of the other types until you close it.
+
+### What a Script Can Read
+
+A script reads four values. Each one is frozen: a script reads it and cannot change it.
+
+#### Args
+
+`args` holds the values the AI sent, one member for each parameter that has a name. An optional parameter is missing when the AI leaves it out. A **One of a List** parameter holds one of its options.
+
+#### World
+
+`world` holds the world's `entities`, `locations` and `dictionary`. `world.entities` includes the entities the game discovered during play. `world.dictionary` lists the enabled dictionary entries only.
+
+#### Scene
+
+`scene` holds the state of the current scene: `location`, `present`, `inScene`, `stats`, `traits`, `persona`, `notes` and `time`. `scene.location` is `null` when the scene has no location. `scene.time` is `null` while the story clock is off.
+
+#### Placeholders
+
+`placeholders` holds the resolved text of each shared placeholder, by name. A name with a space needs brackets: `placeholders["Place Name"]`.
 
 ## Try It
 
@@ -185,4 +205,4 @@ When you switch the **Handler Type**, the editor keeps the settings of the other
 
 - [📜 Prompts](Prompts): prompt presets, which carry the **Enabled** switches
 - [⚙️ Settings](Settings): the **Tools** row in the **Output** tab, and the text endpoints
-- [🧮 Stat Code Guide](StatCodeGuide): the other place you write JavaScript for a world
+- [🧮 Scripts Guide](ScriptsGuide): the other place you write JavaScript for a world

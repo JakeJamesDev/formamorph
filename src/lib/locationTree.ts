@@ -3,9 +3,9 @@
 // Sibling order is the `locations` array order (no separate `order` field). The editor builds/walks the
 // tree from the single flat array; a drag rewrites the array so its order encodes the new tree.
 
-import { arrayMove } from '@dnd-kit/sortable';
+import { ancestors, parentLookup } from "@/lib/ancestors";
 import { effectiveDestinations } from "@/lib/locationGraph";
-import { clamp } from "@/lib/utils";
+import { anyRowCanParent, knownParent, planTreeDrop, projectDrop, removeCollapsedRows } from "@/lib/treeProjection";
 import type { Connection, GameLocation } from '@/types';
 
 export interface LocationTreeNode {
@@ -17,19 +17,17 @@ export interface LocationTreeNode {
 /** The box a location actually sits in. A parent id pointing at a location that isn't here holds nothing, so
  *  it reads as no parent at all — otherwise the location it names would be nowhere in the tree at all. */
 export function holderOf(locations: GameLocation[], location: GameLocation): string | null {
-  const parentId = location.parentId ?? null;
-  return parentId && locations.some((l) => l.id === parentId) ? parentId : null;
+  return knownParent(location.parentId, { has: (id) => locations.some((l) => l.id === id) });
 }
 
 /** Build the full nested tree of top-level nodes, each carrying its recursive children. Every location is
- *  filed under its holder in one pass, so a deep world costs one walk rather than one per level. */
+ *  filed under its parent in one pass, so a deep world costs one walk rather than one per level. */
 export function buildLocationTree(locations: GameLocation[]): LocationTreeNode[] {
   const known = new Set(locations.map((l) => l.id));
   const childrenOf = new Map<string | null, GameLocation[]>();
   for (const location of locations) {
-    const parentId = location.parentId ?? null;
-    const holder = parentId && known.has(parentId) ? parentId : null;
-    childrenOf.set(holder, [...(childrenOf.get(holder) ?? []), location]);
+    const parent = knownParent(location.parentId, known);
+    childrenOf.set(parent, [...(childrenOf.get(parent) ?? []), location]);
   }
   const build = (parentId: string | null): LocationTreeNode[] =>
     (childrenOf.get(parentId) ?? []).map((l) => ({ id: l.id, location: l, children: build(l.id) }));
@@ -63,68 +61,33 @@ export function locationRows(locations: GameLocation[]): FlatLocationNode[] {
 
 /** Drop every node that descends from any id in `ids` (collapsed nodes, the dragged subtree). */
 export function removeCollapsedChildren(items: FlatLocationNode[], ids: Iterable<string>): FlatLocationNode[] {
-  const exclude = new Set(ids);
-  const out: FlatLocationNode[] = [];
-  for (const item of items) {
-    if (item.parentId !== null && exclude.has(item.parentId)) {
-      exclude.add(item.id);
-      continue;
-    }
-    out.push(item);
-  }
-  return out;
+  return removeCollapsedRows(items, ids);
 }
 
 /** True if `candidateId` is `ancestorId` itself or nested beneath it — guards illegal (cyclic) moves. */
 export function isDescendantLocation(locations: GameLocation[], ancestorId: string, candidateId: string): boolean {
-  const byId = new Map(locations.map((l) => [l.id, l]));
-  let cur: string | null | undefined = candidateId;
-  while (cur) {
-    if (cur === ancestorId) return true;
-    cur = byId.get(cur)?.parentId ?? null;
-  }
-  return false;
+  return candidateId === ancestorId
+    || ancestors(candidateId, parentLookup(locations, (l) => l.parentId)).includes(ancestorId);
 }
 
-/** Remove a location, promoting its direct children up to the removed node's own parent (nothing lost). */
+/** Remove a location. Its direct children move up to its parent, into the slot it held: sibling order is the
+ *  array order, so they take its place in the array. */
 export function removeLocationPromotingChildren(locations: GameLocation[], id: string): GameLocation[] {
   const target = locations.find((l) => l.id === id);
   if (!target) return locations;
   const newParent = target.parentId ?? null;
-  return locations
-    .filter((l) => l.id !== id)
-    .map((l) => ((l.parentId ?? null) === id ? { ...l, parentId: newParent } : l));
+  const children = locations.filter((l) => l.id !== id && (l.parentId ?? null) === id);
+  const promoted = children.map((l) => ({ ...l, parentId: newParent }));
+  const kids = new Set(children.map((l) => l.id));
+  return locations.flatMap((l) => (l.id === id ? promoted : kids.has(l.id) ? [] : [l]));
 }
 
-/** Projected drop `{depth, parentId}` for the active row, given the pointer's horizontal drag offset. */
+/** Projected drop `{depth, parentId}` for the active row. Any location can take children. */
 export function getLocationDropProjection(
   items: FlatLocationNode[], activeId: string, overId: string,
   dragOffset: number, indentationWidth: number,
 ): { depth: number; parentId: string | null } {
-  const overIndex = items.findIndex((i) => i.id === overId);
-  const activeIndex = items.findIndex((i) => i.id === activeId);
-  if (overIndex === -1 || activeIndex === -1) return { depth: 0, parentId: null };
-
-  const activeItem = items[activeIndex];
-  const newItems = arrayMove(items, activeIndex, overIndex);
-  const prev = newItems[overIndex - 1];
-  const next = newItems[overIndex + 1];
-
-  const dragDepth = Math.round(dragOffset / indentationWidth);
-  const projectedDepth = activeItem.depth + dragDepth;
-  // Any location can be a parent, so a row may descend one level past the row above it.
-  const maxDepth = prev ? prev.depth + 1 : 0;
-  const minDepth = next ? next.depth : 0;
-  const depth = clamp(projectedDepth, minDepth, maxDepth);
-
-  const parentId = (() => {
-    if (depth === 0 || !prev) return null;
-    if (depth === prev.depth) return prev.parentId;
-    if (depth > prev.depth) return prev.id;
-    return newItems.slice(0, overIndex).reverse().find((i) => i.depth === depth)?.parentId ?? null;
-  })();
-
-  return { depth, parentId };
+  return projectDrop(items, activeId, overId, dragOffset, indentationWidth, anyRowCanParent);
 }
 
 /**
@@ -137,25 +100,17 @@ export function applyLocationDrop(
   locations: GameLocation[], collapsedIds: Iterable<string>,
   activeId: string, overId: string, dragOffset: number, indentationWidth: number,
 ): GameLocation[] {
-  const full = locationRows(locations);
-  const visible = removeCollapsedChildren(full, [...collapsedIds, activeId]);
-  if (!visible.some((i) => i.id === overId) || !visible.some((i) => i.id === activeId)) return locations;
+  const plan = planTreeDrop(locationRows(locations), collapsedIds, activeId, overId, dragOffset, indentationWidth, {
+    canParent: anyRowCanParent,
+    refuses: (active, parent) => parent !== null && isDescendantLocation(locations, active.id, parent.id),
+  });
+  if (!plan) return locations;
 
-  const { parentId } = getLocationDropProjection(visible, activeId, overId, dragOffset, indentationWidth);
-  if (parentId !== null && isDescendantLocation(locations, activeId, parentId)) return locations;
-
-  const activeIndex = full.findIndex((i) => i.id === activeId);
-  const overIndex = full.findIndex((i) => i.id === overId);
-  if (activeIndex === -1 || overIndex === -1) return locations;
-
-  const reParented = full.map((i) => (i.id === activeId ? { ...i, parentId } : i));
-  const sorted = arrayMove(reParented, activeIndex, overIndex);
-
-  // Apply new parentId to shallow-cloned locations and capture each node's sibling order from `sorted`.
+  // Apply new parentId to shallow-cloned locations and capture each node's sibling order from the move.
   const byId = new Map(locations.map((l) => [l.id, { ...l }]));
   const orderByParent = new Map<string, number>();
   const orderOf = new Map<string, number>();
-  for (const item of sorted) {
+  for (const item of plan.moved) {
     const key = item.parentId ?? '\0root';
     const order = orderByParent.get(key) ?? 0;
     orderByParent.set(key, order + 1);
@@ -191,14 +146,14 @@ export function defaultCollapsedLocations(
   const parents = new Set(locations.map((l) => holderOf(locations, l)).filter((id): id is string => id !== null));
 
   const keep = new Set<string>([currentLocationId, ...effectiveDestinations(currentLocationId, locations, connections).keys()]);
+  const parentIdOf = (id: string) => {
+    const loc = byId.get(id);
+    return loc ? holderOf(locations, loc) : null;
+  };
   const expanded = new Set<string>();
   for (const id of keep) {
-    let cur: string | null = id;
-    while (cur && !expanded.has(cur)) {
-      expanded.add(cur);
-      const loc = byId.get(cur);
-      cur = loc ? holderOf(locations, loc) : null;
-    }
+    expanded.add(id);
+    for (const above of ancestors(id, parentIdOf)) expanded.add(above);
   }
   return new Set([...parents].filter((id) => !expanded.has(id)));
 }

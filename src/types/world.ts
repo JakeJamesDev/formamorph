@@ -27,6 +27,24 @@ export interface StatDescriptor {
 /** What a descriptor threshold's number means: the stat's own units, or a percentage of min→max. */
 export type ThresholdUnit = 'raw' | 'percent';
 
+/** The span the editor shows Regen per. `regen` itself is always per hour. */
+export type RegenUnit = 'minutes' | 'hours' | 'days' | 'weeks';
+
+/** When a script runs: before the turn's AI calls, after the AI's asks and regen land, on each completed
+ *  narration sentence, once at a new playthrough's start, or when a trait switches in play. */
+export type ScriptTiming = 'before' | 'after' | 'output' | 'start' | 'switch';
+
+/** One box of code with a timing, on a stat, a trait or the world. */
+export interface Script {
+  id: string;
+  /** Absent or blank = the owner and timing name it. */
+  name?: string;
+  timing: ScriptTiming;
+  code: string;
+  /** Run position within the timing; absent = after every ordered script, in owner then stat order. */
+  order?: number;
+}
+
 /** A world-defined stat: its schema (type, range, descriptors) plus its live/starting value. */
 export interface Stat {
   id: string;
@@ -35,20 +53,20 @@ export interface Stat {
   description: string;
   min: number;
   max: number;
-  /** Initial value at game start (definition-side). */
+  /** Base Value at game start (definition-side), before traits apply. */
   starting?: number;
   /** Live value. */
   value?: number;
+  /** The change per story hour. */
   regen: number;
+  /** The span the editor shows `regen` per. Absent = hours. */
+  regenUnit?: RegenUnit;
   descriptors: StatDescriptor[];
   /** How this stat's descriptor thresholds read: `raw` in the stat's own units (bands stay put when the
    *  range changes), `percent` as a share of min→max (bands rescale). Absent = raw. */
   thresholdUnit?: ThresholdUnit;
-  /** Optional JS run before the turn's AI calls, on the turn's starting state. Its writes reach that
-   *  turn's prompt. */
-  beforeCode?: string;
-  /** Optional JS run after the AI's asks and regen land. */
-  code?: string;
+  /** Scripts with this stat as `self`, run while the stat is enabled. Absent = none. */
+  scripts?: Script[];
   /** Body-mesh morph target names this stat drives; the value maps linearly across [min, authored max],
    *  so a max raised during the game pushes the influence past 1. */
   morphBindings?: string[];
@@ -110,7 +128,7 @@ export interface StatLink {
 }
 
 /** The fields a stat link may override, absent ones on the original read as off or empty. The name stays the
- *  original's; `value` is the Initial Value. */
+ *  original's; `value` is the Base Value. */
 export interface StatLinkFields {
   type: StatType;
   description: string;
@@ -118,10 +136,10 @@ export interface StatLinkFields {
   max: number;
   value: number;
   regen: number;
+  regenUnit: RegenUnit;
   descriptors: StatDescriptor[];
   thresholdUnit: ThresholdUnit;
-  beforeCode: string;
-  code: string;
+  scripts: Script[];
   morphBindings: string[];
   enabled: boolean;
   hidden: boolean;
@@ -141,12 +159,12 @@ export interface StatChange {
   type?: 'min' | 'max' | 'starting' | 'regen';
   /** Stat-update cadence, e.g. 'hour'. */
   interval?: string;
-  /** On a trait the player can bear, the world player stat, even where the bearer owns a stat with this id. */
+  /** On an owner's trait, the global stat, even where the owner has its own stat with this id. */
   target?: StatRowTarget;
 }
 
-/** Which owner's stat a bearer's trait row names when the id alone could mean two. */
-export type StatRowTarget = 'player';
+/** Whose stat an owner's trait row names when the id alone could mean two. */
+export type StatRowTarget = 'global';
 
 /** A stat this trait switches on or off while active; overrides the stat's own `enabled` default. */
 export interface TraitStatToggle {
@@ -159,8 +177,8 @@ export interface TraitStatToggle {
 /** A placeholder its source forces to a fixed value while the source is active, masking that playthrough's
  *  roll. The one shape every source carries: a trait, a location, a stat descriptor, a placeholder value. */
 export interface PlaceholderPin {
-  /** The target's id. A trait pin may name a blueprint placeholder: on each bearer it then traces to that
-   *  bearer's copy (see lib/blueprints). */
+  /** The target's id. A trait pin may name a blueprint placeholder: on each owner it then traces to that
+   *  owner's copy (see lib/blueprints). */
   placeholderId: string;
   value: string;
   /** The pinned value's id, when the pin names one the placeholder carries. Preferred over `value`, so a
@@ -179,18 +197,36 @@ export interface BlueprintOverride<V> {
 export type BlueprintOverrides<T> = { [K in keyof T]?: BlueprintOverride<T[K]> };
 
 /** Whose active set a requirement reads: the played persona's, or a named entity's. `name` is the entity's
- *  name when it was stored, so an unresolved one still reads. Absent on a requirement = the same bearer. */
-export type RequirementBearer =
+ *  name when it was stored, so an unresolved one still reads. Absent on a requirement = the same owner. */
+export type RequirementOwner =
   | { kind: 'you' }
   | { kind: 'entity'; id: string; name?: string };
 
-/** One Condition of a gate: a trait is active, any trait below a group is active, or the player plays as a
- *  world entity. `name` is the target's name when it was stored, so an unresolved one still reads. `not`
- *  flips it: the Condition holds while its target is off. */
+/** How a stat Condition compares the stat to its number. */
+export type StatComparison = '>' | '<' | '>=' | '<=' | '=' | '≠';
+
+/** One Condition of a gate: a trait is active, any trait below a group is active, the player plays as a
+ *  world entity, or an owner's stat compares to a number. `name` is the target's name when it was stored, so
+ *  an unresolved one still reads. `not` flips it: the Condition holds while its target is off, or while a stat
+ *  fails its comparison. A stat Condition's `value` is in the stat's own units under `raw`, or a share of its
+ *  min→max span under `percent`. */
 export type TraitRequirement =
-  | { kind: 'trait'; id: string; name?: string; bearer?: RequirementBearer; not?: true }
-  | { kind: 'group'; id: string; name?: string; bearer?: RequirementBearer; not?: true }
-  | { kind: 'playingAs'; id: string; name?: string; not?: true };
+  | { kind: 'trait'; id: string; name?: string; owner?: RequirementOwner; not?: true }
+  | { kind: 'group'; id: string; name?: string; owner?: RequirementOwner; not?: true }
+  | { kind: 'playingAs'; id: string; name?: string; not?: true }
+  | StatRequirement;
+
+/** A stat Condition: see {@link TraitRequirement}. */
+export interface StatRequirement {
+  kind: 'stat';
+  id: string;
+  name?: string;
+  owner?: RequirementOwner;
+  operator: StatComparison;
+  value: number;
+  unit: ThresholdUnit;
+  not?: true;
+}
 
 /** One Requirement Row: it holds when every Condition in it holds. Never empty. */
 export interface TraitRequirementRow {
@@ -229,7 +265,7 @@ export interface TreePlacement {
   order: number;
 }
 
-/** A node under a bearer that points at a world trait or group, the original, and reads it live. It stores
+/** A node under an owner that points at a world trait or group, the original, and reads it live. It stores
  *  only its own place and per-link data; the original's text, gates and pins reach every link. */
 export interface TraitLink {
   id: string;
@@ -238,9 +274,9 @@ export interface TraitLink {
   kind: 'trait' | 'group';
   /** The original's name when the link was stored, so it travels off-world and rebinds by name. */
   originalName: string;
-  /** null = the bearer's root; otherwise one of the bearer's own groups. */
+  /** null = the owner's root; otherwise one of the owner's own groups. */
   groupId: string | null;
-  /** Sibling order among the bearer's items sharing the same parent. */
+  /** Sibling order among the owner's items sharing the same parent. */
   order?: number;
   /** Original trait id → this link's overrides on that trait. A trait absent here, or a field absent in its
    *  map, reads the original live. A linked group keys its children here. */
@@ -259,6 +295,8 @@ export interface TraitLinkFields {
   statChanges: StatChange[];
   /** 'optional' stands for an absent `Trait.mode`, so an override to Optional survives the JSON export. */
   mode: 'optional' | TraitMode;
+  /** One override for the whole list, as a stat link's. */
+  scripts: Script[];
 }
 
 export type TraitLinkOverrides = BlueprintOverrides<TraitLinkFields>;
@@ -289,10 +327,19 @@ export interface Trait {
   /** Absent = Optional. Automatic (stored `alwaysOn`) is active exactly while its gate holds, and the player never
    *  switches it. Hidden acts as Automatic. Both ignore `isDefault` and `playerToggle`. */
   mode?: TraitMode;
+  /** Scripts with this trait as `self`. Absent = none. */
+  scripts?: Script[];
 }
 
 /** A trait's non-Optional mode. */
 export type TraitMode = 'alwaysOn' | 'hidden';
+
+/** One picture in an entity's gallery. */
+export interface GalleryImage {
+  data: Base64Data;
+  /** The Visibility rule: in play any one row that holds shows the image. Absent or empty = always shown. */
+  requires?: TraitRequirementRow[];
+}
 
 /** A character or object in the world, with separate player-facing and AI-facing descriptions plus optional media. */
 export interface Entity {
@@ -310,7 +357,7 @@ export interface Entity {
    *  scene. Read only with the Persona mark. */
   personaOnly?: boolean;
   /** Marks the entity as the Custom Persona: the player's own entity under None and under a library persona,
-   *  never in the cast (see lib/bearers). At most one per world, at the root. Excludes the Persona marks and
+   *  never in the cast (see lib/owners). At most one per world, at the root. Excludes the Persona marks and
    *  implies persona-only. */
   customPersona?: boolean;
   /** Where a world persona begins, flagged as a starting location or not. Absent = Automatic: the first of
@@ -326,7 +373,7 @@ export interface Entity {
   /** The entity's gallery, in author order. Slot 0 is the primary — the one picture shown wherever only one
    *  fits (library grid, listing art, character-card pixels) — and in game the player pages through the rest.
    *  Read it through `lib/entityImages`, which also covers records written before the gallery. */
-  images?: Base64Data[];
+  images?: GalleryImage[];
   /**
    * Listing tags, the same kind a world carries — how somebody browsing Community Creations finds this.
    *
@@ -356,19 +403,20 @@ export interface Entity {
   openings?: Opening[];
   /** Relative draw weight per opening id; an opening absent from the map weighs 1, and 0 benches it. */
   openingWeights?: Record<string, number>;
-  /** Traits this entity owns. They describe it to the AI, and join the player's traits when the player plays
-   *  as it. They carry no stat changes and no stat toggles. Ids are unique across the world and every entity. */
+  /** Traits this entity owns. They describe it to the AI, and are the persona's traits when the player plays
+   *  as it. Their stat changes and toggles act on the entity's own stats, and on the global stats where the
+   *  entity does not own the stat or the row targets global. Ids are unique across the world and every entity. */
   traits?: Trait[];
   /** Groups for this entity's own traits, nestable via `parentId` like the world's. */
   traitGroups?: TraitGroup[];
-  /** Links to world traits and groups, placed among the entity's own items (see lib/bearers). Each original
+  /** Links to world traits and groups, placed among the entity's own items (see lib/owners). Each original
    *  appears at most once in the entity's tree, directly or through a linked group. */
   traitLinks?: TraitLink[];
   /** Where this entity's node sits in the world's Traits tree: a world group and a sibling order. Absent,
    *  or a group that no longer exists, = the end of the top level. */
   traitPlacement?: TreePlacement;
-  /** Stats this entity owns: the world stat type, every field. Order is list order. Absent = none. Authored
-   *  here only; play does not read them yet. */
+  /** Stats this entity owns: the world stat type, every field. Order is list order. Absent = none. In play
+   *  they are the entity's own values, and the persona's stats when the entity is played. */
   stats?: Stat[];
   /** Groups for this entity's own stats, nestable via `parentId` like the world's. */
   statGroups?: StatGroup[];
@@ -611,6 +659,9 @@ export interface WorldOverview {
   allowedPersonas?: AllowedPersonas;
   /** The persona a new player starts on. Absent = the player's default persona. */
   startPersona?: StartPersona;
+  /** Strip Links And Images: narration history reaches every request as plain text (see
+   *  lib/stripLinksAndImages). Absent = off; a new world sets `true`. */
+  stripLinksAndImages?: boolean;
 }
 
 /** `world` limits the pickers to this world's personas and its Custom Persona. Applied by lib/personaPick. */
@@ -662,6 +713,8 @@ export interface World {
    *  (chips pick World or Unique); an Object shows all of them; one value is a Variable either way. Resolved
    *  at gameplay boundaries (see lib/placeholders); the name/token never reaches runtime. */
   placeholders?: Placeholder[];
+  /** Scripts no stat or trait owns; they run with no `self`. Absent = none. */
+  scripts?: Script[];
 }
 
 /** One authored value: a stable id and the author's text. The id is minted once and never changes, so a
@@ -707,7 +760,7 @@ export interface Placeholder {
   valueOverrides?: Record<string, CopyValueOverrides>;
   /** The editor folder this placeholder sits in on the Placeholders tab; null/absent = ungrouped. Only a
    *  shared placeholder is grouped: a scoped one sits under its entity or book, an owned one under its
-   *  holder. Editor-only, never sent to the AI, and dropped from card and dictionary exports. */
+   *  parent placeholder. Editor-only, never sent to the AI, and dropped from card and dictionary exports. */
   groupId?: string | null;
 }
 
@@ -766,7 +819,7 @@ export interface PlaceholderGroup {
   /** Sibling order among groups sharing the same parent. */
   order?: number;
   /** `blueprints` marks the world's Blueprints group: its shared placeholders are blueprints, read per
-   *  bearer through copies and never as World placeholders. At most one, at the top level. */
+   *  owner through copies and never as World placeholders. At most one, at the top level. */
   system?: 'blueprints';
 }
 

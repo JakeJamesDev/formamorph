@@ -1,12 +1,13 @@
 /**
  * The repair behind the `image-not-webp` row. It can't be one of the registry's pure `fix` functions — every
  * image has to be decoded and re-encoded — so it lives beside the rule seam and the Bench hook runs it on
- * demand, the way the stat-code check runs.
+ * demand, the way the script check runs.
  *
  * It re-derives what to convert from the world it is handed, so a run started before an edit converts what
  * that world held, and the caller decides whether that result is still current.
  */
 import { entityImages } from '@/lib/entityImages';
+import type { GalleryImage } from '@/types';
 import { dataUrlMime, isConvertibleImage, reencodeKeepsAnimation, relabelDataUrl } from '@/lib/imageBytes';
 import { describeKeptImages, reencodeImageDataUrl } from '@/lib/imageOptim';
 import type { RuleWorld } from './rules';
@@ -66,12 +67,12 @@ export async function convertWorldImagesToWebp(world: RuleWorld): Promise<WebpFi
   let entitiesChanged = false;
   const entities: RuleWorld['entities'] = [];
   for (const entity of world.entities ?? []) {
-    const images: string[] = [];
+    const images: GalleryImage[] = [];
     let touched = false;
-    for (const url of entityImages(entity)) {
-      const next = await convert(url);
-      if (next !== url) touched = true;
-      images.push(next);
+    for (const img of entityImages(entity)) {
+      const next = await convert(img.data);
+      if (next !== img.data) touched = true;
+      images.push({ ...img, data: next });
     }
     entitiesChanged ||= touched;
     entities.push(touched ? { ...entity, images } : entity);

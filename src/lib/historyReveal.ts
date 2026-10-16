@@ -2,6 +2,7 @@ import {
   touchedIds, type RecordSliceName, type SliceEdit, type SliceName, type Step, type StepOrigin, type WorldSlices,
 } from '@/lib/editorHistory';
 import type { FindingSection } from '@/lib/testBench/rules';
+import { scriptEntryKey } from '@/lib/worldScripts';
 import type { Dictionary, DictionaryEntry } from '@/types';
 
 /** The World Editor tabs a Step can reveal. */
@@ -40,6 +41,7 @@ const SLICE_TABS: Partial<Record<SliceName, RevealTab>> = {
   dictionaries: 'dictionary',
   placeholders: 'placeholders',
   placeholderGroups: 'placeholders',
+  scripts: 'scripts',
 };
 
 const entriesById = (book: Dictionary | undefined) =>
@@ -76,9 +78,10 @@ export function revealTarget(step: Step, world: WorldSlices): RevealTarget | nul
     const [touched] = touchedIds(edit);
     if (touched === undefined) return { tab };
     const present = (world[edit.slice as RecordSliceName] as { id: string }[]).some((record) => record.id === touched);
-    const id = edit.slice === 'dictionaries' && present
-      ? dictionaryRecordId(touched, edit.before, edit.after, world)
-      : touched;
+    // The Scripts tab keys a row by its home and the script's id.
+    const id = edit.slice === 'dictionaries' && present ? dictionaryRecordId(touched, edit.before, edit.after, world)
+      : edit.slice === 'scripts' ? scriptEntryKey({ kind: 'world' }, touched)
+        : touched;
     return {
       tab, id,
       ...(present ? {} : { gone: true }),

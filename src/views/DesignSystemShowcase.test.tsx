@@ -352,9 +352,9 @@ describe('sections bar reference', () => {
     const sections = () => within(region).getByRole('button', { name: /^Sections/ });
     const bar = () => within(region).getByRole('tablist', { name: 'Editor Sections' });
     await user.click(sections());
-    expect(within(bar()).getAllByRole('tab')).toHaveLength(7);
+    expect(within(bar()).getAllByRole('tab')).toHaveLength(8);
     // Lines split the groups; no group name is drawn.
-    expect(bar().querySelectorAll('[data-sections-separator]')).toHaveLength(2);
+    expect(bar().querySelectorAll('[data-sections-separator]')).toHaveLength(3);
     expect(within(bar()).queryByText('Content')).toBeNull();
     await user.click(within(bar()).getByRole('tab', { name: 'Traits' }));
     expect(sections()).toHaveTextContent('Traits');
@@ -375,7 +375,7 @@ describe('nav rail reference', () => {
 
     const region = screen.getByRole('region', { name: 'Nav Rail' });
     const rail = within(region).getByRole('tablist', { name: 'Sample Editor Sections' });
-    expect(within(rail).getAllByRole('tab')).toHaveLength(7);
+    expect(within(rail).getAllByRole('tab')).toHaveLength(8);
     await user.click(within(rail).getByRole('tab', { name: 'Traits' }));
     expect(within(region).getByText('The trait tree beside the selected trait\'s details.')).toBeInTheDocument();
 
@@ -406,6 +406,53 @@ describe('history controls reference', () => {
 
     await user.click(within(pill).getByRole('button', { name: 'History' }));
     expect(within(region).getByRole('dialog', { name: 'History' })).toBeInTheDocument();
+    expect(localStorage).toHaveLength(0);
+  });
+});
+
+describe('chip options reference', () => {
+  it('opens the production dialog on each sample and writes no storage', async () => {
+    const user = userEvent.setup();
+    renderShowcase();
+    await user.click(screen.getByRole('tab', { name: 'Chip Options' }));
+    expect(screen.getByRole('region', { name: 'Chip Options Reference' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Open Entities Chip' }));
+    const entities = await screen.findByRole('dialog', { name: 'Chip Options' });
+    expect(within(entities).getByText('What the AI Reads')).toBeInTheDocument();
+    for (const row of ['Only With', 'Include', 'Stat Detail']) {
+      expect(within(entities).getByRole('group', { name: row })).toBeInTheDocument();
+    }
+    const onlyWithStats = within(within(entities).getByRole('group', { name: 'Only With' })).getByRole('checkbox', { name: 'Stats' });
+    expect(onlyWithStats).not.toBeChecked();
+    await user.click(onlyWithStats);
+    expect(onlyWithStats).toBeChecked();
+    await user.keyboard('{Escape}');
+
+    await user.click(screen.getByRole('button', { name: 'Open Placeholder Chip' }));
+    const placeholder = await screen.findByRole('dialog', { name: 'Chip Options' });
+    expect(within(placeholder).queryByText('What the AI Reads')).toBeNull();
+    await user.keyboard('{Escape}');
+
+    await user.click(screen.getByRole('checkbox', { name: 'Editable' }));
+    await user.click(screen.getByRole('button', { name: 'Open Stats Chip' }));
+    const readOnly = await screen.findByRole('dialog', { name: 'Chip Options' });
+    within(within(readOnly).getByRole('group', { name: 'Stat Detail' })).getAllByRole('checkbox')
+      .forEach((box) => expect(box).toBeDisabled());
+    expect(localStorage).toHaveLength(0);
+  });
+});
+
+describe('code hover card reference', () => {
+  it('shows the card and the Find All Uses list in both themes, writing no storage', async () => {
+    const user = userEvent.setup();
+    renderShowcase();
+    await user.click(screen.getByRole('tab', { name: 'Code Hover Card' }));
+
+    const region = screen.getByRole('region', { name: 'Code Hover Card Reference' });
+    for (const theme of ['Light Theme', 'Dark Theme']) {
+      expect(within(within(region).getByRole('region', { name: theme })).getByRole('region', { name: 'Stat' })).toHaveTextContent('stats.Fatigue');
+    }
     expect(localStorage).toHaveLength(0);
   });
 });

@@ -48,7 +48,7 @@ export interface TreeRowSpec {
   label: ReactNode;
   /** Extra classes on the label span (e.g. 'font-medium' for group headers). */
   labelClass?: string;
-  /** Secondary text before the actions, such as a holder count. */
+  /** Secondary text before the actions, such as a used-by count. */
   meta?: ReactNode;
   /** Tooltip for {@link TreeRowSpec.meta}, which is usually too terse to read on its row. */
   metaTitle?: string;
@@ -67,6 +67,8 @@ export interface TreeRowSpec {
   /** The row is derived from something else (an owner node read off an entity): it cannot be dragged, and
    *  rows may still be dropped beside or under it. */
   fixed?: boolean;
+  /** Dims the row at rest, as an off entry is dimmed. */
+  faded?: boolean;
 }
 
 /** What a specific tree plugs into the shared scaffold. */
@@ -89,7 +91,7 @@ export interface SortableTreeAdapter<N extends { id: string; depth: number }> {
   /** Commit a drop. */
   onDrop: (activeId: string, overId: string, offsetLeft: number, collapsed: Set<string>) => void;
   /** What `selectedId` and `onSelect` speak in, where a row is not itself the thing being selected — a
-   *  placeholder draws a row under every holder that shares it, and all of them are that one placeholder.
+   *  placeholder draws a row under every parent placeholder that shares it, and all of them are that one placeholder.
    *  Defaults to the row's own id. */
   selectionId?: (node: N) => string;
   /** `select` stays the same function across renders, so a button built into the spec never goes stale. */
@@ -155,7 +157,7 @@ function TreeRowBase<N extends { id: string; depth: number }>({
     // Translate (not Transform): Transform bakes in a scale that resizes the dragged row to the target slot.
     transform: CSS.Translate.toString(rowTransform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging || row.faded ? 0.5 : 1,
   };
   return (
     <EditorRow

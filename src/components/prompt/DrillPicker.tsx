@@ -19,7 +19,7 @@ import ChipRowHeading from './ChipRowHeading';
  * re-aiming a guessing game. Aiming a chip at one another placeholder owns is refused instead, with the
  * offer to promote it — a fork in the road rather than a wall.
  *
- * Opened from a chip's pop-out, seeded at the path that chip already carries: the level it stands on is what
+ * Opened from Chip Options, seeded at the path that chip already carries: the level it stands on is what
  * the picker shows first, and its trail is the way back out.
  */
 

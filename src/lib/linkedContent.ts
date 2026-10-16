@@ -1,9 +1,10 @@
 import { adoptBookPlaceholders, adoptEntityPlaceholders } from '@/lib/placeholderHomes';
 import { comparableOwnedStats } from '@/lib/portableStats';
-import { adoptOwnedTraits, comparableOwnedTraits, traitWorldOf, type TraitWorld } from '@/lib/portableTraits';
+import { adoptOwnedTraits, bindOwnedRules, comparableOwnedTraits, traitWorldOf, type TraitWorld } from '@/lib/portableTraits';
 import { bindCarriedBlueprints } from '@/lib/blueprintTravel';
 import { followedLibraryId } from '@/lib/publishLinks';
 import { entityTexts } from '@/lib/entityTexts';
+import { entityImages } from '@/lib/entityImages';
 import { randomUUID } from '@/lib/uuid';
 import type { CommunityLink, ContentLink, Dictionary, Entity, Placeholder, PlaceholderGroup } from '@/types';
 
@@ -148,9 +149,13 @@ export function chipTexts(item: LinkableContent): string[] {
 
 /** The authored content of one item, ready to compare. Dictionary entry ids go too: every copy mints its
  *  own, so two identical books never share them. */
-function authoredContent(item: LinkableContent): unknown {
+function authoredContent(raw: LinkableContent, world?: TraitWorld): unknown {
+  // Both sides read the owners the copy's world drops, whichever side stored one (Q19).
+  const item = world && !('entries' in raw) ? bindOwnedRules(raw, world) : raw;
   const shed: Record<string, unknown> = withoutWorldFields(item);
-  if (!('entries' in item) && (item.traits || item.traitLinks)) Object.assign(shed, comparableOwnedTraits(item));
+  // A world file read before migration still holds data strings; the library copy holds images.
+  if (!('entries' in item) && item.images) shed.images = entityImages(item);
+  if (!('entries' in item) && (item.traits || item.traitLinks || item.images)) Object.assign(shed, comparableOwnedTraits(item));
   if (!('entries' in item) && item.statLinks) Object.assign(shed, comparableOwnedStats(item));
   if (Array.isArray(shed.entries)) {
     shed.entries = (shed.entries as { id?: string }[]).map(({ id: _entryId, ...entry }) => entry);
@@ -159,9 +164,10 @@ function authoredContent(item: LinkableContent): unknown {
 }
 
 /** Whether the copy still holds exactly what the source holds. Names alone prove nothing, so this reads
- *  the whole authored payload. */
-export function contentMatchesSource(copy: LinkableContent, source: LinkableContent): boolean {
-  return JSON.stringify(authoredContent(copy)) === JSON.stringify(authoredContent(source));
+ *  the whole authored payload. `world` is the copy's: it binds each side's trait requirements, so an owner the
+ *  world drops cannot make the two differ. */
+export function contentMatchesSource(copy: LinkableContent, source: LinkableContent, world?: TraitWorld): boolean {
+  return JSON.stringify(authoredContent(copy, world)) === JSON.stringify(authoredContent(source, world));
 }
 
 /** The world-owned fields an update keeps from the copy. The placeholder lists and the carried blueprints are
@@ -259,7 +265,7 @@ export interface WriteBack {
  * lookup did not answer, or one without content, is not written.
  */
 export function planWriteBack(
-  world: WorldContent, sources: LibrarySource[], shape: (copy: LinkableContent) => LinkableContent,
+  world: WorldContent, sources: LibrarySource[], shape: (copy: LinkableContent) => LinkableContent, traitWorld?: TraitWorld,
 ): WriteBack[] {
   const byId = new Map(sources.map((source) => [source.id, source]));
   return [...world.entities, ...world.dictionaries].flatMap((copy) => {
@@ -269,7 +275,7 @@ export function planWriteBack(
     if (!source?.owned || !source.data) return [];
     // Compared in library form, which names what the copy's owned traits require, as the item stores them.
     const content = shape(copy);
-    if (contentMatchesSource(content, source.data)) return [];
+    if (contentMatchesSource(content, source.data, traitWorld)) return [];
     return [{ copy, source, content }];
   });
 }

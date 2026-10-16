@@ -1,54 +1,49 @@
 /**
- * Which of a stat's two code boxes something belongs to. Its own module because the editor, the template
- * library, the Test Bench and the help text all name a box, and none of them should pull the turn runner
- * — and the QuickJS engine behind it — in to do it.
+ * A stat's scripts as the readers see them, and the two timings the templates and the test clock know. Its own
+ * module because the editor, the template library, the Test Bench and the help text all name a box, and none of
+ * them should pull the turn runner — and the QuickJS engine behind it — in to do it.
  */
 
-import type { PlayerStat } from '@/types';
+import type { Script, ScriptTiming } from '@/types';
+import { filledScripts, SCRIPT_TIMING_LABEL, type ScriptHome } from './scripts';
 
+/** The two timings a stat's Code tab shows a box for. */
 export type StatCodeTiming = 'before' | 'after';
+
+/** The timings the runner runs over a turn's stats: the two boxes, At Game Start before the opening, During
+ *  AI Output, which runs one narration sentence at a time, and When a Trait Switches, once per switch. */
+export type RunTiming = StatCodeTiming | 'start' | 'output' | 'switch';
+
+/** Whether a run reads the turn's starting state: no ask, no regen and every delta zero. */
+export const readsTurnStart = (timing: RunTiming): boolean => timing !== 'after';
 
 /** Both boxes in the order the turn runs them. */
 export const STAT_CODE_TIMINGS = ['before', 'after'] as const satisfies readonly StatCodeTiming[];
 
+/** The template menu and test clock a script's timing reads: every timing but Before the AI reads After the AI's. */
+export const statCodeTimingOf = (timing: ScriptTiming): StatCodeTiming => (timing === 'before' ? 'before' : 'after');
+
 /** What each box is called wherever an author reads it: the editor caption, the template menu, the help,
  *  the Test Bench findings. */
-export const TIMING_LABEL: Record<StatCodeTiming, string> = {
-  before: 'Before the AI',
-  after: 'After the AI',
+export const TIMING_LABEL = SCRIPT_TIMING_LABEL;
+
+/** A box's name where its stat is named beside it, as in a Find All Uses row. */
+export const TIMING_SHORT: Record<Script['timing'], string> = {
+  before: 'Before', after: 'After', output: 'Output', start: 'Start', switch: 'Switch',
 };
 
-/** Each box's target on the stat's Code tab, for a landing on it. */
-export const CODE_BOX_TARGET = { before: 'before-code', after: 'after-code' } as const satisfies Record<StatCodeTiming, string>;
-
-/** The confirm before an insert replaces a box's code, shared by the templates and the help window. */
+/** The confirm before a template replaces a box's code. */
 export const REPLACE_CODE_TITLE = 'Replace The Existing Code';
-export const replaceCodeDescription = (inserted: 'template' | 'code') =>
-  `This box already has code. Inserting this ${inserted} overwrites it.`;
+export const REPLACE_CODE_DESCRIPTION = 'This box already has code. Inserting this template overwrites it.';
 
-/** A stat as far as its two boxes go. Everything that reads code takes this much and no more. */
-export type CodedStat = Pick<PlayerStat, 'beforeCode' | 'code'>;
+/** A stat as far as its scripts go. Everything that reads code takes this much and no more. */
+export type CodedStat = ScriptHome;
 
-/** Which field of a stat each box is. The one place the two names meet, so a reader and a writer cannot
- *  disagree about which box they are working on. */
-export const CODE_FIELD: Record<StatCodeTiming, keyof CodedStat> = { before: 'beforeCode', after: 'code' };
+/** Whether a stat holds no script with code. */
+export const noBoxes = (stat: CodedStat): boolean => filledScripts(stat).length === 0;
 
-/** The box a run reads on one stat, empty where that stat leaves the box blank. */
-export const boxCode = (stat: CodedStat, timing: StatCodeTiming): string => stat[CODE_FIELD[timing]] ?? '';
+/** One script that holds code, for a reader that visits every script and says which it reports on. */
+export type CodeBox = Script;
 
-/** Whether a stat leaves both boxes blank. */
-export const noBoxes = (stat: CodedStat): boolean =>
-  STAT_CODE_TIMINGS.every((timing) => !boxCode(stat, timing).trim());
-
-/** One box that holds code, for a reader that has to visit both and say which it is reporting on. */
-export interface CodeBox {
-  timing: StatCodeTiming;
-  code: string;
-}
-
-/** The boxes a stat actually fills, in turn order. A blank box is left out rather than reported on. */
-export const filledCodeBoxes = (stat: CodedStat): CodeBox[] =>
-  STAT_CODE_TIMINGS.flatMap((timing) => {
-    const code = boxCode(stat, timing);
-    return code.trim() ? [{ timing, code }] : [];
-  });
+/** The scripts a stat fills, in stored order. A blank script is left out rather than reported on. */
+export const filledCodeBoxes = (stat: CodedStat): CodeBox[] => filledScripts(stat);

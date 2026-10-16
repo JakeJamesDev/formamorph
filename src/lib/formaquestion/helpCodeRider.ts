@@ -7,11 +7,11 @@ import type { SurfaceId } from '@/lib/docs/surfaceMap';
 import type { Surface } from '@/lib/surface/surfaceRegistry';
 import { STAT_CODE_TIMINGS, TIMING_LABEL, type StatCodeTiming } from '@/lib/statCodeTiming';
 
-/** The language the rider asks for, as the Stat Code guide writes its fences. */
+/** The language the rider asks for, as the Scripts guide writes its fences. */
 export const CODE_RIDER_LANGUAGE = 'javascript';
 
 /** The stat panel's Code tab, as the surface registry reports it. */
-export const STAT_CODE_TAB: SurfaceId = 'worldEditorStat.code';
+export const SCRIPT_TAB: SurfaceId = 'worldEditorStat.code';
 
 const boxName = (slot: StatCodeTiming) => TIMING_LABEL[slot];
 
@@ -21,20 +21,20 @@ const boxName = (slot: StatCodeTiming) => TIMING_LABEL[slot];
  * It names the sandbox objects, since without them the model invents variable names that throw.
  */
 export const DEFAULT_CODE_RIDER = [
-  'The player wants stat code. Answer with a fenced block of working JavaScript that does the whole task:',
+  'The player wants a script. Answer with a fenced block of working JavaScript that does the whole task:',
   '- Write the code yourself from the rules in the guide sections. The guide has no script for most tasks.',
   `- Write the whole contents of the box the task needs. Name the box in one sentence: ${STAT_CODE_TIMINGS.map((slot) => `**${boxName(slot)}**`).join(' or ')}. Then give the block.`,
-  '- Read the stat whose code it is as `self`, other stats through `stats`, traits through `traits`, placeholders through `placeholders`, and the time through `clock`.',
+  '- Read the stat whose code it is as `self`, the world\'s stats through `stats`, the stats of the entity that owns it through `owner.stats`, traits through `traits`, placeholders through `placeholders`, and the time through `clock`.',
   `- The app reads the word after \`${CODE_RIDER_LANGUAGE}\` on the opening line to put the code in the right box: ${STAT_CODE_TIMINGS.map((slot) => `\`${slot}\` for **${boxName(slot)}**`).join(', ')}.`,
   ...STAT_CODE_TIMINGS.map((slot) => `- Start the block of the **${boxName(slot)}** box with this line: \`\`\`${CODE_RIDER_LANGUAGE} ${slot}`),
   '- After the block, write at most three short steps.',
 ].join('\n');
 
 /**
- * The names the stat-code sandbox injects. A copy, so the help bundle does not pull in the sandbox engine; a
+ * The names the script sandbox injects. A copy, so the help bundle does not pull in the sandbox engine; a
  * drift test holds it to the sandbox's own list.
  */
-export const SANDBOX_GLOBAL_NAMES = ['self', 'stats', 'clock', 'placeholders', 'traits', 'entities', 'persona', 'dictionaries', 'console'] as const;
+export const SANDBOX_GLOBAL_NAMES = ['self', 'owner', 'stats', 'clock', 'placeholders', 'traits', 'entities', 'persona', 'dictionaries', 'console'] as const;
 
 const GLOBALS = SANDBOX_GLOBAL_NAMES.join('|');
 
@@ -54,11 +54,11 @@ const CODE_WORDS: readonly RegExp[] = [
 /** True when the question uses a code word. */
 export const hasCodeWords = (question: string): boolean => CODE_WORDS.some((word) => word.test(question));
 
-/** The Stat Code Guide section that lists the whole sandbox API. Every code turn sends it. */
-export const QUICK_REFERENCE_SECTION = 'StatCodeGuide#quick-reference';
+/** The Scripts Guide section that lists the whole sandbox API. Every code turn sends it. */
+export const QUICK_REFERENCE_SECTION = 'ScriptsGuide#quick-reference';
 
 /** True when a stat's Code tab is open. */
-export const isOnCodeTab = (surface?: Surface | null): boolean => surface?.tabs.includes(STAT_CODE_TAB) === true;
+export const isOnCodeTab = (surface?: Surface | null): boolean => surface?.tabs.includes(SCRIPT_TAB) === true;
 
 /** True when the turn rides the rider: a stat's Code tab is open, or the question uses a code word. */
 export const isCodeTurn = (question: string, surface?: Surface | null): boolean => isOnCodeTab(surface) || hasCodeWords(question);

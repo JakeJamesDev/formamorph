@@ -1,4 +1,5 @@
 import type { EndpointSampler } from '@/lib/endpointSamplers';
+import { extraParamsOf } from '@/lib/extraParams';
 import { AiStreamError } from './aiStream';
 import type { AiRequestSpec } from './aiRequestSpec';
 
@@ -39,6 +40,8 @@ export function rejectedEndpointOverride(error: unknown, spec: AiRequestSpec): R
   if (!parameter) return null;
 
   if (parameter === 'max_tokens' || parameter === 'max_completion_tokens') {
+    // The app never sends `max_completion_tokens`, so one from the Extra Parameters is theirs, not Max Output's.
+    if (parameter === 'max_completion_tokens' && Object.hasOwn(extraParamsOf(spec.target.extraParams), parameter)) return null;
     return spec.maxTokensSource === 'endpoint' ? 'maxOutput' : null;
   }
   const sampler = SAMPLER_BY_PARAMETER[parameter];

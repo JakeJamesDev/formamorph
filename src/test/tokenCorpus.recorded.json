@@ -1,0 +1,1616 @@
+[
+ {
+  "token": "<ACTIVE CHARACTER GUIDANCE>",
+  "parts": {
+   "base": "<ACTIVE CHARACTER GUIDANCE>",
+   "variantId": null,
+   "pre": "",
+   "post": "",
+   "key": "<ACTIVE CHARACTER GUIDANCE>"
+  },
+  "selection": {}
+ },
+ {
+  "token": "<CHARACTER NAME>",
+  "parts": {
+   "base": "<CHARACTER NAME>",
+   "variantId": null,
+   "pre": "",
+   "post": "",
+   "key": "<CHARACTER NAME>"
+  },
+  "selection": {}
+ },
+ {
+  "token": "<DICTIONARY>",
+  "parts": {
+   "base": "<DICTIONARY>",
+   "variantId": null,
+   "pre": "",
+   "post": "",
+   "key": "<DICTIONARY>"
+  },
+  "selection": {
+   "variant": null
+  }
+ },
+ {
+  "token": "<DICTIONARY|before>",
+  "parts": {
+   "base": "<DICTIONARY>",
+   "variantId": "before",
+   "pre": "",
+   "post": "",
+   "key": "<DICTIONARY|before>"
+  },
+  "selection": {
+   "variant": "before"
+  }
+ },
+ {
+  "token": "<DICTIONARY|before|format=markdown|header=\"Background Lore\">",
+  "parts": {
+   "base": "<DICTIONARY>",
+   "variantId": "before",
+   "pre": "",
+   "post": "",
+   "key": "<DICTIONARY|before>",
+   "headerFormat": "markdown",
+   "header": "Background Lore"
+  },
+  "selection": {
+   "variant": "before"
+  }
+ },
+ {
+  "token": "<DICTIONARY|before|pre=\"Facts about the world that are true throughout the story.\\n\\n\"|format=markdown|header=\"Background Lore\">",
+  "parts": {
+   "base": "<DICTIONARY>",
+   "variantId": "before",
+   "pre": "Facts about the world that are true throughout the story.\\n\\n",
+   "post": "",
+   "key": "<DICTIONARY|before>",
+   "headerFormat": "markdown",
+   "header": "Background Lore"
+  },
+  "selection": {
+   "variant": "before"
+  }
+ },
+ {
+  "token": "<DICTIONARY|format=markdown|header=\"Foreground Lore\">",
+  "parts": {
+   "base": "<DICTIONARY>",
+   "variantId": null,
+   "pre": "",
+   "post": "",
+   "key": "<DICTIONARY>",
+   "headerFormat": "markdown",
+   "header": "Foreground Lore"
+  },
+  "selection": {
+   "variant": null
+  }
+ },
+ {
+  "token": "<DICTIONARY|pre=\"Specific details about the world that apply to the current scene.\\n\\n\"|format=markdown|header=\"Foreground Lore\">",
+  "parts": {
+   "base": "<DICTIONARY>",
+   "variantId": null,
+   "pre": "Specific details about the world that apply to the current scene.\\n\\n",
+   "post": "",
+   "key": "<DICTIONARY>",
+   "headerFormat": "markdown",
+   "header": "Foreground Lore"
+  },
+  "selection": {
+   "variant": null
+  }
+ },
+ {
+  "token": "<ENTITIES>",
+  "parts": {
+   "base": "<ENTITIES>",
+   "variantId": null,
+   "pre": "",
+   "post": "",
+   "key": "<ENTITIES>"
+  },
+  "selection": {
+   "scope": null,
+   "content": null,
+   "stats": null,
+   "format": null
+  }
+ },
+ {
+  "token": "<ENTITIES|inscene.name|pre=\", with \"|post=\" present\">",
+  "parts": {
+   "base": "<ENTITIES>",
+   "variantId": "inscene.name",
+   "pre": ", with ",
+   "post": " present",
+   "key": "<ENTITIES|inscene.name>"
+  },
+  "selection": {
+   "scope": "inscene",
+   "content": "name",
+   "stats": null,
+   "format": null
+  }
+ },
+ {
+  "token": "<ENTITIES|inscene>",
+  "parts": {
+   "base": "<ENTITIES>",
+   "variantId": "inscene",
+   "pre": "",
+   "post": "",
+   "key": "<ENTITIES|inscene>"
+  },
+  "selection": {
+   "scope": "inscene",
+   "content": null,
+   "stats": null,
+   "format": null
+  }
+ },
+ {
+  "token": "<ENTITIES|markdown>",
+  "parts": {
+   "base": "<ENTITIES>",
+   "variantId": "markdown",
+   "pre": "",
+   "post": "",
+   "key": "<ENTITIES|markdown>"
+  },
+  "selection": {
+   "scope": null,
+   "content": null,
+   "stats": null,
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<ENTITIES|markdown|header=\"Characters and things that may appear in this location\">",
+  "parts": {
+   "base": "<ENTITIES>",
+   "variantId": "markdown",
+   "pre": "",
+   "post": "",
+   "key": "<ENTITIES|markdown>",
+   "header": "Characters and things that may appear in this location"
+  },
+  "selection": {
+   "scope": null,
+   "content": null,
+   "stats": null,
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<ENTITIES|markdown|header=\"Entities\">",
+  "parts": {
+   "base": "<ENTITIES>",
+   "variantId": "markdown",
+   "pre": "",
+   "post": "",
+   "key": "<ENTITIES|markdown>",
+   "header": "Entities"
+  },
+  "selection": {
+   "scope": null,
+   "content": null,
+   "stats": null,
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<ENTITIES|markdown|header=\"Who is here\">",
+  "parts": {
+   "base": "<ENTITIES>",
+   "variantId": "markdown",
+   "pre": "",
+   "post": "",
+   "key": "<ENTITIES|markdown>",
+   "header": "Who is here"
+  },
+  "selection": {
+   "scope": null,
+   "content": null,
+   "stats": null,
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<ENTITIES|reachable.summary.markdown>",
+  "parts": {
+   "base": "<ENTITIES>",
+   "variantId": "reachable.summary.markdown",
+   "pre": "",
+   "post": "",
+   "key": "<ENTITIES|reachable.summary.markdown>"
+  },
+  "selection": {
+   "scope": "reachable",
+   "content": "summary",
+   "stats": null,
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<ENTITIES|reachable.summary.markdown|header=\"Characters and things that may appear in a reachable location\">",
+  "parts": {
+   "base": "<ENTITIES>",
+   "variantId": "reachable.summary.markdown",
+   "pre": "",
+   "post": "",
+   "key": "<ENTITIES|reachable.summary.markdown>",
+   "header": "Characters and things that may appear in a reachable location"
+  },
+  "selection": {
+   "scope": "reachable",
+   "content": "summary",
+   "stats": null,
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<ENTITIES|reachable.summary.markdown|header=\"Who may be in a reachable location\">",
+  "parts": {
+   "base": "<ENTITIES>",
+   "variantId": "reachable.summary.markdown",
+   "pre": "",
+   "post": "",
+   "key": "<ENTITIES|reachable.summary.markdown>",
+   "header": "Who may be in a reachable location"
+  },
+  "selection": {
+   "scope": "reachable",
+   "content": "summary",
+   "stats": null,
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<ENTITIES|reachable.summary.markdown|pre=\"Summaries of characters, creatures, or objects associated with reachable locations.\\n\\n\"|header=\"Entities in Reachable Locations\">",
+  "parts": {
+   "base": "<ENTITIES>",
+   "variantId": "reachable.summary.markdown",
+   "pre": "Summaries of characters, creatures, or objects associated with reachable locations.\\n\\n",
+   "post": "",
+   "key": "<ENTITIES|reachable.summary.markdown>",
+   "header": "Entities in Reachable Locations"
+  },
+  "selection": {
+   "scope": "reachable",
+   "content": "summary",
+   "stats": null,
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<ENTITIES|reachable>",
+  "parts": {
+   "base": "<ENTITIES>",
+   "variantId": "reachable",
+   "pre": "",
+   "post": "",
+   "key": "<ENTITIES|reachable>"
+  },
+  "selection": {
+   "scope": "reachable",
+   "content": null,
+   "stats": null,
+   "format": null
+  }
+ },
+ {
+  "token": "<ENTITIES|sublocations.markdown>",
+  "parts": {
+   "base": "<ENTITIES>",
+   "variantId": "sublocations.markdown",
+   "pre": "",
+   "post": "",
+   "key": "<ENTITIES|sublocations.markdown>"
+  },
+  "selection": {
+   "scope": "sublocations",
+   "content": null,
+   "stats": null,
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<ENTITIES|sublocations.markdown|header=\"Characters and things that may appear in a sub-location\">",
+  "parts": {
+   "base": "<ENTITIES>",
+   "variantId": "sublocations.markdown",
+   "pre": "",
+   "post": "",
+   "key": "<ENTITIES|sublocations.markdown>",
+   "header": "Characters and things that may appear in a sub-location"
+  },
+  "selection": {
+   "scope": "sublocations",
+   "content": null,
+   "stats": null,
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<ENTITIES|sublocations.markdown|header=\"Who may be in a sub-location\">",
+  "parts": {
+   "base": "<ENTITIES>",
+   "variantId": "sublocations.markdown",
+   "pre": "",
+   "post": "",
+   "key": "<ENTITIES|sublocations.markdown>",
+   "header": "Who may be in a sub-location"
+  },
+  "selection": {
+   "scope": "sublocations",
+   "content": null,
+   "stats": null,
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<ENTITIES|sublocations.summary.markdown|header=\"Characters and things that may appear in a sub-location\">",
+  "parts": {
+   "base": "<ENTITIES>",
+   "variantId": "sublocations.summary.markdown",
+   "pre": "",
+   "post": "",
+   "key": "<ENTITIES|sublocations.summary.markdown>",
+   "header": "Characters and things that may appear in a sub-location"
+  },
+  "selection": {
+   "scope": "sublocations",
+   "content": "summary",
+   "stats": null,
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<ENTITIES|sublocations.summary.markdown|header=\"Who may be in a sub-location\">",
+  "parts": {
+   "base": "<ENTITIES>",
+   "variantId": "sublocations.summary.markdown",
+   "pre": "",
+   "post": "",
+   "key": "<ENTITIES|sublocations.summary.markdown>",
+   "header": "Who may be in a sub-location"
+  },
+  "selection": {
+   "scope": "sublocations",
+   "content": "summary",
+   "stats": null,
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<ENTITIES|sublocations.summary.markdown|pre=\"Summaries of characters, creatures, or objects associated with sublocations.\\n\\n\"|header=\"Entities in Sublocations\">",
+  "parts": {
+   "base": "<ENTITIES>",
+   "variantId": "sublocations.summary.markdown",
+   "pre": "Summaries of characters, creatures, or objects associated with sublocations.\\n\\n",
+   "post": "",
+   "key": "<ENTITIES|sublocations.summary.markdown>",
+   "header": "Entities in Sublocations"
+  },
+  "selection": {
+   "scope": "sublocations",
+   "content": "summary",
+   "stats": null,
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<ENTITIES|sublocations>",
+  "parts": {
+   "base": "<ENTITIES>",
+   "variantId": "sublocations",
+   "pre": "",
+   "post": "",
+   "key": "<ENTITIES|sublocations>"
+  },
+  "selection": {
+   "scope": "sublocations",
+   "content": null,
+   "stats": null,
+   "format": null
+  }
+ },
+ {
+  "token": "<ENTITIES|summary.markdown|header=\"Characters and things that may appear in this location\">",
+  "parts": {
+   "base": "<ENTITIES>",
+   "variantId": "summary.markdown",
+   "pre": "",
+   "post": "",
+   "key": "<ENTITIES|summary.markdown>",
+   "header": "Characters and things that may appear in this location"
+  },
+  "selection": {
+   "scope": null,
+   "content": "summary",
+   "stats": null,
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<ENTITIES|summary.markdown|header=\"Who I am chatting with\">",
+  "parts": {
+   "base": "<ENTITIES>",
+   "variantId": "summary.markdown",
+   "pre": "",
+   "post": "",
+   "key": "<ENTITIES|summary.markdown>",
+   "header": "Who I am chatting with"
+  },
+  "selection": {
+   "scope": null,
+   "content": "summary",
+   "stats": null,
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<ENTITIES|summary.markdown|pre=\"An entity is a character, creature, or object. These entries summarize entities that may appear in the current location.\\n\\n\"|header=\"Entities in the Current Location\">",
+  "parts": {
+   "base": "<ENTITIES>",
+   "variantId": "summary.markdown",
+   "pre": "An entity is a character, creature, or object. These entries summarize entities that may appear in the current location.\\n\\n",
+   "post": "",
+   "key": "<ENTITIES|summary.markdown>",
+   "header": "Entities in the Current Location"
+  },
+  "selection": {
+   "scope": null,
+   "content": "summary",
+   "stats": null,
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<FIRST PASSAGE>",
+  "parts": {
+   "base": "<FIRST PASSAGE>",
+   "variantId": null,
+   "pre": "",
+   "post": "",
+   "key": "<FIRST PASSAGE>"
+  },
+  "selection": {}
+ },
+ {
+  "token": "<IN FRAME>",
+  "parts": {
+   "base": "<IN FRAME>",
+   "variantId": null,
+   "pre": "",
+   "post": "",
+   "key": "<IN FRAME>"
+  },
+  "selection": {}
+ },
+ {
+  "token": "<IN FRAME|format=markdown|header=\"In the picture\">",
+  "parts": {
+   "base": "<IN FRAME>",
+   "variantId": null,
+   "pre": "",
+   "post": "",
+   "key": "<IN FRAME>",
+   "headerFormat": "markdown",
+   "header": "In the picture"
+  },
+  "selection": {}
+ },
+ {
+  "token": "<LANGUAGE>",
+  "parts": {
+   "base": "<LANGUAGE>",
+   "variantId": null,
+   "pre": "",
+   "post": "",
+   "key": "<LANGUAGE>"
+  },
+  "selection": {}
+ },
+ {
+  "token": "<LATER MATERIAL>",
+  "parts": {
+   "base": "<LATER MATERIAL>",
+   "variantId": null,
+   "pre": "",
+   "post": "",
+   "key": "<LATER MATERIAL>"
+  },
+  "selection": {}
+ },
+ {
+  "token": "<LENGTH GUIDANCE>",
+  "parts": {
+   "base": "<LENGTH GUIDANCE>",
+   "variantId": null,
+   "pre": "",
+   "post": "",
+   "key": "<LENGTH GUIDANCE>"
+  },
+  "selection": {}
+ },
+ {
+  "token": "<LOCATION>",
+  "parts": {
+   "base": "<LOCATION>",
+   "variantId": null,
+   "pre": "",
+   "post": "",
+   "key": "<LOCATION>"
+  },
+  "selection": {
+   "scope": null,
+   "content": null,
+   "format": null
+  }
+ },
+ {
+  "token": "<LOCATION|destinations.summary.markdown>",
+  "parts": {
+   "base": "<LOCATION>",
+   "variantId": "destinations.summary.markdown",
+   "pre": "",
+   "post": "",
+   "key": "<LOCATION|destinations.summary.markdown>"
+  },
+  "selection": {
+   "scope": "destinations",
+   "content": "summary",
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<LOCATION|destinations.summary.markdown|header=\"Where The Player Can Go\">",
+  "parts": {
+   "base": "<LOCATION>",
+   "variantId": "destinations.summary.markdown",
+   "pre": "",
+   "post": "",
+   "key": "<LOCATION|destinations.summary.markdown>",
+   "header": "Where The Player Can Go"
+  },
+  "selection": {
+   "scope": "destinations",
+   "content": "summary",
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<LOCATION|destinations>",
+  "parts": {
+   "base": "<LOCATION>",
+   "variantId": "destinations",
+   "pre": "",
+   "post": "",
+   "key": "<LOCATION|destinations>"
+  },
+  "selection": {
+   "scope": "destinations",
+   "content": null,
+   "format": null
+  }
+ },
+ {
+  "token": "<LOCATION|markdown>",
+  "parts": {
+   "base": "<LOCATION>",
+   "variantId": "markdown",
+   "pre": "",
+   "post": "",
+   "key": "<LOCATION|markdown>"
+  },
+  "selection": {
+   "scope": null,
+   "content": null,
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<LOCATION|markdown|header=\"Current Location\">",
+  "parts": {
+   "base": "<LOCATION>",
+   "variantId": "markdown",
+   "pre": "",
+   "post": "",
+   "key": "<LOCATION|markdown>",
+   "header": "Current Location"
+  },
+  "selection": {
+   "scope": null,
+   "content": null,
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<LOCATION|markdown|header=\"Where this happens\">",
+  "parts": {
+   "base": "<LOCATION>",
+   "variantId": "markdown",
+   "pre": "",
+   "post": "",
+   "key": "<LOCATION|markdown>",
+   "header": "Where this happens"
+  },
+  "selection": {
+   "scope": null,
+   "content": null,
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<LOCATION|markdown|header=\"current location\">",
+  "parts": {
+   "base": "<LOCATION>",
+   "variantId": "markdown",
+   "pre": "",
+   "post": "",
+   "key": "<LOCATION|markdown>",
+   "header": "current location"
+  },
+  "selection": {
+   "scope": null,
+   "content": null,
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<LOCATION|markdown|pre=\"The place where the player character currently is.\\n\\n\"|header=\"Current Location\">",
+  "parts": {
+   "base": "<LOCATION>",
+   "variantId": "markdown",
+   "pre": "The place where the player character currently is.\\n\\n",
+   "post": "",
+   "key": "<LOCATION|markdown>",
+   "header": "Current Location"
+  },
+  "selection": {
+   "scope": null,
+   "content": null,
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<LOCATION|name>",
+  "parts": {
+   "base": "<LOCATION>",
+   "variantId": "name",
+   "pre": "",
+   "post": "",
+   "key": "<LOCATION|name>"
+  },
+  "selection": {
+   "scope": null,
+   "content": "name",
+   "format": null
+  }
+ },
+ {
+  "token": "<LOCATION|parent.name|pre=\", in \">",
+  "parts": {
+   "base": "<LOCATION>",
+   "variantId": "parent.name",
+   "pre": ", in ",
+   "post": "",
+   "key": "<LOCATION|parent.name>"
+  },
+  "selection": {
+   "scope": "parent",
+   "content": "name",
+   "format": null
+  }
+ },
+ {
+  "token": "<LOCATION|parent.summary.markdown>",
+  "parts": {
+   "base": "<LOCATION>",
+   "variantId": "parent.summary.markdown",
+   "pre": "",
+   "post": "",
+   "key": "<LOCATION|parent.summary.markdown>"
+  },
+  "selection": {
+   "scope": "parent",
+   "content": "summary",
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<LOCATION|parent>",
+  "parts": {
+   "base": "<LOCATION>",
+   "variantId": "parent",
+   "pre": "",
+   "post": "",
+   "key": "<LOCATION|parent>"
+  },
+  "selection": {
+   "scope": "parent",
+   "content": null,
+   "format": null
+  }
+ },
+ {
+  "token": "<LOCATION|reachable.summary.markdown>",
+  "parts": {
+   "base": "<LOCATION>",
+   "variantId": "reachable.summary.markdown",
+   "pre": "",
+   "post": "",
+   "key": "<LOCATION|reachable.summary.markdown>"
+  },
+  "selection": {
+   "scope": "reachable",
+   "content": "summary",
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<LOCATION|reachable.summary.markdown|header=\"Reachable Locations\">",
+  "parts": {
+   "base": "<LOCATION>",
+   "variantId": "reachable.summary.markdown",
+   "pre": "",
+   "post": "",
+   "key": "<LOCATION|reachable.summary.markdown>",
+   "header": "Reachable Locations"
+  },
+  "selection": {
+   "scope": "reachable",
+   "content": "summary",
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<LOCATION|reachable.summary.markdown|pre=\"Places the player can reach from the current location.\\n\\n\"|header=\"Reachable Locations\">",
+  "parts": {
+   "base": "<LOCATION>",
+   "variantId": "reachable.summary.markdown",
+   "pre": "Places the player can reach from the current location.\\n\\n",
+   "post": "",
+   "key": "<LOCATION|reachable.summary.markdown>",
+   "header": "Reachable Locations"
+  },
+  "selection": {
+   "scope": "reachable",
+   "content": "summary",
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<LOCATION|reachable>",
+  "parts": {
+   "base": "<LOCATION>",
+   "variantId": "reachable",
+   "pre": "",
+   "post": "",
+   "key": "<LOCATION|reachable>"
+  },
+  "selection": {
+   "scope": "reachable",
+   "content": null,
+   "format": null
+  }
+ },
+ {
+  "token": "<LOCATION|sublocations.summary.markdown>",
+  "parts": {
+   "base": "<LOCATION>",
+   "variantId": "sublocations.summary.markdown",
+   "pre": "",
+   "post": "",
+   "key": "<LOCATION|sublocations.summary.markdown>"
+  },
+  "selection": {
+   "scope": "sublocations",
+   "content": "summary",
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<LOCATION|sublocations.summary.markdown|header=\"Sublocations\">",
+  "parts": {
+   "base": "<LOCATION>",
+   "variantId": "sublocations.summary.markdown",
+   "pre": "",
+   "post": "",
+   "key": "<LOCATION|sublocations.summary.markdown>",
+   "header": "Sublocations"
+  },
+  "selection": {
+   "scope": "sublocations",
+   "content": "summary",
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<LOCATION|sublocations.summary.markdown|pre=\"Places contained within the current location.\\n\\n\"|header=\"Sublocations\">",
+  "parts": {
+   "base": "<LOCATION>",
+   "variantId": "sublocations.summary.markdown",
+   "pre": "Places contained within the current location.\\n\\n",
+   "post": "",
+   "key": "<LOCATION|sublocations.summary.markdown>",
+   "header": "Sublocations"
+  },
+  "selection": {
+   "scope": "sublocations",
+   "content": "summary",
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<LOCATION|sublocations>",
+  "parts": {
+   "base": "<LOCATION>",
+   "variantId": "sublocations",
+   "pre": "",
+   "post": "",
+   "key": "<LOCATION|sublocations>"
+  },
+  "selection": {
+   "scope": "sublocations",
+   "content": null,
+   "format": null
+  }
+ },
+ {
+  "token": "<LOCATION|summary.markdown|header=\"Current Location\">",
+  "parts": {
+   "base": "<LOCATION>",
+   "variantId": "summary.markdown",
+   "pre": "",
+   "post": "",
+   "key": "<LOCATION|summary.markdown>",
+   "header": "Current Location"
+  },
+  "selection": {
+   "scope": null,
+   "content": "summary",
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<LOCATION|summary>",
+  "parts": {
+   "base": "<LOCATION>",
+   "variantId": "summary",
+   "pre": "",
+   "post": "",
+   "key": "<LOCATION|summary>"
+  },
+  "selection": {
+   "scope": null,
+   "content": "summary",
+   "format": null
+  }
+ },
+ {
+  "token": "<MARKDOWN GUIDANCE>",
+  "parts": {
+   "base": "<MARKDOWN GUIDANCE>",
+   "variantId": null,
+   "pre": "",
+   "post": "",
+   "key": "<MARKDOWN GUIDANCE>"
+  },
+  "selection": {
+   "variant": null
+  }
+ },
+ {
+  "token": "<MARKDOWN GUIDANCE|definitions>",
+  "parts": {
+   "base": "<MARKDOWN GUIDANCE>",
+   "variantId": "definitions",
+   "pre": "",
+   "post": "",
+   "key": "<MARKDOWN GUIDANCE|definitions>"
+  },
+  "selection": {
+   "variant": "definitions"
+  }
+ },
+ {
+  "token": "<MARKDOWN GUIDANCE|definitions|pre=\"The game displays this syntax in your reply.\\n\\n\"|format=markdown|header=\"Formatting\">",
+  "parts": {
+   "base": "<MARKDOWN GUIDANCE>",
+   "variantId": "definitions",
+   "pre": "The game displays this syntax in your reply.\\n\\n",
+   "post": "",
+   "key": "<MARKDOWN GUIDANCE|definitions>",
+   "headerFormat": "markdown",
+   "header": "Formatting"
+  },
+  "selection": {
+   "variant": "definitions"
+  }
+ },
+ {
+  "token": "<MARKDOWN GUIDANCE|format=markdown|header=\"Formatting\">",
+  "parts": {
+   "base": "<MARKDOWN GUIDANCE>",
+   "variantId": null,
+   "pre": "",
+   "post": "",
+   "key": "<MARKDOWN GUIDANCE>",
+   "headerFormat": "markdown",
+   "header": "Formatting"
+  },
+  "selection": {
+   "variant": null
+  }
+ },
+ {
+  "token": "<NARRATION>",
+  "parts": {
+   "base": "<NARRATION>",
+   "variantId": null,
+   "pre": "",
+   "post": "",
+   "key": "<NARRATION>"
+  },
+  "selection": {}
+ },
+ {
+  "token": "<NARRATION|format=markdown|header=\"The narration that resulted\">",
+  "parts": {
+   "base": "<NARRATION>",
+   "variantId": null,
+   "pre": "",
+   "post": "",
+   "key": "<NARRATION>",
+   "headerFormat": "markdown",
+   "header": "The narration that resulted"
+  },
+  "selection": {}
+ },
+ {
+  "token": "<NARRATION|format=markdown|header=\"The opening scene\">",
+  "parts": {
+   "base": "<NARRATION>",
+   "variantId": null,
+   "pre": "",
+   "post": "",
+   "key": "<NARRATION>",
+   "headerFormat": "markdown",
+   "header": "The opening scene"
+  },
+  "selection": {}
+ },
+ {
+  "token": "<NARRATION|format=markdown|header=\"The scene just told to me, the player character\">",
+  "parts": {
+   "base": "<NARRATION>",
+   "variantId": null,
+   "pre": "",
+   "post": "",
+   "key": "<NARRATION>",
+   "headerFormat": "markdown",
+   "header": "The scene just told to me, the player character"
+  },
+  "selection": {}
+ },
+ {
+  "token": "<NARRATION|format=markdown|header=\"What happened\">",
+  "parts": {
+   "base": "<NARRATION>",
+   "variantId": null,
+   "pre": "",
+   "post": "",
+   "key": "<NARRATION>",
+   "headerFormat": "markdown",
+   "header": "What happened"
+  },
+  "selection": {}
+ },
+ {
+  "token": "<NARRATION|format=markdown|header=\"What happens\">",
+  "parts": {
+   "base": "<NARRATION>",
+   "variantId": null,
+   "pre": "",
+   "post": "",
+   "key": "<NARRATION>",
+   "headerFormat": "markdown",
+   "header": "What happens"
+  },
+  "selection": {}
+ },
+ {
+  "token": "<NARRATION|format=markdown|header=\"What just happened\">",
+  "parts": {
+   "base": "<NARRATION>",
+   "variantId": null,
+   "pre": "",
+   "post": "",
+   "key": "<NARRATION>",
+   "headerFormat": "markdown",
+   "header": "What just happened"
+  },
+  "selection": {}
+ },
+ {
+  "token": "<NEW MOMENTS>",
+  "parts": {
+   "base": "<NEW MOMENTS>",
+   "variantId": null,
+   "pre": "",
+   "post": "",
+   "key": "<NEW MOMENTS>"
+  },
+  "selection": {}
+ },
+ {
+  "token": "<NOTES>",
+  "parts": {
+   "base": "<NOTES>",
+   "variantId": null,
+   "pre": "",
+   "post": "",
+   "key": "<NOTES>"
+  },
+  "selection": {}
+ },
+ {
+  "token": "<NOTES|format=markdown|header=\"Important Player Notes\">",
+  "parts": {
+   "base": "<NOTES>",
+   "variantId": null,
+   "pre": "",
+   "post": "",
+   "key": "<NOTES>",
+   "headerFormat": "markdown",
+   "header": "Important Player Notes"
+  },
+  "selection": {}
+ },
+ {
+  "token": "<NOTES|format=markdown|header=\"Player Notes\">",
+  "parts": {
+   "base": "<NOTES>",
+   "variantId": null,
+   "pre": "",
+   "post": "",
+   "key": "<NOTES>",
+   "headerFormat": "markdown",
+   "header": "Player Notes"
+  },
+  "selection": {}
+ },
+ {
+  "token": "<NOTES|format=xml|header=\"player notes\">",
+  "parts": {
+   "base": "<NOTES>",
+   "variantId": null,
+   "pre": "",
+   "post": "",
+   "key": "<NOTES>",
+   "headerFormat": "xml",
+   "header": "player notes"
+  },
+  "selection": {}
+ },
+ {
+  "token": "<NOTES|pre=\"Additional information supplied by the player for this story.\\n\\n\"|format=markdown|header=\"Important Player Notes\">",
+  "parts": {
+   "base": "<NOTES>",
+   "variantId": null,
+   "pre": "Additional information supplied by the player for this story.\\n\\n",
+   "post": "",
+   "key": "<NOTES>",
+   "headerFormat": "markdown",
+   "header": "Important Player Notes"
+  },
+  "selection": {}
+ },
+ {
+  "token": "<PERSONA>",
+  "parts": {
+   "base": "<PERSONA>",
+   "variantId": null,
+   "pre": "",
+   "post": "",
+   "key": "<PERSONA>"
+  },
+  "selection": {
+   "content": null,
+   "stats": null,
+   "format": null
+  }
+ },
+ {
+  "token": "<PERSONA|markdown>",
+  "parts": {
+   "base": "<PERSONA>",
+   "variantId": "markdown",
+   "pre": "",
+   "post": "",
+   "key": "<PERSONA|markdown>"
+  },
+  "selection": {
+   "content": null,
+   "stats": null,
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<PERSONA|markdown|header=\"Player Character\">",
+  "parts": {
+   "base": "<PERSONA>",
+   "variantId": "markdown",
+   "pre": "",
+   "post": "",
+   "key": "<PERSONA|markdown>",
+   "header": "Player Character"
+  },
+  "selection": {
+   "content": null,
+   "stats": null,
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<PERSONA|markdown|header=\"The passage calls this person you\">",
+  "parts": {
+   "base": "<PERSONA>",
+   "variantId": "markdown",
+   "pre": "",
+   "post": "",
+   "key": "<PERSONA|markdown>",
+   "header": "The passage calls this person you"
+  },
+  "selection": {
+   "content": null,
+   "stats": null,
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<PERSONA|markdown|header=\"Who the player is\">",
+  "parts": {
+   "base": "<PERSONA>",
+   "variantId": "markdown",
+   "pre": "",
+   "post": "",
+   "key": "<PERSONA|markdown>",
+   "header": "Who the player is"
+  },
+  "selection": {
+   "content": null,
+   "stats": null,
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<PERSONA|markdown|header=\"player character\">",
+  "parts": {
+   "base": "<PERSONA>",
+   "variantId": "markdown",
+   "pre": "",
+   "post": "",
+   "key": "<PERSONA|markdown>",
+   "header": "player character"
+  },
+  "selection": {
+   "content": null,
+   "stats": null,
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<PERSONA|markdown|pre=\"The identity and description of the character controlled by the player.\\n\\n\"|header=\"Player Character\">",
+  "parts": {
+   "base": "<PERSONA>",
+   "variantId": "markdown",
+   "pre": "The identity and description of the character controlled by the player.\\n\\n",
+   "post": "",
+   "key": "<PERSONA|markdown>",
+   "header": "Player Character"
+  },
+  "selection": {
+   "content": null,
+   "stats": null,
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<PERSONA|name|pre=\" Characters say the player's name, \"|post=\", only after they learn it.\">",
+  "parts": {
+   "base": "<PERSONA>",
+   "variantId": "name",
+   "pre": " Characters say the player's name, ",
+   "post": ", only after they learn it.",
+   "key": "<PERSONA|name>"
+  },
+  "selection": {
+   "content": "name",
+   "stats": null,
+   "format": null
+  }
+ },
+ {
+  "token": "<PERSONA|name|pre=\" The entity says the player's name, \"|post=\", only after learning it.\">",
+  "parts": {
+   "base": "<PERSONA>",
+   "variantId": "name",
+   "pre": " The entity says the player's name, ",
+   "post": ", only after learning it.",
+   "key": "<PERSONA|name>"
+  },
+  "selection": {
+   "content": "name",
+   "stats": null,
+   "format": null
+  }
+ },
+ {
+  "token": "<PERSONA|name|pre=\" The player character is \"|post=\".\">",
+  "parts": {
+   "base": "<PERSONA>",
+   "variantId": "name",
+   "pre": " The player character is ",
+   "post": ".",
+   "key": "<PERSONA|name>"
+  },
+  "selection": {
+   "content": "name",
+   "stats": null,
+   "format": null
+  }
+ },
+ {
+  "token": "<PERSONA|name|pre=\" The player is \"|post=\".\">",
+  "parts": {
+   "base": "<PERSONA>",
+   "variantId": "name",
+   "pre": " The player is ",
+   "post": ".",
+   "key": "<PERSONA|name>"
+  },
+  "selection": {
+   "content": "name",
+   "stats": null,
+   "format": null
+  }
+ },
+ {
+  "token": "<PERSONA|nostats.markdown|header=\"Player Character\">",
+  "parts": {
+   "base": "<PERSONA>",
+   "variantId": "nostats.markdown",
+   "pre": "",
+   "post": "",
+   "key": "<PERSONA|nostats.markdown>",
+   "header": "Player Character"
+  },
+  "selection": {
+   "content": null,
+   "stats": "nostats",
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<PERSONA|nostats.markdown|post=\"In the Cast, this is Player Character.\"|header=\"Player Character\">",
+  "parts": {
+   "base": "<PERSONA>",
+   "variantId": "nostats.markdown",
+   "pre": "",
+   "post": "In the Cast, this is Player Character.",
+   "key": "<PERSONA|nostats.markdown>",
+   "header": "Player Character"
+  },
+  "selection": {
+   "content": null,
+   "stats": "nostats",
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<PERSONA|summary.markdown|header=\"Player Character\">",
+  "parts": {
+   "base": "<PERSONA>",
+   "variantId": "summary.markdown",
+   "pre": "",
+   "post": "",
+   "key": "<PERSONA|summary.markdown>",
+   "header": "Player Character"
+  },
+  "selection": {
+   "content": "summary",
+   "stats": null,
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<PLAYER ACTION>",
+  "parts": {
+   "base": "<PLAYER ACTION>",
+   "variantId": null,
+   "pre": "",
+   "post": "",
+   "key": "<PLAYER ACTION>"
+  },
+  "selection": {}
+ },
+ {
+  "token": "<PLAYER ACTION|format=markdown|header=\"What the character did\">",
+  "parts": {
+   "base": "<PLAYER ACTION>",
+   "variantId": null,
+   "pre": "",
+   "post": "",
+   "key": "<PLAYER ACTION>",
+   "headerFormat": "markdown",
+   "header": "What the character did"
+  },
+  "selection": {}
+ },
+ {
+  "token": "<REMEMBERED MOMENTS>",
+  "parts": {
+   "base": "<REMEMBERED MOMENTS>",
+   "variantId": null,
+   "pre": "",
+   "post": "",
+   "key": "<REMEMBERED MOMENTS>"
+  },
+  "selection": {}
+ },
+ {
+  "token": "<STATS DESCRIPTION>",
+  "parts": {
+   "base": "<STATS DESCRIPTION>",
+   "variantId": null,
+   "pre": "",
+   "post": "",
+   "key": "<STATS DESCRIPTION>"
+  },
+  "selection": {
+   "numbers": null,
+   "descriptions": null,
+   "meaning": null,
+   "format": null
+  }
+ },
+ {
+  "token": "<STATS DESCRIPTION|descriptions.markdown>",
+  "parts": {
+   "base": "<STATS DESCRIPTION>",
+   "variantId": "descriptions.markdown",
+   "pre": "",
+   "post": "",
+   "key": "<STATS DESCRIPTION|descriptions.markdown>"
+  },
+  "selection": {
+   "numbers": null,
+   "descriptions": "descriptions",
+   "meaning": null,
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<STATS DESCRIPTION|descriptions.markdown|header=\"Other Stats\">",
+  "parts": {
+   "base": "<STATS DESCRIPTION>",
+   "variantId": "descriptions.markdown",
+   "pre": "",
+   "post": "",
+   "key": "<STATS DESCRIPTION|descriptions.markdown>",
+   "header": "Other Stats"
+  },
+  "selection": {
+   "numbers": null,
+   "descriptions": "descriptions",
+   "meaning": null,
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<STATS DESCRIPTION|descriptions.markdown|pre=\"A stat is a named value that the game tracks and that changes during play.\\n\\n\"|header=\"Stats\">",
+  "parts": {
+   "base": "<STATS DESCRIPTION>",
+   "variantId": "descriptions.markdown",
+   "pre": "A stat is a named value that the game tracks and that changes during play.\\n\\n",
+   "post": "",
+   "key": "<STATS DESCRIPTION|descriptions.markdown>",
+   "header": "Stats"
+  },
+  "selection": {
+   "numbers": null,
+   "descriptions": "descriptions",
+   "meaning": null,
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<STATS DESCRIPTION|numbers.meaning.markdown>",
+  "parts": {
+   "base": "<STATS DESCRIPTION>",
+   "variantId": "numbers.meaning.markdown",
+   "pre": "",
+   "post": "",
+   "key": "<STATS DESCRIPTION|numbers.meaning.markdown>"
+  },
+  "selection": {
+   "numbers": "numbers",
+   "descriptions": null,
+   "meaning": "meaning",
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<SUBJECT>",
+  "parts": {
+   "base": "<SUBJECT>",
+   "variantId": null,
+   "pre": "",
+   "post": "",
+   "key": "<SUBJECT>"
+  },
+  "selection": {}
+ },
+ {
+  "token": "<TIME>",
+  "parts": {
+   "base": "<TIME>",
+   "variantId": null,
+   "pre": "",
+   "post": "",
+   "key": "<TIME>"
+  },
+  "selection": {}
+ },
+ {
+  "token": "<TIME|pre=\" It is \">",
+  "parts": {
+   "base": "<TIME>",
+   "variantId": null,
+   "pre": " It is ",
+   "post": "",
+   "key": "<TIME>"
+  },
+  "selection": {}
+ },
+ {
+  "token": "<TIME|pre=\" It is now \"|post=\".\">",
+  "parts": {
+   "base": "<TIME>",
+   "variantId": null,
+   "pre": " It is now ",
+   "post": ".",
+   "key": "<TIME>"
+  },
+  "selection": {}
+ },
+ {
+  "token": "<TRAITS DESCRIPTION>",
+  "parts": {
+   "base": "<TRAITS DESCRIPTION>",
+   "variantId": null,
+   "pre": "",
+   "post": "",
+   "key": "<TRAITS DESCRIPTION>"
+  },
+  "selection": {
+   "format": null
+  }
+ },
+ {
+  "token": "<TRAITS DESCRIPTION|markdown>",
+  "parts": {
+   "base": "<TRAITS DESCRIPTION>",
+   "variantId": "markdown",
+   "pre": "",
+   "post": "",
+   "key": "<TRAITS DESCRIPTION|markdown>"
+  },
+  "selection": {
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<TRAITS DESCRIPTION|markdown|header=\"Other Traits\">",
+  "parts": {
+   "base": "<TRAITS DESCRIPTION>",
+   "variantId": "markdown",
+   "pre": "",
+   "post": "",
+   "key": "<TRAITS DESCRIPTION|markdown>",
+   "header": "Other Traits"
+  },
+  "selection": {
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<TRAITS DESCRIPTION|markdown|header=\"Traits\">",
+  "parts": {
+   "base": "<TRAITS DESCRIPTION>",
+   "variantId": "markdown",
+   "pre": "",
+   "post": "",
+   "key": "<TRAITS DESCRIPTION|markdown>",
+   "header": "Traits"
+  },
+  "selection": {
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<TRAITS DESCRIPTION|markdown|header=\"traits\">",
+  "parts": {
+   "base": "<TRAITS DESCRIPTION>",
+   "variantId": "markdown",
+   "pre": "",
+   "post": "",
+   "key": "<TRAITS DESCRIPTION|markdown>",
+   "header": "traits"
+  },
+  "selection": {
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<TRAITS DESCRIPTION|markdown|pre=\"A trait is a characteristic or condition that is either active or inactive.\\n\\n\"|header=\"Traits\">",
+  "parts": {
+   "base": "<TRAITS DESCRIPTION>",
+   "variantId": "markdown",
+   "pre": "A trait is a characteristic or condition that is either active or inactive.\\n\\n",
+   "post": "",
+   "key": "<TRAITS DESCRIPTION|markdown>",
+   "header": "Traits"
+  },
+  "selection": {
+   "format": "markdown"
+  }
+ },
+ {
+  "token": "<WORLD DESCRIPTION>",
+  "parts": {
+   "base": "<WORLD DESCRIPTION>",
+   "variantId": null,
+   "pre": "",
+   "post": "",
+   "key": "<WORLD DESCRIPTION>"
+  },
+  "selection": {}
+ },
+ {
+  "token": "<WORLD DESCRIPTION|format=markdown|header=\"Game World\">",
+  "parts": {
+   "base": "<WORLD DESCRIPTION>",
+   "variantId": null,
+   "pre": "",
+   "post": "",
+   "key": "<WORLD DESCRIPTION>",
+   "headerFormat": "markdown",
+   "header": "Game World"
+  },
+  "selection": {}
+ },
+ {
+  "token": "<WORLD DESCRIPTION|pre=\"The setting, tone, and world-wide facts of this story.\\n\\n\"|format=markdown|header=\"Game World\">",
+  "parts": {
+   "base": "<WORLD DESCRIPTION>",
+   "variantId": null,
+   "pre": "The setting, tone, and world-wide facts of this story.\\n\\n",
+   "post": "",
+   "key": "<WORLD DESCRIPTION>",
+   "headerFormat": "markdown",
+   "header": "Game World"
+  },
+  "selection": {}
+ }
+]

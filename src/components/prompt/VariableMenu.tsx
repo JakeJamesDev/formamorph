@@ -7,6 +7,7 @@ import { DrillSlide, type SlideFrom } from '@/components/DrillSlide';
 import { MENU_ROW } from '@/components/menuRow';
 import { InsertMenuButton } from '@/components/prompt/InsertMenuButton';
 import { BreadcrumbPickerList, type BreadcrumbPickerRow } from '@/components/ui/breadcrumb-picker';
+import { infoWithAccess } from '@/lib/codeSurface';
 import type { VariableField, VariableNameRow, VariableNode } from '@/lib/statCodeVariableTree';
 import { cn } from '@/lib/utils';
 
@@ -109,7 +110,7 @@ function VariablePanel({ build, onPick, onClose }: {
           >
             <BreadcrumbPickerList
               sections={[{ rows: pickerRows(level.names) }]}
-              onPick={(row) => drill(levelOf(row.name, row.children))}
+              onPick={(row) => (row.field ? onPick(row.field) : drill(levelOf(row.name, row.children)))}
               searchPlaceholder={`Search ${level.label.toLowerCase()}`}
             />
           </div>
@@ -122,7 +123,7 @@ function VariablePanel({ build, onPick, onClose }: {
                 }
                 if (row.kind === 'field') {
                   return (
-                    <Tip key={index} tip={row.field.info} side="right" labelsChild={false}>
+                    <Tip key={index} tip={infoWithAccess(row.field)} side="right" labelsChild={false}>
                       <button type="button" className={MENU_ROW} onClick={() => onPick(row.field)}>
                         <span className={ROW_TEXT}>{row.field.label}</span>
                       </button>
@@ -145,7 +146,7 @@ function VariablePanel({ build, onPick, onClose }: {
 }
 
 /**
- * The stat code Variable menu: the sandbox's globals, drilled level by level down to a field, which inserts
+ * The code Variable menu: the sandbox's globals, drilled level by level down to a field, which inserts
  * its whole path. `build` is read on each open, so the menu lists the names as they are then.
  */
 export function VariableMenu({ build, onPick }: { build: () => readonly VariableNode[]; onPick: (field: VariableField) => void }) {

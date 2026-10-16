@@ -78,9 +78,9 @@ describe('the Requires field', () => {
     expect(within(list).getByRole('option', { name: /^playing as Sir Aldric/ })).toBeInTheDocument();
     expect(within(list).queryByRole('option', { name: /Odd Wick/ })).toBeNull();
 
-    // Only You can hold a world trait, so the plain requirement is added with no bearer page.
+    // Only You can hold a world trait, so the plain requirement is added with no owner page.
     fireEvent.click(paladin);
-    expect(screen.queryByRole('option', { name: /^Same Bearer/ })).toBeNull();
+    expect(screen.queryByRole('option', { name: /^Same Owner/ })).toBeNull();
     expect(traitRequires(ctx, 't-loose')).toEqual([{ all: [{ kind: 'trait', id: 't-paladin' }] }]);
     expect(within(requiresField()).getByRole('button', { name: 'Paladin' })).toBeInTheDocument();
   });
@@ -104,7 +104,7 @@ describe('the Requires field', () => {
     expect(within(requiresField()).getByText('or')).toBeInTheDocument();
   });
 
-  it('asks which bearer when an entity also bears the target, and adds for the one picked', async () => {
+  it('asks which owner when an entity also has the target, and adds for the one picked', async () => {
     const world = benchEditorWorld({
       ...WORLD,
       entities: [
@@ -121,16 +121,16 @@ describe('the Requires field', () => {
     fireEvent.click(within(await screen.findByRole('listbox')).getByRole('option', { name: /^Tamed/ }));
 
     const page = screen.getAllByRole('option').map((o) => o.textContent);
-    expect(page).toEqual(['Same BearerWhoever has the trait', 'You', 'Ash']);
+    expect(page).toEqual(['Same OwnerWhoever has the trait', 'You', 'Ash']);
     fireEvent.click(screen.getByRole('option', { name: /^Ash/ }));
-    expect(traitRequires(ctx, 't-loose')).toEqual([{ all: [{ kind: 'trait', id: 't-tamed', bearer: { kind: 'entity', id: 'ash', name: 'Ash' } }] }]);
+    expect(traitRequires(ctx, 't-loose')).toEqual([{ all: [{ kind: 'trait', id: 't-tamed', owner: { kind: 'entity', id: 'ash', name: 'Ash' } }] }]);
   });
 
   it('reads a target already listed for You as listed, so a world trait cannot take it twice', async () => {
     const world = benchEditorWorld({
       ...WORLD,
       traits: WORLD.traits.map((t) => (t.id === 't-plate'
-        ? { ...t, requires: [{ all: [{ kind: 'trait', id: 't-paladin', bearer: { kind: 'you' } }] }] }
+        ? { ...t, requires: [{ all: [{ kind: 'trait', id: 't-paladin', owner: { kind: 'you' } }] }] }
         : t)),
     } as Partial<World>);
     renderWorldEditorBench(world, 'advanced');

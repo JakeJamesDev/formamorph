@@ -37,7 +37,8 @@ const renderIssues = (results: SourceCheckResults, required: string[] = [], over
     newCount: 0,
     advancedOnlyCount: 0,
     advanced: true,
-    codedStatCount: 0,
+    scriptCount: 0,
+    codePrompts: null,
     codeCheckStatus: 'idle',
     fixingRuleId: null,
     publishBytes: null,
@@ -46,7 +47,7 @@ const renderIssues = (results: SourceCheckResults, required: string[] = [], over
     onDismissRule: vi.fn(),
     onRestoreRule: vi.fn(),
     onMarkAllSeen: vi.fn(),
-    onCheckStatCode: vi.fn(),
+    onCheckScripts: vi.fn(),
     sources,
   };
   render(<IssuesInstrument issues={issues} onFix={vi.fn()} />);
@@ -72,9 +73,9 @@ describe('Issues instrument: missing sources', () => {
       <IssuesInstrument
         issues={{
           groups: [], dismissedGroups: [], ruleCount: RULES.length, newCount: 0, advancedOnlyCount: 0,
-          advanced: true, codedStatCount: 0, codeCheckStatus: 'idle', fixingRuleId: null, publishBytes: null, checking: false,
+          advanced: true, scriptCount: 0, codePrompts: null, codeCheckStatus: 'idle', fixingRuleId: null, publishBytes: null, checking: false,
           onOpenItem: vi.fn(), onDismissRule: vi.fn(), onRestoreRule: vi.fn(), onMarkAllSeen: vi.fn(),
-          onCheckStatCode: vi.fn(),
+          onCheckScripts: vi.fn(),
           sources: {
             sourceCount: copies.length, status: 'idle', missing: [],
             onCheckSources: vi.fn(), onRepair: vi.fn(),

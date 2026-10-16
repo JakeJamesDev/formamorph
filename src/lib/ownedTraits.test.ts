@@ -4,6 +4,7 @@ import {
   traitOwners, updateOwnedTrait,
 } from './ownedTraits';
 import { gateOf, gateStates } from './traitGates';
+import { scoped } from './scope';
 import type { Entity, Trait, TraitGroup } from '@/types';
 
 const trait = (id: string, extra: Partial<Trait> = {}): Trait => ({ id, name: id, statChanges: [], ...extra });
@@ -50,6 +51,19 @@ describe('owned trait edits', () => {
     const next = removeOwnedItem(ash(), 'g-bond');
     expect(next.traitGroups).toBeUndefined();
     expect(next.traits?.find((t) => t.id === 't-tamed')?.groupId).toBeNull();
+  });
+
+  it('removing a group keeps sibling order, links included', () => {
+    const entity: Entity = {
+      id: 'ash', name: 'Ash',
+      traitGroups: [{ id: 'g', name: 'G', parentId: null, order: 1 }],
+      traits: [trait('a', { groupId: null, order: 0 }), trait('x', { groupId: 'g', order: 0 }), trait('b', { groupId: null, order: 3 })],
+      traitLinks: [{ id: 'l', originalId: 'o', kind: 'trait', originalName: 'O', groupId: 'g', order: 1 }],
+    };
+    const next = removeOwnedItem(entity, 'g');
+    expect(next.traitGroups).toBeUndefined();
+    const placed = [...(next.traits ?? []), ...(next.traitLinks ?? [])].map((i) => [i.id, i.groupId, i.order]);
+    expect(placed.sort((p, q) => (p[2] as number) - (q[2] as number))).toEqual([['a', null, 0], ['x', null, 1], ['l', null, 2], ['b', null, 3]]);
   });
 
   it('removing the last trait leaves the entity owning nothing', () => {
@@ -103,17 +117,15 @@ describe('traitOwners', () => {
     { id: 'g-companions', name: 'Companions', parentId: 'g-allies' },
   ];
   const keeper = trait('t-keeper', { name: 'Keeper', requires: [{ all: [{ kind: 'group', id: 'g-allies' }] }] });
-  // Playing Ash, so Ash's active traits are the player's own and can meet the world's group requirement.
+  // Playing Ash, whose active traits are still Ash's own, not global (Q6).
   const unlocked = (entity: Entity) => gateOf(gateStates({
-    owners: traitOwners({ traits: [keeper], traitGroups: companions, entities: [entity] }),
-    active: { ash: ['t-tamed'] }, entities: [], persona: { source: 'world', entityId: 'ash' },
-  }), 'world', 't-keeper')?.unlocked;
+    ...traitOwners({ traits: [keeper], traitGroups: companions, entities: [entity] }),
+    active: scoped([], { ash: ['t-tamed'] }), entities: [], persona: { source: 'world', entityId: 'ash' },
+  }), null, 't-keeper')?.unlocked;
 
-  it('counts the traits of an entity node placed inside a group, at any depth, toward that group', () => {
-    expect(unlocked(ash({ traitPlacement: { groupId: 'g-companions', order: 0 } }))).toBe(true);
-  });
-
-  it('counts no traits of an entity node at the top level, or placed in a group that is gone', () => {
+  // Q6: a world group counts global items only, so an entity node never holds it up, wherever it sits.
+  it('counts no traits of an entity node toward a world group, placed inside it or not', () => {
+    expect(unlocked(ash({ traitPlacement: { groupId: 'g-companions', order: 0 } }))).toBe(false);
     expect(unlocked(ash())).toBe(false);
     expect(unlocked(ash({ traitPlacement: { groupId: null, order: 0 } }))).toBe(false);
     expect(unlocked(ash({ traitPlacement: { groupId: 'g-deleted', order: 0 } }))).toBe(false);

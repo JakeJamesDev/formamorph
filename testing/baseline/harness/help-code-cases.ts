@@ -1,6 +1,6 @@
 /** The help-code probe's questions, and the fixture world each answer's code runs against. */
 import type { SurfaceId } from '@/lib/docs/surfaceMap';
-import { STAT_CODE_TAB } from '@/lib/formaquestion/helpCodeRider';
+import { SCRIPT_TAB } from '@/lib/formaquestion/helpCodeRider';
 import type { CodeTestResult } from '@/lib/formaquestion/helpCodeTestRun';
 import type { HelpFocus } from '@/lib/formaquestion/helpFocus';
 import { executeStatCode, type SandboxPlaceholderNode, type SandboxTrait, type StatCodeRunOptions } from '@/lib/statCodeExecutor';
@@ -34,7 +34,7 @@ export const FIXTURE_STAT = stat('Health', 0, 100, 60, 1);
 
 const statPanel = (...tabs: SurfaceId[]): Surface => ({ screen: 'worldEditor', dialog: null, tabs });
 /** The fixture stat's Code tab, open with that stat selected. */
-const ON_CODE_TAB = { surface: statPanel(STAT_CODE_TAB), focus: { kind: 'stat', id: FIXTURE_STAT.id, name: FIXTURE_STAT.name } } as const;
+const ON_CODE_TAB = { surface: statPanel(SCRIPT_TAB), focus: { kind: 'stat', id: FIXTURE_STAT.id, name: FIXTURE_STAT.name } } as const;
 export const FIXTURE_STATS: readonly Stat[] = [
   FIXTURE_STAT, stat('Stamina', 0, 100, 40, 2), stat('Hunger', 0, 10, 8, 0), stat('Courage', 0, 100, 55, 0), stat('Int', 0, 50, 32, 0),
 ];

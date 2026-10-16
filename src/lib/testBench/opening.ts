@@ -16,13 +16,14 @@
  */
 import { defaultNarrationUserPrompt, defaultSystemPrompt } from '@/components/game/GamePrompts';
 import { copyLookup, readerFor, type CopyLookup } from '@/lib/blueprints';
-import { bearerPriming } from '@/lib/ownedTraitsInPlay';
-import { resolveBearers } from '@/lib/bearers';
+import { ownerPriming } from '@/lib/ownedTraitsInPlay';
+import { resolveOwners } from '@/lib/owners';
+import { startingGateStats } from '@/lib/gateStats';
 import { entityStatOwners, seedEntityStats } from '@/lib/entityStats';
 import { ownedTraitStatesFrom } from '@/lib/ownedTraitState';
 import { allPlaceholders } from '@/lib/placeholderHomes';
-import { playStatWorld, playerStatsOf } from '@/lib/statLinks';
-import { WORLD_OWNER, settle, settleDefaults } from '@/lib/traitGates';
+import { playStatWorld, globalStatsOf } from '@/lib/statLinks';
+import { settle, settleDefaults } from '@/lib/traitGates';
 import { DEFAULT_MAX_TOKENS } from '@/contexts/settingsDefaults';
 import { authoredChipScene } from '@/lib/chipValues/authoredScene';
 import { chipValues } from '@/lib/chipValues/chipValues';
@@ -40,15 +41,15 @@ import type { StatOwner } from '@/lib/statOwners';
 import { allPinTexts, collectPins, valuePinRollChips } from '@/lib/placeholderPins';
 import { activeStatEnabled, enabledStats } from '@/lib/traitEffects';
 import {
-  acquireTrait, applyOwnedStatTraits, bearerStatTraitsInForce, seedStatBases, type TraitRuntimeState, type TraitWorld,
+  applyOwnedStatTraits, entityStatTraitsInForce, seedStatBases, type TraitWorld,
 } from '@/lib/traitRuntime';
 import { buildNarrationPrompt } from '@/lib/turnPipeline/narrationPrompt';
 import { startingLocations } from '@/lib/startingLocation';
 import type {
   Entity, EntityStatValues, GameLocation, Opening, PersonaRef, PlaceholderRolls, PlayerStat, Stat, StatDescriptor, ThresholdUnit, Trait,
 } from '@/types';
-import { lensActiveTraits, lensPinTraits, resolveLensText, type BenchLens } from './lens';
-import { bearerWorldOf, chipBearingTexts, type RuleWorld } from './rules';
+import { lensActiveTraits, lensPersonaPicks, lensPinTraits, lensStartingStats, resolveLensText, type BenchLens } from './lens';
+import { ownerWorldOf, chipBearingTexts, type RuleWorld } from './rules';
 import { scannedEntries } from './triggers';
 
 /** The instrument reads the whole authored world — the first prompt pulls from every slice. */
@@ -234,8 +235,8 @@ export function primeOpeningRolls(
   const placeholders = allPlaceholders(world);
   const pinTexts = openingPinTexts(world);
   const rolled = primeRolls(placeholders, [...chipBearingTexts(world), ...valuePinRollChips(placeholders)], existing, pick, pinTexts);
-  // Each bearer's trait text again through its copies, as Enter World primes it.
-  return bearerPriming(bearerWorldOf(world), [], world.placeholders ?? []).copyTexts
+  // Each owner's trait text again through its copies, as Enter World primes it.
+  return ownerPriming(ownerWorldOf(world), [], world.placeholders ?? []).copyTexts
     .reduce((rolls, { texts, copies }) => primeRolls(placeholders, texts, rolls, pick, pinTexts, copies), rolled);
 }
 
@@ -293,15 +294,12 @@ function collisionChance(chances: number[], draws: number): number {
 /** The fresh game's starting stats: seeded exactly as a new game seeds them, then every active trait
  *  acquired in authored order — bounds derived, deltas applied, clamps allowed to bite. */
 function settleOpeningStats(world: OpeningWorld, active: Trait[]): { settled: PlayerStat[]; seeded: PlayerStat[] } {
-  const seeded = seedStatBases(playerStatsOf(world.stats ?? [], world.statGroups ?? []).map((stat) => {
+  const seeded = seedStatBases(globalStatsOf(world.stats ?? [], world.statGroups ?? []).map((stat) => {
     const value = stat.value || stat.min || 0;
     return { ...stat, value, starting: stat.starting ?? value };
   }));
-  let state: TraitRuntimeState = { stats: seeded, traits: [], disabledTraitIds: [], appliedValues: {} };
-  for (const trait of active) {
-    state = acquireTrait(state, trait, { traits: world.traits ?? [], groups: world.traitGroups ?? [] }).state;
-  }
-  return { settled: state.stats, seeded };
+  // The persona's picks reach the global stats only through their Global rows (Q33).
+  return { settled: lensStartingStats(world, globalStatsOf(world.stats ?? [], world.statGroups ?? []), active), seeded };
 }
 
 /** Each authored entity's stats as a new game seeds them, then settles under the entity's own default traits.
@@ -312,22 +310,32 @@ function settleEntityStats(world: OpeningWorld, active: readonly Trait[], person
   seeded: EntityStatValues;
 } {
   const { entities } = playStatWorld({ stats: world.stats ?? [], statGroups: world.statGroups ?? [], entities: world.entities ?? [] });
-  const bearerWorld = bearerWorldOf(world);
-  const { gate } = resolveBearers(bearerWorld, persona);
-  // Each bearer's default picks, gated against the world traits the lens PC leaves active.
+  const ownerWorld = ownerWorldOf(world);
+  const { gate: ownerGate } = resolveOwners(ownerWorld, persona);
+  // Stat Conditions read the authored start, as Enter World's do (Q23).
+  const gate = { ...ownerGate, stats: startingGateStats({ ...world, entities: world.entities ?? [] }) };
+  // Each owner's default picks; the Custom Persona entity holds the lens PC when it is the persona's (Q33).
+  const custom = lensPersonaPicks(world, active);
+  const defaults = settleDefaults(gate).active;
   const picks = settle({
-    ...gate, active: { ...settleDefaults(gate).active, [WORLD_OWNER]: active.map((t) => t.id) },
+    ...gate,
+    active: {
+      global: active.map((t) => t.id),
+      owners: custom && gate.owners.some((o) => o.id === custom.personaId)
+        ? { ...defaults.owners, [custom.personaId]: custom.ids }
+        : defaults.owners,
+    },
   }).active;
-  const ownedTraits = ownedTraitStatesFrom(Object.fromEntries(Object.entries(picks).filter(([id]) => id !== WORLD_OWNER)));
+  const ownedTraits = ownedTraitStatesFrom(picks.owners);
   const traitWorld: TraitWorld = {
-    traits: [...bearerWorld.traits], groups: [...bearerWorld.traitGroups], entities: bearerWorld.entities,
-    persona, bearers: gate.owners,
+    traits: [...ownerWorld.traits], groups: [...ownerWorld.traitGroups], entities: ownerWorld.entities,
+    persona, global: gate.global, owners: gate.owners,
   };
   const seeded = seedEntityStats(entities);
   const { entityStats = seeded } = applyOwnedStatTraits(
     { stats: [], traits: [], disabledTraitIds: [], appliedValues: {}, ownedTraits, entityStats: seeded }, traitWorld,
   );
-  const owners = entityStatOwners(entityStats, entities, persona, (id) => bearerStatTraitsInForce(ownedTraits, traitWorld, id));
+  const owners = entityStatOwners(entityStats, entities, persona, (id) => entityStatTraitsInForce(ownedTraits, traitWorld, id));
   return { owners, seeded };
 }
 
@@ -367,8 +375,8 @@ export function buildOpening(
     placeholders, rolls, pins, copies: copyLookup(blueprints, readerFor(undefined, entity, false)),
   });
 
-  const playerStats = playerStatsOf(world.stats ?? [], world.statGroups ?? []);
-  const enabled = activeStatEnabled(playerStats, active);
+  const globalStats = globalStatsOf(world.stats ?? [], world.statGroups ?? []);
+  const enabled = activeStatEnabled(globalStats, active);
   const liveStats = enabledStats(settled, enabled);
   const openingStats = (live: readonly PlayerStat[], from: readonly PlayerStat[]): OpeningStat[] => {
     const seededValue = new Map(from.map((stat) => [stat.id, stat.value]));
@@ -531,7 +539,7 @@ export function buildOpening(
     opening,
     openingsEnabled: openingsEnabled(world.worldOverview, world.entities),
     stats,
-    disabledStats: playerStats
+    disabledStats: globalStats
       .filter((stat) => !enabled[stat.id])
       .map((stat) => resolve(stat.name || stat.id)),
     entityStats,

@@ -10,6 +10,8 @@ import {
   resolveSlotValue,
   validateSlotValues,
   fillTemplate,
+  ownerStatAnswer,
+  statAnswer,
   isBuiltInTemplate,
   isNameSlotType,
   PERSONA_TRAIT_OWNER,
@@ -209,6 +211,54 @@ describe('fillTemplate', () => {
 
   it('emits 0 for an unparseable number rather than invalid code', () => {
     expect(fillTemplate('{{n:number}}', { n: 'abc' })).toBe('0');
+  });
+
+  describe('a stat slot picked from the owner’s stats', () => {
+    const owner = ownerStatAnswer('Rage');
+
+    it('reroutes the `stats` it indexes through to `owner.stats`', () => {
+      expect(fillTemplate('const a = stats[{{s:stat}}].value;', { s: owner })).toBe('const a = owner.stats["Rage"].value;');
+      expect(fillTemplate('stats [ {{s:stat}} ].value', { s: owner })).toBe('owner.stats [ "Rage" ].value');
+      expect(fillTemplate('stats?.[{{s:stat}}]?.value', { s: owner })).toBe('owner.stats?.["Rage"]?.value');
+    });
+
+    it('leaves a world pick on `stats`, and reads a plain answer as the world’s', () => {
+      expect(fillTemplate('stats[{{s:stat}}].value', { s: 'Rage' })).toBe('stats["Rage"].value');
+      expect(fillTemplate('stats[{{s:stat}}].value', {})).toBe('stats[""].value');
+    });
+
+    it('reroutes each use of a repeated slot', () => {
+      expect(fillTemplate('stats[{{s:stat}}].max - stats[{{s}}].value', { s: owner })).toBe('owner.stats["Rage"].max - owner.stats["Rage"].value');
+    });
+
+    it('quotes the bare name where the slot is not indexed through `stats`', () => {
+      expect(fillTemplate('const name = {{s:stat}}; foo.stats[{{s}}]; owner.stats[{{s}}]', { s: owner }))
+        .toBe('const name = "Rage"; foo.stats["Rage"]; owner.stats["Rage"]');
+    });
+
+    it('escapes a quote in the name', () => {
+      expect(fillTemplate('stats[{{s:stat}}]', { s: ownerStatAnswer('Ka"os') })).toBe('owner.stats["Ka\\"os"]');
+    });
+
+    it('splits an answer into its route and name', () => {
+      expect(statAnswer(owner)).toEqual({ route: 'owner', name: 'Rage' });
+      expect(statAnswer('Rage')).toEqual({ route: 'world', name: 'Rage' });
+    });
+
+    it('reads as filled, and runs through the sandbox as the owner’s stat', async () => {
+      const slot: TemplateSlot = { name: 's', type: 'stat' };
+      expect(validateSlotValues([slot], { s: owner })).toEqual({});
+      const rage = { id: 'r', name: 'Rage', type: 'number', description: '', min: 0, max: 100, value: 9, regen: 0 } as Stat;
+      const gold = { ...rage, id: 'g', name: 'Rage', value: 40 } as Stat;
+      const result = await executeStatCode(fillTemplate('return stats[{{s:stat}}].value;', { s: owner }), [gold], rage, {
+        owner: { name: 'Bram', id: 'bram', traits: [], stats: { stats: [rage] } },
+      });
+      expect(result).toMatchObject({ value: 9, error: null });
+      const world = await executeStatCode(fillTemplate('return stats[{{s:stat}}].value;', { s: 'Rage' }), [gold], rage, {
+        owner: { name: 'Bram', id: 'bram', traits: [], stats: { stats: [rage] } },
+      });
+      expect(world).toMatchObject({ value: 40, error: null });
+    });
   });
 });
 

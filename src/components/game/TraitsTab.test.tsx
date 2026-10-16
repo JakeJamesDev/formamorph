@@ -34,7 +34,7 @@ const renderTraits = (
     ...options,
     world: { traits, traitGroups, ...options.world },
     seed: (gameplay) => {
-      gameplay.setPlayerTraits(traits.filter((t) => held.includes(t.id)));
+      gameplay.setGlobalTraits(traits.filter((t) => held.includes(t.id)));
       gameplay.setActiveTab('traits');
       options.seed?.(gameplay);
     },
@@ -57,60 +57,63 @@ describe('the traits tab groups traits the way the world was authored', () => {
     T('t-quick', 'Quick Study', { groupId: 'g-mind' }),
   ];
 
-  it('gives every populated group its own section, ungrouped traits landing under General', () => {
-    renderTraits(TRAITS, GROUPS, ['t-strong']);
-    expect(screen.getAllByRole('group').map((el) => el.getAttribute('aria-label')))
-      .toEqual(['General', 'Physical', 'Mental']);
+  it('folds every root group and the ungrouped traits into one Global section, the groups as subheaders', () => {
+    renderTraits(TRAITS, GROUPS, ['t-strong', 't-quick']);
+    expect(screen.getAllByRole('group').map((el) => el.getAttribute('aria-label'))).toEqual(['Global']);
+    expect(within(section('Global')).getByText('Physical')).toBeInTheDocument();
+    expect(within(section('Global')).getByText('Mental')).toBeInTheDocument();
+    expect(within(section('Global')).queryByText('You')).toBeNull();
   });
 
-  it('drops the section chrome entirely for a world with no groups', () => {
+  it('puts a world with no groups under Global too', () => {
     renderTraits([T('t-loose', 'Wanderer')], [], ['t-loose']);
-    expect(screen.getAllByRole('group').map((el) => el.getAttribute('aria-label'))).toEqual(['Traits']);
-    expect(screen.queryByRole('button', { name: /enabled/ })).toBeNull();
+    expect(screen.getAllByRole('group').map((el) => el.getAttribute('aria-label'))).toEqual(['Global']);
+    expect(screen.getByRole('button', { name: 'Global, 1 enabled' })).toBeInTheDocument();
   });
 
-  it('counts a section by its enabled traits, and opens only the sections that have some', () => {
-    renderTraits(TRAITS, GROUPS, ['t-strong']);
+  it('counts the section by its enabled traits, and opens it when it has some', () => {
+    renderTraits(TRAITS, GROUPS, ['t-strong', 't-quick']);
+    expect(screen.getByRole('button', { name: 'Global, 2 enabled' })).toHaveAttribute('aria-expanded', 'true');
+  });
 
-    const body = screen.getByRole('button', { name: 'Physical, 1 enabled' });
-    const mind = screen.getByRole('button', { name: 'Mental, 0 enabled' });
-    expect(body).toHaveAttribute('aria-expanded', 'true');
-    // Nothing enabled in Mental, so it starts out of the way rather than competing for the eye.
-    expect(mind).toHaveAttribute('aria-expanded', 'false');
-    expect(within(section('Mental')).queryByText('Quick Study')).toBeNull();
+  it('starts the Global section shut when nothing in it is enabled', () => {
+    renderTraits(TRAITS, GROUPS, []);
+    const header = screen.getByRole('button', { name: 'Global, 0 enabled' });
+    expect(header).toHaveAttribute('aria-expanded', 'false');
+    expect(within(section('Global')).queryByText('Quick Study')).toBeNull();
 
-    fireEvent.click(mind);
-    expect(within(section('Mental')).getByRole('button', { name: /^Disabled/ })).toBeInTheDocument();
+    fireEvent.click(header);
+    expect(within(section('Global')).getByRole('button', { name: /^Disabled/ })).toBeInTheDocument();
   });
 
   it('shows enabled traits first and folds the rest into a collapsed Disabled block', () => {
     renderTraits(TRAITS, GROUPS, ['t-fleet']);
 
     expect(shown()).toEqual(['Switch off Fleet Footed']);
-    expect(within(section('Physical')).getByRole('button', { name: 'Disabled (1)' }))
+    expect(within(section('Global')).getByRole('button', { name: 'Disabled (3)' }))
       .toHaveAttribute('aria-expanded', 'false');
 
-    openDisabled('Physical');
-    expect(shown()).toEqual(['Switch off Fleet Footed', 'Switch on Strong Back']);
+    openDisabled('Global');
+    expect(shown()).toEqual(['Switch off Fleet Footed', 'Switch on Wanderer', 'Switch on Strong Back', 'Switch on Quick Study']);
   });
 
   it('keeps authored order inside the Disabled block, so acquirables stay where the author put them', () => {
     renderTraits(TRAITS, GROUPS, []);
-    fireEvent.click(screen.getByRole('button', { name: 'Physical, 0 enabled' }));
-    openDisabled('Physical');
-    expect(within(section('Physical')).getAllByRole('checkbox').map((el) => el.getAttribute('aria-label')))
-      .toEqual(['Switch on Strong Back', 'Switch on Fleet Footed']);
+    fireEvent.click(screen.getByRole('button', { name: 'Global, 0 enabled' }));
+    openDisabled('Global');
+    expect(within(section('Global')).getAllByRole('checkbox').map((el) => el.getAttribute('aria-label')))
+      .toEqual(['Switch on Wanderer', 'Switch on Strong Back', 'Switch on Fleet Footed', 'Switch on Quick Study']);
   });
 
-  it('renders a nested subgroup as a subheader inside its top-level section', () => {
+  it('renders a nested subgroup as a subheader inside the Global section', () => {
     const groups = [G('g-mut', 'Mutations'), G('g-major', 'Major', { parentId: 'g-mut' }),
       G('g-deep', 'Latent', { parentId: 'g-major' })];
     const traits = [T('t-heart', 'Second Heart', { groupId: 'g-major' }), T('t-seed', 'Seed', { groupId: 'g-deep' })];
     renderTraits(traits, groups, ['t-heart', 't-seed']);
 
-    const panel = section('Mutations');
-    expect(within(panel).getByText('Major')).toBeInTheDocument();
-    expect(within(panel).getByText('Major › Latent')).toBeInTheDocument();
+    const panel = section('Global');
+    expect(within(panel).getByText('Mutations › Major')).toBeInTheDocument();
+    expect(within(panel).getByText('Mutations › Major › Latent')).toBeInTheDocument();
     // One section, not an accordion inside an accordion.
     expect(screen.getAllByRole('group')).toHaveLength(1);
   });
@@ -154,12 +157,12 @@ describe('the traits tab filter', () => {
     renderTraits(TRAITS, GROUPS, ['t-strong', 't-quick']);
     filter('strong');
     expect(shown()).toEqual(['Switch off Strong Back']);
-    expect(screen.queryByRole('group', { name: 'Mental' })).toBeNull();
+    expect(screen.queryByText('Quick Study')).toBeNull();
   });
 
   it('opens a collapsed section holding a match, so a result is never hidden behind a header', () => {
-    renderTraits(TRAITS, GROUPS, ['t-strong']);
-    expect(screen.getByRole('button', { name: 'Mental, 0 enabled' })).toHaveAttribute('aria-expanded', 'false');
+    renderTraits(TRAITS, GROUPS, []);
+    expect(screen.getByRole('button', { name: 'Global, 0 enabled' })).toHaveAttribute('aria-expanded', 'false');
 
     filter('quick study');
     expect(shown()).toEqual(['Switch on Quick Study']);
@@ -179,15 +182,15 @@ describe('the traits tab filter', () => {
 
   it('counts only the matches in a section badge while the filter is on', () => {
     renderTraits(TRAITS, GROUPS, ['t-strong', 't-fleet']);
-    expect(screen.getByRole('button', { name: 'Physical, 2 enabled' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Global, 2 enabled' })).toBeInTheDocument();
     filter('strong');
-    expect(screen.getByRole('button', { name: 'Physical, 1 enabled' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Global, 1 enabled' })).toBeInTheDocument();
   });
 
   it('holds the collapse controls while a filter is on, rather than flipping a state nothing shows', () => {
     renderTraits(TRAITS, GROUPS, ['t-strong']);
     filter('fleet');
-    const header = screen.getByRole('button', { name: /^Physical/ });
+    const header = screen.getByRole('button', { name: /^Global/ });
     fireEvent.click(header);
     // Still open, and clearing the filter must not spring a collapse the player never saw take effect.
     expect(shown()).toEqual(['Switch on Fleet Footed']);
@@ -238,26 +241,27 @@ describe('the traits tab keeps how the player left it', () => {
     expect(shown()).toEqual(['Switch on Quick Study']);
   });
 
-  it('keeps the sections and Disabled blocks the player folded open or shut', () => {
+  it('keeps the section and Disabled block the player folded open or shut', () => {
     const view = renderTraits(TRAITS, GROUPS, ['t-strong']);
-    fireEvent.click(screen.getByRole('button', { name: /^Physical/ }));      // shut a section that opened
-    fireEvent.click(screen.getByRole('button', { name: 'Mental, 0 enabled' })); // open one that started shut
-    openDisabled('Mental');
+    openDisabled('Global');
+    fireEvent.click(screen.getByRole('button', { name: /^Global/ })); // shut the section that opened
     leaveAndReturn(view);
 
-    expect(screen.getByRole('button', { name: /^Physical/ })).toHaveAttribute('aria-expanded', 'false');
-    expect(shown()).toEqual(['Switch on Quick Study']);
+    expect(screen.getByRole('button', { name: /^Global/ })).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(screen.getByRole('button', { name: /^Global/ }));
+    expect(shown()).toEqual(['Switch off Strong Back', 'Switch on Fleet Footed', 'Switch on Quick Study']);
   });
 
   it('keeps both folds when two land in the same batch', () => {
     renderTraits(TRAITS, GROUPS, ['t-strong']);
     // React batches within one act, so a flip reading this render's copy would lose the earlier one.
     act(() => {
-      fireEvent.click(screen.getByRole('button', { name: /^Physical/ }));
-      fireEvent.click(screen.getByRole('button', { name: /^Mental/ }));
+      fireEvent.click(within(section('Global')).getByRole('button', { name: /^Disabled/ }));
+      fireEvent.click(screen.getByRole('button', { name: /^Global/ }));
     });
-    expect(screen.getByRole('button', { name: /^Physical/ })).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.getByRole('button', { name: /^Mental/ })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('button', { name: /^Global/ })).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(screen.getByRole('button', { name: /^Global/ }));
+    expect(shown()).toEqual(['Switch off Strong Back', 'Switch on Fleet Footed', 'Switch on Quick Study']);
   });
 
   it('keeps a revealed stat-change list open', () => {
@@ -269,7 +273,7 @@ describe('the traits tab keeps how the player left it', () => {
     expect(screen.getByText(/Vigor/)).toHaveTextContent('Vigor: +10');
   });
 
-  it('re-seeds the folds when the trait list itself changes, rather than carrying another turn\'s', () => {
+  it('keeps the fold across a page change while the section list stays the same', () => {
     const held = [T('t-strong', 'Strong Back', { groupId: 'g-body' })];
     const view = renderRightPanel({}, {
       turns: [
@@ -279,20 +283,20 @@ describe('the traits tab keeps how the player left it', () => {
       stats: STATS,
       world: { traits: TRAITS, traitGroups: GROUPS },
       seed: (gameplay) => {
-        gameplay.setPlayerTraits(held);
+        gameplay.setGlobalTraits(held);
         gameplay.setActiveTab('traits');
       },
     });
-    fireEvent.click(screen.getByRole('button', { name: /^Physical/ }));
-    expect(screen.getByRole('button', { name: /^Physical/ })).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(screen.getByRole('button', { name: /^Global/ }));
+    expect(screen.getByRole('button', { name: /^Global/ })).toHaveAttribute('aria-expanded', 'false');
 
-    // Paging back drops the acquirable traits, so Mental disappears and the section list is a different one.
+    // Paging back drops the acquirable traits, but the one Global section stays, so the fold stays too.
     act(() => {
       const gameplay = view.gameplay();
       gameplay.setUserPage(1);
       gameplay.setDisplayedMessages(gameplay.fullMessageHistory.slice(0, 2));
     });
-    expect(screen.getByRole('button', { name: /^Physical/ })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('button', { name: /^Global/ })).toHaveAttribute('aria-expanded', 'false');
   });
 });
 
@@ -306,7 +310,8 @@ describe('a gated trait in play', () => {
 
   it('stays in place, locked, saying what it requires', () => {
     renderTraits(TRAITS, [], []);
-    openDisabled('Traits');
+    fireEvent.click(screen.getByRole('button', { name: /^Global,/ }));
+    openDisabled('Global');
     expect(screen.getByRole('checkbox', { name: 'Switch on Plate Armor' })).toBeDisabled();
     expect(screen.getByText('Requires Paladin')).toBeTruthy();
     expect(screen.getByRole('checkbox', { name: 'Switch on Paladin' })).toBeEnabled();
@@ -314,7 +319,7 @@ describe('a gated trait in play', () => {
 
   it('opens once its requirement is held, saying what unlocked it', () => {
     renderTraits(TRAITS, [], ['t-paladin']);
-    openDisabled('Traits');
+    openDisabled('Global');
     expect(screen.getByRole('checkbox', { name: 'Switch on Plate Armor' })).toBeEnabled();
     expect(screen.getByText('Unlocked by Paladin')).toBeTruthy();
   });
@@ -324,7 +329,8 @@ describe('a gated trait in play', () => {
       world: { entities: [aldric] },
       seed: (gameplay) => gameplay.setPersonaRef({ source: 'world', entityId: 'e-aldric' }),
     });
-    openDisabled('Traits');
+    fireEvent.click(screen.getByRole('button', { name: /^Global,/ }));
+    openDisabled('Global');
     expect(screen.getByRole('checkbox', { name: 'Switch on Royal Crown' })).toBeEnabled();
     expect(screen.getByText('Unlocked by playing as Sir Aldric')).toBeTruthy();
   });
@@ -370,7 +376,7 @@ describe('entity nodes in the traits tab', () => {
     expect(within(ashSection).queryByText('Gruff')).toBeNull();
   });
 
-  it('hands an owned trait’s switch to the runtime by id and bearer', () => {
+  it('hands an owned trait’s switch to the runtime by id and owner', () => {
     const view = withAsh();
     fireEvent.click(screen.getByRole('checkbox', { name: 'Switch off Tamed' }));
     expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-tamed', false, 'e-ash');
@@ -426,7 +432,7 @@ describe('linked traits in the traits tab', () => {
     openDisabled(name);
   };
 
-  it('lists a linked original once per bearer, under each bearer’s node, and never at the top level', () => {
+  it('lists a linked original once per owner, under each owner’s node, and never at the top level', () => {
     withLinks();
     expect(within(section('Ash')).getByRole('radio', { name: 'Switch off Paladin' })).toBeEnabled();
     unfold('Bo');
@@ -436,7 +442,7 @@ describe('linked traits in the traits tab', () => {
     expect(screen.queryByRole('group', { name: 'Classes' })).toBeNull();
   });
 
-  it('hands a linked trait’s switch to the runtime with the bearer whose row it is', () => {
+  it('hands a linked trait’s switch to the runtime with the owner whose row it is', () => {
     const view = withLinks();
     fireEvent.click(within(section('Ash')).getByRole('radio', { name: 'Switch off Paladin' }));
     expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-paladin', false, 'e-ash');
@@ -448,7 +454,7 @@ describe('linked traits in the traits tab', () => {
     expect(screen.getByRole('button', { name: 'Wanderer, You, 0 enabled' })).toBeTruthy();
     unfold('Wanderer');
     expect(within(section('Wanderer')).getByRole('checkbox', { name: 'Switch on Wizard' })).toBeEnabled();
-    // The Character Name chip resolves to the marked entity, never to another bearer.
+    // The Character Name chip resolves to the marked entity, never to another owner.
     expect(within(section('Wanderer')).getByText(/studies\.$/).textContent).toBe('Wanderer studies.');
     expect(screen.getByText("Ash's Paladin")).toBeTruthy();
   });
@@ -477,7 +483,7 @@ describe('linked traits in the traits tab', () => {
     expect(screen.getAllByRole('group').map((g) => g.getAttribute('aria-label'))).toEqual(['Bo', 'Ash']);
   });
 
-  it("reads a linked trait's Character Name as its bearer", () => {
+  it("reads a linked trait's Character Name as its owner", () => {
     withLinks({ seed: (gameplay) => gameplay.setOwnedTraits({ 'e-ash': { chosen: ['t-wizard'] } }) });
     expect(within(section('Ash')).getByText('Ash studies.')).toBeTruthy();
   });
@@ -494,13 +500,13 @@ describe('a full group with a max above one', () => {
   it('disables its switched-off rows and keeps the switched-on ones switchable', () => {
     renderTraits(TRAITS, GROUPS, ['t-bow', 't-hide']);
     expect(screen.getByRole('checkbox', { name: 'Switch off Archery' })).toBeEnabled();
-    openDisabled('Skills');
+    openDisabled('Global');
     expect(screen.getByRole('checkbox', { name: 'Switch on Lore' })).toBeDisabled();
   });
 
   it('keeps every row open below the max', () => {
     renderTraits(TRAITS, GROUPS, ['t-bow']);
-    openDisabled('Skills');
+    openDisabled('Global');
     expect(screen.getByRole('checkbox', { name: 'Switch on Lore' })).toBeEnabled();
   });
 });
@@ -519,9 +525,8 @@ describe('a group at its minimum', () => {
     renderTraits(TRAITS, GROUPS, ['t-bow', 't-hide', 't-pal']);
     expect(screen.getByRole('checkbox', { name: 'Switch off Archery' })).toBeDisabled();
     expect(screen.getByRole('radio', { name: 'Switch off Paladin' })).toBeDisabled();
-    openDisabled('Skills');
+    openDisabled('Global');
     expect(screen.getByRole('checkbox', { name: 'Switch on Lore' })).toBeEnabled();
-    openDisabled('Class');
     expect(screen.getByRole('radio', { name: 'Switch on Rogue' })).toBeEnabled();
   });
 
@@ -542,9 +547,8 @@ describe('an Automatic trait', () => {
 
   it('does not show while dormant and never taken', () => {
     renderTraits(TRAITS, GROUPS, ['t-sworn']);
-    fireEvent.click(screen.getByRole('button', { name: 'General, 0 enabled' }));
-    openDisabled('General');
-    expect(within(section('General')).getByText('Cursed Ring')).toBeInTheDocument();
+    openDisabled('Global');
+    expect(within(section('Global')).getByText('Cursed Ring')).toBeInTheDocument();
     expect(screen.queryByText('Curse')).toBeNull();
   });
 
@@ -552,9 +556,8 @@ describe('an Automatic trait', () => {
     renderTraits(TRAITS, GROUPS, ['t-sworn', 't-curse'], {
       seed: (gameplay) => gameplay.setDisabledTraitIds(['t-curse']),
     });
-    fireEvent.click(screen.getByRole('button', { name: 'General, 0 enabled' }));
-    openDisabled('General');
-    expect(within(section('General')).getByText('Cursed Ring')).toBeInTheDocument();
+    openDisabled('Global');
+    expect(within(section('Global')).getByText('Cursed Ring')).toBeInTheDocument();
     expect(screen.queryByText('Curse')).toBeNull();
   });
 
@@ -563,7 +566,7 @@ describe('an Automatic trait', () => {
     expect(screen.getByText('Curse')).toBeInTheDocument();
     expect(screen.queryByRole('checkbox', { name: /Curse$/ })).toBeNull();
     expect(screen.queryByRole('radio', { name: /Sworn$/ })).toBeNull();
-    openDisabled('Oath');
+    openDisabled('Global');
     expect(screen.getByRole('radio', { name: 'Switch on Free' })).toBeDisabled();
   });
 });
@@ -583,16 +586,16 @@ describe('a Hidden trait', () => {
   it('never shows while active, in its row, its section or the active summary', () => {
     renderTraits(TRAITS, GROUPS, ['t-bond', 't-omen']);
     expect(screen.queryByText(/Blood Bond|Omen/)).toBeNull();
-    expect(screen.queryByRole('group', { name: 'Secrets' })).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Oath, 0 enabled' }));
-    openDisabled('Oath');
+    expect(screen.queryByText('Secrets')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Global, 0 enabled' }));
+    openDisabled('Global');
     expect(screen.getByRole('radio', { name: 'Switch on Free' })).toBeDisabled();
   });
 
   it('leaves its name out of a gate line, and reads "Locked" when nothing else is listed', () => {
     renderTraits(TRAITS, GROUPS, ['t-bond', 't-omen']);
-    fireEvent.click(screen.getByRole('button', { name: 'General, 0 enabled' }));
-    openDisabled('General');
+    fireEvent.click(screen.getByRole('button', { name: 'Global, 0 enabled' }));
+    openDisabled('Global');
     expect(screen.getByText('Requires Paladin')).toBeInTheDocument();
     expect(screen.getByText('Locked')).toBeInTheDocument();
     expect(screen.queryByText(/Lost Name/)).toBeNull();
@@ -600,7 +603,7 @@ describe('a Hidden trait', () => {
 
   it('opens a trait with no line when only a Hidden requirement holds', () => {
     renderTraits(TRAITS, GROUPS, ['t-paladin', 't-lost', 't-bond', 't-omen']);
-    openDisabled('General');
+    openDisabled('Global');
     expect(screen.getByRole('checkbox', { name: 'Switch on Veil' })).toBeEnabled();
     expect(screen.getByText('Unlocked by Paladin')).toBeInTheDocument();
     expect(screen.queryByText(/Lost Name/)).toBeNull();
@@ -622,21 +625,21 @@ describe('a max-one trait group reads as a set of alternatives', () => {
 
   it('switches the chosen alternative on, leaving the runtime to retire its sibling', () => {
     const view = renderTraits(TRAITS, GROUPS, ['t-farm']);
-    openDisabled('Background');
+    openDisabled('Global');
     fireEvent.click(screen.getByRole('radio', { name: 'Switch on Scholar' }));
-    expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-book', true, 'world');
+    expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-book', true, null);
   });
 
   it('clears the selected alternative when it is clicked again, so none is a legal answer', () => {
     const view = renderTraits(TRAITS, GROUPS, ['t-farm']);
     fireEvent.click(screen.getByRole('radio', { name: 'Switch off Farmhand' }));
-    expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-farm', false, 'world');
+    expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-farm', false, null);
   });
 
   it('marks the radios by what is actually held', () => {
     renderTraits(TRAITS, GROUPS, ['t-farm']);
     expect(screen.getByRole('radio', { name: 'Switch off Farmhand' })).toHaveAttribute('aria-checked', 'true');
-    openDisabled('Background');
+    openDisabled('Global');
     expect(screen.getByRole('radio', { name: 'Switch on Scholar' })).toHaveAttribute('aria-checked', 'false');
   });
 });
@@ -658,7 +661,7 @@ describe('a trait row reveals what it does', () => {
     expect(screen.getByText(/Vigor/)).toHaveTextContent('Vigor: +10');
   });
 
-  it("reads a cast entity's trait changes against its own stats, never the player's", () => {
+  it("reads an entity's trait changes against its own stats first, then the global stats, played or not (Q30)", () => {
     // The player's Health is hidden; Hesk's own Health is not. Dwarf also names Vigor, which Hesk doesn't own.
     const dwarf = T('t-dwarf', 'Dwarf', {
       statChanges: [{ statId: 'health', value: 10, type: 'max' }, { statId: 'vigor', value: 3, type: 'starting' }],
@@ -675,21 +678,21 @@ describe('a trait row reveals what it does', () => {
     });
     const { unmount } = owned(false);
     fireEvent.click(screen.getByRole('button', { name: /Dwarf/ }));
-    expect(screen.getByText(/Health/)).toHaveTextContent('Health: +10 (max)');
-    expect(screen.queryByText(/Vigor:/)).toBeNull();
+    // Unplayed, the row Hesk doesn't own still reaches the global Vigor, and her own Health keeps its id.
+    expect(screen.getByText(/Health:/)).toHaveTextContent('Health: +10 (max)');
+    expect(screen.getByText(/Vigor:/)).toHaveTextContent('Vigor: +3');
     unmount();
 
-    // Played, Hesk's traits also reach the player's stats: her own Health first, then the player's Vigor.
     owned(true);
     fireEvent.click(screen.getByRole('button', { name: /Dwarf/ }));
     expect(screen.getByText(/Health:/)).toHaveTextContent('Health: +10 (max)');
     expect(screen.getByText(/Vigor:/)).toHaveTextContent('Vigor: +3');
   });
 
-  it("reads a played persona's row that targets the player against the player's stat, past its own with that id", () => {
+  it("reads a played persona's row with the global target against the global stat, past its own with that id", () => {
     // The player's Health is hidden; Hesk's own Health is not. The vow's first row names the player's.
     const vow = T('t-vow', 'Vow', {
-      statChanges: [{ statId: 'health', value: 10, type: 'max', target: 'player' }, { statId: 'health', value: 4, type: 'starting' }],
+      statChanges: [{ statId: 'health', value: 10, type: 'max', target: 'global' }, { statId: 'health', value: 4, type: 'starting' }],
     });
     const hesk = { id: 'e-hesk', name: 'Mother Hesk', persona: true, traits: [vow], stats: [statFixture('Health', 100)] };
     renderTraits([], [], [], {
@@ -745,6 +748,6 @@ describe('a trait row reveals what it does', () => {
   it('offers no reveal for a trait that changes nothing', () => {
     renderTraits([T('t-plain', 'Wanderer', { playerDescription: 'No road is unfamiliar.' })], [], ['t-plain']);
     expect(screen.queryByRole('button', { name: /Wanderer/ })).toBeNull();
-    expect(within(section('Traits')).getByText('Wanderer')).toBeInTheDocument();
+    expect(within(section('Global')).getByText('Wanderer')).toBeInTheDocument();
   });
 });

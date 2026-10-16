@@ -1,6 +1,7 @@
 import type { Entity, GameLocation, Placeholder, Stat, Trait, WorldOverview } from '@/types';
 import type { ResolvedPersona } from '../persona';
 import { authoredChipScene, type AuthoredWorld } from './authoredScene';
+import { ownerStatParts } from '../statContext';
 import type { ChipScene } from './chipScene';
 
 // Generic on purpose, so no one takes the preview for their own world. Code-only, never in the library.
@@ -46,10 +47,22 @@ const sampleTown: GameLocation = {
 /** A one-value placeholder, which reads the same on every draw. */
 const fixed = (id: string, name: string, text: string): Placeholder => ({ id, name, values: [{ id: `${id}-1`, text }] });
 
+const stat = (id: string, name: string, value: number, description: string, bands: [number, string][]): Stat => ({
+  id, name, type: 'number', description, min: 0, max: 100, value, regen: 0,
+  descriptors: bands.map(([threshold, word], i) => ({ id: `${id}-${i}`, threshold, description: word })),
+});
+
+const trait = (id: string, name: string, aiDescription: string): Trait => ({
+  id, name, aiDescription, isDefault: true, statChanges: [],
+});
+
+// Wren owns one stat and one trait, so the Entities chip's Only With and Include rows show lines in the sample.
 const wren: Entity = {
   id: 'wren', name: 'Wren', locations: ['landing'], placeholders: [fixed('wren-pole', 'Pole', 'a hooked ash pole')],
   aiDescription: 'The lamp-keeper, gray-haired and unhurried, who has watched this shore longer than anyone will admit. Carries a hooked pole she uses for everything but its purpose.',
   aiSummary: 'The unhurried lamp-keeper.',
+  traits: [trait('wren-night-watch', 'Night Watch', 'Keeps the lamp lit through the dark hours, whatever the weather.')],
+  stats: [stat('wren-patience', 'Patience', 70, 'How long she waits on a stranger before she speaks.', [[30, 'Short'], [80, 'Measured'], [100, 'Endless']])],
 };
 const gull: Entity = {
   id: 'gull', name: 'a gull', locations: ['landing'],
@@ -60,21 +73,16 @@ const bell: Entity = {
   id: 'bell', name: 'Bell', locations: ['boathouse'],
   aiDescription: 'A boat-mender working by feel in the dark of the boathouse, talking to the hull.',
   aiSummary: 'A boat-mender working in the dark.',
+  traits: [trait('bell-by-touch', 'By Touch', 'Reads a hull with his fingers, and needs no light to find a leak.')],
+  stats: [stat('bell-focus', 'Focus', 60, 'How steady his hands stay on a repair.', [[30, 'Scattered'], [80, 'Steady'], [100, 'Absorbed']])],
 };
 const harrow: Entity = {
   id: 'harrow', name: 'Harrow', locations: ['sample-town'],
   aiDescription: 'The man who sells maps in Sample Town, and is not currently at his stall.',
   aiSummary: 'The map-seller, absent from his stall.',
+  traits: [trait('harrow-no-questions', 'No Questions', 'Sells a map to anyone, and never asks where it will be used.')],
+  stats: [stat('harrow-eagerness', 'Eagerness', 45, 'How badly he wants the next sale.', [[30, 'Idle'], [70, 'Keen'], [100, 'Desperate']])],
 };
-
-const stat = (id: string, name: string, value: number, description: string, bands: [number, string][]): Stat => ({
-  id, name, type: 'number', description, min: 0, max: 100, value, regen: 0,
-  descriptors: bands.map(([threshold, word], i) => ({ id: `${id}-${i}`, threshold, description: word })),
-});
-
-const trait = (id: string, name: string, aiDescription: string): Trait => ({
-  id, name, aiDescription, isDefault: true, statChanges: [],
-});
 
 /** The sample world the Settings preview renders when no game runs. */
 const SAMPLE_WORLD: AuthoredWorld = {
@@ -108,24 +116,35 @@ const SAMPLE_WORLD: AuthoredWorld = {
 /** The sample world's dictionaries, for a reader that takes them beside the scene. */
 export const sampleDictionaries = () => SAMPLE_WORLD.dictionaries ?? [];
 
-/** The player the sample plays: a library persona, so no known-person line. */
+/** The player the sample plays: a library persona, so no known-person line. It owns one trait and one
+ *  stat, so the preview shows the block as an authored persona fills it. */
+const travelerTrait = trait('false-map', 'False Map', 'Carries a chart that lies, and knows which parts.');
+const travelerStat = stat('nerve', 'Nerve', 55, 'How steady the hands stay when the water rises.', [[30, 'Shaking'], [70, 'Steady'], [100, 'Unshakable']]);
 const persona: ResolvedPersona = {
   source: 'library',
   entity: {
     id: 'traveler', name: 'Traveler', pronouns: 'they/them',
     aiDescription: 'Salt-stained and slow to speak, carrying a map they no longer trust.',
     aiSummary: 'A quiet, salt-stained wanderer.',
+    traits: [travelerTrait],
+    stats: [travelerStat],
   },
 };
 
 /**
  * The sample world as a Chip Scene: its authored opening, plus the player state a world alone lacks — a
- * persona, notes, a clock, and Wren as the one character who has spoken.
+ * persona with its own trait and stat, notes, a clock, and Wren as the one character who has spoken.
  */
 export function sampleChipScene(): ChipScene {
+  const authored = authoredChipScene(SAMPLE_WORLD);
+  const travelerStats = [{ ...travelerStat, value: travelerStat.value ?? travelerStat.min }];
   return {
-    ...authoredChipScene(SAMPLE_WORLD),
+    ...authored,
     persona,
+    playerName: persona.entity.name,
+    ownedTraits: { ...authored.ownedTraits, [persona.entity.id]: [travelerTrait.id] },
+    ownedStats: { ...authored.ownedStats, [persona.entity.id]: travelerStats },
+    playedStats: ownerStatParts([persona.entity], { [persona.entity.id]: travelerStats }),
     inSceneIds: [wren.id],
     notes: 'Traveler is looking for the person who sold them a false map.',
     // Day 3, evening on the default calendar.

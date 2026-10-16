@@ -5,6 +5,7 @@ import type { Dictionary } from '@/types';
 import { entryVectorKey } from '@/lib/semanticDictionary';
 import { getVectors } from '@/lib/embeddingCache';
 import { embedTexts, isEmbeddingModelReady, loadEmbeddingModel } from '@/lib/embeddingWorkerClient';
+import { EMBED_BOUND_MS } from '@/lib/memoryRelevance';
 import type { TriggerWorld } from './triggers';
 import { useTriggerSemantics } from './useTriggerSemantics';
 
@@ -140,7 +141,7 @@ describe('useTriggerSemantics — with the toggle on', () => {
   it('embeds the pasted text and hands over both halves of the score', async () => {
     const { result } = renderHook(() => useTriggerSemantics(true, true, world, 'The tide pulls out.', DELAY));
     await settle();
-    expect(embed).toHaveBeenCalledWith(['The tide pulls out.']);
+    expect(embed).toHaveBeenCalledWith(['The tide pulls out.'], EMBED_BOUND_MS);
     expect(result.current.status).toBe('ready');
     expect(result.current.input?.queryVec).toEqual(vector());
     expect([...(result.current.input?.vectors.keys() ?? [])]).toEqual(keys);

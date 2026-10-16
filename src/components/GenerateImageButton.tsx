@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
-import { toastError } from '@/lib/linkToast';
+import { toastImageFailure } from '@/lib/imageGen/failureToast';
 import { Sparkles, Loader2, SlidersHorizontal, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -13,6 +13,7 @@ import AiGenerateButton from '@/components/AiGenerateButton';
 import TagField from '@/components/prompt/TagField';
 import { useSettings } from '@/contexts/SettingsContext';
 import { type ImageSubjectKind } from '@/lib/imagePrompt';
+import { useGameDataOptional } from '@/contexts/GameDataContext';
 import { generateImage, buildImageRequest } from '@/lib/imageGen';
 import { type ImageCap } from '@/lib/imageOptim';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
@@ -102,7 +103,8 @@ const PreviewPane = ({ shape, generating, progress, frame, preview, onZoom }: {
  * through the configured image provider, fits it to the field's cap, and hands it back via `onChange`.
  */
 export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange, className }: {
-  subject: { description: string; kind: ImageSubjectKind };
+  /** `name`: what the image shows, for its file name on the image server only. */
+  subject: { description: string; kind: ImageSubjectKind; name?: string };
   cap: ImageCap;
   /** Extra classes on the trigger, for a caller that sizes it to the picture above it. */
   className?: string;
@@ -115,6 +117,7 @@ export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange
   onTagsChange?: (t: string) => void;
 }) {
   const settings = useSettings();
+  const gameData = useGameDataOptional();
   const {
     imagePositivePrompt, imageNegativePrompt,
     imagePortraitWidth, imagePortraitHeight, imageLandscapeWidth, imageLandscapeHeight,
@@ -170,6 +173,8 @@ export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange
       // The preset's prefixes (quality/style tags, shared negatives) ride on top of the per-subject fields.
       const { provider, params, opts } = buildImageRequest(settings, {
         prompt, negative, width: genWidth, height: genHeight,
+        // Saved under the world, named for who or what it shows.
+        file: { world: gameData?.worldOverview?.name || 'library', subject: subject.name || (subject.kind === 'character' ? 'entity' : subject.kind) },
       });
       const dataUrl = await generateImage(provider, params, {
         ...opts,
@@ -182,7 +187,7 @@ export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange
       });
       if (abortRef.current === controller) setPreview(dataUrl); // ignore a superseded run; optimize on accept
     } catch (error) {
-      if ((error as Error).name !== 'AbortError') toastError(error, 'Image generation failed.');
+      if ((error as Error).name !== 'AbortError') toastImageFailure(error, 'Image generation failed.');
     } finally {
       if (abortRef.current === controller) { setGenerating(false); setProgress(null); setPreviewFrame(null); }
     }

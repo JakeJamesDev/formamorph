@@ -206,3 +206,24 @@ export function buildStamper(args: {
 export function formatNow(nowHours: number, calendar?: WorldCalendar): string {
   return `It is now ${formatAbsolute(nowHours, calendar)}.`;
 }
+
+export const TURN_TIME_UNITS = ['minutes', 'hours', 'days', 'weeks'] as const;
+export type TurnTimeUnit = (typeof TURN_TIME_UNITS)[number];
+export const TURN_TIME_UNIT_HOURS: Record<TurnTimeUnit, number> = { minutes: 1 / 60, hours: 1, days: 24, weeks: 168 };
+
+const isWhole = (n: number) => Math.abs(n - Math.round(n)) < 1e-6;
+
+/** Hours as an amount in the largest unit that holds it whole. Zero reads as hours. */
+export function splitTurnHours(hours: number): { amount: string; unit: TurnTimeUnit } {
+  if (hours === 0) return { amount: '0', unit: 'hours' };
+  const unit = [...TURN_TIME_UNITS].reverse().find((u) => isWhole(hours / TURN_TIME_UNIT_HOURS[u])) ?? 'hours';
+  const amount = hours / TURN_TIME_UNIT_HOURS[unit];
+  return { amount: String(isWhole(amount) ? Math.round(amount) : amount), unit };
+}
+
+/** A typed amount in a unit as hours. Null when blank, negative, or past MAX_TURN_HOURS. */
+export function joinTurnHours(amount: string, unit: TurnTimeUnit): number | null {
+  if (amount.trim() === '') return null;
+  const hours = Number(amount) * TURN_TIME_UNIT_HOURS[unit];
+  return Number.isFinite(hours) && hours >= 0 && hours <= MAX_TURN_HOURS ? hours : null;
+}
