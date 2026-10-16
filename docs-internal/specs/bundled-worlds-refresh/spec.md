@@ -99,7 +99,9 @@ Every world: current shape on disk, `openings` (no `openingCue`), `imageTags` on
   - It runs arms interleaved in one batch on the cloud endpoint, so each batch carries its own control.
   - It reports structural metrics per arm: stat pass validity, token and reasoning leaks, choices parse, placeholder tokens left unresolved.
   - It writes transcripts for rubric scoring against the baseline rubric.
-  - It assembles prompts from the real prompt source, the way it does today. It replicates the sampler pins and sends `reasoning_effort: "none"`.
+  - It runs turns on the real turn pipeline (TypeScript), with the real narration, stat, and choices requests. It replicates the sampler pins and sends `reasoning_effort: "none"`. It replaces the old hand-rendered world-narration probe.
+  - It runs world, trait, and entity scripts at their real timings, so script-paced stats move. The old arm loads through `migrateWorld`, so its legacy stat code runs as scripts. (Ticket 01 ruling.)
+  - The default "before" arm is `ace2e0204`, the last commit before any refresh ticket.
 - **No shape change.** The refresh changes world content only. It adds no field to the world or save export shape.
 - **No art.** No new images. Visibility rules are out.
 
@@ -111,6 +113,11 @@ Every world: current shape on disk, `openings` (no `openingCue`), `imageTags` on
   - The Test Bench reports no finding on any rule.
   - Coverage: across the set, each feature in the assignment table appears in at least one world.
   - Old saves: a save made against the world's revision before the refresh loads against the new world and commits one turn without error. The fixture is built from that revision in the test, not stored as a copy.
+- Ticket 02 rulings:
+  - The old-save fixture reads each world at `ace2e0204` with `git show`. CI fetches that rev with a shallow fetch. A missing rev fails, never skips. No stored copies.
+  - The Test Bench check is an exact-match ledger of known findings per world, each with a one-line reason. Only the rules' own sync fixes are applied. Image findings (not WebP, oversized) stay until the art effort. World tickets clear content findings or keep one with a reason when it is by design.
+  - The old-save check asserts that a save with a cut stat still loads and plays a turn (Q10). It bites against a reinstated crash on an unknown stat id.
+  - Each coverage row lists its world's Q6 features (Open Chat's list is empty). The set check turns on once all eight rows exist.
 - **Per-world tests** only for world-specific behavior, as Emberwatch has today (a gate that must hold, a script's effect on its stat).
 - Guards must bite: each shared check is shown to fail once with the old file or a broken reference.
 - Prior art: the bundled gates test, the Emberwatch world test, the Open Chat world test, the bundled fingerprint test.
