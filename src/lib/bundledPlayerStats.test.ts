@@ -22,7 +22,7 @@ const load = (id: string): World => {
 /** Per world: the stats the persona owns, and the stats that stay on the world. */
 const SPLIT: Record<string, { owned: string[]; loose: string[] }> = {
   drone: { owned: ['Health', 'Power', 'Mobility', 'Firepower', 'Charge'], loose: [] },
-  rampage: { owned: ['Health', 'Stamina', 'Rampage'], loose: ['Destruction', 'Alert Level'] },
+  rampage: { owned: ['Health', 'Stamina', 'Rampage', 'Berserk'], loose: ['Destruction', 'Alert Level'] },
   slime: { owned: ['Health', 'Stamina', 'Assimilation', 'Panic'], loose: ['Suspicion'] },
   sugarscape: { owned: ['Health', 'Stamina', 'Craving', 'Fullness', 'Stickiness'], loose: [] },
   valentines: { owned: ['Health', 'Stamina', 'Sugar', 'Agility'], loose: ['Pursuit'] },

@@ -15,6 +15,7 @@ const FEATURES: Record<string, Feature[]> = {
   'drone': ['scripts', 'traitGates', 'minMaxPicks'],
   'emberwatch': ['traitGates', 'blueprints'],
   'open-chat': [],
+  'rampage': ['scripts', 'statToggles'],
 };
 
 /** Image size has no budget the bundled worlds must meet (Q13). */
@@ -30,10 +31,6 @@ const BY_DESIGN = 'the blank stage holds no entities by design';
 const OPEN_FINDINGS: Record<string, Record<string, string>> = {
   'open-chat': {
     'location-no-entities: Here': BY_DESIGN,
-  },
-  'rampage': {
-    'alias-lowercase-no-twin: Channel 8 News Chopper': TWIN,
-    'location-no-entities: Neonspire': PLACE,
   },
   'slime': {
     'alias-lowercase-no-twin: neighbor › name': TWIN,
