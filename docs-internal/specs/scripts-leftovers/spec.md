@@ -1,6 +1,7 @@
 # Spec: Scripts Leftovers
 
-Status: ready-for-agent
+Status: done
+Status note: Closed on 2026-10-15. Tickets 01–08 landed; the last landing is 525c3a056. Closed without gates.
 Spec session: scripts-leftovers — spec
 
 ## Problem Statement
@@ -21,13 +22,18 @@ Settled with the user on 2026-10-15, from the open edges in the Backlog of the S
 | Q2 | A disabled stat's row on the Stats tab gets the same marker: dim plus "Off" meta text |
 | Q3 | A trait-switch run lands only the traits it changed, not the whole trait state |
 | Q4 | A persona-change run reads the new cast: `persona` and `entities` match the world after the change, as `trait` and the trait scope already do |
-| Q5 | Script failures group by the section that holds the script: world scripts under Scripts, trait scripts under Traits, stat scripts under Stats, entity scripts under Entities. One finding per section. Reopened once: a Scripts section already existed, so world scripts do not go under Overview |
-| Q6 | The rename covers identifiers, file names and tests, and the Formaquestion prompts and function name |
+| Q5 | Script failures group by the section that holds the script: world scripts under Scripts, trait scripts under Traits, stat scripts under Stats, entity scripts under Entities. Each finding carries its script's section. The Issues list keeps one row per rule, since it shows no section headers. Reopened twice: a Scripts section already existed, so world scripts do not go under Overview; then the list proved to have no section grouping, so no row split |
+| Q6 | The rename covers identifiers, file names and tests, and the Formaquestion prompts and function name. It includes every Test Bench rule id and const (rule ids are not stored in worlds, saves or settings) and the help rider's tab constant. The `statCode*` runtime modules (executor, timing and others) keep their names |
 | Q7 | This is its own effort. The Scripts spec stays closed |
 | Q8 | When a run and the player change the same trait during the run, the player's toggle wins |
 | Q9 | The bench's choice row shows the asking script's name as muted meta text beside the question |
 | Q10 | The help code test runs the code under test in its own timing and on its own owner: stat, trait or world |
-| Q11 | Test seams: the existing test files listed under Testing Decisions. The one new test target is the Stats tab marker |
+| Q11 | Test seams: the existing test files listed under Testing Decisions, plus a new Stats tab marker test. Reopened once: diff landing is a pure function with its own unit test, since the GameViewer test cannot easily reach an entity's own stats (Q14); the GameViewer race test stays |
+| Q12 | A Blueprint trait's `owner.*` lookup is judged against each linking entity; a miss on any of them is flagged, naming that entity. A Blueprint trait no entity links gives no finding |
+| Q13 | Owner-less lookups read "but a world script has no owner", "but a global trait has no owner" and "but a global stat has no owner" (glossary terms; "world stat" and "world trait" are on the Avoid lines). The rule summaries count scripts: "N scripts look up stat names that don't exist", "N scripts read delta in their Before the AI timing, where every source is zero" |
+| Q14 | A switch that drops under Q8 drops its stat effect too: the trait's applied values and `statChanges` follow the player's toggle, as if the run never switched it. Its switch log line drops too. The script's own stat writes, its own log lines and the run's other switches still land |
+| Q15 | A switch to a library persona waits for that entity to load before the trait settle and the persona-change run, as the save-load settle does. The run then reads the loaded persona. A world persona pick fires at once |
+| Q16 | Ticket 08 also covers the leaving persona. The trait scope drops a left library persona. A switch-off event resolves its trait against the world from before the change, and the run carries both worlds, as Scripts Q13 reads the state before the switch. Covers a library persona and a world persona-only entity alike |
 
 ## User Stories
 
@@ -63,7 +69,7 @@ Settled with the user on 2026-10-15, from the open edges in the Backlog of the S
 
 - **One script list for every reader.** The Scripts tab already has a model that lists world, stat and trait scripts. The bench check keeps a private equivalent. The static bench rules, the stat-move readers and the help code test move to one shared list of every script with its owner and timing. A Blueprint stat or trait keeps its once-per-group run.
 - **Static bench rules.** The unknown-stat rules and the Before-reads-delta rule read every script from the shared list. Each item takes the section of the script's home, as the bench check's items already do.
-- **Bench grouping.** The two code-check rules no longer group under a fixed Stats header. Their items split into one finding per item section: Scripts, Traits, Stats, Entities.
+- **Bench grouping.** The two code-check rules' findings carry the section of the script's home: Scripts, Traits, Stats, Entities. The Issues list keeps one row per rule.
 - **Choice row.** A bench prompt carries the asking script's display name (its name, or the owner-and-timing fallback from Scripts Q6). The row shows it in the editor row's existing muted meta text.
 - **Stat-move readers.** The code reader walks every script from the shared list, so a world or trait script that reads a moved stat is reported.
 - **Help code test.** The test takes the code, a timing from all five, and an owner: a stat, a trait, or the world. It runs the code as a script with that home. With no owner named, it keeps today's fallback to the open stat. The offered function's name, purpose line and use-when line say "script."
@@ -92,7 +98,19 @@ Settled with the user on 2026-10-15, from the open edges in the Backlog of the S
 - A marker for a disabled trait's script rows. Scripts Q3 already gates them, and nobody asked for a marker.
 - Tool scripts and the Tool editor.
 - New bench rules beyond widening the existing ones.
+- Widening the help code rider so the AI writes During AI Output, At Game Start, When a Trait Switches, trait or world scripts, and an Insert path for them. The help code test runs any of them; the rider still asks for Before the AI and After the AI boxes only.
 
 ## Further Notes
 
 - The rename touches many files. Check it against open efforts' file lists before it lands, so it does not collide with a running ticket.
+
+## Backlog
+
+Open edges from ticket 07:
+
+- A dropped switch's nested results still land: a sibling it retired, or a trait its own script switched.
+- When two switch runs race, each treats the other's changes as the player's.
+
+Open edges from ticket 08:
+
+- A library persona whose load fails clears the wait with no entity, so the settle runs with an empty persona. The persona-unresolved notice shows it.
