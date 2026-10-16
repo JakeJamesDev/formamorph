@@ -7,7 +7,7 @@ import { sseResponse, sseReply } from '@/test/aiTextFixtures';
 import { deleteSaveRecord, getAllSaveRecords } from '@/components/modals/dbUtils';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { DEFAULT_WORLDS, seedWorldData } from '@/lib/defaultWorlds';
-import type { World } from '@/types';
+import type { SaveRecord, World } from '@/types';
 
 /** Q10: a save made against a bundled world's pre-refresh revision loads against the current file and plays a turn. */
 
@@ -67,6 +67,8 @@ beforeEach(async () => {
   localStorage.setItem('FORMAMORPH_thinkingMode', 'off');
 });
 
+const turnsIn = (save: SaveRecord) => (save.messageHistory ?? []).filter((m) => m.role === 'assistant').length;
+
 /** The world without its first stat: a global one, else the first an entity owns. Null when it has none. */
 function withoutAStat(world: World): World | null {
   if (world.stats.length) return { ...world, stats: world.stats.slice(1) };
@@ -81,9 +83,10 @@ async function playSaveAcross(before: World, after: World) {
   stubEndpoint();
   await closeReadme(before);
   await playTurn('I look around.');
-  await waitFor(async () => expect(await getAllSaveRecords()).toHaveLength(1), { timeout: 8000 });
-  const [save] = await getAllSaveRecords();
   const savedTurns = assistantTurns;
+  // Wait for the autosave that holds the played turn; it replaces any earlier one.
+  await waitFor(async () => expect((await getAllSaveRecords()).map(turnsIn)).toEqual([savedTurns]), { timeout: 8000 });
+  const [save] = await getAllSaveRecords();
   played.unmount();
   cleanup();
 

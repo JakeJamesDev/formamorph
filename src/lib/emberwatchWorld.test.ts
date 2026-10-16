@@ -12,6 +12,7 @@ import { ownerPreview, inPlayOwners } from './ownedTraitsInPlay';
 import { applyOwnedStatTraits, seedNewGameStats, type TraitRuntimeState, type TraitWorld } from './traitRuntime';
 import { ownedTraitStatesFrom } from './ownedTraitState';
 import { seedEntityStats } from './entityStats';
+import { openingPool } from './openings';
 import type { Entity, PersonaRef, World } from '@/types';
 
 // Loaded the way the seeder loads it: raw text through the world migration.
@@ -109,9 +110,34 @@ describe('the Emberwatch default world', () => {
     const readme = world.worldOverview.readme ?? '';
     expect(readme).toContain('## How this world is built');
     for (const label of ['Blueprints', 'Group links', 'Trait links', 'Per-link defaults', 'Link overrides', 'Blueprint pins', 'Blueprint chips',
-      'Custom Persona', 'Persona-only', 'Same-owner gates', 'Any-of gates', 'Named-scope gates', 'Gated defaults']) {
+      'Custom Persona', 'Persona-only', 'Same-owner gates', 'Any-of gates', 'Named-scope gates', 'Gated defaults', 'Lorebook', 'Self openings']) {
       expect(readme, label).toContain(`**${label}`);
     }
+  });
+});
+
+describe('openings on Emberwatch', () => {
+  const start = world.locations.find((l) => l.isStarting)!.id;
+  const poolAs = (persona: PersonaRef) => {
+    const played = persona.source === 'world' ? world.entities.find((e) => e.id === persona.entityId)! : null;
+    return openingPool({
+      overview: world.worldOverview,
+      entities: resolveOwners(ownerWorld(world), persona).cast,
+      locations: world.locations,
+      startingLocationId: start,
+      persona: played ? { entity: played, source: 'world' } : null,
+      customPersona: entityNamed(world, 'Wanderer'),
+    });
+  };
+
+  it("draws the world's own openings under None", () => {
+    expect(poolAs(NONE).map((e) => e.ownerId)).toEqual(world.worldOverview.openings!.map(() => null));
+    expect(poolAs(NONE).length).toBeGreaterThan(1);
+  });
+
+  it.each(['Albus', 'Sylvie Thornwhistle'])('draws only %s\'s own opening while the player plays them', (name) => {
+    const own = entityNamed(world, name);
+    expect(poolAs(asEntity(world, name)).map((e) => [e.ownerId, e.opening.self])).toEqual([[own.id, true]]);
   });
 });
 

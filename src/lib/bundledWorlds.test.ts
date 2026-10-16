@@ -13,6 +13,7 @@ type Feature = 'scripts' | 'traitGates' | 'traitModes' | 'minMaxPicks' | 'statTo
 
 const FEATURES: Record<string, Feature[]> = {
   'drone': ['scripts', 'traitGates', 'minMaxPicks'],
+  'emberwatch': ['traitGates', 'blueprints'],
   'open-chat': [],
 };
 
