@@ -23,3 +23,7 @@ Spec: Implementation Decisions: Owner-tree engine merge. Stories 24, 25.
 ## Blocked by
 
 - 16
+
+## Comments
+
+- 2026-10-15, from ticket 16: the owner-tree engine is built for raw row ids. The stat adapter needs two engine hooks: an id hook on the source (stat `entity/id` prefixes in the entity write, world write and drop result) and a world-write hook on the rules (the tree-order stat step and the row-id slot). These already fit: links-off returns null through `check` (Q6), and cross-owner checks receive the subtree, source owner, target owner and the tree. The stat source must fill `linkRows` for linked rows, because the projection blocks on it.
