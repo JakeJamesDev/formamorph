@@ -99,7 +99,9 @@ Every world: current shape on disk, `openings` (no `openingCue`), `imageTags` on
   - It runs arms interleaved in one batch on the cloud endpoint, so each batch carries its own control.
   - It reports structural metrics per arm: stat pass validity, token and reasoning leaks, choices parse, placeholder tokens left unresolved.
   - It writes transcripts for rubric scoring against the baseline rubric.
-  - It runs turns on the real turn pipeline (TypeScript), with the real narration, stat, and choices requests. It replicates the sampler pins and sends `reasoning_effort: "none"`. It replaces the old hand-rendered world-narration probe.
+  - It drives the real dev build through the baseline harness (Playwright, `window.__baseline`), so prompts, sampler pins, and script timings are the app's own. It adds `reasoning_effort: "none"` at the network route. It replaces the old hand-rendered world-narration probe.
+  - It takes its dev-server port from a flag or env var and never reuses a server it did not start, so world tickets can probe in parallel.
+  - Open Chat uses the bundled test card as its lead entity in both arms.
   - It runs world, trait, and entity scripts at their real timings, so script-paced stats move. The old arm loads through `migrateWorld`, so its legacy stat code runs as scripts. (Ticket 01 ruling.)
   - The default "before" arm is `ace2e0204`, the last commit before any refresh ticket.
 - **No shape change.** The refresh changes world content only. It adds no field to the world or save export shape.
