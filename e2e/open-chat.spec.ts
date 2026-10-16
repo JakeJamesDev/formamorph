@@ -20,7 +20,7 @@ interface Placeholder { id: string; name: string; values: { id: string; text: st
 const world = JSON.parse(readFileSync('src/defaultworlds/open-chat.json', 'utf8'));
 const placeholder = (name: string): Placeholder => world.placeholders.find((ph: Placeholder) => ph.name === name);
 // The chips the narration prompt places; the choice shape and the opening read elsewhere.
-const narrationPlaceholders = ['reply length', 'voice block', 'pacing'].map(placeholder);
+const narrationPlaceholders = ['Reply Length', 'Voice Block', 'Pacing'].map(placeholder);
 const card = JSON.parse(readFileSync('testing/baseline/open-chat-cards.json', 'utf8'))[0];
 // The library entity the player picked at Enter World, read by the card importer.
 world.devPicked = [readTavernJson(JSON.stringify(card))!.entity];
@@ -122,7 +122,7 @@ test('a Quick Start applies the middle setting of every tone group', async ({ pa
   await openChatCard(page).click();
   await page.getByRole('button', { name: 'Quick Start' }).click();
   // The Plain opening pre-fills the action box.
-  await expect(page.getByPlaceholder(/Type your action/)).toHaveValue(placeholder('opening').values[1].text);
+  await expect(page.getByPlaceholder(/Type your action/)).toHaveValue(placeholder('Opening').values[1].text);
   await page.waitForFunction(() => '__baseline' in window);
   const system = systemOf((await playTurn(page, 'Hello.')).narration);
 
@@ -143,8 +143,8 @@ test('switching Style mid-game changes the voice block and the choice shape on t
   await openChatCard(page).click();
   await page.getByRole('button', { name: 'Quick Start' }).click();
   await page.waitForFunction(() => '__baseline' in window);
-  const voice = placeholder('voice block').values.map((value) => value.text);
-  const shape = placeholder('choice shape').values.map((value) => value.text);
+  const voice = placeholder('Voice Block').values.map((value) => value.text);
+  const shape = placeholder('Choice Shape').values.map((value) => value.text);
   const systems = async (action: string) => {
     const { log } = await playTurn(page, action);
     const byType = (type: string) => systemOf(log[log.length - 1].requests.find((request) => request.type === type)!);
@@ -178,7 +178,7 @@ test('editing a pinned value in the World Editor changes what its trait sends', 
   await page.evaluate(() => (window as unknown as { __fmDev: { editWorld(id: string): Promise<void> } }).__fmDev
     .editWorld('open-chat'));
   await gotoDev(page, 'mainMenu', { modal: 'worldEditor', tab: 'placeholders' });
-  await page.getByText('reply length', { exact: true }).first().click();
+  await page.getByText('Reply Length', { exact: true }).first().click();
   await page.getByRole('radio', { name: 'Multiline' }).click();
   await page.getByLabel('Value 2', { exact: true }).click();
   await page.keyboard.press('Control+A');

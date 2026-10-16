@@ -261,7 +261,7 @@
   "placeholders": [
     {
       "id": "fdaef22b-547b-4183-b659-ce07a341cf20",
-      "name": "reply length",
+      "name": "Reply Length",
       "values": [
         {
           "id": "8484196c-8264-4d1b-a615-88bdbb72df18",
@@ -280,7 +280,7 @@
     },
     {
       "id": "f47a8adc-4e46-4932-bcbe-f8d8dd189865",
-      "name": "voice block",
+      "name": "Voice Block",
       "values": [
         {
           "id": "3707696f-7ac3-47ef-a45b-7e158f768edc",
@@ -299,7 +299,7 @@
     },
     {
       "id": "71c41ba6-463c-475d-9582-d534186567f7",
-      "name": "choice shape",
+      "name": "Choice Shape",
       "values": [
         {
           "id": "06d1acd4-c079-4a72-87f1-484942498560",
@@ -318,7 +318,7 @@
     },
     {
       "id": "9d062ad2-1032-4015-b1fa-d4d48c8f762a",
-      "name": "opening",
+      "name": "Opening",
       "values": [
         {
           "id": "716be76e-710f-4467-b70e-fa40db3edd93",
@@ -337,7 +337,7 @@
     },
     {
       "id": "547962ea-289d-4010-8b58-37800bf24059",
-      "name": "pacing",
+      "name": "Pacing",
       "values": [
         {
           "id": "a8cfaf12-95b0-434c-b73d-0e94a5ac9fe1",
