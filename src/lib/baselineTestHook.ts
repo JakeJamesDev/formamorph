@@ -10,6 +10,8 @@ type SendAction = (action: string) => Promise<void>;
  * without fragile DOM waits:
  *   - `runScript(actions)` runs each action through `sendGameAction`, awaiting turn completion between them.
  *   - `getDebugTurns()` returns the current AI-context turns (the same array the Export button downloads).
+ *   - `isTurnRunning()` and `isGameStarted()` let a script wait out a turn the game started on its own (an
+ *     Opening Narration) before it sends the next action. A partial regenerate counts as a running turn.
  *   - `startParityRecording(info)` / `finishParityRecording()` capture the Turn Pipeline parity fixture —
  *     the ordered request sequence the turn emits, recorded at the request seam.
  *
@@ -18,12 +20,16 @@ type SendAction = (action: string) => Promise<void>;
 export function useBaselineTestHook(
   debugTurnsRef: MutableRefObject<unknown[]>,
   sendGameActionRef: MutableRefObject<SendAction>,
+  turnControllerRef: MutableRefObject<AbortController | null>,
+  isGameStartedRef: MutableRefObject<boolean>,
 ): void {
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     const w = window as unknown as { __baseline?: unknown };
     w.__baseline = {
       getDebugTurns: () => debugTurnsRef.current,
+      isTurnRunning: () => turnControllerRef.current !== null,
+      isGameStarted: () => isGameStartedRef.current,
       startParityRecording: (info: { label?: string; world?: string }) => startParityRecording(info),
       finishParityRecording: () => {
         stopParityRecording();
@@ -43,5 +49,5 @@ export function useBaselineTestHook(
       stopParityRecording();
       delete (w as { __baseline?: unknown }).__baseline;
     };
-  }, [debugTurnsRef, sendGameActionRef]);
+  }, [debugTurnsRef, sendGameActionRef, turnControllerRef, isGameStartedRef]);
 }

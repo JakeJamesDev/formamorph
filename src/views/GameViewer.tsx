@@ -3840,7 +3840,9 @@ const GameViewer = ({
   debugTurnsRef.current = debugTurns;
   const sendGameActionRef = useRef(sendGameAction);
   sendGameActionRef.current = sendGameAction;
-  useBaselineTestHook(debugTurnsRef, sendGameActionRef);
+  const isGameStartedRef = useRef(isGameStarted);
+  isGameStartedRef.current = isGameStarted;
+  useBaselineTestHook(debugTurnsRef, sendGameActionRef, abortControllerRef, isGameStartedRef);
 
   // The Background Pass Queue runs the discover, digest, diary and milestone passes between turns. It lives
   // as long as the view: leaving the game disposes it, which cancels its running passes.
