@@ -12,6 +12,8 @@ import { executeStatCode, type SandboxEntity } from './statCodeExecutor';
 import { globalStatsOf, resolvedEntityStats, statLinkState } from './statLinks';
 import { bindOwnedStats } from './portableStats';
 import { codeAt } from '@/test/scriptFixtures';
+import { preRefreshWorld } from '@/test/preRefreshWorlds';
+import { DEFAULT_WORLDS } from './defaultWorlds';
 import { statCodeNamed } from './statCodeNames';
 import { parseEntityCardData } from './entityFile';
 import { clamp } from './utils';
@@ -158,12 +160,14 @@ describe('the other boundaries that read a stat', () => {
   });
 });
 
+// The released bundled worlds store box code, and the pre-refresh revision holds them.
 describe('the shipped bundled worlds', () => {
   type RawStat = Stat & { beforeCode?: string; code?: string };
   type RawWorld = { stats: RawStat[]; statGroups?: World['statGroups']; entities: (Entity & { stats?: RawStat[] })[]; placeholders?: World['placeholders'] };
-  const files = import.meta.glob<{ default: RawWorld }>('../defaultworlds/*.json', { eager: true });
-  const boxed = Object.entries(files).filter(([, file]) =>
-    [...file.default.stats, ...file.default.entities.flatMap((e) => e.stats ?? [])].some((s) => s.code?.trim() || s.beforeCode?.trim()));
+  // Parsed JSON: the box-code fields the World type no longer carries are read as RawWorld.
+  const raws = DEFAULT_WORLDS.map(({ id }) => [`${id}.json`, preRefreshWorld(id) as unknown as RawWorld] as const);
+  const boxed = raws.filter(([, raw]) =>
+    [...raw.stats, ...raw.entities.flatMap((e) => e.stats ?? [])].some((s) => s.code?.trim() || s.beforeCode?.trim()));
 
   it('include worlds that ship box code, so the guard below is not vacuous', () => {
     expect(boxed.length).toBeGreaterThan(0);
@@ -192,7 +196,7 @@ describe('the shipped bundled worlds', () => {
     return values;
   }
 
-  it.each(boxed.flatMap(([path, file]) => (['before', 'after'] as const).map((timing) => [path, timing, file.default] as const)))(
+  it.each(boxed.flatMap(([path, raw]) => (['before', 'after'] as const).map((timing) => [path, timing, raw] as const)))(
     '%s runs every stat to the same value through its scripts at %s',
     async (_path, timing, raw) => {
       const world = migrateWorld(structuredClone(raw));

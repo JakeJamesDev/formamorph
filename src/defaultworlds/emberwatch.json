@@ -1,5 +1,5 @@
 {
-  "version": "3.0.1",
+  "version": "3.3.0",
   "worldOverview": {
     "name": "Emberwatch",
     "description": "A frontier keep at the end of the road, and a barrow past the wall that should have stayed shut. Pick a race and a class, or play a ready-made hero, and go see why the dead are walking.",
@@ -27,7 +27,8 @@
         "kind": "action",
         "text": "I pull the captain's call off the gate post, brush the road dust from my clothes, and walk in under the arch. The guard asks who answers. {{user}}. The name goes on the roll in wet ink, and I ask where I can find the captain."
       }
-    ]
+    ],
+    "customPlayerVRM": null
   },
   "stats": [
     {
@@ -1061,14 +1062,18 @@
       "order": 0,
       "requires": [
         {
-          "kind": "trait",
-          "id": "6289a54c-9886-5693-a0e2-0ef61f735109",
-          "name": "Paladin",
-          "owner": {
-            "kind": "entity",
-            "id": "6d14f861-781e-5b30-9996-e271ac3c39d2",
-            "name": "Albus"
-          }
+          "all": [
+            {
+              "kind": "trait",
+              "id": "6289a54c-9886-5693-a0e2-0ef61f735109",
+              "name": "Paladin",
+              "owner": {
+                "kind": "entity",
+                "id": "6d14f861-781e-5b30-9996-e271ac3c39d2",
+                "name": "Albus"
+              }
+            }
+          ]
         }
       ]
     },
@@ -1259,9 +1264,13 @@
       "isDefault": true,
       "requires": [
         {
-          "kind": "trait",
-          "id": "889d6e62-5641-5102-a184-7e409aa95d60",
-          "name": "Human"
+          "all": [
+            {
+              "kind": "trait",
+              "id": "889d6e62-5641-5102-a184-7e409aa95d60",
+              "name": "Human"
+            }
+          ]
         }
       ]
     },
@@ -1276,9 +1285,13 @@
       "isDefault": true,
       "requires": [
         {
-          "kind": "trait",
-          "id": "f16630f6-5baf-5dc6-a114-efd32d326255",
-          "name": "Elf"
+          "all": [
+            {
+              "kind": "trait",
+              "id": "f16630f6-5baf-5dc6-a114-efd32d326255",
+              "name": "Elf"
+            }
+          ]
         }
       ]
     },
@@ -1293,9 +1306,13 @@
       "isDefault": true,
       "requires": [
         {
-          "kind": "trait",
-          "id": "36b77fb2-a867-566e-90b4-6bbd664e19b9",
-          "name": "Dwarf"
+          "all": [
+            {
+              "kind": "trait",
+              "id": "36b77fb2-a867-566e-90b4-6bbd664e19b9",
+              "name": "Dwarf"
+            }
+          ]
         }
       ]
     },
@@ -1310,9 +1327,13 @@
       "isDefault": true,
       "requires": [
         {
-          "kind": "trait",
-          "id": "15816ba9-0bd7-50a6-8d89-9f38d7234d3f",
-          "name": "Halfling"
+          "all": [
+            {
+              "kind": "trait",
+              "id": "15816ba9-0bd7-50a6-8d89-9f38d7234d3f",
+              "name": "Halfling"
+            }
+          ]
         }
       ]
     },
@@ -1326,9 +1347,13 @@
       "order": 0,
       "requires": [
         {
-          "kind": "trait",
-          "id": "6289a54c-9886-5693-a0e2-0ef61f735109",
-          "name": "Paladin"
+          "all": [
+            {
+              "kind": "trait",
+              "id": "6289a54c-9886-5693-a0e2-0ef61f735109",
+              "name": "Paladin"
+            }
+          ]
         }
       ]
     },
@@ -1342,9 +1367,13 @@
       "order": 1,
       "requires": [
         {
-          "kind": "trait",
-          "id": "6289a54c-9886-5693-a0e2-0ef61f735109",
-          "name": "Paladin"
+          "all": [
+            {
+              "kind": "trait",
+              "id": "6289a54c-9886-5693-a0e2-0ef61f735109",
+              "name": "Paladin"
+            }
+          ]
         }
       ]
     },
@@ -1358,9 +1387,13 @@
       "order": 2,
       "requires": [
         {
-          "kind": "trait",
-          "id": "03673bae-78ae-5a1d-a09b-24b1a89ff1f5",
-          "name": "Wizard"
+          "all": [
+            {
+              "kind": "trait",
+              "id": "03673bae-78ae-5a1d-a09b-24b1a89ff1f5",
+              "name": "Wizard"
+            }
+          ]
         }
       ]
     },
@@ -1374,9 +1407,13 @@
       "order": 3,
       "requires": [
         {
-          "kind": "trait",
-          "id": "03673bae-78ae-5a1d-a09b-24b1a89ff1f5",
-          "name": "Wizard"
+          "all": [
+            {
+              "kind": "trait",
+              "id": "03673bae-78ae-5a1d-a09b-24b1a89ff1f5",
+              "name": "Wizard"
+            }
+          ]
         }
       ]
     },
@@ -1390,9 +1427,13 @@
       "order": 4,
       "requires": [
         {
-          "kind": "trait",
-          "id": "5e64d14c-ccf8-5219-8beb-d44c1491b4b0",
-          "name": "Rogue"
+          "all": [
+            {
+              "kind": "trait",
+              "id": "5e64d14c-ccf8-5219-8beb-d44c1491b4b0",
+              "name": "Rogue"
+            }
+          ]
         }
       ]
     },
@@ -1406,9 +1447,13 @@
       "order": 5,
       "requires": [
         {
-          "kind": "trait",
-          "id": "5e64d14c-ccf8-5219-8beb-d44c1491b4b0",
-          "name": "Rogue"
+          "all": [
+            {
+              "kind": "trait",
+              "id": "5e64d14c-ccf8-5219-8beb-d44c1491b4b0",
+              "name": "Rogue"
+            }
+          ]
         }
       ]
     },
@@ -1422,9 +1467,13 @@
       "order": 6,
       "requires": [
         {
-          "kind": "trait",
-          "id": "052f965e-d53d-5d83-90fe-626f4469f9b2",
-          "name": "Cleric"
+          "all": [
+            {
+              "kind": "trait",
+              "id": "052f965e-d53d-5d83-90fe-626f4469f9b2",
+              "name": "Cleric"
+            }
+          ]
         }
       ]
     },
@@ -1438,9 +1487,13 @@
       "order": 7,
       "requires": [
         {
-          "kind": "trait",
-          "id": "052f965e-d53d-5d83-90fe-626f4469f9b2",
-          "name": "Cleric"
+          "all": [
+            {
+              "kind": "trait",
+              "id": "052f965e-d53d-5d83-90fe-626f4469f9b2",
+              "name": "Cleric"
+            }
+          ]
         }
       ]
     },
@@ -1454,14 +1507,22 @@
       "order": 8,
       "requires": [
         {
-          "kind": "trait",
-          "id": "052f965e-d53d-5d83-90fe-626f4469f9b2",
-          "name": "Cleric"
+          "all": [
+            {
+              "kind": "trait",
+              "id": "052f965e-d53d-5d83-90fe-626f4469f9b2",
+              "name": "Cleric"
+            }
+          ]
         },
         {
-          "kind": "trait",
-          "id": "6289a54c-9886-5693-a0e2-0ef61f735109",
-          "name": "Paladin"
+          "all": [
+            {
+              "kind": "trait",
+              "id": "6289a54c-9886-5693-a0e2-0ef61f735109",
+              "name": "Paladin"
+            }
+          ]
         }
       ]
     }
@@ -1489,7 +1550,7 @@
       "aiDescription": "Race:",
       "parentId": "3253995d-ad44-5d72-ab5b-63207a8a89a8",
       "order": 0,
-      "exclusive": true
+      "maxPicks": 1
     },
     {
       "id": "fc9ffd07-11d1-5ed3-a6f2-1ebf90d7c481",
@@ -1498,7 +1559,7 @@
       "aiDescription": "Class:",
       "parentId": "3253995d-ad44-5d72-ab5b-63207a8a89a8",
       "order": 1,
-      "exclusive": true
+      "maxPicks": 1
     },
     {
       "id": "dea4f1f1-9308-540b-bd4d-3e1c845d5a6c",
@@ -1518,7 +1579,14 @@
     }
   ],
   "statUpdates": [],
-  "dictionaries": [],
+  "dictionaries": [
+    {
+      "id": "6b360779-4cd2-4e5d-9047-1548d1384669",
+      "name": "Default",
+      "enabled": true,
+      "entries": []
+    }
+  ],
   "placeholders": [
     {
       "id": "4b22e697-fcdc-534c-bd78-aa758dda5ec7",
