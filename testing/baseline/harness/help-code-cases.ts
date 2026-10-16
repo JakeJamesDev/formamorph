@@ -3,10 +3,10 @@ import type { SurfaceId } from '@/lib/docs/surfaceMap';
 import { SCRIPT_TAB } from '@/lib/formaquestion/helpCodeRider';
 import type { CodeTestResult } from '@/lib/formaquestion/helpCodeTestRun';
 import type { HelpFocus } from '@/lib/formaquestion/helpFocus';
-import { executeStatCode, type SandboxPlaceholderNode, type SandboxTrait, type StatCodeRunOptions } from '@/lib/statCodeExecutor';
+import { executeStatCode, type NarrationInput, type SandboxPlaceholderNode, type SandboxTrait, type StatCodeRunOptions, type SwitchedTrait } from '@/lib/statCodeExecutor';
 import type { StatCodeWorld } from '@/lib/statCodeTestRun';
 import type { Surface } from '@/lib/surface/surfaceRegistry';
-import type { Placeholder, Stat, Trait } from '@/types';
+import type { Placeholder, ScriptTiming, Stat, Trait } from '@/types';
 import { ref, type CaseNames, type SnippetRunner } from './help-code-score';
 
 /** `code` wants a fenced answer on the rider arm; `prose` is a how-to control that wants none on either arm. */
@@ -24,6 +24,8 @@ export interface HelpCodeCase {
   names?: CaseNames;
   /** The authored world the code test reads. Absent: `FIXTURE_WORLD`. */
   world?: StatCodeWorld;
+  /** The box the task needs. A case with it scores `box`: every fence carries this timing's tag. */
+  timing?: ScriptTiming;
 }
 
 const stat = (name: string, min: number, max: number, value: number, regen: number): Stat =>
@@ -87,9 +89,21 @@ export const PERSONA_SEASONED_WORLD: StatCodeWorld = { ...FIXTURE_WORLD, traits:
 /** Whether a code test came back with no error and no dropped write. */
 export const testsClean = (result: CodeTestResult): boolean => !result.errors.length && !result.run?.error && !result.run?.dropped.length;
 
-/** Runs a snippet as the fixture stat's code, in the real stat-code sandbox and its own interrupt timeout. */
-export const fixtureRunner: SnippetRunner = async (code) => {
-  const result = await executeStatCode(code, [...FIXTURE_STATS], FIXTURE_STAT, FIXTURE_OPTIONS);
+/** The sentence a During AI Output fence runs on. */
+export const FIXTURE_NARRATION: NarrationInput = { sentence: 'Damn, the wind is howling.', full: 'Damn, the wind is howling.', index: 0, sent: [], buffered: [] };
+/** The trait a When a Trait Switches fence runs on: Brave, just switched on, a global trait. */
+export const FIXTURE_SWITCHED: SwitchedTrait = { ...trait('Brave', true, true), owner: '' };
+
+/** The name a fence's timing adds to the sandbox, so its code reads `narration` or `trait` as that timing does. */
+const TIMING_OPTIONS: Partial<Record<ScriptTiming, StatCodeRunOptions>> = {
+  output: { narration: FIXTURE_NARRATION },
+  switch: { switchedTrait: FIXTURE_SWITCHED },
+};
+const timingOptions = (timing: ScriptTiming | null): StatCodeRunOptions => (timing && TIMING_OPTIONS[timing]) || {};
+
+/** Runs a snippet as the fixture stat's code in its fence's timing, in the real sandbox and its own interrupt timeout. */
+export const fixtureRunner: SnippetRunner = async (code, timing) => {
+  const result = await executeStatCode(code, [...FIXTURE_STATS], FIXTURE_STAT, { ...FIXTURE_OPTIONS, ...timingOptions(timing) });
   return { runs: result.error === null, error: result.error };
 };
 
@@ -141,6 +155,11 @@ export const HELP_CODE_CASES: readonly HelpCodeCase[] = [
       ],
     },
   },
+  // The start, output and switch timings. The worded cases name the box; start-new-game asks from the Code tab without it.
+  { id: 'start-new-game', kind: 'code', timing: 'start', question: 'How do I give this stat a random value between 50 and 100 when a new game begins?', ...ON_CODE_TAB },
+  { id: 'start-worded', kind: 'code', timing: 'start', question: 'At Game Start, how do I set Health to its max?' },
+  { id: 'output-swap', kind: 'code', timing: 'output', question: 'During AI Output, how do I replace the word "Damn" with "Darn" in each sentence?' },
+  { id: 'switch-brave', kind: 'code', timing: 'switch', question: 'When a Trait Switches, how do I raise Health by 10 if the trait that switched is Brave and it turned on?' },
   { id: 'add-stat', kind: 'prose', question: 'How do I add a new stat to my world?' },
   { id: 'hide-stat', kind: 'prose', question: 'How do I hide a stat from the player?' },
   { id: 'change-theme', kind: 'prose', question: 'How do I change the theme?' },

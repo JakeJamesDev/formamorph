@@ -1,12 +1,13 @@
-/** Scores one help answer's stat code: its fences, their slot tags, whether each runs in the sandbox, and the names it uses. */
+/** Scores one help answer's script code: its fences, their timing tags, whether each runs in the sandbox, and the names it uses. */
 import { CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS } from '@/lib/statCodeSurface';
-import { STAT_CODE_TIMINGS, type StatCodeTiming } from '@/lib/statCodeTiming';
+import { SCRIPT_TIMINGS } from '@/lib/scripts';
+import type { ScriptTiming } from '@/types';
 
 /** One fenced block of an answer. `closed` is false on a block the answer never closes. */
 export interface Fence {
   language: string;
-  /** The word after the language, when it names a stat-code box. */
-  slot: StatCodeTiming | null;
+  /** The word after the language, when it names a script timing. */
+  timing: ScriptTiming | null;
   code: string;
   closed: boolean;
 }
@@ -22,8 +23,8 @@ export function readFences(answer: string): Fence[] {
   const finish = (closed: boolean) => {
     if (!open) return;
     const [language = '', tag = ''] = open.info.trim().split(/\s+/);
-    const slot = STAT_CODE_TIMINGS.find((timing) => timing === tag) ?? null;
-    fences.push({ language, slot, code: open.lines.join('\n'), closed });
+    const timing = SCRIPT_TIMINGS.find((t) => t === tag) ?? null;
+    fences.push({ language, timing, code: open.lines.join('\n'), closed });
     open = null;
   };
   for (const line of answer.split(/\r?\n/)) {
@@ -45,14 +46,15 @@ export interface SnippetRun {
   runs: boolean;
   error: string | null;
 }
-export type SnippetRunner = (code: string) => Promise<SnippetRun>;
+/** Runs one fence's code in the timing its tag names; null with no tag. */
+export type SnippetRunner = (code: string, timing: ScriptTiming | null) => Promise<SnippetRun>;
 
 export interface CodeScore {
   fences: number;
   fence: boolean;
   /** The answer has a fence and closes every one. */
   closed: boolean;
-  /** The share of the answer's fences that carry a slot tag. */
+  /** The share of the answer's fences that carry a timing tag. */
   tagged: number;
   /** The answer has a fence and every fence runs. */
   runs: boolean;
@@ -72,19 +74,25 @@ const INERT: SnippetRun = { runs: false, error: 'holds no statement' };
 /** Scores an answer, running each fence's code through `run`. A fence that holds no statement does not run. */
 export async function scoreCodeAnswer(answer: string, run: SnippetRunner): Promise<CodeScore> {
   const fences = readFences(answer);
-  const results = await Promise.all(fences.map((fence) => (holdsNoStatement(fence.code) ? INERT : run(fence.code))));
+  const results = await Promise.all(fences.map((fence) => (holdsNoStatement(fence.code) ? INERT : run(fence.code, fence.timing))));
   const fencesRun = results.filter((result) => result.runs).length;
   const fence = fences.length > 0;
   return {
     fences: fences.length,
     fence,
     closed: fence && fences.every((f) => f.closed),
-    tagged: fence ? fences.filter((f) => f.slot !== null).length / fences.length : 0,
+    tagged: fence ? fences.filter((f) => f.timing !== null).length / fences.length : 0,
     runs: fence && fencesRun === fences.length,
     fencesRun,
     errors: results.flatMap((result) => (result.runs ? [] : [result.error ?? 'did not run'])),
   };
 }
+
+/** True when the answer has a fence and every fence carries `timing`'s tag. */
+export const inBox = (answer: string, timing: ScriptTiming): boolean => {
+  const fences = readFences(answer);
+  return fences.length > 0 && fences.every((f) => f.timing === timing);
+};
 
 /** The shares of a set of answers. */
 export interface CodeSummary {
