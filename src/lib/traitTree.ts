@@ -414,13 +414,13 @@ export function traitDropRules(
     return refusal && { kind: 'refused', refusal };
   };
   return {
-    check: ({ tree, dropped, activeId, isNode, from, to, parentAfter, moved, subtree, ownerBefore, writeEntity }) => {
+    check: ({ tree, dropped, activeId, isNode, from, to, parentAfter, moved, subtree, ownerBefore, rowIdIn, writeEntity }) => {
       const blueprint = !isNode && from === null && isBlueprintItem(world, activeId);
       if (blueprint && createLinks && to !== null) {
         const refused = duplicateIn(to, activeId);
         if (refused) return refused;
         const link = makeLink(world, activeId, newLinkId(), { groupId: null, order: 0 });
-        return link && { kind: 'moved', entities: [writeEntity(tree.entityNodes.get(to)!, ownerBefore, undefined, link)] };
+        return link && { kind: 'moved', entities: [writeEntity(tree.entityNodes.get(to)!, ownerBefore, undefined, link)], rowId: rowIdIn(to, link.id) };
       }
       // A linked Blueprint stays in Blueprints, so every link points into it.
       if (blueprint) {

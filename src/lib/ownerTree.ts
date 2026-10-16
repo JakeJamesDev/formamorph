@@ -1,6 +1,6 @@
 // The owner-tree engine: the world's rows of one item kind with a node for each entity that owns some, and the
 // drops that move rows across owners. A source supplies the kind's lists and an entity's rows; drop rules supply
-// the kind's refusals and its write-back. Owned traits supply both.
+// the kind's refusals and its write-back. Owned traits and owned stats supply both.
 
 import type { Entity, TreePlacement } from '@/types';
 import {
@@ -30,6 +30,12 @@ export interface OwnerTree<G extends OwnerTreeGroup, L extends TreeLeaf, R exten
   linkRows: Map<string, R>;
 }
 
+/** The row id an entity's item takes in the tree, and the item id a row draws. */
+export interface OwnerRowIds {
+  rowId(entityId: string, itemId: string): string;
+  itemId(entityId: string, rowId: string): string;
+}
+
 /** What the tree draws for one item kind. */
 export interface OwnerTreeSource<G extends OwnerTreeGroup, L extends TreeLeaf, R extends OwnerLinkRow<OwnerLink>> {
   groups: readonly G[];
@@ -40,6 +46,8 @@ export interface OwnerTreeSource<G extends OwnerTreeGroup, L extends TreeLeaf, R
   library?: readonly Entity[];
   placement(entity: Entity): TreePlacement | undefined;
   blueprintsSubtreeIds(groups: readonly G[]): Set<string>;
+  /** How an entity's rows are named; absent, a row's id is its item's. */
+  rowIds?: OwnerRowIds;
   nodeGroup(entity: Entity, parentId: string | null, order: number): G;
   /** Push the entity's rows below its node, each in `ownerOf` and each link's in `linkRows`. */
   pushRows(tree: OwnerTree<G, L, R>, entity: Entity): void;
@@ -154,9 +162,10 @@ export function ownerTreeDropProjection<G extends OwnerTreeGroup, L extends Tree
 /** The Custom Persona entity `name` left the top level. */
 export type RootRefusal = { reason: 'root'; name: string };
 
-/** What a drop writes: the world's lists when they changed, and every entity that changed. */
+/** What a drop writes: the world's lists when they changed, and every entity that changed. `rowId` is the
+ *  dragged row's id after the drop. */
 export type OwnerTreeDrop<G, L, Rf> =
-  | { kind: 'moved'; world?: { groups: G[]; leaves: L[] }; entities: Entity[] }
+  | { kind: 'moved'; world?: { groups: G[]; leaves: L[] }; entities: Entity[]; rowId: string }
   | { kind: 'refused'; refusal: Rf | RootRefusal };
 
 /** An entity's own lists and links as a drop leaves them. */
@@ -176,6 +185,10 @@ export interface OwnerTreeDropState<G extends OwnerTreeGroup, L extends TreeLeaf
   /** The dragged row with every row below it, after the move. */
   subtree: ReadonlySet<string>;
   ownerBefore(rowId: string): string | null;
+  /** The item id a row draws. */
+  itemId(rowId: string): string;
+  /** The row id the item `itemId` takes under `owner`; null for the world. */
+  rowIdIn(owner: string | null, itemId: string): string;
   /** The entity's lists with each row under `ownerOf`. `added` joins its links at the dragged row's place. */
   writeEntity(entity: Entity, ownerOf: (rowId: string) => string | null, placement?: TreePlacement, added?: Lk): Entity;
 }
@@ -186,6 +199,8 @@ export interface OwnerTreeDropRules<G extends OwnerTreeGroup, L extends TreeLeaf
   check(drop: OwnerTreeDropState<G, L, Lk, R>): OwnerTreeDrop<G, L, Rf> | null | undefined;
   /** The entity with its lists replaced, and its node's placement when given. */
   write(entity: Entity, lists: OwnedLists<G, L, Lk>, placement?: TreePlacement): Entity;
+  /** The world's lists as the kind stores them; absent, as the drop leaves them. */
+  writeWorld?(lists: { groups: G[]; leaves: L[] }): { groups: G[]; leaves: L[] };
   /** World groups the tree leaves out, placed after the drop. */
   hiddenWorldGroups?(tree: OwnerTree<G, L, R>, dropped: { groups: readonly G[]; leaves: readonly L[] }): G[];
 }
@@ -225,9 +240,15 @@ export function applyOwnerTreeDrop<G extends OwnerTreeGroup, L extends TreeLeaf,
   if (nodeEntity?.customPersona && parentAfter !== null) return { kind: 'refused', refusal: { reason: 'root', name: nodeEntity.name } };
 
   const ownerBefore = (rowId: string) => tree.ownerOf.get(rowId) ?? null;
+  const itemId = (rowId: string) => {
+    const owner = tree.ownerOf.get(rowId);
+    return owner !== undefined && source.rowIds ? source.rowIds.itemId(owner, rowId) : rowId;
+  };
+  const itemRef = (ref: string | null | undefined) => (ref == null ? ref : itemId(ref));
+  const rowIdIn = (owner: string | null, id: string) => (owner !== null && source.rowIds ? source.rowIds.rowId(owner, id) : id);
   const writeEntity = (entity: Entity, ownerOf: (rowId: string) => string | null, placement?: TreePlacement, added?: Lk): Entity => {
     // The entity node's id stands for the entity's root, which its own lists store as null.
-    const fromNode = (parent: string | null | undefined) => (parent === entity.id ? null : parent ?? null);
+    const fromNode = (parent: string | null | undefined) => (parent === entity.id ? null : itemRef(parent) ?? null);
     const mine = (rowId: string) => ownerOf(rowId) === entity.id;
     const own = (rowId: string) => mine(rowId) && !tree.linkRows.has(rowId) && !tree.entityNodes.has(rowId);
     const placeOf = (rowId: string) => {
@@ -238,13 +259,15 @@ export function applyOwnerTreeDrop<G extends OwnerTreeGroup, L extends TreeLeaf,
     const links = [...tree.linkRows].filter(([rowId, row]) => row.root && mine(rowId)).map(([rowId, row]) => ({ ...row.link, ...placeOf(rowId) }));
     if (added) links.push({ ...added, ...placeOf(activeId) });
     return rules.write(entity, {
-      groups: dropped.groups.filter((g) => own(g.id)).map((g) => ({ ...g, parentId: fromNode(g.parentId) })),
-      leaves: dropped.leaves.filter((l) => own(l.id)).map((l) => ({ ...l, groupId: fromNode(l.groupId) })),
+      groups: dropped.groups.filter((g) => own(g.id)).map((g) => ({ ...g, id: itemId(g.id), parentId: fromNode(g.parentId) })),
+      leaves: dropped.leaves.filter((l) => own(l.id)).map((l) => ({ ...l, id: itemId(l.id), groupId: fromNode(l.groupId) })),
       links,
     }, placement);
   };
 
-  const outcome = rules.check({ tree, dropped, activeId, isNode, from, to, parentAfter, moved, subtree, ownerBefore, writeEntity });
+  const outcome = rules.check({
+    tree, dropped, activeId, isNode, from, to, parentAfter, moved, subtree, ownerBefore, itemId, rowIdIn, writeEntity,
+  });
   if (outcome !== undefined) return outcome;
 
   const ownerAfter = (rowId: string) => (subtree.has(rowId) && from !== to ? to : ownerBefore(rowId));
@@ -260,11 +283,15 @@ export function applyOwnerTreeDrop<G extends OwnerTreeGroup, L extends TreeLeaf,
     const node = groupById.get(entity.id)!;
     return writeEntity(entity, ownerAfter, pinned.has(entity.id) ? { groupId: node.parentId, order: node.order ?? 0 } : undefined);
   });
-  const world = touched.has(null)
-    ? {
-      groups: [...dropped.groups.filter((g) => worldOwned(g.id)), ...rules.hiddenWorldGroups?.(tree, dropped) ?? []],
-      leaves: dropped.leaves.filter((l) => worldOwned(l.id)),
-    }
-    : undefined;
-  return { kind: 'moved', ...(world ? { world } : {}), entities };
+  const worldLists = () => {
+    const lists = {
+      groups: dropped.groups.filter((g) => worldOwned(g.id)).map((g) => ({ ...g, id: itemId(g.id), parentId: itemRef(g.parentId) ?? null })),
+      leaves: dropped.leaves.filter((l) => worldOwned(l.id))
+        .map((l) => ({ ...l, id: itemId(l.id), ...(l.groupId !== undefined ? { groupId: itemRef(l.groupId) } : {}) })),
+    };
+    const written = rules.writeWorld?.(lists) ?? lists;
+    return { ...written, groups: [...written.groups, ...rules.hiddenWorldGroups?.(tree, dropped) ?? []] };
+  };
+  const rowId = isNode ? activeId : rowIdIn(ownerAfter(activeId), itemId(activeId));
+  return { kind: 'moved', ...(touched.has(null) ? { world: worldLists() } : {}), entities, rowId };
 }

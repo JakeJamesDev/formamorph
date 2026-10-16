@@ -43,6 +43,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **`projectDrop` in `src/lib/treeProjection.ts` finds where a dragged row lands in the group, location and placeholder trees.** Each tree passes the rule for which rows can take children. The same file hides collapsed rows and reads a missing parent as the top level.
   - **`planTreeDrop` in `src/lib/treeProjection.ts` runs the shared start of a drop in the group, location and placeholder trees.** It projects the drop, refuses a hidden target or a cycle, and moves the row. Each tree writes the result to its own data.
   - **`applyOwnerTreeDrop` in `src/lib/ownerTree.ts` runs drops in a tree with entity nodes, and the Traits tab's tree runs on it.** An owner adapter gives the item lists, the entity rows, the refusals and the write-back. Trait drops give the same result as before.
+  - **The Stats tab's tree now runs its drops on `applyOwnerTreeDrop` in `src/lib/ownerTree.ts`.** A source can name entity rows its own way, so stat rows keep their `entity/id` ids. Stat drops give the same result as before.
 
 #### 🔧 Fixed
 
