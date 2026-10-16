@@ -174,9 +174,9 @@ describe('the Open Chat default world', () => {
   it('places each frame chip in its own surface, and neither prompt states a voice outside its chips', () => {
     const narration = worldPrompt(world.worldOverview, 'narration') ?? '';
     const choices = worldPrompt(world.worldOverview, 'choices') ?? '';
-    expect(chipIds(narration)).toEqual(new Set([byName('reply length'), byName('voice block'), byName('pacing')]));
-    expect(chipIds(choices)).toEqual(new Set([byName('choice shape')]));
-    expect(world.worldOverview.openings!.map((o) => [...chipIds(o.text)])).toEqual([[byName('opening')]]);
+    expect(chipIds(narration)).toEqual(new Set([byName('Reply Length'), byName('Voice Block'), byName('Pacing')]));
+    expect(chipIds(choices)).toEqual(new Set([byName('Choice Shape')]));
+    expect(world.worldOverview.openings!.map((o) => [...chipIds(o.text)])).toEqual([[byName('Opening')]]);
     for (const [kind, text] of [['narration', narration], ['choices', choices]]) {
       const bare = parsePlaceholderText(text).map((s) => (s.type === 'text' ? s.value : '')).join('');
       expect(bare, kind).not.toMatch(/first person|second person|third person|quotation|asterisk|present tense|text message|narrat/i);
@@ -301,13 +301,13 @@ describe('the Open Chat tone traits', () => {
     it.each(styles.map((s) => [s.name, s] as const))('%s sends every frame value whole, line by line', (_name, style) => {
       const { narration, choices, opening } = rendered.find((r) => r.style === style)!;
       const pinned = valuesById([...defaultTraits.filter((t) => t.groupId !== style.groupId), style]);
-      const voice = pinned[byName('voice block')];
-      const shape = pinned[byName('choice shape')];
+      const voice = pinned[byName('Voice Block')];
+      const shape = pinned[byName('Choice Shape')];
       for (const block of [voice, shape]) expect(block.split('\n').length).toBeGreaterThan(1);
       expect(narration).toContain(`\n${voice}\n`);
       expect(choices).toContain(`\n${shape}\n`);
-      expect(opening).toBe(pinned[byName('opening')]);
-      for (const name of ['reply length', 'pacing']) {
+      expect(opening).toBe(pinned[byName('Opening')]);
+      for (const name of ['Reply Length', 'Pacing']) {
         expect(pinned[byName(name)].trim(), name).not.toBe('');
         expect(narration, name).toContain(pinned[byName(name)]);
       }
