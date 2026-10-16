@@ -4,20 +4,21 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tip } from '@/components/ui/tooltip';
 import { Meta } from '@/components/ui/typography';
-import { insertableSnippet, useStatCodeInsertTarget } from '@/lib/formaquestion/statCodeInsert';
-import { STAT_CODE_TIMINGS, TIMING_LABEL, type StatCodeTiming } from '@/lib/statCodeTiming';
+import { insertableSnippet, useScriptInsertTarget } from '@/lib/formaquestion/scriptInsert';
+import { SCRIPT_TIMING_LABEL, SCRIPT_TIMINGS } from '@/lib/scripts';
 import { cn } from '@/lib/utils';
+import type { ScriptTiming } from '@/types';
 import type { SnippetBlock } from './CodeSnippet';
 
 const NO_PANEL_TIP = "Switch the World Editor to Advanced and open a stat's Code tab";
 
-/** Insert: a menu headed by the open stat's name that writes the block into one of its boxes. */
+/** Insert: a menu that writes the block as a new script of the chosen timing. */
 export function CodeInsert({ block }: { block: SnippetBlock }) {
-  const target = useStatCodeInsertTarget();
+  const target = useScriptInsertTarget();
   const [open, setOpen] = useState(false);
-  const items = useRef<Partial<Record<StatCodeTiming, HTMLButtonElement | null>>>({});
+  const items = useRef<Partial<Record<ScriptTiming, HTMLButtonElement | null>>>({});
   const menu = useRef<HTMLDivElement>(null);
-  const { slot, code } = insertableSnippet(block.code, block.meta);
+  const { timing: named, code } = insertableSnippet(block.code, block.meta);
 
   if (!target) {
     return (
@@ -42,39 +43,39 @@ export function CodeInsert({ block }: { block: SnippetBlock }) {
         portal={false}
         align="end"
         role="menu"
-        aria-label={`Insert into ${target.statName}`}
+        aria-label={`Insert into ${target.homeName}`}
         className="pointer-events-auto w-48 p-1"
         ref={menu}
         tabIndex={-1}
-        // The fence's slot tag picks the item that has focus on open; with none, no item has it.
+        // The fence's timing tag picks the item that has focus on open; with none, no item has it.
         onOpenAutoFocus={(event) => {
           event.preventDefault();
-          (slot ? items.current[slot] : menu.current)?.focus();
+          (named ? items.current[named] : menu.current)?.focus();
         }}
         onKeyDown={(event) => {
           if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
           event.preventDefault();
-          const rows = STAT_CODE_TIMINGS.map((timing) => items.current[timing]);
+          const rows = SCRIPT_TIMINGS.map((timing) => items.current[timing]);
           const at = rows.findIndex((row) => row === document.activeElement);
           const step = event.key === 'ArrowDown' ? 1 : -1;
           const next = at < 0 ? (step > 0 ? 0 : rows.length - 1) : (at + step + rows.length) % rows.length;
           rows[next]?.focus();
         }}
       >
-        <Meta aria-hidden className="block truncate px-2 py-1">{target.statName}</Meta>
-        {STAT_CODE_TIMINGS.map((timing) => (
+        <Meta aria-hidden className="block truncate px-2 py-1">{target.homeName}</Meta>
+        {SCRIPT_TIMINGS.map((timing) => (
           <Button
             key={timing}
             ref={(element) => { items.current[timing] = element; }}
             role="menuitem"
             variant="ghost"
-            className={cn('h-8 w-full justify-start text-meta', timing === slot && 'bg-accent text-accent-foreground')}
+            className={cn('h-8 w-full justify-start text-meta', timing === named &&'bg-accent text-accent-foreground')}
             onClick={() => {
               setOpen(false);
               target.insert(timing, code);
             }}
           >
-            {TIMING_LABEL[timing]}
+            {SCRIPT_TIMING_LABEL[timing]}
           </Button>
         ))}
       </PopoverContent>

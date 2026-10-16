@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDocsIndex } from '@/lib/docs/docsIndex';
 import { GENERAL_KNOWLEDGE_MARKER } from '@/lib/formaquestion/generalKnowledge';
-import { registerStatCodeInsert, reportStatCodeInsert } from '@/lib/formaquestion/statCodeInsert';
+import { registerScriptInsert, reportScriptInsert } from '@/lib/formaquestion/scriptInsert';
 import { sseReply } from '@/test/aiTextFixtures';
 import { helpAi } from '@/test/helpAiFixture';
 import { storeFramedWindow, stubHelpStream } from '@/test/helpFixtures';
@@ -46,7 +46,7 @@ async function ask(reply: string) {
 function openStat(statName = 'Warmth') {
   const insert = vi.fn();
   let unregister = () => {};
-  act(() => { unregister = registerStatCodeInsert({ statName, insert }); });
+  act(() => { unregister = registerScriptInsert({ homeName: statName, insert }); });
   return { insert, close: () => act(() => unregister()) };
 }
 
@@ -75,14 +75,16 @@ describe('Insert on a help answer', () => {
     expect(within(conversation()).getByRole('button', { name: 'Copy' })).toBeInTheDocument();
   });
 
-  it('opens a menu headed by the open stat with the two boxes', async () => {
+  it('opens a menu headed by the open stat with the five timings', async () => {
     const stat = openStat();
     closeStat = stat.close;
     await ask(UNTAGGED);
     await userEvent.click(insertButtons()[0]);
     const menu = await screen.findByRole('menu', { name: 'Insert into Warmth' });
     expect(menu).toHaveTextContent('Warmth');
-    expect(within(menu).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Before the AI', 'After the AI']);
+    expect(within(menu).getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
+      'Before the AI', 'After the AI', 'During AI Output', 'At Game Start', 'When a Trait Switches',
+    ]);
     // An untagged fence preselects neither box.
     expect(within(menu).getAllByRole('menuitem').some((item) => item === document.activeElement)).toBe(false);
   });
@@ -107,7 +109,7 @@ describe('Insert on a help answer', () => {
     expect(stat.insert).toHaveBeenCalledTimes(2);
   });
 
-  it('moves between the boxes with the arrow keys, wrapping at the ends', async () => {
+  it('moves between the timings with the arrow keys, wrapping at the ends', async () => {
     const stat = openStat();
     closeStat = stat.close;
     await ask(UNTAGGED);
@@ -115,12 +117,27 @@ describe('Insert on a help answer', () => {
     const menu = await screen.findByRole('menu', { name: 'Insert into Warmth' });
     await userEvent.keyboard('{ArrowDown}');
     expect(within(menu).getByRole('menuitem', { name: 'Before the AI' })).toHaveFocus();
-    await userEvent.keyboard('{ArrowDown}');
-    expect(within(menu).getByRole('menuitem', { name: 'After the AI' })).toHaveFocus();
+    await userEvent.keyboard('{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}');
+    expect(within(menu).getByRole('menuitem', { name: 'When a Trait Switches' })).toHaveFocus();
     await userEvent.keyboard('{ArrowDown}');
     expect(within(menu).getByRole('menuitem', { name: 'Before the AI' })).toHaveFocus();
     await userEvent.keyboard('{ArrowUp}{Enter}');
-    expect(stat.insert).toHaveBeenCalledExactlyOnceWith('after', 'return 1;');
+    expect(stat.insert).toHaveBeenCalledExactlyOnceWith('switch', 'return 1;');
+  });
+
+  it.each([
+    ['output', 'During AI Output'],
+    ['start', 'At Game Start'],
+    ['switch', 'When a Trait Switches'],
+  ])('preselects the %s timing and inserts into it', async (tag, label) => {
+    const stat = openStat();
+    closeStat = stat.close;
+    await ask(`Use this:\n\n\`\`\`javascript ${tag}\nreturn 7;\n\`\`\``);
+    await userEvent.click(insertButtons()[0]);
+    const menu = await screen.findByRole('menu', { name: 'Insert into Warmth' });
+    await waitFor(() => expect(within(menu).getByRole('menuitem', { name: label })).toHaveFocus());
+    await userEvent.keyboard('{Enter}');
+    expect(stat.insert).toHaveBeenCalledExactlyOnceWith(tag, 'return 7;');
   });
 
   it('drops a slot word the model put on the first line, and reads it as the tag', async () => {
@@ -170,7 +187,7 @@ describe('Insert on a help answer', () => {
     storeFramedWindow({ sourcesOpen: true, chatStyle: 'minimal' });
     const stat = openStat();
     closeStat = stat.close;
-    stat.insert.mockImplementation(() => reportStatCodeInsert('written'));
+    stat.insert.mockImplementation(() => reportScriptInsert('written'));
     await ask(UNTAGGED);
     await userEvent.click(insertButtons()[0]);
     await userEvent.click(await screen.findByRole('menuitem', { name: 'Before the AI' }));
@@ -181,7 +198,7 @@ describe('Insert on a help answer', () => {
   it('keeps the desktop window open on a write', async () => {
     const stat = openStat();
     closeStat = stat.close;
-    stat.insert.mockImplementation(() => reportStatCodeInsert('written'));
+    stat.insert.mockImplementation(() => reportScriptInsert('written'));
     await ask(UNTAGGED);
     await userEvent.click(insertButtons()[0]);
     await userEvent.click(await screen.findByRole('menuitem', { name: 'After the AI' }));
