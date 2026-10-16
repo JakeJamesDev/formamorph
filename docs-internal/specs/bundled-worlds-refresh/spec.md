@@ -119,6 +119,8 @@ Every world: current shape on disk, `openings` (no `openingCue`), `imageTags` on
   - The old-save fixture reads each world at `ace2e0204` with `git show`. The CI test job fetches that rev at depth 1. A missing rev fails, never skips. No stored copies.
   - Ticket 02 applies only the rules' own sync fixes (image-mislabeled, alias-self-duplicate, alias-leading-article). Every other finding sits in a per-world open list in the shared suite, matched exactly. Each world ticket empties its row.
   - The old-save check asserts that a save with a cut stat still loads and plays a turn (Q10). It bites against a reinstated crash in the load path.
+  - **Q13 (user):** `world-oversized-images` is ignored. The shared suite excludes it, so no row lists it.
+  - **Q14 (user):** World tickets re-encode their existing art to WebP through the app's own `image-not-webp` fix, run in Chromium (it needs `ImageDecoder` for GIF frames). This is a format change, not new art. Veilwood's GIFs are animated: its ticket proves each WebP keeps the source's frame count and per-frame timing before it lands. An image the encoder's grow-guard keeps goes to the spec session, never forced.
   - Each coverage row lists its world's Q6 features (Open Chat's list is empty). The set check turns on once all eight rows exist.
 - **Per-world tests** only for world-specific behavior, as Emberwatch has today (a gate that must hold, a script's effect on its stat).
 - Guards must bite: each shared check is shown to fail once with the old file or a broken reference.
