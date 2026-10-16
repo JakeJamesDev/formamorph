@@ -41,6 +41,8 @@ Settled with the user on 2026-10-14.
 | Q4 | Ticket 13: the generic tree module holds the only projection, collapsed-row and dangling-parent bodies. Each tree keeps its exported names as one-line bindings that pass its parent rule, so callers and tests stay as they are. The dangling-parent helper covers the group, location and placeholder-group lookups and their inline checks. The placeholder chip-holder lookup, the location graph's parent index and the stat group top-level count keep their own rules |
 | Q5 | Ticket 15: the parity harness records owned-trait and owned-stat drops and the bind and portable link outputs on the bundled worlds, with each case's outcome kind asserted. Bundled data stays as is. Ticket 18 adds the overlapping-links fixture and its regression case |
 | Q6 | With link creation off, a stat drop keeps its current behavior: it returns no result and writes nothing. It is not a `refused` result. The parity harness records it as `none` |
+| Q7 | Ticket 19 folds five twin families: owner choices (entity owner choices and Blueprint stat choices), Blueprints subtree ids, placeable group ids with effective placement, links in tree order, and the four "replace an entity's lists, empty means absent" writers. Tickets 16 and 17 already rewrote both drops on the engine, so no other old drop code remains to delete |
+| Q8 | Ticket 19 also folds three more writers of the same family into the shared entity-lists writer: the trait-links writer, the trait-links strip and re-add after the owned-traits writer, and the stat play-world strip. The portable writer (generic over portable items) and the placeholder Blueprints group copy stay out |
 
 ## User Stories
 
@@ -138,6 +140,7 @@ Settled with the user on 2026-10-14.
 - Tree row specs in the editor managers. The trait and stat link rows differ in ways that are a product call.
 - AI pipeline items without a confirmed bug: the five `/models` fetches and their missing timeouts, the empty Bearer header on chat requests, the patch-one-turn loop, the chip vocabulary unions, the regex segment splitters, the trait block indent in prompts, and joining inline reasoning across tool rounds.
 - The probe harness. It copies app code on purpose.
+- Two copies that ticket 19's review found (Q8): the portable writer that replaces links, and the placeholder Blueprints group that copies the trait Blueprints group. These are candidates for a later pass.
 
 ## Further Notes
 
