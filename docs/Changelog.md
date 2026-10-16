@@ -178,6 +178,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### 🔧 Fixed
 
 - **👤 User-facing**
+  - **A new turn no longer shows the previous turn's thought while it waits for its own.** The thought panel clears when you send an action, re-generate or rewind, and fills again as the new reasoning streams. Each saved turn keeps its own thought.
   - **The placeholder and tag suggestion lists of an editor field no longer cover the help window.** A click where a list and the help window overlap now reaches the help window.
   - **Compare shows a changed line as the old line over the new one, marking only the words that differ.** Both lines are faintly tinted and the reworded words are solid. A line rewritten from scratch is tinted whole, and its replacement starts on a line of its own.
   - **The in-game Map no longer shows Connection travel hints, only the lines.** Hints often hold clues or spoilers about a route. The World Editor canvas still shows them.
