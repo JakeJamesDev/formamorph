@@ -45,7 +45,7 @@ Nothing else re-runs. Stats and choices stay as the turn made them. Regenerate S
 
 - **One read for live turns and edits.** A new pure function sits beside the Narration Reading. It takes the edited narration, the prior narration, the known entities, the character exclusions, and the page's previous scene list. It returns the turn's participants and the new scene list.
 - **Participants** come from the Narration Reading with no planner candidates. Quoted speech is stripped. Narrated names are included.
-- **Scene list.** The previous scene list's members stay when the edited text still names them, by a loose match on name or alias. This is the match the live planner-confirmation source uses. The narration parse (no cast) adds the rest. A narrated name not yet known joins as revealed, as on a live turn.
+- **Scene list.** The previous scene list's members stay when the edited text still names them, by a loose match on name or alias. This is the match the live planner-confirmation source uses, but it reads the quote-stripped prose, so a member the edit names only in dialogue leaves. A kept member keeps its reveal flag, and it also reveals when the edit writes the real name. An edit never un-reveals anyone. The narration parse (no cast) adds the rest. A narrated name not yet known joins as revealed, as on a live turn.
 - **No stored cast.** The planner's cast is not saved with a turn, and this spec does not add it. The previous scene list stands in for it.
 - **Discovery needs no new path.** The Background Pass Queue already scans every turn's stored participants for unknown names. A name written into a turn's participants is discovered with that turn as its source. Suppressed names stay excluded there.
 - **Writes on save.**
