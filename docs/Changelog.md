@@ -29,7 +29,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Script prompts now show as a line under the narration, in play and in the editor.** Pick a pill, the dropdown or the text field, then OK where shown. Cancel or Escape closes it. A `player.tell` stays with its turn, survives save and load, and never reaches the AI.
     - **The help window, Scripts Guide and hover cards now explain each script timing, `narration`, `player` and `trait`.** The Stat Code Guide is now the Scripts Guide, and searching "stat code" finds it. The Variable menu lists each name for its timing, and the editor no longer flags them. A world script's `self` card reads empty.
     - **The Test Bench and stat moves now check trait and world scripts, not only stat scripts.** The bench flags unknown stat names and reading delta before the AI. A Blueprint trait's `owner` lookups use each entity that links it. Moving a stat stops when any script reads it.
-    - **When a Trait Switches scripts now keep the trait switches you make and read the new cast after a persona change.** A trait you switch while a script waits on a prompt keeps your setting. After a persona change, `persona` and `entities` show the new cast, and the persona you left switches its traits off. A library persona's scripts wait until it loads.
+    - **When a Trait Switches scripts now keep your own trait switches and read the new cast after a persona change.** A trait you switch while a script waits on a prompt keeps your setting. After a persona change, `persona` and `entities` show the new cast; the left persona's traits switch off. A library persona's scripts wait for it to load.
   - **Image Generation:**
     - **ComfyUI's Model row shows the model a workflow loads itself.** A workflow without `%ckpt%` ignores the Model setting, so the row shows its own model file, grayed out.
     - **ComfyUI's File Name setting sets the folders and name for each saved image.** By default, images go in `formamorph/<world>/`, named for their entity, location or turn. A `/` in the pattern makes a folder. A custom workflow needs `%prefix%` in its save node.
@@ -47,8 +47,6 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### 🔧 Fixed
 
 - **👤 User-facing**
-  - **Scripts:**
-    - **Formaquestion's code test function is now named `test_script`, and its description and code rider say "script."** They said "stat code" before.
   - **ComfyUI with an empty Model now uses the first checkpoint the server lists.** It used to send an empty checkpoint name, which ComfyUI rejects. The Model placeholder says which one is used.
   - **Native Reasoning:**
     - **Models that always reason now have room to answer small prompts like Location Change.** Each strength gives a fixed Thinking Room, from Minimal at 128 tokens to Max at 16,384. Max Output limits only the answer, so turning it off no longer shrinks the room.
@@ -62,6 +60,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Login now shows the server's reason when it refuses you.** A login or password change that gets an error page shows "Login failed" or its own fallback, not a parse error.
   - **Story export now leaves out turns that can't be read, so no error text lands in your story.** The history size estimate also counts turns saved in a looser format.
   - **A library entity with two links to one stat now uses the same link in the editor and in play.** Play keeps the link higher in the stat tree, and adding the entity to a world now keeps that one too.
+  - **Formaquestion's code test function is now named `test_script`, and its description and code rider say "script."** They said "stat code" before.
   - **Deleting an entity, trait, location or placeholder group keeps your item order.** The group's items take its place in the list.
   - **Arrange on the location canvas no longer freezes on a world whose locations hold each other in a loop.** Every walk up the location, group and placeholder trees now stops at a loop.
   - **A stuck semantic search no longer hangs Help or the Test Bench.** Every embedding call now gives up after a set time and leaves no timer running.
