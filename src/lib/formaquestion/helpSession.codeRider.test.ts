@@ -6,7 +6,7 @@ import type { Surface } from '@/lib/surface/surfaceRegistry';
 import { sseReply, sseResponse, textSnapshot, textTarget } from '@/test/aiTextFixtures';
 import { riderPreset } from '@/test/helpFixtures';
 import { HELP_CHIP } from './helpChips';
-import { DEFAULT_CODE_RIDER, SCRIPT_TAB } from './helpCodeRider';
+import { DEFAULT_CODE_RIDER, SCRIPT_TAB, scriptHomeLine } from './helpCodeRider';
 import { CODE_TEST_RIDER_LINE } from './helpCodeTest';
 import { helpUserMessage } from './helpPrompt';
 import { askHelp, type HelpEvent, type HelpQuestion } from './helpSession';
@@ -20,6 +20,7 @@ const index = createDocsIndex({ pages: PAGES, sidebar: '- [World Editor Stats](W
 
 const surface = (...tabs: SurfaceId[]): Surface => ({ screen: 'worldEditor', dialog: null, tabs });
 const CODE_TAB = surface(SCRIPT_TAB);
+const STAT_HOME_LINE = scriptHomeLine(CODE_TAB)!;
 
 type FetchSpy = ReturnType<typeof vi.fn<(url: string, init: RequestInit) => Promise<Response>>>;
 interface SentBody { messages: { role: string; content: string }[]; max_tokens?: number }
@@ -55,10 +56,30 @@ describe('the Code rider', () => {
     expect(bodyOf(fetchImpl).max_tokens).toBe(800);
   });
 
-  it('rides any question asked from a stat Code tab', async () => {
+  it('rides any question asked from a stat Code tab, with the stat home line after it', async () => {
     const { fetchImpl } = await ask('How do I make this go down?', { surface: CODE_TAB });
-    expect(userOf(fetchImpl).endsWith(`\n\n${DEFAULT_CODE_RIDER}`)).toBe(true);
+    expect(userOf(fetchImpl).endsWith(`\n\n${DEFAULT_CODE_RIDER}\n${STAT_HOME_LINE}`)).toBe(true);
     expect(bodyOf(fetchImpl).max_tokens).toBe(800);
+  });
+
+  it('sends the stat home line after an edited rider, and alone after an empty one', async () => {
+    const edited = await ask(CODE_QUESTION, { surface: CODE_TAB, settings: settingsOf({ presets: riderPreset('Answer with code.\n') }) });
+    expect(userOf(edited.fetchImpl).endsWith(`\n\nAnswer with code.\n${STAT_HOME_LINE}`)).toBe(true);
+    const empty = await ask(CODE_QUESTION, { surface: CODE_TAB, settings: settingsOf({ presets: riderPreset(' \n') }) });
+    expect(userOf(empty.fetchImpl).endsWith(`\n\n${STAT_HOME_LINE}`)).toBe(true);
+    expect(userOf(empty.fetchImpl)).not.toContain(DEFAULT_CODE_RIDER.split('\n')[0]);
+  });
+
+  it('puts the home line between the rider and the code-test line', async () => {
+    const { fetchImpl } = await ask(CODE_QUESTION, { surface: CODE_TAB, settings: settingsOf({ lookup: true }), snapshot: CAPABLE });
+    expect(userOf(fetchImpl).endsWith(`\n\n${DEFAULT_CODE_RIDER}\n${STAT_HOME_LINE}\n${CODE_TEST_RIDER_LINE}`)).toBe(true);
+  });
+
+  it('sends no home line off a script home, and none while Use the Open Screen is off', async () => {
+    const elsewhere = await ask(CODE_QUESTION, { surface: surface('worldEditorStat.details') });
+    expect(userOf(elsewhere.fetchImpl).endsWith(`\n\n${DEFAULT_CODE_RIDER}`)).toBe(true);
+    const off = await ask(CODE_QUESTION, { surface: CODE_TAB, settings: settingsOf({ openScreen: false }) });
+    expect(userOf(off.fetchImpl).endsWith(`\n\n${DEFAULT_CODE_RIDER}`)).toBe(true);
   });
 
   it('leaves the Code tab out while Use the Open Screen is off; code words still ride', async () => {

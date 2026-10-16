@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { hasCodeWords, isCodeTurn } from '@/lib/formaquestion/helpCodeRider';
 import { testScript } from '@/lib/formaquestion/helpCodeTestRun';
-import { FIXTURE_STAT, FIXTURE_WORLD, fixtureRunner, HELP_CODE_CASES, testsClean } from './help-code-cases';
-import { passesCase, scoreCodeAnswer, scoreNames } from './help-code-score';
+import type { ScriptTiming } from '@/types';
+import { FIXTURE_STAT, FIXTURE_WORLD, fixtureRunner, HELP_CODE_CASES, testsClean, type HelpCodeCase } from './help-code-cases';
+import { inBox, passesCase, scoreCodeAnswer, scoreNames } from './help-code-score';
 
 const answer = (code: string) => `Put this in **Before the AI**:\n\n\`\`\`javascript before\n${code}\n\`\`\``;
 const passes = async (id: string, code: string) => {
@@ -89,6 +90,38 @@ describe('the known cases under the code test', () => {
 
   it.each(Object.entries(KNOWN))('flag %s on the code the source session gave', async (id, { given }) => {
     expect(await tested(id, given)).toBe(false);
+  });
+});
+
+// Each timing case's code as the guide writes it, in the fence its box needs.
+const TIMED: Record<HelpCodeCase['id'], string> = {
+  'start-new-game': 'return 50 + Math.floor(Math.random() * 51);',
+  'start-worded': 'return self.max;',
+  'output-swap': "narration.sentence = narration.sentence.replace('Damn', 'Darn');",
+  'switch-brave': "if (trait.name === 'Brave' && trait.enabled) stats.Health.value += 10;",
+};
+
+describe('the timing cases', () => {
+  const timed = HELP_CODE_CASES.filter((c) => c.timing);
+  const tagged = (timing: ScriptTiming, code: string) => `Put this in the box:\n\n\`\`\`javascript ${timing}\n${code}\n\`\`\``;
+
+  it('cover the start, output and switch timings, each a code case', () => {
+    expect(timed.map((c) => c.id)).toEqual(Object.keys(TIMED));
+    expect(new Set(timed.map((c) => c.timing))).toEqual(new Set(['start', 'output', 'switch']));
+    expect(timed.every((c) => c.kind === 'code')).toBe(true);
+  });
+
+  it.each(Object.entries(TIMED))('run %s on the code the guide writes, in its box', async (id, code) => {
+    const timing = timed.find((c) => c.id === id)!.timing!;
+    const answer = tagged(timing, code);
+    expect(await scoreCodeAnswer(answer, fixtureRunner)).toMatchObject({ runs: true, tagged: 1 });
+    expect(inBox(answer, timing)).toBe(true);
+  });
+
+  // The runner adds `narration` and `trait` only in their own timing, as the game does.
+  it('fail narration and trait reads outside their timing', async () => {
+    expect((await scoreCodeAnswer(tagged('before', TIMED['output-swap']), fixtureRunner)).runs).toBe(false);
+    expect((await scoreCodeAnswer(tagged('before', TIMED['switch-brave']), fixtureRunner)).runs).toBe(false);
   });
 });
 

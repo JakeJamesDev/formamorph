@@ -21,9 +21,9 @@
 // counts its code test calls, and whether the last one came back clean: no error and no dropped write.
 //
 // Checks, per answer (help-code-score.ts): fence, closed, tagged (per fence), runs (every fence runs in the
-// stat-code sandbox against the fixture stat), truncated (an open fence, of the fenced answers), `cap` (the
-// answer request stopped on the token cap), and on known cases `pass`. Bars: Q7 on the rider arm's code cases
-// (fence ≥ 90%, runs ≥ 80%); Q9 on the rider arm's known cases (pass ≥ 80%, 5+ runs, the other code cases' runs
+// sandbox against the fixture stat, in its fence's timing), truncated (an open fence, of the fenced answers), `cap` (the
+// answer request stopped on the token cap), on known cases `pass`, and on timing cases `box` (every fence carries the
+// case's timing tag). Bars: Q7 on the rider arm's code cases (fence ≥ 90%, runs ≥ 80%); Q9 on the rider arm's known cases (pass ≥ 80%, 5+ runs, the other code cases' runs
 // not below noqr's); Q10 compares names with rider on the known cases.
 //
 // Usage: npx vite-node testing/baseline/harness/help-code-probe.cli.ts --
@@ -44,7 +44,7 @@ import type { CodeTestResult } from '@/lib/formaquestion/helpCodeTestRun';
 import { DEFAULT_HELP_SETTINGS, helpSettingsOf, type HelpSettings } from '@/lib/formaquestion/helpSettings';
 import { emptyToolSnapshot } from '@/lib/tools/toolSnapshot';
 import { FIXTURE_WORLD, HELP_CODE_CASES, fixtureRunner, testsClean, type HelpCodeCase, type HelpCodeKind } from './help-code-cases';
-import { passesCase, scoreCodeAnswer, scoreNames, summarizeCodeScores, type CodeScore, type NameScore } from './help-code-score';
+import { inBox, passesCase, scoreCodeAnswer, scoreNames, summarizeCodeScores, type CodeScore, type NameScore } from './help-code-score';
 import { noUsage, pct, probeSnapshot, sessionFetch, type Usage } from './help-probe-shared';
 
 const args = process.argv.slice(2);
@@ -215,6 +215,8 @@ interface Row {
   caseId: string; kind: HelpCodeKind; arm: Arm; run: number; sample: Sample | null; score: CodeScore | null;
   /** On a known case: its names, and whether it passed. */
   names?: NameScore; pass?: boolean; error?: string;
+  /** On a timing case: whether every fence carries its timing's tag. */
+  box?: boolean;
 }
 
 // One job per run, case and arm, with the arms of a question next to each other in time.
@@ -229,14 +231,14 @@ for (let run = 1; run <= runs; run++) {
           const sample = await ask(arm, c);
           const score = await scoreCodeAnswer(sample.answer, fixtureRunner);
           const names = c.names ? scoreNames(sample.answer, c.names) : undefined;
-          out = { ...row, sample, score, ...(names && { names, pass: passesCase(score, names) }) };
+          out = { ...row, sample, score, ...(names && { names, pass: passesCase(score, names) }), ...(c.timing && { box: inBox(sample.answer, c.timing) }) };
         } catch (error) {
           out = { ...row, sample: null, score: null, error: error instanceof Error ? error.message : String(error) };
         }
         // One line per answer as it lands, so a run in progress can be read and stopped.
         console.log(out.error
           ? `  ${run} ${c.id.padEnd(25)} ${arm.padEnd(8)} FAILED ${out.error.slice(0, 80)}`
-          : `  ${run} ${c.id.padEnd(25)} ${arm.padEnd(8)} calls ${out.sample!.tests} · fence ${out.score!.fence ? 'ok' : 'no'} · ${out.pass === undefined ? `runs ${out.score!.runs ? 'ok' : 'no'}` : out.pass ? 'PASS' : 'MISS'} · ${out.sample!.largestPrompt} tok`);
+          : `  ${run} ${c.id.padEnd(25)} ${arm.padEnd(8)} calls ${out.sample!.tests} · fence ${out.score!.fence ? 'ok' : 'no'} · ${out.pass === undefined ? `runs ${out.score!.runs ? 'ok' : 'no'}` : out.pass ? 'PASS' : 'MISS'}${out.box === undefined ? '' : ` · box ${out.box ? 'ok' : 'no'}`} · ${out.sample!.largestPrompt} tok`);
         return out;
       });
     }
@@ -260,6 +262,7 @@ const rows = [first, ...(await pool(jobs.slice(1), limit))];
 console.log(`${rows.length} questions in ${((Date.now() - started) / 1000).toFixed(0)}s, ${rows.filter((r) => r.error).length} failed`);
 
 const known = new Set(cases.filter((c) => c.names).map((c) => c.id));
+const timed = new Set(cases.filter((c) => c.timing).map((c) => c.id));
 
 /** The code test cells: answers that called it, calls per answer, and of the callers, those whose last call came back clean. */
 function testCells(scored: readonly Row[]) {
@@ -285,6 +288,7 @@ function cells(set: Row[]) {
       `tok ${Math.round(scored.reduce((sum, r) => sum + (r.sample?.usage.answerTokens ?? 0), 0) / Math.max(1, scored.length))}`,
       // A failed request on a known case counts as a miss.
       ...(set.some((r) => known.has(r.caseId)) ? [`pass ${pct(set.filter((r) => r.pass).length, set.length)}`] : []),
+      ...(set.some((r) => timed.has(r.caseId)) ? [`box ${pct(set.filter((r) => r.box).length, set.length)}`] : []),
       ...(tools ? testCells(scored) : []),
     ].join('  '),
   };
@@ -306,6 +310,7 @@ for (const kind of ['code', 'prose'] as const) {
 for (const arm of ARMS) console.log(`code, Code tab open  ${arm.padEnd(8)} ${cells(of(arm, (r) => r.kind === 'code' && cases.find((c) => c.id === r.caseId)?.surface !== undefined)).line}`);
 for (const arm of ARMS) console.log(`known cases          ${arm.padEnd(8)} ${cells(of(arm, isKnown)).line}`);
 for (const arm of ARMS) console.log(`other code cases     ${arm.padEnd(8)} ${cells(of(arm, (r) => r.kind === 'code' && !isKnown(r))).line}`);
+for (const arm of ARMS) console.log(`timing cases         ${arm.padEnd(8)} ${cells(of(arm, (r) => timed.has(r.caseId))).line}`);
 
 const bar = cells(of('rider', (r) => r.kind === 'code')).m;
 const prose = ARMS.filter((arm) => arm === 'rider' || arm === 'control').map((arm) => `${arm} ${percent(cells(of(arm, (r) => r.kind === 'prose')).m.fence)}`);

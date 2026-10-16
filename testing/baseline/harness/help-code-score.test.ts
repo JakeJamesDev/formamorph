@@ -1,30 +1,42 @@
 import { describe, expect, it } from 'vitest';
 import { fixtureRunner } from './help-code-cases';
-import { inventedNames, readFences, ref, scoreCodeAnswer, scoreNames, summarizeCodeScores } from './help-code-score';
+import { inBox, inventedNames, readFences, ref, scoreCodeAnswer, scoreNames, summarizeCodeScores } from './help-code-score';
 
 const fence = (info: string, code: string, close = true) => [`\`\`\`${info}`, code, ...(close ? ['```'] : [])].join('\n');
 
 describe('readFences', () => {
-  it('reads the language, the slot tag and the code of each fence', () => {
+  it('reads the language, the timing tag and the code of each fence', () => {
     const answer = ['Put this in **Before the AI**:', fence('javascript before', 'return 5;'), 'And this in **After the AI**:', fence('javascript after', 'self.value -= 1;')].join('\n\n');
     expect(readFences(answer)).toEqual([
-      { language: 'javascript', slot: 'before', code: 'return 5;', closed: true },
-      { language: 'javascript', slot: 'after', code: 'self.value -= 1;', closed: true },
+      { language: 'javascript', timing: 'before', code: 'return 5;', closed: true },
+      { language: 'javascript', timing: 'after', code: 'self.value -= 1;', closed: true },
     ]);
   });
 
-  it('reads a fence with no slot tag, or another word, as untagged', () => {
-    expect(readFences([fence('javascript', 'return 1;'), fence('js now', 'return 2;'), fence('', 'return 3;')].join('\n')).map((f) => f.slot)).toEqual([null, null, null]);
+  it('reads each of the five timing tags', () => {
+    const tags = ['before', 'after', 'output', 'start', 'switch'];
+    expect(readFences(tags.map((tag) => fence(`javascript ${tag}`, 'return 1;')).join('\n')).map((f) => f.timing)).toEqual(tags);
+  });
+
+  it('puts an answer in a box only when every fence carries its tag', () => {
+    expect(inBox(fence('javascript start', 'return 1;'), 'start')).toBe(true);
+    expect(inBox([fence('javascript start', 'return 1;'), fence('javascript before', 'return 2;')].join('\n'), 'start')).toBe(false);
+    expect(inBox(fence('javascript', 'return 1;'), 'start')).toBe(false);
+    expect(inBox('No code.', 'start')).toBe(false);
+  });
+
+  it('reads a fence with no timing tag, or another word, as untagged', () => {
+    expect(readFences([fence('javascript', 'return 1;'), fence('js now', 'return 2;'), fence('', 'return 3;')].join('\n')).map((f) => f.timing)).toEqual([null, null, null]);
   });
 
   it('reads a fence indented under a list item', () => {
     const answer = ['1. Open the box.', '    ```javascript after', '    return 5;', '    ```', '2. Click **Test Code**.'].join('\n');
-    expect(readFences(answer)).toEqual([{ language: 'javascript', slot: 'after', code: 'return 5;', closed: true }]);
+    expect(readFences(answer)).toEqual([{ language: 'javascript', timing: 'after', code: 'return 5;', closed: true }]);
   });
 
   it('reads a fence the answer never closes as open, with the code it has', () => {
     expect(readFences(['Steps:', fence('javascript after', 'const a = 1;\nreturn a', false)].join('\n'))).toEqual([
-      { language: 'javascript', slot: 'after', code: 'const a = 1;\nreturn a', closed: false },
+      { language: 'javascript', timing: 'after', code: 'const a = 1;\nreturn a', closed: false },
     ]);
   });
 

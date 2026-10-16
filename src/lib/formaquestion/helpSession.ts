@@ -20,7 +20,7 @@ import { createDocsLookup, DOCS_LOOKUP } from './docsLookup';
 import { CODE_TEST_RIDER_LINE, createCodeTest, HELP_CODE_TEST } from './helpCodeTest';
 import { GENERAL_KNOWLEDGE_MARKER, isGeneralKnowledge, readMarker } from './generalKnowledge';
 import { helpChipValues, renderHelpPrompt } from './helpChips';
-import { isCodeTurn, isOnCodeTab, QUICK_REFERENCE_SECTION, withCodeRider, withRiderLine } from './helpCodeRider';
+import { isCodeTurn, isOnCodeTab, QUICK_REFERENCE_SECTION, scriptHomeLine, withCodeRider, withRiderLine } from './helpCodeRider';
 import { createFaceCall } from './helpFace';
 import { requestPicks } from './helpPicks';
 import { HELP_ROLL } from './helpRoll';
@@ -450,8 +450,10 @@ export async function* askHelp({
   const turnMessage = bare
     ? question
     : lookup ? helpLookupUserMessage(question, inPrompt, where) : helpUserMessage(question, inPrompt, where);
-  // The test-first line belongs to the code test, so it rides a cleared rider too.
-  const rider = codeTest ? withRiderLine(prompts.code, CODE_TEST_RIDER_LINE) : prompts.code;
+  // The home line and the test-first line are the app's, so they ride a cleared rider too. The test line goes last.
+  const home = scriptHomeLine(openSurface);
+  const riderWithHome = home ? withRiderLine(prompts.code, home) : prompts.code;
+  const rider = codeTest ? withRiderLine(riderWithHome, CODE_TEST_RIDER_LINE) : riderWithHome;
   const userMessage = codeTurn ? withCodeRider(turnMessage, rider) : turnMessage;
   const options = activeHelpOptions(settings.presets)[lookup ? 'lookup' : 'answer'];
   // The fixed functions first, then the player's Tools. The lookup, the face call and the code test keep their
