@@ -8,6 +8,7 @@ import {
   removeChildrenOf, type FlatTreeNode, type TreeGroup, type TreeLeaf,
 } from './groupTree';
 import { ancestors, parentLookup } from './ancestors';
+import { blueprintsSubtreeIds } from './blueprintGroups';
 
 /** A world or entity group; `system` marks the world's Blueprints group. */
 export type OwnerTreeGroup = TreeGroup & { system?: 'blueprints' };
@@ -45,7 +46,6 @@ export interface OwnerTreeSource<G extends OwnerTreeGroup, L extends TreeLeaf, R
   /** Entities with a node that come last at the top level and never take a placement. */
   library?: readonly Entity[];
   placement(entity: Entity): TreePlacement | undefined;
-  blueprintsSubtreeIds(groups: readonly G[]): Set<string>;
   /** How an entity's rows are named; absent, a row's id is its item's. */
   rowIds?: OwnerRowIds;
   nodeGroup(entity: Entity, parentId: string | null, order: number): G;
@@ -61,16 +61,32 @@ export function nodePlacement(p: TreePlacement | undefined, entity: Entity, plac
 }
 
 /** The world groups an entity node can sit in: every one outside Blueprints. */
-export function placeableGroupIds<G extends OwnerTreeGroup>(
-  groups: readonly G[], blueprintsSubtreeIds: (groups: readonly G[]) => Set<string>,
-): Set<string> {
+export function placeableGroupIds(groups: readonly OwnerTreeGroup[]): Set<string> {
   const inBlueprints = blueprintsSubtreeIds(groups);
   return new Set(groups.filter((g) => !inBlueprints.has(g.id)).map((g) => g.id));
 }
 
 const placeableIds = <G extends OwnerTreeGroup, L extends TreeLeaf, R extends OwnerLinkRow<OwnerLink>>(
   source: OwnerTreeSource<G, L, R>,
-): Set<string> => placeableGroupIds(source.groups, source.blueprintsSubtreeIds);
+): Set<string> => placeableGroupIds(source.groups);
+
+/** An entity's links in its tree's order: by place among its own groups, then by order. */
+export function ownerLinksInTreeOrder<Link extends OwnerLink & { id: string }>(groups: readonly TreeGroup[], links: readonly Link[]): Link[] {
+  const byId = new Map(links.map((l) => [l.id, l]));
+  const leaves = links.map((l) => ({ id: l.id, name: '', groupId: l.groupId, order: l.order }));
+  return flattenTree(buildTree(groups, leaves)).flatMap((row) => (row.leaf ? byId.get(row.id) ?? [] : []));
+}
+
+/** An entity's list fields the owner trees write. */
+type EntityLists = { [K in 'traits' | 'traitGroups' | 'traitLinks' | 'stats' | 'statGroups' | 'statLinks']?: NonNullable<Entity[K]> };
+
+/** The entity with the given lists replaced. An empty list is stored as absent. */
+export function withEntityLists(entity: Entity, lists: EntityLists): Entity {
+  const rest = Object.entries(entity).filter(([key]) => !(key in lists));
+  const kept = Object.entries(lists).filter(([, list]) => list?.length);
+  // Each key either keeps its entity value or takes a list of the key's own type.
+  return Object.fromEntries([...rest, ...kept]) as unknown as Entity;
+}
 
 /** The world's rows with a node for each entity. A node sits where its placement puts it; an unplaced node goes
  *  to the end of the top level, in entity order, and library entities after those. */
@@ -141,8 +157,7 @@ const ownerOfParent = (tree: OwnerTree<OwnerTreeGroup, TreeLeaf, OwnerLinkRow<Ow
  * the row where it can't be.
  */
 export function ownerTreeDropProjection<G extends OwnerTreeGroup, L extends TreeLeaf, R extends OwnerLinkRow<OwnerLink>>(
-  tree: OwnerTree<G, L, R>, blueprintsSubtreeIds: (groups: readonly G[]) => Set<string>,
-  items: FlatTreeNode<G, L>[], activeId: string, overId: string, dragOffset: number, indentationWidth: number,
+  tree: OwnerTree<G, L, R>, items: FlatTreeNode<G, L>[], activeId: string, overId: string, dragOffset: number, indentationWidth: number,
 ): { depth: number; parentId: string | null } | null {
   const projection = getDropProjection(items, activeId, overId, dragOffset, indentationWidth);
   const active = items.find((i) => i.id === activeId);
@@ -216,7 +231,7 @@ export function applyOwnerTreeDrop<G extends OwnerTreeGroup, L extends TreeLeaf,
   const tree = buildOwnerTree(source);
   const collapsed = [...collapsedIds];
   const rows = ownerTreeRows(tree, [...collapsed, activeId]);
-  const projection = ownerTreeDropProjection(tree, source.blueprintsSubtreeIds, rows, activeId, overId, dragOffset, indentationWidth);
+  const projection = ownerTreeDropProjection(tree, rows, activeId, overId, dragOffset, indentationWidth);
   const activeRow = rows.find((r) => r.id === activeId);
   if (!projection || !activeRow) return null;
   // The drop replays the projection's depth, which for an entity node may sit left of the pointer.

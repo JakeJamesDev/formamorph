@@ -13,9 +13,10 @@ import { ownedStatTree } from '@/lib/ownedStatTree';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { duplicateStatNode, newStatGroup, statRootCount } from '@/lib/statGroupTree';
 import {
-  entityStatRows, removeStatBlueprints, resolvedEntityStats, statBlueprintsGroup, statLinksTo, statOriginalOf,
+  entityStatRows, removeStatBlueprints, resolvedEntityStats, statLinksTo, statOriginalOf,
   type StatBlueprintsRemoval,
 } from '@/lib/statLinks';
+import { blueprintsGroup } from '@/lib/blueprintGroups';
 import type { FindingSection } from '@/lib/testBench/rules';
 import { alsoDeletesLinks } from './useRemoveWorldTrait';
 import { StatLinkToButton } from './OwnerPicker';
@@ -134,7 +135,7 @@ export function useWorldStatsAdapter({ selectedId, onSelect, navigate, search, t
         <>
           <ListMenuRow icon={<FolderPlus className="h-4 w-4" />} label="Add Group" onAdd={handleAddGroup} />
           <ListMenuRow icon={<FilePlus className="h-4 w-4" />} label="Add Stat" onAdd={handleAdd} />
-          {!statBlueprintsGroup(statGroups)
+          {!blueprintsGroup(statGroups)
             && <ListMenuRow icon={<BlueprintIcon className="h-4 w-4" />} label="Add Blueprints Group" onAdd={handleAddBlueprints} />}
         </>
       ),

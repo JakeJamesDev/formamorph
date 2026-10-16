@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { applyOwnerTreeDrop, buildOwnerTree, linksCarried, ownerTreeDropProjection, ownerTreeRows, rowsBelow } from './ownerTree';
+import {
+  applyOwnerTreeDrop, buildOwnerTree, linksCarried, ownerLinksInTreeOrder, ownerTreeDropProjection, ownerTreeRows,
+  placeableGroupIds, rowsBelow, withEntityLists,
+} from './ownerTree';
 import { traitDropRules, traitTreeSource, type TraitDropRuleOptions, type TraitTreeOptions } from './traitTree';
-import { blueprintsSubtreeIds } from './blueprintGroups';
 import { statDropRules, statTreeSource } from './ownedStatTree';
 import type { StatReaderWorld } from './statMoveReaders';
 import type { Entity, Stat, StatGroup, StatLink, Trait, TraitGroup, TraitLink } from '@/types';
@@ -70,10 +72,42 @@ describe('rowsBelow and linksCarried', () => {
   });
 });
 
+describe('the shared owner-tree helpers', () => {
+  it('places entity nodes only in world groups outside Blueprints, for traits and stats alike', () => {
+    const statGroups: StatGroup[] = [
+      { id: 'core', name: 'core', parentId: null }, { id: 'sbp', name: 'Blueprints', parentId: null, system: 'blueprints' },
+      { id: 'kit', name: 'kit', parentId: 'sbp' },
+    ];
+    expect([...placeableGroupIds(withBlueprints.traitGroups)]).toEqual(['class']);
+    expect([...placeableGroupIds(statGroups)]).toEqual(['core']);
+  });
+
+  it('orders links by their place among the entity groups, not by array order', () => {
+    const at = (id: string, groupId: string | null, order: number) => ({ ...link(id, id), groupId, order });
+    const groups = [group('outer', null, 0), group('inner', 'outer', 1)];
+    const links = [at('last', null, 1), at('deep', 'inner', 0), at('top', 'outer', 0)];
+    expect(ownerLinksInTreeOrder(groups, links).map((l) => l.id)).toEqual(['top', 'deep', 'last']);
+  });
+
+  it('lists each link once even when a group shares its id', () => {
+    const shared = { ...link('twin', 'twin'), groupId: null, order: 1 };
+    expect(ownerLinksInTreeOrder([group('twin', null, 0)], [shared])).toEqual([shared]);
+  });
+
+  it('replaces only the given lists, stores an empty list as absent, and keeps every other field', () => {
+    const out = withEntityLists({ ...ash, statLinks: [] }, { traits: [trait('new', null, 0)], traitGroups: [], statLinks: [] });
+    expect(out).toEqual({ id: 'ash', name: 'Ash', traits: [trait('new', null, 0)] });
+    // Untouched fields keep their place; replaced lists follow in the order given.
+    expect(Object.keys(withEntityLists(ash, { traits: [], traitGroups: ash.traitGroups }))).toEqual(['id', 'name', 'traitGroups']);
+    expect(Object.keys(withEntityLists(ash, { traitGroups: ash.traitGroups, traits: ash.traits }))).toEqual(['id', 'name', 'traitGroups', 'traits']);
+    expect(withEntityLists(bob, {})).toEqual(bob);
+  });
+});
+
 describe('ownerTreeDropProjection', () => {
   const project = (lists: Lists, entities: Entity[], activeId: string, overId: string, dragOffset: number) => {
     const t = tree(lists, entities);
-    return ownerTreeDropProjection(t, blueprintsSubtreeIds, ownerTreeRows(t, [activeId]), activeId, overId, dragOffset, 24);
+    return ownerTreeDropProjection(t, ownerTreeRows(t, [activeId]), activeId, overId, dragOffset, 24);
   };
 
   it('keeps Blueprints at the top level', () => {

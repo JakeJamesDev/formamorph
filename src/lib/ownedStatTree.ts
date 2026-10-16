@@ -2,17 +2,18 @@
 // Link, and the drops that move them across owners, on the owner-tree engine. A stat id may repeat across owners,
 // so an entity's rows take row ids of their own (`entity/id`), and a drop maps them back.
 
-import type { Entity, Stat, StatGroup, StatLink, TreePlacement } from '@/types';
+import type { Entity, Stat, StatGroup, StatLink } from '@/types';
 import type { FlatTreeNode } from './groupTree';
 import type { HeldReason } from './heldReasons';
 import {
-  applyOwnerTreeDrop, buildOwnerTree, nodePlacement, ownerTreeDropProjection, ownerTreeRows,
+  applyOwnerTreeDrop, buildOwnerTree, ownerTreeDropProjection, ownerTreeRows, withEntityLists,
   type OwnerRowIds, type OwnerTree, type OwnerTreeDrop, type OwnerTreeDropRules, type OwnerTreeDropState, type OwnerTreeSource,
 } from './ownerTree';
 import { statsInTreeOrder } from './statGroupTree';
 import {
-  entityStatRows, resolvedEntityStatTree, statBlueprintsSubtreeIds, statHeldReason, statOriginalOf, type LinkedStatRow,
+  entityStatRows, resolvedEntityStatTree, statHeldReason, statOriginalOf, type LinkedStatRow,
 } from './statLinks';
+import { blueprintsSubtreeIds } from './blueprintGroups';
 import { brokenStatReader, statReaderOutsideBlueprints, type StatReader, type StatReaderWorld } from './statMoveReaders';
 import { randomUUID } from './uuid';
 
@@ -53,16 +54,6 @@ const statRowIds: OwnerRowIds = { rowId: ownedStatRowId, itemId: (entityId, rowI
 export const ownsStats = (entity: Entity): boolean =>
   (entity.stats?.length ?? 0) + (entity.statGroups?.length ?? 0) + (entity.statLinks?.length ?? 0) > 0;
 
-/** The world stat groups an entity node can sit in: every one outside Blueprints. */
-export function statPlaceableGroupIds(groups: readonly StatGroup[]): Set<string> {
-  const inBlueprints = statBlueprintsSubtreeIds(groups);
-  return new Set(groups.filter((g) => !inBlueprints.has(g.id)).map((g) => g.id));
-}
-
-/** The entity node's place in the Stats tree; see {@link nodePlacement}. */
-export const effectiveStatPlacement = (entity: Entity, placeableIds: ReadonlySet<string>): TreePlacement | null =>
-  nodePlacement(entity.statPlacement, entity, placeableIds);
-
 type StatWorldLists = Pick<StatReaderWorld, 'stats' | 'statGroups'>;
 type StatOwnerTree = OwnerTree<StatGroup, Stat, StatLinkRow>;
 
@@ -74,7 +65,6 @@ export function statTreeSource(
     groups: world.statGroups, leaves: world.stats,
     entities: entities.filter((e) => ownsStats(e) || (emptySystemNodes && !!e.customPersona)),
     placement: (e) => e.statPlacement,
-    blueprintsSubtreeIds: statBlueprintsSubtreeIds,
     rowIds: statRowIds,
     nodeGroup: (e, parentId, order) => ({ id: e.id, name: e.name, parentId, order }),
     pushRows: (tree, entity) => {
@@ -123,7 +113,7 @@ export const ownedStatRows = (tree: OwnedStatTree, collapsedIds: Iterable<string
 export const getOwnedStatDropProjection = (
   tree: OwnedStatTree, items: FlatStatRow[], activeId: string, overId: string, dragOffset: number, indentationWidth: number,
 ): { depth: number; parentId: string | null } | null =>
-  ownerTreeDropProjection(toOwnerTree(tree), statBlueprintsSubtreeIds, items, activeId, overId, dragOffset, indentationWidth);
+  ownerTreeDropProjection(toOwnerTree(tree), items, activeId, overId, dragOffset, indentationWidth);
 
 /** Why a drop was refused. `owner` is the entity's name; null for the world. */
 export type StatDropRefusal =
@@ -207,12 +197,12 @@ export function statDropRules(
       }
       // A linked Blueprint stays in Blueprints, so every link points into it.
       if (original) {
-        const leaves = parentAfter == null || !statBlueprintsSubtreeIds(dropped.groups).has(parentAfter);
+        const leaves = parentAfter == null || !blueprintsSubtreeIds(dropped.groups).has(parentAfter);
         const owners = leaves ? entities.filter((e) => e.statLinks?.some((l) => subtree.has(l.originalId))).map((e) => e.name) : [];
         if (owners.length) return refused({ reason: 'blueprint-linked', name: original.item.name, owners });
       }
       // A world stat that joins Blueprints stops being a global stat, so nothing outside may read it.
-      if (!isNode && from === null && !original && parentAfter != null && statBlueprintsSubtreeIds(dropped.groups).has(parentAfter)) {
+      if (!isNode && from === null && !original && parentAfter != null && blueprintsSubtreeIds(dropped.groups).has(parentAfter)) {
         const read = statReaderOutsideBlueprints(world, world.stats.filter((s) => subtree.has(s.id)));
         if (read) return refused({ reason: 'into-blueprints', name: read.stat.name, reader: read.reader });
       }
@@ -223,15 +213,8 @@ export function statDropRules(
       return undefined;
     },
     write: (entity, { groups, leaves, links }, placement) => {
-      const stats = statsInTreeOrder(groups, leaves);
-      const { stats: _s, statGroups: _g, statLinks: _l, ...rest } = entity;
-      return {
-        ...rest,
-        ...(stats.length ? { stats } : {}),
-        ...(groups.length ? { statGroups: groups } : {}),
-        ...(links.length ? { statLinks: links } : {}),
-        ...(placement ? { statPlacement: placement } : {}),
-      };
+      const written = withEntityLists(entity, { stats: statsInTreeOrder(groups, leaves), statGroups: groups, statLinks: links });
+      return placement ? { ...written, statPlacement: placement } : written;
     },
     writeWorld: ({ groups, leaves }) => ({ groups, leaves: statsInTreeOrder(groups, leaves) }),
   };

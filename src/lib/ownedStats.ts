@@ -5,18 +5,14 @@ import { newStat, withDefaultDescriptors } from './blankWorld';
 import { followRename } from './statDescriptors';
 import { duplicateStatNode, newStatGroup } from './statGroupTree';
 import { entityStatRootCount } from './statLinks';
+import { withEntityLists } from './ownerTree';
 
 /** The entity with its owned stats replaced. An empty list is stored as absent. */
-export function withOwnedStats(entity: Entity, stats: Stat[]): Entity {
-  const { stats: _stats, ...rest } = entity;
-  return stats.length ? { ...rest, stats } : rest;
-}
+export const withOwnedStats = (entity: Entity, stats: Stat[]): Entity => withEntityLists(entity, { stats });
 
 /** The entity with its owned stats and stat groups replaced. An empty list is stored as absent. */
-export function withOwnedStatTree(entity: Entity, stats: Stat[], groups: StatGroup[]): Entity {
-  const { stats: _stats, statGroups: _groups, ...rest } = entity;
-  return { ...rest, ...(stats.length ? { stats } : {}), ...(groups.length ? { statGroups: groups } : {}) };
-}
+export const withOwnedStatTree = (entity: Entity, stats: Stat[], groups: StatGroup[]): Entity =>
+  withEntityLists(entity, { stats, statGroups: groups });
 
 const statsOf = (entity: Entity): Stat[] => entity.stats ?? [];
 const groupsOf = (entity: Entity): StatGroup[] => entity.statGroups ?? [];
