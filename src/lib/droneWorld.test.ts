@@ -4,43 +4,12 @@
  */
 import { describe, it, expect } from 'vitest';
 import raw from '@/defaultworlds/drone.json?raw';
-import { migrateWorld } from './version';
-import { resolveOwners, type OwnerWorld } from './owners';
-import { gateOf, gateStates, settleDefaults, switchTrait, underfills, type SettleResult } from './traitGates';
-import { inPlayOwners } from './ownedTraitsInPlay';
-import { applyOwnedStatTraits, seedNewGameStats, type TraitRuntimeState, type TraitWorld } from './traitRuntime';
-import { ownedTraitStatesFrom } from './ownedTraitState';
-import { seedEntityStats } from './entityStats';
+import { gateOf, gateStates, settleDefaults, underfills, type SettleResult } from './traitGates';
 import { runStatCodeTurn } from './statCodeTurn';
-import type { Entity, PersonaRef, PlayerStat, World } from '@/types';
+import type { PlayerStat } from '@/types';
+import { bundledWorldHarness } from '@/test/bundledWorldHarness';
 
-// Loaded the way the seeder loads it: raw text through the world migration.
-const world: World = migrateWorld(JSON.parse(raw));
-const NONE: PersonaRef = { source: 'none' };
-const drone: Entity = world.entities.find((e) => e.customPersona)!;
-const ownerWorld: OwnerWorld = { traits: world.traits, traitGroups: world.traitGroups ?? [], entities: world.entities };
-const { gate } = resolveOwners(ownerWorld, NONE);
-
-const idOf = (name: string): string => {
-  const found = drone.traits!.find((t) => t.name === name);
-  if (!found) throw new Error(`no trait ${name}`);
-  return found.id;
-};
-const names = (ids: readonly string[] = []) => ids.map((id) => drone.traits!.find((t) => t.id === id)?.name ?? id).sort();
-const activeOf = (result: SettleResult | null) => names(result?.active.owners[drone.id]);
-
-/** Switch each named trait on in turn from the default build, as the creator does. */
-function build(...picks: string[]): SettleResult {
-  let state = settleDefaults(gate);
-  for (const pick of picks) {
-    // A switch toggles, so a pick already on (the default chassis) stays as it is.
-    if (state.active.owners[drone.id]?.includes(idOf(pick))) continue;
-    const next = switchTrait({ ...gate, active: state.active }, drone.id, idOf(pick), state.cascadeOff);
-    if (!next) throw new Error(`${pick} would not switch on`);
-    state = next;
-  }
-  return state;
-}
+const { persona: drone, gate, idOf, activeNames: activeOf, build, personaStats, turn, personaStatsOut } = bundledWorldHarness(raw);
 
 describe('the drone build', () => {
   it('starts as an Assault Frame with no modules', () => {
@@ -80,33 +49,13 @@ describe('the drone build', () => {
   });
 });
 
-const traitWorld: TraitWorld = {
-  traits: world.traits, groups: world.traitGroups ?? [], entities: world.entities, persona: NONE, ...inPlayOwners(ownerWorld, NONE),
-};
-const ownedOf = (state: SettleResult) => ownedTraitStatesFrom({ [drone.id]: state.active.owners[drone.id] ?? [] });
-
 /** The drone's stats after its build's stat changes, with each named stat set to a share of its max. */
-function droneStats(state: SettleResult, shares: Record<string, number>): PlayerStat[] {
-  const seeded: TraitRuntimeState = {
-    stats: seedNewGameStats(world.stats), traits: [], disabledTraitIds: [], appliedValues: {},
-    ownedTraits: ownedOf(state), entityStats: seedEntityStats(world.entities),
-  };
-  const started = applyOwnedStatTraits(seeded, traitWorld);
-  return started.entityStats![drone.id].map((s) => (s.name in shares ? { ...s, value: Math.round(s.max * shares[s.name]) } : s));
-}
+const droneStats = (state: SettleResult, shares: Record<string, number>): PlayerStat[] =>
+  personaStats(state).map((s) => (s.name in shares ? { ...s, value: Math.round(s.max * shares[s.name]) } : s));
 
 /** Mobility and Firepower after one After the AI run of the drone's scripts. */
 async function readouts(state: SettleResult, shares: Record<string, number>) {
-  const stats = droneStats(state, shares);
-  const out = await runStatCodeTurn({
-    stats: [], enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {},
-    ownerTraits: {
-      acquired: [], disabledTraitIds: [], appliedValues: {}, entities: world.entities, world: traitWorld, ownedTraits: ownedOf(state),
-    },
-    owners: [{ id: drone.id, stats, enabled: {}, previous: stats, regenApplied: {} }],
-    statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
-  });
-  const after = out.owners?.[drone.id]?.stats ?? stats;
+  const after = personaStatsOut(await runStatCodeTurn(turn(state, { stats: droneStats(state, shares) })));
   const value = (name: string) => after.find((s) => s.name === name)?.value;
   return { mobility: value('Mobility'), firepower: value('Firepower') };
 }

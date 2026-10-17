@@ -4,43 +4,11 @@
  */
 import { describe, it, expect } from 'vitest';
 import raw from '@/defaultworlds/sugarscape.json?raw';
-import { migrateWorld } from './version';
-import { resolveOwners, type OwnerWorld } from './owners';
-import { settleDefaults, switchTrait, underfills, type SettleResult } from './traitGates';
-import { inPlayOwners } from './ownedTraitsInPlay';
-import { applyOwnedStatTraits, seedNewGameStats, type TraitRuntimeState, type TraitWorld } from './traitRuntime';
-import { ownedTraitStatesFrom } from './ownedTraitState';
-import { seedEntityStats } from './entityStats';
+import { settleDefaults, underfills, type SettleResult } from './traitGates';
 import { runStatCodeTurn } from './statCodeTurn';
-import type { Entity, PersonaRef, PlayerStat, World } from '@/types';
+import { bundledWorldHarness, withValues, type StatValues } from '@/test/bundledWorldHarness';
 
-// Loaded the way the seeder loads it: raw text through the world migration.
-const world: World = migrateWorld(JSON.parse(raw));
-const NONE: PersonaRef = { source: 'none' };
-const cursed: Entity = world.entities.find((e) => e.customPersona)!;
-const ownerWorld: OwnerWorld = { traits: world.traits, traitGroups: world.traitGroups ?? [], entities: world.entities };
-const { gate } = resolveOwners(ownerWorld, NONE);
-
-const idOf = (name: string): string => {
-  const found = cursed.traits!.find((t) => t.name === name);
-  if (!found) throw new Error(`no trait ${name}`);
-  return found.id;
-};
-const names = (ids: readonly string[] = []) => ids.map((id) => cursed.traits!.find((t) => t.id === id)?.name ?? id).sort();
-const activeOf = (result: SettleResult) => names(result.active.owners[cursed.id]);
-
-/** Switch each named trait on in turn from the default build, as the creator and the in-play toggle do. */
-function build(...picks: string[]): SettleResult {
-  let state = settleDefaults(gate);
-  for (const pick of picks) {
-    // A switch toggles, so a pick already on (a default) stays as it is.
-    if (state.active.owners[cursed.id]?.includes(idOf(pick))) continue;
-    const next = switchTrait({ ...gate, active: state.active }, cursed.id, idOf(pick), state.cascadeOff);
-    if (!next) throw new Error(`${pick} would not switch on`);
-    state = next;
-  }
-  return state;
-}
+const { persona: cursed, gate, idOf, activeNames: activeOf, build, personaStats, turn, personaStatsOut } = bundledWorldHarness(raw);
 
 describe('the cursed build', () => {
   it('starts as a Nimble Grazer with no Pantry Tricks', () => {
@@ -60,33 +28,13 @@ describe('the cursed build', () => {
   });
 });
 
-const traitWorld: TraitWorld = {
-  traits: world.traits, groups: world.traitGroups ?? [], entities: world.entities, persona: NONE, ...inPlayOwners(ownerWorld, NONE),
-};
-const ownedOf = (state: SettleResult) => ownedTraitStatesFrom({ [cursed.id]: state.active.owners[cursed.id] ?? [] });
-
 /** The cursed's stats after its build's stat changes, with each named stat set to a raw value. */
-function cursedStats(state: SettleResult, values: Record<string, number>): PlayerStat[] {
-  const seeded: TraitRuntimeState = {
-    stats: seedNewGameStats(world.stats), traits: [], disabledTraitIds: [], appliedValues: {},
-    ownedTraits: ownedOf(state), entityStats: seedEntityStats(world.entities),
-  };
-  const started = applyOwnedStatTraits(seeded, traitWorld);
-  return started.entityStats![cursed.id].map((s) => (s.name in values ? { ...s, value: values[s.name] } : s));
-}
+const cursedStats = (state: SettleResult, values: StatValues) => withValues(personaStats(state), values);
 
 /** Craving after one After the AI run of the hunger script. */
-async function cravingAfter(state: SettleResult, values: Record<string, number>) {
-  const stats = cursedStats(state, values);
-  const out = await runStatCodeTurn({
-    stats: [], enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {},
-    ownerTraits: {
-      acquired: [], disabledTraitIds: [], appliedValues: {}, entities: world.entities, world: traitWorld, ownedTraits: ownedOf(state),
-    },
-    owners: [{ id: cursed.id, stats, enabled: {}, previous: stats, regenApplied: {} }],
-    statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
-  });
-  return (out.owners?.[cursed.id]?.stats ?? stats).find((s) => s.name === 'Craving')?.value;
+async function cravingAfter(state: SettleResult, values: StatValues) {
+  const out = await runStatCodeTurn(turn(state, { stats: cursedStats(state, values) }));
+  return personaStatsOut(out).find((s) => s.name === 'Craving')?.value;
 }
 
 /** Craving 30 on a comfortable stomach: neither empty nor full. */

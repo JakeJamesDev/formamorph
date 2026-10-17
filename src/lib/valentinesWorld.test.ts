@@ -4,73 +4,22 @@
  */
 import { describe, it, expect } from 'vitest';
 import raw from '@/defaultworlds/valentines.json?raw';
-import { migrateWorld } from './version';
-import { resolveOwners, type OwnerWorld } from './owners';
-import { settleDefaults, switchTrait, type SettleResult } from './traitGates';
-import { inPlayOwners } from './ownedTraitsInPlay';
-import { applyOwnedStatTraits, seedNewGameStats, type TraitRuntimeState, type TraitWorld } from './traitRuntime';
-import { ownedTraitStatesFrom } from './ownedTraitState';
-import { seedEntityStats } from './entityStats';
 import { runStatCodeTurn } from './statCodeTurn';
-import type { Entity, PersonaRef, PlayerStat, World } from '@/types';
+import type { SettleResult } from './traitGates';
+import type { PlayerStat } from '@/types';
+import { bundledWorldHarness, withValues, type StatValues } from '@/test/bundledWorldHarness';
 
-// Loaded the way the seeder loads it: raw text through the world migration.
-const world: World = migrateWorld(JSON.parse(raw));
-const NONE: PersonaRef = { source: 'none' };
-const student: Entity = world.entities.find((e) => e.customPersona)!;
-const ownerWorld: OwnerWorld = { traits: world.traits, traitGroups: world.traitGroups ?? [], entities: world.entities };
-const { gate } = resolveOwners(ownerWorld, NONE);
-
-const idOf = (name: string): string => {
-  const found = student.traits!.find((t) => t.name === name);
-  if (!found) throw new Error(`no trait ${name}`);
-  return found.id;
-};
-
-/** Switch each named trait on in turn from the default build, as the creator and the in-play toggle do. */
-function build(...picks: string[]): SettleResult {
-  let state = settleDefaults(gate);
-  for (const pick of picks) {
-    if (state.active.owners[student.id]?.includes(idOf(pick))) continue;
-    const next = switchTrait({ ...gate, active: state.active }, student.id, idOf(pick), state.cascadeOff);
-    if (!next) throw new Error(`${pick} would not switch on`);
-    state = next;
-  }
-  return state;
-}
-
-const traitWorld: TraitWorld = {
-  traits: world.traits, groups: world.traitGroups ?? [], entities: world.entities, persona: NONE, ...inPlayOwners(ownerWorld, NONE),
-};
-const ownedOf = (state: SettleResult) => ownedTraitStatesFrom({ [student.id]: state.active.owners[student.id] ?? [] });
+const { build, personaStats, turn, personaStatsOut } = bundledWorldHarness(raw);
 
 /** The student's stats after its build's stat changes, with each named stat set to a raw value. */
-function studentStats(state: SettleResult, values: Record<string, number>): PlayerStat[] {
-  const seeded: TraitRuntimeState = {
-    stats: seedNewGameStats(world.stats), traits: [], disabledTraitIds: [], appliedValues: {},
-    ownedTraits: ownedOf(state), entityStats: seedEntityStats(world.entities),
-  };
-  const started = applyOwnedStatTraits(seeded, traitWorld);
-  return started.entityStats![student.id].map((s) => (s.name in values ? { ...s, value: values[s.name] } : s));
-}
+const studentStats = (state: SettleResult, values: StatValues) => withValues(personaStats(state), values);
 
 const statOf = (stats: readonly PlayerStat[], name: string) => stats.find((s) => s.name === name)!;
 
 /** Agility after one After the AI run of its script. */
-async function agilityAfter(state: SettleResult, values: Record<string, number>) {
-  const stats = studentStats(state, values);
-  const out = await runStatCodeTurn({
-    stats: [], enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {},
-    ownerTraits: {
-      acquired: [], disabledTraitIds: [], appliedValues: {}, entities: world.entities, world: traitWorld, ownedTraits: ownedOf(state),
-    },
-    owners: [{ id: student.id, stats, enabled: {}, previous: stats, regenApplied: {} }],
-    statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
-  });
-  // No fallback to the input: a script that never ran must not pass as one that returned the same value.
-  const ran = out.owners?.[student.id]?.stats;
-  if (!ran) throw new Error('the Agility script did not run');
-  return statOf(ran, 'Agility').value;
+async function agilityAfter(state: SettleResult, values: StatValues) {
+  const out = await runStatCodeTurn(turn(state, { stats: studentStats(state, values) }));
+  return statOf(personaStatsOut(out), 'Agility').value;
 }
 
 // Iron Stomach is the default Constitution, so Sugar tops out at 100. The other builds change one max each.
