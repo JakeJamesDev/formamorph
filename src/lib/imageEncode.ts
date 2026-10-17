@@ -83,7 +83,10 @@ async function encodeAnimatedImage(url: string, maxDim: number, lossless: boolea
   const quality = Math.round(QUALITY * 100);
   const frames: { data: Uint8Array; duration: number; config: { lossless: number; quality: number } }[] = [];
   for (let i = 0; i < frameCount; i++) {
-    const { image } = i === 0 ? first : await dec.decode({ frameIndex: i });
+    // The first frame that fails to decode, such as a truncated file's last one, ends the animation there.
+    const decoded = i === 0 ? first : await dec.decode({ frameIndex: i }).catch(() => null);
+    if (!decoded) break;
+    const { image } = decoded;
     ctx.clearRect(0, 0, w, h);
     ctx.drawImage(image as unknown as CanvasImageSource, 0, 0, w, h);
     const durationUs = image.duration ?? 100_000; // VideoFrame.duration is microseconds; default 100ms
@@ -95,6 +98,8 @@ async function encodeAnimatedImage(url: string, maxDim: number, lossless: boolea
     });
   }
   dec.close();
+  // One surviving frame would flatten the animation, so the source stays.
+  if (frames.length < 2) return null;
 
   const { encodeAnimation } = await loadWebp();
   const out = await encodeAnimation(w, h, true, frames);

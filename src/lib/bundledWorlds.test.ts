@@ -19,31 +19,19 @@ const FEATURES: Record<string, Feature[]> = {
   'slime': ['scripts', 'traitModes'],
   'sugarscape': ['scripts', 'minMaxPicks', 'openingWeights'],
   'valentines': ['scripts'],
+  'veilwood': ['traitGates', 'traitModes', 'minMaxPicks', 'openingWeights'],
 };
 
 /** Image size has no budget the bundled worlds must meet (Q13). */
 const IGNORED_RULES = new Set(['world-oversized-images']);
 
 // Why each open finding stays. A world ticket clears its content and image rows (Q14); a by-design row stays (Q15).
-const WEBP = 'its world ticket re-encodes the art as WebP';
-const PLACE = 'its world ticket places entities here';
 const BY_DESIGN = 'the blank stage holds no entities by design';
 
 /** Findings still open, as `rule: items` with the reason each stays, by world. */
 const OPEN_FINDINGS: Record<string, Record<string, string>> = {
   'open-chat': {
     'location-no-entities: Here': BY_DESIGN,
-  },
-  'veilwood': {
-    'image-not-webp: Cerulean Vex': WEBP,
-    'image-not-webp: Dread Crawler': WEBP,
-    'image-not-webp: Ember Speckle': WEBP,
-    'image-not-webp: Ember Spire': WEBP,
-    'image-not-webp: Midnight Shimmer': WEBP,
-    'image-not-webp: Night Veil': WEBP,
-    'image-not-webp: Shadow Raptor': WEBP,
-    "location-no-entities: The Surveyor's Camp": PLACE,
-    'location-no-entities: The Veilwood': PLACE,
   },
 };
 
