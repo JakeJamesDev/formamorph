@@ -8,6 +8,8 @@ import { gateOf, gateStates, settleDefaults, underfills, type SettleResult } fro
 import { runStatCodeTurn } from './statCodeTurn';
 import type { PlayerStat } from '@/types';
 import { bundledWorldHarness } from '@/test/bundledWorldHarness';
+import { readWorldTools } from './tools/worldTools';
+import { openWorldToolTurn } from './tools/worldToolTurn';
 
 const { persona: drone, gate, idOf, activeNames: activeOf, build, personaStats, turn, personaStatsOut } = bundledWorldHarness(raw);
 
@@ -94,5 +96,59 @@ describe('the drone readout scripts', () => {
 
   it('prime Overdrive in Firepower at full Charge', async () => {
     expect((await readouts(settleDefaults(gate), { ...FULL, Power: 0.5, Charge: 1 })).firepower).toBe(80);
+  });
+});
+
+describe('the lock_target World Tool', () => {
+  const { tools, dropped } = readWorldTools((JSON.parse(raw) as { tools?: unknown }).tools);
+  const lockTarget = tools.find((tool) => tool.name === 'lock_target')!;
+  const failIfCalled = () => { throw new Error('lock_target never runs at the call.'); };
+
+  /** One turn's armed output triggers after the AI calls lock_target once for each name. */
+  async function lockOn(...names: string[]) {
+    const turnTools = openWorldToolTurn(tools, failIfCalled);
+    const execute = turnTools.executor(failIfCalled);
+    const replies = [];
+    for (const name of names) replies.push((await execute(lockTarget, JSON.stringify({ name }), new AbortController().signal)).text);
+    return { replies, triggers: turnTools.armed('output') };
+  }
+
+  /** `sentence` after the drone's output run with `triggers` armed. */
+  const filtered = async (sentence: string, triggers: Awaited<ReturnType<typeof lockOn>>['triggers']) =>
+    (await runStatCodeTurn({ ...turn(settleDefaults(gate), { stats: personaStats(settleDefaults(gate)) }), timing: 'output', triggers,
+      narration: { sentence, full: sentence, index: 0, sent: [], buffered: [] } })).sentence;
+
+  it('loads from the world as a During AI Output filter offered to narration', () => {
+    expect(dropped).toEqual([]);
+    expect(lockTarget.handler).toMatchObject({ kind: 'script', timing: 'output' });
+    expect(lockTarget.offeredTo).toEqual(['narration']);
+  });
+
+  it('answers its Reply and arms the filter', async () => {
+    const { replies, triggers } = await lockOn('Rustjaw');
+    expect(replies).toEqual(['Target locked. Write the narration.']);
+    expect(triggers).toHaveLength(1);
+  });
+
+  it('marks every mention of the target in any letter case, once each', async () => {
+    const { triggers } = await lockOn('Ser Halden');
+    expect(await filtered('Ser Halden raises his shield, and **ser halden** charges.', triggers))
+      .toBe('**⌖ Ser Halden** raises his shield, and **⌖ ser halden** charges.');
+  });
+
+  it('marks the last word of a described target, as the narration shortens it', async () => {
+    const { triggers } = await lockOn('the growling beast');
+    expect(await filtered('The growling beast leaps, and the **beast** howls.', triggers))
+      .toBe('The **⌖ growling beast** leaps, and the **⌖ beast** howls.');
+  });
+
+  it('leaves a sentence without the target as written', async () => {
+    const { triggers } = await lockOn('Rustjaw');
+    expect(await filtered('The dunes shift under your wheels.', triggers)).toBe('The dunes shift under your wheels.');
+  });
+
+  it('moves the lock to the later target, because Stack Calls is off', async () => {
+    const { triggers } = await lockOn('Rustjaw', 'Tiamat');
+    expect(await filtered('Rustjaw ducks as Tiamat roars.', triggers)).toBe('Rustjaw ducks as **⌖ Tiamat** roars.');
   });
 });

@@ -82,6 +82,18 @@ See [During AI Output](#during-ai-output) for what the rewrite changes.
 
 See [Player](#player) for every call and for what closing a prompt does.
 
+## How to Let the AI Run a Script
+<!-- keywords: world tool, tool script, ai decides, ai calls my code, trigger, arm a script, on demand, filter on request, narration filter tool, reply, stack calls, timing, function calling script -->
+<!-- route: worldEditor.tools -->
+
+1. In the World Editor, select **Advanced** in the mode switch and open the **Tools** tab in the **Logic** group.
+2. Select **Add Tool**. Write a **Description** that names the scene that calls for it.
+3. On the **Handler** tab, pick **Script**, then a **Timing**: **On Call**, **During AI Output** or **After the AI**.
+4. Write the script. It reads the AI's values from `args`.
+5. Select **Save Tool**.
+
+See [World Tools](#world-tools) for what each timing does.
+
 ## How to Review Every Script in One Place
 <!-- keywords: scripts tab, all scripts, list of scripts, run order, order of scripts, drag script, reorder scripts, which script runs first, world script, add a world script, find a script, scripts by timing -->
 <!-- route: worldEditor.scripts -->
@@ -120,6 +132,7 @@ A script runs in a sandbox at its own point in the turn (see [The Five Timings](
 - **Rewrite a narration sentence** as it completes (see [Narration](#narration))
 - **Tell or ask the player** (see [Player](#player))
 - **React when a trait switches** (see [Trait](#trait))
+- **Run when the AI decides**, from a World Tool (see [World Tools](#world-tools))
 
 ## How It Works
 <!-- keywords: which box to use, lifecycle, sequence of steps, pre and post, how often it executes, hooks, script crashes, reads zero early, older single box worlds, where scripts live, home of a script, stat script, trait script, world script -->
@@ -215,6 +228,42 @@ Within one timing, scripts run in this order:
 
 A later write to a field wins. So the order decides who wins: a world script ordered before a stat script loses the field to the stat script. Swap their orders and the world script wins. See [Writing to Other Stats](#writing-to-other-stats).
 
+A [World Tool](#world-tools) the AI called runs before all of these, in its timing.
+
+### World Tools
+<!-- keywords: world tool, tool script, trigger, armed, args, reply, stack calls, on call, during ai output, after the ai, ai calls a tool, one turn, filter tool, tool order, tool error -->
+
+A **World Tool** is a Tool that the world holds, on the **Tools** tab in the **Logic** group. When the AI calls a World Tool with a **Script** handler, the call **arms** the script for that turn. The script then runs at the Tool's **Timing**, with the values the AI sent in `args`. See [How to Make a Tool That Changes the Story](Tools#how-to-make-a-tool-that-changes-the-story).
+
+| Timing | When the script runs | What the AI gets back | Writes apply |
+| --- | --- | --- | --- |
+| **On Call** | At once, when the AI calls | The script's return value. Text goes as is and any other value as JSON. A blank or missing value sends the Tool's **Empty Result** | At once. Later Tool calls and later prompts in the turn read them |
+| **During AI Output** | On each narration sentence after the call, for the rest of the turn | The **Reply**, or "Done." when it's blank | The sentence, then the stats with the After the AI scripts |
+| **After the AI** | With the After the AI scripts | The **Reply**, or "Done." when it's blank | When the turn ends |
+
+The script reads and writes everything a world script does: stats, traits, placeholders, the [location](#location), the [clock](#passing-time), [discover](#discover), [memory](#memory) and the [diary](#diary). A During AI Output Tool also reads `narration` and rewrites the sentence, as a [During AI Output](#during-ai-output) script does.
+
+- **`args` holds one member for each parameter the AI sent.** An optional parameter the AI left out is missing. `args` is read-only.
+- **A call lasts one turn.** Nothing armed carries into the next turn or the save.
+- **Stack Calls decides repeat calls.** Clear, a later call in the turn replaces the earlier one. Selected, every call runs once, in call order.
+- **Called Tools run first in their timing**, in the **Tools** tab's order, then the world's scripts of that timing. A During AI Output Tool passes its sentence on to the next one, then to the scripts.
+- **A Planning call covers the narration.** A During AI Output Tool that the AI calls from the Planning prompt rewrites that turn's whole narration.
+- **Errors follow the script rules.** A During AI Output Tool that throws passes its sentence unchanged. On Call and After the AI drop the script's writes, as a failed script does. An On Call error goes back to the AI as the Tool's answer.
+- **`player` works in On Call and After the AI only**, as in the script timings.
+- **A regenerate or a cancel drops everything a Tool did that turn**, On Call writes too. A stop that keeps its narration keeps the On Call writes, because the kept text was written with them.
+- **A stat re-roll drops a Tool's effects.**
+- **With a During AI Output Tool in the world, the reveal shows only complete sentences**, on every turn the Tool is offered.
+
+World Tools need a text endpoint that supports Tools, and **Tools** on in Settings → **Output**. Without them, the AI gets no World Tools and the world plays on. Write the world so it still works without its Tools. See [Endpoints Without Tool Support](Tools#endpoints-without-tool-support).
+
+```js
+// A short sketch of a During AI Output Tool: bold the enemy the AI locked onto.
+const targetName = String(args.name).trim();
+if (targetName) narration.sentence = narration.sentence.split(targetName).join("**⌖ " + targetName + "**");
+```
+
+The sketch matches the exact name only. The drone world ships the full **lock_target** Tool, which also matches any letter case and the name's last word, and leaves bold the AI wrote intact. Open it on that world's **Tools** tab.
+
 ### Strip Links And Images
 
 **Strip Links And Images** is a setting, not a script. It sends past narration to the AI with each markdown link as its text and every image removed. A script can still add a link or an image to a sentence, and the player sees it. The setting is on by default. See [Settings](Settings).
@@ -248,6 +297,8 @@ A timing adds one name to those objects. A script reads only the name its own ti
 | **`narration`** | During AI Output only | `sentence`, `sent`, `buffered`, `full`, `index` | `narration.sentence` | `narration.sentence = <text>` |
 | **`player`** | Every timing but During AI Output | `tell()`, `toast()`, `confirm()`, `ask()`, `askText()` | `player.confirm(<text>)` | Calls, not writes |
 | **`trait`** | When a Trait Switches only | `enabled`, `acquired`, `id`, `name`, `mode`, `available`, `group`, `playerToggle`, `owner` | `trait.enabled` | Read-only |
+
+A [World Tool](#world-tools)'s script also reads `args`, the values the AI sent, such as `args.<Parameter>`. It is read-only.
 
 Follow these rules:
 

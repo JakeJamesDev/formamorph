@@ -26,6 +26,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **You can now test a World Tool in the editor, and renames and Find All Uses cover its script.** Try It lists the reply and each staged write, and applies none. Renaming a location also updates its `location.move` calls. Test Code warns on a diary name the world lacks.
     - **A stat re-roll now keeps the changes a World Tool made during the turn.** An After the AI Tool runs again with the AI's call. An On Call Tool's changes come back as they were, so a random result still matches the story.
     - **A script's clock advance now shows in the prompts the turn builds after it.** A Tool the planner calls now changes the place, time and stats that turn's narration reads. The turn still charges its time, regen and starvation once.
+    - **The drone world now ships lock_target, a World Tool that marks the enemy the AI locks onto.** For the rest of that reply, the target shows in bold with a reticle. The Tools page and the Scripts Guide now explain World Tools.
 - **🛠️ Developer tooling**
   - **The During AI Output run takes a Narration Stream listener that drops a retracted round's writes.** A sentence run still in progress at the retract leaves no write either. Output triggers build on this seam.
 

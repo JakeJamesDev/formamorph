@@ -4,7 +4,7 @@
 
 A **Tool** is a function the AI can call during a request. It gets information the AI does not have, such as the full entry of an entity. The app runs the Tool and sends the result back, and the AI then writes its reply.
 
-A Tool only reads. It never changes the world, the save or your settings.
+Your own Tools and the built-in Tools only read. They never change the world, the save or your settings. A [World Tool](#how-to-add-a-tool-to-a-world) with a script can change the story, because the world's author wrote it for that world.
 
 The **Tools** tab in Settings lists the built-in Tools and your own Tools. It shows in **Advanced** mode only. To open it, open **Settings**, select **Advanced** in the switch next to the title, then open the **Tools** tab.
 
@@ -83,6 +83,24 @@ A **World Tool** is a Tool that a world holds. It exports with the world, and ev
 
 A World Tool named like a built-in Tool or one of your Tools replaces it in that world, for every prompt. The **Tools** tab names the Tool it replaces. Two Tools in one world can't share a name. Drag a Tool in the list to change its place.
 
+## How to Make a Tool That Changes the Story
+<!-- keywords: world tool script, trigger, arm, timing, on call, during ai output, after the ai, reply, stack calls, ai decides, narration filter, move location, pass time, change stats from a tool, ai calls my script -->
+<!-- route: worldEditor.tools -->
+
+1. Open the world's **Tools** tab and select **Add Tool**.
+2. On the **Definition** tab, write a **Description** that names the scene that calls for the Tool.
+3. On the **Handler** tab, pick **Script** in **Handler Type**.
+4. Pick a **Timing**. **On Call** runs the script at once and sends its return value to the AI. **During AI Output** runs it on each later narration sentence of the turn. **After the AI** runs it with the world's After the AI scripts.
+5. For **During AI Output** or **After the AI**, type a **Reply**: the text the AI gets back. Blank sends "Done."
+6. Select **Stack Calls** when each call should run. Leave it clear when a later call replaces the earlier one.
+7. Write the script and select **Save Tool**.
+
+A World Tool works only on a text endpoint that supports Tools. On other endpoints the world plays without it, so write the world to work without its Tools. See [Endpoints Without Tool Support](#endpoints-without-tool-support).
+
+A World Tool's script reads and writes what a world script does, plus `args`, the values the AI sent. It can move the location, pass time, add an entity, and write memories and diary lines. A call lasts one turn. See [World Tools](ScriptsGuide#world-tools) in the Scripts Guide for each timing's rules.
+
+The bundled drone world ships **lock_target**, a **During AI Output** Tool that marks the enemy the AI locked onto.
+
 ---
 
 ## When the AI Calls a Tool
@@ -91,7 +109,7 @@ A World Tool named like a built-in Tool or one of your Tools replaces it in that
 A request offers a Tool only when all of these are true:
 
 - **Tools** is on in Settings → **Output**.
-- The Tool is **Enabled** in the active prompt preset.
+- The Tool is **Enabled** in the active prompt preset. A World Tool skips this check.
 - The prompt is in the Tool's **Offered To** list.
 - The text endpoint of that prompt supports Tools.
 
@@ -194,9 +212,13 @@ The **Handler** tab sets the Tool Handler: the part that runs when the AI calls 
 - **Template Settings.** **Template** is the text to return. Insert a parameter chip where the AI's value goes.
 - **Script Settings.** **Script** is JavaScript. It reads `args`, `world`, `scene` and `placeholders`, and returns text, or any other value as JSON. The ⓘ next to **Script** opens **What a Script Can Read**, which lists every value. The **Variable** menu opens level by level on **Arguments**, **Scene**, **Entities**, **Locations**, **Dictionary** and **Placeholders**, then your world's names, then their fields. Select a field to insert its full path. A script runs in a sandbox and stops after one second.
 
+On a World Tool, **Script Settings** also has **Timing**, and **Reply** and **Stack Calls** for the two later timings. See [How to Make a Tool That Changes the Story](#how-to-make-a-tool-that-changes-the-story).
+
 When you switch the **Handler Type**, the editor keeps the settings of the other types until you close it.
 
 ### What a Script Can Read
+
+This section is for your own Tools. A World Tool's script reads what a world script reads, plus `args`. See [World Tools](ScriptsGuide#world-tools).
 
 A script reads four values. Each one is frozen: a script reads it and cannot change it.
 
