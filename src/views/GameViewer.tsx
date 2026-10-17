@@ -17,7 +17,7 @@ import { type StatClock, type WorldWrites } from "@/lib/statCodeExecutor";
 import { mergeWorldWrites } from "@/lib/worldWrites";
 import { pruneScriptPins, withScriptPins } from "@/lib/scriptPins";
 import {
-  overlayStatCodeResult, playthroughPlaceholderSet, runStatCodeTurn, runSwitchScripts, withPinWrites, type StatCodeTurn, type StatCodeTurnResult,
+  overlayStatCodeResult, playthroughPlaceholderSet, runStatCodeTurn, runSwitchScripts, withPinWrites, type ScriptTrigger, type StatCodeTurn, type StatCodeTurnResult,
 } from "@/lib/statCodeTurn";
 import { landSwitchRun } from "@/lib/switchRunLanding";
 import { openOutputRun, type OutputRun } from "@/lib/outputRun";
@@ -122,6 +122,8 @@ import { useLiveChipScene, type SceneWrites } from "../lib/chipValues/liveScene"
 import { buildToolSnapshot, type ToolMemorySource } from "../lib/tools/toolSnapshot";
 import { toolCallStatus } from "../lib/tools/toolCallStatus";
 import { snapshotToolExecutor } from "../lib/tools/toolOffer";
+import { openWorldToolTurn, type WorldToolTurn } from "../lib/tools/worldToolTurn";
+import { onCallRunner } from "../lib/tools/onCallRunner";
 import { useHelpWorldSource } from "../lib/formaquestion/helpWorld";
 import type { ChipSceneTime } from "../lib/chipValues/chipScene";
 import { useResolvedWorld } from "@/lib/useResolvedWorld";
@@ -2263,6 +2265,8 @@ const GameViewer = ({
     // appeared while the narration was still fading. Scoped to the local navigable graph: the router's
     // reply named one of these or nothing.
     // A During AI Output move already beats the offer, so it never shows.
+    const toolCalls = worldToolTurnRef.current;
+    worldToolTurnRef.current = null;
     const outputMoved = outputRunRef.current?.run.result()?.worldWrites?.location !== undefined;
     if (commit.suggestedLocation && !outputMoved) {
       const target = turn.destinations.find((loc) => loc.name === commit.suggestedLocation);
@@ -2285,7 +2289,9 @@ const GameViewer = ({
 
     // What the narration's During AI Output scripts wrote lands now, so the After batch starts from it. Its
     // bar share joins the before box's.
+    // The On Call runs' state is already live, and the output run's lands over it.
     const { written: outputBase, world: outputWorld } = await landOutputRun();
+    const afterTriggers = toolCalls?.armed("after") ?? [];
 
     // Reset the persistent bar deltas for this turn, then let stat changes + regen below re-fill them. The
     // before box already moved before the narration, so its share is laid straight back over the reset.
@@ -2297,10 +2303,10 @@ const GameViewer = ({
     // or the opening turn.
     // The starvation check below reads the same pre-turn stats, so the run's stat snapshot holds the penalty.
     const statCode = commit.statResponse
-      ? applyStatChanges(commit.statResponse, commit.clock, outputBase, globalStats)
+      ? applyStatChanges(commit.statResponse, commit.clock, outputBase, globalStats, afterTriggers)
       : runStatCode(
         outputBase?.globalStats ?? rawGlobalStatsRef.current, outputBase?.globalStats ?? rawGlobalStatsRef.current, [], commit.clock,
-        outputBase ?? undefined, 'after', { thresholdStats: globalStats },
+        outputBase ?? undefined, 'after', { thresholdStats: globalStats, triggers: afterTriggers },
       );
 
     // Advance the clock by what this turn actually took (the flat hour when unmeasured).
@@ -2530,7 +2536,8 @@ const GameViewer = ({
       turnPreBoxRef.current = preBox;
       turnBeforeBoxRef.current = beforeBox;
       outputRunRef.current = null;
-      const codeView = turnCodeView(beforeBox);
+      onCallStateRef.current = null;
+      let codeView = turnCodeView(beforeBox);
 
       /**
        * Everything the narration rides on, assembled once the up-front router has settled where the turn
@@ -2699,7 +2706,35 @@ const GameViewer = ({
        */
       // One Tool Snapshot for the turn, built at its first Tool call and read by every later one. A move by
       // the router starts it over, so the narration reads the scene it is written for.
-      const turnToolExecutor = () => snapshotToolExecutor(() => buildToolSnapshot(liveScene(turnLocation, codeView), dictionaries, toolMemorySource()));
+      // The turn's own World Tool calls (R6). An On Call run reads the turn as code left it so far and lands at
+      // once, so later prompts read it through `codeView` (Q38, Q40); a turn that never commits puts it back.
+      const onCall = onCallRunner(() => {
+        const prepared = prepareTurnStartCode(onCallStateRef.current ?? turnBeforeBoxRef.current);
+        if (!prepared) throw new Error("The Tool's script could not start");
+        return {
+          turn: prepared.turn,
+          land: (result) => {
+            const { written, world } = prepared.finish(result);
+            // Scene writes join the before box's (Q44): a move sets where later prompts and Tool calls stand.
+            beforeWorldWrites = mergeWorldWrites(beforeWorldWrites, world);
+            const target = world?.location === undefined ? undefined : locations.find((loc) => loc.id === world.location);
+            if (target) {
+              turnLocation = target;
+              scriptLocationRef.current = target;
+              executeTool = turnToolExecutor();
+            }
+            if (!written) return;
+            if (!beforeBoxUndoRef.current) beforeBoxUndoRef.current = turnPreBoxRef.current;
+            onCallStateRef.current = written;
+            codeView = turnCodeView(written);
+          },
+        };
+      });
+      const worldToolTurn = openWorldToolTurn(worldTools, onCall);
+      worldToolTurnRef.current = worldToolTurn;
+      const turnToolExecutor = () => worldToolTurn.executor(
+        snapshotToolExecutor(() => buildToolSnapshot(liveScene(turnLocation, codeView), dictionaries, toolMemorySource())),
+      );
       let executeTool = turnToolExecutor();
 
       const advance: TurnAdvance = async (event, material) => {
@@ -2975,6 +3010,10 @@ const GameViewer = ({
   const turnBeforeBoxRef = useRef<TurnCodeState | null>(null);
   // The turn's During AI Output run, and the run's turn, held until the commit lands its writes.
   const outputRunRef = useRef<{ run: OutputRun; prepared: PreparedStatCode } | null>(null);
+  // The running turn's World Tool calls, whose After triggers its commit fires; a new turn replaces them.
+  const worldToolTurnRef = useRef<WorldToolTurn | null>(null);
+  // The state this turn's On Call runs left, which the output run and the After batch land over.
+  const onCallStateRef = useRef<TurnCodeState | null>(null);
   // Where a running turn stands for its scripts' `location`, ahead of the render that commits a move. Null
   // between turns, where the live location stands.
   const scriptLocationRef = useRef<GameLocation | null>(null);
@@ -2995,7 +3034,9 @@ const GameViewer = ({
       before: PlayerStat[], afterAsks: PlayerStat[], asks: StatCodeTurn["asks"], clock: StatClock,
       preTurn?: PreTurnCodeState,
       timing: RunTiming = 'after',
-      { entityTurn, thresholdStats, traitWorld }: {
+      { entityTurn, thresholdStats, traitWorld, triggers }: {
+        /** World Tool calls that run ahead of the timing's scripts. */
+        triggers?: readonly ScriptTrigger[];
         /** The entities' values after this turn's AI asks, and the asks, by owner. */
         entityTurn?: { values: EntityStatValues; asks: Record<string, StatCodeTurn["asks"]> };
         /** The pre-turn stats the regen tick's starvation check reads. Absent ⇒ no penalty lands beside the run. */
@@ -3066,6 +3107,7 @@ const GameViewer = ({
           traitNameOf: (trait) => resolveTraitText(trait, trait.name),
           owners,
           worldScripts,
+          ...(triggers?.length ? { triggers } : {}),
           places: {
             locations: locations.map(({ id, name }) => ({ id, name })),
             location: here && { id: here.id, name: here.name },
@@ -3218,6 +3260,8 @@ const GameViewer = ({
       base: TurnCodeState | null = null,
       // The pre-turn stats the regen tick's starvation check reads.
       thresholdStats?: readonly PlayerStat[],
+      // The turn's armed After the AI World Tool calls; a re-roll passes none (Q-B ruling).
+      triggers: readonly ScriptTrigger[] = [],
     ) => {
       const baseStats = base?.globalStats ?? rawGlobalStatsRef.current;
       const live = new Set(enabledStats(rawGlobalStatsRef.current, statEnabledRef.current).map((s) => s.id));
@@ -3254,6 +3298,7 @@ const GameViewer = ({
           asks: Object.fromEntries(Object.keys(entityApplied.values).map((id) => [id, asksOf(id)])),
         },
         thresholdStats,
+        triggers,
       });
     },
     [runStatCode, setGlobalStats, setEntityStats, showStatDeltas, resolvePH, entityInForceUnder, ownedTraits],
@@ -3513,9 +3558,7 @@ const GameViewer = ({
 
   /** Opens this turn's During AI Output run over the state the before box left; null when no script has one. */
   const startOutputRun = (): OutputRun | null => {
-    const base = turnBeforeBoxRef.current;
-    const stats = base?.globalStats ?? rawGlobalStatsRef.current;
-    const prepared = prepareStatCode(stats, stats, [], { deltaHours: 0, elapsedHours: gameTime, calendar }, base ?? undefined, 'output');
+    const prepared = prepareTurnStartCode(onCallStateRef.current ?? turnBeforeBoxRef.current, 'output');
     // The crawl shows each sentence as it passes, so only the fade reveal holds any back.
     const run = prepared && openOutputRun(prepared.turn, fadeRevealActive ? getRevealReleased : undefined);
     outputRunRef.current = prepared && run ? { run, prepared } : null;
@@ -3531,11 +3574,21 @@ const GameViewer = ({
     const held = outputRunRef.current;
     outputRunRef.current = null;
     const result = await held?.run.landing();
-    if (!held || !result) return { written: null };
-    const { written, world } = held.prepared.finish(result);
+    // The On Call runs landed after the run opened, so the run's writes go on over theirs.
+    const onCalled = onCallStateRef.current;
+    if (!held || !result) return { written: onCalled };
+    const landing = onCalled ? prepareTurnStartCode(onCalled, 'output') : held.prepared;
+    if (!landing) return { written: onCalled };
+    const { written, world } = landing.finish(result);
     // A turn that never commits puts the writes back with the before box's.
     if (written && !beforeBoxUndoRef.current) beforeBoxUndoRef.current = turnPreBoxRef.current;
-    return { written, world };
+    return { written: written ?? onCalled, world };
+  };
+
+  /** A run over the turn's start as code has left it: `base`, else the live state; no asks, no regen. */
+  const prepareTurnStartCode = (base: TurnCodeState | null, timing: RunTiming = 'before') => {
+    const stats = base?.globalStats ?? rawGlobalStatsRef.current;
+    return prepareStatCode(stats, stats, [], { deltaHours: 0, elapsedHours: gameTime, calendar }, base ?? undefined, timing);
   };
 
   /**

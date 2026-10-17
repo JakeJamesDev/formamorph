@@ -1,6 +1,6 @@
 import { useCallback, useId, useMemo, type ReactNode } from 'react';
 import { Info, Plus, Trash2 } from 'lucide-react';
-import type { Tool, ToolHandler, ToolParam, ToolParamType } from '@/types';
+import type { Tool, ToolHandler, ToolParam, ToolParamType, ToolScriptHandler, ToolScriptTiming } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -28,7 +28,7 @@ import { toolScriptSurface } from '@/lib/tools/toolScriptSurface';
 import { buildToolVariableTree, type ToolVariableNames } from '@/lib/tools/toolVariableTree';
 import { toolTemplateVocabulary } from '@/lib/tools/toolTemplateVocabulary';
 import type { ValueLookup } from '@/lib/promptValues';
-import type { ToolNameProblem } from '@/lib/tools/toolValidation';
+import { armsTrigger, type ToolNameProblem } from '@/lib/tools/toolValidation';
 import { TOOL_EDIT_TABS, type ToolEditTab } from './toolsView';
 import { ToolTryIt, type TryItWorld } from './ToolTryIt';
 
@@ -262,8 +262,58 @@ function ScriptReference({ globals }: { globals: readonly SurfaceEntry[] }) {
   );
 }
 
-function HandlerTab({ draft, onChange, onKindChange, problems, placeholderNames, chipReads, names }: TabProps & {
-  onKindChange: (kind: ToolHandler['kind']) => void; placeholderNames: readonly string[];
+const TIMING_CHOICES: { value: ToolScriptTiming; label: string; help: string }[] = [
+  { value: 'call', label: 'On Call', help: 'Runs your code when the AI calls and returns its value' },
+  { value: 'output', label: 'During AI Output', help: 'Runs your code on each later narration sentence this turn' },
+  { value: 'after', label: 'After the AI', help: 'Runs your code just before the world’s After the AI scripts' },
+];
+
+/** A World Tool's Script timing, and the Reply and Stack Calls of a timing that arms a trigger. */
+function TriggerFields({ handler, onChange }: { handler: ToolScriptHandler; onChange: (next: ToolScriptHandler) => void }) {
+  const id = useId();
+  const timing = handler.timing ?? 'call';
+  const help = TIMING_CHOICES.find((t) => t.value === timing)?.help;
+  const setTiming = (next: ToolScriptTiming) => {
+    const { reply, stack, ...rest } = handler;
+    onChange(armsTrigger(next) ? { ...rest, timing: next, ...(reply ? { reply } : {}), ...(stack ? { stack } : {}) } : { ...rest, timing: next });
+  };
+  return (
+    <>
+      <div className="flex flex-col gap-1">
+        <Label htmlFor={`${id}-timing`}>Timing</Label>
+        <Hint id={`${id}-timing-help`}>{help}</Hint>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Select value={timing} onValueChange={(v) => setTiming(v as ToolScriptTiming)}>
+            <SelectTrigger id={`${id}-timing`} aria-describedby={`${id}-timing-help`}><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {TIMING_CHOICES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      {armsTrigger(timing) && (
+        <>
+          <Field id={`${id}-reply`} label="Reply" hint="Goes to the AI on each call. Blank sends “Done.”">
+            <Input id={`${id}-reply`} value={handler.reply ?? ''} onChange={(e) => onChange({ ...handler, reply: e.target.value })} />
+          </Field>
+          <div className="flex flex-col gap-1">
+            <label className="flex items-center gap-2 text-label">
+              <Checkbox
+                checked={handler.stack === true} aria-describedby={`${id}-stack-help`}
+                onCheckedChange={(c) => onChange({ ...handler, stack: c === true })}
+              />
+              Stack Calls
+            </label>
+            <Hint id={`${id}-stack-help`}>Runs your code once per call, not just for the last call</Hint>
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
+function HandlerTab({ draft, onChange, onKindChange, problems, placeholderNames, chipReads, names, home }: TabProps & {
+  onKindChange: (kind: ToolHandler['kind']) => void; placeholderNames: readonly string[]; home: ToolHome;
   /** The open world's names, which the script's Variable menu lists. Null with only the sample world. */
   names: ToolVariableNames | null;
   /** The scene chips' values on the world Try It runs on, which Chip Options shows. */
@@ -350,6 +400,7 @@ function HandlerTab({ draft, onChange, onKindChange, problems, placeholderNames,
           value={handler.body} onChange={(body) => setHandler({ ...handler, body })}
         />
       )}
+      {handler.kind === 'script' && home === 'world' && <TriggerFields handler={handler} onChange={setHandler} />}
       {handler.kind === 'script' && (
         <CodeArea
           label="Script" ariaLabel="Script" rows={10} surface={surface} variables={variables}
@@ -449,7 +500,7 @@ export function ToolEditor({
             <div className="pr-3 pb-1">
               <TabsContent value="definition" className="mt-0"><DefinitionTab {...body} home={home} nameNote={nameNote} /></TabsContent>
               <TabsContent value="parameters" className="mt-0"><ParametersTab {...body} /></TabsContent>
-              <TabsContent value="handler" className="mt-0"><HandlerTab {...body} onKindChange={switchKind} placeholderNames={placeholderNames} chipReads={toolSnapshot.chips} names={open ? toolSnapshot : null} /></TabsContent>
+              <TabsContent value="handler" className="mt-0"><HandlerTab {...body} home={home} onKindChange={switchKind} placeholderNames={placeholderNames} chipReads={toolSnapshot.chips} names={open ? toolSnapshot : null} /></TabsContent>
             </div>
           </ScrollArea>
         </Tabs>

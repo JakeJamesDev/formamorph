@@ -110,11 +110,27 @@ export interface ToolParam {
 /** The world data a Lookup handler searches. `memories` is catalog-only: a user Tool can't store it. */
 export type ToolLookupSource = 'entities' | 'locations' | 'dictionary' | 'memories';
 
+/** When a World Tool's script runs: at the call, on each narration sentence after it, or with the After the AI
+ *  scripts. */
+export type ToolScriptTiming = 'call' | 'output' | 'after';
+
 /** What runs when the AI calls a Tool. */
 export type ToolHandler =
   | { kind: 'lookup'; source: ToolLookupSource; param: string; returns: 'full' | 'summary' }
   | { kind: 'template'; body: string }
-  | { kind: 'script'; code: string };
+  | ToolScriptHandler;
+
+/** A Script handler. `timing`, `reply` and `stack` exist on World Tools only; absent `timing` is `call`. `reply`
+ *  and `stack` apply to the `output` and `after` timings. */
+export interface ToolScriptHandler {
+  kind: 'script';
+  code: string;
+  timing?: ToolScriptTiming;
+  /** The text an armed call answers with; blank answers "Done.". */
+  reply?: string;
+  /** Every call in a turn fires; off, a later call replaces the armed one. */
+  stack?: boolean;
+}
 
 /** A function the AI can call during a request. User Tools live in one global list; built-in Tools are the catalog. */
 export interface Tool {

@@ -99,7 +99,21 @@ export interface StatCodeTurn {
   places?: SandboxPlaces;
   /** The entities play discovered, which `diary` can name. Absent ⇒ none. */
   discovered?: readonly SandboxPlace[];
+  /** World Tool calls that run ahead of every script of the timing, in this order (Q4). Absent ⇒ none. */
+  triggers?: readonly ScriptTrigger[];
+  /** Runs `triggers` alone, as an On Call Tool does. */
+  triggersOnly?: boolean;
 }
+
+/** One World Tool call a run fires: the Tool's name, its script, and the call's arguments. */
+export interface ScriptTrigger {
+  name: string;
+  code: string;
+  args: Readonly<Record<string, unknown>>;
+}
+
+/** What the run's first trigger answered: its return value as text, or why it failed. */
+export type TriggerReply = { text: string | null } | { error: string };
 
 /** One entity owner's part of a turn, in the same terms as the turn owner's. */
 export interface OwnerCodeTurn extends Pick<StatCodeTurn, 'stats' | 'enabled' | 'previous' | 'regenApplied'> {
@@ -135,6 +149,8 @@ export interface StatCodeTurnResult {
   sentence?: string;
   /** The run's location, clock and discovery writes, merged in run order. Absent when no script wrote one. */
   worldWrites?: WorldWrites;
+  /** Present on a run with triggers. */
+  reply?: TriggerReply;
 }
 
 const mergedWorldWrites = (writers: readonly (WorldWrites | undefined)[]): WorldWrites | undefined =>
@@ -250,6 +266,8 @@ interface ScriptUnit {
   stat: PlayerStat | null;
   trait?: Trait;
   script: Script;
+  /** A World Tool call's arguments; absent on a Script. */
+  args?: ScriptTrigger['args'];
   /** Absent until the script ran clean. */
   writes?: ScriptWrites;
 }
@@ -340,7 +358,9 @@ export const SWITCH_DEPTH_CAP = 8;
  *  switches fire. An `output` run's switches fire with the After batch instead, where its writes land (Q42). */
 export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
   const result = await runScripts(turn);
-  return turn.timing === 'output' ? result : withSwitchRuns(turn, result);
+  if (turn.timing === 'output') return result;
+  const switched = await withSwitchRuns(turn, result);
+  return result.reply ? { ...switched, reply: result.reply } : switched;
 }
 
 /** `result` with the switch runs fired by the switches it made over `turn`, as one result over `turn`. */
@@ -546,7 +566,11 @@ async function runScripts(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
   }
   const ownerRuns = [...entityRuns.flatMap((run) => [...ahead.get(run.owner.id) ?? [], run]), ...waiting];
   const runs: OwnerRun[] = [globalRun, ...ownerRuns];
-  const anyCoded = runs.some((run) => run.units.length);
+  if (turn.triggersOnly) for (const run of runs) run.units = [];
+  const triggers = (turn.triggers ?? []).map(({ name, code, args }) => ({
+    unit: { stat: null, script: { id: `tool:${name}`, name, timing, code }, args } satisfies ScriptUnit, run: globalRun,
+  }));
+  const anyCoded = triggers.length > 0 || runs.some((run) => run.units.length);
   const gateStatsAt = (mainStats: PlayerStat[], ownerStats: EntityStatValues): GateStats => {
     const live = gateStatsOf({ ...before, stats: mainStats, entityStats: ownerStats }, world);
     return { global: live.global, owners: { ...turn.gateStats?.owners, ...live.owners } };
@@ -585,30 +609,36 @@ async function runScripts(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
   const discovered = turn.discovered && codePlaces({ locations: turn.discovered, location: null }, placeholderDefs).locations;
   const dictionaries = sandboxDictionaries(codeDictionaries(placeholderSet?.dictionaries, placeholderDefs), sandbox?.owners);
   /** A script's name in the logs: its stat's or trait's, else its own name or the world-and-timing fallback. */
-  const whoRan = ({ stat, trait, script }: ScriptUnit) => (stat ? `Stat ${stat.name}`
-    : trait ? `Trait ${trait.name}` : `Script ${scriptLabel(script, WORLD_OWNER)}`);
+  const whoRan = ({ stat, trait, script, args }: ScriptUnit) => (stat ? `Stat ${stat.name}`
+    : trait ? `Trait ${trait.name}` : `${args ? 'Tool' : 'Script'} ${scriptLabel(script, WORLD_OWNER)}`);
   /** A trait script's `self`: its trait's entry where its owner's map holds it. */
   const selfTraitOf = (trait: Trait, owner: CodeEntity | undefined): SandboxTrait | undefined =>
     (owner ? owner.traits : traits).find((entry) => entry.id === trait.id);
   const switchedTrait = timing === 'switch' && turn.switched ? switchedTraitEntry(turn.switched, traits, inPlay, switchWorld, placeholderDefs) : undefined;
-  // Run order: ordered scripts first, then owner order and stat order, so the later write wins.
-  const ordered = inRunOrder(runs.flatMap((run) => run.units.map((unit) => ({ unit, run, script: unit.script }))));
+  // Run order: the triggers, then ordered scripts, then owner order and stat order, so the later write wins.
+  const ordered: { unit: ScriptUnit; run: OwnerRun }[] = [
+    ...triggers, ...inRunOrder(runs.flatMap((run) => run.units.map((unit) => ({ unit, run, script: unit.script })))),
+  ];
   // The sentence a During AI Output run hands from one script to the next.
   let sentence = timing === 'output' ? turn.narration?.sentence : undefined;
+  let reply: TriggerReply | undefined;
   const runUnit = async ({ unit, run }: (typeof ordered)[number]) => {
-    const { stat, trait, script } = unit;
+    const { stat, trait, script, args } = unit;
     const owner = ownerEntries.get(run);
     const selfTrait = trait && selfTraitOf(trait, owner);
     const result = await executeStatCode(script.code, [...globalStats.stats], stat, {
       clock: turn.clock, turn: globalStats.turn, enabled: globalStats.enabled, placeholders, traits, ...inPlay,
       owner, dictionaries, prompts: turn.prompts, places, discovered,
       ...(sentence === undefined || !turn.narration ? {} : { narration: { ...turn.narration, sentence } }),
-      ...(selfTrait && { selfTrait }), ...(switchedTrait && { switchedTrait }),
+      ...(selfTrait && { selfTrait }), ...(switchedTrait && { switchedTrait }), ...(args && { args }),
     });
+    const first = args && unit === triggers[0]?.unit;
     if (result.error) {
-      console.error(`Error executing code for ${whoRan(unit)} (${SCRIPT_TIMING_LABEL[script.timing]}):`, result.error);
+      console.error(`Error executing code for ${whoRan(unit)}${args ? '' : ` (${SCRIPT_TIMING_LABEL[script.timing]})`}:`, result.error);
+      if (first) reply = { error: result.error };
       return;
     }
+    if (first) reply = { text: result.reply ?? null };
     if (result.sentence !== undefined) sentence = result.sentence;
     unit.writes = {
       stats: targetWrites(stat, result, run.owner.id),
@@ -624,7 +654,7 @@ async function runScripts(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
   const inOrder = ordered.map(({ unit, run }) => ({ ...unit, owner: ownerEntries.get(run) }));
   const pinWrites = pinWritesInRunOrder(inOrder.map(({ writes }) => writes?.placeholders ?? []));
   const worldWrites = mergedWorldWrites(inOrder.map(({ writes }) => writes?.world));
-  const withWorld = worldWrites ? { worldWrites } : {};
+  const withWorld = { ...(worldWrites ? { worldWrites } : {}), ...(reply ? { reply } : {}) };
 
   // Merged per target before the first settle, so the gate snapshot and the penalties see every owner's writes.
   const byOwner = statWritesByOwner(inOrder.map(({ writes }) => writes));
