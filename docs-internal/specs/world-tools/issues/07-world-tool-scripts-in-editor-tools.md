@@ -18,6 +18,7 @@ Spec: stories 30, 31.
 - [ ] Try It on an After the AI Tool shows the Reply and each staged write, and the world is unchanged afterward
 - [ ] Renaming a stat rewrites a World Tool script that names it
 - [ ] A Find All Uses row for a World Tool opens the Tools tab on that Tool and line
+- [ ] In Test Code and Try It, a `diary` target the authored world lacks reports a warning line naming it as possibly discovered in play, not a failure, because the editor has no discovered cast (Q46)
 - [ ] Changelog fragment written
 - [ ] Four gates green
 

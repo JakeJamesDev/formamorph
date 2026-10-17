@@ -68,6 +68,7 @@ Settled with the user on 2026-10-17. R rulings came from the design discussion; 
 | Q43 | A Stop that keeps its narration keeps the On Call writes, as it keeps Before the AI writes: the kept text was written with them. A regenerate, a stop before narration and a failed turn drop them (user ruling, ticket 05) |
 | Q44 | Q38 covers every write kind: an On Call location, clock or discover write lands on the live state at once, so Narration built after a Planning call is written at the new place. A call made during Narration never rebuilds the text being written; later prompts in the turn see the change (ticket 05 ruling, from Q38) |
 | Q45 | A Before the AI or On Call `clock.advance` shows in prompts built after it in the same turn; the commit adds only the rest of the duration, never double counting. Ticket 10 builds it; ticket 05 lands with turn-start time in prompts, as every clock write reads today (user ruling) |
+| Q46 | The editor has no discovered cast, so in Test Code and Try It a `diary` target the authored world lacks is a warning line, not a script failure (Q30: no false errors). Play still fails an unknown name (Q14). Ticket 07 builds it (ticket 04 edge) |
 
 ## User Stories
 
