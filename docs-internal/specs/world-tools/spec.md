@@ -187,5 +187,6 @@ Settled with the user on 2026-10-17. R rulings came from the design discussion; 
 ## Further Notes
 
 - On an endpoint without Tool support, a world's Tools are not offered and the world plays without them. Authors should not make a world depend on a Tool.
+- As of 2026-10-17 the cloud default endpoint is not tool-capable (Q49). The fix is server-side and outside the project; the user has contacted the server owner. The player and author docs say World Tools need a tool-capable endpoint.
 - A World Tool that writes is a new way to change state beside the passes. That settles the open "Tools vs passes" question in the tool-call ideas notes for World Tools; catalog state-changing Tool ideas there stay open.
 - Probe work: a World Tool's description is prompt text. The bundled example ships with probe numbers showing the cloud model calls it when asked and not otherwise.
