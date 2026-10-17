@@ -9,6 +9,8 @@ import type { TurnMaterial, TurnPassId, TurnPassSubject, TurnPlanInput, TurnSett
 import type { TurnPassOutcome, TurnResult, TurnRun } from './turnRunner';
 import { FLAT_HOURS_PER_TURN } from '@/lib/gameClock';
 import type { TurnCommitContext } from './computeTurnCommit';
+import { parseTurnContent, serializeTurnContent } from '@/lib/turnDigest';
+import type { TurnToolCall } from '@/types';
 
 /**
  * The commit computation as a pure function: outcomes in, one state delta out. Outcomes are parsed by the
@@ -195,6 +197,23 @@ describe('computeTurnCommit — the stored turn', () => {
     ]);
     const turn = computeTurnCommit({ result, plan, context: context() })?.turn;
     expect(turn && 'summary' in turn).toBe(false);
+  });
+
+  it('stores the turn\'s World Tool calls, and a save reads them back', () => {
+    const toolCalls: TurnToolCall[] = [
+      { toolId: 'tool-heal', args: { amount: 7 }, timing: 'after' },
+      { toolId: 'tool-roll', args: {}, timing: 'call', writes: { stats: [{ owner: null, writes: [{ id: 'h', value: 15 }] }] } },
+    ];
+    const { plan, result } = runOf([{ id: 'narration', raw: NARRATION }]);
+    const turn = computeTurnCommit({ result, plan, context: context({ toolCalls }) })?.turn;
+    expect(turn && parseTurnContent(serializeTurnContent(turn))?.toolCalls).toEqual(toolCalls);
+  });
+
+  it('stores no Tool calls when the AI made none, and a turn saved without them loads unchanged', () => {
+    const { plan, result } = runOf([{ id: 'narration', raw: NARRATION }]);
+    expect(computeTurnCommit({ result, plan, context: context({ toolCalls: [] }) })?.turn).not.toHaveProperty('toolCalls');
+    const saved = '{"narration":"Hi.","choices":[],"stat_changes":[]}';
+    expect(parseTurnContent(saved)).toEqual({ narration: 'Hi.', choices: [], stat_changes: [] });
   });
 });
 

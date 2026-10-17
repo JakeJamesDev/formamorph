@@ -1,4 +1,4 @@
-import type { AITurnResult, Entity } from '@/types';
+import type { AITurnResult, Entity, TurnToolCall } from '@/types';
 import type { StatClock, WorldWrites } from '@/lib/statCodeExecutor';
 import { mergeWorldWrites } from '@/lib/worldWrites';
 import type { WorldCalendar } from '@/lib/gameClock';
@@ -59,6 +59,8 @@ export interface TurnCommitContext {
   heldNames?: readonly string[];
   /** Entity id → the name its diary entries go under, for the code's `diary` lines. */
   diaryNames?: Readonly<Record<string, string>>;
+  /** The turn's Script World Tool calls, in call order. */
+  toolCalls?: readonly TurnToolCall[];
 }
 
 export interface TurnCommitInput {
@@ -180,6 +182,7 @@ export function computeTurnCommit({ result, plan, context }: TurnCommitInput): T
     // A turn without a stored delta reads back as the flat hour, so only a time that differs is stored.
     ...(measuredHours !== null || turnHours !== FLAT_HOURS_PER_TURN ? { timeDelta: turnHours } : {}),
     ...(Object.keys(diaries).length ? { diaries } : {}),
+    ...(context.toolCalls?.length ? { toolCalls: [...context.toolCalls] } : {}),
   };
 
   return withCodeWrites({

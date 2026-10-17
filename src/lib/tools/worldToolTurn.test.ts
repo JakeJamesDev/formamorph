@@ -3,7 +3,7 @@
  * (No DOM needed; node keeps the QuickJS WASM engine loading through its filesystem path.)
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { PlayerStat, Script, Tool, ToolScriptHandler } from '@/types';
+import type { PlayerStat, Script, Tool, ToolScriptHandler, TurnToolCall } from '@/types';
 import { transportRequest, type TransportContext } from '@/lib/aiRequest/requestTransport';
 import type { ToolExecutor } from '@/lib/aiRequest/toolLoop';
 import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
@@ -21,7 +21,7 @@ import { runToolCall } from './toolRunner';
 import { emptyToolSnapshot } from './toolSnapshot';
 import { parseTool } from './toolValidation';
 import { withImportedWorldTools } from './worldTools';
-import { DEFAULT_REPLY, openWorldToolTurn, type WorldToolTurn } from './worldToolTurn';
+import { DEFAULT_REPLY, openWorldToolTurn, replayedToolEffects, type WorldToolTurn } from './worldToolTurn';
 
 const health: PlayerStat = {
   id: 'h', name: 'Health', type: 'number', description: '', min: 0, max: 200, value: 10, regen: 0, descriptors: [],
@@ -94,9 +94,9 @@ const NARRATION_ONLY = {
  * armed triggers, as the game view wires it, and `shown` records each sentence the screen got.
  */
 async function playTurn(tools: readonly Tool[], rounds: Round[], {
-  signal = new AbortController().signal, onRound = (_n: number) => {}, output, settings = NARRATION_ONLY,
-}: { signal?: AbortSignal; onRound?: (n: number) => void; output?: Script[]; settings?: Partial<TurnSettings> } = {}) {
-  const live: { state: StatCodeTurn; landed: StatCodeTurnResult[] } = { state: turnState(), landed: [] };
+  signal = new AbortController().signal, onRound = (_n: number) => {}, output, settings = NARRATION_ONLY, start = turnState(),
+}: { signal?: AbortSignal; onRound?: (n: number) => void; output?: Script[]; settings?: Partial<TurnSettings>; start?: StatCodeTurn } = {}) {
+  const live: { state: StatCodeTurn; landed: StatCodeTurnResult[] } = { state: start, landed: [] };
   const onCall = onCallRunner(() => ({
     turn: live.state,
     land: (ran) => { live.landed.push(ran); live.state = afterRun(live.state, ran); },
@@ -242,6 +242,71 @@ describe('World Tools through a turn', () => {
   });
 });
 
+/**
+ * A stat re-roll over a turn's saved calls, as the game view replays it: the calls go through a save, the On
+ * Call writes land on `start`, then the After batch fires the saved After calls.
+ */
+async function reroll(tools: readonly Tool[], calls: readonly TurnToolCall[], start = turnState()) {
+  const { onCallWrites, afterTriggers } = replayedToolEffects(tools, JSON.parse(JSON.stringify(calls)) as TurnToolCall[]);
+  const onCalled = onCallWrites.length
+    ? afterRun(start, await runStatCodeTurn({ ...start, replayed: onCallWrites, triggersOnly: true }))
+    : start;
+  return runStatCodeTurn({ ...onCalled, triggers: afterTriggers });
+}
+
+describe('A stat re-roll replays the turn\'s Tool effects', () => {
+  beforeEach(() => { vi.spyOn(console, 'error').mockImplementation(() => {}); });
+  afterEach(() => vi.restoreAllMocks());
+
+  const luck: PlayerStat = { ...health, id: 'l', name: 'Luck', max: 1e9, value: 0 };
+  const lucky = worldTool('lucky', { code: 'stats.Luck.value = Math.floor(Math.random() * 1e9); return stats.Luck.value;' });
+  const luckOf = (stats: readonly PlayerStat[]) => stats.find((s) => s.id === 'l')?.value;
+
+  it('keeps each call\'s Tool id, args and timing, in call order', async () => {
+    const filter = worldTool('filter', { code: 'narration.sentence = "x";', timing: 'output' });
+    const { wt } = await playTurn([filter, heal()], [[['heal', { amount: 7 }], ['filter', {}]], 'You rest.']);
+    expect(wt.calls()).toEqual([
+      { toolId: 'tool-heal', args: { amount: 7 }, timing: 'after' },
+      { toolId: 'tool-filter', args: {}, timing: 'output' },
+    ]);
+  });
+
+  it('re-runs an After the AI call with its saved args, and its write survives', async () => {
+    const { wt } = await playTurn([heal()], [[['heal', { amount: 7 }]], 'You rest.']);
+    expect(healthOf((await reroll([heal()], wt.calls())).stats)).toBe(17);
+  });
+
+  it('fires the After batch the turn fired: with Stack Calls off, the later call only', async () => {
+    const { wt } = await playTurn([heal()], [[['heal', { amount: 1 }]], [['heal', { amount: 3 }]], 'You rest.']);
+    expect(healthOf((await reroll([heal()], wt.calls())).stats)).toBe(13);
+  });
+
+  it('reapplies an On Call write without running the script, so a random value matches the first run', async () => {
+    const start = turnState({ stats: [luck], previous: [luck] });
+    const { wt, live } = await playTurn([lucky], [[['lucky', {}]], 'You rest.'], { start });
+    const first = luckOf(live.state.stats);
+    expect(first).not.toBe(0);
+    expect(luckOf((await reroll([lucky], wt.calls(), start)).stats)).toBe(first);
+  });
+
+  it('hands the After batch the replayed On Call write to build on', async () => {
+    const { wt } = await playTurn([roll, heal()], [[['roll', {}], ['heal', { amount: 1 }]], 'You rest.']);
+    expect(healthOf((await reroll([roll, heal()], wt.calls())).stats)).toBe(16);
+  });
+
+  it('replays no write for an On Call script that failed', async () => {
+    const broken = worldTool('broken', { code: "stats.Health.value = 99; throw new Error('no dice');" });
+    const { wt } = await playTurn([broken], [[['broken', {}]], 'You rest.']);
+    expect(replayedToolEffects([broken], wt.calls()).onCallWrites).toEqual([]);
+  });
+
+  it('fires no During AI Output call, as a re-roll runs no output Script', async () => {
+    const filter = worldTool('filter', { code: 'stats.Health.value = 1;', timing: 'output' });
+    const { wt } = await playTurn([filter], [[['filter', {}]], 'You rest.']);
+    expect(replayedToolEffects([filter], wt.calls())).toEqual({ onCallWrites: [], afterTriggers: [] });
+  });
+});
+
 describe('During AI Output World Tools through a turn', () => {
   beforeEach(() => { vi.spyOn(console, 'error').mockImplementation(() => {}); });
   afterEach(() => vi.restoreAllMocks());
@@ -307,7 +372,7 @@ describe('During AI Output World Tools through a turn', () => {
 
   it('opens the narration\'s run only for an output Tool that narration offers, or a trigger already armed', async () => {
     const upper = filter('upper', 'narration.sentence = narration.sentence.toUpperCase();');
-    const wt = openWorldToolTurn([upper, heal()], async () => ({ text: '' }));
+    const wt = openWorldToolTurn([upper, heal()], async () => ({ reply: { text: '' } }));
     expect(wt.outputTriggers([heal()])).toBeUndefined();
     // Tools off, or an endpoint without Tool support, offers nothing.
     expect(wt.outputTriggers([])).toBeUndefined();

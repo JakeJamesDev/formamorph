@@ -1,4 +1,5 @@
 import type { WorldMetadata } from './world';
+import type { SavedScriptWrites } from '@/lib/statCodeTurn';
 
 /** Sender role of a chat message, matching the OpenAI chat-completion roles. */
 export type ChatRole = 'system' | 'user' | 'assistant';
@@ -207,6 +208,19 @@ export interface AITurnResult {
   /** A reasoning model's (or inline-thinking) private scratchpad for this turn, shown as a collapsible aside
    *  above the narration. `ms` is the think duration. Absent when the model didn't reason / on pre-2.1.0 saves. */
   reasoning?: { text: string; ms: number };
+  /** The turn's Script World Tool calls, in call order, which a stat re-roll replays (Q39). Absent when the
+   *  AI called none. */
+  toolCalls?: TurnToolCall[];
+}
+
+/** One Script World Tool call a turn made. */
+export interface TurnToolCall {
+  toolId: string;
+  args: Record<string, unknown>;
+  timing: ToolScriptTiming;
+  /** What an On Call script wrote, which a re-roll lays on again in place of a run (Q41). Absent on the other
+   *  timings and when the script failed. */
+  writes?: SavedScriptWrites;
 }
 
 /** An authenticated account as returned by the auth server; extra server fields pass through the index signature. */
