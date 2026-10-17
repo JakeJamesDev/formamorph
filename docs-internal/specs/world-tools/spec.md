@@ -65,6 +65,8 @@ Settled with the user on 2026-10-17. R rulings came from the design discussion; 
 | Q40 | An On Call script reads the live turn state: turn start, plus the Before the AI scripts' writes, plus earlier On Call writes this turn. Output-script writes not yet landed are not visible; the stat pass and After batch have not run (user ruling, spec session) |
 | Q41 | On a re-roll, an On Call Tool does not run again: the re-roll reapplies the writes the call made, so a random result stays what the narration says (user ruling, spec session) |
 | Q42 | Q39 and Q41 split from ticket 05 into ticket 09, blocked by 05 and 06. Until 09 lands, a re-roll drops Tool effects (user ruling) |
+| Q43 | A Stop that keeps its narration keeps the On Call writes, as it keeps Before the AI writes: the kept text was written with them. A regenerate, a stop before narration and a failed turn drop them (user ruling, ticket 05) |
+| Q44 | Q38 covers every write kind: an On Call location, clock or discover write lands on the live state at once, so Narration built after a Planning call is written at the new place. A call made during Narration never rebuilds the text being written; later prompts in the turn see the change (ticket 05 ruling, from Q38) |
 
 ## User Stories
 
