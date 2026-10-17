@@ -37,9 +37,11 @@ describe('During AI Output with the fade reveal', () => {
     const fade = renderHook(() => useSentenceReveal(() => {})).result.current;
     const crawl = { push: () => {}, finish: () => {}, reset: () => {} };
     const readAt: number[] = [];
-    const run = openOutputRun(turn, () => {
-      readAt.push(getRevealReleased());
-      return readAt.at(-1)!;
+    const run = openOutputRun(turn, {
+      released: () => {
+        readAt.push(getRevealReleased());
+        return readAt.at(-1)!;
+      },
     })!;
     const heard: NarrationEvent[] = [];
     const reveal = narrationRevealListener({ fade, crawl, paced: true, wholeSentences: true, onOpened: () => {} });

@@ -11,7 +11,10 @@ import { afterRun, runStatCodeTurn, type StatCodeTurn, type StatCodeTurnResult }
 import { planTurn } from '@/lib/turnPipeline/planTurn';
 import { runTurn, type TurnResult } from '@/lib/turnPipeline/turnRunner';
 import { testInput } from '@/lib/turnPipeline/turnTestInputs';
-import type { TurnMaterial } from '@/lib/turnPipeline/turnPlan';
+import type { TurnMaterial, TurnSettings } from '@/lib/turnPipeline/turnPlan';
+import { narrationStream, type NarrationEvent } from '@/lib/aiRequest/narrationStream';
+import { rewriteSentences } from '@/lib/aiRequest/narrationRewrite';
+import { openOutputRun } from '@/lib/outputRun';
 import { sseFrame, sseResponse, sseTokens, textSnapshot, textTarget } from '@/test/aiTextFixtures';
 import { onCallRunner } from './onCallRunner';
 import { runToolCall } from './toolRunner';
@@ -43,10 +46,15 @@ const heal = (over: Partial<ToolScriptHandler> = {}) =>
   worldTool('heal', { code: 'stats.Health.value += args.amount;', timing: 'after', reply: 'The healing takes hold.', ...over });
 const roll = worldTool('roll', { code: "stats.Health.value += 5; return 'rolled ' + stats.Health.value;" });
 
-/** One model reply: a round of Tool calls, each `[name, args]`, or the narration text. */
-type Round = [string, Record<string, unknown>][] | string;
+/** One model reply: a round of Tool calls, each `[name, args]`, the narration text, or text that ends in Tool calls. */
+type Calls = [string, Record<string, unknown>][];
+type Round = Calls | string | { text: string; calls: Calls };
 
-const toolRound = (calls: [string, Record<string, unknown>][]) => sseResponse([
+const replyOf = (round: Round) => (typeof round === 'string' ? sseResponse(sseTokens([round]))
+  : Array.isArray(round) ? toolRound(round) : toolRound(round.calls, round.text));
+
+const toolRound = (calls: Calls, text?: string) => sseResponse([
+  ...(text ? [sseFrame({ content: text })] : []),
   sseFrame({
     tool_calls: calls.map(([name, args], index) => ({ index, id: `call-${index}`, type: 'function', function: { name, arguments: JSON.stringify(args) } })),
   }),
@@ -82,8 +90,12 @@ const NARRATION_ONLY = {
  * Plays one turn through `runTurn`, its narration request through the Request Transport and a scripted stream
  * that answers `rounds` in order, with the world's Tools run by a fresh World Tool turn. Each On Call run lands on
  * `live`, the turn's state as the game view keeps it. Answers the turn, `live`, and the Tool results each round sent back.
+ * With `output`, the narration streams through a During AI Output run over those world Scripts and the turn's
+ * armed triggers, as the game view wires it, and `shown` records each sentence the screen got.
  */
-async function playTurn(tools: readonly Tool[], rounds: Round[], { signal = new AbortController().signal, onRound = (_n: number) => {} } = {}) {
+async function playTurn(tools: readonly Tool[], rounds: Round[], {
+  signal = new AbortController().signal, onRound = (_n: number) => {}, output, settings = NARRATION_ONLY,
+}: { signal?: AbortSignal; onRound?: (n: number) => void; output?: Script[]; settings?: Partial<TurnSettings> } = {}) {
   const live: { state: StatCodeTurn; landed: StatCodeTurnResult[] } = { state: turnState(), landed: [] };
   const onCall = onCallRunner(() => ({
     turn: live.state,
@@ -98,18 +110,26 @@ async function playTurn(tools: readonly Tool[], rounds: Round[], { signal = new 
     const body = JSON.parse(init.body as string) as { messages: { role: string; content: string }[] };
     sentBack.push(body.messages.filter((m) => m.role === 'tool').map((m) => m.content));
     onRound(n);
-    const round = rounds[n++];
-    return Promise.resolve(typeof round === 'string' ? sseResponse(sseTokens([round])) : toolRound(round));
+    return Promise.resolve(replyOf(rounds[n++]));
   }) as unknown as typeof fetch;
+  const shown: NarrationEvent[] = [];
+  const run = output && openOutputRun(turnState({ worldScripts: output }), { triggers: wt.outputTriggers(tools) });
+  const rewriting = run ? rewriteSentences(run.rewrite, (event) => shown.push(event)) : null;
+  const narrationSink = run && rewriting ? narrationStream(run.listener, rewriting.listener) : () => {};
   const result: TurnResult = await runTurn({
-    plan: planTurn(testInput({}, NARRATION_ONLY)),
+    plan: planTurn(testInput({}, settings)),
     material: material(),
     signal,
-    request: (request, { signal: turnSignal }) => (request.type === 'narration'
-      ? transportRequest({ ...request, signal: turnSignal, executeTool: wt.executor(fallback) }, context(tools, fetchImpl), () => {})
-      : Promise.resolve('')),
+    request: async (request, { signal: turnSignal }) => {
+      const narration = request.type === 'narration';
+      const text = await transportRequest(
+        { ...request, signal: turnSignal, executeTool: wt.executor(fallback) }, context(tools, fetchImpl), narration ? narrationSink : () => {},
+      );
+      // The turn reads the narration its scripts left, as the game view's request does.
+      return (narration && text && rewriting ? await rewriting.final() : undefined) ?? text;
+    },
   });
-  return { result, wt, live, sentBack };
+  return { result, wt, live, sentBack, run, shown };
 }
 
 /** The After the AI batch as the turn lands it: the armed triggers, then the world's After Scripts. */
@@ -219,6 +239,89 @@ describe('World Tools through a turn', () => {
     const next = await playTurn([roll, heal()], [[['roll', {}]], 'You rest.']);
     expect(next.sentBack[1]).toEqual(['rolled 15']);
     expect(next.wt.armed('after')).toEqual([]);
+  });
+});
+
+describe('During AI Output World Tools through a turn', () => {
+  beforeEach(() => { vi.spyOn(console, 'error').mockImplementation(() => {}); });
+  afterEach(() => vi.restoreAllMocks());
+
+  const filter = (name: string, code: string, over: Partial<Tool> = {}) => worldTool(name, { code, timing: 'output' }, over);
+  const tag = (name: string) => filter(name, `narration.sentence = narration.sentence + '[${name}]';`);
+  const outputScript = (code: string): Script => ({ id: 'out', timing: 'output', code });
+  const sentences = (events: readonly NarrationEvent[]) => events.flatMap((e) => (e.type === 'sentence' ? [e.text] : []));
+  const narrationOf = (result: TurnResult) => result.run.material.narration;
+
+  it('rewrites every sentence after the call, and the saved narration is the rewrite', async () => {
+    const upper = filter('upper', 'narration.sentence = narration.sentence.toUpperCase();');
+    const { result, shown, sentBack } = await playTurn([upper], [[['upper', {}]], 'You rest. The fire crackles.'], { output: [] });
+    expect(sentBack[1]).toEqual([DEFAULT_REPLY]);
+    expect(sentences(shown)).toEqual(['YOU REST.', 'THE FIRE CRACKLES.']);
+    expect(shown.find((e) => e.type === 'finished')).toEqual({ type: 'finished', text: 'YOU REST. THE FIRE CRACKLES.' });
+    expect(narrationOf(result)).toBe('YOU REST. THE FIRE CRACKLES.');
+  });
+
+  it('leaves the narration as written when the AI calls no filter', async () => {
+    const { result } = await playTurn([tag('a')], ['You rest.'], { output: [] });
+    expect(narrationOf(result)).toBe('You rest.');
+  });
+
+  it('composes armed filters in Tools-tab order, then a world output Script sees their result', async () => {
+    const { result } = await playTurn([tag('a'), tag('b')], [[['b', {}], ['a', {}]], 'You rest.'], {
+      output: [outputScript("narration.sentence = narration.sentence + '[script]';")],
+    });
+    expect(narrationOf(result)).toBe('You rest.[a][b][script]');
+  });
+
+  it('reads the call\'s args, and with Stack Calls off a later call replaces the earlier one', async () => {
+    const suffix = filter('suffix', 'narration.sentence = narration.sentence + args.amount;');
+    const { result } = await playTurn([suffix], [[['suffix', { amount: 1 }]], [['suffix', { amount: 2 }]], 'You rest.'], { output: [] });
+    expect(narrationOf(result)).toBe('You rest.2');
+  });
+
+  it('covers the whole narration when a Planning request armed it', async () => {
+    const planned = { ...tag('a'), offeredTo: ['thinking', 'narration'] } satisfies Tool;
+    const { result } = await playTurn([planned], [[['a', {}]], 'Plan.', 'You rest. You wake.'], {
+      output: [], settings: { ...NARRATION_ONLY, thinkingMode: 'precall' },
+    });
+    expect(narrationOf(result)).toBe('You rest.[a] You wake.[a]');
+  });
+
+  it('stays armed through a retracted round: the run restarts and the filter writes on the kept round only', async () => {
+    const counting = filter('count', "stats.Health.value += 1; narration.sentence = '<' + narration.sentence + '>';");
+    const lookup: Tool = { ...worldTool('find', { code: '' }), handler: { kind: 'template', body: 'x' } };
+    const { result, run, shown } = await playTurn([counting, lookup], [
+      [['count', {}]], { text: 'Let me check. Hm', calls: [['find', {}]] }, 'The door creaks. Wind howls.',
+    ], { output: [] });
+    expect(shown.some((e) => e.type === 'retract')).toBe(true);
+    expect(narrationOf(result)).toBe('<The door creaks.> <Wind howls.>');
+    expect(healthOf((await run!.landing())!.stats)).toBe(12);
+  });
+
+  it('passes the sentence unchanged and keeps none of its writes when a filter throws', async () => {
+    const broken = filter('broken', "stats.Health.value = 99; narration.sentence = 'lost'; throw new Error('no');");
+    const { result, run } = await playTurn([broken], [[['broken', {}]], 'You rest.'], { output: [] });
+    expect(narrationOf(result)).toBe('You rest.');
+    expect(healthOf((await run!.landing())!.stats)).toBe(10);
+  });
+
+  it('opens the narration\'s run only for an output Tool that narration offers, or a trigger already armed', async () => {
+    const upper = filter('upper', 'narration.sentence = narration.sentence.toUpperCase();');
+    const wt = openWorldToolTurn([upper, heal()], async () => ({ text: '' }));
+    expect(wt.outputTriggers([heal()])).toBeUndefined();
+    // Tools off, or an endpoint without Tool support, offers nothing.
+    expect(wt.outputTriggers([])).toBeUndefined();
+    expect(wt.outputTriggers([upper])?.()).toEqual([]);
+    // A Planning call armed it, though narration does not offer it.
+    await wt.executor(async () => ({ text: 'fallback' }))(upper, '{}', new AbortController().signal);
+    expect(wt.outputTriggers([])?.().map((t) => t.name)).toEqual(['upper']);
+  });
+
+  it('fails a filter that calls player.tell, and the next filter still runs', async () => {
+    const asks = filter('asks', "narration.sentence = 'lost'; player.tell('Hello.');");
+    const { result } = await playTurn([asks, tag('b')], [[['asks', {}], ['b', {}]], 'You rest.'], { output: [] });
+    expect(narrationOf(result)).toBe('You rest.[b]');
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Tool asks'), expect.stringContaining('player.tell'));
   });
 });
 

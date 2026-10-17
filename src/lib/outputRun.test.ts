@@ -10,7 +10,7 @@ import { transportRequest, type TransportContext } from './aiRequest/requestTran
 import type { ToolExecutor } from './aiRequest/toolLoop';
 import { TOOL_CATALOG } from './tools/toolCatalog';
 import { UNKNOWN_REASONING_CAPABILITY } from './reasoningEffort';
-import type { StatCodeTurn } from './statCodeTurn';
+import type { ScriptTrigger, StatCodeTurn } from './statCodeTurn';
 import type { Placeholder, PlaceholderRolls, PlayerStat, Script, Tool, Trait } from '@/types';
 import { collectPins } from './placeholderPins';
 import { phValues } from '@/test/placeholderValues';
@@ -71,6 +71,14 @@ describe('openOutputRun', () => {
     expect(openOutputRun(turn({ stats: [stat({ scripts: [script('x = 1;')] })] }))).not.toBeNull();
     const owner = { id: 'ann', stats: [stat({ scripts: [script('x = 1;')] })], enabled: {}, previous: [], regenApplied: {} };
     expect(openOutputRun(turn({ stats: [], owners: [owner] }))).not.toBeNull();
+  });
+
+  it('is a run with no output script when it has a trigger source, and runs what is armed at each sentence', async () => {
+    const armed: ScriptTrigger[] = [];
+    const run = openOutputRun(turn({ stats: [] }), { triggers: () => [...armed] })!;
+    const first = await run.rewrite('One.', { index: 0, full: 'One.', earlier: [] });
+    armed.push({ name: 'shout', code: 'narration.sentence = narration.sentence.toUpperCase();', args: {} });
+    expect([first, await run.rewrite('Two.', { index: 1, full: 'One. Two.', earlier: [first] })]).toEqual(['One.', 'TWO.']);
   });
 
   it('sums what a script writes on each sentence and lands it as one result', async () => {
@@ -171,7 +179,7 @@ describe('openOutputRun', () => {
   });
 
   it('splits the earlier sentences at the release count it reads', async () => {
-    const run = openOutputRun(turn({ stats: [], worldScripts: [script(reportSent)] }), () => 1)!;
+    const run = openOutputRun(turn({ stats: [], worldScripts: [script(reportSent)] }), { released: () => 1 })!;
     const out = await play(run, ['One.', 'Two.', 'Three.', 'Four.']);
     expect(out[3]).toBe(JSON.stringify([['ONE.'], ['TWO.', 'THREE.']]));
   });

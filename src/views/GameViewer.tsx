@@ -109,7 +109,7 @@ import { useAiSettingsSnapshot } from "../lib/aiRequest/useAiSettingsSnapshot";
 import { surfaceRejectedEndpointOverride } from "../lib/aiRequest/rejectedOverrideNotice";
 import { transportRequest, type TransportContext, type TransportRequest, type TransportSink } from "../lib/aiRequest/requestTransport";
 import { toastAiRequestFailure } from "../lib/aiRequest/aiRequestFailureToast";
-import { schemaAccepted } from "../lib/reasoningEffort";
+import { schemaAccepted, toolsSupported } from "../lib/reasoningEffort";
 import { completeSentenceCount, completeSentencePrefix, narrationStream, type NarrationListener } from "../lib/aiRequest/narrationStream";
 import { narrationRevealListener } from "../lib/narrationRevealListener";
 import { getRevealReleased } from "../lib/revealTimingStore";
@@ -121,7 +121,7 @@ import { chipValues, entityStatsField, sceneEntityChipValues } from "../lib/chip
 import { useLiveChipScene, type SceneWrites } from "../lib/chipValues/liveScene";
 import { buildToolSnapshot, type ToolMemorySource } from "../lib/tools/toolSnapshot";
 import { toolCallStatus } from "../lib/tools/toolCallStatus";
-import { snapshotToolExecutor } from "../lib/tools/toolOffer";
+import { snapshotToolExecutor, toolsOfferedTo } from "../lib/tools/toolOffer";
 import { openWorldToolTurn, type WorldToolTurn } from "../lib/tools/worldToolTurn";
 import { onCallRunner } from "../lib/tools/onCallRunner";
 import { useHelpWorldSource } from "../lib/formaquestion/helpWorld";
@@ -3556,11 +3556,16 @@ const GameViewer = ({
     }
   };
 
-  /** Opens this turn's During AI Output run over the state the before box left; null when no script has one. */
+  /** Opens this turn's During AI Output run over the state the before box left; null when no script or World
+   *  Tool has one. */
   const startOutputRun = (): OutputRun | null => {
     const prepared = prepareTurnStartCode(onCallStateRef.current ?? turnBeforeBoxRef.current, 'output');
+    // The narration's own offer, as the transport builds it: a Tool it can't call never opens the run.
+    const offered = toolsSupported(narrationEndpoint.reasoning)
+      ? toolsOfferedTo("narration", allTools, enabledTools, toolsEnabled, worldTools) : [];
+    const triggers = worldToolTurnRef.current?.outputTriggers(offered);
     // The crawl shows each sentence as it passes, so only the fade reveal holds any back.
-    const run = prepared && openOutputRun(prepared.turn, fadeRevealActive ? getRevealReleased : undefined);
+    const run = prepared && openOutputRun(prepared.turn, { released: fadeRevealActive ? getRevealReleased : undefined, triggers });
     outputRunRef.current = prepared && run ? { run, prepared } : null;
     return run;
   };
