@@ -1,5 +1,11 @@
 import type { DiscoverWrite, WorldWrites } from './statCodeExecutor';
 
+/** Story hours the turn's prompts and scripts read: `turnStart` plus every advance `writes` holds (Q45).
+ *  Undefined when the turn has not advanced the clock. */
+export function advancedClock(turnStart: number, writes: WorldWrites | undefined): number | undefined {
+  return writes?.minutes === undefined ? undefined : turnStart + writes.minutes / 60;
+}
+
 /** `later` laid over `earlier`: the later move wins, advances add, discoveries join once per name, a
  *  described one filling in a bare one, and memory lines, pins and diary lines join in order. */
 export function mergeWorldWrites(earlier: WorldWrites | undefined, later: WorldWrites | undefined): WorldWrites | undefined {

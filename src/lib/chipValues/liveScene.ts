@@ -57,17 +57,19 @@ export interface LiveSceneSources {
   placeholders: readonly Placeholder[];
 }
 
-/** The world under a stat-code before box's writes, which React has not rendered yet. */
+/** The world under a running turn's code writes, which React has not rendered yet. Each absent field keeps
+ *  the live one. */
 export interface SceneWrites {
-  activeStats: PlayerStat[];
-  activeTraits: Trait[];
+  activeStats?: PlayerStat[];
+  activeTraits?: Trait[];
   /** Each entity's owned trait state after the box's switches and cascades. */
-  ownedTraits: OwnedTraitStates;
-  /** Each entity's stat values after the box. Absent keeps the committed ones. */
+  ownedTraits?: OwnedTraitStates;
   entityStats?: OwnerStats;
-  resolve: (text: string) => string;
-  resolveTrait: ResolveTraitText;
-  resolveEntity: ResolveEntityText;
+  resolve?: (text: string) => string;
+  resolveTrait?: ResolveTraitText;
+  resolveEntity?: ResolveEntityText;
+  /** Story hours the turn's clock advances moved the time to. */
+  elapsed?: number;
 }
 
 /**
@@ -132,7 +134,7 @@ export function liveChipScene(
     // Lore activates per turn inside the narration prompt builder, so the scene carries none.
     lore: [],
     notes: sources.notes,
-    time: sources.time,
+    time: sources.time && box?.elapsed !== undefined ? { ...sources.time, elapsed: box.elapsed } : sources.time,
     resolve: box?.resolve ?? sources.resolve,
     resolveEntity,
     placeholders: sources.placeholders,

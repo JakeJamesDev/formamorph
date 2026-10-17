@@ -392,4 +392,18 @@ describe('the live adapter', () => {
   it('carries no lore, since activation is per turn', () => {
     expect(liveChipScene(sources()).lore).toEqual([]);
   });
+
+  describe('a clock the turn advanced', () => {
+    const at10 = { elapsed: 10, calendar: { startHour: 0 } };
+
+    it('reads the advanced time on the Time chip, the rest of the scene live', () => {
+      const values = chipValues(liveChipScene(sources({ time: at10 }), null, { elapsed: 18 }));
+      expect(values('<TIME>')).toBe('Day 1, evening');
+      expect(values('<STATS>')).toBe(chipValues(liveChipScene(sources({ time: at10 })))('<STATS>'));
+    });
+
+    it('keeps the Time chip empty while the clock is off', () => {
+      expect(liveChipScene(sources(), null, { elapsed: 18 }).time).toBeNull();
+    });
+  });
 });
