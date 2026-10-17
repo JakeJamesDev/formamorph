@@ -3,13 +3,14 @@ import type { NarrationListener } from './aiRequest/narrationStream';
 import type { SentenceRewrite } from './aiRequest/narrationRewrite';
 import { filledScriptsAt } from './scripts';
 import {
-  afterRun, chainedResult, runStatCodeTurn, withSwitchRuns, type StatCodeTurn, type StatCodeTurnResult,
+  afterRun, chainedResult, runStatCodeTurn, withSwitchRuns, type ScriptTrigger, type StatCodeTurn, type StatCodeTurnResult,
 } from './statCodeTurn';
 
 /**
- * One reply's During AI Output run. Each completed sentence runs the world's and every owner's output scripts
- * over what the sentences before it left, so what they write sums across the reply. The run holds those
- * writes back: `result` lays them out as one result, which lands with the turn's After batch.
+ * One reply's During AI Output run. Each completed sentence runs the turn's armed output triggers, then the
+ * world's and every owner's output scripts, over what the sentences before it left, so what they write sums
+ * across the reply. The run holds those writes back: `result` lays them out as one result, which lands with
+ * the turn's After batch.
  */
 export interface OutputRun {
   /** Rewrites one sentence. Calls must not overlap, which the sentence rewrite's queue guarantees. */
@@ -32,13 +33,18 @@ const hasOutputScripts = (turn: StatCodeTurn): boolean => {
     || (turn.owners ?? []).some((owner) => owner.stats.some(enabledStat(owner.enabled)));
 };
 
-/**
- * The run of one reply's sentences over `turn`; null when the turn has no output script to run. `released`
- * reads how many of the reply's sentences the reveal has put on screen; a reply with no paced reveal shows
- * each sentence as it passes.
- */
-export function openOutputRun(turn: StatCodeTurn, released: () => number = () => Number.POSITIVE_INFINITY): OutputRun | null {
-  if (!hasOutputScripts(turn)) return null;
+export interface OutputRunOptions {
+  /** How many of the reply's sentences the reveal has put on screen. Absent, each sentence shows as it passes. */
+  released?: () => number;
+  /** The turn's armed output triggers, read at each sentence. Present ⇒ the run opens with no output script. */
+  triggers?: () => readonly ScriptTrigger[];
+}
+
+/** The run of one reply's sentences over `turn`; null when the turn has no output script and no trigger source. */
+export function openOutputRun(
+  turn: StatCodeTurn, { released = () => Number.POSITIVE_INFINITY, triggers }: OutputRunOptions = {},
+): OutputRun | null {
+  if (!triggers && !hasOutputScripts(turn)) return null;
   let now = turn;
   const steps: StatCodeTurnResult[] = [];
   // Bumped on a retract, so a sentence run that was in progress then leaves no write.
@@ -55,7 +61,7 @@ export function openOutputRun(turn: StatCodeTurn, released: () => number = () =>
     const mine = round;
     const shown = Math.min(released(), earlier.length);
     const narration = { sentence, full, index, sent: earlier.slice(0, shown), buffered: earlier.slice(shown) };
-    const step = await runStatCodeTurn({ ...now, timing: 'output', narration });
+    const step = await runStatCodeTurn({ ...now, timing: 'output', narration, triggers: triggers?.() });
     if (mine !== round) return sentence;
     steps.push(step);
     now = afterRun(now, step);

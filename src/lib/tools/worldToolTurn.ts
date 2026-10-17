@@ -25,6 +25,9 @@ export interface WorldToolTurn {
   executor: (fallback: ToolExecutor) => ToolExecutor;
   /** The calls to fire at `timing`: Tools-tab order, then call order with Stack Calls on, else the last call (R4, Q4). */
   armed: (timing: 'output' | 'after') => ScriptTrigger[];
+  /** What a narration's output run reads at each sentence: `armed('output')`. Undefined unless a trigger is
+   *  armed already or `offered`, the narration request's Tools, holds an output World Tool (Q47). */
+  outputTriggers: (offered: readonly Tool[]) => (() => ScriptTrigger[]) | undefined;
 }
 
 const scriptOf = (tool: Tool): ToolScriptHandler | null => (tool.handler.kind === 'script' ? tool.handler : null);
@@ -33,6 +36,12 @@ const scriptOf = (tool: Tool): ToolScriptHandler | null => (tool.handler.kind ==
 export function openWorldToolTurn(worldTools: readonly Tool[], onCall: OnCallRunner): WorldToolTurn {
   const calls: ArmedCall[] = [];
   const own = (tool: Tool) => worldTools.find((mine) => mine.id === tool.id);
+  const armed: WorldToolTurn['armed'] = (timing) => worldTools.flatMap((tool) => {
+    const script = scriptOf(tool);
+    if (script?.timing !== timing) return [];
+    const made = calls.filter((call) => call.tool.id === tool.id).map(({ args }) => ({ name: tool.name, code: script.code, args }));
+    return script.stack ? made : made.slice(-1);
+  });
   return {
     executor: (fallback) => async (tool, argsText, signal) => {
       const mine = own(tool);
@@ -44,11 +53,10 @@ export function openWorldToolTurn(worldTools: readonly Tool[], onCall: OnCallRun
       calls.push({ tool: mine, args: parsed.args });
       return { text: script.reply?.trim() ? script.reply : DEFAULT_REPLY };
     },
-    armed: (timing) => worldTools.flatMap((tool) => {
-      const script = scriptOf(tool);
-      if (script?.timing !== timing) return [];
-      const made = calls.filter((call) => call.tool.id === tool.id).map(({ args }) => ({ name: tool.name, code: script.code, args }));
-      return script.stack ? made : made.slice(-1);
-    }),
+    armed,
+    outputTriggers: (offered) => {
+      const canArm = offered.some((tool) => scriptOf(tool)?.timing === 'output' && own(tool));
+      return canArm || armed('output').length ? () => armed('output') : undefined;
+    },
   };
 }
