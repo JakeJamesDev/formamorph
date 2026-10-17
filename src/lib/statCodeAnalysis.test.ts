@@ -223,7 +223,7 @@ describe('statCodeCompletions', () => {
   });
 
   it('offers the clock members after clock, and day and daypart after clock.previous', () => {
-    expect(labels('return clock.|')).toEqual(['day', 'daypart', 'deltaHours', 'elapsedHours', 'previous']);
+    expect(labels('return clock.|')).toEqual(['day', 'daypart', 'deltaHours', 'elapsedHours', 'previous', 'advance']);
     expect(labels('return clock.previous.|')).toEqual(['day', 'daypart']);
   });
 

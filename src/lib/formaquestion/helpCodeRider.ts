@@ -43,7 +43,9 @@ export const DEFAULT_CODE_RIDER = [
  * The names the script sandbox injects. A copy, so the help bundle does not pull in the sandbox engine; a
  * drift test holds it to the sandbox's own list.
  */
-export const SANDBOX_GLOBAL_NAMES = ['self', 'owner', 'stats', 'clock', 'placeholders', 'traits', 'entities', 'persona', 'dictionaries', 'console'] as const;
+export const SANDBOX_GLOBAL_NAMES = [
+  'self', 'owner', 'stats', 'clock', 'location', 'discover', 'placeholders', 'traits', 'entities', 'persona', 'dictionaries', 'console',
+] as const;
 
 const GLOBALS = SANDBOX_GLOBAL_NAMES.join('|');
 

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { phMap, phNode } from '@/test/sandboxPlaceholders';
 import { executeStatCode, type CodeBoundField } from './statCodeExecutor';
 import {
-  BUILTIN_MEMBERS, CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, DELTA_FIELDS, DICTIONARY_FIELDS, DELTA_MEMBERS, ENTITY_FIELDS, LANGUAGE_NAMES, PERSONA_FIELDS, placeholderEntryFields, PREVIOUS_FIELDS, SANDBOX_BUILTINS, SANDBOX_GLOBALS,
+  BUILTIN_MEMBERS, CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, LOCATION_MEMBERS, DELTA_FIELDS, DICTIONARY_FIELDS, DELTA_MEMBERS, ENTITY_FIELDS, LANGUAGE_NAMES, PERSONA_FIELDS, placeholderEntryFields, PREVIOUS_FIELDS, SANDBOX_BUILTINS, SANDBOX_GLOBALS,
   SELF_WRITABLE_FIELDS, STAT_FIELDS, TRAIT_ENTRY_FIELDS, nearestSurfaceName,
 } from './statCodeSurface';
 import { runStatCodeTurn } from './statCodeTurn';
@@ -63,7 +63,7 @@ describe('the described surface against the sandbox that provides it', () => {
     },
   );
 
-  it.each([['clock', CLOCK_MEMBERS], ['clock.previous', CLOCK_PREVIOUS_FIELDS]] as const)(
+  it.each([['clock', CLOCK_MEMBERS], ['clock.previous', CLOCK_PREVIOUS_FIELDS], ['location', LOCATION_MEMBERS]] as const)(
     'describes every field on %s, and no field it does not',
     async (path, described) => {
       const expected = described.map(entry => entry.name).sort().join(',');

@@ -24,7 +24,7 @@ describe('codeCard: globals and their members', () => {
   it.each([
     ['return se|lf.value;', '(global) self: Stat'],
     ['return st|ats.Health.value;', '(global) stats: object'],
-    ['return cl|ock.day;', '(global) clock: { day, daypart, deltaHours, elapsedHours, previous } [readOnly]'],
+    ['return cl|ock.day;', '(global) clock: { day, daypart, deltaHours, elapsedHours, previous, advance } [readOnly]'],
     ['return self.va|lue;', '(property) Stat.value: number [writable]'],
     ['self.re|gen = 0;', '(property) Stat.regen: number [writable]'],
     ['return self.na|me;', '(property) Stat.name: string [readOnly]'],
@@ -262,7 +262,7 @@ describe('completionCard: the card for an option the list offers', () => {
   }
 
   it.each([
-    ['return clo|', 'clock', '(global) clock: { day, daypart, deltaHours, elapsedHours, previous } [readOnly]'],
+    ['return clo|', 'clock', '(global) clock: { day, daypart, deltaHours, elapsedHours, previous, advance } [readOnly]'],
     ['return self.re|', 'regen', '(property) Stat.regen: number [writable]'],
     ['return stats.He|', 'Health', '(stat) stats.Health: Stat'],
     ['return stats["He|', 'Health', '(stat) stats.Health: Stat'],

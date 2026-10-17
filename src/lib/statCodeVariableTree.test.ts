@@ -6,7 +6,7 @@ import { executeStatCode } from './statCodeExecutor';
 import { statCodeNamed } from './statCodeNames';
 import { codeDictionaries, sandboxDictionaries, sandboxPlaceholders } from './statCodePlaceholders';
 import {
-  CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, DELTA_FIELDS, DELTA_MEMBERS, DICTIONARY_FIELDS, ENTITY_FIELDS, PERSONA_FIELDS,
+  CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, LOCATION_MEMBERS, DELTA_FIELDS, DELTA_MEMBERS, DICTIONARY_FIELDS, ENTITY_FIELDS, PERSONA_FIELDS,
   NARRATION_FIELDS, PLAYER_CALL_ENTRIES, PREVIOUS_FIELDS, SANDBOX_GLOBALS, STAT_CODE_SURFACE, STAT_FIELDS, TRAIT_ENTRY_FIELDS,
   placeholderEntryFields, scriptSurface,
 } from './statCodeSurface';
@@ -106,7 +106,7 @@ const asLevel = (entries: readonly { name: string }[]) => entries.map((entry) =>
 
 describe('the top level', () => {
   it('lists the sandbox’s globals in the order an author meets them, without console', () => {
-    expect(tree.map(labelOf)).toEqual(['This Stat', 'Stats', 'Traits', 'Entities', 'Persona', 'Placeholders', 'Dictionaries', 'Clock']);
+    expect(tree.map(labelOf)).toEqual(['This Stat', 'Stats', 'Traits', 'Entities', 'Persona', 'Placeholders', 'Dictionaries', 'Clock', 'Location', 'Discover']);
   });
 
   // `owner` is empty in a world stat's code, so only an owned or Blueprint stat's menu reaches it.
@@ -333,6 +333,7 @@ describe('field info', () => {
     [['This Stat', 'delta', 'actual'], DELTA_FIELDS],
     [['Clock'], CLOCK_MEMBERS],
     [['Clock', 'previous'], CLOCK_PREVIOUS_FIELDS],
+    [['Location'], LOCATION_MEMBERS],
     [['Traits', 'Brave'], TRAIT_ENTRY_FIELDS],
     [['Entities', 'Mira'], ENTITY_FIELDS],
     [['Entities', 'Mira', 'Traits', 'Keen'], TRAIT_ENTRY_FIELDS],
@@ -397,6 +398,8 @@ describe('every leaf against the sandbox', () => {
     entities,
     persona: entities.find((entity) => entity.id === 'mira'),
     dictionaries: sandboxDictionaries(names.placeholders!.dictionaries ?? [], placeholders.owners),
+    // Test Code stands at the world's starting location.
+    places: { locations: [{ id: 'dock', name: 'Dock' }], location: { id: 'dock', name: 'Dock' } },
   });
 
   // A pin through a path that reaches nothing is dropped, not thrown, so that is checked apart from the run.

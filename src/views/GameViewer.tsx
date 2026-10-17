@@ -13,7 +13,8 @@ import { targetAttribute } from "@/lib/surface/surfaceTargets";
 import { EXIT_TO_MENU_PROMPT } from "@/lib/leavePrompts";
 import { useGameplay } from "@/contexts/GameplayContext";
 import { useAccountDeletion } from "@/contexts/AccountDeletionContext";
-import { type StatClock } from "@/lib/statCodeExecutor";
+import { type StatClock, type WorldWrites } from "@/lib/statCodeExecutor";
+import { mergeWorldWrites } from "@/lib/worldWrites";
 import {
   overlayStatCodeResult, playthroughPlaceholderSet, runStatCodeTurn, runSwitchScripts, withPinWrites, type StatCodeTurn, type StatCodeTurnResult,
 } from "@/lib/statCodeTurn";
@@ -150,7 +151,7 @@ import { buildPlannerBand } from "../lib/turnPipeline/plannerBand";
 import { readNarration, selectVisitorAdditions, presentSceneEntities, splitParticipants } from "../lib/turnPipeline/narrationReading";
 import { planTurn, planHasPass } from "../lib/turnPipeline/planTurn";
 import { runTurn, type TurnAdvance, type TurnRequestAdapter } from "../lib/turnPipeline/turnRunner";
-import { computeTurnCommit, type TurnCommit } from "../lib/turnPipeline/computeTurnCommit";
+import { computeTurnCommit, withCodeWrites, type TurnCommit, type TurnCommitContext } from "../lib/turnPipeline/computeTurnCommit";
 import { classifyTurnError, type TurnErrorKind } from "../lib/turnPipeline/turnErrors";
 import { emptyTurnMaterial, type TurnMaterial, type TurnPassSubject, type TurnPlanInput, type TurnPrompts, type TurnSettings } from "../lib/turnPipeline/turnPlan";
 import { parseTurns, buildVerbatimHistory, buildBandedHistory, extractKeywords, type BandCounts } from "../lib/turnBanding";
@@ -314,7 +315,7 @@ type TurnCodeState = Pick<LiveSnapshot, 'globalStats'> & PreTurnCodeState;
 /** A stat-code run set up but not yet executed: its turn, and the step that lays the result onto live state. */
 interface PreparedStatCode {
   turn: StatCodeTurn;
-  finish: (result: StatCodeTurnResult) => { written: TurnCodeState | null; gateStats: GateStats };
+  finish: (result: StatCodeTurnResult) => { written: TurnCodeState | null; gateStats: GateStats; world?: WorldWrites };
 }
 
 /** The traits in force on one slice of saved trait state, and the stats live under them. The live pair is
@@ -1592,7 +1593,8 @@ const GameViewer = ({
       const priorTells = turnTells(scriptTells, tellTurn);
       if (tellTurn) setScriptTells((now) => withoutTimings(now, tellTurn, REROLLED_TIMINGS));
       // Page one of a fresh game restores the pre-start state, so the start scripts run again first.
-      const written = await runBeforeAI(
+      // A stat re-roll keeps the turn's location, clock and cast, so the replay's world writes drop.
+      const { written } = await runBeforeAI(
         preTurn.globalStats ?? [], { deltaHours: 0, elapsedHours: gameTime - turnHours, calendar }, preTurn,
         page === 1 && newPlaythroughRef.current,
       );
@@ -2250,13 +2252,17 @@ const GameViewer = ({
       signal: AbortSignal; location: GameLocation | null; participants: string[]; destinations: GameLocation[];
       /** Page one came from an Opening Narration, so no reveal ran and there is none to wait out. */
       written: boolean;
+      /** What the commit was computed from, which the later code writes lay over. */
+      context: TurnCommitContext;
     },
   ) => {
     const { signal } = turn;
     // The move offer lands before the reveal is held below — it is the one result that has always
     // appeared while the narration was still fading. Scoped to the local navigable graph: the router's
     // reply named one of these or nothing.
-    if (commit.suggestedLocation) {
+    // A During AI Output move already beats the offer, so it never shows.
+    const outputMoved = outputRunRef.current?.run.result()?.worldWrites?.location !== undefined;
+    if (commit.suggestedLocation && !outputMoved) {
       const target = turn.destinations.find((loc) => loc.name === commit.suggestedLocation);
       if (target) setSuggestedLocation(target);
     }
@@ -2275,35 +2281,9 @@ const GameViewer = ({
     // shipped DEFAULT_START_HOUR, so an unreadable answer plays exactly as before this pass existed.
     if (commit.isOpeningTurn) setStartHour(commit.openingHour);
 
-    // Update final assistant message with complete data
-    setFullMessageHistory((prev) => {
-      const updatedHistory = [...prev];
-      if (
-        updatedHistory.length > 0 &&
-        updatedHistory[updatedHistory.length - 1].role === "assistant"
-      ) {
-        updatedHistory[updatedHistory.length - 1] = {
-          role: "assistant",
-          content: JSON.stringify(commit.turn),
-        };
-      }
-      return updatedHistory;
-    });
-
-    // Persist any characters this turn discovered, anchored to its location + turn so they roll back with
-    // it. Guarded against a double-add (variant-aware name match) by a visitor added moments ago.
-    if (commit.discoveries.length > 0) {
-      setDiscoveredEntities((prev) => {
-        const additions = commit.discoveries.filter(
-          (d) => !prev.some((p) => sameCharacterName(p.entity.name, d.entity.name)),
-        );
-        return additions.length ? [...prev, ...additions] : prev;
-      });
-    }
-
     // What the narration's During AI Output scripts wrote lands now, so the After batch starts from it. Its
     // bar share joins the before box's.
-    const outputBase = await landOutputRun();
+    const { written: outputBase, world: outputWorld } = await landOutputRun();
 
     // Reset the persistent bar deltas for this turn, then let stat changes + regen below re-fill them. The
     // before box already moved before the narration, so its share is laid straight back over the reset.
@@ -2328,6 +2308,46 @@ const GameViewer = ({
     // message, applied stat changes, code writes, and advanced time rather than a stale mid-batch read).
     // The per-turn settle runs first, against the run's one stat snapshot (Q9, Q19).
     const run = await statCode;
+
+    // The output and After the AI code writes beat the passes too, so the stored turn waits for them.
+    const final = withCodeWrites(commit, mergeWorldWrites(outputWorld, run?.world), turn.context);
+    if (commit.suggestedLocation && !final.suggestedLocation) setSuggestedLocation(null);
+    // Regen already ticked at the commit's hours: a longer code duration ticks the extra, a shorter one moves the clock alone.
+    const extraHours = final.turnHours - commit.turnHours;
+    if (extraHours > 0) handleTimePassed(extraHours);
+    else if (extraHours < 0) setGameTime((prev) => prev + extraHours);
+    const codeTarget = final.codeMove && final.codeMove !== turn.location?.id ? locations.find((loc) => loc.id === final.codeMove) : undefined;
+    if (codeTarget) {
+      changeLocation(codeTarget);
+      addLogEntry(`Moved to location: ${codeTarget.name}`);
+    }
+    const location = codeTarget ?? turn.location;
+
+    setFullMessageHistory((prev) => {
+      const updatedHistory = [...prev];
+      if (
+        updatedHistory.length > 0 &&
+        updatedHistory[updatedHistory.length - 1].role === "assistant"
+      ) {
+        updatedHistory[updatedHistory.length - 1] = {
+          role: "assistant",
+          content: JSON.stringify(final.turn),
+        };
+      }
+      return updatedHistory;
+    });
+
+    // Persist any characters this turn discovered, anchored to its location + turn so they roll back with
+    // it. Guarded against a double-add (variant-aware name match) by a visitor added moments ago.
+    if (final.discoveries.length > 0) {
+      setDiscoveredEntities((prev) => {
+        const additions = final.discoveries.filter(
+          (d) => !prev.some((p) => sameCharacterName(p.entity.name, d.entity.name)),
+        );
+        return additions.length ? [...prev, ...additions] : prev;
+      });
+    }
+
     await settleTurn(run?.gateStats ?? null);
     armTurnSnapshot();
     // The turn committed, so the before box's writes stand.
@@ -2351,10 +2371,10 @@ const GameViewer = ({
       try {
         await runSceneImageRef.current({
           turnId: currentTurnIdRef.current,
-          narration: commit.turn.narration,
+          narration: final.turn.narration,
           participants: turn.participants,
-          locationId: turn.location?.id,
-          playerInFrame: commit.turn.playerInFrame,
+          locationId: location?.id,
+          playerInFrame: final.turn.playerInFrame,
           signal: imageController.signal,
         });
       } finally {
@@ -2386,7 +2406,7 @@ const GameViewer = ({
     // Places navigable from here. Nowhere to go means nothing to route: the router's reply is matched
     // against this exact list, so with it empty the call cannot produce a move however the model answers.
     const destinations = currentLocation ? navigableDestinations(currentLocation, locations, connections) : [];
-    const plan = planTurn({
+    const planInput = {
       action,
       isGameStarted,
       destinationCount: destinations.length,
@@ -2396,7 +2416,8 @@ const GameViewer = ({
       attachments: resentAttachments ?? attachments,
       settings: turnSettings(),
       prompts: turnPrompts(),
-    });
+    };
+    let plan = planTurn(planInput);
     // Only narration sees the real opening text; every other consumer (stats, planner, choices, dictionary
     // triggers, stored history) sees the terse "START GAME" proxy — the full cue is a narrator directive
     // that derails those prompts. The player's own text lives on in openingActionRef.
@@ -2423,6 +2444,8 @@ const GameViewer = ({
     // What the turn's own derivations carry between passes. The pipeline's material holds everything the
     // requests render from; these are the view-side reads that outlive a single pass.
     let turnLocation = currentLocation;
+    // What the runs before the AI wrote to the location, the clock and the cast.
+    let beforeWorldWrites: WorldWrites | undefined;
     let actionVec: Float32Array | null = null;
     let priorNarration = "";
     // Staged/precall candidates the narration confirms afterward: ad-hoc = planner-invented (no entity
@@ -2481,9 +2504,19 @@ const GameViewer = ({
         ownedTraits, entityStats: entityStatsRef.current,
       };
       // The At Game Start scripts shape the opening: once per new playthrough, ahead of the before box.
-      const beforeBox = await runBeforeAI(
+      scriptLocationRef.current = turnLocation;
+      const { written: beforeBox, world: beforeWorld } = await runBeforeAI(
         rawGlobalStatsRef.current, { deltaHours: 0, elapsedHours: gameTime, calendar }, undefined, isOpeningTurn && newPlaythroughRef.current,
       );
+      beforeWorldWrites = beforeWorld;
+      // A move before the AI lands before routing, so the narration is written where code put the turn.
+      const beforeTarget = beforeWorld?.location === undefined ? undefined : locations.find((loc) => loc.id === beforeWorld.location);
+      if (beforeTarget) {
+        turnLocation = beforeTarget;
+        scriptLocationRef.current = beforeTarget;
+      }
+      // Any code move beats the router and the suggest pass, so neither request is sent.
+      if (beforeWorld?.location !== undefined) plan = planTurn({ ...planInput, destinationCount: 0, locationCount: 0 });
       beforeBoxUndoRef.current = beforeBox ? preBox : null;
       turnPreBoxRef.current = preBox;
       turnBeforeBoxRef.current = beforeBox;
@@ -2606,7 +2639,7 @@ const GameViewer = ({
       const applyNarrationReading = (narration: string): Partial<TurnMaterial> => {
         // Commit the auto-resolved move now that the narration — already written for the new location —
         // succeeded, so an aborted/empty turn leaves the location unchanged.
-        if (turnLocation && currentLocation && turnLocation.id !== currentLocation.id) {
+        if (turnLocation && turnLocation.id !== currentLocation?.id) {
           changeLocation(turnLocation);
           addLogEntry(`Moved to location: ${turnLocation.name}`);
         }
@@ -2709,6 +2742,7 @@ const GameViewer = ({
             const target = matchedName ? destinations.find((loc) => loc.name === matchedName) : undefined;
             if (target && currentLocation && target.id !== currentLocation.id) {
               turnLocation = target;
+              scriptLocationRef.current = target;
               executeTool = turnToolExecutor();
             }
             return;
@@ -2814,24 +2848,23 @@ const GameViewer = ({
         return;
       }
 
-      const commit = computeTurnCommit({
-        result,
-        plan,
-        context: {
-          participants: turnParticipants,
-          locationId: turnLocation?.id,
-          currentLocationName: currentLocation?.name,
-          discoveryLocationId: turnLocation?.id ?? currentLocation?.id,
-          knownDiscoveredNames: discoveredEntities.map((d) => d.entity.name),
-          // Freeze this turn's player notes and reasoning (both additive save-shape fields).
-          notes: playerNotes,
-          reasoning: turnReasoningRef.current,
-          playerInFrame,
-          gameTime,
-          fixedTurnHours,
-          calendar,
-        },
-      });
+      const commitContext: TurnCommitContext = {
+        participants: turnParticipants,
+        locationId: turnLocation?.id,
+        currentLocationName: currentLocation?.name,
+        discoveryLocationId: turnLocation?.id ?? currentLocation?.id,
+        knownDiscoveredNames: discoveredEntities.map((d) => d.entity.name),
+        // Freeze this turn's player notes and reasoning (both additive save-shape fields).
+        notes: playerNotes,
+        reasoning: turnReasoningRef.current,
+        playerInFrame,
+        gameTime,
+        fixedTurnHours,
+        calendar,
+        codeWrites: beforeWorldWrites,
+        heldNames: [...entities.map((entity) => entity.name), ...suppressedCharacterNames],
+      };
+      const commit = computeTurnCommit({ result, plan, context: commitContext });
       if (!commit) return;
       await applyTurnCommit(commit, {
         signal,
@@ -2839,6 +2872,7 @@ const GameViewer = ({
         participants: turnParticipants,
         destinations,
         written: plan.writtenNarration !== null,
+        context: commitContext,
       });
     } catch (error) {
       // The pipeline's own failures come back as a typed result above; what lands here is a derivation
@@ -2848,6 +2882,7 @@ const GameViewer = ({
       setIsWaitingForAI(false);
       setIsRevealingNarration(false);
       setAiRequestType(null);
+      scriptLocationRef.current = null;
       // Release the turn's controller (unless a newer turn already replaced it).
       if (abortControllerRef.current === controller) {
         abortControllerRef.current = null;
@@ -2930,6 +2965,9 @@ const GameViewer = ({
   const turnBeforeBoxRef = useRef<TurnCodeState | null>(null);
   // The turn's During AI Output run, and the run's turn, held until the commit lands its writes.
   const outputRunRef = useRef<{ run: OutputRun; prepared: PreparedStatCode } | null>(null);
+  // Where a running turn stands for its scripts' `location`, ahead of the render that commits a move. Null
+  // between turns, where the live location stands.
+  const scriptLocationRef = useRef<GameLocation | null>(null);
 
   // The world's list and books; the run joins the library entities' and library books' pools itself.
   const statCodePlaceholders = useMemo(() => playthroughPlaceholderSet({
@@ -2991,6 +3029,7 @@ const GameViewer = ({
         // The starvation penalty the regen tick lands beside this run, so the run's stat snapshot holds it.
         const healthLoss = tick && thresholdStats ? starvationLoss(thresholdStats, enabled, clock.deltaHours ?? FLAT_HOURS_PER_TURN) : null;
         const health = healthLoss === null ? undefined : stats.find((s) => s.name === "Health");
+        const here = scriptLocationRef.current ?? currentLocation;
         const turn: StatCodeTurn = {
           timing,
           prompts: playPrompts(timing),
@@ -3017,6 +3056,10 @@ const GameViewer = ({
           traitNameOf: (trait) => resolveTraitText(trait, trait.name),
           owners,
           worldScripts,
+          places: {
+            locations: locations.map(({ id, name }) => ({ id, name })),
+            location: here && { id: here.id, name: here.name },
+          },
         };
         /** Lays the run's result onto live state and hands back what it left. */
         const finish = (result: StatCodeTurnResult) => {
@@ -3046,9 +3089,10 @@ const GameViewer = ({
             ownedTraits: result.traits?.ownedTraits ?? held.ownedTraits,
             entityStats: nextEntityStats,
           });
+          const world = result.worldWrites;
           if (!result.traits && result.moved.length === 0 && result.boundsChanged.length === 0) {
             const written = nextPins === basePins && nextEntityStats === entityPrevious ? null : stateAfterRun();
-            return { written, gateStats: result.gateStats };
+            return { written, gateStats: result.gateStats, world };
           }
           // The bars are keyed by the name the player reads, so the run's stats resolve theirs here.
           const codeChanges = appliedStatDeltas(stats, resolveStatNames(result.stats, resolvePH));
@@ -3061,7 +3105,7 @@ const GameViewer = ({
           // The commit resets the bar deltas mid-turn, so the share of the runs before the AI is re-laid over that.
           // The start scripts, the before box and the output scripts can move one stat, so their shares add.
           if (readsTurnStart(timing)) beforeBoxDeltasRef.current = sumDeltas(beforeBoxDeltasRef.current, codeChanges);
-          return { written: stateAfterRun(), gateStats: result.gateStats };
+          return { written: stateAfterRun(), gateStats: result.gateStats, world };
         };
         /** A switch run's landing: only what the run changed lands on the state play reached meanwhile. */
         const landSwitch = (result: StatCodeTurnResult) => {
@@ -3086,7 +3130,7 @@ const GameViewer = ({
             if (!trait || !dropped.has(trait)) addLogEntry(line);
           });
           addStatDeltas(null, appliedStatDeltas(resolveStatNames(latest.stats, resolvePH), resolveStatNames(landed.stats, resolvePH)));
-          return { written: null, gateStats: result.gateStats };
+          return { written: null, gateStats: result.gateStats, world: result.worldWrites };
         };
         return { turn, finish };
       } catch (error) {
@@ -3094,14 +3138,14 @@ const GameViewer = ({
         return null;
       }
     },
-    [setGlobalStats, setEntityStats, entityOwnersOf, entityInForceUnder, addStatDeltas, setCodePins, resolvePH, statCodePlaceholders, pinsFor, traits, authoredStats, worldScripts, resolveTraitText, gatedWorld, codeEntities, statEntities, inForceOn, liveScene, libraryIn,
+    [setGlobalStats, setEntityStats, entityOwnersOf, entityInForceUnder, addStatDeltas, setCodePins, resolvePH, statCodePlaceholders, pinsFor, traits, authoredStats, worldScripts, resolveTraitText, gatedWorld, codeEntities, statEntities, inForceOn, liveScene, libraryIn, locations, currentLocation,
       setGlobalTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, setOwnedTraits, addLogEntry, playPrompts, commitTraitState],
   );
 
   // Runs one timing's scripts over this turn and lays the result: a turn with no stat response runs it directly.
   // Null when the run failed.
   const runStatCode = useCallback(
-    async (...args: Parameters<typeof prepareStatCode>): Promise<{ written: TurnCodeState | null; gateStats: GateStats } | null> => {
+    async (...args: Parameters<typeof prepareStatCode>): Promise<ReturnType<PreparedStatCode["finish"]> | null> => {
       const prepared = prepareStatCode(...args);
       if (!prepared) return null;
       try {
@@ -3140,16 +3184,17 @@ const GameViewer = ({
   );
 
   // The runs before the AI, over a turn's starting stats: on an opening that runs the start scripts, the start
-  // scripts first, then the before box over the state they left. Hands back what the runs left, or null when
-  // neither wrote. The opening of a fresh game restarts from its pre-start state on every redo, so each redo
-  // passes `opening`.
+  // scripts first, then the before box over the state they left. Hands back what the runs left, null when
+  // neither wrote, and their world writes. The opening of a fresh game restarts from its pre-start state on
+  // every redo, so each redo passes `opening`.
   const runBeforeAI = async (
     stats: PlayerStat[], clock: StatClock, preTurn: PreTurnCodeState | undefined, opening: boolean,
-  ): Promise<TurnCodeState | null> => {
-    const started = opening ? (await runStatCode(stats, stats, [], clock, preTurn, 'start'))?.written ?? null : null;
+  ): Promise<{ written: TurnCodeState | null; world?: WorldWrites }> => {
+    const start = opening ? await runStatCode(stats, stats, [], clock, preTurn, 'start') : null;
+    const started = start?.written ?? null;
     const base = started?.globalStats ?? stats;
-    const ran = (await runStatCode(base, base, [], clock, started ?? preTurn, 'before'))?.written ?? null;
-    return ran ?? started;
+    const before = await runStatCode(base, base, [], clock, started ?? preTurn, 'before');
+    return { written: before?.written ?? started, world: mergeWorldWrites(start?.world, before?.world) };
   };
 
   // Apply request identities to authored state; resolved names are only for code and display feedback.
@@ -3468,17 +3513,18 @@ const GameViewer = ({
 
   /**
    * Lays the output run's writes onto live state, once, ahead of the After batch. Answers the state it left,
-   * which the After batch then starts from; null when the run wrote nothing or never ran.
+   * which the After batch then starts from, null when the run wrote nothing or never ran, and its world writes,
+   * which the commit lays on.
    */
-  const landOutputRun = async (): Promise<TurnCodeState | null> => {
+  const landOutputRun = async (): Promise<{ written: TurnCodeState | null; world?: WorldWrites }> => {
     const held = outputRunRef.current;
     outputRunRef.current = null;
     const result = await held?.run.landing();
-    if (!held || !result) return null;
-    const { written } = held.prepared.finish(result);
+    if (!held || !result) return { written: null };
+    const { written, world } = held.prepared.finish(result);
     // A turn that never commits puts the writes back with the before box's.
     if (written && !beforeBoxUndoRef.current) beforeBoxUndoRef.current = turnPreBoxRef.current;
-    return written;
+    return { written, world };
   };
 
   /**

@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { planTurn } from './planTurn';
-import { computeTurnCommit } from './computeTurnCommit';
+import { computeTurnCommit, withCodeWrites } from './computeTurnCommit';
+import { dueDiscoveries } from '@/lib/backgroundPassQueue/backgroundPassQueue';
+import { pruneDiscoveredToHistory } from '@/lib/runtimeCharacters';
 import { TURN_PASSES } from './turnPasses';
 import { testInput } from './turnTestInputs';
 import type { TurnMaterial, TurnPassId, TurnPassSubject, TurnPlanInput, TurnSettings } from './turnPlan';
@@ -434,5 +436,124 @@ describe('computeTurnCommit — turns that produced nothing to apply', () => {
   it('applies nothing when the narration came back empty', () => {
     const { plan, run } = runOf([{ id: 'narration', raw: '' }], { narration: '' });
     expect(computeTurnCommit({ result: { status: 'ok', run }, plan, context: context() })).toBeNull();
+  });
+
+  it('applies none of the code writes of a stopped turn', () => {
+    const { plan, run } = runOf([{ id: 'narration', raw: NARRATION }]);
+    const commit = computeTurnCommit({
+      result: { status: 'aborted', run }, plan, context: context({ codeWrites: { location: 'loc-inn', minutes: 5, discover: [{ name: 'Tor', description: 'A smith.' }] } }),
+    });
+    expect(commit).toBeNull();
+  });
+});
+
+describe('computeTurnCommit — code writes beat the passes', () => {
+  it('moves the turn where code moved it and drops the suggest pass', () => {
+    const { plan, result } = runOf(
+      [{ id: 'narration', raw: NARRATION }, { id: 'locationSuggest', raw: 'The Long Pier' }], {}, { locationAutoApply: false },
+    );
+    const commit = computeTurnCommit({ result, plan, context: context({ codeWrites: { location: 'loc-inn' } }) });
+    expect(commit?.turn.locationId).toBe('loc-inn');
+    expect(commit?.codeMove).toBe('loc-inn');
+    expect(commit?.suggestedLocation).toBeNull();
+  });
+
+  it('leaves the pass results as they are with no code write', () => {
+    const { plan, result } = runOf(
+      [{ id: 'narration', raw: NARRATION }, { id: 'locationSuggest', raw: 'The Long Pier' }, { id: 'timePassed', raw: '30m' }],
+      {}, { locationAutoApply: false },
+    );
+    const commit = computeTurnCommit({ result, plan, context: context() });
+    expect(commit).toMatchObject({ suggestedLocation: 'The Long Pier', codeMove: null, codeWrites: null, turnHours: 0.5 });
+    expect(commit?.turn.locationId).toBe('loc-pier');
+  });
+
+  it('charges the minutes code advanced in place of what the clock pass measured', () => {
+    const { plan, result } = runOf([{ id: 'narration', raw: NARRATION }, { id: 'timePassed', raw: '30m' }]);
+    const commit = computeTurnCommit({ result, plan, context: context({ gameTime: 10, codeWrites: { minutes: 90 } }) });
+    expect(commit?.turnHours).toBe(1.5);
+    expect(commit?.turn.timeDelta).toBe(1.5);
+    expect(commit?.clock).toMatchObject({ deltaHours: 1.5, elapsedHours: 11.5 });
+  });
+
+  it('charges the minutes code advanced in place of Time Per Turn, zero included', () => {
+    const { plan, result } = runOf([{ id: 'narration', raw: NARRATION }]);
+    const commit = computeTurnCommit({ result, plan, context: context({ gameTime: 10, fixedTurnHours: 2, codeWrites: { minutes: 0 } }) });
+    expect(commit).toMatchObject({ turnHours: 0, clock: { elapsedHours: 10 } });
+    expect(commit?.turn.timeDelta).toBe(0);
+  });
+
+  it('adds a bare discovered name to the turn\'s participants, where the drainer finds it due', () => {
+    const { plan, result } = runOf([{ id: 'narration', raw: NARRATION }]);
+    const commit = computeTurnCommit({ result, plan, context: context({ codeWrites: { discover: [{ name: 'Tor' }] } }) });
+    expect(commit?.turn.entities).toEqual(['Maela', 'Tor']);
+    expect(commit?.discoveries).toEqual([]);
+    const history = [{ role: 'assistant' as const, content: JSON.stringify(commit?.turn) }];
+    expect(dueDiscoveries(history, ['Maela']).map((due) => [due.name, due.turnId, due.locationId])).toEqual([['Tor', 'turn-1', 'loc-pier']]);
+  });
+
+  it('creates a described character at the turn\'s discovery location, with no pass', () => {
+    const { plan, result } = runOf([{ id: 'narration', raw: NARRATION }]);
+    const commit = computeTurnCommit({
+      result, plan, context: context({ discoveryLocationId: 'loc-pier', codeWrites: { discover: [{ name: 'Tor', description: 'A smith.' }] } }),
+    });
+    expect(commit?.discoveries.map((d) => [d.entity.name, d.entity.aiDescription, d.entity.id, d.locationId, d.sourceTurnId])).toEqual([
+      ['Tor', 'A smith.', 'entity-1', 'loc-pier', 'turn-1'],
+    ]);
+    expect(commit?.turn.entities).toEqual(['Maela', 'Tor']);
+  });
+
+  it('replaces the discover pass\'s record of a name code described', () => {
+    const { plan, result } = runOf([
+      { id: 'narration', raw: NARRATION },
+      { id: 'discoverEntity', raw: 'A stranger.', subject: { name: 'Tor' } },
+      { id: 'discoverEntity', raw: 'A weathered dockhand.', subject: { name: 'Bram' } },
+    ]);
+    const commit = computeTurnCommit({ result, plan, context: context({ codeWrites: { discover: [{ name: 'tor', description: 'A smith.' }] } }) });
+    expect(commit?.discoveries.map((d) => [d.entity.name, d.entity.aiDescription])).toEqual([['Bram', 'A weathered dockhand.'], ['tor', 'A smith.']]);
+  });
+
+  it('loses both discover forms when a regenerate rewinds the turn', () => {
+    const { plan, result } = runOf([{ id: 'narration', raw: NARRATION }]);
+    const commit = computeTurnCommit({
+      result, plan, context: context({ codeWrites: { discover: [{ name: 'Tor' }, { name: 'Sela', description: 'A netmender.' }] } }),
+    });
+    const earlier = { role: 'assistant' as const, content: JSON.stringify({ narration: 'Before.', choices: [], stat_changes: [], turnId: 'turn-0', entities: [] }) };
+    const played = [earlier, { role: 'user' as const, content: 'I read the notices.' }, { role: 'assistant' as const, content: JSON.stringify(commit?.turn) }];
+    const discovered = commit?.discoveries ?? [];
+    expect([dueDiscoveries(played, []).map((due) => due.name), pruneDiscoveredToHistory(discovered, played).map((d) => d.entity.name)])
+      .toEqual([['Maela', 'Tor', 'Sela'], ['Sela']]);
+    const rewound = played.slice(0, 1);
+    expect([dueDiscoveries(rewound, []), pruneDiscoveredToHistory(discovered, rewound)]).toEqual([[], []]);
+  });
+
+  it('leaves alone a name an entity, an earlier discovery or a deletion holds', () => {
+    const { plan, result } = runOf([{ id: 'narration', raw: NARRATION }]);
+    const commit = computeTurnCommit({
+      result, plan, context: context({
+        heldNames: ['Mira', 'Wick'], knownDiscoveredNames: ['Bram Teel'],
+        codeWrites: { discover: [{ name: 'Mira' }, { name: 'Wick', description: 'A runner.' }, { name: 'bram teel', description: 'Again.' }] },
+      }),
+    });
+    expect(commit?.turn.entities).toEqual(['Maela']);
+    expect(commit?.discoveries).toEqual([]);
+  });
+});
+
+describe('withCodeWrites — the After the AI writes', () => {
+  it('lays later writes over the ones the commit already carries', () => {
+    const { plan, result } = runOf([{ id: 'narration', raw: NARRATION }, { id: 'timePassed', raw: '30m' }]);
+    const ctx = context({ gameTime: 10 });
+    const early = computeTurnCommit({ result, plan, context: { ...ctx, codeWrites: { location: 'loc-inn', minutes: 30 } } });
+    const commit = early && withCodeWrites(early, { location: 'loc-gate', minutes: 30, discover: [{ name: 'Tor', description: 'A smith.' }] }, ctx);
+    expect(commit).toMatchObject({ codeMove: 'loc-gate', turnHours: 1, clock: { deltaHours: 1, elapsedHours: 11 } });
+    expect(commit?.turn).toMatchObject({ locationId: 'loc-gate', timeDelta: 1 });
+    expect(commit?.discoveries.map((d) => d.entity.name)).toEqual(['Tor']);
+  });
+
+  it('hands back the same commit for no writes', () => {
+    const { plan, result } = runOf([{ id: 'narration', raw: NARRATION }]);
+    const commit = computeTurnCommit({ result, plan, context: context() });
+    expect(commit && withCodeWrites(commit, undefined, context())).toBe(commit);
   });
 });
