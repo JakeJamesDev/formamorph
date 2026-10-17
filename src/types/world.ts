@@ -1,4 +1,4 @@
-import type { ChatMessage } from './ai';
+import type { ChatMessage, Tool } from './ai';
 
 /** A base64 data-URL string, e.g. "data:image/png;base64,...". */
 export type Base64Data = string;
@@ -712,6 +712,8 @@ export interface World {
   placeholders?: Placeholder[];
   /** Scripts no stat or trait owns; they run with no `self`. Absent = none. */
   scripts?: Script[];
+  /** World Tools, in Tools-tab order: offered in every playthrough of this world. Absent = none. */
+  tools?: Tool[];
 }
 
 /** One authored value: a stable id and the author's text. The id is minted once and never changes, so a

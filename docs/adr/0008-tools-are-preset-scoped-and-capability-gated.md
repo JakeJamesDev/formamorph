@@ -1,6 +1,6 @@
 # ADR-0008 — Tools are defined in settings, enabled per prompt preset, and go only to endpoints known to support them
 
-**Status:** Accepted · **Date:** 2026-09-25
+**Status:** Accepted · **Date:** 2026-09-25 · "A world author cannot ship a Tool" is superseded by [ADR-0013](0013-world-tools-ship-in-worlds.md)
 
 ## Context
 

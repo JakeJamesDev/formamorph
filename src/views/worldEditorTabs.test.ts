@@ -14,16 +14,16 @@ describe('editorTabGroupsFor', () => {
     ]);
   });
 
-  it('adds Placeholders to Vocabulary and Scripts under Logic in Advanced mode', () => {
+  it('adds Placeholders to Vocabulary, and Scripts and Tools under Logic, in Advanced mode', () => {
     expect(shape(true)).toEqual([
       [null, ['Overview']],
       ['Content', ['Entities', 'Locations', 'Traits', 'Stats']],
       ['Vocabulary', ['Dictionary', 'Placeholders']],
-      ['Logic', ['Scripts']],
+      ['Logic', ['Scripts', 'Tools']],
     ]);
   });
 
-  it('leaves Logic out in Simple mode, where Scripts is hidden', () => {
+  it('leaves Logic out in Simple mode, where Scripts and Tools are hidden', () => {
     expect(editorTabGroupsFor(false).some((group) => group.id === 'logic')).toBe(false);
   });
 

@@ -1,4 +1,4 @@
-import { Code, type LucideIcon } from 'lucide-react';
+import { Code, Wrench, type LucideIcon } from 'lucide-react';
 
 import { ELEMENT_ICONS } from '@/lib/elementIcons';
 
@@ -32,6 +32,7 @@ export const WORLD_EDITOR_TABS = [
   { value: 'dictionary', label: 'Dictionary', group: 'vocabulary', icon: ELEMENT_ICONS.dictionary },
   { value: 'placeholders', label: 'Placeholders', group: 'vocabulary', icon: ELEMENT_ICONS.placeholder, advancedOnly: true },
   { value: 'scripts', label: 'Scripts', group: 'logic', icon: Code, advancedOnly: true },
+  { value: 'tools', label: 'Tools', group: 'logic', icon: Wrench, advancedOnly: true },
 ] as const satisfies readonly WorldEditorTab[];
 
 /** The tabs one editor mode shows. Simple drops the `advancedOnly` ones. */

@@ -54,6 +54,8 @@ export interface TransportContext {
   resolveEndpoint: (kind: AIRequestType) => TransportTarget;
   /** The catalog, then the user Tools. */
   tools: readonly Tool[];
+  /** The world's own Tools, offered past the preset switches. */
+  worldTools: readonly Tool[];
   enabledTools: ToolEnabledMap;
   toolsEnabled: boolean;
   /** Builds the Tool Snapshot a request without its own executor reads. */
@@ -123,7 +125,7 @@ async function sendOnce(request: TransportRequest, context: TransportContext, si
 
   // Resolved once, so the capture and the body can never disagree about which target answered.
   const target = context.resolveEndpoint(requestType);
-  const tools = toolsOfferedTo(requestType, context.tools, context.enabledTools, context.toolsEnabled);
+  const tools = toolsOfferedTo(requestType, context.tools, context.enabledTools, context.toolsEnabled, context.worldTools);
   const executeTool = tools.length ? request.executeTool ?? snapshotToolExecutor(context.toolSnapshot) : undefined;
   const spec = buildAiRequestSpec({ ...context.settings, resolveTarget: () => target }, {
     systemPrompt, messages, requestType, maxTokensOverride, ...(executeTool && { tools }), ...(responseSchema && { responseSchema }),

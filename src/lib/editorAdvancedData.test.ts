@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { worldUsesAdvancedFeatures } from './editorAdvancedData';
 import type { AdvancedDataInput } from './editorAdvancedData';
-import type { Dictionary, Entity, GameLocation, Stat, Trait, WorldOverview } from '@/types';
+import type { Dictionary, Entity, GameLocation, Stat, Tool, Trait, WorldOverview } from '@/types';
 
 import { phValues } from '@/test/placeholderValues';
 import { boxScripts } from '@/test/scriptFixtures';
@@ -25,6 +25,14 @@ const plain = (over: Partial<AdvancedDataInput> = {}): AdvancedDataInput => ({
 describe('worldUsesAdvancedFeatures', () => {
   it('says no about a world whose every field Simple mode can show', () => {
     expect(worldUsesAdvancedFeatures(plain())).toBe(false);
+  });
+
+  it('says yes about a World Tool, which has no Simple tab at all', () => {
+    const tool: Tool = {
+      id: 'w1', name: 'roll_fate', description: '', params: [], handler: { kind: 'template', body: 'Yes.' }, emptyResult: '', offeredTo: ['narration'],
+    };
+    expect(worldUsesAdvancedFeatures(plain({ tools: [tool] }))).toBe(true);
+    expect(worldUsesAdvancedFeatures(plain({ tools: [] }))).toBe(false);
   });
 
   it('says yes about a placeholder, which has no Simple tab at all', () => {

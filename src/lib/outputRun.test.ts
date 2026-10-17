@@ -215,7 +215,7 @@ describe('an output run through a narration round that ends in Tool calls', () =
     };
     return {
       settings: textSnapshot(target), resolveEndpoint: () => target,
-      tools: [LOOKUP], enabledTools: { [LOOKUP.id]: true }, toolsEnabled: true,
+      tools: [LOOKUP], worldTools: [], enabledTools: { [LOOKUP.id]: true }, toolsEnabled: true,
       toolSnapshot: () => { throw new Error('No Tool Snapshot here'); },
       showSilentRequests: false, noteReasoningReply: () => {}, noteSchemaRejected: () => {}, fetchImpl,
     };

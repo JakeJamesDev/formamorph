@@ -40,6 +40,14 @@ const NAME_PROBLEM: Record<ToolNameProblem, string> = {
   builtin: 'A built-in Tool uses this name',
 };
 
+/** Where the edited Tool lives: the player's own list, or a world's (which may take a built-in name). */
+export type ToolHome = 'user' | 'world';
+
+const NAME_PROBLEM_BY_HOME: Record<ToolHome, Record<ToolNameProblem, string>> = {
+  user: NAME_PROBLEM,
+  world: { ...NAME_PROBLEM, taken: 'Another Tool in this world uses this name' },
+};
+
 /** Shown under a parameter's name. An unnamed one is left to the footer, so a new card isn't born red. */
 const PARAM_PROBLEM: Record<ParamProblem, string | null> = {
   unnamed: null,
@@ -81,8 +89,8 @@ const LOOKUP_SOURCES: readonly { value: LookupSource; label: string; matches: st
 ];
 
 /** Label, help, control, then the control's problem: the Design System's field help order. */
-function Field({ id, label, hint, error, aside, children }: {
-  id: string; label: string; hint?: string; error?: string | null; aside?: ReactNode; children: ReactNode;
+function Field({ id, label, hint, note, error, aside, children }: {
+  id: string; label: string; hint?: string; note?: string | null; error?: string | null; aside?: ReactNode; children: ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-1 min-w-0">
@@ -91,6 +99,7 @@ function Field({ id, label, hint, error, aside, children }: {
         {aside}
       </div>
       {hint && <Hint>{hint}</Hint>}
+      {note && <Hint role="note">{note}</Hint>}
       {children}
       {error && <FieldError id={`${id}-error`}>{error}</FieldError>}
     </div>
@@ -117,17 +126,20 @@ function JsonField({ id, value, onChange }: { id: string; value: string; onChang
 /** A tab body. */
 interface TabProps { draft: Tool; onChange: Change; problems: DraftProblems }
 
-function DefinitionTab({ draft, onChange, problems }: TabProps) {
+function DefinitionTab({ draft, onChange, problems, home, nameNote }: TabProps & { home: ToolHome; nameNote?: string | null }) {
   const id = useId();
   const missing = OUTLINE.filter((heading) => !draft.description.includes(heading));
   const addOutline = () => {
     const kept = draft.description.trimEnd();
     onChange({ ...draft, description: `${kept}${kept ? '\n' : ''}${missing.map((h) => `${h} `).join('\n')}` });
   };
-  const nameError = draft.name && problems.name ? NAME_PROBLEM[problems.name] : null;
+  const nameError = draft.name && problems.name ? NAME_PROBLEM_BY_HOME[home][problems.name] : null;
   return (
     <div className="flex flex-col gap-4">
-      <Field id={`${id}-name`} label="Name" hint="Names the Tool for the AI, such as find_person" error={nameError}>
+      <Field
+        id={`${id}-name`} label="Name" hint="Names the Tool for the AI, such as find_person" error={nameError}
+        note={nameError ? null : nameNote}
+      >
         <Input
           id={`${id}-name`} value={draft.name} className="font-mono"
           aria-invalid={!!nameError} aria-describedby={nameError ? `${id}-name-error` : undefined}
@@ -377,7 +389,7 @@ function fixesToSave(draft: Tool, problems: DraftProblems): string | null {
  */
 export function ToolEditor({
   draft, onDraftChange, keptHandlers, editTab, onEditTabChange, userTools, reservedNames = [], editing, world, fullscreen, fullscreenButton,
-  onCancel, onSave,
+  onCancel, onSave, home = 'user', nameNote,
 }: {
   draft: Tool;
   /** Takes the new kept handlers too when a handler type switch changed them. */
@@ -385,8 +397,11 @@ export function ToolEditor({
   keptHandlers: KeptHandlers;
   editTab: ToolEditTab;
   onEditTabChange: (tab: ToolEditTab) => void;
-  /** The user Tools, for the name check. */
+  /** The Tools of the draft's home, for the name check. */
   userTools: readonly Tool[];
+  home?: ToolHome;
+  /** Shown under a valid name, such as the Tool a World Tool replaces. */
+  nameNote?: string | null;
   /** The caller's fixed function names, which the name check refuses as built-in. */
   reservedNames?: readonly string[];
   /** True when the draft edits a saved Tool, false for a new one. */
@@ -398,7 +413,7 @@ export function ToolEditor({
   onCancel: () => void;
   onSave: () => void;
 }) {
-  const problems = draftProblems(draft, userTools, reservedNames);
+  const problems = draftProblems(draft, userTools, reservedNames, { world: home === 'world' });
   const blocked = hasDraftProblems(problems);
   const fixes = fixesToSave(draft, problems);
   const body = { draft, onChange: (next: Tool) => onDraftChange(next), problems };
@@ -432,7 +447,7 @@ export function ToolEditor({
           <PanelTabsList tabs={TOOL_EDIT_TABS} stripLabel="Tool Fields" labelClassName="hidden sm:inline" />
           <ScrollArea className="flex-1 min-h-0">
             <div className="pr-3 pb-1">
-              <TabsContent value="definition" className="mt-0"><DefinitionTab {...body} /></TabsContent>
+              <TabsContent value="definition" className="mt-0"><DefinitionTab {...body} home={home} nameNote={nameNote} /></TabsContent>
               <TabsContent value="parameters" className="mt-0"><ParametersTab {...body} /></TabsContent>
               <TabsContent value="handler" className="mt-0"><HandlerTab {...body} onKindChange={switchKind} placeholderNames={placeholderNames} chipReads={toolSnapshot.chips} names={open ? toolSnapshot : null} /></TabsContent>
             </div>

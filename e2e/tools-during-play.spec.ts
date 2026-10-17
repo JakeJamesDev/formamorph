@@ -112,11 +112,11 @@ test('a Tool defined in Settings is called during the game, and AI Context shows
 
   server.hold();
   await act(page, 'I ask the clerk what I owe.');
-  // Between the call and the reply, the silent status line names the lookup.
-  await expect(page.getByText('Looking up…')).toBeVisible();
+  // Between the call and the reply, the silent status line names the Tool.
+  await expect(page.getByText(`Calling ${TOOL_NAME}…`)).toBeVisible();
   server.release();
   await expect(page.getByText(REPLY).last()).toBeVisible();
-  await expect(page.getByText('Looking up…')).toHaveCount(0);
+  await expect(page.getByText(`Calling ${TOOL_NAME}…`)).toHaveCount(0);
 
   const [first, second] = server.bodies;
   expect(first.tools?.map((t) => t.function.name)).toEqual([TOOL_NAME]);
@@ -167,7 +167,7 @@ test('with Show Silent Requests off, a Tool round stays out of sight, and Stop e
   await act(page, 'I ask the clerk what I owe.');
   await expect.poll(() => server.bodies.length).toBe(2);
   await expect(page.getByText('Generating Narration…')).toBeVisible();
-  await expect(page.getByText('Looking up…')).toHaveCount(0);
+  await expect(page.getByText(/^Calling /)).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Stop generating' }).click();
   await expect(page.getByPlaceholder(/Type your action/)).toBeEnabled();

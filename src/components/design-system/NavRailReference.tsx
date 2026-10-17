@@ -18,6 +18,7 @@ const BODY: Record<(typeof WORLD_EDITOR_TABS)[number]['value'], string> = {
   dictionary: 'The dictionaries and their entries.',
   placeholders: 'Every placeholder in the world, by owner.',
   scripts: 'Every script in the world, by timing.',
+  tools: 'The world\'s Tools, in run order.',
 };
 
 function Option({ id, label, checked, onChange }: { id: string; label: string; checked: boolean; onChange: (value: boolean) => void }) {

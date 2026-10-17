@@ -90,6 +90,7 @@ import { ThemedToastContainer } from '@/components/ThemedToastContainer';
 import 'react-toastify/dist/ReactToastify.css';
 import { useWorldStatsAdapter } from '../managers/useWorldStatsAdapter';
 import { useWorldScriptsAdapter } from '../managers/useWorldScriptsAdapter';
+import { useWorldToolsAdapter } from '../managers/useWorldToolsAdapter';
 import { useWorldEntitiesAdapter } from '../managers/useWorldEntitiesAdapter';
 import { useWorldLocationsAdapter } from '../managers/useWorldLocationsAdapter';
 import { useWorldDictionaryAdapter } from '../managers/useWorldDictionaryAdapter';
@@ -188,7 +189,7 @@ const WorldEditorInner = ({
     updateWorldOverview, worldId, worldOverview,
     loadWorldData, getWorldData,
     stats, statGroups, locations, entities, entityGroups, traits, traitGroups, dictionaries, placeholders, placementLetters,
-    worldPlaceholders, placeholderOwners, placeholderGroups,
+    worldPlaceholders, placeholderOwners, placeholderGroups, worldTools,
     addStat, addLocation, addEntity, addTrait, addDictionary,
     addPlaceholder,
     updateStat, updateStatGroup, updateEntity, updateEntityGroup, updateLocation, updateTrait, updateTraitGroup,
@@ -201,11 +202,13 @@ const WorldEditorInner = ({
   const { editorAutoSave, setEditorAutoSave, editorAutoSaveIdleSeconds } = useSettings();
   const { promptWorld, dialog: downscaleDialog } = useDownscalePrompt();
 
-  // A Formaquestion Tool and the code test read the world as the editor holds it, unsaved edits included.
-  useHelpWorldSource(useCallback(() => {
+  // A Formaquestion Tool, a World Tool's Try It and the code test read the world as the editor holds it,
+  // unsaved edits included.
+  const editorToolWorld = useCallback(() => {
     const world = getWorldData();
     return buildToolSnapshot(authoredChipScene(world), world.dictionaries ?? []);
-  }, [getWorldData]), getWorldData);
+  }, [getWorldData]);
+  useHelpWorldSource(editorToolWorld, getWorldData);
 
   // Assemble the editor's live world for an image scan/downscale (id/version unused by the scan).
   const buildCurrentWorld = (): World => ({
@@ -969,6 +972,9 @@ const WorldEditorInner = ({
   const selectScript = useCallback((id: string | null) => select('scripts', id), [select]);
   const scriptsAdapter = useWorldScriptsAdapter({ selectedId: selections.scripts ?? null, onSelect: selectScript, active: activeTab === 'scripts' });
   const scriptsParts = useListEditor(scriptsAdapter, { selectedId: selections.scripts ?? null, onSelect: selectScript, search });
+  const selectTool = useCallback((id: string | null) => select('tools', id), [select]);
+  const toolsAdapter = useWorldToolsAdapter({ selectedId: selections.tools ?? null, onSelect: selectTool, snapshot: editorToolWorld });
+  const toolsParts = useListEditor(toolsAdapter, { selectedId: selections.tools ?? null, onSelect: selectTool, search });
   // The entity panel's tab and its trait and placeholder rows live here, so a new entity keeps them.
   const selectEntity = useCallback((id: string | null) => select('entities', id), [select]);
   const entitiesEditor = useWorldEntitiesAdapter({
@@ -1028,12 +1034,13 @@ const WorldEditorInner = ({
   // The active tab's List Editor parts, on a tab that runs on it.
   const partsByTab: Partial<Record<string, ListEditorParts>> = {
     traits: traitsParts, placeholders: placeholdersParts, stats: statsParts,
-    entities: entitiesParts, locations: locationsParts, dictionary: dictionaryParts, scripts: scriptsParts,
+    entities: entitiesParts, locations: locationsParts, dictionary: dictionaryParts, scripts: scriptsParts, tools: toolsParts,
   };
   const listEditorParts = partsByTab[activeTab] ?? null;
   const adaptersByTab: Partial<Record<RevealTab, { holds: (id: string) => boolean }>> = {
     traits: traitsAdapter, placeholders: placeholdersEditor.adapter, stats: statsAdapter,
     entities: entitiesEditor.adapter, locations: locationsAdapter, dictionary: dictionaryEditor.adapter, scripts: scriptsAdapter,
+    tools: toolsAdapter,
   };
   listHoldsRef.current = (tab, id) => !!adaptersByTab[tab]?.holds(id);
   // What the author sees on the active tab beyond the tab itself, for a new Step's Origin.
@@ -1150,7 +1157,7 @@ const WorldEditorInner = ({
   // Shared chrome — reused by the desktop resizable split and the mobile single-panel layout.
   // Only meaningful in Simple mode, where something in this world is out of sight.
   const hasHiddenData = !advanced && worldUsesAdvancedFeatures({
-    worldOverview: getWorldData().worldOverview, stats, entities, locations, traits, dictionaries, placeholders,
+    worldOverview: getWorldData().worldOverview, stats, entities, locations, traits, dictionaries, placeholders, tools: worldTools,
   });
   const findButton = (
     <Tip tip="Find and replace" labelsChild={false}>
