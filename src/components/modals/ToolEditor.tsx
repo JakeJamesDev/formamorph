@@ -37,6 +37,7 @@ import type { ValueLookup } from '@/lib/promptValues';
 import { armsTrigger, type ToolNameProblem } from '@/lib/tools/toolValidation';
 import { TOOL_EDIT_TABS, type ToolEditTab } from './toolsView';
 import { ToolTryIt, type TryItWorld } from './ToolTryIt';
+import { useTryItPlacement } from './useTryItPlacement';
 
 type Change = (next: Tool) => void;
 
@@ -479,7 +480,8 @@ function fixesToSave(draft: Tool, problems: DraftProblems): string | null {
 
 /**
  * Edit mode for a user Tool: Definition, Parameters and Handler on the World Editor's panel tab strip, Try It
- * beside them, and Cancel and Save Tool below. The draft and the tab live with the caller.
+ * beside them (a fourth tab when the editor is narrow), and Cancel and Save Tool below. The draft and the tab
+ * live with the caller.
  */
 export function ToolEditor({
   draft, onDraftChange, keptHandlers, editTab, onEditTabChange, userTools, reservedNames = [], editing, world, fullscreen, fullscreenButton,
@@ -522,40 +524,49 @@ export function ToolEditor({
   const toolSnapshot = useMemo(() => snapshot(), [snapshot]);
   const placeholderNames = useMemo(() => (open ? Object.keys(toolSnapshot.placeholders) : []), [open, toolSnapshot]);
 
+  const { gridRef, narrow, shownTab, tryItOpen, tabs } = useTryItPlacement(editTab, onEditTabChange);
+
   return (
     <div className="flex flex-col flex-1 min-h-0 gap-3">
       <div className="flex items-center justify-between gap-2 flex-shrink-0">
         <p className="text-label font-medium truncate">{editing ? `Edit ${draft.name}` : 'New Tool'}</p>
         {fullscreenButton}
       </div>
-      <div
+      <Tabs
+        ref={gridRef}
         data-testid="tool-editor-grid"
+        surfaceTabs="settingsToolEdit"
+        value={shownTab} onValueChange={(t) => onEditTabChange(t as ToolEditTab)}
         className={cn(
-          'grid flex-1 min-h-0 gap-4 grid-rows-[minmax(0,2fr)_minmax(0,1fr)] lg:grid-rows-1',
-          fullscreen ? 'lg:grid-cols-[minmax(0,2fr)_minmax(22rem,1fr)]' : 'lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]',
+          'grid flex-1 min-h-0 grid-rows-1',
+          narrow && 'grid-cols-1 gap-3',
+          narrow && tryItOpen && 'grid-rows-[auto_minmax(0,1fr)]',
+          !narrow && 'gap-4',
+          !narrow && (fullscreen ? 'grid-cols-[minmax(0,2fr)_minmax(22rem,1fr)]' : 'grid-cols-[minmax(0,1fr)_minmax(0,22rem)]'),
         )}
       >
-        <Tabs
-          surfaceTabs="settingsToolEdit"
-          value={editTab} onValueChange={(t) => onEditTabChange(t as ToolEditTab)}
-          className="flex flex-col min-h-0 gap-3"
-        >
-          <PanelTabsList tabs={TOOL_EDIT_TABS} stripLabel="Tool Fields" labelClassName="hidden sm:inline" />
-          <ScrollArea className="flex-1 min-h-0">
+        <div className="flex flex-col min-h-0 gap-3">
+          <PanelTabsList tabs={tabs} stripLabel="Tool Fields" labelClassName="hidden sm:inline" />
+          <ScrollArea className={cn('flex-1 min-h-0', tryItOpen && 'hidden')}>
             <div className="pr-3 pb-1">
               <TabsContent value="definition" className="mt-0"><DefinitionTab {...body} home={home} nameNote={nameNote} /></TabsContent>
               <TabsContent value="parameters" className="mt-0"><ParametersTab {...body} /></TabsContent>
               <TabsContent value="handler" className="mt-0"><HandlerTab {...body} home={home} worldCode={worldCode} onKindChange={switchKind} placeholderNames={placeholderNames} chipReads={toolSnapshot.chips} names={open ? toolSnapshot : null} /></TabsContent>
             </div>
           </ScrollArea>
-        </Tabs>
-        <ScrollArea className="h-full min-h-0 rounded-md border">
-          <div className="p-3">
-            {/* The draft as it would save, so a list option typed with spaces matches as it will in play. */}
-            <ToolTryIt tool={finishDraft(draft)} world={world} />
-          </div>
-        </ScrollArea>
-      </div>
+        </div>
+        {/* One Try It serves the column and the tab. It stays mounted while hidden, so its inputs and result stay. */}
+        <TabsContent
+          value="tryIt" forceMount hidden={narrow && !tryItOpen} role={narrow ? 'tabpanel' : 'presentation'} className="mt-0 min-h-0"
+        >
+          <ScrollArea className="h-full min-h-0 rounded-md border">
+            <div className="p-3">
+              {/* The draft as it would save, so a list option typed with spaces matches as it will in play. */}
+              <ToolTryIt tool={finishDraft(draft)} world={world} />
+            </div>
+          </ScrollArea>
+        </TabsContent>
+      </Tabs>
       <div className="flex flex-wrap items-center justify-end gap-2 border-t pt-3 flex-shrink-0">
         {fixes && <p role="status" className="mr-auto text-helper text-muted-foreground">{fixes}</p>}
         <Button variant="outline" onClick={onCancel}>Cancel</Button>

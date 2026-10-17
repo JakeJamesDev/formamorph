@@ -123,7 +123,7 @@ export const DEV_MODAL_TABS = {
   settings: ['display', 'output', 'prompts', 'tools', 'endpoints', 'data'],
   // Settings → Tools opens a New Tool draft on its edit tab with `subtab=…`
   // (`#dev?modal=settings&tab=tools&subtab=handler`). The Tools tab is Advanced only.
-  settingsToolEdit: ['definition', 'parameters', 'handler'],
+  settingsToolEdit: ['definition', 'parameters', 'handler', 'tryIt'],
   // Settings → Endpoints opens its own tab with the same `subtab=…` (`#dev?modal=settings&tab=endpoints&subtab=image`).
   // `tagPrompt` is Advanced only and hidden while image generation is off.
   settingsEndpoints: ['text', 'image', 'tagPrompt'],

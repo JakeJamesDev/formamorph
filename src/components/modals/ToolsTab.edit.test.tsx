@@ -293,14 +293,14 @@ describe('the editor layout', () => {
   it('keeps the fixed Try It track when docked', async () => {
     const user = userEvent.setup();
     await openEditor(user);
-    expect(grid()).toHaveClass('lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]');
+    expect(grid()).toHaveClass('grid-cols-[minmax(0,1fr)_minmax(0,22rem)]');
   });
 
   it('gives Try It one third of the width in full screen, with a 22rem floor', async () => {
     const user = userEvent.setup();
     await openEditor(user, [weather()], true);
-    expect(grid()).toHaveClass('lg:grid-cols-[minmax(0,2fr)_minmax(22rem,1fr)]');
-    expect(grid()).not.toHaveClass('lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]');
+    expect(grid()).toHaveClass('grid-cols-[minmax(0,2fr)_minmax(22rem,1fr)]');
+    expect(grid()).not.toHaveClass('grid-cols-[minmax(0,1fr)_minmax(0,22rem)]');
   });
 });
 

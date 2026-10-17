@@ -34,7 +34,7 @@ The dot next to a Tool's name is filled while the Tool is on in that preset. A n
 5. On the **Parameters** tab, select **Add Parameter** for each value the AI passes.
 6. Set the **Name**, **Type** and **Description** of each parameter.
 7. On the **Handler** tab, pick the **Handler Type** and fill in its settings. See [Handler](#handler).
-8. Run the Tool in **Try It** next to the tabs. See [How to Try a Tool](#how-to-try-a-tool).
+8. Run the Tool in **Try It** next to the tabs, or on the **Try It** tab in a narrow editor. See [How to Try a Tool](#how-to-try-a-tool).
 9. Select **Save Tool**.
 
 A new Tool is on in the active preset. **Save Tool** is off while the Tool has a problem. The line next to it names each fix and its tab, such as "Name the Tool (Definition) to save".
@@ -173,7 +173,7 @@ The lookup Tools return an empty `matches` list when nothing matches. Matching i
 <!-- keywords: naming rules, boolean, enum dropdown, string or integer, canned response, nothing found message, time limit, what code can access, three behavior kinds -->
 <!-- route: settings.tools -->
 
-**New Tool** and **Edit** open the editor. It has three tabs, with **Try It** next to them. **Cancel** closes it without a save.
+**New Tool** and **Edit** open the editor. It has three tabs, with **Try It** next to them. In a narrow editor, **Try It** is a fourth tab. **Cancel** closes it without a save.
 
 ### Definition
 
@@ -239,8 +239,12 @@ A script reads four values. Each one is frozen: a script reads it and cannot cha
 `placeholders` holds the resolved text of each shared placeholder, by name. A name with a space needs brackets: `placeholders["Place Name"]`.
 
 ## Try It
+<!-- keywords: try it tab, fourth tab, narrow editor, small window, side column -->
+<!-- route: settingsToolEdit.tryIt -->
 
 **Try It** shows on the selected Tool and next to the editor. See [How to Try a Tool](#how-to-try-a-tool). In the editor it runs the Tool as it would save, so you can test a change before **Save Tool**.
+
+When the editor is narrow, **Try It** leaves its column and becomes a fourth tab. Your values and the last result stay when you switch to another tab and back. When the editor widens, **Try It** returns to its column and the editor opens the tab you used last.
 
 ## Related
 
