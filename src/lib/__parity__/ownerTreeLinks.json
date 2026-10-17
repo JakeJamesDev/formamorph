@@ -6869,58 +6869,25 @@
       "boundStats": {
         "stats": [
           {
-            "description": "Represents the player's physical well-being and ability to sustain damage",
+            "description": "How much running the player has left. Running, dodging and climbing spend it. Rest in a quiet spot restores it.",
             "descriptors": [
               {
-                "description": "Critical condition. Severely wounded, barely conscious, and at risk of death.",
-                "id": "health_critical",
-                "threshold": 10
-              },
-              {
-                "description": "Injured. Suffering from multiple wounds, movement impaired, combat effectiveness reduced.",
-                "id": "health_injured",
-                "threshold": 40
-              },
-              {
-                "description": "Hurt. Minor injuries present, some pain, but generally functional.",
-                "id": "health_hurt",
-                "threshold": 70
-              },
-              {
-                "description": "Healthy. No significant injuries, operating at full capacity.",
-                "id": "health_healthy",
-                "threshold": 100
-              }
-            ],
-            "id": "health",
-            "max": 100,
-            "min": 0,
-            "name": "Health",
-            "regen": 3,
-            "starting": 100,
-            "type": "number",
-            "value": 100
-          },
-          {
-            "description": "Represents the player's energy and ability to perform physical actions",
-            "descriptors": [
-              {
-                "description": "Exhausted. Barely able to move, risk of collapse, unable to perform strenuous actions.",
+                "description": "Spent. Legs shaking, lungs burning; a brisk walk is the best on offer.",
                 "id": "stamina_exhausted",
                 "threshold": 10
               },
               {
-                "description": "Tired. Movements are sluggish, difficulty in sustained physical activities.",
+                "description": "Tired. Breathing hard, and every staircase feels twice as long.",
                 "id": "stamina_tired",
                 "threshold": 40
               },
               {
-                "description": "Winded. Slightly out of breath, can perform most actions but not at peak efficiency.",
+                "description": "Winded. A little out of breath, still good for a sprint or two.",
                 "id": "stamina_winded",
                 "threshold": 70
               },
               {
-                "description": "Energetic. Full of energy, capable of performing any physical action without hindrance.",
+                "description": "Fresh. Bouncing on the balls of their feet, ready to run.",
                 "id": "stamina_energetic",
                 "threshold": 100
               }
@@ -6936,25 +6903,25 @@
             "value": 100
           },
           {
-            "description": "How much sugary chocolate the player has eaten recently. Too much causes a queasy sugar overload.",
+            "description": "How much chocolate the player has eaten. Each chocolate eaten raises it, and it fades slowly on its own.",
             "descriptors": [
               {
-                "description": "Fresh. Hasn't eaten much; light on their feet.",
+                "description": "Clear. Barely a taste of chocolate; light on their feet.",
                 "id": 1,
                 "threshold": 10
               },
               {
-                "description": "Satisfied. Had a few chocolates, feeling fine.",
+                "description": "Sweet. A few chocolates down, a sugary taste that lingers.",
                 "id": 2,
                 "threshold": 40
               },
               {
-                "description": "Sugar high. Eaten a lot of sweets; starting to feel jittery and sluggish.",
+                "description": "Sugar high. Jittery hands, a racing heart and a heavy stomach.",
                 "id": 3,
                 "threshold": 70
               },
               {
-                "description": "Sugar crash. Far too much chocolate; queasy and struggling to keep moving.",
+                "description": "Sugar crash. Queasy and slow; the next chocolate might be the last one they can take.",
                 "id": 4,
                 "threshold": 100
               }
@@ -6970,10 +6937,10 @@
             "value": 0
           },
           {
-            "description": "Live readout of how quick the player really is right now — tracks Stamina and drops as Sugar climbs.",
+            "description": "How quick the player is right now. It follows Stamina and Sugar.",
             "descriptors": [
               {
-                "description": "Leaden. Legs like wet cement; a determined walker could catch you.",
+                "description": "Leaden. Legs like wet cement; a determined walker could catch them.",
                 "id": "agility_leaden",
                 "threshold": 10
               },
@@ -6988,7 +6955,7 @@
                 "threshold": 70
               },
               {
-                "description": "Untouchable. Full speed — nobody in this school can lay a ribbon on you.",
+                "description": "Untouchable. Full speed; nobody in this school can lay a ribbon on them.",
                 "id": "agility_untouchable",
                 "threshold": 100
               }
@@ -7000,7 +6967,7 @@
             "regen": 0,
             "scripts": [
               {
-                "code": "const stamina = owner.stats.Stamina.value;\nconst sugar = owner.stats.Sugar.value;\nreturn Math.round(stamina * 0.7 + 30 - sugar * 0.4);",
+                "code": "// Agility: how quick the player is right now. It is a readout of the body, so this script sets it every turn.\nconst stamina = owner.stats.Stamina;\nconst sugar = owner.stats.Sugar;\nconst traits = owner.traits;\n\n// Energy sets the base. Even an exhausted student can shuffle along, so the base is 30 and full Stamina adds 70.\n// Stamina is read as a share of its max, so Star Athlete's bigger tank counts the same when it is full.\nconst energy = stamina.value / stamina.max;\nlet agility = 30 + energy * 70;\n\n// Chocolate weighs the legs down: a full stomach costs 40.\n// Sugar is read as a share of its max too, so a Sweet Tooth fills up later and a Dainty Appetite sooner.\nconst fullness = sugar.value / sugar.max;\nagility = agility - fullness * 40;\n\n// All-Out Sprint trades Stamina for speed. While it is on, the player gets a burst of 20.\nif (traits[\"All-Out Sprint\"].enabled) agility = agility + 20;\n\n// The stat clamps the result to 0–100.\nreturn Math.round(agility);",
                 "id": "agility:after",
                 "timing": "after"
               }
@@ -7014,7 +6981,7 @@
       "boundTraits": {
         "traitGroups": [
           {
-            "aiDescription": "The player’s reputation — why they are the most popular student at Ashburn High:",
+            "aiDescription": "The player's reputation, the reason they are the most popular student at Ashburn High:",
             "id": "e5ac8e6e-e0fb-4fea-807e-f4768af6d658",
             "maxPicks": 1,
             "name": "Reputation",
@@ -7023,7 +6990,7 @@
             "playerDescription": "Why the whole school is after you. Pick one."
           },
           {
-            "aiDescription": "How the player’s body handles chocolate:",
+            "aiDescription": "How the player's body handles chocolate:",
             "id": "c20b44fc-867e-491c-b538-da0a446cd92c",
             "maxPicks": 1,
             "name": "Constitution",
@@ -7042,7 +7009,7 @@
         ],
         "traits": [
           {
-            "aiDescription": "The player is the ace of the track team — famous for speed, with deep stamina reserves and fast recovery.",
+            "aiDescription": "The player is the ace of the track team, famous for speed, with deep stamina reserves and fast recovery.",
             "groupId": "e5ac8e6e-e0fb-4fea-807e-f4768af6d658",
             "id": "3d66f368-7497-4649-a010-fbdbf04dfe27",
             "isDefault": true,
@@ -7063,21 +7030,21 @@
             ]
           },
           {
-            "aiDescription": "The player is the class idol. Admirers are too love-struck to grab or tackle them outright, which opens escape windows — but every sighting draws more admirers, so the swarm keeps growing.",
+            "aiDescription": "The player is the class idol. Admirers are too love-struck to grab or tackle them outright, which opens escape windows. Every sighting draws more admirers, so the swarm keeps growing.",
             "groupId": "e5ac8e6e-e0fb-4fea-807e-f4768af6d658",
             "id": "d0de9e84-ff76-4a80-8915-7ccdb5e52bd1",
             "name": "Class Idol",
             "order": 1,
-            "playerDescription": "So beloved the swarm hesitates to lay hands on you — but it grows with every sighting.",
+            "playerDescription": "So adored that admirers hesitate to grab you. Every sighting draws more of them.",
             "statChanges": []
           },
           {
-            "aiDescription": "The player is the student council president. They can quote school rules with authority to stall admirers and talk their way past staff; classmates hesitate to mob someone they answer to.",
+            "aiDescription": "The player is the student council president. They quote school rules with authority to stall admirers and talk their way past staff. Classmates hesitate to mob someone they answer to.",
             "groupId": "e5ac8e6e-e0fb-4fea-807e-f4768af6d658",
             "id": "39515312-4278-4498-854e-d628aafce4f6",
             "name": "Student Council President",
             "order": 2,
-            "playerDescription": "Respected, not just adored. You can bluff with rules, and the crowd organizes against you more slowly.",
+            "playerDescription": "Respected, not only adored. You can bluff with the rules, and the swarm organizes more slowly.",
             "statChanges": [
               {
                 "statId": "pursuit",
@@ -7087,13 +7054,13 @@
             ]
           },
           {
-            "aiDescription": "The player has an iron stomach — sugar burns off quickly and rarely slows them for long.",
+            "aiDescription": "The player has an iron stomach: sugar burns off quickly and rarely slows them for long.",
             "groupId": "c20b44fc-867e-491c-b538-da0a446cd92c",
             "id": "4c210346-147a-41df-99ed-3e39d90ce785",
             "isDefault": true,
             "name": "Iron Stomach",
             "order": 0,
-            "playerDescription": "Sugar burns off you fast. Eat, grimace, keep moving.",
+            "playerDescription": "Sugar burns off you fast. Eat, wince and keep moving.",
             "statChanges": [
               {
                 "statId": "stomach",
@@ -7103,7 +7070,7 @@
             ]
           },
           {
-            "aiDescription": "The player has a sweet tooth: they can eat far more chocolate before a sugar crash, but genuinely enjoy every piece — temptation to accept \"just one more\" is a real weakness.",
+            "aiDescription": "The player has a sweet tooth. They can eat far more chocolate before a sugar crash, and they enjoy every piece, so \"just one more\" tempts them.",
             "groupId": "c20b44fc-867e-491c-b538-da0a446cd92c",
             "id": "33c896ee-ceae-40b0-b63d-62a252ed143a",
             "name": "Sweet Tooth",
@@ -7118,12 +7085,12 @@
             ]
           },
           {
-            "aiDescription": "The player has a dainty appetite — even a few chocolates push them toward a sugar crash, so every accepted box matters.",
+            "aiDescription": "The player has a dainty appetite. Even a few chocolates push them toward a sugar crash, so every accepted box matters.",
             "groupId": "c20b44fc-867e-491c-b538-da0a446cd92c",
             "id": "75c8676a-a7d1-4e64-a850-88bb748d3dd3",
             "name": "Dainty Appetite",
             "order": 2,
-            "playerDescription": "A few chocolates is already a lot. The crash comes early — dodge like it matters.",
+            "playerDescription": "A few chocolates is already a lot. The crash comes early, so every dodge matters.",
             "statChanges": [
               {
                 "statId": "stomach",
@@ -7133,7 +7100,7 @@
             ]
           },
           {
-            "aiDescription": "The player is wearing proper running shoes — quick acceleration and fast stamina recovery.",
+            "aiDescription": "The player is wearing proper running shoes: quick acceleration and fast stamina recovery.",
             "groupId": "5c0949e5-0247-40c0-9f0e-0cb4b551e483",
             "id": "7b38f953-36a4-499d-be1d-63bf72da4f92",
             "name": "Running Shoes",
@@ -7148,7 +7115,7 @@
             ]
           },
           {
-            "aiDescription": "The player carries a box of store-bought decoy chocolates. Thrown or dropped, they scatter admirers who scramble for them; re-gifted, they can redirect an admirer’s attention entirely.",
+            "aiDescription": "The player carries a box of store-bought decoy chocolates. Thrown or dropped, they scatter admirers who scramble for them; re-gifted, they can redirect an admirer's attention entirely.",
             "groupId": "5c0949e5-0247-40c0-9f0e-0cb4b551e483",
             "id": "94f8ee3a-aa1a-43c6-9d15-f3b19d1de7ac",
             "name": "Decoy Chocolates",
@@ -7157,7 +7124,7 @@
             "statChanges": []
           },
           {
-            "aiDescription": "The player carries a hand-annotated map of Ashburn High marking shortcuts, fire doors, and camera blind spots — they always know an alternate route between any two places in the school.",
+            "aiDescription": "The player carries a hand-annotated map of Ashburn High marking shortcuts, fire doors, and camera blind spots. They always know an alternate route between any two places in the school.",
             "groupId": "5c0949e5-0247-40c0-9f0e-0cb4b551e483",
             "id": "28ce4715-cf88-480d-9f35-958d523bf9a8",
             "name": "Annotated School Map",
@@ -7166,17 +7133,17 @@
             "statChanges": []
           },
           {
-            "aiDescription": "ACTIVE: the player is sprinting flat out — much harder to catch, ignoring pleasantries, vaulting obstacles. Sustained sprinting is exhausting.",
+            "aiDescription": "The player is sprinting flat out: much harder to catch, vaulting obstacles and skipping pleasantries. It wears them out fast.",
             "id": "59e13f82-35f8-490c-bb01-35c4ecf00523",
             "name": "All-Out Sprint",
             "order": 3,
-            "playerDescription": "Drop everything and run flat out. Fast — but your stamina stops recovering while it’s on.",
+            "playerDescription": "Run flat out. You're much faster, but your Stamina drains each turn.",
             "playerToggle": true,
             "statChanges": [
               {
                 "statId": "stamina",
                 "type": "regen",
-                "value": -6
+                "value": -10
               }
             ]
           }
@@ -7185,58 +7152,25 @@
       "carriedStats": {
         "stats": [
           {
-            "description": "Represents the player's physical well-being and ability to sustain damage",
+            "description": "How much running the player has left. Running, dodging and climbing spend it. Rest in a quiet spot restores it.",
             "descriptors": [
               {
-                "description": "Critical condition. Severely wounded, barely conscious, and at risk of death.",
-                "id": "health_critical",
-                "threshold": 10
-              },
-              {
-                "description": "Injured. Suffering from multiple wounds, movement impaired, combat effectiveness reduced.",
-                "id": "health_injured",
-                "threshold": 40
-              },
-              {
-                "description": "Hurt. Minor injuries present, some pain, but generally functional.",
-                "id": "health_hurt",
-                "threshold": 70
-              },
-              {
-                "description": "Healthy. No significant injuries, operating at full capacity.",
-                "id": "health_healthy",
-                "threshold": 100
-              }
-            ],
-            "id": "health",
-            "max": 100,
-            "min": 0,
-            "name": "Health",
-            "regen": 3,
-            "starting": 100,
-            "type": "number",
-            "value": 100
-          },
-          {
-            "description": "Represents the player's energy and ability to perform physical actions",
-            "descriptors": [
-              {
-                "description": "Exhausted. Barely able to move, risk of collapse, unable to perform strenuous actions.",
+                "description": "Spent. Legs shaking, lungs burning; a brisk walk is the best on offer.",
                 "id": "stamina_exhausted",
                 "threshold": 10
               },
               {
-                "description": "Tired. Movements are sluggish, difficulty in sustained physical activities.",
+                "description": "Tired. Breathing hard, and every staircase feels twice as long.",
                 "id": "stamina_tired",
                 "threshold": 40
               },
               {
-                "description": "Winded. Slightly out of breath, can perform most actions but not at peak efficiency.",
+                "description": "Winded. A little out of breath, still good for a sprint or two.",
                 "id": "stamina_winded",
                 "threshold": 70
               },
               {
-                "description": "Energetic. Full of energy, capable of performing any physical action without hindrance.",
+                "description": "Fresh. Bouncing on the balls of their feet, ready to run.",
                 "id": "stamina_energetic",
                 "threshold": 100
               }
@@ -7252,25 +7186,25 @@
             "value": 100
           },
           {
-            "description": "How much sugary chocolate the player has eaten recently. Too much causes a queasy sugar overload.",
+            "description": "How much chocolate the player has eaten. Each chocolate eaten raises it, and it fades slowly on its own.",
             "descriptors": [
               {
-                "description": "Fresh. Hasn't eaten much; light on their feet.",
+                "description": "Clear. Barely a taste of chocolate; light on their feet.",
                 "id": 1,
                 "threshold": 10
               },
               {
-                "description": "Satisfied. Had a few chocolates, feeling fine.",
+                "description": "Sweet. A few chocolates down, a sugary taste that lingers.",
                 "id": 2,
                 "threshold": 40
               },
               {
-                "description": "Sugar high. Eaten a lot of sweets; starting to feel jittery and sluggish.",
+                "description": "Sugar high. Jittery hands, a racing heart and a heavy stomach.",
                 "id": 3,
                 "threshold": 70
               },
               {
-                "description": "Sugar crash. Far too much chocolate; queasy and struggling to keep moving.",
+                "description": "Sugar crash. Queasy and slow; the next chocolate might be the last one they can take.",
                 "id": 4,
                 "threshold": 100
               }
@@ -7286,10 +7220,10 @@
             "value": 0
           },
           {
-            "description": "Live readout of how quick the player really is right now — tracks Stamina and drops as Sugar climbs.",
+            "description": "How quick the player is right now. It follows Stamina and Sugar.",
             "descriptors": [
               {
-                "description": "Leaden. Legs like wet cement; a determined walker could catch you.",
+                "description": "Leaden. Legs like wet cement; a determined walker could catch them.",
                 "id": "agility_leaden",
                 "threshold": 10
               },
@@ -7304,7 +7238,7 @@
                 "threshold": 70
               },
               {
-                "description": "Untouchable. Full speed — nobody in this school can lay a ribbon on you.",
+                "description": "Untouchable. Full speed; nobody in this school can lay a ribbon on them.",
                 "id": "agility_untouchable",
                 "threshold": 100
               }
@@ -7316,7 +7250,7 @@
             "regen": 0,
             "scripts": [
               {
-                "code": "const stamina = owner.stats.Stamina.value;\nconst sugar = owner.stats.Sugar.value;\nreturn Math.round(stamina * 0.7 + 30 - sugar * 0.4);",
+                "code": "// Agility: how quick the player is right now. It is a readout of the body, so this script sets it every turn.\nconst stamina = owner.stats.Stamina;\nconst sugar = owner.stats.Sugar;\nconst traits = owner.traits;\n\n// Energy sets the base. Even an exhausted student can shuffle along, so the base is 30 and full Stamina adds 70.\n// Stamina is read as a share of its max, so Star Athlete's bigger tank counts the same when it is full.\nconst energy = stamina.value / stamina.max;\nlet agility = 30 + energy * 70;\n\n// Chocolate weighs the legs down: a full stomach costs 40.\n// Sugar is read as a share of its max too, so a Sweet Tooth fills up later and a Dainty Appetite sooner.\nconst fullness = sugar.value / sugar.max;\nagility = agility - fullness * 40;\n\n// All-Out Sprint trades Stamina for speed. While it is on, the player gets a burst of 20.\nif (traits[\"All-Out Sprint\"].enabled) agility = agility + 20;\n\n// The stat clamps the result to 0–100.\nreturn Math.round(agility);",
                 "id": "agility:after",
                 "timing": "after"
               }
@@ -7330,7 +7264,7 @@
       "carriedTraits": {
         "traitGroups": [
           {
-            "aiDescription": "The player’s reputation — why they are the most popular student at Ashburn High:",
+            "aiDescription": "The player's reputation, the reason they are the most popular student at Ashburn High:",
             "id": "e5ac8e6e-e0fb-4fea-807e-f4768af6d658",
             "maxPicks": 1,
             "name": "Reputation",
@@ -7339,7 +7273,7 @@
             "playerDescription": "Why the whole school is after you. Pick one."
           },
           {
-            "aiDescription": "How the player’s body handles chocolate:",
+            "aiDescription": "How the player's body handles chocolate:",
             "id": "c20b44fc-867e-491c-b538-da0a446cd92c",
             "maxPicks": 1,
             "name": "Constitution",
@@ -7358,7 +7292,7 @@
         ],
         "traits": [
           {
-            "aiDescription": "The player is the ace of the track team — famous for speed, with deep stamina reserves and fast recovery.",
+            "aiDescription": "The player is the ace of the track team, famous for speed, with deep stamina reserves and fast recovery.",
             "groupId": "e5ac8e6e-e0fb-4fea-807e-f4768af6d658",
             "id": "3d66f368-7497-4649-a010-fbdbf04dfe27",
             "isDefault": true,
@@ -7379,21 +7313,21 @@
             ]
           },
           {
-            "aiDescription": "The player is the class idol. Admirers are too love-struck to grab or tackle them outright, which opens escape windows — but every sighting draws more admirers, so the swarm keeps growing.",
+            "aiDescription": "The player is the class idol. Admirers are too love-struck to grab or tackle them outright, which opens escape windows. Every sighting draws more admirers, so the swarm keeps growing.",
             "groupId": "e5ac8e6e-e0fb-4fea-807e-f4768af6d658",
             "id": "d0de9e84-ff76-4a80-8915-7ccdb5e52bd1",
             "name": "Class Idol",
             "order": 1,
-            "playerDescription": "So beloved the swarm hesitates to lay hands on you — but it grows with every sighting.",
+            "playerDescription": "So adored that admirers hesitate to grab you. Every sighting draws more of them.",
             "statChanges": []
           },
           {
-            "aiDescription": "The player is the student council president. They can quote school rules with authority to stall admirers and talk their way past staff; classmates hesitate to mob someone they answer to.",
+            "aiDescription": "The player is the student council president. They quote school rules with authority to stall admirers and talk their way past staff. Classmates hesitate to mob someone they answer to.",
             "groupId": "e5ac8e6e-e0fb-4fea-807e-f4768af6d658",
             "id": "39515312-4278-4498-854e-d628aafce4f6",
             "name": "Student Council President",
             "order": 2,
-            "playerDescription": "Respected, not just adored. You can bluff with rules, and the crowd organizes against you more slowly.",
+            "playerDescription": "Respected, not only adored. You can bluff with the rules, and the swarm organizes more slowly.",
             "statChanges": [
               {
                 "statId": "pursuit",
@@ -7403,13 +7337,13 @@
             ]
           },
           {
-            "aiDescription": "The player has an iron stomach — sugar burns off quickly and rarely slows them for long.",
+            "aiDescription": "The player has an iron stomach: sugar burns off quickly and rarely slows them for long.",
             "groupId": "c20b44fc-867e-491c-b538-da0a446cd92c",
             "id": "4c210346-147a-41df-99ed-3e39d90ce785",
             "isDefault": true,
             "name": "Iron Stomach",
             "order": 0,
-            "playerDescription": "Sugar burns off you fast. Eat, grimace, keep moving.",
+            "playerDescription": "Sugar burns off you fast. Eat, wince and keep moving.",
             "statChanges": [
               {
                 "statId": "stomach",
@@ -7419,7 +7353,7 @@
             ]
           },
           {
-            "aiDescription": "The player has a sweet tooth: they can eat far more chocolate before a sugar crash, but genuinely enjoy every piece — temptation to accept \"just one more\" is a real weakness.",
+            "aiDescription": "The player has a sweet tooth. They can eat far more chocolate before a sugar crash, and they enjoy every piece, so \"just one more\" tempts them.",
             "groupId": "c20b44fc-867e-491c-b538-da0a446cd92c",
             "id": "33c896ee-ceae-40b0-b63d-62a252ed143a",
             "name": "Sweet Tooth",
@@ -7434,12 +7368,12 @@
             ]
           },
           {
-            "aiDescription": "The player has a dainty appetite — even a few chocolates push them toward a sugar crash, so every accepted box matters.",
+            "aiDescription": "The player has a dainty appetite. Even a few chocolates push them toward a sugar crash, so every accepted box matters.",
             "groupId": "c20b44fc-867e-491c-b538-da0a446cd92c",
             "id": "75c8676a-a7d1-4e64-a850-88bb748d3dd3",
             "name": "Dainty Appetite",
             "order": 2,
-            "playerDescription": "A few chocolates is already a lot. The crash comes early — dodge like it matters.",
+            "playerDescription": "A few chocolates is already a lot. The crash comes early, so every dodge matters.",
             "statChanges": [
               {
                 "statId": "stomach",
@@ -7449,7 +7383,7 @@
             ]
           },
           {
-            "aiDescription": "The player is wearing proper running shoes — quick acceleration and fast stamina recovery.",
+            "aiDescription": "The player is wearing proper running shoes: quick acceleration and fast stamina recovery.",
             "groupId": "5c0949e5-0247-40c0-9f0e-0cb4b551e483",
             "id": "7b38f953-36a4-499d-be1d-63bf72da4f92",
             "name": "Running Shoes",
@@ -7464,7 +7398,7 @@
             ]
           },
           {
-            "aiDescription": "The player carries a box of store-bought decoy chocolates. Thrown or dropped, they scatter admirers who scramble for them; re-gifted, they can redirect an admirer’s attention entirely.",
+            "aiDescription": "The player carries a box of store-bought decoy chocolates. Thrown or dropped, they scatter admirers who scramble for them; re-gifted, they can redirect an admirer's attention entirely.",
             "groupId": "5c0949e5-0247-40c0-9f0e-0cb4b551e483",
             "id": "94f8ee3a-aa1a-43c6-9d15-f3b19d1de7ac",
             "name": "Decoy Chocolates",
@@ -7473,7 +7407,7 @@
             "statChanges": []
           },
           {
-            "aiDescription": "The player carries a hand-annotated map of Ashburn High marking shortcuts, fire doors, and camera blind spots — they always know an alternate route between any two places in the school.",
+            "aiDescription": "The player carries a hand-annotated map of Ashburn High marking shortcuts, fire doors, and camera blind spots. They always know an alternate route between any two places in the school.",
             "groupId": "5c0949e5-0247-40c0-9f0e-0cb4b551e483",
             "id": "28ce4715-cf88-480d-9f35-958d523bf9a8",
             "name": "Annotated School Map",
@@ -7482,17 +7416,17 @@
             "statChanges": []
           },
           {
-            "aiDescription": "ACTIVE: the player is sprinting flat out — much harder to catch, ignoring pleasantries, vaulting obstacles. Sustained sprinting is exhausting.",
+            "aiDescription": "The player is sprinting flat out: much harder to catch, vaulting obstacles and skipping pleasantries. It wears them out fast.",
             "id": "59e13f82-35f8-490c-bb01-35c4ecf00523",
             "name": "All-Out Sprint",
             "order": 3,
-            "playerDescription": "Drop everything and run flat out. Fast — but your stamina stops recovering while it’s on.",
+            "playerDescription": "Run flat out. You're much faster, but your Stamina drains each turn.",
             "playerToggle": true,
             "statChanges": [
               {
                 "statId": "stamina",
                 "type": "regen",
-                "value": -6
+                "value": -10
               }
             ]
           }
@@ -7501,58 +7435,25 @@
       "portableStats": {
         "stats": [
           {
-            "description": "Represents the player's physical well-being and ability to sustain damage",
+            "description": "How much running the player has left. Running, dodging and climbing spend it. Rest in a quiet spot restores it.",
             "descriptors": [
               {
-                "description": "Critical condition. Severely wounded, barely conscious, and at risk of death.",
-                "id": "health_critical",
-                "threshold": 10
-              },
-              {
-                "description": "Injured. Suffering from multiple wounds, movement impaired, combat effectiveness reduced.",
-                "id": "health_injured",
-                "threshold": 40
-              },
-              {
-                "description": "Hurt. Minor injuries present, some pain, but generally functional.",
-                "id": "health_hurt",
-                "threshold": 70
-              },
-              {
-                "description": "Healthy. No significant injuries, operating at full capacity.",
-                "id": "health_healthy",
-                "threshold": 100
-              }
-            ],
-            "id": "health",
-            "max": 100,
-            "min": 0,
-            "name": "Health",
-            "regen": 3,
-            "starting": 100,
-            "type": "number",
-            "value": 100
-          },
-          {
-            "description": "Represents the player's energy and ability to perform physical actions",
-            "descriptors": [
-              {
-                "description": "Exhausted. Barely able to move, risk of collapse, unable to perform strenuous actions.",
+                "description": "Spent. Legs shaking, lungs burning; a brisk walk is the best on offer.",
                 "id": "stamina_exhausted",
                 "threshold": 10
               },
               {
-                "description": "Tired. Movements are sluggish, difficulty in sustained physical activities.",
+                "description": "Tired. Breathing hard, and every staircase feels twice as long.",
                 "id": "stamina_tired",
                 "threshold": 40
               },
               {
-                "description": "Winded. Slightly out of breath, can perform most actions but not at peak efficiency.",
+                "description": "Winded. A little out of breath, still good for a sprint or two.",
                 "id": "stamina_winded",
                 "threshold": 70
               },
               {
-                "description": "Energetic. Full of energy, capable of performing any physical action without hindrance.",
+                "description": "Fresh. Bouncing on the balls of their feet, ready to run.",
                 "id": "stamina_energetic",
                 "threshold": 100
               }
@@ -7568,25 +7469,25 @@
             "value": 100
           },
           {
-            "description": "How much sugary chocolate the player has eaten recently. Too much causes a queasy sugar overload.",
+            "description": "How much chocolate the player has eaten. Each chocolate eaten raises it, and it fades slowly on its own.",
             "descriptors": [
               {
-                "description": "Fresh. Hasn't eaten much; light on their feet.",
+                "description": "Clear. Barely a taste of chocolate; light on their feet.",
                 "id": 1,
                 "threshold": 10
               },
               {
-                "description": "Satisfied. Had a few chocolates, feeling fine.",
+                "description": "Sweet. A few chocolates down, a sugary taste that lingers.",
                 "id": 2,
                 "threshold": 40
               },
               {
-                "description": "Sugar high. Eaten a lot of sweets; starting to feel jittery and sluggish.",
+                "description": "Sugar high. Jittery hands, a racing heart and a heavy stomach.",
                 "id": 3,
                 "threshold": 70
               },
               {
-                "description": "Sugar crash. Far too much chocolate; queasy and struggling to keep moving.",
+                "description": "Sugar crash. Queasy and slow; the next chocolate might be the last one they can take.",
                 "id": 4,
                 "threshold": 100
               }
@@ -7602,10 +7503,10 @@
             "value": 0
           },
           {
-            "description": "Live readout of how quick the player really is right now — tracks Stamina and drops as Sugar climbs.",
+            "description": "How quick the player is right now. It follows Stamina and Sugar.",
             "descriptors": [
               {
-                "description": "Leaden. Legs like wet cement; a determined walker could catch you.",
+                "description": "Leaden. Legs like wet cement; a determined walker could catch them.",
                 "id": "agility_leaden",
                 "threshold": 10
               },
@@ -7620,7 +7521,7 @@
                 "threshold": 70
               },
               {
-                "description": "Untouchable. Full speed — nobody in this school can lay a ribbon on you.",
+                "description": "Untouchable. Full speed; nobody in this school can lay a ribbon on them.",
                 "id": "agility_untouchable",
                 "threshold": 100
               }
@@ -7632,7 +7533,7 @@
             "regen": 0,
             "scripts": [
               {
-                "code": "const stamina = owner.stats.Stamina.value;\nconst sugar = owner.stats.Sugar.value;\nreturn Math.round(stamina * 0.7 + 30 - sugar * 0.4);",
+                "code": "// Agility: how quick the player is right now. It is a readout of the body, so this script sets it every turn.\nconst stamina = owner.stats.Stamina;\nconst sugar = owner.stats.Sugar;\nconst traits = owner.traits;\n\n// Energy sets the base. Even an exhausted student can shuffle along, so the base is 30 and full Stamina adds 70.\n// Stamina is read as a share of its max, so Star Athlete's bigger tank counts the same when it is full.\nconst energy = stamina.value / stamina.max;\nlet agility = 30 + energy * 70;\n\n// Chocolate weighs the legs down: a full stomach costs 40.\n// Sugar is read as a share of its max too, so a Sweet Tooth fills up later and a Dainty Appetite sooner.\nconst fullness = sugar.value / sugar.max;\nagility = agility - fullness * 40;\n\n// All-Out Sprint trades Stamina for speed. While it is on, the player gets a burst of 20.\nif (traits[\"All-Out Sprint\"].enabled) agility = agility + 20;\n\n// The stat clamps the result to 0–100.\nreturn Math.round(agility);",
                 "id": "agility:after",
                 "timing": "after"
               }
@@ -7646,7 +7547,7 @@
       "portableTraits": {
         "traitGroups": [
           {
-            "aiDescription": "The player’s reputation — why they are the most popular student at Ashburn High:",
+            "aiDescription": "The player's reputation, the reason they are the most popular student at Ashburn High:",
             "id": "e5ac8e6e-e0fb-4fea-807e-f4768af6d658",
             "maxPicks": 1,
             "name": "Reputation",
@@ -7655,7 +7556,7 @@
             "playerDescription": "Why the whole school is after you. Pick one."
           },
           {
-            "aiDescription": "How the player’s body handles chocolate:",
+            "aiDescription": "How the player's body handles chocolate:",
             "id": "c20b44fc-867e-491c-b538-da0a446cd92c",
             "maxPicks": 1,
             "name": "Constitution",
@@ -7674,7 +7575,7 @@
         ],
         "traits": [
           {
-            "aiDescription": "The player is the ace of the track team — famous for speed, with deep stamina reserves and fast recovery.",
+            "aiDescription": "The player is the ace of the track team, famous for speed, with deep stamina reserves and fast recovery.",
             "groupId": "e5ac8e6e-e0fb-4fea-807e-f4768af6d658",
             "id": "3d66f368-7497-4649-a010-fbdbf04dfe27",
             "isDefault": true,
@@ -7695,21 +7596,21 @@
             ]
           },
           {
-            "aiDescription": "The player is the class idol. Admirers are too love-struck to grab or tackle them outright, which opens escape windows — but every sighting draws more admirers, so the swarm keeps growing.",
+            "aiDescription": "The player is the class idol. Admirers are too love-struck to grab or tackle them outright, which opens escape windows. Every sighting draws more admirers, so the swarm keeps growing.",
             "groupId": "e5ac8e6e-e0fb-4fea-807e-f4768af6d658",
             "id": "d0de9e84-ff76-4a80-8915-7ccdb5e52bd1",
             "name": "Class Idol",
             "order": 1,
-            "playerDescription": "So beloved the swarm hesitates to lay hands on you — but it grows with every sighting.",
+            "playerDescription": "So adored that admirers hesitate to grab you. Every sighting draws more of them.",
             "statChanges": []
           },
           {
-            "aiDescription": "The player is the student council president. They can quote school rules with authority to stall admirers and talk their way past staff; classmates hesitate to mob someone they answer to.",
+            "aiDescription": "The player is the student council president. They quote school rules with authority to stall admirers and talk their way past staff. Classmates hesitate to mob someone they answer to.",
             "groupId": "e5ac8e6e-e0fb-4fea-807e-f4768af6d658",
             "id": "39515312-4278-4498-854e-d628aafce4f6",
             "name": "Student Council President",
             "order": 2,
-            "playerDescription": "Respected, not just adored. You can bluff with rules, and the crowd organizes against you more slowly.",
+            "playerDescription": "Respected, not only adored. You can bluff with the rules, and the swarm organizes more slowly.",
             "statChanges": [
               {
                 "statId": "pursuit",
@@ -7719,13 +7620,13 @@
             ]
           },
           {
-            "aiDescription": "The player has an iron stomach — sugar burns off quickly and rarely slows them for long.",
+            "aiDescription": "The player has an iron stomach: sugar burns off quickly and rarely slows them for long.",
             "groupId": "c20b44fc-867e-491c-b538-da0a446cd92c",
             "id": "4c210346-147a-41df-99ed-3e39d90ce785",
             "isDefault": true,
             "name": "Iron Stomach",
             "order": 0,
-            "playerDescription": "Sugar burns off you fast. Eat, grimace, keep moving.",
+            "playerDescription": "Sugar burns off you fast. Eat, wince and keep moving.",
             "statChanges": [
               {
                 "statId": "stomach",
@@ -7735,7 +7636,7 @@
             ]
           },
           {
-            "aiDescription": "The player has a sweet tooth: they can eat far more chocolate before a sugar crash, but genuinely enjoy every piece — temptation to accept \"just one more\" is a real weakness.",
+            "aiDescription": "The player has a sweet tooth. They can eat far more chocolate before a sugar crash, and they enjoy every piece, so \"just one more\" tempts them.",
             "groupId": "c20b44fc-867e-491c-b538-da0a446cd92c",
             "id": "33c896ee-ceae-40b0-b63d-62a252ed143a",
             "name": "Sweet Tooth",
@@ -7750,12 +7651,12 @@
             ]
           },
           {
-            "aiDescription": "The player has a dainty appetite — even a few chocolates push them toward a sugar crash, so every accepted box matters.",
+            "aiDescription": "The player has a dainty appetite. Even a few chocolates push them toward a sugar crash, so every accepted box matters.",
             "groupId": "c20b44fc-867e-491c-b538-da0a446cd92c",
             "id": "75c8676a-a7d1-4e64-a850-88bb748d3dd3",
             "name": "Dainty Appetite",
             "order": 2,
-            "playerDescription": "A few chocolates is already a lot. The crash comes early — dodge like it matters.",
+            "playerDescription": "A few chocolates is already a lot. The crash comes early, so every dodge matters.",
             "statChanges": [
               {
                 "statId": "stomach",
@@ -7765,7 +7666,7 @@
             ]
           },
           {
-            "aiDescription": "The player is wearing proper running shoes — quick acceleration and fast stamina recovery.",
+            "aiDescription": "The player is wearing proper running shoes: quick acceleration and fast stamina recovery.",
             "groupId": "5c0949e5-0247-40c0-9f0e-0cb4b551e483",
             "id": "7b38f953-36a4-499d-be1d-63bf72da4f92",
             "name": "Running Shoes",
@@ -7780,7 +7681,7 @@
             ]
           },
           {
-            "aiDescription": "The player carries a box of store-bought decoy chocolates. Thrown or dropped, they scatter admirers who scramble for them; re-gifted, they can redirect an admirer’s attention entirely.",
+            "aiDescription": "The player carries a box of store-bought decoy chocolates. Thrown or dropped, they scatter admirers who scramble for them; re-gifted, they can redirect an admirer's attention entirely.",
             "groupId": "5c0949e5-0247-40c0-9f0e-0cb4b551e483",
             "id": "94f8ee3a-aa1a-43c6-9d15-f3b19d1de7ac",
             "name": "Decoy Chocolates",
@@ -7789,7 +7690,7 @@
             "statChanges": []
           },
           {
-            "aiDescription": "The player carries a hand-annotated map of Ashburn High marking shortcuts, fire doors, and camera blind spots — they always know an alternate route between any two places in the school.",
+            "aiDescription": "The player carries a hand-annotated map of Ashburn High marking shortcuts, fire doors, and camera blind spots. They always know an alternate route between any two places in the school.",
             "groupId": "5c0949e5-0247-40c0-9f0e-0cb4b551e483",
             "id": "28ce4715-cf88-480d-9f35-958d523bf9a8",
             "name": "Annotated School Map",
@@ -7798,17 +7699,17 @@
             "statChanges": []
           },
           {
-            "aiDescription": "ACTIVE: the player is sprinting flat out — much harder to catch, ignoring pleasantries, vaulting obstacles. Sustained sprinting is exhausting.",
+            "aiDescription": "The player is sprinting flat out: much harder to catch, vaulting obstacles and skipping pleasantries. It wears them out fast.",
             "id": "59e13f82-35f8-490c-bb01-35c4ecf00523",
             "name": "All-Out Sprint",
             "order": 3,
-            "playerDescription": "Drop everything and run flat out. Fast — but your stamina stops recovering while it’s on.",
+            "playerDescription": "Run flat out. You're much faster, but your Stamina drains each turn.",
             "playerToggle": true,
             "statChanges": [
               {
                 "statId": "stamina",
                 "type": "regen",
-                "value": -6
+                "value": -10
               }
             ]
           }
