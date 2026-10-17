@@ -4,90 +4,32 @@
  */
 import { describe, it, expect } from 'vitest';
 import raw from '@/defaultworlds/rampage.json?raw';
-import { migrateWorld } from './version';
-import { resolveOwners, type OwnerWorld } from './owners';
-import { settleDefaults, switchTrait, type SettleResult } from './traitGates';
-import { inPlayOwners } from './ownedTraitsInPlay';
-import { applyOwnedStatTraits, seedNewGameStats, type TraitRuntimeState, type TraitWorld } from './traitRuntime';
-import { ownedTraitStatesFrom } from './ownedTraitState';
-import { seedEntityStats } from './entityStats';
+import { settleDefaults, type SettleResult } from './traitGates';
+import { seedNewGameStats } from './traitRuntime';
 import { activeStatEnabled } from './traitEffects';
 import { activeDescriptor } from './statContext';
 import { runStatCodeTurn, runSwitchScripts, type StatCodeTurn } from './statCodeTurn';
-import type { Entity, PersonaRef, PlayerStat, World } from '@/types';
+import { bundledWorldHarness, valueOf, withValues, type StatValues } from '@/test/bundledWorldHarness';
 
-// Loaded the way the seeder loads it: raw text through the world migration.
-const world: World = migrateWorld(JSON.parse(raw));
-const NONE: PersonaRef = { source: 'none' };
-const creature: Entity = world.entities.find((e) => e.customPersona)!;
-const ownerWorld: OwnerWorld = { traits: world.traits, traitGroups: world.traitGroups ?? [], entities: world.entities };
-const { gate } = resolveOwners(ownerWorld, NONE);
-const traitWorld: TraitWorld = {
-  traits: world.traits, groups: world.traitGroups ?? [], entities: world.entities, persona: NONE, ...inPlayOwners(ownerWorld, NONE),
-};
-
-const idOf = (name: string): string => {
-  const found = creature.traits!.find((t) => t.name === name);
-  if (!found) throw new Error(`no trait ${name}`);
-  return found.id;
-};
-
-/** Switch each named trait on in turn from the default build, as the creator and the in-play toggle do. */
-function build(...picks: string[]): SettleResult {
-  let state = settleDefaults(gate);
-  for (const pick of picks) {
-    const next = switchTrait({ ...gate, active: state.active }, creature.id, idOf(pick), state.cascadeOff);
-    if (!next) throw new Error(`${pick} would not switch on`);
-    state = next;
-  }
-  return state;
-}
-
-const activeIds = (state: SettleResult) => state.active.owners[creature.id] ?? [];
-const ownedOf = (state: SettleResult) => ownedTraitStatesFrom({ [creature.id]: activeIds(state) });
-const activeTraits = (state: SettleResult) => creature.traits!.filter((t) => activeIds(state).includes(t.id));
-
-/** Stat name → value. */
-type Values = Record<string, number>;
-
-/** `stats` with each named stat set to its value in `values`. */
-const withValues = (stats: PlayerStat[], values: Values): PlayerStat[] =>
-  stats.map((s) => (s.name in values ? { ...s, value: values[s.name] } : s));
-
-/** The creature's stats after its build's stat changes. */
-function creatureStats(state: SettleResult): PlayerStat[] {
-  const seeded: TraitRuntimeState = {
-    stats: seedNewGameStats(world.stats), traits: [], disabledTraitIds: [], appliedValues: {},
-    ownedTraits: ownedOf(state), entityStats: seedEntityStats(world.entities),
-  };
-  return applyOwnedStatTraits(seeded, traitWorld).entityStats![creature.id];
-}
-
-const valueOf = (stats: readonly PlayerStat[] | undefined, name: string) => stats?.find((s) => s.name === name)?.value;
+const { world, persona: creature, gate, idOf, activeIds, activeTraits, build, personaStats, turn: harnessTurn, personaStatsOut } = bundledWorldHarness(raw);
 
 /** Where the AI left the creature's and the world's stats, and the values the turn started from. */
-interface TurnValues { creature?: Values; global?: Values; previous?: Values }
+interface TurnValues { creature?: StatValues; global?: StatValues; previous?: StatValues }
 
 /** One turn over the creature's build. A stat absent from `previous` started where it stands. */
 function turn(state: SettleResult, { creature: own = {}, global = {}, previous = {} }: TurnValues): StatCodeTurn {
-  const stats = withValues(creatureStats(state), own);
+  const stats = withValues(personaStats(state), own);
   const globals = withValues(seedNewGameStats(world.stats), global);
-  return {
-    stats: globals, enabled: {}, previous: withValues(globals, previous), asks: [], regenApplied: {}, clock: {},
-    ownerTraits: {
-      acquired: [], disabledTraitIds: [], appliedValues: {}, entities: world.entities, world: traitWorld, ownedTraits: ownedOf(state),
-    },
-    owners: [{
-      id: creature.id, stats, enabled: activeStatEnabled(stats, activeTraits(state)), previous: withValues(stats, previous), regenApplied: {},
-    }],
-    statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
-  };
+  return harnessTurn(state, {
+    stats, previous: withValues(stats, previous), globals, globalPrevious: withValues(globals, previous),
+    enabled: activeStatEnabled(stats, activeTraits(state)),
+  });
 }
 
 /** One After the AI run. */
 async function after(state: SettleResult, values: TurnValues) {
   const out = await runStatCodeTurn(turn(state, values));
-  return { global: out.stats, creature: out.owners?.[creature.id]?.stats };
+  return { global: out.stats, creature: personaStatsOut(out) };
 }
 
 describe('Alert Level', () => {

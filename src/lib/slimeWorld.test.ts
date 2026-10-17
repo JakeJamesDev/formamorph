@@ -4,58 +4,15 @@
  */
 import { describe, it, expect } from 'vitest';
 import raw from '@/defaultworlds/slime.json?raw';
-import { migrateWorld } from './version';
-import { resolveOwners, type OwnerWorld } from './owners';
-import { settleDefaults, switchTrait, type SettleResult } from './traitGates';
-import { inPlayOwners } from './ownedTraitsInPlay';
-import { applyOwnedStatTraits, seedNewGameStats, type TraitRuntimeState, type TraitWorld } from './traitRuntime';
-import { ownedTraitStatesFrom } from './ownedTraitState';
-import { seedEntityStats } from './entityStats';
+import { resolveOwners } from './owners';
+import { settleDefaults, type SettleResult } from './traitGates';
 import { runStatCodeTurn } from './statCodeTurn';
 import { resolvePlaceholders } from './placeholders';
 import { openingPool } from './openings';
-import type { Entity, PersonaRef, PlayerStat, World } from '@/types';
+import { bundledWorldHarness, withValues } from '@/test/bundledWorldHarness';
 
-// Loaded the way the seeder loads it: raw text through the world migration.
-const world: World = migrateWorld(JSON.parse(raw));
-const NONE: PersonaRef = { source: 'none' };
-const resident: Entity = world.entities.find((e) => e.customPersona)!;
-const ownerWorld: OwnerWorld = { traits: world.traits, traitGroups: world.traitGroups ?? [], entities: world.entities };
-const { gate } = resolveOwners(ownerWorld, NONE);
+const { world, persona: resident, gate, ownerWorld, none: NONE, traitNamed, activeNames, build, personaStats, turn, personaStatsOut } = bundledWorldHarness(raw);
 const allPlaceholders = [...world.placeholders!, ...world.entities.flatMap((e) => e.placeholders ?? []), ...world.dictionaries!.flatMap((d) => d.placeholders ?? [])];
-
-const traitNamed = (name: string) => {
-  const found = resident.traits!.find((t) => t.name === name);
-  if (!found) throw new Error(`no trait ${name}`);
-  return found;
-};
-const activeNames = (state: SettleResult) => (state.active.owners[resident.id] ?? []).map((id) => resident.traits!.find((t) => t.id === id)!.name).sort();
-
-/** Switch each named trait on in turn from the default picks, as the creator and the trait panel do. */
-function build(...picks: string[]): SettleResult {
-  let state = settleDefaults(gate);
-  for (const pick of picks) {
-    const next = switchTrait({ ...gate, active: state.active }, resident.id, traitNamed(pick).id, state.cascadeOff);
-    if (!next) throw new Error(`${pick} would not switch on`);
-    state = next;
-  }
-  return state;
-}
-
-const traitWorld: TraitWorld = {
-  traits: world.traits, groups: world.traitGroups ?? [], entities: world.entities, persona: NONE, ...inPlayOwners(ownerWorld, NONE),
-};
-const ownedOf = (state: SettleResult) => ownedTraitStatesFrom({ [resident.id]: state.active.owners[resident.id] ?? [] });
-
-/** The Resident's stats after the picks' stat changes, with the named stats set to raw values. */
-function residentStats(state: SettleResult, values: Record<string, number>): PlayerStat[] {
-  const seeded: TraitRuntimeState = {
-    stats: seedNewGameStats(world.stats), traits: [], disabledTraitIds: [], appliedValues: {},
-    ownedTraits: ownedOf(state), entityStats: seedEntityStats(world.entities),
-  };
-  const started = applyOwnedStatTraits(seeded, traitWorld);
-  return started.entityStats![resident.id].map((s) => (s.name in values ? { ...s, value: values[s.name] } : s));
-}
 
 interface Turn {
   /** Assimilation at the start of the turn. */
@@ -68,17 +25,10 @@ interface Turn {
 
 /** Assimilation after one After the AI run of the Resident's scripts. */
 async function spread(state: SettleResult, { from, aiChange = 0, hours, panic = 0 }: Turn): Promise<number | undefined> {
-  const previous = residentStats(state, { Assimilation: from, Panic: panic });
-  const stats = previous.map((s) => (s.name === 'Assimilation' ? { ...s, value: from + aiChange } : s));
-  const out = await runStatCodeTurn({
-    stats: [], enabled: {}, previous: [], asks: [], regenApplied: {}, clock: { deltaHours: hours },
-    ownerTraits: {
-      acquired: [], disabledTraitIds: [], appliedValues: {}, entities: world.entities, world: traitWorld, ownedTraits: ownedOf(state),
-    },
-    owners: [{ id: resident.id, stats, enabled: {}, previous, regenApplied: {} }],
-    statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
-  });
-  return (out.owners?.[resident.id]?.stats ?? stats).find((s) => s.name === 'Assimilation')?.value;
+  const previous = withValues(personaStats(state), { Assimilation: from, Panic: panic });
+  const stats = withValues(previous, { Assimilation: from + aiChange });
+  const out = await runStatCodeTurn(turn(state, { stats, previous, clock: { deltaHours: hours } }));
+  return personaStatsOut(out).find((s) => s.name === 'Assimilation')?.value;
 }
 
 // The default picks: Night-Shift Nurse, Steady Hands, and the Hidden strain.
