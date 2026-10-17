@@ -72,6 +72,7 @@ Settled with the user on 2026-10-17. R rulings came from the design discussion; 
 | Q47 | A world with a During AI Output World Tool reveals like a world with an output Script (Scripts Q21): the output run opens when narration starts and the crawl holds to whole sentences on every turn, armed or not. Only while the Tool would be offered: the global Tools switch on and the endpoint tool-capable (ticket 06 ruling, from Scripts Q21) |
 | Q48 | Ticket 08's "help topic" means new routed how-to sections in the Tools doc for the Tools tab (timing, Reply, Stack Calls, a Tool that changes the story) and a fix to its "a Tool only reads" line, plus a World Tools section in the Scripts guide. No tab-level help topic entry. The example is `lock_target(name)` in the drone scripts showcase world: During AI Output, Stack Calls off, marks the locked target in later sentences (ticket 08 ruling) |
 | Q49 | The cloud default endpoint rejects any request with `tools` (HTTP 400: auto tool choice is not enabled on the server), so the capability gate offers it no World Tools. Ticket 08's call-rate probe and live check run on Cydonia 24B locally, same design, in a GPU window the user agrees to; the ticket records that the cloud model is not tool-capable (ticket 08 ruling) |
+| Q50 | A location rename rewrites the string literal in `location.move("<name>")` in every script: World Tools and world, stat and trait Scripts. Find All Uses lists those calls. Ticket 07 builds it (user ruling, ticket 07) |
 
 ## User Stories
 
