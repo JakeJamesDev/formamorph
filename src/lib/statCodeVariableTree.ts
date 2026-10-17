@@ -12,7 +12,7 @@ import {
   isPlaceholderEntryMember, memberStep, placeholderPathMap, type PlaceholderPathMap, type PlaceholderPathNode,
 } from '@/lib/statCodePaths';
 import {
-  CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, DELTA_FIELDS, DELTA_MEMBERS, DICTIONARY_FIELDS, ENTITY_FIELDS, NARRATION_FIELDS,
+  CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, LOCATION_MEMBERS, DELTA_FIELDS, DELTA_MEMBERS, DICTIONARY_FIELDS, ENTITY_FIELDS, NARRATION_FIELDS,
   NARRATION_GLOBAL, PERSONA_FIELDS, PLAYER_CALL_ENTRIES, PLAYER_GLOBAL, PREVIOUS_FIELDS, SANDBOX_GLOBALS, SELF_TRAIT_FIELDS,
   STAT_FIELDS, SWITCHED_TRAIT_FIELDS, SWITCHED_TRAIT_GLOBAL, TRAIT_ENTRY_FIELDS, TRAIT_SCRIPT_SURFACE, placeholderEntryFields,
 } from '@/lib/statCodeSurface';
@@ -157,8 +157,27 @@ const statNameRows = (path: Path, stats: readonly Pick<VariableNameRow, 'name' |
   firstOfEach(stats.filter((stat) => stat.name !== ''), (stat) => stat.name)
     .map((stat) => ({ ...stat, children: statFields(keyed(path, stat.name)) }));
 
-const clockFields = (path: Path): VariableNode[] => fields(path, CLOCK_MEMBERS, (entry, at) =>
-  (entry.name === 'previous' ? group(entry, fields(at, CLOCK_PREVIOUS_FIELDS)) : undefined));
+/** A method's leaf, called with `arg`, which stays selected to type over. It has no access. */
+const callField = ({ access: _method, ...call }: VariableField, arg: string): VariableField => {
+  const insert = `${call.insert}(${arg})`;
+  const from = insert.length - arg.length - 1;
+  return { ...call, insert, selection: { from, to: from + arg.length } };
+};
+
+const clockFields = (path: Path): VariableNode[] => fields(path, CLOCK_MEMBERS, (entry, at) => {
+  if (entry.name === 'advance') return callField(field(path, entry), '30');
+  return entry.name === 'previous' ? group(entry, fields(at, CLOCK_PREVIOUS_FIELDS)) : undefined;
+});
+
+// A move to where the turn stands runs as inserted in any turn with a location.
+const locationFields = (): VariableNode[] => LOCATION_MEMBERS.map((entry) =>
+  (entry.name === 'move' ? callField(field(root('location'), entry), 'location.name') : field(root('location'), entry)));
+
+/** `discover`, a call at the top level. */
+const discoverField = (): VariableField => {
+  const entry = SANDBOX_GLOBALS.find((global) => global.name === 'discover');
+  return callField({ kind: 'field', label: 'discover', detail: entry?.detail ?? '', info: entry?.info ?? '', insert: 'discover' }, '"Name"');
+};
 
 /** A placeholder entry's members by its kind. The calls insert complete; `pin` leaves its text selected. */
 function placeholderFields(path: Path, kind: PlaceholderKindNoun): VariableNode[] {
@@ -355,6 +374,8 @@ export function buildVariableTree(
     nameList('Placeholders', placeholderList, 'No placeholders in this world', globalInfo('placeholders')),
     nameList('Dictionaries', dictionaryRows, 'No dictionaries in this world', globalInfo('dictionaries')),
     { kind: 'group', label: 'Clock', info: globalInfo('clock'), children: clockFields(root('clock')) },
+    { kind: 'group', label: 'Location', info: globalInfo('location'), children: locationFields() },
+    { kind: 'group', label: 'Discover', info: globalInfo('discover'), children: [discoverField()] },
     ...timingGroups(timing),
   ];
 }

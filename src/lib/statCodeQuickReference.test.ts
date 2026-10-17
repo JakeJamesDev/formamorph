@@ -10,7 +10,7 @@ import { phValues } from '@/test/placeholderValues';
 import { statCodeDiagnostics, type AnalysisOptions } from './statCodeAnalysis';
 import { executeStatCode, type StatCodeResult } from './statCodeExecutor';
 import {
-  CLOCK_MEMBERS, SELF_WRITABLE_FIELDS, DICTIONARY_FIELDS, ENTITY_FIELDS, PERSONA_FIELDS, placeholderEntryFields, SANDBOX_GLOBALS, STAT_FIELDS,
+  CLOCK_MEMBERS, LOCATION_MEMBERS, SELF_WRITABLE_FIELDS, DICTIONARY_FIELDS, ENTITY_FIELDS, PERSONA_FIELDS, placeholderEntryFields, SANDBOX_GLOBALS, STAT_FIELDS,
   TRAIT_ENTRY_FIELDS,
 } from './statCodeSurface';
 import type { SurfaceEntry } from './codeSurface';
@@ -82,6 +82,7 @@ const world = {
   // The code's own owner, holding the same stat names as the world.
   owner: { id: 'owner', name: 'Owner', traits: [trait()], stats: { stats } },
   dictionaries: [{ name: 'Dictionary', id: 'dictionary', placeholders: dictionaryOwns }],
+  places: { locations: [{ id: 'location', name: 'Location' }], location: { id: 'location', name: 'Location' } },
 };
 const run = (code: string) => executeStatCode(code, stats, stats[0], world);
 
@@ -104,7 +105,7 @@ const editorNames: AnalysisOptions = {
 const editorFindings = (code: string) => statCodeDiagnostics(code, editorNames).map((finding) => finding.message);
 
 /** The result fields a run that changed only what it meant to fills. Any other field reports a dropped write. */
-const APPLIED_FIELDS = new Set(['value', 'error', 'bounds', 'statWrites', 'ownerStatWrites', 'placeholders', 'traits', 'entities']);
+const APPLIED_FIELDS = new Set(['value', 'error', 'bounds', 'statWrites', 'ownerStatWrites', 'placeholders', 'traits', 'entities', 'worldWrites']);
 const APPLIED_ENTITY_FIELDS = new Set(['entity', 'traits']);
 
 /** The fields of a run's result that report a dropped write, an entity's own included. */
@@ -116,7 +117,7 @@ const dropped = (result: StatCodeResult) => [
 /** Whether a run left anything for the turn to apply. */
 const landed = (result: StatCodeResult) => result.value !== null || !!result.bounds || !!result.statWrites?.length
   || !!result.ownerStatWrites?.length || !!result.placeholders?.length
-  || !!result.traits?.length || !!result.entities?.some((entity) => entity.traits?.length);
+  || !!result.traits?.length || !!result.entities?.some((entity) => entity.traits?.length) || !!result.worldWrites;
 
 /** Each object's members as the surface lists them. `console` has no list; the sandbox answers for it below. */
 const SURFACE_MEMBERS: Record<string, readonly SurfaceEntry[]> = {
@@ -124,6 +125,8 @@ const SURFACE_MEMBERS: Record<string, readonly SurfaceEntry[]> = {
   stats: STAT_FIELDS,
   owner: ENTITY_FIELDS,
   clock: CLOCK_MEMBERS,
+  location: LOCATION_MEMBERS,
+  discover: [],
   traits: TRAIT_ENTRY_FIELDS,
   persona: PERSONA_FIELDS,
   entities: ENTITY_FIELDS,

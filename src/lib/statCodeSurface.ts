@@ -32,6 +32,14 @@ export const CLOCK_MEMBERS: readonly SurfaceEntry[] = readOnlyEntries([
   { name: 'deltaHours', detail: 'number', info: 'Story hours this turn consumed' },
   { name: 'elapsedHours', detail: 'number', info: 'Total story hours at the end of this turn' },
   { name: 'previous', detail: shapeOf(CLOCK_PREVIOUS_FIELDS), info: 'Clock at the start of this turn, with day and daypart' },
+  { name: 'advance', detail: '(minutes) => void', info: 'Sets how long this turn takes, in story minutes, in place of the AI’s measure. Calls in one turn add up. The clock reads the same for the rest of the script.' },
+]);
+
+/** The members of `location`: where the turn stands, and the move. */
+export const LOCATION_MEMBERS: readonly SurfaceEntry[] = readOnlyEntries([
+  { name: 'id', detail: 'string', info: 'Unique id of the location the turn is at, or empty in a world with no location' },
+  { name: 'name', detail: 'string', info: 'Code name of the location the turn is at, or empty in a world with no location' },
+  { name: 'move', detail: '(nameOrId) => void', info: 'Moves the turn to a location of the world, in place of the AI’s move. A name the world has no location for stops the script with an error.' },
 ]);
 
 /** The fields of the clock object that `path` names, or null when `path` is no clock object. */
@@ -46,6 +54,8 @@ export const SANDBOX_GLOBALS: readonly SurfaceEntry[] = [
   { name: 'owner', detail: 'object', info: 'The entity that owns this stat, with the fields of an entities entry. A Blueprint stat’s code runs once for each owner. It’s empty in a global stat. Use owner.stats["Two Words"] for a name with a space.' },
   { name: 'stats', detail: 'object', info: 'The global stats by name, in every stat’s code. An entity’s own are on owner.stats. Use stats["Two Words"] for a name with a space.' },
   { name: 'clock', detail: shapeOf(CLOCK_MEMBERS), info: 'The story clock', access: 'readOnly' },
+  { name: 'location', detail: shapeOf(LOCATION_MEMBERS), info: 'The location the turn is at. Call location.move to move it.', access: 'readOnly' },
+  { name: 'discover', detail: '(name, description?) => void', info: 'Adds a new entity to the turn. With a description it joins at once; without one, the AI describes it. A name an entity already has does nothing.' },
   { name: 'placeholders', detail: 'object', info: 'The world’s own placeholders by name. An entity’s or a dictionary’s are on its entry. Use placeholders["Two Words"] for a name with a space.' },
   { name: 'traits', detail: 'object', info: 'Every trait in the world by name. Use traits["Two Words"] for a name with a space.' },
   { name: 'entities', detail: 'object', info: 'Every entity in the game by name, with its own traits, placeholders and stats. Use entities["Two Words"] for a name with a space.' },
@@ -278,7 +288,7 @@ export const STAT_CODE_SURFACE: CodeSurface = {
   label: 'stat script',
   globals: SANDBOX_GLOBALS,
   builtins: SANDBOX_BUILTINS,
-  members: BUILTIN_MEMBERS,
+  members: new Map([...BUILTIN_MEMBERS, ['location', LOCATION_MEMBERS]]),
   languageNames: LANGUAGE_NAMES,
   // The Variable menu is the drill tree in `statCodeVariableTree`.
   missingReturn: 'This code never returns a number or writes self.value, so the stat keeps its value.',

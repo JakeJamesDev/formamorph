@@ -4,8 +4,9 @@ import type {
 import {
   CODE_BOUND_FIELDS, executeStatCode, keyedEntities, type EntityTraitWrites, type KeyedEntities, type NarrationInput, type PlaceholderWrite,
   type SandboxStats, type SandboxTrait, type StatClock, type StatCodeResult, type StatTurnInputs, type StatWrite, type SwitchedTrait,
-  type TraitWrite, type ValueAndMax,
+  type TraitWrite, type ValueAndMax, type SandboxPlace, type SandboxPlaces, type WorldWrites,
 } from './statCodeExecutor';
+import { mergeWorldWrites } from './worldWrites';
 import { statCodeName, statCodeNamed } from './statCodeNames';
 import {
   codeDictionaries, sandboxDictionaries, sandboxPlaceholders, withLibraryPlaceholders, type StatCodePlaceholderSet,
@@ -94,6 +95,8 @@ export interface StatCodeTurn {
   penalties?: Readonly<Record<string, number>>;
   /** Who answers `player.*`. Absent, the game's prompt store does. */
   prompts?: ScriptPromptHost;
+  /** The world's locations, authored names and all, and where the turn stands. Absent, code names none. */
+  places?: SandboxPlaces;
 }
 
 /** One entity owner's part of a turn, in the same terms as the turn owner's. */
@@ -128,7 +131,12 @@ export interface StatCodeTurnResult {
   gateStats: GateStats;
   /** The sentence an `output` run left: as it came when no script changed it. Absent on any other run. */
   sentence?: string;
+  /** The run's location, clock and discovery writes, merged in run order. Absent when no script wrote one. */
+  worldWrites?: WorldWrites;
 }
+
+const mergedWorldWrites = (writers: readonly (WorldWrites | undefined)[]): WorldWrites | undefined =>
+  writers.reduce<WorldWrites | undefined>(mergeWorldWrites, undefined);
 
 /** Placeholder id → what code pinned it to, or null where code unpinned it. An Object's pin is a list. */
 export type PinWrites = Readonly<Record<string, string | string[] | null>>;
@@ -249,6 +257,7 @@ interface ScriptWrites {
   stats: ReadonlyMap<OwnerId, readonly TargetWrite[]>;
   placeholders: readonly PlaceholderWrite[];
   traits?: StatTraitWrites;
+  world?: WorldWrites;
 }
 
 /** One stat's fields a box wrote. */
@@ -430,6 +439,7 @@ export function chainedResult(start: StatCodeTurn, steps: readonly StatCodeTurnR
   const finalStep = steps.at(-1);
   if (!finalStep) throw new Error('A chained result needs a step');
   const pinWrites: PinWrites = Object.assign({}, ...steps.map((step) => step.pinWrites));
+  const worldWrites = mergedWorldWrites(steps.map((step) => step.worldWrites));
   const last = steps.findLast((step) => step.traits)?.traits;
   const logs = steps.map((step) => step.traits?.log ?? []);
   const traits: StatCodeTraitResult | undefined = last && {
@@ -443,7 +453,7 @@ export function chainedResult(start: StatCodeTurn, steps: readonly StatCodeTurnR
   }));
   return {
     stats: now.stats, ...changedStats(start.stats, now.stats), pinWrites, gateStats: finalStep.gateStats,
-    ...(traits ? { traits } : {}), ...(owners ? { owners } : {}),
+    ...(traits ? { traits } : {}), ...(owners ? { owners } : {}), ...(worldWrites ? { worldWrites } : {}),
   };
 }
 
@@ -569,6 +579,7 @@ async function runScripts(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
       ?? { id, name: '', type: '', pronouns: '', inScene: false, traits: [], stats: ownerStats(run) };
   };
   const ownerEntries = new Map(runs.map((run) => [run, ownerEntryOf(run)]));
+  const places = turn.places && codePlaces(turn.places, placeholderDefs);
   const dictionaries = sandboxDictionaries(codeDictionaries(placeholderSet?.dictionaries, placeholderDefs), sandbox?.owners);
   /** A script's name in the logs: its stat's or trait's, else its own name or the world-and-timing fallback. */
   const whoRan = ({ stat, trait, script }: ScriptUnit) => (stat ? `Stat ${stat.name}`
@@ -587,7 +598,7 @@ async function runScripts(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
     const selfTrait = trait && selfTraitOf(trait, owner);
     const result = await executeStatCode(script.code, [...globalStats.stats], stat, {
       clock: turn.clock, turn: globalStats.turn, enabled: globalStats.enabled, placeholders, traits, ...inPlay,
-      owner, dictionaries, prompts: turn.prompts,
+      owner, dictionaries, prompts: turn.prompts, places,
       ...(sentence === undefined || !turn.narration ? {} : { narration: { ...turn.narration, sentence } }),
       ...(selfTrait && { selfTrait }), ...(switchedTrait && { switchedTrait }),
     });
@@ -600,6 +611,7 @@ async function runScripts(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
       stats: targetWrites(stat, result, run.owner.id),
       placeholders: result.placeholders ?? [],
       ...(result.traits || result.entities ? { traits: { world: result.traits ?? [], entities: result.entities ?? [] } } : {}),
+      ...(result.worldWrites ? { world: result.worldWrites } : {}),
     };
     warnDroppedWrites(whoRan(unit), result);
   };
@@ -608,6 +620,8 @@ async function runScripts(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
   else await Promise.all(ordered.map(runUnit));
   const inOrder = ordered.map(({ unit, run }) => ({ ...unit, owner: ownerEntries.get(run) }));
   const pinWrites = pinWritesInRunOrder(inOrder.map(({ writes }) => writes?.placeholders ?? []));
+  const worldWrites = mergedWorldWrites(inOrder.map(({ writes }) => writes?.world));
+  const withWorld = worldWrites ? { worldWrites } : {};
 
   // Merged per target before the first settle, so the gate snapshot and the penalties see every owner's writes.
   const byOwner = statWritesByOwner(inOrder.map(({ writes }) => writes));
@@ -657,10 +671,11 @@ async function runScripts(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
   const withSentence = sentence === undefined ? {} : { sentence };
   const { stats, moved, boundsChanged } = settleWrites(turn.stats, switched.state.stats, mainWrites, active);
   if (!traitResult && moved.length === 0 && boundsChanged.length === 0) {
-    return { stats: turn.stats, moved, boundsChanged, pinWrites, gateStats, ...withOwners, ...withSentence };
+    return { stats: turn.stats, moved, boundsChanged, pinWrites, gateStats, ...withOwners, ...withSentence, ...withWorld };
   }
   return {
     stats, moved, boundsChanged, pinWrites, gateStats, ...(traitResult ? { traits: traitResult } : {}), ...withOwners, ...withSentence,
+    ...withWorld,
   };
 }
 
@@ -700,6 +715,12 @@ function settleWrites(
     return next.value === stat.value && !boundsChanged.includes(stat.id) ? stat : next;
   });
   return { stats, moved, boundsChanged };
+}
+
+/** `places` under the code names scripts reach them by. */
+function codePlaces({ locations, location }: SandboxPlaces, placeholders: readonly Placeholder[]): SandboxPlaces {
+  const coded = (place: SandboxPlace): SandboxPlace => ({ id: place.id, name: statCodeName(place.name, placeholders) });
+  return { locations: locations.map(coded), location: location && coded(location) };
 }
 
 /** The entities with the fields `fieldsOf` gives each one laid on, `persona` still one of them. */

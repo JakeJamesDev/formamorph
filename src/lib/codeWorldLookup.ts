@@ -4,7 +4,7 @@
  * then its Blueprint.
  */
 
-import type { Dictionary, Entity, EntityGroup, Placeholder, ScriptTiming, Stat, StatGroup, Trait, TraitGroup } from '@/types';
+import type { Dictionary, Entity, EntityGroup, GameLocation, Placeholder, ScriptTiming, Stat, StatGroup, Trait, TraitGroup } from '@/types';
 import { effectiveCopy } from './blueprints';
 import { editorGateInput, resolveOwners, type OwnerWorld } from './owners';
 import { startingGateStats } from './gateStats';
@@ -144,6 +144,8 @@ export interface CodeCardWorld extends PinEditorWorld, WorldScriptsSource {
   entityGroups?: readonly EntityGroup[];
   statGroups?: readonly StatGroup[];
   dictionaries?: readonly Dictionary[];
+  /** Absent ⇒ none. */
+  locations?: readonly GameLocation[];
 }
 
 /** Each box's lookup over `world`. The world's owners resolve once, on the first card any box opens. */

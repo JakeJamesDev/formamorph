@@ -21,6 +21,7 @@ import {
   ruleScripts, scriptFinding, SCRIPT_EXECUTION, SCRIPT_UNKNOWN_NAME, type Finding, type FindingItem, type RuleWorld,
 } from './rules';
 import { startingGateStats } from '@/lib/gateStats';
+import { codeLocationsOf } from '@/lib/statCodeBoxOptions';
 import type { Script, Stat, Trait } from '@/types';
 
 export { SCRIPT_EXECUTION, SCRIPT_UNKNOWN_NAME } from './rules';
@@ -143,6 +144,7 @@ export async function checkScripts(world: RuleWorld, prompts?: ScriptPromptHost)
   ), placeholders.owners).map((entity) => ({ ...entity, stats: { stats: resolved.get(entity.id ?? '') ?? [] } }));
   const entryOf = new Map(entities.map((entity) => [entity.id, entity]));
   const dictionaries = sandboxDictionaries(codeDictionaries(world.dictionaries, placeholderDefs), placeholders.owners);
+  const places = codeLocationsOf(world.locations ?? [], placeholderDefs);
 
   const results = await Promise.all(units.map(async (unit) => {
     const { script, ref, label, item, entityId } = unit;
@@ -157,7 +159,7 @@ export async function checkScripts(world: RuleWorld, prompts?: ScriptPromptHost)
       : (owner ? owner.traits : traits).find((entry) => entry.id === unit.trait.id)
         ?? { id: unit.trait.id, name: statCodeName(unit.trait.name, placeholderDefs), enabled: false, acquired: false };
     const result = await executeStatCode(script.code, stats, self, {
-      placeholders: placeholders.top, traits, entities, owner, dictionaries,
+      placeholders: placeholders.top, traits, entities, owner, dictionaries, places,
       ...(selfTrait && { selfTrait }), ...(prompts && { prompts: askedBy(prompts, label) }),
       ...(script.timing === 'output' && { narration: sampleNarration(SAMPLE_SENTENCE) }),
       ...(script.timing === 'switch' && {

@@ -8,7 +8,8 @@ import { codePinText } from '@/lib/placeholderPins';
 import { PLACEHOLDER_PATH_SEPARATOR } from '@/lib/placeholders';
 import {
   clampToOwnRange, CODE_BOUND_FIELDS, entityTraitsPath, executeStatCode, memberPath, traitWritesPath, SELF_WRITABLE_FIELDS, type CodeBoundField,
-  type OwnerStatWrites, type PlaceholderWrite, type SandboxEntity, type SandboxPlaceholderNode, type StatWrite, type TraitWrite,
+  type OwnerStatWrites, type PlaceholderWrite, type SandboxEntity, type SandboxPlace, type SandboxPlaces, type SandboxPlaceholderNode, type StatWrite,
+  type TraitWrite, type WorldWrites,
 } from '@/lib/statCodeExecutor';
 import type { CodeEntityNames, MissingName } from '@/lib/statCodeAnalysis';
 import { cardWorldNames, type StatCodeNames } from '@/lib/statCodeBoxOptions';
@@ -36,7 +37,8 @@ const TEST_CLOCK: Record<StatCodeTiming, { deltaHours: number; elapsedHours: num
 };
 
 /** The parts of an authored world a stat's code reaches. */
-export type StatCodeWorld = Pick<World, 'stats' | 'statGroups' | 'traits' | 'traitGroups' | 'entities' | 'entityGroups' | 'placeholders' | 'placeholderGroups' | 'dictionaries'>;
+export type StatCodeWorld = Pick<World, 'stats' | 'statGroups' | 'traits' | 'traitGroups' | 'entities' | 'entityGroups' | 'placeholders' | 'placeholderGroups' | 'dictionaries'>
+  & Partial<Pick<World, 'locations'>>;
 
 /** The names of `world` as the stat panel reads them: the global stats without Blueprints, and each entity's
  *  with its links. */
@@ -253,6 +255,19 @@ function ownerMaps(entities: readonly CodeEntityNames[], owner: TestRunOwner | u
   };
 }
 
+/** One line for a move, one for the advances together, and one per discovery. */
+const NO_PLACES: SandboxPlaces = { locations: [], location: null };
+
+const worldWriteLines = (writes: WorldWrites | undefined, locations: readonly SandboxPlace[]): string[] => {
+  if (!writes) return [];
+  const { location, minutes, discover = [] } = writes;
+  return [
+    ...(location === undefined ? [] : [`location.move: ${locations.find((place) => place.id === location)?.name ?? location}`]),
+    ...(minutes === undefined ? [] : [`clock.advance: ${minutes} minutes`]),
+    ...discover.map(({ name, description }) => `discover: ${name}${description === undefined ? '' : ', described'}`),
+  ];
+};
+
 /** The line of a dropped kind of write, or none when no names are left. */
 const droppedLine = (lead: string, names: readonly string[] | undefined) =>
   (names?.length ? [`${lead} Writes ignored: ${names.join(', ')}.`] : []);
@@ -264,8 +279,8 @@ const droppedLine = (lead: string, names: readonly string[] | undefined) =>
  */
 export async function runTestCode(
   code: string, timing: ScriptTiming, stat: (Partial<Stat> & Pick<Stat, 'id' | 'name'>) | null,
-  { codeNamedStats, placeholders, traits, traitPlaces, entities, entityStats }:
-    Pick<StatCodeNames, 'codeNamedStats' | 'placeholders' | 'traits' | 'traitPlaces' | 'entities' | 'entityStats'>,
+  { codeNamedStats, placeholders, traits, traitPlaces, entities, entityStats, places = NO_PLACES }:
+    Pick<StatCodeNames, 'codeNamedStats' | 'placeholders' | 'traits' | 'traitPlaces' | 'entities' | 'entityStats' | 'places'>,
   { pendingPersona: pending = false, missing, owner, selfTrait, sentence, prompts }: TestRunOptions = {},
 ): Promise<TestCodeReport> {
   // No playthrough: an unrolled placeholder reads as a fresh draw, no one holds a trait, and no persona plays.
@@ -321,6 +336,7 @@ export async function runTestCode(
       ...(ownerEntry && { owner: ownerEntry }),
       ...(timing === 'output' && { narration: sampleNarration(sentence ?? '') }),
       ...(switchedTrait && { switchedTrait }), ...(prompts && { prompts }),
+      places,
     },
   );
   const assumedField = missing ? { assumed } : {};
@@ -348,6 +364,7 @@ export async function runTestCode(
     ...(outcome.traits ?? []).map((entry) => switchLine('', entry)),
     ...(outcome.entities ?? []).filter((entry) => entry !== personaWrites).flatMap((row) =>
       (row.traits ?? []).map((entry) => switchLine(`${traitWritesPath(row)}.`, entry))),
+    ...worldWriteLines(outcome.worldWrites, places.locations),
   ];
   const keep = missing ? droppedFilter(missing) : KEEP_DROPPED;
   const dropped = [

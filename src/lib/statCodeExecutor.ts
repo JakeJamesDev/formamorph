@@ -102,6 +102,37 @@ export interface StatCodeResult {
   /** The sentence the code left, by return or by `narration.sentence`. Present on a During AI Output run that
    *  succeeded, the sentence as it came when the code did not touch it. */
   sentence?: string;
+  /** What the code did to the location, the clock and the discovered cast. Absent when it did none of it. */
+  worldWrites?: WorldWrites;
+}
+
+/** A location as `location.move` finds it: by id, else by code name. */
+export interface SandboxPlace {
+  id: string;
+  name: string;
+}
+
+/** The world's locations a run can name, and where the turn stands. */
+export interface SandboxPlaces {
+  locations: readonly SandboxPlace[];
+  location: SandboxPlace | null;
+}
+
+/** One `discover` call. With a description the entity is created at once; without, the discover pass
+ *  describes it. */
+export interface DiscoverWrite {
+  name: string;
+  description?: string;
+}
+
+/** A run's writes to the turn's world fields. Each field is absent when no call wrote it. */
+export interface WorldWrites {
+  /** The id of the location the last `location.move` named. */
+  location?: string;
+  /** Every `clock.advance` of the run, added up. */
+  minutes?: number;
+  /** Once per name, in first-call order; a call with a description fills in one without. */
+  discover?: DiscoverWrite[];
 }
 
 /** The `narration` a During AI Output run reads. Its presence marks the run's timing. */
@@ -1088,6 +1119,65 @@ export interface StatCodeRunOptions {
   switchedTrait?: SwitchedTrait;
   /** Who answers `player.*`. Absent, the game's prompt store does. */
   prompts?: ScriptPromptHost;
+  /** What `location` reads and what `location.move` can name. Absent, the run knows none. */
+  places?: SandboxPlaces;
+}
+
+const WORLD_WRITES = '__formamorphWorldWrites';
+const ADVANCE_CLOCK = '__formamorphAdvanceClock';
+
+/** The prelude of `location`, `discover` and the hook `clock.advance` calls. An unknown location is listed as well
+ *  as thrown, so a script that catches the throw still fails. */
+const worldPrelude = ({ locations, location }: SandboxPlaces): string => [
+  `const [location, discover, ${ADVANCE_CLOCK}, ${WORLD_WRITES}] = ((places, lock, note) => {`,
+  `  const writes = { location: null, minutes: 0, advanced: false, discover: [], unknown: [] };`,
+  `  const find = (kind, list, target) => {`,
+  `    const hit = typeof target === 'string' ? list.find((place) => place.id === target) || list.find((place) => place.name === target) : undefined;`,
+  `    if (hit) return hit.id;`,
+  `    const message = 'The world has no ' + kind + ' named "' + String(target) + '"';`,
+  `    writes.unknown.push(message);`,
+  `    throw new Error(message);`,
+  `  };`,
+  `  const here = places.location || { id: '', name: '' };`,
+  `  const location = Object.freeze(lock({`,
+  `    id: here.id, name: here.name, move: (target) => { writes.location = find('location', places.locations, target); },`,
+  `  }, ['id', 'name', 'move'], 'location.', note));`,
+  `  const text = (value) => (typeof value === 'string' ? value.trim() : '');`,
+  `  const discover = (name, description) => {`,
+  `    if (!text(name)) throw new TypeError('discover needs a name as text');`,
+  `    if (description !== undefined && !text(description)) throw new TypeError('discover needs a description as text');`,
+  `    const entry = description === undefined ? { name: text(name) } : { name: text(name), description: text(description) };`,
+  `    const at = writes.discover.findIndex((known) => known.name === entry.name);`,
+  `    if (at < 0) writes.discover.push(entry);`,
+  `    else if (entry.description !== undefined) writes.discover[at] = entry;`,
+  `  };`,
+  `  const advance = (minutes) => {`,
+  `    if (typeof minutes !== 'number' || !Number.isFinite(minutes) || minutes < 0) {`,
+  `      throw new TypeError('clock.advance needs a finite number of minutes, 0 or more');`,
+  `    }`,
+  `    writes.minutes += minutes;`,
+  `    writes.advanced = true;`,
+  `  };`,
+  `  return [location, Object.freeze(discover), advance, writes];`,
+  `})(${JSON.stringify({ locations, location })}, ${LOCK_FIELDS}, ${LOOSE_NOTE});`,
+].join('\n');
+
+const NO_PLACES: SandboxPlaces = { locations: [], location: null };
+
+/** The world writes a run's dump holds, or the error of the first unknown name it named. */
+function readWorldWrites(dump: string): { writes?: WorldWrites } | { error: string } {
+  const parsed: unknown = JSON.parse(dump);
+  if (!parsed || typeof parsed !== 'object') return {};
+  const { location, minutes, advanced, discover, unknown } = parsed as {
+    location: string | null; minutes: number; advanced: boolean; discover: DiscoverWrite[]; unknown: string[];
+  };
+  if (unknown.length) return { error: unknown[0] };
+  const writes: WorldWrites = {
+    ...(location === null ? {} : { location }),
+    ...(advanced ? { minutes } : {}),
+    ...(discover.length ? { discover } : {}),
+  };
+  return Object.keys(writes).length ? { writes } : {};
 }
 
 /** The `player` object of a During AI Output run: every call throws, since a sentence cannot wait on a dialog. */
@@ -1157,7 +1247,7 @@ export const executeStatCode = async (
   currentStat: Stat | null,
   {
     clock, turn, enabled, placeholders = [], traits = [], entities = [], persona = EMPTY_PERSONA, owner, dictionaries = [],
-    narration, selfTrait, switchedTrait, prompts = scriptPrompts,
+    narration, selfTrait, switchedTrait, prompts = scriptPrompts, places = NO_PLACES,
   }: StatCodeRunOptions = {},
 ): Promise<StatCodeResult> => {
   // If code is empty, return null (use the manually set value)
@@ -1242,11 +1332,14 @@ export const executeStatCode = async (
       `const self = ${!currentStat ? selfTraitSource : selfMap ? `${selfMap}[${JSON.stringify(selfData.name)}]` : JSON.stringify(selfData)};`,
       ...(selfMap || !currentStat ? [] : [`(${LOCK_STAT})(self, ${SELF_ASSIGNED}, (path) => ${LOOSE_NOTE}('self.' + path));`]),
       ...(!currentStat && selfTrait ? [`Object.freeze((${LOCK_FIELDS})(self, Object.keys(self), 'self.', ${LOOSE_NOTE}));`] : []),
-      `const clock = ((lock) => {`,
+      worldPrelude(places),
+      `const clock = ((lock, advance) => {`,
       `  const clock = ${JSON.stringify(clockObject(clock))};`,
       `  Object.freeze(lock(clock.previous, ['day', 'daypart'], 'clock.previous.', ${LOOSE_NOTE}));`,
-      `  return Object.freeze(lock(clock, Object.keys(clock), 'clock.', ${LOOSE_NOTE}));`,
-      `})(${LOCK_FIELDS});`,
+      `  lock(clock, Object.keys(clock), 'clock.', ${LOOSE_NOTE});`,
+      `  Object.defineProperty(clock, 'advance', { value: advance, enumerable: true });`,
+      `  return Object.freeze(clock);`,
+      `})(${LOCK_FIELDS}, ${ADVANCE_CLOCK});`,
       ...(narration ? [
         // `sent` and `buffered` freeze, so code can neither swap nor grow them.
         `const narration = Object.seal((${LOCK_FIELDS})(((entry) => (Object.freeze(entry.sent), Object.freeze(entry.buffered), entry))(`,
@@ -1267,7 +1360,7 @@ export const executeStatCode = async (
       code,
       `})(), ${selfRead('value')}, ${CODE_BOUND_FIELDS.map(selfRead).join(', ')}, ${PLACEHOLDER_WRITES}(), ${TRAIT_WRITES}(), ${ENTITY_WRITES}(),`,
       `  ${STAT_WRITES}(), ${DICTIONARY_WRITES}(), JSON.stringify(${SELF_ASSIGNED}), ${OWNER_STAT_WRITES}(), JSON.stringify(${LOOSE_WRITES}),`,
-      `  ${ENTITY_STAT_WRITES}(), ${narration ? 'narration.sentence' : 'undefined'}];`,
+      `  ${ENTITY_STAT_WRITES}(), ${narration ? 'narration.sentence' : 'undefined'}, JSON.stringify(${WORLD_WRITES})];`,
     ].join('\n');
 
     return await runInSandbox(program, ({ vm, result, consoleOutput, timedOut }): StatCodeResult => {
@@ -1318,6 +1411,7 @@ export const executeStatCode = async (
       const loose: unknown = JSON.parse(readDump(9 + CODE_BOUND_FIELDS.length));
       const entityStatsDump = readDump(10 + CODE_BOUND_FIELDS.length);
       const assignedSentence = readSlot(11 + CODE_BOUND_FIELDS.length);
+      const worldWrites = readWorldWrites(readDump(12 + CODE_BOUND_FIELDS.length));
 
       if (consoleOutput.trim()) {
         console.log('Console output:', consoleOutput);
@@ -1327,6 +1421,7 @@ export const executeStatCode = async (
       const returnsSentence = !!narration && returned.type === 'string';
       if (narration && assignedSentence.type !== 'string') return failure('narration.sentence must be a string', 'bad-write');
       const sentence = narration && (returnsSentence ? returned.text : assignedSentence.text);
+      if ('error' in worldWrites) return failure(worldWrites.error, 'throw');
       if (currentStat && !returnsSentence && returned.type !== 'number' && returned.type !== 'undefined') {
         return nonNumberFailure('Code must return a number or nothing');
       }
@@ -1388,6 +1483,7 @@ export const executeStatCode = async (
         ...(entityWrites.unknown.length ? { unknownEntities: entityWrites.unknown } : {}),
         ...(readOnlyWrites.length ? { readOnlyWrites } : {}),
         ...(sentence === undefined ? {} : { sentence }),
+        ...(worldWrites.writes ? { worldWrites: worldWrites.writes } : {}),
       });
       if (!currentStat || returnsSentence) return settled(null);
       if (returned.type === 'number') return settled(returned.number);

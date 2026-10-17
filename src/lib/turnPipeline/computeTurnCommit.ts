@@ -1,5 +1,6 @@
 import type { AITurnResult, Entity } from '@/types';
-import type { StatClock } from '@/lib/statCodeExecutor';
+import type { StatClock, WorldWrites } from '@/lib/statCodeExecutor';
+import { mergeWorldWrites } from '@/lib/worldWrites';
 import type { WorldCalendar } from '@/lib/gameClock';
 import { FLAT_HOURS_PER_TURN } from '@/lib/gameClock';
 import { materializeDiscoveredEntity } from '@/lib/runtimeCharacters';
@@ -51,6 +52,11 @@ export interface TurnCommitContext {
   /** Ids for materialized entities — the one thing here that isn't a function of its inputs, so it enters
    *  as one. Defaults to a fresh UUID. */
   newEntityId?: () => string;
+  /** What this turn's code wrote to the location, the clock and the cast before the commit. Each field beats
+   *  the pass that answers it (Q13, Q15). */
+  codeWrites?: WorldWrites;
+  /** Names a code discovery leaves alone: every entity's, and the ones the player deleted. Absent ⇒ none. */
+  heldNames?: readonly string[];
 }
 
 export interface TurnCommitInput {
@@ -78,6 +84,11 @@ export interface TurnCommit {
   /** The story's opening hour, on the opening turn only. Null means the shipped default stands. */
   openingHour: number | null;
   discoveries: TurnDiscovery[];
+  /** The location code moved the turn to, which the apply step moves play to. `turn.locationId` holds a router
+   *  move too, so this tells the two apart. Null when code moved nothing. */
+  codeMove: string | null;
+  /** Every code write this commit holds, so a later batch lays over them. Null when it holds none. */
+  codeWrites: WorldWrites | null;
 }
 
 /** Every outcome one pass produced, in dispatch order. A failed request is left out — it answered nothing. */
@@ -169,7 +180,7 @@ export function computeTurnCommit({ result, plan, context }: TurnCommitInput): T
     ...(Object.keys(diaries).length ? { diaries } : {}),
   };
 
-  return {
+  return withCodeWrites({
     turn,
     statResponse,
     statChanges,
@@ -187,5 +198,47 @@ export function computeTurnCommit({ result, plan, context }: TurnCommitInput): T
     isOpeningTurn: plan.isOpeningTurn,
     openingHour,
     discoveries,
-  };
+    codeMove: null,
+    codeWrites: null,
+  }, context.codeWrites, context);
+}
+
+/**
+ * `commit` with `writes` laid over the code writes it already holds. A code write beats the pass for its
+ * field: a move drops the suggest offer, an advance replaces the turn's duration, and a described discovery
+ * replaces the pass's record of that name. The same commit when `writes` is absent.
+ */
+export function withCodeWrites(commit: TurnCommit, writes: WorldWrites | undefined, context: TurnCommitContext): TurnCommit {
+  if (!writes) return commit;
+  const codeWrites = mergeWorldWrites(commit.codeWrites ?? undefined, writes) ?? null;
+  let { turn, discoveries, suggestedLocation, codeMove, turnHours, clock } = commit;
+
+  if (writes.location !== undefined) {
+    codeMove = writes.location;
+    turn = { ...turn, locationId: writes.location };
+    suggestedLocation = null;
+  }
+
+  const minutes = codeWrites?.minutes;
+  if (minutes !== undefined) {
+    turnHours = minutes / 60;
+    turn = { ...turn, timeDelta: turnHours };
+    clock = { ...clock, deltaHours: turnHours, elapsedHours: (clock.elapsedHours ?? 0) - (clock.deltaHours ?? 0) + turnHours };
+  }
+
+  const newEntityId = context.newEntityId ?? randomUUID;
+  const held = (name: string) => [...context.heldNames ?? [], ...context.knownDiscoveredNames].some((known) => sameCharacterName(known, name));
+  let entities = turn.entities ?? [];
+  for (const { name, description } of writes.discover ?? []) {
+    if (held(name)) continue;
+    if (!entities.some((known) => sameCharacterName(known, name))) entities = [...entities, name];
+    if (description === undefined) continue;
+    discoveries = [
+      ...discoveries.filter((found) => !sameCharacterName(found.entity.name, name)),
+      { entity: materializeDiscoveredEntity(name, description, newEntityId()), locationId: context.discoveryLocationId, sourceTurnId: turn.turnId ?? '' },
+    ];
+  }
+  if (entities !== turn.entities) turn = { ...turn, entities };
+
+  return { ...commit, turn, discoveries, suggestedLocation, codeMove, turnHours, clock, codeWrites };
 }

@@ -17,6 +17,8 @@ export const STAT_CODE_GUIDE_LINKS: Readonly<Record<string, DocTarget>> = {
   stats: scripts('stats'),
   owner: scripts('owner'),
   clock: scripts('the-story-clock'),
+  location: scripts('location'),
+  discover: scripts('discover'),
   traits: scripts('traits'),
   placeholders: scripts('placeholders'),
   entities: scripts('entities'),

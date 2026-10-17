@@ -34,6 +34,13 @@ describe('the on-demand script check', () => {
     ]))).toEqual([]);
   });
 
+  it('runs a move to a location of the world clean, and fails a move to one it lacks', async () => {
+    const world = (code: string): RuleWorld => ({ ...base([]), scripts: [{ id: 'w', timing: 'after', code }] });
+    expect(await checkScripts(world('if (location.name === "Harbor Steps") location.move("harbor"); clock.advance(5); discover("Tor");'))).toEqual([]);
+    const [found] = await checkScripts(world('location.move("Harbor Stairs");'));
+    expect(found?.ruleId).toBe(SCRIPT_EXECUTION.id);
+  });
+
   it('runs every script the static rules read, and names each by the same row', async () => {
     const fails: Script[] = [{ id: 'f', timing: 'after', code: 'throw new Error("x");' }];
     const ash: Entity = {

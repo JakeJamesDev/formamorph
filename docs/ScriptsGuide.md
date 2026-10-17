@@ -229,7 +229,9 @@ A script can use only these objects. A word in angle brackets stands for a name 
 | `self` | `id`, `name`, `type`, `description`, `enabled`, `min`, `max`, `value`, `regen`, `previous`, `delta` | `self.value` | `self.value = <n>` |
 | `stats` | `id`, `name`, `type`, `description`, `enabled`, `min`, `max`, `value`, `regen`, `previous`, `delta` | `stats.<Stat>.value` | `stats.<Stat>.value = <n>` |
 | `owner` | `id`, `name`, `type`, `pronouns`, `inScene`, `traits`, `placeholders`, `stats` | `owner.stats.<Stat>.value` | `owner.stats.<Stat>.value = <n>` |
-| `clock` | `day`, `daypart`, `deltaHours`, `elapsedHours`, `previous` | `clock.day` | Read-only |
+| `clock` | `day`, `daypart`, `deltaHours`, `elapsedHours`, `previous`, `advance()` | `clock.day` | `clock.advance(<n>)` |
+| `location` | `id`, `name`, `move()` | `location.name` | `location.move("<Location>")` |
+| `discover` | — | — | `discover(<text>)` |
 | `traits` | `enabled`, `acquired`, `id`, `name`, `mode`, `available`, `group`, `playerToggle` | `traits.<Trait>.enabled` | `traits.<Trait>.enabled = true` |
 | `persona` | `id`, `name`, `type`, `pronouns`, `inScene`, `traits`, `placeholders`, `stats` | `persona.traits.<Trait>.enabled` | `persona.traits.<Trait>.enabled = true` |
 | `entities` | `id`, `name`, `type`, `pronouns`, `inScene`, `traits`, `placeholders`, `stats` | `entities.<Entity>.stats.<Stat>.value` | `entities.<Entity>.traits.<Trait>.enabled = true` |
@@ -785,7 +787,7 @@ The timings are ordered against each other, though: everything a Before the AI s
 ### The Story Clock
 <!-- keywords: calendar, date, day night cycle, duration, time passed, timer, how long slept, always one hour, in game time -->
 
-`clock` is a read-only object that describes the story time. A write to any of its fields is ignored and reported.
+`clock` describes the story time. Its fields are read-only: a write to one is ignored and reported. To pass time, call `clock.advance`.
 
 | Field | What it is |
 | --- | --- |
@@ -801,6 +803,51 @@ The timings are ordered against each other, though: everything a Before the AI s
 **Why start and end are both given.** A turn spans time. An eight-hour sleep that begins at 15:00 has `clock.previous.daypart === 'afternoon'` and `clock.daypart === 'night'`. Neither reading alone describes the turn.
 
 > ⚠️ **With the clock off, `clock.deltaHours` is always the Time Per Turn setting** (`1` unless the player changes it), and every turn advances the story by that much. Your code works either way; it just gets a flat number instead of a measured one. The setting is **Measured Clock**, under [Settings](Settings#time) → **Output** → **Time**, in **Advanced** mode.
+
+#### Passing Time
+
+`clock.advance(<n>)` sets how long the turn takes, in story minutes. It replaces what the AI measured, or the Time Per Turn when the clock is off.
+
+- **Calls add up.** Two scripts that each call `clock.advance(30)` make the turn take one hour.
+- **The clock reads the same for the rest of the run.** A call changes the turn, not the `clock` your script reads.
+- **The number must be 0 or more.** A negative or non-finite number stops the script with an error, and its writes are dropped.
+
+```js
+// A long rest takes eight hours, whatever the AI measured.
+if (traits.Resting.enabled) clock.advance(8 * 60);
+```
+
+### Location
+<!-- keywords: move player, teleport, change scene, travel, where am i, current place, go to -->
+
+`location` is the place the turn is at. `location.name` is its code name and `location.id` its id. Both are empty in a world with no location.
+
+`location.move("<Location>")` moves the turn to a location of your world, by name or id. It replaces the AI's move for that turn, and it needs no path from where the turn is.
+
+- **A Before the AI move lands before the AI writes.** The narration is written at the new place.
+- **A During AI Output or After the AI move lands with the turn.**
+- **The last move wins.** When several scripts move the turn, the last one in run order decides.
+- **A name your world has no location for stops the script with an error.** Its other writes are dropped too, so a typo shows up in Test Code and the Test Bench.
+
+```js
+// Falling asleep in the woods wakes you at camp.
+if (stats.Energy.value <= 0) location.move("Camp");
+```
+
+### Discover
+<!-- keywords: new character, add npc, spawn, introduce someone, meet, create entity -->
+
+`discover(<text>)` adds a new entity to the turn, as if the AI had introduced them.
+
+- **`discover("<Name>")`** adds the name to the turn's cast. The AI then describes them, as it does for an entity the narration invents. With **Describe New Characters** off, nothing more happens. See [How to Get Descriptions for New Entities](Entities#how-to-get-descriptions-for-new-entities).
+- **`discover("<Name>", "<Description>")`** creates the entity at once with that description, with no AI call.
+- **A name that an entity already has does nothing.**
+- **The entity goes away when the turn does.** A regenerate or a stopped turn drops it.
+
+### Code Beats the AI
+<!-- keywords: who wins, ai overrides, script vs ai, precedence location clock -->
+
+A script's move, advance or discovery wins over the AI's answer for the same turn. With no script write, the AI's answer stands as before. Like every script write, each one belongs to its turn: a regenerate or a stopped turn drops it. A stat re-roll keeps the turn's place, time and cast.
 
 ### Examples
 <!-- keywords: sample scripts, cookbook, survival needs, decay over time, combat math, rng, randomness same number, soft cap, copy paste ideas -->

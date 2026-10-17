@@ -14,11 +14,13 @@ export interface ScriptWorldNames {
 /** The world's names as script boxes read them. Off world, only the placeholders the item carries. */
 export function useScriptWorldNames(): ScriptWorldNames {
   const { placeholders, placeholderGroups, placeholderOwners, traits, traitGroups, playEntities, entityGroups, dictionaries } = useStatEditorWorld();
-  const playStats = useGameDataOptional()?.playStats;
+  const gameData = useGameDataOptional();
+  const playStats = gameData?.playStats;
+  const locations = gameData?.locations;
   // `stats` is the world's play stats in every box.
   const names = useMemo(() => statCodeWorldNames({
-    playStats: playStats ?? [], playEntities, traits, traitGroups, entityGroups, placeholders, placeholderOwners, dictionaries,
-  }), [playStats, playEntities, traits, traitGroups, entityGroups, placeholders, placeholderOwners, dictionaries]);
+    playStats: playStats ?? [], playEntities, traits, traitGroups, entityGroups, placeholders, placeholderOwners, dictionaries, locations,
+  }), [playStats, playEntities, traits, traitGroups, entityGroups, placeholders, placeholderOwners, dictionaries, locations]);
   const placeholderPlaces = useMemo(
     () => worldPlaceholderPlaces({ list: placeholders, owners: placeholderOwners, groups: placeholderGroups }),
     [placeholders, placeholderOwners, placeholderGroups],
