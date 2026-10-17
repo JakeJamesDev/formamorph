@@ -70,7 +70,7 @@ function CallLimitField({ callLimit, defaultLimit, maxLimit, onChange }: {
 }
 
 /** Offered To and Max Calls per Request, written on each change. Where one request takes every Tool, the limit alone. */
-function AvailabilityFields({ tool, onChange, offeredTo }: { tool: Tool; onChange: (tool: Tool) => void; offeredTo: boolean }) {
+export function AvailabilityFields({ tool, onChange, offeredTo }: { tool: Tool; onChange: (tool: Tool) => void; offeredTo: boolean }) {
   const id = useId();
   const setLimit = (limit: number | undefined) => {
     const { callLimit: _, ...rest } = tool;

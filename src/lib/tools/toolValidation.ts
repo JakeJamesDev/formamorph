@@ -23,12 +23,14 @@ export interface ToolNameCheck {
   selfId?: string;
   /** The caller's fixed function names, which count as built-in. */
   reserved?: readonly string[];
+  /** A World Tool, which may take a catalog name and replace that Tool (Q22). */
+  world?: boolean;
 }
 
-/** The problem with naming a user Tool `name` among `tools`, or null. */
-export function toolNameProblem(name: string, tools: readonly Tool[], { selfId, reserved = [] }: ToolNameCheck = {}): ToolNameProblem | null {
+/** The problem with naming a Tool `name` among the other Tools of its list, `tools`, or null. */
+export function toolNameProblem(name: string, tools: readonly Tool[], { selfId, reserved = [], world = false }: ToolNameCheck = {}): ToolNameProblem | null {
   if (!TOOL_NAME_PATTERN.test(name)) return 'format';
-  if (catalogToolNamed(name) || reserved.some((taken) => sameToolName(taken, name))) return 'builtin';
+  if ((!world && catalogToolNamed(name)) || reserved.some((taken) => sameToolName(taken, name))) return 'builtin';
   if (tools.some((t) => t.id !== selfId && sameToolName(t.name, name))) return 'taken';
   return null;
 }
@@ -78,15 +80,15 @@ function parseHandler(raw: unknown): ToolHandler | null {
 }
 
 /**
- * Validate an untrusted user Tool, such as one in a Tool pack or local storage. Every field must be well-formed or the
+ * Validate an untrusted user Tool, such as one in a Tool pack or local storage, or a `world` Tool. Every field must be well-formed or the
  * whole Tool is rejected with a reason; only prompt kinds from a newer version are dropped quietly.
  */
-export function parseTool(raw: unknown): { tool: Tool } | { error: string } {
+export function parseTool(raw: unknown, { world = false }: { world?: boolean } = {}): { tool: Tool } | { error: string } {
   if (!isRecord(raw)) return { error: "it isn't a Tool" };
   const { id, name, description, emptyResult, callLimit } = raw;
   if (typeof id !== 'string' || !id) return { error: 'it has no id' };
   if (typeof name !== 'string') return { error: 'it has no name' };
-  const nameProblem = toolNameProblem(name, []);
+  const nameProblem = toolNameProblem(name, [], { world });
   if (nameProblem === 'format') return { error: 'its name uses characters other than letters, digits, _ and -, or is over 64 characters' };
   if (nameProblem === 'builtin') return { error: 'its name is a built-in Tool name' };
   if (typeof description !== 'string') return { error: 'it has no description' };

@@ -89,7 +89,7 @@ export const SEVERITIES: readonly Severity[] = ['error', 'warning', 'info'] as c
 
 /** The editor tab that owns a finding's items — where Open navigates to. */
 export type FindingSection =
-  | 'overview' | 'stats' | 'entities' | 'locations' | 'traits' | 'dictionary' | 'placeholders' | 'scripts';
+  | 'overview' | 'stats' | 'entities' | 'locations' | 'traits' | 'dictionary' | 'placeholders' | 'scripts' | 'tools';
 
 /** One item a finding names, labeled as the editor's own lists label it. */
 export interface FindingItem {

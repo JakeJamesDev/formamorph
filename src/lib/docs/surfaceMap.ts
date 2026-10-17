@@ -164,6 +164,7 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
   'worldEditor.dictionary': { page: 'World-Editor-Dictionary', anchor: '-world-editor-dictionary' },
   'worldEditor.placeholders': { page: 'World-Editor-Placeholders', anchor: '-world-editor-placeholders' },
   'worldEditor.scripts': { page: 'ScriptsGuide', anchor: 'how-to-review-every-script-in-one-place' },
+  'worldEditor.tools': { page: 'Tools', anchor: 'how-to-add-a-tool-to-a-world' },
 
   'worldEditorLocations.list': { page: 'World-Editor-Locations', anchor: 'list-and-canvas' },
   'worldEditorLocations.canvas': { page: 'World-Editor-Locations', anchor: 'list-and-canvas' },

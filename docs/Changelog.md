@@ -16,6 +16,9 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 #### ➕ Added
 
+- **👤 User-facing**
+  - **World Tools:**
+    - **Worlds can now hold Tools, which every playthrough of the world offers to the AI.** Add them in the World Editor's new Tools tab, in Advanced mode. A World Tool replaces a same-name Tool in its world. The Tool status line now names the Tools the AI calls.
 - **🛠️ Developer tooling**
   - **The During AI Output run takes a Narration Stream listener that drops a retracted round's writes.** A sentence run still in progress at the retract leaves no write either. Output triggers build on this seam.
 

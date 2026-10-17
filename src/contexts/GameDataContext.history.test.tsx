@@ -114,6 +114,27 @@ describe('the world history', () => {
     expect(ctx().entities.map((e) => e.name)).toEqual(['Wick', 'Moss']);
   });
 
+  it('undoes a saved, a reordered and a deleted World Tool, one Step each', async () => {
+    const tool = (id: string) => ({
+      id, name: id, description: '', params: [], handler: { kind: 'template' as const, body: 'Yes.' }, emptyResult: '', offeredTo: ['narration' as const],
+    });
+    const { ctx, history } = await open();
+    const ids = () => ctx().worldTools.map((t) => t.id);
+    await act1(() => ctx().setWorldTools([tool('roll'), tool('tally')]));
+    await act1(() => ctx().setWorldTools([...ctx().worldTools].reverse()));
+    await act1(() => ctx().setWorldTools(ctx().worldTools.filter((t) => t.id !== 'roll')));
+    expect(ids()).toEqual(['tally']);
+
+    await act1(() => history().undo());
+    expect(ids()).toEqual(['tally', 'roll']);
+    await act1(() => history().undo());
+    expect(ids()).toEqual(['roll', 'tally']);
+    await act1(() => history().undo());
+    expect(ids()).toEqual([]);
+    await act1(() => history().redo());
+    expect(ids()).toEqual(['roll', 'tally']);
+  });
+
   it('records a write that bypasses the actions', async () => {
     const { ctx, history } = await open();
     await act1(() => ctx().setStats((prev) => [...prev].reverse()));

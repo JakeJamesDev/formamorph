@@ -45,6 +45,46 @@ describe('toolsOfferedTo', () => {
     const tools = [GET_ENTITY, userTool({ id: 'a', name: 'a' }), userTool({ id: 'b', name: 'b' })];
     expect(toolsOfferedTo('narration', tools, allOn, true).map((t) => t.name)).toEqual(['get_entity', 'a', 'b']);
   });
+
+  describe('World Tools', () => {
+    const worldTool = (over: Partial<Tool>) => userTool({ id: 'w', name: 'w', ...over });
+
+    it('offers a World Tool after catalog and user Tools, with no preset switch', () => {
+      const tools = [GET_ENTITY, userTool({ id: 'a', name: 'a' })];
+      const offered = toolsOfferedTo('narration', tools, { get_entity: true, a: true }, true, [worldTool({})]);
+      expect(offered.map((t) => t.name)).toEqual(['get_entity', 'a', 'w']);
+    });
+
+    it('offers a World Tool the preset map switches off', () => {
+      expect(toolsOfferedTo('narration', [], { w: false }, true, [worldTool({})]).map((t) => t.name)).toEqual(['w']);
+    });
+
+    it('offers no World Tool with the global Tools switch off', () => {
+      expect(toolsOfferedTo('narration', [], {}, false, [worldTool({})])).toEqual([]);
+    });
+
+    it('offers a World Tool only to the prompts it names', () => {
+      expect(toolsOfferedTo('choices', [], {}, true, [worldTool({})])).toEqual([]);
+    });
+
+    it('replaces a same-name catalog or user Tool, ignoring case', () => {
+      const mine = worldTool({ id: 'w1', name: 'GET_ENTITY' });
+      const userA = userTool({ id: 'a', name: 'a' });
+      const offered = toolsOfferedTo('narration', [GET_ENTITY, userA], allOn, true, [mine, worldTool({ id: 'w2', name: 'A' })]);
+      expect(offered.map((t) => t.id)).toEqual(['w1', 'w2']);
+    });
+
+    it('removes the same-name Tool from a prompt the World Tool does not name', () => {
+      const choicesOnly = worldTool({ name: 'get_entity', offeredTo: ['choices'] });
+      expect(toolsOfferedTo('narration', [GET_ENTITY], allOn, true, [choicesOnly])).toEqual([]);
+    });
+
+    it('leaves another world, with no World Tools, on the catalog Tool', () => {
+      const mine = worldTool({ name: 'get_entity' });
+      expect(toolsOfferedTo('narration', [GET_ENTITY], allOn, true, [mine])).toEqual([mine]);
+      expect(toolsOfferedTo('narration', [GET_ENTITY], allOn, true, [])).toEqual([GET_ENTITY]);
+    });
+  });
 });
 
 describe('snapshotToolExecutor', () => {

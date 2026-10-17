@@ -64,6 +64,25 @@ An import skips a Tool you already have, and names it. A file with a Script Tool
 
 A shared prompt preset also carries a copy of each of your Tools that is on in it. See [Sharing a Preset](Prompts#sharing-a-preset).
 
+## How to Add a Tool to a World
+<!-- keywords: world tool, ship a tool, author tool, tool in my world, world editor tools tab, replace built-in, same name warning -->
+<!-- route: worldEditor.tools -->
+
+A **World Tool** is a Tool that a world holds. It exports with the world, and every playthrough of that world offers it.
+
+1. Open the world in the **World Editor**, in **Advanced** mode.
+2. Open the **Tools** tab in the **Logic** group.
+3. Select **Add Tool**, then edit the Tool as in [The Tool Editor](#the-tool-editor).
+4. Select **Save Tool**.
+
+| | World Tool | Your own Tool |
+|---|---|---|
+| 📦 Lives in | The world file | Your settings |
+| 🎚️ Switched by | **Tools** in Settings → **Output** only | That switch and the prompt preset |
+| 🌍 Offered in | That world only | Every world |
+
+A World Tool named like a built-in Tool or one of your Tools replaces it in that world, for every prompt. The **Tools** tab names the Tool it replaces. Two Tools in one world can't share a name. Drag a Tool in the list to change its place.
+
 ---
 
 ## When the AI Calls a Tool
@@ -80,7 +99,7 @@ The AI decides when to call a Tool. The Tool's **Description** tells it when. Ea
 
 **Max Calls per Request** caps how many times the AI can call one Tool for one prompt. The default is 4. A call past the cap gets an error. After a call past the cap, a call to an unknown Tool or a call with unreadable arguments, the AI gets one last request with no Tools. It then writes its reply.
 
-To see the calls, turn on **Show Silent Requests** in Settings → **Display**. The status line then shows **Looking up…** while the AI calls Tools. In the AI Context inspector, a request that called Tools has a **Tool Rounds** section with each call and its result. See [The AI Context Inspector](How-to-Play#the-ai-context-inspector).
+To see the calls, turn on **Show Silent Requests** in Settings → **Display**. The status line then names the Tools while the AI calls them, such as **Calling get_entity…**. In the AI Context inspector, a request that called Tools has a **Tool Rounds** section with each call and its result. See [The AI Context Inspector](How-to-Play#the-ai-context-inspector).
 
 ## Endpoints Without Tool Support
 <!-- keywords: unsupported model, not compatible, capability check, backend ignores it, which models work, note replaces checkbox, falls back to summaries, local model limits, tool calling, function calling, tool use -->

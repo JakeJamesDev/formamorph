@@ -118,6 +118,7 @@ import { navigableDestinations } from "../lib/locationContext";
 import { chipValues, entityStatsField, sceneEntityChipValues } from "../lib/chipValues/chipValues";
 import { useLiveChipScene, type SceneWrites } from "../lib/chipValues/liveScene";
 import { buildToolSnapshot, type ToolMemorySource } from "../lib/tools/toolSnapshot";
+import { toolCallStatus } from "../lib/tools/toolCallStatus";
 import { snapshotToolExecutor } from "../lib/tools/toolOffer";
 import { useHelpWorldSource } from "../lib/formaquestion/helpWorld";
 import type { ChipSceneTime } from "../lib/chipValues/chipScene";
@@ -392,6 +393,7 @@ const GameViewer = ({
     placeholders: worldPlaceholders,
     placeholderOwners,
     worldScripts,
+    worldTools,
     worldOverview,
     worldId,
     worldLoaded,
@@ -2068,8 +2070,8 @@ const GameViewer = ({
   );
   // A Formaquestion Tool reads the same playthrough while the game shows; the code test reads the authored world.
   useHelpWorldSource(toolWorld, getWorldData);
-  // Requests between a round's Tool calls and the next round's first token: the count behind "Looking up…".
-  const [toolLookups, setToolLookups] = useState(0);
+  // Each request's round between its Tool calls and the next round's first token, as the called Tool names.
+  const [toolLookups, setToolLookups] = useState<readonly (readonly string[])[]>([]);
 
   /** The prompt texts this turn's passes render from — the active preset's fields, as authored. */
   const turnPrompts = (): TurnPrompts => ({
@@ -3295,6 +3297,7 @@ const GameViewer = ({
     settings: aiSnapshot,
     resolveEndpoint: resolveEndpointForKind,
     tools: allTools,
+    worldTools,
     enabledTools,
     toolsEnabled,
     toolSnapshot: toolWorld,
@@ -3335,18 +3338,21 @@ const GameViewer = ({
     else toastAiRequestFailure(failure.error, () => setConnectionGuideOpen(true));
   };
 
-  /** From a round's Tool calls until the next round's first token, the request is looking up. */
+  /** From a round's Tool calls until the next round's first token, the request waits on those Tools. */
   const lookupSink = (): { sink: TransportSink; end: () => void } => {
-    let lookingUp = false;
+    let waiting: readonly string[] | null = null;
     const end = () => {
-      if (!lookingUp) return;
-      lookingUp = false;
-      setToolLookups((n) => n - 1);
+      const done = waiting;
+      if (!done) return;
+      waiting = null;
+      setToolLookups((rounds) => rounds.filter((round) => round !== done));
     };
     const sink: TransportSink = (event) => {
-      if (event.type === "toolCalls" && !lookingUp) {
-        lookingUp = true;
-        setToolLookups((n) => n + 1);
+      if (event.type === "toolCalls") {
+        end();
+        const round = event.names;
+        waiting = round;
+        setToolLookups((rounds) => [...rounds, round]);
       }
       if (event.type === "roundStarted") end();
     };
@@ -4408,11 +4414,12 @@ const GameViewer = ({
     // The active turn's request takes the status row; a silent memory digest (which runs between turns)
     // shows here too when no turn is in flight, but only when "Show Silent Requests" is enabled. Tool
     // rounds are silent requests, so their line follows the same setting.
-    if (toolLookups > 0 && showSilentRequests) {
+    const toolStatus = toolCallStatus(toolLookups);
+    if (toolStatus && showSilentRequests) {
       return (
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-meta text-muted-foreground whitespace-nowrap">
-            Looking up…
+          <span className="text-meta text-muted-foreground whitespace-nowrap truncate min-w-0 max-w-[60%]">
+            {toolStatus}
           </span>
           <div className="flex-grow">
             <IndeterminateProgress />

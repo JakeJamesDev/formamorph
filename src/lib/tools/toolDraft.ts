@@ -38,11 +38,14 @@ export const blankTool = (id: string, offeredTo: AIRequestType[] = ['narration']
   emptyResult: '{"matches": []}', offeredTo,
 });
 
-/** Every problem with `draft` among the user `tools`. `reserved` names are the caller's fixed functions. */
-export function draftProblems(draft: Tool, tools: readonly Tool[], reserved: readonly string[] = []): DraftProblems {
+/** Every problem with `draft` among `tools`, the user Tools or a `world`'s Tools. `reserved` names are the
+ *  caller's fixed functions. */
+export function draftProblems(
+  draft: Tool, tools: readonly Tool[], reserved: readonly string[] = [], { world = false }: { world?: boolean } = {},
+): DraftProblems {
   const { handler, params } = draft;
   return {
-    name: toolNameProblem(draft.name, tools, { selfId: draft.id, reserved }),
+    name: toolNameProblem(draft.name, tools, { selfId: draft.id, reserved, world }),
     params: params.map((p) => paramProblem(p, params)),
     handler: handler.kind === 'lookup' && !params.some((p) => p.name === handler.param) ? 'lookupParam' : null,
   };

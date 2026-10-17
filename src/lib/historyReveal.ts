@@ -42,6 +42,7 @@ const SLICE_TABS: Partial<Record<SliceName, RevealTab>> = {
   placeholders: 'placeholders',
   placeholderGroups: 'placeholders',
   scripts: 'scripts',
+  tools: 'tools',
 };
 
 const entriesById = (book: Dictionary | undefined) =>

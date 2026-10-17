@@ -1,6 +1,6 @@
 import type {
   Connection, Dictionary, Entity, EntityGroup, GameLocation, Placeholder, PlaceholderGroup, Script, Stat, StatGroup, StatUpdate,
-  Trait, TraitGroup, WorldOverview,
+  Tool, Trait, TraitGroup, WorldOverview,
 } from "@/types";
 import { canonicalEqual } from "@/lib/canonicalStringify";
 
@@ -12,7 +12,7 @@ import { canonicalEqual } from "@/lib/canonicalStringify";
  * Session-only and capped. Nothing here is stored with the world, and saving only places a marker.
  */
 
-/** The fourteen slices of an open world that the history records. */
+/** The fifteen slices of an open world that the history records. */
 export interface WorldSlices {
   worldOverview: WorldOverview;
   stats: Stat[];
@@ -29,6 +29,8 @@ export interface WorldSlices {
   placeholderGroups: PlaceholderGroup[];
   /** The world's own scripts. */
   scripts: Script[];
+  /** The world's own Tools. */
+  tools: Tool[];
 }
 
 export type SliceName = keyof WorldSlices;
@@ -36,7 +38,7 @@ export type RecordSliceName = Exclude<SliceName, "worldOverview">;
 
 export const WORLD_SLICES: readonly SliceName[] = [
   "worldOverview", "stats", "statGroups", "locations", "connections", "entities", "entityGroups", "traits", "traitGroups",
-  "statUpdates", "dictionaries", "placeholders", "placeholderGroups", "scripts",
+  "statUpdates", "dictionaries", "placeholders", "placeholderGroups", "scripts", "tools",
 ];
 
 /** One record slice's change: only the touched records, absent on a side where the record did not exist. */

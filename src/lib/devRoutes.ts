@@ -127,7 +127,7 @@ export const DEV_MODAL_TABS = {
   // Settings → Endpoints opens its own tab with the same `subtab=…` (`#dev?modal=settings&tab=endpoints&subtab=image`).
   // `tagPrompt` is Advanced only and hidden while image generation is off.
   settingsEndpoints: ['text', 'image', 'tagPrompt'],
-  worldEditor: ['overview', 'entities', 'locations', 'traits', 'stats', 'dictionary', 'placeholders', 'scripts'],
+  worldEditor: ['overview', 'entities', 'locations', 'traits', 'stats', 'dictionary', 'placeholders', 'scripts', 'tools'],
   // Community Creations browses one kind per tab, plus Contest — a view over the worlds already in the
   // catalog rather than a fourth kind (see lib/browseTabs). `tab=contest` serves canned contests, so the
   // tab is reachable whether or not one is really running.

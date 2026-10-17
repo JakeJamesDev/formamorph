@@ -31,13 +31,13 @@ const SAMPLE_CONNECTIONS: Connection[] = [
 
 function noop() { /* the sample has no such slice */ }
 
-// The sample is a world of two slices; the recorder reads the other ten as empty and never writes them.
+// The sample is a world of two slices; the recorder reads the others as empty and never writes them.
 const NO_SLICES = {
   worldOverview: {} as WorldOverview, stats: [], statGroups: [], entities: [], entityGroups: [], traits: [], traitGroups: [],
-  statUpdates: [], dictionaries: [], placeholders: [], placeholderGroups: [], scripts: [],
+  statUpdates: [], dictionaries: [], placeholders: [], placeholderGroups: [], scripts: [], tools: [],
 };
 const NO_WRITES = { worldOverview: noop, stats: noop, statGroups: noop, entities: noop, entityGroups: noop, traits: noop, traitGroups: noop,
-  statUpdates: noop, dictionaries: noop, placeholders: noop, placeholderGroups: noop, scripts: noop };
+  statUpdates: noop, dictionaries: noop, placeholders: noop, placeholderGroups: noop, scripts: noop, tools: noop };
 
 export function LocationsCanvasReference() {
   const [locations, setLocations] = useState(() => structuredClone(SAMPLE_LOCATIONS));

@@ -17,7 +17,7 @@ const overview = (name: string): WorldOverview => ({ name } as unknown as WorldO
 
 const emptyWorld = (over: Partial<WorldSlices> = {}): WorldSlices => ({
   worldOverview: overview('Sedge Landing'), stats: [], statGroups: [], locations: [], connections: [], entities: [], entityGroups: [],
-  traits: [], traitGroups: [], statUpdates: [], dictionaries: [], placeholders: [], placeholderGroups: [], scripts: [],
+  traits: [], traitGroups: [], statUpdates: [], dictionaries: [], placeholders: [], placeholderGroups: [], scripts: [], tools: [],
   ...over,
 });
 

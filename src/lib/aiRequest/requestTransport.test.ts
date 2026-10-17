@@ -63,6 +63,7 @@ const context = (fetchImpl: typeof fetch, over: Partial<TransportContext> = {}):
   settings: textSnapshot(target()),
   resolveEndpoint: () => target(),
   tools: [],
+  worldTools: [],
   enabledTools: {},
   toolsEnabled: false,
   toolSnapshot: () => { throw new Error('No request here builds its own Tool Snapshot'); },
@@ -213,6 +214,47 @@ describe('a Tool round after streamed text', () => {
     const { types } = await send(request({ executeTool }), ctx);
     expect(types).not.toContain('retract');
     expect(types).toContain('toolCalls');
+  });
+});
+
+describe('World Tools', () => {
+  const ROLL: Tool = {
+    id: 'w-roll', name: 'roll_fate', description: 'Purpose: roll.', params: [],
+    handler: { kind: 'template', body: 'Fate says yes.' }, emptyResult: '', offeredTo: ['narration'],
+  };
+  const offeredNames = (init: RequestInit) =>
+    ((JSON.parse(String(init.body)) as { tools?: { function: { name: string } }[] }).tools ?? []).map((t) => t.function.name);
+  const callRoll = [
+    sseFrame({ tool_calls: [{ index: 0, id: 'call-0', type: 'function', function: { name: ROLL.name, arguments: '{}' } }] }),
+    sseFrame({}, 'tool_calls'),
+  ];
+
+  it('sends a World Tool the preset switches off, and names it when the AI calls it', async () => {
+    const sent: RequestInit[] = [];
+    const fetchImpl = scripted([(init) => { sent.push(init); return sseResponse(callRoll); }, () => sseResponse(sseTokens(['Yes.']))]);
+    const executeTool = vi.fn<ToolExecutor>(async () => ({ text: 'Fate says yes.' }));
+    const ctx = context(fetchImpl, { worldTools: [ROLL], enabledTools: { [ROLL.id]: false }, toolsEnabled: true });
+    const { events } = await send(request({ executeTool }), ctx);
+    expect(offeredNames(sent[0])).toEqual(['roll_fate']);
+    expect(executeTool.mock.calls[0].slice(0, 2)).toEqual([ROLL, '{}']);
+    expect(events).toContainEqual({ type: 'toolCalls', names: ['roll_fate'] });
+  });
+
+  it('sends no World Tool with the global Tools switch off', async () => {
+    const sent: RequestInit[] = [];
+    const fetchImpl = scripted([(init) => { sent.push(init); return sseResponse(sseTokens(['Yes.'])); }]);
+    await send(request(), context(fetchImpl, { worldTools: [ROLL], toolsEnabled: false }));
+    expect(offeredNames(sent[0])).toEqual([]);
+  });
+
+  it('sends a World Tool in place of the catalog Tool it is named after', async () => {
+    const sent: RequestInit[] = [];
+    const fetchImpl = scripted([(init) => { sent.push(init); return sseResponse(sseTokens(['Yes.'])); }]);
+    const mine = { ...ROLL, name: LOOKUP.name };
+    const ctx = context(fetchImpl, { tools: [LOOKUP], enabledTools: { [LOOKUP.id]: true }, worldTools: [mine], toolsEnabled: true });
+    await send(request({ executeTool: async () => ({ text: '' }) }), ctx);
+    const body = JSON.parse(String(sent[0].body)) as { tools: { function: { name: string; description: string } }[] };
+    expect(body.tools.map((t) => t.function)).toEqual([expect.objectContaining({ name: LOOKUP.name, description: mine.description })]);
   });
 });
 

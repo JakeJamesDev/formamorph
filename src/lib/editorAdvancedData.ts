@@ -9,7 +9,7 @@ import { allPlaceholders } from './placeholderHomes';
 import { openingTexts } from './openings';
 import { worldAllowedPersonas, worldStartPersona } from './personaPick';
 import { storedWorldPrompt, WORLD_PROMPT_KINDS } from './worldPrompt';
-import type { Dictionary, Entity, GameLocation, Placeholder, Stat, Trait, WorldOverview } from '@/types';
+import type { Dictionary, Entity, GameLocation, Placeholder, Stat, Tool, Trait, WorldOverview } from '@/types';
 
 export interface AdvancedDataInput {
   worldOverview: WorldOverview;
@@ -19,6 +19,8 @@ export interface AdvancedDataInput {
   traits: Trait[];
   dictionaries: Dictionary[];
   placeholders: Placeholder[];
+  /** The world's Tools; absent reads as none. */
+  tools?: Tool[];
 }
 
 // The Dictionary tab itself is visible in Simple, so only the parts of it Simple can't show count:
@@ -46,6 +48,7 @@ const traitIsAdvanced = memoByRecord((t: Trait) => hasValue(t.statToggles) || ha
  */
 export function worldUsesAdvancedFeatures(w: AdvancedDataInput): boolean {
   if (allPlaceholders(w).length > 0) return true;
+  if ((w.tools ?? []).length > 0) return true;
   if ((w.dictionaries ?? []).some(bookIsAdvanced)) return true;
   if (w.worldOverview && overviewIsAdvanced(w.worldOverview)) return true;
   if ((w.stats ?? []).some(statIsAdvanced)) return true;

@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { GameDataProvider, useGameData } from './GameDataContext';
-import type { Stat, World } from '@/types';
+import type { Stat, Tool, World } from '@/types';
 
 import { phValueId, phValues } from '@/test/placeholderValues';
 import { boxScripts } from '@/test/scriptFixtures';
@@ -90,6 +90,40 @@ describe('scripts in the world store', () => {
     const { result } = renderHook(() => useGameData(), { wrapper });
     act(() => { result.current.loadWorldData(world('w', {})); });
     expect(result.current.getWorldData()).not.toHaveProperty('scripts');
+  });
+});
+
+describe('World Tools in the world store', () => {
+  const roll: Tool = {
+    id: 'w-roll', name: 'get_entity', description: 'Purpose: roll.', params: [],
+    handler: { kind: 'script', code: 'return 4;' }, emptyResult: '', offeredTo: ['narration'], callLimit: 2,
+  };
+
+  it('carries the world’s Tools through export and an import into another world, clean', () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData(world('w', {})); });
+    act(() => { result.current.setWorldTools([roll]); });
+    const exported = JSON.parse(JSON.stringify(result.current.getWorldData()));
+    expect(exported.tools).toEqual([roll]);
+
+    act(() => { result.current.loadWorldData(world('other', {})); });
+    expect(result.current.worldTools).toEqual([]);
+    act(() => { result.current.loadWorldData(exported); });
+    expect(result.current.worldTools).toEqual([roll]);
+    expect(result.current.isWorldDirty).toBe(false);
+  });
+
+  it('loads a world without Tools unchanged, and exports no Tool list for it', () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData(world('w', {})); });
+    expect(result.current.worldTools).toEqual([]);
+    expect(result.current.getWorldData()).not.toHaveProperty('tools');
+  });
+
+  it('drops an unreadable Tool from an imported world and keeps the rest', () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData({ ...world('w', {}), tools: [{ id: 'x', name: 'no handler' }, roll] } as unknown as World); });
+    expect(result.current.worldTools).toEqual([roll]);
   });
 });
 

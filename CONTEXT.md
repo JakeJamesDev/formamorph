@@ -33,8 +33,12 @@ The module that runs the silent passes a turn leaves behind — discover, digest
 _Avoid_: drainer, idle loop, background worker (the embedding batch is not one of these)
 
 **Tool**:
-A function the AI may call during a request to get information it does not have, such as an entity's full entry. Defined once in settings, enabled per prompt preset, and offered only to the prompts it names, and only on endpoints known to support tools. Read-only: a Tool never changes the world or the playthrough. A Formaquestion Tool is the same shape in a second list, switched per device for the help request.
+A function the AI may call during a request to get information it does not have, such as an entity's full entry. A catalog or user Tool is defined once in settings and enabled per prompt preset; a World Tool lives on a world. Each is offered only to the prompts it names, and only on endpoints known to support tools. A Tool in settings is read-only: it never changes the world or the playthrough. A Formaquestion Tool is the same shape in a second list, switched per device for the help request.
 _Avoid_: function (wire-format word), instrument (a Test Bench part)
+
+**World Tool**:
+A Tool stored on a world (`World.tools`), edited in the World Editor's Tools tab and exported with the world. Every playthrough of that world offers it, after the catalog and user Tools, whenever the global Tools switch is on; prompt presets do not list or switch it. A World Tool whose name matches a catalog or user Tool replaces that Tool in its world, for every prompt. Two World Tools in one world cannot share a name.
+_Avoid_: author Tool, custom Tool, bundled Tool
 
 **Formaquestion Tool**:
 A Tool of the player's own that the help answer request offers. A separate list from the gameplay Tools, with a switch per device and no prompt preset; the gameplay Tool store never holds one, and a gameplay Tool never shows in Formaquestion. It reads the open world in the game or the editor, and an empty Tool Snapshot on every other screen. Imports and exports with the Tool pack file. Cannot take a fixed function's name, such as the guide lookup's.
