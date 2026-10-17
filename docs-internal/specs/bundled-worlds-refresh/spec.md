@@ -1,6 +1,7 @@
 # Bundled Worlds Refresh
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-10-17: tickets 01–10 landed, last landing 6a4d158cf. Closed without gates.
 Spec session: bundled-worlds-refresh — spec
 
 ## Problem Statement
