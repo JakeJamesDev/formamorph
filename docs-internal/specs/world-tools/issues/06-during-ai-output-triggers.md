@@ -26,3 +26,7 @@ Spec: R2, Q3, Q4, Q9; stories 8, 15, 39.
 
 - 02 Output Run Restarts On Retracted Rounds
 - 05 Arming, After The AI And On Call Writes
+
+## Comments
+
+- From ticket 02 (landed 3e949300b): `OutputRun`'s listener resets only on `retract`, not on `opened`; `rewriteSentences` resets on both. Today they match, because the transport retracts whenever a round streamed text. Keep the armed trigger list outside the run's reset: a retract restarts the run's steps and writes, but triggers stay armed (Q9). A test with a retracted round must prove the filter still applies to the kept round.
