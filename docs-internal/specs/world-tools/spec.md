@@ -73,6 +73,7 @@ Settled with the user on 2026-10-17. R rulings came from the design discussion; 
 | Q48 | Ticket 08's "help topic" means new routed how-to sections in the Tools doc for the Tools tab (timing, Reply, Stack Calls, a Tool that changes the story) and a fix to its "a Tool only reads" line, plus a World Tools section in the Scripts guide. No tab-level help topic entry. The example is `lock_target(name)` in the drone scripts showcase world: During AI Output, Stack Calls off, marks the locked target in later sentences (ticket 08 ruling) |
 | Q49 | The cloud default endpoint rejects any request with `tools` (HTTP 400: auto tool choice is not enabled on the server), so the capability gate offers it no World Tools. Ticket 08's call-rate probe and live check run on Cydonia 24B locally, same design, in a GPU window the user agrees to; the ticket records that the cloud model is not tool-capable (ticket 08 ruling) |
 | Q50 | A location rename rewrites the string literal in `location.move("<name>")` in every script: World Tools and world, stat and trait Scripts. Find All Uses lists those calls. Ticket 07 builds it (user ruling, ticket 07) |
+| Q51 | On a re-roll, a trait switch in an On Call call's saved writes fires the switched trait's When a Trait Switches scripts again, as every other re-rolled switch does. Q41 freezes only the On Call script, whose return value the AI read; switch scripts re-roll like the Before the AI box's (ticket 09 ruling) |
 
 ## User Stories
 
