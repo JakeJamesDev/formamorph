@@ -144,6 +144,35 @@ export function applyImportance(history: ChatMessage[], byTurnId: Map<string, nu
 /** Whether a trimmed diary entry carries a memory: a `nothing notable` entry does not. */
 export const diaryHoldsMemory = (text: string) => text.toLowerCase() !== 'nothing notable';
 
+/** The parsed assistant turn whose id is `turnId`, or undefined when the history holds none. */
+export function parsedTurnById(history: readonly ChatMessage[], turnId: string): AITurnResult | undefined {
+  for (const message of history) {
+    if (message.role !== 'assistant') continue;
+    const parsed = parseTurnContent(message.content);
+    if (parsed?.turnId === turnId) return parsed;
+  }
+  return undefined;
+}
+
+/** The turn's memory as recall reads it: the digest, then the `memory.add` lines. Undefined when it has neither. */
+export function turnMemory({ summary, codeMemory }: Pick<AITurnResult, 'summary' | 'codeMemory'>): string | undefined {
+  if (!codeMemory?.length) return summary;
+  return [summary?.trim(), ...codeMemory].filter(Boolean).join(' ');
+}
+
+/** The turn's diary entries by name as readers see them: the pass's entry, then that name's `diary` lines. A code
+ *  line replaces a `nothing notable` entry. Names match without case, under the entry's spelling. */
+export function turnDiaries({ diaries, codeDiaries }: Pick<AITurnResult, 'diaries' | 'codeDiaries'>): Record<string, string> {
+  if (!codeDiaries) return diaries ?? {};
+  const out: Record<string, string> = { ...diaries };
+  for (const [name, lines] of Object.entries(codeDiaries)) {
+    const key = Object.keys(out).find((known) => known.trim().toLowerCase() === name.trim().toLowerCase()) ?? name;
+    const entry = out[key]?.trim();
+    out[key] = [entry && diaryHoldsMemory(entry) ? entry : '', ...lines].filter(Boolean).join(' ');
+  }
+  return out;
+}
+
 /**
  * A character's own diary entries across the history, chronological (oldest first), capped to the last
  * `max`. Key match is case-insensitive (a director cast name may differ in case from the entity name).
@@ -155,8 +184,8 @@ export function collectCharacterDiary(history: ChatMessage[], name: string, max:
   for (const message of history) {
     if (message.role !== 'assistant') continue;
     const parsed = parseTurnContent(message.content);
-    if (!parsed?.diaries) continue;
-    const match = Object.entries(parsed.diaries).find(([k]) => k.trim().toLowerCase() === key);
+    if (!parsed?.diaries && !parsed?.codeDiaries) continue;
+    const match = Object.entries(turnDiaries(parsed)).find(([k]) => k.trim().toLowerCase() === key);
     const text = match?.[1]?.trim();
     if (text && diaryHoldsMemory(text)) entries.push(text);
   }

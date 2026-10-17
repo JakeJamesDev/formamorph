@@ -255,16 +255,22 @@ function ownerMaps(entities: readonly CodeEntityNames[], owner: TestRunOwner | u
   };
 }
 
-/** One line for a move, one for the advances together, and one per discovery. */
 const NO_PLACES: SandboxPlaces = { locations: [], location: null };
 
-const worldWriteLines = (writes: WorldWrites | undefined, locations: readonly SandboxPlace[]): string[] => {
+/** One line for a move, one for the advances together, and one per discovery, memory line, pin and diary line. */
+const worldWriteLines = (
+  writes: WorldWrites | undefined, locations: readonly SandboxPlace[], entities: readonly SandboxEntity[],
+): string[] => {
   if (!writes) return [];
-  const { location, minutes, discover = [] } = writes;
+  const { location, minutes, discover = [], memory = [], pins = [], diary = [] } = writes;
+  const entityName = (entity: string) => entities.find((known) => known.id === entity)?.name ?? entity;
   return [
     ...(location === undefined ? [] : [`location.move: ${locations.find((place) => place.id === location)?.name ?? location}`]),
     ...(minutes === undefined ? [] : [`clock.advance: ${minutes} minutes`]),
     ...discover.map(({ name, description }) => `discover: ${name}${description === undefined ? '' : ', described'}`),
+    ...memory.map((line) => `memory.add: ${line}`),
+    ...pins.map((line) => `memory.pin: ${line}`),
+    ...diary.map(({ entity, line }) => `diary: ${entityName(entity)}: ${line}`),
   ];
 };
 
@@ -364,7 +370,7 @@ export async function runTestCode(
     ...(outcome.traits ?? []).map((entry) => switchLine('', entry)),
     ...(outcome.entities ?? []).filter((entry) => entry !== personaWrites).flatMap((row) =>
       (row.traits ?? []).map((entry) => switchLine(`${traitWritesPath(row)}.`, entry))),
-    ...worldWriteLines(outcome.worldWrites, places.locations),
+    ...worldWriteLines(outcome.worldWrites, places.locations, entityEntries),
   ];
   const keep = missing ? droppedFilter(missing) : KEEP_DROPPED;
   const dropped = [

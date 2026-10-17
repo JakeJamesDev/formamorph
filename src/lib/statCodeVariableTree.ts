@@ -12,7 +12,7 @@ import {
   isPlaceholderEntryMember, memberStep, placeholderPathMap, type PlaceholderPathMap, type PlaceholderPathNode,
 } from '@/lib/statCodePaths';
 import {
-  CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, LOCATION_MEMBERS, DELTA_FIELDS, DELTA_MEMBERS, DICTIONARY_FIELDS, ENTITY_FIELDS, NARRATION_FIELDS,
+  CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, LOCATION_MEMBERS, MEMORY_MEMBERS, DELTA_FIELDS, DELTA_MEMBERS, DICTIONARY_FIELDS, ENTITY_FIELDS, NARRATION_FIELDS,
   NARRATION_GLOBAL, PERSONA_FIELDS, PLAYER_CALL_ENTRIES, PLAYER_GLOBAL, PREVIOUS_FIELDS, SANDBOX_GLOBALS, SELF_TRAIT_FIELDS,
   STAT_FIELDS, SWITCHED_TRAIT_FIELDS, SWITCHED_TRAIT_GLOBAL, TRAIT_ENTRY_FIELDS, TRAIT_SCRIPT_SURFACE, placeholderEntryFields,
 } from '@/lib/statCodeSurface';
@@ -173,11 +173,20 @@ const clockFields = (path: Path): VariableNode[] => fields(path, CLOCK_MEMBERS, 
 const locationFields = (): VariableNode[] => LOCATION_MEMBERS.map((entry) =>
   (entry.name === 'move' ? callField(field(root('location'), entry), 'location.name') : field(root('location'), entry)));
 
-/** `discover`, a call at the top level. */
-const discoverField = (): VariableField => {
-  const entry = SANDBOX_GLOBALS.find((global) => global.name === 'discover');
-  return callField({ kind: 'field', label: 'discover', detail: entry?.detail ?? '', info: entry?.info ?? '', insert: 'discover' }, '"Name"');
+/** A call at the top level, `name(arg)`. */
+const topCallField = (name: string, arg: string): VariableField => {
+  const entry = SANDBOX_GLOBALS.find((global) => global.name === name);
+  return callField({ kind: 'field', label: name, detail: entry?.detail ?? '', info: entry?.info ?? '', insert: name }, arg);
 };
+
+/** `diary` for `name`, the world's first entity, which stays selected to type over. */
+const diaryField = (name: string): VariableField => {
+  const call = topCallField('diary', `${JSON.stringify(name)}, "Line"`);
+  const from = 'diary("'.length;
+  return { ...call, selection: { from, to: from + JSON.stringify(name).length - 2 } };
+};
+
+const memoryFields = (): VariableNode[] => MEMORY_MEMBERS.map((entry) => callField(field(root('memory'), entry), '"Line"'));
 
 /** A placeholder entry's members by its kind. The calls insert complete; `pin` leaves its text selected. */
 function placeholderFields(path: Path, kind: PlaceholderKindNoun): VariableNode[] {
@@ -375,7 +384,9 @@ export function buildVariableTree(
     nameList('Dictionaries', dictionaryRows, 'No dictionaries in this world', globalInfo('dictionaries')),
     { kind: 'group', label: 'Clock', info: globalInfo('clock'), children: clockFields(root('clock')) },
     { kind: 'group', label: 'Location', info: globalInfo('location'), children: locationFields() },
-    { kind: 'group', label: 'Discover', info: globalInfo('discover'), children: [discoverField()] },
+    { kind: 'group', label: 'Discover', info: globalInfo('discover'), children: [topCallField('discover', '"Name"')] },
+    { kind: 'group', label: 'Memory', info: globalInfo('memory'), children: memoryFields() },
+    { kind: 'group', label: 'Diary', info: globalInfo('diary'), children: [diaryField(names?.entities?.[0]?.name ?? 'Name')] },
     ...timingGroups(timing),
   ];
 }

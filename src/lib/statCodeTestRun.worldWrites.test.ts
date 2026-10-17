@@ -35,6 +35,19 @@ describe('runTestCode world writes', () => {
     expect(report.writes).toEqual(['location.move: North Gate', 'clock.advance: 30 minutes', 'discover: Tor', 'discover: Mira, described']);
   });
 
+  it('lists each memory line, pin and diary line', async () => {
+    const report = await run('memory.add("Tor lied."); memory.pin("The bridge is out."); diary("Tor", "I lied.");', {
+      ...world, entities: [{ id: 'e-tor', name: 'Tor' }],
+    });
+    expect(report.error).toBeNull();
+    expect(report.writes).toEqual(['memory.add: Tor lied.', 'memory.pin: The bridge is out.', 'diary: Tor: I lied.']);
+  });
+
+  it('fails on a diary for an entity the world does not have', async () => {
+    const report = await run('diary("Stranger", "Hello.");');
+    expect(report.error).toMatch(/Stranger/);
+  });
+
   it('fails on a location the world does not have, and lists no writes', async () => {
     const report = await run('clock.advance(5); location.move("Moon");');
     expect(report.error).toMatch(/Moon/);

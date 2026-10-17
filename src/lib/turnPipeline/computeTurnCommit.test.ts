@@ -551,6 +551,35 @@ describe('withCodeWrites — the After the AI writes', () => {
     expect(commit?.discoveries.map((d) => d.entity.name)).toEqual(['Tor']);
   });
 
+  it('carries the Before pins and the later ones, in order', () => {
+    const { plan, result } = runOf([{ id: 'narration', raw: NARRATION }]);
+    const ctx = context();
+    const early = computeTurnCommit({ result, plan, context: { ...ctx, codeWrites: { pins: ['The bridge is out.'] } } });
+    const commit = early && withCodeWrites(early, { pins: ['Mira owes a debt.'] }, ctx);
+    expect(commit?.codeWrites?.pins).toEqual(['The bridge is out.', 'Mira owes a debt.']);
+  });
+
+  it('stores the memory and diary lines beside the passes, in run order, by entity name', () => {
+    const { plan, result } = runOf([{ id: 'narration', raw: NARRATION }, { id: 'summary', raw: 'The gate fell.' }]);
+    const ctx = context({ diaryNames: { 'e-tor': 'Tor', 'e-mira': 'Mira' } });
+    const early = computeTurnCommit({
+      result, plan, context: { ...ctx, codeWrites: { memory: ['Tor lied.'], diary: [{ entity: 'e-tor', line: 'I lied.' }] } },
+    });
+    const commit = early && withCodeWrites(early, { memory: ['Mira ran.'], diary: [{ entity: 'e-mira', line: 'I ran.' }, { entity: 'e-tor', line: 'I hid.' }] }, ctx);
+    expect(commit?.turn).toMatchObject({
+      summary: 'The gate fell.',
+      codeMemory: ['Tor lied.', 'Mira ran.'],
+      codeDiaries: { Tor: ['I lied.', 'I hid.'], Mira: ['I ran.'] },
+    });
+  });
+
+  it('keeps memory lines on the turn and out of the pins', () => {
+    const { plan, result } = runOf([{ id: 'narration', raw: NARRATION }]);
+    const commit = computeTurnCommit({ result, plan, context: context({ codeWrites: { memory: ['Tor lied.'] } }) });
+    expect(commit?.turn.codeMemory).toEqual(['Tor lied.']);
+    expect(commit?.codeWrites?.pins).toBeUndefined();
+  });
+
   it('hands back the same commit for no writes', () => {
     const { plan, result } = runOf([{ id: 'narration', raw: NARRATION }]);
     const commit = computeTurnCommit({ result, plan, context: context() });

@@ -10,7 +10,7 @@ import { phValues } from '@/test/placeholderValues';
 import { statCodeDiagnostics, type AnalysisOptions } from './statCodeAnalysis';
 import { executeStatCode, type StatCodeResult } from './statCodeExecutor';
 import {
-  CLOCK_MEMBERS, LOCATION_MEMBERS, SELF_WRITABLE_FIELDS, DICTIONARY_FIELDS, ENTITY_FIELDS, PERSONA_FIELDS, placeholderEntryFields, SANDBOX_GLOBALS, STAT_FIELDS,
+  CLOCK_MEMBERS, LOCATION_MEMBERS, MEMORY_MEMBERS, SELF_WRITABLE_FIELDS, DICTIONARY_FIELDS, ENTITY_FIELDS, PERSONA_FIELDS, placeholderEntryFields, SANDBOX_GLOBALS, STAT_FIELDS,
   TRAIT_ENTRY_FIELDS,
 } from './statCodeSurface';
 import type { SurfaceEntry } from './codeSurface';
@@ -127,6 +127,8 @@ const SURFACE_MEMBERS: Record<string, readonly SurfaceEntry[]> = {
   clock: CLOCK_MEMBERS,
   location: LOCATION_MEMBERS,
   discover: [],
+  memory: MEMORY_MEMBERS,
+  diary: [],
   traits: TRAIT_ENTRY_FIELDS,
   persona: PERSONA_FIELDS,
   entities: ENTITY_FIELDS,

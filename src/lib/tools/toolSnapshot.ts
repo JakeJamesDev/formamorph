@@ -6,7 +6,7 @@ import { enabledBooks } from '@/lib/dictionaryUtils';
 import type { ValueLookup } from '@/lib/promptValues';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import { parseTurns } from '@/lib/turnBanding';
-import { diaryHoldsMemory, parseTurnContent, serializeTurnContent } from '@/lib/turnDigest';
+import { diaryHoldsMemory, parseTurnContent, serializeTurnContent, turnDiaries } from '@/lib/turnDigest';
 import { applyMemoryOverrides, type MemoryOverrides } from '@/lib/memoryOverrides';
 import { vectorKey } from '@/lib/memoryRelevance';
 
@@ -141,7 +141,8 @@ function placeholderValues(list: readonly Placeholder[] | undefined, read: (chip
 function toolMemories({ history, overrides, verbatimFloor }: ToolMemorySource): ToolMemory[] {
   const turns = applyMemoryOverrides(parseTurns([...history]), overrides);
   return turns.slice(0, Math.max(0, turns.length - verbatimFloor)).flatMap((t, i) => {
-    const diaries = Object.entries(parseTurnContent(history[t.index].content)?.diaries ?? {})
+    const parsed = parseTurnContent(history[t.index].content);
+    const diaries = Object.entries(parsed ? turnDiaries(parsed) : {})
       .flatMap(([character, text]) => (typeof text === 'string' ? [{ character: character.trim(), text: text.trim() }] : []))
       .filter((d) => d.text && diaryHoldsMemory(d.text));
     const digest = t.summary?.trim() ?? '';

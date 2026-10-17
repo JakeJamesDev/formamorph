@@ -6,7 +6,7 @@ import { executeStatCode } from './statCodeExecutor';
 import { statCodeNamed } from './statCodeNames';
 import { codeDictionaries, sandboxDictionaries, sandboxPlaceholders } from './statCodePlaceholders';
 import {
-  CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, LOCATION_MEMBERS, DELTA_FIELDS, DELTA_MEMBERS, DICTIONARY_FIELDS, ENTITY_FIELDS, PERSONA_FIELDS,
+  CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, LOCATION_MEMBERS, MEMORY_MEMBERS, DELTA_FIELDS, DELTA_MEMBERS, DICTIONARY_FIELDS, ENTITY_FIELDS, PERSONA_FIELDS,
   NARRATION_FIELDS, PLAYER_CALL_ENTRIES, PREVIOUS_FIELDS, SANDBOX_GLOBALS, STAT_CODE_SURFACE, STAT_FIELDS, TRAIT_ENTRY_FIELDS,
   placeholderEntryFields, scriptSurface,
 } from './statCodeSurface';
@@ -106,7 +106,7 @@ const asLevel = (entries: readonly { name: string }[]) => entries.map((entry) =>
 
 describe('the top level', () => {
   it('lists the sandbox’s globals in the order an author meets them, without console', () => {
-    expect(tree.map(labelOf)).toEqual(['This Stat', 'Stats', 'Traits', 'Entities', 'Persona', 'Placeholders', 'Dictionaries', 'Clock', 'Location', 'Discover']);
+    expect(tree.map(labelOf)).toEqual(['This Stat', 'Stats', 'Traits', 'Entities', 'Persona', 'Placeholders', 'Dictionaries', 'Clock', 'Location', 'Discover', 'Memory', 'Diary']);
   });
 
   // `owner` is empty in a world stat's code, so only an owned or Blueprint stat's menu reaches it.
@@ -334,6 +334,7 @@ describe('field info', () => {
     [['Clock'], CLOCK_MEMBERS],
     [['Clock', 'previous'], CLOCK_PREVIOUS_FIELDS],
     [['Location'], LOCATION_MEMBERS],
+    [['Memory'], MEMORY_MEMBERS],
     [['Traits', 'Brave'], TRAIT_ENTRY_FIELDS],
     [['Entities', 'Mira'], ENTITY_FIELDS],
     [['Entities', 'Mira', 'Traits', 'Keen'], TRAIT_ENTRY_FIELDS],
@@ -402,9 +403,12 @@ describe('every leaf against the sandbox', () => {
     places: { locations: [{ id: 'dock', name: 'Dock' }], location: { id: 'dock', name: 'Dock' } },
   });
 
+  // `diary` names a real entity and never the persona, so it has its own cases below.
+  const isDiary = (field: VariableField) => field.insert.startsWith('diary(');
+
   // A pin through a path that reaches nothing is dropped, not thrown, so that is checked apart from the run.
   // Only Mira plays, so the persona's union reaches Rook's names as blanks.
-  it.each(variableTreeLeaves(tree).map((field) => [field.insert]))('runs %s as inserted', async (insert) => {
+  it.each(variableTreeLeaves(tree).filter((field) => !isDiary(field)).map((field) => [field.insert]))('runs %s as inserted', async (insert) => {
     const result = await run(`const read = ${insert}; return 1;`);
     expect(result).toMatchObject({ value: 1, error: null });
     if (!insert.startsWith('persona')) expect([result.unknownPlaceholders, result.unknownOwnerPlaceholders]).toEqual([undefined, undefined]);
@@ -420,8 +424,22 @@ describe('every leaf against the sandbox', () => {
   );
 
   // An unknown name reads as a blank entry, so a template's type-over path must run too.
-  it.each(variableTreeLeaves(templateTree).map((field) => [field.insert]))('runs the template’s %s as inserted', async (insert) => {
+  it.each(variableTreeLeaves(templateTree).filter((field) => !isDiary(field)).map((field) => [field.insert]))('runs the template’s %s as inserted', async (insert) => {
     await expect(run(`const read = ${insert}; return 1;`)).resolves.toMatchObject({ value: 1, error: null });
+  });
+
+  it('writes the diary of the world’s first entity as inserted, where Test Code plays no persona', async () => {
+    const [diary] = variableTreeLeaves(tree).filter(isDiary);
+    expect(diary.insert).toBe('diary("Mira", "Line")');
+    expect(diary.insert.slice(diary.selection?.from, diary.selection?.to)).toBe('Mira');
+    const result = await executeStatCode(`${diary.insert}; return 1;`, stats, stats[0], { entities });
+    expect(result).toMatchObject({ value: 1, error: null, worldWrites: { diary: [{ entity: 'mira', line: 'Line' }] } });
+  });
+
+  it('leaves the template’s diary name to type over, since no entity is called Name', async () => {
+    const [diary] = variableTreeLeaves(templateTree).filter(isDiary);
+    expect(diary.insert.slice(diary.selection?.from, diary.selection?.to)).toBe('Name');
+    expect((await run(`${diary.insert}; return 1;`)).error).toMatch(/no entity named "Name"/);
   });
 
   // A blank entry runs clean too; a real one reads its own key as its name.

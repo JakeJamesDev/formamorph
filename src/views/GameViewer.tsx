@@ -15,6 +15,7 @@ import { useGameplay } from "@/contexts/GameplayContext";
 import { useAccountDeletion } from "@/contexts/AccountDeletionContext";
 import { type StatClock, type WorldWrites } from "@/lib/statCodeExecutor";
 import { mergeWorldWrites } from "@/lib/worldWrites";
+import { pruneScriptPins, withScriptPins } from "@/lib/scriptPins";
 import {
   overlayStatCodeResult, playthroughPlaceholderSet, runStatCodeTurn, runSwitchScripts, withPinWrites, type StatCodeTurn, type StatCodeTurnResult,
 } from "@/lib/statCodeTurn";
@@ -114,7 +115,7 @@ import { narrationRevealListener } from "../lib/narrationRevealListener";
 import { getRevealReleased } from "../lib/revealTimingStore";
 import { fanOut } from "../lib/aiRequest/fanOut";
 import { rewriteSentences } from "../lib/aiRequest/narrationRewrite";
-import { parseTurnContent, recentParticipants, collectCharacterDiary } from "../lib/turnDigest";
+import { parseTurnContent, recentParticipants, collectCharacterDiary, parsedTurnById, turnDiaries, turnMemory } from "../lib/turnDigest";
 import { navigableDestinations } from "../lib/locationContext";
 import { chipValues, entityStatsField, sceneEntityChipValues } from "../lib/chipValues/chipValues";
 import { useLiveChipScene, type SceneWrites } from "../lib/chipValues/liveScene";
@@ -1096,14 +1097,15 @@ const GameViewer = ({
       setActionAttachments((prev) => setTurnAttachments(prev, turnId, pending.slice(2)));
     })();
   }, [devRoute?.attach, fullMessageHistory, mounted, setPendingAttachments, setActionAttachments]);
-  // Images and tells belong to turns in the history. Between turns, drop the ones whose turn failed, rolled back or
+  // Images, tells and script pins belong to turns in the history. Between turns, drop the ones whose turn failed, rolled back or
   // was re-generated. The controller marks a running turn at once: a regenerate starts inside an effect, and
   // its user message can commit before `isWaitingForAI` does.
   useEffect(() => {
     if (isWaitingForAI || abortControllerRef.current) return;
     setActionAttachments((prev) => pruneAttachments(prev, fullMessageHistory));
     setScriptTells((prev) => pruneTells(prev, fullMessageHistory));
-  }, [isWaitingForAI, fullMessageHistory, setActionAttachments, setScriptTells]);
+    setMemoryNotes((prev) => pruneScriptPins(prev, fullMessageHistory));
+  }, [isWaitingForAI, fullMessageHistory, setActionAttachments, setScriptTells, setMemoryNotes]);
   const [isEditingWorld, setIsEditingWorld] = useState(false);
   const [uiHidden, setUiHidden] = useState(false); // hide all panels/buttons to reveal the background image
   const [showEditorExitPrompt, setShowEditorExitPrompt] = useState(false);
@@ -2336,6 +2338,13 @@ const GameViewer = ({
       }
       return updatedHistory;
     });
+    // Pins become notes anchored after this turn, so they leave with it.
+    const committedTurnId = final.turn.turnId;
+    const pins = final.codeWrites?.pins;
+    if (committedTurnId && pins?.length) {
+      const anchor = fullMessageHistoryRef.current.length;
+      setMemoryNotes((prev) => withScriptPins(prev, committedTurnId, pins, anchor));
+    }
 
     // Persist any characters this turn discovered, anchored to its location + turn so they roll back with
     // it. Guarded against a double-add (variant-aware name match) by a visitor added moments ago.
@@ -2863,6 +2872,7 @@ const GameViewer = ({
         calendar,
         codeWrites: beforeWorldWrites,
         heldNames: [...entities.map((entity) => entity.name), ...suppressedCharacterNames],
+        diaryNames: Object.fromEntries([...traitLibrary, ...allEntities].map((entity) => [entity.id, entity.name])),
       };
       const commit = computeTurnCommit({ result, plan, context: commitContext });
       if (!commit) return;
@@ -3060,6 +3070,7 @@ const GameViewer = ({
             locations: locations.map(({ id, name }) => ({ id, name })),
             location: here && { id: here.id, name: here.name },
           },
+          discovered: discoveredEntities.map(({ entity }) => ({ id: entity.id, name: entity.name })),
         };
         /** Lays the run's result onto live state and hands back what it left. */
         const finish = (result: StatCodeTurnResult) => {
@@ -3138,7 +3149,7 @@ const GameViewer = ({
         return null;
       }
     },
-    [setGlobalStats, setEntityStats, entityOwnersOf, entityInForceUnder, addStatDeltas, setCodePins, resolvePH, statCodePlaceholders, pinsFor, traits, authoredStats, worldScripts, resolveTraitText, gatedWorld, codeEntities, statEntities, inForceOn, liveScene, libraryIn, locations, currentLocation,
+    [setGlobalStats, setEntityStats, entityOwnersOf, entityInForceUnder, addStatDeltas, setCodePins, resolvePH, statCodePlaceholders, pinsFor, traits, authoredStats, worldScripts, resolveTraitText, gatedWorld, codeEntities, statEntities, inForceOn, liveScene, libraryIn, locations, currentLocation, discoveredEntities,
       setGlobalTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, setOwnedTraits, addLogEntry, playPrompts, commitTraitState],
   );
 
@@ -3989,7 +4000,10 @@ const GameViewer = ({
         const digest = await sendAiRequestRef.current({ ...buildDigestRequestRef.current(target), signal: queueSignal });
         const trimmed = (digest ?? "").trim();
         if (!trimmed || queueSignal.aborted || !mounted.current) return false;
-        setMemoryEdits((prev) => ({ ...prev, [turnId]: { text: trimmed, source: 'ai' } }));
+        // The fresh digest replaces the AI's text only; the turn's `memory.add` lines still follow it.
+        const codeMemory = parsedTurnById(fullMessageHistoryRef.current, turnId)?.codeMemory;
+        const text = turnMemory({ summary: trimmed, codeMemory }) ?? trimmed;
+        setMemoryEdits((prev) => ({ ...prev, [turnId]: { text, source: 'ai' } }));
         return true;
       }, signal);
       return run ? run.value : undefined;
@@ -4022,10 +4036,10 @@ const GameViewer = ({
         if (m.role !== "assistant") continue;
         const parsed = parseTurnContent(m.content);
         if (!parsed) continue;
-        const d = wantDigests ? parsed.summary?.trim() : undefined;
+        const d = wantDigests ? turnMemory(parsed)?.trim() : undefined;
         if (d) wanted.set(vectorKey(d), d);
-        if (wantDiaries && parsed.diaries) {
-          for (const text of Object.values(parsed.diaries)) {
+        if (wantDiaries) {
+          for (const text of Object.values(turnDiaries(parsed))) {
             const t = text?.trim();
             if (t && t.toLowerCase() !== "nothing notable") wanted.set(vectorKey(t), t);
           }
@@ -5224,11 +5238,8 @@ const GameViewer = ({
               return renderSegs(plan ? markFindHits(segs, plan.hits, start, plan.base) : segs);
             };
             // The memory digest for this turn (stored on its assistant message), if one has been generated.
-            const currentSummary = currentTurn?.turnId
-              ? fullMessageHistory
-                  .map((m) => (m.role === "assistant" ? parseTurnContent(m.content) : null))
-                  .find((c) => c?.turnId === currentTurn.turnId)?.summary
-              : undefined;
+            const currentParsed = currentTurn?.turnId ? parsedTurnById(fullMessageHistory, currentTurn.turnId) : undefined;
+            const currentSummary = currentParsed ? turnMemory(currentParsed) : undefined;
             // Collapse keys: one per request group ("group-<i>"), one per request body, plus one per
             // captured reasoning ("reasoning-<i>") and raw output ("out-<i>"). Collapse/expand all toggles every level.
             const collapseKeys: (string | number)[] = [];
