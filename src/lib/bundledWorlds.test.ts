@@ -18,6 +18,7 @@ const FEATURES: Record<string, Feature[]> = {
   'rampage': ['scripts', 'statToggles'],
   'slime': ['scripts', 'traitModes'],
   'sugarscape': ['scripts', 'minMaxPicks', 'openingWeights'],
+  'valentines': ['scripts'],
 };
 
 /** Image size has no budget the bundled worlds must meet (Q13). */
@@ -26,20 +27,12 @@ const IGNORED_RULES = new Set(['world-oversized-images']);
 // Why each open finding stays. A world ticket clears its content and image rows (Q14); a by-design row stays (Q15).
 const WEBP = 'its world ticket re-encodes the art as WebP';
 const PLACE = 'its world ticket places entities here';
-const TWIN = 'its world ticket adds a capitalized twin';
 const BY_DESIGN = 'the blank stage holds no entities by design';
 
 /** Findings still open, as `rule: items` with the reason each stays, by world. */
 const OPEN_FINDINGS: Record<string, Record<string, string>> = {
   'open-chat': {
     'location-no-entities: Here': BY_DESIGN,
-  },
-  'valentines': {
-    'alias-lowercase-no-twin: The Swarm': TWIN,
-    'alias-lowercase-no-twin: friend': TWIN,
-    'image-not-webp: Hana Sakuragi': WEBP,
-    'location-no-entities: Ashburn High': PLACE,
-    'location-no-entities: Rooftop': PLACE,
   },
   'veilwood': {
     'image-not-webp: Cerulean Vex': WEBP,

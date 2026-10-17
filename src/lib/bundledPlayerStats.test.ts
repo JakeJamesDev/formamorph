@@ -25,7 +25,7 @@ const SPLIT: Record<string, { owned: string[]; loose: string[] }> = {
   rampage: { owned: ['Health', 'Stamina', 'Rampage', 'Berserk'], loose: ['Destruction', 'Alert Level'] },
   slime: { owned: ['Health', 'Stamina', 'Assimilation', 'Panic'], loose: ['Suspicion'] },
   sugarscape: { owned: ['Health', 'Stamina', 'Craving', 'Fullness', 'Stickiness'], loose: [] },
-  valentines: { owned: ['Health', 'Stamina', 'Sugar', 'Agility'], loose: ['Pursuit'] },
+  valentines: { owned: ['Stamina', 'Sugar', 'Agility'], loose: ['Pursuit'] },
   veilwood: { owned: ['Health', 'Stamina', 'Stress', 'Satiety', 'Toxin'], loose: ['Predator Attention'] },
 };
 const OWNING = Object.keys(SPLIT);
