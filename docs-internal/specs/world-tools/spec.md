@@ -64,6 +64,7 @@ Settled with the user on 2026-10-17. R rulings came from the design discussion; 
 | Q39 | A stat re-roll replays the turn's Tool effects. After triggers re-run with call args saved on the turn; output triggers follow what a re-roll does for output Scripts. **Save shape change (additive):** the turn stores its Tool calls (Tool id, args, timing) and On Call writes (user ruling, spec session; replaces "runs no Tool triggers") |
 | Q40 | An On Call script reads the live turn state: turn start, plus the Before the AI scripts' writes, plus earlier On Call writes this turn. Output-script writes not yet landed are not visible; the stat pass and After batch have not run (user ruling, spec session) |
 | Q41 | On a re-roll, an On Call Tool does not run again: the re-roll reapplies the writes the call made, so a random result stays what the narration says (user ruling, spec session) |
+| Q42 | Q39 and Q41 split from ticket 05 into ticket 09, blocked by 05 and 06. Until 09 lands, a re-roll drops Tool effects (user ruling) |
 
 ## User Stories
 
