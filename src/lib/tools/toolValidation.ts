@@ -1,4 +1,6 @@
-import type { AIRequestType, Tool, ToolEnabledMap, ToolHandler, ToolLookupSource, ToolParam, ToolParamType } from '@/types';
+import type {
+  AIRequestType, Tool, ToolEnabledMap, ToolHandler, ToolLookupSource, ToolParam, ToolParamType, ToolScriptHandler, ToolScriptTiming,
+} from '@/types';
 import { PROMPT_REQUEST_KINDS } from '@/lib/reasoningEffort';
 import { TOOL_CATALOG } from './toolCatalog';
 
@@ -65,7 +67,25 @@ function parseParam(raw: unknown): ToolParam | null {
   return { name, type: type as ToolParamType, description, required, options: [...options] };
 }
 
-function parseHandler(raw: unknown): ToolHandler | null {
+const SCRIPT_TIMINGS: readonly ToolScriptTiming[] = ['call', 'output', 'after'];
+
+/** Whether a Script handler at `timing` arms a trigger rather than running at the call. */
+export const armsTrigger = (timing: ToolScriptTiming | undefined): timing is 'output' | 'after' =>
+  timing === 'output' || timing === 'after';
+
+/** A Script handler's World Tool fields, or why they can't be read. A user Tool may hold none of them (Q12). */
+function parseScriptFields(raw: Raw, world: boolean): Omit<ToolScriptHandler, 'kind' | 'code'> | string {
+  const { timing, reply, stack } = raw;
+  if (!world) return timing === undefined && reply === undefined && stack === undefined ? {} : 'only a World Tool can have a timing, Reply or Stack Calls';
+  if (timing !== undefined && !SCRIPT_TIMINGS.includes(timing as ToolScriptTiming)) return 'its timing is unknown';
+  if (reply !== undefined && typeof reply !== 'string') return 'its reply is not text';
+  if (stack !== undefined && typeof stack !== 'boolean') return 'its Stack Calls setting is not true or false';
+  const at = timing as ToolScriptTiming | undefined;
+  if (!armsTrigger(at)) return at ? { timing: at } : {};
+  return { timing: at, ...(reply ? { reply } : {}), ...(stack ? { stack } : {}) };
+}
+
+function parseHandler(raw: unknown, world: boolean): ToolHandler | string | null {
   if (!isRecord(raw)) return null;
   if (raw.kind === 'lookup') {
     const { param, returns } = raw;
@@ -75,7 +95,11 @@ function parseHandler(raw: unknown): ToolHandler | null {
     return { kind: 'lookup', source, param, returns };
   }
   if (raw.kind === 'template') return typeof raw.body === 'string' ? { kind: 'template', body: raw.body } : null;
-  if (raw.kind === 'script') return typeof raw.code === 'string' ? { kind: 'script', code: raw.code } : null;
+  if (raw.kind === 'script') {
+    if (typeof raw.code !== 'string') return null;
+    const fields = parseScriptFields(raw, world);
+    return typeof fields === 'string' ? fields : { kind: 'script', code: raw.code, ...fields };
+  }
   return null;
 }
 
@@ -100,8 +124,9 @@ export function parseTool(raw: unknown, { world = false }: { world?: boolean } =
     if (params.some((q) => q.name === param.name)) return { error: `the parameter "${param.name}" appears twice` };
     params.push(param);
   }
-  const handler = parseHandler(raw.handler);
+  const handler = parseHandler(raw.handler, world);
   if (!handler) return { error: 'its handler is unreadable' };
+  if (typeof handler === 'string') return { error: handler };
   if (typeof emptyResult !== 'string') return { error: 'it has no empty result' };
   const offeredTo = parseOfferedTo(raw.offeredTo);
   if (!offeredTo) return { error: 'its prompt list is unreadable' };

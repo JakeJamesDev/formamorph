@@ -104,6 +104,8 @@ export interface StatCodeResult {
   sentence?: string;
   /** What the code did to the location, the clock and the discovered cast. Absent when it did none of it. */
   worldWrites?: WorldWrites;
+  /** A World Tool run's return value as text: a string as is, any other value as JSON, null for nothing. */
+  reply?: string | null;
 }
 
 /** A location as `location.move` finds it: by id, else by code name. */
@@ -1135,6 +1137,8 @@ export interface StatCodeRunOptions {
   places?: SandboxPlaces;
   /** The entities play discovered, which `diary` can name beside `entities`. */
   discovered?: readonly SandboxPlace[];
+  /** A World Tool run's call arguments, frozen. Absent on a Script, where `args` does not exist. */
+  args?: Readonly<Record<string, unknown>>;
 }
 
 const WORLD_WRITES = '__formamorphWorldWrites';
@@ -1282,7 +1286,7 @@ export const executeStatCode = async (
   currentStat: Stat | null,
   {
     clock, turn, enabled, placeholders = [], traits = [], entities = [], persona = EMPTY_PERSONA, owner, dictionaries = [],
-    narration, selfTrait, switchedTrait, prompts = scriptPrompts, places = NO_PLACES, discovered = [],
+    narration, selfTrait, switchedTrait, prompts = scriptPrompts, places = NO_PLACES, discovered = [], args,
   }: StatCodeRunOptions = {},
 ): Promise<StatCodeResult> => {
   // If code is empty, return null (use the manually set value)
@@ -1387,6 +1391,8 @@ export const executeStatCode = async (
         `  ${JSON.stringify({ ...Object.values(traitData([switchedTrait]))[0], owner: switchedTrait.owner })});`,
       ] : []),
       ...(engine === 'async' ? [PLAYER_PRELUDE] : []),
+      // A JSON string parsed in the VM, so a `__proto__` argument stays a plain key.
+      ...(args ? [`const args = Object.freeze(JSON.parse(${JSON.stringify(JSON.stringify(args))}));`] : []),
       placeholdersPrelude(placeholderMap),
       trackedMapPrelude({ ...TRAIT_MAP, root: 'traits', reader: TRAIT_WRITES, data: traitData(traits) }),
       entitiesPrelude(keyed, placeholderMap, blankStat, place, statEntriesOf),
@@ -1427,6 +1433,16 @@ export const executeStatCode = async (
       };
       const returned = readSlot(0);
       const written = readSlot(1);
+      const replyOf = (): string | null => {
+        if (returned.type === 'string') return returned.text;
+        const handle = vm.getProp(result.value, 0);
+        try {
+          const value: unknown = vm.dump(handle);
+          return value === undefined || value === null ? null : JSON.stringify(value) ?? null;
+        } finally {
+          handle.dispose();
+        }
+      };
       const boundSlots = CODE_BOUND_FIELDS.map((field, i) => [field, readSlot(2 + i)] as const);
       const readDump = (index: number): string => {
         const handle = vm.getProp(result.value, index);
@@ -1519,6 +1535,7 @@ export const executeStatCode = async (
         ...(readOnlyWrites.length ? { readOnlyWrites } : {}),
         ...(sentence === undefined ? {} : { sentence }),
         ...(worldWrites.writes ? { worldWrites: worldWrites.writes } : {}),
+        ...(args ? { reply: replyOf() } : {}),
       });
       if (!currentStat || returnsSentence) return settled(null);
       if (returned.type === 'number') return settled(returned.number);

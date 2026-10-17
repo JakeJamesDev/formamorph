@@ -14,6 +14,7 @@ import { findSavesUsingModel } from '@/lib/modelUsage';
 import { DEFAULT_AVATAR_URL } from '@/lib/defaultAvatar';
 import { toast } from 'react-toastify';
 import { toastError } from '@/lib/linkToast';
+import { withImportedWorldTools } from '@/lib/tools/worldTools';
 import { ThemedToastContainer } from '@/components/ThemedToastContainer';
 import 'react-toastify/dist/ReactToastify.css';
 import { Button } from "@/components/ui/button";
@@ -1024,7 +1025,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       try {
         // Sanitize at the import boundary: the worker reads, parses and migrates the file to the current
         // version (off-thread: an image-heavy world is tens of MB), then we settle what its bundled content follows.
-        const world = await resolveImportedWorld(await parseWorldFile(file));
+        const { world, warning } = withImportedWorldTools(await resolveImportedWorld(await parseWorldFile(file)));
+        if (warning) toast.warning(warning);
         const id = `uploaded-${randomUUID()}`;
         world.id = id;
         parsed.push({ world, id });

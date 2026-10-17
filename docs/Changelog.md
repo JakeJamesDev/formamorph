@@ -21,6 +21,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Worlds can now hold Tools, which every playthrough of the world offers to the AI.** Add them in the World Editor's new Tools tab, in Advanced mode. A World Tool replaces a same-name Tool in its world. The Tool status line now names the Tools the AI calls.
     - **Scripts can now move the location, advance the story clock and discover a new entity.** Call `location.move`, `clock.advance` or `discover` from any script. Each write beats the AI's answer for that turn and drops with a regenerate. Test Code lists them.
     - **Scripts can now add a memory line, a pinned memory or a diary line for the turn.** Call `memory.add`, `memory.pin` or `diary`. Lines join the AI's summary and diary, a pin is sent with every request, and a regenerate drops all three.
+    - **A World Tool's script can now run when the AI calls it, or after the AI, and change the game.** An On Call Tool returns its script's value. An After the AI Tool sends its Reply, and its script runs with the After the AI scripts. A regenerate drops the changes.
 - **🛠️ Developer tooling**
   - **The During AI Output run takes a Narration Stream listener that drops a retracted round's writes.** A sentence run still in progress at the retract leaves no write either. Output triggers build on this seam.
 

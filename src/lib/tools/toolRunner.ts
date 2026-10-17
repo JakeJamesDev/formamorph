@@ -25,7 +25,7 @@ export interface ToolCallResult {
 type ToolArgValue = string | number | boolean;
 
 /** Validated arguments, by parameter name. An absent optional parameter has no key. */
-type ToolArgs = Readonly<Record<string, ToolArgValue>>;
+export type ToolArgs = Readonly<Record<string, ToolArgValue>>;
 
 const failed = (failure: ToolCallFailure, error: string): ToolCallResult =>
   ({ text: JSON.stringify({ error }), failure });

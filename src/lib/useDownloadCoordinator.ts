@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, type Dispatch, type SetStateAction } from "react";
 import { toast } from "react-toastify";
 import { toastError } from "@/lib/linkToast";
+import { withImportedWorldTools } from "@/lib/tools/worldTools";
 import WorldStorageService from "@/services/WorldStorageService";
 import { migrateWorld } from "@/lib/version";
 import { fetchCatalogContent } from "@/lib/fetchCatalogContent";
@@ -317,8 +318,9 @@ export function useDownloadCoordinator(
     // this download stored for it, which is what the editor reads as Linked. An update then puts back
     // every copy the review protected, so the write cannot discard what the player kept.
     const update = run.update;
+    const { world: imported, warning: toolWarning } = withImportedWorldTools(content.migrated);
     const linked = keepInstalledCopies(
-      linkInstalledSources(content.migrated, run.installed),
+      linkInstalledSources(imported, run.installed),
       update?.previous ?? {},
       update ? protectedCopies(update.rows, update.actions, run.installed) : [],
     );
@@ -341,6 +343,7 @@ export function useDownloadCoordinator(
     if (run.overwrite) setWorlds((prev) => prev.map((w) => (w.id === run.localId ? { ...w, ...record } : w)));
     else setWorlds((prev) => [...prev, { ...record, isLoading: false }]);
     toast.success(`"${name}" ${run.overwrite ? 'updated' : 'downloaded'} successfully`);
+    if (toolWarning) toast.warning(toolWarning);
   };
 
   /**
