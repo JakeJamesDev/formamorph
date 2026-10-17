@@ -251,7 +251,7 @@ The script reads and writes everything a world script does: stats, traits, place
 - **Errors follow the script rules.** A During AI Output Tool that throws passes its sentence unchanged. On Call and After the AI drop the script's writes, as a failed script does. An On Call error goes back to the AI as the Tool's answer.
 - **`player` works in On Call and After the AI only**, as in the script timings.
 - **A regenerate or a cancel drops everything a Tool did that turn**, On Call writes too. A stop that keeps its narration keeps the On Call writes, because the kept text was written with them.
-- **A stat re-roll drops a Tool's effects.**
+- **A stat re-roll keeps a Tool's effects.** An After the AI Tool runs again with the AI's call. An On Call Tool's writes come back as they were, so a random result still matches the story. A During AI Output Tool doesn't run again, as a During AI Output script doesn't.
 - **With a During AI Output Tool in the world, the reveal shows only complete sentences**, on every turn the Tool is offered.
 
 World Tools need a text endpoint that supports Tools, and **Tools** on in Settings → **Output**. Without them, the AI gets no World Tools and the world plays on. Write the world so it still works without its Tools. See [Endpoints Without Tool Support](Tools#endpoints-without-tool-support).
