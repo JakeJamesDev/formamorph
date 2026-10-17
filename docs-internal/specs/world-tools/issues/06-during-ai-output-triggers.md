@@ -1,6 +1,6 @@
 # 06: During AI Output Triggers
 
-Status: ready-for-human
+Status: done
 Blocked by: 02, 05
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high

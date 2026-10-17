@@ -1,6 +1,7 @@
 # Spec: World Tools
 
-Status: ready-for-agent
+Status: done
+Status note: Closed on 2026-10-17. Tickets 01–11 landed; the last landing is 38ff42f7e. Gates green on 2026-10-17.
 Spec session: world-tools — spec
 
 ## Problem Statement
