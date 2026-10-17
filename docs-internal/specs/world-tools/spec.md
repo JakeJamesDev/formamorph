@@ -60,6 +60,9 @@ Settled with the user on 2026-10-17. R rulings came from the design discussion; 
 | Q35 | On the Tools tab read view, Offered To and Max Calls write as they change, one history Step each, as in Settings; Q21's draft applies to the Tool editor (ticket 01 ruling, from Q21) |
 | Q36 | `memory.pin(line)` adds a Memory Manager note anchored at the turn, shown under Custom. The note id carries the turn id, and a regenerate, undo or cancel prunes notes whose turn is gone. A script-written marker is out of scope (ticket 04 ruling) |
 | Q37 | `memory.add(line)` and `diary(nameOrId, line)` add beside the pass output, never replace it: the digest and diary passes still run for that turn, the code lines are stored on the turn beside them, and everything that reads the digest or the diary (recall, requests, the Memory Manager, the diary view) reads both. Several calls keep call order. Overrides Q15 for these two writes. **Save shape change (additive):** one per-turn field for code memory lines and one for code diary lines. Diary targets are entities in play, world or discovered; the persona is not a target; an unknown name fails the script (user ruling, ticket 04) |
+| Q38 | On Call writes stage in the turn and land at commit, after the output run's writes and before the After triggers and After Scripts. A stopped turn lands none. Prompts sent later in the same turn do not see them; the On Call return value is the only same-turn effect. Replaces "visible to later reads in the turn" (user ruling in the ticket 05 session) |
+| Q39 | A stat re-roll runs no Tool triggers and lands no On Call writes (user ruling in the ticket 05 session) |
+| Q40 | An On Call script reads the turn as a Before the AI script does: no AI asks, no regen, deltas zero (user ruling in the ticket 05 session) |
 
 ## User Stories
 
