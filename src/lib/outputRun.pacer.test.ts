@@ -22,8 +22,10 @@ const turn: StatCodeTurn = {
 };
 
 const settle = () => new Promise<void>((resolve) => { setImmediate(resolve); });
-async function until(done: () => boolean) {
-  for (let i = 0; i < 500 && !done(); i++) await act(settle);
+// A wall-clock bound: each wait spans real QuickJS runs, whose tick count grows on a slower machine.
+async function until(done: () => boolean, ms = 5000) {
+  const deadline = performance.now() + ms;
+  while (!done() && performance.now() < deadline) await act(settle);
   expect(done()).toBe(true);
 }
 
