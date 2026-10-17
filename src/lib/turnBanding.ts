@@ -388,7 +388,7 @@ export function buildBandedHistory(args: {
   /** Last turn's band membership (`BandResult.bandTurnIds`). Members rank as if scored STICKY_BONUS×
    *  higher, so the band drifts instead of being re-drawn every turn. Only acts in scored mode, and
    *  never overrides the protected ends. Null/absent/empty = no hysteresis, the pre-feature path. */
-  stickyIds?: Set<string> | null;
+  stickyIds?: ReadonlySet<string> | null;
   /** Semantic rehydration (roadmap step 2): the turnIds worth restoring to full text for this action,
    *  best-first, already threshold-gated and near-duplicate-filtered by lib/semanticRehydration. The
    *  band takes as many as fit `rehydrateCap` tokens (up to `maxRehydrations`), removes them from the

@@ -14,7 +14,7 @@ import { EXIT_TO_MENU_PROMPT } from "@/lib/leavePrompts";
 import { useGameplay } from "@/contexts/GameplayContext";
 import { useAccountDeletion } from "@/contexts/AccountDeletionContext";
 import { type StatClock, type WorldWrites } from "@/lib/statCodeExecutor";
-import { mergeWorldWrites } from "@/lib/worldWrites";
+import { advancedClock, mergeWorldWrites } from "@/lib/worldWrites";
 import { pruneScriptPins, withScriptPins } from "@/lib/scriptPins";
 import {
   overlayStatCodeResult, playthroughPlaceholderSet, runStatCodeTurn, runSwitchScripts, withPinWrites, type ScriptTrigger, type StatCodeTurn, type StatCodeTurnResult,
@@ -158,7 +158,7 @@ import { computeTurnCommit, withCodeWrites, type TurnCommit, type TurnCommitCont
 import { classifyTurnError, type TurnErrorKind } from "../lib/turnPipeline/turnErrors";
 import { emptyTurnMaterial, type TurnMaterial, type TurnPassSubject, type TurnPlanInput, type TurnPrompts, type TurnSettings } from "../lib/turnPipeline/turnPlan";
 import { parseTurns, buildVerbatimHistory, buildBandedHistory, extractKeywords, type BandCounts } from "../lib/turnBanding";
-import { anatomyRegions, toAnatomyBlocks } from "../lib/requestAnatomy";
+import { anatomyRegions, toAnatomyBlocks, type AnatomyRun } from "../lib/requestAnatomy";
 import type { PromptJumpTarget } from "../lib/promptJump";
 import {
   markFindHits, markFraction, parseFindTerms, planFindHits, type FindMarked,
@@ -168,7 +168,8 @@ import { agedMilestoneCandidates, resolveMilestoneDrop } from "../lib/milestoneM
 import { applyMemoryOverrides, activeNotes } from "../lib/memoryOverrides";
 import { buildRelevanceScores, EMBED_BATCH_BOUND_MS, EMBED_BOUND_MS, vectorKey } from "../lib/memoryRelevance";
 import { entryVectorKey, entryEmbedText } from "../lib/semanticDictionary";
-import { selectSemanticRehydrations, rehydrationCooldownBlocked } from "../lib/semanticRehydration";
+import { selectSemanticRehydrations } from "../lib/semanticRehydration";
+import { pickHistoryRecall, type HistoryPicks } from "../lib/historyRecall";
 import { embedTexts, isEmbeddingModelReady, loadEmbeddingModel } from "../lib/embeddingWorkerClient";
 import { getVectors, putVector } from "../lib/embeddingCache";
 import { findEntityNames, matchNames, sameCharacterName } from "../lib/entityMatch";
@@ -324,6 +325,16 @@ type PreTurnCodeState = Pick<
  *  passes, which run before React re-renders with it. */
 type TurnCodeState = Pick<LiveSnapshot, 'globalStats'> & PreTurnCodeState;
 
+/** A running turn's view of the history. Each absent field reads live state. */
+interface HistoryTurnView {
+  /** Story hours the recap's stamps and now-line read. */
+  nowHours?: number;
+  /** The context values the now-line renders from. */
+  values?: TokenValues;
+  /** The first trim's picks, on a re-render. */
+  picks?: HistoryPicks;
+}
+
 /** A stat-code run set up but not yet executed: its turn, and the step that lays the result onto live state. */
 interface PreparedStatCode {
   turn: StatCodeTurn;
@@ -340,7 +351,7 @@ const activeUnderTraits = (
   traitOrder: Parameters<typeof inAuthoredOrder>[1],
   /** The entities' global-row traits in force on that slice, which switch stats with the rest. */
   globalRows: readonly Trait[] = [],
-): Pick<SceneWrites, 'activeStats' | 'activeTraits'> => {
+): Required<Pick<SceneWrites, 'activeStats' | 'activeTraits'>> => {
   const inForce = inAuthoredOrder(traitsInForce(acquired, disabledTraitIds), traitOrder);
   return { activeTraits: inForce, activeStats: enabledStats(stats, activeStatEnabled(stats, [...inForce, ...globalRows])) };
 };
@@ -1722,7 +1733,10 @@ const GameViewer = ({
   const narrationAnswerCap = narrationCaps.answerCap;
   const reserveTokens = outputReserve(narrationCaps.reserve);
 
-  const getTrimmedMessageHistory = useCallback((promptTokens = 0, action = "", relevanceScores: Map<string, number> | null = null, actionVec: Float32Array | null = null, liveRecall = false) => {
+  const getTrimmedMessageHistory = useCallback((
+    promptTokens = 0, action = "", relevanceScores: Map<string, number> | null = null, actionVec: Float32Array | null = null, liveRecall = false,
+    turnView: HistoryTurnView = {},
+  ): { messages: ChatMessage[]; runs: AnatomyRun[][]; picks?: HistoryPicks } => {
     const turns = parseEffectiveTurns(fullMessageHistory);
     if (memoryDigests) {
       const keywords = extractKeywords(action, dictionary);
@@ -1732,31 +1746,31 @@ const GameViewer = ({
       // Semantic rehydration: rank the old scenes this action returns to (threshold + near-duplicate
       // guard in lib/semanticRehydration). Floor/band split here is the budget-free approximation of
       // buildBandedHistory's; it re-validates band membership before spending tokens.
-      let semanticRehydrate: string[] | null = null;
-      if (semanticRehydration && semanticMemory && actionVec) {
+      const select = semanticRehydration && semanticMemory && actionVec ? (blocked: ReadonlySet<string>) => {
         const floorCount = Math.min(narrationVerbatimTurns, turns.length);
         const floorTurns = turns.slice(turns.length - floorCount);
         const drop = getMilestoneDrop(turns);
         const band = turns.slice(0, turns.length - floorCount).filter(
           (t) => t.summary?.trim() && !(drop && t.turnId && drop.has(t.turnId)),
         );
-        const recallTurn = liveRecall ? turns.length : lastRecallTurnRef.current ?? turns.length;
-        const blocked = rehydrationCooldownBlocked(rehydrateLastFiredRef.current, recallTurn);
-        semanticRehydrate = selectSemanticRehydrations(band, floorTurns, actionVec, embedVectorsRef.current, blocked);
-        if (liveRecall) {
-          lastRecallTurnRef.current = recallTurn;
-          for (const id of semanticRehydrate) rehydrateLastFiredRef.current.set(id, recallTurn);
-        }
-      }
+        return selectSemanticRehydrations(band, floorTurns, actionVec, embedVectorsRef.current, blocked);
+      } : null;
+      const book = { lastRecallTurn: lastRecallTurnRef.current, lastFired: rehydrateLastFiredRef.current };
+      // A re-render keeps the picks its turn's first trim made, so the recall records once.
+      const picks = pickHistoryRecall({
+        picks: turnView.picks, live: liveRecall, turnCount: turns.length, book, sticky: lastBandIdsRef.current, select,
+      });
+      lastRecallTurnRef.current = book.lastRecallTurn;
+      const { semanticRehydrate, stickyIds } = picks;
       // The recap's "where things stand" closer: mid-scene anchor (location + recent participants) plus
       // the player's standing notes. Probed on real failure turns (now-line-probe.mjs): removed the
       // scene-reset / roleplay-identity-inversion class entirely; without it the recap reads as backstory.
       // In-world time (experimental): each remembered moment is stamped with when it happened — the recap
       // otherwise reads as an undated chronicle (docs-internal/designs/time-system/design.md).
-      const stamp = timeContext ? buildStamper({ nowHours: gameTime, hoursAt: hoursByPosition(turns), calendar }) : undefined;
+      const stamp = timeContext ? buildStamper({ nowHours: turnView.nowHours ?? gameTime, hoursAt: hoursByPosition(turns), calendar }) : undefined;
       // Assembled from the same context values every other prompt uses: each chip carries its own wording
       // in its affixes and disappears with its value, so any combination still reads as a sentence.
-      const nowLine = currentLocation ? renderPromptTemplate(nowLinePrompt, contextValuesRef.current()) : undefined;
+      const nowLine = currentLocation ? renderPromptTemplate(nowLinePrompt, turnView.values ?? contextValuesRef.current()) : undefined;
       const { messages, runs, counts, bandTurnIds, rehydratedTurnIds } = buildBandedHistory({
         turns,
         contextWindow,
@@ -1772,7 +1786,7 @@ const GameViewer = ({
         nowLine,
         relevanceScores,
         bandCap: semanticMemory ? semanticBandCap : 0,
-        stickyIds: lastBandIdsRef.current,
+        stickyIds,
         semanticRehydrate,
         rehydratePrompt: rehydrateUserPrompt,
         notes: effectiveNotes,
@@ -1782,12 +1796,13 @@ const GameViewer = ({
       lastBandCountsRef.current = counts;
       // `liveRecall` is the real turn's call — the AI-context preview builds the same band with it off, so
       // gating here keeps the Memory panel reporting what was actually sent rather than what a preview drew.
-      if (liveRecall) {
+      // A turn's re-render is what was sent, so the panel follows it too.
+      if (liveRecall || turnView.picks) {
         lastBandIdsRef.current = new Set(bandTurnIds);
         setContextMemoryIds(bandTurnIds);
         setRehydratedMemoryIds(rehydratedTurnIds);
       }
-      return { messages, runs };
+      return { messages, runs, picks };
     }
     lastBandCountsRef.current = null;
     // Digests off: no band to anchor into, so the player's own memories lead as a standing block.
@@ -1952,10 +1967,10 @@ const GameViewer = ({
 
   const getEndpointUrl = () => endpointUrl;
 
-  // The world as this turn's passes read it, over what a before box wrote and React has not rendered yet.
-  // Null for a box that moved nothing, which leaves every pass on the memoized state reads.
-  const turnCodeView = useCallback((over: TurnCodeState | null): SceneWrites | null => {
-    if (!over) return null;
+  // The world as this turn's passes read it, over what its code wrote and React has not rendered yet, at the
+  // time its clock advances reached. Null when code moved nothing, which leaves every pass on the memoized reads.
+  const turnCodeView = useCallback((over: TurnCodeState | null, elapsed?: number): SceneWrites | null => {
+    if (!over) return elapsed === undefined ? null : { elapsed };
     const overPins = pinsFor(over.codePins ?? {}, {
       traits: over.globalTraits, disabledTraitIds: over.disabledTraitIds, ownedTraits: over.ownedTraits, stats: over.globalStats,
     });
@@ -1971,6 +1986,7 @@ const GameViewer = ({
       resolve,
       resolveTrait: (trait, text, owner) => resolveTraitFor(overPins, trait, text, owner),
       resolveEntity: (entity, text) => resolveEntityFor(overPins, entity, text),
+      ...(elapsed === undefined ? {} : { elapsed }),
     };
   }, [pinsFor, resolveFor, resolveTraitFor, resolveEntityFor, traits, traitOrder, gatedWorld]);
 
@@ -2470,8 +2486,8 @@ const GameViewer = ({
     // What the turn's own derivations carry between passes. The pipeline's material holds everything the
     // requests render from; these are the view-side reads that outlive a single pass.
     let turnLocation = currentLocation;
-    // What the runs before the AI wrote to the location, the clock and the cast.
-    let beforeWorldWrites: WorldWrites | undefined;
+    // What the runs before the AI and the On Call runs wrote to the location, the clock and the cast.
+    let turnWorldWrites: WorldWrites | undefined;
     let actionVec: Float32Array | null = null;
     let priorNarration = "";
     // Staged/precall candidates the narration confirms afterward: ad-hoc = planner-invented (no entity
@@ -2534,7 +2550,7 @@ const GameViewer = ({
       const { written: beforeBox, world: beforeWorld } = await runBeforeAI(
         rawGlobalStatsRef.current, { deltaHours: 0, elapsedHours: gameTime, calendar }, undefined, isOpeningTurn && newPlaythroughRef.current,
       );
-      beforeWorldWrites = beforeWorld;
+      turnWorldWrites = beforeWorld;
       // A move before the AI lands before routing, so the narration is written where code put the turn.
       const beforeTarget = beforeWorld?.location === undefined ? undefined : locations.find((loc) => loc.id === beforeWorld.location);
       if (beforeTarget) {
@@ -2548,21 +2564,23 @@ const GameViewer = ({
       turnBeforeBoxRef.current = beforeBox;
       outputRunRef.current = null;
       onCallStateRef.current = null;
-      let codeView = turnCodeView(beforeBox);
+      const beforeClock = advancedClock(gameTime, beforeWorld);
+      turnClockRef.current = beforeClock ?? null;
+      let codeView = turnCodeView(beforeBox, beforeClock);
+      // An On Call write since the narration's context values were built, which later prompts must read (Q52).
+      let narrationBuilt = false;
+      let ctxStale = false;
+      let relevanceScores: Map<string, number> | null = null;
+      let historyPicks: HistoryPicks | undefined;
 
       /**
-       * Everything the narration rides on, assembled once the up-front router has settled where the turn
-       * takes place: the context values, the dictionary scan, the system prompt, and the trimmed history
-       * this turn's user message is appended to.
+       * The narration's context values, system prompt and trimmed history, under the turn's code view and
+       * clock. `picks` re-renders with the memories the first trim chose.
        */
-      const assembleNarration = async (): Promise<Partial<TurnMaterial>> => {
+      const renderNarration = (picks?: HistoryPicks) => {
         // The shared context base (incl. all three Stats-chip variants), scoped to this turn's location;
         // every system-prompt render below spreads it and adds its own tokens.
         const ctx = contextValues(turnLocation, codeView);
-        // One action embedding for every semantic consumer this turn (lore activation, band relevance,
-        // diary retrieval). Null = all semantic features quietly off for this turn.
-        actionVec = await embedActionVec(effectiveAction);
-
         const { prompt, runs, dictionaryDebug } = buildNarrationPrompt({
           template: systemPrompt,
           ctx,
@@ -2580,15 +2598,37 @@ const GameViewer = ({
           resolvePH: codeView?.resolve ?? resolvePH,
         });
         pendingDictionaryDebugRef.current = dictionaryDebug;
-
         // Get trimmed history before adding new action (history fills the window left by the prompt).
-        // Pass the action so banding can rehydrate older turns it references. Relevance scores are
-        // computed once here and shared with the planner rebuild below so both stages trim identically.
-        const relevanceScores = computeRelevanceScores(actionVec);
-        // The context meter re-trims with the same scores + action vector so its counts mirror this turn.
+        // Pass the action so banding can rehydrate older turns it references.
+        const history = getTrimmedMessageHistory(
+          estimateTokens(prompt.length), effectiveAction, relevanceScores, actionVec, !picks,
+          // A turn its code left alone keeps the live now-line, byte for byte.
+          { nowHours: codeView?.elapsed, values: codeView ? ctx : undefined, picks },
+        );
+        // Track the assembled system-prompt size for the memory-usage breakdown
+        setLastPromptChars(prompt.length);
+        return { ctx, prompt, runs, history };
+      };
+
+      /**
+       * Everything the narration rides on, assembled once the up-front router has settled where the turn
+       * takes place: the context values, the dictionary scan, the system prompt, and the trimmed history
+       * this turn's user message is appended to.
+       */
+      const assembleNarration = async (): Promise<Partial<TurnMaterial>> => {
+        // One action embedding for every semantic consumer this turn (lore activation, band relevance,
+        // diary retrieval). Null = all semantic features quietly off for this turn.
+        actionVec = await embedActionVec(effectiveAction);
+        // Relevance scores are computed once here and shared with the planner rebuild below so both stages
+        // trim identically. The context meter re-trims with the same scores + action vector so its counts
+        // mirror this turn.
+        relevanceScores = computeRelevanceScores(actionVec);
         lastRelevanceScoresRef.current = relevanceScores;
         lastActionVecRef.current = actionVec;
-        const { messages: trimmedHistory, runs: historyRuns } = getTrimmedMessageHistory(estimateTokens(prompt.length), effectiveAction, relevanceScores, actionVec, true);
+        const { ctx, prompt, runs, history } = renderNarration();
+        const { messages: trimmedHistory, runs: historyRuns } = history;
+        historyPicks = history.picks;
+        narrationBuilt = true;
 
         // Add user message to history after getting trimmed history. Stores the proxy on the opening turn so
         // later turns' context is byte-identical to the old flow (the real opening text lives in openingActionRef).
@@ -2601,9 +2641,6 @@ const GameViewer = ({
           .filter((m) => m.role === "assistant")
           .map((m) => narrationOf(m.content) ?? "")
           .join("\n");
-
-        // Track the assembled system-prompt size for the memory-usage breakdown
-        setLastPromptChars(prompt.length);
 
         // Banded turns ride as condensed pairs, so the last assistant message is the real last narration.
         const lastStory = [...trimmedHistory].reverse().find((m) => m.role === "assistant")?.content || "";
@@ -2727,17 +2764,23 @@ const GameViewer = ({
           land: (result) => {
             const { written, world } = prepared.finish(result);
             // Scene writes join the before box's (Q44): a move sets where later prompts and Tool calls stand.
-            beforeWorldWrites = mergeWorldWrites(beforeWorldWrites, world);
+            turnWorldWrites = mergeWorldWrites(turnWorldWrites, world);
             const target = world?.location === undefined ? undefined : locations.find((loc) => loc.id === world.location);
             if (target) {
               turnLocation = target;
               scriptLocationRef.current = target;
-              executeTool = turnToolExecutor();
             }
-            if (!written) return;
-            if (!beforeBoxUndoRef.current) beforeBoxUndoRef.current = turnPreBoxRef.current;
-            onCallStateRef.current = written;
-            codeView = turnCodeView(written);
+            // An advance moves the time later prompts, Tool calls and scripts read (Q45).
+            if (target || world?.minutes !== undefined) executeTool = turnToolExecutor();
+            if (written) {
+              if (!beforeBoxUndoRef.current) beforeBoxUndoRef.current = turnPreBoxRef.current;
+              onCallStateRef.current = written;
+            }
+            if (!written && !world) return;
+            const clock = advancedClock(gameTime, turnWorldWrites);
+            turnClockRef.current = clock ?? null;
+            codeView = turnCodeView(onCallStateRef.current ?? turnBeforeBoxRef.current, clock);
+            if (narrationBuilt) ctxStale = true;
           },
         };
       });
@@ -2767,7 +2810,17 @@ const GameViewer = ({
             // Hand the streaming narration (inside sendAiRequest) this turn's scene-list inputs so it can
             // keep the Entities tab live per sentence.
             sceneListCtxRef.current = { cast: sceneCast, prior: priorNarration };
-            return;
+            if (!ctxStale) return;
+            ctxStale = false;
+            // A Planning On Call write landed after the prompt was built, so the narration reads it (Q44, Q52).
+            const { ctx, prompt, runs, history } = renderNarration(historyPicks);
+            return {
+              ctx,
+              narrationSystemPrompt: prompt,
+              narrationSystemPromptRuns: runs,
+              trimmedHistory: history.messages,
+              historyRuns: history.runs,
+            };
           }
           if (event.stage === "postNarration") {
             // The batch shows one stable label instead of a race between its own requests; "Choices" since
@@ -2781,7 +2834,11 @@ const GameViewer = ({
             const statRequest = statRequestFor(
               enabledStats(globalStatsRef.current, statEnabledRef.current), presentEntitiesOf(fanOut.diary), entityStatsRef.current,
             );
+            // A call during the narration never rebuilds its text; the passes after it read the change (Q44).
+            const ctx = ctxStale ? { ctx: contextValues(turnLocation, codeView) } : {};
+            ctxStale = false;
             return {
+              ...ctx,
               subjects: { ...material.subjects, ...fanOut },
               statRequest,
               statCtx: contextValues(turnLocation, codeView, statRequest),
@@ -2864,7 +2921,10 @@ const GameViewer = ({
       };
 
       /** The pipeline's request seam, filled by the Request Transport. */
-      const request: TurnRequestAdapter = (spec, context) => sendAiRequest({ ...spec, signal: context.signal, executeTool });
+      // Each call reads the executor at call time, so a later call in the same request sees an earlier one's move.
+      const request: TurnRequestAdapter = (spec, context) => sendAiRequest({
+        ...spec, signal: context.signal, executeTool: (tool, args) => executeTool(tool, args),
+      });
 
       const result = await runTurn({
         plan,
@@ -2916,7 +2976,7 @@ const GameViewer = ({
         gameTime,
         fixedTurnHours,
         calendar,
-        codeWrites: beforeWorldWrites,
+        codeWrites: turnWorldWrites,
         heldNames: [...entities.map((entity) => entity.name), ...suppressedCharacterNames],
         diaryNames: Object.fromEntries([...traitLibrary, ...allEntities].map((entity) => [entity.id, entity.name])),
         toolCalls: worldToolTurn.calls(),
@@ -2940,6 +3000,7 @@ const GameViewer = ({
       setIsRevealingNarration(false);
       setAiRequestType(null);
       scriptLocationRef.current = null;
+      turnClockRef.current = null;
       // Release the turn's controller (unless a newer turn already replaced it).
       if (abortControllerRef.current === controller) {
         abortControllerRef.current = null;
@@ -3029,6 +3090,9 @@ const GameViewer = ({
   // Where a running turn stands for its scripts' `location`, ahead of the render that commits a move. Null
   // between turns, where the live location stands.
   const scriptLocationRef = useRef<GameLocation | null>(null);
+  // The story hours a running turn's clock advances reached, which its later runs read (Q45). Null when the
+  // turn has not advanced the clock, and between turns.
+  const turnClockRef = useRef<number | null>(null);
 
   // The world's list and books; the run joins the library entities' and library books' pools itself.
   const statCodePlaceholders = useMemo(() => playthroughPlaceholderSet({
@@ -3610,7 +3674,7 @@ const GameViewer = ({
   /** A run over the turn's start as code has left it: `base`, else the live state; no asks, no regen. */
   const prepareTurnStartCode = (base: TurnCodeState | null, timing: RunTiming = 'before') => {
     const stats = base?.globalStats ?? rawGlobalStatsRef.current;
-    return prepareStatCode(stats, stats, [], { deltaHours: 0, elapsedHours: gameTime, calendar }, base ?? undefined, timing);
+    return prepareStatCode(stats, stats, [], { deltaHours: 0, elapsedHours: turnClockRef.current ?? gameTime, calendar }, base ?? undefined, timing);
   };
 
   /**
